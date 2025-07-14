@@ -14,6 +14,11 @@ verus! {
 
         pub assume_specification [Choice::from](u: u8) -> (c: Choice);
 
+        #[verifier::external_body]
+        fn select(x: &u64, y: &u64, c: Choice) -> u64 {
+            u64::conditional_select(x, y, c)
+        }
+
 
         /* MANUALLY IMPORTED FROM curve25519-dalek/src/backend/serial/u64/constants.rs */
         /// `L` is the order of base point, i.e. 2^252 + 27742317777372353535851937790883648493
@@ -330,7 +335,7 @@ verus! {
         let mut carry: u64 = 0;
         for i in 0..5 {
             let underflow = Choice::from((borrow >> 63) as u8);
-            let addend = u64::conditional_select(&0, &L.limbs[i], underflow);
+            let addend = select(&0, &L.limbs[i], underflow);
             assume(false);
             carry = (carry >> 52) + difference.limbs[i] + addend;
             difference.limbs[i] = carry & mask;

@@ -12,12 +12,19 @@ verus! {
         #[verifier::external_body]
         pub struct ExChoice(Choice);
 
-        pub assume_specification [Choice::from](u: u8) -> (c: Choice);
+        pub assume_specification [Choice::from](u: u8) -> (c: Choice)
+            ensures u == 0 ==> boolify(c) == false,
+                    u == 1 ==> boolify(c) == true;
 
         #[verifier::external_body]
-        fn select(x: &u64, y: &u64, c: Choice) -> u64 {
+        fn select(x: &u64, y: &u64, c: Choice) -> (res: u64)
+            ensures boolify(c) ==> res == x,
+                    ! boolify(c) ==> res == y
+        {
             u64::conditional_select(x, y, c)
         }
+
+        pub spec fn boolify(c: Choice) -> bool;
 
 
         /* MANUALLY IMPORTED FROM curve25519-dalek/src/backend/serial/u64/constants.rs */

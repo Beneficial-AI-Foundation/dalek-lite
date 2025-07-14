@@ -2,8 +2,8 @@
 #![allow(unused)]
 use vstd::prelude::*;
 use vstd::arithmetic::power2::*;
-// use subtle::{Choice, ConditionallySelectable}; // simulated with normal (unsubtle) operations
-// use crate::constants; // We manually import needed constants 
+use subtle::{Choice, ConditionallySelectable};
+//use crate::constants; // We manually import needed constants
 
 verus! {
 
@@ -321,15 +321,8 @@ verus! {
         // conditionally add l if the difference is negative
         let mut carry: u64 = 0;
         for i in 0..5 {
-          /*** BEGIN: ADAPTED CODE BLOCK ***/
-          // ORIGINAL CODE
-         //   let underflow = Choice::from((borrow >> 63) as u8);
-         //   let addend = u64::conditional_select(&0, &constants::L[i], underflow);
-        // OUR ADAPTED CODE FOR VERUS
-            let underflow = (borrow >> 63) != 0;
-            let addend = if underflow { L.limbs[i] } else { 0 };
-
-        /*** END: ADAPTED CODE BLOCK ***/
+            let underflow = Choice::from((borrow >> 63) as u8);
+            let addend = u64::conditional_select(&0, &L.limbs[i], underflow);
             assume(false);
             carry = (carry >> 52) + difference.limbs[i] + addend;
             difference.limbs[i] = carry & mask;

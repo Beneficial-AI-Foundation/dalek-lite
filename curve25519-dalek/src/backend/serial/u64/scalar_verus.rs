@@ -5,6 +5,12 @@ use vstd::arithmetic::power2::*;
 use subtle::{Choice, ConditionallySelectable};
 //use crate::constants; // We manually import needed constants
 
+// Specification for Choice::from
+pub assume_specification [Choice::from](u: u8) -> (c: Choice)
+    ensures
+        c.unwrap_u8() == u,
+        c.unwrap_u8() == 0 || c.unwrap_u8() == 1;
+
 verus! {
 
         /* MANUALLY IMPORTED FROM curve25519-dalek/src/backend/serial/u64/constants.rs */

@@ -3,7 +3,7 @@
 use vstd::prelude::*;
 use vstd::arithmetic::power2::*;
 use subtle::{Choice, ConditionallySelectable};
-//use crate::constants; // We manually import needed constants
+// use crate::constants; // We manually import needed constants
 
 
 verus! {
@@ -342,7 +342,12 @@ verus! {
         let mut carry: u64 = 0;
         for i in 0..5 {
             let underflow = Choice::from((borrow >> 63) as u8);
+          /*** BEGIN: ADAPTED CODE BLOCK ***/
+          // ORIGINAL CODE
+         //   let addend = u64::conditional_select(&0, &constants::L[i], underflow);
+        // OUR ADAPTED CODE FOR VERUS
             let addend = select(&0, &L.limbs[i], underflow);
+        /*** END: ADAPTED CODE BLOCK ***/
             assume(false);
             carry = (carry >> 52) + difference.limbs[i] + addend;
             difference.limbs[i] = carry & mask;

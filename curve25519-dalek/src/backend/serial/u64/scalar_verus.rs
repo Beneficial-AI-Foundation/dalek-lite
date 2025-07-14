@@ -8,11 +8,12 @@ use subtle::{Choice, ConditionallySelectable};
 
 verus! {
 
-        // Specification for Choice::from
-        pub assume_specification [Choice::from](u: u8) -> (c: Choice)
-            ensures
-                c.unwrap_u8() == u,
-                c.unwrap_u8() == 0 || c.unwrap_u8() == 1;
+        #[verifier::external_type_specification]
+        #[verifier::external_body]
+        pub struct ExChoice(Choice);
+
+        pub assume_specification [Choice::from](u: u8) -> (c: Choice);
+
 
         /* MANUALLY IMPORTED FROM curve25519-dalek/src/backend/serial/u64/constants.rs */
         /// `L` is the order of base point, i.e. 2^252 + 27742317777372353535851937790883648493

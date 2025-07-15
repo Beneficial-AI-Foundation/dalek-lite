@@ -12,7 +12,7 @@ verus! {
         #[verifier::external_body]
         pub struct ExChoice(Choice);
 
-        pub spec fn boolify(c: Choice) -> bool;
+        pub uninterp spec fn boolify(c: Choice) -> bool;
 
         pub assume_specification [Choice::from](u: u8) -> (c: Choice)
             ensures u == 0 ==> boolify(c) == false,

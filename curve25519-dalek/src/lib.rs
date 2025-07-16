@@ -23,7 +23,13 @@
 // Linting:
 //------------------------------------------------------------------------
 #![cfg_attr(allow_unused_unsafe, allow(unused_unsafe))]
-#![warn(clippy::unwrap_used, missing_docs, rust_2018_idioms, unused_lifetimes)]
+#![warn(
+    clippy::unwrap_used,
+    missing_docs,
+    rust_2018_idioms,
+    unused_lifetimes,
+    unused_qualifications
+)]
 
 //------------------------------------------------------------------------
 // External dependencies:

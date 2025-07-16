@@ -14,6 +14,9 @@
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use subtle::{Choice, ConditionallySelectable};
+use vstd::calc;
+use vstd::prelude::*;
+use vstd::arithmetic::mul::*;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
@@ -51,11 +54,43 @@ impl IndexMut<usize> for Scalar52 {
     }
 }
 
-/// u64 * u64 = u128 multiply helper
-#[inline(always)]
-fn m(x: u64, y: u64) -> u128 {
-    (x as u128) * (y as u128)
+verus!{
+        /// u64 * u64 = u128 multiply helper
+        #[inline(always)]
+        fn m(x: u64, y: u64) -> (z: u128)
+        requires
+            x < (1u64 << 52),
+            y < (1u64 << 52),
+        ensures
+            z < (1u128 << 104),
+            z == x * y
+        {
+            proof {
+                assert(1u128 << 52 == 1u64 << 52) by (bit_vector);
+                assert((x as u128) < (1u128 << 52));
+                assert((y as u128) < (1u128 << 52));
+                calc! {
+                    (<)
+                    (x as u128) * (y as u128); (<=) {
+                        if x > 0 {
+                            lemma_mul_strict_inequality(y as int, (1u128 << 52) as int, x as int);
+                        } else {
+                            assert(x == 0);
+                            assert((x as u128) * (y as u128) == 0);
+                            assert((x as u128) * (1u128 << 52) == 0);
+                        }
+                    }
+                    (x as u128) * (1u128 << 52); (<) {
+                        lemma_mul_strict_inequality(x as int, (1u128 << 52) as int, (1u128 << 52) as int);
+                    }
+                    (1u128 << 52) * (1u128 << 52);
+                }
+                assert((1u128 << 52) * (1u128 << 52) == (1u128 << 104)) by (compute);
+            }
+            (x as u128) * (y as u128)
+        }
 }
+
 
 impl Scalar52 {
     /// The scalar \\( 0 \\).

@@ -162,6 +162,7 @@ verus! {
             returns ((x as nat * y as nat) % ((1u64 << 64) as nat)) as u64;
 
         /// u64 * u64 = u128 multiply helper
+        #[verifier::allow_in_spec]
         #[inline(always)]
         fn m(x: u64, y: u64) -> (z: u128)
         requires
@@ -169,7 +170,7 @@ verus! {
             y < (1u64 << 52),
         ensures
             z < (1u128 << 104),
-            z == x * y
+        returns (x * y) as u128
         {
             proof {
                 assert(1u128 << 52 == 1u64 << 52) by (bit_vector);

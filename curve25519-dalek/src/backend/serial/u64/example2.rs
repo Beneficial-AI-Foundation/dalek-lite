@@ -21,13 +21,11 @@ verus! {
             (x as u128) * (y as u128)
         }
 
-    fn square_internal(a: &Scalar52) -> (res: [u128; 9])
+    fn square_internal(a: &Scalar52) -> u128
     requires
         forall|i: int| 0 <= i < 5 ==> a.limbs[i] < (1u64 << 52),
     {
-        let mut z = [0u128; 9];
 
-        z[0] = m(a.limbs[0], a.limbs[0]);
         proof!{
             assert (a.limbs[0] < (1u64 << 52));
             assert (a.limbs[1] < (1u64 << 52));
@@ -39,9 +37,7 @@ verus! {
             assume (m(a.limbs[0], a.limbs[1]) < (1u128 << 104));
             assume (2 * m(a.limbs[0], a.limbs[1]) < (2u128 << 104));
         }
-        z[1] = m(a.limbs[0], a.limbs[1]) * 2;
-
-        z
+        m(a.limbs[0], a.limbs[1]) * 2
     }
 }
 

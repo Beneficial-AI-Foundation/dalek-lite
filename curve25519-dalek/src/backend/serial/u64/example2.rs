@@ -4,7 +4,7 @@ use vstd::prelude::*;
 verus! {
 
     #[verifier::allow_in_spec]
-    fn m(x: u64, y: u64) -> (z: u128)
+    fn m1(x: u64, y: u64) -> (z: u128)
     requires
         x < (1u64 << 52),
         y < (1u64 << 52),
@@ -16,7 +16,7 @@ verus! {
         (x as u128) * (y as u128)
     }
 
-    fn square_internal(a: u64, b: u64) -> u128
+    fn m2(a: u64, b: u64) -> u128
     requires
         a < (1u64 << 52),
         b < (1u64 << 52),
@@ -25,9 +25,9 @@ verus! {
         proof!{
             assert(a < (1u64 << 52));
             assert(b < (1u64 << 52));
-            assert(m(a, b) < (1u128 << 104));
+            assert(m1(a, b) < (1u128 << 104));
         }
-        m(a, b)
+        m1(a, b)
     }
 }
 

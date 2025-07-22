@@ -34,10 +34,9 @@ verus! {
             assert (x < (1u64 << 52));
             assert (y < (1u64 << 52));
             assert (m(x, y) < (1u128 << 104));
-            assume (m(a.limbs[0], a.limbs[1]) < (1u128 << 104));
-            assume (2 * m(a.limbs[0], a.limbs[1]) < (2u128 << 104));
+            assert (m(a.limbs[0], a.limbs[1]) < (1u128 << 104));
         }
-        m(a.limbs[0], a.limbs[1]) * 2
+        m(a.limbs[0], a.limbs[1])
     }
 }
 

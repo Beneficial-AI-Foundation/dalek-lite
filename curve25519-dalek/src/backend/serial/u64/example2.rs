@@ -4,9 +4,6 @@ use vstd::prelude::*;
 verus! {
 
 
-        struct Scalar52 {
-            pub limbs: [u64; 5],
-        }
 
         #[verifier::allow_in_spec]
         fn m(x: u64, y: u64) -> (z: u128)
@@ -21,22 +18,18 @@ verus! {
             (x as u128) * (y as u128)
         }
 
-    fn square_internal(a: &Scalar52) -> u128
+    fn square_internal(a: u64, b: u64) -> u128
     requires
-        forall|i: int| 0 <= i < 5 ==> a.limbs[i] < (1u64 << 52),
+        a < (1u64 << 52),
+        b < (1u64 << 52),
     {
 
         proof!{
-            assert (a.limbs[0] < (1u64 << 52));
-            assert (a.limbs[1] < (1u64 << 52));
-            let x = a.limbs[0];
-            let y = a.limbs[1];
-            assert (x < (1u64 << 52));
-            assert (y < (1u64 << 52));
-            assert (m(x, y) < (1u128 << 104));
-            assert (m(a.limbs[0], a.limbs[1]) < (1u128 << 104));
+            assert (a < (1u64 << 52));
+            assert (b < (1u64 << 52));
+            assert (m(a, b) < (1u128 << 104));
         }
-        m(a.limbs[0], a.limbs[1])
+        m(a, b)
     }
 }
 

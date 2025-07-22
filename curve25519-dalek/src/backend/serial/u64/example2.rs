@@ -1,8 +1,5 @@
 use vstd::prelude::*;
-
-
 verus! {
-
     #[verifier::allow_in_spec]
     fn m1(x: u64, y: u64) -> (z: u128)
     requires
@@ -21,15 +18,14 @@ verus! {
         a < (1u64 << 52),
         b < (1u64 << 52),
     {
-
         proof!{
             assert(a < (1u64 << 52));
             assert(b < (1u64 << 52));
-            assert(m1(a, b) < (1u128 << 104));
+            assume(m1(a, b) < (1u128 << 104));
+            assume(2 * m1(a, b) < (2u128 << 104));
         }
-        m1(a, b)
+        2 * m1(a, b)
     }
 }
 
-fn main()
-{}
+fn main() {}

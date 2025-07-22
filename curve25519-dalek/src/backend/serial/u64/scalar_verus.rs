@@ -164,7 +164,7 @@ verus! {
         /// u64 * u64 = u128 multiply helper
         #[verifier::allow_in_spec]
         #[inline(always)]
-        fn m(x: u64, y: u64) -> (z: u128)
+        pub fn m(x: u64, y: u64) -> (z: u128)
         requires
             x < (1u64 << 52),
             y < (1u64 << 52),
@@ -458,7 +458,7 @@ verus! {
     /// Compute `a^2`
     #[inline(always)]
     #[rustfmt::skip] // keep alignment of calculations
-    pub (crate) fn square_internal(a: &Scalar52) -> [u128; 9]
+    pub (crate) fn square_internal(a: &Scalar52) -> (res: [u128; 9])
     requires
         forall|i: int| 0 <= i < 5 ==> a.limbs[i] < (1u64 << 52),
     {
@@ -466,6 +466,10 @@ verus! {
 
         z[0] = m(a.limbs[0], a.limbs[0]);
         proof!{
+            assert (a.limbs[0] < (1u64 << 52));
+            assert (a.limbs[1] < (1u64 << 52));
+            assume (m(a.limbs[0], a.limbs[1]) < (1u128 << 104));
+            assume (2 * m(a.limbs[0], a.limbs[1]) < (2u128 << 104));
             assert( m(3, 3) < 10 );
         }
         z[1] = m(a.limbs[0], a.limbs[1]) * 2;

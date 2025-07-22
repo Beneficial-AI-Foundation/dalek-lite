@@ -21,6 +21,9 @@ verus! {
         proof!{
             assert(a < (1u64 << 52));
             assert(b < (1u64 << 52));
+
+            // If either of these assumes is changed to an assert,
+            // Verus panics
             assume(m1(a, b) < (1u128 << 104));
             assume(2 * m1(a, b) < (2u128 << 104));
         }

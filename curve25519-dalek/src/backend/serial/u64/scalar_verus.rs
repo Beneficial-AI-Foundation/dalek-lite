@@ -465,8 +465,11 @@ verus! {
         let mut z = [0u128; 9];
 
         z[0] = m(a.limbs[0], a.limbs[0]);
-        assume(false);
+        proof!{
+            assert( m(3, 3) < 10 );
+        }
         z[1] = m(a.limbs[0], a.limbs[1]) * 2;
+        assume(false);
         z[2] = m(a.limbs[0], a.limbs[2]) * 2 + m(a.limbs[1], a.limbs[1]);
         z[3] = m(a.limbs[0], a.limbs[3]) * 2 + m(a.limbs[1], a.limbs[2]) * 2;
         z[4] = m(a.limbs[0], a.limbs[4]) * 2 + m(a.limbs[1], a.limbs[3]) * 2 + m(a.limbs[2], a.limbs[2]);

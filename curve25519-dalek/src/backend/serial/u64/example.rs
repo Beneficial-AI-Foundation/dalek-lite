@@ -16,7 +16,8 @@ fn sum2(a: u64, b: u64) -> (z: u64)
     //ensures 4 == sum(2, 2)
 {
     let z = a + b;
-    assert(4 == sum(2, 2));
+    assert(z == sum(a, b));
+    //assert(4 == sum(2, 2));
     //return z;
     return 0;
 }

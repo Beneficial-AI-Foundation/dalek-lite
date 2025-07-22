@@ -468,6 +468,11 @@ verus! {
         proof!{
             assert (a.limbs[0] < (1u64 << 52));
             assert (a.limbs[1] < (1u64 << 52));
+            let x = a.limbs[0];
+            let y = a.limbs[1];
+            assert (x < (1u64 << 52));
+            assert (y < (1u64 << 52));
+            assert (m(x, y) < (1u128 << 104));
             assume (m(a.limbs[0], a.limbs[1]) < (1u128 << 104));
             assume (2 * m(a.limbs[0], a.limbs[1]) < (2u128 << 104));
             assert( m(3, 3) < 10 );

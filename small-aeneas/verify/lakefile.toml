@@ -1,0 +1,20 @@
+name = "verify"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["Verify"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+autoImplicit = false
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "aeneas"
+git = "https://github.com/AeneasVerif/aeneas.git"
+subDir = "backends/lean"
+rev = "main"  # or a specific commit hash
+
+[[lean_lib]]
+name = "Verify"

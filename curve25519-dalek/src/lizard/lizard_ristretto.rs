@@ -2,7 +2,7 @@
 
 #![allow(non_snake_case)]
 
-use digest::generic_array::typenum::U32;
+use digest::array::typenum::U32;
 use digest::Digest;
 
 use crate::constants;
@@ -54,7 +54,7 @@ impl RistrettoPoint {
         let mut n_found = 0;
         for (j, fe_j) in fes.iter().enumerate() {
             let mut ok = Choice::from((mask >> j) & 1);
-            let buf2 = fe_j.as_bytes(); // array
+            let buf2 = fe_j.to_bytes(); // array
             h.copy_from_slice(&D::digest(&buf2[8..24])); // array
             h[8..24].copy_from_slice(&buf2[8..24]);
             h[0] &= 254;
@@ -89,7 +89,7 @@ impl RistrettoPoint {
         let (mask, fes) = self.elligator_ristretto_flavor_inverse();
 
         for j in 0..8 {
-            ret[j] = fes[j].as_bytes();
+            ret[j] = fes[j].to_bytes();
         }
         (mask, ret)
     }

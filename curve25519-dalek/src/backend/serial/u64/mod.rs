@@ -33,3 +33,5 @@ pub mod field_verus;
 pub mod common_verus;
 
 pub mod vstd_u128_verus;
+
+pub mod curve25519_verus;

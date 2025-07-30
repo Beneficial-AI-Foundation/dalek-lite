@@ -13,6 +13,7 @@
 
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
+use subtle::{Choice, ConditionallySelectable};
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
@@ -117,7 +118,7 @@ impl Scalar52 {
     /// Pack the limbs of this `Scalar52` into 32 bytes
     #[rustfmt::skip] // keep alignment of s[*] calculations
     #[allow(clippy::identity_op)]
-    pub fn as_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; 32] {
         let mut s = [0u8; 32];
 
         s[ 0] =  (self.0[ 0] >>  0)                      as u8;
@@ -174,14 +175,6 @@ impl Scalar52 {
 
     /// Compute `a - b` (mod l)
     pub fn sub(a: &Scalar52, b: &Scalar52) -> Scalar52 {
-        // Optimization barrier to prevent compiler from inserting branch instructions
-        // TODO(tarcieri): find a better home (or abstraction) for this
-        fn black_box(value: u64) -> u64 {
-            // SAFETY: `u64` is a simple integer `Copy` type and `value` lives on the stack so
-            // a pointer to it will be valid.
-            unsafe { core::ptr::read_volatile(&value) }
-        }
-
         let mut difference = Scalar52::ZERO;
         let mask = (1u64 << 52) - 1;
 
@@ -193,12 +186,11 @@ impl Scalar52 {
         }
 
         // conditionally add l if the difference is negative
-        let underflow_mask = ((borrow >> 63) ^ 1).wrapping_sub(1);
         let mut carry: u64 = 0;
         for i in 0..5 {
-            // SECURITY: `black_box` prevents LLVM from inserting a `jns` conditional on x86(_64)
-            // which can be used to bypass this section when `underflow_mask` is zero.
-            carry = (carry >> 52) + difference[i] + (constants::L[i] & black_box(underflow_mask));
+            let underflow = Choice::from((borrow >> 63) as u8);
+            let addend = u64::conditional_select(&0, &constants::L[i], underflow);
+            carry = (carry >> 52) + difference[i] + addend;
             difference[i] = carry & mask;
         }
 

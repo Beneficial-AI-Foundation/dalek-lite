@@ -11,3 +11,5 @@ build*.txt
 *.bak
 
 *.s
+.aider*
+.verus-solver-log

@@ -57,7 +57,7 @@ use core::{
 use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
-use crate::scalar::{clamp_integer, Scalar};
+use crate::scalar::{Scalar, clamp_integer};
 
 use crate::traits::Identity;
 
@@ -84,6 +84,12 @@ impl ConstantTimeEq for MontgomeryPoint {
     }
 }
 
+impl ConditionallySelectable for MontgomeryPoint {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Self(<[u8; 32]>::conditional_select(&a.0, &b.0, choice))
+    }
+}
+
 impl PartialEq for MontgomeryPoint {
     fn eq(&self, other: &MontgomeryPoint) -> bool {
         self.ct_eq(other).into()
@@ -98,7 +104,7 @@ impl Hash for MontgomeryPoint {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical
         // 32-byte encoding
-        let canonical_bytes = FieldElement::from_bytes(&self.0).as_bytes();
+        let canonical_bytes = FieldElement::from_bytes(&self.0).to_bytes();
         canonical_bytes.hash(state);
     }
 }
@@ -209,10 +215,10 @@ impl MontgomeryPoint {
     /// # Return
     ///
     /// * `Some(EdwardsPoint)` if `self` is the \\(u\\)-coordinate of a
-    /// point on (the Montgomery form of) Curve25519;
+    ///   point on (the Montgomery form of) Curve25519;
     ///
     /// * `None` if `self` is the \\(u\\)-coordinate of a point on the
-    /// twist of (the Montgomery form of) Curve25519;
+    ///   twist of (the Montgomery form of) Curve25519;
     ///
     pub fn to_edwards(&self, sign: u8) -> Option<EdwardsPoint> {
         // To decompress the Montgomery u coordinate to an
@@ -239,21 +245,21 @@ impl MontgomeryPoint {
 
         let y = &(&u - &one) * &(&u + &one).invert();
 
-        let mut y_bytes = y.as_bytes();
+        let mut y_bytes = y.to_bytes();
         y_bytes[31] ^= sign << 7;
 
         CompressedEdwardsY(y_bytes).decompress()
     }
 }
 
-/// Perform the Elligator2 mapping to a Montgomery point.
+/// Perform the Elligator2 mapping to a Montgomery point. Returns a Montgomery point and a `Choice`
+/// determining whether eps is a square. This is required by the standard to determine the
+/// sign of the v coordinate.
 ///
-/// See <https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-10#section-6.7.1>
+/// See <https://www.rfc-editor.org/rfc/rfc9380.html#name-elligator-2-method>
 //
-// TODO Determine how much of the hash-to-group API should be exposed after the CFRG
-//      draft gets into a more polished/accepted state.
 #[allow(unused)]
-pub(crate) fn elligator_encode(r_0: &FieldElement) -> MontgomeryPoint {
+pub(crate) fn elligator_encode(r_0: &FieldElement) -> (MontgomeryPoint, Choice) {
     let one = FieldElement::ONE;
     let d_1 = &one + &r_0.square2(); /* 2r^2 */
 
@@ -272,7 +278,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> MontgomeryPoint {
     let mut u = &d + &Atemp; /* d, or d+A if nonsquare */
     u.conditional_negate(!eps_is_sq); /* d, or -d-A if nonsquare */
 
-    MontgomeryPoint(u.as_bytes())
+    (MontgomeryPoint(u.to_bytes()), eps_is_sq)
 }
 
 /// A `ProjectivePoint` holds a point on the projective line
@@ -321,7 +327,7 @@ impl ProjectivePoint {
     /// * \\( 0 \\) if \\( W \eq 0 \\);
     pub fn as_affine(&self) -> MontgomeryPoint {
         let u = &self.U * &self.W.invert();
-        MontgomeryPoint(u.as_bytes())
+        MontgomeryPoint(u.to_bytes())
     }
 }
 
@@ -431,7 +437,7 @@ mod test {
     #[cfg(feature = "alloc")]
     use alloc::vec::Vec;
 
-    use rand_core::{CryptoRng, RngCore};
+    use rand_core::{CryptoRng, RngCore, TryRngCore};
 
     #[test]
     fn identity_in_different_coordinates() {
@@ -492,14 +498,14 @@ mod test {
         let one = FieldElement::ONE;
 
         // u = 2 corresponds to a point on the twist.
-        let two = MontgomeryPoint((&one + &one).as_bytes());
+        let two = MontgomeryPoint((&one + &one).to_bytes());
 
         assert!(two.to_edwards(0).is_none());
 
         // u = -1 corresponds to a point on the twist, but should be
         // checked explicitly because it's an exceptional point for the
         // birational map.  For instance, libsignal will accept it.
-        let minus_one = MontgomeryPoint((-&one).as_bytes());
+        let minus_one = MontgomeryPoint((-&one).to_bytes());
 
         assert!(minus_one.to_edwards(0).is_none());
     }
@@ -515,8 +521,8 @@ mod test {
     }
 
     /// Returns a random point on the prime-order subgroup
-    fn rand_prime_order_point(mut rng: impl RngCore + CryptoRng) -> EdwardsPoint {
-        let s: Scalar = Scalar::random(&mut rng);
+    fn rand_prime_order_point<R: CryptoRng + ?Sized>(rng: &mut R) -> EdwardsPoint {
+        let s: Scalar = Scalar::random(rng);
         EdwardsPoint::mul_base(&s)
     }
 
@@ -534,7 +540,7 @@ mod test {
 
     #[test]
     fn montgomery_ladder_matches_edwards_scalarmult() {
-        let mut csprng = rand_core::OsRng;
+        let mut csprng = rand_core::OsRng.unwrap_err();
 
         for _ in 0..100 {
             let p_edwards = rand_prime_order_point(&mut csprng);
@@ -552,7 +558,7 @@ mod test {
     // multiplying by the Scalar representation of the same bits
     #[test]
     fn montgomery_mul_bits_be() {
-        let mut csprng = rand_core::OsRng;
+        let mut csprng = rand_core::OsRng.unwrap_err();
 
         for _ in 0..100 {
             // Make a random prime-order point P
@@ -577,7 +583,7 @@ mod test {
     // integers b₁, b₂ and random (curve or twist) point P.
     #[test]
     fn montgomery_mul_bits_be_twist() {
-        let mut csprng = rand_core::OsRng;
+        let mut csprng = rand_core::OsRng.unwrap_err();
 
         for _ in 0..100 {
             // Make a random point P on the curve or its twist
@@ -623,7 +629,7 @@ mod test {
         for _ in 0..100 {
             // This will be reduced mod l with probability l / 2^256 ≈ 6.25%
             let mut a_bytes = [0u8; 32];
-            csprng.fill_bytes(&mut a_bytes);
+            csprng.try_fill_bytes(&mut a_bytes).unwrap();
 
             assert_eq!(
                 MontgomeryPoint::mul_base_clamped(a_bytes),
@@ -646,7 +652,7 @@ mod test {
         let bits_in: [u8; 32] = (&bytes[..]).try_into().expect("Range invariant broken");
 
         let fe = FieldElement::from_bytes(&bits_in);
-        let eg = elligator_encode(&fe);
+        let (eg, _) = elligator_encode(&fe);
         assert_eq!(eg.to_bytes(), ELLIGATOR_CORRECT_OUTPUT);
     }
 
@@ -654,7 +660,7 @@ mod test {
     fn montgomery_elligator_zero_zero() {
         let zero = [0u8; 32];
         let fe = FieldElement::from_bytes(&zero);
-        let eg = elligator_encode(&fe);
+        let (eg, _) = elligator_encode(&fe);
         assert_eq!(eg.to_bytes(), zero);
     }
 }

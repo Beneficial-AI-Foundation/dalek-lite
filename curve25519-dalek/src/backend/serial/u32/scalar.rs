@@ -12,6 +12,7 @@
 
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
+use subtle::{Choice, ConditionallySelectable};
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
@@ -128,7 +129,7 @@ impl Scalar29 {
     /// Pack the limbs of this `Scalar29` into 32 bytes.
     #[rustfmt::skip] // keep alignment of s[*] calculations
     #[allow(clippy::identity_op)]
-    pub fn as_bytes(&self) -> [u8; 32] {
+    pub fn to_bytes(self) -> [u8; 32] {
         let mut s = [0u8; 32];
 
         s[ 0] =  (self.0[0] >>  0)                      as u8;
@@ -185,14 +186,6 @@ impl Scalar29 {
 
     /// Compute `a - b` (mod l).
     pub fn sub(a: &Scalar29, b: &Scalar29) -> Scalar29 {
-        // Optimization barrier to prevent compiler from inserting branch instructions
-        // TODO(tarcieri): find a better home (or abstraction) for this
-        fn black_box(value: u32) -> u32 {
-            // SAFETY: `u32` is a simple integer `Copy` type and `value` lives on the stack so
-            // a pointer to it will be valid.
-            unsafe { core::ptr::read_volatile(&value) }
-        }
-
         let mut difference = Scalar29::ZERO;
         let mask = (1u32 << 29) - 1;
 
@@ -204,10 +197,11 @@ impl Scalar29 {
         }
 
         // conditionally add l if the difference is negative
-        let underflow_mask = ((borrow >> 31) ^ 1).wrapping_sub(1);
         let mut carry: u32 = 0;
         for i in 0..9 {
-            carry = (carry >> 29) + difference[i] + (constants::L[i] & black_box(underflow_mask));
+            let underflow = Choice::from((borrow >> 31) as u8);
+            let addend = u32::conditional_select(&0, &constants::L[i], underflow);
+            carry = (carry >> 29) + difference[i] + addend;
             difference[i] = carry & mask;
         }
 

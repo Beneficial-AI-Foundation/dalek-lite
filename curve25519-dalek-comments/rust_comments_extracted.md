@@ -236,6 +236,13 @@ However, that prevents them being used with --document-private-items,
 so comment out the doc(hidden) for now until this is resolved
 
 upstream rust issue: https://github.com/rust-lang/rust/issues/46380
+###[doc(hidden)]
+
+###[doc(hidden)]
+
+###[doc(hidden)]
+
+###[doc(hidden)]
 
 ### Negation
 
@@ -4615,6 +4622,8 @@ it is possible to compute the encodings of their doubles $
 \mathrm{enc}( \[2\]P_1), \ldots, \mathrm{enc}( \[2\]P_n ) $
 in a batch.
 
+```
+
 ### use curve25519_dalek::ristretto::RistrettoPoint;
 use rand_core::{OsRng, TryRngCore};
 
@@ -4693,6 +4702,8 @@ point should be unknown.  The map is applied twice and the
 results are added, to ensure a uniform distribution.
 
 ### Example
+
+```
 
 ### use curve25519_dalek::ristretto::RistrettoPoint;
 use sha2::Sha512;
@@ -4959,6 +4970,7 @@ To construct a `Scalar` as the hash of some input data, use
 [`Scalar::from_hash`], which allows an IUF API.
 
 ```
+
 ### fn main() {
 use sha2::{Digest, Sha512};
 use curve25519_dalek::scalar::Scalar;
@@ -5109,6 +5121,8 @@ use rand_core::{OsRng, TryRngCore};
 let mut csprng = OsRng.unwrap_err();
 let a: Scalar = Scalar::random(&mut csprng);
 ### }
+```
+
 Hash a slice of bytes into a scalar.
 
 Takes a type parameter `D`, which is any `Digest` producing 64
@@ -5117,6 +5131,8 @@ bytes (512 bits) of output.
 Convenience wrapper around `from_hash`.
 
 ### Example
+
+```
 
 ### use curve25519_dalek::scalar::Scalar;
 use sha2::Sha512;

@@ -69,6 +69,16 @@ def extract_comments_from_rust_file(file_path):
                     if comment_content:
                         is_comment = True
             
+            # Handle cfg_attr lines with doc = "```"
+            elif 'cfg_attr(feature' in stripped and 'doc = "```"' in stripped:
+                # Extract the content between the quotes
+                start_quote = stripped.find('doc = "') + 7  # 7 is len('doc = "')
+                end_quote = stripped.rfind('")]')
+                if start_quote != -1 and end_quote != -1 and end_quote > start_quote:
+                    comment_content = stripped[start_quote:end_quote]
+                    if comment_content:
+                        is_comment = True
+            
             # Process the line
             if is_comment:
                 # Filter out emacs-style mode lines and other pre-matter
@@ -126,6 +136,10 @@ def should_skip_comment(comment_content):
         "-*- coding: utf-8 -*-",
         "-*- coding: utf-8; -*-"
     ]:
+        return True
+    
+    # Skip ###[doc(hidden)] lines
+    if comment_content.strip() == "###[doc(hidden)]":
         return True
     
     # # Skip other common pre-matter patterns
@@ -221,9 +235,9 @@ def format_comments_for_markdown(comments):
         
         # Check if this is a dashed header pattern
         if (i + 2 < len(comments) and 
-            comment.strip().startswith('-') and comment.strip().endswith('-') and
+            comment.strip() and comment.strip().replace('-', '') == '' and
             comments[i + 1].strip() and not comments[i + 1].strip().startswith('-') and
-            comments[i + 2].strip().startswith('-') and comments[i + 2].strip().endswith('-')):
+            comments[i + 2].strip() and comments[i + 2].strip().replace('-', '') == ''):
             
             # This is a dashed header pattern, convert to ### header
             header_text = comments[i + 1].strip()
@@ -251,7 +265,7 @@ def main():
     src_dir = "curve25519-dalek/src"
     
     # Output file
-    output_file = "rust_comments_extracted.md"
+    output_file = "./curve25519-dalek-comments/rust_comments_extracted.md"
     
     # Check if the directory exists
     if not os.path.exists(src_dir):

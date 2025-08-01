@@ -1,174 +1,168 @@
 # Specs associated to `src/scalar.rs`
 
+## To do
+
+- Add the specs related to constant time evaluation of relevant functions
 
 ## Constants
 
-- ℓ = 2^{252} + 27742317777372353535851937790883648493 (Prime order of the Ristretto group and the Ed25519 basepoint)
-- h = 8 (Cofactor of curve25519)
+- ℓ = 2^{252} + 27742317777372353535851937790883648493 (prime order of the Ristretto group and the Ed25519 basepoint)
+- h = 8 (cofactor of curve25519)
 
 ## Utility functions
 
 - `to_nat_32_u8`: converts from `[u8; 32]` to `nat`, interpreting the 32 byte value in little endian format
 - `to_nat_64_u8`: converts from `[u8; 64]` to `nat`, interpreting the 64 byte value in little endian format
-- `to_nat_Scalar`: converts from `Scalar` to `nat`, interpreting the 32 byte value stored in `bytes` in little endian format
+- `to_nat_Scalar`: converts from `Scalar` to `nat`, interpreting the 32 byte value stored in `bytes` in little endian format (uses `to_nat_32_u8`)
+- `to_nat_DoubleEndedIterator_Bool`: converts from `DoubleEndedIterator` of bits to `nat`, interpreting the bits in little endian format
+- `to_nat_UnpackedScalar`: converts from `UnpackedScalar` to `nat` (implementation of `UnpackedScalar` depends on choice of backend)
 
 ## Function specifications
 
-## Specification for:
+### `pub fn from_bytes_mod_order(bytes: [u8; 32]) -> Scalar`
 `curve25519_dalek::scalar::Scalar`
-`pub fn from_bytes_mod_order(bytes: [u8; 32]) -> Scalar`
 
 1. to_nat_Scalar result = (to_nat_32_u8 input) mod ℓ
 
-## Specification for:
+### `pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> Scalar`
 `curve25519_dalek::scalar::Scalar`
-`pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> Scalar`
 
 1. to_nat_Scalar result = (to_nat_64_u8 input) mod ℓ
 
-## Specification for:
+### `pub fn from_canonical_bytes(bytes: [u8; 32]) -> CtOption<Scalar>`
 `curve25519_dalek::scalar::Scalar`
-`pub fn from_canonical_bytes(bytes: [u8; 32]) -> CtOption<Scalar>`
 
-1. Outputs none if input represents an integer which is greater than of equal to ℓ
-2. Otherwise outputs the input
+1. Outputs none if (to_nat_32_u8 input) ≥ ℓ
+2. Otherwise to_nat_Scalar result = to_nat_32_u8 input
 
-## Specification for:
+### `pub const ZERO`
 `curve25519_dalek::scalar::Scalar`
-`pub const ZERO`
 
-1. Equal to 0
+1. to_nat_Scalar result = 0
 
-## Specification for:
+### `pub const ONE`
 `curve25519_dalek::scalar::Scalar`
-`pub const ONE`
 
-1. Equal to 1
+1. to_nat_Scalar result = 1
 
-## Specification for:
+### `pub fn random<R>(rng: &mut R) -> Self`
 `curve25519_dalek::scalar::Scalar`
-`pub fn random<R>(rng: &mut R) -> Self`
 
-1. Returns a valid scalar (i.e., corresponds to an integer in {0, 1,..., ℓ - 1})
-2. Uniformly random in {0, 1,..., ℓ - 1}
+1. to_nat_Scalar result ∈ {0, 1,..., ℓ - 1}
+2. (to_nat_Scalar result) is uniformly random in {0, 1,..., ℓ - 1}
 
-## Specification for:
+### `pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar`
 `curve25519_dalek::scalar::Scalar`
-`pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar`
 
-1. Output is a valid scalar, i.e. an integer less than ℓ
-2. Function is deterministic, same input always gives the same output
-3. Uniform distribution in {0, 1,..., ℓ - 1}
+1. to_nat_Scalar result ∈ {0, 1,..., ℓ - 1}
+2. Function is deterministic, same input always gives the same result
+3. to_nat_Scalar result is uniformly distributed in {0, 1,..., ℓ - 1}
 
-## Specification for:
+### `pub fn from_hash<D>(hash: D) -> Scalar`
 `curve25519_dalek::scalar::Scalar`
-`pub fn from_hash<D>(hash: D) -> Scalar`
 
-1. Output is a valid scalar, i.e. an integer less than ℓ
-2. Function is deterministic, same input always gives the same output
-3. Uniform distribution in {0, 1,..., ℓ - 1}
+1. to_nat_Scalar result ∈ {0, 1,..., ℓ - 1}
+2. Function is deterministic, same input always gives the same result
+3. to_nat_Scalar result is uniformly distributed in {0, 1,..., ℓ - 1}
 
-## Specification for:
+### `pub const fn to_bytes(&self) -> [u8; 32]`
 `curve25519_dalek::scalar::Scalar`
-`pub const fn to_bytes(&self) -> [u8; 32]`
 
-1. Output equal to self
+1. to_nat_Scalar self = to_nat_32_u8 result
 
-## Specification for:
+### `pub const fn as_bytes(&self) -> [u8; 32]`
 `curve25519_dalek::scalar::Scalar`
-`pub const fn as_bytes(&self) -> [u8; 32]`
 
-1. Output equal to self (same as above but pointer version)
+1. to_nat_Scalar self = to_nat_32_u8 result 
 
-## Specification for:
+Note: same as above but pointer version
+
+### `pub fn invert(&self) -> Scalar`
 `curve25519_dalek::scalar::Scalar`
-`pub fn invert(&self) -> Scalar`
 
-1. If self ≠ 0, self * result = 1 (mod ℓ)
+1. If to_nat_Scalar self ≠ 0 then (to_nat_Scalar self) * (to_nat_Scalar result) = 1 (mod ℓ)
 
-## Specification for:
+### `pub fn batch_invert(inputs: &mut [Scalar]) -> Scalar`
 `curve25519_dalek::scalar::Scalar`
-`pub fn batch_invert(inputs: &mut [Scalar]) -> Scalar`
 
-1. Same as above but for a batch of scalars
+1. Same as above but for a batch of `Scalar`s
 
-## Specification for:
+### `pub(crate) fn bits_le(&self) -> impl DoubleEndedIterator<Item = bool> + '_`
 `curve25519_dalek::scalar::Scalar`
-`pub(crate) fn bits_le(&self) -> impl DoubleEndedIterator<Item = bool> + '_`
 
-1. Output is equal to self
+1. to_nat_DoubleEndedIterator_Bool result = to_nat_Scalar self
 
-## Specification for:
+### `pub(crate) fn non_adjacent_form(&self, w: usize) -> [i8; 256]`
 `curve25519_dalek::scalar::Scalar`
-`pub(crate) fn non_adjacent_form(&self, w: usize) -> [i8; 256]`
-Permitted in source only for (2 <= w <= 8)
+Permitted in source only for (2 ≤ w ≤ 8)
 Called "w-Non-Adjacent Form"
 
-let n_i denote the output
+let n_i denote the result
 
-1. k = \sum_i n_i 2^i,
+1. to_nat_Scalar self = ∑_i n_i 2^i,
 2. each nonzero coefficient n_i is odd
 3. each nonzero coefficient is bounded |n_i| < 2^{w-1}
-4. n_{m-1} is nonzero
+4. n_{255} is nonzero
 5. at most one of any w consecutive coefficients is nonzero
 
-## Specification for:
+### `pub(crate) fn as_radix_16(&self) -> [i8; 64]`
 `curve25519_dalek::scalar::Scalar`
-`pub(crate) fn as_radix_16(&self) -> [i8; 64]`
 
-let a_i denote the output
+let a_i denote the result
 
-Requires that self < 2^{255}
-1. a = a\_0 + a\_1 16\^1 + \cdots + a_{63} 16\^{63}
-2. -8 <= a_i < 8
+Requires that to_nat_Scalar self < 2^{255}
+1. a = a_0 + a_1 16^1 + \cdots + a_{63} 16^{63}
+2. -8 ≤ a_i < 8
 
-## Specification for:
+### `pub(crate) fn to_radix_2w_size_hint(w: usize) -> usize`
 `curve25519_dalek::scalar::Scalar`
-`pub(crate) fn to_radix_2w_size_hint(w: usize) -> usize`
 
-Unclear how to specify, returns a size hint indicating how many entries
+To do: Unclear how to specify, returns a size hint indicating how many entries
 of the return value of `to_radix_2w` are nonzero.
-Might not be relevant except for speed concerns.
 
-## Specification for:
+### `pub(crate) fn as_radix_2w(&self, w: usize) -> [i8; 64]`
 `curve25519_dalek::scalar::Scalar`
-`pub(crate) fn as_radix_2w(&self, w: usize) -> [i8; 64]`
 Permitted in source only for w = 4, 5, 6, 7, 8
 
-let a_i denote the output coefficients
+let a_i denote the result
 
-1. a = a_0 + a_1 2^1 w + \cdots + a_{n-1} 2^{w*(n-1)}
-2. -2^w/2 \leq a_i < 2^w/2 if 0 \leq i < (n-1)
-3. -2^w/2 \leq a_{n-1} \leq 2^w/2
+1. to_nat_Scalar self = a_0 + a_1 2^1 w + \cdots + a_{n-1} 2^{w*(n-1)}
+2. -2^w/2 ≤ a_i < 2^w/2 if 0 ≤ i < (n-1)
+3. -2^w/2 ≤ a_{n-1} ≤ 2^w/2
 
-## Specification for:
+### `pub(crate) fn unpack(&self) -> UnpackedScalar`
 `curve25519_dalek::scalar::Scalar`
-`pub(crate) fn unpack(&self) -> UnpackedScalar`
 
-1. The output (5 52-bit limbs) represents the same integer as the 32 byte input
+1. to_nat_UnpackedScalar result = to_nat_Scalar self
 
-## Specification for:
-`curve25519_dalek::scalar::Scalar52`
-`pub fn montgomery_invert(&self) -> UnpackedScalar`
+### `fn pack(&self) -> Scalar`
+`curve25519_dalek::scalar::UnpackedScalar`
 
-1. If self is in montgomery form then output is the inverse
+1. to_nat_Scalar result = to_nat_UnpackedScalar self
 
-## Specification for:
-`curve25519_dalek::scalar::Scalar52`
-`pub fn invert(&self) -> UnpackedScalar`
+### `pub fn montgomery_invert(&self) -> UnpackedScalar`
+`curve25519_dalek::scalar::UnpackedScalar`
 
-1. self * result = 1 (mod ℓ) (surely self ≠ 0 is required although not stated in the docs)
+1. If self is in Montgomery form then (to_nat_UnpackedScalar self) * (to_nat_UnpackedScalar result) = 1 (mod ℓ) 
 
-## Specification for:
+[Further info](https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion)
+
+### `pub fn invert(&self) -> UnpackedScalar`
+`curve25519_dalek::scalar::UnpackedScalar`
+
+1. (to_nat_UnpackedScalar self) * (to_nat_UnpackedScalar result) = 1 (mod ℓ) 
+
+Note: surely self ≠ 0 is required although not stated in the docs
+
+### `pub const fn clamp_integer(mut bytes: [u8; 32]) -> [u8; 32]`
 `curve25519_dalek::scalar`
-`pub const fn clamp_integer(mut bytes: [u8; 32]) -> [u8; 32]`
 
 Let n denote the 32 byte output interpreted as an integer in little endian format (`as_nat_32_u8`)
 
-1. 2^254 ≤ n
-2. n < 2^255
-3. n is divisible by 8 (the cofactor of curve25519)
-4. If the input is uniformly random then the output is uniformly random
+1. 2^254 ≤ as_nat_32_u8 result
+2. as_nat_32_u8 result < 2^255
+3. (as_nat_32_u8 result) is divisible by 8 (the cofactor of curve25519)
+4. If the input is uniformly random then the result is uniformly random
 
 [Further info](https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/)
 

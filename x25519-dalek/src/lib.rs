@@ -28,5 +28,8 @@
 //------------------------------------------------------------------------
 
 mod x25519;
+pub mod libsig_curve25519;
+/// Verus verification-enabled version of libsignal curve25519 functionality
+pub mod libsig_curve25519_verus;
 
 pub use crate::x25519::*;

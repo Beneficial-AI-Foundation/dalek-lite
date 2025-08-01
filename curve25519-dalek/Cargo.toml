@@ -71,6 +71,7 @@ serde = { version = "1.0", default-features = false, optional = true, features =
 ] }
 zeroize = { version = "1", default-features = false, optional = true }
 sha2 = "0.11.0-rc.0"
+rand = "0.9"
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 cpufeatures = "0.2.17"
@@ -79,7 +80,7 @@ cpufeatures = "0.2.17"
 fiat-crypto = { version = "0.3.0", default-features = false }
 
 [features]
-default = ["alloc", "precomputed-tables", "zeroize"]
+default = ["alloc", "precomputed-tables", "zeroize", "digest"]
 alloc = ["zeroize?/alloc"]
 precomputed-tables = []
 legacy_compatibility = []

@@ -3,27 +3,43 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+/**** 
+ * 
+ * NOTE: QUASI-COPY OF libsignal/rust/core/src/curve/curve25519.rs
+ *
+ */
+
+//! XEdDSA signature functionality for X25519 keys
+//! 
+//! This module implements the XEdDSA signature scheme which allows X25519 keys
+//! to be used for both key exchange and signatures.
+
 use curve25519_dalek::constants::ED25519_BASEPOINT_TABLE;
 use curve25519_dalek::edwards::EdwardsPoint;
 use curve25519_dalek::montgomery::MontgomeryPoint;
 use curve25519_dalek::scalar;
 use curve25519_dalek::scalar::Scalar;
+use crate::x25519::{PublicKey, StaticSecret};
 use rand::{CryptoRng, Rng};
 use sha2::{Digest, Sha512};
 use subtle::ConstantTimeEq;
-use x25519_dalek::{PublicKey, StaticSecret};
 
 const AGREEMENT_LENGTH: usize = 32;
+/// The length of a private key in bytes
 pub const PRIVATE_KEY_LENGTH: usize = 32;
+/// The length of a public key in bytes
 pub const PUBLIC_KEY_LENGTH: usize = 32;
+/// The length of a signature in bytes
 pub const SIGNATURE_LENGTH: usize = 64;
 
+/// A private key for XEdDSA signatures and X25519 key exchange
 #[derive(Clone)]
 pub struct PrivateKey {
     secret: StaticSecret,
 }
 
 impl PrivateKey {
+    /// Generate a new private key using the provided CSPRNG
     pub fn new<R>(csprng: &mut R) -> Self
     where
         R: CryptoRng + Rng,
@@ -37,6 +53,7 @@ impl PrivateKey {
         PrivateKey { secret }
     }
 
+    /// Calculate the shared secret with another party's public key
     pub fn calculate_agreement(
         &self,
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
@@ -107,6 +124,7 @@ impl PrivateKey {
         result
     }
 
+    /// Verify an XEdDSA signature against a public key and message
     pub fn verify_signature(
         their_public_key: &[u8; PUBLIC_KEY_LENGTH],
         message: &[&[u8]],
@@ -148,10 +166,12 @@ impl PrivateKey {
         bool::from(cap_r_check.as_bytes().ct_eq(&cap_r))
     }
 
+    /// Derive the public key bytes from this private key
     pub fn derive_public_key_bytes(&self) -> [u8; PUBLIC_KEY_LENGTH] {
         *PublicKey::from(&self.secret).as_bytes()
     }
 
+    /// Get the private key bytes
     pub fn private_key_bytes(&self) -> [u8; PRIVATE_KEY_LENGTH] {
         self.secret.to_bytes()
     }
@@ -303,4 +323,4 @@ mod tests {
             );
         }
     }
-}
+} 

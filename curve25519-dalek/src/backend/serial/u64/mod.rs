@@ -34,4 +34,5 @@ pub mod common_verus;
 
 pub mod vstd_u128_verus;
 
-pub mod curve25519_verus;
+// XEdDSA functionality has been moved to x25519-dalek crate to avoid circular dependency
+// Users should import from x25519_dalek::xeddsa directly

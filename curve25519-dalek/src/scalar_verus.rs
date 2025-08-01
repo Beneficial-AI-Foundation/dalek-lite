@@ -31,4 +31,8 @@ impl Scalar {
 
 }
 
+fn main()
+    {
+
+    }
 }

@@ -125,18 +125,6 @@ impl Scalar {
         &self.bytes
     }
 
-    /// Note: Stub implementation for verification module
-    pub fn invert(&self) -> Scalar {
-        // Stub implementation for verification module
-        Scalar::ONE
-    }
-
-    /// Note: Stub implementation for verification module
-    #[cfg(feature = "alloc")]
-    pub fn batch_invert(_inputs: &mut [Scalar]) -> Scalar {
-        // Stub implementation for verification module
-        Scalar::ONE
-    }
 
     
     

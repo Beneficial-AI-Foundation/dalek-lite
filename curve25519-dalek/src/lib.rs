@@ -53,6 +53,8 @@ pub(crate) mod macros;
 // Scalar arithmetic mod l = 2^252 + ..., the order of the Ristretto group
 pub mod scalar;
 
+pub mod scalar_verus;
+
 // Point operations on the Montgomery form of Curve25519
 pub mod montgomery;
 

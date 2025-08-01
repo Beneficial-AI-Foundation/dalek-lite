@@ -2,14 +2,14 @@ use vstd::prelude::*;
 
 verus! {
 
-pub struct Scalar {
+pub struct Foo {
 }
 
-impl Scalar {
-    pub const ONE: Self = Self {  };
+impl Foo {
+    pub const BAR: Self = Self {  };
 
-    pub fn invert(&self) -> Scalar {
-        Scalar::ONE
+    pub fn get_bar(&self) -> Foo {
+        Foo::BAR
     }
 }
 

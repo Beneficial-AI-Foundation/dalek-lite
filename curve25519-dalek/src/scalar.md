@@ -97,18 +97,18 @@ Note: same as above but pointer version
 Permitted in source only for (2 ≤ w ≤ 8)
 Called "w-Non-Adjacent Form"
 
-let n_i denote the result
+let (a_0, a_1,..., a_{255}) = result
 
-1. to_nat_Scalar self = ∑_i n_i 2^i,
-2. each nonzero coefficient n_i is odd
-3. each nonzero coefficient is bounded |n_i| < 2^{w-1}
-4. n_{255} is nonzero
+1. to_nat_Scalar self = ∑_i a_i 2^i,
+2. each nonzero coefficient a_i is odd
+3. each nonzero coefficient is bounded |a_i| < 2^{w-1}
+4. a_{255} is nonzero
 5. at most one of any w consecutive coefficients is nonzero
 
 ### `pub(crate) fn as_radix_16(&self) -> [i8; 64]`
 `curve25519_dalek::scalar::Scalar`
 
-let a_i denote the result
+let (a_0, a_1,..., a_{63}) = result
 
 Requires that to_nat_Scalar self < 2^{255}
 1. a = a_0 + a_1 16^1 + \cdots + a_{63} 16^{63}
@@ -124,7 +124,7 @@ of the return value of `to_radix_2w` are nonzero.
 `curve25519_dalek::scalar::Scalar`
 Permitted in source only for w = 4, 5, 6, 7, 8
 
-let a_i denote the result
+let (a_0, a_1,..., a_{63}) = result
 
 1. to_nat_Scalar self = a_0 + a_1 2^1 w + \cdots + a_{n-1} 2^{w*(n-1)}
 2. -2^w/2 ≤ a_i < 2^w/2 if 0 ≤ i < (n-1)
@@ -156,8 +156,6 @@ Note: surely self ≠ 0 is required although not stated in the docs
 
 ### `pub const fn clamp_integer(mut bytes: [u8; 32]) -> [u8; 32]`
 `curve25519_dalek::scalar`
-
-Let n denote the 32 byte output interpreted as an integer in little endian format (`as_nat_32_u8`)
 
 1. 2^254 ≤ as_nat_32_u8 result
 2. as_nat_32_u8 result < 2^255

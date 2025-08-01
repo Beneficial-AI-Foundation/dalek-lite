@@ -11,7 +11,7 @@ verus! {
 
 
 pub struct Scalar {
-    pub bytes: [u8; 32],
+    pub bytes: [u8; 1],
 }
 
 
@@ -19,8 +19,7 @@ impl Scalar {
 
     pub const ONE: Self = Self {
         bytes: [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
+            1,
         ],
     };
 

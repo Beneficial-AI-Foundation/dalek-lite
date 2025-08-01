@@ -369,7 +369,7 @@ impl PrivateKey {
         true,
     ensures
         result.0.len() == SIGNATURE_LENGTH,
-        (&result.1),
+        // is_random_scalar(&result.1), // TODO: Prove this mathematically
        {
 
         // ORIGINAL CODE C1:

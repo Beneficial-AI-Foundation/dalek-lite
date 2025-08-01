@@ -18,10 +18,7 @@ use crate::constants;
 verus! {
 
 
-type UnpackedScalar = backend::serial::u64::scalar::Scalar52;
 
-#[allow(clippy::derived_hash_with_manual_eq)]
-#[derive(Copy, Clone, Hash)]
 pub struct Scalar {
     pub bytes: [u8; 32],
 }

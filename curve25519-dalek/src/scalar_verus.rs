@@ -1,19 +1,10 @@
 
-#![allow(unused)]
 
 use vstd::prelude::*;
 
 
 
-use subtle::Choice;
 
-use subtle::ConstantTimeEq;
-
-#[cfg(feature = "zeroize")]
-use zeroize::Zeroize;
-
-use crate::backend;
-use crate::constants;
 
 verus! {
 

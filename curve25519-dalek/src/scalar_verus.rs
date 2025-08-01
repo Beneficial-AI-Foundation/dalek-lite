@@ -87,24 +87,7 @@ pub struct Scalar {
 }
 
 
-// Implement ConstantTimeEq trait for Scalar - Verus compatible version
-impl ConstantTimeEq for Scalar {
-    fn ct_eq(&self, other: &Self) -> Choice {
-        // Verus-compatible implementation: manual byte comparison
-        let mut equal = true;
-        for i in 0..32 {
-            equal = equal && (self.bytes[i] == other.bytes[i]);
-        }
-        if equal { Choice::from(1u8) } else { Choice::from(0u8) }
-    }
-}
-
 impl Scalar {
-    /// The scalar \\( 0 \\).
-    pub const ZERO: Self = Self { 
-        bytes: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 
-                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] 
-    };
 
     /// The scalar \\( 1 \\).
     pub const ONE: Self = Self {
@@ -114,26 +97,9 @@ impl Scalar {
         ],
     };
 
-   
-    /// Return the bytes of this scalar
-    pub const fn to_bytes(&self) -> [u8; 32] {
-        self.bytes
-    }
-
-    /// Return a reference to the bytes of this scalar
-    pub const fn as_bytes(&self) -> &[u8; 32] {
-        &self.bytes
-    }
 
     /// Note: Stub implementation for verification module
     pub fn invert(&self) -> Scalar {
-        // Stub implementation for verification module
-        Scalar::ONE
-    }
-
-    /// Note: Stub implementation for verification module
-    #[cfg(feature = "alloc")]
-    pub fn batch_invert(_inputs: &mut [Scalar]) -> Scalar {
         // Stub implementation for verification module
         Scalar::ONE
     }

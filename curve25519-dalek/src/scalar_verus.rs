@@ -224,6 +224,7 @@ impl Scalar {
 
         // Step 2: recenter coefficients from [0,16) to [-8,8)
         for i in 0..63 {
+            assume(false);
             let carry = (output[i] + 8) >> 4;
             output[i] = output[i] - (carry << 4);
             output[i + 1] = output[i + 1] + carry;

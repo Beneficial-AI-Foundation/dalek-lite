@@ -68,10 +68,6 @@ pub mod constants;
 // External (and internal) traits.
 pub mod traits;
 
-// Verus
-pub mod common_verus;
-pub mod scalar_verus;
-
 //------------------------------------------------------------------------
 // curve25519-dalek internal modules
 //------------------------------------------------------------------------

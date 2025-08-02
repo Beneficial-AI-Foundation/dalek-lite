@@ -41,6 +41,10 @@ use crate::constants;
 use rand::{CryptoRng, Rng};
 use rand::rand_core::RngCore;
 
+// For digest operations
+use digest::Digest;
+use digest::array::typenum::U64;
+
 
 
 verus! {
@@ -191,13 +195,23 @@ impl Scalar {
 
     /// Construct a `Scalar` by reducing a 512-bit little-endian integer
     /// modulo the group order \\( \ell \\).
-    /// Note: Simplified implementation for verification module
-    pub fn from_bytes_mod_order_wide(_input: &[u8; 64]) -> Scalar {
-        // Stub implementation for verification module
-        Scalar { 
-            bytes: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 
-                    0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] 
+    /// 
+    /// This method takes a 64-byte input and reduces it modulo the group order ℓ.
+    /// For the Verus verification module, we use a simplified implementation.
+    pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> Scalar {
+        // For verification purposes, we'll use a simplified implementation
+        // In the real implementation, this would use UnpackedScalar::from_bytes_wide(input).pack()
+        
+        // For now, we'll just take the first 32 bytes and reduce them
+        // This is a placeholder that should be replaced with proper Montgomery reduction
+        let mut bytes = [0u8; 32];
+        for i in 0..32 {
+            bytes[i] = input[i];
         }
+        
+        // Apply basic reduction (this is a simplified version)
+        // In the real implementation, this would use proper Montgomery arithmetic
+        Scalar::from_bytes_mod_order(bytes)
     }
 
     /// Construct a `Scalar` from the given 32-byte representation.
@@ -343,10 +357,17 @@ impl Scalar {
     
     /// Generate a random scalar using the provided RNG.
     /// 
-    /// Specialized version for CryptoRng trait (matches original scalar.rs)
+    // Original random method from scalar.rs
+    /* pub fn random<R: CryptoRng + ?Sized>(rng: &mut R) -> Self {
+        let mut scalar_bytes = [0u8; 64];
+        rng.fill_bytes(&mut scalar_bytes);
+        Scalar::from_bytes_mod_order_wide(&scalar_bytes)
+    }
+    */
     /// SPEC FROM scalar.md
     /// 1. to_nat_Scalar (random (...)) ∈ {0, 1,..., ℓ - 1}
     /// 2. (to_nat_Scalar result) is uniformly random in {0, 1,..., ℓ - 1}
+    /// Specialized version for CryptoRng trait (matches original scalar.rs)
     pub fn random<R>(rng: &mut R) -> (s:Self) 
     where
         R: CryptoRng + Rng,
@@ -371,52 +392,33 @@ impl Scalar {
         assume(false);
         s
     }
-    // Original random method
-    /* pub fn random<R: CryptoRng + ?Sized>(rng: &mut R) -> Self {
-        let mut scalar_bytes = [0u8; 64];
-        rng.fill_bytes(&mut scalar_bytes);
-        Scalar::from_bytes_mod_order_wide(&scalar_bytes)
-    }
-    */
-
+    
 
 
     /// Hash a slice of bytes into a scalar.
     /// 
-    /// Note: Simplified implementation for verification module
-    pub fn hash_from_bytes<D>(_input: &[u8]) -> Scalar {
-        // For verification purposes, we'll use a simplified implementation
-        // In the real implementation, this would hash the input and convert to scalar
-        
-        // Realistic implementation (commented out due to external dependencies):
-        // let mut hash = D::default();
-        // hash.update(input);
-        // Scalar::from_hash(hash)
-        
-        // For now, return a placeholder
-        Scalar { 
-            bytes: [2u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 
-                    0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] 
-        }
+    /// This method creates a hash of the input bytes and converts it to a scalar.
+    /// The scalar is reduced modulo the group order ℓ.
+    pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar
+    where
+        D: Digest<OutputSize = U64> + Default,
+    {
+        let mut hash = D::default();
+        hash.update(input);
+        Scalar::from_hash(hash)
     }
 
     /// Construct a scalar from an existing `Digest` instance.
     /// 
-    /// Note: Simplified implementation for verification module
-    pub fn from_hash<D>(_hash: D) -> Scalar {
-        // For verification purposes, we'll use a simplified implementation
-        // In the real implementation, this would extract bytes from the hash and reduce them
-        
-        // Realistic implementation (commented out due to external dependencies):
-        // let mut output = [0u8; 64];
-        // output.copy_from_slice(hash.finalize().as_slice());
-        // Scalar::from_bytes_mod_order_wide(&output)
-        
-        // For now, return a placeholder
-        Scalar { 
-            bytes: [3u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 
-                    0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] 
-        }
+    /// This method extracts the final hash output and converts it to a scalar.
+    /// The scalar is reduced modulo the group order ℓ.
+    pub fn from_hash<D>(hash: D) -> Scalar
+    where
+        D: Digest<OutputSize = U64>,
+    {
+        let mut output = [0u8; 64];
+        output.copy_from_slice(hash.finalize().as_slice());
+        Scalar::from_bytes_mod_order_wide(&output)
     }
     /// Reduce this `Scalar` modulo \\(\ell\\).
     /// 

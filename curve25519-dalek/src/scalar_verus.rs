@@ -30,9 +30,7 @@ use subtle::Choice;
 use subtle::ConstantTimeEq;
 use core::ops::Index;
 
-#[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
-
 
 use crate::backend::serial::u64::scalar_specs::*;
 use crate::backend;
@@ -412,12 +410,33 @@ impl Scalar {
     /// 
     /// This method extracts the final hash output and converts it to a scalar.
     /// The scalar is reduced modulo the group order ℓ.
-    pub fn from_hash<D>(hash: D) -> Scalar
+    // Original code from scalar.rs:
+    // pub fn from_hash<D>(hash: D) -> Scalar
+    // where
+    //     D: Digest<OutputSize = U64>,
+    // {
+    //     let mut output = [0u8; 64];
+    //     output.copy_from_slice(hash.finalize().as_slice());
+    //     Scalar::from_bytes_mod_order_wide(&output)
+    // }
+    // SPEC FROM scalar.md
+    // ### `pub fn from_hash<D>(hash: D) -> Scalar`
+    // 1. to_nat_Scalar (from_hash (...)) ∈ {0, 1,..., ℓ - 1}
+    // 2. Function is deterministic, same input always gives the same result
+    // 3. to_nat_Scalar (from_hash (...)) is uniformly distributed in {0, 1,..., ℓ - 1}
+    // ###
+    pub fn from_hash<D>(hash: D) -> (s:Scalar)
     where
         D: Digest<OutputSize = U64>,
     {
         let mut output = [0u8; 64];
-        output.copy_from_slice(hash.finalize().as_slice());
+        let hash_bytes = hash.finalize();
+        let hash_bytes_array: [u8; 64] = hash_bytes.into();
+        // Manual copy to avoid unsizing operations that Verus doesn't support
+        // Original code: output.copy_from_slice(hash.finalize().as_slice());
+        for i in 0..64 {
+            output[i] = hash_bytes_array[i];
+        }
         Scalar::from_bytes_mod_order_wide(&output)
     }
     /// Reduce this `Scalar` modulo \\(\ell\\).

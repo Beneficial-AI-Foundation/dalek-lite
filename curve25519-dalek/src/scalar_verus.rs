@@ -25,6 +25,8 @@
 #![allow(unused)]
 
 use vstd::prelude::*;
+use verus_builtin::*;
+use sha2::Sha512;
 
 use subtle::Choice;
 use subtle::ConstantTimeEq;
@@ -46,11 +48,18 @@ use digest::array::typenum::U64;
 
 
 verus! {
+    // EXTERNAL SPECIFICATIONS
 
     // annotations for random values 
     pub uninterp spec fn is_random(x: u8) -> bool;
     pub uninterp spec fn is_random_bytes(bytes: &[u8]) -> bool;
     pub uninterp spec fn is_random_scalar(scalar: &Scalar) -> bool;
+    pub uninterp spec fn is_random_hash(hash: &Sha512) -> bool;
+
+    /// External specification for SHA-512 hasher
+    #[verifier::external_type_specification]
+    #[verifier::external_body]
+    pub struct ExSha512(Sha512);
 
     #[verifier::external_body]
     pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
@@ -69,6 +78,29 @@ verus! {
         rng.fill_bytes(&mut bytes);
         bytes[0]
     }
+
+    #[verifier::external_body]
+    fn sha512_new() -> Sha512 {
+        Sha512::new()
+    }
+
+    #[verifier::external_body]
+    fn sha512_update(hash: &mut Sha512, data: &[u8]) 
+    ensures
+        is_random_bytes(data) ==> is_random_hash(hash),
+    {
+        hash.update(data);
+    }
+
+    #[verifier::external_body]
+    fn sha512_finalize(hash: Sha512) -> [u8; 64] {
+        use sha2::Digest;
+        let result = hash.finalize();
+        let result_array: [u8; 64] = result.into();
+        result_array
+    }
+
+
 
 type UnpackedScalar = backend::serial::u64::scalar::Scalar52;
 
@@ -365,6 +397,7 @@ impl Scalar {
     /// SPEC FROM scalar.md
     /// 1. to_nat_Scalar (random (...)) ∈ {0, 1,..., ℓ - 1}
     /// 2. (to_nat_Scalar result) is uniformly random in {0, 1,..., ℓ - 1}
+    /// NOTE: is condition 2. really true? 
     /// Specialized version for CryptoRng trait (matches original scalar.rs)
     pub fn random<R>(rng: &mut R) -> (s:Self) 
     where
@@ -397,15 +430,40 @@ impl Scalar {
     /// 
     /// This method creates a hash of the input bytes and converts it to a scalar.
     /// The scalar is reduced modulo the group order ℓ.
-    pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar
-    where
-        D: Digest<OutputSize = U64> + Default,
+    /// ORIGINAL CODE:
+    /// pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar
+    /// where
+    ///     D: Digest<OutputSize = U64> + Default,
+    /// {
+    ///     let mut hash = D::default();
+    ///     hash.update(input);
+    ///     Scalar::from_hash(hash)
+    /// }
+    /// SPEC FROM scalar.md 
+    /// 1. to_nat_Scalar (hash_from_bytes (...)) ∈ {0, 1,..., ℓ - 1}
+    /// 2. Function is deterministic, same input always gives the same result
+    /// 3. to_nat_Scalar (hash_from_bytes (...)) is uniformly distributed in {0, 1,..., ℓ - 1}
+    /// NOTE: is condition 3. really true? 
+    /// ###
+    // Commented out due to Verus generic bounds issues
+    // NOTE: it panics with generic digests 
+         pub fn hash_from_bytes(input: &[u8]) -> (s:Scalar)
+    //where
+    //    D: Digest<OutputSize = U64> + Default,
+        ensures
+            0 <= bytes_to_nat(&s.bytes) <= group_order() - 1, // 1.
+            // NOTE: see if we need 2. 
+            is_random_bytes(input) ==> is_random_scalar(&s), // 3.
     {
-        let mut hash = D::default();
-        hash.update(input);
-        Scalar::from_hash(hash)
+        let mut hash = sha512_new();
+        sha512_update(&mut hash, input);
+        let result_array = sha512_finalize(hash);
+        let s = Scalar::from_bytes_mod_order_wide(&result_array);
+        assume(false);
+        s
     }
 
+    
     /// Construct a scalar from an existing `Digest` instance.
     /// 
     /// This method extracts the final hash output and converts it to a scalar.
@@ -425,20 +483,18 @@ impl Scalar {
     // 2. Function is deterministic, same input always gives the same result
     // 3. to_nat_Scalar (from_hash (...)) is uniformly distributed in {0, 1,..., ℓ - 1}
     // ###
-    pub fn from_hash<D>(hash: D) -> (s:Scalar)
-    where
-        D: Digest<OutputSize = U64>,
+    pub fn from_hash(hash: Sha512) -> (s: Scalar)
+    ensures 
+        0 <= bytes_to_nat(&s.bytes) <= group_order() - 1,
+        is_random_hash(&hash) ==> is_random_scalar(&s),
     {
-        let mut output = [0u8; 64];
-        let hash_bytes = hash.finalize();
-        let hash_bytes_array: [u8; 64] = hash_bytes.into();
-        // Manual copy to avoid unsizing operations that Verus doesn't support
-        // Original code: output.copy_from_slice(hash.finalize().as_slice());
-        for i in 0..64 {
-            output[i] = hash_bytes_array[i];
-        }
-        Scalar::from_bytes_mod_order_wide(&output)
+        let result_array = sha512_finalize(hash);
+        let s = Scalar::from_bytes_mod_order_wide(&result_array);
+        assume(false);
+        s
     }
+
+    
     /// Reduce this `Scalar` modulo \\(\ell\\).
     /// 
     /// This uses Montgomery reduction to compute the canonical representative

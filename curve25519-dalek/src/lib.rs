@@ -53,6 +53,9 @@ pub(crate) mod macros;
 // Scalar arithmetic mod l = 2^252 + ..., the order of the Ristretto group
 pub mod scalar;
 
+// Verus specifications for scalar operations (verification only - coexists with main scalar)
+pub mod scalar_verus;
+
 // Point operations on the Montgomery form of Curve25519
 pub mod montgomery;
 
@@ -76,6 +79,9 @@ pub mod traits;
 pub(crate) mod field;
 
 // Arithmetic backends (using u32, u64, etc) live here
+#[cfg(docsrs)]
+pub mod backend;
+#[cfg(not(docsrs))]
 pub mod backend;
 
 // Generic code for window lookups

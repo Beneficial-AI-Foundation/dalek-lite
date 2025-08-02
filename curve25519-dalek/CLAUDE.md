@@ -1,5 +1,12 @@
 # Development Notes
 
+## Fiat Backend Testing
+
+To test compilation with the fiat backend:
+```bash
+RUSTFLAGS='--cfg curve25519_dalek_backend="fiat"' cargo check
+```
+
 ## Verus Verification
 
 Run Verus verification from the `curve25519-dalek` directory:
@@ -135,3 +142,11 @@ scripts/verus_cleaner.py src/backend/serial/u64/scalar_verus.rs 200 210 'lemma'
 scripts/verus_cleaner.py src/backend/serial/u64/field_verus.rs 150 200 'assert'
 ```
 
+### 13. Moving Proof Blocks to Lemmas
+
+Executable code is easier to read if multiline proof blocks are replaced by lemmas:
+1. Replace the proof block with an assume statement that you think will show the same thing.
+2. Replace that with a lemma that shows the same thing. You can assume false for the lemma. 
+3. Put the contents of the proof block into the lemma to actually prove it. 
+
+Verify at each step

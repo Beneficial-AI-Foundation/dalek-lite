@@ -26,13 +26,14 @@ pub mod scalar;
 
 pub mod constants;
 
-pub mod scalar_verus;
-
 pub mod field_verus;
+
+pub mod field_lemmas;
 
 pub mod common_verus;
 
-pub mod vstd_u128_verus;
+pub mod subtle_assumes;
 
-// XEdDSA functionality has been moved to x25519-dalek crate to avoid circular dependency
-// Users should import from x25519_dalek::xeddsa directly
+pub mod scalar_lemmas;
+
+pub mod scalar_specs;

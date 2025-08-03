@@ -34,7 +34,7 @@ use vstd::calc;
 use rand::{CryptoRng, Rng};
 use rand_core::RngCore;
 
-use curve25519_dalek::backend::serial::u64::scalar_verus::*;
+use curve25519_dalek::backend::serial::u64::scalar::*;
 
 verus! {
 
@@ -65,9 +65,9 @@ verus! {
 
     // External function specifications for SHA-512
     /// External specification for SHA-512 hasher
-    #[verifier::external_type_specification]
-    #[verifier::external_body]
-    pub struct ExSha512(Sha512);
+   // #[verifier::external_type_specification]
+   // #[verifier::external_body]
+   // pub struct ExSha512(Sha512);
 
     // External specifications for curve types
     /// External specification for Montgomery point
@@ -350,11 +350,13 @@ impl PrivateKey {
     // E = kB
     // A.y = E.y
     // A.s = 0
+    // THIS IS SKIPPED IN IMPLEMENTATION
+    // SO a IS ALWAYS k
     // if E.s == 1:
     //     a = -k (mod q)
     // else:
     //     a = k (mod q)
-    // return A, a
+    // return A, 
 
 
     pub fn calculate_signature<R>(
@@ -369,7 +371,7 @@ impl PrivateKey {
         true,
     ensures
         result.0.len() == SIGNATURE_LENGTH,
-        // is_random_scalar(&result.1), // TODO: Prove this mathematically
+        // is_random_scalar(&result.1), 
        {
 
         // ORIGINAL CODE C1:

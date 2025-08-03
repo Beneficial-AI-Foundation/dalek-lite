@@ -722,10 +722,6 @@ impl Scalar {
 
 }
 
-// Note: UnpackedScalar implementations removed to avoid conflicts with main scalar module
-// This is a verification-only module that coexists with the main scalar implementation
-
-// Note: read_le_u64_into function removed - replaced with inline Verus-compatible implementations
 
 /// _Clamps_ the given little-endian representation of a 32-byte integer. Clamping the value puts
 /// it in the range:

@@ -266,6 +266,7 @@ impl Scalar {
     /// let candidate = Scalar { bytes };
     /// CtOption::new(candidate, high_bit_unset & candidate.is_canonical())
     /// }
+    /// SPEC FROM scalar.md
     /// ### `pub fn from_canonical_bytes(bytes: [u8; 32]) -> CtOption<Scalar>`
     /// 1. Outputs none if (to_nat_32_u8 bytes) ≥ ℓ
     /// 2. Otherwise to_nat_Scalar (from_canonical_bytes bytes) = to_nat_32_u8 bytes

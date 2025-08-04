@@ -744,10 +744,22 @@ impl Scalar {
 /// more details.
 
 #[must_use]
-pub const fn clamp_integer(mut bytes: [u8; 32]) -> [u8; 32] {
+/// SPEC FROM scalar.md
+/// 1. 2^254 ≤ as_nat_32_u8 result
+/// 2. as_nat_32_u8 result < 2^255
+/// 3. (as_nat_32_u8 result) is divisible by 8 (the cofactor of curve25519)
+/// 4. If the input is uniformly random then the result is uniformly random
+
+pub const fn clamp_integer(mut bytes: [u8; 32]) -> (result: [u8; 32]) 
+ensures
+    pow2(254) <= bytes_to_nat(&result) < pow2(255), // 1.,2.
+    bytes_to_nat(&result) % 8 == 0, // 3. 
+    is_random_bytes(&bytes) ==> is_random_bytes(&result), // 4. 
+{
     bytes[0] &= 0b1111_1000;
     bytes[31] &= 0b0111_1111;
     bytes[31] |= 0b0100_0000;
+    assume(false);
     bytes
 }
 

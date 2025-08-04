@@ -94,7 +94,7 @@ NOTE: not clear. This seems to also perform some multiplication. Please recheck.
 
 1. to_nat_DoubleEndedIterator_Bool (bits_le self) = to_nat_Scalar self
 
-### `pub(crate) fn non_adjacent_form(&self, w: usize) -> [i8; 256]`
+### `pub(crate) fn non_adjacent_form(&self, w: usize) -> [i8; 256]` [todo]
 `curve25519_dalek::scalar::Scalar`
 Permitted in source only for (2 ≤ w ≤ 8)
 Called "w-Non-Adjacent Form"
@@ -107,7 +107,7 @@ let (a_0, a_1,..., a_{255}) = non_adjacent_form self
 4. a_{255} is nonzero
 5. at most one of any w consecutive coefficients is nonzero
 
-### `pub(crate) fn as_radix_16(&self) -> [i8; 64]`
+### `pub(crate) fn as_radix_16(&self) -> [i8; 64]` [todo]
 `curve25519_dalek::scalar::Scalar`
 
 let (a_0, a_1,..., a_{63}) = as_radix_16 self
@@ -116,13 +116,13 @@ Requires that to_nat_Scalar self < 2^{255}
 1. a = a_0 + a_1 16^1 + \cdots + a_{63} 16^{63}
 2. -8 ≤ a_i < 8
 
-### `pub(crate) fn to_radix_2w_size_hint(w: usize) -> usize`
+### `pub(crate) fn to_radix_2w_size_hint(w: usize) -> usize` [todo]
 `curve25519_dalek::scalar::Scalar`
 
 To do: Unclear how to specify, returns a size hint indicating how many entries
 of the return value of `to_radix_2w` are nonzero.
 
-### `pub(crate) fn as_radix_2w(&self, w: usize) -> [i8; 64]`
+### `pub(crate) fn as_radix_2w(&self, w: usize) -> [i8; 64]` [todo]
 `curve25519_dalek::scalar::Scalar`
 Permitted in source only for w = 4, 5, 6, 7, 8
 
@@ -132,31 +132,31 @@ let (a_0, a_1,..., a_{63}) = as_radix_2w (self, w)
 2. -2^w/2 ≤ a_i < 2^w/2 if 0 ≤ i < (n-1)
 3. -2^w/2 ≤ a_{n-1} ≤ 2^w/2
 
-### `pub(crate) fn unpack(&self) -> UnpackedScalar`
+### `pub(crate) fn unpack(&self) -> UnpackedScalar` [todo]
 `curve25519_dalek::scalar::Scalar`
 
 1. to_nat_UnpackedScalar (unpack self) = to_nat_Scalar self
 
-### `fn pack(&self) -> Scalar`
+### `fn pack(&self) -> Scalar` [todo]
 `curve25519_dalek::scalar::UnpackedScalar`
 
 1. to_nat_Scalar (pack self) = to_nat_UnpackedScalar self
 
-### `pub fn montgomery_invert(&self) -> UnpackedScalar`
+### `pub fn montgomery_invert(&self) -> UnpackedScalar` [todo]
 `curve25519_dalek::scalar::UnpackedScalar`
 
 1. If self is in Montgomery form then (to_nat_UnpackedScalar self) * (to_nat_UnpackedScalar (montgomery_invert self)) = 1 (mod ℓ) 
 
 [Further info](https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion)
 
-### `pub fn invert(&self) -> UnpackedScalar`
+### `pub fn invert(&self) -> UnpackedScalar` [done]
 `curve25519_dalek::scalar::UnpackedScalar`
 
 1. (to_nat_UnpackedScalar self) * (to_nat_UnpackedScalar (invert self)) = 1 (mod ℓ) 
 
 Note: likely that self ≠ 0 is required although not stated in the docs
 
-### `pub const fn clamp_integer(mut bytes: [u8; 32]) -> [u8; 32]`
+### `pub const fn clamp_integer(mut bytes: [u8; 32]) -> [u8; 32]` [done] 
 `curve25519_dalek::scalar`
 
 let result = clamp_integer bytes

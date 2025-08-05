@@ -346,10 +346,14 @@ impl Scalar52 {
             // In both cases, this equals (a + group_order() - b) % group_order()
             
             if (borrow >> 63) == 0 {
-                // No underflow: a >= b, so a - b >= 0
-                // Also need: a - b < group_order() to apply mod identity
+                // We know difference == a - b from first loop (when no borrow)
+                // Need to show: (a + group_order() - b) % group_order() == a - b
+                // This requires: 0 <= a - b < group_order()
+                // We have a >= b (from no borrow), so a - b >= 0
+                // Still need: a - b < group_order()
                 assume(to_nat(&a.limbs) - to_nat(&b.limbs) < group_order());
-                // Therefore: (a + group_order() - b) % group_order() = (a - b) % group_order() = a - b
+                // Since 0 <= a - b < group_order(), we have (a - b) % group_order() == a - b
+                // Also: (a + group_order() - b) % group_order() == (a - b) % group_order() == a - b
                 assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
             } else {
                 // Underflow: difference == a + group_order() - b

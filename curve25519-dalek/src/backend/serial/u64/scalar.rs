@@ -307,6 +307,17 @@ impl Scalar52 {
             difference.limbs[i] = carry & mask;
             proof { lemma_carry_bounded_after_mask(carry, mask); }
         }
+        
+        proof {
+            if (borrow >> 63) == 0 {
+                // No underflow case
+                // TODO: prove result == a - b
+            } else {
+                // Underflow case  
+                assert((borrow >> 63) == 1); // We know it's exactly 1
+                // TODO: prove result == a - b + L
+            }
+        }
         assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
         difference
     }

@@ -316,6 +316,7 @@ impl Scalar52 {
             } else {
                 // Underflow case  
                 assert((borrow >> 63) == 1); // We know it's exactly 1
+                assume(to_nat(&a.limbs) < to_nat(&b.limbs)); // TODO: prove from borrow
                 // TODO: prove result == a - b + L
             }
         }

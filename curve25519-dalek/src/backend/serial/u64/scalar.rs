@@ -268,14 +268,19 @@ impl Scalar52 {
 
         // a - b
         let mut borrow: u64 = 0;
+        proof { 
+            assert((borrow >> 63) <= 1) by (bit_vector);
+        }
         for i in 0..5
             invariant
                       limbs_bounded(b),
                       forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
                       mask == (1u64 << 52) - 1,
+                      (borrow >> 63) <= 1,
         {
             proof { assert ((borrow >> 63) < 2) by (bit_vector); }
             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
+            proof { assert((borrow >> 63) <= 1) by (bit_vector); }
             difference.limbs[i] = borrow & mask;
             proof { lemma_borrow_and_mask_bounded(borrow, mask); }
         }

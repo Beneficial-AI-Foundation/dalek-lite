@@ -321,15 +321,21 @@ impl Scalar52 {
         }
         
         proof {
+            // Use our multi-precision borrow lemma to establish the relationship between
+            // the final borrow flag and the comparison of a and b
+            lemma_multi_precision_borrow_comparison(&a.limbs, &b.limbs, borrow);
+            
             if (borrow >> 63) == 0 {
                 // No underflow case
-                assume(to_nat(&a.limbs) >= to_nat(&b.limbs)); // TODO: prove from no borrow
+                // From the lemma: (borrow >> 63) == 0 <==> to_nat(a) >= to_nat(b)
+                assert(to_nat(&a.limbs) >= to_nat(&b.limbs)); // Proven by lemma
                 // TODO: prove result == a - b
                 // Second loop adds 0 (since underflow flag is 0), so difference remains a - b
             } else {
                 // Underflow case  
                 assert((borrow >> 63) == 1); // We know it's exactly 1
-                assume(to_nat(&a.limbs) < to_nat(&b.limbs)); // TODO: prove from borrow
+                // From the lemma: (borrow >> 63) == 1 <==> to_nat(a) < to_nat(b)
+                assert(to_nat(&a.limbs) < to_nat(&b.limbs)); // Proven by lemma
                 // TODO: prove result == a - b + L
                 // Second loop adds L (since underflow flag is 1)
                 assume(to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs) + to_nat(&constants::L.limbs));

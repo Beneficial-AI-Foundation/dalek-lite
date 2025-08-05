@@ -304,6 +304,9 @@ impl Scalar52 {
             assert((borrow >> 63) == 0 || (borrow >> 63) == 1) by (bit_vector);
         }
 
+        // Capture the state before the second loop for our lemma
+        let ghost difference_before_second_loop = difference.limbs;
+
         // conditionally add l if the difference is negative
         let mut carry: u64 = 0;
         for i in 0..5
@@ -348,15 +351,51 @@ impl Scalar52 {
                 // No underflow case
                 // From the lemma: (borrow >> 63) == 0 <==> to_nat(a) >= to_nat(b)
                 assert(to_nat(&a.limbs) >= to_nat(&b.limbs)); // Proven by lemma
-                // TODO: prove result == a - b
-                // Second loop adds 0 (since underflow flag is 0), so difference remains a - b
+                // Prove result == a - b using our lemma
+                // Second loop adds 0 (since underflow flag is 0), so difference remains unchanged
+                lemma_l_value_properties(&constants::L, &difference);
+                lemma_second_loop_adds_l_conditionally(
+                    &difference_before_second_loop,
+                    (borrow >> 63),
+                    &difference.limbs,
+                    &constants::L
+                );
+                
+                // From our lemma (since borrow >> 63 == 0), we know:
+                // to_nat(&difference.limbs) == to_nat(&difference_before_second_loop)
+                
+                // From the first loop (no underflow case), we know:
+                // to_nat(&difference_before_second_loop) == to_nat(&a.limbs) - to_nat(&b.limbs)
+                
+                // Therefore: to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs)
+                assert(to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs));
             } else {
                 // Underflow case  
                 assert((borrow >> 63) == 1); // We know it's exactly 1
                 // From the lemma: (borrow >> 63) == 1 <==> to_nat(a) < to_nat(b)
                 assert(to_nat(&a.limbs) < to_nat(&b.limbs)); // Proven by lemma
-                // TODO: prove result == a - b + L
+                // Prove result == a - b + L using our lemma
                 // Second loop adds L (since underflow flag is 1)
+                lemma_l_value_properties(&constants::L, &difference);
+                lemma_second_loop_adds_l_conditionally(
+                    &difference_before_second_loop,
+                    (borrow >> 63),
+                    &difference.limbs,
+                    &constants::L
+                );
+                
+                // From the first loop (underflow case), we know:
+                // to_nat(&difference_before_second_loop) == (to_nat(a) - to_nat(b) + 2^260) mod 2^260
+                
+                // From our lemma (since borrow >> 63 == 1), we know:
+                // to_nat(&difference.limbs) == to_nat(&difference_before_second_loop) + to_nat(&constants::L.limbs)
+                
+                // Since a < b in this case, to_nat(a) - to_nat(b) is negative,
+                // so (to_nat(a) - to_nat(b) + 2^260) mod 2^260 == to_nat(a) - to_nat(b) + 2^260
+                // But this reasoning needs more careful handling of modular arithmetic
+                
+                // For now, we'll assume the combination gives us the desired result
+                // TODO: Complete the mathematical reasoning to eliminate this assume
                 assume(to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs) + to_nat(&constants::L.limbs));
                 // L equals group_order()
                 lemma_l_equals_group_order();

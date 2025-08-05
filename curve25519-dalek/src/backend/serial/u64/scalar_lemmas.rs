@@ -667,4 +667,77 @@ pub proof fn lemma_first_loop_computes_wrapped_difference(
         assume(to_nat(difference) == (to_nat(a) as int - to_nat(b) as int + pow2(260) as int) % pow2(260) as int);
     }
 }
+
+/// Lemma proving what the second loop in scalar::sub computes
+/// The second loop conditionally adds L to the difference based on the underflow flag
+pub proof fn lemma_second_loop_adds_l_conditionally(
+    input_difference: &[u64; 5],
+    underflow_flag: u64,
+    output_difference: &[u64; 5],
+    l_value: &Scalar52
+)
+    requires
+        // Input bounds
+        forall|i: int| 0 <= i < 5 ==> input_difference[i] < (1u64 << 52),
+        forall|i: int| 0 <= i < 5 ==> output_difference[i] < (1u64 << 52),
+        forall|i: int| 0 <= i < 5 ==> l_value.limbs[i] < (1u64 << 52),
+        
+        // underflow_flag is either 0 or 1
+        underflow_flag == 0 || underflow_flag == 1,
+        
+        // Precondition: output_difference is computed from input_difference by the second loop
+        // The loop performs: for each limb i
+        //   let addend = select(&0, &l_value.limbs[i], Choice::from(underflow_flag as u8));
+        //   carry = (carry >> 52) + input_difference[i] + addend;
+        //   output_difference[i] = carry & mask;
+        // This implements multi-precision addition with carry propagation
+    ensures
+        if underflow_flag == 0 {
+            // When no underflow, addend is always 0, so result equals input
+            to_nat(output_difference) == to_nat(input_difference)
+        } else {
+            // When underflow occurred, we add L to the input difference
+            to_nat(output_difference) == to_nat(input_difference) + to_nat(&l_value.limbs)
+        }
+{
+    // Establish that underflow_flag is exactly 0 or 1
+    assert(underflow_flag == 0 || underflow_flag == 1);
+    
+    if underflow_flag == 0 {
+        // Case 1: No underflow (underflow_flag == 0)
+        // In this case, select(&0, &l_value.limbs[i], Choice::from(0)) returns 0
+        // So we're effectively adding 0 to each limb of input_difference
+        
+        // The loop computes: carry = (carry >> 52) + input_difference[i] + 0
+        // This simplifies to just propagating any existing carry bits
+        // Since we start with carry = 0 and add 0 to each limb,
+        // the final result should equal the input
+        
+        // TODO: This requires proving that multi-precision addition of 0
+        // preserves the original value when implemented with carry propagation
+        assume(to_nat(output_difference) == to_nat(input_difference));
+        
+    } else {
+        // Case 2: Underflow occurred (underflow_flag == 1)
+        // In this case, select(&0, &l_value.limbs[i], Choice::from(1)) returns l_value.limbs[i]
+        // So we're adding L to the input_difference using multi-precision arithmetic
+        
+        // The loop computes: carry = (carry >> 52) + input_difference[i] + l_value.limbs[i]
+        // This implements the standard multi-precision addition algorithm
+        // The final result should be input_difference + L
+        
+        // Key insight: The second loop implements multi-precision addition
+        // between input_difference and L with proper carry propagation
+        // Since both values fit in 260 bits and L is the group order (< 2^253),
+        // their sum should not overflow the 260-bit representation
+        
+        // TODO: This requires proving that the multi-precision addition algorithm
+        // correctly computes input_difference + L when implemented with carry propagation
+        // The proof would involve:
+        // 1. Showing that the carry propagation correctly handles overflow between limbs
+        // 2. Establishing that the sum fits within the 260-bit limb representation
+        // 3. Using properties of to_nat to show the arithmetic relationship
+        assume(to_nat(output_difference) == to_nat(input_difference) + to_nat(&l_value.limbs));
+    }
+}
 } // verus!

@@ -379,4 +379,18 @@ pub proof fn lemma_rr_limbs_bounded()
     // Verus can figure that out the other 4 limbs are bounded
     assert(0x000d63c715bea69fu64 < (1u64 << 52)) by (bit_vector);
 }
+
+pub proof fn lemma_borrow_flag_interpretation(
+    a0: u64, b0: u64, borrow_in: u64, borrow_out: u64
+)
+    requires
+        a0 < (1u64 << 52),
+        b0 < (1u64 << 52),
+        (borrow_in >> 63) <= 1,
+        borrow_out == a0.wrapping_sub(b0.wrapping_add((borrow_in >> 63) as u64)),
+    ensures
+        (borrow_out >> 63) == 1 <==> (a0 as int) < (b0 as int) + (borrow_in >> 63) as int,
+{
+    assume(false); // TODO: prove with bit vector reasoning
+}
 } // verus!

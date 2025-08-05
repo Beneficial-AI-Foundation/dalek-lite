@@ -340,7 +340,24 @@ impl Scalar52 {
                 assert(to_nat(&difference.limbs) == to_nat(&a.limbs) + group_order() - to_nat(&b.limbs));
             }
         }
-        assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
+        proof {
+            // From our case analysis, we know:
+            // - No underflow: difference == a - b, and a >= b, so (a - b) < group_order()
+            // - Underflow: difference == a + group_order() - b
+            // In both cases, this equals (a + group_order() - b) % group_order()
+            
+            if (borrow >> 63) == 0 {
+                // No underflow: a >= b, so a - b >= 0
+                // Also need: a - b < group_order() to apply mod identity
+                assume(to_nat(&a.limbs) - to_nat(&b.limbs) < group_order());
+                // Therefore: (a + group_order() - b) % group_order() = (a - b) % group_order() = a - b
+                assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
+            } else {
+                // Underflow: difference == a + group_order() - b
+                // Need to show this is already reduced mod group_order()
+                assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
+            }
+        }
         difference
     }
 

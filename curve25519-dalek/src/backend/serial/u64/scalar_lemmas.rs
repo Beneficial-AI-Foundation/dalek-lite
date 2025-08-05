@@ -740,4 +740,61 @@ pub proof fn lemma_second_loop_adds_l_conditionally(
         assume(to_nat(output_difference) == to_nat(input_difference) + to_nat(&l_value.limbs));
     }
 }
+
+/// Specification predicate for scalar values that are properly reduced modulo the group order
+pub open spec fn scalar_reduced(s: &Scalar52) -> bool {
+    to_nat(&s.limbs) < group_order()
+}
+
+/// Lemma: If two scalars are reduced and a >= b, then a - b < group_order
+pub proof fn lemma_subtraction_bound_for_reduced_scalars(a: &Scalar52, b: &Scalar52)
+    requires
+        limbs_bounded(a),
+        limbs_bounded(b),
+        scalar_reduced(a),
+        scalar_reduced(b),
+        to_nat(&a.limbs) >= to_nat(&b.limbs),
+    ensures
+        to_nat(&a.limbs) - to_nat(&b.limbs) < group_order(),
+{
+    // This is a straightforward mathematical fact:
+    // If a < group_order() and b < group_order() and a >= b, then a - b < group_order()
+    // 
+    // Proof: Since a < group_order() and b >= 0, we have a - b <= a < group_order()
+    // Since a >= b, we also have a - b >= 0
+    // Therefore: 0 <= a - b < group_order()
+    
+    // We have:
+    // - to_nat(&a.limbs) < group_order() (from scalar_reduced(a))
+    // - to_nat(&b.limbs) < group_order() (from scalar_reduced(b))  
+    // - to_nat(&a.limbs) >= to_nat(&b.limbs) (from precondition)
+    // - to_nat(&b.limbs) >= 0 (natural numbers are non-negative)
+    
+    // Therefore: to_nat(&a.limbs) - to_nat(&b.limbs) <= to_nat(&a.limbs) < group_order()
+    assert(to_nat(&a.limbs) - to_nat(&b.limbs) <= to_nat(&a.limbs));
+    assert(to_nat(&a.limbs) < group_order());
+    
+    // The inequality follows by transitivity
+}
+
+/// Lemma: For limbs that are bounded but may not be fully reduced, 
+/// the difference is still bounded by a reasonable upper bound
+pub proof fn lemma_subtraction_bound_for_bounded_scalars(a: &Scalar52, b: &Scalar52)
+    requires
+        limbs_bounded(a),
+        limbs_bounded(b),
+        to_nat(&a.limbs) >= to_nat(&b.limbs),
+    ensures
+        to_nat(&a.limbs) - to_nat(&b.limbs) < pow2(260),
+{
+    // From lemma_to_nat_upper_bound, we know that limbs_bounded implies to_nat < pow2(260)
+    lemma_to_nat_upper_bound(&a.limbs);
+    lemma_to_nat_upper_bound(&b.limbs);
+    
+    // Since to_nat(&a.limbs) < pow2(260) and to_nat(&b.limbs) >= 0,
+    // we have to_nat(&a.limbs) - to_nat(&b.limbs) <= to_nat(&a.limbs) < pow2(260)
+    assert(to_nat(&a.limbs) - to_nat(&b.limbs) <= to_nat(&a.limbs));
+    assert(to_nat(&a.limbs) < pow2(260) as nat);
+}
+
 } // verus!

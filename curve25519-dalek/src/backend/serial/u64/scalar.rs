@@ -277,6 +277,7 @@ impl Scalar52 {
                       forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
                       mask == (1u64 << 52) - 1,
                       (borrow >> 63) <= 1,
+                      i == 0 ==> borrow == 0,
         {
             proof { assert ((borrow >> 63) < 2) by (bit_vector); }
             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));

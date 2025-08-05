@@ -291,6 +291,14 @@ impl Scalar52 {
         }
 
         proof {
+            assume(if (borrow >> 63) == 0 {
+                to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs)
+            } else {
+                to_nat(&difference.limbs) == (to_nat(&a.limbs) as int - to_nat(&b.limbs) as int + pow2(260) as int) % pow2(260) as int
+            });
+        }
+
+        proof {
             assert((borrow >> 63) == 0 || (borrow >> 63) == 1) by (bit_vector);
         }
 

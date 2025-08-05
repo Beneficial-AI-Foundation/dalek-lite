@@ -412,22 +412,92 @@ pub proof fn lemma_to_nat_upper_bound(limbs: &[u64; 5])
     ensures
         to_nat(limbs) < pow2(260) as nat,
 {
-    // Each limb is < 2^52, so the 5-limb representation is < 2^52 * (2^52)^4 = 2^260
-    // This follows from the definition of to_nat as a weighted sum
-    assert(limbs[0] < (1u64 << 52));
-    assert(limbs[1] < (1u64 << 52));
-    assert(limbs[2] < (1u64 << 52));
-    assert(limbs[3] < (1u64 << 52));
-    assert(limbs[4] < (1u64 << 52));
+    // Each limb is < 2^52, so we can bound the weighted sum
     
-    // to_nat(limbs) = limbs[0] + limbs[1]*2^52 + limbs[2]*2^104 + limbs[3]*2^156 + limbs[4]*2^208
-    // Since each limbs[i] < 2^52, we have:
-    // to_nat(limbs) < 2^52 + 2^52*2^52 + 2^52*2^104 + 2^52*2^156 + 2^52*2^208
-    //               = 2^52 + 2^104 + 2^156 + 2^208 + 2^260
-    //               < 2^260 (since 2^52 + 2^104 + 2^156 + 2^208 < 2^260)
+    // First, establish that (1u64 << 52) == pow2(52)
+    assert((1u64 << 52) == pow2(52)) by {
+        shift_is_pow2(52);
+    };
     
-    // TODO: Prove this rigorously using vstd lemmas
-    assume(to_nat(limbs) < pow2(260) as nat);
+    // Use the equivalence between to_nat and five_limbs_to_nat_aux
+    lemma_five_limbs_equals_to_nat(limbs);
+    assert(to_nat(limbs) == five_limbs_to_nat_aux(*limbs));
+    
+    // The key insight: since each limb[i] < pow2(52), the maximum possible value
+    // is achieved when each limb[i] = pow2(52) - 1.
+    // In that case, to_nat would equal pow2(260) - 1, which is < pow2(260).
+    
+    // We can prove this by showing that to_nat is strictly monotonic in each limb
+    // and then using the bound for the maximum case.
+    
+    // Since limbs[i] < (1u64 << 52) = pow2(52), we have limbs[i] <= pow2(52) - 1
+    assert(forall|i: int| 0 <= i < 5 ==> (limbs[i] as nat) <= pow2(52) - 1);
+    
+    // Now bound each term in the weighted sum:
+    // term_0 = limbs[0] <= pow2(52) - 1
+    // term_1 = pow2(52) * limbs[1] <= pow2(52) * (pow2(52) - 1) = pow2(104) - pow2(52)
+    // term_2 = pow2(104) * limbs[2] <= pow2(104) * (pow2(52) - 1) = pow2(156) - pow2(104)
+    // term_3 = pow2(156) * limbs[3] <= pow2(156) * (pow2(52) - 1) = pow2(208) - pow2(156)
+    // term_4 = pow2(208) * limbs[4] <= pow2(208) * (pow2(52) - 1) = pow2(260) - pow2(208)
+    
+    assert((limbs[0] as nat) <= pow2(52) - 1);
+    
+    assert(pow2(52) * (limbs[1] as nat) <= pow2(52) * (pow2(52) - 1)) by {
+        if limbs[1] > 0 {
+            lemma_mul_inequality((limbs[1] as nat) as int, (pow2(52) - 1) as int, pow2(52) as int);
+        }
+    };
+    assert(pow2(52) * (pow2(52) - 1) == pow2(104) - pow2(52)) by {
+        broadcast use group_mul_is_distributive;
+        lemma_pow2_adds(52, 52);
+    };
+    
+    assert(pow2(104) * (limbs[2] as nat) <= pow2(104) * (pow2(52) - 1)) by {
+        if limbs[2] > 0 {
+            lemma_mul_inequality((limbs[2] as nat) as int, (pow2(52) - 1) as int, pow2(104) as int);
+        }
+    };
+    assert(pow2(104) * (pow2(52) - 1) == pow2(156) - pow2(104)) by {
+        broadcast use group_mul_is_distributive;
+        lemma_pow2_adds(104, 52);
+    };
+    
+    assert(pow2(156) * (limbs[3] as nat) <= pow2(156) * (pow2(52) - 1)) by {
+        if limbs[3] > 0 {
+            lemma_mul_inequality((limbs[3] as nat) as int, (pow2(52) - 1) as int, pow2(156) as int);
+        }
+    };
+    assert(pow2(156) * (pow2(52) - 1) == pow2(208) - pow2(156)) by {
+        broadcast use group_mul_is_distributive;
+        lemma_pow2_adds(156, 52);
+    };
+    
+    assert(pow2(208) * (limbs[4] as nat) <= pow2(208) * (pow2(52) - 1)) by {
+        if limbs[4] > 0 {
+            lemma_mul_inequality((limbs[4] as nat) as int, (pow2(52) - 1) as int, pow2(208) as int);
+        }
+    };
+    assert(pow2(208) * (pow2(52) - 1) == pow2(260) - pow2(208)) by {
+        broadcast use group_mul_is_distributive;
+        lemma_pow2_adds(208, 52);
+    };
+    
+    // Sum all the bounds:
+    // to_nat(limbs) <= (pow2(52) - 1) + (pow2(104) - pow2(52)) + (pow2(156) - pow2(104)) + 
+    //                  (pow2(208) - pow2(156)) + (pow2(260) - pow2(208))
+    //                = pow2(260) - 1
+    
+    // Since each limb is strictly less than pow2(52) (not <=), at least one term is strict,
+    // so to_nat(limbs) < pow2(260) - 1 < pow2(260)
+    
+    // The telescoping sum gives us pow2(260) - 1
+    assert(
+        (pow2(52) - 1) + (pow2(104) - pow2(52)) + (pow2(156) - pow2(104)) + 
+        (pow2(208) - pow2(156)) + (pow2(260) - pow2(208)) == pow2(260) - 1
+    );
+    
+    // Since to_nat(limbs) <= pow2(260) - 1 and we have strict inequality on at least one limb,
+    // we get to_nat(limbs) < pow2(260)
 }
 
 pub proof fn lemma_borrow_flag_interpretation(

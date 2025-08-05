@@ -271,6 +271,7 @@ impl Scalar52 {
         proof { 
             assert((borrow >> 63) <= 1) by (bit_vector);
         }
+        let ghost mut temp_values: Seq<u64> = seq![0u64; 5];
         for i in 0..5
             invariant
                       limbs_bounded(b),
@@ -281,6 +282,9 @@ impl Scalar52 {
         {
             proof { assert ((borrow >> 63) < 2) by (bit_vector); }
             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
+            proof {
+                temp_values = temp_values.update(i as int, borrow);
+            }
             proof { assert((borrow >> 63) <= 1) by (bit_vector); }
             difference.limbs[i] = borrow & mask;
             proof { lemma_borrow_and_mask_bounded(borrow, mask); }

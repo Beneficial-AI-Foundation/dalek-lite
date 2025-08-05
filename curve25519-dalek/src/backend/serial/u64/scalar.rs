@@ -334,6 +334,10 @@ impl Scalar52 {
                 // TODO: prove result == a - b + L
                 // Second loop adds L (since underflow flag is 1)
                 assume(to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs) + to_nat(&constants::L.limbs));
+                // L equals group_order()
+                assume(to_nat(&constants::L.limbs) == group_order());
+                // Therefore: a - b + L = a - b + group_order() = a + group_order() - b
+                assert(to_nat(&difference.limbs) == to_nat(&a.limbs) + group_order() - to_nat(&b.limbs));
             }
         }
         assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));

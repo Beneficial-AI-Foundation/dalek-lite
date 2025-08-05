@@ -325,8 +325,7 @@ impl Scalar52 {
                 // No underflow case
                 assume(to_nat(&a.limbs) >= to_nat(&b.limbs)); // TODO: prove from no borrow
                 // TODO: prove result == a - b
-                // Second loop adds 0 (since underflow flag is 0)
-                assume(to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs));
+                // Second loop adds 0 (since underflow flag is 0), so difference remains a - b
             } else {
                 // Underflow case  
                 assert((borrow >> 63) == 1); // We know it's exactly 1

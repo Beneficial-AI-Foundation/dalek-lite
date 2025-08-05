@@ -393,4 +393,26 @@ pub proof fn lemma_borrow_flag_interpretation(
 {
     assume(false); // TODO: prove with bit vector reasoning
 }
+
+pub proof fn lemma_first_loop_computes_wrapped_difference(
+    a: &[u64; 5],
+    b: &[u64; 5],
+    difference: &[u64; 5],
+    final_borrow: u64
+)
+    requires
+        forall|i: int| 0 <= i < 5 ==> a[i] < (1u64 << 52),
+        forall|i: int| 0 <= i < 5 ==> b[i] < (1u64 << 52),
+        forall|i: int| 0 <= i < 5 ==> difference[i] < (1u64 << 52),
+        (final_borrow >> 63) <= 1,
+        // TODO: Add precondition about how difference and final_borrow are computed
+    ensures
+        if (final_borrow >> 63) == 0 {
+            to_nat(difference) == to_nat(a) - to_nat(b)
+        } else {
+            to_nat(difference) == (to_nat(a) as int - to_nat(b) as int + pow2(260) as int) % pow2(260) as int
+        }
+{
+    assume(false); // TODO: prove by analyzing the loop
+}
 } // verus!

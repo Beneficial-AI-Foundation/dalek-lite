@@ -286,6 +286,10 @@ impl Scalar52 {
             proof { lemma_borrow_and_mask_bounded(borrow, mask); }
         }
 
+        proof {
+            assert((borrow >> 63) == 0 || (borrow >> 63) == 1) by (bit_vector);
+        }
+
         // conditionally add l if the difference is negative
         let mut carry: u64 = 0;
         for i in 0..5

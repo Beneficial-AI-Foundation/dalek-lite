@@ -733,13 +733,10 @@ impl FieldElement51 {
                 assert( (1u64 << 54) * ((19 * (1u64 << 54)) as u64) == 19 * (1u128 << 108)) by (bit_vector);
 
                 // bv arithmetic
-                assert(19 < (1u64 << 5)) by (bit_vector);
                 assert((1u64 << 51) < (1u64 << 52)) by (bit_vector);
                 assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
                 assert((1u64 << 54) < (1u64 << 59)) by (bit_vector);
-                assert((1u64 << 54) * (1u64 << 5) == (1u64 << 59)) by (bit_vector);
                 assert(((1u64 << 54) as u128) * ((1u64 << 54) as u128) == (1u128 << 108)) by (bit_vector);
-                assert(((1u64 << 54) as u128) * ((1u64 << 59) as u128) == (1u128 << 113)) by (bit_vector);
 
                 let a3_19 = (19 * a[3]) as u64;
                 let a4_19 = (19 * a[4]) as u64;
@@ -774,7 +771,6 @@ impl FieldElement51 {
                 lemma_m(a[0],  a[3], bound, bound);
                 lemma_m(a[1],  a[2], bound, bound);
                 // conclusion, (19 + 2 * (1 + 1)) = 23
-                assert(c3_0 < 23 * bound_sq);
 
                 // c4
                 let c4_0: u128 = (a[2] *  a[2] + 2*( a[0] *  a[4] + a[1] *  a[3])) as u128;
@@ -782,7 +778,6 @@ impl FieldElement51 {
                 lemma_m(a[0],  a[4], bound, bound);
                 lemma_m(a[1],  a[3], bound, bound);
                 // conclusion, (1 + 2 * (1 + 1)) = 5
-                assert(c4_0 < 5 * bound_sq);
 
                 assert( 77 * bound_sq <= ((u64::MAX as u128) << 51)) by (compute); // all ci_0 are then < MAX << 51
 
@@ -798,21 +793,18 @@ impl FieldElement51 {
                 let c2 = (c2_0 + ((c1 >> 51) as u64) as u128) as u128;
                 let a1_0 = (c1 as u64) & LOW_51_BIT_MASK;
 
-                lemma_shr_51_fits_u64(c2);
                 // a1_0 < (1u64 << 51)
                 masked_lt_51(c1 as u64);
 
                 let c3 = (c3_0 + ((c2 >> 51) as u64) as u128) as u128;
                 let a2 = (c2 as u64) & LOW_51_BIT_MASK;
 
-                lemma_shr_51_fits_u64(c3);
                 // a2 < (1u64 << 51)
                 masked_lt_51(c2 as u64);
 
                 let c4 = (c4_0 + ((c3 >> 51) as u64) as u128) as u128;
                 let a3 = (c3 as u64) & LOW_51_BIT_MASK;
 
-                lemma_shr_51_fits_u64(c4);
                 // a3 < (1u64 << 51)
                 masked_lt_51(c3 as u64);
 
@@ -822,7 +814,6 @@ impl FieldElement51 {
                 // a4 < (1u64 << 51)
                 masked_lt_51(c4 as u64);
 
-                assert(c4 <= c4_0 + (u64::MAX as u128));
                 lemma_shr_51_le(c4, (5 * bound_sq + (u64::MAX as u128)) as u128 );
 
                 // From the comments below:
@@ -834,10 +825,8 @@ impl FieldElement51 {
                 let pow2_5933 = 724618875532318195u64;
 
                 assert((5 * (1u128 << 108) + (u64::MAX as u128)) as u128 >> 51 < (pow2_5933 as u128)) by (compute);
-                assert(carry < pow2_5933);
 
                 // a[0] += carry * 19 fits in u64
-                assert((1u64 << 51) + 19 * pow2_5933 <= u64::MAX) by (compute);
                 let a0_1 = (a0_0 + carry * 19) as u64;
 
                 lemma_shr_51_le(a0_1 as u128, u64::MAX as u128);
@@ -847,7 +836,6 @@ impl FieldElement51 {
                 assert((1u64 << 51) + (1u64 << 13) < (1u64 << 52)) by (compute);
 
                 // Now a[1] < 2^51 + 2^(64 -51) = 2^51 + 2^13 < 2^(51 + epsilon).
-                assert(a1_0 + (a0_1 >> 51) < (1u64 << 52));
                 let a1_1 = (a1_0 + (a0_1 >> 51)) as u64;
 
                 let a0_2 = a0_1 & LOW_51_BIT_MASK;
@@ -917,7 +905,6 @@ impl FieldElement51 {
                         pow2(153) * (c3 - pow2(51) * (c3/ (pow2(51) as u128))) +
                         pow2(204) * (c4 - pow2(51) * (c4/ (pow2(51) as u128)))
                     ) by {
-                        broadcast use lemma_fundamental_div_mod;
                     }
 
                     // Then, we know that
@@ -947,7 +934,6 @@ impl FieldElement51 {
                         p() * carry
                     ) by {
                         broadcast use lemma_mul_is_associative;
-                        broadcast use lemma_mul_is_distributive_sub;
 
                         lemma_pow2_adds(51, 51);
                         lemma_pow2_adds(51, 102);
@@ -956,7 +942,6 @@ impl FieldElement51 {
 
                         // carry on the right, get p
                         broadcast use lemma_mul_is_distributive_sub_other_way;
-                        pow255_gt_19();
                     }
 
                     let c_arr_as_nat = (c0_0 +

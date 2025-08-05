@@ -28,7 +28,7 @@ proof fn verify_invert_correct(x: Scalar52)
 
 }
 
-proof fn lemma_l_equals_group_order()
+pub(crate) proof fn lemma_l_equals_group_order()
     ensures
         to_nat(&constants::L.limbs) == group_order(),
 {

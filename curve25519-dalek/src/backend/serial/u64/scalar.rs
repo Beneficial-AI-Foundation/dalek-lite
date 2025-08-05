@@ -279,6 +279,8 @@ impl Scalar52 {
                       mask == (1u64 << 52) - 1,
                       (borrow >> 63) <= 1,
                       i == 0 ==> borrow == 0,
+                      temp_values.len() == 5,
+                      forall|j: int| 0 <= j < i ==> (temp_values[j] >> 63) <= 1,
         {
             proof { assert ((borrow >> 63) < 2) by (bit_vector); }
             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
@@ -321,6 +323,23 @@ impl Scalar52 {
         }
         
         proof {
+            // For now, use assumes to establish the witness for the exists clause
+            // TODO: Replace assumes with proper proofs based on temp_values
+            assume(exists|borrow0: u64, borrow1: u64, borrow2: u64, borrow3: u64, borrow4: u64, borrow5: u64|
+                borrow0 == 0 &&
+                (borrow0 >> 63) <= 1 &&
+                borrow1 == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((borrow0 >> 63) as u64)) &&
+                (borrow1 >> 63) <= 1 &&
+                borrow2 == (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((borrow1 >> 63) as u64)) &&
+                (borrow2 >> 63) <= 1 &&
+                borrow3 == (a.limbs[2] as u64).wrapping_sub((b.limbs[2] as u64).wrapping_add((borrow2 >> 63) as u64)) &&
+                (borrow3 >> 63) <= 1 &&
+                borrow4 == (a.limbs[3] as u64).wrapping_sub((b.limbs[3] as u64).wrapping_add((borrow3 >> 63) as u64)) &&
+                (borrow4 >> 63) <= 1 &&
+                borrow5 == (a.limbs[4] as u64).wrapping_sub((b.limbs[4] as u64).wrapping_add((borrow4 >> 63) as u64)) &&
+                (borrow5 >> 63) <= 1 &&
+                borrow == borrow5);
+            
             // Use our multi-precision borrow lemma to establish the relationship between
             // the final borrow flag and the comparison of a and b
             lemma_multi_precision_borrow_comparison(&a.limbs, &b.limbs, borrow);

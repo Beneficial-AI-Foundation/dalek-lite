@@ -530,8 +530,21 @@ pub proof fn lemma_multi_precision_borrow_comparison(
         forall|i: int| 0 <= i < 5 ==> a[i] < (1u64 << 52),
         forall|i: int| 0 <= i < 5 ==> b[i] < (1u64 << 52),
         (final_borrow >> 63) <= 1,
-        // final_borrow is the result of multi-precision subtraction:
-        // borrow = 0, then for i in 0..5: borrow = a[i].wrapping_sub(b[i] + (borrow >> 63))
+        // final_borrow is precisely computed by the multi-precision subtraction algorithm:
+        exists|borrow0: u64, borrow1: u64, borrow2: u64, borrow3: u64, borrow4: u64, borrow5: u64|
+            borrow0 == 0 &&
+            (borrow0 >> 63) <= 1 &&
+            borrow1 == (a[0] as u64).wrapping_sub((b[0] as u64).wrapping_add((borrow0 >> 63) as u64)) &&
+            (borrow1 >> 63) <= 1 &&
+            borrow2 == (a[1] as u64).wrapping_sub((b[1] as u64).wrapping_add((borrow1 >> 63) as u64)) &&
+            (borrow2 >> 63) <= 1 &&
+            borrow3 == (a[2] as u64).wrapping_sub((b[2] as u64).wrapping_add((borrow2 >> 63) as u64)) &&
+            (borrow3 >> 63) <= 1 &&
+            borrow4 == (a[3] as u64).wrapping_sub((b[3] as u64).wrapping_add((borrow3 >> 63) as u64)) &&
+            (borrow4 >> 63) <= 1 &&
+            borrow5 == (a[4] as u64).wrapping_sub((b[4] as u64).wrapping_add((borrow4 >> 63) as u64)) &&
+            (borrow5 >> 63) <= 1 &&
+            final_borrow == borrow5,
     ensures
         (final_borrow >> 63) == 0 <==> to_nat(a) >= to_nat(b),
         (final_borrow >> 63) == 1 <==> to_nat(a) < to_nat(b),

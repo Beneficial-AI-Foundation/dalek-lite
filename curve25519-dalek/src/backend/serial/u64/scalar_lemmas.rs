@@ -15,6 +15,7 @@ use vstd::bits::*;
 #[allow(unused_imports)]
 use vstd::calc;
 use vstd::prelude::*;
+use crate::constants;
 
 verus! {
 
@@ -25,6 +26,31 @@ proof fn verify_invert_correct(x: Scalar52)
 {
     assume(false);
 
+}
+
+proof fn lemma_l_equals_group_order()
+    ensures
+        to_nat(&constants::L.limbs) == group_order(),
+{
+    // L is defined as:
+    // limbs: [0x0002631a5cf5d3ed, 0x000dea2f79cd6581, 0x000000000014def9, 0x0000000000000000, 0x0000100000000000]
+    // This represents: 2^252 + 27742317777372353535851937790883648493
+    
+    // Compute the value
+    let l0 = 0x0002631a5cf5d3edu64;
+    let l1 = 0x000dea2f79cd6581u64;
+    let l2 = 0x000000000014def9u64;
+    let l3 = 0x0000000000000000u64;
+    let l4 = 0x0000100000000000u64;
+    
+    assert(constants::L.limbs[0] == l0);
+    assert(constants::L.limbs[1] == l1);
+    assert(constants::L.limbs[2] == l2);
+    assert(constants::L.limbs[3] == l3);
+    assert(constants::L.limbs[4] == l4);
+    
+    // TODO: Compute to_nat and show it equals group_order()
+    assume(false);
 }
 
 pub proof fn lemma_52_52(x: u64, y: u64)

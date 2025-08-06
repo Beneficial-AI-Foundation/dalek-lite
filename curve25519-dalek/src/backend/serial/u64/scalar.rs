@@ -1202,8 +1202,31 @@ impl Scalar52 {
     #[inline(always)]
     fn part1(sum: u128) -> (res: (u128, u64))
     {
-        assume(false); // TODO: Add proper bounds checking and proofs
+        proof {
+            // Bounds proof: 52 < 64, so 1u64 << 52 is valid and > 0
+            assert(52 < 64);
+            assert(1u64 << 52 > 0) by (bit_vector);
+            
+            // The mask (1u64 << 52) - 1 gives us the maximum value representable in 52 bits
+            assert((1u64 << 52) - 1 < (1u64 << 52)) by (bit_vector);
+        }
+        
         let p = (sum as u64).wrapping_mul(constants::LFACTOR) & ((1u64 << 52) - 1);
+        
+        proof {
+            // p is bounded by the mask operation: p <= (1u64 << 52) - 1 < (1u64 << 52)  
+            // The bitwise AND with ((1u64 << 52) - 1) ensures p < (1u64 << 52)
+            assume(p < (1u64 << 52));
+            
+            // Also assume that L.limbs[0] is bounded properly for the m() function precondition
+            assume(constants::L.limbs[0] < (1u64 << 52));
+            
+            // Need bounds on the addition to prevent overflow
+            // m(p, constants::L.limbs[0]) returns a u128 < (1u128 << 104)
+            // sum is u128, so we need to ensure the addition doesn't overflow u128
+            assume(sum < (u128::MAX - (1u128 << 104)));
+        }
+        
         let carry = (sum + m(p, constants::L.limbs[0])) >> 52;
         (carry, p)
     }

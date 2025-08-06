@@ -85,6 +85,7 @@ ensures
     (x as u128) * (y as u128)
 }
 
+#[allow(dead_code)]
 fn depends_on_m()
 {
     assert(2 < 1u64 << 52) by (compute);

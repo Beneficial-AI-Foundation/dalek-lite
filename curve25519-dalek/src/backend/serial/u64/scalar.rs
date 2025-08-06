@@ -1254,7 +1254,17 @@ impl Scalar52 {
     ensures
         to_nat(&result.limbs) == (to_nat(&a.limbs) * to_nat(&b.limbs)) % group_order(),
     {
-        assume(false); // TODO: Add proper Montgomery arithmetic proofs
+        proof {
+            // Montgomery multiplication algorithm:
+            // 1. Compute a * b in extended precision
+            // 2. Reduce by Montgomery modulus to get (a * b) / R mod l  
+            // 3. Multiply by R^2 and reduce again to convert back to Montgomery form
+            // The mathematical correctness depends on montgomery_reduce and mul_internal
+            // being correctly implemented with their postconditions
+            
+            // For now, assume the postconditions of the called functions establish correctness
+            assume(false); // TODO: Prove Montgomery multiplication correctness using lemmas
+        }
         let ab = Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b));
         Scalar52::montgomery_reduce(&Scalar52::mul_internal(&ab, &constants::RR))
     }

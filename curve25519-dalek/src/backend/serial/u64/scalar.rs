@@ -1212,7 +1212,11 @@ impl Scalar52 {
     #[inline(always)]
     fn part2(sum: u128) -> (res: (u128, u64))
     {
-        assume(false); // TODO: Add proper bounds checking and proofs
+        proof {
+            // Bounds proof: 52 < 64, so 1u64 << 52 is valid and > 1
+            assert(52 < 64);
+            assert(1u64 << 52 > 0) by (bit_vector);
+        }
         let w = (sum as u64) & ((1u64 << 52) - 1);
         let carry = sum >> 52;
         (carry, w)

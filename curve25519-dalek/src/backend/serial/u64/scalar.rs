@@ -283,6 +283,10 @@ impl Scalar52 {
                       forall|j: int| 0 <= j < i ==> (temp_values[j] >> 63) <= 1,
                       // Relationship invariant for temp_values[0] after processing limb 0
                       i >= 1 ==> temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((0u64 >> 63) as u64)),
+                      // Relationship invariant for temp_values[1] after processing limb 1
+                      i >= 2 ==> temp_values[1] == (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((temp_values[0] >> 63) as u64)),
+                      // Continuity invariant: current borrow equals temp_values from previous iteration
+                      i >= 1 ==> borrow == temp_values[(i-1) as int],
         {
             proof { assert ((borrow >> 63) < 2) by (bit_vector); }
             let ghost old_borrow = borrow;
@@ -327,6 +331,34 @@ impl Scalar52 {
                     assert(old_borrow == 0u64);
                     assert(temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((0u64 >> 63) as u64)));
                     
+                }
+                
+                // For i=1, establish the relationship needed for temp_values[1] invariant
+                if i == 1 {
+                    // From the loop invariant, we know temp_values[0] was established in the previous iteration
+                    assert(temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((0u64 >> 63) as u64)));
+                    
+                    // From the continuity invariant: when i >= 1, borrow == temp_values[(i-1) as int]
+                    // So when i == 1: borrow == temp_values[0] (at the start of this iteration)
+                    // Since old_borrow is saved as borrow at the start, we have: old_borrow == temp_values[0]
+                    assert(old_borrow == temp_values[0]);
+                    assert((old_borrow >> 63) == (temp_values[0] >> 63));
+                    
+                    // temp_values[1] is set to the current borrow value
+                    assert(temp_values[1] == borrow);
+                    
+                    // Establish type equivalences
+                    assert(b.limbs[1] as u64 == b.limbs[1]);  // since b.limbs[1] is already u64
+                    assert(a.limbs[1] as u64 == a.limbs[1]);  // since a.limbs[1] is already u64
+                    
+                    // Now we can show the equivalence:
+                    // borrow = a.limbs[1].wrapping_sub(b.limbs[1] + (old_borrow >> 63))
+                    // = a.limbs[1].wrapping_sub(b.limbs[1] + (temp_values[0] >> 63))  // since old_borrow == temp_values[0]
+                    // = (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((temp_values[0] >> 63) as u64))  // type equivalence
+                    assert(borrow == (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((temp_values[0] >> 63) as u64)));
+                    
+                    // Therefore temp_values[1] equals the target expression
+                    assert(temp_values[1] == (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((temp_values[0] >> 63) as u64)));
                 }
             }
             proof { assert((borrow >> 63) <= 1) by (bit_vector); }
@@ -406,7 +438,13 @@ impl Scalar52 {
             // 2. Loop invariant establishes temp_values[0] = computation with (0u64 >> 63)  
             // 3. Since both expressions use bit shift of 0, they are equivalent
             assert(temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((borrow0 >> 63) as u64)));
-            assume(temp_values[1] == (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((temp_values[0] >> 63) as u64)));
+            
+            // Successfully proved: temp_values[1] equals the wrapping_sub computation
+            // The proof works because:
+            // 1. Loop invariant establishes temp_values[1] = computation with (temp_values[0] >> 63)
+            // 2. The i=1 case in the loop proves this relationship using type equivalences
+            // 3. temp_values[0] is already proven, so we can use it in temp_values[1] computation
+            assert(temp_values[1] == (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((temp_values[0] >> 63) as u64)));
             assume(temp_values[2] == (a.limbs[2] as u64).wrapping_sub((b.limbs[2] as u64).wrapping_add((temp_values[1] >> 63) as u64)));
             assume(temp_values[3] == (a.limbs[3] as u64).wrapping_sub((b.limbs[3] as u64).wrapping_add((temp_values[2] >> 63) as u64)));
             assume(temp_values[4] == (a.limbs[4] as u64).wrapping_sub((b.limbs[4] as u64).wrapping_add((temp_values[3] >> 63) as u64)));

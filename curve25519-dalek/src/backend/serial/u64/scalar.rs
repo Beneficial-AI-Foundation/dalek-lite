@@ -684,11 +684,26 @@ impl Scalar52 {
                 // 2. The natural number interpretation (to_nat)
                 // 3. The scalar value interpretation (modulo group_order)
                 //
-                // For now, we assume this fundamental implementation property:
-                assume(to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs) + to_nat(&constants::L.limbs));
-                // L equals group_order()
+                // First establish that L equals group_order() to satisfy the lemma precondition
                 lemma_l_equals_group_order();
-                // Therefore: a - b + L = a - b + group_order() = a + group_order() - b
+                
+                // Use our lemma to prove the fundamental implementation property:
+                super::scalar_lemmas::lemma_underflow_arithmetic_equivalence(
+                    to_nat(&a.limbs),
+                    to_nat(&b.limbs),
+                    to_nat(&constants::L.limbs)
+                );
+                
+                // From the lemma, we know:
+                // (to_nat(&a.limbs) as int - to_nat(&b.limbs) as int + pow2(260) as int) + to_nat(&constants::L.limbs) as int 
+                // == to_nat(&a.limbs) + to_nat(&constants::L.limbs) - to_nat(&b.limbs)
+                
+                // We established earlier that:
+                // to_nat(&difference.limbs) == (to_nat(&a.limbs) as int - to_nat(&b.limbs) as int + pow2(260) as int) + to_nat(&constants::L.limbs)
+                // Therefore:
+                assert(to_nat(&difference.limbs) == to_nat(&a.limbs) + to_nat(&constants::L.limbs) - to_nat(&b.limbs));
+                // Since we already established L equals group_order():
+                // Therefore: a + L - b = a + group_order() - b
                 assert(to_nat(&difference.limbs) == to_nat(&a.limbs) + group_order() - to_nat(&b.limbs));
             }
         }

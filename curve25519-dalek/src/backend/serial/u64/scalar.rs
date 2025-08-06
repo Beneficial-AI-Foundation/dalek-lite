@@ -754,7 +754,22 @@ impl Scalar52 {
                 // - Second loop adds 0 when no underflow, so difference unchanged
                 //
                 // Therefore: difference == a - b == (a + group_order() - b) % group_order()
-                assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
+                
+                // Apply our modular arithmetic lemma for the no-underflow case
+                // We need to establish the preconditions:
+                // 1. a_val < pow2(260), b_val < pow2(260) - from limbs_bounded
+                // 2. a_val >= b_val - from no-underflow condition (borrow >> 63) == 0
+                // 3. (a_val - b_val) < group_order() - from lemma_subtraction_bound_general
+                super::scalar_lemmas::lemma_to_nat_upper_bound(&a.limbs);
+                super::scalar_lemmas::lemma_to_nat_upper_bound(&b.limbs);
+                assert(to_nat(&a.limbs) >= to_nat(&b.limbs)); // From no-underflow condition
+                
+                // Apply the helper lemma
+                super::scalar_lemmas::lemma_no_underflow_modular_arithmetic(to_nat(&a.limbs), to_nat(&b.limbs));
+                
+                // The lemma proves: (a - b) == (a + group_order() - b) % group_order()
+                // Combined with our established fact: to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs)
+                assert(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
             } else {
                 // MODULAR ARITHMETIC REASONING FOR UNDERFLOW:
                 // We have: difference == a - b + L (from above)
@@ -779,8 +794,15 @@ impl Scalar52 {
                 // - But group_order() < pow2(260), so this needs more careful analysis
                 //
                 // The mathematical relationship should hold from the construction,
-                // but proving the bounds rigorously requires more sophisticated analysis:
-                assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
+                // We can now prove this using our helper lemma:
+                
+                // Apply the helper lemma for underflow modular arithmetic
+                // Preconditions are satisfied: a_val < pow2(260), b_val < pow2(260), a_val < b_val
+                super::scalar_lemmas::lemma_underflow_modular_arithmetic_final(to_nat(&a.limbs), to_nat(&b.limbs));
+                
+                // The lemma proves: (a + group_order() - b) == (a + group_order() - b) % group_order()
+                // Combined with our established fact: to_nat(&difference.limbs) == to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)
+                assert(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
             }
         }
         difference

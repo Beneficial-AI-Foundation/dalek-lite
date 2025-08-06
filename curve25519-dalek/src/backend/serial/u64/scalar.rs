@@ -457,11 +457,13 @@ impl Scalar52 {
         }
 
         proof {
-            assume(if (borrow >> 63) == 0 {
-                to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs)
-            } else {
-                to_nat(&difference.limbs) == (to_nat(&a.limbs) as int - to_nat(&b.limbs) as int + pow2(260) as int) % pow2(260) as int
-            });
+            // Apply the lemma that proves the relationship between difference and the inputs
+            // based on the first loop's computation
+            lemma_first_loop_computes_wrapped_difference(&a.limbs, &b.limbs, &difference.limbs, borrow);
+            
+            // The lemma establishes exactly what we need:
+            // if (borrow >> 63) == 0: to_nat(&difference.limbs) == to_nat(&a.limbs) - to_nat(&b.limbs)
+            // else: to_nat(&difference.limbs) == (to_nat(&a.limbs) as int - to_nat(&b.limbs) as int + pow2(260) as int) % pow2(260) as int
         }
 
         proof {

@@ -281,11 +281,53 @@ impl Scalar52 {
                       i == 0 ==> borrow == 0,
                       temp_values.len() == 5,
                       forall|j: int| 0 <= j < i ==> (temp_values[j] >> 63) <= 1,
+                      // Relationship invariant for temp_values[0] after processing limb 0
+                      i >= 1 ==> temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((0u64 >> 63) as u64)),
         {
             proof { assert ((borrow >> 63) < 2) by (bit_vector); }
+            let ghost old_borrow = borrow;
             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
             proof {
                 temp_values = temp_values.update(i as int, borrow);
+                
+                // For i=0, establish the relationship needed for the invariant
+                if i == 0 {
+                    // From loop invariant: i == 0 ==> borrow == 0
+                    // old_borrow is the value of borrow at the start of this iteration
+                    assert(old_borrow == 0) by {
+                        // The loop invariant states that when i == 0, borrow == 0
+                        // old_borrow was saved before the computation, so it's the initial value
+                    };
+                    assert((old_borrow >> 63) == 0) by {
+                        assert(old_borrow == 0);
+                        assert(0u64 >> 63 == 0) by (bit_vector);
+                    };
+                    
+                    // temp_values[0] is set to the current borrow value
+                    assert(temp_values[0] == borrow);
+                    
+                    // The computation was: borrow = a.limbs[0].wrapping_sub(b.limbs[0] + (old_borrow >> 63))
+                    // Since old_borrow = 0, this becomes: borrow = a.limbs[0].wrapping_sub(b.limbs[0] + 0)
+                    // Which is: borrow = a.limbs[0].wrapping_sub(b.limbs[0])
+                    
+                    // We need to show this equals: (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add(0u64))
+                    // First establish that b.limbs[0] + 0 equals (b.limbs[0] as u64).wrapping_add(0u64)
+                    assert(b.limbs[0] + 0 == b.limbs[0]);
+                    assert((b.limbs[0] as u64).wrapping_add(0u64) == b.limbs[0] as u64);
+                    assert(b.limbs[0] as u64 == b.limbs[0]);  // since b.limbs[0] is already u64
+                    
+                    // Now show the wrapping_sub equivalence
+                    // borrow = a.limbs[0].wrapping_sub(b.limbs[0])
+                    // target = (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((0u64 >> 63) as u64))
+                    //        = (a.limbs[0] as u64).wrapping_sub(b.limbs[0] as u64)
+                    //        = a.limbs[0].wrapping_sub(b.limbs[0])  // since types are already u64
+                    assert(borrow == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((old_borrow >> 63) as u64)));
+                    
+                    // Also establish the form needed for the loop invariant
+                    assert(old_borrow == 0u64);
+                    assert(temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((0u64 >> 63) as u64)));
+                    
+                }
             }
             proof { assert((borrow >> 63) <= 1) by (bit_vector); }
             difference.limbs[i] = borrow & mask;
@@ -358,7 +400,12 @@ impl Scalar52 {
             // - Consider helper lemmas for wrapping_sub equivalences
             // - Strengthen loop invariants more carefully with proper type annotations
             
-            assume(temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((borrow0 >> 63) as u64)));
+            // Successfully proved: temp_values[0] equals the wrapping_sub computation
+            // The proof works because:
+            // 1. borrow0 = 0, so (borrow0 >> 63) = 0
+            // 2. Loop invariant establishes temp_values[0] = computation with (0u64 >> 63)  
+            // 3. Since both expressions use bit shift of 0, they are equivalent
+            assert(temp_values[0] == (a.limbs[0] as u64).wrapping_sub((b.limbs[0] as u64).wrapping_add((borrow0 >> 63) as u64)));
             assume(temp_values[1] == (a.limbs[1] as u64).wrapping_sub((b.limbs[1] as u64).wrapping_add((temp_values[0] >> 63) as u64)));
             assume(temp_values[2] == (a.limbs[2] as u64).wrapping_sub((b.limbs[2] as u64).wrapping_add((temp_values[1] >> 63) as u64)));
             assume(temp_values[3] == (a.limbs[3] as u64).wrapping_sub((b.limbs[3] as u64).wrapping_add((temp_values[2] >> 63) as u64)));

@@ -4,12 +4,12 @@ This directory contains Python scripts that support the automated generation of 
 
 ## Scripts Overview
 
-### 🔍 `find_new_verus_functions.py`
+### 🔍 `find_changed_verus_constructs.py`
 **Purpose**: Detects newly added Verus functions from git diffs
 
 **Usage**:
 ```bash
-./find_new_verus_functions.py [base_ref]
+./find_changed_verus_constructs.py [base_ref]
 ```
 
 **Features**:
@@ -21,10 +21,10 @@ This directory contains Python scripts that support the automated generation of 
 **Example**:
 ```bash
 # Find new functions compared to main branch
-./find_new_verus_functions.py origin/main
+./find_changed_verus_constructs.py origin/main
 
 # Find new functions compared to a specific commit
-./find_new_verus_functions.py abc123
+./find_changed_verus_constructs.py abc123
 ```
 
 ### 🗺️ `map_functions_to_symbols.py`
@@ -246,7 +246,7 @@ The scripts are designed to work together in the GitHub Actions workflow:
 
 ```mermaid
 graph TD
-    A[PR Created] --> B[find_new_verus_functions.py]
+    A[PR Created] --> B[find_changed_verus_constructs.py]
     B --> C[map_functions_to_symbols.py]
     C --> D[generate_dependency_graphs.py]
     D --> E[create_graph_gallery.py]
@@ -300,7 +300,7 @@ All scripts include comprehensive error handling:
    git diff origin/main..HEAD -- '*.rs'
    
    # Run function detector directly
-   ./find_new_verus_functions.py origin/main
+   ./find_changed_verus_constructs.py origin/main
    ```
 
 2. **Symbol mapping failures**:

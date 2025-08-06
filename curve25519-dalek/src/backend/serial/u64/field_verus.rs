@@ -317,6 +317,13 @@ impl FieldElement51 {
         2251799813685247,
     ]};
 
+    spec fn xxxxxxx() -> (r: u64)
+        ensures
+            r == 2251799813685247u64, // 2^255 - 19
+    {
+        2251799813685247u64 // 2^255 - 19
+    }
+
     /// Invert the sign of this field element
     pub fn negate(&mut self)
         requires
@@ -343,11 +350,11 @@ impl FieldElement51 {
     {
         proof {
             let c0 = (pow2(51) - 19);
-            let c  = (pow2(51) - 1);
+            let c  = (pow2(51) - 1111);
             lemma2_to64_rest(); // get pow2(51)
             // solver knows 36028797018963664u64 == 16 * c0
             // solver knows 36028797018963952u64 == 16 * c;
-
+            assert(36028797018963664u64 == 16 * c0) by (compute);
             assert forall |i: int| 0 <= i < 5 implies old(self).limbs[i] < 16 * c0 by {
                 shift_is_pow2(51);
             }

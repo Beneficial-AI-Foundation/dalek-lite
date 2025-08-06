@@ -128,7 +128,32 @@ impl Scalar52 {
         s.limbs[3] = ((words[2] >> 28) | (words[3] << 36)) & mask;
         s.limbs[4] =  (words[3] >> 16)                     & top_mask;
 
-        assume(false); // TODO: complete the proof
+        proof {
+            // Need to prove: bytes_to_nat(bytes) == to_nat(&s.limbs)
+            // We have: bytes_to_nat(bytes) == words_to_nat(&words) (assumed at line 114)
+            // Need to prove: words_to_nat(&words) == to_nat(&s.limbs)
+            
+            // The bit manipulation extracts limbs from words as follows:
+            // s.limbs[0] = words[0] & mask                     (bits 0-51)
+            // s.limbs[1] = ((words[0] >> 52) | (words[1] << 12)) & mask  (bits 52-103)
+            // s.limbs[2] = ((words[1] >> 40) | (words[2] << 24)) & mask  (bits 104-155)
+            // s.limbs[3] = ((words[2] >> 28) | (words[3] << 36)) & mask  (bits 156-207)
+            // s.limbs[4] = (words[3] >> 16) & top_mask          (bits 208-255, only 48 bits)
+            
+            // Each limb represents its contribution to the natural number:
+            // s.limbs[i] * 2^(52*i) for i = 0..4
+            
+            // First establish that our masks are correct
+            assert(mask == (1u64 << 52) - 1) by {
+                assert(1u64 << 52 > 0) by (bit_vector);
+            };
+            assert(top_mask == (1u64 << 48) - 1) by {
+                assert(1u64 << 48 > 0) by (bit_vector);
+            };
+            
+            // Use bit_vector to prove the bit manipulation correctness
+            super::scalar_lemmas::lemma_words_to_limbs_conversion(&words, &s.limbs, mask, top_mask);
+        }
 
         s
     }
@@ -141,12 +166,30 @@ impl Scalar52 {
         limbs_bounded(&s),
         to_nat(&s.limbs) == bytes_wide_to_nat(bytes) % group_order(),
     {
-        assume(false); // TODO: complete the proof
+        // First convert 64 bytes to 8 64-bit words in little-endian order
         let mut words = [0u64; 8];
-        for i in 0..8 {
-            for j in 0..8 {
+        for i in 0..8
+            invariant 0 <= i <= 8
+        {
+            for j in 0..8
+                invariant 0 <= j <= 8 && i < 8
+            {
+                proof {
+                    assert(i < 8 && j < 8);
+                    assert((i as u64)*8u64 < 64u64);
+                    let idx = (i as u64) * 8 + (j as u64);
+                    assert(idx < 64);
+                }
                 words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);
             }
+        }
+        
+        // TODO: Prove that bytes_wide_to_nat(bytes) == words_to_wide_nat(&words)
+        // where words_to_wide_nat is defined as converting 8 u64 words to nat
+        assume(bytes_wide_to_nat(bytes) == words_to_nat_gen_u64(&words, 8, 64));
+
+        proof {
+            assert(1u64 << 52 > 0) by (bit_vector);
         }
 
         let mask = (1u64 << 52) - 1;
@@ -163,6 +206,30 @@ impl Scalar52 {
         hi[2] = ((words[5] >> 44) | (words[ 6] << 20)) & mask;
         hi[3] = ((words[6] >> 32) | (words[ 7] << 32)) & mask;
         hi[4] =   words[7] >> 20                             ;
+
+        proof {
+            // Need to prove: to_nat(&s.limbs) == bytes_wide_to_nat(bytes) % group_order()
+            // We have established: bytes_wide_to_nat(bytes) == words_to_nat_gen_u64(&words, 8, 64)
+            
+            // The bit manipulation splits the 512-bit value into two parts:
+            // lo represents bits 0-259: words[0:4] with 52-bit limbs  
+            // hi represents bits 260-519: words[4:7] with 52-bit limbs, shifted by 4 bits
+            
+            // After Montgomery operations:
+            // lo_mont = montgomery_mul(lo, R) = lo (since (lo * R) / R mod L = lo mod L)
+            // hi_mont = montgomery_mul(hi, RR) = hi * R (since (hi * RR) / R mod L = hi * R mod L)
+            
+            // Final result: add(hi_mont, lo_mont) = (hi * R + lo) mod L
+            // This equals: (hi * 2^260 + lo) mod L, since R = 2^260 mod L
+            
+            // First establish that our mask is correct
+            assert(mask == (1u64 << 52) - 1) by {
+                assert(1u64 << 52 > 0) by (bit_vector);
+            };
+            
+            // Use our new lemma for wide conversion (to be created)
+            super::scalar_lemmas::lemma_words_to_wide_limbs_conversion(&words, &lo.limbs, &hi.limbs, mask);
+        }
 
         lo = Scalar52::montgomery_mul(&lo, &constants::R);  // (lo * R) / R = lo
         hi = Scalar52::montgomery_mul(&hi, &constants::RR); // (hi * R^2) / R = hi * R

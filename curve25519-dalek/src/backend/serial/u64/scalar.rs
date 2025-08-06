@@ -1052,7 +1052,8 @@ impl Scalar52 {
         }
 
         // Analyze the borrow flag to determine the case
-        lemma_multi_precision_borrow_comparison(&a.limbs, &b.limbs, borrow);
+        // Use the strengthened version since we have scalar_reduced preconditions
+        super::scalar_lemmas::lemma_multi_precision_borrow_comparison_for_reduced_scalars(&a.limbs, &b.limbs, borrow);
         
         // Second loop: conditionally add L based on underflow
         let mut carry: u64 = 0;
@@ -1083,7 +1084,18 @@ impl Scalar52 {
             
             // The rest follows from standard modular arithmetic properties
         } else {
-            // Underflow case - similar analysis applies
+            // Underflow case - use the strengthened lemma for reduced scalars
+            assert(to_nat(&a.limbs) < to_nat(&b.limbs)); // From the lemma
+            
+            // Apply the strengthened version that eliminates the assume statement
+            // Preconditions are satisfied: scalar_reduced(a), scalar_reduced(b), a < b
+            super::scalar_lemmas::lemma_underflow_modular_arithmetic_for_reduced_scalars(
+                to_nat(&a.limbs), 
+                to_nat(&b.limbs)
+            );
+            
+            // The strengthened lemma proves: (a + group_order() - b) == (a + group_order() - b) % group_order()
+            // without any assume statements, using mathematical reasoning with the stronger bounds
         }
         
         difference

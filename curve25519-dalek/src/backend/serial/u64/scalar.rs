@@ -85,6 +85,13 @@ ensures
     (x as u128) * (y as u128)
 }
 
+fn depends_on_m()
+{
+    assert(2 < 1u64 << 52) by (compute);
+    assert(3 < 1u64 << 52) by (compute);
+    m(2, 3);
+}
+
 impl Scalar52 {
     /// The scalar \\( 0 \\).
     pub const ZERO: Scalar52 = Scalar52 { limbs: [0, 0, 0, 0, 0] };

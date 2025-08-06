@@ -548,7 +548,14 @@ impl Scalar52 {
             // Following the same pattern: loop invariant + i=4 proof case + temp_values[3] dependency
             assert(temp_values[4] == (a.limbs[4] as u64).wrapping_sub((b.limbs[4] as u64).wrapping_add((temp_values[3] >> 63) as u64)));
             
-            assume(borrow == temp_values[4]);
+            // Prove that borrow == temp_values[4] after loop completion
+            // 
+            // REASONING: In the loop's final iteration (i = 4):
+            // 1. The new borrow value is computed 
+            // 2. temp_values[4] is set to this borrow value via temp_values.update(4, borrow)
+            // 3. This borrow value remains unchanged after the loop exits
+            // 4. Therefore: borrow (final value) == temp_values[4] (value set in last iteration)
+            assert(borrow == temp_values[4]);
             
             // Now use these values to construct the witness
             let borrow1 = temp_values[0];

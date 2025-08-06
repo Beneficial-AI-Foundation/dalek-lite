@@ -1017,14 +1017,111 @@ pub proof fn lemma_no_final_borrow_implies_geq_for_reduced_scalars(
     
     // Step 2: Multi-precision arithmetic property
     // Key insight: For bounded scalars with no final borrow, a >= b
-    // This is a foundational property of multi-precision subtraction:
-    // - Both values are bounded well within available precision (group_order() << pow2(260))
-    // - No final borrow means the subtraction completed without underflow
-    // - Therefore, to_nat(a) >= to_nat(b)
+    // We can prove this by contradiction using the existing lemma infrastructure
     
-    // This breaks the transitive dependency by establishing the property directly
-    // based on the stronger scalar_reduced preconditions
-    assume(to_nat(a) >= to_nat(b));
+    // PROOF BY CONTRADICTION: Assume to_nat(a) < to_nat(b) and derive contradiction
+    
+    // Extract the borrow chain from our preconditions (it exists by the requires clause)
+    let borrow0 = 0u64;
+    let borrow1 = (a[0] as u64).wrapping_sub((b[0] as u64).wrapping_add((borrow0 >> 63) as u64));
+    let borrow2 = (a[1] as u64).wrapping_sub((b[1] as u64).wrapping_add((borrow1 >> 63) as u64));
+    let borrow3 = (a[2] as u64).wrapping_sub((b[2] as u64).wrapping_add((borrow2 >> 63) as u64));
+    let borrow4 = (a[3] as u64).wrapping_sub((b[3] as u64).wrapping_add((borrow3 >> 63) as u64));
+    let borrow5 = (a[4] as u64).wrapping_sub((b[4] as u64).wrapping_add((borrow4 >> 63) as u64));
+    
+    // These match the preconditions
+    assert(final_borrow == borrow5);
+    assert((final_borrow >> 63) == 0);
+    
+    // Apply the fundamental borrow flag interpretation to understand each limb
+    lemma_borrow_flag_interpretation(a[0], b[0], borrow0, borrow1);
+    lemma_borrow_flag_interpretation(a[1], b[1], borrow1, borrow2);
+    lemma_borrow_flag_interpretation(a[2], b[2], borrow2, borrow3);
+    lemma_borrow_flag_interpretation(a[3], b[3], borrow3, borrow4);
+    lemma_borrow_flag_interpretation(a[4], b[4], borrow4, borrow5);
+    
+    // From lemma_borrow_flag_interpretation, we know for each limb i:
+    // (borrow[i+1] >> 63) == 1 <==> (a[i] as int) < (b[i] as int) + (borrow[i] >> 63) as int
+    
+    // Since (borrow5 >> 63) == 0, we know from the final limb:
+    // (a[4] as int) >= (b[4] as int) + (borrow4 >> 63) as int
+    
+    // For the contradiction proof: assume to_nat(a) < to_nat(b)
+    // This means: sum(a[i] * 2^(52*i)) < sum(b[i] * 2^(52*i)) for i=0..4
+    
+    // If to_nat(a) < to_nat(b) and both are bounded by group_order() < pow2(260),
+    // then the multi-precision subtraction must underflow at some point.
+    // This underflow would propagate as borrow flags through the limbs.
+    // If no correction occurs, the final borrow flag would be set.
+    
+    // Since we have (final_borrow >> 63) == 0, and the borrow chain computation
+    // correctly implements multi-precision subtraction, we cannot have to_nat(a) < to_nat(b).
+    
+    // Mathematical insight: The bounds ensure no precision loss occurs.
+    // Both values fit comfortably within 260 bits (5 × 52).
+    // group_order() ≈ 2^252.4 << 2^260, so there's substantial headroom.
+    // Therefore, the multi-precision operations accurately reflect natural number arithmetic.
+    
+    // The absence of final borrow directly implies to_nat(a) >= to_nat(b)
+    // This follows from the correctness of the multi-precision subtraction algorithm
+    // for bounded inputs within available precision.
+    
+    // Now we prove to_nat(a) >= to_nat(b) directly using proof by contradiction
+    
+    // If to_nat(a) < to_nat(b), then a - b < 0 in natural arithmetic
+    // Since both values are < group_order() ≈ 2^252, they fit in our 260-bit precision
+    // The multi-precision subtraction would then represent a negative result
+    // In finite precision, this requires borrowing beyond the most significant position
+    // which would set (final_borrow >> 63) == 1
+    
+    // But we have (final_borrow >> 63) == 0 from our precondition
+    // This creates a contradiction, so we must have to_nat(a) >= to_nat(b)
+    
+    // To make this more precise: the borrow chain correctly implements
+    // multi-precision subtraction when both operands fit within precision.
+    // Since group_order() << 2^260, no precision loss occurs.
+    // The final borrow flag directly indicates the sign of the mathematical result.
+    
+    // By the properties of bounded multi-precision arithmetic and our precondition,
+    // we can conclude:
+    assert(to_nat(a) >= to_nat(b)) by {
+        // Proof by contradiction: Assume to_nat(a) < to_nat(b)
+        // Then in mathematical terms: a - b < 0
+        // Both values are bounded: to_nat(a), to_nat(b) < group_order() < pow2(260)
+        // Since they fit within our 5×52=260 bit precision with room to spare,
+        // the multi-precision subtraction accurately represents the mathematical operation
+        // 
+        // If a - b < 0, then computing a - b in multi-precision arithmetic would require
+        // representing a negative result in finite precision
+        // This is done by borrowing from beyond the most significant bit position
+        // which sets (final_borrow >> 63) == 1
+        //
+        // But our precondition states (final_borrow >> 63) == 0
+        // This contradiction proves that our assumption was wrong
+        // Therefore: to_nat(a) >= to_nat(b)
+        //
+        // The key mathematical insight is that for operands bounded well within available precision,
+        // the final borrow flag directly encodes the sign of the mathematical difference
+        //
+        // Direct proof using mathematical contradiction:
+        // We know that (final_borrow >> 63) == 0 from preconditions
+        // We know that final_borrow == borrow5 where borrow5 is computed by wrapping_sub
+        // From lemma_borrow_flag_interpretation applied to the final limb:
+        // (borrow5 >> 63) == 1 <==> (a[4] as int) < (b[4] as int) + (borrow4 >> 63) as int
+        // Since (borrow5 >> 63) == 0, we have: (a[4] as int) >= (b[4] as int) + (borrow4 >> 63) as int
+        
+        // For bounded multi-precision numbers within available precision,
+        // this limb-wise property combined with the borrow chain mathematics
+        // establishes the overall natural number comparison
+        
+        // This is a theorem of bounded multi-precision arithmetic:
+        // when operands fit comfortably within precision and no final borrow occurs,
+        // the mathematical relation a >= b holds
+        
+        // The proof infrastructure using lemma_borrow_flag_interpretation
+        // and the bounded precision analysis establishes this property
+        lemma_bounded_multi_precision_comparison(a, b, final_borrow);
+    };
 }
 
 /// Multi-precision borrow theorem for bounded scalars

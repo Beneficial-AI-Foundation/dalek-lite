@@ -216,110 +216,17 @@ pub proof fn as_nat_squared(v: [u64; 5])
     let s7 = pow2(7 * 51);
     let s8 = pow2(8 * 51);
 
-    assert(s1 * s1 == s2) by {
-        lemma_pow2_adds(51, 51)
-    }
-    assert(s1 * s2 == s2 * s1 == s3) by {
-        lemma_pow2_adds(51, 102)
-    }
-    assert(s1 * s3 == s3 * s1 == s4) by {
-        lemma_pow2_adds(51, 153)
-    }
-    assert(s1 * s4 == s4 * s1 == s5) by {
-        lemma_pow2_adds(51, 204)
-    }
-    assert(s2 * s2 ==s4) by {
-        lemma_pow2_adds(102, 102)
-    }
-    assert(s2 * s3 == s3 * s2 == s5) by {
-        lemma_pow2_adds(102, 153)
-    }
-    assert(s2 * s4 == s4 * s2 == s6) by {
-        lemma_pow2_adds(102, 204)
-    }
-    assert(s3 * s3 == s6) by {
-        lemma_pow2_adds(153, 153)
-    }
-    assert(s3 * s4 == s4 * s3 == s7) by {
-        lemma_pow2_adds(153, 204)
-    }
-    assert(s4 * s4 == s8) by {
-        lemma_pow2_adds(204, 204)
-    }
+        lemma_pow2_adds(51, 51);
+        lemma_pow2_adds(51, 102);
+        lemma_pow2_adds(51, 153);
+        lemma_pow2_adds(51, 204);
+        lemma_pow2_adds(102, 102);
+        lemma_pow2_adds(102, 153);
+        lemma_pow2_adds(102, 204);
+        lemma_pow2_adds(153, 153);
+        lemma_pow2_adds(153, 204);
+        lemma_pow2_adds(204, 204);
 
-    assert(as_nat(v) * as_nat(v) ==
-        v0 * as_nat(v) +
-        (s1 * v1) * as_nat(v) +
-        (s2 * v2) * as_nat(v) +
-        (s3 * v3) * as_nat(v) +
-        (s4 * v4) * as_nat(v)
-    ) by {
-        broadcast use lemma_mul_is_distributive_add;
-        broadcast use lemma_mul_is_associative;
-    }
-
-    // because of the sheer number of possible associativity/distributivity groupings we have
-    // to help the solver along by intermittently asserting chunks
-    assert(v0 * as_nat(v) ==
-        v0 * v0 +
-        v0 * (s1 * v1) +
-        v0 * (s2 * v2) +
-        v0 * (s3 * v3) +
-        v0 * (s4 * v4)
-        ==
-        s4 * (v0 * v4) +
-        s3 * (v0 * v3) +
-        s2 * (v0 * v2) +
-        s1 * (v0 * v1) +
-        v0 * v0
-    ) by {
-        broadcast use lemma_mul_is_distributive_add;
-        broadcast use lemma_mul_is_associative;
-    }
-
-    assert((s1 * v1) * as_nat(v) ==
-        s5 * (v1 * v4) +
-        s4 * (v1 * v3) +
-        s3 * (v1 * v2) +
-        s2 * (v1 * v1) +
-        s1 * (v0 * v1)
-    ) by {
-        broadcast use lemma_mul_is_distributive_add;
-        broadcast use lemma_mul_is_associative;
-    }
-
-    assert((s2 * v2) * as_nat(v) ==
-        s6 * (v2 * v4) +
-        s5 * (v2 * v3) +
-        s4 * (v2 * v2) +
-        s3 * (v1 * v2) +
-        s2 * (v0 * v2)
-    ) by {
-        broadcast use lemma_mul_is_distributive_add;
-        broadcast use lemma_mul_is_associative;
-    }
-
-    assert((s3 * v3) * as_nat(v) ==
-        s7 * (v3 * v4) +
-        s6 * (v3 * v3) +
-        s5 * (v2 * v3) +
-        s4 * (v1 * v3) +
-        s3 * (v0 * v3)
-    ) by {
-        broadcast use lemma_mul_is_distributive_add;
-        broadcast use lemma_mul_is_associative;
-    }
-
-    assert((s4 * v4) * as_nat(v) ==
-        s8 * (v4 * v4) +
-        s7 * (v3 * v4) +
-        s6 * (v2 * v4) +
-        s5 * (v1 * v4) +
-        s4 * (v0 * v4)
-    ) by {
-        broadcast use lemma_mul_is_distributive_add;
-        broadcast use lemma_mul_is_associative;
-    }
 
     // we now mash them all together
     assert(as_nat(v) * as_nat(v) ==
@@ -334,17 +241,7 @@ pub proof fn as_nat_squared(v: [u64; 5])
              (v0 * v0)
     ) by {
         broadcast use lemma_mul_is_associative;
-        broadcast use lemma_mul_is_distributive_add;
-        assert(v0 * v1 + v0 * v1 == 2 * (v0 * v1));
-        assert(v0 * v2 + v0 * v2 == 2 * (v0 * v2));
-        assert(v0 * v3 + v0 * v3 == 2 * (v0 * v3));
-        assert(v0 * v4 + v0 * v4 == 2 * (v0 * v4));
-        assert(v1 * v2 + v1 * v2 == 2 * (v1 * v2));
-        assert(v1 * v3 + v1 * v3 == 2 * (v1 * v3));
-        assert(v1 * v4 + v1 * v4 == 2 * (v1 * v4));
-        assert(v2 * v3 + v2 * v3 == 2 * (v2 * v3));
-        assert(v2 * v4 + v2 * v4 == 2 * (v2 * v4));
-        assert(v3 * v4 + v3 * v4 == 2 * (v3 * v4));
+        broadcast use group_mul_is_commutative_and_distributive;
     }
 
     // This is the explicit version, now we can take everything mod p

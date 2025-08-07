@@ -45,6 +45,7 @@ pub proof fn lemma_borrow_and_mask_bounded(borrow: u64, mask: u64)
 }
 
 
+
 pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -121,6 +122,9 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
             
             // Borrow tracking - borrow is either 0 or represents a borrow from higher-order limbs
             (borrow >> 63) < 2,
+            
+            // Ghost variable tracking: diff_nat_partial represents the partial sum built so far
+            // For now, we maintain this as a simple tracking variable (proof to be added later)
     {
         proof {
             assert((borrow >> 63) < 2) by (bit_vector);
@@ -144,7 +148,7 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
             assert((borrow >> 63) < 2) by (bit_vector);
             
             // Key mathematical insight: The operation we just performed computes:
-            // difference.limbs[i] = (a.limbs[i] - b.limbs[i] - old_borrow_bit) mod 2^52
+            // difference.limbs[i] = (a.limbs[i] - b.limbs[i] - old_borrow_bit) mod 2^52  
             // borrow = 1 if (a.limbs[i] - b.limbs[i] - old_borrow_bit) < 0, else 0
             // This is the core of multi-precision subtraction with borrowing
             

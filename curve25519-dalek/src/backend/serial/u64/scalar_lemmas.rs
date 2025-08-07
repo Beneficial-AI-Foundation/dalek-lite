@@ -105,14 +105,14 @@ pub(crate) proof fn lemma_l_equals_group_order()
     // to_nat(L) = L[0] + L[1]*2^52 + L[2]*2^104 + L[3]*2^156 + L[4]*2^208
     //           = 0x0002631a5cf5d3ed + 0x000dea2f79cd6581*2^52 + 0x000000000014def9*2^104 + 0*2^156 + 0x0000100000000000*2^208
     //
-    // Note: 0x0000100000000000 = 2^52, so the last term is 2^52 * 2^208 = 2^260
+    // Note: 0x0000100000000000 = 2^44, so the last term is 2^44 * 2^208 = 2^252
     //
     // Breaking down the hex values:
-    // L[0] = 0x0002631a5cf5d3ed = 2718348863321327597
-    // L[1] = 0x000dea2f79cd6581 = 3984120534734779777  
-    // L[2] = 0x000000000014def9 = 356084969
+    // L[0] = 0x0002631a5cf5d3ed = 671914833335277
+    // L[1] = 0x000dea2f79cd6581 = 3916664325105025
+    // L[2] = 0x000000000014def9 = 1367801
     // L[3] = 0x0000000000000000 = 0
-    // L[4] = 0x0000100000000000 = 4503599627370496 = 2^52
+    // L[4] = 0x0000100000000000 = 17592186044416 = 2^44
     //
     // Using computational lemmas to establish the arithmetic:
     
@@ -161,71 +161,54 @@ pub(crate) proof fn lemma_l_equals_group_order()
     // Note: We know L[4] = constants::L.limbs[4], and by design this equals 2^52
     assert(l4 == constants::L.limbs[4]);
     
-    // MATHEMATICAL DESIGN PROPERTY: L[4] equals 2^52 by curve25519 specification
+    // MATHEMATICAL PROPERTY: L[4] equals 2^44 by the curve25519 constant definition
     //
-    // The curve25519 constant L is specifically designed with L[4] = 2^52.
-    // This is a DESIGN DECISION in the curve25519 specification to optimize
-    // multi-precision arithmetic operations.
+    // The curve25519 constant L has L[4] = 0x0000100000000000 = 2^44.
+    // This value is part of the precise representation of the group order
+    // 2^252 + 27742317777372353535851937790883648493.
     //
-    // Mathematical foundation:
-    // - L[4] represents the most significant limb of the group order constant
-    // - By design, this limb contains exactly 2^52 to align with 52-bit limb boundaries
-    // - This property is established by the curve specification, not derived computationally
+    // Mathematical verification:
+    // L[4] = 0x0000100000000000 (hex) = 17592186044416 (decimal) = 2^44
     //
-    // This can be verified by examining the hexadecimal representation:
-    // L[4] = 0x10000000000000 (hex) = 2^52 = 4503599627370496 (decimal)
+    // This contributes L[4] * 2^208 = 2^44 * 2^208 = 2^252 to the group order
     //
-    // Reference: curve25519 specification and multi-precision arithmetic design
-    assume(l4 == (1u64 << 52));
-    assert((l4 as nat) == (1u64 << 52) as nat);
+    // Reference: curve25519 specification and verified constants
+    assert(l4 == (1u64 << 44)) by (bit_vector);
+    assert((l4 as nat) == (1u64 << 44) as nat);
     
     // Establish the connection to pow2
-    lemma_pow2_pos(52); // Ensure pow2(52) is well-defined
-    shift_is_pow2(52);
-    assert((1u64 << 52) as nat == pow2(52));
+    lemma_pow2_pos(44); // Ensure pow2(44) is well-defined
+    shift_is_pow2(44);
+    assert((1u64 << 44) as nat == pow2(44));
     
-    // Step 4: Prove that L[4] * 2^208 = 2^260
+    // Step 4: Prove that L[4] * 2^208 = 2^252
     calc! {
         (==)
         (l4 as nat) * pow2(208); {
-            // l4 = 2^52
+            // l4 = 2^44
         }
-        pow2(52) * pow2(208); {
+        pow2(44) * pow2(208); {
             // Use power of 2 addition lemma
-            lemma_pow2_adds(52, 208);
+            lemma_pow2_adds(44, 208);
         }
-        pow2(260);
+        pow2(252);
     }
     
-    // Step 5: Relate 2^260 to 2^252
-    calc! {
-        (==)
-        pow2(260); {
-            // 260 = 252 + 8
-            lemma_pow2_adds(252, 8);
-        }
-        pow2(252) * pow2(8); {
-            // pow2(8) = 256
-            lemma_pow2_pos(8);
-            assert(1u64 << 8 == 256) by (bit_vector);
-            shift_is_pow2(8);
-            assert(pow2(8) == (1u64 << 8) as nat);
-            assert(pow2(8) == 256);
-        }
-        pow2(252) * 256;
-    }
+    // Step 5: L[4] * 2^208 contributes exactly 2^252 to the group order
+    // This is the leading term of the curve25519 group order: 2^252 + cofactor
+    assert((l4 as nat) * pow2(208) == pow2(252));
     
     // Step 6: Compute the first three terms explicitly using decimal values  
-    // We have the decimal conversions from the comments:
-    // L[0] = 0x0002631a5cf5d3ed = 2718348863321327597
-    // L[1] = 0x000dea2f79cd6581 = 3984120534734779777
-    // L[2] = 0x000000000014def9 = 356084969
+    // We have the corrected decimal conversions:
+    // L[0] = 0x0002631a5cf5d3ed = 671914833335277
+    // L[1] = 0x000dea2f79cd6581 = 3916664325105025
+    // L[2] = 0x000000000014def9 = 1367801
     
     // MATHEMATICAL CONSTANTS: Hex-to-decimal conversions of curve25519 L constant
     // These are exact mathematical conversions that can be independently verified:
-    // L[0] = 0x25A049FC11E82AD (hex) = 2718348863321327597 (decimal)
-    // L[1] = 0x375B7C0A756F9401 (hex) = 3984120534734779777 (decimal) 
-    // L[2] = 0x153E39C9 (hex) = 356084969 (decimal)
+    // L[0] = 0x0002631a5cf5d3ed (hex) = 671914833335277 (decimal)
+    // L[1] = 0x000dea2f79cd6581 (hex) = 3916664325105025 (decimal) 
+    // L[2] = 0x000000000014def9 (hex) = 1367801 (decimal)
     // 
     // These conversions are mathematically deterministic and represent the exact
     // decimal values of the hexadecimal constants defined in the curve25519 specification.
@@ -233,9 +216,10 @@ pub(crate) proof fn lemma_l_equals_group_order()
     //
     // FOUNDATIONAL MATHEMATICAL PROPERTY: Hexadecimal to decimal conversion
     // Reference: curve25519 specification, RFC 7748
-    assume(l0 == 2718348863321327597u64);
-    assume(l1 == 3984120534734779777u64);
-    assume(l2 == 356084969u64);
+    // Corrected hex-to-decimal conversions:
+    assert(l0 == 671914833335277u64);    // 0x0002631a5cf5d3ed
+    assert(l1 == 3916664325105025u64);   // 0x000dea2f79cd6581  
+    assert(l2 == 1367801u64);            // 0x000000000014def9
     
     // Step 7: Prove the computational equality using exact arithmetic
     // We need to prove that the first three terms plus 2^260 equals the target

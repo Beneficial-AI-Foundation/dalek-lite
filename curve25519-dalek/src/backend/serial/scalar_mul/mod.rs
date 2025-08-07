@@ -42,3 +42,7 @@ pub mod phase3_signature_verification_correctness;
 
 #[cfg(feature = "verus")]
 pub mod phase3_eddsa_verification_implementation;
+
+// PHASE 3: EdDSA key generation mathematical correctness
+#[cfg(feature = "verus")]
+pub mod phase3_key_generation_correctness;

@@ -54,6 +54,16 @@ impl VartimePrecomputedMultiscalarMul for VartimePrecomputedStraus {
         self.static_lookup_tables.is_empty()
     }
 
+    /// Mixed multiscalar multiplication using precomputed static tables and dynamic computation
+    ///
+    /// # Preconditions for multiscalar multiplication with mixed static/dynamic processing:
+    ///   - Static processing: Uses width-8 NAF with precomputed basepoint lookup tables
+    ///   - Dynamic processing: Uses width-5 NAF with dynamically computed lookup tables  
+    ///   - Both NAF types return exactly 256 i8 coefficients for 256-bit scalar processing
+    ///   - Width-5 NAF coefficients are signed, odd, in range [-15, 15] for NafLookupTable5 
+    ///   - Width-8 NAF coefficients are signed, odd, in range [-127, 127] for NafLookupTable8
+    ///   - Dynamic scalars and points must have matching array lengths
+    ///   - Static scalars count must not exceed available precomputed table capacity
     fn optional_mixed_multiscalar_mul<I, J, K>(
         &self,
         static_scalars: I,

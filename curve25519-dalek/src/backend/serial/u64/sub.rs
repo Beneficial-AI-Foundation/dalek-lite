@@ -101,7 +101,8 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
     proof {
         // Initialize ghost variables properly - borrow starts at 0
         assert(borrow == 0);  
-        // No need to assert about bit shift of 0, it's obvious
+        // Prove initial borrow invariant
+        assert((borrow >> 63) < 2) by (bit_vector);
     }
     
     for i in 0..5
@@ -116,8 +117,8 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
             b_nat == to_nat(&b.limbs),
             group_ord == group_order(),
             
-            // Mathematical tracking (these are auxiliary variables for analysis)
-            // diff_nat_partial tracks the partial result - we'll assume it's maintained correctly for now
+            // Borrow tracking - borrow is either 0 or represents a borrow from higher-order limbs
+            (borrow >> 63) < 2,
     {
         proof {
             assert((borrow >> 63) < 2) by (bit_vector);
@@ -135,8 +136,13 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
         proof {
             lemma_borrow_and_mask_bounded(borrow, mask);
             
-            // Update partial natural number representation for tracking (assume correctness for now)
-            assume(diff_nat_partial == old_diff_nat + (difference.limbs[i as int] as nat) * pow2(52 * i as nat));
+            // Prove that borrow >> 63 is either 0 or 1 (less than 2)
+            // After wrapping_sub, borrow is either a positive result or a wrapped negative result
+            // In either case, the high bit (bit 63) is either 0 or 1
+            assert((borrow >> 63) < 2) by (bit_vector);
+            
+            // Update partial natural number representation for tracking 
+            // For now, just update the ghost variable without proving the relationship
             diff_nat_partial = old_diff_nat + (difference.limbs[i as int] as nat) * pow2(52 * i as nat);
             
             // Track borrow state for mathematical analysis

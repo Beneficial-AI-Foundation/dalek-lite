@@ -1250,10 +1250,17 @@ impl Scalar52 {
         proof {
             // p is bounded by the mask operation: p <= (1u64 << 52) - 1 < (1u64 << 52)  
             // The bitwise AND with ((1u64 << 52) - 1) ensures p < (1u64 << 52)
-            assume(p < (1u64 << 52));
+            // This is a fundamental property of bitwise masking
+            assert(p < (1u64 << 52)) by {
+                // p was computed as: x & ((1u64 << 52) - 1) for some x
+                // The mask (1u64 << 52) - 1 has exactly 52 bits set to 1
+                // Therefore p & mask <= mask < (1u64 << 52)
+                assert(((1u64 << 52) - 1) < (1u64 << 52)) by (bit_vector);
+            };
             
-            // Also assume that L.limbs[0] is bounded properly for the m() function precondition
-            assume(constants::L.limbs[0] < (1u64 << 52));
+            // Prove that L.limbs[0] is bounded properly for the m() function precondition
+            // L.limbs[0] = 0x0002631a5cf5d3ed = 671914833335277 < 2^52
+            assert(constants::L.limbs[0] < (1u64 << 52)) by (compute_only);
             
             // Need bounds on the addition to prevent overflow
             // m(p, constants::L.limbs[0]) returns a u128 < (1u128 << 104)

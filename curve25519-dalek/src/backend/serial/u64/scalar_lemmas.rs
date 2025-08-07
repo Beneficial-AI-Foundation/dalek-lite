@@ -2415,8 +2415,21 @@ pub proof fn lemma_curve25519_constant_bound()
     // REFERENCE: "Curve25519: new Diffie-Hellman speed records" by Bernstein
     // REFERENCE: IETF Standards for elliptic curve cryptography
     //
-    // FOUNDATIONAL AXIOM: This is a mathematical constant defining curve25519's structure
-    assume(27742317777372353535851937790883648493nat < pow2(126));
+    // MATHEMATICAL PROOF: This cofactor bound can be verified computationally
+    // The cofactor 27742317777372353535851937790883648493 ≈ 2^124.38
+    // Therefore it is definitely less than 2^126
+    
+    // We can prove this by showing the cofactor < 2^125 < 2^126
+    lemma_pow2_pos(125);
+    lemma_pow2_pos(126);
+    lemma_pow2_adds(125, 1);
+    assert(pow2(126) == pow2(125) * 2);
+    
+    // The cofactor is less than 2^125, which can be verified by computation
+    assert(27742317777372353535851937790883648493nat < pow2(125)) by (compute_only);
+    
+    // Therefore it's also less than 2^126
+    assert(27742317777372353535851937790883648493nat < pow2(126));
 }
 
 /// Lemma establishing the relationship between group_order and pow2(260)

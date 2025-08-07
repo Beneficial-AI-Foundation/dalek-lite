@@ -350,12 +350,6 @@ pub proof fn as_nat_squared(v: [u64; 5])
         lemma_mod_sum_factor(k as int, sum as int, p() as int);
     }
 
-    // sanity check
-    assert(s4 * c4 == pow2(4 * 51) * (v[2] * v[2] + 2 * (v[1] * v[3]) + 2 * (v[0] * v[4])));
-    assert(s3 * c3 == pow2(3 * 51) * (2 * (v[1] *  v[2]) + 2 * (v[0] *  v[3]) + 19 * (v[4] * v[4])));
-    assert(s2 * c2 == pow2(2 * 51) * (v[1] * v[1] + 2 * (v[0] *  v[2]) + 19 * (2 * (v[3] * v[4]))));
-    assert(s1 * c1 == pow2(1 * 51) * (2 * (v[0] *  v[1]) + 19 * (v[3] * v[3] + 2 * (v[2] * v[4]))));
-    assert(c0 == (v[0] *  v[0] + 19 * (2 * (v[2] * v[3]) + 2 * (v[1] * v[4]))));
 }
 
 pub proof fn as_nat_k(a: [u64;5], k: u64)

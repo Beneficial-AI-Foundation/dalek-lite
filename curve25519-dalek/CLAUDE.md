@@ -7,14 +7,6 @@ To test compilation with the fiat backend:
 RUSTFLAGS='--cfg curve25519_dalek_backend="fiat"' cargo check
 ```
 
-## Verus Verification
-
-Run Verus verification from the `curve25519-dalek` directory:
-```bash
-cd curve25519-dalek && cargo verus verify -- --multiple-errors 20
-```
-
-This ensures proper compilation and avoids dependency issues with other crates in the workspace.
 
 ## Verus docs
 See https://verus-lang.github.io/verus/guide/ for tutorial
@@ -107,7 +99,7 @@ After proving functions completely, clean up redundant assertions before submitt
 
 **IMPORTANT**: When asked to test assertion removal:
 - **Test every single assert individually** - do not skip steps or batch similar-looking assertions
-- **Be thorough even if it takes many cargo verify runs** - this is exactly the kind of careful, systematic work that LLMs excel at
+- **Be thorough even if it takes many verus runs** - this is exactly the kind of careful, systematic work that LLMs excel at
 - **Complete ALL tests when asked** - do not stop halfway through even if patterns become clear
 - **Document what you tested and what you didn't** - be explicit about your methodology  
 - LLMs can handle repetitive verification tasks that would be tedious for humans

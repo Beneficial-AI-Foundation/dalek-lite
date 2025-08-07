@@ -185,7 +185,12 @@ impl ConstantTimeEq for CompressedEdwardsY {
     //ensures
     //    true,
     {
-        assume(false); // This is a placeholder for the external body, which is not implemented in this example.
+        // Mathematical foundation: Constant-time equality for cryptographic point compression.
+        // This operation compares two compressed Edwards Y coordinates while maintaining
+        // timing invariance - a fundamental requirement for cryptographic implementations.
+        // The underlying byte-level comparison preserves the constant-time guarantee
+        // through careful implementation that avoids timing-dependent branching.
+        // This is a foundational cryptographic primitive rather than a complex proof target.
         self.as_bytes().ct_eq(other.as_bytes())
     }
 }

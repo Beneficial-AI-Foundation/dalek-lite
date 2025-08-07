@@ -731,6 +731,12 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
             // Partial result tracking invariant: result_nat_partial represents the partial sum
             // result_nat_partial == sum_{j=0}^{i-1} difference.limbs[j] * pow2(52*j)
             // This tracks the natural number representation of the limbs processed so far
+            i == 0 ==> result_nat_partial == 0,
+            i == 1 ==> result_nat_partial == (difference.limbs[0] as nat) * pow2(0),
+            i == 2 ==> result_nat_partial == (difference.limbs[0] as nat) * pow2(0) + (difference.limbs[1] as nat) * pow2(52),
+            i == 3 ==> result_nat_partial == (difference.limbs[0] as nat) * pow2(0) + (difference.limbs[1] as nat) * pow2(52) + (difference.limbs[2] as nat) * pow2(104),
+            i == 4 ==> result_nat_partial == (difference.limbs[0] as nat) * pow2(0) + (difference.limbs[1] as nat) * pow2(52) + (difference.limbs[2] as nat) * pow2(104) + (difference.limbs[3] as nat) * pow2(156),
+            i == 5 ==> result_nat_partial == (difference.limbs[0] as nat) * pow2(0) + (difference.limbs[1] as nat) * pow2(52) + (difference.limbs[2] as nat) * pow2(104) + (difference.limbs[3] as nat) * pow2(156) + (difference.limbs[4] as nat) * pow2(208),
     {
         let addend = if (borrow >> 63) != 0 {
             L.limbs[i]
@@ -824,11 +830,49 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
         // Use the helper lemma to understand the structure
         lemma_five_limbs_equals_to_nat(&difference.limbs);
         
-        // The mathematical connection is: after the loop completes,
-        // result_nat_partial should equal sum_{j=0}^{4} difference.limbs[j] * pow2(52*j),
-        // which is exactly the definition of to_nat(&difference.limbs).
-        // This assumes the incremental updates in the loop were correctly tracked.
-        assume(result_nat_partial == to_nat(&difference.limbs));
+        // Prove that result_nat_partial correctly accumulated the weighted sum
+        // The loop invariant establishes that after the loop completes (i=5):
+        // result_nat_partial == (difference.limbs[0] as nat) * pow2(0) +
+        //                      (difference.limbs[1] as nat) * pow2(52) + 
+        //                      (difference.limbs[2] as nat) * pow2(104) + 
+        //                      (difference.limbs[3] as nat) * pow2(156) + 
+        //                      (difference.limbs[4] as nat) * pow2(208)
+        
+        // This is exactly the definition of five_limbs_to_nat_aux(difference.limbs)
+        // By definition: five_limbs_to_nat_aux(limbs) == 
+        //   (limbs[0] as nat) + pow2(52) * (limbs[1] as nat) + pow2(104) * (limbs[2] as nat) + 
+        //   pow2(156) * (limbs[3] as nat) + pow2(208) * (limbs[4] as nat)
+        // which is the same as our invariant (just reordered with multiplication)
+        
+        // Use calc! to transform the invariant form to the five_limbs_to_nat_aux form
+        calc! {
+            (==)
+            result_nat_partial; { 
+                // From the loop invariant (i=5 case), we have:
+                // result_nat_partial == (difference.limbs[0] as nat) * pow2(0) + ... + (difference.limbs[4] as nat) * pow2(208)
+            }
+            (difference.limbs[0] as nat) * pow2(0) +
+            (difference.limbs[1] as nat) * pow2(52) + 
+            (difference.limbs[2] as nat) * pow2(104) + 
+            (difference.limbs[3] as nat) * pow2(156) + 
+            (difference.limbs[4] as nat) * pow2(208); {
+                // Simplify pow2(0) * x = x 
+                assert(pow2(0) == 1) by { lemma2_to64(); };
+                broadcast use lemma_mul_is_commutative;
+            }
+            (difference.limbs[0] as nat) +
+            pow2(52) * (difference.limbs[1] as nat) + 
+            pow2(104) * (difference.limbs[2] as nat) + 
+            pow2(156) * (difference.limbs[3] as nat) + 
+            pow2(208) * (difference.limbs[4] as nat);
+        }
+        
+        assert(result_nat_partial == five_limbs_to_nat_aux(difference.limbs));
+        
+        // From lemma_five_limbs_equals_to_nat, we know:
+        // five_limbs_to_nat_aux(difference.limbs) == to_nat(&difference.limbs)
+        // Therefore: result_nat_partial == to_nat(&difference.limbs)
+        assert(result_nat_partial == to_nat(&difference.limbs));
         
         // MATHEMATICAL ANALYSIS: What the second loop accomplishes
         // 

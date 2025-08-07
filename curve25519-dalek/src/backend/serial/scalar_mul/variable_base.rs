@@ -7,6 +7,11 @@ use crate::traits::Identity;
 use crate::window::LookupTable;
 
 /// Perform constant-time, variable-base scalar multiplication.
+/// 
+/// # Preconditions (for verification)
+/// - scalar.as_radix_16() returns exactly 64 i8 values
+/// - Each digit in scalar.as_radix_16() is in range [-8, 8] 
+/// - Array accesses at indices [0..63] and [63] are safe
 #[rustfmt::skip] // keep alignment of explanatory comments
 pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
     // Construct a lookup table of [P,2P,3P,4P,5P,6P,7P,8P]

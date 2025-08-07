@@ -16,6 +16,13 @@ cd curve25519-dalek && cargo verus verify -- --multiple-errors 20
 
 This ensures proper compilation and avoids dependency issues with other crates in the workspace.
 
+## Verus docs
+See https://verus-lang.github.io/verus/guide/ for tutorial
+
+See https://verus-lang.github.io/verus/verusdoc/vstd for vstd lemmas, 
+especially https://verus-lang.github.io/verus/verusdoc/vstd/arithmetic/index.html 
+for mul and div_mod lemmas
+
 ## Strategies for Debugging Verus Proofs
 
 ### 1. Replace `assume(false)` with `assert` to Find Issues

@@ -70,6 +70,8 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
     requires
         limbs_bounded(a),
         limbs_bounded(b),
+        scalar_reduced(a),
+        scalar_reduced(b),
     ensures
         to_nat(&s.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (
         group_order() as int),

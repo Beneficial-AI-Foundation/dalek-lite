@@ -2,7 +2,29 @@ use vstd::prelude::*;
 use vstd::arithmetic::power2::*;
 use vstd::calc;
 use vstd::arithmetic::mul::*;
+use vstd::arithmetic::div_mod::*;
+use vstd::bits::*;
 verus! {
+
+pub proof fn pow2_le_max64(k: nat)
+    requires
+        k < 64,
+    ensures
+        pow2(k) <= u64::MAX
+    {
+        lemma2_to64();
+        lemma2_to64_rest();
+    }
+
+pub proof fn shift_is_pow2(k: nat)
+    requires
+        k < 64,
+    ensures
+        (1u64 << k) == pow2(k)
+{
+    pow2_le_max64(k);
+    lemma_u64_shl_is_mul(1u64, k as u64);
+}
 
 #[derive(Copy, Clone)]
 pub struct Scalar52 {
@@ -16,6 +38,35 @@ proof fn top_level_proof()
 
 pub open spec fn scalar_reduced(s: &Scalar52) -> bool {
     to_nat(&s.limbs) < group_order()
+}
+
+pub proof fn lemma_borrow_and_mask_bounded(borrow: u64, mask: u64)
+    requires
+        mask == (1u64 << 52) - 1,
+    ensures
+        (borrow & mask) < (1u64 << 52),
+{
+    assert((borrow & mask) <= mask) by (bit_vector);
+}
+
+pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
+    requires
+        mask == (1u64 << 52) - 1,
+        carry < (1u64 << 53),
+    ensures
+        (carry & mask) < (1u64 << 52),
+        (carry >> 52) <= 1,
+{
+    assert((carry & mask) <= mask) by (bit_vector);
+    assert((1u64 << 53) == 2 * (1u64 << 52)) by (bit_vector);
+    broadcast use lemma_u64_shr_is_div;
+    lemma_pow2_pos(52);
+    shift_is_pow2(52);
+    assert(carry >> 52 == carry / (1u64 << 52));
+    lemma_fundamental_div_mod(carry as int, (1u64 << 52) as int);
+    let q = carry / (1u64 << 52);
+    let r = carry % (1u64 << 52);
+    lemma_mul_strict_inequality_converse(q as int, 2int, (1u64 << 52) as int);
 }
 
     /// Compute `a - b` (mod l)
@@ -53,9 +104,12 @@ pub open spec fn scalar_reduced(s: &Scalar52) -> bool {
                       i == 0 ==> carry == 0,
                       i >= 1 ==> (carry >> 52) < 2,
         {
-            let underflow = Choice::from((borrow >> 63) as u8);
-            let addend = select(&0, &constants::L.limbs[i], underflow);
-            proof {lemma_scalar_subtract_no_overflow(carry, difference.limbs[i as int], addend, i as u32, &constants::L);}
+            let addend = if (borrow >> 63) != 0 {
+                L.limbs[i]
+            } else {
+                0
+            };
+            proof {lemma_scalar_subtract_no_overflow(carry, difference.limbs[i as int], addend, i as u32, &L);}
             carry = (carry >> 52) + difference.limbs[i] + addend;
             difference.limbs[i] = carry & mask;
             proof { lemma_carry_bounded_after_mask(carry, mask); }
@@ -308,6 +362,37 @@ pub proof fn lemma_subtraction_bound_for_reduced_scalars(a: &Scalar52, b: &Scala
     assert(to_nat(&a.limbs) < group_order());
 
     // The inequality follows by transitivity
+}
+
+pub proof fn lemma_scalar_subtract_no_overflow(carry: u64, difference_limb: u64, addend: u64, i: u32, l_value: &Scalar52)
+    requires
+        i < 5,
+        difference_limb < (1u64 << 52),
+        addend == 0 || addend == l_value.limbs[i as int],
+        i == 0 ==> carry == 0,
+        i >= 1 ==> (carry >> 52) < 2,
+        l_value.limbs[0] == 0x0002631a5cf5d3ed,
+        l_value.limbs[1] == 0x000dea2f79cd6581,
+        l_value.limbs[2] == 0x000000000014def9,
+        l_value.limbs[3] == 0x0000000000000000,
+        l_value.limbs[4] == 0x0000100000000000,
+    ensures
+        (carry >> 52) + difference_limb + addend < (1u64 << 53),
+{
+    if i == 0 {
+        assert(0x0002631a5cf5d3ed < (1u64 << 52)) by (bit_vector);
+    } else if i == 1 {
+        assert(0x000dea2f79cd6581 < (1u64 << 52)) by (bit_vector);
+    } else if i == 2 {
+        assert(0x000000000014def9 < (1u64 << 52)) by (bit_vector);
+    } else if i == 3 {
+    } else {
+        assert(0x0000100000000000 < (1u64 << 52)) by (bit_vector);
+    }
+    if i == 0 {
+        assert((0u64 >> 52) == 0) by (bit_vector);
+    }
+    assert(2 * (1u64 << 52) == (1u64 << 53)) by (bit_vector);
 }
 }
 

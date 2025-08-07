@@ -100,6 +100,14 @@ impl MultiscalarMul for Straus {
     /// top-to-bottom, then right-to-left, we need to multiply by \\(
     /// 16\\) only once per column, sharing the doublings across all
     /// of the input points.
+    ///
+    /// # Preconditions (for verification)
+    /// - For multi-scalar multiplication with n scalars and n points:
+    ///   - Each scalar.as_radix_16() returns exactly 64 i8 values  
+    ///   - Each digit in every scalar.as_radix_16() is in range [-8, 8]
+    ///   - All scalar_digits arrays are accessed at indices [0..63] and [63]
+    ///   - lookup_tables and scalar_digits have matching lengths for synchronized iteration
+    ///   - Array accesses: s_i[j] for i in [0..n-1], j in [0..63] are safe
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint
     where
         I: IntoIterator,
@@ -156,6 +164,14 @@ impl VartimeMultiscalarMul for Straus {
     /// The non-adjacent form has signed, odd digits.  Using only odd
     /// digits halves the table size (since we only need odd
     /// multiples), or gives fewer additions for the same table size.
+    ///
+    /// # Preconditions (for verification)
+    /// - For variable-time multi-scalar multiplication with n scalars and n points:
+    ///   - Each scalar.non_adjacent_form(5) returns exactly 256 i8 values
+    ///   - NAF digits are signed and odd, within expected range for width-5 NAF
+    ///   - All nafs arrays are accessed at indices [0..255] and [255] 
+    ///   - lookup_tables and nafs have matching lengths for synchronized iteration
+    ///   - Array accesses: naf[i] for i in [0..255] are safe
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
     where
         I: IntoIterator,

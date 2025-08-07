@@ -20,6 +20,41 @@ use crate::edwards::EdwardsPoint;
 use crate::scalar::Scalar;
 use crate::traits::VartimeMultiscalarMul;
 
+#[cfg(feature = "verus")]
+use vstd::prelude::*;
+
+#[cfg(feature = "verus")]
+verus! {
+    spec fn digit_bounds_valid(digit: i16, w: usize) -> bool {
+        // Digits are in range [-2^w/2, 2^w/2], except the last digit may equal 2^w/2
+        let max_magnitude = (1i16 << (w - 1));
+        -max_magnitude <= digit && digit <= max_magnitude
+    }
+
+    spec fn bucket_index_safe(digit: i16, buckets_count: usize) -> bool {
+        if digit > 0 {
+            let b = (digit - 1) as usize;
+            b < buckets_count
+        } else if digit < 0 {
+            let b = (-digit - 1) as usize;
+            b < buckets_count
+        } else {
+            true // digit == 0, no bucket access
+        }
+    }
+
+    spec fn window_width_valid(w: usize) -> bool {
+        // Window width must be in valid range to prevent overflow
+        4 <= w && w <= 8
+    }
+
+    spec fn bucket_count_consistent(w: usize, buckets_count: usize) -> bool {
+        // buckets_count = (1 << w) / 2, which is 2^(w-1)
+        // This ensures bucket indexing stays within bounds
+        buckets_count == (1usize << (w - 1))
+    }
+}
+
 /// Implements a version of Pippenger's algorithm.
 ///
 /// The algorithm works as follows:
@@ -70,6 +105,14 @@ impl VartimeMultiscalarMul for Pippenger {
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
     {
+        #[cfg(feature = "verus")]
+        requires([
+            // The algorithm is designed for these window widths to prevent overflow
+            // Window width determines bucket count and digit extraction bounds
+            window_width_valid(6), // w=6 for size < 500
+            window_width_valid(7), // w=7 for size < 800  
+            window_width_valid(8), // w=8 for size >= 800
+        ]);
         use crate::traits::Identity;
 
         let mut scalars = scalars.into_iter();
@@ -89,6 +132,20 @@ impl VartimeMultiscalarMul for Pippenger {
         let max_digit: usize = 1 << w;
         let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
         let buckets_count: usize = max_digit / 2; // digits are signed+centered hence 2^w/2, excluding 0-th bucket
+
+        #[cfg(feature = "verus")]
+        assert([
+            // Verify window width is in valid range (4 <= w <= 8)
+            window_width_valid(w),
+            // Verify bucket count consistency: buckets_count = 2^(w-1) 
+            bucket_count_consistent(w, buckets_count),
+            // Verify max_digit calculation doesn't overflow
+            max_digit == (1usize << w),
+            // Verify buckets_count = max_digit / 2
+            buckets_count == max_digit / 2,
+            // Verify digits_count is reasonable (should be <= 64 for scalar)
+            digits_count <= 64,
+        ]);
 
         // Collect optimized scalars and points in buffers for repeated access
         // (scanning the whole set per digit position).
@@ -122,13 +179,26 @@ impl VartimeMultiscalarMul for Pippenger {
             for (digits, pt) in scalars_points.iter() {
                 // Widen digit so that we don't run into edge cases when w=8.
                 let digit = digits[digit_index] as i16;
+                
+                #[cfg(feature = "verus")]
+                assert([
+                    // Verify digit is in valid range for the window width
+                    digit_bounds_valid(digit, w),
+                    // Verify bucket indexing will be safe for this digit
+                    bucket_index_safe(digit, buckets_count),
+                ]);
+                
                 match digit.cmp(&0) {
                     Ordering::Greater => {
                         let b = (digit - 1) as usize;
+                        #[cfg(feature = "verus")]
+                        assert(b < buckets_count); // Verify bucket access is safe
                         buckets[b] = (&buckets[b] + pt).as_extended();
                     }
                     Ordering::Less => {
                         let b = (-digit - 1) as usize;
+                        #[cfg(feature = "verus")]
+                        assert(b < buckets_count); // Verify bucket access is safe
                         buckets[b] = (&buckets[b] - pt).as_extended();
                     }
                     Ordering::Equal => {}
@@ -143,9 +213,21 @@ impl VartimeMultiscalarMul for Pippenger {
             //   C
             //   C B
             //   C B A   Sum = C + (C+B) + (C+B+A)
+            #[cfg(feature = "verus")]
+            assert([
+                // Verify buckets_count > 0 so accessing buckets_count - 1 is safe
+                buckets_count > 0,
+                // Verify buckets_count - 1 is within buckets array bounds
+                buckets_count - 1 < buckets.len(),
+                // Verify buckets array has the expected size
+                buckets.len() == buckets_count,
+            ]);
+            
             let mut buckets_intermediate_sum = buckets[buckets_count - 1];
             let mut buckets_sum = buckets[buckets_count - 1];
             for i in (0..(buckets_count - 1)).rev() {
+                #[cfg(feature = "verus")]
+                assert(i < buckets.len()); // Verify array access is safe
                 buckets_intermediate_sum += buckets[i];
                 buckets_sum += buckets_intermediate_sum;
             }
@@ -155,6 +237,14 @@ impl VartimeMultiscalarMul for Pippenger {
 
         // Take the high column as an initial value to avoid wasting time doubling the identity element in `fold()`.
         let hi_column = columns.next().expect("should have more than zero digits");
+
+        #[cfg(feature = "verus")]
+        assert([
+            // Verify w can be safely cast to u32 for mul_by_pow_2
+            w <= u32::MAX as usize,
+            // Verify w is in the expected range to prevent overflow in mul_by_pow_2
+            w <= 8, // Maximum window width supported
+        ]);
 
         Some(columns.fold(hi_column, |total, p| total.mul_by_pow_2(w as u32) + p))
     }

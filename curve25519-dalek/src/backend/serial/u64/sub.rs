@@ -18,13 +18,11 @@ pub open spec fn scalar_reduced(s: &Scalar52) -> bool {
     to_nat(&s.limbs) < group_order()
 }
 
-    #[cfg(verus_keep)]
-    pub fn sub_with_reduced_scalars(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
+    /// Compute `a - b` (mod l)
+    pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
     requires
         limbs_bounded(a),
         limbs_bounded(b),
-        scalar_reduced(a),  // a < group_order()
-        scalar_reduced(b),  // b < group_order()
     ensures
         to_nat(&s.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int)
     {
@@ -32,66 +30,37 @@ pub open spec fn scalar_reduced(s: &Scalar52) -> bool {
         proof { assert(1u64 << 52 > 0) by (bit_vector);}
         let mask = (1u64 << 52) - 1;
 
-        // First loop: compute a - b (potentially with wraparound)
-        let mut difference_before_second_loop = [0u64; 5];
-        let mut temp_values = [0u64; 5];
+        // a - b
         let mut borrow: u64 = 0;
         for i in 0..5
-           invariant
-               forall|j: int| 0 <= j < i ==> difference_before_second_loop[j] < (1u64 << 52),
-               limbs_bounded(a),
-               limbs_bounded(b),
-               scalar_reduced(a),
-               scalar_reduced(b),
-               mask == (1u64 << 52) - 1,
-               i == 0 ==> borrow == 0,
-               i >= 1 ==> (borrow >> 63) <= 1,
-               forall|j: int| 0 <= j < i ==> (temp_values[j] >> 63) <= 1,
+            invariant
+                      limbs_bounded(b),
+                      forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
+                      mask == (1u64 << 52) - 1,
         {
-            temp_values[i] = (a.limbs[i] as u64).wrapping_sub((b.limbs[i] as u64).wrapping_add((borrow >> 63) as u64));
-            borrow = temp_values[i];
-            difference_before_second_loop[i] = borrow & mask;
+            proof { assert ((borrow >> 63) < 2) by (bit_vector); }
+            borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
+            difference.limbs[i] = borrow & mask;
+            proof { lemma_borrow_and_mask_bounded(borrow, mask); }
         }
 
-        // Analyze the borrow flag to determine the case
-        proof {
-        lemma_multi_precision_borrow_comparison(&a.limbs, &b.limbs, borrow);
-        }
-
-        // Second loop: conditionally add L based on underflow
+        // conditionally add l if the difference is negative
         let mut carry: u64 = 0;
         for i in 0..5
-           invariant
-               forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
-               limbs_bounded(a),
-               limbs_bounded(b),
-               scalar_reduced(a),
-               scalar_reduced(b),
-               mask == (1u64 << 52) - 1,
-               i == 0 ==> carry == 0,
-               i >= 1 ==> (carry >> 52) < 2,
+            invariant
+                      forall|j: int| 0 <= j < 5 ==> difference.limbs[j] < (1u64 << 52),  // from first loop
+                      mask == (1u64 << 52) - 1,
+                      i == 0 ==> carry == 0,
+                      i >= 1 ==> (carry >> 52) < 2,
         {
-            let addend = if (borrow >> 63) == 1 { L.limbs[i] } else { 0 };
-            carry = (carry >> 52) + difference_before_second_loop[i] + addend;
+            let underflow = Choice::from((borrow >> 63) as u8);
+            let addend = select(&0, &constants::L.limbs[i], underflow);
+            proof {lemma_scalar_subtract_no_overflow(carry, difference.limbs[i as int], addend, i as u32, &constants::L);}
+            carry = (carry >> 52) + difference.limbs[i] + addend;
             difference.limbs[i] = carry & mask;
+            proof { lemma_carry_bounded_after_mask(carry, mask); }
         }
-
-        // With stronger preconditions, we can now prove the bound without assume
-        if (borrow >> 63) == 0 {
-            // No underflow case - use the stronger lemma for reduced scalars
-            assert(to_nat(&a.limbs) >= to_nat(&b.limbs)); // From the lemma
-            proof {
-            lemma_subtraction_bound_for_reduced_scalars(a, b);
-            }
-
-            // We now have a mathematical proof that: to_nat(&a.limbs) - to_nat(&b.limbs) < group_order()
-            // This eliminates the need for the assume statement!
-
-            // The rest follows from standard modular arithmetic properties
-        } else {
-            // Underflow case - similar analysis applies
-        }
-
+        assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (group_order() as int));
         difference
     }
 

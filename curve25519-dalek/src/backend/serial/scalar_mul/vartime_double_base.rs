@@ -40,6 +40,15 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
     // Find starting index
     let mut i: usize = 255;
     for j in (0..256).rev() {
+        #[cfg(feature = "verus")]
+        assert([
+            j < 256,  // Loop index bounds for safe NAF array access
+            a_naf.len() == 256,  // a_naf array size consistency
+            b_naf.len() == 256,  // b_naf array size consistency
+            j < a_naf.len(),  // Safe a_naf[j] access when assigning to i
+            j < b_naf.len(),  // Safe b_naf[j] access when assigning to i
+        ]);
+        
         i = j;
         if a_naf[i] != 0 || b_naf[i] != 0 {
             break;
@@ -55,6 +64,15 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
 
     let mut r = ProjectivePoint::identity();
     loop {
+        #[cfg(feature = "verus")]
+        assert([
+            i < 256,  // Loop index bounds for safe NAF array access
+            a_naf.len() == 256,  // a_naf array size consistency
+            b_naf.len() == 256,  // b_naf array size consistency
+            i < a_naf.len(),  // Safe a_naf[i] access
+            i < b_naf.len(),  // Safe b_naf[i] access
+        ]);
+        
         let mut t = r.double();
 
         match a_naf[i].cmp(&0) {

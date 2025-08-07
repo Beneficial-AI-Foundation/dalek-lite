@@ -37,6 +37,12 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
     let mut tmp1 = &tmp3 + &lookup_table.select(scalar_digits[63]);
     // Now tmp1 = s_63*P in P1xP1 coords
     for i in (0..63).rev() {
+        #[cfg(feature = "verus")]
+        assert([
+            i < scalar_digits.len(),  // Verify safe scalar_digits[i] access
+            scalar_digits.len() == 64,  // Array size consistency for [0..63] access
+        ]);
+        
         tmp2 = tmp1.as_projective(); // tmp2 =    (prev) in P2 coords
         tmp1 = tmp2.double();        // tmp1 =  2*(prev) in P1xP1 coords
         tmp2 = tmp1.as_projective(); // tmp2 =  2*(prev) in P2 coords

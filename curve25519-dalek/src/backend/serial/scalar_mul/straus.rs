@@ -135,9 +135,21 @@ impl MultiscalarMul for Straus {
 
         let mut Q = EdwardsPoint::identity();
         for j in (0..64).rev() {
+            #[cfg(feature = "verus")]
+            assert([
+                j < 64,  // Loop index bounds for safe s_i[j] access
+                scalar_digits.len() == lookup_tables.len(),  // Synchronized array lengths
+            ]);
+            
             Q = Q.mul_by_pow_2(4);
             let it = scalar_digits.iter().zip(lookup_tables.iter());
             for (s_i, lookup_table_i) in it {
+                #[cfg(feature = "verus")]
+                assert([
+                    j < s_i.len(),  // Safe s_i[j] array access
+                    s_i.len() == 64,  // Each scalar has 64 digits
+                ]);
+                
                 // R_i = s_{i,j} * P_i
                 let R_i = lookup_table_i.select(s_i[j]);
                 // Q = Q + R_i
@@ -197,9 +209,21 @@ impl VartimeMultiscalarMul for Straus {
         let mut r = ProjectivePoint::identity();
 
         for i in (0..256).rev() {
+            #[cfg(feature = "verus")]
+            assert([
+                i < 256,  // Loop index bounds for safe naf[i] access
+                nafs.len() == lookup_tables.len(),  // Synchronized array lengths
+            ]);
+            
             let mut t: CompletedPoint = r.double();
 
             for (naf, lookup_table) in nafs.iter().zip(lookup_tables.iter()) {
+                #[cfg(feature = "verus")]
+                assert([
+                    i < naf.len(),  // Safe naf[i] array access
+                    naf.len() == 256,  // Each NAF has 256 digits
+                ]);
+                
                 match naf[i].cmp(&0) {
                     Ordering::Greater => {
                         t = &t.as_extended() + &lookup_table.select(naf[i] as usize)

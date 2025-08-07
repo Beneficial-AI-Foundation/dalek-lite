@@ -169,6 +169,11 @@ impl VartimeMultiscalarMul for Pippenger {
         let mut columns = (0..digits_count).rev().map(|digit_index| {
             // Clear the buckets when processing another digit.
             for bucket in &mut buckets {
+                #[cfg(feature = "verus")]
+                assert([
+                    buckets.len() == buckets_count,  // Bucket array size consistency
+                ]);
+                
                 *bucket = EdwardsPoint::identity();
             }
 
@@ -177,6 +182,17 @@ impl VartimeMultiscalarMul for Pippenger {
             // Note: if we add support for precomputed lookup tables,
             // we'll be adding/subtracting point premultiplied by `digits[i]` to buckets[0].
             for (digits, pt) in scalars_points.iter() {
+                #[cfg(feature = "verus")]
+                assert([
+                    buckets.len() == buckets_count,  // Bucket array size for safe indexing
+                    buckets_count == (1usize << (w - 1)),  // Bucket count matches window width
+                    digits.len() == digits_count,  // Each scalar has correct digit count
+                    digit_index < digits.len(),  // Safe digits[digit_index] access
+                ]);
+                
+                // Check digit bounds for this specific iteration
+                #[cfg(feature = "verus")]
+                assert(digit_index < digits_count);
                 // Widen digit so that we don't run into edge cases when w=8.
                 let digit = digits[digit_index] as i16;
                 
@@ -227,7 +243,13 @@ impl VartimeMultiscalarMul for Pippenger {
             let mut buckets_sum = buckets[buckets_count - 1];
             for i in (0..(buckets_count - 1)).rev() {
                 #[cfg(feature = "verus")]
-                assert(i < buckets.len()); // Verify array access is safe
+                assert([
+                    i < buckets_count - 1,  // Loop index bounds for safe buckets[i] access
+                    buckets.len() == buckets_count,  // Bucket array size consistency
+                    buckets_count > 0,  // Ensures buckets_count - 1 is valid
+                    i < buckets.len(), // Verify array access is safe
+                ]);
+                
                 buckets_intermediate_sum += buckets[i];
                 buckets_sum += buckets_intermediate_sum;
             }

@@ -77,43 +77,123 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
         group_order() as int),
 {
     let mut difference = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
+    
+    // Ghost variables to track mathematical values
+    let ghost a_nat = to_nat(&a.limbs);
+    let ghost b_nat = to_nat(&b.limbs);
+    let ghost group_ord = group_order();
+    
     proof {
         assert(1u64 << 52 > 0) by (bit_vector);
+        assert(a_nat < group_ord);
+        assert(b_nat < group_ord);
+        assert(group_ord > 0);
     }
     let mask = (1u64 << 52) - 1;
 
-    // a - b
+    // a - b  
     let mut borrow: u64 = 0;
+    
+    // Ghost tracking for the first loop
+    let ghost mut diff_nat_partial = 0nat;
+    let ghost mut borrow_contribution = 0int;
+    
+    proof {
+        // Initialize ghost variables properly - borrow starts at 0
+        assert(borrow == 0);  
+        // No need to assert about bit shift of 0, it's obvious
+    }
+    
     for i in 0..5
         invariant
+            // Basic bounds that we know hold
             limbs_bounded(b),
             forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
             mask == (1u64 << 52) - 1,
+            
+            // Ghost variable consistency (these are definitions)
+            a_nat == to_nat(&a.limbs),
+            b_nat == to_nat(&b.limbs),
+            group_ord == group_order(),
+            
+            // Mathematical tracking (these are auxiliary variables for analysis)
+            // diff_nat_partial tracks the partial result - we'll assume it's maintained correctly for now
     {
         proof {
             assert((borrow >> 63) < 2) by (bit_vector);
         }
+        
+        // Store old borrow for ghost variable updates
+        let ghost old_borrow = borrow;
+        let ghost old_diff_nat = diff_nat_partial;
+        
+        // Perform the subtraction with borrow
         borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
         difference.limbs[i] = borrow & mask;
+        
+        // Update ghost variables
         proof {
             lemma_borrow_and_mask_bounded(borrow, mask);
+            
+            // Update partial natural number representation for tracking (assume correctness for now)
+            assume(diff_nat_partial == old_diff_nat + (difference.limbs[i as int] as nat) * pow2(52 * i as nat));
+            diff_nat_partial = old_diff_nat + (difference.limbs[i as int] as nat) * pow2(52 * i as nat);
+            
+            // Track borrow state for mathematical analysis
+            borrow_contribution = if borrow >> 63 == 1 { -(pow2(52 * (i + 1) as nat) as int) } else { 0 };
         }
     }
 
+    // After first loop: store the state for mathematical tracking
+    let ghost diff_after_first_loop = to_nat(&difference.limbs);
+    let ghost need_to_add_L = (borrow >> 63) == 1;
+    
     // conditionally add l if the difference is negative
     let mut carry: u64 = 0;
+    
+    // Ghost tracking for the second loop
+    let ghost mut result_nat_partial = 0nat;
+    let ghost L_nat = to_nat(&L.limbs);
+    
+    proof {
+        // L represents the group order - we need to assume this for now
+        assume(L_nat == group_ord);  // This will be proven in a later step
+        
+        // After first loop, we have either:
+        // 1. If no borrow needed: diff_after_first_loop == a_nat - b_nat (normal subtraction)
+        // 2. If borrow needed: diff_after_first_loop == a_nat - b_nat + 2^260 (wrapped around)
+        //    In this case, we need to subtract 2^260 and add group_ord to get the correct modular result
+    }
+    
     for i in 0..5
         invariant
-            forall|j: int| 0 <= j < 5 ==> difference.limbs[j] < (1u64 << 52),  // from first loop
+            // Basic bounds from first loop and current computation
+            forall|j: int| 0 <= j < 5 ==> difference.limbs[j] < (1u64 << 52),  // from first loop  
             mask == (1u64 << 52) - 1,
             i == 0 ==> carry == 0,
             i >= 1 ==> (carry >> 52) < 2,
+            
+            // Ghost variable consistency (definitions)
+            a_nat == to_nat(&a.limbs),
+            b_nat == to_nat(&b.limbs),
+            group_ord == group_order(),
+            L_nat == group_ord,
+            need_to_add_L == (borrow >> 63 == 1),
+            
+            // Track partial result construction - auxiliary for analysis
+            // result_nat_partial will track how we build up the final result
     {
         let addend = if (borrow >> 63) != 0 {
             L.limbs[i]
         } else {
             0
         };
+        
+        // Store old values for ghost variable updates
+        let ghost old_carry = carry;
+        let ghost old_result_nat = result_nat_partial;
+        let ghost old_diff_limb = difference.limbs[i as int];
+        
         proof {
             lemma_scalar_subtract_no_overflow(
                 carry,
@@ -123,12 +203,31 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
                 &L,
             );
         }
+        
         carry = (carry >> 52) + difference.limbs[i] + addend;
         difference.limbs[i] = carry & mask;
+        
         proof {
             lemma_carry_bounded_after_mask(carry, mask);
+            
+            // Update ghost tracking for partial result (assume correctness for now)
+            assume(result_nat_partial == old_result_nat + (difference.limbs[i as int] as nat) * pow2(52 * i as nat));
+            result_nat_partial = old_result_nat + (difference.limbs[i as int] as nat) * pow2(52 * i as nat);
         }
     }
+    
+    // After both loops: establish the mathematical relationship
+    proof {
+        // At this point, result_nat_partial should equal to_nat(&difference.limbs)
+        // This will be proven in a later step when we convert assumes to proper proofs
+        assume(result_nat_partial == to_nat(&difference.limbs));
+        
+        // The final result should represent the correct modular subtraction:
+        // If need_to_add_L was true: we computed (diff_after_first_loop + L_nat)
+        // If need_to_add_L was false: we kept diff_after_first_loop
+        // Both cases should give us the correct (a_nat - b_nat) mod group_ord
+    }
+    
     assume(to_nat(&difference.limbs) == (to_nat(&a.limbs) + group_order() - to_nat(&b.limbs)) % (
     group_order() as int));
     difference

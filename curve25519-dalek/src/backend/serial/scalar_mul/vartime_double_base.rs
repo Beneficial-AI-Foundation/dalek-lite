@@ -20,6 +20,15 @@ use crate::traits::Identity;
 use crate::window::NafLookupTable5;
 
 /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
+/// 
+/// # Preconditions (for verification)
+/// - For double-base scalar multiplication with NAF representation:
+///   - Each scalar.non_adjacent_form(w) returns exactly 256 i8 values
+///   - For width-5 NAF: digits are signed, odd, and in range [-15, 15]
+///   - For width-8 NAF: digits are signed, odd, and in range [-127, 127] 
+///   - NAF arrays accessed at indices [0..255] during iteration from 255 down to 0
+///   - Both a_naf[i] and b_naf[i] array accesses are safe for synchronized processing
+///   - Table select operations require odd positive arguments within NAF width bounds
 pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
     let a_naf = a.non_adjacent_form(5);
 

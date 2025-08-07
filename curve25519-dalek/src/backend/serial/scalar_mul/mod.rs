@@ -31,3 +31,14 @@ pub mod precomputed_straus;
 
 #[cfg(feature = "alloc")]
 pub mod pippenger;
+
+// PHASE 2: Complete algorithmic correctness framework
+#[cfg(feature = "verus")]
+pub mod phase2_unified_correctness;
+
+// PHASE 3: EdDSA signature verification protocol correctness
+#[cfg(feature = "verus")]
+pub mod phase3_signature_verification_correctness;
+
+#[cfg(feature = "verus")]
+pub mod phase3_eddsa_verification_implementation;

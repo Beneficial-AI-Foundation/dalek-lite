@@ -50,3 +50,7 @@ pub mod phase3_key_generation_correctness;
 // PHASE 3: EdDSA protocol composition correctness
 #[cfg(feature = "verus")]
 pub mod phase3_protocol_composition_correctness;
+
+// CAMPAIGN FINALE: Complete EdDSA system correctness - Master end-to-end framework
+#[cfg(feature = "verus")]
+pub mod phase3_eddsa_complete_correctness;

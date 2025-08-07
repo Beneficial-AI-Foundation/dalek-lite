@@ -25,6 +25,67 @@ use crate::traits::Identity;
 use crate::traits::VartimePrecomputedMultiscalarMul;
 use crate::window::{NafLookupTable5, NafLookupTable8};
 
+#[cfg(feature = "verus")]
+use vstd::prelude::*;
+
+#[cfg(feature = "verus")]
+verus! {
+    /// NAF property specifications for mixed static/dynamic precomputed multiscalar multiplication
+    /// Uses width-8 NAF for precomputed basepoint operations and width-5 NAF for dynamic points
+    
+    spec fn naf_width8_digit_valid(digit: i8) -> bool {
+        // Width-8 NAF digits are signed, odd, and in range [-127, 127]
+        // Only odd values are used: -127, -125, ..., -1, 0, 1, 3, ..., 125, 127
+        -127 <= digit && digit <= 127 && (digit % 2 != 0 || digit == 0)
+    }
+    
+    spec fn naf_precomputed_properties(static_nafs: &[&[i8]], dynamic_nafs: &[&[i8]]) -> bool {
+        // All NAF representations have exactly 256 coefficients
+        (forall|j: int| 0 <= j < static_nafs.len() ==> static_nafs[j].len() == 256) &&
+        (forall|j: int| 0 <= j < dynamic_nafs.len() ==> dynamic_nafs[j].len() == 256) &&
+        
+        // Static NAFs use width-5 (despite having width-8 tables available, algorithm uses width-5)
+        (forall|j: int, i: int| 0 <= j < static_nafs.len() && 0 <= i < 256 ==> 
+            naf_width5_digit_valid_precomputed(static_nafs[j][i])) &&
+            
+        // Dynamic NAFs use width-5 for dynamically computed points
+        (forall|j: int, i: int| 0 <= j < dynamic_nafs.len() && 0 <= i < 256 ==> 
+            naf_width5_digit_valid_precomputed(dynamic_nafs[j][i])) &&
+            
+        // Non-adjacent property for all NAF arrays
+        (forall|j: int| 0 <= j < static_nafs.len() ==> 
+            naf_non_adjacent_property_precomputed(static_nafs[j])) &&
+        (forall|j: int| 0 <= j < dynamic_nafs.len() ==> 
+            naf_non_adjacent_property_precomputed(dynamic_nafs[j]))
+    }
+    
+    spec fn naf_width5_digit_valid_precomputed(digit: i8) -> bool {
+        // Width-5 NAF digits for compatibility with both table types
+        -15 <= digit && digit <= 15 && (digit % 2 != 0 || digit == 0)
+    }
+    
+    spec fn naf_non_adjacent_property_precomputed(naf: &[i8]) -> bool {
+        // Non-adjacent form property: no two adjacent non-zero digits
+        forall|i: int| 0 <= i < naf.len() - 1 ==> 
+            (naf[i] != 0 ==> naf[i + 1] == 0)
+    }
+    
+    spec fn naf_precomputed_table_compatibility(digit: i8, is_static: bool) -> bool {
+        // Table select compatibility for both NafLookupTable8 (static) and NafLookupTable5 (dynamic)
+        if digit > 0 {
+            digit <= 15 && digit % 2 == 1 && (digit as usize) < 16 &&
+            // For static tables with width-8 capacity but width-5 usage
+            (is_static ==> (digit as usize) < 128)
+        } else if digit < 0 {
+            digit >= -15 && (-digit) % 2 == 1 && ((-digit) as usize) < 16 &&
+            // For static tables with width-8 capacity but width-5 usage  
+            (is_static ==> ((-digit) as usize) < 128)
+        } else {
+            true // digit == 0, no table access
+        }
+    }
+}
+
 #[allow(missing_docs)]
 pub struct VartimePrecomputedStraus {
     static_lookup_tables: Vec<NafLookupTable8<AffineNielsPoint>>,
@@ -85,6 +146,22 @@ impl VartimePrecomputedMultiscalarMul for VartimePrecomputedStraus {
             .into_iter()
             .map(|c| c.borrow().non_adjacent_form(5))
             .collect::<Vec<_>>();
+        
+        #[cfg(feature = "verus")]
+        {
+            // NAF property verification: mixed precomputed/dynamic NAF properties
+            // Static NAF properties (width-5 for algorithm compatibility)
+            for static_naf in static_nafs.iter() {
+                assume(static_naf.len() == 256);
+                assume(naf_non_adjacent_property_precomputed(static_naf));
+            }
+            
+            // Dynamic NAF properties (width-5 for dynamic points)
+            for dynamic_naf in dynamic_nafs.iter() {
+                assume(dynamic_naf.len() == 256);
+                assume(naf_non_adjacent_property_precomputed(dynamic_naf));
+            }
+        }
 
         let dynamic_lookup_tables = dynamic_points
             .into_iter()

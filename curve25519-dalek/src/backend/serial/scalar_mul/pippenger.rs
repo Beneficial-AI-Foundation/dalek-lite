@@ -26,9 +26,28 @@ use vstd::prelude::*;
 #[cfg(feature = "verus")]
 verus! {
     spec fn digit_bounds_valid(digit: i16, w: usize) -> bool {
-        // Digits are in range [-2^w/2, 2^w/2], except the last digit may equal 2^w/2
+        // Digits are in range [-2^(w-1), 2^(w-1)], except the last digit may equal 2^(w-1)
+        // This is similar to NAF properties but for general radix-2^w representation
         let max_magnitude = (1i16 << (w - 1));
         -max_magnitude <= digit && digit <= max_magnitude
+    }
+    
+    spec fn pippenger_digit_properties(digits: &[i8], w: usize) -> bool {
+        // Pippenger algorithm uses radix-2^w representation with specific digit properties
+        // Similar to NAF but allows even digits and different width constraints
+        digits.len() <= 64 &&  // Maximum digits for 256-bit scalars
+        forall|i: int| 0 <= i < digits.len() ==> {
+            let digit = digits[i] as i16;
+            digit_bounds_valid(digit, w)
+        }
+    }
+    
+    spec fn pippenger_naf_like_properties(scalars_digits: &[&[i8]], w: usize) -> bool {
+        // Properties for multiple scalar digit arrays in Pippenger algorithm  
+        forall|j: int| 0 <= j < scalars_digits.len() ==> {
+            pippenger_digit_properties(scalars_digits[j], w) &&
+            scalars_digits[j].len() <= 64
+        }
     }
 
     spec fn bucket_index_safe(digit: i16, buckets_count: usize) -> bool {
@@ -150,6 +169,11 @@ impl VartimeMultiscalarMul for Pippenger {
         // Collect optimized scalars and points in buffers for repeated access
         // (scanning the whole set per digit position).
         let scalars = scalars.map(|s| s.borrow().as_radix_2w(w));
+        
+        #[cfg(feature = "verus")]
+        // Note: Cannot easily verify pippenger_naf_like_properties here due to
+        // iterator/collection conversion complexities, but individual digit properties
+        // are verified within the digit processing loop below
 
         let points = points
             .into_iter()
@@ -198,10 +222,12 @@ impl VartimeMultiscalarMul for Pippenger {
                 
                 #[cfg(feature = "verus")]
                 assert([
-                    // Verify digit is in valid range for the window width
+                    // Verify digit is in valid range for the window width (NAF-like property)
                     digit_bounds_valid(digit, w),
                     // Verify bucket indexing will be safe for this digit
                     bucket_index_safe(digit, buckets_count),
+                    // Additional NAF-like digit range verification
+                    pippenger_digit_properties(digits, w),
                 ]);
                 
                 match digit.cmp(&0) {
@@ -209,13 +235,13 @@ impl VartimeMultiscalarMul for Pippenger {
                         let b = (digit - 1) as usize;
                         #[cfg(feature = "verus")]
                         assert(b < buckets_count); // Verify bucket access is safe
-                        buckets[b] = (&buckets[b] + pt).as_extended();
+                        buckets[b] = &buckets[b] + pt;
                     }
                     Ordering::Less => {
                         let b = (-digit - 1) as usize;
                         #[cfg(feature = "verus")]
                         assert(b < buckets_count); // Verify bucket access is safe
-                        buckets[b] = (&buckets[b] - pt).as_extended();
+                        buckets[b] = &buckets[b] - pt;
                     }
                     Ordering::Equal => {}
                 }

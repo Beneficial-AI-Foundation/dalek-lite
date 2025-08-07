@@ -44,6 +44,7 @@ pub proof fn lemma_borrow_and_mask_bounded(borrow: u64, mask: u64)
     assert((borrow & mask) <= mask) by (bit_vector);
 }
 
+
 pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -108,6 +109,7 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
     for i in 0..5
         invariant
             // Basic bounds that we know hold
+            limbs_bounded(a),
             limbs_bounded(b),
             forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
             mask == (1u64 << 52) - 1,
@@ -140,6 +142,15 @@ pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
             // After wrapping_sub, borrow is either a positive result or a wrapped negative result
             // In either case, the high bit (bit 63) is either 0 or 1
             assert((borrow >> 63) < 2) by (bit_vector);
+            
+            // Key mathematical insight: The operation we just performed computes:
+            // difference.limbs[i] = (a.limbs[i] - b.limbs[i] - old_borrow_bit) mod 2^52
+            // borrow = 1 if (a.limbs[i] - b.limbs[i] - old_borrow_bit) < 0, else 0
+            // This is the core of multi-precision subtraction with borrowing
+            
+            // Assert bounds that we know from invariants
+            assert(a.limbs[i as int] < (1u64 << 52)); // from limbs_bounded(a)
+            assert(b.limbs[i as int] < (1u64 << 52)); // from limbs_bounded(b)
             
             // Update partial natural number representation for tracking 
             // For now, just update the ghost variable without proving the relationship

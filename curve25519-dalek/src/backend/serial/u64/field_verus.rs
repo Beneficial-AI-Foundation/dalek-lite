@@ -41,44 +41,40 @@ requires
     a0_1 == (a0_0 + carry * 19) as u64,
     a1_1 == (a1_0 + (a0_1 >> 51)) as u64,
     a0_2 == a0_1 & LOW_51_BIT_MASK,
-ensures as_nat(a_hat) % p() == (as_nat(a) * as_nat(a)) % p()
-{
-    // Missing facts from the main function that are needed for verification
-    assume(forall |i: int| 0 <= i < 5 ==> a[i] < 1u64 << 54);
-    assume( as_nat(a) % p() == pow(as_nat(a) as int, pow2(i as nat)) as nat % p() );
     
-    let bound = 1u64 << 54;
-    let bound_sq = 1u128 << 108;
+    // Missing facts from the main function that are needed for verification
+    forall |i: int| 0 <= i < 5 ==> a[i] < 1u64 << 54,
     
     // Bounds on intermediate values from lemmas
-    assume(c0_0 < 77 * bound_sq);
-    assume(c1_0 < 59 * bound_sq);
-    assume(c2_0 < 41 * bound_sq);
-    assume(c3_0 < 23 * bound_sq);
-    assume(c4_0 < 5 * bound_sq);
+    c0_0 < 77 * (1u128 << 108),
+    c1_0 < 59 * (1u128 << 108),
+    c2_0 < 41 * (1u128 << 108),
+    c3_0 < 23 * (1u128 << 108),
+    c4_0 < 5 * (1u128 << 108),
     
     // Carry bounds
-    assume((c1 >> 51) <= (u64::MAX as u128));
-    assume((c2 >> 51) <= (u64::MAX as u128));
-    assume((c3 >> 51) <= (u64::MAX as u128));
-    assume((c4 >> 51) <= (u64::MAX as u128));
-    assume(carry < 724618875532318195u64); // pow2_5933
+    (c1 >> 51) <= (u64::MAX as u128),
+    (c2 >> 51) <= (u64::MAX as u128),
+    (c3 >> 51) <= (u64::MAX as u128),
+    (c4 >> 51) <= (u64::MAX as u128),
+    carry < 724618875532318195u64, // pow2_5933
     
     // Masking bounds
-    assume(a0_0 < (1u64 << 51));
-    assume(a1_0 < (1u64 << 51));
-    assume(a2 < (1u64 << 51));
-    assume(a3 < (1u64 << 51));
-    assume(a4 < (1u64 << 51));
-    assume(a0_2 < (1u64 << 51));
+    a0_0 < (1u64 << 51),
+    a1_0 < (1u64 << 51),
+    a2 < (1u64 << 51),
+    a3 < (1u64 << 51),
+    a4 < (1u64 << 51),
+    a0_2 < (1u64 << 51),
     
     // Arithmetic bounds
-    assume(a0_1 <= u64::MAX);
-    assume(a1_0 + (a0_1 >> 51) < (1u64 << 52));
+    a0_1 <= u64::MAX,
+    a1_0 + (a0_1 >> 51) < (1u64 << 52),
     
     // Core mathematical properties
-    assume(p() > 0);
-    
+    p() > 0,
+ensures as_nat(a_hat) % p() == (as_nat(a) * as_nat(a)) % p()
+{
                     // it suffices to prove as_nat(a_hat) == (as_nat(a))^2 (mod p)
                     // let s = pow2(51) for brevity
 

@@ -17,10 +17,32 @@ verus! {
 
 pub proof fn foo(a_hat: [u64; 5], a0_1: u64, a1_0: u64 ,a2 :u64, a3:u64, a4:u64, a: [u64; 5], 
                  a0_2: u64, a1_1: u64, c0_0: u128, c1: u128, c2: u128, c3: u128, c4: u128, carry: u64,
-                 c1_0: u128, c2_0: u128, c3_0: u128, c4_0: u128, a3_19: u64, a4_19: u64)
+                 c1_0: u128, c2_0: u128, c3_0: u128, c4_0: u128, a3_19: u64, a4_19: u64, a0_0: u64)
+requires
+    // Variable definitions from the caller
+    a_hat == [a0_2, a1_1, a2, a3, a4],
+    a3_19 == (19 * a[3]) as u64,
+    a4_19 == (19 * a[4]) as u64,
+    c0_0 == c0_0_val(a),
+    c1_0 == c1_0_val(a), 
+    c2_0 == c2_0_val(a),
+    c3_0 == c3_0_val(a),
+    c4_0 == c4_0_val(a),
+    c1 == c1_val(a),
+    c2 == c2_val(a),
+    c3 == c3_val(a),
+    c4 == c4_val(a),
+    carry == (c4 >> 51) as u64,
+    a1_0 == (c1 as u64) & LOW_51_BIT_MASK,
+    a2 == (c2 as u64) & LOW_51_BIT_MASK,
+    a3 == (c3 as u64) & LOW_51_BIT_MASK,
+    a4 == (c4 as u64) & LOW_51_BIT_MASK,
+    a0_0 == (c0_0 as u64) & LOW_51_BIT_MASK,
+    a0_1 == (a0_0 + carry * 19) as u64,
+    a1_1 == (a1_0 + (a0_1 >> 51)) as u64,
+    a0_2 == a0_1 & LOW_51_BIT_MASK,
 ensures as_nat(a_hat) % p() == (as_nat(a) * as_nat(a)) % p()
 {
-    assume(false);
                     // it suffices to prove as_nat(a_hat) == (as_nat(a))^2 (mod p)
                     // let s = pow2(51) for brevity
 
@@ -1097,7 +1119,7 @@ impl FieldElement51 {
                 // Loop invariant: after i loops we have as_nat(a) % p = as_nat(self.limbs) ^ (2 ^ i) % p
                 let a_hat = [a0_2, a1_1, a2, a3, a4];
                 assert(as_nat(a_hat) % p() == (as_nat(a) * as_nat(a)) % p() ) by {
-                    foo(a_hat, a0_1, a1_0, a2, a3, a4, a, a0_2, a1_1, c0_0, c1, c2, c3, c4, carry, c1_0, c2_0, c3_0, c4_0, a3_19, a4_19)
+                    foo(a_hat, a0_1, a1_0, a2, a3, a4, a, a0_2, a1_1, c0_0, c1, c2, c3, c4, carry, c1_0, c2_0, c3_0, c4_0, a3_19, a4_19, a0_0)
                 }
 
                 let a_pow_2i_int = pow(as_nat(self.limbs) as int, pow2(i as nat));

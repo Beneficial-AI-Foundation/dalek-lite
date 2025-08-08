@@ -75,6 +75,140 @@ requires
     p() > 0,
 ensures as_nat(a_hat) % p() == (as_nat(a) * as_nat(a)) % p()
 {
+
+
+                pow255_gt_19(); // p > 0
+                lemma2_to64_rest(); // pow2(51 | 54)
+                shift_is_pow2(54);
+
+                assert( (1u64 << 54) * ((19 * (1u64 << 54)) as u64) == 19 * (1u128 << 108)) by (bit_vector);
+                assert(((1u64 << 54) as u128) * ((1u64 << 54) as u128) == (1u128 << 108)) by (bit_vector);
+
+
+
+
+
+
+
+                let bound = 1u64 << 54;
+                let bound19 = (19 * bound) as u64;
+                let bound_sq = 1u128 << 108;
+
+                let pow2_5933 = 724618875532318195u64;
+
+
+
+                term_product_bounds(a, bound);
+
+                // ci_0 < 77 * (1u128 << 108)
+                c_i_0_bounded(a, bound);
+
+                // precond for c_i_shift_bounded
+                assert(77 * (bound * bound) + u64::MAX <= ((u64::MAX as u128) << 51)) by {
+                    assert( 77 * (1u128 << 108)+ u64::MAX <= ((u64::MAX as u128) << 51)) by (compute);
+                }
+                // ci >> 51 <= u64::MAX
+                c_i_shift_bounded(a, bound);
+
+                // bv arithmetic
+                assert(19 < (1u64 << 5)) by (bit_vector);
+                assert((1u64 << 51) < (1u64 << 52)) by (bit_vector);
+                assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
+                assert((1u64 << 54) < (1u64 << 59)) by (bit_vector);
+                assert((1u64 << 54) * (1u64 << 5) == (1u64 << 59)) by (bit_vector);
+                assert(((1u64 << 54) as u128) * ((1u64 << 59) as u128) == (1u128 << 113)) by (bit_vector);
+
+
+                // NOTE: we assert the properties derived from c_i_0_bounded
+                // and c_i_shift_bounded after every variable declaration,
+                // to trigger the solver instantiation
+
+                // ci_0 defs
+
+                assert(c0_0 < 77 * bound_sq);
+
+                assert(c1_0 < 59 * bound_sq);
+
+                assert(c2_0 < 41 * bound_sq);
+
+                assert(c3_0 < 23 * bound_sq);
+
+                assert(c4_0 < 5 * bound_sq);
+
+                // ci defs
+
+                assert((c1 >> 51) <= (u64::MAX as u128));
+
+                assert((c2 >> 51) <= (u64::MAX as u128));
+
+                assert((c3 >> 51) <= (u64::MAX as u128));
+
+                assert((c4 >> 51) <= (u64::MAX as u128));
+
+
+                // a0_0 < (1u64 << 51)
+                masked_lt_51(c0_0 as u64);
+
+
+                lemma_shr_51_fits_u64(c2);
+                // a1_0 < (1u64 << 51)
+                masked_lt_51(c1 as u64);
+
+
+
+                lemma_shr_51_fits_u64(c3);
+                // a2 < (1u64 << 51)
+                masked_lt_51(c2 as u64);
+
+
+
+                // a3 < (1u64 << 51)
+                masked_lt_51(c3 as u64);
+
+
+                // a4 < (1u64 << 51)
+                masked_lt_51(c4 as u64);
+
+                assert(c4 <= c4_0 + (u64::MAX as u128));
+                lemma_shr_51_le(c4, (5 * bound_sq + (u64::MAX as u128)) as u128 );
+
+                // From the comments below:
+                // c4 < 2^110.33  so that carry < 2^59.33
+                // and
+                // a[0] + carry * 19 < 2^51 + 19 * 2^59.33 < 2^63.58
+
+                // ceil(2^59.33)
+
+                assert((5 * (1u128 << 108) + (u64::MAX as u128)) as u128 >> 51 < (pow2_5933 as u128)) by (compute);
+                assert(carry < pow2_5933);
+
+                // a[0] += carry * 19 fits in u64
+                assert((1u64 << 51) + 19 * pow2_5933 <= u64::MAX) by (compute);
+
+                lemma_shr_51_le(a0_1 as u128, u64::MAX as u128);
+                assert( ((u64::MAX as u128) >> 51) < (1u64 << 13) ) by (compute);
+
+                // a1_0 < (1u64 << 51)
+                assert((1u64 << 51) + (1u64 << 13) < (1u64 << 52)) by (compute);
+
+                // Now a[1] < 2^51 + 2^(64 -51) = 2^51 + 2^13 < 2^(51 + epsilon).
+                assert(a1_0 + (a0_1 >> 51) < (1u64 << 52));
+
+                // a0_2 < (1u64 << 51)
+                masked_lt_51(a0_1 as u64);
+
+
+
+
+
+
+
+
+
+
+                assert( 19 * bound <= u64::MAX) by {
+                    assert( 19 * (1u64 << 54) <= u64::MAX) by (compute);
+                }
                     // it suffices to prove as_nat(a_hat) == (as_nat(a))^2 (mod p)
                     // let s = pow2(51) for brevity
 

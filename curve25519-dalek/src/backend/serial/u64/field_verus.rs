@@ -15,7 +15,7 @@ use super::vstd_u128::*;
 
 verus! {
 
-pub proof fn foo(a_hat: [u64; 5], a0_1: u64, a1_0: u64 ,a2 :u64, a3:u64, a4:u64, a: [u64; 5], 
+pub proof fn foo(a_hat: [u64; 5], a0_1: u64, a1_0: u64 ,a2 :u64, a3:u64, a4:u64, a: [u64; 5],
                  a0_2: u64, a1_1: u64, c0_0: u128, c1: u128, c2: u128, c3: u128, c4: u128, carry: u64,
                  c1_0: u128, c2_0: u128, c3_0: u128, c4_0: u128, a3_19: u64, a4_19: u64, a0_0: u64)
 requires
@@ -24,7 +24,7 @@ requires
     a3_19 == (19 * a[3]) as u64,
     a4_19 == (19 * a[4]) as u64,
     c0_0 == c0_0_val(a),
-    c1_0 == c1_0_val(a), 
+    c1_0 == c1_0_val(a),
     c2_0 == c2_0_val(a),
     c3_0 == c3_0_val(a),
     c4_0 == c4_0_val(a),
@@ -41,24 +41,24 @@ requires
     a0_1 == (a0_0 + carry * 19) as u64,
     a1_1 == (a1_0 + (a0_1 >> 51)) as u64,
     a0_2 == a0_1 & LOW_51_BIT_MASK,
-    
+
     // Missing facts from the main function that are needed for verification
     forall |i: int| 0 <= i < 5 ==> a[i] < 1u64 << 54,
-    
+
     // Bounds on intermediate values from lemmas
     c0_0 < 77 * (1u128 << 108),
     c1_0 < 59 * (1u128 << 108),
     c2_0 < 41 * (1u128 << 108),
     c3_0 < 23 * (1u128 << 108),
     c4_0 < 5 * (1u128 << 108),
-    
+
     // Carry bounds
     (c1 >> 51) <= (u64::MAX as u128),
     (c2 >> 51) <= (u64::MAX as u128),
     (c3 >> 51) <= (u64::MAX as u128),
     (c4 >> 51) <= (u64::MAX as u128),
     carry < 724618875532318195u64, // pow2_5933
-    
+
     // Masking bounds
     a0_0 < (1u64 << 51),
     a1_0 < (1u64 << 51),
@@ -66,11 +66,11 @@ requires
     a3 < (1u64 << 51),
     a4 < (1u64 << 51),
     a0_2 < (1u64 << 51),
-    
+
     // Arithmetic bounds
     a0_1 <= u64::MAX,
     a1_0 + (a0_1 >> 51) < (1u64 << 52),
-    
+
     // Core mathematical properties
     p() > 0,
     ensures as_nat(a_hat) % p() == (as_nat(a) * as_nat(a)) % p()

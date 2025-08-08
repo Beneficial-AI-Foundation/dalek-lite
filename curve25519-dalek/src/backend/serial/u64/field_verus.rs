@@ -1260,9 +1260,7 @@ impl FieldElement51 {
                 //---- end of no-overflow proof ----
                 // Loop invariant: after i loops we have as_nat(a) % p = as_nat(self.limbs) ^ (2 ^ i) % p
                 let a_hat = [a0_2, a1_1, a2, a3, a4];
-                assert(as_nat(a_hat) % p() == (as_nat(a) * as_nat(a)) % p() ) by {
-                    pow2k_aux(a_hat, a0_1, a1_0, a2, a3, a4, a, a0_2, a1_1, c0_0, c1, c2, c3, c4, carry, c1_0, c2_0, c3_0, c4_0, a3_19, a4_19, a0_0)
-                }
+                pow2k_aux(a_hat, a0_1, a1_0, a2, a3, a4, a, a0_2, a1_1, c0_0, c1, c2, c3, c4, carry, c1_0, c2_0, c3_0, c4_0, a3_19, a4_19, a0_0);
 
                 let a_pow_2i_int = pow(as_nat(self.limbs) as int, pow2(i as nat));
                 assert(a_pow_2i_int >= 0) by {

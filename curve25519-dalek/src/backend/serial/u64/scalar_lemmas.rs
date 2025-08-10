@@ -243,7 +243,112 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
         seq_u64_to_nat(seq.subrange(0, i + 1)) == 
         seq_u64_to_nat(seq.subrange(0, i)) + seq[i] * pow2(52 * i as nat)
 {
-    assume(false); // TODO: Prove this lemma
+    // Direct approach using the mathematical property
+    // We use the fact that seq_to_nat implements positional notation
+    
+    if i == 0 {
+        // Base case
+        assert(seq_u64_to_nat(seq.subrange(0, 0)) == 0) by {
+            reveal_with_fuel(seq_to_nat, 1);
+        };
+        
+        assert(seq_u64_to_nat(seq.subrange(0, 1)) == seq[0] as nat) by {
+            reveal_with_fuel(seq_to_nat, 2);
+        };
+        
+        lemma2_to64(); // pow2(0) = 1
+        assert(52 * 0 == 0);
+        assert(seq[0] * pow2(0) == seq[0] as nat);
+    } else {
+        // Recursive case - use mathematical property directly
+        // The value of a sequence in positional notation can be decomposed as:
+        // value([a₀, a₁, ..., aᵢ]) = value([a₀, a₁, ..., aᵢ₋₁]) + aᵢ * radix^i
+        
+        let seq_full = seq.subrange(0, i + 1);
+        let seq_prefix = seq.subrange(0, i);
+        
+        // Convert to nat sequences
+        let nat_full = seq_full.map(|j, x| x as nat);
+        let nat_prefix = seq_prefix.map(|j, x| x as nat);
+        
+        assert(nat_full.len() == i + 1);
+        assert(nat_prefix.len() == i);
+        assert(nat_full[i] == seq[i] as nat);
+        assert(forall|j: int| 0 <= j < i ==> nat_full[j] == nat_prefix[j]);
+        
+        // Use the fundamental decomposition property of positional notation
+        lemma_positional_decomposition(nat_full, i);
+        
+        // This gives us: seq_to_nat(nat_full) = seq_to_nat(nat_prefix) + nat_full[i] * pow2(52 * i)
+        assert(seq_to_nat(nat_full) == seq_to_nat(nat_prefix) + nat_full[i] * pow2(52 * i as nat));
+        
+        // Converting back to the original sequences:
+        assert(seq_u64_to_nat(seq_full) == seq_u64_to_nat(seq_prefix) + seq[i] * pow2(52 * i as nat));
+    }
+}
+
+// Simple lemma about positional notation decomposition
+proof fn lemma_positional_decomposition(s: Seq<nat>, pos: int)
+    requires
+        s.len() == pos + 1,
+        pos > 0,
+    ensures
+        seq_to_nat(s) == seq_to_nat(s.subrange(0, pos)) + s[pos] * pow2(52 * pos as nat)
+    decreases pos
+{
+    if pos == 1 {
+        // Base case: s has 2 elements
+        assert(s.len() == 2);
+        let prefix = s.subrange(0, 1);
+        assert(prefix.len() == 1);
+        
+        reveal_with_fuel(seq_to_nat, 3);
+        
+        // seq_to_nat(s) = s[0] + seq_to_nat(s.subrange(1, 2)) * pow2(52)
+        let tail = s.subrange(1, 2);
+        assert(tail.len() == 1);
+        assert(seq_to_nat(tail) == s[1]);
+        assert(seq_to_nat(s) == s[0] + s[1] * pow2(52));
+        
+        // seq_to_nat(prefix) = s[0]
+        assert(seq_to_nat(prefix) == s[0]);
+        
+        // Therefore: s[0] + s[1] * pow2(52) = s[0] + s[1] * pow2(52 * 1)
+        assert(52 * 1 == 52);
+        assert(seq_to_nat(s) == seq_to_nat(prefix) + s[1] * pow2(52 * 1 as nat));
+    } else {
+        // Inductive case: pos > 1
+        reveal_with_fuel(seq_to_nat, 10);
+        
+        // seq_to_nat(s) = s[0] + seq_to_nat(s.subrange(1, pos + 1)) * pow2(52)
+        let tail = s.subrange(1, pos + 1 as int);
+        assert(tail.len() == pos);
+        assert(seq_to_nat(s) == s[0] + seq_to_nat(tail) * pow2(52));
+        
+        // Apply induction hypothesis to tail
+        lemma_positional_decomposition(tail, pos - 1);
+        let tail_prefix = tail.subrange(0, pos - 1);
+        assert(seq_to_nat(tail) == seq_to_nat(tail_prefix) + tail[pos - 1] * pow2(52 * (pos - 1) as nat));
+        assert(tail[pos - 1] == s[pos]);
+        
+        // seq_to_nat(s) = s[0] + (seq_to_nat(tail_prefix) + s[pos] * pow2(52 * (pos - 1))) * pow2(52)
+        // = s[0] + seq_to_nat(tail_prefix) * pow2(52) + s[pos] * pow2(52 * (pos - 1)) * pow2(52)
+        
+        // Now relate to s.subrange(0, pos)
+        let s_prefix = s.subrange(0, pos);
+        assert(s_prefix.len() == pos);
+        assert(s_prefix[0] == s[0]);
+        assert(s_prefix.subrange(1, pos) == tail_prefix);
+        assert(seq_to_nat(s_prefix) == s[0] + seq_to_nat(tail_prefix) * pow2(52));
+        
+        // Combine powers
+        lemma_pow2_adds(52 * (pos - 1) as nat, 52);
+        assert(pow2(52 * (pos - 1) as nat) * pow2(52) == pow2(52 * pos as nat));
+        
+        // Therefore: seq_to_nat(s) = seq_to_nat(s_prefix) + s[pos] * pow2(52 * pos)
+        broadcast use lemma_mul_is_associative;
+        broadcast use lemma_mul_is_distributive_sub;
+    }
 }
 
 

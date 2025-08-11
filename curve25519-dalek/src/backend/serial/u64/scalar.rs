@@ -759,4 +759,97 @@ mod test {
             assert!(reduced[i] == C[i]);
         }
     }
+
+    #[test]
+    fn sub_within_bounds() {
+        use num_bigint::BigInt;
+
+        // Executable version of to_nat
+        fn to_nat_exec(limbs: &[u64; 5]) -> BigInt {
+            let mut result = BigInt::from(0u64);
+            for i in 0..5 {
+                result += BigInt::from(limbs[i]) << (52 * i);
+            }
+            result
+        }
+
+        // Group order as BigInt
+        let group_order =
+            BigInt::from(1u64) << 252 | BigInt::from(27742317777372353535851937790883648493u128);
+
+        // Test case 1: Values within bounds
+        // Using pre-defined test values A and B from the test module
+        let a_nat = to_nat_exec(&A.limbs);
+        let b_nat = to_nat_exec(&B.limbs);
+
+        // Verify the precondition: -group_order <= a - b < group_order
+        let diff = &a_nat - &b_nat;
+        assert!(&diff >= &(-&group_order) && &diff < &group_order);
+
+        // Perform subtraction
+        let result = Scalar52::sub(&A, &B);
+        let result_nat = to_nat_exec(&result.limbs);
+
+        // Verify the postcondition
+        let expected = if diff >= BigInt::from(0) {
+            diff.clone()
+        } else {
+            &diff + &group_order
+        };
+        assert_eq!(result_nat % &group_order, expected % &group_order);
+    }
+
+    #[test]
+    fn sub_outside_bounds() {
+        use num_bigint::BigInt;
+
+        // Executable version of to_nat
+        fn to_nat_exec(limbs: &[u64; 5]) -> BigInt {
+            let mut result = BigInt::from(0u64);
+            for i in 0..5 {
+                result += BigInt::from(limbs[i]) << (52 * i);
+            }
+            result
+        }
+
+        // Group order as BigInt
+        let group_order =
+            BigInt::from(1u64) << 252 | BigInt::from(27742317777372353535851937790883648493u128);
+
+        // Test case 2: Values outside bounds
+        // Create two values where a - b < -group_order
+        // Using a small value for a and a large value for b
+        let a = Scalar52 {
+            limbs: [1, 0, 0, 0, 0], // Very small value
+        };
+
+        // Use X which is close to the maximum scalar value
+        let b = X;
+
+        let a_nat = to_nat_exec(&a.limbs);
+        let b_nat = to_nat_exec(&b.limbs);
+
+        // Verify the precondition is violated: a - b < -group_order
+        let diff = &a_nat - &b_nat;
+        assert!(&diff < &(-&group_order));
+
+        // Perform subtraction
+        let result = Scalar52::sub(&a, &b);
+        let result_nat = to_nat_exec(&result.limbs);
+
+        // Show that the result is NOT equal to (a - b) mod group_order
+        let expected_mod = if diff >= BigInt::from(0) {
+            diff.clone() % &group_order
+        } else {
+            let mut r = diff % &group_order;
+            if r < BigInt::from(0) {
+                r = &r + &group_order;
+            }
+            r
+        };
+
+        // The actual result will be different because sub doesn't properly handle
+        // values outside the bounds
+        assert_ne!(result_nat % &group_order, expected_mod);
+    }
 }

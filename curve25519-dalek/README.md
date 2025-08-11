@@ -82,14 +82,10 @@ Curve arithmetic is implemented and used by one of the following backends:
 
 | Backend           | Selection | Implementation                                           | Bits / Word sizes |
 | :---              | :---      | :---                                                     | :---              |
-| `serial`          | Automatic | An optimized, non-parllel implementation                 | `32` and `64`     |
+| `serial`          | Automatic | An optimized, non-parallel implementation                | `32` and `64`     |
 | `fiat`            | Manual    | Formally verified field arithmetic from [fiat-crypto]    | `32` and `64`     |
-| `simd`            | Automatic | Intel AVX2 accelerated backend                           | `64` only         |
-| `unstable_avx512` | Manual    | Intel AVX512 IFMA accelerated backend (requires nightly) | `64` only         |
 
-At runtime, `curve25519-dalek` selects an arithmetic backend from the set of backends it was compiled to support. For Intel x86-64 targets, unless otherwise specified, it will build itself with `simd` support, and default to `serial` at runtime if the appropriate CPU features aren't detected. See [SIMD backend] for more details.
-
-In the future, `simd` backend may be extended to cover more instruction sets. This change will be non-breaking as this is considered an implementation detail.
+At runtime, `curve25519-dalek` uses the `serial` backend by default, unless the `fiat` backend is explicitly configured.
 
 ## Manual Backend Override
 
@@ -105,9 +101,7 @@ rustflags = ['--cfg=curve25519_dalek_backend="BACKEND"']
 ```
 More info [here](https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags).
 
-Note for contributors: The target backends are not entirely independent of each
-other. The [SIMD backend] directly depends on parts of the serial backend to
-function.
+Note for contributors: The `fiat` and `serial` backends are independent implementations.
 
 ## Bits / Word size
 
@@ -126,7 +120,6 @@ RUSTFLAGS='--cfg curve25519_dalek_bits="SIZE"'
 `SIZE` is `32` or `64`. As in the above section, this can also be placed
 in `~/.cargo/config`.
 
-Note: The [SIMD backend] requires a word size of 64 bits. Attempting to set bits=32 and backend=`simd` will yield a compile error.
 
 ### Cross-compilation
 
@@ -137,18 +130,6 @@ $ rustup target add i686-unknown-linux-gnu
 $ cargo build --target i686-unknown-linux-gnu
 ```
 
-## SIMD backend
-
-When the `simd` backend is selected, the AVX2 or `serial` implementation is selected automatically at runtime, depending on the currently available CPU features. Similarly, when the `unstable_avx512` backend is selected, the AVX512 implementation is selected automatically at runtime if available, or else selection falls through to the aforementioned `simd` backend logic.
-
-For a given CPU feature, you can also specify an appropriate `-C target_feature` to build a binary which assumes the required SIMD instructions are always available. Don't do this if you don't have a good reason.
-
-| Backend | `RUSTFLAGS`                               | Requires nightly? |
-| :---    | :---                                      | :---              |
-| AVX2    | `-C target_feature=+avx2`                 | no                |
-| AVX512  | `-C target_feature=+avx512ifma,+avx512vl` | yes               |
-
-To reiterate, the `simd` backend will NOT use AVX512 code under any circumstance. The only way to enable AVX512 currently is to select the `unstable_avx512` backend and use a nightly compiler.
 
 # Documentation
 
@@ -227,11 +208,7 @@ entrypoints of `curve25519-dalek` functions, but at the entrypoints of
 functions in other crates.
 
 The implementation is memory-safe, and contains no significant
-`unsafe` code.  The SIMD backend uses `unsafe` internally to call SIMD
-intrinsics.  These are marked `unsafe` only because invoking them on an
-inappropriate CPU would cause `SIGILL`, but the entire backend is only
-invoked when the appropriate CPU features are detected at runtime, or
-when the whole program is compiled with the appropriate `target_feature`s.
+`unsafe` code.
 
 # Performance
 
@@ -307,10 +284,8 @@ contributions.
 [docs]: https://docs.rs/curve25519-dalek/
 [contributing]: https://github.com/dalek-cryptography/curve25519-dalek/blob/master/CONTRIBUTING.md
 [criterion]: https://github.com/japaric/criterion.rs
-[parallel_doc]: https://docs.rs/curve25519-dalek/latest/curve25519_dalek/backend/vector/index.html
 [subtle_doc]: https://docs.rs/subtle
 [fiat-crypto]: https://github.com/mit-plv/fiat-crypto
 [semver]: https://semver.org/spec/v2.0.0.html
 [rngcorestd]: https://github.com/rust-random/rand/tree/7aa25d577e2df84a5156f824077bb7f6bdf28d97/rand_core#crate-features
 [zeroize-trait]: https://docs.rs/zeroize/latest/zeroize/trait.Zeroize.html
-[SIMD backend]: #simd-backend

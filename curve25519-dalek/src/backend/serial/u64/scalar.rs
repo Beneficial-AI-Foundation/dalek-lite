@@ -850,6 +850,6 @@ mod test {
 
         // The actual result will be different because sub doesn't properly handle
         // values outside the bounds
-        assert_ne!(result_nat % &group_order, expected_mod);
+        assert_ne!(result_nat % &group_order, expected_mod % &group_order);
     }
 }

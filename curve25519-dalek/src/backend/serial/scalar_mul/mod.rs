@@ -13,7 +13,9 @@
 //!
 //! Note that all of these implementations use serial code for field
 //! arithmetic with the multi-model strategy described in the
-//! `curve_models` module.
+//! `curve_models` module.  The vectorized AVX2 backend has its own
+//! scalar multiplication implementations, since it only uses one
+//! curve model.
 
 #[allow(missing_docs)]
 pub mod variable_base;

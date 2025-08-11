@@ -19,7 +19,7 @@ function match_and_report() {
 cargo clean
 OUT=build_1.txt
 env RUSTFLAGS="--cfg curve25519_dalek_diagnostics=\"build\"" cargo build > "$OUT" 2>&1
-match_and_report "curve25519_dalek_backend is 'serial'" "$OUT"
+match_and_report "curve25519_dalek_backend is 'simd'" "$OUT"
 match_and_report "curve25519_dalek_bits is '64'" "$OUT"
 
 # Override to 32 bits assuming naively 64 bit build host
@@ -50,6 +50,14 @@ env RUSTFLAGS="--cfg curve25519_dalek_diagnostics=\"build\"" cargo build --targe
 match_and_report "curve25519_dalek_backend is 'serial'" "$OUT"
 match_and_report "curve25519_dalek_bits is '32'" "$OUT"
 
+# wasm 32 bit target default
+# Attempted override w/ "simd" should result "serial" addition
+cargo clean
+OUT=build_5_1.txt
+env RUSTFLAGS="--cfg curve25519_dalek_diagnostics=\"build\" --cfg curve25519_dalek_backend=\"simd\"" cargo build --target wasm32-unknown-unknown > "$OUT" 2>&1
+# This override must fail the compilation since "simd" is not available
+# See: issues/532
+match_and_report "Could not override curve25519_dalek_backend to simd" "$OUT"
 
 # fiat override with default 64 bit naive host assumption
 cargo clean

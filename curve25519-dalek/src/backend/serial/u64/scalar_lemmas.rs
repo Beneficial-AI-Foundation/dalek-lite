@@ -1038,19 +1038,10 @@ requires
          b == coeff * (1u64<<10),
 ensures a|b == a+b
 {
-   let mask = ((1u64<<10) - 1) as u64;
-   assert (b & mask  == 0) by (bit_vector)
-        requires
-        b == coeff * (1u64<<10),
-        mask == ((1u64<<10) - 1) as u64;
-   assert (a & mask == a) by (bit_vector)
-        requires
-        a < 1u64<<10,
-        mask == ((1u64<<10) - 1) as u64;
    assert(a|b == a+b) by (bit_vector)
-        requires a & mask == a,
-        b & mask as u64 == 0,
-        mask == ((1u64<<10) - 1) as u64;
+    requires
+            a < 1u64<<10,
+            b == coeff * (1u64<<10);
 }
 
 } // verus!

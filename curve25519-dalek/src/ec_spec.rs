@@ -1,5 +1,5 @@
-use vstd::prelude::*;
 use vstd::arithmetic::power2::*;
+use vstd::prelude::*;
 
 verus! {
 // ===== Elliptic Curve Point Specifications =====

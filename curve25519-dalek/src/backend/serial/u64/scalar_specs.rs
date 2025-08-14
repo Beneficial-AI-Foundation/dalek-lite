@@ -177,7 +177,10 @@ pub open spec fn field_mul(a: nat, b: nat) -> nat {
 }
 
 // Extended GCD for computing modular inverse
-// TODO
+// TODO This looks plausible but could be wrong.
+// Add a lemma proving that it finds the gcd
+// and that it finds the correct coefficients for
+// g = ax+by
 pub open spec fn extended_gcd(a: int, b: int) -> (int, int, int)
     decreases b.abs()
 {
@@ -190,7 +193,7 @@ pub open spec fn extended_gcd(a: int, b: int) -> (int, int, int)
 }
 
 // Modular inverse using extended GCD
-// TODO
+// TODO Add a lemma proving that a * a^-1 = 1
 pub open spec fn field_inv(a: nat) -> nat 
     recommends a % field_prime() != 0
 {

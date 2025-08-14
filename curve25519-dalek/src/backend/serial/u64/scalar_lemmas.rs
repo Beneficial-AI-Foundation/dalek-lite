@@ -1032,13 +1032,17 @@ pub(crate) proof fn lemma_sub_loop2_invariant(difference: Scalar52, i: usize, a:
     }
 }
 
-pub proof fn foo(a: u64, b:u64, mask: u64)
+pub proof fn foo(a: u64, b:u64, mask: u64, coeff: u64)
 requires
-         b & mask  == 0,
          a < 1u64<<10,
+         b == coeff * (1u64<<10),
          mask == ((1u64<<10) - 1) as u64
 ensures a|b == a+b
 {
+   assert (b & mask  == 0) by (bit_vector)
+        requires
+            b == coeff * (1u64<<10),
+         mask == ((1u64<<10) - 1) as u64;
    assert (a & mask == a) by (bit_vector)
         requires
          a < 1u64<<10,

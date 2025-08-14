@@ -133,4 +133,181 @@ pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
     forall|i: int| 0 <= i < 5 ==> s.limbs[i] < (1u64 << 52)
 }
 
+// ===== Elliptic Curve Point Specifications =====
+
+// Field prime for curve25519: p = 2^255 - 19
+pub open spec fn field_prime() -> nat {
+    pow2(255) - 19
+}
+
+// Montgomery curve coefficient A = 486662 for curve25519
+pub open spec fn curve_a() -> nat {
+    486662
+}
+
+// Montgomery curve coefficient B = 1 for curve25519
+pub open spec fn curve_b() -> nat {
+    1
+}
+
+// Point representation on the elliptic curve
+pub enum PointSpec {
+    Zero,  // Point at infinity / identity element
+    Affine(nat, nat),  // (x, y) coordinates as naturals
+}
+
+// Field operations modulo p
+pub open spec fn field_add(a: nat, b: nat) -> nat {
+    (a + b) % field_prime()
+}
+
+pub open spec fn field_sub(a: nat, b: nat) -> nat {
+    if a >= b {
+        (a - b) % field_prime()
+    } else {
+        ((field_prime() - b) + a) % field_prime()
+    }
+}
+
+pub open spec fn field_mul(a: nat, b: nat) -> nat {
+    (a * b) % field_prime()
+}
+
+// Extended GCD for computing modular inverse
+pub open spec fn extended_gcd(a: int, b: int) -> (int, int, int)
+    decreases b.abs()
+{
+    if b == 0 {
+        (a, 1, 0)
+    } else {
+        let (g, x1, y1) = extended_gcd(b, a % b);
+        (g, y1, x1 - (a / b) * y1)
+    }
+}
+
+// Modular inverse using extended GCD
+pub open spec fn field_inv(a: nat) -> nat 
+    recommends a % field_prime() != 0
+{
+    let (g, x, y) = extended_gcd(a as int, field_prime() as int);
+    if x >= 0 {
+        x as nat % field_prime()
+    } else {
+        ((x + field_prime() as int) as nat) % field_prime()
+    }
+}
+
+pub open spec fn field_div(a: nat, b: nat) -> nat
+    recommends b % field_prime() != 0
+{
+    field_mul(a, field_inv(b))
+}
+
+// Check if a point is on the Montgomery curve: B*y^2 = x^3 + A*x^2 + x
+pub open spec fn is_on_curve(p: PointSpec) -> bool {
+    match p {
+        PointSpec::Zero => true,
+        PointSpec::Affine(x, y) => {
+            let x_mod = x % field_prime();
+            let y_mod = y % field_prime();
+            let lhs = field_mul(curve_b(), field_mul(y_mod, y_mod));
+            let x_squared = field_mul(x_mod, x_mod);
+            let x_cubed = field_mul(x_squared, x_mod);
+            let ax_squared = field_mul(curve_a(), x_squared);
+            let rhs = field_add(field_add(x_cubed, ax_squared), x_mod);
+            lhs == rhs
+        }
+    }
+}
+
+// Elliptic curve point addition for Montgomery curves
+pub open spec fn ec_add(p: PointSpec, q: PointSpec) -> PointSpec
+    recommends is_on_curve(p) && is_on_curve(q)
+{
+    match (p, q) {
+        (PointSpec::Zero, _) => q,
+        (_, PointSpec::Zero) => p,
+        (PointSpec::Affine(x_p, y_p), PointSpec::Affine(x_q, y_q)) => {
+            let x_p_mod = x_p % field_prime();
+            let y_p_mod = y_p % field_prime();
+            let x_q_mod = x_q % field_prime();
+            let y_q_mod = y_q % field_prime();
+            
+            if x_p_mod == x_q_mod {
+                if y_p_mod == y_q_mod {
+                    // Point doubling case (P = Q)
+                    if y_p_mod == 0 {
+                        PointSpec::Zero
+                    } else {
+                        // s = (3*x_p^2 + 2*A*x_p + 1) / (2*B*y_p)
+                        let x_p_squared = field_mul(x_p_mod, x_p_mod);
+                        let three_x_p_squared = field_mul(3, x_p_squared);
+                        let two_a_x_p = field_mul(field_mul(2, curve_a()), x_p_mod);
+                        let numerator = field_add(field_add(three_x_p_squared, two_a_x_p), 1);
+                        let two_b_y_p = field_mul(field_mul(2, curve_b()), y_p_mod);
+                        let s = field_div(numerator, two_b_y_p);
+                        
+                        // x_r = B*s^2 - A - 2*x_p
+                        let s_squared = field_mul(s, s);
+                        let b_s_squared = field_mul(curve_b(), s_squared);
+                        let two_x_p = field_mul(2, x_p_mod);
+                        let x_r = field_sub(field_sub(b_s_squared, curve_a()), two_x_p);
+                        
+                        // y_r = s*(x_p - x_r) - y_p
+                        let x_diff = field_sub(x_p_mod, x_r);
+                        let s_x_diff = field_mul(s, x_diff);
+                        let y_r = field_sub(s_x_diff, y_p_mod);
+                        
+                        PointSpec::Affine(x_r, y_r)
+                    }
+                } else {
+                    // y_p = -y_q (mod p), so P + Q = O
+                    PointSpec::Zero
+                }
+            } else {
+                // General case: P != Q
+                // s = (y_q - y_p) / (x_q - x_p)
+                let y_diff = field_sub(y_q_mod, y_p_mod);
+                let x_diff = field_sub(x_q_mod, x_p_mod);
+                let s = field_div(y_diff, x_diff);
+                
+                // x_r = B*s^2 - A - x_p - x_q
+                let s_squared = field_mul(s, s);
+                let b_s_squared = field_mul(curve_b(), s_squared);
+                let x_sum = field_add(x_p_mod, x_q_mod);
+                let x_r = field_sub(field_sub(b_s_squared, curve_a()), x_sum);
+                
+                // y_r = s*(x_p - x_r) - y_p
+                let x_diff = field_sub(x_p_mod, x_r);
+                let s_x_diff = field_mul(s, x_diff);
+                let y_r = field_sub(s_x_diff, y_p_mod);
+                
+                PointSpec::Affine(x_r, y_r)
+            }
+        }
+    }
+}
+
+// Point negation
+pub open spec fn ec_neg(p: PointSpec) -> PointSpec {
+    match p {
+        PointSpec::Zero => PointSpec::Zero,
+        PointSpec::Affine(x, y) => PointSpec::Affine(x, field_sub(0, y))
+    }
+}
+
+// Scalar multiplication (repeated addition)
+pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
+    recommends is_on_curve(p)
+    decreases k
+{
+    if k == 0 {
+        PointSpec::Zero
+    } else if k == 1 {
+        p
+    } else {
+        ec_add(p, ec_scalar_mul(k - 1, p))
+    }
+}
+
 } // verus!

@@ -174,6 +174,7 @@ pub open spec fn field_mul(a: nat, b: nat) -> nat {
 }
 
 // Extended GCD for computing modular inverse
+// TODO
 pub open spec fn extended_gcd(a: int, b: int) -> (int, int, int)
     decreases b.abs()
 {
@@ -186,6 +187,7 @@ pub open spec fn extended_gcd(a: int, b: int) -> (int, int, int)
 }
 
 // Modular inverse using extended GCD
+// TODO
 pub open spec fn field_inv(a: nat) -> nat 
     recommends a % field_prime() != 0
 {
@@ -221,6 +223,12 @@ pub open spec fn is_on_curve(p: PointSpec) -> bool {
 }
 
 // Elliptic curve point addition for Montgomery curves
+// For curve By² = x³ + Ax² + x
+// Addition formula: x₃ = B(y₂-y₁)²/(x₂-x₁)² - A - x₁ - x₂
+//                   y₃ = (2x₁+x₂+A)(y₂-y₁)/(x₂-x₁) - B(y₂-y₁)³/(x₂-x₁)³ - y₁
+// Doubling formula: slope l = (3x₁²+2Ax₁+1)/(2By₁)
+//                   x₃ = Bl² - A - 2x₁
+//                   y₃ = (3x₁+A)l - Bl³ - y₁
 pub open spec fn ec_add(p: PointSpec, q: PointSpec) -> PointSpec
     recommends is_on_curve(p) && is_on_curve(q)
 {
@@ -239,24 +247,27 @@ pub open spec fn ec_add(p: PointSpec, q: PointSpec) -> PointSpec
                     if y_p_mod == 0 {
                         PointSpec::Zero
                     } else {
-                        // s = (3*x_p^2 + 2*A*x_p + 1) / (2*B*y_p)
+                        // Slope: l = (3x₁² + 2Ax₁ + 1) / (2By₁)
                         let x_p_squared = field_mul(x_p_mod, x_p_mod);
                         let three_x_p_squared = field_mul(3, x_p_squared);
                         let two_a_x_p = field_mul(field_mul(2, curve_a()), x_p_mod);
                         let numerator = field_add(field_add(three_x_p_squared, two_a_x_p), 1);
                         let two_b_y_p = field_mul(field_mul(2, curve_b()), y_p_mod);
-                        let s = field_div(numerator, two_b_y_p);
+                        let l = field_div(numerator, two_b_y_p);
                         
-                        // x_r = B*s^2 - A - 2*x_p
-                        let s_squared = field_mul(s, s);
-                        let b_s_squared = field_mul(curve_b(), s_squared);
+                        // x₃ = Bl² - A - 2x₁
+                        let l_squared = field_mul(l, l);
+                        let b_l_squared = field_mul(curve_b(), l_squared);
                         let two_x_p = field_mul(2, x_p_mod);
-                        let x_r = field_sub(field_sub(b_s_squared, curve_a()), two_x_p);
+                        let x_r = field_sub(field_sub(b_l_squared, curve_a()), two_x_p);
                         
-                        // y_r = s*(x_p - x_r) - y_p
-                        let x_diff = field_sub(x_p_mod, x_r);
-                        let s_x_diff = field_mul(s, x_diff);
-                        let y_r = field_sub(s_x_diff, y_p_mod);
+                        // y₃ = (3x₁ + A)l - Bl³ - y₁
+                        let three_x_p = field_mul(3, x_p_mod);
+                        let three_x_p_plus_a = field_add(three_x_p, curve_a());
+                        let term1 = field_mul(three_x_p_plus_a, l);
+                        let l_cubed = field_mul(l_squared, l);
+                        let b_l_cubed = field_mul(curve_b(), l_cubed);
+                        let y_r = field_sub(field_sub(term1, b_l_cubed), y_p_mod);
                         
                         PointSpec::Affine(x_r, y_r)
                     }
@@ -266,21 +277,28 @@ pub open spec fn ec_add(p: PointSpec, q: PointSpec) -> PointSpec
                 }
             } else {
                 // General case: P != Q
-                // s = (y_q - y_p) / (x_q - x_p)
+                // x₃ = B(y₂-y₁)²/(x₂-x₁)² - A - x₁ - x₂
                 let y_diff = field_sub(y_q_mod, y_p_mod);
                 let x_diff = field_sub(x_q_mod, x_p_mod);
-                let s = field_div(y_diff, x_diff);
-                
-                // x_r = B*s^2 - A - x_p - x_q
-                let s_squared = field_mul(s, s);
-                let b_s_squared = field_mul(curve_b(), s_squared);
+                let y_diff_squared = field_mul(y_diff, y_diff);
+                let x_diff_squared = field_mul(x_diff, x_diff);
+                let fraction = field_div(y_diff_squared, x_diff_squared);
+                let b_fraction = field_mul(curve_b(), fraction);
                 let x_sum = field_add(x_p_mod, x_q_mod);
-                let x_r = field_sub(field_sub(b_s_squared, curve_a()), x_sum);
+                let x_r = field_sub(field_sub(b_fraction, curve_a()), x_sum);
                 
-                // y_r = s*(x_p - x_r) - y_p
-                let x_diff = field_sub(x_p_mod, x_r);
-                let s_x_diff = field_mul(s, x_diff);
-                let y_r = field_sub(s_x_diff, y_p_mod);
+                // y₃ = (2x₁+x₂+A)(y₂-y₁)/(x₂-x₁) - B(y₂-y₁)³/(x₂-x₁)³ - y₁
+                let two_x_p = field_mul(2, x_p_mod);
+                let sum_term = field_add(field_add(two_x_p, x_q_mod), curve_a());
+                let slope_term = field_div(y_diff, x_diff);
+                let term1 = field_mul(sum_term, slope_term);
+                
+                let y_diff_cubed = field_mul(y_diff_squared, y_diff);
+                let x_diff_cubed = field_mul(x_diff_squared, x_diff);
+                let fraction2 = field_div(y_diff_cubed, x_diff_cubed);
+                let b_fraction2 = field_mul(curve_b(), fraction2);
+                
+                let y_r = field_sub(field_sub(term1, b_fraction2), y_p_mod);
                 
                 PointSpec::Affine(x_r, y_r)
             }

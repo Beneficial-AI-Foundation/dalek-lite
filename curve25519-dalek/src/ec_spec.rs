@@ -5,6 +5,7 @@ verus! {
 // https://en.wikipedia.org/wiki/Curve25519 gives the curve in Montgomery form
 // Hence use formulas from https://en.wikipedia.org/wiki/Montgomery_curve#Addition
 // and https://en.wikipedia.org/wiki/Montgomery_curve#Doubling
+// Might be better to use https://eprint.iacr.org/2017/212.pdf as a reference
 
 // Field prime for curve25519: p = 2^255 - 19
 pub open spec fn field_prime() -> nat {
@@ -48,7 +49,7 @@ pub open spec fn field_mul(a: nat, b: nat) -> nat {
 // TODO This looks plausible but could be wrong.
 // Add a lemma proving that it finds the gcd
 // and that it finds the correct coefficients for
-// g = ax+by
+// g = ax+by, i.e. https://en.wikipedia.org/wiki/B%C3%A9zout%27s_identity
 pub open spec fn extended_gcd(a: int, b: int) -> (int, int, int)
     decreases b.abs()
 {
@@ -182,7 +183,7 @@ pub open spec fn ec_add(p: PointSpec, q: PointSpec) -> PointSpec
 }
 
 // Scalar multiplication (repeated addition)
-// The inefficient but correct way
+// The inefficient but easy-to-read way
 pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
     recommends is_on_curve(p)
     decreases k

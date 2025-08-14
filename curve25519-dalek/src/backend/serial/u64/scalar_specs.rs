@@ -134,6 +134,9 @@ pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
 }
 
 // ===== Elliptic Curve Point Specifications =====
+// https://en.wikipedia.org/wiki/Curve25519 gives the curve in Montgomery form
+// Hence use formulas from https://en.wikipedia.org/wiki/Montgomery_curve#Addition
+// and https://en.wikipedia.org/wiki/Montgomery_curve#Doubling
 
 // Field prime for curve25519: p = 2^255 - 19
 pub open spec fn field_prime() -> nat {
@@ -222,6 +225,7 @@ pub open spec fn is_on_curve(p: PointSpec) -> bool {
     }
 }
 
+
 // Elliptic curve point addition for Montgomery curves
 // For curve By² = x³ + Ax² + x
 // Addition formula: x₃ = B(y₂-y₁)²/(x₂-x₁)² - A - x₁ - x₂
@@ -306,15 +310,8 @@ pub open spec fn ec_add(p: PointSpec, q: PointSpec) -> PointSpec
     }
 }
 
-// Point negation
-pub open spec fn ec_neg(p: PointSpec) -> PointSpec {
-    match p {
-        PointSpec::Zero => PointSpec::Zero,
-        PointSpec::Affine(x, y) => PointSpec::Affine(x, field_sub(0, y))
-    }
-}
-
 // Scalar multiplication (repeated addition)
+// The inefficient but correct way
 pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
     recommends is_on_curve(p)
     decreases k

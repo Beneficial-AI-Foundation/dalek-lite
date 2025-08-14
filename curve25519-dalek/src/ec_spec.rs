@@ -1,4 +1,5 @@
 use vstd::prelude::*;
+use vstd::arithmetic::power2::*;
 
 verus! {
 // ===== Elliptic Curve Point Specifications =====
@@ -9,7 +10,7 @@ verus! {
 
 // Field prime for curve25519: p = 2^255 - 19
 pub open spec fn field_prime() -> nat {
-    pow2(255) - 19
+    (pow2(255) - 19) as nat
 }
 
 // Montgomery curve coefficient A = 486662 for curve25519
@@ -35,9 +36,9 @@ pub open spec fn field_add(a: nat, b: nat) -> nat {
 
 pub open spec fn field_sub(a: nat, b: nat) -> nat {
     if a >= b {
-        (a - b) % field_prime()
+        ((a - b) % field_prime() as int) as nat
     } else {
-        ((field_prime() - b) + a) % field_prime()
+        (((field_prime() - b) + a) % field_prime() as int) as nat
     }
 }
 
@@ -51,7 +52,7 @@ pub open spec fn field_mul(a: nat, b: nat) -> nat {
 // and that it finds the correct coefficients for
 // g = ax+by, i.e. https://en.wikipedia.org/wiki/B%C3%A9zout%27s_identity
 pub open spec fn extended_gcd(a: int, b: int) -> (int, int, int)
-    decreases b.abs()
+    decreases if b >= 0 { b } else { -b }
 {
     if b == 0 {
         (a, 1, 0)
@@ -196,7 +197,7 @@ pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
     } else if k == 1 {
         p
     } else {
-        ec_add(p, ec_scalar_mul(k - 1, p))
+        ec_add(p, ec_scalar_mul((k - 1) as nat, p))
     }
 }
 
@@ -204,3 +205,5 @@ pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
 // from_edwards_point, and from any other representation used by curve-dalek
 
 } // verus!
+
+fn main() {}

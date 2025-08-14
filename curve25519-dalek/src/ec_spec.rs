@@ -97,6 +97,9 @@ pub open spec fn is_on_curve(p: PointSpec) -> bool {
     }
 }
 
+// TODO We could prove a lemma saying that p+q also lies on the curve,
+// and that p+q is on the same line as p and q (up to negation, which
+// maybe Montgomery form doesn't care about?)
 
 // Elliptic curve point addition for Montgomery curves
 // For curve By² = x³ + Ax² + x
@@ -196,5 +199,8 @@ pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
         ec_add(p, ec_scalar_mul(k - 1, p))
     }
 }
+
+// TODO Add conversion functions from_montgomery_point,
+// from_edwards_point, and from any other representation used by curve-dalek
 
 } // verus!

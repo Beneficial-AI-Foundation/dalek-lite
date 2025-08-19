@@ -128,10 +128,10 @@ use subtle::ConstantTimeEq;
 // #[cfg(feature = "zeroize")]
 // use zeroize::Zeroize;
 
-use crate::constants;
+use crate::curve_constants;
 
-use crate::field::FieldElement;
-use crate::scalar::{Scalar, clamp_integer};
+use crate::curve_field::FieldElement;
+use crate::curve_scalar::{Scalar, clamp_integer};
 
 use crate::montgomery::MontgomeryPoint;
 
@@ -230,7 +230,7 @@ mod decompress {
         let Z = FieldElement::ONE;
         let YY = Y.square();
         let u = &YY - &Z;                            // u =  y²-1
-        let v = &(&YY * &constants::EDWARDS_D) + &Z; // v = dy²+1
+        let v = &(&YY * &curve_constants::EDWARDS_D) + &Z; // v = dy²+1
         let (is_valid_y_coord, X) = FieldElement::sqrt_ratio_i(&u, &v);
 
         (is_valid_y_coord, X, Y, Z)
@@ -274,7 +274,7 @@ impl TryFrom<&[u8]> for CompressedEdwardsY {
 // serializers to serialize those structures.
 
 // #[cfg(feature = "digest")]
-// use constants::ED25519_SQRTAM2;
+// use curve_constants::ED25519_SQRTAM2;
 #[cfg(feature = "serde")]
 use serde::de::Visitor;
 #[cfg(feature = "serde")]
@@ -530,7 +530,7 @@ impl EdwardsPoint {
             Y_plus_X: &self.Y + &self.X,
             Y_minus_X: &self.Y - &self.X,
             Z: self.Z,
-            T2d: &self.T * &constants::EDWARDS_D2,
+            T2d: &self.T * &curve_constants::EDWARDS_D2,
         }
     }
 
@@ -552,7 +552,7 @@ impl EdwardsPoint {
         let recip = self.Z.invert();
         let x = &self.X * &recip;
         let y = &self.Y * &recip;
-        let xy2d = &(&x * &y) * &constants::EDWARDS_D2;
+        let xy2d = &(&x * &y) * &curve_constants::EDWARDS_D2;
         AffineNielsPoint {
             y_plus_x: &y + &x,
             y_minus_x: &y - &x,
@@ -850,12 +850,12 @@ impl EdwardsPoint {
     pub fn mul_base(scalar: &Scalar) -> Self {
         #[cfg(not(feature = "precomputed-tables"))]
         {
-            scalar * constants::ED25519_BASEPOINT_POINT
+            curve_constants::ED25519_BASEPOINT_POINT * scalar
         }
 
         #[cfg(feature = "precomputed-tables")]
         {
-            scalar * constants::ED25519_BASEPOINT_TABLE
+            curve_constants::ED25519_BASEPOINT_TABLE * scalar
         }
     }
 
@@ -1032,7 +1032,7 @@ macro_rules! impl_basepoint_table {
         ///
         /// * [`EdwardsBasepointTableRadix16`]: 30KB, 64A
         ///   (this is the default size, and is used for
-        ///   [`constants::ED25519_BASEPOINT_TABLE`])
+        ///   [`curve_constants::ED25519_BASEPOINT_TABLE`])
         /// * [`EdwardsBasepointTableRadix64`]: 120KB, 43A
         /// * [`EdwardsBasepointTableRadix128`]: 240KB, 37A
         /// * [`EdwardsBasepointTableRadix256`]: 480KB, 33A
@@ -1324,9 +1324,9 @@ impl EdwardsPoint {
     /// use curve25519_dalek::constants;
     ///
     /// // Generator of the prime-order subgroup
-    /// let P = constants::ED25519_BASEPOINT_POINT;
+    /// let P = curve_constants::ED25519_BASEPOINT_POINT;
     /// // Generator of the torsion subgroup
-    /// let Q = constants::EIGHT_TORSION[1];
+    /// let Q = curve_constants::EIGHT_TORSION[1];
     ///
     /// // P has large order
     /// assert_eq!(P.is_small_order(), false);
@@ -1354,9 +1354,9 @@ impl EdwardsPoint {
     /// use curve25519_dalek::constants;
     ///
     /// // Generator of the prime-order subgroup
-    /// let P = constants::ED25519_BASEPOINT_POINT;
+    /// let P = curve_constants::ED25519_BASEPOINT_POINT;
     /// // Generator of the torsion subgroup
-    /// let Q = constants::EIGHT_TORSION[1];
+    /// let Q = curve_constants::EIGHT_TORSION[1];
     ///
     /// // P is torsion-free
     /// assert_eq!(P.is_torsion_free(), true);
@@ -1365,7 +1365,7 @@ impl EdwardsPoint {
     /// assert_eq!((P+Q).is_torsion_free(), false);
     /// ```
     pub fn is_torsion_free(&self) -> bool {
-        (self * constants::BASEPOINT_ORDER).is_identity()
+        (self * curve_constants::BASEPOINT_ORDER).is_identity()
     }
 }
 
@@ -1410,7 +1410,7 @@ impl group::Group for EdwardsPoint {
     }
 
     fn generator() -> Self {
-        constants::ED25519_BASEPOINT_POINT
+        curve_constants::ED25519_BASEPOINT_POINT
     }
 
     fn is_identity(&self) -> Choice {
@@ -1711,7 +1711,7 @@ impl CofactorGroup for EdwardsPoint {
     }
 
     fn is_torsion_free(&self) -> Choice {
-        (self * constants::BASEPOINT_ORDER).ct_eq(&Self::identity())
+        (self * curve_constants::BASEPOINT_ORDER).ct_eq(&Self::identity())
     }
 }
 
@@ -1729,7 +1729,7 @@ impl CofactorGroup for EdwardsPoint {
 //     use alloc::vec::Vec;
 
 //     #[cfg(feature = "precomputed-tables")]
-//     use crate::constants::ED25519_BASEPOINT_TABLE;
+//     use crate::curve_constants::ED25519_BASEPOINT_TABLE;
 
 //     /// X coordinate of the basepoint.
 //     /// = 15112221349535400772501151409588531511454012693041857206046113283949847762202
@@ -1790,30 +1790,30 @@ impl CofactorGroup for EdwardsPoint {
 //     #[test]
 //     fn basepoint_decompression_compression() {
 //         let base_X = FieldElement::from_bytes(&BASE_X_COORD_BYTES);
-//         let bp = constants::ED25519_BASEPOINT_COMPRESSED
+//         let bp = curve_constants::ED25519_BASEPOINT_COMPRESSED
 //             .decompress()
 //             .unwrap();
 //         assert!(bp.is_valid());
 //         // Check that decompression actually gives the correct X coordinate
 //         assert_eq!(base_X, bp.X);
-//         assert_eq!(bp.compress(), constants::ED25519_BASEPOINT_COMPRESSED);
+//         assert_eq!(bp.compress(), curve_constants::ED25519_BASEPOINT_COMPRESSED);
 //     }
 
 //     /// Test sign handling in decompression
 //     #[test]
 //     fn decompression_sign_handling() {
 //         // Manually set the high bit of the last byte to flip the sign
-//         let mut minus_basepoint_bytes = *constants::ED25519_BASEPOINT_COMPRESSED.as_bytes();
+//         let mut minus_basepoint_bytes = *curve_constants::ED25519_BASEPOINT_COMPRESSED.as_bytes();
 //         minus_basepoint_bytes[31] |= 1 << 7;
 //         let minus_basepoint = CompressedEdwardsY(minus_basepoint_bytes)
 //             .decompress()
 //             .unwrap();
 //         // Test projective coordinates exactly since we know they should
 //         // only differ by a flipped sign.
-//         assert_eq!(minus_basepoint.X, -(&constants::ED25519_BASEPOINT_POINT.X));
-//         assert_eq!(minus_basepoint.Y, constants::ED25519_BASEPOINT_POINT.Y);
-//         assert_eq!(minus_basepoint.Z, constants::ED25519_BASEPOINT_POINT.Z);
-//         assert_eq!(minus_basepoint.T, -(&constants::ED25519_BASEPOINT_POINT.T));
+//         assert_eq!(minus_basepoint.X, -(&curve_constants::ED25519_BASEPOINT_POINT.X));
+//         assert_eq!(minus_basepoint.Y, curve_constants::ED25519_BASEPOINT_POINT.Y);
+//         assert_eq!(minus_basepoint.Z, curve_constants::ED25519_BASEPOINT_POINT.Z);
+//         assert_eq!(minus_basepoint.T, -(&curve_constants::ED25519_BASEPOINT_POINT.T));
 //     }
 
 //     /// Test that computing 1*basepoint gives the correct basepoint.
@@ -1822,7 +1822,7 @@ impl CofactorGroup for EdwardsPoint {
 //     fn basepoint_mult_one_vs_basepoint() {
 //         let bp = ED25519_BASEPOINT_TABLE * &Scalar::ONE;
 //         let compressed = bp.compress();
-//         assert_eq!(compressed, constants::ED25519_BASEPOINT_COMPRESSED);
+//         assert_eq!(compressed, curve_constants::ED25519_BASEPOINT_COMPRESSED);
 //     }
 
 //     /// Test that `EdwardsBasepointTable::basepoint()` gives the correct basepoint.
@@ -1830,14 +1830,14 @@ impl CofactorGroup for EdwardsPoint {
 //     #[test]
 //     fn basepoint_table_basepoint_function_correct() {
 //         let bp = ED25519_BASEPOINT_TABLE.basepoint();
-//         assert_eq!(bp.compress(), constants::ED25519_BASEPOINT_COMPRESSED);
+//         assert_eq!(bp.compress(), curve_constants::ED25519_BASEPOINT_COMPRESSED);
 //     }
 
 //     /// Test `impl Add<EdwardsPoint> for EdwardsPoint`
 //     /// using basepoint + basepoint versus the 2*basepoint constant.
 //     #[test]
 //     fn basepoint_plus_basepoint_vs_basepoint2() {
-//         let bp = constants::ED25519_BASEPOINT_POINT;
+//         let bp = curve_constants::ED25519_BASEPOINT_POINT;
 //         let bp_added = bp + bp;
 //         assert_eq!(bp_added.compress(), BASE2_CMPRSSD);
 //     }
@@ -1846,7 +1846,7 @@ impl CofactorGroup for EdwardsPoint {
 //     /// using the basepoint, basepoint2 constants
 //     #[test]
 //     fn basepoint_plus_basepoint_projective_niels_vs_basepoint2() {
-//         let bp = constants::ED25519_BASEPOINT_POINT;
+//         let bp = curve_constants::ED25519_BASEPOINT_POINT;
 //         let bp_added = (&bp + &bp.as_projective_niels()).as_extended();
 //         assert_eq!(bp_added.compress(), BASE2_CMPRSSD);
 //     }
@@ -1855,7 +1855,7 @@ impl CofactorGroup for EdwardsPoint {
 //     /// using the basepoint, basepoint2 constants
 //     #[test]
 //     fn basepoint_plus_basepoint_affine_niels_vs_basepoint2() {
-//         let bp = constants::ED25519_BASEPOINT_POINT;
+//         let bp = curve_constants::ED25519_BASEPOINT_POINT;
 //         let bp_affine_niels = bp.as_affine_niels();
 //         let bp_added = (&bp + &bp_affine_niels).as_extended();
 //         assert_eq!(bp_added.compress(), BASE2_CMPRSSD);
@@ -1898,7 +1898,7 @@ impl CofactorGroup for EdwardsPoint {
 //     /// Test that multiplication by the basepoint order kills the basepoint
 //     #[test]
 //     fn basepoint_mult_by_basepoint_order() {
-//         let should_be_id = EdwardsPoint::mul_base(&constants::BASEPOINT_ORDER);
+//         let should_be_id = EdwardsPoint::mul_base(&curve_constants::BASEPOINT_ORDER);
 //         assert!(should_be_id.is_identity());
 //     }
 
@@ -1907,14 +1907,14 @@ impl CofactorGroup for EdwardsPoint {
 //     #[test]
 //     fn test_precomputed_basepoint_mult() {
 //         let aB_1 = ED25519_BASEPOINT_TABLE * &A_SCALAR;
-//         let aB_2 = constants::ED25519_BASEPOINT_POINT * A_SCALAR;
+//         let aB_2 = curve_constants::ED25519_BASEPOINT_POINT * A_SCALAR;
 //         assert_eq!(aB_1.compress(), aB_2.compress());
 //     }
 
 //     /// Test scalar_mul versus a known scalar multiple from ed25519.py
 //     #[test]
 //     fn scalar_mul_vs_ed25519py() {
-//         let aB = constants::ED25519_BASEPOINT_POINT * A_SCALAR;
+//         let aB = curve_constants::ED25519_BASEPOINT_POINT * A_SCALAR;
 //         assert_eq!(aB.compress(), A_TIMES_BASEPOINT);
 //     }
 
@@ -1922,7 +1922,7 @@ impl CofactorGroup for EdwardsPoint {
 //     #[test]
 //     fn basepoint_double_vs_basepoint2() {
 //         assert_eq!(
-//             constants::ED25519_BASEPOINT_POINT.double().compress(),
+//             curve_constants::ED25519_BASEPOINT_POINT.double().compress(),
 //             BASE2_CMPRSSD
 //         );
 //     }
@@ -1939,7 +1939,7 @@ impl CofactorGroup for EdwardsPoint {
 //     #[cfg(feature = "precomputed-tables")]
 //     #[test]
 //     fn basepoint_tables() {
-//         let P = &constants::ED25519_BASEPOINT_POINT;
+//         let P = &curve_constants::ED25519_BASEPOINT_POINT;
 //         let a = A_SCALAR;
 
 //         let table_radix16 = EdwardsBasepointTableRadix16::create(P);
@@ -1967,7 +1967,7 @@ impl CofactorGroup for EdwardsPoint {
 //     #[cfg(feature = "precomputed-tables")]
 //     #[test]
 //     fn basepoint_tables_unreduced_scalar() {
-//         let P = &constants::ED25519_BASEPOINT_POINT;
+//         let P = &curve_constants::ED25519_BASEPOINT_POINT;
 //         let a = crate::scalar::test::LARGEST_UNREDUCED_SCALAR;
 
 //         let table_radix16 = EdwardsBasepointTableRadix16::create(P);
@@ -1994,18 +1994,18 @@ impl CofactorGroup for EdwardsPoint {
 //     #[test]
 //     fn basepoint_projective_extended_round_trip() {
 //         assert_eq!(
-//             constants::ED25519_BASEPOINT_POINT
+//             curve_constants::ED25519_BASEPOINT_POINT
 //                 .as_projective()
 //                 .as_extended()
 //                 .compress(),
-//             constants::ED25519_BASEPOINT_COMPRESSED
+//             curve_constants::ED25519_BASEPOINT_COMPRESSED
 //         );
 //     }
 
 //     /// Test computing 16*basepoint vs mul_by_pow_2(4)
 //     #[test]
 //     fn basepoint16_vs_mul_by_pow_2_4() {
-//         let bp16 = constants::ED25519_BASEPOINT_POINT.mul_by_pow_2(4);
+//         let bp16 = curve_constants::ED25519_BASEPOINT_POINT.mul_by_pow_2(4);
 //         assert_eq!(bp16.compress(), BASE16_CMPRSSD);
 //     }
 
@@ -2019,7 +2019,7 @@ impl CofactorGroup for EdwardsPoint {
 //         let random_point = {
 //             let mut b = [0u8; 32];
 //             csprng.try_fill_bytes(&mut b).unwrap();
-//             EdwardsPoint::mul_base_clamped(b) + constants::EIGHT_TORSION[1]
+//             EdwardsPoint::mul_base_clamped(b) + curve_constants::EIGHT_TORSION[1]
 //         };
 //         // Make a basepoint table from the random point. We'll use this with mul_base_clamped
 //         #[cfg(feature = "precomputed-tables")]
@@ -2032,7 +2032,7 @@ impl CofactorGroup for EdwardsPoint {
 //         let a_bytes = [0xff; 32];
 //         assert_eq!(
 //             EdwardsPoint::mul_base_clamped(a_bytes),
-//             constants::ED25519_BASEPOINT_POINT.mul_clamped(a_bytes)
+//             curve_constants::ED25519_BASEPOINT_POINT.mul_clamped(a_bytes)
 //         );
 //         #[cfg(feature = "precomputed-tables")]
 //         assert_eq!(
@@ -2048,7 +2048,7 @@ impl CofactorGroup for EdwardsPoint {
 
 //             assert_eq!(
 //                 EdwardsPoint::mul_base_clamped(a_bytes),
-//                 constants::ED25519_BASEPOINT_POINT.mul_clamped(a_bytes)
+//                 curve_constants::ED25519_BASEPOINT_POINT.mul_clamped(a_bytes)
 //             );
 //             #[cfg(feature = "precomputed-tables")]
 //             assert_eq!(
@@ -2062,7 +2062,7 @@ impl CofactorGroup for EdwardsPoint {
 //     #[cfg(feature = "alloc")]
 //     fn impl_sum() {
 //         // Test that sum works for non-empty iterators
-//         let BASE = constants::ED25519_BASEPOINT_POINT;
+//         let BASE = curve_constants::ED25519_BASEPOINT_POINT;
 
 //         let s1 = Scalar::from(999u64);
 //         let P1 = BASE * s1;
@@ -2094,7 +2094,7 @@ impl CofactorGroup for EdwardsPoint {
 //     fn conditional_assign_for_affine_niels_point() {
 //         let id = AffineNielsPoint::identity();
 //         let mut p1 = AffineNielsPoint::identity();
-//         let bp = constants::ED25519_BASEPOINT_POINT.as_affine_niels();
+//         let bp = curve_constants::ED25519_BASEPOINT_POINT.as_affine_niels();
 
 //         p1.conditional_assign(&bp, Choice::from(0));
 //         assert_eq!(p1, id);
@@ -2105,9 +2105,9 @@ impl CofactorGroup for EdwardsPoint {
 //     #[test]
 //     fn is_small_order() {
 //         // The basepoint has large prime order
-//         assert!(!constants::ED25519_BASEPOINT_POINT.is_small_order());
-//         // constants::EIGHT_TORSION has all points of small order.
-//         for torsion_point in &constants::EIGHT_TORSION {
+//         assert!(!curve_constants::ED25519_BASEPOINT_POINT.is_small_order());
+//         // curve_constants::EIGHT_TORSION has all points of small order.
+//         for torsion_point in &curve_constants::EIGHT_TORSION {
 //             assert!(torsion_point.is_small_order());
 //         }
 //     }
@@ -2134,7 +2134,7 @@ impl CofactorGroup for EdwardsPoint {
 //         // TODO(tarcieri): proptests?
 //         // Make some points deterministically then randomly
 //         let mut points = (1u64..16)
-//             .map(|n| constants::ED25519_BASEPOINT_POINT * Scalar::from(n))
+//             .map(|n| curve_constants::ED25519_BASEPOINT_POINT * Scalar::from(n))
 //             .collect::<Vec<_>>();
 //         points.extend(core::iter::repeat_with(|| EdwardsPoint::random(&mut rng)).take(100));
 //         let compressed = EdwardsPoint::compress_batch(&points);
@@ -2148,7 +2148,7 @@ impl CofactorGroup for EdwardsPoint {
 //     #[test]
 //     fn is_identity() {
 //         assert!(EdwardsPoint::identity().is_identity());
-//         assert!(!constants::ED25519_BASEPOINT_POINT.is_identity());
+//         assert!(!curve_constants::ED25519_BASEPOINT_POINT.is_identity());
 //     }
 
 //     /// Rust's debug builds have overflow and underflow trapping,
@@ -2163,7 +2163,7 @@ impl CofactorGroup for EdwardsPoint {
 //     /// the type system and prove correctness).
 //     #[test]
 //     fn monte_carlo_overflow_underflow_debug_assert_test() {
-//         let mut P = constants::ED25519_BASEPOINT_POINT;
+//         let mut P = curve_constants::ED25519_BASEPOINT_POINT;
 //         // N.B. each scalar_mul does 1407 field mults, 1024 field squarings,
 //         // so this does ~ 1M of each operation.
 //         for _ in 0..1_000 {
@@ -2173,7 +2173,7 @@ impl CofactorGroup for EdwardsPoint {
 
 //     #[test]
 //     fn scalarmult_extended_point_works_both_ways() {
-//         let G: EdwardsPoint = constants::ED25519_BASEPOINT_POINT;
+//         let G: EdwardsPoint = curve_constants::ED25519_BASEPOINT_POINT;
 //         let s: Scalar = A_SCALAR;
 
 //         let P1 = G * s;
@@ -2340,7 +2340,7 @@ impl CofactorGroup for EdwardsPoint {
 //             let A = A_TIMES_BASEPOINT.decompress().unwrap();
 //             let result = EdwardsPoint::vartime_multiscalar_mul(
 //                 &[A_SCALAR, B_SCALAR],
-//                 &[A, constants::ED25519_BASEPOINT_POINT],
+//                 &[A, curve_constants::ED25519_BASEPOINT_POINT],
 //             );
 //             assert_eq!(result.compress(), DOUBLE_SCALAR_MULT_RESULT);
 //         }
@@ -2351,11 +2351,11 @@ impl CofactorGroup for EdwardsPoint {
 //             let A = A_TIMES_BASEPOINT.decompress().unwrap();
 //             let result_vartime = EdwardsPoint::vartime_multiscalar_mul(
 //                 &[A_SCALAR, B_SCALAR],
-//                 &[A, constants::ED25519_BASEPOINT_POINT],
+//                 &[A, curve_constants::ED25519_BASEPOINT_POINT],
 //             );
 //             let result_consttime = EdwardsPoint::multiscalar_mul(
 //                 &[A_SCALAR, B_SCALAR],
-//                 &[A, constants::ED25519_BASEPOINT_POINT],
+//                 &[A, curve_constants::ED25519_BASEPOINT_POINT],
 //             );
 
 //             assert_eq!(result_vartime.compress(), result_consttime.compress());
@@ -2367,8 +2367,8 @@ impl CofactorGroup for EdwardsPoint {
 //     fn serde_bincode_basepoint_roundtrip() {
 //         use bincode;
 
-//         let encoded = bincode::serialize(&constants::ED25519_BASEPOINT_POINT).unwrap();
-//         let enc_compressed = bincode::serialize(&constants::ED25519_BASEPOINT_COMPRESSED).unwrap();
+//         let encoded = bincode::serialize(&curve_constants::ED25519_BASEPOINT_POINT).unwrap();
+//         let enc_compressed = bincode::serialize(&curve_constants::ED25519_BASEPOINT_COMPRESSED).unwrap();
 //         assert_eq!(encoded, enc_compressed);
 
 //         // Check that the encoding is 32 bytes exactly
@@ -2377,13 +2377,13 @@ impl CofactorGroup for EdwardsPoint {
 //         let dec_uncompressed: EdwardsPoint = bincode::deserialize(&encoded).unwrap();
 //         let dec_compressed: CompressedEdwardsY = bincode::deserialize(&encoded).unwrap();
 
-//         assert_eq!(dec_uncompressed, constants::ED25519_BASEPOINT_POINT);
-//         assert_eq!(dec_compressed, constants::ED25519_BASEPOINT_COMPRESSED);
+//         assert_eq!(dec_uncompressed, curve_constants::ED25519_BASEPOINT_POINT);
+//         assert_eq!(dec_compressed, curve_constants::ED25519_BASEPOINT_COMPRESSED);
 
 //         // Check that the encoding itself matches the usual one
-//         let raw_bytes = constants::ED25519_BASEPOINT_COMPRESSED.as_bytes();
+//         let raw_bytes = curve_constants::ED25519_BASEPOINT_COMPRESSED.as_bytes();
 //         let bp: EdwardsPoint = bincode::deserialize(raw_bytes).unwrap();
-//         assert_eq!(bp, constants::ED25519_BASEPOINT_POINT);
+//         assert_eq!(bp, curve_constants::ED25519_BASEPOINT_POINT);
 //     }
 
 //     // Hash-to-curve test vectors from

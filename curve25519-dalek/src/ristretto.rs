@@ -174,8 +174,8 @@ use core::ops::{Mul, MulAssign};
 // #[cfg(feature = "digest")]
 // use digest::array::typenum::U64;
 
-use crate::constants;
-use crate::field::FieldElement;
+use crate::curve_constants;
+use crate::curve_field::FieldElement;
 
 #[cfg(feature = "group")]
 use {
@@ -202,7 +202,7 @@ use subtle::ConstantTimeEq;
 use crate::edwards::EdwardsBasepointTable;
 use crate::edwards::EdwardsPoint;
 
-use crate::scalar::Scalar;
+use crate::curve_scalar::Scalar;
 
 #[cfg(feature = "precomputed-tables")]
 use crate::traits::BasepointTable;
@@ -312,7 +312,7 @@ mod decompress {
         let u2_sqr = u2.square(); // (1 - as²)²
 
         // v == ad(1+as²)² - (1-as²)²            where d=-121665/121666
-        let v = &(&(-&constants::EDWARDS_D) * &u1.square()) - &u2_sqr;
+        let v = &(&(-&curve_constants::EDWARDS_D) * &u1.square()) - &u2_sqr;
 
         let (ok, I) = (&v * &u2_sqr).invsqrt(); // 1/sqrt(v*u_2²)
 
@@ -512,9 +512,9 @@ impl RistrettoPoint {
         let z_inv = &i1 * &(&i2 * T);
         let mut den_inv = i2;
 
-        let iX = &X * &constants::SQRT_M1;
-        let iY = &Y * &constants::SQRT_M1;
-        let ristretto_magic = &constants::INVSQRT_A_MINUS_D;
+        let iX = &X * &curve_constants::SQRT_M1;
+        let iY = &Y * &curve_constants::SQRT_M1;
+        let ristretto_magic = &curve_constants::INVSQRT_A_MINUS_D;
         let enchanted_denominator = &i1 * ristretto_magic;
 
         let rotate = (T * &z_inv).is_negative();
@@ -587,7 +587,7 @@ impl RistrettoPoint {
                 let XX = P.0.X.square();
                 let YY = P.0.Y.square();
                 let ZZ = P.0.Z.square();
-                let dTT = &P.0.T.square() * &constants::EDWARDS_D;
+                let dTT = &P.0.T.square() * &curve_constants::EDWARDS_D;
 
                 let e = &P.0.X * &(&P.0.Y + &P.0.Y); // = 2*X*Y
                 let f = &ZZ + &dTT;                  // = Z^2 + d*T^2
@@ -615,7 +615,7 @@ impl RistrettoPoint {
                 let Zinv = &state.eg * inv;
                 let Tinv = &state.fh * inv;
 
-                let mut magic = constants::INVSQRT_A_MINUS_D;
+                let mut magic = curve_constants::INVSQRT_A_MINUS_D;
 
                 let negcheck1 = (&state.eg * &Zinv).is_negative();
 
@@ -624,13 +624,13 @@ impl RistrettoPoint {
                 let mut h = state.h;
 
                 let minus_e = -&e;
-                let f_times_sqrta = &state.f * &constants::SQRT_M1;
+                let f_times_sqrta = &state.f * &curve_constants::SQRT_M1;
 
                 e.conditional_assign(&state.g, negcheck1);
                 g.conditional_assign(&minus_e, negcheck1);
                 h.conditional_assign(&f_times_sqrta, negcheck1);
 
-                magic.conditional_assign(&constants::SQRT_M1, negcheck1);
+                magic.conditional_assign(&curve_constants::SQRT_M1, negcheck1);
 
                 let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
 
@@ -650,9 +650,9 @@ impl RistrettoPoint {
     fn coset4(&self) -> [EdwardsPoint; 4] {
         [
             self.0,
-            self.0 + constants::EIGHT_TORSION[2],
-            self.0 + constants::EIGHT_TORSION[4],
-            self.0 + constants::EIGHT_TORSION[6],
+            self.0 + curve_constants::EIGHT_TORSION[2],
+            self.0 + curve_constants::EIGHT_TORSION[4],
+            self.0 + curve_constants::EIGHT_TORSION[6],
         ]
     }
 
@@ -665,11 +665,11 @@ impl RistrettoPoint {
     /// This method is not public because it's just used for hashing
     /// to a point -- proper elligator support is deferred for now.
     pub(crate) fn elligator_ristretto_flavor(r_0: &FieldElement) -> RistrettoPoint {
-        let i = &constants::SQRT_M1;
-        let d = &constants::EDWARDS_D;
-        let one_minus_d_sq = &constants::ONE_MINUS_EDWARDS_D_SQUARED;
-        let d_minus_one_sq = &constants::EDWARDS_D_MINUS_ONE_SQUARED;
-        let mut c = constants::MINUS_ONE;
+        let i = &curve_constants::SQRT_M1;
+        let d = &curve_constants::EDWARDS_D;
+        let one_minus_d_sq = &curve_constants::ONE_MINUS_EDWARDS_D_SQUARED;
+        let d_minus_one_sq = &curve_constants::EDWARDS_D_MINUS_ONE_SQUARED;
+        let mut c = curve_constants::MINUS_ONE;
 
         let one = FieldElement::ONE;
 
@@ -694,7 +694,7 @@ impl RistrettoPoint {
         RistrettoPoint(
             CompletedPoint {
                 X: &(&s + &s) * &D,
-                Z: &N_t * &constants::SQRT_AD_MINUS_ONE,
+                Z: &N_t * &curve_constants::SQRT_AD_MINUS_ONE,
                 Y: &FieldElement::ONE - &s_sq,
                 T: &FieldElement::ONE + &s_sq,
             }
@@ -985,12 +985,12 @@ impl RistrettoPoint {
     pub fn mul_base(scalar: &Scalar) -> Self {
         #[cfg(not(feature = "precomputed-tables"))]
         {
-            scalar * constants::RISTRETTO_BASEPOINT_POINT
+            curve_constants::RISTRETTO_BASEPOINT_POINT * scalar
         }
 
         #[cfg(feature = "precomputed-tables")]
         {
-            scalar * constants::RISTRETTO_BASEPOINT_TABLE
+            curve_constants::RISTRETTO_BASEPOINT_TABLE * scalar
         }
     }
 }
@@ -1114,7 +1114,7 @@ impl RistrettoPoint {
 /// A precomputed table of multiples of the Ristretto basepoint is
 /// available in the `constants` module:
 /// ```
-/// use curve25519_dalek::constants::RISTRETTO_BASEPOINT_TABLE;
+/// use curve25519_dalek::curve_constants::RISTRETTO_BASEPOINT_TABLE;
 /// use curve25519_dalek::scalar::Scalar;
 ///
 /// let a = Scalar::from(87329482u64);
@@ -1175,7 +1175,7 @@ impl ConditionallySelectable for RistrettoPoint {
     /// # fn main() {
     ///
     /// let A = RistrettoPoint::identity();
-    /// let B = constants::RISTRETTO_BASEPOINT_POINT;
+    /// let B = curve_constants::RISTRETTO_BASEPOINT_POINT;
     ///
     /// let mut P = A;
     ///
@@ -1237,7 +1237,7 @@ impl group::Group for RistrettoPoint {
     }
 
     fn generator() -> Self {
-        constants::RISTRETTO_BASEPOINT_POINT
+        curve_constants::RISTRETTO_BASEPOINT_POINT
     }
 
     fn is_identity(&self) -> Choice {
@@ -1329,9 +1329,9 @@ impl CofactorGroup for RistrettoPoint {
 //     fn serde_bincode_basepoint_roundtrip() {
 //         use bincode;
 
-//         let encoded = bincode::serialize(&constants::RISTRETTO_BASEPOINT_POINT).unwrap();
+//         let encoded = bincode::serialize(&curve_constants::RISTRETTO_BASEPOINT_POINT).unwrap();
 //         let enc_compressed =
-//             bincode::serialize(&constants::RISTRETTO_BASEPOINT_COMPRESSED).unwrap();
+//             bincode::serialize(&curve_constants::RISTRETTO_BASEPOINT_COMPRESSED).unwrap();
 //         assert_eq!(encoded, enc_compressed);
 
 //         // Check that the encoding is 32 bytes exactly
@@ -1340,18 +1340,18 @@ impl CofactorGroup for RistrettoPoint {
 //         let dec_uncompressed: RistrettoPoint = bincode::deserialize(&encoded).unwrap();
 //         let dec_compressed: CompressedRistretto = bincode::deserialize(&encoded).unwrap();
 
-//         assert_eq!(dec_uncompressed, constants::RISTRETTO_BASEPOINT_POINT);
-//         assert_eq!(dec_compressed, constants::RISTRETTO_BASEPOINT_COMPRESSED);
+//         assert_eq!(dec_uncompressed, curve_constants::RISTRETTO_BASEPOINT_POINT);
+//         assert_eq!(dec_compressed, curve_constants::RISTRETTO_BASEPOINT_COMPRESSED);
 
 //         // Check that the encoding itself matches the usual one
-//         let raw_bytes = constants::RISTRETTO_BASEPOINT_COMPRESSED.as_bytes();
+//         let raw_bytes = curve_constants::RISTRETTO_BASEPOINT_COMPRESSED.as_bytes();
 //         let bp: RistrettoPoint = bincode::deserialize(raw_bytes).unwrap();
-//         assert_eq!(bp, constants::RISTRETTO_BASEPOINT_POINT);
+//         assert_eq!(bp, curve_constants::RISTRETTO_BASEPOINT_POINT);
 //     }
 
 //     #[test]
 //     fn scalarmult_ristrettopoint_works_both_ways() {
-//         let P = constants::RISTRETTO_BASEPOINT_POINT;
+//         let P = curve_constants::RISTRETTO_BASEPOINT_POINT;
 //         let s = Scalar::from(999u64);
 
 //         let P1 = P * s;
@@ -1364,7 +1364,7 @@ impl CofactorGroup for RistrettoPoint {
 //     #[cfg(feature = "alloc")]
 //     fn impl_sum() {
 //         // Test that sum works for non-empty iterators
-//         let BASE = constants::RISTRETTO_BASEPOINT_POINT;
+//         let BASE = curve_constants::RISTRETTO_BASEPOINT_POINT;
 
 //         let s1 = Scalar::from(999u64);
 //         let P1 = BASE * s1;
@@ -1393,8 +1393,8 @@ impl CofactorGroup for RistrettoPoint {
 
 //     #[test]
 //     fn decompress_negative_s_fails() {
-//         // constants::d is neg, so decompression should fail as |d| != d.
-//         let bad_compressed = CompressedRistretto(constants::EDWARDS_D.to_bytes());
+//         // curve_constants::d is neg, so decompression should fail as |d| != d.
+//         let bad_compressed = CompressedRistretto(curve_constants::EDWARDS_D.to_bytes());
 //         assert!(bad_compressed.decompress().is_none());
 //     }
 
@@ -1419,10 +1419,10 @@ impl CofactorGroup for RistrettoPoint {
 
 //     #[test]
 //     fn basepoint_roundtrip() {
-//         let bp_compressed_ristretto = constants::RISTRETTO_BASEPOINT_POINT.compress();
+//         let bp_compressed_ristretto = curve_constants::RISTRETTO_BASEPOINT_POINT.compress();
 //         let bp_recaf = bp_compressed_ristretto.decompress().unwrap().0;
 //         // Check that bp_recaf differs from bp by a point of order 4
-//         let diff = constants::RISTRETTO_BASEPOINT_POINT.0 - bp_recaf;
+//         let diff = curve_constants::RISTRETTO_BASEPOINT_POINT.0 - bp_recaf;
 //         let diff4 = diff.mul_by_pow_2(2);
 //         assert_eq!(diff4.compress(), CompressedEdwardsY::identity());
 //     }
@@ -1500,13 +1500,13 @@ impl CofactorGroup for RistrettoPoint {
 //         let mut bp = RistrettoPoint::identity();
 //         for point in compressed {
 //             assert_eq!(bp.compress(), point);
-//             bp += constants::RISTRETTO_BASEPOINT_POINT;
+//             bp += curve_constants::RISTRETTO_BASEPOINT_POINT;
 //         }
 //     }
 
 //     #[test]
 //     fn four_torsion_basepoint() {
-//         let bp = constants::RISTRETTO_BASEPOINT_POINT;
+//         let bp = curve_constants::RISTRETTO_BASEPOINT_POINT;
 //         let bp_coset = bp.coset4();
 //         for point in bp_coset {
 //             assert_eq!(bp, RistrettoPoint(point));

@@ -18,7 +18,7 @@ use subtle::Choice;
 // #[cfg(feature = "zeroize")]
 // use zeroize::Zeroize;
 
-use crate::constants;
+use crate::curve_constants;
 
 #[allow(unused_imports)]
 use super::scalar_lemmas::*;
@@ -166,8 +166,8 @@ impl Scalar52 {
         hi[3] = ((words[6] >> 32) | (words[ 7] << 32)) & mask;
         hi[4] =   words[7] >> 20                             ;
 
-        lo = Scalar52::montgomery_mul(&lo, &constants::R);  // (lo * R) / R = lo
-        hi = Scalar52::montgomery_mul(&hi, &constants::RR); // (hi * R^2) / R = hi * R
+        lo = Scalar52::montgomery_mul(&lo, &curve_constants::R);  // (lo * R) / R = lo
+        hi = Scalar52::montgomery_mul(&hi, &curve_constants::RR); // (hi * R^2) / R = hi * R
 
         Scalar52::add(&hi, &lo)
     }
@@ -273,11 +273,11 @@ impl Scalar52 {
         proof {lemma_add_sum_simplify(a, b, &sum, carry);}
 
         // subtract l if the sum is >= l
-        proof { lemma_l_value_properties(&constants::L, &sum); }
+        proof { lemma_l_value_properties(&curve_constants::L, &sum); }
         assert(group_order() > to_nat(&sum.limbs) - group_order() >= -group_order());
         proof{lemma_l_equals_group_order();}
         proof{lemma_mod_sub_multiples_vanish(to_nat(&sum.limbs) as int, group_order() as int);}
-        Scalar52::sub(&sum, &constants::L)
+        Scalar52::sub(&sum, &curve_constants::L)
 
     }
 
@@ -338,7 +338,7 @@ impl Scalar52 {
         let mut carry: u64 = 0;
         let ghost difference_after_loop1 = difference;
         assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 0 as int)) == 0);
-        assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 0 as int)) == 0);
+        assert(seq_u64_to_nat(curve_constants::L.limbs@.subrange(0, 0 as int)) == 0);
         assert(seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)) == 0);
         assert(carry >> 52 == 0) by (bit_vector)
             requires carry == 0;
@@ -352,20 +352,20 @@ impl Scalar52 {
                       (i >=1 && borrow >> 63 == 0) ==> carry == difference.limbs[i-1],
                       borrow >> 63 == 0 ==> difference_after_loop1 == difference,
                       borrow >> 63 == 1 ==>
-                          seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, i as int)) + seq_u64_to_nat(constants::L.limbs@.subrange(0, i as int)) ==
+                          seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, i as int)) + seq_u64_to_nat(curve_constants::L.limbs@.subrange(0, i as int)) ==
                           seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (carry >> 52) * pow2(52 * i as nat)
 
         {
             let ghost old_carry = carry;
             let underflow = Choice::from((borrow >> 63) as u8);
-            let addend = select(&0, &constants::L.limbs[i], underflow);
+            let addend = select(&0, &curve_constants::L.limbs[i], underflow);
             if borrow >> 63 == 0 {
                 assert(addend == 0);
             }
             if borrow >> 63 == 1 {
-                assert(addend == constants::L.limbs[i as int]);
+                assert(addend == curve_constants::L.limbs[i as int]);
             }
-            proof {lemma_scalar_subtract_no_overflow(carry, difference.limbs[i as int], addend, i as u32, &constants::L);}
+            proof {lemma_scalar_subtract_no_overflow(carry, difference.limbs[i as int], addend, i as u32, &curve_constants::L);}
             carry = (carry >> 52) + difference.limbs[i] + addend;
             let ghost difference_loop2_start = difference;
             difference.limbs[i] = carry & mask;
@@ -449,7 +449,7 @@ impl Scalar52 {
 
 
         // note: l[3] is zero, so its multiples can be skipped
-        let l = &constants::L;
+        let l = &curve_constants::L;
 
         // the first half computes the Montgomery adjustment factor n, and begins adding n*l to make limbs divisible by R
         let (carry, n0) = Self::part1(limbs[0]);
@@ -475,8 +475,8 @@ impl Scalar52 {
     fn part1(sum: u128) -> (res: (u128, u64))
     {
         assume(false); // TODO: Add proper bounds checking and proofs
-        let p = (sum as u64).wrapping_mul(constants::LFACTOR) & ((1u64 << 52) - 1);
-        let carry = (sum + m(p, constants::L.limbs[0])) >> 52;
+        let p = (sum as u64).wrapping_mul(curve_constants::LFACTOR) & ((1u64 << 52) - 1);
+        let carry = (sum + m(p, curve_constants::L.limbs[0])) >> 52;
         (carry, p)
     }
 
@@ -501,7 +501,7 @@ impl Scalar52 {
     {
         assume(false); // TODO: Add proper Montgomery arithmetic proofs
         let ab = Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b));
-        Scalar52::montgomery_reduce(&Scalar52::mul_internal(&ab, &constants::RR))
+        Scalar52::montgomery_reduce(&Scalar52::mul_internal(&ab, &curve_constants::RR))
     }
 
     /// Compute `a^2` (mod l)
@@ -515,7 +515,7 @@ impl Scalar52 {
     {
         assume(false); // TODO: Add proper Montgomery arithmetic proofs
         let aa = Scalar52::montgomery_reduce(&Scalar52::square_internal(self));
-        Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR))
+        Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &curve_constants::RR))
     }
 
     /// Compute `(a * b) / R` (mod l), where R is the Montgomery modulus 2^260
@@ -555,7 +555,7 @@ impl Scalar52 {
         proof {
             lemma_rr_limbs_bounded();
         }
-        let result = Scalar52::montgomery_mul(self, &constants::RR);
+        let result = Scalar52::montgomery_mul(self, &curve_constants::RR);
         assume(to_nat(&result.limbs) == (to_nat(&self.limbs) * montgomery_radix()) % group_order());
         result
     }

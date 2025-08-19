@@ -54,10 +54,10 @@ use core::{
     ops::{Mul, MulAssign},
 };
 
-use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
+use crate::curve_constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
-use crate::field::FieldElement;
-use crate::scalar::{Scalar, clamp_integer};
+use crate::curve_field::FieldElement;
+use crate::curve_scalar::{Scalar, clamp_integer};
 
 use crate::traits::Identity;
 
@@ -457,15 +457,15 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //     fn serde_bincode_basepoint_roundtrip() {
 //         use bincode;
 
-//         let encoded = bincode::serialize(&constants::X25519_BASEPOINT).unwrap();
+//         let encoded = bincode::serialize(&curve_constants::X25519_BASEPOINT).unwrap();
 //         let decoded: MontgomeryPoint = bincode::deserialize(&encoded).unwrap();
 
 //         assert_eq!(encoded.len(), 32);
-//         assert_eq!(decoded, constants::X25519_BASEPOINT);
+//         assert_eq!(decoded, curve_constants::X25519_BASEPOINT);
 
-//         let raw_bytes = constants::X25519_BASEPOINT.as_bytes();
+//         let raw_bytes = curve_constants::X25519_BASEPOINT.as_bytes();
 //         let bp: MontgomeryPoint = bincode::deserialize(raw_bytes).unwrap();
-//         assert_eq!(bp, constants::X25519_BASEPOINT);
+//         assert_eq!(bp, curve_constants::X25519_BASEPOINT);
 //     }
 
 //     /// Test Montgomery -> Edwards on the X/Ed25519 basepoint
@@ -473,13 +473,13 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //     fn basepoint_montgomery_to_edwards() {
 //         // sign bit = 0 => basepoint
 //         assert_eq!(
-//             constants::ED25519_BASEPOINT_POINT,
-//             constants::X25519_BASEPOINT.to_edwards(0).unwrap()
+//             curve_constants::ED25519_BASEPOINT_POINT,
+//             curve_constants::X25519_BASEPOINT.to_edwards(0).unwrap()
 //         );
 //         // sign bit = 1 => minus basepoint
 //         assert_eq!(
-//             -constants::ED25519_BASEPOINT_POINT,
-//             constants::X25519_BASEPOINT.to_edwards(1).unwrap()
+//             -curve_constants::ED25519_BASEPOINT_POINT,
+//             curve_constants::X25519_BASEPOINT.to_edwards(1).unwrap()
 //         );
 //     }
 
@@ -487,8 +487,8 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //     #[test]
 //     fn basepoint_edwards_to_montgomery() {
 //         assert_eq!(
-//             constants::ED25519_BASEPOINT_POINT.to_montgomery(),
-//             constants::X25519_BASEPOINT
+//             curve_constants::ED25519_BASEPOINT_POINT.to_montgomery(),
+//             curve_constants::X25519_BASEPOINT
 //         );
 //     }
 
@@ -622,7 +622,7 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //         let a_bytes = [0xff; 32];
 //         assert_eq!(
 //             MontgomeryPoint::mul_base_clamped(a_bytes),
-//             constants::X25519_BASEPOINT.mul_clamped(a_bytes)
+//             curve_constants::X25519_BASEPOINT.mul_clamped(a_bytes)
 //         );
 
 //         // Test agreement on random integers
@@ -633,7 +633,7 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 
 //             assert_eq!(
 //                 MontgomeryPoint::mul_base_clamped(a_bytes),
-//                 constants::X25519_BASEPOINT.mul_clamped(a_bytes)
+//                 curve_constants::X25519_BASEPOINT.mul_clamped(a_bytes)
 //             );
 //         }
 //     }

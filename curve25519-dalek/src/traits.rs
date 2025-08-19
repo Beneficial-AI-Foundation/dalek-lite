@@ -15,7 +15,7 @@
 
 use core::borrow::Borrow;
 
-use crate::scalar::{Scalar, clamp_integer};
+use crate::curve_scalar::{Scalar, clamp_integer};
 use subtle::ConstantTimeEq;
 
 // ------------------------------------------------------------------------
@@ -108,7 +108,7 @@ pub trait MultiscalarMul {
     /// let c = Scalar::from(98098098u64);
     ///
     /// // Some points
-    /// let P = constants::RISTRETTO_BASEPOINT_POINT;
+    /// let P = curve_constants::RISTRETTO_BASEPOINT_POINT;
     /// let Q = P + P;
     /// let R = P + Q;
     ///
@@ -164,7 +164,7 @@ pub trait VartimeMultiscalarMul {
     /// let abc = [a,b,c];
     ///
     /// // Some points
-    /// let P = constants::RISTRETTO_BASEPOINT_POINT;
+    /// let P = curve_constants::RISTRETTO_BASEPOINT_POINT;
     /// let Q = P + P;
     /// let R = P + Q;
     /// let PQR = [P, Q, R];
@@ -229,7 +229,7 @@ pub trait VartimeMultiscalarMul {
     /// let c = Scalar::from(98098098u64);
     ///
     /// // Some points
-    /// let P = constants::RISTRETTO_BASEPOINT_POINT;
+    /// let P = curve_constants::RISTRETTO_BASEPOINT_POINT;
     /// let Q = P + P;
     /// let R = P + Q;
     ///

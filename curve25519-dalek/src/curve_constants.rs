@@ -17,7 +17,7 @@ use cfg_if::cfg_if;
 use crate::edwards::CompressedEdwardsY;
 use crate::montgomery::MontgomeryPoint;
 use crate::ristretto::{CompressedRistretto, RistrettoPoint};
-use crate::scalar::Scalar;
+use crate::curve_scalar::Scalar;
 
 #[cfg(feature = "precomputed-tables")]
 use crate::edwards::EdwardsBasepointTable;
@@ -97,7 +97,7 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //     #[test]
 //     fn test_eight_torsion() {
 //         for i in 0..8 {
-//             let Q = constants::EIGHT_TORSION[i].mul_by_pow_2(3);
+//             let Q = curve_constants::EIGHT_TORSION[i].mul_by_pow_2(3);
 //             assert!(Q.is_valid());
 //             assert!(Q.is_identity());
 //         }
@@ -106,7 +106,7 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //     #[test]
 //     fn test_four_torsion() {
 //         for i in (0..8).filter(|i| i % 2 == 0) {
-//             let Q = constants::EIGHT_TORSION[i].mul_by_pow_2(2);
+//             let Q = curve_constants::EIGHT_TORSION[i].mul_by_pow_2(2);
 //             assert!(Q.is_valid());
 //             assert!(Q.is_identity());
 //         }
@@ -115,7 +115,7 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //     #[test]
 //     fn test_two_torsion() {
 //         for i in (0..8).filter(|i| i % 4 == 0) {
-//             let Q = constants::EIGHT_TORSION[i].mul_by_pow_2(1);
+//             let Q = curve_constants::EIGHT_TORSION[i].mul_by_pow_2(1);
 //             assert!(Q.is_valid());
 //             assert!(Q.is_identity());
 //         }
@@ -125,9 +125,9 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //     #[test]
 //     fn test_sqrt_minus_one() {
 //         let minus_one = FieldElement::MINUS_ONE;
-//         let sqrt_m1_sq = &constants::SQRT_M1 * &constants::SQRT_M1;
+//         let sqrt_m1_sq = &curve_constants::SQRT_M1 * &curve_constants::SQRT_M1;
 //         assert_eq!(minus_one, sqrt_m1_sq);
-//         assert!(bool::from(!constants::SQRT_M1.is_negative()));
+//         assert!(bool::from(!curve_constants::SQRT_M1.is_negative()));
 //     }
 
 //     #[test]
@@ -135,7 +135,7 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //         let minus_one = FieldElement::MINUS_ONE;
 //         let (was_nonzero_square, invsqrt_m1) = minus_one.invsqrt();
 //         assert!(bool::from(was_nonzero_square));
-//         let sign_test_sqrt = &invsqrt_m1 * &constants::SQRT_M1;
+//         let sign_test_sqrt = &invsqrt_m1 * &curve_constants::SQRT_M1;
 //         assert_eq!(sign_test_sqrt, minus_one);
 //     }
 
@@ -148,8 +148,8 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //         let b = FieldElement2625([121666, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 //         let d = &a * &b.invert();
 //         let d2 = &d + &d;
-//         assert_eq!(d, constants::EDWARDS_D);
-//         assert_eq!(d2, constants::EDWARDS_D2);
+//         assert_eq!(d, curve_constants::EDWARDS_D);
+//         assert_eq!(d2, curve_constants::EDWARDS_D2);
 //     }
 
 //     /// Test that d = -121665/121666
@@ -161,15 +161,15 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //         let b = FieldElement51([121666, 0, 0, 0, 0]);
 //         let d = &a * &b.invert();
 //         let d2 = &d + &d;
-//         assert_eq!(d, constants::EDWARDS_D);
-//         assert_eq!(d2, constants::EDWARDS_D2);
+//         assert_eq!(d, curve_constants::EDWARDS_D);
+//         assert_eq!(d2, curve_constants::EDWARDS_D2);
 //     }
 
 //     #[test]
 //     fn test_sqrt_ad_minus_one() {
 //         let a = FieldElement::MINUS_ONE;
-//         let ad_minus_one = &(&a * &constants::EDWARDS_D) + &a;
-//         let should_be_ad_minus_one = constants::SQRT_AD_MINUS_ONE.square();
+//         let ad_minus_one = &(&a * &curve_constants::EDWARDS_D) + &a;
+//         let should_be_ad_minus_one = curve_constants::SQRT_AD_MINUS_ONE.square();
 //         assert_eq!(should_be_ad_minus_one, ad_minus_one);
 //     }
 
@@ -178,8 +178,8 @@ pub static RISTRETTO_BASEPOINT_TABLE: &RistrettoBasepointTable = unsafe {
 //     #[cfg(feature = "digest")]
 //     fn test_sqrt_a_minus_2() {
 //         let one = FieldElement::ONE;
-//         let a_minus_two = &(&constants::MONTGOMERY_A_NEG - &one) - &one;
+//         let a_minus_two = &(&curve_constants::MONTGOMERY_A_NEG - &one) - &one;
 
-//         assert_eq!(constants::ED25519_SQRTAM2.square(), a_minus_two)
+//         assert_eq!(curve_constants::ED25519_SQRTAM2.square(), a_minus_two)
 //     }
 // }

@@ -33,7 +33,7 @@ use subtle::ConditionallySelectable;
 use subtle::ConstantTimeEq;
 
 use crate::backend;
-use crate::constants;
+use crate::curve_constants;
 
 // #[cfg(feature = "digest")]
 // use digest::{
@@ -319,13 +319,13 @@ impl FieldElement {
         let mut r = &(u * &v3) * &(u * &v7).pow_p58();
         let check = v * &r.square();
 
-        let i = &constants::SQRT_M1;
+        let i = &curve_constants::SQRT_M1;
 
         let correct_sign_sqrt = check.ct_eq(u);
         let flipped_sign_sqrt = check.ct_eq(&(-u));
         let flipped_sign_sqrt_i = check.ct_eq(&(&(-u) * i));
 
-        let r_prime = &constants::SQRT_M1 * &r;
+        let r_prime = &curve_constants::SQRT_M1 * &r;
         r.conditional_assign(&r_prime, flipped_sign_sqrt | flipped_sign_sqrt_i);
 
         // Choose the nonnegative square root.
@@ -495,7 +495,7 @@ impl FieldElement {
 //     fn sqrt_ratio_behavior() {
 //         let zero = FieldElement::ZERO;
 //         let one = FieldElement::ONE;
-//         let i = constants::SQRT_M1;
+//         let i = curve_constants::SQRT_M1;
 //         let two = &one + &one; // 2 is nonsquare mod p.
 //         let four = &two + &two; // 4 is square mod p.
 

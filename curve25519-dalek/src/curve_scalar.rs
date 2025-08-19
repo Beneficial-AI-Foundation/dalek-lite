@@ -147,7 +147,7 @@ use subtle::CtOption;
 // use zeroize::Zeroize;
 
 use crate::backend;
-use crate::constants;
+use crate::curve_constants;
 
 cfg_if! {
     if #[cfg(curve25519_dalek_backend = "fiat")] {
@@ -369,7 +369,7 @@ impl Neg for &Scalar {
     type Output = Scalar;
     #[allow(non_snake_case)]
     fn neg(self) -> Scalar {
-        let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
+        let self_R = UnpackedScalar::mul_internal(&self.unpack(), &curve_constants::R);
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
         UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack()
     }
@@ -1119,7 +1119,7 @@ impl Scalar {
     #[allow(non_snake_case)]
     fn reduce(&self) -> Scalar {
         let x = self.unpack();
-        let xR = UnpackedScalar::mul_internal(&x, &constants::R);
+        let xR = UnpackedScalar::mul_internal(&x, &curve_constants::R);
         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
         x_mod_l.pack()
     }
@@ -1327,7 +1327,7 @@ impl PrimeFieldBits for Scalar {
     }
 
     fn char_le_bits() -> FieldBits<Self::ReprBits> {
-        constants::BASEPOINT_ORDER.to_bytes().into()
+        curve_constants::BASEPOINT_ORDER.to_bytes().into()
     }
 }
 
@@ -1757,7 +1757,7 @@ pub const fn clamp_integer(mut bytes: [u8; 32]) -> [u8; 32] {
 
 //         //  (x + 2^256x) * R
 //         let interim =
-//             UnpackedScalar::mul_internal(&UnpackedScalar::from_bytes_wide(&bignum), &constants::R);
+//             UnpackedScalar::mul_internal(&UnpackedScalar::from_bytes_wide(&bignum), &curve_constants::R);
 //         // ((x + 2^256x) * R) / R  (mod l)
 //         let montgomery_reduced = UnpackedScalar::montgomery_reduce(&interim);
 

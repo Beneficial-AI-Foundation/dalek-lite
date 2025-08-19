@@ -13,9 +13,9 @@
 use core::cmp::Ordering;
 
 use crate::backend::serial::curve_models::{ProjectiveNielsPoint, ProjectivePoint};
-use crate::constants;
+use crate::curve_constants;
 use crate::edwards::EdwardsPoint;
-use crate::scalar::Scalar;
+use crate::curve_scalar::Scalar;
 use crate::traits::Identity;
 use crate::window::NafLookupTable5;
 
@@ -39,10 +39,10 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
 
     let table_A = NafLookupTable5::<ProjectiveNielsPoint>::from(A);
     #[cfg(feature = "precomputed-tables")]
-    let table_B = &constants::AFFINE_ODD_MULTIPLES_OF_BASEPOINT;
+    let table_B = &curve_constants::AFFINE_ODD_MULTIPLES_OF_BASEPOINT;
     #[cfg(not(feature = "precomputed-tables"))]
     let table_B =
-        &NafLookupTable5::<ProjectiveNielsPoint>::from(&constants::ED25519_BASEPOINT_POINT);
+        &NafLookupTable5::<ProjectiveNielsPoint>::from(&curve_constants::ED25519_BASEPOINT_POINT);
 
     let mut r = ProjectivePoint::identity();
     loop {

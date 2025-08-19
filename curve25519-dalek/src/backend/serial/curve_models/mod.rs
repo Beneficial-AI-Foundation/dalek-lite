@@ -132,10 +132,10 @@ use subtle::ConditionallySelectable;
 // #[cfg(feature = "zeroize")]
 // use zeroize::Zeroize;
 
-use crate::constants;
+use crate::curve_constants;
 
 use crate::edwards::EdwardsPoint;
-use crate::field::FieldElement;
+use crate::curve_field::FieldElement;
 use crate::traits::ValidityCheck;
 
 // ------------------------------------------------------------------------
@@ -282,7 +282,7 @@ impl ValidityCheck for ProjectivePoint {
         let ZZ = self.Z.square();
         let ZZZZ = ZZ.square();
         let lhs = &(&YY - &XX) * &ZZ;
-        let rhs = &ZZZZ + &(&constants::EDWARDS_D * &(&XX * &YY));
+        let rhs = &ZZZZ + &(&curve_constants::EDWARDS_D * &(&XX * &YY));
 
         lhs == rhs
     }

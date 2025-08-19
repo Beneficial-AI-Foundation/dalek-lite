@@ -19,7 +19,7 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 
 use crate::edwards::EdwardsPoint;
-use crate::scalar::Scalar;
+use crate::curve_scalar::Scalar;
 use crate::traits::MultiscalarMul;
 use crate::traits::VartimeMultiscalarMul;
 

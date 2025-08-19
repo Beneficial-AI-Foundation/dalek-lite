@@ -20,7 +20,7 @@ use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
 };
 use crate::edwards::EdwardsPoint;
-use crate::scalar::Scalar;
+use crate::curve_scalar::Scalar;
 use crate::traits::Identity;
 use crate::traits::VartimePrecomputedMultiscalarMul;
 use crate::window::{NafLookupTable5, NafLookupTable8};

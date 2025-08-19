@@ -17,7 +17,7 @@ use core::borrow::Borrow;
 use core::cmp::Ordering;
 
 use crate::edwards::EdwardsPoint;
-use crate::scalar::Scalar;
+use crate::curve_scalar::Scalar;
 use crate::traits::VartimeMultiscalarMul;
 
 /// Implements a version of Pippenger's algorithm.
@@ -163,7 +163,7 @@ impl VartimeMultiscalarMul for Pippenger {
 // #[cfg(test)]
 // mod test {
 //     use super::*;
-//     use crate::constants;
+//     use crate::curve_constants;
 
 //     #[test]
 //     fn test_vartime_pippenger() {
@@ -172,7 +172,7 @@ impl VartimeMultiscalarMul for Pippenger {
 //         let x = Scalar::from(2128506u64).invert();
 //         let y = Scalar::from(4443282u64).invert();
 //         let points: Vec<_> = (0..n)
-//             .map(|i| constants::ED25519_BASEPOINT_POINT * Scalar::from(1 + i as u64))
+//             .map(|i| curve_constants::ED25519_BASEPOINT_POINT * Scalar::from(1 + i as u64))
 //             .collect();
 //         let scalars: Vec<_> = (0..n)
 //             .map(|i| x + (Scalar::from(i as u64) * y)) // fast way to make ~random but deterministic scalars

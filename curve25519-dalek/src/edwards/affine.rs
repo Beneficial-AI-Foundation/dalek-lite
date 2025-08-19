@@ -1,6 +1,6 @@
 use super::{CompressedEdwardsY, EdwardsPoint};
 use crate::traits::Identity;
-use crate::{Scalar, field::FieldElement};
+use crate::{curve_scalar::Scalar, curve_field::FieldElement};
 use core::ops::Mul;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
@@ -108,7 +108,7 @@ impl Mul<&AffinePoint> for Scalar {
 
 //     #[test]
 //     fn generator_round_trip() {
-//         let basepoint = constants::ED25519_BASEPOINT_POINT;
+//         let basepoint = curve_constants::ED25519_BASEPOINT_POINT;
 //         assert_eq!(basepoint.to_affine().to_edwards(), basepoint);
 //     }
 // }

@@ -2,7 +2,7 @@
 
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::edwards::EdwardsPoint;
-use crate::scalar::Scalar;
+use crate::curve_scalar::Scalar;
 use crate::traits::Identity;
 use crate::window::LookupTable;
 

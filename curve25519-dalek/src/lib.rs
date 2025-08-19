@@ -51,7 +51,7 @@ pub(crate) mod macros;
 //------------------------------------------------------------------------
 
 // Scalar arithmetic mod l = 2^252 + ..., the order of the Ristretto group
-pub mod scalar;
+pub mod curve_scalar;
 
 // Point operations on the Montgomery form of Curve25519
 pub mod montgomery;
@@ -63,7 +63,7 @@ pub mod edwards;
 pub mod ristretto;
 
 // Useful constants, like the Ed25519 basepoint
-pub mod constants;
+pub mod curve_constants;
 
 // External (and internal) traits.
 pub mod traits;
@@ -73,7 +73,7 @@ pub mod traits;
 //------------------------------------------------------------------------
 
 // Finite field arithmetic mod p = 2^255 - 19
-pub(crate) mod field;
+pub(crate) mod curve_field;
 
 // Arithmetic backends (using u32, u64, etc) live here
 #[cfg(docsrs)]
@@ -85,7 +85,7 @@ pub(crate) mod backend;
 pub(crate) mod window;
 
 pub use crate::{
-    edwards::EdwardsPoint, montgomery::MontgomeryPoint, ristretto::RistrettoPoint, scalar::Scalar,
+    edwards::EdwardsPoint, montgomery::MontgomeryPoint, ristretto::RistrettoPoint, curve_scalar::Scalar,
 };
 
 // Build time diagnostics for validation

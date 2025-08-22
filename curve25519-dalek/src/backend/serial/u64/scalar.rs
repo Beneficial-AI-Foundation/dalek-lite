@@ -295,6 +295,7 @@ impl Scalar52 {
         to_nat(&s.limbs) == (to_nat(&a.limbs) - to_nat(&b.limbs)) % (group_order() as int),
         limbs_bounded(&s),
     {
+        assert(false);
         let mut difference = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
         proof { assert(1u64 << 52 > 0) by (bit_vector);}
         let mask = (1u64 << 52) - 1;

@@ -186,6 +186,25 @@ pub open spec fn ec_add(p: PointSpec, q: PointSpec) -> PointSpec
     }
 }
 
+// Point negation for Montgomery curves
+// For Montgomery curve By² = x³ + Ax² + x, negation changes y to -y
+pub open spec fn ec_negate(p: PointSpec) -> PointSpec
+    recommends is_on_curve(p)
+{
+    match p {
+        PointSpec::Zero => PointSpec::Zero,
+        PointSpec::Affine(x, y) => {
+            let y_mod = y % field_prime();
+            let neg_y = if y_mod == 0 {
+                0
+            } else {
+                field_sub(field_prime(), y_mod)
+            };
+            PointSpec::Affine(x, neg_y)
+        }
+    }
+}
+
 // Scalar multiplication (repeated addition)
 // The inefficient but easy-to-read way
 pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
@@ -201,8 +220,630 @@ pub open spec fn ec_scalar_mul(k: nat, p: PointSpec) -> PointSpec
     }
 }
 
-// TODO Add conversion functions from_montgomery_point,
-// from_edwards_point, and from any other representation used by curve-dalek
+// ===== Conversion Functions =====
+// These functions convert from the concrete types to our abstract PointSpec
+
+// Convert from MontgomeryPoint to abstract PointSpec
+// Note: This is unimplemented - would need access to the internal coordinates
+pub open spec fn from_montgomery_point(p: crate::montgomery::MontgomeryPoint) -> PointSpec
+{
+    arbitrary()  // Placeholder - implementation would extract coordinates
+}
+
+// Convert from EdwardsPoint to abstract PointSpec  
+// Note: This is unimplemented - would need access to the internal coordinates
+pub open spec fn from_edwards_point(p: crate::edwards::EdwardsPoint) -> PointSpec
+{
+    arbitrary()  // Placeholder - implementation would extract coordinates
+}
+
+// Convert from RistrettoPoint to abstract PointSpec
+// Note: This is unimplemented - would need access to the internal coordinates
+pub open spec fn from_ristretto_point(p: crate::ristretto::RistrettoPoint) -> PointSpec
+{
+    arbitrary()  // Placeholder - implementation would extract coordinates
+}
+
+// ===== Public API Specification Lemmas =====
+// These lemmas specify how the public API should behave in terms of our abstract spec
+
+// ===== MontgomeryPoint Lemmas =====
+
+proof fn lemma_montgomery_mul_base(scalar: crate::scalar::Scalar)
+    ensures from_montgomery_point(crate::montgomery::MontgomeryPoint::mul_base(&scalar)) == 
+            ec_scalar_mul(scalar_to_nat(scalar), montgomery_basepoint_spec())
+{
+    assume(false);
+}
+
+proof fn lemma_montgomery_mul_clamped(p: crate::montgomery::MontgomeryPoint, bytes: [u8; 32])
+    ensures from_montgomery_point(p.mul_clamped(bytes)) ==
+            ec_scalar_mul(bytes_to_clamped_scalar(bytes), from_montgomery_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_montgomery_mul_base_clamped(bytes: [u8; 32])
+    ensures from_montgomery_point(crate::montgomery::MontgomeryPoint::mul_base_clamped(bytes)) ==
+            ec_scalar_mul(bytes_to_clamped_scalar(bytes), montgomery_basepoint_spec())
+{
+    assume(false);
+}
+
+proof fn lemma_montgomery_to_edwards(p: crate::montgomery::MontgomeryPoint, sign: u8)
+    ensures match p.to_edwards(sign) {
+        Some(ed) => from_edwards_point(ed) == montgomery_to_edwards_spec(from_montgomery_point(p), sign),
+        None => !valid_montgomery_to_edwards(from_montgomery_point(p), sign)
+    }
+{
+    assume(false);
+}
+
+// ===== EdwardsPoint Lemmas =====
+
+proof fn lemma_edwards_to_montgomery(p: crate::edwards::EdwardsPoint)
+    ensures from_montgomery_point(p.to_montgomery()) == 
+            edwards_to_montgomery_spec(from_edwards_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_mul_base(scalar: crate::scalar::Scalar)
+    ensures from_edwards_point(crate::edwards::EdwardsPoint::mul_base(&scalar)) ==
+            ec_scalar_mul(scalar_to_nat(scalar), edwards_basepoint_spec())
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_mul_clamped(p: crate::edwards::EdwardsPoint, bytes: [u8; 32])
+    ensures from_edwards_point(p.mul_clamped(bytes)) ==
+            ec_scalar_mul(bytes_to_clamped_scalar(bytes), from_edwards_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_mul_base_clamped(bytes: [u8; 32])
+    ensures from_edwards_point(crate::edwards::EdwardsPoint::mul_base_clamped(bytes)) ==
+            ec_scalar_mul(bytes_to_clamped_scalar(bytes), edwards_basepoint_spec())
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_double_scalar_mul_basepoint(a: crate::scalar::Scalar, A: crate::edwards::EdwardsPoint, b: crate::scalar::Scalar)
+    ensures from_edwards_point(crate::edwards::EdwardsPoint::vartime_double_scalar_mul_basepoint(&a, &A, &b)) ==
+            ec_add(ec_scalar_mul(scalar_to_nat(a), from_edwards_point(A)),
+                   ec_scalar_mul(scalar_to_nat(b), edwards_basepoint_spec()))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_mul_by_cofactor(p: crate::edwards::EdwardsPoint)
+    ensures from_edwards_point(p.mul_by_cofactor()) ==
+            ec_scalar_mul(8, from_edwards_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_is_small_order(p: crate::edwards::EdwardsPoint)
+    ensures p.is_small_order() == is_small_order_spec(from_edwards_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_is_torsion_free(p: crate::edwards::EdwardsPoint)
+    ensures p.is_torsion_free() == is_torsion_free_spec(from_edwards_point(p))
+{
+    assume(false);
+}
+
+// ===== RistrettoPoint Lemmas =====
+
+proof fn lemma_ristretto_mul_base(scalar: crate::scalar::Scalar)
+    ensures from_ristretto_point(crate::ristretto::RistrettoPoint::mul_base(&scalar)) ==
+            ec_scalar_mul(scalar_to_nat(scalar), ristretto_basepoint_spec())
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_double_scalar_mul_basepoint(a: crate::scalar::Scalar, A: crate::ristretto::RistrettoPoint, b: crate::scalar::Scalar)
+    ensures from_ristretto_point(crate::ristretto::RistrettoPoint::vartime_double_scalar_mul_basepoint(&a, &A, &b)) ==
+            ec_add(ec_scalar_mul(scalar_to_nat(a), from_ristretto_point(A)),
+                   ec_scalar_mul(scalar_to_nat(b), ristretto_basepoint_spec()))
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_from_uniform_bytes(bytes: [u8; 64])
+    ensures from_ristretto_point(crate::ristretto::RistrettoPoint::from_uniform_bytes(&bytes)) ==
+            ristretto_from_uniform_spec(bytes)
+{
+    assume(false);
+}
+
+// ===== Scalar Lemmas =====
+
+proof fn lemma_scalar_from_bytes_mod_order(bytes: [u8; 32])
+    ensures scalar_to_nat(crate::scalar::Scalar::from_bytes_mod_order(bytes)) ==
+            bytes_to_nat_mod_order(bytes)
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_from_bytes_mod_order_wide(bytes: [u8; 64])
+    ensures scalar_to_nat(crate::scalar::Scalar::from_bytes_mod_order_wide(&bytes)) ==
+            bytes_to_nat_mod_order_wide(bytes)
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_from_canonical_bytes(bytes: [u8; 32])
+    ensures match crate::scalar::Scalar::from_canonical_bytes(bytes) {
+        Some(s) => scalar_to_nat(s) == bytes_to_nat(bytes) && bytes_to_nat(bytes) < group_order(),
+        None => bytes_to_nat(bytes) >= group_order()
+    }
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_invert(s: crate::scalar::Scalar)
+    requires scalar_to_nat(s) != 0
+    ensures scalar_to_nat(s.invert()) == field_inv(scalar_to_nat(s))
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_add(a: crate::scalar::Scalar, b: crate::scalar::Scalar)
+    ensures scalar_to_nat(a + b) == (scalar_to_nat(a) + scalar_to_nat(b)) % group_order()
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_sub(a: crate::scalar::Scalar, b: crate::scalar::Scalar)
+    ensures scalar_to_nat(a - b) == (scalar_to_nat(a) - scalar_to_nat(b)) % (group_order() as int)
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_mul(a: crate::scalar::Scalar, b: crate::scalar::Scalar)
+    ensures scalar_to_nat(a * b) == (scalar_to_nat(a) * scalar_to_nat(b)) % group_order()
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_neg(a: crate::scalar::Scalar)
+    ensures scalar_to_nat(-a) == (group_order() - scalar_to_nat(a)) % group_order()
+{
+    assume(false);
+}
+
+// ===== Arithmetic Operation Lemmas =====
+// These lemmas specify how arithmetic operations on points relate to our abstract spec
+
+// ===== EdwardsPoint Arithmetic Lemmas =====
+
+proof fn lemma_edwards_add(a: crate::edwards::EdwardsPoint, b: crate::edwards::EdwardsPoint)
+    ensures from_edwards_point(a + b) == ec_add(from_edwards_point(a), from_edwards_point(b))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_sub(a: crate::edwards::EdwardsPoint, b: crate::edwards::EdwardsPoint)
+    ensures from_edwards_point(a - b) == ec_add(from_edwards_point(a), ec_negate(from_edwards_point(b)))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_neg(a: crate::edwards::EdwardsPoint)
+    ensures from_edwards_point(-a) == ec_negate(from_edwards_point(a))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_scalar_mul(s: crate::scalar::Scalar, p: crate::edwards::EdwardsPoint)
+    ensures from_edwards_point(s * p) == ec_scalar_mul(scalar_to_nat(s), from_edwards_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_scalar_mul_commute(p: crate::edwards::EdwardsPoint, s: crate::scalar::Scalar)
+    ensures from_edwards_point(p * s) == ec_scalar_mul(scalar_to_nat(s), from_edwards_point(p))
+{
+    assume(false);
+}
+
+// ===== RistrettoPoint Arithmetic Lemmas =====
+
+proof fn lemma_ristretto_add(a: crate::ristretto::RistrettoPoint, b: crate::ristretto::RistrettoPoint)
+    ensures from_ristretto_point(a + b) == ec_add(from_ristretto_point(a), from_ristretto_point(b))
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_sub(a: crate::ristretto::RistrettoPoint, b: crate::ristretto::RistrettoPoint)
+    ensures from_ristretto_point(a - b) == ec_add(from_ristretto_point(a), ec_negate(from_ristretto_point(b)))
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_neg(a: crate::ristretto::RistrettoPoint)
+    ensures from_ristretto_point(-a) == ec_negate(from_ristretto_point(a))
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_scalar_mul(s: crate::scalar::Scalar, p: crate::ristretto::RistrettoPoint)
+    ensures from_ristretto_point(s * p) == ec_scalar_mul(scalar_to_nat(s), from_ristretto_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_scalar_mul_commute(p: crate::ristretto::RistrettoPoint, s: crate::scalar::Scalar)
+    ensures from_ristretto_point(p * s) == ec_scalar_mul(scalar_to_nat(s), from_ristretto_point(p))
+{
+    assume(false);
+}
+
+// ===== Helper Specifications =====
+// These are helper functions that would need to be defined to make the above lemmas complete
+
+// Convert scalar to natural number
+pub open spec fn scalar_to_nat(s: crate::scalar::Scalar) -> nat
+{
+    arbitrary()  // Would extract the scalar value as a nat
+}
+
+// Convert bytes to natural number
+pub open spec fn bytes_to_nat(bytes: [u8; 32]) -> nat
+{
+    arbitrary()  // Little-endian bytes to nat conversion
+}
+
+// Convert bytes to natural number modulo group order
+pub open spec fn bytes_to_nat_mod_order(bytes: [u8; 32]) -> nat
+{
+    bytes_to_nat(bytes) % group_order()
+}
+
+// Convert 64 bytes to natural number modulo group order  
+pub open spec fn bytes_to_nat_mod_order_wide(bytes: [u8; 64]) -> nat
+{
+    arbitrary() % group_order()  // 512-bit to nat then mod group order
+}
+
+// Convert bytes to clamped scalar (used in X25519)
+pub open spec fn bytes_to_clamped_scalar(bytes: [u8; 32]) -> nat
+{
+    arbitrary()  // Apply clamping operation then convert to nat
+}
+
+// Basepoint specifications for different coordinate systems
+pub open spec fn montgomery_basepoint_spec() -> PointSpec
+{
+    arbitrary()  // The Montgomery basepoint as PointSpec
+}
+
+pub open spec fn edwards_basepoint_spec() -> PointSpec
+{
+    arbitrary()  // The Edwards basepoint as PointSpec
+}
+
+pub open spec fn ristretto_basepoint_spec() -> PointSpec
+{
+    arbitrary()  // The Ristretto basepoint as PointSpec
+}
+
+// Coordinate conversion specifications
+pub open spec fn montgomery_to_edwards_spec(p: PointSpec, sign: u8) -> PointSpec
+{
+    arbitrary()  // Montgomery to Edwards conversion
+}
+
+pub open spec fn edwards_to_montgomery_spec(p: PointSpec) -> PointSpec
+{
+    arbitrary()  // Edwards to Montgomery conversion
+}
+
+pub open spec fn valid_montgomery_to_edwards(p: PointSpec, sign: u8) -> bool
+{
+    arbitrary()  // Whether Montgomery point can be converted to Edwards with given sign
+}
+
+// Torsion and order checking specifications
+pub open spec fn is_small_order_spec(p: PointSpec) -> bool
+{
+    arbitrary()  // Whether point is in the small order subgroup
+}
+
+pub open spec fn is_torsion_free_spec(p: PointSpec) -> bool
+{
+    arbitrary()  // Whether point is torsion-free (in prime order subgroup)
+}
+
+// Ristretto-specific specifications
+pub open spec fn ristretto_from_uniform_spec(bytes: [u8; 64]) -> PointSpec
+{
+    arbitrary()  // Ristretto point from uniform bytes
+}
+
+// Conversion and encoding specifications
+pub open spec fn group_order_to_bytes() -> [u8; 32]
+{
+    arbitrary()  // Convert group order to bytes
+}
+
+pub open spec fn edwards_decompress_spec(c: crate::edwards::CompressedEdwardsY) -> Option<PointSpec>
+{
+    arbitrary()  // Decompress Edwards point from bytes
+}
+
+pub open spec fn ristretto_decompress_spec(c: crate::ristretto::CompressedRistretto) -> Option<PointSpec>
+{
+    arbitrary()  // Decompress Ristretto point from bytes
+}
+
+// Hash-to-curve specifications
+pub open spec fn edwards_hash_to_curve_spec<D>(input: &[u8]) -> PointSpec
+{
+    arbitrary()  // Hash bytes to Edwards point
+}
+
+pub open spec fn ristretto_hash_to_curve_spec<D>(input: &[u8]) -> PointSpec  
+{
+    arbitrary()  // Hash bytes to Ristretto point
+}
+
+pub open spec fn scalar_hash_to_field_spec<D>(input: &[u8]) -> nat
+{
+    arbitrary()  // Hash bytes to scalar field element
+}
+
+// Multiscalar multiplication specifications
+pub open spec fn multiscalar_spec<PointType, ConversionFn>(
+    scalars: &[crate::scalar::Scalar],
+    points: &[PointType],
+    conversion: ConversionFn
+) -> PointSpec
+where
+    ConversionFn: Fn(PointType) -> PointSpec
+{
+    multiscalar_spec_recursive(scalars, points, conversion, 0)
+}
+
+pub open spec fn multiscalar_spec_recursive<PointType, ConversionFn>(
+    scalars: &[crate::scalar::Scalar],
+    points: &[PointType],
+    conversion: ConversionFn,
+    index: nat
+) -> PointSpec
+where
+    ConversionFn: Fn(PointType) -> PointSpec
+    decreases scalars.len() - index
+{
+    if index >= scalars.len() {
+        PointSpec::Zero
+    } else {
+        ec_add(
+            ec_scalar_mul(scalar_to_nat(scalars[index as int]), conversion(points[index as int])),
+            multiscalar_spec_recursive(scalars, points, conversion, index + 1)
+        )
+    }
+}
+
+pub open spec fn optional_multiscalar_spec<PointType, ConversionFn>(
+    scalars: &[crate::scalar::Scalar],
+    points: &[Option<PointType>],
+    conversion: ConversionFn
+) -> Option<PointSpec>
+where
+    ConversionFn: Fn(PointType) -> PointSpec
+{
+    if forall|i: int| 0 <= i < points.len() ==> points[i].is_some() {
+        Some(optional_multiscalar_spec_recursive(scalars, points, conversion, 0))
+    } else {
+        None
+    }
+}
+
+pub open spec fn optional_multiscalar_spec_recursive<PointType, ConversionFn>(
+    scalars: &[crate::scalar::Scalar],
+    points: &[Option<PointType>],
+    conversion: ConversionFn,
+    index: nat
+) -> PointSpec
+where
+    ConversionFn: Fn(PointType) -> PointSpec
+    decreases scalars.len() - index
+{
+    if index >= scalars.len() {
+        PointSpec::Zero
+    } else {
+        match points[index as int] {
+            Some(point) => ec_add(
+                ec_scalar_mul(scalar_to_nat(scalars[index as int]), conversion(point)),
+                optional_multiscalar_spec_recursive(scalars, points, conversion, index + 1)
+            ),
+            None => arbitrary()  // Should not happen due to precondition
+        }
+    }
+}
+
+// Batch operation specifications
+pub open spec fn double_and_compress_batch_spec(points: &[crate::ristretto::RistrettoPoint]) -> Vec<crate::ristretto::CompressedRistretto>
+{
+    arbitrary()  // Would specify batch doubling and compression
+}
+
+// Group order for scalar field (different from curve field prime)
+pub open spec fn group_order() -> nat
+{
+    // The order of the scalar field for Curve25519/Ed25519
+    // This is 2^252 + 27742317777372353535851937790883648493
+    // In hex: 0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed
+    pow2(252) + 27742317777372353535851937790883648493
+}
+
+// ===== Constants Lemmas =====
+// These lemmas specify how the public constants relate to our abstract spec
+
+proof fn lemma_ed25519_basepoint()
+    ensures from_edwards_point(crate::constants::ED25519_BASEPOINT_POINT) == edwards_basepoint_spec()
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_basepoint()
+    ensures from_ristretto_point(crate::constants::RISTRETTO_BASEPOINT_POINT) == ristretto_basepoint_spec()
+{
+    assume(false);
+}
+
+proof fn lemma_x25519_basepoint()
+    ensures from_montgomery_point(crate::constants::X25519_BASEPOINT) == montgomery_basepoint_spec()
+{
+    assume(false);
+}
+
+proof fn lemma_basepoint_order()
+    ensures crate::constants::BASEPOINT_ORDER.as_bytes() == group_order_to_bytes()
+{
+    assume(false);
+}
+
+// ===== Compression and Decompression Lemmas =====
+
+proof fn lemma_edwards_compress(p: crate::edwards::EdwardsPoint)
+    ensures edwards_decompress_spec(p.compress()) == Some(from_edwards_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_compress(p: crate::ristretto::RistrettoPoint)
+    ensures ristretto_decompress_spec(p.compress()) == Some(from_ristretto_point(p))
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_decompress_valid(c: crate::edwards::CompressedEdwardsY)
+    ensures match c.decompress() {
+        Some(p) => edwards_decompress_spec(c) == Some(from_edwards_point(p)),
+        None => edwards_decompress_spec(c) == None
+    }
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_decompress_valid(c: crate::ristretto::CompressedRistretto)
+    ensures match c.decompress() {
+        Some(p) => ristretto_decompress_spec(c) == Some(from_ristretto_point(p)),
+        None => ristretto_decompress_spec(c) == None
+    }
+{
+    assume(false);
+}
+
+// ===== Additional Scalar Methods Lemmas =====
+
+proof fn lemma_scalar_batch_invert(inputs: &mut [crate::scalar::Scalar])
+    ensures forall|i: int| 0 <= i < inputs.len() && scalar_to_nat(inputs[i]) != 0 ==> 
+            scalar_to_nat(inputs[i]) * scalar_to_nat(inputs[i].invert()) % group_order() == 1
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_zero()
+    ensures scalar_to_nat(crate::scalar::Scalar::ZERO) == 0
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_one()
+    ensures scalar_to_nat(crate::scalar::Scalar::ONE) == 1
+{
+    assume(false);
+}
+
+// ===== Hash-to-Curve Lemmas =====
+
+proof fn lemma_edwards_hash_from_bytes<D>(input: &[u8])
+    ensures from_edwards_point(crate::edwards::EdwardsPoint::hash_from_bytes::<D>(input)) ==
+            edwards_hash_to_curve_spec::<D>(input)
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_hash_from_bytes<D>(input: &[u8])
+    ensures from_ristretto_point(crate::ristretto::RistrettoPoint::hash_from_bytes::<D>(input)) ==
+            ristretto_hash_to_curve_spec::<D>(input)
+{
+    assume(false);
+}
+
+proof fn lemma_scalar_hash_from_bytes<D>(input: &[u8])
+    ensures scalar_to_nat(crate::scalar::Scalar::hash_from_bytes::<D>(input)) ==
+            scalar_hash_to_field_spec::<D>(input)
+{
+    assume(false);
+}
+
+// ===== Multiscalar Multiplication Lemmas =====
+
+#[cfg(feature = "alloc")]
+proof fn lemma_edwards_multiscalar_mul(scalars: &[crate::scalar::Scalar], points: &[crate::edwards::EdwardsPoint])
+    requires scalars.len() == points.len()
+    ensures from_edwards_point(crate::edwards::EdwardsPoint::multiscalar_mul(scalars, points)) ==
+            multiscalar_spec(scalars, points, from_edwards_point)
+{
+    assume(false);
+}
+
+#[cfg(feature = "alloc")]
+proof fn lemma_edwards_optional_multiscalar_mul(
+    scalars: &[crate::scalar::Scalar], 
+    points: &[Option<crate::edwards::EdwardsPoint>]
+)
+    requires scalars.len() == points.len()
+    ensures match crate::edwards::EdwardsPoint::optional_multiscalar_mul(scalars, points) {
+        Some(result) => optional_multiscalar_spec(scalars, points, from_edwards_point) == Some(from_edwards_point(result)),
+        None => optional_multiscalar_spec(scalars, points, from_edwards_point) == None
+    }
+{
+    assume(false);
+}
+
+proof fn lemma_edwards_vartime_multiscalar_mul(scalars: &[crate::scalar::Scalar], points: &[crate::edwards::EdwardsPoint])
+    requires scalars.len() == points.len()
+    ensures from_edwards_point(crate::edwards::EdwardsPoint::vartime_multiscalar_mul(scalars, points)) ==
+            multiscalar_spec(scalars, points, from_edwards_point)
+{
+    assume(false);
+}
+
+#[cfg(feature = "alloc")]
+proof fn lemma_ristretto_multiscalar_mul(scalars: &[crate::scalar::Scalar], points: &[crate::ristretto::RistrettoPoint])
+    requires scalars.len() == points.len()
+    ensures from_ristretto_point(crate::ristretto::RistrettoPoint::multiscalar_mul(scalars, points)) ==
+            multiscalar_spec(scalars, points, from_ristretto_point)
+{
+    assume(false);
+}
+
+proof fn lemma_ristretto_vartime_multiscalar_mul(scalars: &[crate::scalar::Scalar], points: &[crate::ristretto::RistrettoPoint])
+    requires scalars.len() == points.len()
+    ensures from_ristretto_point(crate::ristretto::RistrettoPoint::vartime_multiscalar_mul(scalars, points)) ==
+            multiscalar_spec(scalars, points, from_ristretto_point)
+{
+    assume(false);
+}
+
+// ===== Batch Operation Lemmas =====
+
+#[cfg(feature = "alloc")]
+proof fn lemma_ristretto_double_and_compress_batch(points: &[crate::ristretto::RistrettoPoint])
+    ensures crate::ristretto::RistrettoPoint::double_and_compress_batch(points) ==
+            double_and_compress_batch_spec(points)
+{
+    assume(false);
+}
 
 } // verus!
 

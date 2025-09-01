@@ -23,8 +23,10 @@ pub proof fn bit_or_is_plus(a: u64, b: u8, k: u64)
         a | ((b as u64) << (k as u64)) == a + ((b as u64) << (k as u64)),
         a + ((b as u64) << (k as u64)) <= u64::MAX
 {
-    assume(false);
-    // assert(a | ((b as u64) << (k as u64)) == a + ((b as u64) << (k as u64))) by (bit_vector);
+    assert(a | ((b as u64) << (k as u64)) == a + ((b as u64) << (k as u64))) by (bit_vector)
+        requires
+            k + 8 <= 64,
+            a < 1u64 << k;
 }
 
 pub proof fn bit_or_is_plus_alt(a: u8, b: u8, k: nat)

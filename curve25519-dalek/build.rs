@@ -22,6 +22,9 @@ impl std::fmt::Display for DalekBits {
 }
 
 fn main() {
+    // Tell rustc to check for the verus_keep_ghost cfg
+    println!("cargo::rustc-check-cfg=cfg(verus_keep_ghost)");
+
     let target_arch = match std::env::var("CARGO_CFG_TARGET_ARCH") {
         Ok(arch) => arch,
         _ => "".to_string(),

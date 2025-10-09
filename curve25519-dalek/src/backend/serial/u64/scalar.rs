@@ -14,6 +14,7 @@
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use subtle::Choice;
+use vstd::calc;
 
 // #[cfg(feature = "zeroize")]
 // use zeroize::Zeroize;
@@ -30,6 +31,11 @@ use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
+use vstd::arithmetic::power::pow;
+use vstd::arithmetic;
+use vstd::arithmetic::div_mod;
+use vstd::arithmetic::mul::lemma_mul_is_associative;
+use vstd::arithmetic::mul::lemma_mul_is_distributive_add_other_way;
 
 verus! {
 /// The `Scalar52` struct represents an element in
@@ -87,6 +93,122 @@ ensures
     (x as u128) * (y as u128)
 }
 
+const shift_8 : u64  = 0x1_00u64;
+const shift_12 : u64 = 0x1_000u64;
+const shift_16 : u64 = 0x1_0000u64;
+const shift_20 : u64 = 0x1_0000_0u64;
+const shift_24 : u64 = 0x1_0000_00u64;
+const shift_28 : u64 = 0x1_0000_000u64;
+const shift_32 : u64 = 0x1_0000_0000u64;
+const shift_36 : u64 = 0x1_0000_0000_0u64;
+const shift_40 : u64 = 0x1_0000_0000_00u64;
+const shift_48 : u64 = 0x1_0000_0000_0000u64;
+const shift_52 : u64 = 0x1_0000_0000_0000_0u64;
+const shift_56 : u64 = 0x1_0000_0000_0000_00u64;
+const shift_64 : u128 = 0x1_0000_0000_0000_0000u128;
+
+pub proof fn distribution_over_8_terms_other_way(
+    n: int,
+    x1: int, x2: int, x3: int, x4: int,
+    x5: int, x6: int, x7: int, x8: int
+)
+    ensures
+        (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8) * n
+        == x1*n + x2*n + x3*n + x4*n + x5*n + x6*n + x7*n + x8*n
+{
+    // Expand from the outermost term inward
+    arithmetic::mul::lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5 + x6 + x7, x8);
+    arithmetic::mul::lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5 + x6, x7);
+    arithmetic::mul::lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5, x6);
+    arithmetic::mul::lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4, x5);
+    arithmetic::mul::lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3, x4);
+    arithmetic::mul::lemma_mul_is_distributive_add_other_way(n, x1 + x2, x3);
+    arithmetic::mul::lemma_mul_is_distributive_add_other_way(n, x1, x2);
+}
+
+
+proof fn pow2_distributivity_over_word(
+    word: nat,
+    byte0: nat, byte1: nat, byte2 : nat, byte3: nat,
+    byte4: nat, byte5: nat, byte6 : nat, byte7: nat,
+    exp: nat
+)
+requires
+    word == byte0 * pow2(0) + byte1 * pow2(8) + byte2 * pow2(16) + byte3 * pow2(24) +
+            byte4 * pow2(32) + byte5 * pow2(40) + byte6 * pow2(48) + byte7 * pow2(56)
+ensures 
+    word * pow2(exp) == byte0 * pow2(exp) + byte1 * pow2(exp + 8) + byte2 * pow2(exp + 16) + byte3 * pow2(exp + 24) +
+            byte4 * pow2(exp + 32) + byte5 * pow2(exp + 40) + byte6 * pow2(exp + 48) + byte7 * pow2(exp + 56)
+{
+    calc! {
+        (==)
+        (word as nat) * pow2(exp); (==) {
+            let x1 = byte0 * pow2(0) as int;
+            let x2 = byte1 * pow2(8) as int;
+            let x3 = byte2 * pow2(16) as int;
+            let x4 = byte3 * pow2(24) as int;
+            let x5 = byte4 * pow2(32) as int;
+            let x6 = byte5 * pow2(40) as int;
+            let x7 = byte6 * pow2(48) as int;
+            let x8 = byte7 * pow2(56) as int;
+
+            distribution_over_8_terms_other_way(pow2(exp) as int,
+                x1, x2, x3, x4,
+                x5, x6, x7, x8);
+        }
+        (byte0 * pow2(0) * pow2(exp)
+        + byte1 * pow2(8) * pow2(exp)
+        + byte2 * pow2(16) * pow2(exp)
+        + byte3 * pow2(24) * pow2(exp)
+        + byte4 * pow2(32) * pow2(exp)
+        + byte5 * pow2(40) * pow2(exp)
+        + byte6 * pow2(48) * pow2(exp)
+        + byte7 * pow2(56) * pow2(exp)); (==) {
+            // === byte 0 ===
+            lemma_pow2_adds(0, exp);
+            assert(pow2(0) * pow2(exp) == pow2(exp));
+            arithmetic::mul::lemma_mul_is_associative((byte0 as int), pow2(0) as int, pow2(exp) as int);
+            // === byte 1 ===
+            lemma_pow2_adds(8, exp);
+            assert(pow2(8) * pow2(exp) == pow2(exp + 8));
+            arithmetic::mul::lemma_mul_is_associative((byte1 as int), pow2(8) as int, pow2(exp) as int);
+            // === byte 2 ===
+            lemma_pow2_adds(16, exp);
+            assert(pow2(16) * pow2(exp) == pow2(exp + 16));
+            arithmetic::mul::lemma_mul_is_associative((byte2 as int), pow2(16) as int, pow2(exp) as int);
+            // === byte 3 ===
+            lemma_pow2_adds(24, exp);
+            assert(pow2(24) * pow2(exp) == pow2(exp + 24));
+            arithmetic::mul::lemma_mul_is_associative((byte3 as int), pow2(24) as int, pow2(exp) as int);
+            // === byte 4 ===
+            lemma_pow2_adds(32, exp);
+            assert(pow2(32) * pow2(exp) == pow2(exp + 32));
+            arithmetic::mul::lemma_mul_is_associative((byte4 as int), pow2(32) as int, pow2(exp) as int);
+            // === byte 5 ===
+            lemma_pow2_adds(40, exp);
+            assert(pow2(40) * pow2(exp) == pow2(exp + 40));
+            arithmetic::mul::lemma_mul_is_associative((byte5 as int), pow2(40) as int, pow2(exp) as int);
+            // === byte 6 ===
+            lemma_pow2_adds(48, exp);
+            assert(pow2(48) * pow2(exp) == pow2(exp + 48));
+            arithmetic::mul::lemma_mul_is_associative((byte6 as int), pow2(48) as int, pow2(exp) as int);
+            // === byte 7 ===
+            lemma_pow2_adds(56, exp);
+            assert(pow2(56) * pow2(exp) == pow2(exp + 56));
+            arithmetic::mul::lemma_mul_is_associative((byte7 as int), pow2(56) as int, pow2(exp) as int);
+        }
+        (byte0  * pow2(exp + 0)
+        + byte1 * pow2(exp + 8)
+        + byte2 * pow2(exp + 16)
+        + byte3 * pow2(exp + 24)
+        + byte4 * pow2(exp + 32)
+        + byte5 * pow2(exp + 40)
+        + byte6 * pow2(exp + 48)
+        + byte7 * pow2(exp + 56));
+    };
+}
+
+
 impl Scalar52 {
     /// The scalar \\( 0 \\).
     pub const ZERO: Scalar52 = Scalar52 { limbs: [0, 0, 0, 0, 0] };
@@ -96,41 +218,280 @@ impl Scalar52 {
     pub fn from_bytes(bytes: &[u8; 32]) -> (s: Scalar52)
     ensures bytes_to_nat(bytes) == to_nat(&s.limbs)
     {
+
+
         let mut words = [0u64; 4];
+        
+        assert(forall |i2: int| i2 >= 0 && i2 < 4 ==> words[i2] == 0u64);
         for i in 0..4
-            invariant 0 <= i <= 4 // proof
+            invariant 0 <= i <= 4,
+                      forall |i2: int| i2 >= i && i2 < 4 ==> words[i2] == 0u64,
+                      forall |i2: int| 0 <= i2 && i2 < i ==> ((words[i2] as nat)
+                                                            ==
+                                                            (bytes[i2 * 8 + 0 as int] as nat) * pow2(0) 
+                                                            + (bytes[i2 * 8 + 1 as int] as nat) * pow2(8) 
+                                                            + (bytes[i2 * 8 + 2 as int] as nat) * pow2(16) 
+                                                            + (bytes[i2 * 8 + 3 as int] as nat) * pow2(24) 
+                                                            + (bytes[i2 * 8 + 4 as int] as nat) * pow2(32) 
+                                                            + (bytes[i2 * 8 + 5 as int] as nat) * pow2(40)
+                                                            + (bytes[i2 * 8 + 6 as int] as nat) * pow2(48) 
+                                                            + (bytes[i2 * 8 + 7 as int] as nat) * pow2(56))
         {
-            for j in 0..8
-                invariant 0 <= j <= 8 && i < 4
+            assert(words[i as int] == 0);
+
+            for j in 0..8 
+                invariant 0 <= i < 4,
+                          0 <= j <= 8
             {
+                assert(i < 4 && j < 8);
+                let idx = (i as u64) * 8 + (j as u64);
                 proof {
-                    assert(i < 4 && j < 8);
                     assert((i as u64)*8u64 < 32u64);
-                    let idx = (i as u64) * 8 + (j as u64);
                     assert(idx < 32);
                 }
-                words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);
+                assert(bytes[idx as int] < 0x100u128);
+            }
+            let imul8 = i * 8;
+            reveal(pow2);
+            reveal(pow);
+            assert(bytes[imul8 as int] + ((bytes[imul8 as int + 1] as u64) * shift_8) + 
+                   (bytes[imul8 as int + 2] as u64) * shift_16 + (bytes[imul8 as int + 3] as u64) * shift_24 + 
+                   (bytes[imul8 as int + 4] as u64) * shift_32 + (bytes[imul8 as int + 5] as u64) * shift_40 + 
+                   (bytes[imul8 as int + 6] as u64) * shift_48 + (bytes[imul8 as int + 7] as u64) * shift_56 
+                    < shift_64);
+
+            words[i] = bytes[imul8] as u64 + ((bytes[imul8 + 1] as u64) * shift_8) + 
+                   (bytes[imul8 + 2] as u64) * shift_16 + (bytes[imul8 + 3] as u64) * shift_24 + 
+                   (bytes[imul8 + 4] as u64) * shift_32 + (bytes[imul8 + 5] as u64) * shift_40 + 
+                   (bytes[imul8 + 6] as u64) * shift_48 + (bytes[imul8 + 7] as u64) * shift_56;
+            assert(1 as int == pow2(0)) by (compute_only);
+            assert(shift_8  == pow2(8))  by (compute_only);
+            assert(shift_16 == pow2(16)) by (compute_only);
+            assert(shift_24 == pow2(24)) by (compute_only);
+            assert(shift_28 == pow2(28)) by (compute_only);
+            assert(shift_32 == pow2(32)) by (compute_only);
+            assert(shift_40 == pow2(40)) by (compute_only);
+            assert(shift_48 == pow2(48)) by (compute_only);
+            assert(shift_52 == pow2(52)) by (compute_only);
+            assert(shift_56 == pow2(56)) by (compute_only);
+            assert(shift_64 == pow2(64)) by (compute_only);
+            
+            assert(bytes[imul8 as int] as nat * pow2(0) + ((bytes[imul8 as int + 1] as nat) * pow2(8)) + 
+                   (bytes[imul8 as int + 2] as nat) * pow2(16) + (bytes[imul8 as int + 3] as nat) * pow2(24) + 
+                   (bytes[imul8 as int + 4] as nat) * pow2(32) + (bytes[imul8 as int + 5] as nat) * pow2(40) + 
+                   (bytes[imul8 as int + 6] as nat) * pow2(48) + (bytes[imul8 as int + 7] as nat) * pow2(56) 
+                    == words[i as int]);
+        }
+
+        proof {
+            // --- word 0 uses bytes 0..7 ---
+            pow2_distributivity_over_word(words[0] as nat,
+                bytes[0] as nat, bytes[1] as nat, bytes[2] as nat, bytes[3] as nat,
+                bytes[4] as nat, bytes[5] as nat, bytes[6] as nat, bytes[7] as nat,
+                0
+            );
+
+            pow2_distributivity_over_word(words[1] as nat,
+                bytes[8] as nat, bytes[9] as nat, bytes[10] as nat, bytes[11] as nat,
+                bytes[12] as nat, bytes[13] as nat, bytes[14] as nat, bytes[15] as nat,
+                64
+            );
+
+            pow2_distributivity_over_word(words[2] as nat,
+                bytes[16] as nat, bytes[17] as nat, bytes[18] as nat, bytes[19] as nat,
+                bytes[20] as nat, bytes[21] as nat, bytes[22] as nat, bytes[23] as nat,
+                128
+            );
+
+            pow2_distributivity_over_word(words[3] as nat,
+                bytes[24] as nat, bytes[25] as nat, bytes[26] as nat, bytes[27] as nat,
+                bytes[28] as nat, bytes[29] as nat, bytes[30] as nat, bytes[31] as nat,
+                192
+            );
+        }
+
+        reveal(bytes_to_nat);
+        reveal_with_fuel(bytes_to_nat_rec, 33);
+        reveal(words_to_nat);
+        reveal_with_fuel(words_to_nat_gen_u64, 5);
+        assert(words_to_nat(&words) == bytes_to_nat(&bytes));
+        
+        let word_0_first = words[0] % shift_52;
+        let word_0_second = words[0] / shift_52;
+        let word_1_first = words[1] % shift_40;
+        let word_1_second = words[1] / shift_40;
+        let word_2_first = words[2] % shift_28;
+        let word_2_second = words[2] / shift_28;
+        let word_3_first = words[3] % shift_16;
+        let word_3_second = words[3] / shift_16;
+        proof{
+            div_mod::lemma_fundamental_div_mod(words[0] as int, shift_52 as int);
+            assert(words[0] == word_0_second * shift_52 + word_0_first);
+            assert(shift_52 == pow2(52)) by (compute_only);
+            assert(words[0] == word_0_second * pow2(52) + word_0_first);
+
+            div_mod::lemma_fundamental_div_mod(words[1] as int, shift_40 as int);
+            assert(words[1] == word_1_second * shift_40 + word_1_first);
+            assert(shift_40 == pow2(40)) by (compute_only);
+            assert(words[1] == word_1_second * pow2(40) + word_1_first);
+
+            div_mod::lemma_fundamental_div_mod(words[2] as int, shift_28 as int);
+            assert(words[2] == word_2_second * shift_28 + word_2_first);
+            assert(shift_28 == pow2(28)) by (compute_only);
+            assert(words[2] == word_2_second * pow2(28) + word_2_first);
+
+            div_mod::lemma_fundamental_div_mod(words[3] as int, shift_16 as int);
+            assert(words[3] == word_3_second * shift_16 + word_3_first);
+            assert(shift_16 == pow2(16)) by (compute_only);
+            assert(words[3] == word_3_second * pow2(16) + word_3_first);
+        }
+
+        let mut s = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
+
+        s.limbs[0] = word_0_first;
+        s.limbs[1] = word_0_second + word_1_first * shift_12;
+        s.limbs[2] = word_1_second + word_2_first * shift_24;
+        s.limbs[3] = word_2_second + word_3_first * shift_36;
+        s.limbs[4] = word_3_second;
+
+        reveal(to_nat);
+        reveal_with_fuel(seq_to_nat, 10);
+        reveal(words_to_nat);
+        reveal_with_fuel(words_to_nat_gen_u64, 10);
+
+        assert(words_to_nat(&words) == words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3] * pow2(192));        
+        proof{
+            calc!{
+                (==)
+                words_to_nat(&words);
+                (==) {}
+                (words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3] * pow2(192)) as nat;
+                (==) {}
+                (   (word_0_first + word_0_second * pow2(52)) + 
+                    (word_1_first + word_1_second * pow2(40)) * pow2(64) + 
+                    (word_2_first + word_2_second * pow2(28)) * pow2(128) + 
+                    (word_3_first + word_3_second * pow2(16)) * pow2(192)) as nat;
+                (==) {
+                    lemma_mul_is_distributive_add_other_way(pow2(64) as int, word_1_first as int, word_1_second * pow2(40) as int);
+                    lemma_mul_is_associative(word_1_second as int, pow2(40) as int, pow2(64) as int);
+                    lemma_pow2_adds(40, 64);
+
+                    lemma_mul_is_distributive_add_other_way(pow2(128) as int, word_2_first as int, word_2_second * pow2(28) as int);
+                    lemma_mul_is_associative(word_2_second as int, pow2(28) as int, pow2(128) as int);
+                    lemma_pow2_adds(28, 128);
+
+                    lemma_mul_is_distributive_add_other_way(pow2(192) as int, word_3_first as int, word_3_second * pow2(16) as int);
+                    lemma_mul_is_associative(word_3_second as int, pow2(16) as int, pow2(192) as int);
+                    lemma_pow2_adds(16, 192);
+                }
+                ( (word_0_first + word_0_second * pow2(52)) + 
+                  (word_1_first * pow2(64) + word_1_second * pow2(104)) + 
+                  (word_2_first * pow2(128) + word_2_second * pow2(156)) + 
+                  (word_3_first * pow2(192) + word_3_second * pow2(208))
+                ) as nat;
             }
         }
-        //TODO: prove that bytes_to_nat(bytes) == words_to_nat(&words)
-        assume(bytes_to_nat(bytes) == words_to_nat(&words));
         proof {
-            assert(1u64 << 52 > 0) by (bit_vector);
-            assert(1u64 << 48 > 0) by (bit_vector);
-            // TODO: prove property about words array
+            let a = s.limbs[0] as int;
+            let b = s.limbs[1] as int;
+            let c = s.limbs[2] as int;
+            let d = s.limbs[3] as int;
+            let e = s.limbs[4] as int;
+
+        calc! {
+                (==)
+                to_nat(&s.limbs) as int;
+                (==) {
+
+                }
+                // Start expression
+                a + (b + (c + (d + e * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(52) as int);
+
+                // 1) Expand innermost: (d + e*2^52)*2^52
+                (==) {
+                    lemma_mul_is_distributive_add_other_way(d, e * (pow2(52) as int), pow2(52) as int);
+                    lemma_mul_is_associative(e, pow2(52) as int, pow2(52) as int);
+                    lemma_pow2_adds(52, 52);
+                }
+                a + (b + (c + (d * (pow2(52) as int) + e * (pow2(104) as int))) * (pow2(52) as int)) * (pow2(52) as int);
+
+                // 2) Expand next level: (c + (d*2^52 + e*2^104)) * 2^52
+                (==) {
+                    let T1 = d * (pow2(52) as int) + e * (pow2(104) as int);
+                    lemma_mul_is_distributive_add_other_way(c, T1, pow2(52) as int);
+                    lemma_mul_is_distributive_add_other_way(d * (pow2(52) as int), e * (pow2(104) as int), pow2(52) as int);
+                    lemma_mul_is_associative(d, pow2(52) as int, pow2(52) as int);
+                    lemma_pow2_adds(52, 52);
+                    lemma_mul_is_associative(e, pow2(104) as int, pow2(52) as int);
+                    lemma_pow2_adds(104, 52);
+                }
+                a + (b + (c * (pow2(52) as int) + d * (pow2(104) as int) + e * (pow2(156) as int))) * (pow2(52) as int);
+
+                // 3) Expand outer level: (b + (c*2^52 + d*2^104 + e*2^156)) * 2^52
+                (==) {
+                    let U = c * (pow2(52) as int) + d * (pow2(104) as int) + e * (pow2(156) as int);
+                    lemma_mul_is_distributive_add_other_way(b, U, pow2(52) as int);
+                    let U1 = c * (pow2(52) as int) + d * (pow2(104) as int);
+                    lemma_mul_is_distributive_add_other_way(U1, e * (pow2(156) as int), pow2(52) as int);
+                    lemma_mul_is_distributive_add_other_way(c * (pow2(52) as int), d * (pow2(104) as int), pow2(52) as int);
+                    lemma_mul_is_associative(c, pow2(52) as int, pow2(52) as int);
+                    lemma_pow2_adds(52, 52);
+                    lemma_mul_is_associative(d, pow2(104) as int, pow2(52) as int);
+                    lemma_pow2_adds(104, 52);
+                    lemma_mul_is_associative(e, pow2(156) as int, pow2(52) as int);
+                    lemma_pow2_adds(156, 52);
+                }
+                a + b * (pow2(52) as int) + c * (pow2(104) as int) + d * (pow2(156) as int) + e * (pow2(208) as int);
+
+                (==) {}
+                word_0_first + 
+                (word_0_second + word_1_first * shift_12) * pow2(52) +
+                (word_1_second + word_2_first * shift_24) * pow2(104) +
+                (word_2_second + word_3_first * shift_36) * pow2(156) + 
+                word_3_second * pow2(208);
+                (==) {
+                    assert(shift_12 == pow2(12)) by (compute_only);
+                    assert(shift_24 == pow2(24)) by (compute_only);
+                    assert(shift_36 == pow2(36)) by (compute_only);
+                }
+                word_0_first + 
+                (word_0_second + word_1_first * pow2(12)) * pow2(52) +
+                (word_1_second + word_2_first * pow2(24)) * pow2(104) +
+                (word_2_second + word_3_first * pow2(36)) * pow2(156) + 
+                word_3_second * pow2(208);
+                                (==) {
+                    assert(shift_12 == pow2(12)) by (compute_only);
+                    assert(shift_24 == pow2(24)) by (compute_only);
+                    assert(shift_36 == pow2(36)) by (compute_only);
+                }
+                word_0_first + 
+                (word_0_second + word_1_first * pow2(12)) * pow2(52) +
+                (word_1_second + word_2_first * pow2(24)) * pow2(104) +
+                (word_2_second + word_3_first * pow2(36)) * pow2(156) + 
+                word_3_second * pow2(208);
+                (==) {
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, word_0_second as int, word_1_first * (pow2(12) as int));
+                    lemma_mul_is_associative(word_1_first as int, pow2(12) as int, pow2(52) as int);
+                    lemma_pow2_adds(12, 52);
+                    assert(pow2(12) * pow2(52) == pow2(64));
+                    lemma_mul_is_distributive_add_other_way(pow2(104) as int, word_1_second as int, word_2_first * (pow2(24) as int));
+                    lemma_mul_is_associative(word_2_first as int, pow2(24) as int, pow2(104) as int);
+                    lemma_pow2_adds(24, 104);
+                    assert(pow2(12) * pow2(52) == pow2(64));
+                    lemma_mul_is_distributive_add_other_way(pow2(156) as int, word_2_second as int, word_3_first * (pow2(36) as int));
+                    lemma_mul_is_associative(word_3_first as int, pow2(36) as int, pow2(156) as int);
+                    lemma_pow2_adds(36, 156);
+                }
+                (word_0_first + 
+                word_0_second * pow2(52) + word_1_first * pow2(64) +
+                word_1_second * pow2(104) + word_2_first * pow2(128) +
+                word_2_second * pow2(156) + word_3_first * pow2(192) + 
+                word_3_second * pow2(208));
+            };
         }
-
-        let mask = (1u64 << 52) - 1;
-        let top_mask = (1u64 << 48) - 1;
-        let mut s = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
-        //test workflow graphs
-        s.limbs[0] =   words[0]                            & mask;
-        s.limbs[1] = ((words[0] >> 52) | (words[1] << 12)) & mask;
-        s.limbs[2] = ((words[1] >> 40) | (words[2] << 24)) & mask;
-        s.limbs[3] = ((words[2] >> 28) | (words[3] << 36)) & mask;
-        s.limbs[4] =  (words[3] >> 16)                     & top_mask;
-
-        assume(false); // TODO: complete the proof
+        
+        assert(words_to_nat(&words) == to_nat(&s.limbs));
+        assert(bytes_to_nat(bytes) == to_nat(&s.limbs));
 
         s
     }

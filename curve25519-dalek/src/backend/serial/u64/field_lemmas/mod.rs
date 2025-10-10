@@ -16,3 +16,9 @@ pub mod pow2k_lemmas;
 pub mod reduce_lemmas;
 
 pub mod load8_lemmas;
+
+pub mod to_bytes_lemmas;
+
+// Unused helper lemmas - kept for reference and potential future use
+#[allow(unused)]
+pub mod unused_helper_lemmas;

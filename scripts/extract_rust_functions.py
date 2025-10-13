@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Extract Rust function definitions from specified files.
-Outputs TSV with function name, filename, and line number.
+Outputs CSV with function name, filename, and GitHub permalink.
 Filters out commented functions and those containing 'proof', 'spec', or 'main'.
 
 Usage:
@@ -9,6 +9,7 @@ Usage:
 """
 
 import argparse
+import csv
 import re
 import sys
 from pathlib import Path
@@ -17,6 +18,10 @@ from pathlib import Path
 def extract_functions(rust_files):
     """Extract function definitions from Rust files."""
     functions = []
+
+    # GitHub repository and commit info
+    github_repo = "https://github.com/Beneficial-AI-Foundation/dalek-lite"
+    commit_hash = "4c0358ebf1ded29a1963b09c62e9e9dfb6da37df"
 
     # Pattern to match function definitions
     # Matches: fn function_name or pub fn function_name, etc.
@@ -41,20 +46,22 @@ def extract_functions(rust_files):
                         match = fn_pattern.search(line)
                         if match:
                             fn_name = match.group(1)
-                            functions.append((fn_name, str(filepath), line_num))
+                            # Create GitHub permalink
+                            permalink = f"{github_repo}/blob/{commit_hash}/{filepath}#L{line_num}"
+                            functions.append((fn_name, str(filepath), permalink))
 
         except Exception as e:
             print(f"Error processing {filepath}: {e}", file=sys.stderr)
 
-    # Sort by filename, then line number
-    functions.sort(key=lambda x: (x[1], x[2]))
+    # Sort by filename, then by line number (extracted from permalink)
+    functions.sort(key=lambda x: (x[1], int(x[2].split('#L')[1])))
 
     return functions
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Extract Rust function definitions and output as TSV'
+        description='Extract Rust function definitions and output as CSV'
     )
     parser.add_argument(
         'files',
@@ -67,12 +74,12 @@ def main():
 
     functions = extract_functions(args.files)
 
-    # Output TSV header
-    print("function_name\tfilename\tline_number")
+    # Output CSV
+    writer = csv.writer(sys.stdout)
+    writer.writerow(["function_name", "filename", "github_link"])
 
-    # Output TSV rows
-    for fn_name, filename, line_num in functions:
-        print(f"{fn_name}\t{filename}\t{line_num}")
+    for fn_name, filename, permalink in functions:
+        writer.writerow([fn_name, filename, permalink])
 
 
 if __name__ == '__main__':

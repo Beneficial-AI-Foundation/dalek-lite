@@ -180,12 +180,12 @@ use digest::Digest;
 use crate::constants;
 use crate::field::FieldElement;
 
-#[cfg(feature = "group")]
-use {
-    group::{cofactor::CofactorGroup, prime::PrimeGroup, GroupEncoding},
-    rand_core::RngCore,
-    subtle::CtOption,
-};
+// #[cfg(feature = "group")]
+// use {
+//     group::{cofactor::CofactorGroup, prime::PrimeGroup, GroupEncoding},
+//     rand_core::RngCore,
+//     subtle::CtOption,
+// };
 
 use subtle::Choice;
 use subtle::ConditionallyNegatable;
@@ -1175,81 +1175,81 @@ impl Debug for RistrettoPoint {
 // group traits
 // ------------------------------------------------------------------------
 
-// Use the full trait path to avoid Group::identity overlapping Identity::identity in the
-// rest of the module (e.g. tests).
-#[cfg(feature = "group")]
-impl group::Group for RistrettoPoint {
-    type Scalar = Scalar;
+// // Use the full trait path to avoid Group::identity overlapping Identity::identity in the
+// // rest of the module (e.g. tests).
+// #[cfg(feature = "group")]
+// impl group::Group for RistrettoPoint {
+//     type Scalar = Scalar;
 
-//     fn random(mut rng: impl RngCore) -> Self {
-        // NOTE: this is duplicated due to different `rng` bounds
-//         let mut uniform_bytes = [0u8; 64];
-//         rng.fill_bytes(&mut uniform_bytes);
-//         RistrettoPoint::from_uniform_bytes(&uniform_bytes)
-//     }
+// //     fn random(mut rng: impl RngCore) -> Self {
+//         // NOTE: this is duplicated due to different `rng` bounds
+// //         let mut uniform_bytes = [0u8; 64];
+// //         rng.fill_bytes(&mut uniform_bytes);
+// //         RistrettoPoint::from_uniform_bytes(&uniform_bytes)
+// //     }
 
-//     fn identity() -> Self {
-//         Identity::identity()
-//     }
+// //     fn identity() -> Self {
+// //         Identity::identity()
+// //     }
 
-//     fn generator() -> Self {
-//         constants::RISTRETTO_BASEPOINT_POINT
-//     }
+// //     fn generator() -> Self {
+// //         constants::RISTRETTO_BASEPOINT_POINT
+// //     }
 
-//     fn is_identity(&self) -> Choice {
-//         self.ct_eq(&Identity::identity())
-//     }
+// //     fn is_identity(&self) -> Choice {
+// //         self.ct_eq(&Identity::identity())
+// //     }
 
-//     fn double(&self) -> Self {
-//         self + self
-//     }
-}
+// //     fn double(&self) -> Self {
+// //         self + self
+// //     }
+// }
 
-#[cfg(feature = "group")]
-impl GroupEncoding for RistrettoPoint {
-    type Repr = [u8; 32];
+// #[cfg(feature = "group")]
+// impl GroupEncoding for RistrettoPoint {
+//     type Repr = [u8; 32];
 
-//     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
-//         let (s_encoding_is_canonical, s_is_negative, s) =
-//             decompress::step_1(&CompressedRistretto(*bytes));
-// 
-//         let s_is_valid = s_encoding_is_canonical & !s_is_negative;
-// 
-//         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
-// 
-//         CtOption::new(res, s_is_valid & ok & !t_is_negative & !y_is_zero)
-//     }
+// //     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+// //         let (s_encoding_is_canonical, s_is_negative, s) =
+// //             decompress::step_1(&CompressedRistretto(*bytes));
+// //
+// //         let s_is_valid = s_encoding_is_canonical & !s_is_negative;
+// //
+// //         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
+// //
+// //         CtOption::new(res, s_is_valid & ok & !t_is_negative & !y_is_zero)
+// //     }
 
-//     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
-        // Just use the checked API; the checks we could skip aren't expensive.
-//         Self::from_bytes(bytes)
-//     }
+// //     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+//         // Just use the checked API; the checks we could skip aren't expensive.
+// //         Self::from_bytes(bytes)
+// //     }
 
-//     fn to_bytes(&self) -> Self::Repr {
-//         self.compress().to_bytes()
-//     }
-}
+// //     fn to_bytes(&self) -> Self::Repr {
+// //         self.compress().to_bytes()
+// //     }
+// }
 
-#[cfg(feature = "group")]
-impl PrimeGroup for RistrettoPoint {}
+// #[cfg(feature = "group")]
+// impl PrimeGroup for RistrettoPoint {}
 
-/// Ristretto has a cofactor of 1.
-#[cfg(feature = "group")]
-impl CofactorGroup for RistrettoPoint {
-    type Subgroup = Self;
+// /// Ristretto has a cofactor of 1.
+// #[cfg(feature = "group")]
+// impl CofactorGroup for RistrettoPoint {
+//     type Subgroup = Self;
 
-//     fn clear_cofactor(&self) -> Self::Subgroup {
-//         *self
-//     }
+// //     fn clear_cofactor(&self) -> Self::Subgroup {
+// //         *self
+// //     }
 
-//     fn into_subgroup(self) -> CtOption<Self::Subgroup> {
-//         CtOption::new(self, Choice::from(1))
-//     }
+// //     fn into_subgroup(self) -> CtOption<Self::Subgroup> {
+// //         CtOption::new(self, Choice::from(1))
+// //     }
 
-//     fn is_torsion_free(&self) -> Choice {
-//         Choice::from(1)
-//     }
-}
+// //     fn is_torsion_free(&self) -> Choice {
+// //         Choice::from(1)
+// //     }
+// }
 
 // ------------------------------------------------------------------------
 // Zeroize traits

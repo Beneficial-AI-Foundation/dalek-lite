@@ -691,13 +691,13 @@ impl Scalar {
     </ORIGINAL CODE> */
    pub const ZERO: Scalar = Scalar { bytes: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
 
-    /// The scalar \\( 1 \\).
-    pub const ONE: Self = Self {
-        bytes: [
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ],
-    };
+    // /// The scalar \\( 1 \\).
+    // pub const ONE: Self = Self {
+    //     bytes: [
+    //         1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    //         0, 0, 0,
+    //     ],
+    // };
 
     // /* <VERIFICATION NOTE>
     //  Verification of random method postponed - requires rand_core feature to be enabled.

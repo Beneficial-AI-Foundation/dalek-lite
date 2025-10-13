@@ -27,7 +27,7 @@ rustdoc-args = [
     "--html-in-header", "docs/assets/rustdoc-include-katex-header.html",
     "--cfg", "docsrs",
 ]
-features = ["serde", "rand_core", "digest", "legacy_compatibility", "group-bits"]
+features = ["serde", "rand_core", "digest", "legacy_compatibility"]
 
 [dev-dependencies]
 sha2 = { version = "0.10", default-features = false }
@@ -51,7 +51,6 @@ verus_builtin = { git = "https://github.com/verus-lang/verus", rev = "bf8e97e852
 verus_builtin_macros = { git = "https://github.com/verus-lang/verus", rev = "bf8e97e852e95f277333ecd7c6515d5c1adfbf0c"}
 cfg-if = "1"
 ff = { version = "0.13", default-features = false, optional = true }
-group = { version = "0.13", default-features = false, optional = true }
 rand_core = { version = "0.6.4", default-features = false, optional = true }
 digest = { version = "0.10", default-features = false, optional = true }
 subtle = { version = "2.3.0", default-features = false }
@@ -69,8 +68,6 @@ default = ["alloc", "precomputed-tables", "zeroize", "lizard"]
 alloc = ["zeroize?/alloc"]
 precomputed-tables = []
 legacy_compatibility = []
-group = ["dep:group", "rand_core"]
-group-bits = ["group", "ff/bits"]
 lizard = ["digest"]
 
 #[target.'cfg(all(not(curve25519_dalek_backend = "fiat"), not(curve25519_dalek_backend = "serial"), target_arch = "x86_64"))'.dependencies]

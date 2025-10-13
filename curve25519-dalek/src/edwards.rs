@@ -1451,22 +1451,22 @@ impl SubAssign<&SubgroupPoint> for EdwardsPoint {
     }
 }
 
-#[cfg(feature = "group")]
-define_sub_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
+// #[cfg(feature = "group")]
+// define_sub_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
 
-#[cfg(feature = "group")]
-impl<T> Sum<T> for SubgroupPoint
-where
-    T: Borrow<SubgroupPoint>,
-{
-    fn sum<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = T>,
-    {
-        use group::Group;
-        iter.fold(SubgroupPoint::identity(), |acc, item| acc + item.borrow())
-    }
-}
+// #[cfg(feature = "group")]
+// impl<T> Sum<T> for SubgroupPoint
+// where
+//     T: Borrow<SubgroupPoint>,
+// {
+//     fn sum<I>(iter: I) -> Self
+//     where
+//         I: Iterator<Item = T>,
+//     {
+//         use group::Group;
+//         iter.fold(SubgroupPoint::identity(), |acc, item| acc + item.borrow())
+//     }
+// }
 
 #[cfg(feature = "group")]
 impl Mul<&Scalar> for &SubgroupPoint {

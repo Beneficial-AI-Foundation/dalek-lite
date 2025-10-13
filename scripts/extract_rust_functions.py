@@ -76,10 +76,10 @@ def main():
 
     # Output CSV
     writer = csv.writer(sys.stdout)
-    writer.writerow(["function_name", "filename", "github_link"])
+    writer.writerow(["function_name", "github_link", "has_spec_verus", "has_proof_verus", "has_spec_lean", "has_proof_lean"])
 
     for fn_name, filename, permalink in functions:
-        writer.writerow([fn_name, filename, permalink])
+        writer.writerow([fn_name, permalink, "", "", "", ""])
 
 
 if __name__ == '__main__':

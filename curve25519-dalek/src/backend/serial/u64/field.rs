@@ -72,12 +72,12 @@ impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
-impl<'a> SubAssign<&'a FieldElement51> for FieldElement51 {
-    fn sub_assign(&mut self, _rhs: &'a FieldElement51) {
-        let result = (self as &FieldElement51) - _rhs;
-        self.0 = result.0;
-    }
-}
+// impl<'a> SubAssign<&'a FieldElement51> for FieldElement51 {
+//     fn sub_assign(&mut self, _rhs: &'a FieldElement51) {
+//         let result = (self as &FieldElement51) - _rhs;
+//         self.0 = result.0;
+//     }
+// }
 
 impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
@@ -101,12 +101,12 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
-impl<'a> MulAssign<&'a FieldElement51> for FieldElement51 {
-    fn mul_assign(&mut self, _rhs: &'a FieldElement51) {
-        let result = (self as &FieldElement51) * _rhs;
-        self.0 = result.0;
-    }
-}
+// impl<'a> MulAssign<&'a FieldElement51> for FieldElement51 {
+//     fn mul_assign(&mut self, _rhs: &'a FieldElement51) {
+//         let result = (self as &FieldElement51) * _rhs;
+//         self.0 = result.0;
+//     }
+// }
 
 impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
@@ -237,21 +237,21 @@ impl ConditionallySelectable for FieldElement51 {
         ])
     }
 
-    fn conditional_swap(a: &mut FieldElement51, b: &mut FieldElement51, choice: Choice) {
-        u64::conditional_swap(&mut a.0[0], &mut b.0[0], choice);
-        u64::conditional_swap(&mut a.0[1], &mut b.0[1], choice);
-        u64::conditional_swap(&mut a.0[2], &mut b.0[2], choice);
-        u64::conditional_swap(&mut a.0[3], &mut b.0[3], choice);
-        u64::conditional_swap(&mut a.0[4], &mut b.0[4], choice);
-    }
+    // fn conditional_swap(a: &mut FieldElement51, b: &mut FieldElement51, choice: Choice) {
+    //     u64::conditional_swap(&mut a.0[0], &mut b.0[0], choice);
+    //     u64::conditional_swap(&mut a.0[1], &mut b.0[1], choice);
+    //     u64::conditional_swap(&mut a.0[2], &mut b.0[2], choice);
+    //     u64::conditional_swap(&mut a.0[3], &mut b.0[3], choice);
+    //     u64::conditional_swap(&mut a.0[4], &mut b.0[4], choice);
+    // }
 
-    fn conditional_assign(&mut self, other: &FieldElement51, choice: Choice) {
-        self.0[0].conditional_assign(&other.0[0], choice);
-        self.0[1].conditional_assign(&other.0[1], choice);
-        self.0[2].conditional_assign(&other.0[2], choice);
-        self.0[3].conditional_assign(&other.0[3], choice);
-        self.0[4].conditional_assign(&other.0[4], choice);
-    }
+    // fn conditional_assign(&mut self, other: &FieldElement51, choice: Choice) {
+    //     self.0[0].conditional_assign(&other.0[0], choice);
+    //     self.0[1].conditional_assign(&other.0[1], choice);
+    //     self.0[2].conditional_assign(&other.0[2], choice);
+    //     self.0[3].conditional_assign(&other.0[3], choice);
+    //     self.0[4].conditional_assign(&other.0[4], choice);
+    // }
 }
 
 impl FieldElement51 {

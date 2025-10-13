@@ -307,27 +307,27 @@ impl Scalar {
         result
     }
 
-    /// Construct a `Scalar` from the low 255 bits of a 256-bit integer. This breaks the invariant
-    /// that scalars are always reduced. Scalar-scalar arithmetic, i.e., addition, subtraction,
-    /// multiplication, **does not work** on scalars produced from this function. You may only use
-    /// the output of this function for `EdwardsPoint::mul`, `MontgomeryPoint::mul`, and
-    /// `EdwardsPoint::vartime_double_scalar_mul_basepoint`. **Do not use this function** unless
-    /// you absolutely have to.
+    // Construct a `Scalar` from the low 255 bits of a 256-bit integer. This breaks the invariant
+    // that scalars are always reduced. Scalar-scalar arithmetic, i.e., addition, subtraction,
+    // multiplication, **does not work** on scalars produced from this function. You may only use
+    // the output of this function for `EdwardsPoint::mul`, `MontgomeryPoint::mul`, and
+    // `EdwardsPoint::vartime_double_scalar_mul_basepoint`. **Do not use this function** unless
+    // you absolutely have to.
     /* <VERIFICATION NOTE>
         -This is not in default features and not in our current target list ==> spec omitted for now
     </VERIFICATION NOTE> */
-    #[cfg(feature = "legacy_compatibility")]
-    #[deprecated(
-        since = "4.0.0",
-        note = "This constructor outputs scalars with undefined scalar-scalar arithmetic. See docs."
-    )]
-    pub const fn from_bits(bytes: [u8; 32]) -> Scalar {
-        let mut s = Scalar { bytes };
-        // Ensure invariant #1 holds. That is, make s < 2^255 by masking the high bit.
-        s.bytes[31] &= 0b0111_1111;
+    // #[cfg(feature = "legacy_compatibility")]
+    // #[deprecated(
+    //     since = "4.0.0",
+    //     note = "This constructor outputs scalars with undefined scalar-scalar arithmetic. See docs."
+    // )]
+    // pub const fn from_bits(bytes: [u8; 32]) -> Scalar {
+    //     let mut s = Scalar { bytes };
+    //     // Ensure invariant #1 holds. That is, make s < 2^255 by masking the high bit.
+    //     s.bytes[31] &= 0b0111_1111;
 
-        s
-    }
+    //     s
+    // }
 }
 
 
@@ -375,11 +375,11 @@ impl Index<usize> for Scalar {
 /* <VERIFICATION NOTE>
  Left outside verification scope
 </VERIFICATION NOTE> */
-impl Debug for Scalar {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Scalar{{\n\tbytes: {:?},\n}}", &self.bytes)
-    }
-}
+// impl Debug for Scalar {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "Scalar{{\n\tbytes: {:?},\n}}", &self.bytes)
+//     }
+// }
 
 verus! {
 impl<'a> MulAssign<&'a Scalar> for Scalar {
@@ -464,25 +464,25 @@ impl<'a, 'b> Add<&'b Scalar> for &'a Scalar {
 
 define_add_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
-impl<'b> SubAssign<&'b Scalar> for Scalar {
-    fn sub_assign(&mut self, _rhs: &'b Scalar) {
-        *self = *self - _rhs;
-    }
-}
+// impl<'b> SubAssign<&'b Scalar> for Scalar {
+//     fn sub_assign(&mut self, _rhs: &'b Scalar) {
+//         *self = *self - _rhs;
+//     }
+// }
 
-define_sub_assign_variants!(LHS = Scalar, RHS = Scalar);
+// define_sub_assign_variants!(LHS = Scalar, RHS = Scalar);
 
-impl<'a, 'b> Sub<&'b Scalar> for &'a Scalar {
-    type Output = Scalar;
-    #[allow(non_snake_case)]
-    fn sub(self, rhs: &'b Scalar) -> Scalar {
-        // The UnpackedScalar::sub function produces reduced outputs if the inputs are reduced. By
-        // Scalar invariant #1, this is always the case.
-        UnpackedScalar::sub(&self.unpack(), &rhs.unpack()).pack()
-    }
-}
+// impl<'a, 'b> Sub<&'b Scalar> for &'a Scalar {
+//     type Output = Scalar;
+//     #[allow(non_snake_case)]
+//     fn sub(self, rhs: &'b Scalar) -> Scalar {
+//         // The UnpackedScalar::sub function produces reduced outputs if the inputs are reduced. By
+//         // Scalar invariant #1, this is always the case.
+//         UnpackedScalar::sub(&self.unpack(), &rhs.unpack()).pack()
+//     }
+// }
 
-define_sub_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
+// define_sub_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
 impl<'a> Neg for &'a Scalar {
     type Output = Scalar;
@@ -501,20 +501,20 @@ impl Neg for Scalar {
     }
 }
 
-verus! {
-impl ConditionallySelectable for Scalar {
-    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
-        let mut bytes = [0u8; 32];
-        #[allow(clippy::needless_range_loop)]
-        for i in 0..32 {
-            // VERIFICATION NOTE: Use wrapper function for Verus compatibility instead of direct subtle call
-            // ORIGINAL CODE: bytes[i] = u8::conditional_select(&a.bytes[i], &b.bytes[i], choice);
-            bytes[i] = select_u8(&a.bytes[i], &b.bytes[i], choice);
-        }
-        Scalar { bytes }
-    }
-}
-} // verus!
+// verus! {
+// impl ConditionallySelectable for Scalar {
+//     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+//         let mut bytes = [0u8; 32];
+//         #[allow(clippy::needless_range_loop)]
+//         for i in 0..32 {
+//             // VERIFICATION NOTE: Use wrapper function for Verus compatibility instead of direct subtle call
+//             // ORIGINAL CODE: bytes[i] = u8::conditional_select(&a.bytes[i], &b.bytes[i], choice);
+//             bytes[i] = select_u8(&a.bytes[i], &b.bytes[i], choice);
+//         }
+//         Scalar { bytes }
+//     }
+// }
+// } // verus!
 
 #[cfg(feature = "serde")]
 use serde::de::Visitor;
@@ -576,29 +576,29 @@ impl<'de> Deserialize<'de> for Scalar {
     }
 }
 
-impl<T> Product<T> for Scalar
-where
-    T: Borrow<Scalar>,
-{
-    fn product<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = T>,
-    {
-        iter.fold(Scalar::ONE, |acc, item| acc * item.borrow())
-    }
-}
+// impl<T> Product<T> for Scalar
+// where
+//     T: Borrow<Scalar>,
+// {
+//     fn product<I>(iter: I) -> Self
+//     where
+//         I: Iterator<Item = T>,
+//     {
+//         iter.fold(Scalar::ONE, |acc, item| acc * item.borrow())
+//     }
+// }
 
-impl<T> Sum<T> for Scalar
-where
-    T: Borrow<Scalar>,
-{
-    fn sum<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = T>,
-    {
-        iter.fold(Scalar::ZERO, |acc, item| acc + item.borrow())
-    }
-}
+// impl<T> Sum<T> for Scalar
+// where
+//     T: Borrow<Scalar>,
+// {
+//     fn sum<I>(iter: I) -> Self
+//     where
+//         I: Iterator<Item = T>,
+//     {
+//         iter.fold(Scalar::ZERO, |acc, item| acc + item.borrow())
+//     }
+// }
 
 impl Default for Scalar {
     fn default() -> Scalar {
@@ -614,23 +614,23 @@ impl From<u8> for Scalar {
     }
 }
 
-impl From<u16> for Scalar {
-    fn from(x: u16) -> Scalar {
-        let mut s_bytes = [0u8; 32];
-        let x_bytes = x.to_le_bytes();
-        s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
-        Scalar { bytes: s_bytes }
-    }
-}
+// impl From<u16> for Scalar {
+//     fn from(x: u16) -> Scalar {
+//         let mut s_bytes = [0u8; 32];
+//         let x_bytes = x.to_le_bytes();
+//         s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
+//         Scalar { bytes: s_bytes }
+//     }
+// }
 
-impl From<u32> for Scalar {
-    fn from(x: u32) -> Scalar {
-        let mut s_bytes = [0u8; 32];
-        let x_bytes = x.to_le_bytes();
-        s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
-        Scalar { bytes: s_bytes }
-    }
-}
+// impl From<u32> for Scalar {
+//     fn from(x: u32) -> Scalar {
+//         let mut s_bytes = [0u8; 32];
+//         let x_bytes = x.to_le_bytes();
+//         s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
+//         Scalar { bytes: s_bytes }
+//     }
+// }
 
 impl From<u64> for Scalar {
     /// Construct a scalar from the given `u64`.
@@ -662,21 +662,21 @@ impl From<u64> for Scalar {
     }
 }
 
-impl From<u128> for Scalar {
-    fn from(x: u128) -> Scalar {
-        let mut s_bytes = [0u8; 32];
-        let x_bytes = x.to_le_bytes();
-        s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
-        Scalar { bytes: s_bytes }
-    }
-}
+// impl From<u128> for Scalar {
+//     fn from(x: u128) -> Scalar {
+//         let mut s_bytes = [0u8; 32];
+//         let x_bytes = x.to_le_bytes();
+//         s_bytes[0..x_bytes.len()].copy_from_slice(&x_bytes);
+//         Scalar { bytes: s_bytes }
+//     }
+// }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for Scalar {
-    fn zeroize(&mut self) {
-        self.bytes.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for Scalar {
+//     fn zeroize(&mut self) {
+//         self.bytes.zeroize();
+//     }
+// }
 
 verus! {
 
@@ -699,75 +699,75 @@ impl Scalar {
         ],
     };
 
-    /* <VERIFICATION NOTE>
-     Verification of random method postponed - requires rand_core feature to be enabled.
-    </VERIFICATION NOTE> */
-    #[cfg(any(test, feature = "rand_core"))]
-    /// Return a `Scalar` chosen uniformly at random using a user-provided RNG.
-    ///
-    /// # Inputs
-    ///
-    /// * `rng`: any RNG which implements `CryptoRngCore`
-    ///   (i.e. `CryptoRng` + `RngCore`) interface.
-    ///
-    /// # Returns
-    ///
-    /// A random scalar within \\(\mathbb{Z} / \ell\mathbb{Z}\\).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # fn main() {
-    /// use curve25519_dalek::scalar::Scalar;
-    ///
-    /// use rand_core::OsRng;
-    ///
-    /// let mut csprng = OsRng;
-    /// let a: Scalar = Scalar::random(&mut csprng);
-    /// # }
-    /* <VERIFICATION NOTE>
-     Added verifier::external_body annotation
-    </VERIFICATION NOTE> */
-    #[verifier::external_body]
-    pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> (result: Self)
-        ensures is_random_scalar(&result)
-    {
-        let mut scalar_bytes = [0u8; 64];
-        rng.fill_bytes(&mut scalar_bytes);
-        Scalar::from_bytes_mod_order_wide(&scalar_bytes)
-    }
+    // /* <VERIFICATION NOTE>
+    //  Verification of random method postponed - requires rand_core feature to be enabled.
+    // </VERIFICATION NOTE> */
+    // #[cfg(any(test, feature = "rand_core"))]
+    // /// Return a `Scalar` chosen uniformly at random using a user-provided RNG.
+    // ///
+    // /// # Inputs
+    // ///
+    // /// * `rng`: any RNG which implements `CryptoRngCore`
+    // ///   (i.e. `CryptoRng` + `RngCore`) interface.
+    // ///
+    // /// # Returns
+    // ///
+    // /// A random scalar within \\(\mathbb{Z} / \ell\mathbb{Z}\\).
+    // ///
+    // /// # Example
+    // ///
+    // /// ```
+    // /// # fn main() {
+    // /// use curve25519_dalek::scalar::Scalar;
+    // ///
+    // /// use rand_core::OsRng;
+    // ///
+    // /// let mut csprng = OsRng;
+    // /// let a: Scalar = Scalar::random(&mut csprng);
+    // /// # }
+    // /* <VERIFICATION NOTE>
+    //  Added verifier::external_body annotation
+    // </VERIFICATION NOTE> */
+    // #[verifier::external_body]
+    // pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> (result: Self)
+    //     ensures is_random_scalar(&result)
+    // {
+    //     let mut scalar_bytes = [0u8; 64];
+    //     rng.fill_bytes(&mut scalar_bytes);
+    //     Scalar::from_bytes_mod_order_wide(&scalar_bytes)
+    // }
 
-    #[cfg(feature = "digest")]
-    /// Hash a slice of bytes into a scalar.
-    ///
-    /// Takes a type parameter `D`, which is any `Digest` producing 64
-    /// bytes (512 bits) of output.
-    ///
-    /// Convenience wrapper around `from_hash`.
-    ///
-    /// # Example
-    ///
-    #[cfg_attr(feature = "digest", doc = "```")]
-    #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
-    /// # use curve25519_dalek::scalar::Scalar;
-    /// use sha2::Sha512;
-    ///
-    /// # // Need fn main() here in comment so the doctest compiles
-    /// # // See https://doc.rust-lang.org/book/documentation.html#documentation-as-tests
-    /// # fn main() {
-    /// let msg = "To really appreciate architecture, you may even need to commit a murder";
-    /// let s = Scalar::hash_from_bytes::<Sha512>(msg.as_bytes());
-    /// # }
-    /// ```
-    #[verifier::external_body]
-    pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar
-    where
-        D: Digest<OutputSize = U64> + Default,
-    {
-        let mut hash = D::default();
-        hash.update(input);
-        Scalar::from_hash(hash)
-    }
+    // #[cfg(feature = "digest")]
+    // /// Hash a slice of bytes into a scalar.
+    // ///
+    // /// Takes a type parameter `D`, which is any `Digest` producing 64
+    // /// bytes (512 bits) of output.
+    // ///
+    // /// Convenience wrapper around `from_hash`.
+    // ///
+    // /// # Example
+    // ///
+    // #[cfg_attr(feature = "digest", doc = "```")]
+    // #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
+    // /// # use curve25519_dalek::scalar::Scalar;
+    // /// use sha2::Sha512;
+    // ///
+    // /// # // Need fn main() here in comment so the doctest compiles
+    // /// # // See https://doc.rust-lang.org/book/documentation.html#documentation-as-tests
+    // /// # fn main() {
+    // /// let msg = "To really appreciate architecture, you may even need to commit a murder";
+    // /// let s = Scalar::hash_from_bytes::<Sha512>(msg.as_bytes());
+    // /// # }
+    // /// ```
+    // #[verifier::external_body]
+    // pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar
+    // where
+    //     D: Digest<OutputSize = U64> + Default,
+    // {
+    //     let mut hash = D::default();
+    //     hash.update(input);
+    //     Scalar::from_hash(hash)
+    // }
 
     #[cfg(feature = "digest")]
     /// Construct a scalar from an existing `Digest` instance.
@@ -887,282 +887,282 @@ impl Scalar {
     pub fn invert(&self) -> Scalar {
         self.unpack().invert().pack()
     }
-    /// Given a slice of nonzero (possibly secret) `Scalar`s,
-    /// compute their inverses in a batch.
-    ///
-    /// # Return
-    ///
-    /// Each element of `inputs` is replaced by its inverse.
-    ///
-    /// The product of all inverses is returned.
-    ///
-    /// # Warning
-    ///
-    /// All input `Scalars` **MUST** be nonzero.  If you cannot
-    /// *prove* that this is the case, you **SHOULD NOT USE THIS
-    /// FUNCTION**.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use curve25519_dalek::scalar::Scalar;
-    /// # fn main() {
-    /// let mut scalars = [
-    ///     Scalar::from(3u64),
-    ///     Scalar::from(5u64),
-    ///     Scalar::from(7u64),
-    ///     Scalar::from(11u64),
-    /// ];
-    ///
-    /// let allinv = Scalar::batch_invert(&mut scalars);
-    ///
-    /// assert_eq!(allinv, Scalar::from(3*5*7*11u64).invert());
-    /// assert_eq!(scalars[0], Scalar::from(3u64).invert());
-    /// assert_eq!(scalars[1], Scalar::from(5u64).invert());
-    /// assert_eq!(scalars[2], Scalar::from(7u64).invert());
-    /// assert_eq!(scalars[3], Scalar::from(11u64).invert());
-    /// # }
-    /// ```
-    /* <VERIFICATION NOTE>
-     Refactored for Verus: Index loops instead of iterators, manual Vec construction, ..
-    </VERIFICATION NOTE> */
-    #[cfg(feature = "alloc")]
+    // /// Given a slice of nonzero (possibly secret) `Scalar`s,
+    // /// compute their inverses in a batch.
+    // ///
+    // /// # Return
+    // ///
+    // /// Each element of `inputs` is replaced by its inverse.
+    // ///
+    // /// The product of all inverses is returned.
+    // ///
+    // /// # Warning
+    // ///
+    // /// All input `Scalars` **MUST** be nonzero.  If you cannot
+    // /// *prove* that this is the case, you **SHOULD NOT USE THIS
+    // /// FUNCTION**.
+    // ///
+    // /// # Example
+    // ///
+    // /// ```
+    // /// # use curve25519_dalek::scalar::Scalar;
+    // /// # fn main() {
+    // /// let mut scalars = [
+    // ///     Scalar::from(3u64),
+    // ///     Scalar::from(5u64),
+    // ///     Scalar::from(7u64),
+    // ///     Scalar::from(11u64),
+    // /// ];
+    // ///
+    // /// let allinv = Scalar::batch_invert(&mut scalars);
+    // ///
+    // /// assert_eq!(allinv, Scalar::from(3*5*7*11u64).invert());
+    // /// assert_eq!(scalars[0], Scalar::from(3u64).invert());
+    // /// assert_eq!(scalars[1], Scalar::from(5u64).invert());
+    // /// assert_eq!(scalars[2], Scalar::from(7u64).invert());
+    // /// assert_eq!(scalars[3], Scalar::from(11u64).invert());
+    // /// # }
+    // /// ```
+    // /* <VERIFICATION NOTE>
+    //  Refactored for Verus: Index loops instead of iterators, manual Vec construction, ..
+    // </VERIFICATION NOTE> */
+    // #[cfg(feature = "alloc")]
     // Theo: Verus doesn't like the zeroize in this function. I think the long-term
     // solution is to use assume_specification to tell Verus what zeroize does.
     // In the short-term, I've just told verus to ignore the body.
-    #[verifier::external_body]
-    pub fn batch_invert(inputs: &mut [Scalar]) -> (result: Scalar)
-    ensures
-        // Result is the modular inverse of the product of all original inputs
-        is_inverse_of_nat(&result, product_of_scalars(old(inputs)@)),
-        // Each input is replaced with its inverse
-        forall|i: int| 0 <= i < inputs.len() ==>
-            #[trigger] is_inverse(&(#[trigger] old(inputs)[i]), &(#[trigger] inputs[i])),
-    {
-        // This code is essentially identical to the FieldElement
-        // implementation, and is documented there.  Unfortunately,
-        // it's not easy to write it generically, since here we want
-        // to use `UnpackedScalar`s internally, and `Scalar`s
-        // externally, but there's no corresponding distinction for
-        // field elements.
+    // #[verifier::external_body]
+    // pub fn batch_invert(inputs: &mut [Scalar]) -> (result: Scalar)
+    // ensures
+    //     // Result is the modular inverse of the product of all original inputs
+    //     is_inverse_of_nat(&result, product_of_scalars(old(inputs)@)),
+    //     // Each input is replaced with its inverse
+    //     forall|i: int| 0 <= i < inputs.len() ==>
+    //         #[trigger] is_inverse(&(#[trigger] old(inputs)[i]), &(#[trigger] inputs[i])),
+    // {
+    //     // This code is essentially identical to the FieldElement
+    //     // implementation, and is documented there.  Unfortunately,
+    //     // it's not easy to write it generically, since here we want
+    //     // to use `UnpackedScalar`s internally, and `Scalar`s
+    //     // externally, but there's no corresponding distinction for
+    //     // field elements.
 
-        let n = inputs.len();
-        let one_unpacked = Scalar::ONE.unpack();
+    //     let n = inputs.len();
+    //     let one_unpacked = Scalar::ONE.unpack();
 
-        proof {
-            assume(limbs_bounded(&one_unpacked));
-        }
+    //     proof {
+    //         assume(limbs_bounded(&one_unpacked));
+    //     }
 
-        let one: UnpackedScalar = one_unpacked.as_montgomery();
+    //     let one: UnpackedScalar = one_unpacked.as_montgomery();
 
-        proof {
-            assume(limbs_bounded(&one));
-        }
+    //     proof {
+    //         assume(limbs_bounded(&one));
+    //     }
 
-        /* <VERIFICATION NOTE>
-         Build vec manually instead of vec![one; n] for Verus compatibility
-        </VERIFICATION NOTE> */
-        /* <ORIGINAL CODE>
-         let mut scratch = vec![one; n];
-         </ORIGINAL CODE> */
-        let mut scratch = Vec::new();
-        for _ in 0..n {
-            scratch.push(one);
-        }
-
-
-        // Keep an accumulator of all of the previous products
-        let acc_unpacked = Scalar::ONE.unpack();
-
-        proof {
-            assume(scratch.len() == n);
-            assume(limbs_bounded(&acc_unpacked));
-        }
-
-        let mut acc = acc_unpacked.as_montgomery();
-
-        proof {
-            assume(limbs_bounded(&acc));
-        }
-
-        // Pass through the input vector, recording the previous
-        // products in the scratch space
-        /* <VERIFICATION NOTE>
-         Rewritten with index loop instead of .zip() for Verus compatibility
-        </VERIFICATION NOTE> */
-        /* <ORIGINAL CODE>
-         for (input, scratch) in inputs.iter_mut().zip(scratch.iter_mut()) {
-             *scratch = acc;
-        //     // Avoid unnecessary Montgomery multiplication in second pass by
-        //     // keeping inputs in Montgomery form
-             let tmp = input.unpack().as_montgomery();
-             *input = tmp.pack();
-             acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
-         }
-        </ORIGINAL CODE> */
-        for i in 0..n
-             invariant scratch.len() == n, n == inputs.len(), limbs_bounded(&acc)
-        {
-            scratch[i] = acc;
-
-            // Avoid unnecessary Montgomery multiplication in second pass by
-            // keeping inputs in Montgomery form
-            let input_unpacked = inputs[i].unpack();
-
-            proof {
-                assume(limbs_bounded(&input_unpacked));
-            }
-
-            let tmp = input_unpacked.as_montgomery();
-
-            proof {
-                assume(limbs_bounded(&tmp));
-            }
-
-            inputs[i] = tmp.pack();
-            acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
-
-            proof {
-                assume(limbs_bounded(&acc));
-            }
-        }
-
-        proof {
-            // Assert that all scratch elements have bounded limbs
-            assume(forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]));
-        }
-
-        // acc is nonzero iff all inputs are nonzero
-        #[cfg(not(verus_keep_ghost))]
-        debug_assert!(acc.pack() != Scalar::ZERO);
-
-        // Compute the inverse of all products
-        // ORIGINAL CODE: acc = acc.montgomery_invert().from_montgomery();
-        acc = acc.montgomery_invert();
-
-        proof {
-            assume(limbs_bounded(&acc));
-        }
-
-        acc = acc.from_montgomery();
-
-        proof {
-            assume(limbs_bounded(&acc));
-        }
-
-        // We need to return the product of all inverses later
-        let ret = acc.pack();
-
-        // Pass through the vector backwards to compute the inverses
-        // in place
-        /* <VERIFICATION NOTE>
-         Manual reverse loop instead of .rev() for Verus compatibility
-        </VERIFICATION NOTE> */
-        /* <ORIGINAL CODE>
-        for (input, scratch) in inputs.iter_mut().rev().zip(scratch.iter().rev()) {
-             let tmp = UnpackedScalar::montgomery_mul(&acc, &input.unpack());
-             *input = UnpackedScalar::montgomery_mul(&acc, scratch).pack();
-             acc = tmp;
-         }
-        </ORIGINAL CODE> */
-        let mut i: usize = n;
-        while i > 0
-            invariant
-                scratch.len() == n,
-                n == inputs.len(),
-                i <= n,
-                limbs_bounded(&acc),
-                forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]),
-            decreases i
-        {
-            i -= 1;
-            let input_unpacked = inputs[i].unpack();
-
-            proof {
-                assume(limbs_bounded(&input_unpacked));
-            }
-
-            let tmp = UnpackedScalar::montgomery_mul(&acc, &input_unpacked);
-
-            proof {
-                assume(limbs_bounded(&tmp));
-            }
-
-            inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
-            acc = tmp;
-        }
+    //     /* <VERIFICATION NOTE>
+    //      Build vec manually instead of vec![one; n] for Verus compatibility
+    //     </VERIFICATION NOTE> */
+    //     /* <ORIGINAL CODE>
+    //      let mut scratch = vec![one; n];
+    //      </ORIGINAL CODE> */
+    //     let mut scratch = Vec::new();
+    //     for _ in 0..n {
+    //         scratch.push(one);
+    //     }
 
 
-        #[cfg(feature = "zeroize")]
-        Zeroize::zeroize(&mut scratch);
+    //     // Keep an accumulator of all of the previous products
+    //     let acc_unpacked = Scalar::ONE.unpack();
 
-        proof {
-            // Assume the postconditions
-            assume(is_inverse_of_nat(&ret, product_of_scalars(old(inputs)@)));
-            assume(forall|i: int| 0 <= i < inputs.len() ==>
-                #[trigger] is_inverse(&(#[trigger] old(inputs)[i]), &(#[trigger] inputs[i])));
-        }
+    //     proof {
+    //         assume(scratch.len() == n);
+    //         assume(limbs_bounded(&acc_unpacked));
+    //     }
 
-        ret
-    }
+    //     let mut acc = acc_unpacked.as_montgomery();
 
-    /// Get the bits of the scalar as an array, in little-endian order
-    /* <VERIFICATION NOTE>
-     This is a Verus-compatible version of bits_le from below that returns an array instead of an iterator
-    </VERIFICATION NOTE> */
-    #[allow(dead_code)]
-    pub(crate) fn bits_le_v(&self) -> (result: [bool; 256])
-    ensures
-        bits_to_nat(&result) == bytes_to_nat(&self.bytes),
-    {
-        let mut bits = [false; 256];
-        let mut i: usize = 0;
+    //     proof {
+    //         assume(limbs_bounded(&acc));
+    //     }
 
-        while i < 256
-            invariant
-                i <= 256,
-                bits.len() == 256,
-                self.bytes.len() == 32,
-            decreases 256 - i,
-        {
-            // As i runs from 0..256, the bottom 3 bits index the bit, while the upper bits index
-            // the byte. Since self.bytes is little-endian at the byte level, this is
-            // little-endian on the bit level
-            let byte_idx = i >> 3;  // Divide by 8 to get byte index
-            let bit_idx = (i & 7) as u8;  // Modulo 8 to get bit position within byte
+    //     // Pass through the input vector, recording the previous
+    //     // products in the scratch space
+    //     /* <VERIFICATION NOTE>
+    //      Rewritten with index loop instead of .zip() for Verus compatibility
+    //     </VERIFICATION NOTE> */
+    //     /* <ORIGINAL CODE>
+    //      for (input, scratch) in inputs.iter_mut().zip(scratch.iter_mut()) {
+    //          *scratch = acc;
+    //     //     // Avoid unnecessary Montgomery multiplication in second pass by
+    //     //     // keeping inputs in Montgomery form
+    //          let tmp = input.unpack().as_montgomery();
+    //          *input = tmp.pack();
+    //          acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
+    //      }
+    //     </ORIGINAL CODE> */
+    //     for i in 0..n
+    //          invariant scratch.len() == n, n == inputs.len(), limbs_bounded(&acc)
+    //     {
+    //         scratch[i] = acc;
 
-            // Prove bounds using shift and mask lemmas
-            proof {
-                use crate::backend::serial::u64::common_verus::shift_lemmas::*;
-                use crate::backend::serial::u64::common_verus::mask_lemmas::*;
-                use vstd::bits::*;
-                use vstd::arithmetic::power2::*;
+    //         // Avoid unnecessary Montgomery multiplication in second pass by
+    //         // keeping inputs in Montgomery form
+    //         let input_unpacked = inputs[i].unpack();
 
-                assert(i < 256);
+    //         proof {
+    //             assume(limbs_bounded(&input_unpacked));
+    //         }
 
-                // Prove i >> 3 = i / 8 using shift lemma
-                lemma_u64_shr_is_div(i as u64, 3);
-                // pow2(3) = 8
-                lemma2_to64();
-                assert(byte_idx < 32);
+    //         let tmp = input_unpacked.as_montgomery();
 
-                // Prove i & 7 = i % 8 using mask lemma
-                lemma_u64_low_bits_mask_is_mod(i as u64, 3);
-                // low_bits_mask(3) = 7 and pow2(3) = 8
-                lemma2_to64();
-                assert(bit_idx < 8);
-            }
+    //         proof {
+    //             assume(limbs_bounded(&tmp));
+    //         }
 
-            bits[i] = ((self.bytes[byte_idx] >> bit_idx) & 1u8) == 1;
-            i += 1;
-        }
+    //         inputs[i] = tmp.pack();
+    //         acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
 
-        proof {
-            assume(bits_to_nat(&bits) == bytes_to_nat(&self.bytes));
-        }
+    //         proof {
+    //             assume(limbs_bounded(&acc));
+    //         }
+    //     }
 
-        bits
-    }
+    //     proof {
+    //         // Assert that all scratch elements have bounded limbs
+    //         assume(forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]));
+    //     }
+
+    //     // acc is nonzero iff all inputs are nonzero
+    //     #[cfg(not(verus_keep_ghost))]
+    //     debug_assert!(acc.pack() != Scalar::ZERO);
+
+    //     // Compute the inverse of all products
+    //     // ORIGINAL CODE: acc = acc.montgomery_invert().from_montgomery();
+    //     acc = acc.montgomery_invert();
+
+    //     proof {
+    //         assume(limbs_bounded(&acc));
+    //     }
+
+    //     acc = acc.from_montgomery();
+
+    //     proof {
+    //         assume(limbs_bounded(&acc));
+    //     }
+
+    //     // We need to return the product of all inverses later
+    //     let ret = acc.pack();
+
+    //     // Pass through the vector backwards to compute the inverses
+    //     // in place
+    //     /* <VERIFICATION NOTE>
+    //      Manual reverse loop instead of .rev() for Verus compatibility
+    //     </VERIFICATION NOTE> */
+    //     /* <ORIGINAL CODE>
+    //     for (input, scratch) in inputs.iter_mut().rev().zip(scratch.iter().rev()) {
+    //          let tmp = UnpackedScalar::montgomery_mul(&acc, &input.unpack());
+    //          *input = UnpackedScalar::montgomery_mul(&acc, scratch).pack();
+    //          acc = tmp;
+    //      }
+    //     </ORIGINAL CODE> */
+    //     let mut i: usize = n;
+    //     while i > 0
+    //         invariant
+    //             scratch.len() == n,
+    //             n == inputs.len(),
+    //             i <= n,
+    //             limbs_bounded(&acc),
+    //             forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]),
+    //         decreases i
+    //     {
+    //         i -= 1;
+    //         let input_unpacked = inputs[i].unpack();
+
+    //         proof {
+    //             assume(limbs_bounded(&input_unpacked));
+    //         }
+
+    //         let tmp = UnpackedScalar::montgomery_mul(&acc, &input_unpacked);
+
+    //         proof {
+    //             assume(limbs_bounded(&tmp));
+    //         }
+
+    //         inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
+    //         acc = tmp;
+    //     }
+
+
+    //     #[cfg(feature = "zeroize")]
+    //     Zeroize::zeroize(&mut scratch);
+
+    //     proof {
+    //         // Assume the postconditions
+    //         assume(is_inverse_of_nat(&ret, product_of_scalars(old(inputs)@)));
+    //         assume(forall|i: int| 0 <= i < inputs.len() ==>
+    //             #[trigger] is_inverse(&(#[trigger] old(inputs)[i]), &(#[trigger] inputs[i])));
+    //     }
+
+    //     ret
+    // }
+
+    // /// Get the bits of the scalar as an array, in little-endian order
+    // /* <VERIFICATION NOTE>
+    //  This is a Verus-compatible version of bits_le from below that returns an array instead of an iterator
+    // </VERIFICATION NOTE> */
+    // #[allow(dead_code)]
+    // pub(crate) fn bits_le_v(&self) -> (result: [bool; 256])
+    // ensures
+    //     bits_to_nat(&result) == bytes_to_nat(&self.bytes),
+    // {
+    //     let mut bits = [false; 256];
+    //     let mut i: usize = 0;
+
+    //     while i < 256
+    //         invariant
+    //             i <= 256,
+    //             bits.len() == 256,
+    //             self.bytes.len() == 32,
+    //         decreases 256 - i,
+    //     {
+    //         // As i runs from 0..256, the bottom 3 bits index the bit, while the upper bits index
+    //         // the byte. Since self.bytes is little-endian at the byte level, this is
+    //         // little-endian on the bit level
+    //         let byte_idx = i >> 3;  // Divide by 8 to get byte index
+    //         let bit_idx = (i & 7) as u8;  // Modulo 8 to get bit position within byte
+
+    //         // Prove bounds using shift and mask lemmas
+    //         proof {
+    //             use crate::backend::serial::u64::common_verus::shift_lemmas::*;
+    //             use crate::backend::serial::u64::common_verus::mask_lemmas::*;
+    //             use vstd::bits::*;
+    //             use vstd::arithmetic::power2::*;
+
+    //             assert(i < 256);
+
+    //             // Prove i >> 3 = i / 8 using shift lemma
+    //             lemma_u64_shr_is_div(i as u64, 3);
+    //             // pow2(3) = 8
+    //             lemma2_to64();
+    //             assert(byte_idx < 32);
+
+    //             // Prove i & 7 = i % 8 using mask lemma
+    //             lemma_u64_low_bits_mask_is_mod(i as u64, 3);
+    //             // low_bits_mask(3) = 7 and pow2(3) = 8
+    //             lemma2_to64();
+    //             assert(bit_idx < 8);
+    //         }
+
+    //         bits[i] = ((self.bytes[byte_idx] >> bit_idx) & 1u8) == 1;
+    //         i += 1;
+    //     }
+
+    //     proof {
+    //         assume(bits_to_nat(&bits) == bytes_to_nat(&self.bytes));
+    //     }
+
+    //     bits
+    // }
 
 }
 } // verus!
@@ -1701,140 +1701,140 @@ impl UnpackedScalar {
     } // verus!
 }
 
-#[cfg(feature = "group")]
-impl Field for Scalar {
-    const ZERO: Self = Self::ZERO;
-    const ONE: Self = Self::ONE;
+// #[cfg(feature = "group")]
+// impl Field for Scalar {
+//     const ZERO: Self = Self::ZERO;
+//     const ONE: Self = Self::ONE;
 
-    fn random(mut rng: impl RngCore) -> Self {
-        // NOTE: this is duplicated due to different `rng` bounds
-        let mut scalar_bytes = [0u8; 64];
-        rng.fill_bytes(&mut scalar_bytes);
-        Self::from_bytes_mod_order_wide(&scalar_bytes)
-    }
+//     fn random(mut rng: impl RngCore) -> Self {
+//         // NOTE: this is duplicated due to different `rng` bounds
+//         let mut scalar_bytes = [0u8; 64];
+//         rng.fill_bytes(&mut scalar_bytes);
+//         Self::from_bytes_mod_order_wide(&scalar_bytes)
+//     }
 
-    fn square(&self) -> Self {
-        self * self
-    }
+//     fn square(&self) -> Self {
+//         self * self
+//     }
 
-    fn double(&self) -> Self {
-        self + self
-    }
+//     fn double(&self) -> Self {
+//         self + self
+//     }
 
-    fn invert(&self) -> CtOption<Self> {
-        CtOption::new(self.invert(), !self.is_zero())
-    }
+//     fn invert(&self) -> CtOption<Self> {
+//         CtOption::new(self.invert(), !self.is_zero())
+//     }
 
-    fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
-        #[allow(unused_qualifications)]
-        group::ff::helpers::sqrt_ratio_generic(num, div)
-    }
+//     fn sqrt_ratio(num: &Self, div: &Self) -> (Choice, Self) {
+//         #[allow(unused_qualifications)]
+//         group::ff::helpers::sqrt_ratio_generic(num, div)
+//     }
 
-    fn sqrt(&self) -> CtOption<Self> {
-        #[allow(unused_qualifications)]
-        group::ff::helpers::sqrt_tonelli_shanks(
-            self,
-            [
-                0xcb02_4c63_4b9e_ba7d,
-                0x029b_df3b_d45e_f39a,
-                0x0000_0000_0000_0000,
-                0x0200_0000_0000_0000,
-            ],
-        )
-    }
-}
+//     fn sqrt(&self) -> CtOption<Self> {
+//         #[allow(unused_qualifications)]
+//         group::ff::helpers::sqrt_tonelli_shanks(
+//             self,
+//             [
+//                 0xcb02_4c63_4b9e_ba7d,
+//                 0x029b_df3b_d45e_f39a,
+//                 0x0000_0000_0000_0000,
+//                 0x0200_0000_0000_0000,
+//             ],
+//         )
+//     }
+// }
 
-#[cfg(feature = "group")]
-impl PrimeField for Scalar {
-    type Repr = [u8; 32];
+// #[cfg(feature = "group")]
+// impl PrimeField for Scalar {
+//     type Repr = [u8; 32];
 
-    fn from_repr(repr: Self::Repr) -> CtOption<Self> {
-        Self::from_canonical_bytes(repr)
-    }
+//     fn from_repr(repr: Self::Repr) -> CtOption<Self> {
+//         Self::from_canonical_bytes(repr)
+//     }
 
-    fn from_repr_vartime(repr: Self::Repr) -> Option<Self> {
-        // Check that the high bit is not set
-        if (repr[31] >> 7) != 0u8 {
-            return None;
-        }
+//     fn from_repr_vartime(repr: Self::Repr) -> Option<Self> {
+//         // Check that the high bit is not set
+//         if (repr[31] >> 7) != 0u8 {
+//             return None;
+//         }
 
-        let candidate = Scalar { bytes: repr };
+//         let candidate = Scalar { bytes: repr };
 
-        if candidate == candidate.reduce() {
-            Some(candidate)
-        } else {
-            None
-        }
-    }
+//         if candidate == candidate.reduce() {
+//             Some(candidate)
+//         } else {
+//             None
+//         }
+//     }
 
-    fn to_repr(&self) -> Self::Repr {
-        self.to_bytes()
-    }
+//     fn to_repr(&self) -> Self::Repr {
+//         self.to_bytes()
+//     }
 
-    fn is_odd(&self) -> Choice {
-        Choice::from(self.as_bytes()[0] & 1)
-    }
+//     fn is_odd(&self) -> Choice {
+//         Choice::from(self.as_bytes()[0] & 1)
+//     }
 
-    const MODULUS: &'static str =
-        "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed";
-    const NUM_BITS: u32 = 253;
-    const CAPACITY: u32 = 252;
+//     const MODULUS: &'static str =
+//         "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed";
+//     const NUM_BITS: u32 = 253;
+//     const CAPACITY: u32 = 252;
 
-    const TWO_INV: Self = Self {
-        bytes: [
-            0xf7, 0xe9, 0x7a, 0x2e, 0x8d, 0x31, 0x09, 0x2c, 0x6b, 0xce, 0x7b, 0x51, 0xef, 0x7c,
-            0x6f, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x08,
-        ],
-    };
-    const MULTIPLICATIVE_GENERATOR: Self = Self {
-        bytes: [
-            2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ],
-    };
-    const S: u32 = 2;
-    const ROOT_OF_UNITY: Self = Self {
-        bytes: [
-            0xd4, 0x07, 0xbe, 0xeb, 0xdf, 0x75, 0x87, 0xbe, 0xfe, 0x83, 0xce, 0x42, 0x53, 0x56,
-            0xf0, 0x0e, 0x7a, 0xc2, 0xc1, 0xab, 0x60, 0x6d, 0x3d, 0x7d, 0xe7, 0x81, 0x79, 0xe0,
-            0x10, 0x73, 0x4a, 0x09,
-        ],
-    };
-    const ROOT_OF_UNITY_INV: Self = Self {
-        bytes: [
-            0x19, 0xcc, 0x37, 0x71, 0x3a, 0xed, 0x8a, 0x99, 0xd7, 0x18, 0x29, 0x60, 0x8b, 0xa3,
-            0xee, 0x05, 0x86, 0x3d, 0x3e, 0x54, 0x9f, 0x92, 0xc2, 0x82, 0x18, 0x7e, 0x86, 0x1f,
-            0xef, 0x8c, 0xb5, 0x06,
-        ],
-    };
-    const DELTA: Self = Self {
-        bytes: [
-            16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ],
-    };
-}
+//     const TWO_INV: Self = Self {
+//         bytes: [
+//             0xf7, 0xe9, 0x7a, 0x2e, 0x8d, 0x31, 0x09, 0x2c, 0x6b, 0xce, 0x7b, 0x51, 0xef, 0x7c,
+//             0x6f, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+//             0x00, 0x00, 0x00, 0x08,
+//         ],
+//     };
+//     const MULTIPLICATIVE_GENERATOR: Self = Self {
+//         bytes: [
+//             2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//             0, 0, 0,
+//         ],
+//     };
+//     const S: u32 = 2;
+//     const ROOT_OF_UNITY: Self = Self {
+//         bytes: [
+//             0xd4, 0x07, 0xbe, 0xeb, 0xdf, 0x75, 0x87, 0xbe, 0xfe, 0x83, 0xce, 0x42, 0x53, 0x56,
+//             0xf0, 0x0e, 0x7a, 0xc2, 0xc1, 0xab, 0x60, 0x6d, 0x3d, 0x7d, 0xe7, 0x81, 0x79, 0xe0,
+//             0x10, 0x73, 0x4a, 0x09,
+//         ],
+//     };
+//     const ROOT_OF_UNITY_INV: Self = Self {
+//         bytes: [
+//             0x19, 0xcc, 0x37, 0x71, 0x3a, 0xed, 0x8a, 0x99, 0xd7, 0x18, 0x29, 0x60, 0x8b, 0xa3,
+//             0xee, 0x05, 0x86, 0x3d, 0x3e, 0x54, 0x9f, 0x92, 0xc2, 0x82, 0x18, 0x7e, 0x86, 0x1f,
+//             0xef, 0x8c, 0xb5, 0x06,
+//         ],
+//     };
+//     const DELTA: Self = Self {
+//         bytes: [
+//             16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//             0, 0, 0,
+//         ],
+//     };
+// }
 
-#[cfg(feature = "group-bits")]
-impl PrimeFieldBits for Scalar {
-    type ReprBits = [u8; 32];
+// #[cfg(feature = "group-bits")]
+// impl PrimeFieldBits for Scalar {
+//     type ReprBits = [u8; 32];
 
-    fn to_le_bits(&self) -> FieldBits<Self::ReprBits> {
-        self.to_repr().into()
-    }
+//     fn to_le_bits(&self) -> FieldBits<Self::ReprBits> {
+//         self.to_repr().into()
+//     }
 
-    fn char_le_bits() -> FieldBits<Self::ReprBits> {
-        constants::BASEPOINT_ORDER_PRIVATE.to_bytes().into()
-    }
-}
+//     fn char_le_bits() -> FieldBits<Self::ReprBits> {
+//         constants::BASEPOINT_ORDER_PRIVATE.to_bytes().into()
+//     }
+// }
 
-#[cfg(feature = "group")]
-impl FromUniformBytes<64> for Scalar {
-    fn from_uniform_bytes(bytes: &[u8; 64]) -> Self {
-        Scalar::from_bytes_mod_order_wide(bytes)
-    }
-}
+// #[cfg(feature = "group")]
+// impl FromUniformBytes<64> for Scalar {
+//     fn from_uniform_bytes(bytes: &[u8; 64]) -> Self {
+//         Scalar::from_bytes_mod_order_wide(bytes)
+//     }
+// }
 
 /// Read one or more u64s stored as little endian bytes.
 ///

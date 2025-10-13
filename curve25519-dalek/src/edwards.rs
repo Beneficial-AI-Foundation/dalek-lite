@@ -240,13 +240,13 @@ mod decompress {
     }
 }
 
-impl TryFrom<&[u8]> for CompressedEdwardsY {
-    type Error = TryFromSliceError;
+// impl TryFrom<&[u8]> for CompressedEdwardsY {
+//     type Error = TryFromSliceError;
 
-    fn try_from(slice: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
-        Self::from_slice(slice)
-    }
-}
+//     fn try_from(slice: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
+//         Self::from_slice(slice)
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Serde support
@@ -261,35 +261,35 @@ use serde::de::Visitor;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[cfg(feature = "serde")]
-impl Serialize for EdwardsPoint {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(32)?;
-        for byte in self.compress().as_bytes().iter() {
-            tup.serialize_element(byte)?;
-        }
-        tup.end()
-    }
-}
+// #[cfg(feature = "serde")]
+// impl Serialize for EdwardsPoint {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         use serde::ser::SerializeTuple;
+//         let mut tup = serializer.serialize_tuple(32)?;
+//         for byte in self.compress().as_bytes().iter() {
+//             tup.serialize_element(byte)?;
+//         }
+//         tup.end()
+//     }
+// }
 
-#[cfg(feature = "serde")]
-impl Serialize for CompressedEdwardsY {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(32)?;
-        for byte in self.as_bytes().iter() {
-            tup.serialize_element(byte)?;
-        }
-        tup.end()
-    }
-}
+// #[cfg(feature = "serde")]
+// impl Serialize for CompressedEdwardsY {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         use serde::ser::SerializeTuple;
+//         let mut tup = serializer.serialize_tuple(32)?;
+//         for byte in self.as_bytes().iter() {
+//             tup.serialize_element(byte)?;
+//         }
+//         tup.end()
+//     }
+// }
 
 #[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for EdwardsPoint {

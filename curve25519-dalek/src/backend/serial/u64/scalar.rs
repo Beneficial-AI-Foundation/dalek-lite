@@ -41,11 +41,11 @@ pub struct Scalar52 {
 
 } // verus!
 
-impl Debug for Scalar52 {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Scalar52: {:?}", self.limbs)
-    }
-}
+// impl Debug for Scalar52 {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "Scalar52: {:?}", self.limbs)
+//     }
+// }
 
 #[cfg(feature = "zeroize")]
 impl Zeroize for Scalar52 {
@@ -660,18 +660,18 @@ impl Scalar52 {
     }
 
     /// Compute `a^2` (mod l)
-    #[inline(never)]
-    #[allow(dead_code)] // XXX we don't expose square() via the Scalar API
-    pub fn square(&self) -> (result: Scalar52)
-    requires
-        limbs_bounded(self),
-    ensures
-        to_nat(&result.limbs) == (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order(),
-    {
-        assume(false); // TODO: Add proofs
-        let aa = Scalar52::montgomery_reduce(&Scalar52::square_internal(self));
-        Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR))
-    }
+    // #[inline(never)]
+    // #[allow(dead_code)] // XXX we don't expose square() via the Scalar API
+    // pub fn square(&self) -> (result: Scalar52)
+    // requires
+    //     limbs_bounded(self),
+    // ensures
+    //     to_nat(&result.limbs) == (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order(),
+    // {
+    //     assume(false); // TODO: Add proofs
+    //     let aa = Scalar52::montgomery_reduce(&Scalar52::square_internal(self));
+    //     Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR))
+    // }
 
     /// Compute `(a * b) / R` (mod l), where R is the Montgomery modulus 2^260
     #[inline(never)]

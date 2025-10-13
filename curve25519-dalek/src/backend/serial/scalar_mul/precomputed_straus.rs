@@ -32,7 +32,7 @@ pub struct VartimePrecomputedStraus {
 
 // impl VartimePrecomputedMultiscalarMul for VartimePrecomputedStraus {
 //     type Point = EdwardsPoint;
-// 
+//
 //     fn new<I>(static_points: I) -> Self
 //     where
 //         I: IntoIterator,
@@ -45,7 +45,7 @@ pub struct VartimePrecomputedStraus {
 //                 .collect(),
 //         }
 //     }
-// 
+//
 //     fn optional_mixed_multiscalar_mul<I, J, K>(
 //         &self,
 //         static_scalars: I,
@@ -67,24 +67,24 @@ pub struct VartimePrecomputedStraus {
 //             .into_iter()
 //             .map(|c| c.borrow().non_adjacent_form(5))
 //             .collect::<Vec<_>>();
-// 
+//
 //         let dynamic_lookup_tables = dynamic_points
 //             .into_iter()
 //             .map(|P_opt| P_opt.map(|P| NafLookupTable5::<ProjectiveNielsPoint>::from(&P)))
 //             .collect::<Option<Vec<_>>>()?;
-// 
+//
 //         let sp = self.static_lookup_tables.len();
 //         let dp = dynamic_lookup_tables.len();
 //         assert_eq!(sp, static_nafs.len());
 //         assert_eq!(dp, dynamic_nafs.len());
-// 
-        // We could save some doublings by looking for the highest
-        // nonzero NAF coefficient, but since we might have a lot of
-        // them to search, it's not clear it's worthwhile to check.
+//
+// We could save some doublings by looking for the highest
+// nonzero NAF coefficient, but since we might have a lot of
+// them to search, it's not clear it's worthwhile to check.
 //         let mut S = ProjectivePoint::identity();
 //         for j in (0..256).rev() {
 //             let mut R: CompletedPoint = S.double();
-// 
+//
 //             for i in 0..dp {
 //                 let t_ij = dynamic_nafs[i][j];
 //                 match t_ij.cmp(&0) {
@@ -97,7 +97,7 @@ pub struct VartimePrecomputedStraus {
 //                     Ordering::Equal => {}
 //                 }
 //             }
-// 
+//
 //             #[allow(clippy::needless_range_loop)]
 //             for i in 0..sp {
 //                 let t_ij = static_nafs[i][j];
@@ -111,10 +111,10 @@ pub struct VartimePrecomputedStraus {
 //                     Ordering::Equal => {}
 //                 }
 //             }
-// 
+//
 //             S = R.as_projective();
 //         }
-// 
+//
 //         Some(S.as_extended())
 //     }
 // }

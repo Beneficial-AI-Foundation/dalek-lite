@@ -118,14 +118,14 @@ pub(crate) enum VartimePrecomputedStraus {
 //         I::Item: core::borrow::Borrow<EdwardsPoint>,
 //     {
 //         use crate::traits::VartimePrecomputedMultiscalarMul;
-// 
+//
 //         match get_selected_backend() {
-            // #[cfg(curve25519_dalek_backend = "simd")]
-            // BackendKind::Avx2 =>
-            //     VartimePrecomputedStraus::Avx2(vector::scalar_mul::precomputed_straus::spec_avx2::VartimePrecomputedStraus::new(static_points)),
-            // #[cfg(all(curve25519_dalek_backend = "simd", nightly))]
-            // BackendKind::Avx512 =>
-            //     VartimePrecomputedStraus::Avx512ifma(vector::scalar_mul::precomputed_straus::spec_avx512ifma_avx512vl::VartimePrecomputedStraus::new(static_points)),
+// #[cfg(curve25519_dalek_backend = "simd")]
+// BackendKind::Avx2 =>
+//     VartimePrecomputedStraus::Avx2(vector::scalar_mul::precomputed_straus::spec_avx2::VartimePrecomputedStraus::new(static_points)),
+// #[cfg(all(curve25519_dalek_backend = "simd", nightly))]
+// BackendKind::Avx512 =>
+//     VartimePrecomputedStraus::Avx512ifma(vector::scalar_mul::precomputed_straus::spec_avx512ifma_avx512vl::VartimePrecomputedStraus::new(static_points)),
 //             BackendKind::Serial => VartimePrecomputedStraus::Scalar(
 //                 serial::scalar_mul::precomputed_straus::VartimePrecomputedStraus::new(
 //                     static_points,
@@ -133,7 +133,7 @@ pub(crate) enum VartimePrecomputedStraus {
 //             ),
 //         }
 //     }
-// 
+//
 //     pub fn optional_mixed_multiscalar_mul<I, J, K>(
 //         &self,
 //         static_scalars: I,
@@ -148,20 +148,20 @@ pub(crate) enum VartimePrecomputedStraus {
 //         K: IntoIterator<Item = Option<EdwardsPoint>>,
 //     {
 //         use crate::traits::VartimePrecomputedMultiscalarMul;
-// 
+//
 //         match self {
-            // #[cfg(curve25519_dalek_backend = "simd")]
-            // VartimePrecomputedStraus::Avx2(inner) => inner.optional_mixed_multiscalar_mul(
-            //     static_scalars,
-            //     dynamic_scalars,
-            //     dynamic_points,
-            // ),
-            // #[cfg(all(curve25519_dalek_backend = "simd", nightly))]
-            // VartimePrecomputedStraus::Avx512ifma(inner) => inner.optional_mixed_multiscalar_mul(
-            //     static_scalars,
-            //     dynamic_scalars,
-            //     dynamic_points,
-            // ),
+// #[cfg(curve25519_dalek_backend = "simd")]
+// VartimePrecomputedStraus::Avx2(inner) => inner.optional_mixed_multiscalar_mul(
+//     static_scalars,
+//     dynamic_scalars,
+//     dynamic_points,
+// ),
+// #[cfg(all(curve25519_dalek_backend = "simd", nightly))]
+// VartimePrecomputedStraus::Avx512ifma(inner) => inner.optional_mixed_multiscalar_mul(
+//     static_scalars,
+//     dynamic_scalars,
+//     dynamic_points,
+// ),
 //             VartimePrecomputedStraus::Scalar(inner) => inner.optional_mixed_multiscalar_mul(
 //                 static_scalars,
 //                 dynamic_scalars,

@@ -270,7 +270,7 @@ impl<T: Copy> NafLookupTable8<T> {
 //         for i in 0..63 {
 //             Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
 //         }
-        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
+// Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
 //         NafLookupTable8(Ai)
 //     }
 // }

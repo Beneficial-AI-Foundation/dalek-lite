@@ -4,6 +4,7 @@ Script to automatically comment out unused functions in Rust files.
 For each function, it comments it out, runs cargo check, and either keeps or reverts the change.
 """
 
+import argparse
 import subprocess
 import re
 import sys
@@ -107,17 +108,17 @@ def revert_lines(filepath: str, start_line: int, end_line: int, original_lines: 
     with open(filepath, 'w') as f:
         f.writelines(lines)
 
-def run_cargo_check() -> bool:
+def run_cargo_check(check_dir: str, check_cmd: str, timeout: int) -> bool:
     """
-    Run cargo check in libsignal. Returns True if successful, False otherwise.
+    Run cargo check command. Returns True if successful, False otherwise.
     """
     try:
         result = subprocess.run(
-            ['nix-shell', '--run', 'cargo check'],
-            cwd='../libsignal',
+            check_cmd.split(),
+            cwd=check_dir,
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=timeout
         )
         return result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -127,7 +128,7 @@ def run_cargo_check() -> bool:
         print(f"  ❌ Error running cargo check: {e}")
         return False
 
-def process_file(filepath: str, verbose: bool = False) -> Tuple[int, int]:
+def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, verbose: bool = False) -> Tuple[int, int]:
     """
     Process a single Rust file, trying to comment out functions.
     Returns (total_functions, commented_out_count).
@@ -148,7 +149,7 @@ def process_file(filepath: str, verbose: bool = False) -> Tuple[int, int]:
 
         # Test with cargo check
         print(f"     Running cargo check...", end='', flush=True)
-        if run_cargo_check():
+        if run_cargo_check(check_dir, check_cmd, timeout):
             print(" ✅ Success! Function is unused.")
             commented_out += 1
         else:
@@ -158,21 +159,57 @@ def process_file(filepath: str, verbose: bool = False) -> Tuple[int, int]:
     return len(functions), commented_out
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python comment_out_functions.py <rust_file> [rust_file2 ...]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description='Automatically comment out unused functions in Rust files by testing with cargo check'
+    )
+    parser.add_argument(
+        'files',
+        nargs='+',
+        type=str,
+        help='Rust source files to process'
+    )
+    parser.add_argument(
+        '--check-dir',
+        type=str,
+        default='../libsignal',
+        help='Directory to run cargo check in (default: ../libsignal)'
+    )
+    parser.add_argument(
+        '--check-cmd',
+        type=str,
+        default='nix-shell --run cargo check',
+        help='Command to run for checking (default: "nix-shell --run cargo check")'
+    )
+    parser.add_argument(
+        '--timeout',
+        type=int,
+        default=120,
+        help='Timeout in seconds for cargo check (default: 120)'
+    )
+    parser.add_argument(
+        '--verbose',
+        '-v',
+        action='store_true',
+        help='Verbose output'
+    )
 
-    files = sys.argv[1:]
+    args = parser.parse_args()
 
     total_fns = 0
     total_commented = 0
 
-    for filepath in files:
+    for filepath in args.files:
         if not Path(filepath).exists():
             print(f"❌ File not found: {filepath}")
             continue
 
-        fns, commented = process_file(filepath, verbose=True)
+        fns, commented = process_file(
+            filepath,
+            args.check_dir,
+            args.check_cmd,
+            args.timeout,
+            verbose=args.verbose
+        )
         total_fns += fns
         total_commented += commented
 

@@ -121,10 +121,10 @@ use core::ops::{Mul, MulAssign};
 use core::ops::{Sub, SubAssign};
 use vstd::prelude::*;
 
-#[cfg(feature = "group")]
-use group::ff::{Field, FromUniformBytes, PrimeField};
-#[cfg(feature = "group-bits")]
-use group::ff::{FieldBits, PrimeFieldBits};
+// #[cfg(feature = "group")]
+// use group::ff::{Field, FromUniformBytes, PrimeField};
+// #[cfg(feature = "group-bits")]
+// use group::ff::{FieldBits, PrimeFieldBits};
 
 #[cfg(any(test, feature = "group"))]
 use rand_core::RngCore;

@@ -187,14 +187,14 @@ pub struct AffineNielsPoint {
     pub xy2d: FieldElement,
 }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for AffineNielsPoint {
-    fn zeroize(&mut self) {
-        self.y_plus_x.zeroize();
-        self.y_minus_x.zeroize();
-        self.xy2d.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for AffineNielsPoint {
+//     fn zeroize(&mut self) {
+//         self.y_plus_x.zeroize();
+//         self.y_minus_x.zeroize();
+//         self.xy2d.zeroize();
+//     }
+// }
 
 /// A pre-computed point on the \\( \mathbb P\^3 \\) model for the
 /// curve, represented as \\((Y+X, Y-X, Z, 2dXY)\\) in "Niels coordinates".
@@ -210,15 +210,15 @@ pub struct ProjectiveNielsPoint {
     pub T2d: FieldElement,
 }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for ProjectiveNielsPoint {
-    fn zeroize(&mut self) {
-        self.Y_plus_X.zeroize();
-        self.Y_minus_X.zeroize();
-        self.Z.zeroize();
-        self.T2d.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for ProjectiveNielsPoint {
+//     fn zeroize(&mut self) {
+//         self.Y_plus_X.zeroize();
+//         self.Y_minus_X.zeroize();
+//         self.Z.zeroize();
+//         self.T2d.zeroize();
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Constructors
@@ -247,11 +247,11 @@ impl Identity for ProjectiveNielsPoint {
     }
 }
 
-impl Default for ProjectiveNielsPoint {
-    fn default() -> ProjectiveNielsPoint {
-        ProjectiveNielsPoint::identity()
-    }
-}
+// impl Default for ProjectiveNielsPoint {
+//     fn default() -> ProjectiveNielsPoint {
+//         ProjectiveNielsPoint::identity()
+//     }
+// }
 
 impl Identity for AffineNielsPoint {
     fn identity() -> AffineNielsPoint {
@@ -526,25 +526,25 @@ impl<'a> Neg for &'a AffineNielsPoint {
 // Debug traits
 // ------------------------------------------------------------------------
 
-impl Debug for ProjectivePoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "ProjectivePoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?}\n}}",
-            &self.X, &self.Y, &self.Z
-        )
-    }
-}
+// impl Debug for ProjectivePoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(
+//             f,
+//             "ProjectivePoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?}\n}}",
+//             &self.X, &self.Y, &self.Z
+//         )
+//     }
+// }
 
-impl Debug for CompletedPoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "CompletedPoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?},\n\tT: {:?}\n}}",
-            &self.X, &self.Y, &self.Z, &self.T
-        )
-    }
-}
+// impl Debug for CompletedPoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(
+//             f,
+//             "CompletedPoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?},\n\tT: {:?}\n}}",
+//             &self.X, &self.Y, &self.Z, &self.T
+//         )
+//     }
+// }
 
 impl Debug for AffineNielsPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -556,9 +556,9 @@ impl Debug for AffineNielsPoint {
     }
 }
 
-impl Debug for ProjectiveNielsPoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "ProjectiveNielsPoint{{\n\tY_plus_X: {:?},\n\tY_minus_X: {:?},\n\tZ: {:?},\n\tT2d: {:?}\n}}",
-               &self.Y_plus_X, &self.Y_minus_X, &self.Z, &self.T2d)
-    }
-}
+// impl Debug for ProjectiveNielsPoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "ProjectiveNielsPoint{{\n\tY_plus_X: {:?},\n\tY_minus_X: {:?},\n\tZ: {:?},\n\tT2d: {:?}\n}}",
+//                &self.Y_plus_X, &self.Y_minus_X, &self.Z, &self.T2d)
+//     }
+// }

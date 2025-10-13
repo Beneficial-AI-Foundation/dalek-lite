@@ -164,17 +164,17 @@ use crate::traits::{VartimeMultiscalarMul, VartimePrecomputedMultiscalarMul};
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct CompressedEdwardsY(pub [u8; 32]);
 
-impl ConstantTimeEq for CompressedEdwardsY {
-    fn ct_eq(&self, other: &CompressedEdwardsY) -> Choice {
-        self.as_bytes().ct_eq(other.as_bytes())
-    }
-}
+// impl ConstantTimeEq for CompressedEdwardsY {
+//     fn ct_eq(&self, other: &CompressedEdwardsY) -> Choice {
+//         self.as_bytes().ct_eq(other.as_bytes())
+//     }
+// }
 
-impl Debug for CompressedEdwardsY {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "CompressedEdwardsY: {:?}", self.as_bytes())
-    }
-}
+// impl Debug for CompressedEdwardsY {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "CompressedEdwardsY: {:?}", self.as_bytes())
+//     }
+// }
 
 impl CompressedEdwardsY {
     /// View this `CompressedEdwardsY` as an array of bytes.
@@ -291,21 +291,21 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 //     }
 // }
 
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for EdwardsPoint {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct EdwardsPointVisitor;
-
-        impl<'de> Visitor<'de> for EdwardsPointVisitor {
-            type Value = EdwardsPoint;
-
-            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                formatter.write_str("a valid point in Edwards y + sign format")
-            }
-
+// #[cfg(feature = "serde")]
+// impl<'de> Deserialize<'de> for EdwardsPoint {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         struct EdwardsPointVisitor;
+// 
+//         impl<'de> Visitor<'de> for EdwardsPointVisitor {
+//             type Value = EdwardsPoint;
+// 
+//             fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//                 formatter.write_str("a valid point in Edwards y + sign format")
+//             }
+// 
 //             fn visit_seq<A>(self, mut seq: A) -> Result<EdwardsPoint, A::Error>
 //             where
 //                 A: serde::de::SeqAccess<'de>,
@@ -321,27 +321,27 @@ impl<'de> Deserialize<'de> for EdwardsPoint {
 //                     .decompress()
 //                     .ok_or_else(|| serde::de::Error::custom("decompression failed"))
 //             }
-        }
+//         }
+// 
+//         deserializer.deserialize_tuple(32, EdwardsPointVisitor)
+//     }
+// }
 
-        deserializer.deserialize_tuple(32, EdwardsPointVisitor)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for CompressedEdwardsY {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CompressedEdwardsYVisitor;
-
-        impl<'de> Visitor<'de> for CompressedEdwardsYVisitor {
-            type Value = CompressedEdwardsY;
-
-            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                formatter.write_str("32 bytes of data")
-            }
-
+// #[cfg(feature = "serde")]
+// impl<'de> Deserialize<'de> for CompressedEdwardsY {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         struct CompressedEdwardsYVisitor;
+// 
+//         impl<'de> Visitor<'de> for CompressedEdwardsYVisitor {
+//             type Value = CompressedEdwardsY;
+// 
+//             fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//                 formatter.write_str("32 bytes of data")
+//             }
+// 
 //             fn visit_seq<A>(self, mut seq: A) -> Result<CompressedEdwardsY, A::Error>
 //             where
 //                 A: serde::de::SeqAccess<'de>,
@@ -355,11 +355,11 @@ impl<'de> Deserialize<'de> for CompressedEdwardsY {
 //                 }
 //                 Ok(CompressedEdwardsY(bytes))
 //             }
-        }
-
-        deserializer.deserialize_tuple(32, CompressedEdwardsYVisitor)
-    }
-}
+//         }
+// 
+//         deserializer.deserialize_tuple(32, CompressedEdwardsYVisitor)
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Internal point representations
@@ -379,32 +379,32 @@ pub struct EdwardsPoint {
 // Constructors
 // ------------------------------------------------------------------------
 
-impl Identity for CompressedEdwardsY {
-    fn identity() -> CompressedEdwardsY {
-        CompressedEdwardsY([
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ])
-    }
-}
+// impl Identity for CompressedEdwardsY {
+//     fn identity() -> CompressedEdwardsY {
+//         CompressedEdwardsY([
+//             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//             0, 0, 0,
+//         ])
+//     }
+// }
 
-impl Default for CompressedEdwardsY {
-    fn default() -> CompressedEdwardsY {
-        CompressedEdwardsY::identity()
-    }
-}
+// impl Default for CompressedEdwardsY {
+//     fn default() -> CompressedEdwardsY {
+//         CompressedEdwardsY::identity()
+//     }
+// }
 
-impl CompressedEdwardsY {
+// impl CompressedEdwardsY {
     /// Construct a `CompressedEdwardsY` from a slice of bytes.
     ///
     /// # Errors
     ///
     /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
     /// a length of 32.
-    pub fn from_slice(bytes: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
-        bytes.try_into().map(CompressedEdwardsY)
-    }
-}
+//     pub fn from_slice(bytes: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
+//         bytes.try_into().map(CompressedEdwardsY)
+//     }
+// }
 
 impl Identity for EdwardsPoint {
     fn identity() -> EdwardsPoint {
@@ -417,24 +417,24 @@ impl Identity for EdwardsPoint {
     }
 }
 
-impl Default for EdwardsPoint {
-    fn default() -> EdwardsPoint {
-        EdwardsPoint::identity()
-    }
-}
+// impl Default for EdwardsPoint {
+//     fn default() -> EdwardsPoint {
+//         EdwardsPoint::identity()
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Zeroize implementations for wiping points from memory
 // ------------------------------------------------------------------------
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for CompressedEdwardsY {
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for CompressedEdwardsY {
     /// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-        self.0[0] = 1;
-    }
-}
+//     fn zeroize(&mut self) {
+//         self.0.zeroize();
+//         self.0[0] = 1;
+//     }
+// }
 
 #[cfg(feature = "zeroize")]
 impl Zeroize for EdwardsPoint {
@@ -451,14 +451,14 @@ impl Zeroize for EdwardsPoint {
 // Validity checks (for debugging, not CT)
 // ------------------------------------------------------------------------
 
-impl ValidityCheck for EdwardsPoint {
-    fn is_valid(&self) -> bool {
-        let point_on_curve = self.as_projective().is_valid();
-        let on_segre_image = (&self.X * &self.Y) == (&self.Z * &self.T);
-
-        point_on_curve && on_segre_image
-    }
-}
+// impl ValidityCheck for EdwardsPoint {
+//     fn is_valid(&self) -> bool {
+//         let point_on_curve = self.as_projective().is_valid();
+//         let on_segre_image = (&self.X * &self.Y) == (&self.Z * &self.T);
+// 
+//         point_on_curve && on_segre_image
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Constant-time assignment
@@ -492,13 +492,13 @@ impl ConstantTimeEq for EdwardsPoint {
     }
 }
 
-impl PartialEq for EdwardsPoint {
-    fn eq(&self, other: &EdwardsPoint) -> bool {
-        self.ct_eq(other).into()
-    }
-}
+// impl PartialEq for EdwardsPoint {
+//     fn eq(&self, other: &EdwardsPoint) -> bool {
+//         self.ct_eq(other).into()
+//     }
+// }
 
-impl Eq for EdwardsPoint {}
+// impl Eq for EdwardsPoint {}
 
 // ------------------------------------------------------------------------
 // Point conversions
@@ -664,17 +664,17 @@ impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
 
 define_sub_assign_variants!(LHS = EdwardsPoint, RHS = EdwardsPoint);
 
-impl<T> Sum<T> for EdwardsPoint
-where
-    T: Borrow<EdwardsPoint>,
-{
-    fn sum<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = T>,
-    {
-        iter.fold(EdwardsPoint::identity(), |acc, item| acc + item.borrow())
-    }
-}
+// impl<T> Sum<T> for EdwardsPoint
+// where
+//     T: Borrow<EdwardsPoint>,
+// {
+//     fn sum<I>(iter: I) -> Self
+//     where
+//         I: Iterator<Item = T>,
+//     {
+//         iter.fold(EdwardsPoint::identity(), |acc, item| acc + item.borrow())
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Negation
@@ -867,35 +867,35 @@ impl VartimeMultiscalarMul for EdwardsPoint {
 #[cfg(feature = "alloc")]
 pub struct VartimeEdwardsPrecomputation(crate::backend::VartimePrecomputedStraus);
 
-#[cfg(feature = "alloc")]
-impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
-    type Point = EdwardsPoint;
-
-    fn new<I>(static_points: I) -> Self
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Self::Point>,
-    {
-        Self(crate::backend::VartimePrecomputedStraus::new(static_points))
-    }
-
-    fn optional_mixed_multiscalar_mul<I, J, K>(
-        &self,
-        static_scalars: I,
-        dynamic_scalars: J,
-        dynamic_points: K,
-    ) -> Option<Self::Point>
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Scalar>,
-        J: IntoIterator,
-        J::Item: Borrow<Scalar>,
-        K: IntoIterator<Item = Option<Self::Point>>,
-    {
-        self.0
-            .optional_mixed_multiscalar_mul(static_scalars, dynamic_scalars, dynamic_points)
-    }
-}
+// #[cfg(feature = "alloc")]
+// impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
+//     type Point = EdwardsPoint;
+// 
+//     fn new<I>(static_points: I) -> Self
+//     where
+//         I: IntoIterator,
+//         I::Item: Borrow<Self::Point>,
+//     {
+//         Self(crate::backend::VartimePrecomputedStraus::new(static_points))
+//     }
+// 
+//     fn optional_mixed_multiscalar_mul<I, J, K>(
+//         &self,
+//         static_scalars: I,
+//         dynamic_scalars: J,
+//         dynamic_points: K,
+//     ) -> Option<Self::Point>
+//     where
+//         I: IntoIterator,
+//         I::Item: Borrow<Scalar>,
+//         J: IntoIterator,
+//         J::Item: Borrow<Scalar>,
+//         K: IntoIterator<Item = Option<Self::Point>>,
+//     {
+//         self.0
+//             .optional_mixed_multiscalar_mul(static_scalars, dynamic_scalars, dynamic_points)
+//     }
+// }
 
 impl EdwardsPoint {
     /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
@@ -1052,15 +1052,15 @@ macro_rules! impl_basepoint_table {
             }
         }
 
-        impl Debug for $name {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                write!(f, "{:?}([\n", stringify!($name))?;
-                for i in 0..32 {
-                    write!(f, "\t{:?},\n", &self.0[i])?;
-                }
-                write!(f, "])")
-            }
-        }
+//         impl Debug for $name {
+//             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//                 write!(f, "{:?}([\n", stringify!($name))?;
+//                 for i in 0..32 {
+//                     write!(f, "\t{:?},\n", &self.0[i])?;
+//                 }
+//                 write!(f, "])")
+//             }
+//         }
     };
 } // End macro_rules! impl_basepoint_table
 
@@ -1116,17 +1116,17 @@ cfg_if! {
 #[cfg(feature = "precomputed-tables")]
 macro_rules! impl_basepoint_table_conversions {
     (LHS = $lhs:ty, RHS = $rhs:ty) => {
-        impl<'a> From<&'a $lhs> for $rhs {
-            fn from(table: &'a $lhs) -> $rhs {
-                <$rhs>::create(&table.basepoint())
-            }
-        }
+//         impl<'a> From<&'a $lhs> for $rhs {
+//             fn from(table: &'a $lhs) -> $rhs {
+//                 <$rhs>::create(&table.basepoint())
+//             }
+//         }
 
-        impl<'a> From<&'a $rhs> for $lhs {
-            fn from(table: &'a $rhs) -> $lhs {
-                <$lhs>::create(&table.basepoint())
-            }
-        }
+//         impl<'a> From<&'a $rhs> for $lhs {
+//             fn from(table: &'a $rhs) -> $lhs {
+//                 <$lhs>::create(&table.basepoint())
+//             }
+//         }
     };
 }
 

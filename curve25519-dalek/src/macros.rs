@@ -51,19 +51,19 @@ macro_rules! define_add_assign_variants {
 /// Define borrow and non-borrow variants of `Sub`.
 macro_rules! define_sub_variants {
     (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
-        impl<'b> Sub<&'b $rhs> for $lhs {
-            type Output = $out;
-            fn sub(self, rhs: &'b $rhs) -> $out {
-                &self - rhs
-            }
-        }
+//         impl<'b> Sub<&'b $rhs> for $lhs {
+//             type Output = $out;
+//             fn sub(self, rhs: &'b $rhs) -> $out {
+//                 &self - rhs
+//             }
+//         }
 
-        impl<'a> Sub<$rhs> for &'a $lhs {
-            type Output = $out;
-            fn sub(self, rhs: $rhs) -> $out {
-                self - &rhs
-            }
-        }
+//         impl<'a> Sub<$rhs> for &'a $lhs {
+//             type Output = $out;
+//             fn sub(self, rhs: $rhs) -> $out {
+//                 self - &rhs
+//             }
+//         }
 
         impl Sub<$rhs> for $lhs {
             type Output = $out;

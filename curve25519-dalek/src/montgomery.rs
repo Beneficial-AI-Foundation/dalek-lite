@@ -293,11 +293,11 @@ impl Identity for ProjectivePoint {
     }
 }
 
-impl Default for ProjectivePoint {
-    fn default() -> ProjectivePoint {
-        ProjectivePoint::identity()
-    }
-}
+// impl Default for ProjectivePoint {
+//     fn default() -> ProjectivePoint {
+//         ProjectivePoint::identity()
+//     }
+// }
 
 impl ConditionallySelectable for ProjectivePoint {
     fn conditional_select(

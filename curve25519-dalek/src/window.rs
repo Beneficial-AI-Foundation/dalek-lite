@@ -82,17 +82,17 @@ macro_rules! impl_lookup_table {
             }
         }
 
-//         impl<T: Debug> Debug for $name<T> {
-//             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-//                 write!(f, "{:?}(", stringify!($name))?;
-// 
-//                 for x in self.0.iter() {
-//                     write!(f, "{:?}", x)?;
-//                 }
-// 
-//                 write!(f, ")")
-//             }
-//         }
+        //         impl<T: Debug> Debug for $name<T> {
+        //             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        //                 write!(f, "{:?}(", stringify!($name))?;
+        //
+        //                 for x in self.0.iter() {
+        //                     write!(f, "{:?}", x)?;
+        //                 }
+        //
+        //                 write!(f, ")")
+        //             }
+        //         }
 
         impl<'a> From<&'a EdwardsPoint> for $name<ProjectiveNielsPoint> {
             fn from(P: &'a EdwardsPoint) -> Self {
@@ -115,15 +115,15 @@ macro_rules! impl_lookup_table {
             }
         }
 
-//         #[cfg(feature = "zeroize")]
-//         impl<T> Zeroize for $name<T>
-//         where
-//             T: Copy + Default + Zeroize,
-//         {
-//             fn zeroize(&mut self) {
-//                 self.0.iter_mut().zeroize();
-//             }
-//         }
+        //         #[cfg(feature = "zeroize")]
+        //         impl<T> Zeroize for $name<T>
+        //         where
+        //             T: Copy + Default + Zeroize,
+        //         {
+        //             fn zeroize(&mut self) {
+        //                 self.0.iter_mut().zeroize();
+        //             }
+        //         }
     };
 } // End macro_rules! impl_lookup_table
 
@@ -217,7 +217,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
 //         for i in 0..7 {
 //             Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
 //         }
-        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A]
+// Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A]
 //         NafLookupTable5(Ai)
 //     }
 // }
@@ -257,7 +257,7 @@ impl<T: Copy> NafLookupTable8<T> {
 //         for i in 0..63 {
 //             Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
 //         }
-        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
+// Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
 //         NafLookupTable8(Ai)
 //     }
 // }

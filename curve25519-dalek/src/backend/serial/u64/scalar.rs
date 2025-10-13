@@ -303,7 +303,7 @@ impl Scalar52 {
 //         assume(false); // TODO: complete the proof
 //         let mut difference = Scalar52::ZERO;
 //         let mask = (1u64 << 52) - 1;
-// 
+//
         // a - b
 //         let mut borrow: u64 = 0;
 //         for i in 0..5 {
@@ -311,7 +311,7 @@ impl Scalar52 {
 //             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
 //             difference[i] = borrow & mask;
 //         }
-// 
+//
         // conditionally add l if the difference is negative
 //         difference.conditional_add_l(Choice::from((borrow >> 63) as u8));
 //         difference
@@ -329,7 +329,7 @@ impl Scalar52 {
 //         to_nat(&self.limbs) % group_order() == to_nat(&old(self).limbs) % group_order(),
         // VERIFICATION NOTE: expression below unsupported by Verus
         //limbs_bounded(&self),
-// 
+//
         // Meaning of conditional addition
 //         super::subtle_assumes::choice_is_true(condition) ==>
 //             to_nat(&self.limbs) == to_nat(&old(self).limbs) + group_order(),
@@ -337,12 +337,12 @@ impl Scalar52 {
 //             to_nat(&self.limbs) == to_nat(&old(self).limbs),
 //     {
 //         let mut carry: u64 = 0;
-// 
+//
 //         proof {
 //             assert(1u64 << 52 > 0) by (bit_vector);
 //         }
 //         let mask = (1u64 << 52) - 1;
-// 
+//
 //         for i in 0..5
 //             invariant
 //                 mask == (1u64 << 52) - 1,
@@ -357,20 +357,20 @@ impl Scalar52 {
 //             /* <ORIGINAL CODE>
 //              let addend = u64::conditional_select(&0, &constants::L[i], condition);
 //              <ORIGINAL CODE>*/
-// 
+//
             // Prove no overflow using the same lemma as in sub()
 //             proof {
 //                 lemma_scalar_subtract_no_overflow(carry, self.limbs[i as int], addend, i as u32, &constants::L);
 //             }
-// 
+//
 //             carry = (carry >> 52) + self.limbs[i] + addend;
 //             self.limbs[i] = carry & mask;
-// 
+//
 //             proof {
 //                 lemma_carry_bounded_after_mask(carry, mask);
 //             }
 //         }
-// 
+//
 //         proof {
             // TODO: Prove the postconditions
 //             assume(to_nat(&self.limbs) % group_order() == to_nat(&old(self).limbs) % group_order());
@@ -380,7 +380,7 @@ impl Scalar52 {
 //             assume(!super::subtle_assumes::choice_is_true(condition) ==>
 //                 to_nat(&self.limbs) == to_nat(&old(self).limbs));
 //         }
-// 
+//
 //         carry
 //     }
 
@@ -524,7 +524,7 @@ impl Scalar52 {
 //             a[2] * 2,
 //             a[3] * 2,
 //         ];
-// 
+//
 //         [
 //             m( a[0], a[0]),
 //             m(aa[0], a[1]),

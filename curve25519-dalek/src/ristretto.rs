@@ -347,7 +347,7 @@ impl Identity for CompressedRistretto {
 
 // impl TryFrom<&[u8]> for CompressedRistretto {
 //     type Error = TryFromSliceError;
-// 
+//
 //     fn try_from(slice: &[u8]) -> Result<CompressedRistretto, TryFromSliceError> {
 //         Self::from_slice(slice)
 //     }
@@ -411,21 +411,21 @@ impl<'de> Deserialize<'de> for RistrettoPoint {
                 formatter.write_str("a valid point in Ristretto format")
             }
 
-//             fn visit_seq<A>(self, mut seq: A) -> Result<RistrettoPoint, A::Error>
-//             where
-//                 A: serde::de::SeqAccess<'de>,
-//             {
-//                 let mut bytes = [0u8; 32];
-//                 #[allow(clippy::needless_range_loop)]
-//                 for i in 0..32 {
-//                     bytes[i] = seq
-//                         .next_element()?
-//                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-//                 }
-//                 CompressedRistretto(bytes)
-//                     .decompress()
-//                     .ok_or_else(|| serde::de::Error::custom("decompression failed"))
-//             }
+            //             fn visit_seq<A>(self, mut seq: A) -> Result<RistrettoPoint, A::Error>
+            //             where
+            //                 A: serde::de::SeqAccess<'de>,
+            //             {
+            //                 let mut bytes = [0u8; 32];
+            //                 #[allow(clippy::needless_range_loop)]
+            //                 for i in 0..32 {
+            //                     bytes[i] = seq
+            //                         .next_element()?
+            //                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+            //                 }
+            //                 CompressedRistretto(bytes)
+            //                     .decompress()
+            //                     .ok_or_else(|| serde::de::Error::custom("decompression failed"))
+            //             }
         }
 
         deserializer.deserialize_tuple(32, RistrettoPointVisitor)
@@ -447,19 +447,19 @@ impl<'de> Deserialize<'de> for CompressedRistretto {
                 formatter.write_str("32 bytes of data")
             }
 
-//             fn visit_seq<A>(self, mut seq: A) -> Result<CompressedRistretto, A::Error>
-//             where
-//                 A: serde::de::SeqAccess<'de>,
-//             {
-//                 let mut bytes = [0u8; 32];
-//                 #[allow(clippy::needless_range_loop)]
-//                 for i in 0..32 {
-//                     bytes[i] = seq
-//                         .next_element()?
-//                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-//                 }
-//                 Ok(CompressedRistretto(bytes))
-//             }
+            //             fn visit_seq<A>(self, mut seq: A) -> Result<CompressedRistretto, A::Error>
+            //             where
+            //                 A: serde::de::SeqAccess<'de>,
+            //             {
+            //                 let mut bytes = [0u8; 32];
+            //                 #[allow(clippy::needless_range_loop)]
+            //                 for i in 0..32 {
+            //                     bytes[i] = seq
+            //                         .next_element()?
+            //                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+            //                 }
+            //                 Ok(CompressedRistretto(bytes))
+            //             }
         }
 
         deserializer.deserialize_tuple(32, CompressedRistrettoVisitor)
@@ -691,7 +691,7 @@ impl RistrettoPoint {
         )
     }
 
-//     #[cfg(any(test, feature = "rand_core"))]
+    //     #[cfg(any(test, feature = "rand_core"))]
     /// Return a `RistrettoPoint` chosen uniformly at random using a user-provided RNG.
     ///
     /// # Inputs
@@ -709,14 +709,14 @@ impl RistrettoPoint {
     /// discrete log of the output point with respect to any other
     /// point should be unknown.  The map is applied twice and the
     /// results are added, to ensure a uniform distribution.
-//     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {
-//         let mut uniform_bytes = [0u8; 64];
-//         rng.fill_bytes(&mut uniform_bytes);
-// 
-//         RistrettoPoint::from_uniform_bytes(&uniform_bytes)
-//     }
+    //     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {
+    //         let mut uniform_bytes = [0u8; 64];
+    //         rng.fill_bytes(&mut uniform_bytes);
+    //
+    //         RistrettoPoint::from_uniform_bytes(&uniform_bytes)
+    //     }
 
-//     #[cfg(feature = "digest")]
+    //     #[cfg(feature = "digest")]
     /// Hash a slice of bytes into a `RistrettoPoint`.
     ///
     /// Takes a type parameter `D`, which is any `Digest` producing 64
@@ -733,8 +733,8 @@ impl RistrettoPoint {
     ///
     /// # Example
     ///
-//     #[cfg_attr(feature = "digest", doc = "```")]
-//     #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
+    //     #[cfg_attr(feature = "digest", doc = "```")]
+    //     #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
     /// # use curve25519_dalek::ristretto::RistrettoPoint;
     /// use sha2::Sha512;
     ///
@@ -746,32 +746,32 @@ impl RistrettoPoint {
     /// # }
     /// ```
     ///
-//     pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint
-//     where
-//         D: Digest<OutputSize = U64> + Default,
-//     {
-//         let mut hash = D::default();
-//         hash.update(input);
-//         RistrettoPoint::from_hash(hash)
-//     }
+    //     pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint
+    //     where
+    //         D: Digest<OutputSize = U64> + Default,
+    //     {
+    //         let mut hash = D::default();
+    //         hash.update(input);
+    //         RistrettoPoint::from_hash(hash)
+    //     }
 
-//     #[cfg(feature = "digest")]
+    //     #[cfg(feature = "digest")]
     /// Construct a `RistrettoPoint` from an existing `Digest` instance.
     ///
     /// Use this instead of `hash_from_bytes` if it is more convenient
     /// to stream data into the `Digest` than to pass a single byte
     /// slice.
-//     pub fn from_hash<D>(hash: D) -> RistrettoPoint
-//     where
-//         D: Digest<OutputSize = U64> + Default,
-//     {
-        // dealing with generic arrays is clumsy, until const generics land
-//         let output = hash.finalize();
-//         let mut output_bytes = [0u8; 64];
-//         output_bytes.copy_from_slice(output.as_slice());
-// 
-//         RistrettoPoint::from_uniform_bytes(&output_bytes)
-//     }
+    //     pub fn from_hash<D>(hash: D) -> RistrettoPoint
+    //     where
+    //         D: Digest<OutputSize = U64> + Default,
+    //     {
+    // dealing with generic arrays is clumsy, until const generics land
+    //         let output = hash.finalize();
+    //         let mut output_bytes = [0u8; 64];
+    //         output_bytes.copy_from_slice(output.as_slice());
+    //
+    //         RistrettoPoint::from_uniform_bytes(&output_bytes)
+    //     }
 
     /// Construct a `RistrettoPoint` from 64 bytes of data.
     ///
@@ -1016,7 +1016,7 @@ pub struct VartimeRistrettoPrecomputation(crate::backend::VartimePrecomputedStra
 // #[cfg(feature = "alloc")]
 // impl VartimePrecomputedMultiscalarMul for VartimeRistrettoPrecomputation {
 //     type Point = RistrettoPoint;
-// 
+//
 //     fn new<I>(static_points: I) -> Self
 //     where
 //         I: IntoIterator,
@@ -1026,7 +1026,7 @@ pub struct VartimeRistrettoPrecomputation(crate::backend::VartimePrecomputedStra
 //             static_points.into_iter().map(|P| P.borrow().0),
 //         ))
 //     }
-// 
+//
 //     fn optional_mixed_multiscalar_mul<I, J, K>(
 //         &self,
 //         static_scalars: I,
@@ -1051,8 +1051,8 @@ pub struct VartimeRistrettoPrecomputation(crate::backend::VartimePrecomputedStra
 // }
 
 // impl RistrettoPoint {
-    /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the
-    /// Ristretto basepoint.
+/// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the
+/// Ristretto basepoint.
 //     pub fn vartime_double_scalar_mul_basepoint(
 //         a: &Scalar,
 //         A: &RistrettoPoint,
@@ -1084,7 +1084,7 @@ pub struct RistrettoBasepointTable(pub(crate) EdwardsBasepointTable);
 // #[cfg(feature = "precomputed-tables")]
 // impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoBasepointTable {
 //     type Output = RistrettoPoint;
-// 
+//
 //     fn mul(self, scalar: &'b Scalar) -> RistrettoPoint {
 //         RistrettoPoint(&self.0 * scalar)
 //     }
@@ -1101,12 +1101,12 @@ impl<'a, 'b> Mul<&'a RistrettoBasepointTable> for &'b Scalar {
 
 // #[cfg(feature = "precomputed-tables")]
 // impl RistrettoBasepointTable {
-    /// Create a precomputed table of multiples of the given `basepoint`.
+/// Create a precomputed table of multiples of the given `basepoint`.
 //     pub fn create(basepoint: &RistrettoPoint) -> RistrettoBasepointTable {
 //         RistrettoBasepointTable(EdwardsBasepointTable::create(&basepoint.0))
 //     }
-// 
-    /// Get the basepoint for this table as a `RistrettoPoint`.
+//
+/// Get the basepoint for this table as a `RistrettoPoint`.
 //     pub fn basepoint(&self) -> RistrettoPoint {
 //         RistrettoPoint(self.0.basepoint())
 //     }

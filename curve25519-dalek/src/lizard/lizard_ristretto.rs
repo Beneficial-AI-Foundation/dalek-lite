@@ -73,15 +73,15 @@ impl RistrettoPoint {
     }
 
     /// Directly encode 253 bits as a RistrettoPoint, using Elligator
-//     pub fn encode_253_bits(data: &[u8; 32]) -> Option<RistrettoPoint> {
-//         if data.len() != 32 {
-//             return None;
-//         }
-// 
-//         let fe = FieldElement::from_bytes(data);
-//         let p = RistrettoPoint::elligator_ristretto_flavor(&fe);
-//         Some(p)
-//     }
+    //     pub fn encode_253_bits(data: &[u8; 32]) -> Option<RistrettoPoint> {
+    //         if data.len() != 32 {
+    //             return None;
+    //         }
+    //
+    //         let fe = FieldElement::from_bytes(data);
+    //         let p = RistrettoPoint::elligator_ristretto_flavor(&fe);
+    //         Some(p)
+    //     }
 
     /// Directly decode a RistrettoPoint as 253 bits, using Elligator
     pub fn decode_253_bits(&self) -> (u8, [[u8; 32]; 8]) {
@@ -95,14 +95,14 @@ impl RistrettoPoint {
     }
 
     /// Return the coset self + E[4], for debugging.
-//     pub fn xcoset4(&self) -> [EdwardsPoint; 4] {
-//         [
-//             self.0,
-//             self.0 + constants::EIGHT_TORSION[2],
-//             self.0 + constants::EIGHT_TORSION[4],
-//             self.0 + constants::EIGHT_TORSION[6],
-//         ]
-//     }
+    //     pub fn xcoset4(&self) -> [EdwardsPoint; 4] {
+    //         [
+    //             self.0,
+    //             self.0 + constants::EIGHT_TORSION[2],
+    //             self.0 + constants::EIGHT_TORSION[4],
+    //             self.0 + constants::EIGHT_TORSION[6],
+    //         ]
+    //     }
 
     /// Computes the at most 8 positive FieldElements f such that
     /// self == elligator_ristretto_flavor(f).
@@ -246,87 +246,87 @@ mod test {
     #[cfg(feature = "rand")]
     use rand_os::OsRng;
 
-//     fn test_lizard_encode_helper(data: &[u8; 16], result: &[u8; 32]) {
-//         let p = RistrettoPoint::lizard_encode::<Sha256>(data);
-//         let p_bytes = p.compress().to_bytes();
-//         assert!(&p_bytes == result);
-//         let p = CompressedRistretto::from_slice(&p_bytes)
-//             .unwrap()
-//             .decompress()
-//             .unwrap();
-//         let data_out = p.lizard_decode::<Sha256>().unwrap();
-//         assert!(&data_out == data);
-//     }
+    //     fn test_lizard_encode_helper(data: &[u8; 16], result: &[u8; 32]) {
+    //         let p = RistrettoPoint::lizard_encode::<Sha256>(data);
+    //         let p_bytes = p.compress().to_bytes();
+    //         assert!(&p_bytes == result);
+    //         let p = CompressedRistretto::from_slice(&p_bytes)
+    //             .unwrap()
+    //             .decompress()
+    //             .unwrap();
+    //         let data_out = p.lizard_decode::<Sha256>().unwrap();
+    //         assert!(&data_out == data);
+    //     }
 
-//     #[test]
-//     fn test_lizard_encode() {
-//         test_lizard_encode_helper(
-//             &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-//             &[
-//                 0xf0, 0xb7, 0xe3, 0x44, 0x84, 0xf7, 0x4c, 0xf0, 0xf, 0x15, 0x2, 0x4b, 0x73, 0x85,
-//                 0x39, 0x73, 0x86, 0x46, 0xbb, 0xbe, 0x1e, 0x9b, 0xc7, 0x50, 0x9a, 0x67, 0x68, 0x15,
-//                 0x22, 0x7e, 0x77, 0x4f,
-//             ],
-//         );
-// 
-//         test_lizard_encode_helper(
-//             &[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-//             &[
-//                 0xcc, 0x92, 0xe8, 0x1f, 0x58, 0x5a, 0xfc, 0x5c, 0xaa, 0xc8, 0x86, 0x60, 0xd8, 0xd1,
-//                 0x7e, 0x90, 0x25, 0xa4, 0x44, 0x89, 0xa3, 0x63, 0x4, 0x21, 0x23, 0xf6, 0xaf, 0x7,
-//                 0x2, 0x15, 0x6e, 0x65,
-//             ],
-//         );
-// 
-//         test_lizard_encode_helper(
-//             &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-//             &[
-//                 0xc8, 0x30, 0x57, 0x3f, 0x8a, 0x8e, 0x77, 0x78, 0x67, 0x1f, 0x76, 0xcd, 0xc7, 0x96,
-//                 0xdc, 0xa, 0x23, 0x5c, 0xf1, 0x77, 0xf1, 0x97, 0xd9, 0xfc, 0xba, 0x6, 0xe8, 0x4e,
-//                 0x96, 0x24, 0x74, 0x44,
-//             ],
-//         );
-//     }
+    //     #[test]
+    //     fn test_lizard_encode() {
+    //         test_lizard_encode_helper(
+    //             &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    //             &[
+    //                 0xf0, 0xb7, 0xe3, 0x44, 0x84, 0xf7, 0x4c, 0xf0, 0xf, 0x15, 0x2, 0x4b, 0x73, 0x85,
+    //                 0x39, 0x73, 0x86, 0x46, 0xbb, 0xbe, 0x1e, 0x9b, 0xc7, 0x50, 0x9a, 0x67, 0x68, 0x15,
+    //                 0x22, 0x7e, 0x77, 0x4f,
+    //             ],
+    //         );
+    //
+    //         test_lizard_encode_helper(
+    //             &[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    //             &[
+    //                 0xcc, 0x92, 0xe8, 0x1f, 0x58, 0x5a, 0xfc, 0x5c, 0xaa, 0xc8, 0x86, 0x60, 0xd8, 0xd1,
+    //                 0x7e, 0x90, 0x25, 0xa4, 0x44, 0x89, 0xa3, 0x63, 0x4, 0x21, 0x23, 0xf6, 0xaf, 0x7,
+    //                 0x2, 0x15, 0x6e, 0x65,
+    //             ],
+    //         );
+    //
+    //         test_lizard_encode_helper(
+    //             &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    //             &[
+    //                 0xc8, 0x30, 0x57, 0x3f, 0x8a, 0x8e, 0x77, 0x78, 0x67, 0x1f, 0x76, 0xcd, 0xc7, 0x96,
+    //                 0xdc, 0xa, 0x23, 0x5c, 0xf1, 0x77, 0xf1, 0x97, 0xd9, 0xfc, 0xba, 0x6, 0xe8, 0x4e,
+    //                 0x96, 0x24, 0x74, 0x44,
+    //             ],
+    //         );
+    //     }
 
-//     #[test]
-//     fn test_elligator_inv() {
-//         let mut rng = rand::thread_rng();
-// 
-//         for i in 0..100 {
-//             let mut fe_bytes = [0u8; 32];
-// 
-//             if i == 0 {
-                // Test for first corner-case: fe = 0
-//                 fe_bytes = [0u8; 32];
-//             } else if i == 1 {
-                // Test for second corner-case: fe = +sqrt(i*d)
-//                 fe_bytes = [
-//                     168, 27, 92, 74, 203, 42, 48, 117, 170, 109, 234, 14, 45, 169, 188, 205, 21,
-//                     110, 235, 115, 153, 84, 52, 117, 151, 235, 123, 244, 88, 85, 179, 5,
-//                 ];
-//             } else {
-                // For the rest, just generate a random field element to test.
-//                 rng.fill_bytes(&mut fe_bytes);
-//             }
-//             fe_bytes[0] &= 254; // positive
-//             fe_bytes[31] &= 127; // < 2^255-19
-//             let fe = FieldElement::from_bytes(&fe_bytes);
-// 
-//             let pt = RistrettoPoint::elligator_ristretto_flavor(&fe);
-//             for pt2 in &pt.xcoset4() {
-//                 let (mask, fes) = RistrettoPoint(*pt2).elligator_ristretto_flavor_inverse();
-// 
-//                 let mut found = false;
-//                 for (j, fe_j) in fes.iter().enumerate() {
-//                     if mask & (1 << j) != 0 {
-//                         assert_eq!(RistrettoPoint::elligator_ristretto_flavor(fe_j), pt);
-//                         if *fe_j == fe {
-//                             found = true;
-//                         }
-//                     }
-//                 }
-//                 assert!(found);
-//             }
-//         }
-//     }
+    //     #[test]
+    //     fn test_elligator_inv() {
+    //         let mut rng = rand::thread_rng();
+    //
+    //         for i in 0..100 {
+    //             let mut fe_bytes = [0u8; 32];
+    //
+    //             if i == 0 {
+    // Test for first corner-case: fe = 0
+    //                 fe_bytes = [0u8; 32];
+    //             } else if i == 1 {
+    // Test for second corner-case: fe = +sqrt(i*d)
+    //                 fe_bytes = [
+    //                     168, 27, 92, 74, 203, 42, 48, 117, 170, 109, 234, 14, 45, 169, 188, 205, 21,
+    //                     110, 235, 115, 153, 84, 52, 117, 151, 235, 123, 244, 88, 85, 179, 5,
+    //                 ];
+    //             } else {
+    // For the rest, just generate a random field element to test.
+    //                 rng.fill_bytes(&mut fe_bytes);
+    //             }
+    //             fe_bytes[0] &= 254; // positive
+    //             fe_bytes[31] &= 127; // < 2^255-19
+    //             let fe = FieldElement::from_bytes(&fe_bytes);
+    //
+    //             let pt = RistrettoPoint::elligator_ristretto_flavor(&fe);
+    //             for pt2 in &pt.xcoset4() {
+    //                 let (mask, fes) = RistrettoPoint(*pt2).elligator_ristretto_flavor_inverse();
+    //
+    //                 let mut found = false;
+    //                 for (j, fe_j) in fes.iter().enumerate() {
+    //                     if mask & (1 << j) != 0 {
+    //                         assert_eq!(RistrettoPoint::elligator_ristretto_flavor(fe_j), pt);
+    //                         if *fe_j == fe {
+    //                             found = true;
+    //                         }
+    //                     }
+    //                 }
+    //                 assert!(found);
+    //             }
+    //         }
+    //     }
 }

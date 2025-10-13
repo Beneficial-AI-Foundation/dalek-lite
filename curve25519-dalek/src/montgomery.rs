@@ -119,9 +119,9 @@ impl Zeroize for MontgomeryPoint {
 
 impl MontgomeryPoint {
     /// Fixed-base scalar multiplication (i.e. multiplication by the base point).
-//     pub fn mul_base(scalar: &Scalar) -> Self {
-//         EdwardsPoint::mul_base(scalar).to_montgomery()
-//     }
+    //     pub fn mul_base(scalar: &Scalar) -> Self {
+    //         EdwardsPoint::mul_base(scalar).to_montgomery()
+    //     }
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
@@ -141,15 +141,15 @@ impl MontgomeryPoint {
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-//     pub fn mul_base_clamped(bytes: [u8; 32]) -> Self {
-        // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
-        // note that fixed-base multiplication is also defined for all values of `bytes` less than
-        // 2^255.
-//         let s = Scalar {
-//             bytes: clamp_integer(bytes),
-//         };
-//         Self::mul_base(&s)
-//     }
+    //     pub fn mul_base_clamped(bytes: [u8; 32]) -> Self {
+    // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
+    // note that fixed-base multiplication is also defined for all values of `bytes` less than
+    // 2^255.
+    //         let s = Scalar {
+    //             bytes: clamp_integer(bytes),
+    //         };
+    //         Self::mul_base(&s)
+    //     }
 
     /// Given `self` \\( = u\_0(P) \\), and a big-endian bit representation of an integer
     /// \\(n\\), return \\( u\_0(\[n\]P) \\). This is constant time in the length of `bits`.

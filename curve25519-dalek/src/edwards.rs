@@ -183,9 +183,9 @@ impl CompressedEdwardsY {
     }
 
     /// Copy this `CompressedEdwardsY` to an array of bytes.
-//     pub const fn to_bytes(&self) -> [u8; 32] {
-//         self.0
-//     }
+    //     pub const fn to_bytes(&self) -> [u8; 32] {
+    //         self.0
+    //     }
 
     /// Attempt to decompress to an `EdwardsPoint`.
     ///
@@ -298,14 +298,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 //         D: Deserializer<'de>,
 //     {
 //         struct EdwardsPointVisitor;
-// 
+//
 //         impl<'de> Visitor<'de> for EdwardsPointVisitor {
 //             type Value = EdwardsPoint;
-// 
+//
 //             fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 //                 formatter.write_str("a valid point in Edwards y + sign format")
 //             }
-// 
+//
 //             fn visit_seq<A>(self, mut seq: A) -> Result<EdwardsPoint, A::Error>
 //             where
 //                 A: serde::de::SeqAccess<'de>,
@@ -322,7 +322,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 //                     .ok_or_else(|| serde::de::Error::custom("decompression failed"))
 //             }
 //         }
-// 
+//
 //         deserializer.deserialize_tuple(32, EdwardsPointVisitor)
 //     }
 // }
@@ -334,14 +334,14 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 //         D: Deserializer<'de>,
 //     {
 //         struct CompressedEdwardsYVisitor;
-// 
+//
 //         impl<'de> Visitor<'de> for CompressedEdwardsYVisitor {
 //             type Value = CompressedEdwardsY;
-// 
+//
 //             fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 //                 formatter.write_str("32 bytes of data")
 //             }
-// 
+//
 //             fn visit_seq<A>(self, mut seq: A) -> Result<CompressedEdwardsY, A::Error>
 //             where
 //                 A: serde::de::SeqAccess<'de>,
@@ -356,7 +356,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 //                 Ok(CompressedEdwardsY(bytes))
 //             }
 //         }
-// 
+//
 //         deserializer.deserialize_tuple(32, CompressedEdwardsYVisitor)
 //     }
 // }
@@ -395,12 +395,12 @@ pub struct EdwardsPoint {
 // }
 
 // impl CompressedEdwardsY {
-    /// Construct a `CompressedEdwardsY` from a slice of bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
-    /// a length of 32.
+/// Construct a `CompressedEdwardsY` from a slice of bytes.
+///
+/// # Errors
+///
+/// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
+/// a length of 32.
 //     pub fn from_slice(bytes: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
 //         bytes.try_into().map(CompressedEdwardsY)
 //     }
@@ -429,7 +429,7 @@ impl Identity for EdwardsPoint {
 
 // #[cfg(feature = "zeroize")]
 // impl Zeroize for CompressedEdwardsY {
-    /// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
+/// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
 //     fn zeroize(&mut self) {
 //         self.0.zeroize();
 //         self.0[0] = 1;
@@ -455,7 +455,7 @@ impl Zeroize for EdwardsPoint {
 //     fn is_valid(&self) -> bool {
 //         let point_on_curve = self.as_projective().is_valid();
 //         let on_segre_image = (&self.X * &self.Y) == (&self.Z * &self.T);
-// 
+//
 //         point_on_curve && on_segre_image
 //     }
 // }
@@ -759,19 +759,19 @@ impl EdwardsPoint {
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-//     pub fn mul_clamped(self, bytes: [u8; 32]) -> Self {
-        // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
-        // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
-        // needs to hold is invariant #1, i.e., the scalar is less than 2^255. This is guaranteed
-        // by clamping.
-        // Further, we don't do any reduction or arithmetic with this clamped value, so there's no
-        // issues arising from the fact that the curve point is not necessarily in the prime-order
-        // subgroup.
-//         let s = Scalar {
-//             bytes: clamp_integer(bytes),
-//         };
-//         s * self
-//     }
+    //     pub fn mul_clamped(self, bytes: [u8; 32]) -> Self {
+    // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
+    // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
+    // needs to hold is invariant #1, i.e., the scalar is less than 2^255. This is guaranteed
+    // by clamping.
+    // Further, we don't do any reduction or arithmetic with this clamped value, so there's no
+    // issues arising from the fact that the curve point is not necessarily in the prime-order
+    // subgroup.
+    //         let s = Scalar {
+    //             bytes: clamp_integer(bytes),
+    //         };
+    //         s * self
+    //     }
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
@@ -870,7 +870,7 @@ pub struct VartimeEdwardsPrecomputation(crate::backend::VartimePrecomputedStraus
 // #[cfg(feature = "alloc")]
 // impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
 //     type Point = EdwardsPoint;
-// 
+//
 //     fn new<I>(static_points: I) -> Self
 //     where
 //         I: IntoIterator,
@@ -878,7 +878,7 @@ pub struct VartimeEdwardsPrecomputation(crate::backend::VartimePrecomputedStraus
 //     {
 //         Self(crate::backend::VartimePrecomputedStraus::new(static_points))
 //     }
-// 
+//
 //     fn optional_mixed_multiscalar_mul<I, J, K>(
 //         &self,
 //         static_scalars: I,
@@ -1052,15 +1052,15 @@ macro_rules! impl_basepoint_table {
             }
         }
 
-//         impl Debug for $name {
-//             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-//                 write!(f, "{:?}([\n", stringify!($name))?;
-//                 for i in 0..32 {
-//                     write!(f, "\t{:?},\n", &self.0[i])?;
-//                 }
-//                 write!(f, "])")
-//             }
-//         }
+        //         impl Debug for $name {
+        //             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        //                 write!(f, "{:?}([\n", stringify!($name))?;
+        //                 for i in 0..32 {
+        //                     write!(f, "\t{:?},\n", &self.0[i])?;
+        //                 }
+        //                 write!(f, "])")
+        //             }
+        //         }
     };
 } // End macro_rules! impl_basepoint_table
 
@@ -1116,17 +1116,17 @@ cfg_if! {
 #[cfg(feature = "precomputed-tables")]
 macro_rules! impl_basepoint_table_conversions {
     (LHS = $lhs:ty, RHS = $rhs:ty) => {
-//         impl<'a> From<&'a $lhs> for $rhs {
-//             fn from(table: &'a $lhs) -> $rhs {
-//                 <$rhs>::create(&table.basepoint())
-//             }
-//         }
+        //         impl<'a> From<&'a $lhs> for $rhs {
+        //             fn from(table: &'a $lhs) -> $rhs {
+        //                 <$rhs>::create(&table.basepoint())
+        //             }
+        //         }
 
-//         impl<'a> From<&'a $rhs> for $lhs {
-//             fn from(table: &'a $rhs) -> $lhs {
-//                 <$lhs>::create(&table.basepoint())
-//             }
-//         }
+        //         impl<'a> From<&'a $rhs> for $lhs {
+        //             fn from(table: &'a $rhs) -> $lhs {
+        //                 <$lhs>::create(&table.basepoint())
+        //             }
+        //         }
     };
 }
 
@@ -1224,9 +1224,9 @@ impl EdwardsPoint {
     /// // Q has small order
     /// assert_eq!(Q.is_small_order(), true);
     /// ```
-//     pub fn is_small_order(&self) -> bool {
-//         self.mul_by_cofactor().is_identity()
-//     }
+    //     pub fn is_small_order(&self) -> bool {
+    //         self.mul_by_cofactor().is_identity()
+    //     }
 
     /// Determine if this point is “torsion-free”, i.e., is contained in
     /// the prime-order subgroup.

@@ -48,12 +48,12 @@ impl Debug for FieldElement51 {
     }
 }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for FieldElement51 {
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for FieldElement51 {
+//     fn zeroize(&mut self) {
+//         self.0.zeroize();
+//     }
+// }
 
 impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
     fn add_assign(&mut self, _rhs: &'a FieldElement51) {

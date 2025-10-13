@@ -113,12 +113,14 @@ def run_cargo_check(check_dir: str, check_cmd: str, timeout: int) -> bool:
     Run cargo check command. Returns True if successful, False otherwise.
     """
     try:
+        # Use shell=True to handle complex commands like "nix-shell --run 'cargo check'"
         result = subprocess.run(
-            check_cmd.split(),
+            check_cmd,
             cwd=check_dir,
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
+            shell=True
         )
         return result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -177,8 +179,8 @@ def main():
     parser.add_argument(
         '--check-cmd',
         type=str,
-        default='nix-shell --run cargo check',
-        help='Command to run for checking (default: "nix-shell --run cargo check")'
+        default='nix-shell --run "cargo check"',
+        help='Command to run for checking (default: "nix-shell --run \\"cargo check\\"")'
     )
     parser.add_argument(
         '--timeout',

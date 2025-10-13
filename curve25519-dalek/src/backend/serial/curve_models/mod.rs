@@ -273,20 +273,20 @@ impl Default for AffineNielsPoint {
 // Validity checks (for debugging, not CT)
 // ------------------------------------------------------------------------
 
-impl ValidityCheck for ProjectivePoint {
-    fn is_valid(&self) -> bool {
+// impl ValidityCheck for ProjectivePoint {
+//     fn is_valid(&self) -> bool {
         // Curve equation is    -x^2 + y^2 = 1 + d*x^2*y^2,
         // homogenized as (-X^2 + Y^2)*Z^2 = Z^4 + d*X^2*Y^2
-        let XX = self.X.square();
-        let YY = self.Y.square();
-        let ZZ = self.Z.square();
-        let ZZZZ = ZZ.square();
-        let lhs = &(&YY - &XX) * &ZZ;
-        let rhs = &ZZZZ + &(&constants::EDWARDS_D * &(&XX * &YY));
-
-        lhs == rhs
-    }
-}
+//         let XX = self.X.square();
+//         let YY = self.Y.square();
+//         let ZZ = self.Z.square();
+//         let ZZZZ = ZZ.square();
+//         let lhs = &(&YY - &XX) * &ZZ;
+//         let rhs = &ZZZZ + &(&constants::EDWARDS_D * &(&XX * &YY));
+// 
+//         lhs == rhs
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Constant-time assignment
@@ -546,15 +546,15 @@ impl<'a> Neg for &'a AffineNielsPoint {
 //     }
 // }
 
-impl Debug for AffineNielsPoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "AffineNielsPoint{{\n\ty_plus_x: {:?},\n\ty_minus_x: {:?},\n\txy2d: {:?}\n}}",
-            &self.y_plus_x, &self.y_minus_x, &self.xy2d
-        )
-    }
-}
+// impl Debug for AffineNielsPoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(
+//             f,
+//             "AffineNielsPoint{{\n\ty_plus_x: {:?},\n\ty_minus_x: {:?},\n\txy2d: {:?}\n}}",
+//             &self.y_plus_x, &self.y_minus_x, &self.xy2d
+//         )
+//     }
+// }
 
 // impl Debug for ProjectiveNielsPoint {
 //     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

@@ -262,15 +262,15 @@ impl<T: Copy> NafLookupTable8<T> {
 //     }
 // }
 
-#[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
-impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
-    fn from(A: &'a EdwardsPoint) -> Self {
-        let mut Ai = [A.as_affine_niels(); 64];
-        let A2 = A.double();
-        for i in 0..63 {
-            Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
-        }
+// #[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
+// impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
+//     fn from(A: &'a EdwardsPoint) -> Self {
+//         let mut Ai = [A.as_affine_niels(); 64];
+//         let A2 = A.double();
+//         for i in 0..63 {
+//             Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
+//         }
         // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
-        NafLookupTable8(Ai)
-    }
-}
+//         NafLookupTable8(Ai)
+//     }
+// }

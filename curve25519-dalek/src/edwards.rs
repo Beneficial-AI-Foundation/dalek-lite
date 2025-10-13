@@ -436,16 +436,16 @@ impl Identity for EdwardsPoint {
 //     }
 // }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for EdwardsPoint {
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for EdwardsPoint {
     /// Reset this `CompressedEdwardsPoint` to the identity element.
-    fn zeroize(&mut self) {
-        self.X.zeroize();
-        self.Y = FieldElement::ONE;
-        self.Z = FieldElement::ONE;
-        self.T.zeroize();
-    }
-}
+//     fn zeroize(&mut self) {
+//         self.X.zeroize();
+//         self.Y = FieldElement::ONE;
+//         self.Z = FieldElement::ONE;
+//         self.T.zeroize();
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Validity checks (for debugging, not CT)

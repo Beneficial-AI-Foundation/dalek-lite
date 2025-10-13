@@ -51,15 +51,55 @@ def find_function_bounds(lines: List[str], start_idx: int) -> Optional[Tuple[int
 
     return None
 
-def find_functions(filepath: str) -> List[Tuple[int, int, str]]:
+def find_impl_block_bounds(lines: List[str], start_idx: int) -> Optional[Tuple[int, int]]:
     """
-    Find all function definitions in a Rust file.
-    Returns list of (start_line, end_line, function_name) tuples.
+    Find the start and end line indices for an impl block starting at start_idx.
+    Returns (doc_start, impl_end) where doc_start includes /// and #[] comments before impl.
+    """
+    # Find the start of doc comments
+    doc_start = start_idx
+    i = start_idx - 1
+    while i >= 0 and (lines[i].strip().startswith('///') or
+                       lines[i].strip().startswith('#[') or
+                       lines[i].strip() == ''):
+        if lines[i].strip().startswith('///') or lines[i].strip().startswith('#['):
+            doc_start = i
+        i -= 1
+
+    # Find the end of the impl block by tracking braces
+    brace_count = 0
+    in_block = False
+    impl_end = start_idx
+
+    for i in range(start_idx, len(lines)):
+        line = lines[i]
+
+        # Skip comments and strings (simple heuristic)
+        cleaned = re.sub(r'//.*', '', line)
+        cleaned = re.sub(r'"[^"]*"', '', cleaned)
+
+        for char in cleaned:
+            if char == '{':
+                brace_count += 1
+                in_block = True
+            elif char == '}':
+                brace_count -= 1
+                if in_block and brace_count == 0:
+                    return (doc_start, i)
+
+        impl_end = i
+
+    return None
+
+def find_functions_and_impls(filepath: str) -> List[Tuple[int, int, str, str]]:
+    """
+    Find all function definitions and impl blocks in a Rust file.
+    Returns list of (start_line, end_line, name, type) tuples where type is 'fn' or 'impl'.
     """
     with open(filepath, 'r') as f:
         lines = f.readlines()
 
-    functions = []
+    items = []
 
     for i, line in enumerate(lines):
         # Skip already commented out lines
@@ -67,16 +107,26 @@ def find_functions(filepath: str) -> List[Tuple[int, int, str]]:
         if stripped.startswith('//'):
             continue
 
+        # Match impl blocks (impl Foo, impl Trait for Foo, impl<T> Foo<T>, etc.)
+        impl_match = re.search(r'\bimpl\b(?:\s*<[^>]*>)?\s+(?:(?:\w+\s+for\s+)?(\w+))', line)
+        if impl_match:
+            impl_name = impl_match.group(1) or "trait"
+            bounds = find_impl_block_bounds(lines, i)
+            if bounds:
+                doc_start, impl_end = bounds
+                items.append((doc_start, impl_end, f"impl {impl_name}", "impl"))
+                continue
+
         # Match function definitions (pub fn, fn, pub(crate) fn, etc.)
-        match = re.search(r'\b(pub(?:\([^)]*\))?\s+)?fn\s+(\w+)', line)
-        if match:
-            fn_name = match.group(2)
+        fn_match = re.search(r'\b(pub(?:\([^)]*\))?\s+)?fn\s+(\w+)', line)
+        if fn_match:
+            fn_name = fn_match.group(2)
             bounds = find_function_bounds(lines, i)
             if bounds:
                 doc_start, fn_end = bounds
-                functions.append((doc_start, fn_end, fn_name))
+                items.append((doc_start, fn_end, fn_name, "fn"))
 
-    return functions
+    return items
 
 def comment_out_lines(filepath: str, start_line: int, end_line: int) -> List[str]:
     """
@@ -132,19 +182,48 @@ def run_cargo_check(check_dir: str, check_cmd: str, timeout: int) -> bool:
 
 def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, verbose: bool = False) -> Tuple[int, int]:
     """
-    Process a single Rust file, trying to comment out functions.
-    Returns (total_functions, commented_out_count).
+    Process a single Rust file, trying to comment out functions and impl blocks.
+    First pass: try to comment out entire impl blocks.
+    Second pass: try to comment out individual functions (including those in remaining impl blocks).
+    Returns (total_items, commented_out_count).
     """
     print(f"\n📝 Processing {filepath}")
 
-    functions = find_functions(filepath)
-    print(f"   Found {len(functions)} functions")
+    items = find_functions_and_impls(filepath)
+    impl_blocks = [(s, e, n, t) for s, e, n, t in items if t == "impl"]
+    functions = [(s, e, n, t) for s, e, n, t in items if t == "fn"]
+
+    print(f"   Found {len(impl_blocks)} impl blocks and {len(functions)} functions")
 
     commented_out = 0
 
-    # Process functions in reverse order to maintain line numbers
-    for start_line, end_line, fn_name in reversed(functions):
-        print(f"\n  🔍 Trying to comment out: {fn_name} (lines {start_line+1}-{end_line+1})")
+    # FIRST PASS: Process impl blocks in reverse order to maintain line numbers
+    if impl_blocks:
+        print(f"\n  === PASS 1: Trying to comment out impl blocks ===")
+        for start_line, end_line, name, item_type in reversed(impl_blocks):
+            print(f"\n  🔍 Trying to comment out: {name} (lines {start_line+1}-{end_line+1})")
+
+            # Comment out the impl block
+            original_lines = comment_out_lines(filepath, start_line, end_line)
+
+            # Test with cargo check
+            print(f"     Running cargo check...", end='', flush=True)
+            if run_cargo_check(check_dir, check_cmd, timeout):
+                print(" ✅ Success! Impl block is unused.")
+                commented_out += 1
+            else:
+                print(" ❌ Failed. Reverting.")
+                revert_lines(filepath, start_line, end_line, original_lines)
+
+    # SECOND PASS: Re-scan for functions and process them
+    # This will include functions that were in impl blocks that couldn't be removed
+    print(f"\n  === PASS 2: Trying to comment out individual functions ===")
+    items = find_functions_and_impls(filepath)
+    functions = [(s, e, n, t) for s, e, n, t in items if t == "fn"]
+    print(f"   Found {len(functions)} remaining functions to try")
+
+    for start_line, end_line, name, item_type in reversed(functions):
+        print(f"\n  🔍 Trying to comment out: {name} (lines {start_line+1}-{end_line+1})")
 
         # Comment out the function
         original_lines = comment_out_lines(filepath, start_line, end_line)
@@ -158,7 +237,8 @@ def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, ve
             print(" ❌ Failed. Reverting.")
             revert_lines(filepath, start_line, end_line, original_lines)
 
-    return len(functions), commented_out
+    total_items = len(impl_blocks) + len(functions)
+    return total_items, commented_out
 
 def main():
     parser = argparse.ArgumentParser(
@@ -217,7 +297,7 @@ def main():
 
     print(f"\n{'='*60}")
     print(f"✨ Summary:")
-    print(f"   Total functions processed: {total_fns}")
+    print(f"   Total items processed: {total_fns}")
     print(f"   Successfully commented out: {total_commented}")
     print(f"   Remaining: {total_fns - total_commented}")
     print(f"{'='*60}")

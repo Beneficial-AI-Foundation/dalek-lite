@@ -221,9 +221,9 @@ pub struct Scalar {
 // This is a dummy function that we call from signal
 // to test that verus functions in libsignal know
 // about verus functions in curve-dalek
-pub open spec fn is_a_scalar(s: Scalar) -> bool {
-   true
-}
+// pub open spec fn is_a_scalar(s: Scalar) -> bool {
+//    true
+// }
 
 impl Scalar {
     /// Construct a `Scalar` by reducing a 256-bit little-endian integer
@@ -556,20 +556,20 @@ impl<'de> Deserialize<'de> for Scalar {
                 )
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> Result<Scalar, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let mut bytes = [0u8; 32];
-                #[allow(clippy::needless_range_loop)]
-                for i in 0..32 {
-                    bytes[i] = seq
-                        .next_element()?
-                        .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-                }
-                Option::from(Scalar::from_canonical_bytes(bytes))
-                    .ok_or_else(|| serde::de::Error::custom("scalar was not canonically encoded"))
-            }
+//             fn visit_seq<A>(self, mut seq: A) -> Result<Scalar, A::Error>
+//             where
+//                 A: serde::de::SeqAccess<'de>,
+//             {
+//                 let mut bytes = [0u8; 32];
+//                 #[allow(clippy::needless_range_loop)]
+//                 for i in 0..32 {
+//                     bytes[i] = seq
+//                         .next_element()?
+//                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+//                 }
+//                 Option::from(Scalar::from_canonical_bytes(bytes))
+//                     .ok_or_else(|| serde::de::Error::custom("scalar was not canonically encoded"))
+//             }
         }
 
         deserializer.deserialize_tuple(32, ScalarVisitor)
@@ -1380,15 +1380,15 @@ impl Scalar {
             // Convert from radix 256 (bytes) to radix 16 (nibbles)
             // VERIFICATION NOTE: Moved helper functions outside for Verus compatibility
             /* <ORIGINAL CODE>
-            #[allow(clippy::identity_op)]
-            #[inline(always)]
-            fn bot_half(x: u8) -> u8 {
-                (x >> 0) & 15
-            }
-            #[inline(always)]
-            fn top_half(x: u8) -> u8 {
-                (x >> 4) & 15
-            }
+//             #[allow(clippy::identity_op)]
+//             #[inline(always)]
+//             fn bot_half(x: u8) -> u8 {
+//                 (x >> 0) & 15
+//             }
+//             #[inline(always)]
+//             fn top_half(x: u8) -> u8 {
+//                 (x >> 4) & 15
+//             }
 
             for i in 0..32 {
                 output[2 * i] = bot_half(self[i]) as i8;

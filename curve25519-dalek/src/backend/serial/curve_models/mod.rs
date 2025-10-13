@@ -302,12 +302,12 @@ impl ConditionallySelectable for ProjectiveNielsPoint {
         }
     }
 
-    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
-        self.Y_plus_X.conditional_assign(&other.Y_plus_X, choice);
-        self.Y_minus_X.conditional_assign(&other.Y_minus_X, choice);
-        self.Z.conditional_assign(&other.Z, choice);
-        self.T2d.conditional_assign(&other.T2d, choice);
-    }
+//     fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+//         self.Y_plus_X.conditional_assign(&other.Y_plus_X, choice);
+//         self.Y_minus_X.conditional_assign(&other.Y_minus_X, choice);
+//         self.Z.conditional_assign(&other.Z, choice);
+//         self.T2d.conditional_assign(&other.T2d, choice);
+//     }
 }
 
 impl ConditionallySelectable for AffineNielsPoint {
@@ -319,11 +319,11 @@ impl ConditionallySelectable for AffineNielsPoint {
         }
     }
 
-    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
-        self.y_plus_x.conditional_assign(&other.y_plus_x, choice);
-        self.y_minus_x.conditional_assign(&other.y_minus_x, choice);
-        self.xy2d.conditional_assign(&other.xy2d, choice);
-    }
+//     fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+//         self.y_plus_x.conditional_assign(&other.y_plus_x, choice);
+//         self.y_minus_x.conditional_assign(&other.y_minus_x, choice);
+//         self.xy2d.conditional_assign(&other.xy2d, choice);
+//     }
 }
 
 // ------------------------------------------------------------------------

@@ -313,20 +313,20 @@ pub trait VartimePrecomputedMultiscalarMul: Sized {
     /// be convertible to iterators (`I: IntoIter`), and the
     /// iterator's items must be `Borrow<Scalar>`, to allow iterators
     /// returning either `Scalar`s or `&Scalar`s.
-    fn vartime_multiscalar_mul<I>(&self, static_scalars: I) -> Self::Point
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Scalar>,
-    {
-        use core::iter;
-
-        Self::vartime_mixed_multiscalar_mul(
-            self,
-            static_scalars,
-            iter::empty::<Scalar>(),
-            iter::empty::<Self::Point>(),
-        )
-    }
+//     fn vartime_multiscalar_mul<I>(&self, static_scalars: I) -> Self::Point
+//     where
+//         I: IntoIterator,
+//         I::Item: Borrow<Scalar>,
+//     {
+//         use core::iter;
+// 
+//         Self::vartime_mixed_multiscalar_mul(
+//             self,
+//             static_scalars,
+//             iter::empty::<Scalar>(),
+//             iter::empty::<Self::Point>(),
+//         )
+//     }
 
     /// Given `static_scalars`, an iterator of public scalars
     /// \\(b_i\\), `dynamic_scalars`, an iterator of public scalars

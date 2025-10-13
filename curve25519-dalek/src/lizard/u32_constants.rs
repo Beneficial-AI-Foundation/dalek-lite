@@ -4,15 +4,15 @@ cfg_if! {
     if #[cfg(curve25519_dalek_backend = "fiat")] {
         pub use crate::backend::serial::fiat_u32::field::FieldElement2625;
 
-        const fn field_element(element: [u32; 10]) -> FieldElement2625 {
-            FieldElement2625(fiat_crypto::curve25519_32::fiat_25519_tight_field_element(element))
-        }
+//         const fn field_element(element: [u32; 10]) -> FieldElement2625 {
+//             FieldElement2625(fiat_crypto::curve25519_32::fiat_25519_tight_field_element(element))
+//         }
     } else {
         pub use crate::backend::serial::u32::field::FieldElement2625;
 
-        const fn field_element(element: [u32; 10]) -> FieldElement2625 {
-            FieldElement2625(element)
-        }
+//         const fn field_element(element: [u32; 10]) -> FieldElement2625 {
+//             FieldElement2625(element)
+//         }
     }
 }
 

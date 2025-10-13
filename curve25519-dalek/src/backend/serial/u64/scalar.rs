@@ -291,31 +291,31 @@ impl Scalar52 {
 
 
     // VERIFICATION NOTE: refactored sub function from Dalek upstream
-    #[allow(dead_code)]
-    pub fn sub_new(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
-    requires
-        limbs_bounded(a),
-        limbs_bounded(b),
-        -group_order() <= to_nat(&a.limbs) - to_nat(&b.limbs) < group_order(),
-    ensures
-        to_nat(&s.limbs) == (to_nat(&a.limbs) - to_nat(&b.limbs)) % (group_order() as int),
-    {
-        assume(false); // TODO: complete the proof
-        let mut difference = Scalar52::ZERO;
-        let mask = (1u64 << 52) - 1;
-
+//     #[allow(dead_code)]
+//     pub fn sub_new(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
+//     requires
+//         limbs_bounded(a),
+//         limbs_bounded(b),
+//         -group_order() <= to_nat(&a.limbs) - to_nat(&b.limbs) < group_order(),
+//     ensures
+//         to_nat(&s.limbs) == (to_nat(&a.limbs) - to_nat(&b.limbs)) % (group_order() as int),
+//     {
+//         assume(false); // TODO: complete the proof
+//         let mut difference = Scalar52::ZERO;
+//         let mask = (1u64 << 52) - 1;
+// 
         // a - b
-        let mut borrow: u64 = 0;
-        for i in 0..5 {
-            assume(false);
-            borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
-            difference[i] = borrow & mask;
-        }
-
+//         let mut borrow: u64 = 0;
+//         for i in 0..5 {
+//             assume(false);
+//             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
+//             difference[i] = borrow & mask;
+//         }
+// 
         // conditionally add l if the difference is negative
-        difference.conditional_add_l(Choice::from((borrow >> 63) as u8));
-        difference
-    }
+//         difference.conditional_add_l(Choice::from((borrow >> 63) as u8));
+//         difference
+//     }
 
 
     // VERIFICATION NOTE: conditional_add_l function only used in sub_new function
@@ -517,26 +517,26 @@ impl Scalar52 {
     }
 
     /* <ORIGINAL CODE>
-    fn square_internal(a: &Scalar52) -> [u128; 9] {
-        let aa = [
-            a[0] * 2,
-            a[1] * 2,
-            a[2] * 2,
-            a[3] * 2,
-        ];
-
-        [
-            m( a[0], a[0]),
-            m(aa[0], a[1]),
-            m(aa[0], a[2]) + m( a[1], a[1]),
-            m(aa[0], a[3]) + m(aa[1], a[2]),
-            m(aa[0], a[4]) + m(aa[1], a[3]) + m( a[2], a[2]),
-                             m(aa[1], a[4]) + m(aa[2], a[3]),
-                                              m(aa[2], a[4]) + m( a[3], a[3]),
-                                                               m(aa[3], a[4]),
-                                                                                m(a[4], a[4])
-        ]
-    }
+//     fn square_internal(a: &Scalar52) -> [u128; 9] {
+//         let aa = [
+//             a[0] * 2,
+//             a[1] * 2,
+//             a[2] * 2,
+//             a[3] * 2,
+//         ];
+// 
+//         [
+//             m( a[0], a[0]),
+//             m(aa[0], a[1]),
+//             m(aa[0], a[2]) + m( a[1], a[1]),
+//             m(aa[0], a[3]) + m(aa[1], a[2]),
+//             m(aa[0], a[4]) + m(aa[1], a[3]) + m( a[2], a[2]),
+//                              m(aa[1], a[4]) + m(aa[2], a[3]),
+//                                               m(aa[2], a[4]) + m( a[3], a[3]),
+//                                                                m(aa[3], a[4]),
+//                                                                                 m(a[4], a[4])
+//         ]
+//     }
     </ORIGINAL CODE> */
     /* <VERIFICATION NOTE>
     -  refactored verified version of square_internal

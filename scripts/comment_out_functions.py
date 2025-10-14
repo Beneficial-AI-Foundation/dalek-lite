@@ -180,12 +180,12 @@ def run_cargo_check(check_dir: str, check_cmd: str, timeout: int) -> bool:
         print(f"  ❌ Error running cargo check: {e}")
         return False
 
-def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, verbose: bool = False) -> Tuple[int, int]:
+def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, verbose: bool = False) -> Tuple[int, int, int, int]:
     """
     Process a single Rust file, trying to comment out functions and impl blocks.
     First pass: try to comment out entire impl blocks.
     Second pass: try to comment out individual functions (including those in remaining impl blocks).
-    Returns (total_items, commented_out_count).
+    Returns (total_fns, total_impls, commented_fns, commented_impls).
     """
     print(f"\n📝 Processing {filepath}")
 
@@ -195,7 +195,8 @@ def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, ve
 
     print(f"   Found {len(impl_blocks)} impl blocks and {len(functions)} functions")
 
-    commented_out = 0
+    commented_impls = 0
+    commented_fns = 0
 
     # FIRST PASS: Process impl blocks in reverse order to maintain line numbers
     if impl_blocks:
@@ -210,7 +211,7 @@ def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, ve
             print(f"     Running cargo check...", end='', flush=True)
             if run_cargo_check(check_dir, check_cmd, timeout):
                 print(" ✅ Success! Impl block is unused.")
-                commented_out += 1
+                commented_impls += 1
             else:
                 print(" ❌ Failed. Reverting.")
                 revert_lines(filepath, start_line, end_line, original_lines)
@@ -222,6 +223,8 @@ def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, ve
     functions = [(s, e, n, t) for s, e, n, t in items if t == "fn"]
     print(f"   Found {len(functions)} remaining functions to try")
 
+    initial_fn_count = len(functions)
+
     for start_line, end_line, name, item_type in reversed(functions):
         print(f"\n  🔍 Trying to comment out: {name} (lines {start_line+1}-{end_line+1})")
 
@@ -232,13 +235,12 @@ def process_file(filepath: str, check_dir: str, check_cmd: str, timeout: int, ve
         print(f"     Running cargo check...", end='', flush=True)
         if run_cargo_check(check_dir, check_cmd, timeout):
             print(" ✅ Success! Function is unused.")
-            commented_out += 1
+            commented_fns += 1
         else:
             print(" ❌ Failed. Reverting.")
             revert_lines(filepath, start_line, end_line, original_lines)
 
-    total_items = len(impl_blocks) + len(functions)
-    return total_items, commented_out
+    return initial_fn_count, len(impl_blocks), commented_fns, commented_impls
 
 def main():
     parser = argparse.ArgumentParser(
@@ -286,14 +288,16 @@ def main():
     print("✅ Initial check passed\n")
 
     total_fns = 0
-    total_commented = 0
+    total_impls = 0
+    total_commented_fns = 0
+    total_commented_impls = 0
 
     for filepath in args.files:
         if not Path(filepath).exists():
             print(f"❌ File not found: {filepath}")
             continue
 
-        fns, commented = process_file(
+        fns, impls, commented_fns, commented_impls = process_file(
             filepath,
             args.check_dir,
             args.check_cmd,
@@ -301,13 +305,18 @@ def main():
             verbose=args.verbose
         )
         total_fns += fns
-        total_commented += commented
+        total_impls += impls
+        total_commented_fns += commented_fns
+        total_commented_impls += commented_impls
+
+    total_items = total_fns + total_impls
+    total_commented = total_commented_fns + total_commented_impls
 
     print(f"\n{'='*60}")
     print(f"✨ Summary:")
-    print(f"   Total items processed: {total_fns}")
-    print(f"   Successfully commented out: {total_commented}")
-    print(f"   Remaining: {total_fns - total_commented}")
+    print(f"   Total items processed: {total_items} ({total_fns} fns, {total_impls} impls)")
+    print(f"   Successfully commented out: {total_commented} ({total_commented_fns} fns, {total_commented_impls} impls)")
+    print(f"   Remaining: {total_items - total_commented} ({total_fns - total_commented_fns} fns, {total_impls - total_commented_impls} impls)")
     print(f"{'='*60}")
 
 if __name__ == '__main__':

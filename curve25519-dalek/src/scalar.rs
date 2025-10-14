@@ -472,17 +472,17 @@ define_add_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
 // define_sub_assign_variants!(LHS = Scalar, RHS = Scalar);
 
-// impl<'a, 'b> Sub<&'b Scalar> for &'a Scalar {
-//     type Output = Scalar;
-//     #[allow(non_snake_case)]
-//     fn sub(self, rhs: &'b Scalar) -> Scalar {
-//         // The UnpackedScalar::sub function produces reduced outputs if the inputs are reduced. By
-//         // Scalar invariant #1, this is always the case.
-//         UnpackedScalar::sub(&self.unpack(), &rhs.unpack()).pack()
-//     }
-// }
+impl<'a, 'b> Sub<&'b Scalar> for &'a Scalar {
+    type Output = Scalar;
+    #[allow(non_snake_case)]
+    fn sub(self, rhs: &'b Scalar) -> Scalar {
+        // The UnpackedScalar::sub function produces reduced outputs if the inputs are reduced. By
+        // Scalar invariant #1, this is always the case.
+        UnpackedScalar::sub(&self.unpack(), &rhs.unpack()).pack()
+    }
+}
 
-// define_sub_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
+define_sub_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
 impl<'a> Neg for &'a Scalar {
     type Output = Scalar;
@@ -588,17 +588,17 @@ impl<'de> Deserialize<'de> for Scalar {
 //     }
 // }
 
-// impl<T> Sum<T> for Scalar
-// where
-//     T: Borrow<Scalar>,
-// {
-//     fn sum<I>(iter: I) -> Self
-//     where
-//         I: Iterator<Item = T>,
-//     {
-//         iter.fold(Scalar::ZERO, |acc, item| acc + item.borrow())
-//     }
-// }
+impl<T> Sum<T> for Scalar
+where
+    T: Borrow<Scalar>,
+{
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = T>,
+    {
+        iter.fold(Scalar::ZERO, |acc, item| acc + item.borrow())
+    }
+}
 
 impl Default for Scalar {
     fn default() -> Scalar {
@@ -737,37 +737,37 @@ impl Scalar {
     //     Scalar::from_bytes_mod_order_wide(&scalar_bytes)
     // }
 
-    // #[cfg(feature = "digest")]
-    // /// Hash a slice of bytes into a scalar.
-    // ///
-    // /// Takes a type parameter `D`, which is any `Digest` producing 64
-    // /// bytes (512 bits) of output.
-    // ///
-    // /// Convenience wrapper around `from_hash`.
-    // ///
-    // /// # Example
-    // ///
-    // #[cfg_attr(feature = "digest", doc = "```")]
-    // #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
-    // /// # use curve25519_dalek::scalar::Scalar;
-    // /// use sha2::Sha512;
-    // ///
-    // /// # // Need fn main() here in comment so the doctest compiles
-    // /// # // See https://doc.rust-lang.org/book/documentation.html#documentation-as-tests
-    // /// # fn main() {
-    // /// let msg = "To really appreciate architecture, you may even need to commit a murder";
-    // /// let s = Scalar::hash_from_bytes::<Sha512>(msg.as_bytes());
-    // /// # }
-    // /// ```
-    // #[verifier::external_body]
-    // pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar
-    // where
-    //     D: Digest<OutputSize = U64> + Default,
-    // {
-    //     let mut hash = D::default();
-    //     hash.update(input);
-    //     Scalar::from_hash(hash)
-    // }
+    #[cfg(feature = "digest")]
+    /// Hash a slice of bytes into a scalar.
+    ///
+    /// Takes a type parameter `D`, which is any `Digest` producing 64
+    /// bytes (512 bits) of output.
+    ///
+    /// Convenience wrapper around `from_hash`.
+    ///
+    /// # Example
+    ///
+    #[cfg_attr(feature = "digest", doc = "```")]
+    #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
+    /// # use curve25519_dalek::scalar::Scalar;
+    /// use sha2::Sha512;
+    ///
+    /// # // Need fn main() here in comment so the doctest compiles
+    /// # // See https://doc.rust-lang.org/book/documentation.html#documentation-as-tests
+    /// # fn main() {
+    /// let msg = "To really appreciate architecture, you may even need to commit a murder";
+    /// let s = Scalar::hash_from_bytes::<Sha512>(msg.as_bytes());
+    /// # }
+    /// ```
+    #[verifier::external_body]
+    pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar
+    where
+        D: Digest<OutputSize = U64> + Default,
+    {
+        let mut hash = D::default();
+        hash.update(input);
+        Scalar::from_hash(hash)
+    }
 
     #[cfg(feature = "digest")]
     /// Construct a scalar from an existing `Digest` instance.

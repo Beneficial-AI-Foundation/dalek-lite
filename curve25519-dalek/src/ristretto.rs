@@ -1081,14 +1081,14 @@ pub struct VartimeRistrettoPrecomputation(crate::backend::VartimePrecomputedStra
 #[repr(transparent)]
 pub struct RistrettoBasepointTable(pub(crate) EdwardsBasepointTable);
 
-// #[cfg(feature = "precomputed-tables")]
-// impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoBasepointTable {
-//     type Output = RistrettoPoint;
-//
-//     fn mul(self, scalar: &'b Scalar) -> RistrettoPoint {
-//         RistrettoPoint(&self.0 * scalar)
-//     }
-// }
+#[cfg(feature = "precomputed-tables")]
+impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoBasepointTable {
+    type Output = RistrettoPoint;
+
+    fn mul(self, scalar: &'b Scalar) -> RistrettoPoint {
+        RistrettoPoint(&self.0 * scalar)
+    }
+}
 
 #[cfg(feature = "precomputed-tables")]
 impl<'a, 'b> Mul<&'a RistrettoBasepointTable> for &'b Scalar {

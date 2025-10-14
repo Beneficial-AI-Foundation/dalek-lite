@@ -106,14 +106,14 @@ use cfg_if::cfg_if;
 #[cfg(feature = "digest")]
 use digest::{generic_array::typenum::U64, Digest};
 
-#[cfg(feature = "group")]
-use {
-    group::{cofactor::CofactorGroup, prime::PrimeGroup, GroupEncoding},
-    subtle::CtOption,
-};
+// #[cfg(feature = "group")]
+// use {
+//     group::{cofactor::CofactorGroup, prime::PrimeGroup, GroupEncoding},
+//     subtle::CtOption,
+// };
 
-#[cfg(feature = "group")]
-use rand_core::RngCore;
+// #[cfg(feature = "group")]
+// use rand_core::RngCore;
 
 use subtle::Choice;
 use subtle::ConditionallyNegatable;
@@ -164,17 +164,17 @@ use crate::traits::{VartimeMultiscalarMul, VartimePrecomputedMultiscalarMul};
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct CompressedEdwardsY(pub [u8; 32]);
 
-impl ConstantTimeEq for CompressedEdwardsY {
-    fn ct_eq(&self, other: &CompressedEdwardsY) -> Choice {
-        self.as_bytes().ct_eq(other.as_bytes())
-    }
-}
+// impl ConstantTimeEq for CompressedEdwardsY {
+//     fn ct_eq(&self, other: &CompressedEdwardsY) -> Choice {
+//         self.as_bytes().ct_eq(other.as_bytes())
+//     }
+// }
 
-impl Debug for CompressedEdwardsY {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "CompressedEdwardsY: {:?}", self.as_bytes())
-    }
-}
+// impl Debug for CompressedEdwardsY {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "CompressedEdwardsY: {:?}", self.as_bytes())
+//     }
+// }
 
 impl CompressedEdwardsY {
     /// View this `CompressedEdwardsY` as an array of bytes.
@@ -183,9 +183,9 @@ impl CompressedEdwardsY {
     }
 
     /// Copy this `CompressedEdwardsY` to an array of bytes.
-    pub const fn to_bytes(&self) -> [u8; 32] {
-        self.0
-    }
+    //     pub const fn to_bytes(&self) -> [u8; 32] {
+    //         self.0
+    //     }
 
     /// Attempt to decompress to an `EdwardsPoint`.
     ///
@@ -240,13 +240,13 @@ mod decompress {
     }
 }
 
-impl TryFrom<&[u8]> for CompressedEdwardsY {
-    type Error = TryFromSliceError;
+// impl TryFrom<&[u8]> for CompressedEdwardsY {
+//     type Error = TryFromSliceError;
 
-    fn try_from(slice: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
-        Self::from_slice(slice)
-    }
-}
+//     fn try_from(slice: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
+//         Self::from_slice(slice)
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Serde support
@@ -261,105 +261,105 @@ use serde::de::Visitor;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-#[cfg(feature = "serde")]
-impl Serialize for EdwardsPoint {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(32)?;
-        for byte in self.compress().as_bytes().iter() {
-            tup.serialize_element(byte)?;
-        }
-        tup.end()
-    }
-}
+// #[cfg(feature = "serde")]
+// impl Serialize for EdwardsPoint {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         use serde::ser::SerializeTuple;
+//         let mut tup = serializer.serialize_tuple(32)?;
+//         for byte in self.compress().as_bytes().iter() {
+//             tup.serialize_element(byte)?;
+//         }
+//         tup.end()
+//     }
+// }
 
-#[cfg(feature = "serde")]
-impl Serialize for CompressedEdwardsY {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use serde::ser::SerializeTuple;
-        let mut tup = serializer.serialize_tuple(32)?;
-        for byte in self.as_bytes().iter() {
-            tup.serialize_element(byte)?;
-        }
-        tup.end()
-    }
-}
+// #[cfg(feature = "serde")]
+// impl Serialize for CompressedEdwardsY {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         use serde::ser::SerializeTuple;
+//         let mut tup = serializer.serialize_tuple(32)?;
+//         for byte in self.as_bytes().iter() {
+//             tup.serialize_element(byte)?;
+//         }
+//         tup.end()
+//     }
+// }
 
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for EdwardsPoint {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct EdwardsPointVisitor;
+// #[cfg(feature = "serde")]
+// impl<'de> Deserialize<'de> for EdwardsPoint {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         struct EdwardsPointVisitor;
+//
+//         impl<'de> Visitor<'de> for EdwardsPointVisitor {
+//             type Value = EdwardsPoint;
+//
+//             fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//                 formatter.write_str("a valid point in Edwards y + sign format")
+//             }
+//
+//             fn visit_seq<A>(self, mut seq: A) -> Result<EdwardsPoint, A::Error>
+//             where
+//                 A: serde::de::SeqAccess<'de>,
+//             {
+//                 let mut bytes = [0u8; 32];
+//                 #[allow(clippy::needless_range_loop)]
+//                 for i in 0..32 {
+//                     bytes[i] = seq
+//                         .next_element()?
+//                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+//                 }
+//                 CompressedEdwardsY(bytes)
+//                     .decompress()
+//                     .ok_or_else(|| serde::de::Error::custom("decompression failed"))
+//             }
+//         }
+//
+//         deserializer.deserialize_tuple(32, EdwardsPointVisitor)
+//     }
+// }
 
-        impl<'de> Visitor<'de> for EdwardsPointVisitor {
-            type Value = EdwardsPoint;
-
-            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                formatter.write_str("a valid point in Edwards y + sign format")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<EdwardsPoint, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let mut bytes = [0u8; 32];
-                #[allow(clippy::needless_range_loop)]
-                for i in 0..32 {
-                    bytes[i] = seq
-                        .next_element()?
-                        .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-                }
-                CompressedEdwardsY(bytes)
-                    .decompress()
-                    .ok_or_else(|| serde::de::Error::custom("decompression failed"))
-            }
-        }
-
-        deserializer.deserialize_tuple(32, EdwardsPointVisitor)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for CompressedEdwardsY {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct CompressedEdwardsYVisitor;
-
-        impl<'de> Visitor<'de> for CompressedEdwardsYVisitor {
-            type Value = CompressedEdwardsY;
-
-            fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                formatter.write_str("32 bytes of data")
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<CompressedEdwardsY, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let mut bytes = [0u8; 32];
-                #[allow(clippy::needless_range_loop)]
-                for i in 0..32 {
-                    bytes[i] = seq
-                        .next_element()?
-                        .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-                }
-                Ok(CompressedEdwardsY(bytes))
-            }
-        }
-
-        deserializer.deserialize_tuple(32, CompressedEdwardsYVisitor)
-    }
-}
+// #[cfg(feature = "serde")]
+// impl<'de> Deserialize<'de> for CompressedEdwardsY {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         struct CompressedEdwardsYVisitor;
+//
+//         impl<'de> Visitor<'de> for CompressedEdwardsYVisitor {
+//             type Value = CompressedEdwardsY;
+//
+//             fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//                 formatter.write_str("32 bytes of data")
+//             }
+//
+//             fn visit_seq<A>(self, mut seq: A) -> Result<CompressedEdwardsY, A::Error>
+//             where
+//                 A: serde::de::SeqAccess<'de>,
+//             {
+//                 let mut bytes = [0u8; 32];
+//                 #[allow(clippy::needless_range_loop)]
+//                 for i in 0..32 {
+//                     bytes[i] = seq
+//                         .next_element()?
+//                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+//                 }
+//                 Ok(CompressedEdwardsY(bytes))
+//             }
+//         }
+//
+//         deserializer.deserialize_tuple(32, CompressedEdwardsYVisitor)
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Internal point representations
@@ -379,32 +379,32 @@ pub struct EdwardsPoint {
 // Constructors
 // ------------------------------------------------------------------------
 
-impl Identity for CompressedEdwardsY {
-    fn identity() -> CompressedEdwardsY {
-        CompressedEdwardsY([
-            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ])
-    }
-}
+// impl Identity for CompressedEdwardsY {
+//     fn identity() -> CompressedEdwardsY {
+//         CompressedEdwardsY([
+//             1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+//             0, 0, 0,
+//         ])
+//     }
+// }
 
-impl Default for CompressedEdwardsY {
-    fn default() -> CompressedEdwardsY {
-        CompressedEdwardsY::identity()
-    }
-}
+// impl Default for CompressedEdwardsY {
+//     fn default() -> CompressedEdwardsY {
+//         CompressedEdwardsY::identity()
+//     }
+// }
 
-impl CompressedEdwardsY {
-    /// Construct a `CompressedEdwardsY` from a slice of bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
-    /// a length of 32.
-    pub fn from_slice(bytes: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
-        bytes.try_into().map(CompressedEdwardsY)
-    }
-}
+// impl CompressedEdwardsY {
+/// Construct a `CompressedEdwardsY` from a slice of bytes.
+///
+/// # Errors
+///
+/// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
+/// a length of 32.
+//     pub fn from_slice(bytes: &[u8]) -> Result<CompressedEdwardsY, TryFromSliceError> {
+//         bytes.try_into().map(CompressedEdwardsY)
+//     }
+// }
 
 impl Identity for EdwardsPoint {
     fn identity() -> EdwardsPoint {
@@ -417,48 +417,48 @@ impl Identity for EdwardsPoint {
     }
 }
 
-impl Default for EdwardsPoint {
-    fn default() -> EdwardsPoint {
-        EdwardsPoint::identity()
-    }
-}
+// impl Default for EdwardsPoint {
+//     fn default() -> EdwardsPoint {
+//         EdwardsPoint::identity()
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Zeroize implementations for wiping points from memory
 // ------------------------------------------------------------------------
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for CompressedEdwardsY {
-    /// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-        self.0[0] = 1;
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for CompressedEdwardsY {
+/// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
+//     fn zeroize(&mut self) {
+//         self.0.zeroize();
+//         self.0[0] = 1;
+//     }
+// }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for EdwardsPoint {
-    /// Reset this `CompressedEdwardsPoint` to the identity element.
-    fn zeroize(&mut self) {
-        self.X.zeroize();
-        self.Y = FieldElement::ONE;
-        self.Z = FieldElement::ONE;
-        self.T.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for EdwardsPoint {
+/// Reset this `CompressedEdwardsPoint` to the identity element.
+//     fn zeroize(&mut self) {
+//         self.X.zeroize();
+//         self.Y = FieldElement::ONE;
+//         self.Z = FieldElement::ONE;
+//         self.T.zeroize();
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Validity checks (for debugging, not CT)
 // ------------------------------------------------------------------------
 
-impl ValidityCheck for EdwardsPoint {
-    fn is_valid(&self) -> bool {
-        let point_on_curve = self.as_projective().is_valid();
-        let on_segre_image = (&self.X * &self.Y) == (&self.Z * &self.T);
-
-        point_on_curve && on_segre_image
-    }
-}
+// impl ValidityCheck for EdwardsPoint {
+//     fn is_valid(&self) -> bool {
+//         let point_on_curve = self.as_projective().is_valid();
+//         let on_segre_image = (&self.X * &self.Y) == (&self.Z * &self.T);
+//
+//         point_on_curve && on_segre_image
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Constant-time assignment
@@ -492,13 +492,13 @@ impl ConstantTimeEq for EdwardsPoint {
     }
 }
 
-impl PartialEq for EdwardsPoint {
-    fn eq(&self, other: &EdwardsPoint) -> bool {
-        self.ct_eq(other).into()
-    }
-}
+// impl PartialEq for EdwardsPoint {
+//     fn eq(&self, other: &EdwardsPoint) -> bool {
+//         self.ct_eq(other).into()
+//     }
+// }
 
-impl Eq for EdwardsPoint {}
+// impl Eq for EdwardsPoint {}
 
 // ------------------------------------------------------------------------
 // Point conversions
@@ -664,17 +664,17 @@ impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
 
 define_sub_assign_variants!(LHS = EdwardsPoint, RHS = EdwardsPoint);
 
-impl<T> Sum<T> for EdwardsPoint
-where
-    T: Borrow<EdwardsPoint>,
-{
-    fn sum<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = T>,
-    {
-        iter.fold(EdwardsPoint::identity(), |acc, item| acc + item.borrow())
-    }
-}
+// impl<T> Sum<T> for EdwardsPoint
+// where
+//     T: Borrow<EdwardsPoint>,
+// {
+//     fn sum<I>(iter: I) -> Self
+//     where
+//         I: Iterator<Item = T>,
+//     {
+//         iter.fold(EdwardsPoint::identity(), |acc, item| acc + item.borrow())
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Negation
@@ -759,19 +759,19 @@ impl EdwardsPoint {
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-    pub fn mul_clamped(self, bytes: [u8; 32]) -> Self {
-        // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
-        // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
-        // needs to hold is invariant #1, i.e., the scalar is less than 2^255. This is guaranteed
-        // by clamping.
-        // Further, we don't do any reduction or arithmetic with this clamped value, so there's no
-        // issues arising from the fact that the curve point is not necessarily in the prime-order
-        // subgroup.
-        let s = Scalar {
-            bytes: clamp_integer(bytes),
-        };
-        s * self
-    }
+    //     pub fn mul_clamped(self, bytes: [u8; 32]) -> Self {
+    // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
+    // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
+    // needs to hold is invariant #1, i.e., the scalar is less than 2^255. This is guaranteed
+    // by clamping.
+    // Further, we don't do any reduction or arithmetic with this clamped value, so there's no
+    // issues arising from the fact that the curve point is not necessarily in the prime-order
+    // subgroup.
+    //         let s = Scalar {
+    //             bytes: clamp_integer(bytes),
+    //         };
+    //         s * self
+    //     }
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
@@ -867,35 +867,35 @@ impl VartimeMultiscalarMul for EdwardsPoint {
 #[cfg(feature = "alloc")]
 pub struct VartimeEdwardsPrecomputation(crate::backend::VartimePrecomputedStraus);
 
-#[cfg(feature = "alloc")]
-impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
-    type Point = EdwardsPoint;
-
-    fn new<I>(static_points: I) -> Self
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Self::Point>,
-    {
-        Self(crate::backend::VartimePrecomputedStraus::new(static_points))
-    }
-
-    fn optional_mixed_multiscalar_mul<I, J, K>(
-        &self,
-        static_scalars: I,
-        dynamic_scalars: J,
-        dynamic_points: K,
-    ) -> Option<Self::Point>
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Scalar>,
-        J: IntoIterator,
-        J::Item: Borrow<Scalar>,
-        K: IntoIterator<Item = Option<Self::Point>>,
-    {
-        self.0
-            .optional_mixed_multiscalar_mul(static_scalars, dynamic_scalars, dynamic_points)
-    }
-}
+// #[cfg(feature = "alloc")]
+// impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
+//     type Point = EdwardsPoint;
+//
+//     fn new<I>(static_points: I) -> Self
+//     where
+//         I: IntoIterator,
+//         I::Item: Borrow<Self::Point>,
+//     {
+//         Self(crate::backend::VartimePrecomputedStraus::new(static_points))
+//     }
+//
+//     fn optional_mixed_multiscalar_mul<I, J, K>(
+//         &self,
+//         static_scalars: I,
+//         dynamic_scalars: J,
+//         dynamic_points: K,
+//     ) -> Option<Self::Point>
+//     where
+//         I: IntoIterator,
+//         I::Item: Borrow<Scalar>,
+//         J: IntoIterator,
+//         J::Item: Borrow<Scalar>,
+//         K: IntoIterator<Item = Option<Self::Point>>,
+//     {
+//         self.0
+//             .optional_mixed_multiscalar_mul(static_scalars, dynamic_scalars, dynamic_points)
+//     }
+// }
 
 impl EdwardsPoint {
     /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
@@ -1052,15 +1052,15 @@ macro_rules! impl_basepoint_table {
             }
         }
 
-        impl Debug for $name {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                write!(f, "{:?}([\n", stringify!($name))?;
-                for i in 0..32 {
-                    write!(f, "\t{:?},\n", &self.0[i])?;
-                }
-                write!(f, "])")
-            }
-        }
+        //         impl Debug for $name {
+        //             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        //                 write!(f, "{:?}([\n", stringify!($name))?;
+        //                 for i in 0..32 {
+        //                     write!(f, "\t{:?},\n", &self.0[i])?;
+        //                 }
+        //                 write!(f, "])")
+        //             }
+        //         }
     };
 } // End macro_rules! impl_basepoint_table
 
@@ -1116,17 +1116,17 @@ cfg_if! {
 #[cfg(feature = "precomputed-tables")]
 macro_rules! impl_basepoint_table_conversions {
     (LHS = $lhs:ty, RHS = $rhs:ty) => {
-        impl<'a> From<&'a $lhs> for $rhs {
-            fn from(table: &'a $lhs) -> $rhs {
-                <$rhs>::create(&table.basepoint())
-            }
-        }
+        //         impl<'a> From<&'a $lhs> for $rhs {
+        //             fn from(table: &'a $lhs) -> $rhs {
+        //                 <$rhs>::create(&table.basepoint())
+        //             }
+        //         }
 
-        impl<'a> From<&'a $rhs> for $lhs {
-            fn from(table: &'a $rhs) -> $lhs {
-                <$lhs>::create(&table.basepoint())
-            }
-        }
+        //         impl<'a> From<&'a $rhs> for $lhs {
+        //             fn from(table: &'a $rhs) -> $lhs {
+        //                 <$lhs>::create(&table.basepoint())
+        //             }
+        //         }
     };
 }
 
@@ -1224,9 +1224,9 @@ impl EdwardsPoint {
     /// // Q has small order
     /// assert_eq!(Q.is_small_order(), true);
     /// ```
-    pub fn is_small_order(&self) -> bool {
-        self.mul_by_cofactor().is_identity()
-    }
+    //     pub fn is_small_order(&self) -> bool {
+    //         self.mul_by_cofactor().is_identity()
+    //     }
 
     /// Determine if this point is “torsion-free”, i.e., is contained in
     /// the prime-order subgroup.
@@ -1277,313 +1277,313 @@ impl Debug for EdwardsPoint {
 // group traits
 // ------------------------------------------------------------------------
 
-// Use the full trait path to avoid Group::identity overlapping Identity::identity in the
-// rest of the module (e.g. tests).
-#[cfg(feature = "group")]
-impl group::Group for EdwardsPoint {
-    type Scalar = Scalar;
+// // Use the full trait path to avoid Group::identity overlapping Identity::identity in the
+// // rest of the module (e.g. tests).
+// #[cfg(feature = "group")]
+// impl group::Group for EdwardsPoint {
+//     type Scalar = Scalar;
 
-    fn random(mut rng: impl RngCore) -> Self {
-        let mut repr = CompressedEdwardsY([0u8; 32]);
-        loop {
-            rng.fill_bytes(&mut repr.0);
-            if let Some(p) = repr.decompress() {
-                if !IsIdentity::is_identity(&p) {
-                    break p;
-                }
-            }
-        }
-    }
+// //     fn random(mut rng: impl RngCore) -> Self {
+// //         let mut repr = CompressedEdwardsY([0u8; 32]);
+// //         loop {
+// //             rng.fill_bytes(&mut repr.0);
+// //             if let Some(p) = repr.decompress() {
+// //                 if !IsIdentity::is_identity(&p) {
+// //                     break p;
+// //                 }
+// //             }
+// //         }
+// //     }
 
-    fn identity() -> Self {
-        Identity::identity()
-    }
+// //     fn identity() -> Self {
+// //         Identity::identity()
+// //     }
 
-    fn generator() -> Self {
-        constants::ED25519_BASEPOINT_POINT
-    }
+// //     fn generator() -> Self {
+// //         constants::ED25519_BASEPOINT_POINT
+// //     }
 
-    fn is_identity(&self) -> Choice {
-        self.ct_eq(&Identity::identity())
-    }
+// //     fn is_identity(&self) -> Choice {
+// //         self.ct_eq(&Identity::identity())
+// //     }
 
-    fn double(&self) -> Self {
-        self.double()
-    }
-}
+// //     fn double(&self) -> Self {
+// //         self.double()
+// //     }
+// }
 
-#[cfg(feature = "group")]
-impl GroupEncoding for EdwardsPoint {
-    type Repr = [u8; 32];
+// #[cfg(feature = "group")]
+// impl GroupEncoding for EdwardsPoint {
+//     type Repr = [u8; 32];
 
-    fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
-        let repr = CompressedEdwardsY(*bytes);
-        let (is_valid_y_coord, X, Y, Z) = decompress::step_1(&repr);
-        CtOption::new(decompress::step_2(&repr, X, Y, Z), is_valid_y_coord)
-    }
+// //     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+// //         let repr = CompressedEdwardsY(*bytes);
+// //         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(&repr);
+// //         CtOption::new(decompress::step_2(&repr, X, Y, Z), is_valid_y_coord)
+// //     }
 
-    fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
-        // Just use the checked API; there are no checks we can skip.
-        Self::from_bytes(bytes)
-    }
+// //     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+//         // Just use the checked API; there are no checks we can skip.
+// //         Self::from_bytes(bytes)
+// //     }
 
-    fn to_bytes(&self) -> Self::Repr {
-        self.compress().to_bytes()
-    }
-}
+// //     fn to_bytes(&self) -> Self::Repr {
+// //         self.compress().to_bytes()
+// //     }
+// }
 
-/// A `SubgroupPoint` represents a point on the Edwards form of Curve25519, that is
-/// guaranteed to be in the prime-order subgroup.
-#[cfg(feature = "group")]
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SubgroupPoint(EdwardsPoint);
+// /// A `SubgroupPoint` represents a point on the Edwards form of Curve25519, that is
+// /// guaranteed to be in the prime-order subgroup.
+// #[cfg(feature = "group")]
+// #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+// pub struct SubgroupPoint(EdwardsPoint);
 
-#[cfg(feature = "group")]
-impl From<SubgroupPoint> for EdwardsPoint {
-    fn from(p: SubgroupPoint) -> Self {
-        p.0
-    }
-}
+// #[cfg(feature = "group")]
+// impl From<SubgroupPoint> for EdwardsPoint {
+// //     fn from(p: SubgroupPoint) -> Self {
+// //         p.0
+// //     }
+// }
 
-#[cfg(feature = "group")]
-impl Neg for SubgroupPoint {
-    type Output = Self;
+// #[cfg(feature = "group")]
+// impl Neg for SubgroupPoint {
+//     type Output = Self;
 
-    fn neg(self) -> Self::Output {
-        SubgroupPoint(-self.0)
-    }
-}
+// //     fn neg(self) -> Self::Output {
+// //         SubgroupPoint(-self.0)
+// //     }
+// }
 
-#[cfg(feature = "group")]
-impl Add<&SubgroupPoint> for &SubgroupPoint {
-    type Output = SubgroupPoint;
-    fn add(self, other: &SubgroupPoint) -> SubgroupPoint {
-        SubgroupPoint(self.0 + other.0)
-    }
-}
+// #[cfg(feature = "group")]
+// impl Add<&SubgroupPoint> for &SubgroupPoint {
+//     type Output = SubgroupPoint;
+// //     fn add(self, other: &SubgroupPoint) -> SubgroupPoint {
+// //         SubgroupPoint(self.0 + other.0)
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_add_variants!(
-    LHS = SubgroupPoint,
-    RHS = SubgroupPoint,
-    Output = SubgroupPoint
-);
+// #[cfg(feature = "group")]
+// define_add_variants!(
+//     LHS = SubgroupPoint,
+//     RHS = SubgroupPoint,
+//     Output = SubgroupPoint
+// );
 
-#[cfg(feature = "group")]
-impl Add<&SubgroupPoint> for &EdwardsPoint {
-    type Output = EdwardsPoint;
-    fn add(self, other: &SubgroupPoint) -> EdwardsPoint {
-        self + other.0
-    }
-}
+// #[cfg(feature = "group")]
+// impl Add<&SubgroupPoint> for &EdwardsPoint {
+//     type Output = EdwardsPoint;
+// //     fn add(self, other: &SubgroupPoint) -> EdwardsPoint {
+// //         self + other.0
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_add_variants!(
-    LHS = EdwardsPoint,
-    RHS = SubgroupPoint,
-    Output = EdwardsPoint
-);
+// #[cfg(feature = "group")]
+// define_add_variants!(
+//     LHS = EdwardsPoint,
+//     RHS = SubgroupPoint,
+//     Output = EdwardsPoint
+// );
 
-#[cfg(feature = "group")]
-impl AddAssign<&SubgroupPoint> for SubgroupPoint {
-    fn add_assign(&mut self, rhs: &SubgroupPoint) {
-        self.0 += rhs.0
-    }
-}
+// #[cfg(feature = "group")]
+// impl AddAssign<&SubgroupPoint> for SubgroupPoint {
+// //     fn add_assign(&mut self, rhs: &SubgroupPoint) {
+// //         self.0 += rhs.0
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_add_assign_variants!(LHS = SubgroupPoint, RHS = SubgroupPoint);
+// #[cfg(feature = "group")]
+// define_add_assign_variants!(LHS = SubgroupPoint, RHS = SubgroupPoint);
 
-#[cfg(feature = "group")]
-impl AddAssign<&SubgroupPoint> for EdwardsPoint {
-    fn add_assign(&mut self, rhs: &SubgroupPoint) {
-        *self += rhs.0
-    }
-}
+// #[cfg(feature = "group")]
+// impl AddAssign<&SubgroupPoint> for EdwardsPoint {
+// //     fn add_assign(&mut self, rhs: &SubgroupPoint) {
+// //         *self += rhs.0
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_add_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
+// #[cfg(feature = "group")]
+// define_add_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
 
-#[cfg(feature = "group")]
-impl Sub<&SubgroupPoint> for &SubgroupPoint {
-    type Output = SubgroupPoint;
-    fn sub(self, other: &SubgroupPoint) -> SubgroupPoint {
-        SubgroupPoint(self.0 - other.0)
-    }
-}
+// #[cfg(feature = "group")]
+// impl Sub<&SubgroupPoint> for &SubgroupPoint {
+//     type Output = SubgroupPoint;
+// //     fn sub(self, other: &SubgroupPoint) -> SubgroupPoint {
+// //         SubgroupPoint(self.0 - other.0)
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_sub_variants!(
-    LHS = SubgroupPoint,
-    RHS = SubgroupPoint,
-    Output = SubgroupPoint
-);
+// #[cfg(feature = "group")]
+// define_sub_variants!(
+//     LHS = SubgroupPoint,
+//     RHS = SubgroupPoint,
+//     Output = SubgroupPoint
+// );
 
-#[cfg(feature = "group")]
-impl Sub<&SubgroupPoint> for &EdwardsPoint {
-    type Output = EdwardsPoint;
-    fn sub(self, other: &SubgroupPoint) -> EdwardsPoint {
-        self - other.0
-    }
-}
+// #[cfg(feature = "group")]
+// impl Sub<&SubgroupPoint> for &EdwardsPoint {
+//     type Output = EdwardsPoint;
+// //     fn sub(self, other: &SubgroupPoint) -> EdwardsPoint {
+// //         self - other.0
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_sub_variants!(
-    LHS = EdwardsPoint,
-    RHS = SubgroupPoint,
-    Output = EdwardsPoint
-);
+// #[cfg(feature = "group")]
+// define_sub_variants!(
+//     LHS = EdwardsPoint,
+//     RHS = SubgroupPoint,
+//     Output = EdwardsPoint
+// );
 
-#[cfg(feature = "group")]
-impl SubAssign<&SubgroupPoint> for SubgroupPoint {
-    fn sub_assign(&mut self, rhs: &SubgroupPoint) {
-        self.0 -= rhs.0;
-    }
-}
+// #[cfg(feature = "group")]
+// impl SubAssign<&SubgroupPoint> for SubgroupPoint {
+// //     fn sub_assign(&mut self, rhs: &SubgroupPoint) {
+// //         self.0 -= rhs.0;
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_sub_assign_variants!(LHS = SubgroupPoint, RHS = SubgroupPoint);
+// #[cfg(feature = "group")]
+// define_sub_assign_variants!(LHS = SubgroupPoint, RHS = SubgroupPoint);
 
-#[cfg(feature = "group")]
-impl SubAssign<&SubgroupPoint> for EdwardsPoint {
-    fn sub_assign(&mut self, rhs: &SubgroupPoint) {
-        *self -= rhs.0;
-    }
-}
+// #[cfg(feature = "group")]
+// impl SubAssign<&SubgroupPoint> for EdwardsPoint {
+// //     fn sub_assign(&mut self, rhs: &SubgroupPoint) {
+// //         *self -= rhs.0;
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_sub_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
+// // #[cfg(feature = "group")]
+// // define_sub_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
 
-#[cfg(feature = "group")]
-impl<T> Sum<T> for SubgroupPoint
-where
-    T: Borrow<SubgroupPoint>,
-{
-    fn sum<I>(iter: I) -> Self
-    where
-        I: Iterator<Item = T>,
-    {
-        use group::Group;
-        iter.fold(SubgroupPoint::identity(), |acc, item| acc + item.borrow())
-    }
-}
+// // #[cfg(feature = "group")]
+// // impl<T> Sum<T> for SubgroupPoint
+// // where
+// //     T: Borrow<SubgroupPoint>,
+// // {
+// //     fn sum<I>(iter: I) -> Self
+// //     where
+// //         I: Iterator<Item = T>,
+// //     {
+// //         use group::Group;
+// //         iter.fold(SubgroupPoint::identity(), |acc, item| acc + item.borrow())
+// //     }
+// // }
 
-#[cfg(feature = "group")]
-impl Mul<&Scalar> for &SubgroupPoint {
-    type Output = SubgroupPoint;
+// #[cfg(feature = "group")]
+// impl Mul<&Scalar> for &SubgroupPoint {
+//     type Output = SubgroupPoint;
 
-    /// Scalar multiplication: compute `scalar * self`.
-    ///
-    /// For scalar multiplication of a basepoint,
-    /// `EdwardsBasepointTable` is approximately 4x faster.
-    fn mul(self, scalar: &Scalar) -> SubgroupPoint {
-        SubgroupPoint(self.0 * scalar)
-    }
-}
+//     /// Scalar multiplication: compute `scalar * self`.
+//     ///
+//     /// For scalar multiplication of a basepoint,
+//     /// `EdwardsBasepointTable` is approximately 4x faster.
+//     fn mul(self, scalar: &Scalar) -> SubgroupPoint {
+//         SubgroupPoint(self.0 * scalar)
+//     }
+// }
 
-#[cfg(feature = "group")]
-define_mul_variants!(LHS = Scalar, RHS = SubgroupPoint, Output = SubgroupPoint);
+// #[cfg(feature = "group")]
+// define_mul_variants!(LHS = Scalar, RHS = SubgroupPoint, Output = SubgroupPoint);
 
-#[cfg(feature = "group")]
-impl Mul<&SubgroupPoint> for &Scalar {
-    type Output = SubgroupPoint;
+// #[cfg(feature = "group")]
+// impl Mul<&SubgroupPoint> for &Scalar {
+//     type Output = SubgroupPoint;
 
-    /// Scalar multiplication: compute `scalar * self`.
-    ///
-    /// For scalar multiplication of a basepoint,
-    /// `EdwardsBasepointTable` is approximately 4x faster.
-    fn mul(self, point: &SubgroupPoint) -> SubgroupPoint {
-        point * self
-    }
-}
+//     /// Scalar multiplication: compute `scalar * self`.
+//     ///
+//     /// For scalar multiplication of a basepoint,
+//     /// `EdwardsBasepointTable` is approximately 4x faster.
+//     fn mul(self, point: &SubgroupPoint) -> SubgroupPoint {
+//         point * self
+//     }
+// }
 
-#[cfg(feature = "group")]
-define_mul_variants!(LHS = SubgroupPoint, RHS = Scalar, Output = SubgroupPoint);
+// #[cfg(feature = "group")]
+// define_mul_variants!(LHS = SubgroupPoint, RHS = Scalar, Output = SubgroupPoint);
 
-#[cfg(feature = "group")]
-impl MulAssign<&Scalar> for SubgroupPoint {
-    fn mul_assign(&mut self, scalar: &Scalar) {
-        self.0 *= scalar;
-    }
-}
+// #[cfg(feature = "group")]
+// impl MulAssign<&Scalar> for SubgroupPoint {
+// //     fn mul_assign(&mut self, scalar: &Scalar) {
+// //         self.0 *= scalar;
+// //     }
+// }
 
-#[cfg(feature = "group")]
-define_mul_assign_variants!(LHS = SubgroupPoint, RHS = Scalar);
+// #[cfg(feature = "group")]
+// define_mul_assign_variants!(LHS = SubgroupPoint, RHS = Scalar);
 
-#[cfg(feature = "group")]
-impl group::Group for SubgroupPoint {
-    type Scalar = Scalar;
+// #[cfg(feature = "group")]
+// impl group::Group for SubgroupPoint {
+//     type Scalar = Scalar;
 
-    fn random(mut rng: impl RngCore) -> Self {
-        use group::ff::Field;
+// //     fn random(mut rng: impl RngCore) -> Self {
+// //         use group::ff::Field;
+// //
+//         // This will almost never loop, but `Group::random` is documented as returning a
+//         // non-identity element.
+// //         let s = loop {
+// //             let s: Scalar = Field::random(&mut rng);
+// //             if !s.is_zero_vartime() {
+// //                 break s;
+// //             }
+// //         };
+// //
+//         // This gives an element of the prime-order subgroup.
+// //         Self::generator() * s
+// //     }
 
-        // This will almost never loop, but `Group::random` is documented as returning a
-        // non-identity element.
-        let s = loop {
-            let s: Scalar = Field::random(&mut rng);
-            if !s.is_zero_vartime() {
-                break s;
-            }
-        };
+// //     fn identity() -> Self {
+// //         SubgroupPoint(Identity::identity())
+// //     }
 
-        // This gives an element of the prime-order subgroup.
-        Self::generator() * s
-    }
+// //     fn generator() -> Self {
+// //         SubgroupPoint(EdwardsPoint::generator())
+// //     }
 
-    fn identity() -> Self {
-        SubgroupPoint(Identity::identity())
-    }
+// //     fn is_identity(&self) -> Choice {
+// //         self.0.ct_eq(&Identity::identity())
+// //     }
 
-    fn generator() -> Self {
-        SubgroupPoint(EdwardsPoint::generator())
-    }
+// //     fn double(&self) -> Self {
+// //         SubgroupPoint(self.0.double())
+// //     }
+// }
 
-    fn is_identity(&self) -> Choice {
-        self.0.ct_eq(&Identity::identity())
-    }
+// #[cfg(feature = "group")]
+// impl GroupEncoding for SubgroupPoint {
+//     type Repr = <EdwardsPoint as GroupEncoding>::Repr;
 
-    fn double(&self) -> Self {
-        SubgroupPoint(self.0.double())
-    }
-}
+// //     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+// //         EdwardsPoint::from_bytes(bytes).and_then(|p| p.into_subgroup())
+// //     }
 
-#[cfg(feature = "group")]
-impl GroupEncoding for SubgroupPoint {
-    type Repr = <EdwardsPoint as GroupEncoding>::Repr;
+// //     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+// //         EdwardsPoint::from_bytes_unchecked(bytes).and_then(|p| p.into_subgroup())
+// //     }
 
-    fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
-        EdwardsPoint::from_bytes(bytes).and_then(|p| p.into_subgroup())
-    }
+// //     fn to_bytes(&self) -> Self::Repr {
+// //         self.0.compress().to_bytes()
+// //     }
+// }
 
-    fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
-        EdwardsPoint::from_bytes_unchecked(bytes).and_then(|p| p.into_subgroup())
-    }
+// #[cfg(feature = "group")]
+// impl PrimeGroup for SubgroupPoint {}
 
-    fn to_bytes(&self) -> Self::Repr {
-        self.0.compress().to_bytes()
-    }
-}
+// /// Ristretto has a cofactor of 1.
+// #[cfg(feature = "group")]
+// impl CofactorGroup for EdwardsPoint {
+//     type Subgroup = SubgroupPoint;
 
-#[cfg(feature = "group")]
-impl PrimeGroup for SubgroupPoint {}
+// //     fn clear_cofactor(&self) -> Self::Subgroup {
+// //         SubgroupPoint(self.mul_by_cofactor())
+// //     }
 
-/// Ristretto has a cofactor of 1.
-#[cfg(feature = "group")]
-impl CofactorGroup for EdwardsPoint {
-    type Subgroup = SubgroupPoint;
+// //     fn into_subgroup(self) -> CtOption<Self::Subgroup> {
+// //         CtOption::new(SubgroupPoint(self), CofactorGroup::is_torsion_free(&self))
+// //     }
 
-    fn clear_cofactor(&self) -> Self::Subgroup {
-        SubgroupPoint(self.mul_by_cofactor())
-    }
-
-    fn into_subgroup(self) -> CtOption<Self::Subgroup> {
-        CtOption::new(SubgroupPoint(self), CofactorGroup::is_torsion_free(&self))
-    }
-
-    fn is_torsion_free(&self) -> Choice {
-        (self * constants::BASEPOINT_ORDER_PRIVATE).ct_eq(&Self::identity())
-    }
-}
+// //     fn is_torsion_free(&self) -> Choice {
+// //         (self * constants::BASEPOINT_ORDER_PRIVATE).ct_eq(&Self::identity())
+// //     }
+// }
 
 // ------------------------------------------------------------------------
 // Tests

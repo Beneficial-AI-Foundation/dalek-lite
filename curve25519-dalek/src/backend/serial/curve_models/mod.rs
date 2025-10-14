@@ -187,14 +187,14 @@ pub struct AffineNielsPoint {
     pub xy2d: FieldElement,
 }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for AffineNielsPoint {
-    fn zeroize(&mut self) {
-        self.y_plus_x.zeroize();
-        self.y_minus_x.zeroize();
-        self.xy2d.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for AffineNielsPoint {
+//     fn zeroize(&mut self) {
+//         self.y_plus_x.zeroize();
+//         self.y_minus_x.zeroize();
+//         self.xy2d.zeroize();
+//     }
+// }
 
 /// A pre-computed point on the \\( \mathbb P\^3 \\) model for the
 /// curve, represented as \\((Y+X, Y-X, Z, 2dXY)\\) in "Niels coordinates".
@@ -210,15 +210,15 @@ pub struct ProjectiveNielsPoint {
     pub T2d: FieldElement,
 }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for ProjectiveNielsPoint {
-    fn zeroize(&mut self) {
-        self.Y_plus_X.zeroize();
-        self.Y_minus_X.zeroize();
-        self.Z.zeroize();
-        self.T2d.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for ProjectiveNielsPoint {
+//     fn zeroize(&mut self) {
+//         self.Y_plus_X.zeroize();
+//         self.Y_minus_X.zeroize();
+//         self.Z.zeroize();
+//         self.T2d.zeroize();
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Constructors
@@ -247,11 +247,11 @@ impl Identity for ProjectiveNielsPoint {
     }
 }
 
-impl Default for ProjectiveNielsPoint {
-    fn default() -> ProjectiveNielsPoint {
-        ProjectiveNielsPoint::identity()
-    }
-}
+// impl Default for ProjectiveNielsPoint {
+//     fn default() -> ProjectiveNielsPoint {
+//         ProjectiveNielsPoint::identity()
+//     }
+// }
 
 impl Identity for AffineNielsPoint {
     fn identity() -> AffineNielsPoint {
@@ -273,20 +273,20 @@ impl Default for AffineNielsPoint {
 // Validity checks (for debugging, not CT)
 // ------------------------------------------------------------------------
 
-impl ValidityCheck for ProjectivePoint {
-    fn is_valid(&self) -> bool {
-        // Curve equation is    -x^2 + y^2 = 1 + d*x^2*y^2,
-        // homogenized as (-X^2 + Y^2)*Z^2 = Z^4 + d*X^2*Y^2
-        let XX = self.X.square();
-        let YY = self.Y.square();
-        let ZZ = self.Z.square();
-        let ZZZZ = ZZ.square();
-        let lhs = &(&YY - &XX) * &ZZ;
-        let rhs = &ZZZZ + &(&constants::EDWARDS_D * &(&XX * &YY));
-
-        lhs == rhs
-    }
-}
+// impl ValidityCheck for ProjectivePoint {
+//     fn is_valid(&self) -> bool {
+// Curve equation is    -x^2 + y^2 = 1 + d*x^2*y^2,
+// homogenized as (-X^2 + Y^2)*Z^2 = Z^4 + d*X^2*Y^2
+//         let XX = self.X.square();
+//         let YY = self.Y.square();
+//         let ZZ = self.Z.square();
+//         let ZZZZ = ZZ.square();
+//         let lhs = &(&YY - &XX) * &ZZ;
+//         let rhs = &ZZZZ + &(&constants::EDWARDS_D * &(&XX * &YY));
+//
+//         lhs == rhs
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Constant-time assignment
@@ -302,12 +302,12 @@ impl ConditionallySelectable for ProjectiveNielsPoint {
         }
     }
 
-    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
-        self.Y_plus_X.conditional_assign(&other.Y_plus_X, choice);
-        self.Y_minus_X.conditional_assign(&other.Y_minus_X, choice);
-        self.Z.conditional_assign(&other.Z, choice);
-        self.T2d.conditional_assign(&other.T2d, choice);
-    }
+    //     fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+    //         self.Y_plus_X.conditional_assign(&other.Y_plus_X, choice);
+    //         self.Y_minus_X.conditional_assign(&other.Y_minus_X, choice);
+    //         self.Z.conditional_assign(&other.Z, choice);
+    //         self.T2d.conditional_assign(&other.T2d, choice);
+    //     }
 }
 
 impl ConditionallySelectable for AffineNielsPoint {
@@ -319,11 +319,11 @@ impl ConditionallySelectable for AffineNielsPoint {
         }
     }
 
-    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
-        self.y_plus_x.conditional_assign(&other.y_plus_x, choice);
-        self.y_minus_x.conditional_assign(&other.y_minus_x, choice);
-        self.xy2d.conditional_assign(&other.xy2d, choice);
-    }
+    //     fn conditional_assign(&mut self, other: &Self, choice: Choice) {
+    //         self.y_plus_x.conditional_assign(&other.y_plus_x, choice);
+    //         self.y_minus_x.conditional_assign(&other.y_minus_x, choice);
+    //         self.xy2d.conditional_assign(&other.xy2d, choice);
+    //     }
 }
 
 // ------------------------------------------------------------------------
@@ -526,39 +526,39 @@ impl<'a> Neg for &'a AffineNielsPoint {
 // Debug traits
 // ------------------------------------------------------------------------
 
-impl Debug for ProjectivePoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "ProjectivePoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?}\n}}",
-            &self.X, &self.Y, &self.Z
-        )
-    }
-}
+// impl Debug for ProjectivePoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(
+//             f,
+//             "ProjectivePoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?}\n}}",
+//             &self.X, &self.Y, &self.Z
+//         )
+//     }
+// }
 
-impl Debug for CompletedPoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "CompletedPoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?},\n\tT: {:?}\n}}",
-            &self.X, &self.Y, &self.Z, &self.T
-        )
-    }
-}
+// impl Debug for CompletedPoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(
+//             f,
+//             "CompletedPoint{{\n\tX: {:?},\n\tY: {:?},\n\tZ: {:?},\n\tT: {:?}\n}}",
+//             &self.X, &self.Y, &self.Z, &self.T
+//         )
+//     }
+// }
 
-impl Debug for AffineNielsPoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(
-            f,
-            "AffineNielsPoint{{\n\ty_plus_x: {:?},\n\ty_minus_x: {:?},\n\txy2d: {:?}\n}}",
-            &self.y_plus_x, &self.y_minus_x, &self.xy2d
-        )
-    }
-}
+// impl Debug for AffineNielsPoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(
+//             f,
+//             "AffineNielsPoint{{\n\ty_plus_x: {:?},\n\ty_minus_x: {:?},\n\txy2d: {:?}\n}}",
+//             &self.y_plus_x, &self.y_minus_x, &self.xy2d
+//         )
+//     }
+// }
 
-impl Debug for ProjectiveNielsPoint {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "ProjectiveNielsPoint{{\n\tY_plus_X: {:?},\n\tY_minus_X: {:?},\n\tZ: {:?},\n\tT2d: {:?}\n}}",
-               &self.Y_plus_X, &self.Y_minus_X, &self.Z, &self.T2d)
-    }
-}
+// impl Debug for ProjectiveNielsPoint {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "ProjectiveNielsPoint{{\n\tY_plus_X: {:?},\n\tY_minus_X: {:?},\n\tZ: {:?},\n\tT2d: {:?}\n}}",
+//                &self.Y_plus_X, &self.Y_minus_X, &self.Z, &self.T2d)
+//     }
+// }

@@ -180,12 +180,12 @@ use digest::Digest;
 use crate::constants;
 use crate::field::FieldElement;
 
-#[cfg(feature = "group")]
-use {
-    group::{cofactor::CofactorGroup, prime::PrimeGroup, GroupEncoding},
-    rand_core::RngCore,
-    subtle::CtOption,
-};
+// #[cfg(feature = "group")]
+// use {
+//     group::{cofactor::CofactorGroup, prime::PrimeGroup, GroupEncoding},
+//     rand_core::RngCore,
+//     subtle::CtOption,
+// };
 
 use subtle::Choice;
 use subtle::ConditionallyNegatable;
@@ -218,11 +218,11 @@ use crate::traits::{MultiscalarMul, VartimeMultiscalarMul, VartimePrecomputedMul
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct CompressedRistretto(pub [u8; 32]);
 
-impl ConstantTimeEq for CompressedRistretto {
-    fn ct_eq(&self, other: &CompressedRistretto) -> Choice {
-        self.as_bytes().ct_eq(other.as_bytes())
-    }
-}
+// impl ConstantTimeEq for CompressedRistretto {
+//     fn ct_eq(&self, other: &CompressedRistretto) -> Choice {
+//         self.as_bytes().ct_eq(other.as_bytes())
+//     }
+// }
 
 impl CompressedRistretto {
     /// Copy the bytes of this `CompressedRistretto`.
@@ -339,19 +339,19 @@ impl Identity for CompressedRistretto {
     }
 }
 
-impl Default for CompressedRistretto {
-    fn default() -> CompressedRistretto {
-        CompressedRistretto::identity()
-    }
-}
+// impl Default for CompressedRistretto {
+//     fn default() -> CompressedRistretto {
+//         CompressedRistretto::identity()
+//     }
+// }
 
-impl TryFrom<&[u8]> for CompressedRistretto {
-    type Error = TryFromSliceError;
-
-    fn try_from(slice: &[u8]) -> Result<CompressedRistretto, TryFromSliceError> {
-        Self::from_slice(slice)
-    }
-}
+// impl TryFrom<&[u8]> for CompressedRistretto {
+//     type Error = TryFromSliceError;
+//
+//     fn try_from(slice: &[u8]) -> Result<CompressedRistretto, TryFromSliceError> {
+//         Self::from_slice(slice)
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Serde support
@@ -411,21 +411,21 @@ impl<'de> Deserialize<'de> for RistrettoPoint {
                 formatter.write_str("a valid point in Ristretto format")
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> Result<RistrettoPoint, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let mut bytes = [0u8; 32];
-                #[allow(clippy::needless_range_loop)]
-                for i in 0..32 {
-                    bytes[i] = seq
-                        .next_element()?
-                        .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-                }
-                CompressedRistretto(bytes)
-                    .decompress()
-                    .ok_or_else(|| serde::de::Error::custom("decompression failed"))
-            }
+            //             fn visit_seq<A>(self, mut seq: A) -> Result<RistrettoPoint, A::Error>
+            //             where
+            //                 A: serde::de::SeqAccess<'de>,
+            //             {
+            //                 let mut bytes = [0u8; 32];
+            //                 #[allow(clippy::needless_range_loop)]
+            //                 for i in 0..32 {
+            //                     bytes[i] = seq
+            //                         .next_element()?
+            //                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+            //                 }
+            //                 CompressedRistretto(bytes)
+            //                     .decompress()
+            //                     .ok_or_else(|| serde::de::Error::custom("decompression failed"))
+            //             }
         }
 
         deserializer.deserialize_tuple(32, RistrettoPointVisitor)
@@ -447,19 +447,19 @@ impl<'de> Deserialize<'de> for CompressedRistretto {
                 formatter.write_str("32 bytes of data")
             }
 
-            fn visit_seq<A>(self, mut seq: A) -> Result<CompressedRistretto, A::Error>
-            where
-                A: serde::de::SeqAccess<'de>,
-            {
-                let mut bytes = [0u8; 32];
-                #[allow(clippy::needless_range_loop)]
-                for i in 0..32 {
-                    bytes[i] = seq
-                        .next_element()?
-                        .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
-                }
-                Ok(CompressedRistretto(bytes))
-            }
+            //             fn visit_seq<A>(self, mut seq: A) -> Result<CompressedRistretto, A::Error>
+            //             where
+            //                 A: serde::de::SeqAccess<'de>,
+            //             {
+            //                 let mut bytes = [0u8; 32];
+            //                 #[allow(clippy::needless_range_loop)]
+            //                 for i in 0..32 {
+            //                     bytes[i] = seq
+            //                         .next_element()?
+            //                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
+            //                 }
+            //                 Ok(CompressedRistretto(bytes))
+            //             }
         }
 
         deserializer.deserialize_tuple(32, CompressedRistrettoVisitor)
@@ -691,7 +691,7 @@ impl RistrettoPoint {
         )
     }
 
-    #[cfg(any(test, feature = "rand_core"))]
+    //     #[cfg(any(test, feature = "rand_core"))]
     /// Return a `RistrettoPoint` chosen uniformly at random using a user-provided RNG.
     ///
     /// # Inputs
@@ -709,14 +709,14 @@ impl RistrettoPoint {
     /// discrete log of the output point with respect to any other
     /// point should be unknown.  The map is applied twice and the
     /// results are added, to ensure a uniform distribution.
-    pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {
-        let mut uniform_bytes = [0u8; 64];
-        rng.fill_bytes(&mut uniform_bytes);
+    //     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {
+    //         let mut uniform_bytes = [0u8; 64];
+    //         rng.fill_bytes(&mut uniform_bytes);
+    //
+    //         RistrettoPoint::from_uniform_bytes(&uniform_bytes)
+    //     }
 
-        RistrettoPoint::from_uniform_bytes(&uniform_bytes)
-    }
-
-    #[cfg(feature = "digest")]
+    //     #[cfg(feature = "digest")]
     /// Hash a slice of bytes into a `RistrettoPoint`.
     ///
     /// Takes a type parameter `D`, which is any `Digest` producing 64
@@ -733,8 +733,8 @@ impl RistrettoPoint {
     ///
     /// # Example
     ///
-    #[cfg_attr(feature = "digest", doc = "```")]
-    #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
+    //     #[cfg_attr(feature = "digest", doc = "```")]
+    //     #[cfg_attr(not(feature = "digest"), doc = "```ignore")]
     /// # use curve25519_dalek::ristretto::RistrettoPoint;
     /// use sha2::Sha512;
     ///
@@ -746,32 +746,32 @@ impl RistrettoPoint {
     /// # }
     /// ```
     ///
-    pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint
-    where
-        D: Digest<OutputSize = U64> + Default,
-    {
-        let mut hash = D::default();
-        hash.update(input);
-        RistrettoPoint::from_hash(hash)
-    }
+    //     pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint
+    //     where
+    //         D: Digest<OutputSize = U64> + Default,
+    //     {
+    //         let mut hash = D::default();
+    //         hash.update(input);
+    //         RistrettoPoint::from_hash(hash)
+    //     }
 
-    #[cfg(feature = "digest")]
+    //     #[cfg(feature = "digest")]
     /// Construct a `RistrettoPoint` from an existing `Digest` instance.
     ///
     /// Use this instead of `hash_from_bytes` if it is more convenient
     /// to stream data into the `Digest` than to pass a single byte
     /// slice.
-    pub fn from_hash<D>(hash: D) -> RistrettoPoint
-    where
-        D: Digest<OutputSize = U64> + Default,
-    {
-        // dealing with generic arrays is clumsy, until const generics land
-        let output = hash.finalize();
-        let mut output_bytes = [0u8; 64];
-        output_bytes.copy_from_slice(output.as_slice());
-
-        RistrettoPoint::from_uniform_bytes(&output_bytes)
-    }
+    //     pub fn from_hash<D>(hash: D) -> RistrettoPoint
+    //     where
+    //         D: Digest<OutputSize = U64> + Default,
+    //     {
+    // dealing with generic arrays is clumsy, until const generics land
+    //         let output = hash.finalize();
+    //         let mut output_bytes = [0u8; 64];
+    //         output_bytes.copy_from_slice(output.as_slice());
+    //
+    //         RistrettoPoint::from_uniform_bytes(&output_bytes)
+    //     }
 
     /// Construct a `RistrettoPoint` from 64 bytes of data.
     ///
@@ -1013,56 +1013,56 @@ impl VartimeMultiscalarMul for RistrettoPoint {
 #[cfg(feature = "alloc")]
 pub struct VartimeRistrettoPrecomputation(crate::backend::VartimePrecomputedStraus);
 
-#[cfg(feature = "alloc")]
-impl VartimePrecomputedMultiscalarMul for VartimeRistrettoPrecomputation {
-    type Point = RistrettoPoint;
+// #[cfg(feature = "alloc")]
+// impl VartimePrecomputedMultiscalarMul for VartimeRistrettoPrecomputation {
+//     type Point = RistrettoPoint;
+//
+//     fn new<I>(static_points: I) -> Self
+//     where
+//         I: IntoIterator,
+//         I::Item: Borrow<Self::Point>,
+//     {
+//         Self(crate::backend::VartimePrecomputedStraus::new(
+//             static_points.into_iter().map(|P| P.borrow().0),
+//         ))
+//     }
+//
+//     fn optional_mixed_multiscalar_mul<I, J, K>(
+//         &self,
+//         static_scalars: I,
+//         dynamic_scalars: J,
+//         dynamic_points: K,
+//     ) -> Option<Self::Point>
+//     where
+//         I: IntoIterator,
+//         I::Item: Borrow<Scalar>,
+//         J: IntoIterator,
+//         J::Item: Borrow<Scalar>,
+//         K: IntoIterator<Item = Option<Self::Point>>,
+//     {
+//         self.0
+//             .optional_mixed_multiscalar_mul(
+//                 static_scalars,
+//                 dynamic_scalars,
+//                 dynamic_points.into_iter().map(|P_opt| P_opt.map(|P| P.0)),
+//             )
+//             .map(RistrettoPoint)
+//     }
+// }
 
-    fn new<I>(static_points: I) -> Self
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Self::Point>,
-    {
-        Self(crate::backend::VartimePrecomputedStraus::new(
-            static_points.into_iter().map(|P| P.borrow().0),
-        ))
-    }
-
-    fn optional_mixed_multiscalar_mul<I, J, K>(
-        &self,
-        static_scalars: I,
-        dynamic_scalars: J,
-        dynamic_points: K,
-    ) -> Option<Self::Point>
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Scalar>,
-        J: IntoIterator,
-        J::Item: Borrow<Scalar>,
-        K: IntoIterator<Item = Option<Self::Point>>,
-    {
-        self.0
-            .optional_mixed_multiscalar_mul(
-                static_scalars,
-                dynamic_scalars,
-                dynamic_points.into_iter().map(|P_opt| P_opt.map(|P| P.0)),
-            )
-            .map(RistrettoPoint)
-    }
-}
-
-impl RistrettoPoint {
-    /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the
-    /// Ristretto basepoint.
-    pub fn vartime_double_scalar_mul_basepoint(
-        a: &Scalar,
-        A: &RistrettoPoint,
-        b: &Scalar,
-    ) -> RistrettoPoint {
-        RistrettoPoint(EdwardsPoint::vartime_double_scalar_mul_basepoint(
-            a, &A.0, b,
-        ))
-    }
-}
+// impl RistrettoPoint {
+/// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the
+/// Ristretto basepoint.
+//     pub fn vartime_double_scalar_mul_basepoint(
+//         a: &Scalar,
+//         A: &RistrettoPoint,
+//         b: &Scalar,
+//     ) -> RistrettoPoint {
+//         RistrettoPoint(EdwardsPoint::vartime_double_scalar_mul_basepoint(
+//             a, &A.0, b,
+//         ))
+//     }
+// }
 
 /// A precomputed table of multiples of a basepoint, used to accelerate
 /// scalar multiplication.
@@ -1099,18 +1099,18 @@ impl<'a, 'b> Mul<&'a RistrettoBasepointTable> for &'b Scalar {
     }
 }
 
-#[cfg(feature = "precomputed-tables")]
-impl RistrettoBasepointTable {
-    /// Create a precomputed table of multiples of the given `basepoint`.
-    pub fn create(basepoint: &RistrettoPoint) -> RistrettoBasepointTable {
-        RistrettoBasepointTable(EdwardsBasepointTable::create(&basepoint.0))
-    }
-
-    /// Get the basepoint for this table as a `RistrettoPoint`.
-    pub fn basepoint(&self) -> RistrettoPoint {
-        RistrettoPoint(self.0.basepoint())
-    }
-}
+// #[cfg(feature = "precomputed-tables")]
+// impl RistrettoBasepointTable {
+/// Create a precomputed table of multiples of the given `basepoint`.
+//     pub fn create(basepoint: &RistrettoPoint) -> RistrettoBasepointTable {
+//         RistrettoBasepointTable(EdwardsBasepointTable::create(&basepoint.0))
+//     }
+//
+/// Get the basepoint for this table as a `RistrettoPoint`.
+//     pub fn basepoint(&self) -> RistrettoPoint {
+//         RistrettoPoint(self.0.basepoint())
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Constant-time conditional selection
@@ -1154,11 +1154,11 @@ impl ConditionallySelectable for RistrettoPoint {
 // Debug traits
 // ------------------------------------------------------------------------
 
-impl Debug for CompressedRistretto {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "CompressedRistretto: {:?}", self.as_bytes())
-    }
-}
+// impl Debug for CompressedRistretto {
+//     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+//         write!(f, "CompressedRistretto: {:?}", self.as_bytes())
+//     }
+// }
 
 impl Debug for RistrettoPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -1175,99 +1175,99 @@ impl Debug for RistrettoPoint {
 // group traits
 // ------------------------------------------------------------------------
 
-// Use the full trait path to avoid Group::identity overlapping Identity::identity in the
-// rest of the module (e.g. tests).
-#[cfg(feature = "group")]
-impl group::Group for RistrettoPoint {
-    type Scalar = Scalar;
+// // Use the full trait path to avoid Group::identity overlapping Identity::identity in the
+// // rest of the module (e.g. tests).
+// #[cfg(feature = "group")]
+// impl group::Group for RistrettoPoint {
+//     type Scalar = Scalar;
 
-    fn random(mut rng: impl RngCore) -> Self {
-        // NOTE: this is duplicated due to different `rng` bounds
-        let mut uniform_bytes = [0u8; 64];
-        rng.fill_bytes(&mut uniform_bytes);
-        RistrettoPoint::from_uniform_bytes(&uniform_bytes)
-    }
+// //     fn random(mut rng: impl RngCore) -> Self {
+//         // NOTE: this is duplicated due to different `rng` bounds
+// //         let mut uniform_bytes = [0u8; 64];
+// //         rng.fill_bytes(&mut uniform_bytes);
+// //         RistrettoPoint::from_uniform_bytes(&uniform_bytes)
+// //     }
 
-    fn identity() -> Self {
-        Identity::identity()
-    }
+// //     fn identity() -> Self {
+// //         Identity::identity()
+// //     }
 
-    fn generator() -> Self {
-        constants::RISTRETTO_BASEPOINT_POINT
-    }
+// //     fn generator() -> Self {
+// //         constants::RISTRETTO_BASEPOINT_POINT
+// //     }
 
-    fn is_identity(&self) -> Choice {
-        self.ct_eq(&Identity::identity())
-    }
+// //     fn is_identity(&self) -> Choice {
+// //         self.ct_eq(&Identity::identity())
+// //     }
 
-    fn double(&self) -> Self {
-        self + self
-    }
-}
+// //     fn double(&self) -> Self {
+// //         self + self
+// //     }
+// }
 
-#[cfg(feature = "group")]
-impl GroupEncoding for RistrettoPoint {
-    type Repr = [u8; 32];
+// #[cfg(feature = "group")]
+// impl GroupEncoding for RistrettoPoint {
+//     type Repr = [u8; 32];
 
-    fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
-        let (s_encoding_is_canonical, s_is_negative, s) =
-            decompress::step_1(&CompressedRistretto(*bytes));
+// //     fn from_bytes(bytes: &Self::Repr) -> CtOption<Self> {
+// //         let (s_encoding_is_canonical, s_is_negative, s) =
+// //             decompress::step_1(&CompressedRistretto(*bytes));
+// //
+// //         let s_is_valid = s_encoding_is_canonical & !s_is_negative;
+// //
+// //         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
+// //
+// //         CtOption::new(res, s_is_valid & ok & !t_is_negative & !y_is_zero)
+// //     }
 
-        let s_is_valid = s_encoding_is_canonical & !s_is_negative;
+// //     fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
+//         // Just use the checked API; the checks we could skip aren't expensive.
+// //         Self::from_bytes(bytes)
+// //     }
 
-        let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
+// //     fn to_bytes(&self) -> Self::Repr {
+// //         self.compress().to_bytes()
+// //     }
+// }
 
-        CtOption::new(res, s_is_valid & ok & !t_is_negative & !y_is_zero)
-    }
+// #[cfg(feature = "group")]
+// impl PrimeGroup for RistrettoPoint {}
 
-    fn from_bytes_unchecked(bytes: &Self::Repr) -> CtOption<Self> {
-        // Just use the checked API; the checks we could skip aren't expensive.
-        Self::from_bytes(bytes)
-    }
+// /// Ristretto has a cofactor of 1.
+// #[cfg(feature = "group")]
+// impl CofactorGroup for RistrettoPoint {
+//     type Subgroup = Self;
 
-    fn to_bytes(&self) -> Self::Repr {
-        self.compress().to_bytes()
-    }
-}
+// //     fn clear_cofactor(&self) -> Self::Subgroup {
+// //         *self
+// //     }
 
-#[cfg(feature = "group")]
-impl PrimeGroup for RistrettoPoint {}
+// //     fn into_subgroup(self) -> CtOption<Self::Subgroup> {
+// //         CtOption::new(self, Choice::from(1))
+// //     }
 
-/// Ristretto has a cofactor of 1.
-#[cfg(feature = "group")]
-impl CofactorGroup for RistrettoPoint {
-    type Subgroup = Self;
-
-    fn clear_cofactor(&self) -> Self::Subgroup {
-        *self
-    }
-
-    fn into_subgroup(self) -> CtOption<Self::Subgroup> {
-        CtOption::new(self, Choice::from(1))
-    }
-
-    fn is_torsion_free(&self) -> Choice {
-        Choice::from(1)
-    }
-}
+// //     fn is_torsion_free(&self) -> Choice {
+// //         Choice::from(1)
+// //     }
+// }
 
 // ------------------------------------------------------------------------
 // Zeroize traits
 // ------------------------------------------------------------------------
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for CompressedRistretto {
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for CompressedRistretto {
+//     fn zeroize(&mut self) {
+//         self.0.zeroize();
+//     }
+// }
 
-#[cfg(feature = "zeroize")]
-impl Zeroize for RistrettoPoint {
-    fn zeroize(&mut self) {
-        self.0.zeroize();
-    }
-}
+// #[cfg(feature = "zeroize")]
+// impl Zeroize for RistrettoPoint {
+//     fn zeroize(&mut self) {
+//         self.0.zeroize();
+//     }
+// }
 
 // ------------------------------------------------------------------------
 // Tests

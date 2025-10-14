@@ -21,7 +21,7 @@ def extract_functions(rust_files):
 
     # GitHub repository and commit info
     github_repo = "https://github.com/Beneficial-AI-Foundation/dalek-lite"
-    commit_hash = "4c0358ebf1ded29a1963b09c62e9e9dfb6da37df"
+    commit_hash = "5a57bad082ab43848deef98bbded087d54fbd560"
 
     # Pattern to match function definitions
     # Matches: fn function_name or pub fn function_name, etc.

@@ -277,6 +277,14 @@ def main():
 
     args = parser.parse_args()
 
+    # Verify that cargo check passes before making any changes
+    print("🔍 Verifying that cargo check passes before making changes...")
+    if not run_cargo_check(args.check_dir, args.check_cmd, args.timeout):
+        print("❌ ERROR: Cargo check failed on libsignal without any changes!")
+        print("   Please ensure libsignal builds successfully before running this script.")
+        sys.exit(1)
+    print("✅ Initial check passed\n")
+
     total_fns = 0
     total_commented = 0
 

@@ -138,10 +138,9 @@ def comment_out_lines(filepath: str, start_line: int, end_line: int) -> List[str
 
     original_lines = lines[start_line:end_line+1].copy()
 
-    # Comment out each line
+    # Comment out each line (including doc comments and attributes)
     for i in range(start_line, end_line + 1):
-        if not lines[i].strip().startswith('//'):
-            lines[i] = '// ' + lines[i]
+        lines[i] = '// ' + lines[i]
 
     with open(filepath, 'w') as f:
         f.writelines(lines)

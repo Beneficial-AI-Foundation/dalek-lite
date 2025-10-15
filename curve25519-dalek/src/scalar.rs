@@ -816,20 +816,20 @@ impl Scalar {
         Scalar::from_bytes_mod_order_wide(&output)
     }
 
-//     /// Convert this `Scalar` to its underlying sequence of bytes.
-//     ///
-//     /// # Example
-//     ///
-//     /// ```
-//     /// use curve25519_dalek::scalar::Scalar;
-//     ///
-//     /// let s: Scalar = Scalar::ZERO;
-//     ///
-//     /// assert!(s.to_bytes() == [0u8; 32]);
-//     /// ```
-//     pub const fn to_bytes(&self) -> [u8; 32] {
-//         self.bytes
-//     }
+    /// Convert this `Scalar` to its underlying sequence of bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use curve25519_dalek::scalar::Scalar;
+    ///
+    /// let s: Scalar = Scalar::ZERO;
+    ///
+    /// assert!(s.to_bytes() == [0u8; 32]);
+    /// ```
+    pub const fn to_bytes(&self) -> [u8; 32] {
+        self.bytes
+    }
 
     /// View the little-endian byte encoding of the integer representing this Scalar.
     ///

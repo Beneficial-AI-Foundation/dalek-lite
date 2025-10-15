@@ -103,12 +103,12 @@ impl Hash for MontgomeryPoint {
     }
 }
 
-impl Identity for MontgomeryPoint {
-    /// Return the group identity element, which has order 4.
-    fn identity() -> MontgomeryPoint {
-        MontgomeryPoint([0u8; 32])
-    }
-}
+// impl Identity for MontgomeryPoint {
+//     /// Return the group identity element, which has order 4.
+//     fn identity() -> MontgomeryPoint {
+//         MontgomeryPoint([0u8; 32])
+//     }
+// }
 
 #[cfg(feature = "zeroize")]
 impl Zeroize for MontgomeryPoint {
@@ -193,10 +193,10 @@ impl MontgomeryPoint {
         &self.0
     }
 
-    /// Convert this `MontgomeryPoint` to an array of bytes.
-    pub const fn to_bytes(&self) -> [u8; 32] {
-        self.0
-    }
+//     /// Convert this `MontgomeryPoint` to an array of bytes.
+//     pub const fn to_bytes(&self) -> [u8; 32] {
+//         self.0
+//     }
 
     /// Attempt to convert to an `EdwardsPoint`, using the supplied
     /// choice of sign for the `EdwardsPoint`.

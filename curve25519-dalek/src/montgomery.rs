@@ -103,12 +103,12 @@ impl Hash for MontgomeryPoint {
     }
 }
 
-impl Identity for MontgomeryPoint {
-    /// Return the group identity element, which has order 4.
-    fn identity() -> MontgomeryPoint {
-        MontgomeryPoint([0u8; 32])
-    }
-}
+// impl Identity for MontgomeryPoint {
+//     /// Return the group identity element, which has order 4.
+//     fn identity() -> MontgomeryPoint {
+//         MontgomeryPoint([0u8; 32])
+//     }
+// }
 
 #[cfg(feature = "zeroize")]
 impl Zeroize for MontgomeryPoint {
@@ -193,10 +193,10 @@ impl MontgomeryPoint {
         &self.0
     }
 
-    /// Convert this `MontgomeryPoint` to an array of bytes.
-    pub const fn to_bytes(&self) -> [u8; 32] {
-        self.0
-    }
+//     /// Convert this `MontgomeryPoint` to an array of bytes.
+//     pub const fn to_bytes(&self) -> [u8; 32] {
+//         self.0
+//     }
 
     /// Attempt to convert to an `EdwardsPoint`, using the supplied
     /// choice of sign for the `EdwardsPoint`.
@@ -252,28 +252,28 @@ impl MontgomeryPoint {
 //
 // TODO Determine how much of the hash-to-group API should be exposed after the CFRG
 //      draft gets into a more polished/accepted state.
-#[allow(unused)]
-pub(crate) fn elligator_encode(r_0: &FieldElement) -> MontgomeryPoint {
-    let one = FieldElement::ONE;
-    let d_1 = &one + &r_0.square2(); /* 2r^2 */
-
-    let d = &MONTGOMERY_A_NEG * &(d_1.invert()); /* A/(1+2r^2) */
-
-    let d_sq = &d.square();
-    let au = &MONTGOMERY_A * &d;
-
-    let inner = &(d_sq + &au) + &one;
-    let eps = &d * &inner; /* eps = d^3 + Ad^2 + d */
-
-    let (eps_is_sq, _eps) = FieldElement::sqrt_ratio_i(&eps, &one);
-
-    let zero = FieldElement::ZERO;
-    let Atemp = FieldElement::conditional_select(&MONTGOMERY_A, &zero, eps_is_sq); /* 0, or A if nonsquare*/
-    let mut u = &d + &Atemp; /* d, or d+A if nonsquare */
-    u.conditional_negate(!eps_is_sq); /* d, or -d-A if nonsquare */
-
-    MontgomeryPoint(u.as_bytes())
-}
+// #[allow(unused)]
+// pub(crate) fn elligator_encode(r_0: &FieldElement) -> MontgomeryPoint {
+//     let one = FieldElement::ONE;
+//     let d_1 = &one + &r_0.square2(); /* 2r^2 */
+//
+//     let d = &MONTGOMERY_A_NEG * &(d_1.invert()); /* A/(1+2r^2) */
+//
+//     let d_sq = &d.square();
+//     let au = &MONTGOMERY_A * &d;
+//
+//     let inner = &(d_sq + &au) + &one;
+//     let eps = &d * &inner; /* eps = d^3 + Ad^2 + d */
+//
+//     let (eps_is_sq, _eps) = FieldElement::sqrt_ratio_i(&eps, &one);
+//
+//     let zero = FieldElement::ZERO;
+//     let Atemp = FieldElement::conditional_select(&MONTGOMERY_A, &zero, eps_is_sq); /* 0, or A if nonsquare*/
+//     let mut u = &d + &Atemp; /* d, or d+A if nonsquare */
+//     u.conditional_negate(!eps_is_sq); /* d, or -d-A if nonsquare */
+//
+//     MontgomeryPoint(u.as_bytes())
+// }
 
 /// A `ProjectivePoint` holds a point on the projective line
 /// \\( \mathbb P(\mathbb F\_p) \\), which we identify with the Kummer

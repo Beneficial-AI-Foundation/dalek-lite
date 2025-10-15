@@ -16,15 +16,46 @@ def find_function_bounds(lines: List[str], start_idx: int) -> Optional[Tuple[int
     Find the start and end line indices for a function starting at start_idx.
     Returns (doc_start, fn_end) where doc_start includes /// comments before fn.
     """
-    # Find the start of doc comments
+    # Find the start of doc comments and attributes
+    # Simple approach: scan backwards and include anything that looks like:
+    # - doc comments (///)
+    # - attribute syntax (#, [, ], parentheses, quotes, identifiers, etc.)
+    # - blank lines
+    # Stop when we hit something that looks like actual code
     doc_start = start_idx
     i = start_idx - 1
-    while i >= 0 and (lines[i].strip().startswith('///') or
-                       lines[i].strip().startswith('#[') or
-                       lines[i].strip() == ''):
-        if lines[i].strip().startswith('///') or lines[i].strip().startswith('#['):
+
+    while i >= 0:
+        stripped = lines[i].strip()
+
+        # Always continue on blank lines
+        if stripped == '':
+            i -= 1
+            continue
+
+        # Always include doc comments
+        if stripped.startswith('///'):
             doc_start = i
-        i -= 1
+            i -= 1
+            continue
+
+        # Always include lines starting with #[ (attribute start)
+        if stripped.startswith('#['):
+            doc_start = i
+            i -= 1
+            continue
+
+        # Include lines that look like they're part of an attribute
+        # (closing parens/brackets, or string literals, or attribute syntax)
+        if (stripped.startswith((']', ')', '"', 'since', 'note')) or
+            '=' in stripped or
+            stripped.endswith((']', ')', ','))):
+            doc_start = i
+            i -= 1
+            continue
+
+        # Otherwise stop - we've hit actual code
+        break
 
     # Find the end of the function by tracking braces
     brace_count = 0
@@ -56,15 +87,46 @@ def find_impl_block_bounds(lines: List[str], start_idx: int) -> Optional[Tuple[i
     Find the start and end line indices for an impl block starting at start_idx.
     Returns (doc_start, impl_end) where doc_start includes /// and #[] comments before impl.
     """
-    # Find the start of doc comments
+    # Find the start of doc comments and attributes
+    # Simple approach: scan backwards and include anything that looks like:
+    # - doc comments (///)
+    # - attribute syntax (#, [, ], parentheses, quotes, identifiers, etc.)
+    # - blank lines
+    # Stop when we hit something that looks like actual code
     doc_start = start_idx
     i = start_idx - 1
-    while i >= 0 and (lines[i].strip().startswith('///') or
-                       lines[i].strip().startswith('#[') or
-                       lines[i].strip() == ''):
-        if lines[i].strip().startswith('///') or lines[i].strip().startswith('#['):
+
+    while i >= 0:
+        stripped = lines[i].strip()
+
+        # Always continue on blank lines
+        if stripped == '':
+            i -= 1
+            continue
+
+        # Always include doc comments
+        if stripped.startswith('///'):
             doc_start = i
-        i -= 1
+            i -= 1
+            continue
+
+        # Always include lines starting with #[ (attribute start)
+        if stripped.startswith('#['):
+            doc_start = i
+            i -= 1
+            continue
+
+        # Include lines that look like they're part of an attribute
+        # (closing parens/brackets, or string literals, or attribute syntax)
+        if (stripped.startswith((']', ')', '"', 'since', 'note')) or
+            '=' in stripped or
+            stripped.endswith((']', ')', ','))):
+            doc_start = i
+            i -= 1
+            continue
+
+        # Otherwise stop - we've hit actual code
+        break
 
     # Find the end of the impl block by tracking braces
     brace_count = 0
@@ -140,7 +202,10 @@ def comment_out_lines(filepath: str, start_line: int, end_line: int) -> List[str
 
     # Comment out each line
     for i in range(start_line, end_line + 1):
-        if not lines[i].strip().startswith('//'):
+        # Handle blank lines specially - just add '//' without space
+        if lines[i].strip() == '':
+            lines[i] = '//' + lines[i]
+        else:
             lines[i] = '// ' + lines[i]
 
     with open(filepath, 'w') as f:

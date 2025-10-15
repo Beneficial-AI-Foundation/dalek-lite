@@ -13,3 +13,5 @@ build*.txt
 *.s
 .aider*
 .verus-solver-log
+
+__pycache__

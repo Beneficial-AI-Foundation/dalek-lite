@@ -45,38 +45,37 @@ TEST_CODE = """impl EdwardsPoint {
 """
 
 EXPECTED_COMMENTED = """impl EdwardsPoint {
-    #[cfg(feature = "__test_unused")]
-    #[cfg(feature = "digest")]
-    /// Maps the digest of the input bytes to the curve. This is NOT a hash-to-curve function, as
-    /// it produces points with a non-uniform distribution. Rather, it performs something that
-    /// resembles (but is not) half of the
-    /// [`hash_to_curve`](https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html#section-3-4.2.1)
-    /// function from the Elligator2 spec.
-    #[deprecated(
-        since = "4.0.0",
-        note = "previously named `hash_from_bytes`, this is not a secure hash function"
-    )]
-    pub fn nonspec_map_to_curve<D>(bytes: &[u8]) -> EdwardsPoint
-    where
-        D: Digest<OutputSize = U64> + Default,
-    {
-        let mut hash = D::new();
-        hash.update(bytes);
-        let h = hash.finalize();
-        let mut res = [0u8; 32];
-        res.copy_from_slice(&h[..32]);
-
-        let sign_bit = (res[31] & 0x80) >> 7;
-
-        let fe = FieldElement::from_bytes(&res);
-
-        let M1 = crate::montgomery::elligator_encode(&fe);
-        let E1_opt = M1.to_edwards(sign_bit);
-
-        E1_opt
-            .expect("Montgomery conversion to Edwards point in Elligator failed")
-            .mul_by_cofactor()
-    }
+//     #[cfg(feature = "digest")]
+//     /// Maps the digest of the input bytes to the curve. This is NOT a hash-to-curve function, as
+//     /// it produces points with a non-uniform distribution. Rather, it performs something that
+//     /// resembles (but is not) half of the
+//     /// [`hash_to_curve`](https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html#section-3-4.2.1)
+//     /// function from the Elligator2 spec.
+//     #[deprecated(
+//         since = "4.0.0",
+//         note = "previously named `hash_from_bytes`, this is not a secure hash function"
+//     )]
+//     pub fn nonspec_map_to_curve<D>(bytes: &[u8]) -> EdwardsPoint
+//     where
+//         D: Digest<OutputSize = U64> + Default,
+//     {
+//         let mut hash = D::new();
+//         hash.update(bytes);
+//         let h = hash.finalize();
+//         let mut res = [0u8; 32];
+//         res.copy_from_slice(&h[..32]);
+//
+//         let sign_bit = (res[31] & 0x80) >> 7;
+//
+//         let fe = FieldElement::from_bytes(&res);
+//
+//         let M1 = crate::montgomery::elligator_encode(&fe);
+//         let E1_opt = M1.to_edwards(sign_bit);
+//
+//         E1_opt
+//             .expect("Montgomery conversion to Edwards point in Elligator failed")
+//             .mul_by_cofactor()
+//     }
 }
 """
 

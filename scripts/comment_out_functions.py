@@ -17,39 +17,45 @@ def find_function_bounds(lines: List[str], start_idx: int) -> Optional[Tuple[int
     Returns (doc_start, fn_end) where doc_start includes /// comments before fn.
     """
     # Find the start of doc comments and attributes
-    # Walk backwards continuously, including all lines that are:
+    # Simple approach: scan backwards and include anything that looks like:
     # - doc comments (///)
-    # - attributes (#[...)
-    # - continuation of attributes (...])
+    # - attribute syntax (#, [, ], parentheses, quotes, identifiers, etc.)
     # - blank lines
-    # Stop when we hit a line that doesn't match these patterns
+    # Stop when we hit something that looks like actual code
     doc_start = start_idx
     i = start_idx - 1
-    in_multiline_attr = False
 
     while i >= 0:
         stripped = lines[i].strip()
 
-        # Check if this line starts an attribute
+        # Always continue on blank lines
+        if stripped == '':
+            i -= 1
+            continue
+
+        # Always include doc comments
+        if stripped.startswith('///'):
+            doc_start = i
+            i -= 1
+            continue
+
+        # Always include lines starting with #[ (attribute start)
         if stripped.startswith('#['):
             doc_start = i
-            in_multiline_attr = not stripped.endswith(']')
             i -= 1
-        # Check if we're inside a multi-line attribute
-        elif in_multiline_attr:
+            continue
+
+        # Include lines that look like they're part of an attribute
+        # (closing parens/brackets, or string literals, or attribute syntax)
+        if (stripped.startswith((']', ')', '"', 'since', 'note')) or
+            '=' in stripped or
+            stripped.endswith((']', ')', ','))):
             doc_start = i
-            # Check if this line closes the attribute
-            if stripped.endswith(']'):
-                in_multiline_attr = False
             i -= 1
-        # Check for doc comments or blank lines
-        elif stripped.startswith('///') or stripped == '':
-            if stripped.startswith('///'):
-                doc_start = i
-            i -= 1
-        else:
-            # Not a comment, attribute, or blank - stop here
-            break
+            continue
+
+        # Otherwise stop - we've hit actual code
+        break
 
     # Find the end of the function by tracking braces
     brace_count = 0
@@ -82,39 +88,45 @@ def find_impl_block_bounds(lines: List[str], start_idx: int) -> Optional[Tuple[i
     Returns (doc_start, impl_end) where doc_start includes /// and #[] comments before impl.
     """
     # Find the start of doc comments and attributes
-    # Walk backwards continuously, including all lines that are:
+    # Simple approach: scan backwards and include anything that looks like:
     # - doc comments (///)
-    # - attributes (#[...)
-    # - continuation of attributes (...])
+    # - attribute syntax (#, [, ], parentheses, quotes, identifiers, etc.)
     # - blank lines
-    # Stop when we hit a line that doesn't match these patterns
+    # Stop when we hit something that looks like actual code
     doc_start = start_idx
     i = start_idx - 1
-    in_multiline_attr = False
 
     while i >= 0:
         stripped = lines[i].strip()
 
-        # Check if this line starts an attribute
+        # Always continue on blank lines
+        if stripped == '':
+            i -= 1
+            continue
+
+        # Always include doc comments
+        if stripped.startswith('///'):
+            doc_start = i
+            i -= 1
+            continue
+
+        # Always include lines starting with #[ (attribute start)
         if stripped.startswith('#['):
             doc_start = i
-            in_multiline_attr = not stripped.endswith(']')
             i -= 1
-        # Check if we're inside a multi-line attribute
-        elif in_multiline_attr:
+            continue
+
+        # Include lines that look like they're part of an attribute
+        # (closing parens/brackets, or string literals, or attribute syntax)
+        if (stripped.startswith((']', ')', '"', 'since', 'note')) or
+            '=' in stripped or
+            stripped.endswith((']', ')', ','))):
             doc_start = i
-            # Check if this line closes the attribute
-            if stripped.endswith(']'):
-                in_multiline_attr = False
             i -= 1
-        # Check for doc comments or blank lines
-        elif stripped.startswith('///') or stripped == '':
-            if stripped.startswith('///'):
-                doc_start = i
-            i -= 1
-        else:
-            # Not a comment, attribute, or blank - stop here
-            break
+            continue
+
+        # Otherwise stop - we've hit actual code
+        break
 
     # Find the end of the impl block by tracking braces
     brace_count = 0
@@ -180,22 +192,21 @@ def find_functions_and_impls(filepath: str) -> List[Tuple[int, int, str, str]]:
 
 def comment_out_lines(filepath: str, start_line: int, end_line: int) -> List[str]:
     """
-    "Comment out" lines by adding #[cfg(feature = "__test_unused")] before them.
+    Comment out lines from start_line to end_line (inclusive, 0-indexed).
     Returns the original lines for potential revert.
     """
     with open(filepath, 'r') as f:
         lines = f.readlines()
 
-    # Save original state (we'll insert a line, so save more context)
     original_lines = lines[start_line:end_line+1].copy()
 
-    # Get the indentation of the start line
-    indent = len(lines[start_line]) - len(lines[start_line].lstrip())
-    indent_str = lines[start_line][:indent]
-
-    # Insert the cfg attribute before the start line
-    cfg_line = f'{indent_str}#[cfg(feature = "__test_unused")]\n'
-    lines.insert(start_line, cfg_line)
+    # Comment out each line
+    for i in range(start_line, end_line + 1):
+        # Handle blank lines specially - just add '//' without space
+        if lines[i].strip() == '':
+            lines[i] = '//' + lines[i]
+        else:
+            lines[i] = '// ' + lines[i]
 
     with open(filepath, 'w') as f:
         f.writelines(lines)
@@ -203,13 +214,11 @@ def comment_out_lines(filepath: str, start_line: int, end_line: int) -> List[str
     return original_lines
 
 def revert_lines(filepath: str, start_line: int, end_line: int, original_lines: List[str]):
-    """Revert lines to their original state by removing the inserted cfg line."""
+    """Revert lines to their original state."""
     with open(filepath, 'r') as f:
         lines = f.readlines()
 
-    # Remove the cfg line we inserted at start_line
-    if start_line < len(lines) and '#[cfg(feature = "__test_unused")]' in lines[start_line]:
-        del lines[start_line]
+    lines[start_line:end_line+1] = original_lines
 
     with open(filepath, 'w') as f:
         f.writelines(lines)

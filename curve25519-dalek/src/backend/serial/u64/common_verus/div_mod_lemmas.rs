@@ -91,6 +91,232 @@ pub proof fn lemma_div_of_sum(a: nat, b: nat, k: nat)
 
     lemma_div_multiples_vanish_fancy((a0 + b0) as int, ((a % k) + (b % k)) as int, k as int);
 }
+/// Lemma: Uniqueness of quotient in division
+/// If value = q * d + r with 0 <= r < d, then value / d = q
+///
+/// This establishes that the quotient in the fundamental div/mod theorem is unique.
+pub proof fn lemma_div_quotient_unique(value: int, d: int, q: int, r: int)
+    requires
+        d > 0,
+        value == q * d + r,
+        0 <= r < d,
+    ensures
+        value / d == q,
+{
+    use vstd::arithmetic::mul::*;
+
+    // Use fundamental division theorem
+    lemma_fundamental_div_mod(value, d);
+    lemma_mod_bound(value, d);
+
+    let q_actual = value / d;
+    let r_actual = value % d;
+
+    // From fundamental theorem, we get the relationship (but stated with multiplication on the left)
+    assert(value == d * q_actual + r_actual);
+    assert(0 <= r_actual < d);
+
+    // Convert to multiplication on the right for easier comparison
+    assert(d * q_actual == q_actual * d) by { lemma_mul_is_commutative(d, q_actual); }
+    assert(value == q_actual * d + r_actual);
+
+    // From given: value = q * d + r where 0 <= r < d
+    assert(value == q * d + r);
+
+    // Therefore: q * d + r = q_actual * d + r_actual
+    assert(q * d + r == q_actual * d + r_actual);
+
+    // Rearrange: q * d = q_actual * d + (r_actual - r)
+    assert(q * d == q_actual * d + (r_actual - r));
+
+    // Factor out d: d * q = d * q_actual + (r_actual - r)
+    assert(d * q == q * d) by { lemma_mul_is_commutative(d, q); }
+    assert(d * q_actual == q_actual * d) by { lemma_mul_is_commutative(d, q_actual); }
+    assert(d * q == d * q_actual + (r_actual - r));
+
+    // Therefore: d * (q - q_actual) = r_actual - r
+    assert(d * (q - q_actual) == r_actual - r) by {
+        lemma_mul_is_distributive_sub(d, q, q_actual);
+    }
+
+    // Key insight: Since both r and r_actual are in [0, d), their difference is in (-d, d)
+    // But d * (q - q_actual) must be a multiple of d
+    // The only multiple of d in the range (-d, d) is 0
+    // Therefore: d * (q - q_actual) = 0, which means q = q_actual
+
+    if q != q_actual {
+        // If q != q_actual, then |q - q_actual| >= 1
+        let diff = q - q_actual;
+        assert(diff != 0);
+
+        // Therefore |d * (q - q_actual)| >= d
+        if diff > 0 {
+            assert(diff >= 1);
+            lemma_mul_left_inequality(d, 1, diff);
+            assert(d * diff >= d);
+            assert(d * (q - q_actual) >= d);
+        } else {
+            assert(diff <= -1);
+            lemma_mul_inequality(diff, -1, d);
+            assert(d * diff <= -d);
+            assert(d * (q - q_actual) <= -d);
+        }
+
+        // But we know: d * (q - q_actual) = r_actual - r
+        // And: -d < r_actual - r < d
+        // Because 0 <= r_actual < d and 0 <= r < d
+        assert(-d < r_actual - r < d);
+
+        // This is a contradiction: d * (q - q_actual) cannot be both >= d (or <= -d) and in (-d, d)
+        assert(false);
+    }
+
+    assert(q == q_actual);
+}
+
+/// Lemma: For x < d, x % d = x
+/// This is a fundamental property of modulo for values less than the divisor.
+pub proof fn lemma_mod_of_less_than_divisor(x: int, d: int)
+    requires
+        d > 0,
+        0 <= x < d,
+    ensures
+        x % d == x,
+{
+    use vstd::arithmetic::mul::*;
+
+    // Use fundamental div-mod: x = (x/d) * d + (x%d)
+    lemma_fundamental_div_mod(x, d);
+
+    // Get the quotient and remainder
+    let q = x / d;
+    let r = x % d;
+
+    // From fundamental div-mod: x = d * q + r (note the order)
+    assert(x == d * q + r);
+    // Convert to: x = q * d + r
+    assert(d * q == q * d) by { lemma_mul_is_commutative(d, q); }
+    assert(x == q * d + r);
+
+    // We know 0 <= r < d from modulo properties
+    lemma_mod_bound(x, d);
+    assert(0 <= r < d);
+
+    // Since 0 <= x < d and x = q * d + r with 0 <= r < d:
+    // If q >= 1, then q * d >= d, so x >= d, which contradicts x < d
+    // If q <= -1, then q * d <= -d, so x <= -d + r < 0, which contradicts x >= 0
+    // Therefore q = 0
+
+    if q >= 1 {
+        lemma_mul_left_inequality(d, 1, q);
+        assert(d * q >= d);
+        assert(q * d >= d) by { lemma_mul_is_commutative(q, d); }
+        assert(x >= d);
+        assert(false); // Contradiction with x < d
+    }
+
+    if q <= -1 {
+        lemma_mul_inequality(q, -1, d);
+        assert(d * q <= -d);
+        assert(q * d <= -d) by { lemma_mul_is_commutative(q, d); }
+        assert(x == q * d + r <= -d + r);
+        assert(r < d);
+        assert(x < 0);
+        assert(false); // Contradiction with x >= 0
+    }
+
+    assert(q == 0);
+
+    // Therefore: x = 0 * d + r = r
+    assert(0 * d == 0) by (compute);
+    assert(x == q * d + r);
+    assert(x == 0 * d + r);
+    assert(x == 0 + r);
+    assert(x == r);
+    assert(r == x % d);
+    assert(x == x % d);
+}
+
+
+/// Helper lemma: Division with strict upper bound
+/// If x < a * b and a > 0, then x / a < b
+pub proof fn lemma_div_strictly_bounded(x: int, a: int, b: int)
+    requires
+        a > 0,
+        b >= 0,
+        x < a * b,
+    ensures
+        x / a < b,
+{
+   // (b * a) / a == b
+   lemma_div_by_multiple(b, a);
+   // x < b * a && a > 0 => x / a < (b * a) / a
+   lemma_div_by_multiple_is_strongly_ordered(x, a * b, b, a);
+}
+
+/// Helper: Division bounds - if x < 2^b then x/2^a < 2^(b-a)
+pub proof fn lemma_div_bound(x: nat, a: nat, b: nat)
+    requires
+        a <= b,
+        x < pow2(b),
+    ensures
+        x / pow2(a) < pow2((b - a) as nat),
+{
+    // Key insight: 2^b / 2^a = 2^(b-a)
+    // Since x < 2^b, we have x / 2^a < 2^b / 2^a = 2^(b-a)
+
+    lemma_pow2_adds(a, (b - a) as nat);
+    assert(pow2(b) == pow2(a) * pow2((b - a) as nat));
+
+    // Use division properties
+    lemma_div_strictly_bounded(x as int, pow2(a) as int, pow2((b - a) as nat) as int);
+    assert(x / pow2(a) < pow2((b - a) as nat));
+}
+
+/// Helper lemma: if a * b <= c and b > 0, then a <= c / b
+pub proof fn lemma_mul_le_implies_div_le(a: nat, b: nat, c: nat)
+    requires
+        b > 0,
+        a * b <= c,
+    ensures
+        a <= c / b,
+{
+    use vstd::arithmetic::mul::*;
+    
+    // Proof by contradiction: assume a > c / b
+    if a > c / b {
+        // From fundamental div/mod: c = b * (c / b) + (c % b)
+        lemma_fundamental_div_mod(c as int, b as int);
+        let q = c / b;
+        let r = c % b;
+        assert(c == b * q + r);
+        
+        // We know: 0 <= r < b
+        lemma_mod_bound(c as int, b as int);
+        assert(0 <= r < b);
+        
+        // From a > q, we have a >= q + 1 (since both are natural numbers)
+        // Therefore: a * b >= (q + 1) * b = q * b + b
+        assert(a >= q + 1);
+        assert(a * b >= (q + 1) * b) by (nonlinear_arith)
+            requires a >= q + 1, b > 0;
+        assert((q + 1) * b == q * b + b) by (nonlinear_arith);
+        assert(a * b >= q * b + b);
+        
+        // We have: c = b * q + r with r < b
+        // Therefore: c < b * q + b = (q + 1) * b
+        assert(c == b * q + r);
+        assert(r < b);
+        assert(c < b * q + b);
+        assert(b * q == q * b) by (nonlinear_arith);
+        assert(c < q * b + b);
+        
+        // So: a * b >= q * b + b > c
+        // This contradicts our assumption that a * b <= c
+        assert(a * b > c);
+        assert(false);
+    }
+}
 
 fn main() {}
 

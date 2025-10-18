@@ -15,12 +15,15 @@ use super::common_verus::pow_lemmas::*;
 use super::common_verus::shift_lemmas::*;
 
 use super::field_lemmas::as_nat_lemmas::*;
+use super::field_lemmas::compute_q_lemmas::*;
 use super::field_lemmas::field_core::*;
+use super::field_lemmas::limbs_to_bytes_lemmas::*;
 use super::field_lemmas::load8_lemmas::*;
 use super::field_lemmas::negate_lemmas::*;
 use super::field_lemmas::pow2_51_lemmas::*;
 use super::field_lemmas::pow2k_lemmas::*;
 use super::field_lemmas::reduce_lemmas::*;
+use super::field_lemmas::to_bytes_reduction_lemmas::*;
 
 // ADAPTED CODE LINES: X.0 globally replaced with X.limbs
 
@@ -158,11 +161,15 @@ impl FieldElement51 {
             forall|i: int| 0 <= i < 5 ==> r.limbs[i] < (1u64 << 52),
             (forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 51)) ==> (r.limbs =~= limbs),
             as_nat(r.limbs) == as_nat(limbs) - p() * (limbs[4] >> 51),
-            as_nat(r.limbs) % p() == as_nat(limbs) % p()
+            as_nat(r.limbs) % p() == as_nat(limbs) % p(),
+            as_nat(r.limbs) < 2 * p(),
     {
         proof {
             lemma_boundaries(limbs);
             lemma_reduce(limbs);
+            lemma_reduce_bound_2p(limbs);
+            pow255_gt_19();
+            lemma_mod_multiples_vanish((limbs[4] >> 51) as int, as_nat(spec_reduce(limbs)) as int, p() as int);
         }
 
         // Since the input limbs are bounded by 2^64, the biggest
@@ -246,91 +253,9 @@ impl FieldElement51 {
             as_nat_32_u8(r) == as_nat(self.limbs) % p()
     {
         proof {
-            let l = spec_reduce(self.limbs);
+            // Step 1: Reduce limbs to ensure h < 2*p
+            // The reduce function ensures the limbs are bounded by 2^52
             lemma_reduce(self.limbs);
-
-            let q0 = (l[0] + 19) as u64 >> 51;
-            let q1 = (l[1] + q0) as u64 >> 51;
-            let q2 = (l[2] + q1) as u64 >> 51;
-            let q3 = (l[3] + q2) as u64 >> 51;
-            let q4 = (l[4] + q3) as u64 >> 51;
-
-            assert(19 < (1u64 << 52)) by (bit_vector);
-            lemma_add_then_shift(l[0], 19);
-            lemma_add_then_shift(l[1], q0);
-            lemma_add_then_shift(l[2], q1);
-            lemma_add_then_shift(l[3], q2);
-            lemma_add_then_shift(l[4], q3);
-
-            let l0 = (l[0] + 19 * q4) as u64;
-            let l1 = (l[1] + (l0 >> 51)) as u64;
-            let l2 = (l[2] + (l1 >> 51)) as u64;
-            let l3 = (l[3] + (l2 >> 51)) as u64;
-            let l4 = (l[3] + (l3 >> 51)) as u64;
-
-            assert( 19 * q4 < 1u64 << 7) by {
-                // Explicit values for pow2(k) for k < 64
-                lemma2_to64();
-                shift_is_pow2(5); // now we know 19 < 1u64 << 5 for free
-                shift_is_pow2(2);
-                shift_is_pow2(7);
-                lemma_pow2_adds(5, 2);
-            }
-            assert(((1u64 << 7)) + (1u64 << 52) < (1u64 << 53)) by (bit_vector);
-            assert(((1u64 << 13)) + (1u64 << 52) < (1u64 << 53)) by (bit_vector);
-            shifted_lt(l0, 51);
-            shifted_lt(l1, 51);
-            shifted_lt(l2, 51);
-            shifted_lt(l3, 51);
-
-            l51_bit_mask_lt();
-
-            assume(false);
-
-            // TODO
-            // let rr = [
-            //     l0 & LOW_51_BIT_MASK,
-            //     l1 & LOW_51_BIT_MASK,
-            //     l2 & LOW_51_BIT_MASK,
-            //     l3 & LOW_51_BIT_MASK,
-            //     l4 & LOW_51_BIT_MASK
-            // ];
-
-            // let r = [
-            //     rr[0]                           as u8,
-            //     (rr[0] >>  8)                    as u8,
-            //     (rr[0] >> 16)                    as u8,
-            //     (rr[0] >> 24)                    as u8,
-            //     (rr[0] >> 32)                    as u8,
-            //     (rr[0] >> 40)                    as u8,
-            //     ((rr[0] >> 48) | (rr[1] << 3)) as u8,
-            //     (rr[1] >>  5)                    as u8,
-            //     (rr[1] >> 13)                    as u8,
-            //     (rr[1] >> 21)                    as u8,
-            //     (rr[1] >> 29)                    as u8,
-            //     (rr[1] >> 37)                    as u8,
-            //     ((rr[1] >> 45) | (rr[2] << 6)) as u8,
-            //     (rr[2] >>  2)                    as u8,
-            //     (rr[2] >> 10)                    as u8,
-            //     (rr[2] >> 18)                    as u8,
-            //     (rr[2] >> 26)                    as u8,
-            //     (rr[2] >> 34)                    as u8,
-            //     (rr[2] >> 42)                    as u8,
-            //     ((rr[2] >> 50) | (rr[3] << 1)) as u8,
-            //     (rr[3] >>  7)                    as u8,
-            //     (rr[3] >> 15)                    as u8,
-            //     (rr[3] >> 23)                    as u8,
-            //     (rr[3] >> 31)                    as u8,
-            //     (rr[3] >> 39)                    as u8,
-            //     ((rr[3] >> 47) | (rr[4] << 4)) as u8,
-            //     (rr[4] >>  4)                    as u8,
-            //     (rr[4] >> 12)                    as u8,
-            //     (rr[4] >> 20)                    as u8,
-            //     (rr[4] >> 28)                    as u8,
-            //     (rr[4] >> 36)                    as u8,
-            //     (rr[4] >> 44)                    as u8
-            // ];
-
         }
         // Let h = limbs[0] + limbs[1]*2^51 + ... + limbs[4]*2^204.
         //
@@ -350,29 +275,210 @@ impl FieldElement51 {
         // First, reduce the limbs to ensure h < 2*p.
         let mut limbs = FieldElement51::reduce(self.limbs).limbs;
 
+        // Track reduced limbs for proof
+        proof {
+            // After reduce, we have as_nat(limbs) < 2*p() from reduce's postcondition
+            assert(as_nat(limbs) < 2 * p());
+        }
+
+        // Compute q with overflow proofs
+        // After reduce, limbs[i] < 2^52, so limbs[0] + 19 < 2^52 + 19 < 2^64
+        proof {
+            assert((1u64 << 52) + 19 <= u64::MAX) by (compute);
+        }
         let mut q = (limbs[0] + 19) >> 51;
+
+        proof {
+            // Prove q <= 2 after first iteration
+            //lemma_add_preserves_bound(limbs[0], 1u64 << 52, 19);
+            lemma_shr_le_u64((limbs[0] + 19) as u64, ((1u64 << 52) + 19) as u64, 51);
+            assert((((1u64 << 52) + 19) as u64) >> 51 == 2) by (compute);
+            assert(q <= 2);
+        }
+
+        // Second iteration
+        //proof {
+        //    assert((1u64 << 52) + 2 <= u64::MAX) by (compute);
+            //lemma_add_preserves_bound(limbs[1], 1u64 << 52, q);
+        //}
+        let ghost old_q = q;
         q = (limbs[1] + q) >> 51;
+
+        proof {
+            lemma_shr_le_u64((limbs[1] + old_q) as u64, ((1u64 << 52) + 2) as u64, 51);
+            assert(((limbs[1] + old_q) as u64) >> 51 == q);
+            assert((((1u64 << 52) + 2) as u64) >> 51 == 2) by (compute);
+            assert(q <= 2);
+        }
+
+        // Third iteration
+        //proof {
+        //    lemma_add_preserves_bound(limbs[2], 1u64 << 52, q);
+        //}
+        let ghost old_q2 = q;
         q = (limbs[2] + q) >> 51;
+
+        proof {
+            lemma_shr_le_u64((limbs[2] + old_q2) as u64, ((1u64 << 52) + 2) as u64, 51);
+            assert(((limbs[2] + old_q2) as u64) >> 51 == q);
+            assert((((1u64 << 52) + 2) as u64) >> 51 == 2) by (compute);
+            assert(q <= 2);
+        }
+
+        // Fourth iteration
+        //proof {
+        //    lemma_add_preserves_bound(limbs[3], 1u64 << 52, q);
+        //}
+        let ghost old_q3 = q;
         q = (limbs[3] + q) >> 51;
+
+        proof {
+            lemma_shr_le_u64((limbs[3] + old_q3) as u64, ((1u64 << 52) + 2) as u64, 51);
+            assert(((limbs[3] + old_q3) as u64) >> 51 == q);
+            assert((((1u64 << 52) + 2) as u64) >> 51 == 2) by (compute);
+            assert(q <= 2);
+        }
+
+        // Fifth iteration
+        //proof {
+        //    lemma_add_preserves_bound(limbs[4], 1u64 << 52, q);
+        //}
         q = (limbs[4] + q) >> 51;
+        let ghost reduced_limbs = limbs;
+        proof {
+            // Step 2: Prove that q is the correct quotient
+            lemma_compute_q(reduced_limbs, q);
+            // Note: as_nat(reduced_limbs) < 2*p() from reduce's postcondition (line 278)
+            assert(as_nat(reduced_limbs) < 2 * p());
+        }
 
         // Now we can compute r as r = h - pq = r - (2^255-19)q = r + 19q - 2^255q
 
+        proof {
+            // q is at most 1, so 19*q is at most 19
+            assert(q <= 1);
+            assert((1u64 << 52) + 19 <= u64::MAX) by (compute);
+        }
         limbs[0] += 19 * q;
 
         // Now carry the result to compute r + 19q ...
-        let low_51_bit_mask = (1u64 << 51) - 1;
+        // Use LOW_51_BIT_MASK constant directly for proof purposes
+
+        // Track intermediate values for proof
+        let ghost l0 = limbs[0];
+
+        proof {
+            // Establish that LOW_51_BIT_MASK == mask51
+            masks_are_equal();
+
+            // limbs[0] < 2^52 + 19, so limbs[0] >> 51 <= 2
+            lemma_shr_le_u64(limbs[0], ((1u64 << 52) + 19) as u64, 51);
+            assert((((1u64 << 52) + 19) as u64) >> 51 == 2) by (compute);
+            assert(limbs[0] >> 51 <= 2);
+            assert((1u64 << 52) + 2 <= u64::MAX) by (compute);
+        }
         limbs[1] += limbs[0] >> 51;
-        limbs[0] &= low_51_bit_mask;
+        let ghost l1 = limbs[1];
+        limbs[0] &= LOW_51_BIT_MASK;
+
+        proof {
+            lemma_shr_le_u64(limbs[1], ((1u64 << 52) + 2) as u64, 51);
+            assert((((1u64 << 52) + 2) as u64) >> 51 == 2) by (compute);
+            assert(limbs[1] >> 51 <= 2);
+            assert((1u64 << 52) + 2 <= u64::MAX) by (compute);
+        }
         limbs[2] += limbs[1] >> 51;
-        limbs[1] &= low_51_bit_mask;
+        let ghost l2 = limbs[2];
+        limbs[1] &= LOW_51_BIT_MASK;
+
+        proof {
+            lemma_shr_le_u64(limbs[2], ((1u64 << 52) + 2) as u64, 51);
+            assert(limbs[2] >> 51 <= 2);
+        }
         limbs[3] += limbs[2] >> 51;
-        limbs[2] &= low_51_bit_mask;
+        let ghost l3 = limbs[3];
+        limbs[2] &= LOW_51_BIT_MASK;
+
+        proof {
+            lemma_shr_le_u64(limbs[3], ((1u64 << 52) + 2) as u64, 51);
+            assert(limbs[3] >> 51 <= 2);
+        }
         limbs[4] += limbs[3] >> 51;
-        limbs[3] &= low_51_bit_mask;
+        let ghost l4 = limbs[4];
+        limbs[3] &= LOW_51_BIT_MASK;
         // ... but instead of carrying (limbs[4] >> 51) = 2^255q
         // into another limb, discard it, subtracting the value
-        limbs[4] &= low_51_bit_mask;
+        limbs[4] &= LOW_51_BIT_MASK;
+
+        // Track final limbs for proof
+        let ghost final_limbs = limbs;
+
+        proof {
+            // Step 3: Prove that the reduction preserves the value mod p
+            // Establish preconditions:
+            assert(q == 0 || q == 1); // from lemma_compute_q postcondition
+            // The relationship as_nat(reduced_limbs) >= p() <==> q == 1 comes from lemma_compute_q
+
+            // Prove that final_limbs == reduce_with_q_spec(reduced_limbs, q)
+            // This requires showing the executable code matches the spec
+
+            // LOW_51_BIT_MASK == mask51 was already established earlier
+            // Now show that each intermediate value matches the spec
+            // l0 = reduced_limbs[0] + 19 * q
+            assert(l0 == (reduced_limbs[0] + 19 * q) as u64);
+
+            // l1 = reduced_limbs[1] + (l0 >> 51)
+            assert(l1 == (reduced_limbs[1] + (l0 >> 51)) as u64);
+
+            // limbs[0] after masking = l0 & mask51
+            assert(final_limbs[0] == (l0 & LOW_51_BIT_MASK) as u64);
+            assert(final_limbs[0] == (l0 & mask51) as u64);
+
+            // l2 = reduced_limbs[2] + (l1 >> 51)
+            assert(l2 == (reduced_limbs[2] + (l1 >> 51)) as u64);
+
+            // limbs[1] after masking = l1 & mask51
+            assert(final_limbs[1] == (l1 & LOW_51_BIT_MASK) as u64);
+            assert(final_limbs[1] == (l1 & mask51) as u64);
+
+            // l3 = reduced_limbs[3] + (l2 >> 51)
+            assert(l3 == (reduced_limbs[3] + (l2 >> 51)) as u64);
+
+            // limbs[2] after masking = l2 & mask51
+            assert(final_limbs[2] == (l2 & LOW_51_BIT_MASK) as u64);
+            assert(final_limbs[2] == (l2 & mask51) as u64);
+
+            // l4 = reduced_limbs[4] + (l3 >> 51)
+            assert(l4 == (reduced_limbs[4] + (l3 >> 51)) as u64);
+
+            // limbs[3] after masking = l3 & mask51
+            assert(final_limbs[3] == (l3 & LOW_51_BIT_MASK) as u64);
+            assert(final_limbs[3] == (l3 & mask51) as u64);
+
+            // limbs[4] after masking = l4 & mask51
+            assert(final_limbs[4] == (l4 & LOW_51_BIT_MASK) as u64);
+            assert(final_limbs[4] == (l4 & mask51) as u64);
+
+            // Now construct the spec result and show it equals final_limbs
+            let spec_result = reduce_with_q_spec(reduced_limbs, q);
+            assert(spec_result[0] == (l0 & mask51) as u64);
+            assert(spec_result[1] == (l1 & mask51) as u64);
+            assert(spec_result[2] == (l2 & mask51) as u64);
+            assert(spec_result[3] == (l3 & mask51) as u64);
+            assert(spec_result[4] == (l4 & mask51) as u64);
+
+            // Therefore final_limbs == spec_result
+            assert(final_limbs[0] == spec_result[0]);
+            assert(final_limbs[1] == spec_result[1]);
+            assert(final_limbs[2] == spec_result[2]);
+            assert(final_limbs[3] == spec_result[3]);
+            assert(final_limbs[4] == spec_result[4]);
+            assert(final_limbs == spec_result);
+            assert(final_limbs == reduce_with_q_spec(reduced_limbs, q));
+
+            lemma_to_bytes_reduction(reduced_limbs, final_limbs, q);
+            // Now we know: as_nat(final_limbs) == as_nat(self.limbs) % p()
+        }
 
         // Now arrange the bits of the limbs.
         let mut s = [0u8;32];
@@ -408,6 +514,14 @@ impl FieldElement51 {
         s[29] =  (limbs[4] >> 28)                    as u8;
         s[30] =  (limbs[4] >> 36)                    as u8;
         s[31] =  (limbs[4] >> 44)                    as u8;
+
+        proof {
+            // Step 4: Prove that packing limbs into bytes preserves the value
+            lemma_limbs_to_bytes(final_limbs, s);
+            // Now we know: as_nat_32_u8(s) == as_nat(final_limbs)
+            // Combined with step 3: as_nat(final_limbs) == as_nat(self.limbs) % p()
+            // We get: as_nat_32_u8(s) == as_nat(self.limbs) % p()
+        }
 
         // High bit should be zero.
         // DISABLED DUE TO NO VERUS SUPPORT FOR PANICS

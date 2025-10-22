@@ -2518,6 +2518,7 @@ impl UnpackedScalar {
         // Another approach is like lemma_nine_limbs_equals_slice128_to_nat,
         // which shows that a recursive defn equals a large polynomial
         assert (to_nat(&self.limbs) < group_order() ==>   bytes_to_nat(&result.bytes) < group_order());
+<<<<<<< HEAD
         proof {
             if (bytes_to_nat(&result.bytes) < group_order()) {
                 let v = bytes_to_nat(&result.bytes);
@@ -2563,6 +2564,10 @@ impl UnpackedScalar {
                 }
             }
         }
+=======
+        assert( to_nat(&self.limbs) < group_order() ==> result.bytes[31] <= 127 );
+        assume(to_nat(&self.limbs) < group_order() ==> is_canonical_scalar(&result));
+>>>>>>> 9b011a86 (Initial work)
         result
     }
 

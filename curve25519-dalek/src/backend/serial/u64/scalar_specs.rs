@@ -50,6 +50,7 @@ pub open spec fn bytes_to_nat(bytes: &[u8; 32]) -> nat {
     bytes_to_nat_rec(bytes, 0)
 }
 
+    // Little-endian, probably
 pub open spec fn bytes_to_nat_rec(bytes: &[u8; 32], index: int) -> nat
     decreases 32 - index,
 {

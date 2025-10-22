@@ -7,18 +7,18 @@ use vstd::prelude::*;
 
 verus! {
 
-pub proof fn lemma_div_and_mod(ai:u64, bi: u64, v: u64, k: nat)
+pub proof fn lemma_div_and_mod(ai: u64, bi: u64, v: u64, k: nat)
     requires
         k < 64,
         ai == v >> k,
-        bi == v & (low_bits_mask(k) as u64)
+        bi == v & (low_bits_mask(k) as u64),
     ensures
         ai == v / (pow2(k) as u64),
         bi == v % (pow2(k) as u64),
-        v == ai * pow2(k) + bi
+        v == ai * pow2(k) + bi,
 {
     lemma2_to64();
-    lemma2_to64_rest(); // pow2(63) = 0x8000000000000000
+    lemma2_to64_rest();  // pow2(63) = 0x8000000000000000
 
     // v >> k = v / pow2(k);
     lemma_u64_shr_is_div(v, k as u64);
@@ -41,9 +41,9 @@ pub proof fn lemma_div_and_mod(ai:u64, bi: u64, v: u64, k: nat)
 // Combination of mod lemmas, (b +- a * m) % m = b % m
 pub proof fn lemma_mod_sum_factor(a: int, b: int, m: int)
     requires
-        m > 0
+        m > 0,
     ensures
-        (a * m + b) % m == b % m
+        (a * m + b) % m == b % m,
 {
     // (a * m + b) % m == ((a * m) % m + b % m) % m
     lemma_add_mod_noop(a * m, b, m);
@@ -57,7 +57,7 @@ pub proof fn lemma_mod_diff_factor(a: int, b: int, m: int)
     requires
         m > 0,
     ensures
-        (b - a * m) % m == b % m
+        (b - a * m) % m == b % m,
 {
     // (b - a * m) % m == (b % m - (a * m) % m) % m
     lemma_sub_mod_noop(b, a * m, m);
@@ -69,9 +69,10 @@ pub proof fn lemma_mod_diff_factor(a: int, b: int, m: int)
 
 pub proof fn lemma_div_of_sum(a: nat, b: nat, k: nat)
     requires
-        (a % k) + (b % k) < k // also implies k != 0
+        (a % k) + (b % k) < k  // also implies k != 0
+        ,
     ensures
-        (a + b) / k == a / k + b / k
+        (a + b) / k == a / k + b / k,
 {
     let a0 = a / k;
     let b0 = b / k;
@@ -90,6 +91,7 @@ pub proof fn lemma_div_of_sum(a: nat, b: nat, k: nat)
 
     lemma_div_multiples_vanish_fancy((a0 + b0) as int, ((a % k) + (b % k)) as int, k as int);
 }
+
 /// Lemma: Uniqueness of quotient in division
 /// If value = q * d + r with 0 <= r < d, then value / d = q
 ///
@@ -112,8 +114,12 @@ pub proof fn lemma_div_quotient_unique(value: int, d: int, q: int, r: int)
     // From fundamental theorem, we get the relationship (but stated with multiplication on the left)
 
     // Convert to multiplication on the right for easier comparison
-    assert(d * q_actual == q_actual * d) by { lemma_mul_is_commutative(d, q_actual); }
-    assert(d * q == q * d) by { lemma_mul_is_commutative(d, q); }
+    assert(d * q_actual == q_actual * d) by {
+        lemma_mul_is_commutative(d, q_actual);
+    }
+    assert(d * q == q * d) by {
+        lemma_mul_is_commutative(d, q);
+    }
     assert(d * (q - q_actual) == r_actual - r) by {
         lemma_mul_is_distributive_sub(d, q, q_actual);
     }
@@ -134,7 +140,6 @@ pub proof fn lemma_div_quotient_unique(value: int, d: int, q: int, r: int)
             lemma_mul_inequality(diff, -1, d);
         }
     }
-
 }
 
 /// Lemma: For x < d, x % d = x
@@ -155,7 +160,9 @@ pub proof fn lemma_mod_of_less_than_divisor(x: int, d: int)
 
     // From fundamental div-mod: x = d * q + r (note the order)
     // Convert to: x = q * d + r
-    assert(d * q == q * d) by { lemma_mul_is_commutative(d, q); }
+    assert(d * q == q * d) by {
+        lemma_mul_is_commutative(d, q);
+    }
 
     // We know 0 <= r < d from modulo properties
     lemma_mod_bound(x, d);
@@ -168,16 +175,13 @@ pub proof fn lemma_mod_of_less_than_divisor(x: int, d: int)
     if q >= 1 {
         lemma_mul_left_inequality(d, 1, q);
     }
-
     if q <= -1 {
         lemma_mul_inequality(q, -1, d);
     }
-
-
     // Therefore: x = 0 * d + r = r
+
     assert(x == 0 * d + r);
 }
-
 
 /// Helper lemma: Division with strict upper bound
 /// If x < a * b and a > 0, then x / a < b
@@ -189,10 +193,10 @@ pub proof fn lemma_div_strictly_bounded(x: int, a: int, b: int)
     ensures
         x / a < b,
 {
-   // (b * a) / a == b
-   lemma_div_by_multiple(b, a);
-   // x < b * a && a > 0 => x / a < (b * a) / a
-   lemma_div_by_multiple_is_strongly_ordered(x, a * b, b, a);
+    // (b * a) / a == b
+    lemma_div_by_multiple(b, a);
+    // x < b * a && a > 0 => x / a < (b * a) / a
+    lemma_div_by_multiple_is_strongly_ordered(x, a * b, b, a);
 }
 
 /// Helper: Division bounds - if x < 2^b then x/2^a < 2^(b-a)
@@ -205,7 +209,6 @@ pub proof fn lemma_div_bound(x: nat, a: nat, b: nat)
 {
     // Key insight: 2^b / 2^a = 2^(b-a)
     // Since x < 2^b, we have x / 2^a < 2^b / 2^a = 2^(b-a)
-
     lemma_pow2_adds(a, (b - a) as nat);
 
     // Use division properties
@@ -233,7 +236,10 @@ pub proof fn lemma_mul_le_implies_div_le(a: nat, b: nat, c: nat)
         // From a > q, we have a >= q + 1 (since both are natural numbers)
         // Therefore: a * b >= (q + 1) * b = q * b + b
         assert(a * b >= (q + 1) * b) by (nonlinear_arith)
-            requires a >= q + 1, b > 0;
+            requires
+                a >= q + 1,
+                b > 0,
+        ;
         assert((q + 1) * b == q * b + b) by (nonlinear_arith);
     }
 }
@@ -253,7 +259,9 @@ pub proof fn lemma_mul_le_implies_div_le(a: nat, b: nat, c: nat)
 pub proof fn lemma_chunk_extraction_commutes_with_mod(x: nat, k: nat, b: nat, m: nat)
     requires
         b > 0,
-        k * b + b <= m,  // The chunk we're extracting is entirely below the modulo boundary
+        k * b + b
+            <= m,  // The chunk we're extracting is entirely below the modulo boundary
+
     ensures
         (x / pow2(k * b)) % pow2(b) == ((x % pow2(m)) / pow2(k * b)) % pow2(b),
 {
@@ -261,7 +269,6 @@ pub proof fn lemma_chunk_extraction_commutes_with_mod(x: nat, k: nat, b: nat, m:
     // 1. Decompose: x = (x / 2^m) * 2^m + (x % 2^m)
     // 2. Show: ((x / 2^m) * 2^m) / 2^(k*b) is a multiple of 2^b
     // 3. Use that multiples of 2^b vanish in % 2^b
-
     let kb = k * b;
     let x_mod_m = x % pow2(m);
 
@@ -323,7 +330,9 @@ pub proof fn lemma_chunk_extraction_commutes_with_mod(x: nat, k: nat, b: nat, m:
     assert(high_part / pow2(kb) == q) by {
         // Use: (d * q) / d == q when d > 0
         assert((pow2(kb) * q) / pow2(kb) == q) by (nonlinear_arith)
-            requires pow2(kb) > 0;
+            requires
+                pow2(kb) > 0,
+        ;
         assert(high_part / pow2(kb) == q);
     }
     assert(high_part / pow2(kb) == (x / pow2(m)) * pow2(m_minus_kb));
@@ -335,7 +344,9 @@ pub proof fn lemma_chunk_extraction_commutes_with_mod(x: nat, k: nat, b: nat, m:
     assert(q == ((x / pow2(m)) * pow2(b)) * pow2(m_minus_kb_minus_b)) by {
         assert(pow2(m_minus_kb) == pow2(b) * pow2(m_minus_kb_minus_b));
         assert(q == (x / pow2(m)) * pow2(m_minus_kb));
-        assert((x / pow2(m)) * pow2(m_minus_kb) == (x / pow2(m)) * (pow2(b) * pow2(m_minus_kb_minus_b)));
+        assert((x / pow2(m)) * pow2(m_minus_kb) == (x / pow2(m)) * (pow2(b) * pow2(
+            m_minus_kb_minus_b,
+        )));
     }
     lemma_mul_is_associative((x / pow2(m)) as int, pow2(b) as int, pow2(m_minus_kb_minus_b) as int);
     lemma_mul_is_commutative((x / pow2(m)) as int, pow2(b) as int);
@@ -394,13 +405,18 @@ pub proof fn lemma_chunk_extraction_commutes_with_mod(x: nat, k: nat, b: nat, m:
     // We know j is a multiple of pow2(b)
     assert(j == (x / pow2(m)) * pow2(b) * pow2(m_minus_kb_minus_b));
     assert(j % pow2(b) == 0) by {
-        lemma_mod_multiples_vanish((x / pow2(m)) * pow2(m_minus_kb_minus_b) as int, 0, pow2(b) as int);
+        lemma_mod_multiples_vanish(
+            (x / pow2(m)) * pow2(m_minus_kb_minus_b) as int,
+            0,
+            pow2(b) as int,
+        );
     }
 
     // Use lemma_add_mod_noop: (a + b) % m = (a % m + b % m) % m
     lemma_pow2_pos(b);
     lemma_add_mod_noop((low_part / pow2(kb)) as int, j as int, pow2(b) as int);
-    assert((low_part / pow2(kb) + j) % pow2(b) == ((low_part / pow2(kb)) % pow2(b) + j % pow2(b)) % pow2(b));
+    assert((low_part / pow2(kb) + j) % pow2(b) == ((low_part / pow2(kb)) % pow2(b) + j % pow2(b))
+        % pow2(b));
     assert((low_part / pow2(kb) + j) % pow2(b) == ((low_part / pow2(kb)) % pow2(b) + 0) % pow2(b));
 
     // (a % m + 0) % m = a % m
@@ -417,12 +433,13 @@ pub proof fn lemma_chunk_extraction_commutes_with_mod(x: nat, k: nat, b: nat, m:
 
 pub proof fn lemma_u8_cast_is_mod_256(x: u64)
     ensures
-        (x as u8) == (x as nat) % 256
+        (x as u8) == (x as nat) % 256,
 {
     assert(x as nat % 256 == x % 256);
     assert((x as u8) == x % 256) by (bit_vector);
 }
 
-fn main() {}
-
+fn main() {
 }
+
+} // verus!

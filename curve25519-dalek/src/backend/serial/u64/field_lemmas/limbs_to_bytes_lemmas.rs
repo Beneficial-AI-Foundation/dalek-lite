@@ -70,6 +70,7 @@ pub proof fn lemma_limbs_to_bytes(limbs: [u64; 5], bytes: [u8; 32])
 {
     // Connect the bit shift in the requires clause to pow2
     shift_is_pow2(51);
+
     lemma_byte_sum_equals_limb_sum(limbs, bytes);
 }
 
@@ -86,6 +87,7 @@ proof fn lemma_byte_sum_equals_limb_sum(limbs: [u64; 5], bytes: [u8; 32])
     ensures
         as_nat_32_u8(&bytes) == as_nat(limbs),
 {
+
     // This lemma performs the complete algebraic expansion:
     //
     // LHS: as_nat_32_u8(bytes)
@@ -391,7 +393,7 @@ proof fn lemma_sum_extracted_bytes_reconstructs_value(
 /// (x / 2^(k*8)) % 256 == ((x % 2^m) / 2^(k*8)) % 256
 ///
 /// This is a specialized version of lemma_chunk_extraction_commutes_with_mod for bytes (b=8).
-proof fn lemma_byte_extraction_commutes_with_mod(x: nat, k: nat, m: nat)
+pub proof fn lemma_byte_extraction_commutes_with_mod(x: nat, k: nat, m: nat)
     requires
         k * 8 + 8 <= m,  // The byte we're extracting is entirely below the modulo boundary
     ensures
@@ -641,7 +643,7 @@ proof fn lemma_5_bytes_reconstruct(
 
 /// Helper: 6-byte reconstruction lemma
 /// Proves that 6 consecutive bytes reconstruct a 48-bit value
-proof fn lemma_6_bytes_reconstruct(
+pub proof fn lemma_6_bytes_reconstruct(
     value: nat,
     byte0: u8, byte1: u8, byte2: u8, byte3: u8, byte4: u8, byte5: u8,
 )
@@ -1276,22 +1278,6 @@ proof fn lemma_limb2_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 
     lemma_pow2_adds(104, 40);
 
-    // Now we need to show that the distributed sum equals middle_value * pow2(104)
-    // We have: bytes[13] * 2^0 + ... + bytes[18] * 2^40 = middle_value
-    // We distributed 2^104 into each term
-    // Now we need to show the result
-
-    // Build up the sum step by step
-    let sum_0 = bytes[13] as nat * pow2(13 * 8);
-    let sum_1 = sum_0 + bytes[14] as nat * pow2(14 * 8);
-    let sum_2 = sum_1 + bytes[15] as nat * pow2(15 * 8);
-    let sum_3 = sum_2 + bytes[16] as nat * pow2(16 * 8);
-    let sum_4 = sum_3 + bytes[17] as nat * pow2(17 * 8);
-    let sum_5 = sum_4 + bytes[18] as nat * pow2(18 * 8);
-
-    // This should equal middle_value * pow2(104) by the distributivity we applied
-
-    // Final result
     assert(bytes[13] as nat * pow2(13 * 8) +
            bytes[14] as nat * pow2(14 * 8) +
            bytes[15] as nat * pow2(15 * 8) +
@@ -1627,7 +1613,6 @@ proof fn lemma_limb3_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 
     lemma_pow2_adds(160, 32);
 
-    // Final result
     assert(bytes[20] as nat * pow2(20 * 8) +
            bytes[21] as nat * pow2(21 * 8) +
            bytes[22] as nat * pow2(22 * 8) +

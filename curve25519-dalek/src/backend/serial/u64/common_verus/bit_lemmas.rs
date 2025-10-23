@@ -287,6 +287,45 @@ pub proof fn lemma_modular_bit_partitioning(a: nat, b: nat, k: nat, n: nat)
     // (a + b_rem * pow2(k)) % pow2(n) = a + b_rem * pow2(k)
     // We know from precondition 3 that: a + b_rem * pow2(k) < pow2(n)
     lemma_small_mod(a + b_rem * pow2(k), pow2(n));
+
+    // Final step: connect a + b * pow2(k) to the postcondition
+    // From line 277: b == pow2(n_minus_k) * b_quot + b_rem
+    // We want to show: (a + b * pow2(k)) % pow2(n) == a + b_rem * pow2(k)
+
+    // Step 1: Expand b using its definition
+    assert(a + b * pow2(k) == a + (pow2(n_minus_k) * b_quot + b_rem) * pow2(k));
+
+    // Step 2: Distribute pow2(k)
+    assert(a + (pow2(n_minus_k) * b_quot + b_rem) * pow2(k) ==
+           a + pow2(n_minus_k) * b_quot * pow2(k) + b_rem * pow2(k)) by {
+        lemma_mul_is_distributive_add_other_way(pow2(k) as int, (pow2(n_minus_k) * b_quot) as int, b_rem as int);
+    }
+
+    // Step 3: Use pow2(n_minus_k) * pow2(k) = pow2(n) and reassociate
+    assert(pow2(n_minus_k) * pow2(k) == pow2(n));
+    assert(pow2(n_minus_k) * b_quot * pow2(k) == pow2(n) * b_quot) by {
+        lemma_mul_is_associative(pow2(n_minus_k) as int, b_quot as int, pow2(k) as int);
+        lemma_mul_is_associative(b_quot as int, pow2(n_minus_k) as int, pow2(k) as int);
+        lemma_mul_is_commutative(b_quot as int, pow2(n_minus_k) as int);
+    }
+
+    // Step 4: So we have a + b * pow2(k) == a + pow2(n) * b_quot + b_rem * pow2(k)
+    assert(a + b * pow2(k) == a + pow2(n) * b_quot + b_rem * pow2(k));
+
+    // Step 5: Reorder to match line 284's form
+    assert(a + pow2(n) * b_quot + b_rem * pow2(k) == a + b_quot * pow2(n) + b_rem * pow2(k)) by {
+        lemma_mul_is_commutative(pow2(n) as int, b_quot as int);
+    }
+
+    // Step 6: Apply line 284's result
+    // (a + b_quot * pow2(n) + b_rem * pow2(k)) % pow2(n) == (a + b_rem * pow2(k)) % pow2(n)
+    // And from line 289: (a + b_rem * pow2(k)) % pow2(n) == a + b_rem * pow2(k)
+    // Therefore: (a + b * pow2(k)) % pow2(n) == a + b_rem * pow2(k)
+
+    // Step 7: Express final result
+    // a == a % pow2(k) (from line 263)
+    // b_rem == b % pow2(n_minus_k) by definition
+    // So: (a + b * pow2(k)) % pow2(n) == (a % pow2(k)) + ((b % pow2((n-k) as nat)) * pow2(k))
 }
 
 fn main() {}

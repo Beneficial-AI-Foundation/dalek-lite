@@ -2224,8 +2224,15 @@ impl UnpackedScalar {
         // VERIFICATION NOTE: If input is canonical (< group order), output satisfies Scalar invariants
         to_nat(&self.limbs) < group_order() ==> is_canonical_scalar(&result),
     {
+        let bytes = self.as_bytes();
+        proof {
+            // Bridge between recursive and non-recursive representations
+            // as_bytes() uses non-recursive versions, but pack() expects recursive versions
+            lemma_bytes_to_nat_equivalence(&bytes);
+            lemma_to_nat_equivalence(&self.limbs);
+        }
         let result = Scalar {
-            bytes: self.as_bytes(),
+            bytes: bytes,
         };
         // VERIFICATION NOTE: TODO: Prove these follow from as_bytes() spec
         assume(to_nat(&self.limbs) < group_order() ==> is_canonical_scalar(&result));

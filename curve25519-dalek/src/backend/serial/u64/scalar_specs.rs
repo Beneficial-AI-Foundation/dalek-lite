@@ -50,12 +50,50 @@ pub open spec fn five_limbs_to_nat_aux(limbs: [u64; 5]) -> nat {
     pow2(208) * (limbs[4] as nat)
 }
 
+/// Non-recursive version of bytes_to_nat for 32 bytes
+/// This is the non-recursive equivalent, similar to as_nat_32_u8 in field_core.rs
+pub open spec fn bytes_to_nat_aux(bytes: &[u8; 32]) -> nat {
+    (bytes[0] as nat) +
+    (bytes[ 1] as nat) * pow2( 1 * 8) +
+    (bytes[ 2] as nat) * pow2( 2 * 8) +
+    (bytes[ 3] as nat) * pow2( 3 * 8) +
+    (bytes[ 4] as nat) * pow2( 4 * 8) +
+    (bytes[ 5] as nat) * pow2( 5 * 8) +
+    (bytes[ 6] as nat) * pow2( 6 * 8) +
+    (bytes[ 7] as nat) * pow2( 7 * 8) +
+    (bytes[ 8] as nat) * pow2( 8 * 8) +
+    (bytes[ 9] as nat) * pow2( 9 * 8) +
+    (bytes[10] as nat) * pow2(10 * 8) +
+    (bytes[11] as nat) * pow2(11 * 8) +
+    (bytes[12] as nat) * pow2(12 * 8) +
+    (bytes[13] as nat) * pow2(13 * 8) +
+    (bytes[14] as nat) * pow2(14 * 8) +
+    (bytes[15] as nat) * pow2(15 * 8) +
+    (bytes[16] as nat) * pow2(16 * 8) +
+    (bytes[17] as nat) * pow2(17 * 8) +
+    (bytes[18] as nat) * pow2(18 * 8) +
+    (bytes[19] as nat) * pow2(19 * 8) +
+    (bytes[20] as nat) * pow2(20 * 8) +
+    (bytes[21] as nat) * pow2(21 * 8) +
+    (bytes[22] as nat) * pow2(22 * 8) +
+    (bytes[23] as nat) * pow2(23 * 8) +
+    (bytes[24] as nat) * pow2(24 * 8) +
+    (bytes[25] as nat) * pow2(25 * 8) +
+    (bytes[26] as nat) * pow2(26 * 8) +
+    (bytes[27] as nat) * pow2(27 * 8) +
+    (bytes[28] as nat) * pow2(28 * 8) +
+    (bytes[29] as nat) * pow2(29 * 8) +
+    (bytes[30] as nat) * pow2(30 * 8) +
+    (bytes[31] as nat) * pow2(31 * 8)
+}
+
 // Modular reduction of to_nat mod L
 pub open spec fn to_scalar(limbs: &[u64; 5]) -> nat {
     to_nat(limbs) % group_order()
 }
 
 /// natural value of a 256 bit bitstring represented as array of 32 bytes
+/// (Recursive version)
 pub open spec fn bytes_to_nat(bytes: &[u8; 32]) -> nat {
     // Convert bytes to nat in little-endian order using recursive helper
     bytes_to_nat_rec(bytes, 0)
@@ -142,6 +180,26 @@ pub open spec fn montgomery_radix() -> nat {
 // Check that all limbs of a Scalar52 are properly bounded (< 2^52)
 pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
     forall|i: int| 0 <= i < 5 ==> s.limbs[i] < (1u64 << 52)
+}
+
+// ============================================================================
+// Equivalence lemmas: recursive vs non-recursive versions
+// ============================================================================
+
+/// Proves that the non-recursive and recursive versions of bytes_to_nat are equivalent
+pub proof fn lemma_bytes_to_nat_equivalence(bytes: &[u8; 32])
+    ensures
+        bytes_to_nat(bytes) == bytes_to_nat_aux(bytes)
+{
+    assume(false); // TODO: Implement
+}
+
+/// Proves that the non-recursive and recursive versions of to_nat are equivalent for 5 limbs
+pub proof fn lemma_to_nat_equivalence(limbs: &[u64; 5])
+    ensures
+        to_nat(limbs) == five_limbs_to_nat_aux(*limbs)
+{
+    assume(false); // TODO: Implement
 }
 
 } // verus!

@@ -38,6 +38,8 @@ pub mod scalar_lemmas;
 
 pub mod scalar_specs;
 
+pub mod scalar_byte_lemmas;
+
 pub mod std_assumes;
 
 // #[cfg(feature = "serde")]

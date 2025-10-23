@@ -26,6 +26,8 @@ use super::scalar_lemmas::*;
 #[allow(unused_imports)]
 use super::scalar_specs::*;
 #[allow(unused_imports)]
+use super::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
+#[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
@@ -184,7 +186,9 @@ impl Scalar52 {
     #[allow(clippy::identity_op)]
     #[allow(clippy::wrong_self_convention)]
     pub fn as_bytes(self) -> (s: [u8; 32])
-    ensures bytes_to_nat(&s) == to_nat(&self.limbs)
+    requires
+        limbs_bounded(&self),
+    ensures bytes_to_nat_aux(&s) == five_limbs_to_nat_aux(self.limbs)
     {
         let mut s = [0u8; 32];
 
@@ -221,7 +225,9 @@ impl Scalar52 {
         s[30] =  (self.limbs[ 4] >> 32)                      as u8;
         s[31] =  (self.limbs[ 4] >> 40)                      as u8;
 
-        assume(false); // TODO: complete the proof
+        proof {
+            lemma_as_bytes_52(self.limbs, s);
+        }
 
         s
     }

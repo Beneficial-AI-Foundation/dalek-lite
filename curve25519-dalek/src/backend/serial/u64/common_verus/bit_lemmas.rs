@@ -317,15 +317,6 @@ pub proof fn lemma_modular_bit_partitioning(a: nat, b: nat, k: nat, n: nat)
         lemma_mul_is_commutative(pow2(n) as int, b_quot as int);
     }
 
-    // Step 6: Apply line 284's result
-    // (a + b_quot * pow2(n) + b_rem * pow2(k)) % pow2(n) == (a + b_rem * pow2(k)) % pow2(n)
-    // And from line 289: (a + b_rem * pow2(k)) % pow2(n) == a + b_rem * pow2(k)
-    // Therefore: (a + b * pow2(k)) % pow2(n) == a + b_rem * pow2(k)
-
-    // Step 7: Express final result
-    // a == a % pow2(k) (from line 263)
-    // b_rem == b % pow2(n_minus_k) by definition
-    // So: (a + b * pow2(k)) % pow2(n) == (a % pow2(k)) + ((b % pow2((n-k) as nat)) * pow2(k))
 }
 
 fn main() {}

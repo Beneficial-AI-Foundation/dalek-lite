@@ -188,7 +188,7 @@ impl Scalar52 {
     pub fn as_bytes(self) -> (s: [u8; 32])
     requires
         limbs_bounded(&self),
-    ensures bytes_to_nat_aux(&s) == five_limbs_to_nat_aux(self.limbs)
+    ensures bytes_to_nat(&s) == to_nat(&self.limbs)
     {
         let mut s = [0u8; 32];
 
@@ -226,7 +226,11 @@ impl Scalar52 {
         s[31] =  (self.limbs[ 4] >> 40)                      as u8;
 
         proof {
+            // The main lemma proves the property using the non-recursive (_aux) versions
             lemma_as_bytes_52(self.limbs, s);
+            // Use equivalence lemmas to connect to the recursive versions in the ensures clause
+            lemma_bytes_equals_bytes_aux(&s);
+            lemma_five_limbs_equals_to_nat(&self.limbs);
         }
 
         s

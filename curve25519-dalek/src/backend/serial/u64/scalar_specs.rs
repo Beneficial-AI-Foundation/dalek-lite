@@ -182,24 +182,4 @@ pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
     forall|i: int| 0 <= i < 5 ==> s.limbs[i] < (1u64 << 52)
 }
 
-// ============================================================================
-// Equivalence lemmas: recursive vs non-recursive versions
-// ============================================================================
-
-/// Proves that the non-recursive and recursive versions of bytes_to_nat are equivalent
-pub proof fn lemma_bytes_to_nat_equivalence(bytes: &[u8; 32])
-    ensures
-        bytes_to_nat(bytes) == bytes_to_nat_aux(bytes)
-{
-    assume(false); // TODO: Implement
-}
-
-/// Proves that the non-recursive and recursive versions of to_nat are equivalent for 5 limbs
-pub proof fn lemma_to_nat_equivalence(limbs: &[u64; 5])
-    ensures
-        to_nat(limbs) == five_limbs_to_nat_aux(*limbs)
-{
-    assume(false); // TODO: Implement
-}
-
 } // verus!

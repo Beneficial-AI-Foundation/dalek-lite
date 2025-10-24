@@ -675,6 +675,7 @@ impl Scalar52 {
     #[inline(always)]
     #[rustfmt::skip]  // keep alignment of n* and r* calculations
     pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)
+        requires slice128_to_nat(limbs) < ????,
         ensures
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
                 % group_order(),
@@ -694,6 +695,15 @@ impl Scalar52 {
         let (carry, n4) = Self::part1(
             carry + limbs[4] + m(n0, l.limbs[4]) + m(n2, l.limbs[2]) + m(n3, l.limbs[1]),
         );
+        // https://en.wikipedia.org/wiki/Montgomery_modular_multiplication
+        // wikipedia N is L
+        // wikipedia T is limbs, bounded by R * L
+        // wikipedia N' is LFACTOR, but maybe not?
+        // R = 2^260
+
+        // interpret n0...n4 as a Scalar52
+        // to_nat(that) == ??
+        // maybe T + mN is n0...n4?
 
         // limbs is divisible by R now, so we can divide by R by simply storing the upper half as the result
         let (carry, r0) = Self::part2(
@@ -703,6 +713,9 @@ impl Scalar52 {
         let (carry, r2) = Self::part2(carry + limbs[7] + m(n3, l.limbs[4]));
         let (carry, r3) = Self::part2(carry + limbs[8] + m(n4, l.limbs[4]));
         let r4 = carry as u64;
+
+
+        // maybe (T + mN) / R is r0...r4?
 
         // result may be >= l, so attempt to subtract l
         Scalar52::sub(&Scalar52 { limbs: [r0, r1, r2, r3, r4] }, l)

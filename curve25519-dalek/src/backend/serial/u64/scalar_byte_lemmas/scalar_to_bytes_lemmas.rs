@@ -13,6 +13,7 @@ use super::super::common_verus::shift_lemmas::*;
 use super::super::scalar_specs::*;
 
 // Import helper lemmas from field_lemmas
+use super::super::field_lemmas::field_core::as_nat_32_u8;
 use super::super::field_lemmas::limbs_to_bytes_lemmas::*;
 
 verus! {
@@ -141,7 +142,7 @@ pub proof fn lemma_as_bytes_52(limbs: [u64; 5], bytes: [u8; 32])
         forall |i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
         bytes_match_limbs_packing_52(limbs, bytes),
     ensures
-        bytes_to_nat_aux(&bytes) == five_limbs_to_nat_aux(limbs),
+        as_nat_32_u8(&bytes) == five_limbs_to_nat_aux(limbs),
 {
     // Connect the bit shift in the requires clause to pow2 for clarity
 
@@ -152,7 +153,7 @@ pub proof fn lemma_as_bytes_52(limbs: [u64; 5], bytes: [u8; 32])
     // Establish that each limb is bounded by pow2(52)
     //assert(forall |i: int| 0 <= i < 5 ==> limbs[i] < pow2(52));
 
-    assert(bytes_to_nat_aux(&bytes) ==
+    assert(as_nat_32_u8(&bytes) ==
             limb0_byte_contribution_52(limbs, bytes) +
             limb1_byte_contribution_52(limbs, bytes) +
             limb2_byte_contribution_52(limbs, bytes) +
@@ -164,7 +165,7 @@ pub proof fn lemma_as_bytes_52(limbs: [u64; 5], bytes: [u8; 32])
     assert((limbs[0] as nat) % pow2(52) == limbs[0]) by {
         lemma_small_mod(limbs[0] as nat, pow2(52));
     }
-    assert(bytes_to_nat_aux(&bytes) == five_limbs_to_nat_aux(limbs)) by {
+    assert(as_nat_32_u8(&bytes) == five_limbs_to_nat_aux(limbs)) by {
         lemma_limb0_contribution_correctness_52(limbs, bytes);
         lemma_limb1_contribution_correctness_52(limbs, bytes);
         lemma_limb2_contribution_correctness_52(limbs, bytes);
@@ -207,7 +208,7 @@ proof fn lemma_byte_from_limb_shift_52(limb: u64, shift: u64, byte: u8)
     assert((limb >> shift) as u8 as nat == ((limb >> shift) as nat) % 256);
 }
 
-/// Helper: proves that the sum of byte contributions equals bytes_to_nat_aux
+/// Helper: proves that the sum of byte contributions equals as_nat_32_u8
 ///
 /// The key insight here is that the byte contributions partition the bytes
 /// such that each byte (or parts of bytes at boundaries) is accounted for exactly once.
@@ -221,9 +222,9 @@ pub proof fn lemma_sum_equals_byte_nat_52(limbs: [u64; 5], bytes: [u8; 32])
         limb2_byte_contribution_52(limbs, bytes) +
         limb3_byte_contribution_52(limbs, bytes) +
         limb4_byte_contribution_52(limbs, bytes) ==
-        bytes_to_nat_aux(&bytes)
+        as_nat_32_u8(&bytes)
 {
-    // The sum lemma is actually straightforward because bytes_to_nat_aux
+    // The sum lemma is actually straightforward because as_nat_32_u8
     // is just the sum of all bytes weighted by their positions, and the
     // limb contribution functions partition this sum.
     //
@@ -334,7 +335,7 @@ pub proof fn lemma_sum_equals_byte_nat_52(limbs: [u64; 5], bytes: [u8; 32])
         (bytes[31] as nat) * pow2(31 * 8);
 
     assert(bytes[0] as nat * pow2(0 * 8) == bytes[0] as nat * 1);
-    assert(after_split == bytes_to_nat_aux(&bytes));
+    assert(after_split == as_nat_32_u8(&bytes));
 
     // The mathematical fact: after splitting boundary bytes, this equals the sum of limb contributions
     assert(after_split ==

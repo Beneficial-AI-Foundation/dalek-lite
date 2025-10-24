@@ -12,9 +12,9 @@
 | [straus_optional_multiscalar_mul](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/mod.rs#L204) |  |  |  |  |
 | [variable_base_mul](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/mod.rs#L233) |  |  |  |  |
 | [vartime_double_base_mul](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/mod.rs#L247) |  |  |  |  |
-| [identity](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L230) |  |  |  |  |
-| [identity](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L240) |  |  |  |  |
-| [identity](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L257) |  |  |  |  |
+| [identity](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L230) | :heavy_check_mark: | :heavy_check_mark: |  |  |
+| [identity](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L240) | :heavy_check_mark: | :heavy_check_mark: |  |  |
+| [identity](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L257) | :heavy_check_mark: | :heavy_check_mark: |  |  |
 | [default](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L267) |  |  |  |  |
 | [conditional_select](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L296) |  |  |  |  |
 | [conditional_select](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/curve_models/mod.rs#L314) |  |  |  |  |
@@ -33,7 +33,7 @@
 | [optional_multiscalar_mul](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/scalar_mul/straus.rs#L159) |  |  |  |  |
 | [mul](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/scalar_mul/variable_base.rs#L11) |  |  |  |  |
 | [mul](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/scalar_mul/vartime_double_base.rs#L23) |  |  |  |  |
-| [fmt](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/u64/field.rs#L46) |  |  |  |  |
+| [fmt](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/u64/field.rs#L46) | :x: |  |  |  |
 | [add_assign](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/u64/field.rs#L59) |  |  |  |  |
 | [add](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/u64/field.rs#L68) |  |  |  |  |
 | [sub](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/backend/serial/u64/field.rs#L84) |  |  |  |  |
@@ -85,7 +85,7 @@
 | [step_2](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L223) |  |  |  |  |
 | [identity](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L410) |  |  |  |  |
 | [conditional_select](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L468) |  |  |  |  |
-| [ct_eq](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L483) |  |  |  |  |
+| [ct_eq](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L483) | :heavy_check_mark: | :heavy_check_mark: |  |  |
 | [as_projective_niels](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L509) |  |  |  |  |
 | [as_projective](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L522) |  |  |  |  |
 | [as_affine_niels](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L532) |  |  |  |  |
@@ -113,17 +113,17 @@
 | [mul](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L1050) |  |  |  |  |
 | [mul_by_pow_2](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L1192) |  |  |  |  |
 | [is_torsion_free](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L1257) |  |  |  |  |
-| [fmt](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L1267) |  |  |  |  |
-| [eq](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L79) |  |  |  |  |
-| [ct_eq](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L88) |  |  |  |  |
-| [is_negative](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L101) |  |  |  |  |
-| [is_zero](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L111) |  |  |  |  |
-| [pow22501](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L121) |  |  |  |  |
-| [batch_invert](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L161) |  |  |  |  |
-| [invert](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L206) |  |  |  |  |
-| [pow_p58](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L220) |  |  |  |  |
+| [fmt](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/edwards.rs#L1267) | :x: |  |  |  |
+| [eq](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L79) | :heavy_check_mark: |  |  |  |
+| [ct_eq](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L88) | :heavy_check_mark: |  |  |  |
+| [is_negative](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L101) | :heavy_check_mark: |  |  |  |
+| [is_zero](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L111) | :heavy_check_mark: |  |  |  |
+| [pow22501](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L121) | :heavy_check_mark: |  |  |  |
+| [batch_invert](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L161) | :heavy_check_mark: |  |  |  |
+| [invert](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L206) | :heavy_check_mark: |  |  |  |
+| [pow_p58](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L220) | :heavy_check_mark: |  |  |  |
 | [sqrt_ratio_i](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L243) |  |  |  |  |
-| [invsqrt](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L303) |  |  |  |  |
+| [invsqrt](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/field.rs#L303) | :heavy_check_mark: |  |  |  |
 | [elligator_inv](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/lizard/jacobi_quartic.rs#L30) |  |  |  |  |
 | [dual](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/lizard/jacobi_quartic.rs#L66) |  |  |  |  |
 | [from_uniform_bytes_single_elligator](https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/5a57bad082ab43848deef98bbded087d54fbd560/curve25519-dalek/src/lizard/lizard_ristretto.rs#L26) |  |  |  |  |

@@ -23,6 +23,34 @@ use super::common_verus::shift_lemmas::*;
 
 verus! {
 
+pub proof fn lemma_mul_mod(x: nat, r: nat, a: nat, rr: nat, n: nat)
+    requires
+        #[trigger] ((x * r) % n) == #[trigger] ((a * rr) % n),
+        #[trigger] (rr % n) == #[trigger] ((r * r) % n),
+        n > 0
+    ensures
+        #[trigger] (x % n) == #[trigger] ((a * r) % n)
+{
+    // Strategy: Use properties of modular arithmetic:
+    // 1. (x * r) ≡ (a * rr) (mod n)
+    // 2. rr ≡ r² (mod n)
+    // 3. Therefore x ≡ a * r (mod n)
+    assume(false); // TODO: Complete this proof using modular arithmetic properties
+}
+
+pub proof fn lemma_montgomery_inverse(r: nat, n: nat)
+    requires
+        r == montgomery_radix(),
+        n == group_order()
+    ensures
+        // r * r_inv ≡ 1 (mod n)
+        exists|r_inv: nat| #[trigger] ((r * r_inv) % n) == 1
+{
+    // By Euler's theorem, if gcd(r,n)=1, then r^(φ(n)-1) is the multiplicative inverse of r mod n
+    // For prime n, φ(n) = n-1, so r^(n-2) is the inverse
+    assume(false); // TODO: Complete this proof using modular arithmetic properties
+}
+
 /// Verification: scalar * scalar.invert() ≡ 1 mod L
 proof fn verify_invert_correct(
     x: Scalar52,
@@ -362,6 +390,7 @@ pub proof fn lemma_rr_limbs_bounded()
     // Verus can figure that out the other 4 limbs are bounded
     assert(0x000d63c715bea69fu64 < (1u64 << 52)) by (bit_vector);
 }
+// r^2=rr
 
 /// Need to use induction because the postcondition expands
 /// seq_u64_to_nat in the opposite way from how it's defined.

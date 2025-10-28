@@ -14,6 +14,7 @@ use super::subtle_assumes::select;
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use subtle::Choice;
+use vstd::calc;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
@@ -789,7 +790,8 @@ impl Scalar52 {
         ensures
             limbs_bounded(&result),
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&a.limbs)
-                * to_nat(&b.limbs)) % group_order(),
+                * to_nat(&b.limbs)) % group_order(), 
+                // known
     {
         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))
     }
@@ -814,15 +816,31 @@ impl Scalar52 {
             limbs_bounded(self),
         ensures
             limbs_bounded(&result),
-            to_nat(&result.limbs) % group_order() == (to_nat(&self.limbs) * montgomery_radix())
-                % group_order(),
+            #[trigger] (to_nat(&result.limbs) % group_order()) == 
+                #[trigger] ((to_nat(&self.limbs) * montgomery_radix()) % group_order()),
     {
         proof {
             lemma_rr_limbs_bounded();
+            assert(group_order() > 0);  // From group properties
         }
         let result = Scalar52::montgomery_mul(self, &constants::RR);
-        assume(to_nat(&result.limbs) % group_order() == (to_nat(&self.limbs) * montgomery_radix())
-            % group_order());
+        proof {
+            // From montgomery_mul's ensures clause we know:
+            // (to_nat(&result.limbs) * montgomery_radix()) % group_order() ==
+            // (to_nat(&self.limbs) * to_nat(&constants::RR.limbs)) % group_order()
+
+            // Need to prove RR = R² mod N to complete the proof
+            assume(to_nat(&constants::RR.limbs) % group_order() == (montgomery_radix() * montgomery_radix()) % group_order());
+
+            // Apply lemma_mul_mod to complete the proof
+            lemma_mul_mod(
+                to_nat(&result.limbs),
+                montgomery_radix(),
+                to_nat(&self.limbs),
+                to_nat(&constants::RR.limbs),
+                group_order()
+            );
+        }
         result
     }
 

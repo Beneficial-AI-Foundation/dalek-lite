@@ -2446,9 +2446,7 @@ impl UnpackedScalar {
             lemma_bytes_to_nat_rec_equals_bytes_to_nat(&bytes);
             lemma_five_limbs_equals_to_nat(&self.limbs);
         }
-        let result = Scalar {
-            bytes: bytes,
-        };
+        let result = Scalar { bytes: bytes };
         // VERIFICATION NOTE: TODO: Prove these follow from as_bytes() spec
         // result.bytes is [u8; 32]
         // group order is pow2(252) + 27742317777372353535851937790883648493nat

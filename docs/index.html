@@ -54,33 +54,11 @@
 
     <section id="progress" class="section">
         <div class="container">
+            <h2 class="section-title">Verification Progress</h2>
+            <p class="section-subtitle">Track our progress as we formally verify the curve25519-dalek codebase</p>
+            
             <div class="two-column-layout">
                 <div class="left-column">
-                    <div class="chart-card verification-metrics-card">
-                        <h3>Verification Progress</h3>
-                        <img src="outputs/verification_funnel.png" alt="Verification Funnel" class="zoomable" data-title="Verus Verification Funnel">
-                        
-                        <div class="metrics-inline">
-                            <div class="metric-item">
-                                <span class="metric-label">Spec Completion Rate</span>
-                                <span class="metric-value" id="specCompletionRate">32.7%</span>
-                                <span class="metric-description" id="specCompletionDesc">84 of 257 functions have specs</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">Proof Completion Rate</span>
-                                <span class="metric-value" id="proofCompletionRate">51.2%</span>
-                                <span class="metric-description" id="proofCompletionDesc">43 of 84 specs are fully proven</span>
-                            </div>
-                            <div class="metric-item">
-                                <span class="metric-label">Time Period</span>
-                                <span class="metric-value" id="timePeriod">Calculating...</span>
-                                <span class="metric-description" id="timePeriodDays">Loading tracking data</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="right-column">
                     <div class="chart-card">
                         <h3>Counts Over Time</h3>
                         <img src="outputs/absolute_counts_over_time.png" alt="Absolute Counts" class="zoomable" data-title="Absolute Counts Over Time">
@@ -89,6 +67,31 @@
                     <div class="chart-card">
                         <h3>Module Breakdown</h3>
                         <img src="outputs/module_breakdown.png" alt="Module Breakdown" class="zoomable" data-title="Module Breakdown">
+                    </div>
+                </div>
+
+                <div class="right-column">
+                    <div class="chart-card verification-metrics-card">
+                        <h3>Verification Metrics</h3>
+                        <img src="outputs/verification_funnel.png" alt="Verification Funnel" class="zoomable" data-title="Verus Verification Funnel">
+                        
+                        <div class="metrics-inline">
+                            <div class="metric-item">
+                                <span class="metric-label">Spec Completion Rate</span>
+                                <span class="metric-value" id="specCompletionRate">32.3%</span>
+                                <span class="metric-description" id="specCompletionDesc">83 of 257 functions have specs</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Proof Completion Rate</span>
+                                <span class="metric-value" id="proofCompletionRate">42%</span>
+                                <span class="metric-description" id="proofCompletionDesc">38 of 91 specs are fully proven</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-label">Time Period</span>
+                                <span class="metric-value" id="timePeriod">Calculating...</span>
+                                <span class="metric-description" id="timePeriodDays">Loading tracking data</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

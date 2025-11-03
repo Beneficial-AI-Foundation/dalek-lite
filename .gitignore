@@ -10,6 +10,8 @@ build*.txt
 *.orig
 *.bak
 
+**/.DS_Store
+
 *.s
 .aider*
 .verus-solver-log

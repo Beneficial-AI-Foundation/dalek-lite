@@ -246,6 +246,24 @@ impl Scalar52 {
     }
 
     /// Compute `a + b` (mod l)
+    ///
+    /// Adds two scalar values modulo the group order l (the prime order of the Curve25519 subgroup).
+    ///
+    /// # Description
+    /// - Performs limb-wise addition of two 52-bit limb representations
+    /// - Handles carry propagation across limbs during addition
+    /// - Ensures result is reduced modulo l by conditionally subtracting l if sum >= l
+    /// - Returns a canonical scalar in the range [0, l)
+    ///
+    /// # Preconditions (requires)
+    /// - Both input scalars `a` and `b` must have bounded limbs (each limb < 2^52)
+    /// - The natural number representation of `a` must be less than the group order
+    /// - The natural number representation of `b` must be less than the group order
+    ///
+    /// # Postconditions (ensures)
+    /// - Result represents (a + b) mod l mathematically
+    /// - Result is in canonical form (< group_order)
+    /// - Result has bounded limbs (from the final sub operation)
     pub fn add(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
         requires
             limbs_bounded(a),
@@ -279,6 +297,12 @@ impl Scalar52 {
             lemma2_to64();
             assert(pow2(0) == 1);
         }
+        // Loop to add corresponding limbs with carry propagation
+        // Each iteration:
+        // - Adds limbs a[i] and b[i] plus the carry from previous iteration (carry >> 52)
+        // - Stores lower 52 bits in sum[i] and propagates upper bits as carry
+        // - Maintains the invariant that partial sums plus carried value equals partial addition
+        // - Ensures each result limb is bounded by 2^52
         for i in 0..5
             invariant
                 forall|j: int| 0 <= j < i ==> sum.limbs[j] < 1u64 << 52,
@@ -590,6 +614,22 @@ impl Scalar52 {
     }
 
     /// Compute `a * b`
+    ///
+    /// Performs schoolbook multiplication of two scalars represented in 52-bit limb form.
+    ///
+    /// # Description
+    /// - Multiplies two 5-limb scalars using the standard polynomial multiplication algorithm
+    /// - Each limb multiplication uses the helper function `m()` which computes u64 * u64 -> u128
+    /// - Produces a 9-limb u128 result representing the full product (up to 104 bits per limb)
+    /// - This is an intermediate unreduced result; reduction modulo l happens in separate functions
+    /// - The computation follows the schoolbook multiplication pattern where result[i+j] accumulates a[i] * b[j]
+    ///
+    /// # Preconditions (requires)
+    /// - Both input scalars `a` and `b` must have bounded limbs (each limb < 2^52)
+    ///
+    /// # Postconditions (ensures)
+    /// - The natural number representation of the result array equals a * b (mathematical product)
+    /// - The result is stored as 9 limbs of type u128 to hold the full product without overflow
     #[inline(always)]
     #[rustfmt::skip]  // keep alignment of z[*] calculations
     pub(crate) fn mul_internal(a: &Scalar52, b: &Scalar52) -> (z: [u128; 9])

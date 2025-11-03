@@ -159,6 +159,28 @@ impl FieldElement51 {
     }
 
     /// Given 64-bit input limbs, reduce to enforce the bound 2^(51 + epsilon).
+    ///
+    /// Performs a weak reduction on field element limbs to bring them within bounds.
+    ///
+    /// # Description
+    /// - Takes 5 limbs that may exceed the 2^51 bound (up to 2^64 each)
+    /// - Computes carry values from each limb (bits above position 51)
+    /// - Masks each limb to keep only the lower 51 bits
+    /// - Propagates carries to the next higher limb
+    /// - Applies modular reduction by multiplying the top carry by 19 and adding to limb 0
+    /// - This implements the identity: 2^255 ≡ 19 (mod p) where p = 2^255 - 19
+    /// - The result is a "weak reduction" - limbs are bounded but not necessarily canonical
+    ///
+    /// # Preconditions (requires)
+    /// - Input limbs can be any 64-bit values (no specific bounds required)
+    ///
+    /// # Postconditions (ensures)
+    /// - Result limbs match the specification function `spec_reduce`
+    /// - Each result limb is bounded: limb[i] < 2^52
+    /// - If input limbs were already bounded by 2^51, they remain unchanged
+    /// - Mathematical value is preserved modulo p: as_nat(result) ≡ as_nat(input) - p*(input[4] >> 51) (mod p)
+    /// - Result value modulo p equals input value modulo p
+    /// - Result is bounded: as_nat(result) < 2*p
     #[inline(always)]
     fn reduce(mut limbs: [u64; 5]) -> (r: FieldElement51)
         ensures

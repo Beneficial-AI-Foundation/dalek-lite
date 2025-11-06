@@ -14,6 +14,7 @@ use super::subtle_assumes::select;
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 use subtle::Choice;
+use vstd::arithmetic::mul::lemma_mul_is_associative;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
@@ -80,6 +81,131 @@ impl IndexMut<usize> for Scalar52 {
 }
 
 verus! {
+
+
+pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
+    requires
+        #[trigger] ((x * montgomery_radix()) % group_order()) == #[trigger] ((a * rr)
+            % group_order()),
+        #[trigger] (rr % group_order()) == #[trigger] ((montgomery_radix() * montgomery_radix())
+            % group_order()),
+        group_order() > 0,
+    ensures
+        #[trigger] (x % group_order()) == #[trigger] ((a * montgomery_radix()) % group_order()),
+{
+    // 1. Substitute rr with r*r
+    lemma_mul_mod_noop_right(a as int, rr as int, group_order() as int);
+    lemma_mul_mod_noop_right(
+        a as int,
+        (montgomery_radix() * montgomery_radix()) as int,
+        group_order() as int,
+    );
+
+    // let lhs = (x * montgomery_radix()) % group_order();
+    // let step1 = (a * rr) % group_order();
+    // let step2 = (a * (rr % group_order())) % group_order();
+    // let step3 = (a * ((montgomery_radix() * montgomery_radix()) % group_order())) % group_order();
+    // let step4 = (a * (montgomery_radix() * montgomery_radix())) % group_order();
+    // let rhs = (a * montgomery_radix() * montgomery_radix()) % group_order();
+    lemma_mul_is_associative(a as int, montgomery_radix() as int, montgomery_radix() as int);
+
+    assert((x * montgomery_radix()) % group_order() == (a * montgomery_radix() * montgomery_radix())
+        % group_order());
+
+    // 2. use the inverse to remove r from both sides
+
+    // Step 1: Multiply both sides by inv_montgomery_radix() using modular properties
+    lemma_mul_mod_noop_right(
+        inv_montgomery_radix() as int,
+        (x * montgomery_radix()) as int,
+        group_order() as int,
+    );
+    lemma_mul_mod_noop_right(
+        inv_montgomery_radix() as int,
+        (a * montgomery_radix() * montgomery_radix()) as int,
+        group_order() as int,
+    );
+
+    assert((x * montgomery_radix() * inv_montgomery_radix()) % group_order() == (a
+        * montgomery_radix() * montgomery_radix() * inv_montgomery_radix()) % group_order());
+
+    // Step 2: Group (R * R^-1) together using associativity
+    // x * (R * R^-1) and (a * R) * (R * R^-1)
+    lemma_mul_is_associative(x as int, montgomery_radix() as int, inv_montgomery_radix() as int);
+    lemma_mul_is_associative(
+        (a * montgomery_radix()) as int,
+        montgomery_radix() as int,
+        inv_montgomery_radix() as int,
+    );
+
+    assert((x * (montgomery_radix() * inv_montgomery_radix())) % group_order() == ((a
+        * montgomery_radix()) * (montgomery_radix() * inv_montgomery_radix())) % group_order());
+
+    // Step 3: Use lemma_montgomery_inverse to substitute (R * R^-1) % n = 1
+    lemma_montgomery_inverse();
+
+    // Step 4: Substitute and simplify using (R * R^-1) ≡ 1
+    lemma_mul_mod_noop_right(
+        x as int,
+        (montgomery_radix() * inv_montgomery_radix()) as int,
+        group_order() as int,
+    );
+    lemma_mul_mod_noop_right(
+        (a * montgomery_radix()) as int,
+        (montgomery_radix() * inv_montgomery_radix()) as int,
+        group_order() as int,
+    );
+
+}
+
+pub proof fn lemma_montgomery_inverse()
+    ensures
+// r * r_inv ≡ 1 (mod n)
+
+        (montgomery_radix() * inv_montgomery_radix()) % group_order() == 1,
+{
+    lemma2_to64();
+    lemma2_to64_rest();
+
+    lemma_pow2_adds(64, 64);  // prove pow2(128) in nat
+    lemma_pow2_adds(128, 64);  // prove pow2(192) in nat
+    lemma_pow2_adds(192, 60);  // prove pow2(252) in nat
+    lemma_pow2_adds(252, 8);  // prove pow2(260) in nat
+
+    calc! {
+        (==)
+        (montgomery_radix() * inv_montgomery_radix()) % group_order(); {}
+        (1852673427797059126777135760139006525652319754650249024631321344126610074238976_nat
+            * 5706410653605570882457795059301885719620630590890452783038400561109479083972_nat)
+            % 7237005577332262213973186563042994240857116359379907606001950938285454250989_nat; {}
+        1;
+    }
+
+}
+
+pub proof fn lemma_mul_both_sides_mod(x: int, y: int, z: int, m: int)
+    requires
+        m > 0,
+        x % m == y % m,
+    ensures
+        (x * z) % m == (y * z) % m,
+{
+    // Apply lemma_mul_mod_noop_right to both x and y
+    lemma_mul_mod_noop_right(z, x, m);
+    lemma_mul_mod_noop_right(z, y, m);
+
+    // From lemma: z * (x % m) % m == (z * x) % m
+    //            z * (y % m) % m == (z * y) % m
+
+    // Since x % m == y % m (from requires), we have:
+    assert(z * (x % m) % m == z * (y % m) % m);
+
+    // Therefore:
+    assert((z * x) % m == (z * y) % m);
+
+    // By commutativity of multiplication:
+    assert((x * z) % m == (y * z) % m);
+}
 
 /// u64 * u64 = u128 multiply helper
 #[inline(always)]
@@ -870,6 +996,7 @@ impl Scalar52 {
 
         result
     }
+
 
     /// Compute `(a * b) / R` (mod l), where R is the Montgomery modulus 2^260
     #[inline(never)]

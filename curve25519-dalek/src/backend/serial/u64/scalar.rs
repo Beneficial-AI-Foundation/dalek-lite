@@ -1102,7 +1102,7 @@ mod test {
         #![proptest_config(ProptestConfig::with_cases(10000))]
 
         #[test]
-        fn as_bytes_spec_proptest(
+        fn as_bytes_no_mod(
             l0 in 0u64..(1u64 << 52),
             l1 in 0u64..(1u64 << 52),
             l2 in 0u64..(1u64 << 52),
@@ -1124,7 +1124,7 @@ mod test {
         }
 
         #[test]
-        fn as_bytes_spec_mod_2_256_proptest(
+        fn as_bytes_mod_2_256(
             l0 in 0u64..(1u64 << 52),
             l1 in 0u64..(1u64 << 52),
             l2 in 0u64..(1u64 << 52),

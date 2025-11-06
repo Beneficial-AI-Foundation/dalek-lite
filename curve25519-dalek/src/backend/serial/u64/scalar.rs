@@ -1058,4 +1058,15 @@ mod test {
             assert!(reduced[i] == C[i]);
         }
     }
+    #[test]
+    fn as_bytes_2_pow_50() {
+        // Test that l = [0, 0, 0, 0, 2^50] converts to all zeros
+        let l = Scalar52 {
+            limbs: [0, 0, 0, 0, 1u64 << 50],
+        };
+        let bytes = l.as_bytes();
+        for i in 0..32 {
+            assert!(bytes[i] == 0, "byte {} should be 0, got {}", i, bytes[i]);
+        }
+    }
 }

@@ -1057,7 +1057,7 @@ impl Scalar52 {
 //     };
 //     #[test]
 //     fn mul_max() {
-//         let l = Scalar52::mul(&X, &X);
+//         let res = Scalar52::mul(&X, &X);
 //         for i in 0..5 {
 //             assert!(res[i] == XX[i]);
 //         }

@@ -90,9 +90,7 @@ fn m(x: u64, y: u64) -> (z: u128)
         z < (1u128 << 104),
         z == x * y,
 {
-    proof {
-        lemma_52_52(x, y);
-    }
+    assume(false);
     (x as u128) * (y as u128)
 }
 

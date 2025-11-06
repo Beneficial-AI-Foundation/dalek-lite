@@ -1122,5 +1122,32 @@ mod test {
                 "as_bytes spec violated: bytes_to_nat != to_nat\nlimbs: {:?}\nbytes: {:?}",
                 s.limbs, bytes);
         }
+
+        #[test]
+        fn as_bytes_spec_mod_2_256_proptest(
+            l0 in 0u64..(1u64 << 52),
+            l1 in 0u64..(1u64 << 52),
+            l2 in 0u64..(1u64 << 52),
+            l3 in 0u64..(1u64 << 52),
+            l4 in 0u64..(1u64 << 52)  // Allow full 52-bit range
+        ) {
+            use num_bigint::BigUint;
+
+            let s = Scalar52 {
+                limbs: [l0, l1, l2, l3, l4],
+            };
+            let bytes = s.as_bytes();
+
+            let limbs_nat = super::to_nat_exec(&s.limbs);
+            let bytes_nat = super::bytes_to_nat_exec(&bytes);
+
+            // The real spec: bytes_to_nat(&s) == to_nat(&self.limbs) mod 2^256
+            let modulus = BigUint::from(1u64) << 256;
+            let limbs_nat_mod = &limbs_nat % &modulus;
+
+            prop_assert_eq!(bytes_nat, limbs_nat_mod,
+                "as_bytes spec violated: bytes_to_nat != to_nat mod 2^256\nlimbs: {:?}\nbytes: {:?}",
+                s.limbs, bytes);
+        }
     }
 }

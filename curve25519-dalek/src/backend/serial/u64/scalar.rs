@@ -884,6 +884,32 @@ impl Scalar52 {
 }
 
 } // verus!
+
+#[cfg(test)]
+/// Executable version of to_nat for testing
+fn to_nat_exec(limbs: &[u64; 5]) -> num_bigint::BigUint {
+    use num_bigint::BigUint;
+    let mut result = BigUint::from(0u64);
+    let radix = BigUint::from(1u64) << 52;
+
+    for i in (0..5).rev() {
+        result = result * &radix + BigUint::from(limbs[i]);
+    }
+    result
+}
+
+#[cfg(test)]
+/// Executable version of bytes_to_nat for testing
+fn bytes_to_nat_exec(bytes: &[u8; 32]) -> num_bigint::BigUint {
+    use num_bigint::BigUint;
+    let mut result = BigUint::from(0u64);
+
+    for i in (0..32).rev() {
+        result = (result << 8) + BigUint::from(bytes[i]);
+    }
+    result
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1067,6 +1093,34 @@ mod test {
         let bytes = l.as_bytes();
         for i in 0..32 {
             assert!(bytes[i] == 0, "byte {} should be 0, got {}", i, bytes[i]);
+        }
+    }
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(10000))]
+
+        #[test]
+        fn as_bytes_spec_proptest(
+            l0 in 0u64..(1u64 << 52),
+            l1 in 0u64..(1u64 << 52),
+            l2 in 0u64..(1u64 << 52),
+            l3 in 0u64..(1u64 << 52),
+            l4 in 0u64..(1u64 << 52)  // Allow full 52-bit range to catch the bug
+        ) {
+            let s = Scalar52 {
+                limbs: [l0, l1, l2, l3, l4],
+            };
+            let bytes = s.as_bytes();
+
+            let limbs_nat = super::to_nat_exec(&s.limbs);
+            let bytes_nat = super::bytes_to_nat_exec(&bytes);
+
+            // Check the spec: bytes_to_nat(&s) == to_nat(&self.limbs)
+            prop_assert_eq!(bytes_nat, limbs_nat,
+                "as_bytes spec violated: bytes_to_nat != to_nat\nlimbs: {:?}\nbytes: {:?}",
+                s.limbs, bytes);
         }
     }
 }

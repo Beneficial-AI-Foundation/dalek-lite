@@ -1615,4 +1615,12 @@ pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, 
     assert(to_nat(&sum.limbs) < 2 * group_order());
 }
 
+pub(crate) proof fn lemma_rr_equals_spec()
+    ensures
+        to_nat(&constants::RR.limbs) % group_order() == (montgomery_radix() * montgomery_radix())
+            % group_order(),
+{
+    assume(false);
+}
+
 } // verus!

@@ -1617,8 +1617,17 @@ pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, 
 
 pub(crate) proof fn lemma_rr_equals_spec()
     ensures
-        to_nat(&constants::RR.limbs) % group_order() == (montgomery_radix() * montgomery_radix())
-            % group_order(),
+        to_nat(
+            &Scalar52 {
+                limbs: [
+                    0x0009d265e952d13b,
+                    0x000d63c715bea69f,
+                    0x0005be65cb687604,
+                    0x0003dceec73d217f,
+                    0x000009411b7c309a,
+                ],
+            }.limbs,
+        ) % group_order() == (montgomery_radix() * montgomery_radix()) % group_order(),
 {
     assume(false);
 }

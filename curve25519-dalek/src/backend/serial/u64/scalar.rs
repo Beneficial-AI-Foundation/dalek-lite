@@ -166,34 +166,78 @@ impl Scalar52 {
             // VERIFICATION NOTE: Result is canonical
             to_nat(&s.limbs) < group_order(),
     {
-        assume(false);  // TODO: complete the proof
-        let mut words = [0u64;8];
-        for i in 0..8 {
-            for j in 0..8 {
-                assume(false);
+        let ghost wide_input = bytes_wide_to_nat(bytes);
+
+        // Stage 1 assumption: the byte-to-word packing yields the expected little-endian value.
+        let mut words = [0u64; 8];
+        for i in 0..8
+            invariant
+                0 <= i <= 8,
+        {
+            for j in 0..8
+                invariant
+                    0 <= j <= 8,
+            {
+                assume({
+                    let idx = (i as u64) * 8 + (j as u64);
+                    idx < 64
+                });
                 words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);
             }
         }
+        assume(wide_input == words_to_nat_gen_u64(&words, 8, 64));
 
+        // Stage 2 assumption: bounds for the intermediate 64-bit words.
+        assume(forall|k: int| 0 <= k < 8 ==> words[k] < (1u64 << 64));
+
+        proof {
+            assert(1u64 << 52 > 0) by (bit_vector);
+        }
         let mask = (1u64 << 52) - 1;
         let mut lo = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
         let mut hi = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
 
-        lo[0] = words[0] & mask;
-        lo[1] = ((words[0] >> 52) | (words[1] << 12)) & mask;
-        lo[2] = ((words[1] >> 40) | (words[2] << 24)) & mask;
-        lo[3] = ((words[2] >> 28) | (words[3] << 36)) & mask;
-        lo[4] = ((words[3] >> 16) | (words[4] << 48)) & mask;
-        hi[0] = (words[4] >> 4) & mask;
-        hi[1] = ((words[4] >> 56) | (words[5] << 8)) & mask;
-        hi[2] = ((words[5] >> 44) | (words[6] << 20)) & mask;
-        hi[3] = ((words[6] >> 32) | (words[7] << 32)) & mask;
-        hi[4] = words[7] >> 20;
+        lo.limbs[0] =   words[0]                             & mask;
+        lo.limbs[1] = ((words[0] >> 52) | (words[ 1] << 12)) & mask;
+        lo.limbs[2] = ((words[1] >> 40) | (words[ 2] << 24)) & mask;
+        lo.limbs[3] = ((words[2] >> 28) | (words[ 3] << 36)) & mask;
+        lo.limbs[4] = ((words[3] >> 16) | (words[ 4] << 48)) & mask;
+        hi.limbs[0] =  (words[4] >>  4)                      & mask;
+        hi.limbs[1] = ((words[4] >> 56) | (words[ 5] <<  8)) & mask;
+        hi.limbs[2] = ((words[5] >> 44) | (words[ 6] << 20)) & mask;
+        hi.limbs[3] = ((words[6] >> 32) | (words[ 7] << 32)) & mask;
+        hi.limbs[4] =   words[7] >> 20                             ;
+
+        // Stage 3 assumption: the 52-bit limb representations cover the original 512-bit value.
+        let ghost lo_raw = lo;
+        let ghost hi_raw = hi;
+        assume(limbs_bounded(&lo_raw));
+        assume(limbs_bounded(&hi_raw));
+        assume(lo_raw.limbs[4] < (1u64 << 52));
+        assume(hi_raw.limbs[4] < (1u64 << 52));
+        assume(wide_input == to_nat(&lo_raw.limbs) + pow2(260) * to_nat(&hi_raw.limbs));
+        assume(to_nat(&lo_raw.limbs) < pow2(260));
+        assume(to_nat(&hi_raw.limbs) < pow2(252));
+
+        // Stage 4 assumption: Montgomery reductions behave as expected for these operands.
+        assume(limbs_bounded(&constants::R));
+        assume(limbs_bounded(&constants::RR));
 
         lo = Scalar52::montgomery_mul(&lo, &constants::R);  // (lo * R) / R = lo
         hi = Scalar52::montgomery_mul(&hi, &constants::RR);  // (hi * R^2) / R = hi * R
 
-        Scalar52::add(&hi, &lo)
+        assume(to_nat(&lo.limbs) % group_order() == to_nat(&lo_raw.limbs) % group_order());
+        assume(to_nat(&hi.limbs) % group_order() == (to_nat(&hi_raw.limbs) * montgomery_radix()) % group_order());
+        assume(to_nat(&lo.limbs) < group_order());
+        assume(to_nat(&hi.limbs) < group_order());
+
+        let result = Scalar52::add(&hi, &lo);
+
+        // Stage 5 assumption: combining the reduced pieces matches the wide scalar modulo L.
+        assume(to_nat(&result.limbs) % group_order() == wide_input % group_order());
+        assume(to_nat(&result.limbs) < group_order());
+
+        result
     }
 
     /// Pack the limbs of this `Scalar52` into 32 bytes

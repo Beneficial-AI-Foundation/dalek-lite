@@ -33,7 +33,15 @@ use crate::lemmas::scalar_montgomery_lemmas::lemma_from_montgomery_is_product_wi
 #[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
 #[allow(unused_imports)]
+use super::common_verus::bit_lemmas::*;
+#[allow(unused_imports)]
+use super::common_verus::shift_lemmas::*;
+#[allow(unused_imports)]
+use super::common_verus::pow_lemmas::*;
+#[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::mul::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
 #[allow(unused_imports)]
@@ -173,19 +181,99 @@ impl Scalar52 {
         for i in 0..8
             invariant
                 0 <= i <= 8,
+                forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
         {
+            words[i] = 0;
+            proof {
+                let i_int = i as int;
+                assert(words@[i_int] == 0);
+                assert(word_from_bytes_partial(bytes, i_int, 0) == 0);
+                assert(words@[i_int] as nat == word_from_bytes_partial(bytes, i_int, 0));
+                assert(words@[i_int] < (1u64 << 0)) by {
+                    assert(words@[i_int] == 0);
+                    assert(1u64 << 0 == 1u64) by (bit_vector);
+                }
+            }
             for j in 0..8
                 invariant
                     0 <= j <= 8,
+                    i < 8,
+                    forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
+                    words@[(i as int)] as nat == word_from_bytes_partial(bytes, i as int, j as int),
+                    (j < 8 ==> words@[(i as int)] < (1u64 << ((j * 8) as u64))),
             {
-                assume({
-                    let idx = (i as u64) * 8 + (j as u64);
-                    idx < 64
-                });
-                words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);
+                proof {
+                    let idx = (i as u64) * 8u64 + (j as u64);
+                    assert(idx < 64);
+                }
+                let byte = bytes[(i * 8) + j];
+                let byte_val = byte as u64;
+                let shift = j * 8;
+                let ghost i_int = i as int;
+                let ghost j_int = j as int;
+                let ghost old_word = words@[i_int];
+
+                words[i] |= byte_val << shift;
+
+                proof {
+                    let shift_u64 = shift as u64;
+                    let shift_int = j_int * 8;
+                    let shift_nat = shift_int as nat;
+                    let byte_nat = byte_val as nat;
+
+                    assert(words@[i_int] == old_word | (byte_val << shift));
+
+                    lemma_mul_inequality(j_int, 7, 8);
+                    assert(7 * 8 == 56) by (compute);
+                    assert(shift_nat <= 56);
+                    assert(shift_u64 == shift_nat as u64);
+                    assert(shift_u64 < 64);
+
+                    u8_times_pow2_fits_u64(byte, shift_nat);
+                    vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(byte_val, shift_u64, u64::MAX);
+
+                    assert(old_word | (byte_val << shift) == old_word + (byte_val << shift)) by {
+                        bit_or_is_plus(old_word, byte_val, shift_u64);
+                    }
+                    assert(words@[i_int] == old_word + (byte_val << shift));
+
+                    vstd::bits::lemma_u64_shl_is_mul(byte_val, shift_u64);
+                    assert((byte_val << shift) as nat == byte_nat * pow2(shift_nat));
+                    assert(words@[i_int] as nat == old_word as nat + byte_nat * pow2(shift_nat));
+
+                    if j < 7 {
+                        lemma_word_from_bytes_partial_step(bytes, i_int, j_int);
+                        assert(words@[i_int] as nat == word_from_bytes_partial(bytes, i_int, j_int + 1));
+
+                        lemma_word_from_bytes_partial_bound(bytes, i_int, j_int + 1);
+                        let shift_next_u64 = ((j + 1) * 8) as u64;
+                        let shift_next_nat = ((j_int + 1) * 8) as nat;
+                        shift_is_pow2(shift_next_nat);
+                        assert(words@[i_int] < (1u64 << shift_next_u64));
+                    } else {
+                        lemma_word_from_bytes_partial_step_last(bytes, i_int);
+                        assert(words@[i_int] as nat == word_from_bytes_partial(bytes, i_int, 8));
+                    }
+                }
             }
         }
-        assume(wide_input == words_to_nat_gen_u64(&words, 8, 64));
+        // Assumption [Stage1-word-chunks]: each 64-bit word produced by the loops matches the
+        // corresponding little-endian chunk of the 64-byte input.
+        assert(forall|k: int| 0 <= k < 8 ==> words@[k] as nat == word_from_bytes(bytes, k));
+
+        // Assumption [Stage1-bytes-equal-chunks]: assembling the eight byte chunks reconstructs
+        // the original 512-bit integer value.
+        assume(bytes_wide_to_nat(bytes) == words_from_bytes_to_nat(bytes, 8));
+
+        // Assumption [Stage1-words-aggregate]: converting the populated word array back to a
+        // natural number agrees with the chunk-based reconstruction.
+        assume(words_to_nat_gen_u64(&words, 8, 64) == words_from_bytes_to_nat(bytes, 8));
+
+        assert(wide_input == words_to_nat_gen_u64(&words, 8, 64)) by {
+            assert(wide_input == bytes_wide_to_nat(bytes));
+            assert(bytes_wide_to_nat(bytes) == words_from_bytes_to_nat(bytes, 8));
+            assert(words_to_nat_gen_u64(&words, 8, 64) == words_from_bytes_to_nat(bytes, 8));
+        };
 
         // Stage 2 assumption: bounds for the intermediate 64-bit words.
         assume(forall|k: int| 0 <= k < 8 ==> words[k] < (1u64 << 64));

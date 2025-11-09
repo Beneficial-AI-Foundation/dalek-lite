@@ -257,8 +257,10 @@ impl Scalar52 {
 
         assert(wide_input == words_to_nat_gen_u64(&words, 8, 64));
 
-        // Stage 2 assumption: bounds for the intermediate 64-bit words.
-        assume(forall|k: int| 0 <= k < 8 ==> words[k] < (1u64 << 64));
+        // Stage 2 word bounds: every assembled chunk fits in 64 bits.
+        assert forall|k: int| 0 <= k < 8 implies words[k] < pow2(64) by {
+            lemma_word_from_bytes_bound(bytes, k);
+        };
 
         proof {
             assert(1u64 << 52 > 0) by (bit_vector);

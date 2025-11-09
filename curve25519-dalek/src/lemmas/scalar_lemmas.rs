@@ -510,6 +510,44 @@ pub proof fn lemma_bytes_wide_to_nat_rec_chunk(bytes: &[u8; 64], word_idx: int)
     }
 }
 
+pub proof fn lemma_word_from_bytes_bound(bytes: &[u8; 64], word_idx: int)
+    requires
+        0 <= word_idx < 8,
+    ensures
+        word_from_bytes(bytes, word_idx) < pow2(64)
+{
+    lemma_word_from_bytes_partial_bound(bytes, word_idx, 7);
+    lemma_word_from_bytes_partial_step_last(bytes, word_idx);
+
+    let prefix = word_from_bytes_partial(bytes, word_idx, 7);
+    let last_byte = bytes[(word_idx * 8 + 7) as int] as nat;
+    let pow56 = pow2(56);
+    let pow64 = pow2(64);
+
+    assert(last_byte < pow2(8)) by {
+        assert(pow2(8) == 256) by {
+            shift_is_pow2(8);
+            assert(1u64 << 8 == 256) by (bit_vector);
+        };
+    };
+
+    pow2_mul_general(last_byte, 8, 56);
+
+    assert(prefix < pow56);
+
+    assert(last_byte * pow56 <= pow64 - pow56);
+
+    let total = word_from_bytes(bytes, word_idx);
+    assert(total == prefix + last_byte * pow56) by {
+        assert(word_from_bytes_partial(bytes, word_idx, 8) ==
+            word_from_bytes_partial(bytes, word_idx, 7) +
+            (bytes[(word_idx * 8 + 7) as int] as nat) * pow2((7 * 8) as nat));
+    };
+
+    assert(total <= (pow56 - 1) + (pow64 - pow56));
+    assert(total <= pow64 - 1);
+}
+
 pub proof fn lemma_words_to_nat_gen_u64_prefix_matches_bytes(
     words: &[u64; 8],
     bytes: &[u8; 64],

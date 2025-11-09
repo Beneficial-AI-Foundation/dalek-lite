@@ -179,9 +179,7 @@ impl Scalar52 {
         // Stage 1 assumption: the byte-to-word packing yields the expected little-endian value.
         let mut words = [0u64; 8];
         proof {
-            reveal_with_fuel(words_from_bytes_to_nat, 9);
-            reveal_with_fuel(bytes_wide_to_nat, 1);
-            assert(words_from_bytes_to_nat(bytes, 0) + bytes_wide_to_nat_rec(bytes, 0) == bytes_wide_to_nat(bytes));
+            lemma_from_bytes_wide_tail_base(bytes);
         }
         for i in 0..8
             invariant
@@ -222,86 +220,25 @@ impl Scalar52 {
                 words[i] |= byte_val << shift;
 
                 proof {
-                    let shift_u64 = shift as u64;
-                    let shift_int = j_int * 8;
-                    let shift_nat = shift_int as nat;
-                    let byte_nat = byte_val as nat;
-
+                    assert(old_word as nat == word_from_bytes_partial(bytes, i_int, j_int));
                     assert(words@[i_int] == old_word | (byte_val << shift));
-
-                    lemma_mul_inequality(j_int, 7, 8);
-                    assert(7 * 8 == 56) by (compute);
-                    assert(shift_nat <= 56);
-                    assert(shift_u64 == shift_nat as u64);
-                    assert(shift_u64 < 64);
-
-                    u8_times_pow2_fits_u64(byte, shift_nat);
-                    vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(byte_val, shift_u64, u64::MAX);
-
-                    assert(old_word | (byte_val << shift) == old_word + (byte_val << shift)) by {
-                        bit_or_is_plus(old_word, byte_val, shift_u64);
-                    }
-                    assert(words@[i_int] == old_word + (byte_val << shift));
-
-                    vstd::bits::lemma_u64_shl_is_mul(byte_val, shift_u64);
-                    assert((byte_val << shift) as nat == byte_nat * pow2(shift_nat));
-                    assert(words@[i_int] as nat == old_word as nat + byte_nat * pow2(shift_nat));
-
-                    if j < 7 {
-                        lemma_word_from_bytes_partial_step(bytes, i_int, j_int);
-                        assert(words@[i_int] as nat == word_from_bytes_partial(bytes, i_int, j_int + 1));
-
-                        lemma_word_from_bytes_partial_bound(bytes, i_int, j_int + 1);
-                        let shift_next_u64 = ((j + 1) * 8) as u64;
-                        let shift_next_nat = ((j_int + 1) * 8) as nat;
-                        shift_is_pow2(shift_next_nat);
-                        assert(words@[i_int] < (1u64 << shift_next_u64));
-                    } else {
-                        lemma_word_from_bytes_partial_step_last(bytes, i_int);
-                        assert(words@[i_int] as nat == word_from_bytes_partial(bytes, i_int, 8));
-                    }
+                    lemma_from_bytes_wide_word_update(bytes, i_int, j_int, old_word, words@[i_int]);
                 }
             }
             proof {
                 let i_int = i as int;
                 if i < 8 {
-                    let next = i_int + 1;
-                    reveal_with_fuel(words_from_bytes_to_nat, 9);
-                    lemma_bytes_wide_to_nat_rec_chunk(bytes, i_int);
-                    let words_prev = words_from_bytes_to_nat(bytes, i_int);
-                    let word_term = word_from_bytes(bytes, i_int) * pow2((i_int * 64) as nat);
-                    let tail_next = bytes_wide_to_nat_rec(bytes, next * 8);
-                    let tail_prev = bytes_wide_to_nat_rec(bytes, i_int * 8);
-                    assert(words_from_bytes_to_nat(bytes, next) == words_prev + word_term);
-                    assert(tail_prev == word_term + tail_next) by {
-                        assert(bytes_wide_to_nat_rec(bytes, i_int * 8) ==
-                            word_from_bytes(bytes, i_int) * pow2((i_int * 64) as nat) +
-                            bytes_wide_to_nat_rec(bytes, next * 8));
-                    };
-                    assert(words_prev + tail_prev == bytes_wide_to_nat(bytes));
-                    assert(words_from_bytes_to_nat(bytes, next) + bytes_wide_to_nat_rec(bytes, next * 8) == bytes_wide_to_nat(bytes)) by {
-                        assert(words_from_bytes_to_nat(bytes, next) + bytes_wide_to_nat_rec(bytes, next * 8) ==
-                            words_prev + word_term + tail_next) by {
-                            assert(words_from_bytes_to_nat(bytes, next) == words_prev + word_term);
-                        }
-                        assert(words_prev + word_term + tail_next == words_prev + (word_term + tail_next)) by (nonlinear_arith);
-                        assert(words_prev + (word_term + tail_next) == words_prev + tail_prev) by {
-                            assert(word_term + tail_next == tail_prev);
-                        }
-                        assert(words_prev + tail_prev == bytes_wide_to_nat(bytes));
-                    };
+                    lemma_from_bytes_wide_tail_step(bytes, i_int);
                 }
             }
         }
-        // Assumption [Stage1-word-chunks]: each 64-bit word produced by the loops matches the
-        // corresponding little-endian chunk of the 64-byte input.
+        // Stage1-word-chunks: each 64-bit word produced by the loops matches the corresponding
+        // little-endian chunk of the 64-byte input.
         assert(forall|k: int| 0 <= k < 8 ==> words@[k] as nat == word_from_bytes(bytes, k));
 
         // Stage1-tail-zero: After consuming all 64 bytes, no value remains in the recursive byte
         // accumulator.
-        assert(bytes_wide_to_nat_rec(bytes, 64) == 0) by {
-            lemma_bytes_wide_to_nat_rec_tail_zero(bytes);
-        };
+        assert(bytes_wide_to_nat_rec(bytes, 64) == 0);
 
         // Stage1-words-plus-tail: Summing the eight word-aligned chunks together with the remaining
         // byte tail reproduces the original 512-bit input.
@@ -309,15 +246,16 @@ impl Scalar52 {
 
         assert(bytes_wide_to_nat(bytes) == words_from_bytes_to_nat(bytes, 8));
 
-        // Assumption [Stage1-words-aggregate]: converting the populated word array back to a
-        // natural number agrees with the chunk-based reconstruction.
-        assume(words_to_nat_gen_u64(&words, 8, 64) == words_from_bytes_to_nat(bytes, 8));
+        // Stage1-words-aggregate: converting the populated word array back to a natural number
+        // agrees with the chunk-based reconstruction for the full 8-word prefix.
+        // Stage1-words-aggregate: turning the eight collected 64-bit words back into a natural
+        // number matches the chunk-based expansion over the same prefix.
+        proof {
+            lemma_words_to_nat_gen_u64_prefix_matches_bytes(&words, bytes, 8);
+        }
+        assert(words_to_nat_gen_u64(&words, 8, 64) == words_from_bytes_to_nat(bytes, 8));
 
-        assert(wide_input == words_to_nat_gen_u64(&words, 8, 64)) by {
-            assert(wide_input == bytes_wide_to_nat(bytes));
-            assert(bytes_wide_to_nat(bytes) == words_from_bytes_to_nat(bytes, 8));
-            assert(words_to_nat_gen_u64(&words, 8, 64) == words_from_bytes_to_nat(bytes, 8));
-        };
+        assert(wide_input == words_to_nat_gen_u64(&words, 8, 64));
 
         // Stage 2 assumption: bounds for the intermediate 64-bit words.
         assume(forall|k: int| 0 <= k < 8 ==> words[k] < (1u64 << 64));

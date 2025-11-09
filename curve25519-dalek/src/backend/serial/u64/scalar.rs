@@ -178,10 +178,16 @@ impl Scalar52 {
 
         // Stage 1 assumption: the byte-to-word packing yields the expected little-endian value.
         let mut words = [0u64; 8];
+        proof {
+            reveal_with_fuel(words_from_bytes_to_nat, 9);
+            reveal_with_fuel(bytes_wide_to_nat, 1);
+            assert(words_from_bytes_to_nat(bytes, 0) + bytes_wide_to_nat_rec(bytes, 0) == bytes_wide_to_nat(bytes));
+        }
         for i in 0..8
             invariant
                 0 <= i <= 8,
                 forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
+                words_from_bytes_to_nat(bytes, i as int) + bytes_wide_to_nat_rec(bytes, (i as int) * 8) == bytes_wide_to_nat(bytes),
         {
             words[i] = 0;
             proof {
@@ -256,14 +262,52 @@ impl Scalar52 {
                     }
                 }
             }
+            proof {
+                let i_int = i as int;
+                if i < 8 {
+                    let next = i_int + 1;
+                    reveal_with_fuel(words_from_bytes_to_nat, 9);
+                    lemma_bytes_wide_to_nat_rec_chunk(bytes, i_int);
+                    let words_prev = words_from_bytes_to_nat(bytes, i_int);
+                    let word_term = word_from_bytes(bytes, i_int) * pow2((i_int * 64) as nat);
+                    let tail_next = bytes_wide_to_nat_rec(bytes, next * 8);
+                    let tail_prev = bytes_wide_to_nat_rec(bytes, i_int * 8);
+                    assert(words_from_bytes_to_nat(bytes, next) == words_prev + word_term);
+                    assert(tail_prev == word_term + tail_next) by {
+                        assert(bytes_wide_to_nat_rec(bytes, i_int * 8) ==
+                            word_from_bytes(bytes, i_int) * pow2((i_int * 64) as nat) +
+                            bytes_wide_to_nat_rec(bytes, next * 8));
+                    };
+                    assert(words_prev + tail_prev == bytes_wide_to_nat(bytes));
+                    assert(words_from_bytes_to_nat(bytes, next) + bytes_wide_to_nat_rec(bytes, next * 8) == bytes_wide_to_nat(bytes)) by {
+                        assert(words_from_bytes_to_nat(bytes, next) + bytes_wide_to_nat_rec(bytes, next * 8) ==
+                            words_prev + word_term + tail_next) by {
+                            assert(words_from_bytes_to_nat(bytes, next) == words_prev + word_term);
+                        }
+                        assert(words_prev + word_term + tail_next == words_prev + (word_term + tail_next)) by (nonlinear_arith);
+                        assert(words_prev + (word_term + tail_next) == words_prev + tail_prev) by {
+                            assert(word_term + tail_next == tail_prev);
+                        }
+                        assert(words_prev + tail_prev == bytes_wide_to_nat(bytes));
+                    };
+                }
+            }
         }
         // Assumption [Stage1-word-chunks]: each 64-bit word produced by the loops matches the
         // corresponding little-endian chunk of the 64-byte input.
         assert(forall|k: int| 0 <= k < 8 ==> words@[k] as nat == word_from_bytes(bytes, k));
 
-        // Assumption [Stage1-bytes-equal-chunks]: assembling the eight byte chunks reconstructs
-        // the original 512-bit integer value.
-        assume(bytes_wide_to_nat(bytes) == words_from_bytes_to_nat(bytes, 8));
+        // Stage1-tail-zero: After consuming all 64 bytes, no value remains in the recursive byte
+        // accumulator.
+        assert(bytes_wide_to_nat_rec(bytes, 64) == 0) by {
+            lemma_bytes_wide_to_nat_rec_tail_zero(bytes);
+        };
+
+        // Stage1-words-plus-tail: Summing the eight word-aligned chunks together with the remaining
+        // byte tail reproduces the original 512-bit input.
+        assert(words_from_bytes_to_nat(bytes, 8) + bytes_wide_to_nat_rec(bytes, 64) == bytes_wide_to_nat(bytes));
+
+        assert(bytes_wide_to_nat(bytes) == words_from_bytes_to_nat(bytes, 8));
 
         // Assumption [Stage1-words-aggregate]: converting the populated word array back to a
         // natural number agrees with the chunk-based reconstruction.

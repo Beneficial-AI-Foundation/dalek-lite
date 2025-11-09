@@ -220,6 +220,175 @@ pub proof fn lemma_word_from_bytes_partial_step_last(bytes: &[u8; 64], word_idx:
     }
 }
 
+pub proof fn lemma_bytes_wide_to_nat_rec_tail_zero(bytes: &[u8; 64])
+    ensures
+        bytes_wide_to_nat_rec(bytes, 64) == 0
+{
+    assert(bytes_wide_to_nat_rec(bytes, 64) == 0) by {
+        reveal_with_fuel(bytes_wide_to_nat_rec, 1);
+    };
+}
+
+pub proof fn lemma_bytes_wide_to_nat_rec_step(bytes: &[u8; 64], idx: int)
+    requires
+        0 <= idx < 64,
+    ensures
+        bytes_wide_to_nat_rec(bytes, idx) ==
+            (bytes[idx as int] as nat) * pow2((idx * 8) as nat) + bytes_wide_to_nat_rec(bytes, idx + 1)
+{
+    assert(bytes_wide_to_nat_rec(bytes, idx) ==
+        (bytes[idx as int] as nat) * pow2((idx * 8) as nat) + bytes_wide_to_nat_rec(bytes, idx + 1)) by {
+        reveal_with_fuel(bytes_wide_to_nat_rec, 1);
+    };
+}
+
+pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes: &[u8; 64], word_idx: int, upto: int)
+    requires
+        0 <= word_idx < 8,
+        0 <= upto <= 8,
+    ensures
+        bytes_wide_to_nat_rec(bytes, word_idx * 8) ==
+            pow2(((word_idx * 8) * 8) as nat) * word_from_bytes_partial(bytes, word_idx, upto) +
+            bytes_wide_to_nat_rec(bytes, word_idx * 8 + upto)
+    decreases upto
+{
+    let base = word_idx * 8;
+    let pow_base = pow2((base * 8) as nat);
+    if upto == 0 {
+        assert(word_from_bytes_partial(bytes, word_idx, 0) == 0);
+        assert(bytes_wide_to_nat_rec(bytes, base) ==
+            pow_base * word_from_bytes_partial(bytes, word_idx, 0) +
+            bytes_wide_to_nat_rec(bytes, base + 0)) by {
+            assert(pow_base * word_from_bytes_partial(bytes, word_idx, 0) == 0) by (nonlinear_arith);
+            assert(bytes_wide_to_nat_rec(bytes, base + 0) == bytes_wide_to_nat_rec(bytes, base)) by (nonlinear_arith);
+        };
+    } else {
+        let prev = upto - 1;
+        lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, word_idx, prev);
+        lemma_bytes_wide_to_nat_rec_step(bytes, base + prev);
+        if upto < 8 {
+            lemma_word_from_bytes_partial_step(bytes, word_idx, prev);
+        } else {
+            lemma_word_from_bytes_partial_step_last(bytes, word_idx);
+        }
+
+        let partial_prev = word_from_bytes_partial(bytes, word_idx, prev);
+        let partial_upto = word_from_bytes_partial(bytes, word_idx, upto);
+        let byte_val = bytes[(base + prev) as int] as nat;
+
+        assert(partial_upto ==
+            partial_prev + byte_val * pow2((prev * 8) as nat));
+
+        assert(bytes_wide_to_nat_rec(bytes, base + prev) ==
+            byte_val * pow2(((base + prev) * 8) as nat) +
+            bytes_wide_to_nat_rec(bytes, base + upto));
+
+        lemma_pow2_adds(((base * 8) as nat), ((prev * 8) as nat));
+        let combined_exp = ((base * 8) as nat) + ((prev * 8) as nat);
+        assert(combined_exp == ((base + prev) * 8) as nat) by {
+            assert(((base * 8) as nat) as int == base * 8);
+            assert(((prev * 8) as nat) as int == prev * 8);
+            assert(combined_exp as int ==
+                (((base * 8) as nat) as int) + (((prev * 8) as nat) as int));
+            assert(combined_exp as int == base * 8 + prev * 8);
+            assert(base * 8 + prev * 8 == (base + prev) * 8) by (nonlinear_arith);
+            assert((((base + prev) * 8) as nat) as int == (base + prev) * 8);
+            assert(combined_exp as int == (((base + prev) * 8) as nat) as int);
+        };
+        assert(pow_base * pow2((prev * 8) as nat) == pow2(((base + prev) * 8) as nat)) by {
+            assert(pow_base == pow2((base * 8) as nat));
+            calc! {
+                (==)
+                pow_base * pow2((prev * 8) as nat); {
+                    assert(pow_base * pow2((prev * 8) as nat) ==
+                        pow2((base * 8) as nat) * pow2((prev * 8) as nat)) by {
+                        assert(pow_base == pow2((base * 8) as nat));
+                    }
+                }
+                pow2((base * 8) as nat) * pow2((prev * 8) as nat); {
+                    lemma_pow2_adds(((base * 8) as nat), ((prev * 8) as nat));
+                }
+                pow2(combined_exp); {
+                    assert(combined_exp == ((base + prev) * 8) as nat);
+                }
+                pow2(((base + prev) * 8) as nat);
+            }
+        };
+
+        calc! {
+            (==)
+            bytes_wide_to_nat_rec(bytes, base); {
+                assert(bytes_wide_to_nat_rec(bytes, base) ==
+                    pow_base * partial_prev + bytes_wide_to_nat_rec(bytes, base + prev));
+            }
+            pow_base * partial_prev + bytes_wide_to_nat_rec(bytes, base + prev); {
+                assert(bytes_wide_to_nat_rec(bytes, base + prev) ==
+                    byte_val * pow2(((base + prev) * 8) as nat) +
+                    bytes_wide_to_nat_rec(bytes, base + upto));
+            }
+            pow_base * partial_prev + byte_val * pow2(((base + prev) * 8) as nat) +
+                bytes_wide_to_nat_rec(bytes, base + upto); {
+                calc! {
+                    (==)
+                    byte_val * pow2(((base + prev) * 8) as nat); {
+                        assert(pow2(((base + prev) * 8) as nat) == pow_base * pow2((prev * 8) as nat)) by {
+                            assert(pow_base * pow2((prev * 8) as nat) == pow2(((base + prev) * 8) as nat));
+                        }
+                    }
+                    byte_val * (pow_base * pow2((prev * 8) as nat)); {
+                        assert(byte_val * (pow_base * pow2((prev * 8) as nat)) ==
+                            pow_base * byte_val * pow2((prev * 8) as nat)) by (nonlinear_arith);
+                    }
+                    pow_base * byte_val * pow2((prev * 8) as nat);
+                }
+            }
+            pow_base * partial_prev + pow_base * byte_val * pow2((prev * 8) as nat) +
+                bytes_wide_to_nat_rec(bytes, base + upto); {
+                assert(pow_base * partial_prev + pow_base * byte_val * pow2((prev * 8) as nat) ==
+                    pow_base * (partial_prev + byte_val * pow2((prev * 8) as nat))) by (nonlinear_arith);
+            }
+            pow_base * (partial_prev + byte_val * pow2((prev * 8) as nat)) +
+                bytes_wide_to_nat_rec(bytes, base + upto); {
+                assert(partial_upto ==
+                    partial_prev + byte_val * pow2((prev * 8) as nat));
+            }
+            pow_base * word_from_bytes_partial(bytes, word_idx, upto) +
+                bytes_wide_to_nat_rec(bytes, base + upto);
+        }
+    }
+}
+
+pub proof fn lemma_bytes_wide_to_nat_rec_chunk(bytes: &[u8; 64], word_idx: int)
+    requires
+        0 <= word_idx < 8,
+    ensures
+        bytes_wide_to_nat_rec(bytes, word_idx * 8) ==
+            word_from_bytes(bytes, word_idx) * pow2((word_idx * 64) as nat) +
+            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8)
+{
+    lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, word_idx, 8);
+    let base = word_idx * 8;
+    calc! {
+        (==)
+        bytes_wide_to_nat_rec(bytes, word_idx * 8); {
+            assert(word_idx * 8 + 8 == (word_idx + 1) * 8) by (nonlinear_arith);
+            assert(bytes_wide_to_nat_rec(bytes, word_idx * 8) ==
+                pow2(((word_idx * 8) * 8) as nat) * word_from_bytes_partial(bytes, word_idx, 8) +
+                bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8));
+        }
+        pow2(((word_idx * 8) * 8) as nat) * word_from_bytes_partial(bytes, word_idx, 8) +
+            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8); {
+            assert(word_from_bytes_partial(bytes, word_idx, 8) == word_from_bytes(bytes, word_idx));
+        }
+        pow2((word_idx * 64) as nat) * word_from_bytes(bytes, word_idx) +
+            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8); {
+            assert((word_idx * 8) * 8 == word_idx * 64) by (nonlinear_arith);
+        }
+        word_from_bytes(bytes, word_idx) * pow2((word_idx * 64) as nat) +
+            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8);
+    }
+}
+
 pub proof fn lemma_52_52(x: u64, y: u64)
     requires
         x < (1u64 << 52),

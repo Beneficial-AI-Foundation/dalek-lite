@@ -335,7 +335,23 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         // Note on "magic numbers":
         // 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
         // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
-        assume(false);  // PROOF BYPASS for arithmetic overflow
+        // assume(false);  // PROOF BYPASS for arithmetic overflow
+        proof {
+            let c0 = 36028797018963664u64; // 16 * (2^51 - 19)
+            let c  = 36028797018963952u64; // 16 * (2^51 -  1)
+
+            // For all limbs, the addition by the chosen constant does not overflow u64.
+            assume(forall|i: int|
+                0 <= i < 5 ==>
+                    self.limbs[i] <= (if i == 0 { u64::MAX - c0 } else { u64::MAX - c })
+            );
+
+            // For all limbs, the subtraction does not underflow (after adding the constant).
+            assume(forall|i: int|
+                0 <= i < 5 ==>
+                    (if i == 0 { self.limbs[i] + c0 } else { self.limbs[i] + c }) >= _rhs.limbs[i]
+            );
+        }
         let output = FieldElement51::reduce(
             [
                 (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],

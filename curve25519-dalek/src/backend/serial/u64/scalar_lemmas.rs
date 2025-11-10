@@ -1873,6 +1873,7 @@ pub proof fn lemma_pow2_eq_pow(n: nat)
     }
 }
 
+// Proof that (a * R) % group_order() == (b * R) % group_order ==> a % group_order() == b % group_order()
 pub proof fn lemma_cancel_mul_pow2_mod(
     a: nat, b: nat, r_pow: nat
 )
@@ -1987,6 +1988,7 @@ pub proof fn lemma_cancel_mul_pow2_mod(
 
 }
 
+// Proof that a % m == b % m ==> (c * a) % m == (c * b) % m
 pub proof fn lemma_mul_factors_congruent_implies_products_congruent(c: int, a: int, b: int, m: int)
     requires
         m > 0,
@@ -2000,26 +2002,13 @@ pub proof fn lemma_mul_factors_congruent_implies_products_congruent(c: int, a: i
     
 }
 
+// Proof that group_order is less than 2^256
 pub proof fn lemma_group_order_smaller_than_pow256()
     ensures 
         group_order() < pow2(256)
 {
-    // unfold the spec for group_order()
-    reveal_with_fuel(group_order, 1);
-    assert(group_order() == pow2(252) + 27742317777372353535851937790883648493nat);
-
-    // pow2(256) == pow2(4 + 252) == pow2(4) * pow2(252) == 16 * pow2(252)
-    lemma_pow2_adds(4, 252);
-    assert(pow2(256) == pow2(4) * pow2(252));
-    assert(pow2(4) == 16) by { lemma2_to64() };
-    assert(pow2(256) == 16 * pow2(252));
-
-    // Now show pow2(252) + C < 16 * pow2(252)  <=>  C < 15 * pow2(252)
-    // Rearrange and prove the numeric inequality by computation/unfolding.
-    assert(pow2(252) + 27742317777372353535851937790883648493nat < 16 * pow2(252)) by (compute);
-
-    // final rewrite to the goal
-    assert(group_order() < pow2(256));
+    lemma_group_order_bound();
+    lemma_pow2_strictly_increases(255, 256);
 }
 
 } // verus!

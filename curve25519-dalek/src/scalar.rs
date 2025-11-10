@@ -2432,6 +2432,7 @@ pub fn unpack(&self) -> (result:
     UnpackedScalar::from_bytes(&self.bytes)
 }
 
+
 /// Reduce this `Scalar` modulo \\(\ell\\).
 #[allow(non_snake_case)]
 fn reduce(&self) -> (result: Scalar)
@@ -2445,15 +2446,53 @@ fn reduce(&self) -> (result: Scalar)
         is_canonical_scalar(&result),
 {
     let x = self.unpack();
-    //    assume(limbs_bounded(&x));
+    assume(limbs_bounded(&x));
     assume(limbs_bounded(&constants::R));
+
     let xR = UnpackedScalar::mul_internal(&x, &constants::R);
     let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
     let result = x_mod_l.pack();
-    // Assume postconditions (to be proven later)
-    assume(bytes_to_nat(&result.bytes) % group_order() == bytes_to_nat(&self.bytes)
-        % group_order());
-    assume(is_canonical_scalar(&result));
+
+
+    // // Assume postconditions (to be proven later)
+    // assume(bytes_to_nat(&result.bytes) % group_order() == bytes_to_nat(&self.bytes)
+    //     % group_order());
+    // assert(is_canonical_scalar(&result));
+
+    proof {
+        assert(slice128_to_nat(&xR) == to_nat(&x.limbs) * to_nat(&constants::R.limbs));
+
+        // montgomery_reduce ensures:
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
+                == slice128_to_nat(&xR) % group_order());
+
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
+                == (to_nat(&x.limbs) * to_nat(&constants::R.limbs)) % group_order());
+
+        assume(to_nat(&constants::R.limbs) % group_order() == montgomery_radix() % group_order());
+
+        lemma_mul_factors_congruent_implies_products_congruent(to_nat(&x.limbs) as int, montgomery_radix() as int, 
+                to_nat(&constants::R.limbs) as int, group_order() as int);
+
+
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
+                == (to_nat(&x.limbs) * montgomery_radix()) % group_order());
+
+        lemma_cancel_mul_pow2_mod(to_nat(&x_mod_l.limbs), to_nat(&x.limbs),
+                                  montgomery_radix());
+
+        assert(to_nat(&x_mod_l.limbs) % group_order() == to_nat(&x.limbs) % group_order());
+
+        assert(bytes_to_nat(&result.bytes) == to_nat(&x_mod_l.limbs) % pow2(256));
+        assert(to_nat(&x_mod_l.limbs) < group_order());
+
+        assert(group_order() < pow2(256)) by {lemma_group_order_smaller_than_pow256() };
+
+        assert(to_nat(&x_mod_l.limbs) < pow2(256));
+        lemma_small_mod(to_nat(&x_mod_l.limbs), pow2(256));
+        assert(bytes_to_nat(&result.bytes) == to_nat(&x_mod_l.limbs));
+    }
+
     result
 }
 

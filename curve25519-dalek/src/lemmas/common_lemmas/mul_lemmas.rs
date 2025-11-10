@@ -243,7 +243,7 @@ pub proof fn lemma_mul_mod_both(x: int, y: int, m: int)
     // Apply lemma_mul_mod_noop_general twice:
     // Step 1: ((x % m) * (y % m)) % m == (x * (y % m)) % m
     lemma_mul_mod_noop_general(x, y, m);
-    // Step 2: (x * (y % m)) % m == (x * y) % m  
+    // Step 2: (x * (y % m)) % m == (x * y) % m
     lemma_mul_mod_noop_general(y, x, m);
 }
 

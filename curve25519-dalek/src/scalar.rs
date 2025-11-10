@@ -2466,11 +2466,6 @@ fn reduce(&self) -> (result: Scalar)
     let result = x_mod_l.pack();
 
 
-    // // Assume postconditions (to be proven later)
-    // assume(bytes_to_nat(&result.bytes) % group_order() == bytes_to_nat(&self.bytes)
-    //     % group_order());
-    // assert(is_canonical_scalar(&result));
-
     proof {
         assert(slice128_to_nat(&xR) == to_nat(&x.limbs) * to_nat(&constants::R.limbs));
 

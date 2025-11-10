@@ -1754,6 +1754,7 @@ pub proof fn lemma_scalar52_lt_pow2_256_if_canonical(a: &Scalar52)
     }
 }
 
+// Proof that pow2(n) is even for n >= 1
 pub proof fn lemma_pow2_even(n: nat)
     requires
         n >= 1,
@@ -1763,50 +1764,37 @@ pub proof fn lemma_pow2_even(n: nat)
         n
 {
     if n == 1 {
-        // pow2(1) == 2
         assert(pow2(1) == 2) by { lemma2_to64(); };
         assert(2int % 2int == 0) by { lemma_mod_self_0(2) };
     } else {
         let m = (n - 1) as nat;
-        // pow2(n) == pow2(1 + m) == pow2(1) * pow2(m) == 2 * pow2(m)
         lemma_pow2_adds(1, m);
         assert(pow2(n) == pow2(1) * pow2(m));
         assert(pow2(1) == 2) by {lemma2_to64()};
 
-        // work modulo 2: (2 * pow2(m)) % 2 == (2 * (pow2(m) % 2)) % 2
         lemma_mul_mod_noop_right(2 as int, pow2(m) as int, 2 as int);
 
-        // IH: pow2(m) % 2 == 0
         lemma_pow2_even(m);
 
-        // combine: RHS becomes 0, so pow2(n) % 2 == 0
         assert((2 * (pow2(m) as int % 2)) % 2 == 0);
         assert(pow2(n) as int % 2 == 0);
     }
 }
 
-// Main lemma: group_order() is odd
+// Proof that group_order() is odd
 pub proof fn lemma_group_order_is_odd()
     ensures
         group_order() % 2 == 1
 {
-    // Unfold the spec definition: group_order() == pow2(252) + CONST
-    reveal_with_fuel(group_order, 1);
-    // Compute the concrete equality (unfold the spec)
     assert(group_order() == pow2(252) + 27742317777372353535851937790883648493nat);
 
-    // pow2(252) is even
     lemma_pow2_even(252);
     assert((pow2(252) as int) % 2 == 0);
 
     // Reduce the sum modulo 2: (A + B) % 2 == ((A % 2) + (B % 2)) % 2
-    // Use existing add-mod lemma (available in vstd/common_verus)
     lemma_add_mod_noop(pow2(252) as int, 27742317777372353535851937790883648493nat as int, 2 as int);
 
-    // compute the parity of the constant term (literal)
     assert((27742317777372353535851937790883648493nat as int) % 2 == 1);
-
-    // So group_order() % 2 == (0 + 1) % 2 == 1
     assert(group_order() % 2 == 1);
 }
 
@@ -1821,11 +1809,9 @@ pub proof fn lemma_pow_mod_one(x: int, n: nat, m: int)
         n
 {
     if n == 0 {
-        // pow(_,0) == 1
         assert(pow(x, 0) == 1) by {lemma_pow0(x)};
         assert(1int % m == 1) by {lemma_small_mod(1nat, m as nat)};
         assert(pow(x, n) % m == 1);
-
     } else {
         lemma_pow_mod_one(x, (n - 1) as nat, m);
         // pow(x,n) == pow(x,n-1) * x
@@ -1834,6 +1820,7 @@ pub proof fn lemma_pow_mod_one(x: int, n: nat, m: int)
             lemma_pow1(x);
         };
 
+        // x^n = x^(n - 1) * x (mod m)
         assert(pow(x, n) % m == (pow(x, (n - 1) as nat) * x) % m);
         assert(pow(x, n) % m == ((pow(x, (n - 1) as nat) % m) * (x % m)) % m) by {
             lemma_mul_mod_noop(pow(x, (n - 1) as nat), x, m);
@@ -1861,7 +1848,7 @@ pub proof fn lemma_pow2_eq_pow(n: nat)
         let m = (n - 1) as nat;
         lemma_pow2_eq_pow(m);
 
-        lemma_pow2_adds(1, m); // pow2(1 + m) == pow2(1) * pow2(m)
+        lemma_pow2_adds(1, m);
         assert(pow2(1) == 2) by {lemma2_to64()};
         assert(pow2(n) == 2 * pow2(m));
 
@@ -1885,10 +1872,9 @@ pub proof fn lemma_cancel_mul_pow2_mod(
     ensures
         a % group_order() == b % group_order()
 {
-     // Constructive proof using inverse-of-2 modulo L.
+    // Constructive proof using inverse-of-2 modulo L.
     let L = group_order();
 
-    // L is odd
     lemma_group_order_is_odd();
 
     // Define inv2 = (L + 1) / 2
@@ -1941,14 +1927,13 @@ pub proof fn lemma_cancel_mul_pow2_mod(
         // Use the converse lemma: if x == q * d + r and 0 <= r < d then r == x % d
         lemma_fundamental_div_mod_converse((L + 1) as int, L as int, 1, 1);
 
-        // finish
         assert((L + 1) % L == 1);
     }
 
     // pow((inv2 * 2), 260) % L == 1
     lemma_pow_mod_one((inv2 * 2) as int, 260, L as int);
 
-    // pow multiplicative property: pow(inv2 * 2, 260) == pow(inv2,260) * pow(2,260)\
+    // pow(inv2 * 2, 260) == pow(inv2,260) * pow(2,260)
     lemma_pow_distributes(inv2 as int, 2int, 260);
 
     // Using the above, (pow(inv2,260) * pow(2,260)) % L == 1
@@ -1979,12 +1964,8 @@ pub proof fn lemma_cancel_mul_pow2_mod(
             by {lemma_mul_is_associative(b as int, r_pow as int, inv_pow as int)};
     // assert((a * (r_pow * inv_pow)) % (L as int) == (b * (r_pow * inv_pow)) % (L as int));
 
-    // We had (a * c) % L == (b * c) % L. Since c % L == 1, we can reduce both sides:
-    // (a * c) % L == (a * 1) % L and (b * c) % L == (b * 1) % L
     lemma_mul_factors_congruent_implies_products_congruent(a as int, c, 1, L as int);
     lemma_mul_factors_congruent_implies_products_congruent(b as int, c, 1, L as int);
-    // Therefore a % L == b % L
-    // (The previous two calls rewrote left and right to a%L and b%L which are equal by the established congruence.)
 
 }
 

@@ -83,7 +83,10 @@ pub open spec fn field_add(a: nat, b: nat) -> nat {
 
 /// Spec-level field subtraction
 pub open spec fn field_sub(a: nat, b: nat) -> nat {
-    (((a % p()) + p()) - (b % p())) as nat % p()
+    (((a % p()) + p()) - (b % p())) as nat
+        % p()
+    // (((a ) + p()) - (b )) as nat % p()
+
 }
 
 /// Spec-level field multiplication

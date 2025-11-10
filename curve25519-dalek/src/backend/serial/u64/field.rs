@@ -18,6 +18,7 @@ use core::ops::{Sub, SubAssign};
 
 use subtle::Choice;
 use subtle::ConditionallySelectable;
+use vstd::calc;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
@@ -319,9 +320,11 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
 
         ensures
             output == spec_sub_limbs(self, _rhs),
+            // Is the next line correct?
             field_element(&output) == field_sub(field_element(self), field_element(_rhs)),
             limbs_bounded(&output, 54),
     {
+        assert(limbs_bounded(self, 54) && limbs_bounded(_rhs, 54));
         // To avoid underflow, first add a multiple of p.
         // Choose 16*p = p << 4 to be larger than 54-bit _rhs.
         //
@@ -337,20 +340,24 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
         // assume(false);  // PROOF BYPASS for arithmetic overflow
         proof {
-            let c0 = 36028797018963664u64; // 16 * (2^51 - 19)
-            let c  = 36028797018963952u64; // 16 * (2^51 -  1)
+            let c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
+            let c = 36028797018963952u64;  // 16 * (2^51 -  1)
 
             // For all limbs, the addition by the chosen constant does not overflow u64.
             assume(forall|i: int|
-                0 <= i < 5 ==>
-                    self.limbs[i] <= (if i == 0 { u64::MAX - c0 } else { u64::MAX - c })
-            );
+                0 <= i < 5 ==> self.limbs[i] <= (if i == 0 {
+                    u64::MAX - c0
+                } else {
+                    u64::MAX - c
+                }));
 
             // For all limbs, the subtraction does not underflow (after adding the constant).
             assume(forall|i: int|
-                0 <= i < 5 ==>
-                    (if i == 0 { self.limbs[i] + c0 } else { self.limbs[i] + c }) >= _rhs.limbs[i]
-            );
+                0 <= i < 5 ==> (if i == 0 {
+                    self.limbs[i] + c0
+                } else {
+                    self.limbs[i] + c
+                }) >= _rhs.limbs[i]);
         }
         let output = FieldElement51::reduce(
             [
@@ -361,6 +368,23 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
                 (self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4],
             ],
         );
+        assert(limbs_bounded(&output, 52));
+        calc! {
+        (==)
+                field_element(&output); { assume(false)}
+        FieldElement51::reduce(
+            [
+                (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],
+                (self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1],
+                (self.limbs[2] + 36028797018963952u64) - _rhs.limbs[2],
+                (self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3],
+                (self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4],
+            ],
+        ); { assume(false)}
+        field_sub(field_element(self), field_element(_rhs));
+        }
+
+        assume(limbs_bounded(&output, 54));  // Should be easy
         assume(field_element(&output) == field_sub(field_element(self), field_element(_rhs)));
         output
     }

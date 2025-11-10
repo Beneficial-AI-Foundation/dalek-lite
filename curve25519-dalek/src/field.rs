@@ -232,7 +232,12 @@ impl FieldElement {
         // - Algebraic lemmas: lemma_pow_adds, lemma_pow_multiplies, lemma_pow2_geometric
         // - Modular lemma: lemma_pow_mod_noop to connect as_nat(self.limbs) to field_element(self)
         let t0 = self.square();  // 1         e_0 = 2^1
-        let t1 = t0.square().square();  // 3         e_1 = 2^3 = 8
+
+        //NOTE: Changing the code!!!
+        // Break apart chained call to track intermediate postcondition
+        let t0_sq = t0.square();  // e = 4 (intermediate step)
+        // let t1 = t0.square().square();  // 3         e_1 = 2^3 = 8
+        let t1 = t0_sq.square();  // 3         e_1 = 2^3 = 8
         let t2 = self * &t1;  // 3,0       e_2 = 2^3 + 2^0 = 9
         let t3 = &t0 * &t2;  // 3,1,0
         let t4 = t3.square();  // 4,2,1
@@ -257,21 +262,8 @@ impl FieldElement {
             pow255_gt_19();  // Prove p() > 0
 
             assert(as_nat(t0.limbs) % p() == pow(as_nat(self.limbs) as int, 2) as nat % p());
-            
-            // t1 comes from t0.square().square()
-            // From the square() postcondition, chaining two squares should give us:
-            // t1 % p() == pow(pow(t0 % p(), 2), 2) % p()
-            // 
-            // Note: Verus currently cannot automatically reason about chained method calls
-            // because we don't have access to the intermediate value. A full proof would require
-            // either:
-            // 1. Breaking apart the chained call (which modifies the implementation)
-            // 2. A more sophisticated proof technique that doesn't require the intermediate value
-            //
-            // For now, we use assume to establish this relationship, which is sound because
-            // it follows directly from the postcondition of square() applied twice.
-            assume(as_nat(t1.limbs) % p() == pow(pow(as_nat(t0.limbs) as int, 2), 2) as nat % p());
-            
+            assert(as_nat(t0_sq.limbs) % p() == pow(as_nat(t0.limbs) as int, 2) as nat % p());
+            assert(as_nat(t1.limbs) % p() == pow(as_nat(t0_sq.limbs) as int, 2) as nat % p());
             // For mul operations, use lemma to convert from field_mul to direct multiplication
             lemma_mul_mod_noop_general(
                 as_nat(self.limbs) as int,
@@ -290,18 +282,20 @@ impl FieldElement {
             lemma_pow22501_prove_t3(
                 self.limbs,
                 t0.limbs,
+                t0_sq.limbs,
                 t1.limbs,
                 t2.limbs,
                 t3.limbs,
             );
 
             // The lemma proves:
+            // - as_nat(t0_sq.limbs) % p() == pow(base, 4) as nat % p()
             // - as_nat(t1.limbs) % p() == pow(base, 8) as nat % p()
             // - as_nat(t2.limbs) % p() == pow(base, 9) as nat % p()
             // - as_nat(t3.limbs) % p() == pow(base, 11) as nat % p()
 
             let base = as_nat(self.limbs) as int;
-       
+
             // Prove t19 = x^(2^250-1) using explicit lemma
             // Square operation postcondition (t4 = t3^2)
             assert(as_nat(t4.limbs) % p() == pow(as_nat(t3.limbs) as int, 2) as nat % p());

@@ -338,7 +338,6 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         // Note on "magic numbers":
         // 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
         // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
-        // assume(false);  // PROOF BYPASS for arithmetic overflow
         proof {
             let c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
             let c = 36028797018963952u64;  // 16 * (2^51 -  1)
@@ -359,6 +358,13 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
                     self.limbs[i] + c
                 }) >= _rhs.limbs[i]);
         }
+        let ghost unreduced = [
+                ((self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0]) as u64,
+                ((self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1]) as u64,
+                ((self.limbs[2] + 36028797018963952u64) - _rhs.limbs[2]) as u64,
+                ((self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3]) as u64,
+                ((self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4]) as u64,
+            ];
         let output = FieldElement51::reduce(
             [
                 (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],
@@ -369,19 +375,30 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
             ],
         );
         assert(limbs_bounded(&output, 52));
-        calc! {
-        (==)
-                field_element(&output); { assume(false)}
-        FieldElement51::reduce(
-            [
-                (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],
-                (self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1],
-                (self.limbs[2] + 36028797018963952u64) - _rhs.limbs[2],
-                (self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3],
-                (self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4],
-            ],
-        ); { assume(false)}
-        field_sub(field_element(self), field_element(_rhs));
+        // as_nat(limbs) - p() * (limbs[4] >> 51)
+        proof {
+            calc! {
+                (==)
+                field_element(&output); { assume(false) }
+as_nat(output.limbs) % p(); { assume(false)/*expanding field element*/ }
+as_nat(unreduced) % p(); { assume(false) /* from postcondition of reduce, maybe won't work*/}
+                // field_element(
+                //     &FieldElement51::reduce(
+                //         [
+                //             ((self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0]) as u64,
+                //             ((self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1]) as u64,
+                //             ((self.limbs[2] + 36028797018963952u64) - _rhs.limbs[2]) as u64,
+                //             ((self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3]) as u64,
+                //             ((self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4]) as u64,
+                //         ],
+                //     ),
+                // );
+
+   ( (unreduced[0] as nat) + pow2(51) * (unreduced[1] as nat) + pow2(102) * (unreduced[2] as nat) + pow2(153) * (unreduced[3] as nat) + pow2(204) * (unreduced[4] as nat)) % p(); { assume(false) /* from postcondition of reduce*/ }
+                // Group terms of self, rhs, and constant term
+                // lemma saying that as nat of constant is 16 *p
+                field_sub(field_element(self), field_element(_rhs));
+            }
         }
 
         assume(limbs_bounded(&output, 54));  // Should be easy

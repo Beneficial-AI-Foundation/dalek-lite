@@ -122,6 +122,8 @@ use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
+use vstd::bits::lemma_u64_shl_is_mul;
+use vstd::calc;
 
 #[cfg(feature = "group")]
 use group::ff::{Field, FromUniformBytes, PrimeField};
@@ -2436,7 +2438,6 @@ pub fn unpack(&self) -> (result:
 #[allow(non_snake_case)]
 fn reduce(&self) -> (result: Scalar)
 // VERIFICATION NOTE: PROOF BYPASS
-
     ensures
 // Result is equivalent to input modulo the group order
 
@@ -2445,17 +2446,85 @@ fn reduce(&self) -> (result: Scalar)
         is_canonical_scalar(&result),
 {
     let x = self.unpack();
-    //    assume(limbs_bounded(&x));
-    assume(limbs_bounded(&constants::R));
+
+    assert(limbs_bounded(&constants::R)) by {
+        // prove each literal limb is < 2^52
+        assert(constants::R.limbs[0] < 0x10000000000000) by (compute_only);
+        assert(constants::R.limbs[1] < 0x10000000000000) by (compute_only);
+        assert(constants::R.limbs[2] < 0x10000000000000) by (compute_only);
+        assert(constants::R.limbs[3] < 0x10000000000000) by (compute_only);
+        assert(constants::R.limbs[4] < 0x10000000000000) by (compute_only);
+
+        assert(0x10000000000000 == pow2(52)) by {lemma2_to64_rest()};
+        assert(pow2(52) == (1u64 << 52)) by {lemma_u64_shl_is_mul(1, 52)};
+
+    }
+
     let xR = UnpackedScalar::mul_internal(&x, &constants::R);
     let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
     let result = x_mod_l.pack();
-    // Assume postconditions (to be proven later)
-    assume(bytes_to_nat(&result.bytes) % group_order() == bytes_to_nat(&self.bytes)
-        % group_order());
-    assume(is_canonical_scalar(&result));
+
+
+    proof {
+        assert(slice128_to_nat(&xR) == to_nat(&x.limbs) * to_nat(&constants::R.limbs));
+
+        // montgomery_reduce ensures:
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
+                == slice128_to_nat(&xR) % group_order());
+
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
+                == (to_nat(&x.limbs) * to_nat(&constants::R.limbs)) % group_order());
+
+        assert(to_nat(&constants::R.limbs) % group_order() == montgomery_radix() % group_order()) by {
+            lemma_five_limbs_equals_to_nat(&constants::R.limbs);
+
+            lemma2_to64();
+            lemma2_to64_rest();
+            lemma_pow2_adds(52, 52);  // prove pow2(104)
+            lemma_pow2_adds(104, 52);  // prove pow2(156)
+            lemma_pow2_adds(156, 52);  // prove pow2(208)
+            lemma_pow2_adds(208, 44);  // prove pow2(252)
+            lemma_pow2_adds(208, 52);  // prove pow2(260)
+
+            let r_calc: nat = five_limbs_to_nat_aux(constants::R.limbs);
+            lemma_small_mod(r_calc, group_order());  // necessary for to_nat(&constants::R.limbs) == to_nat(&constants::R.limbs) % group_order()
+
+            calc! {
+                (==)
+                montgomery_radix() % group_order(); {}
+                pow2(260) % group_order(); {}
+                1852673427797059126777135760139006525652319754650249024631321344126610074238976_nat
+                    % 7237005577332262213973186563042994240857116359379907606001950938285454250989_nat; {}
+                r_calc;
+            }
+        };
+
+        lemma_mul_factors_congruent_implies_products_congruent(to_nat(&x.limbs) as int, montgomery_radix() as int, 
+                to_nat(&constants::R.limbs) as int, group_order() as int);
+
+
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
+                == (to_nat(&x.limbs) * montgomery_radix()) % group_order());
+
+        lemma_cancel_mul_pow2_mod(to_nat(&x_mod_l.limbs), to_nat(&x.limbs),
+                                  montgomery_radix());
+
+        assert(to_nat(&x_mod_l.limbs) % group_order() == to_nat(&x.limbs) % group_order());
+
+        assert(bytes_to_nat(&result.bytes) == to_nat(&x_mod_l.limbs) % pow2(256));
+        assert(to_nat(&x_mod_l.limbs) < group_order());
+
+        assert(group_order() < pow2(256)) by {lemma_group_order_smaller_than_pow256() };
+
+        assert(to_nat(&x_mod_l.limbs) < pow2(256));
+        lemma_small_mod(to_nat(&x_mod_l.limbs), pow2(256));
+        assert(bytes_to_nat(&result.bytes) == to_nat(&x_mod_l.limbs));
+    }
+
     result
 }
+
+
 
 /// Check whether this `Scalar` is the canonical representative mod \\(\ell\\). This is not
 /// public because any `Scalar` that is publicly observed is reduced, by scalar invariant #2.

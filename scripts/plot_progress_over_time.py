@@ -344,10 +344,6 @@ def plot_absolute_counts(df: pd.DataFrame, output_dir: Path):
 
     # Format x-axis dates
     from matplotlib.dates import DateFormatter
-<<<<<<< HEAD
-
-=======
->>>>>>> 3c2bc022 (Refactor website layout and clean up chart styling; remove velocity and external_body metrics)
     ax.xaxis.set_major_formatter(DateFormatter("%b %d"))
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()

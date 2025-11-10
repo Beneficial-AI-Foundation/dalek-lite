@@ -314,13 +314,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('proofCompletionRate').textContent = `${stats.proof_completion_rate}%`;
             document.getElementById('proofCompletionDesc').textContent = 
                 `${stats.fully_verified} of ${stats.with_specs} specs are fully proven`;
-<<<<<<< HEAD
-            
-            // Update CSV preview and modal totals
-            document.getElementById('csvPreviewTotal').textContent = stats.total_functions;
-            document.getElementById('csvModalTotal').textContent = stats.total_functions;
-=======
->>>>>>> 3c2bc022 (Refactor website layout and clean up chart styling; remove velocity and external_body metrics)
         } catch (error) {
             console.error('Error loading stats:', error);
             // Keep fallback values that are hardcoded in HTML

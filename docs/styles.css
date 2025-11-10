@@ -249,7 +249,10 @@ body {
 
 .right-column .chart-card {
     margin: 0;
+<<<<<<< HEAD
+=======
     height: 100%;
+>>>>>>> 3c2bc022 (Refactor website layout and clean up chart styling; remove velocity and external_body metrics)
 }
 
 .csv-link {

@@ -55,9 +55,7 @@ use crate::specs::field_specs::*;
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
 use crate::field_lemmas::pow22501_t3_lemma::*;
-
-#[allow(unused_imports)]
-use crate::field_specs::*;
+use crate::field_lemmas::pow22501_t19_lemma::*;
 
 verus! {
 
@@ -272,118 +270,94 @@ impl FieldElement {
         }
         
         let t4 = t3.square();  // 4,2,1
-        proof {
-            // square: (x^11)^2 = x^22
-            lemma_pow_multiplies(as_nat(self.limbs) as int, 11, 2);
-        }
-        
         let t5 = &t2 * &t4;  // 4,3,2,1,0
-        proof {
-            // mul: x^9 * x^22 = x^31 = x^(2^5 - 1)
-            lemma_pow_adds(as_nat(self.limbs) as int, 9, 22);
-            assert(31 == pow2(5) - 1) by { lemma2_to64(); }
-        }
-        
         let t6 = t5.pow2k(5);  // 9,8,7,6,5
-        proof {
-            // pow2k: (x^(2^5-1))^(2^5) = x^((2^5-1)·2^5)
-            lemma_pow_multiplies(as_nat(self.limbs) as int, (pow2(5) - 1) as nat, pow2(5) as nat);
-        }
-        
         let t7 = &t6 * &t5;  // 9,8,7,6,5,4,3,2,1,0
-        proof {
-            // mul: x^((2^5-1)·2^5) * x^(2^5-1) = x^((2^5-1)·2^5 + (2^5-1)) = x^(2^10-1)
-            lemma_pow_adds(as_nat(self.limbs) as int, ((pow2(5) - 1) * pow2(5)) as nat, (pow2(5) - 1) as nat);
-            lemma_pow2_geometric_double(5);
-        }
-        
         let t8 = t7.pow2k(10);  // 19..10
-        proof {
-            // pow2k: (x^(2^10-1))^(2^10) = x^((2^10-1)·2^10)
-            lemma_pow_multiplies(as_nat(self.limbs) as int, (pow2(10) - 1) as nat, pow2(10) as nat);
-        }
-        
         let t9 = &t8 * &t7;  // 19..0
-        proof {
-            // mul + geometric: x^((2^10-1)·2^10) * x^(2^10-1) = x^(2^20-1)
-            lemma_pow_adds(as_nat(self.limbs) as int, ((pow2(10) - 1) * pow2(10)) as nat, (pow2(10) - 1) as nat);
-            lemma_pow2_geometric_double(10);
-        }
-        
         let t10 = t9.pow2k(20);  // 39..20
-        proof {
-            // pow2k: (x^(2^20-1))^(2^20) = x^((2^20-1)·2^20)
-            lemma_pow_multiplies(as_nat(self.limbs) as int, (pow2(20) - 1) as nat, pow2(20) as nat);
-        }
-        
         let t11 = &t10 * &t9;  // 39..0
-        proof {
-            // mul + geometric: x^((2^20-1)·2^20) * x^(2^20-1) = x^(2^40-1)
-            lemma_pow_adds(as_nat(self.limbs) as int, ((pow2(20) - 1) * pow2(20)) as nat, (pow2(20) - 1) as nat);
-            lemma_pow2_geometric_double(20);
-        }
-        
         let t12 = t11.pow2k(10);  // 49..10
-        proof {
-            // pow2k: (x^(2^40-1))^(2^10) = x^((2^40-1)·2^10)
-            lemma_pow_multiplies(as_nat(self.limbs) as int, (pow2(40) - 1) as nat, pow2(10) as nat);
-        }
-        
         let t13 = &t12 * &t7;  // 49..0
-        proof {
-            // mul + geometric: x^((2^40-1)·2^10) * x^(2^10-1) = x^(2^50-1)
-            lemma_pow_adds(as_nat(self.limbs) as int, ((pow2(40) - 1) * pow2(10)) as nat, (pow2(10) - 1) as nat);
-            lemma_pow2_geometric(40, 10);
-        }
-        
         let t14 = t13.pow2k(50);  // 99..50
-        proof {
-            // pow2k: (x^(2^50-1))^(2^50) = x^((2^50-1)·2^50)
-            lemma_pow_multiplies(as_nat(self.limbs) as int, (pow2(50) - 1) as nat, pow2(50) as nat);
-        }
-        
         let t15 = &t14 * &t13;  // 99..0
-        proof {
-            // mul + geometric: x^((2^50-1)·2^50) * x^(2^50-1) = x^(2^100-1)
-            lemma_pow_adds(as_nat(self.limbs) as int, ((pow2(50) - 1) * pow2(50)) as nat, (pow2(50) - 1) as nat);
-            lemma_pow2_geometric_double(50);
-        }
-        
         let t16 = t15.pow2k(100);  // 199..100
-        proof {
-            // pow2k: (x^(2^100-1))^(2^100) = x^((2^100-1)·2^100)
-            lemma_pow_multiplies(as_nat(self.limbs) as int, (pow2(100) - 1) as nat, pow2(100) as nat);
-        }
-        
         let t17 = &t16 * &t15;  // 199..0
-        proof {
-            // mul + geometric: x^((2^100-1)·2^100) * x^(2^100-1) = x^(2^200-1)
-            lemma_pow_adds(as_nat(self.limbs) as int, ((pow2(100) - 1) * pow2(100)) as nat, (pow2(100) - 1) as nat);
-            lemma_pow2_geometric_double(100);
-        }
-        
         let t18 = t17.pow2k(50);  // 249..50
-        proof {
-            // pow2k: (x^(2^200-1))^(2^50) = x^((2^200-1)·2^50)
-            lemma_pow_multiplies(as_nat(self.limbs) as int, (pow2(200) - 1) as nat, pow2(50) as nat);
-        }
-        
         let t19 = &t18 * &t13;  // 249..0
-        proof {
-            // mul + geometric: x^((2^200-1)·2^50) * x^(2^50-1) = x^(2^250-1)
-            lemma_pow_adds(as_nat(self.limbs) as int, ((pow2(200) - 1) * pow2(50)) as nat, (pow2(50) - 1) as nat);
-            lemma_pow2_geometric(200, 50);
-        }
         
-        // CHECKPOINT: The same compositional reasoning issue prevents proving this
+        // Prove t19 = x^(2^250-1) using explicit lemma
         proof {
-            // ROOT CAUSE (same as for t3):
-            // Z3 needs: if a % m == b % m, then pow(a, n) % m == pow(b, n) % m
-            // This lemma doesn't exist in the codebase.
-            //
-            // Without it, Z3 can't track exponents through 19 chained operations,
-            // each of which involves this substitution pattern.
-            assume(as_nat(t19.limbs) % p() == pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p());
+            // Square operation postcondition (t4 = t3^2)
+            assert(as_nat(t4.limbs) % p() == pow(as_nat(t3.limbs) as int, 2) as nat % p());
+            
+            // Assert all field operation postconditions for mul operations
+            lemma_mul_mod_noop_general(as_nat(t2.limbs) as int, as_nat(t4.limbs) as int, p() as int);
+            assert(as_nat(t5.limbs) % p() == (as_nat(t2.limbs) * as_nat(t4.limbs)) % p());
+            
+            // pow2k operations postconditions - these come from the method postconditions
+            assert(as_nat(t6.limbs) % p() == pow(as_nat(t5.limbs) as int, pow2(5)) as nat % p());
+            
+            lemma_mul_mod_noop_general(as_nat(t6.limbs) as int, as_nat(t5.limbs) as int, p() as int);
+            assert(as_nat(t7.limbs) % p() == (as_nat(t6.limbs) * as_nat(t5.limbs)) % p());
+            
+            assert(as_nat(t8.limbs) % p() == pow(as_nat(t7.limbs) as int, pow2(10)) as nat % p());
+            
+            lemma_mul_mod_noop_general(as_nat(t8.limbs) as int, as_nat(t7.limbs) as int, p() as int);
+            assert(as_nat(t9.limbs) % p() == (as_nat(t8.limbs) * as_nat(t7.limbs)) % p());
+            
+            assert(as_nat(t10.limbs) % p() == pow(as_nat(t9.limbs) as int, pow2(20)) as nat % p());
+            
+            lemma_mul_mod_noop_general(as_nat(t10.limbs) as int, as_nat(t9.limbs) as int, p() as int);
+            assert(as_nat(t11.limbs) % p() == (as_nat(t10.limbs) * as_nat(t9.limbs)) % p());
+            
+            assert(as_nat(t12.limbs) % p() == pow(as_nat(t11.limbs) as int, pow2(10)) as nat % p());
+            
+            lemma_mul_mod_noop_general(as_nat(t12.limbs) as int, as_nat(t7.limbs) as int, p() as int);
+            assert(as_nat(t13.limbs) % p() == (as_nat(t12.limbs) * as_nat(t7.limbs)) % p());
+            
+            assert(as_nat(t14.limbs) % p() == pow(as_nat(t13.limbs) as int, pow2(50)) as nat % p());
+            
+            lemma_mul_mod_noop_general(as_nat(t14.limbs) as int, as_nat(t13.limbs) as int, p() as int);
+            assert(as_nat(t15.limbs) % p() == (as_nat(t14.limbs) * as_nat(t13.limbs)) % p());
+            
+            assert(as_nat(t16.limbs) % p() == pow(as_nat(t15.limbs) as int, pow2(100)) as nat % p());
+            
+            lemma_mul_mod_noop_general(as_nat(t16.limbs) as int, as_nat(t15.limbs) as int, p() as int);
+            assert(as_nat(t17.limbs) % p() == (as_nat(t16.limbs) * as_nat(t15.limbs)) % p());
+            
+            assert(as_nat(t18.limbs) % p() == pow(as_nat(t17.limbs) as int, pow2(50)) as nat % p());
+            
+            lemma_mul_mod_noop_general(as_nat(t18.limbs) as int, as_nat(t13.limbs) as int, p() as int);
+            assert(as_nat(t19.limbs) % p() == (as_nat(t18.limbs) * as_nat(t13.limbs)) % p());
+            
+            // Use our comprehensive lemma to prove t19 = x^(2^250-1)
+            lemma_pow22501_prove_t19(
+                self.limbs,
+                t0.limbs,
+                t1.limbs,
+                t2.limbs,
+                t3.limbs,
+                t4.limbs,
+                t5.limbs,
+                t6.limbs,
+                t7.limbs,
+                t8.limbs,
+                t9.limbs,
+                t10.limbs,
+                t11.limbs,
+                t12.limbs,
+                t13.limbs,
+                t14.limbs,
+                t15.limbs,
+                t16.limbs,
+                t17.limbs,
+                t18.limbs,
+                t19.limbs,
+            );
+            
+            // The lemma proves:
+            // as_nat(t19.limbs) % p() == pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p()
         }
 
         (t19, t3)

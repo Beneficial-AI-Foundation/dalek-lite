@@ -167,25 +167,29 @@ def load_stats_history(history_file: Path) -> pd.DataFrame:
     print(f"Loading stats history from {history_file}...")
 
     historical_data = []
-    with open(history_file, "r") as f:
-        for line in f:
+    with open(history_file, "r", encoding="utf-8") as f:
+        for line_num, line in enumerate(f, 1):
             line = line.strip()
             if not line:
                 continue
-            entry = json.loads(line)
-            historical_data.append(
-                {
-                    "commit": entry[
-                        "commit"
-                    ],  # Store full hash, truncate only for display
-                    "date": pd.to_datetime(entry["date"]),
-                    "total": entry["total"],
-                    "verus_specs": entry["specs"],
-                    "verus_specs_full": entry["specs"],
-                    "verus_specs_external": entry["specs_external"],
-                    "verus_proofs": entry["proofs"],
-                }
-            )
+            try:
+                entry = json.loads(line)
+                historical_data.append(
+                    {
+                        "commit": entry[
+                            "commit"
+                        ],  # Store full hash, truncate only for display
+                        "date": pd.to_datetime(entry["date"]),
+                        "total": entry["total"],
+                        "verus_specs": entry["specs"],
+                        "verus_specs_full": entry["specs"],
+                        "verus_specs_external": entry["specs_external"],
+                        "verus_proofs": entry["proofs"],
+                    }
+                )
+            except json.JSONDecodeError as e:
+                print(f"Warning: Skipping malformed JSON at line {line_num}: {e}")
+                continue
 
     if not historical_data:
         raise ValueError("No data found in stats history file")

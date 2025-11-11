@@ -59,11 +59,15 @@ def read_existing_history(history_file: Path) -> List[Dict]:
         return []
 
     history = []
-    with open(history_file, "r") as f:
-        for line in f:
+    with open(history_file, "r", encoding="utf-8") as f:
+        for line_num, line in enumerate(f, 1):
             line = line.strip()
             if line:
-                history.append(json.loads(line))
+                try:
+                    history.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    print(f"Warning: Skipping malformed JSON at line {line_num}: {e}")
+                    continue
     return history
 
 
@@ -73,7 +77,7 @@ def get_current_stats(csv_file: Path) -> Dict[str, int]:
     if not csv_file.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_file}")
 
-    with open(csv_file, "r") as f:
+    with open(csv_file, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         rows = list(reader)
 
@@ -249,7 +253,7 @@ def write_history(history: List[Dict], output_file: Path) -> None:
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(output_file, "w") as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         for entry in history_sorted:
             f.write(json.dumps(entry) + "\n")
 
@@ -305,9 +309,15 @@ def main():
         try:
             with urllib.request.urlopen(args.fetch_url, timeout=10) as response:
                 content = response.read().decode("utf-8")
-                for line in content.strip().split("\n"):
+                for line_num, line in enumerate(content.strip().split("\n"), 1):
                     if line:
-                        existing_history.append(json.loads(line))
+                        try:
+                            existing_history.append(json.loads(line))
+                        except json.JSONDecodeError as e:
+                            print(
+                                f"  Warning: Skipping malformed JSON at line {line_num}: {e}"
+                            )
+                            continue
             print(f"  Fetched {len(existing_history)} existing entries")
         except Exception as e:
             print(f"  Warning: Could not fetch from URL: {e}")

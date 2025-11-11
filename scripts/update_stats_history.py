@@ -195,7 +195,9 @@ def fill_missing_history(
 
         # Filter by date if specified
         if since_date:
-            since = datetime.strptime(since_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            since = datetime.strptime(since_date, "%Y-%m-%d").replace(
+                tzinfo=timezone.utc
+            )
             if commit_date < since:
                 break
 

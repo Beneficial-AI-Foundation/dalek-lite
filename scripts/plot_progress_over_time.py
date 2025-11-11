@@ -175,7 +175,9 @@ def load_stats_history(history_file: Path) -> pd.DataFrame:
             entry = json.loads(line)
             historical_data.append(
                 {
-                    "commit": entry["commit"][:8],
+                    "commit": entry[
+                        "commit"
+                    ],  # Store full hash, truncate only for display
                     "date": pd.to_datetime(entry["date"]),
                     "total": entry["total"],
                     "verus_specs": entry["specs"],

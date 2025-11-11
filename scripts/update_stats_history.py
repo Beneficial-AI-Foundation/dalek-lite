@@ -39,6 +39,19 @@ from beartype import beartype
 from git import Repo
 
 
+def get_csv_column_names(first_row: dict) -> tuple[str, str]:
+    """
+    Get the correct column names for spec and proof columns.
+    Supports both old (has_spec_verus) and new (has_spec) column names.
+
+    Returns:
+        tuple: (spec_column_name, proof_column_name)
+    """
+    spec_col = "has_spec" if "has_spec" in first_row else "has_spec_verus"
+    proof_col = "has_proof" if "has_proof" in first_row else "has_proof_verus"
+    return spec_col, proof_col
+
+
 @beartype
 def read_existing_history(history_file: Path) -> List[Dict]:
     """Read existing stats history from JSONL file."""
@@ -78,10 +91,7 @@ def get_current_stats(csv_file: Path) -> Dict[str, int]:
     proofs = 0
 
     # Support both old and new column names for backward compatibility
-    # Check which columns exist first to avoid KeyError
-    first_row = rows[0]
-    spec_col = "has_spec" if "has_spec" in first_row else "has_spec_verus"
-    proof_col = "has_proof" if "has_proof" in first_row else "has_proof_verus"
+    spec_col, proof_col = get_csv_column_names(rows[0])
 
     for row in rows:
         spec_val = row.get(spec_col, "").strip()
@@ -134,8 +144,7 @@ def analyze_csv_at_commit(
         total = len(rows)
 
         # Support both old and new column names
-        spec_col = "has_spec" if "has_spec" in rows[0] else "has_spec_verus"
-        proof_col = "has_proof" if "has_proof" in rows[0] else "has_proof_verus"
+        spec_col, proof_col = get_csv_column_names(rows[0])
 
         specs_full = 0
         specs_external = 0

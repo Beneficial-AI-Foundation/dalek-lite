@@ -121,7 +121,6 @@ use core::ops::{Sub, SubAssign};
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
-use vstd::bits::lemma_u64_shl_is_mul;
 use vstd::calc;
 use vstd::prelude::*;
 

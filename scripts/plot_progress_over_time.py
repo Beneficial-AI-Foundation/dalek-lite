@@ -151,6 +151,52 @@ def analyze_csv_at_commit(
 
 
 @beartype
+def load_stats_history(history_file: Path) -> pd.DataFrame:
+    """
+    Load verification statistics from stats_history.jsonl file.
+    This is much faster than regenerating from git history.
+    """
+    import json
+
+    if not history_file.exists():
+        raise FileNotFoundError(
+            f"Stats history file not found: {history_file}\n"
+            "Run scripts/update_stats_history.py --fill-missing to generate it."
+        )
+
+    print(f"Loading stats history from {history_file}...")
+
+    historical_data = []
+    with open(history_file, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            entry = json.loads(line)
+            historical_data.append(
+                {
+                    "commit": entry["commit"][:8],
+                    "date": pd.to_datetime(entry["date"]),
+                    "total": entry["total"],
+                    "verus_specs": entry["specs"],
+                    "verus_specs_full": entry["specs"],
+                    "verus_specs_external": entry["specs_external"],
+                    "verus_proofs": entry["proofs"],
+                }
+            )
+
+    if not historical_data:
+        raise ValueError("No data found in stats history file")
+
+    df = pd.DataFrame(historical_data)
+    print(f"Loaded {len(df)} historical data points")
+    print(f"Date range: {df['date'].min()} to {df['date'].max()}")
+    print()
+
+    return df
+
+
+@beartype
 def collect_historical_data(
     repo_path: Path,
     csv_relative_path: str,
@@ -537,19 +583,13 @@ def print_summary(df: pd.DataFrame) -> dict:
 @beartype
 def main():
     parser = argparse.ArgumentParser(
-        description="Plot verification progress over time from git history"
+        description="Plot verification progress over time from stats history"
     )
     parser.add_argument(
-        "--branch",
+        "--history",
         type=str,
-        default="main",
-        help="Git branch to analyze (default: main)",
-    )
-    parser.add_argument(
-        "--csv-path",
-        type=str,
-        default="outputs/curve25519_functions.csv",
-        help="Relative path to CSV file from repo root (default: outputs/curve25519_functions.csv)",
+        default="outputs/stats_history.jsonl",
+        help="Path to stats history file (default: outputs/stats_history.jsonl)",
     )
     parser.add_argument(
         "--output-dir",
@@ -557,41 +597,18 @@ def main():
         default="outputs",
         help="Output directory for plots (default: outputs)",
     )
-    parser.add_argument(
-        "--since",
-        type=str,
-        help="Only analyze commits since this date (YYYY-MM-DD)",
-    )
-    parser.add_argument(
-        "--max-commits",
-        type=int,
-        default=50,
-        help="Maximum number of commits to analyze (default: 50)",
-    )
-    parser.add_argument(
-        "--sample",
-        type=int,
-        default=1,
-        help="Sample every Nth commit (default: 1 = all commits)",
-    )
     args = parser.parse_args()
 
     # Set up paths
     script_dir = Path(__file__).parent
     repo_root = script_dir.parent
     output_dir = repo_root / args.output_dir
+    history_file = repo_root / args.history
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Collect historical data
-    df = collect_historical_data(
-        repo_path=repo_root,
-        csv_relative_path=args.csv_path,
-        branch=args.branch,
-        since_date=args.since,
-        max_commits=args.max_commits,
-        sample_interval=args.sample,
-    )
+    # Load historical data from JSONL file
+    df = load_stats_history(history_file)
 
     # Print summary and get metadata
     metadata = print_summary(df)

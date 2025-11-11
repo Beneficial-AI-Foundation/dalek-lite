@@ -67,21 +67,6 @@ verus! {
 /// implementations.
 pub(crate) type FieldElement = backend::serial::u64::field::FieldElement51;
 
-/*
-// Bridge lemma: connects field_element (from mul) to as_nat tracking
-pub proof fn lemma_mul_to_as_nat_pow(a: &FieldElement, b: &FieldElement, result: &FieldElement,
-                                      exp_a: nat, exp_b: nat, base: int)
-    requires
-        as_nat(a.limbs) % p() == pow(base, exp_a) as nat % p(),
-        as_nat(b.limbs) % p() == pow(base, exp_b) as nat % p(),
-        field_element(result) == field_mul(field_element(a), field_element(b)),
-    ensures
-        as_nat(result.limbs) % p() == pow(base, exp_a + exp_b) as nat % p(),
-{
-    lemma_pow_adds(base, exp_a, exp_b);
-}
-*/
-
 impl Eq for FieldElement {
 
 }
@@ -233,7 +218,10 @@ impl FieldElement {
         // - Modular lemma: lemma_pow_mod_noop to connect as_nat(self.limbs) to field_element(self)
         let t0 = self.square();  // 1         e_0 = 2^1
 
-        //NOTE: Changing the code!!!
+        //NOTE: Changing the code!!! 
+        // NOTE: We are now using the intermediate variable t0_sq to track the postcondition of the first square.
+        // NOTE: This is a workaround to allow us to prove the postcondition of the second square.
+        // NOTE: I'm struggling to prove that t0.square().square() is the same as t0_sq.square().
         // Break apart chained call to track intermediate postcondition
         let t0_sq = t0.square();  // e = 4 (intermediate step)
         // let t1 = t0.square().square();  // 3         e_1 = 2^3 = 8

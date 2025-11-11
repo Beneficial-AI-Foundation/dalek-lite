@@ -163,7 +163,7 @@ pub proof fn lemma_pow22501_prove_t19(
         % p());
 
     assert(as_nat(t2_limbs) % p() == (pow(base, 1) as nat * pow(base, 8) as nat) % p()) by {
-        lemma_mul_mod_both_nat(pow(base, 1) as nat, pow(base, 8) as nat, p());
+        lemma_mul_mod_both(pow(base, 1) as nat as int, pow(base, 8) as nat as int, p() as int);
     }
 
     assert(pow(base, 1) * pow(base, 8) == pow(base, 9)) by {
@@ -193,7 +193,7 @@ pub proof fn lemma_pow22501_prove_t19(
         % p());
 
     assert(as_nat(t3_limbs) % p() == (pow(base, 2) as nat * pow(base, 9) as nat) % p()) by {
-        lemma_mul_mod_both_nat(pow(base, 2) as nat, pow(base, 9) as nat, p());
+        lemma_mul_mod_both(pow(base, 2) as nat as int, pow(base, 9) as nat as int, p() as int);
     }
 
     assert(pow(base, 2) * pow(base, 9) == pow(base, 11)) by {
@@ -269,7 +269,7 @@ pub proof fn lemma_pow22501_prove_t19(
         % p());
 
     assert(as_nat(t5_limbs) % p() == (pow(base, 9) as nat * pow(base, 22) as nat) % p()) by {
-        lemma_mul_mod_both_nat(pow(base, 9) as nat, pow(base, 22) as nat, p());
+        lemma_mul_mod_both(pow(base, 9) as nat as int, pow(base, 22) as nat as int, p() as int);
     }
 
     assert(pow(base, 9) * pow(base, 22) == pow(base, 31)) by {
@@ -366,10 +366,10 @@ pub proof fn lemma_pow22501_prove_t19(
         base,
         (pow2(5) - 1) as nat,
     ) as nat) % p()) by {
-        lemma_mul_mod_both_nat(
-            pow(base, ((pow2(5) - 1) * pow2(5)) as nat) as nat,
-            pow(base, (pow2(5) - 1) as nat) as nat,
-            p(),
+        lemma_mul_mod_both(
+            pow(base, ((pow2(5) - 1) * pow2(5)) as nat) as nat as int,
+            pow(base, (pow2(5) - 1) as nat) as nat as int,
+            p() as int,
         );
     }
 
@@ -500,10 +500,10 @@ pub proof fn lemma_pow22501_prove_t19(
         base,
         (pow2(10) - 1) as nat,
     ) as nat) % p()) by {
-        lemma_mul_mod_both_nat(
-            pow(base, ((pow2(10) - 1) * pow2(10)) as nat) as nat,
-            pow(base, (pow2(10) - 1) as nat) as nat,
-            p(),
+        lemma_mul_mod_both(
+            pow(base, ((pow2(10) - 1) * pow2(10)) as nat) as nat as int,
+            pow(base, (pow2(10) - 1) as nat) as nat as int,
+            p() as int,
         );
     }
 
@@ -653,10 +653,10 @@ pub proof fn lemma_pow22501_prove_t19(
         base,
         (pow2(20) - 1) as nat,
     ) as nat) % p()) by {
-        lemma_mul_mod_both_nat(
-            pow(base, ((pow2(20) - 1) * pow2(20)) as nat) as nat,
-            pow(base, (pow2(20) - 1) as nat) as nat,
-            p(),
+        lemma_mul_mod_both(
+            pow(base, ((pow2(20) - 1) * pow2(20)) as nat) as nat as int,
+            pow(base, (pow2(20) - 1) as nat) as nat as int,
+            p() as int,
         );
     }
 
@@ -811,10 +811,10 @@ pub proof fn lemma_pow22501_prove_t19(
         base,
         (pow2(10) - 1) as nat,
     ) as nat) % p()) by {
-        lemma_mul_mod_both_nat(
-            pow(base, ((pow2(40) - 1) * pow2(10)) as nat) as nat,
-            pow(base, (pow2(10) - 1) as nat) as nat,
-            p(),
+        lemma_mul_mod_both(
+            pow(base, ((pow2(40) - 1) * pow2(10)) as nat) as nat as int,
+            pow(base, (pow2(10) - 1) as nat) as nat as int,
+            p() as int,
         );
     }
 
@@ -988,10 +988,10 @@ pub proof fn lemma_pow22501_prove_t19(
         base,
         (pow2(50) - 1) as nat,
     ) as nat) % p()) by {
-        lemma_mul_mod_both_nat(
-            pow(base, ((pow2(50) - 1) * pow2(50)) as nat) as nat,
-            pow(base, (pow2(50) - 1) as nat) as nat,
-            p(),
+        lemma_mul_mod_both(
+            pow(base, ((pow2(50) - 1) * pow2(50)) as nat) as nat as int,
+            pow(base, (pow2(50) - 1) as nat) as nat as int,
+            p() as int,
         );
     }
 
@@ -1171,10 +1171,10 @@ pub proof fn lemma_pow22501_prove_t19(
         base,
         (pow2(100) - 1) as nat,
     ) as nat) % p()) by {
-        lemma_mul_mod_both_nat(
-            pow(base, ((pow2(100) - 1) * pow2(100)) as nat) as nat,
-            pow(base, (pow2(100) - 1) as nat) as nat,
-            p(),
+        lemma_mul_mod_both(
+            pow(base, ((pow2(100) - 1) * pow2(100)) as nat) as nat as int,
+            pow(base, (pow2(100) - 1) as nat) as nat as int,
+            p() as int,
         );
     }
 
@@ -1352,10 +1352,10 @@ pub proof fn lemma_pow22501_prove_t19(
         base,
         (pow2(50) - 1) as nat,
     ) as nat) % p()) by {
-        lemma_mul_mod_both_nat(
-            pow(base, ((pow2(200) - 1) * pow2(50)) as nat) as nat,
-            pow(base, (pow2(50) - 1) as nat) as nat,
-            p(),
+        lemma_mul_mod_both(
+            pow(base, ((pow2(200) - 1) * pow2(50)) as nat) as nat as int,
+            pow(base, (pow2(50) - 1) as nat) as nat as int,
+            p() as int,
         );
     }
 

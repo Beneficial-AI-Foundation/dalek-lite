@@ -55,12 +55,15 @@ jobs:
 
       - name: Update stats history
         run: |
-          # Try to fetch existing history from deployed site
+          # Try to fetch existing history from deployed site and update
+          # If this fails, create a minimal history file so plots don't fail
           scripts/update_stats_history.py \
             --fetch-url https://beneficial-ai-foundation.github.io/dalek-lite/outputs/stats_history.jsonl \
             --fill-missing \
             --since 2025-10-09 \
-            --max-commits 100 || echo "Warning: Stats history update failed, continuing anyway"
+            --max-commits 100 || \
+          (echo "Warning: Stats history update failed, creating minimal history" && \
+           scripts/update_stats_history.py --since 2025-10-09 --max-commits 10)
 
       - name: Generate charts
         run: |

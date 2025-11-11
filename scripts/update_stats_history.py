@@ -2,7 +2,6 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
-#   "pandas",
 #   "beartype",
 #   "gitpython",
 # ]
@@ -64,19 +63,31 @@ def get_current_stats(csv_file: Path) -> Dict[str, int]:
         reader = csv.DictReader(f)
         rows = list(reader)
 
+    if not rows:
+        return {
+            "total": 0,
+            "specs": 0,
+            "specs_external": 0,
+            "proofs": 0,
+        }
+
     total = len(rows)
     specs_full = 0
     specs_external = 0
     proofs = 0
 
+    # Support both old and new column names for backward compatibility
+    spec_col = "has_spec" if "has_spec" in rows[0] else "has_spec_verus"
+    proof_col = "has_proof" if "has_proof" in rows[0] else "has_proof_verus"
+
     for row in rows:
-        spec_val = row.get("has_spec", "").strip()
+        spec_val = row.get(spec_col, "").strip()
         if spec_val == "yes":
             specs_full += 1
         elif spec_val == "ext":
             specs_external += 1
 
-        if row.get("has_proof", "").strip() == "yes":
+        if row.get(proof_col, "").strip() == "yes":
             proofs += 1
 
     return {
@@ -92,9 +103,8 @@ def analyze_csv_at_commit(
     repo: Repo, commit_hash: str, csv_path: str
 ) -> Dict[str, int] | None:
     """
-    Analyze CSV at a specific commit.
-    Tries both old path (outputs/curve25519_functions.csv)
-    and new approach (regenerate from seed).
+    Analyze CSV at a specific commit by retrieving it from git history.
+    Returns None if the CSV doesn't exist at that commit.
     """
     try:
         commit = repo.commit(commit_hash)

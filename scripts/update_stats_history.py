@@ -176,12 +176,16 @@ def analyze_csv_at_commit(
 def fill_missing_history(
     repo_path: Path,
     existing_history: List[Dict],
+    csv_path: str = "outputs/curve25519_functions.csv",
     since_date: str | None = None,
     max_commits: int = 1000,
 ) -> List[Dict]:
     """
     Fill in missing history by analyzing git commits.
     Only processes commits not already in history.
+
+    Args:
+        csv_path: Relative path to CSV file in git history
     """
     repo = Repo(repo_path)
 
@@ -219,9 +223,7 @@ def fill_missing_history(
             print(f"  Processed {processed} new commits...")
 
         # Try to analyze CSV at this commit
-        stats = analyze_csv_at_commit(
-            repo, commit_hash, "outputs/curve25519_functions.csv"
-        )
+        stats = analyze_csv_at_commit(repo, commit_hash, csv_path)
 
         if stats:
             new_entries.append(
@@ -318,8 +320,12 @@ def main():
 
     # Step 2: Fill missing history from git if requested
     if args.fill_missing:
+        # Convert CSV path to relative path for git history lookup
+        csv_relative_path = str(
+            args.csv.relative_to(repo_path) if args.csv.is_absolute() else args.csv
+        )
         new_entries = fill_missing_history(
-            repo_path, existing_history, args.since, args.max_commits
+            repo_path, existing_history, csv_relative_path, args.since, args.max_commits
         )
         existing_history.extend(new_entries)
 

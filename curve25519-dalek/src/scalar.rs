@@ -2436,11 +2436,8 @@ pub fn unpack(&self) -> (result:
 /// Reduce this `Scalar` modulo \\(\ell\\).
 #[allow(non_snake_case)]
 fn reduce(&self) -> (result: Scalar)
-// VERIFICATION NOTE: PROOF BYPASS
-
     ensures
-// Result is equivalent to input modulo the group order
-
+        // Result is equivalent to input modulo the group order
         bytes_to_nat(&result.bytes) % group_order() == bytes_to_nat(&self.bytes) % group_order(),
         // Result satisfies Scalar invariants #1 and #2
         is_canonical_scalar(&result),

@@ -121,9 +121,9 @@ use core::ops::{Sub, SubAssign};
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
-use vstd::prelude::*;
 use vstd::bits::lemma_u64_shl_is_mul;
 use vstd::calc;
+use vstd::prelude::*;
 
 #[cfg(feature = "group")]
 use group::ff::{Field, FromUniformBytes, PrimeField};
@@ -2438,6 +2438,7 @@ pub fn unpack(&self) -> (result:
 #[allow(non_snake_case)]
 fn reduce(&self) -> (result: Scalar)
 // VERIFICATION NOTE: PROOF BYPASS
+
     ensures
 // Result is equivalent to input modulo the group order
 
@@ -2448,7 +2449,7 @@ fn reduce(&self) -> (result: Scalar)
     let x = self.unpack();
 
     assert(limbs_bounded(&constants::R)) by {
-        lemma_r_bounded();
+        lemma_r_bounded(constants::R);
 
     }
 
@@ -2456,18 +2457,18 @@ fn reduce(&self) -> (result: Scalar)
     let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
     let result = x_mod_l.pack();
 
-
     proof {
         assert(slice128_to_nat(&xR) == to_nat(&x.limbs) * to_nat(&constants::R.limbs));
 
         // montgomery_reduce ensures:
-        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
-                == slice128_to_nat(&xR) % group_order());
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(&xR)
+            % group_order());
 
-        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
-                == (to_nat(&x.limbs) * to_nat(&constants::R.limbs)) % group_order());
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order() == (to_nat(&x.limbs)
+            * to_nat(&constants::R.limbs)) % group_order());
 
-        assert(to_nat(&constants::R.limbs) % group_order() == montgomery_radix() % group_order()) by {
+        assert(to_nat(&constants::R.limbs) % group_order() == montgomery_radix() % group_order())
+            by {
             lemma_five_limbs_equals_to_nat(&constants::R.limbs);
 
             lemma2_to64();
@@ -2491,22 +2492,24 @@ fn reduce(&self) -> (result: Scalar)
             }
         };
 
-        lemma_mul_factors_congruent_implies_products_congruent(to_nat(&x.limbs) as int, montgomery_radix() as int, 
-                to_nat(&constants::R.limbs) as int, group_order() as int);
+        lemma_mul_factors_congruent_implies_products_congruent(
+            to_nat(&x.limbs) as int,
+            montgomery_radix() as int,
+            to_nat(&constants::R.limbs) as int,
+            group_order() as int,
+        );
 
+        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order() == (to_nat(&x.limbs)
+            * montgomery_radix()) % group_order());
 
-        assert((to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
-                == (to_nat(&x.limbs) * montgomery_radix()) % group_order());
-
-        lemma_cancel_mul_pow2_mod(to_nat(&x_mod_l.limbs), to_nat(&x.limbs),
-                                  montgomery_radix());
+        lemma_cancel_mul_pow2_mod(to_nat(&x_mod_l.limbs), to_nat(&x.limbs), montgomery_radix());
 
         assert(to_nat(&x_mod_l.limbs) % group_order() == to_nat(&x.limbs) % group_order());
 
         assert(bytes_to_nat(&result.bytes) == to_nat(&x_mod_l.limbs) % pow2(256));
         assert(to_nat(&x_mod_l.limbs) < group_order());
 
-        assert(group_order() < pow2(256)) by {lemma_group_order_smaller_than_pow256() };
+        assert(group_order() < pow2(256)) by { lemma_group_order_smaller_than_pow256() };
 
         assert(to_nat(&x_mod_l.limbs) < pow2(256));
         lemma_small_mod(to_nat(&x_mod_l.limbs), pow2(256));
@@ -2515,8 +2518,6 @@ fn reduce(&self) -> (result: Scalar)
 
     result
 }
-
-
 
 /// Check whether this `Scalar` is the canonical representative mod \\(\ell\\). This is not
 /// public because any `Scalar` that is publicly observed is reduced, by scalar invariant #2.

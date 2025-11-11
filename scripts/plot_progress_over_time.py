@@ -15,6 +15,9 @@ Tracks how specs and proofs have evolved across commits on main branch.
 """
 
 import argparse
+import csv
+import io
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -93,9 +96,6 @@ def analyze_csv_at_commit(
             return None
 
         # Parse CSV content
-        import io
-        import csv
-
         lines = csv_content.strip().split("\n")
         if len(lines) < 2:  # No data rows
             return None
@@ -156,8 +156,6 @@ def load_stats_history(history_file: Path) -> pd.DataFrame:
     Load verification statistics from stats_history.jsonl file.
     This is much faster than regenerating from git history.
     """
-    import json
-
     if not history_file.exists():
         raise FileNotFoundError(
             f"Stats history file not found: {history_file}\n"
@@ -167,6 +165,8 @@ def load_stats_history(history_file: Path) -> pd.DataFrame:
     print(f"Loading stats history from {history_file}...")
 
     historical_data = []
+    required_keys = ["commit", "date", "total", "specs", "specs_external", "proofs"]
+
     with open(history_file, "r", encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             line = line.strip()
@@ -174,6 +174,15 @@ def load_stats_history(history_file: Path) -> pd.DataFrame:
                 continue
             try:
                 entry = json.loads(line)
+
+                # Validate required keys are present
+                missing_keys = [key for key in required_keys if key not in entry]
+                if missing_keys:
+                    print(
+                        f"Warning: Skipping line {line_num} - missing required keys: {missing_keys}"
+                    )
+                    continue
+
                 historical_data.append(
                     {
                         "commit": entry[
@@ -189,6 +198,9 @@ def load_stats_history(history_file: Path) -> pd.DataFrame:
                 )
             except json.JSONDecodeError as e:
                 print(f"Warning: Skipping malformed JSON at line {line_num}: {e}")
+                continue
+            except (KeyError, TypeError, ValueError) as e:
+                print(f"Warning: Skipping invalid data at line {line_num}: {e}")
                 continue
 
     if not historical_data:
@@ -620,8 +632,6 @@ def main():
     metadata = print_summary(df)
 
     # Write metadata to JSON for website
-    import json
-
     metadata_path = output_dir / "metadata.json"
     with open(metadata_path, "w") as f:
         json.dump(metadata, f, indent=2)

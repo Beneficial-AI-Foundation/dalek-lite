@@ -27,8 +27,11 @@ Format: JSON Lines (one JSON object per line)
 """
 
 import argparse
+import csv
+import io
 import json
-from datetime import datetime
+import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
@@ -54,8 +57,6 @@ def read_existing_history(history_file: Path) -> List[Dict]:
 @beartype
 def get_current_stats(csv_file: Path) -> Dict[str, int]:
     """Extract stats from current CSV file."""
-    import csv
-
     if not csv_file.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_file}")
 
@@ -77,8 +78,10 @@ def get_current_stats(csv_file: Path) -> Dict[str, int]:
     proofs = 0
 
     # Support both old and new column names for backward compatibility
-    spec_col = "has_spec" if "has_spec" in rows[0] else "has_spec_verus"
-    proof_col = "has_proof" if "has_proof" in rows[0] else "has_proof_verus"
+    # Check which columns exist first to avoid KeyError
+    first_row = rows[0]
+    spec_col = "has_spec" if "has_spec" in first_row else "has_spec_verus"
+    proof_col = "has_proof" if "has_proof" in first_row else "has_proof_verus"
 
     for row in rows:
         spec_val = row.get(spec_col, "").strip()
@@ -118,9 +121,6 @@ def analyze_csv_at_commit(
             return None
 
         # Parse CSV
-        import csv
-        import io
-
         lines = csv_content.strip().split("\n")
         if len(lines) < 2:
             return None
@@ -191,7 +191,7 @@ def fill_missing_history(
 
     for commit in commits:
         commit_hash = commit.hexsha
-        commit_date = datetime.fromtimestamp(commit.committed_date)
+        commit_date = datetime.fromtimestamp(commit.committed_date, tz=timezone.utc)
 
         # Filter by date if specified
         if since_date:
@@ -290,9 +290,7 @@ def main():
     if args.fetch_url:
         print(f"Fetching history from {args.fetch_url}...")
         try:
-            import urllib.request
-
-            with urllib.request.urlopen(args.fetch_url) as response:
+            with urllib.request.urlopen(args.fetch_url, timeout=10) as response:
                 content = response.read().decode("utf-8")
                 for line in content.strip().split("\n"):
                     if line:
@@ -319,7 +317,9 @@ def main():
         repo = Repo(repo_path)
         current_commit = repo.head.commit
         current_hash = current_commit.hexsha
-        current_date = datetime.fromtimestamp(current_commit.committed_date)
+        current_date = datetime.fromtimestamp(
+            current_commit.committed_date, tz=timezone.utc
+        )
 
         # Check if current commit already in history
         if not any(e["commit"] == current_hash for e in existing_history):

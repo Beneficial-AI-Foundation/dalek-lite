@@ -56,14 +56,19 @@ jobs:
       - name: Update stats history
         run: |
           # Try to fetch existing history from deployed site and update
-          # If this fails, create a minimal history file so plots don't fail
+          # If this fails, regenerate from git history (fallback with more commits)
           scripts/update_stats_history.py \
             --fetch-url https://beneficial-ai-foundation.github.io/dalek-lite/outputs/stats_history.jsonl \
             --fill-missing \
             --since 2025-10-09 \
             --max-commits 100 || \
-          (echo "Warning: Stats history update failed, creating minimal history" && \
-           scripts/update_stats_history.py --since 2025-10-09 --max-commits 10)
+          (echo "Warning: Stats history fetch failed, regenerating from git..." && \
+           if [ -f outputs/curve25519_functions.csv ]; then \
+             scripts/update_stats_history.py --since 2025-10-09 --max-commits 100 --fill-missing; \
+           else \
+             echo "Error: CSV file missing, skipping stats history update"; \
+             touch outputs/stats_history.jsonl; \
+           fi)
 
       - name: Generate charts
         run: |

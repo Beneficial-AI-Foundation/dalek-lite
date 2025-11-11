@@ -2448,15 +2448,7 @@ fn reduce(&self) -> (result: Scalar)
     let x = self.unpack();
 
     assert(limbs_bounded(&constants::R)) by {
-        // prove each literal limb is < 2^52
-        assert(constants::R.limbs[0] < 0x10000000000000) by (compute_only);
-        assert(constants::R.limbs[1] < 0x10000000000000) by (compute_only);
-        assert(constants::R.limbs[2] < 0x10000000000000) by (compute_only);
-        assert(constants::R.limbs[3] < 0x10000000000000) by (compute_only);
-        assert(constants::R.limbs[4] < 0x10000000000000) by (compute_only);
-
-        assert(0x10000000000000 == 1u64 << 52) by (bit_vector);
-
+        lemma_r_bounded(constants::R);
     }
 
     let xR = UnpackedScalar::mul_internal(&x, &constants::R);

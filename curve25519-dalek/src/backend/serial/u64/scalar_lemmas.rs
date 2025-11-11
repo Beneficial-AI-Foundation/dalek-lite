@@ -1980,4 +1980,29 @@ pub proof fn lemma_group_order_smaller_than_pow256()
     lemma_pow2_strictly_increases(255, 256);
 }
 
+// prove each literal limb is < 2^52
+pub proof fn lemma_r_bounded(r: Scalar52)
+    requires
+        r == (Scalar52 {
+            limbs: [
+                0x000f48bd6721e6ed,
+                0x0003bab5ac67e45a,
+                0x000fffffeb35e51b,
+                0x000fffffffffffff,
+                0x00000fffffffffff,
+            ],
+        }),
+    ensures
+        limbs_bounded(&r),
+{
+    assert(0x000f48bd6721e6ed < 0x10000000000000) by (compute_only);
+    assert(0x0003bab5ac67e45a < 0x10000000000000) by (compute_only);
+    assert(0x000fffffeb35e51b < 0x10000000000000) by (compute_only);
+    assert(0x000fffffffffffff < 0x10000000000000) by (compute_only);
+    assert(0x00000fffffffffff < 0x10000000000000) by (compute_only);
+
+    assert(0x10000000000000 == 1u64 << 52) by (bit_vector);
+
+}
+
 } // verus!

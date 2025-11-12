@@ -25,3 +25,4 @@ docs/outputs/*.png
 docs/outputs/*.csv
 docs/outputs/stats.json
 docs/outputs/metadata.json
+.verilib/*.log

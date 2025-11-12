@@ -74,6 +74,10 @@ find . -name "*.rs" -type f | xargs -P 0 -n 1 verusfmt
 
 ## How to deploy to verilib
 
+Suppose you want to update the Verilib GUI with which functions are specified,
+without manually editing the icons in the GUI. Note that the following steps will
+likely overwrite any manual edits you've made in the Verilib GUI.
+
 Generate an API key on Verilib and put it in `.env`:
 
 ```

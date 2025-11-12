@@ -197,14 +197,7 @@ impl FieldElement {
     fn pow22501(&self) -> (result: (FieldElement, FieldElement))
         requires
             forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
-        ensures/*
-            as_nat(result.0.limbs) % p() == pow(
-                as_nat(self.limbs) as int,
-                (pow2(250) - 1) as nat,
-            ) as nat % p(),
-            as_nat(result.1.limbs) % p() == pow(as_nat(self.limbs) as int, 11) as nat % p(),
-        */
-
+        ensures
             spec_field_element(&result.0) == (pow(
                 spec_field_element(self) as int,
                 (pow2(250) - 1) as nat,

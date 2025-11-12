@@ -132,6 +132,7 @@ use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::CompletedPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::curve_models::ProjectivePoint;
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
 
 #[cfg(feature = "precomputed-tables")]
@@ -153,6 +154,7 @@ use crate::traits::{VartimeMultiscalarMul, VartimePrecomputedMultiscalarMul};
 
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::field::*;
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::curve_specs::*;
@@ -236,7 +238,8 @@ impl CompressedEdwardsY {
             )
             // The X coordinate sign bit matches the sign bit from the compressed representation
              && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7),
-            !math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0)) <==> result.is_none(),
+            !math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
+                <==> result.is_none(),
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
@@ -747,9 +750,11 @@ impl ValidityCheck for EdwardsPoint {
 // Constant-time assignment
 // ------------------------------------------------------------------------
 impl ConditionallySelectable for EdwardsPoint {
-    fn conditional_select(a: &EdwardsPoint, b: &EdwardsPoint, choice: Choice) -> (result: EdwardsPoint)
+    fn conditional_select(a: &EdwardsPoint, b: &EdwardsPoint, choice: Choice) -> (result:
+        EdwardsPoint)
         ensures
-            // If choice is false (0), return a
+    // If choice is false (0), return a
+
             !choice_is_true(choice) ==> result == *a,
             // If choice is true (1), return b
             choice_is_true(choice) ==> result == *b,
@@ -768,7 +773,6 @@ impl ConditionallySelectable for EdwardsPoint {
             // 1. Lemma: FieldElement equality from limb equality (extensionality for FieldElement)
             // 2. Lemma: EdwardsPoint equality from field equality (extensionality for EdwardsPoint)
             // For now, we assume the postcondition as it's straightforward from the field-level specs
-
             assume(!choice_is_true(choice) ==> result == *a);
             assume(choice_is_true(choice) ==> result == *b);
         }
@@ -777,17 +781,16 @@ impl ConditionallySelectable for EdwardsPoint {
     }
 }
 
-
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
-
 impl ConstantTimeEq for EdwardsPoint {
     fn ct_eq(&self, other: &EdwardsPoint) -> (result: Choice)
         ensures
-            // Two points are equal if they represent the same affine point:
-            // (X/Z, Y/Z) == (X'/Z', Y'/Z')
-            // This is checked by verifying X*Z' == X'*Z and Y*Z' == Y'*Z
+    // Two points are equal if they represent the same affine point:
+    // (X/Z, Y/Z) == (X'/Z', Y'/Z')
+    // This is checked by verifying X*Z' == X'*Z and Y*Z' == Y'*Z
+
             choice_is_true(result) == (spec_edwards_point(*self) == spec_edwards_point(*other)),
     {
         // We would like to check that the point (X/Z, Y/Z) is equal to
@@ -795,12 +798,10 @@ impl ConstantTimeEq for EdwardsPoint {
         // coordinates (x, y) and (x', y'), which requires two inversions.
         // We have that X = xZ and X' = x'Z'. Thus, x = x' is equivalent to
         // (xZ)Z' = (x'Z')Z, and similarly for the y-coordinate.
-
         /* ORIGINAL CODE:
         let result = (&self.X * &other.Z).ct_eq(&(&other.X * &self.Z))
             & (&self.Y * &other.Z).ct_eq(&(&other.Y * &self.Z));
         */
-
         // VERIFICATION NOTE: Bypass preconditions for field element multiplication
         assume(false);
 
@@ -810,7 +811,9 @@ impl ConstantTimeEq for EdwardsPoint {
 
         proof {
             // The equality check via cross-multiplication is equivalent to affine coordinate equality
-            assume(choice_is_true(result) == (spec_edwards_point(*self) == spec_edwards_point(*other)));
+            assume(choice_is_true(result) == (spec_edwards_point(*self) == spec_edwards_point(
+                *other,
+            )));
         }
 
         result
@@ -821,6 +824,7 @@ impl ConstantTimeEq for EdwardsPoint {
 impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
     open spec fn obeys_eq_spec() -> bool {
         false  // Equality is based on constant-time comparison
+
     }
 
     open spec fn eq_spec(&self, other: &Self) -> bool {
@@ -838,12 +842,13 @@ impl PartialEq for EdwardsPoint {
         /* ORIGINAL CODE:
         self.ct_eq(other).into()
         */
-
         let choice = self.ct_eq(other);
         let result = choice_into(choice);
 
         proof {
-            assert(choice_is_true(choice) == (spec_edwards_point(*self) == spec_edwards_point(*other)));
+            assert(choice_is_true(choice) == (spec_edwards_point(*self) == spec_edwards_point(
+                *other,
+            )));
             assert(result == choice_is_true(choice));
         }
 
@@ -851,15 +856,13 @@ impl PartialEq for EdwardsPoint {
     }
 }
 
-impl Eq for EdwardsPoint {}
+impl Eq for EdwardsPoint {
 
-
+}
 
 // ------------------------------------------------------------------------
 // Point conversions
 // ------------------------------------------------------------------------
-
-
 impl EdwardsPoint {
     /// Convert to a ProjectiveNielsPoint
     pub(crate) fn as_projective_niels(&self) -> (result: ProjectiveNielsPoint)
@@ -1022,7 +1025,6 @@ impl EdwardsPoint {
 }
 
 } // verus!
-
 // ------------------------------------------------------------------------
 // Doubling
 // ------------------------------------------------------------------------

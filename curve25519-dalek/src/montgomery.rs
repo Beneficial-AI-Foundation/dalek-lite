@@ -53,16 +53,21 @@ use core::{
 };
 
 use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
+#[cfg(verus_keep_ghost)]
 use crate::core_assumes::{axiom_hash_is_deterministic, seq_to_array_32, spec_state_after_hash};
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 use crate::scalar::{clamp_integer, Scalar};
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::curve_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
 
 use crate::traits::Identity;
 
-use crate::backend::serial::u64::subtle_assumes::{choice_into, choice_is_true};
+use crate::backend::serial::u64::subtle_assumes::choice_into;
+#[cfg(verus_keep_ghost)]
+use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 
 use subtle::Choice;
 use subtle::ConstantTimeEq;
@@ -84,10 +89,10 @@ pub struct MontgomeryPoint(pub [u8; 32]);
 impl ConstantTimeEq for MontgomeryPoint {
     fn ct_eq(&self, other: &MontgomeryPoint) -> (result: Choice)
         ensures
-            // Two MontgomeryPoints are equal if their u-coordinates are equal mod p
-            choice_is_true(result) == (
-                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
-            ),
+    // Two MontgomeryPoints are equal if their u-coordinates are equal mod p
+
+            choice_is_true(result) == (spec_field_element_from_bytes(&self.0)
+                == spec_field_element_from_bytes(&other.0)),
     {
         let self_fe = FieldElement::from_bytes(&self.0);
         let other_fe = FieldElement::from_bytes(&other.0);
@@ -96,9 +101,8 @@ impl ConstantTimeEq for MontgomeryPoint {
 
         proof {
             // The postcondition follows from FieldElement::ct_eq's specification
-            assume(choice_is_true(result) == (
-                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
-            ));
+            assume(choice_is_true(result) == (spec_field_element_from_bytes(&self.0)
+                == spec_field_element_from_bytes(&other.0)));
         }
 
         result
@@ -122,9 +126,9 @@ impl PartialEq for MontgomeryPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &MontgomeryPoint) -> (result: bool)
         ensures
-            result == (
-                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
-            ),
+            result == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(
+                &other.0,
+            )),
     {
         /* <VERIFICATION NOTE>
          Use wrapper function for Choice::into
@@ -140,11 +144,9 @@ impl PartialEq for MontgomeryPoint {
             // ct_eq ensures: choice_is_true(choice) == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0))
             // choice_into ensures: result == choice_is_true(choice)
             // Therefore by transitivity: result == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0))
-
             // Try to prove it explicitly
-            assert(choice_is_true(choice) == (
-                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
-            ));
+            assert(choice_is_true(choice) == (spec_field_element_from_bytes(&self.0)
+                == spec_field_element_from_bytes(&other.0)));
             assert(result == choice_is_true(choice));
             // Verus should be able to derive the postcondition from these two assertions
         }
@@ -237,13 +239,11 @@ impl Hash for MontgomeryPoint {
 impl Identity for MontgomeryPoint {
     /// Return the group identity element, which has order 4.
     fn identity() -> MontgomeryPoint {
-        MontgomeryPoint([0u8; 32])
+        MontgomeryPoint([0u8;32])
     }
 }
 
 } // verus!
-
-
 #[cfg(feature = "zeroize")]
 impl Zeroize for MontgomeryPoint {
     fn zeroize(&mut self) {
@@ -333,79 +333,79 @@ impl MontgomeryPoint {
     }
 
     verus! {
-    /// Attempt to convert to an `EdwardsPoint`, using the supplied
-    /// choice of sign for the `EdwardsPoint`.
-    ///
-    /// # Inputs
-    ///
-    /// * `sign`: a `u8` donating the desired sign of the resulting
-    ///   `EdwardsPoint`.  `0` denotes positive and `1` negative.
-    ///
-    /// # Return
-    ///
-    /// * `Some(EdwardsPoint)` if `self` is the \\(u\\)-coordinate of a
-    /// point on (the Montgomery form of) Curve25519;
-    ///
-    /// * `None` if `self` is the \\(u\\)-coordinate of a point on the
-    /// twist of (the Montgomery form of) Curve25519;
-    ///
-    pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
-        ensures
-            match result {
-                Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards),
-                None => is_equal_to_minus_one(spec_montgomery_point(*self)),
-            },
-    {
-        // To decompress the Montgomery u coordinate to an
-        // `EdwardsPoint`, we apply the birational map to obtain the
-        // Edwards y coordinate, then do Edwards decompression.
-        //
-        // The birational map is y = (u-1)/(u+1).
-        //
-        // The exceptional points are the zeros of the denominator,
-        // i.e., u = -1.
-        //
-        // But when u = -1, v^2 = u*(u^2+486662*u+1) = 486660.
-        //
-        // Since this is nonsquare mod p, u = -1 corresponds to a point
-        // on the twist, not the curve, so we can reject it early.
 
-        let u = FieldElement::from_bytes(&self.0);
+/// Attempt to convert to an `EdwardsPoint`, using the supplied
+/// choice of sign for the `EdwardsPoint`.
+///
+/// # Inputs
+///
+/// * `sign`: a `u8` donating the desired sign of the resulting
+///   `EdwardsPoint`.  `0` denotes positive and `1` negative.
+///
+/// # Return
+///
+/// * `Some(EdwardsPoint)` if `self` is the \\(u\\)-coordinate of a
+/// point on (the Montgomery form of) Curve25519;
+///
+/// * `None` if `self` is the \\(u\\)-coordinate of a point on the
+/// twist of (the Montgomery form of) Curve25519;
+///
+pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
+    ensures
+        match result {
+            Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards),
+            None => is_equal_to_minus_one(spec_montgomery_point(*self)),
+        },
+{
+    // To decompress the Montgomery u coordinate to an
+    // `EdwardsPoint`, we apply the birational map to obtain the
+    // Edwards y coordinate, then do Edwards decompression.
+    //
+    // The birational map is y = (u-1)/(u+1).
+    //
+    // The exceptional points are the zeros of the denominator,
+    // i.e., u = -1.
+    //
+    // But when u = -1, v^2 = u*(u^2+486662*u+1) = 486660.
+    //
+    // Since this is nonsquare mod p, u = -1 corresponds to a point
+    // on the twist, not the curve, so we can reject it early.
+    let u = FieldElement::from_bytes(&self.0);
 
-        if u == FieldElement::MINUS_ONE {
-            proof {
-                assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
-            }
-            return None;
-        }
-
-        let one = FieldElement::ONE;
-
-        /* VERIFICATION NOTE: need to prove preconditions for arithmetic traits */
-        assume(false);
-
-        let y = &(&u - &one) * &(&u + &one).invert();
-
-        let mut y_bytes = y.as_bytes();
-        y_bytes[31] ^= sign << 7;
-
-        let result = CompressedEdwardsY(y_bytes).decompress();
-
+    if u == FieldElement::MINUS_ONE {
         proof {
-            // assumed postconditions
-            match result {
-                Some(edwards) => {
-                    assume(montgomery_corresponds_to_edwards(*self, edwards));
-                }
-                None => {
-                    assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
-                }
-            }
+            assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
         }
-
-        result
+        return None;
     }
-    } // verus!
+    let one = FieldElement::ONE;
+
+    /* VERIFICATION NOTE: need to prove preconditions for arithmetic traits */
+    assume(false);
+
+    let y = &(&u - &one) * &(&u + &one).invert();
+
+    let mut y_bytes = y.as_bytes();
+    y_bytes[31] ^= sign << 7;
+
+    let result = CompressedEdwardsY(y_bytes).decompress();
+
+    proof {
+        // assumed postconditions
+        match result {
+            Some(edwards) => {
+                assume(montgomery_corresponds_to_edwards(*self, edwards));
+            },
+            None => {
+                assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
+            },
+        }
+    }
+
+    result
+}
+
+} // verus!
 }
 
 /// Perform the Elligator2 mapping to a Montgomery point.

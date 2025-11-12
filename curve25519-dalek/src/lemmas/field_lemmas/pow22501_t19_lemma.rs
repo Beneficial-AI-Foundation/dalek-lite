@@ -22,11 +22,10 @@ use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
-use crate::backend::serial::u64::common_verus::div_mod_lemmas::*;
-use crate::backend::serial::u64::common_verus::mul_lemmas::*;
-use crate::backend::serial::u64::common_verus::pow_lemmas::*;
-use crate::backend::serial::u64::field_lemmas::field_core::*;
-use crate::field_specs::*;
+use crate::lemmas::common_lemmas::div_mod_lemmas::*;
+use crate::lemmas::common_lemmas::mul_lemmas::*;
+use crate::lemmas::common_lemmas::pow_lemmas::*;
+use crate::specs::field_specs_u64::*;
 
 verus! {
 

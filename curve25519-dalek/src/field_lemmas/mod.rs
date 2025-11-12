@@ -1,3 +1,2 @@
-// Backend-agnostic field lemmas
-pub mod pow22501_t19_lemma;
-pub mod pow22501_t3_lemma;
+// This module is deprecated - field lemmas have been moved to src/lemmas/field_lemmas
+// Keeping this file for backwards compatibility during migration

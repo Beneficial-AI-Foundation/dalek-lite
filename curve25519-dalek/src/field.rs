@@ -54,8 +54,11 @@ use crate::specs::field_specs::*;
 
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
-use crate::field_lemmas::pow22501_t3_lemma::*;
-use crate::field_lemmas::pow22501_t19_lemma::*;
+
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::pow22501_t3_lemma::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::pow22501_t19_lemma::*;
 
 verus! {
 

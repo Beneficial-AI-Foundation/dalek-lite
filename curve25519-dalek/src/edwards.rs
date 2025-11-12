@@ -231,7 +231,7 @@ impl CompressedEdwardsY {
                 &self.0,
             )
             // The point is valid
-             && spec_is_valid_edwards_point(
+             && is_valid_edwards_point(
                 result.unwrap(),
             )
             // The X coordinate sign bit matches the sign bit from the compressed representation
@@ -662,7 +662,7 @@ impl Identity for EdwardsPoint {
     */
 
         ensures
-            spec_is_identity(result),
+            is_identity_edwards_point(result),
     {
         assume(spec_field_element(&FieldElement::ZERO) == 0);
         assume(spec_field_element(&FieldElement::ONE) == 1);
@@ -679,7 +679,7 @@ impl Identity for EdwardsPoint {
 impl Default for EdwardsPoint {
     fn default() -> (result: EdwardsPoint)
         ensures
-            spec_is_identity(result),
+            is_identity_edwards_point(result),
     {
         EdwardsPoint::identity()
     }
@@ -719,7 +719,7 @@ impl ValidityCheck for EdwardsPoint {
             limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54)
                 && limbs_bounded(&self.T, 54),
         ensures
-            result == spec_is_valid_edwards_point(*self),
+            result == is_valid_edwards_point(*self),
             true,  // VERIFICATION NOTE: SECOND CONDITION MISSING
     {
         let proj = self.as_projective();
@@ -737,7 +737,7 @@ impl ValidityCheck for EdwardsPoint {
         let result = point_on_curve && on_segre_image;
         proof {
             // postcondition:
-            assume(result == spec_is_valid_edwards_point(*self));
+            assume(result == is_valid_edwards_point(*self));
         }
         result
     }

@@ -101,7 +101,7 @@ pub open spec fn math_is_edwards_identity(x: nat, y: nat) -> bool {
 /// The identity point is (0, 1) in affine coordinates
 /// In projective coordinates (X:Y:Z:T), this means X/Z = 0 and Y/Z = 1
 /// Which is equivalent to X ≡ 0 (mod p) and Y ≡ Z (mod p) with Z ≠ 0
-pub open spec fn spec_is_identity(point: crate::edwards::EdwardsPoint) -> bool {
+pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
     let x = spec_field_element(&point.X);
     let y = spec_field_element(&point.Y);
     let z = spec_field_element(&point.Z);
@@ -114,7 +114,7 @@ pub open spec fn spec_is_identity(point: crate::edwards::EdwardsPoint) -> bool {
 /// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
 /// 2. The extended coordinate satisfies T = X*Y/Z
 /// 3. Z ≠ 0
-pub open spec fn spec_is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
+pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
     let x = spec_field_element(&point.X);
     let y = spec_field_element(&point.Y);
     let z = spec_field_element(&point.Z);
@@ -185,7 +185,7 @@ pub open spec fn is_valid_projective_niels_point(niels: ProjectiveNielsPoint) ->
     // 1. Is valid itself
     // 2. The niels point corresponds to it
     exists|point: EdwardsPoint|
-        spec_is_valid_edwards_point(point) && #[trigger] projective_niels_corresponds_to_edwards(
+        is_valid_edwards_point(point) && #[trigger] projective_niels_corresponds_to_edwards(
             niels,
             point,
         )
@@ -224,7 +224,7 @@ pub open spec fn affine_niels_corresponds_to_edwards(
 /// A valid AffineNielsPoint must correspond to some valid EdwardsPoint
 pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
     exists|point: EdwardsPoint|
-        spec_is_valid_edwards_point(point) && #[trigger] affine_niels_corresponds_to_edwards(
+        is_valid_edwards_point(point) && #[trigger] affine_niels_corresponds_to_edwards(
             niels,
             point,
         )

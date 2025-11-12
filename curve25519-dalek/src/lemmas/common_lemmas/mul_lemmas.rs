@@ -201,37 +201,6 @@ pub proof fn lemma_mul_quad_prod(a1: int, b1: int, a2: int, b2: int)
     lemma_mul_is_associative(a2 * a1, b1, b2);
 }
 
-
-pub proof fn mul_si_vi_and_reorder(
-    si: int,
-    vi: int,
-    v0: int,
-    s1: int,
-    v1: int,
-    s2: int,
-    v2: int,
-    s3: int,
-    v3: int,
-    s4: int,
-    v4: int,
-)
-    ensures
-        (si * vi) * (v0 + s1 * v1 + s2 * v2 + s3 * v3 + s4 * v4) == (si) * (vi * v0) + (si * s1) * (
-        vi * v1) + (si * s2) * (vi * v2) + (si * s3) * (vi * v3) + (si * s4) * (vi * v4),
-{
-    // n * (x1 + x2 + x3 + x4 + x5) == n * x1 + n * x2 + n * x3 + n * x4 + n * x5
-    mul_5_terms(si * vi, v0, s1 * v1, s2 * v2, s3 * v3, s4 * v4);
-
-    assert((si * vi) * (v0 + s1 * v1 + s2 * v2 + s3 * v3 + s4 * v4) == (si * vi) * v0 + (si * vi)
-        * (s1 * v1) + (si * vi) * (s2 * v2) + (si * vi) * (s3 * v3) + (si * vi) * (s4 * v4));
-
-    lemma_mul_is_associative(si, vi, v0);
-    mul_quad_prod(si, vi, s1, v1);
-    mul_quad_prod(si, vi, s2, v2);
-    mul_quad_prod(si, vi, s3, v3);
-    mul_quad_prod(si, vi, s4, v4);
-}
-
 // LEMMA: Modular multiplication with both arguments modded (int version)
 // ((x % m) * (y % m)) % m == (x * y) % m
 pub proof fn lemma_mul_mod_both(x: int, y: int, m: int)

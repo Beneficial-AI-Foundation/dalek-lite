@@ -65,7 +65,6 @@ pub proof fn lemma_mul_si_vi_and_reorder(
     lemma_mul_quad_prod(si, vi, s2, v2);
     lemma_mul_quad_prod(si, vi, s3, v3);
     lemma_mul_quad_prod(si, vi, s4, v4);
-
 }
 
 // Lemma: Bridges from as_nat postcondition to spec_field_element postcondition for power operations
@@ -134,6 +133,8 @@ pub proof fn lemma_bridge_pow_as_nat_to_spec(
     // Now we have: pow(x, exp) % p() == pow(y, exp) % p()
     // With type conversions: (pow(x, exp) as nat) % p() == (pow(y, exp) as nat) % p()
     assert((pow(x as int, exp) as nat) % p() == (pow(y as int, exp) as nat) % p());
+}
+
 // Lemma: If a > b pointwise, then as_nat(a - b) = as_nat(a) - as_nat(b)
 pub proof fn lemma_as_nat_sub(a: [u64; 5], b: [u64; 5])
     requires

@@ -689,10 +689,13 @@ impl Scalar52 {
     pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)
         // TODO: Add precondition:
         // requires
-        //     // The input represents the product of two bounded Scalar52s
+        //     // The input represents the product of two canonical Scalar52s
+        //     // (both limbs_bounded AND value < group_order)
         //     exists|a: &Scalar52, b: &Scalar52|
         //         limbs_bounded(a) &&
         //         limbs_bounded(b) &&
+        //         to_nat(&a.limbs) < group_order() &&
+        //         to_nat(&b.limbs) < group_order() &&
         //         slice128_to_nat(limbs) == to_nat(&a.limbs) * to_nat(&b.limbs)
         ensures
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
@@ -989,13 +992,163 @@ pub mod test {
             .prop_map(|limbs| Scalar52 { limbs })
     }
 
-    /// Generate random 9-limb array from the product of two bounded Scalar52s
-    /// This matches the intended precondition: exists a, b such that limbs = mul_internal(a, b)
+    /// Generate a canonical scalar: limbs_bounded AND value < L
+    /// This generates a random BigUint in [0, L) and converts it to Scalar52
+    fn arb_canonical_scalar52() -> impl Strategy<Value = Scalar52> {
+        // Generate random bytes and interpret as BigUint, then reduce mod L
+        proptest::collection::vec(any::<u8>(), 32..=64)
+            .prop_map(|bytes| {
+                let l = group_order_exec();
+                let value = BigUint::from_bytes_le(&bytes) % &l;
+
+                // Convert BigUint to limbs in base 2^52
+                let mut limbs = [0u64; 5];
+                let mask = (1u64 << 52) - 1;
+                let mut remaining = value;
+
+                for i in 0..5 {
+                    let limb_big = &remaining & BigUint::from(mask);
+                    limbs[i] = limb_big.to_u64_digits().first().copied().unwrap_or(0);
+                    remaining >>= 52;
+                }
+
+                Scalar52 { limbs }
+            })
+    }
+
+    /// Generate random 9-limb array from the product of two canonical Scalar52s
+    /// Both scalars are limbs_bounded AND have value < L
     fn arb_nine_limbs() -> impl Strategy<Value = [u128; 9]> {
-        (arb_scalar52(), arb_scalar52())
+        (arb_canonical_scalar52(), arb_canonical_scalar52())
             .prop_map(|(a, b)| {
                 Scalar52::mul_internal(&a, &b)
             })
+    }
+
+    /// Test that the canonical scalar generator round-trips correctly
+    #[test]
+    fn test_canonical_scalar_generator() {
+        use proptest::prelude::*;
+        use proptest::strategy::ValueTree;
+        use proptest::test_runner::{Config, TestRunner};
+
+        let mut runner = TestRunner::new(Config::default());
+        let l = group_order_exec();
+
+        println!("Testing canonical scalar generator round-trip:");
+        for i in 0..10 {
+            let scalar = arb_canonical_scalar52().new_tree(&mut runner).unwrap().current();
+
+            // Convert to nat
+            let value = to_nat_exec(&scalar.limbs);
+
+            // Check it's canonical
+            assert!(value < l, "Generated value should be < L");
+
+            // Check limbs are bounded
+            for (j, &limb) in scalar.limbs.iter().enumerate() {
+                assert!(limb < (1u64 << 52), "Limb {} should be < 2^52, got {}", j, limb);
+            }
+
+            // Convert back to Scalar52 manually and check it matches
+            let mut limbs_check = [0u64; 5];
+            let mask = (1u64 << 52) - 1;
+            let mut remaining = value.clone();
+
+            for j in 0..5 {
+                let limb_big = &remaining & BigUint::from(mask);
+                limbs_check[j] = limb_big.to_u64_digits().first().copied().unwrap_or(0);
+                remaining >>= 52;
+            }
+
+            // Check round-trip
+            assert_eq!(scalar.limbs, limbs_check, "Round-trip failed for test {}", i + 1);
+
+            // Convert back to nat and verify
+            let value_check = to_nat_exec(&limbs_check);
+            assert_eq!(value, value_check, "Value mismatch after round-trip for test {}", i + 1);
+
+            println!("Test {}: value = {}, limbs = {:?} ✓", i + 1, value, scalar.limbs);
+        }
+    }
+
+    /// Test what mul_internal actually produces with canonical inputs
+    #[test]
+    fn test_mul_internal_canonical_bounds() {
+        use proptest::prelude::*;
+        use proptest::strategy::ValueTree;
+        use proptest::test_runner::{Config, TestRunner};
+
+        let mut runner = TestRunner::new(Config::default());
+
+        println!("Testing mul_internal with CANONICAL scalars (value < L):");
+        // Test a few random cases
+        for i in 0..10 {
+            let a_val = arb_canonical_scalar52().new_tree(&mut runner).unwrap().current();
+            let b_val = arb_canonical_scalar52().new_tree(&mut runner).unwrap().current();
+
+            let product = Scalar52::mul_internal(&a_val, &b_val);
+
+            let a_nat = to_nat_exec(&a_val.limbs);
+            let b_nat = to_nat_exec(&b_val.limbs);
+            let product_nat = slice128_to_nat_exec(&product);
+            let expected = &a_nat * &b_nat;
+            let l = group_order_exec();
+
+            println!("Test {}:", i + 1);
+            println!("  a < L: {}", a_nat < l);
+            println!("  b < L: {}", b_nat < l);
+            println!("  Product / L: {}", &product_nat / &l);
+            println!("  Product < L^2? {}", &product_nat < &(&l * &l));
+            println!("  Product < 2*L? {}", product_nat < &l * 2u32);
+
+            assert_eq!(expected, product_nat, "mul_internal doesn't match a * b");
+        }
+    }
+
+    /// Test the specific failing case to understand what's happening
+    #[test]
+    fn montgomery_reduce_failing_case() {
+        let limbs: [u128; 9] = [
+            0,
+            0,
+            0,
+            0,
+            43234767039827164816921,
+            0,
+            0,
+            0,
+            130605075492091607448940168551,
+        ];
+
+        let result = Scalar52::montgomery_reduce(&limbs);
+
+        let result_nat = to_nat_exec(&result.limbs);
+        let limbs_nat = slice128_to_nat_exec(&limbs);
+        let l = group_order_exec();
+        let r = montgomery_radix_exec();
+
+        println!("Input limbs: {:?}", limbs);
+        println!("Input value: {}", limbs_nat);
+        println!("Group order L: {}", l);
+        println!("Input mod L: {}", &limbs_nat % &l);
+        println!("Input / R: {}", &limbs_nat / &r);
+        println!("(Input / R) mod L: {}", (&limbs_nat / &r) % &l);
+        println!();
+        println!("Result limbs: {:?}", result.limbs);
+        println!("Result value: {}", result_nat);
+        println!("Result >= L: {}", &result_nat >= &l);
+        println!("Result - L: {}", if result_nat >= l { &result_nat - &l } else { BigUint::from(0u32) });
+        println!();
+        println!("Check 1 - Montgomery property: (result * R) mod L == input mod L");
+        println!("  LHS: {}", (&result_nat * &r) % &l);
+        println!("  RHS: {}", &limbs_nat % &l);
+        println!("  Match: {}", (&result_nat * &r) % &l == &limbs_nat % &l);
+
+        // Check what two scalars could produce this
+        println!("\nTrying to understand the input...");
+        println!("Is input < 2*L? {}", &limbs_nat < &(&l * 2u32));
+        println!("Input / L: {}", &limbs_nat / &l);
     }
 
     proptest! {

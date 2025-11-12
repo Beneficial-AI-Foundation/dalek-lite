@@ -74,9 +74,9 @@ find . -name "*.rs" -type f | xargs -P 0 -n 1 verusfmt
 
 ## How to deploy to verilib
 
-Suppose you want to update the Verilib GUI with which functions are specified,
-without manually editing the icons in the GUI. Note that the following steps will
-likely overwrite any manual edits you've made in the Verilib GUI.
+Suppose you want to update the Verilib GUI because you've specified some functions,
+but to save time you don't want to manually edit the icons in the GUI. 
+Note that the following steps will likely overwrite any manual edits you've made in the Verilib GUI.
 
 Make sure that `.verilib/metadata.json` contains the id for a preexisting URL, 
 i.e. it's impossible to create a new Verilib repo using this CLI.

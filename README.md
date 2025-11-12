@@ -71,3 +71,44 @@ In particular, if you want to format all Rust files, run
 ```bash
 find . -name "*.rs" -type f | xargs -P 0 -n 1 verusfmt
 ```
+
+## How to deploy to verilib
+
+Suppose you want to update the Verilib GUI because you've specified some functions,
+but to save time you don't want to manually edit the icons in the GUI. 
+Note that the following steps will likely overwrite any manual edits you've made in the Verilib GUI.
+
+Make sure that `.verilib/metadata.json` contains the id for a preexisting URL, 
+i.e. it's impossible to create a new Verilib repo using this CLI.
+
+Generate an API key on Verilib and put it in `.env`:
+
+```
+╰─>$ cat .env
+VERILIB_API_KEY=<your key>
+```
+
+Note that this key should come from the instance of Verilib in `.verilib/metadata.json`.
+That is, if the URL in that JSON is http://ec2-3-23-60-0.us-east-2.compute.amazonaws.com, 
+go to that URL, click on "My Account" in the top right, click on "New Key", 
+set name and expiration date, and then copy the API key that appears directly under "Api Keys".
+http://ec2-3-23-60-0.us-east-2.compute.amazonaws.com will not know about your login 
+credentials for https://verilib.org/.
+
+Generate the validated statuses in `outputs/curve25519_functions.csv` (which git ignores):
+``` bash
+uv run scripts/analyze_verus_specs_proofs.py
+```
+
+Deploy to Verilib:
+
+``` bash
+uv run scripts/verilib_deploy.py
+```
+
+By editing `fx` and `fy` values in `.verilib/debug_deploy_layouts.json`, 
+you can adjust the location of functions in the Verilib GUI.
+
+There's no need to manually edit the `specified` fields 
+in `.verilib/debug_deploy_tree.json`, 
+since the scripts will populate them from the csv (without editing the json).

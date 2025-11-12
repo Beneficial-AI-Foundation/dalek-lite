@@ -233,5 +233,4 @@ pub proof fn lemma_mul_mod_both_nat(x: nat, y: nat, m: nat)
 fn main() {
 }
 
-
 } // verus!

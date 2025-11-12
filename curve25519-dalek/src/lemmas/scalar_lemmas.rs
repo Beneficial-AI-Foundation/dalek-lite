@@ -78,7 +78,6 @@ pub proof fn lemma_word_from_bytes_partial_bound(bytes: &[u8; 64], word_idx: int
         let byte_val = bytes[(word_idx * 8 + prev) as int] as nat;
         let byte_bound = pow2(8) - 1;
 
-
         lemma_pow2_pos((prev * 8) as nat);
 
         assert(byte_val <= byte_bound) by {
@@ -130,30 +129,20 @@ pub proof fn lemma_word_from_bytes_partial_step_last(bytes: &[u8; 64], word_idx:
 
     let sum_prefix = t0 + t1 + t2 + t3 + t4 + t5 + t6;
 
-
     calc! {
         (==)
-        word_from_bytes_partial(bytes, word_idx, 7); {
-        }
-        word_from_bytes_partial(bytes, word_idx, 6) + t6; {
-        }
-        word_from_bytes_partial(bytes, word_idx, 5) + t5 + t6; {
-        }
-        word_from_bytes_partial(bytes, word_idx, 4) + t4 + t5 + t6; {
-        }
-        word_from_bytes_partial(bytes, word_idx, 3) + t3 + t4 + t5 + t6; {
-        }
-        word_from_bytes_partial(bytes, word_idx, 2) + t2 + t3 + t4 + t5 + t6; {
-        }
-        word_from_bytes_partial(bytes, word_idx, 1) + t1 + t2 + t3 + t4 + t5 + t6; {
-        }
-        word_from_bytes_partial(bytes, word_idx, 0) + t0 + t1 + t2 + t3 + t4 + t5 + t6; {
-        }
+        word_from_bytes_partial(bytes, word_idx, 7); {}
+        word_from_bytes_partial(bytes, word_idx, 6) + t6; {}
+        word_from_bytes_partial(bytes, word_idx, 5) + t5 + t6; {}
+        word_from_bytes_partial(bytes, word_idx, 4) + t4 + t5 + t6; {}
+        word_from_bytes_partial(bytes, word_idx, 3) + t3 + t4 + t5 + t6; {}
+        word_from_bytes_partial(bytes, word_idx, 2) + t2 + t3 + t4 + t5 + t6; {}
+        word_from_bytes_partial(bytes, word_idx, 1) + t1 + t2 + t3 + t4 + t5 + t6; {}
+        word_from_bytes_partial(bytes, word_idx, 0) + t0 + t1 + t2 + t3 + t4 + t5 + t6; {}
         sum_prefix;
     }
 
     let sum_all = sum_prefix + t7;
-
 
     assert(word_from_bytes(bytes, word_idx) == sum_all);
 }
@@ -283,37 +272,31 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes: &[u8; 64], 
 
         lemma_pow2_adds(((base * 8) as nat), ((prev * 8) as nat));
         let combined_exp = ((base * 8) as nat) + ((prev * 8) as nat);
-        assert(combined_exp == ((base + prev) * 8) as nat) by {
-        };
+        assert(combined_exp == ((base + prev) * 8) as nat);
         assert(pow_base * pow2((prev * 8) as nat) == pow2(((base + prev) * 8) as nat)) by {
             calc! {
                 (==)
                 pow_base * pow2((prev * 8) as nat); {
-                    assert(pow_base * pow2((prev * 8) as nat) == pow2((base * 8) as nat) * pow2((prev * 8) as nat)) by {
-                    }
+                    assert(pow_base * pow2((prev * 8) as nat) == pow2((base * 8) as nat) * pow2((prev * 8) as nat));
                 }
                 pow2((base * 8) as nat) * pow2((prev * 8) as nat); {
                     lemma_pow2_adds(((base * 8) as nat), ((prev * 8) as nat));
                 }
-                pow2(combined_exp); {
-                }
+                pow2(combined_exp); {}
                 pow2(((base + prev) * 8) as nat);
             }
         };
 
         calc! {
             (==)
-            bytes_wide_to_nat_rec(bytes, base); {
-            }
-            pow_base * partial_prev + bytes_wide_to_nat_rec(bytes, base + prev); {
-            }
+            bytes_wide_to_nat_rec(bytes, base); {}
+            pow_base * partial_prev + bytes_wide_to_nat_rec(bytes, base + prev); {}
             pow_base * partial_prev + byte_val * pow2(((base + prev) * 8) as nat) +
                 bytes_wide_to_nat_rec(bytes, base + upto); {
                 calc! {
                     (==)
                     byte_val * pow2(((base + prev) * 8) as nat); {
-                        assert(pow2(((base + prev) * 8) as nat) == pow_base * pow2((prev * 8) as nat)) by {
-                        }
+                        assert(pow2(((base + prev) * 8) as nat) == pow_base * pow2((prev * 8) as nat));
                     }
                     byte_val * (pow_base * pow2((prev * 8) as nat)); {
                         assert(byte_val * (pow_base * pow2((prev * 8) as nat)) == pow_base * byte_val * pow2((prev * 8) as nat)) by (nonlinear_arith);
@@ -326,8 +309,7 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes: &[u8; 64], 
                 assert(pow_base * partial_prev + pow_base * byte_val * pow2((prev * 8) as nat) == pow_base * (partial_prev + byte_val * pow2((prev * 8) as nat))) by (nonlinear_arith);
             }
             pow_base * (partial_prev + byte_val * pow2((prev * 8) as nat)) +
-                bytes_wide_to_nat_rec(bytes, base + upto); {
-            }
+                bytes_wide_to_nat_rec(bytes, base + upto); {}
             pow_base * word_from_bytes_partial(bytes, word_idx, upto) +
                 bytes_wide_to_nat_rec(bytes, base + upto);
         }
@@ -346,14 +328,11 @@ pub proof fn lemma_bytes_wide_to_nat_rec_chunk(bytes: &[u8; 64], word_idx: int)
     let base = word_idx * 8;
     calc! {
         (==)
-        bytes_wide_to_nat_rec(bytes, word_idx * 8); {
-        }
+        bytes_wide_to_nat_rec(bytes, word_idx * 8); {}
         pow2(((word_idx * 8) * 8) as nat) * word_from_bytes_partial(bytes, word_idx, 8) +
-            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8); {
-        }
+            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8); {}
         pow2((word_idx * 64) as nat) * word_from_bytes(bytes, word_idx) +
-            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8); {
-        }
+            bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8); {}
         word_from_bytes(bytes, word_idx) * pow2((word_idx * 64) as nat) +
             bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8);
     }
@@ -407,22 +386,16 @@ pub proof fn lemma_words_to_nat_gen_u64_prefix_matches_bytes(
         let idx = count - 1;
         lemma_words_to_nat_gen_u64_prefix_matches_bytes(words, bytes, idx);
 
-
         let words_prefix = words_to_nat_gen_u64(words, idx, 64);
         let bytes_prefix = words_from_bytes_to_nat(bytes, idx);
 
         calc! {
             (==)
-            words_to_nat_gen_u64(words, count, 64); {
-            }
-            (words[idx] as nat) * pow2((idx * 64) as nat) + words_to_nat_gen_u64(words, count - 1, 64); {
-            }
-            (words[idx] as nat) * pow2((idx * 64) as nat) + words_prefix; {
-            }
-            word_from_bytes(bytes, idx) * pow2((idx * 64) as nat) + words_prefix; {
-            }
-            word_from_bytes(bytes, idx) * pow2((idx * 64) as nat) + bytes_prefix; {
-            }
+            words_to_nat_gen_u64(words, count, 64); {}
+            (words[idx] as nat) * pow2((idx * 64) as nat) + words_to_nat_gen_u64(words, count - 1, 64); {}
+            (words[idx] as nat) * pow2((idx * 64) as nat) + words_prefix; {}
+            word_from_bytes(bytes, idx) * pow2((idx * 64) as nat) + words_prefix; {}
+            word_from_bytes(bytes, idx) * pow2((idx * 64) as nat) + bytes_prefix; {}
             words_from_bytes_to_nat(bytes, count);
         }
     }
@@ -675,207 +648,11 @@ pub proof fn lemma_bytes_to_nat_rec_equals_bytes_to_nat(bytes: &[u8; 32])
     }
 }
 
-proof fn lemma_limb1_mask_eq(w0: u64, w1: u64)
-    ensures
-        ((w0 >> 52) | (w1 << 12)) & (u64::MAX >> 12) == (w0 >> 52) | ((w1 & (u64::MAX >> 24)) << 12)
-{
-    assert(((w0 >> 52) | (w1 << 12)) & (u64::MAX >> 12) == (w0 >> 52) | ((w1 & (u64::MAX >> 24)) << 12)) by (bit_vector);
-}
-
-proof fn lemma_high12_bound(w0: u64)
-    ensures
-        (w0 >> 52) < (1u64 << 12)
-{
-    assert((w0 >> 52) < (1u64 << 12)) by (bit_vector);
-}
-
-proof fn lemma_low40_bound(w1: u64)
-    ensures
-        (w1 & (u64::MAX >> 24)) <= u64::MAX >> 12
-{
-    assert((w1 & (u64::MAX >> 24)) <= u64::MAX >> 12) by (bit_vector);
-}
-
 proof fn lemma_mask_preserves(value: u64)
     ensures
         value < (1u64 << 52) ==> (value & (u64::MAX >> 12)) == value
 {
     assert(value < (1u64 << 52) ==> (value & (u64::MAX >> 12)) == value) by (bit_vector);
-}
-
-proof fn lemma_limb1_value_bound(w0: u64, w1: u64)
-    ensures
-        (w0 >> 52) | ((w1 & (u64::MAX >> 24)) << 12) < (1u64 << 52)
-{
-    assert((w0 >> 52) | ((w1 & (u64::MAX >> 24)) << 12) < (1u64 << 52)) by (bit_vector);
-}
-
-proof fn lemma_limb2_mask_eq(w1: u64, w2: u64)
-    ensures
-        ((w1 >> 40) | (w2 << 24)) & (u64::MAX >> 12) == (w1 >> 40) | ((w2 & (u64::MAX >> 36)) << 24)
-{
-    assert(((w1 >> 40) | (w2 << 24)) & (u64::MAX >> 12) == (w1 >> 40) | ((w2 & (u64::MAX >> 36)) << 24)) by (bit_vector);
-}
-
-proof fn lemma_high24_bound(w1: u64)
-    ensures
-        (w1 >> 40) < (1u64 << 24)
-{
-    assert((w1 >> 40) < (1u64 << 24)) by (bit_vector);
-}
-
-proof fn lemma_low28_bound(w2: u64)
-    ensures
-        (w2 & (u64::MAX >> 36)) <= u64::MAX >> 24
-{
-    assert((w2 & (u64::MAX >> 36)) <= u64::MAX >> 24) by (bit_vector);
-}
-
-proof fn lemma_limb2_value_bound(w1: u64, w2: u64)
-    ensures
-        (w1 >> 40) | ((w2 & (u64::MAX >> 36)) << 24) < (1u64 << 52)
-{
-    assert((w1 >> 40) | ((w2 & (u64::MAX >> 36)) << 24) < (1u64 << 52)) by (bit_vector);
-}
-
-proof fn lemma_limb3_mask_eq(w2: u64, w3: u64)
-    ensures
-        ((w2 >> 28) | (w3 << 36)) & (u64::MAX >> 12) == (w2 >> 28) | ((w3 & (u64::MAX >> 48)) << 36)
-{
-    assert(((w2 >> 28) | (w3 << 36)) & (u64::MAX >> 12) == (w2 >> 28) | ((w3 & (u64::MAX >> 48)) << 36)) by (bit_vector);
-}
-
-proof fn lemma_high36_bound(w2: u64)
-    ensures
-        (w2 >> 28) < (1u64 << 36)
-{
-    assert((w2 >> 28) < (1u64 << 36)) by (bit_vector);
-}
-
-proof fn lemma_low16_bound(w3: u64)
-    ensures
-        (w3 & (u64::MAX >> 48)) <= u64::MAX >> 36
-{
-    assert((w3 & (u64::MAX >> 48)) <= u64::MAX >> 36) by (bit_vector);
-}
-
-proof fn lemma_limb3_value_bound(w2: u64, w3: u64)
-    ensures
-        (w2 >> 28) | ((w3 & (u64::MAX >> 48)) << 36) < (1u64 << 52)
-{
-    assert((w2 >> 28) | ((w3 & (u64::MAX >> 48)) << 36) < (1u64 << 52)) by (bit_vector);
-}
-
-proof fn lemma_limb4_mask_eq(w3: u64, w4: u64)
-    ensures
-        ((w3 >> 16) | (w4 << 48)) & (u64::MAX >> 12) == (w3 >> 16) | ((w4 & 0xf) << 48)
-{
-    assert(((w3 >> 16) | (w4 << 48)) & (u64::MAX >> 12) == (w3 >> 16) | ((w4 & 0xf) << 48)) by (bit_vector);
-}
-
-proof fn lemma_high48_bound(w3: u64)
-    ensures
-        (w3 >> 16) < (1u64 << 48)
-{
-    assert((w3 >> 16) < (1u64 << 48)) by (bit_vector);
-}
-
-proof fn lemma_low4_bound(w4: u64)
-    ensures
-        (w4 & 0xf) <= u64::MAX >> 48
-{
-    assert((w4 & 0xf) <= u64::MAX >> 48) by (bit_vector);
-}
-
-proof fn lemma_limb4_value_bound(w3: u64, w4: u64)
-    ensures
-        (w3 >> 16) | ((w4 & 0xf) << 48) < (1u64 << 52)
-{
-    assert((w3 >> 16) | ((w4 & 0xf) << 48) < (1u64 << 52)) by (bit_vector);
-}
-
-proof fn lemma_high8_bound(w4: u64)
-    ensures
-        (w4 >> 56) < (1u64 << 8)
-{
-    assert((w4 >> 56) < (1u64 << 8)) by (bit_vector);
-}
-
-proof fn lemma_low44_bound(w5: u64)
-    ensures
-        (w5 & (u64::MAX >> 20)) <= u64::MAX >> 8
-{
-    assert((w5 & (u64::MAX >> 20)) <= u64::MAX >> 8) by (bit_vector);
-}
-
-proof fn lemma_high_limb1_mask_eq(w4: u64, w5: u64)
-    ensures
-        ((w4 >> 56) | (w5 << 8)) & (u64::MAX >> 12) == (w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8)
-{
-    assert(((w4 >> 56) | (w5 << 8)) & (u64::MAX >> 12) == (w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8)) by (bit_vector);
-}
-
-proof fn lemma_high_limb1_value_bound(w4: u64, w5: u64)
-    ensures
-        (w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8) < (1u64 << 52)
-{
-    assert((w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8) < (1u64 << 52)) by (bit_vector);
-}
-
-proof fn lemma_high20_bound(w5: u64)
-    ensures
-        (w5 >> 44) < (1u64 << 20)
-{
-    assert((w5 >> 44) < (1u64 << 20)) by (bit_vector);
-}
-
-proof fn lemma_low32_bound(w6: u64)
-    ensures
-        (w6 & (u64::MAX >> 32)) <= u64::MAX >> 20
-{
-    assert((w6 & (u64::MAX >> 32)) <= u64::MAX >> 20) by (bit_vector);
-}
-
-proof fn lemma_high_limb2_mask_eq(w5: u64, w6: u64)
-    ensures
-        ((w5 >> 44) | (w6 << 20)) & (u64::MAX >> 12) == (w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20)
-{
-    assert(((w5 >> 44) | (w6 << 20)) & (u64::MAX >> 12) == (w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20)) by (bit_vector);
-}
-
-proof fn lemma_high_limb2_value_bound(w5: u64, w6: u64)
-    ensures
-        (w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20) < (1u64 << 52)
-{
-    assert((w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20) < (1u64 << 52)) by (bit_vector);
-}
-
-proof fn lemma_high32_bound(w6: u64)
-    ensures
-        (w6 >> 32) < (1u64 << 32)
-{
-    assert((w6 >> 32) < (1u64 << 32)) by (bit_vector);
-}
-
-proof fn lemma_low20_bound(w7: u64)
-    ensures
-        (w7 & (u64::MAX >> 44)) <= u64::MAX >> 32
-{
-    assert((w7 & (u64::MAX >> 44)) <= u64::MAX >> 32) by (bit_vector);
-}
-
-proof fn lemma_high_limb3_mask_eq(w6: u64, w7: u64)
-    ensures
-        ((w6 >> 32) | (w7 << 32)) & (u64::MAX >> 12) == (w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32)
-{
-    assert(((w6 >> 32) | (w7 << 32)) & (u64::MAX >> 12) == (w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32)) by (bit_vector);
-}
-
-proof fn lemma_high_limb3_value_bound(w6: u64, w7: u64)
-    ensures
-        (w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32) < (1u64 << 52)
-{
-    assert((w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32) < (1u64 << 52)) by (bit_vector);
 }
 
 pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], mask: u64)
@@ -917,9 +694,6 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         pow2(192) * (words[3] as nat) +
         pow2(256) * ((words[4] & 0xf) as nat);
 
-    assert(lhs == limb_sum);
-    assert(limb_sum == masked_words_sum);
-
     let limb1 = (((words[0] >> 52) | (words[1] << 12)) & mask) as nat;
     let limb2 = (((words[1] >> 40) | (words[2] << 24)) & mask) as nat;
     let limb3 = (((words[2] >> 28) | (words[3] << 36)) & mask) as nat;
@@ -944,86 +718,34 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let low40_mask: u64 = u64::MAX >> 24;
         let low40 = w1 & low40_mask;
 
-        assert(high12 == w0 >> 52);
-        assert(low40 == w1 & low40_mask);
-
-        assert(low40 as nat == w1_low) by {
-            assert(low40 == w1 & low40_mask);
-            assert(low40_mask == u64::MAX >> 24);
-        }
-
-        assert(high12 as nat == w0_high);
-
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12);
-        }
-
-        lemma_limb1_mask_eq(w0, w1);
-        assert(((w0 >> 52) | (w1 << 12)) & mask == (high12 | (low40 << 12))) by {
-            assert(low40 == w1 & low40_mask);
-            assert(high12 == w0 >> 52);
-            assert(mask == u64::MAX >> 12);
-        }
-
-        lemma_high12_bound(w0);
+        assert(((w0 >> 52) | (w1 << 12)) & (u64::MAX >> 12) == (w0 >> 52) | ((w1 & (u64::MAX >> 24)) << 12)) by (bit_vector);
         assert(high12 < (1u64 << 12)) by {
-            assert(high12 == w0 >> 52);
+            assert((w0 >> 52) < (1u64 << 12)) by (bit_vector);
         }
-
-        lemma_low40_bound(w1);
         assert(low40 <= u64::MAX >> 12) by {
-            assert(low40 == w1 & low40_mask);
+            assert((w1 & low40_mask) <= u64::MAX >> 12) by {
+                assert((w1 & (u64::MAX >> 24)) <= u64::MAX >> 12) by (bit_vector);
+            }
+            calc! {
+                (<=)
+                low40; { assert(low40 == w1 & low40_mask); }
+                w1 & low40_mask; { assert((w1 & low40_mask) <= u64::MAX >> 12); }
+                u64::MAX >> 12;
+            }
         }
 
-        lemma_limb1_value_bound(w0, w1);
         assert((high12 | (low40 << 12)) < (1u64 << 52)) by {
-            assert(high12 == w0 >> 52);
-            assert(low40 == w1 & low40_mask);
-            assert(low40_mask == u64::MAX >> 24);
+            assert(((w0 >> 52) | ((w1 & (u64::MAX >> 24)) << 12)) < (1u64 << 52)) by (bit_vector);
         }
         lemma_mask_preserves(high12 | (low40 << 12));
-        assert((high12 | (low40 << 12)) & mask == (high12 | (low40 << 12))) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-            assert(mask == u64::MAX >> 12);
-        }
-
-        assert(limb1 == (high12 | (low40 << 12)) as nat) by {
-            assert((((w0 >> 52) | (w1 << 12)) & mask) == (high12 | (low40 << 12)));
-            assert((high12 | (low40 << 12)) & mask == (high12 | (low40 << 12)));
-        }
-
         bit_or_is_plus(high12, low40, 12);
-
-        assert(limb1 == (high12 + (low40 << 12)) as nat) by {
-            assert(limb1 == (high12 | (low40 << 12)) as nat);
-            assert(high12 | (low40 << 12) == high12 + (low40 << 12));
-        }
-
         assert((low40 << 12) as nat == pow2(12) * (low40 as nat)) by {
             let shift_u64: u64 = 12;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low40, shift_u64, u64::MAX);
             vstd::bits::lemma_u64_shl_is_mul(low40, shift_u64);
             shift_is_pow2(12);
         }
-
-        assert((high12 + (low40 << 12)) as nat == (high12 as nat) + pow2(12) * (low40 as nat)) by {
-            assert((high12 + (low40 << 12)) as nat == (high12 as nat) + ((low40 << 12) as nat));
-            assert((low40 << 12) as nat == pow2(12) * (low40 as nat));
-        }
-
-        assert(limb1 == (high12 as nat) + pow2(12) * (low40 as nat)) by {
-            assert(limb1 == (high12 + (low40 << 12)) as nat);
-            assert((high12 + (low40 << 12)) as nat == (high12 as nat) + pow2(12) * (low40 as nat));
-        }
-
-        assert(limb1 == w0_high + pow2(12) * w1_low) by {
-            assert(high12 as nat == w0_high);
-            assert(low40 as nat == w1_low);
-        };
     };
     // Limb 2 consists of word 1's top 24 bits and word 2's low 28 bits.
     assert(limb2 == w1_high + pow2(24) * w2_low) by {
@@ -1033,68 +755,34 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let low28_mask: u64 = u64::MAX >> 36;
         let low28 = w2 & low28_mask;
 
-        assert(high24 == w1 >> 40);
-        assert(low28 == w2 & low28_mask);
-
-        assert(high24 as nat == w1_high);
-        assert(low28 as nat == w2_low) by {
-            assert(low28 == w2 & low28_mask);
-            assert(low28_mask == u64::MAX >> 36);
-        }
-
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12);
+        assert(((w1 >> 40) | (w2 << 24)) & (u64::MAX >> 12) == (w1 >> 40) | ((w2 & (u64::MAX >> 36)) << 24)) by (bit_vector);
+        assert(high24 < (1u64 << 24)) by {
+            assert((w1 >> 40) < (1u64 << 24)) by (bit_vector);
+        }
+        assert(low28 <= u64::MAX >> 24) by {
+            assert((w2 & low28_mask) <= u64::MAX >> 24) by {
+                assert((w2 & (u64::MAX >> 36)) <= u64::MAX >> 24) by (bit_vector);
+            }
+            calc! {
+                (<=)
+                low28; { assert(low28 == w2 & low28_mask); }
+                w2 & low28_mask; { assert((w2 & low28_mask) <= u64::MAX >> 24); }
+                u64::MAX >> 24;
+            }
         }
 
-        lemma_limb2_mask_eq(w1, w2);
-        assert(((w1 >> 40) | (w2 << 24)) & mask == (high24 | (low28 << 24))) by {
-            assert(low28 == w2 & low28_mask);
-            assert(low28_mask == u64::MAX >> 36);
-            assert(high24 == w1 >> 40);
-            assert(mask == u64::MAX >> 12);
+        assert((high24 | (low28 << 24)) < (1u64 << 52)) by {
+            assert(((w1 >> 40) | ((w2 & (u64::MAX >> 36)) << 24)) < (1u64 << 52)) by (bit_vector);
         }
-
-        lemma_high24_bound(w1);
-        lemma_low28_bound(w2);
-
-        lemma_limb2_value_bound(w1, w2);
         lemma_mask_preserves(high24 | (low28 << 24));
-        assert((high24 | (low28 << 24)) & mask == (high24 | (low28 << 24))) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-            assert(mask == u64::MAX >> 12);
-        }
-
-        assert(limb2 == (high24 | (low28 << 24)) as nat) by {
-            assert((((w1 >> 40) | (w2 << 24)) & mask) == (high24 | (low28 << 24)));
-            assert((high24 | (low28 << 24)) & mask == (high24 | (low28 << 24)));
-        }
-
         bit_or_is_plus(high24, low28, 24);
-
-        assert(limb2 == (high24 + (low28 << 24)) as nat) by {
-            assert(limb2 == (high24 | (low28 << 24)) as nat);
-            assert(high24 | (low28 << 24) == high24 + (low28 << 24));
-        }
         assert((low28 << 24) as nat == pow2(24) * (low28 as nat)) by {
             let shift_u64: u64 = 24;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low28, shift_u64, u64::MAX);
             vstd::bits::lemma_u64_shl_is_mul(low28, shift_u64);
             shift_is_pow2(24);
         }
-
-        assert((high24 + (low28 << 24)) as nat == (high24 as nat) + pow2(24) * (low28 as nat)) by {
-            assert((high24 + (low28 << 24)) as nat == (high24 as nat) + ((low28 << 24) as nat));
-            assert((low28 << 24) as nat == pow2(24) * (low28 as nat));
-        }
-
-        assert(limb2 == w1_high + pow2(24) * w2_low) by {
-            assert(high24 as nat == w1_high);
-            assert(low28 as nat == w2_low);
-        };
     };
     // Limb 3 consists of word 2's top 36 bits and word 3's low 16 bits.
     assert(limb3 == w2_high + pow2(36) * w3_low) by {
@@ -1104,83 +792,31 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let low16_mask: u64 = u64::MAX >> 48;
         let low16 = w3 & low16_mask;
 
-        assert(high36 == w2 >> 28);
-        assert(low16 == w3 & low16_mask);
-
-        assert(high36 as nat == w2_high);
-        assert(low16 as nat == w3_low) by {
-            assert(low16 == w3 & low16_mask);
-            assert(low16_mask == u64::MAX >> 48);
-        }
-
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12);
-        }
-
-        lemma_limb3_mask_eq(w2, w3);
-        assert(((w2 >> 28) | (w3 << 36)) & mask == (high36 | (low16 << 36))) by {
-            assert(low16 == w3 & low16_mask);
-            assert(low16_mask == u64::MAX >> 48);
-            assert(high36 == w2 >> 28);
-            assert(mask == u64::MAX >> 12);
-        }
-
-        lemma_high36_bound(w2);
+        assert(((w2 >> 28) | (w3 << 36)) & (u64::MAX >> 12) == (w2 >> 28) | ((w3 & (u64::MAX >> 48)) << 36)) by (bit_vector);
         assert(high36 < (1u64 << 36)) by {
-            assert(high36 == w2 >> 28);
+            assert((w2 >> 28) < (1u64 << 36)) by (bit_vector);
         }
-        lemma_low16_bound(w3);
         assert(low16 <= u64::MAX >> 36) by {
-            assert(low16 == w3 & low16_mask);
+            calc! {
+                (<=)
+                low16; { assert(low16 == w3 & (u64::MAX >> 48)); }
+                w3 & (u64::MAX >> 48); { assert((w3 & (u64::MAX >> 48)) <= u64::MAX >> 36) by (bit_vector); }
+                u64::MAX >> 36;
+            }
         }
 
-        lemma_limb3_value_bound(w2, w3);
+        assert((high36 | (low16 << 36)) < (1u64 << 52)) by {
+            assert(((w2 >> 28) | ((w3 & (u64::MAX >> 48)) << 36)) < (1u64 << 52)) by (bit_vector);
+        }
         lemma_mask_preserves(high36 | (low16 << 36));
-        assert((high36 | (low16 << 36)) & mask == (high36 | (low16 << 36))) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-            assert(mask == u64::MAX >> 12);
-        }
-
-        assert(limb3 == (high36 | (low16 << 36)) as nat) by {
-            assert((((w2 >> 28) | (w3 << 36)) & mask) == (high36 | (low16 << 36)));
-            assert((high36 | (low16 << 36)) & mask == (high36 | (low16 << 36)));
-        }
-
         bit_or_is_plus(high36, low16, 36);
-
-        assert(limb3 == (high36 + (low16 << 36)) as nat) by {
-            assert(limb3 == (high36 | (low16 << 36)) as nat);
-            assert(high36 | (low16 << 36) == high36 + (low16 << 36));
-        }
-
         assert((low16 << 36) as nat == pow2(36) * (low16 as nat)) by {
             let shift_u64: u64 = 36;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low16, shift_u64, u64::MAX);
-            assert(low16 <= u64::MAX >> 36) by {
-                assert(low16 == w3 & low16_mask);
-            }
-            assert(low16 * pow2(shift_u64 as nat) <= u64::MAX <==> low16 <= u64::MAX >> 36);
-            assert(low16 * pow2(shift_u64 as nat) <= u64::MAX) by {
-                assert(low16 <= u64::MAX >> 36);
-                assert(low16 * pow2(shift_u64 as nat) <= u64::MAX <==> low16 <= u64::MAX >> 36);
-            }
             vstd::bits::lemma_u64_shl_is_mul(low16, shift_u64);
             shift_is_pow2(36);
         }
-
-        assert((high36 + (low16 << 36)) as nat == (high36 as nat) + pow2(36) * (low16 as nat)) by {
-            assert((high36 + (low16 << 36)) as nat == (high36 as nat) + ((low16 << 36) as nat));
-            assert((low16 << 36) as nat == pow2(36) * (low16 as nat));
-        }
-
-        assert(limb3 == w2_high + pow2(36) * w3_low) by {
-            assert(high36 as nat == w2_high);
-            assert(low16 as nat == w3_low);
-        };
     };
     // Limb 4 consists of word 3's top 48 bits and word 4's low 4 bits.
     assert(limb4 == w3_high + pow2(48) * w4_low) by {
@@ -1189,79 +825,25 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let high48 = w3 >> 16;
         let low4 = w4 & 0xf;
 
-        assert(high48 == w3 >> 16);
-        assert(low4 == w4 & 0xf);
-
-        assert(high48 as nat == w3_high);
-        assert(low4 as nat == w4_low);
-
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12);
-        }
-
-        lemma_limb4_mask_eq(w3, w4);
-        assert(((w3 >> 16) | (w4 << 48)) & mask == (high48 | (low4 << 48))) by {
-            assert(low4 == w4 & 0xf);
-            assert(high48 == w3 >> 16);
-            assert(mask == u64::MAX >> 12);
-        }
-
-        lemma_high48_bound(w3);
+        assert(((w3 >> 16) | (w4 << 48)) & (u64::MAX >> 12) == (w3 >> 16) | ((w4 & 0xf) << 48)) by (bit_vector);
         assert(high48 < (1u64 << 48)) by {
-            assert(high48 == w3 >> 16);
+            assert((w3 >> 16) < (1u64 << 48)) by (bit_vector);
         }
-        lemma_low4_bound(w4);
         assert(low4 <= u64::MAX >> 48) by {
-            assert(low4 == w4 & 0xf);
+            assert((w4 & 0xf) <= u64::MAX >> 48) by (bit_vector);
         }
-
-        lemma_limb4_value_bound(w3, w4);
+        assert((high48 | (low4 << 48)) < (1u64 << 52)) by {
+            assert(((w3 >> 16) | ((w4 & 0xf) << 48)) < (1u64 << 52)) by (bit_vector);
+        }
         lemma_mask_preserves(high48 | (low4 << 48));
-        assert((high48 | (low4 << 48)) & mask == (high48 | (low4 << 48))) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-            assert(mask == u64::MAX >> 12);
-        }
-
-        assert(limb4 == (high48 | (low4 << 48)) as nat) by {
-            assert((((w3 >> 16) | (w4 << 48)) & mask) == (high48 | (low4 << 48)));
-            assert((high48 | (low4 << 48)) & mask == (high48 | (low4 << 48)));
-        }
-
         bit_or_is_plus(high48, low4, 48);
-
-        assert(limb4 == (high48 + (low4 << 48)) as nat) by {
-            assert(limb4 == (high48 | (low4 << 48)) as nat);
-            assert(high48 | (low4 << 48) == high48 + (low4 << 48));
-        }
-
         assert((low4 << 48) as nat == pow2(48) * (low4 as nat)) by {
             let shift_u64: u64 = 48;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low4, shift_u64, u64::MAX);
-            assert(low4 <= u64::MAX >> 48) by {
-                assert(low4 == w4 & 0xf);
-            }
-            assert(low4 * pow2(shift_u64 as nat) <= u64::MAX <==> low4 <= u64::MAX >> 48);
-            assert(low4 * pow2(shift_u64 as nat) <= u64::MAX) by {
-                assert(low4 <= u64::MAX >> 48);
-                assert(low4 * pow2(shift_u64 as nat) <= u64::MAX <==> low4 <= u64::MAX >> 48);
-            }
             vstd::bits::lemma_u64_shl_is_mul(low4, shift_u64);
             shift_is_pow2(48);
         }
-
-        assert((high48 + (low4 << 48)) as nat == (high48 as nat) + pow2(48) * (low4 as nat)) by {
-            assert((high48 + (low4 << 48)) as nat == (high48 as nat) + ((low4 << 48) as nat));
-            assert((low4 << 48) as nat == pow2(48) * (low4 as nat));
-        }
-
-        assert(limb4 == w3_high + pow2(48) * w4_low) by {
-            assert(high48 as nat == w3_high);
-            assert(low4 as nat == w4_low);
-        };
     };
     // Word 0 equals its low 52 bits plus its top 12 bits shifted by 52.
     assert(words[0] as nat == w0_low + pow2(52) * w0_high) by {
@@ -1269,89 +851,30 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let high = w0 >> 52;
         let low = w0 & mask;
 
-        assert(low as nat == w0_low);
-        assert(high as nat == w0_high);
-
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12) by {
-            assert(mask == (1u64 << 52) - 1u64);
-            assert((1u64 << 52) - 1u64 == u64::MAX >> 12);
-        }
-
-        assert(low == w0 & mask);
-        assert(low == w0 & (u64::MAX >> 12)) by {
-            assert(low == w0 & mask);
-            assert(mask == u64::MAX >> 12);
-        }
-
         assert(low < (1u64 << 52)) by {
-            assert(low == w0 & (u64::MAX >> 12));
             assert((w0 & (u64::MAX >> 12)) < (1u64 << 52)) by (bit_vector);
         }
-
         assert(high <= u64::MAX >> 52) by {
-            assert(high == w0 >> 52);
             assert((w0 >> 52) <= u64::MAX >> 52) by (bit_vector);
         }
-
         lemma_decompose(w0, mask);
-        assert(w0 == high * pow2(52) + low) by {
-            assert(high == w0 >> 52);
-            assert(low == w0 & mask);
-        }
-
         assert(low | (high << 52) == low + (high << 52)) by {
             bit_or_is_plus(low, high, 52);
         }
 
         let shift_u64: u64 = 52;
         vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, shift_u64, u64::MAX);
-        assert(high * pow2(shift_u64 as nat) <= u64::MAX) by {
-            assert(high <= u64::MAX >> 52) by {
-                assert(high == w0 >> 52);
-                assert((w0 >> 52) <= u64::MAX >> 52) by (bit_vector);
-            }
-            assert(high * pow2(shift_u64 as nat) <= u64::MAX <==> high <= u64::MAX >> 52);
-        }
+        assert(high * pow2(shift_u64 as nat) <= u64::MAX);
         vstd::bits::lemma_u64_shl_is_mul(high, shift_u64);
         shift_is_pow2(52);
 
-        assert(w0 == (w0 & (u64::MAX >> 12)) | ((w0 >> 52) << 52)) by (bit_vector);
-        assert(w0 == low | (high << 52)) by {
-            assert(low == w0 & (u64::MAX >> 12));
-            assert(high == w0 >> 52);
-        }
-
-        assert(w0 == low + (high << 52)) by {
-            assert(w0 == low | (high << 52));
-            assert(low | (high << 52) == low + (high << 52));
-        }
-
-        assert((high << 52) as nat == pow2(52) * (high as nat));
-
-        assert((low + (high << 52)) as nat == (low as nat) + ((high << 52) as nat)) by (nonlinear_arith);
-
-        assert(w0 as nat == (low as nat) + pow2(52) * (high as nat)) by {
-            assert(w0 as nat == (low + (high << 52)) as nat);
-            assert((low + (high << 52)) as nat == (low as nat) + ((high << 52) as nat));
-            assert((high << 52) as nat == pow2(52) * (high as nat));
-        }
-
         calc! {
             (==)
-            words[0] as nat; {
-                assert(words[0] as nat == w0 as nat);
-            }
-            w0 as nat; {
-                assert(w0 as nat == (low as nat) + pow2(52) * (high as nat));
-            }
-            (low as nat) + pow2(52) * (high as nat); {
-                assert(low as nat == w0_low);
-            }
-            w0_low + pow2(52) * (high as nat); {
-                assert(high as nat == w0_high);
-            }
+            words[0] as nat; {}
+            w0 as nat; {}
+            (low as nat) + pow2(52) * (high as nat); {}
+            w0_low + pow2(52) * (high as nat); {}
             w0_low + pow2(52) * w0_high;
         }
     };
@@ -1362,67 +885,27 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let low = w1 & low_mask;
         let high = w1 >> 40;
 
-        assert(low as nat == w1_low);
-        assert(high as nat == w1_high);
-
-        assert(low == w1 & low_mask);
-        assert(low == w1 & (u64::MAX >> 24)) by {
-            assert(low_mask == u64::MAX >> 24);
-        }
         assert(low < (1u64 << 40)) by {
-            assert(low == w1 & (u64::MAX >> 24));
             assert((w1 & (u64::MAX >> 24)) < (1u64 << 40)) by (bit_vector);
         }
         assert(high <= u64::MAX >> 40) by {
-            assert(high == w1 >> 40);
             assert((w1 >> 40) <= u64::MAX >> 40) by (bit_vector);
         }
-
         assert(w1 == low | (high << 40)) by {
-            assert(low == w1 & (u64::MAX >> 24)) by {
-                assert(low_mask == u64::MAX >> 24);
-            }
-            assert(high == w1 >> 40);
             calc! {
                 (==)
                 w1; {
                     assert(w1 == (w1 & (u64::MAX >> 24)) | ((w1 >> 40) << 40)) by (bit_vector);
                 }
-                (w1 & (u64::MAX >> 24)) | ((w1 >> 40) << 40); {
-                    assert(low == w1 & (u64::MAX >> 24));
-                    assert(high == w1 >> 40);
-                    assert((w1 & (u64::MAX >> 24)) | ((w1 >> 40) << 40) == low | (high << 40));
-                }
+                (w1 & (u64::MAX >> 24)) | ((w1 >> 40) << 40); {}
                 low | (high << 40);
             }
         }
-
         bit_or_is_plus(low, high, 40);
-
-        assert(w1 == low + (high << 40)) by {
-            assert(low | (high << 40) == low + (high << 40));
-        }
-
         let shift_u64: u64 = 40;
         vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, shift_u64, u64::MAX);
-        assert(high * pow2(shift_u64 as nat) <= u64::MAX) by {
-            assert(high <= u64::MAX >> 40);
-            assert(high * pow2(shift_u64 as nat) <= u64::MAX <==> high <= u64::MAX >> 40);
-        }
         vstd::bits::lemma_u64_shl_is_mul(high, shift_u64);
         shift_is_pow2(40);
-
-        assert(w1 as nat == (low as nat) + pow2(40) * (high as nat)) by {
-            assert(w1 as nat == (low + (high << 40)) as nat);
-            assert((low + (high << 40)) as nat == (low as nat) + ((high << 40) as nat)) by (nonlinear_arith);
-            assert((high << 40) as nat == pow2(40) * (high as nat));
-        }
-
-        assert(w1 as nat == w1_low + pow2(40) * w1_high) by {
-            assert(low as nat == w1_low);
-            assert(high as nat == w1_high);
-        }
-
         assert(pow2(64) * (pow2(40) * w1_high) == pow2(104) * w1_high) by {
             assert(pow2(64) * (pow2(40) * w1_high) == (pow2(64) * pow2(40)) * w1_high) by (nonlinear_arith);
             lemma_pow2_adds(64, 40);
@@ -1430,17 +913,12 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
 
         calc! {
             (==)
-            pow2(64) * (words[1] as nat); {
-                assert(words[1] as nat == w1_low + pow2(40) * w1_high);
-            }
+            pow2(64) * (words[1] as nat); {}
             pow2(64) * (w1_low + pow2(40) * w1_high); {
                 broadcast use group_mul_is_distributive;
             }
-            pow2(64) * w1_low + pow2(64) * (pow2(40) * w1_high); {
-            }
-            pow2(64) * w1_low + pow2(104) * w1_high; {
-                assert(pow2(64) * (pow2(40) * w1_high) == pow2(104) * w1_high);
-            }
+            pow2(64) * w1_low + pow2(64) * (pow2(40) * w1_high); {}
+            pow2(64) * w1_low + pow2(104) * w1_high; {}
             pow2(64) * w1_low + pow2(104) * w1_high;
         }
     };
@@ -1451,64 +929,29 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let low = w2 & low_mask;
         let high = w2 >> 28;
 
-        assert(low as nat == w2_low);
-        assert(high as nat == w2_high);
-
-        assert(low == w2 & (u64::MAX >> 36));
         assert(low < (1u64 << 28)) by {
-            assert(low == w2 & (u64::MAX >> 36));
             assert((w2 & (u64::MAX >> 36)) < (1u64 << 28)) by (bit_vector);
         }
         assert(high <= u64::MAX >> 28) by {
-            assert(high == w2 >> 28);
             assert((w2 >> 28) <= u64::MAX >> 28) by (bit_vector);
         }
-
         assert(w2 == low | (high << 28)) by {
-            assert(low == w2 & (u64::MAX >> 36));
-            assert(high == w2 >> 28);
             calc! {
                 (==)
                 w2; {
                     assert(w2 == (w2 & (u64::MAX >> 36)) | ((w2 >> 28) << 28)) by (bit_vector);
                 }
-                (w2 & (u64::MAX >> 36)) | ((w2 >> 28) << 28); {
-                    assert((w2 & (u64::MAX >> 36)) | ((w2 >> 28) << 28) == low | (high << 28));
-                }
-                low | (high << 28); {
-                    assert(low == w2 & (u64::MAX >> 36));
-                    assert(high == w2 >> 28);
-                }
+                (w2 & (u64::MAX >> 36)) | ((w2 >> 28) << 28); {}
+                low | (high << 28); {}
                 low | (high << 28);
             }
         }
 
         bit_or_is_plus(low, high, 28);
-
-        assert(w2 == low + (high << 28)) by {
-            assert(low | (high << 28) == low + (high << 28));
-        }
-
         let shift_u64: u64 = 28;
         vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, shift_u64, u64::MAX);
-        assert(high * pow2(shift_u64 as nat) <= u64::MAX) by {
-            assert(high <= u64::MAX >> 28);
-            assert(high * pow2(shift_u64 as nat) <= u64::MAX <==> high <= u64::MAX >> 28);
-        }
         vstd::bits::lemma_u64_shl_is_mul(high, shift_u64);
         shift_is_pow2(28);
-
-        assert(w2 as nat == (low as nat) + pow2(28) * (high as nat)) by {
-            assert(w2 as nat == (low + (high << 28)) as nat);
-            assert((low + (high << 28)) as nat == (low as nat) + ((high << 28) as nat)) by (nonlinear_arith);
-            assert((high << 28) as nat == pow2(28) * (high as nat));
-        }
-
-        assert(w2 as nat == w2_low + pow2(28) * w2_high) by {
-            assert(low as nat == w2_low);
-            assert(high as nat == w2_high);
-        }
-
         assert(pow2(128) * (pow2(28) * w2_high) == pow2(156) * w2_high) by {
             assert(pow2(128) * (pow2(28) * w2_high) == (pow2(128) * pow2(28)) * w2_high) by (nonlinear_arith);
             lemma_pow2_adds(128, 28);
@@ -1516,17 +959,12 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
 
         calc! {
             (==)
-            pow2(128) * (words[2] as nat); {
-                assert(words[2] as nat == w2_low + pow2(28) * w2_high);
-            }
+            pow2(128) * (words[2] as nat); {}
             pow2(128) * (w2_low + pow2(28) * w2_high); {
                 broadcast use group_mul_is_distributive;
             }
-            pow2(128) * w2_low + pow2(128) * (pow2(28) * w2_high); {
-            }
-            pow2(128) * w2_low + pow2(156) * w2_high; {
-                assert(pow2(128) * (pow2(28) * w2_high) == pow2(156) * w2_high);
-            }
+            pow2(128) * w2_low + pow2(128) * (pow2(28) * w2_high); {}
+            pow2(128) * w2_low + pow2(156) * w2_high; {}
             pow2(128) * w2_low + pow2(156) * w2_high;
         }
     };
@@ -1537,64 +975,29 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         let low = w3 & low_mask;
         let high = w3 >> 16;
 
-        assert(low as nat == w3_low);
-        assert(high as nat == w3_high);
-
-        assert(low == w3 & (u64::MAX >> 48));
         assert(low < (1u64 << 16)) by {
-            assert(low == w3 & (u64::MAX >> 48));
             assert((w3 & (u64::MAX >> 48)) < (1u64 << 16)) by (bit_vector);
         }
         assert(high <= u64::MAX >> 16) by {
-            assert(high == w3 >> 16);
             assert((w3 >> 16) <= u64::MAX >> 16) by (bit_vector);
         }
-
         assert(w3 == low | (high << 16)) by {
-            assert(low == w3 & (u64::MAX >> 48));
-            assert(high == w3 >> 16);
             calc! {
                 (==)
                 w3; {
                     assert(w3 == (w3 & (u64::MAX >> 48)) | ((w3 >> 16) << 16)) by (bit_vector);
                 }
-                (w3 & (u64::MAX >> 48)) | ((w3 >> 16) << 16); {
-                    assert((w3 & (u64::MAX >> 48)) | ((w3 >> 16) << 16) == low | (high << 16));
-                }
-                low | (high << 16); {
-                    assert(low == w3 & (u64::MAX >> 48));
-                    assert(high == w3 >> 16);
-                }
+                (w3 & (u64::MAX >> 48)) | ((w3 >> 16) << 16); {}
+                low | (high << 16); {}
                 low | (high << 16);
             }
         }
 
         bit_or_is_plus(low, high, 16);
-
-        assert(w3 == low + (high << 16)) by {
-            assert(low | (high << 16) == low + (high << 16));
-        }
-
         let shift_u64: u64 = 16;
         vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, shift_u64, u64::MAX);
-        assert(high * pow2(shift_u64 as nat) <= u64::MAX) by {
-            assert(high <= u64::MAX >> 16);
-            assert(high * pow2(shift_u64 as nat) <= u64::MAX <==> high <= u64::MAX >> 16);
-        }
         vstd::bits::lemma_u64_shl_is_mul(high, shift_u64);
         shift_is_pow2(16);
-
-        assert(w3 as nat == (low as nat) + pow2(16) * (high as nat)) by {
-            assert(w3 as nat == (low + (high << 16)) as nat);
-            assert((low + (high << 16)) as nat == (low as nat) + ((high << 16) as nat)) by (nonlinear_arith);
-            assert((high << 16) as nat == pow2(16) * (high as nat));
-        }
-
-        assert(w3 as nat == w3_low + pow2(16) * w3_high) by {
-            assert(low as nat == w3_low);
-            assert(high as nat == w3_high);
-        }
-
         assert(pow2(192) * (pow2(16) * w3_high) == pow2(208) * w3_high) by {
             assert(pow2(192) * (pow2(16) * w3_high) == (pow2(192) * pow2(16)) * w3_high) by (nonlinear_arith);
             lemma_pow2_adds(192, 16);
@@ -1602,17 +1005,12 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
 
         calc! {
             (==)
-            pow2(192) * (words[3] as nat); {
-                assert(words[3] as nat == w3_low + pow2(16) * w3_high);
-            }
+            pow2(192) * (words[3] as nat); {}
             pow2(192) * (w3_low + pow2(16) * w3_high); {
                 broadcast use group_mul_is_distributive;
             }
-            pow2(192) * w3_low + pow2(192) * (pow2(16) * w3_high); {
-            }
-            pow2(192) * w3_low + pow2(208) * w3_high; {
-                assert(pow2(192) * (pow2(16) * w3_high) == pow2(208) * w3_high);
-            }
+            pow2(192) * w3_low + pow2(192) * (pow2(16) * w3_high); {}
+            pow2(192) * w3_low + pow2(208) * w3_high; {}
             pow2(192) * w3_low + pow2(208) * w3_high;
         }
     };
@@ -1620,13 +1018,7 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
     assert(masked_words_sum == unmasked_words_sum) by {
         calc! {
             (==)
-            masked_words_sum; {
-                assert(((words[0] & mask) as nat) == w0_low);
-                assert((((words[0] >> 52) | (words[1] << 12)) & mask) as nat == w0_high + pow2(12) * w1_low);
-                assert((((words[1] >> 40) | (words[2] << 24)) & mask) as nat == w1_high + pow2(24) * w2_low);
-                assert((((words[2] >> 28) | (words[3] << 36)) & mask) as nat == w2_high + pow2(36) * w3_low);
-                assert((((words[3] >> 16) | (words[4] << 48)) & mask) as nat == w3_high + pow2(48) * w4_low);
-            }
+            masked_words_sum; {}
             w0_low
                 + pow2(52) * (w0_high + pow2(12) * w1_low)
                 + pow2(104) * (w1_high + pow2(24) * w2_low)
@@ -1639,21 +1031,11 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
                 lemma_pow2_adds(156, 36);
                 lemma_pow2_adds(208, 48);
             }
-            w0_low + pow2(52) * w0_high + pow2(64) * w1_low + pow2(104) * w1_high + pow2(128) * w2_low + pow2(156) * w2_high + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {
-                assert(words[0] as nat == w0_low + pow2(52) * w0_high);
-            }
-            (words[0] as nat) + pow2(64) * w1_low + pow2(104) * w1_high + pow2(128) * w2_low + pow2(156) * w2_high + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {
-                assert(pow2(64) * (words[1] as nat) == pow2(64) * w1_low + pow2(104) * w1_high);
-            }
-            (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * w2_low + pow2(156) * w2_high + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {
-                assert(pow2(128) * (words[2] as nat) == pow2(128) * w2_low + pow2(156) * w2_high);
-            }
-            (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (words[2] as nat) + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {
-                assert(pow2(192) * (words[3] as nat) == pow2(192) * w3_low + pow2(208) * w3_high);
-            }
-            (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * w4_low; {
-                assert(w4_low == ((words[4] & 0xf) as nat));
-            }
+            w0_low + pow2(52) * w0_high + pow2(64) * w1_low + pow2(104) * w1_high + pow2(128) * w2_low + pow2(156) * w2_high + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {}
+            (words[0] as nat) + pow2(64) * w1_low + pow2(104) * w1_high + pow2(128) * w2_low + pow2(156) * w2_high + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {}
+            (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * w2_low + pow2(156) * w2_high + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {}
+            (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (words[2] as nat) + pow2(192) * w3_low + pow2(208) * w3_high + pow2(256) * w4_low; {}
+            (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * w4_low; {}
             unmasked_words_sum;
         }
     };
@@ -1711,9 +1093,6 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
     let w7_low = (words[7] & (u64::MAX >> 44)) as nat;
     let w7_high = (words[7] >> 20) as nat;
 
-    assert(lhs == limb_sum);
-    assert(limb_sum == masked_words_sum);
-
     // Limb 0 consists of word 4's bits 4 through 55.
 
     // Limb 1 consists of word 4's top 8 bits and word 5's low 44 bits.
@@ -1724,93 +1103,36 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         let low44_mask: u64 = u64::MAX >> 20;
         let low44 = w5 & low44_mask;
 
-        assert(high8 == w4 >> 56);
-        assert(low44 == w5 & low44_mask);
-
-        assert(high8 as nat == w4_high);
-        assert(low44 as nat == w5_low);
-
-        lemma_high8_bound(w4);
         assert(high8 < (1u64 << 8)) by {
-            assert(high8 == w4 >> 56);
+            assert((w4 >> 56) < (1u64 << 8)) by (bit_vector);
         }
-
-        lemma_low44_bound(w5);
         assert((w5 & low44_mask) <= u64::MAX >> 8) by {
-            assert(low44_mask == u64::MAX >> 20);
+            assert((w5 & (u64::MAX >> 20)) <= u64::MAX >> 8) by (bit_vector);
         }
         assert(low44 <= u64::MAX >> 8) by {
-            assert(low44 == w5 & low44_mask);
+            calc! {
+                (<=)
+                low44; { assert(low44 == w5 & low44_mask); }
+                w5 & low44_mask; { assert((w5 & low44_mask) <= u64::MAX >> 8); }
+                u64::MAX >> 8;
+            }
         }
 
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12);
 
         let combined = high8 | (low44 << 8);
 
-        assert(((w4 >> 56) | (w5 << 8)) & mask == (w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8)) by {
-            assert(mask == u64::MAX >> 12);
-            lemma_high_limb1_mask_eq(w4, w5);
-        }
-        assert(((w4 >> 56) | (w5 << 8)) & mask == high8 | (low44 << 8)) by {
-            assert(((w4 >> 56) | (w5 << 8)) & mask == (w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8));
-            assert(high8 == w4 >> 56);
-            assert(low44 == w5 & (u64::MAX >> 20));
-        }
-        assert(((w4 >> 56) | (w5 << 8)) & mask == combined) by {
-            assert(((w4 >> 56) | (w5 << 8)) & mask == high8 | (low44 << 8));
-            assert(combined == high8 | (low44 << 8));
-        }
-
-        lemma_high_limb1_value_bound(w4, w5);
+        assert(((w4 >> 56) | (w5 << 8)) & (u64::MAX >> 12) == (w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8)) by (bit_vector);
         assert(combined < (1u64 << 52)) by {
-            assert(high8 == w4 >> 56);
-            assert(low44 == w5 & (u64::MAX >> 20));
+            assert(((w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8)) < (1u64 << 52)) by (bit_vector);
         }
-
         lemma_mask_preserves(combined);
-        assert((combined & (u64::MAX >> 12)) == combined);
-
-        assert(limb1 == combined as nat) by {
-            assert(limb1 == (((w4 >> 56) | (w5 << 8)) & mask) as nat);
-            assert(((w4 >> 56) | (w5 << 8)) & mask == combined);
-        }
-
         bit_or_is_plus(high8, low44, 8);
-        assert(combined == high8 + (low44 << 8));
-
-        assert(limb1 == (high8 + (low44 << 8)) as nat) by {
-            assert(limb1 == combined as nat);
-            assert(combined == high8 + (low44 << 8));
-        }
-
         assert((low44 << 8) as nat == pow2(8) * (low44 as nat)) by {
             let shift_u64: u64 = 8;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low44, shift_u64, u64::MAX);
-            assert(low44 * pow2(shift_u64 as nat) <= u64::MAX <==> low44 <= u64::MAX >> 8);
-            assert(low44 <= u64::MAX >> 8);
-            assert(low44 * pow2(shift_u64 as nat) <= u64::MAX) by {
-                assert(low44 <= u64::MAX >> 8);
-                assert(low44 * pow2(shift_u64 as nat) <= u64::MAX <==> low44 <= u64::MAX >> 8);
-            }
             vstd::bits::lemma_u64_shl_is_mul(low44, shift_u64);
             shift_is_pow2(8);
-        }
-
-        assert((high8 + (low44 << 8)) as nat == (high8 as nat) + pow2(8) * (low44 as nat)) by {
-            assert((high8 + (low44 << 8)) as nat == (high8 as nat) + ((low44 << 8) as nat)) by (nonlinear_arith);
-            assert((low44 << 8) as nat == pow2(8) * (low44 as nat));
-        }
-
-        assert(limb1 == (high8 as nat) + pow2(8) * (low44 as nat)) by {
-            assert(limb1 == (high8 + (low44 << 8)) as nat);
-            assert((high8 + (low44 << 8)) as nat == (high8 as nat) + pow2(8) * (low44 as nat));
-        }
-
-        assert(limb1 == w4_high + pow2(8) * w5_low) by {
-            assert(high8 as nat == w4_high);
-            assert(low44 as nat == w5_low);
         }
     };
 
@@ -1822,87 +1144,34 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         let low32_mask: u64 = u64::MAX >> 32;
         let low32 = w6 & low32_mask;
 
-        assert(high20 == w5 >> 44);
-        assert(low32 == w6 & low32_mask);
-
-        assert(high20 as nat == w5_high);
-        assert(low32 as nat == w6_low);
-
-        lemma_high20_bound(w5);
         assert(high20 < (1u64 << 20)) by {
-            assert(high20 == w5 >> 44);
+            assert((w5 >> 44) < (1u64 << 20)) by (bit_vector);
         }
-
-        lemma_low32_bound(w6);
         assert((w6 & low32_mask) <= u64::MAX >> 20) by {
-            assert(low32_mask == u64::MAX >> 32);
+            assert((w6 & (u64::MAX >> 32)) <= u64::MAX >> 20) by (bit_vector);
         }
         assert(low32 <= u64::MAX >> 20) by {
-            assert(low32 == w6 & low32_mask);
+            calc! {
+                (<=)
+                low32; { assert(low32 == w6 & low32_mask); }
+                w6 & low32_mask; { assert((w6 & low32_mask) <= u64::MAX >> 20); }
+                u64::MAX >> 20;
+            }
         }
-
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12);
 
         let combined = high20 | (low32 << 20);
-
-        assert(((w5 >> 44) | (w6 << 20)) & mask == combined) by {
-            assert(mask == u64::MAX >> 12);
-            lemma_high_limb2_mask_eq(w5, w6);
-            assert(((w5 >> 44) | (w6 << 20)) & mask == (w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20));
-            assert(high20 == w5 >> 44);
-            assert(low32 == w6 & (u64::MAX >> 32));
-        }
-
-        lemma_high_limb2_value_bound(w5, w6);
+        assert(((w5 >> 44) | (w6 << 20)) & (u64::MAX >> 12) == (w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20)) by (bit_vector);
         assert(combined < (1u64 << 52)) by {
-            assert(high20 == w5 >> 44);
-            assert(low32 == w6 & (u64::MAX >> 32));
+            assert(((w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20)) < (1u64 << 52)) by (bit_vector);
         }
-
         lemma_mask_preserves(combined);
-        assert((combined & (u64::MAX >> 12)) == combined);
-
-        assert(limb2 == combined as nat) by {
-            assert(limb2 == (((w5 >> 44) | (w6 << 20)) & mask) as nat);
-            assert(((w5 >> 44) | (w6 << 20)) & mask == combined);
-        }
-
         bit_or_is_plus(high20, low32, 20);
-        assert(combined == high20 + (low32 << 20));
-
-        assert(limb2 == (high20 + (low32 << 20)) as nat) by {
-            assert(limb2 == combined as nat);
-            assert(combined == high20 + (low32 << 20));
-        }
-
         assert((low32 << 20) as nat == pow2(20) * (low32 as nat)) by {
             let shift_u64: u64 = 20;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low32, shift_u64, u64::MAX);
-            assert(low32 * pow2(shift_u64 as nat) <= u64::MAX <==> low32 <= u64::MAX >> 20);
-            assert(low32 <= u64::MAX >> 20);
-            assert(low32 * pow2(shift_u64 as nat) <= u64::MAX) by {
-                assert(low32 <= u64::MAX >> 20);
-                assert(low32 * pow2(shift_u64 as nat) <= u64::MAX <==> low32 <= u64::MAX >> 20);
-            }
             vstd::bits::lemma_u64_shl_is_mul(low32, shift_u64);
             shift_is_pow2(20);
-        }
-
-        assert((high20 + (low32 << 20)) as nat == (high20 as nat) + pow2(20) * (low32 as nat)) by {
-            assert((high20 + (low32 << 20)) as nat == (high20 as nat) + ((low32 << 20) as nat)) by (nonlinear_arith);
-            assert((low32 << 20) as nat == pow2(20) * (low32 as nat));
-        }
-
-        assert(limb2 == (high20 as nat) + pow2(20) * (low32 as nat)) by {
-            assert(limb2 == (high20 + (low32 << 20)) as nat);
-            assert((high20 + (low32 << 20)) as nat == (high20 as nat) + pow2(20) * (low32 as nat));
-        }
-
-        assert(limb2 == w5_high + pow2(20) * w6_low) by {
-            assert(high20 as nat == w5_high);
-            assert(low32 as nat == w6_low);
         }
     };
 
@@ -1914,92 +1183,39 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         let low20_mask: u64 = u64::MAX >> 44;
         let low20 = w7 & low20_mask;
 
-        assert(high32 == w6 >> 32);
-        assert(low20 == w7 & low20_mask);
-
-        assert(high32 as nat == w6_high);
-        assert(low20 as nat == w7_low);
-
-        lemma_high32_bound(w6);
         assert(high32 < (1u64 << 32)) by {
-            assert(high32 == w6 >> 32);
+            assert((w6 >> 32) < (1u64 << 32)) by (bit_vector);
         }
-
-        lemma_low20_bound(w7);
         assert((w7 & low20_mask) <= u64::MAX >> 32) by {
-            assert(low20_mask == u64::MAX >> 44);
+            assert((w7 & (u64::MAX >> 44)) <= u64::MAX >> 32) by (bit_vector);
         }
         assert(low20 <= u64::MAX >> 32) by {
-            assert(low20 == w7 & low20_mask);
+            calc! {
+                (<=)
+                low20; { assert(low20 == w7 & low20_mask); }
+                w7 & low20_mask; { assert((w7 & low20_mask) <= u64::MAX >> 32); }
+                u64::MAX >> 32;
+            }
         }
-
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12);
 
         let combined = high32 | (low20 << 32);
 
-        assert(((w6 >> 32) | (w7 << 32)) & mask == combined) by {
-            assert(mask == u64::MAX >> 12);
-            lemma_high_limb3_mask_eq(w6, w7);
-            assert(((w6 >> 32) | (w7 << 32)) & mask == (w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32));
-            assert(high32 == w6 >> 32);
-            assert(low20 == w7 & (u64::MAX >> 44));
-        }
-
-        lemma_high_limb3_value_bound(w6, w7);
+        assert(((w6 >> 32) | (w7 << 32)) & (u64::MAX >> 12) == (w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32)) by (bit_vector);
         assert(combined < (1u64 << 52)) by {
-            assert(high32 == w6 >> 32);
-            assert(low20 == w7 & (u64::MAX >> 44));
+            assert(((w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32)) < (1u64 << 52)) by (bit_vector);
         }
-
         lemma_mask_preserves(combined);
-        assert((combined & (u64::MAX >> 12)) == combined);
-
-        assert(limb3 == combined as nat) by {
-            assert(limb3 == (((w6 >> 32) | (w7 << 32)) & mask) as nat);
-            assert(((w6 >> 32) | (w7 << 32)) & mask == combined);
-        }
-
         bit_or_is_plus(high32, low20, 32);
-        assert(combined == high32 + (low20 << 32));
-
-        assert(limb3 == (high32 + (low20 << 32)) as nat) by {
-            assert(limb3 == combined as nat);
-            assert(combined == high32 + (low20 << 32));
-        }
-
         assert((low20 << 32) as nat == pow2(32) * (low20 as nat)) by {
             let shift_u64: u64 = 32;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low20, shift_u64, u64::MAX);
-            assert(low20 * pow2(shift_u64 as nat) <= u64::MAX <==> low20 <= u64::MAX >> 32);
-            assert(low20 <= u64::MAX >> 32);
-            assert(low20 * pow2(shift_u64 as nat) <= u64::MAX) by {
-                assert(low20 <= u64::MAX >> 32);
-                assert(low20 * pow2(shift_u64 as nat) <= u64::MAX <==> low20 <= u64::MAX >> 32);
-            }
             vstd::bits::lemma_u64_shl_is_mul(low20, shift_u64);
             shift_is_pow2(32);
-        }
-
-        assert((high32 + (low20 << 32)) as nat == (high32 as nat) + pow2(32) * (low20 as nat)) by {
-            assert((high32 + (low20 << 32)) as nat == (high32 as nat) + ((low20 << 32) as nat)) by (nonlinear_arith);
-            assert((low20 << 32) as nat == pow2(32) * (low20 as nat));
-        }
-
-        assert(limb3 == (high32 as nat) + pow2(32) * (low20 as nat)) by {
-            assert(limb3 == (high32 + (low20 << 32)) as nat);
-            assert((high32 + (low20 << 32)) as nat == (high32 as nat) + pow2(32) * (low20 as nat));
-        }
-
-        assert(limb3 == w6_high + pow2(32) * w7_low) by {
-            assert(high32 as nat == w6_high);
-            assert(low20 as nat == w7_low);
         }
     };
 
     // Limb 4 consists of word 7's top 44 bits.
-    assert(limb4 == w7_high);
 
     // Word 4 shifted by 4 equals limb 0 plus limb 1's contribution from word 4's high bits.
     assert((words[4] >> 4) as nat == limb0 + pow2(52) * w4_high) by {
@@ -2007,62 +1223,26 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         let low52 = (w4 >> 4) & mask;
         let high8 = w4 >> 56;
 
-        assert(mask == (1u64 << 52) - 1u64);
         assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
-        assert(mask == u64::MAX >> 12);
-
-        assert(low52 == (w4 >> 4) & (u64::MAX >> 12));
-        assert(high8 == w4 >> 56);
-
-        assert(low52 as nat == limb0);
-        assert(high8 as nat == w4_high);
-
         assert(low52 < (1u64 << 52)) by {
-            assert(low52 == (w4 >> 4) & (u64::MAX >> 12));
             assert(((w4 >> 4) & (u64::MAX >> 12)) < (1u64 << 52)) by (bit_vector);
         }
-
         assert(high8 <= u64::MAX >> 52) by {
-            assert(high8 == w4 >> 56);
             assert((w4 >> 56) <= u64::MAX >> 56) by (bit_vector);
             assert(u64::MAX >> 56 <= u64::MAX >> 52) by (bit_vector);
         }
-
         lemma_mask_preserves(low52);
-        assert((low52 & (u64::MAX >> 12)) == low52);
-
         assert((w4 >> 4) == (low52 | (high8 << 52))) by {
             assert((w4 >> 4) == ((w4 >> 4) & (u64::MAX >> 12)) | ((w4 >> 56) << 52)) by (bit_vector);
-            assert(low52 == (w4 >> 4) & (u64::MAX >> 12));
-            assert(high8 == w4 >> 56);
         }
-
         bit_or_is_plus(low52, high8, 52);
-        assert((w4 >> 4) == low52 + (high8 << 52));
-
         assert(((high8 << 52) as nat) == pow2(52) * (high8 as nat)) by {
             let shift_u64: u64 = 52;
             vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high8, shift_u64, u64::MAX);
-            assert(high8 * pow2(shift_u64 as nat) <= u64::MAX) by {
-                assert(high8 <= u64::MAX >> 52) by {
-                    assert(high8 == w4 >> 56);
-                    assert((w4 >> 56) <= u64::MAX >> 56) by (bit_vector);
-                    assert(u64::MAX >> 56 <= u64::MAX >> 52) by (bit_vector);
-                }
-                assert(high8 * pow2(shift_u64 as nat) <= u64::MAX <==> high8 <= u64::MAX >> 52);
-            }
+            assert(high8 * pow2(shift_u64 as nat) <= u64::MAX);
             vstd::bits::lemma_u64_shl_is_mul(high8, shift_u64);
             shift_is_pow2(52);
         }
-
-        assert((w4 >> 4) as nat == (low52 + (high8 << 52)) as nat);
-
-        assert((low52 + (high8 << 52)) as nat == (low52 as nat) + ((high8 << 52) as nat)) by (nonlinear_arith);
-
-        assert((w4 >> 4) as nat == (low52 as nat) + pow2(52) * (high8 as nat));
-
-        assert(low52 as nat == limb0);
-        assert(high8 as nat == w4_high);
     };
 
     // Word 5's contribution at scale 2^60 equals its low 44 bits plus its high 20 bits.
@@ -2072,58 +1252,27 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         let low = w5 & low_mask;
         let high = w5 >> 44;
 
-        assert(low as nat == w5_low);
-        assert(high as nat == w5_high);
-
-        assert(low == w5 & (u64::MAX >> 20));
         assert(low < (1u64 << 44)) by {
-            assert(low == w5 & (u64::MAX >> 20));
             assert((w5 & (u64::MAX >> 20)) < (1u64 << 44)) by (bit_vector);
         }
         assert(high <= u64::MAX >> 44) by {
-            assert(high == w5 >> 44);
             assert((w5 >> 44) <= u64::MAX >> 44) by (bit_vector);
         }
-
         assert(w5 == low | (high << 44)) by {
-            assert(low == w5 & (u64::MAX >> 20));
-            assert(high == w5 >> 44);
             calc! {
                 (==)
                 w5; {
                     assert(w5 == (w5 & (u64::MAX >> 20)) | ((w5 >> 44) << 44)) by (bit_vector);
                 }
-                (w5 & (u64::MAX >> 20)) | ((w5 >> 44) << 44); {
-                    assert((w5 & (u64::MAX >> 20)) | ((w5 >> 44) << 44) == low | (high << 44));
-                }
+                (w5 & (u64::MAX >> 20)) | ((w5 >> 44) << 44); {}
                 low | (high << 44);
             }
         }
-
         bit_or_is_plus(low, high, 44);
-        assert(w5 == low + (high << 44)) by {
-            assert(low | (high << 44) == low + (high << 44));
-        }
-
         let shift_u64: u64 = 44;
         vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, shift_u64, u64::MAX);
-        assert(high * pow2(shift_u64 as nat) <= u64::MAX) by {
-            assert(high <= u64::MAX >> 44);
-            assert(high * pow2(shift_u64 as nat) <= u64::MAX <==> high <= u64::MAX >> 44);
-        }
         vstd::bits::lemma_u64_shl_is_mul(high, shift_u64);
         shift_is_pow2(44);
-
-        assert(w5 as nat == (low as nat) + pow2(44) * (high as nat)) by {
-            assert(w5 as nat == (low + (high << 44)) as nat);
-            assert((low + (high << 44)) as nat == (low as nat) + ((high << 44) as nat)) by (nonlinear_arith);
-            assert((high << 44) as nat == pow2(44) * (high as nat));
-        }
-
-        assert(w5 as nat == w5_low + pow2(44) * w5_high) by {
-            assert(low as nat == w5_low);
-            assert(high as nat == w5_high);
-        }
 
         assert(pow2(60) * (pow2(44) * w5_high) == pow2(104) * w5_high) by {
             assert(pow2(60) * (pow2(44) * w5_high) == (pow2(60) * pow2(44)) * w5_high) by (nonlinear_arith);
@@ -2132,17 +1281,12 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
 
         calc! {
             (==)
-            pow2(60) * (words[5] as nat); {
-                assert(words[5] as nat == w5_low + pow2(44) * w5_high);
-            }
+            pow2(60) * (words[5] as nat); {}
             pow2(60) * (w5_low + pow2(44) * w5_high); {
                 broadcast use group_mul_is_distributive;
             }
-            pow2(60) * w5_low + pow2(60) * (pow2(44) * w5_high); {
-            }
-            pow2(60) * w5_low + pow2(104) * w5_high; {
-                assert(pow2(60) * (pow2(44) * w5_high) == pow2(104) * w5_high);
-            }
+            pow2(60) * w5_low + pow2(60) * (pow2(44) * w5_high); {}
+            pow2(60) * w5_low + pow2(104) * w5_high; {}
             pow2(60) * w5_low + pow2(104) * w5_high;
         }
     };
@@ -2154,58 +1298,28 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         let low = w6 & low_mask;
         let high = w6 >> 32;
 
-        assert(low as nat == w6_low);
-        assert(high as nat == w6_high);
-
-        assert(low == w6 & (u64::MAX >> 32));
         assert(low < (1u64 << 32)) by {
-            assert(low == w6 & (u64::MAX >> 32));
             assert((w6 & (u64::MAX >> 32)) < (1u64 << 32)) by (bit_vector);
         }
         assert(high <= u64::MAX >> 32) by {
-            assert(high == w6 >> 32);
             assert((w6 >> 32) <= u64::MAX >> 32) by (bit_vector);
         }
-
         assert(w6 == low | (high << 32)) by {
-            assert(low == w6 & (u64::MAX >> 32));
-            assert(high == w6 >> 32);
             calc! {
                 (==)
                 w6; {
                     assert(w6 == (w6 & (u64::MAX >> 32)) | ((w6 >> 32) << 32)) by (bit_vector);
                 }
-                (w6 & (u64::MAX >> 32)) | ((w6 >> 32) << 32); {
-                    assert((w6 & (u64::MAX >> 32)) | ((w6 >> 32) << 32) == low | (high << 32));
-                }
+                (w6 & (u64::MAX >> 32)) | ((w6 >> 32) << 32); {}
                 low | (high << 32);
             }
         }
-
         bit_or_is_plus(low, high, 32);
-        assert(w6 == low + (high << 32)) by {
-            assert(low | (high << 32) == low + (high << 32));
-        }
 
         let shift_u64: u64 = 32;
         vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, shift_u64, u64::MAX);
-        assert(high * pow2(shift_u64 as nat) <= u64::MAX) by {
-            assert(high <= u64::MAX >> 32);
-            assert(high * pow2(shift_u64 as nat) <= u64::MAX <==> high <= u64::MAX >> 32);
-        }
         vstd::bits::lemma_u64_shl_is_mul(high, shift_u64);
         shift_is_pow2(32);
-
-        assert(w6 as nat == (low as nat) + pow2(32) * (high as nat)) by {
-            assert(w6 as nat == (low + (high << 32)) as nat);
-            assert((low + (high << 32)) as nat == (low as nat) + ((high << 32) as nat)) by (nonlinear_arith);
-            assert((high << 32) as nat == pow2(32) * (high as nat));
-        }
-
-        assert(w6 as nat == w6_low + pow2(32) * w6_high) by {
-            assert(low as nat == w6_low);
-            assert(high as nat == w6_high);
-        }
 
         assert(pow2(124) * (pow2(32) * w6_high) == pow2(156) * w6_high) by {
             assert(pow2(124) * (pow2(32) * w6_high) == (pow2(124) * pow2(32)) * w6_high) by (nonlinear_arith);
@@ -2214,17 +1328,12 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
 
         calc! {
             (==)
-            pow2(124) * (words[6] as nat); {
-                assert(words[6] as nat == w6_low + pow2(32) * w6_high);
-            }
+            pow2(124) * (words[6] as nat); {}
             pow2(124) * (w6_low + pow2(32) * w6_high); {
                 broadcast use group_mul_is_distributive;
             }
-            pow2(124) * w6_low + pow2(124) * (pow2(32) * w6_high); {
-            }
-            pow2(124) * w6_low + pow2(156) * w6_high; {
-                assert(pow2(124) * (pow2(32) * w6_high) == pow2(156) * w6_high);
-            }
+            pow2(124) * w6_low + pow2(124) * (pow2(32) * w6_high); {}
+            pow2(124) * w6_low + pow2(156) * w6_high; {}
             pow2(124) * w6_low + pow2(156) * w6_high;
         }
     };
@@ -2236,58 +1345,28 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         let low = w7 & low_mask;
         let high = w7 >> 20;
 
-        assert(low as nat == w7_low);
-        assert(high as nat == w7_high);
-
-        assert(low == w7 & (u64::MAX >> 44));
         assert(low < (1u64 << 20)) by {
-            assert(low == w7 & (u64::MAX >> 44));
             assert((w7 & (u64::MAX >> 44)) < (1u64 << 20)) by (bit_vector);
         }
         assert(high <= u64::MAX >> 20) by {
-            assert(high == w7 >> 20);
             assert((w7 >> 20) <= u64::MAX >> 20) by (bit_vector);
         }
-
         assert(w7 == low | (high << 20)) by {
-            assert(low == w7 & (u64::MAX >> 44));
-            assert(high == w7 >> 20);
             calc! {
                 (==)
                 w7; {
                     assert(w7 == (w7 & (u64::MAX >> 44)) | ((w7 >> 20) << 20)) by (bit_vector);
                 }
-                (w7 & (u64::MAX >> 44)) | ((w7 >> 20) << 20); {
-                    assert((w7 & (u64::MAX >> 44)) | ((w7 >> 20) << 20) == low | (high << 20));
-                }
+                (w7 & (u64::MAX >> 44)) | ((w7 >> 20) << 20); {}
                 low | (high << 20);
             }
         }
 
         bit_or_is_plus(low, high, 20);
-        assert(w7 == low + (high << 20)) by {
-            assert(low | (high << 20) == low + (high << 20));
-        }
-
         let shift_u64: u64 = 20;
         vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, shift_u64, u64::MAX);
-        assert(high * pow2(shift_u64 as nat) <= u64::MAX) by {
-            assert(high <= u64::MAX >> 20);
-            assert(high * pow2(shift_u64 as nat) <= u64::MAX <==> high <= u64::MAX >> 20);
-        }
         vstd::bits::lemma_u64_shl_is_mul(high, shift_u64);
         shift_is_pow2(20);
-
-        assert(w7 as nat == (low as nat) + pow2(20) * (high as nat)) by {
-            assert(w7 as nat == (low + (high << 20)) as nat);
-            assert((low + (high << 20)) as nat == (low as nat) + ((high << 20) as nat)) by (nonlinear_arith);
-            assert((high << 20) as nat == pow2(20) * (high as nat));
-        }
-
-        assert(w7 as nat == w7_low + pow2(20) * w7_high) by {
-            assert(low as nat == w7_low);
-            assert(high as nat == w7_high);
-        }
 
         assert(pow2(188) * (pow2(20) * w7_high) == pow2(208) * w7_high) by {
             assert(pow2(188) * (pow2(20) * w7_high) == (pow2(188) * pow2(20)) * w7_high) by (nonlinear_arith);
@@ -2296,17 +1375,12 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
 
         calc! {
             (==)
-            pow2(188) * (words[7] as nat); {
-                assert(words[7] as nat == w7_low + pow2(20) * w7_high);
-            }
+            pow2(188) * (words[7] as nat); {}
             pow2(188) * (w7_low + pow2(20) * w7_high); {
                 broadcast use group_mul_is_distributive;
             }
-            pow2(188) * w7_low + pow2(188) * (pow2(20) * w7_high); {
-            }
-            pow2(188) * w7_low + pow2(208) * w7_high; {
-                assert(pow2(188) * (pow2(20) * w7_high) == pow2(208) * w7_high);
-            }
+            pow2(188) * w7_low + pow2(188) * (pow2(20) * w7_high); {}
+            pow2(188) * w7_low + pow2(208) * w7_high; {}
             pow2(188) * w7_low + pow2(208) * w7_high;
         }
     };
@@ -2314,12 +1388,7 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
     assert(masked_words_sum == unmasked_words_sum) by {
         calc! {
             (==)
-            masked_words_sum; {
-                assert(limb1 == w4_high + pow2(8) * w5_low);
-                assert(limb2 == w5_high + pow2(20) * w6_low);
-                assert(limb3 == w6_high + pow2(32) * w7_low);
-                assert(limb4 == w7_high);
-            }
+            masked_words_sum; {}
             limb0
                 + pow2(52) * (w4_high + pow2(8) * w5_low)
                 + pow2(104) * (w5_high + pow2(20) * w6_low)
@@ -2331,18 +1400,10 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
                 lemma_pow2_adds(104, 20);
                 lemma_pow2_adds(156, 32);
             }
-            limb0 + pow2(52) * w4_high + pow2(60) * w5_low + pow2(104) * w5_high + pow2(124) * w6_low + pow2(156) * w6_high + pow2(188) * w7_low + pow2(208) * w7_high; {
-                assert((words[4] >> 4) as nat == limb0 + pow2(52) * w4_high);
-            }
-            (words[4] >> 4) as nat + pow2(60) * w5_low + pow2(104) * w5_high + pow2(124) * w6_low + pow2(156) * w6_high + pow2(188) * w7_low + pow2(208) * w7_high; {
-                assert(pow2(60) * (words[5] as nat) == pow2(60) * w5_low + pow2(104) * w5_high);
-            }
-            (words[4] >> 4) as nat + pow2(60) * (words[5] as nat) + pow2(124) * w6_low + pow2(156) * w6_high + pow2(188) * w7_low + pow2(208) * w7_high; {
-                assert(pow2(124) * (words[6] as nat) == pow2(124) * w6_low + pow2(156) * w6_high);
-            }
-            (words[4] >> 4) as nat + pow2(60) * (words[5] as nat) + pow2(124) * (words[6] as nat) + pow2(188) * w7_low + pow2(208) * w7_high; {
-                assert(pow2(188) * (words[7] as nat) == pow2(188) * w7_low + pow2(208) * w7_high);
-            }
+            limb0 + pow2(52) * w4_high + pow2(60) * w5_low + pow2(104) * w5_high + pow2(124) * w6_low + pow2(156) * w6_high + pow2(188) * w7_low + pow2(208) * w7_high; {}
+            (words[4] >> 4) as nat + pow2(60) * w5_low + pow2(104) * w5_high + pow2(124) * w6_low + pow2(156) * w6_high + pow2(188) * w7_low + pow2(208) * w7_high; {}
+            (words[4] >> 4) as nat + pow2(60) * (words[5] as nat) + pow2(124) * w6_low + pow2(156) * w6_high + pow2(188) * w7_low + pow2(208) * w7_high; {}
+            (words[4] >> 4) as nat + pow2(60) * (words[5] as nat) + pow2(124) * (words[6] as nat) + pow2(188) * w7_low + pow2(208) * w7_high; {}
             (words[4] >> 4) as nat + pow2(60) * (words[5] as nat) + pow2(124) * (words[6] as nat) + pow2(188) * (words[7] as nat); {
                 assert(unmasked_words_sum ==
                     (words[4] >> 4) as nat +

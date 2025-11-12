@@ -240,7 +240,7 @@ def pvf_to_csv(pvf, debug=False, debug_path=DEBUG_PATH):
     Returns:
         dict: CSV dictionary with rows as list of dicts
     """
-    print(f"Processing file entries...")
+    print("Processing file entries...")
 
     # Extract file entries only
     csv = {}
@@ -320,7 +320,6 @@ def read_csv(csv_path=CSV_PATH, debug=False, debug_path=DEBUG_PATH):
     Returns:
         dict: Keys are {function_path}/{function_stem}, values are dict with function info
     """
-    import csv
 
     result = {}
     function_path_module_mismatches = []

@@ -224,27 +224,27 @@ impl CompressedEdwardsY {
     // VERIFICATION NOTE: PROOF BYPASS
 
         ensures
-            is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
+            math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
                 ==> result.is_some()
             // The Y coordinate matches the one from the compressed representation
              && spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes(
                 &self.0,
             )
             // The point is valid
-             && is_valid_edwards_point(
+             && spec_is_valid_edwards_point(
                 result.unwrap(),
             )
             // The X coordinate sign bit matches the sign bit from the compressed representation
              && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7),
-            !is_valid_y_coordinate(spec_field_element_from_bytes(&self.0)) <==> result.is_none(),
+            !math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0)) <==> result.is_none(),
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
         proof {
-            assert(choice_is_true(is_valid_y_coord) ==> is_valid_y_coordinate(
+            assert(choice_is_true(is_valid_y_coord) ==> math_is_valid_y_coordinate(
                 spec_field_element_from_bytes(&self.0),
             ));
-            assert(choice_is_true(is_valid_y_coord) ==> on_edwards_curve(
+            assert(choice_is_true(is_valid_y_coord) ==> math_on_edwards_curve(
                 spec_field_element(&X),
                 spec_field_element(&Y),
             ));
@@ -279,8 +279,8 @@ mod decompress {
             // The returned Z field element is 1
             spec_field_element(&result.3) == 1,
             // The choice is true iff the Y is valid and (X, Y) is on the curve
-            choice_is_true(result.0) <==> is_valid_y_coordinate(spec_field_element(&result.2)),
-            choice_is_true(result.0) ==> on_edwards_curve(
+            choice_is_true(result.0) <==> math_is_valid_y_coordinate(spec_field_element(&result.2)),
+            choice_is_true(result.0) ==> math_on_edwards_curve(
                 spec_field_element(&result.1),
                 spec_field_element(&result.2),
             ),
@@ -319,10 +319,10 @@ mod decompress {
             // Assume postconditions that depend on sqrt_ratio_i behavior
             assume(spec_field_element(&Z) == 1);
             // Note: Using <==> (bi-implication) to match the postcondition exactly
-            assume(choice_is_true(is_valid_y_coord) <==> is_valid_y_coordinate(
+            assume(choice_is_true(is_valid_y_coord) <==> math_is_valid_y_coordinate(
                 spec_field_element(&Y),
             ));
-            assume(choice_is_true(is_valid_y_coord) ==> on_edwards_curve(
+            assume(choice_is_true(is_valid_y_coord) ==> math_on_edwards_curve(
                 spec_field_element(&X),
                 spec_field_element(&Y),
             ));
@@ -553,7 +553,7 @@ impl Identity for CompressedEdwardsY {
     // VERIFICATION NOTE: PROOF BYPASS
 
         ensures
-            is_compressed_identity(result),
+            spec_is_compressed_identity(result),
     {
         let result = CompressedEdwardsY(
             [
@@ -610,7 +610,7 @@ impl Identity for CompressedEdwardsY {
 impl Default for CompressedEdwardsY {
     fn default() -> (result: CompressedEdwardsY)
         ensures
-            is_compressed_identity(result),
+            spec_is_compressed_identity(result),
     {
         let result = CompressedEdwardsY::identity();
         result
@@ -662,7 +662,7 @@ impl Identity for EdwardsPoint {
     */
 
         ensures
-            is_identity(result),
+            spec_is_identity(result),
     {
         assume(spec_field_element(&FieldElement::ZERO) == 0);
         assume(spec_field_element(&FieldElement::ONE) == 1);
@@ -679,7 +679,7 @@ impl Identity for EdwardsPoint {
 impl Default for EdwardsPoint {
     fn default() -> (result: EdwardsPoint)
         ensures
-            is_identity(result),
+            spec_is_identity(result),
     {
         EdwardsPoint::identity()
     }
@@ -719,7 +719,7 @@ impl ValidityCheck for EdwardsPoint {
             limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54)
                 && limbs_bounded(&self.T, 54),
         ensures
-            result == is_valid_edwards_point(*self),
+            result == spec_is_valid_edwards_point(*self),
             true,  // VERIFICATION NOTE: SECOND CONDITION MISSING
     {
         let proj = self.as_projective();
@@ -737,7 +737,7 @@ impl ValidityCheck for EdwardsPoint {
         let result = point_on_curve && on_segre_image;
         proof {
             // postcondition:
-            assume(result == is_valid_edwards_point(*self));
+            assume(result == spec_is_valid_edwards_point(*self));
         }
         result
     }

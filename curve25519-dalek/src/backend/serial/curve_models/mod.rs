@@ -287,7 +287,7 @@ impl ValidityCheck for ProjectivePoint {
             limbs_bounded(&self.Y, 54),
             limbs_bounded(&self.Z, 54),
         ensures
-            result == on_edwards_curve_projective(
+            result == math_on_edwards_curve_projective(
                 spec_field_element(&self.X),
                 spec_field_element(&self.Y),
                 spec_field_element(&self.Z),
@@ -330,7 +330,7 @@ impl ValidityCheck for ProjectivePoint {
         let result = lhs == rhs;
         proof {
             // postcondition
-            assume(result == on_edwards_curve_projective(
+            assume(result == math_on_edwards_curve_projective(
                 spec_field_element(&self.X),
                 spec_field_element(&self.Y),
                 spec_field_element(&self.Z),

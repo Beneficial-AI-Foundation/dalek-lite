@@ -19,7 +19,7 @@ verus! {
 /// where d = -121665/121666 (mod p)
 /// Check if a point (x, y) satisfies the Edwards curve equation
 /// -x² + y² = 1 + d·x²·y²  (mod p)
-pub open spec fn on_edwards_curve(x: nat, y: nat) -> bool {
+pub open spec fn math_on_edwards_curve(x: nat, y: nat) -> bool {
     let p = p();
     let d = spec_field_element(&EDWARDS_D);
     let x2 = math_field_square(x);
@@ -37,7 +37,7 @@ pub open spec fn on_edwards_curve(x: nat, y: nat) -> bool {
 /// A projective point (X:Y:Z) represents the affine point (X/Z, Y/Z)
 /// The homogenized curve equation is: (-X² + Y²)·Z² = Z⁴ + d·X²·Y²
 /// This is equivalent to the affine equation when Z ≠ 0
-pub open spec fn on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {
+pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {
     let d = spec_field_element(&EDWARDS_D);
 
     // Compute X², Y², Z²
@@ -62,7 +62,7 @@ pub open spec fn on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {
 ///   u = y² - 1
 ///   v = d·y² + 1
 /// Returns true if u/v is a square (i.e., x can be recovered)
-pub open spec fn is_valid_y_coordinate(y: nat) -> bool {
+pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool {
     let d = spec_field_element(&EDWARDS_D);
     let y2 = math_field_square(y);
 
@@ -88,12 +88,12 @@ pub open spec fn is_valid_y_coordinate(y: nat) -> bool {
 }
 
 /// The identity point in affine coordinates (0, 1)
-pub open spec fn edwards_identity_affine() -> (nat, nat) {
+pub open spec fn math_edwards_identity() -> (nat, nat) {
     (0, 1)
 }
 
 /// Check if affine coordinates represent the identity point
-pub open spec fn is_edwards_identity(x: nat, y: nat) -> bool {
+pub open spec fn math_is_edwards_identity(x: nat, y: nat) -> bool {
     x % p() == 0 && y % p() == 1
 }
 
@@ -101,7 +101,7 @@ pub open spec fn is_edwards_identity(x: nat, y: nat) -> bool {
 /// The identity point is (0, 1) in affine coordinates
 /// In projective coordinates (X:Y:Z:T), this means X/Z = 0 and Y/Z = 1
 /// Which is equivalent to X ≡ 0 (mod p) and Y ≡ Z (mod p) with Z ≠ 0
-pub open spec fn is_identity(point: crate::edwards::EdwardsPoint) -> bool {
+pub open spec fn spec_is_identity(point: crate::edwards::EdwardsPoint) -> bool {
     let x = spec_field_element(&point.X);
     let y = spec_field_element(&point.Y);
     let z = spec_field_element(&point.Z);
@@ -114,7 +114,7 @@ pub open spec fn is_identity(point: crate::edwards::EdwardsPoint) -> bool {
 /// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
 /// 2. The extended coordinate satisfies T = X*Y/Z
 /// 3. Z ≠ 0
-pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
+pub open spec fn spec_is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
     let x = spec_field_element(&point.X);
     let y = spec_field_element(&point.Y);
     let z = spec_field_element(&point.Z);
@@ -123,14 +123,14 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
     // Z must be non-zero
     z != 0 &&
     // The affine coordinates (X/Z, Y/Z) must be on the curve
-    on_edwards_curve(math_field_mul(x, math_field_inv(z)), math_field_mul(y, math_field_inv(z)))
+    math_on_edwards_curve(math_field_mul(x, math_field_inv(z)), math_field_mul(y, math_field_inv(z)))
         &&
     // Extended coordinate must satisfy T = X*Y/Z
     t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
 }
 
 /// Returns the abstract affine coordinates (x, y) of this point.
-pub open spec fn affine_coords(point: crate::edwards::EdwardsPoint) -> (nat, nat) {
+pub open spec fn spec_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat, nat) {
     let x_abs = spec_field_element(&point.X);
     let y_abs = spec_field_element(&point.Y);
     let z_abs = spec_field_element(&point.Z);
@@ -141,7 +141,7 @@ pub open spec fn affine_coords(point: crate::edwards::EdwardsPoint) -> (nat, nat
 /// Check if a CompressedEdwardsY represents the identity point
 /// The identity point is (0, 1) in affine coordinates
 /// When compressed, this is represented as y=1 with sign bit 0
-pub open spec fn is_compressed_identity(compressed: CompressedEdwardsY) -> bool {
+pub open spec fn spec_is_compressed_identity(compressed: CompressedEdwardsY) -> bool {
     // Extract the y-coordinate (identity has y = 1)
     spec_field_element_from_bytes(&compressed.0) == 1
         &&
@@ -185,7 +185,7 @@ pub open spec fn is_valid_projective_niels_point(niels: ProjectiveNielsPoint) ->
     // 1. Is valid itself
     // 2. The niels point corresponds to it
     exists|point: EdwardsPoint|
-        is_valid_edwards_point(point) && #[trigger] projective_niels_corresponds_to_edwards(
+        spec_is_valid_edwards_point(point) && #[trigger] projective_niels_corresponds_to_edwards(
             niels,
             point,
         )
@@ -224,7 +224,7 @@ pub open spec fn affine_niels_corresponds_to_edwards(
 /// A valid AffineNielsPoint must correspond to some valid EdwardsPoint
 pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
     exists|point: EdwardsPoint|
-        is_valid_edwards_point(point) && #[trigger] affine_niels_corresponds_to_edwards(
+        spec_is_valid_edwards_point(point) && #[trigger] affine_niels_corresponds_to_edwards(
             niels,
             point,
         )

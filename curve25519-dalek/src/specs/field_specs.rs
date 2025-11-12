@@ -6,10 +6,10 @@ use super::field_specs_u64::*;
 use crate::backend::serial::u64::field::FieldElement51;
 #[allow(unused_imports)]
 use crate::constants;
+use vstd::arithmetic::div_mod::*;
+use vstd::arithmetic::power::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
-use vstd::arithmetic::power::*;
-use vstd::arithmetic::div_mod::*;
 
 use vstd::prelude::*;
 

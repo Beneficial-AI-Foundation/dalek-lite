@@ -1,0 +1,2973 @@
+{
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas/field_core.rs": [
+    {
+      "fx": 0.0,
+      "fy": 698.5,
+      "id": "82788",
+      "identifier": "field_core.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": -51.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 717.6756756756756,
+      "fy": 646.5,
+      "id": "83167",
+      "identifier": "load8_at_spec",
+      "path": ""
+    },
+    {
+      "fx": 678.6756756756756,
+      "fy": 503.5,
+      "id": "83166",
+      "identifier": "as_nat_32_u8",
+      "path": ""
+    },
+    {
+      "fx": 808.6756756756756,
+      "fy": 503.5,
+      "id": "83165",
+      "identifier": "as_nat",
+      "path": ""
+    },
+    {
+      "fx": 938.6756756756756,
+      "fy": 503.5,
+      "id": "83163",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 847.6756756756756,
+      "fy": 646.5,
+      "id": "83162",
+      "identifier": "l51_bit_mask_lt",
+      "path": ""
+    },
+    {
+      "fx": 678.6756756756756,
+      "fy": 433.5,
+      "id": "83161",
+      "identifier": "pow255_gt_19",
+      "path": ""
+    },
+    {
+      "fx": 808.6756756756756,
+      "fy": 433.5,
+      "id": "83164",
+      "identifier": "spec_reduce",
+      "path": ""
+    },
+    {
+      "fx": 938.6756756756756,
+      "fy": 433.5,
+      "id": "83160",
+      "identifier": "pre_reduce_limbs",
+      "path": ""
+    },
+    {
+      "fx": 717.6756756756756,
+      "fy": 296.5,
+      "id": "83159",
+      "identifier": "spec_negate",
+      "path": ""
+    },
+    {
+      "fx": 977.6756756756756,
+      "fy": 646.5,
+      "id": "83158",
+      "identifier": "p",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/field.rs": [
+    {
+      "fx": 0.0,
+      "fy": 841.5,
+      "id": "82804",
+      "identifier": "field.rs",
+      "path": ""
+    },
+    {
+      "fx": 717.6756756756756,
+      "fy": 296.5,
+      "id": "82948",
+      "identifier": "sqrt_ratio_i",
+      "path": ""
+    },
+    {
+      "fx": 491.1756756756757,
+      "fy": 570.0,
+      "id": "82946",
+      "identifier": "invsqrt",
+      "path": ""
+    },
+    {
+      "fx": 621.1756756756756,
+      "fy": 570.0,
+      "id": "82947",
+      "identifier": "invert",
+      "path": ""
+    },
+    {
+      "fx": 847.6756756756756,
+      "fy": 296.5,
+      "id": "82945",
+      "identifier": "batch_invert",
+      "path": ""
+    },
+    {
+      "fx": 977.6756756756756,
+      "fy": 296.5,
+      "id": "82943",
+      "identifier": "pow_p58",
+      "path": ""
+    },
+    {
+      "fx": 750.6756756756756,
+      "fy": 570.0,
+      "id": "82944",
+      "identifier": "ct_eq",
+      "path": ""
+    },
+    {
+      "fx": 491.1756756756757,
+      "fy": 220.0,
+      "id": "82942",
+      "identifier": "eq",
+      "path": ""
+    },
+    {
+      "fx": 880.6756756756756,
+      "fy": 570.0,
+      "id": "82941",
+      "identifier": "is_zero",
+      "path": ""
+    },
+    {
+      "fx": 491.1756756756757,
+      "fy": 500.0,
+      "id": "82940",
+      "identifier": "pow22501",
+      "path": ""
+    },
+    {
+      "fx": 621.1756756756756,
+      "fy": 500.0,
+      "id": "82939",
+      "identifier": "is_negative",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 841.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/common_verus/mul_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 683.5,
+      "id": "82793",
+      "identifier": "mul_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": -33.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 571.4324324324325,
+      "fy": 518.5,
+      "id": "83257",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 701.4324324324325,
+      "fy": 518.5,
+      "id": "83258",
+      "identifier": "mul_quad_prod",
+      "path": ""
+    },
+    {
+      "fx": 571.4324324324325,
+      "fy": 168.5,
+      "id": "83255",
+      "identifier": "mul_si_vi_and_reorder",
+      "path": ""
+    },
+    {
+      "fx": 831.4324324324325,
+      "fy": 518.5,
+      "id": "83256",
+      "identifier": "mul_5_terms",
+      "path": ""
+    },
+    {
+      "fx": 961.4324324324324,
+      "fy": 518.5,
+      "id": "83254",
+      "identifier": "mul_v0_and_reorder",
+      "path": ""
+    },
+    {
+      "fx": 571.4324324324325,
+      "fy": 448.5,
+      "id": "83253",
+      "identifier": "mul_lt",
+      "path": ""
+    },
+    {
+      "fx": 701.4324324324325,
+      "fy": 448.5,
+      "id": "83252",
+      "identifier": "lemma_m",
+      "path": ""
+    },
+    {
+      "fx": 831.4324324324325,
+      "fy": 448.5,
+      "id": "83251",
+      "identifier": "mul_5_terms_other_way",
+      "path": ""
+    },
+    {
+      "fx": 961.4324324324324,
+      "fy": 448.5,
+      "id": "83250",
+      "identifier": "mul_le",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/scalar_specs.rs": [
+    {
+      "fx": 0.0,
+      "fy": 803.5,
+      "id": "82811",
+      "identifier": "scalar_specs.rs",
+      "path": ""
+    },
+    {
+      "fx": 881.252043852935,
+      "fy": 322.68896484375,
+      "id": "83152",
+      "identifier": "bytes_wide_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 530.2333060599663,
+      "fy": 318.3290100097656,
+      "id": "83153",
+      "identifier": "group_order",
+      "path": ""
+    },
+    {
+      "fx": 678.6054374076225,
+      "fy": 181.1449432373047,
+      "id": "83151",
+      "identifier": "to_scalar",
+      "path": ""
+    },
+    {
+      "fx": 716.0354300834038,
+      "fy": 423.2369995117187,
+      "id": "83150",
+      "identifier": "to_nat",
+      "path": ""
+    },
+    {
+      "fx": 1015.7162162162164,
+      "fy": 610.6278686523438,
+      "id": "83149",
+      "identifier": "words_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 1043.0404349662165,
+      "fy": 728.9284057617188,
+      "id": "83148",
+      "identifier": "words_to_nat_gen_u64",
+      "path": ""
+    },
+    {
+      "fx": 506.8766471244193,
+      "fy": 511.61077880859375,
+      "id": "83147",
+      "identifier": "limbs_bounded",
+      "path": ""
+    },
+    {
+      "fx": 1155.7544242240288,
+      "fy": 348.4023132324219,
+      "id": "83146",
+      "identifier": "bytes_to_nat_rec",
+      "path": ""
+    },
+    {
+      "fx": 813.7080680228569,
+      "fy": 185.8306121826172,
+      "id": "83145",
+      "identifier": "bytes_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 1253.967864165435,
+      "fy": 663.4967651367188,
+      "id": "83144",
+      "identifier": "bytes_wide_to_nat_rec",
+      "path": ""
+    },
+    {
+      "fx": 493.3644400931694,
+      "fy": 614.0203857421875,
+      "id": "83143",
+      "identifier": "montgomery_radix",
+      "path": ""
+    },
+    {
+      "fx": 681.5183402396538,
+      "fy": 567.4129028320312,
+      "id": "83142",
+      "identifier": "seq_u64_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 829.3749686576225,
+      "fy": 549.5562133789062,
+      "id": "83141",
+      "identifier": "five_limbs_to_nat_aux",
+      "path": ""
+    },
+    {
+      "fx": 948.2145682669976,
+      "fy": 491.5220031738281,
+      "id": "83140",
+      "identifier": "slice128_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 1112.807433257232,
+      "fy": 185.0252685546875,
+      "id": "83139",
+      "identifier": "words_to_nat_gen_u32",
+      "path": ""
+    },
+    {
+      "fx": 524.0761405326225,
+      "fy": 182.7931671142578,
+      "id": "83138",
+      "identifier": "nine_limbs_to_nat_aux",
+      "path": ""
+    },
+    {
+      "fx": 823.7570487357475,
+      "fy": 721.4266967773438,
+      "id": "83137",
+      "identifier": "seq_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": -177.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas/pow2_51_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 698.5,
+      "id": "82786",
+      "identifier": "pow2_51_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": -51.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 548.6756756756756,
+      "fy": 503.5,
+      "id": "83194",
+      "identifier": "lemma_cast_then_mask_51",
+      "path": ""
+    },
+    {
+      "fx": 678.6756756756756,
+      "fy": 503.5,
+      "id": "83193",
+      "identifier": "lemma_two_factoring_51",
+      "path": ""
+    },
+    {
+      "fx": 808.6756756756756,
+      "fy": 503.5,
+      "id": "83192",
+      "identifier": "masked_lt_51",
+      "path": ""
+    },
+    {
+      "fx": 938.6756756756756,
+      "fy": 503.5,
+      "id": "83191",
+      "identifier": "lemma_shr_51_fits_u64",
+      "path": ""
+    },
+    {
+      "fx": 548.6756756756756,
+      "fy": 433.5,
+      "id": "83190",
+      "identifier": "lemma_add_then_shift",
+      "path": ""
+    },
+    {
+      "fx": 678.6756756756756,
+      "fy": 433.5,
+      "id": "83189",
+      "identifier": "lemma_mul_sub",
+      "path": ""
+    },
+    {
+      "fx": 808.6756756756756,
+      "fy": 433.5,
+      "id": "83188",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 938.6756756756756,
+      "fy": 433.5,
+      "id": "83187",
+      "identifier": "lemma_div_and_mod_51",
+      "path": ""
+    },
+    {
+      "fx": 548.6756756756756,
+      "fy": 363.5,
+      "id": "83186",
+      "identifier": "lemma_shr_51_le",
+      "path": ""
+    },
+    {
+      "fx": 678.6756756756756,
+      "fy": 363.5,
+      "id": "83185",
+      "identifier": "lemma_cast_then_mod_51",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/common_verus/shift_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 728.5,
+      "id": "82795",
+      "identifier": "shift_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": -89.07535076141357,
+      "fy": 253.36705017089844,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 463.5405265189506,
+      "fy": 39.063720703125,
+      "id": "83235",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 890.7602225638725,
+      "fy": 572.8033447265625,
+      "id": "83233",
+      "identifier": "shr_zero_is_id",
+      "path": ""
+    },
+    {
+      "fx": 394.9243460990287,
+      "fy": 260.931884765625,
+      "id": "83236",
+      "identifier": "lemma_shl_le_u64",
+      "path": ""
+    },
+    {
+      "fx": 555.6367179252006,
+      "fy": 120.24161529541016,
+      "id": "83231",
+      "identifier": "shl_nondecreasing",
+      "path": ""
+    },
+    {
+      "fx": 573.065520415435,
+      "fy": 455.58990478515625,
+      "id": "83230",
+      "identifier": "shl_decomposition",
+      "path": ""
+    },
+    {
+      "fx": 954.2372123099664,
+      "fy": 422.1004028320313,
+      "id": "83238",
+      "identifier": "shr_decomposition",
+      "path": ""
+    },
+    {
+      "fx": 943.0875541068413,
+      "fy": 120.24162292480467,
+      "id": "83229",
+      "identifier": "shr_nonincreasing",
+      "path": ""
+    },
+    {
+      "fx": 623.0718070365288,
+      "fy": 302.3410186767578,
+      "id": "83237",
+      "identifier": "lemma_u64_max_shifting",
+      "path": ""
+    },
+    {
+      "fx": 557.72982705606,
+      "fy": 573.9686279296875,
+      "id": "83234",
+      "identifier": "shl_zero_is_id",
+      "path": ""
+    },
+    {
+      "fx": 779.8259574271538,
+      "fy": 433.7311401367187,
+      "id": "83232",
+      "identifier": "lemma_shr_le_u64",
+      "path": ""
+    },
+    {
+      "fx": 732.1407767630913,
+      "fy": 109.776123046875,
+      "id": "83228",
+      "identifier": "shifted_lt",
+      "path": ""
+    },
+    {
+      "fx": 413.7620841361381,
+      "fy": 423.26566314697266,
+      "id": "83227",
+      "identifier": "shift_is_pow2",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/scalar_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 1013.5,
+      "id": "82810",
+      "identifier": "scalar_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 214.0,
+      "fy": 891.5,
+      "id": "83091",
+      "identifier": "lemma_add_loop_invariant",
+      "path": ""
+    },
+    {
+      "fx": 344.0,
+      "fy": 891.5,
+      "id": "83088",
+      "identifier": "lemma_carry_bounded_after_mask",
+      "path": ""
+    },
+    {
+      "fx": 305.0,
+      "fy": 748.5,
+      "id": "83087",
+      "identifier": "lemma_l_value_properties",
+      "path": ""
+    },
+    {
+      "fx": 214.0,
+      "fy": 121.5,
+      "id": "83086",
+      "identifier": "lemma_seq_u64_to_nat_subrange_extend",
+      "path": ""
+    },
+    {
+      "fx": 435.0,
+      "fy": 748.5,
+      "id": "83085",
+      "identifier": "lemma_square_internal_no_overflow",
+      "path": ""
+    },
+    {
+      "fx": 565.0,
+      "fy": 748.5,
+      "id": "83084",
+      "identifier": "lemma_rr_limbs_bounded",
+      "path": ""
+    },
+    {
+      "fx": 344.0,
+      "fy": 121.5,
+      "id": "83083",
+      "identifier": "lemma_empty_seq_as_nat",
+      "path": ""
+    },
+    {
+      "fx": 1466.365966796875,
+      "fy": 420.7955017089844,
+      "id": "83082",
+      "identifier": "verify_invert_correct",
+      "path": ""
+    },
+    {
+      "fx": 474.0,
+      "fy": 121.5,
+      "id": "83090",
+      "identifier": "lemma_pow2_260_greater_than_2_group_order",
+      "path": ""
+    },
+    {
+      "fx": 604.0,
+      "fy": 121.5,
+      "id": "83081",
+      "identifier": "lemma_add_sum_simplify",
+      "path": ""
+    },
+    {
+      "fx": 734.0,
+      "fy": 121.5,
+      "id": "83093",
+      "identifier": "lemma_bound_scalar",
+      "path": ""
+    },
+    {
+      "fx": 864.0,
+      "fy": 121.5,
+      "id": "83092",
+      "identifier": "lemma_l_equals_group_order",
+      "path": ""
+    },
+    {
+      "fx": 994.0,
+      "fy": 121.5,
+      "id": "83080",
+      "identifier": "lemma_sub_correct_after_loops",
+      "path": ""
+    },
+    {
+      "fx": 825.0,
+      "fy": 748.5,
+      "id": "83079",
+      "identifier": "lemma_52_52",
+      "path": ""
+    },
+    {
+      "fx": 955.0,
+      "fy": 748.5,
+      "id": "83078",
+      "identifier": "lemma_add_loop_bounds",
+      "path": ""
+    },
+    {
+      "fx": 1085.0,
+      "fy": 748.5,
+      "id": "83076",
+      "identifier": "lemma_pow252",
+      "path": ""
+    },
+    {
+      "fx": 1124.0,
+      "fy": 121.5,
+      "id": "83075",
+      "identifier": "lemma_decompose",
+      "path": ""
+    },
+    {
+      "fx": 474.0,
+      "fy": 891.5,
+      "id": "83074",
+      "identifier": "lemma_mul_internal_no_overflow",
+      "path": ""
+    },
+    {
+      "fx": 604.0,
+      "fy": 891.5,
+      "id": "83073",
+      "identifier": "lemma_scalar_subtract_no_overflow",
+      "path": ""
+    },
+    {
+      "fx": 305.0,
+      "fy": 678.5,
+      "id": "83072",
+      "identifier": "lemma_borrow_and_mask_bounded",
+      "path": ""
+    },
+    {
+      "fx": 1254.0,
+      "fy": 121.5,
+      "id": "83071",
+      "identifier": "lemma_mod_cancel",
+      "path": ""
+    },
+    {
+      "fx": 435.0,
+      "fy": 678.5,
+      "id": "83070",
+      "identifier": "lemma_general_bound",
+      "path": ""
+    },
+    {
+      "fx": 214.0,
+      "fy": 191.5,
+      "id": "83069",
+      "identifier": "lemma_mul_internal_correct",
+      "path": ""
+    },
+    {
+      "fx": 344.0,
+      "fy": 191.5,
+      "id": "83068",
+      "identifier": "lemma_from_montgomery_limbs_conversion",
+      "path": ""
+    },
+    {
+      "fx": 565.0,
+      "fy": 678.5,
+      "id": "83067",
+      "identifier": "lemma_sub_loop1_invariant",
+      "path": ""
+    },
+    {
+      "fx": 695.0,
+      "fy": 678.5,
+      "id": "83077",
+      "identifier": "lemma_old_carry",
+      "path": ""
+    },
+    {
+      "fx": 474.0,
+      "fy": 191.5,
+      "id": "83065",
+      "identifier": "lemma_sub_loop2_invariant",
+      "path": ""
+    },
+    {
+      "fx": 825.0,
+      "fy": 678.5,
+      "id": "83089",
+      "identifier": "lemma_nine_limbs_equals_slice128_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 955.0,
+      "fy": 678.5,
+      "id": "83066",
+      "identifier": "lemma_five_limbs_equals_to_nat",
+      "path": ""
+    },
+    {
+      "fx": 604.0,
+      "fy": 191.5,
+      "id": "83064",
+      "identifier": "lemma_square_internal_correct",
+      "path": ""
+    },
+    {
+      "fx": 1085.0,
+      "fy": 678.5,
+      "id": "83063",
+      "identifier": "lemma_add_carry_and_sum_bounds",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": 1125.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas/pow2k_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 863.5,
+      "id": "82787",
+      "identifier": "pow2k_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": -249.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 990.4866159799936,
+      "fy": 272.4716339111328,
+      "id": "83215",
+      "identifier": "a3_0_val",
+      "path": ""
+    },
+    {
+      "fx": 497.1778849008921,
+      "fy": 260.8427505493164,
+      "id": "83214",
+      "identifier": "a0_0_val",
+      "path": ""
+    },
+    {
+      "fx": 664.3904245737436,
+      "fy": 267.82008361816406,
+      "id": "83213",
+      "identifier": "a1_0_val",
+      "path": ""
+    },
+    {
+      "fx": 1140.9313486460092,
+      "fy": 270.1458740234375,
+      "id": "83211",
+      "identifier": "a4_0_val",
+      "path": ""
+    },
+    {
+      "fx": 264.84367164405603,
+      "fy": 660.3640251159668,
+      "id": "83212",
+      "identifier": "term_product_bounds",
+      "path": ""
+    },
+    {
+      "fx": 1160.024823987806,
+      "fy": 688.2734375,
+      "id": "83207",
+      "identifier": "c4_0_val",
+      "path": ""
+    },
+    {
+      "fx": 808.1013925913218,
+      "fy": 265.494327545166,
+      "id": "83205",
+      "identifier": "a2_0_val",
+      "path": ""
+    },
+    {
+      "fx": 810.914441907728,
+      "fy": 688.2733764648438,
+      "id": "83203",
+      "identifier": "c2_0_val",
+      "path": ""
+    },
+    {
+      "fx": 812.9965952280405,
+      "fy": 478.9532165527344,
+      "id": "83210",
+      "identifier": "c2_val",
+      "path": ""
+    },
+    {
+      "fx": 282.2317789438607,
+      "fy": 486.4432182312012,
+      "id": "83206",
+      "identifier": "c_i_0_bounded",
+      "path": ""
+    },
+    {
+      "fx": 989.5121591928844,
+      "fy": 427.7861328125,
+      "id": "83204",
+      "identifier": "c3_val",
+      "path": ""
+    },
+    {
+      "fx": 277.33659156593103,
+      "fy": 309.68408584594727,
+      "id": "83202",
+      "identifier": "c_i_shift_bounded",
+      "path": ""
+    },
+    {
+      "fx": 986.942762220228,
+      "fy": 681.2960205078125,
+      "id": "83201",
+      "identifier": "c3_0_val",
+      "path": ""
+    },
+    {
+      "fx": 1163.4582041147592,
+      "fy": 376.6190185546875,
+      "id": "83209",
+      "identifier": "c4_val",
+      "path": ""
+    },
+    {
+      "fx": 1274.2315500620248,
+      "fy": 275.02402687072754,
+      "id": "83200",
+      "identifier": "carry_val",
+      "path": ""
+    },
+    {
+      "fx": 799.7727182749155,
+      "fy": 29.851383209228516,
+      "id": "83199",
+      "identifier": "lemma_reorder_mul",
+      "path": ""
+    },
+    {
+      "fx": 662.3082102182749,
+      "fy": 690.3724975585938,
+      "id": "83208",
+      "identifier": "c1_0_val",
+      "path": ""
+    },
+    {
+      "fx": 664.3903940561655,
+      "fy": 539.1968688964844,
+      "id": "83198",
+      "identifier": "c1_val",
+      "path": ""
+    },
+    {
+      "fx": 522.2742746713999,
+      "fy": 685.720947265625,
+      "id": "83197",
+      "identifier": "c0_0_val",
+      "path": ""
+    },
+    {
+      "fx": 524.3564432505015,
+      "fy": 592.6897888183594,
+      "id": "83196",
+      "identifier": "c0_val",
+      "path": ""
+    },
+    {
+      "fx": 347.353650892103,
+      "fy": -77.13445281982422,
+      "id": "83195",
+      "identifier": "main",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/montgomery.rs": [
+    {
+      "fx": 0.0,
+      "fy": 754.5,
+      "id": "82803",
+      "identifier": "montgomery.rs",
+      "path": ""
+    },
+    {
+      "fx": 169.93243243243245,
+      "fy": 539.5,
+      "id": "82845",
+      "identifier": "identity",
+      "path": ""
+    },
+    {
+      "fx": 169.93243243243245,
+      "fy": -20.5,
+      "id": "82844",
+      "identifier": "to_edwards",
+      "path": ""
+    },
+    {
+      "fx": 299.93243243243245,
+      "fy": -20.5,
+      "id": "82842",
+      "identifier": "elligator_encode",
+      "path": ""
+    },
+    {
+      "fx": 299.93243243243245,
+      "fy": 539.5,
+      "id": "82841",
+      "identifier": "differential_add_and_double",
+      "path": ""
+    },
+    {
+      "fx": 429.9324324324325,
+      "fy": -20.5,
+      "id": "82840",
+      "identifier": "hash",
+      "path": ""
+    },
+    {
+      "fx": 429.9324324324325,
+      "fy": 539.5,
+      "id": "82837",
+      "identifier": "conditional_select",
+      "path": ""
+    },
+    {
+      "fx": 559.9324324324325,
+      "fy": 539.5,
+      "id": "82836",
+      "identifier": "as_bytes",
+      "path": ""
+    },
+    {
+      "fx": 689.9324324324324,
+      "fy": 539.5,
+      "id": "82838",
+      "identifier": "ct_eq",
+      "path": ""
+    },
+    {
+      "fx": 559.9324324324325,
+      "fy": -20.5,
+      "id": "82835",
+      "identifier": "eq",
+      "path": ""
+    },
+    {
+      "fx": 819.9324324324324,
+      "fy": 539.5,
+      "id": "82839",
+      "identifier": "mul_base",
+      "path": ""
+    },
+    {
+      "fx": 689.9324324324324,
+      "fy": -20.5,
+      "id": "82834",
+      "identifier": "mul_base_clamped",
+      "path": ""
+    },
+    {
+      "fx": 169.93243243243245,
+      "fy": 469.5,
+      "id": "82833",
+      "identifier": "mul_assign",
+      "path": ""
+    },
+    {
+      "fx": 819.9324324324324,
+      "fy": -20.5,
+      "id": "82832",
+      "identifier": "conditional_select",
+      "path": ""
+    },
+    {
+      "fx": 299.93243243243245,
+      "fy": 469.5,
+      "id": "82831",
+      "identifier": "to_bytes",
+      "path": ""
+    },
+    {
+      "fx": 169.93243243243245,
+      "fy": 49.5,
+      "id": "82830",
+      "identifier": "default",
+      "path": ""
+    },
+    {
+      "fx": 299.93243243243245,
+      "fy": 49.5,
+      "id": "82829",
+      "identifier": "mul_clamped",
+      "path": ""
+    },
+    {
+      "fx": 429.9324324324325,
+      "fy": 469.5,
+      "id": "82828",
+      "identifier": "as_affine",
+      "path": ""
+    },
+    {
+      "fx": 559.9324324324325,
+      "fy": 469.5,
+      "id": "82827",
+      "identifier": "identity",
+      "path": ""
+    },
+    {
+      "fx": 429.9324324324325,
+      "fy": 49.5,
+      "id": "82843",
+      "identifier": "mul_bits_be",
+      "path": ""
+    },
+    {
+      "fx": 559.9324324324325,
+      "fy": 49.5,
+      "id": "82826",
+      "identifier": "mul",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 754.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas/as_nat_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 608.5,
+      "id": "82792",
+      "identifier": "as_nat_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 608.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 453.5,
+      "id": "83219",
+      "identifier": "as_nat_k",
+      "path": ""
+    },
+    {
+      "fx": 805.4864864864865,
+      "fy": 453.5,
+      "id": "83218",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 935.4864864864865,
+      "fy": 453.5,
+      "id": "83217",
+      "identifier": "lemma_as_nat_sub",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 383.5,
+      "id": "83216",
+      "identifier": "as_nat_squared",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas/reduce_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 593.5,
+      "id": "82790",
+      "identifier": "reduce_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 593.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 692.0,
+      "fy": 468.5,
+      "id": "83170",
+      "identifier": "lemma_boundaries",
+      "path": ""
+    },
+    {
+      "fx": 692.0,
+      "fy": 258.5,
+      "id": "83169",
+      "identifier": "lemma_reduce",
+      "path": ""
+    },
+    {
+      "fx": 822.0,
+      "fy": 468.5,
+      "id": "83168",
+      "identifier": "main",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/scalar.rs": [
+    {
+      "fx": 0.0,
+      "fy": 1306.5,
+      "id": "82802",
+      "identifier": "scalar.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 1306.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 144.0,
+      "fy": 41.5,
+      "id": "82937",
+      "identifier": "eq",
+      "path": ""
+    },
+    {
+      "fx": 274.0,
+      "fy": 41.5,
+      "id": "82936",
+      "identifier": "batch_invert",
+      "path": ""
+    },
+    {
+      "fx": 144.0,
+      "fy": 1021.5,
+      "id": "82934",
+      "identifier": "sub_assign",
+      "path": ""
+    },
+    {
+      "fx": 274.0,
+      "fy": 1021.5,
+      "id": "82933",
+      "identifier": "to_bytes",
+      "path": ""
+    },
+    {
+      "fx": 404.0,
+      "fy": 41.5,
+      "id": "82932",
+      "identifier": "invert",
+      "path": ""
+    },
+    {
+      "fx": 119.5,
+      "fy": 784.5,
+      "id": "82931",
+      "identifier": "ct_eq",
+      "path": ""
+    },
+    {
+      "fx": 534.0,
+      "fy": 41.5,
+      "id": "82930",
+      "identifier": "random",
+      "path": ""
+    },
+    {
+      "fx": 664.0,
+      "fy": 41.5,
+      "id": "82929",
+      "identifier": "invert",
+      "path": ""
+    },
+    {
+      "fx": 249.5,
+      "fy": 784.5,
+      "id": "82928",
+      "identifier": "add_assign",
+      "path": ""
+    },
+    {
+      "fx": 794.0,
+      "fy": 41.5,
+      "id": "82927",
+      "identifier": "mul",
+      "path": ""
+    },
+    {
+      "fx": 379.5,
+      "fy": 784.5,
+      "id": "82926",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 509.5,
+      "fy": 784.5,
+      "id": "82925",
+      "identifier": "as_bytes",
+      "path": ""
+    },
+    {
+      "fx": 639.5,
+      "fy": 784.5,
+      "id": "82924",
+      "identifier": "default",
+      "path": ""
+    },
+    {
+      "fx": 924.0,
+      "fy": 41.5,
+      "id": "82923",
+      "identifier": "add",
+      "path": ""
+    },
+    {
+      "fx": 1054.0,
+      "fy": 41.5,
+      "id": "82922",
+      "identifier": "from_bytes_mod_order",
+      "path": ""
+    },
+    {
+      "fx": 769.5,
+      "fy": 784.5,
+      "id": "82921",
+      "identifier": "index",
+      "path": ""
+    },
+    {
+      "fx": 899.5,
+      "fy": 784.5,
+      "id": "82920",
+      "identifier": "bits_le",
+      "path": ""
+    },
+    {
+      "fx": 1029.5,
+      "fy": 784.5,
+      "id": "82919",
+      "identifier": "neg",
+      "path": ""
+    },
+    {
+      "fx": 404.0,
+      "fy": 1021.5,
+      "id": "82918",
+      "identifier": "from",
+      "path": ""
+    },
+    {
+      "fx": 534.0,
+      "fy": 1021.5,
+      "id": "82915",
+      "identifier": "montgomery_invert",
+      "path": ""
+    },
+    {
+      "fx": 1184.0,
+      "fy": 41.5,
+      "id": "82914",
+      "identifier": "neg",
+      "path": ""
+    },
+    {
+      "fx": 119.5,
+      "fy": 714.5,
+      "id": "82913",
+      "identifier": "non_adjacent_form",
+      "path": ""
+    },
+    {
+      "fx": 1314.0,
+      "fy": 41.5,
+      "id": "82912",
+      "identifier": "square_multiply",
+      "path": ""
+    },
+    {
+      "fx": 144.0,
+      "fy": 111.5,
+      "id": "82938",
+      "identifier": "is_canonical",
+      "path": ""
+    },
+    {
+      "fx": 276.6822814941406,
+      "fy": 111.5,
+      "id": "82910",
+      "identifier": "from_canonical_bytes",
+      "path": ""
+    },
+    {
+      "fx": 404.0,
+      "fy": 111.5,
+      "id": "82908",
+      "identifier": "sub",
+      "path": ""
+    },
+    {
+      "fx": 534.0,
+      "fy": 111.5,
+      "id": "82907",
+      "identifier": "reduce",
+      "path": ""
+    },
+    {
+      "fx": 249.5,
+      "fy": 714.5,
+      "id": "82906",
+      "identifier": "conditional_select",
+      "path": ""
+    },
+    {
+      "fx": 379.5,
+      "fy": 714.5,
+      "id": "82905",
+      "identifier": "product",
+      "path": ""
+    },
+    {
+      "fx": 509.5,
+      "fy": 714.5,
+      "id": "82911",
+      "identifier": "unpack",
+      "path": ""
+    },
+    {
+      "fx": 664.0,
+      "fy": 111.5,
+      "id": "82904",
+      "identifier": "mul_assign",
+      "path": ""
+    },
+    {
+      "fx": 639.5,
+      "fy": 714.5,
+      "id": "82916",
+      "identifier": "bot_half",
+      "path": ""
+    },
+    {
+      "fx": 794.0,
+      "fy": 111.5,
+      "id": "82903",
+      "identifier": "top_half",
+      "path": ""
+    },
+    {
+      "fx": 769.5,
+      "fy": 714.5,
+      "id": "82917",
+      "identifier": "pack",
+      "path": ""
+    },
+    {
+      "fx": 924.0,
+      "fy": 111.5,
+      "id": "82902",
+      "identifier": "from_bytes_mod_order_wide",
+      "path": ""
+    },
+    {
+      "fx": 899.5,
+      "fy": 714.5,
+      "id": "82901",
+      "identifier": "to_radix_2w_size_hint",
+      "path": ""
+    },
+    {
+      "fx": 1029.5,
+      "fy": 714.5,
+      "id": "82900",
+      "identifier": "sum",
+      "path": ""
+    },
+    {
+      "fx": 664.0,
+      "fy": 1021.5,
+      "id": "82935",
+      "identifier": "as_radix_16",
+      "path": ""
+    },
+    {
+      "fx": 794.0,
+      "fy": 1021.5,
+      "id": "82909",
+      "identifier": "read_le_u64_into",
+      "path": ""
+    },
+    {
+      "fx": 1054.0,
+      "fy": 111.5,
+      "id": "82899",
+      "identifier": "as_radix_2w",
+      "path": ""
+    },
+    {
+      "fx": 119.5,
+      "fy": 644.5,
+      "id": "82898",
+      "identifier": "clamp_integer",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/curve_models": [
+    {
+      "fx": 0.0,
+      "fy": 563.5,
+      "id": "82782",
+      "identifier": "curve_models",
+      "path": ""
+    },
+    {
+      "fx": 720.0,
+      "fy": 428.5,
+      "id": "82813",
+      "identifier": "mod.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 563.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas/negate_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 608.5,
+      "id": "82791",
+      "identifier": "negate_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 608.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 243.5,
+      "id": "83157",
+      "identifier": "negate_proof",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 453.5,
+      "id": "83155",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 805.4864864864865,
+      "fy": 453.5,
+      "id": "83156",
+      "identifier": "all_neg_limbs_positive",
+      "path": ""
+    },
+    {
+      "fx": 935.4864864864865,
+      "fy": 453.5,
+      "id": "83154",
+      "identifier": "lemma_neg_no_underflow",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/build.rs": [
+    {
+      "fx": 0.0,
+      "fy": 670.5,
+      "id": "82820",
+      "identifier": "build.rs",
+      "path": ""
+    },
+    {
+      "fx": 780.472972972973,
+      "fy": 620.0,
+      "id": "82824",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 910.472972972973,
+      "fy": 620.0,
+      "id": "82822",
+      "identifier": "determine_curve25519_dalek_bits_warning",
+      "path": ""
+    },
+    {
+      "fx": 800.4729729729729,
+      "fy": 414.5,
+      "id": "82825",
+      "identifier": "is_capable_simd",
+      "path": ""
+    },
+    {
+      "fx": 1040.472972972973,
+      "fy": 620.0,
+      "id": "82823",
+      "identifier": "determine_curve25519_dalek_bits",
+      "path": ""
+    },
+    {
+      "fx": 780.472972972973,
+      "fy": 340.0,
+      "id": "82821",
+      "identifier": "main",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src": [
+    {
+      "fx": 293.93243243243245,
+      "fy": -80.5,
+      "id": "439863",
+      "identifier": "src",
+      "path": "/curve25519-dalek/src"
+    },
+    {
+      "fx": 583.9324324324325,
+      "fy": 209.5,
+      "id": "439864",
+      "identifier": "edwards",
+      "path": "/curve25519-dalek/src/edwards"
+    },
+    {
+      "fx": 583.9324324324325,
+      "fy": 559.5,
+      "id": "439890",
+      "identifier": "field.rs",
+      "path": "/curve25519-dalek/src/field.rs"
+    },
+    {
+      "fx": 713.9324324324325,
+      "fy": 559.5,
+      "id": "439865",
+      "identifier": "backend",
+      "path": "/curve25519-dalek/src/backend"
+    },
+    {
+      "fx": 713.9324324324325,
+      "fy": 209.5,
+      "id": "439886",
+      "identifier": "edwards.rs",
+      "path": "/curve25519-dalek/src/edwards.rs"
+    },
+    {
+      "fx": 843.9324324324325,
+      "fy": 559.5,
+      "id": "439888",
+      "identifier": "scalar.rs",
+      "path": "/curve25519-dalek/src/scalar.rs"
+    },
+    {
+      "fx": 843.9324324324325,
+      "fy": 209.5,
+      "id": "439892",
+      "identifier": "window.rs",
+      "path": "/curve25519-dalek/src/window.rs"
+    },
+    {
+      "fx": 973.9324324324324,
+      "fy": 559.5,
+      "id": "439891",
+      "identifier": "traits.rs",
+      "path": "/curve25519-dalek/src/traits.rs"
+    },
+    {
+      "fx": 973.9324324324324,
+      "fy": 209.5,
+      "id": "439887",
+      "identifier": "ristretto.rs",
+      "path": "/curve25519-dalek/src/ristretto.rs"
+    },
+    {
+      "fx": 583.9324324324325,
+      "fy": 349.5,
+      "id": "439889",
+      "identifier": "montgomery.rs",
+      "path": "/curve25519-dalek/src/montgomery.rs"
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/common_verus/div_mod_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 608.5,
+      "id": "82798",
+      "identifier": "div_mod_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": 57.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 453.5,
+      "id": "83223",
+      "identifier": "lemma_mod_diff_factor",
+      "path": ""
+    },
+    {
+      "fx": 805.4864864864865,
+      "fy": 453.5,
+      "id": "83222",
+      "identifier": "lemma_div_and_mod",
+      "path": ""
+    },
+    {
+      "fx": 935.4864864864865,
+      "fy": 453.5,
+      "id": "83221",
+      "identifier": "lemma_mod_sum_factor",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 383.5,
+      "id": "83220",
+      "identifier": "main",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial": [
+    {
+      "fx": 414.5,
+      "fy": 9.5,
+      "id": "439866",
+      "identifier": "serial",
+      "path": "/curve25519-dalek/src/backend/serial"
+    },
+    {
+      "fx": 704.5,
+      "fy": 509.5,
+      "id": "439867",
+      "identifier": "u64",
+      "path": "/curve25519-dalek/src/backend/serial/u64"
+    },
+    {
+      "fx": 834.5,
+      "fy": 509.5,
+      "id": "439868",
+      "identifier": "curve_models",
+      "path": "/curve25519-dalek/src/backend/serial/curve_models"
+    },
+    {
+      "fx": 704.5,
+      "fy": 299.5,
+      "id": "439869",
+      "identifier": "scalar_mul",
+      "path": "/curve25519-dalek/src/backend/serial/scalar_mul"
+    },
+    {
+      "fx": -16.0,
+      "fy": -16.0,
+      "id": "439862",
+      "identifier": "curve25519-dalek",
+      "path": "/curve25519-dalek"
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas/load8_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 758.5,
+      "id": "82789",
+      "identifier": "load8_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 758.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 451.1621621621622,
+      "fy": 163.5,
+      "id": "83183",
+      "identifier": "load8_at_spec_fits_u64",
+      "path": ""
+    },
+    {
+      "fx": 581.1621621621622,
+      "fy": 163.5,
+      "id": "83182",
+      "identifier": "plus_version_is_spec",
+      "path": ""
+    },
+    {
+      "fx": 451.1621621621622,
+      "fy": 583.5,
+      "id": "83181",
+      "identifier": "rec_version_is_exec",
+      "path": ""
+    },
+    {
+      "fx": 711.1621621621622,
+      "fy": 163.5,
+      "id": "83180",
+      "identifier": "load8_at_versions_equivalent",
+      "path": ""
+    },
+    {
+      "fx": 581.1621621621622,
+      "fy": 583.5,
+      "id": "83179",
+      "identifier": "load8_at_or_version_rec",
+      "path": ""
+    },
+    {
+      "fx": 711.1621621621622,
+      "fy": 583.5,
+      "id": "83177",
+      "identifier": "bit_or_is_plus",
+      "path": ""
+    },
+    {
+      "fx": 841.1621621621622,
+      "fy": 583.5,
+      "id": "83176",
+      "identifier": "plus_version_is_spec_lemma",
+      "path": ""
+    },
+    {
+      "fx": 841.1621621621622,
+      "fy": 163.5,
+      "id": "83184",
+      "identifier": "load8_lemma2",
+      "path": ""
+    },
+    {
+      "fx": 971.1621621621622,
+      "fy": 163.5,
+      "id": "83175",
+      "identifier": "load8_lemma",
+      "path": ""
+    },
+    {
+      "fx": 971.1621621621622,
+      "fy": 583.5,
+      "id": "83173",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 451.1621621621622,
+      "fy": 513.5,
+      "id": "83178",
+      "identifier": "load8_lemma_base",
+      "path": ""
+    },
+    {
+      "fx": 581.1621621621622,
+      "fy": 513.5,
+      "id": "83172",
+      "identifier": "load8_lemma1",
+      "path": ""
+    },
+    {
+      "fx": 711.1621621621622,
+      "fy": 513.5,
+      "id": "83174",
+      "identifier": "load8_at_plus_version_rec",
+      "path": ""
+    },
+    {
+      "fx": 841.1621621621622,
+      "fy": 513.5,
+      "id": "83171",
+      "identifier": "load8_at_plus_version_rec_is_bounded",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64": [
+    {
+      "fx": 316.0405405405405,
+      "fy": -65.5,
+      "id": "439867",
+      "identifier": "u64",
+      "path": "/curve25519-dalek/src/backend/serial/u64"
+    },
+    {
+      "fx": 606.0405405405405,
+      "fy": 574.5,
+      "id": "439870",
+      "identifier": "common_verus",
+      "path": "/curve25519-dalek/src/backend/serial/u64/common_verus"
+    },
+    {
+      "fx": 736.0405405405405,
+      "fy": 574.5,
+      "id": "439871",
+      "identifier": "field_lemmas",
+      "path": "/curve25519-dalek/src/backend/serial/u64/field_lemmas"
+    },
+    {
+      "fx": 866.0405405405405,
+      "fy": 574.5,
+      "id": "439893",
+      "identifier": "field.rs",
+      "path": "/curve25519-dalek/src/backend/serial/u64/field.rs"
+    },
+    {
+      "fx": 606.0405405405405,
+      "fy": 224.5,
+      "id": "439894",
+      "identifier": "scalar.rs",
+      "path": "/curve25519-dalek/src/backend/serial/u64/scalar.rs"
+    },
+    {
+      "fx": 736.0405405405405,
+      "fy": 224.5,
+      "id": "439896",
+      "identifier": "scalar_lemmas.rs",
+      "path": "/curve25519-dalek/src/backend/serial/u64/scalar_lemmas.rs"
+    },
+    {
+      "fx": 996.0405405405404,
+      "fy": 574.5,
+      "id": "439898",
+      "identifier": "subtle_assumes.rs",
+      "path": "/curve25519-dalek/src/backend/serial/u64/subtle_assumes.rs"
+    },
+    {
+      "fx": 606.0405405405405,
+      "fy": 434.5,
+      "id": "439897",
+      "identifier": "scalar_specs.rs",
+      "path": "/curve25519-dalek/src/backend/serial/u64/scalar_specs.rs"
+    },
+    {
+      "fx": 866.0405405405405,
+      "fy": 224.5,
+      "id": "439895",
+      "identifier": "field_verus.rs",
+      "path": "/curve25519-dalek/src/backend/serial/u64/field_verus.rs"
+    },
+    {
+      "fx": -36.0,
+      "fy": -36.0,
+      "id": "439862",
+      "identifier": "curve25519-dalek",
+      "path": "/curve25519-dalek"
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/common_verus/pow_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 653.5,
+      "id": "82797",
+      "identifier": "pow_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": 3.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 615.0,
+      "fy": 478.5,
+      "id": "83245",
+      "identifier": "lemma_pow_nat_is_nat",
+      "path": ""
+    },
+    {
+      "fx": 745.0,
+      "fy": 476.5908508300781,
+      "id": "83243",
+      "identifier": "lemma_pow2_square",
+      "path": ""
+    },
+    {
+      "fx": 875.0,
+      "fy": 478.5,
+      "id": "83242",
+      "identifier": "lemma_two_factoring",
+      "path": ""
+    },
+    {
+      "fx": 1005.0,
+      "fy": 478.5,
+      "id": "83244",
+      "identifier": "pow2_mul_u8",
+      "path": ""
+    },
+    {
+      "fx": 615.0,
+      "fy": 198.5,
+      "id": "83241",
+      "identifier": "u8_times_pow2_fits_u64",
+      "path": ""
+    },
+    {
+      "fx": 615.0,
+      "fy": 408.5,
+      "id": "83240",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 745.0,
+      "fy": 408.5,
+      "id": "83239",
+      "identifier": "pow2_le_max64",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field.rs": [
+    {
+      "fx": 0.0,
+      "fy": 863.5,
+      "id": "82807",
+      "identifier": "field.rs",
+      "path": ""
+    },
+    {
+      "fx": 424.5405405405405,
+      "fy": 761.5,
+      "id": "83135",
+      "identifier": "conditional_swap",
+      "path": ""
+    },
+    {
+      "fx": 554.5405405405405,
+      "fy": 761.5,
+      "id": "83134",
+      "identifier": "from_bytes",
+      "path": ""
+    },
+    {
+      "fx": 515.5405405405405,
+      "fy": 618.5,
+      "id": "83132",
+      "identifier": "conditional_select",
+      "path": ""
+    },
+    {
+      "fx": 645.5405405405405,
+      "fy": 618.5,
+      "id": "83131",
+      "identifier": "add",
+      "path": ""
+    },
+    {
+      "fx": 422.21476539405614,
+      "fy": 201.5,
+      "id": "83130",
+      "identifier": "sub",
+      "path": ""
+    },
+    {
+      "fx": 775.5405405405405,
+      "fy": 618.5,
+      "id": "83129",
+      "identifier": "square2",
+      "path": ""
+    },
+    {
+      "fx": 905.5405405405404,
+      "fy": 618.5,
+      "id": "83128",
+      "identifier": "sub_assign",
+      "path": ""
+    },
+    {
+      "fx": 1035.5405405405404,
+      "fy": 618.5,
+      "id": "83127",
+      "identifier": "m",
+      "path": ""
+    },
+    {
+      "fx": 684.5405405405405,
+      "fy": 761.5,
+      "id": "83126",
+      "identifier": "mul",
+      "path": ""
+    },
+    {
+      "fx": 814.5405405405405,
+      "fy": 761.5,
+      "id": "83136",
+      "identifier": "reduce",
+      "path": ""
+    },
+    {
+      "fx": 515.5405405405405,
+      "fy": 548.5,
+      "id": "83125",
+      "identifier": "to_bytes",
+      "path": ""
+    },
+    {
+      "fx": 645.5405405405405,
+      "fy": 548.5,
+      "id": "83133",
+      "identifier": "negate",
+      "path": ""
+    },
+    {
+      "fx": 554.5405405405405,
+      "fy": 201.5,
+      "id": "83124",
+      "identifier": "neg",
+      "path": ""
+    },
+    {
+      "fx": 775.5405405405405,
+      "fy": 548.5,
+      "id": "83123",
+      "identifier": "add_assign",
+      "path": ""
+    },
+    {
+      "fx": 905.5405405405404,
+      "fy": 548.5,
+      "id": "83122",
+      "identifier": "from_limbs",
+      "path": ""
+    },
+    {
+      "fx": 1035.5405405405404,
+      "fy": 548.5,
+      "id": "83121",
+      "identifier": "conditional_assign",
+      "path": ""
+    },
+    {
+      "fx": 944.5405405405404,
+      "fy": 761.5,
+      "id": "83120",
+      "identifier": "mul_assign",
+      "path": ""
+    },
+    {
+      "fx": 1074.5405405405404,
+      "fy": 761.5,
+      "id": "83119",
+      "identifier": "square",
+      "path": ""
+    },
+    {
+      "fx": 515.5405405405405,
+      "fy": 478.5,
+      "id": "83118",
+      "identifier": "load8_at",
+      "path": ""
+    },
+    {
+      "fx": 645.5405405405405,
+      "fy": 478.5,
+      "id": "83117",
+      "identifier": "pow2k",
+      "path": ""
+    },
+    {
+      "fx": 775.5405405405405,
+      "fy": 478.5,
+      "id": "83116",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": -249.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek": [
+    {
+      "fx": 428.5,
+      "fy": 24.5,
+      "id": "439862",
+      "identifier": "curve25519-dalek",
+      "path": "/curve25519-dalek"
+    },
+    {
+      "fx": 718.5,
+      "fy": 454.5,
+      "id": "439863",
+      "identifier": "src",
+      "path": "/curve25519-dalek/src"
+    },
+    {
+      "fx": 848.5,
+      "fy": 454.5,
+      "id": "439906",
+      "identifier": "build.rs",
+      "path": "/curve25519-dalek/build.rs"
+    }
+  ],
+  "curve25519-dalek/src/backend": [
+    {
+      "fx": 428.5,
+      "fy": 24.5,
+      "id": "439865",
+      "identifier": "backend",
+      "path": "/curve25519-dalek/src/backend"
+    },
+    {
+      "fx": 718.5,
+      "fy": 454.5,
+      "id": "439866",
+      "identifier": "serial",
+      "path": "/curve25519-dalek/src/backend/serial"
+    },
+    {
+      "fx": -8.0,
+      "fy": -8.0,
+      "id": "439862",
+      "identifier": "curve25519-dalek",
+      "path": "/curve25519-dalek"
+    },
+    {
+      "fx": 848.5,
+      "fy": 454.5,
+      "id": "439905",
+      "identifier": "mod.rs",
+      "path": "/curve25519-dalek/src/backend/mod.rs"
+    }
+  ],
+  "curve25519-dalek/src/backend/mod.rs": [
+    {
+      "fx": 0.0,
+      "fy": 745.5,
+      "id": "82819",
+      "identifier": "mod.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 745.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 717.6756756756756,
+      "fy": 296.5,
+      "id": "83020",
+      "identifier": "new",
+      "path": ""
+    },
+    {
+      "fx": 847.6756756756756,
+      "fy": 296.5,
+      "id": "83019",
+      "identifier": "variable_base_mul",
+      "path": ""
+    },
+    {
+      "fx": 717.6756756756756,
+      "fy": 646.5,
+      "id": "83018",
+      "identifier": "len",
+      "path": ""
+    },
+    {
+      "fx": 977.6756756756756,
+      "fy": 296.5,
+      "id": "83016",
+      "identifier": "straus_optional_multiscalar_mul",
+      "path": ""
+    },
+    {
+      "fx": 763.1756756756756,
+      "fy": 550.5,
+      "id": "83015",
+      "identifier": "optional_mixed_multiscalar_mul",
+      "path": ""
+    },
+    {
+      "fx": 1107.6756756756756,
+      "fy": 296.5,
+      "id": "83014",
+      "identifier": "pippenger_optional_multiscalar_mul",
+      "path": ""
+    },
+    {
+      "fx": 893.1756756756756,
+      "fy": 550.5,
+      "id": "83013",
+      "identifier": "is_empty",
+      "path": ""
+    },
+    {
+      "fx": 717.6756756756756,
+      "fy": 366.5,
+      "id": "83012",
+      "identifier": "vartime_double_base_mul",
+      "path": ""
+    },
+    {
+      "fx": 1023.1756756756756,
+      "fy": 550.5,
+      "id": "83017",
+      "identifier": "get_selected_backend",
+      "path": ""
+    },
+    {
+      "fx": 847.6756756756756,
+      "fy": 366.5,
+      "id": "83011",
+      "identifier": "straus_multiscalar_mul",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/scalar.rs": [
+    {
+      "fx": 0.0,
+      "fy": 848.5,
+      "id": "82808",
+      "identifier": "scalar.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 848.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 454.4324324324325,
+      "fy": 776.5,
+      "id": "83113",
+      "identifier": "index",
+      "path": ""
+    },
+    {
+      "fx": 584.4324324324325,
+      "fy": 776.5,
+      "id": "83112",
+      "identifier": "index_mut",
+      "path": ""
+    },
+    {
+      "fx": 429.9324324324325,
+      "fy": 539.5,
+      "id": "83111",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 454.4324019148543,
+      "fy": 214.1965484619141,
+      "id": "83110",
+      "identifier": "mul",
+      "path": ""
+    },
+    {
+      "fx": 584.4324324324325,
+      "fy": 216.5,
+      "id": "83109",
+      "identifier": "montgomery_square",
+      "path": ""
+    },
+    {
+      "fx": 714.4324324324325,
+      "fy": 218.8034515380859,
+      "id": "83108",
+      "identifier": "square",
+      "path": ""
+    },
+    {
+      "fx": 559.9324324324325,
+      "fy": 539.5,
+      "id": "83105",
+      "identifier": "to_bytes",
+      "path": ""
+    },
+    {
+      "fx": 844.4324324324325,
+      "fy": 216.5,
+      "id": "83104",
+      "identifier": "from_montgomery",
+      "path": ""
+    },
+    {
+      "fx": 689.9324324324324,
+      "fy": 539.5,
+      "id": "83107",
+      "identifier": "part2",
+      "path": ""
+    },
+    {
+      "fx": 819.9324324324324,
+      "fy": 539.5,
+      "id": "83101",
+      "identifier": "square_internal",
+      "path": ""
+    },
+    {
+      "fx": 714.4324324324325,
+      "fy": 776.5,
+      "id": "83099",
+      "identifier": "from_bytes",
+      "path": ""
+    },
+    {
+      "fx": 844.4324324324325,
+      "fy": 776.5,
+      "id": "83106",
+      "identifier": "add",
+      "path": ""
+    },
+    {
+      "fx": 974.4324324324324,
+      "fy": 216.5,
+      "id": "83098",
+      "identifier": "from_bytes_wide",
+      "path": ""
+    },
+    {
+      "fx": 429.9324324324325,
+      "fy": 469.5,
+      "id": "83103",
+      "identifier": "montgomery_reduce",
+      "path": ""
+    },
+    {
+      "fx": 559.9324324324325,
+      "fy": 469.5,
+      "id": "83100",
+      "identifier": "mul_internal",
+      "path": ""
+    },
+    {
+      "fx": 689.9324324324324,
+      "fy": 469.5,
+      "id": "83102",
+      "identifier": "m",
+      "path": ""
+    },
+    {
+      "fx": 935.4324324324324,
+      "fy": 563.5,
+      "id": "83096",
+      "identifier": "part1",
+      "path": ""
+    },
+    {
+      "fx": 819.9324324324324,
+      "fy": 469.5,
+      "id": "83097",
+      "identifier": "montgomery_mul",
+      "path": ""
+    },
+    {
+      "fx": 1104.4324324324325,
+      "fy": 216.5,
+      "id": "83095",
+      "identifier": "as_montgomery",
+      "path": ""
+    },
+    {
+      "fx": 974.4324324324324,
+      "fy": 776.5,
+      "id": "83094",
+      "identifier": "sub",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/curve_models/mod.rs": [
+    {
+      "fx": 0.0,
+      "fy": 863.5,
+      "id": "82813",
+      "identifier": "mod.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 863.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 255.54054054054055,
+      "fy": 618.5,
+      "id": "83041",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 255.54054054054055,
+      "fy": 58.5,
+      "id": "83040",
+      "identifier": "conditional_assign",
+      "path": ""
+    },
+    {
+      "fx": 385.5405405405405,
+      "fy": 618.5,
+      "id": "83038",
+      "identifier": "as_extended",
+      "path": ""
+    },
+    {
+      "fx": 515.5405405405405,
+      "fy": 618.5,
+      "id": "83037",
+      "identifier": "double",
+      "path": ""
+    },
+    {
+      "fx": 645.5405405405405,
+      "fy": 618.5,
+      "id": "83036",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 775.5405405405405,
+      "fy": 618.5,
+      "id": "83035",
+      "identifier": "identity",
+      "path": ""
+    },
+    {
+      "fx": 385.5405405405405,
+      "fy": 58.5,
+      "id": "83034",
+      "identifier": "default",
+      "path": ""
+    },
+    {
+      "fx": 905.5405405405404,
+      "fy": 618.5,
+      "id": "83033",
+      "identifier": "is_valid",
+      "path": ""
+    },
+    {
+      "fx": 1035.5405405405404,
+      "fy": 618.5,
+      "id": "83039",
+      "identifier": "identity",
+      "path": ""
+    },
+    {
+      "fx": 515.5405405405405,
+      "fy": 58.5,
+      "id": "83032",
+      "identifier": "default",
+      "path": ""
+    },
+    {
+      "fx": 645.5405405405405,
+      "fy": 58.5,
+      "id": "83031",
+      "identifier": "conditional_assign",
+      "path": ""
+    },
+    {
+      "fx": 255.54054054054055,
+      "fy": 548.5,
+      "id": "83030",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 385.5405405405405,
+      "fy": 548.5,
+      "id": "83029",
+      "identifier": "as_extended",
+      "path": ""
+    },
+    {
+      "fx": 515.5405405405405,
+      "fy": 548.5,
+      "id": "83028",
+      "identifier": "fmt",
+      "path": ""
+    },
+    {
+      "fx": 645.5405405405405,
+      "fy": 548.5,
+      "id": "83027",
+      "identifier": "add",
+      "path": ""
+    },
+    {
+      "fx": 775.5405405405405,
+      "fy": 58.5,
+      "id": "83026",
+      "identifier": "conditional_select",
+      "path": ""
+    },
+    {
+      "fx": 775.5405405405405,
+      "fy": 548.5,
+      "id": "83025",
+      "identifier": "as_projective",
+      "path": ""
+    },
+    {
+      "fx": 905.5405405405404,
+      "fy": 548.5,
+      "id": "83024",
+      "identifier": "neg",
+      "path": ""
+    },
+    {
+      "fx": 905.5405405405404,
+      "fy": 58.5,
+      "id": "83023",
+      "identifier": "conditional_select",
+      "path": ""
+    },
+    {
+      "fx": 1035.5405405405404,
+      "fy": 548.5,
+      "id": "83022",
+      "identifier": "sub",
+      "path": ""
+    },
+    {
+      "fx": 255.54054054054055,
+      "fy": 478.5,
+      "id": "83021",
+      "identifier": "identity",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_lemmas": [
+    {
+      "fx": 0.0,
+      "fy": 653.5,
+      "id": "82785",
+      "identifier": "field_lemmas",
+      "path": ""
+    },
+    {
+      "fx": 784.0,
+      "fy": 621.5,
+      "id": "82786",
+      "identifier": "pow2_51_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 745.0,
+      "fy": 478.5,
+      "id": "82788",
+      "identifier": "field_core.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": 3.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 784.0,
+      "fy": 341.5,
+      "id": "82787",
+      "identifier": "pow2k_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 914.0,
+      "fy": 341.5,
+      "id": "82789",
+      "identifier": "load8_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 1044.0,
+      "fy": 341.5,
+      "id": "82790",
+      "identifier": "reduce_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 999.5,
+      "fy": 450.0,
+      "id": "82791",
+      "identifier": "negate_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 875.0,
+      "fy": 478.5,
+      "id": "82792",
+      "identifier": "as_nat_lemmas.rs",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/common_verus/bit_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 593.5,
+      "id": "82796",
+      "identifier": "bit_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 692.0,
+      "fy": 468.5,
+      "id": "83226",
+      "identifier": "bitwise_or_r_zero_is_id",
+      "path": ""
+    },
+    {
+      "fx": 822.0,
+      "fy": 468.5,
+      "id": "83225",
+      "identifier": "bitwise_or_l_zero_is_id",
+      "path": ""
+    },
+    {
+      "fx": 952.0,
+      "fy": 468.5,
+      "id": "83224",
+      "identifier": "main",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/common_verus/mask_lemmas.rs": [
+    {
+      "fx": 0.0,
+      "fy": 608.5,
+      "id": "82794",
+      "identifier": "mask_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 608.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 453.5,
+      "id": "83249",
+      "identifier": "masked_lt",
+      "path": ""
+    },
+    {
+      "fx": 805.4864864864865,
+      "fy": 453.5,
+      "id": "83248",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 935.4864864864865,
+      "fy": 453.5,
+      "id": "83247",
+      "identifier": "low_bits_mask_increases",
+      "path": ""
+    },
+    {
+      "fx": 675.4864864864865,
+      "fy": 243.5,
+      "id": "83246",
+      "identifier": "low_bits_masks_fit_u64",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/common_verus": [
+    {
+      "fx": 0.0,
+      "fy": 638.5,
+      "id": "82784",
+      "identifier": "common_verus",
+      "path": ""
+    },
+    {
+      "fx": 635.8108108108108,
+      "fy": 493.5,
+      "id": "82793",
+      "identifier": "mul_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 765.8108108108108,
+      "fy": 493.5,
+      "id": "82794",
+      "identifier": "mask_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 895.8108108108108,
+      "fy": 493.5,
+      "id": "82795",
+      "identifier": "shift_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 635.8108108108108,
+      "fy": 353.5,
+      "id": "82797",
+      "identifier": "pow_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 765.8108108108108,
+      "fy": 353.5,
+      "id": "82796",
+      "identifier": "bit_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 895.8108108108108,
+      "fy": 353.5,
+      "id": "82798",
+      "identifier": "div_mod_lemmas.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": 21.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/subtle_assumes.rs": [
+    {
+      "fx": 0.0,
+      "fy": 578.5,
+      "id": "82812",
+      "identifier": "subtle_assumes.rs",
+      "path": ""
+    },
+    {
+      "fx": 0.0,
+      "fy": 93.0,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 706.0,
+      "fy": 413.5,
+      "id": "83115",
+      "identifier": "reveal_choice",
+      "path": ""
+    },
+    {
+      "fx": 836.0,
+      "fy": 413.5,
+      "id": "83114",
+      "identifier": "select",
+      "path": ""
+    }
+  ],
+  "curve25519-dalek/src/backend/serial/u64/field_verus.rs": [
+    {
+      "fx": 0.0,
+      "fy": 728.5,
+      "id": "82809",
+      "identifier": "field_verus.rs",
+      "path": ""
+    },
+    {
+      "fx": 70.0,
+      "fy": 728.5,
+      "id": "82776",
+      "identifier": "curve25519-dalek",
+      "path": ""
+    },
+    {
+      "fx": 670.2162162162163,
+      "fy": 686.5,
+      "id": "83062",
+      "identifier": "main",
+      "path": ""
+    },
+    {
+      "fx": 670.2162162162163,
+      "fy": 336.5,
+      "id": "83061",
+      "identifier": "to_bytes",
+      "path": ""
+    },
+    {
+      "fx": 800.2162162162163,
+      "fy": 336.5,
+      "id": "83059",
+      "identifier": "masks_are_equal",
+      "path": ""
+    },
+    {
+      "fx": 930.2162162162164,
+      "fy": 336.5,
+      "id": "83056",
+      "identifier": "square",
+      "path": ""
+    },
+    {
+      "fx": 631.2162162162163,
+      "fy": 543.5,
+      "id": "83055",
+      "identifier": "m",
+      "path": ""
+    },
+    {
+      "fx": 761.2162162162163,
+      "fy": 543.5,
+      "id": "83057",
+      "identifier": "pow2k",
+      "path": ""
+    },
+    {
+      "fx": 1060.2162162162165,
+      "fy": 336.5,
+      "id": "83054",
+      "identifier": "square2",
+      "path": ""
+    },
+    {
+      "fx": 891.2162162162163,
+      "fy": 543.5,
+      "id": "83058",
+      "identifier": "reduce",
+      "path": ""
+    },
+    {
+      "fx": 1190.2162162162165,
+      "fy": 336.5,
+      "id": "83053",
+      "identifier": "negate",
+      "path": ""
+    },
+    {
+      "fx": 1021.2162162162164,
+      "fy": 543.5,
+      "id": "83060",
+      "identifier": "load8_at",
+      "path": ""
+    },
+    {
+      "fx": 670.2162162162163,
+      "fy": 406.5,
+      "id": "83052",
+      "identifier": "from_bytes",
+      "path": ""
+    },
+    {
+      "fx": 800.2162162162163,
+      "fy": 686.5,
+      "id": "83051",
+      "identifier": "from_limbs",
+      "path": ""
+    }
+  ]
+}

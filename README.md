@@ -78,6 +78,9 @@ Suppose you want to update the Verilib GUI with which functions are specified,
 without manually editing the icons in the GUI. Note that the following steps will
 likely overwrite any manual edits you've made in the Verilib GUI.
 
+Make sure that `.verilib/metadata.json` contains the id for a preexisting URL, 
+i.e. it's impossible to create a new Verilib repo using this CLI.
+
 Generate an API key on Verilib and put it in `.env`:
 
 ```
@@ -102,9 +105,6 @@ Deploy to Verilib:
 ``` bash
 uv run scripts/verilib_deploy.py
 ```
-
-Note that `.verilib/metadata.json` must contain the id for a preexisting URL, 
-i.e. it's impossible to create a new Verilib repo through this CLI.
 
 By editing `fx` and `fy` values in `.verilib/debug_deploy_layouts.json`, 
 you can adjust the location of functions in the Verilib GUI.

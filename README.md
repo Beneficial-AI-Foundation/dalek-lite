@@ -81,6 +81,9 @@ Generate an API key on Verilib and put it in `.env`:
 VERILIB_API_KEY=<your key>
 ```
 
+Note that this key should come from the instance of Verilib in `.verilib/metadata.json`
+(i.e. not necessarily verilib.org).
+
 Generate the validated statuses in `outputs/curve25519_functions.csv` (which git ignores):
 ``` bash
 uv run scripts/analyze_verus_specs_proofs.py

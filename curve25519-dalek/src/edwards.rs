@@ -886,7 +886,10 @@ impl EdwardsPoint {
     ///
     /// Note that this is a one-way conversion, since the Montgomery
     /// model does not retain sign information.
-    pub fn to_montgomery(&self) -> MontgomeryPoint {
+    pub fn to_montgomery(&self) -> (result: MontgomeryPoint)
+        ensures
+            montgomery_corresponds_to_edwards(result, *self),
+    {
         // We have u = (1+y)/(1-y) = (Z+Y)/(Z-Y).
         //
         // The denominator is zero only when y=1, the identity point of

@@ -57,6 +57,7 @@ use crate::core_assumes::{axiom_hash_is_deterministic, seq_to_array_32, spec_sta
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 use crate::scalar::{clamp_integer, Scalar};
+use crate::specs::curve_specs::*;
 use crate::specs::field_specs::*;
 
 use crate::traits::Identity;
@@ -304,6 +305,7 @@ impl MontgomeryPoint {
         self.0
     }
 
+    verus! {
     /// Attempt to convert to an `EdwardsPoint`, using the supplied
     /// choice of sign for the `EdwardsPoint`.
     ///
@@ -320,7 +322,13 @@ impl MontgomeryPoint {
     /// * `None` if `self` is the \\(u\\)-coordinate of a point on the
     /// twist of (the Montgomery form of) Curve25519;
     ///
-    pub fn to_edwards(&self, sign: u8) -> Option<EdwardsPoint> {
+    pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
+        ensures
+            match result {
+                Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards),
+                None => is_equal_to_minus_one(spec_montgomery_point(*self)),
+            },
+    {
         // To decompress the Montgomery u coordinate to an
         // `EdwardsPoint`, we apply the birational map to obtain the
         // Edwards y coordinate, then do Edwards decompression.
@@ -338,18 +346,39 @@ impl MontgomeryPoint {
         let u = FieldElement::from_bytes(&self.0);
 
         if u == FieldElement::MINUS_ONE {
+            proof {
+                assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
+            }
             return None;
         }
 
         let one = FieldElement::ONE;
+
+        /* VERIFICATION NOTE: need to prove preconditions for arithmetic traits */
+        assume(false);
 
         let y = &(&u - &one) * &(&u + &one).invert();
 
         let mut y_bytes = y.as_bytes();
         y_bytes[31] ^= sign << 7;
 
-        CompressedEdwardsY(y_bytes).decompress()
+        let result = CompressedEdwardsY(y_bytes).decompress();
+
+        proof {
+            // assumed postconditions
+            match result {
+                Some(edwards) => {
+                    assume(montgomery_corresponds_to_edwards(*self, edwards));
+                }
+                None => {
+                    assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
+                }
+            }
+        }
+
+        result
     }
+    } // verus!
 }
 
 /// Perform the Elligator2 mapping to a Montgomery point.

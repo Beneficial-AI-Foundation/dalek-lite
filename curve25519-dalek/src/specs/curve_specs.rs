@@ -230,4 +230,52 @@ pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
         )
 }
 
+/// Montgomery curve equation: B·v² = u³ + A·u² + u
+/// For Curve25519: v² = u³ + 486662·u² + u (with B = 1, A = 486662)
+/// Check if a point (u, v) satisfies the Montgomery curve equation
+pub open spec fn math_on_montgomery_curve(u: nat, v: nat) -> bool {
+    let a = 486662;
+    let u2 = math_field_square(u);
+    let u3 = math_field_mul(u, u2);
+    let v2 = math_field_square(v);
+
+    // v² = u³ + A·u² + u
+    let rhs = math_field_add(math_field_add(u3, math_field_mul(a, u2)), u);
+
+    v2 == rhs
+}
+
+/// Returns the u-coordinate of a Montgomery point as a field element
+/// Montgomery points only store the u-coordinate; sign information is lost
+pub open spec fn spec_montgomery_point(point: crate::montgomery::MontgomeryPoint) -> nat {
+    spec_field_element_from_bytes(&point.0)
+}
+
+/// Check if a MontgomeryPoint corresponds to an EdwardsPoint
+/// via the birational map u = (1+y)/(1-y)
+/// Special case: Edwards identity (y=1) maps to u=0
+pub open spec fn montgomery_corresponds_to_edwards(
+    montgomery: crate::montgomery::MontgomeryPoint,
+    edwards: EdwardsPoint,
+) -> bool {
+    let u = spec_montgomery_point(montgomery);
+    let (x, y) = spec_edwards_point(edwards);
+    let denominator = math_field_sub(1, y);
+
+    if denominator == 0 {
+        // Special case: Edwards identity (x=0, y=1) maps to Montgomery u=0
+        u == 0
+    } else {
+        // General case: u = (1+y)/(1-y)
+        let numerator = math_field_add(1, y);
+        u == math_field_mul(numerator, math_field_inv(denominator))
+    }
+}
+
+/// Check if a Montgomery u-coordinate is invalid for conversion to Edwards
+/// u = -1 is invalid because it corresponds to a point on the twist
+pub open spec fn is_equal_to_minus_one(u: nat) -> bool {
+    u == math_field_sub(0, 1)  // u == -1
+}
+
 } // verus!

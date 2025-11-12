@@ -215,15 +215,7 @@ impl FieldElement {
         // Multiplying t_i and t_j corresponds to adding e_i + e_j.
         //
         // Temporary t_i                      Nonzero bits of e_i
-        //
-        // PROOF STRATEGY:
-        // We track field_element(&ti) through the operation chain, establishing
-        // that each ti equals self^(exponent) mod p. We use:
-        // - Definitional equality: field_element(&fe) = as_nat(fe.limbs) % p()
-        // - Algebraic lemmas: lemma_pow_adds, lemma_pow_multiplies, lemma_pow2_geometric
-        // - Modular lemma: lemma_pow_mod_noop to connect as_nat(self.limbs) to field_element(self)
         let t0 = self.square();  // 1         e_0 = 2^1
-
         //NOTE: Changing the code!!!
         // NOTE: We are now using the intermediate variable t0_sq to track the postcondition of the first square.
         // NOTE: This is a workaround to allow us to prove the postcondition of the second square.

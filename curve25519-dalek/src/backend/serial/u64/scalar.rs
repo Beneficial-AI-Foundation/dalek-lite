@@ -974,12 +974,18 @@ mod test {
         s.limbs.iter().all(|&limb| limb < (1u64 << 52))
     }
 
-    // Property-based test for montgomery_reduce
+    // Property-based test generators
 
     /// Generate random 9-limb array where each limb is a valid u128
     /// We limit the limbs to reasonable values to avoid overflows in intermediate computations
     fn arb_nine_limbs() -> impl Strategy<Value = [u128; 9]> {
         prop::array::uniform9(0u128..((1u128 << 104) - 1))
+    }
+
+    /// Generate a valid Scalar52 with bounded limbs (each limb < 2^52)
+    fn arb_scalar52() -> impl Strategy<Value = Scalar52> {
+        prop::array::uniform5(0u64..(1u64 << 52))
+            .prop_map(|limbs| Scalar52 { limbs })
     }
 
     proptest! {
@@ -1053,5 +1059,148 @@ mod test {
         assert_eq!((&result_nat * &r) % &l, &limbs_nat % &l);
         assert!(limbs_bounded_exec(&result));
         assert!(&result_nat < &l);
+    }
+
+    // Property tests for montgomery_mul
+    proptest! {
+        #[test]
+        fn prop_montgomery_mul_spec(a in arb_scalar52(), b in arb_scalar52()) {
+            let result = Scalar52::montgomery_mul(&a, &b);
+
+            let a_nat = to_nat_exec(&a.limbs);
+            let b_nat = to_nat_exec(&b.limbs);
+            let result_nat = to_nat_exec(&result.limbs);
+            let l = group_order_exec();
+            let r = montgomery_radix_exec();
+
+            // Check spec postconditions:
+            // 1. limbs_bounded(&result)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // 2. (to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&a.limbs) * to_nat(&b.limbs)) % group_order()
+            let lhs = (&result_nat * &r) % &l;
+            let rhs = (&a_nat * &b_nat) % &l;
+            prop_assert_eq!(lhs, rhs,
+                "Montgomery mul spec violated: (result * R) mod L != (a * b) mod L");
+        }
+    }
+
+    // Property tests for montgomery_square
+    proptest! {
+        #[test]
+        fn prop_montgomery_square_spec(a in arb_scalar52()) {
+            let result = a.montgomery_square();
+
+            let a_nat = to_nat_exec(&a.limbs);
+            let result_nat = to_nat_exec(&result.limbs);
+            let l = group_order_exec();
+            let r = montgomery_radix_exec();
+
+            // Check spec postconditions:
+            // 1. limbs_bounded(&result)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // 2. (to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order()
+            let lhs = (&result_nat * &r) % &l;
+            let rhs = (&a_nat * &a_nat) % &l;
+            prop_assert_eq!(lhs, rhs,
+                "Montgomery square spec violated: (result * R) mod L != (a * a) mod L");
+        }
+    }
+
+    // Property tests for mul
+    proptest! {
+        #[test]
+        fn prop_mul_spec(a in arb_scalar52(), b in arb_scalar52()) {
+            let result = Scalar52::mul(&a, &b);
+
+            let a_nat = to_nat_exec(&a.limbs);
+            let b_nat = to_nat_exec(&b.limbs);
+            let result_nat = to_nat_exec(&result.limbs);
+            let l = group_order_exec();
+
+            // Check spec postconditions:
+            // 1. to_nat(&result.limbs) % group_order() == (to_nat(&a.limbs) * to_nat(&b.limbs)) % group_order()
+            let lhs = &result_nat % &l;
+            let rhs = (&a_nat * &b_nat) % &l;
+            prop_assert_eq!(lhs, rhs,
+                "Mul spec violated: result mod L != (a * b) mod L");
+
+            // 2. limbs_bounded(&result)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // 3. to_nat(&result.limbs) < group_order()
+            prop_assert!(&result_nat < &l,
+                "Result not in canonical form (>= L)");
+        }
+    }
+
+    // Property tests for square
+    proptest! {
+        #[test]
+        fn prop_square_spec(a in arb_scalar52()) {
+            let result = a.square();
+
+            let a_nat = to_nat_exec(&a.limbs);
+            let result_nat = to_nat_exec(&result.limbs);
+            let l = group_order_exec();
+
+            // Check spec postcondition:
+            // to_nat(&result.limbs) == (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order()
+            let expected = (&a_nat * &a_nat) % &l;
+            prop_assert_eq!(result_nat, expected,
+                "Square spec violated: result != (a * a) mod L");
+        }
+    }
+
+    // Property tests for as_montgomery
+    proptest! {
+        #[test]
+        fn prop_as_montgomery_spec(a in arb_scalar52()) {
+            let result = a.as_montgomery();
+
+            let a_nat = to_nat_exec(&a.limbs);
+            let result_nat = to_nat_exec(&result.limbs);
+            let l = group_order_exec();
+            let r = montgomery_radix_exec();
+
+            // Check spec postconditions:
+            // 1. limbs_bounded(&result)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // 2. to_nat(&result.limbs) % group_order() == (to_nat(&self.limbs) * montgomery_radix()) % group_order()
+            let lhs = &result_nat % &l;
+            let rhs = (&a_nat * &r) % &l;
+            prop_assert_eq!(lhs, rhs,
+                "as_montgomery spec violated: result mod L != (a * R) mod L");
+        }
+    }
+
+    // Property tests for from_montgomery
+    proptest! {
+        #[test]
+        fn prop_from_montgomery_spec(a in arb_scalar52()) {
+            let result = a.from_montgomery();
+
+            let a_nat = to_nat_exec(&a.limbs);
+            let result_nat = to_nat_exec(&result.limbs);
+            let l = group_order_exec();
+            let r = montgomery_radix_exec();
+
+            // Check spec postconditions:
+            // 1. limbs_bounded(&result)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // 2. (to_nat(&result.limbs) * montgomery_radix()) % group_order() == to_nat(&self.limbs) % group_order()
+            let lhs = (&result_nat * &r) % &l;
+            let rhs = &a_nat % &l;
+            prop_assert_eq!(lhs, rhs,
+                "from_montgomery spec violated: (result * R) mod L != a mod L");
+        }
     }
 }

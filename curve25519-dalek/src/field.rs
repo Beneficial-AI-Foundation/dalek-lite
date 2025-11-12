@@ -56,6 +56,8 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::field_lemmas::as_nat_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t19_lemma::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t3_lemma::*;
@@ -195,12 +197,20 @@ impl FieldElement {
     fn pow22501(&self) -> (result: (FieldElement, FieldElement))
         requires
             forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
-        ensures
+        ensures/*
             as_nat(result.0.limbs) % p() == pow(
                 as_nat(self.limbs) as int,
                 (pow2(250) - 1) as nat,
             ) as nat % p(),
             as_nat(result.1.limbs) % p() == pow(as_nat(self.limbs) as int, 11) as nat % p(),
+        */
+
+            spec_field_element(&result.0) == (pow(
+                spec_field_element(self) as int,
+                (pow2(250) - 1) as nat,
+            ) as nat) % p(),
+            spec_field_element(&result.1) == (pow(spec_field_element(self) as int, 11) as nat)
+                % p(),
     {
         // Instead of managing which temporary variables are used
         // for what, we define as many as we need and leave stack
@@ -420,8 +430,15 @@ impl FieldElement {
                 t19.limbs,
             );
 
-            // The lemma proves:
-            // as_nat(t19.limbs) % p() == pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p()
+            // Bridge from as_nat postconditions to spec_field_element postconditions
+            // The previous proof established:
+            //assert(as_nat(t19.limbs) % p() == (pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat) % p());
+            //assert(as_nat(t3.limbs) % p() == (pow(as_nat(self.limbs) as int, 11) as nat) % p());
+
+            // Use bridge lemma to prove the spec_field_element postconditions
+            lemma_bridge_pow_as_nat_to_spec(&t19, self, (pow2(250) - 1) as nat);
+            lemma_bridge_pow_as_nat_to_spec(&t3, self, 11);
+
         }
 
         (t19, t3)

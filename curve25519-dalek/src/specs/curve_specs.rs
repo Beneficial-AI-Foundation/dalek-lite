@@ -123,8 +123,10 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
     // Z must be non-zero
     z != 0 &&
     // The affine coordinates (X/Z, Y/Z) must be on the curve
-    math_on_edwards_curve(math_field_mul(x, math_field_inv(z)), math_field_mul(y, math_field_inv(z)))
-        &&
+    math_on_edwards_curve(
+        math_field_mul(x, math_field_inv(z)),
+        math_field_mul(y, math_field_inv(z)),
+    ) &&
     // Extended coordinate must satisfy T = X*Y/Z
     t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
 }
@@ -276,6 +278,7 @@ pub open spec fn montgomery_corresponds_to_edwards(
 /// u = -1 is invalid because it corresponds to a point on the twist
 pub open spec fn is_equal_to_minus_one(u: nat) -> bool {
     u == math_field_sub(0, 1)  // u == -1
+
 }
 
 } // verus!

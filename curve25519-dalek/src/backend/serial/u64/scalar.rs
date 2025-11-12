@@ -280,14 +280,138 @@ impl Scalar52 {
         hi.limbs[3] = ((words[6] >> 32) | (words[ 7] << 32)) & mask;
         hi.limbs[4] =   words[7] >> 20                             ;
 
-        // Stage 3 assumption: the 52-bit limb representations cover the original 512-bit value.
+        // Stage 3: the masked limbs contributed by each 64-bit word remain below 2^52.
         let ghost lo_raw = lo;
         let ghost hi_raw = hi;
-        assume(limbs_bounded(&lo_raw));
-        assume(limbs_bounded(&hi_raw));
-        assume(lo_raw.limbs[4] < (1u64 << 52));
-        assume(hi_raw.limbs[4] < (1u64 << 52));
-        assume(wide_input == to_nat(&lo_raw.limbs) + pow2(260) * to_nat(&hi_raw.limbs));
+        assert(mask == (1u64 << 52) - 1);
+
+        assert forall|i: int| 0 <= i < 5 implies lo_raw.limbs[i] < (1u64 << 52) by {
+            if i == 0 {
+                assert(lo_raw.limbs[i] == words[0] & mask);
+                assert(lo_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded(words[0], mask);
+                    assert(lo_raw.limbs[i] == words[0] & mask);
+                };
+            } else if i == 1 {
+                assert(lo_raw.limbs[i] == ((words[0] >> 52) | (words[1] << 12)) & mask);
+                assert(lo_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded((words[0] >> 52) | (words[1] << 12), mask);
+                    assert(lo_raw.limbs[i] == ((words[0] >> 52) | (words[1] << 12)) & mask);
+                };
+            } else if i == 2 {
+                assert(lo_raw.limbs[i] == ((words[1] >> 40) | (words[2] << 24)) & mask);
+                assert(lo_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded((words[1] >> 40) | (words[2] << 24), mask);
+                    assert(lo_raw.limbs[i] == ((words[1] >> 40) | (words[2] << 24)) & mask);
+                };
+            } else if i == 3 {
+                assert(lo_raw.limbs[i] == ((words[2] >> 28) | (words[3] << 36)) & mask);
+                assert(lo_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded((words[2] >> 28) | (words[3] << 36), mask);
+                    assert(lo_raw.limbs[i] == ((words[2] >> 28) | (words[3] << 36)) & mask);
+                };
+            } else {
+                assert(i == 4);
+                assert(lo_raw.limbs[i] == ((words[3] >> 16) | (words[4] << 48)) & mask);
+                assert(lo_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded((words[3] >> 16) | (words[4] << 48), mask);
+                    assert(lo_raw.limbs[i] == ((words[3] >> 16) | (words[4] << 48)) & mask);
+                };
+            }
+        };
+        assert(limbs_bounded(&lo_raw));
+
+        assert forall|i: int| 0 <= i < 5 implies hi_raw.limbs[i] < (1u64 << 52) by {
+            if i == 0 {
+                assert(hi_raw.limbs[i] == (words[4] >> 4) & mask);
+                assert(hi_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded(words[4] >> 4, mask);
+                    assert(hi_raw.limbs[i] == (words[4] >> 4) & mask);
+                };
+            } else if i == 1 {
+                assert(hi_raw.limbs[i] == ((words[4] >> 56) | (words[5] << 8)) & mask);
+                assert(hi_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded((words[4] >> 56) | (words[5] << 8), mask);
+                    assert(hi_raw.limbs[i] == ((words[4] >> 56) | (words[5] << 8)) & mask);
+                };
+            } else if i == 2 {
+                assert(hi_raw.limbs[i] == ((words[5] >> 44) | (words[6] << 20)) & mask);
+                assert(hi_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded((words[5] >> 44) | (words[6] << 20), mask);
+                    assert(hi_raw.limbs[i] == ((words[5] >> 44) | (words[6] << 20)) & mask);
+                };
+            } else if i == 3 {
+                assert(hi_raw.limbs[i] == ((words[6] >> 32) | (words[7] << 32)) & mask);
+                assert(hi_raw.limbs[i] < (1u64 << 52)) by {
+                    lemma_borrow_and_mask_bounded((words[6] >> 32) | (words[7] << 32), mask);
+                    assert(hi_raw.limbs[i] == ((words[6] >> 32) | (words[7] << 32)) & mask);
+                };
+            } else {
+                assert(i == 4);
+                let word7 = words[7];
+                assert(hi_raw.limbs[i] == word7 >> 20);
+                assert(hi_raw.limbs[i] < (1u64 << 52)) by {
+                    assert(hi_raw.limbs[i] == word7 >> 20);
+                    assert(word7 >> 20 <= u64::MAX >> 20) by (bit_vector);
+                    assert(u64::MAX >> 20 < (1u64 << 52)) by (bit_vector);
+                };
+            }
+        };
+        assert(limbs_bounded(&hi_raw));
+
+        let ghost pow2_260 = pow2(260);
+        let ghost low_expr =
+            (words[0] as nat) +
+            pow2(64) * (words[1] as nat) +
+            pow2(128) * (words[2] as nat) +
+            pow2(192) * (words[3] as nat) +
+            pow2(256) * ((words[4] & 0xf) as nat);
+
+        let ghost high_expr =
+            (words[4] >> 4) as nat +
+            pow2(60) * (words[5] as nat) +
+            pow2(124) * (words[6] as nat) +
+            pow2(188) * (words[7] as nat);
+
+        // Assumption [L2]: The 512-bit input splits as `pow2(260) * high_expr + low_expr`.
+        assume(wide_input == pow2_260 * high_expr + low_expr);
+        // Assumption [L3]: The lower chunk is strictly less than `2^260`.
+        assume(low_expr < pow2_260);
+
+        proof {
+            lemma_pow2_pos(260);
+
+            calc! {
+                (==)
+                wide_input % pow2_260;
+                { assert(wide_input == pow2_260 * high_expr + low_expr); }
+                (pow2_260 * high_expr + low_expr) % pow2_260;
+                { lemma_mod_multiples_vanish(high_expr as int, low_expr as int, pow2_260 as int); }
+                low_expr % pow2_260;
+                { lemma_small_mod(low_expr, pow2_260); }
+                low_expr;
+            }
+
+            assert(wide_input % pow2_260 == low_expr);
+
+            calc! {
+                (==)
+                to_nat(&lo_raw.limbs);
+                { assert(to_nat(&lo_raw.limbs) == low_expr); }
+                low_expr;
+                { assert(wide_input % pow2_260 == low_expr); }
+                wide_input % pow2_260;
+            }
+
+            assert(to_nat(&lo_raw.limbs) == wide_input % pow2_260);
+        }
+
+        assert(to_nat(&lo_raw.limbs) == wide_input % pow2(260));
+        // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
+        assume(to_nat(&hi_raw.limbs) == wide_input / pow2(260));
+        // Assumption: Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
+        assume(wide_input == (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260)));
+        assert(wide_input == to_nat(&lo_raw.limbs) + pow2(260) * to_nat(&hi_raw.limbs));
         assume(to_nat(&lo_raw.limbs) < pow2(260));
         assume(to_nat(&hi_raw.limbs) < pow2(252));
 

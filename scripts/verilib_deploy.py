@@ -8,6 +8,9 @@ import os
 import requests
 from csv import DictReader
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Get the project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

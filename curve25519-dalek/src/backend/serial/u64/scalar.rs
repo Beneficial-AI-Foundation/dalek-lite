@@ -1106,6 +1106,39 @@ pub mod test {
         }
     }
 
+    /// Test montgomery_reduce with a specific canonical input
+    #[test]
+    fn montgomery_reduce_canonical_case() {
+        use proptest::prelude::*;
+        use proptest::strategy::ValueTree;
+        use proptest::test_runner::{Config, TestRunner};
+
+        let mut runner = TestRunner::new(Config::default());
+
+        let a = arb_canonical_scalar52().new_tree(&mut runner).unwrap().current();
+        let b = arb_canonical_scalar52().new_tree(&mut runner).unwrap().current();
+        let limbs = Scalar52::mul_internal(&a, &b);
+        let result = Scalar52::montgomery_reduce(&limbs);
+
+        let a_nat = to_nat_exec(&a.limbs);
+        let b_nat = to_nat_exec(&b.limbs);
+        let limbs_nat = slice128_to_nat_exec(&limbs);
+        let result_nat = to_nat_exec(&result.limbs);
+        let l = group_order_exec();
+
+        println!("a = {}", a_nat);
+        println!("b = {}", b_nat);
+        println!("a < L: {}", a_nat < l);
+        println!("b < L: {}", b_nat < l);
+        println!();
+        println!("product = a * b = {}", limbs_nat);
+        println!("product / L = {}", &limbs_nat / &l);
+        println!();
+        println!("result = {}", result_nat);
+        println!("result < L: {}", result_nat < l);
+        println!("result >= L: {}", result_nat >= l);
+    }
+
     /// Test the specific failing case to understand what's happening
     #[test]
     fn montgomery_reduce_failing_case() {

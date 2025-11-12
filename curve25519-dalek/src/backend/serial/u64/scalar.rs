@@ -687,6 +687,13 @@ impl Scalar52 {
     #[inline(always)]
     #[rustfmt::skip]  // keep alignment of n* and r* calculations
     pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)
+        // TODO: Add precondition:
+        // requires
+        //     // The input represents the product of two bounded Scalar52s
+        //     exists|a: &Scalar52, b: &Scalar52|
+        //         limbs_bounded(a) &&
+        //         limbs_bounded(b) &&
+        //         slice128_to_nat(limbs) == to_nat(&a.limbs) * to_nat(&b.limbs)
         ensures
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
                 % group_order(),
@@ -976,16 +983,19 @@ pub mod test {
 
     // Property-based test generators
 
-    /// Generate random 9-limb array where each limb is a valid u128
-    /// We limit the limbs to reasonable values to avoid overflows in intermediate computations
-    fn arb_nine_limbs() -> impl Strategy<Value = [u128; 9]> {
-        prop::array::uniform9(0u128..((1u128 << 104) - 1))
-    }
-
     /// Generate a valid Scalar52 with bounded limbs (each limb < 2^52)
     fn arb_scalar52() -> impl Strategy<Value = Scalar52> {
         prop::array::uniform5(0u64..(1u64 << 52))
             .prop_map(|limbs| Scalar52 { limbs })
+    }
+
+    /// Generate random 9-limb array from the product of two bounded Scalar52s
+    /// This matches the intended precondition: exists a, b such that limbs = mul_internal(a, b)
+    fn arb_nine_limbs() -> impl Strategy<Value = [u128; 9]> {
+        (arb_scalar52(), arb_scalar52())
+            .prop_map(|(a, b)| {
+                Scalar52::mul_internal(&a, &b)
+            })
     }
 
     proptest! {

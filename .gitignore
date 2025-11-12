@@ -27,3 +27,4 @@ docs/outputs/*.csv
 docs/outputs/stats.json
 docs/outputs/metadata.json
 docs/outputs/stats_history.jsonl
+.verilib/*.log

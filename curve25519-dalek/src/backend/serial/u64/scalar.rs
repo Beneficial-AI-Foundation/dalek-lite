@@ -923,7 +923,7 @@ impl Scalar52 {
 } // verus!
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
     use num_bigint::BigUint;
     use num_traits::{One, Zero};

@@ -3632,8 +3632,10 @@ pub const fn clamp_integer(bytes: [u8; 32]) -> (result: [u8; 32])
 // }
 
 #[cfg(test)]
-mod proptest {
+mod proptest_scalar {
     use super::*;
+    use num_bigint::BigUint;
+    use num_traits::{One, Zero};
     use proptest::prelude::*;
 
     // Import the executable helper functions from the backend tests
@@ -3645,8 +3647,7 @@ mod proptest {
 
     /// Convert Scalar bytes to BigUint
     /// Matches the spec: bytes_to_nat(&[u8; 32])
-    fn bytes_to_nat_exec(bytes: &[u8; 32]) -> num_bigint::BigUint {
-        use num_bigint::BigUint;
+    fn bytes_to_nat_exec(bytes: &[u8; 32]) -> BigUint {
         let mut result = BigUint::from(0u32);
         for i in (0..32).rev() {
             result = (result << 8) + BigUint::from(bytes[i]);
@@ -3656,14 +3657,14 @@ mod proptest {
 
     /// Convert Scalar to its natural number representation
     /// Matches: scalar_to_nat(scalar) which is bytes_to_nat(&scalar.bytes) % group_order()
-    fn scalar_to_nat_exec(scalar: &Scalar) -> num_bigint::BigUint {
+    fn scalar_to_nat_exec(scalar: &Scalar) -> BigUint {
         bytes_to_nat_exec(&scalar.bytes) % group_order_exec()
     }
 
     /// Generate a random canonical Scalar (< L)
     fn arb_canonical_scalar() -> impl Strategy<Value = Scalar> {
         // Generate 32 random bytes
-        prop::array::uniform32(any::<u8>())
+        proptest::array::uniform32(any::<u8>())
             .prop_map(|bytes| {
                 // Use from_bytes_mod_order to ensure we get a valid scalar
                 Scalar::from_bytes_mod_order(bytes)
@@ -3675,8 +3676,6 @@ mod proptest {
     proptest! {
         #[test]
         fn prop_neg_spec(scalar in arb_canonical_scalar()) {
-            use num_traits::Zero;
-
             let result = -&scalar;
 
             let scalar_nat = scalar_to_nat_exec(&scalar);
@@ -3686,7 +3685,7 @@ mod proptest {
             // Check spec postcondition:
             // (scalar_to_nat(self) + scalar_to_nat(&result)) % group_order() == 0
             let sum = (&scalar_nat + &result_nat) % &l;
-            prop_assert_eq!(sum, num_bigint::BigUint::zero(),
+            prop_assert_eq!(sum, BigUint::zero(),
                 "Negation spec violated: (scalar + (-scalar)) mod L != 0");
         }
     }
@@ -3695,7 +3694,7 @@ mod proptest {
 
     proptest! {
         #[test]
-        fn prop_reduce_spec(bytes in prop::array::uniform32(any::<u8>())) {
+        fn prop_reduce_spec(bytes in proptest::array::uniform32(any::<u8>())) {
             // Create a scalar from arbitrary bytes (may not be canonical)
             let scalar = Scalar { bytes };
             let result = scalar.reduce();
@@ -3726,19 +3725,15 @@ mod proptest {
 
     #[test]
     fn neg_zero() {
-        use num_traits::Zero;
-
         let zero = Scalar::ZERO;
         let neg_zero = -&zero;
 
         // -0 should be 0
-        assert_eq!(scalar_to_nat_exec(&neg_zero), num_bigint::BigUint::zero());
+        assert_eq!(scalar_to_nat_exec(&neg_zero), BigUint::zero());
     }
 
     #[test]
     fn neg_one() {
-        use num_traits::Zero;
-
         let one = Scalar::ONE;
         let neg_one = -&one;
 
@@ -3748,7 +3743,7 @@ mod proptest {
 
         // 1 + (-1) should be 0 mod L
         let sum = (&one_nat + &neg_one_nat) % &l;
-        assert_eq!(sum, num_bigint::BigUint::zero());
+        assert_eq!(sum, BigUint::zero());
     }
 
     #[test]

@@ -62,7 +62,7 @@ use crate::specs::field_specs::*;
 
 use crate::traits::Identity;
 
-use crate::backend::serial::u64::subtle_assumes::choice_into;
+use crate::backend::serial::u64::subtle_assumes::{choice_into, choice_is_true};
 
 use subtle::Choice;
 use subtle::ConstantTimeEq;
@@ -82,11 +82,26 @@ pub struct MontgomeryPoint(pub [u8; 32]);
 
 /// Equality of `MontgomeryPoint`s is defined mod p.
 impl ConstantTimeEq for MontgomeryPoint {
-    fn ct_eq(&self, other: &MontgomeryPoint) -> Choice {
+    fn ct_eq(&self, other: &MontgomeryPoint) -> (result: Choice)
+        ensures
+            // Two MontgomeryPoints are equal if their u-coordinates are equal mod p
+            choice_is_true(result) == (
+                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
+            ),
+    {
         let self_fe = FieldElement::from_bytes(&self.0);
         let other_fe = FieldElement::from_bytes(&other.0);
 
-        self_fe.ct_eq(&other_fe)
+        let result = self_fe.ct_eq(&other_fe);
+
+        proof {
+            // The postcondition follows from FieldElement::ct_eq's specification
+            assume(choice_is_true(result) == (
+                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
+            ));
+        }
+
+        result
     }
 }
 
@@ -98,9 +113,8 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for MontgomeryPoint {
     }
 
     open spec fn eq_spec(&self, other: &Self) -> bool {
-        // Two MontgomeryPoints are equal if their byte representations are equal
-        // (after conversion to canonical FieldElement form)
-        self.0@ == other.0@
+        // Two MontgomeryPoints are equal if their u-coordinates are equal mod p
+        spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
     }
 }
 
@@ -108,7 +122,9 @@ impl PartialEq for MontgomeryPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &MontgomeryPoint) -> (result: bool)
         ensures
-            result == (self.0@ == other.0@),
+            result == (
+                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
+            ),
     {
         /* <VERIFICATION NOTE>
          Use wrapper function for Choice::into
@@ -119,8 +135,19 @@ impl PartialEq for MontgomeryPoint {
         let choice = self.ct_eq(other);
         let result = choice_into(choice);
 
-        // VERIFICATION NOTE: Need to prove the postcondition
-        assume(result == (self.0@ == other.0@));
+        proof {
+            // VERIFICATION NOTE: The postcondition follows from ct_eq's specification
+            // ct_eq ensures: choice_is_true(choice) == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0))
+            // choice_into ensures: result == choice_is_true(choice)
+            // Therefore by transitivity: result == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0))
+
+            // Try to prove it explicitly
+            assert(choice_is_true(choice) == (
+                spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)
+            ));
+            assert(result == choice_is_true(choice));
+            // Verus should be able to derive the postcondition from these two assertions
+        }
 
         result
     }

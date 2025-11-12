@@ -933,7 +933,7 @@ mod test {
 
     /// Convert 5 limbs (52-bit each) to a BigUint
     /// Matches the spec: to_nat(&[u64; 5])
-    fn to_nat_exec(limbs: &[u64; 5]) -> BigUint {
+    pub fn to_nat_exec(limbs: &[u64; 5]) -> BigUint {
         let mut result = BigUint::zero();
         let radix = BigUint::from(1u128 << 52);
         for i in (0..5).rev() {
@@ -944,7 +944,7 @@ mod test {
 
     /// Convert 9 u128 limbs (52-bit each) to a BigUint
     /// Matches the spec: slice128_to_nat(&[u128; 9])
-    fn slice128_to_nat_exec(limbs: &[u128; 9]) -> BigUint {
+    pub fn slice128_to_nat_exec(limbs: &[u128; 9]) -> BigUint {
         let mut result = BigUint::zero();
         let radix = BigUint::from(1u128 << 52);
         for i in (0..9).rev() {
@@ -955,7 +955,7 @@ mod test {
 
     /// The group order L
     /// Matches the spec: group_order()
-    fn group_order_exec() -> BigUint {
+    pub fn group_order_exec() -> BigUint {
         // L = 2^252 + 27742317777372353535851937790883648493
         let base = BigUint::one() << 252;
         let offset = BigUint::parse_bytes(b"27742317777372353535851937790883648493", 10).unwrap();
@@ -964,13 +964,13 @@ mod test {
 
     /// Montgomery radix R = 2^260
     /// Matches the spec: montgomery_radix()
-    fn montgomery_radix_exec() -> BigUint {
+    pub fn montgomery_radix_exec() -> BigUint {
         BigUint::one() << 260
     }
 
     /// Check if all limbs are bounded by 2^52
     /// Matches the spec: limbs_bounded(&Scalar52)
-    fn limbs_bounded_exec(s: &Scalar52) -> bool {
+    pub fn limbs_bounded_exec(s: &Scalar52) -> bool {
         s.limbs.iter().all(|&limb| limb < (1u64 << 52))
     }
 

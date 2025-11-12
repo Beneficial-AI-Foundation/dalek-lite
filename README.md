@@ -81,8 +81,12 @@ Generate an API key on Verilib and put it in `.env`:
 VERILIB_API_KEY=<your key>
 ```
 
-Note that this key should come from the instance of Verilib in `.verilib/metadata.json`
-(i.e. not necessarily verilib.org).
+Note that this key should come from the instance of Verilib in `.verilib/metadata.json`.
+That is, if the URL in that JSON is http://ec2-3-23-60-0.us-east-2.compute.amazonaws.com, 
+go to that URL, click on "My Account" in the top right, click on "New Key", 
+set name and expiration date, and then copy the API key that appears directly under "Api Keys".
+http://ec2-3-23-60-0.us-east-2.compute.amazonaws.com will not know about your login 
+credentials for https://verilib.org/.
 
 Generate the validated statuses in `outputs/curve25519_functions.csv` (which git ignores):
 ``` bash

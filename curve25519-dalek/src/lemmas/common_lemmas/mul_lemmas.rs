@@ -216,20 +216,6 @@ pub proof fn lemma_mul_mod_both(x: int, y: int, m: int)
     lemma_mul_mod_noop_general(y, x, m);
 }
 
-// LEMMA: Modular multiplication with both arguments modded (nat version)
-// ((x % m) * (y % m)) % m == (x * y) % m
-// This avoids type conversion issues between int and nat
-pub proof fn lemma_mul_mod_both_nat(x: nat, y: nat, m: nat)
-    requires
-        m > 0,
-    ensures
-        ((x % m) * (y % m)) % m == (x * y) % m,
-{
-    // Cast to int and use the int version
-    lemma_mul_mod_both(x as int, y as int, m as int);
-    // Z3 should automatically see that the result applies to nat
-}
-
 fn main() {
 }
 

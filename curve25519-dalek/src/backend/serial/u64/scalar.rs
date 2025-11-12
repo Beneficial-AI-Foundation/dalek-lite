@@ -373,6 +373,47 @@ impl Scalar52 {
             pow2(124) * (words[6] as nat) +
             pow2(188) * (words[7] as nat);
 
+        // Reading the five 52-bit limbs in radix 2^52 reproduces the low chunk reconstructed from the 64-bit words.
+        assert(lo_raw.limbs[0] == words[0] & mask);
+        assert(lo_raw.limbs[1] == ((words[0] >> 52) | (words[1] << 12)) & mask);
+        assert(lo_raw.limbs[2] == ((words[1] >> 40) | (words[2] << 24)) & mask);
+        assert(lo_raw.limbs[3] == ((words[2] >> 28) | (words[3] << 36)) & mask);
+        assert(lo_raw.limbs[4] == ((words[3] >> 16) | (words[4] << 48)) & mask);
+        proof {
+            lemma_low_limbs_encode_low_expr(&lo_raw.limbs, &words, mask);
+        }
+        assert(five_limbs_to_nat_aux(lo_raw.limbs) == low_expr);
+        assert(to_nat(&lo_raw.limbs) == low_expr) by {
+            calc! {
+                (==)
+                to_nat(&lo_raw.limbs);
+                { lemma_five_limbs_equals_to_nat(&lo_raw.limbs); }
+                five_limbs_to_nat_aux(lo_raw.limbs);
+                { assert(five_limbs_to_nat_aux(lo_raw.limbs) == low_expr); }
+                low_expr;
+            }
+        };
+        // Reading the five 52-bit limbs in radix 2^52 reproduces the high chunk reconstructed from the 64-bit words.
+        assert(hi_raw.limbs[0] == (words[4] >> 4) & mask);
+        assert(hi_raw.limbs[1] == ((words[4] >> 56) | (words[5] << 8)) & mask);
+        assert(hi_raw.limbs[2] == ((words[5] >> 44) | (words[6] << 20)) & mask);
+        assert(hi_raw.limbs[3] == ((words[6] >> 32) | (words[7] << 32)) & mask);
+        assert(hi_raw.limbs[4] == words[7] >> 20);
+        proof {
+            lemma_high_limbs_encode_high_expr(&hi_raw.limbs, &words, mask);
+        }
+        assert(five_limbs_to_nat_aux(hi_raw.limbs) == high_expr);
+        assert(to_nat(&hi_raw.limbs) == high_expr) by {
+            calc! {
+                (==)
+                to_nat(&hi_raw.limbs);
+                { lemma_five_limbs_equals_to_nat(&hi_raw.limbs); }
+                five_limbs_to_nat_aux(hi_raw.limbs);
+                { assert(five_limbs_to_nat_aux(hi_raw.limbs) == high_expr); }
+                high_expr;
+            }
+        };
+
         // Assumption [L2]: The 512-bit input splits as `pow2(260) * high_expr + low_expr`.
         assume(wide_input == pow2_260 * high_expr + low_expr);
         // Assumption [L3]: The lower chunk is strictly less than `2^260`.

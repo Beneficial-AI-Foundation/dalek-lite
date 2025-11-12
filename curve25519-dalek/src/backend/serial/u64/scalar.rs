@@ -687,16 +687,15 @@ impl Scalar52 {
     #[inline(always)]
     #[rustfmt::skip]  // keep alignment of n* and r* calculations
     pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)
-        // TODO: Add precondition:
-        // requires
-        //     // The input represents the product of two canonical Scalar52s
-        //     // (both limbs_bounded AND value < group_order)
-        //     exists|a: &Scalar52, b: &Scalar52|
-        //         limbs_bounded(a) &&
-        //         limbs_bounded(b) &&
-        //         to_nat(&a.limbs) < group_order() &&
-        //         to_nat(&b.limbs) < group_order() &&
-        //         slice128_to_nat(limbs) == to_nat(&a.limbs) * to_nat(&b.limbs)
+        requires
+            // The input represents the product of two canonical Scalar52s
+            // (both limbs_bounded AND value < group_order)
+            exists|a: &Scalar52, b: &Scalar52|
+                limbs_bounded(a) &&
+                limbs_bounded(b) &&
+                to_nat(&a.limbs) < group_order() &&
+                to_nat(&b.limbs) < group_order() &&
+                slice128_to_nat(limbs) == to_nat(&a.limbs) * to_nat(&b.limbs)
         ensures
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
                 % group_order(),
@@ -794,6 +793,8 @@ impl Scalar52 {
         requires
             limbs_bounded(a),
             limbs_bounded(b),
+            to_nat(&a.limbs) < group_order(),
+            to_nat(&b.limbs) < group_order(),
         ensures
             to_nat(&result.limbs) % group_order() == (to_nat(&a.limbs) * to_nat(&b.limbs))
                 % group_order(),
@@ -813,6 +814,7 @@ impl Scalar52 {
     pub fn square(&self) -> (result: Scalar52)
         requires
             limbs_bounded(self),
+            to_nat(&self.limbs) < group_order(),
         ensures
             to_nat(&result.limbs) == (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order(),
     {
@@ -824,6 +826,12 @@ impl Scalar52 {
 
         assert((to_nat(&aa.limbs) * montgomery_radix()) % group_order() == (to_nat(&self.limbs)
             * to_nat(&self.limbs)) % group_order());
+
+        proof {
+            // aa may not be canonical, but RR is canonical
+            assume(to_nat(&aa.limbs) < group_order());
+            assume(to_nat(&constants::RR.limbs) < group_order());
+        }
 
         // square_internal ensures
         // ensures
@@ -862,6 +870,8 @@ impl Scalar52 {
         requires
             limbs_bounded(a),
             limbs_bounded(b),
+            to_nat(&a.limbs) < group_order(),
+            to_nat(&b.limbs) < group_order(),
         ensures
             limbs_bounded(&result),
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&a.limbs)
@@ -875,6 +885,7 @@ impl Scalar52 {
     pub fn montgomery_square(&self) -> (result: Scalar52)
         requires
             limbs_bounded(self),
+            to_nat(&self.limbs) < group_order(),
         ensures
             limbs_bounded(&result),
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&self.limbs)
@@ -888,6 +899,7 @@ impl Scalar52 {
     pub fn as_montgomery(&self) -> (result: Scalar52)
         requires
             limbs_bounded(self),
+            to_nat(&self.limbs) < group_order(),
         ensures
             limbs_bounded(&result),
             to_nat(&result.limbs) % group_order() == (to_nat(&self.limbs) * montgomery_radix())
@@ -895,6 +907,8 @@ impl Scalar52 {
     {
         proof {
             lemma_rr_limbs_bounded();
+            // montgomery_mul requires RR to be canonical
+            assume(to_nat(&constants::RR.limbs) < group_order());
         }
         let result = Scalar52::montgomery_mul(self, &constants::RR);
         assume(to_nat(&result.limbs) % group_order() == (to_nat(&self.limbs) * montgomery_radix())
@@ -908,6 +922,7 @@ impl Scalar52 {
     pub fn from_montgomery(&self) -> (result: Scalar52)
         requires
             limbs_bounded(self),
+            to_nat(&self.limbs) < group_order(),
         ensures
             limbs_bounded(&result),
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == to_nat(&self.limbs)
@@ -921,6 +936,17 @@ impl Scalar52 {
                 forall|j: int| #![auto] i <= j < 9 ==> limbs[j] == 0,
         {
             limbs[i] = self.limbs[i] as u128;
+        }
+        proof {
+            // from_montgomery converts a scalar in Montgomery form by dividing by R
+            // The input limbs represent self * 1, which is the product of self and 1
+            // Both self and 1 are canonical (< group_order)
+            assume(exists|a: &Scalar52, b: &Scalar52|
+                limbs_bounded(a) &&
+                limbs_bounded(b) &&
+                to_nat(&a.limbs) < group_order() &&
+                to_nat(&b.limbs) < group_order() &&
+                slice128_to_nat(&limbs) == to_nat(&a.limbs) * to_nat(&b.limbs));
         }
         let result = Scalar52::montgomery_reduce(&limbs);
         proof {

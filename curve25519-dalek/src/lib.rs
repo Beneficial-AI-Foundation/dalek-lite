@@ -99,8 +99,6 @@ pub mod field;
 pub(crate) mod lemmas;
 pub(crate) mod specs;
 
-// Backend-agnostic field lemmas
-pub(crate) mod field_lemmas;
 // External type specifications for core Rust types
 pub(crate) mod core_assumes;
 

@@ -9,7 +9,7 @@ import requests
 from csv import DictReader
 from pathlib import Path
 
-# Get the project root 
+# Get the project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEBUG_PATH = PROJECT_ROOT / ".verilib" / "verilib_deploy.log"
 OLD_TREE_PATH = PROJECT_ROOT / ".verilib" / "debug_deploy_tree.json"
@@ -17,6 +17,7 @@ METADATA_PATH = PROJECT_ROOT / ".verilib" / "metadata.json"
 PVF_PATH = PROJECT_ROOT / ".verilib" / "curve25519_functions.pvf"
 TREE_PATH = PROJECT_ROOT / ".verilib" / "curve25519_functions.tree"
 CSV_PATH = PROJECT_ROOT / "outputs" / "curve25519_functions.csv"
+
 
 def build_tree_node(identifier, pvf):
     """
@@ -33,29 +34,31 @@ def build_tree_node(identifier, pvf):
         return None
 
     entry = pvf[identifier]
-    file_type = entry.get('file_type', '')
+    file_type = entry.get("file_type", "")
 
     # Build the base node structure
     node = {
         "identifier": identifier,
-        "content": entry.get('content', ''),
+        "content": entry.get("content", ""),
         "children": [],
-        "file_type": file_type
+        "file_type": file_type,
     }
 
     # Add file-specific fields
     if file_type == "file":
         # Add dependencies
-        dependencies = list(entry.get('dependencies', {}).keys())
+        dependencies = list(entry.get("dependencies", {}).keys())
         # Convert dependencies to have leading "/" if they don't already
-        dependencies = ["/" + dep if not dep.startswith("/") else dep for dep in dependencies]
+        dependencies = [
+            "/" + dep if not dep.startswith("/") else dep for dep in dependencies
+        ]
         node["dependencies"] = dependencies
 
         # Add specified field
-        node["specified"] = entry.get('specified', False)
+        node["specified"] = entry.get("specified", False)
 
     # Recursively build children
-    children_ids = entry.get('children', {}).keys()
+    children_ids = entry.get("children", {}).keys()
     for child_id in children_ids:
         child_node = build_tree_node(child_id, pvf)
         if child_node:
@@ -79,7 +82,7 @@ def find_root_nodes(pvf):
 
     # Collect all identifiers that appear as children
     for entry in pvf.values():
-        children = list(entry.get('children', {}).keys())
+        children = list(entry.get("children", {}).keys())
         all_children.update(children)
 
     # Root nodes are those not appearing as children
@@ -89,7 +92,6 @@ def find_root_nodes(pvf):
 
 
 def pvf_to_tree(pvf, debug=False, debug_path=DEBUG_PATH):
-
     print(f"Found {len(pvf)} entries in PVF file")
 
     print("Finding root nodes...")
@@ -115,6 +117,7 @@ def pvf_to_tree(pvf, debug=False, debug_path=DEBUG_PATH):
 
     return tree
 
+
 def ensure_parent_exists(identifier, pvf):
     """
     Ensure all parent folders exist in the hierarchy, creating them if necessary.
@@ -128,7 +131,7 @@ def ensure_parent_exists(identifier, pvf):
         Number of newly created parent folders
     """
     created_count = 0
-    parent_id = identifier.rsplit('/', 1)[0] if '/' in identifier else None
+    parent_id = identifier.rsplit("/", 1)[0] if "/" in identifier else None
 
     if parent_id is None:
         # At root level, no parent needed
@@ -141,7 +144,7 @@ def ensure_parent_exists(identifier, pvf):
             "children": {},
             "file_type": "folder",
             "url": "",
-            "visible": True
+            "visible": True,
         }
         created_count += 1
 
@@ -150,18 +153,17 @@ def ensure_parent_exists(identifier, pvf):
 
     # Add identifier as child of parent if not already present
     parent_entry = pvf[parent_id]
-    children = parent_entry['children']
+    children = parent_entry["children"]
     if identifier not in children:
-        children[identifier] = { "visible" : True }
+        children[identifier] = {"visible": True}
 
     return created_count
 
 
 def csv_to_pvf(csv, OLD_TREE_PATH=OLD_TREE_PATH, debug=False, debug_path=DEBUG_PATH):
-
     # Read old tree
     print(f"Reading old tree {OLD_TREE_PATH}...")
-    with open(OLD_TREE_PATH, 'r', encoding='utf-8') as f:
+    with open(OLD_TREE_PATH, "r", encoding="utf-8") as f:
         old_tree = json.load(f)
     old_pvf = tree_to_pvf(old_tree)
     print(f"Found {len(old_pvf)} identifiers in old PVF file")
@@ -174,10 +176,10 @@ def csv_to_pvf(csv, OLD_TREE_PATH=OLD_TREE_PATH, debug=False, debug_path=DEBUG_P
     for identifier in csv.keys():
         # Get CSV field values
         csv_entry = csv[identifier]
-        specified = csv_entry['specified']
-        verified = csv_entry['verified']
-        new_identifier = csv_entry['new_identifier']
-        url = csv_entry['url']
+        specified = csv_entry["specified"]
+        verified = csv_entry["verified"]
+        new_identifier = csv_entry["new_identifier"]
+        url = csv_entry["url"]
         content = ""
         dependencies = {}
 
@@ -186,12 +188,12 @@ def csv_to_pvf(csv, OLD_TREE_PATH=OLD_TREE_PATH, debug=False, debug_path=DEBUG_P
             old_entry = old_pvf[identifier]
 
             # Only update if it's a file type entry
-            if old_entry.get('file_type') == 'file':
-                content = old_entry['content']
-                for dependency in old_entry['dependencies']:
+            if old_entry.get("file_type") == "file":
+                content = old_entry["content"]
+                for dependency in old_entry["dependencies"]:
                     if dependency in csv:
-                        dep_new_ident = csv[dependency]['new_identifier']
-                        dependencies[dep_new_ident] = { "visible" : True}    
+                        dep_new_ident = csv[dependency]["new_identifier"]
+                        dependencies[dep_new_ident] = {"visible": True}
                 updated_count += 1
             else:
                 raise ValueError(f"Identifier {identifier} is not a file but a folder")
@@ -206,7 +208,7 @@ def csv_to_pvf(csv, OLD_TREE_PATH=OLD_TREE_PATH, debug=False, debug_path=DEBUG_P
             "specified": specified,
             "verified": verified,
             "url": url,
-            "visible": True
+            "visible": True,
         }
         # Ensure parent hierarchy exists
         folders_created += ensure_parent_exists(new_identifier, pvf)
@@ -245,52 +247,54 @@ def pvf_to_csv(pvf, debug=False, debug_path=DEBUG_PATH):
     # Extract file entries only
     csv = {}
     for identifier, entry in pvf.items():
-        if entry.get('file_type') == 'file':
-            link = entry.get('url')
+        if entry.get("file_type") == "file":
+            link = entry.get("url")
 
             # Extract function_path from link (between "main/" and "#L")
-            if 'main/' in link and '#L' in link:
-                start_idx = link.find('main/') + len('main/')
-                end_idx = link.find('#L')
+            if "main/" in link and "#L" in link:
+                start_idx = link.find("main/") + len("main/")
+                end_idx = link.find("#L")
                 function_path = link[start_idx:end_idx]
             else:
                 raise ValueError(f"Unexpected link format {link}")
 
             # Check if function_path matches module (after replacing "::" with "/")
-            if function_path.endswith('/mod.rs'):
-                module_path = function_path[:-len('/mod.rs')]
-            elif function_path.endswith('.rs'):
-                module_path = function_path[:-len('.rs')]
+            if function_path.endswith("/mod.rs"):
+                module_path = function_path[: -len("/mod.rs")]
+            elif function_path.endswith(".rs"):
+                module_path = function_path[: -len(".rs")]
             else:
                 raise ValueError(f"Function path {function_path} does not end with .rs")
             module_path = module_path.replace("-", "_")
-            module_path = module_path.replace("src/","")
+            module_path = module_path.replace("src/", "")
 
             if not identifier.startswith(module_path):
-                raise ValueError(f"Identifier {identifier} does not have format of module path.")
+                raise ValueError(
+                    f"Identifier {identifier} does not have format of module path."
+                )
 
             # Extract function_identifier (everything after first module_path/)
-            function_identifier = identifier[len(module_path) + 1:]
+            function_identifier = identifier[len(module_path) + 1 :]
             # Convert module_path back to module
-            module = module_path.replace('/', '::')
+            module = module_path.replace("/", "::")
 
             # Convert function_identifier back to function
-            function = function_identifier.replace('/', '::')
+            function = function_identifier.replace("/", "::")
 
             # Reconstruct old identifier
-            if '::' in function:
-                function_stem = function.split('::')[-1]
+            if "::" in function:
+                function_stem = function.split("::")[-1]
             else:
                 function_stem = function
             old_identifier = f"{function_path}/{function_stem}"
 
             csv[old_identifier] = {
-                'new_identifier': identifier,
-                'function': function,
-                'module': module,
-                'specified': entry.get('specified'),
-                'verified': entry.get('verified'),
-                'url': entry.get('url')
+                "new_identifier": identifier,
+                "function": function,
+                "module": module,
+                "specified": entry.get("specified"),
+                "verified": entry.get("verified"),
+                "url": entry.get("url"),
             }
 
     print(f"Found {len(csv)} file entries")
@@ -324,46 +328,49 @@ def read_csv(csv_path=CSV_PATH, debug=False, debug_path=DEBUG_PATH):
     result = {}
     function_path_module_mismatches = []
 
-    with open(csv_path, 'r', encoding='utf-8') as f:
+    with open(csv_path, "r", encoding="utf-8") as f:
         reader = DictReader(f)
         for row in reader:
-
-            if row['has_spec'].lower() not in ["yes","no",""]:
-                print(f"WARNING: Row `{row['function']}`, `{row['module']}` has unexpected has_spec value `{row['has_spec']}`")
-            function = row['function']
-            module = row['module']
-            link = row['link']
-            specified = row['has_spec'].lower() == 'yes'
-            verified = row['has_proof'].lower() == 'yes'
+            if row["has_spec"].lower() not in ["yes", "no", ""]:
+                print(
+                    f"WARNING: Row `{row['function']}`, `{row['module']}` has unexpected has_spec value `{row['has_spec']}`"
+                )
+            function = row["function"]
+            module = row["module"]
+            link = row["link"]
+            specified = row["has_spec"].lower() == "yes"
+            verified = row["has_proof"].lower() == "yes"
 
             # Extract function_path from link (between "main/" and "#L")
-            if 'main/' in link and '#L' in link:
-                start_idx = link.find('main/') + len('main/')
-                end_idx = link.find('#L')
+            if "main/" in link and "#L" in link:
+                start_idx = link.find("main/") + len("main/")
+                end_idx = link.find("#L")
                 function_path = link[start_idx:end_idx]
             else:
                 raise ValueError(f"Unexpected link format {link}")
 
             # Check if function_path matches module (after replacing "::" with "/")
             module_path = module.replace("::", "/")
-            if function_path.endswith('/mod.rs'):
-                function_path_modified = function_path[:-len('/mod.rs')]
-            elif function_path.endswith('.rs'):
-                function_path_modified = function_path[:-len('.rs')]
+            if function_path.endswith("/mod.rs"):
+                function_path_modified = function_path[: -len("/mod.rs")]
+            elif function_path.endswith(".rs"):
+                function_path_modified = function_path[: -len(".rs")]
             else:
                 raise ValueError(f"Function path {function_path} does not end with .rs")
             function_path_modified = function_path_modified.replace("-", "_")
-            function_path_modified = function_path_modified.replace("src/","")
+            function_path_modified = function_path_modified.replace("src/", "")
             if function_path_modified != module_path:
-                function_path_module_mismatches.append({
-                    "function_path_modified": function_path_modified,
-                    "module_path": module_path
-                })
+                function_path_module_mismatches.append(
+                    {
+                        "function_path_modified": function_path_modified,
+                        "module_path": module_path,
+                    }
+                )
 
             # Extract function_stem (part after last "::" in function)
             function_identifier = function.replace("::", "/")
-            if '::' in function:
-                function_stem = function.split('::')[-1]
+            if "::" in function:
+                function_stem = function.split("::")[-1]
             else:
                 function_stem = function
 
@@ -375,12 +382,14 @@ def read_csv(csv_path=CSV_PATH, debug=False, debug_path=DEBUG_PATH):
                 "module": module,
                 "specified": specified,
                 "verified": verified,
-                "url": link
+                "url": link,
             }
 
             # Check for duplicate keys
             if key in result:
-                raise ValueError(f"Duplicate key found: {key} (existing: {result[key]}, new: {value})")
+                raise ValueError(
+                    f"Duplicate key found: {key} (existing: {result[key]}, new: {value})"
+                )
 
             result[key] = value
 
@@ -417,27 +426,29 @@ def write_csv(csv, csv_path=CSV_PATH, debug=False, debug_path=DEBUG_PATH):
     # Convert dict to CSV rows
     csv_rows = []
     for identifier, entry in csv.items():
-        function = entry['function']
-        module = entry['module']
-        url = entry['url']
-        specified = entry['specified']
-        verified = entry['verified']
+        function = entry["function"]
+        module = entry["module"]
+        url = entry["url"]
+        specified = entry["specified"]
+        verified = entry["verified"]
 
         # Convert boolean to yes/no
-        has_spec = 'yes' if specified else ''
-        has_proof = 'yes' if verified else ''
+        has_spec = "yes" if specified else ""
+        has_proof = "yes" if verified else ""
 
-        csv_rows.append({
-            'function': function,
-            'module': module,
-            'link': url,
-            'has_spec': has_spec,
-            'has_proof': has_proof
-        })
+        csv_rows.append(
+            {
+                "function": function,
+                "module": module,
+                "link": url,
+                "has_spec": has_spec,
+                "has_proof": has_proof,
+            }
+        )
 
     # Write to CSV file
-    with open(csv_path, 'w', encoding='utf-8', newline='') as f:
-        fieldnames = ['function', 'module', 'link', 'has_spec', 'has_proof']
+    with open(csv_path, "w", encoding="utf-8", newline="") as f:
+        fieldnames = ["function", "module", "link", "has_spec", "has_proof"]
         writer = csv_module.DictWriter(f, fieldnames=fieldnames)
 
         writer.writeheader()
@@ -453,6 +464,7 @@ def write_csv(csv, csv_path=CSV_PATH, debug=False, debug_path=DEBUG_PATH):
             f.write(f"Wrote {len(csv_rows)} rows to {csv_path}\n")
 
     print("Done!")
+
 
 def extract_nodes_recursive(node, node_map):
     """
@@ -479,7 +491,9 @@ def extract_nodes_recursive(node, node_map):
             dependencies = node.get("dependencies", [])
             # Remove leading "/" from each dependency and convert to dictionary
             dependencies = {
-                (dep[1:] if isinstance(dep, str) and dep.startswith("/") else dep): {"visible": True}
+                (dep[1:] if isinstance(dep, str) and dep.startswith("/") else dep): {
+                    "visible": True
+                }
                 for dep in dependencies
             }
             content = node.get("content", "")
@@ -493,7 +507,7 @@ def extract_nodes_recursive(node, node_map):
                     "children": children_identifiers,
                     "file_type": file_type,
                     "url": "",
-                    "visible": True
+                    "visible": True,
                 }
             else:
                 node_map[identifier] = {
@@ -503,7 +517,7 @@ def extract_nodes_recursive(node, node_map):
                     "specified": specified,
                     "verified": True,
                     "url": "",
-                    "visible": True
+                    "visible": True,
                 }
 
         # Recursively process children
@@ -517,10 +531,12 @@ def extract_nodes_recursive(node, node_map):
         for item in node:
             extract_nodes_recursive(item, node_map)
 
+
 def tree_to_pvf(tree):
     pvf = {}
     extract_nodes_recursive(tree, pvf)
     return pvf
+
 
 def deploy(url, repo, api_key, tree, debug=False, debug_path=DEBUG_PATH):
     """Send POST request to deploy endpoint.
@@ -541,7 +557,7 @@ def deploy(url, repo, api_key, tree, debug=False, debug_path=DEBUG_PATH):
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Authorization": f"ApiKey {api_key}"
+        "Authorization": f"ApiKey {api_key}",
     }
 
     # Write json_body to file with pretty printing (only if debug mode)
@@ -562,6 +578,7 @@ def deploy(url, repo, api_key, tree, debug=False, debug_path=DEBUG_PATH):
     print(f"Response Body: {response.text}")
 
     return response
+
 
 if __name__ == "__main__":
     # Load metadata (repo and url)

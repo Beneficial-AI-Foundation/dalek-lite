@@ -71,3 +71,33 @@ In particular, if you want to format all Rust files, run
 ```bash
 find . -name "*.rs" -type f | xargs -P 0 -n 1 verusfmt
 ```
+
+## How to deploy to verilib
+
+Generate an API key on Verilib and put it in `.env`:
+
+```
+╰─>$ cat .env
+VERILIB_API_KEY=<your key>
+```
+
+Generate the validated statuses in `outputs/curve25519_functions.csv` (which git ignores):
+``` bash
+uv run scripts/analyze_verus_specs_proofs.py
+```
+
+Deploy to Verilib:
+
+``` bash
+uv run scripts/verilib_deploy.py
+```
+
+Note that `.verilib/metadata.json` must contain the id for a preexisting URL, 
+i.e. it's impossible to create a new Verilib repo through this CLI.
+
+By editing `fx` and `fy` values in `.verilib/debug_deploy_layouts.json`, 
+you can adjust the location of functions in the Verilib GUI.
+
+There's no need to manually edit the `specified` fields 
+in `.verilib/debug_deploy_tree.json`, 
+since the scripts will populate them from the csv (without editing the json).

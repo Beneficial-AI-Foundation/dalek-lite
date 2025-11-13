@@ -829,6 +829,8 @@ impl Scalar52 {
             lemma_rr_limbs_bounded();
         }
 
+        // We only know limbs_bounded, so this triggers the weaker part of the
+        // montgomery_reduce spec
         let aa = Scalar52::montgomery_reduce(&Scalar52::square_internal(self));
 
         assert((to_nat(&aa.limbs) * montgomery_radix()) % group_order() == (to_nat(&self.limbs)
@@ -838,6 +840,8 @@ impl Scalar52 {
         // ensures
         //     slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&a.limbs),
 
+        // We know RR < group_order, so this triggers the stronger part of the
+        // montgomery_reduce spec, which is what this function's postcondition wants
         let result = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR));
 
         assert((to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&aa.limbs)

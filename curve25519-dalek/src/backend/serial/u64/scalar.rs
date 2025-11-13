@@ -997,7 +997,19 @@ impl Scalar52 {
         assert forall|j: int| 0 <= j < 5 implies product[j] == limbs[j] by {};
         assert forall|j: int| 5 <= j < 9 implies product[j] == limbs[j] by {};
         assert forall|j: int| 0 <= j < 9 implies product[j] == limbs[j] by {};
-        assert(product == limbs);
+
+        // Assert each element individually to help Verus prove array equality
+        assert(product[0] == limbs[0]);
+        assert(product[1] == limbs[1]);
+        assert(product[2] == limbs[2]);
+        assert(product[3] == limbs[3]);
+        assert(product[4] == limbs[4]);
+        assert(product[5] == limbs[5]);
+        assert(product[6] == limbs[6]);
+        assert(product[7] == limbs[7]);
+        assert(product[8] == limbs[8]);
+
+        assert(&product =~= limbs);
 
         // We've proven the existential with witnesses self_scalar and one
         assert(limbs_bounded(self_scalar));

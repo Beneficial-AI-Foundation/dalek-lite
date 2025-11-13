@@ -2571,6 +2571,7 @@ fn square_multiply(
     requires
         limbs_bounded(old(y)),  // Use old() for &mut parameters in requires
         limbs_bounded(x),  // No old() needed for & parameters
+
     ensures
         limbs_bounded(y),
         limbs_bounded(x),

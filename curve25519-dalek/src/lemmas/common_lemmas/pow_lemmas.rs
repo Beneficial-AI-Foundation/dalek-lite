@@ -893,8 +893,7 @@ pub proof fn lemma_pow2_geometric(a: nat, b: nat)
     lemma_mul_is_distributive_sub(pow2(b) as int, pow2(a) as int, 1);
 }
 
-// FUNDAMENTAL LEMMA: Modular congruence preserves powers
-// If a ≡ b (mod m), then a^n ≡ b^n (mod m)
+// Modular congruence preserves powers
 pub proof fn lemma_pow_mod_congruent(a: int, b: int, n: nat, m: int)
     requires
         m > 0,

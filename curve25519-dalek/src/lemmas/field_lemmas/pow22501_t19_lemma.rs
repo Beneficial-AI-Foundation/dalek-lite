@@ -372,7 +372,7 @@ pub proof fn lemma_pow22501_prove_t19(
     }
 
     assert((((pow2(5) - 1) * pow2(5)) + (pow2(5) - 1)) as nat == (pow2(10) - 1) as nat) by {
-        lemma_pow2_geometric_double(5);
+        lemma_pow2_geometric(5, 5);
     }
 
     assert(pow(base, ((pow2(5) - 1) * pow2(5)) as nat) >= 0);  // known from earlier
@@ -517,7 +517,7 @@ pub proof fn lemma_pow22501_prove_t19(
     }
 
     assert((((pow2(10) - 1) * pow2(10)) + (pow2(10) - 1)) as nat == (pow2(20) - 1) as nat) by {
-        lemma_pow2_geometric_double(10);
+        lemma_pow2_geometric(10, 10);
     }
 
     assert(pow(base, ((pow2(10) - 1) * pow2(10)) as nat) >= 0);  // known from earlier
@@ -666,7 +666,7 @@ pub proof fn lemma_pow22501_prove_t19(
     }
 
     assert((((pow2(20) - 1) * pow2(20)) + (pow2(20) - 1)) as nat == (pow2(40) - 1) as nat) by {
-        lemma_pow2_geometric_double(20);
+        lemma_pow2_geometric(20, 20);
     }
 
     assert(pow(base, ((pow2(20) - 1) * pow2(20)) as nat) >= 0);  // known from earlier
@@ -995,7 +995,7 @@ pub proof fn lemma_pow22501_prove_t19(
     }
 
     assert((((pow2(50) - 1) * pow2(50)) + (pow2(50) - 1)) as nat == (pow2(100) - 1) as nat) by {
-        lemma_pow2_geometric_double(50);
+        lemma_pow2_geometric(50, 50);
     }
 
     assert(pow(base, ((pow2(50) - 1) * pow2(50)) as nat) >= 0);  // known from earlier
@@ -1172,7 +1172,7 @@ pub proof fn lemma_pow22501_prove_t19(
     }
 
     assert((((pow2(100) - 1) * pow2(100)) + (pow2(100) - 1)) as nat == (pow2(200) - 1) as nat) by {
-        lemma_pow2_geometric_double(100);
+        lemma_pow2_geometric(100, 100);
     }
 
     assert(pow(base, ((pow2(100) - 1) * pow2(100)) as nat) >= 0);  // known from earlier

@@ -10,14 +10,17 @@
 //! ```text
 //! (0xfffffffffffff^2) * 5 = 0x4ffffffffffff60000000000005 (107 bits).
 //! ```
+#[allow(unused_imports)]
 use super::subtle_assumes::select;
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
+#[allow(unused_imports)]
 use subtle::Choice;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
+#[allow(unused_imports)]
 use crate::constants;
 
 #[allow(unused_imports)]
@@ -373,6 +376,16 @@ impl Scalar52 {
             pow2(124) * (words[6] as nat) +
             pow2(188) * (words[7] as nat);
 
+        let ghost wide_sum =
+            (words[0] as nat) +
+            pow2(64) * (words[1] as nat) +
+            pow2(128) * (words[2] as nat) +
+            pow2(192) * (words[3] as nat) +
+            pow2(256) * (words[4] as nat) +
+            pow2(320) * (words[5] as nat) +
+            pow2(384) * (words[6] as nat) +
+            pow2(448) * (words[7] as nat);
+
         // Reading the five 52-bit limbs in radix 2^52 reproduces the low chunk reconstructed from the 64-bit words.
         assert(lo_raw.limbs[0] == words[0] & mask);
         assert(lo_raw.limbs[1] == ((words[0] >> 52) | (words[1] << 12)) & mask);
@@ -415,11 +428,328 @@ impl Scalar52 {
         };
 
         // Assumption [L2]: The 512-bit input splits as `pow2(260) * high_expr + low_expr`.
-        assume(wide_input == pow2_260 * high_expr + low_expr);
-        // Assumption [L3]: The lower chunk is strictly less than `2^260`.
-        assume(low_expr < pow2_260);
-
+        // WideSum-Expansion: converting the eight 64-bit words back into a natural number matches the explicit little-endian sum of their weighted contributions.
         proof {
+            lemma_words_from_bytes_to_nat_wide(bytes);
+        }
+        assert(words_to_nat_gen_u64(&words, 8, 64) == wide_sum) by {
+            let ghost word_term0 = word_from_bytes(bytes, 0);
+            let ghost word_term1 = pow2(64) * word_from_bytes(bytes, 1);
+            let ghost word_term2 = pow2(128) * word_from_bytes(bytes, 2);
+            let ghost word_term3 = pow2(192) * word_from_bytes(bytes, 3);
+            let ghost word_term4 = pow2(256) * word_from_bytes(bytes, 4);
+            let ghost word_term5 = pow2(320) * word_from_bytes(bytes, 5);
+            let ghost word_term6 = pow2(384) * word_from_bytes(bytes, 6);
+            let ghost word_term7 = pow2(448) * word_from_bytes(bytes, 7);
+            let ghost wide_sum_bytes =
+                word_term0 + word_term1 + word_term2 + word_term3 +
+                word_term4 + word_term5 + word_term6 + word_term7;
+
+            let ghost wide_sum_seq =
+                (words@[0] as nat) +
+                pow2(64) * (words@[1] as nat) +
+                pow2(128) * (words@[2] as nat) +
+                pow2(192) * (words@[3] as nat) +
+                pow2(256) * (words@[4] as nat) +
+                pow2(320) * (words@[5] as nat) +
+                pow2(384) * (words@[6] as nat) +
+                pow2(448) * (words@[7] as nat);
+
+            calc! {
+                (==)
+                words_to_nat_gen_u64(&words, 8, 64);
+                { assert(words_to_nat_gen_u64(&words, 8, 64) == words_from_bytes_to_nat(bytes, 8)); }
+                words_from_bytes_to_nat(bytes, 8);
+                { assert(words_from_bytes_to_nat(bytes, 8) == wide_sum_bytes); }
+                wide_sum_bytes;
+                {
+                    assert(words@[0] as nat == word_from_bytes(bytes, 0));
+                    assert(words@[1] as nat == word_from_bytes(bytes, 1));
+                    assert(words@[2] as nat == word_from_bytes(bytes, 2));
+                    assert(words@[3] as nat == word_from_bytes(bytes, 3));
+                    assert(words@[4] as nat == word_from_bytes(bytes, 4));
+                    assert(words@[5] as nat == word_from_bytes(bytes, 5));
+                    assert(words@[6] as nat == word_from_bytes(bytes, 6));
+                    assert(words@[7] as nat == word_from_bytes(bytes, 7));
+                    assert(word_term0 == words@[0] as nat);
+                    assert(word_term1 == pow2(64) * (words@[1] as nat));
+                    assert(word_term2 == pow2(128) * (words@[2] as nat));
+                    assert(word_term3 == pow2(192) * (words@[3] as nat));
+                    assert(word_term4 == pow2(256) * (words@[4] as nat));
+                    assert(word_term5 == pow2(320) * (words@[5] as nat));
+                    assert(word_term6 == pow2(384) * (words@[6] as nat));
+                    assert(word_term7 == pow2(448) * (words@[7] as nat));
+                    assert(wide_sum_bytes == wide_sum_seq);
+                    assert(words@[0] == words[0]);
+                    assert(words@[1] == words[1]);
+                    assert(words@[2] == words[2]);
+                    assert(words@[3] == words[3]);
+                    assert(words@[4] == words[4]);
+                    assert(words@[5] == words[5]);
+                    assert(words@[6] == words[6]);
+                    assert(words@[7] == words[7]);
+                    assert(wide_sum_seq == wide_sum);
+                }
+                wide_sum;
+            }
+        };
+        // Word[4]'s contribution at 2^256 equals the sum of its low four bits and the shifted high remainder.
+        assert(pow2_260 * ((words[4] >> 4) as nat) + pow2(256) * ((words[4] & 0xf) as nat) == pow2(256) * (words[4] as nat)) by {
+            let word4 = words[4];
+            let high_nat = (word4 >> 4) as nat;
+            let low_nat = (word4 & 0xf) as nat;
+
+            lemma_pow2_adds(256, 4);
+            lemma_word_split_low4(word4);
+
+            assert(pow2_260 == pow2(256) * pow2(4)) by {
+                assert(pow2_260 == pow2(260));
+                assert(256 + 4 == 260);
+            };
+
+            calc! {
+                (==)
+                pow2_260 * high_nat + pow2(256) * low_nat;
+                {
+                    assert(pow2_260 == pow2(256) * pow2(4));
+                }
+                (pow2(256) * pow2(4)) * high_nat + pow2(256) * low_nat;
+                {
+                    lemma_mul_is_associative(pow2(256) as int, pow2(4) as int, high_nat as int);
+                }
+                pow2(256) * (pow2(4) * high_nat) + pow2(256) * low_nat;
+                {
+                    lemma_mul_is_distributive_add(pow2(256) as int, (pow2(4) * high_nat) as int, low_nat as int);
+                }
+                pow2(256) * (pow2(4) * high_nat + low_nat);
+                {
+                    assert(pow2(4) * high_nat + low_nat == word4 as nat);
+                }
+                pow2(256) * (word4 as nat);
+                {
+                    assert(word4 as nat == words[4] as nat);
+                }
+                pow2(256) * (words[4] as nat);
+            }
+        };
+        // Raising 2^260 by another 2^60 places word[5] at the 2^320 position.
+        assert(pow2_260 * pow2(60) == pow2(320)) by {
+            calc! {
+                (==)
+                pow2_260 * pow2(60);
+                {
+                    assert(pow2_260 == pow2(260));
+                    assert(pow2_260 * pow2(60) == pow2(260) * pow2(60));
+                }
+                pow2(260) * pow2(60);
+                {
+                    lemma_pow2_adds(260, 60);
+                    assert(pow2(260) * pow2(60) == pow2(260 + 60));
+                }
+                pow2(260 + 60);
+                { assert(260 + 60 == 320); }
+                pow2(320);
+            }
+        };
+
+        // Raising 2^260 by another 2^124 places word[6] at the 2^384 position.
+        assert(pow2_260 * pow2(124) == pow2(384)) by {
+            calc! {
+                (==)
+                pow2_260 * pow2(124);
+                {
+                    assert(pow2_260 == pow2(260));
+                    assert(pow2_260 * pow2(124) == pow2(260) * pow2(124));
+                }
+                pow2(260) * pow2(124);
+                {
+                    lemma_pow2_adds(260, 124);
+                    assert(pow2(260) * pow2(124) == pow2(260 + 124));
+                }
+                pow2(260 + 124);
+                { assert(260 + 124 == 384); }
+                pow2(384);
+            }
+        };
+
+        // Raising 2^260 by another 2^188 places word[7] at the 2^448 position.
+        assert(pow2_260 * pow2(188) == pow2(448)) by {
+            calc! {
+                (==)
+                pow2_260 * pow2(188);
+                {
+                    assert(pow2_260 == pow2(260));
+                    assert(pow2_260 * pow2(188) == pow2(260) * pow2(188));
+                }
+                pow2(260) * pow2(188);
+                {
+                    lemma_pow2_adds(260, 188);
+                    assert(pow2(260) * pow2(188) == pow2(260 + 188));
+                }
+                pow2(260 + 188);
+                { assert(260 + 188 == 448); }
+                pow2(448);
+            }
+        };
+        // HighLow-Recombine: Combining the high and low chunks at the 2^260 boundary reproduces the weighted word sum.
+        assert(pow2_260 * high_expr + low_expr == wide_sum) by {
+            let base =
+                (words[0] as nat) +
+                pow2(64) * (words[1] as nat) +
+                pow2(128) * (words[2] as nat) +
+                pow2(192) * (words[3] as nat);
+
+            let word4_high = (words[4] >> 4) as nat;
+            let word4_low = (words[4] & 0xf) as nat;
+            let word5_nat = words[5] as nat;
+            let word6_nat = words[6] as nat;
+            let word7_nat = words[7] as nat;
+
+            let term_a = pow2(60) * word5_nat;
+            let term_b = pow2(124) * word6_nat;
+            let term_c = pow2(188) * word7_nat;
+
+            assert(low_expr == base + pow2(256) * word4_low);
+            assert(high_expr == word4_high + term_a + term_b + term_c);
+
+            assert(pow2(320) * word5_nat == pow2_260 * (pow2(60) * word5_nat)) by {
+                calc! {
+                    (==)
+                    pow2(320) * word5_nat;
+                    { assert(pow2_260 == pow2(260)); }
+                    pow2(320) * word5_nat;
+                    { assert(pow2_260 * pow2(60) == pow2(320)); }
+                    (pow2_260 * pow2(60)) * word5_nat;
+                    { lemma_mul_is_associative(pow2_260 as int, pow2(60) as int, word5_nat as int); }
+                    pow2_260 * (pow2(60) * word5_nat);
+                }
+            };
+
+            assert(pow2(384) * word6_nat == pow2_260 * (pow2(124) * word6_nat)) by {
+                calc! {
+                    (==)
+                    pow2(384) * word6_nat;
+                    { assert(pow2_260 == pow2(260)); }
+                    pow2(384) * word6_nat;
+                    { assert(pow2_260 * pow2(124) == pow2(384)); }
+                    (pow2_260 * pow2(124)) * word6_nat;
+                    { lemma_mul_is_associative(pow2_260 as int, pow2(124) as int, word6_nat as int); }
+                    pow2_260 * (pow2(124) * word6_nat);
+                }
+            };
+
+            assert(pow2(448) * word7_nat == pow2_260 * (pow2(188) * word7_nat)) by {
+                calc! {
+                    (==)
+                    pow2(448) * word7_nat;
+                    { assert(pow2_260 == pow2(260)); }
+                    pow2(448) * word7_nat;
+                    { assert(pow2_260 * pow2(188) == pow2(448)); }
+                    (pow2_260 * pow2(188)) * word7_nat;
+                    { lemma_mul_is_associative(pow2_260 as int, pow2(188) as int, word7_nat as int); }
+                    pow2_260 * (pow2(188) * word7_nat);
+                }
+            };
+
+            assert(pow2_260 * (term_a + term_b + term_c) == pow2(320) * word5_nat + pow2(384) * word6_nat + pow2(448) * word7_nat) by {
+                calc! {
+                    (==)
+                    pow2_260 * (term_a + term_b + term_c);
+                    {
+                        lemma_mul_is_distributive_add(pow2_260 as int, term_a as int, (term_b + term_c) as int);
+                    }
+                    pow2_260 * term_a + pow2_260 * (term_b + term_c);
+                    {
+                        lemma_mul_is_distributive_add(pow2_260 as int, term_b as int, term_c as int);
+                    }
+                    pow2_260 * term_a + (pow2_260 * term_b + pow2_260 * term_c);
+                    {
+                        assert(pow2_260 * term_a == pow2_260 * (pow2(60) * word5_nat));
+                        assert(pow2_260 * term_b == pow2_260 * (pow2(124) * word6_nat));
+                        assert(pow2_260 * term_c == pow2_260 * (pow2(188) * word7_nat));
+                        assert(pow2_260 * pow2(60) == pow2(320));
+                        assert(pow2_260 * pow2(124) == pow2(384));
+                        assert(pow2_260 * pow2(188) == pow2(448));
+                    }
+                    pow2(320) * word5_nat + (pow2(384) * word6_nat + pow2(448) * word7_nat);
+                }
+            };
+
+            calc! {
+                (==)
+                pow2_260 * high_expr + low_expr;
+                { assert(high_expr == word4_high + term_a + term_b + term_c); }
+                pow2_260 * (word4_high + term_a + term_b + term_c) + low_expr;
+                {
+                    lemma_mul_is_distributive_add(pow2_260 as int, word4_high as int, (term_a + term_b + term_c) as int);
+                }
+                pow2_260 * word4_high + pow2_260 * (term_a + term_b + term_c) + low_expr;
+                {
+                    assert(pow2_260 * (term_a + term_b + term_c) == pow2(320) * word5_nat + pow2(384) * word6_nat + pow2(448) * word7_nat);
+                }
+                pow2_260 * word4_high + (pow2(320) * word5_nat + pow2(384) * word6_nat + pow2(448) * word7_nat) + low_expr;
+                { assert(low_expr == base + pow2(256) * word4_low); }
+                pow2_260 * word4_high + (pow2(320) * word5_nat + pow2(384) * word6_nat + pow2(448) * word7_nat) + (base + pow2(256) * word4_low);
+                {
+                    assert(pow2_260 * word4_high + pow2(256) * word4_low == pow2(256) * (words[4] as nat));
+                }
+                pow2(256) * (words[4] as nat) + (pow2(320) * word5_nat + pow2(384) * word6_nat + pow2(448) * word7_nat) + base;
+                {
+                    assert(base ==
+                        (words[0] as nat) +
+                        pow2(64) * (words[1] as nat) +
+                        pow2(128) * (words[2] as nat) +
+                        pow2(192) * (words[3] as nat));
+                }
+                (words[0] as nat) +
+                pow2(64) * (words[1] as nat) +
+                pow2(128) * (words[2] as nat) +
+                pow2(192) * (words[3] as nat) +
+                pow2(256) * (words[4] as nat) +
+                pow2(320) * (words[5] as nat) +
+                pow2(384) * (words[6] as nat) +
+                pow2(448) * (words[7] as nat);
+                { assert(wide_sum ==
+                        (words[0] as nat) +
+                        pow2(64) * (words[1] as nat) +
+                        pow2(128) * (words[2] as nat) +
+                        pow2(192) * (words[3] as nat) +
+                        pow2(256) * (words[4] as nat) +
+                        pow2(320) * (words[5] as nat) +
+                        pow2(384) * (words[6] as nat) +
+                        pow2(448) * (words[7] as nat)); }
+                wide_sum;
+            }
+        };
+
+        assert(wide_input == pow2_260 * high_expr + low_expr) by {
+            calc! {
+                (==)
+                wide_input;
+                { assert(wide_input == words_to_nat_gen_u64(&words, 8, 64)); }
+                words_to_nat_gen_u64(&words, 8, 64);
+                { assert(words_to_nat_gen_u64(&words, 8, 64) == wide_sum); }
+                wide_sum;
+                { assert(wide_sum == pow2_260 * high_expr + low_expr); }
+                pow2_260 * high_expr + low_expr;
+            }
+        };
+        // L3: The lower chunk has value strictly below 2^260.
+        assert(low_expr < pow2_260) by {
+            lemma_bound_scalar(&lo_raw);
+            assert((52 * (5) as nat) == 260) by {
+                assert(52 * 5 == 260) by (compute_only);
+            };
+            assert(pow2((52 * (5) as nat)) == pow2_260) by {
+                assert((52 * (5) as nat) == 260);
+            };
+            assert(to_nat(&lo_raw.limbs) < pow2((52 * (5) as nat)));
+            assert(to_nat(&lo_raw.limbs) < pow2_260);
+            assert(low_expr == to_nat(&lo_raw.limbs));
+        };
+
+        // Assumption: The lower bits of the wide input, modulo 2^260, match the natural value encoded by `lo_raw`.
+        assert(to_nat(&lo_raw.limbs) == wide_input % pow2(260)) by {
             lemma_pow2_pos(260);
 
             calc! {
@@ -445,16 +775,138 @@ impl Scalar52 {
             }
 
             assert(to_nat(&lo_raw.limbs) == wide_input % pow2_260);
-        }
-
-        assert(to_nat(&lo_raw.limbs) == wide_input % pow2(260));
+        };
         // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
-        assume(to_nat(&hi_raw.limbs) == wide_input / pow2(260));
-        // Assumption: Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
-        assume(wide_input == (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260)));
+        assert(to_nat(&hi_raw.limbs) == wide_input / pow2(260)) by {
+            lemma_pow2_pos(260);
+            assert(pow2_260 > 0);
+
+            let ghost wide_input_int = wide_input as int;
+            let ghost pow2_260_int = pow2_260 as int;
+            let ghost high_expr_int = high_expr as int;
+            let ghost low_expr_int = low_expr as int;
+
+            assert(wide_input_int == wide_input);
+            assert(pow2_260_int == pow2_260);
+            assert(high_expr_int == high_expr);
+            assert(low_expr_int == low_expr);
+
+            assert(pow2_260_int != 0) by {
+                assert(pow2_260 > 0);
+            };
+            assert(low_expr_int >= 0) by {
+                assert(low_expr >= 0);
+            };
+            assert(low_expr_int < pow2_260_int) by {
+                assert(low_expr < pow2_260);
+            };
+
+            assert(wide_input_int == high_expr_int * pow2_260_int + low_expr_int) by {
+                assert(wide_input == pow2_260 * high_expr + low_expr);
+            };
+
+            lemma_fundamental_div_mod_converse(wide_input_int, pow2_260_int, high_expr_int, low_expr_int);
+
+            assert(high_expr == wide_input / pow2_260) by {
+                assert(high_expr == high_expr_int);
+                assert(pow2_260 == pow2_260_int);
+                assert(wide_input == wide_input_int);
+                assert(high_expr_int == wide_input_int / pow2_260_int);
+            };
+
+            assert(to_nat(&hi_raw.limbs) == high_expr);
+        };
+        // Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
+        assert(wide_input == (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260))) by {
+            calc! {
+                (==)
+                wide_input;
+                { assert(wide_input == pow2_260 * high_expr + low_expr); }
+                pow2_260 * high_expr + low_expr;
+                {
+                    assert(high_expr == wide_input / pow2(260));
+                    assert(low_expr == wide_input % pow2(260));
+                }
+                pow2_260 * (wide_input / pow2(260)) + wide_input % pow2(260);
+                {
+                    assert(pow2_260 * (wide_input / pow2(260)) + wide_input % pow2(260) ==
+                        (wide_input % pow2(260)) + pow2_260 * (wide_input / pow2(260))) by (nonlinear_arith);
+                }
+                (wide_input % pow2(260)) + pow2_260 * (wide_input / pow2(260));
+                { assert(pow2_260 == pow2(260)); }
+                (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260));
+            }
+        };
         assert(wide_input == to_nat(&lo_raw.limbs) + pow2(260) * to_nat(&hi_raw.limbs));
-        assume(to_nat(&lo_raw.limbs) < pow2(260));
-        assume(to_nat(&hi_raw.limbs) < pow2(252));
+        assert(low_expr < pow2(260)) by {
+            assert(pow2_260 == pow2(260));
+            assert(low_expr < pow2_260);
+        };
+        assert(to_nat(&lo_raw.limbs) < pow2(260)) by {
+            assert(to_nat(&lo_raw.limbs) == low_expr);
+            assert(low_expr < pow2(260));
+        };
+        assert(high_expr < pow2(252)) by {
+            lemma_words_to_nat_gen_u64_bound_le(&words, 8);
+            assert(wide_input == words_to_nat_gen_u64(&words, 8, 64));
+            assert(wide_input <= pow2((8 * 64) as nat) - 1) by {
+                assert(words_to_nat_gen_u64(&words, 8, 64) <= pow2((8 * 64) as nat) - 1);
+                assert(wide_input == words_to_nat_gen_u64(&words, 8, 64));
+            };
+            assert(8 * 64 == 512) by (compute_only);
+            assert(pow2((8 * 64) as nat) == pow2(512));
+            assert(wide_input <= pow2(512) - 1);
+            assert(pow2(512) - 1 < pow2(512)) by (nonlinear_arith);
+            assert(wide_input < pow2(512)) by {
+                assert(wide_input <= pow2(512) - 1);
+                assert(pow2(512) - 1 < pow2(512));
+            };
+
+            lemma_pow2_adds(260, 252);
+            assert(pow2_260 == pow2(260));
+            assert(pow2_260 * pow2(252) == pow2(512)) by {
+                assert(pow2_260 == pow2(260));
+                lemma_pow2_adds(260, 252);
+            };
+            assert(wide_input < pow2_260 * pow2(252)) by {
+                assert(pow2_260 * pow2(252) == pow2(512));
+                assert(wide_input < pow2(512));
+            };
+
+            lemma_pow2_pos(260);
+            let ghost wide_input_int = wide_input as int;
+            let ghost pow2_260_int = pow2_260 as int;
+            assert(pow2_260_int == pow2_260);
+            assert(pow2_260_int > 0) by {
+                assert(pow2_260 > 0);
+                assert(pow2_260_int == pow2_260);
+            };
+            assert(wide_input_int < pow2_260_int * (pow2(252) as int)) by {
+                assert(wide_input < pow2_260 * pow2(252));
+                assert(pow2_260_int == pow2_260);
+            };
+
+            lemma_multiply_divide_lt(wide_input_int, pow2_260_int, pow2(252) as int);
+            let ghost high_expr_int = high_expr as int;
+            assert(high_expr_int == wide_input_int / pow2_260_int);
+            assert(high_expr_int < pow2(252) as int);
+            assert(high_expr as int == high_expr_int);
+            assert((high_expr as int) < (pow2(252) as int)) by {
+                assert(high_expr as int == high_expr_int);
+                assert(high_expr_int < pow2(252) as int);
+            };
+            assert(pow2(252) as int == pow2(252));
+            assert(high_expr as int == high_expr);
+            assert(high_expr < pow2(252)) by {
+                assert(high_expr as int == high_expr);
+                assert(pow2(252) as int == pow2(252));
+                assert((high_expr as int) < (pow2(252) as int));
+            };
+        };
+        assert(to_nat(&hi_raw.limbs) < pow2(252)) by {
+            assert(high_expr == to_nat(&hi_raw.limbs));
+            assert(high_expr < pow2(252));
+        };
 
         // Stage 4 assumption: Montgomery reductions behave as expected for these operands.
         assume(limbs_bounded(&constants::R));

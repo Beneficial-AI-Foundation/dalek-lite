@@ -691,6 +691,9 @@ impl Scalar52 {
     #[rustfmt::skip]  // keep alignment of n* and r* calculations
     pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result:
         Scalar52)
+    // If the input is the product of 2 bounded scalars, we get 2 postconditions.
+    // If the 2nd scalar is also canonical, we unlock a 3rd postcondition.
+    // Not all calling code needs the 3rd postcondition.
     // Note: This spec is not yet confirmed because the function is unproved.
     // The spec is checked by prop_montgomery_reduce_two_bounded and prop_montgomery_reduce_one_canonical.
     // If you edit this spec, please update the proptests.

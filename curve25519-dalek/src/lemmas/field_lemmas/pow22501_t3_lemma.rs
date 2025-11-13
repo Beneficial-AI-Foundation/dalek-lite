@@ -182,10 +182,8 @@ pub proof fn lemma_pow22501_prove_t3(
     }
 
     // Convert to nat: casting preserves multiplication for non-negative values
-    assert(pow(base, 1) >= 0);
-    assert(pow(base, 8) >= 0);  // known from earlier
-    assert((pow(base, 1) * pow(base, 8)) >= 0) by {
-        lemma_mul_nonnegative(pow(base, 1), pow(base, 8));
+    assert(pow(base, 9) >= 0) by {
+        lemma_pow_nonnegative(base, 9);
     }
     assert(pow(base, 1) as nat * pow(base, 8) as nat == (pow(base, 1) * pow(base, 8)) as nat);
     assert(pow(base, 1) as nat * pow(base, 8) as nat == pow(base, 9) as nat);
@@ -219,15 +217,8 @@ pub proof fn lemma_pow22501_prove_t3(
     }
 
     // Convert to nat: casting preserves multiplication for non-negative values
-    assert(pow(base, 2) >= 0);  // known from earlier
-    assert(pow(base, 9) >= 0) by {
-        assert(pow(base, 1) * pow(base, 8) == pow(base, 9));  // known
-        assert(pow(base, 1) >= 0);
-        assert(pow(base, 8) >= 0);  // known
-        lemma_mul_nonnegative(pow(base, 1), pow(base, 8));
-    }
-    assert((pow(base, 2) * pow(base, 9)) >= 0) by {
-        lemma_mul_nonnegative(pow(base, 2), pow(base, 9));
+    assert(pow(base, 11) >= 0) by {
+        lemma_pow_nonnegative(base, 11);
     }
     assert(pow(base, 2) as nat * pow(base, 9) as nat == (pow(base, 2) * pow(base, 9)) as nat);
     assert(pow(base, 2) as nat * pow(base, 9) as nat == pow(base, 11) as nat);

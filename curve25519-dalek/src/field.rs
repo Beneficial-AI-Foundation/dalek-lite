@@ -216,11 +216,12 @@ impl FieldElement {
         //
         // Temporary t_i                      Nonzero bits of e_i
         let t0 = self.square();  // 1         e_0 = 2^1
-        //NOTE: Changing the code!!!
+        // NOTE: Changing the code!!!
         // NOTE: We are now using the intermediate variable t0_sq to track the postcondition of the first square.
         // NOTE: This is a workaround to allow us to prove the postcondition of the second square.
         // NOTE: I'm struggling to prove that t0.square().square() is the same as t0_sq.square().
         // Break apart chained call to track intermediate postcondition
+        // NOTE: Using intermediate variable t0_sq to track the postcondition
         let t0_sq = t0.square();  // e = 4 (intermediate step)
         // let t1 = t0.square().square();  // 3         e_1 = 2^3 = 8
         let t1 = t0_sq.square();  // 3         e_1 = 2^3 = 8
@@ -268,12 +269,7 @@ impl FieldElement {
                 );
             };
 
-            // Use our clean lemma to prove t3 = x^11 and all intermediate steps
-            // The lemma proves:
-            // - as_nat(t0_sq.limbs) % p() == pow(base, 4) as nat % p()
-            // - as_nat(t1.limbs) % p() == pow(base, 8) as nat % p()
-            // - as_nat(t2.limbs) % p() == pow(base, 9) as nat % p()
-            // - as_nat(t3.limbs) % p() == pow(base, 11) as nat % p()
+            // Use lemma to prove t3 = x^11 and all intermediate steps
             lemma_pow22501_prove_t3(
                 self.limbs,
                 t0.limbs,
@@ -286,9 +282,7 @@ impl FieldElement {
             let base = as_nat(self.limbs) as int;
 
             // Prove t19 = x^(2^250-1) using explicit lemma
-            // Square operation postcondition (t4 = t3^2, from .square() ensures clause)
-            assert(as_nat(t4.limbs) % p() == pow(as_nat(t3.limbs) as int, 2) as nat % p());
-
+            
             // Multiplication: t5 = t2 * t4
             assert(as_nat(t5.limbs) % p() == (as_nat(t2.limbs) * as_nat(t4.limbs)) % p()) by {
                 lemma_mul_mod_noop_general(
@@ -297,10 +291,6 @@ impl FieldElement {
                     p() as int,
                 );
             };
-
-            // pow2k operation: t6 = t5^(2^5), from .pow2k(5) ensures clause
-            assert(as_nat(t6.limbs) % p() == pow(as_nat(t5.limbs) as int, pow2(5)) as nat % p())
-               ;
 
             // Multiplication: t7 = t6 * t5
             assert(as_nat(t7.limbs) % p() == (as_nat(t6.limbs) * as_nat(t5.limbs)) % p()) by {
@@ -311,10 +301,6 @@ impl FieldElement {
                 );
             };
 
-            // pow2k operation: t8 = t7^(2^10), from .pow2k(10) ensures clause
-            assert(as_nat(t8.limbs) % p() == pow(as_nat(t7.limbs) as int, pow2(10)) as nat % p())
-               ;
-
             // Multiplication: t9 = t8 * t7
             assert(as_nat(t9.limbs) % p() == (as_nat(t8.limbs) * as_nat(t7.limbs)) % p()) by {
                 lemma_mul_mod_noop_general(
@@ -323,10 +309,6 @@ impl FieldElement {
                     p() as int,
                 );
             };
-
-            // pow2k operation: t10 = t9^(2^20), from .pow2k(20) ensures clause
-            assert(as_nat(t10.limbs) % p() == pow(as_nat(t9.limbs) as int, pow2(20)) as nat % p())
-               ;
 
             // Multiplication: t11 = t10 * t9
             assert(as_nat(t11.limbs) % p() == (as_nat(t10.limbs) * as_nat(t9.limbs)) % p()) by {
@@ -337,10 +319,6 @@ impl FieldElement {
                 );
             };
 
-            // pow2k operation: t12 = t11^(2^10), from .pow2k(10) ensures clause
-            assert(as_nat(t12.limbs) % p() == pow(as_nat(t11.limbs) as int, pow2(10)) as nat % p())
-               ;
-
             // Multiplication: t13 = t12 * t7
             assert(as_nat(t13.limbs) % p() == (as_nat(t12.limbs) * as_nat(t7.limbs)) % p()) by {
                 lemma_mul_mod_noop_general(
@@ -349,10 +327,6 @@ impl FieldElement {
                     p() as int,
                 );
             };
-
-            // pow2k operation: t14 = t13^(2^50), from .pow2k(50) ensures clause
-            assert(as_nat(t14.limbs) % p() == pow(as_nat(t13.limbs) as int, pow2(50)) as nat % p())
-               ;
 
             // Multiplication: t15 = t14 * t13
             assert(as_nat(t15.limbs) % p() == (as_nat(t14.limbs) * as_nat(t13.limbs)) % p()) by {
@@ -363,10 +337,6 @@ impl FieldElement {
                 );
             };
 
-            // pow2k operation: t16 = t15^(2^100), from .pow2k(100) ensures clause
-            assert(as_nat(t16.limbs) % p() == pow(as_nat(t15.limbs) as int, pow2(100)) as nat % p())
-               ;
-
             // Multiplication: t17 = t16 * t15
             assert(as_nat(t17.limbs) % p() == (as_nat(t16.limbs) * as_nat(t15.limbs)) % p()) by {
                 lemma_mul_mod_noop_general(
@@ -375,10 +345,6 @@ impl FieldElement {
                     p() as int,
                 );
             };
-
-            // pow2k operation: t18 = t17^(2^50), from .pow2k(50) ensures clause
-            assert(as_nat(t18.limbs) % p() == pow(as_nat(t17.limbs) as int, pow2(50)) as nat % p())
-               ;
 
             // Multiplication: t19 = t18 * t13
             assert(as_nat(t19.limbs) % p() == (as_nat(t18.limbs) * as_nat(t13.limbs)) % p()) by {

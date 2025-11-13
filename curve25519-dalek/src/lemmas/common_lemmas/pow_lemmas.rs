@@ -924,6 +924,36 @@ pub proof fn lemma_pow_mod_congruent(a: int, b: int, n: nat, m: int)
     }
 }
 
+/// Lemma: Powers of non-negative integers are always non-negative
+///
+/// For any non-negative integer base and natural number exponent n,
+/// pow(base, n) >= 0.
+///
+/// This is a fundamental property: multiplying non-negative numbers
+/// always yields non-negative results.
+///
+/// This lemma extends vstd's `lemma_pow_positive` to handle the case when base = 0.
+pub proof fn lemma_pow_nonnegative(base: int, n: nat)
+    requires
+        base >= 0,
+    ensures
+        pow(base, n) >= 0,
+{
+    if base > 0 {
+        // Delegate to vstd's lemma_pow_positive for the positive case
+        lemma_pow_positive(base, n);
+    } else {
+        // base == 0 case
+        if n == 0 {
+            // pow(0, 0) == 1 >= 0
+            lemma_pow0(0);
+        } else {
+            // pow(0, n) == 0 >= 0 for n > 0
+            lemma0_pow(n);
+        }
+    }
+}
+
 /// Lemma: Powers with even exponents are always non-negative
 ///
 /// For any integer x and natural number k, pow(x, 2*k) >= 0

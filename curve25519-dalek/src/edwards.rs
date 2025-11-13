@@ -694,9 +694,13 @@ impl Default for EdwardsPoint {
 #[cfg(feature = "zeroize")]
 impl Zeroize for CompressedEdwardsY {
     /// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
-    #[verifier::external_body]
-    fn zeroize(&mut self) {
-        self.0.zeroize();
+    fn zeroize(&mut self)
+        ensures
+            forall|i: int| 1 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
+            self.0[0] == 1u8,
+    {
+        /* ORIGINAL CODE: self.0.zeroize(); */
+        crate::core_assumes::zeroize_bytes32(&mut self.0);
         self.0[0] = 1;
     }
 }
@@ -704,8 +708,13 @@ impl Zeroize for CompressedEdwardsY {
 #[cfg(feature = "zeroize")]
 impl Zeroize for EdwardsPoint {
     /// Reset this `CompressedEdwardsPoint` to the identity element.
-    #[verifier::external_body]
-    fn zeroize(&mut self) {
+    fn zeroize(&mut self)
+        ensures
+            forall|i: int| 0 <= i < 5 ==> self.X.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> self.T.limbs[i] == 0,
+            self.Y == FieldElement::ONE,
+            self.Z == FieldElement::ONE,
+    {
         self.X.zeroize();
         self.Y = FieldElement::ONE;
         self.Z = FieldElement::ONE;

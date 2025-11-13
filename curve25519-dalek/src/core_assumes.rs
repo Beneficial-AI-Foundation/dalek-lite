@@ -254,4 +254,16 @@ pub fn zeroize_bytes32(bytes: &mut [u8; 32])
     bytes.zeroize();
 }
 
+#[cfg(feature = "zeroize")]
+// Wrapper for zeroize on [u64; 5] arrays (used by FieldElement51)
+// After zeroizing, all limbs should be zero
+#[verifier::external_body]
+pub fn zeroize_limbs5(limbs: &mut [u64; 5])
+    ensures
+        forall|i: int| 0 <= i < 5 ==> #[trigger] limbs[i] == 0u64,
+{
+    use zeroize::Zeroize;
+    limbs.zeroize();
+}
+
 } // verus!

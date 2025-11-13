@@ -249,6 +249,7 @@ impl Zeroize for MontgomeryPoint {
         ensures
             forall|i: int| 0 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
     {
+        /* ORIGINAL CODE: self.0.zeroize(); */
         crate::core_assumes::zeroize_bytes32(&mut self.0);
     }
 }

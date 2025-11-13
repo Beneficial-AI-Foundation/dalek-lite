@@ -187,7 +187,7 @@ def load_stats_history(history_file: Path) -> pd.DataFrame:
                 date = pd.to_datetime(entry["date"])
                 if date.tz is not None:
                     date = date.tz_localize(None)  # Remove timezone info
-                
+
                 historical_data.append(
                     {
                         "commit": entry[

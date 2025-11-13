@@ -919,19 +919,275 @@ impl Scalar52 {
             lemma_rr_limbs_bounded();
         };
 
-        lo = Scalar52::montgomery_mul(&lo, &constants::R);  // (lo * R) / R = lo
-        hi = Scalar52::montgomery_mul(&hi, &constants::RR);  // (hi * R^2) / R = hi * R
+        let lo_before = lo;
+        let hi_before = hi;
 
-        assume(to_nat(&lo.limbs) % group_order() == to_nat(&lo_raw.limbs) % group_order());
-        assume(to_nat(&hi.limbs) % group_order() == (to_nat(&hi_raw.limbs) * montgomery_radix()) % group_order());
-        assume(to_nat(&lo.limbs) < group_order());
-        assume(to_nat(&hi.limbs) < group_order());
+        let lo_product = Scalar52::mul_internal(&lo_before, &constants::R);
+        lo = Scalar52::montgomery_reduce(&lo_product);  // (lo * R) / R = lo
+        let hi_product = Scalar52::mul_internal(&hi_before, &constants::RR);
+        hi = Scalar52::montgomery_reduce(&hi_product);  // (hi * R^2) / R = hi * R
+
+        proof {
+            assert(limbs_bounded(&lo));
+            assert(lo_before == lo_raw);
+            assert(limbs_bounded(&lo_before)) by {
+                assert(lo_before == lo_raw);
+                assert(limbs_bounded(&lo_raw));
+            }
+
+            let ghost lo_before_nat = to_nat(&lo_before.limbs);
+            let ghost lo_after_nat = to_nat(&lo.limbs);
+            let ghost r_nat = to_nat(&constants::R.limbs);
+            let ghost lo_product_nat = slice128_to_nat(&lo_product);
+
+            assert(lo_product_nat == lo_before_nat * r_nat);
+            assert(
+                (lo_after_nat * montgomery_radix()) % group_order()
+                    == lo_product_nat % group_order()
+            );
+            assert(
+                (lo_after_nat * montgomery_radix()) % group_order()
+                    == (lo_before_nat * r_nat) % group_order()
+            );
+
+            lemma_r_equals_spec(constants::R);
+
+            lemma_mul_factors_congruent_implies_products_congruent(
+                lo_before_nat as int,
+                montgomery_radix() as int,
+                r_nat as int,
+                group_order() as int,
+            );
+
+            assert(
+                (lo_after_nat * montgomery_radix()) % group_order()
+                    == (lo_before_nat * montgomery_radix()) % group_order()
+            );
+
+            lemma_cancel_mul_pow2_mod(lo_after_nat, lo_before_nat, montgomery_radix());
+
+            assert(lo_before_nat == to_nat(&lo_raw.limbs));
+            assert(to_nat(&lo.limbs) < group_order());
+
+            assert(limbs_bounded(&hi));
+            assert(hi_before == hi_raw);
+            assert(limbs_bounded(&hi_before)) by {
+                assert(hi_before == hi_raw);
+                assert(limbs_bounded(&hi_raw));
+            }
+
+            let ghost hi_before_nat = to_nat(&hi_before.limbs);
+            let ghost hi_after_nat = to_nat(&hi.limbs);
+            let ghost rr_nat = to_nat(&constants::RR.limbs);
+            let ghost hi_product_nat = slice128_to_nat(&hi_product);
+
+            assert(hi_product_nat == hi_before_nat * rr_nat);
+            assert(
+                (hi_after_nat * montgomery_radix()) % group_order()
+                    == hi_product_nat % group_order()
+            );
+            assert(
+                (hi_after_nat * montgomery_radix()) % group_order()
+                    == (hi_before_nat * rr_nat) % group_order()
+            );
+
+            lemma_rr_equals_spec(constants::RR);
+
+            lemma_mul_factors_congruent_implies_products_congruent(
+                hi_before_nat as int,
+                rr_nat as int,
+                (montgomery_radix() * montgomery_radix()) as int,
+                group_order() as int,
+            );
+
+            assert(
+                (hi_after_nat * montgomery_radix()) % group_order()
+                    == (hi_before_nat * (montgomery_radix() * montgomery_radix())) % group_order()
+            );
+
+            calc! {
+                (==)
+                (hi_after_nat * montgomery_radix()) % group_order(); {
+                    assert(
+                        (hi_after_nat * montgomery_radix()) % group_order()
+                            == (hi_before_nat * rr_nat) % group_order()
+                    );
+                }
+                (hi_before_nat * rr_nat) % group_order(); {
+                    assert(
+                        (hi_before_nat * rr_nat) % group_order()
+                            == (hi_before_nat * (montgomery_radix() * montgomery_radix())) % group_order()
+                    );
+                }
+                (hi_before_nat * (montgomery_radix() * montgomery_radix())) % group_order(); {
+                    lemma_mul_is_associative(
+                        hi_before_nat as int,
+                        montgomery_radix() as int,
+                        montgomery_radix() as int,
+                    );
+                    assert(
+                        (hi_before_nat * (montgomery_radix() * montgomery_radix())) % group_order()
+                            == ((hi_before_nat * montgomery_radix()) * montgomery_radix()) % group_order()
+                    );
+                }
+                ((hi_before_nat * montgomery_radix()) * montgomery_radix()) % group_order();
+            }
+
+            lemma_cancel_mul_pow2_mod(
+                hi_after_nat,
+                hi_before_nat * montgomery_radix(),
+                montgomery_radix(),
+            );
+
+            assert(hi_before_nat == to_nat(&hi_raw.limbs));
+            assert(to_nat(&hi.limbs) < group_order());
+        }
+
+        assert(to_nat(&lo.limbs) % group_order() == to_nat(&lo_raw.limbs) % group_order());
+        assert(
+            to_nat(&hi.limbs) % group_order()
+                == (to_nat(&hi_raw.limbs) * montgomery_radix()) % group_order()
+        );
 
         let result = Scalar52::add(&hi, &lo);
 
         // Stage 5 assumption: combining the reduced pieces matches the wide scalar modulo L.
-        assume(to_nat(&result.limbs) % group_order() == wide_input % group_order());
-        assume(to_nat(&result.limbs) < group_order());
+        proof {
+            let ghost result_nat = to_nat(&result.limbs);
+            let ghost hi_nat = to_nat(&hi.limbs);
+            let ghost lo_nat = to_nat(&lo.limbs);
+            let ghost hi_raw_nat = to_nat(&hi_raw.limbs);
+            let ghost lo_raw_nat = to_nat(&lo_raw.limbs);
+            let ghost r_nat = montgomery_radix();
+            let ghost result_int = result_nat as int;
+            let ghost hi_int = hi_nat as int;
+            let ghost lo_int = lo_nat as int;
+            let ghost hi_raw_int = hi_raw_nat as int;
+            let ghost lo_raw_int = lo_raw_nat as int;
+            let ghost r_int = r_nat as int;
+            let ghost group_int = group_order() as int;
+
+            assert(group_order() == pow2(252) + 27742317777372353535851937790883648493nat);
+            lemma_pow2_pos(252);
+            assert(group_order() > 0);
+            assert(r_nat == pow2(260));
+
+            lemma_small_mod(result_nat, group_order());
+            lemma_small_mod(hi_nat, group_order());
+            lemma_small_mod(lo_nat, group_order());
+
+            assert(result_nat == (hi_nat + lo_nat) % group_order());
+            assert(hi_nat == (hi_raw_nat * r_nat) % group_order()) by {
+                assert(hi_nat % group_order() == (hi_raw_nat * r_nat) % group_order());
+            };
+            assert(lo_nat == lo_raw_nat % group_order()) by {
+                assert(lo_nat % group_order() == lo_raw_nat % group_order());
+            };
+
+            lemma_small_mod(((hi_nat + lo_nat) % group_order()) as nat, group_order());
+
+            calc! {
+                (==)
+                (result_nat * r_nat) % group_order(); {
+                    lemma_mul_factors_congruent_implies_products_congruent(
+                        r_int,
+                        result_int,
+                        ((hi_nat + lo_nat) % group_order()) as int,
+                        group_int,
+                    );
+                    assert(
+                        (result_nat * r_nat) % group_order()
+                            == (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order()
+                    );
+                }
+                (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order(); {
+                    lemma_mul_factors_congruent_implies_products_congruent(
+                        r_int,
+                        ((hi_nat + lo_nat) % group_order()) as int,
+                        (hi_nat + lo_nat) as int,
+                        group_int,
+                    );
+                    lemma_mul_is_commutative(((hi_nat + lo_nat) % group_order()) as int, r_int);
+                    assert(
+                        (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order()
+                            == (r_nat * (hi_nat + lo_nat)) % group_order()
+                    );
+                }
+                (r_nat * (hi_nat + lo_nat)) % group_order(); {
+                    lemma_mul_is_distributive_add(r_int, hi_int, lo_int);
+                    assert(
+                        r_nat * (hi_nat + lo_nat)
+                            == r_nat * hi_nat + r_nat * lo_nat
+                    );
+                }
+                (r_nat * hi_nat + r_nat * lo_nat) % group_order(); {
+                    lemma_add_mod_noop(r_int * hi_int, r_int * lo_int, group_int);
+                    assert(
+                        (r_nat * hi_nat + r_nat * lo_nat) % group_order()
+                            == ((r_nat * hi_nat) % group_order()
+                                + (r_nat * lo_nat) % group_order()) % group_order()
+                    );
+                }
+                ((r_nat * hi_nat) % group_order()
+                    + (r_nat * lo_nat) % group_order()) % group_order(); {
+                    lemma_mul_factors_congruent_implies_products_congruent(
+                        r_int,
+                        hi_int,
+                        (hi_raw_nat * r_nat) as int,
+                        group_int,
+                    );
+                    lemma_mul_factors_congruent_implies_products_congruent(
+                        r_int,
+                        lo_int,
+                        lo_raw_int,
+                        group_int,
+                    );
+                    lemma_mul_is_associative(hi_raw_int, r_int, r_int);
+                    assert(
+                        (r_nat * hi_nat) % group_order()
+                            == (hi_raw_nat * r_nat * r_nat) % group_order()
+                    );
+                    assert(
+                        (r_nat * lo_nat) % group_order()
+                            == (lo_raw_nat * r_nat) % group_order()
+                    );
+                }
+                ((hi_raw_nat * r_nat * r_nat) % group_order()
+                    + (lo_raw_nat * r_nat) % group_order()) % group_order(); {
+                    lemma_add_mod_noop(
+                        hi_raw_int * r_int * r_int,
+                        lo_raw_int * r_int,
+                        group_int,
+                    );
+                    assert(
+                        ((hi_raw_nat * r_nat * r_nat) % group_order()
+                            + (lo_raw_nat * r_nat) % group_order()) % group_order()
+                            == (hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat) % group_order()
+                    );
+                }
+                (hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat) % group_order(); {
+                    lemma_mul_is_associative(hi_raw_int, r_int, r_int);
+                    lemma_mul_is_distributive_add_other_way(
+                        r_int,
+                        hi_raw_int * r_int,
+                        lo_raw_int,
+                    );
+                    assert(
+                        hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat
+                            == (hi_raw_nat * r_nat + lo_raw_nat) * r_nat
+                    );
+                }
+                ((hi_raw_nat * r_nat + lo_raw_nat) * r_nat) % group_order(); {
+                    assert(hi_raw_nat == high_expr);
+                    assert(lo_raw_nat == low_expr);
+                    assert(wide_input == r_nat * hi_raw_nat + lo_raw_nat);
+                }
+                (wide_input * r_nat) % group_order();
+            }
+
+            lemma_cancel_mul_pow2_mod(result_nat, wide_input, r_nat);
+        }
+        assert(to_nat(&result.limbs) < group_order());
 
         result
     }

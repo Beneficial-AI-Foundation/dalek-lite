@@ -577,7 +577,44 @@ pub(crate) proof fn lemma_r_le_l(r: Scalar52)
     lemma_pow2_adds(208, 52);  // prove pow2(260)
 
     let r_calc: nat = five_limbs_to_nat_aux(r.limbs);
+}
 
+pub(crate) proof fn lemma_r_equals_spec(r: Scalar52)
+    requires
+        r == (Scalar52 {
+            limbs: [
+                0x000f48bd6721e6ed,
+                0x0003bab5ac67e45a,
+                0x000fffffeb35e51b,
+                0x000fffffffffffff,
+                0x00000fffffffffff,
+            ],
+        }),
+    ensures
+        to_nat(&r.limbs) % group_order() == montgomery_radix() % group_order(),
+        to_nat(&r.limbs) < group_order(),
+{
+    lemma_five_limbs_equals_to_nat(&r.limbs);
+
+    lemma2_to64();
+    lemma2_to64_rest();
+    lemma_pow2_adds(52, 52);
+    lemma_pow2_adds(104, 52);
+    lemma_pow2_adds(156, 52);
+    lemma_pow2_adds(208, 44);
+    lemma_pow2_adds(208, 52);
+
+    let r_calc: nat = five_limbs_to_nat_aux(r.limbs);
+    lemma_small_mod(r_calc, group_order());
+
+    calc! {
+        (==)
+        montgomery_radix() % group_order(); {}
+        pow2(260) % group_order(); {}
+        1852673427797059126777135760139006525652319754650249024631321344126610074238976_nat
+            % 7237005577332262213973186563042994240857116359379907606001950938285454250989_nat; {}
+        r_calc;
+    }
 }
 
 pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)

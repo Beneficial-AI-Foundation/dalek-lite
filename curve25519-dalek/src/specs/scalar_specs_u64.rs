@@ -144,8 +144,6 @@ pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
     forall|i: int| 0 <= i < 5 ==> s.limbs[i] < (1u64 << 52)
 }
 
-/// Spec function for multiplication - same as mul_internal but marked as spec
-/// This allows calling it in spec contexts (like exists clauses)
 pub open spec fn spec_mul_internal(a: &Scalar52, b: &Scalar52) -> [u128; 9]
     recommends
         limbs_bounded(a),

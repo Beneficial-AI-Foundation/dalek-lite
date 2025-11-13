@@ -2468,8 +2468,8 @@ fn reduce(&self) -> (result: Scalar)
 
     proof {
         // Preconditions for montgomery_reduce
-        assume(to_nat(&x.limbs) < group_order());
-        assume(to_nat(&constants::R.limbs) < group_order());
+        assert(to_nat(&x.limbs) < group_order());
+        assert(to_nat(&constants::R.limbs) < group_order()) by {lemma_r_le_l(constants::R);};
     }
 
     let xR = UnpackedScalar::mul_internal(&x, &constants::R);

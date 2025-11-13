@@ -829,8 +829,10 @@ impl Scalar52 {
 
         proof {
             // aa may not be canonical, but RR is canonical
-            assume(to_nat(&aa.limbs) < group_order());
-            assume(to_nat(&constants::RR.limbs) < group_order());
+            assert(to_nat(&aa.limbs) < group_order());
+            assert(to_nat(&constants::RR.limbs) < group_order()) by {
+                lemma_rr_equals_spec(constants::RR);
+            };
         }
 
         // square_internal ensures

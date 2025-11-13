@@ -482,6 +482,7 @@ pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
     ensures
         to_nat(&rr.limbs) % group_order() == (montgomery_radix() * montgomery_radix())
             % group_order(),
+        to_nat(&rr.limbs) < group_order(),
 {
     lemma_five_limbs_equals_to_nat(&rr.limbs);
 

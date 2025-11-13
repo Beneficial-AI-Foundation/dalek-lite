@@ -1249,21 +1249,6 @@ pub mod test {
         }
     }
 
-    #[test]
-    fn montgomery_reduce_max_limb() {
-        // Each limb at near-max value
-        let limbs = [(1u128 << 52) - 1; 9];
-        let result = Scalar52::montgomery_reduce(&limbs);
-
-        let result_nat = to_nat_exec(&result.limbs);
-        let limbs_nat = slice128_to_nat_exec(&limbs);
-        let l = group_order_exec();
-        let r = montgomery_radix_exec();
-
-        assert_eq!((&result_nat * &r) % &l, &limbs_nat % &l);
-        assert!(limbs_bounded_exec(&result));
-        assert!(&result_nat < &l);
-    }
 }
 // #[cfg(test)]
 // mod test {

@@ -2596,7 +2596,6 @@ fn square_multiply(
             assume(to_nat(&y.limbs) < group_order());
         }
         *y = y.montgomery_square();
-
     }
     *y = UnpackedScalar::montgomery_mul(y, x);
     proof {

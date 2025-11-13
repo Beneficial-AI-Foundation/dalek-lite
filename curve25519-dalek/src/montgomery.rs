@@ -85,6 +85,11 @@ verus! {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MontgomeryPoint(pub [u8; 32]);
 
+/// Spec function: extract the u-coordinate of a MontgomeryPoint as a field element
+pub open spec fn spec_montgomery(point: MontgomeryPoint) -> nat {
+    spec_field_element_from_bytes(&point.0)
+}
+
 /// Equality of `MontgomeryPoint`s is defined mod p.
 impl ConstantTimeEq for MontgomeryPoint {
     fn ct_eq(&self, other: &MontgomeryPoint) -> (result: Choice)
@@ -238,8 +243,18 @@ impl Hash for MontgomeryPoint {
 
 impl Identity for MontgomeryPoint {
     /// Return the group identity element, which has order 4.
-    fn identity() -> MontgomeryPoint {
-        MontgomeryPoint([0u8;32])
+    fn identity() -> (result: MontgomeryPoint)
+        ensures
+    // The identity point has u-coordinate = 0
+
+            spec_montgomery(result) == 0,
+    {
+        let result = MontgomeryPoint([0u8;32]);
+        proof {
+            // The byte array [0, 0, ..., 0] represents the field element 0
+            assume(spec_field_element_from_bytes(&result.0) == 0);
+        }
+        result
     }
 }
 
@@ -247,10 +262,18 @@ impl Identity for MontgomeryPoint {
 impl Zeroize for MontgomeryPoint {
     fn zeroize(&mut self)
         ensures
+    // All bytes are zero
+
             forall|i: int| 0 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
+            // The u-coordinate is 0 (identity point)
+            spec_montgomery(*self) == 0,
     {
         /* ORIGINAL CODE: self.0.zeroize(); */
         crate::core_assumes::zeroize_bytes32(&mut self.0);
+        proof {
+            // After zeroizing, all bytes are 0, so the field element is 0
+            assume(spec_field_element_from_bytes(&self.0) == 0);
+        }
     }
 }
 

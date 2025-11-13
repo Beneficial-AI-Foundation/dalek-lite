@@ -699,18 +699,15 @@ impl Scalar52 {
     // and montgomery_reduce_non_canonical_product_fails_postcondition,
     // and test_canonical_scalar_generator (if it's then unused)
 
-        requires
-    // The input represents the product of one merely-bounded Scalar52
-    // and one canonical Scalar52
-
-            exists|bounded: &Scalar52, canonical: &Scalar52|
-                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs) < group_order() &&
-        spec_mul_internal(bounded, canonical) == limbs
 
         ensures
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
                 % group_order(),
             limbs_bounded(&result),
+
+            (exists|bounded: &Scalar52, canonical: &Scalar52|
+                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs) < group_order() &&
+        spec_mul_internal(bounded, canonical) == limbs) ==>
             to_nat(&result.limbs) < group_order(),
     {
         assume(false);  // TODO: Add proofs

@@ -700,13 +700,13 @@ impl Scalar52 {
     // and test_canonical_scalar_generator (if it's then unused)
 
         requires
-    // The input represents the product of two canonical Scalar52s
-    // (both limbs_bounded AND value < group_order)
+    // The input represents the product of one merely-bounded Scalar52
+    // and one canonical Scalar52
 
-            exists|a: &Scalar52, b: &Scalar52|
-                limbs_bounded(a) && limbs_bounded(b) && to_nat(&a.limbs) < group_order() && to_nat(
-                    &b.limbs,
-                ) < group_order() && slice128_to_nat(limbs) == to_nat(&a.limbs) * to_nat(&b.limbs),
+            exists|bounded: &Scalar52, canonical: &Scalar52|
+                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs) < group_order() &&
+        spec_mul_internal(bounded, canonical) == limbs
+
         ensures
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
                 % group_order(),

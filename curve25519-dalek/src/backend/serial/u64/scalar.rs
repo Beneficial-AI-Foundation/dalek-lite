@@ -1220,7 +1220,6 @@ pub mod test {
         }
     }
 
-
     proptest! {
         #[test]
         fn prop_montgomery_reduce_spec(limbs in arb_nine_limbs()) {

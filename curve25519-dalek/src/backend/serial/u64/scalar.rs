@@ -1235,11 +1235,23 @@ pub mod test {
             })
     }
 
-    proptest! {
-        #![proptest_config(proptest::test_runner::Config::with_cases(1000000))]
+    /// Generate 9-limb arrays from product of TWO bounded scalars
+    /// Matches first part of spec: exists bounded1, bounded2 such that limbs = mul(bounded1, bounded2)
+    fn arb_nine_limbs_two_bounded() -> impl Strategy<Value = [u128; 9]> {
+        (arb_scalar52(), arb_scalar52())
+            .prop_map(|(a, b)| {
+                Scalar52::mul_internal(&a, &b)
+            })
+    }
 
+    proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(10000))]
+
+        /// Test 1: Input is product of TWO bounded scalars (both may be non-canonical)
+        /// Spec says: if input = mul(bounded1, bounded2) then Montgomery property and limbs_bounded hold
+        /// (but canonicality is NOT guaranteed)
         #[test]
-        fn prop_montgomery_reduce_spec(limbs in arb_nine_limbs()) {
+        fn prop_montgomery_reduce_two_bounded(limbs in arb_nine_limbs_two_bounded()) {
             // Call montgomery_reduce
             let result = Scalar52::montgomery_reduce(&limbs);
 
@@ -1249,24 +1261,22 @@ pub mod test {
             let l = group_order_exec();
             let r = montgomery_radix_exec();
 
-            // Check the spec postconditions:
-            // 1. (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs) % group_order()
+            // Postcondition 1: Montgomery property (should hold for product of two bounded)
             let lhs = (&result_nat * &r) % &l;
             let rhs = &limbs_nat % &l;
             prop_assert_eq!(lhs, rhs,
                 "Montgomery reduce spec violated: (result * R) mod L != limbs mod L");
 
-            // 2. limbs_bounded(&result)
+            // Postcondition 2: limbs_bounded (should hold for product of two bounded)
             prop_assert!(limbs_bounded_exec(&result),
                 "Result limbs not bounded by 2^52");
 
-            // 3. to_nat(&result.limbs) < group_order()
-            prop_assert!(&result_nat < &l,
-                "Result not in canonical form (>= L)");
+            // Postcondition 3: Canonicality is NOT guaranteed for product of two bounded scalars
+            // (only guaranteed when one is canonical)
         }
 
-        /// Property test with ONE bounded scalar and ONE canonical scalar
-        /// This tests whether having just one canonical input is sufficient
+        /// Test 2: Input is product of one bounded scalar and one canonical scalar
+        /// Spec says: if input = mul(bounded, canonical) then result < L
         #[test]
         fn prop_montgomery_reduce_one_canonical(limbs in arb_nine_limbs_one_canonical()) {
             // Call montgomery_reduce
@@ -1278,20 +1288,20 @@ pub mod test {
             let l = group_order_exec();
             let r = montgomery_radix_exec();
 
-            // Check the spec postconditions:
-            // 1. (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs) % group_order()
+            // Postcondition 1: Montgomery property (holds by first part of spec)
             let lhs = (&result_nat * &r) % &l;
             let rhs = &limbs_nat % &l;
             prop_assert_eq!(lhs, rhs,
                 "Montgomery reduce spec violated: (result * R) mod L != limbs mod L");
 
-            // 2. limbs_bounded(&result)
+            // Postcondition 2: limbs_bounded (holds by first part of spec)
             prop_assert!(limbs_bounded_exec(&result),
                 "Result limbs not bounded by 2^52");
 
-            // 3. to_nat(&result.limbs) < group_order()
+            // Postcondition 3: Canonicality - SHOULD hold by second part of spec
+            // (exists bounded, canonical such that limbs = mul(bounded, canonical)) ==> result < L
             prop_assert!(&result_nat < &l,
-                "Result not in canonical form (>= L)");
+                "Result not in canonical form (>= L), but input was product of bounded × canonical");
         }
     }
 

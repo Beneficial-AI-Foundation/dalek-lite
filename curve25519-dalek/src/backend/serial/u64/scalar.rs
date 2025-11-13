@@ -912,8 +912,12 @@ impl Scalar52 {
         };
 
         // Stage 4 assumption: Montgomery reductions behave as expected for these operands.
-        assume(limbs_bounded(&constants::R));
-        assume(limbs_bounded(&constants::RR));
+        assert(limbs_bounded(&constants::R)) by {
+            lemma_r_limbs_bounded(); // had to write this one manually due to crashes
+        };
+        assert(limbs_bounded(&constants::RR)) by {
+            lemma_rr_limbs_bounded();
+        };
 
         lo = Scalar52::montgomery_mul(&lo, &constants::R);  // (lo * R) / R = lo
         hi = Scalar52::montgomery_mul(&hi, &constants::RR);  // (hi * R^2) / R = hi * R

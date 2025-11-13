@@ -936,33 +936,16 @@ pub proof fn lemma_pow_even_nonnegative(x: int, k: nat)
     ensures
         pow(x, 2 * k) >= 0,
 {
-    if k == 0 {
-        // pow(x, 0) = 1 >= 0
-        lemma_pow0(x);
-        assert(pow(x, 0) == 1);
-    } else {
-        // pow(x, 2*k) = pow(pow(x, k), 2) by lemma_pow_multiplies
-        lemma_pow_multiplies(x, k, 2);
-        assert(pow(x, 2 * k) == pow(pow(x, k), 2));
-
-        // pow(y, 2) = y * y for any y
-        let y = pow(x, k);
-        lemma_square_is_pow2(y);
-        assert(pow(y, 2) == y * y);
-
-        // y * y >= 0 for any integer y (by case split)
-        if y >= 0 {
-            lemma_mul_nonnegative(y, y);
-            assert(y * y >= 0);
-        } else {
-            // If y < 0, then -y > 0, and y * y == (-y) * (-y) >= 0
-            lemma_mul_nonnegative(-y, -y);
-            assert((-y) * (-y) >= 0);
-            lemma_mul_cancels_negatives(y, y);
-            assert(y * y == (-y) * (-y));
-            assert(y * y >= 0);
-        }
-        assert(pow(x, 2 * k) >= 0);
+    assert(pow(x, 2 * k) == pow(x, k) * pow(x, k)) by {
+      lemma_pow_adds(x, k, k);
+    }
+    let y = pow(x, k);
+    if (y >= 0){
+      lemma_mul_nonnegative(y, y);
+    }
+    else {
+      lemma_mul_nonnegative(-y, -y);
+      lemma_mul_cancels_negatives(y, y)
     }
 }
 

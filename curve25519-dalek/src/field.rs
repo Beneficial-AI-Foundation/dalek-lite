@@ -269,6 +269,11 @@ impl FieldElement {
             };
 
             // Use our clean lemma to prove t3 = x^11 and all intermediate steps
+            // The lemma proves:
+            // - as_nat(t0_sq.limbs) % p() == pow(base, 4) as nat % p()
+            // - as_nat(t1.limbs) % p() == pow(base, 8) as nat % p()
+            // - as_nat(t2.limbs) % p() == pow(base, 9) as nat % p()
+            // - as_nat(t3.limbs) % p() == pow(base, 11) as nat % p()
             lemma_pow22501_prove_t3(
                 self.limbs,
                 t0.limbs,
@@ -277,12 +282,6 @@ impl FieldElement {
                 t2.limbs,
                 t3.limbs,
             );
-
-            // The lemma proves:
-            // - as_nat(t0_sq.limbs) % p() == pow(base, 4) as nat % p()
-            // - as_nat(t1.limbs) % p() == pow(base, 8) as nat % p()
-            // - as_nat(t2.limbs) % p() == pow(base, 9) as nat % p()
-            // - as_nat(t3.limbs) % p() == pow(base, 11) as nat % p()
 
             let base = as_nat(self.limbs) as int;
 

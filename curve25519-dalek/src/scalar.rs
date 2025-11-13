@@ -1608,8 +1608,6 @@ impl Scalar {
         proof {
             // Assert that all scratch elements have bounded limbs
             assume(forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]));
-            // acc must be canonical before inversion
-            assume(to_nat(&acc.limbs) < group_order());
         }
 
         // acc is nonzero iff all inputs are nonzero

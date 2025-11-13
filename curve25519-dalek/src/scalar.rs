@@ -2701,7 +2701,6 @@ impl UnpackedScalar {
 
         requires
             limbs_bounded(&self),
-            to_nat(&self.limbs) < group_order(),
         ensures
             limbs_bounded(&result),
             (to_nat(&result.limbs) * to_nat(&self.limbs)) % group_order() == (montgomery_radix()

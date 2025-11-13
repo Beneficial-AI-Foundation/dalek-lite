@@ -366,6 +366,234 @@ pub proof fn lemma_word_from_bytes_bound(bytes: &[u8; 64], word_idx: int)
 
 }
 
+pub proof fn lemma_words_to_nat_gen_u64_bound_le(words: &[u64; 8], count: int)
+    requires
+        0 <= count <= 8,
+        forall|k: int| 0 <= k < 8 ==> words[k] < pow2(64),
+    ensures
+        words_to_nat_gen_u64(words, count, 64) <= pow2((count * 64) as nat) - 1,
+    decreases count
+{
+    reveal_with_fuel(words_to_nat_gen_u64, 9);
+
+    if count == 0 {
+        assert(words_to_nat_gen_u64(words, 0, 64) == 0);
+        lemma2_to64();
+        assert(pow2(0) == 1);
+        assert(words_to_nat_gen_u64(words, 0, 64) <= pow2(0) - 1);
+    } else {
+        let idx = count - 1;
+        lemma_words_to_nat_gen_u64_bound_le(words, idx);
+
+        assert(0 <= idx < 8);
+
+        let prefix = words_to_nat_gen_u64(words, idx, 64);
+        let word_val = words[idx] as nat;
+
+        assert(word_val < pow2(64)) by {
+            assert(words[idx] < pow2(64));
+        };
+
+        let term = word_val * pow2((idx * 64) as nat);
+        assert(term <= (pow2(64) - 1) * pow2((idx * 64) as nat)) by {
+            assert(word_val <= pow2(64) - 1) by {
+                assert(word_val < pow2(64));
+            };
+            lemma_mul_upper_bound(
+                word_val as int,
+                (pow2(64) - 1) as int,
+                pow2((idx * 64) as nat) as int,
+                pow2((idx * 64) as nat) as int,
+            );
+        };
+
+        assert(count - 1 == idx);
+        assert(words_to_nat_gen_u64(words, count, 64)
+            == (words[count - 1] as nat) * pow2(((count - 1) * 64) as nat)
+               + words_to_nat_gen_u64(words, count - 1, 64));
+        assert(words[count - 1] == words[idx]);
+        assert(words_to_nat_gen_u64(words, count - 1, 64) == prefix);
+        assert(((count - 1) * 64) as nat == (idx * 64) as nat);
+        assert(words_to_nat_gen_u64(words, count, 64)
+            == (words[idx] as nat) * pow2((idx * 64) as nat) + prefix);
+        assert(word_val * pow2((idx * 64) as nat) == term);
+        assert(words_to_nat_gen_u64(words, count, 64) == term + prefix);
+        assert(words_to_nat_gen_u64(words, count, 64) <= pow2((count * 64) as nat) - 1) by {
+            let pow_prefix = pow2((idx * 64) as nat) as int;
+            let pow_total = pow2((count * 64) as nat) as int;
+            let pow64 = pow2(64) as int;
+            let word_i = word_val as int;
+            let term_i = term as int;
+            let prefix_i = prefix as int;
+            let words_i = words_to_nat_gen_u64(words, count, 64) as int;
+
+            assert(term_i == word_i * pow_prefix) by {
+                assert(term == word_val * pow2((idx * 64) as nat));
+                assert(term_i == term as int);
+                assert(word_i == word_val as int);
+                assert(pow_prefix == pow2((idx * 64) as nat) as int);
+            };
+
+            assert(count == idx + 1) by {
+                assert(count - 1 == idx);
+            };
+            assert(count * 64 == idx * 64 + 64) by {
+                assert(count == idx + 1);
+            };
+            assert((count * 64) as nat == (idx * 64 + 64) as nat) by {
+                assert(count * 64 == idx * 64 + 64);
+            };
+            assert(((idx * 64) as nat) + 64 == (idx * 64 + 64) as nat) by {
+                assert((idx * 64) + 64 == idx * 64 + 64);
+            };
+
+            assert(pow_total == pow_prefix * pow64) by {
+                lemma_pow2_adds((idx * 64) as nat, 64);
+                calc! {
+                    (==)
+                    pow_total;
+                    { }
+                    pow2((count * 64) as nat) as int;
+                    {
+                        assert((count * 64) as nat == (idx * 64 + 64) as nat);
+                    }
+                    pow2((idx * 64 + 64) as nat) as int;
+                    {
+                        assert(((idx * 64) as nat) + 64 == (idx * 64 + 64) as nat);
+                    }
+                    pow2(((idx * 64) as nat) + 64) as int;
+                    {
+                        assert(pow2(((idx * 64) as nat) + 64)
+                            == pow2((idx * 64) as nat) * pow2(64));
+                    }
+                    (pow2((idx * 64) as nat) * pow2(64)) as int;
+                    {
+                        assert(pow2((idx * 64) as nat) as int == pow_prefix);
+                        assert(pow2(64) as int == pow64);
+                    }
+                    pow_prefix * pow64;
+                }
+            };
+
+            assert(word_i <= pow64 - 1) by {
+                assert(word_val < pow2(64));
+                assert(word_val <= pow2(64) - 1);
+                assert(word_i == word_val as int);
+                assert(pow64 - 1 == (pow2(64) - 1) as int);
+            };
+
+            assert(prefix_i <= pow_prefix - 1) by {
+                assert(words_to_nat_gen_u64(words, idx, 64) <= pow2((idx * 64) as nat) - 1);
+                assert(prefix == words_to_nat_gen_u64(words, idx, 64));
+                assert(prefix_i == prefix as int);
+                assert(pow_prefix - 1 == (pow2((idx * 64) as nat) - 1) as int);
+            };
+
+            let diff = pow_total - 1 - (term_i + prefix_i);
+
+            assert(diff == (pow64 - 1 - word_i) * pow_prefix + (pow_prefix - 1 - prefix_i)) by {
+                calc! {
+                    (==)
+                    diff;
+                    { }
+                    pow_total - 1 - (term_i + prefix_i);
+                    {
+                        assert(pow_total == pow_prefix * pow64);
+                        assert(term_i == word_i * pow_prefix);
+                    }
+                    pow_prefix * pow64 - 1 - (word_i * pow_prefix + prefix_i);
+                    {
+                        calc! {
+                            (==)
+                            pow_prefix * pow64 - 1 - (word_i * pow_prefix + prefix_i);
+                            {
+                                assert(pow_prefix * pow64 - 1 - (word_i * pow_prefix + prefix_i)
+                                    == pow_prefix * pow64 - 1 - word_i * pow_prefix - prefix_i);
+                            }
+                            pow_prefix * pow64 - 1 - word_i * pow_prefix - prefix_i;
+                            {
+                                assert(pow_prefix * pow64 - 1 - word_i * pow_prefix - prefix_i
+                                    == pow_prefix * pow64 - word_i * pow_prefix - (prefix_i + 1));
+                            }
+                            pow_prefix * pow64 - word_i * pow_prefix - (prefix_i + 1);
+                        }
+                    }
+                    pow_prefix * pow64 - word_i * pow_prefix - (prefix_i + 1);
+                    {
+                        lemma_mul_is_distributive_sub(pow_prefix, pow64, word_i);
+                        assert(pow_prefix * pow64 - pow_prefix * word_i
+                            == pow_prefix * (pow64 - word_i));
+                        assert(word_i * pow_prefix == pow_prefix * word_i) by {
+                            lemma_mul_is_commutative(word_i, pow_prefix);
+                        };
+                    }
+                    pow_prefix * (pow64 - word_i) - (prefix_i + 1);
+                    {
+                        assert(pow64 - word_i == (pow64 - 1 - word_i) + 1);
+                    }
+                    pow_prefix * ((pow64 - 1 - word_i) + 1) - (prefix_i + 1);
+                    {
+                        lemma_mul_is_distributive_add(pow_prefix, pow64 - 1 - word_i, 1 as int);
+                        assert(pow_prefix * ((pow64 - 1 - word_i) + 1)
+                            == pow_prefix * (pow64 - 1 - word_i) + pow_prefix);
+                    }
+                    pow_prefix * (pow64 - 1 - word_i) + pow_prefix - (prefix_i + 1);
+                    {
+                        assert(pow_prefix - (prefix_i + 1) == pow_prefix - 1 - prefix_i);
+                        lemma_mul_is_commutative(pow_prefix, pow64 - 1 - word_i);
+                    }
+                    (pow64 - 1 - word_i) * pow_prefix + (pow_prefix - 1 - prefix_i);
+                }
+            };
+
+            assert(pow64 - 1 - word_i >= 0) by {
+                assert(word_i <= pow64 - 1);
+            };
+
+            assert(pow_prefix - 1 - prefix_i >= 0) by {
+                assert(prefix_i <= pow_prefix - 1);
+            };
+
+            assert(pow_prefix >= 0) by {
+                lemma_pow2_pos((idx * 64) as nat);
+                assert(pow_prefix == pow2((idx * 64) as nat) as int);
+            };
+
+            assert(diff >= 0) by {
+                assert((pow64 - 1 - word_i) * pow_prefix >= 0) by {
+                    lemma_mul_inequality(0, pow64 - 1 - word_i, pow_prefix);
+                };
+                assert(pow_prefix - 1 - prefix_i >= 0);
+            };
+
+            assert(term_i + prefix_i <= pow_total - 1) by {
+                assert(diff >= 0);
+            };
+
+            assert(words_i == term_i + prefix_i) by {
+                assert(words_to_nat_gen_u64(words, count, 64) == term + prefix);
+                assert(term_i == term as int);
+                assert(prefix_i == prefix as int);
+            };
+
+            assert(words_i <= (pow2((count * 64) as nat) - 1) as int) by {
+                assert(words_i == term_i + prefix_i);
+                assert(pow_total == pow2((count * 64) as nat) as int);
+                assert(term_i + prefix_i <= pow_total - 1);
+            };
+
+            assert(words_to_nat_gen_u64(words, count, 64) as int == words_i);
+            assert((pow2((count * 64) as nat) - 1) as int == pow_total - 1);
+
+            assert(words_to_nat_gen_u64(words, count, 64)
+                <= pow2((count * 64) as nat) - 1) by {
+                assert(words_to_nat_gen_u64(words, count, 64) as int
+                    <= (pow2((count * 64) as nat) - 1) as int);
+            };
+        };
+    }
+}
+
 pub proof fn lemma_words_to_nat_gen_u64_prefix_matches_bytes(
     words: &[u64; 8],
     bytes: &[u8; 64],
@@ -399,6 +627,296 @@ pub proof fn lemma_words_to_nat_gen_u64_prefix_matches_bytes(
             words_from_bytes_to_nat(bytes, count);
         }
     }
+}
+
+pub proof fn lemma_word_split_low4(word: u64)
+    ensures
+        pow2(4) * ((word >> 4) as nat) + (word & 0xf) as nat == word as nat
+{
+    lemma2_to64();
+    lemma_low_bits_mask_values();
+    shift_is_pow2(4);
+
+    let pow4 = pow2(4);
+    let mask: u64 = 0xf;
+
+    assert(pow4 == 16);
+    assert(low_bits_mask(4) == mask as nat);
+
+    lemma_pow2_pos(4);
+
+    lemma_u64_shr_is_div(word, 4);
+    lemma_u64_low_bits_mask_is_mod(word, 4);
+    lemma_fundamental_div_mod(word as int, pow4 as int);
+
+    let quotient = word as nat / pow4;
+    let remainder = word as nat % pow4;
+
+    assert((word >> 4) as nat == quotient) by {
+        assert((word >> 4) as nat == word as nat / pow4);
+    }
+
+    assert(low_bits_mask(4) as u64 == mask) by {
+        assert(low_bits_mask(4) == mask as nat);
+        assert((mask as nat) as u64 == mask) by (bit_vector);
+    }
+
+    assert((word & mask) as nat == remainder) by {
+        assert(word & mask == word % (1u64 << 4)) by {
+            assert(word & mask == word & (low_bits_mask(4) as u64));
+            assert(word & (low_bits_mask(4) as u64) == word % (pow2(4) as u64));
+            assert(pow2(4) as u64 == 1u64 << 4) by {
+                shift_is_pow2(4);
+            }
+        };
+        assert((word % (1u64 << 4)) as nat == word as nat % pow4) by {
+            assert((1u64 << 4) as nat == pow4) by {
+                shift_is_pow2(4);
+            }
+        }
+    }
+
+    assert(word as nat == quotient * pow4 + remainder);
+
+    calc! {
+        (==)
+        pow4 * ((word >> 4) as nat) + (word & mask) as nat; {
+            assert((word >> 4) as nat == quotient);
+            assert((word & mask) as nat == remainder);
+        }
+        pow4 * quotient + remainder; {
+            lemma_mul_is_commutative(pow4 as int, quotient as int);
+        }
+        quotient * pow4 + remainder; {
+            assert(word as nat == quotient * pow4 + remainder);
+        }
+        word as nat;
+    }
+}
+
+pub proof fn lemma_words_from_bytes_to_nat_wide(bytes: &[u8; 64])
+    ensures
+        words_from_bytes_to_nat(bytes, 8) ==
+            word_from_bytes(bytes, 0) +
+            pow2(64) * word_from_bytes(bytes, 1) +
+            pow2(128) * word_from_bytes(bytes, 2) +
+            pow2(192) * word_from_bytes(bytes, 3) +
+            pow2(256) * word_from_bytes(bytes, 4) +
+            pow2(320) * word_from_bytes(bytes, 5) +
+            pow2(384) * word_from_bytes(bytes, 6) +
+            pow2(448) * word_from_bytes(bytes, 7),
+{
+    reveal_with_fuel(words_from_bytes_to_nat, 9);
+
+    let term0 = word_from_bytes(bytes, 0);
+    let term1 = word_from_bytes(bytes, 1) * pow2((1 * 64) as nat);
+    let term2 = word_from_bytes(bytes, 2) * pow2((2 * 64) as nat);
+    let term3 = word_from_bytes(bytes, 3) * pow2((3 * 64) as nat);
+    let term4 = word_from_bytes(bytes, 4) * pow2((4 * 64) as nat);
+    let term5 = word_from_bytes(bytes, 5) * pow2((5 * 64) as nat);
+    let term6 = word_from_bytes(bytes, 6) * pow2((6 * 64) as nat);
+    let term7 = word_from_bytes(bytes, 7) * pow2((7 * 64) as nat);
+
+    assert(pow2((7 * 64) as nat) == pow2(448));
+    assert(pow2((6 * 64) as nat) == pow2(384));
+    assert(pow2((5 * 64) as nat) == pow2(320));
+    assert(pow2((4 * 64) as nat) == pow2(256));
+    assert(pow2((3 * 64) as nat) == pow2(192));
+    assert(pow2((2 * 64) as nat) == pow2(128));
+    assert(pow2((1 * 64) as nat) == pow2(64));
+    assert(pow2((0 * 64) as nat) == pow2(0));
+    assert(pow2(0) == 1) by {
+        shift_is_pow2(0);
+        assert(1u64 << 0 == 1u64) by (bit_vector);
+    }
+
+    calc! {
+        (==)
+        words_from_bytes_to_nat(bytes, 8);
+        {
+            assert(words_from_bytes_to_nat(bytes, 8)
+                == words_from_bytes_to_nat(bytes, 7)
+                + word_from_bytes(bytes, 7) * pow2((7 * 64) as nat));
+            assert(word_from_bytes(bytes, 7) * pow2((7 * 64) as nat) == term7);
+        }
+        words_from_bytes_to_nat(bytes, 7) + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 7)
+                == words_from_bytes_to_nat(bytes, 6)
+                + word_from_bytes(bytes, 6) * pow2((6 * 64) as nat));
+            assert(word_from_bytes(bytes, 6) * pow2((6 * 64) as nat) == term6);
+        }
+        words_from_bytes_to_nat(bytes, 6) + term6 + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 6)
+                == words_from_bytes_to_nat(bytes, 5)
+                + word_from_bytes(bytes, 5) * pow2((5 * 64) as nat));
+            assert(word_from_bytes(bytes, 5) * pow2((5 * 64) as nat) == term5);
+        }
+        words_from_bytes_to_nat(bytes, 5) + term5 + term6 + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 5)
+                == words_from_bytes_to_nat(bytes, 4)
+                + word_from_bytes(bytes, 4) * pow2((4 * 64) as nat));
+            assert(word_from_bytes(bytes, 4) * pow2((4 * 64) as nat) == term4);
+        }
+        words_from_bytes_to_nat(bytes, 4) + term4 + term5 + term6 + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 4)
+                == words_from_bytes_to_nat(bytes, 3)
+                + word_from_bytes(bytes, 3) * pow2((3 * 64) as nat));
+            assert(word_from_bytes(bytes, 3) * pow2((3 * 64) as nat) == term3);
+        }
+        words_from_bytes_to_nat(bytes, 3) + term3 + term4 + term5 + term6 + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 3)
+                == words_from_bytes_to_nat(bytes, 2)
+                + word_from_bytes(bytes, 2) * pow2((2 * 64) as nat));
+            assert(word_from_bytes(bytes, 2) * pow2((2 * 64) as nat) == term2);
+        }
+        words_from_bytes_to_nat(bytes, 2) + term2 + term3 + term4 + term5 + term6 + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 2)
+                == words_from_bytes_to_nat(bytes, 1)
+                + word_from_bytes(bytes, 1) * pow2((1 * 64) as nat));
+            assert(word_from_bytes(bytes, 1) * pow2((1 * 64) as nat) == term1);
+        }
+        words_from_bytes_to_nat(bytes, 1) + term1 + term2 + term3 + term4 + term5 + term6 + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 1)
+                == words_from_bytes_to_nat(bytes, 0)
+                + word_from_bytes(bytes, 0) * pow2((0 * 64) as nat));
+            assert(word_from_bytes(bytes, 0) * pow2((0 * 64) as nat) == term0);
+        }
+        words_from_bytes_to_nat(bytes, 0) + term0 + term1 + term2 + term3 + term4 + term5 + term6 + term7;
+        {
+            assert(words_from_bytes_to_nat(bytes, 0) == 0);
+        }
+        term0 + term1 + term2 + term3 + term4 + term5 + term6 + term7;
+    }
+
+    assert(term1 == pow2(64) * word_from_bytes(bytes, 1)) by {
+        calc! {
+            (==)
+            term1;
+            {}
+            word_from_bytes(bytes, 1) * pow2((1 * 64) as nat);
+            {
+                lemma_mul_is_commutative(word_from_bytes(bytes, 1) as int, pow2((1 * 64) as nat) as int);
+            }
+            pow2((1 * 64) as nat) * word_from_bytes(bytes, 1);
+            {
+                assert(pow2((1 * 64) as nat) == pow2(64));
+            }
+            pow2(64) * word_from_bytes(bytes, 1);
+        }
+    };
+    assert(term2 == pow2(128) * word_from_bytes(bytes, 2)) by {
+        calc! {
+            (==)
+            term2;
+            {}
+            word_from_bytes(bytes, 2) * pow2((2 * 64) as nat);
+            {
+                lemma_mul_is_commutative(word_from_bytes(bytes, 2) as int, pow2((2 * 64) as nat) as int);
+            }
+            pow2((2 * 64) as nat) * word_from_bytes(bytes, 2);
+            {
+                assert(pow2((2 * 64) as nat) == pow2(128));
+            }
+            pow2(128) * word_from_bytes(bytes, 2);
+        }
+    };
+    assert(term3 == pow2(192) * word_from_bytes(bytes, 3)) by {
+        calc! {
+            (==)
+            term3;
+            {}
+            word_from_bytes(bytes, 3) * pow2((3 * 64) as nat);
+            {
+                lemma_mul_is_commutative(word_from_bytes(bytes, 3) as int, pow2((3 * 64) as nat) as int);
+            }
+            pow2((3 * 64) as nat) * word_from_bytes(bytes, 3);
+            {
+                assert(pow2((3 * 64) as nat) == pow2(192));
+            }
+            pow2(192) * word_from_bytes(bytes, 3);
+        }
+    };
+    assert(term4 == pow2(256) * word_from_bytes(bytes, 4)) by {
+        calc! {
+            (==)
+            term4;
+            {}
+            word_from_bytes(bytes, 4) * pow2((4 * 64) as nat);
+            {
+                lemma_mul_is_commutative(word_from_bytes(bytes, 4) as int, pow2((4 * 64) as nat) as int);
+            }
+            pow2((4 * 64) as nat) * word_from_bytes(bytes, 4);
+            {
+                assert(pow2((4 * 64) as nat) == pow2(256));
+            }
+            pow2(256) * word_from_bytes(bytes, 4);
+        }
+    };
+    assert(term5 == pow2(320) * word_from_bytes(bytes, 5)) by {
+        calc! {
+            (==)
+            term5;
+            {}
+            word_from_bytes(bytes, 5) * pow2((5 * 64) as nat);
+            {
+                lemma_mul_is_commutative(word_from_bytes(bytes, 5) as int, pow2((5 * 64) as nat) as int);
+            }
+            pow2((5 * 64) as nat) * word_from_bytes(bytes, 5);
+            {
+                assert(pow2((5 * 64) as nat) == pow2(320));
+            }
+            pow2(320) * word_from_bytes(bytes, 5);
+        }
+    };
+    assert(term6 == pow2(384) * word_from_bytes(bytes, 6)) by {
+        calc! {
+            (==)
+            term6;
+            {}
+            word_from_bytes(bytes, 6) * pow2((6 * 64) as nat);
+            {
+                lemma_mul_is_commutative(word_from_bytes(bytes, 6) as int, pow2((6 * 64) as nat) as int);
+            }
+            pow2((6 * 64) as nat) * word_from_bytes(bytes, 6);
+            {
+                assert(pow2((6 * 64) as nat) == pow2(384));
+            }
+            pow2(384) * word_from_bytes(bytes, 6);
+        }
+    };
+    assert(term7 == pow2(448) * word_from_bytes(bytes, 7)) by {
+        calc! {
+            (==)
+            term7;
+            {}
+            word_from_bytes(bytes, 7) * pow2((7 * 64) as nat);
+            {
+                lemma_mul_is_commutative(word_from_bytes(bytes, 7) as int, pow2((7 * 64) as nat) as int);
+            }
+            pow2((7 * 64) as nat) * word_from_bytes(bytes, 7);
+            {
+                assert(pow2((7 * 64) as nat) == pow2(448));
+            }
+            pow2(448) * word_from_bytes(bytes, 7);
+        }
+    };
+
+    assert(term0 + term1 + term2 + term3 + term4 + term5 + term6 + term7
+        == word_from_bytes(bytes, 0)
+            + pow2(64) * word_from_bytes(bytes, 1)
+            + pow2(128) * word_from_bytes(bytes, 2)
+            + pow2(192) * word_from_bytes(bytes, 3)
+            + pow2(256) * word_from_bytes(bytes, 4)
+            + pow2(320) * word_from_bytes(bytes, 5)
+            + pow2(384) * word_from_bytes(bytes, 6)
+            + pow2(448) * word_from_bytes(bytes, 7));
 }
 
 pub proof fn lemma_52_52(x: u64, y: u64)

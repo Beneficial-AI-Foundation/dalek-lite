@@ -20,6 +20,7 @@ use zeroize::Zeroize;
 
 use crate::constants;
 
+use crate::lemmas::scalar_montgomery_lemmas::lemma_from_montgomery_is_product_with_one;
 #[allow(unused_imports)]
 use crate::lemmas::core_lemmas::*;
 #[allow(unused_imports)]

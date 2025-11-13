@@ -2571,12 +2571,9 @@ fn square_multiply(
     requires
         limbs_bounded(old(y)),  // Use old() for &mut parameters in requires
         limbs_bounded(x),  // No old() needed for & parameters
-        to_nat(&old(y).limbs) < group_order(),
-        to_nat(&x.limbs) < group_order(),
     ensures
         limbs_bounded(y),
         limbs_bounded(x),
-        to_nat(&y.limbs) < group_order(),
         (to_nat(&y.limbs) * montgomery_radix()) % group_order() == (pow(
             to_nat(&old(y).limbs) as int,
             pow2(squarings as nat),
@@ -2588,7 +2585,6 @@ fn square_multiply(
         invariant
             limbs_bounded(y),
             limbs_bounded(x),
-            to_nat(&y.limbs) < group_order(),
             i <= squarings,
             pow(to_nat(&old(y).limbs) as int, pow2(i as nat)) < group_order() as int,
     {
@@ -2600,7 +2596,6 @@ fn square_multiply(
         }
         *y = y.montgomery_square();
 
-        assume(to_nat(&y.limbs) < group_order());
     }
     *y = UnpackedScalar::montgomery_mul(y, x);
     proof {

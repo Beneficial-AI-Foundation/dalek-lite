@@ -1245,7 +1245,7 @@ pub mod test {
     }
 
     proptest! {
-        #![proptest_config(proptest::test_runner::Config::with_cases(10000))]
+        #![proptest_config(proptest::test_runner::Config::with_cases(1000000))]
 
         /// Test 1: Input is product of TWO bounded scalars (both may be non-canonical)
         /// Spec says: if input = mul(bounded1, bounded2) then Montgomery property and limbs_bounded hold

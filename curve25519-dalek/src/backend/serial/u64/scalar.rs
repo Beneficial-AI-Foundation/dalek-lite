@@ -1267,7 +1267,6 @@ pub mod test {
 
         /// Property test with ONE bounded scalar and ONE canonical scalar
         /// This tests whether having just one canonical input is sufficient
-        /// (spoiler: it is not, this test should also fail)
         #[test]
         fn prop_montgomery_reduce_one_canonical(limbs in arb_nine_limbs_one_canonical()) {
             // Call montgomery_reduce

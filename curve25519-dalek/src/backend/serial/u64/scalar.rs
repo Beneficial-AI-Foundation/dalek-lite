@@ -36,8 +36,6 @@ use vstd::arithmetic::power2::*;
 use vstd::calc;
 use vstd::prelude::*;
 
-// TODO Fix warning about triggers
-
 verus! {
 
 /// The `Scalar52` struct represents an element in

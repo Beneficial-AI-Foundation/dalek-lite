@@ -54,18 +54,29 @@ proof fn lemma_mul_mod_right_eq(a: nat, b: nat, c: nat, n: nat)
     ensures (a * b) % n == (a * c) % n
 {
     // If b ≡ c (mod n), then a*b ≡ a*c (mod n)
-    // This is a standard property of modular arithmetic:
-    // If b ≡ c (mod n), then for any a, we have a*b ≡ a*c (mod n)
+    // Strategy: Convert to int and use vstd lemmas
     
-    // Key insight: (a * b) % n = (a * (b % n)) % n for all a, b, n
-    // This is because if b = q*n + r where r = b%n, then
-    // a*b = a*(q*n + r) = a*q*n + a*r
-    // So (a*b) % n = (a*r) % n = (a*(b%n)) % n
-    assume((a * b) % n == (a * (b % n)) % n);
-    assume((a * c) % n == (a * (c % n)) % n);
+    // Cast to int for using vstd lemmas
+    let a_int = a as int;
+    let b_int = b as int;
+    let c_int = c as int;
+    let n_int = n as int;
     
-    // Now since b % n == c % n, we have:
-    // (a * b) % n = (a * (b % n)) % n = (a * (c % n)) % n = (a * c) % n
+    // Use lemma_mul_mod_noop_right from vstd:
+    // lemma_mul_mod_noop_right(z: int, x: int, n: int)
+    // requires n > 0, x % n == (x % n) % n  (always true)
+    // ensures (z * x) % n == (z * (x % n)) % n
+    
+    lemma_mul_mod_noop_right(a_int, b_int, n_int);
+    lemma_mul_mod_noop_right(a_int, c_int, n_int);
+    
+    // Now we have:
+    // (a * b) % n == (a * (b % n)) % n
+    // (a * c) % n == (a * (c % n)) % n
+    
+    // Since b % n == c % n (from requires), we have (b % n) == (c % n)
+    // Therefore (a * (b % n)) % n == (a * (c % n)) % n
+    // Which means (a * b) % n == (a * c) % n
 }
 
 

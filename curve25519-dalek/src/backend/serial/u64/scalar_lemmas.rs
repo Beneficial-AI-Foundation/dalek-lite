@@ -23,29 +23,25 @@ use super::common_verus::shift_lemmas::*;
 
 verus! {
 
+// Specialized Montgomery variant of lemma_mul_mod.
+// We don't need a fully general modular-cancellation lemma here — the
+// Montgomery radix `montgomery_radix()` is invertible modulo the curve
+// group order, so we can delegate to the Montgomery-specific cancellation
+// lemma implemented below.
 pub proof fn lemma_mul_mod(x: nat, r: nat, a: nat, rr: nat, n: nat)
     requires
-        #[trigger] ((x * r) % n) == #[trigger] ((a * rr) % n),
-        #[trigger] (rr % n) == #[trigger] ((r * r) % n),
+        // only accept the Montgomery-specific case
+        r == montgomery_radix(),
+        n == group_order(),
+        ((x * r) % n) == ((a * rr) % n),
+        (rr % n) == ((r * r) % n),
         n > 0
     ensures
-        #[trigger] (x % n) == #[trigger] ((a * r) % n)
+        (x % n) == ((a * r) % n)
 {
-    // Strategy: Use properties of modular arithmetic:
-    // 1. (x * r) ≡ (a * rr) (mod n)
-    // 2. rr ≡ r² (mod n)
-    // 3. Therefore x ≡ a * r (mod n)
-    
-    // Step 1: From rr % n == (r * r) % n, we get:
-    // (a * rr) % n == (a * (r * r)) % n
-    lemma_mul_mod_right_eq(a, rr, r * r, n);
-    
-    // Step 2: Therefore (x * r) % n == (a * (r * r)) % n == ((a * r) * r) % n
-    // which means (x * r) % n == ((a * r) * r) % n
-    
-    // Step 3: This implies x % n == (a * r) % n by modular cancellation
-    // (This requires that gcd(r,n) = 1 which is true for Montgomery arithmetic)
-    assume(false); // TODO: Prove modular cancellation property for Montgomery form
+    // Delegate to the Montgomery-specific cancellation lemma which uses the
+    // precomputed inverse of the Montgomery radix.
+    lemma_cancel_mul_montgomery_mod(x, a, rr);
 }
 
 // Helper lemma for modular arithmetic
@@ -1547,8 +1543,6 @@ pub(crate) proof fn lemma_rr_equals_radix_squared()
     }
 }
 
-/// Cancels the montgomery_radix factor from both sides of a modular equation
-/// This is the key lemma for proving as_montgomery correctness
 pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     requires
         ((x * montgomery_radix()) % group_order()) == ((a * rr) % group_order()),
@@ -1557,7 +1551,7 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     ensures
         (x % group_order()) == ((a * montgomery_radix()) % group_order()),
 {
-    // Step 1: Substitute rr with r*r using modular multiplication properties
+    // 1. Substitute rr with r*r
     lemma_mul_mod_noop_right(a as int, rr as int, group_order() as int);
     lemma_mul_mod_noop_right(
         a as int,
@@ -1565,12 +1559,20 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
         group_order() as int,
     );
 
-    // Now we have: (x * r) % n == (a * r * r) % n
+    // let lhs = (x * montgomery_radix()) % group_order();
+    // let step1 = (a * rr) % group_order();
+    // let step2 = (a * (rr % group_order())) % group_order();
+    // let step3 = (a * ((montgomery_radix() * montgomery_radix()) % group_order())) % group_order();
+    // let step4 = (a * (montgomery_radix() * montgomery_radix())) % group_order();
+    // let rhs = (a * montgomery_radix() * montgomery_radix()) % group_order();
     lemma_mul_is_associative(a as int, montgomery_radix() as int, montgomery_radix() as int);
+
     assert((x * montgomery_radix()) % group_order() == (a * montgomery_radix() * montgomery_radix())
         % group_order());
 
-    // Step 2: Multiply both sides by inv_montgomery_radix()
+    // 2. use the inverse to remove r from both sides
+
+    // Step 1: Multiply both sides by inv_montgomery_radix() using modular properties
     lemma_mul_mod_noop_right(
         inv_montgomery_radix() as int,
         (x * montgomery_radix()) as int,
@@ -1585,7 +1587,8 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     assert((x * montgomery_radix() * inv_montgomery_radix()) % group_order() == (a
         * montgomery_radix() * montgomery_radix() * inv_montgomery_radix()) % group_order());
 
-    // Step 3: Use associativity to group (R * R^-1)
+    // Step 2: Group (R * R^-1) together using associativity
+    // x * (R * R^-1) and (a * R) * (R * R^-1)
     lemma_mul_is_associative(x as int, montgomery_radix() as int, inv_montgomery_radix() as int);
     lemma_mul_is_associative(
         (a * montgomery_radix()) as int,
@@ -1596,10 +1599,10 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     assert((x * (montgomery_radix() * inv_montgomery_radix())) % group_order() == ((a
         * montgomery_radix()) * (montgomery_radix() * inv_montgomery_radix())) % group_order());
 
-    // Step 4: Apply lemma_montgomery_inverse to substitute (R * R^-1) % n = 1
+    // Step 3: Use lemma_montgomery_inverse to substitute (R * R^-1) % n = 1
     lemma_montgomery_inverse();
 
-    // Step 5: Simplify using (R * R^-1) ≡ 1
+    // Step 4: Substitute and simplify using (R * R^-1) ≡ 1
     lemma_mul_mod_noop_right(
         x as int,
         (montgomery_radix() * inv_montgomery_radix()) as int,
@@ -1610,6 +1613,7 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
         (montgomery_radix() * inv_montgomery_radix()) as int,
         group_order() as int,
     );
+
 }
 
 } // verus!

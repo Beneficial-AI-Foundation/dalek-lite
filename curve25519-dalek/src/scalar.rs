@@ -783,18 +783,16 @@ impl Neg for &Scalar {
         UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack()
         </ORIGINAL CODE> */
         /* <MODIFIED CODE> */
-        let unpacked_self = self.unpack();
 
         proof {
             // Preconditions for mul_internal and sub
             assume(limbs_bounded(&constants::R));
             assume(limbs_bounded(&UnpackedScalar::ZERO));
             // Preconditions for montgomery_reduce
-            assume(to_nat(&unpacked_self.limbs) < group_order());
-            assume(to_nat(&constants::R.limbs) < group_order());
+            assert(to_nat(&constants::R.limbs) < group_order()) by {lemma_r_le_l(constants::R);};
         }
 
-        let self_R = UnpackedScalar::mul_internal(&unpacked_self, &constants::R);
+        let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
 
         proof {

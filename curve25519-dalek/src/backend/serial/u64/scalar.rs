@@ -1222,9 +1222,50 @@ pub mod test {
         }
     }
 
+    /// Generate random 9-limb array from product of one bounded scalar and one canonical scalar
+    /// This tests a weaker precondition: one scalar just bounded, other canonical
+    fn arb_nine_limbs_one_canonical() -> impl Strategy<Value = [u128; 9]> {
+        (arb_scalar52(), arb_canonical_scalar52())
+            .prop_map(|(a, b)| {
+                Scalar52::mul_internal(&a, &b)
+            })
+    }
+
     proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(1000000))]
+
         #[test]
         fn prop_montgomery_reduce_spec(limbs in arb_nine_limbs()) {
+            // Call montgomery_reduce
+            let result = Scalar52::montgomery_reduce(&limbs);
+
+            // Convert to BigUint using executable spec functions
+            let result_nat = to_nat_exec(&result.limbs);
+            let limbs_nat = slice128_to_nat_exec(&limbs);
+            let l = group_order_exec();
+            let r = montgomery_radix_exec();
+
+            // Check the spec postconditions:
+            // 1. (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs) % group_order()
+            let lhs = (&result_nat * &r) % &l;
+            let rhs = &limbs_nat % &l;
+            prop_assert_eq!(lhs, rhs,
+                "Montgomery reduce spec violated: (result * R) mod L != limbs mod L");
+
+            // 2. limbs_bounded(&result)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // 3. to_nat(&result.limbs) < group_order()
+            prop_assert!(&result_nat < &l,
+                "Result not in canonical form (>= L)");
+        }
+
+        /// Property test with ONE bounded scalar and ONE canonical scalar
+        /// This tests whether having just one canonical input is sufficient
+        /// (spoiler: it is not, this test should also fail)
+        #[test]
+        fn prop_montgomery_reduce_one_canonical(limbs in arb_nine_limbs_one_canonical()) {
             // Call montgomery_reduce
             let result = Scalar52::montgomery_reduce(&limbs);
 

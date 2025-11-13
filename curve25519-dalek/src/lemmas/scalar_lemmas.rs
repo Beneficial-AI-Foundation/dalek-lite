@@ -471,13 +471,13 @@ pub proof fn lemma_montgomery_inverse()
 pub(crate) proof fn lemma_r_le_l(r: Scalar52)
     requires
         r == (Scalar52 {
-    limbs: [
-        0x000f48bd6721e6ed,
-        0x0003bab5ac67e45a,
-        0x000fffffeb35e51b,
-        0x000fffffffffffff,
-        0x00000fffffffffff,
-    ],
+            limbs: [
+                0x000f48bd6721e6ed,
+                0x0003bab5ac67e45a,
+                0x000fffffeb35e51b,
+                0x000fffffffffffff,
+                0x00000fffffffffff,
+            ],
         }),
     ensures
         to_nat(&r.limbs) < group_order(),
@@ -510,7 +510,7 @@ pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
     ensures
         to_nat(&rr.limbs) % group_order() == (montgomery_radix() * montgomery_radix())
             % group_order(),
-    // TODO Make this into separate lemma
+        // TODO Make this into separate lemma
         to_nat(&rr.limbs) < group_order(),
 {
     lemma_five_limbs_equals_to_nat(&rr.limbs);

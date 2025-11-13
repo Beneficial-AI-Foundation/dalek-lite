@@ -783,13 +783,14 @@ impl Neg for &Scalar {
         UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack()
         </ORIGINAL CODE> */
         /* <MODIFIED CODE> */
-
         proof {
             // Preconditions for mul_internal and sub
             assume(limbs_bounded(&constants::R));
             assume(limbs_bounded(&UnpackedScalar::ZERO));
             // Preconditions for montgomery_reduce
-            assert(to_nat(&constants::R.limbs) < group_order()) by {lemma_r_le_l(constants::R);};
+            assert(to_nat(&constants::R.limbs) < group_order()) by {
+                lemma_r_le_l(constants::R);
+            };
         }
 
         let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
@@ -2465,7 +2466,9 @@ fn reduce(&self) -> (result: Scalar)
     proof {
         // Preconditions for montgomery_reduce
         assert(to_nat(&x.limbs) < group_order());
-        assert(to_nat(&constants::R.limbs) < group_order()) by {lemma_r_le_l(constants::R);};
+        assert(to_nat(&constants::R.limbs) < group_order()) by {
+            lemma_r_le_l(constants::R);
+        };
     }
 
     let xR = UnpackedScalar::mul_internal(&x, &constants::R);
@@ -3669,7 +3672,6 @@ pub const fn clamp_integer(bytes: [u8; 32]) -> (result: [u8; 32])
 //         }
 //     }
 // }
-
 #[cfg(test)]
 mod proptest_scalar {
     use super::*;
@@ -3678,9 +3680,7 @@ mod proptest_scalar {
     use proptest::prelude::*;
 
     // Import the executable helper functions from the backend tests
-    use crate::backend::serial::u64::scalar::test::{
-        group_order_exec, to_nat_exec,
-    };
+    use crate::backend::serial::u64::scalar::test::{group_order_exec, to_nat_exec};
 
     // Additional helper functions specific to Scalar (not Scalar52)
 
@@ -3703,11 +3703,10 @@ mod proptest_scalar {
     /// Generate a random canonical Scalar (< L)
     fn arb_canonical_scalar() -> impl Strategy<Value = Scalar> {
         // Generate 32 random bytes
-        proptest::array::uniform32(any::<u8>())
-            .prop_map(|bytes| {
-                // Use from_bytes_mod_order to ensure we get a valid scalar
-                Scalar::from_bytes_mod_order(bytes)
-            })
+        proptest::array::uniform32(any::<u8>()).prop_map(|bytes| {
+            // Use from_bytes_mod_order to ensure we get a valid scalar
+            Scalar::from_bytes_mod_order(bytes)
+        })
     }
 
     // Property tests for neg

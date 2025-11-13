@@ -787,10 +787,6 @@ impl Neg for &Scalar {
             // Preconditions for mul_internal and sub
             assume(limbs_bounded(&constants::R));
             assume(limbs_bounded(&UnpackedScalar::ZERO));
-            // Preconditions for montgomery_reduce
-            assert(to_nat(&constants::R.limbs) < group_order()) by {
-                lemma_r_le_l(constants::R);
-            };
         }
 
         let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);

@@ -806,7 +806,7 @@ impl ConstantTimeEq for EdwardsPoint {
     // (X/Z, Y/Z) == (X'/Z', Y'/Z')
     // This is checked by verifying X*Z' == X'*Z and Y*Z' == Y'*Z
 
-            choice_is_true(result) == (spec_edwards_point(*self) == spec_edwards_point(*other)),
+            choice_is_true(result) == (affine_edwards_point(*self) == affine_edwards_point(*other)),
     {
         // We would like to check that the point (X/Z, Y/Z) is equal to
         // the point (X'/Z', Y'/Z') without converting into affine
@@ -826,7 +826,7 @@ impl ConstantTimeEq for EdwardsPoint {
 
         proof {
             // The equality check via cross-multiplication is equivalent to affine coordinate equality
-            assume(choice_is_true(result) == (spec_edwards_point(*self) == spec_edwards_point(
+            assume(choice_is_true(result) == (affine_edwards_point(*self) == affine_edwards_point(
                 *other,
             )));
         }
@@ -843,7 +843,7 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
 
     open spec fn eq_spec(&self, other: &Self) -> bool {
         // Two EdwardsPoints are equal if they represent the same affine point
-        spec_edwards_point(*self) == spec_edwards_point(*other)
+        affine_edwards_point(*self) == affine_edwards_point(*other)
     }
 }
 
@@ -851,7 +851,7 @@ impl PartialEq for EdwardsPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &EdwardsPoint) -> (result: bool)
         ensures
-            result == (spec_edwards_point(*self) == spec_edwards_point(*other)),
+            result == (affine_edwards_point(*self) == affine_edwards_point(*other)),
     {
         /* ORIGINAL CODE:
         self.ct_eq(other).into()
@@ -860,7 +860,7 @@ impl PartialEq for EdwardsPoint {
         let result = choice_into(choice);
 
         proof {
-            assert(choice_is_true(choice) == (spec_edwards_point(*self) == spec_edwards_point(
+            assert(choice_is_true(choice) == (affine_edwards_point(*self) == affine_edwards_point(
                 *other,
             )));
             assert(result == choice_is_true(choice));
@@ -1041,7 +1041,6 @@ impl EdwardsPoint {
     }
 }
 
-} // verus!
 // ------------------------------------------------------------------------
 // Doubling
 // ------------------------------------------------------------------------
@@ -1052,10 +1051,10 @@ impl EdwardsPoint {
     }
 }
 
+} // verus!
 // ------------------------------------------------------------------------
 // Addition and Subtraction
 // ------------------------------------------------------------------------
-
 impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
     type Output = EdwardsPoint;
     fn add(self, other: &'b EdwardsPoint) -> EdwardsPoint {

@@ -243,14 +243,17 @@ impl Identity for MontgomeryPoint {
     }
 }
 
-} // verus!
 #[cfg(feature = "zeroize")]
 impl Zeroize for MontgomeryPoint {
-    fn zeroize(&mut self) {
-        self.0.zeroize();
+    fn zeroize(&mut self)
+        ensures
+            forall|i: int| 0 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
+    {
+        crate::core_assumes::zeroize_bytes32(&mut self.0);
     }
 }
 
+} // verus!
 impl MontgomeryPoint {
     /// Fixed-base scalar multiplication (i.e. multiplication by the base point).
     pub fn mul_base(scalar: &Scalar) -> Self {

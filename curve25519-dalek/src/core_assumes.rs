@@ -58,63 +58,6 @@ pub assume_specification<'a>[ core::fmt::Formatter::<'a>::write_str ](
 ) -> core::result::Result<(), core::fmt::Error>
 ;
 
-// Spec function: models the state of a hasher after hashing bytes
-pub spec fn spec_state_after_hash<H, T, const N: usize>(initial_state: H, bytes: &[T; N]) -> H;
-
-// Axiom: Hash is deterministic - same input produces same output state
-pub proof fn axiom_hash_is_deterministic<T, const N: usize, H>(
-    arr1: &[T; N],
-    arr2: &[T; N],
-    state1: H,
-    state2: H,
-)
-    requires
-        arr1@ == arr2@,
-        state1 == state2,
-    ensures
-        spec_state_after_hash(state1, arr1) == spec_state_after_hash(state2, arr2),
-{
-    admit();
-}
-
-// Convert a Seq<u8> to a [u8; 32] array (requires seq.len() >= 32)
-pub open spec fn seq_to_array_32(s: Seq<u8>) -> [u8; 32] {
-    [
-        s[0],
-        s[1],
-        s[2],
-        s[3],
-        s[4],
-        s[5],
-        s[6],
-        s[7],
-        s[8],
-        s[9],
-        s[10],
-        s[11],
-        s[12],
-        s[13],
-        s[14],
-        s[15],
-        s[16],
-        s[17],
-        s[18],
-        s[19],
-        s[20],
-        s[21],
-        s[22],
-        s[23],
-        s[24],
-        s[25],
-        s[26],
-        s[27],
-        s[28],
-        s[29],
-        s[30],
-        s[31],
-    ]
-}
-
 // Build a Seq<u8> from fixed arrays (for specs)
 pub open spec fn seq_from2(b: &[u8; 2]) -> Seq<u8> {
     Seq::new(2, |i: int| b[i])
@@ -218,6 +161,8 @@ pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
     rng.fill_bytes(bytes)
 }
 
+/* Hash and Digest specifications */
+
 #[cfg(feature = "digest")]
 #[verifier::external_body]
 pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64])
@@ -237,5 +182,76 @@ pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::ha
     _1: &mut H,
 ) where H: core::hash::Hasher, T: core::hash::Hash
 ;
+
+// Spec function: models the state of a hasher after hashing bytes
+pub spec fn spec_state_after_hash<H, T, const N: usize>(initial_state: H, bytes: &[T; N]) -> H;
+
+// Axiom: Hash is deterministic - same input produces same output state
+pub proof fn axiom_hash_is_deterministic<T, const N: usize, H>(
+    arr1: &[T; N],
+    arr2: &[T; N],
+    state1: H,
+    state2: H,
+)
+    requires
+        arr1@ == arr2@,
+        state1 == state2,
+    ensures
+        spec_state_after_hash(state1, arr1) == spec_state_after_hash(state2, arr2),
+{
+    admit();
+}
+
+// Convert a Seq<u8> to a [u8; 32] array (requires seq.len() >= 32)
+pub open spec fn seq_to_array_32(s: Seq<u8>) -> [u8; 32] {
+    [
+        s[0],
+        s[1],
+        s[2],
+        s[3],
+        s[4],
+        s[5],
+        s[6],
+        s[7],
+        s[8],
+        s[9],
+        s[10],
+        s[11],
+        s[12],
+        s[13],
+        s[14],
+        s[15],
+        s[16],
+        s[17],
+        s[18],
+        s[19],
+        s[20],
+        s[21],
+        s[22],
+        s[23],
+        s[24],
+        s[25],
+        s[26],
+        s[27],
+        s[28],
+        s[29],
+        s[30],
+        s[31],
+    ]
+}
+
+/*** Zeroize specifications ***/
+
+#[cfg(feature = "zeroize")]
+// Wrapper for zeroize on [u8; 32] arrays
+// After zeroizing, all bytes should be zero
+#[verifier::external_body]
+pub fn zeroize_bytes32(bytes: &mut [u8; 32])
+    ensures
+        forall|i: int| 0 <= i < 32 ==> #[trigger] bytes[i] == 0u8,
+{
+    use zeroize::Zeroize;
+    bytes.zeroize();
+}
 
 } // verus!

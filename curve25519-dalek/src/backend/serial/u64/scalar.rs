@@ -687,6 +687,10 @@ impl Scalar52 {
     #[inline(always)]
     #[rustfmt::skip]  // keep alignment of n* and r* calculations
     pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)
+        // Note: This spec is not yet confirmed because the function is unproved.
+        // The spec is checked by prop_montgomery_reduce_spec.
+        // If you edit this spec, please update the proptest.
+        // Once this function and all deps are proved, you can remove to proptest
         requires
             // The input represents the product of two canonical Scalar52s
             // (both limbs_bounded AND value < group_order)

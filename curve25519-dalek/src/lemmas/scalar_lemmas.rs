@@ -1842,5 +1842,4 @@ pub proof fn lemma_r_bounded(r: Scalar52)
 
 }
 
-
 } // verus!

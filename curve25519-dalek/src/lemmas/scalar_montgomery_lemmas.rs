@@ -1,7 +1,7 @@
-use vstd::prelude::*;
 use crate::backend::serial::u64::scalar::Scalar52;
 use crate::specs::scalar_specs_u64::limbs_bounded;
 use crate::specs::scalar_specs_u64::spec_mul_internal;
+use vstd::prelude::*;
 
 verus! {
 
@@ -24,10 +24,15 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
     let product = spec_mul_internal(self_scalar, &one);
     assert(product[0] == (self_scalar.limbs[0] as u128) * 1);
     assert(product[1] == (self_scalar.limbs[0] as u128) * 0 + (self_scalar.limbs[1] as u128) * 1);
-    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (1)) as u128);
-    assert(product[3] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (1)) as u128);
-    assert(product[4] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (0) + (self_scalar.limbs[4] as u128) * (1)) as u128);
+    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (
+    0) + (self_scalar.limbs[2] as u128) * (1)) as u128);
+    assert(product[3] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (
+    0) + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (1)) as u128);
+    assert(product[4] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (
+    0) + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (0) + (
+    self_scalar.limbs[4] as u128) * (1)) as u128);
     assert(product[8] == ((self_scalar.limbs[4] as u128) * (0)) as u128);
     assert(&product =~= limbs);
 }
-}
+
+} // verus!

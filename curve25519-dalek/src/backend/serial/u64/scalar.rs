@@ -20,13 +20,13 @@ use zeroize::Zeroize;
 
 use crate::constants;
 
-use crate::lemmas::scalar_montgomery_lemmas::lemma_from_montgomery_is_product_with_one;
 #[allow(unused_imports)]
 use crate::lemmas::core_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas::*;
+use crate::lemmas::scalar_montgomery_lemmas::lemma_from_montgomery_is_product_with_one;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
 #[allow(unused_imports)]

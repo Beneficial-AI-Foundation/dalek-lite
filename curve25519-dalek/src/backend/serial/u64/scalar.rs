@@ -1362,6 +1362,155 @@ pub mod test {
         assert!(&result_nat < &l);
     }
 
+    /// Test that demonstrates why montgomery_reduce needs canonical inputs in its precondition.
+    ///
+    /// Even though montgomery_reduce might work correctly with non-canonical bounded inputs
+    /// in practice (due to internal reductions), we cannot PROVE it will always produce
+    /// canonical output without assuming the inputs are canonical.
+    /// This test shows the precondition requires BOTH limbs_bounded AND value < group_order.
+    #[test]
+    fn montgomery_reduce_bounded_but_not_canonical() {
+        let l = group_order_exec();
+
+        // Create a scalar that is limbs_bounded but MUCH larger than group_order
+        // Use a value close to 2^260 (the maximum for 5 limbs of 52 bits each)
+        // This is approximately 1000 * L
+        let a_limbs = [
+            (1u64 << 52) - 100,  // Almost maxed out limbs
+            (1u64 << 52) - 100,
+            (1u64 << 52) - 100,
+            (1u64 << 52) - 100,
+            (1u64 << 52) - 100,
+        ];
+
+        let a = Scalar52 { limbs: a_limbs };
+
+        // Create scalar b = 1 (canonical)
+        let b = Scalar52 { limbs: [1, 0, 0, 0, 0] };
+
+        // Both are limbs_bounded
+        assert!(limbs_bounded_exec(&a), "a should be limbs_bounded");
+        assert!(limbs_bounded_exec(&b), "b should be limbs_bounded");
+
+        // But a is NOT canonical
+        let a_nat = to_nat_exec(&a.limbs);
+        assert!(&a_nat >= &l, "a should be >= L (non-canonical)");
+        println!("a value: {}", a_nat);
+        println!("a / L: {}", &a_nat / &l);
+
+        // b IS canonical
+        let b_nat = to_nat_exec(&b.limbs);
+        assert!(&b_nat < &l, "b should be < L (canonical)");
+
+        // Compute product a * b = a * 1 = a
+        let limbs = Scalar52::mul_internal(&a, &b);
+        let limbs_nat = slice128_to_nat_exec(&limbs);
+
+        // The product equals a (since b = 1)
+        assert_eq!(&limbs_nat, &a_nat, "a * 1 should equal a");
+
+        // Now apply montgomery_reduce
+        let result = Scalar52::montgomery_reduce(&limbs);
+        let result_nat = to_nat_exec(&result.limbs);
+        let r = montgomery_radix_exec();
+
+        // Check postconditions:
+
+        // 1. Montgomery property: (result * R) mod L == input mod L
+        let montgomery_check = (&result_nat * &r) % &l == &limbs_nat % &l;
+        println!("Montgomery property satisfied: {}", montgomery_check);
+        assert!(montgomery_check, "Montgomery property should still hold");
+
+        // 2. limbs_bounded
+        let bounded_check = limbs_bounded_exec(&result);
+        println!("Result limbs_bounded: {}", bounded_check);
+        assert!(bounded_check, "Result should be limbs_bounded");
+
+        // 3. Canonicality: result < L
+        let canonical_check = &result_nat < &l;
+        println!("Result < L (canonical): {}", canonical_check);
+        println!("Result value: {}", result_nat);
+        println!("Group order L: {}", l);
+
+        if &result_nat >= &l {
+            println!("Result - L: {}", &result_nat - &l);
+            println!("(Result - L) / L: {}", (&result_nat - &l) / &l);
+        }
+
+        // THIS IS THE KEY POINT: When input comes from non-canonical scalars,
+        // the result may not be canonical!
+        if !canonical_check {
+            println!("\n*** DEMONSTRATION ***");
+            println!("Input was product of:");
+            println!("  a (bounded but >> L): {}", a_nat);
+            println!("  b (canonical): {}", b_nat);
+            println!("Result is NOT canonical: {} >= {}", result_nat, l);
+            println!("This shows why precondition requires BOTH limbs_bounded AND < group_order");
+        }
+    }
+
+    /// Generate a scalar with bounded limbs but value >= group_order
+    fn arb_bounded_non_canonical_scalar() -> impl Strategy<Value = Scalar52> {
+        // We want limbs_bounded but value >= L
+        // Since L ≈ 2^252, we can generate large values by using large limbs
+        prop::array::uniform5((1u64 << 51)..(1u64 << 52))
+            .prop_map(|limbs| Scalar52 { limbs })
+            .prop_filter("value must be >= L", |s| {
+                to_nat_exec(&s.limbs) >= group_order_exec()
+            })
+    }
+
+    proptest! {
+        /// Property test showing that montgomery_reduce cannot guarantee canonical output
+        /// when given inputs that are products of bounded-but-non-canonical scalars.
+        ///
+        /// This test demonstrates that the precondition "exists |a, b| limbs_bounded(a) ∧ limbs_bounded(b)"
+        /// is insufficient - we need "limbs_bounded(a) ∧ to_nat(a) < L" for both a and b.
+        #[test]
+        fn prop_montgomery_reduce_fails_postcondition_with_non_canonical_inputs(
+            a in arb_bounded_non_canonical_scalar(),
+            b in arb_canonical_scalar52()
+        ) {
+            // Preconditions: a is bounded but >= L, b is canonical
+            prop_assert!(limbs_bounded_exec(&a));
+            prop_assert!(limbs_bounded_exec(&b));
+            let a_nat = to_nat_exec(&a.limbs);
+            let b_nat = to_nat_exec(&b.limbs);
+            let l = group_order_exec();
+            prop_assert!(&a_nat >= &l, "a should be non-canonical");
+            prop_assert!(&b_nat < &l, "b should be canonical");
+
+            // Compute the product
+            let limbs = Scalar52::mul_internal(&a, &b);
+            let limbs_nat = slice128_to_nat_exec(&limbs);
+
+            // Apply montgomery_reduce
+            let result = Scalar52::montgomery_reduce(&limbs);
+            let result_nat = to_nat_exec(&result.limbs);
+            let r = montgomery_radix_exec();
+
+            // Check the postconditions
+
+            // This should pass: Montgomery property
+            let montgomery_ok = (&result_nat * &r) % &l == &limbs_nat % &l;
+            prop_assert!(montgomery_ok, "Montgomery property should hold");
+
+            // This should pass: limbs_bounded
+            prop_assert!(limbs_bounded_exec(&result), "Result should be limbs_bounded");
+
+            prop_assert!(&result_nat < &l, "Result not in canonical form (>= L)");
+
+            // This SHOULD FAIL sometimes: canonical output
+            // When a is much larger than L, the result may not be < L
+            if &result_nat >= &l {
+                return Err(proptest::test_runner::TestCaseError::fail(
+                    format!("montgomery_reduce produced non-canonical output {} >= L when input was product of non-canonical scalar (a = {}, {} ≥ L) and canonical scalar (b = {}, {} < L)",
+                        result_nat, a_nat, a_nat, b_nat, b_nat)
+                ));
+            }
+        }
+    }
+
     // Property tests for montgomery_mul
     proptest! {
         #[test]

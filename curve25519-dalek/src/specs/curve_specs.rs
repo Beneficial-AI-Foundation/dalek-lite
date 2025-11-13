@@ -151,6 +151,20 @@ pub open spec fn spec_is_compressed_identity(compressed: CompressedEdwardsY) -> 
     (compressed.0[31] >> 7) == 0
 }
 
+/// Spec function: check if a CompressedEdwardsY corresponds to an EdwardsPoint
+/// The compressed form should match the affine y-coordinate and x sign bit
+pub open spec fn compressed_edwards_y_corresponds_to_edwards(
+    compressed: CompressedEdwardsY,
+    point: EdwardsPoint,
+) -> bool {
+    let (x_affine, y_affine) = spec_edwards_point(point);
+    // The y-coordinate in the compressed form matches the affine y-coordinate
+    spec_field_element_from_bytes(&compressed.0)
+        == y_affine
+    // The sign bit matches the sign of the affine x-coordinate
+     && (compressed.0[31] >> 7) == (((x_affine % crate::specs::field_specs_u64::p()) % 2) as u8)
+}
+
 /// Check if a ProjectiveNielsPoint corresponds to an EdwardsPoint
 /// A ProjectiveNielsPoint (Y_plus_X, Y_minus_X, Z, T2d) corresponds to EdwardsPoint (X:Y:Z:T) if:
 /// 1. Y_plus_X = Y + X (mod p)

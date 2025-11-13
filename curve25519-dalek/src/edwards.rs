@@ -697,9 +697,15 @@ impl Zeroize for CompressedEdwardsY {
     fn zeroize(&mut self)
         ensures
             forall|i: int| 1 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
-            self.0[0] == 1u8,
+            self.0[0]
+                == 1u8,
+    // VERIFICATION NOTE: this "zeroize" leaves one as bit equal to 1
+
     {
-        /* ORIGINAL CODE: self.0.zeroize(); */
+        /* ORIGINAL CODE:
+            self.0.zeroize();
+            self.0[0] = 1;
+        */
         crate::core_assumes::zeroize_bytes32(&mut self.0);
         self.0[0] = 1;
     }
@@ -986,7 +992,10 @@ impl EdwardsPoint {
     }
 
     /// Compress this point to `CompressedEdwardsY` format.
-    pub fn compress(&self) -> CompressedEdwardsY {
+    pub fn compress(&self) -> (result: CompressedEdwardsY)
+        ensures
+            compressed_edwards_y_corresponds_to_edwards(result, *self),
+    {
         let recip = self.Z.invert();
         let ghost z_abs = spec_field_element(&self.Z);
         assert(spec_field_element(&recip) == math_field_inv(z_abs));

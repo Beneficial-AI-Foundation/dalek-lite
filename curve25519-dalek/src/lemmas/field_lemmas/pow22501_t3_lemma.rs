@@ -173,7 +173,7 @@ pub proof fn lemma_pow22501_prove_t3(
 
     // Apply modular multiplication lemma: ((a % p) * (b % p)) % p = (a * b) % p
     assert(as_nat(t2_limbs) % p() == (pow(base, 1) as nat * pow(base, 8) as nat) % p()) by {
-        lemma_mul_mod_both(pow(base, 1) as nat as int, pow(base, 8) as nat as int, p() as int);
+        lemma_mul_mod_noop_general(pow(base, 1) as nat as int, pow(base, 8) as nat as int, p() as int);
     }
 
     // Prove x^1 * x^8 = x^9 in int
@@ -210,7 +210,7 @@ pub proof fn lemma_pow22501_prove_t3(
 
     // Apply modular multiplication lemma: ((a % p) * (b % p)) % p = (a * b) % p
     assert(as_nat(t3_limbs) % p() == (pow(base, 2) as nat * pow(base, 9) as nat) % p()) by {
-        lemma_mul_mod_both(pow(base, 2) as nat as int, pow(base, 9) as nat as int, p() as int);
+        lemma_mul_mod_noop_general(pow(base, 2) as nat as int, pow(base, 9) as nat as int, p() as int);
     }
 
     // Prove x^2 * x^9 = x^11 in int

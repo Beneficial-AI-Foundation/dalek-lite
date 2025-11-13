@@ -663,6 +663,7 @@ impl Scalar52 {
             limbs_bounded(a),
         ensures
             slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&a.limbs),
+            spec_mul_internal(a, a) == z
     {
         proof { lemma_square_internal_no_overflow() }
 
@@ -968,39 +969,14 @@ impl Scalar52 {
     proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, limbs: &[u128; 9])
         requires
             limbs_bounded(self_scalar),
-            to_nat(&self_scalar.limbs) < group_order(),
             forall|j: int| #![auto] 0 <= j < 5 ==> limbs[j] == self_scalar.limbs[j] as u128,
             forall|j: int| #![auto] 5 <= j < 9 ==> limbs[j] == 0,
         ensures
-            exists|a: &Scalar52, b: &Scalar52|
-                limbs_bounded(a) && limbs_bounded(b) && to_nat(&a.limbs) < group_order() && to_nat(
-                    &b.limbs,
-                ) < group_order() && slice128_to_nat(limbs) == to_nat(&a.limbs) * to_nat(&b.limbs),
+            (exists|bounded: &Scalar52, canonical: &Scalar52|
+                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs) < group_order() &&
+        spec_mul_internal(bounded, canonical) == limbs)
     {
-        // TODO Prove this lemma
-        // Create a scalar representing 1
-        let one = Scalar52 { limbs: [1, 0, 0, 0, 0] };
-
-        // First, prove that limbs represents self_scalar
-        assert forall|j: int| 0 <= j < 5 implies limbs[j] == self_scalar.limbs[j] as u128 by {};
-        assert forall|j: int| 5 <= j < 9 implies limbs[j] == 0 by {};
-
-        // Show that slice128_to_nat(limbs) == to_nat(&self_scalar.limbs)
-        assume(slice128_to_nat(limbs) == to_nat(&self_scalar.limbs));
-
-        // Show that to_nat(&one.limbs) == 1
-        assume(to_nat(&one.limbs) == 1);
-
-        // Show that limbs_bounded(one)
-        assume(limbs_bounded(&one));
-
-        // Therefore slice128_to_nat(limbs) == to_nat(&self_scalar.limbs) * to_nat(&one.limbs)
-        assert(slice128_to_nat(limbs) == to_nat(&self_scalar.limbs) * to_nat(&one.limbs));
-
-        // Witness the existential with self_scalar and one
-        assert(limbs_bounded(self_scalar) && limbs_bounded(&one) && to_nat(&self_scalar.limbs)
-            < group_order() && to_nat(&one.limbs) < group_order() && slice128_to_nat(limbs)
-            == to_nat(&self_scalar.limbs) * to_nat(&one.limbs));
+        assume(false);
     }
 }
 

@@ -1551,7 +1551,6 @@ impl Scalar {
 
         proof {
             assume(limbs_bounded(&acc));
-            assume(to_nat(&acc.limbs) < group_order());
         }
 
         // Pass through the input vector, recording the previous
@@ -1574,7 +1573,6 @@ impl Scalar {
                 scratch.len() == n,
                 n == inputs.len(),
                 limbs_bounded(&acc),
-                to_nat(&acc.limbs) < group_order(),
         {
             scratch[i] = acc;
 
@@ -1590,7 +1588,6 @@ impl Scalar {
 
             proof {
                 assume(limbs_bounded(&tmp));
-                assume(to_nat(&tmp.limbs) < group_order());
             }
 
             inputs[i] = tmp.pack();
@@ -1598,7 +1595,6 @@ impl Scalar {
 
             proof {
                 assume(limbs_bounded(&acc));
-                assume(to_nat(&acc.limbs) < group_order());
             }
         }
 
@@ -1617,14 +1613,12 @@ impl Scalar {
 
         proof {
             assume(limbs_bounded(&acc));
-            assume(to_nat(&acc.limbs) < group_order());
         }
 
         acc = acc.from_montgomery();
 
         proof {
             assume(limbs_bounded(&acc));
-            assume(to_nat(&acc.limbs) < group_order());
         }
 
         // We need to return the product of all inverses later
@@ -1657,16 +1651,12 @@ impl Scalar {
 
             proof {
                 assume(limbs_bounded(&input_unpacked));
-                assume(to_nat(&input_unpacked.limbs) < group_order());
-                assume(to_nat(&acc.limbs) < group_order());
             }
 
             let tmp = UnpackedScalar::montgomery_mul(&acc, &input_unpacked);
 
             proof {
                 assume(limbs_bounded(&tmp));
-                assume(to_nat(&tmp.limbs) < group_order());
-                assume(to_nat(&scratch[i as int].limbs) < group_order());
             }
 
             inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
@@ -2459,11 +2449,9 @@ fn reduce(&self) -> (result: Scalar)
 
     }
 
-    proof {
         assert(to_nat(&constants::R.limbs) < group_order()) by {
             lemma_r_le_l(constants::R);
         };
-    }
 
     let xR = UnpackedScalar::mul_internal(&x, &constants::R);
     let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
@@ -2587,7 +2575,6 @@ fn square_multiply(
             i = i + 1;
             assume(i <= squarings);
             assume(pow(to_nat(&old(y).limbs) as int, pow2(i as nat)) < group_order() as int);
-            assume(to_nat(&y.limbs) < group_order());
         }
         *y = y.montgomery_square();
     }

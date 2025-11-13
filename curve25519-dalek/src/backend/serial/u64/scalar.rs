@@ -942,7 +942,6 @@ impl Scalar52 {
         }
         result
     }
-
 }
 
 } // verus!
@@ -1162,12 +1161,14 @@ pub mod test {
 
     /// Generate random 9-limb array from product of one bounded scalar and one canonical scalar
     fn arb_nine_limbs_one_canonical() -> impl Strategy<Value = [u128; 9]> {
-        (arb_bounded_scalar52(), arb_canonical_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
+        (arb_bounded_scalar52(), arb_canonical_scalar52())
+            .prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     /// Generate 9-limb arrays from product of TWO bounded scalars
     fn arb_nine_limbs_two_bounded() -> impl Strategy<Value = [u128; 9]> {
-        (arb_bounded_scalar52(), arb_bounded_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
+        (arb_bounded_scalar52(), arb_bounded_scalar52())
+            .prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     proptest! {

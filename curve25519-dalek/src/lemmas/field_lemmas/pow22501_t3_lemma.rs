@@ -99,12 +99,8 @@ pub proof fn lemma_pow22501_prove_t3(
 
     // Convert int modulo to nat modulo for both sides
     assert((pow(as_nat(t0_limbs) as int, 2) as nat) % p() == (pow(as_nat(t0_limbs) as int, 2) % (
-    p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t0_limbs) as int, 2), p());
-    }
-    assert((pow(base, 4) as nat) % p() == (pow(base, 4) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, 4), p());
-    }
+    p() as int)) as nat);
+    assert((pow(base, 4) as nat) % p() == (pow(base, 4) % (p() as int)) as nat);
 
     // Apply power congruence: since t0_limbs ≡ x^2 (mod p), then t0_limbs^2 ≡ (x^2)^2 (mod p)
     assert((pow(as_nat(t0_limbs) as int, 2) % (p() as int)) as nat == (pow(pow(base, 2), 2) % (
@@ -138,12 +134,8 @@ pub proof fn lemma_pow22501_prove_t3(
 
     // Convert int modulo to nat modulo for both sides
     assert((pow(as_nat(t0_sq_limbs) as int, 2) as nat) % p() == (pow(as_nat(t0_sq_limbs) as int, 2)
-        % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t0_sq_limbs) as int, 2), p());
-    }
-    assert((pow(base, 8) as nat) % p() == (pow(base, 8) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, 8), p());
-    }
+        % (p() as int)) as nat);
+    assert((pow(base, 8) as nat) % p() == (pow(base, 8) % (p() as int)) as nat);
 
     // Apply power congruence: since t0_sq_limbs ≡ x^4 (mod p), then t0_sq_limbs^2 ≡ (x^4)^2 (mod p)
     assert((pow(as_nat(t0_sq_limbs) as int, 2) % (p() as int)) as nat == (pow(pow(base, 4), 2) % (

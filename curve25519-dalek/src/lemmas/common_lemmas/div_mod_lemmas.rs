@@ -128,48 +128,4 @@ pub proof fn lemma_u8_cast_is_mod_256(x: u64)
     assert((x as u8) == x % 256) by (bit_vector);
 }
 
-pub proof fn lemma_mul_both_sides_mod(x: int, y: int, z: int, m: int)
-    requires
-        m > 0,
-        x % m == y % m,
-    ensures
-        (x * z) % m == (y * z) % m,
-{
-    // Apply lemma_mul_mod_noop_right to both x and y
-    lemma_mul_mod_noop_right(z, x, m);
-    lemma_mul_mod_noop_right(z, y, m);
-}
-
-pub proof fn lemma_mod_int_to_nat_equiv(x: int, m: nat)
-    requires
-        m > 0,
-        x >= 0,
-    ensures
-        x as nat % m == (x % m as int) as nat,
-{
-    // Step 1: Use fundamental div-mod for int
-    lemma_fundamental_div_mod(x, m as int);
-
-    // Step 2: The modulo result in int is non-negative and less than m
-    let mod_result_int = x % m as int;
-    assert(mod_result_int >= 0);
-    assert(mod_result_int < m as int);
-
-    // Step 3: Cast x to nat, then use fundamental div-mod for nat
-    let x_nat = x as nat;
-    assert(x_nat as int == x);  // casting preserves value for non-negative
-    lemma_fundamental_div_mod(x_nat as int, m as int);
-
-    // Step 4: The modulo results are equal in int arithmetic
-    assert(x_nat as int % m as int == x % m as int);
-
-    // Step 5: Both are non-negative, so casting to nat preserves equality
-    assert((x_nat as int % m as int) as nat == (x % m as int) as nat);
-
-    // Step 6: The LHS simplifies to x_nat % m
-    assert(x_nat % m == (x_nat as int % m as int) as nat);
-    assert(x as nat % m == (x % m as int) as nat);
-}
-
-
 } // verus!

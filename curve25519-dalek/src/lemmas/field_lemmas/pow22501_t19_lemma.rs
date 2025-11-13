@@ -236,12 +236,8 @@ pub proof fn lemma_pow22501_prove_t19(
     }
 
     assert((pow(as_nat(t3_limbs) as int, 2) as nat) % p() == (pow(as_nat(t3_limbs) as int, 2) % (
-    p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t3_limbs) as int, 2), p());
-    }
-    assert((pow(base, 22) as nat) % p() == (pow(base, 22) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, 22), p());
-    }
+    p() as int)) as nat);
+    assert((pow(base, 22) as nat) % p() == (pow(base, 22) % (p() as int)) as nat);
 
     assert((pow(as_nat(t3_limbs) as int, 2) % (p() as int)) as nat == (pow(pow(base, 11), 2) % (
     p() as int)) as nat) by {
@@ -317,15 +313,11 @@ pub proof fn lemma_pow22501_prove_t19(
     assert((pow(as_nat(t5_limbs) as int, pow2(5)) as nat) % p() == (pow(
         as_nat(t5_limbs) as int,
         pow2(5),
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t5_limbs) as int, pow2(5)), p());
-    }
+    ) % (p() as int)) as nat);
     assert((pow(base, ((pow2(5) - 1) * pow2(5)) as nat) as nat) % p() == (pow(
         base,
         ((pow2(5) - 1) * pow2(5)) as nat,
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, ((pow2(5) - 1) * pow2(5)) as nat), p());
-    }
+    ) % (p() as int)) as nat);
 
     assert((pow(as_nat(t5_limbs) as int, pow2(5)) % (p() as int)) as nat == (pow(
         pow(base, (pow2(5) - 1) as nat),
@@ -438,15 +430,11 @@ pub proof fn lemma_pow22501_prove_t19(
     assert((pow(as_nat(t7_limbs) as int, pow2(10)) as nat) % p() == (pow(
         as_nat(t7_limbs) as int,
         pow2(10),
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t7_limbs) as int, pow2(10)), p());
-    }
+    ) % (p() as int)) as nat);
     assert((pow(base, ((pow2(10) - 1) * pow2(10)) as nat) as nat) % p() == (pow(
         base,
         ((pow2(10) - 1) * pow2(10)) as nat,
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, ((pow2(10) - 1) * pow2(10)) as nat), p());
-    }
+    ) % (p() as int)) as nat);
 
     assert((pow(as_nat(t7_limbs) as int, pow2(10)) % (p() as int)) as nat == (pow(
         pow(base, (pow2(10) - 1) as nat),
@@ -591,15 +579,11 @@ pub proof fn lemma_pow22501_prove_t19(
     assert((pow(as_nat(t9_limbs) as int, pow2(20)) as nat) % p() == (pow(
         as_nat(t9_limbs) as int,
         pow2(20),
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t9_limbs) as int, pow2(20)), p());
-    }
+    ) % (p() as int)) as nat);
     assert((pow(base, ((pow2(20) - 1) * pow2(20)) as nat) as nat) % p() == (pow(
         base,
         ((pow2(20) - 1) * pow2(20)) as nat,
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, ((pow2(20) - 1) * pow2(20)) as nat), p());
-    }
+    ) % (p() as int)) as nat);
 
     assert((pow(as_nat(t9_limbs) as int, pow2(20)) % (p() as int)) as nat == (pow(
         pow(base, (pow2(20) - 1) as nat),
@@ -747,15 +731,11 @@ pub proof fn lemma_pow22501_prove_t19(
     assert((pow(as_nat(t11_limbs) as int, pow2(10)) as nat) % p() == (pow(
         as_nat(t11_limbs) as int,
         pow2(10),
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t11_limbs) as int, pow2(10)), p());
-    }
+    ) % (p() as int)) as nat);
     assert((pow(base, ((pow2(40) - 1) * pow2(10)) as nat) as nat) % p() == (pow(
         base,
         ((pow2(40) - 1) * pow2(10)) as nat,
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, ((pow2(40) - 1) * pow2(10)) as nat), p());
-    }
+    ) % (p() as int)) as nat);
 
     assert((pow(as_nat(t11_limbs) as int, pow2(10)) % (p() as int)) as nat == (pow(
         pow(base, (pow2(40) - 1) as nat),
@@ -924,15 +904,11 @@ pub proof fn lemma_pow22501_prove_t19(
     assert((pow(as_nat(t13_limbs) as int, pow2(50)) as nat) % p() == (pow(
         as_nat(t13_limbs) as int,
         pow2(50),
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t13_limbs) as int, pow2(50)), p());
-    }
+    ) % (p() as int)) as nat);
     assert((pow(base, ((pow2(50) - 1) * pow2(50)) as nat) as nat) % p() == (pow(
         base,
         ((pow2(50) - 1) * pow2(50)) as nat,
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, ((pow2(50) - 1) * pow2(50)) as nat), p());
-    }
+    ) % (p() as int)) as nat);
 
     assert((pow(as_nat(t13_limbs) as int, pow2(50)) % (p() as int)) as nat == (pow(
         pow(base, (pow2(50) - 1) as nat),
@@ -1106,15 +1082,11 @@ pub proof fn lemma_pow22501_prove_t19(
     assert((pow(as_nat(t15_limbs) as int, pow2(100)) as nat) % p() == (pow(
         as_nat(t15_limbs) as int,
         pow2(100),
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t15_limbs) as int, pow2(100)), p());
-    }
+    ) % (p() as int)) as nat);
     assert((pow(base, ((pow2(100) - 1) * pow2(100)) as nat) as nat) % p() == (pow(
         base,
         ((pow2(100) - 1) * pow2(100)) as nat,
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, ((pow2(100) - 1) * pow2(100)) as nat), p());
-    }
+    ) % (p() as int)) as nat);
 
     assert((pow(as_nat(t15_limbs) as int, pow2(100)) % (p() as int)) as nat == (pow(
         pow(base, (pow2(100) - 1) as nat),
@@ -1287,15 +1259,11 @@ pub proof fn lemma_pow22501_prove_t19(
     assert((pow(as_nat(t17_limbs) as int, pow2(50)) as nat) % p() == (pow(
         as_nat(t17_limbs) as int,
         pow2(50),
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(as_nat(t17_limbs) as int, pow2(50)), p());
-    }
+    ) % (p() as int)) as nat);
     assert((pow(base, ((pow2(200) - 1) * pow2(50)) as nat) as nat) % p() == (pow(
         base,
         ((pow2(200) - 1) * pow2(50)) as nat,
-    ) % (p() as int)) as nat) by {
-        lemma_mod_int_to_nat_equiv(pow(base, ((pow2(200) - 1) * pow2(50)) as nat), p());
-    }
+    ) % (p() as int)) as nat);
 
     assert((pow(as_nat(t17_limbs) as int, pow2(50)) % (p() as int)) as nat == (pow(
         pow(base, (pow2(200) - 1) as nat),

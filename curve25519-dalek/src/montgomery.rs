@@ -117,7 +117,7 @@ impl ConstantTimeEq for MontgomeryPoint {
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::cmp::PartialEqSpecImpl for MontgomeryPoint {
     open spec fn obeys_eq_spec() -> bool {
-        false  // Equality is based on constant-time comparison
+        true  // Equality is based on constant-time comparison that obeys eq_spec
 
     }
 

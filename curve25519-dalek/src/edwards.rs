@@ -838,8 +838,7 @@ impl ConstantTimeEq for EdwardsPoint {
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
     open spec fn obeys_eq_spec() -> bool {
-        false  // Equality is based on constant-time comparison
-
+        true
     }
 
     open spec fn eq_spec(&self, other: &Self) -> bool {

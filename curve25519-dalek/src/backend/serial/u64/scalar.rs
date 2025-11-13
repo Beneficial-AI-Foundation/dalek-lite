@@ -185,7 +185,6 @@ impl Scalar52 {
         // Stage 1 assumption: the byte-to-word packing yields the expected little-endian value.
         let mut words = [0u64; 8];
         proof {
-            lemma_from_bytes_wide_tail_base(bytes);
         }
         for i in 0..8
             invariant
@@ -197,8 +196,6 @@ impl Scalar52 {
             proof {
                 let i_int = i as int;
                 assert(words@[i_int] == 0);
-                assert(word_from_bytes_partial(bytes, i_int, 0) == 0);
-                assert(words@[i_int] as nat == word_from_bytes_partial(bytes, i_int, 0));
                 assert(words@[i_int] < (1u64 << 0)) by {
                     assert(words@[i_int] == 0);
                     assert(1u64 << 0 == 1u64) by (bit_vector);
@@ -214,7 +211,6 @@ impl Scalar52 {
             {
                 proof {
                     let idx = (i as u64) * 8u64 + (j as u64);
-                    assert(idx < 64);
                 }
                 let byte = bytes[(i * 8) + j];
                 let byte_val = byte as u64;
@@ -226,8 +222,6 @@ impl Scalar52 {
                 words[i] |= byte_val << shift;
 
                 proof {
-                    assert(old_word as nat == word_from_bytes_partial(bytes, i_int, j_int));
-                    assert(words@[i_int] == old_word | (byte_val << shift));
                     lemma_from_bytes_wide_word_update(bytes, i_int, j_int, old_word, words@[i_int]);
                 }
             }
@@ -240,17 +234,14 @@ impl Scalar52 {
         }
         // Stage1-word-chunks: each 64-bit word produced by the loops matches the corresponding
         // little-endian chunk of the 64-byte input.
-        assert(forall|k: int| 0 <= k < 8 ==> words@[k] as nat == word_from_bytes(bytes, k));
 
         // Stage1-tail-zero: After consuming all 64 bytes, no value remains in the recursive byte
         // accumulator.
-        assert(bytes_wide_to_nat_rec(bytes, 64) == 0);
 
         // Stage1-words-plus-tail: Summing the eight word-aligned chunks together with the remaining
         // byte tail reproduces the original 512-bit input.
         assert(words_from_bytes_to_nat(bytes, 8) + bytes_wide_to_nat_rec(bytes, 64) == bytes_wide_to_nat(bytes));
 
-        assert(bytes_wide_to_nat(bytes) == words_from_bytes_to_nat(bytes, 8));
 
         // Stage1-words-aggregate: converting the populated word array back to a natural number
         // agrees with the chunk-based reconstruction for the full 8-word prefix.
@@ -259,9 +250,7 @@ impl Scalar52 {
         proof {
             lemma_words_to_nat_gen_u64_prefix_matches_bytes(&words, bytes, 8);
         }
-        assert(words_to_nat_gen_u64(&words, 8, 64) == words_from_bytes_to_nat(bytes, 8));
 
-        assert(wide_input == words_to_nat_gen_u64(&words, 8, 64));
 
         // Stage 2 word bounds: every assembled chunk fits in 64 bits.
         assert forall|k: int| 0 <= k < 8 implies words[k] < pow2(64) by {
@@ -289,81 +278,56 @@ impl Scalar52 {
         // Stage 3: the masked limbs contributed by each 64-bit word remain below 2^52.
         let ghost lo_raw = lo;
         let ghost hi_raw = hi;
-        assert(mask == (1u64 << 52) - 1);
 
         assert forall|i: int| 0 <= i < 5 implies lo_raw.limbs[i] < (1u64 << 52) by {
             if i == 0 {
-                assert(lo_raw.limbs[i] == words[0] & mask);
                 assert(lo_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded(words[0], mask);
-                    assert(lo_raw.limbs[i] == words[0] & mask);
                 };
             } else if i == 1 {
-                assert(lo_raw.limbs[i] == ((words[0] >> 52) | (words[1] << 12)) & mask);
                 assert(lo_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded((words[0] >> 52) | (words[1] << 12), mask);
-                    assert(lo_raw.limbs[i] == ((words[0] >> 52) | (words[1] << 12)) & mask);
                 };
             } else if i == 2 {
-                assert(lo_raw.limbs[i] == ((words[1] >> 40) | (words[2] << 24)) & mask);
                 assert(lo_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded((words[1] >> 40) | (words[2] << 24), mask);
-                    assert(lo_raw.limbs[i] == ((words[1] >> 40) | (words[2] << 24)) & mask);
                 };
             } else if i == 3 {
-                assert(lo_raw.limbs[i] == ((words[2] >> 28) | (words[3] << 36)) & mask);
                 assert(lo_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded((words[2] >> 28) | (words[3] << 36), mask);
-                    assert(lo_raw.limbs[i] == ((words[2] >> 28) | (words[3] << 36)) & mask);
                 };
             } else {
-                assert(i == 4);
-                assert(lo_raw.limbs[i] == ((words[3] >> 16) | (words[4] << 48)) & mask);
                 assert(lo_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded((words[3] >> 16) | (words[4] << 48), mask);
-                    assert(lo_raw.limbs[i] == ((words[3] >> 16) | (words[4] << 48)) & mask);
                 };
             }
         };
-        assert(limbs_bounded(&lo_raw));
 
         assert forall|i: int| 0 <= i < 5 implies hi_raw.limbs[i] < (1u64 << 52) by {
             if i == 0 {
-                assert(hi_raw.limbs[i] == (words[4] >> 4) & mask);
                 assert(hi_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded(words[4] >> 4, mask);
-                    assert(hi_raw.limbs[i] == (words[4] >> 4) & mask);
                 };
             } else if i == 1 {
-                assert(hi_raw.limbs[i] == ((words[4] >> 56) | (words[5] << 8)) & mask);
                 assert(hi_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded((words[4] >> 56) | (words[5] << 8), mask);
-                    assert(hi_raw.limbs[i] == ((words[4] >> 56) | (words[5] << 8)) & mask);
                 };
             } else if i == 2 {
-                assert(hi_raw.limbs[i] == ((words[5] >> 44) | (words[6] << 20)) & mask);
                 assert(hi_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded((words[5] >> 44) | (words[6] << 20), mask);
-                    assert(hi_raw.limbs[i] == ((words[5] >> 44) | (words[6] << 20)) & mask);
                 };
             } else if i == 3 {
-                assert(hi_raw.limbs[i] == ((words[6] >> 32) | (words[7] << 32)) & mask);
                 assert(hi_raw.limbs[i] < (1u64 << 52)) by {
                     lemma_borrow_and_mask_bounded((words[6] >> 32) | (words[7] << 32), mask);
-                    assert(hi_raw.limbs[i] == ((words[6] >> 32) | (words[7] << 32)) & mask);
                 };
             } else {
-                assert(i == 4);
                 let word7 = words[7];
-                assert(hi_raw.limbs[i] == word7 >> 20);
                 assert(hi_raw.limbs[i] < (1u64 << 52)) by {
-                    assert(hi_raw.limbs[i] == word7 >> 20);
                     assert(word7 >> 20 <= u64::MAX >> 20) by (bit_vector);
                     assert(u64::MAX >> 20 < (1u64 << 52)) by (bit_vector);
                 };
             }
         };
-        assert(limbs_bounded(&hi_raw));
 
         let ghost pow2_260 = pow2(260);
         let ghost low_expr =
@@ -390,9 +354,6 @@ impl Scalar52 {
             pow2(448) * (words[7] as nat);
 
         // Reading the five 52-bit limbs in radix 2^52 reproduces the low chunk reconstructed from the 64-bit words.
-        assert(lo_raw.limbs[0] == words[0] & mask);
-        assert(lo_raw.limbs[1] == ((words[0] >> 52) | (words[1] << 12)) & mask);
-        assert(lo_raw.limbs[2] == ((words[1] >> 40) | (words[2] << 24)) & mask);
         assert(lo_raw.limbs[3] == ((words[2] >> 28) | (words[3] << 36)) & mask);
         assert(lo_raw.limbs[4] == ((words[3] >> 16) | (words[4] << 48)) & mask);
         proof {
@@ -410,15 +371,9 @@ impl Scalar52 {
             }
         };
         // Reading the five 52-bit limbs in radix 2^52 reproduces the high chunk reconstructed from the 64-bit words.
-        assert(hi_raw.limbs[0] == (words[4] >> 4) & mask);
-        assert(hi_raw.limbs[1] == ((words[4] >> 56) | (words[5] << 8)) & mask);
-        assert(hi_raw.limbs[2] == ((words[5] >> 44) | (words[6] << 20)) & mask);
-        assert(hi_raw.limbs[3] == ((words[6] >> 32) | (words[7] << 32)) & mask);
-        assert(hi_raw.limbs[4] == words[7] >> 20);
         proof {
             lemma_high_limbs_encode_high_expr(&hi_raw.limbs, &words, mask);
         }
-        assert(five_limbs_to_nat_aux(hi_raw.limbs) == high_expr);
         assert(to_nat(&hi_raw.limbs) == high_expr) by {
             calc! {
                 (==)
@@ -479,7 +434,6 @@ impl Scalar52 {
             lemma_pow2_adds(256, 4);
             lemma_word_split_low4(word4);
 
-            assert(pow2_260 == pow2(256) * pow2(4));
 
             calc! {
                 (==)
@@ -689,13 +643,10 @@ impl Scalar52 {
         // L3: The lower chunk has value strictly below 2^260.
         assert(low_expr < pow2_260) by {
             lemma_bound_scalar(&lo_raw);
-            assert((52 * (5) as nat) == 260);
-            assert(pow2((52 * (5) as nat)) == pow2_260);
         };
 
         // Assumption: The lower bits of the wide input, modulo 2^260, match the natural value encoded by `lo_raw`.
         assert(to_nat(&lo_raw.limbs) == wide_input % pow2(260)) by {
-            lemma_pow2_pos(260);
 
             calc! {
                 (==)
@@ -719,19 +670,13 @@ impl Scalar52 {
         };
         // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
         assert(to_nat(&hi_raw.limbs) == wide_input / pow2(260)) by {
-            lemma_pow2_pos(260);
 
             let ghost wide_input_int = wide_input as int;
             let ghost pow2_260_int = pow2_260 as int;
             let ghost high_expr_int = high_expr as int;
             let ghost low_expr_int = low_expr as int;
 
-            assert(pow2_260_int != 0);
-            assert(low_expr_int >= 0);
-            assert(low_expr_int < pow2_260_int);
-            assert(wide_input_int == high_expr_int * pow2_260_int + low_expr_int);
             lemma_fundamental_div_mod_converse(wide_input_int, pow2_260_int, high_expr_int, low_expr_int);
-            assert(high_expr == wide_input / pow2_260);
         };
         // Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
         assert(wide_input == (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260))) by {
@@ -752,28 +697,16 @@ impl Scalar52 {
                 (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260));
             }
         };
-        assert(low_expr < pow2(260));
-        assert(to_nat(&lo_raw.limbs) < pow2(260));
         assert(high_expr < pow2(252)) by {
             lemma_words_to_nat_gen_u64_bound_le(&words, 8);
-            assert(wide_input <= pow2((8 * 64) as nat) - 1);
-            assert(wide_input < pow2(512));
-            lemma_pow2_adds(260, 252);
             assert(pow2_260 * pow2(252) == pow2(512)) by {
                 lemma_pow2_adds(260, 252);
             };
-            assert(wide_input < pow2_260 * pow2(252));
-            lemma_pow2_pos(260);
             let ghost wide_input_int = wide_input as int;
             let ghost pow2_260_int = pow2_260 as int;
-            assert(pow2_260_int > 0);
-            assert(wide_input_int < pow2_260_int * (pow2(252) as int));
             lemma_multiply_divide_lt(wide_input_int, pow2_260_int, pow2(252) as int);
             let ghost high_expr_int = high_expr as int;
-            assert((high_expr as int) < (pow2(252) as int));
-            assert(high_expr < pow2(252));
         };
-        assert(to_nat(&hi_raw.limbs) < pow2(252));
 
         // Stage 4 assumption: Montgomery reductions behave as expected for these operands.
         assert(limbs_bounded(&constants::R)) by {
@@ -792,7 +725,6 @@ impl Scalar52 {
         hi = Scalar52::montgomery_reduce(&hi_product);  // (hi * R^2) / R = hi * R
 
         proof {
-            assert(limbs_bounded(&lo_before));
 
             let ghost lo_before_nat = to_nat(&lo_before.limbs);
             let ghost lo_after_nat = to_nat(&lo.limbs);
@@ -824,7 +756,6 @@ impl Scalar52 {
 
             lemma_cancel_mul_pow2_mod(lo_after_nat, lo_before_nat, montgomery_radix());
 
-            assert(limbs_bounded(&hi_before));
 
             let ghost hi_before_nat = to_nat(&hi_before.limbs);
             let ghost hi_after_nat = to_nat(&hi.limbs);
@@ -912,14 +843,8 @@ impl Scalar52 {
             let ghost r_int = r_nat as int;
             let ghost group_int = group_order() as int;
 
-            lemma_pow2_pos(252);
 
-            lemma_small_mod(result_nat, group_order());
-            lemma_small_mod(hi_nat, group_order());
-            lemma_small_mod(lo_nat, group_order());
 
-            assert(hi_nat == (hi_raw_nat * r_nat) % group_order());
-            assert(lo_nat == lo_raw_nat % group_order());
 
             lemma_small_mod(((hi_nat + lo_nat) % group_order()) as nat, group_order());
 
@@ -944,7 +869,6 @@ impl Scalar52 {
                         (hi_nat + lo_nat) as int,
                         group_int,
                     );
-                    lemma_mul_is_commutative(((hi_nat + lo_nat) % group_order()) as int, r_int);
                     assert(
                         (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order()
                             == (r_nat * (hi_nat + lo_nat)) % group_order()
@@ -979,7 +903,6 @@ impl Scalar52 {
                         lo_raw_int,
                         group_int,
                     );
-                    lemma_mul_is_associative(hi_raw_int, r_int, r_int);
                     assert(
                         (r_nat * hi_nat) % group_order()
                             == (hi_raw_nat * r_nat * r_nat) % group_order()
@@ -1003,7 +926,6 @@ impl Scalar52 {
                     );
                 }
                 (hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat) % group_order(); {
-                    lemma_mul_is_associative(hi_raw_int, r_int, r_int);
                     lemma_mul_is_distributive_add_other_way(
                         r_int,
                         hi_raw_int * r_int,
@@ -1015,14 +937,12 @@ impl Scalar52 {
                     );
                 }
                 ((hi_raw_nat * r_nat + lo_raw_nat) * r_nat) % group_order(); {
-                    assert(wide_input == r_nat * hi_raw_nat + lo_raw_nat);
                 }
                 (wide_input * r_nat) % group_order();
             }
 
             lemma_cancel_mul_pow2_mod(result_nat, wide_input, r_nat);
         }
-        assert(to_nat(&result.limbs) < group_order());
 
         result
     }

@@ -1088,6 +1088,68 @@ pub mod test {
             .prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
+    /// Test case demonstrating that montgomery_reduce fails its canonicality postcondition
+    /// when given input that is the product of two bounded-but-non-canonical scalars.
+    ///
+    /// This specific case was found by proptest and demonstrates why the precondition
+    /// requires BOTH scalars to be canonical (< L), not just bounded.
+    #[test]
+    #[should_panic(expected = "Result not in canonical form")]
+    fn montgomery_reduce_non_canonical_product_fails_postcondition() {
+        // This is the minimal failing case found by proptest
+        let limbs: [u128; 9] = [
+            0,
+            0,
+            0,
+            0,
+            43234767039827164816921,
+            0,
+            0,
+            0,
+            130605075492091607448940168551,
+        ];
+
+        // Verify the input limbs are relatively small (much smaller than 2^104 which is the
+        // theoretical max for products of 52-bit limbs)
+        assert!(limbs[0] < (1u128 << 1), "limbs[0] should be < 2^1");
+        assert!(limbs[1] < (1u128 << 1), "limbs[1] should be < 2^1");
+        assert!(limbs[2] < (1u128 << 1), "limbs[2] should be < 2^1");
+        assert!(limbs[3] < (1u128 << 1), "limbs[3] should be < 2^1");
+        assert!(limbs[4] < (1u128 << 76), "limbs[4] should be < 2^76");
+        assert!(limbs[5] < (1u128 << 1), "limbs[5] should be < 2^1");
+        assert!(limbs[6] < (1u128 << 1), "limbs[6] should be < 2^1");
+        assert!(limbs[7] < (1u128 << 1), "limbs[7] should be < 2^1");
+        assert!(limbs[8] < (1u128 << 97), "limbs[8] should be < 2^97");
+
+        let result = Scalar52::montgomery_reduce(&limbs);
+
+        let result_nat = to_nat_exec(&result.limbs);
+        let limbs_nat = slice128_to_nat_exec(&limbs);
+        let l = group_order_exec();
+        let r = montgomery_radix_exec();
+
+        // The Montgomery property should still hold
+        assert_eq!(
+            (&result_nat * &r) % &l,
+            &limbs_nat % &l,
+            "Montgomery property violated"
+        );
+
+        // The result should be limbs_bounded
+        assert!(
+            limbs_bounded_exec(&result),
+            "Result limbs not bounded by 2^52"
+        );
+
+        // But the canonicality postcondition FAILS
+        assert!(
+            &result_nat < &l,
+            "Result not in canonical form (>= L): {} >= {}",
+            result_nat,
+            l
+        );
+    }
+
     /// Test that the canonical scalar generator round-trips correctly
     #[test]
     fn test_canonical_scalar_generator() {

@@ -24,6 +24,10 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
 
     // Prove limbs_bounded(one)
     assert(one.limbs[0] == 1);
+    assert(one.limbs[1] == 0);
+    assert(one.limbs[2] == 0);
+    assert(one.limbs[3] == 0);
+    assert(one.limbs[4] == 0);
     assert(1 < (1u64 << 52)) by (bit_vector);
     assert forall|i: int| 1 <= i < 5 implies one.limbs[i] == 0 && 0 < (1u64 << 52) by {};
     assert(limbs_bounded(&one));
@@ -41,7 +45,12 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
     assert(product[1] == self_scalar.limbs[1] as u128);
 
     // product[2] = self[0] * 0 + self[1] * 0 + self[2] * 1 = self[2]
-    assert(product[2] == (self_scalar.limbs[2] as u128) * 1);
+    assert(product[2] == ((self_scalar.limbs[0] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[1] as u128) * (one.limbs[1] as u128)
+            + (self_scalar.limbs[2] as u128) * (one.limbs[0] as u128)) as u128);
+    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0)
+            + (self_scalar.limbs[2] as u128) * (one.limbs[0] as u128)) as u128);
+    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0)
+            + (self_scalar.limbs[2] as u128) * (1)) as u128);
     assert(product[2] == self_scalar.limbs[2] as u128);
 
     // product[3] = self[0] * 0 + self[1] * 0 + self[2] * 0 + self[3] * 1 = self[3]

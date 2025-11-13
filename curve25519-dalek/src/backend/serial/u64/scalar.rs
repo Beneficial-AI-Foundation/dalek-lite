@@ -1016,7 +1016,7 @@ pub mod test {
     // Property-based test generators
 
     /// Generate a valid Scalar52 with bounded limbs (each limb < 2^52)
-    fn arb_scalar52() -> impl Strategy<Value = Scalar52> {
+    fn arb_bounded_scalar52() -> impl Strategy<Value = Scalar52> {
         prop::array::uniform5(0u64..(1u64 << 52)).prop_map(|limbs| Scalar52 { limbs })
     }
 
@@ -1041,13 +1041,6 @@ pub mod test {
 
             Scalar52 { limbs }
         })
-    }
-
-    /// Generate random 9-limb array from the product of two canonical Scalar52s
-    /// Both scalars are limbs_bounded AND have value < L
-    fn arb_nine_limbs() -> impl Strategy<Value = [u128; 9]> {
-        (arb_canonical_scalar52(), arb_canonical_scalar52())
-            .prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     /// Test case demonstrating that montgomery_reduce fails its canonicality postcondition
@@ -1185,13 +1178,13 @@ pub mod test {
     /// Generate random 9-limb array from product of one bounded scalar and one canonical scalar
     /// This tests a weaker precondition: one scalar just bounded, other canonical
     fn arb_nine_limbs_one_canonical() -> impl Strategy<Value = [u128; 9]> {
-        (arb_scalar52(), arb_canonical_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
+        (arb_bounded_scalar52(), arb_canonical_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     /// Generate 9-limb arrays from product of TWO bounded scalars
     /// Matches first part of spec: exists bounded1, bounded2 such that limbs = mul(bounded1, bounded2)
     fn arb_nine_limbs_two_bounded() -> impl Strategy<Value = [u128; 9]> {
-        (arb_scalar52(), arb_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
+        (arb_bounded_scalar52(), arb_bounded_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     proptest! {

@@ -1176,13 +1176,11 @@ pub mod test {
     }
 
     /// Generate random 9-limb array from product of one bounded scalar and one canonical scalar
-    /// This tests a weaker precondition: one scalar just bounded, other canonical
     fn arb_nine_limbs_one_canonical() -> impl Strategy<Value = [u128; 9]> {
         (arb_bounded_scalar52(), arb_canonical_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     /// Generate 9-limb arrays from product of TWO bounded scalars
-    /// Matches first part of spec: exists bounded1, bounded2 such that limbs = mul(bounded1, bounded2)
     fn arb_nine_limbs_two_bounded() -> impl Strategy<Value = [u128; 9]> {
         (arb_bounded_scalar52(), arb_bounded_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }

@@ -243,8 +243,31 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes: &[u8; 64], 
     let base = word_idx * 8;
     let pow_base = pow2((base * 8) as nat);
     if upto == 0 {
-        assert(bytes_wide_to_nat_rec(bytes, base) == pow_base * word_from_bytes_partial(bytes, word_idx, 0) + bytes_wide_to_nat_rec(bytes, base + 0)) by {
-        };
+        calc! {
+            (==)
+            bytes_wide_to_nat_rec(bytes, base); {
+                assert(bytes_wide_to_nat_rec(bytes, base) == bytes_wide_to_nat_rec(bytes, base + 0)) by {
+                    assert(base + 0 == base) by (nonlinear_arith);
+                };
+            }
+            bytes_wide_to_nat_rec(bytes, base + 0); {
+                assert(pow_base * 0 == 0) by (nonlinear_arith);
+                assert(
+                    bytes_wide_to_nat_rec(bytes, base + 0) ==
+                        pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0)
+                ) by (nonlinear_arith);
+            }
+            pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0); {
+                assert(word_from_bytes_partial(bytes, word_idx, 0) == 0);
+                assert(
+                    pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0) ==
+                        pow_base * word_from_bytes_partial(bytes, word_idx, 0) +
+                            bytes_wide_to_nat_rec(bytes, base + 0)
+                ) by (nonlinear_arith);
+            }
+            pow_base * word_from_bytes_partial(bytes, word_idx, 0) +
+                bytes_wide_to_nat_rec(bytes, base + 0);
+        }
     } else {
         let prev = upto - 1;
         lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, word_idx, prev);

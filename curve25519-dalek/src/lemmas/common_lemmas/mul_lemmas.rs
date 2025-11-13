@@ -201,5 +201,4 @@ pub proof fn lemma_mul_quad_prod(a1: int, b1: int, a2: int, b2: int)
     lemma_mul_is_associative(a2 * a1, b1, b2);
 }
 
-
 } // verus!

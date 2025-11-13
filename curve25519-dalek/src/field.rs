@@ -282,7 +282,7 @@ impl FieldElement {
             let base = as_nat(self.limbs) as int;
 
             // Prove t19 = x^(2^250-1) using explicit lemma
-            
+
             // Multiplication: t5 = t2 * t4
             assert(as_nat(t5.limbs) % p() == (as_nat(t2.limbs) * as_nat(t4.limbs)) % p()) by {
                 lemma_mul_mod_noop_general(

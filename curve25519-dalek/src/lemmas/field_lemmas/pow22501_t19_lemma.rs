@@ -149,7 +149,7 @@ pub proof fn lemma_pow22501_prove_t19(
     // ========================================================================
     // Establish non-negativity facts needed throughout the proof
     // ========================================================================
-    
+
     // Prove pow(base, 9) >= 0 for use throughout the proof
     assert(pow(base, 9) >= 0) by {
         lemma_pow_nonnegative(base, 9);
@@ -203,7 +203,11 @@ pub proof fn lemma_pow22501_prove_t19(
         % p());
 
     assert(as_nat(t5_limbs) % p() == (pow(base, 9) as nat * pow(base, 22) as nat) % p()) by {
-        lemma_mul_mod_noop_general(pow(base, 9) as nat as int, pow(base, 22) as nat as int, p() as int);
+        lemma_mul_mod_noop_general(
+            pow(base, 9) as nat as int,
+            pow(base, 22) as nat as int,
+            p() as int,
+        );
     }
 
     assert(pow(base, 9) * pow(base, 22) == pow(base, 31)) by {
@@ -227,98 +231,197 @@ pub proof fn lemma_pow22501_prove_t19(
     // Prove t6 = x^((2^5-1)*2^5)
     // ========================================================================
     // t6 = t5.pow2k(5) = (x^(2^5-1))^(2^5)
-    assert(pow2(5) > 0) by { lemma_pow2_pos(5); }
+    assert(pow2(5) > 0) by {
+        lemma_pow2_pos(5);
+    }
     lemma_prove_pow2k_step(base, as_nat(t5_limbs), as_nat(t6_limbs), (pow2(5) - 1) as nat, pow2(5));
 
     // ========================================================================
     // Prove t7 = x^(2^10-1)
     // ========================================================================
     // t7 = t6 * t5 = x^((2^5-1)*2^5) * x^(2^5-1) = x^(2^10-1)
-    lemma_prove_geometric_mul_step(base, as_nat(t6_limbs), as_nat(t5_limbs), as_nat(t7_limbs), ((pow2(5) - 1) * pow2(5)) as nat, (pow2(5) - 1) as nat);
+    lemma_prove_geometric_mul_step(
+        base,
+        as_nat(t6_limbs),
+        as_nat(t5_limbs),
+        as_nat(t7_limbs),
+        ((pow2(5) - 1) * pow2(5)) as nat,
+        (pow2(5) - 1) as nat,
+    );
     lemma_pow2_geometric(5, 5);
 
     // ========================================================================
     // Prove t8 = x^((2^10-1)*2^10)
     // ========================================================================
     // t8 = t7.pow2k(10) = (x^(2^10-1))^(2^10)
-    assert(pow2(10) > 0) by { lemma_pow2_pos(10); }
-    lemma_prove_pow2k_step(base, as_nat(t7_limbs), as_nat(t8_limbs), (pow2(10) - 1) as nat, pow2(10));
+    assert(pow2(10) > 0) by {
+        lemma_pow2_pos(10);
+    }
+    lemma_prove_pow2k_step(
+        base,
+        as_nat(t7_limbs),
+        as_nat(t8_limbs),
+        (pow2(10) - 1) as nat,
+        pow2(10),
+    );
 
     // ========================================================================
     // Prove t9 = x^(2^20-1)
     // ========================================================================
     // t9 = t8 * t7 = x^((2^10-1)*2^10) * x^(2^10-1) = x^(2^20-1)
-    lemma_prove_geometric_mul_step(base, as_nat(t8_limbs), as_nat(t7_limbs), as_nat(t9_limbs), ((pow2(10) - 1) * pow2(10)) as nat, (pow2(10) - 1) as nat);
+    lemma_prove_geometric_mul_step(
+        base,
+        as_nat(t8_limbs),
+        as_nat(t7_limbs),
+        as_nat(t9_limbs),
+        ((pow2(10) - 1) * pow2(10)) as nat,
+        (pow2(10) - 1) as nat,
+    );
     lemma_pow2_geometric(10, 10);
 
     // ========================================================================
     // Prove t10 = x^((2^20-1)*2^20)
     // ========================================================================
     // t10 = t9.pow2k(20) = (x^(2^20-1))^(2^20)
-    assert(pow2(20) > 0) by { lemma_pow2_pos(20); }
-    lemma_prove_pow2k_step(base, as_nat(t9_limbs), as_nat(t10_limbs), (pow2(20) - 1) as nat, pow2(20));
+    assert(pow2(20) > 0) by {
+        lemma_pow2_pos(20);
+    }
+    lemma_prove_pow2k_step(
+        base,
+        as_nat(t9_limbs),
+        as_nat(t10_limbs),
+        (pow2(20) - 1) as nat,
+        pow2(20),
+    );
 
     // ========================================================================
     // Prove t11 = x^(2^40-1)
     // ========================================================================
     // t11 = t10 * t9 = x^((2^20-1)*2^20) * x^(2^20-1) = x^(2^40-1)
-    lemma_prove_geometric_mul_step(base, as_nat(t10_limbs), as_nat(t9_limbs), as_nat(t11_limbs), ((pow2(20) - 1) * pow2(20)) as nat, (pow2(20) - 1) as nat);
+    lemma_prove_geometric_mul_step(
+        base,
+        as_nat(t10_limbs),
+        as_nat(t9_limbs),
+        as_nat(t11_limbs),
+        ((pow2(20) - 1) * pow2(20)) as nat,
+        (pow2(20) - 1) as nat,
+    );
     lemma_pow2_geometric(20, 20);
 
     // ========================================================================
     // Prove t12 = x^((2^40-1)*2^10)
     // ========================================================================
     // t12 = t11.pow2k(10) = (x^(2^40-1))^(2^10)
-    assert(pow2(10) > 0) by { lemma_pow2_pos(10); }
-    lemma_prove_pow2k_step(base, as_nat(t11_limbs), as_nat(t12_limbs), (pow2(40) - 1) as nat, pow2(10));
+    assert(pow2(10) > 0) by {
+        lemma_pow2_pos(10);
+    }
+    lemma_prove_pow2k_step(
+        base,
+        as_nat(t11_limbs),
+        as_nat(t12_limbs),
+        (pow2(40) - 1) as nat,
+        pow2(10),
+    );
 
     // ========================================================================
     // Prove t13 = x^(2^50-1)
     // ========================================================================
     // t13 = t12 * t7 = x^((2^40-1)*2^10) * x^(2^10-1) = x^(2^50-1)
-    lemma_prove_geometric_mul_step(base, as_nat(t12_limbs), as_nat(t7_limbs), as_nat(t13_limbs), ((pow2(40) - 1) * pow2(10)) as nat, (pow2(10) - 1) as nat);
+    lemma_prove_geometric_mul_step(
+        base,
+        as_nat(t12_limbs),
+        as_nat(t7_limbs),
+        as_nat(t13_limbs),
+        ((pow2(40) - 1) * pow2(10)) as nat,
+        (pow2(10) - 1) as nat,
+    );
     lemma_pow2_geometric(40, 10);
 
     // ========================================================================
     // Prove t14 = x^((2^50-1)*2^50)
     // ========================================================================
     // t14 = t13.pow2k(50) = (x^(2^50-1))^(2^50)
-    assert(pow2(50) > 0) by { lemma_pow2_pos(50); }
-    lemma_prove_pow2k_step(base, as_nat(t13_limbs), as_nat(t14_limbs), (pow2(50) - 1) as nat, pow2(50));
+    assert(pow2(50) > 0) by {
+        lemma_pow2_pos(50);
+    }
+    lemma_prove_pow2k_step(
+        base,
+        as_nat(t13_limbs),
+        as_nat(t14_limbs),
+        (pow2(50) - 1) as nat,
+        pow2(50),
+    );
 
     // ========================================================================
     // Prove t15 = x^(2^100-1)
     // ========================================================================
     // t15 = t14 * t13 = x^((2^50-1)*2^50) * x^(2^50-1) = x^(2^100-1)
-    lemma_prove_geometric_mul_step(base, as_nat(t14_limbs), as_nat(t13_limbs), as_nat(t15_limbs), ((pow2(50) - 1) * pow2(50)) as nat, (pow2(50) - 1) as nat);
+    lemma_prove_geometric_mul_step(
+        base,
+        as_nat(t14_limbs),
+        as_nat(t13_limbs),
+        as_nat(t15_limbs),
+        ((pow2(50) - 1) * pow2(50)) as nat,
+        (pow2(50) - 1) as nat,
+    );
     lemma_pow2_geometric(50, 50);
 
     // ========================================================================
     // Prove t16 = x^((2^100-1)*2^100)
     // ========================================================================
     // t16 = t15.pow2k(100) = (x^(2^100-1))^(2^100)
-    assert(pow2(100) > 0) by { lemma_pow2_pos(100); }
-    lemma_prove_pow2k_step(base, as_nat(t15_limbs), as_nat(t16_limbs), (pow2(100) - 1) as nat, pow2(100));
+    assert(pow2(100) > 0) by {
+        lemma_pow2_pos(100);
+    }
+    lemma_prove_pow2k_step(
+        base,
+        as_nat(t15_limbs),
+        as_nat(t16_limbs),
+        (pow2(100) - 1) as nat,
+        pow2(100),
+    );
 
     // ========================================================================
     // Prove t17 = x^(2^200-1)
     // ========================================================================
     // t17 = t16 * t15 = x^((2^100-1)*2^100) * x^(2^100-1) = x^(2^200-1)
-    lemma_prove_geometric_mul_step(base, as_nat(t16_limbs), as_nat(t15_limbs), as_nat(t17_limbs), ((pow2(100) - 1) * pow2(100)) as nat, (pow2(100) - 1) as nat);
+    lemma_prove_geometric_mul_step(
+        base,
+        as_nat(t16_limbs),
+        as_nat(t15_limbs),
+        as_nat(t17_limbs),
+        ((pow2(100) - 1) * pow2(100)) as nat,
+        (pow2(100) - 1) as nat,
+    );
     lemma_pow2_geometric(100, 100);
 
     // ========================================================================
     // Prove t18 = x^((2^200-1)*2^50)
     // ========================================================================
     // t18 = t17.pow2k(50) = (x^(2^200-1))^(2^50)
-    assert(pow2(50) > 0) by { lemma_pow2_pos(50); }
-    lemma_prove_pow2k_step(base, as_nat(t17_limbs), as_nat(t18_limbs), (pow2(200) - 1) as nat, pow2(50));
+    assert(pow2(50) > 0) by {
+        lemma_pow2_pos(50);
+    }
+    lemma_prove_pow2k_step(
+        base,
+        as_nat(t17_limbs),
+        as_nat(t18_limbs),
+        (pow2(200) - 1) as nat,
+        pow2(50),
+    );
 
     // ========================================================================
     // Prove t19 = x^(2^250-1) - FINAL STEP
     // ========================================================================
     // t19 = t18 * t13 = x^((2^200-1)*2^50) * x^(2^50-1) = x^(2^250-1)
-    lemma_prove_geometric_mul_step(base, as_nat(t18_limbs), as_nat(t13_limbs), as_nat(t19_limbs), ((pow2(200) - 1) * pow2(50)) as nat, (pow2(50) - 1) as nat);
+    lemma_prove_geometric_mul_step(
+        base,
+        as_nat(t18_limbs),
+        as_nat(t13_limbs),
+        as_nat(t19_limbs),
+        ((pow2(200) - 1) * pow2(50)) as nat,
+        (pow2(50) - 1) as nat,
+    );
     lemma_pow2_geometric(200, 50);
 }
 

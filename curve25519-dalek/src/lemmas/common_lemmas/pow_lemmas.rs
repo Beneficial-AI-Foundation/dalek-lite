@@ -966,15 +966,14 @@ pub proof fn lemma_pow_even_nonnegative(x: int, k: nat)
         pow(x, 2 * k) >= 0,
 {
     assert(pow(x, 2 * k) == pow(x, k) * pow(x, k)) by {
-      lemma_pow_adds(x, k, k);
+        lemma_pow_adds(x, k, k);
     }
     let y = pow(x, k);
-    if (y >= 0){
-      lemma_mul_nonnegative(y, y);
-    }
-    else {
-      lemma_mul_nonnegative(-y, -y);
-      lemma_mul_cancels_negatives(y, y)
+    if (y >= 0) {
+        lemma_mul_nonnegative(y, y);
+    } else {
+        lemma_mul_nonnegative(-y, -y);
+        lemma_mul_cancels_negatives(y, y)
     }
 }
 

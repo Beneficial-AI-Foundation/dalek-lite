@@ -691,7 +691,9 @@ impl Scalar52 {
     // Note: This spec is not yet confirmed because the function is unproved.
     // The spec is checked by prop_montgomery_reduce_spec.
     // If you edit this spec, please update the proptest.
-    // Once this function and all deps are proved, you can remove to proptest
+    // Once this function and all deps are proved, you can remove that proptest,
+    // and montgomery_reduce_non_canonical_product_fails_postcondition,
+    // and test_canonical_scalar_generator (if it's then unused)
 
         requires
     // The input represents the product of two canonical Scalar52s

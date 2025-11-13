@@ -246,19 +246,15 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes: &[u8; 64], 
         calc! {
             (==)
             bytes_wide_to_nat_rec(bytes, base); {
-                assert(bytes_wide_to_nat_rec(bytes, base) == bytes_wide_to_nat_rec(bytes, base + 0)) by {
-                    assert(base + 0 == base) by (nonlinear_arith);
-                };
+                assert(bytes_wide_to_nat_rec(bytes, base) == bytes_wide_to_nat_rec(bytes, base + 0));
             }
             bytes_wide_to_nat_rec(bytes, base + 0); {
-                assert(pow_base * 0 == 0) by (nonlinear_arith);
                 assert(
                     bytes_wide_to_nat_rec(bytes, base + 0) ==
                         pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0)
                 ) by (nonlinear_arith);
             }
             pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0); {
-                assert(word_from_bytes_partial(bytes, word_idx, 0) == 0);
                 assert(
                     pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0) ==
                         pow_base * word_from_bytes_partial(bytes, word_idx, 0) +

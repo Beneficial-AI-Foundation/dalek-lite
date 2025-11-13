@@ -543,10 +543,6 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
         out[0] &= LOW_51_BIT_MASK;
 
         // Now out[i] < 2^(51 + epsilon) for all i.
-        proof {
-            // PROOF BYPASS: assume output limbs are properly bounded
-            assume(forall|i: int| 0 <= i < 5 ==> out[i] < 1u64 << 54);
-        }
         FieldElement51 { limbs: out }
     }
 }

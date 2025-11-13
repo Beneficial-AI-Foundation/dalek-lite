@@ -36,6 +36,7 @@ use vstd::arithmetic::power2::*;
 use vstd::calc;
 use vstd::prelude::*;
 
+
 verus! {
 
 /// The `Scalar52` struct represents an element in
@@ -600,7 +601,7 @@ impl Scalar52 {
             limbs_bounded(b),
         ensures
             slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&b.limbs),
-            Self::spec_mul_internal(a, b) == z
+            spec_mul_internal(a, b) == z
     {
         proof { lemma_mul_internal_no_overflow() }
 
@@ -626,25 +627,6 @@ impl Scalar52 {
         z
     }
 
-    /// Spec function for multiplication - same as mul_internal but marked as spec
-    /// This allows calling it in spec contexts (like exists clauses)
-    pub open spec fn spec_mul_internal(a: &Scalar52, b: &Scalar52) -> [u128; 9]
-        recommends
-            limbs_bounded(a),
-            limbs_bounded(b),
-    {
-        [
-            ((a.limbs[0] as u128) * (b.limbs[0] as u128)) as u128,
-            ((a.limbs[0] as u128) * (b.limbs[1] as u128) + (a.limbs[1] as u128) * (b.limbs[0] as u128)) as u128,
-            ((a.limbs[0] as u128) * (b.limbs[2] as u128) + (a.limbs[1] as u128) * (b.limbs[1] as u128) + (a.limbs[2] as u128) * (b.limbs[0] as u128)) as u128,
-            ((a.limbs[0] as u128) * (b.limbs[3] as u128) + (a.limbs[1] as u128) * (b.limbs[2] as u128) + (a.limbs[2] as u128) * (b.limbs[1] as u128) + (a.limbs[3] as u128) * (b.limbs[0] as u128)) as u128,
-            ((a.limbs[0] as u128) * (b.limbs[4] as u128) + (a.limbs[1] as u128) * (b.limbs[3] as u128) + (a.limbs[2] as u128) * (b.limbs[2] as u128) + (a.limbs[3] as u128) * (b.limbs[1] as u128) + (a.limbs[4] as u128) * (b.limbs[0] as u128)) as u128,
-            ((a.limbs[1] as u128) * (b.limbs[4] as u128) + (a.limbs[2] as u128) * (b.limbs[3] as u128) + (a.limbs[3] as u128) * (b.limbs[2] as u128) + (a.limbs[4] as u128) * (b.limbs[1] as u128)) as u128,
-            ((a.limbs[2] as u128) * (b.limbs[4] as u128) + (a.limbs[3] as u128) * (b.limbs[3] as u128) + (a.limbs[4] as u128) * (b.limbs[2] as u128)) as u128,
-            ((a.limbs[3] as u128) * (b.limbs[4] as u128) + (a.limbs[4] as u128) * (b.limbs[3] as u128)) as u128,
-            ((a.limbs[4] as u128) * (b.limbs[4] as u128)) as u128,
-        ]
-    }
 
     /* <ORIGINAL CODE>
     fn square_internal(a: &Scalar52) -> [u128; 9] {

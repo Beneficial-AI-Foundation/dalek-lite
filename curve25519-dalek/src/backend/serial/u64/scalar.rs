@@ -934,9 +934,6 @@ impl Scalar52 {
             limbs[i] = self.limbs[i] as u128;
         }
         proof {
-            // from_montgomery converts a scalar in Montgomery form by dividing by R
-            // The input limbs represent self * 1, which is the product of self and 1
-            // Both self and 1 are canonical (< group_order)
             Self::lemma_from_montgomery_is_product_with_one(self, &limbs);
         }
         let result = Scalar52::montgomery_reduce(&limbs);
@@ -954,9 +951,8 @@ impl Scalar52 {
             forall|j: int| #![auto] 0 <= j < 5 ==> limbs[j] == self_scalar.limbs[j] as u128,
             forall|j: int| #![auto] 5 <= j < 9 ==> limbs[j] == 0,
         ensures
-            (exists|bounded: &Scalar52, canonical: &Scalar52|
-                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs)
-                    < group_order() && spec_mul_internal(bounded, canonical) == limbs),
+            (exists|bounded1: &Scalar52, bounded2: &Scalar52|
+                limbs_bounded(bounded1) && limbs_bounded(bounded2)  && spec_mul_internal(bounded1, bounded2) == limbs),
     {
         assume(false);
     }

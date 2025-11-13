@@ -45,41 +45,28 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
     assert(product[1] == self_scalar.limbs[1] as u128);
 
     // product[2] = self[0] * 0 + self[1] * 0 + self[2] * 1 = self[2]
-    assert(product[2] == ((self_scalar.limbs[0] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[1] as u128) * (one.limbs[1] as u128)
-            + (self_scalar.limbs[2] as u128) * (one.limbs[0] as u128)) as u128);
-    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0)
-            + (self_scalar.limbs[2] as u128) * (one.limbs[0] as u128)) as u128);
-    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0)
-            + (self_scalar.limbs[2] as u128) * (1)) as u128);
+    assert(product[2] == ((self_scalar.limbs[0] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[1] as u128) * (one.limbs[1] as u128) + (self_scalar.limbs[2] as u128) * (one.limbs[0] as u128)) as u128);
+    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (one.limbs[0] as u128)) as u128);
+    assert(product[2] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (1)) as u128);
     assert(product[2] == self_scalar.limbs[2] as u128);
 
     // product[3] = self[0] * 0 + self[1] * 0 + self[2] * 0 + self[3] * 1 = self[3]
-    assert(product[3] == ((self_scalar.limbs[0] as u128) * (one.limbs[3] as u128) + (self_scalar.limbs[1] as u128) * (one.limbs[2] as u128)
-            + (self_scalar.limbs[2] as u128) * (one.limbs[1] as u128) + (self_scalar.limbs[3] as u128) * (one.limbs[0] as u128)) as u128);
-    assert(product[3] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0)
-            + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (1)) as u128);
+    assert(product[3] == ((self_scalar.limbs[0] as u128) * (one.limbs[3] as u128) + (self_scalar.limbs[1] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[2] as u128) * (one.limbs[1] as u128) + (self_scalar.limbs[3] as u128) * (one.limbs[0] as u128)) as u128);
+    assert(product[3] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (1)) as u128);
     assert(product[3] == self_scalar.limbs[3] as u128);
 
     // product[4] = self[0] * 0 + ... + self[4] * 1 = self[4]
-    assert(product[4] == ((self_scalar.limbs[0] as u128) * (one.limbs[4] as u128) + (self_scalar.limbs[1] as u128) * (one.limbs[3] as u128)
-            + (self_scalar.limbs[2] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[3] as u128) * (one.limbs[1] as u128)
-            + (self_scalar.limbs[4] as u128) * (one.limbs[0] as u128)) as u128);
-    assert(product[4] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0)
-            + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (0)
-            + (self_scalar.limbs[4] as u128) * (1)) as u128);
+    assert(product[4] == ((self_scalar.limbs[0] as u128) * (one.limbs[4] as u128) + (self_scalar.limbs[1] as u128) * (one.limbs[3] as u128) + (self_scalar.limbs[2] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[3] as u128) * (one.limbs[1] as u128) + (self_scalar.limbs[4] as u128) * (one.limbs[0] as u128)) as u128);
+    assert(product[4] == ((self_scalar.limbs[0] as u128) * (0) + (self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (0) + (self_scalar.limbs[4] as u128) * (1)) as u128);
     assert(product[4] == self_scalar.limbs[4] as u128);
 
     // product[5..8] = 0 (since one's upper limbs are 0)
-    assert(product[5] == ((self_scalar.limbs[1] as u128) * (one.limbs[4] as u128) + (self_scalar.limbs[2] as u128) * (one.limbs[3] as u128)
-            + (self_scalar.limbs[3] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[4] as u128) * (one.limbs[1] as u128)) as u128);
-    assert(product[5] == ((self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (0)
-            + (self_scalar.limbs[3] as u128) * (0) + (self_scalar.limbs[4] as u128) * (0)) as u128);
+    assert(product[5] == ((self_scalar.limbs[1] as u128) * (one.limbs[4] as u128) + (self_scalar.limbs[2] as u128) * (one.limbs[3] as u128) + (self_scalar.limbs[3] as u128) * (one.limbs[2] as u128) + (self_scalar.limbs[4] as u128) * (one.limbs[1] as u128)) as u128);
+    assert(product[5] == ((self_scalar.limbs[1] as u128) * (0) + (self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (0) + (self_scalar.limbs[4] as u128) * (0)) as u128);
     assert(product[5] == 0);
 
-    assert(product[6] == ((self_scalar.limbs[2] as u128) * (one.limbs[4] as u128) + (self_scalar.limbs[3] as u128) * (one.limbs[3] as u128)
-            + (self_scalar.limbs[4] as u128) * (one.limbs[2] as u128)) as u128);
-    assert(product[6] == ((self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (0)
-            + (self_scalar.limbs[4] as u128) * (0)) as u128);
+    assert(product[6] == ((self_scalar.limbs[2] as u128) * (one.limbs[4] as u128) + (self_scalar.limbs[3] as u128) * (one.limbs[3] as u128) + (self_scalar.limbs[4] as u128) * (one.limbs[2] as u128)) as u128);
+    assert(product[6] == ((self_scalar.limbs[2] as u128) * (0) + (self_scalar.limbs[3] as u128) * (0) + (self_scalar.limbs[4] as u128) * (0)) as u128);
     assert(product[6] == 0);
 
     assert(product[7] == ((self_scalar.limbs[3] as u128) * (one.limbs[4] as u128) + (self_scalar.limbs[4] as u128) * (one.limbs[3] as u128)) as u128);

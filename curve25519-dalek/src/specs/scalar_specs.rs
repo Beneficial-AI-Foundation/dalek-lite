@@ -170,5 +170,4 @@ pub open spec fn is_valid_radix_16(digits: &[i8; 64]) -> bool {
     is_valid_radix_2w(digits, 4, 64)
 }
 
-
 } // verus!

@@ -602,7 +602,7 @@ impl Scalar52 {
             limbs_bounded(b),
         ensures
             slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&b.limbs),
-            spec_mul_internal(a, b) == z
+            spec_mul_internal(a, b) == z,
     {
         proof { lemma_mul_internal_no_overflow() }
 
@@ -627,7 +627,6 @@ impl Scalar52 {
 
         z
     }
-
 
     /* <ORIGINAL CODE>
     fn square_internal(a: &Scalar52) -> [u128; 9] {
@@ -663,7 +662,7 @@ impl Scalar52 {
             limbs_bounded(a),
         ensures
             slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&a.limbs),
-            spec_mul_internal(a, a) == z
+            spec_mul_internal(a, a) == z,
     {
         proof { lemma_square_internal_no_overflow() }
 
@@ -700,19 +699,18 @@ impl Scalar52 {
     // and montgomery_reduce_non_canonical_product_fails_postcondition,
     // and test_canonical_scalar_generator (if it's then unused)
 
-
         ensures
             (exists|bounded1: &Scalar52, bounded2: &Scalar52|
-                limbs_bounded(bounded1) && limbs_bounded(bounded2) &&
-        spec_mul_internal(bounded1, bounded2) == limbs) ==>
-            ((to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
-                % group_order() &&
-            limbs_bounded(&result)),
-
+                limbs_bounded(bounded1) && limbs_bounded(bounded2) && spec_mul_internal(
+                    bounded1,
+                    bounded2,
+                ) == limbs) ==> ((to_nat(&result.limbs) * montgomery_radix()) % group_order()
+                == slice128_to_nat(limbs) % group_order() && limbs_bounded(&result)),
             (exists|bounded: &Scalar52, canonical: &Scalar52|
-                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs) < group_order() &&
-        spec_mul_internal(bounded, canonical) == limbs) ==>
-            to_nat(&result.limbs) < group_order(),
+                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs)
+                    < group_order() && spec_mul_internal(bounded, canonical) == limbs) ==> to_nat(
+                &result.limbs,
+            ) < group_order(),
     {
         assume(false);  // TODO: Add proofs
 
@@ -955,8 +953,8 @@ impl Scalar52 {
             forall|j: int| #![auto] 5 <= j < 9 ==> limbs[j] == 0,
         ensures
             (exists|bounded: &Scalar52, canonical: &Scalar52|
-                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs) < group_order() &&
-        spec_mul_internal(bounded, canonical) == limbs)
+                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs)
+                    < group_order() && spec_mul_internal(bounded, canonical) == limbs),
     {
         assume(false);
     }
@@ -1187,19 +1185,13 @@ pub mod test {
     /// Generate random 9-limb array from product of one bounded scalar and one canonical scalar
     /// This tests a weaker precondition: one scalar just bounded, other canonical
     fn arb_nine_limbs_one_canonical() -> impl Strategy<Value = [u128; 9]> {
-        (arb_scalar52(), arb_canonical_scalar52())
-            .prop_map(|(a, b)| {
-                Scalar52::mul_internal(&a, &b)
-            })
+        (arb_scalar52(), arb_canonical_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     /// Generate 9-limb arrays from product of TWO bounded scalars
     /// Matches first part of spec: exists bounded1, bounded2 such that limbs = mul(bounded1, bounded2)
     fn arb_nine_limbs_two_bounded() -> impl Strategy<Value = [u128; 9]> {
-        (arb_scalar52(), arb_scalar52())
-            .prop_map(|(a, b)| {
-                Scalar52::mul_internal(&a, &b)
-            })
+        (arb_scalar52(), arb_scalar52()).prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
     proptest! {
@@ -1262,7 +1254,6 @@ pub mod test {
                 "Result not in canonical form (>= L), but input was product of bounded × canonical");
         }
     }
-
 }
 // #[cfg(test)]
 // mod test {

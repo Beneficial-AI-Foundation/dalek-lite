@@ -232,15 +232,16 @@ impl Zeroize for MontgomeryPoint {
     }
 }
 
-} // verus!
 impl MontgomeryPoint {
     /// Fixed-base scalar multiplication (i.e. multiplication by the base point).
+    #[verifier::external_body]
     pub fn mul_base(scalar: &Scalar) -> Self {
         EdwardsPoint::mul_base(scalar).to_montgomery()
     }
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
+    #[verifier::external_body]
     pub fn mul_clamped(self, bytes: [u8; 32]) -> Self {
         // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
         // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
@@ -249,21 +250,18 @@ impl MontgomeryPoint {
         // Further, we don't do any reduction or arithmetic with this clamped value, so there's no
         // issues arising from the fact that the curve point is not necessarily in the prime-order
         // subgroup.
-        let s = Scalar {
-            bytes: clamp_integer(bytes),
-        };
+        let s = Scalar { bytes: clamp_integer(bytes) };
         s * self
     }
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
+    #[verifier::external_body]
     pub fn mul_base_clamped(bytes: [u8; 32]) -> Self {
         // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
         // note that fixed-base multiplication is also defined for all values of `bytes` less than
         // 2^255.
-        let s = Scalar {
-            bytes: clamp_integer(bytes),
-        };
+        let s = Scalar { bytes: clamp_integer(bytes) };
         Self::mul_base(&s)
     }
 
@@ -274,14 +272,12 @@ impl MontgomeryPoint {
     /// Curve25519 uses _clamped multiplication_, explained
     /// [here](https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/).
     /// When in doubt, use [`Self::mul_clamped`].
+    #[verifier::external_body]
     pub fn mul_bits_be(&self, bits: impl Iterator<Item = bool>) -> MontgomeryPoint {
         // Algorithm 8 of Costello-Smith 2017
         let affine_u = FieldElement::from_bytes(&self.0);
         let mut x0 = ProjectivePoint::identity();
-        let mut x1 = ProjectivePoint {
-            U: affine_u,
-            W: FieldElement::ONE,
-        };
+        let mut x1 = ProjectivePoint { U: affine_u, W: FieldElement::ONE };
 
         // Go through the bits from most to least significant, using a sliding window of 2
         let mut prev_bit = false;
@@ -314,82 +310,79 @@ impl MontgomeryPoint {
         self.0
     }
 
-    verus! {
-
-/// Attempt to convert to an `EdwardsPoint`, using the supplied
-/// choice of sign for the `EdwardsPoint`.
-///
-/// # Inputs
-///
-/// * `sign`: a `u8` donating the desired sign of the resulting
-///   `EdwardsPoint`.  `0` denotes positive and `1` negative.
-///
-/// # Return
-///
-/// * `Some(EdwardsPoint)` if `self` is the \\(u\\)-coordinate of a
-/// point on (the Montgomery form of) Curve25519;
-///
-/// * `None` if `self` is the \\(u\\)-coordinate of a point on the
-/// twist of (the Montgomery form of) Curve25519;
-///
-pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
-    ensures
-        match result {
-            Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards),
-            None => is_equal_to_minus_one(spec_montgomery_point(*self)),
-        },
-{
-    // To decompress the Montgomery u coordinate to an
-    // `EdwardsPoint`, we apply the birational map to obtain the
-    // Edwards y coordinate, then do Edwards decompression.
-    //
-    // The birational map is y = (u-1)/(u+1).
-    //
-    // The exceptional points are the zeros of the denominator,
-    // i.e., u = -1.
-    //
-    // But when u = -1, v^2 = u*(u^2+486662*u+1) = 486660.
-    //
-    // Since this is nonsquare mod p, u = -1 corresponds to a point
-    // on the twist, not the curve, so we can reject it early.
-    let u = FieldElement::from_bytes(&self.0);
-
-    if u == FieldElement::MINUS_ONE {
-        proof {
-            assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
-        }
-        return None;
-    }
-    let one = FieldElement::ONE;
-
-    /* VERIFICATION NOTE: need to prove preconditions for arithmetic traits */
-    assume(false);
-
-    let y = &(&u - &one) * &(&u + &one).invert();
-
-    let mut y_bytes = y.as_bytes();
-    y_bytes[31] ^= sign << 7;
-
-    let result = CompressedEdwardsY(y_bytes).decompress();
-
-    proof {
-        // assumed postconditions
-        match result {
-            Some(edwards) => {
-                assume(montgomery_corresponds_to_edwards(*self, edwards));
+    /// Attempt to convert to an `EdwardsPoint`, using the supplied
+    /// choice of sign for the `EdwardsPoint`.
+    ///
+    /// # Inputs
+    ///
+    /// * `sign`: a `u8` donating the desired sign of the resulting
+    ///   `EdwardsPoint`.  `0` denotes positive and `1` negative.
+    ///
+    /// # Return
+    ///
+    /// * `Some(EdwardsPoint)` if `self` is the \\(u\\)-coordinate of a
+    /// point on (the Montgomery form of) Curve25519;
+    ///
+    /// * `None` if `self` is the \\(u\\)-coordinate of a point on the
+    /// twist of (the Montgomery form of) Curve25519;
+    ///
+    pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
+        ensures
+            match result {
+                Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards),
+                None => is_equal_to_minus_one(spec_montgomery_point(*self)),
             },
-            None => {
+    {
+        // To decompress the Montgomery u coordinate to an
+        // `EdwardsPoint`, we apply the birational map to obtain the
+        // Edwards y coordinate, then do Edwards decompression.
+        //
+        // The birational map is y = (u-1)/(u+1).
+        //
+        // The exceptional points are the zeros of the denominator,
+        // i.e., u = -1.
+        //
+        // But when u = -1, v^2 = u*(u^2+486662*u+1) = 486660.
+        //
+        // Since this is nonsquare mod p, u = -1 corresponds to a point
+        // on the twist, not the curve, so we can reject it early.
+        let u = FieldElement::from_bytes(&self.0);
+
+        if u == FieldElement::MINUS_ONE {
+            proof {
                 assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
-            },
+            }
+            return None;
         }
-    }
+        let one = FieldElement::ONE;
 
-    result
+        /* VERIFICATION NOTE: need to prove preconditions for arithmetic traits */
+        assume(false);
+
+        let y = &(&u - &one) * &(&u + &one).invert();
+
+        let mut y_bytes = y.as_bytes();
+        y_bytes[31] ^= sign << 7;
+
+        let result = CompressedEdwardsY(y_bytes).decompress();
+
+        proof {
+            // assumed postconditions
+            match result {
+                Some(edwards) => {
+                    assume(montgomery_corresponds_to_edwards(*self, edwards));
+                },
+                None => {
+                    assume(is_equal_to_minus_one(spec_montgomery_point(*self)));
+                },
+            }
+        }
+
+        result
+    }
 }
 
 } // verus!
-}
-
 /// Perform the Elligator2 mapping to a Montgomery point.
 ///
 /// See <https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-10#section-6.7.1>

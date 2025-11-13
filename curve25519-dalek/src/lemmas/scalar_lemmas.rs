@@ -484,7 +484,6 @@ pub(crate) proof fn lemma_r_le_l(r: Scalar52)
 {
     lemma_five_limbs_equals_to_nat(&r.limbs);
 
-    lemma2_to64();
     lemma2_to64_rest();
     lemma_pow2_adds(52, 52);  // prove pow2(104)
     lemma_pow2_adds(104, 52);  // prove pow2(156)
@@ -514,7 +513,6 @@ pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
 {
     lemma_five_limbs_equals_to_nat(&rr.limbs);
 
-    lemma2_to64();
     lemma2_to64_rest();
     lemma_pow2_adds(52, 52);  // prove pow2(104)
     lemma_pow2_adds(104, 52);  // prove pow2(156)

@@ -1265,49 +1265,4 @@ pub mod test {
         assert!(limbs_bounded_exec(&result));
         assert!(&result_nat < &l);
     }
-
-
-    /// Generate a valid Scalar52 with bounded limbs (each limb < 2^52)
-    fn arb_scalar52v2() -> impl Strategy<Value = Scalar52> {
-        prop::array::uniform5(0u64..(1u64 << 52))
-            .prop_map(|limbs| Scalar52 { limbs })
-    }
-
-    /// Generate random 9-limb array from the product of two bounded Scalar52s
-    /// This matches the intended precondition: exists a, b such that limbs = mul_internal(a, b)
-    fn arb_nine_limbsv2() -> impl Strategy<Value = [u128; 9]> {
-        (arb_scalar52v2(), arb_scalar52v2())
-            .prop_map(|(a, b)| {
-                Scalar52::mul_internal(&a, &b)
-            })
-    }
-
-    proptest! {
-        #[test]
-        fn prop_montgomery_reduce_specv2(limbs in arb_nine_limbsv2()) {
-            // Call montgomery_reduce
-            let result = Scalar52::montgomery_reduce(&limbs);
-
-            // Convert to BigUint using executable spec functions
-            let result_nat = to_nat_exec(&result.limbs);
-            let limbs_nat = slice128_to_nat_exec(&limbs);
-            let l = group_order_exec();
-            let r = montgomery_radix_exec();
-
-            // Check the spec postconditions:
-            // 1. (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs) % group_order()
-            let lhs = (&result_nat * &r) % &l;
-            let rhs = &limbs_nat % &l;
-            prop_assert_eq!(lhs, rhs,
-                "Montgomery reduce spec violated: (result * R) mod L != limbs mod L");
-
-            // 2. limbs_bounded(&result)
-            prop_assert!(limbs_bounded_exec(&result),
-                "Result limbs not bounded by 2^52");
-
-            // 3. to_nat(&result.limbs) < group_order()
-            prop_assert!(&result_nat < &l,
-                "Result not in canonical form (>= L)");
-        }
-    }
 }

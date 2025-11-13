@@ -701,9 +701,12 @@ impl Scalar52 {
 
 
         ensures
-            (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
-                % group_order(),
-            limbs_bounded(&result),
+            (exists|bounded1: &Scalar52, bounded2: &Scalar52|
+                limbs_bounded(bounded1) && limbs_bounded(bounded2) &&
+        spec_mul_internal(bounded1, bounded2) == limbs) ==>
+            ((to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
+                % group_order() &&
+            limbs_bounded(&result)),
 
             (exists|bounded: &Scalar52, canonical: &Scalar52|
                 limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs) < group_order() &&

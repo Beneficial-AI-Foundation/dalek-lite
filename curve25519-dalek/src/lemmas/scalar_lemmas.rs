@@ -432,6 +432,21 @@ pub proof fn lemma_from_montgomery_limbs_conversion(limbs: &[u128; 9], self_limb
     ));
 }
 
+pub proof fn lemma_r_limbs_bounded()
+    ensures
+        0x000f48bd6721e6edu64 < (1u64 << 52),
+        0x0003bab5ac67e45au64 < (1u64 << 52),
+        0x000fffffeb35e51bu64 < (1u64 << 52),
+        0x000fffffffffffffu64 < (1u64 << 52),
+        0x00000fffffffffff_u64 < (1u64 << 52),
+{
+    assert(0x000f48bd6721e6edu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x0003bab5ac67e45au64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000fffffeb35e51bu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000fffffffffffffu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x00000fffffffffff_u64 < (1u64 << 52)) by (bit_vector);
+}
+
 pub proof fn lemma_rr_limbs_bounded()
     ensures
         0x000d63c715bea69fu64 < (1u64 << 52),

@@ -5,6 +5,10 @@ use core::array::TryFromSliceError;
 use core::convert::TryInto;
 
 #[allow(unused_imports)]
+use crate::montgomery::MontgomeryPoint;
+#[allow(unused_imports)]
+use crate::specs::field_specs::*;
+#[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
 #[allow(unused_imports)]
 use crate::Scalar;
@@ -186,20 +190,47 @@ pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::ha
 // Spec function: models the state of a hasher after hashing bytes
 pub spec fn spec_state_after_hash<H, T, const N: usize>(initial_state: H, bytes: &[T; N]) -> H;
 
-// Axiom: Hash is deterministic - same input produces same output state
-pub proof fn axiom_hash_is_deterministic<T, const N: usize, H>(
-    arr1: &[T; N],
-    arr2: &[T; N],
-    state1: H,
-    state2: H,
+/// Spec function: the hash state after hashing a MontgomeryPoint
+/// This is defined as the hash state of its canonical byte representation
+pub open spec fn spec_state_after_hash_montgomery<H>(
+    initial_state: H,
+    point: &MontgomeryPoint,
+) -> H {
+    // The hash state of a MontgomeryPoint is determined by its canonical bytes
+    // Canonical bytes are: spec_fe51_to_bytes(spec_fe51_from_bytes(point.0))
+    let canonical_seq = spec_fe51_to_bytes(&spec_fe51_from_bytes(&point.0));
+    let canonical_bytes = seq_to_array_32(canonical_seq);
+    spec_state_after_hash(initial_state, &canonical_bytes)
+}
+
+pub proof fn lemma_hash_is_canonical<H>(
+    point1: &MontgomeryPoint,
+    point2: &MontgomeryPoint,
+    state: H,
 )
     requires
-        arr1@ == arr2@,
-        state1 == state2,
+// The two points represent the same field element (same canonical value)
+
+        spec_field_element_from_bytes(&point1.0) == spec_field_element_from_bytes(&point2.0),
     ensures
-        spec_state_after_hash(state1, arr1) == spec_state_after_hash(state2, arr2),
+// Points with equal field element values hash to the same state
+
+        spec_state_after_hash_montgomery(state, point1) == spec_state_after_hash_montgomery(
+            state,
+            point2,
+        ),
 {
-    admit();
+    // Get canonical byte sequences
+    let ghost canonical_seq1 = spec_fe51_to_bytes(&spec_fe51_from_bytes(&point1.0));
+    let ghost canonical_seq2 = spec_fe51_to_bytes(&spec_fe51_from_bytes(&point2.0));
+
+    // Convert to arrays for use with hash_determinism_axiom
+    let ghost canonical1 = seq_to_array_32(canonical_seq1);
+    let ghost canonical2 = seq_to_array_32(canonical_seq2);
+
+    assume(canonical_seq1 == canonical_seq2);
+    assert(canonical1@ == canonical2@);
+
 }
 
 // Convert a Seq<u8> to a [u8; 32] array (requires seq.len() >= 32)

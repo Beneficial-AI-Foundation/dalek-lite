@@ -1,5 +1,4 @@
 #![allow(unused)]
-use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 use vstd::prelude::*;
 

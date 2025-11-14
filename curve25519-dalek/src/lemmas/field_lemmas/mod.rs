@@ -14,8 +14,6 @@ pub mod pow2_51_lemmas;
 
 pub mod pow2k_lemmas;
 
-// pub mod pow22501_lemmas;  // Backup file with more comprehensive lemmas - keeping for reference
-
 pub mod reduce_lemmas;
 
 pub mod load8_lemmas;

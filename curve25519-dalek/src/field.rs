@@ -200,12 +200,12 @@ impl FieldElement {
     #[rustfmt::skip]  // keep alignment of explanatory comments
     fn pow22501(&self) -> (result: (FieldElement, FieldElement))
         requires
-            forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
+            limbs_bounded(self, 54),
         ensures
     // Bounded limbs (maintained by all field operations)
 
-            forall|i: int| 0 <= i < 5 ==> result.0.limbs[i] < 1u64 << 54,
-            forall|i: int| 0 <= i < 5 ==> result.1.limbs[i] < 1u64 << 54,
+            limbs_bounded(&result.0, 54),
+            limbs_bounded(&result.1, 54),
             // Mathematical values
             spec_field_element(&result.0) == (pow(
                 spec_field_element(self) as int,
@@ -401,8 +401,8 @@ impl FieldElement {
             // Bounded limbs: all field operations (mul, square, pow2k) maintain the bound < 2^54
             // t19 is the result of mul (&t18 * &t13), so it inherits the bound from mul's postcondition
             // t3 is the result of mul (&t0 * &t2), so it inherits the bound from mul's postcondition
-            assert(forall|i: int| 0 <= i < 5 ==> t19.limbs[i] < 1u64 << 54);
-            assert(forall|i: int| 0 <= i < 5 ==> t3.limbs[i] < 1u64 << 54);
+            assert(limbs_bounded(&t19, 54));
+            assert(limbs_bounded(&t3, 54));
         }
 
         (t19, t3)
@@ -493,7 +493,7 @@ impl FieldElement {
         proof {
             // PROOF BYPASS: assume acc limbs are bounded
             // (This would follow from the loop invariant, but we haven't proven that yet)
-            assume(forall|i: int| 0 <= i < 5 ==> acc.limbs[i] < 1u64 << 54);
+            assume(limbs_bounded(&acc, 54));
         }
         acc = acc.invert();
 
@@ -567,7 +567,7 @@ impl FieldElement {
     // VERIFICATION NOTE: PROOF BYPASS
 
         requires
-            forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
+            limbs_bounded(self, 54),
         ensures
     // If self is non-zero, result is the multiplicative inverse: result * self ≡ 1 (mod p)
 
@@ -595,11 +595,11 @@ impl FieldElement {
     #[allow(clippy::let_and_return)]
     fn pow_p58(&self) -> (result: FieldElement)
         requires
-            forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
+            limbs_bounded(self, 54),
         ensures
     // Bounded limbs (maintained by all field operations)
 
-            forall|i: int| 0 <= i < 5 ==> result.limbs[i] < 1u64 << 54,
+            limbs_bounded(&result, 54),
             // Mathematical value
             spec_field_element(&result) == (pow(
                 spec_field_element(self) as int,
@@ -653,7 +653,7 @@ impl FieldElement {
             lemma_bridge_pow_as_nat_to_spec(&t21, self, (pow2(252) - 3) as nat);
 
             // Bounded limbs: t21 is the result of mul (self * &t20), which maintains the bound
-            assert(forall|i: int| 0 <= i < 5 ==> t21.limbs[i] < 1u64 << 54);
+            assert(limbs_bounded(&t21, 54));
         }
 
         t21

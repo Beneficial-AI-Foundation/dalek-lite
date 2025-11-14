@@ -900,28 +900,9 @@ pub proof fn lemma_pow_mod_congruent(a: int, b: int, n: nat, m: int)
         a % m == b % m,
     ensures
         pow(a, n) % m == pow(b, n) % m,
-    decreases n,
 {
-    if n == 0 {
-        // pow(a, 0) == pow(b, 0) == 1
-        lemma_pow0(a);
-        lemma_pow0(b);
-    } else {
-        // Inductive case: pow(a, n) == a * pow(a, n-1) for n > 0
-        // Need to show: pow(a, n) % m == pow(b, n) % m
-        // By IH: pow(a, n-1) % m == pow(b, n-1) % m
-        lemma_pow_mod_congruent(a, b, (n - 1) as nat, m);
-
-        // Use lemma_pow_adds to state: pow(a, n) = pow(a, 1) * pow(a, n-1) = a * pow(a, n-1)
-        lemma_pow1(a);
-        lemma_pow_adds(a, 1, (n - 1) as nat);
-        lemma_pow1(b);
-        lemma_pow_adds(b, 1, (n - 1) as nat);
-
-        // Use modular multiplication property
-        lemma_mul_mod_noop_general(a, pow(a, (n - 1) as nat), m);
-        lemma_mul_mod_noop_general(b, pow(b, (n - 1) as nat), m);
-    }
+    lemma_pow_mod_noop(a, n, m);
+    lemma_pow_mod_noop(b, n, m);
 }
 
 /// Lemma: Powers of non-negative integers are always non-negative

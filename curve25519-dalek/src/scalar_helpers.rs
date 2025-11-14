@@ -1,4 +1,3 @@
-//! Helper functions for scalar operations in MODIFIED CODE
 use crate::scalar::Scalar;
 use vstd::prelude::*;
 

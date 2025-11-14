@@ -56,11 +56,15 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::as_nat_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t19_lemma::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t3_lemma::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::pow_p58_lemma::*;
 
 verus! {
 
@@ -591,11 +595,74 @@ impl FieldElement {
         // The bits of (p-5)/8 are 101111.....11.
         //
         //                                 nonzero bits of exponent
-        let (t19, _) = self.pow22501();  // 249..0
-        assume(false);
-        let t20 = t19.pow2k(2);  // 251..2
-        assume(false);
-        let t21 = self * &t20;  // 251..2,0
+        let (t19, _) = self.pow22501();  // 249..0 = x^(2^250-1)
+
+        proof {
+            // TODO: pow22501 should add this to its postcondition:
+            //       ensures forall|i: int| 0 <= i < 5 ==> result.0.limbs[i] < 1u64 << 54
+            // This is required by pow2k's precondition. The bound is maintained by all
+            // field operations (square, mul, pow2k), but it's not currently tracked in
+            // the postconditions of pow22501.
+            assume(forall|i: int| 0 <= i < 5 ==> t19.limbs[i] < 1u64 << 54);
+        }
+
+        let t20 = t19.pow2k(2);  // 251..2 = x^(2^252-4)
+        let t21 = self * &t20;  // 251..2,0 = x^(2^252-3)
+
+        proof {
+            pow255_gt_19();
+
+            // Bridge from spec_field_element to as_nat
+            assert(as_nat(t19.limbs) % p() == spec_field_element(&t19));
+            assert(as_nat(self.limbs) % p() == spec_field_element(self));
+
+            // Use lemma_pow_mod_noop to bridge from spec_field_element to as_nat
+            lemma_pow_mod_noop(as_nat(self.limbs) as int, (pow2(250) - 1) as nat, p() as int);
+            assert(pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) >= 0) by {
+                lemma_pow_nonnegative(as_nat(self.limbs) as int, (pow2(250) - 1) as nat);
+            }
+            assert(pow((as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat) >= 0) by {
+                lemma_pow_nonnegative((as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat);
+            }
+            assert(pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p() == pow(
+                (as_nat(self.limbs) % p()) as int,
+                (pow2(250) - 1) as nat,
+            ) as nat % p());
+            assert(as_nat(t19.limbs) % p() == pow(
+                as_nat(self.limbs) as int,
+                (pow2(250) - 1) as nat,
+            ) as nat % p());
+
+            // Multiplication: t21 = self * t20
+            assert(as_nat(t21.limbs) % p() == (as_nat(self.limbs) * as_nat(t20.limbs)) % p()) by {
+                lemma_mul_mod_noop_general(
+                    as_nat(self.limbs) as int,
+                    as_nat(t20.limbs) as int,
+                    p() as int,
+                );
+            };
+
+            // Use lemma to prove t21 = x^(2^252-3)
+            lemma_pow_p58_prove(self.limbs, t19.limbs, t20.limbs, t21.limbs);
+
+            // Bridge back from as_nat to spec_field_element
+            lemma_bridge_pow_as_nat_to_spec(&t21, self, (pow2(252) - 3) as nat);
+
+            // The bridge lemma gives us: spec_field_element(&t21) == (pow(...) as nat) % p()
+            // The postcondition needs: spec_field_element(&t21) == pow(...) % (p() as int)
+            // These are equivalent - just nat % nat vs int % int type difference
+            assert(spec_field_element(&t21) == pow(
+                spec_field_element(self) as int,
+                (pow2(252) - 3) as nat,
+            ) % (p() as int)) by {
+                // From bridge lemma: spec_field_element(&t21) == (pow(spec_field_element(self) as int, exp) as nat) % p()
+                // We need: spec_field_element(&t21) == pow(spec_field_element(self) as int, exp) % (p() as int)
+                // Since pow(...) >= 0, these are the same (nat % nat == int % int when values are non-negative)
+                assert(pow(spec_field_element(self) as int, (pow2(252) - 3) as nat) >= 0) by {
+                    lemma_pow_nonnegative(spec_field_element(self) as int, (pow2(252) - 3) as nat);
+                }
+            }
+        }
 
         t21
     }

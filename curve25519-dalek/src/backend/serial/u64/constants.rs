@@ -87,11 +87,14 @@ pub(crate) const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
     ],
 };
 
-/// `APLUS2_OVER_FOUR` is (A+2)/4. (This is used internally within the Montgomery ladder.)
+verus! {
+
+    /// `APLUS2_OVER_FOUR` is (A+2)/4. (This is used internally within the Montgomery ladder.)
 pub(crate) const APLUS2_OVER_FOUR: FieldElement51 = FieldElement51 {
     limbs: [121666, 0, 0, 0, 0],
 };
 
+}
 /// `MONTGOMERY_A` is equal to 486662, which is a constant of the curve equation
 /// for Curve25519 in its Montgomery form. (This is used internally within the
 /// Elligator map.)

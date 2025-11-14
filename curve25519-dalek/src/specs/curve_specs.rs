@@ -361,4 +361,50 @@ pub open spec fn is_equal_to_minus_one(u: nat) -> bool {
 
 }
 
+/// Map Edwards affine y to Montgomery u via u = (1+y)/(1-y). Special-case y=1 -> u=0.
+pub open spec fn montgomery_u_from_edwards_y(y: nat) -> nat {
+    let denom = math_field_sub(1, y);
+    if denom == 0 {
+        0
+    } else {
+        let numer = math_field_add(1, y);
+        math_field_mul(numer, math_field_inv(denom))
+    }
+}
+
+/// Map Montgomery u to Edwards affine y via y = (u-1)/(u+1).
+/// Recommends u != -1 to avoid division by zero.
+pub open spec fn edwards_y_from_montgomery_u(u: nat) -> nat
+    recommends
+        u != math_field_sub(0, 1),
+{
+    let denom = math_field_add(u, 1);
+    let numer = math_field_sub(u, 1);
+    math_field_mul(numer, math_field_inv(denom))
+}
+
+/// Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).
+/// Given (x1,y1) and (x2,y2) on the curve, returns (x3,y3) = (x1,y1) + (x2,y2).
+/// Formulas:
+///   x3 = (x1*y2 + y1*x2) / (1 + d*x1*x2*y1*y2)
+///   y3 = (y1*y2 + x1*x2) / (1 - d*x1*x2*y1*y2)
+pub open spec fn edwards_add_affine(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
+    let d = spec_field_element(&EDWARDS_D);
+    let x1x2 = math_field_mul(x1, x2);
+    let y1y2 = math_field_mul(y1, y2);
+    let x1y2 = math_field_mul(x1, y2);
+    let y1x2 = math_field_mul(y1, x2);
+    let t = math_field_mul(d, math_field_mul(x1x2, y1y2));
+    let denom_x = math_field_add(1, t);
+    let denom_y = math_field_sub(1, t);
+    let x3 = math_field_mul(math_field_add(x1y2, y1x2), math_field_inv(denom_x));
+    let y3 = math_field_mul(math_field_add(y1y2, x1x2), math_field_inv(denom_y));
+    (x3, y3)
+}
+
+/// Affine Edwards doubling defined as addition with itself.
+pub open spec fn edwards_double_affine(x: nat, y: nat) -> (nat, nat) {
+    edwards_add_affine(x, y, x, y)
+}
+
 } // verus!

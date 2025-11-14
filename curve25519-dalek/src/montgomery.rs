@@ -300,6 +300,51 @@ impl MontgomeryPoint {
         x0.as_affine()
     }
 
+    /// Version of mul_bits_be that takes a slice of bits instead of an iterator.
+    /// This version uses a while loop instead of for-loop to be Verus-compatible.
+    ///
+    /// Given `self` \\( = u\_0(P) \\), and a big-endian bit representation of an integer
+    /// \\(n\\) as a slice, return \\( u\_0(\[n\]P) \\).
+    ///
+    /// VERIFICATION NOTE: Currently marked as external_body because ProjectivePoint and
+    /// differential_add_and_double are defined outside the verus! block. Once those are
+    /// moved into verified code or given proper specifications, this can be verified.
+    #[verifier::external_body]
+    pub fn mul_bits_be_slice(&self, bits: &[bool]) -> MontgomeryPoint {
+        // Algorithm 8 of Costello-Smith 2017
+        let affine_u = FieldElement::from_bytes(&self.0);
+        let mut x0 = ProjectivePoint::identity();
+        let mut x1 = ProjectivePoint { U: affine_u, W: FieldElement::ONE };
+
+        // Go through the bits from most to least significant, using a sliding window of 2
+        let mut prev_bit = false;
+        let mut i: usize = 0;
+        while i < bits.len()
+            invariant
+                i <= bits.len(),
+        {
+            let cur_bit = bits[i];
+            let choice: u8 = (prev_bit ^ cur_bit) as u8;
+
+            #[cfg(not(verus_keep_ghost))]
+            debug_assert!(choice == 0 || choice == 1);
+
+            ProjectivePoint::conditional_swap(&mut x0, &mut x1, choice.into());
+            differential_add_and_double(&mut x0, &mut x1, &affine_u);
+
+            prev_bit = cur_bit;
+            i = i + 1;
+        }
+        // The final value of prev_bit above is scalar.bits()[0], i.e., the LSB of scalar
+        ProjectivePoint::conditional_swap(&mut x0, &mut x1, Choice::from(prev_bit as u8));
+        // Don't leave the bit in the stack
+        #[cfg(feature = "zeroize")]
+        prev_bit.zeroize();
+
+        x0.as_affine()
+    }
+
+
     /// View this `MontgomeryPoint` as an array of bytes.
     pub const fn as_bytes(&self) -> &[u8; 32] {
         &self.0
@@ -383,6 +428,7 @@ impl MontgomeryPoint {
 }
 
 } // verus!
+
 /// Perform the Elligator2 mapping to a Montgomery point.
 ///
 /// See <https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-10#section-6.7.1>
@@ -412,26 +458,44 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> MontgomeryPoint {
     MontgomeryPoint(u.as_bytes())
 }
 
+verus! {
+
 /// A `ProjectivePoint` holds a point on the projective line
 /// \\( \mathbb P(\mathbb F\_p) \\), which we identify with the Kummer
 /// line of the Montgomery curve.
 #[derive(Copy, Clone, Debug)]
-struct ProjectivePoint {
+pub struct ProjectivePoint {
     pub U: FieldElement,
     pub W: FieldElement,
 }
 
 impl Identity for ProjectivePoint {
-    fn identity() -> ProjectivePoint {
-        ProjectivePoint {
+    fn identity() -> (result: ProjectivePoint)
+        ensures
+            // The identity point is (1:0) in projective coordinates
+            spec_field_element(&result.U) == 1,
+            spec_field_element(&result.W) == 0,
+    {
+        let result = ProjectivePoint {
             U: FieldElement::ONE,
             W: FieldElement::ZERO,
+        };
+        proof {
+            // The identity point is (1, 0) in projective coordinates
+            assume(spec_field_element(&result.U) == 1);
+            assume(spec_field_element(&result.W) == 0);
         }
+        result
     }
 }
 
 impl Default for ProjectivePoint {
-    fn default() -> ProjectivePoint {
+    fn default() -> (result: ProjectivePoint)
+        ensures
+            // Default returns the identity point
+            spec_field_element(&result.U) == 1,
+            spec_field_element(&result.W) == 0,
+    {
         ProjectivePoint::identity()
     }
 }
@@ -441,13 +505,43 @@ impl ConditionallySelectable for ProjectivePoint {
         a: &ProjectivePoint,
         b: &ProjectivePoint,
         choice: Choice,
-    ) -> ProjectivePoint {
-        ProjectivePoint {
+    ) -> (result: ProjectivePoint)
+        ensures
+            // If choice is false (0), return a
+            !choice_is_true(choice) ==> {
+                &&& result.U == a.U
+                &&& result.W == a.W
+            },
+            // If choice is true (1), return b
+            choice_is_true(choice) ==> {
+                &&& result.U == b.U
+                &&& result.W == b.W
+            },
+    {
+        let result = ProjectivePoint {
             U: FieldElement::conditional_select(&a.U, &b.U, choice),
             W: FieldElement::conditional_select(&a.W, &b.W, choice),
+        };
+        
+        proof {
+            // What we can derive from FieldElement::conditional_select:
+            assert(!choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.U.limbs[i] == a.U.limbs[i]));
+            assert(choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.U.limbs[i] == b.U.limbs[i]));
+
+            // For result.W = FieldElement::conditional_select(&a.W, &b.W, choice):
+            assert(!choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.W.limbs[i] == a.W.limbs[i]));
+            assert(choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.W.limbs[i] == b.W.limbs[i]));
+
+            // We need to lift limbs equality to struct equality:
+            // (forall i. fe1.limbs[i] == fe2.limbs[i]) ==> fe1 == fe2
+            assume(!choice_is_true(choice) ==> (result.U == a.U && result.W == a.W));
+            assume(choice_is_true(choice) ==> (result.U == b.U && result.W == b.W));
         }
+
+        result
     }
 }
+
 
 impl ProjectivePoint {
     /// Dehomogenize this point to affine coordinates.
@@ -456,11 +550,41 @@ impl ProjectivePoint {
     ///
     /// * \\( u = U / W \\) if \\( W \neq 0 \\);
     /// * \\( 0 \\) if \\( W \eq 0 \\);
-    pub fn as_affine(&self) -> MontgomeryPoint {
+    ///
+    /// # Specification
+    /// The resulting MontgomeryPoint has u-coordinate equal to U/W (or 0 if W=0)
+    pub fn as_affine(&self) -> (result: MontgomeryPoint)
+        ensures
+            // For projective point (U:W), the affine u-coordinate is u = U/W (or 0 if W=0)
+            spec_montgomery_point(result) == {
+                let u_proj = spec_field_element(&self.U);
+                let w_proj = spec_field_element(&self.W);
+                if w_proj == 0 {
+                    0
+                } else {
+                    math_field_mul(u_proj, math_field_inv(w_proj))
+                }
+            },
+    {
+        proof {
+            // VERIFICATION NOTE: Assume preconditions for FieldElement operations
+            // Multiplication requires limbs bounded by 2^54
+            assume(forall|i: int| 0 <= i < 5 ==> self.U.limbs[i] < (1u64 << 54));
+            assume(forall|i: int| 0 <= i < 5 ==> self.W.limbs[i] < (1u64 << 54));
+        }
         let u = &self.U * &self.W.invert();
-        MontgomeryPoint(u.as_bytes())
+        let result = MontgomeryPoint(u.as_bytes());
+        proof {
+            // postcondition
+            // The affine u-coordinate is U * W^(-1) = U / W
+            let u_proj = spec_field_element(&self.U);
+            let w_proj = spec_field_element(&self.W);
+            assume(spec_montgomery_point(result) == if w_proj == 0 { 0 } else { math_field_mul(u_proj, math_field_inv(w_proj)) });
+        }
+        result
     }
 }
+
 
 /// Perform the double-and-add step of the Montgomery ladder.
 ///
@@ -481,7 +605,10 @@ fn differential_add_and_double(
     P: &mut ProjectivePoint,
     Q: &mut ProjectivePoint,
     affine_PmQ: &FieldElement,
-) {
+)   
+ensures true, // TODO 
+{
+    assume(false); // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations
     let t0 = &P.U + &P.W;
     let t1 = &P.U - &P.W;
     let t2 = &Q.U + &Q.W;
@@ -535,11 +662,14 @@ impl Mul<&Scalar> for &MontgomeryPoint {
     type Output = MontgomeryPoint;
 
     /// Given `self` \\( = u\_0(P) \\), and a `Scalar` \\(n\\), return \\( u\_0(\[n\]P) \\)
+    #[verifier::external_body]
     fn mul(self, scalar: &Scalar) -> MontgomeryPoint {
         // We multiply by the integer representation of the given Scalar. By scalar invariant #1,
         // the MSB is 0, so we can skip it.
         self.mul_bits_be(scalar.bits_le().rev().skip(1))
     }
+}
+
 }
 
 impl MulAssign<&Scalar> for MontgomeryPoint {

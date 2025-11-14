@@ -102,32 +102,12 @@ pub proof fn lemma_bridge_pow_as_nat_to_spec(
     // Since y == x % p():
     assert(pow(x as int, exp) % (p() as int) == pow(y as int, exp) % (p() as int));
 
-    if x > 0 {
-        assert(pow(x as int, exp) >= 0) by {
-            lemma_pow_positive(x as int, exp);
-        }
-    } else {
-        assert(pow(x as int, exp) >= 0) by {
-            if exp == 0 {
-                lemma_pow0(0);
-            } else {
-                lemma0_pow(exp);
-            }
-        }
+    assert(pow(x as int, exp) >= 0) by {
+        lemma_pow_nonnegative(x as int, exp);
     }
 
-    if y > 0 {
-        assert(pow(y as int, exp) >= 0) by {
-            lemma_pow_positive(y as int, exp);
-        }
-    } else {
-        assert(pow(y as int, exp) >= 0) by {
-            if exp == 0 {
-                lemma_pow0(0);
-            } else {
-                lemma0_pow(exp);
-            }
-        }
+    assert(pow(y as int, exp) >= 0) by {
+        lemma_pow_nonnegative(y as int, exp);
     }
 
     // Now we have: pow(x, exp) % p() == pow(y, exp) % p()

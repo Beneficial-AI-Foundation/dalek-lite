@@ -221,7 +221,8 @@ impl Scalar52 {
             proof {
                 let i_int = i as int;
                 if i < 8 {
-                    lemma_from_bytes_wide_tail_step(bytes, i_int);
+                    reveal_with_fuel(words_from_bytes_to_nat, 9);
+                    lemma_bytes_wide_to_nat_rec_chunk(bytes, i_int);
                 }
             }
         }

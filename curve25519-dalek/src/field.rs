@@ -202,6 +202,11 @@ impl FieldElement {
         requires
             forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
         ensures
+    // Bounded limbs (maintained by all field operations)
+
+            forall|i: int| 0 <= i < 5 ==> result.0.limbs[i] < 1u64 << 54,
+            forall|i: int| 0 <= i < 5 ==> result.1.limbs[i] < 1u64 << 54,
+            // Mathematical values
             spec_field_element(&result.0) == (pow(
                 spec_field_element(self) as int,
                 (pow2(250) - 1) as nat,
@@ -393,6 +398,11 @@ impl FieldElement {
             lemma_bridge_pow_as_nat_to_spec(&t19, self, (pow2(250) - 1) as nat);
             lemma_bridge_pow_as_nat_to_spec(&t3, self, 11);
 
+            // Bounded limbs: all field operations (mul, square, pow2k) maintain the bound < 2^54
+            // t19 is the result of mul (&t18 * &t13), so it inherits the bound from mul's postcondition
+            // t3 is the result of mul (&t0 * &t2), so it inherits the bound from mul's postcondition
+            assert(forall|i: int| 0 <= i < 5 ==> t19.limbs[i] < 1u64 << 54);
+            assert(forall|i: int| 0 <= i < 5 ==> t3.limbs[i] < 1u64 << 54);
         }
 
         (t19, t3)
@@ -587,25 +597,19 @@ impl FieldElement {
         requires
             forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
         ensures
-            spec_field_element(&result) == pow(
+    // Bounded limbs (maintained by all field operations)
+
+            forall|i: int| 0 <= i < 5 ==> result.limbs[i] < 1u64 << 54,
+            // Mathematical value
+            spec_field_element(&result) == (pow(
                 spec_field_element(self) as int,
                 (pow2(252) - 3) as nat,
-            ) % (p() as int),
+            ) as nat) % p(),
     {
         // The bits of (p-5)/8 are 101111.....11.
         //
         //                                 nonzero bits of exponent
         let (t19, _) = self.pow22501();  // 249..0 = x^(2^250-1)
-
-        proof {
-            // TODO: pow22501 should add this to its postcondition:
-            //       ensures forall|i: int| 0 <= i < 5 ==> result.0.limbs[i] < 1u64 << 54
-            // This is required by pow2k's precondition. The bound is maintained by all
-            // field operations (square, mul, pow2k), but it's not currently tracked in
-            // the postconditions of pow22501.
-            assume(forall|i: int| 0 <= i < 5 ==> t19.limbs[i] < 1u64 << 54);
-        }
-
         let t20 = t19.pow2k(2);  // 251..2 = x^(2^252-4)
         let t21 = self * &t20;  // 251..2,0 = x^(2^252-3)
 
@@ -648,20 +652,8 @@ impl FieldElement {
             // Bridge back from as_nat to spec_field_element
             lemma_bridge_pow_as_nat_to_spec(&t21, self, (pow2(252) - 3) as nat);
 
-            // The bridge lemma gives us: spec_field_element(&t21) == (pow(...) as nat) % p()
-            // The postcondition needs: spec_field_element(&t21) == pow(...) % (p() as int)
-            // These are equivalent - just nat % nat vs int % int type difference
-            assert(spec_field_element(&t21) == pow(
-                spec_field_element(self) as int,
-                (pow2(252) - 3) as nat,
-            ) % (p() as int)) by {
-                // From bridge lemma: spec_field_element(&t21) == (pow(spec_field_element(self) as int, exp) as nat) % p()
-                // We need: spec_field_element(&t21) == pow(spec_field_element(self) as int, exp) % (p() as int)
-                // Since pow(...) >= 0, these are the same (nat % nat == int % int when values are non-negative)
-                assert(pow(spec_field_element(self) as int, (pow2(252) - 3) as nat) >= 0) by {
-                    lemma_pow_nonnegative(spec_field_element(self) as int, (pow2(252) - 3) as nat);
-                }
-            }
+            // Bounded limbs: t21 is the result of mul (self * &t20), which maintains the bound
+            assert(forall|i: int| 0 <= i < 5 ==> t21.limbs[i] < 1u64 << 54);
         }
 
         t21

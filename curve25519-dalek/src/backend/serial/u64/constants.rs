@@ -94,11 +94,12 @@ pub(crate) const APLUS2_OVER_FOUR: FieldElement51 = FieldElement51 {
     limbs: [121666, 0, 0, 0, 0],
 };
 
-}
+
 /// `MONTGOMERY_A` is equal to 486662, which is a constant of the curve equation
 /// for Curve25519 in its Montgomery form. (This is used internally within the
 /// Elligator map.)
-pub(crate) const MONTGOMERY_A: FieldElement51 = FieldElement51 {
+/// VERIFICATION NOTE: made public
+pub const MONTGOMERY_A: FieldElement51 = FieldElement51 {
     limbs: [486662, 0, 0, 0, 0],
 };
 
@@ -113,6 +114,8 @@ pub(crate) const MONTGOMERY_A_NEG: FieldElement51 = FieldElement51 {
         2251799813685247,
     ],
 };
+
+} // verus!
 
 verus! {
 

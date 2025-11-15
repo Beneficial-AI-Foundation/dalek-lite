@@ -1,4 +1,4 @@
-// Specifications for mathematical operations on Curve25519
+// Specifications for mathematical operations on Curve25519 (Edwards curve)
 #[allow(unused_imports)]
 use super::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -11,12 +11,53 @@ use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
+#[allow(unused_imports)]
+use crate::specs::montgomery_specs::*;
 use vstd::prelude::*;
 
 verus! {
 
-/// Edwards curve equation: -x² + y² = 1 + d·x²·y²
-/// where d = -121665/121666 (mod p)
+/// Affine Edwards point (x, y)
+/// Curve equation is: -x² + y² = 1 + d·x²·y² for Edwards constant d = -121665/121666
+pub struct EdwardsPointAffine { pub x: nat, pub y: nat }
+
+
+
+/// Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).
+/// For the curve -x² + y² = 1 + d·x²·y², the addition formulas are:
+///   x₃ = (x₁y₂ + y₁x₂) / (1 + d·x₁x₂y₁y₂)
+///   y₃ = (y₁y₂ + x₁x₂) / (1 - d·x₁x₂y₁y₂)
+pub open spec fn edwards_add(
+    P: EdwardsPointAffine,
+    Q: EdwardsPointAffine
+) -> EdwardsPointAffine
+{
+    let x1 = P.x;
+    let y1 = P.y;
+    let x2 = Q.x;
+    let y2 = Q.y;
+
+    let x1y2 = math_field_mul(x1, y2);
+    let y1x2 = math_field_mul(y1, x2);
+
+    let y1y2 = math_field_mul(y1, y2);
+    let x1x2 = math_field_mul(x1, x2);
+
+    let dx1x2y1y2 = math_field_mul(spec_field_element(&EDWARDS_D), math_field_mul(x1x2, y1y2));
+
+    let numerator_x   = math_field_add(x1y2, y1x2);
+    let denominator_x = math_field_add(1, dx1x2y1y2);
+
+    let numerator_y   = math_field_add(y1y2, x1x2);  
+    let denominator_y = math_field_sub(1, dx1x2y1y2);
+
+    EdwardsPointAffine {
+        x: math_field_mul(numerator_x, math_field_inv(denominator_x)),
+        y: math_field_mul(numerator_y, math_field_inv(denominator_y)),
+    }
+}
+
+
 /// Check if a point (x, y) satisfies the Edwards curve equation
 /// -x² + y² = 1 + d·x²·y²  (mod p)
 pub open spec fn math_on_edwards_curve(x: nat, y: nat) -> bool {
@@ -172,21 +213,40 @@ pub open spec fn affine_completed_point(
     (math_field_mul(x_abs, z_inv), math_field_mul(y_abs, t_inv))
 }
 
-/// Returns the field element values (X, Y, Z) from a ProjectivePoint.
-/// A ProjectivePoint (X:Y:Z) is in projective coordinates.
-pub open spec fn spec_projective_point(point: ProjectivePoint) -> (nat, nat, nat) {
+/// Returns the field element values (X, Y, Z) from an Edwards ProjectivePoint.
+/// An Edwards ProjectivePoint (X:Y:Z) is in projective coordinates.
+pub open spec fn spec_projective_point_edwards(point: ProjectivePoint) -> (nat, nat, nat) {
     let x = spec_field_element(&point.X);
     let y = spec_field_element(&point.Y);
     let z = spec_field_element(&point.Z);
     (x, y, z)
 }
 
-/// Returns the abstract affine coordinates (x, y) from a ProjectivePoint.
-/// A ProjectivePoint (X:Y:Z) represents affine point (X/Z, Y/Z).
-pub open spec fn affine_projective_point(point: ProjectivePoint) -> (nat, nat) {
-    let (x, y, z) = spec_projective_point(point);
+/// Returns the abstract affine coordinates (x, y) from an Edwards ProjectivePoint.
+/// An Edwards ProjectivePoint (X:Y:Z) represents affine point (X/Z, Y/Z).
+pub open spec fn affine_projective_point_edwards(point: ProjectivePoint) -> (nat, nat) {
+    let (x, y, z) = spec_projective_point_edwards(point);
     let z_inv = math_field_inv(z);
     (math_field_mul(x, z_inv), math_field_mul(y, z_inv))
+}
+
+/// Returns the field element values (U, W) from a Montgomery ProjectivePoint.
+/// A Montgomery ProjectivePoint (U:W) is in projective coordinates on the Montgomery curve.
+pub open spec fn spec_projective_point_montgomery(point: crate::montgomery::ProjectivePoint) -> (nat, nat) {
+    let u = spec_field_element(&point.U);
+    let w = spec_field_element(&point.W);
+    (u, w)
+}
+
+/// Returns the abstract affine u-coordinate from a Montgomery ProjectivePoint.
+/// A Montgomery ProjectivePoint (U:W) represents affine point u = U/W.
+pub open spec fn affine_projective_point_montgomery(point: crate::montgomery::ProjectivePoint) -> nat {
+    let (u, w) = spec_projective_point_montgomery(point);
+    if w == 0 {
+        0  // Identity case
+    } else {
+        math_field_mul(u, math_field_inv(w))
+    }
 }
 
 /// Returns the field element values (Y+X, Y-X, Z, T2d) from a ProjectiveNielsPoint.

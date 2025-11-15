@@ -605,8 +605,21 @@ fn differential_add_and_double(
     P: &mut ProjectivePoint,
     Q: &mut ProjectivePoint,
     affine_PmQ: &FieldElement,
-)   
-ensures true, // TODO 
+)
+    requires
+        // The affine_PmQ field element represents the u-coordinate of the difference P - Q
+        // In other words: affine_PmQ = u(P - Q) = U_P/W_P - U_Q/W_Q (in affine coordinates)
+        // When P and Q are represented in projective coordinates (U_P:W_P) and (U_Q:W_Q),
+        // the affine difference can be computed, and affine_PmQ holds that u-coordinate value.
+        // This is the key invariant maintained throughout the Montgomery ladder.
+        ({
+            let u_p = affine_projective_point_montgomery(*old(P));
+            let u_q = affine_projective_point_montgomery(*old(Q));
+            let u_diff = spec_field_element(affine_PmQ);
+
+            u_diff == math_field_sub(u_p, u_q) // TO REVIEW
+        })
+    ensures true, // TODO
 {
     assume(false); // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations
     let t0 = &P.U + &P.W;

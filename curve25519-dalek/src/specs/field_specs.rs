@@ -13,10 +13,6 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Spec function for field addition: (a + b) mod p
-pub open spec fn spec_math_field_add(a: &FieldElement51, b: &FieldElement51) -> nat {
-    (spec_field_element(a) + spec_field_element(b)) % p()
-}
 
 /// Spec predicate: all limbs are bounded by a given bit limit
 pub open spec fn limbs_bounded(fe: &FieldElement51, bit_limit: u64) -> bool {

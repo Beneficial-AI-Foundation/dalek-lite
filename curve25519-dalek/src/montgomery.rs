@@ -56,19 +56,21 @@ use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::core_assumes::*;
+#[cfg(feature = "zeroize")]
+use crate::core_assumes::zeroize_bool;
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 use crate::scalar::{clamp_integer, Scalar};
 #[allow(unused_imports)]
 use crate::specs::curve_specs::*;
 #[allow(unused_imports)]
-use crate::specs::montgomery_specs::*;
-#[allow(unused_imports)]
 use crate::specs::field_specs::*;
+#[allow(unused_imports)]
+use crate::specs::montgomery_specs::*;
 
 use crate::traits::Identity;
 
-use crate::backend::serial::u64::subtle_assumes::choice_into;
+use crate::backend::serial::u64::subtle_assumes::{choice_into, conditional_swap_montgomery_projective};
 #[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 
@@ -311,7 +313,6 @@ impl MontgomeryPoint {
     /// VERIFICATION NOTE: Currently marked as external_body because ProjectivePoint and
     /// differential_add_and_double are defined outside the verus! block. Once those are
     /// moved into verified code or given proper specifications, this can be verified.
-    #[verifier::external_body]
     pub fn mul_bits_be_slice(&self, bits: &[bool]) -> MontgomeryPoint {
         // Algorithm 8 of Costello-Smith 2017
         let affine_u = FieldElement::from_bytes(&self.0);
@@ -324,6 +325,7 @@ impl MontgomeryPoint {
         while i < bits.len()
             invariant
                 i <= bits.len(),
+            decreases bits.len() - i,
         {
             let cur_bit = bits[i];
             let choice: u8 = (prev_bit ^ cur_bit) as u8;
@@ -331,24 +333,27 @@ impl MontgomeryPoint {
             #[cfg(not(verus_keep_ghost))]
             debug_assert!(choice == 0 || choice == 1);
 
-            ProjectivePoint::conditional_swap(&mut x0, &mut x1, choice.into());
+            conditional_swap_montgomery_projective(&mut x0, &mut x1, choice.into());
+            assume(false); // VERIFICATION NOTE: need to prove preconditions for differential_add_and_double
             differential_add_and_double(&mut x0, &mut x1, &affine_u);
 
             prev_bit = cur_bit;
             i = i + 1;
         }
         // The final value of prev_bit above is scalar.bits()[0], i.e., the LSB of scalar
-        ProjectivePoint::conditional_swap(&mut x0, &mut x1, Choice::from(prev_bit as u8));
+        conditional_swap_montgomery_projective(&mut x0, &mut x1, Choice::from(prev_bit as u8));
         // Don't leave the bit in the stack
         #[cfg(feature = "zeroize")]
-        prev_bit.zeroize();
+        zeroize_bool(&mut prev_bit);
 
         x0.as_affine()
     }
 
-
     /// View this `MontgomeryPoint` as an array of bytes.
-    pub const fn as_bytes(&self) -> &[u8; 32] {
+    pub const fn as_bytes(&self) -> (result: &[u8; 32]) 
+    ensures
+        result == &self.0,
+    {
         &self.0
     }
 
@@ -474,14 +479,12 @@ pub struct ProjectivePoint {
 impl Identity for ProjectivePoint {
     fn identity() -> (result: ProjectivePoint)
         ensures
-            // The identity point is (1:0) in projective coordinates
+    // The identity point is (1:0) in projective coordinates
+
             spec_field_element(&result.U) == 1,
             spec_field_element(&result.W) == 0,
     {
-        let result = ProjectivePoint {
-            U: FieldElement::ONE,
-            W: FieldElement::ZERO,
-        };
+        let result = ProjectivePoint { U: FieldElement::ONE, W: FieldElement::ZERO };
         proof {
             // The identity point is (1, 0) in projective coordinates
             assume(spec_field_element(&result.U) == 1);
@@ -494,7 +497,8 @@ impl Identity for ProjectivePoint {
 impl Default for ProjectivePoint {
     fn default() -> (result: ProjectivePoint)
         ensures
-            // Default returns the identity point
+    // Default returns the identity point
+
             spec_field_element(&result.U) == 1,
             spec_field_element(&result.W) == 0,
     {
@@ -503,13 +507,11 @@ impl Default for ProjectivePoint {
 }
 
 impl ConditionallySelectable for ProjectivePoint {
-    fn conditional_select(
-        a: &ProjectivePoint,
-        b: &ProjectivePoint,
-        choice: Choice,
-    ) -> (result: ProjectivePoint)
+    fn conditional_select(a: &ProjectivePoint, b: &ProjectivePoint, choice: Choice) -> (result:
+        ProjectivePoint)
         ensures
-            // If choice is false (0), return a
+    // If choice is false (0), return a
+
             !choice_is_true(choice) ==> {
                 &&& result.U == a.U
                 &&& result.W == a.W
@@ -524,15 +526,19 @@ impl ConditionallySelectable for ProjectivePoint {
             U: FieldElement::conditional_select(&a.U, &b.U, choice),
             W: FieldElement::conditional_select(&a.W, &b.W, choice),
         };
-        
+
         proof {
             // What we can derive from FieldElement::conditional_select:
-            assert(!choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.U.limbs[i] == a.U.limbs[i]));
-            assert(choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.U.limbs[i] == b.U.limbs[i]));
+            assert(!choice_is_true(choice) ==> (forall|i: int|
+                0 <= i < 5 ==> result.U.limbs[i] == a.U.limbs[i]));
+            assert(choice_is_true(choice) ==> (forall|i: int|
+                0 <= i < 5 ==> result.U.limbs[i] == b.U.limbs[i]));
 
             // For result.W = FieldElement::conditional_select(&a.W, &b.W, choice):
-            assert(!choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.W.limbs[i] == a.W.limbs[i]));
-            assert(choice_is_true(choice) ==> (forall|i: int| 0 <= i < 5 ==> result.W.limbs[i] == b.W.limbs[i]));
+            assert(!choice_is_true(choice) ==> (forall|i: int|
+                0 <= i < 5 ==> result.W.limbs[i] == a.W.limbs[i]));
+            assert(choice_is_true(choice) ==> (forall|i: int|
+                0 <= i < 5 ==> result.W.limbs[i] == b.W.limbs[i]));
 
             // We need to lift limbs equality to struct equality:
             // (forall i. fe1.limbs[i] == fe2.limbs[i]) ==> fe1 == fe2
@@ -543,7 +549,6 @@ impl ConditionallySelectable for ProjectivePoint {
         result
     }
 }
-
 
 impl ProjectivePoint {
     /// Dehomogenize this point to affine coordinates.
@@ -557,7 +562,8 @@ impl ProjectivePoint {
     /// The resulting MontgomeryPoint has u-coordinate equal to U/W (or 0 if W=0)
     pub fn as_affine(&self) -> (result: MontgomeryPoint)
         ensures
-            // For projective point (U:W), the affine u-coordinate is u = U/W (or 0 if W=0)
+    // For projective point (U:W), the affine u-coordinate is u = U/W (or 0 if W=0)
+
             spec_montgomery_point(result) == {
                 let u_proj = spec_field_element(&self.U);
                 let w_proj = spec_field_element(&self.W);
@@ -581,12 +587,15 @@ impl ProjectivePoint {
             // The affine u-coordinate is U * W^(-1) = U / W
             let u_proj = spec_field_element(&self.U);
             let w_proj = spec_field_element(&self.W);
-            assume(spec_montgomery_point(result) == if w_proj == 0 { 0 } else { math_field_mul(u_proj, math_field_inv(w_proj)) });
+            assume(spec_montgomery_point(result) == if w_proj == 0 {
+                0
+            } else {
+                math_field_mul(u_proj, math_field_inv(w_proj))
+            });
         }
         result
     }
 }
-
 
 /// Perform the double-and-add step of the Montgomery ladder.
 ///
@@ -602,56 +611,59 @@ impl ProjectivePoint {
 /// $$
 ///     (U\_Q : W\_Q) \gets u(P + Q).
 /// $$
-#[rustfmt::skip] // keep alignment of explanatory comments
+#[rustfmt::skip]  // keep alignment of explanatory comments
 fn differential_add_and_double(
     P: &mut ProjectivePoint,
     Q: &mut ProjectivePoint,
     affine_PmQ: &FieldElement,
 )
     requires
-        // The affine_PmQ field element represents the u-coordinate of the difference P - Q
-        // In other words: affine_PmQ = u(P - Q) = U_P/W_P - U_Q/W_Q (in affine coordinates)
-        // When P and Q are represented in projective coordinates (U_P:W_P) and (U_Q:W_Q),
-        // the affine difference can be computed, and affine_PmQ holds that u-coordinate value.
-        // This is the key invariant maintained throughout the Montgomery ladder.
-        ({
-            let u_p = affine_projective_point_montgomery(*old(P));
-            let u_q = affine_projective_point_montgomery(*old(Q));
-            let u_diff = spec_field_element(affine_PmQ);
-
-            u_diff == math_field_sub(u_p, u_q) // TO REVIEW
-        })
-    ensures true, // TODO
+        // There exist full affine Montgomery points that P and Q represent,
+        // with the differential relationship maintained.
+        exists|P_full: MontgomeryAffine, Q_full: MontgomeryAffine|
+            #[trigger] differential_relation_holds(*old(P), *old(Q), affine_PmQ, P_full, Q_full),
+    ensures
+        // The same P_full and Q_full that satisfied the differential invariant
+        // now have their double and sum represented by the output projective points.
+        exists|P_full: MontgomeryAffine, Q_full: MontgomeryAffine|
+            {
+                // P_full and Q_full are identified by the input relationship
+                #[trigger] differential_relation_holds(*old(P), *old(Q), affine_PmQ, P_full, Q_full)
+                &&
+                // Now P represents [2]P_full and Q represents P_full + Q_full
+                projective_represents_montgomery(*P, #[trigger] montgomery_add(P_full, P_full))
+                && projective_represents_montgomery(*Q, #[trigger] montgomery_add(P_full, Q_full))
+            },
 {
-    assume(false); // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations
+    assume(false);  // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations
     let t0 = &P.U + &P.W;
     let t1 = &P.U - &P.W;
     let t2 = &Q.U + &Q.W;
     let t3 = &Q.U - &Q.W;
 
-    let t4 = t0.square();   // (U_P + W_P)^2 = U_P^2 + 2 U_P W_P + W_P^2
-    let t5 = t1.square();   // (U_P - W_P)^2 = U_P^2 - 2 U_P W_P + W_P^2
+    let t4 = t0.square();  // (U_P + W_P)^2 = U_P^2 + 2 U_P W_P + W_P^2
+    let t5 = t1.square();  // (U_P - W_P)^2 = U_P^2 - 2 U_P W_P + W_P^2
 
-    let t6 = &t4 - &t5;     // 4 U_P W_P
+    let t6 = &t4 - &t5;  // 4 U_P W_P
 
-    let t7 = &t0 * &t3;     // (U_P + W_P) (U_Q - W_Q) = U_P U_Q + W_P U_Q - U_P W_Q - W_P W_Q
-    let t8 = &t1 * &t2;     // (U_P - W_P) (U_Q + W_Q) = U_P U_Q - W_P U_Q + U_P W_Q - W_P W_Q
+    let t7 = &t0 * &t3;  // (U_P + W_P) (U_Q - W_Q) = U_P U_Q + W_P U_Q - U_P W_Q - W_P W_Q
+    let t8 = &t1 * &t2;  // (U_P - W_P) (U_Q + W_Q) = U_P U_Q - W_P U_Q + U_P W_Q - W_P W_Q
 
-    let t9  = &t7 + &t8;    // 2 (U_P U_Q - W_P W_Q)
-    let t10 = &t7 - &t8;    // 2 (W_P U_Q - U_P W_Q)
+    let t9 = &t7 + &t8;  // 2 (U_P U_Q - W_P W_Q)
+    let t10 = &t7 - &t8;  // 2 (W_P U_Q - U_P W_Q)
 
-    let t11 =  t9.square(); // 4 (U_P U_Q - W_P W_Q)^2
-    let t12 = t10.square(); // 4 (W_P U_Q - U_P W_Q)^2
+    let t11 = t9.square();  // 4 (U_P U_Q - W_P W_Q)^2
+    let t12 = t10.square();  // 4 (W_P U_Q - U_P W_Q)^2
 
-    let t13 = &APLUS2_OVER_FOUR * &t6; // (A + 2) U_P U_Q
+    let t13 = &APLUS2_OVER_FOUR * &t6;  // (A + 2) U_P U_Q
 
-    let t14 = &t4 * &t5;    // ((U_P + W_P)(U_P - W_P))^2 = (U_P^2 - W_P^2)^2
-    let t15 = &t13 + &t5;   // (U_P - W_P)^2 + (A + 2) U_P W_P
+    let t14 = &t4 * &t5;  // ((U_P + W_P)(U_P - W_P))^2 = (U_P^2 - W_P^2)^2
+    let t15 = &t13 + &t5;  // (U_P - W_P)^2 + (A + 2) U_P W_P
 
-    let t16 = &t6 * &t15;   // 4 (U_P W_P) ((U_P - W_P)^2 + (A + 2) U_P W_P)
+    let t16 = &t6 * &t15;  // 4 (U_P W_P) ((U_P - W_P)^2 + (A + 2) U_P W_P)
 
-    let t17 = affine_PmQ * &t12; // U_D * 4 (W_P U_Q - U_P W_Q)^2
-    let t18 = t11;               // W_D * 4 (U_P U_Q - W_P W_Q)^2
+    let t17 = affine_PmQ * &t12;  // U_D * 4 (W_P U_Q - U_P W_Q)^2
+    let t18 = t11;  // W_D * 4 (U_P U_Q - W_P W_Q)^2
 
     P.U = t14;  // U_{P'} = (U_P + W_P)^2 (U_P - W_P)^2
     P.W = t16;  // W_{P'} = (4 U_P W_P) ((U_P - W_P)^2 + ((A + 2)/4) 4 U_P W_P)
@@ -666,6 +678,7 @@ define_mul_variants!(
     RHS = Scalar,
     Output = MontgomeryPoint
 );
+
 define_mul_variants!(
     LHS = Scalar,
     RHS = MontgomeryPoint,
@@ -685,8 +698,7 @@ impl Mul<&Scalar> for &MontgomeryPoint {
     }
 }
 
-}
-
+} // verus!
 impl MulAssign<&Scalar> for MontgomeryPoint {
     fn mul_assign(&mut self, scalar: &Scalar) {
         *self = (self as &MontgomeryPoint) * scalar;

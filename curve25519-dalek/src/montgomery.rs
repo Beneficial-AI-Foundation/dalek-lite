@@ -62,6 +62,8 @@ use crate::scalar::{clamp_integer, Scalar};
 #[allow(unused_imports)]
 use crate::specs::curve_specs::*;
 #[allow(unused_imports)]
+use crate::specs::montgomery_specs::*;
+#[allow(unused_imports)]
 use crate::specs::field_specs::*;
 
 use crate::traits::Identity;

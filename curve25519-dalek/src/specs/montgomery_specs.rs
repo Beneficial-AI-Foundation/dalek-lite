@@ -10,7 +10,7 @@ use vstd::prelude::*;
 verus! {
 
 /// Affine Montgomery point (u, v)
-/// Curve equation is: v² = u³ + A·u² + u for Montgomery curve parameter A = 486662
+/// Curve equation is: v² = u³ + A·u² + u with A = 486662
 pub struct MontgomeryPointAffine { pub u: nat, pub v: nat }
 
 /// Montgomery curve points including the point at infinity
@@ -20,7 +20,6 @@ pub enum MontgomeryAffine {
 }
 
 /// Montgomery curve equation: B·v² = u³ + A·u² + u
-/// For Curve25519: v² = u³ + 486662·u² + u (with B = 1, A = 486662)
 /// Check if a point (u, v) satisfies the Montgomery curve equation
 pub open spec fn math_on_montgomery_curve(u: nat, v: nat) -> bool {
     let a = spec_field_element(&MONTGOMERY_A);
@@ -136,12 +135,25 @@ pub open spec fn spec_montgomery_point(point: crate::montgomery::MontgomeryPoint
     spec_field_element_from_bytes(&point.0)
 }
 
-/// Returns the field element values (U, W) from a Montgomery ProjectivePoint.
-/// A Montgomery ProjectivePoint (U:W) is in projective coordinates on the Montgomery curve.
-pub open spec fn spec_projective_point_montgomery(point: crate::montgomery::ProjectivePoint) -> (nat, nat) {
-    let u = spec_field_element(&point.U);
-    let w = spec_field_element(&point.W);
-    (u, w)
+/// Check if a MontgomeryPoint corresponds to an EdwardsPoint
+/// via the birational map u = (1+y)/(1-y)
+/// Special case: Edwards identity (y=1) maps to u=0
+pub open spec fn montgomery_corresponds_to_edwards(
+    montgomery: crate::montgomery::MontgomeryPoint,
+    edwards: crate::edwards::EdwardsPoint,
+) -> bool {
+    let u = spec_montgomery_point(montgomery);
+    let (x, y) = crate::specs::curve_specs::affine_edwards_point(edwards);
+    let denominator = math_field_sub(1, y);
+
+    if denominator == 0 {
+        // Special case: Edwards identity (x=0, y=1) maps to Montgomery u=0
+        u == 0
+    } else {
+        // General case: u = (1+y)/(1-y)
+        let numerator = math_field_add(1, y);
+        u == math_field_mul(numerator, math_field_inv(denominator))
+    }
 }
 
 /// Returns the abstract affine u-coordinate from a Montgomery ProjectivePoint.
@@ -154,6 +166,15 @@ pub open spec fn affine_projective_point_montgomery(point: crate::montgomery::Pr
         math_field_mul(u, math_field_inv(w))
     }
 }
+
+/// Returns the field element values (U, W) from a Montgomery ProjectivePoint.
+/// A Montgomery ProjectivePoint (U:W) is in projective coordinates on the Montgomery curve.
+pub open spec fn spec_projective_point_montgomery(point: crate::montgomery::ProjectivePoint) -> (nat, nat) {
+    let u = spec_field_element(&point.U);
+    let w = spec_field_element(&point.W);
+    (u, w)
+}
+
 
 /// Check if a Montgomery u-coordinate is invalid for conversion to Edwards
 /// u = -1 is invalid because it corresponds to a point on the twist

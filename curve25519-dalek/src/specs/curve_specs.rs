@@ -230,25 +230,6 @@ pub open spec fn affine_projective_point_edwards(point: ProjectivePoint) -> (nat
     (math_field_mul(x, z_inv), math_field_mul(y, z_inv))
 }
 
-/// Returns the field element values (U, W) from a Montgomery ProjectivePoint.
-/// A Montgomery ProjectivePoint (U:W) is in projective coordinates on the Montgomery curve.
-pub open spec fn spec_projective_point_montgomery(point: crate::montgomery::ProjectivePoint) -> (nat, nat) {
-    let u = spec_field_element(&point.U);
-    let w = spec_field_element(&point.W);
-    (u, w)
-}
-
-/// Returns the abstract affine u-coordinate from a Montgomery ProjectivePoint.
-/// A Montgomery ProjectivePoint (U:W) represents affine point u = U/W.
-pub open spec fn affine_projective_point_montgomery(point: crate::montgomery::ProjectivePoint) -> nat {
-    let (u, w) = spec_projective_point_montgomery(point);
-    if w == 0 {
-        0  // Identity case
-    } else {
-        math_field_mul(u, math_field_inv(w))
-    }
-}
-
 /// Returns the field element values (Y+X, Y-X, Z, T2d) from a ProjectiveNielsPoint.
 pub open spec fn spec_projective_niels_point(niels: ProjectiveNielsPoint) -> (nat, nat, nat, nat) {
     let y_plus_x = spec_field_element(&niels.Y_plus_X);
@@ -370,77 +351,6 @@ pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
             niels,
             point,
         )
-}
-
-/// Montgomery curve equation: B·v² = u³ + A·u² + u
-/// For Curve25519: v² = u³ + 486662·u² + u (with B = 1, A = 486662)
-/// Check if a point (u, v) satisfies the Montgomery curve equation
-pub open spec fn math_on_montgomery_curve(u: nat, v: nat) -> bool {
-    let a = 486662;
-    let u2 = math_field_square(u);
-    let u3 = math_field_mul(u, u2);
-    let v2 = math_field_square(v);
-
-    // v² = u³ + A·u² + u
-    let rhs = math_field_add(math_field_add(u3, math_field_mul(a, u2)), u);
-
-    v2 == rhs
-}
-
-/// Returns the u-coordinate of a Montgomery point as a field element
-/// Montgomery points only store the u-coordinate; sign information is lost
-pub open spec fn spec_montgomery_point(point: crate::montgomery::MontgomeryPoint) -> nat {
-    spec_field_element_from_bytes(&point.0)
-}
-
-/// Check if a MontgomeryPoint corresponds to an EdwardsPoint
-/// via the birational map u = (1+y)/(1-y)
-/// Special case: Edwards identity (y=1) maps to u=0
-pub open spec fn montgomery_corresponds_to_edwards(
-    montgomery: crate::montgomery::MontgomeryPoint,
-    edwards: EdwardsPoint,
-) -> bool {
-    let u = spec_montgomery_point(montgomery);
-    let (x, y) = affine_edwards_point(edwards);
-    let denominator = math_field_sub(1, y);
-
-    if denominator == 0 {
-        // Special case: Edwards identity (x=0, y=1) maps to Montgomery u=0
-        u == 0
-    } else {
-        // General case: u = (1+y)/(1-y)
-        let numerator = math_field_add(1, y);
-        u == math_field_mul(numerator, math_field_inv(denominator))
-    }
-}
-
-/// Check if a Montgomery u-coordinate is invalid for conversion to Edwards
-/// u = -1 is invalid because it corresponds to a point on the twist
-pub open spec fn is_equal_to_minus_one(u: nat) -> bool {
-    u == math_field_sub(0, 1)  // u == -1
-
-}
-
-/// Map Edwards affine y to Montgomery u via u = (1+y)/(1-y). Special-case y=1 -> u=0.
-pub open spec fn montgomery_u_from_edwards_y(y: nat) -> nat {
-    let denom = math_field_sub(1, y);
-    if denom == 0 {
-        0
-    } else {
-        let numer = math_field_add(1, y);
-        math_field_mul(numer, math_field_inv(denom))
-    }
-}
-
-/// Map Montgomery u to Edwards affine y via y = (u-1)/(u+1).
-/// Recommends u != -1 to avoid division by zero.
-pub open spec fn edwards_y_from_montgomery_u(u: nat) -> nat
-    recommends
-        u != math_field_sub(0, 1),
-{
-    let denom = math_field_add(u, 1);
-    let numer = math_field_sub(u, 1);
-    math_field_mul(numer, math_field_inv(denom))
 }
 
 /// Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).

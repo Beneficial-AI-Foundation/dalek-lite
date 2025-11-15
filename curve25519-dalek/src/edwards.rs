@@ -160,6 +160,8 @@ use crate::backend::serial::u64::subtle_assumes::*;
 use crate::specs::curve_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::montgomery_specs::*;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------

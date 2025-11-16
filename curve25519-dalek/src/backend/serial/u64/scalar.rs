@@ -364,20 +364,7 @@ impl Scalar52 {
         proof {
             lemma_words_from_bytes_to_nat_wide(bytes);
         }
-        assert(words_to_nat_gen_u64(&words, 8, 64) == wide_sum) by {
-            let ghost word_term0 = word_from_bytes(bytes, 0);
-            let ghost word_term1 = pow2(64) * word_from_bytes(bytes, 1);
-            let ghost word_term2 = pow2(128) * word_from_bytes(bytes, 2);
-            let ghost word_term3 = pow2(192) * word_from_bytes(bytes, 3);
-            let ghost word_term4 = pow2(256) * word_from_bytes(bytes, 4);
-            let ghost word_term5 = pow2(320) * word_from_bytes(bytes, 5);
-            let ghost word_term6 = pow2(384) * word_from_bytes(bytes, 6);
-            let ghost word_term7 = pow2(448) * word_from_bytes(bytes, 7);
-            let ghost wide_sum_bytes =
-                word_term0 + word_term1 + word_term2 + word_term3 +
-                word_term4 + word_term5 + word_term6 + word_term7;
-
-        };
+        assert(words_to_nat_gen_u64(&words, 8, 64) == wide_sum);
         // Word[4]'s contribution at 2^256 equals the sum of its low four bits and the shifted high remainder.
         assert(pow2_260 * ((words[4] >> 4) as nat) + pow2(256) * ((words[4] & 0xf) as nat) == pow2(256) * (words[4] as nat)) by {
             let word4 = words[4];
@@ -390,12 +377,10 @@ impl Scalar52 {
             calc! {
                 (==)
                 pow2_260 * high_nat + pow2(256) * low_nat; {}
-                (pow2(256) * pow2(4)) * high_nat + pow2(256) * low_nat;
-                {
+                (pow2(256) * pow2(4)) * high_nat + pow2(256) * low_nat; {
                     lemma_mul_is_associative(pow2(256) as int, pow2(4) as int, high_nat as int);
                 }
-                pow2(256) * (pow2(4) * high_nat) + pow2(256) * low_nat;
-                {
+                pow2(256) * (pow2(4) * high_nat) + pow2(256) * low_nat; {
                     lemma_mul_is_distributive_add(pow2(256) as int, (pow2(4) * high_nat) as int, low_nat as int);
                 }
                 pow2(256) * (pow2(4) * high_nat + low_nat); {}
@@ -418,14 +403,7 @@ impl Scalar52 {
         };
         // HighLow-Recombine: Combining the high and low chunks at the 2^260 boundary reproduces the weighted word sum.
         assert(pow2_260 * high_expr + low_expr == wide_sum) by {
-            let base =
-                (words[0] as nat) +
-                pow2(64) * (words[1] as nat) +
-                pow2(128) * (words[2] as nat) +
-                pow2(192) * (words[3] as nat);
-
             let word4_high = (words[4] >> 4) as nat;
-            let word4_low = (words[4] & 0xf) as nat;
             let word5_nat = words[5] as nat;
             let word6_nat = words[6] as nat;
             let word7_nat = words[7] as nat;
@@ -449,12 +427,10 @@ impl Scalar52 {
             assert(pow2_260 * (term_a + term_b + term_c) == pow2(320) * word5_nat + pow2(384) * word6_nat + pow2(448) * word7_nat) by {
                 calc! {
                     (==)
-                    pow2_260 * (term_a + term_b + term_c);
-                    {
+                    pow2_260 * (term_a + term_b + term_c); {
                         lemma_mul_is_distributive_add(pow2_260 as int, term_a as int, (term_b + term_c) as int);
                     }
-                    pow2_260 * term_a + pow2_260 * (term_b + term_c);
-                    {
+                    pow2_260 * term_a + pow2_260 * (term_b + term_c); {
                         lemma_mul_is_distributive_add(pow2_260 as int, term_b as int, term_c as int);
                     }
                     pow2(320) * word5_nat + (pow2(384) * word6_nat + pow2(448) * word7_nat);
@@ -463,18 +439,10 @@ impl Scalar52 {
 
             calc! {
                 (==)
-                pow2_260 * (word4_high + term_a + term_b + term_c) + low_expr;
-                {
+                pow2_260 * (word4_high + term_a + term_b + term_c) + low_expr; {
                     lemma_mul_is_distributive_add(pow2_260 as int, word4_high as int, (term_a + term_b + term_c) as int);
                 }
-                (words[0] as nat) +
-                pow2(64) * (words[1] as nat) +
-                pow2(128) * (words[2] as nat) +
-                pow2(192) * (words[3] as nat) +
-                pow2(256) * (words[4] as nat) +
-                pow2(320) * (words[5] as nat) +
-                pow2(384) * (words[6] as nat) +
-                pow2(448) * (words[7] as nat); {}
+                (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * (words[4] as nat) + pow2(320) * (words[5] as nat) + pow2(384) * (words[6] as nat) + pow2(448) * (words[7] as nat); {}
                 wide_sum;
             }
         };
@@ -489,10 +457,12 @@ impl Scalar52 {
         assert(to_nat(&lo_raw.limbs) == wide_input % pow2(260)) by {
             calc! {
                 (==)
-                (pow2_260 * high_expr + low_expr) % pow2_260;
-                { lemma_mod_multiples_vanish(high_expr as int, low_expr as int, pow2_260 as int); }
-                low_expr % pow2_260;
-                { lemma_small_mod(low_expr, pow2_260); }
+                (pow2_260 * high_expr + low_expr) % pow2_260; { 
+                    lemma_mod_multiples_vanish(high_expr as int, low_expr as int, pow2_260 as int);
+                }
+                low_expr % pow2_260; {
+                    lemma_small_mod(low_expr, pow2_260);
+                }
                 low_expr;
             }
         };
@@ -507,10 +477,7 @@ impl Scalar52 {
         };
         // Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
         assert(wide_input == (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260))) by {
-            assert(
-                (wide_input % pow2(260)) + pow2_260 * (wide_input / pow2(260))
-                == (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260))
-            );
+            assert((wide_input % pow2(260)) + pow2_260 * (wide_input / pow2(260)) == (wide_input % pow2(260)) + pow2(260) * (wide_input / pow2(260)));
         };
         assert(high_expr < pow2(252)) by {
             lemma_words_to_nat_gen_u64_bound_le(&words, 8);
@@ -542,16 +509,9 @@ impl Scalar52 {
             let ghost lo_before_nat = to_nat(&lo_before.limbs);
             let ghost lo_after_nat = to_nat(&lo.limbs);
             let ghost r_nat = to_nat(&constants::R.limbs);
-            let ghost lo_product_nat = slice128_to_nat(&lo_product);
-
             lemma_r_equals_spec(constants::R);
 
-            lemma_mul_factors_congruent_implies_products_congruent(
-                lo_before_nat as int,
-                montgomery_radix() as int,
-                r_nat as int,
-                group_order() as int,
-            );
+            lemma_mul_factors_congruent_implies_products_congruent(lo_before_nat as int, montgomery_radix() as int, r_nat as int, group_order() as int);
 
             lemma_cancel_mul_pow2_mod(lo_after_nat, lo_before_nat, montgomery_radix());
 
@@ -561,29 +521,13 @@ impl Scalar52 {
 
             lemma_rr_equals_spec(constants::RR);
 
-            lemma_mul_factors_congruent_implies_products_congruent(
-                hi_before_nat as int,
-                rr_nat as int,
-                (montgomery_radix() * montgomery_radix()) as int,
-                group_order() as int,
-            );
+            lemma_mul_factors_congruent_implies_products_congruent(hi_before_nat as int, rr_nat as int, (montgomery_radix() * montgomery_radix()) as int, group_order() as int);
 
-            assert(
-                (hi_before_nat * (montgomery_radix() * montgomery_radix())) % group_order()
-                == ((hi_before_nat * montgomery_radix()) * montgomery_radix()) % group_order()
-            ) by {
-                lemma_mul_is_associative(
-                    hi_before_nat as int,
-                    montgomery_radix() as int,
-                    montgomery_radix() as int,
-                );
+            assert((hi_before_nat * (montgomery_radix() * montgomery_radix())) % group_order() == ((hi_before_nat * montgomery_radix()) * montgomery_radix()) % group_order()) by {
+                lemma_mul_is_associative(hi_before_nat as int, montgomery_radix() as int, montgomery_radix() as int);
             };
 
-            lemma_cancel_mul_pow2_mod(
-                hi_after_nat,
-                hi_before_nat * montgomery_radix(),
-                montgomery_radix(),
-            );
+            lemma_cancel_mul_pow2_mod(hi_after_nat, hi_before_nat * montgomery_radix(), montgomery_radix());
         }
 
         let result = Scalar52::add(&hi, &lo);
@@ -608,62 +552,24 @@ impl Scalar52 {
 
             calc! {
                 (==)
-                (result_nat * r_nat) % group_order();
-                {
-                    lemma_mul_factors_congruent_implies_products_congruent(
-                        r_int,
-                        result_int,
-                        ((hi_nat + lo_nat) % group_order()) as int,
-                        group_int,
-                    );
+                (result_nat * r_nat) % group_order(); {
                 }
-                (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order();
-                {
-                    lemma_mul_factors_congruent_implies_products_congruent(
-                        r_int,
-                        ((hi_nat + lo_nat) % group_order()) as int,
-                        (hi_nat + lo_nat) as int,
-                        group_int,
-                    );
+                (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order(); {
+                    lemma_mul_factors_congruent_implies_products_congruent(r_int, ((hi_nat + lo_nat) % group_order()) as int, (hi_nat + lo_nat) as int, group_int);
                 }
-                (r_nat * (hi_nat + lo_nat)) % group_order();
-                {
+                (r_nat * (hi_nat + lo_nat)) % group_order(); {
                     lemma_mul_is_distributive_add(r_int, hi_int, lo_int);
                 }
-                (r_nat * hi_nat + r_nat * lo_nat) % group_order();
-                {
+                (r_nat * hi_nat + r_nat * lo_nat) % group_order(); {
                     lemma_add_mod_noop(r_int * hi_int, r_int * lo_int, group_int);
                 }
-                ((r_nat * hi_nat) % group_order() + (r_nat * lo_nat) % group_order()) % group_order();
-                {
-                    lemma_mul_factors_congruent_implies_products_congruent(
-                        r_int,
-                        hi_int,
-                        (hi_raw_nat * r_nat) as int,
-                        group_int,
-                    );
-                    lemma_mul_factors_congruent_implies_products_congruent(
-                        r_int,
-                        lo_int,
-                        lo_raw_int,
-                        group_int,
-                    );
+                ((r_nat * hi_nat) % group_order() + (r_nat * lo_nat) % group_order()) % group_order(); {
                 }
-                ((hi_raw_nat * r_nat * r_nat) % group_order() + (lo_raw_nat * r_nat) % group_order()) % group_order();
-                {
-                    lemma_add_mod_noop(
-                        hi_raw_int * r_int * r_int,
-                        lo_raw_int * r_int,
-                        group_int,
-                    );
+                ((hi_raw_nat * r_nat * r_nat) % group_order() + (lo_raw_nat * r_nat) % group_order()) % group_order(); {
+                    lemma_add_mod_noop(hi_raw_int * r_int * r_int, lo_raw_int * r_int, group_int);
                 }
-                (hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat) % group_order();
-                {
-                    lemma_mul_is_distributive_add_other_way(
-                        r_int,
-                        hi_raw_int * r_int,
-                        lo_raw_int,
-                    );
+                (hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat) % group_order(); {
+                    lemma_mul_is_distributive_add_other_way(r_int, hi_raw_int * r_int, lo_raw_int);
                 }
                 (wide_input * r_nat) % group_order();
             }

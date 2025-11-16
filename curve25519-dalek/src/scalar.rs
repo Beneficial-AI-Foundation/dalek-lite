@@ -2510,7 +2510,7 @@ impl Scalar {
         }
 
         assert(to_nat(&constants::R.limbs) < group_order()) by {
-            lemma_r_le_l(constants::R);
+            lemma_r_equals_spec(constants::R);
         };
 
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);

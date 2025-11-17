@@ -39,7 +39,7 @@ verus! {
 /// * Each step follows the correct field operation postconditions
 ///
 /// # Postconditions
-/// * as_nat(t3_limbs) % p() == pow(as_nat(self_limbs) as int, 11) as nat % p()
+/// * u64_5_as_nat(t3_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, 11) as nat % p()
 /// * Also proves intermediate values: t0_sq = x^4, t1 = x^8, t2 = x^9
 pub proof fn lemma_pow22501_prove_t3(
     self_limbs: [u64; 5],
@@ -59,18 +59,18 @@ pub proof fn lemma_pow22501_prove_t3(
         forall|i: int| 0 <= i < 5 ==> t2_limbs[i] < 1u64 << 54,
         forall|i: int| 0 <= i < 5 ==> t3_limbs[i] < 1u64 << 54,
         // Computational relationships (from field operation postconditions)
-        as_nat(t0_limbs) % p() == pow(as_nat(self_limbs) as int, 2) as nat % p(),
-        as_nat(t0_sq_limbs) % p() == pow(as_nat(t0_limbs) as int, 2) as nat % p(),
-        as_nat(t1_limbs) % p() == pow(as_nat(t0_sq_limbs) as int, 2) as nat % p(),
-        as_nat(t2_limbs) % p() == (as_nat(self_limbs) * as_nat(t1_limbs)) % p(),
-        as_nat(t3_limbs) % p() == (as_nat(t0_limbs) * as_nat(t2_limbs)) % p(),
+        u64_5_as_nat(t0_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, 2) as nat % p(),
+        u64_5_as_nat(t0_sq_limbs) % p() == pow(u64_5_as_nat(t0_limbs) as int, 2) as nat % p(),
+        u64_5_as_nat(t1_limbs) % p() == pow(u64_5_as_nat(t0_sq_limbs) as int, 2) as nat % p(),
+        u64_5_as_nat(t2_limbs) % p() == (u64_5_as_nat(self_limbs) * u64_5_as_nat(t1_limbs)) % p(),
+        u64_5_as_nat(t3_limbs) % p() == (u64_5_as_nat(t0_limbs) * u64_5_as_nat(t2_limbs)) % p(),
     ensures
-        as_nat(t3_limbs) % p() == pow(as_nat(self_limbs) as int, 11) as nat % p(),
-        as_nat(t0_sq_limbs) % p() == pow(as_nat(self_limbs) as int, 4) as nat % p(),
-        as_nat(t1_limbs) % p() == pow(as_nat(self_limbs) as int, 8) as nat % p(),
-        as_nat(t2_limbs) % p() == pow(as_nat(self_limbs) as int, 9) as nat % p(),
+        u64_5_as_nat(t3_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, 11) as nat % p(),
+        u64_5_as_nat(t0_sq_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, 4) as nat % p(),
+        u64_5_as_nat(t1_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, 8) as nat % p(),
+        u64_5_as_nat(t2_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, 9) as nat % p(),
 {
-    let base = as_nat(self_limbs) as int;
+    let base = u64_5_as_nat(self_limbs) as int;
 
     assert(p() > 0) by {
         pow255_gt_19();

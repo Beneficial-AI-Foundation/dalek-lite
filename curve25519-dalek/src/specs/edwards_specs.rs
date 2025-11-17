@@ -19,19 +19,16 @@ verus! {
 
 /// Affine Edwards point (x, y)
 /// Curve equation is: -x² + y² = 1 + d·x²·y² for Edwards constant d = -121665/121666
-pub struct EdwardsPointAffine { pub x: nat, pub y: nat }
-
-
+pub struct EdwardsPointAffine {
+    pub x: nat,
+    pub y: nat,
+}
 
 /// Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).
 /// For the curve -x² + y² = 1 + d·x²·y², the addition formulas are:
 ///   x₃ = (x₁y₂ + y₁x₂) / (1 + d·x₁x₂y₁y₂)
 ///   y₃ = (y₁y₂ + x₁x₂) / (1 - d·x₁x₂y₁y₂)
-pub open spec fn edwards_add(
-    P: EdwardsPointAffine,
-    Q: EdwardsPointAffine
-) -> EdwardsPointAffine
-{
+pub open spec fn edwards_add(P: EdwardsPointAffine, Q: EdwardsPointAffine) -> EdwardsPointAffine {
     let x1 = P.x;
     let y1 = P.y;
     let x2 = Q.x;
@@ -45,10 +42,10 @@ pub open spec fn edwards_add(
 
     let dx1x2y1y2 = math_field_mul(spec_field_element(&EDWARDS_D), math_field_mul(x1x2, y1y2));
 
-    let numerator_x   = math_field_add(x1y2, y1x2);
+    let numerator_x = math_field_add(x1y2, y1x2);
     let denominator_x = math_field_add(1, dx1x2y1y2);
 
-    let numerator_y   = math_field_add(y1y2, x1x2);  
+    let numerator_y = math_field_add(y1y2, x1x2);
     let denominator_y = math_field_sub(1, dx1x2y1y2);
 
     EdwardsPointAffine {
@@ -56,7 +53,6 @@ pub open spec fn edwards_add(
         y: math_field_mul(numerator_y, math_field_inv(denominator_y)),
     }
 }
-
 
 /// Check if a point (x, y) satisfies the Edwards curve equation
 /// -x² + y² = 1 + d·x²·y²  (mod p)

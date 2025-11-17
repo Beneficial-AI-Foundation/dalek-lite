@@ -276,7 +276,7 @@ impl MontgomeryPoint {
     /// Curve25519 uses _clamped multiplication_, explained
     /// [here](https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/).
     /// When in doubt, use [`Self::mul_clamped`].
-    /* VERIFICATION NOTE: original code; followed by refactored version without using Iterator - unsuported by Verus)*/
+    /* VERIFICATION NOTE: original code; followed by refactored version without using Iterator - unsupported by Verus)*/
     /* <ORIGINAL CODE>
     pub fn mul_bits_be(&self, bits: impl Iterator<Item = bool>) -> MontgomeryPoint {
         // Algorithm 8 of Costello-Smith 2017

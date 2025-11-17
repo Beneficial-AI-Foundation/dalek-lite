@@ -1802,7 +1802,7 @@ fn top_half(x: u8) -> (result:
 
 impl Scalar {
     /// Get the bits of the scalar, in little-endian order
-    /* VERIFICATION NOTE: original code followed by refactored version without using Iterator - unsuported by Verus)*/
+    /* VERIFICATION NOTE: original code followed by refactored version without using Iterator - unsupported by Verus)*/
     /* <ORIGINAL CODE>
     pub(crate) fn bits_le(&self) -> impl DoubleEndedIterator<Item = bool> + '_ {
         /* <VERIFICATION NOTE>

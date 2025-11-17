@@ -180,13 +180,18 @@ pub open spec fn is_valid_radix_16(digits: &[i8; 64]) -> bool {
 /// This interprets bits[0] as the most significant bit
 /// Used for scalar multiplication where bits are processed MSB first
 pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
-    recommends 0 <= len <= bits.len()
-    decreases len
+    recommends
+        0 <= len <= bits.len(),
+    decreases len,
 {
     if len <= 0 {
         0
     } else {
-        let bit_value = if bits[len - 1] { 1nat } else { 0nat };
+        let bit_value = if bits[len - 1] {
+            1nat
+        } else {
+            0nat
+        };
         bit_value + 2 * bits_be_to_nat(bits, len - 1)
     }
 }

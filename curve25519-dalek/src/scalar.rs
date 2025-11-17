@@ -110,6 +110,8 @@
 //! reduces a \\(512\\)-bit integer, if the optional `digest` feature
 //! has been enabled.
 
+use crate::lemmas::common_lemmas::mask_lemmas::*;
+use crate::lemmas::common_lemmas::shift_lemmas::*;
 use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::iter::{Product, Sum};
@@ -121,6 +123,7 @@ use core::ops::{Sub, SubAssign};
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
+use vstd::bits::*;
 use vstd::calc;
 use vstd::prelude::*;
 
@@ -1844,11 +1847,6 @@ impl Scalar {
 
             // Prove bounds using shift and mask lemmas
             proof {
-                use crate::lemmas::common_lemmas::shift_lemmas::*;
-                use crate::lemmas::common_lemmas::mask_lemmas::*;
-                use vstd::bits::*;
-                use vstd::arithmetic::power2::*;
-
                 assert(i < 256);
 
                 // Prove i >> 3 = i / 8 using shift lemma

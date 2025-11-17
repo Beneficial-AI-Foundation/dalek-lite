@@ -56,7 +56,9 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 
 #[allow(unused_imports)]
-use crate::lemmas::field_lemmas::as_nat_lemmas::*;
+use crate::lemmas::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t19_lemma::*;
 #[allow(unused_imports)]
@@ -614,32 +616,32 @@ impl FieldElement {
         proof {
             pow255_gt_19();
 
-            // Bridge from spec_field_element to as_nat
-            assert(as_nat(t19.limbs) % p() == spec_field_element(&t19));
-            assert(as_nat(self.limbs) % p() == spec_field_element(self));
+            // Bridge from spec_field_element to u64_5_as_nat
+            assert(u64_5_as_nat(t19.limbs) % p() == spec_field_element(&t19));
+            assert(u64_5_as_nat(self.limbs) % p() == spec_field_element(self));
 
-            // Use lemma_pow_mod_noop to bridge from spec_field_element to as_nat
-            lemma_pow_mod_noop(as_nat(self.limbs) as int, (pow2(250) - 1) as nat, p() as int);
-            assert(pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) >= 0) by {
-                lemma_pow_nonnegative(as_nat(self.limbs) as int, (pow2(250) - 1) as nat);
+            // Use lemma_pow_mod_noop to bridge from spec_field_element to u64_5_as_nat
+            lemma_pow_mod_noop(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat, p() as int);
+            assert(pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) >= 0) by {
+                lemma_pow_nonnegative(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat);
             }
-            assert(pow((as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat) >= 0) by {
-                lemma_pow_nonnegative((as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat);
+            assert(pow((u64_5_as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat) >= 0) by {
+                lemma_pow_nonnegative((u64_5_as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat);
             }
-            assert(pow(as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p() == pow(
-                (as_nat(self.limbs) % p()) as int,
+            assert(pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p() == pow(
+                (u64_5_as_nat(self.limbs) % p()) as int,
                 (pow2(250) - 1) as nat,
             ) as nat % p());
-            assert(as_nat(t19.limbs) % p() == pow(
-                as_nat(self.limbs) as int,
+            assert(u64_5_as_nat(t19.limbs) % p() == pow(
+                u64_5_as_nat(self.limbs) as int,
                 (pow2(250) - 1) as nat,
             ) as nat % p());
 
             // Multiplication: t21 = self * t20
-            assert(as_nat(t21.limbs) % p() == (as_nat(self.limbs) * as_nat(t20.limbs)) % p()) by {
+            assert(u64_5_as_nat(t21.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(t20.limbs)) % p()) by {
                 lemma_mul_mod_noop_general(
-                    as_nat(self.limbs) as int,
-                    as_nat(t20.limbs) as int,
+                    u64_5_as_nat(self.limbs) as int,
+                    u64_5_as_nat(t20.limbs) as int,
                     p() as int,
                 );
             };
@@ -647,7 +649,7 @@ impl FieldElement {
             // Use lemma to prove t21 = x^(2^252-3)
             lemma_pow_p58_prove(self.limbs, t19.limbs, t20.limbs, t21.limbs);
 
-            // Bridge back from as_nat to spec_field_element
+            // Bridge back from u64_5_as_nat to spec_field_element
             lemma_bridge_pow_as_nat_to_spec(&t21, self, (pow2(252) - 3) as nat);
 
             // Bounded limbs: t21 is the result of mul (self * &t20), which maintains the bound

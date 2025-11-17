@@ -192,7 +192,6 @@ impl Scalar52 {
         {
             words[i] = 0;
             proof {
-                let i_int = i as int;
                 assert(1u64 << 0 == 1u64) by (bit_vector);
             }
             for j in 0..8
@@ -203,17 +202,13 @@ impl Scalar52 {
                     words@[(i as int)] as nat == word_from_bytes_partial(bytes, i as int, j as int),
                     (j < 8 ==> words@[(i as int)] < (1u64 << ((j * 8) as u64))),
             {
-                let byte = bytes[(i * 8) + j];
-                let byte_val = byte as u64;
-                let shift = j * 8;
                 let ghost i_int = i as int;
-                let ghost j_int = j as int;
                 let ghost old_word = words@[i_int];
 
-                words[i] |= byte_val << shift;
+                words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);
 
                 proof {
-                    lemma_from_bytes_wide_word_update(bytes, i_int, j_int, old_word, words@[i_int]);
+                    lemma_from_bytes_wide_word_update(bytes, i_int, j as int, old_word, words@[i_int]);
                 }
             }
             proof {
@@ -326,18 +321,12 @@ impl Scalar52 {
             pow2(384) * (words[6] as nat) +
             pow2(448) * (words[7] as nat);
 
-        // Reading the five 52-bit limbs in radix 2^52 reproduces the low chunk reconstructed from the 64-bit words.
         proof {
+            // Reading the five 52-bit limbs in radix 2^52 reproduces the low chunk reconstructed from the 64-bit words.
             lemma_low_limbs_encode_low_expr(&lo_raw.limbs, &words, mask);
-        }
-        proof {
             lemma_five_limbs_equals_to_nat(&lo_raw.limbs);
-        }
-        // Reading the five 52-bit limbs in radix 2^52 reproduces the high chunk reconstructed from the 64-bit words.
-        proof {
+            // Reading the five 52-bit limbs in radix 2^52 reproduces the high chunk reconstructed from the 64-bit words.
             lemma_high_limbs_encode_high_expr(&hi_raw.limbs, &words, mask);
-        }
-        proof {
             lemma_five_limbs_equals_to_nat(&hi_raw.limbs);
         }
         assert(to_nat(&hi_raw.limbs) == high_expr);
@@ -369,18 +358,12 @@ impl Scalar52 {
                 pow2(256) * (words[4] as nat);
             }
         };
-        // Raising 2^260 by another 2^60 places word[5] at the 2^320 position.
         proof {
+            // Raising 2^260 by another 2^60 places word[5] at the 2^320 position.
             lemma_pow2_adds(260, 60);
-        }
-
-        // Raising 2^260 by another 2^124 places word[6] at the 2^384 position.
-        proof {
+            // Raising 2^260 by another 2^124 places word[6] at the 2^384 position.
             lemma_pow2_adds(260, 124);
-        }
-
-        // Raising 2^260 by another 2^188 places word[7] at the 2^448 position.
-        proof {
+            // Raising 2^260 by another 2^188 places word[7] at the 2^448 position.
             lemma_pow2_adds(260, 188);
         }
         // HighLow-Recombine: Combining the high and low chunks at the 2^260 boundary reproduces the weighted word sum.
@@ -447,28 +430,19 @@ impl Scalar52 {
         };
         // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
         assert(to_nat(&hi_raw.limbs) == wide_input / pow2(260)) by {
-            let ghost wide_input_int = wide_input as int;
-            let ghost pow2_260_int = pow2_260 as int;
-            let ghost high_expr_int = high_expr as int;
-            let ghost low_expr_int = low_expr as int;
-
-            lemma_fundamental_div_mod_converse(wide_input_int, pow2_260_int, high_expr_int, low_expr_int);
+            lemma_fundamental_div_mod_converse(wide_input as int, pow2_260 as int, high_expr as int, low_expr as int);
         };
         // Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
         assert(high_expr < pow2(252)) by {
             lemma_words_to_nat_gen_u64_bound_le(&words, 8);
             lemma_pow2_adds(260, 252);
             assert(pow2_260 * pow2(252) == pow2(512));
-            let ghost wide_input_int = wide_input as int;
-            let ghost pow2_260_int = pow2_260 as int;
-            lemma_multiply_divide_lt(wide_input_int, pow2_260_int, pow2(252) as int);
+            lemma_multiply_divide_lt(wide_input as int, pow2_260 as int, pow2(252) as int);
         };
 
         // Stage 4 assumption: Montgomery reductions behave as expected for these operands.
         proof {
             lemma_r_limbs_bounded(); // had to write this one manually due to crashes
-        }
-        proof {
             lemma_rr_limbs_bounded();
         }
 
@@ -513,7 +487,6 @@ impl Scalar52 {
             let ghost hi_raw_nat = to_nat(&hi_raw.limbs);
             let ghost lo_raw_nat = to_nat(&lo_raw.limbs);
             let ghost r_nat = montgomery_radix();
-            let ghost result_int = result_nat as int;
             let ghost hi_int = hi_nat as int;
             let ghost lo_int = lo_nat as int;
             let ghost hi_raw_int = hi_raw_nat as int;
@@ -525,8 +498,7 @@ impl Scalar52 {
 
             calc! {
                 (==)
-                (result_nat * r_nat) % group_order(); {
-                }
+                (result_nat * r_nat) % group_order(); {}
                 (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order(); {
                     lemma_mul_factors_congruent_implies_products_congruent(r_int, ((hi_nat + lo_nat) % group_order()) as int, (hi_nat + lo_nat) as int, group_int);
                 }
@@ -536,8 +508,7 @@ impl Scalar52 {
                 (r_nat * hi_nat + r_nat * lo_nat) % group_order(); {
                     lemma_add_mod_noop(r_int * hi_int, r_int * lo_int, group_int);
                 }
-                ((r_nat * hi_nat) % group_order() + (r_nat * lo_nat) % group_order()) % group_order(); {
-                }
+                ((r_nat * hi_nat) % group_order() + (r_nat * lo_nat) % group_order()) % group_order(); {}
                 ((hi_raw_nat * r_nat * r_nat) % group_order() + (lo_raw_nat * r_nat) % group_order()) % group_order(); {
                     lemma_add_mod_noop(hi_raw_int * r_int * r_int, lo_raw_int * r_int, group_int);
                 }

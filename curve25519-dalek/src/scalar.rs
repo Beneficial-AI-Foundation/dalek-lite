@@ -2444,11 +2444,11 @@ impl Scalar {
         assert(limbs_bounded(&constants::R)) by {
             lemma_r_bounded(constants::R);
 
-    }
+        }
 
-    assert(to_nat(&constants::R.limbs) < group_order()) by {
-        lemma_r_le_l(constants::R);
-    };
+        assert(to_nat(&constants::R.limbs) < group_order()) by {
+            lemma_r_le_l(constants::R);
+        };
 
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);
         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);

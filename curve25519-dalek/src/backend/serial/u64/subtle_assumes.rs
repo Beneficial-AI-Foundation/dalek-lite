@@ -238,7 +238,8 @@ pub fn conditional_swap_montgomery_projective(
     choice: Choice,
 )
     ensures
-        // If choice is false, points remain unchanged
+// If choice is false, points remain unchanged
+
         !choice_is_true(choice) ==> {
             &&& a.U == old(a).U
             &&& a.W == old(a).W

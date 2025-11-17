@@ -1176,8 +1176,46 @@ pub mod test {
             .prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
     }
 
+    /// Convert a 32-byte array to a BigUint
+    /// Matches the spec: bytes_to_nat(&[u8; 32])
+    pub fn bytes_to_nat_exec(bytes: &[u8; 32]) -> BigUint {
+        let mut result = BigUint::zero();
+        let radix = BigUint::from(256u32);
+        for i in (0..32).rev() {
+            result = result * &radix + BigUint::from(bytes[i]);
+        }
+        result
+    }
+
     proptest! {
         #![proptest_config(proptest::test_runner::Config::with_cases(1000000))]
+
+        /// Test from_bytes spec: for any 32-byte array, verify all three postconditions
+        /// 1. bytes_to_nat(bytes) == to_nat(&s.limbs)
+        /// 2. limbs_bounded(&s)
+        /// 3. to_nat(&s.limbs) < group_order()
+        #[test]
+        fn prop_from_bytes(bytes in prop::array::uniform32(any::<u8>())) {
+            // Call from_bytes
+            let s = Scalar52::from_bytes(&bytes);
+
+            // Convert to BigUint using executable spec functions
+            let bytes_nat = bytes_to_nat_exec(&bytes);
+            let result_nat = to_nat_exec(&s.limbs);
+            let l = group_order_exec();
+
+            // Postcondition 1: bytes_to_nat(bytes) == to_nat(&s.limbs)
+            prop_assert_eq!(bytes_nat, result_nat.clone(),
+                "from_bytes spec violated: bytes_to_nat(bytes) != to_nat(&s.limbs)");
+
+            // Postcondition 2: limbs_bounded(&s)
+            prop_assert!(limbs_bounded_exec(&s),
+                "from_bytes spec violated: result limbs not bounded by 2^52");
+
+            // Postcondition 3: to_nat(&s.limbs) < group_order()
+            prop_assert!(&result_nat < &l,
+                "from_bytes spec violated: result not canonical (>= L)");
+        }
 
         /// Test 1: Input is product of TWO bounded scalars (both may be non-canonical)
         /// Spec says: if input = mul(bounded1, bounded2) then Montgomery property and limbs_bounded hold

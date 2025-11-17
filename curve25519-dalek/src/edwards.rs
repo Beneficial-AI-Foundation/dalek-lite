@@ -1058,7 +1058,6 @@ impl EdwardsPoint {
             limbs_bounded(&self.Y, 54),
             limbs_bounded(&self.Z, 54),
             limbs_bounded(&self.T, 54),
-
         ensures
             is_valid_edwards_point(result),  // result is also a valid Edwards point
             // Result equals the affine doubling of the input.
@@ -1075,7 +1074,10 @@ impl EdwardsPoint {
             // as_projective correctness:
             // A valid EdwardsPoint must map to a valid projective point
             assert(is_valid_projective_point(proj));
-            assert(limbs_bounded(&proj.X, 54) && limbs_bounded(&proj.Y, 54) && limbs_bounded(&proj.Z, 54));
+            assert(limbs_bounded(&proj.X, 54) && limbs_bounded(&proj.Y, 54) && limbs_bounded(
+                &proj.Z,
+                54,
+            ));
         }
 
         let doubled = proj.double();

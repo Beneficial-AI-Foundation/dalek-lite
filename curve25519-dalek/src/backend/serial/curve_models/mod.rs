@@ -392,18 +392,15 @@ impl ProjectivePoint {
     pub fn as_extended(&self) -> (result: EdwardsPoint)
         requires
             is_valid_projective_point(*self),
+            // preconditions for arithmetic traits
+            limbs_bounded(&self.X, 54),
+            limbs_bounded(&self.Y, 54),
+            limbs_bounded(&self.Z, 54),
         ensures
             is_valid_edwards_point(result),
             spec_edwards_point(result) == spec_projective_to_extended(*self),
             affine_edwards_point(result) == affine_projective_point_edwards(*self),
     {
-        proof {
-            // preconditions for arithmetic traits
-            assume(limbs_bounded(&self.X, 54));
-            assume(limbs_bounded(&self.Y, 54));
-            assume(limbs_bounded(&self.Z, 54));
-        }
-
         let result = EdwardsPoint {
             X: &self.X * &self.Z,
             Y: &self.Y * &self.Z,
@@ -428,18 +425,16 @@ impl CompletedPoint {
     pub fn as_projective(&self) -> (result: ProjectivePoint)
         requires
             is_valid_completed_point(*self),
+            // preconditions for arithmetic traits
+            limbs_bounded(&self.X, 54),
+            limbs_bounded(&self.Y, 54),
+            limbs_bounded(&self.Z, 54),
+            limbs_bounded(&self.T, 54),
         ensures
             is_valid_projective_point(result),
             spec_projective_point_edwards(result) == spec_completed_to_projective(*self),
             affine_projective_point_edwards(result) == affine_completed_point(*self),
     {
-        proof {
-            // preconditions for arithmetic traits
-            assume(limbs_bounded(&self.X, 54));
-            assume(limbs_bounded(&self.Y, 54));
-            assume(limbs_bounded(&self.Z, 54));
-            assume(limbs_bounded(&self.T, 54));
-        }
         let result = ProjectivePoint {
             X: &self.X * &self.T,
             Y: &self.Y * &self.Z,
@@ -461,19 +456,16 @@ impl CompletedPoint {
     pub fn as_extended(&self) -> (result: EdwardsPoint)
         requires
             is_valid_completed_point(*self),
+            // preconditions for arithmetic traits
+            limbs_bounded(&self.X, 54),
+            limbs_bounded(&self.Y, 54),
+            limbs_bounded(&self.Z, 54),
+            limbs_bounded(&self.T, 54),
         ensures
             is_valid_edwards_point(result),
             spec_edwards_point(result) == spec_completed_to_extended(*self),
             affine_edwards_point(result) == affine_completed_point(*self),
     {
-        proof {
-            // preconditions for arithmetic traits
-            assume(limbs_bounded(&self.X, 54));
-            assume(limbs_bounded(&self.Y, 54));
-            assume(limbs_bounded(&self.Z, 54));
-            assume(limbs_bounded(&self.T, 54));
-        }
-
         let result = EdwardsPoint {
             X: &self.X * &self.T,
             Y: &self.Y * &self.Z,
@@ -498,6 +490,10 @@ impl ProjectivePoint {
     pub fn double(&self) -> (result: CompletedPoint)
         requires
             is_valid_projective_point(*self),
+            // preconditions for arithmetic traits
+            limbs_bounded(&self.X, 54),
+            limbs_bounded(&self.Y, 54),
+            limbs_bounded(&self.Z, 54),
         ensures
             is_valid_completed_point(result),
             // The result represents the affine doubling of self
@@ -505,13 +501,11 @@ impl ProjectivePoint {
                 let (x, y) = affine_projective_point_edwards(*self);
                 edwards_double(x, y)
             }),
+            limbs_bounded(&result.X, 54),
+            limbs_bounded(&result.Y, 54),
+            limbs_bounded(&result.Z, 54),
+            limbs_bounded(&result.T, 54),
     {
-        proof {
-            // preconditions for arithmetic traits
-            assume(limbs_bounded(&self.X, 54));
-            assume(limbs_bounded(&self.Y, 54));
-            assume(limbs_bounded(&self.Z, 54));
-        }
         // Double()
         let XX = self.X.square();
         let YY = self.Y.square();

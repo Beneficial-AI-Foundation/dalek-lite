@@ -92,6 +92,34 @@ pub proof fn lemma_div_of_sum(a: nat, b: nat, k: nat)
     lemma_div_multiples_vanish_fancy((a0 + b0) as int, ((a % k) + (b % k)) as int, k as int);
 }
 
+pub proof fn lemma_mod_of_sum(a: nat, b:nat, k: nat)
+    requires
+        (a % k) + (b % k) < k
+    ensures
+        (a + b) % k == (a % k) + (b % k)
+{
+    lemma_div_of_sum(a, b, k);
+    assert((a + b) / k == a / k + b / k);
+    assert(a + b == k * ((a + b) / k) + (a + b) % k) by {
+        lemma_fundamental_div_mod((a + b) as int, k as int);
+    }
+    assert(a == k * (a / k) + a % k) by {
+        lemma_fundamental_div_mod(a as int, k as int);
+    }
+    assert(b == k * (b / k) + b % k) by {
+        lemma_fundamental_div_mod(b as int, k as int);
+    }
+
+    assert(a + b - k * ((a + b) / k) == (a + b) % k);
+    
+    assert(k * ((a + b) / k) == k * (a / k) + k * (b / k)) by {
+        assert(k * ((a / k) + (b / k)) == k * (a / k) + k * (b / k)) by {
+            lemma_mul_is_distributive_add(k as int, (a / k) as int, (b / k) as int);
+        }
+    }
+    assert(a + b - k * ((a + b) / k) == a - k * (a / k) + b - k * (b / k));
+}
+
 /// Helper lemma: Division with strict upper bound
 /// If x < a * b and a > 0, then x / a < b
 pub proof fn lemma_div_strictly_bounded(x: int, a: int, b: int)

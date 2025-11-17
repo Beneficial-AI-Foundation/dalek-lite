@@ -10,6 +10,9 @@ use super::div_mod_lemmas::*;
 use super::mul_lemmas::*;
 use super::sum_lemmas::*;
 
+#[allow(unused_imports)]
+use vstd::calc;
+
 verus! {
 
 pub proof fn lemma_u8_lt_pow2_8(a: u8)
@@ -956,6 +959,112 @@ pub proof fn lemma_pow_even_nonnegative(x: int, k: nat)
         lemma_mul_nonnegative(-y, -y);
         lemma_mul_cancels_negatives(y, y)
     }
+}
+
+
+pub proof fn byte_over_word_is_commutative(
+    byte0: nat, byte1: nat, byte2 : nat, byte3: nat,
+    byte4: nat, byte5: nat, byte6 : nat, byte7: nat
+)
+ensures
+    byte0 * pow2(0) + byte1 * pow2(8) + byte2 * pow2(16) + byte3 * pow2(24) +
+    byte4 * pow2(32) + byte5 * pow2(40) + byte6 * pow2(48) + byte7 * pow2(56)
+==
+    pow2(0)  * byte0 + pow2(8)  * byte1 + pow2(16) * byte2 + pow2(24) * byte3 +
+    pow2(32) * byte4 + pow2(40) * byte5 + pow2(48) * byte6 + pow2(56) * byte7
+{
+    lemma_mul_is_commutative(pow2(0)  as int, byte0 as int);
+    lemma_mul_is_commutative(pow2(8)  as int, byte1 as int);
+    lemma_mul_is_commutative(pow2(16) as int, byte2 as int);
+    lemma_mul_is_commutative(pow2(24) as int, byte3 as int);
+    lemma_mul_is_commutative(pow2(32) as int, byte4 as int);
+    lemma_mul_is_commutative(pow2(40) as int, byte5 as int);
+    lemma_mul_is_commutative(pow2(48) as int, byte6 as int);
+    lemma_mul_is_commutative(pow2(56) as int, byte7 as int);
+}
+
+/// Lemma: Multiplication by power of 2 of a reconstructed 64-bit word distributes over its bytes
+///
+/// This is used in `Scalar52::from_bytes`
+pub proof fn pow2_distributivity_over_word(
+    word: nat,
+    byte0: nat, byte1: nat, byte2 : nat, byte3: nat,
+    byte4: nat, byte5: nat, byte6 : nat, byte7: nat,
+    exp: nat
+)
+requires
+    word == byte0 * pow2(0) + byte1 * pow2(8) + byte2 * pow2(16) + byte3 * pow2(24) +
+            byte4 * pow2(32) + byte5 * pow2(40) + byte6 * pow2(48) + byte7 * pow2(56)
+ensures 
+    word * pow2(exp) == byte0 * pow2(exp) + byte1 * pow2(exp + 8) + byte2 * pow2(exp + 16) + byte3 * pow2(exp + 24) +
+            byte4 * pow2(exp + 32) + byte5 * pow2(exp + 40) + byte6 * pow2(exp + 48) + byte7 * pow2(exp + 56)
+{
+    calc! {
+        (==)
+        (word as nat) * pow2(exp); (==) {
+            let x1 = byte0 * pow2(0) as int;
+            let x2 = byte1 * pow2(8) as int;
+            let x3 = byte2 * pow2(16) as int;
+            let x4 = byte3 * pow2(24) as int;
+            let x5 = byte4 * pow2(32) as int;
+            let x6 = byte5 * pow2(40) as int;
+            let x7 = byte6 * pow2(48) as int;
+            let x8 = byte7 * pow2(56) as int;
+
+            distribution_over_8_terms_other_way(pow2(exp) as int,
+                x1, x2, x3, x4,
+                x5, x6, x7, x8);
+        }
+        (byte0 * pow2(0) * pow2(exp)
+        + byte1 * pow2(8) * pow2(exp)
+        + byte2 * pow2(16) * pow2(exp)
+        + byte3 * pow2(24) * pow2(exp)
+        + byte4 * pow2(32) * pow2(exp)
+        + byte5 * pow2(40) * pow2(exp)
+        + byte6 * pow2(48) * pow2(exp)
+        + byte7 * pow2(56) * pow2(exp)); (==) {
+            // === byte 0 ===
+            lemma_pow2_adds(0, exp);
+            assert(pow2(0) * pow2(exp) == pow2(exp));
+            lemma_mul_is_associative((byte0 as int), pow2(0) as int, pow2(exp) as int);
+            // === byte 1 ===
+            lemma_pow2_adds(8, exp);
+            assert(pow2(8) * pow2(exp) == pow2(exp + 8));
+            lemma_mul_is_associative((byte1 as int), pow2(8) as int, pow2(exp) as int);
+            // === byte 2 ===
+            lemma_pow2_adds(16, exp);
+            assert(pow2(16) * pow2(exp) == pow2(exp + 16));
+            lemma_mul_is_associative((byte2 as int), pow2(16) as int, pow2(exp) as int);
+            // === byte 3 ===
+            lemma_pow2_adds(24, exp);
+            assert(pow2(24) * pow2(exp) == pow2(exp + 24));
+            lemma_mul_is_associative((byte3 as int), pow2(24) as int, pow2(exp) as int);
+            // === byte 4 ===
+            lemma_pow2_adds(32, exp);
+            assert(pow2(32) * pow2(exp) == pow2(exp + 32));
+            lemma_mul_is_associative((byte4 as int), pow2(32) as int, pow2(exp) as int);
+            // === byte 5 ===
+            lemma_pow2_adds(40, exp);
+            assert(pow2(40) * pow2(exp) == pow2(exp + 40));
+            lemma_mul_is_associative((byte5 as int), pow2(40) as int, pow2(exp) as int);
+            // === byte 6 ===
+            lemma_pow2_adds(48, exp);
+            assert(pow2(48) * pow2(exp) == pow2(exp + 48));
+            lemma_mul_is_associative((byte6 as int), pow2(48) as int, pow2(exp) as int);
+            // === byte 7 ===
+            lemma_pow2_adds(56, exp);
+            assert(pow2(56) * pow2(exp) == pow2(exp + 56));
+            lemma_mul_is_associative((byte7 as int), pow2(56) as int, pow2(exp) as int);
+        }
+        (byte0  * pow2(exp + 0)
+        + byte1 * pow2(exp + 8)
+        + byte2 * pow2(exp + 16)
+        + byte3 * pow2(exp + 24)
+        + byte4 * pow2(exp + 32)
+        + byte5 * pow2(exp + 40)
+        + byte6 * pow2(exp + 48)
+        + byte7 * pow2(exp + 56));
+    };
 }
 
 } // verus!

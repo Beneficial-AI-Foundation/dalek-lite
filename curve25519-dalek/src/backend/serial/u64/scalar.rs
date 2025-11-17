@@ -21,6 +21,10 @@ use zeroize::Zeroize;
 use crate::constants;
 
 #[allow(unused_imports)]
+use crate::lemmas::common_lemmas::bit_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::core_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
@@ -37,6 +41,13 @@ use vstd::arithmetic::power2::*;
 #[allow(unused_imports)]
 use vstd::calc;
 use vstd::prelude::*;
+#[allow(unused_imports)]
+use vstd::bits::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::mul::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power::*;
+
 
 verus! {
 
@@ -115,30 +126,254 @@ impl Scalar52 {
             to_nat(&s.limbs) < group_order(),
     {
         let mut words = [0u64;4];
+        proof {
+            assert(forall |i2: int| 0 <= i2 < 4 ==> words[i2] == 0u64);
+        }
         for i in 0..4
             invariant
-                0 <= i <= 4  // proof
-                ,
+                0 <= i <= 4,
+                forall |i2: int| i <= i2 < 4 ==> words[i2] == 0u64,
+                forall |i2: int| 0 <= i2 < i ==> ((words[i2] as nat)
+                                                            == bytes_seq_to_nat_clear(
+                                                                Seq::new(8, |j: int| bytes[i2*8 + j]), 8)
+                                                 )
         {
+            proof{
+                assert(words[i as int] == 0);
+                lemma_pow2_pos(0 as nat)
+            }
+
             for j in 0..8
                 invariant
-                    0 <= j <= 8 && i < 4,
+                    0 <= j <= 8 && 0 <= i < 4,
+                    words[i as int] < pow2(j as nat * 8),
+                    forall |i2: int| i + 1 <= i2 < 4 ==> words[i2] == 0u64,
+                    words[i as int] == bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[i as int * 8 + j2]), j as nat),
+                    forall |i2: int| 0 <= i2 < i ==> ((words[i2] as nat)
+                                                            == bytes_seq_to_nat_clear(
+                                                                Seq::new(8, |j: int| bytes[i2*8 + j]), 8)
+                                                     )
             {
                 proof {
                     assert(i < 4 && j < 8);
                     assert((i as u64) * 8u64 < 32u64);
                     let idx = (i as u64) * 8 + (j as u64);
                     assert(idx < 32);
+
+                    let old_word = words[i as int];
+                    let new_byte = bytes[idx] as u64;
+                    
+                    assert(j < 8);
+                    lemma_mul_strict_inequality(j as int, 8, 8);
+                    assert((j as int * 8)  < 64);
+                    lemma_pow2_strictly_increases(j as nat* 8, 64);
+                    
+                    assert(1 * pow2(j as nat * 8) == pow2(j as nat * 8));
+                    assert(1 * pow2(j as nat * 8) < pow2(64));
+                    lemma_u64_pow2_no_overflow(j as nat * 8);
+                    
+                    let j8 = (j * 8) as u64;
+                    
+                    assert(old_word < (1u64 << j8)) by {
+                        assert(old_word < pow2(j8 as nat));
+                        assert(j8 < u64::BITS);
+                        assert(1 * pow2(j8 as nat) <= u64::MAX);
+                        lemma_u64_shl_is_mul(1, j8);
+                        assert((1u64 << j8) == 1 * pow2(j8 as nat));
+                    };
+
+                    assert(new_byte <= (u64::MAX >> j8)) by {
+                        assert(new_byte <= 255) by (compute);
+                        assert((u64::MAX >> (j * 8)) ==  (u64::MAX / (pow2(j8 as nat) as u64))) by {
+                            lemma_u64_shr_is_div(u64::MAX, j8);
+                        }
+                        assert(u64::MAX / (pow2(56) as u64) <= u64::MAX / (pow2(j8 as nat) as u64)) by {
+                            assert(j8 <= 56);
+                            assert(pow2(j8 as nat) <= pow2(56)) by {
+                                lemma_pow_increases(2, j8 as nat, 56);
+                                lemma_pow2(j8 as nat);
+                                lemma_pow2(56);
+                            }
+                            lemma_div_is_ordered_by_denominator(u64::MAX as int, pow2(j8 as nat) as int, pow2(56) as int);
+                            assert(((u64::MAX as int) / (pow2(56) as int)) <= ((u64::MAX as int) / (pow2(j8 as nat) as int)));
+                            lemma_u64_pow2_no_overflow(56);
+                        }
+                        assert(255 <= u64::MAX / (pow2(56) as u64)) by {
+                            lemma_pow2(56);
+                            lemma_u64_pow2_no_overflow(56);
+                            reveal(pow);
+                            assert(255 <= u64::MAX / (pow(2, 56) as u64)) by (compute);
+                        }
+                    }
+
+                    assert((old_word | (new_byte << (j8))) ==
+                           (old_word + (new_byte << (j8)))) by {
+                        lemma_bit_or_is_plus(old_word, new_byte, j8 as u64);
+                    }
+                    
+                    let j8next = (j as u64 + 1) * 8 as u64;
+                    
+                    
+                    assert(old_word + (new_byte << j8) == old_word + new_byte * pow2(j8 as nat)) by {
+                        assert(new_byte <= 255);
+                        assert(pow2(j8 as nat) <= pow2(56)) by {
+                            lemma_pow_increases(2, j8 as nat, 56);
+                            lemma_pow2(j8 as nat);
+                            lemma_pow2(56);
+                        }
+                        assert(new_byte * pow2(j8 as nat) <= new_byte * pow2(56)) by {
+                            if(0 < new_byte) {
+                                lemma_mul_left_inequality(new_byte as int, pow2(j8 as nat) as int, pow2(56) as int);
+                            } else {
+                                assert(0 == new_byte);
+                                assert(new_byte * pow2(j8 as nat) == 0) by {
+                                    lemma_mul_by_zero_is_zero(pow2(j8 as nat) as int);
+                                };
+                                assert(new_byte * pow2(56) == 0) by {
+                                    lemma_mul_by_zero_is_zero(pow2(56) as int);
+                                };
+                            }
+                        };
+                        assert(new_byte * pow2(j8 as nat) <= u64::MAX) by {
+                            lemma_mul_inequality(new_byte as int, 255, pow2(56) as int);
+                            assert(255 * pow(2, 56) <= u64::MAX) by (compute); 
+                            assert(255 * pow2(56) <= u64::MAX) by {
+                                lemma_pow2(56);
+                            };
+                        }
+                        lemma_u64_shl_is_mul(new_byte, j8);
+                    };
+
+                    assert(old_word + (new_byte << j8) < pow2(j8next as nat)) by {
+                        assert((new_byte as int) * pow2(j8 as nat) <= 255 * pow2(j8 as nat)) by {
+                            lemma_mul_inequality(new_byte as int, 255, pow2(j8 as nat) as int);
+                        }
+                        assert(old_word + new_byte * pow2(j8 as nat) <= 256 * pow2(j8 as nat));
+                        assert(256 * pow2(j8 as nat) == pow2(8) * pow2(j8 as nat)) by {
+                            lemma_pow2(8);
+                            assert(256 == pow(2, 8)) by (compute);
+                            assert(256 == pow2(8));
+                        }
+                        assert(256 * pow2(j8 as nat) == pow2(8 + (j8 as nat))) by {
+                            lemma_pow2_adds(8, j8 as nat);
+                        }
+                    }
+                    
+                    assert(old_word == bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat));
+                    
+                    assert(bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat) 
+                        + pow2((j as nat) * 8) * bytes[(i as int) * 8 + j]
+                        == bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), (j + 1) as nat)) by {
+                        reveal(bytes_seq_to_nat_clear);
+                    }
+                    
+                    assert(bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat) 
+                        + bytes[(i as int) * 8 + j] * pow2((j as nat) * 8)
+                        == bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), (j + 1) as nat)) by {
+                        lemma_mul_is_commutative(bytes[(i as int) * 8 + j] as int, pow2((j as nat) * 8) as int);
+                    }
+
+                    assert(old_word + new_byte * pow2(j8 as nat) == 
+                        bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), (j + 1) as nat));
+                    
+                    assert(old_word + new_byte * pow2(j8 as nat) ==
+                            old_word + (new_byte<<j8)) by {
+                        }
                 }
                 words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);
+                proof {
+                    assert(words[i as int] < pow2((j as nat + 1) * 8));
+                    assert(words[i as int] ==
+                           bytes_seq_to_nat_clear(Seq::new(8, |j2: int| bytes[(i as nat) * 8 + j2]), (j + 1) as nat));
+                }
+            }
+            proof{
+                assert(words[i as int] == bytes_seq_to_nat_clear(Seq::new(8, |j: int| bytes[i * 8 + j]), 8));
+                assert(forall |i2: int| 0 <= i2 < i ==> ((words[i2] as nat)
+                                                            == bytes_seq_to_nat_clear(
+                                                                Seq::new(8, |j: int| bytes[i2*8 + j]), 8)
+                                                     ));
             }
         }
-        //TODO: prove that bytes_to_nat(bytes) == words_to_nat(&words)
-        assume(bytes_to_nat(bytes) == words_to_nat(&words));
+        
+        proof{
+            // --- word 0 uses bytes 0..7 ---
+            assert(forall |i2: int| 0 <= i2 < 4 ==> ((words[i2] as nat)
+                                                            == bytes_seq_to_nat_clear(
+                                                                Seq::new(8, |j: int| bytes[i2*8 + j]), 8)
+                                                 ));
+
+            assert(words[0] ==
+                bytes[0] * pow2(0) + bytes[1] * pow2(8) + bytes[2] * pow2(16) + bytes[3] * pow2(24) +
+                bytes[4] * pow2(32) + bytes[5] * pow2(40) + bytes[6] * pow2(48) + bytes[7] * pow2(56)
+            ) by {
+                reveal_with_fuel(bytes_seq_to_nat_clear, 10);
+                byte_over_word_is_commutative(bytes[0] as nat, bytes[1] as nat, bytes[2] as nat, bytes[3] as nat,
+                                              bytes[4] as nat, bytes[5] as nat, bytes[6] as nat, bytes[7] as nat);
+            }
+
+            pow2_distributivity_over_word(words[0] as nat,
+                bytes[0] as nat, bytes[1] as nat, bytes[2] as nat, bytes[3] as nat,
+                bytes[4] as nat, bytes[5] as nat, bytes[6] as nat, bytes[7] as nat,
+                0
+            );
+
+            assert(words[1] ==
+                bytes[8] * pow2(0) + bytes[9] * pow2(8) + bytes[10] * pow2(16) + bytes[11] * pow2(24) +
+                bytes[12] * pow2(32) + bytes[13] * pow2(40) + bytes[14] * pow2(48) + bytes[15] * pow2(56)
+            ) by {
+                reveal_with_fuel(bytes_seq_to_nat_clear, 10);
+                byte_over_word_is_commutative(bytes[8] as nat, bytes[9] as nat, bytes[10] as nat, bytes[11] as nat,
+                    bytes[12] as nat, bytes[13] as nat, bytes[14] as nat, bytes[15] as nat);
+            }
+
+            pow2_distributivity_over_word(words[1] as nat,
+                bytes[8] as nat, bytes[9] as nat, bytes[10] as nat, bytes[11] as nat,
+                bytes[12] as nat, bytes[13] as nat, bytes[14] as nat, bytes[15] as nat,
+                64
+            );
+
+            assert(words[2] ==
+                bytes[16] * pow2(0) + bytes[17] * pow2(8) + bytes[18] * pow2(16) + bytes[19] * pow2(24) +
+                bytes[20] * pow2(32) + bytes[21] * pow2(40) + bytes[22] * pow2(48) + bytes[23] * pow2(56)
+            ) by {
+                reveal_with_fuel(bytes_seq_to_nat_clear, 10);
+                byte_over_word_is_commutative(bytes[16] as nat, bytes[17] as nat, bytes[18] as nat, bytes[19] as nat,
+                    bytes[20] as nat, bytes[21] as nat, bytes[22] as nat, bytes[23] as nat);
+            }   
+    
+            pow2_distributivity_over_word(words[2] as nat,
+                bytes[16] as nat, bytes[17] as nat, bytes[18] as nat, bytes[19] as nat,
+                bytes[20] as nat, bytes[21] as nat, bytes[22] as nat, bytes[23] as nat,
+                128
+            );
+            
+            assert(words[3] ==
+                bytes[24] * pow2(0) + bytes[25] * pow2(8) + bytes[26] * pow2(16) + bytes[27] * pow2(24) +
+                bytes[28] * pow2(32) + bytes[29] * pow2(40) + bytes[30] * pow2(48) + bytes[31] * pow2(56)
+            ) by {
+                reveal_with_fuel(bytes_seq_to_nat_clear, 10);
+                byte_over_word_is_commutative(bytes[24] as nat, bytes[25] as nat, bytes[26] as nat, bytes[27] as nat,
+                    bytes[28] as nat, bytes[29] as nat, bytes[30] as nat, bytes[31] as nat);
+            }
+
+            pow2_distributivity_over_word(words[3] as nat,
+                bytes[24] as nat, bytes[25] as nat, bytes[26] as nat, bytes[27] as nat,
+                bytes[28] as nat, bytes[29] as nat, bytes[30] as nat, bytes[31] as nat,
+                192
+            );
+
+            reveal(bytes_to_nat);
+            reveal_with_fuel(bytes_to_nat_rec, 33);
+            reveal(words_to_nat);
+            reveal_with_fuel(words_to_nat_gen_u64, 5);
+
+            assert(bytes_to_nat(bytes) == words_to_nat(&words));
+        }
+
         proof {
             assert(1u64 << 52 > 0) by (bit_vector);
             assert(1u64 << 48 > 0) by (bit_vector);
-            // TODO: prove property about words array
         }
 
         let mask = (1u64 << 52) - 1;
@@ -151,7 +386,300 @@ impl Scalar52 {
         s.limbs[3] = ((words[2] >> 28) | (words[3] << 36)) & mask;
         s.limbs[4] = (words[3] >> 16) & top_mask;
 
-        assume(false);  // TODO: complete the proof
+        proof {
+            lemma_u64_pow2_no_overflow(52);
+            lemma_u64_pow2_no_overflow(40);
+            lemma_u64_pow2_no_overflow(28);
+            lemma_u64_pow2_no_overflow(16);
+
+            let word_0_first = words[0] % pow2(52) as u64;
+            let word_0_second = words[0] / pow2(52) as u64;
+            let word_1_first = words[1] % pow2(40) as u64;
+            let word_1_second = words[1] / pow2(40) as u64;
+            let word_2_first = words[2] % pow2(28) as u64;
+            let word_2_second = words[2] / pow2(28) as u64;
+            let word_3_first = words[3] % pow2(16) as u64;
+            let word_3_second = words[3] / pow2(16) as u64;
+                    
+            assert(words[0] == word_0_first + word_0_second * pow2(52)) by {
+               lemma_fundamental_div_mod(words[0] as int, pow2(52) as int); 
+            }
+            assert(words[1] == word_1_first + word_1_second * pow2(40)) by {
+               lemma_fundamental_div_mod(words[1] as int, pow2(40) as int); 
+            }
+            assert(words[2] == word_2_first + word_2_second * pow2(28)) by {
+               lemma_fundamental_div_mod(words[2] as int, pow2(28) as int); 
+            }
+            assert(words[3] == word_3_first + word_3_second * pow2(16)) by {
+               lemma_fundamental_div_mod(words[3] as int, pow2(16) as int); 
+            }
+
+            assert(mask + 1 == pow2(52)) by {
+                lemma_pow2(52);
+                assert((pow(2, 52) as u64) == (1u64 << 52)) by (compute);
+                assert(pow(2, 52) as u64 == mask + 1);
+            }
+            assert(low_bits_mask(52) == mask);
+            
+            let words0 = words[0] as u64;
+            let words1 = words[1] as u64;
+            let words2 = words[2] as u64;
+            let words3 = words[3] as u64;
+             
+            assert(words0 & mask < (1u64 << 52)) by (bit_vector)
+                requires 
+                    mask == ((1u64 << 52) - 1)
+            ;
+            assert(((words0 >> 52) | (words1 << 12)) & mask < (1u64 << 52)) by (bit_vector)
+                requires 
+                    mask == ((1u64 << 52) - 1)
+            ;
+            assert(((words1 >> 40) | (words2 << 24)) & mask < (1u64 << 52)) by (bit_vector)
+                requires 
+                    mask == ((1u64 << 52) - 1)
+            ;
+            assert(((words2 >> 28) | (words3 << 36)) & mask < (1u64 << 52)) by (bit_vector)
+                requires 
+                    mask == ((1u64 << 52) - 1)
+            ;
+            assert((words3 >> 16) & top_mask < (1u64 << 52)) by (bit_vector)
+                requires 
+                    top_mask == ((1u64 << 48) - 1)
+            ;
+
+            assert(s.limbs[0] == word_0_first) by {
+                assert(words[0] & mask == words[0] % pow2(52) as u64) by {
+                    lemma_u64_low_bits_mask_is_mod(words[0], 52);
+                };
+            };
+
+            assert(s.limbs[1] == word_0_second + word_1_first * pow2(12)) by {
+                assert((((words0>>52) | (words1 << 12)) & mask) ==
+                       (words0>>52) + ((words1 &  (((1u64 << 40) - 1u64) as u64)) << 12)) by (bit_vector)
+                    requires 
+                        mask == ((1u64 << 52) - 1)
+                ;
+
+                assert(low_bits_mask(40) == ((1u64 << 40) - 1u64)) by {
+                    lemma_pow2(40);
+                    assert(pow(2, 40) == (1u64<<40)) by (compute);
+                    assert(pow2(40) - 1 == low_bits_mask(40));
+                };
+
+                assert(((words0>>52) + ((words1 & (((1u64 << 40) - 1u64) as u64)) << 12)) ==
+                    ((words0 / pow2(52) as u64) + ((words1 % pow2(40) as u64) * pow2(12)))
+                    ) by {
+                    lemma_u64_low_bits_mask_is_mod(words1, 40);
+
+                    assert((words1 % pow2(40) as u64) * pow2(12) < pow2(52)) by {
+                        lemma_pow2_pos(40);
+                        lemma_mod_division_less_than_divisor(words1 as int, pow2(40) as int);
+                        lemma_pow2_pos(12);
+                        lemma_mul_strict_inequality((words1 % pow2(40) as u64) as int, pow2(40) as int, pow2(12) as int);
+                        assert((words1 % pow2(40) as u64) * pow2(12) < pow2(40) * pow2(12));
+                        lemma_pow2_adds(40, 12);
+                    }
+                    lemma_u64_shl_is_mul(words1 % pow2(40) as u64, 12);
+                    lemma_u64_shr_is_div(words0, 52);
+                };
+    
+                assert(s.limbs[1] ==
+                       (words0 / pow2(52) as u64) + ((words1 % pow2(40) as u64) * pow2(12)));
+            }
+            
+            assert(s.limbs[2] == word_1_second + word_2_first * pow2(24)) by {
+                assert((((words1>>40) | (words2 << 24)) & mask) ==
+                       (words1>>40) + ((words2 & (((1u64 << 28) - 1u64) as u64)) << 24)) by (bit_vector)
+                    requires 
+                        mask == ((1u64 << 52) - 1)
+                ;
+
+
+                assert(low_bits_mask(28) == ((1u64 << 28) - 1u64)) by {
+                    lemma_pow2(28);
+                    assert(pow(2, 28) == (1u64<<28)) by (compute);
+                    assert(pow2(28) - 1 == low_bits_mask(28));
+                };
+
+                assert(((words1>>40) + ((words2 & (((1u64 << 28) - 1u64) as u64)) << 24)) ==
+                    ((words1 / pow2(40) as u64) + ((words2 % pow2(28) as u64) * pow2(24)))
+                    ) by {
+                    lemma_u64_low_bits_mask_is_mod(words2, 28);
+
+                    assert((words2 % pow2(28) as u64) * pow2(24) < pow2(52)) by {
+                        lemma_pow2_pos(28);
+                        lemma_mod_division_less_than_divisor(words2 as int, pow2(28) as int);
+                        lemma_pow2_pos(24);
+                        lemma_mul_strict_inequality((words2 % pow2(28) as u64) as int, pow2(28) as int, pow2(24) as int);
+                        assert((words2 % pow2(28) as u64) * pow2(24) < pow2(28) * pow2(24));
+                        lemma_pow2_adds(28, 24);
+                    }
+                    lemma_u64_shl_is_mul(words2 % pow2(28) as u64, 24);
+                    lemma_u64_shr_is_div(words1, 40);
+                };
+                assert(s.limbs[2] ==
+                       (words1 / pow2(40) as u64) + ((words2 % pow2(28) as u64) * pow2(24)));
+            }
+
+            assert(s.limbs[3] == word_2_second + word_3_first * pow2(36)) by {
+                assert((((words2>>28) | (words3 << 36)) & mask) ==
+                        (words2>>28) + ((words3 & (((1u64 << 16) - 1u64) as u64)) << 36)) by (bit_vector)
+                    requires
+                        mask == ((1u64 << 52) - 1)
+                    ;
+
+                assert(low_bits_mask(16) == ((1u64 << 16) - 1u64)) by {
+                    lemma_pow2(16);
+                    assert(pow(2, 16) == (1u64<<16)) by (compute);
+                    assert(pow2(16) - 1 == low_bits_mask(16));
+                };
+
+                assert(((words2>>28) + ((words3 & (((1u64 << 16) - 1u64) as u64)) << 36)) ==
+                    ((words2 / pow2(28) as u64) + ((words3 % pow2(16) as u64) * pow2(36)))
+                ) by {
+                    lemma_u64_low_bits_mask_is_mod(words3, 16);
+
+                    assert((words3 % pow2(16) as u64) * pow2(36) < pow2(52)) by {
+                        lemma_pow2_pos(16);
+                        lemma_mod_division_less_than_divisor(words3 as int, pow2(16) as int);
+                        lemma_pow2_pos(36);
+                        lemma_mul_strict_inequality((words3 % pow2(16) as u64) as int, pow2(16) as int, pow2(36) as int);
+                        assert((words3 % pow2(16) as u64) * pow2(36) < pow2(16) * pow2(36));
+                        lemma_pow2_adds(16, 36);
+                    }
+                    lemma_u64_shl_is_mul(words3 % pow2(16) as u64, 36);
+                    lemma_u64_shr_is_div(words2, 28);
+                };
+
+                assert(s.limbs[3] ==
+                    (words2 / pow2(28) as u64) + ((words3 % pow2(16) as u64) * pow2(36)));
+            }
+
+            assert(s.limbs[4] == word_3_second) by {
+                assert (words3>>16 & (top_mask) == words3>>16) by (bit_vector)
+                    requires
+                        top_mask == ((1u64 << 48) - 1u64)
+                ;
+                lemma_u64_shr_is_div(words3, 16);
+            }
+            
+            reveal(to_nat);
+            reveal_with_fuel(seq_to_nat, 10);
+            reveal(words_to_nat);
+            reveal_with_fuel(words_to_nat_gen_u64, 10);
+            
+            assert(words_to_nat(&words) == words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3] * pow2(192));
+
+            calc!{
+                (==)
+                    words_to_nat(&words);
+                (==) {}
+                (words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3] * pow2(192)) as nat;
+                (==) {}
+                (   (word_0_first + word_0_second * pow2(52)) + 
+                    (word_1_first + word_1_second * pow2(40)) * pow2(64) + 
+                    (word_2_first + word_2_second * pow2(28)) * pow2(128) + 
+                    (word_3_first + word_3_second * pow2(16)) * pow2(192)) as nat;
+                (==) {
+                    lemma_mul_is_distributive_add_other_way(pow2(64) as int, word_1_first as int, word_1_second * pow2(40) as int);
+                    lemma_mul_is_associative(word_1_second as int, pow2(40) as int, pow2(64) as int);
+                    lemma_pow2_adds(40, 64);
+
+                    lemma_mul_is_distributive_add_other_way(pow2(128) as int, word_2_first as int, word_2_second * pow2(28) as int);
+                    lemma_mul_is_associative(word_2_second as int, pow2(28) as int, pow2(128) as int);
+                    lemma_pow2_adds(28, 128);
+
+                    lemma_mul_is_distributive_add_other_way(pow2(192) as int, word_3_first as int, word_3_second * pow2(16) as int);
+                    lemma_mul_is_associative(word_3_second as int, pow2(16) as int, pow2(192) as int);
+                    lemma_pow2_adds(16, 192);
+                }
+                ( (word_0_first + word_0_second * pow2(52)) + 
+                  (word_1_first * pow2(64) + word_1_second * pow2(104)) + 
+                  (word_2_first * pow2(128) + word_2_second * pow2(156)) + 
+                  (word_3_first * pow2(192) + word_3_second * pow2(208))
+                ) as nat;
+            }
+            let a = s.limbs[0] as int;
+            let b = s.limbs[1] as int;
+            let c = s.limbs[2] as int;
+            let d = s.limbs[3] as int;
+            let e = s.limbs[4] as int;
+
+            calc! {
+                (==)
+                    to_nat(&s.limbs) as int;
+                (==) {
+
+                }
+                // Start expression
+                a + (b + (c + (d + e * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(52) as int);
+
+                // 1) Expand innermost: (d + e*2^52)*2^52
+                (==) {
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, d, e * (pow2(52) as int));
+                    lemma_mul_is_associative(e, pow2(52) as int, pow2(52) as int);
+                    lemma_pow2_adds(52, 52);
+                }
+                a + (b + (c + (d * (pow2(52) as int) + e * (pow2(104) as int))) * (pow2(52) as int)) * (pow2(52) as int);
+
+                // 2) Expand next level: (c + (d*2^52 + e*2^104)) * 2^52
+                (==) {
+                    let T1 = d * (pow2(52) as int) + e * (pow2(104) as int);
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, c, T1);
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, d * (pow2(52) as int), e * (pow2(104) as int));
+                    lemma_mul_is_associative(d, pow2(52) as int, pow2(52) as int);
+                    lemma_pow2_adds(52, 52);
+                    lemma_mul_is_associative(e, pow2(104) as int, pow2(52) as int);
+                    lemma_pow2_adds(104, 52);
+                }
+                a + (b + (c * (pow2(52) as int) + d * (pow2(104) as int) + e * (pow2(156) as int))) * (pow2(52) as int);
+
+                // 3) Expand outer level: (b + (c*2^52 + d*2^104 + e*2^156)) * 2^52
+                (==) {
+                    let U = c * (pow2(52) as int) + d * (pow2(104) as int) + e * (pow2(156) as int);
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, b, U);
+                    let U1 = c * (pow2(52) as int) + d * (pow2(104) as int);
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, U1, e * (pow2(156) as int));
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, c * (pow2(52) as int), d * (pow2(104) as int));
+                    lemma_mul_is_associative(c, pow2(52) as int, pow2(52) as int);
+                    lemma_pow2_adds(52, 52);
+                    lemma_mul_is_associative(d, pow2(104) as int, pow2(52) as int);
+                    lemma_pow2_adds(104, 52);
+                    lemma_mul_is_associative(e, pow2(156) as int, pow2(52) as int);
+                    lemma_pow2_adds(156, 52);
+                }
+                a + b * (pow2(52) as int) + c * (pow2(104) as int) + d * (pow2(156) as int) + e * (pow2(208) as int);
+
+                (==) {}
+                word_0_first + 
+                    (word_0_second + word_1_first * pow2(12)) * pow2(52) +
+                    (word_1_second + word_2_first * pow2(24)) * pow2(104) +
+                    (word_2_second + word_3_first * pow2(36)) * pow2(156) + 
+                    word_3_second * pow2(208);
+                (==) {
+                    lemma_mul_is_distributive_add_other_way(pow2(52) as int, word_0_second as int, word_1_first * (pow2(12) as int));
+                    lemma_mul_is_associative(word_1_first as int, pow2(12) as int, pow2(52) as int);
+                    lemma_pow2_adds(12, 52);
+                    assert(pow2(12) * pow2(52) == pow2(64));
+                    lemma_mul_is_distributive_add_other_way(pow2(104) as int, word_1_second as int, word_2_first * (pow2(24) as int));
+                    lemma_mul_is_associative(word_2_first as int, pow2(24) as int, pow2(104) as int);
+                    lemma_pow2_adds(24, 104);
+                    assert(pow2(12) * pow2(52) == pow2(64));
+                    lemma_mul_is_distributive_add_other_way(pow2(156) as int, word_2_second as int, word_3_first * (pow2(36) as int));
+                    lemma_mul_is_associative(word_3_first as int, pow2(36) as int, pow2(156) as int);
+                    lemma_pow2_adds(36, 156);
+                }
+                (word_0_first + 
+                 word_0_second * pow2(52) + word_1_first * pow2(64) +
+                 word_1_second * pow2(104) + word_2_first * pow2(128) +
+                 word_2_second * pow2(156) + word_3_first * pow2(192) + 
+                 word_3_second * pow2(208));
+            };
+            assert(words_to_nat(&words) == to_nat(&s.limbs));
+            assert(bytes_to_nat(bytes) == to_nat(&s.limbs));
+        }
+        
+        assume(to_nat(&s.limbs) < group_order()); 
 
         s
     }

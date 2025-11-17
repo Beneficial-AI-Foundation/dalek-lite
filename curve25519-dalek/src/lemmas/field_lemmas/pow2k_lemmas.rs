@@ -6,8 +6,8 @@ use vstd::arithmetic::power2::*;
 use vstd::bits::*;
 use vstd::prelude::*;
 
-use super::u64_5_as_nat_lemmas::*;
 use super::pow2_51_lemmas::*;
+use super::u64_5_as_nat_lemmas::*;
 
 use super::super::common_lemmas::div_mod_lemmas::*;
 use super::super::common_lemmas::mask_lemmas::*;
@@ -329,7 +329,10 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
         pow2k_loop_boundary_spec(a),
         u64_5_as_nat(a) % p() == pow(u64_5_as_nat(limbs) as int, pow2(i)) as nat % p(),
     ensures
-        u64_5_as_nat(pow2k_loop_return(a)) % p() == pow(u64_5_as_nat(limbs) as int, pow2(i + 1)) as nat % p(),
+        u64_5_as_nat(pow2k_loop_return(a)) % p() == pow(
+            u64_5_as_nat(limbs) as int,
+            pow2(i + 1),
+        ) as nat % p(),
 {
     lemma2_to64_rest();  // pow2(51)
     assert(p() > 0) by {
@@ -355,8 +358,8 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
         // let s = pow2(51) for brevity
         // By definition, u64_5_as_nat(a_hat) = a0_2 + s * a1_1 + s^2 * a2 + s^3 * a3 + s^4 * a4
         // a0_2 + s * a1_1 cancel out terms via the div/mod identity:
-        assert(u64_5_as_nat(a_hat) == a0_1 + pow2(51) * a1_0 + pow2(102) * a2 + pow2(153) * a3 + pow2(204)
-            * a4) by {
+        assert(u64_5_as_nat(a_hat) == a0_1 + pow2(51) * a1_0 + pow2(102) * a2 + pow2(153) * a3
+            + pow2(204) * a4) by {
             // a0_2 + s * a1_1 =
             // a0_1 % s  + s * (a1_0 + s * (a0_1 / s)) =
             // s * a1_0 + [s * (a0_1 / s) + a0_1 % s] = (by the div-mod identity)
@@ -386,10 +389,11 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
         let carry = carry_val(a);
 
         // Next, we replace all _ & LOW_BITS_MASK with (mod s)
-        assert(u64_5_as_nat(a_hat) == ((c0_0 as u64) % (pow2(51) as u64)) + 19 * carry + pow2(51) * ((
-        c1 as u64) % (pow2(51) as u64)) + pow2(102) * ((c2 as u64) % (pow2(51) as u64)) + pow2(153)
-            * ((c3 as u64) % (pow2(51) as u64)) + pow2(204) * ((c4 as u64) % (pow2(51) as u64)))
-            by {
+        assert(u64_5_as_nat(a_hat) == ((c0_0 as u64) % (pow2(51) as u64)) + 19 * carry + pow2(51)
+            * ((c1 as u64) % (pow2(51) as u64)) + pow2(102) * ((c2 as u64) % (pow2(51) as u64))
+            + pow2(153) * ((c3 as u64) % (pow2(51) as u64)) + pow2(204) * ((c4 as u64) % (pow2(
+            51,
+        ) as u64))) by {
             l51_bit_mask_lt();
 
             assert((pow2(51) as u64) == (pow2(51) as u128));
@@ -416,10 +420,10 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
         }
 
         // We can see all mod operations in u128
-        assert(u64_5_as_nat(a_hat) == (c0_0 % (pow2(51) as u128)) + 19 * carry + pow2(51) * (c1 % (pow2(
+        assert(u64_5_as_nat(a_hat) == (c0_0 % (pow2(51) as u128)) + 19 * carry + pow2(51) * (c1 % (
+        pow2(51) as u128)) + pow2(102) * (c2 % (pow2(51) as u128)) + pow2(153) * (c3 % (pow2(
             51,
-        ) as u128)) + pow2(102) * (c2 % (pow2(51) as u128)) + pow2(153) * (c3 % (pow2(51) as u128))
-            + pow2(204) * (c4 % (pow2(51) as u128))) by {
+        ) as u128)) + pow2(204) * (c4 % (pow2(51) as u128))) by {
             // pow2(51) is the same in u64 and 128
             lemma_cast_then_mod_51(c0_0);
             lemma_cast_then_mod_51(c1);
@@ -429,12 +433,10 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
         }
 
         // Next, we categorically replace a % s with a - s * ( a / s )
-        assert(u64_5_as_nat(a_hat) == (c0_0 - pow2(51) * (c0_0 / (pow2(51) as u128))) + 19 * carry + pow2(
-            51,
-        ) * (c1 - pow2(51) * (c1 / (pow2(51) as u128))) + pow2(102) * (c2 - pow2(51) * (c2 / (pow2(
-            51,
-        ) as u128))) + pow2(153) * (c3 - pow2(51) * (c3 / (pow2(51) as u128))) + pow2(204) * (c4
-            - pow2(51) * (c4 / (pow2(51) as u128)))) by {
+        assert(u64_5_as_nat(a_hat) == (c0_0 - pow2(51) * (c0_0 / (pow2(51) as u128))) + 19 * carry
+            + pow2(51) * (c1 - pow2(51) * (c1 / (pow2(51) as u128))) + pow2(102) * (c2 - pow2(51)
+            * (c2 / (pow2(51) as u128))) + pow2(153) * (c3 - pow2(51) * (c3 / (pow2(51) as u128)))
+            + pow2(204) * (c4 - pow2(51) * (c4 / (pow2(51) as u128)))) by {
             lemma_fundamental_div_mod(c0_0 as int, pow2(51) as int);
             lemma_fundamental_div_mod(c1 as int, pow2(51) as int);
             lemma_fundamental_div_mod(c2 as int, pow2(51) as int);
@@ -460,9 +462,8 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
 
         // Now we use distributivity and pow exponent sums, which cancels out any ci terms and leaves only ci_0 terms
         // Conveniently, we're left with a difference of c * p
-        assert(u64_5_as_nat(a_hat) == c0_0 + pow2(51) * c1_0 + pow2(102) * c2_0 + pow2(153) * c3_0 + pow2(
-            204,
-        ) * c4_0 - p() * carry) by {
+        assert(u64_5_as_nat(a_hat) == c0_0 + pow2(51) * c1_0 + pow2(102) * c2_0 + pow2(153) * c3_0
+            + pow2(204) * c4_0 - p() * carry) by {
             assert(c0_0 - pow2(51) * (c1 - c1_0) == c0_0 - pow2(51) * c1 + pow2(51) * c1_0) by {
                 lemma_mul_is_distributive_sub(pow2(51) as int, c1 as int, c1_0 as int);
             }
@@ -613,7 +614,8 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
     }
     let a_pow_2i: nat = a_pow_2i_int as nat;
 
-    assert(u64_5_as_nat(a_hat) % p() == ((u64_5_as_nat(a) % p()) * (u64_5_as_nat(a) % p())) % p()) by {
+    assert(u64_5_as_nat(a_hat) % p() == ((u64_5_as_nat(a) % p()) * (u64_5_as_nat(a) % p())) % p())
+        by {
         lemma_mul_mod_noop(u64_5_as_nat(a) as int, u64_5_as_nat(a) as int, p() as int);
     }
 
@@ -628,10 +630,8 @@ pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
     // u64_5_as_nat(a_hat) % p  = (u64_5_as_nat(a) * u64_5_as_nat(a)) % p = (a_pow_2i ^ 2)) % p
     // It suffices to prove that
     // (v^(2^i))^2 = v^(2^(i + 1))
-    assert(pow(u64_5_as_nat(limbs) as int, pow2(i)) * pow(u64_5_as_nat(limbs) as int, pow2(i)) == pow(
-        u64_5_as_nat(limbs) as int,
-        pow2(i + 1),
-    )) by {
+    assert(pow(u64_5_as_nat(limbs) as int, pow2(i)) * pow(u64_5_as_nat(limbs) as int, pow2(i))
+        == pow(u64_5_as_nat(limbs) as int, pow2(i + 1))) by {
         lemma_pow2_square(u64_5_as_nat(limbs) as int, i);
     }
 }

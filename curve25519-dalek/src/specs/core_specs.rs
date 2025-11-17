@@ -91,9 +91,9 @@ pub open spec fn spec_load8_at(input: &[u8], i: usize) -> nat {
 pub open spec fn u64_5_as_nat_generic_radix(arr: [u64;5], radix: nat) -> nat {
     (
                           arr[0] +
-        pow2(1 * radix) * arr[1] + 
-        pow2(2 * radix) * arr[2] + 
-        pow2(3 * radix) * arr[3] + 
+        pow2(1 * radix) * arr[1] +
+        pow2(2 * radix) * arr[2] +
+        pow2(3 * radix) * arr[3] +
         pow2(4 * radix) * arr[4]
     ) as nat
 }

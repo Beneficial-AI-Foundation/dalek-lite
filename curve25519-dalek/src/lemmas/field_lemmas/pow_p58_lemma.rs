@@ -48,15 +48,19 @@ pub proof fn lemma_pow_p58_prove(
     requires
 // t19 = x^(2^250-1) from pow22501
 
-        u64_5_as_nat(t19_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, (pow2(250) - 1) as nat) as nat
-            % p(),
+        u64_5_as_nat(t19_limbs) % p() == pow(
+            u64_5_as_nat(self_limbs) as int,
+            (pow2(250) - 1) as nat,
+        ) as nat % p(),
         // t20 = t19^4 (from pow2k(2))
         u64_5_as_nat(t20_limbs) % p() == pow(u64_5_as_nat(t19_limbs) as int, pow2(2)) as nat % p(),
         // t21 = self * t20
         u64_5_as_nat(t21_limbs) % p() == (u64_5_as_nat(self_limbs) * u64_5_as_nat(t20_limbs)) % p(),
     ensures
-        u64_5_as_nat(t21_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, (pow2(252) - 3) as nat) as nat
-            % p(),
+        u64_5_as_nat(t21_limbs) % p() == pow(
+            u64_5_as_nat(self_limbs) as int,
+            (pow2(252) - 3) as nat,
+        ) as nat % p(),
 {
     let base = u64_5_as_nat(self_limbs) as int;
 
@@ -113,7 +117,13 @@ pub proof fn lemma_pow_p58_prove(
     assert(pow2(2) > 0) by {
         lemma_pow2_pos(2);
     }
-    lemma_prove_pow2k_step(base, u64_5_as_nat(t19_limbs), u64_5_as_nat(t20_limbs), exp_250_m1, pow2(2));
+    lemma_prove_pow2k_step(
+        base,
+        u64_5_as_nat(t19_limbs),
+        u64_5_as_nat(t20_limbs),
+        exp_250_m1,
+        pow2(2),
+    );
 
     assert(u64_5_as_nat(t20_limbs) % p() == pow(base, exp_252_m4) as nat % p());
 

@@ -48,9 +48,8 @@ pub proof fn lemma_reduction_telescoping(
         final_limbs[3] < (1u64 << 51),
         final_limbs[4] < (1u64 << 51),
     ensures
-        u64_5_as_nat(input_limbs) as int + 19 * q as int == u64_5_as_nat(final_limbs) as int + c4 * pow2(
-            255,
-        ) as int,
+        u64_5_as_nat(input_limbs) as int + 19 * q as int == u64_5_as_nat(final_limbs) as int + c4
+            * pow2(255) as int,
 {
     // Establish power-of-2 relationships
     lemma_pow2_pos(51);
@@ -517,7 +516,8 @@ pub proof fn lemma_carry_out_equals_q(input_limbs: [u64; 5], q: u64)
         //
         // Therefore: c4 = 1 = q
         // Invoke the division computation to establish c4 = (u64_5_as_nat + 19*q) / 2^255
-        assert(c4 as int == (u64_5_as_nat(input_limbs) as int + 19 * q as int) / (pow2(255) as int)) by {
+        assert(c4 as int == (u64_5_as_nat(input_limbs) as int + 19 * q as int) / (pow2(255) as int))
+            by {
             lemma_reduction_carry_propagation_is_division(input_limbs, q, c4);
         }
 

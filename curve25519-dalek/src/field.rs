@@ -58,13 +58,13 @@ use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
-use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::*;
-#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t19_lemma::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t3_lemma::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow_p58_lemma::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::*;
 
 verus! {
 
@@ -258,19 +258,25 @@ impl FieldElement {
             pow255_gt_19();  // Prove p() > 0
 
             // Square operation postconditions (from .square() method ensures clause)
-            assert(u64_5_as_nat(t0.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, 2) as nat % p());
-            assert(u64_5_as_nat(t0_sq.limbs) % p() == pow(u64_5_as_nat(t0.limbs) as int, 2) as nat % p());
-            assert(u64_5_as_nat(t1.limbs) % p() == pow(u64_5_as_nat(t0_sq.limbs) as int, 2) as nat % p());
+            assert(u64_5_as_nat(t0.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, 2) as nat
+                % p());
+            assert(u64_5_as_nat(t0_sq.limbs) % p() == pow(u64_5_as_nat(t0.limbs) as int, 2) as nat
+                % p());
+            assert(u64_5_as_nat(t1.limbs) % p() == pow(u64_5_as_nat(t0_sq.limbs) as int, 2) as nat
+                % p());
 
             // For mul operations, use lemma to convert from field_mul to direct multiplication
-            assert(u64_5_as_nat(t2.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(t1.limbs)) % p()) by {
+            assert(u64_5_as_nat(t2.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(
+                t1.limbs,
+            )) % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(self.limbs) as int,
                     u64_5_as_nat(t1.limbs) as int,
                     p() as int,
                 );
             };
-            assert(u64_5_as_nat(t3.limbs) % p() == (u64_5_as_nat(t0.limbs) * u64_5_as_nat(t2.limbs)) % p()) by {
+            assert(u64_5_as_nat(t3.limbs) % p() == (u64_5_as_nat(t0.limbs) * u64_5_as_nat(t2.limbs))
+                % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t0.limbs) as int,
                     u64_5_as_nat(t2.limbs) as int,
@@ -293,7 +299,8 @@ impl FieldElement {
             // Prove t19 = x^(2^250-1) using explicit lemma
 
             // Multiplication: t5 = t2 * t4
-            assert(u64_5_as_nat(t5.limbs) % p() == (u64_5_as_nat(t2.limbs) * u64_5_as_nat(t4.limbs)) % p()) by {
+            assert(u64_5_as_nat(t5.limbs) % p() == (u64_5_as_nat(t2.limbs) * u64_5_as_nat(t4.limbs))
+                % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t2.limbs) as int,
                     u64_5_as_nat(t4.limbs) as int,
@@ -302,7 +309,8 @@ impl FieldElement {
             };
 
             // Multiplication: t7 = t6 * t5
-            assert(u64_5_as_nat(t7.limbs) % p() == (u64_5_as_nat(t6.limbs) * u64_5_as_nat(t5.limbs)) % p()) by {
+            assert(u64_5_as_nat(t7.limbs) % p() == (u64_5_as_nat(t6.limbs) * u64_5_as_nat(t5.limbs))
+                % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t6.limbs) as int,
                     u64_5_as_nat(t5.limbs) as int,
@@ -311,7 +319,8 @@ impl FieldElement {
             };
 
             // Multiplication: t9 = t8 * t7
-            assert(u64_5_as_nat(t9.limbs) % p() == (u64_5_as_nat(t8.limbs) * u64_5_as_nat(t7.limbs)) % p()) by {
+            assert(u64_5_as_nat(t9.limbs) % p() == (u64_5_as_nat(t8.limbs) * u64_5_as_nat(t7.limbs))
+                % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t8.limbs) as int,
                     u64_5_as_nat(t7.limbs) as int,
@@ -320,7 +329,9 @@ impl FieldElement {
             };
 
             // Multiplication: t11 = t10 * t9
-            assert(u64_5_as_nat(t11.limbs) % p() == (u64_5_as_nat(t10.limbs) * u64_5_as_nat(t9.limbs)) % p()) by {
+            assert(u64_5_as_nat(t11.limbs) % p() == (u64_5_as_nat(t10.limbs) * u64_5_as_nat(
+                t9.limbs,
+            )) % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t10.limbs) as int,
                     u64_5_as_nat(t9.limbs) as int,
@@ -329,7 +340,9 @@ impl FieldElement {
             };
 
             // Multiplication: t13 = t12 * t7
-            assert(u64_5_as_nat(t13.limbs) % p() == (u64_5_as_nat(t12.limbs) * u64_5_as_nat(t7.limbs)) % p()) by {
+            assert(u64_5_as_nat(t13.limbs) % p() == (u64_5_as_nat(t12.limbs) * u64_5_as_nat(
+                t7.limbs,
+            )) % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t12.limbs) as int,
                     u64_5_as_nat(t7.limbs) as int,
@@ -338,7 +351,9 @@ impl FieldElement {
             };
 
             // Multiplication: t15 = t14 * t13
-            assert(u64_5_as_nat(t15.limbs) % p() == (u64_5_as_nat(t14.limbs) * u64_5_as_nat(t13.limbs)) % p()) by {
+            assert(u64_5_as_nat(t15.limbs) % p() == (u64_5_as_nat(t14.limbs) * u64_5_as_nat(
+                t13.limbs,
+            )) % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t14.limbs) as int,
                     u64_5_as_nat(t13.limbs) as int,
@@ -347,7 +362,9 @@ impl FieldElement {
             };
 
             // Multiplication: t17 = t16 * t15
-            assert(u64_5_as_nat(t17.limbs) % p() == (u64_5_as_nat(t16.limbs) * u64_5_as_nat(t15.limbs)) % p()) by {
+            assert(u64_5_as_nat(t17.limbs) % p() == (u64_5_as_nat(t16.limbs) * u64_5_as_nat(
+                t15.limbs,
+            )) % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t16.limbs) as int,
                     u64_5_as_nat(t15.limbs) as int,
@@ -356,7 +373,9 @@ impl FieldElement {
             };
 
             // Multiplication: t19 = t18 * t13
-            assert(u64_5_as_nat(t19.limbs) % p() == (u64_5_as_nat(t18.limbs) * u64_5_as_nat(t13.limbs)) % p()) by {
+            assert(u64_5_as_nat(t19.limbs) % p() == (u64_5_as_nat(t18.limbs) * u64_5_as_nat(
+                t13.limbs,
+            )) % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(t18.limbs) as int,
                     u64_5_as_nat(t13.limbs) as int,
@@ -626,7 +645,10 @@ impl FieldElement {
                 lemma_pow_nonnegative(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat);
             }
             assert(pow((u64_5_as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat) >= 0) by {
-                lemma_pow_nonnegative((u64_5_as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat);
+                lemma_pow_nonnegative(
+                    (u64_5_as_nat(self.limbs) % p()) as int,
+                    (pow2(250) - 1) as nat,
+                );
             }
             assert(pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p() == pow(
                 (u64_5_as_nat(self.limbs) % p()) as int,
@@ -638,7 +660,9 @@ impl FieldElement {
             ) as nat % p());
 
             // Multiplication: t21 = self * t20
-            assert(u64_5_as_nat(t21.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(t20.limbs)) % p()) by {
+            assert(u64_5_as_nat(t21.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(
+                t20.limbs,
+            )) % p()) by {
                 lemma_mul_mod_noop_general(
                     u64_5_as_nat(self.limbs) as int,
                     u64_5_as_nat(t20.limbs) as int,

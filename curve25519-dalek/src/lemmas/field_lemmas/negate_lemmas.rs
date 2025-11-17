@@ -5,8 +5,8 @@ use vstd::arithmetic::power2::*;
 use vstd::bits::*;
 use vstd::prelude::*;
 
-use super::u64_5_as_nat_lemmas::*;
 use super::reduce_lemmas::*;
+use super::u64_5_as_nat_lemmas::*;
 
 use super::super::common_lemmas::shift_lemmas::*;
 
@@ -55,8 +55,8 @@ pub proof fn proof_negate(limbs: [u64; 5])
         // u64_5_as_nat(negate(l)) = u64_5_as_nat(reduce(16 * (c0, c, c, c, c) - l))
         //                   = 16p - u64_5_as_nat(l) - p * ((16c - l4) >> 51)
         // Note that (16c - l4) >> 51 is either 14 or 15, in either case < 16.
-        u64_5_as_nat(spec_negate(limbs)) == 16 * p() - u64_5_as_nat(limbs) - p() * ((36028797018963952u64
-            - limbs[4]) as u64 >> 51),
+        u64_5_as_nat(spec_negate(limbs)) == 16 * p() - u64_5_as_nat(limbs) - p() * ((
+        36028797018963952u64 - limbs[4]) as u64 >> 51),
         (u64_5_as_nat(spec_negate(limbs)) + u64_5_as_nat(limbs)) % p() == 0,
 {
     proof_reduce(pre_reduce_limbs(limbs));
@@ -74,8 +74,8 @@ pub proof fn proof_negate(limbs: [u64; 5])
 
     assert(u64_5_as_nat(v) == 16 * p()) by {
         // by definition of u64_5_as_nat
-        assert(u64_5_as_nat(v) == 16 * c0 + pow2(51) * (16 * c) + pow2(102) * (16 * c) + pow2(153) * (16
-            * c) + pow2(204) * (16 * c));
+        assert(u64_5_as_nat(v) == 16 * c0 + pow2(51) * (16 * c) + pow2(102) * (16 * c) + pow2(153)
+            * (16 * c) + pow2(204) * (16 * c));
 
         // solver can reorder factors and pull out 16 on its own
         // ...

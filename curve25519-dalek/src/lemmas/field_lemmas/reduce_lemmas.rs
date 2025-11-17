@@ -131,8 +131,9 @@ pub proof fn proof_reduce(limbs: [u64; 5])
     lemma_reduce_boundaries(limbs);
 
     // distribute
-    assert(u64_5_as_nat(rr) == 19 * a4 + b0 + pow2(51) * a0 + pow2(51) * b1 + pow2(102) * a1 + pow2(102)
-        * b2 + pow2(153) * a2 + pow2(153) * b3 + pow2(204) * a3 + pow2(204) * b4) by {
+    assert(u64_5_as_nat(rr) == 19 * a4 + b0 + pow2(51) * a0 + pow2(51) * b1 + pow2(102) * a1 + pow2(
+        102,
+    ) * b2 + pow2(153) * a2 + pow2(153) * b3 + pow2(204) * a3 + pow2(204) * b4) by {
         lemma_mul_is_distributive_add(pow2(51) as int, a0 as int, b1 as int);
         lemma_mul_is_distributive_add(pow2(102) as int, a1 as int, b2 as int);
         lemma_mul_is_distributive_add(pow2(153) as int, a2 as int, b3 as int);
@@ -140,17 +141,18 @@ pub proof fn proof_reduce(limbs: [u64; 5])
     }
 
     // factor out
-    assert(u64_5_as_nat(rr) == 19 * a4 + b0 + pow2(51) * a0 + pow2(51) * b1 + pow2(51) * (pow2(51) * a1)
-        + pow2(102) * b2 + pow2(102) * (pow2(51) * a2) + pow2(153) * b3 + pow2(153) * (pow2(51)
-        * a3) + pow2(204) * b4) by {
+    assert(u64_5_as_nat(rr) == 19 * a4 + b0 + pow2(51) * a0 + pow2(51) * b1 + pow2(51) * (pow2(51)
+        * a1) + pow2(102) * b2 + pow2(102) * (pow2(51) * a2) + pow2(153) * b3 + pow2(153) * (pow2(
+        51,
+    ) * a3) + pow2(204) * b4) by {
         lemma_two_factoring_51(51, a1);
         lemma_two_factoring_51(102, a2);
         lemma_two_factoring_51(153, a3);
     }
 
     // change groupings
-    assert(u64_5_as_nat(rr) == (b0 + pow2(51) * a0) + pow2(51) * (b1 + pow2(51) * a1) + pow2(102) * (b2
-        + pow2(51) * a2) + pow2(153) * (b3 + pow2(51) * a3) + pow2(204) * b4 + 19 * a4) by {
+    assert(u64_5_as_nat(rr) == (b0 + pow2(51) * a0) + pow2(51) * (b1 + pow2(51) * a1) + pow2(102)
+        * (b2 + pow2(51) * a2) + pow2(153) * (b3 + pow2(51) * a3) + pow2(204) * b4 + 19 * a4) by {
         lemma_mul_is_distributive_add(pow2(51) as int, b1 as int, pow2(51) * a1);
         lemma_mul_is_distributive_add(pow2(102) as int, b2 as int, pow2(51) * a2);
         lemma_mul_is_distributive_add(pow2(153) as int, b3 as int, pow2(51) * a3);

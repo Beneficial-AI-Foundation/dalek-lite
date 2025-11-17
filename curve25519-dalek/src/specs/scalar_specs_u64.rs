@@ -32,23 +32,23 @@ pub open spec fn to_nat(limbs: &[u64]) -> nat {
 
 #[verusfmt::skip]
 pub open spec fn nine_limbs_to_nat_aux(limbs: &[u128; 9]) -> nat {
-    (limbs[0] as nat) + 
-    (limbs[1] as nat) * pow2( 52) + 
-    (limbs[2] as nat) * pow2(104) + 
-    (limbs[3] as nat) * pow2(156) + 
-    (limbs[4] as nat) * pow2(208) + 
-    (limbs[5] as nat) * pow2(260) + 
-    (limbs[6] as nat) * pow2(312) + 
-    (limbs[7] as nat) * pow2(364) + 
+    (limbs[0] as nat) +
+    (limbs[1] as nat) * pow2( 52) +
+    (limbs[2] as nat) * pow2(104) +
+    (limbs[3] as nat) * pow2(156) +
+    (limbs[4] as nat) * pow2(208) +
+    (limbs[5] as nat) * pow2(260) +
+    (limbs[6] as nat) * pow2(312) +
+    (limbs[7] as nat) * pow2(364) +
     (limbs[8] as nat) * pow2(416)
 }
 
 #[verusfmt::skip]
 pub open spec fn five_limbs_to_nat_aux(limbs: [u64; 5]) -> nat {
-                (limbs[0] as nat) + 
-    pow2( 52) * (limbs[1] as nat) + 
-    pow2(104) * (limbs[2] as nat) + 
-    pow2(156) * (limbs[3] as nat) + 
+                (limbs[0] as nat) +
+    pow2( 52) * (limbs[1] as nat) +
+    pow2(104) * (limbs[2] as nat) +
+    pow2(156) * (limbs[3] as nat) +
     pow2(208) * (limbs[4] as nat)
 }
 

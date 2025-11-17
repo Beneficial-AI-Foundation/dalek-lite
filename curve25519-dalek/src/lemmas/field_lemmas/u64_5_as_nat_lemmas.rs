@@ -74,7 +74,8 @@ pub proof fn lemma_bridge_pow_as_nat_to_spec(
     exp: nat,
 )
     requires
-        u64_5_as_nat(result.limbs) % p() == (pow(u64_5_as_nat(base.limbs) as int, exp) as nat) % p(),
+        u64_5_as_nat(result.limbs) % p() == (pow(u64_5_as_nat(base.limbs) as int, exp) as nat)
+            % p(),
     ensures
         spec_field_element(result) == (pow(spec_field_element(base) as int, exp) as nat) % p(),
 {
@@ -138,9 +139,9 @@ pub proof fn lemma_u64_5_as_nat_sub(a: [u64; 5], b: [u64; 5])
         (a[4] - b[4]) as u64,
     ];
     // distribute pow2
-    assert(u64_5_as_nat(c) == (a[0] - b[0]) + pow2(51) * a[1] - pow2(51) * b[1] + pow2(102) * a[2] - pow2(
-        102,
-    ) * b[2] + pow2(153) * a[3] - pow2(153) * b[3] + pow2(204) * a[4] - pow2(204) * b[4]) by {
+    assert(u64_5_as_nat(c) == (a[0] - b[0]) + pow2(51) * a[1] - pow2(51) * b[1] + pow2(102) * a[2]
+        - pow2(102) * b[2] + pow2(153) * a[3] - pow2(153) * b[3] + pow2(204) * a[4] - pow2(204)
+        * b[4]) by {
         lemma_mul_is_distributive_sub(pow2(1 * 51) as int, a[1] as int, b[1] as int);
         lemma_mul_is_distributive_sub(pow2(2 * 51) as int, a[2] as int, b[2] as int);
         lemma_mul_is_distributive_sub(pow2(3 * 51) as int, a[3] as int, b[3] as int);
@@ -502,8 +503,8 @@ pub proof fn lemma_u64_5_as_nat_k(a: [u64; 5], k: u64)
         (k * a[4]) as u64,
     ];
 
-    assert(u64_5_as_nat(ka) == k * a[0] + k * (pow2(51) * a[1]) + k * (pow2(102) * a[2]) + k * (pow2(153)
-        * a[3]) + k * (pow2(204) * a[4])) by {
+    assert(u64_5_as_nat(ka) == k * a[0] + k * (pow2(51) * a[1]) + k * (pow2(102) * a[2]) + k * (
+    pow2(153) * a[3]) + k * (pow2(204) * a[4])) by {
         lemma_mul_is_associative(pow2(51) as int, a[1] as int, k as int);
         lemma_mul_is_associative(pow2(102) as int, a[2] as int, k as int);
         lemma_mul_is_associative(pow2(153) as int, a[3] as int, k as int);

@@ -38,10 +38,10 @@ pub proof fn l51_bit_mask_lt()
 // Evaluation function, given a field element as limbs, reconstruct the nat value it represents.
 #[verusfmt::skip]
 pub open spec fn u64_5_as_nat(limbs: [u64; 5]) -> nat {
-                (limbs[0] as nat) + 
-    pow2( 51) * (limbs[1] as nat) + 
-    pow2(102) * (limbs[2] as nat) + 
-    pow2(153) * (limbs[3] as nat) + 
+                (limbs[0] as nat) +
+    pow2( 51) * (limbs[1] as nat) +
+    pow2(102) * (limbs[2] as nat) +
+    pow2(153) * (limbs[3] as nat) +
     pow2(204) * (limbs[4] as nat)
 }
 

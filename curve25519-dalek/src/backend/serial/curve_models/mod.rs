@@ -398,14 +398,25 @@ impl ProjectivePoint {
             affine_edwards_point(result) == affine_projective_point_edwards(*self),
     {
         proof {
-            assume(false);  // preconditions for arithmetic traits
+            // preconditions for arithmetic traits
+            assume(limbs_bounded(&self.X, 54));
+            assume(limbs_bounded(&self.Y, 54));
+            assume(limbs_bounded(&self.Z, 54));
         }
-        EdwardsPoint {
+
+        let result = EdwardsPoint {
             X: &self.X * &self.Z,
             Y: &self.Y * &self.Z,
             Z: self.Z.square(),
             T: &self.X * &self.Y,
+        };
+        proof {
+            // postconditions
+            assume(is_valid_edwards_point(result));
+            assume(spec_edwards_point(result) == spec_projective_to_extended(*self));
+            assume(affine_edwards_point(result) == affine_projective_point_edwards(*self));
         }
+        result
     }
 }
 
@@ -423,9 +434,24 @@ impl CompletedPoint {
             affine_projective_point_edwards(result) == affine_completed_point(*self),
     {
         proof {
-            assume(false);  // need to prove preconditions for arithmetic traits
+            // preconditions for arithmetic traits
+            assume(limbs_bounded(&self.X, 54));
+            assume(limbs_bounded(&self.Y, 54));
+            assume(limbs_bounded(&self.Z, 54));
+            assume(limbs_bounded(&self.T, 54));
         }
-        ProjectivePoint { X: &self.X * &self.T, Y: &self.Y * &self.Z, Z: &self.Z * &self.T }
+        let result = ProjectivePoint {
+            X: &self.X * &self.T,
+            Y: &self.Y * &self.Z,
+            Z: &self.Z * &self.T,
+        };
+        proof {
+            // postconditions
+            assume(is_valid_projective_point(result));
+            assume(spec_projective_point_edwards(result) == spec_completed_to_projective(*self));
+            assume(affine_projective_point_edwards(result) == affine_completed_point(*self));
+        }
+        result
     }
 
     /// Convert this point from the \\( \mathbb P\^1 \times \mathbb P\^1
@@ -434,7 +460,6 @@ impl CompletedPoint {
     /// This costs \\(4 \mathrm M \\).
     pub fn as_extended(&self) -> (result: EdwardsPoint)
         requires
-            true,
             is_valid_completed_point(*self),
         ensures
             is_valid_edwards_point(result),
@@ -442,14 +467,26 @@ impl CompletedPoint {
             affine_edwards_point(result) == affine_completed_point(*self),
     {
         proof {
-            assume(false);  // need to prove preconditions for arithmetic traits
+            // preconditions for arithmetic traits
+            assume(limbs_bounded(&self.X, 54));
+            assume(limbs_bounded(&self.Y, 54));
+            assume(limbs_bounded(&self.Z, 54));
+            assume(limbs_bounded(&self.T, 54));
         }
-        EdwardsPoint {
+
+        let result = EdwardsPoint {
             X: &self.X * &self.T,
             Y: &self.Y * &self.Z,
             Z: &self.Z * &self.T,
             T: &self.X * &self.Y,
+        };
+        proof {
+            // postconditions
+            assume(is_valid_edwards_point(result));
+            assume(spec_edwards_point(result) == spec_completed_to_extended(*self));
+            assume(affine_edwards_point(result) == affine_completed_point(*self));
         }
+        result
     }
 }
 
@@ -464,29 +501,61 @@ impl ProjectivePoint {
         ensures
             is_valid_completed_point(result),
             // The result represents the affine doubling of self
-            affine_completed_point(result) == edwards_double(
-                affine_projective_point_edwards(*self).0,
-                affine_projective_point_edwards(*self).1,
-            ),
+            affine_completed_point(result) == ({
+                let (x, y) = affine_projective_point_edwards(*self);
+                edwards_double(x, y)
+            }),
     {
         proof {
-            assume(false);  // preconditions for arithmetic traits
+            // preconditions for arithmetic traits
+            assume(limbs_bounded(&self.X, 54));
+            assume(limbs_bounded(&self.Y, 54));
+            assume(limbs_bounded(&self.Z, 54));
         }
         // Double()
         let XX = self.X.square();
         let YY = self.Y.square();
         let ZZ2 = self.Z.square2();
+        proof {
+            // preconditions for arithmetic traits
+            assume(forall|i: int|
+                0 <= i < 5 ==> #[trigger] (self.X.limbs[i] + self.Y.limbs[i]) <= u64::MAX)
+        }
         let X_plus_Y = &self.X + &self.Y;
+        proof {
+            // preconditions for arithmetic traits
+            assume(limbs_bounded(&X_plus_Y, 54));  // for X_plus_Y_sq = X_plus_Y.square()
+            assume(forall|i: int|
+                0 <= i < 5 ==> #[trigger] (YY.limbs[i] + XX.limbs[i]) <= u64::MAX);  // for YY_plus_XX = &YY + &XX and YY_minus_XX = &YY - &XX
+            assume(limbs_bounded(&YY, 54) && limbs_bounded(&XX, 54));  // for YY_plus_XX = &YY + &XX and YY_minus_XX = &YY - &XX
+        }
         let X_plus_Y_sq = X_plus_Y.square();
         let YY_plus_XX = &YY + &XX;
         let YY_minus_XX = &YY - &XX;
 
-        CompletedPoint {
+        proof {
+            // preconditions for arithmetic traits
+            assume(limbs_bounded(&X_plus_Y_sq, 54));  // for &X_plus_Y_sq - &YY_plus_XX
+            assume(limbs_bounded(&YY_plus_XX, 54));  // for &X_plus_Y_sq - &YY_plus_XX
+            assume(limbs_bounded(&YY_minus_XX, 54));  // for &ZZ2 - &YY_minus_XX
+            assume(limbs_bounded(&ZZ2, 54));  // for &ZZ2 - &YY_minus_XX
+        }
+        let result = CompletedPoint {
             X: &X_plus_Y_sq - &YY_plus_XX,
             Y: YY_plus_XX,
             Z: YY_minus_XX,
             T: &ZZ2 - &YY_minus_XX,
+        };
+        proof {
+            // postconditions
+            assume(is_valid_completed_point(result));
+            assume(affine_completed_point(result) == edwards_double(
+                affine_projective_point_edwards(*self).0,
+                affine_projective_point_edwards(*self).1,
+            ));
         }
+
+        result
     }
 }
 

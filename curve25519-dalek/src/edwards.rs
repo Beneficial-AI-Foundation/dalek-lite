@@ -1051,19 +1051,47 @@ impl EdwardsPoint {
 // ------------------------------------------------------------------------
 impl EdwardsPoint {
     /// Add this point to itself.
-    pub(crate) fn double(&self) -> (result: EdwardsPoint) {
+    pub(crate) fn double(&self) -> (result: EdwardsPoint)
+        requires
+            is_valid_edwards_point(*self),  // self is a valid extended Edwards point
+
+        ensures
+            is_valid_edwards_point(result),  // result is also a valid Edwards point
+            // Result equals the affine doubling of the input.
+            affine_edwards_point(result) == edwards_double(
+                affine_edwards_point(*self).0,
+                affine_edwards_point(*self).1,
+            ),
+    {
         /* ORIGINAL CODE
         self.as_projective().double().as_extended()
         */
         let proj = self.as_projective();
         proof {
-            assume(is_valid_projective_point(proj));
+            // as_projective correctness:
+            // A valid EdwardsPoint must map to a valid projective point
+            assert(is_valid_projective_point(proj));
         }
+
         let doubled = proj.double();
         proof {
+            // projective double() spec guarantees this
             assert(is_valid_completed_point(doubled));
         }
+
         let result = doubled.as_extended();
+
+        proof {
+            // completed → extended conversion preserves affine meaning
+            assert(affine_edwards_point(result) == affine_completed_point(doubled));
+
+            // And from the lower-level double() spec:
+            assert(affine_completed_point(doubled) == edwards_double(
+                affine_edwards_point(*self).0,
+                affine_edwards_point(*self).1,
+            ));
+        }
+
         result
     }
 }

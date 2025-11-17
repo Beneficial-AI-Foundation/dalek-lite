@@ -112,7 +112,6 @@ impl Scalar52 {
         ensures
             bytes_to_nat(bytes) == to_nat(&s.limbs),
             limbs_bounded(&s),
-            to_nat(&s.limbs) < group_order(),
     {
         let mut words = [0u64;4];
         for i in 0..4

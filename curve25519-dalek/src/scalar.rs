@@ -2424,7 +2424,7 @@ impl Scalar {
         ensures
             limbs_bounded(&result),
             to_nat(&result.limbs) == bytes_to_nat(&self.bytes),
-        {
+    {
         UnpackedScalar::from_bytes(&self.bytes)
     }
 

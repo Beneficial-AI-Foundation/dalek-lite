@@ -358,7 +358,7 @@ pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
 /// Formulas:
 ///   x3 = (x1*y2 + y1*x2) / (1 + d*x1*x2*y1*y2)
 ///   y3 = (y1*y2 + x1*x2) / (1 - d*x1*x2*y1*y2)
-pub open spec fn edwards_add_affine(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
+pub open spec fn affine_edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
     let d = spec_field_element(&EDWARDS_D);
     let x1x2 = math_field_mul(x1, x2);
     let y1y2 = math_field_mul(y1, y2);
@@ -373,8 +373,8 @@ pub open spec fn edwards_add_affine(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat,
 }
 
 /// Affine Edwards doubling defined as addition with itself.
-pub open spec fn edwards_double_affine(x: nat, y: nat) -> (nat, nat) {
-    edwards_add_affine(x, y, x, y)
+pub open spec fn affine_edwards_double(x: nat, y: nat) -> (nat, nat) {
+    affine_edwards_add(x, y, x, y)
 }
 
 } // verus!

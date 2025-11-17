@@ -153,7 +153,7 @@ pub open spec fn montgomery_corresponds_to_edwards(
     edwards: crate::edwards::EdwardsPoint,
 ) -> bool {
     let u = spec_montgomery_point(montgomery);
-    let (x, y) = crate::specs::curve_specs::affine_edwards_point(edwards);
+    let (x, y) = crate::specs::edwards_specs::affine_edwards_point(edwards);
     let denominator = math_field_sub(1, y);
 
     if denominator == 0 {

@@ -62,7 +62,7 @@ use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 use crate::scalar::{clamp_integer, Scalar};
 #[allow(unused_imports)]
-use crate::specs::curve_specs::*;
+use crate::specs::edwards_specs::*;
 #[allow(unused_imports)]
 use crate::specs::field_specs::*;
 #[allow(unused_imports)]

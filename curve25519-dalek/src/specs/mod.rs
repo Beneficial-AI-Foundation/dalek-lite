@@ -1,6 +1,6 @@
 pub mod core_specs;
 
-pub mod curve_specs;
+pub mod edwards_specs;
 
 pub mod field_specs;
 

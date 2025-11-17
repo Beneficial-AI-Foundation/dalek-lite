@@ -157,7 +157,7 @@ use crate::backend::serial::u64::field::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::*;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::specs::curve_specs::*;
+use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks

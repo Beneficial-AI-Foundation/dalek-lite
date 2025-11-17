@@ -1200,7 +1200,6 @@ pub mod test {
 
         let s = Scalar52::from_bytes(&bytes);
 
-        let bytes_nat = bytes_to_nat_exec(&bytes);
         let result_nat = to_nat_exec(&s.limbs);
         let l = group_order_exec();
 

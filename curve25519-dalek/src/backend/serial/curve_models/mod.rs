@@ -389,7 +389,14 @@ impl ProjectivePoint {
     /// \\( \mathbb P\^3 \\) model.
     ///
     /// This costs \\(3 \mathrm M + 1 \mathrm S\\).
-    pub fn as_extended(&self) -> EdwardsPoint {
+    pub fn as_extended(&self) -> (result: EdwardsPoint)
+        requires
+            is_valid_projective_point(*self),
+        ensures
+            is_valid_edwards_point(result),
+            spec_edwards_point(result) == spec_projective_to_extended(*self),
+            affine_edwards_point(result) == affine_projective_point_edwards(*self),
+    {
         proof {
             assume(false);  // preconditions for arithmetic traits
         }
@@ -407,9 +414,16 @@ impl CompletedPoint {
     /// \\) model to the \\( \mathbb P\^2 \\) model.
     ///
     /// This costs \\(3 \mathrm M \\).
-    pub fn as_projective(&self) -> ProjectivePoint {
+    pub fn as_projective(&self) -> (result: ProjectivePoint)
+        requires
+            is_valid_completed_point(*self),
+        ensures
+            is_valid_projective_point(result),
+            spec_projective_point_edwards(result) == spec_completed_to_projective(*self),
+            affine_projective_point_edwards(result) == affine_completed_point(*self),
+    {
         proof {
-            assume(false);  // preconditions for arithmetic traits
+            assume(false);  // need to prove preconditions for arithmetic traits
         }
         ProjectivePoint { X: &self.X * &self.T, Y: &self.Y * &self.Z, Z: &self.Z * &self.T }
     }
@@ -418,9 +432,17 @@ impl CompletedPoint {
     /// \\) model to the \\( \mathbb P\^3 \\) model.
     ///
     /// This costs \\(4 \mathrm M \\).
-    pub fn as_extended(&self) -> EdwardsPoint {
+    pub fn as_extended(&self) -> (result: EdwardsPoint)
+        requires
+            true,
+            is_valid_completed_point(*self),
+        ensures
+            is_valid_edwards_point(result),
+            spec_edwards_point(result) == spec_completed_to_extended(*self),
+            affine_edwards_point(result) == affine_completed_point(*self),
+    {
         proof {
-            assume(false);  // preconditions for arithmetic traits
+            assume(false);  // need to prove preconditions for arithmetic traits
         }
         EdwardsPoint {
             X: &self.X * &self.T,
@@ -436,7 +458,17 @@ impl CompletedPoint {
 // ------------------------------------------------------------------------
 impl ProjectivePoint {
     /// Double this point: return self + self
-    pub fn double(&self) -> CompletedPoint {
+    pub fn double(&self) -> (result: CompletedPoint)
+        requires
+            is_valid_projective_point(*self),
+        ensures
+            is_valid_completed_point(result),
+            // The result represents the affine doubling of self
+            affine_completed_point(result) == edwards_double(
+                affine_projective_point_edwards(*self).0,
+                affine_projective_point_edwards(*self).1,
+            ),
+    {
         proof {
             assume(false);  // preconditions for arithmetic traits
         }

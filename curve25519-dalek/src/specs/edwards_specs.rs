@@ -17,43 +17,6 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Affine Edwards point (x, y)
-/// Curve equation is: -x² + y² = 1 + d·x²·y² for Edwards constant d = -121665/121666
-pub struct EdwardsPointAffine {
-    pub x: nat,
-    pub y: nat,
-}
-
-/// Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).
-/// For the curve -x² + y² = 1 + d·x²·y², the addition formulas are:
-///   x₃ = (x₁y₂ + y₁x₂) / (1 + d·x₁x₂y₁y₂)
-///   y₃ = (y₁y₂ + x₁x₂) / (1 - d·x₁x₂y₁y₂)
-pub open spec fn edwards_add(P: EdwardsPointAffine, Q: EdwardsPointAffine) -> EdwardsPointAffine {
-    let x1 = P.x;
-    let y1 = P.y;
-    let x2 = Q.x;
-    let y2 = Q.y;
-
-    let x1y2 = math_field_mul(x1, y2);
-    let y1x2 = math_field_mul(y1, x2);
-
-    let y1y2 = math_field_mul(y1, y2);
-    let x1x2 = math_field_mul(x1, x2);
-
-    let dx1x2y1y2 = math_field_mul(spec_field_element(&EDWARDS_D), math_field_mul(x1x2, y1y2));
-
-    let numerator_x = math_field_add(x1y2, y1x2);
-    let denominator_x = math_field_add(1, dx1x2y1y2);
-
-    let numerator_y = math_field_add(y1y2, x1x2);
-    let denominator_y = math_field_sub(1, dx1x2y1y2);
-
-    EdwardsPointAffine {
-        x: math_field_mul(numerator_x, math_field_inv(denominator_x)),
-        y: math_field_mul(numerator_y, math_field_inv(denominator_y)),
-    }
-}
-
 /// Check if a point (x, y) satisfies the Edwards curve equation
 /// -x² + y² = 1 + d·x²·y²  (mod p)
 pub open spec fn math_on_edwards_curve(x: nat, y: nat) -> bool {
@@ -354,7 +317,7 @@ pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
 /// Formulas:
 ///   x3 = (x1*y2 + y1*x2) / (1 + d*x1*x2*y1*y2)
 ///   y3 = (y1*y2 + x1*x2) / (1 - d*x1*x2*y1*y2)
-pub open spec fn affine_edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
+pub open spec fn edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
     let d = spec_field_element(&EDWARDS_D);
     let x1x2 = math_field_mul(x1, x2);
     let y1y2 = math_field_mul(y1, y2);
@@ -369,8 +332,75 @@ pub open spec fn affine_edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat,
 }
 
 /// Affine Edwards doubling defined as addition with itself.
-pub open spec fn affine_edwards_double(x: nat, y: nat) -> (nat, nat) {
-    affine_edwards_add(x, y, x, y)
+pub open spec fn edwards_double(x: nat, y: nat) -> (nat, nat) {
+    edwards_add(x, y, x, y)
+}
+
+/// Check if a CompletedPoint is valid
+/// A CompletedPoint ((X:Z), (Y:T)) in P¹ × P¹ is valid if:
+/// 1. The affine point (X/Z, Y/T) lies on the Edwards curve
+/// 2. Z ≠ 0 and T ≠ 0
+pub open spec fn is_valid_completed_point(
+    point: crate::backend::serial::curve_models::CompletedPoint,
+) -> bool {
+    let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(point);
+
+    // Z and T must be non-zero
+    z_abs != 0 && t_abs != 0
+        &&
+    // The affine coordinates (X/Z, Y/T) must be on the curve
+    math_on_edwards_curve(
+        math_field_mul(x_abs, math_field_inv(z_abs)),
+        math_field_mul(y_abs, math_field_inv(t_abs)),
+    )
+}
+
+/// Check if a ProjectivePoint is valid
+/// A ProjectivePoint (X:Y:Z) in P² is valid if:
+/// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
+/// 2. Z ≠ 0
+pub open spec fn is_valid_projective_point(point: ProjectivePoint) -> bool {
+    let (x, y, z) = spec_projective_point_edwards(point);
+
+    // Z must be non-zero
+    z != 0 &&
+    // The affine coordinates (X/Z, Y/Z) must be on the curve
+    math_on_edwards_curve(
+        math_field_mul(x, math_field_inv(z)),
+        math_field_mul(y, math_field_inv(z)),
+    )
+}
+
+/// Spec for CompletedPoint::as_projective conversion
+/// Converts from P¹ × P¹ to P² via the mapping:
+///   (X:Z, Y:T) ↦ (X·T : Y·Z : Z·T)
+/// This preserves the affine point because:
+///   X·T / Z·T = X/Z and Y·Z / Z·T = Y/T
+pub open spec fn spec_completed_to_projective(
+    point: crate::backend::serial::curve_models::CompletedPoint,
+) -> (nat, nat, nat) {
+    let (x, y, z, t) = spec_completed_point(point);
+    (math_field_mul(x, t), math_field_mul(y, z), math_field_mul(z, t))
+}
+
+/// Spec for CompletedPoint::as_extended conversion
+/// Converts from P¹ × P¹ to P³ via the Segre embedding:
+///   ((X:Z), (Y:T)) ↦ (X·T : Y·Z : Z·T : X·Y)
+/// This preserves the affine point and satisfies the extended coordinate invariant
+pub open spec fn spec_completed_to_extended(
+    point: crate::backend::serial::curve_models::CompletedPoint,
+) -> (nat, nat, nat, nat) {
+    let (x, y, z, t) = spec_completed_point(point);
+    (math_field_mul(x, t), math_field_mul(y, z), math_field_mul(z, t), math_field_mul(x, y))
+}
+
+/// Spec for ProjectivePoint::as_extended conversion
+/// Converts from P² to P³ via:
+///   (X:Y:Z) ↦ (X·Z : Y·Z : Z² : X·Y)
+/// This preserves the affine point and establishes the extended coordinate invariant
+pub open spec fn spec_projective_to_extended(point: ProjectivePoint) -> (nat, nat, nat, nat) {
+    let (x, y, z) = spec_projective_point_edwards(point);
+    (math_field_mul(x, z), math_field_mul(y, z), math_field_square(z), math_field_mul(x, y))
 }
 
 } // verus!

@@ -1051,8 +1051,20 @@ impl EdwardsPoint {
 // ------------------------------------------------------------------------
 impl EdwardsPoint {
     /// Add this point to itself.
-    pub(crate) fn double(&self) -> EdwardsPoint {
+    pub(crate) fn double(&self) -> (result: EdwardsPoint) {
+        /* ORIGINAL CODE
         self.as_projective().double().as_extended()
+        */
+        let proj = self.as_projective();
+        proof {
+            assume(is_valid_projective_point(proj));
+        }
+        let doubled = proj.double();
+        proof {
+            assert(is_valid_completed_point(doubled));
+        }
+        let result = doubled.as_extended();
+        result
     }
 }
 

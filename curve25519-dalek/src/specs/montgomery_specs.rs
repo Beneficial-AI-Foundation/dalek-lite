@@ -36,11 +36,19 @@ pub open spec fn math_on_montgomery_curve(u: nat, v: nat) -> bool {
 /// A point is valid if it's either:
 /// - Infinity (the identity element), or
 /// - A finite point (u, v) that satisfies the Montgomery curve equation
-pub open spec fn is_valid_montgomery_point(point: MontgomeryAffine) -> bool {
+pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
     match point {
         MontgomeryAffine::Infinity => true,
         MontgomeryAffine::Finite{u, v} => math_on_montgomery_curve(u, v)
     }
+}
+
+/// Check if a MontgomeryPoint's u-coordinate corresponds to a valid point on the Montgomery curve.
+/// Returns true if there exists a valid affine Montgomery point with this u-coordinate.
+pub open spec fn is_valid_montgomery_point(point: crate::montgomery::MontgomeryPoint) -> bool {
+    exists |P: MontgomeryAffine|
+        is_valid_montgomery_affine(P) &&
+        spec_montgomery_point(point) == spec_u_coordinate(P)
 }
 
 /// Negation on the Montgomery curve.
@@ -137,6 +145,15 @@ pub open spec fn montgomery_add(
 /// Subtraction on the Montgomery curve, defined as P - Q = P + (-Q).
 pub open spec fn montgomery_sub(P: MontgomeryAffine, Q: MontgomeryAffine) -> MontgomeryAffine {
     montgomery_add(P, montgomery_neg(Q))
+}
+
+/// Extract the u-coordinate from a MontgomeryAffine point.
+/// Maps Infinity to 0, and Finite{u, v} to u.
+pub open spec fn spec_u_coordinate(point: MontgomeryAffine) -> nat {
+    match point {
+        MontgomeryAffine::Infinity => 0,
+        MontgomeryAffine::Finite{u, v: _} => u,
+    }
 }
 
 /// Returns the u-coordinate of a Montgomery point as a field element
@@ -263,8 +280,8 @@ pub open spec fn differential_relation_holds(
     P_full: MontgomeryAffine,
     Q_full: MontgomeryAffine,
 ) -> bool {
-    is_valid_montgomery_point(P_full)
-    && is_valid_montgomery_point(Q_full)
+    is_valid_montgomery_affine(P_full)
+    && is_valid_montgomery_affine(Q_full)
     && projective_represents_montgomery(P, P_full)
     && projective_represents_montgomery(Q, Q_full)
     &&
@@ -273,6 +290,19 @@ pub open spec fn differential_relation_holds(
         MontgomeryAffine::Finite { u: u_diff, v: _ } =>
             spec_field_element(affine_PmQ) == u_diff,
         MontgomeryAffine::Infinity => false  // differential add never works at ∞
+    }
+}
+
+/// Scalar multiplication on Montgomery curve (abstract specification)
+/// Computes [n]P where n is a scalar and P is a Montgomery point
+/// This is the standard recursive definition: [n]P = P + [n-1]P
+pub open spec fn montgomery_scalar_mul(P: MontgomeryAffine, n: nat) -> MontgomeryAffine
+    decreases n
+{
+    if n == 0 {
+        MontgomeryAffine::Infinity
+    } else {
+        montgomery_add(P, montgomery_scalar_mul(P, (n - 1) as nat))
     }
 }
 

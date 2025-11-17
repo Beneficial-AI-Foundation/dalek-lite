@@ -53,11 +53,11 @@ use core::{
 };
 
 use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
+#[cfg(feature = "zeroize")]
+use crate::core_assumes::zeroize_bool;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::core_assumes::*;
-#[cfg(feature = "zeroize")]
-use crate::core_assumes::zeroize_bool;
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 use crate::scalar::{clamp_integer, Scalar};
@@ -67,12 +67,18 @@ use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 #[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
+#[allow(unused_imports)]
+use crate::specs::scalar_specs::*;
+#[allow(unused_imports)]
+use crate::specs::scalar_specs_u64::*;
 
 use crate::traits::Identity;
 
-use crate::backend::serial::u64::subtle_assumes::{choice_into, conditional_swap_montgomery_projective};
 #[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
+use crate::backend::serial::u64::subtle_assumes::{
+    choice_into, conditional_swap_montgomery_projective,
+};
 
 use subtle::Choice;
 use subtle::ConstantTimeEq;
@@ -150,15 +156,9 @@ impl PartialEq for MontgomeryPoint {
         let result = choice_into(choice);
 
         proof {
-            // VERIFICATION NOTE: The postcondition follows from ct_eq's specification
-            // ct_eq ensures: choice_is_true(choice) == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0))
-            // choice_into ensures: result == choice_is_true(choice)
-            // Therefore by transitivity: result == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0))
-            // Try to prove it explicitly
             assert(choice_is_true(choice) == (spec_field_element_from_bytes(&self.0)
                 == spec_field_element_from_bytes(&other.0)));
             assert(result == choice_is_true(choice));
-            // Verus should be able to derive the postcondition from these two assertions
         }
 
         result
@@ -276,7 +276,8 @@ impl MontgomeryPoint {
     /// Curve25519 uses _clamped multiplication_, explained
     /// [here](https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/).
     /// When in doubt, use [`Self::mul_clamped`].
-    #[verifier::external_body]
+    /* VERIFICATION NOTE: original code; followed by refactored version without using Iterator - unsuported by Verus)*/
+    /* <ORIGINAL CODE>
     pub fn mul_bits_be(&self, bits: impl Iterator<Item = bool>) -> MontgomeryPoint {
         // Algorithm 8 of Costello-Smith 2017
         let affine_u = FieldElement::from_bytes(&self.0);
@@ -303,17 +304,32 @@ impl MontgomeryPoint {
 
         x0.as_affine()
     }
-
+    </ORIGINAL CODE>
+    */
     /// Version of mul_bits_be that takes a slice of bits instead of an iterator.
     /// This version uses a while loop instead of for-loop to be Verus-compatible.
     ///
     /// Given `self` \\( = u\_0(P) \\), and a big-endian bit representation of an integer
     /// \\(n\\) as a slice, return \\( u\_0(\[n\]P) \\).
     ///
-    /// VERIFICATION NOTE: Currently marked as external_body because ProjectivePoint and
-    /// differential_add_and_double are defined outside the verus! block. Once those are
-    /// moved into verified code or given proper specifications, this can be verified.
-    pub fn mul_bits_be_slice(&self, bits: &[bool]) -> MontgomeryPoint {
+    // VERIFICATION NOTE: refactored mul_bits_de code
+    pub fn mul_bits_be(&self, bits: &[bool]) -> (result: MontgomeryPoint)
+        requires
+            bits.len() <= 255,
+            is_valid_montgomery_point(*self),
+        ensures
+    // Result represents [n]self where n is the scalar value from bits
+    // If self has u-coordinate matching affine point P, result has u-coordinate of [n]P
+
+            exists|P: MontgomeryAffine| #[trigger]
+                is_valid_montgomery_affine(P) && spec_montgomery_point(*self) == spec_u_coordinate(
+                    P,
+                ) && {
+                    let n = bits_be_to_nat(bits, bits@.len() as int);
+                    let result_point = montgomery_scalar_mul(P, n);
+                    spec_montgomery_point(result) == spec_u_coordinate(result_point)
+                },
+    {
         // Algorithm 8 of Costello-Smith 2017
         let affine_u = FieldElement::from_bytes(&self.0);
         let mut x0 = ProjectivePoint::identity();
@@ -334,7 +350,7 @@ impl MontgomeryPoint {
             debug_assert!(choice == 0 || choice == 1);
 
             conditional_swap_montgomery_projective(&mut x0, &mut x1, choice.into());
-            assume(false); // VERIFICATION NOTE: need to prove preconditions for differential_add_and_double
+            assume(false);  // VERIFICATION NOTE: need to prove preconditions for differential_add_and_double
             differential_add_and_double(&mut x0, &mut x1, &affine_u);
 
             prev_bit = cur_bit;
@@ -346,13 +362,27 @@ impl MontgomeryPoint {
         #[cfg(feature = "zeroize")]
         zeroize_bool(&mut prev_bit);
 
-        x0.as_affine()
+        let result = x0.as_affine();
+        proof {
+            // postcondition
+            // Result represents [n]self where n is the scalar value from bits
+            // If self has u-coordinate matching affine point P, result has u-coordinate of [n]P
+            assume(exists|P: MontgomeryAffine| #[trigger]
+                is_valid_montgomery_affine(P) && spec_montgomery_point(*self) == spec_u_coordinate(
+                    P,
+                ) && {
+                    let n = bits_be_to_nat(bits, bits@.len() as int);
+                    let result_point = montgomery_scalar_mul(P, n);
+                    spec_montgomery_point(result) == spec_u_coordinate(result_point)
+                });
+        }
+        result
     }
 
     /// View this `MontgomeryPoint` as an array of bytes.
-    pub const fn as_bytes(&self) -> (result: &[u8; 32]) 
-    ensures
-        result == &self.0,
+    pub const fn as_bytes(&self) -> (result: &[u8; 32])
+        ensures
+            result == &self.0,
     {
         &self.0
     }
@@ -435,7 +465,6 @@ impl MontgomeryPoint {
 }
 
 } // verus!
-
 /// Perform the Elligator2 mapping to a Montgomery point.
 ///
 /// See <https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-10#section-6.7.1>
@@ -618,21 +647,26 @@ fn differential_add_and_double(
     affine_PmQ: &FieldElement,
 )
     requires
-        // There exist full affine Montgomery points that P and Q represent,
-        // with the differential relationship maintained.
-        exists|P_full: MontgomeryAffine, Q_full: MontgomeryAffine|
-            #[trigger] differential_relation_holds(*old(P), *old(Q), affine_PmQ, P_full, Q_full),
+// There exist full affine Montgomery points that P and Q represent,
+// with the differential relationship maintained.
+
+        exists|P_full: MontgomeryAffine, Q_full: MontgomeryAffine| #[trigger]
+            differential_relation_holds(*old(P), *old(Q), affine_PmQ, P_full, Q_full),
     ensures
-        // The same P_full and Q_full that satisfied the differential invariant
-        // now have their double and sum represented by the output projective points.
+// The same P_full and Q_full that satisfied the differential invariant
+// now have their double and sum represented by the output projective points.
+
         exists|P_full: MontgomeryAffine, Q_full: MontgomeryAffine|
             {
                 // P_full and Q_full are identified by the input relationship
                 #[trigger] differential_relation_holds(*old(P), *old(Q), affine_PmQ, P_full, Q_full)
-                &&
+                    &&
                 // Now P represents [2]P_full and Q represents P_full + Q_full
                 projective_represents_montgomery(*P, #[trigger] montgomery_add(P_full, P_full))
-                && projective_represents_montgomery(*Q, #[trigger] montgomery_add(P_full, Q_full))
+                    && projective_represents_montgomery(
+                    *Q,
+                    #[trigger] montgomery_add(P_full, Q_full),
+                )
             },
 {
     assume(false);  // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations
@@ -685,77 +719,153 @@ define_mul_variants!(
     Output = MontgomeryPoint
 );
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
+    open spec fn obeys_mul_spec() -> bool {
+        false  // Set to false since we use ensures clause instead of concrete spec
+
+    }
+
+    open spec fn mul_req(self, rhs: &Scalar) -> bool {
+        is_valid_montgomery_point(*self)
+    }
+
+    open spec fn mul_spec(self, rhs: &Scalar) -> MontgomeryPoint {
+        arbitrary()  // Placeholder - actual spec is in ensures clause
+
+    }
+}
+
 /// Multiply this `MontgomeryPoint` by a `Scalar`.
 impl Mul<&Scalar> for &MontgomeryPoint {
     type Output = MontgomeryPoint;
 
     /// Given `self` \\( = u\_0(P) \\), and a `Scalar` \\(n\\), return \\( u\_0(\[n\]P) \\)
-    #[verifier::external_body]
-    fn mul(self, scalar: &Scalar) -> MontgomeryPoint {
+    fn mul(self, scalar: &Scalar) -> (result: MontgomeryPoint)
+        ensures
+    // Result represents [n]self where n is the scalar value (mod group order)
+    // If self has u-coordinate matching affine point P, result has u-coordinate of [n]P
+
+            exists|P: MontgomeryAffine| #[trigger]
+                is_valid_montgomery_affine(P) && spec_montgomery_point(*self) == spec_u_coordinate(
+                    P,
+                ) && {
+                    let result_point = montgomery_scalar_mul(P, spec_scalar(scalar));
+                    spec_montgomery_point(result) == spec_u_coordinate(result_point)
+                },
+    {
+        proof {
+            // VERIFICATION NOTE: Proof that mul correctly implements scalar multiplication.
+            // This depends on the correctness of mul_bits_be.
+            assume(false);
+        }
+
         // We multiply by the integer representation of the given Scalar. By scalar invariant #1,
         // the MSB is 0, so we can skip it.
+        /* ORIGINAL CODE (using Iterator):
         self.mul_bits_be(scalar.bits_le().rev().skip(1))
+        */
+        // Verus-compatible version: use bits_le()  to get array, then reverse and skip MSB
+        let bits_le = scalar.bits_le();
+        let mut bits_be = [false;255];
+        let mut i = 0;
+        while i < 255
+            decreases 255 - i,
+        {
+            bits_be[i] = bits_le[254 - i];
+            i += 1;
+        }
+        self.mul_bits_be(&bits_be)
     }
 }
 
-} // verus!
 impl MulAssign<&Scalar> for MontgomeryPoint {
-    fn mul_assign(&mut self, scalar: &Scalar) {
-        *self = (self as &MontgomeryPoint) * scalar;
+    fn mul_assign(&mut self, scalar: &Scalar)
+        requires
+            is_valid_montgomery_point(*old(self)),
+        ensures
+    // Result represents [n]old(self) where n is the scalar value
+
+            exists|P: MontgomeryAffine| #[trigger]
+                is_valid_montgomery_affine(P) && spec_montgomery_point(*old(self))
+                    == spec_u_coordinate(P) && {
+                    let result_point = montgomery_scalar_mul(P, spec_scalar(scalar));
+                    spec_montgomery_point(*self) == spec_u_coordinate(result_point)
+                },
+    {
+        *self = &*self * scalar;
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for &Scalar {
+    open spec fn obeys_mul_spec() -> bool {
+        false  // Set to false since we use ensures clause instead of concrete spec
+
+    }
+
+    open spec fn mul_req(self, rhs: &MontgomeryPoint) -> bool {
+        is_valid_montgomery_point(*rhs)
+    }
+
+    open spec fn mul_spec(self, rhs: &MontgomeryPoint) -> MontgomeryPoint {
+        arbitrary()  // Placeholder - actual spec is in ensures clause
+
     }
 }
 
 impl Mul<&MontgomeryPoint> for &Scalar {
     type Output = MontgomeryPoint;
 
-    fn mul(self, point: &MontgomeryPoint) -> MontgomeryPoint {
+    fn mul(self, point: &MontgomeryPoint) -> (result: MontgomeryPoint)
+        ensures
+    // Scalar multiplication is commutative: scalar * point = point * scalar
+
+            exists|P: MontgomeryAffine| #[trigger]
+                is_valid_montgomery_affine(P) && spec_montgomery_point(*point) == spec_u_coordinate(
+                    P,
+                ) && {
+                    let result_point = montgomery_scalar_mul(P, spec_scalar(self));
+                    spec_montgomery_point(result) == spec_u_coordinate(result_point)
+                },
+    {
         point * self
     }
 }
 
+} // verus!
 // ------------------------------------------------------------------------
 // Tests
 // ------------------------------------------------------------------------
-
 // #[cfg(test)]
 // mod test {
 //     use super::*;
 //     use crate::constants;
-
 //     #[cfg(feature = "alloc")]
 //     use alloc::vec::Vec;
-
 //     use rand_core::{CryptoRng, RngCore};
-
 //     #[test]
 //     fn identity_in_different_coordinates() {
 //         let id_projective = ProjectivePoint::identity();
 //         let id_montgomery = id_projective.as_affine();
-
 //         assert!(id_montgomery == MontgomeryPoint::identity());
 //     }
-
 //     #[test]
 //     fn identity_in_different_models() {
 //         assert!(EdwardsPoint::identity().to_montgomery() == MontgomeryPoint::identity());
 //     }
-
 //     #[test]
 //     #[cfg(feature = "serde")]
 //     fn serde_bincode_basepoint_roundtrip() {
 //         use bincode;
-
 //         let encoded = bincode::serialize(&constants::X25519_BASEPOINT).unwrap();
 //         let decoded: MontgomeryPoint = bincode::deserialize(&encoded).unwrap();
-
 //         assert_eq!(encoded.len(), 32);
 //         assert_eq!(decoded, constants::X25519_BASEPOINT);
-
 //         let raw_bytes = constants::X25519_BASEPOINT.as_bytes();
 //         let bp: MontgomeryPoint = bincode::deserialize(raw_bytes).unwrap();
 //         assert_eq!(bp, constants::X25519_BASEPOINT);
 //     }
-
 //     /// Test Montgomery -> Edwards on the X/Ed25519 basepoint
 //     #[test]
 //     fn basepoint_montgomery_to_edwards() {
@@ -770,7 +880,6 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //             constants::X25519_BASEPOINT.to_edwards(1).unwrap()
 //         );
 //     }
-
 //     /// Test Edwards -> Montgomery on the X/Ed25519 basepoint
 //     #[test]
 //     fn basepoint_edwards_to_montgomery() {
@@ -779,41 +888,32 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //             constants::X25519_BASEPOINT
 //         );
 //     }
-
 //     /// Check that Montgomery -> Edwards fails for points on the twist.
 //     #[test]
 //     fn montgomery_to_edwards_rejects_twist() {
 //         let one = FieldElement::ONE;
-
 //         // u = 2 corresponds to a point on the twist.
 //         let two = MontgomeryPoint((&one + &one).as_bytes());
-
 //         assert!(two.to_edwards(0).is_none());
-
 //         // u = -1 corresponds to a point on the twist, but should be
 //         // checked explicitly because it's an exceptional point for the
 //         // birational map.  For instance, libsignal will accept it.
 //         let minus_one = MontgomeryPoint((-&one).as_bytes());
-
 //         assert!(minus_one.to_edwards(0).is_none());
 //     }
-
 //     #[test]
 //     fn eq_defined_mod_p() {
 //         let mut u18_bytes = [0u8; 32];
 //         u18_bytes[0] = 18;
 //         let u18 = MontgomeryPoint(u18_bytes);
 //         let u18_unred = MontgomeryPoint([255; 32]);
-
 //         assert_eq!(u18, u18_unred);
 //     }
-
 //     /// Returns a random point on the prime-order subgroup
 //     fn rand_prime_order_point(mut rng: impl RngCore + CryptoRng) -> EdwardsPoint {
 //         let s: Scalar = Scalar::random(&mut rng);
 //         EdwardsPoint::mul_base(&s)
 //     }
-
 //     /// Given a bytestring that's little-endian at the byte level, return an iterator over all the
 //     /// bits, in little-endian order.
 //     fn bytestring_bits_le(x: &[u8]) -> impl DoubleEndedIterator<Item = bool> + Clone + '_ {
@@ -825,39 +925,31 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //             ((x[i >> 3] >> (i & 7)) & 1u8) == 1
 //         })
 //     }
-
 //     #[test]
 //     fn montgomery_ladder_matches_edwards_scalarmult() {
 //         let mut csprng = rand_core::OsRng;
-
 //         for _ in 0..100 {
 //             let p_edwards = rand_prime_order_point(&mut csprng);
 //             let p_montgomery: MontgomeryPoint = p_edwards.to_montgomery();
-
 //             let s: Scalar = Scalar::random(&mut csprng);
 //             let expected = s * p_edwards;
 //             let result = s * p_montgomery;
-
 //             assert_eq!(result, expected.to_montgomery())
 //         }
 //     }
-
 //     // Tests that, on the prime-order subgroup, MontgomeryPoint::mul_bits_be is the same as
 //     // multiplying by the Scalar representation of the same bits
 //     #[test]
 //     fn montgomery_mul_bits_be() {
 //         let mut csprng = rand_core::OsRng;
-
 //         for _ in 0..100 {
 //             // Make a random prime-order point P
 //             let p_edwards = rand_prime_order_point(&mut csprng);
 //             let p_montgomery: MontgomeryPoint = p_edwards.to_montgomery();
-
 //             // Make a random integer b
 //             let mut bigint = [0u8; 64];
 //             csprng.fill_bytes(&mut bigint[..]);
 //             let bigint_bits_be = bytestring_bits_le(&bigint).rev();
-
 //             // Check that bP is the same whether calculated as scalar-times-edwards or
 //             // integer-times-montgomery.
 //             let expected = Scalar::from_bytes_mod_order_wide(&bigint) * p_edwards;
@@ -865,14 +957,12 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //             assert_eq!(result, expected.to_montgomery())
 //         }
 //     }
-
 //     // Tests that MontgomeryPoint::mul_bits_be is consistent on any point, even ones that might be
 //     // on the curve's twist. Specifically, this tests that b₁(b₂P) == b₂(b₁P) for random
 //     // integers b₁, b₂ and random (curve or twist) point P.
 //     #[test]
 //     fn montgomery_mul_bits_be_twist() {
 //         let mut csprng = rand_core::OsRng;
-
 //         for _ in 0..100 {
 //             // Make a random point P on the curve or its twist
 //             let p_montgomery = {
@@ -880,19 +970,16 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //                 csprng.fill_bytes(&mut buf);
 //                 MontgomeryPoint(buf)
 //             };
-
 //             // Compute two big integers b₁ and b₂
 //             let mut bigint1 = [0u8; 64];
 //             let mut bigint2 = [0u8; 64];
 //             csprng.fill_bytes(&mut bigint1[..]);
 //             csprng.fill_bytes(&mut bigint2[..]);
-
 //             // Compute b₁P and b₂P
 //             let bigint1_bits_be = bytestring_bits_le(&bigint1).rev();
 //             let bigint2_bits_be = bytestring_bits_le(&bigint2).rev();
 //             let prod1 = p_montgomery.mul_bits_be(bigint1_bits_be.clone());
 //             let prod2 = p_montgomery.mul_bits_be(bigint2_bits_be.clone());
-
 //             // Check that b₁(b₂P) == b₂(b₁P)
 //             assert_eq!(
 //                 prod1.mul_bits_be(bigint2_bits_be),
@@ -900,50 +987,42 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 //             );
 //         }
 //     }
-
 //     /// Check that mul_base_clamped and mul_clamped agree
 //     #[test]
 //     fn mul_base_clamped() {
 //         let mut csprng = rand_core::OsRng;
-
 //         // Test agreement on a large integer. Even after clamping, this is not reduced mod l.
 //         let a_bytes = [0xff; 32];
 //         assert_eq!(
 //             MontgomeryPoint::mul_base_clamped(a_bytes),
 //             constants::X25519_BASEPOINT.mul_clamped(a_bytes)
 //         );
-
 //         // Test agreement on random integers
 //         for _ in 0..100 {
 //             // This will be reduced mod l with probability l / 2^256 ≈ 6.25%
 //             let mut a_bytes = [0u8; 32];
 //             csprng.fill_bytes(&mut a_bytes);
-
 //             assert_eq!(
 //                 MontgomeryPoint::mul_base_clamped(a_bytes),
 //                 constants::X25519_BASEPOINT.mul_clamped(a_bytes)
 //             );
 //         }
 //     }
-
 //     #[cfg(feature = "alloc")]
 //     const ELLIGATOR_CORRECT_OUTPUT: [u8; 32] = [
 //         0x5f, 0x35, 0x20, 0x00, 0x1c, 0x6c, 0x99, 0x36, 0xa3, 0x12, 0x06, 0xaf, 0xe7, 0xc7, 0xac,
 //         0x22, 0x4e, 0x88, 0x61, 0x61, 0x9b, 0xf9, 0x88, 0x72, 0x44, 0x49, 0x15, 0x89, 0x9d, 0x95,
 //         0xf4, 0x6e,
 //     ];
-
 //     #[test]
 //     #[cfg(feature = "alloc")]
 //     fn montgomery_elligator_correct() {
 //         let bytes: Vec<u8> = (0u8..32u8).collect();
 //         let bits_in: [u8; 32] = (&bytes[..]).try_into().expect("Range invariant broken");
-
 //         let fe = FieldElement::from_bytes(&bits_in);
 //         let eg = elligator_encode(&fe);
 //         assert_eq!(eg.to_bytes(), ELLIGATOR_CORRECT_OUTPUT);
 //     }
-
 //     #[test]
 //     fn montgomery_elligator_zero_zero() {
 //         let zero = [0u8; 32];

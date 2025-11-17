@@ -362,6 +362,11 @@ impl MontgomeryPoint {
         #[cfg(feature = "zeroize")]
         zeroize_bool(&mut prev_bit);
 
+        proof {
+            // preconditions for as_affine
+            assume(crate::specs::field_specs::limbs_bounded(&x0.U, 54));
+            assume(crate::specs::field_specs::limbs_bounded(&x0.W, 54));
+        }
         let result = x0.as_affine();
         proof {
             // postcondition
@@ -590,6 +595,9 @@ impl ProjectivePoint {
     /// # Specification
     /// The resulting MontgomeryPoint has u-coordinate equal to U/W (or 0 if W=0)
     pub fn as_affine(&self) -> (result: MontgomeryPoint)
+        requires
+            crate::specs::field_specs::limbs_bounded(&self.U, 54),
+            crate::specs::field_specs::limbs_bounded(&self.W, 54),
         ensures
     // For projective point (U:W), the affine u-coordinate is u = U/W (or 0 if W=0)
 
@@ -606,8 +614,8 @@ impl ProjectivePoint {
         proof {
             // VERIFICATION NOTE: Assume preconditions for FieldElement operations
             // Multiplication requires limbs bounded by 2^54
-            assume(forall|i: int| 0 <= i < 5 ==> self.U.limbs[i] < (1u64 << 54));
-            assume(forall|i: int| 0 <= i < 5 ==> self.W.limbs[i] < (1u64 << 54));
+            //     assume(forall|i: int| 0 <= i < 5 ==> self.U.limbs[i] < (1u64 << 54));
+            //     assume(forall|i: int| 0 <= i < 5 ==> self.W.limbs[i] < (1u64 << 54));
         }
         let u = &self.U * &self.W.invert();
         let result = MontgomeryPoint(u.as_bytes());

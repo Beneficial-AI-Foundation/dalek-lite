@@ -326,8 +326,8 @@ impl MontgomeryPoint {
                     P,
                 ) ==> {
                     let n = bits_be_to_nat(bits, bits@.len() as int);
-                    let Pn = montgomery_scalar_mul(P, n);
-                    spec_montgomery_point(result) == spec_u_coordinate(Pn)
+                    let x = montgomery_scalar_mul(P, n);
+                    spec_montgomery_point(result) == spec_u_coordinate(x)
                 },
     {
         // Algorithm 8 of Costello-Smith 2017
@@ -377,8 +377,8 @@ impl MontgomeryPoint {
                     P,
                 ) ==> {
                     let n = bits_be_to_nat(bits, bits@.len() as int);
-                    let Pn = montgomery_scalar_mul(P, n);
-                    spec_montgomery_point(result) == spec_u_coordinate(Pn)
+                    let x = montgomery_scalar_mul(P, n);
+                    spec_montgomery_point(result) == spec_u_coordinate(x)
                 });
         }
         result
@@ -754,12 +754,12 @@ impl Mul<&Scalar> for &MontgomeryPoint {
     // Result represents [n]self where n is the scalar value (mod group order)
     // If self has u-coordinate matching affine point P, result has u-coordinate of [n]P
 
-            exists|P: MontgomeryAffine| #[trigger]
+            forall|P: MontgomeryAffine|
                 is_valid_montgomery_affine(P) && spec_montgomery_point(*self) == spec_u_coordinate(
                     P,
-                ) && {
-                    let result_point = montgomery_scalar_mul(P, spec_scalar(scalar));
-                    spec_montgomery_point(result) == spec_u_coordinate(result_point)
+                ) ==> {
+                    let x = montgomery_scalar_mul(P, spec_scalar(scalar));
+                    spec_montgomery_point(result) == spec_u_coordinate(x)
                 },
     {
         proof {

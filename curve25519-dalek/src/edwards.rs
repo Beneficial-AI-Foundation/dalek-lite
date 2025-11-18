@@ -313,8 +313,7 @@ mod decompress {
         let yy_times_d = &YY * &constants::EDWARDS_D;
         proof {
             // For Add (yy_times_d + Z): requires no overflow
-            assume(forall|i: int|
-                0 <= i < 5 ==> #[trigger] (yy_times_d.limbs[i] + Z.limbs[i]) <= u64::MAX);
+            assume(sum_of_limbs_bounded(&yy_times_d, &Z, u64::MAX));
         }
         let v = &yy_times_d + &Z;  // v = dy²+1
 
@@ -889,8 +888,7 @@ impl EdwardsPoint {
             projective_niels_corresponds_to_edwards(result, *self),
     {
         proof {
-            assume(forall|i: int|
-                0 <= i < 5 ==> #[trigger] (self.Y.limbs[i] + self.X.limbs[i]) <= u64::MAX);  // for Y_plus_X
+            assume(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));  // for Y_plus_X
             assume(limbs_bounded(&self.Y, 54) && limbs_bounded(&self.X, 54));  // for Y_minus_X
             assume(limbs_bounded(&self.T, 54) && limbs_bounded(&constants::EDWARDS_D2, 54));  // for T2d
         }
@@ -915,12 +913,20 @@ impl EdwardsPoint {
     ///
     /// Free.
     pub(crate) const fn as_projective(&self) -> (result: ProjectivePoint)
+        requires
+            limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54)
+                && limbs_bounded(&self.T, 54),
         ensures
             result.X == self.X,
             result.Y == self.Y,
             result.Z == self.Z,
+            limbs_bounded(&result.X, 54) && limbs_bounded(&result.Y, 54) && limbs_bounded(
+                &result.Z,
+                54,
+            ),
     {
-        ProjectivePoint { X: self.X, Y: self.Y, Z: self.Z }
+        let result = ProjectivePoint { X: self.X, Y: self.Y, Z: self.Z };
+        result
     }
 
     /// Dehomogenize to a AffineNielsPoint.
@@ -954,7 +960,7 @@ impl EdwardsPoint {
         let xy2d = &xy * &constants::EDWARDS_D2;
 
         proof {
-            assume(forall|i: int| 0 <= i < 5 ==> #[trigger] (y.limbs[i] + x.limbs[i]) <= u64::MAX);  // for y_plus_x
+            assume(sum_of_limbs_bounded(&y, &x, u64::MAX));  // for y_plus_x
             assume(limbs_bounded(&y, 54) && limbs_bounded(&x, 54));  // for y_minus_x
         }
 
@@ -1071,13 +1077,13 @@ impl EdwardsPoint {
         */
         let proj = self.as_projective();
         proof {
-            // as_projective correctness:
-            // A valid EdwardsPoint must map to a valid projective point
             assert(is_valid_projective_point(proj));
+            // preconditions for projective double()
             assert(limbs_bounded(&proj.X, 54) && limbs_bounded(&proj.Y, 54) && limbs_bounded(
                 &proj.Z,
                 54,
             ));
+            assume(sum_of_limbs_bounded(&proj.X, &proj.Y, u64::MAX));
         }
 
         let doubled = proj.double();

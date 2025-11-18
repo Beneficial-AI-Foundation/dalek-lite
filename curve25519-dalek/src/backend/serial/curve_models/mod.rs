@@ -322,8 +322,7 @@ impl ValidityCheck for ProjectivePoint {
         }
         let d_times_xxyy = &constants::EDWARDS_D * &xx_times_yy;
         proof {
-            assume(forall|i: int|
-                0 <= i < 5 ==> #[trigger] (ZZZZ.limbs[i] + d_times_xxyy.limbs[i]) <= u64::MAX);  // for rhs = &ZZZZ + &d_times_xxyy
+            assume(sum_of_limbs_bounded(&ZZZZ, &d_times_xxyy, u64::MAX));  // for rhs = &ZZZZ + &d_times_xxyy
         }
         let rhs = &ZZZZ + &d_times_xxyy;
 
@@ -494,6 +493,7 @@ impl ProjectivePoint {
             limbs_bounded(&self.X, 54),
             limbs_bounded(&self.Y, 54),
             limbs_bounded(&self.Z, 54),
+            sum_of_limbs_bounded(&self.X, &self.Y, u64::MAX),
         ensures
             is_valid_completed_point(result),
             // The result represents the affine doubling of self
@@ -510,17 +510,12 @@ impl ProjectivePoint {
         let XX = self.X.square();
         let YY = self.Y.square();
         let ZZ2 = self.Z.square2();
-        proof {
-            // preconditions for arithmetic traits
-            assume(forall|i: int|
-                0 <= i < 5 ==> #[trigger] (self.X.limbs[i] + self.Y.limbs[i]) <= u64::MAX)
-        }
+
         let X_plus_Y = &self.X + &self.Y;
         proof {
             // preconditions for arithmetic traits
             assume(limbs_bounded(&X_plus_Y, 54));  // for X_plus_Y_sq = X_plus_Y.square()
-            assume(forall|i: int|
-                0 <= i < 5 ==> #[trigger] (YY.limbs[i] + XX.limbs[i]) <= u64::MAX);  // for YY_plus_XX = &YY + &XX and YY_minus_XX = &YY - &XX
+            assume(sum_of_limbs_bounded(&YY, &XX, u64::MAX));  // for YY_plus_XX = &YY + &XX and YY_minus_XX = &YY - &XX
             assume(limbs_bounded(&YY, 54) && limbs_bounded(&XX, 54));  // for YY_plus_XX = &YY + &XX and YY_minus_XX = &YY - &XX
         }
         let X_plus_Y_sq = X_plus_Y.square();

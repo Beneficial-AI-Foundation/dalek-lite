@@ -80,7 +80,7 @@ pub open spec fn seq_from16(b: &[u8; 16]) -> Seq<u8> {
 }
 
 pub open spec fn seq_from32(b: &[u8; 32]) -> Seq<u8> {
-    Seq::new(32, |i: int| b[i])
+    b@
 }
 
 #[verifier::external_body]

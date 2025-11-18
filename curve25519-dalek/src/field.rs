@@ -60,6 +60,8 @@ use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
+use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t19_lemma::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow22501_t3_lemma::*;
@@ -139,7 +141,7 @@ impl ConstantTimeEq for FieldElement {
         Choice)/* <VERIFICATION NOTE>
      - Use wrapper functions for ConstantTimeEq and CtOption
      - DRAFT SPEC: spec_fe51_to_bytes is a complex spec function that should correspond to as_bytes()
-     - Proof uses lemma_as_bytes_equals_spec_fe51_to_bytes (currently admitted)
+     - Proof uses lemma_as_bytes_equals_spec_fe51_to_bytes
     </VERIFICATION NOTE> */
 
         ensures
@@ -157,9 +159,6 @@ impl ConstantTimeEq for FieldElement {
         let result = ct_eq_bytes32(&self_bytes, &other_bytes);
 
         proof {
-            use crate::core_assumes::seq_from32;
-            use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
-
             // Proof chain:
             // 1. ct_eq_bytes32 ensures: choice_is_true(result) == (self_bytes == other_bytes)
             // 2. Array equality <==> sequence equality
@@ -167,11 +166,9 @@ impl ConstantTimeEq for FieldElement {
             // 4. lemma_as_bytes_equals_spec_fe51_to_bytes: seq_from32(&bytes) == spec_fe51_to_bytes(fe)
             //    when u8_32_as_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
             // 5. Therefore: choice_is_true(result) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
-
             // From as_bytes() postcondition, we know:
             // - u8_32_as_nat(&self_bytes) == u64_5_as_nat(self.limbs) % p()
             // - u8_32_as_nat(&other_bytes) == u64_5_as_nat(other.limbs) % p()
-
             // Apply lemmas with the bytes and the postcondition requirement
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &self_bytes);
             lemma_as_bytes_equals_spec_fe51_to_bytes(other, &other_bytes);
@@ -320,10 +317,8 @@ impl FieldElement {
             pow255_gt_19();  // Prove p() > 0
 
             // Square operation postconditions (from .square() method ensures clause)
-            assert(u64_5_as_nat(t0.limbs) % p() == pow(
-                u64_5_as_nat(self.limbs) as int,
-                2,
-            ) as nat % p());
+            assert(u64_5_as_nat(t0.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, 2) as nat
+                % p());
             assert(u64_5_as_nat(t0_sq.limbs) % p() == pow(u64_5_as_nat(t0.limbs) as int, 2) as nat
                 % p());
             assert(u64_5_as_nat(t1.limbs) % p() == pow(u64_5_as_nat(t0_sq.limbs) as int, 2) as nat
@@ -704,27 +699,20 @@ impl FieldElement {
             assert(u64_5_as_nat(self.limbs) % p() == spec_field_element(self));
 
             // Use lemma_pow_mod_noop to bridge from spec_field_element to u64_5_as_nat
-            lemma_pow_mod_noop(
-                u64_5_as_nat(self.limbs) as int,
-                (pow2(250) - 1) as nat,
-                p() as int,
-            );
+            lemma_pow_mod_noop(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat, p() as int);
             assert(pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) >= 0) by {
-                lemma_pow_nonnegative(
-                    u64_5_as_nat(self.limbs) as int,
-                    (pow2(250) - 1) as nat,
-                );
+                lemma_pow_nonnegative(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat);
             }
-            assert(pow((u64_5_as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat) >= 0)
-                by {
+            assert(pow((u64_5_as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat) >= 0) by {
                 lemma_pow_nonnegative(
                     (u64_5_as_nat(self.limbs) % p()) as int,
                     (pow2(250) - 1) as nat,
                 );
             }
-            assert(pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p()
-                == pow((u64_5_as_nat(self.limbs) % p()) as int, (pow2(250) - 1) as nat) as nat
-                % p());
+            assert(pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat % p() == pow(
+                (u64_5_as_nat(self.limbs) % p()) as int,
+                (pow2(250) - 1) as nat,
+            ) as nat % p());
             assert(u64_5_as_nat(t19.limbs) % p() == pow(
                 u64_5_as_nat(self.limbs) as int,
                 (pow2(250) - 1) as nat,

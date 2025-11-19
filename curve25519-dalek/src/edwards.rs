@@ -1398,8 +1398,9 @@ define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 
 define_mul_variants!(LHS = EdwardsPoint, RHS = Scalar, Output = EdwardsPoint);
 
-/* ORIGINAL CODE: Scalar * EdwardsPoint macro call commented out to avoid duplicates
-   The implementations are now manually defined below inside the verus! block
+/* ORIGINAL CODE: Scalar * EdwardsPoint macro commented out because macro-generated code
+   is outside verus! blocks and cannot be used inside verus! blocks.
+   Manual implementations are in mul_specs.rs inside verus! block.
 
 define_mul_variants!(LHS = Scalar, RHS = EdwardsPoint, Output = EdwardsPoint);
 */

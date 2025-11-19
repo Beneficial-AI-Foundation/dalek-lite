@@ -10,6 +10,9 @@
 // - Henry de Valence <hdevalence@hdevalence.ca>
 //! Internal macros.
 /// Define borrow and non-borrow variants of `Add`.
+///
+use vstd::prelude::*;
+
 macro_rules! define_add_variants {
     (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
         impl<'b> Add<&'b $rhs> for $lhs {

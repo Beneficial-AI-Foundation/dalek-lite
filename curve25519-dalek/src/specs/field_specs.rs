@@ -125,6 +125,21 @@ pub proof fn field_inv_axiom(a: nat)
     admit();  // This would be proven from field theory or assumed as axiom
 }
 
+/// Check if a value is a quadratic residue (square) modulo p
+pub open spec fn math_is_square(a: nat) -> bool {
+    exists|y: nat| (#[trigger] (y * y) % p()) == (a % p())
+}
+
+/// Compute a square root modulo p (if it exists)
+/// Returns some y such that y^2 ≡ a (mod p)
+/// The result is unspecified if a is not a quadratic residue
+pub open spec fn math_sqrt(a: nat) -> nat
+    recommends
+        math_is_square(a),
+{
+    choose|y: nat| y < p() && #[trigger] ((y * y) % p()) == (a % p())
+}
+
 /// Spec function for FieldElement::from_bytes
 /// Takes a 32-byte array and produces a FieldElement51
 /// The high bit of byte[31] is ignored, giving a 255-bit value

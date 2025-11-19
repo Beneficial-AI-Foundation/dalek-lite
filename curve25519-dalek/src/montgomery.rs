@@ -238,15 +238,28 @@ impl Zeroize for MontgomeryPoint {
 
 impl MontgomeryPoint {
     /// Fixed-base scalar multiplication (i.e. multiplication by the base point).
-    #[verifier::external_body]
     pub fn mul_base(scalar: &Scalar) -> Self {
         EdwardsPoint::mul_base(scalar).to_montgomery()
     }
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-    #[verifier::external_body]
-    pub fn mul_clamped(self, bytes: [u8; 32]) -> Self {
+    pub fn mul_clamped(self, bytes: [u8; 32]) -> (result: Self)
+        requires
+            is_valid_montgomery_point(self),
+        ensures/* VERIFICATION NOTE: Result represents [n]self where n is the clamped integer value
+      The corresponding scalar is not reduced modulo the group order. */
+
+            ({
+                let P = canonical_montgomery_lift(spec_montgomery_point(self));
+                let clamped_bytes = spec_clamp_integer(bytes);
+                let n = bytes_to_nat(&clamped_bytes);
+                let R = montgomery_scalar_mul(P, n);
+                spec_montgomery_point(result) == spec_u_coordinate(R)
+            }),
+            // The clamped bytes satisfy the clamping invariant
+            is_clamped_integer(&spec_clamp_integer(bytes)),
+    {
         // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
         // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
         // needs to hold is invariant #1, i.e., the scalar is less than 2^255. This is guaranteed
@@ -255,7 +268,18 @@ impl MontgomeryPoint {
         // issues arising from the fact that the curve point is not necessarily in the prime-order
         // subgroup.
         let s = Scalar { bytes: clamp_integer(bytes) };
-        s * self
+        let result = s * self;
+        proof {
+            // This should follow from the unreduced Mul spec, but we assume it for now:
+            assume({
+                let P = canonical_montgomery_lift(spec_montgomery_point(self));
+                let clamped_bytes = spec_clamp_integer(bytes);
+                let n = bytes_to_nat(&clamped_bytes);
+                let R = montgomery_scalar_mul(P, n);
+                spec_montgomery_point(result) == spec_u_coordinate(R)
+            });
+        }
+        result
     }
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see
@@ -312,23 +336,22 @@ impl MontgomeryPoint {
     /// Given `self` \\( = u\_0(P) \\), and a big-endian bit representation of an integer
     /// \\(n\\) as a slice, return \\( u\_0(\[n\]P) \\).
     ///
-    // VERIFICATION NOTE: refactored mul_bits_de code
+    // VERIFICATION NOTE: refactored mul_bits_be code
     pub fn mul_bits_be(&self, bits: &[bool]) -> (result: MontgomeryPoint)
         requires
             bits.len() <= 255,
             is_valid_montgomery_point(*self),
         ensures
-    // Result represents [n]self where n is the scalar value from bits
-    // If self has u-coordinate matching affine point P, result has u-coordinate of [n]P
+    // Let P be the canonical affine lift of input u-coordinate
 
-            forall|P: MontgomeryAffine|
-                is_valid_montgomery_affine(P) && spec_montgomery_point(*self) == spec_u_coordinate(
-                    P,
-                ) ==> {
-                    let n = bits_be_to_nat(bits, bits@.len() as int);
-                    let x = montgomery_scalar_mul(P, n);
-                    spec_montgomery_point(result) == spec_u_coordinate(x)
-                },
+            ({
+                let P = canonical_montgomery_lift(spec_montgomery_point(*self));
+                let n = bits_be_to_nat(bits, bits@.len() as int);
+                let R = montgomery_scalar_mul(P, n);
+
+                // result encodes u([n]P)
+                spec_montgomery_point(result) == spec_u_coordinate(R)
+            }),
     {
         // Algorithm 8 of Costello-Smith 2017
         let affine_u = FieldElement::from_bytes(&self.0);
@@ -369,17 +392,14 @@ impl MontgomeryPoint {
         }
         let result = x0.as_affine();
         proof {
-            // postcondition
-            // Result represents [n]self where n is the scalar value from bits
-            // If self has u-coordinate matching affine point P, result has u-coordinate of [n]P
-            assume(forall|P: MontgomeryAffine|
-                is_valid_montgomery_affine(P) && spec_montgomery_point(*self) == spec_u_coordinate(
-                    P,
-                ) ==> {
-                    let n = bits_be_to_nat(bits, bits@.len() as int);
-                    let x = montgomery_scalar_mul(P, n);
-                    spec_montgomery_point(result) == spec_u_coordinate(x)
-                });
+            // postcondition using canonical lift
+            assume({
+                let u0 = spec_montgomery_point(*self);
+                let P = canonical_montgomery_lift(u0);
+                let n = bits_be_to_nat(bits, bits@.len() as int);
+                let R = montgomery_scalar_mul(P, n);
+                spec_montgomery_point(result) == spec_u_coordinate(R)
+            });
         }
         result
     }
@@ -721,53 +741,44 @@ define_mul_variants!(
     Output = MontgomeryPoint
 );
 
+/* ORIGINAL CODE: Scalar * MontgomeryPoint macro call commented out to avoid duplicates
+   The implementations are now manually defined inside the verus! block below
+
 define_mul_variants!(
     LHS = Scalar,
     RHS = MontgomeryPoint,
     Output = MontgomeryPoint
 );
+*/
 
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
-    open spec fn obeys_mul_spec() -> bool {
-        false  // Set to false since we use ensures clause instead of concrete spec
-
-    }
-
-    open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        is_valid_montgomery_point(*self)
-    }
-
-    open spec fn mul_spec(self, rhs: &Scalar) -> MontgomeryPoint {
-        arbitrary()  // Placeholder - actual spec is in ensures clause
-
-    }
-}
-
+// NOTE: MulSpecImpl for &MontgomeryPoint * &Scalar moved to mul_specs.rs
 /// Multiply this `MontgomeryPoint` by a `Scalar`.
 impl Mul<&Scalar> for &MontgomeryPoint {
     type Output = MontgomeryPoint;
 
     /// Given `self` \\( = u\_0(P) \\), and a `Scalar` \\(n\\), return \\( u\_0(\[n\]P) \\)
+    ///
+    /* VERIFICATION NOTE:
+    The implementation multiplies by the **unreduced** byte representation
+     of the scalar. This is important for:
+     - X25519 clamped scalars (which are NOT reduced mod l)
+     - Correct behavior on points on the twist or with non-trivial cofactor
+
+    For canonical (reduced) scalars on prime-order subgroup points, the mathematical
+    property `[n]P = [n mod l]P` could hold, to be proven separately if needed.
+    */
     fn mul(self, scalar: &Scalar) -> (result: MontgomeryPoint)
         ensures
-    // Result represents [n]self where n is the scalar value (mod group order)
-    // If self has u-coordinate matching affine point P, result has u-coordinate of [n]P
+    // Multiplies by the UNREDUCED scalar value using canonical Montgomery lift
 
-            forall|P: MontgomeryAffine|
-                is_valid_montgomery_affine(P) && spec_montgomery_point(*self) == spec_u_coordinate(
-                    P,
-                ) ==> {
-                    let x = montgomery_scalar_mul(P, spec_scalar(scalar));
-                    spec_montgomery_point(result) == spec_u_coordinate(x)
-                },
+            ({
+                let u0 = spec_montgomery_point(*self);
+                let P = canonical_montgomery_lift(u0);
+                let n_unreduced = scalar_to_nat(scalar);
+                let R = montgomery_scalar_mul(P, n_unreduced);
+                spec_montgomery_point(result) == spec_u_coordinate(R)
+            }),
     {
-        proof {
-            // VERIFICATION NOTE: Proof that mul correctly implements scalar multiplication.
-            // This depends on the correctness of mul_bits_be.
-            assume(false);
-        }
-
         // We multiply by the integer representation of the given Scalar. By scalar invariant #1,
         // the MSB is 0, so we can skip it.
         /* ORIGINAL CODE (using Iterator):
@@ -783,7 +794,19 @@ impl Mul<&Scalar> for &MontgomeryPoint {
             bits_be[i] = bits_le[254 - i];
             i += 1;
         }
-        self.mul_bits_be(&bits_be)
+        let result = self.mul_bits_be(&bits_be);
+        proof {
+            // postcondition: multiplication by unreduced scalar value using canonical lift
+            assume({
+                let u0 = spec_montgomery_point(*self);
+                let P = canonical_montgomery_lift(u0);
+                let n_unreduced = scalar_to_nat(scalar);
+                let R = montgomery_scalar_mul(P, n_unreduced);
+                spec_montgomery_point(result) == spec_u_coordinate(R)
+            });
+        }
+        ;
+        result
     }
 }
 
@@ -792,52 +815,75 @@ impl MulAssign<&Scalar> for MontgomeryPoint {
         requires
             is_valid_montgomery_point(*old(self)),
         ensures
-    // Result represents [n]old(self) where n is the scalar value
+    // Result represents [n]old(self) where n is the UNREDUCED scalar value
+    // Uses canonical Montgomery lift
 
-            exists|P: MontgomeryAffine| #[trigger]
-                is_valid_montgomery_affine(P) && spec_montgomery_point(*old(self))
-                    == spec_u_coordinate(P) && {
-                    let result_point = montgomery_scalar_mul(P, spec_scalar(scalar));
-                    spec_montgomery_point(*self) == spec_u_coordinate(result_point)
-                },
+            ({
+                let u0 = spec_montgomery_point(*old(self));
+                let P = canonical_montgomery_lift(u0);
+                let n_unreduced = scalar_to_nat(scalar);
+                let R = montgomery_scalar_mul(P, n_unreduced);
+                spec_montgomery_point(*self) == spec_u_coordinate(R)
+            }),
     {
         *self = &*self * scalar;
     }
 }
 
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for &Scalar {
-    open spec fn obeys_mul_spec() -> bool {
-        false  // Set to false since we use ensures clause instead of concrete spec
-
-    }
-
-    open spec fn mul_req(self, rhs: &MontgomeryPoint) -> bool {
-        is_valid_montgomery_point(*rhs)
-    }
-
-    open spec fn mul_spec(self, rhs: &MontgomeryPoint) -> MontgomeryPoint {
-        arbitrary()  // Placeholder - actual spec is in ensures clause
-
-    }
-}
-
+// NOTE: MulSpecImpl for &Scalar * &MontgomeryPoint moved to mul_specs.rs
 impl Mul<&MontgomeryPoint> for &Scalar {
     type Output = MontgomeryPoint;
 
+    /* VERIFICATION NOTE
+     -This operation is commutative and delegates to `point * scalar`.
+       See the documentation for `&MontgomeryPoint * &Scalar` for details.
+     */
     fn mul(self, point: &MontgomeryPoint) -> (result: MontgomeryPoint)
         ensures
-    // Scalar multiplication is commutative: scalar * point = point * scalar
+    // Delegates to point * self, which multiplies by the unreduced scalar using canonical lift
 
-            exists|P: MontgomeryAffine| #[trigger]
-                is_valid_montgomery_affine(P) && spec_montgomery_point(*point) == spec_u_coordinate(
-                    P,
-                ) && {
-                    let result_point = montgomery_scalar_mul(P, spec_scalar(self));
-                    spec_montgomery_point(result) == spec_u_coordinate(result_point)
-                },
+            ({
+                let u0 = spec_montgomery_point(*point);
+                let P = canonical_montgomery_lift(u0);
+                let n_unreduced = scalar_to_nat(self);
+                let R = montgomery_scalar_mul(P, n_unreduced);
+                spec_montgomery_point(result) == spec_u_coordinate(R)
+            }),
     {
         point * self
+    }
+}
+
+/*VERIFICATION NOTE:
+ Manual implementations of Scalar * MontgomeryPoint variants
+ These are normally generated by define_mul_variants! macro, but we define them
+ manually inside verus! block so Verus can see them for verification
+ They transparently delegate to the reference implementation (&Scalar * &MontgomeryPoint)
+ which is already inside the verus block with full specifications
+ */
+
+// NOTE: MulSpecImpl for Scalar * MontgomeryPoint variants moved to mul_specs.rs
+impl<'b> Mul<&'b MontgomeryPoint> for Scalar {
+    type Output = MontgomeryPoint;
+
+    fn mul(self, rhs: &'b MontgomeryPoint) -> MontgomeryPoint {
+        &self * rhs
+    }
+}
+
+impl<'a> Mul<MontgomeryPoint> for &'a Scalar {
+    type Output = MontgomeryPoint;
+
+    fn mul(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
+        self * &rhs
+    }
+}
+
+impl Mul<MontgomeryPoint> for Scalar {
+    type Output = MontgomeryPoint;
+
+    fn mul(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
+        &self * &rhs
     }
 }
 

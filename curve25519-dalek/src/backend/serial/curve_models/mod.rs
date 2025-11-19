@@ -564,14 +564,11 @@ impl vstd::std_specs::ops::AddSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
 
     open spec fn add_req(self, rhs: &ProjectiveNielsPoint) -> bool {
         // Preconditions needed for field operations
-        limbs_bounded(&self.X, 54) &&
-        limbs_bounded(&self.Y, 54) &&
-        limbs_bounded(&self.Z, 54) &&
-        limbs_bounded(&self.T, 54) &&
-        limbs_bounded(&rhs.Y_plus_X, 54) &&
-        limbs_bounded(&rhs.Y_minus_X, 54) &&
-        limbs_bounded(&rhs.Z, 54) &&
-        limbs_bounded(&rhs.T2d, 54)
+        limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54)
+            && limbs_bounded(&self.T, 54) && limbs_bounded(&rhs.Y_plus_X, 54) && limbs_bounded(
+            &rhs.Y_minus_X,
+            54,
+        ) && limbs_bounded(&rhs.Z, 54) && limbs_bounded(&rhs.T2d, 54)
     }
 
     open spec fn add_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
@@ -606,7 +603,7 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
         let ZZ = &self.Z * &other.Z;
         proof {
             assume(sum_of_limbs_bounded(&ZZ, &ZZ, u64::MAX));  // for ZZ2 = &ZZ + &ZZ
-        }   
+        }
         let ZZ2 = &ZZ + &ZZ;
         proof {
             assume(limbs_bounded(&ZZ2, 54));  // for ZZ2 = &ZZ + &ZZ
@@ -627,8 +624,6 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
 }
 
 } // verus!
-
-
 //#[doc(hidden)]
 impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;

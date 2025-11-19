@@ -769,22 +769,13 @@ impl Mul<&Scalar> for &MontgomeryPoint {
 
     /// Given `self` \\( = u\_0(P) \\), and a `Scalar` \\(n\\), return \\( u\_0(\[n\]P) \\)
     ///
-    /* VERIFICATION NOTE:
-    The implementation multiplies by the **unreduced** byte representation
-     of the scalar. This is important for:
-     - X25519 clamped scalars (which are NOT reduced mod l)
-     - Correct behavior on points on the twist or with non-trivial cofactor
-
-    For canonical (reduced) scalars on prime-order subgroup points, the mathematical
-    property `[n]P = [n mod l]P` could hold, to be proven separately if needed.
-    */
     fn mul(self, scalar: &Scalar) -> (result: MontgomeryPoint)
         ensures
-    // Multiplies by the UNREDUCED scalar value using canonical Montgomery lift
+    // The canonical Montgomery lift point P corresponding to this u-coordinate
+    // is multiplied by the unreduced scalar value
 
             ({
-                let u0 = spec_montgomery_point(*self);
-                let P = canonical_montgomery_lift(u0);
+                let P = canonical_montgomery_lift(spec_montgomery_point(*self));
                 let n_unreduced = scalar_to_nat(scalar);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery_point(result) == spec_u_coordinate(R)
@@ -809,8 +800,7 @@ impl Mul<&Scalar> for &MontgomeryPoint {
         proof {
             // postcondition: multiplication by unreduced scalar value using canonical lift
             assume({
-                let u0 = spec_montgomery_point(*self);
-                let P = canonical_montgomery_lift(u0);
+                let P = canonical_montgomery_lift(spec_montgomery_point(*self));
                 let n_unreduced = scalar_to_nat(scalar);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery_point(result) == spec_u_coordinate(R)

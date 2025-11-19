@@ -270,7 +270,7 @@ impl MontgomeryPoint {
         let s = Scalar { bytes: clamp_integer(bytes) };
         let result = s * self;
         proof {
-            // This should follow from the unreduced Mul spec, but we assume it for now:
+            // postcondition
             assume({
                 let P = canonical_montgomery_lift(spec_montgomery_point(self));
                 let clamped_bytes = spec_clamp_integer(bytes);
@@ -342,9 +342,8 @@ impl MontgomeryPoint {
             bits.len() <= 255,
             is_valid_montgomery_point(*self),
         ensures
-    // Let P be the canonical affine lift of input u-coordinate
-
             ({
+                // Let P be the canonical affine lift of input u-coordinate
                 let P = canonical_montgomery_lift(spec_montgomery_point(*self));
                 let n = bits_be_to_nat(bits, bits@.len() as int);
                 let R = montgomery_scalar_mul(P, n);
@@ -631,12 +630,6 @@ impl ProjectivePoint {
                 }
             },
     {
-        proof {
-            // VERIFICATION NOTE: Assume preconditions for FieldElement operations
-            // Multiplication requires limbs bounded by 2^54
-            //     assume(forall|i: int| 0 <= i < 5 ==> self.U.limbs[i] < (1u64 << 54));
-            //     assume(forall|i: int| 0 <= i < 5 ==> self.W.limbs[i] < (1u64 << 54));
-        }
         let u = &self.U * &self.W.invert();
         let result = MontgomeryPoint(u.as_bytes());
         proof {
@@ -675,27 +668,45 @@ fn differential_add_and_double(
     affine_PmQ: &FieldElement,
 )
     requires
-// There exist full affine Montgomery points that P and Q represent,
-// with the differential relationship maintained.
+// The differential relationship: P and Q have valid u-coordinates,
+// and affine_PmQ is u(P - Q) using canonical lifts
 
-        exists|P_full: MontgomeryAffine, Q_full: MontgomeryAffine| #[trigger]
-            differential_relation_holds(*old(P), *old(Q), affine_PmQ, P_full, Q_full),
+        ({
+            let u_P = spec_projective_u_coordinate(*old(P));
+            let u_Q = spec_projective_u_coordinate(*old(Q));
+            let P_aff = canonical_montgomery_lift(u_P);
+            let Q_aff = canonical_montgomery_lift(u_Q);
+
+            // Both u-coordinates must be valid (allowing canonical Montgomery lift)
+            is_valid_u_coordinate(u_P) && is_valid_u_coordinate(u_Q)
+                &&
+            // P and Q are distinct points
+            P_aff != Q_aff
+                &&
+            // affine_PmQ is exactly u(canonical_lift(P) - canonical_lift(Q))
+            match montgomery_sub(P_aff, Q_aff) {
+                MontgomeryAffine::Finite { u: u_diff, .. } => spec_field_element(affine_PmQ)
+                    == u_diff,
+                MontgomeryAffine::Infinity => false,
+            }
+        }),
     ensures
-// The same P_full and Q_full that satisfied the differential invariant
-// now have their double and sum represented by the output projective points.
+// After the operation, P represents [2]P_old and Q represents P_old + Q_old
 
-        exists|P_full: MontgomeryAffine, Q_full: MontgomeryAffine|
-            {
-                // P_full and Q_full are identified by the input relationship
-                #[trigger] differential_relation_holds(*old(P), *old(Q), affine_PmQ, P_full, Q_full)
-                    &&
-                // Now P represents [2]P_full and Q represents P_full + Q_full
-                projective_represents_montgomery(*P, #[trigger] montgomery_add(P_full, P_full))
-                    && projective_represents_montgomery(
-                    *Q,
-                    #[trigger] montgomery_add(P_full, Q_full),
-                )
-            },
+        ({
+            let u_P = spec_projective_u_coordinate(*old(P));
+            let u_Q = spec_projective_u_coordinate(*old(Q));
+            let u_P_new = spec_projective_u_coordinate(*P);
+            let u_Q_new = spec_projective_u_coordinate(*Q);
+            let P_aff = canonical_montgomery_lift(u_P);
+            let Q_aff = canonical_montgomery_lift(u_Q);
+
+            // P now represents [2]P_old
+            u_P_new == spec_u_coordinate(montgomery_add(P_aff, P_aff))
+                &&
+            // Q now represents P_old + Q_old
+            u_Q_new == spec_u_coordinate(montgomery_add(P_aff, Q_aff))
+        }),
 {
     assume(false);  // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations
     let t0 = &P.U + &P.W;

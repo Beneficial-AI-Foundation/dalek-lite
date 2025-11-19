@@ -81,7 +81,8 @@ impl vstd::std_specs::ops::MulSpecImpl<Scalar> for EdwardsPoint {
 // =============================================================================
 // SECTION 2: Scalar * EdwardsPoint
 // =============================================================================
-// Specifications only - reference implementations (&Scalar * &EdwardsPoint) are in edwards.rs
+// NOTE: Manual implementations needed because macro-generated code is outside verus! blocks
+// and cannot be used from inside verus! blocks (e.g., EdwardsPoint::mul_clamped).
 /// Spec for &Scalar * &EdwardsPoint
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for &Scalar {
@@ -302,6 +303,8 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
 
 // Owned-type implementations: delegate to &Scalar * &MontgomeryPoint
 // (Reference implementation is in montgomery.rs with detailed ensures clauses)
+// NOTE: Manual implementations needed because macro-generated code is outside verus! blocks
+// and cannot be used from inside verus! blocks (e.g., MontgomeryPoint::mul_clamped).
 impl<'b> Mul<&'b MontgomeryPoint> for Scalar {
     type Output = MontgomeryPoint;
 

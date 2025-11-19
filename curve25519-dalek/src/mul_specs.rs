@@ -5,7 +5,7 @@ use core::ops::Mul;
 use vstd::prelude::*;
 
 /* VERIFICATION NOTE: this file contains
-- expaned macro calls for multiplicaitons between Scalar, EdwardsPoint, and MontgomeryPoint.
+- inlined macro definitions for multiplicaitons between Scalar, EdwardsPoint, and MontgomeryPoint.
 - their specifications as trait implementations MulSpecImpl.
 */
 verus! {

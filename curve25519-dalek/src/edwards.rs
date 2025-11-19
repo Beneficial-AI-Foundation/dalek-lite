@@ -1109,17 +1109,85 @@ impl EdwardsPoint {
     }
 }
 
-} // verus!
 // ------------------------------------------------------------------------
 // Addition and Subtraction
 // ------------------------------------------------------------------------
-impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
-    type Output = EdwardsPoint;
-    fn add(self, other: &'b EdwardsPoint) -> EdwardsPoint {
-        (self + &other.as_projective_niels()).as_extended()
+/// Spec for &EdwardsPoint + &EdwardsPoint
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddSpecImpl<&EdwardsPoint> for &EdwardsPoint {
+    open spec fn obeys_add_spec() -> bool {
+        false  // Set to false since we use ensures clause instead of concrete spec
+
+    }
+
+    open spec fn add_req(self, rhs: &EdwardsPoint) -> bool {
+        is_valid_edwards_point(*self) && is_valid_edwards_point(*rhs)
+            &&
+        // limb bounds needed because of arithmetic inside:
+        limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54)
+            && limbs_bounded(&self.T, 54) && limbs_bounded(&rhs.X, 54) && limbs_bounded(&rhs.Y, 54)
+            && limbs_bounded(&rhs.Z, 54) && limbs_bounded(&rhs.T, 54)
+    }
+
+    open spec fn add_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
+        arbitrary()  // Placeholder - actual spec is in ensures clause
+
     }
 }
 
+impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
+    type Output = EdwardsPoint;
+
+    fn add(self, other: &'b EdwardsPoint) -> (result: EdwardsPoint)
+        ensures
+            is_valid_edwards_point(result),
+            // Semantic correctness: affine addition law
+            ({
+                let (x1, y1) = affine_edwards_point(*self);
+                let (x2, y2) = affine_edwards_point(*other);
+                affine_edwards_point(result) == edwards_add(x1, y1, x2, y2)
+            }),
+    {
+        /* ORIGINAL CODE
+        (self + &other.as_projective_niels()).as_extended()
+        */
+        let other_niels = other.as_projective_niels();
+
+        proof {
+            // Assume preconditions for EdwardsPoint + ProjectiveNielsPoint addition
+            assume(limbs_bounded(&other_niels.Y_plus_X, 54));
+            assume(limbs_bounded(&other_niels.Y_minus_X, 54));
+            assume(limbs_bounded(&other_niels.Z, 54));
+            assume(limbs_bounded(&other_niels.T2d, 54));
+        }
+
+        let sum = self + &other_niels;
+
+        proof {
+            // preconditions for CompletedPoint.as_extended()
+            assume(is_valid_completed_point(sum));
+            assume(limbs_bounded(&sum.X, 54) && limbs_bounded(&sum.Y, 54) && limbs_bounded(
+                &sum.Z,
+                54,
+            ) && limbs_bounded(&sum.T, 54));
+        }
+
+        let result = sum.as_extended();
+
+        proof {
+            // Assume postconditions
+            assume(is_valid_edwards_point(result));
+            assume({
+                let (x1, y1) = affine_edwards_point(*self);
+                let (x2, y2) = affine_edwards_point(*other);
+                affine_edwards_point(result) == edwards_add(x1, y1, x2, y2)
+            });
+        }
+        result
+    }
+}
+
+} // verus!
 define_add_variants!(
     LHS = EdwardsPoint,
     RHS = EdwardsPoint,

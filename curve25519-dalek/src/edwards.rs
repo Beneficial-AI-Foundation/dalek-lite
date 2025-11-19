@@ -1399,12 +1399,39 @@ define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 define_mul_variants!(LHS = EdwardsPoint, RHS = Scalar, Output = EdwardsPoint);
 
 /* ORIGINAL CODE: Scalar * EdwardsPoint macro call commented out to avoid duplicates
-   The implementations are now manually defined inside the verus! block in mul_specs.rs
+   The implementations are now manually defined below inside the verus! block
 
 define_mul_variants!(LHS = Scalar, RHS = EdwardsPoint, Output = EdwardsPoint);
 */
 
 verus! {
+
+impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
+    type Output = EdwardsPoint;
+
+    /// Scalar multiplication: compute `scalar * self`.
+    ///
+    /// For scalar multiplication of a basepoint,
+    /// `EdwardsBasepointTable` is approximately 4x faster.
+    /// Delegates to backend::variable_base_mul
+    #[verifier::external_body]
+    fn mul(self, scalar: &'b Scalar) -> EdwardsPoint {
+        crate::backend::variable_base_mul(self, scalar)
+    }
+}
+
+impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
+    type Output = EdwardsPoint;
+
+    /// Scalar multiplication: compute `scalar * point`.
+    ///
+    /// For scalar multiplication of a basepoint,
+    /// `EdwardsBasepointTable` is approximately 4x faster.
+    #[verifier::external_body]  // Delegates to &EdwardsPoint * &Scalar which calls external variable_base_mul
+    fn mul(self, point: &'b EdwardsPoint) -> EdwardsPoint {
+        point * self
+    }
+}
 
 impl EdwardsPoint {
     /// Fixed-base scalar multiplication by the Ed25519 base point.

@@ -13,6 +13,7 @@ verus! {
 // =============================================================================
 // SECTION 1: EdwardsPoint * Scalar
 // =============================================================================
+// Specifications only - reference implementations (&EdwardsPoint * &Scalar) are in edwards.rs
 /// Spec for &EdwardsPoint * &Scalar (reference implementation)
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &EdwardsPoint {
@@ -26,20 +27,6 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &EdwardsPoint {
 
     open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
         arbitrary()
-    }
-}
-
-impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
-    type Output = EdwardsPoint;
-
-    /// Scalar multiplication: compute `scalar * self`.
-    ///
-    /// For scalar multiplication of a basepoint,
-    /// `EdwardsBasepointTable` is approximately 4x faster.
-    /// Delegates to backend::variable_base_mul
-    #[verifier::external_body]
-    fn mul(self, scalar: &'b Scalar) -> EdwardsPoint {
-        crate::backend::variable_base_mul(self, scalar)
     }
 }
 
@@ -94,6 +81,7 @@ impl vstd::std_specs::ops::MulSpecImpl<Scalar> for EdwardsPoint {
 // =============================================================================
 // SECTION 2: Scalar * EdwardsPoint
 // =============================================================================
+// Specifications only - reference implementations (&Scalar * &EdwardsPoint) are in edwards.rs
 /// Spec for &Scalar * &EdwardsPoint
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for &Scalar {
@@ -107,19 +95,6 @@ impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for &Scalar {
 
     open spec fn mul_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
         arbitrary()
-    }
-}
-
-impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
-    type Output = EdwardsPoint;
-
-    /// Scalar multiplication: compute `scalar * point`.
-    ///
-    /// For scalar multiplication of a basepoint,
-    /// `EdwardsBasepointTable` is approximately 4x faster.
-    #[verifier::external_body]  // Delegates to &EdwardsPoint * &Scalar which calls external variable_base_mul
-    fn mul(self, point: &'b EdwardsPoint) -> EdwardsPoint {
-        point * self
     }
 }
 

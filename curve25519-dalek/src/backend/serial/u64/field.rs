@@ -49,6 +49,8 @@ use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::lemmas::common_lemmas::shift_lemmas::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::field_lemmas::add_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::compute_q_lemmas::*;
@@ -173,6 +175,8 @@ impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
             sum_of_limbs_bounded(old(self), _rhs, u64::MAX),
         ensures
             *self == spec_add_fe51_limbs(old(self), _rhs),
+            spec_field_element_as_nat(self) == spec_field_element_as_nat(old(self))
+                + spec_field_element_as_nat(_rhs),
             spec_field_element(self) == math_field_add(
                 spec_field_element(old(self)),
                 spec_field_element(_rhs),
@@ -182,9 +186,8 @@ impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
         for i in 0..5
             invariant
                 forall|j: int|
-                    #![auto]
-                    0 <= j < i ==> self.limbs[j] == original_limbs[j] + _rhs.limbs[j],
-                forall|j: int| #![auto] i <= j < 5 ==> self.limbs[j] == original_limbs[j],
+                    0 <= j < i ==> #[trigger] self.limbs[j] == original_limbs[j] + _rhs.limbs[j],
+                forall|j: int| i <= j < 5 ==> #[trigger] self.limbs[j] == original_limbs[j],
                 forall|j: int|
                     0 <= j < 5 ==> #[trigger] original_limbs[j] + _rhs.limbs[j] <= u64::MAX,
         {
@@ -196,11 +199,10 @@ impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
             // After loop, all limbs are the sum: self.limbs[i] == original_limbs[i] + _rhs.limbs[i]
             // This means self.limbs equals spec_add_fe51_limbs(old(self), _rhs).limbs
             assert(self.limbs =~= spec_add_fe51_limbs(old(self), _rhs).limbs);
+            // Discharge the rest of the ensures
+            lemma_field51_add(old(self), _rhs);
         }
-        assume(spec_field_element(self) == math_field_add(
-            spec_field_element(old(self)),
-            spec_field_element(_rhs),
-        ));
+
     }
 }
 
@@ -231,6 +233,8 @@ impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
 
         ensures
             output == spec_add_fe51_limbs(self, _rhs),
+            spec_field_element_as_nat(&output) == spec_field_element_as_nat(self)
+                + spec_field_element_as_nat(_rhs),
             spec_field_element(&output) == math_field_add(
                 spec_field_element(self),
                 spec_field_element(_rhs),
@@ -245,9 +249,8 @@ impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
         for i in 0..5
             invariant
                 forall|j: int|
-                    #![auto]
-                    0 <= j < i ==> output.limbs[j] == original_limbs[j] + _rhs.limbs[j],
-                forall|j: int| #![auto] i <= j < 5 ==> output.limbs[j] == original_limbs[j],
+                    0 <= j < i ==> #[trigger] output.limbs[j] == original_limbs[j] + _rhs.limbs[j],
+                forall|j: int| i <= j < 5 ==> #[trigger] output.limbs[j] == original_limbs[j],
                 forall|j: int|
                     0 <= j < 5 ==> #[trigger] original_limbs[j] + _rhs.limbs[j] <= u64::MAX,
         {
@@ -256,16 +259,19 @@ impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
             output.limbs[i] += _rhs.limbs[i];
         }
         /* </MODIFIED CODE> */
-        // Trigger the forall invariant
-        assert(output.limbs == [
-            (original_limbs[0] + _rhs.limbs[0]) as u64,
-            (original_limbs[1] + _rhs.limbs[1]) as u64,
-            (original_limbs[2] + _rhs.limbs[2]) as u64,
-            (original_limbs[3] + _rhs.limbs[3]) as u64,
-            (original_limbs[4] + _rhs.limbs[4]) as u64,
-        ]);
-        assume(spec_field_element(&output) == (spec_field_element(self) + spec_field_element(_rhs))
-            % p());
+        proof {
+            // Trigger the forall invariant
+            assert(output.limbs == [
+                (original_limbs[0] + _rhs.limbs[0]) as u64,
+                (original_limbs[1] + _rhs.limbs[1]) as u64,
+                (original_limbs[2] + _rhs.limbs[2]) as u64,
+                (original_limbs[3] + _rhs.limbs[3]) as u64,
+                (original_limbs[4] + _rhs.limbs[4]) as u64,
+            ]);
+
+            lemma_field51_add(self, _rhs);
+        }
+
         output
     }
 }

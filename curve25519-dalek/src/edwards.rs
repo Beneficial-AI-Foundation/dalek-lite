@@ -1187,7 +1187,6 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
     }
 }
 
-} // verus!
 define_add_variants!(
     LHS = EdwardsPoint,
     RHS = EdwardsPoint,
@@ -1196,10 +1195,26 @@ define_add_variants!(
 
 impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
     fn add_assign(&mut self, _rhs: &'b EdwardsPoint) {
+        /* ORIGINAL CODE
         *self = (self as &EdwardsPoint) + _rhs;
+        CAST TO &EdwardsPoint UNSUPPORTED */
+        proof {
+            // Assume preconditions from AddSpecImpl are satisfied
+            assume(is_valid_edwards_point(*self) && is_valid_edwards_point(*_rhs));
+            assume(limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(
+                &self.Z,
+                54,
+            ) && limbs_bounded(&self.T, 54));
+            assume(limbs_bounded(&_rhs.X, 54) && limbs_bounded(&_rhs.Y, 54) && limbs_bounded(
+                &_rhs.Z,
+                54,
+            ) && limbs_bounded(&_rhs.T, 54));
+        }
+        *self = &*self + _rhs;
     }
 }
 
+} // verus!
 define_add_assign_variants!(LHS = EdwardsPoint, RHS = EdwardsPoint);
 
 impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {

@@ -70,12 +70,16 @@ pub open spec fn canonical_sqrt(r: nat) -> nat
     }
 }
 
+pub open spec fn is_valid_u_coordinate(u: nat) -> bool {
+    math_is_square(montgomery_rhs(u))
+}
+
 /// Given u-coordinate of a Montgomery point (non-torsion),
 /// return the unique affine Montgomery point (u, v)
 /// where v is the canonical square root of u*(u^2 + A*u + 1).
 pub open spec fn canonical_montgomery_lift(u: nat) -> MontgomeryAffine
     recommends
-        math_is_square(montgomery_rhs(u)),
+        is_valid_u_coordinate(u),
 {
     let v = canonical_sqrt(montgomery_rhs(u));
     MontgomeryAffine::Finite { u: u % p(), v }
@@ -88,7 +92,7 @@ pub open spec fn canonical_montgomery_lift(u: nat) -> MontgomeryAffine
 /// This ensures there exists a v such that v² = montgomery_rhs(u), making (u,v) a point on the curve.
 pub open spec fn is_valid_montgomery_point(point: crate::montgomery::MontgomeryPoint) -> bool {
     let u = spec_montgomery_point(point);
-    math_is_square(montgomery_rhs(u))
+    is_valid_u_coordinate(u)
 }
 
 /// Negation on the Montgomery curve.
@@ -254,6 +258,18 @@ pub open spec fn edwards_y_from_montgomery_u(u: nat) -> nat
     math_field_mul(numerator, math_field_inv(denom))
 }
 
+/// Extract the u-coordinate from a ProjectivePoint (U:W) as u = U/W.
+/// Returns 0 if W = 0 (which represents the point at infinity).
+pub open spec fn spec_projective_u_coordinate(P: ProjectivePoint) -> nat {
+    let U = spec_field_element(&P.U);
+    let W = spec_field_element(&P.W);
+    if W == 0 {
+        0
+    } else {
+        math_field_mul(U, math_field_inv(W))
+    }
+}
+
 /// Check if a Montgomery ProjectivePoint (U:W) represents a MontgomeryAffine point (u,v) for some v.
 ///
 /// A ProjectivePoint stores only the u-coordinate in projective form: u = U/W.
@@ -280,36 +296,6 @@ pub open spec fn projective_represents_montgomery(
             // Use cross-multiplication to avoid division.
             U == math_field_mul(u, W)
         },
-    }
-}
-
-/// Helper predicate for differential_add_and_double specification.
-/// Captures the relationship between projective points P, Q, their affine representations P_full, Q_full,
-/// and the differential u-coordinate affine_PmQ.
-///
-/// This predicate states:
-/// - P_full and Q_full are valid Montgomery curve points
-/// - P represents P_full
-/// - Q represents Q_full
-/// - affine_PmQ is the u-coordinate of (P_full - Q_full)
-/// - The difference is not infinity (differential addition doesn't work at infinity)
-pub open spec fn differential_relation_holds(
-    P: ProjectivePoint,
-    Q: ProjectivePoint,
-    affine_PmQ: &crate::field::FieldElement,
-    P_full: MontgomeryAffine,
-    Q_full: MontgomeryAffine,
-) -> bool {
-    is_valid_montgomery_affine(P_full) && is_valid_montgomery_affine(Q_full)
-        && projective_represents_montgomery(P, P_full) && projective_represents_montgomery(
-        Q,
-        Q_full,
-    ) &&
-    // affine_PmQ is exactly u(P_full − Q_full)
-    match montgomery_sub(P_full, Q_full) {
-        MontgomeryAffine::Finite { u: u_diff, v: _ } => spec_field_element(affine_PmQ) == u_diff,
-        MontgomeryAffine::Infinity => false  // differential add never works at ∞
-        ,
     }
 }
 

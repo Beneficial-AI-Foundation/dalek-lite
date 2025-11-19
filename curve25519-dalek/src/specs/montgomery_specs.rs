@@ -43,11 +43,52 @@ pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
     }
 }
 
+/// Compute f(u) = u^3 + A*u^2 + u over the field.
+pub open spec fn montgomery_rhs(u: nat) -> nat {
+    let A = spec_field_element(&MONTGOMERY_A);
+    let u2 = math_field_mul(u, u);  // u^2
+    let u3 = math_field_mul(u2, u);  // u^3
+    let Au2 = math_field_mul(A, u2);  // A*u^2
+    math_field_add(math_field_add(u3, Au2), u)  // u^3 + A*u^2 + u
+
+}
+
+/// Choose a canonical square root.
+/// Return the sqrt(r) whose least-significant bit is 0.
+/// (This matches Ed25519’s canonical-sign rule.)
+pub open spec fn canonical_sqrt(r: nat) -> nat
+    recommends
+        math_is_square(r),
+{
+    let s1 = math_sqrt(r);  // some square root
+    let s2 = math_field_neg(s1);  // the other root
+
+    if (s1 % 2 == 0) {
+        s1
+    } else {
+        s2
+    }
+}
+
+/// Given u-coordinate of a Montgomery point (non-torsion),
+/// return the unique affine Montgomery point (u, v)
+/// where v is the canonical square root of u*(u^2 + A*u + 1).
+pub open spec fn canonical_montgomery_lift(u: nat) -> MontgomeryAffine
+    recommends
+        math_is_square(montgomery_rhs(u)),
+{
+    let v = canonical_sqrt(montgomery_rhs(u));
+    MontgomeryAffine::Finite { u: u % p(), v }
+}
+
 /// Check if a MontgomeryPoint's u-coordinate corresponds to a valid point on the Montgomery curve.
-/// Returns true if there exists a valid affine Montgomery point with this u-coordinate.
+///
+/// A MontgomeryPoint is valid if its u-coordinate allows a canonical Montgomery lift,
+/// which requires that montgomery_rhs(u) = u³ + A·u² + u is a quadratic residue (square) mod p.
+/// This ensures there exists a v such that v² = montgomery_rhs(u), making (u,v) a point on the curve.
 pub open spec fn is_valid_montgomery_point(point: crate::montgomery::MontgomeryPoint) -> bool {
-    exists|P: MontgomeryAffine|
-        is_valid_montgomery_affine(P) && spec_montgomery_point(point) == spec_u_coordinate(P)
+    let u = spec_montgomery_point(point);
+    math_is_square(montgomery_rhs(u))
 }
 
 /// Negation on the Montgomery curve.

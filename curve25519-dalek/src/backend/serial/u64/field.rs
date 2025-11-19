@@ -165,12 +165,7 @@ fn m(x: u64, y: u64) -> (r: u128)
 }
 
 impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
-    fn add_assign(
-        &mut self,
-        _rhs: &'a FieldElement51,
-    )
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    fn add_assign(&mut self, _rhs: &'a FieldElement51)
         requires
             sum_of_limbs_bounded(old(self), _rhs, u64::MAX),
         ensures
@@ -227,10 +222,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&FieldElement51> for &FieldElement51 {
 impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
 
-    fn add(self, _rhs: &'a FieldElement51) -> (output:
-        FieldElement51)
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    fn add(self, _rhs: &'a FieldElement51) -> (output: FieldElement51)
         ensures
             output == spec_add_fe51_limbs(self, _rhs),
             spec_field_element_as_nat(&output) == spec_field_element_as_nat(self)

@@ -1,23 +1,245 @@
-// -*- mode: rust; -*-
-//
-// This file is part of curve25519-dalek.
-// See LICENSE for licensing information.
-//
-// Multiplication specifications for Verus verification
-//
-// This module contains all the MulSpecImpl trait implementations that define
-// preconditions and postconditions for scalar multiplication operations.
+use crate::edwards::EdwardsBasepointTable;
 use crate::specs::montgomery_specs::*;
 use crate::{EdwardsPoint, MontgomeryPoint, Scalar};
+use core::ops::Mul;
 use vstd::prelude::*;
 
+/* VERIFICATION NOTE: this file contains
+- expaned macro calls for multiplicaitons between Scalar, EdwardsPoint, and MontgomeryPoint.
+- their specifications as trait implementations MulSpecImpl.
+*/
 verus! {
 
 // =============================================================================
-// MontgomeryPoint * Scalar specifications
+// SECTION 1: EdwardsPoint * Scalar
 // =============================================================================
+/// Spec for &EdwardsPoint * &Scalar (reference implementation)
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &EdwardsPoint {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &Scalar) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
+    type Output = EdwardsPoint;
+
+    /// Scalar multiplication: compute `scalar * self`.
+    ///
+    /// For scalar multiplication of a basepoint,
+    /// `EdwardsBasepointTable` is approximately 4x faster.
+    /// Delegates to backend::variable_base_mul
+    #[verifier::external_body]
+    fn mul(self, scalar: &'b Scalar) -> EdwardsPoint {
+        crate::backend::variable_base_mul(self, scalar)
+    }
+}
+
+/// Spec for &EdwardsPoint * Scalar (owned scalar)
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<Scalar> for &EdwardsPoint {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: Scalar) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: Scalar) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+/// Spec for EdwardsPoint * &Scalar (owned point)
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for EdwardsPoint {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &Scalar) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+/// Spec for EdwardsPoint * Scalar (both owned)
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<Scalar> for EdwardsPoint {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: Scalar) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: Scalar) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+// =============================================================================
+// SECTION 2: Scalar * EdwardsPoint
+// =============================================================================
+/// Spec for &Scalar * &EdwardsPoint
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for &Scalar {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &EdwardsPoint) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
+    type Output = EdwardsPoint;
+
+    /// Scalar multiplication: compute `scalar * point`.
+    ///
+    /// For scalar multiplication of a basepoint,
+    /// `EdwardsBasepointTable` is approximately 4x faster.
+    #[verifier::external_body]  // Delegates to EdwardsPoint * Scalar
+    fn mul(self, point: &'b EdwardsPoint) -> EdwardsPoint {
+        point * self
+    }
+}
+
+/// Spec for Scalar * &EdwardsPoint (owned scalar)
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for Scalar {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &EdwardsPoint) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+impl<'b> Mul<&'b EdwardsPoint> for Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]  // Delegates to &Scalar * &EdwardsPoint
+    fn mul(self, rhs: &'b EdwardsPoint) -> EdwardsPoint {
+        &self * rhs
+    }
+}
+
+/// Spec for &Scalar * EdwardsPoint (owned point)
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: EdwardsPoint) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: EdwardsPoint) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+impl<'a> Mul<EdwardsPoint> for &'a Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]  // Delegates to &Scalar * &EdwardsPoint
+    fn mul(self, rhs: EdwardsPoint) -> EdwardsPoint {
+        self * &rhs
+    }
+}
+
+/// Spec for Scalar * EdwardsPoint (both owned)
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: EdwardsPoint) -> bool {
+        true
+    }
+
+    open spec fn mul_spec(self, rhs: EdwardsPoint) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+impl Mul<EdwardsPoint> for Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]  // Delegates to &Scalar * &EdwardsPoint
+    fn mul(self, rhs: EdwardsPoint) -> EdwardsPoint {
+        &self * &rhs
+    }
+}
+
+// =============================================================================
+// SECTION 3: Scalar * EdwardsBasepointTable
+// =============================================================================
+/// External type specification for EdwardsBasepointTable
+#[verifier::external_type_specification]
+#[verifier::external_body]
+#[allow(dead_code)]
+pub struct ExEdwardsBasepointTable(EdwardsBasepointTable);
+
+impl<'a> Mul<&'a EdwardsBasepointTable> for Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]
+    fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> EdwardsPoint {
+        &self * basepoint_table
+    }
+}
+
+impl<'a> Mul<EdwardsBasepointTable> for &'a Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]
+    fn mul(self, basepoint_table: EdwardsBasepointTable) -> EdwardsPoint {
+        self * &basepoint_table
+    }
+}
+
+impl Mul<EdwardsBasepointTable> for Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]
+    fn mul(self, basepoint_table: EdwardsBasepointTable) -> EdwardsPoint {
+        &self * &basepoint_table
+    }
+}
+
+// =============================================================================
+// SECTION 4: MontgomeryPoint * Scalar
+// =============================================================================
+// Specifications only - implementations are in montgomery.rs
+// Requires: MontgomeryPoint must be valid
 /// Spec for &MontgomeryPoint * &Scalar (reference implementation)
-/// Requires: MontgomeryPoint must be valid
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
     open spec fn obeys_mul_spec() -> bool {
@@ -36,10 +258,11 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
 }
 
 // =============================================================================
-// Scalar * MontgomeryPoint specifications
+// SECTION 5: Scalar * MontgomeryPoint
 // =============================================================================
+// Specifications only - implementations are in montgomery.rs
+// Requires: MontgomeryPoint must be valid
 /// Spec for &Scalar * &MontgomeryPoint (reference implementation)
-/// Requires: MontgomeryPoint must be valid
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for &Scalar {
     open spec fn obeys_mul_spec() -> bool {
@@ -57,8 +280,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for &Scalar {
     }
 }
 
-/// Spec for Scalar * &MontgomeryPoint
-/// Requires: MontgomeryPoint must be valid
+/// Spec for Scalar * &MontgomeryPoint (owned scalar)
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for Scalar {
     open spec fn obeys_mul_spec() -> bool {
@@ -74,8 +296,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for Scalar {
     }
 }
 
-/// Spec for &Scalar * MontgomeryPoint
-/// Requires: MontgomeryPoint must be valid
+/// Spec for &Scalar * MontgomeryPoint (owned point)
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for &Scalar {
     open spec fn obeys_mul_spec() -> bool {
@@ -91,8 +312,7 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for &Scalar {
     }
 }
 
-/// Spec for Scalar * MontgomeryPoint
-/// Requires: MontgomeryPoint must be valid
+/// Spec for Scalar * MontgomeryPoint (both owned)
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
     open spec fn obeys_mul_spec() -> bool {
@@ -104,133 +324,6 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
     }
 
     open spec fn mul_spec(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
-        arbitrary()
-    }
-}
-
-// =============================================================================
-// EdwardsPoint * Scalar specifications
-// =============================================================================
-/// Spec for &EdwardsPoint * &Scalar
-/// No precondition needed
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &EdwardsPoint {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        true  // No precondition for EdwardsPoint * Scalar
-
-    }
-
-    open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
-        arbitrary()
-    }
-}
-
-/// Spec for &EdwardsPoint * Scalar
-/// No precondition needed
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<Scalar> for &EdwardsPoint {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: Scalar) -> bool {
-        true
-    }
-
-    open spec fn mul_spec(self, rhs: Scalar) -> EdwardsPoint {
-        arbitrary()
-    }
-}
-
-/// Spec for EdwardsPoint * &Scalar
-/// No precondition needed
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for EdwardsPoint {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        true
-    }
-
-    open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
-        arbitrary()
-    }
-}
-
-/// Spec for EdwardsPoint * Scalar
-/// No precondition needed
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<Scalar> for EdwardsPoint {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: Scalar) -> bool {
-        true
-    }
-
-    open spec fn mul_spec(self, rhs: Scalar) -> EdwardsPoint {
-        arbitrary()
-    }
-}
-
-// =============================================================================
-// Scalar * EdwardsPoint specifications
-// =============================================================================
-/// Spec for Scalar * &EdwardsPoint
-/// No precondition needed
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for Scalar {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: &EdwardsPoint) -> bool {
-        true  // No precondition for EdwardsPoint multiplication
-
-    }
-
-    open spec fn mul_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
-        arbitrary()
-    }
-}
-
-/// Spec for &Scalar * EdwardsPoint
-/// No precondition needed
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: EdwardsPoint) -> bool {
-        true
-    }
-
-    open spec fn mul_spec(self, rhs: EdwardsPoint) -> EdwardsPoint {
-        arbitrary()
-    }
-}
-
-/// Spec for Scalar * EdwardsPoint
-/// No precondition needed
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: EdwardsPoint) -> bool {
-        true
-    }
-
-    open spec fn mul_spec(self, rhs: EdwardsPoint) -> EdwardsPoint {
         arbitrary()
     }
 }

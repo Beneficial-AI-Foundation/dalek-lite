@@ -1154,7 +1154,12 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
         let other_niels = other.as_projective_niels();
 
         proof {
-            // Assume preconditions for EdwardsPoint + ProjectiveNielsPoint addition
+            // Preconditions for EdwardsPoint + ProjectiveNielsPoint addition
+            // The limb bounds for self are inherited from the outer function's add_req
+            // We need to assume the sum_of_limbs_bounded precondition
+            assume(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+
+            // Assume limb bounds for other_niels (from as_projective_niels postconditions)
             assume(limbs_bounded(&other_niels.Y_plus_X, 54));
             assume(limbs_bounded(&other_niels.Y_minus_X, 54));
             assume(limbs_bounded(&other_niels.Z, 54));

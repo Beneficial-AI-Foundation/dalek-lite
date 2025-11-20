@@ -233,14 +233,14 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
 
 pub proof fn lemma_bytes_to_nat_rec_equals_bytes_to_nat(bytes: &[u8; 32])
     ensures
-        bytes_to_nat(bytes) == as_nat_32_u8(bytes),
+        bytes_to_nat(bytes) == u8_32_as_nat(bytes),
 {
     // Strategy: Unfold the recursive definition and show it matches the explicit sum
     // The recursive definition bytes_to_nat_rec(bytes, 0) computes:
     // bytes[0] * 2^0 + bytes[1] * 2^8 + ... + bytes[31] * 2^248
     // First, reveal the recursive structure by showing a few key steps
-    // Note: bytes_to_nat now directly returns as_nat_32_u8, so we use that for the reveal
-    reveal_with_fuel(as_nat_32_u8_rec, 33);
+    // Note: bytes_to_nat now directly returns u8_32_as_nat, so we use that for the reveal
+    reveal_with_fuel(u8_32_as_nat_rec, 33);
 
     // Now we need to show that the recursive unfolding equals the explicit sum
     // The key is that pow2(0) == 1, so bytes[0] * pow2(0) == bytes[0]
@@ -291,7 +291,7 @@ pub proof fn lemma_bytes_to_nat_rec_equals_bytes_to_nat(bytes: &[u8; 32])
         bytes[27] as nat) * pow2(216) + (bytes[28] as nat) * pow2(224) + (bytes[29] as nat) * pow2(
             232,
         ) + (bytes[30] as nat) * pow2(240) + (bytes[31] as nat) * pow2(248); {}
-        as_nat_32_u8(bytes);
+        u8_32_as_nat(bytes);
     }
 }
 

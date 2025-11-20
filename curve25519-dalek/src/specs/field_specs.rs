@@ -7,6 +7,8 @@ use crate::backend::serial::u64::field::FieldElement51;
 #[allow(unused_imports)]
 use crate::constants;
 #[allow(unused_imports)]
+use vstd::arithmetic::power::*;
+#[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
 
 use vstd::prelude::*;
@@ -123,6 +125,46 @@ pub proof fn field_inv_axiom(a: nat)
         ((a % p()) * math_field_inv(a)) % p() == 1,
 {
     admit();  // This would be proven from field theory or assumed as axiom
+}
+
+/// Axiom: Uniqueness of multiplicative inverse
+///
+/// If a value w satisfies the inverse property for a, then w equals math_field_inv(a).
+/// This captures the uniqueness of the multiplicative inverse in a field.
+pub proof fn field_inv_unique(a: nat, w: nat)
+    requires
+        a % p() != 0,
+        w < p(),
+        ((a % p()) * w) % p() == 1,
+    ensures
+        w == math_field_inv(a),
+{
+    admit();  // Follows from uniqueness of multiplicative inverses in fields
+}
+
+/// Axiom: By convention, math_field_inv(0) returns 0
+///
+/// When the input is 0 (which has no multiplicative inverse),
+/// we conventionally define the result to be 0.
+pub proof fn field_inv_zero()
+    ensures
+        math_field_inv(0) == 0,
+{
+    admit();  // Convention for undefined case
+}
+
+/// Axiom: Fermat's Little Theorem for the prime field p()
+///
+/// For any non-zero element x in the field, x^(p-1) ≡ 1 (mod p).
+/// This is a fundamental property of prime fields and the basis for computing
+/// multiplicative inverses as x^(p-2).
+pub proof fn fermat_little_theorem(x: nat)
+    requires
+        x % p() != 0,
+    ensures
+        (pow(x as int, (p() - 1) as nat) as nat) % p() == 1,
+{
+    admit();  // Fundamental theorem of prime fields
 }
 
 /// Spec function for FieldElement::from_bytes

@@ -228,18 +228,6 @@ impl FieldElement {
             // From as_bytes() postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
             // Apply lemma to establish that bytes matches spec_fe51_to_bytes
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &bytes);
-
-            // Prove that the first bytes match
-            assert(bytes[0] == spec_fe51_to_bytes(self)[0]) by {
-                assert(seq_from32(&bytes) == spec_fe51_to_bytes(self));
-                assert(seq_from32(&bytes)[0] == bytes[0]);
-            }
-
-            // Equal bytes have equal low bits
-            //assert(bytes[0] & 1 == spec_fe51_to_bytes(self)[0] & 1);
-
-            // Choice::from specification ensures: (bytes[0] & 1 == 1) == choice_is_true(result)
-            // Therefore: choice_is_true(result) == (spec_fe51_to_bytes(self)[0] & 1 == 1)
         }
 
         result

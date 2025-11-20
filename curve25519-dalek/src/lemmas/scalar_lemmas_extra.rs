@@ -45,8 +45,7 @@ pub proof fn lemma_word_from_bytes_partial_bound(bytes: &[u8; 64], word_idx: int
 {
     if upto <= 0 {
         assert(pow2(0) == 1) by {
-            lemma_shift_is_pow2(0);
-            assert(1u64 << 0 == 1) by (bit_vector);
+            lemma2_to64();
         }
     } else {
         let prev = upto - 1;
@@ -55,8 +54,7 @@ pub proof fn lemma_word_from_bytes_partial_bound(bytes: &[u8; 64], word_idx: int
         let byte_val = bytes[(word_idx * 8 + prev) as int] as nat;
 
         assert(pow2(8) == 256) by {
-            lemma_shift_is_pow2(8);
-            assert(1u64 << 8 == 256) by (bit_vector);
+            lemma2_to64();
         };
 
         lemma_mul_upper_bound(
@@ -192,8 +190,7 @@ pub proof fn lemma_word_from_bytes_bound(bytes: &[u8; 64], word_idx: int)
     let last_byte = bytes[(word_idx * 8 + 7) as int] as nat;
 
     assert(pow2(8) == 256) by {
-        lemma_shift_is_pow2(8);
-        assert(1u64 << 8 == 256) by (bit_vector);
+        lemma2_to64();
     };
 
     lemma_pow2_mul_bound_general(last_byte, 8, 56);
@@ -304,8 +301,7 @@ pub proof fn lemma_words_from_bytes_to_nat_wide(bytes: &[u8; 64])
 
     assert(pow2((0 * 64) as nat) == pow2(0));
     assert(pow2(0) == 1) by {
-        lemma_shift_is_pow2(0);
-        assert(1u64 << 0 == 1u64) by (bit_vector);
+        lemma2_to64();
     }
 
     assert(words_from_bytes_to_nat(bytes, 1) == words_from_bytes_to_nat(bytes, 0) + word_from_bytes(bytes, 0) * pow2((0 * 64) as nat));

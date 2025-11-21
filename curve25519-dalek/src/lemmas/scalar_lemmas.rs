@@ -24,13 +24,13 @@ use vstd::calc;
 use vstd::prelude::*;
 
 #[allow(unused_imports)]
-use super::common_lemmas::pow_lemmas::*;
-#[allow(unused_imports)]
-use super::common_lemmas::shift_lemmas::*;
-#[allow(unused_imports)]
 use super::common_lemmas::bit_lemmas::*;
 #[allow(unused_imports)]
 use super::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
+use super::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
+use super::common_lemmas::shift_lemmas::*;
 
 verus! {
 
@@ -292,7 +292,6 @@ pub proof fn lemma_bytes_to_nat_rec_equals_bytes_to_nat(bytes: &[u8; 32])
         u8_32_as_nat(bytes);
     }
 }
-
 
 pub proof fn lemma_scalar_subtract_no_overflow(
     carry: u64,

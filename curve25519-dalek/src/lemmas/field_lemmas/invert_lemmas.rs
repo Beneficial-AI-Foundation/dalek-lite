@@ -109,7 +109,7 @@ pub proof fn lemma_invert_zero_case(
     assert(spec_field_element(t21) == 0) by {
         assert(spec_field_element(t21) == math_field_mul(spec_field_element(t20), 0));
         assert((spec_field_element(t20) * 0) == 0);
-    } 
+    }
 }
 
 /// Lemma: Arithmetic fact about the exponent decomposition
@@ -418,7 +418,7 @@ pub proof fn lemma_invert_equals_math_field_inv(self_fe: &FieldElement51, t21: &
                     pow255_gt_19();
                 }
                 lemma_mod_bound(spec_field_element_as_nat(self_fe) as int, p() as int);
-            }            
+            }
             lemma_small_mod(x, p());
         }
 

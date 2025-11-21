@@ -131,7 +131,6 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
     }
 }
 
-
 /// Spec for Scalar * EdwardsPoint (both owned)
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
@@ -147,7 +146,6 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
         arbitrary()
     }
 }
-
 
 // =============================================================================
 // SECTION 3: MontgomeryPoint * Scalar
@@ -242,6 +240,5 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
         arbitrary()
     }
 }
-
 
 } // verus!

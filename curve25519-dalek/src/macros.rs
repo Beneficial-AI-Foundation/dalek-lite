@@ -112,7 +112,6 @@ macro_rules! define_mul_variants {
     };
 }
 
-
 /// This is the same as define_mul_variants,
 /// except it's for types where we've specified what mul does
 macro_rules! define_mul_variants_verus {

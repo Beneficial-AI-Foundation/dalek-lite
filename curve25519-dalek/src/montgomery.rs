@@ -752,14 +752,11 @@ define_mul_variants!(
     Output = MontgomeryPoint
 );
 
-
 define_mul_variants_verus!(
     LHS = Scalar,
     RHS = MontgomeryPoint,
     Output = MontgomeryPoint
 );
-
-
 
 // NOTE: MulSpecImpl for &MontgomeryPoint * &Scalar moved to mul_specs.rs
 /// Multiply this `MontgomeryPoint` by a `Scalar`.

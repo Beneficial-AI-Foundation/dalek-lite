@@ -133,19 +133,23 @@ pub open spec fn word_from_bytes(bytes: &[u8; 64], word_idx: int) -> nat {
         0
     } else {
         let base = word_idx * 8;
-        (bytes[(base + 0) as int] as nat) * pow2(0) +
-        (bytes[(base + 1) as int] as nat) * pow2(8) +
-        (bytes[(base + 2) as int] as nat) * pow2(16) +
-        (bytes[(base + 3) as int] as nat) * pow2(24) +
-        (bytes[(base + 4) as int] as nat) * pow2(32) +
-        (bytes[(base + 5) as int] as nat) * pow2(40) +
-        (bytes[(base + 6) as int] as nat) * pow2(48) +
-        (bytes[(base + 7) as int] as nat) * pow2(56)
+        (bytes[(base + 0) as int] as nat) * pow2(0) + (bytes[(base + 1) as int] as nat) * pow2(8)
+            + (bytes[(base + 2) as int] as nat) * pow2(16) + (bytes[(base + 3) as int] as nat)
+            * pow2(24) + (bytes[(base + 4) as int] as nat) * pow2(32) + (bytes[(base
+            + 5) as int] as nat) * pow2(40) + (bytes[(base + 6) as int] as nat) * pow2(48) + (
+        bytes[(base + 7) as int] as nat) * pow2(56)
     }
 }
 
 pub open spec fn word_from_bytes_partial(bytes: &[u8; 64], word_idx: int, upto: int) -> nat
-    decreases if upto <= 0 { 0 } else if upto >= 8 { 0 } else { upto as nat }
+    decreases
+            if upto <= 0 {
+                0
+            } else if upto >= 8 {
+                0
+            } else {
+                upto as nat
+            },
 {
     if !(0 <= word_idx && word_idx < 8) {
         0
@@ -155,13 +159,18 @@ pub open spec fn word_from_bytes_partial(bytes: &[u8; 64], word_idx: int, upto: 
         word_from_bytes(bytes, word_idx)
     } else {
         let j = upto - 1;
-        word_from_bytes_partial(bytes, word_idx, j) +
-            (bytes[(word_idx * 8 + j) as int] as nat) * pow2((j * 8) as nat)
+        word_from_bytes_partial(bytes, word_idx, j) + (bytes[(word_idx * 8 + j) as int] as nat)
+            * pow2((j * 8) as nat)
     }
 }
 
 pub open spec fn words_from_bytes_to_nat(bytes: &[u8; 64], count: int) -> nat
-    decreases if count <= 0 { 0 } else { count as nat }
+    decreases
+            if count <= 0 {
+                0
+            } else {
+                count as nat
+            },
 {
     if count <= 0 {
         0

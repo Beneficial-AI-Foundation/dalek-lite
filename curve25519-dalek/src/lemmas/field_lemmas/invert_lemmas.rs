@@ -109,7 +109,7 @@ pub proof fn lemma_invert_zero_case(
     assert(spec_field_element(t21) == 0) by {
         assert(spec_field_element(t21) == math_field_mul(spec_field_element(t20), 0));
         assert((spec_field_element(t20) * 0) == 0);
-    }
+    } 
 }
 
 /// Lemma: Arithmetic fact about the exponent decomposition
@@ -223,14 +223,6 @@ pub proof fn lemma_invert_power_chain(
             lemma_invert_exponent_arithmetic();
         };
     }
-
-    // Conclusion: spec_field_element(t20) == (pow(x, (pow2(255) - 32)) as nat) % p()
-    assert(spec_field_element(t20) == (pow(x as int, (pow2(255) - 32) as nat) as nat) % p());
-
-    // PART 2: Establish spec_field_element(t21) by expanding mul
-    // From requires: t21 = math_field_mul(t20, t3)
-    // Expand math_field_mul: math_field_mul(a, b) = (a * b) % p()
-    assert(spec_field_element(t21) == (spec_field_element(t20) * spec_field_element(t3)) % p());
 }
 
 /// Helper lemma: Multiplying x^(p-2) by x yields x^(p-1)
@@ -268,7 +260,6 @@ pub proof fn lemma_multiply_by_base_power_addition(
 
         // For any n < m, we have n % m = n
         assert(x % p() == x) by {
-            lemma_mod_is_mod_recursive(x as int, p() as int);
             lemma_small_mod(x, p());
         }
     }
@@ -390,7 +381,6 @@ pub proof fn lemma_invert_is_multiplicative_inverse(
                 }
 
                 assert(x % p() == x) by {
-                    lemma_mod_is_mod_recursive(x as int, p() as int);
                     lemma_small_mod(x, p());
                 }
             }
@@ -428,8 +418,7 @@ pub proof fn lemma_invert_equals_math_field_inv(self_fe: &FieldElement51, t21: &
                     pow255_gt_19();
                 }
                 lemma_mod_bound(spec_field_element_as_nat(self_fe) as int, p() as int);
-            }
-            lemma_mod_is_mod_recursive(x as int, p() as int);
+            }            
             lemma_small_mod(x, p());
         }
 

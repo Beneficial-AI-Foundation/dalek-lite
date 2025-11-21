@@ -187,6 +187,25 @@ pub proof fn lemma_mul_distributive_8_terms(
     }
 }
 
+pub proof fn distribution_over_8_terms_other_way(
+    n: int,
+    x1: int, x2: int, x3: int, x4: int,
+    x5: int, x6: int, x7: int, x8: int
+)
+    ensures
+        (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8) * n
+        == x1*n + x2*n + x3*n + x4*n + x5*n + x6*n + x7*n + x8*n
+{
+    // Expand from the outermost term inward
+    lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5 + x6 + x7, x8);
+    lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5 + x6, x7);
+    lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5, x6);
+    lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4, x5);
+    lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3, x4);
+    lemma_mul_is_distributive_add_other_way(n, x1 + x2, x3);
+    lemma_mul_is_distributive_add_other_way(n, x1, x2);
+}
+
 pub proof fn lemma_mul_quad_prod(a1: int, b1: int, a2: int, b2: int)
     ensures
         (a1 * b1) * (a2 * b2) == (a1 * a2) * (b1 * b2),

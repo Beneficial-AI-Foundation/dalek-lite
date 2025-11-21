@@ -35,6 +35,15 @@ pub proof fn lemma_bit_or_is_plus(a: u64, b: u64, k: u64)
 {
 }
 
+pub proof fn lemma_bit_or_is_plus_overflow(a: u64, b: u64, k: u64)
+    by (bit_vector)
+    requires
+        a < 1u64 << k,
+    ensures
+        a | (b << k) == a + (b << k),
+{
+}
+
 pub proof fn lemma_bitops(a: u64, b: u64, c: u64)
     requires
         c < 64,

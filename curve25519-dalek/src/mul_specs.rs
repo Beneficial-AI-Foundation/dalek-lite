@@ -115,14 +115,6 @@ impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for Scalar {
     }
 }
 
-impl<'b> Mul<&'b EdwardsPoint> for Scalar {
-    type Output = EdwardsPoint;
-
-    fn mul(self, rhs: &'b EdwardsPoint) -> EdwardsPoint {
-        &self * rhs
-    }
-}
-
 /// Spec for &Scalar * EdwardsPoint (owned point)
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
@@ -136,14 +128,6 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
 
     open spec fn mul_spec(self, rhs: EdwardsPoint) -> EdwardsPoint {
         arbitrary()
-    }
-}
-
-impl<'a> Mul<EdwardsPoint> for &'a Scalar {
-    type Output = EdwardsPoint;
-
-    fn mul(self, rhs: EdwardsPoint) -> EdwardsPoint {
-        self * &rhs
     }
 }
 
@@ -163,52 +147,8 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
     }
 }
 
-impl Mul<EdwardsPoint> for Scalar {
-    type Output = EdwardsPoint;
-
-    fn mul(self, rhs: EdwardsPoint) -> EdwardsPoint {
-        &self * &rhs
-    }
-}
-
 // =============================================================================
-// SECTION 3: Scalar * EdwardsBasepointTable
-// =============================================================================
-/// External type specification for EdwardsBasepointTable
-#[verifier::external_type_specification]
-#[verifier::external_body]
-#[allow(dead_code)]
-pub struct ExEdwardsBasepointTable(EdwardsBasepointTable);
-
-impl<'a> Mul<&'a EdwardsBasepointTable> for Scalar {
-    type Output = EdwardsPoint;
-
-    #[verifier::external_body]
-    fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> EdwardsPoint {
-        &self * basepoint_table
-    }
-}
-
-impl<'a> Mul<EdwardsBasepointTable> for &'a Scalar {
-    type Output = EdwardsPoint;
-
-    #[verifier::external_body]  // Delegates to &Scalar * &EdwardsBasepointTable which is external
-    fn mul(self, basepoint_table: EdwardsBasepointTable) -> EdwardsPoint {
-        self * &basepoint_table
-    }
-}
-
-impl Mul<EdwardsBasepointTable> for Scalar {
-    type Output = EdwardsPoint;
-
-    #[verifier::external_body]  // Delegates to &Scalar * &EdwardsBasepointTable which is external
-    fn mul(self, basepoint_table: EdwardsBasepointTable) -> EdwardsPoint {
-        &self * &basepoint_table
-    }
-}
-
-// =============================================================================
-// SECTION 4: MontgomeryPoint * Scalar
+// SECTION 3: MontgomeryPoint * Scalar
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid
@@ -231,7 +171,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
 }
 
 // =============================================================================
-// SECTION 5: Scalar * MontgomeryPoint
+// SECTION 4: Scalar * MontgomeryPoint
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid
@@ -298,34 +238,6 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
 
     open spec fn mul_spec(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
         arbitrary()
-    }
-}
-
-// Owned-type implementations: delegate to &Scalar * &MontgomeryPoint
-// (Reference implementation is in montgomery.rs with detailed ensures clauses)
-// NOTE: Manual implementations needed because macro-generated code is outside verus! blocks
-// and cannot be used from inside verus! blocks (e.g., MontgomeryPoint::mul_clamped).
-impl<'b> Mul<&'b MontgomeryPoint> for Scalar {
-    type Output = MontgomeryPoint;
-
-    fn mul(self, rhs: &'b MontgomeryPoint) -> MontgomeryPoint {
-        &self * rhs
-    }
-}
-
-impl<'a> Mul<MontgomeryPoint> for &'a Scalar {
-    type Output = MontgomeryPoint;
-
-    fn mul(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
-        self * &rhs
-    }
-}
-
-impl Mul<MontgomeryPoint> for Scalar {
-    type Output = MontgomeryPoint;
-
-    fn mul(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
-        &self * &rhs
     }
 }
 

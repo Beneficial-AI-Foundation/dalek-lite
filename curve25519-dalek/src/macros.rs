@@ -112,6 +112,35 @@ macro_rules! define_mul_variants {
     };
 }
 
+/// This is the same as define_mul_variants,
+/// except it's for types where we've specified what mul does
+macro_rules! define_mul_variants_verus {
+    (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
+        verus!{
+        impl<'b> Mul<&'b $rhs> for $lhs {
+            type Output = $out;
+            fn mul(self, rhs: &'b $rhs) -> $out {
+                &self * rhs
+            }
+        }
+
+        impl<'a> Mul<$rhs> for &'a $lhs {
+            type Output = $out;
+            fn mul(self, rhs: $rhs) -> $out {
+                self * &rhs
+            }
+        }
+
+        impl Mul<$rhs> for $lhs {
+            type Output = $out;
+            fn mul(self, rhs: $rhs) -> $out {
+                &self * &rhs
+            }
+        }
+        }
+    };
+}
+
 /// Define non-borrow variants of `MulAssign`.
 macro_rules! define_mul_assign_variants {
     (LHS = $lhs:ty, RHS = $rhs:ty) => {

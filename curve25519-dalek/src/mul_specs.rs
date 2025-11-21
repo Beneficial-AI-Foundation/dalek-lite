@@ -301,32 +301,5 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
     }
 }
 
-// Owned-type implementations: delegate to &Scalar * &MontgomeryPoint
-// (Reference implementation is in montgomery.rs with detailed ensures clauses)
-// NOTE: Manual implementations needed because macro-generated code is outside verus! blocks
-// and cannot be used from inside verus! blocks (e.g., MontgomeryPoint::mul_clamped).
-impl<'b> Mul<&'b MontgomeryPoint> for Scalar {
-    type Output = MontgomeryPoint;
-
-    fn mul(self, rhs: &'b MontgomeryPoint) -> MontgomeryPoint {
-        &self * rhs
-    }
-}
-
-impl<'a> Mul<MontgomeryPoint> for &'a Scalar {
-    type Output = MontgomeryPoint;
-
-    fn mul(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
-        self * &rhs
-    }
-}
-
-impl Mul<MontgomeryPoint> for Scalar {
-    type Output = MontgomeryPoint;
-
-    fn mul(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
-        &self * &rhs
-    }
-}
 
 } // verus!

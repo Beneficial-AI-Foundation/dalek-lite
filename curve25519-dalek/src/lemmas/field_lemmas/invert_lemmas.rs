@@ -385,8 +385,8 @@ pub proof fn lemma_invert_is_multiplicative_inverse(
                 }
             }
 
-            // Apply Fermat's Little Theorem
-            fermat_little_theorem(x);
+            // Apply Fermat's Little Theorem for p()
+            axiom_fermat_little_for_p25519(x);
         }
     }
 }

@@ -255,18 +255,21 @@ pub proof fn field_inv_zero()
     // By the if-branch in math_field_inv's definition: math_field_inv(0) == 0
 }
 
-/// Axiom: Fermat's Little Theorem for the prime field p()
+/// Axiom: Fermat's Little Theorem for the specific prime p() = 2^255 - 19
 ///
-/// For any non-zero element x in the field, x^(p-1) ≡ 1 (mod p).
+/// For any non-zero element x in the field ℤ/p()ℤ, we have x^(p-1) ≡ 1 (mod p).
 /// This is a fundamental property of prime fields and the basis for computing
-/// multiplicative inverses as x^(p-2).
-pub proof fn fermat_little_theorem(x: nat)
+/// multiplicative inverses as x^(p-2) (since x * x^(p-2) = x^(p-1) ≡ 1).
+///
+/// Note: This axiom is specific to p() = 2^255 - 19, not a general statement
+/// about all primes. The name reflects this specificity.
+pub proof fn axiom_fermat_little_for_p25519(x: nat)
     requires
         x % p() != 0,
     ensures
         (pow(x as int, (p() - 1) as nat) as nat) % p() == 1,
 {
-    admit();  // Fundamental theorem of prime fields
+    admit();  // Requires p() to be prime
 }
 
 /// Spec function for FieldElement::from_bytes

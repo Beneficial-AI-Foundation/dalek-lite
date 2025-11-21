@@ -150,7 +150,7 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
 
 
 // =============================================================================
-// SECTION 4: MontgomeryPoint * Scalar
+// SECTION 3: MontgomeryPoint * Scalar
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid
@@ -173,7 +173,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
 }
 
 // =============================================================================
-// SECTION 5: Scalar * MontgomeryPoint
+// SECTION 4: Scalar * MontgomeryPoint
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid

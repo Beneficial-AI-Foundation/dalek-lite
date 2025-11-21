@@ -184,21 +184,29 @@ impl Scalar52 {
 
         // Stage 1 assumption: the byte-to-word packing yields the expected little-endian value.
         let mut words = [0u64; 8];
+        proof {
+            assert forall|k: int| 0 <= k < 8 implies words@[k] == 0 by {
+                assert(0 <= k < 8);
+                assert(#[trigger] words@[k] == 0);
+            };
+        }
         for i in 0..8
             invariant
                 0 <= i <= 8,
                 forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
                 words_from_bytes_to_nat(bytes, i as int) + bytes_wide_to_nat_rec(bytes, (i as int) * 8) == bytes_wide_to_nat(bytes),
+                forall|k: int| i <= k < 8 ==> words@[k] == 0,
         {
-            words[i] = 0;
             proof {
                 assert(1u64 << 0 == 1u64) by (bit_vector);
+                assert(words@[i as int] == 0);
             }
             for j in 0..8
                 invariant
                     0 <= j <= 8,
                     i < 8,
                     forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
+                    forall|k: int| i < k < 8 ==> words@[k] == 0,
                     words@[(i as int)] as nat == word_from_bytes_partial(bytes, i as int, j as int),
                     (j < 8 ==> words@[(i as int)] < (1u64 << ((j * 8) as u64))),
             {
@@ -212,6 +220,9 @@ impl Scalar52 {
                 }
             }
             proof {
+                assert forall|k: int| i + 1 <= k < 8 implies words@[k] == 0 by {
+                    assert(words@[#[trigger] k] == 0);
+                };
                 let i_int = i as int;
                 if i < 8 {
                     reveal_with_fuel(words_from_bytes_to_nat, 9);

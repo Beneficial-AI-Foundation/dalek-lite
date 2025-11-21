@@ -752,26 +752,11 @@ define_mul_variants!(
     Output = MontgomeryPoint
 );
 
-/* ORIGINAL CODE: Scalar * MontgomeryPoint macro commented out because macro-generated code
-   is outside verus! blocks and cannot be used inside verus! blocks.
-   Manual implementations are in mul_specs.rs inside verus! block.
-
-define_mul_variants!(
+define_mul_variants_verus!(
     LHS = Scalar,
     RHS = MontgomeryPoint,
     Output = MontgomeryPoint
 );
-*/
-
-/* ORIGINAL CODE: Scalar * MontgomeryPoint macro call commented out to avoid duplicates
-   The implementations are now manually defined inside the verus! block below
-
-define_mul_variants!(
-    LHS = Scalar,
-    RHS = MontgomeryPoint,
-    Output = MontgomeryPoint
-);
-*/
 
 // NOTE: MulSpecImpl for &MontgomeryPoint * &Scalar moved to mul_specs.rs
 /// Multiply this `MontgomeryPoint` by a `Scalar`.

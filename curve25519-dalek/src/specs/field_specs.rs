@@ -133,7 +133,7 @@ pub open spec fn math_is_square(a: nat) -> bool {
 /// Compute a square root modulo p (if it exists)
 /// Returns some y such that y^2 ≡ a (mod p)
 /// The result is unspecified if a is not a quadratic residue
-/// Note result is not unique 
+/// Note result is not unique
 pub open spec fn math_sqrt(a: nat) -> nat
     recommends
         math_is_square(a),

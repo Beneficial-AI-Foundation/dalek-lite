@@ -115,14 +115,6 @@ impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for Scalar {
     }
 }
 
-impl<'b> Mul<&'b EdwardsPoint> for Scalar {
-    type Output = EdwardsPoint;
-
-    fn mul(self, rhs: &'b EdwardsPoint) -> EdwardsPoint {
-        &self * rhs
-    }
-}
-
 /// Spec for &Scalar * EdwardsPoint (owned point)
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
@@ -139,13 +131,6 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
     }
 }
 
-impl<'a> Mul<EdwardsPoint> for &'a Scalar {
-    type Output = EdwardsPoint;
-
-    fn mul(self, rhs: EdwardsPoint) -> EdwardsPoint {
-        self * &rhs
-    }
-}
 
 /// Spec for Scalar * EdwardsPoint (both owned)
 #[cfg(verus_keep_ghost)]
@@ -163,13 +148,6 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
     }
 }
 
-impl Mul<EdwardsPoint> for Scalar {
-    type Output = EdwardsPoint;
-
-    fn mul(self, rhs: EdwardsPoint) -> EdwardsPoint {
-        &self * &rhs
-    }
-}
 
 // =============================================================================
 // SECTION 3: Scalar * EdwardsBasepointTable

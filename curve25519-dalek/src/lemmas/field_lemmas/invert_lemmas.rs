@@ -61,19 +61,11 @@ pub proof fn lemma_pow2k_to_field_element(fe: &FieldElement51, result: &FieldEle
 
     // Prove pow results are non-negative to justify int-to-nat casts
     assert(pow(u64_5_as_nat(fe.limbs) as int, k) >= 0) by {
-        if u64_5_as_nat(fe.limbs) == 0 {
-            lemma0_pow(k);
-        } else {
-            lemma_pow_positive(u64_5_as_nat(fe.limbs) as int, k);
-        }
+        lemma_pow_nonnegative(u64_5_as_nat(fe.limbs) as int, k);
     }
 
     assert(pow(spec_field_element(fe) as int, k) >= 0) by {
-        if spec_field_element(fe) == 0 {
-            lemma0_pow(k);
-        } else {
-            lemma_pow_positive(spec_field_element(fe) as int, k);
-        }
+        lemma_pow_nonnegative(spec_field_element(fe) as int, k);
     }
 
     // Complete the chain:

@@ -1001,11 +1001,7 @@ pub proof fn lemma_pow_mod_composition(x: nat, a: nat, b: nat, m: nat)
     // Bridge 1: pow(x, a) % m on int is same as ((pow(x, a) as nat) % m) as int
     assert(pow(x as int, a) % (m as int) == ((pow(x as int, a) as nat) % m) as int) by {
         assert(pow(x as int, a) >= 0) by {
-            if x == 0 {
-                lemma0_pow(a);
-            } else {
-                lemma_pow_positive(x as int, a);
-            }
+            lemma_pow_nonnegative(x as int, a);
         }
         lemma_int_nat_mod_equiv(pow(x as int, a), m);
     }
@@ -1017,11 +1013,7 @@ pub proof fn lemma_pow_mod_composition(x: nat, a: nat, b: nat, m: nat)
             lemma_fundamental_div_mod(pow(x as int, a), m as int);
         }
         assert(pow(base_int, b) >= 0) by {
-            if base_int == 0 {
-                lemma0_pow(b);
-            } else {
-                lemma_pow_positive(base_int, b);
-            }
+            lemma_pow_nonnegative(base_int, b);
         }
         lemma_int_nat_mod_equiv(pow(base_int, b), m);
     }
@@ -1037,11 +1029,7 @@ pub proof fn lemma_pow_mod_composition(x: nat, a: nat, b: nat, m: nat)
             ;
         }
         assert(pow(x as int, a * b) >= 0) by {
-            if x == 0 {
-                lemma0_pow(a * b);
-            } else {
-                lemma_pow_positive(x as int, a * b);
-            }
+            lemma_pow_nonnegative(x as int, a * b);
         }
         lemma_int_nat_mod_equiv(pow(x as int, a * b), m);
     }
@@ -1091,11 +1079,7 @@ pub proof fn lemma_modular_power_addition(x: nat, a: nat, b: nat, m: nat)
     // Bridge 1: pow(x, a) % m on int is same as ((pow(x, a) as nat) % m) as int
     assert(pow(x as int, a) % (m as int) == ((pow(x as int, a) as nat) % m) as int) by {
         assert(pow(x as int, a) >= 0) by {
-            if x == 0 {
-                lemma0_pow(a);
-            } else {
-                lemma_pow_positive(x as int, a);
-            }
+            lemma_pow_nonnegative(x as int, a);
         }
         lemma_int_nat_mod_equiv(pow(x as int, a), m);
     }
@@ -1103,11 +1087,7 @@ pub proof fn lemma_modular_power_addition(x: nat, a: nat, b: nat, m: nat)
     // Bridge 2: pow(x, b) % m on int is same as ((pow(x, b) as nat) % m) as int
     assert(pow(x as int, b) % (m as int) == ((pow(x as int, b) as nat) % m) as int) by {
         assert(pow(x as int, b) >= 0) by {
-            if x == 0 {
-                lemma0_pow(b);
-            } else {
-                lemma_pow_positive(x as int, b);
-            }
+            lemma_pow_nonnegative(x as int, b);
         }
         lemma_int_nat_mod_equiv(pow(x as int, b), m);
     }
@@ -1115,11 +1095,7 @@ pub proof fn lemma_modular_power_addition(x: nat, a: nat, b: nat, m: nat)
     // Bridge 3: pow(x, a+b) % m on int is same as ((pow(x, a+b) as nat) % m) as int
     assert(pow(x as int, a + b) % (m as int) == ((pow(x as int, a + b) as nat) % m) as int) by {
         assert(pow(x as int, a + b) >= 0) by {
-            if x == 0 {
-                lemma0_pow(a + b);
-            } else {
-                lemma_pow_positive(x as int, a + b);
-            }
+            lemma_pow_nonnegative(x as int, a + b);
         }
         lemma_int_nat_mod_equiv(pow(x as int, a + b), m);
     }

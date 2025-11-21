@@ -753,7 +753,7 @@ define_mul_variants!(
 );
 
 
-define_mul_variants2!(
+define_mul_variants_verus!(
     LHS = Scalar,
     RHS = MontgomeryPoint,
     Output = MontgomeryPoint

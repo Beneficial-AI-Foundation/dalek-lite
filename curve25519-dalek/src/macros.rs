@@ -113,8 +113,9 @@ macro_rules! define_mul_variants {
 }
 
 
-/// Define borrow and non-borrow variants of `Mul`.
-macro_rules! define_mul_variants2 {
+/// This is the same as define_mul_variants,
+/// except it's for types where we've specified what mul does
+macro_rules! define_mul_variants_verus {
     (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
         verus!{
         impl<'b> Mul<&'b $rhs> for $lhs {

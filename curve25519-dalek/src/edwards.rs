@@ -1398,7 +1398,7 @@ define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 
 define_mul_variants!(LHS = EdwardsPoint, RHS = Scalar, Output = EdwardsPoint);
 
-define_mul_variants2!(LHS = Scalar, RHS = EdwardsPoint, Output = EdwardsPoint);
+define_mul_variants_verus!(LHS = Scalar, RHS = EdwardsPoint, Output = EdwardsPoint);
 
 verus! {
 

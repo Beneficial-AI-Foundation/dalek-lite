@@ -24,6 +24,10 @@ use vstd::calc;
 use vstd::prelude::*;
 
 #[allow(unused_imports)]
+use super::common_lemmas::bit_lemmas::*;
+#[allow(unused_imports)]
+use super::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
 use super::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
 use super::common_lemmas::shift_lemmas::*;
@@ -225,6 +229,70 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     }
 }
 
+pub proof fn lemma_bytes_to_nat_rec_equals_bytes_to_nat(bytes: &[u8; 32])
+    ensures
+        bytes_to_nat(bytes) == u8_32_as_nat(bytes),
+{
+    // Strategy: Unfold the recursive definition and show it matches the explicit sum
+    // The recursive definition bytes_to_nat_rec(bytes, 0) computes:
+    // bytes[0] * 2^0 + bytes[1] * 2^8 + ... + bytes[31] * 2^248
+    // First, reveal the recursive structure by showing a few key steps
+    // Note: bytes_to_nat now directly returns u8_32_as_nat, so we use that for the reveal
+    reveal_with_fuel(u8_32_as_nat_rec, 33);
+
+    // Now we need to show that the recursive unfolding equals the explicit sum
+    // The key is that pow2(0) == 1, so bytes[0] * pow2(0) == bytes[0]
+    assert(pow2(0) == 1) by {
+        lemma2_to64();
+    };
+
+    // Use calc block to show the transformation step by step
+    calc! {
+        (==)
+        bytes_to_nat(bytes); {}
+        bytes_to_nat_rec(bytes, 0); {
+            // Unfold recursively - Verus should be able to see this with fuel
+        }
+        (bytes[0] as nat) * pow2(0) + (bytes[1] as nat) * pow2(8) + (bytes[2] as nat) * pow2(16) + (
+        bytes[3] as nat) * pow2(24) + (bytes[4] as nat) * pow2(32) + (bytes[5] as nat) * pow2(40)
+            + (bytes[6] as nat) * pow2(48) + (bytes[7] as nat) * pow2(56) + (bytes[8] as nat)
+            * pow2(64) + (bytes[9] as nat) * pow2(72) + (bytes[10] as nat) * pow2(80) + (
+        bytes[11] as nat) * pow2(88) + (bytes[12] as nat) * pow2(96) + (bytes[13] as nat) * pow2(
+            104,
+        ) + (bytes[14] as nat) * pow2(112) + (bytes[15] as nat) * pow2(120) + (bytes[16] as nat)
+            * pow2(128) + (bytes[17] as nat) * pow2(136) + (bytes[18] as nat) * pow2(144) + (
+        bytes[19] as nat) * pow2(152) + (bytes[20] as nat) * pow2(160) + (bytes[21] as nat) * pow2(
+            168,
+        ) + (bytes[22] as nat) * pow2(176) + (bytes[23] as nat) * pow2(184) + (bytes[24] as nat)
+            * pow2(192) + (bytes[25] as nat) * pow2(200) + (bytes[26] as nat) * pow2(208) + (
+        bytes[27] as nat) * pow2(216) + (bytes[28] as nat) * pow2(224) + (bytes[29] as nat) * pow2(
+            232,
+        ) + (bytes[30] as nat) * pow2(240) + (bytes[31] as nat) * pow2(248); {
+            // Simplify bytes[0] * pow2(0) to bytes[0]
+            // Since pow2(0) == 1, we have x * 1 == x
+            assert((bytes[0] as nat) * pow2(0) == (bytes[0] as nat)) by {
+                assert(pow2(0) == 1);
+            };
+        }
+        (bytes[0] as nat) + (bytes[1] as nat) * pow2(8) + (bytes[2] as nat) * pow2(16) + (
+        bytes[3] as nat) * pow2(24) + (bytes[4] as nat) * pow2(32) + (bytes[5] as nat) * pow2(40)
+            + (bytes[6] as nat) * pow2(48) + (bytes[7] as nat) * pow2(56) + (bytes[8] as nat)
+            * pow2(64) + (bytes[9] as nat) * pow2(72) + (bytes[10] as nat) * pow2(80) + (
+        bytes[11] as nat) * pow2(88) + (bytes[12] as nat) * pow2(96) + (bytes[13] as nat) * pow2(
+            104,
+        ) + (bytes[14] as nat) * pow2(112) + (bytes[15] as nat) * pow2(120) + (bytes[16] as nat)
+            * pow2(128) + (bytes[17] as nat) * pow2(136) + (bytes[18] as nat) * pow2(144) + (
+        bytes[19] as nat) * pow2(152) + (bytes[20] as nat) * pow2(160) + (bytes[21] as nat) * pow2(
+            168,
+        ) + (bytes[22] as nat) * pow2(176) + (bytes[23] as nat) * pow2(184) + (bytes[24] as nat)
+            * pow2(192) + (bytes[25] as nat) * pow2(200) + (bytes[26] as nat) * pow2(208) + (
+        bytes[27] as nat) * pow2(216) + (bytes[28] as nat) * pow2(224) + (bytes[29] as nat) * pow2(
+            232,
+        ) + (bytes[30] as nat) * pow2(240) + (bytes[31] as nat) * pow2(248); {}
+        u8_32_as_nat(bytes);
+    }
+}
+
 pub proof fn lemma_scalar_subtract_no_overflow(
     carry: u64,
     difference_limb: u64,
@@ -362,6 +430,21 @@ pub proof fn lemma_from_montgomery_limbs_conversion(limbs: &[u128; 9], self_limb
     ));
 }
 
+pub proof fn lemma_r_limbs_bounded()
+    ensures
+        0x000f48bd6721e6edu64 < (1u64 << 52),
+        0x0003bab5ac67e45au64 < (1u64 << 52),
+        0x000fffffeb35e51bu64 < (1u64 << 52),
+        0x000fffffffffffffu64 < (1u64 << 52),
+        0x00000fffffffffff_u64 < (1u64 << 52),
+{
+    assert(0x000f48bd6721e6edu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x0003bab5ac67e45au64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000fffffeb35e51bu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000fffffffffffffu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x00000fffffffffff_u64 < (1u64 << 52)) by (bit_vector);
+}
+
 pub proof fn lemma_rr_limbs_bounded()
     ensures
         0x000d63c715bea69fu64 < (1u64 << 52),
@@ -468,7 +551,7 @@ pub proof fn lemma_montgomery_inverse()
 
 }
 
-pub(crate) proof fn lemma_r_le_l(r: Scalar52)
+pub(crate) proof fn lemma_r_equals_spec(r: Scalar52)
     requires
         r == (Scalar52 {
             limbs: [
@@ -480,19 +563,30 @@ pub(crate) proof fn lemma_r_le_l(r: Scalar52)
             ],
         }),
     ensures
+        to_nat(&r.limbs) % group_order() == montgomery_radix() % group_order(),
         to_nat(&r.limbs) < group_order(),
 {
     lemma_five_limbs_equals_to_nat(&r.limbs);
 
+    lemma2_to64();
     lemma2_to64_rest();
-    lemma_pow2_adds(52, 52);  // prove pow2(104)
-    lemma_pow2_adds(104, 52);  // prove pow2(156)
-    lemma_pow2_adds(156, 52);  // prove pow2(208)
-    lemma_pow2_adds(208, 44);  // prove pow2(252)
-    lemma_pow2_adds(208, 52);  // prove pow2(260)
+    lemma_pow2_adds(52, 52);
+    lemma_pow2_adds(104, 52);
+    lemma_pow2_adds(156, 52);
+    lemma_pow2_adds(208, 44);
+    lemma_pow2_adds(208, 52);
 
     let r_calc: nat = five_limbs_to_nat_aux(r.limbs);
+    lemma_small_mod(r_calc, group_order());
 
+    calc! {
+        (==)
+        montgomery_radix() % group_order(); {}
+        pow2(260) % group_order(); {}
+        1852673427797059126777135760139006525652319754650249024631321344126610074238976_nat
+            % 7237005577332262213973186563042994240857116359379907606001950938285454250989_nat; {}
+        r_calc;
+    }
 }
 
 pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)

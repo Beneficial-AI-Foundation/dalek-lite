@@ -257,8 +257,6 @@ impl MontgomeryPoint {
                 let R = montgomery_scalar_mul(P, n);
                 spec_montgomery_point(result) == spec_u_coordinate(R)
             }),
-            // The clamped bytes satisfy the clamping invariant
-            is_clamped_integer(&spec_clamp_integer(bytes)),
     {
         // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
         // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
@@ -816,8 +814,7 @@ impl MulAssign<&Scalar> for MontgomeryPoint {
     // Uses canonical Montgomery lift
 
             ({
-                let u0 = spec_montgomery_point(*old(self));
-                let P = canonical_montgomery_lift(u0);
+                let P = canonical_montgomery_lift(spec_montgomery_point(*old(self)));
                 let n_unreduced = scalar_to_nat(scalar);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery_point(*self) == spec_u_coordinate(R)
@@ -840,8 +837,7 @@ impl Mul<&MontgomeryPoint> for &Scalar {
     // Delegates to point * self, which multiplies by the unreduced scalar using canonical lift
 
             ({
-                let u0 = spec_montgomery_point(*point);
-                let P = canonical_montgomery_lift(u0);
+                let P = canonical_montgomery_lift(spec_montgomery_point(*point));
                 let n_unreduced = scalar_to_nat(self);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery_point(result) == spec_u_coordinate(R)

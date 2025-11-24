@@ -67,24 +67,26 @@ pub proof fn lemma_as_nat_add(a: [u64; 5], b: [u64; 5])
 
     assert(as_nat(sum) == (a[0] as nat + b[0] as nat) + pow2(51) * ((a[1] + b[1]) as nat) + pow2(
         102,
-    ) * ((a[2] + b[2]) as nat) + pow2(153) * ((a[3] + b[3]) as nat) + pow2(204) * ((a[4] + b[4]) as nat)) by {}
+    ) * ((a[2] + b[2]) as nat) + pow2(153) * ((a[3] + b[3]) as nat) + pow2(204) * ((a[4]
+        + b[4]) as nat)) by {}
 
-    assert(pow2(51) * ((a[1] + b[1]) as nat) == pow2(51) * (a[1] as nat) + pow2(51) * (b[1] as nat)) by {
+    assert(pow2(51) * ((a[1] + b[1]) as nat) == pow2(51) * (a[1] as nat) + pow2(51) * (b[1] as nat))
+        by {
         lemma_mul_is_distributive_add(pow2(51) as int, a[1] as int, b[1] as int);
     }
 
-    assert(pow2(102) * ((a[2] + b[2]) as nat) == pow2(102) * (a[2] as nat) + pow2(102) * (b[2]
-        as nat)) by {
+    assert(pow2(102) * ((a[2] + b[2]) as nat) == pow2(102) * (a[2] as nat) + pow2(102) * (
+    b[2] as nat)) by {
         lemma_mul_is_distributive_add(pow2(102) as int, a[2] as int, b[2] as int);
     }
 
-    assert(pow2(153) * ((a[3] + b[3]) as nat) == pow2(153) * (a[3] as nat) + pow2(153) * (b[3]
-        as nat)) by {
+    assert(pow2(153) * ((a[3] + b[3]) as nat) == pow2(153) * (a[3] as nat) + pow2(153) * (
+    b[3] as nat)) by {
         lemma_mul_is_distributive_add(pow2(153) as int, a[3] as int, b[3] as int);
     }
 
-    assert(pow2(204) * ((a[4] + b[4]) as nat) == pow2(204) * (a[4] as nat) + pow2(204) * (b[4]
-        as nat)) by {
+    assert(pow2(204) * ((a[4] + b[4]) as nat) == pow2(204) * (a[4] as nat) + pow2(204) * (
+    b[4] as nat)) by {
         lemma_mul_is_distributive_add(pow2(204) as int, a[4] as int, b[4] as int);
     }
 

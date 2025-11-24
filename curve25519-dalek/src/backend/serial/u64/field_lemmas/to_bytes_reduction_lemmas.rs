@@ -678,18 +678,15 @@ pub proof fn lemma_to_bytes_reduction(input_limbs: [u64; 5], final_limbs: [u64; 
 }
 
 /// Proves that the magic constants used in subtraction equal 16*p
-/// 
+///
 /// The constants are:
 /// - c0 = 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
 /// - c  = 36028797018963952u64 = 2^55 - 16  = 16 * (2^51 - 1)
 pub proof fn lemma_sub_constants_equal_16p()
     ensures
-        (36028797018963664u64 as nat + 
-         pow2(51) * (36028797018963952u64 as nat) + 
-         pow2(102) * (36028797018963952u64 as nat) + 
-         pow2(153) * (36028797018963952u64 as nat) + 
-         pow2(204) * (36028797018963952u64 as nat))
-        == (16 as nat) * p()
+        (36028797018963664u64 as nat + pow2(51) * (36028797018963952u64 as nat) + pow2(102) * (
+        36028797018963952u64 as nat) + pow2(153) * (36028797018963952u64 as nat) + pow2(204) * (
+        36028797018963952u64 as nat)) == (16 as nat) * p(),
 {
     // Step 1: Verify the individual constants
     lemma2_to64_rest();
@@ -701,7 +698,7 @@ pub proof fn lemma_sub_constants_equal_16p()
         }
         assert(16 * (0x8000000000000 - 19) == 36028797018963664) by (compute);
     }
-    
+
     assert(36028797018963952u64 as nat == 16 * (pow2(51) - 1)) by {
         assert(16 * (pow2(51) - 1) == 16 * (0x8000000000000 - 1)) by {
             assert(pow2(51) == 0x8000000000000);
@@ -713,45 +710,32 @@ pub proof fn lemma_sub_constants_equal_16p()
     // (c0, c, c, c, c) in radix 2^51 representation
     calc! {
         (==)
-        36028797018963664u64 as nat + 
-        pow2(51) * (36028797018963952u64 as nat) + 
-        pow2(102) * (36028797018963952u64 as nat) + 
-        pow2(153) * (36028797018963952u64 as nat) + 
-        pow2(204) * (36028797018963952u64 as nat);
-        { /* substitute constants */ }
-        (16 * (pow2(51) - 19) + 
-        pow2(51) * (16 * (pow2(51) - 1)) + 
-        pow2(102) * (16 * (pow2(51) - 1)) + 
-        pow2(153) * (16 * (pow2(51) - 1)) + 
-        pow2(204) * (16 * (pow2(51) - 1))) as nat;
-        { /* factor out 16 using distributivity */ 
-          lemma_mul_is_distributive_add(16, pow2(51) - 19, 
-              pow2(51) * (pow2(51) - 1) + 
-              pow2(102) * (pow2(51) - 1) + 
-              pow2(153) * (pow2(51) - 1) + 
-              pow2(204) * (pow2(51) - 1));
+        36028797018963664u64 as nat + pow2(51) * (36028797018963952u64 as nat) + pow2(102) * (
+        36028797018963952u64 as nat) + pow2(153) * (36028797018963952u64 as nat) + pow2(204) * (
+        36028797018963952u64 as nat); {  /* substitute constants */
         }
-        (16 * ((pow2(51) - 19) + 
-              pow2(51) * (pow2(51) - 1) + 
-              pow2(102) * (pow2(51) - 1) + 
-              pow2(153) * (pow2(51) - 1) + 
-              pow2(204) * (pow2(51) - 1))) as nat;
-                { /* this inner sum equals p() */ 
-                    lemma_p_radix_representation();
-                }
-        (16 * p()) as nat; 
+        (16 * (pow2(51) - 19) + pow2(51) * (16 * (pow2(51) - 1)) + pow2(102) * (16 * (pow2(51) - 1))
+            + pow2(153) * (16 * (pow2(51) - 1)) + pow2(204) * (16 * (pow2(51) - 1))) as nat; {  /* factor out 16 using distributivity */
+            lemma_mul_is_distributive_add(
+                16,
+                pow2(51) - 19,
+                pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153) * (pow2(51) - 1)
+                    + pow2(204) * (pow2(51) - 1),
+            );
+        }
+        (16 * ((pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153)
+            * (pow2(51) - 1) + pow2(204) * (pow2(51) - 1))) as nat; {  /* this inner sum equals p() */
+            lemma_p_radix_representation();
+        }
+        (16 * p()) as nat;
     }
 }
 
 /// Helper: Proves p() = (2^51 - 19) + 2^51 * (2^51 - 1) + ... in radix 2^51
 proof fn lemma_p_radix_representation()
     ensures
-        (pow2(51) - 19) + 
-        pow2(51) * (pow2(51) - 1) + 
-        pow2(102) * (pow2(51) - 1) + 
-        pow2(153) * (pow2(51) - 1) + 
-        pow2(204) * (pow2(51) - 1)
-        == p()
+        (pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153) * (
+        pow2(51) - 1) + pow2(204) * (pow2(51) - 1) == p(),
 {
     let r1 = pow2(51);
     let r2 = pow2(102);
@@ -762,12 +746,13 @@ proof fn lemma_p_radix_representation()
     assert(pow2(51) * (pow2(51) - 1) == r2 - r1) by {
         calc! {
             (==)
-            r1 * (r1 - 1);
-            { lemma_mul_is_commutative(r1 as int, (r1 - 1) as int); }
-            (r1 - 1) * r1;
-            { lemma_mul_is_distributive_sub(r1 as int, r1 as int, 1); }
-            r1 * r1 - r1 * 1;
-            {
+            r1 * (r1 - 1); {
+                lemma_mul_is_commutative(r1 as int, (r1 - 1) as int);
+            }
+            (r1 - 1) * r1; {
+                lemma_mul_is_distributive_sub(r1 as int, r1 as int, 1);
+            }
+            r1 * r1 - r1 * 1; {
                 lemma_pow2_adds(51, 51);
                 lemma_mul_basics(r1 as int);
                 assert(r1 * r1 == r2);
@@ -780,10 +765,10 @@ proof fn lemma_p_radix_representation()
     assert(pow2(102) * (pow2(51) - 1) == r3 - r2) by {
         calc! {
             (==)
-            r2 * (r1 - 1);
-            { lemma_mul_is_distributive_sub(r2 as int, r1 as int, 1); }
-            r2 * r1 - r2 * 1;
-            {
+            r2 * (r1 - 1); {
+                lemma_mul_is_distributive_sub(r2 as int, r1 as int, 1);
+            }
+            r2 * r1 - r2 * 1; {
                 lemma_pow2_adds(102, 51);
                 lemma_mul_is_commutative(r2 as int, r1 as int);
                 lemma_mul_basics(r2 as int);
@@ -797,10 +782,10 @@ proof fn lemma_p_radix_representation()
     assert(pow2(153) * (pow2(51) - 1) == r4 - r3) by {
         calc! {
             (==)
-            r3 * (r1 - 1);
-            { lemma_mul_is_distributive_sub(r3 as int, r1 as int, 1); }
-            r3 * r1 - r3 * 1;
-            {
+            r3 * (r1 - 1); {
+                lemma_mul_is_distributive_sub(r3 as int, r1 as int, 1);
+            }
+            r3 * r1 - r3 * 1; {
                 lemma_pow2_adds(153, 51);
                 lemma_mul_is_commutative(r3 as int, r1 as int);
                 lemma_mul_basics(r3 as int);
@@ -814,10 +799,10 @@ proof fn lemma_p_radix_representation()
     assert(pow2(204) * (pow2(51) - 1) == r5 - r4) by {
         calc! {
             (==)
-            r4 * (r1 - 1);
-            { lemma_mul_is_distributive_sub(r4 as int, r1 as int, 1); }
-            r4 * r1 - r4 * 1;
-            {
+            r4 * (r1 - 1); {
+                lemma_mul_is_distributive_sub(r4 as int, r1 as int, 1);
+            }
+            r4 * r1 - r4 * 1; {
                 lemma_pow2_adds(204, 51);
                 lemma_mul_is_commutative(r4 as int, r1 as int);
                 lemma_mul_basics(r4 as int);
@@ -830,19 +815,14 @@ proof fn lemma_p_radix_representation()
 
     calc! {
         (==)
-        (pow2(51) - 19) + 
-        pow2(51) * (pow2(51) - 1) + 
-        pow2(102) * (pow2(51) - 1) + 
-        pow2(153) * (pow2(51) - 1) + 
-        pow2(204) * (pow2(51) - 1);
-        {
+        (pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153) * (
+        pow2(51) - 1) + pow2(204) * (pow2(51) - 1); {
             assert(pow2(51) * (pow2(51) - 1) == r2 - r1);
             assert(pow2(102) * (pow2(51) - 1) == r3 - r2);
             assert(pow2(153) * (pow2(51) - 1) == r4 - r3);
             assert(pow2(204) * (pow2(51) - 1) == r5 - r4);
         }
-        (r1 - 19) + (r2 - r1) + (r3 - r2) + (r4 - r3) + (r5 - r4);
-        { }
+        (r1 - 19) + (r2 - r1) + (r3 - r2) + (r4 - r3) + (r5 - r4); {}
         r5 - 19;
     }
 

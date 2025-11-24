@@ -237,12 +237,29 @@ pub fn conditional_negate_field<T>(a: &mut T, choice: Choice) where
 }
 
 /// Generic wrapper for Identity::identity()
+/// Spec: For concrete types, returns:
+/// - T = AffineNielsPoint: spec_identity_affine_niels()
+/// - T = ProjectiveNielsPoint: spec_identity_projective_niels()
 #[verifier::external_body]
 pub fn identity_generic<T>() -> T
 where
     T: crate::traits::Identity,
 {
     T::identity()
+}
+
+/// Generic wrapper to negate a point (returns new negated value)
+/// Spec: For concrete types, returns:
+/// - T = AffineNielsPoint: spec_negate_affine_niels(a)
+/// - T = ProjectiveNielsPoint: spec_negate_projective_niels(a)
+#[verifier::external_body]
+pub fn negate_generic<T>(a: T) -> T
+where
+    T: subtle::ConditionallyNegatable + Copy,
+{
+    let mut result = a;
+    result.conditional_negate(Choice::from(1));
+    result
 }
 
 /// Generic wrapper for ConditionallySelectable::conditional_assign()

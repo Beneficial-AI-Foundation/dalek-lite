@@ -41,6 +41,35 @@ verus! {
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::{sum_of_limbs_bounded, limbs_bounded};
 
+/// Spec function: Identity element for AffineNielsPoint
+/// Identity has y_plus_x = 1, y_minus_x = 1, xy2d = 0
+pub open spec fn spec_identity_affine_niels() -> AffineNielsPoint;
+
+/// Spec function: Identity element for ProjectiveNielsPoint
+/// Identity has Y_plus_X = Z, Y_minus_X = Z, T2d = 0
+pub open spec fn spec_identity_projective_niels() -> ProjectiveNielsPoint;
+
+/// Spec function: Negation of an AffineNielsPoint
+/// Negation swaps y+x with y-x and negates xy2d
+pub open spec fn spec_negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
+    AffineNielsPoint {
+        y_plus_x: p.y_minus_x,
+        y_minus_x: p.y_plus_x,
+        xy2d: crate::field::FieldElement { limbs: crate::specs::field_specs_u64::spec_negate(p.xy2d.limbs) }
+    }
+}
+
+/// Spec function: Negation of a ProjectiveNielsPoint
+/// Negation swaps Y+X with Y-X and negates T2d (Z stays the same)
+pub open spec fn spec_negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveNielsPoint {
+    ProjectiveNielsPoint {
+        Y_plus_X: p.Y_minus_X,
+        Y_minus_X: p.Y_plus_X,
+        Z: p.Z,
+        T2d: crate::field::FieldElement { limbs: crate::specs::field_specs_u64::spec_negate(p.T2d.limbs) }
+    }
+}
+
 /// Specification trait for `From<T>` conversions, allowing preconditions
 pub trait FromSpecImpl<T>: Sized {
     /// Whether this implementation provides a full specification
@@ -61,8 +90,8 @@ pub open spec fn is_valid_lookup_table_projective<const N: usize>(
 ) -> bool {
     &&& table.len() == size
     &&& forall|j: int|
-        0 <= j < size ==> projective_niels_to_affine(#[trigger] table[j]) == edwards_scalar_mul(
-            affine_edwards_point(P),
+        0 <= j < size ==> projective_niels_point_as_affine_edwards(#[trigger] table[j]) == edwards_scalar_mul(
+            edwards_point_as_affine(P),
             (j + 1) as nat,
         )
 }
@@ -75,8 +104,8 @@ pub open spec fn is_valid_lookup_table_affine<const N: usize>(
 ) -> bool {
     &&& table.len() == size
     &&& forall|j: int|
-        0 <= j < size ==> affine_niels_to_affine_edwards(#[trigger] table[j]) == edwards_scalar_mul(
-            affine_edwards_point(P),
+        0 <= j < size ==> affine_niels_point_as_affine_edwards(#[trigger] table[j]) == edwards_scalar_mul(
+            edwards_point_as_affine(P),
             (j + 1) as nat,
         )
 }
@@ -115,32 +144,19 @@ macro_rules! impl_lookup_table {
                 requires
                     $neg <= x,
                     x as i16 <= $size as i16,
-                    // TODO: Add precondition that table is valid (when T = AffineNielsPoint or ProjectiveNielsPoint):
-                    // There exists a base_point P such that:
-                    // forall|i: int| 0 <= i < $size ==>
-                    //   exists |edwards_point: EdwardsPoint|
-                    //     affine_edwards_point(edwards_point) == edwards_scalar_mul(P_affine, (i+1) as nat) &&
-                    //     (affine_niels_corresponds_to_edwards OR projective_niels_corresponds_to_edwards)(self.0[i], edwards_point)
-                    // where P_affine is the affine representation of base_point P
                 ensures
-                    // Specification (when connected to concrete types):
-                    // Returns x * P where P is the base point used to construct this table
+                    // Formal spec for x > 0: return table element at index x-1
+                    (x > 0 ==> result == self.0[(x - 1) as int]),
                     //
-                    // For x = 0: result is the identity element
-                    //   (For AffineNielsPoint: y_plus_x = 1, y_minus_x = 1, xy2d = 0)
-                    //   (For ProjectiveNielsPoint: Y_plus_X = Z, Y_minus_X = Z, XY2d = 0)
+                    // Informal spec for other cases (cannot express type-specific postconditions for generic T):
                     //
-                    // For x != 0: Given the base_point P such that this table is valid,
-                    //   exists |edwards_result: EdwardsPoint|
-                    //     affine_edwards_point(edwards_result) == edwards_scalar_mul_signed(P_affine, x as int) &&
-                    //     (affine_niels_corresponds_to_edwards OR projective_niels_corresponds_to_edwards)(result, edwards_result)
+                    // For x == 0: result == identity element
+                    //   When T = AffineNielsPoint: result == spec_identity_affine_niels()
+                    //   When T = ProjectiveNielsPoint: result == spec_identity_projective_niels()
                     //
-                    // The algorithm:
-                    // 1. Compute |x| (absolute value using bit shift)
-                    // 2. Select table[|x|-1] in constant time, which equals |x| * P
-                    // 3. Conditionally negate if x < 0
-                    // Result: x * P
-                    true,
+                    // For x < 0: result == negated table element at index |x|-1
+                    //   When T = AffineNielsPoint: result == spec_negate_affine_niels(self.0[((-x) - 1) as int])
+                    //   When T = ProjectiveNielsPoint: result == spec_negate_projective_niels(self.0[((-x) - 1) as int])
             {
                 // Debug assertions from original macro - ignored by Verus
                 #[cfg(not(verus_keep_ghost))]

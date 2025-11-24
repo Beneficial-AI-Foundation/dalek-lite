@@ -807,7 +807,7 @@ impl ConstantTimeEq for EdwardsPoint {
     // (X/Z, Y/Z) == (X'/Z', Y'/Z')
     // This is checked by verifying X*Z' == X'*Z and Y*Z' == Y'*Z
 
-            choice_is_true(result) == (affine_edwards_point(*self) == affine_edwards_point(*other)),
+            choice_is_true(result) == (edwards_point_as_affine(*self) == edwards_point_as_affine(*other)),
     {
         // We would like to check that the point (X/Z, Y/Z) is equal to
         // the point (X'/Z', Y'/Z') without converting into affine
@@ -827,7 +827,7 @@ impl ConstantTimeEq for EdwardsPoint {
 
         proof {
             // The equality check via cross-multiplication is equivalent to affine coordinate equality
-            assume(choice_is_true(result) == (affine_edwards_point(*self) == affine_edwards_point(
+            assume(choice_is_true(result) == (edwards_point_as_affine(*self) == edwards_point_as_affine(
                 *other,
             )));
         }
@@ -844,7 +844,7 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
 
     open spec fn eq_spec(&self, other: &Self) -> bool {
         // Two EdwardsPoints are equal if they represent the same affine point
-        affine_edwards_point(*self) == affine_edwards_point(*other)
+        edwards_point_as_affine(*self) == edwards_point_as_affine(*other)
     }
 }
 
@@ -852,7 +852,7 @@ impl PartialEq for EdwardsPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &EdwardsPoint) -> (result: bool)
         ensures
-            result == (affine_edwards_point(*self) == affine_edwards_point(*other)),
+            result == (edwards_point_as_affine(*self) == edwards_point_as_affine(*other)),
     {
         /* ORIGINAL CODE:
         self.ct_eq(other).into()
@@ -861,7 +861,7 @@ impl PartialEq for EdwardsPoint {
         let result = choice_into(choice);
 
         proof {
-            assert(choice_is_true(choice) == (affine_edwards_point(*self) == affine_edwards_point(
+            assert(choice_is_true(choice) == (edwards_point_as_affine(*self) == edwards_point_as_affine(
                 *other,
             )));
             assert(result == choice_is_true(choice));
@@ -1067,9 +1067,9 @@ impl EdwardsPoint {
         ensures
             is_valid_edwards_point(result),  // result is also a valid Edwards point
             // Result equals the affine doubling of the input.
-            affine_edwards_point(result) == edwards_double(
-                affine_edwards_point(*self).0,
-                affine_edwards_point(*self).1,
+            edwards_point_as_affine(result) == edwards_double(
+                edwards_point_as_affine(*self).0,
+                edwards_point_as_affine(*self).1,
             ),
     {
         /* ORIGINAL CODE
@@ -1096,12 +1096,12 @@ impl EdwardsPoint {
 
         proof {
             // completed → extended conversion preserves affine meaning
-            assert(affine_edwards_point(result) == affine_completed_point(doubled));
+            assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(doubled));
 
             // And from the lower-level double() spec:
-            assert(affine_completed_point(doubled) == edwards_double(
-                affine_edwards_point(*self).0,
-                affine_edwards_point(*self).1,
+            assert(completed_point_as_affine_edwards(doubled) == edwards_double(
+                edwards_point_as_affine(*self).0,
+                edwards_point_as_affine(*self).1,
             ));
         }
 
@@ -1143,9 +1143,9 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
             is_valid_edwards_point(result),
             // Semantic correctness: affine addition law
             ({
-                let (x1, y1) = affine_edwards_point(*self);
-                let (x2, y2) = affine_edwards_point(*other);
-                affine_edwards_point(result) == edwards_add(x1, y1, x2, y2)
+                let (x1, y1) = edwards_point_as_affine(*self);
+                let (x2, y2) = edwards_point_as_affine(*other);
+                edwards_point_as_affine(result) == edwards_add(x1, y1, x2, y2)
             }),
     {
         /* ORIGINAL CODE
@@ -1183,9 +1183,9 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
             // Assume postconditions
             assume(is_valid_edwards_point(result));
             assume({
-                let (x1, y1) = affine_edwards_point(*self);
-                let (x2, y2) = affine_edwards_point(*other);
-                affine_edwards_point(result) == edwards_add(x1, y1, x2, y2)
+                let (x1, y1) = edwards_point_as_affine(*self);
+                let (x2, y2) = edwards_point_as_affine(*other);
+                edwards_point_as_affine(result) == edwards_add(x1, y1, x2, y2)
             });
         }
         result
@@ -1204,9 +1204,9 @@ impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
             is_valid_edwards_point(*self),
             // Semantic correctness: result is the addition of old(self) + rhs
             ({
-                let (x1, y1) = affine_edwards_point(*old(self));
-                let (x2, y2) = affine_edwards_point(*_rhs);
-                affine_edwards_point(*self) == edwards_add(x1, y1, x2, y2)
+                let (x1, y1) = edwards_point_as_affine(*old(self));
+                let (x2, y2) = edwards_point_as_affine(*_rhs);
+                edwards_point_as_affine(*self) == edwards_add(x1, y1, x2, y2)
             }),
     {
         /* ORIGINAL CODE
@@ -1261,9 +1261,9 @@ impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
             is_valid_edwards_point(result),
             // Semantic correctness: affine subtraction law
             ({
-                let (x1, y1) = affine_edwards_point(*self);
-                let (x2, y2) = affine_edwards_point(*other);
-                affine_edwards_point(result) == edwards_sub(x1, y1, x2, y2)
+                let (x1, y1) = edwards_point_as_affine(*self);
+                let (x2, y2) = edwards_point_as_affine(*other);
+                edwards_point_as_affine(result) == edwards_sub(x1, y1, x2, y2)
             }),
     {
         /* ORIGINAL CODE
@@ -1297,9 +1297,9 @@ impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
             // Assume postconditions
             assume(is_valid_edwards_point(result));
             assume({
-                let (x1, y1) = affine_edwards_point(*self);
-                let (x2, y2) = affine_edwards_point(*other);
-                affine_edwards_point(result) == edwards_sub(x1, y1, x2, y2)
+                let (x1, y1) = edwards_point_as_affine(*self);
+                let (x2, y2) = edwards_point_as_affine(*other);
+                edwards_point_as_affine(result) == edwards_sub(x1, y1, x2, y2)
             });
         }
 
@@ -1319,9 +1319,9 @@ impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
             is_valid_edwards_point(*self),
             // Semantic correctness: result is the subtraction of old(self) - rhs
             ({
-                let (x1, y1) = affine_edwards_point(*old(self));
-                let (x2, y2) = affine_edwards_point(*_rhs);
-                affine_edwards_point(*self) == edwards_sub(x1, y1, x2, y2)
+                let (x1, y1) = edwards_point_as_affine(*old(self));
+                let (x2, y2) = edwards_point_as_affine(*_rhs);
+                edwards_point_as_affine(*self) == edwards_sub(x1, y1, x2, y2)
             }),
     {
         /* ORIGINAL CODE

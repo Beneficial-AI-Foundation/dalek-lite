@@ -143,7 +143,7 @@ pub open spec fn spec_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat
 
 /// Returns the abstract affine coordinates (x, y) from an EdwardsPoint.
 /// An EdwardsPoint (X:Y:Z:T) represents affine point (X/Z, Y/Z).
-pub open spec fn affine_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat, nat) {
+pub open spec fn edwards_point_as_affine(point: crate::edwards::EdwardsPoint) -> (nat, nat) {
     let (x, y, z, _t) = spec_edwards_point(point);
     let z_inv = math_field_inv(z);
     (math_field_mul(x, z_inv), math_field_mul(y, z_inv))
@@ -163,7 +163,7 @@ pub open spec fn spec_completed_point(
 
 /// Returns the abstract affine coordinates (x, y) from a CompletedPoint.
 /// A CompletedPoint ((X:Z), (Y:T)) in P¹ × P¹ represents affine point (X/Z, Y/T).
-pub open spec fn affine_completed_point(
+pub open spec fn completed_point_as_affine_edwards(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat) {
     let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(point);
@@ -183,7 +183,7 @@ pub open spec fn spec_projective_point_edwards(point: ProjectivePoint) -> (nat, 
 
 /// Returns the abstract affine coordinates (x, y) from an Edwards ProjectivePoint.
 /// An Edwards ProjectivePoint (X:Y:Z) represents affine point (X/Z, Y/Z).
-pub open spec fn affine_projective_point_edwards(point: ProjectivePoint) -> (nat, nat) {
+pub open spec fn projective_point_as_affine_edwards(point: ProjectivePoint) -> (nat, nat) {
     let (x, y, z) = spec_projective_point_edwards(point);
     let z_inv = math_field_inv(z);
     (math_field_mul(x, z_inv), math_field_mul(y, z_inv))
@@ -223,7 +223,7 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
     compressed: CompressedEdwardsY,
     point: EdwardsPoint,
 ) -> bool {
-    let (x_affine, y_affine) = affine_edwards_point(point);
+    let (x_affine, y_affine) = edwards_point_as_affine(point);
     // The y-coordinate in the compressed form matches the affine y-coordinate
     spec_field_element_from_bytes(&compressed.0)
         == y_affine
@@ -276,7 +276,7 @@ pub open spec fn is_valid_projective_niels_point(niels: ProjectiveNielsPoint) ->
 /// Extract affine coordinates (x, y) from a ProjectiveNielsPoint
 /// Given: Y_plus_X = Y + X, Y_minus_X = Y - X, and Z (all in projective coords)
 /// First recover projective X and Y, then convert to affine: x = X/Z, y = Y/Z
-pub open spec fn projective_niels_to_affine(niels: ProjectiveNielsPoint) -> (nat, nat) {
+pub open spec fn projective_niels_point_as_affine_edwards(niels: ProjectiveNielsPoint) -> (nat, nat) {
     let y_plus_x = spec_field_element(&niels.Y_plus_X);
     let y_minus_x = spec_field_element(&niels.Y_minus_X);
     let z = spec_field_element(&niels.Z);
@@ -335,7 +335,7 @@ pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
 /// Extract affine coordinates (x, y) from an AffineNielsPoint
 /// Given: y_plus_x = y + x and y_minus_x = y - x
 /// Solve for: x = (y_plus_x - y_minus_x) / 2, y = (y_plus_x + y_minus_x) / 2
-pub open spec fn affine_niels_to_affine_edwards(niels: AffineNielsPoint) -> (nat, nat) {
+pub open spec fn affine_niels_point_as_affine_edwards(niels: AffineNielsPoint) -> (nat, nat) {
     let y_plus_x = spec_field_element(&niels.y_plus_x);
     let y_minus_x = spec_field_element(&niels.y_minus_x);
 

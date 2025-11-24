@@ -1,4 +1,25 @@
 // Specifications for mathematical operations on Curve25519 (Edwards curve)
+//
+// ## References
+//
+// The mathematical formulas and specifications in this file are based on:
+//
+// - [BBJLP2008] Bernstein, D.J., Birkner, P., Joye, M., Lange, T., Peters, C. (2008).
+//   "Twisted Edwards Curves". In: Vaudenay, S. (eds) Progress in Cryptology – AFRICACRYPT 2008.
+//   https://eprint.iacr.org/2008/013.pdf
+//
+// - [RFC8032] Josefsson, S. and I. Liusvaara, "Edwards-Curve Digital Signature Algorithm (EdDSA)",
+//   RFC 8032, DOI 10.17487/RFC8032, January 2017.
+//   https://www.rfc-editor.org/info/rfc8032
+//
+// - [HWCD2008] Hisil, H., Wong, K.K., Carter, G., Dawson, E. (2008).
+//   "Twisted Edwards Curves Revisited". In: Pieprzyk, J. (eds) Advances in Cryptology - ASIACRYPT 2008.
+//   https://eprint.iacr.org/2008/522.pdf
+//   (Source for extended coordinates and efficient addition formulas)
+//
+// - Curve25519-dalek documentation and implementation
+//   https://github.com/dalek-cryptography/curve25519-dalek
+//
 #[allow(unused_imports)]
 use super::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -19,6 +40,9 @@ verus! {
 
 /// Check if a point (x, y) satisfies the Edwards curve equation
 /// -x² + y² = 1 + d·x²·y²  (mod p)
+///
+/// This is the twisted Edwards curve equation with a = -1.
+/// Reference: [BBJLP2008] Section 3, [RFC8032] Section 5.1
 pub open spec fn math_on_edwards_curve(x: nat, y: nat) -> bool {
     let p = p();
     let d = spec_field_element(&EDWARDS_D);
@@ -37,6 +61,8 @@ pub open spec fn math_on_edwards_curve(x: nat, y: nat) -> bool {
 /// A projective point (X:Y:Z) represents the affine point (X/Z, Y/Z)
 /// The homogenized curve equation is: (-X² + Y²)·Z² = Z⁴ + d·X²·Y²
 /// This is equivalent to the affine equation when Z ≠ 0
+///
+/// Reference: [BBJLP2008] Section 3
 pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {
     let d = spec_field_element(&EDWARDS_D);
 
@@ -114,6 +140,9 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
 /// 2. The extended coordinate satisfies T = X*Y/Z
 /// 3. Z ≠ 0
+///
+/// Extended coordinates (X:Y:Z:T) with T = XY/Z enable faster point arithmetic.
+/// Reference: [HWCD2008] Section 3 for extended twisted Edwards coordinates
 pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
     let x = spec_field_element(&point.X);
     let y = spec_field_element(&point.Y);
@@ -205,6 +234,9 @@ pub open spec fn projective_point_as_affine_edwards(point: ProjectivePoint) -> (
 }
 
 /// Returns the field element values (Y+X, Y-X, Z, T2d) from a ProjectiveNielsPoint.
+///
+/// Niels coordinates are an optimized representation for point addition.
+/// Reference: [HWCD2008] Section 3.1 for extended coordinates and efficient formulas
 pub open spec fn spec_projective_niels_point(niels: ProjectiveNielsPoint) -> (nat, nat, nat, nat) {
     let y_plus_x = spec_field_element(&niels.Y_plus_X);
     let y_minus_x = spec_field_element(&niels.Y_minus_X);
@@ -214,6 +246,9 @@ pub open spec fn spec_projective_niels_point(niels: ProjectiveNielsPoint) -> (na
 }
 
 /// Returns the field element values (y+x, y-x, xy2d) from an AffineNielsPoint.
+///
+/// Affine Niels coordinates store (y+x, y-x, xy2d) for efficient mixed addition.
+/// Reference: [HWCD2008] Section 3.1
 pub open spec fn spec_affine_niels_point(niels: AffineNielsPoint) -> (nat, nat, nat) {
     let y_plus_x = spec_field_element(&niels.y_plus_x);
     let y_minus_x = spec_field_element(&niels.y_minus_x);
@@ -438,6 +473,9 @@ pub open spec fn negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveN
 /// Formulas:
 ///   x3 = (x1*y2 + y1*x2) / (1 + d*x1*x2*y1*y2)
 ///   y3 = (y1*y2 + x1*x2) / (1 - d*x1*x2*y1*y2)
+///
+/// These are the unified addition formulas for twisted Edwards curves with a = -1.
+/// Reference: [BBJLP2008] Section 3.1, [RFC8032] Section 5.1.4
 pub open spec fn edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
     let d = spec_field_element(&EDWARDS_D);
     let x1x2 = math_field_mul(x1, x2);

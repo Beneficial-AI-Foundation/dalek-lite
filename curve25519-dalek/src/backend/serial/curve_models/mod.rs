@@ -244,9 +244,7 @@ impl Identity for ProjectivePoint {
             Y: FieldElement::ONE,
             Z: FieldElement::ONE,
         };
-        proof {
-            assume(result == identity_projective_point_edwards());
-        }
+        
         result
     }
 }

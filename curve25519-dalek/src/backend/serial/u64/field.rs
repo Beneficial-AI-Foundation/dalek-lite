@@ -338,71 +338,256 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         // Note on "magic numbers":
         // 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
         // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
+        let c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
+        let c = 36028797018963952u64;  // 16 * (2^51 -  1)
+
         proof {
-            let c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
-            let c = 36028797018963952u64;  // 16 * (2^51 -  1)
+            // Bound both operands so adding the constants cannot overflow a u64.
+            assert(self.limbs[0] < (1u64 << 54)) by {
+                assert(limbs_bounded(self, 54));
+            }
+            lemma_lt_pow2_implies_leq_pred(self.limbs[0], 54);
+            assert(self.limbs[0] <= u64::MAX - c0) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c0) by (compute);
+            }
 
-            // For all limbs, the addition by the chosen constant does not overflow u64.
-            assume(forall|i: int|
-                0 <= i < 5 ==> self.limbs[i] <= (if i == 0 {
-                    u64::MAX - c0
-                } else {
-                    u64::MAX - c
-                }));
+            assert(self.limbs[1] < (1u64 << 54)) by {
+                assert(limbs_bounded(self, 54));
+            }
+            lemma_lt_pow2_implies_leq_pred(self.limbs[1], 54);
+            assert(self.limbs[1] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
 
-            // For all limbs, the subtraction does not underflow (after adding the constant).
-            assume(forall|i: int|
-                0 <= i < 5 ==> (if i == 0 {
-                    self.limbs[i] + c0
-                } else {
-                    self.limbs[i] + c
-                }) >= _rhs.limbs[i]);
-        }
-        let ghost unreduced = [
-                ((self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0]) as u64,
-                ((self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1]) as u64,
-                ((self.limbs[2] + 36028797018963952u64) - _rhs.limbs[2]) as u64,
-                ((self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3]) as u64,
-                ((self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4]) as u64,
-            ];
-        let output = FieldElement51::reduce(
-            [
-                (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],
-                (self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1],
-                (self.limbs[2] + 36028797018963952u64) - _rhs.limbs[2],
-                (self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3],
-                (self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4],
-            ],
-        );
-        assert(limbs_bounded(&output, 52));
-        // as_nat(limbs) - p() * (limbs[4] >> 51)
-        proof {
-            calc! {
-                (==)
-                field_element(&output); { assume(false) }
-as_nat(output.limbs) % p(); { assume(false)/*expanding field element*/ }
-as_nat(unreduced) % p(); { assume(false) /* from postcondition of reduce, maybe won't work*/}
-                // field_element(
-                //     &FieldElement51::reduce(
-                //         [
-                //             ((self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0]) as u64,
-                //             ((self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1]) as u64,
-                //             ((self.limbs[2] + 36028797018963952u64) - _rhs.limbs[2]) as u64,
-                //             ((self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3]) as u64,
-                //             ((self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4]) as u64,
-                //         ],
-                //     ),
-                // );
+            assert(self.limbs[2] < (1u64 << 54)) by {
+                assert(limbs_bounded(self, 54));
+            }
+            lemma_lt_pow2_implies_leq_pred(self.limbs[2], 54);
+            assert(self.limbs[2] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
 
-   ( (unreduced[0] as nat) + pow2(51) * (unreduced[1] as nat) + pow2(102) * (unreduced[2] as nat) + pow2(153) * (unreduced[3] as nat) + pow2(204) * (unreduced[4] as nat)) % p(); { assume(false) /* from postcondition of reduce*/ }
-                // Group terms of self, rhs, and constant term
-                // lemma saying that as nat of constant is 16 *p
-                field_sub(field_element(self), field_element(_rhs));
+            assert(self.limbs[3] < (1u64 << 54)) by {
+                assert(limbs_bounded(self, 54));
+            }
+            lemma_lt_pow2_implies_leq_pred(self.limbs[3], 54);
+            assert(self.limbs[3] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
+
+            assert(self.limbs[4] < (1u64 << 54)) by {
+                assert(limbs_bounded(self, 54));
+            }
+            lemma_lt_pow2_implies_leq_pred(self.limbs[4], 54);
+            assert(self.limbs[4] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
+
+            assert(_rhs.limbs[0] < (1u64 << 54)) by {
+                assert(limbs_bounded(_rhs, 54));
+            }
+            assert(_rhs.limbs[0] < c0) by {
+                assert((1u64 << 54) <= c0) by (compute);
+            }
+
+            assert(_rhs.limbs[1] < (1u64 << 54)) by {
+                assert(limbs_bounded(_rhs, 54));
+            }
+            assert(_rhs.limbs[1] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
+            }
+
+            assert(_rhs.limbs[2] < (1u64 << 54)) by {
+                assert(limbs_bounded(_rhs, 54));
+            }
+            assert(_rhs.limbs[2] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
+            }
+
+            assert(_rhs.limbs[3] < (1u64 << 54)) by {
+                assert(limbs_bounded(_rhs, 54));
+            }
+            assert(_rhs.limbs[3] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
+            }
+
+            assert(_rhs.limbs[4] < (1u64 << 54)) by {
+                assert(limbs_bounded(_rhs, 54));
+            }
+            assert(_rhs.limbs[4] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
             }
         }
 
-        assume(limbs_bounded(&output, 54));  // Should be easy
-        assume(field_element(&output) == field_sub(field_element(self), field_element(_rhs)));
+        // Precompute the constants we add to each limb prior to subtraction.
+        let const_vec = [c0, c, c, c, c];
+
+        proof {
+            // Package the limb-wise bounds into a quantifier for later reuse.
+            assert(forall|i: int| 0 <= i < 5 ==> self.limbs[i] <= u64::MAX - const_vec[i]) by {
+                let i: int = arbitrary();
+                if 0 <= i && i < 5 {
+                    if i == 0 {
+                        assert(self.limbs[0] <= u64::MAX - c0);
+                    } else if i == 1 {
+                        assert(self.limbs[1] <= u64::MAX - c);
+                    } else if i == 2 {
+                        assert(self.limbs[2] <= u64::MAX - c);
+                    } else if i == 3 {
+                        assert(self.limbs[3] <= u64::MAX - c);
+                    } else if i == 4 {
+                        assert(self.limbs[4] <= u64::MAX - c);
+                    }
+                }
+            };
+        }
+
+        // Translate both operands into the safe range before subtracting.
+        let s0 = self.limbs[0] + c0;
+        let s1 = self.limbs[1] + c;
+        let s2 = self.limbs[2] + c;
+        let s3 = self.limbs[3] + c;
+        let s4 = self.limbs[4] + c;
+        // Capture the widened limbs so we can reason about them element-wise.
+        let ghost augmented = [s0, s1, s2, s3, s4];
+        proof {
+            // Record the explicit shape of the augmented limbs for later rewrites.
+            assert(augmented == [
+                (self.limbs[0] + c0) as u64,
+                (self.limbs[1] + c) as u64,
+                (self.limbs[2] + c) as u64,
+                (self.limbs[3] + c) as u64,
+                (self.limbs[4] + c) as u64,
+            ]);
+        }
+
+        proof {
+            lemma_u64_add_bounds(self.limbs[0], c0);
+            lemma_u64_add_bounds(self.limbs[1], c);
+            lemma_u64_add_bounds(self.limbs[2], c);
+            lemma_u64_add_bounds(self.limbs[3], c);
+            lemma_u64_add_bounds(self.limbs[4], c);
+
+            assert(_rhs.limbs[0] <= s0) by {
+                assert(_rhs.limbs[0] < c0);
+                assert(c0 <= s0);
+            }
+            assert(_rhs.limbs[1] <= s1) by {
+                assert(_rhs.limbs[1] < c);
+                assert(c <= s1);
+            }
+            assert(_rhs.limbs[2] <= s2) by {
+                assert(_rhs.limbs[2] < c);
+                assert(c <= s2);
+            }
+            assert(_rhs.limbs[3] <= s3) by {
+                assert(_rhs.limbs[3] < c);
+                assert(c <= s3);
+            }
+            assert(_rhs.limbs[4] <= s4) by {
+                assert(_rhs.limbs[4] < c);
+                assert(c <= s4);
+            }
+
+            // Mirror the quantified bounds for the RHS limbs relative to the augmented sums.
+            assert(forall|i: int| 0 <= i < 5 ==> _rhs.limbs[i] <= augmented[i]) by {
+                let i: int = arbitrary();
+                if 0 <= i && i < 5 {
+                    if i == 0 {
+                        assert(_rhs.limbs[0] <= s0);
+                    } else if i == 1 {
+                        assert(_rhs.limbs[1] <= s1);
+                    } else if i == 2 {
+                        assert(_rhs.limbs[2] <= s2);
+                    } else if i == 3 {
+                        assert(_rhs.limbs[3] <= s3);
+                    } else if i == 4 {
+                        assert(_rhs.limbs[4] <= s4);
+                    }
+                }
+            };
+        }
+
+        let d0 = s0 - _rhs.limbs[0];
+        let d1 = s1 - _rhs.limbs[1];
+        let d2 = s2 - _rhs.limbs[2];
+        let d3 = s3 - _rhs.limbs[3];
+        let d4 = s4 - _rhs.limbs[4];
+
+        // Store the raw subtraction limbs before the reduction pass.
+        let ghost unreduced = [d0, d1, d2, d3, d4];
+
+        // Collapse the widened subtraction back into the canonical 52-bit window.
+        let output = FieldElement51::reduce([d0, d1, d2, d3, d4]);
+        assert(limbs_bounded(&output, 52));
+
+        proof {
+            // Tie the unreduced snapshot to the concrete limb expression used by reduce.
+            assert(unreduced == [
+                ((self.limbs[0] + c0) - _rhs.limbs[0]) as u64,
+                ((self.limbs[1] + c) - _rhs.limbs[1]) as u64,
+                ((self.limbs[2] + c) - _rhs.limbs[2]) as u64,
+                ((self.limbs[3] + c) - _rhs.limbs[3]) as u64,
+                ((self.limbs[4] + c) - _rhs.limbs[4]) as u64,
+            ]);
+            assert(output.limbs == spec_reduce(unreduced));
+            assert(output == spec_sub_limbs(self, _rhs));
+        }
+
+        proof {
+            assert(1u64 << 52 < 1u64 << 54) by (compute);
+            assert(limbs_bounded(&output, 54));
+        }
+
+        proof {
+            // Glue the raw subtraction back to the spec subtraction using reduction lemmas.
+            lemma_as_nat_add(self.limbs, const_vec);
+            lemma_as_nat_sub(augmented, _rhs.limbs);
+
+            assert(as_nat(augmented) == as_nat(self.limbs) + as_nat(const_vec));
+            lemma_sub_constants_equal_16p();
+            assert(as_nat(augmented) == as_nat(self.limbs) + (16 as nat) * p());
+            assert(as_nat(unreduced) == as_nat(augmented) - as_nat(_rhs.limbs));
+
+            let x = as_nat(self.limbs) as int;
+            let y = as_nat(_rhs.limbs) as int;
+            let modulus = p() as int;
+            let unreduced_int = as_nat(unreduced) as int;
+
+            assert(unreduced_int == x - y + (16 as int) * modulus);
+
+            lemma_mod_sum_factor(16 as int, x - y, modulus);
+            assert(unreduced_int % modulus == (x - y) % modulus);
+
+            assert(field_element(&output) == (unreduced_int % modulus) as nat) by {
+                assert(field_element(&output) == as_nat(output.limbs) % p());
+                assert(as_nat(output.limbs) % p() == as_nat(unreduced) % p());
+                assert(as_nat(unreduced) % p() == (unreduced_int % modulus) as nat);
+            }
+
+            let x_mod = x % modulus;
+            let y_mod = y % modulus;
+            assert(field_element(self) == x_mod as nat);
+            assert(field_element(_rhs) == y_mod as nat);
+            assert(field_element(self) % p() == field_element(self)) by {
+                lemma_mod_twice(x, modulus);
+            }
+            assert(field_element(_rhs) % p() == field_element(_rhs)) by {
+                lemma_mod_twice(y, modulus);
+            }
+
+            assert(field_sub(field_element(self), field_element(_rhs)) == (((x_mod + modulus) - y_mod) % modulus) as nat) by {
+                assert(field_element(self) % p() == field_element(self));
+                assert(field_element(_rhs) % p() == field_element(_rhs));
+            }
+
+            lemma_mod_sum_factor(1 as int, x_mod - y_mod, modulus);
+            lemma_sub_mod_noop(x, y, modulus);
+            assert(((x_mod + modulus) - y_mod) % modulus == (x - y) % modulus);
+
+            assert(field_element(&output) == field_sub(field_element(self), field_element(_rhs)));
+        }
+
         output
     }
 }

@@ -43,6 +43,56 @@ pub proof fn lemma_as_nat_sub(a: [u64; 5], b: [u64; 5])
     }
 }
 
+pub proof fn lemma_as_nat_add(a: [u64; 5], b: [u64; 5])
+    requires
+        forall|i: int| 0 <= i < 5 ==> a[i] <= u64::MAX - b[i],
+    ensures
+        as_nat(
+            [
+                (a[0] + b[0]) as u64,
+                (a[1] + b[1]) as u64,
+                (a[2] + b[2]) as u64,
+                (a[3] + b[3]) as u64,
+                (a[4] + b[4]) as u64,
+            ],
+        ) == as_nat(a) + as_nat(b),
+{
+    let sum = [
+        (a[0] + b[0]) as u64,
+        (a[1] + b[1]) as u64,
+        (a[2] + b[2]) as u64,
+        (a[3] + b[3]) as u64,
+        (a[4] + b[4]) as u64,
+    ];
+
+    assert(as_nat(sum) == (a[0] as nat + b[0] as nat) + pow2(51) * ((a[1] + b[1]) as nat) + pow2(
+        102,
+    ) * ((a[2] + b[2]) as nat) + pow2(153) * ((a[3] + b[3]) as nat) + pow2(204) * ((a[4] + b[4]) as nat)) by {}
+
+    assert(pow2(51) * ((a[1] + b[1]) as nat) == pow2(51) * (a[1] as nat) + pow2(51) * (b[1] as nat)) by {
+        lemma_mul_is_distributive_add(pow2(51) as int, a[1] as int, b[1] as int);
+    }
+
+    assert(pow2(102) * ((a[2] + b[2]) as nat) == pow2(102) * (a[2] as nat) + pow2(102) * (b[2]
+        as nat)) by {
+        lemma_mul_is_distributive_add(pow2(102) as int, a[2] as int, b[2] as int);
+    }
+
+    assert(pow2(153) * ((a[3] + b[3]) as nat) == pow2(153) * (a[3] as nat) + pow2(153) * (b[3]
+        as nat)) by {
+        lemma_mul_is_distributive_add(pow2(153) as int, a[3] as int, b[3] as int);
+    }
+
+    assert(pow2(204) * ((a[4] + b[4]) as nat) == pow2(204) * (a[4] as nat) + pow2(204) * (b[4]
+        as nat)) by {
+        lemma_mul_is_distributive_add(pow2(204) as int, a[4] as int, b[4] as int);
+    }
+
+    assert(as_nat(sum) == as_nat(a) + as_nat(b)) by {
+        lemma2_to64();
+    }
+}
+
 // Explicit and mod-p identities for squaring as_nat conversion
 #[verusfmt::skip]
 pub proof fn as_nat_squared(v: [u64; 5])

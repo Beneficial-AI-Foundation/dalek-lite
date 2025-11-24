@@ -228,6 +228,31 @@ pub proof fn lemma_bitops_lifted(a: u64, b: u64, s: nat, k: nat)
     }
 }
 
+pub proof fn lemma_lt_pow2_implies_leq_pred(x: u64, bits: u32)
+    requires
+        bits < 64,
+        x < (1u64 << bits),
+    ensures
+        x <= (1u64 << bits) - 1,
+{
+    let bound = 1u64 << bits;
+    let bound_i = bound as int;
+    let x_i = x as int;
+    assert(x_i < bound_i);
+    assert(x_i <= bound_i - 1);
+}
+
+pub proof fn lemma_u64_add_bounds(a: u64, b: u64)
+    requires
+        a <= u64::MAX - b,
+    ensures
+        a + b >= a,
+        a + b >= b,
+{
+    assert(a + b >= a) by (bit_vector);
+    assert(a + b >= b) by (bit_vector);
+}
+
 /// Modular Bit Partitioning Theorem
 /// If we add a value 'a' (fitting in k bits) to 'b' shifted left by k positions,
 /// and take the result mod 2^n, we can partition the contributions:

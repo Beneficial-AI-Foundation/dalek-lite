@@ -141,8 +141,6 @@ macro_rules! impl_lookup_table {
                     debug_assert!(x as i16 <= $size as i16);
                 }
 
-                // TODO: Remove assume(false) once we add proper overflow proofs
-                // For now, silence overflow checks to keep original code
                 assume(false);
 
                 // Compute xabs = |x|
@@ -192,8 +190,6 @@ macro_rules! impl_lookup_table {
                     debug_assert!(x as i16 <= $size as i16);
                 }
 
-                // TODO: Remove assume(false) once we add proper overflow proofs
-                // For now, silence overflow checks to keep original code
                 assume(false);
 
                 // Compute xabs = |x|
@@ -287,7 +283,6 @@ macro_rules! impl_lookup_table {
 
                 let mut points = [P.as_projective_niels(); $size];
                 for j in $conv_range
-                    // TODO: Add loop invariant proving table validity
                 {
                     // ORIGINAL CODE:
                     // points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
@@ -367,7 +362,6 @@ macro_rules! impl_lookup_table {
                 let mut points = [P.as_affine_niels(); $size];
                 // XXX batch inversion would be good if perf mattered here
                 for j in $conv_range
-                    // TODO: Add loop invariant proving table validity
                 {
                     // ORIGINAL CODE:
                     // points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()

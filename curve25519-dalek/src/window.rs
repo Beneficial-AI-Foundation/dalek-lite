@@ -131,8 +131,8 @@ macro_rules! impl_lookup_table {
                 ensures
                     // Formal specification for all cases:
                     (x > 0 ==> result == self.0[(x - 1) as int]),
-                    (x == 0 ==> result == spec_identity_affine_niels()),
-                    (x < 0 ==> result == spec_negate_affine_niels(self.0[((-x) - 1) as int])),
+                    (x == 0 ==> result == identity_affine_niels()),
+                    (x < 0 ==> result == negate_affine_niels(self.0[((-x) - 1) as int])),
             {
                 // Debug assertions from original macro - ignored by Verus
                 #[cfg(not(verus_keep_ghost))]
@@ -150,8 +150,7 @@ macro_rules! impl_lookup_table {
                 let xabs = (x as i16 + xmask) ^ xmask;
 
                 // Set t = 0 * P = identity
-                /* ORIGINAL CODE: let mut t = AffineNielsPoint::identity(); */
-                let mut t = identity_generic::<AffineNielsPoint>();
+                let mut t = AffineNielsPoint::identity();
                 for j in $range {
                     // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
                     /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
@@ -183,8 +182,8 @@ macro_rules! impl_lookup_table {
                 ensures
                     // Formal specification for all cases:
                     (x > 0 ==> result == self.0[(x - 1) as int]),
-                    (x == 0 ==> result == spec_identity_projective_niels()),
-                    (x < 0 ==> result == spec_negate_projective_niels(self.0[((-x) - 1) as int])),
+                    (x == 0 ==> result == identity_projective_niels()),
+                    (x < 0 ==> result == negate_projective_niels(self.0[((-x) - 1) as int])),
             {
                 // Debug assertions from original macro - ignored by Verus
                 #[cfg(not(verus_keep_ghost))]
@@ -202,8 +201,7 @@ macro_rules! impl_lookup_table {
                 let xabs = (x as i16 + xmask) ^ xmask;
 
                 // Set t = 0 * P = identity
-                /* ORIGINAL CODE: let mut t = ProjectiveNielsPoint::identity(); */
-                let mut t = identity_generic::<ProjectiveNielsPoint>();
+                let mut t = ProjectiveNielsPoint::identity();
                 for j in $range {
                     // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
                     /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
@@ -232,7 +230,12 @@ macro_rules! impl_lookup_table {
 
         impl<T: Copy + Default> Default for $name<T> {
             #[verifier::external_body]
-            fn default() -> $name<T> {
+            fn default() -> (result: $name<T>)
+                ensures
+                    // All table entries are set to the same default value
+                    // (Cannot express T::default() in spec, but all entries are equal)
+                    forall|i: int, j: int| 0 <= i < $size && 0 <= j < $size ==> result.0[i] == result.0[j],
+            {
                 $name([T::default(); $size])
             }
         }

@@ -181,6 +181,21 @@ pub open spec fn spec_projective_point_edwards(point: ProjectivePoint) -> (nat, 
     (x, y, z)
 }
 
+/// Spec function: Identity element for ProjectivePoint as tuple
+/// Identity in projective coordinates: (0, 1, 1) represents (0:1:1) which is affine point (0, 1)
+pub open spec fn spec_identity_projective_point_edwards() -> (nat, nat, nat) {
+    (0nat, 1nat, 1nat)
+}
+
+/// Identity element for ProjectivePoint as structure
+pub open spec fn identity_projective_point_edwards() -> ProjectivePoint {
+    ProjectivePoint {
+        X: crate::field::FieldElement { limbs: [0, 0, 0, 0, 0] },  // 0
+        Y: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
+        Z: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
+    }
+}
+
 /// Returns the abstract affine coordinates (x, y) from an Edwards ProjectivePoint.
 /// An Edwards ProjectivePoint (X:Y:Z) represents affine point (X/Z, Y/Z).
 pub open spec fn projective_point_as_affine_edwards(point: ProjectivePoint) -> (nat, nat) {
@@ -348,10 +363,15 @@ pub open spec fn affine_niels_point_as_affine_edwards(niels: AffineNielsPoint) -
     (x, y)
 }
 
-/// Spec function: Identity element for AffineNielsPoint
+/// Spec function: Identity element for AffineNielsPoint as tuple
 /// Identity represents the point (0, 1) in affine coordinates
 /// For Niels form (y+x, y-x, xy2d): (1, 1, 0)
-pub open spec fn spec_identity_affine_niels() -> AffineNielsPoint {
+pub open spec fn spec_identity_affine_niels() -> (nat, nat, nat) {
+    (1nat, 1nat, 0nat)
+}
+
+/// Identity element for AffineNielsPoint as structure
+pub open spec fn identity_affine_niels() -> AffineNielsPoint {
     AffineNielsPoint {
         y_plus_x: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
         y_minus_x: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
@@ -359,10 +379,15 @@ pub open spec fn spec_identity_affine_niels() -> AffineNielsPoint {
     }
 }
 
-/// Spec function: Identity element for ProjectiveNielsPoint
+/// Spec function: Identity element for ProjectiveNielsPoint as tuple
 /// Identity represents the point (0:1:1) in projective coordinates
 /// For Niels form (Y+X, Y-X, Z, T2d): (1, 1, 1, 0)
-pub open spec fn spec_identity_projective_niels() -> ProjectiveNielsPoint {
+pub open spec fn spec_identity_projective_niels() -> (nat, nat, nat, nat) {
+    (1nat, 1nat, 1nat, 0nat)
+}
+
+/// Identity element for ProjectiveNielsPoint as structure
+pub open spec fn identity_projective_niels() -> ProjectiveNielsPoint {
     ProjectiveNielsPoint {
         Y_plus_X: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
         Y_minus_X: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
@@ -371,9 +396,15 @@ pub open spec fn spec_identity_projective_niels() -> ProjectiveNielsPoint {
     }
 }
 
-/// Spec function: Negation of an AffineNielsPoint
+/// Spec function: Negation of an AffineNielsPoint as tuple
 /// Negation swaps y+x with y-x and negates xy2d
-pub open spec fn spec_negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
+pub open spec fn spec_negate_affine_niels(p: (nat, nat, nat)) -> (nat, nat, nat) {
+    let (y_plus_x, y_minus_x, xy2d) = p;
+    (y_minus_x, y_plus_x, math_field_neg(xy2d))
+}
+
+/// Negation of an AffineNielsPoint as structure
+pub open spec fn negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
     AffineNielsPoint {
         y_plus_x: p.y_minus_x,
         y_minus_x: p.y_plus_x,
@@ -383,9 +414,15 @@ pub open spec fn spec_negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoi
     }
 }
 
-/// Spec function: Negation of a ProjectiveNielsPoint
+/// Spec function: Negation of a ProjectiveNielsPoint as tuple
 /// Negation swaps Y+X with Y-X and negates T2d (Z stays the same)
-pub open spec fn spec_negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveNielsPoint {
+pub open spec fn spec_negate_projective_niels(p: (nat, nat, nat, nat)) -> (nat, nat, nat, nat) {
+    let (y_plus_x, y_minus_x, z, t2d) = p;
+    (y_minus_x, y_plus_x, z, math_field_neg(t2d))
+}
+
+/// Negation of a ProjectiveNielsPoint as structure
+pub open spec fn negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveNielsPoint {
     ProjectiveNielsPoint {
         Y_plus_X: p.Y_minus_X,
         Y_minus_X: p.Y_plus_X,

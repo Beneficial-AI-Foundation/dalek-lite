@@ -235,14 +235,27 @@ use crate::traits::Identity;
 verus! {
 
 impl Identity for ProjectivePoint {
-    fn identity() -> (result: ProjectivePoint) {
-        ProjectivePoint { X: FieldElement::ZERO, Y: FieldElement::ONE, Z: FieldElement::ONE }
+    fn identity() -> (result: ProjectivePoint)
+        ensures
+            result == identity_projective_point_edwards(),
+    {
+        let result = ProjectivePoint {
+            X: FieldElement::ZERO,
+            Y: FieldElement::ONE,
+            Z: FieldElement::ONE,
+        };
+        proof {
+            assume(result == identity_projective_point_edwards());
+        }
+        result
     }
 }
 
-} // verus!
 impl Identity for ProjectiveNielsPoint {
-    fn identity() -> ProjectiveNielsPoint {
+    fn identity() -> (result: ProjectiveNielsPoint)
+        ensures
+            result == identity_projective_niels(),
+    {
         ProjectiveNielsPoint {
             Y_plus_X: FieldElement::ONE,
             Y_minus_X: FieldElement::ONE,
@@ -253,13 +266,19 @@ impl Identity for ProjectiveNielsPoint {
 }
 
 impl Default for ProjectiveNielsPoint {
-    fn default() -> ProjectiveNielsPoint {
+    fn default() -> (result: ProjectiveNielsPoint)
+        ensures
+            result == identity_projective_niels(),
+    {
         ProjectiveNielsPoint::identity()
     }
 }
 
 impl Identity for AffineNielsPoint {
-    fn identity() -> AffineNielsPoint {
+    fn identity() -> (result: AffineNielsPoint)
+        ensures
+            result == identity_affine_niels(),
+    {
         AffineNielsPoint {
             y_plus_x: FieldElement::ONE,
             y_minus_x: FieldElement::ONE,
@@ -269,15 +288,18 @@ impl Identity for AffineNielsPoint {
 }
 
 impl Default for AffineNielsPoint {
-    fn default() -> AffineNielsPoint {
+    fn default() -> (result: AffineNielsPoint)
+        ensures
+            result == identity_affine_niels(),
+    {
         AffineNielsPoint::identity()
     }
 }
 
+} // verus!
 // ------------------------------------------------------------------------
 // Validity checks (for debugging, not CT)
 // ------------------------------------------------------------------------
-
 verus! {
 
 impl ValidityCheck for ProjectivePoint {
@@ -443,7 +465,9 @@ impl CompletedPoint {
             // postconditions
             assume(is_valid_projective_point(result));
             assume(spec_projective_point_edwards(result) == spec_completed_to_projective(*self));
-            assume(projective_point_as_affine_edwards(result) == completed_point_as_affine_edwards(*self));
+            assume(projective_point_as_affine_edwards(result) == completed_point_as_affine_edwards(
+                *self,
+            ));
         }
         result
     }

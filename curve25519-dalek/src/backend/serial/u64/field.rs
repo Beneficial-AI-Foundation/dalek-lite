@@ -441,8 +441,8 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
                 lemma_mod_twice(y, modulus);
             }
 
-            assert(math_field_sub(spec_field_element(self), spec_field_element(_rhs)) == (((x_mod + modulus)
-                - y_mod) % modulus) as nat) by {
+            assert(math_field_sub(spec_field_element(self), spec_field_element(_rhs)) == (((x_mod
+                + modulus) - y_mod) % modulus) as nat) by {
                 assert(spec_field_element(self) % p() == spec_field_element(self));
                 assert(spec_field_element(_rhs) % p() == spec_field_element(_rhs));
             }
@@ -451,7 +451,10 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
             lemma_sub_mod_noop(x, y, modulus);
             assert(((x_mod + modulus) - y_mod) % modulus == (x - y) % modulus);
 
-            assert(spec_field_element(&output) == math_field_sub(spec_field_element(self), spec_field_element(_rhs)));
+            assert(spec_field_element(&output) == math_field_sub(
+                spec_field_element(self),
+                spec_field_element(_rhs),
+            ));
         }
 
         output

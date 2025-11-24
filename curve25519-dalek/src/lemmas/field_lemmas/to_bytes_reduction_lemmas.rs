@@ -2,8 +2,8 @@
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power2::*;
-use vstd::calc;
 use vstd::bits::*;
+use vstd::calc;
 use vstd::prelude::*;
 
 use super::compute_q_lemmas::*;
@@ -698,9 +698,9 @@ pub proof fn lemma_to_bytes_reduction(input_limbs: [u64; 5], final_limbs: [u64; 
 /// Proves that the subtraction constants expand to 16 * p() in radix-2^51 form.
 pub proof fn lemma_sub_constants_equal_16p()
     ensures
-        (36028797018963664u64 as nat + pow2(51) * (36028797018963952u64 as nat) + pow2(102)
-            * (36028797018963952u64 as nat) + pow2(153) * (36028797018963952u64 as nat)
-            + pow2(204) * (36028797018963952u64 as nat)) == (16 as nat) * p(),
+        (36028797018963664u64 as nat + pow2(51) * (36028797018963952u64 as nat) + pow2(102) * (
+        36028797018963952u64 as nat) + pow2(153) * (36028797018963952u64 as nat) + pow2(204) * (
+        36028797018963952u64 as nat)) == (16 as nat) * p(),
 {
     lemma2_to64_rest();
     assert(pow2(51) == 0x8000000000000);
@@ -721,23 +721,22 @@ pub proof fn lemma_sub_constants_equal_16p()
 
     calc! {
         (==)
-        36028797018963664u64 as nat + pow2(51) * (36028797018963952u64 as nat) + pow2(102)
-            * (36028797018963952u64 as nat) + pow2(153) * (36028797018963952u64 as nat)
-            + pow2(204) * (36028797018963952u64 as nat); {
+        36028797018963664u64 as nat + pow2(51) * (36028797018963952u64 as nat) + pow2(102) * (
+        36028797018963952u64 as nat) + pow2(153) * (36028797018963952u64 as nat) + pow2(204) * (
+        36028797018963952u64 as nat); {
             // Substitute the constant definitions for clarity
         }
-        (16 * (pow2(51) - 19) + pow2(51) * (16 * (pow2(51) - 1)) + pow2(102)
-            * (16 * (pow2(51) - 1)) + pow2(153) * (16 * (pow2(51) - 1)) + pow2(204)
-            * (16 * (pow2(51) - 1))) as nat; {
+        (16 * (pow2(51) - 19) + pow2(51) * (16 * (pow2(51) - 1)) + pow2(102) * (16 * (pow2(51) - 1))
+            + pow2(153) * (16 * (pow2(51) - 1)) + pow2(204) * (16 * (pow2(51) - 1))) as nat; {
             lemma_mul_is_distributive_add(
                 16,
                 pow2(51) - 19,
-                pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153)
-                    * (pow2(51) - 1) + pow2(204) * (pow2(51) - 1),
+                pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153) * (pow2(51) - 1)
+                    + pow2(204) * (pow2(51) - 1),
             );
         }
-        (16 * ((pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1)
-            + pow2(153) * (pow2(51) - 1) + pow2(204) * (pow2(51) - 1))) as nat; {
+        (16 * ((pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153)
+            * (pow2(51) - 1) + pow2(204) * (pow2(51) - 1))) as nat; {
             lemma_p_radix_representation();
         }
         (16 * p()) as nat;
@@ -747,8 +746,8 @@ pub proof fn lemma_sub_constants_equal_16p()
 /// Helper lemma establishing the radix-2^51 expansion of p().
 pub proof fn lemma_p_radix_representation()
     ensures
-        (pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1)
-            + pow2(153) * (pow2(51) - 1) + pow2(204) * (pow2(51) - 1) == p(),
+        (pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153) * (
+        pow2(51) - 1) + pow2(204) * (pow2(51) - 1) == p(),
 {
     let r1 = pow2(51);
     let r2 = pow2(102);
@@ -828,9 +827,8 @@ pub proof fn lemma_p_radix_representation()
 
     calc! {
         (==)
-        (pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1)
-            + pow2(153) * (pow2(51) - 1) + pow2(204) * (pow2(51) - 1); {
-        }
+        (pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153) * (
+        pow2(51) - 1) + pow2(204) * (pow2(51) - 1); {}
         (r1 - 19) + (r2 - r1) + (r3 - r2) + (r4 - r3) + (r5 - r4); {
             assert(pow2(51) * (pow2(51) - 1) == r2 - r1);
             assert(pow2(102) * (pow2(51) - 1) == r3 - r2);

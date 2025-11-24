@@ -150,38 +150,8 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
 // =============================================================================
 // SECTION 3: Scalar * EdwardsBasepointTable
 // =============================================================================
-
-/* VERIFICATION NOTE: external specs needed for now because some macro-generated code is outside verus! blocks */
-
-/// External type specification for EdwardsBasepointTable
-#[verifier::external_type_specification]
-#[verifier::external_body]
-#[allow(dead_code)]
-pub struct ExEdwardsBasepointTable(EdwardsBasepointTable);
-
-/// External type specification for EdwardsBasepointTableRadix32
-#[verifier::external_type_specification]
-#[verifier::external_body]
-#[allow(dead_code)]
-pub struct ExEdwardsBasepointTableRadix32(crate::edwards::EdwardsBasepointTableRadix32);
-
-/// External type specification for EdwardsBasepointTableRadix64
-#[verifier::external_type_specification]
-#[verifier::external_body]
-#[allow(dead_code)]
-pub struct ExEdwardsBasepointTableRadix64(crate::edwards::EdwardsBasepointTableRadix64);
-
-/// External type specification for EdwardsBasepointTableRadix128
-#[verifier::external_type_specification]
-#[verifier::external_body]
-#[allow(dead_code)]
-pub struct ExEdwardsBasepointTableRadix128(crate::edwards::EdwardsBasepointTableRadix128);
-
-/// External type specification for EdwardsBasepointTableRadix256
-#[verifier::external_type_specification]
-#[verifier::external_body]
-#[allow(dead_code)]
-pub struct ExEdwardsBasepointTableRadix256(crate::edwards::EdwardsBasepointTableRadix256);
+/* VERIFICATION NOTE: Removed external type specifications for EdwardsBasepointTable and all radix variants
+   since the radix-16 EdwardsBasepointTable is now manually expanded inside a verus! block. */
 
 // =============================================================================
 // SECTION 4: MontgomeryPoint * Scalar

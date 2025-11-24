@@ -135,11 +135,10 @@ use crate::backend::serial::curve_models::ProjectivePoint;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
 
+/* VERIFICATION NOTE: Only importing LookupTableRadix16 since other radix variants
+were removed during manual expansion focusing on radix-16. */
 #[cfg(feature = "precomputed-tables")]
-use crate::window::{
-    LookupTableRadix128, LookupTableRadix16, LookupTableRadix256, LookupTableRadix32,
-    LookupTableRadix64,
-};
+use crate::window::LookupTableRadix16;
 
 #[cfg(feature = "precomputed-tables")]
 use crate::traits::BasepointTable;
@@ -1765,43 +1764,199 @@ macro_rules! impl_basepoint_table {
 } // End macro_rules! impl_basepoint_table
 
 // The number of additions required is ceil(256/w) where w is the radix representation.
+/* VERIFICATION NOTE: Manually expanded impl_basepoint_table! macro for radix-16 (EdwardsBasepointTable).
+   Removed macro invocations for radix-32, 64, 128, 256 variants to focus verification
+   on the primary radix-16 implementation used as a constructor for consts.
+
+   Original macro invocation:
+   impl_basepoint_table! {
+       Name = EdwardsBasepointTable,
+       LookupTable = LookupTableRadix16,
+       Point = EdwardsPoint,
+       Radix = 4,
+       Additions = 64
+   }
+*/
+
 cfg_if! {
     if #[cfg(feature = "precomputed-tables")] {
-        impl_basepoint_table! {
-            Name = EdwardsBasepointTable,
-            LookupTable = LookupTableRadix16,
-            Point = EdwardsPoint,
-            Radix = 4,
-            Additions = 64
+
+verus! {
+
+/// A precomputed table of multiples of a basepoint, for accelerating
+/// fixed-base scalar multiplication.  One table, for the Ed25519
+/// basepoint, is provided in the [`constants`] module.
+///
+/// The basepoint tables are reasonably large, so they should probably be boxed.
+///
+/// The sizes for the tables and the number of additions required for one scalar
+/// multiplication are as follows:
+///
+/// * [`EdwardsBasepointTableRadix16`]: 30KB, 64A
+///   (this is the default size, and is used for
+///   [`constants::ED25519_BASEPOINT_TABLE`])
+/// * [`EdwardsBasepointTableRadix64`]: 120KB, 43A
+/// * [`EdwardsBasepointTableRadix128`]: 240KB, 37A
+/// * [`EdwardsBasepointTableRadix256`]: 480KB, 33A
+///
+/// # Why 33 additions for radix-256?
+///
+/// Normally, the radix-256 tables would allow for only 32 additions per scalar
+/// multiplication.  However, due to the fact that standardised definitions of
+/// legacy protocols—such as x25519—require allowing unreduced 255-bit scalars
+/// invariants, when converting such an unreduced scalar's representation to
+/// radix-\\(2^{8}\\), we cannot guarantee the carry bit will fit in the last
+/// coefficient (the coefficients are `i8`s).  When, \\(w\\), the power-of-2 of
+/// the radix, is \\(w < 8\\), we can fold the final carry onto the last
+/// coefficient, \\(d\\), because \\(d < 2^{w/2}\\), so
+/// $$
+///     d + carry \cdot 2^{w} = d + 1 \cdot 2^{w} < 2^{w+1} < 2^{8}
+/// $$
+/// When \\(w = 8\\), we can't fit \\(carry \cdot 2^{w}\\) into an `i8`, so we
+/// add the carry bit onto an additional coefficient.
+#[repr(transparent)]
+pub struct EdwardsBasepointTable(pub(crate) [LookupTableRadix16<AffineNielsPoint>; 32]);
+
+// Manual Clone implementation to avoid array clone issues in Verus
+impl Clone for EdwardsBasepointTable {
+    #[verifier::external_body]
+    fn clone(&self) -> Self {
+        EdwardsBasepointTable(self.0)
+    }
+}
+
+impl BasepointTable for EdwardsBasepointTable {
+    type Point = EdwardsPoint;
+
+    /// Create a table of precomputed multiples of `basepoint`.
+    #[verifier::external_body]
+    fn create(basepoint: &EdwardsPoint) -> EdwardsBasepointTable {
+        // XXX use init_with
+        let mut table = EdwardsBasepointTable([LookupTableRadix16::default();32]);
+        let mut P = *basepoint;
+        for i in 0..32 {
+            // P = (2w)^i * B
+            table.0[i] = LookupTableRadix16::from(&P);
+            P = P.mul_by_pow_2(4 + 4);
         }
-        impl_basepoint_table! {
-            Name = EdwardsBasepointTableRadix32,
-            LookupTable = LookupTableRadix32,
-            Point = EdwardsPoint,
-            Radix = 5,
-            Additions = 52
+        table
+    }
+
+    /// Get the basepoint for this table as an `EdwardsPoint`.
+    fn basepoint(&self) -> EdwardsPoint {
+        // self.0[0].select(1) = 1*(16^2)^0*B
+        // but as an `AffineNielsPoint`, so add identity to convert to extended.
+        proof {
+            assume(false);
         }
-        impl_basepoint_table! {
-            Name = EdwardsBasepointTableRadix64,
-            LookupTable = LookupTableRadix64,
-            Point = EdwardsPoint,
-            Radix = 6,
-            Additions = 43
+        (&EdwardsPoint::identity() + &self.0[0].select(1)).as_extended()
+    }
+
+    /// The computation uses Pippeneger's algorithm, as described for the
+    /// specific case of radix-16 on page 13 of the Ed25519 paper.
+    ///
+    /// # Piggenger's Algorithm Generalised
+    ///
+    /// Write the scalar \\(a\\) in radix-\\(w\\), where \\(w\\) is a power of
+    /// 2, with coefficients in \\([\frac{-w}{2},\frac{w}{2})\\), i.e.,
+    /// $$
+    ///     a = a\_0 + a\_1 w\^1 + \cdots + a\_{x} w\^{x},
+    /// $$
+    /// with
+    /// $$
+    /// \begin{aligned}
+    ///     \frac{-w}{2} \leq a_i < \frac{w}{2}
+    ///     &&\cdots&&
+    ///     \frac{-w}{2} \leq a\_{x} \leq \frac{w}{2}
+    /// \end{aligned}
+    /// $$
+    /// and the number of additions, \\(x\\), is given by
+    /// \\(x = \lceil \frac{256}{w} \rceil\\). Then
+    /// $$
+    ///     a B = a\_0 B + a\_1 w\^1 B + \cdots + a\_{x-1} w\^{x-1} B.
+    /// $$
+    /// Grouping even and odd coefficients gives
+    /// $$
+    /// \begin{aligned}
+    ///     a B = \quad a\_0 w\^0 B +& a\_2 w\^2 B + \cdots + a\_{x-2} w\^{x-2} B    \\\\
+    ///               + a\_1 w\^1 B +& a\_3 w\^3 B + \cdots + a\_{x-1} w\^{x-1} B    \\\\
+    ///         = \quad(a\_0 w\^0 B +& a\_2 w\^2 B + \cdots + a\_{x-2} w\^{x-2} B)   \\\\
+    ///             + w(a\_1 w\^0 B +& a\_3 w\^2 B + \cdots + a\_{x-1} w\^{x-2} B).  \\\\
+    /// \end{aligned}
+    /// $$
+    /// For each \\(i = 0 \ldots 31\\), we create a lookup table of
+    /// $$
+    /// [w\^{2i} B, \ldots, \frac{w}{2}\cdot w\^{2i} B],
+    /// $$
+    /// and use it to select \\( y \cdot w\^{2i} \cdot B \\) in constant time.
+    ///
+    /// The radix-\\(w\\) representation requires that the scalar is bounded
+    /// by \\(2\^{255}\\), which is always the case.
+    ///
+    /// The above algorithm is trivially generalised to other powers-of-2 radices.
+    #[verifier::external_body]
+    fn mul_base(&self, scalar: &Scalar) -> EdwardsPoint {
+        let a = scalar.as_radix_2w(4);
+
+        let tables = &self.0;
+        let mut P = EdwardsPoint::identity();
+
+        // ORIGINAL CODE (doesn't work with Verus - .filter() not supported in ghost for loops):
+        // for i in (0..64).filter(|x| x % 2 == 1) {
+        //     P = (&P + &tables[i / 2].select(a[i])).as_extended();
+        // }
+        for i in 0..64 {
+            if i % 2 == 1 {
+                P = (&P + &tables[i / 2].select(a[i])).as_extended();
+            }
         }
-        impl_basepoint_table! {
-            Name = EdwardsBasepointTableRadix128,
-            LookupTable = LookupTableRadix128,
-            Point = EdwardsPoint,
-            Radix = 7,
-            Additions = 37
+
+        P = P.mul_by_pow_2(4);
+        // ORIGINAL CODE (doesn't work with Verus - .filter() not supported in ghost for loops):
+        // for i in (0..64).filter(|x| x % 2 == 0) {
+        //     P = (&P + &tables[i / 2].select(a[i])).as_extended();
+        // }
+        for i in 0..64 {
+            if i % 2 == 0 {
+                P = (&P + &tables[i / 2].select(a[i])).as_extended();
+            }
         }
-        impl_basepoint_table! {
-            Name = EdwardsBasepointTableRadix256,
-            LookupTable = LookupTableRadix256,
-            Point = EdwardsPoint,
-            Radix = 8,
-            Additions = 33
+
+        P
+    }
+}
+
+} // verus!
+impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
+    type Output = EdwardsPoint;
+
+    /// Construct an `EdwardsPoint` from a `Scalar` \\(a\\) by
+    /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
+    fn mul(self, scalar: &'b Scalar) -> EdwardsPoint {
+        // delegate to a private function so that its documentation appears in internal docs
+        self.mul_base(scalar)
+    }
+}
+
+impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
+    type Output = EdwardsPoint;
+
+    /// Construct an `EdwardsPoint` from a `Scalar` \\(a\\) by
+    /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
+    fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> EdwardsPoint {
+        basepoint_table * self
+    }
+}
+
+impl Debug for EdwardsBasepointTable {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}([\n", stringify!(EdwardsBasepointTable))?;
+        for i in 0..32 {
+            write!(f, "\t{:?},\n", &self.0[i])?;
         }
+        write!(f, "])")
+    }
+}
 
         /// A type-alias for [`EdwardsBasepointTable`] because the latter is
         /// used as a constructor in the [`constants`] module.
@@ -1830,57 +1985,8 @@ macro_rules! impl_basepoint_table_conversions {
     };
 }
 
-cfg_if! {
-    if #[cfg(feature = "precomputed-tables")] {
-        // Conversions from radix 16
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix16,
-            RHS = EdwardsBasepointTableRadix32
-        }
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix16,
-            RHS = EdwardsBasepointTableRadix64
-        }
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix16,
-            RHS = EdwardsBasepointTableRadix128
-        }
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix16,
-            RHS = EdwardsBasepointTableRadix256
-        }
-
-        // Conversions from radix 32
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix32,
-            RHS = EdwardsBasepointTableRadix64
-        }
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix32,
-            RHS = EdwardsBasepointTableRadix128
-        }
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix32,
-            RHS = EdwardsBasepointTableRadix256
-        }
-
-        // Conversions from radix 64
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix64,
-            RHS = EdwardsBasepointTableRadix128
-        }
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix64,
-            RHS = EdwardsBasepointTableRadix256
-        }
-
-        // Conversions from radix 128
-        impl_basepoint_table_conversions! {
-            LHS = EdwardsBasepointTableRadix128,
-            RHS = EdwardsBasepointTableRadix256
-        }
-    }
-}
+/* VERIFICATION NOTE: Removed all impl_basepoint_table_conversions! invocations
+since only radix-16 is kept and no conversions between radix sizes are needed. */
 
 impl EdwardsPoint {
     /// Multiply by the cofactor: return \\(\[8\]P\\).

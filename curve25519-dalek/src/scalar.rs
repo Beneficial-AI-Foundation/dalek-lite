@@ -2521,56 +2521,59 @@ impl Scalar {
         result
     }
 
-    result
-}
+    /// Check whether this `Scalar` is the canonical representative mod \\(\ell\\). This is not
+    /// public because any `Scalar` that is publicly observed is reduced, by scalar invariant #2.
+    fn is_canonical(&self) -> (result: Choice)
+        ensures
+    // Result is true iff the scalar satisfies Scalar invariants #1 and #2
 
-/// Check whether this `Scalar` is the canonical representative mod \\(\ell\\). This is not
-/// public because any `Scalar` that is publicly observed is reduced, by scalar invariant #2.
-fn is_canonical(&self) -> (result: Choice)
-    ensures
-// Result is true iff the scalar satisfies Scalar invariants #1 and #2
+            choice_is_true(result) == is_canonical_scalar(self),
+    {
+        let x = &self.reduce();
+        let result = self.ct_eq(x);
 
-        choice_is_true(result) == is_canonical_scalar(self),
-{
-    let x = &self.reduce();
-    let result = self.ct_eq(x);
+        proof {
+            // ct_eq ensures choice_is_true(result) == (self.bytes == x.bytes)
+            // reduce ensures is_canonical_scalar(&x) is true
+            if (self.bytes == x.bytes) {
+                assert(bytes_to_nat(&self.bytes) == bytes_to_nat(&x.bytes));
+                assert(is_canonical_scalar(&x));
+            } else {
+                // by postcondition of reduce
+                assert(bytes_to_nat(&x.bytes) % group_order() == bytes_to_nat(&self.bytes)
+                    % group_order());
+                assert(bytes_to_nat(&x.bytes) < group_order());
 
-    proof {
-        // ct_eq ensures choice_is_true(result) == (self.bytes == x.bytes)
-        // reduce ensures is_canonical_scalar(&x) is true
-
-        if (self.bytes == x.bytes) {
-            assert(bytes_to_nat(&self.bytes) == bytes_to_nat(&x.bytes));
-            assert(is_canonical_scalar(&x));
-        } else {
-            // by postcondition of reduce
-            assert(bytes_to_nat(&x.bytes) % group_order() == bytes_to_nat(&self.bytes) % group_order());
-            assert(bytes_to_nat(&x.bytes) < group_order());
-
-            assert(x.bytes != self.bytes);
-            assert(bytes_to_nat(&x.bytes) != bytes_to_nat(&self.bytes)) by {
-                lemma_bytes_to_nat_injective(&x.bytes, &self.bytes);
-            }
-
-            assert(bytes_to_nat(&x.bytes) == bytes_to_nat(&x.bytes) % group_order()) by {
-                lemma_fundamental_div_mod_converse_mod(bytes_to_nat(&x.bytes) as int, 
-                    group_order() as int, 0int, bytes_to_nat(&x.bytes) as int);
-            }
-
-            assert(bytes_to_nat(&x.bytes) == bytes_to_nat(&self.bytes) % group_order());
-            
-            assert(bytes_to_nat(&self.bytes) % group_order() != bytes_to_nat(&self.bytes));
-
-            // by contradiction bytes_to_nat(&self.bytes) != bytes_to_nat(&x.bytes)
-            if (bytes_to_nat(&self.bytes) < group_order()) {
-                assert(bytes_to_nat(&self.bytes) % group_order() == bytes_to_nat(&self.bytes)) by {
-                    lemma_small_mod(bytes_to_nat(&self.bytes), group_order());
+                assert(x.bytes != self.bytes);
+                assert(bytes_to_nat(&x.bytes) != bytes_to_nat(&self.bytes)) by {
+                    lemma_bytes_to_nat_injective(&x.bytes, &self.bytes);
                 }
-                assert(false);
+
+                assert(bytes_to_nat(&x.bytes) == bytes_to_nat(&x.bytes) % group_order()) by {
+                    lemma_fundamental_div_mod_converse_mod(
+                        bytes_to_nat(&x.bytes) as int,
+                        group_order() as int,
+                        0int,
+                        bytes_to_nat(&x.bytes) as int,
+                    );
+                }
+
+                assert(bytes_to_nat(&x.bytes) == bytes_to_nat(&self.bytes) % group_order());
+
+                assert(bytes_to_nat(&self.bytes) % group_order() != bytes_to_nat(&self.bytes));
+
+                // by contradiction bytes_to_nat(&self.bytes) != bytes_to_nat(&x.bytes)
+                if (bytes_to_nat(&self.bytes) < group_order()) {
+                    assert(bytes_to_nat(&self.bytes) % group_order() == bytes_to_nat(&self.bytes))
+                        by {
+                        lemma_small_mod(bytes_to_nat(&self.bytes), group_order());
+                    }
+                    assert(false);
+                }
             }
         }
+        result
     }
-    result
 }
 
 // verus!

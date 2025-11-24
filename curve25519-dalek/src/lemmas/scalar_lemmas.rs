@@ -1846,16 +1846,16 @@ pub proof fn lemma_bytes_to_nat_injective(a: &[u8; 32], b: &[u8; 32])
     ensures
         bytes_to_nat(a) != bytes_to_nat(b),
 {
-    use crate::lemmas::core_lemmas::lemma_as_nat_32_u8_injective;
-    
-    // Since bytes_to_nat(x) == as_nat_32_u8(x) by definition
-    assert(bytes_to_nat(a) == as_nat_32_u8(a));
-    assert(bytes_to_nat(b) == as_nat_32_u8(b));
-    
-    // Apply the injectivity lemma for as_nat_32_u8
-    lemma_as_nat_32_u8_injective(a, b);
-    
-    // Therefore: as_nat_32_u8(a) != as_nat_32_u8(b)
+    use crate::lemmas::core_lemmas::lemma_u8_32_as_nat_injective;
+
+    // Since bytes_to_nat(x) == u8_32_as_nat(x) by definition
+    assert(bytes_to_nat(a) == u8_32_as_nat(a));
+    assert(bytes_to_nat(b) == u8_32_as_nat(b));
+
+    // Apply the injectivity lemma for u8_32_as_nat
+    lemma_u8_32_as_nat_injective(a, b);
+
+    // Therefore: u8_32_as_nat(a) != u8_32_as_nat(b)
     // Which means: bytes_to_nat(a) != bytes_to_nat(b)
 }
 

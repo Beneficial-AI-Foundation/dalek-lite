@@ -29,12 +29,12 @@ The function must ensure the output is **canonical**, meaning it represents the 
 ### Core Invariant
 
 ```
-as_nat_32_u8(bytes) = as_nat(limbs) mod p
+u8_32_as_nat(bytes) = as_nat(limbs) mod p
 ```
 
 Where:
 - `as_nat(limbs)` = limbs[0] + limbs[1]·2^51 + limbs[2]·2^102 + limbs[3]·2^153 + limbs[4]·2^204
-- `as_nat_32_u8(bytes)` = bytes[0] + bytes[1]·2^8 + ... + bytes[31]·2^248
+- `u8_32_as_nat(bytes)` = bytes[0] + bytes[1]·2^8 + ... + bytes[31]·2^248
 
 ---
 
@@ -43,7 +43,7 @@ Where:
 ```rust
 pub fn to_bytes(self) -> (r: [u8; 32])
     ensures
-        as_nat_32_u8(r) == as_nat(self.limbs) % p()
+  u8_32_as_nat(r) == as_nat(self.limbs) % p()
 ```
 
 **Precondition**: The input `self.limbs` represents a field element (implicitly reduced during operations)
@@ -85,7 +85,7 @@ Therefore, `q` equals the carry bit out of position 255 when computing `as_nat(l
 
 ```
 Input: final_limbs[0..4] where each limb < 2^51
-Output: bytes[0..31] where as_nat_32_u8(bytes) = as_nat(final_limbs)
+Output: bytes[0..31] where u8_32_as_nat(bytes) = as_nat(final_limbs)
 ```
 
 This step packs the 255 bits (5 × 51 bits) into 32 bytes (256 bits).
@@ -344,7 +344,7 @@ So `as_nat(final) < p` is guaranteed. ∎
 
 Then:
 ```
-as_nat_32_u8(bytes) = as_nat(limbs)
+u8_32_as_nat(bytes) = as_nat(limbs)
 ```
 
 **Proof**:
@@ -370,7 +370,7 @@ This is the most intricate lemma because limb boundaries don't align with byte b
 - Byte 19: bits [152, 160) — crosses limb boundary at bit 153
 - Byte 25: bits [200, 208) — crosses limb boundary at bit 204
 
-**Strategy**: Show that `as_nat_32_u8(bytes)` equals `as_nat(limbs)` by expanding both sides and regrouping.
+**Strategy**: Show that `u8_32_as_nat(bytes)` equals `as_nat(limbs)` by expanding both sides and regrouping.
 
 *Expansion of as_nat(limbs)*:
 ```
@@ -378,9 +378,9 @@ as_nat(limbs) = limbs[0] + limbs[1]·2^51 + limbs[2]·2^102
                 + limbs[3]·2^153 + limbs[4]·2^204
 ```
 
-*Expansion of as_nat_32_u8(bytes)*:
+*Expansion of u8_32_as_nat(bytes)*:
 ```
-as_nat_32_u8(bytes) = Σᵢ₌₀³¹ bytes[i]·2^(8i)
+u8_32_as_nat(bytes) = Σᵢ₌₀³¹ bytes[i]·2^(8i)
 ```
 
 *Key insight*: Each byte either:
@@ -397,7 +397,7 @@ bytes[4] = (limbs[0] >> 32) & 0xFF      = ⌊limbs[0] / 2^32⌋ mod 2^8
 bytes[5] = (limbs[0] >> 40) & 0xFF      = ⌊limbs[0] / 2^40⌋ mod 2^8
 ```
 
-Their contribution to `as_nat_32_u8`:
+Their contribution to `u8_32_as_nat`:
 ```
 bytes[0] + bytes[1]·2^8 + bytes[2]·2^16 + ... + bytes[5]·2^40
   = limbs[0] mod 2^48
@@ -449,9 +449,9 @@ Then:
 bytes[i] = ⌊N / 2^(8i)⌋ mod 2^8  for i = 0, ..., 31
 ```
 
-By construction, this is exactly how `as_nat_32_u8` is defined:
+By construction, this is exactly how `u8_32_as_nat` is defined:
 ```
-as_nat_32_u8(bytes) = Σᵢ bytes[i]·2^(8i)
+u8_32_as_nat(bytes) = Σᵢ bytes[i]·2^(8i)
                      = Σᵢ (⌊N / 2^(8i)⌋ mod 2^8)·2^(8i)
 ```
 
@@ -464,7 +464,7 @@ In our case, B = 2^8 = 256, n = 31, and N < 2^255 < 2^256 = B^32.
 
 Therefore:
 ```
-as_nat_32_u8(bytes) = N = as_nat(limbs)
+u8_32_as_nat(bytes) = N = as_nat(limbs)
 ```
 
 **Paper proof complexity**: ~20 lines using radix representation theorem

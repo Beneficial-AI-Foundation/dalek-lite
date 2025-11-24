@@ -575,6 +575,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
     }
 
     open spec fn add_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
+        // Placeholder - actual spec is in the ensures clause of the add function
         arbitrary()
     }
 }
@@ -585,7 +586,22 @@ impl vstd::std_specs::ops::AddSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
 impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;
 
-    fn add(self, other: &'b ProjectiveNielsPoint) -> CompletedPoint {
+    fn add(self, other: &'b ProjectiveNielsPoint) -> (result: CompletedPoint)
+        ensures
+    // The result represents the Edwards addition of the affine forms of self and other
+
+            is_valid_completed_point(
+                result,
+            ),
+    // TODO: Add full spec relating result to edwards_add once we have field conversion lemmas
+    // {
+    //   let self_affine = affine_edwards_point(*self);
+    //   let other_affine = projective_niels_to_affine(*other);
+    //   let (x3, y3) = edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1);
+    //   affine_completed_point(result) == (x3, y3)
+    // }
+
+    {
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
@@ -684,28 +700,83 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     }
 }
 
-} // verus!
+/// Spec for &EdwardsPoint + &AffineNielsPoint
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
+    open spec fn obeys_add_spec() -> bool {
+        false
+    }
+
+    open spec fn add_req(self, rhs: &AffineNielsPoint) -> bool {
+        // Preconditions needed for field operations
+        sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX) && sum_of_limbs_bounded(
+            &self.Z,
+            &self.Z,
+            u64::MAX,
+        )  // for Z2 = &self.Z + &self.Z
+         && limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54)
+            && limbs_bounded(&self.T, 54) && limbs_bounded(&rhs.y_plus_x, 54) && limbs_bounded(
+            &rhs.y_minus_x,
+            54,
+        ) && limbs_bounded(&rhs.xy2d, 54)
+    }
+
+    open spec fn add_spec(self, rhs: &AffineNielsPoint) -> CompletedPoint {
+        // Placeholder - actual spec is in the ensures clause of the add function
+        arbitrary()
+    }
+}
+
 //#[doc(hidden)]
 impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;
 
-    fn add(self, other: &'b AffineNielsPoint) -> CompletedPoint {
+    fn add(self, other: &'b AffineNielsPoint) -> (result: CompletedPoint)
+        ensures
+    // The result represents the Edwards addition of the affine forms of self and other
+
+            is_valid_completed_point(
+                result,
+            ),
+    // TODO: Add full spec relating result to edwards_add once we have field conversion lemmas
+    // {
+    //   let self_affine = affine_edwards_point(*self);
+    //   let other_affine = affine_niels_to_affine(*other);
+    //   let (x3, y3) = edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1);
+    //   affine_completed_point(result) == (x3, y3)
+    // }
+
+    {
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
+        proof {
+            assume(sum_of_limbs_bounded(&Y_plus_X, &Y_minus_X, u64::MAX));
+            assume(limbs_bounded(&Y_plus_X, 54) && limbs_bounded(&Y_minus_X, 54));
+        }
         let PP = &Y_plus_X * &other.y_plus_x;
         let MM = &Y_minus_X * &other.y_minus_x;
         let Txy2d = &self.T * &other.xy2d;
         let Z2 = &self.Z + &self.Z;
-
-        CompletedPoint {
+        proof {
+            assume(sum_of_limbs_bounded(&Z2, &Txy2d, u64::MAX));
+            assume(sum_of_limbs_bounded(&PP, &MM, u64::MAX));
+            assume(limbs_bounded(&PP, 54) && limbs_bounded(&MM, 54));
+            assume(limbs_bounded(&Z2, 54) && limbs_bounded(&Txy2d, 54));
+        }
+        let result = CompletedPoint {
             X: &PP - &MM,
             Y: &PP + &MM,
             Z: &Z2 + &Txy2d,
             T: &Z2 - &Txy2d,
+        };
+        proof {
+            assume(is_valid_completed_point(result));
         }
+        result
     }
 }
 
+} // verus!
 //#[doc(hidden)]
 impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;

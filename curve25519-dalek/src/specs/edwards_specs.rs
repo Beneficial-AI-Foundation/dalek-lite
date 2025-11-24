@@ -273,6 +273,26 @@ pub open spec fn is_valid_projective_niels_point(niels: ProjectiveNielsPoint) ->
         )
 }
 
+/// Extract affine coordinates (x, y) from a ProjectiveNielsPoint
+/// Given: Y_plus_X = Y + X, Y_minus_X = Y - X, and Z (all in projective coords)
+/// First recover projective X and Y, then convert to affine: x = X/Z, y = Y/Z
+pub open spec fn projective_niels_to_affine(niels: ProjectiveNielsPoint) -> (nat, nat) {
+    let y_plus_x = spec_field_element(&niels.Y_plus_X);
+    let y_minus_x = spec_field_element(&niels.Y_minus_X);
+    let z = spec_field_element(&niels.Z);
+
+    // Recover projective X and Y from Y+X and Y-X
+    let x_proj = math_field_mul(math_field_sub(y_plus_x, y_minus_x), math_field_inv(2));
+    let y_proj = math_field_mul(math_field_add(y_plus_x, y_minus_x), math_field_inv(2));
+
+    // Convert to affine by dividing by Z
+    let z_inv = math_field_inv(z);
+    let x = math_field_mul(x_proj, z_inv);
+    let y = math_field_mul(y_proj, z_inv);
+
+    (x, y)
+}
+
 /// Check if an AffineNielsPoint corresponds to an EdwardsPoint
 /// An AffineNielsPoint (y_plus_x, y_minus_x, xy2d) corresponds to EdwardsPoint (X:Y:Z:T) if:
 /// 1. y_plus_x = y + x (mod p) where x = X/Z, y = Y/Z (affine coordinates)
@@ -310,6 +330,19 @@ pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
             niels,
             point,
         )
+}
+
+/// Extract affine coordinates (x, y) from an AffineNielsPoint
+/// Given: y_plus_x = y + x and y_minus_x = y - x
+/// Solve for: x = (y_plus_x - y_minus_x) / 2, y = (y_plus_x + y_minus_x) / 2
+pub open spec fn affine_niels_to_affine_edwards(niels: AffineNielsPoint) -> (nat, nat) {
+    let y_plus_x = spec_field_element(&niels.y_plus_x);
+    let y_minus_x = spec_field_element(&niels.y_minus_x);
+
+    let x = math_field_mul(math_field_sub(y_plus_x, y_minus_x), math_field_inv(2));
+    let y = math_field_mul(math_field_add(y_plus_x, y_minus_x), math_field_inv(2));
+
+    (x, y)
 }
 
 /// Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).
@@ -409,6 +442,38 @@ pub open spec fn spec_completed_to_extended(
 pub open spec fn spec_projective_to_extended(point: ProjectivePoint) -> (nat, nat, nat, nat) {
     let (x, y, z) = spec_projective_point_edwards(point);
     (math_field_mul(x, z), math_field_mul(y, z), math_field_square(z), math_field_mul(x, y))
+}
+
+/// Scalar multiplication on Edwards curve points (affine coordinates)
+/// Computes n * P using repeated addition
+/// Takes the affine coordinates (x, y) of a point P and returns n * P
+pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, nat)
+    decreases n,
+{
+    if n == 0 {
+        math_edwards_identity()  // (0, 1)
+
+    } else {
+        let prev = edwards_scalar_mul(point_affine, (n - 1) as nat);
+        edwards_add(prev.0, prev.1, point_affine.0, point_affine.1)
+    }
+}
+
+/// Scalar multiplication that handles negative scalars (for lookup tables)
+/// Unlike edwards_scalar_mul which only takes nat (≥ 0), this takes int which can be negative
+///
+/// For n ≥ 0: returns n * P using edwards_scalar_mul
+/// For n < 0: returns n * P = -(|n| * P) by computing |n| * P and negating
+///            Edwards negation: (x,y) -> (-x,y)
+///
+/// Used by LookupTable::select(x) where x: i8 can be negative (e.g., -8 ≤ x ≤ 8)
+pub open spec fn edwards_scalar_mul_signed(point_affine: (nat, nat), n: int) -> (nat, nat) {
+    if n >= 0 {
+        edwards_scalar_mul(point_affine, n as nat)
+    } else {
+        let (x, y) = edwards_scalar_mul(point_affine, (-n) as nat);
+        (math_field_neg(x), y)
+    }
 }
 
 } // verus!

@@ -148,7 +148,67 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
 }
 
 // =============================================================================
-// SECTION 3: MontgomeryPoint * Scalar
+// SECTION 3: Scalar * EdwardsBasepointTable
+// =============================================================================
+/// External type specification for EdwardsBasepointTable
+#[verifier::external_type_specification]
+#[verifier::external_body]
+#[allow(dead_code)]
+pub struct ExEdwardsBasepointTable(EdwardsBasepointTable);
+
+/// External type specification for EdwardsBasepointTableRadix32
+#[verifier::external_type_specification]
+#[verifier::external_body]
+#[allow(dead_code)]
+pub struct ExEdwardsBasepointTableRadix32(crate::edwards::EdwardsBasepointTableRadix32);
+
+/// External type specification for EdwardsBasepointTableRadix64
+#[verifier::external_type_specification]
+#[verifier::external_body]
+#[allow(dead_code)]
+pub struct ExEdwardsBasepointTableRadix64(crate::edwards::EdwardsBasepointTableRadix64);
+
+/// External type specification for EdwardsBasepointTableRadix128
+#[verifier::external_type_specification]
+#[verifier::external_body]
+#[allow(dead_code)]
+pub struct ExEdwardsBasepointTableRadix128(crate::edwards::EdwardsBasepointTableRadix128);
+
+/// External type specification for EdwardsBasepointTableRadix256
+#[verifier::external_type_specification]
+#[verifier::external_body]
+#[allow(dead_code)]
+pub struct ExEdwardsBasepointTableRadix256(crate::edwards::EdwardsBasepointTableRadix256);
+
+impl<'a> Mul<&'a EdwardsBasepointTable> for Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]
+    fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> EdwardsPoint {
+        &self * basepoint_table
+    }
+}
+
+impl<'a> Mul<EdwardsBasepointTable> for &'a Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]  // Delegates to &Scalar * &EdwardsBasepointTable which is external
+    fn mul(self, basepoint_table: EdwardsBasepointTable) -> EdwardsPoint {
+        self * &basepoint_table
+    }
+}
+
+impl Mul<EdwardsBasepointTable> for Scalar {
+    type Output = EdwardsPoint;
+
+    #[verifier::external_body]  // Delegates to &Scalar * &EdwardsBasepointTable which is external
+    fn mul(self, basepoint_table: EdwardsBasepointTable) -> EdwardsPoint {
+        &self * &basepoint_table
+    }
+}
+
+// =============================================================================
+// SECTION 4: MontgomeryPoint * Scalar
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid
@@ -171,7 +231,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
 }
 
 // =============================================================================
-// SECTION 4: Scalar * MontgomeryPoint
+// SECTION 5: Scalar * MontgomeryPoint
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid

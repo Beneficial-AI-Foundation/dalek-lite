@@ -24,13 +24,68 @@ use crate::traits::Identity;
 
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
+use crate::backend::serial::u64::subtle_assumes::{
+    conditional_assign_generic, conditional_negate_field, ct_eq_u16, identity_generic,
+};
 use crate::edwards::EdwardsPoint;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
+use vstd::prelude::*;
+
+verus! {
+
+// Trait for types that represent Edwards curve points in different coordinate systems
+// This allows us to write a single, concrete spec for select() that works for all representations
+use crate::specs::edwards_specs::*;
+use crate::specs::field_specs::{sum_of_limbs_bounded, limbs_bounded};
+
+/// Specification trait for `From<T>` conversions, allowing preconditions
+pub trait FromSpecImpl<T>: Sized {
+    /// Whether this implementation provides a full specification
+    spec fn obeys_from_spec() -> bool;
+
+    /// Preconditions for the `from` conversion
+    spec fn from_spec_req(src: T) -> bool;
+
+    /// Specification for what the conversion produces
+    spec fn from_spec(src: T) -> Self;
+}
+
+/// Spec: Check if a lookup table contains [P, 2P, 3P, ..., size*P] in ProjectiveNiels form
+pub open spec fn is_valid_lookup_table_projective<const N: usize>(
+    table: [ProjectiveNielsPoint; N],
+    P: EdwardsPoint,
+    size: nat,
+) -> bool {
+    &&& table.len() == size
+    &&& forall|j: int|
+        0 <= j < size ==> projective_niels_to_affine(#[trigger] table[j]) == edwards_scalar_mul(
+            affine_edwards_point(P),
+            (j + 1) as nat,
+        )
+}
+
+/// Spec: Check if a lookup table contains [P, 2P, 3P, ..., size*P] in AffineNiels form
+pub open spec fn is_valid_lookup_table_affine<const N: usize>(
+    table: [AffineNielsPoint; N],
+    P: EdwardsPoint,
+    size: nat,
+) -> bool {
+    &&& table.len() == size
+    &&& forall|j: int|
+        0 <= j < size ==> affine_niels_to_affine_edwards(#[trigger] table[j]) == edwards_scalar_mul(
+            affine_edwards_point(P),
+            (j + 1) as nat,
+        )
+}
+
+} // verus!
 macro_rules! impl_lookup_table {
     (Name = $name:ident, Size = $size:expr, SizeNeg = $neg:expr, SizeRange = $range:expr, ConversionRange = $conv_range:expr) => {
+        verus! {
+
         /// A lookup table of precomputed multiples of a point \\(P\\), used to
         /// compute \\( xP \\) for \\( -8 \leq x \leq 8 \\).
         ///
@@ -38,49 +93,108 @@ macro_rules! impl_lookup_table {
         ///
         /// Since `LookupTable` does not implement `Index`, it's more difficult
         /// to accidentally use the table directly.  Unfortunately the table is
-        /// only `pub(crate)` so that we can write hardcoded constants, so it's
-        /// still technically possible.  It would be nice to prevent direct
-        /// access to the table.
-        #[derive(Copy, Clone)]
-        pub struct $name<T>(pub(crate) [T; $size]);
+        /// `pub` (changed from `pub(crate)`) so that we can write hardcoded constants
+        /// and verify specifications in Verus, so it's still technically possible.
+        /// It would be nice to prevent direct access to the table.
+        ///
+        /* VERIFICATION NOTE: Changed from `pub(crate)` to `pub` to allow Verus verification of
+         the `from` function's ensures clause, which must be verifiable from outside this crate.
+         */
+        #[derive(Copy)]
+        pub struct $name<T>(pub [T; $size]);
 
         impl<T> $name<T>
         where
             T: Identity + ConditionallySelectable + ConditionallyNegatable,
         {
             /// Given \\(-8 \leq x \leq 8\\), return \\(xP\\) in constant time.
-            pub fn select(&self, x: i8) -> T {
-                debug_assert!(x >= $neg);
-                debug_assert!(x as i16 <= $size as i16); // XXX We have to convert to i16s here for the radix-256 case.. this is wrong.
+            ///
+            /// Where P is the base point that was used to create this lookup table.
+            /// This table stores [P, 2P, 3P, ..., 8P] (for radix-16).
+            pub fn select(&self, x: i8) -> (result: T)
+                requires
+                    $neg <= x,
+                    x as i16 <= $size as i16,
+                    // TODO: Add precondition that table is valid (when T = AffineNielsPoint or ProjectiveNielsPoint):
+                    // There exists a base_point P such that:
+                    // forall|i: int| 0 <= i < $size ==>
+                    //   exists |edwards_point: EdwardsPoint|
+                    //     affine_edwards_point(edwards_point) == edwards_scalar_mul(P_affine, (i+1) as nat) &&
+                    //     (affine_niels_corresponds_to_edwards OR projective_niels_corresponds_to_edwards)(self.0[i], edwards_point)
+                    // where P_affine is the affine representation of base_point P
+                ensures
+                    // Specification (when connected to concrete types):
+                    // Returns x * P where P is the base point used to construct this table
+                    //
+                    // For x = 0: result is the identity element
+                    //   (For AffineNielsPoint: y_plus_x = 1, y_minus_x = 1, xy2d = 0)
+                    //   (For ProjectiveNielsPoint: Y_plus_X = Z, Y_minus_X = Z, XY2d = 0)
+                    //
+                    // For x != 0: Given the base_point P such that this table is valid,
+                    //   exists |edwards_result: EdwardsPoint|
+                    //     affine_edwards_point(edwards_result) == edwards_scalar_mul_signed(P_affine, x as int) &&
+                    //     (affine_niels_corresponds_to_edwards OR projective_niels_corresponds_to_edwards)(result, edwards_result)
+                    //
+                    // The algorithm:
+                    // 1. Compute |x| (absolute value using bit shift)
+                    // 2. Select table[|x|-1] in constant time, which equals |x| * P
+                    // 3. Conditionally negate if x < 0
+                    // Result: x * P
+                    true,
+            {
+                // Debug assertions from original macro - ignored by Verus
+                #[cfg(not(verus_keep_ghost))]
+                {
+                    debug_assert!(x >= $neg);
+                    debug_assert!(x as i16 <= $size as i16);
+                }
+
+                // TODO: Remove assume(false) once we add proper overflow proofs
+                // For now, silence overflow checks to keep original code
+                assume(false);
 
                 // Compute xabs = |x|
                 let xmask = x as i16 >> 7;
                 let xabs = (x as i16 + xmask) ^ xmask;
 
                 // Set t = 0 * P = identity
-                let mut t = T::identity();
+                /* ORIGINAL CODE: let mut t = T::identity(); */
+                let mut t = identity_generic::<T>();
                 for j in $range {
                     // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
-                    let c = (xabs as u16).ct_eq(&(j as u16));
-                    t.conditional_assign(&self.0[j - 1], c);
+                    /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
+                    let c = ct_eq_u16(&(xabs as u16), &(j as u16));
+                    /* ORIGINAL CODE: t.conditional_assign(&self.0[j - 1], c); */
+                    conditional_assign_generic(&mut t, &self.0[j - 1], c);
                 }
                 // Now t == |x| * P.
 
                 let neg_mask = Choice::from((xmask & 1) as u8);
-                t.conditional_negate(neg_mask);
+                /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
+                conditional_negate_field(&mut t, neg_mask);
                 // Now t == x * P.
 
                 t
             }
         }
 
+        // Manual Clone implementation to avoid array clone issues in Verus
+        impl<T: Copy> Clone for $name<T> {
+            #[verifier::external_body]
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
         impl<T: Copy + Default> Default for $name<T> {
+            #[verifier::external_body]
             fn default() -> $name<T> {
                 $name([T::default(); $size])
             }
         }
 
         impl<T: Debug> Debug for $name<T> {
+            #[verifier::external_body]
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 write!(f, "{:?}(", stringify!($name))?;
 
@@ -92,27 +206,165 @@ macro_rules! impl_lookup_table {
             }
         }
 
+        /// Spec for From<&EdwardsPoint> conversion for ProjectiveNiels lookup table
+        impl<'a> FromSpecImpl<&'a EdwardsPoint> for $name<ProjectiveNielsPoint> {
+            open spec fn obeys_from_spec() -> bool {
+                false
+            }
+
+            open spec fn from_spec_req(P: &'a EdwardsPoint) -> bool {
+                // Preconditions needed for table construction
+                limbs_bounded(&P.X, 54) && limbs_bounded(&P.Y, 54)
+                    && limbs_bounded(&P.Z, 54) && limbs_bounded(&P.T, 54)
+            }
+
+            open spec fn from_spec(P: &'a EdwardsPoint) -> Self {
+                arbitrary() // conditions specified in the ensures clause of the from function
+            }
+        }
+
         impl<'a> From<&'a EdwardsPoint> for $name<ProjectiveNielsPoint> {
-            fn from(P: &'a EdwardsPoint) -> Self {
-                let mut points = [P.as_projective_niels(); $size];
-                for j in $conv_range {
-                    points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
+            /// Create a lookup table from an EdwardsPoint
+            /// Constructs [P, 2P, 3P, ..., Size*P]
+            fn from(P: &'a EdwardsPoint) -> (result: Self)
+                ensures
+                    is_valid_lookup_table_projective(result.0, *P, $size as nat),
+            {
+                // Assume preconditions from FromSpecImpl::from_spec_req
+                proof {
+                    assume(limbs_bounded(&P.X, 54));
+                    assume(limbs_bounded(&P.Y, 54));
+                    assume(limbs_bounded(&P.Z, 54));
+                    assume(limbs_bounded(&P.T, 54));
                 }
-                $name(points)
+
+                let mut points = [P.as_projective_niels(); $size];
+                for j in $conv_range
+                    // TODO: Add loop invariant proving table validity
+                {
+                    // ORIGINAL CODE:
+                    // points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
+
+                    // For Verus: unroll to assume preconditions for intermediate operations
+                    proof {
+                        // Preconditions for P (left-hand side of addition)
+                        assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
+                        assume(limbs_bounded(&P.X, 54));
+                        assume(limbs_bounded(&P.Y, 54));
+                        assume(limbs_bounded(&P.Z, 54));
+                        assume(limbs_bounded(&P.T, 54));
+                        // Preconditions for &points[j] (right-hand side - ProjectiveNielsPoint)
+                        assume(limbs_bounded(&&points[j as int].Y_plus_X, 54));
+                        assume(limbs_bounded(&&points[j as int].Y_minus_X, 54));
+                        assume(limbs_bounded(&&points[j as int].Z, 54));
+                        assume(limbs_bounded(&&points[j as int].T2d, 54));
+                    }
+                    let sum = P + &points[j];
+                    proof {
+                        // Preconditions for sum.as_extended()
+                        assume(limbs_bounded(&sum.X, 54));
+                        assume(limbs_bounded(&sum.Y, 54));
+                        assume(limbs_bounded(&sum.Z, 54));
+                        assume(limbs_bounded(&sum.T, 54));
+                    }
+                    let extended = sum.as_extended();
+                    proof {
+                        // Preconditions for extended.as_projective_niels()
+                        assume(limbs_bounded(&extended.X, 54));
+                        assume(limbs_bounded(&extended.Y, 54));
+                        assume(limbs_bounded(&extended.Z, 54));
+                        assume(limbs_bounded(&extended.T, 54));
+                    }
+                    points[j + 1] = extended.as_projective_niels();
+                }
+                let result = $name(points);
+                proof {
+                    assume(is_valid_lookup_table_projective(result.0, *P, $size as nat));
+                }
+                result
+            }
+        }
+
+        /// Spec for From<&EdwardsPoint> conversion for AffineNiels lookup table
+        impl<'a> FromSpecImpl<&'a EdwardsPoint> for $name<AffineNielsPoint> {
+            open spec fn obeys_from_spec() -> bool {
+                false
+            }
+
+            open spec fn from_spec_req(P: &'a EdwardsPoint) -> bool {
+                // Preconditions needed for table construction
+                limbs_bounded(&P.X, 54) && limbs_bounded(&P.Y, 54)
+                    && limbs_bounded(&P.Z, 54) && limbs_bounded(&P.T, 54)
+            }
+
+            open spec fn from_spec(P: &'a EdwardsPoint) -> Self {
+                arbitrary() // conditions specified in the ensures clause of the from function
             }
         }
 
         impl<'a> From<&'a EdwardsPoint> for $name<AffineNielsPoint> {
-            fn from(P: &'a EdwardsPoint) -> Self {
+            /// Create a lookup table from an EdwardsPoint (affine version)
+            /// Constructs [P, 2P, 3P, ..., Size*P]
+            fn from(P: &'a EdwardsPoint) -> (result: Self)
+                ensures
+                    is_valid_lookup_table_affine(result.0, *P, $size as nat),
+            {
+                // Assume preconditions from FromSpecImpl::from_spec_req
+                proof {
+                    assume(limbs_bounded(&P.X, 54));
+                    assume(limbs_bounded(&P.Y, 54));
+                    assume(limbs_bounded(&P.Z, 54));
+                    assume(limbs_bounded(&P.T, 54));
+                }
+
                 let mut points = [P.as_affine_niels(); $size];
                 // XXX batch inversion would be good if perf mattered here
-                for j in $conv_range {
-                    points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()
+                for j in $conv_range
+                    // TODO: Add loop invariant proving table validity
+                {
+                    // ORIGINAL CODE:
+                    // points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()
+
+                    // For Verus: unroll to assume preconditions for intermediate operations
+                    proof {
+                        // Preconditions for P (left-hand side of addition)
+                        assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
+                        assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX)); // for Z2 = &P.Z + &P.Z in add
+                        assume(limbs_bounded(&P.X, 54));
+                        assume(limbs_bounded(&P.Y, 54));
+                        assume(limbs_bounded(&P.Z, 54));
+                        assume(limbs_bounded(&P.T, 54));
+                        // Preconditions for &points[j] (right-hand side - AffineNielsPoint)
+                        assume(limbs_bounded(&&points[j as int].y_plus_x, 54));
+                        assume(limbs_bounded(&&points[j as int].y_minus_x, 54));
+                        assume(limbs_bounded(&&points[j as int].xy2d, 54));
+                    }
+                    let sum = P + &points[j];
+                    proof {
+                        // Preconditions for sum.as_extended()
+                        assume(limbs_bounded(&sum.X, 54));
+                        assume(limbs_bounded(&sum.Y, 54));
+                        assume(limbs_bounded(&sum.Z, 54));
+                        assume(limbs_bounded(&sum.T, 54));
+                    }
+                    let extended = sum.as_extended();
+                    proof {
+                        // Preconditions for extended.as_affine_niels()
+                        assume(limbs_bounded(&extended.X, 54));
+                        assume(limbs_bounded(&extended.Y, 54));
+                        assume(limbs_bounded(&extended.Z, 54));
+                        assume(limbs_bounded(&extended.T, 54));
+                    }
+                    points[j + 1] = extended.as_affine_niels()
                 }
-                $name(points)
+                let result = $name(points);
+                proof {
+                    assume(is_valid_lookup_table_affine(result.0, *P, $size as nat));
+                }
+                result
             }
         }
-
+    } // verus!
         #[cfg(feature = "zeroize")]
         impl<T> Zeroize for $name<T>
         where

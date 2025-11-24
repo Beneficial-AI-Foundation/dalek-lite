@@ -1697,8 +1697,6 @@ macro_rules! impl_basepoint_table {
             /// The above algorithm is trivially generalised to other powers-of-2 radices.
             
             
-            // Note: Marked external_body because it uses external functions (select, add, mul_by_pow_2)
-            // and contains assume(false), so it's not verified anyway
             #[verifier::external_body]
             fn mul_base(&self, scalar: &Scalar) -> $point {
                 assume(false);

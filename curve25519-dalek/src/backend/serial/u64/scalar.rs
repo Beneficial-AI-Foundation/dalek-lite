@@ -239,19 +239,7 @@ impl Scalar52 {
                 }
             }
         }
-        // Stage1-word-chunks: each 64-bit word produced by the loops matches the corresponding
-        // little-endian chunk of the 64-byte input.
 
-        // Stage1-tail-zero: After consuming all 64 bytes, no value remains in the recursive byte
-        // accumulator.
-
-        // Stage1-words-plus-tail: Summing the eight word-aligned chunks together with the remaining
-        // byte tail reproduces the original 512-bit input.
-
-        // Stage1-words-aggregate: converting the populated word array back to a natural number
-        // agrees with the chunk-based reconstruction for the full 8-word prefix.
-        // Stage1-words-aggregate: turning the eight collected 64-bit words back into a natural
-        // number matches the chunk-based expansion over the same prefix.
         proof {
             lemma_words_to_nat_gen_u64_prefix_matches_bytes(&words, bytes, 8);
         }

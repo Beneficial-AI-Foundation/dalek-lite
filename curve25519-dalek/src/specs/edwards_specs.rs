@@ -276,7 +276,10 @@ pub open spec fn is_valid_projective_niels_point(niels: ProjectiveNielsPoint) ->
 /// Extract affine coordinates (x, y) from a ProjectiveNielsPoint
 /// Given: Y_plus_X = Y + X, Y_minus_X = Y - X, and Z (all in projective coords)
 /// First recover projective X and Y, then convert to affine: x = X/Z, y = Y/Z
-pub open spec fn projective_niels_point_as_affine_edwards(niels: ProjectiveNielsPoint) -> (nat, nat) {
+pub open spec fn projective_niels_point_as_affine_edwards(niels: ProjectiveNielsPoint) -> (
+    nat,
+    nat,
+) {
     let y_plus_x = spec_field_element(&niels.Y_plus_X);
     let y_minus_x = spec_field_element(&niels.Y_minus_X);
     let z = spec_field_element(&niels.Z);
@@ -343,6 +346,54 @@ pub open spec fn affine_niels_point_as_affine_edwards(niels: AffineNielsPoint) -
     let y = math_field_mul(math_field_add(y_plus_x, y_minus_x), math_field_inv(2));
 
     (x, y)
+}
+
+/// Spec function: Identity element for AffineNielsPoint
+/// Identity represents the point (0, 1) in affine coordinates
+/// For Niels form (y+x, y-x, xy2d): (1, 1, 0)
+pub open spec fn spec_identity_affine_niels() -> AffineNielsPoint {
+    AffineNielsPoint {
+        y_plus_x: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
+        y_minus_x: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
+        xy2d: crate::field::FieldElement { limbs: [0, 0, 0, 0, 0] },  // 0
+    }
+}
+
+/// Spec function: Identity element for ProjectiveNielsPoint
+/// Identity represents the point (0:1:1) in projective coordinates
+/// For Niels form (Y+X, Y-X, Z, T2d): (1, 1, 1, 0)
+pub open spec fn spec_identity_projective_niels() -> ProjectiveNielsPoint {
+    ProjectiveNielsPoint {
+        Y_plus_X: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
+        Y_minus_X: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
+        Z: crate::field::FieldElement { limbs: [1, 0, 0, 0, 0] },  // 1
+        T2d: crate::field::FieldElement { limbs: [0, 0, 0, 0, 0] },  // 0
+    }
+}
+
+/// Spec function: Negation of an AffineNielsPoint
+/// Negation swaps y+x with y-x and negates xy2d
+pub open spec fn spec_negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
+    AffineNielsPoint {
+        y_plus_x: p.y_minus_x,
+        y_minus_x: p.y_plus_x,
+        xy2d: crate::field::FieldElement {
+            limbs: crate::specs::field_specs_u64::spec_negate(p.xy2d.limbs),
+        },
+    }
+}
+
+/// Spec function: Negation of a ProjectiveNielsPoint
+/// Negation swaps Y+X with Y-X and negates T2d (Z stays the same)
+pub open spec fn spec_negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveNielsPoint {
+    ProjectiveNielsPoint {
+        Y_plus_X: p.Y_minus_X,
+        Y_minus_X: p.Y_plus_X,
+        Z: p.Z,
+        T2d: crate::field::FieldElement {
+            limbs: crate::specs::field_specs_u64::spec_negate(p.T2d.limbs),
+        },
+    }
 }
 
 /// Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).

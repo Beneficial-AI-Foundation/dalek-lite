@@ -339,6 +339,7 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
             ),
             limbs_bounded(&output, 54),
     {
+        assert(limbs_bounded(self, 54) && limbs_bounded(_rhs, 54));
         // To avoid underflow, first add a multiple of p.
         // Choose 16*p = p << 4 to be larger than 54-bit _rhs.
         //
@@ -352,7 +353,55 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         // Note on "magic numbers":
         // 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
         // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
-        assume(false);  // PROOF BYPASS for arithmetic overflow
+        let c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
+        let c = 36028797018963952u64;  // 16 * (2^51 -  1)
+
+        proof {
+            // Bound both operands so adding the constants cannot overflow a u64.
+            assert(self.limbs[0] <= u64::MAX - c0) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c0) by (compute);
+            }
+            assert(self.limbs[1] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
+            assert(self.limbs[2] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
+            assert(self.limbs[3] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
+            assert(self.limbs[4] <= u64::MAX - c) by {
+                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
+            }
+
+            assert(_rhs.limbs[0] < c0) by {
+                assert((1u64 << 54) <= c0) by (compute);
+            }
+            assert(_rhs.limbs[1] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
+            }
+            assert(_rhs.limbs[2] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
+            }
+            assert(_rhs.limbs[3] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
+            }
+            assert(_rhs.limbs[4] < c) by {
+                assert((1u64 << 54) <= c) by (compute);
+            }
+        }
+
+        // Precompute the constants we add to each limb prior to subtraction.
+        let const_vec = [c0, c, c, c, c];
+
+        // Translate both operands into the safe range before subtracting.
+        let s0 = self.limbs[0] + c0;
+        let s1 = self.limbs[1] + c;
+        let s2 = self.limbs[2] + c;
+        let s3 = self.limbs[3] + c;
+        let s4 = self.limbs[4] + c;
+        // Capture the widened limbs so we can reason about them element-wise.
+        let ghost augmented: [u64; 5] = [s0, s1, s2, s3, s4];
         let output = FieldElement51::reduce(
             [
                 (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],
@@ -362,10 +411,49 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
                 (self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4],
             ],
         );
-        assume(spec_field_element(&output) == math_field_sub(
-            spec_field_element(self),
-            spec_field_element(_rhs),
-        ));
+
+        proof {
+            assert(1u64 << 52 < 1u64 << 54) by (compute);
+            assert(limbs_bounded(&output, 54));
+
+            // Glue the raw subtraction back to the spec subtraction using reduction lemmas.
+            lemma_u64_5_as_nat_add(self.limbs, const_vec);
+            lemma_u64_5_as_nat_sub(augmented, _rhs.limbs);
+
+            assert(u64_5_as_nat(augmented) == u64_5_as_nat(self.limbs) + u64_5_as_nat(const_vec));
+            lemma_sub_constants_equal_16p();
+            assert(u64_5_as_nat(augmented) == u64_5_as_nat(self.limbs) + (16 as nat) * p());
+
+            let x = u64_5_as_nat(self.limbs) as int;
+            let y = u64_5_as_nat(_rhs.limbs) as int;
+            let modulus = p() as int;
+
+            lemma_mod_sum_factor(16 as int, x - y, modulus);
+
+            let x_mod = x % modulus;
+            let y_mod = y % modulus;
+            assert(spec_field_element(self) == x_mod as nat);
+            assert(spec_field_element(_rhs) == y_mod as nat);
+            assert(spec_field_element(self) % p() == spec_field_element(self)) by {
+                lemma_mod_twice(x, modulus);
+            }
+            assert(spec_field_element(_rhs) % p() == spec_field_element(_rhs)) by {
+                lemma_mod_twice(y, modulus);
+            }
+
+            assert(math_field_sub(spec_field_element(self), spec_field_element(_rhs)) == (((x_mod + modulus)
+                - y_mod) % modulus) as nat) by {
+                assert(spec_field_element(self) % p() == spec_field_element(self));
+                assert(spec_field_element(_rhs) % p() == spec_field_element(_rhs));
+            }
+
+            lemma_mod_sum_factor(1 as int, x_mod - y_mod, modulus);
+            lemma_sub_mod_noop(x, y, modulus);
+            assert(((x_mod + modulus) - y_mod) % modulus == (x - y) % modulus);
+
+            assert(spec_field_element(&output) == math_field_sub(spec_field_element(self), spec_field_element(_rhs)));
+        }
+
         output
     }
 }

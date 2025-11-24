@@ -170,6 +170,8 @@ pub proof fn lemma_mul_distributive_8_terms(
     ensures
         n * (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8) == (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8) * n
             == n * x1 + n * x2 + n * x3 + n * x4 + n * x5 + n * x6 + n * x7 + n * x8,
+        (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8) * n == x1 * n + x2 * n + x3 * n + x4 * n + x5 * n
+            + x6 * n + x7 * n + x8 * n,
 {
     assert(n * (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8) == (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8)
         * n) by {
@@ -185,17 +187,7 @@ pub proof fn lemma_mul_distributive_8_terms(
         * x6 + n * x7) by {
         lemma_mul_distributive_7_terms(n, x1, x2, x3, x4, x5, x6, x7);
     }
-}
 
-pub proof fn distribution_over_8_terms_other_way(
-    n: int,
-    x1: int, x2: int, x3: int, x4: int,
-    x5: int, x6: int, x7: int, x8: int
-)
-    ensures
-        (x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8) * n
-        == x1*n + x2*n + x3*n + x4*n + x5*n + x6*n + x7*n + x8*n
-{
     // Expand from the outermost term inward
     lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5 + x6 + x7, x8);
     lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3 + x4 + x5 + x6, x7);
@@ -204,6 +196,38 @@ pub proof fn distribution_over_8_terms_other_way(
     lemma_mul_is_distributive_add_other_way(n, x1 + x2 + x3, x4);
     lemma_mul_is_distributive_add_other_way(n, x1 + x2, x3);
     lemma_mul_is_distributive_add_other_way(n, x1, x2);
+}
+
+pub proof fn lemma_mul_commutative_8_terms(
+    a0: int,
+    b0: int,
+    a1: int,
+    b1: int,
+    a2: int,
+    b2: int,
+    a3: int,
+    b3: int,
+    a4: int,
+    b4: int,
+    a5: int,
+    b5: int,
+    a6: int,
+    b6: int,
+    a7: int,
+    b7: int,
+)
+    ensures
+        a0 * b0 + a1 * b1 + a2 * b2 + a3 * b3 + a4 * b4 + a5 * b5 + a6 * b6 + a7 * b7 == b0 * a0
+            + b1 * a1 + b2 * a2 + b3 * a3 + b4 * a4 + b5 * a5 + b6 * a6 + b7 * a7,
+{
+    lemma_mul_is_commutative(a0, b0);
+    lemma_mul_is_commutative(a1, b1);
+    lemma_mul_is_commutative(a2, b2);
+    lemma_mul_is_commutative(a3, b3);
+    lemma_mul_is_commutative(a4, b4);
+    lemma_mul_is_commutative(a5, b5);
+    lemma_mul_is_commutative(a6, b6);
+    lemma_mul_is_commutative(a7, b7);
 }
 
 pub proof fn lemma_mul_quad_prod(a1: int, b1: int, a2: int, b2: int)

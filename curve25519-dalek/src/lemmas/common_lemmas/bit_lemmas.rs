@@ -28,16 +28,6 @@ pub proof fn lemma_bitwise_or_l_zero_is_id(a: u64)
 pub proof fn lemma_bit_or_is_plus(a: u64, b: u64, k: u64)
     by (bit_vector)
     requires
-        b <= (u64::MAX >> k),
-        a < 1u64 << k,
-    ensures
-        a | (b << k) == a + (b << k),
-{
-}
-
-pub proof fn lemma_bit_or_is_plus_overflow(a: u64, b: u64, k: u64)
-    by (bit_vector)
-    requires
         a < 1u64 << k,
     ensures
         a | (b << k) == a + (b << k),

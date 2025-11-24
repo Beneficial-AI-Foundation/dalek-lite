@@ -46,21 +46,6 @@ pub open spec fn to_scalar(limbs: &[u64; 5]) -> nat {
     to_nat(limbs) % group_order()
 }
 
-///Converts 8 bytes into the equivalent little endian word
-pub open spec fn bytes8_to_nat(
-    b0: u8, b1: u8, b2: u8, b3: u8,
-    b4: u8, b5: u8, b6: u8, b7: u8
-) -> nat {
-    (b0 as nat) * pow2(0)  +
-    (b1 as nat) * pow2(8)  +
-    (b2 as nat) * pow2(16) +
-    (b3 as nat) * pow2(24) +
-    (b4 as nat) * pow2(32) +
-    (b5 as nat) * pow2(40) +
-    (b6 as nat) * pow2(48) +
-    (b7 as nat) * pow2(56)
-}
-
 /// natural value of a 256 bit bitstring represented as array of 32 bytes
 ///
 /// Note: This is now an alias for the shared `as_nat_32_u8` function from core_specs.
@@ -104,16 +89,16 @@ pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat
 }
 
 /// Little-endian natural value of an arbitrary-length byte sequence (with clearer coefficients)
-pub open spec fn bytes_seq_to_nat_clear(bytes: Seq<u8>, j: nat) -> nat
-recommends
-    j <= bytes.len(),
-decreases j,
+pub open spec fn bytes_seq_to_nat_clear_aux(bytes: Seq<u8>, j: nat) -> nat
+    recommends
+        j <= bytes.len(),
+    decreases j,
 {
     if j == 0 {
         0
     } else {
-        let j1 : nat = (j - 1) as nat;
-        bytes_seq_to_nat_clear(bytes, j1) + pow2(((j1) * 8) as nat) * bytes[j1 as int] as nat
+        let j1: nat = (j - 1) as nat;
+        bytes_seq_to_nat_clear_aux(bytes, j1) + pow2(((j1) * 8) as nat) * bytes[j1 as int] as nat
     }
 }
 

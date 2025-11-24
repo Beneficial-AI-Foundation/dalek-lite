@@ -92,11 +92,11 @@ pub proof fn lemma_div_of_sum(a: nat, b: nat, k: nat)
     lemma_div_multiples_vanish_fancy((a0 + b0) as int, ((a % k) + (b % k)) as int, k as int);
 }
 
-pub proof fn lemma_mod_of_sum(a: nat, b:nat, k: nat)
+pub proof fn lemma_mod_of_sum(a: nat, b: nat, k: nat)
     requires
-        (a % k) + (b % k) < k
+        (a % k) + (b % k) < k,
     ensures
-        (a + b) % k == (a % k) + (b % k)
+        (a + b) % k == (a % k) + (b % k),
 {
     lemma_div_of_sum(a, b, k);
     assert((a + b) / k == a / k + b / k);
@@ -111,7 +111,7 @@ pub proof fn lemma_mod_of_sum(a: nat, b:nat, k: nat)
     }
 
     assert(a + b - k * ((a + b) / k) == (a + b) % k);
-    
+
     assert(k * ((a + b) / k) == k * (a / k) + k * (b / k)) by {
         assert(k * ((a / k) + (b / k)) == k * (a / k) + k * (b / k)) by {
             lemma_mul_is_distributive_add(k as int, (a / k) as int, (b / k) as int);

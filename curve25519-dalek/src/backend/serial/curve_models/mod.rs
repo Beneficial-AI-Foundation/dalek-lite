@@ -590,17 +590,18 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
         ensures
     // The result represents the Edwards addition of the affine forms of self and other
 
-            is_valid_completed_point(
-                result,
-            ),
-    // TODO: Add full spec relating result to edwards_add once we have field conversion lemmas
-    // {
-    //   let self_affine = affine_edwards_point(*self);
-    //   let other_affine = projective_niels_to_affine(*other);
-    //   let (x3, y3) = edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1);
-    //   affine_completed_point(result) == (x3, y3)
-    // }
-
+            is_valid_completed_point(result),
+            ({
+                let self_affine = affine_edwards_point(*self);
+                let other_affine = projective_niels_to_affine(*other);
+                let (x3, y3) = edwards_add(
+                    self_affine.0,
+                    self_affine.1,
+                    other_affine.0,
+                    other_affine.1,
+                );
+                affine_completed_point(result) == (x3, y3)
+            }),
     {
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -631,7 +632,19 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             T: &ZZ2 - &TT2d,
         };
         proof {
+            // postconditions
             assume(is_valid_completed_point(result));
+            assume({
+                let self_affine = affine_edwards_point(*self);
+                let other_affine = projective_niels_to_affine(*other);
+                let (x3, y3) = edwards_add(
+                    self_affine.0,
+                    self_affine.1,
+                    other_affine.0,
+                    other_affine.1,
+                );
+                affine_completed_point(result) == (x3, y3)
+            });
         }
         result
     }
@@ -735,17 +748,18 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
         ensures
     // The result represents the Edwards addition of the affine forms of self and other
 
-            is_valid_completed_point(
-                result,
-            ),
-    // TODO: Add full spec relating result to edwards_add once we have field conversion lemmas
-    // {
-    //   let self_affine = affine_edwards_point(*self);
-    //   let other_affine = affine_niels_to_affine(*other);
-    //   let (x3, y3) = edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1);
-    //   affine_completed_point(result) == (x3, y3)
-    // }
-
+            is_valid_completed_point(result),
+            ({
+                let self_affine = affine_edwards_point(*self);
+                let other_affine = affine_niels_to_affine_edwards(*other);
+                let (x3, y3) = edwards_add(
+                    self_affine.0,
+                    self_affine.1,
+                    other_affine.0,
+                    other_affine.1,
+                );
+                affine_completed_point(result) == (x3, y3)
+            }),
     {
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -770,7 +784,19 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
             T: &Z2 - &Txy2d,
         };
         proof {
+            // postconditions
             assume(is_valid_completed_point(result));
+            assume(affine_completed_point(result) == ({
+                let self_affine = affine_edwards_point(*self);
+                let other_affine = affine_niels_to_affine_edwards(*other);
+                let (x3, y3) = edwards_add(
+                    self_affine.0,
+                    self_affine.1,
+                    other_affine.0,
+                    other_affine.1,
+                );
+                (x3, y3)
+            }));
         }
         result
     }

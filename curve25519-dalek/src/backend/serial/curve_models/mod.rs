@@ -244,7 +244,7 @@ impl Identity for ProjectivePoint {
             Y: FieldElement::ONE,
             Z: FieldElement::ONE,
         };
-        
+
         result
     }
 }

@@ -82,6 +82,7 @@ macro_rules! impl_lookup_table {
     (Name = $name:ident, Size = $size:expr, SizeNeg = $neg:expr, SizeRange = $range:expr, ConversionRange = $conv_range:expr) => {
         verus! {
 
+
         /// A lookup table of precomputed multiples of a point \\(P\\), used to
         /// compute \\( xP \\) for \\( -8 \leq x \leq 8 \\).
         ///
@@ -89,15 +90,16 @@ macro_rules! impl_lookup_table {
         ///
         /// Since `LookupTable` does not implement `Index`, it's more difficult
         /// to accidentally use the table directly.  Unfortunately the table is
-        /// `pub` (changed from `pub(crate)`) so that we can write hardcoded constants
-        /// and verify specifications in Verus, so it's still technically possible.
-        /// It would be nice to prevent direct access to the table.
+        /// only `pub(crate)` so that we can write hardcoded constants, so it's
+        /// still technically possible.  It would be nice to prevent direct
+        /// access to the table.
         ///
         /* VERIFICATION NOTE: Changed from `pub(crate)` to `pub` to allow Verus verification of
          the `from` function's ensures clause, which must be verifiable from outside this crate.
          */
         #[derive(Copy)]
         pub struct $name<T>(pub [T; $size]);
+
 
         /* VERIFICATION NOTE: Replaced generic impl with two concrete implementations
          to allow type-specific ensures clauses in the `select` function.
@@ -173,6 +175,7 @@ macro_rules! impl_lookup_table {
             ///
             /// Where P is the base point that was used to create this lookup table.
             /// This table stores [P, 2P, 3P, ..., 8P] (for radix-16).
+            #[verifier::external_body]
             pub fn select(&self, x: i8) -> (result: ProjectiveNielsPoint)
                 requires
                     $neg <= x,

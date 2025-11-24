@@ -807,7 +807,9 @@ impl ConstantTimeEq for EdwardsPoint {
     // (X/Z, Y/Z) == (X'/Z', Y'/Z')
     // This is checked by verifying X*Z' == X'*Z and Y*Z' == Y'*Z
 
-            choice_is_true(result) == (edwards_point_as_affine(*self) == edwards_point_as_affine(*other)),
+            choice_is_true(result) == (edwards_point_as_affine(*self) == edwards_point_as_affine(
+                *other,
+            )),
     {
         // We would like to check that the point (X/Z, Y/Z) is equal to
         // the point (X'/Z', Y'/Z') without converting into affine
@@ -827,9 +829,8 @@ impl ConstantTimeEq for EdwardsPoint {
 
         proof {
             // The equality check via cross-multiplication is equivalent to affine coordinate equality
-            assume(choice_is_true(result) == (edwards_point_as_affine(*self) == edwards_point_as_affine(
-                *other,
-            )));
+            assume(choice_is_true(result) == (edwards_point_as_affine(*self)
+                == edwards_point_as_affine(*other)));
         }
 
         result
@@ -861,9 +862,8 @@ impl PartialEq for EdwardsPoint {
         let result = choice_into(choice);
 
         proof {
-            assert(choice_is_true(choice) == (edwards_point_as_affine(*self) == edwards_point_as_affine(
-                *other,
-            )));
+            assert(choice_is_true(choice) == (edwards_point_as_affine(*self)
+                == edwards_point_as_affine(*other)));
             assert(result == choice_is_true(choice));
         }
 
@@ -1626,13 +1626,13 @@ macro_rules! impl_basepoint_table {
         #[repr(transparent)]
         pub struct $name(pub(crate) [$table<AffineNielsPoint>; 32]);
 
-        verus! {
+        // verus! {
 
         impl BasepointTable for $name {
             type Point = $point;
 
             /// Create a table of precomputed multiples of `basepoint`.
-            #[verifier::external_body] // Marked external_body because EdwardsBasepointTable is opaque (external_body in mul_specs.rs)
+            //       #[verifier::external_body] // Marked external_body because EdwardsBasepointTable is opaque (external_body in mul_specs.rs)
             fn create(basepoint: &$point) -> $name {
                 // XXX use init_with
                 let mut table = $name([$table::default(); 32]);
@@ -1646,7 +1646,7 @@ macro_rules! impl_basepoint_table {
             }
 
             /// Get the basepoint for this table as an `EdwardsPoint`.
-            #[verifier::external_body] // Marked external_body because EdwardsBasepointTable is opaque (external_body in mul_specs.rs)
+            //     #[verifier::external_body] // Marked external_body because EdwardsBasepointTable is opaque (external_body in mul_specs.rs)
             fn basepoint(&self) -> $point {
                 // self.0[0].select(1) = 1*(16^2)^0*B
                 // but as an `AffineNielsPoint`, so add identity to convert to extended.
@@ -1695,11 +1695,10 @@ macro_rules! impl_basepoint_table {
             /// by \\(2\^{255}\\), which is always the case.
             ///
             /// The above algorithm is trivially generalised to other powers-of-2 radices.
-            
-            
-            #[verifier::external_body]
+
+            //   #[verifier::external_body]
             fn mul_base(&self, scalar: &Scalar) -> $point {
-                assume(false);
+                //  assume(false);
                 let a = scalar.as_radix_2w($radix);
 
                 let tables = &self.0;
@@ -1716,7 +1715,7 @@ macro_rules! impl_basepoint_table {
                 }
 
                 P = P.mul_by_pow_2($radix);
-                assume(false);
+                //  assume(false);
                 // ORIGINAL CODE (doesn't work with Verus - .filter() not supported in ghost for loops):
                 // for i in (0..$adds).filter(|x| x % 2 == 0) {
                 //     P = (&P + &tables[i / 2].select(a[i])).as_extended();
@@ -1730,7 +1729,7 @@ macro_rules! impl_basepoint_table {
                 P
             }
         }
-    } // verus!
+        //} // verus!
 
         impl<'a, 'b> Mul<&'b Scalar> for &'a $name {
             type Output = $point;

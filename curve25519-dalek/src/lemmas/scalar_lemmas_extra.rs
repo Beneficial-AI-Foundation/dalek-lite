@@ -14,6 +14,7 @@ use crate::specs::scalar_specs_u64::*;
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::mul::*;
+#[allow(unused_imports)]
 use vstd::arithmetic::power::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
@@ -189,17 +190,9 @@ pub proof fn lemma_word_from_bytes_matches_spec_load8(bytes: &[u8; 64], word_idx
     ensures
         spec_load8_at(bytes, (word_idx * 8) as usize) == word_from_bytes(bytes, word_idx),
 {
-    let base = word_idx * 8;
-    let idx = base as usize;
     // spec_load8_at uses pow2(k*8) * byte, word_from_bytes uses byte * pow2(k*8)
-    // Show both equal the same combined value via commutativity
-    let combined_load8 = pow2(0) * (bytes[(base + 0) as int] as nat) + pow2(8) * (bytes[(base
-        + 1) as int] as nat) + pow2(16) * (bytes[(base + 2) as int] as nat) + pow2(24) * (bytes[(
-    base + 3) as int] as nat) + pow2(32) * (bytes[(base + 4) as int] as nat) + pow2(40) * (bytes[(
-    base + 5) as int] as nat) + pow2(48) * (bytes[(base + 6) as int] as nat) + pow2(56) * (bytes[(
-    base + 7) as int] as nat);
-    assert(spec_load8_at(bytes, idx) == combined_load8);
-    assert(word_from_bytes(bytes, word_idx) == combined_load8);
+    // These are equal by commutativity of multiplication
+    broadcast use lemma_mul_is_commutative;
 }
 
 pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
@@ -231,7 +224,6 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
         }
         let partial_prev = word_from_bytes_partial(bytes, word_idx, prev);
         let byte_val = bytes[(base + prev) as int] as nat;
-
         lemma_pow2_adds(((base * 8) as nat), ((prev * 8) as nat));
 
         // Rewriting byte_val * pow2((base + prev) * 8) = pow_base * byte_val * pow2(prev * 8)
@@ -253,10 +245,7 @@ pub proof fn lemma_bytes_wide_to_nat_rec_chunk(bytes: &[u8; 64], word_idx: int)
         ) + bytes_wide_to_nat_rec(bytes, (word_idx + 1) * 8),
 {
     lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, word_idx, 8);
-    lemma_mul_is_commutative(
-        pow2((word_idx * 64) as nat) as int,
-        word_from_bytes(bytes, word_idx) as int,
-    );
+    broadcast use lemma_mul_is_commutative;
 }
 
 pub proof fn lemma_word_from_bytes_bound(bytes: &[u8; 64], word_idx: int)
@@ -268,9 +257,7 @@ pub proof fn lemma_word_from_bytes_bound(bytes: &[u8; 64], word_idx: int)
     let idx = (word_idx * 8) as usize;
     lemma_spec_load8_at_fits_u64(bytes, idx);
     lemma_word_from_bytes_matches_spec_load8(bytes, word_idx);
-    assert(u64::MAX == pow2(64) - 1) by {
-        lemma2_to64_rest();
-    }
+    lemma2_to64_rest();  // u64::MAX == pow2(64) - 1
 }
 
 pub proof fn lemma_words_to_nat_gen_u64_bound_le(words: &[u64; 8], count: int)
@@ -348,12 +335,7 @@ pub proof fn lemma_words_from_bytes_to_nat_wide(bytes: &[u8; 64])
             * word_from_bytes(bytes, 6) + pow2(448) * word_from_bytes(bytes, 7),
 {
     reveal_with_fuel(words_from_bytes_to_nat, 9);
-
-    assert(pow2((0 * 64) as nat) == pow2(0));
-    assert(pow2(0) == 1) by {
-        lemma2_to64();
-    }
-
+    lemma2_to64();  // pow2(0) == 1
     assert(words_from_bytes_to_nat(bytes, 1) == words_from_bytes_to_nat(bytes, 0) + word_from_bytes(
         bytes,
         0,

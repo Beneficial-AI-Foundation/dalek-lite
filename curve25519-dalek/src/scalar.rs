@@ -842,9 +842,6 @@ impl Neg for Scalar {
             (scalar_to_nat(&self) + scalar_to_nat(&result)) % group_order() == 0,
     {
         let result = (&self).neg();
-        proof {
-            assume((scalar_to_nat(&self) + scalar_to_nat(&result)) % group_order() == 0);
-        }
         result
     }/* <ORIGINAL CODE>
     fn neg(self) -> Scalar {

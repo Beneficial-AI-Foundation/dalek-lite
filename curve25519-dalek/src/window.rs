@@ -39,6 +39,9 @@ use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
 
+/* VERIFICATION NOTE: Removed unused impl_lookup_table! macro since LookupTable
+(radix-16) was manually expanded. */
+
 verus! {
 
 /// Specification trait for `From<T>` conversions, allowing preconditions
@@ -78,8 +81,6 @@ pub open spec fn is_valid_lookup_table_affine<const N: usize>(
 }
 
 } // verus!
-/* VERIFICATION NOTE: Removed unused impl_lookup_table! macro since LookupTable
-(radix-16) was manually expanded. */
 /* VERIFICATION NOTE: Manually expanded impl_lookup_table! macro for radix-16 (LookupTable).
    Removed macro invocations for radix-32, 64, 128, 256 variants to focus verification
    on the primary radix-16 implementation used as a constructor for consts.

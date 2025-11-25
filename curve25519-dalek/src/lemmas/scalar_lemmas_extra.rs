@@ -81,44 +81,36 @@ pub proof fn lemma_word_from_bytes_partial_step_last(bytes: &[u8; 64], word_idx:
     reveal_with_fuel(word_from_bytes_partial, 9);
 }
 
-pub proof fn lemma_from_bytes_wide_word_update(
-    bytes: &[u8; 64],
-    word_idx: int,
-    byte_pos: int,
-    old_word: u64,
-    new_word: u64,
-)
+pub proof fn lemma_word_from_bytes_matches_spec_load8(bytes: &[u8; 64], word_idx: int)
     requires
         0 <= word_idx < 8,
-        0 <= byte_pos < 8,
-        old_word as nat == word_from_bytes_partial(bytes, word_idx, byte_pos),
-        new_word == old_word | ((bytes[(word_idx * 8 + byte_pos) as int] as u64) << (byte_pos * 8)),
     ensures
-        new_word as nat == word_from_bytes_partial(bytes, word_idx, byte_pos + 1),
-        byte_pos < 7 ==> new_word < (1u64 << (((byte_pos + 1) * 8) as u64)),
-        byte_pos == 7 ==> new_word as nat == word_from_bytes_partial(bytes, word_idx, 8),
+        spec_load8_at(bytes, (word_idx * 8) as usize) == word_from_bytes(bytes, word_idx),
 {
-    let byte = bytes[(word_idx * 8 + byte_pos) as int];
-    let byte_val = byte as u64;
-    let shift_u64 = ((byte_pos as usize) * 8) as u64;
-    let shift_nat = (byte_pos * 8) as nat;
+    let base = word_idx * 8;
+    assert(base >= 0);
+    assert(base + 7 < 64);
+    let idx = (base) as usize;
 
-    lemma_u8_times_pow2_fits_u64(byte, shift_nat);
-    vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(byte_val, shift_u64, u64::MAX);
+    let term0 = (bytes[(base + 0) as int] as nat) * pow2((0 * 8) as nat);
+    let term1 = (bytes[(base + 1) as int] as nat) * pow2((1 * 8) as nat);
+    let term2 = (bytes[(base + 2) as int] as nat) * pow2((2 * 8) as nat);
+    let term3 = (bytes[(base + 3) as int] as nat) * pow2((3 * 8) as nat);
+    let term4 = (bytes[(base + 4) as int] as nat) * pow2((4 * 8) as nat);
+    let term5 = (bytes[(base + 5) as int] as nat) * pow2((5 * 8) as nat);
+    let term6 = (bytes[(base + 6) as int] as nat) * pow2((6 * 8) as nat);
+    let term7 = (bytes[(base + 7) as int] as nat) * pow2((7 * 8) as nat);
 
-    lemma_word_from_bytes_partial_bound(bytes, word_idx, byte_pos);
-    lemma_shift_is_pow2(shift_nat);
+    let combined = term0 + term1 + term2 + term3 + term4 + term5 + term6 + term7;
 
-    lemma_bit_or_is_plus(old_word, byte_val, shift_u64);
+    assert(word_from_bytes(bytes, word_idx) == combined) by {
+        assert(0 <= word_idx < 8);
+    };
 
-    vstd::bits::lemma_u64_shl_is_mul(byte_val, shift_u64);
-
-    if byte_pos < 7 {
-        lemma_word_from_bytes_partial_bound(bytes, word_idx, byte_pos + 1);
-        lemma_shift_is_pow2(((byte_pos + 1) * 8) as nat);
-    } else {
-        lemma_word_from_bytes_partial_step_last(bytes, word_idx);
-    }
+    assert(spec_load8_at(bytes, (word_idx * 8) as usize) == combined) by {
+        assert(idx + 7 < 64);
+        assert(spec_load8_at(bytes, idx) == combined);
+    };
 }
 
 pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(

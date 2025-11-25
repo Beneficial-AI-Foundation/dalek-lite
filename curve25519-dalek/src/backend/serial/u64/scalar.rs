@@ -12,6 +12,7 @@
 //! ```
 #[allow(unused_imports)]
 use super::subtle_assumes::select;
+use super::field::load8_at;
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 #[allow(unused_imports)]
@@ -200,39 +201,40 @@ impl Scalar52 {
                 ) == bytes_wide_to_nat(bytes),
                 forall|k: int| i <= k < 8 ==> words@[k] == 0,
         {
+            let offset = i * 8;
+            let _offset_plus = offset + 7usize;
             proof {
-                assert(1u64 << 0 == 1u64) by (bit_vector);
-                assert(words@[i as int] == 0);
-            }
-            for j in 0..8
-                invariant
-                    0 <= j <= 8,
-                    i < 8,
-                    forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
-                    forall|k: int| i < k < 8 ==> words@[k] == 0,
-                    words@[(i as int)] as nat == word_from_bytes_partial(bytes, i as int, j as int),
-                    (j < 8 ==> words@[(i as int)] < (1u64 << ((j * 8) as u64))),
-            {
                 let ghost i_int = i as int;
-                let ghost old_word = words@[i_int];
-
-                words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);
-
-                proof {
-                    lemma_from_bytes_wide_word_update(
-                        bytes,
-                        i_int,
-                        j as int,
-                        old_word,
-                        words@[i_int],
-                    );
-                }
+                let ghost offset_int = offset as int;
+                assert(0 <= i_int < 8);
+                assert(offset_int == i_int * 8);
+                assert(offset_int <= 7 * 8) by {
+                    assert(i_int <= 7) by {
+                        assert(i_int < 8);
+                    };
+                };
+                assert(offset_int <= 56);
+                assert(offset_int + 7 < 64) by {
+                    assert(offset_int <= 56);
+                };
+                assert(bytes.len() == 64);
+                assert(_offset_plus < bytes.len()) by {
+                    assert((_offset_plus) as int == offset_int + 7);
+                    assert(offset_int + 7 < 64);
+                };
             }
+            let chunk = load8_at(bytes, offset);
+            words[i] = chunk;
+
             proof {
+                let i_int = i as int;
+                lemma_word_from_bytes_matches_spec_load8(bytes, i_int);
+                assert(words@[i_int] as nat == word_from_bytes(bytes, i_int)) by {
+                    assert(words@[i_int] == chunk);
+                };
                 assert forall|k: int| i + 1 <= k < 8 implies words@[k] == 0 by {
                     assert(words@[#[trigger] k] == 0);
                 };
-                let i_int = i as int;
                 if i < 8 {
                     reveal_with_fuel(words_from_bytes_to_nat, 9);
                     lemma_bytes_wide_to_nat_rec_chunk(bytes, i_int);

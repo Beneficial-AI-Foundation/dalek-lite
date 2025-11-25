@@ -196,7 +196,31 @@ impl LookupTable<ProjectiveNielsPoint> {
             (x == 0 ==> result == identity_projective_niels()),
             (x < 0 ==> result == negate_projective_niels(self.0[((-x) - 1) as int])),
     {
-        // Debug assertions from original macro - ignored by Verus
+        /* ORIGINAL CODE: for generic type T, $name, $size, $neg, $range, and $conv_range.
+
+            debug_assert!(x >= $neg);
+            debug_assert!(x as i16 <= $size as i16); // XXX We have to convert to i16s here for the radix-256 case.. this is wrong.
+
+            // Compute xabs = |x|
+                let xmask = x as i16 >> 7;
+                let xabs = (x as i16 + xmask) ^ xmask;
+
+                // Set t = 0 * P = identity
+                let mut t = T::identity();
+                for j in $range {
+                    // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
+                    let c = (xabs as u16).ct_eq(&(j as u16));
+                    t.conditional_assign(&self.0[j - 1], c);
+                }
+                // Now t == |x| * P.
+
+                let neg_mask = Choice::from((xmask & 1) as u8);
+                t.conditional_negate(neg_mask);
+                // Now t == x * P.
+
+                t
+        In our instantiation we have T = ProjectiveNielsPoint, $name = LookupTable, $size = 8, $neg = -8, $range = 1..9, and $conv_range = 0..7.
+         */
         #[cfg(not(verus_keep_ghost))]
         {
             debug_assert!(x >= -8);

@@ -401,7 +401,7 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         let ghost s3 = self.limbs[3] + c;
         let ghost s4 = self.limbs[4] + c;
         // Capture the widened limbs so we can reason about them element-wise.
-        let ghost augmented: [u64; 5] = [s0, s1, s2, s3, s4];
+        let ghost augmented: [u64; 5] = [s0 as u64, s1 as u64, s2 as u64, s3 as u64, s4 as u64];
         let output = FieldElement51::reduce(
             [
                 (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],

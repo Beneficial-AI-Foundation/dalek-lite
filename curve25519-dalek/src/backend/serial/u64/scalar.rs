@@ -397,16 +397,13 @@ impl Scalar52 {
             lemma_rr_limbs_bounded();
         }
 
-        let lo_before = lo;
-        let hi_before = hi;
-
-        let lo_product = Scalar52::mul_internal(&lo_before, &constants::R);
+        let lo_product = Scalar52::mul_internal(&lo, &constants::R);
         lo = Scalar52::montgomery_reduce(&lo_product);  // (lo * R) / R = lo
-        let hi_product = Scalar52::mul_internal(&hi_before, &constants::RR);
+        let hi_product = Scalar52::mul_internal(&hi, &constants::RR);
         hi = Scalar52::montgomery_reduce(&hi_product);  // (hi * R^2) / R = hi * R
 
         proof {
-            let ghost lo_before_nat = to_nat(&lo_before.limbs);
+            let ghost lo_before_nat = to_nat(&lo_raw.limbs);
             let ghost lo_after_nat = to_nat(&lo.limbs);
             let ghost r_nat = to_nat(&constants::R.limbs);
             lemma_r_equals_spec(constants::R);
@@ -420,7 +417,7 @@ impl Scalar52 {
 
             lemma_cancel_mul_pow2_mod(lo_after_nat, lo_before_nat, montgomery_radix());
 
-            let ghost hi_before_nat = to_nat(&hi_before.limbs);
+            let ghost hi_before_nat = to_nat(&hi_raw.limbs);
             let ghost hi_after_nat = to_nat(&hi.limbs);
             let ghost rr_nat = to_nat(&constants::RR.limbs);
 

@@ -37,6 +37,118 @@ use super::scalar_lemmas::*;
 
 verus! {
 
+/// Helper lemma for decomposing a word's contribution at a given scale.
+/// Given a word that is split at bit position `split_pos`, this lemma proves:
+///   pow2(scale) * word == pow2(scale) * low_part + pow2(scale + split_pos) * high_part
+/// where low_part = word & (u64::MAX >> mask_shift) and high_part = word >> split_pos
+/// Note: mask_shift = 64 - split_pos
+pub proof fn lemma_word_contribution_decomposition(
+    word: u64,
+    scale: nat,
+    split_pos: u64,
+    mask_shift: u64,
+    low_part: nat,
+    high_part: nat,
+)
+    requires
+        split_pos > 0 && split_pos < 64,
+        mask_shift + split_pos == 64,
+        low_part == (word & (u64::MAX >> mask_shift)) as nat,
+        high_part == (word >> split_pos) as nat,
+    ensures
+        pow2(scale) * (word as nat) == pow2(scale) * low_part + pow2(scale + split_pos as nat) * high_part,
+{
+    let low_mask = u64::MAX >> mask_shift;
+    let low = word & low_mask;
+    let high = word >> split_pos;
+
+    // Low part is bounded
+    assert((word & low_mask) < (1u64 << split_pos)) by (bit_vector)
+        requires split_pos > 0 && split_pos < 64 && mask_shift + split_pos == 64 && low_mask == u64::MAX >> mask_shift;
+
+    // High part is bounded
+    assert((word >> split_pos) <= u64::MAX >> split_pos) by (bit_vector)
+        requires split_pos > 0 && split_pos < 64;
+
+    // Word decomposes into low | (high << split_pos)
+    assert(word == (word & low_mask) | ((word >> split_pos) << split_pos)) by (bit_vector)
+        requires split_pos > 0 && split_pos < 64 && mask_shift + split_pos == 64 && low_mask == u64::MAX >> mask_shift;
+
+    lemma_bit_or_is_plus(low, high, split_pos);
+    vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, split_pos, u64::MAX);
+    vstd::bits::lemma_u64_shl_is_mul(high, split_pos);
+
+    // pow2(scale) * (pow2(split_pos) * high_part) == pow2(scale + split_pos) * high_part
+    assert(pow2(scale) * (pow2(split_pos as nat) * high_part) == pow2(scale + split_pos as nat) * high_part) by {
+        assert(pow2(scale) * (pow2(split_pos as nat) * high_part) == (pow2(scale) * pow2(split_pos as nat)) * high_part)
+            by (nonlinear_arith);
+        lemma_pow2_adds(scale, split_pos as nat);
+    }
+    broadcast use group_mul_is_distributive;
+}
+
+/// Helper lemma for proving a limb (from adjacent words) equals the sum of high bits 
+/// from the previous word and low bits from the next word.
+/// The limb is formed as: ((prev_word >> prev_shift) | (next_word << high_bits)) & mask
+/// and equals: high_part + pow2(high_bits) * low_part
+///
+/// Parameters:
+/// - `prev_word`, `next_word`: The two adjacent words
+/// - `prev_shift`: How many bits to shift prev_word right (64 - high_bits)
+/// - `high_bits`: Number of bits from prev_word contributing to the limb
+/// - `low_mask_shift`: How many bits to shift for the low mask (64 - low_bits, where low_bits = 52 - high_bits)
+/// - `limb`: The computed limb value
+/// - `high_part`: (prev_word >> prev_shift) as nat
+/// - `low_part`: (next_word & low_mask) as nat
+pub proof fn lemma_limb_from_adjacent_words(
+    prev_word: u64,
+    next_word: u64,
+    prev_shift: u64,
+    high_bits: u64,
+    low_mask_shift: u64,
+    limb: nat,
+    high_part: nat,
+    low_part: nat,
+)
+    requires
+        high_bits > 0 && high_bits < 52,
+        prev_shift + high_bits == 64,
+        low_mask_shift + (52 - high_bits) == 64,
+        limb == (((prev_word >> prev_shift) | (next_word << high_bits)) & (u64::MAX >> 12)) as nat,
+        high_part == (prev_word >> prev_shift) as nat,
+        low_part == (next_word & (u64::MAX >> low_mask_shift)) as nat,
+    ensures
+        limb == high_part + pow2(high_bits as nat) * low_part,
+{
+    let mask = u64::MAX >> 12;
+    let low_mask = u64::MAX >> low_mask_shift;
+    let high_val = prev_word >> prev_shift;
+    let low_val = next_word & low_mask;
+
+    // High part is bounded by 2^high_bits
+    assert((prev_word >> prev_shift) < (1u64 << high_bits)) by (bit_vector)
+        requires high_bits > 0 && high_bits < 52 && prev_shift + high_bits == 64;
+
+    // Low part fits when shifted by high_bits
+    assert((next_word & low_mask) <= u64::MAX >> high_bits) by (bit_vector)
+        requires high_bits > 0 && high_bits < 52 && low_mask_shift + (52 - high_bits) == 64 && low_mask == u64::MAX >> low_mask_shift;
+
+    // OR with mask simplifies
+    assert(((prev_word >> prev_shift) | (next_word << high_bits)) & mask
+        == (prev_word >> prev_shift) | ((next_word & low_mask) << high_bits)) by (bit_vector)
+        requires high_bits > 0 && high_bits < 52 && prev_shift + high_bits == 64 
+            && low_mask_shift + (52 - high_bits) == 64 && low_mask == u64::MAX >> low_mask_shift && mask == u64::MAX >> 12;
+
+    // Combined value fits in 52 bits
+    assert(((prev_word >> prev_shift) | ((next_word & low_mask) << high_bits)) < (1u64 << 52)) by (bit_vector)
+        requires high_bits > 0 && high_bits < 52 && prev_shift + high_bits == 64 
+            && low_mask_shift + (52 - high_bits) == 64 && low_mask == u64::MAX >> low_mask_shift;
+
+    lemma_bit_or_is_plus(high_val, low_val, high_bits);
+    vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low_val, high_bits, u64::MAX);
+    vstd::bits::lemma_u64_shl_is_mul(low_val, high_bits);
+}
+
 pub proof fn lemma_word_from_bytes_partial_step_last(bytes: &[u8; 64], word_idx: int)
     requires
         0 <= word_idx < 8,
@@ -273,53 +385,11 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
     let w4_low = (words[4] & 0xf) as nat;
 
     // Limb 1 consists of word 0's top 12 bits and word 1's low 40 bits.
-    assert(limb1 == w0_high + pow2(12) * w1_low) by {
-        let w0 = words[0];
-        let w1 = words[1];
-        let high12 = w0 >> 52;
-        let low40 = w1 & (u64::MAX >> 24);
-
-        assert(((w0 >> 52) | (w1 << 12)) & (u64::MAX >> 12) == (w0 >> 52) | ((w1 & (u64::MAX >> 24))
-            << 12)) by (bit_vector);
-        assert((w0 >> 52) < (1u64 << 12)) by (bit_vector);
-        assert((w1 & (u64::MAX >> 24)) <= u64::MAX >> 12) by (bit_vector);
-        assert(((w0 >> 52) | ((w1 & (u64::MAX >> 24)) << 12)) < (1u64 << 52)) by (bit_vector);
-        lemma_bit_or_is_plus(high12, low40, 12);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low40, 12, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(low40, 12);
-    };
+    lemma_limb_from_adjacent_words(words[0], words[1], 52, 12, 24, limb1, w0_high, w1_low);
     // Limb 2 consists of word 1's top 24 bits and word 2's low 28 bits.
-    assert(limb2 == w1_high + pow2(24) * w2_low) by {
-        let w1 = words[1];
-        let w2 = words[2];
-        let high24 = w1 >> 40;
-        let low28 = w2 & (u64::MAX >> 36);
-
-        assert(((w1 >> 40) | (w2 << 24)) & (u64::MAX >> 12) == (w1 >> 40) | ((w2 & (u64::MAX >> 36))
-            << 24)) by (bit_vector);
-        assert((w1 >> 40) < (1u64 << 24)) by (bit_vector);
-        assert((w2 & (u64::MAX >> 36)) <= u64::MAX >> 24) by (bit_vector);
-        assert(((w1 >> 40) | ((w2 & (u64::MAX >> 36)) << 24)) < (1u64 << 52)) by (bit_vector);
-        lemma_bit_or_is_plus(high24, low28, 24);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low28, 24, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(low28, 24);
-    };
+    lemma_limb_from_adjacent_words(words[1], words[2], 40, 24, 36, limb2, w1_high, w2_low);
     // Limb 3 consists of word 2's top 36 bits and word 3's low 16 bits.
-    assert(limb3 == w2_high + pow2(36) * w3_low) by {
-        let w2 = words[2];
-        let w3 = words[3];
-        let high36 = w2 >> 28;
-        let low16 = w3 & (u64::MAX >> 48);
-
-        assert(((w2 >> 28) | (w3 << 36)) & (u64::MAX >> 12) == (w2 >> 28) | ((w3 & (u64::MAX >> 48))
-            << 36)) by (bit_vector);
-        assert((w2 >> 28) < (1u64 << 36)) by (bit_vector);
-        assert((w3 & (u64::MAX >> 48)) <= u64::MAX >> 36) by (bit_vector);
-        assert(((w2 >> 28) | ((w3 & (u64::MAX >> 48)) << 36)) < (1u64 << 52)) by (bit_vector);
-        lemma_bit_or_is_plus(high36, low16, 36);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low16, 36, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(low16, 36);
-    };
+    lemma_limb_from_adjacent_words(words[2], words[3], 28, 36, 48, limb3, w2_high, w3_low);
     // Limb 4 consists of word 3's top 48 bits and word 4's low 4 bits.
     assert(limb4 == w3_high + pow2(48) * w4_low) by {
         let w3 = words[3];
@@ -346,64 +416,18 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
         assert((w0 >> 52) <= u64::MAX >> 52) by (bit_vector);
         lemma_decompose(w0, mask);
         lemma_bit_or_is_plus(low, high, 52);
-
     };
     // Word 1's contribution at scale 2^64 equals its low 40 bits plus its high 24 bits.
     assert(pow2(64) * (words[1] as nat) == pow2(64) * w1_low + pow2(104) * w1_high) by {
-        let w1 = words[1];
-        let low = w1 & (u64::MAX >> 24);
-        let high = w1 >> 40;
-
-        assert((w1 & (u64::MAX >> 24)) < (1u64 << 40)) by (bit_vector);
-        assert((w1 >> 40) <= u64::MAX >> 40) by (bit_vector);
-        assert(w1 == (w1 & (u64::MAX >> 24)) | ((w1 >> 40) << 40)) by (bit_vector);
-        lemma_bit_or_is_plus(low, high, 40);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, 40, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(high, 40);
-        assert(pow2(64) * (pow2(40) * w1_high) == pow2(104) * w1_high) by {
-            assert(pow2(64) * (pow2(40) * w1_high) == (pow2(64) * pow2(40)) * w1_high)
-                by (nonlinear_arith);
-            lemma_pow2_adds(64, 40);
-        }
-        broadcast use group_mul_is_distributive;
+        lemma_word_contribution_decomposition(words[1], 64, 40, 24, w1_low, w1_high);
     };
     // Word 2's contribution at scale 2^128 equals its low 28 bits plus its high 36 bits.
     assert(pow2(128) * (words[2] as nat) == pow2(128) * w2_low + pow2(156) * w2_high) by {
-        let w2 = words[2];
-        let low = w2 & (u64::MAX >> 36);
-        let high = w2 >> 28;
-
-        assert((w2 & (u64::MAX >> 36)) < (1u64 << 28)) by (bit_vector);
-        assert((w2 >> 28) <= u64::MAX >> 28) by (bit_vector);
-        assert(w2 == (w2 & (u64::MAX >> 36)) | ((w2 >> 28) << 28)) by (bit_vector);
-        lemma_bit_or_is_plus(low, high, 28);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, 28, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(high, 28);
-        assert(pow2(128) * (pow2(28) * w2_high) == pow2(156) * w2_high) by {
-            assert(pow2(128) * (pow2(28) * w2_high) == (pow2(128) * pow2(28)) * w2_high)
-                by (nonlinear_arith);
-            lemma_pow2_adds(128, 28);
-        }
-        broadcast use group_mul_is_distributive;
+        lemma_word_contribution_decomposition(words[2], 128, 28, 36, w2_low, w2_high);
     };
     // Word 3's contribution at scale 2^192 equals its low 16 bits plus its high 48 bits.
     assert(pow2(192) * (words[3] as nat) == pow2(192) * w3_low + pow2(208) * w3_high) by {
-        let w3 = words[3];
-        let low = w3 & (u64::MAX >> 48);
-        let high = w3 >> 16;
-
-        assert((w3 & (u64::MAX >> 48)) < (1u64 << 16)) by (bit_vector);
-        assert((w3 >> 16) <= u64::MAX >> 16) by (bit_vector);
-        assert(w3 == (w3 & (u64::MAX >> 48)) | ((w3 >> 16) << 16)) by (bit_vector);
-        lemma_bit_or_is_plus(low, high, 16);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, 16, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(high, 16);
-        assert(pow2(192) * (pow2(16) * w3_high) == pow2(208) * w3_high) by {
-            assert(pow2(192) * (pow2(16) * w3_high) == (pow2(192) * pow2(16)) * w3_high)
-                by (nonlinear_arith);
-            lemma_pow2_adds(192, 16);
-        }
-        broadcast use group_mul_is_distributive;
+        lemma_word_contribution_decomposition(words[3], 192, 16, 48, w3_low, w3_high);
     };
 
     assert(w0_low + pow2(52) * (w0_high + pow2(12) * w1_low) + pow2(104) * (w1_high + pow2(24)
@@ -460,55 +484,13 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
     // Limb 0 consists of word 4's bits 4 through 55.
 
     // Limb 1 consists of word 4's top 8 bits and word 5's low 44 bits.
-    assert(limb1 == w4_high + pow2(8) * w5_low) by {
-        let w4 = words[4];
-        let w5 = words[5];
-        let high8 = w4 >> 56;
-        let low44 = w5 & (u64::MAX >> 20);
-
-        assert((w4 >> 56) < (1u64 << 8)) by (bit_vector);
-        assert((w5 & (u64::MAX >> 20)) <= u64::MAX >> 8) by (bit_vector);
-        assert(((w4 >> 56) | (w5 << 8)) & (u64::MAX >> 12) == (w4 >> 56) | ((w5 & (u64::MAX >> 20))
-            << 8)) by (bit_vector);
-        assert(((w4 >> 56) | ((w5 & (u64::MAX >> 20)) << 8)) < (1u64 << 52)) by (bit_vector);
-        lemma_bit_or_is_plus(high8, low44, 8);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low44, 8, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(low44, 8);
-    };
+    lemma_limb_from_adjacent_words(words[4], words[5], 56, 8, 20, limb1, w4_high, w5_low);
 
     // Limb 2 consists of word 5's top 20 bits and word 6's low 32 bits.
-    assert(limb2 == w5_high + pow2(20) * w6_low) by {
-        let w5 = words[5];
-        let w6 = words[6];
-        let high20 = w5 >> 44;
-        let low32 = w6 & (u64::MAX >> 32);
-
-        assert((w5 >> 44) < (1u64 << 20)) by (bit_vector);
-        assert((w6 & (u64::MAX >> 32)) <= u64::MAX >> 20) by (bit_vector);
-        assert(((w5 >> 44) | (w6 << 20)) & (u64::MAX >> 12) == (w5 >> 44) | ((w6 & (u64::MAX >> 32))
-            << 20)) by (bit_vector);
-        assert(((w5 >> 44) | ((w6 & (u64::MAX >> 32)) << 20)) < (1u64 << 52)) by (bit_vector);
-        lemma_bit_or_is_plus(high20, low32, 20);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low32, 20, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(low32, 20);
-    };
+    lemma_limb_from_adjacent_words(words[5], words[6], 44, 20, 32, limb2, w5_high, w6_low);
 
     // Limb 3 consists of word 6's top 32 bits and word 7's low 20 bits.
-    assert(limb3 == w6_high + pow2(32) * w7_low) by {
-        let w6 = words[6];
-        let w7 = words[7];
-        let high32 = w6 >> 32;
-        let low20 = w7 & (u64::MAX >> 44);
-
-        assert((w6 >> 32) < (1u64 << 32)) by (bit_vector);
-        assert((w7 & (u64::MAX >> 44)) <= u64::MAX >> 32) by (bit_vector);
-        assert(((w6 >> 32) | (w7 << 32)) & (u64::MAX >> 12) == (w6 >> 32) | ((w7 & (u64::MAX >> 44))
-            << 32)) by (bit_vector);
-        assert(((w6 >> 32) | ((w7 & (u64::MAX >> 44)) << 32)) < (1u64 << 52)) by (bit_vector);
-        lemma_bit_or_is_plus(high32, low20, 32);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(low20, 32, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(low20, 32);
-    };
+    lemma_limb_from_adjacent_words(words[6], words[7], 32, 32, 44, limb3, w6_high, w7_low);
 
     // Limb 4 consists of word 7's top 44 bits.
 
@@ -531,62 +513,17 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
 
     // Word 5's contribution at scale 2^60 equals its low 44 bits plus its high 20 bits.
     assert(pow2(60) * (words[5] as nat) == pow2(60) * w5_low + pow2(104) * w5_high) by {
-        let w5 = words[5];
-        let low = w5 & (u64::MAX >> 20);
-        let high = w5 >> 44;
-
-        assert((w5 & (u64::MAX >> 20)) < (1u64 << 44)) by (bit_vector);
-        assert((w5 >> 44) <= u64::MAX >> 44) by (bit_vector);
-        assert(w5 == (w5 & (u64::MAX >> 20)) | ((w5 >> 44) << 44)) by (bit_vector);
-        lemma_bit_or_is_plus(low, high, 44);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, 44, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(high, 44);
-        assert(pow2(60) * (pow2(44) * w5_high) == pow2(104) * w5_high) by {
-            assert(pow2(60) * (pow2(44) * w5_high) == (pow2(60) * pow2(44)) * w5_high)
-                by (nonlinear_arith);
-            lemma_pow2_adds(60, 44);
-        }
-        broadcast use group_mul_is_distributive;
+        lemma_word_contribution_decomposition(words[5], 60, 44, 20, w5_low, w5_high);
     };
 
     // Word 6's contribution at scale 2^124 equals its low 32 bits plus its high 32 bits.
     assert(pow2(124) * (words[6] as nat) == pow2(124) * w6_low + pow2(156) * w6_high) by {
-        let w6 = words[6];
-        let low = w6 & (u64::MAX >> 32);
-        let high = w6 >> 32;
-
-        assert((w6 & (u64::MAX >> 32)) < (1u64 << 32)) by (bit_vector);
-        assert((w6 >> 32) <= u64::MAX >> 32) by (bit_vector);
-        assert(w6 == (w6 & (u64::MAX >> 32)) | ((w6 >> 32) << 32)) by (bit_vector);
-        lemma_bit_or_is_plus(low, high, 32);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, 32, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(high, 32);
-        assert(pow2(124) * (pow2(32) * w6_high) == pow2(156) * w6_high) by {
-            assert(pow2(124) * (pow2(32) * w6_high) == (pow2(124) * pow2(32)) * w6_high)
-                by (nonlinear_arith);
-            lemma_pow2_adds(124, 32);
-        }
-        broadcast use group_mul_is_distributive;
+        lemma_word_contribution_decomposition(words[6], 124, 32, 32, w6_low, w6_high);
     };
 
     // Word 7's contribution at scale 2^188 equals its low 20 bits plus its high 44 bits.
     assert(pow2(188) * (words[7] as nat) == pow2(188) * w7_low + pow2(208) * w7_high) by {
-        let w7 = words[7];
-        let low = w7 & (u64::MAX >> 44);
-        let high = w7 >> 20;
-
-        assert((w7 & (u64::MAX >> 44)) < (1u64 << 20)) by (bit_vector);
-        assert((w7 >> 20) <= u64::MAX >> 20) by (bit_vector);
-        assert(w7 == (w7 & (u64::MAX >> 44)) | ((w7 >> 20) << 20)) by (bit_vector);
-        lemma_bit_or_is_plus(low, high, 20);
-        vstd::bits::lemma_u64_mul_pow2_le_max_iff_max_shr(high, 20, u64::MAX);
-        vstd::bits::lemma_u64_shl_is_mul(high, 20);
-        assert(pow2(188) * (pow2(20) * w7_high) == pow2(208) * w7_high) by {
-            assert(pow2(188) * (pow2(20) * w7_high) == (pow2(188) * pow2(20)) * w7_high)
-                by (nonlinear_arith);
-            lemma_pow2_adds(188, 20);
-        }
-        broadcast use group_mul_is_distributive;
+        lemma_word_contribution_decomposition(words[7], 188, 20, 44, w7_low, w7_high);
     };
 
     assert(limb0 + pow2(52) * (w4_high + pow2(8) * w5_low) + pow2(104) * (w5_high + pow2(20)

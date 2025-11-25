@@ -353,42 +353,11 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         // Note on "magic numbers":
         // 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
         // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
-        let c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
-        let c = 36028797018963952u64;  // 16 * (2^51 -  1)
+        let ghost c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
+        let ghost c = 36028797018963952u64;  // 16 * (2^51 -  1)
 
         proof {
-            // Bound both operands so adding the constants cannot overflow a u64.
-            assert(self.limbs[0] <= u64::MAX - c0) by {
-                assert(((1u64 << 54) - 1) <= u64::MAX - c0) by (compute);
-            }
-            assert(self.limbs[1] <= u64::MAX - c) by {
-                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
-            }
-            assert(self.limbs[2] <= u64::MAX - c) by {
-                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
-            }
-            assert(self.limbs[3] <= u64::MAX - c) by {
-                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
-            }
-            assert(self.limbs[4] <= u64::MAX - c) by {
-                assert(((1u64 << 54) - 1) <= u64::MAX - c) by (compute);
-            }
-
-            assert(_rhs.limbs[0] < c0) by {
-                assert((1u64 << 54) <= c0) by (compute);
-            }
-            assert(_rhs.limbs[1] < c) by {
-                assert((1u64 << 54) <= c) by (compute);
-            }
-            assert(_rhs.limbs[2] < c) by {
-                assert((1u64 << 54) <= c) by (compute);
-            }
-            assert(_rhs.limbs[3] < c) by {
-                assert((1u64 << 54) <= c) by (compute);
-            }
-            assert(_rhs.limbs[4] < c) by {
-                assert((1u64 << 54) <= c) by (compute);
-            }
+            lemma_field_add_16p_no_overflow(self, _rhs);
         }
 
         // Precompute the constants we add to each limb prior to subtraction.

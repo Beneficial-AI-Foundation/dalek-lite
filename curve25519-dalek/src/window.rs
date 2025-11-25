@@ -25,7 +25,7 @@ use crate::traits::Identity;
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::subtle_assumes::{
-    conditional_assign_generic, conditional_negate_field, ct_eq_u16, identity_generic,
+    conditional_assign_generic, conditional_negate_field, ct_eq_u16,
 };
 use crate::edwards::EdwardsPoint;
 

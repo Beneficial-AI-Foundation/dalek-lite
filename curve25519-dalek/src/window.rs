@@ -187,7 +187,6 @@ impl LookupTable<ProjectiveNielsPoint> {
     ///
     /// Where P is the base point that was used to create this lookup table.
     /// This table stores [P, 2P, 3P, ..., 8P] (for radix-16).
-    #[verifier::external_body]
     pub fn select(&self, x: i8) -> (result: ProjectiveNielsPoint)
         requires
             -8 <= x,
@@ -240,16 +239,30 @@ impl<T: Copy> Clone for LookupTable<T> {
     }
 }
 
-impl<T: Copy + Default> Default for LookupTable<T> {
-    #[verifier::external_body]
-    fn default() -> (result: LookupTable<T>)
+// Specialized Default implementation for AffineNielsPoint
+impl Default for LookupTable<AffineNielsPoint> {
+    fn default() -> (result: LookupTable<AffineNielsPoint>)
         ensures
-    // All table entries are set to the same default value
-    // (Cannot express T::default() in spec, but all entries are equal)
+    // All table entries are set to the identity point
 
-            forall|i: int, j: int| 0 <= i < 8 && 0 <= j < 8 ==> result.0[i] == result.0[j],
+            forall|i: int|
+                0 <= i < 8 ==> result.0[i] == crate::specs::edwards_specs::identity_affine_niels(),
     {
-        LookupTable([T::default();8])
+        LookupTable([AffineNielsPoint::default();8])
+    }
+}
+
+// Specialized Default implementation for ProjectiveNielsPoint
+impl Default for LookupTable<ProjectiveNielsPoint> {
+    fn default() -> (result: LookupTable<ProjectiveNielsPoint>)
+        ensures
+    // All table entries are set to the identity point
+
+            forall|i: int|
+                0 <= i < 8 ==> result.0[i]
+                    == crate::specs::edwards_specs::identity_projective_niels(),
+    {
+        LookupTable([ProjectiveNielsPoint::default();8])
     }
 }
 

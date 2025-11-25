@@ -148,13 +148,7 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
 }
 
 // =============================================================================
-// SECTION 3: Scalar * EdwardsBasepointTable
-// =============================================================================
-/* VERIFICATION NOTE: Removed external type specifications for EdwardsBasepointTable and all radix variants
-   since the radix-16 EdwardsBasepointTable is now manually expanded inside a verus! block. */
-
-// =============================================================================
-// SECTION 4: MontgomeryPoint * Scalar
+// SECTION 3: MontgomeryPoint * Scalar
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid
@@ -177,7 +171,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
 }
 
 // =============================================================================
-// SECTION 5: Scalar * MontgomeryPoint
+// SECTION 4: Scalar * MontgomeryPoint
 // =============================================================================
 // Specifications only - implementations are in montgomery.rs
 // Requires: MontgomeryPoint must be valid

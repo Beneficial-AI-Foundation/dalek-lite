@@ -41,6 +41,8 @@ use crate::lemmas::scalar_lemmas::*;
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::scalar_montgomery_lemmas::lemma_from_montgomery_is_product_with_one;
 #[allow(unused_imports)]
+use crate::lemmas::field_lemmas::load8_lemmas::*;
+#[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
@@ -54,6 +56,8 @@ use vstd::prelude::*;
 
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas_extra::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::core_specs::spec_load8_at;
 
 verus! {
 
@@ -205,12 +209,21 @@ impl Scalar52 {
 
             proof {
                 let i_int = i as int;
-                lemma_word_from_bytes_matches_spec_load8(bytes, i_int);
+                // Inline lemma_word_from_bytes_matches_spec_load8:
+                // spec_load8_at uses pow2(k*8) * byte, word_from_bytes uses byte * pow2(k*8)
+                assert(spec_load8_at(bytes, (i_int * 8) as usize) == word_from_bytes(bytes, i_int)) by {
+                    broadcast use lemma_mul_is_commutative;
+                };
                 assert forall|k: int| i + 1 <= k < 8 implies words@[k] == 0 by {
                     assert(words@[#[trigger] k] == 0);
                 };
                 reveal_with_fuel(words_from_bytes_to_nat, 9);
-                lemma_bytes_wide_to_nat_rec_chunk(bytes, i_int);
+                // Inline lemma_bytes_wide_to_nat_rec_chunk
+                assert(bytes_wide_to_nat_rec(bytes, i_int * 8) == word_from_bytes(bytes, i_int) * pow2((i_int * 64) as nat)
+                    + bytes_wide_to_nat_rec(bytes, (i_int + 1) * 8)) by {
+                    lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, i_int, 8);
+                    broadcast use lemma_mul_is_commutative;
+                };
             }
         }
 
@@ -220,7 +233,12 @@ impl Scalar52 {
 
         // Stage 2 word bounds: every assembled chunk fits in 64 bits.
         assert forall|k: int| 0 <= k < 8 implies words[k] < pow2(64) by {
-            lemma_word_from_bytes_bound(bytes, k);
+            let idx = (k * 8) as usize;
+            lemma_spec_load8_at_fits_u64(bytes, idx);
+            // spec_load8_at uses pow2(k*8) * byte, word_from_bytes uses byte * pow2(k*8)
+            // These are equal by commutativity of multiplication
+            broadcast use lemma_mul_is_commutative;
+            lemma2_to64_rest();  // u64::MAX == pow2(64) - 1
         };
 
         proof {
@@ -298,7 +316,14 @@ impl Scalar52 {
             let low_nat = (word4 & 0xf) as nat;
 
             lemma_pow2_adds(256, 4);
-            lemma_word_split_low4(word4);
+            // Inline lemma_word_split_low4: pow2(4) * ((word4 >> 4) as nat) + (word4 & 0xf) as nat == word4 as nat
+            assert(pow2(4) * ((word4 >> 4) as nat) + (word4 & 0xf) as nat == word4 as nat) by {
+                lemma2_to64();  // gives pow2(0) == 1 and pow2(1) == 2
+                assert(pow2(2) == pow2(1) * pow2(1)) by { lemma_pow2_adds(1, 1); };
+                assert(pow2(4) == pow2(2) * pow2(2)) by { lemma_pow2_adds(2, 2); };
+                assert(16 * ((word4 >> 4) as nat) + (word4 & 0xf) as nat == word4 as nat) by (bit_vector)
+                    requires word4 == word4;
+            };
 
             calc! {
                 (==)

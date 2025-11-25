@@ -32,12 +32,11 @@ use crate::edwards::EdwardsPoint;
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
-use vstd::prelude::*;
-
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
+use vstd::prelude::*;
 
 /* VERIFICATION NOTE: Removed unused impl_lookup_table! macro since LookupTable
 (radix-16) was manually expanded. */
@@ -80,7 +79,6 @@ pub open spec fn is_valid_lookup_table_affine<const N: usize>(
             == edwards_scalar_mul(edwards_point_as_affine(P), (j + 1) as nat)
 }
 
-} // verus!
 /* VERIFICATION NOTE: Manually expanded impl_lookup_table! macro for radix-16 (LookupTable).
    Removed macro invocations for radix-32, 64, 128, 256 variants to focus verification
    on the primary radix-16 implementation used as a constructor for consts.
@@ -94,7 +92,6 @@ impl_lookup_table! {
     ConversionRange = 0..7
    }
 */
-verus! {
 
 /// A lookup table of precomputed multiples of a point \\(P\\), used to
 /// compute \\( xP \\) for \\( -8 \leq x \leq 8 \\).

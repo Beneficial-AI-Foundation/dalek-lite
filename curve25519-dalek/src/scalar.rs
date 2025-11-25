@@ -792,6 +792,7 @@ impl Neg for &Scalar {
             // Preconditions for mul_internal and sub
             assume(limbs_bounded(&constants::R));
             assume(limbs_bounded(&UnpackedScalar::ZERO));
+            // Also prove that to_nat(R) < group order
         }
 
         let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);

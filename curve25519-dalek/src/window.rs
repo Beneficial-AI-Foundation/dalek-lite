@@ -264,6 +264,13 @@ impl Default for LookupTable<ProjectiveNielsPoint> {
     }
 }
 
+/* ORIGINAL CODE: generic default implementation
+impl<T: Copy + Default> Default for $name<T> {
+    fn default() -> $name<T> {
+        $name([T::default(); 8])
+    }
+*/
+
 impl<T: Debug> Debug for LookupTable<T> {
     #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {

@@ -478,47 +478,15 @@ impl Scalar52 {
             let ghost hi_raw_nat = to_nat(&hi_raw.limbs);
             let ghost lo_raw_nat = to_nat(&lo_raw.limbs);
             let ghost r_nat = montgomery_radix();
-            let ghost group_int = group_order() as int;
 
-            lemma_small_mod(((hi_nat + lo_nat) % group_order()) as nat, group_order());
-
-            calc! {
-                (==)
-                (result_nat * r_nat) % group_order(); {}
-                (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order(); {
-                    lemma_mul_factors_congruent_implies_products_congruent(
-                        r_nat as int,
-                        ((hi_nat + lo_nat) % group_order()) as int,
-                        (hi_nat + lo_nat) as int,
-                        group_int,
-                    );
-                }
-                (r_nat * (hi_nat + lo_nat)) % group_order(); {
-                    lemma_mul_is_distributive_add(r_nat as int, hi_nat as int, lo_nat as int);
-                }
-                (r_nat * hi_nat + r_nat * lo_nat) % group_order(); {
-                    lemma_add_mod_noop((r_nat * hi_nat) as int, (r_nat * lo_nat) as int, group_int);
-                }
-                ((r_nat * hi_nat) % group_order() + (r_nat * lo_nat) % group_order())
-                    % group_order(); {}
-                ((hi_raw_nat * r_nat * r_nat) % group_order() + (lo_raw_nat * r_nat)
-                    % group_order()) % group_order(); {
-                    lemma_add_mod_noop(
-                        (hi_raw_nat * r_nat * r_nat) as int,
-                        (lo_raw_nat * r_nat) as int,
-                        group_int,
-                    );
-                }
-                (hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat) % group_order(); {
-                    lemma_mul_is_distributive_add_other_way(
-                        r_nat as int,
-                        (hi_raw_nat * r_nat) as int,
-                        lo_raw_nat as int,
-                    );
-                    assert(hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat == wide_input * r_nat);
-                }
-                (wide_input * r_nat) % group_order();
-            }
+            lemma_montgomery_reduced_sum_congruent(
+                result_nat,
+                hi_nat,
+                lo_nat,
+                hi_raw_nat,
+                lo_raw_nat,
+                wide_input,
+            );
 
             lemma_cancel_mul_pow2_mod(result_nat, wide_input, r_nat);
         }

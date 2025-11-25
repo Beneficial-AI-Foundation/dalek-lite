@@ -489,4 +489,68 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
     assert(masked_words_sum == unmasked_words_sum);
 }
 
+/// Proves that combining Montgomery-reduced hi and lo pieces preserves congruence
+/// with the original wide input modulo the group order L.
+/// 
+/// Given:
+/// - hi_raw = wide_input / R and lo_raw = wide_input % R (where R = 2^260)
+/// - hi and lo are Montgomery reductions satisfying:
+///   - hi * R ≡ hi_raw * R^2 (mod L)
+///   - lo * R ≡ lo_raw * R (mod L)
+/// - result = (hi + lo) mod L
+/// 
+/// Proves: result * R ≡ wide_input * R (mod L)
+pub proof fn lemma_montgomery_reduced_sum_congruent(
+    result_nat: nat,
+    hi_nat: nat,
+    lo_nat: nat,
+    hi_raw_nat: nat,
+    lo_raw_nat: nat,
+    wide_input: nat,
+)
+    requires
+        // result comes from Scalar52::add
+        result_nat == (hi_nat + lo_nat) % group_order(),
+        // From Stage 4 Montgomery reductions
+        (hi_nat * montgomery_radix()) % group_order() == (hi_raw_nat * montgomery_radix() * montgomery_radix()) % group_order(),
+        (lo_nat * montgomery_radix()) % group_order() == (lo_raw_nat * montgomery_radix()) % group_order(),
+        // hi_raw and lo_raw come from dividing wide_input at the Montgomery radix boundary
+        hi_raw_nat == wide_input / montgomery_radix(),
+        lo_raw_nat == wide_input % montgomery_radix(),
+    ensures
+        (result_nat * montgomery_radix()) % group_order() == (wide_input * montgomery_radix()) % group_order(),
+{
+    let r_nat = montgomery_radix();
+    let group_int = group_order() as int;
+
+    // Prove the key relationship from div/mod properties
+    lemma_pow2_pos(260);
+    lemma_fundamental_div_mod(wide_input as int, r_nat as int);
+    
+    // hi_raw_nat * r^2 + lo_raw_nat * r == r * (hi_raw_nat * r + lo_raw_nat) == r * wide_input
+    assert(hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat == wide_input * r_nat) by {
+        lemma_mul_is_commutative(hi_raw_nat as int, r_nat as int);
+        lemma_mul_is_distributive_add_other_way(
+            r_nat as int,
+            (hi_raw_nat * r_nat) as int,
+            lo_raw_nat as int,
+        );
+    };
+
+    lemma_small_mod(((hi_nat + lo_nat) % group_order()) as nat, group_order());
+    lemma_mul_factors_congruent_implies_products_congruent(
+        r_nat as int,
+        ((hi_nat + lo_nat) % group_order()) as int,
+        (hi_nat + lo_nat) as int,
+        group_int,
+    );
+    lemma_mul_is_distributive_add(r_nat as int, hi_nat as int, lo_nat as int);
+    lemma_add_mod_noop((r_nat * hi_nat) as int, (r_nat * lo_nat) as int, group_int);
+    lemma_add_mod_noop(
+        (hi_raw_nat * r_nat * r_nat) as int,
+        (lo_raw_nat * r_nat) as int,
+        group_int,
+    );
+}
+
 } // verus!

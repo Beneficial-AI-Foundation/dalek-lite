@@ -353,8 +353,8 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         // Note on "magic numbers":
         // 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
         // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
-        let c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
-        let c = 36028797018963952u64;  // 16 * (2^51 -  1)
+        let ghost c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
+        let ghost c = 36028797018963952u64;  // 16 * (2^51 -  1)
 
         proof {
             // Bound both operands so adding the constants cannot overflow a u64.
@@ -392,16 +392,16 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         }
 
         // Precompute the constants we add to each limb prior to subtraction.
-        let const_vec = [c0, c, c, c, c];
+        let ghost const_vec = [c0, c, c, c, c];
 
         // Translate both operands into the safe range before subtracting.
-        let s0 = self.limbs[0] + c0;
-        let s1 = self.limbs[1] + c;
-        let s2 = self.limbs[2] + c;
-        let s3 = self.limbs[3] + c;
-        let s4 = self.limbs[4] + c;
+        let ghost s0 = self.limbs[0] + c0;
+        let ghost s1 = self.limbs[1] + c;
+        let ghost s2 = self.limbs[2] + c;
+        let ghost s3 = self.limbs[3] + c;
+        let ghost s4 = self.limbs[4] + c;
         // Capture the widened limbs so we can reason about them element-wise.
-        let ghost augmented: [u64; 5] = [s0, s1, s2, s3, s4];
+        let ghost augmented: [u64; 5] = [s0 as u64, s1 as u64, s2 as u64, s3 as u64, s4 as u64];
         let output = FieldElement51::reduce(
             [
                 (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],

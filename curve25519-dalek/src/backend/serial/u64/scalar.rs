@@ -202,26 +202,10 @@ impl Scalar52 {
                 forall|k: int| i <= k < 8 ==> words@[k] == 0,
         {
             let offset = i * 8;
-            let _offset_plus = offset + 7usize;
+            let _offset_end = offset + 7usize;
             proof {
-                let ghost i_int = i as int;
-                let ghost offset_int = offset as int;
-                assert(0 <= i_int < 8);
-                assert(offset_int == i_int * 8);
-                assert(offset_int <= 7 * 8) by {
-                    assert(i_int <= 7) by {
-                        assert(i_int < 8);
-                    };
-                };
-                assert(offset_int <= 56);
-                assert(offset_int + 7 < 64) by {
-                    assert(offset_int <= 56);
-                };
-                assert(bytes.len() == 64);
-                assert(_offset_plus < bytes.len()) by {
-                    assert((_offset_plus) as int == offset_int + 7);
-                    assert(offset_int + 7 < 64);
-                };
+                // offset + 7 = i*8 + 7 <= 7*8 + 7 = 63 < 64 = bytes.len()
+                assert(_offset_end < 64);
             }
             let chunk = load8_at(bytes, offset);
             words[i] = chunk;
@@ -229,16 +213,11 @@ impl Scalar52 {
             proof {
                 let i_int = i as int;
                 lemma_word_from_bytes_matches_spec_load8(bytes, i_int);
-                assert(words@[i_int] as nat == word_from_bytes(bytes, i_int)) by {
-                    assert(words@[i_int] == chunk);
-                };
                 assert forall|k: int| i + 1 <= k < 8 implies words@[k] == 0 by {
                     assert(words@[#[trigger] k] == 0);
                 };
-                if i < 8 {
-                    reveal_with_fuel(words_from_bytes_to_nat, 9);
-                    lemma_bytes_wide_to_nat_rec_chunk(bytes, i_int);
-                }
+                reveal_with_fuel(words_from_bytes_to_nat, 9);
+                lemma_bytes_wide_to_nat_rec_chunk(bytes, i_int);
             }
         }
 
@@ -278,21 +257,19 @@ impl Scalar52 {
                 lemma_borrow_and_mask_bounded(words[0], mask);
             } else if i == 1 {
                 lemma_borrow_and_mask_bounded((words[0] >> 52) | (words[1] << 12), mask);
-                assert(lo_raw.limbs[i] < (1u64 << 52));
             } else if i == 2 {
                 lemma_borrow_and_mask_bounded((words[1] >> 40) | (words[2] << 24), mask);
             } else if i == 3 {
                 lemma_borrow_and_mask_bounded((words[2] >> 28) | (words[3] << 36), mask);
             } else {
                 lemma_borrow_and_mask_bounded((words[3] >> 16) | (words[4] << 48), mask);
-                assert(lo_raw.limbs[i] < (1u64 << 52));
+                assert(lo_raw.limbs[4] < (1u64 << 52));
             }
         };
 
         assert forall|i: int| 0 <= i < 5 implies hi_raw.limbs[i] < (1u64 << 52) by {
             if i == 0 {
                 lemma_borrow_and_mask_bounded(words[4] >> 4, mask);
-                assert(hi_raw.limbs[i] < (1u64 << 52));
             } else if i == 1 {
                 lemma_borrow_and_mask_bounded((words[4] >> 56) | (words[5] << 8), mask);
             } else if i == 2 {
@@ -303,7 +280,6 @@ impl Scalar52 {
                 let word7 = words[7];
                 assert(word7 >> 20 <= u64::MAX >> 20) by (bit_vector);
                 assert(u64::MAX >> 20 < (1u64 << 52)) by (bit_vector);
-                assert(hi_raw.limbs[i] < (1u64 << 52));
             }
         };
 
@@ -346,18 +322,14 @@ impl Scalar52 {
 
             calc! {
                 (==)
-                pow2_260 * high_nat + pow2(256) * low_nat; {}
-                (pow2(256) * pow2(4)) * high_nat + pow2(256) * low_nat; {
+                pow2_260 * high_nat + pow2(256) * low_nat; {
                     lemma_mul_is_associative(pow2(256) as int, pow2(4) as int, high_nat as int);
-                }
-                pow2(256) * (pow2(4) * high_nat) + pow2(256) * low_nat; {
                     lemma_mul_is_distributive_add(
                         pow2(256) as int,
                         (pow2(4) * high_nat) as int,
                         low_nat as int,
                     );
                 }
-                pow2(256) * (pow2(4) * high_nat + low_nat); {}
                 pow2(256) * (words[4] as nat);
             }
         };
@@ -381,33 +353,21 @@ impl Scalar52 {
             let term_c = pow2(188) * word7_nat;
 
             lemma_mul_is_associative(pow2_260 as int, pow2(60) as int, word5_nat as int);
-
             lemma_mul_is_associative(pow2_260 as int, pow2(124) as int, word6_nat as int);
-            assert(pow2(384) * word6_nat == pow2_260 * (pow2(124) * word6_nat));
-
             lemma_mul_is_associative(pow2_260 as int, pow2(188) as int, word7_nat as int);
-            assert(pow2(448) * word7_nat == pow2_260 * (pow2(188) * word7_nat));
 
             assert(pow2_260 * (term_a + term_b + term_c) == pow2(320) * word5_nat + pow2(384)
                 * word6_nat + pow2(448) * word7_nat) by {
-                calc! {
-                    (==)
-                    pow2_260 * (term_a + term_b + term_c); {
-                        lemma_mul_is_distributive_add(
-                            pow2_260 as int,
-                            term_a as int,
-                            (term_b + term_c) as int,
-                        );
-                    }
-                    pow2_260 * term_a + pow2_260 * (term_b + term_c); {
-                        lemma_mul_is_distributive_add(
-                            pow2_260 as int,
-                            term_b as int,
-                            term_c as int,
-                        );
-                    }
-                    pow2(320) * word5_nat + (pow2(384) * word6_nat + pow2(448) * word7_nat);
-                }
+                lemma_mul_is_distributive_add(
+                    pow2_260 as int,
+                    term_a as int,
+                    (term_b + term_c) as int,
+                );
+                lemma_mul_is_distributive_add(
+                    pow2_260 as int,
+                    term_b as int,
+                    term_c as int,
+                );
             };
 
             calc! {
@@ -435,16 +395,8 @@ impl Scalar52 {
 
         // Assumption: The lower bits of the wide input, modulo 2^260, match the natural value encoded by `lo_raw`.
         assert(to_nat(&lo_raw.limbs) == wide_input % pow2(260)) by {
-            calc! {
-                (==)
-                (pow2_260 * high_expr + low_expr) % pow2_260; {
-                    lemma_mod_multiples_vanish(high_expr as int, low_expr as int, pow2_260 as int);
-                }
-                low_expr % pow2_260; {
-                    lemma_small_mod(low_expr, pow2_260);
-                }
-                low_expr;
-            }
+            lemma_mod_multiples_vanish(high_expr as int, low_expr as int, pow2_260 as int);
+            lemma_small_mod(low_expr, pow2_260);
         };
         // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
         assert(to_nat(&hi_raw.limbs) == wide_input / pow2(260)) by {
@@ -528,11 +480,6 @@ impl Scalar52 {
             let ghost hi_raw_nat = to_nat(&hi_raw.limbs);
             let ghost lo_raw_nat = to_nat(&lo_raw.limbs);
             let ghost r_nat = montgomery_radix();
-            let ghost hi_int = hi_nat as int;
-            let ghost lo_int = lo_nat as int;
-            let ghost hi_raw_int = hi_raw_nat as int;
-            let ghost lo_raw_int = lo_raw_nat as int;
-            let ghost r_int = r_nat as int;
             let ghost group_int = group_order() as int;
 
             lemma_small_mod(((hi_nat + lo_nat) % group_order()) as nat, group_order());
@@ -542,26 +489,38 @@ impl Scalar52 {
                 (result_nat * r_nat) % group_order(); {}
                 (((hi_nat + lo_nat) % group_order()) * r_nat) % group_order(); {
                     lemma_mul_factors_congruent_implies_products_congruent(
-                        r_int,
+                        r_nat as int,
                         ((hi_nat + lo_nat) % group_order()) as int,
                         (hi_nat + lo_nat) as int,
                         group_int,
                     );
                 }
                 (r_nat * (hi_nat + lo_nat)) % group_order(); {
-                    lemma_mul_is_distributive_add(r_int, hi_int, lo_int);
+                    lemma_mul_is_distributive_add(r_nat as int, hi_nat as int, lo_nat as int);
                 }
                 (r_nat * hi_nat + r_nat * lo_nat) % group_order(); {
-                    lemma_add_mod_noop(r_int * hi_int, r_int * lo_int, group_int);
+                    lemma_add_mod_noop(
+                        (r_nat * hi_nat) as int,
+                        (r_nat * lo_nat) as int,
+                        group_int,
+                    );
                 }
                 ((r_nat * hi_nat) % group_order() + (r_nat * lo_nat) % group_order())
                     % group_order(); {}
                 ((hi_raw_nat * r_nat * r_nat) % group_order() + (lo_raw_nat * r_nat)
                     % group_order()) % group_order(); {
-                    lemma_add_mod_noop(hi_raw_int * r_int * r_int, lo_raw_int * r_int, group_int);
+                    lemma_add_mod_noop(
+                        (hi_raw_nat * r_nat * r_nat) as int,
+                        (lo_raw_nat * r_nat) as int,
+                        group_int,
+                    );
                 }
                 (hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat) % group_order(); {
-                    lemma_mul_is_distributive_add_other_way(r_int, hi_raw_int * r_int, lo_raw_int);
+                    lemma_mul_is_distributive_add_other_way(
+                        r_nat as int,
+                        (hi_raw_nat * r_nat) as int,
+                        lo_raw_nat as int,
+                    );
                 }
                 (wide_input * r_nat) % group_order();
             }

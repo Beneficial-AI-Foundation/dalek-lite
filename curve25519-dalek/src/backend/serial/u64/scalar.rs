@@ -501,6 +501,7 @@ impl Scalar52 {
                         (hi_raw_nat * r_nat) as int,
                         lo_raw_nat as int,
                     );
+                    assert(hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat == wide_input * r_nat);
                 }
                 (wide_input * r_nat) % group_order();
             }

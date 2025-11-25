@@ -614,7 +614,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &FieldElement51 {
 
     // Pre-condition of neg
     open spec fn neg_req(self) -> bool {
-        forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 51)
+        limbs_bounded(self, 51)
     }
 
     // Postcondition of neg

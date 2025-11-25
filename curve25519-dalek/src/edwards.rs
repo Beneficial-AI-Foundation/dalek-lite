@@ -1314,6 +1314,17 @@ define_sub_variants!(
 
 impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
     fn sub_assign(&mut self, _rhs: &'b EdwardsPoint)
+        requires
+            is_valid_edwards_point(*old(self)),
+            is_valid_edwards_point(*_rhs),
+            limbs_bounded(&old(self).X, 54),
+            limbs_bounded(&old(self).Y, 54),
+            limbs_bounded(&old(self).Z, 54),
+            limbs_bounded(&old(self).T, 54),
+            limbs_bounded(&_rhs.X, 54),
+            limbs_bounded(&_rhs.Y, 54),
+            limbs_bounded(&_rhs.Z, 54),
+            limbs_bounded(&_rhs.T, 54),
         ensures
             is_valid_edwards_point(*self),
             // Semantic correctness: result is the subtraction of old(self) - rhs
@@ -1326,23 +1337,12 @@ impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
         /* ORIGINAL CODE
         *self = (self as &EdwardsPoint) - _rhs;
         CAST TO &EdwardsPoint UNSUPPORTED */
-        proof {
-            // Assume preconditions from SubSpecImpl are satisfied
-            assume(is_valid_edwards_point(*self) && is_valid_edwards_point(*_rhs));
-            assume(limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(
-                &self.Z,
-                54,
-            ) && limbs_bounded(&self.T, 54));
-            assume(limbs_bounded(&_rhs.X, 54) && limbs_bounded(&_rhs.Y, 54) && limbs_bounded(
-                &_rhs.Z,
-                54,
-            ) && limbs_bounded(&_rhs.T, 54));
-        }
         *self = &*self - _rhs;
     }
 }
 
 } // verus!
+
 define_sub_assign_variants!(LHS = EdwardsPoint, RHS = EdwardsPoint);
 
 impl<T> Sum<T> for EdwardsPoint
@@ -1361,16 +1361,68 @@ where
 // Negation
 // ------------------------------------------------------------------------
 
+verus! {
+
+/// Spec for &EdwardsPoint negation
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
+    open spec fn obeys_neg_spec() -> bool {
+        false  // Set to false since we use arbitrary() as placeholder
+    }
+
+    open spec fn neg_req(self) -> bool {
+        // Preconditions: limbs must be bounded for field element negation
+        limbs_bounded(&self.X, 51) && limbs_bounded(&self.T, 51)
+    }
+
+    open spec fn neg_spec(self) -> EdwardsPoint {
+        arbitrary()  // Placeholder - actual semantics are field-wise negation
+    }
+}
+
 impl<'a> Neg for &'a EdwardsPoint {
     type Output = EdwardsPoint;
 
     fn neg(self) -> EdwardsPoint {
+        /* ORIGINAL CODE
         EdwardsPoint {
             X: -(&self.X),
             Y: self.Y,
             Z: self.Z,
             T: -(&self.T),
         }
+        */
+        // REFACTORED: Use explicit Neg::neg() calls instead of operator shortcuts
+        // to avoid Verus panic
+        proof {
+            // Assume preconditions for field element negation (limbs < 2^51)
+            assume(limbs_bounded(&self.X, 51));
+            assume(limbs_bounded(&self.T, 51));
+        }
+        use core::ops::Neg;
+        EdwardsPoint {
+            X: Neg::neg(&self.X),
+            Y: self.Y,
+            Z: self.Z,
+            T: Neg::neg(&self.T),
+        }
+    }
+}
+
+/// Spec for EdwardsPoint (owned) negation
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
+    open spec fn obeys_neg_spec() -> bool {
+        false  // Set to false since we delegate to &EdwardsPoint
+    }
+
+    open spec fn neg_req(self) -> bool {
+        // Same requirements as &EdwardsPoint
+        limbs_bounded(&self.X, 51) && limbs_bounded(&self.T, 51)
+    }
+
+    open spec fn neg_spec(self) -> EdwardsPoint {
+        arbitrary()  // Placeholder - delegates to &EdwardsPoint negation
     }
 }
 
@@ -1378,20 +1430,38 @@ impl Neg for EdwardsPoint {
     type Output = EdwardsPoint;
 
     fn neg(self) -> EdwardsPoint {
+        /* ORIGINAL CODE
         -&self
+        */
+        // REFACTORED: Use explicit Neg::neg() call to avoid Verus type inference issues
+        proof {
+            // Assume preconditions for &EdwardsPoint negation
+            assume(limbs_bounded(&self.X, 51));
+            assume(limbs_bounded(&self.T, 51));
+        }
+        use core::ops::Neg;
+        Neg::neg(&self)
     }
 }
+
 
 // ------------------------------------------------------------------------
 // Scalar multiplication
 // ------------------------------------------------------------------------
 
 impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
-    fn mul_assign(&mut self, scalar: &'b Scalar) {
+    fn mul_assign(&mut self, scalar: &'b Scalar) 
+    {
+        /* ORIGINAL CODE
         let result = (self as &EdwardsPoint) * scalar;
+        CAST TO &EdwardsPoint UNSUPPORTED */
+        let result = &*self * scalar;
         *self = result;
     }
 }
+
+} // verus!
+
 
 define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 

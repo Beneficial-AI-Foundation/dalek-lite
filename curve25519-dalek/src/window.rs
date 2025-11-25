@@ -309,6 +309,16 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         ensures
             is_valid_lookup_table_projective(result.0, *P, 8 as nat),
     {
+        /* ORIGINAL CODE: for generic $name, $size, and conv_range.
+
+         let mut points = [P.as_projective_niels(); $size];
+                for j in $conv_range {
+                    points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
+                }
+                $name(points)
+
+        In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
+        */
         // Assume preconditions from FromSpecImpl::from_spec_req
         proof {
             assume(limbs_bounded(&P.X, 54));
@@ -386,6 +396,17 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         ensures
             is_valid_lookup_table_affine(result.0, *P, 8 as nat),
     {
+        /* ORIGINAL CODE: for generic $name, $size, and conv_range.
+
+         let mut points = [P.as_affine_niels(); $size];
+                // XXX batch inversion would be good if perf mattered here
+                for j in $conv_range {
+                    points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()
+                }
+                $name(points)
+
+        In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
+        */
         // Assume preconditions from FromSpecImpl::from_spec_req
         proof {
             assume(limbs_bounded(&P.X, 54));

@@ -185,15 +185,8 @@ impl Scalar52 {
 
         // Stage 1 assumption: the byte-to-word packing yields the expected little-endian value.
         let mut words = [0u64;8];
-        proof {
-            assert forall|k: int| 0 <= k < 8 implies words@[k] == 0 by {
-                assert(0 <= k < 8);
-                assert(#[trigger] words@[k] == 0);
-            };
-        }
         for i in 0..8
             invariant
-                0 <= i <= 8,
                 forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
                 words_from_bytes_to_nat(bytes, i as int) + bytes_wide_to_nat_rec(
                     bytes,
@@ -253,34 +246,21 @@ impl Scalar52 {
         let ghost hi_raw = hi;
 
         assert forall|i: int| 0 <= i < 5 implies lo_raw.limbs[i] < (1u64 << 52) by {
-            if i == 0 {
-                lemma_borrow_and_mask_bounded(words[0], mask);
-            } else if i == 1 {
-                lemma_borrow_and_mask_bounded((words[0] >> 52) | (words[1] << 12), mask);
-            } else if i == 2 {
-                lemma_borrow_and_mask_bounded((words[1] >> 40) | (words[2] << 24), mask);
-            } else if i == 3 {
-                lemma_borrow_and_mask_bounded((words[2] >> 28) | (words[3] << 36), mask);
-            } else {
-                lemma_borrow_and_mask_bounded((words[3] >> 16) | (words[4] << 48), mask);
-                assert(lo_raw.limbs[4] < (1u64 << 52));
-            }
+            lemma_borrow_and_mask_bounded(words[0], mask);
+            lemma_borrow_and_mask_bounded((words[0] >> 52) | (words[1] << 12), mask);
+            lemma_borrow_and_mask_bounded((words[1] >> 40) | (words[2] << 24), mask);
+            lemma_borrow_and_mask_bounded((words[2] >> 28) | (words[3] << 36), mask);
+            lemma_borrow_and_mask_bounded((words[3] >> 16) | (words[4] << 48), mask);
         };
 
         assert forall|i: int| 0 <= i < 5 implies hi_raw.limbs[i] < (1u64 << 52) by {
-            if i == 0 {
-                lemma_borrow_and_mask_bounded(words[4] >> 4, mask);
-            } else if i == 1 {
-                lemma_borrow_and_mask_bounded((words[4] >> 56) | (words[5] << 8), mask);
-            } else if i == 2 {
-                lemma_borrow_and_mask_bounded((words[5] >> 44) | (words[6] << 20), mask);
-            } else if i == 3 {
-                lemma_borrow_and_mask_bounded((words[6] >> 32) | (words[7] << 32), mask);
-            } else {
-                let word7 = words[7];
-                assert(word7 >> 20 <= u64::MAX >> 20) by (bit_vector);
-                assert(u64::MAX >> 20 < (1u64 << 52)) by (bit_vector);
-            }
+            lemma_borrow_and_mask_bounded(words[4] >> 4, mask);
+            lemma_borrow_and_mask_bounded((words[4] >> 56) | (words[5] << 8), mask);
+            lemma_borrow_and_mask_bounded((words[5] >> 44) | (words[6] << 20), mask);
+            lemma_borrow_and_mask_bounded((words[6] >> 32) | (words[7] << 32), mask);
+            let word7 = words[7];
+            assert(word7 >> 20 <= u64::MAX >> 20) by (bit_vector);
+            assert(u64::MAX >> 20 < (1u64 << 52)) by (bit_vector);
         };
 
         let ghost pow2_260 = pow2(260);

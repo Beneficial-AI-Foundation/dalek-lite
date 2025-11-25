@@ -763,8 +763,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &Scalar {
     }
 
     open spec fn neg_req(self) -> bool {
-        true  // No preconditions - scalars are canonical by invariant
-
+        scalar_to_nat(self) < group_order()
     }
 
     open spec fn neg_spec(self) -> Scalar {
@@ -789,6 +788,7 @@ impl Neg for &Scalar {
         </ORIGINAL CODE> */
         /* <MODIFIED CODE> */
         proof {
+            assert(scalar_to_nat(self) < group_order());
             // Preconditions for mul_internal and sub
             assume(limbs_bounded(&constants::R));
             assume(limbs_bounded(&UnpackedScalar::ZERO));
@@ -825,8 +825,7 @@ impl vstd::std_specs::ops::NegSpecImpl for Scalar {
     }
 
     open spec fn neg_req(self) -> bool {
-        true  // No specific preconditions - scalars are canonical by invariant
-
+        scalar_to_nat(&self) < group_order()
     }
 
     open spec fn neg_spec(self) -> Scalar {

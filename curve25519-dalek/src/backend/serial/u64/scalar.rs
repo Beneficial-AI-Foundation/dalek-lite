@@ -10,9 +10,9 @@
 //! ```text
 //! (0xfffffffffffff^2) * 5 = 0x4ffffffffffff60000000000005 (107 bits).
 //! ```
+use super::field::load8_at;
 #[allow(unused_imports)]
 use super::subtle_assumes::select;
-use super::field::load8_at;
 use core::fmt::Debug;
 use core::ops::{Index, IndexMut};
 #[allow(unused_imports)]
@@ -343,11 +343,7 @@ impl Scalar52 {
                     term_a as int,
                     (term_b + term_c) as int,
                 );
-                lemma_mul_is_distributive_add(
-                    pow2_260 as int,
-                    term_b as int,
-                    term_c as int,
-                );
+                lemma_mul_is_distributive_add(pow2_260 as int, term_b as int, term_c as int);
             };
 
             calc! {
@@ -479,11 +475,7 @@ impl Scalar52 {
                     lemma_mul_is_distributive_add(r_nat as int, hi_nat as int, lo_nat as int);
                 }
                 (r_nat * hi_nat + r_nat * lo_nat) % group_order(); {
-                    lemma_add_mod_noop(
-                        (r_nat * hi_nat) as int,
-                        (r_nat * lo_nat) as int,
-                        group_int,
-                    );
+                    lemma_add_mod_noop((r_nat * hi_nat) as int, (r_nat * lo_nat) as int, group_int);
                 }
                 ((r_nat * hi_nat) % group_order() + (r_nat * lo_nat) % group_order())
                     % group_order(); {}

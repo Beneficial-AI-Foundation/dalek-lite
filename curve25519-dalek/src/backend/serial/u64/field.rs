@@ -392,14 +392,14 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         }
 
         // Precompute the constants we add to each limb prior to subtraction.
-        let const_vec = [c0, c, c, c, c];
+        let ghost const_vec = [c0, c, c, c, c];
 
         // Translate both operands into the safe range before subtracting.
-        let s0 = self.limbs[0] + c0;
-        let s1 = self.limbs[1] + c;
-        let s2 = self.limbs[2] + c;
-        let s3 = self.limbs[3] + c;
-        let s4 = self.limbs[4] + c;
+        let ghost s0 = self.limbs[0] + c0;
+        let ghost s1 = self.limbs[1] + c;
+        let ghost s2 = self.limbs[2] + c;
+        let ghost s3 = self.limbs[3] + c;
+        let ghost s4 = self.limbs[4] + c;
         // Capture the widened limbs so we can reason about them element-wise.
         let ghost augmented: [u64; 5] = [s0, s1, s2, s3, s4];
         let output = FieldElement51::reduce(

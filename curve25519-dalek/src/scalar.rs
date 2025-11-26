@@ -2599,6 +2599,267 @@ impl Scalar {
 } // verus!
 verus! {
 
+
+/// Lemma: Montgomery squaring preserves the squares property
+/// Given:
+/// - `new_y * R = y_before^2 (mod L)` (from montgomery_square)
+/// - `y_before * R^(2^k - 1) = y0^(2^k) (mod L)` (loop invariant)
+/// 
+/// Proves:
+/// - `new_y * R^(2^(k+1) - 1) = y0^(2^(k+1)) (mod L)`
+///
+/// Key insight: 2^(k+1) - 1 = 2*(2^k - 1) + 1
+/// So R^(2^(k+1) - 1) = R * R^(2*(2^k - 1)) = R * (R^(2^k - 1))^2
+proof fn lemma_square_multiply_step(
+    new_y: nat,
+    y_before: nat, 
+    y0: nat,
+    R: nat,
+    L: nat,
+    k: nat,
+)
+    requires
+        L > 0,
+        R > 0,
+        // montgomery_square postcondition (new_y * R = y_before^2 mod L)
+        (new_y * R) % L == (y_before * y_before) % L,
+        // loop invariant before (using nat types consistent with new invariant form)
+        (y_before * pow(R as int, (pow2(k) - 1) as nat) as nat) % L == 
+            (pow(y0 as int, pow2(k)) as nat) % L,
+    ensures
+        (new_y * pow(R as int, (pow2(k + 1) - 1) as nat) as nat) % L == 
+            (pow(y0 as int, pow2(k + 1)) as nat) % L,
+{
+    use vstd::arithmetic::power2::{lemma_pow2_unfold, lemma2_to64, lemma_pow2_pos};
+    use vstd::arithmetic::div_mod::{lemma_mod_multiples_vanish, lemma_fundamental_div_mod};
+    use vstd::arithmetic::mul::{lemma_mul_is_associative, lemma_mul_is_commutative};
+    use crate::lemmas::common_lemmas::pow_lemmas::{
+        lemma_pow_nonnegative, lemma_pow2_square
+    };
+    
+    // Establish basic pow2 facts
+    lemma2_to64();
+    lemma_pow2_unfold(k + 1);  // pow2(k+1) = 2 * pow2(k)
+    
+    // Key fact: pow2(k+1) - 1 = 2 * pow2(k) - 1 = 2 * (pow2(k) - 1) + 1
+    let exp_k = (pow2(k) - 1) as nat;  // exponent for R at step k
+    let exp_k1 = (pow2(k + 1) - 1) as nat;  // exponent for R at step k+1
+    
+    // Prove exp_k1 == 2 * exp_k + 1
+    assert(pow2(k) >= 1) by {
+        lemma_pow2_pos(k);
+    }
+    assert(pow2(k + 1) >= 2) by {
+        lemma_pow2_pos(k + 1);
+    }
+    assert(pow2(k + 1) == 2 * pow2(k));  // from lemma_pow2_unfold already called
+    
+    // 2 * pow2(k) - 1 = 2 * (pow2(k) - 1) + 2 - 1 = 2 * (pow2(k) - 1) + 1
+    assert(2 * pow2(k) - 1 == 2 * (pow2(k) - 1) + 1) by (nonlinear_arith)
+        requires pow2(k) >= 1;
+    
+    assert(exp_k1 == 2 * exp_k + 1) by {
+        assert((pow2(k + 1) - 1) as nat == (2 * pow2(k) - 1) as nat);
+        assert((2 * pow2(k) - 1) as nat == (2 * (pow2(k) - 1) + 1) as nat);
+    }
+    
+    // Therefore: R^(exp_k1) = R^(2*exp_k + 1) = R * R^(2*exp_k) = R * (R^exp_k)^2
+    assert(pow(R as int, exp_k1) == R * pow(pow(R as int, exp_k), 2)) by {
+        // R^(2*exp_k + 1) = R^1 * R^(2*exp_k)
+        lemma_pow_adds(R as int, 1nat, 2 * exp_k);
+        lemma_pow1(R as int);
+        // R^(2*exp_k) = (R^exp_k)^2
+        lemma_pow_multiplies(R as int, exp_k, 2nat);
+    }
+    
+    // From montgomery_square: new_y * R ≡ y_before^2 (mod L)
+    // From invariant: y_before * R^exp_k ≡ y0^(2^k) (mod L)
+    
+    // Let A = y_before * R^exp_k and B = y0^(2^k)
+    // We have A % L == B % L from the invariant
+    
+    // Goal: new_y * R^exp_k1 ≡ y0^(2^(k+1)) (mod L)
+    // I.e., new_y * R * (R^exp_k)^2 ≡ (y0^(2^k))^2 (mod L)
+    
+    // From new_y * R ≡ y_before^2, multiply both sides by (R^exp_k)^2:
+    // new_y * R * (R^exp_k)^2 ≡ y_before^2 * (R^exp_k)^2 (mod L)
+    //                        = (y_before * R^exp_k)^2
+    //                        ≡ (y0^(2^k))^2 (mod L)  [from invariant]
+    //                        = y0^(2^(k+1))          [pow rule]
+    
+    // y0^(2^(k+1)) = y0^(2 * 2^k) = (y0^(2^k))^2
+    lemma_pow_multiplies(y0 as int, pow2(k), 2);
+    assert(pow(pow(y0 as int, pow2(k)), 2) == pow(y0 as int, 2 * pow2(k)));
+    assert(pow(pow(y0 as int, pow2(k)), 2) == pow(y0 as int, pow2(k + 1)));
+    
+    // R^exp_k > 0 since R > 0
+    assert(pow(R as int, exp_k) > 0) by {
+        lemma_pow_positive(R as int, exp_k);
+    }
+    
+    // (R^exp_k)^2 definition
+    let R_exp_k: int = pow(R as int, exp_k);
+    let R_exp_k_sq_int: int = pow(R_exp_k, 2);  // = R_exp_k * R_exp_k
+    
+    assert(R_exp_k_sq_int > 0) by {
+        lemma_pow_positive(R_exp_k, 2);
+    }
+    
+    // pow(x, 2) = x * x
+    assert(R_exp_k_sq_int == R_exp_k * R_exp_k) by {
+        lemma_pow1(R_exp_k);
+        lemma_pow_adds(R_exp_k, 1, 1);
+    }
+    
+    let R_exp_k_sq: nat = R_exp_k_sq_int as nat;
+    
+    // y_times_R_exp = y_before * R^exp_k
+    let y_times_R_exp: nat = y_before * (R_exp_k as nat);
+    
+    // From invariant: y_times_R_exp % L == (y0^(2^k)) % L
+    // So: y_times_R_exp^2 % L == (y0^(2^k))^2 % L
+    let y0_pow_k: nat = pow(y0 as int, pow2(k)) as nat;
+    assert(y0_pow_k >= 0) by {
+        lemma_pow_nonnegative(y0 as int, pow2(k));
+    }
+    
+    // Square both sides of the congruence
+    // First, rewrite invariant in the right form
+    assert(y_times_R_exp % L == y0_pow_k % L) by {
+        // From: (y_before * pow(R as int, exp_k) as nat) % L == (pow(y0 as int, pow2(k)) as nat) % L
+        // y_times_R_exp = y_before * (R_exp_k as nat) = y_before * pow(R as int, exp_k) as nat
+    }
+    
+    assert((y_times_R_exp * y_times_R_exp) % L == (y0_pow_k * y0_pow_k) % L) by {
+        // (a % L)^2 % L == a^2 % L (mod property)
+        lemma_mul_mod_noop(y_times_R_exp as int, y_times_R_exp as int, L as int);
+        lemma_mul_mod_noop(y0_pow_k as int, y0_pow_k as int, L as int);
+        // Since y_times_R_exp % L == y0_pow_k % L,
+        // (y_times_R_exp % L)^2 == (y0_pow_k % L)^2
+        // So y_times_R_exp^2 % L == y0_pow_k^2 % L
+    }
+    
+    // y_times_R_exp^2 = y_before^2 * (R^exp_k)^2
+    // This is the algebraic identity (a*b)^2 = a^2 * b^2
+    
+    let y_sq: nat = y_before * y_before;
+    let R_exp_k_nat: nat = R_exp_k as nat;
+    
+    // Prove that y_times_R_exp = y_before * R_exp_k_nat
+    assert(y_times_R_exp == y_before * R_exp_k_nat);
+    
+    // Prove (a * b)^2 = a^2 * b^2 for int types, then bridge to nat
+    // Working directly with the products to avoid associativity issues
+    let ab = y_times_R_exp;  // = y_before * R_exp_k_nat
+    let ab_sq = ab * ab;     // = (y_before * R_exp_k_nat)^2
+    
+    // We need: ab_sq == y_sq * R_exp_k_sq
+    // where y_sq = y_before^2 and R_exp_k_sq = R_exp_k^2
+    
+    // Use nonlinear_arith to prove the algebraic identity
+    assert(ab_sq == y_sq * R_exp_k_sq) by (nonlinear_arith)
+        requires
+            y_times_R_exp == y_before * R_exp_k_nat,
+            ab == y_times_R_exp,
+            ab_sq == ab * ab,
+            y_sq == y_before * y_before,
+            R_exp_k_sq == (R_exp_k * R_exp_k) as nat,
+            R_exp_k_nat == R_exp_k as nat,
+            R_exp_k > 0,
+    ;
+    
+    // Now: y_before^2 * R_exp_k_sq % L == y0_pow_k^2 % L
+    // And: new_y * R % L == y_before^2 % L
+    // Multiply both sides by R_exp_k_sq:
+    // (new_y * R * R_exp_k_sq) % L == (y_before^2 * R_exp_k_sq) % L
+    
+    // From montgomery_square: (new_y * R) % L == (y_before * y_before) % L
+    // If a % m == b % m, then (a * c) % m == (b * c) % m
+    // Proof: 
+    //   (a * c) % m == ((a % m) * (c % m)) % m  [from lemma_mul_mod_noop]
+    //   (b * c) % m == ((b % m) * (c % m)) % m  [from lemma_mul_mod_noop]
+    //   Since a % m == b % m, the RHS are equal, so LHS are equal
+    
+    let new_y_R: nat = new_y * R;
+    let y_sq: nat = y_before * y_before;
+    
+    // From precondition: new_y_R % L == y_sq % L
+    assert(new_y_R % L == y_sq % L);
+    
+    // Apply lemma_mul_mod_noop to both products
+    lemma_mul_mod_noop(new_y_R as int, R_exp_k_sq as int, L as int);
+    lemma_mul_mod_noop(y_sq as int, R_exp_k_sq as int, L as int);
+    
+    // After lemma_mul_mod_noop:
+    // (new_y_R * R_exp_k_sq) % L == ((new_y_R % L) * (R_exp_k_sq % L)) % L
+    // (y_sq * R_exp_k_sq) % L == ((y_sq % L) * (R_exp_k_sq % L)) % L
+    
+    // Key insight: new_y_R % L == y_sq % L implies:
+    // ((new_y_R % L) * (R_exp_k_sq % L)) == ((y_sq % L) * (R_exp_k_sq % L))
+    // Therefore the modular products are equal
+    
+    assert(((new_y * R) * R_exp_k_sq) % L == ((y_before * y_before) * R_exp_k_sq) % L);
+    
+    // new_y * R * R_exp_k_sq = new_y * R^exp_k1
+    // Because R * R_exp_k_sq = R * (R^exp_k)^2 = R^(1 + 2*exp_k) = R^exp_k1
+    assert((new_y * R) * R_exp_k_sq == new_y * pow(R as int, exp_k1) as nat) by {
+        // R^exp_k_sq = (R^exp_k)^2 = R^(2*exp_k)
+        lemma_pow2_square(R as int, exp_k);
+        // R * R^(2*exp_k) = R^(1 + 2*exp_k) = R^exp_k1
+        lemma_pow_adds(R as int, 1, 2 * exp_k);
+        lemma_pow1(R as int);
+        // new_y * R * R_exp_k_sq = new_y * (R * R_exp_k_sq)
+        lemma_mul_is_associative(new_y as int, R as int, R_exp_k_sq as int);
+    }
+    
+    // (y_before^2 * R_exp_k_sq) % L == y_times_R_exp^2 % L == y0_pow_k^2 % L
+    // y0_pow_k^2 = (y0^(2^k))^2 = y0^(2^(k+1))
+    
+    // Step 1: (new_y * R^exp_k1) % L = ((new_y * R) * R_exp_k_sq) % L
+    // (proven by assert on line 2762)
+    
+    // Step 2: ((new_y * R) * R_exp_k_sq) % L == (y_sq * R_exp_k_sq) % L
+    // (proven by assert on line 2758)
+    
+    // Step 3: y_sq * R_exp_k_sq == y_times_R_exp * y_times_R_exp
+    // (proven by assert on line 2709)
+    assert((y_sq * R_exp_k_sq) % L == (y_times_R_exp * y_times_R_exp) % L);
+    
+    // Step 4: (y_times_R_exp^2) % L == (y0_pow_k^2) % L
+    // (proven by assert earlier around line 2690)
+    
+    // Step 5: y0_pow_k^2 == pow(y0, pow2(k+1)) as nat
+    // y0_pow_k = pow(y0, pow2(k)) as nat
+    // y0_pow_k^2 = (pow(y0, pow2(k)))^2 = pow(y0, 2 * pow2(k)) = pow(y0, pow2(k+1))
+    
+    // First prove the int-level equality
+    let y0_pow_k_int: int = pow(y0 as int, pow2(k));
+    assert(y0_pow_k == y0_pow_k_int as nat);
+    
+    // pow(y0, pow2(k)) * pow(y0, pow2(k)) == pow(y0, pow2(k+1))
+    // lemma_pow2_square(v, i) proves: pow(v, pow2(i)) * pow(v, pow2(i)) == pow(v, pow2(i+1))
+    lemma_pow2_square(y0 as int, k);  // Use k, not pow2(k)
+    assert(y0_pow_k_int * y0_pow_k_int == pow(y0 as int, pow2(k + 1)));
+    
+    // Bridge to nat: Since y0_pow_k >= 0, we have y0_pow_k_int >= 0
+    assert(y0_pow_k_int >= 0) by {
+        lemma_pow_nonnegative(y0 as int, pow2(k));
+    }
+    
+    // y0_pow_k * y0_pow_k (nat multiplication) = y0_pow_k_int * y0_pow_k_int (int multiplication)
+    assert(y0_pow_k * y0_pow_k == (y0_pow_k_int * y0_pow_k_int) as nat);
+    assert(y0_pow_k * y0_pow_k == pow(y0 as int, pow2(k + 1)) as nat);
+    
+    // Now chain everything together
+    // (new_y * R^exp_k1) % L = ((new_y * R) * R_exp_k_sq) % L       [Step 1]
+    //                        = (y_sq * R_exp_k_sq) % L              [Step 2]  
+    //                        = (y_times_R_exp * y_times_R_exp) % L  [Step 3]
+    //                        = (y0_pow_k * y0_pow_k) % L            [Step 4]
+    //                        = (y0^(2^(k+1))) % L                   [Step 5]
+    
+    assert((new_y * pow(R as int, exp_k1) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L);
+}
+
 // Helper function for montgomery_invert
 #[inline]
 fn square_multiply(
@@ -2606,8 +2867,14 @@ fn square_multiply(
     squarings: usize,
     x: &UnpackedScalar,
 )/*  VERIFICATION NOTE:
-- PROOF BYPASS
 - This function was initially inside the body of montgomery_invert, but was moved outside for Verus
+- Mathematical property: After n Montgomery squarings followed by Montgomery multiply with x,
+  the result satisfies: y * R^(2^n) ≡ old_y^(2^n) * x (mod L)
+  where R = montgomery_radix(), L = group_order()
+- Loop invariant: y * R^(2^iter - 1) ≡ old_y^(2^iter) (mod L)
+  - iter=0: y * R^0 = y0 (trivially true)
+  - iter=1: y * R^1 = y0^2 (after montgomery_square which computes y0^2/R)
+  - iter=k: y * R^(2^k - 1) = y0^(2^k)
 */
 
     requires
@@ -2617,35 +2884,233 @@ fn square_multiply(
     ensures
         limbs_bounded(y),
         limbs_bounded(x),
-        (to_nat(&y.limbs) * montgomery_radix()) % group_order() == (pow(
-            to_nat(&old(y).limbs) as int,
-            pow2(squarings as nat),
-        ) * to_nat(&x.limbs)) % (group_order() as int),
+        // Main mathematical property proven:
+        // From loop invariant: y_after_squarings * R^(2^squarings - 1) ≡ y0^(2^squarings) (mod L)
+        // From montgomery_mul: final * R ≡ y_after_squarings * x (mod L)
+        // Combining: final * R * R^(2^squarings - 1) ≡ y0^(2^squarings) * x (mod L)
+        // So: final * R^(2^squarings) ≡ y0^(2^squarings) * x (mod L)
+        (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == 
+            (pow(to_nat(&old(y).limbs) as int, pow2(squarings as nat)) as int * to_nat(&x.limbs) as int) % (group_order() as int),
 {
-    assume(false);
-    let ghost mut i: int = 0;  // Ghost variable: tracks iterations for proof
-    for _ in 0..squarings
+    let ghost y0: nat = to_nat(&y.limbs);
+    let ghost xv: nat = to_nat(&x.limbs);
+    let ghost R: nat = montgomery_radix();
+    let ghost L: nat = group_order();
+    
+    // Establish the initial invariant before entering the loop
+    proof {
+        use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_pos};
+        use vstd::arithmetic::power::{lemma_pow0, lemma_pow1};
+        use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
+
+        
+        // Prove R > 0: montgomery_radix() = pow2(260) > 0
+        lemma_pow2_pos(260);
+        assert(R == montgomery_radix());
+        assert(montgomery_radix() == pow2(260));
+        assert(pow2(260) > 0);
+        assert(R > 0);
+        
+        // pow2(0) = 1
+        lemma2_to64();
+        assert(pow2(0nat) == 1);
+        
+        // R^0 = 1
+        lemma_pow0(R as int);
+        assert(pow(R as int, 0nat) == 1);
+        
+        // y0^1 = y0
+        lemma_pow1(y0 as int);
+        assert(pow(y0 as int, 1nat) == y0 as int);
+        
+        // Initial invariant: y0 * R^(2^0 - 1) = y0 * R^0 = y0 * 1 = y0
+        // And y0^(2^0) = y0^1 = y0
+        // So they are equal mod L
+        // Note: pow2(0) - 1 = 1 - 1 = 0, so (pow2(0) - 1) as nat = 0
+        assert((pow2(0nat) - 1) as nat == 0nat);
+        assert(pow(R as int, 0nat) == 1);
+        assert((y0 * 1) as nat == y0);
+        assert((y0 * pow(R as int, (pow2(0nat) - 1) as nat) as nat) == y0);
+        assert((pow(y0 as int, pow2(0nat)) as nat) == (pow(y0 as int, 1nat) as nat));
+        assert((pow(y0 as int, 1nat) as nat) == y0);
+        assert((y0 * pow(R as int, (pow2(0nat) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(0nat)) as nat) % L);
+    }
+    
+    // Use a while loop for better control over the loop counter
+    let mut iter: usize = 0;
+    
+    // Loop invariant: y * R^(2^iter - 1) ≡ y0^(2^iter) (mod L)
+    while iter < squarings
         invariant
             limbs_bounded(y),
             limbs_bounded(x),
-            i <= squarings,
-            pow(to_nat(&old(y).limbs) as int, pow2(i as nat)) < group_order() as int,
+            iter <= squarings,
+            to_nat(&x.limbs) == xv,
+            L == group_order(),
+            R == montgomery_radix(),
+            L > 0,
+            R > 0,
+            // Core mathematical invariant: y * R^(2^iter - 1) ≡ y0^(2^iter) (mod L)
+            (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == 
+                (pow(y0 as int, pow2(iter as nat)) as nat) % L,
+        decreases squarings - iter,
     {
-        proof {
-            i = i + 1;
-            assume(i <= squarings);
-            assume(pow(to_nat(&old(y).limbs) as int, pow2(i as nat)) < group_order() as int);
-        }
+        let ghost y_before: nat = to_nat(&y.limbs);
+        
         *y = y.montgomery_square();
+        
+        let ghost new_y: nat = to_nat(&y.limbs);
+        
+        // montgomery_square postcondition gives us:
+        // (new_y * R) % L == (y_before * y_before) % L
+        
+        // Use the helper lemma to establish the new invariant
+        proof {
+            // The montgomery_square postcondition is:
+            // (to_nat(&result.limbs) * montgomery_radix()) % group_order() == 
+            //     (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order()
+            // Which means: (new_y * R) % L == (y_before * y_before) % L
+            
+            lemma_square_multiply_step(new_y, y_before, y0, R, L, iter as nat);
+        }
+        
+        iter = iter + 1;
     }
-    *y = UnpackedScalar::montgomery_mul(y, x);
+    
+    // After the loop: y * R^(2^squarings - 1) ≡ y0^(2^squarings) (mod L)
+    let ghost y_after_squarings: nat = to_nat(&y.limbs);
+    let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
+    
+    // Capture the loop invariant at end (iter == squarings)
     proof {
-        assume(limbs_bounded(y));
-        assume(limbs_bounded(x));
-        assume((to_nat(&y.limbs) * montgomery_radix()) % group_order() == (pow(
-            to_nat(&old(y).limbs) as int,
-            pow2(squarings as nat),
-        ) * to_nat(&x.limbs)) % (group_order() as int));
+        // From loop invariant with iter == squarings:
+        // (y_after_squarings * pow(R as int, exp_final) as nat) % L == 
+        //     (pow(y0 as int, pow2(squarings as nat)) as nat) % L
+    }
+    
+    *y = UnpackedScalar::montgomery_mul(y, x);
+    
+    // montgomery_mul postcondition:
+    // (final * R) % L == (y_after_squarings * xv) % L
+    
+    // Proof of postcondition:
+    // final * R^(2^squarings) ≡ y0^(2^squarings) * x (mod L)
+    
+    proof {
+        use vstd::arithmetic::mul::{lemma_mul_is_associative, lemma_mul_is_commutative};
+        use vstd::arithmetic::power::{lemma_pow_adds, lemma_pow1};
+        use vstd::arithmetic::power2::{lemma_pow2_pos, lemma2_to64};
+        use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow_nonnegative;
+        
+        let final_y: nat = to_nat(&y.limbs);
+        let n: nat = squarings as nat;
+        let pow2_n: nat = pow2(n);
+        let R_exp_int: int = pow(R as int, exp_final);  // R^(2^n - 1)
+        let R_pow2n: int = pow(R as int, pow2_n);       // R^(2^n)
+        let y0_pow: int = pow(y0 as int, pow2_n);       // y0^(2^n)
+        
+        lemma2_to64();
+        lemma_pow2_pos(n);
+        
+        // Step 1: Prove R * R^(2^n - 1) = R^(2^n)
+        // 1 + (2^n - 1) = 2^n
+        assert(1 + exp_final == pow2_n) by {
+            assert(pow2_n >= 1);
+            assert(exp_final == (pow2_n - 1) as nat);
+        }
+        lemma_pow_adds(R as int, 1nat, exp_final);
+        lemma_pow1(R as int);
+        assert((R as int) * R_exp_int == R_pow2n);
+        
+        // From loop invariant (with iter == squarings at end of loop):
+        // (y_after_squarings * R_exp_int as nat) % L == (y0_pow as nat) % L
+        let lhs_invariant: nat = (y_after_squarings * R_exp_int as nat);
+        let rhs_invariant: nat = y0_pow as nat;
+        
+        // R_exp_int is positive since R > 0 and exp_final >= 0
+        assert(R_exp_int >= 0) by {
+            use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow_nonnegative;
+            lemma_pow_nonnegative(R as int, exp_final);
+        }
+        
+        // This is directly from the loop invariant
+        assert(lhs_invariant % L == rhs_invariant % L);
+        
+        // From montgomery_mul:
+        // (final_y * R) % L == (y_after_squarings * xv) % L
+        let final_times_R: nat = final_y * R;
+        let y_after_times_x: nat = y_after_squarings * xv;
+        assert(final_times_R % L == y_after_times_x % L);
+        
+        // Step 2: Multiply the loop invariant by xv
+        // lhs_invariant * xv % L == rhs_invariant * xv % L
+        lemma_mul_mod_noop(lhs_invariant as int, xv as int, L as int);
+        lemma_mul_mod_noop(rhs_invariant as int, xv as int, L as int);
+        assert((lhs_invariant * xv) % L == (rhs_invariant * xv) % L);
+        
+        // Step 3: Multiply the montgomery_mul result by R_exp_int
+        // final_times_R * R_exp_int % L == y_after_times_x * R_exp_int % L
+        lemma_mul_mod_noop(final_times_R as int, R_exp_int, L as int);
+        lemma_mul_mod_noop(y_after_times_x as int, R_exp_int, L as int);
+        assert((final_times_R as int * R_exp_int) % (L as int) == (y_after_times_x as int * R_exp_int) % (L as int));
+        
+        // final_times_R * R_exp_int = final_y * R * R_exp_int = final_y * R_pow2n
+        assert(final_times_R as int * R_exp_int == final_y as int * R_pow2n) by {
+            lemma_mul_is_associative(final_y as int, R as int, R_exp_int);
+            assert((R as int) * R_exp_int == R_pow2n);
+        }
+        
+        // y_after_times_x * R_exp_int = y_after_squarings * xv * R_exp_int
+        //                             = y_after_squarings * R_exp_int * xv  (commutativity)
+        //                             = lhs_invariant * xv
+        // Using nonlinear_arith for the algebraic identity with explicit int casts
+        let y_after_int: int = y_after_squarings as int;
+        let xv_int: int = xv as int;
+        let R_exp_nat: nat = R_exp_int as nat;
+        
+        assert(y_after_times_x as int == y_after_int * xv_int);
+        assert(lhs_invariant as int == y_after_int * R_exp_int);
+        
+        // The key algebraic identity: (a * b) * c = (a * c) * b
+        // y_after_times_x * R_exp_int = (y_after * xv) * R_exp = y_after * xv * R_exp
+        // lhs_invariant * xv = (y_after * R_exp) * xv = y_after * R_exp * xv
+        // By commutativity of multiplication: y_after * xv * R_exp = y_after * R_exp * xv
+        assert((y_after_int * xv_int) * R_exp_int == (y_after_int * R_exp_int) * xv_int) by (nonlinear_arith)
+            requires
+                R_exp_int >= 0,
+        ;
+        
+        assert(y_after_times_x as int * R_exp_int == lhs_invariant as int * xv as int);
+        
+        // Now chain together:
+        // (final_y * R_pow2n) % L == (final_times_R * R_exp_int) % L  [from above]
+        //                        == (y_after_times_x * R_exp_int) % L [from montgomery_mul * R_exp]
+        //                        == (lhs_invariant * xv) % L          [commutativity]
+        //                        == (rhs_invariant * xv) % L          [from loop invariant * xv]
+        //                        == (y0_pow * xv) % L                 [definition of rhs_invariant]
+        
+        assert((final_y as int * R_pow2n) % (L as int) == (final_times_R as int * R_exp_int) % (L as int));
+        assert((final_times_R as int * R_exp_int) % (L as int) == (y_after_times_x as int * R_exp_int) % (L as int));
+        assert((y_after_times_x as int * R_exp_int) % (L as int) == (lhs_invariant as int * xv as int) % (L as int));
+        assert((lhs_invariant * xv) % L == (rhs_invariant * xv) % L);
+        assert(rhs_invariant == y0_pow as nat);
+        
+        // Final result - chain all the equalities
+        assert((lhs_invariant as int * xv as int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
+        assert((y_after_times_x as int * R_exp_int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
+        assert((final_times_R as int * R_exp_int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
+        assert((final_y as int * R_pow2n) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
+        
+        // y0_pow >= 0 since y0 >= 0 and pow with non-negative base is non-negative
+        assert(y0_pow >= 0) by {
+            lemma_pow_nonnegative(y0 as int, pow2_n);
+        }
+        assert(rhs_invariant as int == y0_pow);
+        assert((final_y as int * R_pow2n) % (L as int) == (y0_pow * xv as int) % (L as int));
+        
+        // Convert to postcondition form
+        assert((to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == 
+            (pow(y0 as int, pow2(squarings as nat)) as int * xv as int) % (group_order() as int));
     }
 }
 

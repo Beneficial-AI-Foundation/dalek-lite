@@ -2714,13 +2714,6 @@ fn square_multiply(
     x: &UnpackedScalar,
 )/*  VERIFICATION NOTE:
 - This function was initially inside the body of montgomery_invert, but was moved outside for Verus
-- Mathematical property: After n Montgomery squarings followed by Montgomery multiply with x,
-  the result satisfies: y * R^(2^n) ≡ old_y^(2^n) * x (mod L)
-  where R = montgomery_radix(), L = group_order()
-- Loop invariant: y * R^(2^iter - 1) ≡ old_y^(2^iter) (mod L)
-  - iter=0: y * R^0 = y0 (trivially true)
-  - iter=1: y * R^1 = y0^2 (after montgomery_square which computes y0^2/R)
-  - iter=k: y * R^(2^k - 1) = y0^(2^k)
 */
 
     requires
@@ -2730,11 +2723,6 @@ fn square_multiply(
     ensures
         limbs_bounded(y),
         limbs_bounded(x),
-        // Main mathematical property proven:
-        // From loop invariant: y_after_squarings * R^(2^squarings - 1) ≡ y0^(2^squarings) (mod L)
-        // From montgomery_mul: final * R ≡ y_after_squarings * x (mod L)
-        // Combining: final * R * R^(2^squarings - 1) ≡ y0^(2^squarings) * x (mod L)
-        // So: final * R^(2^squarings) ≡ y0^(2^squarings) * x (mod L)
         (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == 
             (pow(to_nat(&old(y).limbs) as int, pow2(squarings as nat)) as int * to_nat(&x.limbs) as int) % (group_order() as int),
 {
@@ -2766,7 +2754,6 @@ fn square_multiply(
             limbs_bounded(y),
             limbs_bounded(x),
             iter <= squarings,
-            to_nat(&x.limbs) == xv,
             L == group_order(),
             R == montgomery_radix(),
             L > 0,
@@ -2790,9 +2777,8 @@ fn square_multiply(
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
     
     *y = UnpackedScalar::montgomery_mul(y, x);
-    
     proof {
-        use vstd::arithmetic::mul::{lemma_mul_is_associative, lemma_mul_is_commutative};
+        use vstd::arithmetic::mul::lemma_mul_is_associative;
         use vstd::arithmetic::power::{lemma_pow_adds, lemma_pow1};
         use vstd::arithmetic::power2::{lemma_pow2_pos, lemma2_to64};
         use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow_nonnegative;
@@ -2806,58 +2792,36 @@ fn square_multiply(
         
         lemma2_to64();
         lemma_pow2_pos(n);
-        
-        assert(1 + exp_final == pow2_n) by {
-            assert(pow2_n >= 1);
-            assert(exp_final == (pow2_n - 1) as nat);
-        }
         lemma_pow_adds(R as int, 1nat, exp_final);
         lemma_pow1(R as int);
-        assert((R as int) * R_exp_int == R_pow2n);
+        lemma_pow_nonnegative(R as int, exp_final);
+        lemma_pow_nonnegative(y0 as int, pow2_n);
         
-        let lhs_invariant: nat = (y_after_squarings * R_exp_int as nat);
+        let lhs_invariant: nat = y_after_squarings * R_exp_int as nat;
         let rhs_invariant: nat = y0_pow as nat;
-        
-        assert(R_exp_int >= 0) by {
-            use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow_nonnegative;
-            lemma_pow_nonnegative(R as int, exp_final);
-        }
-        
-        assert(lhs_invariant % L == rhs_invariant % L);
-        
         let final_times_R: nat = final_y * R;
         let y_after_times_x: nat = y_after_squarings * xv;
-        assert(final_times_R % L == y_after_times_x % L);
         
-        lemma_mul_mod_noop(lhs_invariant as int, xv as int, L as int);
-        lemma_mul_mod_noop(rhs_invariant as int, xv as int, L as int);
-        assert((lhs_invariant * xv) % L == (rhs_invariant * xv) % L);
-        
-        lemma_mul_mod_noop(final_times_R as int, R_exp_int, L as int);
-        lemma_mul_mod_noop(y_after_times_x as int, R_exp_int, L as int);
-        assert((final_times_R as int * R_exp_int) % (L as int) == (y_after_times_x as int * R_exp_int) % (L as int));
-        
-        assert(final_times_R as int * R_exp_int == final_y as int * R_pow2n) by {
-            lemma_mul_is_associative(final_y as int, R as int, R_exp_int);
-            assert((R as int) * R_exp_int == R_pow2n);
-        }
-        
-        let y_after_int: int = y_after_squarings as int;
-        let xv_int: int = xv as int;
-        
-        assert(y_after_times_x as int == y_after_int * xv_int);
-        assert(lhs_invariant as int == y_after_int * R_exp_int);
-        
-        assert((y_after_int * xv_int) * R_exp_int == (y_after_int * R_exp_int) * xv_int) by (nonlinear_arith)
+        assert((y_after_squarings as int * xv as int) * R_exp_int == 
+               (y_after_squarings as int * R_exp_int) * xv as int) by (nonlinear_arith)
             requires R_exp_int >= 0;
         
-        assert(y_after_times_x as int * R_exp_int == lhs_invariant as int * xv as int);
-        
-        assert((final_y as int * R_pow2n) % (L as int) == (lhs_invariant as int * xv as int) % (L as int));
-        
-        assert(y0_pow >= 0) by { lemma_pow_nonnegative(y0 as int, pow2_n); }
-        assert(rhs_invariant as int == y0_pow);
-        assert((final_y as int * R_pow2n) % (L as int) == (y0_pow * xv as int) % (L as int));
+        calc! { (==)
+            (final_y as int * R_pow2n) % (L as int); {
+                lemma_mul_is_associative(final_y as int, R as int, R_exp_int);
+            }
+            (final_times_R as int * R_exp_int) % (L as int); {
+                lemma_mul_mod_noop(final_times_R as int, R_exp_int, L as int);
+                lemma_mul_mod_noop(y_after_times_x as int, R_exp_int, L as int);
+            }
+            (y_after_times_x as int * R_exp_int) % (L as int); {}
+            (lhs_invariant as int * xv as int) % (L as int); {
+                lemma_mul_mod_noop(lhs_invariant as int, xv as int, L as int);
+                lemma_mul_mod_noop(rhs_invariant as int, xv as int, L as int);
+            }
+            (rhs_invariant as int * xv as int) % (L as int); {}
+            (y0_pow * xv as int) % (L as int);
+        }
         
         assert((to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == 
             (pow(y0 as int, pow2(squarings as nat)) as int * xv as int) % (group_order() as int));

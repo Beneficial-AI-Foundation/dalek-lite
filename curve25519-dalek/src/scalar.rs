@@ -2854,10 +2854,8 @@ fn square_multiply(
             lemma_pow_nonnegative(R as int, exp_final);
         }
         
-        // This is directly from the loop invariant
         assert(lhs_invariant % L == rhs_invariant % L);
         
-        // From montgomery_mul:
         let final_times_R: nat = final_y * R;
         let y_after_times_x: nat = y_after_squarings * xv;
         assert(final_times_R % L == y_after_times_x % L);
@@ -2877,7 +2875,6 @@ fn square_multiply(
         
         let y_after_int: int = y_after_squarings as int;
         let xv_int: int = xv as int;
-        let R_exp_nat: nat = R_exp_int as nat;
         
         assert(y_after_times_x as int == y_after_int * xv_int);
         assert(lhs_invariant as int == y_after_int * R_exp_int);
@@ -2887,22 +2884,12 @@ fn square_multiply(
         
         assert(y_after_times_x as int * R_exp_int == lhs_invariant as int * xv as int);
         
-        assert((final_y as int * R_pow2n) % (L as int) == (final_times_R as int * R_exp_int) % (L as int));
-        assert((final_times_R as int * R_exp_int) % (L as int) == (y_after_times_x as int * R_exp_int) % (L as int));
-        assert((y_after_times_x as int * R_exp_int) % (L as int) == (lhs_invariant as int * xv as int) % (L as int));
-        assert((lhs_invariant * xv) % L == (rhs_invariant * xv) % L);
-        assert(rhs_invariant == y0_pow as nat);
-        
-        assert((lhs_invariant as int * xv as int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
-        assert((y_after_times_x as int * R_exp_int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
-        assert((final_times_R as int * R_exp_int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
-        assert((final_y as int * R_pow2n) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
+        assert((final_y as int * R_pow2n) % (L as int) == (lhs_invariant as int * xv as int) % (L as int));
         
         assert(y0_pow >= 0) by { lemma_pow_nonnegative(y0 as int, pow2_n); }
         assert(rhs_invariant as int == y0_pow);
         assert((final_y as int * R_pow2n) % (L as int) == (y0_pow * xv as int) % (L as int));
         
-        // Convert to postcondition form
         assert((to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == 
             (pow(y0 as int, pow2(squarings as nat)) as int * xv as int) % (group_order() as int));
     }

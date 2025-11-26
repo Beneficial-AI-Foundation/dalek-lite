@@ -227,9 +227,9 @@ impl Zeroize for ProjectiveNielsPoint {
 }
 
 } // verus!
-// ------------------------------------------------------------------------
-// Constructors
-// ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // Constructors
+  // ------------------------------------------------------------------------
 use crate::traits::Identity;
 
 verus! {
@@ -289,9 +289,9 @@ impl Default for AffineNielsPoint {
 }
 
 } // verus!
-// ------------------------------------------------------------------------
-// Validity checks (for debugging, not CT)
-// ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // Validity checks (for debugging, not CT)
+  // ------------------------------------------------------------------------
 verus! {
 
 impl ValidityCheck for ProjectivePoint {
@@ -354,9 +354,9 @@ impl ValidityCheck for ProjectivePoint {
 }
 
 } // verus!
-// ------------------------------------------------------------------------
-// Constant-time assignment
-// ------------------------------------------------------------------------
+  // ------------------------------------------------------------------------
+  // Constant-time assignment
+  // ------------------------------------------------------------------------
 impl ConditionallySelectable for ProjectiveNielsPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         ProjectiveNielsPoint {
@@ -791,7 +791,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
 }
 
 } // verus!
-//#[doc(hidden)]
+  //#[doc(hidden)]
 impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;
 

@@ -76,7 +76,7 @@ impl Index<usize> for Scalar52 {
 }
 
 } // verus!
-// VERIFICATION EXCLUDED: mutable returns unsupported by Verus
+  // VERIFICATION EXCLUDED: mutable returns unsupported by Verus
 impl IndexMut<usize> for Scalar52 {
     fn index_mut(&mut self, _index: usize) -> &mut u64 {
         &mut (self.limbs[_index])
@@ -879,7 +879,7 @@ impl Scalar52 {
         ensures
             limbs_bounded(&result),
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&a.limbs)
-                * to_nat(&b.limbs)) % group_order(), 
+                * to_nat(&b.limbs)) % group_order(),
                 // known
     {
         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))
@@ -905,7 +905,7 @@ impl Scalar52 {
             limbs_bounded(self),
         ensures
             limbs_bounded(&result),
-            #[trigger] (to_nat(&result.limbs) % group_order()) == 
+            #[trigger] (to_nat(&result.limbs) % group_order()) ==
                 #[trigger] ((to_nat(&self.limbs) * montgomery_radix()) % group_order()),
     {
         proof {

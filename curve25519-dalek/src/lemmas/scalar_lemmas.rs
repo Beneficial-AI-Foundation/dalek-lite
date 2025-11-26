@@ -60,25 +60,25 @@ proof fn lemma_mul_mod_right_eq(a: nat, b: nat, c: nat, n: nat)
 {
     // If b ≡ c (mod n), then a*b ≡ a*c (mod n)
     // Strategy: Convert to int and use vstd lemmas
-    
+
     // Cast to int for using vstd lemmas
     let a_int = a as int;
     let b_int = b as int;
     let c_int = c as int;
     let n_int = n as int;
-    
+
     // Use lemma_mul_mod_noop_right from vstd:
     // lemma_mul_mod_noop_right(z: int, x: int, n: int)
     // requires n > 0, x % n == (x % n) % n  (always true)
     // ensures (z * x) % n == (z * (x % n)) % n
-    
+
     lemma_mul_mod_noop_right(a_int, b_int, n_int);
     lemma_mul_mod_noop_right(a_int, c_int, n_int);
-    
+
     // Now we have:
     // (a * b) % n == (a * (b % n)) % n
     // (a * c) % n == (a * (c % n)) % n
-    
+
     // Since b % n == c % n (from requires), we have (b % n) == (c % n)
     // Therefore (a * (b % n)) % n == (a * (c % n)) % n
     // Which means (a * b) % n == (a * c) % n

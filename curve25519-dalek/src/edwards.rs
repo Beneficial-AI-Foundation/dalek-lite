@@ -417,7 +417,7 @@ impl TryFrom<&[u8]> for CompressedEdwardsY {
 }
 
 } // verus!
-/* VERIFICATION NOTE: we don't cover serde feature yet */
+  /* VERIFICATION NOTE: we don't cover serde feature yet */
 // ------------------------------------------------------------------------
 // Serde support
 // ------------------------------------------------------------------------
@@ -1467,11 +1467,11 @@ impl EdwardsPoint {
 }
 
 } // verus!
-// ------------------------------------------------------------------------
-// Multiscalar Multiplication impls
-// ------------------------------------------------------------------------
-// These use the iterator's size hint and the target settings to
-// forward to a specific backend implementation.
+  // ------------------------------------------------------------------------
+  // Multiscalar Multiplication impls
+  // ------------------------------------------------------------------------
+  // These use the iterator's size hint and the target settings to
+  // forward to a specific backend implementation.
 #[cfg(feature = "alloc")]
 impl MultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;

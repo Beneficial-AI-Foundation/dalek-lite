@@ -2533,50 +2533,7 @@ impl Scalar {
         let result = self.ct_eq(x);
 
         proof {
-            // ct_eq ensures choice_is_true(result) == (self.bytes == x.bytes)
-            // reduce ensures is_canonical_scalar(&x) is true
-            if (self.bytes == x.bytes) {
-                assert(bytes_to_nat(&self.bytes) == bytes_to_nat(&x.bytes));
-                assert(is_canonical_scalar(&x));
-            } else {
-                // by postcondition of reduce
-                assert(bytes_to_nat(&x.bytes) % group_order() == bytes_to_nat(&self.bytes)
-                    % group_order());
-                assert(bytes_to_nat(&x.bytes) < group_order());
-
-                assert(x.bytes != self.bytes);
-                assert(bytes_to_nat(&x.bytes) != bytes_to_nat(&self.bytes)) by {
-                    use crate::lemmas::field_lemmas::u8_32_as_nat_injectivity_lemmas::lemma_canonical_bytes_equal;
-                    // Proof by contradiction: if they had the same nat value, they'd be equal
-                    if bytes_to_nat(&x.bytes) == bytes_to_nat(&self.bytes) {
-                        lemma_canonical_bytes_equal(&x.bytes, &self.bytes);
-                        assert(x.bytes =~= self.bytes);
-                        assert(false);
-                    }
-                }
-
-                assert(bytes_to_nat(&x.bytes) == bytes_to_nat(&x.bytes) % group_order()) by {
-                    lemma_fundamental_div_mod_converse_mod(
-                        bytes_to_nat(&x.bytes) as int,
-                        group_order() as int,
-                        0int,
-                        bytes_to_nat(&x.bytes) as int,
-                    );
-                }
-
-                assert(bytes_to_nat(&x.bytes) == bytes_to_nat(&self.bytes) % group_order());
-
-                assert(bytes_to_nat(&self.bytes) % group_order() != bytes_to_nat(&self.bytes));
-
-                // by contradiction bytes_to_nat(&self.bytes) != bytes_to_nat(&x.bytes)
-                if (bytes_to_nat(&self.bytes) < group_order()) {
-                    assert(bytes_to_nat(&self.bytes) % group_order() == bytes_to_nat(&self.bytes))
-                        by {
-                        lemma_small_mod(bytes_to_nat(&self.bytes), group_order());
-                    }
-                    assert(false);
-                }
-            }
+            lemma_is_canonical_correctness(&self.bytes, &x.bytes);
         }
         result
     }

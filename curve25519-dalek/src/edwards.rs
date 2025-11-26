@@ -1465,7 +1465,7 @@ impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
 
 define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 
-define_mul_variants!(LHS = EdwardsPoint, RHS = Scalar, Output = EdwardsPoint);
+define_mul_variants_verus!(LHS = EdwardsPoint, RHS = Scalar, Output = EdwardsPoint);
 
 define_mul_variants_verus!(LHS = Scalar, RHS = EdwardsPoint, Output = EdwardsPoint);
 
@@ -1503,7 +1503,8 @@ impl EdwardsPoint {
     ///
     /// Uses precomputed basepoint tables when the `precomputed-tables` feature
     /// is enabled, trading off increased code size for ~4x better performance.
-    #[verifier::external_body]  // Calls external multiplication operations
+   
+    #[verifier::external_body]
     pub fn mul_base(scalar: &Scalar) -> Self {
         #[cfg(not(feature = "precomputed-tables"))]
         { scalar * constants::ED25519_BASEPOINT_POINT }
@@ -1792,7 +1793,6 @@ impl BasepointTable for EdwardsBasepointTable {
     /// by \\(2\^{255}\\), which is always the case.
     ///
     /// The above algorithm is trivially generalised to other powers-of-2 radices.
-    #[verifier::external_body]
     fn mul_base(&self, scalar: &Scalar) -> EdwardsPoint {
         let a = scalar.as_radix_2w(4);
 
@@ -1825,6 +1825,7 @@ impl BasepointTable for EdwardsBasepointTable {
 }
 
 } // verus!
+
 impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
     type Output = EdwardsPoint;
 
@@ -1846,6 +1847,8 @@ impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
     }
 }
 
+
+
 impl Debug for EdwardsBasepointTable {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}([\n", stringify!(EdwardsBasepointTable))?;
@@ -1866,11 +1869,12 @@ impl Debug for EdwardsBasepointTable {
     }
 }
 
-/* VERIFICATION NOTE: Removed unused impl_basepoint_table_conversions! macro
-since only radix-16 is kept and no conversions between radix sizes are needed. */
+/* VERIFICATION NOTE: 
+- removed unused impl_basepoint_table_conversions! macro definitions and invocations
+since only radix-16 is kept and no conversions between radix sizes are needed. 
+*/
 
-/* VERIFICATION NOTE: Removed all impl_basepoint_table_conversions! invocations
-since only radix-16 is kept and no conversions between radix sizes are needed. */
+verus! {
 
 impl EdwardsPoint {
     /// Multiply by the cofactor: return \\(\[8\]P\\).
@@ -1880,6 +1884,7 @@ impl EdwardsPoint {
 
     /// Compute \\([2\^k] P \\) by successive doublings. Requires \\( k > 0 \\).
     pub(crate) fn mul_by_pow_2(&self, k: u32) -> EdwardsPoint {
+        #[cfg(not(verus_keep_ghost))]
         debug_assert!(k > 0);
         let mut r: CompletedPoint;
         let mut s = self.as_projective();
@@ -1914,6 +1919,7 @@ impl EdwardsPoint {
     /// // Q has small order
     /// assert_eq!(Q.is_small_order(), true);
     /// ```
+    #[verifier::external_body]
     pub fn is_small_order(&self) -> bool {
         self.mul_by_cofactor().is_identity()
     }
@@ -1944,10 +1950,13 @@ impl EdwardsPoint {
     /// // P + Q is not torsion-free
     /// assert_eq!((P+Q).is_torsion_free(), false);
     /// ```
+    #[verifier::external_body]
     pub fn is_torsion_free(&self) -> bool {
         (self * constants::BASEPOINT_ORDER_PRIVATE).is_identity()
     }
 }
+
+} // verus!
 
 // ------------------------------------------------------------------------
 // Debug traits

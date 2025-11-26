@@ -16,15 +16,19 @@ use core::borrow::Borrow;
 use crate::scalar::{clamp_integer, Scalar};
 use subtle::ConstantTimeEq;
 
+use vstd::prelude::*;
+
 // ------------------------------------------------------------------------
 // Public Traits
 // ------------------------------------------------------------------------
 
+verus! {
 /// Trait for getting the identity element of a point type.
 pub trait Identity {
     /// Returns the identity element of the curve.
     /// Can be used as a constructor.
-    fn identity() -> Self;
+    /* VERIFICATION NOTE: added where Self: Sized to fix Verus type inference issues */
+    fn identity() -> Self where Self: Sized;
 }
 
 /// Trait for testing if a curve point is equivalent to the identity point.
@@ -44,6 +48,8 @@ where
         self.ct_eq(&T::identity()).into()
     }
 }
+
+} // verus!
 
 /// A precomputed table of basepoints, for optimising scalar multiplications.
 pub trait BasepointTable {

@@ -10,6 +10,15 @@ verus! {
 #[allow(dead_code)]
 pub struct ExChoice(Choice);
 
+/*** External trait specification for subtle::ConstantTimeEq ***/
+
+#[verifier::external_trait_specification]
+pub trait ExConstantTimeEq {
+    type ExternalTraitSpecificationFor: ConstantTimeEq;
+    
+    fn ct_eq(&self, other: &Self) -> Choice;
+}
+
 /*** External type specification for subtle::CtOption ***/
 
 #[verifier::external_type_specification]
@@ -100,6 +109,7 @@ pub fn choice_into(c: Choice) -> (b: bool)
 {
     c.into()
 }
+
 
 /// Wrapper for bitwise AND on Choice
 #[verifier::external_body]

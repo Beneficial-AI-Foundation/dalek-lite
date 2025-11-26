@@ -2601,15 +2601,7 @@ verus! {
 
 
 /// Lemma: Montgomery squaring preserves the squares property
-/// Given:
-/// - `new_y * R = y_before^2 (mod L)` (from montgomery_square)
-/// - `y_before * R^(2^k - 1) = y0^(2^k) (mod L)` (loop invariant)
-/// 
-/// Proves:
-/// - `new_y * R^(2^(k+1) - 1) = y0^(2^(k+1)) (mod L)`
-///
-/// Key insight: 2^(k+1) - 1 = 2*(2^k - 1) + 1
-/// So R^(2^(k+1) - 1) = R * R^(2*(2^k - 1)) = R * (R^(2^k - 1))^2
+/// Key insight: 2^(k+1) - 1 = 2*(2^k - 1) + 1, so R^(2^(k+1) - 1) = R * (R^(2^k - 1))^2
 proof fn lemma_square_multiply_step(
     new_y: nat,
     y_before: nat, 
@@ -2634,76 +2626,57 @@ proof fn lemma_square_multiply_step(
     
     lemma2_to64();
     lemma_pow2_unfold(k + 1);
+    lemma_pow2_pos(k);
+    lemma_pow2_pos(k + 1);
     
     let exp_k = (pow2(k) - 1) as nat;
     let exp_k1 = (pow2(k + 1) - 1) as nat;
-    
-    assert(pow2(k) >= 1) by { lemma_pow2_pos(k); }
-    assert(pow2(k + 1) >= 2) by { lemma_pow2_pos(k + 1); }
-    assert(pow2(k + 1) == 2 * pow2(k));
-    
-    assert(2 * pow2(k) - 1 == 2 * (pow2(k) - 1) + 1) by (nonlinear_arith) requires pow2(k) >= 1;
-    assert(exp_k1 == 2 * exp_k + 1);
-    
-    assert(pow(R as int, exp_k1) == R * pow(pow(R as int, exp_k), 2)) by {
-        lemma_pow_adds(R as int, 1nat, 2 * exp_k);
-        lemma_pow1(R as int);
-        lemma_pow_multiplies(R as int, exp_k, 2nat);
-    }
-    
-    lemma_pow_multiplies(y0 as int, pow2(k), 2);
-    assert(pow(pow(y0 as int, pow2(k)), 2) == pow(y0 as int, pow2(k + 1)));
-    
-    assert(pow(R as int, exp_k) > 0) by { lemma_pow_positive(R as int, exp_k); }
-    
     let R_exp_k: int = pow(R as int, exp_k);
-    let R_exp_k_sq_int: int = pow(R_exp_k, 2);
-    
-    assert(R_exp_k_sq_int > 0) by { lemma_pow_positive(R_exp_k, 2); }
-    
-    assert(R_exp_k_sq_int == R_exp_k * R_exp_k) by {
-        lemma_pow1(R_exp_k);
-        lemma_pow_adds(R_exp_k, 1, 1);
-    }
-    
-    let R_exp_k_sq: nat = R_exp_k_sq_int as nat;
+    let R_exp_k_sq: nat = (R_exp_k * R_exp_k) as nat;
     let y_times_R_exp: nat = y_before * (R_exp_k as nat);
     let y0_pow_k: nat = pow(y0 as int, pow2(k)) as nat;
-    
-    assert(y_times_R_exp % L == y0_pow_k % L);
-    
-    assert((y_times_R_exp * y_times_R_exp) % L == (y0_pow_k * y0_pow_k) % L) by {
-        lemma_mul_mod_noop(y_times_R_exp as int, y_times_R_exp as int, L as int);
-        lemma_mul_mod_noop(y0_pow_k as int, y0_pow_k as int, L as int);
-    }
-    
     let y_sq: nat = y_before * y_before;
     let R_exp_k_nat: nat = R_exp_k as nat;
     
-    assert(y_times_R_exp * y_times_R_exp == y_sq * R_exp_k_sq) by (nonlinear_arith)
-        requires
-            y_times_R_exp == y_before * R_exp_k_nat,
-            y_sq == y_before * y_before,
-            R_exp_k_sq == (R_exp_k * R_exp_k) as nat,
-            R_exp_k_nat == R_exp_k as nat,
-            R_exp_k > 0,
-    ;
+    // Establish key equalities
+    assert(exp_k1 == 2 * exp_k + 1) by (nonlinear_arith) 
+        requires pow2(k) >= 1, pow2(k + 1) == 2 * pow2(k), 
+                 exp_k == (pow2(k) - 1) as nat, exp_k1 == (pow2(k + 1) - 1) as nat;
+    lemma_pow_positive(R as int, exp_k);
+    lemma_pow_positive(R_exp_k, 2);
     
-    lemma_mul_mod_noop((new_y * R) as int, R_exp_k_sq as int, L as int);
-    lemma_mul_mod_noop(y_sq as int, R_exp_k_sq as int, L as int);
+    assert(R_exp_k_sq == pow(R_exp_k, 2) as nat) by { lemma_pow1(R_exp_k); lemma_pow_adds(R_exp_k, 1, 1); }
+    
+    assert(y_times_R_exp * y_times_R_exp == y_sq * R_exp_k_sq) by (nonlinear_arith)
+        requires y_times_R_exp == y_before * R_exp_k_nat, R_exp_k_nat == R_exp_k as nat, 
+                 y_sq == y_before * y_before,
+                 R_exp_k_sq == (R_exp_k * R_exp_k) as nat, R_exp_k > 0;
     
     assert((new_y * R) * R_exp_k_sq == new_y * pow(R as int, exp_k1) as nat) by {
-        lemma_pow2_square(R as int, exp_k);
-        lemma_pow_adds(R as int, 1, 2 * exp_k);
+        lemma_pow_adds(R as int, 1nat, 2 * exp_k);
         lemma_pow1(R as int);
+        lemma_pow_multiplies(R as int, exp_k, 2nat);
         lemma_mul_is_associative(new_y as int, R as int, R_exp_k_sq as int);
     }
     
+    lemma_pow_multiplies(y0 as int, pow2(k), 2);
     lemma_pow2_square(y0 as int, k);
     lemma_pow_nonnegative(y0 as int, pow2(k));
-    assert(y0_pow_k * y0_pow_k == pow(y0 as int, pow2(k + 1)) as nat);
     
-    assert((new_y * pow(R as int, exp_k1) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L);
+    calc! { (==)
+        (new_y * pow(R as int, exp_k1) as nat) % L; {}
+        ((new_y * R) * R_exp_k_sq) % L; {
+            lemma_mul_mod_noop((new_y * R) as int, R_exp_k_sq as int, L as int);
+            lemma_mul_mod_noop(y_sq as int, R_exp_k_sq as int, L as int);
+        }
+        (y_sq * R_exp_k_sq) % L; {}
+        (y_times_R_exp * y_times_R_exp) % L; {
+            lemma_mul_mod_noop(y_times_R_exp as int, y_times_R_exp as int, L as int);
+            lemma_mul_mod_noop(y0_pow_k as int, y0_pow_k as int, L as int);
+        }
+        (y0_pow_k * y0_pow_k) % L; {}
+        (pow(y0 as int, pow2(k + 1)) as nat) % L;
+    }
 }
 
 // Helper function for montgomery_invert

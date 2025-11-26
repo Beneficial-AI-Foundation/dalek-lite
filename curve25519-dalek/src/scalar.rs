@@ -2645,11 +2645,7 @@ proof fn lemma_square_multiply_step(
     assert(pow2(k + 1) == 2 * pow2(k));
     
     assert(2 * pow2(k) - 1 == 2 * (pow2(k) - 1) + 1) by (nonlinear_arith) requires pow2(k) >= 1;
-    
-    assert(exp_k1 == 2 * exp_k + 1) by {
-        assert((pow2(k + 1) - 1) as nat == (2 * pow2(k) - 1) as nat);
-        assert((2 * pow2(k) - 1) as nat == (2 * (pow2(k) - 1) + 1) as nat);
-    }
+    assert(exp_k1 == 2 * exp_k + 1);
     
     assert(pow(R as int, exp_k1) == R * pow(pow(R as int, exp_k), 2)) by {
         lemma_pow_adds(R as int, 1nat, 2 * exp_k);
@@ -2658,7 +2654,6 @@ proof fn lemma_square_multiply_step(
     }
     
     lemma_pow_multiplies(y0 as int, pow2(k), 2);
-    assert(pow(pow(y0 as int, pow2(k)), 2) == pow(y0 as int, 2 * pow2(k)));
     assert(pow(pow(y0 as int, pow2(k)), 2) == pow(y0 as int, pow2(k + 1)));
     
     assert(pow(R as int, exp_k) > 0) by { lemma_pow_positive(R as int, exp_k); }
@@ -2687,9 +2682,6 @@ proof fn lemma_square_multiply_step(
     
     let y_sq: nat = y_before * y_before;
     let R_exp_k_nat: nat = R_exp_k as nat;
-    
-    assert(y_times_R_exp == y_before * R_exp_k_nat);
-    
     let ab = y_times_R_exp;
     let ab_sq = ab * ab;
     
@@ -2705,8 +2697,6 @@ proof fn lemma_square_multiply_step(
     ;
     
     let new_y_R: nat = new_y * R;
-    let y_sq: nat = y_before * y_before;
-    
     assert(new_y_R % L == y_sq % L);
     
     lemma_mul_mod_noop(new_y_R as int, R_exp_k_sq as int, L as int);
@@ -2724,14 +2714,10 @@ proof fn lemma_square_multiply_step(
     assert((y_sq * R_exp_k_sq) % L == (y_times_R_exp * y_times_R_exp) % L);
     
     let y0_pow_k_int: int = pow(y0 as int, pow2(k));
-    assert(y0_pow_k == y0_pow_k_int as nat);
+    assert(y0_pow_k_int >= 0) by { lemma_pow_nonnegative(y0 as int, pow2(k)); }
     
     lemma_pow2_square(y0 as int, k);
     assert(y0_pow_k_int * y0_pow_k_int == pow(y0 as int, pow2(k + 1)));
-    
-    assert(y0_pow_k_int >= 0) by { lemma_pow_nonnegative(y0 as int, pow2(k)); }
-    
-    assert(y0_pow_k * y0_pow_k == (y0_pow_k_int * y0_pow_k_int) as nat);
     assert(y0_pow_k * y0_pow_k == pow(y0 as int, pow2(k + 1)) as nat);
     
     assert((new_y * pow(R as int, exp_k1) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L);

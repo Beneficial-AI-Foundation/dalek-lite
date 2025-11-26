@@ -2610,11 +2610,12 @@ proof fn lemma_square_multiply_step(new_y: nat, y_before: nat, y0: nat, R: nat, 
     ensures
         (new_y * pow(R as int, (pow2(k + 1) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L,
 {
-    use vstd::arithmetic::power2::{lemma_pow2_unfold, lemma2_to64, lemma_pow2_pos};
+    use vstd::arithmetic::power2::{lemma_pow2_unfold, lemma_pow2_pos};
     use vstd::arithmetic::mul::lemma_mul_is_associative;
     use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow_nonnegative, lemma_pow2_square};
     
-    lemma2_to64(); lemma_pow2_unfold(k + 1); lemma_pow2_pos(k); lemma_pow2_pos(k + 1);
+    lemma_pow2_unfold(k + 1);
+    lemma_pow2_pos(k);
     
     let exp_k = (pow2(k) - 1) as nat;
     let exp_k1 = (pow2(k + 1) - 1) as nat;
@@ -2629,21 +2630,33 @@ proof fn lemma_square_multiply_step(new_y: nat, y_before: nat, y0: nat, R: nat, 
     lemma_pow_positive(R as int, exp_k);
     lemma_pow_positive(R_exp_k, 2);
     
-    assert(R_exp_k_sq == pow(R_exp_k, 2) as nat) by { lemma_pow1(R_exp_k); lemma_pow_adds(R_exp_k, 1, 1); }
+    assert(R_exp_k_sq == pow(R_exp_k, 2) as nat) by {
+        lemma_pow1(R_exp_k);
+        lemma_pow_adds(R_exp_k, 1, 1);
+    }
     assert(y_R * y_R == (y_before * y_before) * R_exp_k_sq) by (nonlinear_arith) 
         requires y_R == y_before * (R_exp_k as nat), R_exp_k_sq == (R_exp_k * R_exp_k) as nat, R_exp_k > 0;
     assert((new_y * R) * R_exp_k_sq == new_y * pow(R as int, exp_k1) as nat) by {
-        lemma_pow_adds(R as int, 1nat, 2 * exp_k); lemma_pow1(R as int);
+        lemma_pow_adds(R as int, 1nat, 2 * exp_k);
+        lemma_pow1(R as int);
         lemma_pow_multiplies(R as int, exp_k, 2nat);
         lemma_mul_is_associative(new_y as int, R as int, R_exp_k_sq as int);
     }
-    lemma_pow_multiplies(y0 as int, pow2(k), 2); lemma_pow2_square(y0 as int, k); lemma_pow_nonnegative(y0 as int, pow2(k));
+    lemma_pow_multiplies(y0 as int, pow2(k), 2);
+    lemma_pow2_square(y0 as int, k);
+    lemma_pow_nonnegative(y0 as int, pow2(k));
     
     calc! { (==)
         (new_y * pow(R as int, exp_k1) as nat) % L; {}
-        ((new_y * R) * R_exp_k_sq) % L; { lemma_mul_mod_noop((new_y * R) as int, R_exp_k_sq as int, L as int); lemma_mul_mod_noop((y_before * y_before) as int, R_exp_k_sq as int, L as int); }
+        ((new_y * R) * R_exp_k_sq) % L; {
+            lemma_mul_mod_noop((new_y * R) as int, R_exp_k_sq as int, L as int);
+            lemma_mul_mod_noop((y_before * y_before) as int, R_exp_k_sq as int, L as int);
+        }
         ((y_before * y_before) * R_exp_k_sq) % L; {}
-        (y_R * y_R) % L; { lemma_mul_mod_noop(y_R as int, y_R as int, L as int); lemma_mul_mod_noop(y0_k as int, y0_k as int, L as int); }
+        (y_R * y_R) % L; {
+            lemma_mul_mod_noop(y_R as int, y_R as int, L as int);
+            lemma_mul_mod_noop(y0_k as int, y0_k as int, L as int);
+        }
         (y0_k * y0_k) % L; {}
         (pow(y0 as int, pow2(k + 1)) as nat) % L;
     }
@@ -2676,7 +2689,8 @@ fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar)
         invariant
             limbs_bounded(y), limbs_bounded(x), iter <= squarings,
             L == group_order(), R == montgomery_radix(), L > 0, R > 0,
-            (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(iter as nat)) as nat) % L,
+            (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == 
+                (pow(y0 as int, pow2(iter as nat)) as nat) % L,
         decreases squarings - iter,
     {
         let ghost y_before: nat = to_nat(&y.limbs);
@@ -2692,7 +2706,7 @@ fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar)
     proof {
         use vstd::arithmetic::mul::lemma_mul_is_associative;
         use vstd::arithmetic::power::{lemma_pow_adds, lemma_pow1};
-        use vstd::arithmetic::power2::{lemma_pow2_pos, lemma2_to64};
+        use vstd::arithmetic::power2::lemma_pow2_pos;
         use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow_nonnegative;
         
         let final_y: nat = to_nat(&y.limbs);
@@ -2701,7 +2715,7 @@ fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar)
         let R_pow2n: int = pow(R as int, pow2(n));
         let y0_pow: int = pow(y0 as int, pow2(n));
         
-        lemma2_to64(); lemma_pow2_pos(n);
+        lemma_pow2_pos(n);
         lemma_pow_adds(R as int, 1nat, exp_final); lemma_pow1(R as int);
         lemma_pow_nonnegative(R as int, exp_final); lemma_pow_nonnegative(y0 as int, pow2(n));
         

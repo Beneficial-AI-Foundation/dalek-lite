@@ -43,6 +43,35 @@ use vstd::prelude::*;
 
 verus! {
 
+/// Spec function: Identity element for AffineNielsPoint
+/// Identity has y_plus_x = 1, y_minus_x = 1, xy2d = 0
+pub open spec fn spec_identity_affine_niels() -> AffineNielsPoint;
+
+/// Spec function: Identity element for ProjectiveNielsPoint
+/// Identity has Y_plus_X = Z, Y_minus_X = Z, T2d = 0
+pub open spec fn spec_identity_projective_niels() -> ProjectiveNielsPoint;
+
+/// Spec function: Negation of an AffineNielsPoint
+/// Negation swaps y+x with y-x and negates xy2d
+pub open spec fn spec_negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
+    AffineNielsPoint {
+        y_plus_x: p.y_minus_x,
+        y_minus_x: p.y_plus_x,
+        xy2d: crate::field::FieldElement { limbs: crate::specs::field_specs_u64::spec_negate(p.xy2d.limbs) }
+    }
+}
+
+/// Spec function: Negation of a ProjectiveNielsPoint
+/// Negation swaps Y+X with Y-X and negates T2d (Z stays the same)
+pub open spec fn spec_negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveNielsPoint {
+    ProjectiveNielsPoint {
+        Y_plus_X: p.Y_minus_X,
+        Y_minus_X: p.Y_plus_X,
+        Z: p.Z,
+        T2d: crate::field::FieldElement { limbs: crate::specs::field_specs_u64::spec_negate(p.T2d.limbs) }
+    }
+}
+
 /// Specification trait for `From<T>` conversions, allowing preconditions
 pub trait FromSpecImpl<T>: Sized {
     /// Whether this implementation provides a full specification

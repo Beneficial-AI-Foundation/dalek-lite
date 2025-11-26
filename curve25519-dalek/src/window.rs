@@ -43,6 +43,11 @@ use vstd::prelude::*;
 
 verus! {
 
+// Trait for types that represent Edwards curve points in different coordinate systems
+// This allows us to write a single, concrete spec for select() that works for all representations
+use crate::specs::edwards_specs::*;
+use crate::specs::field_specs::{sum_of_limbs_bounded, limbs_bounded};
+
 /// Spec function: Identity element for AffineNielsPoint
 /// Identity has y_plus_x = 1, y_minus_x = 1, xy2d = 0
 pub open spec fn spec_identity_affine_niels() -> AffineNielsPoint;
@@ -235,8 +240,8 @@ impl LookupTable<ProjectiveNielsPoint> {
                 let xabs = (x as i16 + xmask) ^ xmask;
 
                 // Set t = 0 * P = identity
-                /* ORIGINAL CODE: let mut t = T::identity(); */
-                let mut t = identity_generic::<T>();
+                /* ORIGINAL CODE: let mut t = ProjectiveNielsPoint::identity(); */
+                let mut t = identity_generic::<ProjectiveNielsPoint>();
                 for j in $range {
                     // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
                     /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */

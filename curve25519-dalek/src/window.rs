@@ -138,7 +138,7 @@ impl LookupTable<AffineNielsPoint> {
     pub fn select(&self, x: i8) -> (result: AffineNielsPoint)
         requires
             -8 <= x,
-            x as i16 <= 8 as i16,
+            x <= 8,
         ensures
     // Formal specification for all cases:
 
@@ -150,7 +150,7 @@ impl LookupTable<AffineNielsPoint> {
         #[cfg(not(verus_keep_ghost))]
         {
             debug_assert!(x >= -8);
-            debug_assert!(x as i16 <= 8 as i16);
+            debug_assert!(x <= 8);
         }
 
         assume(false);
@@ -188,7 +188,7 @@ impl LookupTable<ProjectiveNielsPoint> {
     pub fn select(&self, x: i8) -> (result: ProjectiveNielsPoint)
         requires
             -8 <= x,
-            x as i16 <= 8 as i16,
+            x <= 8,
         ensures
     // Formal specification for all cases:
 
@@ -224,7 +224,7 @@ impl LookupTable<ProjectiveNielsPoint> {
         #[cfg(not(verus_keep_ghost))]
         {
             debug_assert!(x >= -8);
-            debug_assert!(x as i16 <= 8 as i16);
+            debug_assert!(x <= 8);
         }
 
         assume(false);
@@ -353,17 +353,17 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
 
         let mut points = [P.as_projective_niels();8];
         for j in 0..7 {
-            // ORIGINAL CODE:
-            // points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
-            // For Verus: unroll to assume preconditions for intermediate operations
+            // ORIGINAL CODE: points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
+            // NOTE: We must unroll this into intermediate variables (sum, extended) to add
+            // assumes about their limb bounds.
+            // We cannot directly put them in proof blocks because they are exec variables.
             proof {
-                // Preconditions for P (left-hand side of addition)
+                // Preconditions for P + &points[j]
                 assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
                 assume(limbs_bounded(&P.X, 54));
                 assume(limbs_bounded(&P.Y, 54));
                 assume(limbs_bounded(&P.Z, 54));
                 assume(limbs_bounded(&P.T, 54));
-                // Preconditions for &points[j] (right-hand side - ProjectiveNielsPoint)
                 assume(limbs_bounded(&&points[j as int].Y_plus_X, 54));
                 assume(limbs_bounded(&&points[j as int].Y_minus_X, 54));
                 assume(limbs_bounded(&&points[j as int].Z, 54));

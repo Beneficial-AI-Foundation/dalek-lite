@@ -96,7 +96,11 @@ pub proof fn lemma_word_contribution_decomposition(
         )) * high_part) by (nonlinear_arith);
         lemma_pow2_adds(scale, split_pos as nat);
     }
-    broadcast use group_mul_is_distributive;
+    // Final ensures: pow2(scale) * word == pow2(scale) * low_part + pow2(scale + split_pos) * high_part
+    assert(pow2(scale) * (word as nat) == pow2(scale) * low_part + pow2(scale + split_pos as nat)
+        * high_part) by {
+        broadcast use group_mul_is_distributive;
+    };
 
 }
 
@@ -259,7 +263,7 @@ pub proof fn lemma_words_to_nat_gen_u64_prefix_matches_bytes(
 )
     requires
         0 <= count <= 8,
-        forall|k: int| 0 <= k < 8 ==> words@[k] as nat == word_from_bytes(bytes, k),
+        forall|k: int| #![auto] 0 <= k < 8 ==> words@[k] as nat == word_from_bytes(bytes, k),
     ensures
         words_to_nat_gen_u64(words, count, 64) == words_from_bytes_to_nat(bytes, count),
     decreases count,
@@ -285,13 +289,19 @@ pub proof fn lemma_words_from_bytes_to_nat_wide(bytes: &[u8; 64])
         0,
     ) * pow2((0 * 64) as nat));
 
-    lemma_mul_is_commutative(word_from_bytes(bytes, 1) as int, pow2((1 * 64) as nat) as int);
-    lemma_mul_is_commutative(word_from_bytes(bytes, 2) as int, pow2((2 * 64) as nat) as int);
-    lemma_mul_is_commutative(word_from_bytes(bytes, 3) as int, pow2((3 * 64) as nat) as int);
-    lemma_mul_is_commutative(word_from_bytes(bytes, 4) as int, pow2((4 * 64) as nat) as int);
-    lemma_mul_is_commutative(word_from_bytes(bytes, 5) as int, pow2((5 * 64) as nat) as int);
-    lemma_mul_is_commutative(word_from_bytes(bytes, 6) as int, pow2((6 * 64) as nat) as int);
-    lemma_mul_is_commutative(word_from_bytes(bytes, 7) as int, pow2((7 * 64) as nat) as int);
+    // Reorder multiplications: word * pow2(k) == pow2(k) * word
+    assert(words_from_bytes_to_nat(bytes, 8) == word_from_bytes(bytes, 0) + pow2(64) * word_from_bytes(
+        bytes, 1) + pow2(128) * word_from_bytes(bytes, 2) + pow2(192) * word_from_bytes(bytes, 3) + pow2(
+        256) * word_from_bytes(bytes, 4) + pow2(320) * word_from_bytes(bytes, 5) + pow2(384)
+        * word_from_bytes(bytes, 6) + pow2(448) * word_from_bytes(bytes, 7)) by {
+        lemma_mul_is_commutative(word_from_bytes(bytes, 1) as int, pow2((1 * 64) as nat) as int);
+        lemma_mul_is_commutative(word_from_bytes(bytes, 2) as int, pow2((2 * 64) as nat) as int);
+        lemma_mul_is_commutative(word_from_bytes(bytes, 3) as int, pow2((3 * 64) as nat) as int);
+        lemma_mul_is_commutative(word_from_bytes(bytes, 4) as int, pow2((4 * 64) as nat) as int);
+        lemma_mul_is_commutative(word_from_bytes(bytes, 5) as int, pow2((5 * 64) as nat) as int);
+        lemma_mul_is_commutative(word_from_bytes(bytes, 6) as int, pow2((6 * 64) as nat) as int);
+        lemma_mul_is_commutative(word_from_bytes(bytes, 7) as int, pow2((7 * 64) as nat) as int);
+    };
 }
 
 pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], mask: u64)
@@ -487,6 +497,74 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
         lemma_pow2_adds(156, 32);
     };
     assert(masked_words_sum == unmasked_words_sum);
+}
+
+/// Proves that combining the high and low chunks at the 2^260 boundary reproduces the
+/// weighted word sum. This is the "HighLow-Recombine" step in from_bytes_wide.
+///
+/// Given:
+/// - low_expr = w0 + 2^64*w1 + 2^128*w2 + 2^192*w3 + 2^256*(w4 & 0xf)
+/// - high_expr = (w4 >> 4) + 2^60*w5 + 2^124*w6 + 2^188*w7
+/// - wide_sum = w0 + 2^64*w1 + 2^128*w2 + 2^192*w3 + 2^256*w4 + 2^320*w5 + 2^384*w6 + 2^448*w7
+///
+/// Proves: 2^260 * high_expr + low_expr == wide_sum
+pub proof fn lemma_high_low_recombine(
+    w0: nat, w1: nat, w2: nat, w3: nat, w4: nat, w5: nat, w6: nat, w7: nat,
+    w4_low: nat,
+    w4_high: nat,
+)
+    requires
+        w4_low == (w4 % 16),  // w4 & 0xf
+        w4_high == (w4 / 16), // w4 >> 4
+    ensures
+        ({
+            let low_expr = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4_low;
+            let high_expr = w4_high + pow2(60) * w5 + pow2(124) * w6 + pow2(188) * w7;
+            let wide_sum = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4
+                + pow2(320) * w5 + pow2(384) * w6 + pow2(448) * w7;
+            pow2(260) * high_expr + low_expr == wide_sum
+        }),
+{
+    let low_expr = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4_low;
+    let high_expr = w4_high + pow2(60) * w5 + pow2(124) * w6 + pow2(188) * w7;
+    let wide_sum = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4
+        + pow2(320) * w5 + pow2(384) * w6 + pow2(448) * w7;
+    let pow2_260 = pow2(260);
+
+    // First prove: 2^260 * (w4 >> 4) + 2^256 * (w4 & 0xf) == 2^256 * w4
+    // Equivalently: pow2(260) * (w4/16) + pow2(256) * (w4%16) == pow2(256) * w4
+    assert(pow2_260 * w4_high + pow2(256) * w4_low == pow2(256) * w4) by {
+        // Establish pow2(260) == pow2(256) * pow2(4)
+        lemma_pow2_adds(256, 4);
+        // Establish pow2(4) == 16
+        lemma2_to64();
+        assert(pow2(2) == pow2(1) * pow2(1)) by { lemma_pow2_adds(1, 1); };
+        assert(pow2(4) == pow2(2) * pow2(2)) by { lemma_pow2_adds(2, 2); };
+        // Use fundamental div/mod: w4 == 16 * (w4/16) + w4%16
+        lemma_fundamental_div_mod(w4 as int, 16);
+        // Now combine using associativity and distributivity
+        lemma_mul_is_associative(pow2(256) as int, pow2(4) as int, w4_high as int);
+        lemma_mul_is_distributive_add(pow2(256) as int, (pow2(4) * w4_high) as int, w4_low as int);
+    };
+
+    // Prove pow2 addition facts for word positions
+    lemma_pow2_adds(260, 60);
+    lemma_pow2_adds(260, 124);
+    lemma_pow2_adds(260, 188);
+
+    let term_a = pow2(60) * w5;
+    let term_b = pow2(124) * w6;
+    let term_c = pow2(188) * w7;
+
+    // Final combination
+    assert(pow2_260 * high_expr + low_expr == wide_sum) by {
+        lemma_mul_is_associative(pow2_260 as int, pow2(60) as int, w5 as int);
+        lemma_mul_is_associative(pow2_260 as int, pow2(124) as int, w6 as int);
+        lemma_mul_is_associative(pow2_260 as int, pow2(188) as int, w7 as int);
+        lemma_mul_is_distributive_add(pow2_260 as int, term_a as int, (term_b + term_c) as int);
+        lemma_mul_is_distributive_add(pow2_260 as int, term_b as int, term_c as int);
+        lemma_mul_is_distributive_add(pow2_260 as int, w4_high as int, (term_a + term_b + term_c) as int);
+    };
 }
 
 /// Proves that combining Montgomery-reduced hi and lo pieces preserves congruence

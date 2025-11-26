@@ -61,7 +61,7 @@ jobs:
         cargo install --path .
     - name: Run verusfmt check
       run: |
-        find . -name "*.rs" -type f | xargs verusfmt --check
+        find . -path ./target -prune -o -name "*.rs" -type f -print | xargs verusfmt --check
 
   check-libsignal:
     name: "`cargo check` on libsignal with this dalek-lite commit"

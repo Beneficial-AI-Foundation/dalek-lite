@@ -2621,9 +2621,7 @@ proof fn lemma_square_multiply_step(
     requires
         L > 0,
         R > 0,
-        // montgomery_square postcondition (new_y * R = y_before^2 mod L)
         (new_y * R) % L == (y_before * y_before) % L,
-        // loop invariant before (using nat types consistent with new invariant form)
         (y_before * pow(R as int, (pow2(k) - 1) as nat) as nat) % L == 
             (pow(y0 as int, pow2(k)) as nat) % L,
     ensures

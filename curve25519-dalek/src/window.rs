@@ -43,6 +43,18 @@ use vstd::prelude::*;
 
 verus! {
 
+/// Specification trait for `From<T>` conversions, allowing preconditions
+pub trait FromSpecImpl<T>: Sized {
+    /// Whether this implementation provides a full specification
+    spec fn obeys_from_spec() -> bool;
+
+    /// Preconditions for the `from` conversion
+    spec fn from_spec_req(src: T) -> bool;
+
+    /// Specification for what the conversion produces
+    spec fn from_spec(src: T) -> Self;
+}
+
 /// Spec: Check if a lookup table contains [P, 2P, 3P, ..., size*P] in ProjectiveNiels form
 pub open spec fn is_valid_lookup_table_projective<const N: usize>(
     table: [ProjectiveNielsPoint; N],
@@ -194,16 +206,20 @@ impl LookupTable<ProjectiveNielsPoint> {
                 let xabs = (x as i16 + xmask) ^ xmask;
 
                 // Set t = 0 * P = identity
-                let mut t = T::identity();
+                /* ORIGINAL CODE: let mut t = T::identity(); */
+                let mut t = identity_generic::<T>();
                 for j in $range {
                     // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
-                    let c = (xabs as u16).ct_eq(&(j as u16));
-                    t.conditional_assign(&self.0[j - 1], c);
+                    /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
+                    let c = ct_eq_u16(&(xabs as u16), &(j as u16));
+                    /* ORIGINAL CODE: t.conditional_assign(&self.0[j - 1], c); */
+                    conditional_assign_generic(&mut t, &self.0[j - 1], c);
                 }
                 // Now t == |x| * P.
 
                 let neg_mask = Choice::from((xmask & 1) as u8);
-                t.conditional_negate(neg_mask);
+                /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
+                conditional_negate_field(&mut t, neg_mask);
                 // Now t == x * P.
 
                 t
@@ -292,193 +308,52 @@ impl<T: Debug> Debug for LookupTable<T> {
             write!(f, "{:?}", x)?;
         }
 
-        write!(f, ")")
-    }
-}
-
-/// Spec for From<&EdwardsPoint> conversion for ProjectiveNiels lookup table
-#[cfg(verus_keep_ghost)]
-impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<
-    ProjectiveNielsPoint,
-> {
-    open spec fn obeys_from_spec() -> bool {
-        false  // We use ensures clause instead of concrete spec
-
-    }
-
-    open spec fn from_spec(P: &'a EdwardsPoint) -> Self {
-        arbitrary()  // conditions specified in the ensures clause of the from function
-
+                write!(f, ")")
     }
 }
 
 impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
-    /// Create a lookup table from an EdwardsPoint
-    /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result: Self)
-        ensures
-            is_valid_lookup_table_projective(result.0, *P, 8 as nat),
-    {
-        /* ORIGINAL CODE: for generic $name, $size, and conv_range.
-
-         let mut points = [P.as_projective_niels(); $size];
-                for j in $conv_range {
-                    points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
-                }
-                $name(points)
-
-        In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
-        */
-        // Assume preconditions from vstd FromSpecImpl::from_req
-        proof {
-            assume(limbs_bounded(&P.X, 54));
-            assume(limbs_bounded(&P.Y, 54));
-            assume(limbs_bounded(&P.Z, 54));
-            assume(limbs_bounded(&P.T, 54));
-        }
-
-        let mut points = [P.as_projective_niels();8];
+    fn from(P: &'a EdwardsPoint) -> Self {
+        let mut points = [P.as_projective_niels(); 8];
         for j in 0..7 {
-            // ORIGINAL CODE: points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
-            // NOTE: We must unroll this into intermediate variables (sum, extended) to add
-            // assumes about their limb bounds.
-            // We cannot directly put them in proof blocks because they are exec variables.
-            proof {
-                // Preconditions for P + &points[j]
-                assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
-                assume(limbs_bounded(&P.X, 54));
-                assume(limbs_bounded(&P.Y, 54));
-                assume(limbs_bounded(&P.Z, 54));
-                assume(limbs_bounded(&P.T, 54));
-                assume(limbs_bounded(&&points[j as int].Y_plus_X, 54));
-                assume(limbs_bounded(&&points[j as int].Y_minus_X, 54));
-                assume(limbs_bounded(&&points[j as int].Z, 54));
-                assume(limbs_bounded(&&points[j as int].T2d, 54));
-            }
-            let sum = P + &points[j];
-            proof {
-                // Preconditions for sum.as_extended()
-                assume(limbs_bounded(&sum.X, 54));
-                assume(limbs_bounded(&sum.Y, 54));
-                assume(limbs_bounded(&sum.Z, 54));
-                assume(limbs_bounded(&sum.T, 54));
-            }
-            let extended = sum.as_extended();
-            proof {
-                // Preconditions for extended.as_projective_niels()
-                assume(limbs_bounded(&extended.X, 54));
-                assume(limbs_bounded(&extended.Y, 54));
-                assume(limbs_bounded(&extended.Z, 54));
-                assume(limbs_bounded(&extended.T, 54));
-            }
-            points[j + 1] = extended.as_projective_niels();
+            points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
         }
-        let result = LookupTable(points);
-        proof {
-            assume(is_valid_lookup_table_projective(result.0, *P, 8 as nat));
-        }
-        result
+        LookupTable(points)
     }
-}
-
-/// Spec for From<&EdwardsPoint> conversion for AffineNiels lookup table
-#[cfg(verus_keep_ghost)]
-impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<
-    AffineNielsPoint,
-> {
-    open spec fn obeys_from_spec() -> bool {
-        false  // We use ensures clause instead of concrete spec
-
-    }
-
-    open spec fn from_spec(P: &'a EdwardsPoint) -> Self {
-        arbitrary()  // conditions specified in the ensures clause of the from function
-
-    }
-}
-
-impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
-    /// Create a lookup table from an EdwardsPoint (affine version)
-    /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result: Self)
-        ensures
-            is_valid_lookup_table_affine(result.0, *P, 8 as nat),
-    {
-        /* ORIGINAL CODE: for generic $name, $size, and conv_range.
-
-         let mut points = [P.as_affine_niels(); $size];
-                // XXX batch inversion would be good if perf mattered here
-                for j in $conv_range {
+        impl<'a> From<&'a EdwardsPoint> for $name<AffineNielsPoint> {
+            fn from(P: &'a EdwardsPoint) -> Self {
+        let mut points = [P.as_affine_niels(); 8];
+        // XXX batch inversion would be good if perf mattered here
+        for j in 0..7 {
                     points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()
                 }
                 $name(points)
-
-        In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
-        */
-        // Assume preconditions from vstd FromSpecImpl::from_req
-        proof {
-            assume(limbs_bounded(&P.X, 54));
-            assume(limbs_bounded(&P.Y, 54));
-            assume(limbs_bounded(&P.Z, 54));
-            assume(limbs_bounded(&P.T, 54));
+            }
         }
 
-        let mut points = [P.as_affine_niels();8];
-        // XXX batch inversion would be good if perf mattered here
-        for j in 0..7 {
-            // ORIGINAL CODE:
-            // points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()
-            // For Verus: unroll to assume preconditions for intermediate operations
-            proof {
-                // Preconditions for P (left-hand side of addition)
-                assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
-                assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // for Z2 = &P.Z + &P.Z in add
-                assume(limbs_bounded(&P.X, 54));
-                assume(limbs_bounded(&P.Y, 54));
-                assume(limbs_bounded(&P.Z, 54));
-                assume(limbs_bounded(&P.T, 54));
-                // Preconditions for &points[j] (right-hand side - AffineNielsPoint)
-                assume(limbs_bounded(&&points[j as int].y_plus_x, 54));
-                assume(limbs_bounded(&&points[j as int].y_minus_x, 54));
-                assume(limbs_bounded(&&points[j as int].xy2d, 54));
+        #[cfg(feature = "zeroize")]
+        impl<T> Zeroize for $name<T>
+        where
+            T: Copy + Default + Zeroize,
+        {
+            fn zeroize(&mut self) {
+                self.0.iter_mut().zeroize();
             }
-            let sum = P + &points[j];
-            proof {
-                // Preconditions for sum.as_extended()
-                assume(limbs_bounded(&sum.X, 54));
-                assume(limbs_bounded(&sum.Y, 54));
-                assume(limbs_bounded(&sum.Z, 54));
-                assume(limbs_bounded(&sum.T, 54));
-            }
-            let extended = sum.as_extended();
-            proof {
-                // Preconditions for extended.as_affine_niels()
-                assume(limbs_bounded(&extended.X, 54));
-                assume(limbs_bounded(&extended.Y, 54));
-                assume(limbs_bounded(&extended.Z, 54));
-                assume(limbs_bounded(&extended.T, 54));
-            }
-            points[j + 1] = extended.as_affine_niels()
         }
-        let result = LookupTable(points);
-        proof {
-            assume(is_valid_lookup_table_affine(result.0, *P, 8 as nat));
-        }
-        result
-    }
+    };
+} // End macro_rules! impl_lookup_table
+
+// The first one has to be named "LookupTable" because it's used as a constructor for consts.
+// This is radix-16
+impl_lookup_table! {
+    Name = LookupTable,
+    Size = 8,
+    SizeNeg = -8,
+    SizeRange = 1..9,
+    ConversionRange = 0..7
 }
 
-} // verus!
-#[cfg(feature = "zeroize")]
-impl<T> Zeroize for LookupTable<T>
-where
-    T: Copy + Default + Zeroize,
-{
-    fn zeroize(&mut self) {
-        self.0.iter_mut().zeroize();
-    }
-}
-
+// The rest only get used to make basepoint tables
 cfg_if! {
     if #[cfg(feature = "precomputed-tables")] {
         // For homogeneity with other radix sizes, alias to "LookupTableRadix16".

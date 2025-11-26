@@ -1591,6 +1591,7 @@ impl EdwardsPoint {
 (radix-16) was manually expanded. */
 
 // The number of additions required is ceil(256/w) where w is the radix representation.
+
 /* VERIFICATION NOTE: Manually expanded impl_basepoint_table! macro for radix-16 (EdwardsBasepointTable).
    Removed macro invocations for radix-32, 64, 128, 256 variants to focus verification
    on the primary radix-16 implementation used as a constructor for consts.

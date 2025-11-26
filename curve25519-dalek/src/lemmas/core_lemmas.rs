@@ -2,12 +2,9 @@
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power2::*;
-use vstd::calc;
 use vstd::prelude::*;
 
-use super::common_lemmas::div_mod_lemmas::*;
 use super::common_lemmas::pow_lemmas::*;
-use super::field_lemmas::u8_32_as_nat_injectivity_lemmas::*;
 
 use crate::specs::core_specs::*;
 
@@ -35,21 +32,6 @@ pub proof fn u8_32_as_nat_le_pow2_256(bytes: &[u8; 32])
     }
     assert(u8_32_as_nat(&bytes) % pow2(256) == u8_32_as_nat(&bytes)) by {
         lemma_small_mod(u8_32_as_nat(&bytes), pow2(256));
-    }
-}
-
-/// Proves that `u8_32_as_nat` is injective: different byte arrays produce different natural numbers.
-pub proof fn lemma_u8_32_as_nat_injective(a: &[u8; 32], b: &[u8; 32])
-    requires
-        a != b,
-    ensures
-        u8_32_as_nat(a) != u8_32_as_nat(b),
-{
-    // contradiction
-    if u8_32_as_nat(a) == u8_32_as_nat(b) {
-        lemma_canonical_bytes_equal(a, b);
-        assert(a =~= b);
-        assert(false);
     }
 }
 

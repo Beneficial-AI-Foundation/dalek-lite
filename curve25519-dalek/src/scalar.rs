@@ -2546,7 +2546,13 @@ impl Scalar {
 
                 assert(x.bytes != self.bytes);
                 assert(bytes_to_nat(&x.bytes) != bytes_to_nat(&self.bytes)) by {
-                    lemma_bytes_to_nat_injective(&x.bytes, &self.bytes);
+                    use crate::lemmas::field_lemmas::u8_32_as_nat_injectivity_lemmas::lemma_canonical_bytes_equal;
+                    // Proof by contradiction: if they had the same nat value, they'd be equal
+                    if bytes_to_nat(&x.bytes) == bytes_to_nat(&self.bytes) {
+                        lemma_canonical_bytes_equal(&x.bytes, &self.bytes);
+                        assert(x.bytes =~= self.bytes);
+                        assert(false);
+                    }
                 }
 
                 assert(bytes_to_nat(&x.bytes) == bytes_to_nat(&x.bytes) % group_order()) by {

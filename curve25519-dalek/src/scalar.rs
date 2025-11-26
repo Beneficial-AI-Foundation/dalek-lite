@@ -2601,10 +2601,19 @@ verus! {
 
 // Helper function for montgomery_invert
 #[inline]
-fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar)
+fn square_multiply(
+    y: &mut UnpackedScalar,
+    squarings: usize,
+    x: &UnpackedScalar,
+)/*  VERIFICATION NOTE:
+- PROOF BYPASS
+- This function was initially inside the body of montgomery_invert, but was moved outside for Verus
+*/
+
     requires
-        limbs_bounded(old(y)),
-        limbs_bounded(x),
+        limbs_bounded(old(y)),  // Use old() for &mut parameters in requires
+        limbs_bounded(x),  // No old() needed for & parameters
+
     ensures
         limbs_bounded(y),
         limbs_bounded(x),

@@ -191,7 +191,7 @@ impl Scalar52 {
         let mut words = [0u64;8];
         for i in 0..8
             invariant
-                forall|k: int| 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
+                forall|k: int| #![auto] 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
                 words_from_bytes_to_nat(bytes, i as int) + bytes_wide_to_nat_rec(
                     bytes,
                     (i as int) * 8,
@@ -209,7 +209,6 @@ impl Scalar52 {
 
             proof {
                 let i_int = i as int;
-                // Inline lemma_word_from_bytes_matches_spec_load8:
                 // spec_load8_at uses pow2(k*8) * byte, word_from_bytes uses byte * pow2(k*8)
                 assert(spec_load8_at(bytes, (i_int * 8) as usize) == word_from_bytes(bytes, i_int)) by {
                     broadcast use lemma_mul_is_commutative;
@@ -218,7 +217,6 @@ impl Scalar52 {
                     assert(words@[#[trigger] k] == 0);
                 };
                 reveal_with_fuel(words_from_bytes_to_nat, 9);
-                // Inline lemma_bytes_wide_to_nat_rec_chunk
                 assert(bytes_wide_to_nat_rec(bytes, i_int * 8) == word_from_bytes(bytes, i_int) * pow2((i_int * 64) as nat)
                     + bytes_wide_to_nat_rec(bytes, (i_int + 1) * 8)) by {
                     lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, i_int, 8);
@@ -236,8 +234,9 @@ impl Scalar52 {
             let idx = (k * 8) as usize;
             lemma_spec_load8_at_fits_u64(bytes, idx);
             // spec_load8_at uses pow2(k*8) * byte, word_from_bytes uses byte * pow2(k*8)
-            // These are equal by commutativity of multiplication
-            broadcast use lemma_mul_is_commutative;
+            assert(spec_load8_at(bytes, idx) == word_from_bytes(bytes, k)) by {
+                broadcast use lemma_mul_is_commutative;
+            };
             lemma2_to64_rest();  // u64::MAX == pow2(64) - 1
         };
 
@@ -307,85 +306,25 @@ impl Scalar52 {
         proof {
             lemma_words_from_bytes_to_nat_wide(bytes);
         }
-        // Word[4]'s contribution at 2^256 equals the sum of its low four bits and the shifted high remainder.
-        assert(pow2_260 * ((words[4] >> 4) as nat) + pow2(256) * ((words[4] & 0xf) as nat) == pow2(
-            256,
-        ) * (words[4] as nat)) by {
-            let word4 = words[4];
-            let high_nat = (word4 >> 4) as nat;
-            let low_nat = (word4 & 0xf) as nat;
 
-            lemma_pow2_adds(256, 4);
-            // Inline lemma_word_split_low4: pow2(4) * ((word4 >> 4) as nat) + (word4 & 0xf) as nat == word4 as nat
-            assert(pow2(4) * ((word4 >> 4) as nat) + (word4 & 0xf) as nat == word4 as nat) by {
-                lemma2_to64();  // gives pow2(0) == 1 and pow2(1) == 2
-                assert(pow2(2) == pow2(1) * pow2(1)) by { lemma_pow2_adds(1, 1); };
-                assert(pow2(4) == pow2(2) * pow2(2)) by { lemma_pow2_adds(2, 2); };
-                assert(16 * ((word4 >> 4) as nat) + (word4 & 0xf) as nat == word4 as nat) by (bit_vector)
-                    requires word4 == word4;
-            };
-
-            calc! {
-                (==)
-                pow2_260 * high_nat + pow2(256) * low_nat; {
-                    lemma_mul_is_associative(pow2(256) as int, pow2(4) as int, high_nat as int);
-                    lemma_mul_is_distributive_add(
-                        pow2(256) as int,
-                        (pow2(4) * high_nat) as int,
-                        low_nat as int,
-                    );
-                }
-                pow2(256) * (words[4] as nat);
-            }
+        // HighLow-Recombine: Combining the high and low chunks at the 2^260 boundary reproduces the weighted word sum.
+        // Bridge bit operations to arithmetic operations for word4
+        let ghost word4 = words[4];
+        let ghost word4_high_nat = (word4 >> 4) as nat;
+        let ghost word4_low_nat = (word4 & 0xf) as nat;
+        // word4 >> 4 == word4 / 16 and word4 & 0xf == word4 % 16 (for u64)
+        assert(word4_high_nat == (word4 as nat) / 16 && word4_low_nat == (word4 as nat) % 16) by {
+            assert(word4 >> 4 == word4 / 16 && word4 & 0xf == word4 % 16) by (bit_vector)
+                requires word4 == word4;
         };
         proof {
-            // Raising 2^260 by another 2^60 places word[5] at the 2^320 position.
-            lemma_pow2_adds(260, 60);
-            // Raising 2^260 by another 2^124 places word[6] at the 2^384 position.
-            lemma_pow2_adds(260, 124);
-            // Raising 2^260 by another 2^188 places word[7] at the 2^448 position.
-            lemma_pow2_adds(260, 188);
+            lemma_high_low_recombine(
+                words[0] as nat, words[1] as nat, words[2] as nat, words[3] as nat,
+                word4 as nat, words[5] as nat, words[6] as nat, words[7] as nat,
+                word4_low_nat,
+                word4_high_nat,
+            );
         }
-        // HighLow-Recombine: Combining the high and low chunks at the 2^260 boundary reproduces the weighted word sum.
-        assert(pow2_260 * high_expr + low_expr == wide_sum) by {
-            let word4_high = (words[4] >> 4) as nat;
-            let word5_nat = words[5] as nat;
-            let word6_nat = words[6] as nat;
-            let word7_nat = words[7] as nat;
-
-            let term_a = pow2(60) * word5_nat;
-            let term_b = pow2(124) * word6_nat;
-            let term_c = pow2(188) * word7_nat;
-
-            lemma_mul_is_associative(pow2_260 as int, pow2(60) as int, word5_nat as int);
-            lemma_mul_is_associative(pow2_260 as int, pow2(124) as int, word6_nat as int);
-            lemma_mul_is_associative(pow2_260 as int, pow2(188) as int, word7_nat as int);
-
-            assert(pow2_260 * (term_a + term_b + term_c) == pow2(320) * word5_nat + pow2(384)
-                * word6_nat + pow2(448) * word7_nat) by {
-                lemma_mul_is_distributive_add(
-                    pow2_260 as int,
-                    term_a as int,
-                    (term_b + term_c) as int,
-                );
-                lemma_mul_is_distributive_add(pow2_260 as int, term_b as int, term_c as int);
-            };
-
-            calc! {
-                (==)
-                pow2_260 * (word4_high + term_a + term_b + term_c) + low_expr; {
-                    lemma_mul_is_distributive_add(
-                        pow2_260 as int,
-                        word4_high as int,
-                        (term_a + term_b + term_c) as int,
-                    );
-                }
-                (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (words[2] as nat)
-                    + pow2(192) * (words[3] as nat) + pow2(256) * (words[4] as nat) + pow2(320) * (
-                words[5] as nat) + pow2(384) * (words[6] as nat) + pow2(448) * (words[7] as nat); {}
-                wide_sum;
-            }
-        };
 
         assert(wide_input == pow2_260 * high_expr + low_expr);
         // L3: The lower chunk has value strictly below 2^260.

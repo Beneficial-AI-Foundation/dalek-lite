@@ -2703,8 +2703,6 @@ proof fn lemma_square_multiply_step(
         lemma_mul_is_associative(new_y as int, R as int, R_exp_k_sq as int);
     }
     
-    let y0_pow_k_int: int = pow(y0 as int, pow2(k));
-    
     lemma_pow2_square(y0 as int, k);
     lemma_pow_nonnegative(y0 as int, pow2(k));
     assert(y0_pow_k * y0_pow_k == pow(y0 as int, pow2(k + 1)) as nat);

@@ -2631,132 +2631,68 @@ proof fn lemma_square_multiply_step(
             (pow(y0 as int, pow2(k + 1)) as nat) % L,
 {
     use vstd::arithmetic::power2::{lemma_pow2_unfold, lemma2_to64, lemma_pow2_pos};
-    use vstd::arithmetic::div_mod::{lemma_mod_multiples_vanish, lemma_fundamental_div_mod};
-    use vstd::arithmetic::mul::{lemma_mul_is_associative, lemma_mul_is_commutative};
-    use crate::lemmas::common_lemmas::pow_lemmas::{
-        lemma_pow_nonnegative, lemma_pow2_square
-    };
+    use vstd::arithmetic::mul::lemma_mul_is_associative;
+    use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow_nonnegative, lemma_pow2_square};
     
-    // Establish basic pow2 facts
     lemma2_to64();
-    lemma_pow2_unfold(k + 1);  // pow2(k+1) = 2 * pow2(k)
+    lemma_pow2_unfold(k + 1);
     
-    // Key fact: pow2(k+1) - 1 = 2 * pow2(k) - 1 = 2 * (pow2(k) - 1) + 1
-    let exp_k = (pow2(k) - 1) as nat;  // exponent for R at step k
-    let exp_k1 = (pow2(k + 1) - 1) as nat;  // exponent for R at step k+1
+    let exp_k = (pow2(k) - 1) as nat;
+    let exp_k1 = (pow2(k + 1) - 1) as nat;
     
-    // Prove exp_k1 == 2 * exp_k + 1
-    assert(pow2(k) >= 1) by {
-        lemma_pow2_pos(k);
-    }
-    assert(pow2(k + 1) >= 2) by {
-        lemma_pow2_pos(k + 1);
-    }
-    assert(pow2(k + 1) == 2 * pow2(k));  // from lemma_pow2_unfold already called
+    assert(pow2(k) >= 1) by { lemma_pow2_pos(k); }
+    assert(pow2(k + 1) >= 2) by { lemma_pow2_pos(k + 1); }
+    assert(pow2(k + 1) == 2 * pow2(k));
     
-    // 2 * pow2(k) - 1 = 2 * (pow2(k) - 1) + 2 - 1 = 2 * (pow2(k) - 1) + 1
-    assert(2 * pow2(k) - 1 == 2 * (pow2(k) - 1) + 1) by (nonlinear_arith)
-        requires pow2(k) >= 1;
+    assert(2 * pow2(k) - 1 == 2 * (pow2(k) - 1) + 1) by (nonlinear_arith) requires pow2(k) >= 1;
     
     assert(exp_k1 == 2 * exp_k + 1) by {
         assert((pow2(k + 1) - 1) as nat == (2 * pow2(k) - 1) as nat);
         assert((2 * pow2(k) - 1) as nat == (2 * (pow2(k) - 1) + 1) as nat);
     }
     
-    // Therefore: R^(exp_k1) = R^(2*exp_k + 1) = R * R^(2*exp_k) = R * (R^exp_k)^2
     assert(pow(R as int, exp_k1) == R * pow(pow(R as int, exp_k), 2)) by {
-        // R^(2*exp_k + 1) = R^1 * R^(2*exp_k)
         lemma_pow_adds(R as int, 1nat, 2 * exp_k);
         lemma_pow1(R as int);
-        // R^(2*exp_k) = (R^exp_k)^2
         lemma_pow_multiplies(R as int, exp_k, 2nat);
     }
     
-    // From montgomery_square: new_y * R ≡ y_before^2 (mod L)
-    // From invariant: y_before * R^exp_k ≡ y0^(2^k) (mod L)
-    
-    // Let A = y_before * R^exp_k and B = y0^(2^k)
-    // We have A % L == B % L from the invariant
-    
-    // Goal: new_y * R^exp_k1 ≡ y0^(2^(k+1)) (mod L)
-    // I.e., new_y * R * (R^exp_k)^2 ≡ (y0^(2^k))^2 (mod L)
-    
-    // From new_y * R ≡ y_before^2, multiply both sides by (R^exp_k)^2:
-    // new_y * R * (R^exp_k)^2 ≡ y_before^2 * (R^exp_k)^2 (mod L)
-    //                        = (y_before * R^exp_k)^2
-    //                        ≡ (y0^(2^k))^2 (mod L)  [from invariant]
-    //                        = y0^(2^(k+1))          [pow rule]
-    
-    // y0^(2^(k+1)) = y0^(2 * 2^k) = (y0^(2^k))^2
     lemma_pow_multiplies(y0 as int, pow2(k), 2);
     assert(pow(pow(y0 as int, pow2(k)), 2) == pow(y0 as int, 2 * pow2(k)));
     assert(pow(pow(y0 as int, pow2(k)), 2) == pow(y0 as int, pow2(k + 1)));
     
-    // R^exp_k > 0 since R > 0
-    assert(pow(R as int, exp_k) > 0) by {
-        lemma_pow_positive(R as int, exp_k);
-    }
+    assert(pow(R as int, exp_k) > 0) by { lemma_pow_positive(R as int, exp_k); }
     
-    // (R^exp_k)^2 definition
     let R_exp_k: int = pow(R as int, exp_k);
-    let R_exp_k_sq_int: int = pow(R_exp_k, 2);  // = R_exp_k * R_exp_k
+    let R_exp_k_sq_int: int = pow(R_exp_k, 2);
     
-    assert(R_exp_k_sq_int > 0) by {
-        lemma_pow_positive(R_exp_k, 2);
-    }
+    assert(R_exp_k_sq_int > 0) by { lemma_pow_positive(R_exp_k, 2); }
     
-    // pow(x, 2) = x * x
     assert(R_exp_k_sq_int == R_exp_k * R_exp_k) by {
         lemma_pow1(R_exp_k);
         lemma_pow_adds(R_exp_k, 1, 1);
     }
     
     let R_exp_k_sq: nat = R_exp_k_sq_int as nat;
-    
-    // y_times_R_exp = y_before * R^exp_k
     let y_times_R_exp: nat = y_before * (R_exp_k as nat);
-    
-    // From invariant: y_times_R_exp % L == (y0^(2^k)) % L
-    // So: y_times_R_exp^2 % L == (y0^(2^k))^2 % L
     let y0_pow_k: nat = pow(y0 as int, pow2(k)) as nat;
-    assert(y0_pow_k >= 0) by {
-        lemma_pow_nonnegative(y0 as int, pow2(k));
-    }
+    assert(y0_pow_k >= 0) by { lemma_pow_nonnegative(y0 as int, pow2(k)); }
     
-    // Square both sides of the congruence
-    // First, rewrite invariant in the right form
-    assert(y_times_R_exp % L == y0_pow_k % L) by {
-        // From: (y_before * pow(R as int, exp_k) as nat) % L == (pow(y0 as int, pow2(k)) as nat) % L
-        // y_times_R_exp = y_before * (R_exp_k as nat) = y_before * pow(R as int, exp_k) as nat
-    }
+    assert(y_times_R_exp % L == y0_pow_k % L);
     
     assert((y_times_R_exp * y_times_R_exp) % L == (y0_pow_k * y0_pow_k) % L) by {
-        // (a % L)^2 % L == a^2 % L (mod property)
         lemma_mul_mod_noop(y_times_R_exp as int, y_times_R_exp as int, L as int);
         lemma_mul_mod_noop(y0_pow_k as int, y0_pow_k as int, L as int);
-        // Since y_times_R_exp % L == y0_pow_k % L,
-        // (y_times_R_exp % L)^2 == (y0_pow_k % L)^2
-        // So y_times_R_exp^2 % L == y0_pow_k^2 % L
     }
-    
-    // y_times_R_exp^2 = y_before^2 * (R^exp_k)^2
-    // This is the algebraic identity (a*b)^2 = a^2 * b^2
     
     let y_sq: nat = y_before * y_before;
     let R_exp_k_nat: nat = R_exp_k as nat;
     
-    // Prove that y_times_R_exp = y_before * R_exp_k_nat
     assert(y_times_R_exp == y_before * R_exp_k_nat);
     
-    // Prove (a * b)^2 = a^2 * b^2 for int types, then bridge to nat
-    // Working directly with the products to avoid associativity issues
-    let ab = y_times_R_exp;  // = y_before * R_exp_k_nat
-    let ab_sq = ab * ab;     // = (y_before * R_exp_k_nat)^2
+    let ab = y_times_R_exp;
+    let ab_sq = ab * ab;
     
-    // We need: ab_sq == y_sq * R_exp_k_sq
-    // where y_sq = y_before^2 and R_exp_k_sq = R_exp_k^2
-    
-    // Use nonlinear_arith to prove the algebraic identity
     assert(ab_sq == y_sq * R_exp_k_sq) by (nonlinear_arith)
         requires
             y_times_R_exp == y_before * R_exp_k_nat,
@@ -2768,94 +2704,35 @@ proof fn lemma_square_multiply_step(
             R_exp_k > 0,
     ;
     
-    // Now: y_before^2 * R_exp_k_sq % L == y0_pow_k^2 % L
-    // And: new_y * R % L == y_before^2 % L
-    // Multiply both sides by R_exp_k_sq:
-    // (new_y * R * R_exp_k_sq) % L == (y_before^2 * R_exp_k_sq) % L
-    
-    // From montgomery_square: (new_y * R) % L == (y_before * y_before) % L
-    // If a % m == b % m, then (a * c) % m == (b * c) % m
-    // Proof: 
-    //   (a * c) % m == ((a % m) * (c % m)) % m  [from lemma_mul_mod_noop]
-    //   (b * c) % m == ((b % m) * (c % m)) % m  [from lemma_mul_mod_noop]
-    //   Since a % m == b % m, the RHS are equal, so LHS are equal
-    
     let new_y_R: nat = new_y * R;
     let y_sq: nat = y_before * y_before;
     
-    // From precondition: new_y_R % L == y_sq % L
     assert(new_y_R % L == y_sq % L);
     
-    // Apply lemma_mul_mod_noop to both products
     lemma_mul_mod_noop(new_y_R as int, R_exp_k_sq as int, L as int);
     lemma_mul_mod_noop(y_sq as int, R_exp_k_sq as int, L as int);
     
-    // After lemma_mul_mod_noop:
-    // (new_y_R * R_exp_k_sq) % L == ((new_y_R % L) * (R_exp_k_sq % L)) % L
-    // (y_sq * R_exp_k_sq) % L == ((y_sq % L) * (R_exp_k_sq % L)) % L
-    
-    // Key insight: new_y_R % L == y_sq % L implies:
-    // ((new_y_R % L) * (R_exp_k_sq % L)) == ((y_sq % L) * (R_exp_k_sq % L))
-    // Therefore the modular products are equal
-    
     assert(((new_y * R) * R_exp_k_sq) % L == ((y_before * y_before) * R_exp_k_sq) % L);
     
-    // new_y * R * R_exp_k_sq = new_y * R^exp_k1
-    // Because R * R_exp_k_sq = R * (R^exp_k)^2 = R^(1 + 2*exp_k) = R^exp_k1
     assert((new_y * R) * R_exp_k_sq == new_y * pow(R as int, exp_k1) as nat) by {
-        // R^exp_k_sq = (R^exp_k)^2 = R^(2*exp_k)
         lemma_pow2_square(R as int, exp_k);
-        // R * R^(2*exp_k) = R^(1 + 2*exp_k) = R^exp_k1
         lemma_pow_adds(R as int, 1, 2 * exp_k);
         lemma_pow1(R as int);
-        // new_y * R * R_exp_k_sq = new_y * (R * R_exp_k_sq)
         lemma_mul_is_associative(new_y as int, R as int, R_exp_k_sq as int);
     }
     
-    // (y_before^2 * R_exp_k_sq) % L == y_times_R_exp^2 % L == y0_pow_k^2 % L
-    // y0_pow_k^2 = (y0^(2^k))^2 = y0^(2^(k+1))
-    
-    // Step 1: (new_y * R^exp_k1) % L = ((new_y * R) * R_exp_k_sq) % L
-    // (proven by assert on line 2762)
-    
-    // Step 2: ((new_y * R) * R_exp_k_sq) % L == (y_sq * R_exp_k_sq) % L
-    // (proven by assert on line 2758)
-    
-    // Step 3: y_sq * R_exp_k_sq == y_times_R_exp * y_times_R_exp
-    // (proven by assert on line 2709)
     assert((y_sq * R_exp_k_sq) % L == (y_times_R_exp * y_times_R_exp) % L);
     
-    // Step 4: (y_times_R_exp^2) % L == (y0_pow_k^2) % L
-    // (proven by assert earlier around line 2690)
-    
-    // Step 5: y0_pow_k^2 == pow(y0, pow2(k+1)) as nat
-    // y0_pow_k = pow(y0, pow2(k)) as nat
-    // y0_pow_k^2 = (pow(y0, pow2(k)))^2 = pow(y0, 2 * pow2(k)) = pow(y0, pow2(k+1))
-    
-    // First prove the int-level equality
     let y0_pow_k_int: int = pow(y0 as int, pow2(k));
     assert(y0_pow_k == y0_pow_k_int as nat);
     
-    // pow(y0, pow2(k)) * pow(y0, pow2(k)) == pow(y0, pow2(k+1))
-    // lemma_pow2_square(v, i) proves: pow(v, pow2(i)) * pow(v, pow2(i)) == pow(v, pow2(i+1))
-    lemma_pow2_square(y0 as int, k);  // Use k, not pow2(k)
+    lemma_pow2_square(y0 as int, k);
     assert(y0_pow_k_int * y0_pow_k_int == pow(y0 as int, pow2(k + 1)));
     
-    // Bridge to nat: Since y0_pow_k >= 0, we have y0_pow_k_int >= 0
-    assert(y0_pow_k_int >= 0) by {
-        lemma_pow_nonnegative(y0 as int, pow2(k));
-    }
+    assert(y0_pow_k_int >= 0) by { lemma_pow_nonnegative(y0 as int, pow2(k)); }
     
-    // y0_pow_k * y0_pow_k (nat multiplication) = y0_pow_k_int * y0_pow_k_int (int multiplication)
     assert(y0_pow_k * y0_pow_k == (y0_pow_k_int * y0_pow_k_int) as nat);
     assert(y0_pow_k * y0_pow_k == pow(y0 as int, pow2(k + 1)) as nat);
-    
-    // Now chain everything together
-    // (new_y * R^exp_k1) % L = ((new_y * R) * R_exp_k_sq) % L       [Step 1]
-    //                        = (y_sq * R_exp_k_sq) % L              [Step 2]  
-    //                        = (y_times_R_exp * y_times_R_exp) % L  [Step 3]
-    //                        = (y0_pow_k * y0_pow_k) % L            [Step 4]
-    //                        = (y0^(2^(k+1))) % L                   [Step 5]
     
     assert((new_y * pow(R as int, exp_k1) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L);
 }

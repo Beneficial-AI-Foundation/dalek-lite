@@ -495,6 +495,28 @@ pub open spec fn edwards_double(x: nat, y: nat) -> (nat, nat) {
     edwards_add(x, y, x, y)
 }
 
+/// Helper spec function: Edwards addition of EdwardsPoint and ProjectiveNielsPoint
+/// Combines the affine conversion and addition into a single convenient spec function.
+pub open spec fn spec_edwards_add_projective_niels(
+    p: crate::edwards::EdwardsPoint,
+    q: crate::backend::serial::curve_models::ProjectiveNielsPoint,
+) -> (nat, nat) {
+    let self_affine = edwards_point_as_affine(p);
+    let other_affine = projective_niels_point_as_affine_edwards(q);
+    edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+}
+
+/// Helper spec function: Edwards addition of EdwardsPoint and AffineNielsPoint
+/// Combines the affine conversion and addition into a single convenient spec function.
+pub open spec fn spec_edwards_add_affine_niels(
+    p: crate::edwards::EdwardsPoint,
+    q: crate::backend::serial::curve_models::AffineNielsPoint,
+) -> (nat, nat) {
+    let self_affine = edwards_point_as_affine(p);
+    let other_affine = affine_niels_point_as_affine_edwards(q);
+    edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+}
+
 /// Affine Edwards subtraction for twisted Edwards curves.
 /// Given (x1,y1) and (x2,y2) on the curve, returns (x3,y3) = (x1,y1) - (x2,y2).
 /// Subtraction is defined as addition with the negation of the second point.

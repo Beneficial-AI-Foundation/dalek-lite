@@ -239,13 +239,7 @@ impl Identity for ProjectivePoint {
         ensures
             result == identity_projective_point_edwards(),
     {
-        let result = ProjectivePoint {
-            X: FieldElement::ZERO,
-            Y: FieldElement::ONE,
-            Z: FieldElement::ONE,
-        };
-
-        result
+        ProjectivePoint { X: FieldElement::ZERO, Y: FieldElement::ONE, Z: FieldElement::ONE }
     }
 }
 
@@ -613,17 +607,10 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     // The result represents the Edwards addition of the affine forms of self and other
 
             is_valid_completed_point(result),
-            ({
-                let self_affine = edwards_point_as_affine(*self);
-                let other_affine = projective_niels_point_as_affine_edwards(*other);
-                let (x3, y3) = edwards_add(
-                    self_affine.0,
-                    self_affine.1,
-                    other_affine.0,
-                    other_affine.1,
-                );
-                completed_point_as_affine_edwards(result) == (x3, y3)
-            }),
+            completed_point_as_affine_edwards(result) == spec_edwards_add_projective_niels(
+                *self,
+                *other,
+            ),
     {
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -656,17 +643,10 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
         proof {
             // postconditions
             assume(is_valid_completed_point(result));
-            assume({
-                let self_affine = edwards_point_as_affine(*self);
-                let other_affine = projective_niels_point_as_affine_edwards(*other);
-                let (x3, y3) = edwards_add(
-                    self_affine.0,
-                    self_affine.1,
-                    other_affine.0,
-                    other_affine.1,
-                );
-                completed_point_as_affine_edwards(result) == (x3, y3)
-            });
+            assume(completed_point_as_affine_edwards(result) == spec_edwards_add_projective_niels(
+                *self,
+                *other,
+            ));
         }
         result
     }
@@ -771,17 +751,10 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
     // The result represents the Edwards addition of the affine forms of self and other
 
             is_valid_completed_point(result),
-            ({
-                let self_affine = edwards_point_as_affine(*self);
-                let other_affine = affine_niels_point_as_affine_edwards(*other);
-                let (x3, y3) = edwards_add(
-                    self_affine.0,
-                    self_affine.1,
-                    other_affine.0,
-                    other_affine.1,
-                );
-                completed_point_as_affine_edwards(result) == (x3, y3)
-            }),
+            completed_point_as_affine_edwards(result) == spec_edwards_add_affine_niels(
+                *self,
+                *other,
+            ),
     {
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -808,17 +781,10 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
         proof {
             // postconditions
             assume(is_valid_completed_point(result));
-            assume(completed_point_as_affine_edwards(result) == ({
-                let self_affine = edwards_point_as_affine(*self);
-                let other_affine = affine_niels_point_as_affine_edwards(*other);
-                let (x3, y3) = edwards_add(
-                    self_affine.0,
-                    self_affine.1,
-                    other_affine.0,
-                    other_affine.1,
-                );
-                (x3, y3)
-            }));
+            assume(completed_point_as_affine_edwards(result) == spec_edwards_add_affine_niels(
+                *self,
+                *other,
+            ));
         }
         result
     }

@@ -283,24 +283,15 @@ pub proof fn lemma_words_from_bytes_to_nat_wide(bytes: &[u8; 64])
             * word_from_bytes(bytes, 6) + pow2(448) * word_from_bytes(bytes, 7),
 {
     reveal_with_fuel(words_from_bytes_to_nat, 9);
-    lemma2_to64();  // pow2(0) == 1
+    lemma2_to64();
     assert(words_from_bytes_to_nat(bytes, 1) == words_from_bytes_to_nat(bytes, 0) + word_from_bytes(
-        bytes,
-        0,
-    ) * pow2((0 * 64) as nat));
-
-    // Reorder multiplications: word * pow2(k) == pow2(k) * word
+        bytes, 0) * pow2((0 * 64) as nat));
+    // Reorder multiplications using commutativity
     assert(words_from_bytes_to_nat(bytes, 8) == word_from_bytes(bytes, 0) + pow2(64) * word_from_bytes(
         bytes, 1) + pow2(128) * word_from_bytes(bytes, 2) + pow2(192) * word_from_bytes(bytes, 3) + pow2(
         256) * word_from_bytes(bytes, 4) + pow2(320) * word_from_bytes(bytes, 5) + pow2(384)
         * word_from_bytes(bytes, 6) + pow2(448) * word_from_bytes(bytes, 7)) by {
-        lemma_mul_is_commutative(word_from_bytes(bytes, 1) as int, pow2((1 * 64) as nat) as int);
-        lemma_mul_is_commutative(word_from_bytes(bytes, 2) as int, pow2((2 * 64) as nat) as int);
-        lemma_mul_is_commutative(word_from_bytes(bytes, 3) as int, pow2((3 * 64) as nat) as int);
-        lemma_mul_is_commutative(word_from_bytes(bytes, 4) as int, pow2((4 * 64) as nat) as int);
-        lemma_mul_is_commutative(word_from_bytes(bytes, 5) as int, pow2((5 * 64) as nat) as int);
-        lemma_mul_is_commutative(word_from_bytes(bytes, 6) as int, pow2((6 * 64) as nat) as int);
-        lemma_mul_is_commutative(word_from_bytes(bytes, 7) as int, pow2((7 * 64) as nat) as int);
+        broadcast use lemma_mul_is_commutative;
     };
 }
 
@@ -499,12 +490,91 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
     assert(masked_words_sum == unmasked_words_sum);
 }
 
+/// Proves that the lo limbs constructed from 8 words with the given mask are bounded by 2^52.
+/// This is part of Stage 3 in from_bytes_wide.
+pub proof fn lemma_lo_limbs_bounded(lo: &Scalar52, words: &[u64; 8], mask: u64)
+    requires
+        mask == (1u64 << 52) - 1u64,
+        lo.limbs[0] == words[0] & mask,
+        lo.limbs[1] == ((words[0] >> 52) | (words[1] << 12)) & mask,
+        lo.limbs[2] == ((words[1] >> 40) | (words[2] << 24)) & mask,
+        lo.limbs[3] == ((words[2] >> 28) | (words[3] << 36)) & mask,
+        lo.limbs[4] == ((words[3] >> 16) | (words[4] << 48)) & mask,
+    ensures
+        forall|i: int| #![auto] 0 <= i < 5 ==> lo.limbs[i] < (1u64 << 52),
+{
+    lemma_borrow_and_mask_bounded(words[0], mask);
+    lemma_borrow_and_mask_bounded((words[0] >> 52) | (words[1] << 12), mask);
+    lemma_borrow_and_mask_bounded((words[1] >> 40) | (words[2] << 24), mask);
+    lemma_borrow_and_mask_bounded((words[2] >> 28) | (words[3] << 36), mask);
+    lemma_borrow_and_mask_bounded((words[3] >> 16) | (words[4] << 48), mask);
+}
+
+/// Proves that the hi limbs constructed from 8 words with the given mask are bounded by 2^52.
+/// This is part of Stage 3 in from_bytes_wide.
+pub proof fn lemma_hi_limbs_bounded(hi: &Scalar52, words: &[u64; 8], mask: u64)
+    requires
+        mask == (1u64 << 52) - 1u64,
+        hi.limbs[0] == (words[4] >> 4) & mask,
+        hi.limbs[1] == ((words[4] >> 56) | (words[5] << 8)) & mask,
+        hi.limbs[2] == ((words[5] >> 44) | (words[6] << 20)) & mask,
+        hi.limbs[3] == ((words[6] >> 32) | (words[7] << 32)) & mask,
+        hi.limbs[4] == words[7] >> 20,
+    ensures
+        forall|i: int| #![auto] 0 <= i < 5 ==> hi.limbs[i] < (1u64 << 52),
+{
+    lemma_borrow_and_mask_bounded(words[4] >> 4, mask);
+    lemma_borrow_and_mask_bounded((words[4] >> 56) | (words[5] << 8), mask);
+    lemma_borrow_and_mask_bounded((words[5] >> 44) | (words[6] << 20), mask);
+    lemma_borrow_and_mask_bounded((words[6] >> 32) | (words[7] << 32), mask);
+    let word7 = words[7];
+    assert(word7 >> 20 <= u64::MAX >> 20) by (bit_vector);
+    assert(u64::MAX >> 20 < (1u64 << 52)) by (bit_vector);
+}
+
+/// Proves that Montgomery reduction cancels the R factor from a product.
+/// 
+/// Given a product (before * const_nat) reduced via Montgomery reduction, this lemma
+/// proves that after cancelling R, we get: after ≡ before * extra_factor (mod L)
+/// 
+/// Usage in from_bytes_wide:
+/// - For lo: const_nat = R, extra_factor = 1 → after ≡ before (mod L)
+/// - For hi: const_nat = R², extra_factor = R → after ≡ before * R (mod L)
+pub proof fn lemma_montgomery_reduce_cancels_r(
+    after_nat: nat,
+    before_nat: nat,
+    const_nat: nat,
+    extra_factor: nat,
+)
+    requires
+        // const_nat is congruent to extra_factor * R mod L
+        const_nat % group_order() == (extra_factor * montgomery_radix()) % group_order(),
+        // From montgomery_reduce: (after * R) % L == (before * const_nat) % L
+        (after_nat * montgomery_radix()) % group_order() == (before_nat * const_nat) % group_order(),
+    ensures
+        after_nat % group_order() == (before_nat * extra_factor) % group_order(),
+        // Also establish the intermediate form needed by Stage 5
+        (after_nat * montgomery_radix()) % group_order() == (before_nat * extra_factor * montgomery_radix()) % group_order(),
+{
+    // Establish: (before * const_nat) % L == (before * extra_factor * R) % L
+    lemma_mul_factors_congruent_implies_products_congruent(
+        before_nat as int,
+        (extra_factor * montgomery_radix()) as int,
+        const_nat as int,
+        group_order() as int,
+    );
+    // Associativity: before * extra_factor * R
+    lemma_mul_is_associative(before_nat as int, extra_factor as int, montgomery_radix() as int);
+    // Cancel the R multiplication
+    lemma_cancel_mul_pow2_mod(after_nat, before_nat * extra_factor, montgomery_radix());
+}
+
 /// Proves that combining the high and low chunks at the 2^260 boundary reproduces the
 /// weighted word sum. This is the "HighLow-Recombine" step in from_bytes_wide.
 ///
 /// Given:
-/// - low_expr = w0 + 2^64*w1 + 2^128*w2 + 2^192*w3 + 2^256*(w4 & 0xf)
-/// - high_expr = (w4 >> 4) + 2^60*w5 + 2^124*w6 + 2^188*w7
+/// - low_expr = w0 + 2^64*w1 + 2^128*w2 + 2^192*w3 + 2^256*(w4 % 16)
+/// - high_expr = (w4 / 16) + 2^60*w5 + 2^124*w6 + 2^188*w7
 /// - wide_sum = w0 + 2^64*w1 + 2^128*w2 + 2^192*w3 + 2^256*w4 + 2^320*w5 + 2^384*w6 + 2^448*w7
 ///
 /// Proves: 2^260 * high_expr + low_expr == wide_sum
@@ -514,8 +584,8 @@ pub proof fn lemma_high_low_recombine(
     w4_high: nat,
 )
     requires
-        w4_low == (w4 % 16),  // w4 & 0xf
-        w4_high == (w4 / 16), // w4 >> 4
+        w4_low == w4 % 16,
+        w4_high == w4 / 16,
     ensures
         ({
             let low_expr = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4_low;
@@ -525,46 +595,20 @@ pub proof fn lemma_high_low_recombine(
             pow2(260) * high_expr + low_expr == wide_sum
         }),
 {
-    let low_expr = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4_low;
-    let high_expr = w4_high + pow2(60) * w5 + pow2(124) * w6 + pow2(188) * w7;
-    let wide_sum = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4
-        + pow2(320) * w5 + pow2(384) * w6 + pow2(448) * w7;
-    let pow2_260 = pow2(260);
+    // Key insight: 2^260 * (w4/16) + 2^256 * (w4%16) == 2^256 * w4
+    lemma_pow2_adds(256, 4);
+    lemma2_to64();
+    assert(pow2(2) == pow2(1) * pow2(1)) by { lemma_pow2_adds(1, 1); };
+    assert(pow2(4) == pow2(2) * pow2(2)) by { lemma_pow2_adds(2, 2); };
+    lemma_fundamental_div_mod(w4 as int, 16);
 
-    // First prove: 2^260 * (w4 >> 4) + 2^256 * (w4 & 0xf) == 2^256 * w4
-    // Equivalently: pow2(260) * (w4/16) + pow2(256) * (w4%16) == pow2(256) * w4
-    assert(pow2_260 * w4_high + pow2(256) * w4_low == pow2(256) * w4) by {
-        // Establish pow2(260) == pow2(256) * pow2(4)
-        lemma_pow2_adds(256, 4);
-        // Establish pow2(4) == 16
-        lemma2_to64();
-        assert(pow2(2) == pow2(1) * pow2(1)) by { lemma_pow2_adds(1, 1); };
-        assert(pow2(4) == pow2(2) * pow2(2)) by { lemma_pow2_adds(2, 2); };
-        // Use fundamental div/mod: w4 == 16 * (w4/16) + w4%16
-        lemma_fundamental_div_mod(w4 as int, 16);
-        // Now combine using associativity and distributivity
-        lemma_mul_is_associative(pow2(256) as int, pow2(4) as int, w4_high as int);
-        lemma_mul_is_distributive_add(pow2(256) as int, (pow2(4) * w4_high) as int, w4_low as int);
-    };
-
-    // Prove pow2 addition facts for word positions
+    // Word position scaling: 2^260 * 2^k == 2^(260+k)
     lemma_pow2_adds(260, 60);
     lemma_pow2_adds(260, 124);
     lemma_pow2_adds(260, 188);
 
-    let term_a = pow2(60) * w5;
-    let term_b = pow2(124) * w6;
-    let term_c = pow2(188) * w7;
-
-    // Final combination
-    assert(pow2_260 * high_expr + low_expr == wide_sum) by {
-        lemma_mul_is_associative(pow2_260 as int, pow2(60) as int, w5 as int);
-        lemma_mul_is_associative(pow2_260 as int, pow2(124) as int, w6 as int);
-        lemma_mul_is_associative(pow2_260 as int, pow2(188) as int, w7 as int);
-        lemma_mul_is_distributive_add(pow2_260 as int, term_a as int, (term_b + term_c) as int);
-        lemma_mul_is_distributive_add(pow2_260 as int, term_b as int, term_c as int);
-        lemma_mul_is_distributive_add(pow2_260 as int, w4_high as int, (term_a + term_b + term_c) as int);
-    };
+    // Distribute 2^260 across high_expr terms and combine with low_expr
+    broadcast use group_mul_is_distributive, lemma_mul_is_associative;
 }
 
 /// Proves that combining Montgomery-reduced hi and lo pieces preserves congruence

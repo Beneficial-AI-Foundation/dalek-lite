@@ -262,23 +262,10 @@ impl Scalar52 {
         let ghost lo_raw = lo;
         let ghost hi_raw = hi;
 
-        assert forall|i: int| 0 <= i < 5 implies lo_raw.limbs[i] < (1u64 << 52) by {
-            lemma_borrow_and_mask_bounded(words[0], mask);
-            lemma_borrow_and_mask_bounded((words[0] >> 52) | (words[1] << 12), mask);
-            lemma_borrow_and_mask_bounded((words[1] >> 40) | (words[2] << 24), mask);
-            lemma_borrow_and_mask_bounded((words[2] >> 28) | (words[3] << 36), mask);
-            lemma_borrow_and_mask_bounded((words[3] >> 16) | (words[4] << 48), mask);
-        };
-
-        assert forall|i: int| 0 <= i < 5 implies hi_raw.limbs[i] < (1u64 << 52) by {
-            lemma_borrow_and_mask_bounded(words[4] >> 4, mask);
-            lemma_borrow_and_mask_bounded((words[4] >> 56) | (words[5] << 8), mask);
-            lemma_borrow_and_mask_bounded((words[5] >> 44) | (words[6] << 20), mask);
-            lemma_borrow_and_mask_bounded((words[6] >> 32) | (words[7] << 32), mask);
-            let word7 = words[7];
-            assert(word7 >> 20 <= u64::MAX >> 20) by (bit_vector);
-            assert(u64::MAX >> 20 < (1u64 << 52)) by (bit_vector);
-        };
+        proof {
+            lemma_lo_limbs_bounded(&lo_raw, &words, mask);
+            lemma_hi_limbs_bounded(&hi_raw, &words, mask);
+        }
 
         let ghost pow2_260 = pow2(260);
         let ghost low_expr = (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (
@@ -371,63 +358,31 @@ impl Scalar52 {
             let ghost lo_after_nat = to_nat(&lo.limbs);
             let ghost r_nat = to_nat(&constants::R.limbs);
             lemma_r_equals_spec(constants::R);
-
-            lemma_mul_factors_congruent_implies_products_congruent(
-                lo_before_nat as int,
-                montgomery_radix() as int,
-                r_nat as int,
-                group_order() as int,
-            );
-
-            lemma_cancel_mul_pow2_mod(lo_after_nat, lo_before_nat, montgomery_radix());
+            // lo: multiply by R, reduce => extra_factor = 1
+            lemma_montgomery_reduce_cancels_r(lo_after_nat, lo_before_nat, r_nat, 1);
 
             let ghost hi_before_nat = to_nat(&hi_raw.limbs);
             let ghost hi_after_nat = to_nat(&hi.limbs);
             let ghost rr_nat = to_nat(&constants::RR.limbs);
-
             lemma_rr_equals_spec(constants::RR);
-
-            lemma_mul_factors_congruent_implies_products_congruent(
-                hi_before_nat as int,
-                rr_nat as int,
-                (montgomery_radix() * montgomery_radix()) as int,
-                group_order() as int,
-            );
-
-            lemma_mul_is_associative(
-                hi_before_nat as int,
-                montgomery_radix() as int,
-                montgomery_radix() as int,
-            );
-
-            lemma_cancel_mul_pow2_mod(
-                hi_after_nat,
-                hi_before_nat * montgomery_radix(),
-                montgomery_radix(),
-            );
+            // hi: multiply by R², reduce => extra_factor = R
+            lemma_montgomery_reduce_cancels_r(hi_after_nat, hi_before_nat, rr_nat, montgomery_radix());
         }
 
         let result = Scalar52::add(&hi, &lo);
 
         // Stage 5 assumption: combining the reduced pieces matches the wide scalar modulo L.
         proof {
-            let ghost result_nat = to_nat(&result.limbs);
-            let ghost hi_nat = to_nat(&hi.limbs);
-            let ghost lo_nat = to_nat(&lo.limbs);
-            let ghost hi_raw_nat = to_nat(&hi_raw.limbs);
-            let ghost lo_raw_nat = to_nat(&lo_raw.limbs);
-            let ghost r_nat = montgomery_radix();
-
             lemma_montgomery_reduced_sum_congruent(
-                result_nat,
-                hi_nat,
-                lo_nat,
-                hi_raw_nat,
-                lo_raw_nat,
+                to_nat(&result.limbs),
+                to_nat(&hi.limbs),
+                to_nat(&lo.limbs),
+                to_nat(&hi_raw.limbs),
+                to_nat(&lo_raw.limbs),
                 wide_input,
             );
 
-            lemma_cancel_mul_pow2_mod(result_nat, wide_input, r_nat);
+            lemma_cancel_mul_pow2_mod(to_nat(&result.limbs), wide_input, montgomery_radix());
         }
 
         result

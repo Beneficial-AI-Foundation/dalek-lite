@@ -2681,21 +2681,10 @@ proof fn lemma_square_multiply_step(
 
 // Helper function for montgomery_invert
 #[inline]
-fn square_multiply(
-    y: &mut UnpackedScalar,
-    squarings: usize,
-    x: &UnpackedScalar,
-)/*  VERIFICATION NOTE:
-- This function was initially inside the body of montgomery_invert, but was moved outside for Verus
-*/
-
-    requires
-        limbs_bounded(old(y)),  // Use old() for &mut parameters in requires
-        limbs_bounded(x),  // No old() needed for & parameters
-
+fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar)
+    requires limbs_bounded(old(y)), limbs_bounded(x),
     ensures
-        limbs_bounded(y),
-        limbs_bounded(x),
+        limbs_bounded(y), limbs_bounded(x),
         (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == 
             (pow(to_nat(&old(y).limbs) as int, pow2(squarings as nat)) as int * to_nat(&x.limbs) as int) % (group_order() as int),
 {
@@ -2704,52 +2693,33 @@ fn square_multiply(
     let ghost R: nat = montgomery_radix();
     let ghost L: nat = group_order();
     
-    // Establish the initial invariant before entering the loop
     proof {
         use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_pos};
         use vstd::arithmetic::power::{lemma_pow0, lemma_pow1};
-        
-        lemma_pow2_pos(260);
-        lemma2_to64();
-        lemma_pow0(R as int);
-        lemma_pow1(y0 as int);
-        assert((pow2(0nat) - 1) as nat == 0nat);
+        lemma_pow2_pos(260); lemma2_to64(); lemma_pow0(R as int); lemma_pow1(y0 as int);
+        assert(pow(R as int, 0nat) == 1);
         assert((y0 * 1) as nat == y0);
-        assert((y0 * pow(R as int, (pow2(0nat) - 1) as nat) as nat) == y0);
-        assert((pow(y0 as int, pow2(0nat)) as nat) == y0);
-        assert((y0 * pow(R as int, (pow2(0nat) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(0nat)) as nat) % L);
     }
     
     let mut iter: usize = 0;
-    
     while iter < squarings
         invariant
-            limbs_bounded(y),
-            limbs_bounded(x),
-            iter <= squarings,
-            L == group_order(),
-            R == montgomery_radix(),
-            L > 0,
-            R > 0,
+            limbs_bounded(y), limbs_bounded(x), iter <= squarings,
+            L == group_order(), R == montgomery_radix(), L > 0, R > 0,
             (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == 
                 (pow(y0 as int, pow2(iter as nat)) as nat) % L,
         decreases squarings - iter,
     {
         let ghost y_before: nat = to_nat(&y.limbs);
-        
         *y = y.montgomery_square();
-        
-        let ghost new_y: nat = to_nat(&y.limbs);
-        
-        proof { lemma_square_multiply_step(new_y, y_before, y0, R, L, iter as nat); }
-        
+        proof { lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, iter as nat); }
         iter = iter + 1;
     }
     
-    let ghost y_after_squarings: nat = to_nat(&y.limbs);
+    let ghost y_after: nat = to_nat(&y.limbs);
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
-    
     *y = UnpackedScalar::montgomery_mul(y, x);
+    
     proof {
         use vstd::arithmetic::mul::lemma_mul_is_associative;
         use vstd::arithmetic::power::{lemma_pow_adds, lemma_pow1};
@@ -2758,46 +2728,30 @@ fn square_multiply(
         
         let final_y: nat = to_nat(&y.limbs);
         let n: nat = squarings as nat;
-        let pow2_n: nat = pow2(n);
-        let R_exp_int: int = pow(R as int, exp_final);
-        let R_pow2n: int = pow(R as int, pow2_n);
-        let y0_pow: int = pow(y0 as int, pow2_n);
+        let R_exp: int = pow(R as int, exp_final);
+        let R_pow2n: int = pow(R as int, pow2(n));
+        let y0_pow: int = pow(y0 as int, pow2(n));
         
-        lemma2_to64();
-        lemma_pow2_pos(n);
-        lemma_pow_adds(R as int, 1nat, exp_final);
-        lemma_pow1(R as int);
-        lemma_pow_nonnegative(R as int, exp_final);
-        lemma_pow_nonnegative(y0 as int, pow2_n);
+        lemma2_to64(); lemma_pow2_pos(n);
+        lemma_pow_adds(R as int, 1nat, exp_final); lemma_pow1(R as int);
+        lemma_pow_nonnegative(R as int, exp_final); lemma_pow_nonnegative(y0 as int, pow2(n));
         
-        let lhs_invariant: nat = y_after_squarings * R_exp_int as nat;
-        let rhs_invariant: nat = y0_pow as nat;
-        let final_times_R: nat = final_y * R;
-        let y_after_times_x: nat = y_after_squarings * xv;
-        
-        assert((y_after_squarings as int * xv as int) * R_exp_int == 
-               (y_after_squarings as int * R_exp_int) * xv as int) by (nonlinear_arith)
-            requires R_exp_int >= 0;
+        assert((y_after as int * xv as int) * R_exp == (y_after as int * R_exp) * xv as int) by (nonlinear_arith)
+            requires R_exp >= 0;
         
         calc! { (==)
-            (final_y as int * R_pow2n) % (L as int); {
-                lemma_mul_is_associative(final_y as int, R as int, R_exp_int);
+            (final_y as int * R_pow2n) % (L as int); { lemma_mul_is_associative(final_y as int, R as int, R_exp); }
+            ((final_y * R) as int * R_exp) % (L as int); {
+                lemma_mul_mod_noop((final_y * R) as int, R_exp, L as int);
+                lemma_mul_mod_noop((y_after * xv) as int, R_exp, L as int);
             }
-            (final_times_R as int * R_exp_int) % (L as int); {
-                lemma_mul_mod_noop(final_times_R as int, R_exp_int, L as int);
-                lemma_mul_mod_noop(y_after_times_x as int, R_exp_int, L as int);
+            ((y_after * xv) as int * R_exp) % (L as int); {}
+            ((y_after * R_exp as nat) as int * xv as int) % (L as int); {
+                lemma_mul_mod_noop((y_after * R_exp as nat) as int, xv as int, L as int);
+                lemma_mul_mod_noop(y0_pow, xv as int, L as int);
             }
-            (y_after_times_x as int * R_exp_int) % (L as int); {}
-            (lhs_invariant as int * xv as int) % (L as int); {
-                lemma_mul_mod_noop(lhs_invariant as int, xv as int, L as int);
-                lemma_mul_mod_noop(rhs_invariant as int, xv as int, L as int);
-            }
-            (rhs_invariant as int * xv as int) % (L as int); {}
             (y0_pow * xv as int) % (L as int);
         }
-        
-        assert((to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == 
-            (pow(y0 as int, pow2(squarings as nat)) as int * xv as int) % (group_order() as int));
     }
 }
 

@@ -1,0 +1,103 @@
+name: Deploy Website to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'functions_to_track.csv'
+      - 'scripts/analyze_verus_specs_proofs.py'
+      - 'scripts/update_stats_history.py'
+      - 'scripts/plot_*.py'
+      - 'scripts/csv_to_markdown.py'
+      - '.github/workflows/deploy-pages.yml'
+      - 'curve25519-dalek/src/**/*.rs'
+      - 'curve25519-dalek/build.rs'
+  workflow_dispatch:
+
+# Sets permissions for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full git history needed for temporal charts
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          pip install matplotlib pandas gitpython beartype
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Generate CSV from seed file
+        run: |
+          scripts/analyze_verus_specs_proofs.py
+
+      - name: Update stats history
+        run: |
+          # Try to fetch existing history from deployed site and update
+          # If this fails, regenerate from git history (fallback with max commits for full history)
+          scripts/update_stats_history.py \
+            --fetch-url https://beneficial-ai-foundation.github.io/dalek-lite/outputs/stats_history.jsonl \
+            --fill-missing \
+            --since 2025-10-09 \
+            --max-commits 10000 || \
+          (echo "Warning: Stats history fetch failed, regenerating from git..." && \
+           if [ -f outputs/curve25519_functions.csv ]; then \
+             scripts/update_stats_history.py --since 2025-10-09 --max-commits 10000 --fill-missing; \
+           else \
+             echo "Error: CSV file missing, skipping stats history update"; \
+             touch outputs/stats_history.jsonl; \
+           fi)
+
+      - name: Generate charts
+        run: |
+          scripts/plot_progress.py
+          scripts/plot_progress_over_time.py
+          scripts/plot_csv_preview.py
+
+      - name: Copy charts and CSV to docs
+        run: |
+          mkdir -p docs/outputs
+          cp outputs/verification_funnel.png docs/outputs/
+          cp outputs/absolute_counts_over_time.png docs/outputs/
+          cp outputs/module_breakdown.png docs/outputs/
+          cp outputs/csv_preview.png docs/outputs/
+          cp outputs/curve25519_functions.csv docs/outputs/
+          cp outputs/metadata.json docs/outputs/
+          cp outputs/stats.json docs/outputs/
+          cp outputs/stats_history.jsonl docs/outputs/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+

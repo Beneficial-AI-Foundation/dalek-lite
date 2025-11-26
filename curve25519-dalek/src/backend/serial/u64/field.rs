@@ -22,19 +22,71 @@ use subtle::ConditionallySelectable;
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
+#[allow(unused_imports)]
+use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::mul::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::*;
+#[allow(unused_imports)]
+use vstd::bits::*;
+#[allow(unused_imports)]
 use vstd::prelude::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::common_lemmas::bit_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::div_mod_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::mask_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::mul_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::shift_lemmas::*;
+
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::add_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::compute_q_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::from_bytes_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::limbs_to_bytes_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::load8_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::negate_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::pow2_51_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::pow2k_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::reduce_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::to_bytes_reduction_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::*;
+#[allow(unused_imports)]
+use crate::specs::core_specs::*;
+
+#[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
-
 #[allow(unused_imports)]
-use crate::backend::serial::u64::field_lemmas::field_core::*;
-
+use crate::specs::field_specs::*;
 #[allow(unused_imports)]
-use crate::backend::serial::u64::field_lemmas::load8_lemmas::*;
+use crate::specs::field_specs_u64::*;
 
-#[allow(unused_imports)]
-use vstd::arithmetic::power2::*;
+verus! {
+
+/* MANUALLY moved outside and made explicit */
+// LOW_51_BIT_MASK: u64 = (1u64 << 51) -1; originally
+pub const LOW_51_BIT_MASK: u64 = 2251799813685247u64;
 
 /// A `FieldElement51` represents an element of the field
 /// \\( \mathbb Z / (2\^{255} - 19)\\).
@@ -49,14 +101,6 @@ use vstd::arithmetic::power2::*;
 /// `curve25519_dalek::field::FieldElement` to either `FieldElement51`
 /// or `FieldElement2625`.
 ///
-
-verus! {
-
-/* MANUALLY moved outside and made explicit */
-// LOW_51_BIT_MASK: u64 = (1u64 << 51) -1; originally
-pub const LOW_51_BIT_MASK: u64 = 2251799813685247u64;
-
-// 2^51  -1
 /// The backend-specific type `FieldElement51` should not be used
 /// outside of the `curve25519_dalek::field` module.
 #[derive(Copy, Clone)]
@@ -65,26 +109,25 @@ pub struct FieldElement51 {
     pub limbs: [u64; 5],
 }
 
-} // verus!
-/* <VERIFICATION NOTE>
- Left outside verification scope
-</VERIFICATION NOTE> */
 impl Debug for FieldElement51 {
+    /* VERIFICATION NOTE: we don't cover debugging */
+    #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "FieldElement51({:?})", &self.limbs[..])
     }
 }
 
-verus! {
-
 #[cfg(feature = "zeroize")]
 impl Zeroize for FieldElement51 {
     /* <VERIFICATION NOTE>
-    External body annotation
+    Using wrapper function with postcondition
     </VERIFICATION NOTE> */
-    #[verifier::external_body]
-    fn zeroize(&mut self) {
-        self.limbs.zeroize();
+    fn zeroize(&mut self)
+        ensures
+            forall|i: int| 0 <= i < 5 ==> self.limbs[i] == 0,
+    {
+        /* ORIGINAL CODE: self.limbs.zeroize(); */
+        crate::core_assumes::zeroize_limbs5(&mut self.limbs);
     }
 }
 
@@ -94,12 +137,12 @@ const fn load8_at(input: &[u8], i: usize) -> (r: u64)
     requires
         i + 7 < input.len(),
     ensures
-        r as nat == load8_at_spec(input, i),
+        r as nat == spec_load8_at(input, i),
 {
     proof {
-        rec_version_is_exec(input, i);
-        load8_at_versions_equivalent(input, i, 7);
-        plus_version_is_spec(input, i);
+        lemma_load8_at_rec_version_is_exec(input, i);
+        lemma_load8_at_versions_equivalent(input, i, 7);
+        lemma_load8_at_plus_version_is_spec(input, i);
     }
     (input[i] as u64) | ((input[i + 1] as u64) << 8) | ((input[i + 2] as u64) << 16) | ((input[i
         + 3] as u64) << 24) | ((input[i + 4] as u64) << 32) | ((input[i + 5] as u64) << 40) | ((
@@ -116,68 +159,187 @@ fn m(x: u64, y: u64) -> (r: u128)
 {
     proof {
         // if a <= a' and b <= b' then ab <= a'b'
-        // mul_le(x as nat, u64::MAX as nat, y as nat, u64::MAX as nat);
-        assume(false);
+        lemma_mul_le(x as nat, u64::MAX as nat, y as nat, u64::MAX as nat);
     }
     (x as u128) * (y as u128)
 }
 
 impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
-    fn add_assign(&mut self, _rhs: &'a FieldElement51) {
-        for i in 0..5 {
-            proof {
-                assume(false);
-            }
+    fn add_assign(&mut self, _rhs: &'a FieldElement51)
+        requires
+            sum_of_limbs_bounded(old(self), _rhs, u64::MAX),
+        ensures
+            *self == spec_add_fe51_limbs(old(self), _rhs),
+            spec_field_element_as_nat(self) == spec_field_element_as_nat(old(self))
+                + spec_field_element_as_nat(_rhs),
+            spec_field_element(self) == math_field_add(
+                spec_field_element(old(self)),
+                spec_field_element(_rhs),
+            ),
+    {
+        let ghost original_limbs = self.limbs;
+        for i in 0..5
+            invariant
+                forall|j: int|
+                    0 <= j < i ==> #[trigger] self.limbs[j] == original_limbs[j] + _rhs.limbs[j],
+                forall|j: int| i <= j < 5 ==> #[trigger] self.limbs[j] == original_limbs[j],
+                forall|j: int|
+                    0 <= j < 5 ==> #[trigger] original_limbs[j] + _rhs.limbs[j] <= u64::MAX,
+        {
+            // Trigger the forall
+            assert(original_limbs[i as int] + _rhs.limbs[i as int] <= u64::MAX);
             self.limbs[i] += _rhs.limbs[i];
         }
+        proof {
+            // After loop, all limbs are the sum: self.limbs[i] == original_limbs[i] + _rhs.limbs[i]
+            // This means self.limbs equals spec_add_fe51_limbs(old(self), _rhs).limbs
+            assert(self.limbs =~= spec_add_fe51_limbs(old(self), _rhs).limbs);
+            // Discharge the rest of the ensures
+            lemma_field51_add(old(self), _rhs);
+        }
+
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddSpecImpl<&FieldElement51> for &FieldElement51 {
+    // Does the implementation of this trait obey basic addition principles
+    open spec fn obeys_add_spec() -> bool {
+        true
+    }
+
+    // Pre-condition of add
+    open spec fn add_req(self, rhs: &FieldElement51) -> bool {
+        sum_of_limbs_bounded(self, rhs, u64::MAX)
+    }
+
+    // Postcondition of add - delegates to spec_add_fe51_limbs for consistency
+    open spec fn add_spec(self, rhs: &FieldElement51) -> FieldElement51 {
+        spec_add_fe51_limbs(self, rhs)
     }
 }
 
 impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
 
-    fn add(self, _rhs: &'a FieldElement51) -> FieldElement51 {
+    fn add(self, _rhs: &'a FieldElement51) -> (output: FieldElement51)
+        ensures
+            output == spec_add_fe51_limbs(self, _rhs),
+            spec_field_element_as_nat(&output) == spec_field_element_as_nat(self)
+                + spec_field_element_as_nat(_rhs),
+            spec_field_element(&output) == math_field_add(
+                spec_field_element(self),
+                spec_field_element(_rhs),
+            ),
+    {
         let mut output = *self;
         /* ORIGINAL CODE
         output += _rhs;
         */
         /* MODIFIED CODE */
-        for i in 0..5 {
-            proof {
-                assume(false);
-            }
+        let ghost original_limbs = self.limbs;
+        for i in 0..5
+            invariant
+                forall|j: int|
+                    0 <= j < i ==> #[trigger] output.limbs[j] == original_limbs[j] + _rhs.limbs[j],
+                forall|j: int| i <= j < 5 ==> #[trigger] output.limbs[j] == original_limbs[j],
+                forall|j: int|
+                    0 <= j < 5 ==> #[trigger] original_limbs[j] + _rhs.limbs[j] <= u64::MAX,
+        {
+            // Trigger the forall
+            assert(original_limbs[i as int] + _rhs.limbs[i as int] <= u64::MAX);
             output.limbs[i] += _rhs.limbs[i];
         }
         /* </MODIFIED CODE> */
         proof {
-            assume(false);  // BECAUSE OF VERUS TRAIT ISSUES
+            // Trigger the forall invariant
+            assert(output.limbs == [
+                (original_limbs[0] + _rhs.limbs[0]) as u64,
+                (original_limbs[1] + _rhs.limbs[1]) as u64,
+                (original_limbs[2] + _rhs.limbs[2]) as u64,
+                (original_limbs[3] + _rhs.limbs[3]) as u64,
+                (original_limbs[4] + _rhs.limbs[4]) as u64,
+            ]);
+
+            lemma_field51_add(self, _rhs);
         }
+
         output
     }
 }
 
 impl<'a> SubAssign<&'a FieldElement51> for FieldElement51 {
-    fn sub_assign(&mut self, _rhs: &'a FieldElement51) {
+    fn sub_assign(
+        &mut self,
+        _rhs: &'a FieldElement51,
+    )
+    // VERIFICATION NOTE: PROOF BYPASS
+
+        requires
+            limbs_bounded(old(self), 54) && limbs_bounded(_rhs, 54),
+        ensures
+            forall|i: int| 0 <= i < 5 ==> #[trigger] self.limbs[i] < (1u64 << 52),
+            *self == spec_sub_limbs(old(self), _rhs),
+            spec_field_element(self) == math_field_sub(
+                spec_field_element(old(self)),
+                spec_field_element(_rhs),
+            ),
+    {
         /* ORIGINAL CODE
         let result = (self as &FieldElement51) - _rhs;
         self.0 = result.0;
         */
         /* MODIFIED CODE */
-        proof {
-            assume(false);
-        }
         let result = &*self - _rhs;
-        proof {
-            assume(false);  // BECAUSE OF VERUS TRAIT ISSUES
-        }
         self.limbs = result.limbs;
+        proof {
+            // result satisfies sub_spec by the postcondition of sub
+            assert(result == spec_sub_limbs(old(self), _rhs));
+            // Therefore self.limbs equals spec_sub_limbs(old(self), _rhs).limbs
+            assert(self.limbs =~= spec_sub_limbs(old(self), _rhs).limbs);
+        }
+        assume(spec_field_element(self) == math_field_sub(
+            spec_field_element(old(self)),
+            spec_field_element(_rhs),
+        ));
+        assume(forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 52))
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &FieldElement51 {
+    // Does the implementation of this trait obey basic subtraction principles
+    open spec fn obeys_sub_spec() -> bool {
+        true
+    }
+
+    // Pre-condition of sub - delegates to spec_sub_limbs_bounded for consistency
+    open spec fn sub_req(self, rhs: &FieldElement51) -> bool {
+        limbs_bounded(self, 54) && limbs_bounded(rhs, 54)
+    }
+
+    // Postcondition of sub - delegates to spec_sub_limbs for consistency
+    open spec fn sub_spec(self, rhs: &FieldElement51) -> FieldElement51 {
+        spec_sub_limbs(self, rhs)
     }
 }
 
 impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
 
-    fn sub(self, _rhs: &'a FieldElement51) -> FieldElement51 {
+    fn sub(self, _rhs: &'a FieldElement51) -> (output:
+        FieldElement51)
+    // VERIFICATION NOTE: PROOF BYPASS
+
+        ensures
+            output == spec_sub_limbs(self, _rhs),
+            spec_field_element(&output) == math_field_sub(
+                spec_field_element(self),
+                spec_field_element(_rhs),
+            ),
+            limbs_bounded(&output, 54),
+    {
+        assert(limbs_bounded(self, 54) && limbs_bounded(_rhs, 54));
         // To avoid underflow, first add a multiple of p.
         // Choose 16*p = p << 4 to be larger than 54-bit _rhs.
         //
@@ -187,8 +349,29 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
         //
         // Since we don't yet have type-level integers to do this, we
         // have to add an explicit reduction call here.
-        assume(false);
-        FieldElement51::reduce(
+        //
+        // Note on "magic numbers":
+        // 36028797018963664u64 = 2^55 - 304 = 16 * (2^51 - 19)
+        // 36028797018963952u64 = 2^55 - 16 =  16 * (2^51 - 1)
+        let ghost c0 = 36028797018963664u64;  // 16 * (2^51 - 19)
+        let ghost c = 36028797018963952u64;  // 16 * (2^51 -  1)
+
+        proof {
+            lemma_field_add_16p_no_overflow(self, _rhs);
+        }
+
+        // Precompute the constants we add to each limb prior to subtraction.
+        let ghost const_vec = [c0, c, c, c, c];
+
+        // Translate both operands into the safe range before subtracting.
+        let ghost s0 = self.limbs[0] + c0;
+        let ghost s1 = self.limbs[1] + c;
+        let ghost s2 = self.limbs[2] + c;
+        let ghost s3 = self.limbs[3] + c;
+        let ghost s4 = self.limbs[4] + c;
+        // Capture the widened limbs so we can reason about them element-wise.
+        let ghost augmented: [u64; 5] = [s0 as u64, s1 as u64, s2 as u64, s3 as u64, s4 as u64];
+        let output = FieldElement51::reduce(
             [
                 (self.limbs[0] + 36028797018963664u64) - _rhs.limbs[0],
                 (self.limbs[1] + 36028797018963952u64) - _rhs.limbs[1],
@@ -196,17 +379,86 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
                 (self.limbs[3] + 36028797018963952u64) - _rhs.limbs[3],
                 (self.limbs[4] + 36028797018963952u64) - _rhs.limbs[4],
             ],
-        )
+        );
+
+        proof {
+            assert(1u64 << 52 < 1u64 << 54) by (compute);
+            assert(limbs_bounded(&output, 54));
+
+            // Glue the raw subtraction back to the spec subtraction using reduction lemmas.
+            lemma_u64_5_as_nat_add(self.limbs, const_vec);
+            lemma_u64_5_as_nat_sub(augmented, _rhs.limbs);
+
+            assert(u64_5_as_nat(augmented) == u64_5_as_nat(self.limbs) + u64_5_as_nat(const_vec));
+            lemma_sub_constants_equal_16p();
+            assert(u64_5_as_nat(augmented) == u64_5_as_nat(self.limbs) + (16 as nat) * p());
+
+            let x = u64_5_as_nat(self.limbs) as int;
+            let y = u64_5_as_nat(_rhs.limbs) as int;
+            let modulus = p() as int;
+
+            lemma_mod_sum_factor(16 as int, x - y, modulus);
+
+            let x_mod = x % modulus;
+            let y_mod = y % modulus;
+            assert(spec_field_element(self) == x_mod as nat);
+            assert(spec_field_element(_rhs) == y_mod as nat);
+            assert(spec_field_element(self) % p() == spec_field_element(self)) by {
+                lemma_mod_twice(x, modulus);
+            }
+            assert(spec_field_element(_rhs) % p() == spec_field_element(_rhs)) by {
+                lemma_mod_twice(y, modulus);
+            }
+
+            assert(math_field_sub(spec_field_element(self), spec_field_element(_rhs)) == (((x_mod
+                + modulus) - y_mod) % modulus) as nat) by {
+                assert(spec_field_element(self) % p() == spec_field_element(self));
+                assert(spec_field_element(_rhs) % p() == spec_field_element(_rhs));
+            }
+
+            lemma_mod_sum_factor(1 as int, x_mod - y_mod, modulus);
+            lemma_sub_mod_noop(x, y, modulus);
+            assert(((x_mod + modulus) - y_mod) % modulus == (x - y) % modulus);
+
+            assert(spec_field_element(&output) == math_field_sub(
+                spec_field_element(self),
+                spec_field_element(_rhs),
+            ));
+        }
+
+        output
     }
 }
 
 impl<'a> MulAssign<&'a FieldElement51> for FieldElement51 {
     fn mul_assign(&mut self, _rhs: &'a FieldElement51) {
         proof {
-            assume(false);
-        }  // PROOF BYPASS due to vstd trait spec preconditions
+            // PROOF BYPASS: Assume preconditions for Mul
+            // For Mul (self * rhs): requires limbs < 2^54
+            assume(forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 54));
+            assume(forall|i: int| 0 <= i < 5 ==> _rhs.limbs[i] < (1u64 << 54));
+        }
         let result = &*self * _rhs;
         self.limbs = result.limbs;
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&FieldElement51> for &FieldElement51 {
+    // Does the implementation of this trait obey basic multiplication principles
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    // Pre-condition of mul
+    open spec fn mul_req(self, rhs: &FieldElement51) -> bool {
+        limbs_bounded(self, 54) && limbs_bounded(rhs, 54)
+    }
+
+    // Postcondition of mul
+    open spec fn mul_spec(self, rhs: &FieldElement51) -> FieldElement51 {
+        // VERIFICATION NOTE: WE DON'T PROVIDE A SPEC EXPRESSION FOR mul RESULT
+        arbitrary()
     }
 }
 
@@ -214,13 +466,24 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
 
     #[rustfmt::skip]  // keep alignment of c* calculations
-    fn mul(self, _rhs: &'a FieldElement51) -> FieldElement51 {
+    fn mul(self, _rhs: &'a FieldElement51) -> (output:
+        FieldElement51)/*  VERIFICATION NOTE:
+    - PROOF BYPASS
+    - REVIEW SPEC WHILE DOING THE PROOF
+    */
+
+        ensures
+            spec_field_element(&output) == math_field_mul(
+                spec_field_element(self),
+                spec_field_element(_rhs),
+            ),
+            limbs_bounded(&output, 54),
+    {
         /// Helper function to multiply two 64-bit integers with 128
         /// bits of output.
         // VERIFICATION NOTE: manually moved outside
         // #[inline(always)]
         // fn m(x: u64, y: u64) -> u128 { (x as u128) * (y as u128) }
-        assume(false);
         // Alias self, _rhs for more readable formulas
         let a: &[u64; 5] = &self.limbs;
         let b: &[u64; 5] = &_rhs.limbs;
@@ -238,11 +501,13 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
         // Since 51 + b + lg(19) < 51 + 4.25 + b
         //                       = 55.25 + b,
         // this fits if b < 8.75.
+        assume(false);  // PROOF BYPASS for arithmetic overflow
         let b1_19 = b[1] * 19;
         let b2_19 = b[2] * 19;
         let b3_19 = b[3] * 19;
         let b4_19 = b[4] * 19;
 
+        assume(false);  // PROOF BYPASS for arithmetic overflow
         // Multiply to get 128-bit coefficients of output
         let c0: u128 = m(a[0], b[0]) + m(a[4], b1_19) + m(a[3], b2_19) + m(a[2], b3_19) + m(
             a[1],
@@ -339,19 +604,44 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
-impl Neg for &FieldElement51 {
-    type Output = FieldElement51;
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::NegSpecImpl for &FieldElement51 {
+    // Does the implementation of this trait obey basic negation principles
+    // Set to false since we use arbitrary() as placeholder
+    open spec fn obeys_neg_spec() -> bool {
+        false
+    }
 
-    fn neg(self) -> FieldElement51 {
-        let mut output = *self;
-        assume(false);
-        output.negate();
-        output
+    // Pre-condition of neg
+    open spec fn neg_req(self) -> bool {
+        forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 51)
+    }
+
+    // Postcondition of neg
+    open spec fn neg_spec(self) -> FieldElement51 {
+        // VERIFICATION NOTE: WE DON'T PROVIDE A SPEC EXPRESSION FOR neg RESULT
+        arbitrary()
     }
 }
 
-} // verus!
-verus! {
+impl Neg for &FieldElement51 {
+    type Output = FieldElement51;
+
+    fn neg(self) -> (output: FieldElement51)
+        ensures
+            spec_field_element(&output) == math_field_neg(spec_field_element(self)),
+            forall|i: int| 0 <= i < 5 ==> output.limbs[i] < (1u64 << 52),
+    {
+        let mut output = *self;
+        output.negate();
+
+        proof {
+            lemma_neg(self);
+        }
+
+        output
+    }
+}
 
 impl ConditionallySelectable for FieldElement51 {
     fn conditional_select(a: &FieldElement51, b: &FieldElement51, choice: Choice) -> (result:
@@ -459,7 +749,10 @@ impl ConditionallySelectable for FieldElement51 {
 verus! {
 
 impl FieldElement51 {
-    pub(crate) const fn from_limbs(limbs: [u64; 5]) -> FieldElement51 {
+    pub(crate) const fn from_limbs(limbs: [u64; 5]) -> (result: FieldElement51)
+        ensures
+            (result == FieldElement51 { limbs }),
+    {
         FieldElement51 { limbs }
     }
 
@@ -483,32 +776,30 @@ impl FieldElement51 {
         requires
             forall|i: int| 0 <= i < 5 ==> old(self).limbs[i] < (1u64 << 51),
         ensures
-            forall|i: int|
-                0 <= i < 5 ==> self.limbs[i] < (1u64
-                    << 52),
-    // Assume we start with l = (l0, l1, l2, l3, l4).
-    // Using c0 = 2^51 - 19 and c = 2^51 - 1, we can see that
-    // ( 36028797018963664u64 - l0,
-    //   36028797018963952u64 - l1,
-    //   36028797018963952u64 - l2,
-    //   36028797018963952u64 - l3,
-    //   36028797018963952u64 - l4 )
-    // is just 16 * (c0, c, c, c, c) - l (in vector notation)
-    // Further, as_nat((c0, c, c, c, c)) = p, so
-    // as_nat(16 * (c0, c, c, c, c) - l) is 16p - as_nat(l)
-    // We know as_nat(reduce(v)) = as_nat(v) - p * (v4 >> 51) for any v.
-    // This gives us the identity
-    // as_nat(negate(l)) = as_nat(reduce(16 * (c0, c, c, c, c) - l))
-    //                   = 16p - as_nat(l) - p * ((16c - l4) >> 51)
-    // Note that (16c - l4) >> 51 is either 14 or 15, in either case < 16.
-    //      as_nat(self.limbs) == 16 * p() - as_nat(old(self).limbs) - p() * ((36028797018963952u64 - old(self).limbs[4]) as u64 >> 51),
-    //      (as_nat(self.limbs) + as_nat(old(self).limbs)) % p() == 0
-
+            forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 52),
+            // Assume we start with l = (l0, l1, l2, l3, l4).
+            // Using c0 = 2^51 - 19 and c = 2^51 - 1, we can see that
+            // ( 36028797018963664u64 - l0,
+            //   36028797018963952u64 - l1,
+            //   36028797018963952u64 - l2,
+            //   36028797018963952u64 - l3,
+            //   36028797018963952u64 - l4 )
+            // is just 16 * (c0, c, c, c, c) - l (in vector notation)
+            // Further, u64_5_as_nat((c0, c, c, c, c)) = p, so
+            // u64_5_as_nat(16 * (c0, c, c, c, c) - l) is 16p - u64_5_as_nat(l)
+            // We know u64_5_as_nat(reduce(v)) = u64_5_as_nat(v) - p * (v4 >> 51) for any v.
+            // This gives us the identity
+            // u64_5_as_nat(negate(l)) = u64_5_as_nat(reduce(16 * (c0, c, c, c, c) - l))
+            //                   = 16p - u64_5_as_nat(l) - p * ((16c - l4) >> 51)
+            // Note that (16c - l4) >> 51 is either 14 or 15, in either case < 16.
+            u64_5_as_nat(self.limbs) == 16 * p() - u64_5_as_nat(old(self).limbs) - p() * ((
+            36028797018963952u64 - old(self).limbs[4]) as u64 >> 51),
+            (u64_5_as_nat(self.limbs) + u64_5_as_nat(old(self).limbs)) % p() == 0,
+            self.limbs == spec_negate(old(self).limbs),
     {
         proof {
-            // lemma_neg_no_underflow(self.limbs);
-            // negate_proof(self.limbs);
-            assume(false);  // PROOF BYPASS
+            lemma_neg_no_underflow(self.limbs);
+            proof_negate(self.limbs);
         }
         // See commentary in the Sub impl: (copied below)
         // To avoid underflow, first add a multiple of p.
@@ -537,10 +828,20 @@ impl FieldElement51 {
 
     /// Given 64-bit input limbs, reduce to enforce the bound 2^(51 + epsilon).
     #[inline(always)]
-    fn reduce(mut limbs: [u64; 5]) -> (r: FieldElement51) {
+    fn reduce(mut limbs: [u64; 5]) -> (r: FieldElement51)
+        ensures
+            r.limbs == spec_reduce(limbs),
+            forall|i: int| 0 <= i < 5 ==> r.limbs[i] < (1u64 << 52),
+            (forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 51)) ==> (r.limbs =~= limbs),
+            u64_5_as_nat(r.limbs) == u64_5_as_nat(limbs) - p() * (limbs[4] >> 51),
+            u64_5_as_nat(r.limbs) % p() == u64_5_as_nat(limbs) % p(),
+            u64_5_as_nat(r.limbs) < 2 * p(),
+    {
         proof {
-            assume(false);
-        }  // PROOF BYPASS - complex arithmetic reasoning
+            lemma_reduce_boundaries(limbs);
+            proof_reduce(limbs);
+            lemma_reduce_bound_2p(limbs);
+        }
 
         // Since the input limbs are bounded by 2^64, the biggest
         // carry-out is bounded by 2^13.
@@ -593,7 +894,7 @@ impl FieldElement51 {
         ensures
     // last bit is ignored
 
-            as_nat(r.limbs) == as_nat_32_u8(bytes) % pow2(255),
+            u64_5_as_nat(r.limbs) == u8_32_as_nat(bytes) % pow2(255),
     {
         /* MANUALLY moved outside */
         /*
@@ -609,8 +910,35 @@ impl FieldElement51 {
         }
         */
         proof {
-            l51_bit_mask_lt();  // No over/underflow in the below let-def
-            assume(false);
+            assert(mask51 == (1u64 << 51) - 1) by (compute);
+
+            let l0 = spec_load8_at(bytes, 0);
+            let l1 = spec_load8_at(bytes, 6);
+            let l2 = spec_load8_at(bytes, 12);
+            let l3 = spec_load8_at(bytes, 19);
+            let l4 = spec_load8_at(bytes, 24);
+
+            assert(l0 <= u64::MAX && l1 <= u64::MAX && l2 <= u64::MAX && l3 <= u64::MAX && l4
+                <= u64::MAX) by {
+                lemma_spec_load8_at_fits_u64(bytes, 0);
+                lemma_spec_load8_at_fits_u64(bytes, 6);
+                lemma_spec_load8_at_fits_u64(bytes, 12);
+                lemma_spec_load8_at_fits_u64(bytes, 19);
+                lemma_spec_load8_at_fits_u64(bytes, 24);
+            }
+
+            let rr = [
+                l0 as u64 & mask51,
+                (l1 as u64 >> 3) & mask51,
+                (l2 as u64 >> 6) & mask51,
+                (l3 as u64 >> 1) & mask51,
+                (l4 as u64 >> 12) & mask51,
+            ];
+
+            assert(u64_5_as_nat(rr) == u8_32_as_nat(bytes) % pow2(255)) by {
+                lemma_from_bytes_as_nat(bytes);
+                lemma_as_nat_32_mod_255(bytes);
+            }
         }
         let low_51_bit_mask = (1u64 << 51) - 1;
         // ADAPTED CODE LINE: limbs is now a named field
@@ -642,7 +970,44 @@ impl FieldElement51 {
     /// Serialize this `FieldElement51` to a 32-byte array.  The
     /// encoding is canonical.
     #[rustfmt::skip]  // keep alignment of s[*] calculations
-    pub fn as_bytes(self) -> [u8; 32] {
+    pub fn as_bytes(self) -> (r: [u8; 32])
+        ensures
+    // canonical encoding, i.e. mod p value
+
+            u8_32_as_nat(&r) == u64_5_as_nat(self.limbs) % p(),
+    {
+        proof {
+            // No overflows
+            lemma_as_bytes_boundaries1(self.limbs);
+            lemma_as_bytes_boundaries2(self.limbs);
+
+            // Step 1: Reduce limbs to ensure h < 2*p
+            // The reduce function ensures the limbs are bounded by 2^52
+            proof_reduce(self.limbs);
+            lemma_reduce_bound_2p(self.limbs);
+            let limbs = spec_reduce(self.limbs);
+
+            let q = compute_q_spec(limbs);
+
+            // Step 2: Prove that q is the correct quotient
+            assert((q == 0 || q == 1) && (u64_5_as_nat(limbs) >= p() <==> q == 1) && (u64_5_as_nat(
+                limbs,
+            ) < p() <==> q == 0)) by {
+                lemma_compute_q(limbs, q);
+            }
+
+            let final_limbs = reduce_with_q_spec(limbs, q);
+
+            // Step 3: Prove that the reduction preserves the value mod p
+            lemma_to_bytes_reduction(limbs, final_limbs, q);
+
+            // Now arrange the bits of the limbs.
+            let s = bit_arrange(final_limbs);
+
+            // Step 4: Prove that packing limbs into bytes preserves the value
+            lemma_limbs_to_bytes(final_limbs, s);
+        }
+
         // Let h = limbs[0] + limbs[1]*2^51 + ... + limbs[4]*2^204.
         //
         // Write h = pq + r with 0 <= r < p.
@@ -658,7 +1023,6 @@ impl FieldElement51 {
         // Notice that h >= p <==> h + 19 >= p + 19 <==> h + 19 >= 2^255.
         // Therefore q can be computed as the carry bit of h + 19.
         // First, reduce the limbs to ensure h < 2*p.
-        assume(false);
         let mut limbs = FieldElement51::reduce(self.limbs).limbs;
 
         let mut q = (limbs[0] + 19) >> 51;
@@ -729,8 +1093,19 @@ impl FieldElement51 {
 
     /// Given `k > 0`, return `self^(2^k)`.
     #[rustfmt::skip]  // keep alignment of c* calculations
-    pub fn pow2k(&self, mut k: u32) -> FieldElement51 {
-        assume(false);
+    pub fn pow2k(&self, mut k: u32) -> (r: FieldElement51)
+        requires
+            k > 0,  // debug_assert!( k > 0 );
+            forall|i: int|
+                0 <= i < 5 ==> self.limbs[i] < 1u64 << 54  // 51 + b for b = 3
+            ,
+        ensures
+            forall|i: int| 0 <= i < 5 ==> r.limbs[i] < 1u64 << 54,
+            u64_5_as_nat(r.limbs) % p() == pow(
+                u64_5_as_nat(self.limbs) as int,
+                pow2(k as nat),
+            ) as nat % p(),
+    {
         #[cfg(not(verus_keep_ghost))]
         debug_assert!( k > 0 );
 
@@ -742,10 +1117,39 @@ impl FieldElement51 {
         }
         */
         let mut a: [u64; 5] = self.limbs;
-        assume(false);
+
+        let ghost k0 = k;
+        // pre-loop invariant, i = 0
+        proof {
+            assert(u64_5_as_nat(a) == pow(u64_5_as_nat(self.limbs) as int, pow2(0))) by {
+                lemma2_to64();  // pow2(0) = 1
+                lemma_pow1(u64_5_as_nat(self.limbs) as int);
+            }
+        }
         loop
+            invariant_except_break
+                forall|j: int| 0 <= j < 5 ==> a[j] < 1u64 << 54,
+                u64_5_as_nat(a) % p() == pow(
+                    u64_5_as_nat(self.limbs) as int,
+                    pow2((k0 - k) as nat),
+                ) as nat % p(),
+                0 < k <= k0,
+            ensures
+                k == 0,
+                forall|j: int| 0 <= j < 5 ==> a[j] < 1u64 << 54,
+                u64_5_as_nat(a) % p() == pow(
+                    u64_5_as_nat(self.limbs) as int,
+                    pow2(k0 as nat),
+                ) as nat % p(),
             decreases k,
         {
+            proof {
+                let ghost i = (k0 - k) as nat;
+
+                lemma_pow2k_loop_boundary(a);
+                lemma_pow2k_loop_value(a, self.limbs, i);
+            }
+
             // Precondition: assume input limbs a[i] are bounded as
             //
             // a[i] < 2^(51 + b)
@@ -758,7 +1162,6 @@ impl FieldElement51 {
             // Since 51 + b + lg(19) < 51 + 4.25 + b
             //                       = 55.25 + b,
             // this fits if b < 8.75.
-            assume(false);
             let a3_19 = 19 * a[3];
             let a4_19 = 19 * a[4];
 
@@ -844,17 +1247,98 @@ impl FieldElement51 {
     }
 
     /// Returns the square of this field element.
-    pub fn square(&self) -> FieldElement51 {
+    pub fn square(&self) -> (r: FieldElement51)
+        requires
+    // The precondition in pow2k loop propagates to here
+
+            forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
+        ensures
+    //needed for pow22501
+
+            forall|i: int| 0 <= i < 5 ==> r.limbs[i] < 1u64 << 54,
+            u64_5_as_nat(r.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, 2) as nat % p(),
+    {
+        proof {
+            // pow2(1) == 2
+            lemma2_to64();
+        }
         self.pow2k(1)
     }
 
     /// Returns 2 times the square of this field element.
-    pub fn square2(&self) -> FieldElement51 {
+    pub fn square2(&self) -> (r: FieldElement51)
+        requires
+    // The precondition in pow2k loop propagates to here
+
+            forall|i: int| 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54,
+        ensures
+            u64_5_as_nat(r.limbs) % p() == (2 * pow(u64_5_as_nat(self.limbs) as int, 2)) as nat
+                % p(),
+    {
         let mut square = self.pow2k(1);
-        for i in 0..5 {
+
+        // Since square is mut, we save the initial value
+        let ghost old_limbs = square.limbs;
+
+        proof {
+            // forall |i: int| 0 <= i < 5 ==> 2 * old_limbs[i] <= u64::MAX
+            assert forall|i: int| 0 <= i < 5 implies 2 * square.limbs[i] <= u64::MAX by {
+                // if LHS < RHS, then 2 * LHS < 2 * RHS
+                lemma_mul_left_inequality(2, square.limbs[i] as int, (1u64 << 54) as int);
+                assert(2 * (1u64 << 54) <= u64::MAX) by (compute);
+            }
+
+            let ka = [
+                (2 * square.limbs[0]) as u64,
+                (2 * square.limbs[1]) as u64,
+                (2 * square.limbs[2]) as u64,
+                (2 * square.limbs[3]) as u64,
+                (2 * square.limbs[4]) as u64,
+            ];
+
+            // u64_5_as_nat(ka) == 2 * u64_5_as_nat(square.limbs)
+            // and
+            // u64_5_as_nat(ka) % p() == (2 * u64_5_as_nat(square.limbs)) % p()
+            lemma_u64_5_as_nat_k(square.limbs, 2);
+
+            // By pow2k ensures:
+            // u64_5_as_nat(square.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, pow2(1)) as nat % p()
+            // We just need pow2(1) == 2
+            lemma2_to64();
+
+            // p > 0
+            pow255_gt_19();
+
+            assert(u64_5_as_nat(ka) % p() == ((2nat % p()) * (u64_5_as_nat(square.limbs) % p()))
+                % p() == ((2nat % p()) * (pow(u64_5_as_nat(self.limbs) as int, 2) as nat % p()))
+                % p()) by {
+                lemma_mul_mod_noop(2, u64_5_as_nat(square.limbs) as int, p() as int);
+            }
+
+            // u64_5_as_nat(self.limbs)^2 >= 0
+            assert(pow(u64_5_as_nat(self.limbs) as int, 2) >= 0) by {
+                lemma_pow_nat_is_nat(u64_5_as_nat(self.limbs), 1);
+            }
+
+            assert(((2nat % p()) * (pow(u64_5_as_nat(self.limbs) as int, 2) as nat % p())) % p()
+                == (2 * (pow(u64_5_as_nat(self.limbs) as int, 2))) as nat % p()) by {
+                lemma_mul_mod_noop(2, pow(u64_5_as_nat(self.limbs) as int, 2) as int, p() as int);
+            }
+
+            assert(u64_5_as_nat(ka) % p() == (2 * (pow(u64_5_as_nat(self.limbs) as int, 2))) as nat
+                % p());
+        }
+
+        for i in 0..5
+            invariant
+                forall|j: int| 0 <= j < 5 ==> old_limbs[j] < (1u64 << 54),
+                forall|j: int| 0 <= j < i ==> #[trigger] square.limbs[j] == 2 * old_limbs[j],
+                forall|j: int| i <= j < 5 ==> #[trigger] square.limbs[j] == old_limbs[j],
+        {
             proof {
-                assume(false);
-            }  // PROOF BYPASS: overflow checking for *=2
+                assert(2 * (1u64 << 54) <= u64::MAX) by (compute);
+                lemma_mul_strict_inequality(square.limbs[i as int] as int, (1u64 << 54) as int, 2);
+            }
             square.limbs[i] *= 2;
         }
 

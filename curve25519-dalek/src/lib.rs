@@ -64,9 +64,6 @@ pub(crate) mod macros;
 // Scalar arithmetic mod l = 2^252 + ..., the order of the Ristretto group
 pub mod scalar;
 
-// Specification functions for Scalar
-pub(crate) mod scalar_specs;
-
 // Helper functions for scalar operations on slices
 pub(crate) mod scalar_helpers;
 
@@ -98,6 +95,12 @@ pub mod lizard;
 
 // Finite field arithmetic mod p = 2^255 - 19
 pub mod field;
+
+pub(crate) mod lemmas;
+pub(crate) mod specs;
+
+// External type specifications for core Rust types
+pub(crate) mod core_assumes;
 
 // Arithmetic backends (using u32, u64, etc) live here
 #[cfg(docsrs)]

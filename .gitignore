@@ -13,3 +13,17 @@ build*.txt
 *.s
 .aider*
 .verus-solver-log
+.verus-log
+
+# Generated charts and website assets (generated in CI)
+outputs/*.png
+outputs/curve25519_functions.csv
+outputs/curve25519_functions.md
+outputs/stats.json
+outputs/metadata.json
+outputs/stats_history.jsonl
+docs/outputs/*.png
+docs/outputs/*.csv
+docs/outputs/stats.json
+docs/outputs/metadata.json
+docs/outputs/stats_history.jsonl

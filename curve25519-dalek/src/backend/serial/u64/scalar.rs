@@ -22,13 +22,21 @@ use zeroize::Zeroize;
 use crate::constants;
 
 #[allow(unused_imports)]
-use super::scalar_lemmas::*;
+use crate::lemmas::core_lemmas::*;
 #[allow(unused_imports)]
-use super::scalar_specs::*;
+use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::scalar_lemmas::*;
+#[cfg(verus_keep_ghost)]
+use crate::lemmas::scalar_montgomery_lemmas::lemma_from_montgomery_is_product_with_one;
+#[allow(unused_imports)]
+use crate::specs::scalar_specs_u64::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
+#[allow(unused_imports)]
+use vstd::calc;
 use vstd::prelude::*;
 
 verus! {
@@ -105,7 +113,6 @@ impl Scalar52 {
         ensures
             bytes_to_nat(bytes) == to_nat(&s.limbs),
             limbs_bounded(&s),
-            to_nat(&s.limbs) < group_order(),
     {
         let mut words = [0u64;4];
         for i in 0..4
@@ -193,8 +200,10 @@ impl Scalar52 {
     #[allow(clippy::identity_op)]
     #[allow(clippy::wrong_self_convention)]
     pub fn as_bytes(self) -> (s: [u8; 32])
+        requires
+            limbs_bounded(&self),
         ensures
-            bytes_to_nat(&s) == to_nat(&self.limbs),
+            bytes_to_nat(&s) == to_nat(&self.limbs) % pow2(256),
     {
         let mut s = [0u8;32];
 
@@ -231,7 +240,11 @@ impl Scalar52 {
         s[30] = (self.limbs[4] >> 32) as u8;
         s[31] = (self.limbs[4] >> 40) as u8;
 
-        assume(false);  // TODO: complete the proof
+        proof {
+            // The main lemma proves the property using the non-recursive (_aux) versions
+            lemma_as_bytes_52(self.limbs, s);
+            lemma_five_limbs_equals_to_nat(&self.limbs);
+        }
 
         s
     }
@@ -589,6 +602,7 @@ impl Scalar52 {
             limbs_bounded(b),
         ensures
             slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&b.limbs),
+            spec_mul_internal(a, b) == z,
     {
         proof { lemma_mul_internal_no_overflow() }
 
@@ -648,6 +662,7 @@ impl Scalar52 {
             limbs_bounded(a),
         ensures
             slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&a.limbs),
+            spec_mul_internal(a, a) == z,
     {
         proof { lemma_square_internal_no_overflow() }
 
@@ -675,12 +690,30 @@ impl Scalar52 {
     /// Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^260
     #[inline(always)]
     #[rustfmt::skip]  // keep alignment of n* and r* calculations
-    pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)
+    pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result:
+        Scalar52)
+    // If the input is the product of 2 bounded scalars, we get 2 postconditions.
+    // If the 2nd scalar is also canonical, we unlock a 3rd postcondition.
+    // Not all calling code needs the 3rd postcondition.
+    // Note: This spec is not yet confirmed because the function is unproved.
+    // The spec is checked by prop_montgomery_reduce_two_bounded and prop_montgomery_reduce_one_canonical.
+    // If you edit this spec, please update the proptests.
+    // Once this function and all deps are proved, you can remove those proptests,
+    // and montgomery_reduce_non_canonical_product_fails_postcondition,
+    // and test_canonical_scalar_generator (if it's then unused)
+
         ensures
-            (to_nat(&result.limbs) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
-                % group_order(),
-            limbs_bounded(&result),
-            to_nat(&result.limbs) < group_order(),
+            (exists|bounded1: &Scalar52, bounded2: &Scalar52|
+                limbs_bounded(bounded1) && limbs_bounded(bounded2) && spec_mul_internal(
+                    bounded1,
+                    bounded2,
+                ) == limbs) ==> ((to_nat(&result.limbs) * montgomery_radix()) % group_order()
+                == slice128_to_nat(limbs) % group_order() && limbs_bounded(&result)),
+            (exists|bounded: &Scalar52, canonical: &Scalar52|
+                limbs_bounded(bounded) && limbs_bounded(canonical) && to_nat(&canonical.limbs)
+                    < group_order() && spec_mul_internal(bounded, canonical) == limbs) ==> to_nat(
+                &result.limbs,
+            ) < group_order(),
     {
         assume(false);  // TODO: Add proofs
 
@@ -722,9 +755,28 @@ impl Scalar52 {
                 &&& sum + (p as u128) * (constants::L.limbs[0] as u128) == carry << 52
             }),
     {
-        assume(false);  // TODO: Add proofs
+        assert((1u64 << 52) > 1) by (bit_vector);
+        assert((1u64 << 52) - 1 > 0);
         let p = (sum as u64).wrapping_mul(constants::LFACTOR) & ((1u64 << 52) - 1);
+        proof {
+            let piece1 = (sum as u64).wrapping_mul(constants::LFACTOR) as u64;
+            let piece2 = ((1u64 << 52) - 1) as u64;
+            assert(p == piece1 & piece2);
+            assert(piece1 & piece2 < (1u64 << 52)) by (bit_vector)
+                requires
+                    piece2 == ((1u64 << 52) - 1),
+            ;
+        }
+        assert(p < (1u64 << 52));
+        assert(constants::L.limbs[0] == 0x0002631a5cf5d3ed);
+        assert(0x0002631a5cf5d3ed < (1u64 << 52)) by (bit_vector);
+        assert(constants::L.limbs[0] < (1u64 << 52));
+        // Going to need a precondition on sum to ensure it's small enough
+        // This bound may not be the right bound
+        assume(sum + p * constants::L.limbs[0] < ((2 as u64) << 63));
         let carry = (sum + m(p, constants::L.limbs[0])) >> 52;
+        // Is this actually true? Not sure that the right shift and left shift cancel.
+        assume(sum + (p as u128) * (constants::L.limbs[0] as u128) == carry << 52);
         (carry, p)
     }
 
@@ -776,9 +828,48 @@ impl Scalar52 {
         ensures
             to_nat(&result.limbs) == (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order(),
     {
-        assume(false);  // TODO: Add proofs
+        proof {
+            lemma_rr_limbs_bounded();
+        }
+
+        // We only know limbs_bounded, so this triggers the weaker part of the
+        // montgomery_reduce spec
         let aa = Scalar52::montgomery_reduce(&Scalar52::square_internal(self));
-        Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR))
+
+        assert((to_nat(&aa.limbs) * montgomery_radix()) % group_order() == (to_nat(&self.limbs)
+            * to_nat(&self.limbs)) % group_order());
+
+        // square_internal ensures
+        // ensures
+        //     slice128_to_nat(&z) == to_nat(&a.limbs) * to_nat(&a.limbs),
+
+        // We know RR < group_order, so this triggers the stronger part of the
+        // montgomery_reduce spec, which is what this function's postcondition wants
+        let result = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR));
+
+        assert((to_nat(&result.limbs) * montgomery_radix()) % group_order() == (to_nat(&aa.limbs)
+            * to_nat(&constants::RR.limbs)) % group_order());
+
+        proof {
+            // 1. prove (to_nat(&constants::RR.limbs) % group_order() == (montgomery_radix()*montgomery_radix()) % group_order()
+            lemma_rr_equals_spec(constants::RR);
+
+            // 2. Reduce to (to_nat(&result.limbs)) % group_order() == (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order()
+            lemma_cancel_mul_montgomery_mod(
+                to_nat(&result.limbs),
+                to_nat(&aa.limbs),
+                to_nat(&constants::RR.limbs),
+            );
+
+            // 3. allows us to assert (to_nat(&result.limbs)) % group_order() == (to_nat(&result.limbs))
+            //  true from montgomery_reduce postcondition
+            lemma_small_mod((to_nat(&result.limbs)), group_order())
+        }
+
+        assert((to_nat(&result.limbs)) % group_order() == (to_nat(&aa.limbs) * montgomery_radix())
+            % group_order());
+
+        result
     }
 
     /// Compute `(a * b) / R` (mod l), where R is the Montgomery modulus 2^260
@@ -862,6 +953,9 @@ impl Scalar52 {
         {
             limbs[i] = self.limbs[i] as u128;
         }
+        proof {
+            lemma_from_montgomery_is_product_with_one(self, &limbs);
+        }
         let result = Scalar52::montgomery_reduce(&limbs);
         proof {
             lemma_from_montgomery_limbs_conversion(&limbs, &self.limbs);
@@ -871,6 +965,351 @@ impl Scalar52 {
 }
 
 } // verus!
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use num_bigint::BigUint;
+    use num_traits::{One, Zero};
+    use proptest::prelude::*;
+
+    // Executable versions of spec functions to match the spec as closely as possible
+
+    /// Convert 5 limbs (52-bit each) to a BigUint
+    /// Matches the spec: to_nat(&[u64; 5])
+    pub fn to_nat_exec(limbs: &[u64; 5]) -> BigUint {
+        let mut result = BigUint::zero();
+        let radix = BigUint::from(1u128 << 52);
+        for i in (0..5).rev() {
+            result = result * &radix + BigUint::from(limbs[i]);
+        }
+        result
+    }
+
+    /// Convert 9 u128 limbs (52-bit each) to a BigUint
+    /// Matches the spec: slice128_to_nat(&[u128; 9])
+    pub fn slice128_to_nat_exec(limbs: &[u128; 9]) -> BigUint {
+        let mut result = BigUint::zero();
+        let radix = BigUint::from(1u128 << 52);
+        for i in (0..9).rev() {
+            result = result * &radix + BigUint::from(limbs[i]);
+        }
+        result
+    }
+
+    /// The group order L
+    /// Matches the spec: group_order()
+    pub fn group_order_exec() -> BigUint {
+        // L = 2^252 + 27742317777372353535851937790883648493
+        let base = BigUint::one() << 252;
+        let offset = BigUint::parse_bytes(b"27742317777372353535851937790883648493", 10).unwrap();
+        base + offset
+    }
+
+    /// Montgomery radix R = 2^260
+    /// Matches the spec: montgomery_radix()
+    pub fn montgomery_radix_exec() -> BigUint {
+        BigUint::one() << 260
+    }
+
+    /// Check if all limbs are bounded by 2^52
+    /// Matches the spec: limbs_bounded(&Scalar52)
+    pub fn limbs_bounded_exec(s: &Scalar52) -> bool {
+        s.limbs.iter().all(|&limb| limb < (1u64 << 52))
+    }
+
+    // Property-based test generators
+
+    /// Generate a valid Scalar52 with bounded limbs (each limb < 2^52)
+    fn arb_bounded_scalar52() -> impl Strategy<Value = Scalar52> {
+        prop::array::uniform5(0u64..(1u64 << 52)).prop_map(|limbs| Scalar52 { limbs })
+    }
+
+    /// Generate a canonical scalar: limbs_bounded AND value < L
+    /// This generates a random BigUint in [0, L) and converts it to Scalar52
+    fn arb_canonical_scalar52() -> impl Strategy<Value = Scalar52> {
+        // Generate random bytes and interpret as BigUint, then reduce mod L
+        proptest::collection::vec(any::<u8>(), 32..=64).prop_map(|bytes| {
+            let l = group_order_exec();
+            let value = BigUint::from_bytes_le(&bytes) % &l;
+
+            // Convert BigUint to limbs in base 2^52
+            let mut limbs = [0u64; 5];
+            let mask = (1u64 << 52) - 1;
+            let mut remaining = value;
+
+            for i in 0..5 {
+                let limb_big = &remaining & BigUint::from(mask);
+                limbs[i] = limb_big.to_u64_digits().first().copied().unwrap_or(0);
+                remaining >>= 52;
+            }
+
+            Scalar52 { limbs }
+        })
+    }
+
+    /// Test case demonstrating that montgomery_reduce fails its canonicality postcondition
+    /// when given input that is the product of two bounded-but-non-canonical scalars.
+    ///
+    /// This specific case was found by proptest and demonstrates why the precondition
+    /// requires BOTH scalars to be canonical (< L), not just bounded.
+    #[test]
+    #[should_panic(expected = "Result not in canonical form")]
+    fn montgomery_reduce_non_canonical_product_fails_postcondition() {
+        // This is the minimal failing case found by proptest
+        let limbs: [u128; 9] = [
+            0,
+            0,
+            0,
+            0,
+            43234767039827164816921,
+            0,
+            0,
+            0,
+            130605075492091607448940168551,
+        ];
+
+        // Verify the input limbs are relatively small (much smaller than 2^104 which is the
+        // theoretical max for products of 52-bit limbs)
+        assert!(limbs[0] < (1u128 << 1), "limbs[0] should be < 2^1");
+        assert!(limbs[1] < (1u128 << 1), "limbs[1] should be < 2^1");
+        assert!(limbs[2] < (1u128 << 1), "limbs[2] should be < 2^1");
+        assert!(limbs[3] < (1u128 << 1), "limbs[3] should be < 2^1");
+        assert!(limbs[4] < (1u128 << 76), "limbs[4] should be < 2^76");
+        assert!(limbs[5] < (1u128 << 1), "limbs[5] should be < 2^1");
+        assert!(limbs[6] < (1u128 << 1), "limbs[6] should be < 2^1");
+        assert!(limbs[7] < (1u128 << 1), "limbs[7] should be < 2^1");
+        assert!(limbs[8] < (1u128 << 97), "limbs[8] should be < 2^97");
+
+        let result = Scalar52::montgomery_reduce(&limbs);
+
+        let result_nat = to_nat_exec(&result.limbs);
+        let limbs_nat = slice128_to_nat_exec(&limbs);
+        let l = group_order_exec();
+        let r = montgomery_radix_exec();
+
+        // The Montgomery property should still hold
+        assert_eq!(
+            (&result_nat * &r) % &l,
+            &limbs_nat % &l,
+            "Montgomery property violated"
+        );
+
+        // The result should be limbs_bounded
+        assert!(
+            limbs_bounded_exec(&result),
+            "Result limbs not bounded by 2^52"
+        );
+
+        // But the canonicality postcondition FAILS
+        assert!(
+            &result_nat < &l,
+            "Result not in canonical form (>= L): {} >= {}",
+            result_nat,
+            l
+        );
+    }
+
+    /// Test that the canonical scalar generator round-trips correctly
+    #[test]
+    fn test_canonical_scalar_generator() {
+        use proptest::prelude::*;
+        use proptest::strategy::ValueTree;
+        use proptest::test_runner::{Config, TestRunner};
+
+        let mut runner = TestRunner::new(Config::default());
+        let l = group_order_exec();
+
+        println!("Testing canonical scalar generator round-trip:");
+        for i in 0..10 {
+            let scalar = arb_canonical_scalar52()
+                .new_tree(&mut runner)
+                .unwrap()
+                .current();
+
+            // Convert to nat
+            let value = to_nat_exec(&scalar.limbs);
+
+            // Check it's canonical
+            assert!(value < l, "Generated value should be < L");
+
+            // Check limbs are bounded
+            for (j, &limb) in scalar.limbs.iter().enumerate() {
+                assert!(
+                    limb < (1u64 << 52),
+                    "Limb {} should be < 2^52, got {}",
+                    j,
+                    limb
+                );
+            }
+
+            // Convert back to Scalar52 manually and check it matches
+            let mut limbs_check = [0u64; 5];
+            let mask = (1u64 << 52) - 1;
+            let mut remaining = value.clone();
+
+            for j in 0..5 {
+                let limb_big = &remaining & BigUint::from(mask);
+                limbs_check[j] = limb_big.to_u64_digits().first().copied().unwrap_or(0);
+                remaining >>= 52;
+            }
+
+            // Check round-trip
+            assert_eq!(
+                scalar.limbs,
+                limbs_check,
+                "Round-trip failed for test {}",
+                i + 1
+            );
+
+            // Convert back to nat and verify
+            let value_check = to_nat_exec(&limbs_check);
+            assert_eq!(
+                value,
+                value_check,
+                "Value mismatch after round-trip for test {}",
+                i + 1
+            );
+
+            println!(
+                "Test {}: value = {}, limbs = {:?} ✓",
+                i + 1,
+                value,
+                scalar.limbs
+            );
+        }
+    }
+
+    /// Generate random 9-limb array from product of one bounded scalar and one canonical scalar
+    fn arb_nine_limbs_one_canonical() -> impl Strategy<Value = [u128; 9]> {
+        (arb_bounded_scalar52(), arb_canonical_scalar52())
+            .prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
+    }
+
+    /// Generate 9-limb arrays from product of TWO bounded scalars
+    fn arb_nine_limbs_two_bounded() -> impl Strategy<Value = [u128; 9]> {
+        (arb_bounded_scalar52(), arb_bounded_scalar52())
+            .prop_map(|(a, b)| Scalar52::mul_internal(&a, &b))
+    }
+
+    /// Convert a 32-byte array to a BigUint
+    /// Matches the spec: bytes_to_nat(&[u8; 32])
+    pub fn bytes_to_nat_exec(bytes: &[u8; 32]) -> BigUint {
+        let mut result = BigUint::zero();
+        let radix = BigUint::from(256u32);
+        for i in (0..32).rev() {
+            result = result * &radix + BigUint::from(bytes[i]);
+        }
+        result
+    }
+
+    /// Test case demonstrating that from_bytes does NOT ensure canonicality.
+    /// i.e. the postcondition `to_nat(&s.limbs) < group_order()` may not hold
+    ///
+    /// The minimal failing case found by proptest: bytes[31] = 17 (all others 0)
+    /// represents 17 * 2^248, which is >= L, so the result is not canonical.
+    #[test]
+    fn from_bytes_non_canonical_example() {
+        let bytes: [u8; 32] = [
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 17,
+        ];
+
+        let s = Scalar52::from_bytes(&bytes);
+
+        let result_nat = to_nat_exec(&s.limbs);
+        let l = group_order_exec();
+
+        // OLD Postcondition 3: to_nat(&s.limbs) < group_order() - DOES NOT HOLD
+        assert!(
+            &result_nat >= &l,
+            "This example demonstrates result >= L: {} >= {}",
+            result_nat,
+            l
+        );
+    }
+
+    proptest! {
+        #![proptest_config(proptest::test_runner::Config::with_cases(1000000))]
+
+        /// Test from_bytes spec: for any 32-byte array, verify both postconditions
+        /// 1. bytes_to_nat(bytes) == to_nat(&s.limbs)
+        /// 2. limbs_bounded(&s)
+        #[test]
+        fn prop_from_bytes(bytes in prop::array::uniform32(any::<u8>())) {
+            // Call from_bytes
+            let s = Scalar52::from_bytes(&bytes);
+
+            // Convert to BigUint using executable spec functions
+            let bytes_nat = bytes_to_nat_exec(&bytes);
+            let result_nat = to_nat_exec(&s.limbs);
+
+            // Postcondition 1: bytes_to_nat(bytes) == to_nat(&s.limbs)
+            prop_assert_eq!(bytes_nat, result_nat,
+                "from_bytes spec violated: bytes_to_nat(bytes) != to_nat(&s.limbs)");
+
+            // Postcondition 2: limbs_bounded(&s)
+            prop_assert!(limbs_bounded_exec(&s),
+                "from_bytes spec violated: result limbs not bounded by 2^52");
+        }
+
+        /// Test 1: Input is product of TWO bounded scalars (both may be non-canonical)
+        /// Spec says: if input = mul(bounded1, bounded2) then Montgomery property and limbs_bounded hold
+        /// (but canonicality is NOT guaranteed)
+        #[test]
+        fn prop_montgomery_reduce_two_bounded(limbs in arb_nine_limbs_two_bounded()) {
+            // Call montgomery_reduce
+            let result = Scalar52::montgomery_reduce(&limbs);
+
+            // Convert to BigUint using executable spec functions
+            let result_nat = to_nat_exec(&result.limbs);
+            let limbs_nat = slice128_to_nat_exec(&limbs);
+            let l = group_order_exec();
+            let r = montgomery_radix_exec();
+
+            // Postcondition 1: Montgomery property (should hold for product of two bounded)
+            let lhs = (&result_nat * &r) % &l;
+            let rhs = &limbs_nat % &l;
+            prop_assert_eq!(lhs, rhs,
+                "Montgomery reduce spec violated: (result * R) mod L != limbs mod L");
+
+            // Postcondition 2: limbs_bounded (should hold for product of two bounded)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // Postcondition 3: Canonicality is NOT guaranteed for product of two bounded scalars
+            // (only guaranteed when one is canonical)
+        }
+
+        /// Test 2: Input is product of one bounded scalar and one canonical scalar
+        /// Spec says: if input = mul(bounded, canonical) then result < L
+        #[test]
+        fn prop_montgomery_reduce_one_canonical(limbs in arb_nine_limbs_one_canonical()) {
+            // Call montgomery_reduce
+            let result = Scalar52::montgomery_reduce(&limbs);
+
+            // Convert to BigUint using executable spec functions
+            let result_nat = to_nat_exec(&result.limbs);
+            let limbs_nat = slice128_to_nat_exec(&limbs);
+            let l = group_order_exec();
+            let r = montgomery_radix_exec();
+
+            // Postcondition 1: Montgomery property (holds by first part of spec)
+            let lhs = (&result_nat * &r) % &l;
+            let rhs = &limbs_nat % &l;
+            prop_assert_eq!(lhs, rhs,
+                "Montgomery reduce spec violated: (result * R) mod L != limbs mod L");
+
+            // Postcondition 2: limbs_bounded (holds by first part of spec)
+            prop_assert!(limbs_bounded_exec(&result),
+                "Result limbs not bounded by 2^52");
+
+            // Postcondition 3: Canonicality - SHOULD hold by second part of spec
+            // (exists bounded, canonical such that limbs = mul(bounded, canonical)) ==> result < L
+            prop_assert!(&result_nat < &l,
+                "Result not in canonical form (>= L), but input was product of bounded × canonical");
+        }
+    }
+}
 // #[cfg(test)]
 // mod test {
 //     use super::*;

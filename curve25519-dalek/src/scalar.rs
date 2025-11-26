@@ -2682,14 +2682,10 @@ proof fn lemma_square_multiply_step(
     
     let y_sq: nat = y_before * y_before;
     let R_exp_k_nat: nat = R_exp_k as nat;
-    let ab = y_times_R_exp;
-    let ab_sq = ab * ab;
     
-    assert(ab_sq == y_sq * R_exp_k_sq) by (nonlinear_arith)
+    assert(y_times_R_exp * y_times_R_exp == y_sq * R_exp_k_sq) by (nonlinear_arith)
         requires
             y_times_R_exp == y_before * R_exp_k_nat,
-            ab == y_times_R_exp,
-            ab_sq == ab * ab,
             y_sq == y_before * y_before,
             R_exp_k_sq == (R_exp_k * R_exp_k) as nat,
             R_exp_k_nat == R_exp_k as nat,

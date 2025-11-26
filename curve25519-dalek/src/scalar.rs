@@ -2689,9 +2689,7 @@ proof fn lemma_square_multiply_step(
             R_exp_k > 0,
     ;
     
-    let new_y_R: nat = new_y * R;
-    
-    lemma_mul_mod_noop(new_y_R as int, R_exp_k_sq as int, L as int);
+    lemma_mul_mod_noop((new_y * R) as int, R_exp_k_sq as int, L as int);
     lemma_mul_mod_noop(y_sq as int, R_exp_k_sq as int, L as int);
     
     assert((new_y * R) * R_exp_k_sq == new_y * pow(R as int, exp_k1) as nat) by {

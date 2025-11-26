@@ -2617,9 +2617,10 @@ fn square_multiply(
     ensures
         limbs_bounded(y),
         limbs_bounded(x),
-        (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
-            % group_order() == (pow(to_nat(&old(y).limbs) as int, pow2(squarings as nat)) as int
-            * to_nat(&x.limbs) as int) % (group_order() as int),
+        (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == (pow(
+            to_nat(&old(y).limbs) as int,
+            pow2(squarings as nat),
+        ) * to_nat(&x.limbs)) % (group_order() as int),
 {
     let ghost y0: nat = to_nat(&y.limbs);
     let ghost xv: nat = to_nat(&x.limbs);

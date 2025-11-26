@@ -523,6 +523,41 @@ pub proof fn lemma_montgomery_inverse()
 
 }
 
+// Montgomery radix inverse under L
+pub open spec fn inv_montgomery_radix() -> nat {
+    0x8e84371e098e4fc4_u64 as nat + pow2(64) * 0xfb2697cda3adacf5_u64 as nat + pow2(128)
+        * 0x3614e75438ffa36b_u64 as nat + pow2(192) * 0xc9db6c6f26fe918_u64 as nat
+}
+
+/// Proves that the RR constant equals R² mod L
+pub(crate) proof fn lemma_rr_equals_radix_squared()
+    ensures
+        to_nat(&constants::RR.limbs) % group_order() == (montgomery_radix() * montgomery_radix())
+            % group_order(),
+{
+    lemma_five_limbs_equals_to_nat(&constants::RR.limbs);
+
+    lemma2_to64();
+    lemma2_to64_rest();
+    lemma_pow2_adds(52, 52);  // prove pow2(104)
+    lemma_pow2_adds(104, 52);  // prove pow2(156)
+    lemma_pow2_adds(156, 52);  // prove pow2(208)
+    lemma_pow2_adds(208, 44);  // prove pow2(252)
+    lemma_pow2_adds(208, 52);  // prove pow2(260)
+
+    let rr_calc: nat = five_limbs_to_nat_aux(constants::RR.limbs);
+    lemma_small_mod(rr_calc, group_order());
+
+    calc! {
+        (==)
+        (montgomery_radix() * montgomery_radix()) % group_order(); {}
+        (1852673427797059126777135760139006525652319754650249024631321344126610074238976_nat
+            * 1852673427797059126777135760139006525652319754650249024631321344126610074238976_nat)
+            % 7237005577332262213973186563042994240857116359379907606001950938285454250989_nat; {}
+        rr_calc;
+    }
+}
+
 pub(crate) proof fn lemma_r_le_l(r: Scalar52)
     requires
         r == (Scalar52 {

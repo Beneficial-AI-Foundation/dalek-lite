@@ -2778,45 +2778,20 @@ fn square_multiply(
     proof {
         use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_pos};
         use vstd::arithmetic::power::{lemma_pow0, lemma_pow1};
-        use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
-
         
-        // Prove R > 0: montgomery_radix() = pow2(260) > 0
         lemma_pow2_pos(260);
-        assert(R == montgomery_radix());
-        assert(montgomery_radix() == pow2(260));
-        assert(pow2(260) > 0);
-        assert(R > 0);
-        
-        // pow2(0) = 1
         lemma2_to64();
-        assert(pow2(0nat) == 1);
-        
-        // R^0 = 1
         lemma_pow0(R as int);
-        assert(pow(R as int, 0nat) == 1);
-        
-        // y0^1 = y0
         lemma_pow1(y0 as int);
-        assert(pow(y0 as int, 1nat) == y0 as int);
-        
-        // Initial invariant: y0 * R^(2^0 - 1) = y0 * R^0 = y0 * 1 = y0
-        // And y0^(2^0) = y0^1 = y0
-        // So they are equal mod L
-        // Note: pow2(0) - 1 = 1 - 1 = 0, so (pow2(0) - 1) as nat = 0
         assert((pow2(0nat) - 1) as nat == 0nat);
-        assert(pow(R as int, 0nat) == 1);
         assert((y0 * 1) as nat == y0);
         assert((y0 * pow(R as int, (pow2(0nat) - 1) as nat) as nat) == y0);
-        assert((pow(y0 as int, pow2(0nat)) as nat) == (pow(y0 as int, 1nat) as nat));
-        assert((pow(y0 as int, 1nat) as nat) == y0);
+        assert((pow(y0 as int, pow2(0nat)) as nat) == y0);
         assert((y0 * pow(R as int, (pow2(0nat) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(0nat)) as nat) % L);
     }
     
-    // Use a while loop for better control over the loop counter
     let mut iter: usize = 0;
     
-    // Loop invariant: y * R^(2^iter - 1) ≡ y0^(2^iter) (mod L)
     while iter < squarings
         invariant
             limbs_bounded(y),
@@ -2827,7 +2802,6 @@ fn square_multiply(
             R == montgomery_radix(),
             L > 0,
             R > 0,
-            // Core mathematical invariant: y * R^(2^iter - 1) ≡ y0^(2^iter) (mod L)
             (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == 
                 (pow(y0 as int, pow2(iter as nat)) as nat) % L,
         decreases squarings - iter,
@@ -2838,40 +2812,15 @@ fn square_multiply(
         
         let ghost new_y: nat = to_nat(&y.limbs);
         
-        // montgomery_square postcondition gives us:
-        // (new_y * R) % L == (y_before * y_before) % L
-        
-        // Use the helper lemma to establish the new invariant
-        proof {
-            // The montgomery_square postcondition is:
-            // (to_nat(&result.limbs) * montgomery_radix()) % group_order() == 
-            //     (to_nat(&self.limbs) * to_nat(&self.limbs)) % group_order()
-            // Which means: (new_y * R) % L == (y_before * y_before) % L
-            
-            lemma_square_multiply_step(new_y, y_before, y0, R, L, iter as nat);
-        }
+        proof { lemma_square_multiply_step(new_y, y_before, y0, R, L, iter as nat); }
         
         iter = iter + 1;
     }
     
-    // After the loop: y * R^(2^squarings - 1) ≡ y0^(2^squarings) (mod L)
     let ghost y_after_squarings: nat = to_nat(&y.limbs);
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
     
-    // Capture the loop invariant at end (iter == squarings)
-    proof {
-        // From loop invariant with iter == squarings:
-        // (y_after_squarings * pow(R as int, exp_final) as nat) % L == 
-        //     (pow(y0 as int, pow2(squarings as nat)) as nat) % L
-    }
-    
     *y = UnpackedScalar::montgomery_mul(y, x);
-    
-    // montgomery_mul postcondition:
-    // (final * R) % L == (y_after_squarings * xv) % L
-    
-    // Proof of postcondition:
-    // final * R^(2^squarings) ≡ y0^(2^squarings) * x (mod L)
     
     proof {
         use vstd::arithmetic::mul::{lemma_mul_is_associative, lemma_mul_is_commutative};
@@ -2882,15 +2831,13 @@ fn square_multiply(
         let final_y: nat = to_nat(&y.limbs);
         let n: nat = squarings as nat;
         let pow2_n: nat = pow2(n);
-        let R_exp_int: int = pow(R as int, exp_final);  // R^(2^n - 1)
-        let R_pow2n: int = pow(R as int, pow2_n);       // R^(2^n)
-        let y0_pow: int = pow(y0 as int, pow2_n);       // y0^(2^n)
+        let R_exp_int: int = pow(R as int, exp_final);
+        let R_pow2n: int = pow(R as int, pow2_n);
+        let y0_pow: int = pow(y0 as int, pow2_n);
         
         lemma2_to64();
         lemma_pow2_pos(n);
         
-        // Step 1: Prove R * R^(2^n - 1) = R^(2^n)
-        // 1 + (2^n - 1) = 2^n
         assert(1 + exp_final == pow2_n) by {
             assert(pow2_n >= 1);
             assert(exp_final == (pow2_n - 1) as nat);
@@ -2899,12 +2846,9 @@ fn square_multiply(
         lemma_pow1(R as int);
         assert((R as int) * R_exp_int == R_pow2n);
         
-        // From loop invariant (with iter == squarings at end of loop):
-        // (y_after_squarings * R_exp_int as nat) % L == (y0_pow as nat) % L
         let lhs_invariant: nat = (y_after_squarings * R_exp_int as nat);
         let rhs_invariant: nat = y0_pow as nat;
         
-        // R_exp_int is positive since R > 0 and exp_final >= 0
         assert(R_exp_int >= 0) by {
             use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow_nonnegative;
             lemma_pow_nonnegative(R as int, exp_final);

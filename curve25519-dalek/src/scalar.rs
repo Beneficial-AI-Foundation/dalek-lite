@@ -2671,7 +2671,6 @@ proof fn lemma_square_multiply_step(
     let R_exp_k_sq: nat = R_exp_k_sq_int as nat;
     let y_times_R_exp: nat = y_before * (R_exp_k as nat);
     let y0_pow_k: nat = pow(y0 as int, pow2(k)) as nat;
-    assert(y0_pow_k >= 0) by { lemma_pow_nonnegative(y0 as int, pow2(k)); }
     
     assert(y_times_R_exp % L == y0_pow_k % L);
     
@@ -2693,12 +2692,9 @@ proof fn lemma_square_multiply_step(
     ;
     
     let new_y_R: nat = new_y * R;
-    assert(new_y_R % L == y_sq % L);
     
     lemma_mul_mod_noop(new_y_R as int, R_exp_k_sq as int, L as int);
     lemma_mul_mod_noop(y_sq as int, R_exp_k_sq as int, L as int);
-    
-    assert(((new_y * R) * R_exp_k_sq) % L == ((y_before * y_before) * R_exp_k_sq) % L);
     
     assert((new_y * R) * R_exp_k_sq == new_y * pow(R as int, exp_k1) as nat) by {
         lemma_pow2_square(R as int, exp_k);
@@ -2707,13 +2703,10 @@ proof fn lemma_square_multiply_step(
         lemma_mul_is_associative(new_y as int, R as int, R_exp_k_sq as int);
     }
     
-    assert((y_sq * R_exp_k_sq) % L == (y_times_R_exp * y_times_R_exp) % L);
-    
     let y0_pow_k_int: int = pow(y0 as int, pow2(k));
-    assert(y0_pow_k_int >= 0) by { lemma_pow_nonnegative(y0 as int, pow2(k)); }
     
     lemma_pow2_square(y0 as int, k);
-    assert(y0_pow_k_int * y0_pow_k_int == pow(y0 as int, pow2(k + 1)));
+    lemma_pow_nonnegative(y0 as int, pow2(k));
     assert(y0_pow_k * y0_pow_k == pow(y0 as int, pow2(k + 1)) as nat);
     
     assert((new_y * pow(R as int, exp_k1) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L);

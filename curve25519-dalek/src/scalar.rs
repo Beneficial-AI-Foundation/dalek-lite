@@ -3037,33 +3037,23 @@ fn square_multiply(
         assert(lhs_invariant % L == rhs_invariant % L);
         
         // From montgomery_mul:
-        // (final_y * R) % L == (y_after_squarings * xv) % L
         let final_times_R: nat = final_y * R;
         let y_after_times_x: nat = y_after_squarings * xv;
         assert(final_times_R % L == y_after_times_x % L);
         
-        // Step 2: Multiply the loop invariant by xv
-        // lhs_invariant * xv % L == rhs_invariant * xv % L
         lemma_mul_mod_noop(lhs_invariant as int, xv as int, L as int);
         lemma_mul_mod_noop(rhs_invariant as int, xv as int, L as int);
         assert((lhs_invariant * xv) % L == (rhs_invariant * xv) % L);
         
-        // Step 3: Multiply the montgomery_mul result by R_exp_int
-        // final_times_R * R_exp_int % L == y_after_times_x * R_exp_int % L
         lemma_mul_mod_noop(final_times_R as int, R_exp_int, L as int);
         lemma_mul_mod_noop(y_after_times_x as int, R_exp_int, L as int);
         assert((final_times_R as int * R_exp_int) % (L as int) == (y_after_times_x as int * R_exp_int) % (L as int));
         
-        // final_times_R * R_exp_int = final_y * R * R_exp_int = final_y * R_pow2n
         assert(final_times_R as int * R_exp_int == final_y as int * R_pow2n) by {
             lemma_mul_is_associative(final_y as int, R as int, R_exp_int);
             assert((R as int) * R_exp_int == R_pow2n);
         }
         
-        // y_after_times_x * R_exp_int = y_after_squarings * xv * R_exp_int
-        //                             = y_after_squarings * R_exp_int * xv  (commutativity)
-        //                             = lhs_invariant * xv
-        // Using nonlinear_arith for the algebraic identity with explicit int casts
         let y_after_int: int = y_after_squarings as int;
         let xv_int: int = xv as int;
         let R_exp_nat: nat = R_exp_int as nat;
@@ -3071,23 +3061,10 @@ fn square_multiply(
         assert(y_after_times_x as int == y_after_int * xv_int);
         assert(lhs_invariant as int == y_after_int * R_exp_int);
         
-        // The key algebraic identity: (a * b) * c = (a * c) * b
-        // y_after_times_x * R_exp_int = (y_after * xv) * R_exp = y_after * xv * R_exp
-        // lhs_invariant * xv = (y_after * R_exp) * xv = y_after * R_exp * xv
-        // By commutativity of multiplication: y_after * xv * R_exp = y_after * R_exp * xv
         assert((y_after_int * xv_int) * R_exp_int == (y_after_int * R_exp_int) * xv_int) by (nonlinear_arith)
-            requires
-                R_exp_int >= 0,
-        ;
+            requires R_exp_int >= 0;
         
         assert(y_after_times_x as int * R_exp_int == lhs_invariant as int * xv as int);
-        
-        // Now chain together:
-        // (final_y * R_pow2n) % L == (final_times_R * R_exp_int) % L  [from above]
-        //                        == (y_after_times_x * R_exp_int) % L [from montgomery_mul * R_exp]
-        //                        == (lhs_invariant * xv) % L          [commutativity]
-        //                        == (rhs_invariant * xv) % L          [from loop invariant * xv]
-        //                        == (y0_pow * xv) % L                 [definition of rhs_invariant]
         
         assert((final_y as int * R_pow2n) % (L as int) == (final_times_R as int * R_exp_int) % (L as int));
         assert((final_times_R as int * R_exp_int) % (L as int) == (y_after_times_x as int * R_exp_int) % (L as int));
@@ -3095,16 +3072,12 @@ fn square_multiply(
         assert((lhs_invariant * xv) % L == (rhs_invariant * xv) % L);
         assert(rhs_invariant == y0_pow as nat);
         
-        // Final result - chain all the equalities
         assert((lhs_invariant as int * xv as int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
         assert((y_after_times_x as int * R_exp_int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
         assert((final_times_R as int * R_exp_int) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
         assert((final_y as int * R_pow2n) % (L as int) == (rhs_invariant as int * xv as int) % (L as int));
         
-        // y0_pow >= 0 since y0 >= 0 and pow with non-negative base is non-negative
-        assert(y0_pow >= 0) by {
-            lemma_pow_nonnegative(y0 as int, pow2_n);
-        }
+        assert(y0_pow >= 0) by { lemma_pow_nonnegative(y0 as int, pow2_n); }
         assert(rhs_invariant as int == y0_pow);
         assert((final_y as int * R_pow2n) % (L as int) == (y0_pow * xv as int) % (L as int));
         

@@ -2602,43 +2602,27 @@ verus! {
 
 /// Lemma: Montgomery squaring preserves the squares property
 /// Key insight: 2^(k+1) - 1 = 2*(2^k - 1) + 1, so R^(2^(k+1) - 1) = R * (R^(2^k - 1))^2
-proof fn lemma_square_multiply_step(
-    new_y: nat,
-    y_before: nat, 
-    y0: nat,
-    R: nat,
-    L: nat,
-    k: nat,
-)
+proof fn lemma_square_multiply_step(new_y: nat, y_before: nat, y0: nat, R: nat, L: nat, k: nat)
     requires
-        L > 0,
-        R > 0,
+        L > 0, R > 0,
         (new_y * R) % L == (y_before * y_before) % L,
-        (y_before * pow(R as int, (pow2(k) - 1) as nat) as nat) % L == 
-            (pow(y0 as int, pow2(k)) as nat) % L,
+        (y_before * pow(R as int, (pow2(k) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(k)) as nat) % L,
     ensures
-        (new_y * pow(R as int, (pow2(k + 1) - 1) as nat) as nat) % L == 
-            (pow(y0 as int, pow2(k + 1)) as nat) % L,
+        (new_y * pow(R as int, (pow2(k + 1) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L,
 {
     use vstd::arithmetic::power2::{lemma_pow2_unfold, lemma2_to64, lemma_pow2_pos};
     use vstd::arithmetic::mul::lemma_mul_is_associative;
     use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow_nonnegative, lemma_pow2_square};
     
-    lemma2_to64();
-    lemma_pow2_unfold(k + 1);
-    lemma_pow2_pos(k);
-    lemma_pow2_pos(k + 1);
+    lemma2_to64(); lemma_pow2_unfold(k + 1); lemma_pow2_pos(k); lemma_pow2_pos(k + 1);
     
     let exp_k = (pow2(k) - 1) as nat;
     let exp_k1 = (pow2(k + 1) - 1) as nat;
     let R_exp_k: int = pow(R as int, exp_k);
     let R_exp_k_sq: nat = (R_exp_k * R_exp_k) as nat;
-    let y_times_R_exp: nat = y_before * (R_exp_k as nat);
-    let y0_pow_k: nat = pow(y0 as int, pow2(k)) as nat;
-    let y_sq: nat = y_before * y_before;
-    let R_exp_k_nat: nat = R_exp_k as nat;
+    let y_R: nat = y_before * (R_exp_k as nat);
+    let y0_k: nat = pow(y0 as int, pow2(k)) as nat;
     
-    // Establish key equalities
     assert(exp_k1 == 2 * exp_k + 1) by (nonlinear_arith) 
         requires pow2(k) >= 1, pow2(k + 1) == 2 * pow2(k), 
                  exp_k == (pow2(k) - 1) as nat, exp_k1 == (pow2(k + 1) - 1) as nat;
@@ -2646,35 +2630,21 @@ proof fn lemma_square_multiply_step(
     lemma_pow_positive(R_exp_k, 2);
     
     assert(R_exp_k_sq == pow(R_exp_k, 2) as nat) by { lemma_pow1(R_exp_k); lemma_pow_adds(R_exp_k, 1, 1); }
-    
-    assert(y_times_R_exp * y_times_R_exp == y_sq * R_exp_k_sq) by (nonlinear_arith)
-        requires y_times_R_exp == y_before * R_exp_k_nat, R_exp_k_nat == R_exp_k as nat, 
-                 y_sq == y_before * y_before,
-                 R_exp_k_sq == (R_exp_k * R_exp_k) as nat, R_exp_k > 0;
-    
+    assert(y_R * y_R == (y_before * y_before) * R_exp_k_sq) by (nonlinear_arith) 
+        requires y_R == y_before * (R_exp_k as nat), R_exp_k_sq == (R_exp_k * R_exp_k) as nat, R_exp_k > 0;
     assert((new_y * R) * R_exp_k_sq == new_y * pow(R as int, exp_k1) as nat) by {
-        lemma_pow_adds(R as int, 1nat, 2 * exp_k);
-        lemma_pow1(R as int);
+        lemma_pow_adds(R as int, 1nat, 2 * exp_k); lemma_pow1(R as int);
         lemma_pow_multiplies(R as int, exp_k, 2nat);
         lemma_mul_is_associative(new_y as int, R as int, R_exp_k_sq as int);
     }
-    
-    lemma_pow_multiplies(y0 as int, pow2(k), 2);
-    lemma_pow2_square(y0 as int, k);
-    lemma_pow_nonnegative(y0 as int, pow2(k));
+    lemma_pow_multiplies(y0 as int, pow2(k), 2); lemma_pow2_square(y0 as int, k); lemma_pow_nonnegative(y0 as int, pow2(k));
     
     calc! { (==)
         (new_y * pow(R as int, exp_k1) as nat) % L; {}
-        ((new_y * R) * R_exp_k_sq) % L; {
-            lemma_mul_mod_noop((new_y * R) as int, R_exp_k_sq as int, L as int);
-            lemma_mul_mod_noop(y_sq as int, R_exp_k_sq as int, L as int);
-        }
-        (y_sq * R_exp_k_sq) % L; {}
-        (y_times_R_exp * y_times_R_exp) % L; {
-            lemma_mul_mod_noop(y_times_R_exp as int, y_times_R_exp as int, L as int);
-            lemma_mul_mod_noop(y0_pow_k as int, y0_pow_k as int, L as int);
-        }
-        (y0_pow_k * y0_pow_k) % L; {}
+        ((new_y * R) * R_exp_k_sq) % L; { lemma_mul_mod_noop((new_y * R) as int, R_exp_k_sq as int, L as int); lemma_mul_mod_noop((y_before * y_before) as int, R_exp_k_sq as int, L as int); }
+        ((y_before * y_before) * R_exp_k_sq) % L; {}
+        (y_R * y_R) % L; { lemma_mul_mod_noop(y_R as int, y_R as int, L as int); lemma_mul_mod_noop(y0_k as int, y0_k as int, L as int); }
+        (y0_k * y0_k) % L; {}
         (pow(y0 as int, pow2(k + 1)) as nat) % L;
     }
 }
@@ -2706,8 +2676,7 @@ fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar)
         invariant
             limbs_bounded(y), limbs_bounded(x), iter <= squarings,
             L == group_order(), R == montgomery_radix(), L > 0, R > 0,
-            (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == 
-                (pow(y0 as int, pow2(iter as nat)) as nat) % L,
+            (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(iter as nat)) as nat) % L,
         decreases squarings - iter,
     {
         let ghost y_before: nat = to_nat(&y.limbs);
@@ -2736,20 +2705,13 @@ fn square_multiply(y: &mut UnpackedScalar, squarings: usize, x: &UnpackedScalar)
         lemma_pow_adds(R as int, 1nat, exp_final); lemma_pow1(R as int);
         lemma_pow_nonnegative(R as int, exp_final); lemma_pow_nonnegative(y0 as int, pow2(n));
         
-        assert((y_after as int * xv as int) * R_exp == (y_after as int * R_exp) * xv as int) by (nonlinear_arith)
-            requires R_exp >= 0;
+        assert((y_after as int * xv as int) * R_exp == (y_after as int * R_exp) * xv as int) by (nonlinear_arith) requires R_exp >= 0;
         
         calc! { (==)
             (final_y as int * R_pow2n) % (L as int); { lemma_mul_is_associative(final_y as int, R as int, R_exp); }
-            ((final_y * R) as int * R_exp) % (L as int); {
-                lemma_mul_mod_noop((final_y * R) as int, R_exp, L as int);
-                lemma_mul_mod_noop((y_after * xv) as int, R_exp, L as int);
-            }
+            ((final_y * R) as int * R_exp) % (L as int); { lemma_mul_mod_noop((final_y * R) as int, R_exp, L as int); lemma_mul_mod_noop((y_after * xv) as int, R_exp, L as int); }
             ((y_after * xv) as int * R_exp) % (L as int); {}
-            ((y_after * R_exp as nat) as int * xv as int) % (L as int); {
-                lemma_mul_mod_noop((y_after * R_exp as nat) as int, xv as int, L as int);
-                lemma_mul_mod_noop(y0_pow, xv as int, L as int);
-            }
+            ((y_after * R_exp as nat) as int * xv as int) % (L as int); { lemma_mul_mod_noop((y_after * R_exp as nat) as int, xv as int, L as int); lemma_mul_mod_noop(y0_pow, xv as int, L as int); }
             (y0_pow * xv as int) % (L as int);
         }
     }

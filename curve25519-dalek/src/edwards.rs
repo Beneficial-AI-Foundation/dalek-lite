@@ -702,7 +702,7 @@ impl Zeroize for CompressedEdwardsY {
             forall|i: int| 1 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
             self.0[0]
                 == 1u8,
-    // VERIFICATION NOTE: this "zeroize" leaves one as bit equal to 1
+    // VERIFICATION NOTE: this "zeroize" leaves one bit equal to 1
 
     {
         /* ORIGINAL CODE:
@@ -741,7 +741,6 @@ impl ValidityCheck for EdwardsPoint {
                 && limbs_bounded(&self.T, 54),
         ensures
             result == is_valid_edwards_point(*self),
-            true,  // VERIFICATION NOTE: SECOND CONDITION MISSING
     {
         let proj = self.as_projective();
         proof {
@@ -757,7 +756,7 @@ impl ValidityCheck for EdwardsPoint {
 
         let result = point_on_curve && on_segre_image;
         proof {
-            // postcondition:
+            // postcondition: capturing both point_on_curve and on_segre_image
             assume(result == is_valid_edwards_point(*self));
         }
         result
@@ -802,6 +801,20 @@ impl ConditionallySelectable for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
+/// Spec for ConstantTimeEq trait implementation
+#[cfg(verus_keep_ghost)]
+pub trait ConstantTimeEqSpecImpl {
+    spec fn ct_eq_req(&self, other: &Self) -> bool;
+}
+
+#[cfg(verus_keep_ghost)]
+impl ConstantTimeEqSpecImpl for EdwardsPoint {
+    open spec fn ct_eq_req(&self, other: &EdwardsPoint) -> bool {
+        limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54) &&
+        limbs_bounded(&other.X, 54) && limbs_bounded(&other.Y, 54) && limbs_bounded(&other.Z, 54)
+    }
+}
+
 impl ConstantTimeEq for EdwardsPoint {
     fn ct_eq(&self, other: &EdwardsPoint) -> (result: Choice)
         ensures
@@ -813,6 +826,11 @@ impl ConstantTimeEq for EdwardsPoint {
                 *other,
             )),
     {
+        proof {
+            // Preconditions from ConstantTimeEqSpecImpl::ct_eq_req needed for multiplications below
+            assume(self.ct_eq_req(other));
+        }
+        
         // We would like to check that the point (X/Z, Y/Z) is equal to
         // the point (X'/Z', Y'/Z') without converting into affine
         // coordinates (x, y) and (x', y'), which requires two inversions.
@@ -822,9 +840,7 @@ impl ConstantTimeEq for EdwardsPoint {
         let result = (&self.X * &other.Z).ct_eq(&(&other.X * &self.Z))
             & (&self.Y * &other.Z).ct_eq(&(&other.Y * &self.Z));
         */
-        // VERIFICATION NOTE: Bypass preconditions for field element multiplication
-        assume(false);
-
+        
         let x_eq = (&self.X * &other.Z).ct_eq(&(&other.X * &self.Z));
         let y_eq = (&self.Y * &other.Z).ct_eq(&(&other.Y * &self.Z));
         let result = choice_and(x_eq, y_eq);
@@ -1126,6 +1142,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&EdwardsPoint> for &EdwardsPoint {
         is_valid_edwards_point(*self) && is_valid_edwards_point(*rhs)
             &&
         // limb bounds needed because of arithmetic inside:
+        sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX) &&
         limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54)
             && limbs_bounded(&self.T, 54) && limbs_bounded(&rhs.X, 54) && limbs_bounded(&rhs.Y, 54)
             && limbs_bounded(&rhs.Z, 54) && limbs_bounded(&rhs.T, 54)
@@ -1153,13 +1170,15 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
         /* ORIGINAL CODE
         (self + &other.as_projective_niels()).as_extended()
         */
+        assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+
         let other_niels = other.as_projective_niels();
 
         proof {
             // Preconditions for EdwardsPoint + ProjectiveNielsPoint addition
             // The limb bounds for self are inherited from the outer function's add_req
             // We need to assume the sum_of_limbs_bounded precondition
-            assume(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+            assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
 
             // Assume limb bounds for other_niels (from as_projective_niels postconditions)
             assume(limbs_bounded(&other_niels.Y_plus_X, 54));
@@ -1202,6 +1221,12 @@ define_add_variants!(
 
 impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
     fn add_assign(&mut self, _rhs: &'b EdwardsPoint)
+        requires
+            is_valid_edwards_point(*old(self)) && is_valid_edwards_point(*_rhs),
+            sum_of_limbs_bounded(&(*old(self)).Y, &(*old(self)).X, u64::MAX),
+            limbs_bounded(&old(self).X, 54) && limbs_bounded(&old(self).Y, 54) && limbs_bounded(&old(self).Z, 54)
+                && limbs_bounded(&old(self).T, 54) && limbs_bounded(&_rhs.X, 54) && limbs_bounded(&_rhs.Y, 54)
+                && limbs_bounded(&_rhs.Z, 54) && limbs_bounded(&_rhs.T, 54),
         ensures
             is_valid_edwards_point(*self),
             // Semantic correctness: result is the addition of old(self) + rhs
@@ -1214,18 +1239,7 @@ impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
         /* ORIGINAL CODE
         *self = (self as &EdwardsPoint) + _rhs;
         CAST TO &EdwardsPoint UNSUPPORTED */
-        proof {
-            // Assume preconditions from AddSpecImpl are satisfied
-            assume(is_valid_edwards_point(*self) && is_valid_edwards_point(*_rhs));
-            assume(limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(
-                &self.Z,
-                54,
-            ) && limbs_bounded(&self.T, 54));
-            assume(limbs_bounded(&_rhs.X, 54) && limbs_bounded(&_rhs.Y, 54) && limbs_bounded(
-                &_rhs.Z,
-                54,
-            ) && limbs_bounded(&_rhs.T, 54));
-        }
+        
         *self = &*self + _rhs;
     }
 }

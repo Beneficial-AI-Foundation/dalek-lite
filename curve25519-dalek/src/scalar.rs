@@ -111,6 +111,7 @@
 //! has been enabled.
 
 use crate::lemmas::common_lemmas::mask_lemmas::*;
+use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::lemmas::common_lemmas::shift_lemmas::*;
 use core::borrow::Borrow;
 use core::fmt::Debug;
@@ -121,6 +122,7 @@ use core::ops::{Add, AddAssign};
 use core::ops::{Mul, MulAssign};
 use core::ops::{Sub, SubAssign};
 use vstd::arithmetic::div_mod::*;
+use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
 use vstd::bits::*;
@@ -2609,9 +2611,6 @@ proof fn lemma_square_multiply_step(new_y: nat, y_before: nat, y0: nat, R: nat, 
     ensures
         (new_y * pow(R as int, (pow2(k + 1) - 1) as nat) as nat) % L == (pow(y0 as int, pow2(k + 1)) as nat) % L,
 {
-    use vstd::arithmetic::power2::{lemma_pow2_unfold, lemma_pow2_pos};
-    use vstd::arithmetic::mul::lemma_mul_is_associative;
-    use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow_nonnegative, lemma_pow2_square};
     
     lemma_pow2_unfold(k + 1);
     lemma_pow2_pos(k);
@@ -2690,8 +2689,6 @@ fn square_multiply(
     let ghost L: nat = group_order();
 
     proof {
-        use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_pos};
-        use vstd::arithmetic::power::{lemma_pow0, lemma_pow1};
         lemma_pow2_pos(260);
         lemma2_to64();
         lemma_pow0(R as int);
@@ -2729,11 +2726,6 @@ fn square_multiply(
     *y = UnpackedScalar::montgomery_mul(y, x);
 
     proof {
-        use vstd::arithmetic::mul::lemma_mul_is_associative;
-        use vstd::arithmetic::power::{lemma_pow_adds, lemma_pow1};
-        use vstd::arithmetic::power2::lemma_pow2_pos;
-        use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow_nonnegative;
-
         let final_y: nat = to_nat(&y.limbs);
         let n: nat = squarings as nat;
         let R_exp: int = pow(R as int, exp_final);

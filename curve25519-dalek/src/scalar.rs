@@ -2656,6 +2656,7 @@ fn square_multiply(
     {
         let ghost y_before: nat = to_nat(&y.limbs);
         let ghost i_before: nat = i as nat;
+        *y = y.montgomery_square();
         proof {
             lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, i_before);
             i = i + 1;
@@ -2663,9 +2664,7 @@ fn square_multiply(
             // lemma ensures: pow2(i_before + 1) which equals pow2(i as nat) since i = i_before + 1
             assert(i as nat == i_before + 1);
         }
-        *y = y.montgomery_square();
     }
-    *y = UnpackedScalar::montgomery_mul(y, x);
 
     proof {
         assume(i == squarings);  // After for loop, i equals squarings
@@ -2681,6 +2680,8 @@ fn square_multiply(
             pow2(squarings as nat),
         ) as nat) % L);
     }
+
+    *y = UnpackedScalar::montgomery_mul(y, x);
 
     proof {
         let final_y: nat = to_nat(&y.limbs);

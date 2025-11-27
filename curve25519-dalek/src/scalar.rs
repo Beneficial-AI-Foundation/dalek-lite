@@ -2665,6 +2665,7 @@ fn square_multiply(
         }
         *y = y.montgomery_square();
     }
+    *y = UnpackedScalar::montgomery_mul(y, x);
 
     proof {
         assume(i == squarings);  // After for loop, i equals squarings
@@ -2680,8 +2681,6 @@ fn square_multiply(
             pow2(squarings as nat),
         ) as nat) % L);
     }
-
-    *y = UnpackedScalar::montgomery_mul(y, x);
 
     proof {
         let final_y: nat = to_nat(&y.limbs);

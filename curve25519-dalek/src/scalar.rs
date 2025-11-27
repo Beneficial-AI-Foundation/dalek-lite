@@ -2640,26 +2640,21 @@ fn square_multiply(
         assert((y0 * 1) as nat == y0);
     }
 
-    let ghost mut i: int = 0;  // Ghost variable: tracks iterations for proof
-    // VERIFICATION NOTE: Named loop variable allows `i == idx` invariant to track iteration count
+    // VERIFICATION NOTE: Named loop variable allows tracking iteration count
     for idx in 0..squarings
         invariant
             limbs_bounded(y),
             limbs_bounded(x),
-            i == idx,
             L == group_order(),
             R == montgomery_radix(),
             L > 0,
             R > 0,
-            (to_nat(&y.limbs) * pow(R as int, (pow2(i as nat) - 1) as nat) as nat) % L == (pow(
+            (to_nat(&y.limbs) * pow(R as int, (pow2(idx as nat) - 1) as nat) as nat) % L == (pow(
                 y0 as int,
-                pow2(i as nat),
+                pow2(idx as nat),
             ) as nat) % L,
     {
         let ghost y_before: nat = to_nat(&y.limbs);
-        proof {
-            i = i + 1;
-        }
         *y = y.montgomery_square();
         proof {
             lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, idx as nat);

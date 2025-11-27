@@ -2657,13 +2657,12 @@ fn square_multiply(
             ) as nat) % L,
     {
         let ghost y_before: nat = to_nat(&y.limbs);
-        let ghost i_before: nat = i as nat;
         proof {
             i = i + 1;
         }
         *y = y.montgomery_square();
         proof {
-            lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, i_before);
+            lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, idx as nat);
         }
     }
 

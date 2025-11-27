@@ -353,8 +353,8 @@ mod decompress {
                 spec_field_element(&X)
             },
             // Y and Z are unchanged
-            spec_field_element(&result.Y) == spec_field_element(&Y),
-            spec_field_element(&result.Z) == spec_field_element(&Z),
+            &result.Y == &Y &&
+            &result.Z == &Z &&
             // X is conditionally negated based on the sign bit
             // T = X * Y (after conditional negation)
             spec_field_element(&result.T) == math_field_mul(
@@ -377,8 +377,8 @@ mod decompress {
 
         proof {
             // For Mul (X * Y): requires limbs < 2^54
-            assume(forall|i: int| 0 <= i < 5 ==> X.limbs[i] < (1u64 << 54));
-            assume(forall|i: int| 0 <= i < 5 ==> Y.limbs[i] < (1u64 << 54));
+            assume(limbs_bounded(&X, 54));
+            assume(limbs_bounded(&Y, 54));
 
             // Assume conditional_negate_field behaves correctly
             assume(spec_field_element(&X) == if choice_is_true(compressed_sign_bit) {

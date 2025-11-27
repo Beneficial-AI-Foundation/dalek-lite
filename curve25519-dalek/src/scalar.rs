@@ -2619,6 +2619,8 @@ fn square_multiply(
     ensures
         limbs_bounded(y),
         limbs_bounded(x),
+        // VERIFICATION NOTE: Changed postcondition from the original incorrect version
+        // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`
         (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
             % group_order() == (pow(to_nat(&old(y).limbs) as int, pow2(squarings as nat)) * to_nat(
             &x.limbs,
@@ -2639,12 +2641,12 @@ fn square_multiply(
     }
 
     let ghost mut i: int = 0;  // Ghost variable: tracks iterations for proof
-    for _ in 0..squarings
+    // VERIFICATION NOTE: Named loop variable allows `i == idx` invariant to track iteration count
+    for idx in 0..squarings
         invariant
             limbs_bounded(y),
             limbs_bounded(x),
-            i <= squarings,
-            i >= 0,
+            i == idx,
             L == group_order(),
             R == montgomery_radix(),
             L > 0,
@@ -2660,30 +2662,23 @@ fn square_multiply(
         proof {
             lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, i_before);
             i = i + 1;
-            assume(i <= squarings);
             // lemma ensures: pow2(i_before + 1) which equals pow2(i as nat) since i = i_before + 1
             assert(i as nat == i_before + 1);
         }
     }
 
-    proof {
-        assume(i == squarings);  // After for loop, i equals squarings
-    }
-
     let ghost y_after: nat = to_nat(&y.limbs);
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
-
-    proof {
-        // After loop, i == squarings, so invariant gives us:
-        assert((y_after * pow(R as int, exp_final) as nat) % L == (pow(
-            y0 as int,
-            pow2(squarings as nat),
-        ) as nat) % L);
-    }
 
     *y = UnpackedScalar::montgomery_mul(y, x);
 
     proof {
+        // After loop, i == squarings (from ensures), so invariant gives us:
+        assert((y_after * pow(R as int, exp_final) as nat) % L == (pow(
+            y0 as int,
+            pow2(squarings as nat),
+        ) as nat) % L);
+
         let final_y: nat = to_nat(&y.limbs);
         let n: nat = squarings as nat;
         let R_exp: int = pow(R as int, exp_final);

@@ -643,17 +643,19 @@ impl CompressedEdwardsY {
             },
     {
         // ORIGINAL CODE: bytes.try_into().map(CompressedEdwardsY)
-        // REFACTORED for Verus compatibility:
-        // 1. try_into marked as external and used through wrapper function
-        // 2. datatype constructors like CompressedEdwardsY are not allowed as function values in map()
+        // VERUS WORKAROUND: Verus doesn't allow datatype constructors like CompressedEdwardsY as function values,
+        // so we use a closure |arr| CompressedEdwardsY(arr) instead of CompressedEdwardsY directly.
+        // Also, try_into is wrapped in an external function for Verus compatibility.
         let arr_result = try_into_32_bytes_array(bytes);
         let result = arr_result.map(|arr| CompressedEdwardsY(arr));
 
-        // PROOF BYPASS: we need to prove property preservation through map
-        assume(match result {
-            Ok(point) => point.0@ == bytes@,
-            Err(_) => true,
-        });
+        proof {
+            // postcondition
+            assume(match result {
+                Ok(point) => point.0@ == bytes@,
+                Err(_) => true,
+            });
+        }
         result
     }
 }

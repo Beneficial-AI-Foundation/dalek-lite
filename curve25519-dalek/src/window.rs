@@ -316,8 +316,8 @@ impl<'a> FromSpecImpl<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
 
     open spec fn from_spec_req(P: &'a EdwardsPoint) -> bool {
         // Preconditions needed for table construction
-        limbs_bounded(&P.X, 54) && limbs_bounded(&P.Y, 54) && limbs_bounded(&P.Z, 54)
-            && limbs_bounded(&P.T, 54)
+        fe51_limbs_bounded(&P.X, 54) && fe51_limbs_bounded(&P.Y, 54) && fe51_limbs_bounded(&P.Z, 54)
+            && fe51_limbs_bounded(&P.T, 54)
     }
 
     open spec fn from_spec(P: &'a EdwardsPoint) -> Self {
@@ -345,10 +345,10 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         */
         // Assume preconditions from FromSpecImpl::from_spec_req
         proof {
-            assume(limbs_bounded(&P.X, 54));
-            assume(limbs_bounded(&P.Y, 54));
-            assume(limbs_bounded(&P.Z, 54));
-            assume(limbs_bounded(&P.T, 54));
+            assume(fe51_limbs_bounded(&P.X, 54));
+            assume(fe51_limbs_bounded(&P.Y, 54));
+            assume(fe51_limbs_bounded(&P.Z, 54));
+            assume(fe51_limbs_bounded(&P.T, 54));
         }
 
         let mut points = [P.as_projective_niels();8];
@@ -360,30 +360,30 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
             proof {
                 // Preconditions for P + &points[j]
                 assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
-                assume(limbs_bounded(&P.X, 54));
-                assume(limbs_bounded(&P.Y, 54));
-                assume(limbs_bounded(&P.Z, 54));
-                assume(limbs_bounded(&P.T, 54));
-                assume(limbs_bounded(&&points[j as int].Y_plus_X, 54));
-                assume(limbs_bounded(&&points[j as int].Y_minus_X, 54));
-                assume(limbs_bounded(&&points[j as int].Z, 54));
-                assume(limbs_bounded(&&points[j as int].T2d, 54));
+                assume(fe51_limbs_bounded(&P.X, 54));
+                assume(fe51_limbs_bounded(&P.Y, 54));
+                assume(fe51_limbs_bounded(&P.Z, 54));
+                assume(fe51_limbs_bounded(&P.T, 54));
+                assume(fe51_limbs_bounded(&&points[j as int].Y_plus_X, 54));
+                assume(fe51_limbs_bounded(&&points[j as int].Y_minus_X, 54));
+                assume(fe51_limbs_bounded(&&points[j as int].Z, 54));
+                assume(fe51_limbs_bounded(&&points[j as int].T2d, 54));
             }
             let sum = P + &points[j];
             proof {
                 // Preconditions for sum.as_extended()
-                assume(limbs_bounded(&sum.X, 54));
-                assume(limbs_bounded(&sum.Y, 54));
-                assume(limbs_bounded(&sum.Z, 54));
-                assume(limbs_bounded(&sum.T, 54));
+                assume(fe51_limbs_bounded(&sum.X, 54));
+                assume(fe51_limbs_bounded(&sum.Y, 54));
+                assume(fe51_limbs_bounded(&sum.Z, 54));
+                assume(fe51_limbs_bounded(&sum.T, 54));
             }
             let extended = sum.as_extended();
             proof {
                 // Preconditions for extended.as_projective_niels()
-                assume(limbs_bounded(&extended.X, 54));
-                assume(limbs_bounded(&extended.Y, 54));
-                assume(limbs_bounded(&extended.Z, 54));
-                assume(limbs_bounded(&extended.T, 54));
+                assume(fe51_limbs_bounded(&extended.X, 54));
+                assume(fe51_limbs_bounded(&extended.Y, 54));
+                assume(fe51_limbs_bounded(&extended.Z, 54));
+                assume(fe51_limbs_bounded(&extended.T, 54));
             }
             points[j + 1] = extended.as_projective_niels();
         }
@@ -403,8 +403,8 @@ impl<'a> FromSpecImpl<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
 
     open spec fn from_spec_req(P: &'a EdwardsPoint) -> bool {
         // Preconditions needed for table construction
-        limbs_bounded(&P.X, 54) && limbs_bounded(&P.Y, 54) && limbs_bounded(&P.Z, 54)
-            && limbs_bounded(&P.T, 54)
+        fe51_limbs_bounded(&P.X, 54) && fe51_limbs_bounded(&P.Y, 54) && fe51_limbs_bounded(&P.Z, 54)
+            && fe51_limbs_bounded(&P.T, 54)
     }
 
     open spec fn from_spec(P: &'a EdwardsPoint) -> Self {
@@ -433,10 +433,10 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         */
         // Assume preconditions from FromSpecImpl::from_spec_req
         proof {
-            assume(limbs_bounded(&P.X, 54));
-            assume(limbs_bounded(&P.Y, 54));
-            assume(limbs_bounded(&P.Z, 54));
-            assume(limbs_bounded(&P.T, 54));
+            assume(fe51_limbs_bounded(&P.X, 54));
+            assume(fe51_limbs_bounded(&P.Y, 54));
+            assume(fe51_limbs_bounded(&P.Z, 54));
+            assume(fe51_limbs_bounded(&P.T, 54));
         }
 
         let mut points = [P.as_affine_niels();8];
@@ -449,30 +449,30 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
                 // Preconditions for P (left-hand side of addition)
                 assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
                 assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // for Z2 = &P.Z + &P.Z in add
-                assume(limbs_bounded(&P.X, 54));
-                assume(limbs_bounded(&P.Y, 54));
-                assume(limbs_bounded(&P.Z, 54));
-                assume(limbs_bounded(&P.T, 54));
+                assume(fe51_limbs_bounded(&P.X, 54));
+                assume(fe51_limbs_bounded(&P.Y, 54));
+                assume(fe51_limbs_bounded(&P.Z, 54));
+                assume(fe51_limbs_bounded(&P.T, 54));
                 // Preconditions for &points[j] (right-hand side - AffineNielsPoint)
-                assume(limbs_bounded(&&points[j as int].y_plus_x, 54));
-                assume(limbs_bounded(&&points[j as int].y_minus_x, 54));
-                assume(limbs_bounded(&&points[j as int].xy2d, 54));
+                assume(fe51_limbs_bounded(&&points[j as int].y_plus_x, 54));
+                assume(fe51_limbs_bounded(&&points[j as int].y_minus_x, 54));
+                assume(fe51_limbs_bounded(&&points[j as int].xy2d, 54));
             }
             let sum = P + &points[j];
             proof {
                 // Preconditions for sum.as_extended()
-                assume(limbs_bounded(&sum.X, 54));
-                assume(limbs_bounded(&sum.Y, 54));
-                assume(limbs_bounded(&sum.Z, 54));
-                assume(limbs_bounded(&sum.T, 54));
+                assume(fe51_limbs_bounded(&sum.X, 54));
+                assume(fe51_limbs_bounded(&sum.Y, 54));
+                assume(fe51_limbs_bounded(&sum.Z, 54));
+                assume(fe51_limbs_bounded(&sum.T, 54));
             }
             let extended = sum.as_extended();
             proof {
                 // Preconditions for extended.as_affine_niels()
-                assume(limbs_bounded(&extended.X, 54));
-                assume(limbs_bounded(&extended.Y, 54));
-                assume(limbs_bounded(&extended.Z, 54));
-                assume(limbs_bounded(&extended.T, 54));
+                assume(fe51_limbs_bounded(&extended.X, 54));
+                assume(fe51_limbs_bounded(&extended.Y, 54));
+                assume(fe51_limbs_bounded(&extended.Z, 54));
+                assume(fe51_limbs_bounded(&extended.T, 54));
             }
             points[j + 1] = extended.as_affine_niels()
         }

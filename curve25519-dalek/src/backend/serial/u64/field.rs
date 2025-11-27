@@ -276,7 +276,7 @@ impl<'a> SubAssign<&'a FieldElement51> for FieldElement51 {
     // VERIFICATION NOTE: PROOF BYPASS
 
         requires
-            limbs_bounded(old(self), 54) && limbs_bounded(_rhs, 54),
+            fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(_rhs, 54),
         ensures
             forall|i: int| 0 <= i < 5 ==> #[trigger] self.limbs[i] < (1u64 << 52),
             *self == spec_sub_limbs(old(self), _rhs),
@@ -315,7 +315,7 @@ impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &FieldElement51 {
 
     // Pre-condition of sub - delegates to spec_sub_limbs_bounded for consistency
     open spec fn sub_req(self, rhs: &FieldElement51) -> bool {
-        limbs_bounded(self, 54) && limbs_bounded(rhs, 54)
+        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
     }
 
     // Postcondition of sub - delegates to spec_sub_limbs for consistency
@@ -337,9 +337,9 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
                 spec_field_element(self),
                 spec_field_element(_rhs),
             ),
-            limbs_bounded(&output, 54),
+            fe51_limbs_bounded(&output, 54),
     {
-        assert(limbs_bounded(self, 54) && limbs_bounded(_rhs, 54));
+        assert(fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(_rhs, 54));
         // To avoid underflow, first add a multiple of p.
         // Choose 16*p = p << 4 to be larger than 54-bit _rhs.
         //
@@ -383,7 +383,7 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
 
         proof {
             assert(1u64 << 52 < 1u64 << 54) by (compute);
-            assert(limbs_bounded(&output, 54));
+            assert(fe51_limbs_bounded(&output, 54));
 
             // Glue the raw subtraction back to the spec subtraction using reduction lemmas.
             lemma_u64_5_as_nat_add(self.limbs, const_vec);
@@ -452,7 +452,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&FieldElement51> for &FieldElement51 {
 
     // Pre-condition of mul
     open spec fn mul_req(self, rhs: &FieldElement51) -> bool {
-        limbs_bounded(self, 54) && limbs_bounded(rhs, 54)
+        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
     }
 
     // Postcondition of mul
@@ -477,7 +477,7 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
                 spec_field_element(self),
                 spec_field_element(_rhs),
             ),
-            limbs_bounded(&output, 54),
+            fe51_limbs_bounded(&output, 54),
     {
         /// Helper function to multiply two 64-bit integers with 128
         /// bits of output.
@@ -614,7 +614,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &FieldElement51 {
 
     // Pre-condition of neg
     open spec fn neg_req(self) -> bool {
-        limbs_bounded(self, 51)
+        fe51_limbs_bounded(self, 51)
     }
 
     // Postcondition of neg

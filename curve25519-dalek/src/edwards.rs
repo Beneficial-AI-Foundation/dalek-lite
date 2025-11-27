@@ -801,6 +801,7 @@ impl ConditionallySelectable for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
+
 /// Spec for ConstantTimeEq trait implementation
 #[cfg(verus_keep_ghost)]
 pub trait ConstantTimeEqSpecImpl {
@@ -817,6 +818,11 @@ impl ConstantTimeEqSpecImpl for EdwardsPoint {
 
 impl ConstantTimeEq for EdwardsPoint {
     fn ct_eq(&self, other: &EdwardsPoint) -> (result: Choice)
+        /* VERIFICATION NOTE: we cannot add a "requires" clause to ct_eq with ConstantTimeEqSpecImpl, 
+            unlike for Add trait implementations through AddSpecImpl.
+        */
+        // requires self.ct_eq_req(other),
+        
         ensures
     // Two points are equal if they represent the same affine point:
     // (X/Z, Y/Z) == (X'/Z', Y'/Z')
@@ -828,6 +834,10 @@ impl ConstantTimeEq for EdwardsPoint {
     {
         proof {
             // Preconditions from ConstantTimeEqSpecImpl::ct_eq_req needed for multiplications below
+            /* VERIFICATION NOTE: 
+            - Verus does not support adding a "requires" clause to ct_eq with ConstantTimeEqSpecImpl, 
+            - For standard types like Add, a "requires" clause for "add" was supported through the AddSpecImpl
+            */
             assume(self.ct_eq_req(other));
         }
         
@@ -861,6 +871,15 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
         true
     }
 
+    /* VERIFICATION NOTE: we cannot add a "requires" clause to eq_spec with PartialEqSpecImpl, 
+        unlike for Add trait implementations through AddSpecImpl.
+    THIS DOES NOT WORK: 
+    open spec fn eq_req(&self, other: &Self) -> bool {
+        limbs_bounded(&self.X, 54) && limbs_bounded(&self.Y, 54) && limbs_bounded(&self.Z, 54) &&
+        limbs_bounded(&other.X, 54) && limbs_bounded(&other.Y, 54) && limbs_bounded(&other.Z, 54)
+    }
+    */
+    
     open spec fn eq_spec(&self, other: &Self) -> bool {
         // Two EdwardsPoints are equal if they represent the same affine point
         edwards_point_as_affine(*self) == edwards_point_as_affine(*other)
@@ -870,6 +889,8 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
 impl PartialEq for EdwardsPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &EdwardsPoint) -> (result: bool)
+        /* VERIFICATION NOTE: we cannot add a "requires" clause to eq with PartialEqSpecImpl, */
+        // requires self.ct_eq_req(other),
         ensures
             result == (edwards_point_as_affine(*self) == edwards_point_as_affine(*other)),
     {

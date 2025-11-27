@@ -278,16 +278,17 @@ mod decompress {
     ))  // Result components: (is_valid, X, Y, Z)// VERIFICATION NOTE: PROOF BYPASSFORMATTER_NOT_INLINE_MARKER
         ensures
     // The returned Y field element matches the one extracted from the compressed representation
-
-            spec_field_element(&result.2) == spec_field_element_from_bytes(&repr.0),
+        ({  let (is_valid, X, Y, Z) = result;
+            spec_field_element(&Y) == spec_field_element_from_bytes(&repr.0) &&
             // The returned Z field element is 1
-            spec_field_element(&result.3) == 1,
+            spec_field_element(&Z) == 1 &&
             // The choice is true iff the Y is valid and (X, Y) is on the curve
-            choice_is_true(result.0) <==> math_is_valid_y_coordinate(spec_field_element(&result.2)),
-            choice_is_true(result.0) ==> math_on_edwards_curve(
-                spec_field_element(&result.1),
-                spec_field_element(&result.2),
-            ),
+            (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(spec_field_element(&Y))) &&
+            (choice_is_true(is_valid) ==> math_on_edwards_curve(
+                spec_field_element(&X),
+                spec_field_element(&Y),
+            ))
+        }),
     {
         let Y = FieldElement::from_bytes(repr.as_bytes());
         assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
@@ -1794,6 +1795,9 @@ impl BasepointTable for EdwardsBasepointTable {
     ///
     /// The above algorithm is trivially generalised to other powers-of-2 radices.
     fn mul_base(&self, scalar: &Scalar) -> EdwardsPoint {
+        proof {
+            assume(scalar.bytes[31] <= 127);  // precondition for as_radix_2w(4)
+        }
         let a = scalar.as_radix_2w(4);
 
         let tables = &self.0;
@@ -1805,10 +1809,43 @@ impl BasepointTable for EdwardsBasepointTable {
         // }
         for i in 0..64 {
             if i % 2 == 1 {
-                P = (&P + &tables[i / 2].select(a[i])).as_extended();
+                // ORIGINAL CODE: need to add intermediate variables for pre and post conditions
+                //     P = (&P + &tables[i / 2].select(a[i])).as_extended();
+                proof {
+                    // preconditions for select and arithmetic operations
+                    assume(a[i as int] >= -8 && a[i as int] <= 8);
+                }
+                let selected = tables[i / 2].select(a[i]);
+                proof {
+                    // preconditions for addition
+                    assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
+                    assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));
+                    assume(limbs_bounded(&P.X, 54));
+                    assume(limbs_bounded(&P.Y, 54));
+                    assume(limbs_bounded(&P.Z, 54));
+                    assume(limbs_bounded(&P.T, 54));
+                    assume(limbs_bounded(&selected.y_plus_x, 54));
+                    assume(limbs_bounded(&selected.y_minus_x, 54));
+                    assume(limbs_bounded(&selected.xy2d, 54));
+                }
+                let tmp = &P + &selected;
+                proof {
+                    // preconditions for as_extended
+                    assume(limbs_bounded(&tmp.X, 54));
+                    assume(limbs_bounded(&tmp.Y, 54));
+                    assume(limbs_bounded(&tmp.Z, 54));
+                    assume(limbs_bounded(&tmp.T, 54));
+                }
+                P = tmp.as_extended();
             }
         }
 
+        proof {
+            assume(limbs_bounded(&P.X, 54));
+            assume(limbs_bounded(&P.Y, 54));
+            assume(limbs_bounded(&P.Z, 54));
+            assume(limbs_bounded(&P.T, 54));
+        }
         P = P.mul_by_pow_2(4);
         // ORIGINAL CODE (doesn't work with Verus - .filter() not supported in ghost for loops):
         // for i in (0..64).filter(|x| x % 2 == 0) {
@@ -1816,7 +1853,32 @@ impl BasepointTable for EdwardsBasepointTable {
         // }
         for i in 0..64 {
             if i % 2 == 0 {
-                P = (&P + &tables[i / 2].select(a[i])).as_extended();
+                proof {
+                    // preconditions for select and arithmetic operations
+                    assume(a[i as int] >= -8 && a[i as int] <= 8);
+                }
+                let selected = tables[i / 2].select(a[i]);
+                proof {
+                    // preconditions for addition
+                    assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
+                    assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));
+                    assume(limbs_bounded(&P.X, 54));
+                    assume(limbs_bounded(&P.Y, 54));
+                    assume(limbs_bounded(&P.Z, 54));
+                    assume(limbs_bounded(&P.T, 54));
+                    assume(limbs_bounded(&selected.y_plus_x, 54));
+                    assume(limbs_bounded(&selected.y_minus_x, 54));
+                    assume(limbs_bounded(&selected.xy2d, 54));
+                }
+                let tmp = &P + &selected;
+                proof {
+                    // preconditions for as_extended
+                    assume(limbs_bounded(&tmp.X, 54));
+                    assume(limbs_bounded(&tmp.Y, 54));
+                    assume(limbs_bounded(&tmp.Z, 54));
+                    assume(limbs_bounded(&tmp.T, 54));
+                }
+                P = tmp.as_extended();
             }
         }
 
@@ -1878,21 +1940,53 @@ verus! {
 
 impl EdwardsPoint {
     /// Multiply by the cofactor: return \\(\[8\]P\\).
-    pub fn mul_by_cofactor(&self) -> EdwardsPoint {
+    pub fn mul_by_cofactor(&self) -> (result: EdwardsPoint)
+        requires
+            limbs_bounded(&self.X, 54),
+            limbs_bounded(&self.Y, 54),
+            limbs_bounded(&self.Z, 54),
+            limbs_bounded(&self.T, 54),
+    {
         self.mul_by_pow_2(3)
     }
 
     /// Compute \\([2\^k] P \\) by successive doublings. Requires \\( k > 0 \\).
-    pub(crate) fn mul_by_pow_2(&self, k: u32) -> EdwardsPoint {
+    pub(crate) fn mul_by_pow_2(&self, k: u32) -> (result: EdwardsPoint)
+        requires
+            k > 0,
+            limbs_bounded(&self.X, 54),
+            limbs_bounded(&self.Y, 54),
+            limbs_bounded(&self.Z, 54),
+            limbs_bounded(&self.T, 54),
+    {
         #[cfg(not(verus_keep_ghost))]
         debug_assert!(k > 0);
         let mut r: CompletedPoint;
         let mut s = self.as_projective();
         for _ in 0..(k - 1) {
+            proof {
+                assume(is_valid_projective_point(s));
+                assume(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX));
+                assume(limbs_bounded(&s.X, 54));
+                assume(limbs_bounded(&s.Y, 54));
+                assume(limbs_bounded(&s.Z, 54));
+            }
             r = s.double();
+            proof {
+                assume(limbs_bounded(&r.X, 54));
+                assume(limbs_bounded(&r.Y, 54));
+                assume(limbs_bounded(&r.Z, 54));
+            }
             s = r.as_projective();
         }
         // Unroll last iteration so we can go directly as_extended()
+        proof {
+            assume(is_valid_projective_point(s));
+            assume(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX));
+            assume(limbs_bounded(&s.X, 54));
+            assume(limbs_bounded(&s.Y, 54));
+            assume(limbs_bounded(&s.Z, 54));
+        }
         s.double().as_extended()
     }
 

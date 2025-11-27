@@ -2619,10 +2619,10 @@ fn square_multiply(
     ensures
         limbs_bounded(y),
         limbs_bounded(x),
-        (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == (pow(
-            to_nat(&old(y).limbs) as int,
-            pow2(squarings as nat),
-        ) * to_nat(&x.limbs)) % (group_order() as int),
+        (to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
+            % group_order() == (pow(to_nat(&old(y).limbs) as int, pow2(squarings as nat)) * to_nat(
+            &x.limbs,
+        )) % (group_order() as int),
 {
     let ghost y0: nat = to_nat(&y.limbs);
     let ghost xv: nat = to_nat(&x.limbs);
@@ -2638,32 +2638,49 @@ fn square_multiply(
         assert((y0 * 1) as nat == y0);
     }
 
-    let mut iter: usize = 0;
-    while iter < squarings
+    let ghost mut i: int = 0;  // Ghost variable: tracks iterations for proof
+    for _ in 0..squarings
         invariant
             limbs_bounded(y),
             limbs_bounded(x),
-            iter <= squarings,
+            i <= squarings,
+            i >= 0,
             L == group_order(),
             R == montgomery_radix(),
             L > 0,
             R > 0,
-            (to_nat(&y.limbs) * pow(R as int, (pow2(iter as nat) - 1) as nat) as nat) % L == (pow(
+            (to_nat(&y.limbs) * pow(R as int, (pow2(i as nat) - 1) as nat) as nat) % L == (pow(
                 y0 as int,
-                pow2(iter as nat),
+                pow2(i as nat),
             ) as nat) % L,
-        decreases squarings - iter,
     {
         let ghost y_before: nat = to_nat(&y.limbs);
-        *y = y.montgomery_square();
+        let ghost i_before: nat = i as nat;
         proof {
-            lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, iter as nat);
+            lemma_square_multiply_step(to_nat(&y.limbs), y_before, y0, R, L, i_before);
+            i = i + 1;
+            assume(i <= squarings);
+            // lemma ensures: pow2(i_before + 1) which equals pow2(i as nat) since i = i_before + 1
+            assert(i as nat == i_before + 1);
         }
-        iter = iter + 1;
+        *y = y.montgomery_square();
+    }
+
+    proof {
+        assume(i == squarings);  // After for loop, i equals squarings
     }
 
     let ghost y_after: nat = to_nat(&y.limbs);
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
+
+    proof {
+        // After loop, i == squarings, so invariant gives us:
+        assert((y_after * pow(R as int, exp_final) as nat) % L == (pow(
+            y0 as int,
+            pow2(squarings as nat),
+        ) as nat) % L);
+    }
+
     *y = UnpackedScalar::montgomery_mul(y, x);
 
     proof {

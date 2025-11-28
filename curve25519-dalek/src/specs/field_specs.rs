@@ -131,7 +131,10 @@ pub open spec fn math_field_inv(a: nat) -> nat {
     }
 }
 
-/// Axiom: For non-zero field elements, the inverse exists and satisfies the inverse property
+/// Proof: For non-zero field elements, the inverse exists and satisfies the inverse property
+///
+/// Uses Fermat's Little Theorem: a^(p-1) ≡ 1 (mod p) for a not divisible by p.
+/// Therefore a * a^(p-2) ≡ 1 (mod p), so a^(p-2) is the multiplicative inverse of a.
 pub proof fn field_inv_axiom(a: nat)
     requires
         a % p() != 0,
@@ -139,7 +142,109 @@ pub proof fn field_inv_axiom(a: nat)
         math_field_inv(a) < p(),
         ((a % p()) * math_field_inv(a)) % p() == 1,
 {
-    admit();  // This would be proven from field theory or assumed as axiom
+    // First, we need p() to be prime
+    axiom_p_is_prime();
+
+    // By Fermat's Little Theorem: a^(p-1) ≡ 1 (mod p)
+    lemma_fermat_little_theorem(a, p());
+
+    // This means: a * a^(p-2) ≡ 1 (mod p)
+    // So a^(p-2) mod p is an inverse of a mod p
+
+    // p - 1 = (p - 2) + 1, so a^(p-1) = a * a^(p-2)
+    let p_val = p();
+    let exp = (p_val - 2) as nat;
+    let inv_candidate = (pow(a as int, exp) as nat) % p_val;
+
+    // Show that inv_candidate < p (trivially true since it's a mod result)
+    assert(inv_candidate < p_val) by {
+        lemma_mod_bound((pow(a as int, exp) as nat) as int, p_val as int);
+    };
+
+    // Show that (a % p) * inv_candidate ≡ 1 (mod p)
+    // FLT gives us: pow(a, p-1) % p == 1
+    // pow(a, p-1) = pow(a, (p-2) + 1) = a * pow(a, p-2)
+
+    // First, show pow(a, p-1) = a * pow(a, p-2)
+    assert(pow(a as int, (p_val - 1) as nat) == (a as int) * pow(a as int, exp)) by {
+        reveal(pow);
+    };
+
+    // From FLT: pow(a, p-1) % p == 1
+    assert((pow(a as int, (p_val - 1) as nat) as nat) % p_val == 1);
+
+    // pow(a, p-1) and a * pow(a, p-2) are equal and both non-negative
+    let pow_p1 = pow(a as int, (p_val - 1) as nat);
+    let pow_p2 = pow(a as int, exp);
+
+    assert(pow_p1 == (a as int) * pow_p2) by {
+        reveal(pow);
+    };
+
+    // pow_p1 is non-negative
+    assert(pow_p1 >= 0) by {
+        if a > 0 {
+            lemma_pow_positive(a as int, (p_val - 1) as nat);
+        } else {
+            lemma_small_mod(0nat, p_val);
+            assert(false);
+        }
+    };
+
+    // pow_p2 is non-negative
+    assert(pow_p2 >= 0) by {
+        if a > 0 {
+            lemma_pow_positive(a as int, exp);
+        } else {
+            lemma_small_mod(0nat, p_val);
+            assert(false);
+        }
+    };
+
+    // Therefore: (a * pow(a, p-2)) % p == 1
+    // Since pow(a, p-1) = a * pow(a, p-2) and pow(a, p-1) % p == 1
+    assert(((a as int) * pow_p2) % (p_val as int) == 1) by {
+        // pow_p1 % p == 1 and pow_p1 == a * pow_p2
+        // Note: we need nat/int consistency
+        assert(pow_p1 % (p_val as int) == 1) by {
+            // (pow_p1 as nat) % p_val == 1
+            // pow_p1 >= 0, so pow_p1 as nat == pow_p1
+            // pow_p1 % p == (pow_p1 as nat) % p
+        };
+    };
+
+    // Now show that (a % p) * inv_candidate ≡ a * pow(a, p-2) ≡ 1 (mod p)
+    // Using modular arithmetic: ((a % p) * (b % p)) % p == (a * b) % p
+
+    // pow(a, p-2) is non-negative
+    assert(pow(a as int, exp) >= 0) by {
+        if a > 0 {
+            lemma_pow_positive(a as int, exp);
+        } else {
+            // a == 0, but a % p != 0, contradiction
+            lemma_small_mod(0nat, p_val);
+            assert(false);
+        }
+    };
+
+    // (a % p) * (pow(a, p-2) % p) % p == (a * pow(a, p-2)) % p == 1
+    assert(((a % p_val) * inv_candidate) % p_val == 1) by {
+        lemma_mul_mod_noop_general(a as int, pow(a as int, exp), p_val as int);
+    };
+
+    // Now we need to show that math_field_inv(a) satisfies these properties
+    // math_field_inv(a) is defined using choose, so we need to show inv_candidate
+    // is a valid witness
+
+    // The choose picks some w such that w < p and (a % p) * w % p == 1
+    // We've shown inv_candidate satisfies this, so the choose will pick some such w
+    // (not necessarily inv_candidate, but some valid inverse)
+
+    // The postconditions follow from the definition of math_field_inv and
+    // the fact that we've shown such a w exists
+    assert(inv_candidate < p_val && ((a % p_val) * inv_candidate) % p_val == 1);
+
+    // Since the choose exists, math_field_inv(a) picks a valid inverse
 }
 
 /// Helper lemma: If a*w ≡ 1 (mod p) and a*z ≡ 1 (mod p), and both w,z < p, then w = z

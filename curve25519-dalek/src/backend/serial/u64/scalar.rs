@@ -33,6 +33,8 @@ use crate::lemmas::common_lemmas::shift_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::core_lemmas::*;
 #[allow(unused_imports)]
+use crate::lemmas::field_lemmas::load8_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::montgomery_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
@@ -40,8 +42,6 @@ use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
 use crate::lemmas::scalar_lemmas::*;
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::scalar_montgomery_lemmas::lemma_from_montgomery_is_product_with_one;
-#[allow(unused_imports)]
-use crate::lemmas::field_lemmas::load8_lemmas::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
 #[allow(unused_imports)]
@@ -191,7 +191,9 @@ impl Scalar52 {
         let mut words = [0u64;8];
         for i in 0..8
             invariant
-                forall|k: int| #![auto] 0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
+                forall|k: int|
+                    #![auto]
+                    0 <= k < i ==> words@[k] as nat == word_from_bytes(bytes, k),
                 words_from_bytes_to_nat(bytes, i as int) + bytes_wide_to_nat_rec(
                     bytes,
                     (i as int) * 8,
@@ -210,17 +212,21 @@ impl Scalar52 {
             proof {
                 let i_int = i as int;
                 // spec_load8_at uses pow2(k*8) * byte, word_from_bytes uses byte * pow2(k*8)
-                assert(spec_load8_at(bytes, (i_int * 8) as usize) == word_from_bytes(bytes, i_int)) by {
+                assert(spec_load8_at(bytes, (i_int * 8) as usize) == word_from_bytes(bytes, i_int))
+                    by {
                     broadcast use lemma_mul_is_commutative;
+
                 };
                 assert forall|k: int| i + 1 <= k < 8 implies words@[k] == 0 by {
                     assert(words@[#[trigger] k] == 0);
                 };
                 reveal_with_fuel(words_from_bytes_to_nat, 9);
-                assert(bytes_wide_to_nat_rec(bytes, i_int * 8) == word_from_bytes(bytes, i_int) * pow2((i_int * 64) as nat)
-                    + bytes_wide_to_nat_rec(bytes, (i_int + 1) * 8)) by {
+                assert(bytes_wide_to_nat_rec(bytes, i_int * 8) == word_from_bytes(bytes, i_int)
+                    * pow2((i_int * 64) as nat) + bytes_wide_to_nat_rec(bytes, (i_int + 1) * 8))
+                    by {
                     lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, i_int, 8);
                     broadcast use lemma_mul_is_commutative;
+
                 };
             }
         }
@@ -236,6 +242,7 @@ impl Scalar52 {
             // spec_load8_at uses pow2(k*8) * byte, word_from_bytes uses byte * pow2(k*8)
             assert(spec_load8_at(bytes, idx) == word_from_bytes(bytes, k)) by {
                 broadcast use lemma_mul_is_commutative;
+
             };
             lemma2_to64_rest();  // u64::MAX == pow2(64) - 1
         };
@@ -302,12 +309,20 @@ impl Scalar52 {
         // word4 >> 4 == word4 / 16 and word4 & 0xf == word4 % 16 (for u64)
         assert(word4_high_nat == (word4 as nat) / 16 && word4_low_nat == (word4 as nat) % 16) by {
             assert(word4 >> 4 == word4 / 16 && word4 & 0xf == word4 % 16) by (bit_vector)
-                requires word4 == word4;
+                requires
+                    word4 == word4,
+            ;
         };
         proof {
             lemma_high_low_recombine(
-                words[0] as nat, words[1] as nat, words[2] as nat, words[3] as nat,
-                word4 as nat, words[5] as nat, words[6] as nat, words[7] as nat,
+                words[0] as nat,
+                words[1] as nat,
+                words[2] as nat,
+                words[3] as nat,
+                word4 as nat,
+                words[5] as nat,
+                words[6] as nat,
+                words[7] as nat,
                 word4_low_nat,
                 word4_high_nat,
             );
@@ -366,7 +381,12 @@ impl Scalar52 {
             let ghost rr_nat = to_nat(&constants::RR.limbs);
             lemma_rr_equals_spec(constants::RR);
             // hi: multiply by R², reduce => extra_factor = R
-            lemma_montgomery_reduce_cancels_r(hi_after_nat, hi_before_nat, rr_nat, montgomery_radix());
+            lemma_montgomery_reduce_cancels_r(
+                hi_after_nat,
+                hi_before_nat,
+                rr_nat,
+                montgomery_radix(),
+            );
         }
 
         let result = Scalar52::add(&hi, &lo);

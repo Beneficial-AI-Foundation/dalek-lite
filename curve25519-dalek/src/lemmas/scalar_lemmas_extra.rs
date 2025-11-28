@@ -100,6 +100,7 @@ pub proof fn lemma_word_contribution_decomposition(
     assert(pow2(scale) * (word as nat) == pow2(scale) * low_part + pow2(scale + split_pos as nat)
         * high_part) by {
         broadcast use group_mul_is_distributive;
+
     };
 
 }
@@ -285,13 +286,17 @@ pub proof fn lemma_words_from_bytes_to_nat_wide(bytes: &[u8; 64])
     reveal_with_fuel(words_from_bytes_to_nat, 9);
     lemma2_to64();
     assert(words_from_bytes_to_nat(bytes, 1) == words_from_bytes_to_nat(bytes, 0) + word_from_bytes(
-        bytes, 0) * pow2((0 * 64) as nat));
+        bytes,
+        0,
+    ) * pow2((0 * 64) as nat));
     // Reorder multiplications using commutativity
-    assert(words_from_bytes_to_nat(bytes, 8) == word_from_bytes(bytes, 0) + pow2(64) * word_from_bytes(
-        bytes, 1) + pow2(128) * word_from_bytes(bytes, 2) + pow2(192) * word_from_bytes(bytes, 3) + pow2(
-        256) * word_from_bytes(bytes, 4) + pow2(320) * word_from_bytes(bytes, 5) + pow2(384)
-        * word_from_bytes(bytes, 6) + pow2(448) * word_from_bytes(bytes, 7)) by {
+    assert(words_from_bytes_to_nat(bytes, 8) == word_from_bytes(bytes, 0) + pow2(64)
+        * word_from_bytes(bytes, 1) + pow2(128) * word_from_bytes(bytes, 2) + pow2(192)
+        * word_from_bytes(bytes, 3) + pow2(256) * word_from_bytes(bytes, 4) + pow2(320)
+        * word_from_bytes(bytes, 5) + pow2(384) * word_from_bytes(bytes, 6) + pow2(448)
+        * word_from_bytes(bytes, 7)) by {
         broadcast use lemma_mul_is_commutative;
+
     };
 }
 
@@ -533,10 +538,10 @@ pub proof fn lemma_hi_limbs_bounded(hi: &Scalar52, words: &[u64; 8], mask: u64)
 }
 
 /// Proves that Montgomery reduction cancels the R factor from a product.
-/// 
+///
 /// Given a product (before * const_nat) reduced via Montgomery reduction, this lemma
 /// proves that after cancelling R, we get: after ≡ before * extra_factor (mod L)
-/// 
+///
 /// Usage in from_bytes_wide:
 /// - For lo: const_nat = R, extra_factor = 1 → after ≡ before (mod L)
 /// - For hi: const_nat = R², extra_factor = R → after ≡ before * R (mod L)
@@ -547,14 +552,17 @@ pub proof fn lemma_montgomery_reduce_cancels_r(
     extra_factor: nat,
 )
     requires
-        // const_nat is congruent to extra_factor * R mod L
+// const_nat is congruent to extra_factor * R mod L
+
         const_nat % group_order() == (extra_factor * montgomery_radix()) % group_order(),
         // From montgomery_reduce: (after * R) % L == (before * const_nat) % L
-        (after_nat * montgomery_radix()) % group_order() == (before_nat * const_nat) % group_order(),
+        (after_nat * montgomery_radix()) % group_order() == (before_nat * const_nat)
+            % group_order(),
     ensures
         after_nat % group_order() == (before_nat * extra_factor) % group_order(),
         // Also establish the intermediate form needed by Stage 5
-        (after_nat * montgomery_radix()) % group_order() == (before_nat * extra_factor * montgomery_radix()) % group_order(),
+        (after_nat * montgomery_radix()) % group_order() == (before_nat * extra_factor
+            * montgomery_radix()) % group_order(),
 {
     // Establish: (before * const_nat) % L == (before * extra_factor * R) % L
     lemma_mul_factors_congruent_implies_products_congruent(
@@ -579,7 +587,14 @@ pub proof fn lemma_montgomery_reduce_cancels_r(
 ///
 /// Proves: 2^260 * high_expr + low_expr == wide_sum
 pub proof fn lemma_high_low_recombine(
-    w0: nat, w1: nat, w2: nat, w3: nat, w4: nat, w5: nat, w6: nat, w7: nat,
+    w0: nat,
+    w1: nat,
+    w2: nat,
+    w3: nat,
+    w4: nat,
+    w5: nat,
+    w6: nat,
+    w7: nat,
     w4_low: nat,
     w4_high: nat,
 )
@@ -588,7 +603,8 @@ pub proof fn lemma_high_low_recombine(
         w4_high == w4 / 16,
     ensures
         ({
-            let low_expr = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4_low;
+            let low_expr = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256)
+                * w4_low;
             let high_expr = w4_high + pow2(60) * w5 + pow2(124) * w6 + pow2(188) * w7;
             let wide_sum = w0 + pow2(64) * w1 + pow2(128) * w2 + pow2(192) * w3 + pow2(256) * w4
                 + pow2(320) * w5 + pow2(384) * w6 + pow2(448) * w7;
@@ -598,8 +614,12 @@ pub proof fn lemma_high_low_recombine(
     // Key insight: 2^260 * (w4/16) + 2^256 * (w4%16) == 2^256 * w4
     lemma_pow2_adds(256, 4);
     lemma2_to64();
-    assert(pow2(2) == pow2(1) * pow2(1)) by { lemma_pow2_adds(1, 1); };
-    assert(pow2(4) == pow2(2) * pow2(2)) by { lemma_pow2_adds(2, 2); };
+    assert(pow2(2) == pow2(1) * pow2(1)) by {
+        lemma_pow2_adds(1, 1);
+    };
+    assert(pow2(4) == pow2(2) * pow2(2)) by {
+        lemma_pow2_adds(2, 2);
+    };
     lemma_fundamental_div_mod(w4 as int, 16);
 
     // Word position scaling: 2^260 * 2^k == 2^(260+k)
@@ -609,18 +629,19 @@ pub proof fn lemma_high_low_recombine(
 
     // Distribute 2^260 across high_expr terms and combine with low_expr
     broadcast use group_mul_is_distributive, lemma_mul_is_associative;
+
 }
 
 /// Proves that combining Montgomery-reduced hi and lo pieces preserves congruence
 /// with the original wide input modulo the group order L.
-/// 
+///
 /// Given:
 /// - hi_raw = wide_input / R and lo_raw = wide_input % R (where R = 2^260)
 /// - hi and lo are Montgomery reductions satisfying:
 ///   - hi * R ≡ hi_raw * R^2 (mod L)
 ///   - lo * R ≡ lo_raw * R (mod L)
 /// - result = (hi + lo) mod L
-/// 
+///
 /// Proves: result * R ≡ wide_input * R (mod L)
 pub proof fn lemma_montgomery_reduced_sum_congruent(
     result_nat: nat,
@@ -631,16 +652,20 @@ pub proof fn lemma_montgomery_reduced_sum_congruent(
     wide_input: nat,
 )
     requires
-        // result comes from Scalar52::add
+// result comes from Scalar52::add
+
         result_nat == (hi_nat + lo_nat) % group_order(),
         // From Stage 4 Montgomery reductions
-        (hi_nat * montgomery_radix()) % group_order() == (hi_raw_nat * montgomery_radix() * montgomery_radix()) % group_order(),
-        (lo_nat * montgomery_radix()) % group_order() == (lo_raw_nat * montgomery_radix()) % group_order(),
+        (hi_nat * montgomery_radix()) % group_order() == (hi_raw_nat * montgomery_radix()
+            * montgomery_radix()) % group_order(),
+        (lo_nat * montgomery_radix()) % group_order() == (lo_raw_nat * montgomery_radix())
+            % group_order(),
         // hi_raw and lo_raw come from dividing wide_input at the Montgomery radix boundary
         hi_raw_nat == wide_input / montgomery_radix(),
         lo_raw_nat == wide_input % montgomery_radix(),
     ensures
-        (result_nat * montgomery_radix()) % group_order() == (wide_input * montgomery_radix()) % group_order(),
+        (result_nat * montgomery_radix()) % group_order() == (wide_input * montgomery_radix())
+            % group_order(),
 {
     let r_nat = montgomery_radix();
     let group_int = group_order() as int;
@@ -648,7 +673,7 @@ pub proof fn lemma_montgomery_reduced_sum_congruent(
     // Prove the key relationship from div/mod properties
     lemma_pow2_pos(260);
     lemma_fundamental_div_mod(wide_input as int, r_nat as int);
-    
+
     // hi_raw_nat * r^2 + lo_raw_nat * r == r * (hi_raw_nat * r + lo_raw_nat) == r * wide_input
     assert(hi_raw_nat * r_nat * r_nat + lo_raw_nat * r_nat == wide_input * r_nat) by {
         lemma_mul_is_commutative(hi_raw_nat as int, r_nat as int);
@@ -668,11 +693,7 @@ pub proof fn lemma_montgomery_reduced_sum_congruent(
     );
     lemma_mul_is_distributive_add(r_nat as int, hi_nat as int, lo_nat as int);
     lemma_add_mod_noop((r_nat * hi_nat) as int, (r_nat * lo_nat) as int, group_int);
-    lemma_add_mod_noop(
-        (hi_raw_nat * r_nat * r_nat) as int,
-        (lo_raw_nat * r_nat) as int,
-        group_int,
-    );
+    lemma_add_mod_noop((hi_raw_nat * r_nat * r_nat) as int, (lo_raw_nat * r_nat) as int, group_int);
 }
 
 } // verus!

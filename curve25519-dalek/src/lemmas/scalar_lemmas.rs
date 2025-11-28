@@ -26,6 +26,10 @@ use vstd::prelude::*;
 #[allow(unused_imports)]
 use super::common_lemmas::bit_lemmas::*;
 #[allow(unused_imports)]
+use super::common_lemmas::bit_lemmas::*;
+#[allow(unused_imports)]
+use super::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
 use super::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
 use super::common_lemmas::pow_lemmas::*;
@@ -33,10 +37,6 @@ use super::common_lemmas::pow_lemmas::*;
 use super::common_lemmas::shift_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::u8_32_as_nat_injectivity_lemmas::*;
-#[allow(unused_imports)]
-use super::common_lemmas::bit_lemmas::*;
-#[allow(unused_imports)]
-use super::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::u8_32_as_nat_injectivity_lemmas::*;
 

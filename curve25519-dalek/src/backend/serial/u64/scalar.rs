@@ -21,9 +21,9 @@ use zeroize::Zeroize;
 use crate::constants;
 
 #[allow(unused_imports)]
-use crate::lemmas::as_montgomery_lemmas::*;
-#[allow(unused_imports)]
 use crate::lemmas::core_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::montgomery_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
 #[allow(unused_imports)]

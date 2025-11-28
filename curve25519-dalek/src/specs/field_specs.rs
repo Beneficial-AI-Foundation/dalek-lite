@@ -131,7 +131,13 @@ pub open spec fn math_field_inv(a: nat) -> nat {
     }
 }
 
-/// Axiom: For non-zero field elements, the inverse exists and satisfies the inverse property
+/// Theorem: For non-zero field elements, the inverse exists and satisfies the inverse property
+///
+/// This is now a proven theorem using Bézout's identity, rather than an axiom.
+/// The proof relies on:
+/// 1. axiom_p_is_prime(): p = 2^255 - 19 is prime
+/// 2. lemma_prime_coprime: if p is prime and a % p != 0, then gcd(a, p) = 1
+/// 3. lemma_coprime_has_inverse: if gcd(a, m) = 1, then a has a multiplicative inverse mod m
 pub proof fn field_inv_axiom(a: nat)
     requires
         a % p() != 0,
@@ -139,7 +145,30 @@ pub proof fn field_inv_axiom(a: nat)
         math_field_inv(a) < p(),
         ((a % p()) * math_field_inv(a)) % p() == 1,
 {
-    admit();  // This would be proven from field theory or assumed as axiom
+    // Step 1: Establish that p() is prime
+    axiom_p_is_prime();
+
+    // Step 2: a % p() != 0 and p() is prime implies gcd(a % p(), p()) = 1
+    let a_red = a % p();
+    assert(a_red % p() != 0) by {
+        // a_red = a % p, so a_red < p
+        // a_red % p = a_red (since a_red < p)
+        lemma_mod_bound(a as int, p() as int);
+        lemma_small_mod(a_red, p());
+        // If a % p != 0, then (a % p) % p = a % p != 0
+    };
+
+    lemma_prime_coprime(a_red, p());
+    assert(gcd(a_red, p()) == 1);
+
+    // Step 3: gcd(a_red, p()) = 1 implies a_red has an inverse mod p()
+    // p() > 1 since p() = 2^255 - 19 > 2
+    p_gt_2();
+    lemma_coprime_has_inverse(a_red, p());
+
+    // Step 4: The inverse witness exists
+    // lemma_coprime_has_inverse ensures: exists|w: nat| w < p() && (a_red * w) % p() == 1
+    // This is exactly what the choose in math_field_inv needs
 }
 
 /// Helper lemma: If a*w ≡ 1 (mod p) and a*z ≡ 1 (mod p), and both w,z < p, then w = z

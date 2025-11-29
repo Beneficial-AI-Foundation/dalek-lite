@@ -131,7 +131,9 @@ pub open spec fn math_field_inv(a: nat) -> nat {
     }
 }
 
-/// Axiom: For non-zero field elements, the inverse exists and satisfies the inverse property
+/// Theorem: For non-zero field elements, the inverse exists and satisfies the inverse property
+///
+/// Proven constructively: gcd(a%p, p) = 1 by primality, then Bezout gives the witness.
 pub proof fn field_inv_axiom(a: nat)
     requires
         a % p() != 0,
@@ -139,7 +141,15 @@ pub proof fn field_inv_axiom(a: nat)
         math_field_inv(a) < p(),
         ((a % p()) * math_field_inv(a)) % p() == 1,
 {
-    admit();  // This would be proven from field theory or assumed as axiom
+    assert(p() > 1) by { pow255_gt_19(); }
+    axiom_p_is_prime();
+    lemma_gcd_with_prime(a, p());
+    lemma_mod_inverse_correct(a, p());
+    
+    let concrete_inv = spec_mod_inverse(a, p());
+    assert(((a % p()) * concrete_inv) % p() == 1) by {
+        lemma_mul_mod_noop_left(a as int, concrete_inv as int, p() as int);
+    };
 }
 
 /// Helper lemma: If a*w ≡ 1 (mod p) and a*z ≡ 1 (mod p), and both w,z < p, then w = z

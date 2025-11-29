@@ -14,7 +14,6 @@ verus! {
 // ============================================================================
 // PART 1: GCD (Greatest Common Divisor)
 // ============================================================================
-
 /// Spec function: Greatest Common Divisor using Euclidean algorithm
 ///
 /// This is a constructive definition that computes gcd(a, b) recursively.
@@ -78,13 +77,15 @@ pub proof fn lemma_gcd_divides_both(a: nat, b: nat)
     decreases b,
 {
     let g = spec_gcd(a, b);
-    
+
     if b == 0 {
-        if a > 0 { lemma_mod_self_0(a as int); }
+        if a > 0 {
+            lemma_mod_self_0(a as int);
+        }
     } else {
         let r = a % b;
         lemma_gcd_divides_both(b, r);
-        
+
         if g > 0 {
             lemma_fundamental_div_mod(a as int, b as int);
             lemma_divides_linear_combo(r, b, a / b, g);
@@ -128,18 +129,18 @@ pub proof fn lemma_common_divisor_divides_gcd(a: nat, b: nat, d: nat)
     } else {
         let q = a / b;
         let r = a % b;
-        
+
         lemma_fundamental_div_mod(a as int, b as int);
-        
+
         assert((b * q) % d == 0) by {
             lemma_mul_mod_noop_right(q as int, b as int, d as int);
             lemma_mul_is_commutative(q as int, b as int);
         };
-        
+
         assert(r % d == 0) by {
             lemma_sub_mod_noop(a as int, (b * q) as int, d as int);
         };
-        
+
         lemma_common_divisor_divides_gcd(b, r, d);
     }
 }
@@ -154,21 +155,28 @@ pub proof fn lemma_gcd_with_prime(a: nat, prime: nat)
 {
     let a_red = a % prime;
     let g = spec_gcd(a_red, prime);
-    
-    assert(a_red < prime) by { lemma_mod_bound(a as int, prime as int); };
-    
+
+    assert(a_red < prime) by {
+        lemma_mod_bound(a as int, prime as int);
+    };
+
     lemma_gcd_divides_both(a_red, prime);
     lemma_gcd_positive(a_red, prime);
-    
+
     if g != 1 {
         // g | prime and g > 1 implies g == prime (by primality)
         assert(g == prime) by {
             lemma_mod_is_zero_when_divisible(prime, g);
-            if g < prime { assert(false); }  // contradicts is_prime
+            if g < prime {
+                assert(false);
+            }  // contradicts is_prime
+
         };
-        
+
         // But g | a_red with a_red < prime and a_red != 0 is impossible
-        assert(a_red % prime == a_red) by { lemma_small_mod(a_red, prime); };
+        assert(a_red % prime == a_red) by {
+            lemma_small_mod(a_red, prime);
+        };
         assert(false);
     }
 }
@@ -194,6 +202,7 @@ proof fn lemma_mod_is_zero_when_divisible(n: nat, d: nat)
             assert(false);
         }
         // Now n / d >= 1, so (n/d) * d >= d, meaning n >= d
+
         lemma_mul_inequality(1int, (n / d) as int, d as int);
         lemma_mul_is_commutative((n / d) as int, d as int);
     }
@@ -202,7 +211,6 @@ proof fn lemma_mod_is_zero_when_divisible(n: nat, d: nat)
 // ============================================================================
 // PART 2: Extended Euclidean Algorithm (Bezout's Identity)
 // ============================================================================
-
 /// Extended GCD result type: (gcd, x, y) where gcd = a*x + b*y
 /// We use int for x and y because they can be negative
 pub struct ExtGcdResult {
@@ -260,17 +268,17 @@ pub proof fn lemma_bezout_identity(a: nat, b: nat)
         lemma_bezout_identity(b, a % b);
         let r_prev = spec_extended_gcd(b, a % b);
         let r = spec_extended_gcd(a, b);
-        
+
         let x_prime = r_prev.x;
         let y_prime = r_prev.y;
         let remainder = (a % b) as int;
         let quotient = (a / b) as int;
-        
+
         // Show: a * y' + b * (x' - q * y') = b * x' + y' * (a - b*q) = b * x' + y' * (a%b) = gcd
         lemma_fundamental_div_mod(a as int, b as int);
-        
+
         let lhs = a as int * y_prime + b as int * (x_prime - quotient * y_prime);
-        
+
         lemma_mul_is_distributive_sub(b as int, x_prime, quotient * y_prime);
         lemma_mul_is_associative(b as int, quotient, y_prime);
         lemma_mul_is_commutative(a as int, y_prime);
@@ -283,7 +291,6 @@ pub proof fn lemma_bezout_identity(a: nat, b: nat)
 // ============================================================================
 // PART 3: Modular Inverse via Bezout's Identity
 // ============================================================================
-
 /// Spec function: Compute modular inverse using extended Euclidean algorithm
 ///
 /// For a and m coprime (gcd(a, m) = 1), returns the unique x in [0, m) such that
@@ -300,6 +307,7 @@ pub open spec fn spec_mod_inverse(a: nat, m: nat) -> nat
 {
     if m <= 1 || spec_gcd(a % m, m) != 1 {
         0  // Undefined case - return 0 by convention
+
     } else {
         let r = spec_extended_gcd(a % m, m);
         // r.x might be negative, so normalize to [0, m)
@@ -321,38 +329,40 @@ pub proof fn lemma_mod_inverse_correct(a: nat, m: nat)
 
     lemma_bezout_identity(a_red, m);
     lemma_extended_gcd_is_gcd(a_red, m);
-    
+
     // (m * r.y) % m = 0
     assert((m as int * r.y) % (m as int) == 0) by {
         lemma_mul_is_commutative(m as int, r.y);
         lemma_mod_multiples_basic(r.y, m as int);
     };
-    
+
     // (a_red * r.x) % m = 1
     assert((a_red as int * r.x) % (m as int) == 1) by {
         lemma_add_mod_noop(a_red as int * r.x, m as int * r.y, m as int);
         lemma_mod_twice(a_red as int * r.x, m as int);
         lemma_small_mod(1nat, m);
     };
-    
+
     let inv = spec_mod_inverse(a, m);
     let normalized_x = (((r.x % (m as int)) + (m as int)) % (m as int)) as nat;
-    
-    assert(inv < m) by { lemma_mod_bound((r.x % (m as int)) + (m as int), m as int); };
-    
+
+    assert(inv < m) by {
+        lemma_mod_bound((r.x % (m as int)) + (m as int), m as int);
+    };
+
     // normalized_x ≡ r.x (mod m)
     assert((normalized_x as int) % (m as int) == r.x % (m as int)) by {
         lemma_add_mod_noop(r.x % (m as int), m as int, m as int);
         lemma_mod_self_0(m as int);
         lemma_mod_twice(r.x, m as int);
     };
-    
+
     // (a_red * normalized_x) % m = 1
     assert((a_red as int * normalized_x as int) % (m as int) == 1) by {
         lemma_mul_mod_noop_right(a_red as int, normalized_x as int, m as int);
         lemma_mul_mod_noop_right(a_red as int, r.x, m as int);
     };
-    
+
     // (a * inv) % m = 1
     assert((a * inv) % m == 1) by {
         lemma_mul_mod_noop_left(a as int, inv as int, m as int);
@@ -362,7 +372,6 @@ pub proof fn lemma_mod_inverse_correct(a: nat, m: nat)
 // ============================================================================
 // PART 4: Fermat's Little Theorem
 // ============================================================================
-
 /// Lemma: Fermat's Little Theorem
 ///
 /// For any prime p and any integer x not divisible by p,

@@ -1775,7 +1775,6 @@ impl BasepointTable for EdwardsBasepointTable {
     type Point = EdwardsPoint;
 
     /// Create a table of precomputed multiples of `basepoint`.
-    #[verifier::external_body]
     fn create(basepoint: &EdwardsPoint) -> EdwardsBasepointTable {
         // XXX use init_with
         let mut table = EdwardsBasepointTable([LookupTableRadix16::default();32]);
@@ -1783,6 +1782,12 @@ impl BasepointTable for EdwardsBasepointTable {
         for i in 0..32 {
             // P = (2w)^i * B
             table.0[i] = LookupTableRadix16::from(&P);
+            proof {
+                assume(fe51_limbs_bounded(&P.X, 54));
+                assume(fe51_limbs_bounded(&P.Y, 54));
+                assume(fe51_limbs_bounded(&P.Z, 54));
+                assume(fe51_limbs_bounded(&P.T, 54));
+            }
             P = P.mul_by_pow_2(4 + 4);
         }
         table

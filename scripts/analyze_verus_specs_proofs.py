@@ -215,7 +215,7 @@ def parse_function_in_file(
                 def normalize_impl(s):
                     # Remove lifetime annotations like 'a, 'b but keep the &
                     s = re.sub(r"<'\w+>", "", s)  # Remove <'a>
-                    s = re.sub(r"'\w+\s*", "", s)  # Remove 'a
+                    s = re.sub(r"'\w+\b", "", s)  # Remove 'a (word boundary)
                     # Normalize spaces
                     return " ".join(s.split())
 
@@ -229,25 +229,30 @@ def parse_function_in_file(
 
                 # Check for reference vs owned type distinction
                 # "Neg for &EdwardsPoint" vs "Neg for EdwardsPoint"
+                # Only applies when trait names match (e.g., both are "Neg")
                 if " for " in impl_block and " for " in norm_found:
-                    expected_type = impl_block.split(" for ")[-1].strip()
-                    found_type = norm_found.split(" for ")[-1].strip()
-                    # Both must have & or both must not have &
-                    expected_is_ref = expected_type.startswith("&")
-                    found_is_ref = found_type.startswith("&")
-                    if expected_is_ref == found_is_ref:
-                        # Check the type names match (ignoring &)
-                        expected_base = expected_type.lstrip("&").strip()
-                        found_base = found_type.lstrip("&").strip()
-                        if expected_base == found_base:
-                            filtered_matches.append(match)
-                            continue
+                    expected_trait = impl_block.split(" for ")[0].strip()
+                    found_trait = norm_found.split(" for ")[0].strip()
+                    # Extract base trait name (e.g., "Neg" from "Neg", "From<u8>" stays as is)
+                    expected_trait_base = expected_trait.split("<")[0]
+                    found_trait_base = found_trait.split("<")[0]
 
-                # Special case: "From<u8> for Scalar" should match exactly
-                elif " for " in impl_block:
-                    trait_part = impl_block.split(" for ")[0]
-                    if trait_part in found_impl_sig:
-                        filtered_matches.append(match)
+                    # Only do ref vs owned check if traits match and have no type params
+                    # (e.g., Neg for &T vs Neg for T, not From<u8> vs From<u16>)
+                    if (
+                        expected_trait_base == found_trait_base
+                        and "<" not in expected_trait
+                    ):
+                        expected_type = impl_block.split(" for ")[-1].strip()
+                        found_type = norm_found.split(" for ")[-1].strip()
+                        expected_is_ref = expected_type.startswith("&")
+                        found_is_ref = found_type.startswith("&")
+                        if expected_is_ref == found_is_ref:
+                            expected_base = expected_type.lstrip("&").strip()
+                            found_base = found_type.lstrip("&").strip()
+                            if expected_base == found_base:
+                                filtered_matches.append(match)
+                                continue
         if filtered_matches:
             matches = filtered_matches
 

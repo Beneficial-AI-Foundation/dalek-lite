@@ -65,7 +65,7 @@ def extract_impl_signature(content: str, fn_start: int) -> Optional[str]:
             match = re.search(r"impl\s*(?:<[^>]+>)?\s*(.+?)\s*\{", line)
             if match:
                 impl_part = match.group(1).strip()
-                # Clean up lifetime params like 'a, 'b from the result
+                # Note: lifetime params are cleaned up later in normalize_impl()
                 return impl_part
 
     return None

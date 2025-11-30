@@ -231,7 +231,6 @@ top_half(u8),curve25519_dalek::scalar,
 "square_multiply(&mut UnpackedScalar, usize, &UnpackedScalar)",curve25519_dalek::scalar,
 part1(u128),curve25519_dalek::backend::serial::u64::scalar,
 part2(u128),curve25519_dalek::backend::serial::u64::scalar,
-BatchCompressState::efgh(&self),curve25519_dalek::ristretto,
 EdwardsBasepointTable::create(&EdwardsPoint),curve25519_dalek::edwards,BasepointTable for EdwardsBasepointTable
 EdwardsBasepointTable::basepoint(&self),curve25519_dalek::edwards,BasepointTable for EdwardsBasepointTable
 "EdwardsBasepointTable::mul_base(&self, &Scalar)",curve25519_dalek::edwards,BasepointTable for EdwardsBasepointTable

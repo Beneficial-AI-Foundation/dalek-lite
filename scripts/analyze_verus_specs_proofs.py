@@ -213,10 +213,12 @@ def parse_function_in_file(
             if found_impl_sig:
                 # Normalize both for comparison (remove lifetimes but preserve &)
                 def normalize_impl(s):
-                    # Remove lifetime annotations like 'a, 'b but keep the &
-                    s = re.sub(r"<'\w+>", "", s)  # Remove <'a>
-                    s = re.sub(r"'\w+\b", "", s)  # Remove 'a (word boundary)
-                    # Normalize spaces
+                    # Remove lifetime annotations while preserving & references
+                    # Pattern 1: <'a> → "" (standalone lifetime generics like Deserialize<'de>)
+                    # Pattern 2: 'a → "" (lifetimes in mixed contexts like &'b Scalar → & Scalar)
+                    # Both patterns together ensure consistent normalization for matching
+                    s = re.sub(r"<'\w+>", "", s)
+                    s = re.sub(r"'\w+\b", "", s)
                     return " ".join(s.split())
 
                 norm_found = normalize_impl(found_impl_sig)

@@ -240,6 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (currentCsvFilter === 'all') return true;
             if (currentCsvFilter === 'verified') return func.has_proof === 'yes';
             if (currentCsvFilter === 'spec') return func.has_spec === 'yes' || func.has_spec === 'ext';
+            if (currentCsvFilter === 'external') return func.has_spec === 'ext';
             if (currentCsvFilter === 'none') return !func.has_spec && !func.has_proof;
             
             return true;

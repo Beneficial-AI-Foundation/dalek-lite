@@ -1065,8 +1065,9 @@ impl EdwardsPoint {
     /// model does not retain sign information.
     pub fn to_montgomery(&self) -> (result: MontgomeryPoint)
         requires
-            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54)
-                && fe51_limbs_bounded(&self.Z, 54),
+            fe51_limbs_bounded(&self.X, 54),
+            // Y and Z need 51-bit bounds so U = Z + Y is 52-bit bounded (< 54 for mul)
+            fe51_limbs_bounded(&self.Y, 51) && fe51_limbs_bounded(&self.Z, 51),
             sum_of_limbs_bounded(&self.Z, &self.Y, u64::MAX),
         ensures
             montgomery_corresponds_to_edwards(result, *self),
@@ -1076,14 +1077,20 @@ impl EdwardsPoint {
         // The denominator is zero only when y=1, the identity point of
         // the Edwards curve.  Since 0.invert() = 0, in this case we
         // compute the 2-torsion point (0,0).
+        proof {
+            // 51-bit bounded implies 54-bit bounded (for sub precondition)
+            assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
+            assert(fe51_limbs_bounded(&self.Y, 54));
+            assert(fe51_limbs_bounded(&self.Z, 54));
+        }
         let U = &self.Z + &self.Y;
         let W = &self.Z - &self.Y;
         // W bounded by 54 from sub() postcondition
+        // U bounded by 52 from add() postcondition (51-bit inputs → 52-bit output)
         proof {
-            // GAP: U = Z + Y without reduction, U[i] could be up to 2^55, but mul requires < 2^54.
-            // In practice, field elements are usually more reduced (< 2^51), making U < 2^52.
-            // Fix: either strengthen requires to 51-bit bounds, or add reduce() call.
-            assume(fe51_limbs_bounded(&U, 54));
+            assert(fe51_limbs_bounded(&U, 52));  // from add postcondition
+            assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
+            assert(fe51_limbs_bounded(&U, 54));
         }
         let u = &U * &W.invert();
         let result = MontgomeryPoint(u.as_bytes());

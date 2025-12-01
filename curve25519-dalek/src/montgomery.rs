@@ -243,8 +243,9 @@ impl MontgomeryPoint {
         // REFACTORED: to assume postconditions for EdwardsPoint::mul_base
         let temp = EdwardsPoint::mul_base(scalar);
         proof {
-            assume(fe51_limbs_bounded(&temp.X, 54) && fe51_limbs_bounded(&temp.Y, 54)
-                && fe51_limbs_bounded(&temp.Z, 54));
+            assume(fe51_limbs_bounded(&temp.X, 54));
+            // to_montgomery requires 51-bit bounds for Y, Z so U = Z + Y fits in 52 bits
+            assume(fe51_limbs_bounded(&temp.Y, 51) && fe51_limbs_bounded(&temp.Z, 51));
             assume(sum_of_limbs_bounded(&temp.Z, &temp.Y, u64::MAX));
         }
         temp.to_montgomery()

@@ -871,8 +871,13 @@ impl FieldElement {
         let r_is_negative = r.is_negative();
         // ORIGINAL CODE:
         // r.conditional_negate(r_is_negative);
-        // REFACTORED: Use wrapper for conditional_negate
-        conditional_negate_field(&mut r, r_is_negative);
+        // REFACTORED: Use specialized wrapper with specs
+        proof {
+            // r is bounded after conditional_assign (result of multiplications and pow_p58)
+            // This will need to be proven when we remove the assume(false) bypass
+            assume(fe51_limbs_bounded(&r, 51));
+        }
+        conditional_negate_field_element(&mut r, r_is_negative);
 
         // ORIGINAL CODE:
         // let was_nonzero_square = correct_sign_sqrt | flipped_sign_sqrt;

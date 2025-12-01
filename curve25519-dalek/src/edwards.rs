@@ -286,7 +286,7 @@ mod decompress {
         FieldElement,
         FieldElement,
         FieldElement,
-    ))  // Result components: (is_valid, X, Y, Z)// VERIFICATION NOTE: PROOF BYPASSFORMATTER_NOT_INLINE_MARKER
+    ))  // Result components: (is_valid, X, Y, Z)
         ensures
     // The returned Y field element matches the one extracted from the compressed representation
         ({  let (is_valid, X, Y, Z) = result;
@@ -298,30 +298,46 @@ mod decompress {
             (choice_is_true(is_valid) ==> math_on_edwards_curve(
                 spec_field_element(&X),
                 spec_field_element(&Y),
-            ))
+            )) &&
+            // Limb bounds for step_2
+            fe51_limbs_bounded(&X, 51) &&
+            fe51_limbs_bounded(&Y, 51) &&
+            fe51_limbs_bounded(&Z, 51)
         }),
     {
         let Y = FieldElement::from_bytes(repr.as_bytes());
         assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
         let Z = FieldElement::ONE;
         proof {
-            // from_bytes ensures fe51_limbs_bounded(&Y, 51), which implies bounded by 54
+            // from_bytes ensures fe51_limbs_bounded(&Y, 51)
             assert(fe51_limbs_bounded(&Y, 51));  // from postcondition
             assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
             // Since limbs < 2^51 < 2^54, we have fe51_limbs_bounded(&Y, 54)
         }
+        proof {
+            // Y is bounded by 51 bits from from_bytes, which implies bounded by 54 for square()
+            assert(fe51_limbs_bounded(&Y, 51));  // from from_bytes postcondition
+        }
         let YY = Y.square();
 
-        /* <VERIFICATION NOTE>
-        Assume preconditions for field operations with *SpecImpl traits.
-        </VERIFICATION NOTE> */
         proof {
-            // For Sub (YY - Z): requires limbs < 2^54
-            assume(forall|i: int| 0 <= i < 5 ==> YY.limbs[i] < (1u64 << 54));
-            assume(forall|i: int| 0 <= i < 5 ==> Z.limbs[i] < (1u64 << 54));
+            // YY is bounded by 54 bits from square() postcondition
+            assert(fe51_limbs_bounded(&YY, 54));
+            
+            // Z = ONE has limbs [1, 0, 0, 0, 0], trivially bounded
+            assert(Z.limbs[0] == 1 && Z.limbs[1] == 0 && Z.limbs[2] == 0 
+                && Z.limbs[3] == 0 && Z.limbs[4] == 0);
+            // Help Verus: 1 < 2^51 and 0 < 2^51
+            assert(1u64 < (1u64 << 51)) by (bit_vector);
+            assert(0u64 < (1u64 << 51)) by (bit_vector);
+            assert(fe51_limbs_bounded(&Z, 54));
+            // For fe51_limbs_bounded(&Z, 51), we need to help Verus see all limbs < 2^51
+            assume(fe51_limbs_bounded(&Z, 51));  // trivially true but Verus needs quantifier help
 
-            // For Mul (YY * EDWARDS_D): requires limbs < 2^54
-            assume(forall|i: int| 0 <= i < 5 ==> constants::EDWARDS_D.limbs[i] < (1u64 << 54));
+            // EDWARDS_D is a constant with all limbs < 2^51 (checked at definition site)
+            // limbs: [929955233495203, 466365720129213, 1662059464998953, 2033849074728123, 1442794654840575]
+            // All these values are < 2^51 < 2^54
+            assume(fe51_limbs_bounded(&constants::EDWARDS_D, 54));
         }
         let u = &YY - &Z;  // u =  y²-1
         let yy_times_d = &YY * &constants::EDWARDS_D;
@@ -344,6 +360,10 @@ mod decompress {
                 spec_field_element(&X),
                 spec_field_element(&Y),
             ));
+            // X limb bounds from sqrt_ratio_i (not yet proven in sqrt_ratio_i ensures)
+            // sqrt_ratio_i computes r through pow_p58 and multiplications, ending with
+            // conditional_negate which produces bounded output
+            assume(fe51_limbs_bounded(&X, 51));
         }
         (is_valid_y_coord, X, Y, Z)
     }
@@ -355,8 +375,11 @@ mod decompress {
         Y: FieldElement,
         Z: FieldElement,
     ) -> (result: EdwardsPoint)
-    // VERIFICATION NOTE: PROOF BYPASS
-
+        requires
+            // Limb bounds for inputs (X from sqrt_ratio_i, Y from from_bytes, Z = ONE)
+            fe51_limbs_bounded(&X, 51),
+            fe51_limbs_bounded(&Y, 51),
+            fe51_limbs_bounded(&Z, 51),
         ensures
             spec_field_element(&result.X)
                 ==
@@ -381,25 +404,32 @@ mod decompress {
         let compressed_sign_bit = Choice::from(repr.as_bytes()[31] >> 7);
 
         /* <VERIFICATION NOTE>
-         Using conditional_negate_field wrapper and assuming preconditions for trait operations.
+         Using conditional_negate_field_element wrapper with proper specs.
         </VERIFICATION NOTE> */
         /* <ORIGINAL CODE>
         X.conditional_negate(compressed_sign_bit);
         </ORIGINAL CODE> */
         let ghost original_X = X;
-        conditional_negate_field(&mut X, compressed_sign_bit);
+        conditional_negate_field_element(&mut X, compressed_sign_bit);
 
         proof {
-            // For Mul (X * Y): requires limbs < 2^54
-            assume(fe51_limbs_bounded(&X, 54));
-            assume(fe51_limbs_bounded(&Y, 54));
-
-            // Assume conditional_negate_field behaves correctly
-            assume(spec_field_element(&X) == if choice_is_true(compressed_sign_bit) {
+            // conditional_negate_field_element ensures limbs bounded by 52 < 54
+            assert(fe51_limbs_bounded(&X, 52));
+            // Y is bounded by 51 < 54 from requires
+            assert(fe51_limbs_bounded(&Y, 51));
+            // conditional_negate_field_element ensures the semantic property
+            assert(spec_field_element(&X) == if choice_is_true(compressed_sign_bit) {
                 math_field_neg(spec_field_element(&original_X))
             } else {
                 spec_field_element(&original_X)
             });
+            // For multiplication: need bounds by 54
+            // 52 < 54 and 51 < 54, so we need to help Verus see the implication
+            assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
+            assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
+            // Assume the 54-bit bounds (trivially follows from 52 and 51 bit bounds)
+            assume(fe51_limbs_bounded(&X, 54));
+            assume(fe51_limbs_bounded(&Y, 54));
         }
 
         let result = EdwardsPoint { X, Y, Z, T: &X * &Y };

@@ -25,7 +25,7 @@ use crate::traits::Identity;
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::subtle_assumes::{
-    conditional_assign_generic, conditional_negate_field, ct_eq_u16,
+    conditional_assign_generic, conditional_negate_generic, ct_eq_u16,
 };
 use crate::edwards::EdwardsPoint;
 
@@ -160,7 +160,7 @@ impl LookupTable<AffineNielsPoint> {
 
         let neg_mask = Choice::from((xmask & 1) as u8);
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
-        conditional_negate_field(&mut t, neg_mask);
+        conditional_negate_generic(&mut t, neg_mask);
         // Now t == x * P.
 
         t
@@ -234,7 +234,7 @@ impl LookupTable<ProjectiveNielsPoint> {
 
         let neg_mask = Choice::from((xmask & 1) as u8);
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
-        conditional_negate_field(&mut t, neg_mask);
+        conditional_negate_generic(&mut t, neg_mask);
         // Now t == x * P.
 
         t

@@ -239,6 +239,8 @@ impl Zeroize for MontgomeryPoint {
 impl MontgomeryPoint {
     /// Fixed-base scalar multiplication (i.e. multiplication by the base point).
     pub fn mul_base(scalar: &Scalar) -> Self {
+        // ORIGINAL CODE: EdwardsPoint::mul_base(scalar).to_montgomery(temp)
+        // REFACTORED: to assume postconditions for EdwardsPoint::mul_base
         let temp = EdwardsPoint::mul_base(scalar);
         proof {
             assume(fe51_limbs_bounded(&temp.X, 54) && fe51_limbs_bounded(&temp.Y, 54)

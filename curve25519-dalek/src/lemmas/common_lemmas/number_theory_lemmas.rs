@@ -232,7 +232,7 @@ proof fn lemma_one_pow(n: nat)
 // PART 3: Factorial and Product Definitions
 // =============================================================================
 
-/// n! = 1 * 2 * ... * n
+/// Factorial: n! = 1 * 2 * 3 * ... * n
 pub open spec fn factorial(n: nat) -> nat
     decreases n,
 {
@@ -1878,7 +1878,15 @@ pub proof fn axiom_permutation_product(a: nat, p: nat, n: nat)
 // PART 7: Main Theorem - Fermat's Little Theorem
 // =============================================================================
 
-/// Fermat's Little Theorem: x^(p-1) ≡ 1 (mod p) for prime p, gcd(x,p) = 1
+/// Lemma: Fermat's Little Theorem
+///
+/// For any prime p and any integer x not divisible by p,
+/// we have x^(p-1) ≡ 1 (mod p).
+///
+/// Proof: Using the permutation argument:
+/// 1. The sequence {a, 2a, ..., (p-1)a} mod p is a permutation of {1, 2, ..., p-1}
+/// 2. Therefore their products are equal mod p: a^(p-1) * (p-1)! ≡ (p-1)! (mod p)
+/// 3. Since gcd((p-1)!, p) = 1 for prime p, we can cancel to get a^(p-1) ≡ 1 (mod p)
 pub proof fn lemma_fermat_little_theorem(x: nat, prime: nat)
     requires
         is_prime(prime),

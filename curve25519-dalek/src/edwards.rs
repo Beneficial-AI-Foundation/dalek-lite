@@ -305,7 +305,10 @@ mod decompress {
         assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
         let Z = FieldElement::ONE;
         proof {
-            assume(fe51_limbs_bounded(&Y, 54));
+            // from_bytes ensures fe51_limbs_bounded(&Y, 51), which implies bounded by 54
+            assert(fe51_limbs_bounded(&Y, 51));  // from postcondition
+            assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
+            // Since limbs < 2^51 < 2^54, we have fe51_limbs_bounded(&Y, 54)
         }
         let YY = Y.square();
 

@@ -341,10 +341,8 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         */
         // Assume preconditions from FromSpecImpl::from_spec_req
         proof {
-            assume(fe51_limbs_bounded(&P.X, 54));
-            assume(fe51_limbs_bounded(&P.Y, 54));
-            assume(fe51_limbs_bounded(&P.Z, 54));
-            assume(fe51_limbs_bounded(&P.T, 54));
+            assume(edwards_point_limbs_bounded(*P));
+            assume(edwards_point_sum_bounded(*P));
         }
 
         let mut points = [P.as_projective_niels();8];
@@ -355,11 +353,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
             // We cannot directly put them in proof blocks because they are exec variables.
             proof {
                 // Preconditions for P + &points[j]
-                assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
-                assume(fe51_limbs_bounded(&P.X, 54));
-                assume(fe51_limbs_bounded(&P.Y, 54));
-                assume(fe51_limbs_bounded(&P.Z, 54));
-                assume(fe51_limbs_bounded(&P.T, 54));
+                assume(is_well_formed_edwards_point(*P));
                 assume(fe51_limbs_bounded(&&points[j as int].Y_plus_X, 54));
                 assume(fe51_limbs_bounded(&&points[j as int].Y_minus_X, 54));
                 assume(fe51_limbs_bounded(&&points[j as int].Z, 54));
@@ -376,10 +370,8 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
             let extended = sum.as_extended();
             proof {
                 // Preconditions for extended.as_projective_niels()
-                assume(fe51_limbs_bounded(&extended.X, 54));
-                assume(fe51_limbs_bounded(&extended.Y, 54));
-                assume(fe51_limbs_bounded(&extended.Z, 54));
-                assume(fe51_limbs_bounded(&extended.T, 54));
+                assume(edwards_point_limbs_bounded(extended));
+                assume(edwards_point_sum_bounded(extended));
             }
             points[j + 1] = extended.as_projective_niels();
         }
@@ -435,10 +427,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         */
         // Assume preconditions from FromSpecImpl::from_spec_req
         proof {
-            assume(fe51_limbs_bounded(&P.X, 54));
-            assume(fe51_limbs_bounded(&P.Y, 54));
-            assume(fe51_limbs_bounded(&P.Z, 54));
-            assume(fe51_limbs_bounded(&P.T, 54));
+            assume(edwards_point_limbs_bounded(*P));
         }
 
         let mut points = [P.as_affine_niels();8];
@@ -449,12 +438,8 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
             // For Verus: unroll to assume preconditions for intermediate operations
             proof {
                 // Preconditions for P (left-hand side of addition)
-                assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
+                assume(is_well_formed_edwards_point(*P));
                 assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // for Z2 = &P.Z + &P.Z in add
-                assume(fe51_limbs_bounded(&P.X, 54));
-                assume(fe51_limbs_bounded(&P.Y, 54));
-                assume(fe51_limbs_bounded(&P.Z, 54));
-                assume(fe51_limbs_bounded(&P.T, 54));
                 // Preconditions for &points[j] (right-hand side - AffineNielsPoint)
                 assume(fe51_limbs_bounded(&&points[j as int].y_plus_x, 54));
                 assume(fe51_limbs_bounded(&&points[j as int].y_minus_x, 54));
@@ -471,10 +456,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
             let extended = sum.as_extended();
             proof {
                 // Preconditions for extended.as_affine_niels()
-                assume(fe51_limbs_bounded(&extended.X, 54));
-                assume(fe51_limbs_bounded(&extended.Y, 54));
-                assume(fe51_limbs_bounded(&extended.Z, 54));
-                assume(fe51_limbs_bounded(&extended.T, 54));
+                assume(edwards_point_limbs_bounded(extended));
             }
             points[j + 1] = extended.as_affine_niels()
         }

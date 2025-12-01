@@ -737,8 +737,7 @@ impl Zeroize for EdwardsPoint {
 impl ValidityCheck for EdwardsPoint {
     fn is_valid(&self) -> (result: bool)
         requires
-            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54)
-                && fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
         ensures
             result == is_valid_edwards_point(*self),
     {
@@ -811,8 +810,7 @@ pub trait ConstantTimeEqSpecImpl {
 #[cfg(verus_keep_ghost)]
 impl ConstantTimeEqSpecImpl for EdwardsPoint {
     open spec fn ct_eq_req(&self, other: &EdwardsPoint) -> bool {
-        fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54) &&
-        fe51_limbs_bounded(&other.X, 54) && fe51_limbs_bounded(&other.Y, 54) && fe51_limbs_bounded(&other.Z, 54)
+        edwards_point_limbs_bounded(*self) && edwards_point_limbs_bounded(*other)
     }
 }
 
@@ -875,8 +873,7 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
         unlike for Add trait implementations through AddSpecImpl.
     THIS DOES NOT WORK: 
     open spec fn eq_req(&self, other: &Self) -> bool {
-        fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54) &&
-        fe51_limbs_bounded(&other.X, 54) && fe51_limbs_bounded(&other.Y, 54) && fe51_limbs_bounded(&other.Z, 54)
+        edwards_point_limbs_bounded(*self) && edwards_point_limbs_bounded(*other)
     }
     */
     
@@ -921,13 +918,17 @@ impl EdwardsPoint {
     /// Convert to a ProjectiveNielsPoint
     pub(crate) fn as_projective_niels(&self) -> (result: ProjectiveNielsPoint)
         requires
-            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54)
-                && fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
+            edwards_point_sum_bounded(*self),
         ensures
             projective_niels_corresponds_to_edwards(result, *self),
+            fe51_limbs_bounded(&result.Y_plus_X, 54),
+            fe51_limbs_bounded(&result.Y_minus_X, 54),
+            fe51_limbs_bounded(&result.Z, 54),
+            fe51_limbs_bounded(&result.T2d, 54),
     {
         proof {
-            assume(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));  // for Y_plus_X
+            assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));  // for Y_plus_X
             assume(fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.X, 54));  // for Y_minus_X
             assume(fe51_limbs_bounded(&self.T, 54) && fe51_limbs_bounded(&constants::EDWARDS_D2, 54));  // for T2d
         }
@@ -940,8 +941,12 @@ impl EdwardsPoint {
         };
 
         proof {
-            // postcondition:
+            // postconditions:
             assume(projective_niels_corresponds_to_edwards(result, *self));
+            assume(fe51_limbs_bounded(&result.Y_plus_X, 54));
+            assume(fe51_limbs_bounded(&result.Y_minus_X, 54));
+            assume(fe51_limbs_bounded(&result.Z, 54));
+            assume(fe51_limbs_bounded(&result.T2d, 54));
         }
 
         result
@@ -953,8 +958,7 @@ impl EdwardsPoint {
     /// Free.
     pub(crate) const fn as_projective(&self) -> (result: ProjectivePoint)
         requires
-            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54)
-                && fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
         ensures
             result.X == self.X,
             result.Y == self.Y,
@@ -972,8 +976,7 @@ impl EdwardsPoint {
     /// Mainly for testing.
     pub(crate) fn as_affine_niels(&self) -> (result: AffineNielsPoint)
         requires
-            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54)
-                && fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
         ensures
             affine_niels_corresponds_to_edwards(result, *self),
     {
@@ -1049,8 +1052,7 @@ impl EdwardsPoint {
     /// Compress this point to `CompressedEdwardsY` format.
     pub fn compress(&self) -> (result: CompressedEdwardsY)
         requires
-            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54)
-                && fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
         ensures
             compressed_edwards_y_corresponds_to_edwards(result, *self),
     {
@@ -1108,10 +1110,7 @@ impl EdwardsPoint {
     pub(crate) fn double(&self) -> (result: EdwardsPoint)
         requires
             is_valid_edwards_point(*self),  // self is a valid extended Edwards point
-            fe51_limbs_bounded(&self.X, 54),
-            fe51_limbs_bounded(&self.Y, 54),
-            fe51_limbs_bounded(&self.Z, 54),
-            fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
         ensures
             is_valid_edwards_point(result),  // result is also a valid Edwards point
             // Result equals the affine doubling of the input.
@@ -1169,13 +1168,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&EdwardsPoint> for &EdwardsPoint {
     }
 
     open spec fn add_req(self, rhs: &EdwardsPoint) -> bool {
-        is_valid_edwards_point(*self) && is_valid_edwards_point(*rhs)
-            &&
-        // limb bounds needed because of arithmetic inside:
-        sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX) &&
-        fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54)
-            && fe51_limbs_bounded(&self.T, 54) && fe51_limbs_bounded(&rhs.X, 54) && fe51_limbs_bounded(&rhs.Y, 54)
-            && fe51_limbs_bounded(&rhs.Z, 54) && fe51_limbs_bounded(&rhs.T, 54)
+        is_well_formed_edwards_point(*self) && is_well_formed_edwards_point(*rhs)
     }
 
     open spec fn add_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
@@ -1252,11 +1245,8 @@ define_add_variants!(
 impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
     fn add_assign(&mut self, _rhs: &'b EdwardsPoint)
         requires
-            is_valid_edwards_point(*old(self)) && is_valid_edwards_point(*_rhs),
-            sum_of_limbs_bounded(&(*old(self)).Y, &(*old(self)).X, u64::MAX),
-            fe51_limbs_bounded(&old(self).X, 54) && fe51_limbs_bounded(&old(self).Y, 54) && fe51_limbs_bounded(&old(self).Z, 54)
-                && fe51_limbs_bounded(&old(self).T, 54) && fe51_limbs_bounded(&_rhs.X, 54) && fe51_limbs_bounded(&_rhs.Y, 54)
-                && fe51_limbs_bounded(&_rhs.Z, 54) && fe51_limbs_bounded(&_rhs.T, 54),
+            is_well_formed_edwards_point(*old(self)),
+            is_well_formed_edwards_point(*_rhs),
         ensures
             is_valid_edwards_point(*self),
             // Semantic correctness: result is the addition of old(self) + rhs
@@ -1286,12 +1276,7 @@ impl vstd::std_specs::ops::SubSpecImpl<&EdwardsPoint> for &EdwardsPoint {
     }
 
     open spec fn sub_req(self, rhs: &EdwardsPoint) -> bool {
-        is_valid_edwards_point(*self) && is_valid_edwards_point(*rhs)
-            &&
-        // limb bounds needed because of arithmetic inside:
-        fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54)
-            && fe51_limbs_bounded(&self.T, 54) && fe51_limbs_bounded(&rhs.X, 54) && fe51_limbs_bounded(&rhs.Y, 54)
-            && fe51_limbs_bounded(&rhs.Z, 54) && fe51_limbs_bounded(&rhs.T, 54)
+        is_well_formed_edwards_point(*self) && is_well_formed_edwards_point(*rhs)
     }
 
     open spec fn sub_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
@@ -1319,11 +1304,11 @@ impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
 
         proof {
             // Preconditions for EdwardsPoint - ProjectiveNielsPoint subtraction
-            assume(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
-            assume(fe51_limbs_bounded(&other_niels.Y_plus_X, 54));
-            assume(fe51_limbs_bounded(&other_niels.Y_minus_X, 54));
-            assume(fe51_limbs_bounded(&other_niels.Z, 54));
-            assume(fe51_limbs_bounded(&other_niels.T2d, 54));
+            assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+            assert(fe51_limbs_bounded(&other_niels.Y_plus_X, 54));
+            assert(fe51_limbs_bounded(&other_niels.Y_minus_X, 54));
+            assert(fe51_limbs_bounded(&other_niels.Z, 54));
+            assert(fe51_limbs_bounded(&other_niels.T2d, 54));
         }
 
         let diff = self - &other_niels;
@@ -1362,16 +1347,8 @@ define_sub_variants!(
 impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
     fn sub_assign(&mut self, _rhs: &'b EdwardsPoint)
         requires
-            is_valid_edwards_point(*old(self)),
-            is_valid_edwards_point(*_rhs),
-            fe51_limbs_bounded(&old(self).X, 54),
-            fe51_limbs_bounded(&old(self).Y, 54),
-            fe51_limbs_bounded(&old(self).Z, 54),
-            fe51_limbs_bounded(&old(self).T, 54),
-            fe51_limbs_bounded(&_rhs.X, 54),
-            fe51_limbs_bounded(&_rhs.Y, 54),
-            fe51_limbs_bounded(&_rhs.Z, 54),
-            fe51_limbs_bounded(&_rhs.T, 54),
+            is_well_formed_edwards_point(*old(self)),
+            is_well_formed_edwards_point(*_rhs),
         ensures
             is_valid_edwards_point(*self),
             // Semantic correctness: result is the subtraction of old(self) - rhs
@@ -1869,12 +1846,8 @@ impl BasepointTable for EdwardsBasepointTable {
                 let selected = tables[i / 2].select(a[i]);
                 proof {
                     // preconditions for addition
-                    assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
-                    assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));
-                    assume(fe51_limbs_bounded(&P.X, 54));
-                    assume(fe51_limbs_bounded(&P.Y, 54));
-                    assume(fe51_limbs_bounded(&P.Z, 54));
-                    assume(fe51_limbs_bounded(&P.T, 54));
+                    assume(is_well_formed_edwards_point(P));
+                    assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // extra bound for Z2 = &P.Z + &P.Z in add
                     assume(fe51_limbs_bounded(&selected.y_plus_x, 54));
                     assume(fe51_limbs_bounded(&selected.y_minus_x, 54));
                     assume(fe51_limbs_bounded(&selected.xy2d, 54));
@@ -1892,9 +1865,7 @@ impl BasepointTable for EdwardsBasepointTable {
         }
 
         proof {
-            assume(fe51_limbs_bounded(&P.X, 54));
-            assume(fe51_limbs_bounded(&P.Y, 54));
-            assume(fe51_limbs_bounded(&P.Z, 54));
+            assume(edwards_point_limbs_bounded(P));
             assume(fe51_limbs_bounded(&P.T, 54));
         }
         P = P.mul_by_pow_2(4);
@@ -1911,12 +1882,8 @@ impl BasepointTable for EdwardsBasepointTable {
                 let selected = tables[i / 2].select(a[i]);
                 proof {
                     // preconditions for addition
-                    assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
-                    assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));
-                    assume(fe51_limbs_bounded(&P.X, 54));
-                    assume(fe51_limbs_bounded(&P.Y, 54));
-                    assume(fe51_limbs_bounded(&P.Z, 54));
-                    assume(fe51_limbs_bounded(&P.T, 54));
+                    assume(is_well_formed_edwards_point(P));
+                    assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // extra bound for Z2 = &P.Z + &P.Z in add
                     assume(fe51_limbs_bounded(&selected.y_plus_x, 54));
                     assume(fe51_limbs_bounded(&selected.y_minus_x, 54));
                     assume(fe51_limbs_bounded(&selected.xy2d, 54));
@@ -1993,10 +1960,7 @@ impl EdwardsPoint {
     /// Multiply by the cofactor: return \\(\[8\]P\\).
     pub fn mul_by_cofactor(&self) -> (result: EdwardsPoint)
         requires
-            fe51_limbs_bounded(&self.X, 54),
-            fe51_limbs_bounded(&self.Y, 54),
-            fe51_limbs_bounded(&self.Z, 54),
-            fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
     {
         self.mul_by_pow_2(3)
     }
@@ -2005,10 +1969,7 @@ impl EdwardsPoint {
     pub(crate) fn mul_by_pow_2(&self, k: u32) -> (result: EdwardsPoint)
         requires
             k > 0,
-            fe51_limbs_bounded(&self.X, 54),
-            fe51_limbs_bounded(&self.Y, 54),
-            fe51_limbs_bounded(&self.Z, 54),
-            fe51_limbs_bounded(&self.T, 54),
+            edwards_point_limbs_bounded(*self),
     {
         #[cfg(not(verus_keep_ghost))]
         debug_assert!(k > 0);

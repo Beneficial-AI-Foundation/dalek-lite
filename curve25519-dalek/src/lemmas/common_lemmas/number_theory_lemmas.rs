@@ -214,8 +214,7 @@ proof fn lemma_mod_is_zero_when_divisible(n: nat, d: nat)
 // PART 2: Basic Power Lemmas
 // =============================================================================
 
-/// Proves that 1 raised to any power n equals 1: 1^n = 1
-/// This is a fundamental identity needed for many proofs.
+/// 1^n = 1
 proof fn lemma_one_pow(n: nat)
     ensures
         pow(1int, n) == 1,
@@ -223,9 +222,7 @@ proof fn lemma_one_pow(n: nat)
 {
     reveal(pow);
     if n == 0 {
-        // pow(1, 0) = 1 by definition
     } else {
-        // pow(1, n) = 1 * pow(1, n-1) = pow(1, n-1) = 1 (by IH)
         lemma_one_pow((n - 1) as nat);
         lemma_mul_basics(pow(1int, (n - 1) as nat));
     }
@@ -235,7 +232,7 @@ proof fn lemma_one_pow(n: nat)
 // PART 3: Factorial and Product Definitions
 // =============================================================================
 
-/// Factorial: n! = 1 * 2 * 3 * ... * n
+/// n! = 1 * 2 * ... * n
 pub open spec fn factorial(n: nat) -> nat
     decreases n,
 {
@@ -246,7 +243,7 @@ pub open spec fn factorial(n: nat) -> nat
     }
 }
 
-/// Binomial coefficient C(n,k) = n! / (k! * (n-k)!)
+/// C(n,k) = n! / (k!(n-k)!) using Pascal's identity
 pub open spec fn binomial(n: nat, k: nat) -> nat
     decreases n,
 {
@@ -255,13 +252,11 @@ pub open spec fn binomial(n: nat, k: nat) -> nat
     } else if k == 0 || k == n {
         1
     } else {
-        // Pascal's identity: C(n,k) = C(n-1,k-1) + C(n-1,k)
         binomial((n - 1) as nat, (k - 1) as nat) + binomial((n - 1) as nat, k)
     }
 }
 
-/// For prime p and 0 < k < p, p divides C(p,k)
-/// This is because C(p,k) = p! / (k! * (p-k)!) and p divides p! but not k! or (p-k)!
+/// For prime p and 0 < k < p, p | C(p,k)
 pub proof fn lemma_binomial_divisible_by_prime(p: nat, k: nat)
     requires
         is_prime(p),
@@ -270,21 +265,10 @@ pub proof fn lemma_binomial_divisible_by_prime(p: nat, k: nat)
         binomial(p, k) % p == 0,
     decreases p,
 {
-    // C(p,k) * k! * (p-k)! = p!
-    // p divides p! (obviously: p! = p * (p-1)!)
-    // p does not divide k! (since k < p and p is prime)
-    // p does not divide (p-k)! (since p-k < p and p is prime)
-    // By Euclid's lemma, p must divide C(p,k)
-    
-    // For the formal proof, we use Pascal's identity and induction
-    // Base case handling and recursive case
+    // Use Pascal's identity and induction
     if p == 2 {
-        // p = 2, k must be 1 (since 0 < k < 2)
         assert(k == 1);
-        // C(2,1) = 2
-        assert(binomial(2, 1) == binomial(1, 0) + binomial(1, 1)) by {
-            // By Pascal's identity
-        };
+        assert(binomial(2, 1) == binomial(1, 0) + binomial(1, 1)) by {};
         assert(binomial(1, 0) == 1);
         assert(binomial(1, 1) == 1);
         assert(binomial(2, 1) == 2);
@@ -292,33 +276,11 @@ pub proof fn lemma_binomial_divisible_by_prime(p: nat, k: nat)
             lemma_mod_self_0(2int);
         };
     } else {
-        // p > 2
-        // Use Pascal's identity: C(p,k) = C(p-1,k-1) + C(p-1,k)
-        // We need to show C(p,k) % p == 0
-        
-        // Key insight: We can use the formula C(p,k) = p * C(p-1,k-1) / k
-        // which shows p | C(p,k) since gcd(p,k) = 1 for 0 < k < p
-        
-        // Alternative: prove by showing C(p,k) = p/k * C(p-1,k-1)
-        // Since gcd(p,k) = 1, k | C(p-1,k-1), so C(p,k) is a multiple of p
-        
-        // For now, we use a direct calculation approach
-        // C(p,k) = p! / (k! * (p-k)!)
-        // = p * (p-1)! / (k! * (p-k)!)
-        // = p * C(p-1,k-1) * (p-k) / k  ... this gets complicated
-        
-        // Simpler: use the identity C(p,k) = (p/k) * C(p-1,k-1)
-        // Since p is prime and 0 < k < p, gcd(p,k) = 1
-        // So k | C(p-1,k-1) and C(p,k) = p * (C(p-1,k-1)/k)
-        // Therefore p | C(p,k)
-        
-        // We'll prove this using the recursive multiplication formula
         lemma_binomial_prime_divisibility_helper(p, k);
     }
 }
 
-/// Helper: proves that for prime p and 0 < k < p, k * C(p,k) = p * C(p-1,k-1)
-/// This identity, combined with gcd(p,k) = 1, implies p | C(p,k)
+/// k * C(p,k) = p * C(p-1,k-1), combined with gcd(p,k)=1 implies p | C(p,k)
 proof fn lemma_binomial_prime_divisibility_helper(p: nat, k: nat)
     requires
         is_prime(p),
@@ -326,52 +288,26 @@ proof fn lemma_binomial_prime_divisibility_helper(p: nat, k: nat)
     ensures
         binomial(p, k) % p == 0,
 {
-    // The key identity: k * C(n,k) = n * C(n-1,k-1)
-    // Proof: k * C(n,k) = k * n!/(k!(n-k)!) = n!/(k-1)!(n-k)! = n * (n-1)!/((k-1)!(n-k)!) = n * C(n-1,k-1)
-    
-    // For n = p (prime): k * C(p,k) = p * C(p-1,k-1)
-    // Since gcd(k,p) = 1 (as k < p and p is prime), and p | k * C(p,k),
-    // by Euclid's lemma p | C(p,k)
-    
-    // We prove this by showing that p * C(p-1,k-1) is divisible by k,
-    // and the quotient is C(p,k), which must then be divisible by p.
-    
-    // First establish the identity k * C(p,k) = p * C(p-1,k-1)
     lemma_binomial_absorption(p, k);
-    // Now we have: k * binomial(p,k) == p * binomial(p-1,k-1)
-    
-    // Since p | (p * C(p-1,k-1)) and k * C(p,k) = p * C(p-1,k-1),
-    // we have p | (k * C(p,k))
-    // Since gcd(p,k) = 1 (p prime, 0 < k < p), by Euclid: p | C(p,k)
     
     let prod = k * binomial(p, k);
     assert(prod == p * binomial((p - 1) as nat, (k - 1) as nat));
     
-    // prod % p == 0 since prod = p * something
     assert(prod % p == 0) by {
         lemma_mod_multiples_basic(binomial((p - 1) as nat, (k - 1) as nat) as int, p as int);
     };
-    
-    // k * C(p,k) % p == 0
-    // gcd(k,p) = 1 since 0 < k < p and p is prime
-    // By Euclid's lemma: either k % p == 0 or C(p,k) % p == 0
-    // But k < p so k % p = k != 0
-    // Therefore C(p,k) % p == 0
     
     assert(k % p != 0) by {
         lemma_small_mod(k, p);
     };
     
-    // Apply Euclid's lemma
     if binomial(p, k) % p != 0 {
-        // k * C(p,k) % p == 0 but neither k % p == 0 nor C(p,k) % p == 0
-        // This contradicts Euclid's lemma
         lemma_euclid_prime(k, binomial(p, k), p);
         assert(false);
     }
 }
 
-/// Absorption identity: k * C(n,k) = n * C(n-1,k-1) for n >= k >= 1
+/// Absorption: k * C(n,k) = n * C(n-1,k-1)
 pub proof fn lemma_binomial_absorption(n: nat, k: nat)
     requires
         n >= 1,
@@ -381,75 +317,40 @@ pub proof fn lemma_binomial_absorption(n: nat, k: nat)
         k * binomial(n, k) == n * binomial((n - 1) as nat, (k - 1) as nat),
     decreases n,
 {
-    // Proof by induction on n
-    // Base case: n = 1, k = 1
-    // k * C(1,1) = 1 * 1 = 1
-    // n * C(0,0) = 1 * 1 = 1 ✓
-    
     if n == 1 {
         assert(k == 1);
         assert(binomial(1, 1) == 1);
         assert(binomial(0, 0) == 1);
         assert(1nat * 1nat == 1nat * 1nat);
     } else if k == n {
-        // k * C(n,n) = n * 1 = n
-        // n * C(n-1,n-1) = n * 1 = n ✓
         assert(binomial(n, n) == 1);
         assert(binomial((n - 1) as nat, (n - 1) as nat) == 1);
     } else if k == 1 {
-        // 1 * C(n,1) = C(n,1)
-        // n * C(n-1,0) = n * 1 = n
-        // Need: C(n,1) = n
-        // C(n,1) = C(n-1,0) + C(n-1,1) = 1 + C(n-1,1)
-        // By induction: C(n-1,1) = n-1
-        // So C(n,1) = 1 + (n-1) = n ✓
         lemma_binomial_n_1(n);
         assert(binomial(n, 1) == n);
         assert(binomial((n - 1) as nat, 0) == 1);
         lemma_mul_basics(n as int);
     } else {
-        // General case: 1 < k < n
-        // Use Pascal's identity: C(n,k) = C(n-1,k-1) + C(n-1,k)
-        // k * C(n,k) = k * C(n-1,k-1) + k * C(n-1,k)
-        
-        // By IH on (n-1,k-1): (k-1) * C(n-1,k-1) = (n-1) * C(n-2,k-2)
-        // By IH on (n-1,k):   k * C(n-1,k) = (n-1) * C(n-2,k-1)
-        
-        // This gets complicated. Let's use a direct algebraic argument instead.
-        // 
-        // k * C(n,k) = k * n! / (k! * (n-k)!)
-        //            = n! / ((k-1)! * (n-k)!)
-        //            = n * (n-1)! / ((k-1)! * (n-k)!)
-        //            = n * (n-1)! / ((k-1)! * ((n-1)-(k-1))!)
-        //            = n * C(n-1,k-1)
-        
-        // For Verus, we prove this using the recursive definition and strong induction
-        
-        // Pascal's identity
+        // Use factorial-based proof
         assert(binomial(n, k) == binomial((n - 1) as nat, (k - 1) as nat) + binomial(
             (n - 1) as nat,
             k,
         ));
         
-        // k * C(n,k) = k * C(n-1,k-1) + k * C(n-1,k)
         lemma_mul_is_distributive_add(k as int, binomial((n - 1) as nat, (k - 1) as nat) as int, binomial(
             (n - 1) as nat,
             k,
         ) as int);
         
-        // For the term k * C(n-1,k): by IH, k * C(n-1,k) = (n-1) * C(n-2,k-1)
         if k < n - 1 {
             lemma_binomial_absorption((n - 1) as nat, k);
-            // k * C(n-1,k) = (n-1) * C(n-2,k-1)
         }
         
-        // This proof is getting complex. Let's use a simpler approach:
-        // Direct proof using factorial representation
         lemma_binomial_absorption_factorial(n, k);
     }
 }
 
-/// Helper: C(n,1) = n
+/// C(n,1) = n
 proof fn lemma_binomial_n_1(n: nat)
     requires
         n >= 1,
@@ -460,7 +361,6 @@ proof fn lemma_binomial_n_1(n: nat)
     if n == 1 {
         assert(binomial(1, 1) == 1);
     } else {
-        // C(n,1) = C(n-1,0) + C(n-1,1) = 1 + C(n-1,1)
         assert(binomial(n, 1) == binomial((n - 1) as nat, 0) + binomial((n - 1) as nat, 1));
         assert(binomial((n - 1) as nat, 0) == 1);
         lemma_binomial_n_1((n - 1) as nat);
@@ -468,7 +368,7 @@ proof fn lemma_binomial_n_1(n: nat)
     }
 }
 
-/// Factorial-based proof of absorption identity
+/// Factorial-based absorption proof
 proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
     requires
         n >= 1,
@@ -477,35 +377,9 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
     ensures
         k * binomial(n, k) == n * binomial((n - 1) as nat, (k - 1) as nat),
 {
-    // C(n,k) = n! / (k! * (n-k)!)
-    // k * C(n,k) = k * n! / (k! * (n-k)!) = n! / ((k-1)! * (n-k)!)
-    // 
-    // C(n-1,k-1) = (n-1)! / ((k-1)! * (n-k)!)
-    // n * C(n-1,k-1) = n * (n-1)! / ((k-1)! * (n-k)!) = n! / ((k-1)! * (n-k)!)
-    //
-    // Therefore k * C(n,k) = n * C(n-1,k-1)
-    
-    // We prove this by showing both sides equal n! / ((k-1)! * (n-k)!)
-    // Using the factorial-binomial relationship
-    
-    // First, establish: binomial(n,k) * factorial(k) * factorial(n-k) == factorial(n)
     lemma_binomial_factorial_relation(n, k);
-    // binomial(n,k) * k! * (n-k)! == n!
-    
-    // Similarly: binomial(n-1,k-1) * factorial(k-1) * factorial(n-k) == factorial(n-1)
     lemma_binomial_factorial_relation((n - 1) as nat, (k - 1) as nat);
-    // binomial(n-1,k-1) * (k-1)! * (n-k)! == (n-1)!
     
-    // From the first: k * binomial(n,k) * (k-1)! * (n-k)! = k * n! / k = n! / 1 ... 
-    // Actually: binomial(n,k) = n! / (k! * (n-k)!)
-    // So k * binomial(n,k) = k * n! / (k! * (n-k)!) = n! / ((k-1)! * (n-k)!)
-    
-    // From the second: n * binomial(n-1,k-1) * (k-1)! * (n-k)! = n * (n-1)! = n!
-    // So n * binomial(n-1,k-1) = n! / ((k-1)! * (n-k)!)
-    
-    // Both equal n! / ((k-1)! * (n-k)!)
-    
-    // For Verus, we manipulate the factorial relations
     let binom_n_k = binomial(n, k);
     let binom_nm1_km1 = binomial((n - 1) as nat, (k - 1) as nat);
     let fact_k = factorial(k);
@@ -514,31 +388,8 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
     let fact_n = factorial(n);
     let fact_nm1 = factorial((n - 1) as nat);
     
-    // fact_k = k * fact_km1
     assert(fact_k == k * fact_km1);
-    
-    // fact_n = n * fact_nm1
     assert(fact_n == n * fact_nm1);
-    
-    // From lemma_binomial_factorial_relation:
-    // binom_n_k * fact_k * fact_nmk == fact_n
-    // binom_nm1_km1 * fact_km1 * fact_nmk == fact_nm1
-    
-    // Substitute fact_k = k * fact_km1:
-    // binom_n_k * k * fact_km1 * fact_nmk == fact_n
-    // (k * binom_n_k) * fact_km1 * fact_nmk == fact_n
-    
-    // Substitute fact_n = n * fact_nm1:
-    // (k * binom_n_k) * fact_km1 * fact_nmk == n * fact_nm1
-    
-    // From second relation: binom_nm1_km1 * fact_km1 * fact_nmk == fact_nm1
-    // So: fact_nm1 = binom_nm1_km1 * fact_km1 * fact_nmk
-    
-    // Substitute:
-    // (k * binom_n_k) * fact_km1 * fact_nmk == n * binom_nm1_km1 * fact_km1 * fact_nmk
-    
-    // If fact_km1 * fact_nmk > 0, we can cancel:
-    // k * binom_n_k == n * binom_nm1_km1
     
     assert(fact_km1 > 0) by {
         lemma_factorial_positive((k - 1) as nat);
@@ -547,24 +398,8 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
         lemma_factorial_positive((n - k) as nat);
     };
     
-    // The rest follows from algebraic manipulation
-    // We need to show: k * binom_n_k == n * binom_nm1_km1
-    
-    // Using the relations established above
     assert(binom_n_k * fact_k * fact_nmk == fact_n);
     assert(binom_nm1_km1 * fact_km1 * fact_nmk == fact_nm1);
-    
-    // k * binom_n_k * fact_km1 * fact_nmk 
-    // = binom_n_k * (k * fact_km1) * fact_nmk
-    // = binom_n_k * fact_k * fact_nmk
-    // = fact_n
-    // = n * fact_nm1
-    // = n * (binom_nm1_km1 * fact_km1 * fact_nmk)
-    // = n * binom_nm1_km1 * fact_km1 * fact_nmk
-    
-    // So: k * binom_n_k * fact_km1 * fact_nmk == n * binom_nm1_km1 * fact_km1 * fact_nmk
-    // Cancel fact_km1 * fact_nmk (which is > 0):
-    // k * binom_n_k == n * binom_nm1_km1
     
     let common = fact_km1 * fact_nmk;
     assert(common > 0) by {
@@ -621,8 +456,7 @@ proof fn lemma_mul_equality_converse(a: nat, b: nat, c: nat)
     }
 }
 
-/// Binomial-factorial relation: C(n,k) * k! * (n-k)! = n!
-/// This is a well-known combinatorial identity.
+/// C(n,k) * k! * (n-k)! = n! (well-known combinatorial identity)
 #[verifier::external_body]
 proof fn lemma_binomial_factorial_relation(n: nat, k: nat)
     requires
@@ -630,26 +464,8 @@ proof fn lemma_binomial_factorial_relation(n: nat, k: nat)
     ensures
         binomial(n, k) * factorial(k) * factorial((n - k) as nat) == factorial(n),
 {
-    // The standard mathematical proof:
-    // By definition, C(n,k) = n! / (k! * (n-k)!)
-    // So C(n,k) * k! * (n-k)! = n!
-    //
-    // This can also be proved by induction using Pascal's identity:
-    // C(n,k) = C(n-1,k-1) + C(n-1,k)
-    //
-    // Base cases:
-    // - k = 0: C(n,0) * 0! * n! = 1 * 1 * n! = n! ✓
-    // - k = n: C(n,n) * n! * 0! = 1 * n! * 1 = n! ✓
-    //
-    // Inductive case (0 < k < n):
-    // C(n,k) * k! * (n-k)! 
-    // = (C(n-1,k-1) + C(n-1,k)) * k! * (n-k)!
-    // = C(n-1,k-1) * k! * (n-k)! + C(n-1,k) * k! * (n-k)!
-    // = k * C(n-1,k-1) * (k-1)! * (n-k)! + (n-k) * C(n-1,k) * k! * (n-1-k)!
-    // = k * (n-1)! + (n-k) * (n-1)!  [by IH]
-    // = n * (n-1)! = n!
 }
-/// Factorial is always positive
+/// n! > 0
 proof fn lemma_factorial_positive(n: nat)
     ensures
         factorial(n) > 0,
@@ -664,8 +480,7 @@ proof fn lemma_factorial_positive(n: nat)
     }
 }
 
-/// Strong form of Fermat's Little Theorem: a^p ≡ a (mod p) for all a >= 0
-/// This is proved by induction on a using the binomial theorem.
+/// a^p ≡ a (mod p) for all a >= 0 (proved by induction using binomial theorem)
 pub proof fn lemma_fermat_strong(a: nat, p: nat)
     requires
         is_prime(p),
@@ -674,7 +489,6 @@ pub proof fn lemma_fermat_strong(a: nat, p: nat)
     decreases a,
 {
     if a == 0 {
-        // 0^p = 0, and 0 % p = 0 ✓
         assert(pow(0int, p) == 0) by {
             if p == 0 {
                 reveal(pow);
@@ -685,115 +499,48 @@ pub proof fn lemma_fermat_strong(a: nat, p: nat)
         };
         lemma_small_mod(0nat, p);
     } else {
-        // Inductive case: a > 0
-        // We want to show (a)^p ≡ a (mod p)
-        // Write a = (a-1) + 1
-        // Then a^p = ((a-1) + 1)^p = Σ_{k=0}^{p} C(p,k) * (a-1)^k * 1^{p-k}
-        //          = Σ_{k=0}^{p} C(p,k) * (a-1)^k
-        // 
-        // Key insight: For 0 < k < p, C(p,k) ≡ 0 (mod p) (by lemma_binomial_divisible_by_prime)
-        // So a^p ≡ C(p,0)*(a-1)^0 + C(p,p)*(a-1)^p (mod p)
-        //        ≡ 1 + (a-1)^p (mod p)
-        //        ≡ 1 + (a-1) (mod p)    [by IH: (a-1)^p ≡ (a-1) (mod p)]
-        //        ≡ a (mod p)
-        
         let am1 = (a - 1) as nat;
         
-        // By IH: (a-1)^p ≡ (a-1) (mod p)
         lemma_fermat_strong(am1, p);
         assert((pow(am1 as int, p) as nat) % p == am1 % p);
         
-        // Use binomial expansion: a^p = (am1 + 1)^p
-        // = Σ_{k=0}^{p} C(p,k) * am1^k
-        // ≡ C(p,0) * am1^0 + C(p,p) * am1^p (mod p)  [middle terms vanish]
-        // = 1 + am1^p
-        // ≡ 1 + am1 (mod p)  [by IH]
-        // = a (mod p)
-        
-        // The key step: show that the binomial expansion mod p simplifies
         lemma_binomial_expansion_mod_p(am1, p);
-        // This gives us: pow(am1 + 1, p) % p == (1 + pow(am1, p)) % p
         
-        // Since am1 + 1 == a
         assert(am1 + 1 == a);
-        
-        // pow(a, p) % p == (1 + pow(am1, p)) % p
         assert((pow(a as int, p) as nat) % p == (1 + (pow(am1 as int, p) as nat)) % p);
         
-        // (1 + pow(am1, p)) % p == (1 + (pow(am1, p) % p)) % p by modular arithmetic
-        // == (1 + (am1 % p)) % p by IH
-        // == (1 + am1) % p since 1 + am1 might need reduction
-        // == a % p
-        
-        // First, establish what we know from IH
-        // From lemma_fermat_strong(am1, p), we have:
         let pow_am1_p = pow(am1 as int, p) as nat;
         let am1_pow_mod = pow_am1_p % p;
         assert(am1_pow_mod == am1 % p);
-        
-        // The goal: (1 + pow_am1_p) % p == (1 + am1) % p
-        
-        // Work in int to use lemma_mod_adds
         let pow_am1_p_int = pow_am1_p as int;
         let p_int = p as int;
         let am1_int = am1 as int;
         
-        // Step 1: (1 + pow_am1_p_int) % p_int == (1 % p_int + pow_am1_p_int % p_int) % p_int
         lemma_mod_adds(1, pow_am1_p_int, p_int);
-        
-        // Step 2: 1 % p_int == 1 (since p > 1)
         lemma_small_mod(1nat, p);
         assert(1int % p_int == 1);
-        
-        // Step 3: pow_am1_p_int % p_int == am1_pow_mod as int
         assert(pow_am1_p_int % p_int == am1_pow_mod as int);
-        
-        // Step 4: So (1 + pow_am1_p_int) % p_int == (1 + am1_pow_mod as int) % p_int
-        // Since am1_pow_mod == am1 % p, we have:
         assert(am1_pow_mod as int == (am1 % p) as int);
-        
-        // Step 5: (1 + am1_int) % p_int == (1 % p_int + am1_int % p_int) % p_int
         lemma_mod_adds(1, am1_int, p_int);
-        // == (1 + am1_int % p_int) % p_int
-        // == (1 + (am1 % p) as int) % p_int
-        
-        // Step 6: Now we have both sides equal to (1 + (am1 % p) as int) % p_int
         assert((1 + pow_am1_p_int) % p_int == (1 + am1_int) % p_int);
-        
-        // Convert back to nat
         assert((1 + pow_am1_p) % p == (1 + am1) % p);
         
         assert((1 + am1) == a);
     }
 }
 
-/// Binomial expansion modulo prime: (a+1)^p ≡ a^p + 1 (mod p)
-/// The middle terms C(p,k) for 0 < k < p are all divisible by p
-///
-/// Proof strategy: We prove this by induction on a.
-/// - Base case: (0+1)^p = 1^p = 1 and 1 + 0^p = 1 + 0 = 1 ✓
-/// - Inductive case: Assume (a)^p ≡ a^p + 1^p (mod p) for all a' < a+1
-///   We use the partial binomial sum approach to show the middle terms vanish.
+/// (a+1)^p ≡ a^p + 1 (mod p) - middle terms C(p,k) vanish for 0 < k < p
 proof fn lemma_binomial_expansion_mod_p(a: nat, p: nat)
     requires
         is_prime(p),
     ensures
         (pow((a + 1) as int, p) as nat) % p == (1 + (pow(a as int, p) as nat)) % p,
 {
-    // The key insight: (a+1)^p = Σ_{k=0}^{p} C(p,k) * a^k
-    // For 0 < k < p, C(p,k) ≡ 0 (mod p)
-    // So (a+1)^p ≡ C(p,0)*a^0 + C(p,p)*a^p = 1 + a^p (mod p)
-    
-    // First prove the partial sum result
     lemma_partial_binomial_sum_mod_p(a, p, p);
-    // This gives: binomial_sum(a, p, p) % p == (1 + pow(a, p)) % p
-    
-    // Now we need: binomial_sum(a, p, p) == pow(a+1, p)
-    // This is the binomial theorem - use the axiom
     axiom_binomial_theorem(a, p);
 }
 
-/// The binomial sum Σ_{k=0}^{n} C(n,k) * a^k equals (a+1)^n
+/// Σ_{k=0}^{max_k} C(n,k) * a^k
 spec fn binomial_sum(a: nat, n: nat, max_k: nat) -> nat
     decreases max_k,
 {
@@ -804,34 +551,7 @@ spec fn binomial_sum(a: nat, n: nat, max_k: nat) -> nat
     }
 }
 
-/// The Binomial Theorem: (a+1)^n = Σ_{k=0}^{n} C(n,k) * a^k
-/// 
-/// MATHEMATICAL AXIOM
-/// ==================
-/// This lemma asserts the binomial theorem, one of the most fundamental identities
-/// in combinatorics. The proof follows from Pascal's identity for binomial coefficients
-/// and the algebraic manipulation of polynomial sums.
-///
-/// Proof outline (mathematical, not Verus-verified):
-/// 1. Base case (n=0): (a+1)^0 = 1 = C(0,0) ✓
-/// 2. Inductive step: Assume the theorem for n-1. Then:
-///    (a+1)^n = (a+1) * (a+1)^{n-1}
-///            = (a+1) * Σ_{k=0}^{n-1} C(n-1,k) a^k   [by IH]
-///            = Σ_{k=0}^{n-1} C(n-1,k) a^{k+1} + Σ_{k=0}^{n-1} C(n-1,k) a^k   [distribute]
-///            = Σ_{j=1}^{n} C(n-1,j-1) a^j + Σ_{k=0}^{n-1} C(n-1,k) a^k   [reindex]
-///            = a^n + Σ_{k=1}^{n-1} [C(n-1,k-1) + C(n-1,k)] a^k + 1   [separate k=0,n]
-///            = 1 + Σ_{k=1}^{n-1} C(n,k) a^k + a^n   [Pascal's identity]
-///            = Σ_{k=0}^{n} C(n,k) a^k   ✓
-///
-/// The formal Verus verification of this algebraic manipulation would require
-/// building up sum manipulation primitives (index shifts, splitting, etc.)
-/// which are not part of vstd's arithmetic library.
-///
-/// We accept this as a mathematical axiom, noting that:
-/// 1. It is a well-established theorem proven in every combinatorics textbook
-/// 2. Our spec function `binomial` is DEFINED using Pascal's identity
-/// 3. The structure of the proof above shows exactly WHY the theorem is true
-/// 4. This is the ONLY axiomatic assumption in our Fermat's Little Theorem proof
+/// Binomial Theorem: (a+1)^n = Σ_{k=0}^{n} C(n,k) * a^k (axiom)
 #[verifier::external_body]
 proof fn axiom_binomial_theorem(a: nat, n: nat)
     ensures
@@ -2023,32 +1743,9 @@ proof fn lemma_product_identity(a: nat, p: nat, n: nat)
     }
 }
 
-/// Axiom: The product of the residues {(i*a) % p : i in 1..n} equals n! mod p
-///
-/// This follows from the fact that multiplication by a coprime element is a
-/// bijection on the multiplicative group mod p. Since the residues are distinct
-/// and all in {1, ..., p-1}, they must be exactly {1, ..., p-1} (by pigeonhole).
-/// The product of any permutation of {1, ..., n} equals n!.
-///
-/// Mathematical proof outline:
-/// 1. Define f(i) = (i * a) % p for i in {1, ..., p-1}
-/// 2. f is injective (proved by lemma_multiples_distinct_mod_prime)
-/// 3. f maps into {1, ..., p-1} (proved by lemma_mult_maps_to_nonzero)
-/// 4. Since |domain| = |codomain| = p-1 and f is injective, f is a bijection
-/// 5. For any bijection f: S -> S, product of f(S) = product of S
-/// 6. Therefore, ∏_{i=1}^{p-1} f(i) = ∏_{i=1}^{p-1} i = (p-1)!
-///
-/// The final step (5) is the key: the product of a set doesn't depend on
-/// the order of multiplication (commutativity), and a bijection just
-/// reorders the elements.
-///
-/// Formalizing this would require set theory infrastructure not available
-/// in vstd's basic arithmetic library. We accept it as a mathematical axiom.
-///
-/// Note: This is a fundamental combinatorial fact (product invariant under
-/// permutation) combined with the pigeonhole principle. Both are well-established
-/// mathematical results that are typically axiomatized when not working with
-/// explicit finite set machinery.
+/// Product of residues {(i*a) % p : i in 1..n} equals n! mod p
+/// Proof: f(i) = (i * a) % p is a bijection on {1..p-1} (injective + pigeonhole),
+/// so ∏ f(i) = ∏ i = (p-1)!
 pub proof fn axiom_permutation_product(a: nat, p: nat, n: nat)
     requires
         is_prime(p),
@@ -2181,15 +1878,7 @@ pub proof fn axiom_permutation_product(a: nat, p: nat, n: nat)
 // PART 7: Main Theorem - Fermat's Little Theorem
 // =============================================================================
 
-/// Lemma: Fermat's Little Theorem
-///
-/// For any prime p and any integer x not divisible by p,
-/// we have x^(p-1) ≡ 1 (mod p).
-///
-/// Proof: Using the permutation argument:
-/// 1. The sequence {a, 2a, ..., (p-1)a} mod p is a permutation of {1, 2, ..., p-1}
-/// 2. Therefore their products are equal mod p: a^(p-1) * (p-1)! ≡ (p-1)! (mod p)
-/// 3. Since gcd((p-1)!, p) = 1 for prime p, we can cancel to get a^(p-1) ≡ 1 (mod p)
+/// Fermat's Little Theorem: x^(p-1) ≡ 1 (mod p) for prime p, gcd(x,p) = 1
 pub proof fn lemma_fermat_little_theorem(x: nat, prime: nat)
     requires
         is_prime(prime),

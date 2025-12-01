@@ -427,9 +427,8 @@ mod decompress {
             // 52 < 54 and 51 < 54, so we need to help Verus see the implication
             assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
             assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
-            // Assume the 54-bit bounds (trivially follows from 52 and 51 bit bounds)
-            assume(fe51_limbs_bounded(&X, 54));
-            assume(fe51_limbs_bounded(&Y, 54));
+            assert(fe51_limbs_bounded(&X, 54));
+            assert(fe51_limbs_bounded(&Y, 54));
         }
 
         let result = EdwardsPoint { X, Y, Z, T: &X * &Y };

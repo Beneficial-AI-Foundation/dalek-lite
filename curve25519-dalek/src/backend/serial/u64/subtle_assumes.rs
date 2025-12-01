@@ -2,6 +2,7 @@
 use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::backend::serial::u64::field::FieldElement51;
+#[cfg(verus_keep_ghost)]
 use crate::specs::field_specs::{fe51_limbs_bounded, math_field_neg, spec_field_element};
 
 use vstd::prelude::*;

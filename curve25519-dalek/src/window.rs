@@ -298,13 +298,15 @@ impl<T: Debug> Debug for LookupTable<T> {
 
 /// Spec for From<&EdwardsPoint> conversion for ProjectiveNiels lookup table
 #[cfg(verus_keep_ghost)]
-impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
-//impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
-    
+impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<
+    ProjectiveNielsPoint,
+> {
+    //impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
     open spec fn obeys_from_spec() -> bool {
         false
     }
-/* VERIFICTATION NOTE: this not supported in Verus 
+
+    /* VERIFICTATION NOTE: this not supported in Verus
 
     open spec fn from_req(P: &'a EdwardsPoint) -> bool {
         // Preconditions needed for table construction
@@ -321,11 +323,12 @@ impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTabl
 impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
     /// Create a lookup table from an EdwardsPoint
     /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result: Self)
-    /* 
-    VERIFICATION NOTE: similar to Add and Mul traits, 
-    we want from_req from above to apply here, but Verus does not yet support this 
+    fn from(P: &'a EdwardsPoint) -> (result:
+        Self)/*
+    VERIFICATION NOTE: similar to Add and Mul traits,
+    we want from_req from above to apply here, but Verus does not yet support this
     */
+
         ensures
             is_valid_lookup_table_projective(result.0, *P, 8 as nat),
     {
@@ -383,15 +386,16 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
     }
 }
 
- 
 /// Spec for From<&EdwardsPoint> conversion for AffineNiels lookup table
 #[cfg(verus_keep_ghost)]
-impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
+impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTable<
+    AffineNielsPoint,
+> {
     open spec fn obeys_from_spec() -> bool {
         false
     }
 
-/* VERIFICTATION NOTE: this not supported in Verus 
+    /* VERIFICTATION NOTE: this not supported in Verus
     open spec fn from_req(P: &'a EdwardsPoint) -> bool {
         // Preconditions needed for table construction
         fe51_limbs_bounded(&P.X, 54) && fe51_limbs_bounded(&P.Y, 54) && fe51_limbs_bounded(&P.Z, 54)
@@ -407,12 +411,14 @@ impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a EdwardsPoint> for LookupTabl
 impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
     /// Create a lookup table from an EdwardsPoint (affine version)
     /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result: Self)
-    /* 
-    VERIFICATION NOTE: similar to Add and Mul traits, 
-    we want from_req from above to apply here, but Verus does not yet support this 
+    fn from(P: &'a EdwardsPoint) -> (result:
+        Self)/*
+    VERIFICATION NOTE: similar to Add and Mul traits,
+    we want from_req from above to apply here, but Verus does not yet support this
     */
-    ensures is_valid_lookup_table_affine(result.0, *P, 8 as nat),
+
+        ensures
+            is_valid_lookup_table_affine(result.0, *P, 8 as nat),
     {
         /* ORIGINAL CODE: for generic $name, $size, and conv_range.
 

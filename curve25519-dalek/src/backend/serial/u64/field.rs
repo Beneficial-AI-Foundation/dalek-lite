@@ -892,7 +892,8 @@ impl FieldElement51 {
     #[rustfmt::skip]  // keep alignment of bit shifts
     pub const fn from_bytes(bytes: &[u8; 32]) -> (r: FieldElement51)
         ensures
-            // last bit is ignored
+    // last bit is ignored
+
             u64_5_as_nat(r.limbs) == u8_32_as_nat(bytes) % pow2(255),
             // each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),
@@ -940,7 +941,7 @@ impl FieldElement51 {
                 lemma_from_bytes_as_nat(bytes);
                 lemma_as_nat_32_mod_255(bytes);
             }
-            
+
             // Prove limbs are bounded: x & mask51 < 2^51
             assert(forall|x: u64| #[trigger] (x & mask51) < (1u64 << 51)) by (bit_vector);
         }

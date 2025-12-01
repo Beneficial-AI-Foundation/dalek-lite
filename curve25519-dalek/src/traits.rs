@@ -23,6 +23,7 @@ use vstd::prelude::*;
 // ------------------------------------------------------------------------
 
 verus! {
+
 /// Trait for getting the identity element of a point type.
 pub trait Identity {
     /// Returns the identity element of the curve.
@@ -40,17 +41,13 @@ pub trait IsIdentity {
 /// Implement generic identity equality testing for a point representations
 /// which have constant-time equality testing and a defined identity
 /// constructor.
-impl<T> IsIdentity for T
-where
-    T: ConstantTimeEq + Identity,
-{
+impl<T> IsIdentity for T where T: ConstantTimeEq + Identity {
     fn is_identity(&self) -> bool {
         self.ct_eq(&T::identity()).into()
     }
 }
 
 } // verus!
-
 /// A precomputed table of basepoints, for optimising scalar multiplications.
 pub trait BasepointTable {
     /// The type of point contained within this table.

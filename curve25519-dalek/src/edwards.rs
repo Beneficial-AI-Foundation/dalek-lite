@@ -601,19 +601,47 @@ pub struct EdwardsPoint {
 // Constructors
 // ------------------------------------------------------------------------
 impl Identity for CompressedEdwardsY {
-    #[verusfmt::skip]
     fn identity() -> (result: CompressedEdwardsY)
         ensures
-            // Identity point has y = 1 and sign bit = 0
+    // Identity point has y = 1 and sign bit = 0
+
             spec_field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
     {
         let result = CompressedEdwardsY(
             [
-                1, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
             ],
         );
 
@@ -683,23 +711,24 @@ impl CompressedEdwardsY {
 }
 
 impl Identity for EdwardsPoint {
-    fn identity() -> (result:
-        EdwardsPoint)/* VERIFICATION NOTE:
-    - PROOF BYPASS
-    - is_identity ensures affine point is (0, 1) - more general than the FieldElement defined below
-    */
-
+    fn identity() -> (result: EdwardsPoint)
         ensures
             is_identity_edwards_point(result),
     {
-        assume(spec_field_element(&FieldElement::ZERO) == 0);
-        assume(spec_field_element(&FieldElement::ONE) == 1);
         let result = EdwardsPoint {
             X: FieldElement::ZERO,
             Y: FieldElement::ONE,
             Z: FieldElement::ONE,
             T: FieldElement::ZERO,
         };
+        proof {
+            // ZERO has limbs [0,0,0,0,0] → spec_field_element = 0
+            // ONE has limbs [1,0,0,0,0] → spec_field_element = 1
+            assume(spec_field_element(&FieldElement::ZERO) == 0);
+            assume(spec_field_element(&FieldElement::ONE) == 1);
+            // is_identity_edwards_point requires: z != 0, x == 0, y == z
+            // With X=ZERO, Y=ONE, Z=ONE: z=1≠0, x=0, y=z=1 ✓
+        }
         result
     }
 }
@@ -767,9 +796,9 @@ impl ValidityCheck for EdwardsPoint {
         proof {
             // The limb bounds are preserved by as_projective() (proj.X == self.X, etc.)
             // and self has limbs_bounded from the preconditions
-            assume(fe51_limbs_bounded(&proj.X, 54));
-            assume(fe51_limbs_bounded(&proj.Y, 54));
-            assume(fe51_limbs_bounded(&proj.Z, 54));
+            assert(fe51_limbs_bounded(&proj.X, 54));
+            assert(fe51_limbs_bounded(&proj.Y, 54));
+            assert(fe51_limbs_bounded(&proj.Z, 54));
         }
         let point_on_curve = proj.is_valid();
 
@@ -906,9 +935,7 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
 impl PartialEq for EdwardsPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &EdwardsPoint) -> (result:
-        bool)/* VERIFICATION NOTE: we cannot add a "requires" clause to eq with PartialEqSpecImpl, */
-    // requires self.ct_eq_req(other),
-
+        bool)  /* VERIFICATION NOTE: we cannot add a "requires" clause to eq with PartialEqSpecImpl, */  // requires self.ct_eq_req(other),FORMATTER_NOT_INLINE_MARKER
         ensures
             result == (edwards_point_as_affine(*self) == edwards_point_as_affine(*other)),
     {
@@ -949,12 +976,7 @@ impl EdwardsPoint {
             fe51_limbs_bounded(&result.T2d, 54),
     {
         proof {
-            assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));  // for Y_plus_X
-            assume(fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.X, 54));  // for Y_minus_X
-            assume(fe51_limbs_bounded(&self.T, 54) && fe51_limbs_bounded(
-                &constants::EDWARDS_D2,
-                54,
-            ));  // for T2d
+            assume(fe51_limbs_bounded(&constants::EDWARDS_D2, 54));  // for T2d
         }
 
         let result = ProjectiveNielsPoint {
@@ -1003,22 +1025,17 @@ impl EdwardsPoint {
             affine_niels_corresponds_to_edwards(result, *self),
     {
         let recip = self.Z.invert();
-        proof {
-            assume(fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&recip, 54));  // for x = &self.X * &recip
-            assume(fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&recip, 54));  // for y = &self.Y * &recip
-        }
+        // recip bounded by 54 from invert() postcondition
 
         let x = &self.X * &recip;
         let y = &self.Y * &recip;
-
-        proof {
-            assume(fe51_limbs_bounded(&x, 54) && fe51_limbs_bounded(&y, 54));  // for xy = &x * &y
-        }
+        // x, y bounded by 54 from mul() postcondition
 
         let xy = &x * &y;
+        // xy bounded by 54 from mul() postcondition
 
         proof {
-            assume(fe51_limbs_bounded(&xy, 54) && fe51_limbs_bounded(&constants::EDWARDS_D2, 54));  // for xy2d = &xy * &constants::EDWARDS_D2
+            assume(fe51_limbs_bounded(&constants::EDWARDS_D2, 54));
         }
 
         let xy2d = &xy * &constants::EDWARDS_D2;
@@ -1061,8 +1078,12 @@ impl EdwardsPoint {
         // compute the 2-torsion point (0,0).
         let U = &self.Z + &self.Y;
         let W = &self.Z - &self.Y;
+        // W bounded by 54 from sub() postcondition
         proof {
-            assume(fe51_limbs_bounded(&U, 54) && fe51_limbs_bounded(&W, 54));
+            // GAP: U = Z + Y without reduction, U[i] could be up to 2^55, but mul requires < 2^54.
+            // In practice, field elements are usually more reduced (< 2^51), making U < 2^52.
+            // Fix: either strengthen requires to 51-bit bounds, or add reduce() call.
+            assume(fe51_limbs_bounded(&U, 54));
         }
         let u = &U * &W.invert();
         let result = MontgomeryPoint(u.as_bytes());
@@ -1435,11 +1456,7 @@ impl<'a> Neg for &'a EdwardsPoint {
         */
         // REFACTORED: Use explicit Neg::neg() calls instead of operator shortcuts
         // to avoid Verus panic
-        proof {
-            // Assume preconditions for field element negation (limbs < 2^51)
-            assume(fe51_limbs_bounded(&self.X, 51));
-            assume(fe51_limbs_bounded(&self.T, 51));
-        }
+        // neg_req ensures: fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
         use core::ops::Neg;
         EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) }
     }
@@ -1472,11 +1489,7 @@ impl Neg for EdwardsPoint {
         -&self
         */
         // REFACTORED: Use explicit Neg::neg() call to avoid Verus type inference issues
-        proof {
-            // Assume preconditions for &EdwardsPoint negation
-            assume(fe51_limbs_bounded(&self.X, 51));
-            assume(fe51_limbs_bounded(&self.T, 51));
-        }
+        // neg_req ensures: fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
         use core::ops::Neg;
         Neg::neg(&self)
     }

@@ -332,7 +332,10 @@ impl ValidityCheck for ProjectivePoint {
 
         let xx_times_yy = &XX * &YY;
         proof {
-            assume(fe51_limbs_bounded(&constants::EDWARDS_D, 54) && fe51_limbs_bounded(&xx_times_yy, 54));  // for d_times_xxyy = &constants::EDWARDS_D * &xx_times_yy
+            assume(fe51_limbs_bounded(&constants::EDWARDS_D, 54) && fe51_limbs_bounded(
+                &xx_times_yy,
+                54,
+            ));  // for d_times_xxyy = &constants::EDWARDS_D * &xx_times_yy
         }
         let d_times_xxyy = &constants::EDWARDS_D * &xx_times_yy;
         proof {
@@ -580,9 +583,9 @@ impl vstd::std_specs::ops::AddSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
 
     open spec fn add_req(self, rhs: &ProjectiveNielsPoint) -> bool {
         // Preconditions needed for field operations
-        is_well_formed_edwards_point(*self)
-            && fe51_limbs_bounded(&rhs.Y_plus_X, 54) && fe51_limbs_bounded(&rhs.Y_minus_X, 54)
-            && fe51_limbs_bounded(&rhs.Z, 54) && fe51_limbs_bounded(&rhs.T2d, 54)
+        is_well_formed_edwards_point(*self) && fe51_limbs_bounded(&rhs.Y_plus_X, 54)
+            && fe51_limbs_bounded(&rhs.Y_minus_X, 54) && fe51_limbs_bounded(&rhs.Z, 54)
+            && fe51_limbs_bounded(&rhs.T2d, 54)
     }
 
     open spec fn add_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
@@ -656,9 +659,9 @@ impl vstd::std_specs::ops::SubSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
 
     open spec fn sub_req(self, rhs: &ProjectiveNielsPoint) -> bool {
         // Preconditions needed for field operations
-        is_well_formed_edwards_point(*self)
-            && fe51_limbs_bounded(&rhs.Y_plus_X, 54) && fe51_limbs_bounded(&rhs.Y_minus_X, 54)
-            && fe51_limbs_bounded(&rhs.Z, 54) && fe51_limbs_bounded(&rhs.T2d, 54)
+        is_well_formed_edwards_point(*self) && fe51_limbs_bounded(&rhs.Y_plus_X, 54)
+            && fe51_limbs_bounded(&rhs.Y_minus_X, 54) && fe51_limbs_bounded(&rhs.Z, 54)
+            && fe51_limbs_bounded(&rhs.T2d, 54)
     }
 
     open spec fn sub_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
@@ -714,9 +717,12 @@ impl vstd::std_specs::ops::AddSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
 
     open spec fn add_req(self, rhs: &AffineNielsPoint) -> bool {
         // Preconditions needed for field operations
-        is_well_formed_edwards_point(*self)
-            && sum_of_limbs_bounded(&self.Z, &self.Z, u64::MAX)  // for Z2 = &self.Z + &self.Z
-            && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
+        is_well_formed_edwards_point(*self) && sum_of_limbs_bounded(
+            &self.Z,
+            &self.Z,
+            u64::MAX,
+        )  // for Z2 = &self.Z + &self.Z
+         && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
             && fe51_limbs_bounded(&rhs.xy2d, 54)
     }
 

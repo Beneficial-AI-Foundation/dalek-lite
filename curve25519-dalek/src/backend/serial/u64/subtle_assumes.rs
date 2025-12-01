@@ -19,7 +19,7 @@ pub struct ExChoice(Choice);
 #[verifier::external_trait_specification]
 pub trait ExConstantTimeEq {
     type ExternalTraitSpecificationFor: ConstantTimeEq;
-    
+
     // Note: Implementations should define their own preconditions via a companion spec trait
     // For EdwardsPoint, see ConstantTimeEqSpecImpl in edwards.rs
     fn ct_eq(&self, other: &Self) -> Choice;
@@ -115,7 +115,6 @@ pub fn choice_into(c: Choice) -> (b: bool)
 {
     c.into()
 }
-
 
 /// Wrapper for bitwise AND on Choice
 #[verifier::external_body]

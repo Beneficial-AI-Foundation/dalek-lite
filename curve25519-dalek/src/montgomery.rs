@@ -241,7 +241,8 @@ impl MontgomeryPoint {
     pub fn mul_base(scalar: &Scalar) -> Self {
         let temp = EdwardsPoint::mul_base(scalar);
         proof {
-            assume(fe51_limbs_bounded(&temp.X, 54) && fe51_limbs_bounded(&temp.Y, 54) && fe51_limbs_bounded(&temp.Z, 54));
+            assume(fe51_limbs_bounded(&temp.X, 54) && fe51_limbs_bounded(&temp.Y, 54)
+                && fe51_limbs_bounded(&temp.Z, 54));
             assume(sum_of_limbs_bounded(&temp.Z, &temp.Y, u64::MAX));
         }
         temp.to_montgomery()

@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
-use crate::specs::primality_specs::*;
-#[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
+#[allow(unused_imports)]
+use crate::specs::primality_specs::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
@@ -231,7 +231,6 @@ proof fn lemma_one_pow(n: nat)
 // =============================================================================
 // PART 3: Factorial and Product Definitions
 // =============================================================================
-
 /// Factorial: n! = 1 * 2 * 3 * ... * n
 pub open spec fn factorial(n: nat) -> nat
     decreases n,
@@ -289,18 +288,18 @@ proof fn lemma_binomial_prime_divisibility_helper(p: nat, k: nat)
         binomial(p, k) % p == 0,
 {
     lemma_binomial_absorption(p, k);
-    
+
     let prod = k * binomial(p, k);
     assert(prod == p * binomial((p - 1) as nat, (k - 1) as nat));
-    
+
     assert(prod % p == 0) by {
         lemma_mod_multiples_basic(binomial((p - 1) as nat, (k - 1) as nat) as int, p as int);
     };
-    
+
     assert(k % p != 0) by {
         lemma_small_mod(k, p);
     };
-    
+
     if binomial(p, k) % p != 0 {
         lemma_euclid_prime(k, binomial(p, k), p);
         assert(false);
@@ -336,16 +335,16 @@ pub proof fn lemma_binomial_absorption(n: nat, k: nat)
             (n - 1) as nat,
             k,
         ));
-        
-        lemma_mul_is_distributive_add(k as int, binomial((n - 1) as nat, (k - 1) as nat) as int, binomial(
-            (n - 1) as nat,
-            k,
-        ) as int);
-        
+
+        lemma_mul_is_distributive_add(
+            k as int,
+            binomial((n - 1) as nat, (k - 1) as nat) as int,
+            binomial((n - 1) as nat, k) as int,
+        );
+
         if k < n - 1 {
             lemma_binomial_absorption((n - 1) as nat, k);
         }
-        
         lemma_binomial_absorption_factorial(n, k);
     }
 }
@@ -379,7 +378,7 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
 {
     lemma_binomial_factorial_relation(n, k);
     lemma_binomial_factorial_relation((n - 1) as nat, (k - 1) as nat);
-    
+
     let binom_n_k = binomial(n, k);
     let binom_nm1_km1 = binomial((n - 1) as nat, (k - 1) as nat);
     let fact_k = factorial(k);
@@ -387,25 +386,25 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
     let fact_nmk = factorial((n - k) as nat);
     let fact_n = factorial(n);
     let fact_nm1 = factorial((n - 1) as nat);
-    
+
     assert(fact_k == k * fact_km1);
     assert(fact_n == n * fact_nm1);
-    
+
     assert(fact_km1 > 0) by {
         lemma_factorial_positive((k - 1) as nat);
     };
     assert(fact_nmk > 0) by {
         lemma_factorial_positive((n - k) as nat);
     };
-    
+
     assert(binom_n_k * fact_k * fact_nmk == fact_n);
     assert(binom_nm1_km1 * fact_km1 * fact_nmk == fact_nm1);
-    
+
     let common = fact_km1 * fact_nmk;
     assert(common > 0) by {
         lemma_mul_strictly_positive(fact_km1 as int, fact_nmk as int);
     };
-    
+
     assert(k * binom_n_k * common == fact_n) by {
         assert(binom_n_k * fact_k * fact_nmk == fact_n);
         assert(fact_k == k * fact_km1);
@@ -413,14 +412,14 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
         lemma_mul_is_associative((binom_n_k * k) as int, fact_km1 as int, fact_nmk as int);
         lemma_mul_is_commutative(binom_n_k as int, k as int);
     };
-    
+
     assert(n * binom_nm1_km1 * common == fact_n) by {
         assert(binom_nm1_km1 * fact_km1 * fact_nmk == fact_nm1);
         assert(fact_n == n * fact_nm1);
         lemma_mul_is_associative(n as int, binom_nm1_km1 as int, (fact_km1 * fact_nmk) as int);
         lemma_mul_is_associative(binom_nm1_km1 as int, fact_km1 as int, fact_nmk as int);
     };
-    
+
     // Now we have:
     // k * binom_n_k * common == fact_n == n * binom_nm1_km1 * common
     // Since common > 0, we can conclude k * binom_n_k == n * binom_nm1_km1
@@ -465,6 +464,7 @@ proof fn lemma_binomial_factorial_relation(n: nat, k: nat)
         binomial(n, k) * factorial(k) * factorial((n - k) as nat) == factorial(n),
 {
 }
+
 /// n! > 0
 proof fn lemma_factorial_positive(n: nat)
     ensures
@@ -500,22 +500,22 @@ pub proof fn lemma_fermat_strong(a: nat, p: nat)
         lemma_small_mod(0nat, p);
     } else {
         let am1 = (a - 1) as nat;
-        
+
         lemma_fermat_strong(am1, p);
         assert((pow(am1 as int, p) as nat) % p == am1 % p);
-        
+
         lemma_binomial_expansion_mod_p(am1, p);
-        
+
         assert(am1 + 1 == a);
         assert((pow(a as int, p) as nat) % p == (1 + (pow(am1 as int, p) as nat)) % p);
-        
+
         let pow_am1_p = pow(am1 as int, p) as nat;
         let am1_pow_mod = pow_am1_p % p;
         assert(am1_pow_mod == am1 % p);
         let pow_am1_p_int = pow_am1_p as int;
         let p_int = p as int;
         let am1_int = am1 as int;
-        
+
         lemma_mod_adds(1, pow_am1_p_int, p_int);
         lemma_small_mod(1nat, p);
         assert(1int % p_int == 1);
@@ -524,7 +524,7 @@ pub proof fn lemma_fermat_strong(a: nat, p: nat)
         lemma_mod_adds(1, am1_int, p_int);
         assert((1 + pow_am1_p_int) % p_int == (1 + am1_int) % p_int);
         assert((1 + pow_am1_p) % p == (1 + am1) % p);
-        
+
         assert((1 + am1) == a);
     }
 }
@@ -583,61 +583,61 @@ proof fn lemma_partial_binomial_sum_mod_p(a: nat, p: nat, j: nat)
         // S_j = S_{j-1} + C(p,j) * a^j
         // By IH: S_{j-1} % p == 1
         // C(p,j) % p == 0 for 0 < j < p
-        
         lemma_partial_binomial_sum_mod_p(a, p, (j - 1) as nat);
         assert(binomial_sum(a, p, (j - 1) as nat) % p == 1);
-        
+
         lemma_binomial_divisible_by_prime(p, j);
         assert(binomial(p, j) % p == 0);
-        
+
         // C(p,j) * a^j % p == 0
         // Since C(p,j) % p == 0, we have C(p,j) = q*p for some q
         // So C(p,j) * a^j = q*p * a^j, which is divisible by p
-        
+
         // Use the fact that (x % p == 0) implies (x * y) % p == 0
         lemma_pow_nonnegative(a as int, j);
         assert(pow(a as int, j) >= 0);
-        
+
         // Work with int types for the modular arithmetic
         let binom_int = binomial(p, j) as int;
         let pow_int = pow(a as int, j);
         let term_int = binom_int * pow_int;
-        
+
         // term_int % p == 0
         assert(term_int % (p as int) == 0) by {
             // First, establish that binom_int % p == 0
             assert(binom_int % (p as int) == 0);
-            
+
             // Apply lemma_mul_mod_noop_left
             lemma_mul_mod_noop_left(binom_int, pow_int, p as int);
             // This gives: (binom_int * pow_int) % p == (binom_int % p * pow_int) % p
-            
+
             // binom_int % p == 0, so (binom_int % p) * pow_int == 0 * pow_int == 0
             lemma_mul_basics(pow_int);
             assert((binom_int % (p as int)) * pow_int == 0);
-            
+
             // 0 % p == 0 for any p > 0
-            assert(p > 1) by { /* is_prime(p) implies p > 1 */ };
+            assert(p > 1) by {  /* is_prime(p) implies p > 1 */
+            };
             lemma_small_mod(0nat, p);
         };
-        
+
         // term_int >= 0 since both factors >= 0
         assert(term_int >= 0) by {
             lemma_mul_nonnegative(binom_int, pow_int);
         };
-        
+
         // The nat version matches the int version
         let term_j = binomial(p, j) * (pow(a as int, j) as nat);
         assert(term_j == term_int as nat);
         assert(term_j % p == 0) by {
             // term_j as int == term_int, term_int % p == 0, so term_j % p == 0
         };
-        
+
         // S_j = S_{j-1} + term_j
         // S_j % p == (S_{j-1} + term_j) % p == (S_{j-1} % p + term_j % p) % p
         //         == (1 + 0) % p == 1
         assert(binomial_sum(a, p, j) == binomial_sum(a, p, (j - 1) as nat) + term_j);
-        
+
         assert(binomial_sum(a, p, j) % p == 1) by {
             lemma_mod_adds(binomial_sum(a, p, (j - 1) as nat) as int, term_j as int, p as int);
             lemma_small_mod(1nat, p);
@@ -647,57 +647,61 @@ proof fn lemma_partial_binomial_sum_mod_p(a: nat, p: nat, j: nat)
         // S_p = S_{p-1} + C(p,p) * a^p
         // By IH: S_{p-1} % p == 1
         // C(p,p) = 1
-        
         if p == 1 {
             // Special case: p = 1
             // S_1 = C(1,0)*a^0 + C(1,1)*a^1 = 1 + a
             // (1 + a^1) = 1 + a
             // So S_1 % 1 == (1 + a) % 1 == 0
-            assert(binomial_sum(a, 1, 1) == binomial_sum(a, 1, 0) + binomial(1, 1) * pow(a as int, 1) as nat);
+            assert(binomial_sum(a, 1, 1) == binomial_sum(a, 1, 0) + binomial(1, 1) * pow(
+                a as int,
+                1,
+            ) as nat);
             assert(binomial_sum(a, 1, 0) == 1);
             assert(binomial(1, 1) == 1);
-            assert(pow(a as int, 1) == a as int) by { reveal(pow); lemma_mul_basics(1int); };
+            assert(pow(a as int, 1) == a as int) by {
+                reveal(pow);
+                lemma_mul_basics(1int);
+            };
             // But p = 1 is not prime (prime requires > 1), so this case doesn't occur
             assert(false);
         }
-        
         lemma_partial_binomial_sum_mod_p(a, p, (p - 1) as nat);
         assert(binomial_sum(a, p, (p - 1) as nat) % p == 1);
-        
+
         assert(binomial(p, p) == 1);
-        
+
         // term_p = binomial(p,p) * a^p = 1 * a^p = a^p
         let pow_a_p = pow(a as int, p) as nat;
         lemma_pow_nonnegative(a as int, p);
         assert(pow(a as int, p) >= 0);
-        
+
         let term_p = binomial(p, p) * pow_a_p;
         assert(term_p == pow_a_p) by {
             assert(binomial(p, p) == 1);
         };
-        
+
         // S_p = S_{p-1} + a^p
         assert(binomial_sum(a, p, p) == binomial_sum(a, p, (p - 1) as nat) + term_p);
-        
+
         // S_p % p == (S_{p-1} + a^p) % p
         //         == (S_{p-1} % p + a^p % p) % p
         //         == (1 + (a^p % p)) % p
         //         == (1 + a^p) % p  [since (x % p + y % p) % p == (x + y) % p]
-        
+
         // First show: (S_{p-1} + term_p) % p == (1 + term_p % p) % p
         lemma_mod_adds(binomial_sum(a, p, (p - 1) as nat) as int, term_p as int, p as int);
         // This gives: (S_{p-1} + term_p) % p == (S_{p-1} % p + term_p % p) % p == (1 + term_p % p) % p
-        
+
         // Since term_p == pow_a_p, term_p % p == pow_a_p % p
         assert(term_p % p == pow_a_p % p);
-        
+
         // Now show: (1 + term_p % p) % p == (1 + pow_a_p) % p
         // This is because (1 + (x % p)) % p == (1 + x) % p
         lemma_mod_adds(1, pow_a_p as int, p as int);
         // This gives: (1 + pow_a_p) % p == (1 % p + pow_a_p % p) % p
         lemma_small_mod(1nat, p);
         // So (1 + pow_a_p) % p == (1 + pow_a_p % p) % p
-        
+
         assert(binomial_sum(a, p, p) % p == (1 + pow_a_p) % p);
     }
 }
@@ -716,7 +720,6 @@ proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
     // a * (a^n - 1) ≡ 0 (mod p)
     // Since p is prime and a % p != 0, by Euclid's lemma: (a^n - 1) % p == 0
     // So a^n ≡ 1 (mod p)
-    
     // First, show pow(a, n) >= 1 (since a > 0 and n >= 0, and a % p != 0 means a > 0)
     assert(a > 0) by {
         if a == 0 {
@@ -724,26 +727,26 @@ proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
             assert(false);
         }
     };
-    
+
     assert(pow(a as int, n) >= 1) by {
         lemma_pow_positive(a as int, n);
     };
-    
+
     // a * a^n = a * a^(p-1) = a^p
     // We have a^p ≡ a (mod p)
     // So a * a^(p-1) ≡ a (mod p)
-    
+
     // (a * a^n) % p == a % p
     // (a * a^n - a) % p == 0
     // a * (a^n - 1) % p == 0
-    
+
     let pow_n = pow(a as int, n);
-    
+
     // a * pow_n - a = a * (pow_n - 1)
     assert((a as int) * pow_n - (a as int) == (a as int) * (pow_n - 1)) by {
         lemma_mul_is_distributive_sub(a as int, pow_n, 1);
     };
-    
+
     // ((a * pow_n) - a) % p == 0
     // because (a * pow_n) % p == a % p
     assert(((a as int) * pow_n - (a as int)) % (p as int) == 0) by {
@@ -752,16 +755,16 @@ proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
         // Actually we need: if x % p == y % p then (x - y) % p == 0
         lemma_mod_sub_eq_implies_zero((a as int) * pow_n, a as int, p as int);
     };
-    
+
     // So (a * (pow_n - 1)) % p == 0
     assert(((a as int) * (pow_n - 1)) % (p as int) == 0);
-    
+
     // By Euclid's lemma: a % p == 0 or (pow_n - 1) % p == 0
     // Since a % p != 0, we have (pow_n - 1) % p == 0
-    
+
     // But we need to be careful: Euclid's lemma works with naturals
     // pow_n >= 1, so pow_n - 1 >= 0
-    
+
     if (pow_n - 1) % (p as int) != 0 {
         // Then a % p == 0 by Euclid
         // pow_n - 1 >= 0, so we can treat it as nat
@@ -775,8 +778,8 @@ proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
         // But a % p != 0 by precondition, contradiction
         assert(false);
     }
-    
     // (pow_n - 1) % p == 0 means pow_n % p == 1
+
     assert(pow_n % (p as int) == 1) by {
         // pow_n = (pow_n - 1) + 1
         // pow_n % p = ((pow_n - 1) + 1) % p = (0 + 1) % p = 1
@@ -798,18 +801,18 @@ proof fn lemma_mod_sub_eq_implies_zero(x: int, y: int, m: int)
     let r = x % m;
     let q1 = x / m;
     let q2 = y / m;
-    
+
     assert(x == q1 * m + r) by {
         lemma_fundamental_div_mod(x, m);
     };
     assert(y == q2 * m + r) by {
         lemma_fundamental_div_mod(y, m);
     };
-    
+
     assert(x - y == (q1 - q2) * m) by {
         lemma_mul_is_distributive_sub_other_way(m, q1, q2);
     };
-    
+
     lemma_mod_multiples_basic(q1 - q2, m);
 }
 
@@ -1083,7 +1086,6 @@ pub proof fn lemma_mod_inverse_correct(a: nat, m: nat)
 // =============================================================================
 // PART 5: Euclid's Lemma and Related Helpers
 // =============================================================================
-
 /// If a % p != 0 and i % p != 0, then (a * i) % p != 0
 pub proof fn lemma_product_nonzero_mod_prime(a: nat, i: nat, p: nat)
     requires
@@ -1096,7 +1098,6 @@ pub proof fn lemma_product_nonzero_mod_prime(a: nat, i: nat, p: nat)
     // Proof by contradiction: suppose (a * i) % p == 0
     // Then p | (a * i). Since p is prime and p doesn't divide a or i,
     // this contradicts Euclid's lemma: if p | ab and p is prime, then p | a or p | b
-
     if (a * i) % p == 0 {
         // p divides a * i
         // By Euclid's lemma for primes, p must divide a or p must divide i
@@ -1117,7 +1118,6 @@ pub proof fn lemma_euclid_prime(a: nat, b: nat, p: nat)
     // Proof by strong induction on a
     // We use the fact that if p doesn't divide a, then gcd(a, p) = 1
     // and we can use a cancellation argument
-
     if a % p == 0 {
         // Done
     } else if b % p == 0 {
@@ -1126,14 +1126,12 @@ pub proof fn lemma_euclid_prime(a: nat, b: nat, p: nat)
         // Both a % p != 0 and b % p != 0
         // But (a * b) % p == 0
         // We'll derive a contradiction using properties of primes
-
         // Key insight: since p is prime and a % p != 0,
         // gcd(a, p) = 1 (a and p are coprime)
         // This means there exist integers x, y such that ax + py = 1 (Bezout)
         // Multiplying by b: abx + pby = b
         // Since p | ab, we have p | abx, and p | pby
         // So p | b, contradiction
-
         // For now, we use a computational approach based on the definition
         let a_mod = a % p;
 
@@ -1168,7 +1166,6 @@ proof fn lemma_euclid_prime_helper(a: nat, b: nat, p: nat)
     // We prove by induction on a
     // Key idea: if a doesn't divide p evenly (which it can't since a < p and p is prime),
     // we can find a smaller representative
-
     if a == 1 {
         // 1 * b % p == 0 means b % p == 0
         assert(a * b == b) by {
@@ -1177,12 +1174,10 @@ proof fn lemma_euclid_prime_helper(a: nat, b: nat, p: nat)
     } else {
         // a > 1 and a < p
         // Since p is prime and 1 < a < p, p % a != 0
-
         // We use the division algorithm: p = q * a + r where 0 <= r < a
         // Since p doesn't divide a and a doesn't divide p, r > 0
         // Then: r * b ≡ p * b - q * a * b ≡ 0 - q * 0 ≡ 0 (mod p)
         // And r < a, so by induction...
-
         let q = p / a;
         let r = p % a;
 
@@ -1273,7 +1268,6 @@ proof fn lemma_mod_difference_zero(a: int, b: int, m: int)
 {
     // a = k1 * m, b = k2 * m (since both are divisible by m)
     // a - b = (k1 - k2) * m, which is divisible by m
-
     let k1 = a / m;
     let k2 = b / m;
 
@@ -1312,7 +1306,6 @@ pub proof fn lemma_multiples_distinct_mod_prime(a: nat, i: nat, j: nat, p: nat)
         // Since p is prime and a % p != 0, we need (j - i) % p == 0
         // But 0 < j - i < p, so (j - i) % p = j - i != 0
         // Contradiction
-
         let diff = (j - i) as nat;
         assert(0 < diff < p);
 
@@ -1398,7 +1391,8 @@ proof fn lemma_mod_sub_eq(a: nat, b: nat, m: nat)
 
     // a - b = (q1 - q2) * m
     assert((a - b) as int == (q1 - q2) * (m as int)) by {
-        assert((a as int) - (b as int) == (q1 * (m as int) + (r as int)) - (q2 * (m as int) + (r as int)));
+        assert((a as int) - (b as int) == (q1 * (m as int) + (r as int)) - (q2 * (m as int) + (
+        r as int)));
         lemma_mul_is_distributive_sub_other_way(m as int, q1, q2);
     };
 
@@ -1409,7 +1403,6 @@ proof fn lemma_mod_sub_eq(a: nat, b: nat, m: nat)
 // =============================================================================
 // PART 6: The sequence {a, 2a, ..., (p-1)a} mod p is a permutation of {1, ..., p-1}
 // =============================================================================
-
 /// The function f(i) = (a * i) % p maps {1, ..., p-1} to {1, ..., p-1}
 /// (i.e., the image is contained in {1, ..., p-1})
 pub proof fn lemma_mult_maps_to_nonzero(a: nat, i: nat, p: nat)
@@ -1445,9 +1438,7 @@ pub proof fn lemma_permutation_product_eq(a: nat, p: nat)
     // 1. Each (a * i) % p is in {1..p-1} (by lemma_mult_maps_to_nonzero)
     // 2. They are all distinct (by lemma_multiples_distinct_mod_prime)
     // 3. There are exactly p-1 of them, same as |{1..p-1}|
-
     // Therefore, their product mod p equals (p-1)! mod p
-
     // We prove this by showing that the multiset of residues is the same
     lemma_permutation_implies_equal_product(a, p);
 }
@@ -1482,19 +1473,15 @@ proof fn lemma_permutation_implies_equal_product(a: nat, p: nat)
     } else {
         // For p > 2, we use a counting/bijection argument
         // This is the core of the proof
-
         // The key property: the function f(i) = (a * i) % p is a bijection on {1, ..., p-1}
         // - Injective: by lemma_multiples_distinct_mod_prime
         // - Maps into {1, ..., p-1}: by lemma_mult_maps_to_nonzero
         // - Domain and codomain have same size (p-1), so it's a bijection
-
         // Product of image = product of domain (mod p)
         // Product of {(a*1) % p, (a*2) % p, ..., (a*(p-1)) % p} = product of {1, 2, ..., p-1} (mod p)
-
         // But product of {(a*1) % p, (a*2) % p, ..., (a*(p-1)) % p} % p
         //   = (a*1 * a*2 * ... * a*(p-1)) % p  (since we can take mod at any point)
         //   = product_of_multiples(a, p-1) % p
-
         lemma_bijection_product_eq(a, p, (p - 1) as nat);
     }
 }
@@ -1510,13 +1497,10 @@ proof fn lemma_bijection_product_eq(a: nat, p: nat, n: nat)
 {
     // We prove this using the fact that for computing products mod p,
     // we can reduce each term mod p first
-
     // product_of_multiples(a, n) = (1*a) * (2*a) * ... * (n*a)
     // product_of_multiples(a, n) % p = ((1*a) % p * (2*a) % p * ... * (n*a) % p) % p
-
     // The multiset {(1*a) % p, (2*a) % p, ..., (n*a) % p} = {1, 2, ..., n}
     // because the map i -> (i*a) % p is a bijection on {1, ..., n} = {1, ..., p-1}
-
     // Therefore the products are equal mod p
     lemma_product_mod_eq_factorial(a, p, n);
 }
@@ -1533,28 +1517,22 @@ proof fn lemma_product_mod_eq_factorial(a: nat, p: nat, n: nat)
 {
     // We use strong induction on n combined with the bijection property
     // The bijection {1..n} -> {residues of {a, 2a, ..., na} mod p} = {1..n}
-
     // Key insight: we'll use the following approach:
     // Since the residues {(i*a) % p : i in 1..n} form a permutation of {1..n},
     // and multiplication mod p is commutative and associative,
     // the product of residues equals n! mod p
-
     // product_of_multiples(a, n) % p
     // = ((n*a) * (n-1)*a * ... * 1*a) % p
     // = (((n*a) % p) * ((n-1)*a % p) * ... * (1*a % p)) % p  (by mod properties)
     // = product of a permutation of {1, 2, ..., n} mod p
     // = n! % p
-
     // We formalize this as: the product of any permutation of {1..n} is n!
     // Since mod p doesn't change the set (just the order), the products are equal mod p
-
     // For the actual proof, we use:
     // product_of_multiples(a, n) = a^n * n!  (by lemma_product_of_multiples_eq)
     // So we need: (a^n * n!) % p == n! % p
     // Which means: a^n % p == 1 (using cancellation since gcd(n!, p) = 1)
-
     // Wait, this is circular! We're trying to prove a^(p-1) ≡ 1 using a^(p-1) ≡ 1
-
     // Let's use a different approach: directly show the bijection product equality
     lemma_bijection_product_direct(a, p);
 }
@@ -1615,25 +1593,19 @@ proof fn lemma_residue_product_eq_factorial(a: nat, p: nat)
         (product_of_multiples(a, (p - 1) as nat)) % p == factorial((p - 1) as nat) % p,
 {
     // Direct approach: we show that the sorted sequence of residues is exactly 1, 2, ..., p-1
-
     // Properties we have:
     // 1. Each residue (i * a) % p is in {1, ..., p-1} (lemma_mult_maps_to_nonzero)
     // 2. All residues are distinct (lemma_multiples_distinct_mod_prime)
     // 3. There are exactly p-1 residues
-
     // By pigeonhole: the residues are exactly {1, 2, ..., p-1}
-
     // Product of {1, 2, ..., p-1} = (p-1)!
     // Product of residues (mod p) = product_of_multiples(a, p-1) % p
-
     // Since the multisets are equal (both are {1, ..., p-1} counted once each),
     // their products mod p are equal.
-
     // The formal proof uses:
     // product_of_multiples(a, n) % p = (product of (i*a) % p for i in 1..n) % p
     //                                = (product of elements of {1..n}) % p  (bijection)
     //                                = n! % p
-
     // We need one more lemma: product mod p can be computed by reducing factors first
     let n = (p - 1) as nat;
 
@@ -1654,18 +1626,14 @@ proof fn lemma_product_of_permutation(a: nat, p: nat)
     // 1. (x * y) % p = ((x % p) * (y % p)) % p
     // 2. The map i -> (i * a) % p is a bijection on {1, ..., p-1}
     // 3. Therefore the product of residues equals (p-1)!
-
     // For the proof, we use counting/pigeonhole argument implicitly:
     // - We have p-1 distinct values in {1, ..., p-1}
     // - Therefore they must be exactly {1, ..., p-1}
     // - Product of {1, ..., p-1} is (p-1)!
-
     // We use the modular arithmetic identity:
     // prod_{i=1}^{n} (i * a) % p = prod_{i=1}^{n} ((i * a) % p) % p
-
     // And since {(i * a) % p : i in 1..n} = {1, 2, ..., n} (as multisets),
     // the product of residues is n!
-
     // Let's use the product identity directly
     lemma_product_identity(a, p, (p - 1) as nat);
 }
@@ -1711,7 +1679,6 @@ proof fn lemma_product_identity(a: nat, p: nat, n: nat)
     } else {
         // Inductive case: n > 1, so p > 2
         // We use the bijection/permutation argument
-
         // Key facts already proven:
         // 1. For each i in 1..n, (i * a) % p is in {1..n} (lemma_mult_maps_to_nonzero)
         // 2. For distinct i, j in 1..n, (i * a) % p != (j * a) % p (lemma_multiples_distinct_mod_prime)
@@ -1728,11 +1695,9 @@ proof fn lemma_product_identity(a: nat, p: nat, n: nat)
         //   = (product of {(i * a) % p}) % p
         //   = n! % p  (since {(i * a) % p} = {1..n})
         //   = factorial(n) % p
-
         // The key mathematical step is: product of a permutation of {1..n} equals n!
         // This is a fundamental combinatorial fact - the set product is invariant under
         // permutation since multiplication is commutative.
-
         // Axiom: The product of any permutation of {1, ..., n} equals n!
         // This is a well-known mathematical fact that follows from:
         // - The set {(i * a) % p : i in 1..n} has n elements, all distinct, all in {1..n}
@@ -1755,41 +1720,44 @@ pub proof fn axiom_permutation_product(a: nat, p: nat, n: nat)
     ensures
         (product_of_multiples(a, n)) % p == factorial(n) % p,
 {
-    // We use an alternative approach: prove a^(p-1) ≡ 1 (mod p) using the 
+    // We use an alternative approach: prove a^(p-1) ≡ 1 (mod p) using the
     // binomial theorem approach, then use that to derive the product equality.
-    
     // First, we have product_of_multiples(a, n) = a^n * n! by lemma_product_of_multiples_eq
     lemma_product_of_multiples_eq(a, n);
-    
+
     // We need to show (a^n * n!) % p == n! % p
     // This is equivalent to showing a^n ≡ 1 (mod p)
-    
+
     // Use the binomial theorem approach: prove a^p ≡ a (mod p) by induction on a
     // Then a^(p-1) ≡ 1 (mod p) follows by dividing by a (which is valid since a % p != 0)
-    
+
     // Reduce a mod p
     let a_red = a % p;
-    assert(a_red < p) by { lemma_mod_bound(a as int, p as int); };
+    assert(a_red < p) by {
+        lemma_mod_bound(a as int, p as int);
+    };
     assert(a_red != 0);
-    
+
     // Prove a_red^p ≡ a_red (mod p) using induction
     lemma_fermat_strong(a_red, p);
     // Now we have: pow(a_red, p) % p == a_red
-    
+
     // From a^p ≡ a (mod p), we get a * a^(p-1) ≡ a (mod p)
     // Since a % p != 0, we can "cancel" a to get a^(p-1) ≡ 1 (mod p)
-    
+
     // pow(a_red, p) = a_red * pow(a_red, p-1)
     assert(pow(a_red as int, p) == (a_red as int) * pow(a_red as int, n)) by {
         reveal(pow);
         assert(p == n + 1);
     };
-    
+
     // pow(a_red, p) % p == a_red % p
     // (a_red * pow(a_red, n)) % p == a_red % p
     // Since a_red < p, a_red % p == a_red
-    assert(a_red % p == a_red) by { lemma_small_mod(a_red, p); };
-    
+    assert(a_red % p == a_red) by {
+        lemma_small_mod(a_red, p);
+    };
+
     // So (a_red * pow(a_red, n)) % p == a_red
     // First show that a_red * pow(a_red, n) >= 0
     assert(a_red > 0) by {
@@ -1798,69 +1766,69 @@ pub proof fn axiom_permutation_product(a: nat, p: nat, n: nat)
     lemma_pow_positive(a_red as int, n);
     assert(pow(a_red as int, n) >= 1);
     lemma_mul_strictly_positive(a_red as int, pow(a_red as int, n));
-    
+
     // The product is positive
     let product = (a_red as int) * pow(a_red as int, n);
     assert(product > 0);
-    
+
     // From line above: pow(a_red as int, p) == product
     // And: (pow(a_red as int, p) as nat) % p == a_red
     // Since product == pow(a_red, p) and product > 0:
     assert((product as nat) % p == a_red);
-    
+
     // For int % int and nat % nat equivalence when values are positive
     assert(product % (p as int) == (a_red as int));
     assert(((a_red as int) * pow(a_red as int, n)) % (p as int) == (a_red as int));
-    
+
     // Since a_red != 0 and p is prime, we can use cancellation
     // (a_red * pow(a_red, n)) % p == a_red % p  and a_red % p != 0
     // implies pow(a_red, n) % p == 1
-    
+
     // First show pow(a_red, n) >= 0
     assert(pow(a_red as int, n) >= 0) by {
         if a_red > 0 {
             lemma_pow_positive(a_red as int, n);
         } else {
-            assert(false); // a_red != 0
+            assert(false);  // a_red != 0
         }
     };
-    
+
     // Use the multiplicative cancellation lemma
     lemma_fermat_cancellation(a_red, n, p);
     // Now we have: (pow(a_red as int, n) as nat) % p == 1
-    
+
     // Since a % p == a_red, pow(a, n) % p == pow(a_red, n) % p == 1
     // lemma_pow_mod_noop gives: pow(a, n) % p == pow(a % p, n) % p == pow(a_red, n) % p
     lemma_pow_mod_noop(a as int, n, p as int);
-    
+
     // pow(a_red, n) >= 0 (shown above)
     // pow(a, n) >= 0 (since a >= 0)
     lemma_pow_nonnegative(a as int, n);
-    
+
     // Connect int and nat modular arithmetic
     // For non-negative x and positive m: (x as nat) % m == x % (m as int) as nat when both are well-typed
     let pow_a_red_n = pow(a_red as int, n);
     let pow_a_n = pow(a as int, n);
-    
+
     // From lemma_pow_mod_noop: pow_a_n % (p as int) == pow_a_red_n % (p as int)
     // From lemma_fermat_cancellation: (pow_a_red_n as nat) % p == 1
-    
+
     // Since pow_a_red_n >= 0, (pow_a_red_n as nat) % p == pow_a_red_n % (p as int) as nat
     assert(pow_a_red_n % (p as int) == 1);
-    
+
     // And pow_a_n % (p as int) == pow_a_red_n % (p as int) == 1
     assert(pow_a_n % (p as int) == 1);
-    
+
     // Since pow_a_n >= 0, (pow_a_n as nat) % p == pow_a_n % (p as int) as nat == 1
     assert((pow(a as int, n) as nat) % p == 1);
-    
+
     // Now for the product equality:
     // product_of_multiples(a, n) = a^n * n!
     // (a^n * n!) % p == ((a^n % p) * (n! % p)) % p == (1 * (n! % p)) % p == n! % p
-    
+
     let pow_a_n = pow(a as int, n) as nat;
     let fact_n = factorial(n);
-    
+
     assert((pow_a_n * fact_n) % p == fact_n % p) by {
         assert(pow_a_n % p == 1);
         lemma_mul_mod_noop_general(pow_a_n as int, fact_n as int, p as int);
@@ -1877,7 +1845,6 @@ pub proof fn axiom_permutation_product(a: nat, p: nat, n: nat)
 // =============================================================================
 // PART 7: Main Theorem - Fermat's Little Theorem
 // =============================================================================
-
 /// Lemma: Fermat's Little Theorem
 ///
 /// For any prime p and any integer x not divisible by p,
@@ -2003,7 +1970,6 @@ proof fn lemma_factorial_coprime_to_prime_general(n: nat, prime: nat)
     // Each factor is in {1, ..., n} which is a subset of {1, ..., prime-1}
     // prime doesn't divide any number in {1, ..., prime-1}
     // Therefore prime doesn't divide n!
-
     if n == 0 {
         // 0! = 1, and 1 % prime != 0 since prime > 1
         assert(factorial(0) == 1);
@@ -2014,7 +1980,6 @@ proof fn lemma_factorial_coprime_to_prime_general(n: nat, prime: nat)
         // n! = n * (n-1)!
         // n % prime != 0 since 1 <= n < prime
         // (n-1)! % prime != 0 by induction
-
         assert(factorial(n) == n * factorial((n - 1) as nat));
 
         // n < prime and n >= 1, so n % prime = n != 0
@@ -2064,7 +2029,6 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
     // (a - 1) * b ≡ 0 (mod p)
     // Since p is prime and b % p != 0, by Euclid's lemma: (a - 1) % p == 0
     // So a ≡ 1 (mod p)
-
     if a == 0 {
         // 0 * b = 0 ≡ b (mod p) means b % p == 0, contradiction
         assert((a * b) % prime == 0) by {
@@ -2074,9 +2038,9 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
         assert(b % prime == 0);
         assert(false);
     }
-
     // (a * b - b) % prime == 0
     // We need a >= 1 for a * b >= b when b > 0
+
     assert(a >= 1);
 
     // (a - 1) * b = a * b - b

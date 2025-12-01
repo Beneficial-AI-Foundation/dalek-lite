@@ -279,17 +279,6 @@ pub open spec fn spec_affine_niels_point(niels: AffineNielsPoint) -> (nat, nat, 
     (y_plus_x, y_minus_x, xy2d)
 }
 
-/// Check if a CompressedEdwardsY represents the identity point
-/// The identity point is (0, 1) in affine coordinates
-/// When compressed, this is represented as y=1 with sign bit 0
-pub open spec fn spec_is_compressed_identity(compressed: CompressedEdwardsY) -> bool {
-    // Extract the y-coordinate (identity has y = 1)
-    spec_field_element_from_bytes(&compressed.0) == 1
-        &&
-    // Sign bit should be 0 (since x = 0)
-    (compressed.0[31] >> 7) == 0
-}
-
 /// Spec function: check if a CompressedEdwardsY corresponds to an EdwardsPoint
 /// The compressed form should match the affine y-coordinate and x sign bit
 pub open spec fn compressed_edwards_y_corresponds_to_edwards(

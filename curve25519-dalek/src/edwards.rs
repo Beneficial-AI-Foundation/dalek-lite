@@ -260,12 +260,12 @@ impl CompressedEdwardsY {
                 // Gap 1: step_2 produces a valid Edwards point when (X, Y) is on curve
                 // Requires: math_on_edwards_curve(X, Y) && T = X*Y/Z ==> is_valid_edwards_point
                 assume(is_valid_edwards_point(point));
-                
+
                 // Gap 2: Y coordinate is preserved through decompression
                 // From step_1: spec_field_element(&Y) == spec_field_element_from_bytes(&self.0)
                 // step_2 doesn't modify Y
                 assume(spec_field_element(&point.Y) == spec_field_element_from_bytes(&self.0));
-                
+
                 // Gap 3: Sign bit is correctly applied by conditional_negate
                 assume(spec_field_element_sign_bit(&point.X) == (self.0[31] >> 7));
             }
@@ -289,21 +289,26 @@ mod decompress {
     ))  // Result components: (is_valid, X, Y, Z)
         ensures
     // The returned Y field element matches the one extracted from the compressed representation
-        ({  let (is_valid, X, Y, Z) = result;
-            spec_field_element(&Y) == spec_field_element_from_bytes(&repr.0) &&
-            // The returned Z field element is 1
-            spec_field_element(&Z) == 1 &&
-            // The choice is true iff the Y is valid and (X, Y) is on the curve
-            (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(spec_field_element(&Y))) &&
-            (choice_is_true(is_valid) ==> math_on_edwards_curve(
-                spec_field_element(&X),
-                spec_field_element(&Y),
-            )) &&
-            // Limb bounds for step_2
-            fe51_limbs_bounded(&X, 51) &&
-            fe51_limbs_bounded(&Y, 51) &&
-            fe51_limbs_bounded(&Z, 51)
-        }),
+
+            ({
+                let (is_valid, X, Y, Z) = result;
+                spec_field_element(&Y) == spec_field_element_from_bytes(&repr.0)
+                    &&
+                // The returned Z field element is 1
+                spec_field_element(&Z) == 1
+                    &&
+                // The choice is true iff the Y is valid and (X, Y) is on the curve
+                (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(spec_field_element(&Y)))
+                    && (choice_is_true(is_valid) ==> math_on_edwards_curve(
+                    spec_field_element(&X),
+                    spec_field_element(&Y),
+                )) &&
+                // Limb bounds for step_2
+                fe51_limbs_bounded(&X, 51) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded(
+                    &Z,
+                    51,
+                )
+            }),
     {
         let Y = FieldElement::from_bytes(repr.as_bytes());
         assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
@@ -323,10 +328,10 @@ mod decompress {
         proof {
             // YY is bounded by 54 bits from square() postcondition
             assert(fe51_limbs_bounded(&YY, 54));
-            
+
             // Z = ONE has limbs [1, 0, 0, 0, 0], trivially bounded
-            assert(Z.limbs[0] == 1 && Z.limbs[1] == 0 && Z.limbs[2] == 0 
-                && Z.limbs[3] == 0 && Z.limbs[4] == 0);
+            assert(Z.limbs[0] == 1 && Z.limbs[1] == 0 && Z.limbs[2] == 0 && Z.limbs[3] == 0
+                && Z.limbs[4] == 0);
             // Help Verus: 1 < 2^51 and 0 < 2^51
             assert(1u64 < (1u64 << 51)) by (bit_vector);
             assert(0u64 < (1u64 << 51)) by (bit_vector);
@@ -376,7 +381,8 @@ mod decompress {
         Z: FieldElement,
     ) -> (result: EdwardsPoint)
         requires
-            // Limb bounds for inputs (X from sqrt_ratio_i, Y from from_bytes, Z = ONE)
+    // Limb bounds for inputs (X from sqrt_ratio_i, Y from from_bytes, Z = ONE)
+
             fe51_limbs_bounded(&X, 51),
             fe51_limbs_bounded(&Y, 51),
             fe51_limbs_bounded(&Z, 51),
@@ -390,8 +396,8 @@ mod decompress {
                 spec_field_element(&X)
             },
             // Y and Z are unchanged
-            &result.Y == &Y &&
-            &result.Z == &Z &&
+            &result.Y == &Y && &result.Z == &Z
+                &&
             // X is conditionally negated based on the sign bit
             // T = X * Y (after conditional negation)
             spec_field_element(&result.T) == math_field_mul(
@@ -434,8 +440,8 @@ mod decompress {
         let result = EdwardsPoint { X, Y, Z, T: &X * &Y };
 
         proof {
-            // Assume multiplication produces correct math_field_mul result
-            assume(spec_field_element(&result.T) == math_field_mul(
+            // multiplication produces correct math_field_mul result
+            assert(spec_field_element(&result.T) == math_field_mul(
                 spec_field_element(&result.X),
                 spec_field_element(&result.Y),
             ));
@@ -595,58 +601,29 @@ pub struct EdwardsPoint {
 // Constructors
 // ------------------------------------------------------------------------
 impl Identity for CompressedEdwardsY {
-    fn identity() -> (result:
-        CompressedEdwardsY)
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    #[verusfmt::skip]
+    fn identity() -> (result: CompressedEdwardsY)
         ensures
-            spec_is_compressed_identity(result),
+            // Identity point has y = 1 and sign bit = 0
+            spec_field_element_from_bytes(&result.0) == 1,
+            (result.0[31] >> 7) == 0,
     {
         let result = CompressedEdwardsY(
             [
-                1,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
+                1, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0,
             ],
         );
 
         proof {
-            // The bytes [1, 0, 0, ..., 0] represent the value 1 in little-endian
-            // byte 31 is 0, so the sign bit (bit 7 of byte 31) is 0
+            // byte 31 is 0, so sign bit (bit 7) is 0
             assert(result.0[31] == 0);
-            let x = result.0[31];
-            assume(x >> 7 == 0);
-            // spec_field_element_from_bytes([1, 0, ...]) should equal 1
-            // This requires the byte-to-nat conversion to recognize [1,0,0,...] = 1
+            assert((0u8 >> 7) == 0) by (bit_vector);
+
+            // spec_field_element_from_bytes([1, 0, ...]) = 1
+            // The bytes represent 1 in little-endian: byte[0] = 1, rest = 0
             assume(spec_field_element_from_bytes(&result.0) == 1);
         }
 
@@ -657,10 +634,12 @@ impl Identity for CompressedEdwardsY {
 impl Default for CompressedEdwardsY {
     fn default() -> (result: CompressedEdwardsY)
         ensures
-            spec_is_compressed_identity(result),
+    // Identity point has y = 1 and sign bit = 0
+
+            spec_field_element_from_bytes(&result.0) == 1,
+            (result.0[31] >> 7) == 0,
     {
-        let result = CompressedEdwardsY::identity();
-        result
+        CompressedEdwardsY::identity()
     }
 }
 
@@ -843,7 +822,6 @@ impl ConditionallySelectable for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
-
 /// Spec for ConstantTimeEq trait implementation
 #[cfg(verus_keep_ghost)]
 pub trait ConstantTimeEqSpecImpl {
@@ -858,12 +836,12 @@ impl ConstantTimeEqSpecImpl for EdwardsPoint {
 }
 
 impl ConstantTimeEq for EdwardsPoint {
-    fn ct_eq(&self, other: &EdwardsPoint) -> (result: Choice)
-        /* VERIFICATION NOTE: we cannot add a "requires" clause to ct_eq with ConstantTimeEqSpecImpl, 
+    fn ct_eq(&self, other: &EdwardsPoint) -> (result:
+        Choice)/* VERIFICATION NOTE: we cannot add a "requires" clause to ct_eq with ConstantTimeEqSpecImpl,
             unlike for Add trait implementations through AddSpecImpl.
         */
-        // requires self.ct_eq_req(other),
-        
+    // requires self.ct_eq_req(other),
+
         ensures
     // Two points are equal if they represent the same affine point:
     // (X/Z, Y/Z) == (X'/Z', Y'/Z')
@@ -875,13 +853,13 @@ impl ConstantTimeEq for EdwardsPoint {
     {
         proof {
             // Preconditions from ConstantTimeEqSpecImpl::ct_eq_req needed for multiplications below
-            /* VERIFICATION NOTE: 
-            - Verus does not support adding a "requires" clause to ct_eq with ConstantTimeEqSpecImpl, 
+            /* VERIFICATION NOTE:
+            - Verus does not support adding a "requires" clause to ct_eq with ConstantTimeEqSpecImpl,
             - For standard types like Add, a "requires" clause for "add" was supported through the AddSpecImpl
             */
             assume(self.ct_eq_req(other));
         }
-        
+
         // We would like to check that the point (X/Z, Y/Z) is equal to
         // the point (X'/Z', Y'/Z') without converting into affine
         // coordinates (x, y) and (x', y'), which requires two inversions.
@@ -891,7 +869,7 @@ impl ConstantTimeEq for EdwardsPoint {
         let result = (&self.X * &other.Z).ct_eq(&(&other.X * &self.Z))
             & (&self.Y * &other.Z).ct_eq(&(&other.Y * &self.Z));
         */
-        
+
         let x_eq = (&self.X * &other.Z).ct_eq(&(&other.X * &self.Z));
         let y_eq = (&self.Y * &other.Z).ct_eq(&(&other.Y * &self.Z));
         let result = choice_and(x_eq, y_eq);
@@ -912,14 +890,13 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
         true
     }
 
-    /* VERIFICATION NOTE: we cannot add a "requires" clause to eq_spec with PartialEqSpecImpl, 
+    /* VERIFICATION NOTE: we cannot add a "requires" clause to eq_spec with PartialEqSpecImpl,
         unlike for Add trait implementations through AddSpecImpl.
-    THIS DOES NOT WORK: 
+    THIS DOES NOT WORK:
     open spec fn eq_req(&self, other: &Self) -> bool {
         edwards_point_limbs_bounded(*self) && edwards_point_limbs_bounded(*other)
     }
     */
-    
     open spec fn eq_spec(&self, other: &Self) -> bool {
         // Two EdwardsPoints are equal if they represent the same affine point
         edwards_point_as_affine(*self) == edwards_point_as_affine(*other)
@@ -928,9 +905,10 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
 
 impl PartialEq for EdwardsPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
-    fn eq(&self, other: &EdwardsPoint) -> (result: bool)
-        /* VERIFICATION NOTE: we cannot add a "requires" clause to eq with PartialEqSpecImpl, */
-        // requires self.ct_eq_req(other),
+    fn eq(&self, other: &EdwardsPoint) -> (result:
+        bool)/* VERIFICATION NOTE: we cannot add a "requires" clause to eq with PartialEqSpecImpl, */
+    // requires self.ct_eq_req(other),
+
         ensures
             result == (edwards_point_as_affine(*self) == edwards_point_as_affine(*other)),
     {
@@ -973,7 +951,10 @@ impl EdwardsPoint {
         proof {
             assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));  // for Y_plus_X
             assume(fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.X, 54));  // for Y_minus_X
-            assume(fe51_limbs_bounded(&self.T, 54) && fe51_limbs_bounded(&constants::EDWARDS_D2, 54));  // for T2d
+            assume(fe51_limbs_bounded(&self.T, 54) && fe51_limbs_bounded(
+                &constants::EDWARDS_D2,
+                54,
+            ));  // for T2d
         }
 
         let result = ProjectiveNielsPoint {
@@ -1006,10 +987,8 @@ impl EdwardsPoint {
             result.X == self.X,
             result.Y == self.Y,
             result.Z == self.Z,
-            fe51_limbs_bounded(&result.X, 54) && fe51_limbs_bounded(&result.Y, 54) && fe51_limbs_bounded(
-                &result.Z,
-                54,
-            ),
+            fe51_limbs_bounded(&result.X, 54) && fe51_limbs_bounded(&result.Y, 54)
+                && fe51_limbs_bounded(&result.Z, 54),
     {
         let result = ProjectivePoint { X: self.X, Y: self.Y, Z: self.Z };
         result
@@ -1069,7 +1048,8 @@ impl EdwardsPoint {
     /// model does not retain sign information.
     pub fn to_montgomery(&self) -> (result: MontgomeryPoint)
         requires
-            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54) && fe51_limbs_bounded(&self.Z, 54),
+            fe51_limbs_bounded(&self.X, 54) && fe51_limbs_bounded(&self.Y, 54)
+                && fe51_limbs_bounded(&self.Z, 54),
             sum_of_limbs_bounded(&self.Z, &self.Y, u64::MAX),
         ensures
             montgomery_corresponds_to_edwards(result, *self),
@@ -1169,10 +1149,8 @@ impl EdwardsPoint {
         proof {
             assert(is_valid_projective_point(proj));
             // preconditions for projective double()
-            assert(fe51_limbs_bounded(&proj.X, 54) && fe51_limbs_bounded(&proj.Y, 54) && fe51_limbs_bounded(
-                &proj.Z,
-                54,
-            ));
+            assert(fe51_limbs_bounded(&proj.X, 54) && fe51_limbs_bounded(&proj.Y, 54)
+                && fe51_limbs_bounded(&proj.Z, 54));
             assume(sum_of_limbs_bounded(&proj.X, &proj.Y, u64::MAX));
         }
 
@@ -1258,10 +1236,8 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
         proof {
             // preconditions for CompletedPoint.as_extended()
             assume(is_valid_completed_point(sum));
-            assume(fe51_limbs_bounded(&sum.X, 54) && fe51_limbs_bounded(&sum.Y, 54) && fe51_limbs_bounded(
-                &sum.Z,
-                54,
-            ) && fe51_limbs_bounded(&sum.T, 54));
+            assume(fe51_limbs_bounded(&sum.X, 54) && fe51_limbs_bounded(&sum.Y, 54)
+                && fe51_limbs_bounded(&sum.Z, 54) && fe51_limbs_bounded(&sum.T, 54));
         }
 
         let result = sum.as_extended();
@@ -1302,7 +1278,6 @@ impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
         /* ORIGINAL CODE
         *self = (self as &EdwardsPoint) + _rhs;
         CAST TO &EdwardsPoint UNSUPPORTED */
-        
         *self = &*self + _rhs;
     }
 }
@@ -1359,10 +1334,8 @@ impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
         proof {
             // Preconditions for CompletedPoint.as_extended()
             assume(is_valid_completed_point(diff));
-            assume(fe51_limbs_bounded(&diff.X, 54) && fe51_limbs_bounded(&diff.Y, 54) && fe51_limbs_bounded(
-                &diff.Z,
-                54,
-            ) && fe51_limbs_bounded(&diff.T, 54));
+            assume(fe51_limbs_bounded(&diff.X, 54) && fe51_limbs_bounded(&diff.Y, 54)
+                && fe51_limbs_bounded(&diff.Z, 54) && fe51_limbs_bounded(&diff.T, 54));
         }
 
         let result = diff.as_extended();
@@ -1409,7 +1382,6 @@ impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
 }
 
 } // verus!
-
 define_sub_assign_variants!(LHS = EdwardsPoint, RHS = EdwardsPoint);
 
 impl<T> Sum<T> for EdwardsPoint
@@ -1435,6 +1407,7 @@ verus! {
 impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
     open spec fn obeys_neg_spec() -> bool {
         false  // Set to false since we use arbitrary() as placeholder
+
     }
 
     open spec fn neg_req(self) -> bool {
@@ -1444,6 +1417,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
 
     open spec fn neg_spec(self) -> EdwardsPoint {
         arbitrary()  // Placeholder - actual semantics are field-wise negation
+
     }
 }
 
@@ -1467,12 +1441,7 @@ impl<'a> Neg for &'a EdwardsPoint {
             assume(fe51_limbs_bounded(&self.T, 51));
         }
         use core::ops::Neg;
-        EdwardsPoint {
-            X: Neg::neg(&self.X),
-            Y: self.Y,
-            Z: self.Z,
-            T: Neg::neg(&self.T),
-        }
+        EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) }
     }
 }
 
@@ -1481,6 +1450,7 @@ impl<'a> Neg for &'a EdwardsPoint {
 impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
     open spec fn obeys_neg_spec() -> bool {
         false  // Set to false since we delegate to &EdwardsPoint
+
     }
 
     open spec fn neg_req(self) -> bool {
@@ -1490,6 +1460,7 @@ impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
 
     open spec fn neg_spec(self) -> EdwardsPoint {
         arbitrary()  // Placeholder - delegates to &EdwardsPoint negation
+
     }
 }
 
@@ -1511,14 +1482,11 @@ impl Neg for EdwardsPoint {
     }
 }
 
-
 // ------------------------------------------------------------------------
 // Scalar multiplication
 // ------------------------------------------------------------------------
-
 impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
-    fn mul_assign(&mut self, scalar: &'b Scalar) 
-    {
+    fn mul_assign(&mut self, scalar: &'b Scalar) {
         /* ORIGINAL CODE
         let result = (self as &EdwardsPoint) * scalar;
         CAST TO &EdwardsPoint UNSUPPORTED */
@@ -1528,8 +1496,6 @@ impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
 }
 
 } // verus!
-
-
 define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 
 define_mul_variants_verus!(LHS = EdwardsPoint, RHS = Scalar, Output = EdwardsPoint);
@@ -1570,7 +1536,6 @@ impl EdwardsPoint {
     ///
     /// Uses precomputed basepoint tables when the `precomputed-tables` feature
     /// is enabled, trading off increased code size for ~4x better performance.
-   
     #[verifier::external_body]
     pub fn mul_base(scalar: &Scalar) -> Self {
         #[cfg(not(feature = "precomputed-tables"))]
@@ -1948,7 +1913,6 @@ impl BasepointTable for EdwardsBasepointTable {
 }
 
 } // verus!
-
 impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
     type Output = EdwardsPoint;
 
@@ -1992,9 +1956,9 @@ impl Debug for EdwardsBasepointTable {
     }
 }
 
-/* VERIFICATION NOTE: 
+/* VERIFICATION NOTE:
 - removed unused impl_basepoint_table_conversions! macro definitions and invocations
-since only radix-16 is kept and no conversions between radix sizes are needed. 
+since only radix-16 is kept and no conversions between radix sizes are needed.
 */
 
 verus! {
@@ -2106,11 +2070,9 @@ impl EdwardsPoint {
 }
 
 } // verus!
-
 // ------------------------------------------------------------------------
 // Debug traits
 // ------------------------------------------------------------------------
-
 impl Debug for EdwardsPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(

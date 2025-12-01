@@ -252,12 +252,23 @@ impl CompressedEdwardsY {
                 spec_field_element(&X),
                 spec_field_element(&Y),
             ));
-            assume(false);
         }
         if choice_into(is_valid_y_coord) {
             let point = decompress::step_2(self, X, Y, Z);
             let result = Some(point);
-            assume(false);
+            proof {
+                // Gap 1: step_2 produces a valid Edwards point when (X, Y) is on curve
+                // Requires: math_on_edwards_curve(X, Y) && T = X*Y/Z ==> is_valid_edwards_point
+                assume(is_valid_edwards_point(point));
+                
+                // Gap 2: Y coordinate is preserved through decompression
+                // From step_1: spec_field_element(&Y) == spec_field_element_from_bytes(&self.0)
+                // step_2 doesn't modify Y
+                assume(spec_field_element(&point.Y) == spec_field_element_from_bytes(&self.0));
+                
+                // Gap 3: Sign bit is correctly applied by conditional_negate
+                assume(spec_field_element_sign_bit(&point.X) == (self.0[31] >> 7));
+            }
             result
         } else {
             let result = None;

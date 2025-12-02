@@ -120,21 +120,21 @@ pub open spec fn math_field_square(a: nat) -> nat {
 /// For non-zero elements (a % p() != 0), this returns the unique multiplicative
 /// inverse modulo p. By convention, when a % p() == 0, this returns 0.
 ///
-/// The existence of inverses for non-zero elements is guaranteed by field_inv_axiom,
+/// The existence of inverses for non-zero elements is guaranteed by field_inv_property,
 /// which relies on p being prime.
 pub open spec fn math_field_inv(a: nat) -> nat {
     if a % p() == 0 {
         0  // Convention: inverse of 0 is defined as 0
 
     } else {
-        choose|w: nat| w < p() && #[trigger] ((a % p()) * w) % p() == 1
+        spec_mod_inverse(a, p())
     }
 }
 
 /// Theorem: For non-zero field elements, the inverse exists and satisfies the inverse property
 ///
 /// Proven constructively: gcd(a%p, p) = 1 by primality, then Bezout gives the witness.
-pub proof fn field_inv_axiom(a: nat)
+pub proof fn field_inv_property(a: nat)
     requires
         a % p() != 0,
     ensures
@@ -148,9 +148,11 @@ pub proof fn field_inv_axiom(a: nat)
     lemma_gcd_with_prime(a, p());
     lemma_mod_inverse_correct(a, p());
 
-    let concrete_inv = spec_mod_inverse(a, p());
-    assert(((a % p()) * concrete_inv) % p() == 1) by {
-        lemma_mul_mod_noop_left(a as int, concrete_inv as int, p() as int);
+    // lemma_mod_inverse_correct ensures (a * spec_mod_inverse(a, p())) % p() == 1
+    // We need ((a % p()) * spec_mod_inverse(a, p())) % p() == 1
+    let inv = spec_mod_inverse(a, p());
+    assert(((a % p()) * inv) % p() == 1) by {
+        lemma_mul_mod_noop_left(a as int, inv as int, p() as int);
     };
 }
 
@@ -227,7 +229,7 @@ proof fn lemma_inverse_unique_core(a: nat, w: nat, z: nat, p: nat)
 /// w = w * 1 = w * (a * z) = (w * a) * z = 1 * z = z, where z = math_field_inv(a)
 ///
 /// Note: This theorem only requires modular arithmetic properties; it does NOT
-/// require p to be prime (though the existence from field_inv_axiom does).
+/// require p to be prime (though the existence from field_inv_property does).
 pub proof fn field_inv_unique(a: nat, w: nat)
     requires
         a % p() != 0,
@@ -238,6 +240,10 @@ pub proof fn field_inv_unique(a: nat, w: nat)
 {
     let a_red = a % p();
     let z = math_field_inv(a);
+
+    // Establish that z satisfies the inverse property
+    field_inv_property(a);
+
     // Show a_red < p()
     assert(a_red < p()) by {
         lemma_mod_bound(a as int, p() as int);

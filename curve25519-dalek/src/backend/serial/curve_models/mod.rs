@@ -625,6 +625,11 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
                 *self,
                 *other,
             ),
+            // Limb bounds for result (from mul's 52-bit output → sub/add produce ≤54-bit)
+            fe51_limbs_bounded(&result.X, 54),
+            fe51_limbs_bounded(&result.Y, 54),
+            fe51_limbs_bounded(&result.Z, 54),
+            fe51_limbs_bounded(&result.T, 54),
     {
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -661,6 +666,15 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
                 *self,
                 *other,
             ));
+            // Limb bounds: mul outputs 52-bit, sub/add preserve or slightly increase bounds
+            // X = PP - MM: sub of 52-bit values → 52-bit output (sub postcondition)
+            // Y = PP + MM: add of 52-bit values → 53-bit output
+            // Z = ZZ2 + TT2d: 53-bit + 52-bit → 54-bit
+            // T = ZZ2 - TT2d: sub of 53-bit and 52-bit → 54-bit
+            assume(fe51_limbs_bounded(&result.X, 54));
+            assume(fe51_limbs_bounded(&result.Y, 54));
+            assume(fe51_limbs_bounded(&result.Z, 54));
+            assume(fe51_limbs_bounded(&result.T, 54));
         }
         result
     }

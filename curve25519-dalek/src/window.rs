@@ -59,13 +59,12 @@ pub open spec fn is_valid_lookup_table_projective<const N: usize>(
 pub open spec fn lookup_table_projective_limbs_bounded<const N: usize>(
     table: [ProjectiveNielsPoint; N],
 ) -> bool {
-    forall|j: int| 0 <= j < table.len() ==> {
-        let entry = #[trigger] table[j];
-        fe51_limbs_bounded(&entry.Y_plus_X, 54) &&
-        fe51_limbs_bounded(&entry.Y_minus_X, 54) &&
-        fe51_limbs_bounded(&entry.Z, 54) &&
-        fe51_limbs_bounded(&entry.T2d, 54)
-    }
+    forall|j: int|
+        0 <= j < table.len() ==> {
+            let entry = #[trigger] table[j];
+            fe51_limbs_bounded(&entry.Y_plus_X, 54) && fe51_limbs_bounded(&entry.Y_minus_X, 54)
+                && fe51_limbs_bounded(&entry.Z, 54) && fe51_limbs_bounded(&entry.T2d, 54)
+        }
 }
 
 /// Spec: Check if a lookup table contains [P, 2P, 3P, ..., size*P] in AffineNiels form

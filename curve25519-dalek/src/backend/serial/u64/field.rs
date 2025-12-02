@@ -1118,8 +1118,11 @@ impl FieldElement51 {
             forall|i: int|
                 0 <= i < 5 ==> self.limbs[i] < 1u64 << 54  // 51 + b for b = 3
             ,
-        ensures
-            // Actual bound: 2^51 + 2^13 < 2^52 (from carry propagation in reduction)
+        ensures/*  VERIFICATION NOTE: spec updated
+         - spec needs cleanup
+         - proof needs completed: one assume left */
+    // Actual bound: 2^51 + 2^13 < 2^52 (from carry propagation in reduction)
+
             forall|i: int| 0 <= i < 5 ==> r.limbs[i] < 1u64 << 52,
             // 52-bit implies 54-bit (for compatibility with callers)
             forall|i: int| 0 <= i < 5 ==> r.limbs[i] < 1u64 << 54,
@@ -1150,7 +1153,8 @@ impl FieldElement51 {
         }
         loop
             invariant_except_break
-                // Conservative: input could be 54-bit, but after first iteration it's 52-bit
+        // Conservative: input could be 54-bit, but after first iteration it's 52-bit
+
                 forall|j: int| 0 <= j < 5 ==> a[j] < 1u64 << 54,
                 u64_5_as_nat(a) % p() == pow(
                     u64_5_as_nat(self.limbs) as int,
@@ -1368,7 +1372,8 @@ impl FieldElement51 {
 
         for i in 0..5
             invariant
-                // pow2k now ensures 52-bit output
+        // pow2k now ensures 52-bit output
+
                 forall|j: int| 0 <= j < 5 ==> old_limbs[j] < (1u64 << 52),
                 forall|j: int| 0 <= j < i ==> #[trigger] square.limbs[j] == 2 * old_limbs[j],
                 forall|j: int| i <= j < 5 ==> #[trigger] square.limbs[j] == old_limbs[j],

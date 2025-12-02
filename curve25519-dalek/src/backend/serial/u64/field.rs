@@ -460,6 +460,8 @@ impl vstd::std_specs::ops::MulSpecImpl<&FieldElement51> for &FieldElement51 {
     }
 
     // Pre-condition of mul
+    // Note: mul can handle up to ~59-bit inputs (51 + b where b < 8.75)
+    // We use 54-bit as the standard requirement
     open spec fn mul_req(self, rhs: &FieldElement51) -> bool {
         fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
     }

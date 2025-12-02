@@ -6,9 +6,26 @@ use crate::scalar::Scalar;
 use crate::traits::Identity;
 use crate::window::LookupTable;
 
+#[cfg(verus_keep_ghost)]
+use crate::specs::edwards_specs::{is_valid_completed_point, is_well_formed_edwards_point};
+#[cfg(verus_keep_ghost)]
+use crate::specs::field_specs::{fe51_limbs_bounded, sum_of_limbs_bounded};
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::{radix_16_all_bounded, radix_16_digit_bounded};
+#[cfg(verus_keep_ghost)]
+use crate::window::lookup_table_projective_limbs_bounded;
+
+use vstd::prelude::*;
+
+verus! {
 /// Perform constant-time, variable-base scalar multiplication.
+// VERIFICATION NOTE: PROOF BYPASS - assumes used for intermediate preconditions
 #[rustfmt::skip] // keep alignment of explanatory comments
-pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
+pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint
+    requires
+        // as_radix_16 requires scalar.bytes[31] <= 127 (MSB clear, i.e. scalar < 2^255)
+        scalar.bytes[31] <= 127,
+{
     // Construct a lookup table of [P,2P,3P,4P,5P,6P,7P,8P]
     let lookup_table = LookupTable::<ProjectiveNielsPoint>::from(point);
     // Setting s = scalar, compute
@@ -29,9 +46,43 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
     // Unwrap first loop iteration to save computing 16*identity
     let mut tmp2;
     let mut tmp3 = EdwardsPoint::identity();
+    proof {
+        // From identity() postcondition
+        assert(is_well_formed_edwards_point(tmp3));
+        // From as_radix_16 postcondition: radix_16_all_bounded ensures all digits in [-8, 8]
+        assert(radix_16_all_bounded(&scalar_digits));
+        assert(radix_16_digit_bounded(scalar_digits[63]));  // instantiate for index 63
+    }
+    /* ORIGINAL CODE: */
     let mut tmp1 = &tmp3 + &lookup_table.select(scalar_digits[63]);
+    
+    // REFACTORED: Extract select result to add proof assumptions
+    //let niels63 = lookup_table.select(scalar_digits[63]);
+    // Limb bounds from select() postcondition
+    //let mut tmp1 = &tmp3 + &niels63;
     // Now tmp1 = s_63*P in P1xP1 coords
+    /* ORIGINAL CODE:
     for i in (0..63).rev() {
+    */
+    // REFACTORED: Verus doesn't support .rev() on ranges, so iterate forward and compute reverse index
+    for j in 0usize..63
+        invariant
+            // scalar_digits bounds remain valid throughout the loop
+            radix_16_all_bounded(&scalar_digits),
+            // lookup_table has bounded limbs (from from() postcondition)
+            lookup_table_projective_limbs_bounded(lookup_table.0),
+            // tmp1 is always a valid completed point (from Add postcondition)
+            is_valid_completed_point(tmp1),
+    {
+        let i = 62 - j;  // i goes from 62 down to 0
+        proof {
+            // TODO: Add limb bounds to Add<ProjectiveNielsPoint> postcondition
+            // For now, assume limb bounds needed by as_projective
+            assume(fe51_limbs_bounded(&tmp1.X, 54));
+            assume(fe51_limbs_bounded(&tmp1.Y, 54));
+            assume(fe51_limbs_bounded(&tmp1.Z, 54));
+            assume(fe51_limbs_bounded(&tmp1.T, 54));
+        }
         tmp2 = tmp1.as_projective(); // tmp2 =    (prev) in P2 coords
         tmp1 = tmp2.double();        // tmp1 =  2*(prev) in P1xP1 coords
         tmp2 = tmp1.as_projective(); // tmp2 =  2*(prev) in P2 coords
@@ -44,5 +95,15 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
         tmp1 = &tmp3 + &lookup_table.select(scalar_digits[i]);
         // Now tmp1 = s_i*P + 16*(prev) in P1xP1 coords
     }
+    proof {
+        // From loop invariant
+        assert(is_valid_completed_point(tmp1));
+        // TODO: Add limb bounds to Add postcondition
+        assume(fe51_limbs_bounded(&tmp1.X, 54));
+        assume(fe51_limbs_bounded(&tmp1.Y, 54));
+        assume(fe51_limbs_bounded(&tmp1.Z, 54));
+        assume(fe51_limbs_bounded(&tmp1.T, 54));
+    }
     tmp1.as_extended()
 }
+} // verus!

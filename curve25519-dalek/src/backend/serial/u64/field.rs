@@ -1264,8 +1264,10 @@ impl FieldElement51 {
             proof {
                 // After masking and carry propagation:
                 // a[0] is masked to 51 bits: a[0] < 2^51 < 2^52
-                // a[1] < 2^51 + 2^13 < 2^52
-                // a[2], a[3], a[4] are masked to 51 bits: < 2^51 < 2^52
+                // a[2], a[3], a[4] were masked earlier, so < 2^51 < 2^52
+                // a[1] < 2^51 + 2^13 < 2^52 (from old masked value + carry)
+                // GAP: proving these bounds requires tracking mask effects through the loop
+                // TODO:
                 assume(forall|j: int| 0 <= j < 5 ==> a[j] < (1u64 << 52));
             }
 

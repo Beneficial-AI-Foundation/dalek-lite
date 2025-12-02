@@ -53,13 +53,8 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint
         assert(radix_16_all_bounded(&scalar_digits));
         assert(radix_16_digit_bounded(scalar_digits[63]));  // instantiate for index 63
     }
-    /* ORIGINAL CODE: */
     let mut tmp1 = &tmp3 + &lookup_table.select(scalar_digits[63]);
     
-    // REFACTORED: Extract select result to add proof assumptions
-    //let niels63 = lookup_table.select(scalar_digits[63]);
-    // Limb bounds from select() postcondition
-    //let mut tmp1 = &tmp3 + &niels63;
     // Now tmp1 = s_63*P in P1xP1 coords
     /* ORIGINAL CODE:
     for i in (0..63).rev() {

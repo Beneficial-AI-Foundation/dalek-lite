@@ -360,7 +360,21 @@ verus! {
 ///
 /// ORIGINAL: `pub static ED25519_BASEPOINT_TABLE: &EdwardsBasepointTable`
 /// Changed to `const` inside verus! block to make it accessible from verus code.
-/// The 7400-line table data is marked external_body to avoid bloating verification.
+///
+/// ## Verification Status
+///
+/// The 7400-line table data is marked `external_body` to avoid bloating verification.
+/// Its correctness is specified via `axiom_ed25519_basepoint_table_valid()` in
+/// `specs/edwards_specs.rs`, which asserts:
+///
+/// ```text
+/// is_valid_edwards_basepoint_table(*ED25519_BASEPOINT_TABLE, spec_ed25519_basepoint())
+/// ```
+///
+/// This axiom states that the table satisfies the same specification as
+/// `EdwardsBasepointTable::create(&ED25519_BASEPOINT_POINT)` would produce:
+/// - `table.0[i]` contains `[1·(16²)^i·B, 2·(16²)^i·B, ..., 8·(16²)^i·B]`
+/// - This enables verified scalar multiplication via radix-16 representation.
 #[cfg(feature = "precomputed-tables")]
 #[verifier::external_body]
 pub const ED25519_BASEPOINT_TABLE: &'static EdwardsBasepointTable =

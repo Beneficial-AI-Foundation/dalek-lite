@@ -326,16 +326,11 @@ pub open spec fn montgomery_scalar_mul(P: MontgomeryAffine, n: nat) -> Montgomer
 ///
 /// The Montgomery basepoint corresponds to the Ed25519 basepoint under
 /// the birational map between twisted Edwards and Montgomery forms.
+///
+/// Note: X25519 uses X-only (u-coordinate only) arithmetic, so the full
+/// affine point (u, v) is not needed - we only work with u-coordinates.
 pub open spec fn spec_x25519_basepoint_u() -> nat {
     spec_field_element_from_bytes(&X25519_BASEPOINT.0)
-}
-
-/// The X25519/Montgomery basepoint in affine coordinates.
-/// The u-coordinate is 9, the v-coordinate is determined by the curve equation.
-pub open spec fn spec_x25519_basepoint() -> MontgomeryAffine {
-    let u = spec_x25519_basepoint_u();
-    let v = canonical_sqrt(montgomery_rhs(u));
-    MontgomeryAffine::Finite { u, v }
 }
 
 /// Extract u-coordinate from a MontgomeryAffine point

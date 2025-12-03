@@ -1905,11 +1905,12 @@ impl BasepointTable for EdwardsBasepointTable {
             // The result is the Ed25519 basepoint B
             edwards_point_as_affine(result) == spec_ed25519_basepoint(),
     {
+        // self.0[0].select(1) = 1*(16^2)^0*B
+        // but as an `AffineNielsPoint`, so add identity to convert to extended.
         /* ORIGINAL CODE:
             (&EdwardsPoint::identity() + &self.0[0].select(1)).as_extended()
         */
-        // self.0[0].select(1) = 1*(16^2)^0*B
-        // but as an `AffineNielsPoint`, so add identity to convert to extended.
+        /* REFACTORED FOR ASSERTIONS: */
         let identity = EdwardsPoint::identity();
         let selected = self.0[0].select(1);
         proof {

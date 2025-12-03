@@ -238,11 +238,18 @@ impl Zeroize for MontgomeryPoint {
 
 impl MontgomeryPoint {
     /// Fixed-base scalar multiplication (i.e. multiplication by the base point).
-    pub fn mul_base(scalar: &Scalar) -> Self
+    pub fn mul_base(scalar: &Scalar) -> (result: Self)
         requires
             scalar.bytes[31] <= 127,
+        ensures
+            is_valid_montgomery_point(result),
+            // Functional correctness: result.u = [scalar] * basepoint (u-coordinate)
+            spec_montgomery(result) == montgomery_scalar_mul_u(
+                spec_x25519_basepoint_u(),
+                spec_scalar(scalar),
+            ),
     {
-        // ORIGINAL CODE: EdwardsPoint::mul_base(scalar).to_montgomery(temp)
+        // ORIGINAL CODE: EdwardsPoint::mul_base(scalar).to_montgomery()
         // REFACTORED: to assume postconditions for EdwardsPoint::mul_base
         let temp = EdwardsPoint::mul_base(scalar);
         proof {
@@ -251,7 +258,15 @@ impl MontgomeryPoint {
             assume(fe51_limbs_bounded(&temp.Y, 51) && fe51_limbs_bounded(&temp.Z, 51));
             assume(sum_of_limbs_bounded(&temp.Z, &temp.Y, u64::MAX));
         }
-        temp.to_montgomery()
+        let result = temp.to_montgomery();
+        proof {
+            assume(is_valid_montgomery_point(result));
+            assume(spec_montgomery(result) == montgomery_scalar_mul_u(
+                spec_x25519_basepoint_u(),
+                spec_scalar(scalar),
+            ));
+        }
+        result
     }
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see

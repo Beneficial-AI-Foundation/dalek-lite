@@ -37,6 +37,7 @@ use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
+#[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::pow2;
 use vstd::prelude::*;

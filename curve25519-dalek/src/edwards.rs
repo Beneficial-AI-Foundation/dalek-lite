@@ -1473,7 +1473,7 @@ impl<'a> Neg for &'a EdwardsPoint {
     fn neg(
         self,
     ) -> EdwardsPoint/* requires clause in NegSpecImpl for &EdwardsPoint above:
-            fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+           requires fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
         */
      {
         /* ORIGINAL CODE
@@ -1516,7 +1516,7 @@ impl Neg for EdwardsPoint {
     fn neg(
         self,
     ) -> EdwardsPoint/* requires clause in NegSpecImpl for EdwardsPoint above:
-            fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+            requires fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
         */
      {
         /* ORIGINAL CODE
@@ -1569,7 +1569,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
     /// `EdwardsBasepointTable` is approximately 4x faster.
     fn mul(self, scalar: &'b Scalar) -> (result:
         EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsPoint in mul_specs.rs:
-            rhs.bytes[31] <= 127 && is_well_formed_edwards_point(*self)
+            requires rhs.bytes[31] <= 127 && is_well_formed_edwards_point(*self)
         */
 
         ensures
@@ -1592,7 +1592,7 @@ impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
     /// `EdwardsBasepointTable` is approximately 4x faster.
     fn mul(self, point: &'b EdwardsPoint) -> (result:
         EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsPoint> for &Scalar in mul_specs.rs:
-            self.bytes[31] <= 127 && is_well_formed_edwards_point(*rhs)
+            requires self.bytes[31] <= 127 && is_well_formed_edwards_point(*rhs)
         */
 
         ensures
@@ -2082,7 +2082,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
     /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
     fn mul(self, scalar: &'b Scalar) -> (result:
         EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsBasepointTable in mul_specs.rs:
-        scalar.bytes[31] <= 127
+        requires scalar.bytes[31] <= 127
     */
 
         ensures
@@ -2104,7 +2104,7 @@ impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
     /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
     fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> (result:
         EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsBasepointTable> for &Scalar in mul_specs.rs:
-        self.bytes[31] <= 127
+        requires self.bytes[31] <= 127
     */
 
         ensures

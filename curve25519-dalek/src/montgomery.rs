@@ -69,6 +69,8 @@ use crate::specs::field_specs::*;
 use crate::specs::montgomery_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
 #[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
 
@@ -309,13 +311,28 @@ impl MontgomeryPoint {
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-    #[verifier::external_body]
-    pub fn mul_base_clamped(bytes: [u8; 32]) -> Self {
+    pub fn mul_base_clamped(bytes: [u8; 32]) -> (result: Self)
+        ensures
+            is_valid_montgomery_point(result),
+            // Functional correctness: result.u = [clamp(bytes)] * basepoint (u-coordinate)
+            spec_montgomery(result) == montgomery_scalar_mul_u(
+                spec_x25519_basepoint_u(),
+                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+            ),
+    {
         // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
         // note that fixed-base multiplication is also defined for all values of `bytes` less than
         // 2^255.
         let s = Scalar { bytes: clamp_integer(bytes) };
-        Self::mul_base(&s)
+        // clamp_integer ensures s.bytes[31] <= 127, satisfying mul_base's requires
+        let result = Self::mul_base(&s);
+        proof {
+            assume(spec_montgomery(result) == montgomery_scalar_mul_u(
+                spec_x25519_basepoint_u(),
+                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+            ));
+        }
+        result
     }
 
     /// Given `self` \\( = u\_0(P) \\), and a big-endian bit representation of an integer

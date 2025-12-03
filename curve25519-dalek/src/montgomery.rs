@@ -454,7 +454,10 @@ impl MontgomeryPoint {
     }
 
     /// Convert this `MontgomeryPoint` to an array of bytes.
-    pub const fn to_bytes(&self) -> [u8; 32] {
+    pub const fn to_bytes(&self) -> (result: [u8; 32])
+        ensures
+            result == self.0,
+    {
         self.0
     }
 

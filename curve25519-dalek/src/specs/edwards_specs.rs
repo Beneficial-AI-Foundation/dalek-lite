@@ -28,12 +28,17 @@ use crate::backend::serial::curve_models::{
 };
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
+#[cfg(feature = "precomputed-tables")]
+#[allow(unused_imports)]
+use crate::edwards::EdwardsBasepointTable;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::pow2;
 use vstd::prelude::*;
 
 verus! {
@@ -62,6 +67,48 @@ pub proof fn lemma_basepoint_on_curve()
     assume(math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1));
 }
 */
+// =============================================================================
+// EdwardsBasepointTable Specification
+// =============================================================================
+/// Compute 256^n (i.e., (16²)^n) for basepoint table indexing
+/// Uses pow2(8*n) since 256 = 2^8
+pub open spec fn pow256(n: nat) -> nat {
+    pow2(8 * n)
+}
+
+/// Spec: A valid EdwardsBasepointTable for a basepoint B contains 32 LookupTables where:
+/// - table.0[i] contains [1·(16²)^i·B, 2·(16²)^i·B, ..., 8·(16²)^i·B]
+///
+/// This enables computing [scalar] * B via radix-16 representation of scalar.
+/// Uses is_valid_lookup_table_affine_coords from window.rs
+#[cfg(feature = "precomputed-tables")]
+pub open spec fn is_valid_edwards_basepoint_table(
+    table: EdwardsBasepointTable,
+    basepoint: (nat, nat),
+) -> bool {
+    // Each of the 32 LookupTables contains correct multiples of (16²)^i * B
+    forall|i: int|
+        #![trigger table.0[i]]
+        0 <= i < 32 ==> crate::window::is_valid_lookup_table_affine_coords(
+            table.0[i].0,
+            edwards_scalar_mul(basepoint, pow256(i as nat)),
+            8,
+        )
+}
+
+/// Axiom: ED25519_BASEPOINT_TABLE is a valid basepoint table for the Ed25519 basepoint.
+/// This connects the hardcoded constant to our specification.
+#[cfg(feature = "precomputed-tables")]
+#[verifier::external_body]
+pub proof fn axiom_ed25519_basepoint_table_valid()
+    ensures
+        is_valid_edwards_basepoint_table(
+            *crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE,
+            spec_ed25519_basepoint(),
+        ),
+{
+}
+
 // =============================================================================
 // Curve Equation Specifications
 // =============================================================================

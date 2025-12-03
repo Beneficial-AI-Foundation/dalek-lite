@@ -1856,7 +1856,7 @@ verus! {
 /// When \\(w = 8\\), we can't fit \\(carry \cdot 2^{w}\\) into an `i8`, so we
 /// add the carry bit onto an additional coefficient.
 #[repr(transparent)]
-pub struct EdwardsBasepointTable(pub(crate) [LookupTableRadix16<AffineNielsPoint>; 32]);
+pub struct EdwardsBasepointTable(pub [LookupTableRadix16<AffineNielsPoint>; 32]);
 
 // Manual Clone implementation to avoid array clone issues in Verus
 impl Clone for EdwardsBasepointTable {
@@ -1870,12 +1870,19 @@ impl BasepointTable for EdwardsBasepointTable {
     type Point = EdwardsPoint;
 
     /// Create a table of precomputed multiples of `basepoint`.
-    fn create(basepoint: &EdwardsPoint) -> EdwardsBasepointTable {
+    ///
+    /// Constructs 32 LookupTables where table.0[i] = [1·(16²)^i·B, ..., 8·(16²)^i·B]
+    fn create(basepoint: &EdwardsPoint) -> (result: EdwardsBasepointTable)
+        requires
+            is_well_formed_edwards_point(*basepoint),
+        ensures
+            is_valid_edwards_basepoint_table(result, edwards_point_as_affine(*basepoint)),
+    {
         // XXX use init_with
         let mut table = EdwardsBasepointTable([LookupTableRadix16::default();32]);
         let mut P = *basepoint;
         for i in 0..32 {
-            // P = (2w)^i * B
+            // P = (16²)^i * basepoint
             table.0[i] = LookupTableRadix16::from(&P);
             proof {
                 assume(fe51_limbs_bounded(&P.X, 54));
@@ -1883,7 +1890,10 @@ impl BasepointTable for EdwardsBasepointTable {
                 assume(fe51_limbs_bounded(&P.Z, 54));
                 assume(fe51_limbs_bounded(&P.T, 54));
             }
-            P = P.mul_by_pow_2(4 + 4);
+            P = P.mul_by_pow_2(4 + 4);  // P = P * 2^8 = P * 256 = P * 16²
+        }
+        proof {
+            assume(is_valid_edwards_basepoint_table(table, edwards_point_as_affine(*basepoint)));
         }
         table
     }

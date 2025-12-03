@@ -162,7 +162,7 @@ use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::spec_scalar;
+use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -1615,9 +1615,16 @@ impl EdwardsPoint {
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-    pub fn mul_clamped(self, bytes: [u8; 32]) -> Self
+    pub fn mul_clamped(self, bytes: [u8; 32]) -> (result: Self)
         requires
             is_well_formed_edwards_point(self),
+        ensures
+            is_well_formed_edwards_point(result),
+            // Result is scalar multiplication of self by the clamped scalar
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(self),
+                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+            ),
     {
         // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
         // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
@@ -1627,7 +1634,15 @@ impl EdwardsPoint {
         // issues arising from the fact that the curve point is not necessarily in the prime-order
         // subgroup.
         let s = Scalar { bytes: clamp_integer(bytes) };
-        s * self
+        let result = s * self;
+        proof {
+            assume(is_well_formed_edwards_point(result));
+            assume(edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(self),
+                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+            ));
+        }
+        result
     }
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see

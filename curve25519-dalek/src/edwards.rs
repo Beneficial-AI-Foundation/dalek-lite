@@ -161,6 +161,8 @@ use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::spec_scalar;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -1237,7 +1239,11 @@ impl vstd::std_specs::ops::AddSpecImpl<&EdwardsPoint> for &EdwardsPoint {
 impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
     type Output = EdwardsPoint;
 
-    fn add(self, other: &'b EdwardsPoint) -> (result: EdwardsPoint)
+    fn add(self, other: &'b EdwardsPoint) -> (result:
+        EdwardsPoint)/* requires clause in AddSpecImpl<&EdwardsPoint> for &EdwardsPoint above:
+            is_well_formed_edwards_point(*self) && is_well_formed_edwards_point(*rhs)
+        */
+
         ensures
             is_valid_edwards_point(result),
             // Semantic correctness: affine addition law
@@ -1341,7 +1347,11 @@ impl vstd::std_specs::ops::SubSpecImpl<&EdwardsPoint> for &EdwardsPoint {
 impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
     type Output = EdwardsPoint;
 
-    fn sub(self, other: &'b EdwardsPoint) -> (result: EdwardsPoint)
+    fn sub(self, other: &'b EdwardsPoint) -> (result:
+        EdwardsPoint)/* requires clause in SubSpecImpl<&EdwardsPoint> for &EdwardsPoint above:
+            is_well_formed_edwards_point(*self) && is_well_formed_edwards_point(*rhs)
+        */
+
         ensures
             is_valid_edwards_point(result),
             // Semantic correctness: affine subtraction law
@@ -1460,7 +1470,12 @@ impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
 impl<'a> Neg for &'a EdwardsPoint {
     type Output = EdwardsPoint;
 
-    fn neg(self) -> EdwardsPoint {
+    fn neg(
+        self,
+    ) -> EdwardsPoint/* requires clause in NegSpecImpl for &EdwardsPoint above:
+            fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+        */
+     {
         /* ORIGINAL CODE
         EdwardsPoint {
             X: -(&self.X),
@@ -1471,7 +1486,6 @@ impl<'a> Neg for &'a EdwardsPoint {
         */
         // REFACTORED: Use explicit Neg::neg() calls instead of operator shortcuts
         // to avoid Verus panic
-        // neg_req ensures: fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
         use core::ops::Neg;
         EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) }
     }
@@ -1499,12 +1513,16 @@ impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
 impl Neg for EdwardsPoint {
     type Output = EdwardsPoint;
 
-    fn neg(self) -> EdwardsPoint {
+    fn neg(
+        self,
+    ) -> EdwardsPoint/* requires clause in NegSpecImpl for EdwardsPoint above:
+            fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+        */
+     {
         /* ORIGINAL CODE
         -&self
         */
         // REFACTORED: Use explicit Neg::neg() call to avoid Verus type inference issues
-        // neg_req ensures: fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
         use core::ops::Neg;
         Neg::neg(&self)
     }
@@ -1514,7 +1532,11 @@ impl Neg for EdwardsPoint {
 // Scalar multiplication
 // ------------------------------------------------------------------------
 impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
-    fn mul_assign(&mut self, scalar: &'b Scalar) {
+    fn mul_assign(&mut self, scalar: &'b Scalar)
+        requires
+            scalar.bytes[31] <= 127,
+            is_well_formed_edwards_point(*old(self)),
+    {
         /* ORIGINAL CODE
         let result = (self as &EdwardsPoint) * scalar;
         CAST TO &EdwardsPoint UNSUPPORTED */
@@ -1539,9 +1561,18 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
     ///
     /// For scalar multiplication of a basepoint,
     /// `EdwardsBasepointTable` is approximately 4x faster.
-    /// Delegates to backend::variable_base_mul
-    #[verifier::external_body]
-    fn mul(self, scalar: &'b Scalar) -> EdwardsPoint {
+    fn mul(self, scalar: &'b Scalar) -> (result:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsPoint in mul_specs.rs:
+            rhs.bytes[31] <= 127 && is_well_formed_edwards_point(*self)
+        */
+
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(*self),
+                spec_scalar(scalar),
+            ),
+    {
         crate::backend::variable_base_mul(self, scalar)
     }
 }
@@ -1553,8 +1584,18 @@ impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
     ///
     /// For scalar multiplication of a basepoint,
     /// `EdwardsBasepointTable` is approximately 4x faster.
-    #[verifier::external_body]  // Delegates to &EdwardsPoint * &Scalar which calls external variable_base_mul
-    fn mul(self, point: &'b EdwardsPoint) -> EdwardsPoint {
+    fn mul(self, point: &'b EdwardsPoint) -> (result:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsPoint> for &Scalar in mul_specs.rs:
+            self.bytes[31] <= 127 && is_well_formed_edwards_point(*rhs)
+        */
+
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(*point),
+                spec_scalar(self),
+            ),
+    {
         point * self
     }
 }
@@ -1574,7 +1615,10 @@ impl EdwardsPoint {
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-    pub fn mul_clamped(self, bytes: [u8; 32]) -> Self {
+    pub fn mul_clamped(self, bytes: [u8; 32]) -> Self
+        requires
+            is_well_formed_edwards_point(self),
+    {
         // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
         // #2. But #2 is not necessary for correctness of variable-base multiplication. All that
         // needs to hold is invariant #1, i.e., the scalar is less than 2^255. This is guaranteed

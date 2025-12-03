@@ -1,7 +1,7 @@
-use crate::edwards::EdwardsBasepointTable;
+use crate::specs::edwards_specs::*;
 use crate::specs::montgomery_specs::*;
+use crate::specs::scalar_specs::*;
 use crate::{EdwardsPoint, MontgomeryPoint, Scalar};
-use core::ops::Mul;
 use vstd::prelude::*;
 
 /* VERIFICATION NOTE: this file contains
@@ -22,7 +22,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &EdwardsPoint {
     }
 
     open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        true
+        rhs.bytes[31] <= 127 && is_well_formed_edwards_point(*self)
     }
 
     open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
@@ -38,7 +38,7 @@ impl vstd::std_specs::ops::MulSpecImpl<Scalar> for &EdwardsPoint {
     }
 
     open spec fn mul_req(self, rhs: Scalar) -> bool {
-        true
+        rhs.bytes[31] <= 127 && is_well_formed_edwards_point(*self)
     }
 
     open spec fn mul_spec(self, rhs: Scalar) -> EdwardsPoint {
@@ -54,7 +54,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for EdwardsPoint {
     }
 
     open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        true
+        rhs.bytes[31] <= 127 && is_well_formed_edwards_point(self)
     }
 
     open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
@@ -70,7 +70,7 @@ impl vstd::std_specs::ops::MulSpecImpl<Scalar> for EdwardsPoint {
     }
 
     open spec fn mul_req(self, rhs: Scalar) -> bool {
-        true
+        rhs.bytes[31] <= 127 && is_well_formed_edwards_point(self)
     }
 
     open spec fn mul_spec(self, rhs: Scalar) -> EdwardsPoint {
@@ -91,7 +91,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for &Scalar {
     }
 
     open spec fn mul_req(self, rhs: &EdwardsPoint) -> bool {
-        true
+        self.bytes[31] <= 127 && is_well_formed_edwards_point(*rhs)
     }
 
     open spec fn mul_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
@@ -107,7 +107,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&EdwardsPoint> for Scalar {
     }
 
     open spec fn mul_req(self, rhs: &EdwardsPoint) -> bool {
-        true
+        self.bytes[31] <= 127 && is_well_formed_edwards_point(*rhs)
     }
 
     open spec fn mul_spec(self, rhs: &EdwardsPoint) -> EdwardsPoint {
@@ -123,7 +123,7 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for &Scalar {
     }
 
     open spec fn mul_req(self, rhs: EdwardsPoint) -> bool {
-        true
+        self.bytes[31] <= 127 && is_well_formed_edwards_point(rhs)
     }
 
     open spec fn mul_spec(self, rhs: EdwardsPoint) -> EdwardsPoint {
@@ -139,7 +139,7 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
     }
 
     open spec fn mul_req(self, rhs: EdwardsPoint) -> bool {
-        true
+        self.bytes[31] <= 127 && is_well_formed_edwards_point(rhs)
     }
 
     open spec fn mul_spec(self, rhs: EdwardsPoint) -> EdwardsPoint {

@@ -1,3 +1,5 @@
+#[cfg(feature = "precomputed-tables")]
+use crate::edwards::EdwardsBasepointTable;
 use crate::specs::edwards_specs::*;
 use crate::specs::montgomery_specs::*;
 use crate::specs::scalar_specs::*;
@@ -237,6 +239,44 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
     }
 
     open spec fn mul_spec(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
+        arbitrary()
+    }
+}
+
+// =============================================================================
+// SECTION 5: EdwardsBasepointTable * Scalar
+// =============================================================================
+// Specifications for basepoint table scalar multiplication
+/// Spec for &EdwardsBasepointTable * &Scalar
+#[cfg(feature = "precomputed-tables")]
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &EdwardsBasepointTable {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &Scalar) -> bool {
+        rhs.bytes[31] <= 127
+    }
+
+    open spec fn mul_spec(self, rhs: &Scalar) -> EdwardsPoint {
+        arbitrary()
+    }
+}
+
+/// Spec for &Scalar * &EdwardsBasepointTable
+#[cfg(feature = "precomputed-tables")]
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&EdwardsBasepointTable> for &Scalar {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &EdwardsBasepointTable) -> bool {
+        self.bytes[31] <= 127
+    }
+
+    open spec fn mul_spec(self, rhs: &EdwardsBasepointTable) -> EdwardsPoint {
         arbitrary()
     }
 }

@@ -1536,6 +1536,12 @@ impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
         requires
             scalar.bytes[31] <= 127,
             is_well_formed_edwards_point(*old(self)),
+        ensures
+            is_well_formed_edwards_point(*self),
+            edwards_point_as_affine(*self) == edwards_scalar_mul(
+                edwards_point_as_affine(*old(self)),
+                spec_scalar(scalar),
+            ),
     {
         /* ORIGINAL CODE
         let result = (self as &EdwardsPoint) * scalar;
@@ -1605,8 +1611,17 @@ impl EdwardsPoint {
     ///
     /// Uses precomputed basepoint tables when the `precomputed-tables` feature
     /// is enabled, trading off increased code size for ~4x better performance.
-    #[verifier::external_body]
-    pub fn mul_base(scalar: &Scalar) -> Self {
+    pub fn mul_base(scalar: &Scalar) -> (result: Self)
+        requires
+            scalar.bytes[31] <= 127,
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = [scalar] * B where B is the basepoint
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                spec_ed25519_basepoint(),
+                spec_scalar(scalar),
+            ),
+    {
         #[cfg(not(feature = "precomputed-tables"))]
         { scalar * constants::ED25519_BASEPOINT_POINT }
         #[cfg(feature = "precomputed-tables")]
@@ -1647,7 +1662,15 @@ impl EdwardsPoint {
 
     /// Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see
     /// [`clamp_integer`].
-    pub fn mul_base_clamped(bytes: [u8; 32]) -> Self {
+    pub fn mul_base_clamped(bytes: [u8; 32]) -> (result: Self)
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = [clamped_scalar] * B where B is the basepoint
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                spec_ed25519_basepoint(),
+                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+            ),
+    {
         // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
         // note that fixed-base multiplication is also defined for all values of `bytes` less than
         // 2^255.
@@ -1866,13 +1889,41 @@ impl BasepointTable for EdwardsBasepointTable {
     }
 
     /// Get the basepoint for this table as an `EdwardsPoint`.
-    fn basepoint(&self) -> EdwardsPoint {
+    fn basepoint(&self) -> (result: EdwardsPoint)
+        ensures
+            is_well_formed_edwards_point(result),
+            // The result is the Ed25519 basepoint B
+            edwards_point_as_affine(result) == spec_ed25519_basepoint(),
+    {
+        /* ORIGINAL CODE:
+            (&EdwardsPoint::identity() + &self.0[0].select(1)).as_extended()
+        */
         // self.0[0].select(1) = 1*(16^2)^0*B
         // but as an `AffineNielsPoint`, so add identity to convert to extended.
+        let identity = EdwardsPoint::identity();
+        let selected = self.0[0].select(1);
         proof {
-            assume(false);
+            // Preconditions for addition
+            assume(is_well_formed_edwards_point(identity));
+            assume(sum_of_limbs_bounded(&identity.Z, &identity.Z, u64::MAX));
+            assume(fe51_limbs_bounded(&selected.y_plus_x, 54));
+            assume(fe51_limbs_bounded(&selected.y_minus_x, 54));
+            assume(fe51_limbs_bounded(&selected.xy2d, 54));
         }
-        (&EdwardsPoint::identity() + &self.0[0].select(1)).as_extended()
+        let completed = &identity + &selected;
+        proof {
+            // Preconditions for as_extended
+            assume(fe51_limbs_bounded(&completed.X, 54));
+            assume(fe51_limbs_bounded(&completed.Y, 54));
+            assume(fe51_limbs_bounded(&completed.Z, 54));
+            assume(fe51_limbs_bounded(&completed.T, 54));
+        }
+        let result = completed.as_extended();
+        proof {
+            assume(is_well_formed_edwards_point(result));
+            assume(edwards_point_as_affine(result) == spec_ed25519_basepoint());
+        }
+        result
     }
 
     /// The computation uses Pippeneger's algorithm, as described for the
@@ -1917,10 +1968,17 @@ impl BasepointTable for EdwardsBasepointTable {
     /// by \\(2\^{255}\\), which is always the case.
     ///
     /// The above algorithm is trivially generalised to other powers-of-2 radices.
-    fn mul_base(&self, scalar: &Scalar) -> EdwardsPoint {
-        proof {
-            assume(scalar.bytes[31] <= 127);  // precondition for as_radix_2w(4)
-        }
+    fn mul_base(&self, scalar: &Scalar) -> (result: EdwardsPoint)
+        requires
+            scalar.bytes[31] <= 127,
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = [scalar] * B
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                spec_ed25519_basepoint(),
+                spec_scalar(scalar),
+            ),
+    {
         let a = scalar.as_radix_2w(4);
 
         let tables = &self.0;
@@ -1995,18 +2053,36 @@ impl BasepointTable for EdwardsBasepointTable {
             }
         }
 
+        proof {
+            // postconditions
+            assume(is_well_formed_edwards_point(P));
+            assume(edwards_point_as_affine(P) == edwards_scalar_mul(
+                spec_ed25519_basepoint(),
+                spec_scalar(scalar),
+            ));
+        }
         P
     }
 }
 
-} // verus!
 impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
     type Output = EdwardsPoint;
 
     /// Construct an `EdwardsPoint` from a `Scalar` \\(a\\) by
     /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
-    fn mul(self, scalar: &'b Scalar) -> EdwardsPoint {
-        // delegate to a private function so that its documentation appears in internal docs
+    fn mul(self, scalar: &'b Scalar) -> (result:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsBasepointTable in mul_specs.rs:
+        scalar.bytes[31] <= 127
+    */
+
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = [scalar] * B
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                spec_ed25519_basepoint(),
+                spec_scalar(scalar),
+            ),
+    {
         self.mul_base(scalar)
     }
 }
@@ -2016,13 +2092,24 @@ impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
 
     /// Construct an `EdwardsPoint` from a `Scalar` \\(a\\) by
     /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
-    fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> EdwardsPoint {
+    fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> (result:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsBasepointTable> for &Scalar in mul_specs.rs:
+        self.bytes[31] <= 127
+    */
+
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = [scalar] * B
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                spec_ed25519_basepoint(),
+                spec_scalar(self),
+            ),
+    {
         basepoint_table * self
     }
 }
 
-
-
+} // verus!
 impl Debug for EdwardsBasepointTable {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}([\n", stringify!(EdwardsBasepointTable))?;

@@ -164,37 +164,43 @@ pub(crate) const RR: Scalar52 = Scalar52 {
     ],
 };
 
-} // verus!
 /// The Ed25519 basepoint, as an `EdwardsPoint`.
 ///
 /// This is called `_POINT` to distinguish it from
 /// `ED25519_BASEPOINT_TABLE`, which should be used for scalar
 /// multiplication (it's much faster).
 pub const ED25519_BASEPOINT_POINT: EdwardsPoint = EdwardsPoint {
-    X: FieldElement51::from_limbs([
-        1738742601995546,
-        1146398526822698,
-        2070867633025821,
-        562264141797630,
-        587772402128613,
-    ]),
-    Y: FieldElement51::from_limbs([
-        1801439850948184,
-        1351079888211148,
-        450359962737049,
-        900719925474099,
-        1801439850948198,
-    ]),
-    Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-    T: FieldElement51::from_limbs([
-        1841354044333475,
-        16398895984059,
-        755974180946558,
-        900171276175154,
-        1821297809914039,
-    ]),
+    X: FieldElement51 {
+        limbs: [
+            1738742601995546,
+            1146398526822698,
+            2070867633025821,
+            562264141797630,
+            587772402128613,
+        ],
+    },
+    Y: FieldElement51 {
+        limbs: [
+            1801439850948184,
+            1351079888211148,
+            450359962737049,
+            900719925474099,
+            1801439850948198,
+        ],
+    },
+    Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+    T: FieldElement51 {
+        limbs: [
+            1841354044333475,
+            16398895984059,
+            755974180946558,
+            900171276175154,
+            1821297809914039,
+        ],
+    },
 };
 
+} // verus!
 /// The 8-torsion subgroup \\(\mathcal E \[8\]\\).
 ///
 /// In the case of Curve25519, it is cyclic; the \\(i\\)-th element of
@@ -348,11 +354,19 @@ pub const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8] = [
     },
 ];
 
+verus! {
+
 /// Table containing precomputed multiples of the Ed25519 basepoint \\(B = (x, 4/5)\\).
+///
+/// ORIGINAL: `pub static ED25519_BASEPOINT_TABLE: &EdwardsBasepointTable`
+/// Changed to `const` inside verus! block to make it accessible from verus code.
+/// The 7400-line table data is marked external_body to avoid bloating verification.
 #[cfg(feature = "precomputed-tables")]
-pub static ED25519_BASEPOINT_TABLE: &EdwardsBasepointTable =
+#[verifier::external_body]
+pub const ED25519_BASEPOINT_TABLE: &'static EdwardsBasepointTable =
     &ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN;
 
+} // verus!
 /// Inner constant, used to avoid filling the docs with precomputed points.
 #[doc(hidden)]
 #[cfg(feature = "precomputed-tables")]

@@ -27,7 +27,7 @@ use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
 };
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::constants::EDWARDS_D;
+use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 #[allow(unused_imports)]
@@ -38,6 +38,33 @@ use vstd::prelude::*;
 
 verus! {
 
+// =============================================================================
+// Ed25519 Basepoint
+// =============================================================================
+/// The Ed25519 basepoint B in affine coordinates (x, y).
+/// This is the generator point of the prime-order subgroup.
+///
+/// References the actual constant ED25519_BASEPOINT_POINT from constants.rs.
+/// The y-coordinate is 4/5 mod p (the first 255 bits of the compressed form).
+/// The x-coordinate is the positive square root satisfying the curve equation.
+///
+/// Reference: [RFC8032] Section 5.1
+pub open spec fn spec_ed25519_basepoint() -> (nat, nat) {
+    (u64_5_as_nat(ED25519_BASEPOINT_POINT.X.limbs), u64_5_as_nat(ED25519_BASEPOINT_POINT.Y.limbs))
+}
+
+/// Proof: The basepoint is on the Edwards curve
+/* SEE IF WE NEED THIS
+pub proof fn lemma_basepoint_on_curve()
+    ensures
+        math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1),
+{
+    assume(math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1));
+}
+*/
+// =============================================================================
+// Curve Equation Specifications
+// =============================================================================
 /// Check if a point (x, y) satisfies the Edwards curve equation
 /// -x² + y² = 1 + d·x²·y²  (mod p)
 ///

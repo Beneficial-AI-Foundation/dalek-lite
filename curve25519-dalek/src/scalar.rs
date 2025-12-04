@@ -349,11 +349,37 @@ impl Scalar {
         let result = ct_option_new(candidate, condition);
         /* </MODIFIED CODE> */
 
-        // VERIFICATION NOTE: PROOF BYPASS
-        assume(bytes_to_nat(&bytes) < group_order() ==> ct_option_has_value(result));
-        assume(bytes_to_nat(&bytes) >= group_order() ==> !ct_option_has_value(result));
-        assume(ct_option_has_value(result) ==> bytes_to_nat(&ct_option_value(result).bytes)
-            % group_order() == bytes_to_nat(&bytes) % group_order());
+        // Capture the high byte value for use in the proof (avoids Verus interpreter issues)
+        let ghost high_byte: u8 = bytes[31];
+
+        proof {
+            // Prove: bytes_to_nat(&bytes) < group_order() ==> ct_option_has_value(result)
+            if bytes_to_nat(&bytes) < group_order() {
+                // Apply lemma to show bytes[31] <= 127 (high bit clear)
+                use crate::lemmas::scalar_lemmas::lemma_canonical_bytes_high_bit_clear;
+                lemma_canonical_bytes_high_bit_clear(&candidate.bytes);
+
+                // When high_byte <= 127, high_byte >> 7 == 0
+                assert(high_byte >> 7 == 0) by (bit_vector)
+                    requires high_byte <= 127;
+            }
+
+            // Prove: bytes_to_nat(&bytes) >= group_order() ==> !ct_option_has_value(result)
+            if bytes_to_nat(&bytes) >= group_order() {
+                // By definition, is_canonical_scalar requires bytes_to_nat < group_order
+                // So is_canonical_scalar(&candidate) is false, hence is_canonical is false
+                // Therefore condition (= high_bit_unset && is_canonical) is false
+                // And by ct_option_new's postcondition, ct_option_has_value(result) is false
+            }
+
+            // Prove: ct_option_has_value(result) ==> bytes_to_nat(&ct_option_value(result).bytes)
+            //            % group_order() == bytes_to_nat(&bytes) % group_order()
+            // By ct_option_new's postcondition: ct_option_value(result) == candidate
+            // And candidate.bytes == bytes (since candidate = Scalar { bytes })
+            // So ct_option_value(result).bytes == bytes
+            // Therefore bytes_to_nat(&ct_option_value(result).bytes) == bytes_to_nat(&bytes)
+            assert(ct_option_value(result).bytes == bytes);
+        }
 
         result
     }

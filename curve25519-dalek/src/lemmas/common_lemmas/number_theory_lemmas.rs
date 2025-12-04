@@ -211,25 +211,7 @@ proof fn lemma_mod_is_zero_when_divisible(n: nat, d: nat)
 }
 
 // =============================================================================
-// PART 2: Basic Power Lemmas
-// =============================================================================
-
-/// 1^n = 1
-proof fn lemma_one_pow(n: nat)
-    ensures
-        pow(1int, n) == 1,
-    decreases n,
-{
-    reveal(pow);
-    if n == 0 {
-    } else {
-        lemma_one_pow((n - 1) as nat);
-        lemma_mul_basics(pow(1int, (n - 1) as nat));
-    }
-}
-
-// =============================================================================
-// PART 3: Factorial and Product Definitions
+// PART 2: Factorial and Product Definitions
 // =============================================================================
 /// Factorial: n! = 1 * 2 * 3 * ... * n
 pub open spec fn factorial(n: nat) -> nat

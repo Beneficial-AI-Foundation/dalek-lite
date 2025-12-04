@@ -465,4 +465,10 @@ pub open spec fn is_inv_witness(v: nat, w: nat) -> bool {
     ((v % p()) * (w % p())) % p() == 1
 }
 
+/// The mathematical value of SQRT_M1 (sqrt(-1) mod p)
+/// This is the 4th root of unity i such that i² = -1 (mod p)
+pub open spec fn spec_sqrt_m1() -> nat {
+    spec_field_element(&constants::SQRT_M1)
+}
+
 } // verus!

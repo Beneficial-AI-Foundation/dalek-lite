@@ -1,6 +1,8 @@
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
+use crate::specs::field_specs_u64::*; // for p(), pow255_gt_19()
+#[allow(unused_imports)]
 use crate::specs::primality_specs::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
@@ -8,6 +10,8 @@ use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::*; // for pow2(), lemma_pow2_adds()
 
 use vstd::prelude::*;
 
@@ -1677,6 +1681,91 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
             lemma_mod_adds((a - 1) as int, 1, prime as int);
             lemma_small_mod(1nat, prime);
         };
+    }
+}
+
+// ============================================================================
+// Modular Arithmetic - Square of Complement
+// ============================================================================
+/// Lemma: (p - a)² % p = a² % p for 0 < a < p
+///
+/// This is a fundamental modular arithmetic property:
+///   (p - a)² = p² - 2pa + a²
+///   p² % p = 0 (p divides p²)
+///   2pa % p = 0 (p divides 2pa)
+///   So (p - a)² % p = a² % p
+///
+/// This lemma is useful for proving that negation preserves squares in finite fields.
+pub proof fn lemma_square_of_complement(a: nat, p: nat)
+    requires
+        p > 0,
+        0 < a && a < p,
+    ensures
+        (((p - a) * (p - a)) as nat) % p == ((a * a) as nat) % p,
+{
+    let p_int = p as int;
+    let a_int = a as int;
+    let p_minus_a = (p - a) as int;
+
+    // Step 1: (p - a)² = p² - 2pa + a²
+    assert(p_minus_a * p_minus_a == p_int * p_int - 2 * p_int * a_int + a_int * a_int) by {
+        lemma_mul_is_distributive_sub(p_minus_a, p_int, a_int);
+        lemma_mul_is_commutative(p_minus_a, p_int);
+        lemma_mul_is_distributive_sub(p_int, p_int, a_int);
+        lemma_mul_is_commutative(p_minus_a, a_int);
+        lemma_mul_is_distributive_sub(a_int, p_int, a_int);
+        lemma_mul_is_commutative(a_int, p_int);
+        lemma_mul_is_associative(2int, p_int, a_int);
+    }
+
+    // Step 2: (p² - 2pa + a²) % p = a² % p
+    assert((p_int * p_int - 2 * p_int * a_int + a_int * a_int) % p_int == (a_int * a_int) % p_int)
+        by {
+        assert((p_int * p_int) % p_int == 0) by {
+            lemma_mod_multiples_basic(p_int, p_int);
+        }
+        assert((2 * p_int * a_int) % p_int == 0) by {
+            assert(2 * p_int * a_int == (2 * a_int) * p_int) by {
+                lemma_mul_is_associative(2int, p_int, a_int);
+                lemma_mul_is_commutative(2int, p_int);
+                lemma_mul_is_associative(p_int, 2int, a_int);
+                lemma_mul_is_commutative(p_int, 2 * a_int);
+            }
+            lemma_mod_multiples_basic(2 * a_int, p_int);
+        }
+        assert((p_int * p_int - 2 * p_int * a_int) % p_int == 0) by {
+            lemma_sub_mod_noop(p_int * p_int, 2 * p_int * a_int, p_int);
+            lemma_small_mod(0nat, p);
+        }
+        lemma_add_mod_noop(p_int * p_int - 2 * p_int * a_int, a_int * a_int, p_int);
+        lemma_mod_twice(a_int * a_int, p_int);
+    }
+}
+
+/// Proof that p() is odd (p() % 2 == 1)
+///
+/// Since p() = 2^255 - 19:
+/// - 2^255 is even (by lemma_pow2_even)
+/// - 19 is odd (19 % 2 == 1)
+/// - even - odd = odd
+pub proof fn lemma_p_is_odd()
+    ensures
+        p() % 2 == 1,
+{
+    // 2^255 is even
+    assert(pow2(255) % 2 == 0) by {
+        lemma_pow2_even(255);
+    }
+
+    // p = 2^255 - 19 ≡ 0 - 1 ≡ -1 ≡ 1 (mod 2)
+    assert((pow2(255) as int - 19) % 2 == 1) by {
+        assert(19int % 2 == 1) by (compute);
+        lemma_sub_mod_noop(pow2(255) as int, 19int, 2int);
+        assert((-1int) % 2 == 1) by (compute);
+    }
+
+    assert(pow2(255) > 19) by {
+        pow255_gt_19();
     }
 }
 

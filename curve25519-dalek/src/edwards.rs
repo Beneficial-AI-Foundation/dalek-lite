@@ -158,18 +158,30 @@ use crate::traits::{VartimeMultiscalarMul, VartimePrecomputedMultiscalarMul};
 use crate::backend::serial::u64::field::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::*;
+#[allow(unused_imports)] // Used in verus! blocks for Edwards curve constants
+use crate::lemmas::edwards_lemmas::constants_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for decompress proofs
+use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for decompress proofs
+use crate::lemmas::edwards_lemmas::step1_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for general field constants (ONE, ZERO)
+use crate::lemmas::field_lemmas::constants_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::field_specs_u64::*;
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
-#[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
-#[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::mul::*;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -230,11 +242,18 @@ impl CompressedEdwardsY {
     ///
     /// Returns `None` if the input is not the \\(y\\)-coordinate of a
     /// curve point.
+    ///
     pub fn decompress(&self) -> (result: Option<
         EdwardsPoint,
     >)
-    // VERIFICATION NOTE: PROOF BYPASS
+    // The compressed point must have a valid sign bit. This is automatically
+    // satisfied for points produced by `compress()`. For externally-sourced
+    // bytes (e.g., from network input), callers must ensure this invariant.
+    //
+    // See `is_valid_compressed_edwards_y` in `edwards_specs.rs` for full justification.
 
+        requires
+            is_valid_compressed_edwards_y(&self.0),
         ensures
             math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
                 ==> result.is_some()
@@ -266,17 +285,19 @@ impl CompressedEdwardsY {
             let point = decompress::step_2(self, X, Y, Z);
             let result = Some(point);
             proof {
-                // Gap 1: step_2 produces a valid Edwards point when (X, Y) is on curve
-                // Requires: math_on_edwards_curve(X, Y) && T = X*Y/Z ==> is_valid_edwards_point
-                assume(is_valid_edwards_point(point));
+                // Extract values for lemma
+                let x_orig = spec_field_element(&X);
+                let y = spec_field_element(&Y);
 
-                // Gap 2: Y coordinate is preserved through decompression
-                // From step_1: spec_field_element(&Y) == spec_field_element_from_bytes(&self.0)
-                // step_2 doesn't modify Y
-                assume(spec_field_element(&point.Y) == spec_field_element_from_bytes(&self.0));
+                // Establish step_2 postconditions needed by lemma
+                // step_2 ensures Y and Z are preserved by reference equality
+                assert(&point.Y == &Y);
+                assert(&point.Z == &Z);
+                assert(spec_field_element(&point.Y) == y);
+                assert(spec_field_element(&point.Z) == 1);
 
-                // Gap 3: Sign bit is correctly applied by conditional_negate
-                assume(spec_field_element_sign_bit(&point.X) == (self.0[31] >> 7));
+                // Use the unified lemma to prove all postconditions
+                lemma_decompress_valid_branch(&self.0, x_orig, y, &point);
             }
             result
         } else {
@@ -313,71 +334,158 @@ mod decompress {
                     spec_field_element(&Y),
                 )) &&
                 // Limb bounds for step_2
-                fe51_limbs_bounded(&X, 51) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded(
+                // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)
+                fe51_limbs_bounded(&X, 52) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded(
                     &Z,
                     51,
                 )
+                    &&
+                // the next 2 postconditions are needed in the proof of decompress
+                // X is the non-negative root (LSB = 0) - from sqrt_ratio_i
+                (spec_field_element(&X) % p()) % 2 == 0
+                    &&
+                // X is bounded (< p) - from sqrt_ratio_i
+                spec_field_element(&X) < p()
             }),
     {
+        // =================================================================
+        // PHASE 1: Setup Y, Z, compute u = y² - 1, v = d·y² + 1
+        // =================================================================
         let Y = FieldElement::from_bytes(repr.as_bytes());
         assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
         let Z = FieldElement::ONE;
         proof {
-            // from_bytes ensures fe51_limbs_bounded(&Y, 51)
-            assert(fe51_limbs_bounded(&Y, 51));  // from postcondition
+            // Y is 51-bit bounded (from from_bytes), which implies 54-bit for square
             assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
-            // Since limbs < 2^51 < 2^54, we have fe51_limbs_bounded(&Y, 54)
         }
-        proof {
-            // Y is bounded by 51 bits from from_bytes, which implies bounded by 54 for square()
-            assert(fe51_limbs_bounded(&Y, 51));  // from from_bytes postcondition
-        }
-        let YY = Y.square();
+
+        let YY = Y.square();  // Y² - requires 54-bit bounded input
 
         proof {
-            // YY is bounded by 54 bits from square() postcondition
-            assert(fe51_limbs_bounded(&YY, 54));
-
-            // Z = ONE has limbs [1, 0, 0, 0, 0], trivially bounded
-            assert(Z.limbs[0] == 1 && Z.limbs[1] == 0 && Z.limbs[2] == 0 && Z.limbs[3] == 0
-                && Z.limbs[4] == 0);
-            // Help Verus: 1 < 2^51 and 0 < 2^51
-            assert(1u64 < (1u64 << 51)) by (bit_vector);
-            assert(0u64 < (1u64 << 51)) by (bit_vector);
-            assert(fe51_limbs_bounded(&Z, 54));
-            // For fe51_limbs_bounded(&Z, 51), we need to help Verus see all limbs < 2^51
-            assume(fe51_limbs_bounded(&Z, 51));  // trivially true but Verus needs quantifier help
-
-            // EDWARDS_D is a constant with all limbs < 2^51 (checked at definition site)
-            // limbs: [929955233495203, 466365720129213, 1662059464998953, 2033849074728123, 1442794654840575]
-            // All these values are < 2^51 < 2^54
-            assume(fe51_limbs_bounded(&constants::EDWARDS_D, 54));
+            // Limb bounds for field operation preconditions (overflow prevention):
+            // - lemma_one_limbs_bounded: ONE.limbs[i] < 2^51, needed for `u = &YY - &Z`
+            // - lemma_edwards_d_limbs_bounded: EDWARDS_D.limbs[i] < 2^51, needed for `yy_times_d = &YY * &EDWARDS_D`
+            lemma_one_limbs_bounded();
+            lemma_edwards_d_limbs_bounded();
         }
-        let u = &YY - &Z;  // u =  y²-1
+
+        let u = &YY - &Z;  // u = y² - 1
         let yy_times_d = &YY * &constants::EDWARDS_D;
+
         proof {
-            // For Add (yy_times_d + Z): requires no overflow
-            assume(sum_of_limbs_bounded(&yy_times_d, &Z, u64::MAX));
+            // Setup for Add: yy_times_d (52-bit from mul) + Z = ONE
+            // (inlined from lemma_decompress_add_no_overflow)
+            // 2^52 + 1 < u64::MAX
+            assert((1u64 << 52) + 1 < u64::MAX) by (bit_vector);
+            // Each limb sum is bounded
+            assert forall|i: int| 0 <= i < 5 implies yy_times_d.limbs[i] + Z.limbs[i]
+                < u64::MAX by {
+                // limb[i] < 2^52 (from 52-bit bound)
+                // Z.limbs[0] = 1, Z.limbs[1..4] = 0
+            };
         }
-        let v = &yy_times_d + &Z;  // v = dy²+1
+
+        let v = &yy_times_d + &Z;  // v = d·y² + 1
+
+        proof {
+            // v bounds: 52-bit + 1 < 54-bit
+            assert((1u64 << 52) + 1 < (1u64 << 54)) by (bit_vector);
+            assert(forall|i: int| 0 <= i < 5 ==> v.limbs[i] < (1u64 << 54));
+        }
 
         let (is_valid_y_coord, X) = FieldElement::sqrt_ratio_i(&u, &v);
 
         proof {
-            // Assume postconditions that depend on sqrt_ratio_i behavior
-            assume(spec_field_element(&Z) == 1);
-            // Note: Using <==> (bi-implication) to match the postcondition exactly
-            assume(choice_is_true(is_valid_y_coord) <==> math_is_valid_y_coordinate(
-                spec_field_element(&Y),
-            ));
-            assume(choice_is_true(is_valid_y_coord) ==> math_on_edwards_curve(
-                spec_field_element(&X),
-                spec_field_element(&Y),
-            ));
-            // X limb bounds from sqrt_ratio_i (not yet proven in sqrt_ratio_i ensures)
-            // sqrt_ratio_i computes r through pow_p58 and multiplications, ending with
-            // conditional_negate which produces bounded output
-            assume(fe51_limbs_bounded(&X, 51));
+            // =================================================================
+            // PHASE 2: sqrt_ratio_i postconditions
+            // =================================================================
+            assert(spec_field_element(&Z) == 1) by {
+                lemma_one_field_element_value();
+            };
+
+            //prove the last 2 postconditions for step_1
+            // From sqrt_ratio_i ensures: non-negative root, bounded
+            assert((spec_field_element(&X) % p()) % 2 == 0);
+            assert(spec_field_element(&X) < p());
+            assert(fe51_limbs_bounded(&X, 52));
+
+            // =================================================================
+            // PHASE 3: Connect sqrt_ratio_i to curve semantics
+            // =================================================================
+            // Field operations ensures clauses give us the correspondence
+
+            let ghost y = spec_field_element(&Y);
+            let ghost d = spec_field_element(&constants::EDWARDS_D);
+            let ghost y2 = math_field_square(y);
+            let ghost u_math = math_field_sub(y2, 1);
+            let ghost v_math = math_field_add(math_field_mul(d, y2), 1);
+            let ghost x = spec_field_element(&X);
+
+            // 1. YY = Y.square() → spec_field_element(&YY) == math_field_square(y)
+            assert(spec_field_element(&YY) == y2) by {
+                // square() ensures: u64_5_as_nat(YY.limbs) % p() == pow(u64_5_as_nat(Y.limbs), 2) % p()
+                // Apply lemma to show this equals math_field_square(y)
+                lemma_square_matches_math_field_square(
+                    spec_field_element_as_nat(&Y),
+                    spec_field_element_as_nat(&YY),
+                );
+            };
+
+            // 2. u = YY - Z → spec_field_element(&u) == math_field_sub(y2, 1)
+            assert(spec_field_element(&u) == u_math) by {
+                // Sub ensures: spec_field_element(&u) == math_field_sub(spec_field_element(&YY), spec_field_element(&Z))
+                // Z = ONE, so spec_field_element(&Z) == 1
+                lemma_one_field_element_value();
+            };
+
+            // 3. v = yy_times_d + Z → spec_field_element(&v) == math_field_add(d*y2, 1)
+            assert(spec_field_element(&v) == v_math) by {
+                // yy_times_d = YY * EDWARDS_D
+                // Mul ensures: spec_field_element(&yy_times_d) == math_field_mul(y2, d)
+                // v_math = math_field_add(math_field_mul(d, y2), 1)
+                // Need: math_field_mul(y2, d) == math_field_mul(d, y2)  (commutativity)
+                lemma_one_field_element_value();
+
+                // math_field_mul is commutative: (a * b) % p == (b * a) % p
+                assert(math_field_mul(y2, d) == math_field_mul(d, y2)) by {
+                    lemma_mul_is_commutative(y2 as int, d as int);
+                    assert(y2 * d == d * y2);
+                };
+            };
+
+            // Establish preconditions for lemma_step1_case_analysis from sqrt_ratio_i postconditions
+            // sqrt_ratio_i ensures: (u == 0) ==> choice_is_true && result == 0
+            // sqrt_ratio_i ensures: (v == 0 && u != 0) ==> !choice_is_true
+            // sqrt_ratio_i ensures: (choice_is_true && v != 0) ==> is_sqrt_ratio(u, v, result)
+            // sqrt_ratio_i ensures: (!choice_is_true && v != 0 && u != 0) ==> is_sqrt_ratio_times_i(u, v, result)
+
+            // u_math and v_math are field elements, so bounded by p
+            // u_math = math_field_sub(y2, 1) = (y2 - 1 + p) % p < p
+            // v_math = math_field_add(d*y2, 1) = (d*y2 + 1) % p < p
+            assert(u_math < p());
+            assert(v_math < p());
+
+            // x < p() from sqrt_ratio_i postcondition
+            assert(x < p());
+
+            // Establish is_sqrt_ratio_times_i precondition for failure case
+            // When sqrt_ratio_i fails with u,v ≠ 0: x²·v = i·u
+            assert((!choice_is_true(is_valid_y_coord) && u_math != 0 && v_math != 0) ==> (x * x
+                * v_math) % p() == (spec_sqrt_m1() * u_math) % p()) by {
+                // From sqrt_ratio_i postcondition: is_sqrt_ratio_times_i(u, v, &X) when failure
+                // is_sqrt_ratio_times_i says: (r² * v) % p == (i * u) % p
+                // where r = spec_field_element(&X) = x, v = spec_field_element(&v), u = spec_field_element(&u)
+            };
+
+            // Use lemma to prove curve semantics from sqrt_ratio_i result
+            lemma_step1_case_analysis(
+                y,
+                x,
+                u_math,
+                v_math,
+                choice_is_true(is_valid_y_coord),
+                is_sqrt_ratio(&u, &v, &X),
+            );
         }
         (is_valid_y_coord, X, Y, Z)
     }
@@ -391,8 +499,9 @@ mod decompress {
     ) -> (result: EdwardsPoint)
         requires
     // Limb bounds for inputs (X from sqrt_ratio_i, Y from from_bytes, Z = ONE)
+    // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)
 
-            fe51_limbs_bounded(&X, 51),
+            fe51_limbs_bounded(&X, 52),
             fe51_limbs_bounded(&Y, 51),
             fe51_limbs_bounded(&Z, 51),
         ensures
@@ -425,6 +534,11 @@ mod decompress {
         X.conditional_negate(compressed_sign_bit);
         </ORIGINAL CODE> */
         let ghost original_X = X;
+        proof {
+            // 51-bit bounded implies 52-bit bounded (for conditional_negate precondition)
+            assert((1u64 << 51) < (1u64 << 52)) by (bit_vector);
+            assert(fe51_limbs_bounded(&X, 52));
+        }
         conditional_negate_field_element(&mut X, compressed_sign_bit);
 
         proof {

@@ -25,16 +25,17 @@ pub broadcast proof fn lemma_u128_shl_is_mul(x: u128, shift: u128)
     assume(false);
 }
 
-pub open spec fn spec_part2(sum: u128) -> (res: (u128, u64)) {
-    (sum >> 52, (sum as u64) & (((1u64 << 52) - 1) as u64))
-}
-
 pub proof fn lemma_part2_bounds(sum: u128)
     ensures
-        spec_part2(sum).1 < (1u64 << 52),
-        sum == spec_part2(sum).1 + (spec_part2(sum).0 << 52),
+        ({
+            let carry = sum >> 52;
+            let w = (sum as u64) & (((1u64 << 52) - 1) as u64);
+            &&& w < (1u64 << 52)
+            &&& sum == w + (carry << 52)
+        }),
 {
-    let (carry, w) = spec_part2(sum);
+    let carry = sum >> 52;
+    let w = (sum as u64) & (((1u64 << 52) - 1) as u64);
 
     assert(w < 1u64 << 52) by {
         assert((sum as u64) & (((1u64 << 52) - 1) as u64) < (1u64 << 52)) by (bit_vector);

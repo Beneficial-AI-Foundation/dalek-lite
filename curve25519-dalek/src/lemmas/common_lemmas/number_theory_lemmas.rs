@@ -662,8 +662,6 @@ proof fn lemma_partial_binomial_sum_mod_p(a: nat, p: nat, j: nat)
                 reveal(pow);
                 lemma_mul_basics(1int);
             };
-            // But p = 1 is not prime (prime requires > 1), so this case doesn't occur
-            assert(false);
         }
         lemma_partial_binomial_sum_mod_p(a, p, (p - 1) as nat);
         assert(binomial_sum(a, p, (p - 1) as nat) % p == 1);
@@ -724,7 +722,6 @@ proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
     assert(a > 0) by {
         if a == 0 {
             lemma_small_mod(0nat, p);
-            assert(false);
         }
     };
 
@@ -776,7 +773,6 @@ proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
         // This gives a % p == 0 or diff % p == 0
         // Since diff % p != 0, we get a % p == 0
         // But a % p != 0 by precondition, contradiction
-        assert(false);
     }
     // (pow_n - 1) % p == 0 means pow_n % p == 1
 
@@ -796,23 +792,11 @@ proof fn lemma_mod_sub_eq_implies_zero(x: int, y: int, m: int)
     ensures
         (x - y) % m == 0,
 {
-    // x = q1*m + r, y = q2*m + r (same remainder)
-    // x - y = (q1 - q2)*m, which is divisible by m
-    let r = x % m;
-    let q1 = x / m;
-    let q2 = y / m;
-
-    assert(x == q1 * m + r) by {
-        lemma_fundamental_div_mod(x, m);
-    };
-    assert(y == q2 * m + r) by {
-        lemma_fundamental_div_mod(y, m);
-    };
-
-    assert(x - y == (q1 - q2) * m) by {
-        lemma_mul_is_distributive_sub_other_way(m, q1, q2);
-    };
-
+    // By lemma_sub_mod_noop: (x - y) % m == ((x % m) - (y % m)) % m
+    lemma_sub_mod_noop(x, y, m);
+    // Since x % m == y % m, we have (x - y) % m == (r - r) % m == 0 % m == 0
+    lemma_small_mod(0nat, m as nat);
+}
     lemma_mod_multiples_basic(q1 - q2, m);
 }
 
@@ -1260,34 +1244,15 @@ proof fn lemma_euclid_prime_helper(a: nat, b: nat, p: nat)
 proof fn lemma_mod_difference_zero(a: int, b: int, m: int)
     requires
         m > 0,
-        a >= b,
         a % m == 0,
         b % m == 0,
     ensures
         (a - b) % m == 0,
 {
-    // a = k1 * m, b = k2 * m (since both are divisible by m)
-    // a - b = (k1 - k2) * m, which is divisible by m
-    let k1 = a / m;
-    let k2 = b / m;
-
-    // a = k1 * m (since a % m == 0)
-    assert(a == k1 * m) by {
-        lemma_fundamental_div_mod(a, m);
-    };
-
-    // b = k2 * m (since b % m == 0)
-    assert(b == k2 * m) by {
-        lemma_fundamental_div_mod(b, m);
-    };
-
-    // a - b = k1 * m - k2 * m = (k1 - k2) * m
-    assert(a - b == (k1 - k2) * m) by {
-        lemma_mul_is_distributive_sub_other_way(m, k1, k2);
-    };
-
-    // (k1 - k2) * m is divisible by m
-    lemma_mod_multiples_basic(k1 - k2, m);
+   // By lemma_sub_mod_noop: (a - b) % m == ((a % m) - (b % m)) % m
+    lemma_sub_mod_noop(a, b, m);
+    // Since a % m == 0 and b % m == 0: (a - b) % m == (0 - 0) % m == 0
+    lemma_small_mod(0nat, m as nat);
 }
 
 /// If 1 <= i < j < p and a % p != 0, then (a * i) % p != (a * j) % p
@@ -1385,7 +1350,6 @@ proof fn lemma_mod_sub_eq(a: nat, b: nat, m: nat)
             };
             assert((q1 - q2) * (m as int) < 0);
             // But (a - b) = (q1 - q2) * m, and (a - b) >= 0, contradiction
-            assert(false);
         }
     };
 
@@ -1786,11 +1750,7 @@ pub proof fn axiom_permutation_product(a: nat, p: nat, n: nat)
 
     // First show pow(a_red, n) >= 0
     assert(pow(a_red as int, n) >= 0) by {
-        if a_red > 0 {
-            lemma_pow_positive(a_red as int, n);
-        } else {
-            assert(false);  // a_red != 0
-        }
+        lemma_pow_positive(a_red as int, n);
     };
 
     // Use the multiplicative cancellation lemma
@@ -1925,7 +1885,6 @@ pub proof fn lemma_fermat_little_theorem(x: nat, prime: nat)
             assert(a % prime == 0) by {
                 lemma_small_mod(0nat, prime);
             };
-            assert(false);
         }
     };
 
@@ -2036,7 +1995,6 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
             lemma_small_mod(0nat, prime);
         };
         assert(b % prime == 0);
-        assert(false);
     }
     // (a * b - b) % prime == 0
     // We need a >= 1 for a * b >= b when b > 0
@@ -2060,7 +2018,6 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
             if b == 0 {
                 lemma_small_mod(0nat, prime);
                 // 0 % prime == 0, but we have b % prime != 0, contradiction
-                assert(false);
             }
         };
 

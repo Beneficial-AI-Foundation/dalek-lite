@@ -1205,7 +1205,7 @@ proof fn lemma_mod_difference_zero(a: int, b: int, m: int)
     ensures
         (a - b) % m == 0,
 {
-   // By lemma_sub_mod_noop: (a - b) % m == ((a % m) - (b % m)) % m
+    // By lemma_sub_mod_noop: (a - b) % m == ((a % m) - (b % m)) % m
     lemma_sub_mod_noop(a, b, m);
     // Since a % m == 0 and b % m == 0: (a - b) % m == (0 - 0) % m == 0
     lemma_small_mod(0nat, m as nat);
@@ -1373,11 +1373,11 @@ pub proof fn lemma_product_of_multiples_mod_eq_factorial(a: nat, p: nat)
         // a % 2 != 0 and a % 2 < 2, so a % 2 == 1
         lemma_mod_bound(a as int, 2);
         lemma_small_mod(1nat, 2nat);
-        return;
+        return ;
     }
-
     // For p > 2, we use the bijection argument combined with Fermat's Little Theorem
     // product_of_multiples(a, n) = a^n * n! by lemma_product_of_multiples_eq
+
     lemma_product_of_multiples_eq(a, n);
 
     // We need to show (a^n * n!) % p == n! % p

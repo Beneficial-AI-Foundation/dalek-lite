@@ -357,9 +357,12 @@ impl Scalar {
                 use crate::lemmas::scalar_lemmas::lemma_canonical_bytes_high_bit_clear;
                 lemma_canonical_bytes_high_bit_clear(&candidate.bytes);
                 assert(high_byte >> 7 == 0) by (bit_vector)
-                    requires high_byte <= 127;
+                    requires
+                        high_byte <= 127,
+                ;
             }
             // ct_option_value(result) == candidate and candidate.bytes == bytes
+
             assert(ct_option_value(result).bytes == bytes);
         }
 

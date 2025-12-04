@@ -745,6 +745,13 @@ impl Identity for EdwardsPoint {
     }
 }
 
+impl crate::traits::IsIdentitySpecImpl for EdwardsPoint {
+    /// For EdwardsPoint, is_identity returns true iff the affine point equals (0, 1)
+    open spec fn is_identity_spec(&self) -> bool {
+        edwards_point_as_affine(*self) == math_edwards_identity()
+    }
+}
+
 impl Default for EdwardsPoint {
     fn default() -> (result: EdwardsPoint)
         ensures
@@ -2165,11 +2172,11 @@ impl EdwardsPoint {
     {
         let result = self.mul_by_pow_2(3);
         proof {
-            // 2^3 = 8
-            assume(edwards_point_as_affine(result) == edwards_scalar_mul(
-                edwards_point_as_affine(*self),
-                8,
-            ));
+            // Prove 2^3 = 8
+            vstd::arithmetic::power2::lemma2_to64();
+            assert(vstd::arithmetic::power2::pow2(3) == 8);
+            // mul_by_pow_2 ensures: edwards_point_as_affine(result) == edwards_scalar_mul(..., pow2(3))
+            // Combined with pow2(3) == 8, we get the postcondition
         }
         result
     }
@@ -2260,11 +2267,13 @@ impl EdwardsPoint {
     {
         /* ORIGINAL CODE: self.mul_by_cofactor().is_identity() */
         let cofactor_mul = self.mul_by_cofactor();
+        // mul_by_cofactor ensures:
+        //   edwards_point_as_affine(cofactor_mul) == edwards_scalar_mul(edwards_point_as_affine(*self), 8)
         let result = cofactor_mul.is_identity();
-        proof {
-            assume(result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)
-                == math_edwards_identity()));
-        }
+        // is_identity ensures: result == cofactor_mul.is_identity_spec()
+        //   which equals: edwards_point_as_affine(cofactor_mul) == math_edwards_identity()
+        // Combined with mul_by_cofactor's ensures:
+        //   result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == math_edwards_identity())
         result
     }
 
@@ -2305,10 +2314,13 @@ impl EdwardsPoint {
     {
         /* ORIGINAL CODE: (self * constants::BASEPOINT_ORDER_PRIVATE).is_identity() */
         let order_mul = self * constants::BASEPOINT_ORDER_PRIVATE;
+        // Mul ensures: edwards_point_as_affine(order_mul) == edwards_scalar_mul(..., spec_scalar(&BASEPOINT_ORDER_PRIVATE))
         let result = order_mul.is_identity();
+        // is_identity ensures: result == (edwards_point_as_affine(order_mul) == math_edwards_identity())
         proof {
-            assume(result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order())
-                == math_edwards_identity()));
+            // TODO: Need lemma that spec_scalar(&BASEPOINT_ORDER_PRIVATE) == group_order()
+            // BASEPOINT_ORDER_PRIVATE represents ℓ = 2^252 + 27742317777372353535851937790883648493
+            assume(spec_scalar(&constants::BASEPOINT_ORDER_PRIVATE) == group_order());
         }
         result
     }

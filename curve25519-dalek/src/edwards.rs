@@ -663,6 +663,13 @@ impl Identity for CompressedEdwardsY {
     }
 }
 
+impl crate::traits::IsIdentitySpecImpl for CompressedEdwardsY {
+    /// For CompressedEdwardsY, is_identity returns true iff y-coordinate is 1 with sign bit 0
+    open spec fn is_identity_spec(&self) -> bool {
+        spec_field_element_from_bytes(&self.0) == 1 && (self.0[31] >> 7) == 0
+    }
+}
+
 impl Default for CompressedEdwardsY {
     fn default() -> (result: CompressedEdwardsY)
         ensures

@@ -823,7 +823,6 @@ impl Neg for &Scalar {
     type Output = Scalar;
 
     #[allow(non_snake_case)]
-    // VERIFICATION NOTE: PROOF BYPASS
     fn neg(self) -> (result: Scalar)
         ensures
             (scalar_to_nat(self) + scalar_to_nat(&result)) % group_order() == 0,
@@ -835,35 +834,57 @@ impl Neg for &Scalar {
         </ORIGINAL CODE> */
         /* <MODIFIED CODE> */
         proof {
-            // Preconditions for mul_internal and sub
-            assume(limbs_bounded(&constants::R));
-            assume(limbs_bounded(&UnpackedScalar::ZERO));
-            // Also prove that to_nat(R) < group order
+            // Establish preconditions for mul_internal, montgomery_reduce, and sub
+            lemma_r_bounded(constants::R);
+            lemma_zero_bounded(UnpackedScalar::ZERO);
+            lemma_r_equals_spec(constants::R);
         }
 
-        let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
+        let self_unpacked = self.unpack();
+        let self_R = UnpackedScalar::mul_internal(&self_unpacked, &constants::R);
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
 
         proof {
-            assume(limbs_bounded(&self_mod_l));
-            // sub requires: -group_order() <= 0 - to_nat(&self_mod_l.limbs) < group_order()
-            // Hence we need to know that to_nat(self_mod_l) < group_order.
-            // From the spec of montgomery_reduce, that only happens if self_R can be written
-            // as the product of something bounded and something canonical. R is canonical,
-            // so we need self.unpack() to be bounded, which unpack's postcondition gives us
-            assume(-group_order() <= to_nat(&UnpackedScalar::ZERO.limbs) - to_nat(
-                &self_mod_l.limbs,
-            ));
-            assume(to_nat(&UnpackedScalar::ZERO.limbs) - to_nat(&self_mod_l.limbs) < group_order());
+            // Trigger montgomery_reduce postconditions by providing existential witnesses
+            assert(limbs_bounded(&self_unpacked) && limbs_bounded(&constants::R) && to_nat(
+                &constants::R.limbs,
+            ) < group_order() && spec_mul_internal(&self_unpacked, &constants::R) == self_R);
         }
 
-        let result = UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack();
-        proof {
-            // TODO: Prove that -self + self == 0 (mod group_order)
-            assume((scalar_to_nat(self) + scalar_to_nat(&result)) % group_order() == 0);
-        }
+        let sub_result = UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l);
+        let result = sub_result.pack();
 
         /* </MODIFIED CODE> */
+        proof {
+            // Show: to_nat(&self_mod_l.limbs) % group_order() == scalar_to_nat(self) % group_order()
+            assert((to_nat(&self_mod_l.limbs) * montgomery_radix()) % group_order() == (to_nat(
+                &self_unpacked.limbs,
+            ) * to_nat(&constants::R.limbs)) % group_order());
+            lemma_r_equals_spec(constants::R);
+            lemma_mul_factors_congruent_implies_products_congruent(
+                to_nat(&self_unpacked.limbs) as int,
+                montgomery_radix() as int,
+                to_nat(&constants::R.limbs) as int,
+                group_order() as int,
+            );
+            lemma_cancel_mul_pow2_mod(
+                to_nat(&self_mod_l.limbs),
+                to_nat(&self_unpacked.limbs),
+                montgomery_radix(),
+            );
+
+            // Show: scalar_to_nat(&result) == to_nat(&sub_result.limbs)
+            lemma_group_order_smaller_than_pow256();
+            lemma_small_mod(to_nat(&sub_result.limbs), pow2(256));
+
+            // Complete the proof
+            lemma_negation_sums_to_zero(
+                scalar_to_nat(self),
+                to_nat(&self_mod_l.limbs),
+                scalar_to_nat(&result),
+            );
+        }
+
         result
     }
 }

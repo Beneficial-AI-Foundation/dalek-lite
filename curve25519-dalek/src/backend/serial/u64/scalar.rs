@@ -1009,9 +1009,7 @@ impl Scalar52 {
                 &&& sum == (w as u128) + (carry << 52)
             }),
     {
-        proof {
-            lemma_part2_bounds(sum)
-        }
+        proof { lemma_part2_bounds(sum) }
         let w = (sum as u64) & ((1u64 << 52) - 1);
         let carry = sum >> 52;
         (carry, w)

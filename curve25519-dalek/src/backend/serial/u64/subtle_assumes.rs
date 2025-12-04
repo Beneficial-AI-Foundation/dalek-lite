@@ -259,10 +259,14 @@ pub fn conditional_negate_generic<T>(a: &mut T, choice: Choice) where
 
 /// Specialized wrapper for conditional_negate on FieldElement51 with proper specs.
 /// Use this when you need verified limb bounds and functional correctness guarantees.
+///
+/// Note: The implementation internally uses field negation which calls reduce(),
+/// so 52-bit bounded input is safe (reduce handles up to 64-bit limbs).
+/// The output is always 52-bit bounded from the reduce operation.
 #[verifier::external_body]
 pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
     requires
-        fe51_limbs_bounded(old(a), 51),
+        fe51_limbs_bounded(old(a), 52),  // Relaxed from 51 to 52 to match mul/square output
     ensures
         fe51_limbs_bounded(a, 52),
         spec_field_element(a) == if choice_is_true(choice) {
@@ -272,6 +276,24 @@ pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
         },
 {
     a.conditional_negate(choice);
+}
+
+/// Specialized wrapper for FieldElement51 negation with proper specs.
+/// The Neg implementation for FieldElement51 produces 52-bit bounded output.
+/// Note: The actual Neg impl has ensures for 52-bit output and correct semantics,
+/// but we use external_body to avoid Verus internal errors with trait dispatch.
+///
+/// The implementation adds 16*p (with limbs ~2^55) then subtracts and reduces.
+/// This safely handles up to 54-bit inputs (2^55 - 2^54 > 0), so 52-bit is safe.
+#[verifier::external_body]
+pub fn negate_field_element(a: &FieldElement51) -> (result: FieldElement51)
+    requires
+        fe51_limbs_bounded(a, 52),  // Relaxed to match conditional_negate (safe up to 54-bit)
+    ensures
+        fe51_limbs_bounded(&result, 52),  // Neg produces 52-bit output
+        spec_field_element(&result) == math_field_neg(spec_field_element(a)),
+{
+    -a
 }
 
 /// Generic wrapper for ConditionallySelectable::conditional_assign()

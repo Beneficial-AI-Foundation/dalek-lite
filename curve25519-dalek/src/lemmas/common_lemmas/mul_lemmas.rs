@@ -1,5 +1,6 @@
 #![allow(unused)]
 use vstd::arithmetic::mul::*;
+use vstd::arithmetic::power::*;
 use vstd::prelude::*;
 
 verus! {
@@ -198,6 +199,20 @@ pub proof fn lemma_mul_quad_prod(a1: int, b1: int, a2: int, b2: int)
     lemma_mul_is_associative(a2, a1, b1);
     // ((a2 * a1) * b1) * b2 = (a2 * a1) * (b1 * b2)
     lemma_mul_is_associative(a2 * a1, b1, b2);
+}
+
+/// Square of product equals product of squares: (a*b)² = a²*b²
+///
+/// Derived from vstd's lemma_pow_distributes: pow(a*b, e) == pow(a, e) * pow(b, e)
+pub proof fn lemma_product_square(a: nat, b: nat)
+    ensures (a * b) * (a * b) == (a * a) * (b * b),
+{
+    // pow(a*b, 2) == pow(a, 2) * pow(b, 2)  [from lemma_pow_distributes]
+    lemma_pow_distributes(a as int, b as int, 2);
+    // pow(x, 2) == x * x  [from lemma_square_is_pow2]
+    lemma_square_is_pow2((a * b) as int);
+    lemma_square_is_pow2(a as int);
+    lemma_square_is_pow2(b as int);
 }
 
 } // verus!

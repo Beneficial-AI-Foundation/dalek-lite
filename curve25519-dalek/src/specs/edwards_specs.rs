@@ -367,6 +367,43 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
      && (compressed.0[31] >> 7) == (((x_affine % crate::specs::field_specs_u64::p()) % 2) as u8)
 }
 
+/// Check if a CompressedEdwardsY has a valid sign bit.
+///
+/// ## Justification
+///
+/// This precondition captures an invariant that must hold for correctly-formed
+/// compressed Edwards points:
+///
+/// 1. **Mathematical basis**: For points with x = 0 on the Edwards curve,
+///    the curve equation gives y² = 1, so y = ±1. These special points
+///    (the identity (0,1) and the point (0,-1)) have only one valid sign bit: 0.
+///
+/// 2. **compress() always produces valid points**: The compress() function
+///    (edwards.rs:1293) sets `sign_bit = x.is_negative()` which returns
+///    `bytes[0] & 1 = LSB(x)`. When x = 0, this is always 0.
+///
+/// 3. **Spec alignment**: The existing spec `compressed_edwards_y_corresponds_to_edwards`
+///    (edwards_specs.rs:367) already requires `sign_bit == x % 2`.
+///
+/// 4. **Sources of CompressedEdwardsY**:
+///    - compress(): Always produces valid points (by construction)
+///    - Direct construction / from_slice / serde: No automatic validation
+///    - identity(): Hardcoded valid bytes
+///
+/// Therefore, this precondition is satisfied by all compress()-produced points
+/// and must be ensured by callers when handling externally-sourced bytes.
+///
+/// ## Definition
+///
+/// If the Y coordinate yields x = 0 (i.e., y² ≡ 1 mod p), the sign bit must be 0.
+pub open spec fn is_valid_compressed_edwards_y(bytes: &[u8; 32]) -> bool {
+    let y = spec_field_element_from_bytes(bytes);
+    let sign_bit = bytes[31] >> 7;
+    // If y² ≡ 1 (mod p), then x = 0, so sign_bit must be 0
+    // Equivalently: sign_bit == 1 implies y² ≢ 1
+    math_field_square(y) == 1 ==> sign_bit == 0
+}
+
 /// Check if a ProjectiveNielsPoint corresponds to an EdwardsPoint
 /// A ProjectiveNielsPoint (Y_plus_X, Y_minus_X, Z, T2d) corresponds to EdwardsPoint (X:Y:Z:T) if:
 /// 1. Y_plus_X = Y + X (mod p)

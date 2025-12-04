@@ -13,3 +13,5 @@ pub mod montgomery_lemmas;
 pub mod scalar_lemmas_extra;
 
 pub mod scalar_byte_lemmas;
+
+pub mod edwards_lemmas;

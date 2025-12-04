@@ -12,4 +12,9 @@ pub mod pow_lemmas;
 
 pub mod shift_lemmas;
 
+pub mod sqrt_ratio_lemmas;
+
 pub mod sum_lemmas;
+
+// Unused lemmas kept for reference
+pub mod unused_sqrt_ratio_lemmas;

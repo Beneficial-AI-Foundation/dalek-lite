@@ -1,9 +1,11 @@
 #![allow(unused)]
+use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::power2::*;
 use vstd::bits::*;
 use vstd::prelude::*;
 
 use super::core_specs::*;
+use crate::lemmas::common_lemmas::pow_lemmas::lemma_pow2_even;
 
 verus! {
 
@@ -31,6 +33,36 @@ pub proof fn p_gt_2()
 {
     lemma2_to64();  // 2^5 = 32
     lemma_pow2_strictly_increases(5, 255);  // 2^255 > 2^5 = 32
+}
+
+/// Proof that p() is odd (p() % 2 == 1)
+///
+/// Since p() = 2^255 - 19:
+/// - 2^255 is even (by lemma_pow2_even)
+/// - 19 is odd (19 % 2 == 1)
+/// - even - odd = odd
+pub proof fn lemma_p_is_odd()
+    ensures
+        p() % 2 == 1,
+{
+    // 2^255 is even
+    lemma_pow2_even(255);
+    assert(pow2(255) % 2 == 0);
+    
+    // 19 % 2 == 1
+    assert(19int % 2 == 1) by (compute);
+    
+    // p() = 2^255 - 19
+    // (even - odd) % 2 = (0 - 1) % 2 = (-1) % 2 = 1
+    // Using lemma_sub_mod_noop: (a - b) % m == ((a%m) - (b%m)) % m
+    lemma_sub_mod_noop(pow2(255) as int, 19int, 2int);
+    // (pow2(255) - 19) % 2 == ((pow2(255) % 2) - (19 % 2)) % 2 == (0 - 1) % 2 == (-1) % 2
+    
+    // -1 % 2 == 1 (in Verus, negative mod is handled correctly)
+    assert((-1int) % 2 == 1) by (compute);
+    
+    // Combine: p() % 2 == 1
+    pow255_gt_19();  // Ensure 2^255 > 19 so p() > 0
 }
 
 pub open spec const mask51: u64 = 2251799813685247u64;

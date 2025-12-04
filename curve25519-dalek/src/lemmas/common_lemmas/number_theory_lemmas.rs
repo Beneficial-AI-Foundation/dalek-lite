@@ -3,11 +3,15 @@ use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
 use crate::specs::primality_specs::*;
 #[allow(unused_imports)]
+use crate::specs::field_specs_u64::*;  // for p(), pow255_gt_19()
+#[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::mul::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::*;  // for pow2(), lemma_pow2_adds()
 
 use vstd::prelude::*;
 
@@ -1678,6 +1682,209 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
             lemma_small_mod(1nat, prime);
         };
     }
+}
+
+// ============================================================================
+// PART 9: Modular Arithmetic - Square of Complement
+// ============================================================================
+
+/// Lemma: (p - a)² % p = a² % p for 0 < a < p
+///
+/// This is a fundamental modular arithmetic property:
+///   (p - a)² = p² - 2pa + a²
+///   p² % p = 0 (p divides p²)
+///   2pa % p = 0 (p divides 2pa)
+///   So (p - a)² % p = a² % p
+///
+/// This lemma is useful for proving that negation preserves squares in finite fields.
+pub proof fn lemma_square_of_complement(a: nat, p: nat)
+    requires
+        p > 0,
+        0 < a && a < p,
+    ensures
+        (((p - a) * (p - a)) as nat) % p == ((a * a) as nat) % p,
+{
+    let p_int = p as int;
+    let a_int = a as int;
+    let p_minus_a = (p - a) as int;
+    
+    // Step 1: Algebraic expansion
+    // (p - a)² = p² - 2pa + a²
+    
+    // lemma_mul_is_distributive_sub(x, y, z) proves: x * (y - z) = x*y - x*z
+    
+    // First: (p - a) * (p - a) = (p-a)*p - (p-a)*a
+    assert(p_minus_a * p_minus_a == p_minus_a * p_int - p_minus_a * a_int) by {
+        lemma_mul_is_distributive_sub(p_minus_a, p_int, a_int);
+    }
+    
+    // Expand (p-a)*p = p*p - a*p
+    assert(p_minus_a * p_int == p_int * p_int - a_int * p_int) by {
+        lemma_mul_is_commutative(p_minus_a, p_int);
+        // p * (p - a) = p*p - p*a
+        lemma_mul_is_distributive_sub(p_int, p_int, a_int);
+    }
+    
+    // Expand (p-a)*a = p*a - a*a
+    assert(p_minus_a * a_int == p_int * a_int - a_int * a_int) by {
+        lemma_mul_is_commutative(p_minus_a, a_int);
+        // a * (p - a) = a*p - a*a
+        lemma_mul_is_distributive_sub(a_int, p_int, a_int);
+    }
+    
+    // Combine: (p-a)² = (p² - ap) - (pa - a²) = p² - ap - pa + a²
+    // Note: ap = pa by commutativity
+    assert(a_int * p_int == p_int * a_int) by {
+        lemma_mul_is_commutative(a_int, p_int);
+    }
+    
+    // So: (p-a)² = p² - 2pa + a²
+    // We have: (p-a)² = (p² - ap) - (pa - a²) = p² - ap - pa + a²
+    // And ap = pa, so: p² - ap - pa + a² = p² - 2pa + a²
+    
+    // Step: Show ap + pa = 2pa
+    // Since a*p = p*a (commutativity), we have:
+    // a*p + p*a = p*a + p*a = 2*(p*a)
+    let pa = p_int * a_int;
+    assert(a_int * p_int == pa);
+    assert(pa + pa == 2 * pa);
+    assert(2 * pa == 2 * p_int * a_int) by {
+        lemma_mul_is_associative(2int, p_int, a_int);
+    }
+    assert(a_int * p_int + p_int * a_int == 2 * p_int * a_int);
+    
+    // Now show the full expansion
+    // We have: (p-a)² = (p² - ap) - (pa - a²)
+    assert(p_minus_a * p_minus_a == (p_int * p_int - a_int * p_int) - (p_int * a_int - a_int * a_int));
+    
+    // Simplify: (A - B) - (C - D) = A - B - C + D
+    let A = p_int * p_int;
+    let B = a_int * p_int;
+    let C = p_int * a_int;
+    let D = a_int * a_int;
+    assert((A - B) - (C - D) == A - B - C + D);
+    
+    // Now A - B - C + D = p² - ap - pa + a² = p² - (ap + pa) + a² = p² - 2pa + a²
+    // Since B = ap = pa = C, we have B + C = 2pa
+    assert(B == C);  // ap = pa
+    assert(A - B - C + D == A - (B + C) + D);
+    assert(B + C == 2 * pa);
+    assert(A - (B + C) + D == A - 2 * pa + D);
+    assert(A - 2 * pa + D == p_int * p_int - 2 * p_int * a_int + a_int * a_int);
+    
+    assert(p_minus_a * p_minus_a == p_int * p_int - 2 * p_int * a_int + a_int * a_int);
+    
+    // Step 2: p² % p = 0
+    assert((p_int * p_int) % p_int == 0) by {
+        lemma_mod_multiples_basic(p_int, p_int);
+    }
+    
+    // Step 3: 2pa % p = 0
+    // 2*p*a = (2*a) * p, so it's a multiple of p
+    assert((2 * p_int * a_int) % p_int == 0) by {
+        // Need to show: 2 * p * a = (2 * a) * p
+        assert(2 * p_int * a_int == (2 * a_int) * p_int) by {
+            lemma_mul_is_associative(2int, p_int, a_int);
+            lemma_mul_is_commutative(2int, p_int);
+            lemma_mul_is_associative(p_int, 2int, a_int);
+            lemma_mul_is_commutative(p_int, 2 * a_int);
+        }
+        // (2*a) * p is divisible by p
+        lemma_mod_multiples_basic(2 * a_int, p_int);
+    }
+    
+    // Step 4: Combine
+    // (p² - 2pa + a²) % p = a² % p
+    // Because p² % p = 0 and 2pa % p = 0
+    
+    // First: (p² - 2pa) % p = 0
+    assert((p_int * p_int - 2 * p_int * a_int) % p_int == 0) by {
+        lemma_sub_mod_noop(p_int * p_int, 2 * p_int * a_int, p_int);
+        // Both p² % p = 0 and 2pa % p = 0, so (p² - 2pa) % p = (0 - 0) % p = 0
+        lemma_small_mod(0nat, p);
+    }
+    
+    // Then: (p² - 2pa + a²) % p = (0 + a²) % p = a² % p
+    // lemma_add_mod_noop: (x + y) % m = ((x % m) + (y % m)) % m
+    let x = p_int * p_int - 2 * p_int * a_int;
+    let y = a_int * a_int;
+    
+    // We have x % p = 0 (from above)
+    assert(x % p_int == 0);
+    
+    // Apply lemma_add_mod_noop
+    lemma_add_mod_noop(x, y, p_int);
+    // This gives: (x + y) % p = ((x % p) + (y % p)) % p = (0 + (y % p)) % p
+    assert((x + y) % p_int == ((x % p_int) + (y % p_int)) % p_int);
+    assert(((x % p_int) + (y % p_int)) % p_int == (0 + (y % p_int)) % p_int);
+    
+    // Now: (0 + (y % p)) % p = (y % p) % p = y % p
+    // Because 0 + z = z and (z % p) % p = z % p
+    let y_mod_p = y % p_int;
+    assert(0 + y_mod_p == y_mod_p);
+    lemma_mod_twice(y, p_int);  // (y % p) % p = y % p
+    assert((y_mod_p) % p_int == y % p_int);
+    assert((0 + y_mod_p) % p_int == y_mod_p % p_int);
+    
+    // Final chain: (x + y) % p = y % p
+    assert((x + y) % p_int == (y) % p_int);
+    assert((p_int * p_int - 2 * p_int * a_int + a_int * a_int) % p_int == (a_int * a_int) % p_int);
+    
+    // Step 5: Connect to the ensures clause
+    // We showed: (p-a)² = p² - 2pa + a² and (p² - 2pa + a²) % p = a² % p
+    // So (p-a)² % p = a² % p
+    
+    // Cast to nat for the ensures clause
+    assert(p_minus_a * p_minus_a >= 0) by {
+        lemma_mul_nonnegative(p_minus_a, p_minus_a);
+    }
+    assert(a_int * a_int >= 0) by {
+        lemma_mul_nonnegative(a_int, a_int);
+    }
+}
+
+//=============================================================================
+// Properties of p = 2^255 - 19
+//=============================================================================
+
+/// Proves that p ≡ 5 (mod 8)
+///
+/// Mathematical reasoning:
+/// 1. p = 2^255 - 19
+/// 2. 2^255 = 2^3 · 2^252 = 8 · 2^252, so 2^255 ≡ 0 (mod 8)
+/// 3. 19 ≡ 3 (mod 8)
+/// 4. p ≡ 0 - 3 ≡ -3 ≡ 5 (mod 8)
+///
+/// Used in: field.rs (sqrt_ratio_i verification)
+pub proof fn lemma_p_mod_8_eq_5()
+    ensures p() % 8 == 5,
+{
+    pow255_gt_19();
+    
+    // Step 1: 2^3 = 8 (revealed via lemma2_to64)
+    lemma2_to64();
+    assert(pow2(3) == 8);
+    
+    // Step 2: 2^255 = 2^3 · 2^252
+    assert(pow2(255) == pow2(3) * pow2(252)) by {
+        lemma_pow2_adds(3, 252);
+    };
+    
+    // Step 3: 2^255 ≡ 0 (mod 8) since 2^255 = 8 · 2^252
+    assert(pow2(255) % 8 == 0) by {
+        lemma_mul_mod_noop_left(pow2(3) as int, pow2(252) as int, 8int);
+    };
+    
+    // Step 4: 19 ≡ 3 (mod 8)
+    assert(19int % 8 == 3) by (compute);
+    
+    // Step 5: p = 2^255 - 19 ≡ 0 - 3 ≡ -3 (mod 8)
+    assert((pow2(255) as int - 19) % 8 == (-3int) % 8) by {
+        lemma_sub_mod_noop(pow2(255) as int, 19int, 8int);
+    };
+    
+    // Step 6: -3 ≡ 5 (mod 8)
+    assert((-3int) % 8 == 5) by (compute);
 }
 
 } // verus!

@@ -71,6 +71,10 @@ use crate::lemmas::field_lemmas::pow22501_t3_lemma::*;
 use crate::lemmas::field_lemmas::pow_p58_lemma::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::sqrt_ratio_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 
 verus! {
 
@@ -792,6 +796,11 @@ impl FieldElement {
         Choice,
         FieldElement,
     ))
+        requires
+            // Input bounds for sqrt_ratio_i
+            // u and v can be up to 54-bit bounded (from sub/add operations in decompress)
+            fe51_limbs_bounded(u, 54),
+            fe51_limbs_bounded(v, 54),
         ensures
     // When u = 0: always return (true, 0)
 
@@ -815,6 +824,14 @@ impl FieldElement {
                 v,
                 &result.1,
             ),
+            // NEW: The result is always the "non-negative" square root (LSB = 0)
+            // This is a fundamental property of sqrt_ratio_i that the original code
+            // relies on for decompression sign bit handling
+            (spec_field_element(&result.1) % p()) % 2 == 0,
+            // NEW: The result is bounded (reduced mod p)
+            spec_field_element(&result.1) < p(),
+            // Limb bounds: result is 52-bit bounded (from conditional_negate)
+            fe51_limbs_bounded(&result.1, 52),
     // VERIFICATION NOTE: PROOF BYPASS
 
     {
@@ -842,11 +859,62 @@ impl FieldElement {
         //
         // If v is zero, r is also zero.
         proof {
-            assume(false);  // PROOF BYPASS
+            // ALGEBRAIC CORRECTNESS PROOF STRUCTURE:
+            // 1. p ≡ 5 (mod 8), so the algorithm works
+            lemma_p_mod_8_eq_5();
+            
+            // 2. The key algebraic property: v*r² = u * (4th root of unity)
+            //    where r = (uv³)(uv⁷)^((p-5)/8)
+            //    This means check ∈ {u, -u, u*i, -u*i}
+            
+            // 3. If check = u: return (true, r)
+            // 4. If check = -u: return (true, r*i) since (r*i)²*v = -r²*v = u
+            // 5. If check = u*i: return (false, r) - u/v is not a square, but i*u/v is
+            // 6. If check = -u*i: return (false, r*i) since (r*i)²*v = -r²*v = u*i
+            
+            // The detailed proofs for each case use the lemmas in sqrt_ratio_lemmas.rs:
+            //
+            // Case 4 (check = -u): after r ← r*i, we have v·r² = u
+            //   → lemma_flipped_sign_becomes_correct(u_math, v_math, r_math)
+            //
+            // Case 6 (check = -u*i): after r ← r*i, we have v·r² = u*i
+            //   → lemma_flipped_sign_becomes_correct(u_math * spec_sqrt_m1(), v_math, r_math)
+            //
+            // For now, we assume the algebraic correctness
+            assume(false);  // TODO: Replace with full algebraic proof using lemmas above
         }
+        // BOUNDS TRACKING:
+        // v is 54-bit bounded (from requires)
+        // v.square() requires 54-bit, produces 52-bit
         let v3 = &v.square() * v;
+        proof {
+            // v² is 52-bit, v is 54-bit, mul produces 52-bit
+            // Since 52 < 54, v² qualifies as 54-bit input
+            assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
+            assert(fe51_limbs_bounded(&v3, 52));  // from mul postcondition
+        }
         let v7 = &v3.square() * v;
-        let mut r = &(u * &v3) * &(u * &v7).pow_p58();
+        proof {
+            // v3² is 52-bit, v is 54-bit, mul produces 52-bit
+            assert(fe51_limbs_bounded(&v7, 52));  // from mul postcondition
+        }
+        let uv3 = u * &v3;
+        let uv7 = u * &v7;
+        proof {
+            // u is 54-bit, v3/v7 are 52-bit < 54-bit, mul produces 52-bit
+            assert(fe51_limbs_bounded(&uv3, 52));
+            assert(fe51_limbs_bounded(&uv7, 52));
+        }
+        let uv7_pow = uv7.pow_p58();
+        proof {
+            // pow_p58 requires 54-bit (52 < 54 ✓), produces 54-bit
+            assert(fe51_limbs_bounded(&uv7_pow, 54));
+        }
+        let mut r = &uv3 * &uv7_pow;
+        proof {
+            // uv3 is 52-bit < 54-bit, uv7_pow is 54-bit, mul produces 52-bit
+            assert(fe51_limbs_bounded(&r, 52));  // from mul postcondition
+        }
         let check = v * &r.square();
 
         let i = &constants::SQRT_M1;
@@ -862,21 +930,43 @@ impl FieldElement {
         let flipped_sign_sqrt_i = check.ct_eq(&(&u_neg * i));
 
         let r_prime = &constants::SQRT_M1 * &r;
+        proof {
+            // SQRT_M1 is 51-bit < 54-bit, r is 52-bit < 54-bit, mul produces 52-bit
+            assert(fe51_limbs_bounded(&r_prime, 52));
+        }
         // ORIGINAL CODE:
         // r.conditional_assign(&r_prime, flipped_sign_sqrt | flipped_sign_sqrt_i);
         // REFACTORED: Use wrapper for Choice bitwise OR
-        r.conditional_assign(&r_prime, choice_or(flipped_sign_sqrt, flipped_sign_sqrt_i));
+        let ghost r_before_assign = r;
+        let the_choice = choice_or(flipped_sign_sqrt, flipped_sign_sqrt_i);
+        r.conditional_assign(&r_prime, the_choice);
+        proof {
+            // conditional_assign ensures:
+            // - If choice is false: r.limbs[i] == r_before_assign.limbs[i] (52-bit)
+            // - If choice is true: r.limbs[i] == r_prime.limbs[i] (52-bit)
+            // Either way, result is 52-bit bounded
+            assert(fe51_limbs_bounded(&r_before_assign, 52));
+            assert(fe51_limbs_bounded(&r_prime, 52));
+            // Prove bounds preservation for each limb
+            assert forall|i: int| 0 <= i < 5 implies r.limbs[i] < (1u64 << 52) by {
+                if choice_is_true(the_choice) {
+                    // r.limbs[i] == r_prime.limbs[i] < 2^52
+                    assert(r.limbs[i] == r_prime.limbs[i]);
+                    assert(r_prime.limbs[i] < (1u64 << 52));
+                } else {
+                    // r.limbs[i] == r_before_assign.limbs[i] < 2^52
+                    assert(r.limbs[i] == r_before_assign.limbs[i]);
+                    assert(r_before_assign.limbs[i] < (1u64 << 52));
+                }
+            }
+            assert(fe51_limbs_bounded(&r, 52));
+        }
 
         // Choose the nonnegative square root.
         let r_is_negative = r.is_negative();
         // ORIGINAL CODE:
         // r.conditional_negate(r_is_negative);
         // REFACTORED: Use specialized wrapper with specs
-        proof {
-            // r is bounded after conditional_assign (result of multiplications and pow_p58)
-            // This will need to be proven when we remove the assume(false) bypass
-            assume(fe51_limbs_bounded(&r, 51));
-        }
         conditional_negate_field_element(&mut r, r_is_negative);
 
         // ORIGINAL CODE:

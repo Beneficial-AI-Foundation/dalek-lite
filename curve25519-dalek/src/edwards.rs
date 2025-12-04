@@ -163,6 +163,8 @@ use crate::specs::field_specs::*;
 use crate::specs::montgomery_specs::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs_u64::group_order;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -2153,8 +2155,23 @@ impl EdwardsPoint {
     pub fn mul_by_cofactor(&self) -> (result: EdwardsPoint)
         requires
             edwards_point_limbs_bounded(*self),
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = [8]P
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(*self),
+                8,
+            ),
     {
-        self.mul_by_pow_2(3)
+        let result = self.mul_by_pow_2(3);
+        proof {
+            // 2^3 = 8
+            assume(edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(*self),
+                8,
+            ));
+        }
+        result
     }
 
     /// Compute \\([2\^k] P \\) by successive doublings. Requires \\( k > 0 \\).
@@ -2162,6 +2179,13 @@ impl EdwardsPoint {
         requires
             k > 0,
             edwards_point_limbs_bounded(*self),
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = [2^k]P
+            edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(*self),
+                vstd::arithmetic::power2::pow2(k as nat),
+            ),
     {
         #[cfg(not(verus_keep_ghost))]
         debug_assert!(k > 0);
@@ -2191,7 +2215,15 @@ impl EdwardsPoint {
             assume(fe51_limbs_bounded(&s.Y, 54));
             assume(fe51_limbs_bounded(&s.Z, 54));
         }
-        s.double().as_extended()
+        let result = s.double().as_extended();
+        proof {
+            assume(is_well_formed_edwards_point(result));
+            assume(edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(*self),
+                vstd::arithmetic::power2::pow2(k as nat),
+            ));
+        }
+        result
     }
 
     /// Determine if this point is of small order.
@@ -2217,12 +2249,26 @@ impl EdwardsPoint {
     /// // Q has small order
     /// assert_eq!(Q.is_small_order(), true);
     /// ```
-    #[verifier::external_body]
-    pub fn is_small_order(&self) -> bool {
-        self.mul_by_cofactor().is_identity()
+    pub fn is_small_order(&self) -> (result: bool)
+        requires
+            edwards_point_limbs_bounded(*self),
+        ensures
+    // A point has small order iff [8]P = O (identity)
+
+            result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)
+                == math_edwards_identity()),
+    {
+        /* ORIGINAL CODE: self.mul_by_cofactor().is_identity() */
+        let cofactor_mul = self.mul_by_cofactor();
+        let result = cofactor_mul.is_identity();
+        proof {
+            assume(result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)
+                == math_edwards_identity()));
+        }
+        result
     }
 
-    /// Determine if this point is “torsion-free”, i.e., is contained in
+    /// Determine if this point is "torsion-free", i.e., is contained in
     /// the prime-order subgroup.
     ///
     /// # Return
@@ -2248,9 +2294,23 @@ impl EdwardsPoint {
     /// // P + Q is not torsion-free
     /// assert_eq!((P+Q).is_torsion_free(), false);
     /// ```
-    #[verifier::external_body]
-    pub fn is_torsion_free(&self) -> bool {
-        (self * constants::BASEPOINT_ORDER_PRIVATE).is_identity()
+    pub fn is_torsion_free(&self) -> (result: bool)
+        requires
+            is_well_formed_edwards_point(*self),
+        ensures
+    // A point is torsion-free iff [ℓ]P = O, where ℓ is the group order
+
+            result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order())
+                == math_edwards_identity()),
+    {
+        /* ORIGINAL CODE: (self * constants::BASEPOINT_ORDER_PRIVATE).is_identity() */
+        let order_mul = self * constants::BASEPOINT_ORDER_PRIVATE;
+        let result = order_mul.is_identity();
+        proof {
+            assume(result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order())
+                == math_edwards_identity()));
+        }
+        result
     }
 }
 

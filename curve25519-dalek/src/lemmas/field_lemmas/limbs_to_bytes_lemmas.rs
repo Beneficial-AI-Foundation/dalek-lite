@@ -2010,7 +2010,7 @@ proof fn lemma_boundary_byte_combines(
         }
 
         assert((a | b << low_bits) == a + (b << low_bits)) by {
-            lemma_bit_or_is_plus(a, b, low_bits as u64);
+            lemma_u64_bit_or_is_plus(a, b, low_bits as u64);
         }
     }
 

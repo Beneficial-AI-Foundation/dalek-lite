@@ -253,7 +253,7 @@ pub proof fn lemma_load8_at_versions_equivalent(input: &[u8], i: usize, k: nat)
             }
             assert(u8::MAX <= u64::MAX >> 56) by (compute);
         }
-        lemma_bit_or_is_plus(prev, input[i + k] as u64, (8 * k) as u64);
+        lemma_u64_bit_or_is_plus(prev, input[i + k] as u64, (8 * k) as u64);
     }
 }
 

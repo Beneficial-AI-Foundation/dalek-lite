@@ -134,6 +134,8 @@ use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::curve_models::ProjectivePoint;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
+use vstd::arithmetic::power2::{pow2, lemma2_to64};
+
 
 /* VERIFICATION NOTE: Only importing LookupTableRadix16 since other radix variants
 were removed during manual expansion focusing on radix-16. */
@@ -2164,6 +2166,7 @@ since only radix-16 is kept and no conversions between radix sizes are needed.
 
 verus! {
 
+
 impl EdwardsPoint {
     /// Multiply by the cofactor: return \\(\[8\]P\\).
     pub fn mul_by_cofactor(&self) -> (result: EdwardsPoint)
@@ -2180,10 +2183,11 @@ impl EdwardsPoint {
         let result = self.mul_by_pow_2(3);
         proof {
             // Prove 2^3 = 8
-            vstd::arithmetic::power2::lemma2_to64();
-            assert(vstd::arithmetic::power2::pow2(3) == 8);
             // mul_by_pow_2 ensures: edwards_point_as_affine(result) == edwards_scalar_mul(..., pow2(3))
             // Combined with pow2(3) == 8, we get the postcondition
+            assert(pow2(3) == 8) by {
+                lemma2_to64();
+            }
         }
         result
     }
@@ -2198,7 +2202,7 @@ impl EdwardsPoint {
             // Functional correctness: result = [2^k]P
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(*self),
-                vstd::arithmetic::power2::pow2(k as nat),
+                pow2(k as nat),
             ),
     {
         #[cfg(not(verus_keep_ghost))]
@@ -2234,7 +2238,7 @@ impl EdwardsPoint {
             assume(is_well_formed_edwards_point(result));
             assume(edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(*self),
-                vstd::arithmetic::power2::pow2(k as nat),
+                pow2(k as nat),
             ));
         }
         result

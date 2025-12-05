@@ -46,9 +46,6 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
     // Establish that one is canonical: to_nat([1,0,0,0,0]) = 1 < group_order()
     crate::lemmas::scalar_lemmas::lemma_one_bounded(one);
     crate::lemmas::scalar_lemmas::lemma_five_limbs_equals_to_nat(&one.limbs);
-    assert(to_nat(&one.limbs) == 1) by {
-        assert(crate::specs::scalar_specs_u64::five_limbs_to_nat_aux([1u64, 0u64, 0u64, 0u64, 0u64]) == 1) by (compute);
-    };
     assert(1 < group_order());
 }
 

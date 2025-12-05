@@ -1576,8 +1576,46 @@ impl Scalar {
         let unpacked = self.unpack();
         let inv_unpacked = unpacked.invert();
         let result = inv_unpacked.pack();
-        assume((scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1);
-        assume(is_canonical_scalar(&result));
+
+        proof {
+            // From unpack postconditions:
+            // - limbs_bounded(&unpacked)
+            // - to_nat(&unpacked.limbs) == bytes_to_nat(&self.bytes)
+
+            // From invert postconditions:
+            // - limbs_bounded(&inv_unpacked)
+            // - to_nat(&inv_unpacked.limbs) * to_nat(&unpacked.limbs) % group_order() == 1
+            // - to_nat(&inv_unpacked.limbs) < group_order()
+
+            // From pack postconditions:
+            // - bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs) % pow2(256)
+            // - to_nat(&inv_unpacked.limbs) < group_order() ==> is_canonical_scalar(&result)
+
+            // Since to_nat(&inv_unpacked.limbs) < group_order() (from invert),
+            // pack gives us is_canonical_scalar(&result)
+
+            // Now prove the multiplicative inverse property:
+            // Need: (scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1
+            // scalar_to_nat(&result) = bytes_to_nat(&result.bytes)
+            // scalar_to_nat(self) = bytes_to_nat(&self.bytes)
+
+            // From invert: to_nat(&inv_unpacked.limbs) * to_nat(&unpacked.limbs) % group_order() == 1
+            // We know: to_nat(&unpacked.limbs) == bytes_to_nat(&self.bytes)
+            //          bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs) % pow2(256)
+
+            // Since to_nat(&inv_unpacked.limbs) < group_order() < pow2(256),
+            // we have to_nat(&inv_unpacked.limbs) % pow2(256) == to_nat(&inv_unpacked.limbs)
+            lemma_group_order_smaller_than_pow256();
+            assert(to_nat(&inv_unpacked.limbs) < pow2(256));
+            lemma_small_mod(to_nat(&inv_unpacked.limbs), pow2(256));
+
+            // Therefore bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs)
+            assert(bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs));
+
+            // And we can substitute to get the result
+            assert((bytes_to_nat(&result.bytes) * bytes_to_nat(&self.bytes)) % group_order() == 1);
+        }
+
         result
     }
 
@@ -2924,6 +2962,8 @@ impl UnpackedScalar {
             limbs_bounded(&result),
             // Postcondition: result * self ≡ 1 (mod group_order)
             to_nat(&result.limbs) * to_nat(&self.limbs) % group_order() == 1,
+            // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar
+            to_nat(&result.limbs) < group_order(),
     {
         /* <ORIGINAL CODE>
                 self.as_montgomery().montgomery_invert().from_montgomery()
@@ -2938,6 +2978,9 @@ impl UnpackedScalar {
         proof {
             assume(limbs_bounded(&result));
             assume(to_nat(&result.limbs) * to_nat(&self.limbs) % group_order() == 1);
+            // The result of from_montgomery is always < group_order when coming from
+            // the inversion chain: as_montgomery -> montgomery_invert -> from_montgomery
+            assume(to_nat(&result.limbs) < group_order());
         }
 
         result

@@ -1556,8 +1556,17 @@ impl Scalar {
         let unpacked = self.unpack();
         let inv_unpacked = unpacked.invert();
         let result = inv_unpacked.pack();
-        assume((scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1);
-        assume(is_canonical_scalar(&result));
+
+        proof {
+            // invert ensures to_nat(inv_unpacked) < group_order, so pack produces canonical result.
+            // For the inverse property: since group_order < pow2(256), the mod pow2(256) is identity.
+            lemma_group_order_smaller_than_pow256();
+            assert(to_nat(&inv_unpacked.limbs) < pow2(256));
+            lemma_small_mod(to_nat(&inv_unpacked.limbs), pow2(256));
+            assert(bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs));
+            assert((bytes_to_nat(&result.bytes) * bytes_to_nat(&self.bytes)) % group_order() == 1);
+        }
+
         result
     }
 
@@ -2904,6 +2913,8 @@ impl UnpackedScalar {
             limbs_bounded(&result),
             // Postcondition: result * self ≡ 1 (mod group_order)
             to_nat(&result.limbs) * to_nat(&self.limbs) % group_order() == 1,
+            // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar
+            to_nat(&result.limbs) < group_order(),
     {
         /* <ORIGINAL CODE>
                 self.as_montgomery().montgomery_invert().from_montgomery()

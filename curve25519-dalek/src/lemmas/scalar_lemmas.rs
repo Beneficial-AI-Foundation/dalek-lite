@@ -2031,4 +2031,16 @@ pub proof fn lemma_canonical_bytes_high_bit_clear(bytes: &[u8; 32])
     }
 }
 
+// Prove that Scalar52 with limbs [1, 0, 0, 0, 0] is bounded (all limbs < 2^52)
+pub proof fn lemma_one_bounded(one: Scalar52)
+    requires
+        one == (Scalar52 { limbs: [1, 0, 0, 0, 0] }),
+    ensures
+        limbs_bounded(&one),
+{
+    assert(1u64 < 0x10000000000000) by (compute_only);
+    assert(0u64 < 0x10000000000000) by (compute_only);
+    assert(0x10000000000000 == 1u64 << 52) by (bit_vector);
+}
+
 } // verus!

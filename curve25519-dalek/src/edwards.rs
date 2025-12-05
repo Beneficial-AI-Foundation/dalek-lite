@@ -134,8 +134,8 @@ use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::curve_models::ProjectivePoint;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
-use vstd::arithmetic::power2::{pow2, lemma2_to64};
-
+#[cfg(verus_keep_ghost)]
+use vstd::arithmetic::power2::{lemma2_to64, pow2};
 
 /* VERIFICATION NOTE: Only importing LookupTableRadix16 since other radix variants
 were removed during manual expansion focusing on radix-16. */
@@ -2165,7 +2165,6 @@ since only radix-16 is kept and no conversions between radix sizes are needed.
 */
 
 verus! {
-
 
 impl EdwardsPoint {
     /// Multiply by the cofactor: return \\(\[8\]P\\).

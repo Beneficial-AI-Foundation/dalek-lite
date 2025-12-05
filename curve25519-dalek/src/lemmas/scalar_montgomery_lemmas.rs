@@ -1,12 +1,12 @@
 use crate::backend::serial::u64::scalar::Scalar52;
 #[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs_u64::group_order;
+#[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs_u64::limbs_bounded;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs_u64::spec_mul_internal;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs_u64::to_nat;
-#[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs_u64::group_order;
 use vstd::prelude::*;
 
 verus! {

@@ -1187,6 +1187,11 @@ impl Scalar52 {
             limbs_bounded(&result),
             (to_nat(&result.limbs) * montgomery_radix()) % group_order() == to_nat(&self.limbs)
                 % group_order(),
+            // Result is canonical (< group_order)
+            // This follows from montgomery_reduce's postcondition: when input is
+            // spec_mul_internal(bounded, canonical) with canonical < group_order,
+            // the output is < group_order. Here canonical = [1,0,0,0,0] with to_nat = 1.
+            to_nat(&result.limbs) < group_order(),
     {
         let mut limbs = [0u128;9];
         #[allow(clippy::needless_range_loop)]
@@ -1198,11 +1203,16 @@ impl Scalar52 {
             limbs[i] = self.limbs[i] as u128;
         }
         proof {
+            // This lemma establishes:
+            // 1. exists bounded1, bounded2 such that spec_mul_internal(bounded1, bounded2) == limbs
+            // 2. exists bounded, canonical such that to_nat(canonical) < group_order() and spec_mul_internal(bounded, canonical) == limbs
             lemma_from_montgomery_is_product_with_one(self, &limbs);
         }
         let result = Scalar52::montgomery_reduce(&limbs);
         proof {
             lemma_from_montgomery_limbs_conversion(&limbs, &self.limbs);
+            // montgomery_reduce's 2nd postcondition now automatically applies because
+            // lemma_from_montgomery_is_product_with_one established the required existential
         }
         result
     }

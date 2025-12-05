@@ -2970,17 +2970,18 @@ impl UnpackedScalar {
         </ORIGINAL CODE> */
         assume(limbs_bounded(self));
         let mont = self.as_montgomery();
-        assume(limbs_bounded(&mont));
+        // as_montgomery ensures limbs_bounded(&result), no assume needed
         let inv = mont.montgomery_invert();
-        assume(limbs_bounded(&inv));
+        // montgomery_invert ensures limbs_bounded(&result), no assume needed
         let result = inv.from_montgomery();
+        // from_montgomery ensures:
+        // - limbs_bounded(&result)
+        // - to_nat(&result.limbs) < group_order()  <- This is what we needed!
 
         proof {
-            assume(limbs_bounded(&result));
+            // to_nat(&result.limbs) < group_order() comes from from_montgomery's postcondition
+            // limbs_bounded(&result) comes from from_montgomery's postcondition
             assume(to_nat(&result.limbs) * to_nat(&self.limbs) % group_order() == 1);
-            // The result of from_montgomery is always < group_order when coming from
-            // the inversion chain: as_montgomery -> montgomery_invert -> from_montgomery
-            assume(to_nat(&result.limbs) < group_order());
         }
 
         result

@@ -1578,41 +1578,12 @@ impl Scalar {
         let result = inv_unpacked.pack();
 
         proof {
-            // From unpack postconditions:
-            // - limbs_bounded(&unpacked)
-            // - to_nat(&unpacked.limbs) == bytes_to_nat(&self.bytes)
-
-            // From invert postconditions:
-            // - limbs_bounded(&inv_unpacked)
-            // - to_nat(&inv_unpacked.limbs) * to_nat(&unpacked.limbs) % group_order() == 1
-            // - to_nat(&inv_unpacked.limbs) < group_order()
-
-            // From pack postconditions:
-            // - bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs) % pow2(256)
-            // - to_nat(&inv_unpacked.limbs) < group_order() ==> is_canonical_scalar(&result)
-
-            // Since to_nat(&inv_unpacked.limbs) < group_order() (from invert),
-            // pack gives us is_canonical_scalar(&result)
-
-            // Now prove the multiplicative inverse property:
-            // Need: (scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1
-            // scalar_to_nat(&result) = bytes_to_nat(&result.bytes)
-            // scalar_to_nat(self) = bytes_to_nat(&self.bytes)
-
-            // From invert: to_nat(&inv_unpacked.limbs) * to_nat(&unpacked.limbs) % group_order() == 1
-            // We know: to_nat(&unpacked.limbs) == bytes_to_nat(&self.bytes)
-            //          bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs) % pow2(256)
-
-            // Since to_nat(&inv_unpacked.limbs) < group_order() < pow2(256),
-            // we have to_nat(&inv_unpacked.limbs) % pow2(256) == to_nat(&inv_unpacked.limbs)
+            // invert ensures to_nat(inv_unpacked) < group_order, so pack produces canonical result.
+            // For the inverse property: since group_order < pow2(256), the mod pow2(256) is identity.
             lemma_group_order_smaller_than_pow256();
             assert(to_nat(&inv_unpacked.limbs) < pow2(256));
             lemma_small_mod(to_nat(&inv_unpacked.limbs), pow2(256));
-
-            // Therefore bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs)
             assert(bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs));
-
-            // And we can substitute to get the result
             assert((bytes_to_nat(&result.bytes) * bytes_to_nat(&self.bytes)) % group_order() == 1);
         }
 

@@ -224,12 +224,12 @@ ProjectivePoint::as_extended(&self),curve25519_dalek::backend::serial::curve_mod
 CompletedPoint::as_projective(&self),curve25519_dalek::backend::serial::curve_models,CompletedPoint
 CompletedPoint::as_extended(&self),curve25519_dalek::backend::serial::curve_models,CompletedPoint
 ProjectivePoint::double(&self),curve25519_dalek::backend::serial::curve_models,ProjectivePoint
-EdwardsPoint::add(&ProjectiveNielsPoint),curve25519_dalek::backend::serial::curve_models,Add<&'b ProjectiveNielsPoint> for EdwardsPoint
-EdwardsPoint::sub(&ProjectiveNielsPoint),curve25519_dalek::backend::serial::curve_models,Sub<&'b ProjectiveNielsPoint> for EdwardsPoint
-EdwardsPoint::add(&AffineNielsPoint),curve25519_dalek::backend::serial::curve_models,Add<&'b AffineNielsPoint> for EdwardsPoint
-EdwardsPoint::sub(&AffineNielsPoint),curve25519_dalek::backend::serial::curve_models,Sub<&'b AffineNielsPoint> for EdwardsPoint
-ProjectiveNielsPoint::neg(self),curve25519_dalek::backend::serial::curve_models,Neg for ProjectiveNielsPoint
-AffineNielsPoint::neg(self),curve25519_dalek::backend::serial::curve_models,Neg for AffineNielsPoint
+EdwardsPoint::add(&ProjectiveNielsPoint),curve25519_dalek::backend::serial::curve_models,Add<&'b ProjectiveNielsPoint> for &EdwardsPoint
+EdwardsPoint::sub(&ProjectiveNielsPoint),curve25519_dalek::backend::serial::curve_models,Sub<&'b ProjectiveNielsPoint> for &EdwardsPoint
+EdwardsPoint::add(&AffineNielsPoint),curve25519_dalek::backend::serial::curve_models,Add<&'b AffineNielsPoint> for &EdwardsPoint
+EdwardsPoint::sub(&AffineNielsPoint),curve25519_dalek::backend::serial::curve_models,Sub<&'b AffineNielsPoint> for &EdwardsPoint
+ProjectiveNielsPoint::neg(self),curve25519_dalek::backend::serial::curve_models,Neg for &ProjectiveNielsPoint
+AffineNielsPoint::neg(self),curve25519_dalek::backend::serial::curve_models,Neg for &AffineNielsPoint
 ProjectivePoint::fmt(&core),curve25519_dalek::backend::serial::curve_models,Debug for ProjectivePoint
 CompletedPoint::fmt(&core),curve25519_dalek::backend::serial::curve_models,Debug for CompletedPoint
 AffineNielsPoint::fmt(&core),curve25519_dalek::backend::serial::curve_models,Debug for AffineNielsPoint

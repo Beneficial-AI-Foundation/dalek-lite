@@ -266,6 +266,13 @@ impl CompressedEdwardsY {
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
+        /* ORIGINAL CODE:
+            if is_valid_y_coord.into() {
+                Some(decompress::step_2(self, X, Y, Z))
+            } else {
+                None
+            }
+         */
         proof {
             assert(choice_is_true(is_valid_y_coord) ==> math_is_valid_y_coordinate(
                 spec_field_element_from_bytes(&self.0),
@@ -339,124 +346,54 @@ mod decompress {
                 spec_field_element(&X) < p()
             }),
     {
-        // =================================================================
-        // PHASE 1: Setup Y, Z, compute u = y² - 1, v = d·y² + 1
-        // =================================================================
+        /* ORIGINAL CODE:
         let Y = FieldElement::from_bytes(repr.as_bytes());
-        assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
+        let Z = FieldElement::ONE;
+        let YY = Y.square();
+        let u = &YY - &Z;                            // u =  y²-1
+        let v = &(&YY * &constants::EDWARDS_D) + &Z; // v = dy²+1
+        let (is_valid_y_coord, X) = FieldElement::sqrt_ratio_i(&u, &v);
+        (is_valid_y_coord, X, Y, Z)
+        */
+        
+        let Y = FieldElement::from_bytes(repr.as_bytes());
         let Z = FieldElement::ONE;
         
+        // PROOF: Establish preconditions for field operations below
+        // - square() requires 54-bit bounded input; Y is 51-bit from from_bytes
+        // - Sub/Mul require ONE and EDWARDS_D to have bounded limbs
         proof {
-            // Y is 51-bit bounded (from from_bytes), which implies 54-bit for square
             assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
-        }
-        
-        let YY = Y.square();  // Y² - requires 54-bit bounded input
-        
-        proof {
-            // Setup constant bounds
             lemma_one_limbs_bounded();
             lemma_edwards_d_limbs_bounded();
         }
         
+        let YY = Y.square();
         let u = &YY - &Z;  // u = y² - 1
         let yy_times_d = &YY * &constants::EDWARDS_D;
         
-        proof {
-            // Setup for Add: yy_times_d (52-bit from mul) + Z = ONE
-            lemma_decompress_add_no_overflow(&yy_times_d, &Z);
-        }
+        // PROOF: Add requires sum_of_limbs_bounded; yy_times_d is 52-bit, Z=ONE
+        proof { lemma_step1_add_bounds(&yy_times_d, &Z); }
         
         let v = &yy_times_d + &Z;  // v = d·y² + 1
         
+        // PROOF: sqrt_ratio_i requires v to be 54-bit bounded
+        // v has limbs < 2^52 + 1 (from Add), which is < 2^54
         proof {
-            // v bounds: 52-bit + 1 < 54-bit
             assert((1u64 << 52) + 1 < (1u64 << 54)) by (bit_vector);
-            assert(forall|i: int| 0 <= i < 5 ==> v.limbs[i] < (1u64 << 54));
         }
-
+        
         let (is_valid_y_coord, X) = FieldElement::sqrt_ratio_i(&u, &v);
 
+        // PROOF: Prove all step_1 postconditions via lemma_step1
+        // - Establishes YY == math_field_square(Y)
+        // - Proves choice_is_true <==> math_is_valid_y_coordinate
+        // - Proves choice_is_true ==> math_on_edwards_curve
         proof {
-            // =================================================================
-            // PHASE 2: sqrt_ratio_i postconditions
-            // =================================================================
-            lemma_one_field_element_value();
-            assert(spec_field_element(&Z) == 1);
-            
-            // From sqrt_ratio_i ensures: non-negative root, bounded
-            assert((spec_field_element(&X) % p()) % 2 == 0);
-            assert(spec_field_element(&X) < p());
-            assert(fe51_limbs_bounded(&X, 52));
-
-            // =================================================================
-            // PHASE 3: Connect sqrt_ratio_i to curve semantics
-            // =================================================================
-            // Field operations ensures clauses give us the correspondence!
-            
-            let ghost y = spec_field_element(&Y);
-            let ghost d = spec_field_element(&constants::EDWARDS_D);
-            let ghost y2 = math_field_square(y);
-            let ghost u_math = math_field_sub(y2, 1);
-            let ghost v_math = math_field_add(math_field_mul(d, y2), 1);
-            let ghost x = spec_field_element(&X);
-            
-            // FIELD OPERATION CORRESPONDENCE - NOW PROVED!
-            // 1. YY = Y.square() → spec_field_element(&YY) == math_field_square(y)
-            assert(spec_field_element(&YY) == y2) by {
-                // square() ensures: u64_5_as_nat(YY.limbs) % p() == pow(u64_5_as_nat(Y.limbs), 2) % p()
-                // Apply lemma to show this equals math_field_square(y)
-                lemma_square_matches_math_field_square(
-                    spec_field_element_as_nat(&Y),
-                    spec_field_element_as_nat(&YY),
-                );
-            };
-            
-            // 2. u = YY - Z → spec_field_element(&u) == math_field_sub(y2, 1)
-            assert(spec_field_element(&u) == u_math) by {
-                // Sub ensures: spec_field_element(&u) == math_field_sub(spec_field_element(&YY), spec_field_element(&Z))
-                // Z = ONE, so spec_field_element(&Z) == 1
-                lemma_one_field_element_value();
-            };
-            
-            // 3. v = yy_times_d + Z → spec_field_element(&v) == math_field_add(d*y2, 1)
-            assert(spec_field_element(&v) == v_math) by {
-                // yy_times_d = YY * EDWARDS_D
-                // Mul ensures: spec_field_element(&yy_times_d) == math_field_mul(y2, d)
-                // v_math = math_field_add(math_field_mul(d, y2), 1)
-                // Need: math_field_mul(y2, d) == math_field_mul(d, y2)  (commutativity)
-                lemma_one_field_element_value();
-                
-                // math_field_mul is commutative: (a * b) % p == (b * a) % p
-                assert(math_field_mul(y2, d) == math_field_mul(d, y2)) by {
-                    lemma_mul_is_commutative(y2 as int, d as int);
-                    assert(y2 * d == d * y2);
-                };
-            };
-            
-            // Establish preconditions for lemma_step1_case_analysis from sqrt_ratio_i postconditions
-            // sqrt_ratio_i ensures: (u == 0) ==> choice_is_true && result == 0
-            // sqrt_ratio_i ensures: (v == 0 && u != 0) ==> !choice_is_true
-            // sqrt_ratio_i ensures: (choice_is_true && v != 0) ==> is_sqrt_ratio(u, v, result)
-            
-            // u_math and v_math are field elements, so bounded by p
-            assert(u_math < p()) by {
-                // u_math = math_field_sub(y2, 1) = (y2 - 1 + p) % p < p
-            };
-            assert(v_math < p()) by {
-                // v_math = math_field_add(d*y2, 1) = (d*y2 + 1) % p < p
-            };
-            
-            // Use lemma to prove curve semantics from sqrt_ratio_i result
-            lemma_step1_case_analysis(
-                y,
-                x,
-                u_math,
-                v_math,
-                choice_is_true(is_valid_y_coord),
-                is_sqrt_ratio(&u, &v, &X),
-            );
+            lemma_square_matches_math_field_square(spec_field_element_as_nat(&Y), spec_field_element_as_nat(&YY));
+            lemma_step1(repr, &Y, &Z, &YY, &u, &v, &X, choice_is_true(is_valid_y_coord));
         }
+        
         (is_valid_y_coord, X, Y, Z)
     }
 

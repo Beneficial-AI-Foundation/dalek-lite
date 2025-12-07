@@ -16,7 +16,9 @@ use crate::backend::serial::u64::field::FieldElement51;
 use crate::lemmas::common_lemmas::sqrt_ratio_lemmas::*;
 // lemma_no_square_root_when_times_i is in common_lemmas/sqrt_ratio_lemmas.rs
 use crate::edwards::EdwardsPoint;
+use crate::edwards::CompressedEdwardsY;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+use crate::lemmas::field_lemmas::constants_lemmas::*;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
@@ -1193,6 +1195,136 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
 // =============================================================================
 // UNIFIED LEMMAS FOR DECOMPRESS REFACTORING
 // =============================================================================
+
+/// Helper lemma: establishes bounds for Add operation in step_1
+/// This proves that yy_times_d + Z won't overflow
+pub proof fn lemma_step1_add_bounds(yy_times_d: &FieldElement51, z: &FieldElement51)
+    requires
+        fe51_limbs_bounded(yy_times_d, 52),  // from mul postcondition
+        z == &FieldElement51::ONE,
+    ensures
+        sum_of_limbs_bounded(yy_times_d, z, u64::MAX),
+{
+    lemma_one_limbs_bounded();
+    // mul produces 52-bit bounded, ONE has limbs [1,0,0,0,0]
+    // 2^52 + 1 < u64::MAX
+    assert((1u64 << 52) + 1 < u64::MAX) by (bit_vector);
+    
+    // Each limb sum is bounded
+    assert forall|i: int| 0 <= i < 5 implies yy_times_d.limbs[i] + z.limbs[i] < u64::MAX by {
+        // limb[i] < 2^52 (from 52-bit bound)
+        // z.limbs[0] = 1, z.limbs[1..4] = 0
+    };
+}
+
+/// Comprehensive lemma for step_1: proves ALL postconditions from field elements.
+///
+/// This lemma encapsulates ALL the proof logic that was previously inline in step_1.
+/// It takes the computed field elements and proves all ensures clauses.
+///
+/// ## Parameters
+/// - `repr`: The compressed representation
+/// - `Y, Z, YY, u, v, X`: Field elements computed by step_1
+/// - `is_valid_y_coord`: The choice from sqrt_ratio_i
+///
+/// ## Proves all step_1 postconditions:
+/// - Y matches repr
+/// - Z == 1
+/// - choice_is_true(is_valid) <==> math_is_valid_y_coordinate(y)
+/// - choice_is_true(is_valid) ==> math_on_edwards_curve(x, y)
+/// - Limb bounds
+/// - X is non-negative root (LSB = 0)
+/// - X < p
+pub proof fn lemma_step1(
+    repr: &CompressedEdwardsY,
+    fe_y: &FieldElement51,
+    fe_z: &FieldElement51,
+    fe_yy: &FieldElement51,
+    fe_u: &FieldElement51,
+    fe_v: &FieldElement51,
+    fe_x: &FieldElement51,
+    is_valid_y_coord: bool,  // choice_is_true(is_valid_y_coord)
+)
+    requires
+        // Y is from from_bytes
+        spec_field_element(fe_y) == spec_field_element_from_bytes(&repr.0),
+        // Z is ONE
+        fe_z == &FieldElement51::ONE,
+        // YY = Y²
+        spec_field_element(fe_yy) == math_field_square(spec_field_element(fe_y)),
+        // u = YY - Z
+        spec_field_element(fe_u) == math_field_sub(spec_field_element(fe_yy), spec_field_element(fe_z)),
+        // v = YY * EDWARDS_D + Z
+        spec_field_element(fe_v) == math_field_add(
+            math_field_mul(spec_field_element(fe_yy), spec_field_element(&EDWARDS_D)),
+            spec_field_element(fe_z),
+        ),
+        // sqrt_ratio_i postconditions
+        (is_valid_y_coord && spec_field_element(fe_v) != 0) ==> is_sqrt_ratio(fe_u, fe_v, fe_x),
+        (spec_field_element(fe_u) == 0) ==> (is_valid_y_coord && spec_field_element(fe_x) == 0),
+        (spec_field_element(fe_v) == 0 && spec_field_element(fe_u) != 0) ==> !is_valid_y_coord,
+        // sqrt_ratio_i bounds postconditions
+        (spec_field_element(fe_x) % p()) % 2 == 0,
+        spec_field_element(fe_x) < p(),
+        fe51_limbs_bounded(fe_x, 52),
+        // Input bounds from operations
+        fe51_limbs_bounded(fe_y, 51),
+        fe51_limbs_bounded(fe_z, 51),
+    ensures
+        // Y matches repr
+        spec_field_element(fe_y) == spec_field_element_from_bytes(&repr.0),
+        // Z == 1
+        spec_field_element(fe_z) == 1,
+        // Validity <==> curve semantics
+        is_valid_y_coord <==> math_is_valid_y_coordinate(spec_field_element(fe_y)),
+        is_valid_y_coord ==> math_on_edwards_curve(spec_field_element(fe_x), spec_field_element(fe_y)),
+        // Limb bounds
+        fe51_limbs_bounded(fe_x, 52),
+        fe51_limbs_bounded(fe_y, 51),
+        fe51_limbs_bounded(fe_z, 51),
+        // X properties
+        (spec_field_element(fe_x) % p()) % 2 == 0,
+        spec_field_element(fe_x) < p(),
+{
+    // Establish Z = 1
+    lemma_one_field_element_value();
+    assert(spec_field_element(fe_z) == 1);
+    
+    // Establish field operation correspondence
+    let y = spec_field_element(fe_y);
+    let d = spec_field_element(&EDWARDS_D);
+    let y2 = math_field_square(y);
+    let u_math = math_field_sub(y2, 1);
+    let v_math = math_field_add(math_field_mul(d, y2), 1);
+    let x = spec_field_element(fe_x);
+    
+    // Prove correspondence
+    assert(spec_field_element(fe_yy) == y2);
+    assert(spec_field_element(fe_u) == u_math) by {
+        lemma_one_field_element_value();
+    };
+    assert(spec_field_element(fe_v) == v_math) by {
+        lemma_one_field_element_value();
+        // math_field_mul is commutative
+        assert(math_field_mul(y2, d) == math_field_mul(d, y2)) by {
+            lemma_mul_is_commutative(y2 as int, d as int);
+        };
+    };
+    
+    // u_math and v_math are bounded by p
+    assert(u_math < p());
+    assert(v_math < p());
+    
+    // Use the case analysis lemma
+    lemma_step1_case_analysis(
+        y,
+        x,
+        u_math,
+        v_math,
+        is_valid_y_coord,
+        is_sqrt_ratio(fe_u, fe_v, fe_x),
+    );
+}
 
 /// Main lemma for step_1: proves curve semantics from sqrt_ratio_i result.
 ///

@@ -550,14 +550,6 @@ impl MontgomeryPoint {
 //
 // TODO Determine how much of the hash-to-group API should be exposed after the CFRG
 //      draft gets into a more polished/accepted state.
-/*
-VERIFICATION NOTE: Modifications for Verus compatibility:
-- Split compound expressions to insert proof blocks for arithmetic preconditions
-- Use wrapper functions to avoid Verus crash on subtle::Choice type:
-  - conditional_select_field_element instead of FieldElement::conditional_select
-  - conditional_negate_field_element instead of .conditional_negate()
-  - choice_not() instead of ! operator on Choice
-*/
 #[allow(unused)]
 pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     requires

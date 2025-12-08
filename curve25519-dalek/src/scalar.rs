@@ -882,6 +882,7 @@ impl Neg for &Scalar {
                 scalar_to_nat(self),
                 to_nat(&self_mod_l.limbs),
                 scalar_to_nat(&result),
+                group_order(),
             );
         }
 

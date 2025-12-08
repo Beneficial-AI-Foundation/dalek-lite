@@ -2066,32 +2066,32 @@ proof fn lemma_neg_sum_mod(q: int, r: int, L: int)
 /// Proves that for self_nat and its negation result_nat:
 /// (self_nat + result_nat) % L == 0
 /// where result_nat == (-congruent_to_self) % L and congruent_to_self % L == self_nat % L
-pub proof fn lemma_negation_sums_to_zero(self_nat: nat, congruent_to_self: nat, result_nat: nat)
+pub proof fn lemma_negation_sums_to_zero(self_nat: nat, congruent_to_self: nat, result_nat: nat, L: nat)
     requires
-        group_order() > 0,
-        congruent_to_self % group_order() == self_nat % group_order(),
-        result_nat == (-(congruent_to_self as int)) % (group_order() as int),
-        result_nat < group_order(),
+        L > 0,
+        congruent_to_self % L == self_nat % L,
+        result_nat == (-(congruent_to_self as int)) % (L as int),
+        result_nat < L,
     ensures
-        (self_nat + result_nat) % group_order() == 0,
+        (self_nat + result_nat) % L == 0,
 {
-    let L: int = group_order() as int;
-    let self_mod_L: int = (self_nat % group_order()) as int;
+    let L_int: int = L as int;
+    let self_mod_L: int = (self_nat % L) as int;
 
     // (-congruent_to_self) % L == (-self_mod_L) % L
-    let q: int = (congruent_to_self as int) / L;
-    lemma_fundamental_div_mod(congruent_to_self as int, L);
-    lemma_neg_sum_mod(q, self_mod_L, L);
+    let q: int = (congruent_to_self as int) / L_int;
+    lemma_fundamental_div_mod(congruent_to_self as int, L_int);
+    lemma_neg_sum_mod(q, self_mod_L, L_int);
 
     if self_mod_L == 0 {
-        lemma_small_mod(0nat, group_order());
-        lemma_mod_multiples_vanish((self_nat as int) / L, 0, L);
+        lemma_small_mod(0nat, L);
+        lemma_mod_multiples_vanish((self_nat as int) / L_int, 0, L_int);
     } else {
-        lemma_mod_add_multiples_vanish(-self_mod_L, L);
-        lemma_small_mod((L - self_mod_L) as nat, group_order());
-        lemma_add_mod_noop(self_nat as int, result_nat as int, L);
-        lemma_small_mod(result_nat, group_order());
-        lemma_mod_self_0(L);
+        lemma_mod_add_multiples_vanish(-self_mod_L, L_int);
+        lemma_small_mod((L_int - self_mod_L) as nat, L);
+        lemma_add_mod_noop(self_nat as int, result_nat as int, L_int);
+        lemma_small_mod(result_nat, L);
+        lemma_mod_self_0(L_int);
     }
 }
 

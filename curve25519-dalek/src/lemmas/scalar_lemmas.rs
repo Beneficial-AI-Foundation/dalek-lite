@@ -2066,7 +2066,12 @@ proof fn lemma_neg_sum_mod(q: int, r: int, L: int)
 /// Proves that for self_nat and its negation result_nat:
 /// (self_nat + result_nat) % L == 0
 /// where result_nat == (-congruent_to_self) % L and congruent_to_self % L == self_nat % L
-pub proof fn lemma_negation_sums_to_zero(self_nat: nat, congruent_to_self: nat, result_nat: nat, L: nat)
+pub proof fn lemma_negation_sums_to_zero(
+    self_nat: nat,
+    congruent_to_self: nat,
+    result_nat: nat,
+    L: nat,
+)
     requires
         L > 0,
         congruent_to_self % L == self_nat % L,

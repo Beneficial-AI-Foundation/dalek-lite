@@ -583,8 +583,8 @@ pub open spec fn edwards_double(x: nat, y: nat) -> (nat, nat) {
 /// Helper spec function: Edwards addition of EdwardsPoint and ProjectiveNielsPoint
 /// Combines the affine conversion and addition into a single convenient spec function.
 pub open spec fn spec_edwards_add_projective_niels(
-    p: crate::edwards::EdwardsPoint,
-    q: crate::backend::serial::curve_models::ProjectiveNielsPoint,
+    p: EdwardsPoint,
+    q: ProjectiveNielsPoint,
 ) -> (nat, nat) {
     let self_affine = edwards_point_as_affine(p);
     let other_affine = projective_niels_point_as_affine_edwards(q);

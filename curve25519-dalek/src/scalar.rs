@@ -831,36 +831,34 @@ impl Neg for &Scalar {
         let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
         UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack()
+
+        let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
         </ORIGINAL CODE> */
         /* <MODIFIED CODE> */
         proof {
-            // Establish preconditions for mul_internal, montgomery_reduce, and sub
+            // Establish preconditions
             lemma_r_bounded(constants::R);
             lemma_zero_bounded(UnpackedScalar::ZERO);
             lemma_r_equals_spec(constants::R);
         }
 
+        // Execute the actual computation
         let self_unpacked = self.unpack();
         let self_R = UnpackedScalar::mul_internal(&self_unpacked, &constants::R);
+        /* </MODIFIED CODE> */
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
 
-        proof {
-            // Trigger montgomery_reduce postconditions by providing existential witnesses
-            assert(limbs_bounded(&self_unpacked) && limbs_bounded(&constants::R) && to_nat(
-                &constants::R.limbs,
-            ) < group_order() && spec_mul_internal(&self_unpacked, &constants::R) == self_R);
-        }
+        /* <ORIGINAL CODE>
+        let result = UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack();
+        </ORIGINAL CODE> */
 
+        /* <MODIFIED CODE> */
         let sub_result = UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l);
         let result = sub_result.pack();
-
         /* </MODIFIED CODE> */
+
         proof {
-            // Show: to_nat(&self_mod_l.limbs) % group_order() == scalar_to_nat(self) % group_order()
-            assert((to_nat(&self_mod_l.limbs) * montgomery_radix()) % group_order() == (to_nat(
-                &self_unpacked.limbs,
-            ) * to_nat(&constants::R.limbs)) % group_order());
-            lemma_r_equals_spec(constants::R);
+            // Prove congruence: to_nat(&self_mod_l.limbs) % L == scalar_to_nat(self) % L
             lemma_mul_factors_congruent_implies_products_congruent(
                 to_nat(&self_unpacked.limbs) as int,
                 montgomery_radix() as int,
@@ -873,11 +871,11 @@ impl Neg for &Scalar {
                 montgomery_radix(),
             );
 
-            // Show: scalar_to_nat(&result) == to_nat(&sub_result.limbs)
+            // Prove result is in canonical form
             lemma_group_order_smaller_than_pow256();
             lemma_small_mod(to_nat(&sub_result.limbs), pow2(256));
 
-            // Complete the proof
+            // Prove the negation property
             lemma_negation_sums_to_zero(
                 scalar_to_nat(self),
                 to_nat(&self_mod_l.limbs),

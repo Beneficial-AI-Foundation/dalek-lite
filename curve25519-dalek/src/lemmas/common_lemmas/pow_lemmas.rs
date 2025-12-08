@@ -1159,10 +1159,9 @@ pub proof fn lemma_pow2_distributivity_over_word(
 
     lemma_mul_distributive_8_terms(pow2(exp) as int, x1, x2, x3, x4, x5, x6, x7, x8);
 
-    assert(word * pow2(exp) == byte0 * pow2(0) * pow2(exp) + byte1 * pow2(8) * pow2(exp)
-        + byte2 * pow2(16) * pow2(exp) + byte3 * pow2(24) * pow2(exp)
-        + byte4 * pow2(32) * pow2(exp) + byte5 * pow2(40) * pow2(exp)
-        + byte6 * pow2(48) * pow2(exp) + byte7 * pow2(56) * pow2(exp));
+    assert(word * pow2(exp) == byte0 * pow2(0) * pow2(exp) + byte1 * pow2(8) * pow2(exp) + byte2
+        * pow2(16) * pow2(exp) + byte3 * pow2(24) * pow2(exp) + byte4 * pow2(32) * pow2(exp) + byte5
+        * pow2(40) * pow2(exp) + byte6 * pow2(48) * pow2(exp) + byte7 * pow2(56) * pow2(exp));
 
     // Step 2: Simplify each term using pow2(a) * pow2(b) == pow2(a+b)
     lemma_pow2_adds(0, exp);

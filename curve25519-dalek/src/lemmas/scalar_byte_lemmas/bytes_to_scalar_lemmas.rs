@@ -1,3 +1,17 @@
+//! Proofs for converting bytes to Scalar52 representation
+//!
+//! This module contains lemmas that prove the correctness of the `from_bytes` function,
+//! which converts a 32-byte array into a Scalar52 (5 limbs of 52 bits each).
+//!
+//! The conversion happens in three stages:
+//! 1. Pack 32 bytes into 4 u64 words (8 bytes per word)
+//! 2. Extract 5 limbs of 52 bits from those 4 words
+//! 3. Prove the final representation matches the original byte array's natural value
+//!
+//! The main lemmas are:
+//! - `lemma_byte_to_word_step`: Proves one byte OR operation in the word-building loop
+//! - `lemma_bytes_to_word_equivalence`: Proves 4 words correctly represent 32 bytes
+//! - `lemma_words_to_scalar`: Proves 5 limbs correctly represent 4 words
 #![allow(unused)]
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
@@ -22,6 +36,20 @@ use crate::specs::scalar_specs_u64::*;
 
 verus! {
 
+/// Proves the correctness of one iteration of the byte-to-word conversion loop
+///
+/// This lemma verifies that OR-ing a single byte (shifted by j*8 bits) into a word
+/// maintains the invariant that the word represents the first j+1 bytes as a little-endian
+/// natural number.
+///
+/// # Arguments
+/// * `bytes` - The 32-byte input array
+/// * `words` - The partially-built word array (4 words)
+/// * `i` - Current word index (0..4)
+/// * `j` - Current byte index within the word (0..8)
+///
+/// # Loop context
+/// This is used in: `words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);`
 pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize, j: usize)
     requires
         0 <= j < 8 && 0 <= i < 4,
@@ -176,6 +204,22 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
     ));
 }
 
+/// Proves that 4 u64 words correctly represent a 32-byte array as a natural number
+///
+/// This lemma connects the byte-level and word-level representations, proving that
+/// the natural number value of 32 bytes equals the natural number value of 4 words
+/// (when each word contains 8 bytes in little-endian order).
+///
+/// # Mathematical relationship
+/// If `words[i]` contains `bytes[i*8..i*8+8]` in little-endian order, then:
+/// ```text
+/// bytes_to_nat(bytes) = words_to_nat(words)
+/// = words[0] + words[1]*2^64 + words[2]*2^128 + words[3]*2^192
+/// ```
+///
+/// # Arguments
+/// * `bytes` - The 32-byte input array
+/// * `words` - The 4 u64 words built from the bytes
 pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     requires
         forall|i2: int|
@@ -186,6 +230,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     ensures
         bytes_to_nat(bytes) == words_to_nat(&words),
 {
+    // For each of the 4 words, prove it equals the sum of its 8 bytes with appropriate powers of 2
     assert(words[0] == bytes[0] * pow2(0) + bytes[1] * pow2(8) + bytes[2] * pow2(16) + bytes[3]
         * pow2(24) + bytes[4] * pow2(32) + bytes[5] * pow2(40) + bytes[6] * pow2(48) + bytes[7]
         * pow2(56)) by {
@@ -339,6 +384,28 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     reveal_with_fuel(words_to_nat_gen_u64, 5);
 }
 
+/// Proves that 5 Scalar52 limbs correctly represent 4 u64 words
+///
+/// This lemma verifies the bit-slicing operation that extracts 5 limbs of 52 bits each
+/// from 4 words of 64 bits each. The limbs overlap across word boundaries.
+///
+/// # Limb extraction pattern
+/// ```text
+/// Word layout (4 × 64 bits = 256 bits total):
+/// [----word[0]----][----word[1]----][----word[2]----][----word[3]----]
+///
+/// Limb extraction (5 × 52 bits = 260 bits, last limb only 48 bits):
+/// [--limb[0]--][--limb[1]--][--limb[2]--][--limb[3]--][limb[4]]
+///        \___12 bits from word[1]
+///                    \___12 bits from word[2]
+///                                \___8 bits from word[3]
+/// ```
+///
+/// # Arguments
+/// * `words` - The 4 u64 words containing the packed bytes
+/// * `s` - The Scalar52 with 5 limbs extracted from the words
+/// * `mask` - The 52-bit mask (2^52 - 1)
+/// * `top_mask` - The 48-bit mask (2^48 - 1) for the final limb
 pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -352,6 +419,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
         words_to_nat(&words) == to_nat(&s.limbs),
         limbs_bounded(&s),
 {
+    // Bit-vector proofs that masks work correctly
     assert(1u64 << 52 > 0) by (bit_vector);
     assert(1u64 << 48 > 0) by (bit_vector);
 
@@ -360,14 +428,16 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
     lemma_u64_pow2_no_overflow(28);
     lemma_u64_pow2_no_overflow(16);
 
-    let word_0_first = words[0] % pow2(52) as u64;
-    let word_0_second = words[0] / pow2(52) as u64;
-    let word_1_first = words[1] % pow2(40) as u64;
-    let word_1_second = words[1] / pow2(40) as u64;
-    let word_2_first = words[2] % pow2(28) as u64;
-    let word_2_second = words[2] / pow2(28) as u64;
-    let word_3_first = words[3] % pow2(16) as u64;
-    let word_3_second = words[3] / pow2(16) as u64;
+    // Split each word into two parts at strategic bit positions
+    // This corresponds to how limbs are extracted from overlapping word boundaries
+    let word_0_first = words[0] % pow2(52) as u64;  // Lower 52 bits of word[0] → limb[0]
+    let word_0_second = words[0] / pow2(52) as u64;  // Upper 12 bits of word[0] → part of limb[1]
+    let word_1_first = words[1] % pow2(40) as u64;  // Lower 40 bits of word[1] → part of limb[1]
+    let word_1_second = words[1] / pow2(40) as u64;  // Upper 24 bits of word[1] → part of limb[2]
+    let word_2_first = words[2] % pow2(28) as u64;  // Lower 28 bits of word[2] → part of limb[2]
+    let word_2_second = words[2] / pow2(28) as u64;  // Upper 36 bits of word[2] → part of limb[3]
+    let word_3_first = words[3] % pow2(16) as u64;  // Lower 16 bits of word[3] → part of limb[3]
+    let word_3_second = words[3] / pow2(16) as u64;  // Upper 48 bits of word[3] → limb[4]
 
     assert(words[0] == word_0_first + word_0_second * pow2(52)) by {
         lemma_fundamental_div_mod(words[0] as int, pow2(52) as int);
@@ -415,12 +485,16 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
             top_mask == ((1u64 << 48) - 1),
     ;
 
+    // Prove each limb equals the correct combination of word parts
+
+    // Limb 0: Just the lower 52 bits of word[0]
     assert(s.limbs[0] == word_0_first) by {
         assert(words[0] & mask == words[0] % pow2(52) as u64) by {
             lemma_u64_low_bits_mask_is_mod(words[0], 52);
         };
     };
 
+    // Limb 1: Upper 12 bits of word[0] combined with lower 40 bits of word[1] (shifted left by 12)
     assert(s.limbs[1] == word_0_second + word_1_first * pow2(12)) by {
         assert((((words0 >> 52) | (words1 << 12)) & mask) == (words0 >> 52) + ((words1 & (((1u64
             << 40) - 1u64) as u64)) << 12)) by (bit_vector)
@@ -457,6 +531,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
         assert(s.limbs[1] == (words0 / pow2(52) as u64) + ((words1 % pow2(40) as u64) * pow2(12)));
     }
 
+    // Limb 2: Upper 24 bits of word[1] combined with lower 28 bits of word[2] (shifted left by 24)
     assert(s.limbs[2] == word_1_second + word_2_first * pow2(24)) by {
         assert((((words1 >> 40) | (words2 << 24)) & mask) == (words1 >> 40) + ((words2 & (((1u64
             << 28) - 1u64) as u64)) << 24)) by (bit_vector)
@@ -492,6 +567,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
         assert(s.limbs[2] == (words1 / pow2(40) as u64) + ((words2 % pow2(28) as u64) * pow2(24)));
     }
 
+    // Limb 3: Upper 36 bits of word[2] combined with lower 16 bits of word[3] (shifted left by 36)
     assert(s.limbs[3] == word_2_second + word_3_first * pow2(36)) by {
         assert((((words2 >> 28) | (words3 << 36)) & mask) == (words2 >> 28) + ((words3 & (((1u64
             << 16) - 1u64) as u64)) << 36)) by (bit_vector)
@@ -528,6 +604,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
         assert(s.limbs[3] == (words2 / pow2(28) as u64) + ((words3 % pow2(16) as u64) * pow2(36)));
     }
 
+    // Limb 4: Just the upper 48 bits of word[3]
     assert(s.limbs[4] == word_3_second) by {
         assert(words3 >> 16 & (top_mask) == words3 >> 16) by (bit_vector)
             requires

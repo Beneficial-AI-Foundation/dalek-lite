@@ -3,7 +3,6 @@ use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
-use vstd::calc;
 use vstd::prelude::*;
 use vstd::seq::*;
 

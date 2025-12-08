@@ -135,7 +135,7 @@ const fn load8_at(input: &[u8], i: usize) -> (r: u64)
     requires
         i + 7 < input.len(),
     ensures
-        r as nat == load8_at_spec(input, i),
+        r as nat == spec_load8_at(input, i),
 {
     proof {
         lemma_load8_at_rec_version_is_exec(input, i);
@@ -852,19 +852,19 @@ impl FieldElement51 {
         proof {
             assert(mask51 == (1u64 << 51) - 1) by (compute);
 
-            let l0 = load8_at_spec(bytes, 0);
-            let l1 = load8_at_spec(bytes, 6);
-            let l2 = load8_at_spec(bytes, 12);
-            let l3 = load8_at_spec(bytes, 19);
-            let l4 = load8_at_spec(bytes, 24);
+            let l0 = spec_load8_at(bytes, 0);
+            let l1 = spec_load8_at(bytes, 6);
+            let l2 = spec_load8_at(bytes, 12);
+            let l3 = spec_load8_at(bytes, 19);
+            let l4 = spec_load8_at(bytes, 24);
 
             assert(l0 <= u64::MAX && l1 <= u64::MAX && l2 <= u64::MAX && l3 <= u64::MAX && l4
                 <= u64::MAX) by {
-                lemma_load8_at_spec_fits_u64(bytes, 0);
-                lemma_load8_at_spec_fits_u64(bytes, 6);
-                lemma_load8_at_spec_fits_u64(bytes, 12);
-                lemma_load8_at_spec_fits_u64(bytes, 19);
-                lemma_load8_at_spec_fits_u64(bytes, 24);
+                lemma_spec_load8_at_fits_u64(bytes, 0);
+                lemma_spec_load8_at_fits_u64(bytes, 6);
+                lemma_spec_load8_at_fits_u64(bytes, 12);
+                lemma_spec_load8_at_fits_u64(bytes, 19);
+                lemma_spec_load8_at_fits_u64(bytes, 24);
             }
 
             let rr = [

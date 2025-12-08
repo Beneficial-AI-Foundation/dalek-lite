@@ -41,7 +41,7 @@ pub open spec fn as_nat(limbs: [u64; 5]) -> nat {
     limbs[3] as nat) + pow2(204) * (limbs[4] as nat)
 }
 
-// Note: u8_32_as_nat, u8_32_as_nat_rec, and load8_at_spec have been moved to core_specs
+// Note: u8_32_as_nat, u8_32_as_nat_rec, and spec_load8_at have been moved to core_specs
 // They are now shared between field and scalar implementations
 pub open spec fn spec_reduce(limbs: [u64; 5]) -> (r: [u64; 5]) {
     let r = [

@@ -133,15 +133,15 @@ pub open spec fn spec_fe51_from_bytes(bytes: &[u8; 32]) -> FieldElement51 {
         limbs: [
         // load bits [  0, 64), mask to 51 bits
 
-            (load8_at_spec(bytes, 0) as u64) & low_51_bit_mask,
+            (spec_load8_at(bytes, 0) as u64) & low_51_bit_mask,
             // load bits [ 48,112), shift right by 3, mask to 51 bits
-            ((load8_at_spec(bytes, 6) as u64) >> 3) & low_51_bit_mask,
+            ((spec_load8_at(bytes, 6) as u64) >> 3) & low_51_bit_mask,
             // load bits [ 96,160), shift right by 6, mask to 51 bits
-            ((load8_at_spec(bytes, 12) as u64) >> 6) & low_51_bit_mask,
+            ((spec_load8_at(bytes, 12) as u64) >> 6) & low_51_bit_mask,
             // load bits [152,216), shift right by 1, mask to 51 bits
-            ((load8_at_spec(bytes, 19) as u64) >> 1) & low_51_bit_mask,
+            ((spec_load8_at(bytes, 19) as u64) >> 1) & low_51_bit_mask,
             // load bits [192,256), shift right by 12, mask to 51 bits (this ignores high bit)
-            ((load8_at_spec(bytes, 24) as u64) >> 12) & low_51_bit_mask,
+            ((spec_load8_at(bytes, 24) as u64) >> 12) & low_51_bit_mask,
         ],
     }
 }

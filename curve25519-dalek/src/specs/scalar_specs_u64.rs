@@ -48,17 +48,17 @@ pub open spec fn to_scalar(limbs: &[u64; 5]) -> nat {
 
 /// natural value of a 256 bit bitstring represented as array of 32 bytes
 ///
-/// Note: This is now an alias for the shared `as_nat_32_u8` function from core_specs.
+/// Note: This is now an alias for the shared `u8_32_as_nat` function from core_specs.
 /// Both field and scalar code use the same underlying byte-to-nat conversion.
 pub open spec fn bytes_to_nat(bytes: &[u8; 32]) -> nat {
-    as_nat_32_u8(bytes)
+    u8_32_as_nat(bytes)
 }
 
 /// Recursive version of bytes_to_nat (now delegating to core_specs)
 pub open spec fn bytes_to_nat_rec(bytes: &[u8; 32], index: int) -> nat
     decreases 32 - index,
 {
-    as_nat_32_u8_rec(bytes, index as nat)
+    u8_32_as_nat_rec(bytes, index as nat)
 }
 
 /// natural value of a 512 bit bitstring represented as array of 64 bytes

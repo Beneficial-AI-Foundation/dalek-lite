@@ -834,7 +834,7 @@ impl FieldElement51 {
         ensures
     // last bit is ignored
 
-            as_nat(r.limbs) == as_nat_32_u8(bytes) % pow2(255),
+            as_nat(r.limbs) == u8_32_as_nat(bytes) % pow2(255),
     {
         /* MANUALLY moved outside */
         /*
@@ -875,7 +875,7 @@ impl FieldElement51 {
                 (l4 as u64 >> 12) & mask51,
             ];
 
-            assert(as_nat(rr) == as_nat_32_u8(bytes) % pow2(255)) by {
+            assert(as_nat(rr) == u8_32_as_nat(bytes) % pow2(255)) by {
                 lemma_from_bytes_as_nat(bytes);
                 lemma_as_nat_32_mod_255(bytes);
             }
@@ -914,7 +914,7 @@ impl FieldElement51 {
         ensures
     // canonical encoding, i.e. mod p value
 
-            as_nat_32_u8(&r) == as_nat(self.limbs) % p(),
+            u8_32_as_nat(&r) == as_nat(self.limbs) % p(),
     {
         proof {
             // No overflows

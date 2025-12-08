@@ -422,7 +422,7 @@ pub proof fn lemma_from_bytes_as_nat(bytes: &[u8; 32])
 
 pub proof fn lemma_as_nat_32_mod_255(bytes: &[u8; 32])
     ensures
-        as_nat_32_u8(bytes) % pow2(255) == (bytes[0] * pow2(0 * 8)) + (bytes[1] * pow2(1 * 8)) + (
+        u8_32_as_nat(bytes) % pow2(255) == (bytes[0] * pow2(0 * 8)) + (bytes[1] * pow2(1 * 8)) + (
         bytes[2] * pow2(2 * 8)) + (bytes[3] * pow2(3 * 8)) + (bytes[4] * pow2(4 * 8)) + (bytes[5]
             * pow2(5 * 8)) + (bytes[6] * pow2(6 * 8)) + (bytes[7] * pow2(7 * 8)) + (bytes[8] * pow2(
             8 * 8,
@@ -435,7 +435,7 @@ pub proof fn lemma_as_nat_32_mod_255(bytes: &[u8; 32])
         bytes[27] * pow2(27 * 8)) + (bytes[28] * pow2(28 * 8)) + (bytes[29] * pow2(29 * 8)) + (
         bytes[30] * pow2(30 * 8)) + ((bytes[31] as nat % pow2(7)) * pow2(31 * 8)),
 {
-    assert(as_nat_32_u8(bytes) == (bytes[0] * pow2(0 * 8)) + (bytes[1] * pow2(1 * 8)) + (bytes[2]
+    assert(u8_32_as_nat(bytes) == (bytes[0] * pow2(0 * 8)) + (bytes[1] * pow2(1 * 8)) + (bytes[2]
         * pow2(2 * 8)) + (bytes[3] * pow2(3 * 8)) + (bytes[4] * pow2(4 * 8)) + (bytes[5] * pow2(
         5 * 8,
     )) + (bytes[6] * pow2(6 * 8)) + (bytes[7] * pow2(7 * 8)) + (bytes[8] * pow2(8 * 8)) + (bytes[9]
@@ -456,7 +456,7 @@ pub proof fn lemma_as_nat_32_mod_255(bytes: &[u8; 32])
         }
         reveal_with_fuel(pow2_sum, 31);
     }
-    assert(as_nat_32_u8(bytes) % pow2(255) == (pow2_sum(bytes, 0, 8, 30) + bytes[31] * pow2(
+    assert(u8_32_as_nat(bytes) % pow2(255) == (pow2_sum(bytes, 0, 8, 30) + bytes[31] * pow2(
         31 * 8,
     )) as nat % pow2(255));
 

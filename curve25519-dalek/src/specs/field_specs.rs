@@ -66,7 +66,7 @@ pub open spec fn spec_field_element(fe: &FieldElement51) -> nat {
 /// The bytes are interpreted as a little-endian integer with the high bit of byte[31] ignored.
 /// The result is the canonical value in [0, p) where p = 2^255 - 19.
 pub open spec fn spec_field_element_from_bytes(bytes: &[u8; 32]) -> nat {
-    (as_nat_32_u8(bytes) % pow2(255)) % p()
+    (u8_32_as_nat(bytes) % pow2(255)) % p()
 }
 
 /// Spec function: Get the sign bit of a field element

@@ -2112,4 +2112,23 @@ pub proof fn lemma_one_bounded(one: Scalar52)
     assert(0x10000000000000 == 1u64 << 52) by (bit_vector);
 }
 
+/// Proves that if 0 <= a, b < L => -L < a - b < L
+pub proof fn lemma_sub_precondition_from_canonical(a: nat, b: nat, L: nat)
+    requires
+        L > 0,
+        a < L,
+        b < L,
+    ensures
+        -(L as int) < (a as int) - (b as int),
+        (a as int) - (b as int) < (L as int),
+{
+    // b >= 0 => a - b <= a < L
+    assert((a as int) - (b as int) <= (a as int));
+    assert((a as int) < (L as int));
+
+    // a >= 0 => a - b >= -b > -L
+    assert((a as int) - (b as int) >= -(b as int));
+    assert(-(b as int) > -(L as int));
+}
+
 } // verus!

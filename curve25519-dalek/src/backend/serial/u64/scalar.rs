@@ -158,7 +158,7 @@ impl Scalar52 {
                 invariant
                     0 <= j <= 8 && 0 <= i < 4,
                     words[i as int] < pow2(j as nat * 8),
-                    forall|i2: int| i + 1 <= i2 < 4 ==> words[i2] == 0u64,
+                    forall|i2: int| i + 1 <= i2 < 4 ==> words[i2] == 0,
                     words[i as int] == bytes_seq_to_nat_clear_aux(
                         Seq::new(8, |j2: int| bytes[i as int * 8 + j2]),
                         j as nat,

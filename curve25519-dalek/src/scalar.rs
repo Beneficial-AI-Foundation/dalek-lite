@@ -948,8 +948,8 @@ impl ConditionallySelectable for Scalar {
 
 /* <VERIFICATION NOTE>
  Trait implementations for Product and Sum use iterators which are not directly supported by Verus.
- Product: Uses external_body helper to collect iterator, then calls verified product_of_slice.
- Sum: Still uses external_body since it follows similar pattern to Product but hasn't been updated yet.
+ Both use an external_body helper to collect the iterator into Vec<Scalar>,
+ then call verified product_of_slice/sum_of_slice functions for the actual computation.
 </VERIFICATION NOTE> */
 
 // Spec function: extracts the scalars collected from an iterator

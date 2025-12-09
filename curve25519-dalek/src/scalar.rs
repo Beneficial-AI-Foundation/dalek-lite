@@ -943,8 +943,25 @@ impl ConditionallySelectable for Scalar {
 }
 
 /* <VERIFICATION NOTE>
- Trait implementations for Product and Sum declared as external_body since they use iterators which are not supported by Verus.
+ Trait implementations for Product and Sum use iterators which are not directly supported by Verus.
+ Product: Uses external_body helper to collect iterator, then calls verified product_of_slice.
+ Sum: Still uses external_body since it follows similar pattern to Product but hasn't been updated yet.
 </VERIFICATION NOTE> */
+
+// Spec function: extracts the scalars collected from an iterator
+pub uninterp spec fn spec_scalars_from_iter<T, I>(iter: I) -> Seq<Scalar>;
+
+// Helper to collect iterator into Vec<Scalar>
+#[verifier::external_body]
+fn collect_scalars_from_iter<T, I>(iter: I) -> (result: Vec<Scalar>) where
+    T: Borrow<Scalar>,
+    I: Iterator<Item = T>,
+
+    ensures
+        result@ == spec_scalars_from_iter::<T, I>(iter),
+{
+    iter.map(|item| *item.borrow()).collect()
+}
 
 impl<T> Product<T> for Scalar where T: Borrow<Scalar> {
     /* <ORIGINAL CODE>
@@ -956,21 +973,19 @@ impl<T> Product<T> for Scalar where T: Borrow<Scalar> {
     }
     </ORIGINAL CODE> */
     /* <VERIFICATION NOTE>
-     Added verifier::external_body annotation
+    Iterator operations and Borrow trait are not supported by Verus.
+    We use an external_body helper to collect the iterator into Vec<Scalar>,
+    then call the verified product_of_slice function for the actual computation.
     </VERIFICATION NOTE> */
-    #[verifier::external_body]
-    /* <MODIFIED CODE> - FOR EVENTUAL VERIFICATION*/
-    fn product<I>(iter: I) -> Self where I: Iterator<Item = T> {
-        // Collect iterator into a Vec, then convert via Borrow to get &[Scalar]
-        let items: Vec<T> = iter.collect();
-
-        // Convert to Vec<Scalar> via borrow
-        let scalars: Vec<Scalar> = items.iter().map(|item| *item.borrow()).collect();
-
-        // Use the verified product_of_slice function
+    fn product<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
+        ensures
+            scalar_to_nat(&result) < group_order(),
+            scalar_congruent_nat(&result, product_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
+    {
+        let scalars = collect_scalars_from_iter(iter);
+        // Use verified product_of_slice for the actual computation
         Scalar::product_of_slice(&scalars)
-    }  /* </MODIFIED CODE> */
-
+    }
 }
 
 impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
@@ -1208,7 +1223,7 @@ impl From<u128> for Scalar {
 #[cfg(feature = "zeroize")]
 impl Zeroize for Scalar {
     /* <VERIFICATION NOTE>
-    Using wrapper function with postcondition
+    Using wrapper function for verus compatibility instead of direct subtle call
     </VERIFICATION NOTE> */
     fn zeroize(&mut self)
         ensures

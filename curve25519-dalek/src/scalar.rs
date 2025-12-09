@@ -552,6 +552,7 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
         ensures
             bytes_to_nat(&result.bytes) % group_order() == (bytes_to_nat(&self.bytes)
                 * bytes_to_nat(&_rhs.bytes)) % group_order(),
+            is_canonical_scalar(&result),
     {
         /* <VERIFICATION NOTE>
          Store unpacked values explicitly for asserts
@@ -579,15 +580,18 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
                 * to_nat(&rhs_unpacked.limbs)) % group_order());
             assert(limbs_bounded(&result_unpacked));
         }
+        // UnpackedScalar::mul ensures to_nat(&result_unpacked.limbs) < group_order()
+        // pack() ensures: to_nat(&self.limbs) < group_order() ==> is_canonical_scalar(&result)
         let result = result_unpacked.pack();
         proof {
             assert(bytes_to_nat(&result.bytes) % group_order() == to_nat(&result_unpacked.limbs)
                 % group_order());
             assert(bytes_to_nat(&result.bytes) % group_order() == (bytes_to_nat(&self.bytes)
                 * bytes_to_nat(&_rhs.bytes)) % group_order());
+            // Trigger pack()'s conditional postcondition for is_canonical_scalar
+            assert(to_nat(&result_unpacked.limbs) < group_order());
+            assert(is_canonical_scalar(&result));
         }
-        assert(bytes_to_nat(&result.bytes) % group_order() == (bytes_to_nat(&self.bytes)
-            * bytes_to_nat(&_rhs.bytes)) % group_order());
         /* </MODIFIED CODE> */
         /* <ORIGINAL CODE>
          let result = UnpackedScalar::mul(&self.unpack(), &_rhs.unpack()).pack();
@@ -988,26 +992,35 @@ impl<T> Product<T> for Scalar where T: Borrow<Scalar> {
     }
 }
 
-impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
-    #[verifier::external_body]
-    fn sum<I>(iter: I) -> Self where I: Iterator<Item = T> {
-        iter.fold(Scalar::ZERO, |acc, item| acc + item.borrow())
-    }/* <MODIFIED CODE> - if needed in for verification in the future
+/* <ORIGINAL CODE>
+impl<T> Sum<T> for Scalar
+where
+    T: Borrow<Scalar>,
+{
     fn sum<I>(iter: I) -> Self
     where
         I: Iterator<Item = T>,
     {
-        // Collect iterator into a Vec, then convert via Borrow to get &[Scalar]
-        let items: Vec<T> = iter.collect();
+        iter.fold(Scalar::ZERO, |acc, item| acc + item.borrow())
+    }
+</ORIGINAL CODE> */
 
-        // Convert to Vec<Scalar> via borrow
-        let scalars: Vec<Scalar> = items.iter().map(|item| *item.borrow()).collect();
+/* <VERIFICATION NOTE>
+Iterator operations and Borrow trait are not supported by Verus.
+We use an external_body helper to collect the iterator into Vec<Scalar>,
+then call the verified sum_of_slice function for the actual computation.
+</VERIFICATION NOTE> */
 
-        // Use the verified sum_of_slice function
+impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
+    fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
+        ensures
+            scalar_to_nat(&result) < group_order(),
+            scalar_congruent_nat(&result, sum_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
+    {
+        let scalars = collect_scalars_from_iter(iter);
+        // Use verified sum_of_slice for the actual computation
         Scalar::sum_of_slice(&scalars)
     }
-     </MODIFIED CODE> */
-
 }
 
 impl Default for Scalar {

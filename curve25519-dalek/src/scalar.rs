@@ -1564,26 +1564,22 @@ impl Scalar {
     // Result is the multiplicative inverse: result * self ≡ 1 (mod group_order)
 
             (scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1,
-            is_canonical_scalar(
-                &result,
-            ),
-    // VERIFICATION NOTE: is this true and/or necessary?
-    // Result is canonical
-    // scalar_to_nat(&result) < group_order(),
-    // result.bytes[31] <= 127,
-
+            is_canonical_scalar(&result),
     {
         let unpacked = self.unpack();
         let inv_unpacked = unpacked.invert();
         let result = inv_unpacked.pack();
 
         proof {
-            // invert ensures to_nat(inv_unpacked) < group_order, so pack produces canonical result.
-            // For the inverse property: since group_order < pow2(256), the mod pow2(256) is identity.
+            // Step 1: invert ensures to_nat(inv_unpacked) < group_order < pow2(256)
             lemma_group_order_smaller_than_pow256();
             assert(to_nat(&inv_unpacked.limbs) < pow2(256));
+
+            // Step 2: Since inv_unpacked < pow2(256), pack preserves the value (no modular reduction)
             lemma_small_mod(to_nat(&inv_unpacked.limbs), pow2(256));
             assert(bytes_to_nat(&result.bytes) == to_nat(&inv_unpacked.limbs));
+
+            // Step 3: The inverse property follows from invert's postcondition
             assert((bytes_to_nat(&result.bytes) * bytes_to_nat(&self.bytes)) % group_order() == 1);
         }
 

@@ -144,7 +144,7 @@ impl Scalar52 {
                 0 <= i <= 4,
                 forall|i2: int| i <= i2 < 4 ==> words[i2] == 0,
                 forall|i2: int|
-                    0 <= i2 < i ==> ((words[i2] as nat) == bytes_seq_to_nat_clear_aux(
+                    0 <= i2 < i ==> (words[i2] == bytes_seq_to_nat_clear_aux(
                         Seq::new(8, |j: int| bytes[i2 * 8 + j]),
                         8,
                     )),

@@ -151,7 +151,7 @@ impl Scalar52 {
         {
             proof {
                 assert(words[i as int] == 0);
-                lemma_pow2_pos(0 as nat)
+                lemma_pow2_pos(0)
             }
 
             for j in 0..8

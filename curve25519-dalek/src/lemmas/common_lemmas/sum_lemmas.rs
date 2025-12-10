@@ -76,7 +76,7 @@ pub proof fn lemma_sum_bounds(coefs: Seq<nat>, k: nat, s: nat)
 }
 
 /// Proves that if 0 <= a, b < L => -L < a - b < L
-pub proof fn lemma_sub_symetric_bound(a: nat, b: nat, L: nat)
+pub proof fn lemma_sub_symmetric_bound(a: nat, b: nat, L: nat)
     requires
         L > 0,
         a < L,

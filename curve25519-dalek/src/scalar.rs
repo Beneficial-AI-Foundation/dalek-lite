@@ -758,7 +758,7 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
         // UnpackedScalar::sub requires: -group_order() <= to_nat(&a.limbs) - to_nat(&b.limbs) < group_order()
         proof {
             // -group_order() < to_nat(&self_unpacked.limbs) - to_nat(&rhs_unpacked.limbs) < grour_order()
-            lemma_sub_symetric_bound(
+            lemma_sub_symmetric_bound(
                 to_nat(&self_unpacked.limbs),
                 to_nat(&rhs_unpacked.limbs),
                 group_order(),

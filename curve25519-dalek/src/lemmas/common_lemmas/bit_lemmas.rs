@@ -36,7 +36,7 @@ lemma_bitwise_or_zero_is_id!(lemma_u32_bitwise_or_zero_is_id, u32);
 lemma_bitwise_or_zero_is_id!(lemma_u64_bitwise_or_zero_is_id, u64);
 lemma_bitwise_or_zero_is_id!(lemma_u128_bitwise_or_zero_is_id, u128);
 
-// Proofs that bitwise disjunction for N-bit integers equals addition iff for some `n` one factor 
+// Proofs that bitwise disjunction for N-bit integers equals addition iff for some `n` one factor
 // only uses the top `N-n` bits, and the other the low `n` bits.
 macro_rules! lemma_bit_or_is_plus {
     ($name:ident, $uN:ty) => {
@@ -77,8 +77,8 @@ macro_rules! lemma_distribute_over_bit_or {
                 c < <$uN>::BITS,
             ensures
                 (a | b) >> c == (a >> c) | (b >> c),
-                (a | b) & (low_bits_mask(c as nat) as $uN) == 
-                (a & (low_bits_mask(c as nat) as $uN)) | 
+                (a | b) & (low_bits_mask(c as nat) as $uN) ==
+                (a & (low_bits_mask(c as nat) as $uN)) |
                 (b & (low_bits_mask(c as nat) as $uN)),
             {
                 assert(low_bits_mask(c as nat) <= $uN::MAX) by {
@@ -92,10 +92,26 @@ macro_rules! lemma_distribute_over_bit_or {
     };
 }
 
-lemma_distribute_over_bit_or!(lemma_u8_distribute_over_bit_or, lemma_u8_low_bits_masks_fit, u8);
-lemma_distribute_over_bit_or!(lemma_u16_distribute_over_bit_or, lemma_u16_low_bits_masks_fit, u16);
-lemma_distribute_over_bit_or!(lemma_u32_distribute_over_bit_or, lemma_u32_low_bits_masks_fit, u32);
-lemma_distribute_over_bit_or!(lemma_u64_distribute_over_bit_or, lemma_u64_low_bits_masks_fit, u64);
+lemma_distribute_over_bit_or!(
+    lemma_u8_distribute_over_bit_or,
+    lemma_u8_low_bits_masks_fit,
+    u8
+);
+lemma_distribute_over_bit_or!(
+    lemma_u16_distribute_over_bit_or,
+    lemma_u16_low_bits_masks_fit,
+    u16
+);
+lemma_distribute_over_bit_or!(
+    lemma_u32_distribute_over_bit_or,
+    lemma_u32_low_bits_masks_fit,
+    u32
+);
+lemma_distribute_over_bit_or!(
+    lemma_u64_distribute_over_bit_or,
+    lemma_u64_low_bits_masks_fit,
+    u64
+);
 
 // Proofs that right-shifting and masking distribute over bitwise disjunction
 macro_rules! lemma_distribute_over_bit_or {
@@ -110,8 +126,8 @@ macro_rules! lemma_distribute_over_bit_or {
                 c < <$uN>::BITS,
             ensures
                 (a | b) >> c == (a >> c) | (b >> c),
-                (a | b) & (low_bits_mask(c as nat) as $uN) == 
-                (a & (low_bits_mask(c as nat) as $uN)) | 
+                (a | b) & (low_bits_mask(c as nat) as $uN) ==
+                (a & (low_bits_mask(c as nat) as $uN)) |
                 (b & (low_bits_mask(c as nat) as $uN)),
             {
                 assert(low_bits_mask(c as nat) <= $uN::MAX) by {

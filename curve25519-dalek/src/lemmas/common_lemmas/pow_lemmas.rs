@@ -199,9 +199,13 @@ macro_rules! lemma_pow2_mul_bound_uN {
 }
 
 lemma_pow2_mul_bound_uN!(lemma_u8_pow2_mul_bound, lemma_u8_lt_pow2_8, u8);
+
 lemma_pow2_mul_bound_uN!(lemma_u16_pow2_mul_bound, lemma_u16_lt_pow2_16, u16);
+
 lemma_pow2_mul_bound_uN!(lemma_u32_pow2_mul_bound, lemma_u32_lt_pow2_32, u32);
+
 lemma_pow2_mul_bound_uN!(lemma_u64_pow2_mul_bound, lemma_u64_lt_pow2_64, u64);
+
 lemma_pow2_mul_bound_uN!(lemma_u128_pow2_mul_bound, lemma_u128_lt_pow2_128, u128);
 
 pub proof fn lemma_binary_sum_div_decomposition(a: nat, b: nat, s: nat, k: nat)

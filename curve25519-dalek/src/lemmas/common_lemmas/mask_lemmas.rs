@@ -4,8 +4,8 @@ use vstd::arithmetic::power2::*;
 use vstd::bits::*;
 use vstd::prelude::*;
 
-use super::shift_lemmas::*;
 use super::pow_lemmas::*;
+use super::shift_lemmas::*;
 
 // Proofs of when masking a value fits into the number of bits used by the mask.
 macro_rules! lemma_masked_lt {
@@ -37,10 +37,34 @@ macro_rules! lemma_masked_lt {
     };
 }
 
-lemma_masked_lt!(lemma_u8_masked_lt, lemma_u8_low_bits_mask_is_mod, lemma_u8_pow2_le_max, lemma_u8_shl_is_mul, u8);
-lemma_masked_lt!(lemma_u16_masked_lt, lemma_u16_low_bits_mask_is_mod, lemma_u16_pow2_le_max, lemma_u16_shl_is_mul, u16);
-lemma_masked_lt!(lemma_u32_masked_lt, lemma_u32_low_bits_mask_is_mod, lemma_u32_pow2_le_max, lemma_u32_shl_is_mul, u32);
-lemma_masked_lt!(lemma_u64_masked_lt, lemma_u64_low_bits_mask_is_mod, lemma_u64_pow2_le_max, lemma_u64_shl_is_mul, u64);
+lemma_masked_lt!(
+    lemma_u8_masked_lt,
+    lemma_u8_low_bits_mask_is_mod,
+    lemma_u8_pow2_le_max,
+    lemma_u8_shl_is_mul,
+    u8
+);
+lemma_masked_lt!(
+    lemma_u16_masked_lt,
+    lemma_u16_low_bits_mask_is_mod,
+    lemma_u16_pow2_le_max,
+    lemma_u16_shl_is_mul,
+    u16
+);
+lemma_masked_lt!(
+    lemma_u32_masked_lt,
+    lemma_u32_low_bits_mask_is_mod,
+    lemma_u32_pow2_le_max,
+    lemma_u32_shl_is_mul,
+    u32
+);
+lemma_masked_lt!(
+    lemma_u64_masked_lt,
+    lemma_u64_low_bits_mask_is_mod,
+    lemma_u64_pow2_le_max,
+    lemma_u64_shl_is_mul,
+    u64
+);
 // TODO: missing VSTD lemmas for u128
 // lemma_masked_lt!(lemma_u128_masked_lt, lemma_u128_low_bits_mask_is_mod, lemma_u128_pow2_le_max, lemma_u128_shl_is_mul, u128);
 
@@ -55,7 +79,7 @@ macro_rules! lemma_low_bits_masks_fit {
                 k <= <$uN>::BITS,
             ensures
                 low_bits_mask(k) <= <$uN>::MAX,
-        {            
+        {
             lemma_low_bits_mask_values();  // lbm(0) = 0 ... lbm(64) = 2^64
             assert(low_bits_mask(<$uN>::BITS as nat) <= <$uN>::MAX) by (compute);
             if (k < <$uN>::BITS) {

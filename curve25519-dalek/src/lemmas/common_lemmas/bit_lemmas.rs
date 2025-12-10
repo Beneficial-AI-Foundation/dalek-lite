@@ -36,7 +36,7 @@ lemma_bitwise_or_zero_is_id!(lemma_u32_bitwise_or_zero_is_id, u32);
 lemma_bitwise_or_zero_is_id!(lemma_u64_bitwise_or_zero_is_id, u64);
 lemma_bitwise_or_zero_is_id!(lemma_u128_bitwise_or_zero_is_id, u128);
 
-// Proofs that bitwise disjunction for N-bit integers equals addition iff for some `n` one factor
+// Proofs that bitwise disjunction for N-bit integers equals addition if for some `n` one factor
 // only uses the top `N-n` bits, and the other the low `n` bits.
 macro_rules! lemma_bit_or_is_plus {
     ($name:ident, $uN:ty) => {
@@ -112,31 +112,3 @@ lemma_distribute_over_bit_or!(
     lemma_u64_low_bits_masks_fit,
     u64
 );
-
-// Proofs that right-shifting and masking distribute over bitwise disjunction
-macro_rules! lemma_distribute_over_bit_or {
-    ($name:ident, $no_overflow:ident, $uN:ty) => {
-        #[cfg(verus_keep_ghost)]
-        verus! {
-        #[doc = "Proof that for any `a`, `b` and `k` of type "]
-        #[doc = stringify!($uN)]
-        #[doc = ", `(a | b) >> c` equals `(a >> c) | (b >> c)` and `(a | b) & M` equals `(a & M) | (b & M)` for `M = low_bits_mask(c)`."]
-        pub proof fn $name(a: $uN, b: $uN, c: $uN)
-            requires
-                c < <$uN>::BITS,
-            ensures
-                (a | b) >> c == (a >> c) | (b >> c),
-                (a | b) & (low_bits_mask(c as nat) as $uN) ==
-                (a & (low_bits_mask(c as nat) as $uN)) |
-                (b & (low_bits_mask(c as nat) as $uN)),
-            {
-                assert(low_bits_mask(c as nat) <= $uN::MAX) by {
-                    $no_overflow(c as nat);
-                }
-                assert((a | b) >> c == (a >> c) | (b >> c)) by (bit_vector);
-                let lbm = (low_bits_mask(c as nat) as $uN);
-                assert((a | b) & lbm == (a & lbm) | (b & lbm)) by (bit_vector);
-            }
-    }
-    };
-}

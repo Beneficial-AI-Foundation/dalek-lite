@@ -688,7 +688,16 @@ impl vstd::std_specs::ops::AddSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
 impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;
 
-    fn add(self, other: &'b ProjectiveNielsPoint) -> (result: CompletedPoint)
+    fn add(self, other: &'b ProjectiveNielsPoint) -> (result:
+        CompletedPoint)/* VERIFICATION NOTE: requires clause is in AddSpecImpl::add_req
+        requires
+            is_well_formed_edwards_point(*self),
+            fe51_limbs_bounded(&other.Y_plus_X, 54),
+            fe51_limbs_bounded(&other.Y_minus_X, 54),
+            fe51_limbs_bounded(&other.Z, 54),
+            fe51_limbs_bounded(&other.T2d, 54),
+        */
+
         ensures
     // The result represents the Edwards addition of the affine forms of self and other
 
@@ -775,7 +784,16 @@ impl vstd::std_specs::ops::SubSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
 impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;
 
-    fn sub(self, other: &'b ProjectiveNielsPoint) -> (result: CompletedPoint)
+    fn sub(self, other: &'b ProjectiveNielsPoint) -> (result:
+        CompletedPoint)/* VERIFICATION NOTE: requires clause is in SubSpecImpl::sub_req
+        requires
+            is_well_formed_edwards_point(*self),
+            fe51_limbs_bounded(&other.Y_plus_X, 54),
+            fe51_limbs_bounded(&other.Y_minus_X, 54),
+            fe51_limbs_bounded(&other.Z, 54),
+            fe51_limbs_bounded(&other.T2d, 54),
+        */
+
         ensures
     // The result represents the Edwards subtraction of the affine forms of self and other
 
@@ -862,7 +880,16 @@ impl vstd::std_specs::ops::AddSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
 impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;
 
-    fn add(self, other: &'b AffineNielsPoint) -> (result: CompletedPoint)
+    fn add(self, other: &'b AffineNielsPoint) -> (result:
+        CompletedPoint)/* VERIFICATION NOTE: requires clause is in AddSpecImpl::add_req
+        requires
+            is_well_formed_edwards_point(*self),
+            sum_of_limbs_bounded(&self.Z, &self.Z, u64::MAX),
+            fe51_limbs_bounded(&other.y_plus_x, 54),
+            fe51_limbs_bounded(&other.y_minus_x, 54),
+            fe51_limbs_bounded(&other.xy2d, 54),
+        */
+
         ensures
     // The result represents the Edwards addition of the affine forms of self and other
 
@@ -934,7 +961,16 @@ impl vstd::std_specs::ops::SubSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
 impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
     type Output = CompletedPoint;
 
-    fn sub(self, other: &'b AffineNielsPoint) -> (result: CompletedPoint)
+    fn sub(self, other: &'b AffineNielsPoint) -> (result:
+        CompletedPoint)/* VERIFICATION NOTE: requires clause is in SubSpecImpl::sub_req
+        requires
+            is_well_formed_edwards_point(*self),
+            sum_of_limbs_bounded(&self.Z, &self.Z, u64::MAX),
+            fe51_limbs_bounded(&other.y_plus_x, 54),
+            fe51_limbs_bounded(&other.y_minus_x, 54),
+            fe51_limbs_bounded(&other.xy2d, 54),
+        */
+
         ensures
     // The result represents the Edwards subtraction of the affine forms of self and other
 

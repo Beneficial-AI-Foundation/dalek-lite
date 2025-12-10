@@ -728,8 +728,6 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
     // VERIFICATION NOTE: VERIFIED
     // PRECONDITION is_canonical_scalar(self) && is_canonical_scalar(_rhs)
-    // This precondition cannot be enforced in trait implementations,
-    // but is required for mathematical correctness.
     #[allow(non_snake_case)]
     fn sub(self, _rhs: &'b Scalar) -> (result:
         Scalar)/* VERIFICATION NOTE: preconditions are added to the SpecImpl above

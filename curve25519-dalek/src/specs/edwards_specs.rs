@@ -39,6 +39,9 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
+use vstd::arithmetic::div_mod::{lemma_mod_bound, lemma_small_mod};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
 use vstd::arithmetic::power2::pow2;
 use vstd::prelude::*;
 
@@ -757,22 +760,19 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
     assert(math_field_mul(0nat, z_inv) == 0nat) by {
         assert(0nat * z_inv == 0nat);
         // 0 % p == 0 when p > 0
-        vstd::arithmetic::div_mod::lemma_small_mod(0nat, p());
+        lemma_small_mod(0nat, p());
     }
     assert(math_field_mul(x, z_inv) == 0nat);
 
     // z = spec_field_element(&point.Z) = spec_field_element_as_nat(&point.Z) % p()
     // So z < p() by property of modulo
     assert(z < p()) by {
-        vstd::arithmetic::div_mod::lemma_mod_bound(
-            spec_field_element_as_nat(&point.Z) as int,
-            p() as int,
-        );
+        lemma_mod_bound(spec_field_element_as_nat(&point.Z) as int, p() as int);
     }
 
     // Since z < p() and z != 0, we have z % p() == z and z % p() != 0
     assert(z % p() == z) by {
-        vstd::arithmetic::div_mod::lemma_small_mod(z, p());
+        lemma_small_mod(z, p());
     }
     assert(z % p() != 0);
 

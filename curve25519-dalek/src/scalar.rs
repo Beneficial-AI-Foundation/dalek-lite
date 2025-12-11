@@ -2997,7 +2997,7 @@ impl UnpackedScalar {
 
         proof {
             use crate::lemmas::scalar_lemmas::lemma_invert_correctness;
-            
+
             // Apply the invert correctness lemma
             lemma_invert_correctness(
                 to_nat(&self.limbs),

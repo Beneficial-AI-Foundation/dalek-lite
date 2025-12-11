@@ -533,20 +533,20 @@ impl FieldElement {
                 0 <= i < old(inputs).len() ==> (forall|j: int|
                     0 <= j < 5 ==> old(inputs)[i].limbs[j] < 1u64 << 54),
         ensures
-    // Each element is replaced appropriately:
-
+            // Each element is replaced appropriately:
             forall|i: int|
                 #![auto]
-                0 <= i < inputs.len() ==> {
+                0 <= i < inputs.len() ==> (
                     // If input was non-zero, it's replaced with its inverse
-                    (spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
+                    ((spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
                         &old(inputs)[i],
                         &inputs[i],
-                    ) &&
+                    ))
+                    &&
                     // If input was zero, it remains zero
-                    (spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(&inputs[i])
-                        == 0
-                },
+                    ((spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(&inputs[i])
+                        == 0)
+                ),
     {
         // Montgomery's Trick and Fast Implementation of Masked AES
         // Genelle, Prouff and Quisquater

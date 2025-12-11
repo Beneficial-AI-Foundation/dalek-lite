@@ -530,8 +530,7 @@ impl FieldElement {
         requires
             forall|i: int|
                 #![trigger old(inputs)[i]]
-                0 <= i < old(inputs).len() ==> (forall|j: int|
-                    0 <= j < 5 ==> old(inputs)[i].limbs[j] < 1u64 << 54),
+                0 <= i < old(inputs).len() ==> fe51_limbs_bounded(&old(inputs)[i], 54),
         ensures
             // Each element is replaced appropriately:
             forall|i: int|

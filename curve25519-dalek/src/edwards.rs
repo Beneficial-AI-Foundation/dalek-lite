@@ -250,10 +250,10 @@ impl CompressedEdwardsY {
     // satisfied for points produced by `compress()`. For externally-sourced
     // bytes (e.g., from network input), callers must ensure this invariant.
     //
-    // See `is_valid_compressed_edwards_y` in `edwards_specs.rs` for full justification.
+    // See `compressed_y_has_valid_sign_bit` in `edwards_specs.rs` for full justification.
 
         requires
-            is_valid_compressed_edwards_y(&self.0),
+            compressed_y_has_valid_sign_bit(&self.0),
         ensures
             math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
                 ==> result.is_some()

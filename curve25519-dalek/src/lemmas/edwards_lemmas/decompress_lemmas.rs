@@ -361,7 +361,7 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
     assert(y2 == 1);
 }
 
-/// Lemma: From is_valid_compressed_edwards_y, derive that sign_bit=1 implies x≠0
+/// Lemma: From compressed_y_has_valid_sign_bit, derive that sign_bit=1 implies x≠0
 ///
 /// ## Mathematical Proof
 ///
@@ -376,7 +376,7 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
 /// Combined: sign_bit = 1 ==> x ≠ 0
 pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: nat)
     requires
-        is_valid_compressed_edwards_y(bytes),  // decompress precondition
+        compressed_y_has_valid_sign_bit(bytes),  // decompress precondition
         y == spec_field_element_from_bytes(bytes),  // Y from bytes
         math_on_edwards_curve(x, y),  // (x, y) on curve
         x < p(),  // X bounded
@@ -390,7 +390,7 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
     let y_sq = math_field_square(y);
 
     if sign_bit == 1 {
-        // From is_valid_compressed_edwards_y: y² == 1 ==> sign_bit == 0
+        // From compressed_y_has_valid_sign_bit: y² == 1 ==> sign_bit == 0
         // Contrapositive: sign_bit == 1 ==> y² != 1
         assert(y_sq != 1);
 
@@ -428,7 +428,7 @@ pub proof fn lemma_decompress_valid_branch(
     point: &EdwardsPoint,
 )
     requires
-        is_valid_compressed_edwards_y(repr_bytes),
+        compressed_y_has_valid_sign_bit(repr_bytes),
         // step_1 postconditions (as nat values)
         y == spec_field_element_from_bytes(repr_bytes),
         math_on_edwards_curve(x_orig, y),

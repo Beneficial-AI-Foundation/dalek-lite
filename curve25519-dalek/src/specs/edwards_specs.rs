@@ -398,7 +398,7 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
 /// ## Definition
 ///
 /// If the Y coordinate yields x = 0 (i.e., y² ≡ 1 mod p), the sign bit must be 0.
-pub open spec fn is_valid_compressed_edwards_y(bytes: &[u8; 32]) -> bool {
+pub open spec fn compressed_y_has_valid_sign_bit(bytes: &[u8; 32]) -> bool {
     let y = spec_field_element_from_bytes(bytes);
     let sign_bit = bytes[31] >> 7;
     // If y² ≡ 1 (mod p), then x = 0, so sign_bit must be 0

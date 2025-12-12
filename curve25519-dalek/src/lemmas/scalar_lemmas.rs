@@ -2139,51 +2139,65 @@ pub proof fn lemma_invert_correctness(self_val: nat, mont_val: nat, inv_val: nat
 {
     let R = montgomery_radix();
     let L = group_order();
-
-    lemma_montgomery_inverse();
     let R_inv = inv_montgomery_radix();
 
-    // Step 1: Show (result * R) * mont ≡ R² (mod L)
-    assert(((result_val * R) * mont_val) % L == (R * R) % L) by {
-        lemma_mul_mod_noop_left((result_val * R) as int, mont_val as int, L as int);
-        lemma_mul_mod_noop_left(inv_val as int, mont_val as int, L as int);
+    // Final goal: (result_val * self_val) % L == 1
+    assert((result_val * self_val) % L == 1nat) by {
+        lemma_montgomery_inverse();
+
+        // Step 1: Show (result * R) * mont ≡ R² (mod L)
+        assert(((result_val * R) * mont_val) % L == (R * R) % L) by {
+            lemma_mul_mod_noop_left((result_val * R) as int, mont_val as int, L as int);
+            lemma_mul_mod_noop_left(inv_val as int, mont_val as int, L as int);
+        }
+
+        // Step 2: Substitute mont ≡ self * R
+        assert((result_val * ((R * self_val) * R)) % L == (R * R) % L) by {
+            lemma_mul_is_associative(result_val as int, R as int, mont_val as int);
+            lemma_mul_mod_noop_right(R as int, mont_val as int, L as int);
+            lemma_mul_mod_noop_right(R as int, (self_val * R) as int, L as int);
+            lemma_mul_is_associative(R as int, self_val as int, R as int);
+            lemma_mul_mod_noop_right(result_val as int, (R * mont_val) as int, L as int);
+            lemma_mul_mod_noop_right(result_val as int, (R * (self_val * R)) as int, L as int);
+        }
+
+        // Step 3: Regroup to (result * self) * R²
+        assert(((result_val * self_val) * (R * R)) % L == (R * R) % L) by {
+            lemma_mul_is_associative(result_val as int, (R * self_val) as int, R as int);
+            lemma_mul_is_associative(result_val as int, R as int, self_val as int);
+            lemma_mul_is_associative((result_val * R) as int, self_val as int, R as int);
+            lemma_mul_is_commutative(R as int, self_val as int);
+            lemma_mul_is_associative(result_val as int, self_val as int, R as int);
+            lemma_mul_is_associative((result_val * self_val) as int, R as int, R as int);
+        }
+
+        // Step 4: First application of R_inv to cancel one R
+        assert(((result_val * self_val) * R) % L == R % L) by {
+            lemma_montgomery_inverse();
+            lemma_mul_mod_noop_right(
+                R_inv as int,
+                ((result_val * self_val) * (R * R)) as int,
+                L as int,
+            );
+            lemma_mul_mod_noop_right(R_inv as int, (R * R) as int, L as int);
+            lemma_mul_is_associative((result_val * self_val) as int, (R * R) as int, R_inv as int);
+            lemma_mul_is_associative(R as int, R as int, R_inv as int);
+            lemma_mul_mod_noop_right(R as int, (R * R_inv) as int, L as int);
+            lemma_mul_mod_noop_right(
+                (result_val * self_val) as int,
+                ((R * R) * R_inv) as int,
+                L as int,
+            );
+            lemma_mul_mod_noop_right((result_val * self_val) as int, R as int, L as int);
+        }
+
+        // Step 5: Second application of R_inv to cancel the remaining R
+        lemma_mul_mod_noop_right(R_inv as int, ((result_val * self_val) * R) as int, L as int);
+        lemma_mul_mod_noop_right(R_inv as int, R as int, L as int);
+        lemma_mul_is_associative((result_val * self_val) as int, R as int, R_inv as int);
+        lemma_mul_mod_noop_right((result_val * self_val) as int, (R * R_inv) as int, L as int);
+        lemma_mul_mod_noop_right((result_val * self_val) as int, 1nat as int, L as int);
     }
-
-    // Step 2: Substitute mont ≡ self * R
-    lemma_mul_is_associative(result_val as int, R as int, mont_val as int);
-    lemma_mul_mod_noop_right(R as int, mont_val as int, L as int);
-    lemma_mul_mod_noop_right(R as int, (self_val * R) as int, L as int);
-    lemma_mul_is_associative(R as int, self_val as int, R as int);
-    lemma_mul_mod_noop_right(result_val as int, (R * mont_val) as int, L as int);
-    lemma_mul_mod_noop_right(result_val as int, (R * (self_val * R)) as int, L as int);
-    assert((result_val * ((R * self_val) * R)) % L == (R * R) % L);
-
-    // Step 3: Regroup to (result * self) * R²
-    lemma_mul_is_associative(result_val as int, (R * self_val) as int, R as int);
-    lemma_mul_is_associative(result_val as int, R as int, self_val as int);
-    lemma_mul_is_associative((result_val * R) as int, self_val as int, R as int);
-    lemma_mul_is_commutative(R as int, self_val as int);
-    lemma_mul_is_associative(result_val as int, self_val as int, R as int);
-    lemma_mul_is_associative((result_val * self_val) as int, R as int, R as int);
-    assert(((result_val * self_val) * (R * R)) % L == (R * R) % L);
-
-    // Step 4: Cancel R² by multiplying both sides by R_inv twice
-    lemma_mul_mod_noop_right(R_inv as int, ((result_val * self_val) * (R * R)) as int, L as int);
-    lemma_mul_mod_noop_right(R_inv as int, (R * R) as int, L as int);
-    lemma_mul_is_associative((result_val * self_val) as int, (R * R) as int, R_inv as int);
-    lemma_mul_is_associative(R as int, R as int, R_inv as int);
-    lemma_mul_mod_noop_right(R as int, (R * R_inv) as int, L as int);
-    lemma_mul_mod_noop_right((result_val * self_val) as int, ((R * R) * R_inv) as int, L as int);
-    lemma_mul_mod_noop_right((result_val * self_val) as int, R as int, L as int);
-    assert(((result_val * self_val) * R) % L == R % L);
-
-    // Second application of R_inv
-    lemma_mul_mod_noop_right(R_inv as int, ((result_val * self_val) * R) as int, L as int);
-    lemma_mul_mod_noop_right(R_inv as int, R as int, L as int);
-    lemma_mul_is_associative((result_val * self_val) as int, R as int, R_inv as int);
-    lemma_mul_mod_noop_right((result_val * self_val) as int, (R * R_inv) as int, L as int);
-    lemma_mul_mod_noop_right((result_val * self_val) as int, 1nat as int, L as int);
-    assert((result_val * self_val) % L == 1nat);
 }
 
 } // verus!

@@ -2996,8 +2996,6 @@ impl UnpackedScalar {
         // from_montgomery ensures limbs_bounded(&result) and to_nat(&result.limbs) < group_order()
 
         proof {
-            use crate::lemmas::scalar_lemmas::lemma_invert_correctness;
-
             // Apply the invert correctness lemma
             lemma_invert_correctness(
                 to_nat(&self.limbs),

@@ -212,6 +212,24 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
     z != 0 && x == 0 && y == z
 }
 
+/// Math-level validity predicate for an Edwards point in **extended coordinates** (X:Y:Z:T).
+///
+/// This is the "unpacked" version of `is_valid_edwards_point` that operates directly on the
+/// mathematical values `(x, y, z, t)` (all reduced mod p via `math_field_*`).
+///
+/// An (X:Y:Z:T) tuple is valid iff:
+/// 1. Z ≠ 0
+/// 2. The affine point (X/Z, Y/Z) is on the Edwards curve
+/// 3. T = X·Y/Z
+pub open spec fn math_is_valid_edwards_point_xyzt(x: nat, y: nat, z: nat, t: nat) -> bool {
+    z != 0
+        && math_on_edwards_curve(
+            math_field_mul(x, math_field_inv(z)),
+            math_field_mul(y, math_field_inv(z)),
+        )
+        && t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
+}
+
 /// Check if an EdwardsPoint in projective coordinates is valid
 /// An EdwardsPoint (X:Y:Z:T) is valid if:
 /// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
@@ -226,15 +244,7 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
     let z = spec_field_element(&point.Z);
     let t = spec_field_element(&point.T);
 
-    // Z must be non-zero
-    z != 0 &&
-    // The affine coordinates (X/Z, Y/Z) must be on the curve
-    math_on_edwards_curve(
-        math_field_mul(x, math_field_inv(z)),
-        math_field_mul(y, math_field_inv(z)),
-    ) &&
-    // Extended coordinate must satisfy T = X*Y/Z
-    t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
+    math_is_valid_edwards_point_xyzt(x, y, z, t)
 }
 
 /// Limb bounds for safe field arithmetic on an EdwardsPoint.

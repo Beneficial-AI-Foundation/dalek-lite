@@ -75,12 +75,7 @@ pub proof fn lemma_decompress_produces_valid_point(
         math_on_edwards_curve(x, y),
         t == math_field_mul(x, y),
     ensures
-        ({
-            z != 0 && math_on_edwards_curve(
-                math_field_mul(x, math_field_inv(z)),
-                math_field_mul(y, math_field_inv(z)),
-            ) && t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
-        }),
+        math_is_valid_edwards_point_xyzt(x, y, z, t),
 {
     // Goal: Show (X:Y:Z:T) with Z=1 is a valid extended point
     //

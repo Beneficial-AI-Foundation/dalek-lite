@@ -212,6 +212,22 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
     z != 0 && x == 0 && y == z
 }
 
+/// Math-level validity predicate for an Edwards point in **extended coordinates** (X:Y:Z:T).
+///
+/// This is the "unpacked" version of `is_valid_edwards_point` that operates directly on the
+/// mathematical values `(x, y, z, t)` (all reduced mod p via `math_field_*`).
+///
+/// An (X:Y:Z:T) tuple is valid iff:
+/// 1. Z ≠ 0
+/// 2. The affine point (X/Z, Y/Z) is on the Edwards curve
+/// 3. T = X·Y/Z
+pub open spec fn math_is_valid_edwards_point_xyzt(x: nat, y: nat, z: nat, t: nat) -> bool {
+    z != 0 && math_on_edwards_curve(
+        math_field_mul(x, math_field_inv(z)),
+        math_field_mul(y, math_field_inv(z)),
+    ) && t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
+}
+
 /// Check if an EdwardsPoint in projective coordinates is valid
 /// An EdwardsPoint (X:Y:Z:T) is valid if:
 /// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
@@ -226,15 +242,7 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
     let z = spec_field_element(&point.Z);
     let t = spec_field_element(&point.T);
 
-    // Z must be non-zero
-    z != 0 &&
-    // The affine coordinates (X/Z, Y/Z) must be on the curve
-    math_on_edwards_curve(
-        math_field_mul(x, math_field_inv(z)),
-        math_field_mul(y, math_field_inv(z)),
-    ) &&
-    // Extended coordinate must satisfy T = X*Y/Z
-    t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
+    math_is_valid_edwards_point_xyzt(x, y, z, t)
 }
 
 /// Limb bounds for safe field arithmetic on an EdwardsPoint.
@@ -367,6 +375,43 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
         == y_affine
     // The sign bit matches the sign of the affine x-coordinate
      && (compressed.0[31] >> 7) == (((x_affine % crate::specs::field_specs_u64::p()) % 2) as u8)
+}
+
+/// Check if a CompressedEdwardsY has a valid sign bit.
+///
+/// ## Justification
+///
+/// This precondition captures an invariant that must hold for correctly-formed
+/// compressed Edwards points:
+///
+/// 1. **Mathematical basis**: For points with x = 0 on the Edwards curve,
+///    the curve equation gives y² = 1, so y = ±1. These special points
+///    (the identity (0,1) and the point (0,-1)) have only one valid sign bit: 0.
+///
+/// 2. **compress() always produces valid points**: The compress() function
+///    (edwards.rs:1293) sets `sign_bit = x.is_negative()` which returns
+///    `bytes[0] & 1 = LSB(x)`. When x = 0, this is always 0.
+///
+/// 3. **Spec alignment**: The existing spec `compressed_edwards_y_corresponds_to_edwards`
+///    (edwards_specs.rs:367) already requires `sign_bit == x % 2`.
+///
+/// 4. **Sources of CompressedEdwardsY**:
+///    - compress(): Always produces valid points (by construction)
+///    - Direct construction / from_slice / serde: No automatic validation
+///    - identity(): Hardcoded valid bytes
+///
+/// Therefore, this precondition is satisfied by all compress()-produced points
+/// and must be ensured by callers when handling externally-sourced bytes.
+///
+/// ## Definition
+///
+/// If the Y coordinate yields x = 0 (i.e., y² ≡ 1 mod p), the sign bit must be 0.
+pub open spec fn compressed_y_has_valid_sign_bit(bytes: &[u8; 32]) -> bool {
+    let y = spec_field_element_from_bytes(bytes);
+    let sign_bit = bytes[31] >> 7;
+    // If y² ≡ 1 (mod p), then x = 0, so sign_bit must be 0
+    // Equivalently: sign_bit == 1 implies y² ≢ 1
+    math_field_square(y) == 1 ==> sign_bit == 0
 }
 
 /// Check if a ProjectiveNielsPoint corresponds to an EdwardsPoint

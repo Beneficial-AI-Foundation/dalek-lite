@@ -222,12 +222,10 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// 2. The affine point (X/Z, Y/Z) is on the Edwards curve
 /// 3. T = X·Y/Z
 pub open spec fn math_is_valid_edwards_point_xyzt(x: nat, y: nat, z: nat, t: nat) -> bool {
-    z != 0
-        && math_on_edwards_curve(
-            math_field_mul(x, math_field_inv(z)),
-            math_field_mul(y, math_field_inv(z)),
-        )
-        && t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
+    z != 0 && math_on_edwards_curve(
+        math_field_mul(x, math_field_inv(z)),
+        math_field_mul(y, math_field_inv(z)),
+    ) && t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
 }
 
 /// Check if an EdwardsPoint in projective coordinates is valid

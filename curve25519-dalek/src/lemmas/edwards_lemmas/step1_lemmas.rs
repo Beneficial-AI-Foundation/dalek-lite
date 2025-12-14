@@ -438,19 +438,17 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
 /// - `x`: The X coordinate value (from sqrt_ratio_i)
 /// - `u_math`: Y² - 1 (mathematical value)
 /// - `v_math`: d·Y² + 1 (mathematical value)
-/// - `is_valid`: The choice from sqrt_ratio_i (as bool)
-/// - `is_sqrt_ratio_holds`: Whether is_sqrt_ratio(u, v, x) holds
+/// - `sqrt_ratio_succeeded`: The choice result from sqrt_ratio_i (as bool)
 ///
 /// ## Proves
-/// - is_valid <==> math_is_valid_y_coordinate(y)
-/// - is_valid ==> math_on_edwards_curve(x, y)
+/// - sqrt_ratio_succeeded <==> math_is_valid_y_coordinate(y)
+/// - sqrt_ratio_succeeded ==> math_on_edwards_curve(x, y)
 pub proof fn lemma_step1_case_analysis(
     y: nat,
     x: nat,
     u_math: nat,
     v_math: nat,
-    is_valid: bool,
-    is_sqrt_ratio_holds: bool,
+    sqrt_ratio_succeeded: bool,
 )
     requires
 // u = Y² - 1, v = d·Y² + 1
@@ -461,33 +459,35 @@ pub proof fn lemma_step1_case_analysis(
             u_math == math_field_sub(y2, 1) && v_math == math_field_add(math_field_mul(d, y2), 1)
         }),
         // sqrt_ratio_i postconditions (from ensures clause)
-        // When is_valid and v ≠ 0, is_sqrt_ratio holds
-        (is_valid && v_math != 0) ==> is_sqrt_ratio_holds,
-        is_sqrt_ratio_holds ==> (x * x * v_math) % p() == u_math,
+        // When sqrt_ratio_succeeded and v ≠ 0: x²·v = u (math_is_sqrt_ratio)
+        (sqrt_ratio_succeeded && v_math != 0) ==> math_is_sqrt_ratio(u_math, v_math, x),
         // When u = 0, sqrt_ratio_i returns true with x = 0
-        (u_math == 0) ==> (is_valid && x == 0),
+        (u_math == 0) ==> (sqrt_ratio_succeeded && x == 0),
         // When v = 0 and u ≠ 0, sqrt_ratio_i returns false
-        (v_math == 0 && u_math != 0) ==> !is_valid,
-        // When sqrt_ratio_i fails with u,v ≠ 0: x²·v = i·u (is_sqrt_ratio_times_i)
-        (!is_valid && u_math != 0 && v_math != 0) ==> (x * x * v_math) % p() == (spec_sqrt_m1()
-            * u_math) % p(),
+        (v_math == 0 && u_math != 0) ==> !sqrt_ratio_succeeded,
+        // When sqrt_ratio_i fails with u,v ≠ 0: x²·v = i·u (math_is_sqrt_ratio_times_i)
+        (!sqrt_ratio_succeeded && u_math != 0 && v_math != 0) ==> math_is_sqrt_ratio_times_i(
+            u_math,
+            v_math,
+            x,
+        ),
         // Field element bounds (u_math and v_math are field elements, so < p)
         x < p(),
         u_math < p(),
         v_math < p(),
     ensures
-        is_valid <==> math_is_valid_y_coordinate(y),
-        is_valid ==> math_on_edwards_curve(x, y),
+        sqrt_ratio_succeeded <==> math_is_valid_y_coordinate(y),
+        sqrt_ratio_succeeded ==> math_on_edwards_curve(x, y),
 {
-    // Case analysis on is_valid (sqrt_ratio_i success/failure)
-    if is_valid {
+    // Case analysis on sqrt_ratio_succeeded (sqrt_ratio_i success/failure)
+    if sqrt_ratio_succeeded {
         // Case: sqrt_ratio_i returned true
         // Goal: math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)
         if v_math != 0 {
             // Subcase: v ≠ 0 (main case)
             assert(math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)) by {
-                // From precondition: is_sqrt_ratio holds
-                assert(is_sqrt_ratio_holds);
+                // From precondition: math_is_sqrt_ratio holds
+                assert(math_is_sqrt_ratio(u_math, v_math, x));
                 assert((x * x * v_math) % p() == u_math);
 
                 // Convert to math_field_mul form for curve semantics
@@ -499,7 +499,7 @@ pub proof fn lemma_step1_case_analysis(
         } else {
             // Subcase: v = 0 (identity points y = ±1)
             assert(math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)) by {
-                // By contrapositive: is_valid && v = 0 ==> u = 0
+                // By contrapositive: sqrt_ratio_succeeded && v = 0 ==> u = 0
                 assert(u_math == 0);
                 // From precondition: u = 0 ==> x = 0
                 assert(x == 0);
@@ -511,7 +511,7 @@ pub proof fn lemma_step1_case_analysis(
         // Case: sqrt_ratio_i returned false
         // Goal: !math_is_valid_y_coordinate(y)
         assert(!math_is_valid_y_coordinate(y)) by {
-            // By contrapositive of (u = 0 ==> is_valid): !is_valid ==> u ≠ 0
+            // By contrapositive of (u = 0 ==> sqrt_ratio_succeeded): !sqrt_ratio_succeeded ==> u ≠ 0
             assert(u_math != 0);
             lemma_small_mod(u_math, p());
             assert(u_math % p() != 0);
@@ -528,11 +528,12 @@ pub proof fn lemma_step1_case_analysis(
                     lemma_small_mod(v_math, p());
                 };
 
-                // Establish the antecedent: !is_valid && u_math != 0 && v_math != 0
-                assert(!is_valid);
+                // Establish the antecedent: !sqrt_ratio_succeeded && u_math != 0 && v_math != 0
+                assert(!sqrt_ratio_succeeded);
                 assert(u_math != 0);
 
-                // From precondition: (!is_valid && u_math != 0 && v_math != 0) ==> x²·v = i·u
+                // From precondition: math_is_sqrt_ratio_times_i(u_math, v_math, x)
+                assert(math_is_sqrt_ratio_times_i(u_math, v_math, x));
                 assert((x * x * v_math) % p() == (spec_sqrt_m1() * u_math) % p());
 
                 // Establish the existential for lemma_sqrt_ratio_failure_means_invalid_y

@@ -450,6 +450,20 @@ pub open spec fn is_sqrt_ratio_times_i(
     spec_field_element(&constants::SQRT_M1) * spec_field_element(u)) % p()
 }
 
+/// Spec function: r² * v = u (mod p) — math version operating on nat values
+/// This is the mathematical equivalent of is_sqrt_ratio but without FieldElement wrappers.
+/// Use this when working with mathematical values directly in lemmas.
+pub open spec fn math_is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {
+    (r * r * v) % p() == u
+}
+
+/// Spec function: r² * v = i*u (mod p) — math version operating on nat values
+/// Used for the nonsquare case in sqrt_ratio_i.
+/// This is the mathematical equivalent of is_sqrt_ratio_times_i.
+pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
+    (r * r * v) % p() == (spec_sqrt_m1() * u) % p()
+}
+
 // Square-ness mod p (spec-only).
 pub open spec fn is_square_mod_p(a: nat) -> bool {
     exists|y: nat| (#[trigger] (y * y) % p()) == (a % p())

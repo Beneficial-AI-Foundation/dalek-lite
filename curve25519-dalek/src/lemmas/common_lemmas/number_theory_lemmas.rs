@@ -1685,60 +1685,51 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
 }
 
 // ============================================================================
-// Modular Arithmetic - Square of Complement
+// Modular Arithmetic - Product of Complements
 // ============================================================================
-/// Lemma: (p - a)² % p = a² % p for 0 < a < p
+/// Lemma: (p - a)(p - b) % p = (a * b) % p for 0 < a, b < p
 ///
 /// This is a fundamental modular arithmetic property:
-///   (p - a)² = p² - 2pa + a²
-///   p² % p = 0 (p divides p²)
-///   2pa % p = 0 (p divides 2pa)
-///   So (p - a)² % p = a² % p
+///   (p - a)(p - b) = p² - pb - pa + ab = p(p - a - b) + ab
+///   p(p - a - b) % p = 0 (p divides p(p - a - b))
+///   So (p - a)(p - b) % p = ab % p
 ///
-/// This lemma is useful for proving that negation preserves squares in finite fields.
-pub proof fn lemma_square_of_complement(a: nat, p: nat)
+/// This lemma generalizes the property that negation preserves products in finite fields.
+pub proof fn lemma_product_of_complements(a: nat, b: nat, p: nat)
     requires
         p > 0,
         0 < a && a < p,
+        0 < b && b < p,
     ensures
-        (((p - a) * (p - a)) as nat) % p == ((a * a) as nat) % p,
+        (((p - a) * (p - b)) as nat) % p == ((a * b) as nat) % p,
 {
     let p_int = p as int;
     let a_int = a as int;
+    let b_int = b as int;
     let p_minus_a = (p - a) as int;
+    let p_minus_b = (p - b) as int;
 
-    // Step 1: (p - a)² = p² - 2pa + a²
-    assert(p_minus_a * p_minus_a == p_int * p_int - 2 * p_int * a_int + a_int * a_int) by {
-        lemma_mul_is_distributive_sub(p_minus_a, p_int, a_int);
-        lemma_mul_is_commutative(p_minus_a, p_int);
-        lemma_mul_is_distributive_sub(p_int, p_int, a_int);
-        lemma_mul_is_commutative(p_minus_a, a_int);
-        lemma_mul_is_distributive_sub(a_int, p_int, a_int);
+    // Step 1: (p - a)(p - b) = p² - pb - pa + ab = p(p - a - b) + ab
+    assert(p_minus_a * p_minus_b == p_int * (p_int - a_int - b_int) + a_int * b_int) by {
+        // (p - a)(p - b) = p(p - b) - a(p - b)
+        lemma_mul_is_distributive_sub(p_minus_b, p_int, a_int);
+        // p(p - b) = p² - pb
+        lemma_mul_is_distributive_sub(p_int, p_int, b_int);
+        // a(p - b) = ap - ab
+        lemma_mul_is_distributive_sub(a_int, p_int, b_int);
+        // So: (p - a)(p - b) = p² - pb - ap + ab
+        //                    = p² - pb - pa + ab  (commutativity)
         lemma_mul_is_commutative(a_int, p_int);
-        lemma_mul_is_associative(2int, p_int, a_int);
+        // p² - pb - pa + ab = p(p - b - a) + ab
+        lemma_mul_is_distributive_sub(p_int, p_int, b_int);
+        lemma_mul_is_distributive_sub(p_int, (p_int - b_int), a_int);
     }
 
-    // Step 2: (p² - 2pa + a²) % p = a² % p
-    assert((p_int * p_int - 2 * p_int * a_int + a_int * a_int) % p_int == (a_int * a_int) % p_int)
-        by {
-        assert((p_int * p_int) % p_int == 0) by {
-            lemma_mod_multiples_basic(p_int, p_int);
-        }
-        assert((2 * p_int * a_int) % p_int == 0) by {
-            assert(2 * p_int * a_int == (2 * a_int) * p_int) by {
-                lemma_mul_is_associative(2int, p_int, a_int);
-                lemma_mul_is_commutative(2int, p_int);
-                lemma_mul_is_associative(p_int, 2int, a_int);
-                lemma_mul_is_commutative(p_int, 2 * a_int);
-            }
-            lemma_mod_multiples_basic(2 * a_int, p_int);
-        }
-        assert((p_int * p_int - 2 * p_int * a_int) % p_int == 0) by {
-            lemma_sub_mod_noop(p_int * p_int, 2 * p_int * a_int, p_int);
-            lemma_small_mod(0nat, p);
-        }
-        lemma_add_mod_noop(p_int * p_int - 2 * p_int * a_int, a_int * a_int, p_int);
-        lemma_mod_twice(a_int * a_int, p_int);
+    // Step 2: (p(p - a - b) + ab) % p = ab % p
+    let k = p_int - a_int - b_int;
+    assert((p_int * k + a_int * b_int) % p_int == (a_int * b_int) % p_int) by {
+        // p * k % p = 0 for any k
+        lemma_mod_multiples_vanish(k, a_int * b_int, p_int);
     }
 }
 

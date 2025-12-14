@@ -82,7 +82,7 @@ pub proof fn lemma_neg_square_eq(x: nat)
     } else {
         // a > 0: neg_x = p - a, use (p-a)² ≡ a² (mod p)
         lemma_small_mod((p - a) as nat, p);
-        lemma_square_of_complement(a, p);
+        lemma_product_of_complements(a, a, p);
     }
 }
 

@@ -106,27 +106,20 @@ pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
 pub proof fn lemma_decompress_field_element_sign_bit(
     x_before_negate: nat,
     x_after_negate: nat,
-    repr_byte_31: u8,
+    sign_bit: u8,
 )
     requires
+        sign_bit == 0 || sign_bit == 1,
         (x_before_negate % p()) % 2 == 0,  // sqrt_ratio_i returns even
-        (repr_byte_31 >> 7) == 1 ==> x_before_negate % p() != 0,  // x ≠ 0 when negating
-        x_after_negate == if (repr_byte_31 >> 7) == 1 {
+        sign_bit == 1 ==> x_before_negate % p() != 0,  // x ≠ 0 when negating
+        x_after_negate == if sign_bit == 1 {
             math_field_neg(x_before_negate)
         } else {
             x_before_negate % p()
         },
     ensures
-        ((x_after_negate % p()) % 2) as u8 == (repr_byte_31 >> 7),
+        ((x_after_negate % p()) % 2) as u8 == sign_bit,
 {
-    let sign_bit = repr_byte_31 >> 7;
-
-    // sign_bit ∈ {0, 1}
-    assert(sign_bit == 0 || sign_bit == 1) by (bit_vector)
-        requires
-            sign_bit == repr_byte_31 >> 7,
-    ;
-
     // (x_after % 2) as u8 == sign_bit
     assert((x_after_negate % 2) as u8 == sign_bit) by {
         lemma_sign_bit_after_conditional_negate(x_before_negate, sign_bit);
@@ -288,16 +281,24 @@ pub proof fn lemma_decompress_valid_branch(
 
         // ((x_after % p) % 2) as u8 == sign_bit
         assert(((x_after % p()) % 2) as u8 == (repr_byte_31 >> 7)) by {
+            let sign_bit = repr_byte_31 >> 7;
+
+            // sign_bit ∈ {0, 1}
+            assert(sign_bit == 0 || sign_bit == 1) by (bit_vector)
+                requires
+                    sign_bit == repr_byte_31 >> 7,
+            ;
+
             // Precondition 1: sqrt_ratio_i returns non-negative root (LSB = 0)
             assert((x_before % p()) % 2 == 0);
 
             // Precondition 2: sign_bit == 1 ==> x != 0
-            assert((repr_byte_31 >> 7) == 1 ==> x_before % p() != 0) by {
+            assert(sign_bit == 1 ==> x_before % p() != 0) by {
                 lemma_sign_bit_one_implies_x_nonzero(repr_bytes, x_before, y);
             };
 
             // Precondition 3: x_after matches conditional expression
-            assert(x_after == if (repr_byte_31 >> 7) == 1 {
+            assert(x_after == if sign_bit == 1 {
                 math_field_neg(x_before)
             } else {
                 x_before % p()
@@ -305,7 +306,7 @@ pub proof fn lemma_decompress_valid_branch(
                 lemma_small_mod(x_before, p());
             };
 
-            lemma_decompress_field_element_sign_bit(x_before, x_after, repr_byte_31);
+            lemma_decompress_field_element_sign_bit(x_before, x_after, sign_bit);
         };
     };
 }

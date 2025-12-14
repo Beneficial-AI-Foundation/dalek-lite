@@ -205,7 +205,7 @@ pub proof fn lemma_int_nat_mod_equiv(v: int, m: nat)
 /// Multiplication distributes with modular negation: a * (-b mod m) ≡ -(a*b) (mod m)
 ///
 /// This is the unsigned representation version, where -x is encoded as (m - x % m).
-/// Key insight: a * (-b) = -(a*b) in integer arithmetic (v·(-r²) = -(v·r²)).
+/// Key insight: a * (-b) = -(a*b) in integer arithmetic.
 pub proof fn lemma_mul_distributes_over_neg_mod(a: nat, b: nat, m: nat)
     requires
         m > 1,
@@ -230,7 +230,6 @@ pub proof fn lemma_mul_distributes_over_neg_mod(a: nat, b: nat, m: nat)
     };
 
     // Step 3: a * (-b_mod) = -(a * b_mod) in integer arithmetic
-    // This is the key algebraic property: v·(-r²) = -(v·r²)
     assert((a as int) * (-(b_mod as int)) == -((a as int) * (b_mod as int))) by (nonlinear_arith);
 
     // Step 4: (a * b_mod) % m == (a * b) % m [mod absorption]

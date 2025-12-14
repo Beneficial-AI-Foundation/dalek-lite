@@ -2,12 +2,13 @@
 //!
 //! This module contains proofs for the `decompress` operation on Ed25519 points.
 //! For step_1 lemmas (curve equation, validity), see `step1_lemmas.rs`.
+//! For general curve equation lemmas (negation, extended coords), see `curve_equation_lemmas.rs`.
 //!
 //! ## Key Properties Proven
 //!
-//! 1. **Extended coordinate correctness**: T = X·Y/Z for valid points with Z = 1
-//! 2. **Negation preserves curve**: (-x, y) is on curve if (x, y) is
-//! 3. **Sign bit correctness**: After conditional_negate, the sign bit matches
+//! 1. **Sign bit correctness**: After conditional_negate, the sign bit matches
+//! 2. **Curve equation properties**: x=0 implies y²=1, sign bit implications
+//! 3. **Main decompress lemma**: Combines all properties for valid branch
 #![allow(unused_imports)]
 use crate::backend::serial::u64::constants;
 use crate::backend::serial::u64::constants::EDWARDS_D;
@@ -15,6 +16,7 @@ use crate::backend::serial::u64::field::FieldElement51;
 use crate::edwards::EdwardsPoint;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::common_lemmas::sqrt_ratio_lemmas::*;
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 use crate::lemmas::edwards_lemmas::step1_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 use crate::specs::edwards_specs::*;
@@ -27,102 +29,6 @@ use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 verus! {
-
-/// Main Lemma: decompress produces a valid Edwards point
-///
-/// When Z = 1 and (X, Y) is on the curve with T = X * Y,
-/// the result is a valid Edwards point.
-pub proof fn lemma_decompress_produces_valid_point(
-    x: nat,
-    y: nat,
-    z: nat,
-    t: nat,
-    sign_applied: bool,
-)
-    requires
-        z == 1,
-        math_on_edwards_curve(x, y),
-        t == math_field_mul(x, y),
-    ensures
-        math_is_valid_edwards_point_xyzt(x, y, z, t),
-{
-    // Goal: Show (X:Y:Z:T) with Z=1 is a valid extended point
-    //
-    // Need to prove:
-    //   1. Z ≠ 0
-    //   2. (X/Z, Y/Z) is on curve
-    //   3. T = X·Y/Z
-    let p = p();
-    p_gt_2();
-
-    // Part 1: Z = 1 ≠ 0
-    assert(z != 0);
-
-    // Part 2: (X/Z, Y/Z) is on curve
-    assert(math_on_edwards_curve(
-        math_field_mul(x, math_field_inv(z)),
-        math_field_mul(y, math_field_inv(z)),
-    )) by {
-        // Since Z = 1, inv(Z) = 1
-        assert(math_field_inv(z) == 1) by {
-            lemma_field_inv_one();
-        };
-
-        // X · inv(Z) = X · 1 = X % p
-        assert(math_field_mul(x, math_field_inv(z)) == (x * 1) % p);
-        assert(math_field_mul(y, math_field_inv(z)) == (y * 1) % p);
-
-        // on_curve(X % p, Y % p) ⟺ on_curve(X, Y) via square_mod_noop
-        // (inlined from lemma_curve_mod_noop)
-        lemma_square_mod_noop(x);
-        lemma_square_mod_noop(y);
-    };
-
-    // Part 3: T = X·Y/Z
-    assert(t == math_field_mul(math_field_mul(x, y), math_field_inv(z))) by {
-        lemma_field_inv_one();
-        let xy = math_field_mul(x, y);
-        // xy < p (mod result), so xy · 1 = xy
-        assert(xy < p) by {
-            lemma_mod_bound((x * y) as int, p as int);
-        };
-        lemma_small_mod(xy, p);
-        assert(math_field_mul(xy, math_field_inv(z)) == xy);
-        // t = xy (from precondition)
-    };
-}
-
-// =============================================================================
-// Negation Lemmas
-// =============================================================================
-/// Lemma: Negation preserves the curve equation
-///
-/// If (x, y) is on the curve, then (-x, y) is also on the curve.
-/// This is because the curve equation involves x² which is the same for x and -x.
-pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
-    requires
-        math_on_edwards_curve(x, y),
-    ensures
-        math_on_edwards_curve(math_field_neg(x), y),
-{
-    // Goal: on_curve(-x, y)
-    // Strategy: The curve equation uses x², and (-x)² = x², so the equation is identical
-    //
-    //   y² - (-x)² = 1 + d·(-x)²·y²
-    //   y² - x²    = 1 + d·x²·y²      (same equation!)
-    //
-    // The precondition says (x, y) satisfies this, so (-x, y) does too.
-    let neg_x = math_field_neg(x);
-
-    assert(math_on_edwards_curve(neg_x, y)) by {
-        // Key insight: (-x)² = x²
-        assert(math_field_square(neg_x) == math_field_square(x)) by {
-            lemma_neg_square_eq(x);  // (-x)² = (x % p)²
-            lemma_square_mod_noop(x);  // (x % p)² = x²
-        };
-        // With (-x)² = x², the curve equations are identical
-    };
-}
 
 // =============================================================================
 // Sign Bit Lemmas
@@ -442,8 +348,8 @@ pub proof fn lemma_decompress_valid_branch(
         assert(y_final == y);
         assert(t_final == math_field_mul(x_final, y_final));
 
-        // Apply the validity lemma
-        lemma_decompress_produces_valid_point(x_final, y_final, z_final, t_final, sign_bit == 1);
+        // Apply the validity lemma (from curve_equation_lemmas)
+        lemma_affine_to_extended_valid(x_final, y_final, z_final, t_final);
     };
 
     // =========================================================================

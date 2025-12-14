@@ -1,9 +1,17 @@
 //! Lemmas for step_1 of Edwards point decompression
 //!
-//! This module contains proofs for the `step_1` operation which computes:
-//! - Y coordinate from compressed bytes
-//! - Z = 1
-//! - sqrt_ratio_i(u, v) where u = Y² - 1 and v = d·Y² + 1
+//! ## step_1 Function
+//!
+//! ```text
+//! fn step_1(repr: &CompressedEdwardsY) -> (Choice, FieldElement, FieldElement, FieldElement)
+//!                                          // (is_valid, X, Y, Z)
+//! ```
+//!
+//! Decodes the Y coordinate from compressed bytes and computes a candidate X coordinate.
+//! - Extracts Y from `repr`, sets Z = 1
+//! - Computes u = Y² - 1 and v = d·Y² + 1
+//! - Calls sqrt_ratio_i(u, v) to find X such that X² = u/v (if it exists)
+//! - Returns `is_valid = Choice(1)` if Y is valid (u/v is a square), else `Choice(0)`
 //!
 //! ## Key Properties Proven
 //!

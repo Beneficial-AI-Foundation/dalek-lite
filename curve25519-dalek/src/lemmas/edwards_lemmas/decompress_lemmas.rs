@@ -1,6 +1,17 @@
 //! Lemmas for Edwards point decompression
 //!
 //! This module contains proofs for the `decompress` operation on Ed25519 points.
+//!
+//! ## decompress Function
+//!
+//! ```text
+//! fn decompress(&self: CompressedEdwardsY) -> Option<EdwardsPoint>
+//! ```
+//!
+//! Decompresses a 32-byte compressed Edwards point into a full Edwards point.
+//! - Calls step_1 to decode Y and compute candidate X
+//! - Applies step_2 to adjust X sign based on the compressed sign bit
+//! - Returns `Some(EdwardsPoint)` if Y is valid, else `None`
 //! For step_1 lemmas (curve equation, validity), see `step1_lemmas.rs`.
 //! For general curve equation lemmas (negation, extended coords), see `curve_equation_lemmas.rs`.
 //!

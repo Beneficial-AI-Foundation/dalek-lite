@@ -1,5 +1,3 @@
-//! Lemmas for sqrt_ratio_i algorithm verification
-//!
 //! This file contains lemmas needed to verify sqrt_ratio_i (field.rs) and
 //! related decompress proofs.
 //!

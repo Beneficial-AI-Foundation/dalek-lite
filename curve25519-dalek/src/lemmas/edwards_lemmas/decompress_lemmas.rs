@@ -28,37 +28,6 @@ use vstd::prelude::*;
 
 verus! {
 
-// =============================================================================
-// Step 1 Helper Lemmas for decompress
-// =============================================================================
-//
-// These lemmas organize the step_1 proof into three phases:
-// 1. Limb bounds: Preconditions for field operations
-// 2. sqrt_ratio_i postconditions: Properties of the computed X
-// 3. Curve semantics: Connecting to math_is_valid_y and math_on_edwards_curve
-/// Phase 1: Limb bounds are established for sqrt_ratio_i preconditions
-///
-/// This lemma documents that:
-/// - Y from from_bytes has 51-bit bounded limbs
-/// - Z = ONE has 51-bit bounded limbs
-/// - After operations, u and v have 54-bit bounded limbs (for sqrt_ratio_i)
-pub proof fn lemma_step1_limb_bounds_established()
-    ensures
-// ONE has 51-bit and 54-bit bounded limbs
-
-        fe51_limbs_bounded(&FieldElement51::ONE, 51),
-        fe51_limbs_bounded(&FieldElement51::ONE, 54),
-        // EDWARDS_D has 54-bit bounded limbs
-        fe51_limbs_bounded(&EDWARDS_D, 54),
-{
-    use crate::lemmas::field_lemmas::constants_lemmas::*;
-    use crate::lemmas::edwards_lemmas::constants_lemmas::*;
-
-    lemma_one_limbs_bounded();
-    lemma_one_limbs_bounded_54();
-    lemma_edwards_d_limbs_bounded_54();
-}
-
 /// Main Lemma: decompress produces a valid Edwards point
 ///
 /// When Z = 1 and (X, Y) is on the curve with T = X * Y,

@@ -287,12 +287,11 @@ pub proof fn lemma_square_matches_math_field_square(y_raw: nat, y2_raw: nat)
 // =============================================================================
 // Edge Case Lemmas for step_1
 // =============================================================================
-/// When u = 0 in decompress, y² = 1 and (0, y) is on the Edwards curve.
+/// When y² = 1 in decompress, (0, y) is on the Edwards curve.
 /// This is the edge case where y = ±1 (identity-related points).
-pub proof fn lemma_u_zero_implies_identity_point(y: nat, u: nat)
+pub proof fn lemma_u_zero_implies_identity_point(y: nat)
     requires
-        u == math_field_sub(math_field_square(y), 1),
-        u == 0,
+        math_field_sub(math_field_square(y), 1) == 0,
     ensures
         math_field_square(y) == 1,
         math_on_edwards_curve(0, y),
@@ -305,15 +304,15 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat, u: nat)
 
     // Step 1: Prove y² = 1
     //
-    // Given: u = math_field_sub(y², 1) = 0
+    // Given: math_field_sub(y², 1) = 0
     // Expanding: math_field_sub(y2, 1) = (y2 + p - 1) % p  [since y2, 1 < p]
     //
-    // Since u = 0, we have (y2 + p - 1) % p = 0, so y2 + p - 1 is a multiple of p.
+    // Since math_field_sub(y2, 1) = 0, we have (y2 + p - 1) % p = 0, so y2 + p - 1 is a multiple of p.
     // Range: y2 ∈ [0, p) implies y2 + p - 1 ∈ [p-1, 2p-1)
     // The only multiple of p in [p-1, 2p-1) is p itself.
     // Therefore y2 + p - 1 = p, giving y2 = 1.
     //
-    // Case analysis below rules out y2 = 0 and y2 >= 2 by showing they give u ≠ 0.
+    // Case analysis below rules out y2 = 0 and y2 >= 2 by showing they give math_field_sub(y2, 1) ≠ 0.
     assert(y2 == 1) by {
         // Establish bounds
         assert(y2 < p) by {
@@ -338,7 +337,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat, u: nat)
             assert(sum % p as int == (p - 1) as int) by {
                 lemma_small_mod((p - 1) as nat, p);
             };
-            // This contradicts u = math_field_sub(y2, 1) = 0
+            // This contradicts math_field_sub(y2, 1) = 0
         } else if y2 >= 2 {
             // sum = y2 + p - 1 >= p + 1
             assert(sum >= p as int + 1);
@@ -347,7 +346,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat, u: nat)
                 lemma_small_mod((y2 - 1) as nat, p);
                 lemma_mod_multiples_vanish(-1int, sum, p as int);
             };
-            // y2 - 1 >= 1 ≠ 0, contradicts u = 0
+            // y2 - 1 >= 1 ≠ 0, contradicts math_field_sub(y2, 1) = 0
         }
         // The only remaining case is y2 == 1
 
@@ -397,9 +396,9 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat, u: nat)
     // Step 3: Prove math_is_valid_y_coordinate(y)
     // From the spec: when u % p == 0, it returns true directly
     assert(math_is_valid_y_coordinate(y)) by {
-        // u = math_field_sub(y2, 1) = 0 (from precondition)
+        // math_field_sub(y2, 1) = 0 (from precondition)
         // 0 % p = 0
-        assert(u % p == 0) by {
+        assert(math_field_sub(y2, 1) % p == 0) by {
             lemma_small_mod(0nat, p);
         };
         // By definition of math_is_valid_y_coordinate, when u % p == 0, it's true
@@ -536,7 +535,7 @@ pub proof fn lemma_step1_case_analysis(
                 // From precondition: u = 0 ==> x = 0
                 assert(x == 0);
                 // Identity point lemma
-                lemma_u_zero_implies_identity_point(y, u_math);
+                lemma_u_zero_implies_identity_point(y);
             };
         }
     } else {

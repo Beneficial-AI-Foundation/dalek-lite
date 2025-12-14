@@ -187,8 +187,6 @@ pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, u: nat, v: nat, r: n
 /// When sqrt_ratio_i succeeds with v ≠ 0, we can prove:
 /// - math_is_valid_y_coordinate(y)
 /// - math_on_edwards_curve(x, y)
-///
-/// This requires field operation correspondence assumes (trust boundary).
 pub proof fn lemma_step1_curve_semantics(
     y: nat,  // spec_field_element(&Y)
     x: nat,  // spec_field_element(&X) from sqrt_ratio_i

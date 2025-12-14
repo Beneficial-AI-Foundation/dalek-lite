@@ -7,7 +7,7 @@
 //! ## Key Properties Proven
 //!
 //! 1. **Sign bit correctness**: After conditional_negate, the sign bit matches
-//! 2. **Curve equation properties**: x=0 implies y²=1, sign bit implications
+//! 2. **Sign bit implications**: sign_bit=1 implies x≠0
 //! 3. **Main decompress lemma**: Combines all properties for valid branch
 #![allow(unused_imports)]
 use crate::backend::serial::u64::constants;
@@ -147,90 +147,8 @@ pub proof fn lemma_decompress_field_element_sign_bit(
 }
 
 // =============================================================================
-// Curve Equation Lemmas
+// Sign Bit and Curve Interaction
 // =============================================================================
-/// Lemma: If x = 0 (mod p) and (x, y) is on the Edwards curve, then y² = 1 (mod p)
-///
-/// ## Mathematical Proof
-///
-/// From the curve equation: y² - x² = 1 + d·x²·y² (mod p)
-///
-/// If x ≡ 0 (mod p):
-/// - x² = (x * x) % p = (0 * 0) % p = 0
-/// - x²·y² = 0 * y² = 0
-/// - Curve becomes: y² - 0 = 1 + d·0
-/// - Therefore: y² = 1 (mod p)
-pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
-    requires
-        math_on_edwards_curve(x, y),
-        x % p() == 0,
-    ensures
-        math_field_square(y) == 1,
-{
-    let modulus = p();
-    let d = spec_field_element(&EDWARDS_D);
-    let x2 = math_field_square(x);
-    let y2 = math_field_square(y);
-    let x2y2 = math_field_mul(x2, y2);
-    let d_x2y2 = math_field_mul(d, x2y2);
-    let lhs = math_field_sub(y2, x2);
-    let rhs = math_field_add(1, d_x2y2);
-
-    // Establish p > 1 for lemma preconditions
-    assert(modulus > 1) by {
-        p_gt_2();
-    };
-
-    // Goal: y² = 1
-    // Strategy: From curve equation y² - x² = 1 + d·x²·y², show all terms simplify
-
-    assert(x2 == 0) by {
-        // x² = (x * x) % p = ((x % p) * (x % p)) % p = (0 * 0) % p = 0
-        lemma_mul_mod_noop_general(x as int, x as int, modulus as int);
-        assert((x * x) % modulus == ((x % modulus) * (x % modulus)) % modulus);
-    };
-
-    assert(x2y2 == 0) by {
-        // x²·y² = 0 * y² = 0
-        assert(x2 == 0);
-        lemma_mul_by_zero_is_zero(y2 as int);
-        lemma_small_mod(0nat, modulus);
-    };
-
-    assert(d_x2y2 == 0) by {
-        // d * x²y² = d * 0 = 0
-        assert(x2y2 == 0);
-        lemma_mul_by_zero_is_zero(d as int);
-    };
-
-    assert(rhs == 1) by {
-        // rhs = (1 + d·x²·y²) % p = (1 + 0) % p = 1 % p = 1
-        assert(d_x2y2 == 0);
-        lemma_small_mod(1nat, modulus);
-    };
-
-    // From curve equation (precondition): lhs == rhs
-    assert(lhs == rhs);
-    assert(lhs == 1);
-
-    assert(lhs == y2) by {
-        // lhs = math_field_sub(y2, 0) = (y2 + p) % p = y2
-        assert(x2 == 0);
-
-        // y2 < p (math_field_square output is reduced)
-        assert(y2 < modulus) by {
-            lemma_mod_bound(y as int * y as int, modulus as int);
-        };
-
-        // (p + y2) % p = y2 % p = y2 (since y2 < p)
-        lemma_small_mod(y2, modulus);
-        lemma_mod_multiples_vanish(1int, y2 as int, modulus as int);
-    };
-
-    // Conclusion: y2 == lhs == 1
-    assert(y2 == 1);
-}
-
 /// Lemma: From compressed_y_has_valid_sign_bit, derive that sign_bit=1 implies x≠0
 ///
 /// ## Mathematical Proof

@@ -221,7 +221,7 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// 1. Z ≠ 0
 /// 2. The affine point (X/Z, Y/Z) is on the Edwards curve
 /// 3. T = X·Y/Z
-pub open spec fn math_is_valid_edwards_point_xyzt(x: nat, y: nat, z: nat, t: nat) -> bool {
+pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
     z != 0 && math_on_edwards_curve(
         math_field_mul(x, math_field_inv(z)),
         math_field_mul(y, math_field_inv(z)),
@@ -242,7 +242,7 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
     let z = spec_field_element(&point.Z);
     let t = spec_field_element(&point.T);
 
-    math_is_valid_edwards_point_xyzt(x, y, z, t)
+    math_is_valid_extended_edwards_point(x, y, z, t)
 }
 
 /// Limb bounds for safe field arithmetic on an EdwardsPoint.

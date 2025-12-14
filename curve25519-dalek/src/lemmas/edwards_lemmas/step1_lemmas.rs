@@ -411,16 +411,10 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
     // Step 1: Get the forall from lemma_no_square_root_when_times_i
     // The lemma now takes r as parameter
     // Note: Must use `assert forall|r|` (not `assert(forall|r|)`) to bind r in the by block
-    // Must also wrap in `if r < p()` to have the antecedent available as a fact
     // Explicit trigger matches math_is_valid_y_coordinate's trigger
-    assert forall|r: nat|
-        r < p() ==> #[trigger] math_field_mul(math_field_square(r), v) != u % p() && math_field_mul(
-            math_field_square(r),
-            v,
-        ) != math_field_neg(u) by {
-        if r < p() {
-            lemma_no_square_root_when_times_i(u, v, r);
-        }
+    assert forall|r: nat| r < p() implies #[trigger] math_field_mul(math_field_square(r), v) != u
+        % p() && math_field_mul(math_field_square(r), v) != math_field_neg(u) by {
+        lemma_no_square_root_when_times_i(u, v, r);
     };
 
     // Step 2: Restate as negation of the existential

@@ -80,7 +80,7 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, z: nat, t: nat)
         math_on_edwards_curve(x, y),
         t == math_field_mul(x, y),
     ensures
-        math_is_valid_edwards_point_xyzt(x, y, z, t),
+        math_is_valid_extended_edwards_point(x, y, z, t),
 {
     // Goal: Show (X:Y:Z:T) with Z=1 is a valid extended point
     //

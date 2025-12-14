@@ -28,7 +28,7 @@ use vstd::prelude::*;
 verus! {
 
 // =============================================================================
-// Basic Lemmas about the Edwards Curve Equation
+// sqrt_ratio to Curve Equation Connection
 // =============================================================================
 /// Lemma: If x² = u/v where u = y² - 1 and v = d·y² + 1,
 /// then (x, y) satisfies the Edwards curve equation -x² + y² = 1 + d·x²·y²

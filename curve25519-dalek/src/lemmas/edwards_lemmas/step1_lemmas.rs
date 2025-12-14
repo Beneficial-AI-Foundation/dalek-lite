@@ -244,49 +244,10 @@ pub proof fn lemma_step1_curve_semantics(
 }
 
 // =============================================================================
-// Field Operation Correspondence Lemmas
-// =============================================================================
-//
-// These lemmas prove that concrete field operations match math_field_* specs.
-// They connect the FieldElement51 implementation to the mathematical definitions.
-/// Prove: spec_field_element(&YY) == math_field_square(spec_field_element(&Y))
-///
-/// This follows from square()'s ensures clause which states:
-///   u64_5_as_nat(r.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, 2) as nat % p()
-///
-/// Combined with the fact that pow(n, 2) = n * n and modular arithmetic properties.
-pub proof fn lemma_square_matches_math_field_square(y_raw: nat, y2_raw: nat)
-    requires
-// y2_raw comes from square()'s postcondition
-
-        y2_raw % p() == pow(y_raw as int, 2) as nat % p(),
-    ensures
-        y2_raw % p() == math_field_square(y_raw % p()),
-{
-    let y = y_raw % p();
-    let p = p();
-    p_gt_2();
-
-    // pow(y_raw, 2) = y_raw * y_raw
-    assert(pow(y_raw as int, 2) == y_raw as int * y_raw as int) by {
-        reveal(pow);
-        assert(pow(y_raw as int, 1) == y_raw as int * pow(y_raw as int, 0));
-    };
-
-    // (y_raw * y_raw) % p == ((y_raw % p) * (y_raw % p)) % p
-    assert((y_raw * y_raw) % p == (y * y) % p) by {
-        lemma_mul_mod_noop_general(y_raw as int, y_raw as int, p as int);
-    };
-
-    // math_field_square(y) = (y * y) % p
-    assert(math_field_square(y) == (y * y) % p);
-
-    // Chain: y2_raw % p == pow(...) % p == (y_raw * y_raw) % p == (y * y) % p == math_field_square(y)
-}
-
-// =============================================================================
 // Edge Case Lemmas for step_1
 // =============================================================================
+// Note: lemma_square_matches_math_field_square and lemma_mul_matches_math_field_mul
+// are now in field_lemmas/field_algebra_lemmas.rs as general field lemmas.
 /// When y² = 1 in decompress, (0, y) is on the Edwards curve.
 /// This is the edge case where y = ±1 (identity-related points).
 pub proof fn lemma_u_zero_implies_identity_point(y: nat)

@@ -344,25 +344,22 @@ pub proof fn lemma_is_sqrt_ratio_to_math_field(
 
     // math_field_square(x) = (x * x) % p
     let x2 = math_field_square(x);
-    assert(x2 == (x * x) % p);
 
-    // math_field_mul(x2, v) = (x2 * v) % p = ((x*x) % p * v) % p
-    // By lemma_mul_mod_noop_left: ((x*x) % p * v) % p == ((x*x) * v) % p
-    assert(math_field_mul(x2, v) == (x * x * v) % p) by {
-        lemma_mul_mod_noop_left((x * x) as int, v as int, p as int);
-        assert(((x * x) % p as nat * v) % p == ((x * x) * v) % p);
+    // From requires: (x*x*v) % p == u, so u < p (it's a mod result)
+    // Therefore u % p == u
+    assert(u % p == u) by {
+        lemma_mod_bound(((x * x) * v) as int, p as int);
+        lemma_small_mod(u, p);
     };
 
-    // From requires: (x * x * v) % p == u
-    assert((x * x * v) % p == u);
+    // Use the general multiplication matching lemma:
+    // From (x*x * v) % p == u, we get math_field_mul((x*x) % p, v % p) == u % p
+    lemma_mul_matches_math_field_mul(x * x, v, u);
 
-    // Conclude: math_field_mul(x2, v) == u % p
-    // Since math_field_mul returns a value < p, and we have (x*x*v) % p == u
+    // Since x2 = (x*x) % p, we have math_field_mul(x2, v % p) == u % p
+    // And math_field_mul(x2, v % p) == math_field_mul(x2, v) by mod absorption
     assert(math_field_mul(x2, v) == u % p) by {
-        // math_field_mul(x2, v) < p (mod result)
-        lemma_mod_bound((x * x * v) as int, p as int);
-        // x % p = x when x < p
-        lemma_small_mod(math_field_mul(x2, v), p);
+        lemma_mul_mod_noop_right(x2 as int, v as int, p as int);
     };
 }
 

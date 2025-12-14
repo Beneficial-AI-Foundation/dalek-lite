@@ -464,6 +464,29 @@ pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
     (r * r * v) % p() == (spec_sqrt_m1() * u) % p()
 }
 
+/// Spec function capturing sqrt_ratio_i postconditions on mathematical values.
+///
+/// This encapsulates the four postconditions of sqrt_ratio_i:
+/// 1. When u = 0: returns (true, 0)
+/// 2. When v = 0 and u ≠ 0: returns (false, _)
+/// 3. When success and v ≠ 0: r² · v ≡ u (mod p)
+/// 4. When failure and v ≠ 0 and u ≠ 0: r² · v ≡ i·u (mod p)
+///
+/// Use this in lemmas instead of listing all postconditions separately.
+pub open spec fn spec_sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -> bool {
+    // When u = 0: always return (true, 0)
+    ((u == 0) ==> (success && r == 0))
+        &&
+    // When v = 0 but u ≠ 0: return false
+    ((v == 0 && u != 0) ==> !success)
+        &&
+    // When successful and v ≠ 0: r² * v ≡ u (mod p)
+    ((success && v != 0) ==> math_is_sqrt_ratio(u, v, r))
+        &&
+    // When unsuccessful and v ≠ 0 and u ≠ 0: r² * v ≡ i*u (mod p)
+    ((!success && v != 0 && u != 0) ==> math_is_sqrt_ratio_times_i(u, v, r))
+}
+
 // Square-ness mod p (spec-only).
 pub open spec fn is_square_mod_p(a: nat) -> bool {
     exists|y: nat| (#[trigger] (y * y) % p()) == (a % p())

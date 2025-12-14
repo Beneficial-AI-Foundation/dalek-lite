@@ -456,42 +456,21 @@ mod decompress {
             };
 
             // Establish preconditions for lemma_step1_case_analysis from sqrt_ratio_i postconditions
-            // sqrt_ratio_i ensures: (u == 0) ==> choice_is_true && result == 0
-            // sqrt_ratio_i ensures: (v == 0 && u != 0) ==> !choice_is_true
-            // sqrt_ratio_i ensures: (choice_is_true && v != 0) ==> math_is_sqrt_ratio(u, v, x)
-            // sqrt_ratio_i ensures: (!choice_is_true && v != 0 && u != 0) ==> math_is_sqrt_ratio_times_i(u, v, x)
-
             // u_math and v_math are field elements, so bounded by p
-            // u_math = math_field_sub(y2, 1) = (y2 - 1 + p) % p < p
-            // v_math = math_field_add(d*y2, 1) = (d*y2 + 1) % p < p
             assert(u_math < p());
             assert(v_math < p());
-
-            // x < p() from sqrt_ratio_i postcondition
             assert(x < p());
 
-            // Establish math_is_sqrt_ratio_times_i precondition for failure case
-            // When sqrt_ratio_i fails with u,v ≠ 0: x²·v = i·u
-            assert((!choice_is_true(is_valid_y_coord) && u_math != 0 && v_math != 0)
-                ==> math_is_sqrt_ratio_times_i(u_math, v_math, x)) by {
-                // From sqrt_ratio_i postcondition: is_sqrt_ratio_times_i(u, v, &X) when failure
-                // is_sqrt_ratio_times_i says: (r² * v) % p == (i * u) % p
-                // where r = spec_field_element(&X) = x, v = spec_field_element(&v), u = spec_field_element(&u)
-            };
-
-            // Establish math_is_sqrt_ratio precondition for success case
-            assert((choice_is_true(is_valid_y_coord) && v_math != 0) ==> math_is_sqrt_ratio(
-                u_math,
-                v_math,
-                x,
-            )) by {
-                // From sqrt_ratio_i postcondition: is_sqrt_ratio(u, v, &X) when success
-                // This directly maps to math_is_sqrt_ratio with the mathematical values
+            // sqrt_ratio_i postconditions are encapsulated in spec_sqrt_ratio_i_post
+            assert(spec_sqrt_ratio_i_post(u_math, v_math, choice_is_true(is_valid_y_coord), x)) by {
+                // From sqrt_ratio_i ensures clauses (lifted to math values):
+                // - (u == 0) ==> (success && r == 0)
+                // - (v == 0 && u != 0) ==> !success
+                // - (success && v != 0) ==> math_is_sqrt_ratio(u, v, r)
+                // - (!success && v != 0 && u != 0) ==> math_is_sqrt_ratio_times_i(u, v, r)
             };
 
             // Use lemma to prove curve semantics from sqrt_ratio_i result
-            // Note: is_sqrt_ratio(&u, &v, &X) is equivalent to math_is_sqrt_ratio(u_math, v_math, x)
-            // since spec_field_element extracts the same mathematical values
             lemma_step1_case_analysis(y, x, u_math, v_math, choice_is_true(is_valid_y_coord));
         }
         (is_valid_y_coord, X, Y, Z)

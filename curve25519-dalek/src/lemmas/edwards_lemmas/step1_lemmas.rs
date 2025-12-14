@@ -458,19 +458,8 @@ pub proof fn lemma_step1_case_analysis(
             let y2 = math_field_square(y);
             u_math == math_field_sub(y2, 1) && v_math == math_field_add(math_field_mul(d, y2), 1)
         }),
-        // sqrt_ratio_i postconditions (from ensures clause)
-        // When sqrt_ratio_succeeded and v ≠ 0: x²·v = u (math_is_sqrt_ratio)
-        (sqrt_ratio_succeeded && v_math != 0) ==> math_is_sqrt_ratio(u_math, v_math, x),
-        // When u = 0, sqrt_ratio_i returns true with x = 0
-        (u_math == 0) ==> (sqrt_ratio_succeeded && x == 0),
-        // When v = 0 and u ≠ 0, sqrt_ratio_i returns false
-        (v_math == 0 && u_math != 0) ==> !sqrt_ratio_succeeded,
-        // When sqrt_ratio_i fails with u,v ≠ 0: x²·v = i·u (math_is_sqrt_ratio_times_i)
-        (!sqrt_ratio_succeeded && u_math != 0 && v_math != 0) ==> math_is_sqrt_ratio_times_i(
-            u_math,
-            v_math,
-            x,
-        ),
+        // sqrt_ratio_i postconditions (encapsulated in spec function)
+        spec_sqrt_ratio_i_post(u_math, v_math, sqrt_ratio_succeeded, x),
         // Field element bounds (u_math and v_math are field elements, so < p)
         x < p(),
         u_math < p(),

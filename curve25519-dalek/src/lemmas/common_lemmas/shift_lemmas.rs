@@ -578,7 +578,7 @@ lemma_shifted_lt!(lemma_u64_shifted_lt, lemma_u64_shl_zero_is_id, lemma_u64_shr_
 // TODO: missing lemma_u128_shl_is_mul from vstd
 // lemma_shifted_lt!(lemma_u128_shifted_lt, lemma_u128_shl_zero_is_id, lemma_u128_shr_le, lemma_u128_max_shifting, u128);
 // Proofs that shifting left then right is the same as shifting left once by the difference.
-macro_rules! lemma_left_right_shfit {
+macro_rules! lemma_left_right_shift {
     ($name:ident, $shl_is_mul:ident, $shr_is_div:ident, $uN:ty) => {
         #[cfg(verus_keep_ghost)]
         verus! {
@@ -626,14 +626,14 @@ macro_rules! lemma_left_right_shfit {
     };
 }
 
-lemma_left_right_shfit!(lemma_u8_left_right_shift, lemma_u8_shl_is_mul, lemma_u8_shr_is_div, u8);
+lemma_left_right_shift!(lemma_u8_left_right_shift, lemma_u8_shl_is_mul, lemma_u8_shr_is_div, u8);
 
-lemma_left_right_shfit!(lemma_u16_left_right_shift, lemma_u16_shl_is_mul, lemma_u16_shr_is_div, u16);
+lemma_left_right_shift!(lemma_u16_left_right_shift, lemma_u16_shl_is_mul, lemma_u16_shr_is_div, u16);
 
-lemma_left_right_shfit!(lemma_u32_left_right_shift, lemma_u32_shl_is_mul, lemma_u32_shr_is_div, u32);
+lemma_left_right_shift!(lemma_u32_left_right_shift, lemma_u32_shl_is_mul, lemma_u32_shr_is_div, u32);
 
-lemma_left_right_shfit!(lemma_u64_left_right_shift, lemma_u64_shl_is_mul, lemma_u64_shr_is_div, u64);
+lemma_left_right_shift!(lemma_u64_left_right_shift, lemma_u64_shl_is_mul, lemma_u64_shr_is_div, u64);
 
 // TODO: missing lemma_u128_shl_is_mul from vstd
-// lemma_left_right_shfit!(lemma_u128_left_right_shift, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, u128);
+// lemma_left_right_shift!(lemma_u128_left_right_shift, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, u128);
 } // verus!

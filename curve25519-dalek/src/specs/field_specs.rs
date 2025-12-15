@@ -464,16 +464,14 @@ pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
     (r * r * v) % p() == (spec_sqrt_m1() * u) % p()
 }
 
-/// Spec function capturing sqrt_ratio_i postconditions on mathematical values.
+/// Spec function capturing sqrt_ratio_i math correctness postconditions.
 ///
-/// This encapsulates the four postconditions of sqrt_ratio_i:
+/// This encapsulates the four mathematical postconditions of sqrt_ratio_i:
 /// 1. When u = 0: returns (true, 0)
 /// 2. When v = 0 and u ≠ 0: returns (false, _)
 /// 3. When success and v ≠ 0: r² · v ≡ u (mod p)
 /// 4. When failure and v ≠ 0 and u ≠ 0: r² · v ≡ i·u (mod p)
-///
-/// Use this in lemmas instead of listing all postconditions separately.
-pub open spec fn spec_sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -> bool {
+pub open spec fn spec_sqrt_ratio_i_math_post(u: nat, v: nat, success: bool, r: nat) -> bool {
     // When u = 0: always return (true, 0)
     ((u == 0) ==> (success && r == 0))
         &&
@@ -485,6 +483,23 @@ pub open spec fn spec_sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -
         &&
     // When unsuccessful and v ≠ 0 and u ≠ 0: r² * v ≡ i*u (mod p)
     ((!success && v != 0 && u != 0) ==> math_is_sqrt_ratio_times_i(u, v, r))
+}
+
+/// Spec function capturing sqrt_ratio_i boundedness postconditions.
+///
+/// The result r is:
+/// - Reduced modulo p (r < p)
+/// - The "non-negative" square root (even, i.e., LSB = 0)
+pub open spec fn spec_sqrt_ratio_i_bounded_post(r: nat) -> bool {
+    r < p() && r % 2 == 0
+}
+
+/// Complete spec function for sqrt_ratio_i postconditions.
+///
+/// Combines math correctness and boundedness postconditions.
+/// Use this in lemmas instead of listing all postconditions separately.
+pub open spec fn spec_sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -> bool {
+    spec_sqrt_ratio_i_math_post(u, v, success, r) && spec_sqrt_ratio_i_bounded_post(r)
 }
 
 // Square-ness mod p (spec-only).

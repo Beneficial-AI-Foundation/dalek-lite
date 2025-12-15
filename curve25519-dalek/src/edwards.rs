@@ -463,11 +463,24 @@ mod decompress {
 
             // sqrt_ratio_i postconditions are encapsulated in spec_sqrt_ratio_i_post
             assert(spec_sqrt_ratio_i_post(u_math, v_math, choice_is_true(is_valid_y_coord), x)) by {
-                // From sqrt_ratio_i ensures clauses (lifted to math values):
-                // - (u == 0) ==> (success && r == 0)
-                // - (v == 0 && u != 0) ==> !success
-                // - (success && v != 0) ==> math_is_sqrt_ratio(u, v, r)
-                // - (!success && v != 0 && u != 0) ==> math_is_sqrt_ratio_times_i(u, v, r)
+                // Boundedness (spec_sqrt_ratio_i_bounded_post):
+                // From sqrt_ratio_i ensures: x < p() and (x % p()) % 2 == 0
+                assert(x < p());
+                assert((x % p()) % 2 == 0);
+                assert(x % p() == x) by {
+                    lemma_small_mod(x, p());
+                };
+                assert(x % 2 == 0);
+                assert(spec_sqrt_ratio_i_bounded_post(x));
+
+                // Math correctness (spec_sqrt_ratio_i_math_post):
+                // All four cases follow from sqrt_ratio_i ensures clauses
+                assert(spec_sqrt_ratio_i_math_post(
+                    u_math,
+                    v_math,
+                    choice_is_true(is_valid_y_coord),
+                    x,
+                ));
             };
 
             // Use lemma to prove curve semantics from sqrt_ratio_i result

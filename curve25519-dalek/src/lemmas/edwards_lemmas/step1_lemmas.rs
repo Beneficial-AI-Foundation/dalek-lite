@@ -453,9 +453,9 @@ pub proof fn lemma_step1_case_analysis(
             u_math == math_field_sub(y2, 1) && v_math == math_field_add(math_field_mul(d, y2), 1)
         }),
         // sqrt_ratio_i postconditions (encapsulated in spec function)
+        // Includes both math correctness and boundedness (x < p, x % 2 == 0)
         spec_sqrt_ratio_i_post(u_math, v_math, sqrt_ratio_succeeded, x),
         // Field element bounds (u_math and v_math are field elements, so < p)
-        x < p(),
         u_math < p(),
         v_math < p(),
     ensures

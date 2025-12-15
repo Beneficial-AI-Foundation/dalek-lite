@@ -20,11 +20,14 @@ use crate::traits::Identity;
 use crate::window::NafLookupTable5;
 
 #[cfg(verus_keep_ghost)]
-use crate::specs::edwards_specs::is_valid_projective_point;
+use crate::specs::edwards_specs::{
+    edwards_add, edwards_point_as_affine, edwards_scalar_mul, is_valid_projective_point,
+    is_well_formed_edwards_point, spec_ed25519_basepoint,
+};
 #[cfg(verus_keep_ghost)]
 use crate::specs::field_specs::{fe51_limbs_bounded, sum_of_limbs_bounded};
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::is_valid_naf;
+use crate::specs::scalar_specs::{is_valid_naf, spec_scalar};
 #[cfg(verus_keep_ghost)]
 use crate::specs::window_specs::{
     naf_lookup_table5_projective_limbs_bounded, naf_lookup_table8_affine_limbs_bounded,
@@ -38,8 +41,18 @@ verus! {
 // VERIFICATION NOTE: PROOF BYPASS - complex loop invariants not yet verified.
 // Uses `assume(false)` at loop entry points to skip internal verification.
 pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
+    requires
+        // Input point must be well-formed
+        is_well_formed_edwards_point(*A),
     ensures
-        true,
+        // Result is a well-formed Edwards point
+        is_well_formed_edwards_point(out),
+        // Functional correctness: out = a*A + b*B where B is the Ed25519 basepoint
+        edwards_point_as_affine(out) == {
+            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), spec_scalar(a));
+            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), spec_scalar(b));
+            edwards_add(aA.0, aA.1, bB.0, bB.1)
+        },
 {
     let a_naf = a.non_adjacent_form(5);
 
@@ -117,7 +130,17 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     }
 
     assume(false);  // PROOF BYPASS: precondition for as_extended
-    r.as_extended()
+    let result = r.as_extended();
+    proof {
+        // PROOF BYPASS: postconditions
+        assume(is_well_formed_edwards_point(result));
+        assume(edwards_point_as_affine(result) == {
+            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), spec_scalar(a));
+            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), spec_scalar(b));
+            edwards_add(aA.0, aA.1, bB.0, bB.1)
+        });
+    }
+    result
 }
 
 } // verus!

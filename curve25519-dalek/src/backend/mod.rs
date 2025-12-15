@@ -37,7 +37,8 @@ use crate::Scalar;
 
 #[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::{
-    edwards_point_as_affine, edwards_scalar_mul, is_well_formed_edwards_point,
+    edwards_add, edwards_point_as_affine, edwards_scalar_mul, is_well_formed_edwards_point,
+    spec_ed25519_basepoint,
 };
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::spec_scalar;
@@ -277,12 +278,18 @@ pub fn variable_base_mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: Edwa
 verus! {
 
 /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
-// VERIFICATION NOTE: PROOF BYPASS - delegates to vartime_double_base::mul which has
-// `ensures true` due to complex loop invariants.
 #[allow(non_snake_case)]
 pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (result: EdwardsPoint)
+    requires
+        is_well_formed_edwards_point(*A),
     ensures
-        true,
+        is_well_formed_edwards_point(result),
+        // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint
+        edwards_point_as_affine(result) == {
+            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), spec_scalar(a));
+            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), spec_scalar(b));
+            edwards_add(aA.0, aA.1, bB.0, bB.1)
+        },
 {
     /* <ORIGINAL CODE>
     match get_selected_backend() {

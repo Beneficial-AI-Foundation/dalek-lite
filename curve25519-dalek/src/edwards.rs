@@ -1900,16 +1900,21 @@ verus! {
 
 impl EdwardsPoint {
     /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
-    // VERIFICATION NOTE: PROOF BYPASS - delegates to vartime_double_base::mul which has
-    // `ensures true` due to complex loop invariants. Spec can be strengthened when
-    // underlying implementation is fully verified.
     pub fn vartime_double_scalar_mul_basepoint(
         a: &Scalar,
         A: &EdwardsPoint,
         b: &Scalar,
     ) -> (result: EdwardsPoint)
+        requires
+            is_well_formed_edwards_point(*A),
         ensures
-            true,
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint
+            edwards_point_as_affine(result) == {
+                let aA = edwards_scalar_mul(edwards_point_as_affine(*A), spec_scalar(a));
+                let bB = edwards_scalar_mul(spec_ed25519_basepoint(), spec_scalar(b));
+                edwards_add(aA.0, aA.1, bB.0, bB.1)
+            },
     {
         crate::backend::vartime_double_base_mul(a, A, b)
     }

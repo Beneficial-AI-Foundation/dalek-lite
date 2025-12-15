@@ -188,7 +188,7 @@ proof fn lemma_algebraic_chain_base(
         lemma_small_mod(inv_v, p);
         if inv_v == 0 {
             assert(((v % p) * 0) % p == 0);
-            lemma_small_mod(0nat, p);
+            lemma_small_mod(0, p);
             assert(false);
         }
     };
@@ -307,18 +307,20 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
     // x ≠ 0 (if x = 0, then 0 = i·u, but u ≠ 0 and i ≠ 0)
     assert(x != 0) by {
         if x == 0 {
-            assert(math_field_square(0nat) == 0) by {
-                lemma_small_mod(0nat, the_p);
+            assert(math_field_square(0) == 0) by {
+                lemma_small_mod(0, the_p);
             };
             assert(math_field_mul(0, v) == 0) by {
-                assert(0nat * v == 0);  // 0 * anything = 0
-                lemma_small_mod(0nat, the_p);  // 0 % p = 0
+                assert(0 * v == 0);  // 0 * anything = 0
+                lemma_small_mod(0, the_p);  // 0 % p = 0
             };
             assert(i != 0) by {
                 if i == 0 {
                     assert((i * i) % the_p == 0);
                     axiom_sqrt_m1_squared();
                     assert((i * i) % the_p == (the_p - 1) as nat);
+                    // Contradiction: (i*i) % p is both 0 and p-1
+                    assert(false);
                 }
             };
             assert((i * u) % the_p != 0) by {
@@ -328,8 +330,13 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
                     assert(i % the_p != 0) by {
                         lemma_small_mod(i, the_p);
                     };
+                    // Contradiction: Euclid says i % p == 0 or u % p == 0,
+                    // but i % p != 0 (above) and u % p != 0 (from requires)
+                    assert(false);
                 }
             };
+            // Contradiction: x=0 implies LHS=0, but (i*u) % p != 0 means RHS != 0
+            assert(false);
         }
     };
 
@@ -342,7 +349,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
     assert(i != 0) by {
         if i == 0 {
             axiom_sqrt_m1_squared();
-            assert(math_field_square(0nat) == 0);
+            assert(math_field_square(0) == 0);
             assert(math_field_neg(1nat) != 0);
             assert(false);
         }
@@ -547,16 +554,16 @@ pub proof fn lemma_flipped_sign_becomes_correct(u: nat, v: nat, r: nat)
                 lemma_mul_basics(v as int);
             };
             assert((v * neg_r2) % pn == 0) by {
-                lemma_small_mod(0nat, pn);
+                lemma_small_mod(0, pn);
             };
             assert((v * r2) % pn == 0) by {
                 lemma_mul_mod_noop_right(v as int, r2 as int, pn as int);
                 assert((v * 0) % pn == 0) by {
                     lemma_mul_basics(v as int);
-                    lemma_small_mod(0nat, pn);
+                    lemma_small_mod(0, pn);
                 };
             };
-            assert(((pn - 0nat) as nat) % pn == 0) by {
+            assert(((pn - 0) as nat) % pn == 0) by {
                 lemma_mod_self_0(pn as int);
             };
         }
@@ -578,7 +585,7 @@ pub proof fn lemma_flipped_sign_becomes_correct(u: nat, v: nat, r: nat)
             assert(neg_u == 0) by {
                 lemma_mod_self_0(pn as int);
             };
-            assert(((pn - 0nat) as nat) % pn == 0) by {
+            assert(((pn - 0) as nat) % pn == 0) by {
                 lemma_mod_self_0(pn as int);
             };
         }

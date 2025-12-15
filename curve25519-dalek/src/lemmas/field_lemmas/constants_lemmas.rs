@@ -36,7 +36,7 @@ verus! {
 /// Each limb must be < 2^51:
 /// - limbs[0] = 1 < 2^51 ✓
 /// - limbs[1..4] = 0 < 2^51 ✓
-pub proof fn lemma_one_limbs_bounded()
+pub proof fn lemma_one_limbs_bounded_51()
     ensures
         fe51_limbs_bounded(&FieldElement51::ONE, 51),
 {
@@ -49,12 +49,12 @@ pub proof fn lemma_one_limbs_bounded()
 ///
 /// ## Mathematical Proof
 /// 51-bit bounded ⟹ 54-bit bounded since 2^51 < 2^54
-pub proof fn lemma_one_limbs_bounded_54()
+pub proof fn lemma_one_limbs_bounded_51_54()
     ensures
         fe51_limbs_bounded(&FieldElement51::ONE, 54),
 {
     assert(fe51_limbs_bounded(&FieldElement51::ONE, 54)) by {
-        lemma_one_limbs_bounded();
+        lemma_one_limbs_bounded_51();
         assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
     };
 }

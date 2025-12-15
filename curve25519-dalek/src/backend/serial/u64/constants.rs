@@ -87,6 +87,17 @@ pub(crate) const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
     ],
 };
 
+/// Precomputed value of one of the square roots of -1 (mod p)
+pub const SQRT_M1: FieldElement51 = FieldElement51 {
+    limbs: [
+        1718705420411056,
+        234908883556509,
+        2233514472574048,
+        2117202627021982,
+        765476049583133,
+    ],
+};
+
 verus! {
 
 /// `APLUS2_OVER_FOUR` is (A+2)/4. (This is used internally within the Montgomery ladder.)
@@ -112,11 +123,6 @@ pub(crate) const MONTGOMERY_A_NEG: FieldElement51 = FieldElement51 {
 
 } // verus!
 verus! {
-
-/// Precomputed value of one of the square roots of -1 (mod p)
-pub const SQRT_M1: FieldElement51 = FieldElement51 {
-    limbs: [1718705420411056, 234908883556509, 2233514472574048, 2117202627021982, 765476049583133],
-};
 
 /// Edwards `d` value, equal to `-121665/121666 mod p`.
 pub const EDWARDS_D: FieldElement51 = FieldElement51 {

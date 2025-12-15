@@ -22,8 +22,8 @@
 use crate::backend::serial::u64::constants;
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
-use crate::lemmas::common_lemmas::sqrt_ratio_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;

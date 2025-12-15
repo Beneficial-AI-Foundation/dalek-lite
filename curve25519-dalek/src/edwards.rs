@@ -367,9 +367,9 @@ mod decompress {
 
         proof {
             // Limb bounds for field operation preconditions (overflow prevention):
-            // - lemma_one_limbs_bounded: ONE.limbs[i] < 2^51, needed for `u = &YY - &Z`
+            // - lemma_one_limbs_bounded_51: ONE.limbs[i] < 2^51, needed for `u = &YY - &Z`
             // - lemma_edwards_d_limbs_bounded: EDWARDS_D.limbs[i] < 2^51, needed for `yy_times_d = &YY * &EDWARDS_D`
-            lemma_one_limbs_bounded();
+            lemma_one_limbs_bounded_51();
             lemma_edwards_d_limbs_bounded();
         }
 

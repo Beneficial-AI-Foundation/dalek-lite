@@ -468,15 +468,15 @@ pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
 ///
 /// This encapsulates the four mathematical postconditions of sqrt_ratio_i:
 /// 1. When u = 0: returns (true, 0)
-/// 2. When v = 0 and u ≠ 0: returns (false, _)
+/// 2. When v = 0 and u ≠ 0: returns (false, 0)
 /// 3. When success and v ≠ 0: r² · v ≡ u (mod p)
 /// 4. When failure and v ≠ 0 and u ≠ 0: r² · v ≡ i·u (mod p)
 pub open spec fn spec_sqrt_ratio_i_math_post(u: nat, v: nat, success: bool, r: nat) -> bool {
     // When u = 0: always return (true, 0)
     ((u == 0) ==> (success && r == 0))
         &&
-    // When v = 0 but u ≠ 0: return false
-    ((v == 0 && u != 0) ==> !success)
+    // When v = 0 but u ≠ 0: return (false, 0) [division by zero case]
+    ((v == 0 && u != 0) ==> (!success && r == 0))
         &&
     // When successful and v ≠ 0: r² * v ≡ u (mod p)
     ((success && v != 0) ==> math_is_sqrt_ratio(u, v, r))

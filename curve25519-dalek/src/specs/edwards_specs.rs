@@ -379,29 +379,11 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
 
 /// Check if a CompressedEdwardsY has a valid sign bit.
 ///
-/// ## Justification
+/// ## Mathematical basis
 ///
-/// This precondition captures an invariant that must hold for correctly-formed
-/// compressed Edwards points:
-///
-/// 1. **Mathematical basis**: For points with x = 0 on the Edwards curve,
-///    the curve equation gives y² = 1, so y = ±1. These special points
-///    (the identity (0,1) and the point (0,-1)) have only one valid sign bit: 0.
-///
-/// 2. **compress() always produces valid points**: The compress() function
-///    (edwards.rs:1293) sets `sign_bit = x.is_negative()` which returns
-///    `bytes[0] & 1 = LSB(x)`. When x = 0, this is always 0.
-///
-/// 3. **Spec alignment**: The existing spec `compressed_edwards_y_corresponds_to_edwards`
-///    (edwards_specs.rs:367) already requires `sign_bit == x % 2`.
-///
-/// 4. **Sources of CompressedEdwardsY**:
-///    - compress(): Always produces valid points (by construction)
-///    - Direct construction / from_slice / serde: No automatic validation
-///    - identity(): Hardcoded valid bytes
-///
-/// Therefore, this precondition is satisfied by all compress()-produced points
-/// and must be ensured by callers when handling externally-sourced bytes.
+/// For points with x = 0 on the Edwards curve, the curve equation gives y² = 1,
+/// so y = ±1. These special points (the identity (0,1) and the point (0,-1))
+/// have only one valid sign bit: 0, since sign_bit = x % 2 = 0.
 ///
 /// ## Definition
 ///

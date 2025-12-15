@@ -401,21 +401,7 @@ mod decompress {
             // =================================================================
             // PHASE 2: sqrt_ratio_i postconditions
             // =================================================================
-            assert(spec_field_element(&Z) == 1) by {
-                lemma_one_field_element_value();
-            };
-
-            //prove the last 2 postconditions for step_1
-            // From sqrt_ratio_i ensures: non-negative root, bounded
-            assert((spec_field_element(&X) % p()) % 2 == 0);
-            assert(spec_field_element(&X) < p());
-            assert(fe51_limbs_bounded(&X, 52));
-
-            // =================================================================
-            // PHASE 3: Connect sqrt_ratio_i to curve semantics
-            // =================================================================
-            // Field operations ensures clauses give us the correspondence
-
+            // Ghost variable definitions for connecting to math specs
             let ghost y = spec_field_element(&Y);
             let ghost d = spec_field_element(&constants::EDWARDS_D);
             let ghost y2 = math_field_square(y);
@@ -423,45 +409,7 @@ mod decompress {
             let ghost v_math = math_field_add(math_field_mul(d, y2), 1);
             let ghost x = spec_field_element(&X);
 
-            // 1. YY = Y.square() → spec_field_element(&YY) == math_field_square(y)
-            assert(spec_field_element(&YY) == y2) by {
-                // square() ensures: u64_5_as_nat(YY.limbs) % p() == pow(u64_5_as_nat(Y.limbs), 2) % p()
-                // Apply lemma to show this equals math_field_square(y)
-                lemma_square_matches_math_field_square(
-                    spec_field_element_as_nat(&Y),
-                    spec_field_element_as_nat(&YY),
-                );
-            };
-
-            // 2. u = YY - Z → spec_field_element(&u) == math_field_sub(y2, 1)
-            assert(spec_field_element(&u) == u_math) by {
-                // Sub ensures: spec_field_element(&u) == math_field_sub(spec_field_element(&YY), spec_field_element(&Z))
-                // Z = ONE, so spec_field_element(&Z) == 1
-                lemma_one_field_element_value();
-            };
-
-            // 3. v = yy_times_d + Z → spec_field_element(&v) == math_field_add(d*y2, 1)
-            assert(spec_field_element(&v) == v_math) by {
-                // yy_times_d = YY * EDWARDS_D
-                // Mul ensures: spec_field_element(&yy_times_d) == math_field_mul(y2, d)
-                // v_math = math_field_add(math_field_mul(d, y2), 1)
-                // Need: math_field_mul(y2, d) == math_field_mul(d, y2)  (commutativity)
-                lemma_one_field_element_value();
-
-                // math_field_mul is commutative: (a * b) % p == (b * a) % p
-                assert(math_field_mul(y2, d) == math_field_mul(d, y2)) by {
-                    lemma_mul_is_commutative(y2 as int, d as int);
-                    assert(y2 * d == d * y2);
-                };
-            };
-
-            // Establish preconditions for lemma_step1_case_analysis from sqrt_ratio_i postconditions
-            // u_math and v_math are field elements, so bounded by p
-            assert(u_math < p());
-            assert(v_math < p());
-            assert(x < p());
-
-            // sqrt_ratio_i postconditions are encapsulated in spec_sqrt_ratio_i_post
+            // sqrt_ratio_i postconditions encapsulated in spec_sqrt_ratio_i_post
             assert(spec_sqrt_ratio_i_post(u_math, v_math, choice_is_true(is_valid_y_coord), x)) by {
                 // Boundedness (spec_sqrt_ratio_i_bounded_post):
                 // From sqrt_ratio_i ensures: x < p() and (x % p()) % 2 == 0
@@ -473,6 +421,25 @@ mod decompress {
                 assert(x % 2 == 0);
                 assert(spec_sqrt_ratio_i_bounded_post(x));
 
+                // Connect field elements to math versions (needed for spec_sqrt_ratio_i_math_post)
+                // YY = Y.square() → spec_field_element(&YY) == math_field_square(y)
+                lemma_square_matches_math_field_square(
+                    spec_field_element_as_nat(&Y),
+                    spec_field_element_as_nat(&YY),
+                );
+                assert(spec_field_element(&YY) == y2);
+
+                // u = YY - Z → spec_field_element(&u) == u_math
+                lemma_one_field_element_value();
+                assert(spec_field_element(&u) == u_math);
+
+                // v = yy_times_d + Z → spec_field_element(&v) == v_math
+                assert(math_field_mul(y2, d) == math_field_mul(d, y2)) by {
+                    lemma_mul_is_commutative(y2 as int, d as int);
+                    assert(y2 * d == d * y2);
+                };
+                assert(spec_field_element(&v) == v_math);
+
                 // Math correctness (spec_sqrt_ratio_i_math_post):
                 // All four cases follow from sqrt_ratio_i ensures clauses
                 assert(spec_sqrt_ratio_i_math_post(
@@ -482,6 +449,16 @@ mod decompress {
                     x,
                 ));
             };
+
+            // =================================================================
+            // PHASE 3: Additional preconditions for lemma_step1_case_analysis
+            // =================================================================
+            assert(spec_field_element(&Z) == 1) by {
+                lemma_one_field_element_value();
+            };
+
+            // Limb bound for step_1 postcondition (not covered by spec_sqrt_ratio_i_post)
+            assert(fe51_limbs_bounded(&X, 52));
 
             // Use lemma to prove curve semantics from sqrt_ratio_i result
             lemma_step1_case_analysis(y, x, u_math, v_math, choice_is_true(is_valid_y_coord));

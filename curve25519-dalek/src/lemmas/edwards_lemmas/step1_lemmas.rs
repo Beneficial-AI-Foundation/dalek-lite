@@ -455,9 +455,6 @@ pub proof fn lemma_step1_case_analysis(
         // sqrt_ratio_i postconditions (encapsulated in spec function)
         // Includes both math correctness and boundedness (x < p, x % 2 == 0)
         spec_sqrt_ratio_i_post(u_math, v_math, sqrt_ratio_succeeded, x),
-        // Field element bounds (u_math and v_math are field elements, so < p)
-        u_math < p(),
-        v_math < p(),
     ensures
         sqrt_ratio_succeeded <==> math_is_valid_y_coordinate(y),
         sqrt_ratio_succeeded ==> math_on_edwards_curve(x, y),

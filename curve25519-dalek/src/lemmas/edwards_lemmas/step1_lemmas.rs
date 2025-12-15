@@ -328,20 +328,20 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
         let d = spec_field_element(&EDWARDS_D);
 
         // 0² = 0
-        assert(math_field_square(0nat) == 0) by {
-            lemma_small_mod(0nat, p);
+        assert(math_field_square(0) == 0) by {
+            lemma_small_mod(0, p);
         };
-        let x2 = math_field_square(0nat);
+        let x2 = math_field_square(0);
 
         // 0 * y² = 0
         assert(math_field_mul(x2, y2) == 0) by {
-            lemma_small_mod(0nat, p);
+            lemma_small_mod(0, p);
         };
         let x2y2 = math_field_mul(x2, y2);
 
         // d * 0 = 0
         assert(math_field_mul(d, x2y2) == 0) by {
-            lemma_small_mod(0nat, p);
+            lemma_small_mod(0, p);
         };
         let d_x2y2 = math_field_mul(d, x2y2);
 
@@ -349,14 +349,14 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
         assert(math_field_sub(y2, x2) == 1) by {
             assert(y2 == 1);
             assert(x2 == 0);
-            lemma_small_mod(1nat, p);
-            lemma_small_mod(0nat, p);
+            lemma_small_mod(1, p);
+            lemma_small_mod(0, p);
             lemma_mod_multiples_vanish(1int, 1int, p as int);
         };
 
         // RHS: 1 + 0 = 1
         assert(math_field_add(1, d_x2y2) == 1) by {
-            lemma_small_mod(1nat, p);
+            lemma_small_mod(1, p);
         };
 
         // LHS == RHS == 1, so curve equation holds
@@ -368,7 +368,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
         // math_field_sub(y2, 1) = 0 (from precondition)
         // 0 % p = 0
         assert(math_field_sub(y2, 1) % p == 0) by {
-            lemma_small_mod(0nat, p);
+            lemma_small_mod(0, p);
         };
         // By definition of math_is_valid_y_coordinate, when u % p == 0, it's true
     };

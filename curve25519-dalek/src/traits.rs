@@ -77,9 +77,15 @@ pub trait BasepointTable {
     /// Multiply a `scalar` by this precomputed basepoint table, in constant time.
     fn mul_base(&self, scalar: &Scalar) -> Self::Point;
 
+verus! {
     /// Multiply `clamp_integer(bytes)` by this precomputed basepoint table, in constant time. For
     /// a description of clamping, see [`clamp_integer`].
-    fn mul_base_clamped(&self, bytes: [u8; 32]) -> Self::Point {
+    fn mul_base_clamped(&self, bytes: [u8; 32]) -> (result: Self::Point)
+        ensures
+            true,
+    // VERIFICATION NOTE: This trait method has generic Self::Point, so functional specs
+    // are provided in concrete implementations: EdwardsBasepointTable in edwards.rs
+    {
         // Basepoint multiplication is defined for all values of `bytes` up to and including
         // 2^255 - 1. The limit comes from the fact that scalar.as_radix_16() doesn't work for
         // most scalars larger than 2^255.
@@ -88,6 +94,7 @@ pub trait BasepointTable {
         };
         self.mul_base(&s)
     }
+}
 }
 
 /// A trait for constant-time multiscalar multiplication without precomputation.

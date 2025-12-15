@@ -151,8 +151,6 @@ pub proof fn lemma_square_mod_noop(x: nat)
 ///            = math_field_mul(x_raw % p, y_raw % p)   [definition of math_field_mul]
 /// ```
 ///
-/// This is useful for converting from FieldElement51::mul postconditions
-/// to the math_field_mul spec form.
 pub proof fn lemma_mul_matches_math_field_mul(x_raw: nat, y_raw: nat, xy_raw: nat)
     requires
         xy_raw % p() == (x_raw * y_raw) % p(),
@@ -221,7 +219,6 @@ pub proof fn lemma_square_matches_math_field_square(y_raw: nat, y2_raw: nat)
 /// Subtract b: a + 1 ≡ c - b (mod p)  ✓
 /// ```
 ///
-/// Used in sqrt_ratio_implies_on_curve proof.
 pub proof fn lemma_field_add_sub_rearrange(a: nat, b: nat, c: nat)
     requires
         a < p(),

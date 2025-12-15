@@ -544,7 +544,7 @@ pub proof fn lemma_decompress_valid_branch(
 
 ## Axioms (Trust Assumptions)
 
-The proof relies on 6 axioms about number-theoretic properties that are expensive to verify computationally:
+The proof relies on 4 axioms about number-theoretic properties that are expensive to verify computationally:
 
 | Axiom | Statement | Mathematical Justification | Location |
 |-------|-----------|---------------------------|----------|
@@ -552,8 +552,6 @@ The proof relies on 6 axioms about number-theoretic properties that are expensiv
 | `axiom_sqrt_m1_not_square` | $i$ is not a quadratic residue | Euler criterion: $i^{(p-1)/2} = -1$ | `sqrt_ratio_lemmas.rs` |
 | `axiom_neg_sqrt_m1_not_square` | $-i$ is not a quadratic residue | Euler criterion: $(-i)^{(p-1)/2} = -1$ | `sqrt_ratio_lemmas.rs` |
 | `axiom_p_is_prime` | $p = 2^{255} - 19$ is prime | Well-known mathematical fact | `primality_specs.rs` |
-| `lemma_binomial_factorial_relation` | $\binom{n}{k} \cdot k! \cdot (n-k)! = n!$ | Standard combinatorial identity | `number_theory_lemmas.rs` |
-| `axiom_binomial_theorem` | $\sum_{k=0}^{n} \binom{n}{k} a^k = (a+1)^n$ | Standard binomial theorem | `number_theory_lemmas.rs` |
 
 **Note:** All lemmas in the decompress proof chain are **fully proved** — only axioms use `admit()`.
 
@@ -624,7 +622,7 @@ The proof relies on 6 axioms about number-theoretic properties that are expensiv
 |--------|-------|
 | Total verified | **913** |
 | Errors | **0** |
-| Axioms | 6 (all mathematically justified) |
+| Axioms | 4 (all mathematically justified) |
 | Lemmas with admits | **0** |
 | **Success path** | ✅ **Fully proved** |
 | **Failure path** | ✅ **Fully proved** |
@@ -644,7 +642,6 @@ The proof relies on 6 axioms about number-theoretic properties that are expensiv
 | Edwards constants | `lemmas/edwards_lemmas/constants_lemmas.rs` |
 | SQRT_M1 axioms & lemmas | `lemmas/common_lemmas/sqrt_ratio_lemmas.rs` |
 | Primality axiom | `specs/primality_specs.rs` |
-| Number theory axioms | `lemmas/common_lemmas/number_theory_lemmas.rs` |
 
 ---
 

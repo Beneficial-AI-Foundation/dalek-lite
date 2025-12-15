@@ -257,20 +257,22 @@ impl CompressedEdwardsY {
         requires
             compressed_y_has_valid_sign_bit(&self.0),
         ensures
+    // Decompression succeeds iff the y-coordinate is valid
+
             math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
-                ==> result.is_some()
+                <==> result.is_some(),
+            // When successful, the result has these properties:
+            result.is_some() ==> (
             // The Y coordinate matches the one from the compressed representation
-             && spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes(
+            spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes(
                 &self.0,
             )
-            // The point is valid
+            // The point is valid on the Edwards curve
              && is_valid_edwards_point(
                 result.unwrap(),
             )
             // The X coordinate sign bit matches the sign bit from the compressed representation
-             && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7),
-            !math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
-                <==> result.is_none(),
+             && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 

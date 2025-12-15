@@ -59,13 +59,17 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     }
     </ORIGINAL CODE> */
     // VERIFICATION NOTE: Verus doesn't support for-loops over Rev<Range<_>>
-    while i > 0
+    // This loop checks indices 255, 254, ..., 1, 0 (inclusive) to match original behavior.
+    loop
         invariant
             i <= 255,
-        decreases i,
+        decreases i + 1,  // +1 accounts for the final iteration at i == 0
     {
         if a_naf[i] != 0 || b_naf[i] != 0 {
             break;
+        }
+        if i == 0 {
+            break;  // Checked index 0, now exit
         }
         i -= 1;
     }

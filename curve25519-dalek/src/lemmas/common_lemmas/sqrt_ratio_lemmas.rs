@@ -858,8 +858,8 @@ pub proof fn lemma_flipped_sign_becomes_correct(u: nat, v: nat, r: nat)
         (v * r * r) % p() == ((p() as int - (u % p()) as int) % p() as int) as nat,
     ensures
         ({
-            let r_prime = (r * spec_sqrt_m1()) % p();
-            (v * r_prime * r_prime) % p() == u % p()
+            let r_prime = math_field_mul(r, spec_sqrt_m1());
+            math_field_mul(v, math_field_square(r_prime)) == u % p()
         }),
 {
     pow255_gt_19();

@@ -414,6 +414,9 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
             lemma_small_mod(neg_i, the_p);
         };
         assert(is_square_mod_p(neg_i));
+
+        // Contradiction: -i is both a square and not a square
+        assert(false);
     }
     // ========== Case 2: r²·v = -u ==========
     // If true, then q² = i, but i is not a square → contradiction
@@ -453,6 +456,9 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
             lemma_small_mod(i, the_p);
         };
         assert(is_square_mod_p(i));
+
+        // Contradiction: i is both a square and not a square
+        assert(false);
     }
 }
 

@@ -1896,16 +1896,26 @@ impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
     }
 }
 
+verus! {
+
 impl EdwardsPoint {
     /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
+    // VERIFICATION NOTE: PROOF BYPASS - delegates to vartime_double_base::mul which has
+    // `ensures true` due to complex loop invariants. Spec can be strengthened when
+    // underlying implementation is fully verified.
     pub fn vartime_double_scalar_mul_basepoint(
         a: &Scalar,
         A: &EdwardsPoint,
         b: &Scalar,
-    ) -> EdwardsPoint {
+    ) -> (result: EdwardsPoint)
+        ensures
+            true,
+    {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 }
+
+} // verus!
 
 /* VERIFICATION NOTE: Removed unused impl_basepoint_table! macro since EdwardsBasepointTable
 (radix-16) was manually expanded. */

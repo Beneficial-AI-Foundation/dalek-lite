@@ -273,9 +273,18 @@ pub fn variable_base_mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: Edwa
 }
 
 } // verus!
+
+verus! {
+
 /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
+// VERIFICATION NOTE: PROOF BYPASS - delegates to vartime_double_base::mul which has
+// `ensures true` due to complex loop invariants.
 #[allow(non_snake_case)]
-pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
+pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (result: EdwardsPoint)
+    ensures
+        true,
+{
+    /* <ORIGINAL CODE>
     match get_selected_backend() {
         // #[cfg(curve25519_dalek_backend = "simd")]
         // BackendKind::Avx2 => vector::scalar_mul::vartime_double_base::spec_avx2::mul(a, A, b),
@@ -285,4 +294,10 @@ pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> Edwa
         // }
         BackendKind::Serial => serial::scalar_mul::vartime_double_base::mul(a, A, b),
     }
+    </ORIGINAL CODE> */
+    // VERIFICATION NOTE: Simplified to direct call since only Serial backend is verified.
+    // The original match on get_selected_backend() is not verifiable due to external enum.
+    serial::scalar_mul::vartime_double_base::mul(a, A, b)
 }
+
+} // verus!

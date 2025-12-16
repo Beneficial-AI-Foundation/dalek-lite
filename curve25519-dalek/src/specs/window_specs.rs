@@ -188,7 +188,6 @@ pub open spec fn is_valid_naf_lookup_table8_affine_coords(
 ///
 /// The table contains odd multiples [1·B, 3·B, 5·B, ..., 127·B] where B is the Ed25519 basepoint.
 #[cfg(feature = "precomputed-tables")]
-#[verifier::external_body]
 pub proof fn axiom_affine_odd_multiples_of_basepoint_valid()
     ensures
         naf_lookup_table8_affine_limbs_bounded(
@@ -199,6 +198,7 @@ pub proof fn axiom_affine_odd_multiples_of_basepoint_valid()
             spec_ed25519_basepoint(),
         ),
 {
+    admit();  // Hardcoded table data verified by construction
 }
 
 // ============================================================================

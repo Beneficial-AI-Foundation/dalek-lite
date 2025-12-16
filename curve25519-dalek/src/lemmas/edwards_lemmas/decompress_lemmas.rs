@@ -206,24 +206,18 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
 /// ## Parameters
 /// - `repr_bytes`: The compressed representation bytes
 /// - `x_orig`: The X value from step_1 (before conditional negate)
-/// - `y`: The Y value from step_1
 /// - `point`: The final EdwardsPoint from step_2
 ///
 /// ## Proves
 /// - is_valid_edwards_point(point)
 /// - spec_field_element(&point.Y) == spec_field_element_from_bytes(repr_bytes)
 /// - spec_field_element_sign_bit(&point.X) == (repr_bytes[31] >> 7)
-pub proof fn lemma_decompress_valid_branch(
-    repr_bytes: &[u8; 32],
-    x_orig: nat,
-    y: nat,
-    point: &EdwardsPoint,
-)
+pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, point: &EdwardsPoint)
     requires
         compressed_y_has_valid_sign_bit(repr_bytes),
-        // step_1 postconditions (as nat values)
-        y == spec_field_element_from_bytes(repr_bytes),
-        math_on_edwards_curve(x_orig, y),
+        // step_1 postconditions
+        spec_field_element(&point.Y) == spec_field_element_from_bytes(repr_bytes),
+        math_on_edwards_curve(x_orig, spec_field_element(&point.Y)),
         // X is non-negative root (LSB = 0) and bounded
         (x_orig % p()) % 2 == 0,
         x_orig < p(),
@@ -233,7 +227,6 @@ pub proof fn lemma_decompress_valid_branch(
         } else {
             x_orig
         }),
-        spec_field_element(&point.Y) == y,
         spec_field_element(&point.Z) == 1,
         spec_field_element(&point.T) == math_field_mul(
             spec_field_element(&point.X),
@@ -259,28 +252,23 @@ pub proof fn lemma_decompress_valid_branch(
             // X is conditionally negated; negation preserves curve membership
             if sign_bit == 1 {
                 assert(x_final == math_field_neg(x_orig));
-                lemma_negation_preserves_curve(x_orig, y);
+                lemma_negation_preserves_curve(x_orig, y_final);
             } else {
                 assert(x_final == x_orig);
             }
         };
 
-        // Z = 1, Y preserved, T = X * Y
+        // Z = 1, T = X * Y
         assert(z_final == 1);
-        assert(y_final == y);
         assert(t_final == math_field_mul(x_final, y_final));
 
         // Apply the validity lemma (from curve_equation_lemmas)
-        lemma_affine_to_extended_valid(x_final, y_final, z_final, t_final);
+        lemma_affine_to_extended_valid(x_final, y_final, t_final);
     };
 
     // =========================================================================
-    // Goal 2: Y coordinate preserved
+    // Goal 2: Y coordinate preserved (directly from requires)
     // =========================================================================
-    assert(spec_field_element(&point.Y) == spec_field_element_from_bytes(repr_bytes)) by {
-        assert(spec_field_element(&point.Y) == y);
-        // y == spec_field_element_from_bytes(repr_bytes) from requires
-    };
 
     // =========================================================================
     // Goal 3: Sign bit correctness
@@ -305,7 +293,7 @@ pub proof fn lemma_decompress_valid_branch(
 
             // Precondition 2: sign_bit == 1 ==> x != 0
             assert(sign_bit == 1 ==> x_before % p() != 0) by {
-                lemma_sign_bit_one_implies_x_nonzero(repr_bytes, x_before, y);
+                lemma_sign_bit_one_implies_x_nonzero(repr_bytes, x_before, y_final);
             };
 
             // Precondition 3: x_after matches conditional expression

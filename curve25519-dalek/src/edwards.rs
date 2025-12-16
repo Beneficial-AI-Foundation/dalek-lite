@@ -291,17 +291,16 @@ impl CompressedEdwardsY {
             proof {
                 // Extract values for lemma
                 let x_orig = spec_field_element(&X);
-                let y = spec_field_element(&Y);
 
                 // Establish step_2 postconditions needed by lemma
                 // step_2 ensures Y and Z are preserved by reference equality
                 assert(&point.Y == &Y);
                 assert(&point.Z == &Z);
-                assert(spec_field_element(&point.Y) == y);
+                assert(spec_field_element(&point.Y) == spec_field_element_from_bytes(&self.0));
                 assert(spec_field_element(&point.Z) == 1);
 
                 // Use the unified lemma to prove all postconditions
-                lemma_decompress_valid_branch(&self.0, x_orig, y, &point);
+                lemma_decompress_valid_branch(&self.0, x_orig, &point);
             }
             result
         } else {

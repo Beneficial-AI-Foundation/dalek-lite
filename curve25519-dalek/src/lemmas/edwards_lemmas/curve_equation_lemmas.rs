@@ -74,13 +74,12 @@ pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
 /// - Z ≠ 0 ✓
 /// - (X/1, Y/1) = (X, Y) is on curve (given)
 /// - T = X·Y/1 = X·Y ✓
-pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, z: nat, t: nat)
+pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
     requires
-        z == 1,
         math_on_edwards_curve(x, y),
         t == math_field_mul(x, y),
     ensures
-        math_is_valid_extended_edwards_point(x, y, z, t),
+        math_is_valid_extended_edwards_point(x, y, 1, t),
 {
     // Goal: Show (X:Y:Z:T) with Z=1 is a valid extended point
     //
@@ -91,22 +90,21 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, z: nat, t: nat)
     let p = p();
     p_gt_2();
 
-    // Part 1: Z = 1 ≠ 0
-    assert(z != 0);
+    // Part 1: Z = 1 ≠ 0 (trivially true)
 
     // Part 2: (X/Z, Y/Z) is on curve
     assert(math_on_edwards_curve(
-        math_field_mul(x, math_field_inv(z)),
-        math_field_mul(y, math_field_inv(z)),
+        math_field_mul(x, math_field_inv(1)),
+        math_field_mul(y, math_field_inv(1)),
     )) by {
         // Since Z = 1, inv(Z) = 1
-        assert(math_field_inv(z) == 1) by {
+        assert(math_field_inv(1) == 1) by {
             lemma_field_inv_one();
         };
 
         // X · inv(Z) = X · 1 = X % p
-        assert(math_field_mul(x, math_field_inv(z)) == (x * 1) % p);
-        assert(math_field_mul(y, math_field_inv(z)) == (y * 1) % p);
+        assert(math_field_mul(x, math_field_inv(1)) == (x * 1) % p);
+        assert(math_field_mul(y, math_field_inv(1)) == (y * 1) % p);
 
         // on_curve(X % p, Y % p) ⟺ on_curve(X, Y) via square_mod_noop
         // (inlined from lemma_curve_mod_noop)
@@ -115,7 +113,7 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, z: nat, t: nat)
     };
 
     // Part 3: T = X·Y/Z
-    assert(t == math_field_mul(math_field_mul(x, y), math_field_inv(z))) by {
+    assert(t == math_field_mul(math_field_mul(x, y), math_field_inv(1))) by {
         lemma_field_inv_one();
         let xy = math_field_mul(x, y);
         // xy < p (mod result), so xy · 1 = xy
@@ -123,7 +121,7 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, z: nat, t: nat)
             lemma_mod_bound((x * y) as int, p as int);
         };
         lemma_small_mod(xy, p);
-        assert(math_field_mul(xy, math_field_inv(z)) == xy);
+        assert(math_field_mul(xy, math_field_inv(1)) == xy);
         // t = xy (from precondition)
     };
 }
@@ -167,16 +165,14 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
     // Strategy: From curve equation y² - x² = 1 + d·x²·y², show all terms simplify
 
     assert(x2 == 0) by {
-        // x² = (x * x) % p = ((x % p) * (x % p)) % p = (0 * 0) % p = 0
         lemma_mul_mod_noop_general(x as int, x as int, modulus as int);
-        assert((x * x) % modulus == ((x % modulus) * (x % modulus)) % modulus);
     };
 
     assert(x2y2 == 0) by {
         // x²·y² = 0 * y² = 0
         assert(x2 == 0);
         lemma_mul_by_zero_is_zero(y2 as int);
-        lemma_small_mod(0nat, modulus);
+        lemma_small_mod(0, modulus);
     };
 
     assert(d_x2y2 == 0) by {
@@ -188,7 +184,7 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
     assert(rhs == 1) by {
         // rhs = (1 + d·x²·y²) % p = (1 + 0) % p = 1 % p = 1
         assert(d_x2y2 == 0);
-        lemma_small_mod(1nat, modulus);
+        lemma_small_mod(1, modulus);
     };
 
     // From curve equation (precondition): lhs == rhs
@@ -206,7 +202,7 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
 
         // (p + y2) % p = y2 % p = y2 (since y2 < p)
         lemma_small_mod(y2, modulus);
-        lemma_mod_multiples_vanish(1int, y2 as int, modulus as int);
+        lemma_mod_multiples_vanish(1, y2 as int, modulus as int);
     };
 
     // Conclusion: y2 == lhs == 1

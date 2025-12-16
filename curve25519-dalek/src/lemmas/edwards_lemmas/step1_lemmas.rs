@@ -114,8 +114,8 @@ pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
 
         // Step 5: Commutativity of addition - 1 + d·x²·y² = d·x²·y² + 1
         assert(math_field_add(1, d_x2y2) == math_field_sub(y2, x2)) by {
-            lemma_add_mod_noop(1int, d_x2y2 as int, p as int);
-            lemma_add_mod_noop(d_x2y2 as int, 1int, p as int);
+            lemma_add_mod_noop(1, d_x2y2 as int, p as int);
+            lemma_add_mod_noop(d_x2y2 as int, 1, p as int);
         };
     };
 }
@@ -127,16 +127,15 @@ pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
 ///
 /// When sqrt_ratio_i returns (true, r), it means u/v is a square,
 /// which is exactly what math_is_valid_y_coordinate checks.
-pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, u: nat, v: nat, r: nat)
+pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, r: nat)
     requires
-        u == math_field_sub(math_field_square(y), 1),  // u = y² - 1
-        v == math_field_add(
-            math_field_mul(spec_field_element(&EDWARDS_D), math_field_square(y)),
-            1,
-        ),  // v = d·y² + 1
-        v != 0,
-        math_field_mul(math_field_square(r), v) == u % p(),  // r² · v = u
-
+        ({
+            let d = spec_field_element(&EDWARDS_D);
+            let y2 = math_field_square(y);
+            let v = math_field_add(math_field_mul(d, y2), 1);
+            let u = math_field_sub(y2, 1);
+            v != 0 && math_field_mul(math_field_square(r), v) == u % p()
+        }),
     ensures
         math_is_valid_y_coordinate(y),
 {
@@ -150,13 +149,15 @@ pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, u: nat, v: nat, r: n
     let p = p();
     let d = spec_field_element(&EDWARDS_D);
     let y2 = math_field_square(y);
+    let u = math_field_sub(y2, 1);
+    let v = math_field_add(math_field_mul(d, y2), 1);
 
     // Show u < p and v < p (field operations return reduced values)
     assert(u < p) by {
         lemma_mod_bound((((y2 % p) + p) - (1nat % p)) as int, p as int);
     };
     assert(v < p) by {
-        lemma_mod_bound(((d * y2) % p + 1nat) as int, p as int);
+        lemma_mod_bound(((d * y2) % p + 1) as int, p as int);
     };
 
     // Since u < p: u % p = u
@@ -198,28 +199,30 @@ pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, u: nat, v: nat, r: n
 pub proof fn lemma_step1_curve_semantics(
     y: nat,  // spec_field_element(&Y)
     x: nat,  // spec_field_element(&X) from sqrt_ratio_i
-    u_math: nat,  // math_field_sub(y², 1)
-    v_math: nat,  // math_field_add(d·y², 1)
 )
     requires
-// u and v are computed correctly
-
         ({
             let d = spec_field_element(&EDWARDS_D);
             let y2 = math_field_square(y);
-            u_math == math_field_sub(y2, 1) && v_math == math_field_add(math_field_mul(d, y2), 1)
+            let u = math_field_sub(y2, 1);
+            let v = math_field_add(math_field_mul(d, y2), 1);
+            // sqrt_ratio_i succeeded: x² · v = u (mod p)
+            v != 0 && math_field_mul(math_field_square(x), v) == u % p()
         }),
-        // sqrt_ratio_i succeeded: x² · v = u (mod p)
-        v_math != 0,
-        math_field_mul(math_field_square(x), v_math) == u_math % p(),
     ensures
         math_is_valid_y_coordinate(y),
         math_on_edwards_curve(x, y),
 {
+    p_gt_2();
+    let d = spec_field_element(&EDWARDS_D);
+    let y2 = math_field_square(y);
+    let u_math = math_field_sub(y2, 1);
+    let v_math = math_field_add(math_field_mul(d, y2), 1);
+
     // Goal 1: math_is_valid_y_coordinate(y)
     // From precondition: x²·v = u (mod p), so x is witness for valid Y
     assert(math_is_valid_y_coordinate(y)) by {
-        lemma_sqrt_ratio_success_means_valid_y(y, u_math, v_math, x);
+        lemma_sqrt_ratio_success_means_valid_y(y, x);
     };
 
     // Goal 2: math_on_edwards_curve(x, y)
@@ -230,9 +233,6 @@ pub proof fn lemma_step1_curve_semantics(
     //   Bridge: Since u_math = math_field_sub(...) < p, we have u % p = u
 
     assert(math_on_edwards_curve(x, y)) by {
-        p_gt_2();
-        let y2 = math_field_square(y);
-
         // Step 1: u_math < p (math_field_sub returns reduced result)
         assert(u_math < p()) by {
             lemma_mod_bound((((y2 % p()) + p()) - (1nat % p())) as int, p() as int);
@@ -291,7 +291,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
             lemma_small_mod(y2, p);
         };
         assert(1nat % p == 1) by {
-            lemma_small_mod(1nat, p);
+            lemma_small_mod(1, p);
         };
 
         // Range of sum: y2 + p - 1 ∈ [p-1, 2p-1)
@@ -313,7 +313,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
             // sum % p = sum - p = y2 - 1 >= 1
             assert(sum % p as int == y2 as int - 1) by {
                 lemma_small_mod((y2 - 1) as nat, p);
-                lemma_mod_multiples_vanish(-1int, sum, p as int);
+                lemma_mod_multiples_vanish(-1, sum, p as int);
             };
             // y2 - 1 >= 1 ≠ 0, contradicts math_field_sub(y2, 1) = 0
         }
@@ -325,38 +325,17 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
     // Curve equation: -x² + y² = 1 + d·x²·y²
     // With x = 0 and y² = 1: both sides equal 1
     assert(math_on_edwards_curve(0, y)) by {
+        lemma_small_mod(0, p);
+        lemma_small_mod(1, p);
+
         let d = spec_field_element(&EDWARDS_D);
-
-        // 0² = 0
-        assert(math_field_square(0) == 0) by {
-            lemma_small_mod(0, p);
-        };
         let x2 = math_field_square(0);
-
-        // 0 * y² = 0
-        assert(math_field_mul(x2, y2) == 0) by {
-            lemma_small_mod(0, p);
-        };
         let x2y2 = math_field_mul(x2, y2);
-
-        // d * 0 = 0
-        assert(math_field_mul(d, x2y2) == 0) by {
-            lemma_small_mod(0, p);
-        };
         let d_x2y2 = math_field_mul(d, x2y2);
 
         // LHS: y² - 0 = y² = 1
         assert(math_field_sub(y2, x2) == 1) by {
-            assert(y2 == 1);
-            assert(x2 == 0);
-            lemma_small_mod(1, p);
-            lemma_small_mod(0, p);
-            lemma_mod_multiples_vanish(1int, 1int, p as int);
-        };
-
-        // RHS: 1 + 0 = 1
-        assert(math_field_add(1, d_x2y2) == 1) by {
-            lemma_small_mod(1, p);
+            lemma_mod_multiples_vanish(1, 1, p as int);
         };
 
         // LHS == RHS == 1, so curve equation holds
@@ -365,11 +344,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
     // Step 3: Prove math_is_valid_y_coordinate(y)
     // From the spec: when u % p == 0, it returns true directly
     assert(math_is_valid_y_coordinate(y)) by {
-        // math_field_sub(y2, 1) = 0 (from precondition)
-        // 0 % p = 0
-        assert(math_field_sub(y2, 1) % p == 0) by {
-            lemma_small_mod(0, p);
-        };
+        lemma_small_mod(0, p);
         // By definition of math_is_valid_y_coordinate, when u % p == 0, it's true
     };
 }
@@ -474,7 +449,7 @@ pub proof fn lemma_step1_case_analysis(
                 lemma_is_sqrt_ratio_to_math_field(x, u_math, v_math);
 
                 // Apply curve semantics lemma
-                lemma_step1_curve_semantics(y, x, u_math, v_math);
+                lemma_step1_curve_semantics(y, x);
             };
         } else {
             // Subcase: v = 0 (identity points y = ±1)

@@ -26,11 +26,11 @@ use super::field_specs::*;
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
 };
-#[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::edwards::EdwardsBasepointTable;

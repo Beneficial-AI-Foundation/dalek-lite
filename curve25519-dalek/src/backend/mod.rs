@@ -36,12 +36,11 @@ use crate::EdwardsPoint;
 use crate::Scalar;
 
 #[cfg(verus_keep_ghost)]
-use crate::specs::edwards_specs::{
-    edwards_add, edwards_point_as_affine, edwards_scalar_mul, is_well_formed_edwards_point,
-    spec_ed25519_basepoint,
-};
+#[allow(unused_imports)]
+use crate::specs::edwards_specs::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::spec_scalar;
+#[allow(unused_imports)]
+use crate::specs::scalar_specs::*;
 
 pub mod serial;
 

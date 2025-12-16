@@ -20,18 +20,17 @@ use crate::traits::Identity;
 use crate::window::NafLookupTable5;
 
 #[cfg(verus_keep_ghost)]
-use crate::specs::edwards_specs::{
-    edwards_add, edwards_point_as_affine, edwards_scalar_mul, is_valid_projective_point,
-    is_well_formed_edwards_point, spec_ed25519_basepoint,
-};
+#[allow(unused_imports)]
+use crate::specs::edwards_specs::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::field_specs::{fe51_limbs_bounded, sum_of_limbs_bounded};
+#[allow(unused_imports)]
+use crate::specs::field_specs::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::{is_valid_naf, spec_scalar};
+#[allow(unused_imports)]
+use crate::specs::scalar_specs::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::window_specs::{
-    naf_lookup_table5_projective_limbs_bounded, naf_lookup_table8_affine_limbs_bounded,
-};
+#[allow(unused_imports)]
+use crate::specs::window_specs::*;
 
 use vstd::prelude::*;
 

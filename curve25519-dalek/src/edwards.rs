@@ -165,9 +165,11 @@ use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::{is_clamped_integer, spec_clamp_integer, spec_scalar};
+#[allow(unused_imports)]
+use crate::specs::scalar_specs::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs_u64::group_order;
+#[allow(unused_imports)]
+use crate::specs::scalar_specs_u64::*;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------

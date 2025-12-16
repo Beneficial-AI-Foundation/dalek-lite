@@ -4,6 +4,8 @@
 //! and selection operations used in scalar multiplication.
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
+#[cfg(feature = "precomputed-tables")]
+use crate::backend::serial::u64::constants::AFFINE_ODD_MULTIPLES_OF_BASEPOINT;
 use crate::edwards::EdwardsPoint;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
@@ -190,11 +192,9 @@ pub open spec fn is_valid_naf_lookup_table8_affine_coords(
 #[cfg(feature = "precomputed-tables")]
 pub proof fn axiom_affine_odd_multiples_of_basepoint_valid()
     ensures
-        naf_lookup_table8_affine_limbs_bounded(
-            crate::backend::serial::u64::constants::AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0,
-        ),
+        naf_lookup_table8_affine_limbs_bounded(AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0),
         is_valid_naf_lookup_table8_affine_coords(
-            crate::backend::serial::u64::constants::AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0,
+            AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0,
             spec_ed25519_basepoint(),
         ),
 {

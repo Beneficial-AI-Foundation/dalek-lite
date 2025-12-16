@@ -42,10 +42,12 @@ verus! {
 // Uses `assume(false)` at loop entry points to skip internal verification.
 pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     requires
-        // Input point must be well-formed
+// Input point must be well-formed
+
         is_well_formed_edwards_point(*A),
     ensures
-        // Result is a well-formed Edwards point
+// Result is a well-formed Edwards point
+
         is_well_formed_edwards_point(out),
         // Functional correctness: out = a*A + b*B where B is the Ed25519 basepoint
         edwards_point_as_affine(out) == {
@@ -77,12 +79,13 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         invariant
             i <= 255,
         decreases i + 1,  // +1 accounts for the final iteration at i == 0
+
     {
         if a_naf[i] != 0 || b_naf[i] != 0 {
-            break;
+            break ;
         }
         if i == 0 {
-            break;  // Checked index 0, now exit
+            break ;  // Checked index 0, now exit
         }
         i -= 1;
     }
@@ -91,8 +94,9 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     #[cfg(feature = "precomputed-tables")]
     let table_B = &constants::AFFINE_ODD_MULTIPLES_OF_BASEPOINT;
     #[cfg(not(feature = "precomputed-tables"))]
-    let table_B =
-        &NafLookupTable5::<ProjectiveNielsPoint>::from(&constants::ED25519_BASEPOINT_POINT);
+    let table_B = &NafLookupTable5::<ProjectiveNielsPoint>::from(
+        &constants::ED25519_BASEPOINT_POINT,
+    );
 
     let mut r = ProjectivePoint::identity();
 
@@ -107,19 +111,19 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         match a_naf[i].cmp(&0) {
             Ordering::Greater => t = &t.as_extended() + &table_A.select(a_naf[i] as usize),
             Ordering::Less => t = &t.as_extended() - &table_A.select((-a_naf[i]) as usize),
-            Ordering::Equal => {}
+            Ordering::Equal => {},
         }
 
         match b_naf[i].cmp(&0) {
             Ordering::Greater => t = &t.as_extended() + &table_B.select(b_naf[i] as usize),
             Ordering::Less => t = &t.as_extended() - &table_B.select((-b_naf[i]) as usize),
-            Ordering::Equal => {}
+            Ordering::Equal => {},
         }
 
         r = t.as_projective();
 
         if i == 0 {
-            break;
+            break ;
         }
         i -= 1;
     }

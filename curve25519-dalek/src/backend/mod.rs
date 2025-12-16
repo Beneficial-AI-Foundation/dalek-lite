@@ -274,7 +274,6 @@ pub fn variable_base_mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: Edwa
 }
 
 } // verus!
-
 verus! {
 
 /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.

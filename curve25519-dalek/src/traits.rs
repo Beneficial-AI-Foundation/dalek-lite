@@ -222,6 +222,7 @@ pub trait VartimeMultiscalarMul {
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<Self::Point>>;
 
+verus! {    
     /// Given an iterator of public scalars and an iterator of
     /// public points, compute
     /// $$
@@ -268,7 +269,7 @@ pub trait VartimeMultiscalarMul {
     ///
     /// assert_eq!(A1.compress(), (-A2).compress());
     /// # }
-    /// ```
+    /// ``
     fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point
     where
         I: IntoIterator,
@@ -283,8 +284,9 @@ pub trait VartimeMultiscalarMul {
         )
         .expect("should return some point")
     }
-}
+} // verus!
 
+}
 /// A trait for variable-time multiscalar multiplication with precomputation.
 ///
 /// A general multiscalar multiplication with precomputation can be written as

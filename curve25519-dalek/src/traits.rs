@@ -77,25 +77,17 @@ pub trait BasepointTable {
     /// Multiply a `scalar` by this precomputed basepoint table, in constant time.
     fn mul_base(&self, scalar: &Scalar) -> Self::Point;
 
-    verus! {
-
-/// Multiply `clamp_integer(bytes)` by this precomputed basepoint table, in constant time. For
-/// a description of clamping, see [`clamp_integer`].
-fn mul_base_clamped(&self, bytes: [u8; 32]) -> (result: Self::Point)
-    ensures
-        true,
-// VERIFICATION NOTE: This trait method has generic Self::Point, so functional specs
-// are provided in concrete implementations: EdwardsBasepointTable in edwards.rs
-
-{
-    // Basepoint multiplication is defined for all values of `bytes` up to and including
-    // 2^255 - 1. The limit comes from the fact that scalar.as_radix_16() doesn't work for
-    // most scalars larger than 2^255.
-    let s = Scalar { bytes: clamp_integer(bytes) };
-    self.mul_base(&s)
-}
-
-} // verus!
+    /// Multiply `clamp_integer(bytes)` by this precomputed basepoint table, in constant time. For
+    /// a description of clamping, see [`clamp_integer`].
+    fn mul_base_clamped(&self, bytes: [u8; 32]) -> Self::Point {
+        // Basepoint multiplication is defined for all values of `bytes` up to and including
+        // 2^255 - 1. The limit comes from the fact that scalar.as_radix_16() doesn't work for
+        // most scalars larger than 2^255.
+        let s = Scalar {
+            bytes: clamp_integer(bytes),
+        };
+        self.mul_base(&s)
+    }
 }
 
 /// A trait for constant-time multiscalar multiplication without precomputation.
@@ -223,70 +215,69 @@ pub trait VartimeMultiscalarMul {
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<Self::Point>>;
 
-    verus! {
-
-/// Given an iterator of public scalars and an iterator of
-/// public points, compute
-/// $$
-/// Q = c\_1 P\_1 + \cdots + c\_n P\_n,
-/// $$
-/// using variable-time operations.
-///
-/// It is an error to call this function with two iterators of different lengths.
-///
-/// # Examples
-///
-/// The trait bound aims for maximum flexibility: the inputs must be
-/// convertible to iterators (`I: IntoIter`), and the iterator's items
-/// must be `Borrow<Scalar>` (or `Borrow<Point>`), to allow
-/// iterators returning either `Scalar`s or `&Scalar`s.
-///
-/// ```
-/// #[cfg(feature = "alloc")]
-/// # {
-/// use curve25519_dalek::constants;
-/// use curve25519_dalek::traits::VartimeMultiscalarMul;
-/// use curve25519_dalek::ristretto::RistrettoPoint;
-/// use curve25519_dalek::scalar::Scalar;
-///
-/// // Some scalars
-/// let a = Scalar::from(87329482u64);
-/// let b = Scalar::from(37264829u64);
-/// let c = Scalar::from(98098098u64);
-///
-/// // Some points
-/// let P = constants::RISTRETTO_BASEPOINT_POINT;
-/// let Q = P + P;
-/// let R = P + Q;
-///
-/// // A1 = a*P + b*Q + c*R
-/// let abc = [a,b,c];
-/// let A1 = RistrettoPoint::vartime_multiscalar_mul(&abc, &[P,Q,R]);
-/// // Note: (&abc).into_iter(): Iterator<Item=&Scalar>
-///
-/// // A2 = (-a)*P + (-b)*Q + (-c)*R
-/// let minus_abc = abc.iter().map(|x| -x);
-/// let A2 = RistrettoPoint::vartime_multiscalar_mul(minus_abc, &[P,Q,R]);
-/// // Note: minus_abc.into_iter(): Iterator<Item=Scalar>
-///
-/// assert_eq!(A1.compress(), (-A2).compress());
-/// # }
-/// ``
-fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point where
-    I: IntoIterator,
-    I::Item: Borrow<Scalar>,
-    J: IntoIterator,
-    J::Item: Borrow<Self::Point>,
-    Self::Point: Clone,
- {
-    Self::optional_multiscalar_mul(
-        scalars,
-        points.into_iter().map(|P| Some(P.borrow().clone())),
-    ).expect("should return some point")
+    /// Given an iterator of public scalars and an iterator of
+    /// public points, compute
+    /// $$
+    /// Q = c\_1 P\_1 + \cdots + c\_n P\_n,
+    /// $$
+    /// using variable-time operations.
+    ///
+    /// It is an error to call this function with two iterators of different lengths.
+    ///
+    /// # Examples
+    ///
+    /// The trait bound aims for maximum flexibility: the inputs must be
+    /// convertible to iterators (`I: IntoIter`), and the iterator's items
+    /// must be `Borrow<Scalar>` (or `Borrow<Point>`), to allow
+    /// iterators returning either `Scalar`s or `&Scalar`s.
+    ///
+    /// ```
+    /// #[cfg(feature = "alloc")]
+    /// # {
+    /// use curve25519_dalek::constants;
+    /// use curve25519_dalek::traits::VartimeMultiscalarMul;
+    /// use curve25519_dalek::ristretto::RistrettoPoint;
+    /// use curve25519_dalek::scalar::Scalar;
+    ///
+    /// // Some scalars
+    /// let a = Scalar::from(87329482u64);
+    /// let b = Scalar::from(37264829u64);
+    /// let c = Scalar::from(98098098u64);
+    ///
+    /// // Some points
+    /// let P = constants::RISTRETTO_BASEPOINT_POINT;
+    /// let Q = P + P;
+    /// let R = P + Q;
+    ///
+    /// // A1 = a*P + b*Q + c*R
+    /// let abc = [a,b,c];
+    /// let A1 = RistrettoPoint::vartime_multiscalar_mul(&abc, &[P,Q,R]);
+    /// // Note: (&abc).into_iter(): Iterator<Item=&Scalar>
+    ///
+    /// // A2 = (-a)*P + (-b)*Q + (-c)*R
+    /// let minus_abc = abc.iter().map(|x| -x);
+    /// let A2 = RistrettoPoint::vartime_multiscalar_mul(minus_abc, &[P,Q,R]);
+    /// // Note: minus_abc.into_iter(): Iterator<Item=Scalar>
+    ///
+    /// assert_eq!(A1.compress(), (-A2).compress());
+    /// # }
+    /// ```
+    fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point
+    where
+        I: IntoIterator,
+        I::Item: Borrow<Scalar>,
+        J: IntoIterator,
+        J::Item: Borrow<Self::Point>,
+        Self::Point: Clone,
+    {
+        Self::optional_multiscalar_mul(
+            scalars,
+            points.into_iter().map(|P| Some(P.borrow().clone())),
+        )
+        .expect("should return some point")
+    }
 }
 
-} // verus!
-}
 /// A trait for variable-time multiscalar multiplication with precomputation.
 ///
 /// A general multiscalar multiplication with precomputation can be written as

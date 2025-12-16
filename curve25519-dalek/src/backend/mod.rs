@@ -287,7 +287,6 @@ pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (res
             edwards_add(aA.0, aA.1, bB.0, bB.1)
         },
 {
-    /* <ORIGINAL CODE>
     match get_selected_backend() {
         // #[cfg(curve25519_dalek_backend = "simd")]
         // BackendKind::Avx2 => vector::scalar_mul::vartime_double_base::spec_avx2::mul(a, A, b),
@@ -297,10 +296,6 @@ pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (res
         // }
         BackendKind::Serial => serial::scalar_mul::vartime_double_base::mul(a, A, b),
     }
-    </ORIGINAL CODE> */
-    // VERIFICATION NOTE: Simplified to direct call since only Serial backend is verified.
-    // The original match on get_selected_backend() is not verifiable due to external enum.
-    serial::scalar_mul::vartime_double_base::mul(a, A, b)
 }
 
 } // verus!

@@ -2191,41 +2191,6 @@ impl BasepointTable for EdwardsBasepointTable {
         }
         P
     }
-
-    /// Multiply `clamp_integer(bytes)` by this precomputed basepoint table, in constant time.
-    /* ORIGINAL CODE (trait default in traits.rs):
-    fn mul_base_clamped(&self, bytes: [u8; 32]) -> Self::Point {
-        let s = Scalar {
-            bytes: clamp_integer(bytes),
-        };
-        self.mul_base(&s)
-    }
-    */
-    fn mul_base_clamped(&self, bytes: [u8; 32]) -> (result: EdwardsPoint)
-        ensures
-            is_well_formed_edwards_point(result),
-            // result = [clamp(bytes)] * B
-            edwards_point_as_affine(result) == edwards_scalar_mul(
-                spec_ed25519_basepoint(),
-                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
-            ),
-    {
-        let clamped = clamp_integer(bytes);
-        proof {
-            // clamp_integer ensures bytes[31] <= 127, satisfying mul_base precondition
-            assert(is_clamped_integer(&clamped));
-            assert(clamped[31] <= 127);
-        }
-        let s = Scalar { bytes: clamped };
-        let result = self.mul_base(&s);
-        proof {
-            assume(edwards_point_as_affine(result) == edwards_scalar_mul(
-                spec_ed25519_basepoint(),
-                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
-            ));
-        }
-        result
-    }
 }
 
 impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {

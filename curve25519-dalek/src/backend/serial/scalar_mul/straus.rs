@@ -63,6 +63,14 @@ fn collect_lookup_tables<I, J>(points: J) -> (result: Vec<LookupTable<Projective
 where
     J: IntoIterator,
     J::Item: Borrow<EdwardsPoint>,
+
+    ensures
+        // Length of result matches number of input points
+        result@.len() == spec_points_len::<J>(points) as int,
+        // Each lookup table corresponds to its input point
+        forall|i: int|
+            0 <= i < result@.len() ==> spec_lookup_table_point(&#[trigger] result@[i])
+                == spec_points_from_into_iter::<J>(points)[i],
 {
     points
         .into_iter()
@@ -76,6 +84,14 @@ fn collect_scalar_digits<I>(scalars: I) -> (result: Vec<[i8; 64]>)
 where
     I: IntoIterator,
     I::Item: Borrow<Scalar>,
+
+    ensures
+        // Length of result matches number of input scalars
+        result@.len() == spec_scalars_len::<I>(scalars) as int,
+        // Each digit array corresponds to its input scalar
+        forall|i: int|
+            0 <= i < result@.len() ==> spec_radix16_digits_to_scalar(&#[trigger] result@[i])
+                == spec_scalars_from_into_iter::<I>(scalars)[i],
 {
     scalars
         .into_iter()
@@ -89,6 +105,14 @@ fn collect_nafs<I>(scalars: I) -> (result: Vec<[i8; 256]>)
 where
     I: IntoIterator,
     I::Item: Borrow<Scalar>,
+
+    ensures
+        // Length of result matches number of input scalars
+        result@.len() == spec_scalars_len::<I>(scalars) as int,
+        // Each NAF array corresponds to its input scalar
+        forall|i: int|
+            0 <= i < result@.len() ==> spec_naf_digits_to_scalar(&#[trigger] result@[i])
+                == spec_scalars_from_into_iter::<I>(scalars)[i],
 {
     scalars
         .into_iter()
@@ -101,6 +125,21 @@ where
 fn collect_naf_lookup_tables<J>(points: J) -> (result: Option<Vec<NafLookupTable5<ProjectiveNielsPoint>>>)
 where
     J: IntoIterator<Item = Option<EdwardsPoint>>,
+
+    ensures
+        // Result is Some iff spec_optional_points returns Some
+        match (result, spec_optional_points_from_into_iter::<J>(points)) {
+            (Some(tables), Some(pts)) => {
+                // Length matches
+                &&& tables@.len() == pts.len()
+                // Each lookup table corresponds to its input point
+                &&& forall|i: int|
+                    0 <= i < tables@.len() ==> spec_naf_lookup_table_point(&#[trigger] tables@[i])
+                        == pts[i]
+            },
+            (None, None) => true,
+            _ => false,
+        },
 {
     points
         .into_iter()

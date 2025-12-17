@@ -75,6 +75,14 @@ verus! {
 fn collect_scalars<I>(scalars: I) -> (result: Vec<I::Item>)
 where
     I: IntoIterator,
+
+    ensures
+        // Length of result matches number of input scalars
+        result@.len() == spec_scalars_len::<I>(scalars) as int,
+        // Each element in result corresponds to the input at that position
+        forall|i: int|
+            0 <= i < result@.len() ==> spec_scalar_item_to_scalar(&#[trigger] result@[i])
+                == spec_scalars_from_into_iter::<I>(scalars)[i],
 {
     scalars.into_iter().collect()
 }
@@ -84,29 +92,25 @@ where
 fn collect_optional_points<J>(points: J) -> (result: Vec<Option<EdwardsPoint>>)
 where
     J: IntoIterator<Item = Option<EdwardsPoint>>,
+
+    ensures
+        // Length matches input
+        result@.len() == spec_points_len::<J>(points) as int,
+        // The overall Some/None status matches spec
+        match spec_optional_points_from_into_iter::<J>(points) {
+            Some(pts) => {
+                // All elements are Some, and they match the spec points
+                &&& forall|i: int| 0 <= i < result@.len() ==> (#[trigger] result@[i]).is_some()
+                &&& forall|i: int|
+                    0 <= i < result@.len() ==> (#[trigger] result@[i]).unwrap() == pts[i]
+            },
+            None => {
+                // At least one element is None
+                exists|i: int| 0 <= i < result@.len() && (#[trigger] result@[i]).is_none()
+            },
+        },
 {
     points.into_iter().collect()
-}
-
-/// Build scalars_points Vec from collected scalars and points with given w
-#[verifier::external_body]
-fn build_scalars_points<T>(
-    scalars_vec: &Vec<T>,
-    points_vec: &Vec<Option<EdwardsPoint>>,
-    w: usize,
-) -> (result: Option<Vec<(Vec<i8>, ProjectiveNielsPoint)>>)
-where
-    T: Borrow<Scalar>,
-{
-    let mut scalars_points: Vec<(Vec<i8>, ProjectiveNielsPoint)> = Vec::new();
-    for idx in 0..scalars_vec.len() {
-        let s = scalars_vec[idx].borrow().as_radix_2w(w);
-        match &points_vec[idx] {
-            Some(P) => scalars_points.push((s.to_vec(), P.as_projective_niels())),
-            None => return None,
-        }
-    }
-    Some(scalars_points)
 }
 
 pub struct Pippenger;
@@ -169,9 +173,19 @@ impl VartimeMultiscalarMul for Pippenger {
             .map(|(s, maybe_p)| maybe_p.map(|p| (s, p)))
             .collect::<Option<Vec<_>>>()?;
         */
-        // Rewritten: use external_body helpers for iterator operations
+        // Rewritten: use external_body helper for points, inline loop for building scalars_points
         let points_vec = collect_optional_points(points);
-        let scalars_points = build_scalars_points(&scalars_vec, &points_vec, w)?;
+
+        // Build scalars_points Vec from collected scalars and points with given w
+        // Returns early (None) if any point is None
+        let mut scalars_points: Vec<(Vec<i8>, ProjectiveNielsPoint)> = Vec::new();
+        for idx in 0..scalars_vec.len() {
+            let s = scalars_vec[idx].borrow().as_radix_2w(w);
+            match &points_vec[idx] {
+                Some(P) => scalars_points.push((s.to_vec(), P.as_projective_niels())),
+                None => return None,
+            }
+        }
 
         // Prepare 2^w/2 buckets.
         // buckets[i] corresponds to a multiplication factor (i+1).

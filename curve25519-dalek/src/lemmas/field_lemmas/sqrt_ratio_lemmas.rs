@@ -194,10 +194,7 @@ proof fn lemma_algebraic_chain_base(u: nat, v: nat, x: nat, r: nat, i: nat)
 
     // x2 = iu_times_inv_v (both are < p field elements)
     assert(x2 == iu_times_inv_v) by {
-        lemma_mod_bound((x * x) as int, p as int);
-        lemma_small_mod(x2, p);
-        lemma_mod_bound((iu * inv_v) as int, p as int);
-        lemma_small_mod(iu_times_inv_v, p);
+        lemma_mod_twice((x * x) as int, p as int);
     };
 
     let inv_iu = math_field_inv(iu);
@@ -213,10 +210,7 @@ proof fn lemma_algebraic_chain_base(u: nat, v: nat, x: nat, r: nat, i: nat)
     // --- Step 5: Compute r2 as field element ---
     let r_squared_v_times_inv_v = math_field_mul(r_squared_v, inv_v);
     assert(r2 == r_squared_v_times_inv_v) by {
-        lemma_mod_bound((r * r) as int, p as int);
-        lemma_small_mod(r2, p);
-        lemma_mod_bound((r_squared_v * inv_v) as int, p as int);
-        lemma_small_mod(r_squared_v_times_inv_v, p);
+        lemma_mod_twice((r * r) as int, p as int);
     };
 
     // --- Step 6: q² = r_squared_v · inv(i·u) (v terms cancel) ---

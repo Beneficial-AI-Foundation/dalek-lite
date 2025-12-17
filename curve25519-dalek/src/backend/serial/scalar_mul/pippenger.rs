@@ -113,6 +113,31 @@ where
     points.into_iter().collect()
 }
 
+/// Wrapper for Borrow::borrow to get a Scalar reference from a Borrow<Scalar> item
+#[verifier::external_body]
+fn borrow_scalar<T>(item: &T) -> (result: &Scalar)
+where
+    T: Borrow<Scalar>,
+
+    ensures
+        // The borrowed scalar equals the spec extraction of the item
+        *result == spec_scalar_item_to_scalar(item),
+{
+    item.borrow()
+}
+
+/// Wrapper for slice::to_vec to convert a slice to a Vec
+#[verifier::external_body]
+fn slice_to_vec(slice: &[i8]) -> (result: Vec<i8>)
+    ensures
+        // Length is preserved
+        result@.len() == slice@.len(),
+        // Contents are preserved
+        forall|i: int| 0 <= i < result@.len() ==> #[trigger] result@[i] == slice@[i],
+{
+    slice.to_vec()
+}
+
 pub struct Pippenger;
 
 impl VartimeMultiscalarMul for Pippenger {
@@ -180,9 +205,14 @@ impl VartimeMultiscalarMul for Pippenger {
         // Returns early (None) if any point is None
         let mut scalars_points: Vec<(Vec<i8>, ProjectiveNielsPoint)> = Vec::new();
         for idx in 0..scalars_vec.len() {
-            let s = scalars_vec[idx].borrow().as_radix_2w(w);
+            /* ORIGINAL CODE: let s = scalars_vec[idx].borrow().as_radix_2w(w); */
+            // Rewritten: use wrapper for borrow()
+            let scalar_ref = borrow_scalar(&scalars_vec[idx]);
+            let s = scalar_ref.as_radix_2w(w);
             match &points_vec[idx] {
-                Some(P) => scalars_points.push((s.to_vec(), P.as_projective_niels())),
+                /* ORIGINAL CODE: scalars_points.push((s.to_vec(), P.as_projective_niels())) */
+                // Rewritten: use wrapper for to_vec()
+                Some(P) => scalars_points.push((slice_to_vec(&s), P.as_projective_niels())),
                 None => return None,
             }
         }

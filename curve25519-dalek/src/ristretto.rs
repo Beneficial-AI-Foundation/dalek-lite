@@ -492,8 +492,12 @@ impl<'de> Deserialize<'de> for CompressedRistretto {
 /// operations on `RistrettoPoint`s are exactly as fast as operations on
 /// `EdwardsPoint`s.
 ///
+verus! {
+
 #[derive(Copy, Clone)]
 pub struct RistrettoPoint(pub(crate) EdwardsPoint);
+
+} // verus!
 
 impl RistrettoPoint {
     /// Compress this point using the Ristretto encoding.
@@ -869,6 +873,8 @@ impl Eq for RistrettoPoint {}
 // Arithmetic
 // ------------------------------------------------------------------------
 
+verus! {
+
 impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
@@ -877,19 +883,29 @@ impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
     }
 }
 
+} // verus!
+
 define_add_variants!(
     LHS = RistrettoPoint,
     RHS = RistrettoPoint,
     Output = RistrettoPoint
 );
 
+verus! {
+
 impl<'b> AddAssign<&'b RistrettoPoint> for RistrettoPoint {
     fn add_assign(&mut self, _rhs: &RistrettoPoint) {
-        *self = (self as &RistrettoPoint) + _rhs;
+        /* ORIGINAL CODE: *self = (self as &RistrettoPoint) + _rhs; */
+        // Rewritten: Verus doesn't support cast to reference
+        *self = &*self + _rhs;
     }
 }
 
+} // verus!
+
 define_add_assign_variants!(LHS = RistrettoPoint, RHS = RistrettoPoint);
+
+verus! {
 
 impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
@@ -899,17 +915,25 @@ impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
     }
 }
 
+} // verus!
+
 define_sub_variants!(
     LHS = RistrettoPoint,
     RHS = RistrettoPoint,
     Output = RistrettoPoint
 );
 
+verus! {
+
 impl<'b> SubAssign<&'b RistrettoPoint> for RistrettoPoint {
     fn sub_assign(&mut self, _rhs: &RistrettoPoint) {
-        *self = (self as &RistrettoPoint) - _rhs;
+        /* ORIGINAL CODE: *self = (self as &RistrettoPoint) - _rhs; */
+        // Rewritten: Verus doesn't support cast to reference
+        *self = &*self - _rhs;
     }
 }
+
+} // verus!
 
 define_sub_assign_variants!(LHS = RistrettoPoint, RHS = RistrettoPoint);
 
@@ -941,9 +965,13 @@ impl Neg for RistrettoPoint {
     }
 }
 
+verus! {
+
 impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
     fn mul_assign(&mut self, scalar: &'b Scalar) {
-        let result = (self as &RistrettoPoint) * scalar;
+        /* ORIGINAL CODE: let result = (self as &RistrettoPoint) * scalar; */
+        // Rewritten: Verus doesn't support cast to reference
+        let result = &*self * scalar;
         *self = result;
     }
 }
@@ -964,6 +992,8 @@ impl<'a, 'b> Mul<&'b RistrettoPoint> for &'a Scalar {
         RistrettoPoint(self * point.0)
     }
 }
+
+} // verus!
 
 impl RistrettoPoint {
     /// Fixed-base scalar multiplication by the Ristretto base point.

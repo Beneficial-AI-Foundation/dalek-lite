@@ -18,6 +18,12 @@ use crate::edwards::EdwardsPoint;
 use crate::scalar::Scalar;
 use crate::traits::VartimeMultiscalarMul;
 
+#[allow(unused_imports)]
+use crate::specs::edwards_specs::*;
+#[allow(unused_imports)]
+use crate::specs::scalar_mul_specs::*;
+use vstd::prelude::*;
+
 /// Implements a version of Pippenger's algorithm.
 ///
 /// The algorithm works as follows:
@@ -57,21 +63,82 @@ use crate::traits::VartimeMultiscalarMul;
 /// Therefore, the optimal choice of `w` grows slowly as `n` grows.
 ///
 /// This algorithm is adapted from section 4 of <https://eprint.iacr.org/2012/549.pdf>.
+
+use crate::backend::serial::curve_models::ProjectiveNielsPoint;
+
+verus! {
+
+// External-body helpers for iterator operations not supported by Verus
+
+/// Collect scalars from an IntoIterator
+#[verifier::external_body]
+fn collect_scalars<I>(scalars: I) -> (result: Vec<I::Item>)
+where
+    I: IntoIterator,
+{
+    scalars.into_iter().collect()
+}
+
+/// Collect optional points from an IntoIterator
+#[verifier::external_body]
+fn collect_optional_points<J>(points: J) -> (result: Vec<Option<EdwardsPoint>>)
+where
+    J: IntoIterator<Item = Option<EdwardsPoint>>,
+{
+    points.into_iter().collect()
+}
+
+/// Build scalars_points Vec from collected scalars and points with given w
+#[verifier::external_body]
+fn build_scalars_points<T>(
+    scalars_vec: &Vec<T>,
+    points_vec: &Vec<Option<EdwardsPoint>>,
+    w: usize,
+) -> (result: Option<Vec<(Vec<i8>, ProjectiveNielsPoint)>>)
+where
+    T: Borrow<Scalar>,
+{
+    let mut scalars_points: Vec<(Vec<i8>, ProjectiveNielsPoint)> = Vec::new();
+    for idx in 0..scalars_vec.len() {
+        let s = scalars_vec[idx].borrow().as_radix_2w(w);
+        match &points_vec[idx] {
+            Some(P) => scalars_points.push((s.to_vec(), P.as_projective_niels())),
+            None => return None,
+        }
+    }
+    Some(scalars_points)
+}
+
 pub struct Pippenger;
 
 impl VartimeMultiscalarMul for Pippenger {
     type Point = EdwardsPoint;
 
-    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
+    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (result: Option<EdwardsPoint>)
     where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
+
+        ensures
+            match (result, spec_optional_points_from_into_iter::<J>(points)) {
+                (Some(r), Some(pts)) => edwards_point_as_affine(r) == spec_multiscalar_mul(
+                    spec_scalars_from_into_iter::<I>(scalars),
+                    pts,
+                ),
+                (None, None) => true,
+                _ => false,
+            },
     {
         use crate::traits::Identity;
 
+        /* ORIGINAL CODE:
         let mut scalars = scalars.into_iter();
         let size = scalars.by_ref().size_hint().0;
+        */
+        // Rewritten: use external_body helper for iterator operations
+        let scalars_vec = collect_scalars(scalars);
+        let size = scalars_vec.len();
 
         // Digit width in bits. As digit width grows,
         // number of point additions goes down, but amount of
@@ -88,6 +155,7 @@ impl VartimeMultiscalarMul for Pippenger {
         let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
         let buckets_count: usize = max_digit / 2; // digits are signed+centered hence 2^w/2, excluding 0-th bucket
 
+        /* ORIGINAL CODE:
         // Collect optimized scalars and points in buffers for repeated access
         // (scanning the whole set per digit position).
         let scalars = scalars.map(|s| s.borrow().as_radix_2w(w));
@@ -100,13 +168,25 @@ impl VartimeMultiscalarMul for Pippenger {
             .zip(points)
             .map(|(s, maybe_p)| maybe_p.map(|p| (s, p)))
             .collect::<Option<Vec<_>>>()?;
+        */
+        // Rewritten: use external_body helpers for iterator operations
+        let points_vec = collect_optional_points(points);
+        let scalars_points = build_scalars_points(&scalars_vec, &points_vec, w)?;
 
         // Prepare 2^w/2 buckets.
         // buckets[i] corresponds to a multiplication factor (i+1).
+        /* ORIGINAL CODE:
         let mut buckets: Vec<_> = (0..buckets_count)
             .map(|_| EdwardsPoint::identity())
             .collect();
+        */
+        // Rewritten: explicit loop instead of map closure
+        let mut buckets: Vec<EdwardsPoint> = Vec::new();
+        for _ in 0..buckets_count {
+            buckets.push(EdwardsPoint::identity());
+        }
 
+        /* ORIGINAL CODE:
         let mut columns = (0..digits_count).rev().map(|digit_index| {
             // Clear the buckets when processing another digit.
             for bucket in &mut buckets {
@@ -155,8 +235,78 @@ impl VartimeMultiscalarMul for Pippenger {
         let hi_column = columns.next().expect("should have more than zero digits");
 
         Some(columns.fold(hi_column, |total, p| total.mul_by_pow_2(w as u32) + p))
+        */
+
+        // Rewritten: explicit while loop instead of rev().map() and fold()
+        let mut result = EdwardsPoint::identity();
+        let mut first_column = true;
+
+        let mut digit_index: usize = digits_count;
+        while digit_index > 0 {
+            digit_index = digit_index - 1;
+
+            // Clear the buckets when processing another digit.
+            // Rewritten: indexed loop instead of `for bucket in &mut buckets`
+            for bucket_idx in 0..buckets_count {
+                buckets[bucket_idx] = EdwardsPoint::identity();
+            }
+
+            // Iterate over pairs of (point, scalar)
+            // and add/sub the point to the corresponding bucket.
+            // Note: if we add support for precomputed lookup tables,
+            // we'll be adding/subtracting point premultiplied by `digits[i]` to buckets[0].
+            // Rewritten: indexed loop instead of `for (digits, pt) in scalars_points.iter()`
+            let num_pairs = scalars_points.len();
+            for pair_idx in 0..num_pairs {
+                let (digits, pt) = &scalars_points[pair_idx];
+                // Widen digit so that we don't run into edge cases when w=8.
+                let digit = digits[digit_index] as i16;
+                match digit.cmp(&0) {
+                    Ordering::Greater => {
+                        let b = (digit - 1) as usize;
+                        buckets[b] = (&buckets[b] + pt).as_extended();
+                    }
+                    Ordering::Less => {
+                        let b = (-digit - 1) as usize;
+                        buckets[b] = (&buckets[b] - pt).as_extended();
+                    }
+                    Ordering::Equal => {}
+                }
+            }
+
+            // Add the buckets applying the multiplication factor to each bucket.
+            // The most efficient way to do that is to have a single sum with two running sums:
+            // an intermediate sum from last bucket to the first, and a sum of intermediate sums.
+            //
+            // For example, to add buckets 1*A, 2*B, 3*C we need to add these points:
+            //   C
+            //   C B
+            //   C B A   Sum = C + (C+B) + (C+B+A)
+            let mut buckets_intermediate_sum = buckets[buckets_count - 1];
+            let mut buckets_sum = buckets[buckets_count - 1];
+            // Rewritten: while loop instead of `for i in (0..(buckets_count - 1)).rev()`
+            let mut i: usize = buckets_count - 1;
+            while i > 0 {
+                i = i - 1;
+                // Rewritten: explicit addition instead of += (overloaded op-assignment not Verus supported)
+                buckets_intermediate_sum = buckets_intermediate_sum + buckets[i];
+                buckets_sum = buckets_sum + buckets_intermediate_sum;
+            }
+
+            // Accumulate result (replaces columns.next/fold pattern)
+            if first_column {
+                result = buckets_sum;
+                first_column = false;
+            } else {
+                result = result.mul_by_pow_2(w as u32) + buckets_sum;
+            }
+        }
+
+        Some(result)
     }
 }
+
+} // verus!
 
 // #[cfg(test)]
 // mod test {

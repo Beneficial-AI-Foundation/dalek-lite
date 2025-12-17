@@ -15,6 +15,7 @@ use vstd::prelude::*;
 
 macro_rules! define_add_variants {
     (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
+        verus!{
         impl<'b> Add<&'b $rhs> for $lhs {
             type Output = $out;
             fn add(self, rhs: &'b $rhs) -> $out {
@@ -35,6 +36,7 @@ macro_rules! define_add_variants {
                 &self + &rhs
             }
         }
+        }
     };
 }
 
@@ -52,6 +54,7 @@ macro_rules! define_add_assign_variants {
 /// Define borrow and non-borrow variants of `Sub`.
 macro_rules! define_sub_variants {
     (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
+        verus!{
         impl<'b> Sub<&'b $rhs> for $lhs {
             type Output = $out;
             fn sub(self, rhs: &'b $rhs) -> $out {
@@ -72,6 +75,7 @@ macro_rules! define_sub_variants {
                 &self - &rhs
             }
         }
+        }
     };
 }
 
@@ -88,33 +92,6 @@ macro_rules! define_sub_assign_variants {
 
 /// Define borrow and non-borrow variants of `Mul`.
 macro_rules! define_mul_variants {
-    (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
-        impl<'b> Mul<&'b $rhs> for $lhs {
-            type Output = $out;
-            fn mul(self, rhs: &'b $rhs) -> $out {
-                &self * rhs
-            }
-        }
-
-        impl<'a> Mul<$rhs> for &'a $lhs {
-            type Output = $out;
-            fn mul(self, rhs: $rhs) -> $out {
-                self * &rhs
-            }
-        }
-
-        impl Mul<$rhs> for $lhs {
-            type Output = $out;
-            fn mul(self, rhs: $rhs) -> $out {
-                &self * &rhs
-            }
-        }
-    };
-}
-
-/// This is the same as define_mul_variants,
-/// except it's for types where we've specified what mul does
-macro_rules! define_mul_variants_verus {
     (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
         verus!{
         impl<'b> Mul<&'b $rhs> for $lhs {

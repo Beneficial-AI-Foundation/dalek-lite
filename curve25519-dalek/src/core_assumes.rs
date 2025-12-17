@@ -62,6 +62,29 @@ pub assume_specification<'a>[ core::fmt::Formatter::<'a>::write_str ](
 ) -> core::result::Result<(), core::fmt::Error>
 ;
 
+// Iterator operations - external_body helpers for Verus compatibility
+// These allow iterator-based code to compile by wrapping unsupported operations
+
+use alloc::vec::Vec;
+
+/// Helper to collect an IntoIterator into a Vec
+#[verifier::external_body]
+pub fn collect_into_vec<T, I>(iter: I) -> (result: Vec<T>)
+where
+    I: IntoIterator<Item = T>,
+{
+    iter.into_iter().collect()
+}
+
+/// Helper to collect Option<T> iterator, returning None if any element is None
+#[verifier::external_body]
+pub fn collect_options_into_vec<T, I>(iter: I) -> (result: Option<Vec<T>>)
+where
+    I: IntoIterator<Item = Option<T>>,
+{
+    iter.into_iter().collect()
+}
+
 // Build a Seq<u8> from fixed arrays (for specs)
 pub open spec fn seq_from2(b: &[u8; 2]) -> Seq<u8> {
     Seq::new(2, |i: int| b[i])

@@ -30,6 +30,48 @@ use vstd::prelude::*;
 
 verus! {
 
+/// Lemma: If a ≡ 0 (mod p), then a·b ≡ 0 (mod p) in field arithmetic
+///
+/// This is useful for zero-case handling in proofs.
+pub proof fn lemma_field_mul_zero_left(a: nat, b: nat)
+    requires
+        a % p() == 0,
+    ensures
+        math_field_mul(a, b) == 0,
+{
+    let p = p();
+    p_gt_2();
+    // Chain: (a * b) % p == ((a % p) * b) % p == (0 * b) % p == 0 % p == 0
+    assert((a * b) % p == 0) by {
+        lemma_mul_mod_noop_left(a as int, b as int, p as int);
+        assert((0 * b) == 0) by {
+            lemma_mul_basics(b as int);
+        };
+        lemma_small_mod(0, p);
+    };
+}
+
+/// Lemma: If b ≡ 0 (mod p), then a·b ≡ 0 (mod p) in field arithmetic
+///
+/// This is useful for zero-case handling in proofs.
+pub proof fn lemma_field_mul_zero_right(a: nat, b: nat)
+    requires
+        b % p() == 0,
+    ensures
+        math_field_mul(a, b) == 0,
+{
+    let p = p();
+    p_gt_2();
+    // Chain: (a * b) % p == (a * (b % p)) % p == (a * 0) % p == 0 % p == 0
+    assert((a * b) % p == 0) by {
+        lemma_mul_mod_noop_right(a as int, b as int, p as int);
+        assert((a * 0) == 0) by {
+            lemma_mul_basics(a as int);
+        };
+        lemma_small_mod(0, p);
+    };
+}
+
 // =============================================================================
 // Multiplicative Identity Lemmas
 // =============================================================================
@@ -49,7 +91,7 @@ pub proof fn lemma_field_inv_one()
     let inv = math_field_inv(1);
 
     // 1 % p = 1 and (1 * inv) % p = 1 and inv < p
-    assert(1 % p() == 1 && ((1 % p()) * inv) % p() == 1 && inv < p()) by {
+    assert(1nat % p() == 1 && ((1nat % p()) * inv) % p() == 1 && inv < p()) by {
         lemma_small_mod(1, p());
         field_inv_property(1);
     };
@@ -204,7 +246,7 @@ pub proof fn lemma_field_add_sub_rearrange(a: nat, b: nat, c: nat)
     assert(math_field_add(a, 1) == math_field_sub(c, b)) by {
         // Small mod simplifications
         lemma_small_mod(c, p);
-        lemma_small_mod(1nat, p);
+        lemma_small_mod(1, p);
         lemma_small_mod(b, p);
 
         // Step 1: (a + b + 1) % p = c
@@ -238,9 +280,6 @@ pub proof fn lemma_field_add_sub_rearrange(a: nat, b: nat, c: nat)
 /// By uniqueness of inverse: inv(a · b) = inv(a) · inv(b)
 /// ```
 pub proof fn lemma_inv_of_product(a: nat, b: nat)
-    requires
-        a % p() != 0,
-        b % p() != 0,
     ensures
         math_field_inv(math_field_mul(a, b)) == math_field_mul(
             math_field_inv(a),
@@ -255,7 +294,39 @@ pub proof fn lemma_inv_of_product(a: nat, b: nat)
     let inv_b = math_field_inv(b);
     let inv_a_inv_b = math_field_mul(inv_a, inv_b);
 
+    // Handle zero cases: if a % p == 0 or b % p == 0, both sides are 0
+    // since inv(0) == 0 by convention
+    if a % p == 0 || b % p == 0 {
+        // LHS: ab = 0, so inv(ab) = inv(0) = 0
+        assert(math_field_inv(ab) == 0) by {
+            assert(ab == 0) by {
+                if a % p == 0 {
+                    lemma_field_mul_zero_left(a, b);
+                } else {
+                    lemma_field_mul_zero_right(a, b);
+                }
+            };
+        };
+
+        // RHS: inv(a) = 0 or inv(b) = 0, so inv(a) * inv(b) = 0
+        assert(inv_a_inv_b == 0) by {
+            if a % p == 0 {
+                assert(inv_a == 0);
+                assert(inv_a % p == 0) by {
+                    lemma_small_mod(0, p);
+                };
+            } else {
+                assert(inv_b == 0);
+                assert(inv_b % p == 0) by {
+                    lemma_small_mod(0, p);
+                };
+            }
+        };
+        return ;
+    }
+    // Non-zero case: proceed with the original proof
     // Step 1: Get inverse properties: inv_a < p, inv_b < p, and they satisfy inverse equations
+
     assert(inv_a < p && inv_b < p && ((a % p) * inv_a) % p == 1 && ((b % p) * inv_b) % p == 1) by {
         field_inv_property(a);
         field_inv_property(b);
@@ -324,7 +395,7 @@ pub proof fn lemma_inv_of_product(a: nat, b: nat)
     // Therefore ((a*inv_a) * (b*inv_b)) % p = 1
     assert(((a * inv_a) * (b * inv_b)) % p == 1) by {
         lemma_mul_mod_noop((a * inv_a) as int, (b * inv_b) as int, p as int);
-        lemma_small_mod(1nat, p);
+        lemma_small_mod(1, p);
     };
 
     // And so ((a*b) * (inv_a*inv_b)) % p = 1
@@ -358,8 +429,6 @@ pub proof fn lemma_inv_of_product(a: nat, b: nat)
 ///
 /// Special case of inv(a·b) = inv(a)·inv(b) where a = b = x
 pub proof fn lemma_inv_of_square(x: nat)
-    requires
-        x % p() != 0,
     ensures
         math_field_inv(math_field_square(x)) == math_field_square(math_field_inv(x)),
 {
@@ -393,8 +462,6 @@ pub proof fn lemma_inv_of_square(x: nat)
 ///       = (a/b)²
 /// ```
 pub proof fn lemma_quotient_of_squares(a: nat, b: nat)
-    requires
-        b % p() != 0,
     ensures
         math_field_mul(math_field_square(a), math_field_inv(math_field_square(b)))
             == math_field_square(math_field_mul(a, math_field_inv(b))),
@@ -483,8 +550,6 @@ pub proof fn lemma_product_of_squares_eq_square_of_product(x: nat, y: nat)
 /// By uniqueness: x = inv(inv(x)).
 /// ```
 pub proof fn lemma_inv_of_inv(x: nat)
-    requires
-        x % p() != 0,
     ensures
         math_field_inv(math_field_inv(x)) == x % p(),
 {
@@ -494,7 +559,23 @@ pub proof fn lemma_inv_of_inv(x: nat)
     let inv_x = math_field_inv(x);
     let x_mod = x % p;
 
+    // Handle zero case: if x % p == 0, then inv(x) = 0 and inv(inv(x)) = inv(0) = 0 = x % p
+    if x % p == 0 {
+        assert(math_field_inv(inv_x) == x_mod) by {
+            // inv(x) = 0 when x % p == 0
+            assert(inv_x == 0);
+            // inv(0) = 0 since 0 % p == 0
+            assert(math_field_inv(0) == 0) by {
+                assert(0nat % p == 0) by {
+                    lemma_small_mod(0, p);
+                };
+            };
+        };
+        return ;
+    }
+    // Non-zero case: proceed with original proof
     // Step 1: Get properties of inv(x): inv_x < p and (x % p) * inv_x % p == 1
+
     assert(inv_x < p && ((x % p) * inv_x) % p == 1) by {
         field_inv_property(x);
     };
@@ -503,8 +584,14 @@ pub proof fn lemma_inv_of_inv(x: nat)
     assert(inv_x % p != 0) by {
         lemma_small_mod(inv_x, p);
         if inv_x == 0 {
-            lemma_small_mod(0nat, p);
-            assert(false);  // 0 ≠ 1
+            // If inv_x == 0, then (x % p) * inv_x = (x % p) * 0 = 0
+            // But we know ((x % p) * inv_x) % p == 1
+            // So 0 % p == 1, but 0 % p == 0, contradiction
+            assert((x % p) * 0 == 0) by {
+                lemma_mul_basics((x % p) as int);
+            };
+            lemma_small_mod(0, p);
+            // Now we have 0 % p == 1 (from Step 1) but also 0 % p == 0, contradiction
         }
     };
 
@@ -644,7 +731,6 @@ pub proof fn lemma_field_mul_comm(a: nat, b: nat)
 pub proof fn lemma_a_times_inv_ab_is_inv_b(a: nat, b: nat)
     requires
         a % p() != 0,
-        b % p() != 0,
     ensures
         math_field_mul(a, math_field_inv(math_field_mul(a, b))) == math_field_inv(b),
 {
@@ -656,7 +742,28 @@ pub proof fn lemma_a_times_inv_ab_is_inv_b(a: nat, b: nat)
     let inv_b = math_field_inv(b);
     let inv_ab = math_field_inv(ab);
 
+    // Handle zero case: if b % p == 0, then inv(b) = 0 and ab = 0
+    // LHS = a · inv(ab) = a · 0 = 0 = inv(b) = RHS
+    if b % p == 0 {
+        // LHS = a · inv(ab) = 0
+        assert(math_field_mul(a, inv_ab) == 0) by {
+            assert(inv_ab == 0) by {
+                assert(ab == 0) by {
+                    lemma_field_mul_zero_right(a, b);
+                };
+            };
+            assert(inv_ab % p == 0) by {
+                lemma_small_mod(0, p);
+            };
+            lemma_field_mul_zero_right(a, inv_ab);
+        };
+        // RHS = inv(b) = 0
+        assert(inv_b == 0);
+        return ;
+    }
+    // Non-zero case: b % p != 0
     // ab % p != 0 (since a ≠ 0 and b ≠ 0 and p is prime)
+
     assert(ab % p != 0) by {
         lemma_mod_bound((a * b) as int, p as int);
         lemma_mod_twice((a * b) as int, p as int);
@@ -704,8 +811,8 @@ pub proof fn lemma_a_times_inv_ab_is_inv_b(a: nat, b: nat)
     assert((((a * inv_a) % p) * inv_b) % p == ((a * inv_a) * inv_b) % p) by {
         lemma_mul_mod_noop_left((a * inv_a) as int, inv_b as int, p as int);
     };
-    assert(((1nat) * inv_b) % p == ((a * inv_a) * inv_b) % p) by {
-        lemma_mul_mod_noop_left(1nat as int, inv_b as int, p as int);
+    assert(((1) * inv_b) % p == ((a * inv_a) * inv_b) % p) by {
+        lemma_mul_mod_noop_left(1 as int, inv_b as int, p as int);
     };
 
     // Step 2e: (1 * inv_b) % p = inv_b
@@ -715,7 +822,7 @@ pub proof fn lemma_a_times_inv_ab_is_inv_b(a: nat, b: nat)
         field_inv_property(b);
         lemma_small_mod(inv_b, p);
     };
-    assert(((1nat) * inv_b) % p == inv_b) by {
+    assert(((1) * inv_b) % p == inv_b) by {
         lemma_mul_basics(inv_b as int);
         // Now 1 * inv_b == inv_b, and inv_b % p == inv_b
     };
@@ -752,7 +859,7 @@ pub proof fn lemma_neg_one_times_is_neg(a: nat)
 
     // neg_one = p - 1
     assert(neg_one == p - 1) by {
-        lemma_small_mod(1nat, p);
+        lemma_small_mod(1, p);
         lemma_small_mod((p - 1) as nat, p);
     };
 
@@ -785,7 +892,7 @@ pub proof fn lemma_neg_one_times_is_neg(a: nat)
         // (p-1) * a % p = ((p-1) * (a % p)) % p = ((p-1) * 0) % p = 0 % p = 0
         assert(((p - 1) * a_mod_p) == 0);
         assert(((p - 1) as int * a_mod_p as int) % (p as int) == 0) by {
-            lemma_small_mod(0nat, p);
+            lemma_small_mod(0, p);
         };
 
         // neg_one * a = (p-1) * a, and ((p-1) * a) % p = ((p-1) * a_mod_p) % p = 0 = neg_a
@@ -851,13 +958,13 @@ pub proof fn lemma_neg_one_times_is_neg(a: nat)
 pub proof fn lemma_neg_a_times_inv_ab(a: nat, b: nat)
     requires
         a % p() != 0,
-        b % p() != 0,
     ensures
         math_field_mul(math_field_neg(a), math_field_inv(math_field_mul(a, b))) == math_field_mul(
             math_field_neg(1),
             math_field_inv(b),
         ),
 {
+    let p = p();
     p_gt_2();  // Needed for field operations
 
     let neg_a = math_field_neg(a);
@@ -867,7 +974,32 @@ pub proof fn lemma_neg_a_times_inv_ab(a: nat, b: nat)
     let inv_b = math_field_inv(b);
     let a_times_inv_ab = math_field_mul(a, inv_ab);
 
+    // Handle zero case: if b % p == 0, then inv(b) = 0 and ab = 0
+    // LHS = (-a) · inv(ab) = (-a) · 0 = 0 = (-1) · 0 = (-1) · inv(b) = RHS
+    if b % p == 0 {
+        // LHS = (-a) · inv(ab) = 0
+        assert(math_field_mul(neg_a, inv_ab) == 0) by {
+            assert(inv_ab == 0) by {
+                assert(ab == 0) by {
+                    lemma_field_mul_zero_right(a, b);
+                };
+            };
+            assert(inv_ab % p == 0) by {
+                lemma_small_mod(0, p);
+            };
+        };
+        // RHS = (-1) · inv(b) = 0
+        assert(math_field_mul(neg_one, inv_b) == 0) by {
+            assert(inv_b == 0);
+            assert(inv_b % p == 0) by {
+                lemma_small_mod(0, p);
+            };
+        };
+        return ;
+    }
+    // Non-zero case: proceed with original proof
     // Step 1: (-a) = (-1) · a
+
     assert(math_field_mul(neg_one, a) == neg_a) by {
         lemma_neg_one_times_is_neg(a);
     };
@@ -914,7 +1046,7 @@ pub proof fn lemma_double_negation(a: nat)
 
     // Step 1: neg_one = p - 1 (since 1 < p)
     assert(neg_one == p - 1) by {
-        lemma_small_mod(1nat, p);
+        lemma_small_mod(1, p);
         // math_field_neg(1) = (p - (1 % p)) % p = (p - 1) % p = p - 1
         lemma_small_mod((p - 1) as nat, p);
     };

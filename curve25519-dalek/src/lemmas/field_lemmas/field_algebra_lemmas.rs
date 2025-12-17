@@ -139,44 +139,10 @@ pub proof fn lemma_square_mod_noop(x: nat)
     };
 }
 
-/// Lemma: Concrete multiplication matches math_field_mul spec
-///
-/// When xy_raw is the result of multiplying x_raw and y_raw (mod p),
-/// this equals math_field_mul applied to the reduced values.
-///
-/// ## Mathematical Proof
-/// ```text
-/// xy_raw % p = (x_raw * y_raw) % p                    [precondition]
-///            = ((x_raw % p) * (y_raw % p)) % p        [by lemma_mul_mod_noop_general]
-///            = math_field_mul(x_raw % p, y_raw % p)   [definition of math_field_mul]
-/// ```
-///
-pub proof fn lemma_mul_matches_math_field_mul(x_raw: nat, y_raw: nat, xy_raw: nat)
-    requires
-        xy_raw % p() == (x_raw * y_raw) % p(),
-    ensures
-        xy_raw % p() == math_field_mul(x_raw % p(), y_raw % p()),
-{
-    let x = x_raw % p();
-    let y = y_raw % p();
-    let p = p();
-    p_gt_2();
-
-    // (x_raw * y_raw) % p == ((x_raw % p) * (y_raw % p)) % p
-    assert((x_raw * y_raw) % p == (x * y) % p) by {
-        lemma_mul_mod_noop_general(x_raw as int, y_raw as int, p as int);
-    };
-
-    // math_field_mul(x, y) = (x * y) % p by definition
-    assert(math_field_mul(x, y) == (x * y) % p);
-}
-
 /// Lemma: Concrete squaring matches math_field_square spec
 ///
 /// When y2_raw is the result of squaring y_raw (via pow(y_raw, 2)),
 /// this equals math_field_square applied to the reduced value.
-///
-/// This is a special case of lemma_mul_matches_math_field_mul where x = y.
 ///
 /// ## Mathematical Proof
 /// ```text
@@ -200,8 +166,10 @@ pub proof fn lemma_square_matches_math_field_square(y_raw: nat, y2_raw: nat)
         assert(pow(y_raw as int, 1) == y_raw as int * pow(y_raw as int, 0));
     };
 
-    // Now use the general multiplication lemma
-    lemma_mul_matches_math_field_mul(y_raw, y_raw, y2_raw);
+    // Apply mod absorption: (y_raw * y_raw) % p == ((y_raw % p) * (y_raw % p)) % p
+    assert((y_raw * y_raw) % p == ((y_raw % p) * (y_raw % p)) % p) by {
+        lemma_mul_mod_noop_general(y_raw as int, y_raw as int, p as int);
+    };
 
     // math_field_mul(y, y) = math_field_square(y) by definition
     assert(math_field_mul(y_raw % p, y_raw % p) == math_field_square(y_raw % p));

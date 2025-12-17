@@ -254,8 +254,7 @@ pub proof fn lemma_step1_curve_semantics(
 // =============================================================================
 // Edge Case Lemmas for step_1
 // =============================================================================
-// Note: lemma_square_matches_math_field_square and lemma_mul_matches_math_field_mul
-// are now in field_lemmas/field_algebra_lemmas.rs as general field lemmas.
+// Note: lemma_square_matches_math_field_square is in field_lemmas/field_algebra_lemmas.rs.
 /// When y² = 1 in decompress, (0, y) is on the Edwards curve.
 /// This is the edge case where y = ±1 (identity-related points).
 pub proof fn lemma_u_zero_implies_identity_point(y: nat)

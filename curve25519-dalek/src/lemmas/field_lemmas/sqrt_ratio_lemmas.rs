@@ -82,9 +82,11 @@ pub proof fn lemma_is_sqrt_ratio_to_math_field(
         lemma_small_mod(u, p);
     };
 
-    // Use the general multiplication matching lemma:
-    // From (x*x * v) % p == u, we get math_field_mul((x*x) % p, v % p) == u % p
-    lemma_mul_matches_math_field_mul(x * x, v, u);
+    // Apply mod absorption: (x*x * v) % p == ((x*x % p) * (v % p)) % p
+    // This gives us math_field_mul((x*x) % p, v % p) == u % p
+    assert(((x * x) * v) % p == (((x * x) % p) * (v % p)) % p) by {
+        lemma_mul_mod_noop_general((x * x) as int, v as int, p as int);
+    };
 
     // Since x2 = (x*x) % p, we have math_field_mul(x2, v % p) == u % p
     // And math_field_mul(x2, v % p) == math_field_mul(x2, v) by mod absorption

@@ -45,20 +45,6 @@ pub proof fn lemma_one_limbs_bounded_51()
     };
 }
 
-/// ONE has 54-bit bounded limbs (trivial from 51-bit)
-///
-/// ## Mathematical Proof
-/// 51-bit bounded ⟹ 54-bit bounded since 2^51 < 2^54
-pub proof fn lemma_one_limbs_bounded_51_54()
-    ensures
-        fe51_limbs_bounded(&FieldElement51::ONE, 54),
-{
-    assert(fe51_limbs_bounded(&FieldElement51::ONE, 54)) by {
-        lemma_one_limbs_bounded_51();
-        assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
-    };
-}
-
 /// spec_field_element(ONE) = 1  ✅ FULLY PROVED
 ///
 /// ## Mathematical Proof

@@ -63,9 +63,7 @@ pub proof fn lemma_is_sqrt_ratio_to_math_field(
     v: nat,  // spec_field_element(&v_field_elem)
 )
     requires
-// is_sqrt_ratio condition: (x * x * v) % p == u
-
-        (x * x * v) % p() == u,
+        math_is_sqrt_ratio(u, v, x),
     ensures
         math_field_mul(math_field_square(x), v) == u % p(),
 {

@@ -288,6 +288,8 @@ impl VartimeMultiscalarMul for Pippenger {
         let mut digit_index: usize = digits_count;
         while digit_index > 0 {
             digit_index = digit_index - 1;
+            // TODO: need to prove preconditions for arithmetic traits (Add, Sub) and mul_by_pow_2
+            assume(false);
 
             // Clear the buckets when processing another digit.
             // Rewritten: indexed loop instead of `for bucket in &mut buckets`

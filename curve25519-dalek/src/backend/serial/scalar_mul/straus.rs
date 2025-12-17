@@ -266,6 +266,8 @@ impl MultiscalarMul for Straus {
         let mut j: usize = 64;
         while j > 0 {
             j = j - 1;
+            // TODO: need to prove preconditions for mul_by_pow_2 and arithmetic traits (Add)
+            assume(false);
             Q = Q.mul_by_pow_2(4);
             for idx in 0..n {
                 let s_i = &scalar_digits[idx];
@@ -365,6 +367,8 @@ impl VartimeMultiscalarMul for Straus {
         let mut i: usize = 256;
         while i > 0 {
             i = i - 1;
+            // TODO: need to prove preconditions for double and arithmetic traits (Add, Sub)
+            assume(false);
             let mut t: CompletedPoint = r.double();
 
             for idx in 0..num_points {

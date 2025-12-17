@@ -466,17 +466,17 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
 
 /// If v·r² = -u, then v·(r·i)² = u
 ///
-/// Mathematical proof:
+/// Mathematical proof (using reviewer's simplified derivation):
 ///   Precondition: v·r² ≡ -u (mod p)
 ///
-///   (r·i)² = r²·i² = r²·(-1) = -r²    [i² = -1]
-///   v·(r·i)² = v·(-r²) = -(v·r²)      [negation distributes]
-///            = -(-u) = u               [double negation]  ✓
+///   i² = -1                             [axiom_sqrt_m1_squared]
+///   v·r²·i² = -u·i²                     [multiply both sides by i²]
+///   v·(r·i)² = -u·(-1)                  [regroup left, substitute i² = -1 on right]
+///   v·(r·i)² = u                        [double negation: (-1)·(-u) = u]  ✓
 ///
 /// The proof uses:
-/// 1. lemma_multiply_by_i_flips_sign: (r·i)² ≡ -r²
-/// 2. lemma_mul_distributes_over_neg_mod: v·(-x) ≡ -(v·x)
-/// 3. lemma_double_neg_mod: -(-x) ≡ x
+/// 1. axiom_sqrt_m1_squared: i² = -1 (mod p)
+/// 2. lemma_double_negation: (-1)·(-a) = a
 ///
 /// NOTE: For the case v·r² = -u·i, simply call:
 ///   lemma_flipped_sign_becomes_correct(u * spec_sqrt_m1(), v, r)
@@ -491,110 +491,143 @@ pub proof fn lemma_flipped_sign_becomes_correct(u: nat, v: nat, r: nat)
         }),
 {
     pow255_gt_19();
+    p_gt_2();  // Establishes p() > 2, so p() > 1
     let pn = p();
+    let i = spec_sqrt_m1();
     let r2 = r * r;
-    let ri = r * spec_sqrt_m1();
-    let r_prime = ri % pn;
-    let r_prime_sq = r_prime * r_prime;
+    let i2 = i * i;
+    let ri = r * i;
+    let r_prime = math_field_mul(r, i);  // = (r * i) % p
 
-    // === Step 1: (r·i)² % p = -r² % p ===
-    let neg_r2 = ((pn as int - (r2 % pn) as int) % (pn as int)) as nat;
-    // lemma_multiply_by_i_flips_sign establishes: (ri)² % p == neg_r2
-    lemma_multiply_by_i_flips_sign(r);
-
-    // Bridge: ((ri%p) * ri) % p = ((ri%p) * (ri%p)) % p  [mod absorption]
-    assert(((ri % pn) * ri) % pn == ((ri % pn) * (ri % pn)) % pn) by {
-        lemma_mul_mod_noop_right((ri % pn) as int, ri as int, pn as int);
+    // === Key fact: i² = -1 (mod p), i.e., i² % p = p - 1 ===
+    axiom_sqrt_m1_squared();
+    let neg_one = math_field_neg(1nat);
+    assert(i2 % pn == neg_one) by {
+        lemma_small_mod(1nat, pn);
+        lemma_small_mod((pn - 1) as nat, pn);
     };
 
-    // Connect: r_prime_sq % p = neg_r2
-    assert(r_prime_sq % pn == neg_r2) by {
-        assert((((ri % pn) * ri) % pn) % pn == neg_r2);
-        lemma_mod_twice(((ri % pn) * ri) as int, pn as int);
-        assert(((ri % pn) * ri) % pn == neg_r2);
-        lemma_mul_mod_noop_right((ri % pn) as int, ri as int, pn as int);
-        assert(((ri % pn) * (ri % pn)) % pn == neg_r2);
+    // === Left side: (ri)² = r²·i² ===
+    // (r·i)² = r²·i² by commutativity/associativity
+    assert((ri * ri) == (r2 * i2)) by {
+        assert((r * i) * (r * i) == (r * r) * (i * i)) by (nonlinear_arith);
     };
 
-    // === Step 2: v * r * r = v * r2 ===
-    assert((v * r * r) == (v * r2)) by {
-        lemma_mul_is_associative(v as int, r as int, r as int);
-    };
-
-    // From precondition: (v * r2) % p = neg_u
-    let neg_u = ((pn as int - (u % pn) as int) % (pn as int)) as nat;
-    assert((v * r2) % pn == neg_u);
-
-    // === Step 3: v * neg_r2 % p = neg(v*r2) % p ===
-    let r2_mod = r2 % pn;
-    assert(r2_mod < pn) by {
-        lemma_mod_bound(r2 as int, pn as int);
-    };
-    assert(pn > 1) by {
-        p_gt_2();
-    };
-
-    assert((v * neg_r2) % pn == ((pn - (v * r2) % pn) as nat) % pn) by {
-        if r2_mod > 0 {
-            assert(neg_r2 == (pn - r2_mod) as nat) by {
-                lemma_small_mod((pn - r2_mod) as nat, pn);
-            };
-            lemma_mul_distributes_over_neg_mod(v, r2, pn);
-        } else {
-            assert(neg_r2 == 0) by {
-                assert(r2_mod == 0);
-                lemma_mod_self_0(pn as int);
-            };
-            assert(v * neg_r2 == 0) by {
-                lemma_mul_basics(v as int);
-            };
-            assert((v * neg_r2) % pn == 0) by {
-                lemma_small_mod(0, pn);
-            };
-            assert((v * r2) % pn == 0) by {
-                lemma_mul_mod_noop_right(v as int, r2 as int, pn as int);
-                assert((v * 0) % pn == 0) by {
-                    lemma_mul_basics(v as int);
-                    lemma_small_mod(0, pn);
-                };
-            };
-            assert(((pn - 0) as nat) % pn == 0) by {
-                lemma_mod_self_0(pn as int);
-            };
-        }
-    };
-
-    // === Step 4: neg(neg_u) % p = u % p [double negation] ===
+    // === Precondition in field form: v·r² = -u ===
+    // From precondition: (v * r * r) % p = -u % p
+    let neg_u = math_field_neg(u);
     let u_mod = u % pn;
     assert(u_mod < pn) by {
         lemma_mod_bound(u as int, pn as int);
     };
-
-    assert(((pn - neg_u) as nat) % pn == u_mod) by {
+    assert(neg_u == ((pn as int - u_mod as int) % pn as int) as nat) by {
         if u_mod > 0 {
-            assert(neg_u == (pn - u_mod) as nat) by {
-                lemma_small_mod((pn - u_mod) as nat, pn);
-            };
-            lemma_double_neg_mod(u_mod, pn);
+            // (p - u_mod) < p, so small_mod applies
+            lemma_small_mod((pn - u_mod) as nat, pn);
         } else {
-            assert(neg_u == 0) by {
-                lemma_mod_self_0(pn as int);
-            };
-            assert(((pn - 0) as nat) % pn == 0) by {
-                lemma_mod_self_0(pn as int);
-            };
+            // u_mod = 0, so p - 0 = p, and p % p = 0
+            lemma_mod_self_0(pn as int);
         }
     };
-
-    // === Step 5: Connect v * r_prime_sq to v * r_prime * r_prime ===
-    assert((v * r_prime * r_prime) % pn == (v * r_prime_sq) % pn) by {
-        lemma_mul_is_associative(v as int, r_prime as int, r_prime as int);
+    assert((v * r2) % pn == neg_u) by {
+        lemma_mul_is_associative(v as int, r as int, r as int);
     };
 
-    // === Step 6: Chain everything together ===
-    assert((v * r_prime_sq) % pn == (v * neg_r2) % pn) by {
-        lemma_mul_mod_noop_right(v as int, r_prime_sq as int, pn as int);
-    };
+    // === Right side: (-u)·(-1) = u via lemma_double_negation ===
+    // We need u_mod < p and u_mod != 0 for lemma_double_negation
+    // Handle u_mod = 0 case separately (trivial: -0 = 0)
+    if u_mod == 0 {
+        // When u ≡ 0 (mod p), both -u ≡ 0 and the result is 0
+        assert(neg_u == 0) by {
+            lemma_mod_self_0(pn as int);
+        };
+        // v·r² ≡ 0 (from precondition and neg_u = 0)
+        assert((v * r2) % pn == 0);
+
+        // v·r²·i² ≡ 0·i² ≡ 0
+        // Using: (v * r2 * i2) % p = ((v * r2) % p * i2) % p = (0 * i2) % p = 0
+        assert((v * r2 * i2) % pn == 0) by {
+            // (v * r2 * i2) % p = ((v * r2) % p * i2) % p
+            lemma_mul_mod_noop_left((v * r2) as int, i2 as int, pn as int);
+            // ((v * r2) % p * i2) = (0 * i2) = 0
+            assert(((v * r2) % pn) * i2 == 0) by {
+                lemma_mul_basics(i2 as int);
+            };
+            // 0 % p = 0
+            lemma_small_mod(0nat, pn);
+        };
+
+        // v·(ri)² = v·r²·i² since (ri)² = r²·i²
+        assert((v * (ri * ri)) % pn == (v * r2 * i2) % pn) by {
+            lemma_mul_is_associative(v as int, r2 as int, i2 as int);
+        };
+
+        // math_field_mul(v, math_field_square(r_prime)) = (v * (r_prime * r_prime)) % p
+        // r_prime = ri % p, so (r_prime * r_prime) % p = (ri * ri) % p
+        assert(math_field_square(r_prime) == (ri * ri) % pn) by {
+            lemma_mul_mod_noop((ri % pn) as int, (ri % pn) as int, pn as int);
+            lemma_mul_mod_noop(ri as int, ri as int, pn as int);
+        };
+
+        // Final connection
+        assert(math_field_mul(v, math_field_square(r_prime)) == 0) by {
+            lemma_mul_mod_noop_right(v as int, (ri * ri) as int, pn as int);
+            lemma_small_mod(0nat, pn);
+        };
+    } else {
+        // u_mod > 0: use lemma_double_negation
+        assert(u_mod != 0 && u_mod < pn);
+
+        // (-1)·(-u_mod) = u_mod
+        lemma_double_negation(u_mod);
+        assert(math_field_mul(neg_one, math_field_neg(u_mod)) == u_mod);
+
+        // neg_u = math_field_neg(u) = math_field_neg(u_mod) since u % p = u_mod
+        // math_field_neg(u) = (p - (u % p)) % p = (p - u_mod) % p
+        // math_field_neg(u_mod) = (p - (u_mod % p)) % p = (p - u_mod) % p (since u_mod < p)
+        assert(neg_u == math_field_neg(u_mod)) by {
+            lemma_small_mod(u_mod, pn);  // u_mod % p = u_mod
+            lemma_small_mod((pn - u_mod) as nat, pn);  // (p - u_mod) % p = p - u_mod
+        };
+
+        // === Chain: v·(ri)² = v·r²·i² = (-u)·(-1) = u ===
+
+        // v·r²·i² % p = (v·r² % p)·(i² % p) % p = neg_u · neg_one % p
+        assert((v * r2 * i2) % pn == math_field_mul(neg_u, neg_one)) by {
+            lemma_mul_mod_noop((v * r2) as int, i2 as int, pn as int);
+        };
+
+        // neg_u · neg_one = neg_one · neg_u by commutativity
+        lemma_field_mul_comm(neg_u, neg_one);
+        assert(math_field_mul(neg_u, neg_one) == math_field_mul(neg_one, neg_u));
+
+        // neg_one · neg_u = neg_one · math_field_neg(u_mod) = u_mod
+        assert(math_field_mul(neg_one, neg_u) == u_mod);
+
+        // Therefore v·r²·i² % p = u_mod = u % p
+        assert((v * r2 * i2) % pn == u_mod);
+
+        // Connect v·(ri)² to v·r²·i²
+        // v·(ri)² = v·(r²·i²) since (ri)² = r²·i²
+        assert((v * (ri * ri)) % pn == (v * (r2 * i2)) % pn);
+        assert((v * (r2 * i2)) % pn == (v * r2 * i2) % pn) by {
+            lemma_mul_is_associative(v as int, r2 as int, i2 as int);
+        };
+
+        // math_field_mul(v, math_field_square(r_prime)) = (v * (r_prime * r_prime)) % p
+        // r_prime = ri % p, so r_prime * r_prime % p = (ri * ri) % p
+        assert(math_field_square(r_prime) == (ri * ri) % pn) by {
+            lemma_mul_mod_noop((ri % pn) as int, (ri % pn) as int, pn as int);
+            lemma_mul_mod_noop(ri as int, ri as int, pn as int);
+        };
+
+        // Final: math_field_mul(v, math_field_square(r_prime)) = u % p
+        assert(math_field_mul(v, math_field_square(r_prime)) == u_mod) by {
+            let ri_sq_mod = math_field_square(r_prime);
+            lemma_mul_mod_noop_right(v as int, ri_sq_mod as int, pn as int);
+            lemma_mul_mod_noop_right(v as int, (ri * ri) as int, pn as int);
+        };
+    }
 }
 
 } // verus!

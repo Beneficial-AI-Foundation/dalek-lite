@@ -49,9 +49,9 @@ pub proof fn lemma_field_inv_one()
     let inv = math_field_inv(1);
 
     // 1 % p = 1 and (1 * inv) % p = 1 and inv < p
-    assert(1nat % p() == 1 && ((1nat % p()) * inv) % p() == 1 && inv < p()) by {
-        lemma_small_mod(1nat, p());
-        field_inv_property(1nat);
+    assert(1 % p() == 1 && ((1 % p()) * inv) % p() == 1 && inv < p()) by {
+        lemma_small_mod(1, p());
+        field_inv_property(1);
     };
 
     // Since (1 * inv) % p = 1 and inv < p, we have inv = 1
@@ -78,7 +78,7 @@ pub proof fn lemma_neg_square_eq(x: nat)
     if a == 0 {
         // neg_x = (p - 0) % p = 0, so (-0)² = 0 = 0²
         lemma_mod_self_0(p as int);
-        lemma_small_mod(0nat, p);
+        lemma_small_mod(0, p);
     } else {
         // a > 0: neg_x = p - a, use (p-a)² ≡ a² (mod p)
         lemma_small_mod((p - a) as nat, p);

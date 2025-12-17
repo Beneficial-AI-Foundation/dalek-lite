@@ -6,7 +6,7 @@
 //! - `lemma_is_sqrt_ratio_to_math_field` — converts is_sqrt_ratio to math_field form
 //! - `lemma_no_square_root_when_times_i` — failure case: x²·v = i·u implies no r with r²·v = ±u
 //! - `lemma_flipped_sign_becomes_correct` — if v·r² = -u, then v·(r·i)² = u
-//! - `lemma_algebraic_chain_base` — proves q² = r_squared_v · inv(i·u)
+//! - `lemma_algebraic_chain_base` — proves q² = (r²·v) · inv(i·u)
 //!
 //! ## Dependencies
 //!
@@ -93,29 +93,21 @@ pub proof fn lemma_is_sqrt_ratio_to_math_field(
     };
 }
 
-/// Unified algebraic chain: proves q² = r_squared_v · inv(i·u)
+/// Unified algebraic chain: proves q² = (r²·v) · inv(i·u)
 ///
 /// This is the geometric/structural part shared by both Case 1 and Case 2.
-/// The v terms cancel out, leaving q² = r_squared_v · inv(i·u).
+/// The v terms cancel out, leaving q² = (r²·v) · inv(i·u).
 ///
 /// Given:
-///   - r²·v = r_squared_v (could be u or -u)
 ///   - x²·v = i·u
 ///   - q = r/x
 ///
-/// Proves: q² = r_squared_v · inv(i·u)
+/// Derives r_squared_v = r²·v internally, then proves: q² = r_squared_v · inv(i·u)
 ///
 /// The caller then uses:
-/// - lemma_u_times_inv_iu_is_neg_i (when r_squared_v = u) to get q² = -i
-/// - lemma_neg_u_times_inv_iu_is_i (when r_squared_v = -u) to get q² = i
-proof fn lemma_algebraic_chain_base(
-    r_squared_v: nat,  // The value r²·v evaluates to
-    u: nat,
-    v: nat,
-    x: nat,
-    r: nat,
-    i: nat,
-)
+/// - lemma_u_times_inv_iu_is_neg_i (when r²·v = u) to get q² = -i
+/// - lemma_neg_u_times_inv_iu_is_i (when r²·v = -u) to get q² = i
+proof fn lemma_algebraic_chain_base(u: nat, v: nat, x: nat, r: nat, i: nat)
     requires
         v % p() != 0,
         u % p() != 0,
@@ -124,12 +116,11 @@ proof fn lemma_algebraic_chain_base(
         r < p(),
         i == spec_sqrt_m1(),
         i % p() != 0,
-        r_squared_v < p(),  // r_squared_v is a field element
-        math_field_mul(math_field_square(r), v) == r_squared_v,
         math_field_mul(math_field_square(x), v) == (i * u) % p(),
     ensures
         ({
             let q = math_field_mul(r, math_field_inv(x));
+            let r_squared_v = math_field_mul(math_field_square(r), v);
             let iu = math_field_mul(i, u);
             let inv_iu = math_field_inv(iu);
             math_field_square(q) == math_field_mul(r_squared_v, inv_iu)
@@ -146,11 +137,17 @@ proof fn lemma_algebraic_chain_base(
     let q = math_field_mul(r, inv_x);
     let q2 = math_field_square(q);
     let iu = math_field_mul(i, u);
+    let r_squared_v = math_field_mul(r2, v);  // Derive r²·v from r and v
 
     // --- Step 1: q² = r² · inv(x²) ---
     let inv_x2 = math_field_inv(x2);
     assert(q2 == math_field_mul(r2, inv_x2)) by {
         lemma_quotient_of_squares(r, x);
+    };
+
+    // r_squared_v < p (field operation result)
+    assert(r_squared_v < p) by {
+        lemma_mod_bound((r2 * v) as int, p as int);
     };
 
     // --- Step 2: Derive r² = r_squared_v · inv(v) from r²·v = r_squared_v ---
@@ -388,7 +385,9 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
 
         // Step 2: q² = r_squared_v · inv(i·u) (from algebraic chain)
         assert(q2 == math_field_mul(r_squared_v, inv_iu)) by {
-            lemma_algebraic_chain_base(r_squared_v, u, v, x, r, i);
+            lemma_algebraic_chain_base(u, v, x, r, i);
+            // lemma ensures q² = math_field_mul(math_field_square(r), v) · inv_iu
+            // and the if-condition gives math_field_mul(math_field_square(r), v) == r_squared_v
         };
 
         // Step 3: u · inv(i·u) = -i
@@ -441,7 +440,9 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
 
         // Step 2: q² = (-u) · inv(i·u) (from algebraic chain)
         assert(q2 == math_field_mul(r_squared_v, inv_iu)) by {
-            lemma_algebraic_chain_base(r_squared_v, u, v, x, r, i);
+            lemma_algebraic_chain_base(u, v, x, r, i);
+            // lemma ensures q² = math_field_mul(math_field_square(r), v) · inv_iu
+            // and the if-condition gives math_field_mul(math_field_square(r), v) == r_squared_v
         };
 
         // Step 3: (-u) · inv(i·u) = i

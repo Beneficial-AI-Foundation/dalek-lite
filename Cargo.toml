@@ -1,6 +1,7 @@
+# Workspace disabled to allow curve25519-dalek to be a member of libsignal's workspace for SCIP indexing
 [workspace]
 members = [
-    "curve25519-dalek"
+     "curve25519-dalek"
 ]
 resolver = "2"
 

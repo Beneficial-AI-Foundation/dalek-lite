@@ -1149,6 +1149,7 @@ impl From<u16> for Scalar {
         let x_bytes = u16_to_le_bytes(x);
 
         // Copy the 2 bytes from x_bytes to s_bytes
+        // (x_bytes.len() is always 2 because u16_to_le_bytes returns [u8; 2])
         for i in 0..2
             invariant
         // Copied bytes match
@@ -1185,6 +1186,7 @@ impl From<u32> for Scalar {
         let x_bytes = u32_to_le_bytes(x);
 
         // Copy the 4 bytes from x_bytes to s_bytes
+        // (x_bytes.len() is always 4 because u32_to_le_bytes returns [u8; 4])
         for i in 0..4
             invariant
                 forall|j: int| 0 <= j < i ==> s_bytes[j] == x_bytes[j],
@@ -1239,6 +1241,7 @@ impl From<u64> for Scalar {
         let x_bytes = u64_to_le_bytes(x);
 
         // Copy the 8 bytes from x_bytes to s_bytes
+        // (x_bytes.len() is always 8 because u64_to_le_bytes returns [u8; 8])
         for i in 0..8
             invariant
                 forall|j: int| 0 <= j < i ==> s_bytes[j] == x_bytes[j],
@@ -1271,6 +1274,7 @@ impl From<u128> for Scalar {
         let x_bytes = u128_to_le_bytes(x);
 
         // Copy the 16 bytes from x_bytes to s_bytes
+        // (x_bytes.len() is always 16 because u128_to_le_bytes returns [u8; 16])
         for i in 0..16
             invariant
                 forall|j: int| 0 <= j < i ==> s_bytes[j] == x_bytes[j],

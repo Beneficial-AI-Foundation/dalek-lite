@@ -101,7 +101,6 @@ pub proof fn lemma_suffix_zero_when_bytes_zero(bytes: &[u8; 32], n: nat)
                 lemma_mul_basics(pow2((n * 8) as nat) as int);
             }
 
-            // u8_32_as_nat_rec(bytes, n) = 0 * pow2(n*8) + 0 = 0
         }
     }
 }

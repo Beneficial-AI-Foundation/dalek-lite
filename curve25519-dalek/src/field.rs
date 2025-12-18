@@ -530,23 +530,22 @@ impl FieldElement {
         requires
             forall|i: int|
                 #![trigger old(inputs)[i]]
-                0 <= i < old(inputs).len() ==> (forall|j: int|
-                    0 <= j < 5 ==> old(inputs)[i].limbs[j] < 1u64 << 54),
+                0 <= i < old(inputs).len() ==> fe51_limbs_bounded(&old(inputs)[i], 54),
         ensures
-    // Each element is replaced appropriately:
-
+            // Each element is replaced appropriately:
             forall|i: int|
                 #![auto]
-                0 <= i < inputs.len() ==> {
+                0 <= i < inputs.len() ==> (
                     // If input was non-zero, it's replaced with its inverse
-                    (spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
+                    ((spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
                         &old(inputs)[i],
                         &inputs[i],
-                    ) &&
+                    ))
+                    &&
                     // If input was zero, it remains zero
-                    (spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(&inputs[i])
-                        == 0
-                },
+                    ((spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(&inputs[i])
+                        == 0)
+                ),
     {
         // Montgomery's Trick and Fast Implementation of Masked AES
         // Genelle, Prouff and Quisquater
@@ -556,6 +555,19 @@ impl FieldElement {
         // Extract ONE constant before loops (similar to scalar.rs pattern)
         let one = FieldElement::ONE;
 
+        proof {
+            // ONE has limbs [1, 0, 0, 0, 0], which is bounded by 54 bits
+            assert(fe51_limbs_bounded(&one, 54)) by {
+                assert(one.limbs[0] == 1);
+                assert(one.limbs[1] == 0);
+                assert(one.limbs[2] == 0);
+                assert(one.limbs[3] == 0);
+                assert(one.limbs[4] == 0);
+                assert(1u64 < (1u64 << 54)) by (compute);
+                assert(0u64 < (1u64 << 54)) by (compute);
+            };
+        }
+
         /* <VERIFICATION NOTE>
          Build vec manually instead of vec![one; n] for Verus compatibility
         </VERIFICATION NOTE> */
@@ -563,7 +575,12 @@ impl FieldElement {
          let mut scratch = vec![FieldElement::ONE; n];
         </ORIGINAL CODE> */
         let mut scratch = Vec::new();
-        for _ in 0..n {
+        for _k in 0..n  // Added loop variable _k to help with verification
+
+            invariant
+                scratch.len() == _k,
+                scratch@ =~= Seq::new(_k as nat, |j: int| one),
+        {
             scratch.push(one);
         }
 
@@ -583,10 +600,20 @@ impl FieldElement {
             acc.conditional_assign(&(&acc * input), !input.is_zero());
         }
         </ORIGINAL CODE> */
-        for i in 0..n {
-            assume(false);
+        // Ghost: track the original inputs for postcondition
+        let ghost original_inputs = inputs@;
+
+        for i in 0..n
+            invariant
+                n == inputs.len(),
+                n == scratch.len(),
+                fe51_limbs_bounded(&acc, 54),
+                forall|j: int| #![auto] 0 <= j < i ==> fe51_limbs_bounded(&scratch[j], 54),
+                forall|j: int|
+                    #![auto]
+                    0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
+        {
             scratch[i] = acc;
-            assume(false);
             // acc <- acc * input, but skipping zeros (constant-time)
             acc.conditional_assign(&(&acc * &inputs[i]), choice_not(inputs[i].is_zero()));
         }
@@ -597,11 +624,6 @@ impl FieldElement {
         assert!(bool::from(choice_not(acc.is_zero())));
 
         // Compute the inverse of all products
-        proof {
-            // PROOF BYPASS: assume acc limbs are bounded
-            // (This would follow from the loop invariant, but we haven't proven that yet)
-            assume(fe51_limbs_bounded(&acc, 54));
-        }
         acc = acc.invert();
 
         // Pass through the vector backwards to compute the inverses
@@ -622,19 +644,22 @@ impl FieldElement {
         }
         </ORIGINAL CODE> */
 
-        proof {
-            assume(false);
-        }
-
         let mut i: usize = n;
         while i > 0
             invariant
                 n == inputs.len(),
                 n == scratch.len(),
+                i <= n,
+                fe51_limbs_bounded(&acc, 54),
+                forall|j: int|
+                    #![auto]
+                    0 <= j < scratch.len() ==> fe51_limbs_bounded(&scratch[j], 54),
+                forall|j: int|
+                    #![auto]
+                    0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
             decreases i,
         {
             i -= 1;
-            assume(false);
             let tmp = &acc * &inputs[i];
             // input <- acc * scratch, then acc <- tmp
             // Again, we skip zeros in a constant-time way
@@ -644,20 +669,6 @@ impl FieldElement {
             input_i.conditional_assign(&(&acc * &scratch[i]), nz);
             inputs[i] = input_i;
             acc.conditional_assign(&tmp, nz);
-        }
-
-        proof {
-            // Assume the postconditions hold
-            assume(forall|i: int|
-                #![auto]
-                0 <= i < inputs.len() ==> {
-                    (spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
-                        &old(inputs)[i],
-                        &inputs[i],
-                    ) && (spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(
-                        &inputs[i],
-                    ) == 0
-                });
         }
     }
 

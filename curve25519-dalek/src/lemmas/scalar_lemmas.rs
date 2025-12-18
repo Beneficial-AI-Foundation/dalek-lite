@@ -2177,24 +2177,41 @@ pub proof fn lemma_invert_correctness(self_val: nat, mont_val: nat, inv_val: nat
 
         // Step 4: First application of R_inv to cancel one R
         assert(((result_val * self_val) * R) % L == R % L) by {
-            assert((((result_val * self_val) * (R * R)) % L * R_inv) % L == (((R * R) % L) * R_inv) % L);
+            assert((((result_val * self_val) * (R * R)) % L * R_inv) % L == (((R * R) % L) * R_inv)
+                % L);
 
             calc! {
                 (==)
                 (((result_val * self_val) * (R * R)) % L * R_inv) % L; {
-                    lemma_mul_mod_noop_left(((result_val * self_val) * (R * R)) as int, R_inv as int, L as int);        
+                    lemma_mul_mod_noop_left(
+                        ((result_val * self_val) * (R * R)) as int,
+                        R_inv as int,
+                        L as int,
+                    );
                 }
                 ((result_val * self_val) * (R * R) * R_inv) % L; {
-                    lemma_mul_is_associative((result_val * self_val) as int, (R * R) as int, R_inv as int);
+                    lemma_mul_is_associative(
+                        (result_val * self_val) as int,
+                        (R * R) as int,
+                        R_inv as int,
+                    );
                 }
                 ((result_val * self_val) * ((R * R) * R_inv)) % L; {
                     lemma_mul_is_associative(R as int, R as int, R_inv as int);
                 }
                 ((result_val * self_val) * (R * (R * R_inv))) % L; {
-                    lemma_mul_is_associative((result_val * self_val) as int, R as int, (R * R_inv) as int);
+                    lemma_mul_is_associative(
+                        (result_val * self_val) as int,
+                        R as int,
+                        (R * R_inv) as int,
+                    );
                 }
                 (((result_val * self_val) * R) * (R * R_inv)) % L; {
-                    lemma_mul_mod_noop_right(((result_val * self_val) * R) as int, (R * R_inv) as int, L as int);
+                    lemma_mul_mod_noop_right(
+                        ((result_val * self_val) * R) as int,
+                        (R * R_inv) as int,
+                        L as int,
+                    );
                 }
                 (((result_val * self_val) * R) * ((R * R_inv) % L)) % L; {
                     lemma_mul_basics_3(((result_val * self_val) * R) as int);
@@ -2205,7 +2222,7 @@ pub proof fn lemma_invert_correctness(self_val: nat, mont_val: nat, inv_val: nat
             calc! {
                 (==)
                 (((R * R) % L) * R_inv) % L; {
-                    lemma_mul_mod_noop_left((R * R) as int, R_inv as int, L as int);        
+                    lemma_mul_mod_noop_left((R * R) as int, R_inv as int, L as int);
                 }
                 ((R * R) * R_inv) % L; {
                     lemma_mul_is_associative(R as int, R as int, R_inv as int);
@@ -2226,13 +2243,21 @@ pub proof fn lemma_invert_correctness(self_val: nat, mont_val: nat, inv_val: nat
         calc! {
             (==)
             (((result_val * self_val) * R) % L * R_inv) % L; {
-                lemma_mul_mod_noop_left(((result_val * self_val) * R) as int, R_inv as int, L as int);      
+                lemma_mul_mod_noop_left(
+                    ((result_val * self_val) * R) as int,
+                    R_inv as int,
+                    L as int,
+                );
             }
             ((result_val * self_val) * R * R_inv) % L; {
                 lemma_mul_is_associative((result_val * self_val) as int, R as int, R_inv as int);
             }
             ((result_val * self_val) * (R * R_inv)) % L; {
-                lemma_mul_mod_noop_right((result_val * self_val) as int, (R * R_inv) as int, L as int);
+                lemma_mul_mod_noop_right(
+                    (result_val * self_val) as int,
+                    (R * R_inv) as int,
+                    L as int,
+                );
             }
             ((result_val * self_val) * ((R * R_inv) % L)) % L; {
                 lemma_mul_basics_3((result_val * self_val) as int);

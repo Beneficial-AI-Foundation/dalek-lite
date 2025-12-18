@@ -403,7 +403,7 @@ pub proof fn lemma_bytes_to_nat_first_byte_only(bytes: &[u8; 32])
     assert(bytes[0] as nat * pow2(0) == bytes[0] as nat);
 }
 
-/// Generalized lemma for From<T> proofs.
+/// Generalized lemma for From<T> proofs (legacy - uses sequence-based specs).
 ///
 /// Given a sequence of n bytes and a 32-byte array where:
 /// - The first n bytes of the array match the sequence
@@ -426,6 +426,112 @@ pub proof fn lemma_from_le_bytes(le_seq: Seq<u8>, bytes: &[u8; 32], n: nat)
         // Chain: bytes_seq_to_nat(le_seq) == as_nat_prefix == bytes_to_nat
         lemma_bytes_seq_to_nat_equals_as_nat_prefix(le_seq, bytes, n);
         lemma_bytes_to_nat_with_trailing_zeros(bytes, n);
+    }
+}
+
+// ============================================================================
+// New simplified lemmas for From<T> proofs (using array-based bytesN_to_nat specs)
+// These connect bytesN_to_nat directly to bytes_to_nat without going through sequences.
+// ============================================================================
+
+use crate::core_assumes::{bytes2_to_nat, bytes4_to_nat, bytes8_to_nat, bytes16_to_nat};
+
+/// Lemma: bytes2_to_nat equals as_nat_prefix for 2 bytes
+pub proof fn lemma_bytes2_equals_prefix(x_bytes: &[u8; 2], s_bytes: &[u8; 32])
+    requires
+        s_bytes[0] == x_bytes[0],
+        s_bytes[1] == x_bytes[1],
+    ensures
+        bytes2_to_nat(x_bytes) == as_nat_prefix(s_bytes, 2),
+{
+    // Both use the same pow2 structure, just need to unfold as_nat_prefix
+    reveal_with_fuel(as_nat_prefix, 3);
+}
+
+/// Lemma: bytes4_to_nat equals as_nat_prefix for 4 bytes
+pub proof fn lemma_bytes4_equals_prefix(x_bytes: &[u8; 4], s_bytes: &[u8; 32])
+    requires
+        forall|i: int| 0 <= i < 4 ==> s_bytes[i] == x_bytes[i],
+    ensures
+        bytes4_to_nat(x_bytes) == as_nat_prefix(s_bytes, 4),
+{
+    reveal_with_fuel(as_nat_prefix, 5);
+}
+
+/// Lemma: bytes8_to_nat equals as_nat_prefix for 8 bytes
+pub proof fn lemma_bytes8_equals_prefix(x_bytes: &[u8; 8], s_bytes: &[u8; 32])
+    requires
+        forall|i: int| 0 <= i < 8 ==> s_bytes[i] == x_bytes[i],
+    ensures
+        bytes8_to_nat(x_bytes) == as_nat_prefix(s_bytes, 8),
+{
+    reveal_with_fuel(as_nat_prefix, 9);
+}
+
+/// Lemma: bytes16_to_nat equals as_nat_prefix for 16 bytes
+pub proof fn lemma_bytes16_equals_prefix(x_bytes: &[u8; 16], s_bytes: &[u8; 32])
+    requires
+        forall|i: int| 0 <= i < 16 ==> s_bytes[i] == x_bytes[i],
+    ensures
+        bytes16_to_nat(x_bytes) == as_nat_prefix(s_bytes, 16),
+{
+    reveal_with_fuel(as_nat_prefix, 17);
+}
+
+/// Unified lemma for From<u16>: connects bytes2_to_nat to bytes_to_nat
+pub proof fn lemma_from_u16_bytes(x_bytes: &[u8; 2], s_bytes: &[u8; 32])
+    requires
+        s_bytes[0] == x_bytes[0],
+        s_bytes[1] == x_bytes[1],
+        forall|i: int| 2 <= i < 32 ==> s_bytes[i] == 0,
+    ensures
+        bytes_to_nat(s_bytes) == bytes2_to_nat(x_bytes),
+{
+    assert(bytes_to_nat(s_bytes) == bytes2_to_nat(x_bytes)) by {
+        lemma_bytes2_equals_prefix(x_bytes, s_bytes);
+        lemma_bytes_to_nat_with_trailing_zeros(s_bytes, 2);
+    }
+}
+
+/// Unified lemma for From<u32>: connects bytes4_to_nat to bytes_to_nat
+pub proof fn lemma_from_u32_bytes(x_bytes: &[u8; 4], s_bytes: &[u8; 32])
+    requires
+        forall|i: int| 0 <= i < 4 ==> s_bytes[i] == x_bytes[i],
+        forall|i: int| 4 <= i < 32 ==> s_bytes[i] == 0,
+    ensures
+        bytes_to_nat(s_bytes) == bytes4_to_nat(x_bytes),
+{
+    assert(bytes_to_nat(s_bytes) == bytes4_to_nat(x_bytes)) by {
+        lemma_bytes4_equals_prefix(x_bytes, s_bytes);
+        lemma_bytes_to_nat_with_trailing_zeros(s_bytes, 4);
+    }
+}
+
+/// Unified lemma for From<u64>: connects bytes8_to_nat to bytes_to_nat
+pub proof fn lemma_from_u64_bytes(x_bytes: &[u8; 8], s_bytes: &[u8; 32])
+    requires
+        forall|i: int| 0 <= i < 8 ==> s_bytes[i] == x_bytes[i],
+        forall|i: int| 8 <= i < 32 ==> s_bytes[i] == 0,
+    ensures
+        bytes_to_nat(s_bytes) == bytes8_to_nat(x_bytes),
+{
+    assert(bytes_to_nat(s_bytes) == bytes8_to_nat(x_bytes)) by {
+        lemma_bytes8_equals_prefix(x_bytes, s_bytes);
+        lemma_bytes_to_nat_with_trailing_zeros(s_bytes, 8);
+    }
+}
+
+/// Unified lemma for From<u128>: connects bytes16_to_nat to bytes_to_nat
+pub proof fn lemma_from_u128_bytes(x_bytes: &[u8; 16], s_bytes: &[u8; 32])
+    requires
+        forall|i: int| 0 <= i < 16 ==> s_bytes[i] == x_bytes[i],
+        forall|i: int| 16 <= i < 32 ==> s_bytes[i] == 0,
+    ensures
+        bytes_to_nat(s_bytes) == bytes16_to_nat(x_bytes),
+{
+    assert(bytes_to_nat(s_bytes) == bytes16_to_nat(x_bytes)) by {
+        lemma_bytes16_equals_prefix(x_bytes, s_bytes);
+        lemma_bytes_to_nat_with_trailing_zeros(s_bytes, 16);
     }
 }
 

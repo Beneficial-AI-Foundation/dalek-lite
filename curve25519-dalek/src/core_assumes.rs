@@ -62,7 +62,39 @@ pub assume_specification<'a>[ core::fmt::Formatter::<'a>::write_str ](
 ) -> core::result::Result<(), core::fmt::Error>
 ;
 
-// Build a Seq<u8> from fixed arrays (for specs)
+// ============================================================================
+// Array-based little-endian byte conversion specs
+// These use pow2 (matching as_nat_prefix structure exactly) for easy proofs
+// ============================================================================
+use vstd::arithmetic::power2::pow2;
+
+/// Little-endian value of a 2-byte array
+pub open spec fn bytes2_to_nat(b: &[u8; 2]) -> nat {
+    b[0] as nat * pow2(0) + b[1] as nat * pow2(8)
+}
+
+/// Little-endian value of a 4-byte array
+pub open spec fn bytes4_to_nat(b: &[u8; 4]) -> nat {
+    b[0] as nat * pow2(0) + b[1] as nat * pow2(8) + b[2] as nat * pow2(16) + b[3] as nat * pow2(24)
+}
+
+/// Little-endian value of an 8-byte array
+pub open spec fn bytes8_to_nat(b: &[u8; 8]) -> nat {
+    b[0] as nat * pow2(0) + b[1] as nat * pow2(8) + b[2] as nat * pow2(16) + b[3] as nat * pow2(24)
+        + b[4] as nat * pow2(32) + b[5] as nat * pow2(40) + b[6] as nat * pow2(48)
+        + b[7] as nat * pow2(56)
+}
+
+/// Little-endian value of a 16-byte array
+pub open spec fn bytes16_to_nat(b: &[u8; 16]) -> nat {
+    b[0] as nat * pow2(0) + b[1] as nat * pow2(8) + b[2] as nat * pow2(16) + b[3] as nat * pow2(24)
+        + b[4] as nat * pow2(32) + b[5] as nat * pow2(40) + b[6] as nat * pow2(48)
+        + b[7] as nat * pow2(56) + b[8] as nat * pow2(64) + b[9] as nat * pow2(72)
+        + b[10] as nat * pow2(80) + b[11] as nat * pow2(88) + b[12] as nat * pow2(96)
+        + b[13] as nat * pow2(104) + b[14] as nat * pow2(112) + b[15] as nat * pow2(120)
+}
+
+// Legacy: Build a Seq<u8> from fixed arrays (kept for backward compatibility)
 pub open spec fn seq_from2(b: &[u8; 2]) -> Seq<u8> {
     Seq::new(2, |i: int| b[i])
 }
@@ -86,7 +118,7 @@ pub open spec fn seq_from32(b: &[u8; 32]) -> Seq<u8> {
 #[verifier::external_body]
 pub fn u16_to_le_bytes(x: u16) -> (bytes: [u8; 2])
     ensures
-        bytes_seq_to_nat(seq_from2(&bytes)) == x as nat,
+        bytes2_to_nat(&bytes) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -94,7 +126,7 @@ pub fn u16_to_le_bytes(x: u16) -> (bytes: [u8; 2])
 #[verifier::external_body]
 pub fn u32_to_le_bytes(x: u32) -> (bytes: [u8; 4])
     ensures
-        bytes_seq_to_nat(seq_from4(&bytes)) == x as nat,
+        bytes4_to_nat(&bytes) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -102,7 +134,7 @@ pub fn u32_to_le_bytes(x: u32) -> (bytes: [u8; 4])
 #[verifier::external_body]
 pub fn u64_to_le_bytes(x: u64) -> (bytes: [u8; 8])
     ensures
-        bytes_seq_to_nat(seq_from8(&bytes)) == x as nat,
+        bytes8_to_nat(&bytes) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -110,7 +142,7 @@ pub fn u64_to_le_bytes(x: u64) -> (bytes: [u8; 8])
 #[verifier::external_body]
 pub fn u128_to_le_bytes(x: u128) -> (bytes: [u8; 16])
     ensures
-        bytes_seq_to_nat(seq_from16(&bytes)) == x as nat,
+        bytes16_to_nat(&bytes) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -118,7 +150,7 @@ pub fn u128_to_le_bytes(x: u128) -> (bytes: [u8; 16])
 #[verifier::external_body]
 pub fn u16_from_le_bytes(bytes: [u8; 2]) -> (x: u16)
     ensures
-        x as nat == bytes_seq_to_nat(seq_from2(&bytes)),
+        x as nat == bytes2_to_nat(&bytes),
 {
     u16::from_le_bytes(bytes)
 }
@@ -126,7 +158,7 @@ pub fn u16_from_le_bytes(bytes: [u8; 2]) -> (x: u16)
 #[verifier::external_body]
 pub fn u32_from_le_bytes(bytes: [u8; 4]) -> (x: u32)
     ensures
-        x as nat == bytes_seq_to_nat(seq_from4(&bytes)),
+        x as nat == bytes4_to_nat(&bytes),
 {
     u32::from_le_bytes(bytes)
 }
@@ -134,7 +166,7 @@ pub fn u32_from_le_bytes(bytes: [u8; 4]) -> (x: u32)
 #[verifier::external_body]
 pub fn u64_from_le_bytes(bytes: [u8; 8]) -> (x: u64)
     ensures
-        x as nat == bytes_seq_to_nat(seq_from8(&bytes)),
+        x as nat == bytes8_to_nat(&bytes),
 {
     u64::from_le_bytes(bytes)
 }
@@ -142,7 +174,7 @@ pub fn u64_from_le_bytes(bytes: [u8; 8]) -> (x: u64)
 #[verifier::external_body]
 pub fn u128_from_le_bytes(bytes: [u8; 16]) -> (x: u128)
     ensures
-        x as nat == bytes_seq_to_nat(seq_from16(&bytes)),
+        x as nat == bytes16_to_nat(&bytes),
 {
     u128::from_le_bytes(bytes)
 }

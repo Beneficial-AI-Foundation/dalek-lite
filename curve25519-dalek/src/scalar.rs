@@ -1116,11 +1116,6 @@ impl vstd::std_specs::convert::FromSpecImpl<u128> for Scalar {
 }
 
 impl From<u8> for Scalar {
-    /// Construct a scalar from a `u8`.
-    ///
-    /// # Proof
-    ///
-    /// See docs/proofs_for_scalar_from/scalar_from_proofs.md for the mathematical proof.
     fn from(x: u8) -> (result: Scalar)
         ensures
             scalar_to_nat(&result) == x as nat,
@@ -1140,11 +1135,6 @@ impl From<u8> for Scalar {
 }
 
 impl From<u16> for Scalar {
-    /// Construct a scalar from a `u16`.
-    ///
-    /// # Proof
-    ///
-    /// See docs/proofs_for_scalar_from/scalar_from_proofs.md for the mathematical proof.
     #[allow(clippy::manual_memcpy)]
     fn from(x: u16) -> (result: Scalar)
         ensures
@@ -1173,19 +1163,13 @@ impl From<u16> for Scalar {
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from2(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 2);
+            lemma_from_u16_bytes(&x_bytes, &result.bytes);
         }
         result
     }
 }
 
 impl From<u32> for Scalar {
-    /// Construct a scalar from a `u32`.
-    ///
-    /// # Proof
-    ///
-    /// See docs/proofs_for_scalar_from/scalar_from_proofs.md for the mathematical proof.
     #[allow(clippy::manual_memcpy)]
     fn from(x: u32) -> (result: Scalar)
         ensures
@@ -1211,8 +1195,7 @@ impl From<u32> for Scalar {
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from4(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 4);
+            lemma_from_u32_bytes(&x_bytes, &result.bytes);
         }
         result
     }
@@ -1240,7 +1223,6 @@ impl From<u64> for Scalar {
     ///
     /// assert!(fourtytwo == six * seven);
     /// ```
-    // VERIFICATION NOTE: PROOF BYPASS
     #[allow(clippy::manual_memcpy)]
     fn from(x: u64) -> (result: Scalar)
         ensures
@@ -1265,19 +1247,13 @@ impl From<u64> for Scalar {
         /* </MODIFIED CODE> */
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from8(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 8);
+            lemma_from_u64_bytes(&x_bytes, &result.bytes);
         }
         result
     }
 }
 
 impl From<u128> for Scalar {
-    /// Construct a scalar from a `u128`.
-    ///
-    /// # Proof
-    ///
-    /// See docs/proofs_for_scalar_from/scalar_from_proofs.md for the mathematical proof.
     #[allow(clippy::manual_memcpy)]
     fn from(x: u128) -> (result: Scalar)
         ensures
@@ -1303,8 +1279,7 @@ impl From<u128> for Scalar {
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from16(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 16);
+            lemma_from_u128_bytes(&x_bytes, &result.bytes);
         }
         result
     }

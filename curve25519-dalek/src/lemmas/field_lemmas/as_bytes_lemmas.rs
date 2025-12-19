@@ -362,4 +362,110 @@ pub proof fn lemma_seq_eq_implies_array_eq(bytes1: &[u8; 32], bytes2: &[u8; 32])
     assert(*bytes1 == *bytes2);
 }
 
+/// Lemma: from_bytes(as_bytes(fe_orig)) preserves the field element value
+///
+/// This is the fundamental roundtrip property for field element serialization.
+/// Encoding to bytes and decoding back yields the same abstract field element.
+///
+/// ## Parameters:
+/// - `fe_orig`: the original field element
+/// - `fe_decoded`: output of `from_bytes(as_bytes(fe_orig))`
+///
+/// ## Proof outline (let v = u64_5_as_nat(fe_orig.limbs)):
+/// 1. as_bytes produces bytes with: u8_32_as_nat(bytes) = v % p
+/// 2. from_bytes produces: u64_5_as_nat(fe_decoded.limbs) = (v % p) % pow2(255)
+/// 3. Since v % p < p < pow2(255), by lemma_small_mod: (v % p) % pow2(255) = v % p
+/// 4. By lemma_mod_twice: spec_field_element(fe_decoded) = (v % p) % p = v % p
+/// 5. Therefore: spec_field_element(fe_decoded) = spec_field_element(fe_orig)
+pub proof fn lemma_from_bytes_as_bytes_roundtrip(
+    fe_orig: &FieldElement51,
+    fe_decoded: &FieldElement51,
+)
+    requires
+// fe_decoded is from_bytes(as_bytes(fe_orig))
+// Combined postconditions: as_bytes gives (v % p), from_bytes applies % pow2(255)
+
+        u64_5_as_nat(fe_decoded.limbs) == (u64_5_as_nat(fe_orig.limbs) % p()) % pow2(255),
+    ensures
+        spec_field_element(fe_decoded) == spec_field_element(fe_orig),
+{
+    let v = u64_5_as_nat(fe_orig.limbs);
+
+    assert(spec_field_element(fe_decoded) == spec_field_element(fe_orig)) by {
+        // Subgoal 1: (v % p) % pow2(255) == v % p
+        // This means fe_decoded.limbs represents v % p
+        assert((v % p()) % pow2(255) == v % p()) by {
+            // Need: v % p < pow2(255)
+            assert(v % p() < p()) by {
+                pow255_gt_19();
+                lemma_mod_bound(v as int, p() as int);
+            };
+            assert(p() < pow2(255)) by {
+                pow255_gt_19();
+            };
+            lemma_small_mod((v % p()) as nat, pow2(255));
+        };
+
+        // Subgoal 2: (v % p) % p == v % p (mod idempotence)
+        // This connects fe_decoded's field element to fe_orig's
+        assert((v % p()) % p() == v % p()) by {
+            pow255_gt_19();
+            lemma_mod_twice(v as int, p() as int);
+        };
+    };
+}
+
+/// Lemma: as_bytes(from_bytes(bytes_orig)) preserves the byte value (for canonical inputs)
+///
+/// This is the reverse roundtrip property for field element serialization.
+/// It only holds when the input bytes represent a canonical value (< p).
+///
+/// ## Parameters:
+/// - `bytes_orig`: the original bytes (must be canonical: u8_32_as_nat < p)
+/// - `bytes_decoded`: output of `as_bytes(from_bytes(bytes_orig))`
+///
+/// ## Why canonical is required:
+/// If bytes_orig encodes a value v >= p (but < 2^255), then:
+/// - from_bytes preserves v (since v < 2^255)
+/// - as_bytes reduces to v % p
+/// So as_bytes(from_bytes(bytes)) would encode (v % p), not v.
+///
+/// ## Proof outline (let v = u8_32_as_nat(bytes_orig)):
+/// 1. Since v < p < pow2(255), by lemma_small_mod: v % pow2(255) = v
+/// 2. So from_bytes gives: u64_5_as_nat(fe.limbs) = v
+/// 3. Since v < p, by lemma_small_mod: v % p = v
+/// 4. So as_bytes gives: u8_32_as_nat(bytes_decoded) = v
+/// 5. Therefore: bytes_decoded represents the same value as bytes_orig
+pub proof fn lemma_as_bytes_from_bytes_roundtrip(bytes_orig: &[u8; 32], bytes_decoded: &[u8; 32])
+    requires
+// bytes_orig is canonical (represents a value < p)
+
+        u8_32_as_nat(bytes_orig) < p(),
+        // bytes_decoded is as_bytes(from_bytes(bytes_orig))
+        // Combined postconditions: from_bytes applies % pow2(255), as_bytes applies % p
+        u8_32_as_nat(bytes_decoded) == (u8_32_as_nat(bytes_orig) % pow2(255)) % p(),
+    ensures
+        u8_32_as_nat(bytes_decoded) == u8_32_as_nat(bytes_orig),
+{
+    let v = u8_32_as_nat(bytes_orig);
+
+    assert(u8_32_as_nat(bytes_decoded) == v) by {
+        // Subgoal 1: v % pow2(255) == v
+        // Since v < p < pow2(255), v is unchanged by % pow2(255)
+        assert(v % pow2(255) == v) by {
+            assert(p() < pow2(255)) by {
+                pow255_gt_19();
+            };
+            lemma_small_mod(v, pow2(255));
+        };
+
+        // Subgoal 2: v % p == v
+        // Since v < p (canonical), v is unchanged by % p
+        assert(v % p() == v) by {
+            pow255_gt_19();
+            lemma_small_mod(v, p());
+        };
+    };
+}
+
 } // verus!

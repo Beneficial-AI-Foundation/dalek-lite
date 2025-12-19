@@ -365,7 +365,7 @@ pub proof fn lemma_seq_eq_implies_array_eq(bytes1: &[u8; 32], bytes2: &[u8; 32])
 /// Lemma: from_bytes(as_bytes(fe_orig)) preserves the field element value
 ///
 /// This is the fundamental roundtrip property for field element serialization.
-/// Encoding to bytes and decoding back yields the same abstract field element.
+/// Encoding to bytes and decoding back yields the same math field element.
 ///
 /// ## Parameters:
 /// - `fe_orig`: the original field element

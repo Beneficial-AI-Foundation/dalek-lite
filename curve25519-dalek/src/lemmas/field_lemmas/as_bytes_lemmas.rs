@@ -402,15 +402,14 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
     let v = fe_as_nat(fe_orig);
 
     assert(spec_field_element(fe_decoded) == spec_field_element(fe_orig)) by {
+        assert(0 < p() < pow2(255)) by {
+            pow255_gt_19();
+        };
         // Subgoal 1: (v % p) % pow2(255) == v % p
         // The canonical value fits in 255 bits, so from_bytes preserves it
         assert((v % p()) % pow2(255) == v % p()) by {
             assert(v % p() < p()) by {
-                pow255_gt_19();
                 lemma_mod_bound(v as int, p() as int);
-            };
-            assert(p() < pow2(255)) by {
-                pow255_gt_19();
             };
             lemma_small_mod((v % p()) as nat, pow2(255));
         };
@@ -418,7 +417,6 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
         // Subgoal 2: (v % p) % p == v % p (mod idempotence)
         // Taking mod p again doesn't change the canonical value
         assert((v % p()) % p() == v % p()) by {
-            pow255_gt_19();
             lemma_mod_twice(v as int, p() as int);
         };
     };
@@ -470,20 +468,19 @@ pub proof fn lemma_as_bytes_from_bytes_roundtrip(
 {
     let v = bytes_as_nat(bytes_orig);
 
+    assert(0 < p() < pow2(255)) by {
+        pow255_gt_19();
+    };
     assert(bytes_as_nat(bytes_decoded) == v) by {
         // Subgoal 1: v % pow2(255) == v
         // Since v < p < pow2(255), v fits in 255 bits
         assert(v % pow2(255) == v) by {
-            assert(p() < pow2(255)) by {
-                pow255_gt_19();
-            };
             lemma_small_mod(v, pow2(255));
         };
 
         // Subgoal 2: v % p == v
         // Since v < p (canonical), taking mod p doesn't change it
         assert(v % p() == v) by {
-            pow255_gt_19();
             lemma_small_mod(v, p());
         };
     };

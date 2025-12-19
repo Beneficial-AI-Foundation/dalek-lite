@@ -923,7 +923,7 @@ impl FieldElement51 {
         ensures
     // Decode bytes to limbs (bit 255 is cleared)
 
-            fe_repr(&r) == bytes_value(bytes) % pow2(255),
+            fe_as_nat(&r) == bytes_as_nat(bytes) % pow2(255),
             // Each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),
     {
@@ -1008,7 +1008,7 @@ impl FieldElement51 {
         ensures
     // Canonical encoding: bytes represent fe_repr mod p
 
-            bytes_value(&r) == fe_repr(&self) % p(),
+            bytes_as_nat(&r) == fe_as_nat(&self) % p(),
     {
         proof {
             // No overflows

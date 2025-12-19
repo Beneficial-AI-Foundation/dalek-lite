@@ -378,32 +378,30 @@ pub proof fn lemma_seq_eq_implies_array_eq(bytes1: &[u8; 32], bytes2: &[u8; 32])
 /// let fe_decoded = FieldElement51::from_bytes(&bytes);
 /// proof {
 ///     lemma_from_bytes_as_bytes_roundtrip(&fe_orig, &bytes, &fe_decoded);
-///     // Now: fe_value(&fe_decoded) == fe_value(&fe_orig)
+///     // Now: spec_field_element(&fe_decoded) == spec_field_element(&fe_orig)
 /// }
 /// ```
 ///
-/// ## Proof outline (let v = fe_repr(fe_orig)):
-/// 1. as_bytes postcondition: bytes_value(bytes) = v % p
-/// 2. from_bytes postcondition: fe_repr(fe_decoded) = bytes_value(bytes) % pow2(255)
+/// ## Proof outline (let v = fe_as_nat(fe_orig)):
+/// 1. as_bytes postcondition: bytes_as_nat(bytes) = v % p
+/// 2. from_bytes postcondition: fe_as_nat(fe_decoded) = bytes_as_nat(bytes) % pow2(255)
 /// 3. Since v % p < p < pow2(255), by lemma_small_mod: (v % p) % pow2(255) = v % p
-/// 4. By lemma_mod_twice: fe_value(fe_decoded) = (v % p) % p = v % p = fe_value(fe_orig)
+/// 4. By lemma_mod_twice: spec_field_element(fe_decoded) = (v % p) % p = v % p = spec_field_element(fe_orig)
 pub proof fn lemma_from_bytes_as_bytes_roundtrip(
     fe_orig: &FieldElement51,
     bytes: &[u8; 32],
     fe_decoded: &FieldElement51,
 )
     requires
-// as_bytes postcondition: bytes encodes the canonical value of fe_orig
+        as_bytes_post(fe_orig, bytes),  // bytes = as_bytes(fe_orig)
+        from_bytes_post(bytes, fe_decoded),  // fe_decoded = from_bytes(bytes)
 
-        bytes_value(bytes) == fe_repr(fe_orig) % p(),
-        // from_bytes postcondition: fe_decoded decodes bytes (clearing bit 255)
-        fe_repr(fe_decoded) == bytes_value(bytes) % pow2(255),
     ensures
-        fe_value(fe_decoded) == fe_value(fe_orig),
+        spec_field_element(fe_decoded) == spec_field_element(fe_orig),
 {
-    let v = fe_repr(fe_orig);
+    let v = fe_as_nat(fe_orig);
 
-    assert(fe_value(fe_decoded) == fe_value(fe_orig)) by {
+    assert(spec_field_element(fe_decoded) == spec_field_element(fe_orig)) by {
         // Subgoal 1: (v % p) % pow2(255) == v % p
         // The canonical value fits in 255 bits, so from_bytes preserves it
         assert((v % p()) % pow2(255) == v % p()) by {
@@ -432,7 +430,7 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
 /// It only holds when the input bytes represent a canonical value (< p).
 ///
 /// ## Parameters:
-/// - `bytes_orig`: the original bytes (must be canonical: bytes_value < p)
+/// - `bytes_orig`: the original bytes (must be canonical: bytes_as_nat < p)
 /// - `fe`: output of `from_bytes(bytes_orig)`
 /// - `bytes_decoded`: output of `as_bytes(fe)`
 ///
@@ -442,7 +440,7 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
 /// let bytes_decoded = fe.as_bytes();
 /// proof {
 ///     lemma_as_bytes_from_bytes_roundtrip(&bytes_orig, &fe, &bytes_decoded);
-///     // Now: bytes_value(&bytes_decoded) == bytes_value(&bytes_orig)
+///     // Now: bytes_as_nat(&bytes_decoded) == bytes_as_nat(&bytes_orig)
 /// }
 /// ```
 ///
@@ -452,30 +450,27 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
 /// - as_bytes reduces to v % p
 /// So as_bytes(from_bytes(bytes)) would encode (v % p), not v.
 ///
-/// ## Proof outline (let v = bytes_value(bytes_orig)):
+/// ## Proof outline (let v = bytes_as_nat(bytes_orig)):
 /// 1. Since v < p < pow2(255), by lemma_small_mod: v % pow2(255) = v
-/// 2. So from_bytes gives: fe_repr(fe) = v
+/// 2. So from_bytes gives: fe_as_nat(fe) = v
 /// 3. Since v < p, by lemma_small_mod: v % p = v
-/// 4. So as_bytes gives: bytes_value(bytes_decoded) = v
+/// 4. So as_bytes gives: bytes_as_nat(bytes_decoded) = v
 pub proof fn lemma_as_bytes_from_bytes_roundtrip(
     bytes_orig: &[u8; 32],
     fe: &FieldElement51,
     bytes_decoded: &[u8; 32],
 )
     requires
-// bytes_orig is canonical (represents a value < p)
+        bytes_as_nat(bytes_orig) < p(),  // bytes_orig is canonical
+        from_bytes_post(bytes_orig, fe),  // fe = from_bytes(bytes_orig)
+        as_bytes_post(fe, bytes_decoded),  // bytes_decoded = as_bytes(fe)
 
-        bytes_value(bytes_orig) < p(),
-        // from_bytes postcondition: fe decodes bytes_orig (clearing bit 255)
-        fe_repr(fe) == bytes_value(bytes_orig) % pow2(255),
-        // as_bytes postcondition: bytes_decoded encodes the canonical value of fe
-        bytes_value(bytes_decoded) == fe_repr(fe) % p(),
     ensures
-        bytes_value(bytes_decoded) == bytes_value(bytes_orig),
+        bytes_as_nat(bytes_decoded) == bytes_as_nat(bytes_orig),
 {
-    let v = bytes_value(bytes_orig);
+    let v = bytes_as_nat(bytes_orig);
 
-    assert(bytes_value(bytes_decoded) == v) by {
+    assert(bytes_as_nat(bytes_decoded) == v) by {
         // Subgoal 1: v % pow2(255) == v
         // Since v < p < pow2(255), v fits in 255 bits
         assert(v % pow2(255) == v) by {

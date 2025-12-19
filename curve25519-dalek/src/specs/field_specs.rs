@@ -83,22 +83,32 @@ pub open spec fn spec_field_element(fe: &FieldElement51) -> nat {
 /// The numeric value represented by a field element's internal limbs (before mod p).
 /// This is what the limbs encode as a natural number.
 /// Alias for `spec_field_element_as_nat` / `u64_5_as_nat(fe.limbs)`.
-pub open spec fn fe_repr(fe: &FieldElement51) -> nat {
+pub open spec fn fe_as_nat(fe: &FieldElement51) -> nat {
     u64_5_as_nat(fe.limbs)
-}
-
-/// The canonical field element value in [0, p).
-/// This is the abstract mathematical value the field element represents.
-/// Alias for `spec_field_element`.
-pub open spec fn fe_value(fe: &FieldElement51) -> nat {
-    fe_repr(fe) % p()
 }
 
 /// The numeric value represented by a 32-byte array (little-endian).
 /// This is what the bytes encode as a natural number.
 /// Alias for `u8_32_as_nat`.
-pub open spec fn bytes_value(bytes: &[u8; 32]) -> nat {
+/// TODO: Consider making this generic over array size to consolidate u8_32_as_nat, bytes_wide_to_nat, etc.
+pub open spec fn bytes_as_nat(bytes: &[u8; 32]) -> nat {
     u8_32_as_nat(bytes)
+}
+
+// ============================================================================
+// Function postcondition predicates
+// These capture the ensures clauses of as_bytes/from_bytes for use in lemmas
+// ============================================================================
+/// Postcondition of `as_bytes`: bytes is the canonical encoding of fe.
+/// Use this to state that `bytes` is the result of `fe.as_bytes()`.
+pub open spec fn as_bytes_post(fe: &FieldElement51, bytes: &[u8; 32]) -> bool {
+    bytes_as_nat(bytes) == fe_as_nat(fe) % p()
+}
+
+/// Postcondition of `from_bytes`: fe's limbs decode the bytes (clearing bit 255).
+/// Use this to state that `fe` is the result of `FieldElement51::from_bytes(bytes)`.
+pub open spec fn from_bytes_post(bytes: &[u8; 32], fe: &FieldElement51) -> bool {
+    fe_as_nat(fe) == bytes_as_nat(bytes) % pow2(255)
 }
 
 /// Returns the canonical mathematical value when creating a field element from bytes.

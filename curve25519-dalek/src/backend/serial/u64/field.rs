@@ -1006,9 +1006,9 @@ impl FieldElement51 {
     #[rustfmt::skip]  // keep alignment of s[*] calculations
     pub fn as_bytes(self) -> (r: [u8; 32])
         ensures
-    // Canonical encoding: bytes represent fe_repr mod p
+    // Canonical encoding: bytes represent the field element value
 
-            bytes_as_nat(&r) == fe_as_nat(&self) % p(),
+            bytes_as_nat(&r) == spec_field_element(&self),
     {
         proof {
             // No overflows

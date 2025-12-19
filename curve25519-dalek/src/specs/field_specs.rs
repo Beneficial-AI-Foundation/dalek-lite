@@ -102,7 +102,7 @@ pub open spec fn bytes_as_nat(bytes: &[u8; 32]) -> nat {
 /// Postcondition of `as_bytes`: bytes is the canonical encoding of fe.
 /// Use this to state that `bytes` is the result of `fe.as_bytes()`.
 pub open spec fn as_bytes_post(fe: &FieldElement51, bytes: &[u8; 32]) -> bool {
-    bytes_as_nat(bytes) == fe_as_nat(fe) % p()
+    bytes_as_nat(bytes) == spec_field_element(fe)
 }
 
 /// Postcondition of `from_bytes`: fe's limbs decode the bytes (clearing bit 255).

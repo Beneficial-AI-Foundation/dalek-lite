@@ -8,28 +8,31 @@ use vstd::prelude::*;
 
 verus! {
 
-pub open spec fn seq_to_nat(limbs: Seq<nat>) -> nat
+/// Convert a sequence of limbs to nat using 52-bit radix (Horner form).
+/// This is the base recursive function for Scalar52 limb interpretation.
+/// Computes: limbs[0] + limbs[1]*2^52 + limbs[2]*2^104 + ...
+pub open spec fn seq_to_nat_52(limbs: Seq<nat>) -> nat
     decreases limbs.len(),
 {
     if limbs.len() == 0 {
         0
     } else {
-        limbs[0] + seq_to_nat(limbs.subrange(1, limbs.len() as int)) * pow2(52)
+        limbs[0] + seq_to_nat_52(limbs.subrange(1, limbs.len() as int)) * pow2(52)
     }
 }
 
 pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat {
-    seq_to_nat(limbs@.map(|i, x| x as nat))
+    seq_to_nat_52(limbs@.map(|i, x| x as nat))
 }
 
 pub open spec fn seq_u64_to_nat(limbs: Seq<u64>) -> nat {
-    seq_to_nat(limbs.map(|i, x| x as nat))
+    seq_to_nat_52(limbs.map(|i, x| x as nat))
 }
 
 /// Convert radix-2^52 scalar limbs to natural number.
 /// This is the primary spec function for Scalar52 limb interpretation.
 pub open spec fn scalar52_to_nat(limbs: &[u64]) -> nat {
-    seq_to_nat(limbs@.map(|i, x| x as nat))
+    seq_to_nat_52(limbs@.map(|i, x| x as nat))
 }
 
 #[verusfmt::skip]
@@ -60,36 +63,8 @@ pub open spec fn scalar52_mod_order(limbs: &[u64; 5]) -> nat {
     scalar52_to_nat(limbs) % group_order()
 }
 
-/// natural value of a 256 bit bitstring represented as array of 32 bytes
-///
-/// Note: This is now an alias for the shared `u8_32_as_nat` function from core_specs.
-/// Both field and scalar code use the same underlying byte-to-nat conversion.
-pub open spec fn bytes_to_nat(bytes: &[u8; 32]) -> nat {
-    u8_32_as_nat(bytes)
-}
-
-/// Recursive version of bytes_to_nat (now delegating to core_specs)
-pub open spec fn bytes_to_nat_rec(bytes: &[u8; 32], index: int) -> nat
-    decreases 32 - index,
-{
-    u8_32_as_nat_rec(bytes, index as nat)
-}
-
-/// natural value of a 512 bit bitstring represented as array of 64 bytes
-pub open spec fn bytes_wide_to_nat(bytes: &[u8; 64]) -> nat {
-    // Convert bytes to nat in little-endian order using recursive helper
-    bytes_wide_to_nat_rec(bytes, 0)
-}
-
-pub open spec fn bytes_wide_to_nat_rec(bytes: &[u8; 64], index: int) -> nat
-    decreases 64 - index,
-{
-    if index >= 64 {
-        0
-    } else {
-        (bytes[index] as nat) * pow2((index * 8) as nat) + bytes_wide_to_nat_rec(bytes, index + 1)
-    }
-}
+// bytes32_to_nat, bytes_seq_to_nat, and bytes_to_nat_suffix (all generic)
+// are now in core_specs.rs. They are imported via `use super::core_specs::*`
 
 
 // Group order: the value of L as a natural number

@@ -178,7 +178,9 @@ pub proof fn lemma_limb_from_adjacent_words(
     vstd::bits::lemma_u64_shl_is_mul(low_val, high_bits);
 }
 
-pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
+/// Lemma: suffix sum at word boundary equals word contribution + remaining suffix.
+/// Shows how bytes_to_nat_suffix decomposes at word (8-byte) boundaries.
+pub proof fn lemma_bytes_suffix_matches_word_partial(
     bytes: &[u8; 64],
     word_idx: int,
     upto: int,
@@ -187,8 +189,8 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
         0 <= word_idx < 8,
         0 <= upto <= 8,
     ensures
-        bytes_wide_to_nat_rec(bytes, word_idx * 8) == pow2(((word_idx * 8) * 8) as nat)
-            * word_from_bytes_partial(bytes@, word_idx, upto) + bytes_wide_to_nat_rec(
+        bytes_to_nat_suffix(bytes, word_idx * 8) == pow2(((word_idx * 8) * 8) as nat)
+            * word64_from_bytes_partial(bytes@, word_idx, upto) + bytes_to_nat_suffix(
             bytes,
             word_idx * 8 + upto,
         ),
@@ -197,16 +199,16 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
     let base = word_idx * 8;
     let pow_base = pow2((base * 8) as nat);
     if upto == 0 {
-        assert(pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0) == pow_base
-            * word_from_bytes_partial(bytes@, word_idx, 0) + bytes_wide_to_nat_rec(bytes, base + 0));
+        assert(pow_base * 0 + bytes_to_nat_suffix(bytes, base + 0) == pow_base
+            * word64_from_bytes_partial(bytes@, word_idx, 0) + bytes_to_nat_suffix(bytes, base + 0));
     } else {
         let prev = upto - 1;
-        lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, word_idx, prev);
+        lemma_bytes_suffix_matches_word_partial(bytes, word_idx, prev);
         if upto >= 8 {
-            // Inline lemma_word_from_bytes_partial_step_last
-            reveal_with_fuel(word_from_bytes_partial, 9);
+            // Inline lemma_word64_from_bytes_partial_step_last
+            reveal_with_fuel(word64_from_bytes_partial, 9);
         }
-        let partial_prev = word_from_bytes_partial(bytes@, word_idx, prev);
+        let partial_prev = word64_from_bytes_partial(bytes@, word_idx, prev);
         let byte_val = bytes[(base + prev) as int] as nat;
         lemma_pow2_adds(((base * 8) as nat), ((prev * 8) as nat));
 
@@ -220,10 +222,6 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
     }
 }
 
-// NOTE: The following lemmas have been moved to core_lemmas.rs with clearer names:
-// - lemma_words_to_nat_gen_u64_bound_le → lemma_words_to_nat_upper_bound
-// - lemma_words_to_nat_gen_u64_prefix_matches_bytes → lemma_words_to_nat_equals_bytes  
-// - lemma_words_from_bytes_to_nat_wide → lemma_words_from_bytes_to_nat_wide (same name)
 
 pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], mask: u64)
     requires

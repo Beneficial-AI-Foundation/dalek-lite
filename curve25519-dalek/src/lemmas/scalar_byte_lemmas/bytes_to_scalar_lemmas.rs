@@ -55,18 +55,18 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
         0 <= j < 8 && 0 <= i < 4,
         words[i as int] < pow2(j as nat * 8),
         forall|i2: int| i + 1 <= i2 < 4 ==> words[i2] == 0u64,
-        words[i as int] == bytes_seq_to_nat_clear_aux(
+        words[i as int] == bytes_to_nat_prefix(
             Seq::new(8, |j2: int| bytes[i as int * 8 + j2]),
             j as nat,
         ),
         forall|i2: int|
-            0 <= i2 < i ==> ((words[i2] as nat) == bytes_seq_to_nat_clear_aux(
+            0 <= i2 < i ==> ((words[i2] as nat) == bytes_to_nat_prefix(
                 Seq::new(8, |j: int| bytes[i2 * 8 + j]),
                 8,
             )),
     ensures
         (words[i as int] | (bytes[(i * 8) + j] as u64) << (j * 8)) < pow2((j as nat + 1) * 8),
-        (words[i as int] | (bytes[(i * 8) + j] as u64) << (j * 8)) == bytes_seq_to_nat_clear_aux(
+        (words[i as int] | (bytes[(i * 8) + j] as u64) << (j * 8)) == bytes_to_nat_prefix(
             Seq::new(8, |j2: int| bytes[(i as nat) * 8 + j2]),
             (j + 1) as nat,
         ),
@@ -169,28 +169,28 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
         }
     }
 
-    assert(old_word == bytes_seq_to_nat_clear_aux(
+    assert(old_word == bytes_to_nat_prefix(
         Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]),
         j as nat,
     ));
 
-    assert(bytes_seq_to_nat_clear_aux(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat)
-        + pow2((j as nat) * 8) * bytes[(i as int) * 8 + j] == bytes_seq_to_nat_clear_aux(
+    assert(bytes_to_nat_prefix(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat)
+        + pow2((j as nat) * 8) * bytes[(i as int) * 8 + j] == bytes_to_nat_prefix(
         Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]),
         (j + 1) as nat,
     )) by {
-        reveal(bytes_seq_to_nat_clear_aux);
+        reveal(bytes_to_nat_prefix);
     }
 
-    assert(bytes_seq_to_nat_clear_aux(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat)
-        + bytes[(i as int) * 8 + j] * pow2((j as nat) * 8) == bytes_seq_to_nat_clear_aux(
+    assert(bytes_to_nat_prefix(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat)
+        + bytes[(i as int) * 8 + j] * pow2((j as nat) * 8) == bytes_to_nat_prefix(
         Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]),
         (j + 1) as nat,
     )) by {
         lemma_mul_is_commutative(bytes[(i as int) * 8 + j] as int, pow2((j as nat) * 8) as int);
     }
 
-    assert(old_word + new_byte * pow2(j8 as nat) == bytes_seq_to_nat_clear_aux(
+    assert(old_word + new_byte * pow2(j8 as nat) == bytes_to_nat_prefix(
         Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]),
         (j + 1) as nat,
     ));
@@ -198,7 +198,7 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
     assert(old_word + new_byte * pow2(j8 as nat) == old_word + (new_byte << j8)) by {}
 
     assert((words[i as int] | (bytes[(i * 8) + j] as u64) << (j * 8)) < pow2((j as nat + 1) * 8));
-    assert((words[i as int] | (bytes[(i * 8) + j] as u64) << (j * 8)) == bytes_seq_to_nat_clear_aux(
+    assert((words[i as int] | (bytes[(i * 8) + j] as u64) << (j * 8)) == bytes_to_nat_prefix(
         Seq::new(8, |j2: int| bytes[(i as nat) * 8 + j2]),
         (j + 1) as nat,
     ));
@@ -213,7 +213,7 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
 /// # Mathematical relationship
 /// If `words[i]` contains `bytes[i*8..i*8+8]` in little-endian order, then:
 /// ```text
-/// bytes_to_nat(bytes) = words_to_nat_u64(&words, 4, 64)
+/// bytes32_to_nat(bytes) = words_to_nat_u64(&words, 4, 64)
 /// = words[0] + words[1]*2^64 + words[2]*2^128 + words[3]*2^192
 /// ```
 ///
@@ -223,18 +223,18 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
 pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     requires
         forall|i2: int|
-            0 <= i2 < 4 ==> ((words[i2] as nat) == bytes_seq_to_nat_clear_aux(
+            0 <= i2 < 4 ==> ((words[i2] as nat) == bytes_to_nat_prefix(
                 Seq::new(8, |j: int| bytes[i2 * 8 + j]),
                 8,
             )),
     ensures
-        bytes_to_nat(bytes) == words_to_nat_u64(&words, 4, 64),
+        bytes32_to_nat(bytes) == words_to_nat_u64(&words, 4, 64),
 {
     // For each of the 4 words, prove it equals the sum of its 8 bytes with appropriate powers of 2
     assert(words[0] == bytes[0] * pow2(0) + bytes[1] * pow2(8) + bytes[2] * pow2(16) + bytes[3]
         * pow2(24) + bytes[4] * pow2(32) + bytes[5] * pow2(40) + bytes[6] * pow2(48) + bytes[7]
         * pow2(56)) by {
-        reveal_with_fuel(bytes_seq_to_nat_clear_aux, 9);
+        reveal_with_fuel(bytes_to_nat_prefix, 9);
         lemma_mul_commutative_8_terms(
             bytes[0] as int,
             pow2(0) as int,
@@ -271,7 +271,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     assert(words[1] == bytes[8] * pow2(0) + bytes[9] * pow2(8) + bytes[10] * pow2(16) + bytes[11]
         * pow2(24) + bytes[12] * pow2(32) + bytes[13] * pow2(40) + bytes[14] * pow2(48) + bytes[15]
         * pow2(56)) by {
-        reveal_with_fuel(bytes_seq_to_nat_clear_aux, 9);
+        reveal_with_fuel(bytes_to_nat_prefix, 9);
         lemma_mul_commutative_8_terms(
             bytes[8] as int,
             pow2(0) as int,
@@ -308,7 +308,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     assert(words[2] == bytes[16] * pow2(0) + bytes[17] * pow2(8) + bytes[18] * pow2(16) + bytes[19]
         * pow2(24) + bytes[20] * pow2(32) + bytes[21] * pow2(40) + bytes[22] * pow2(48) + bytes[23]
         * pow2(56)) by {
-        reveal_with_fuel(bytes_seq_to_nat_clear_aux, 9);
+        reveal_with_fuel(bytes_to_nat_prefix, 9);
         lemma_mul_commutative_8_terms(
             bytes[16] as int,
             pow2(0) as int,
@@ -345,7 +345,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     assert(words[3] == bytes[24] * pow2(0) + bytes[25] * pow2(8) + bytes[26] * pow2(16) + bytes[27]
         * pow2(24) + bytes[28] * pow2(32) + bytes[29] * pow2(40) + bytes[30] * pow2(48) + bytes[31]
         * pow2(56)) by {
-        reveal_with_fuel(bytes_seq_to_nat_clear_aux, 10);
+        reveal_with_fuel(bytes_to_nat_prefix, 10);
         lemma_mul_commutative_8_terms(
             bytes[24] as int,
             pow2(0) as int,
@@ -379,7 +379,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
         192,
     );
 
-    reveal(bytes_to_nat);
+    reveal(bytes32_to_nat);
     reveal_with_fuel(words_to_nat_gen, 5);
 }
 
@@ -613,7 +613,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
     }
 
     reveal(scalar52_to_nat);
-    reveal_with_fuel(seq_to_nat, 10);
+    reveal_with_fuel(seq_to_nat_52, 10);
     reveal_with_fuel(words_to_nat_gen, 5);
 
     assert(words_to_nat_u64(&words, 4, 64) == words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3]

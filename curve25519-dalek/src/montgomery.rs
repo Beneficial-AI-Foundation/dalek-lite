@@ -75,6 +75,8 @@ use crate::specs::scalar_specs::*;
 use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
 #[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
+#[allow(unused_imports)]
+use crate::specs::core_specs::*;
 
 use crate::traits::Identity;
 

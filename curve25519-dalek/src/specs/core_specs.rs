@@ -112,4 +112,186 @@ pub open spec fn u64_5_as_nat_generic_radix(arr: [u64;5], radix: nat) -> nat {
     ) as nat
 }
 
+// ============================================================================
+// Byte sequence to nat conversion
+// ============================================================================
+
+/// Little-endian natural value of an arbitrary-length byte sequence.
+/// Computes: bytes[0] + bytes[1] * 2^8 + bytes[2] * 2^16 + ...
+pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat
+    decreases bytes.len(),
+{
+    if bytes.len() == 0 {
+        0
+    } else {
+        (bytes[0] as nat) + pow2(8) * bytes_seq_to_nat(bytes.skip(1))
+    }
+}
+
+/// Little-endian natural value of first j bytes of a sequence.
+/// Used for incremental byte-to-word conversion proofs.
+pub open spec fn bytes_seq_to_nat_clear_aux(bytes: Seq<u8>, j: nat) -> nat
+    recommends
+        j <= bytes.len(),
+    decreases j,
+{
+    if j == 0 {
+        0
+    } else {
+        let j1: nat = (j - 1) as nat;
+        bytes_seq_to_nat_clear_aux(bytes, j1) + pow2(((j1) * 8) as nat) * bytes[j1 as int] as nat
+    }
+}
+
+// ============================================================================
+// Word-to-nat conversion (generic over word type)
+// ============================================================================
+
+/// THE fully generic primitive for word-to-nat conversion.
+/// Works with any word type via Seq<nat> - use arr@.map(|i, x| x as nat) to convert.
+///
+/// Computes: sum_{i=0}^{num_words-1} words[i] * 2^(i * bits_per_word)
+pub open spec fn words_to_nat_gen(words: Seq<nat>, num_words: int, bits_per_word: int) -> nat
+    decreases num_words,
+{
+    if num_words <= 0 {
+        0
+    } else {
+        let word_value = words[num_words - 1] * pow2(((num_words - 1) * bits_per_word) as nat);
+        word_value + words_to_nat_gen(words, num_words - 1, bits_per_word)
+    }
+}
+
+/// Convenience wrapper for u64 arrays.
+/// Use this for the common case of &[u64] inputs.
+/// For proofs requiring reveal_with_fuel, use reveal_with_fuel(words_to_nat_gen, n).
+pub open spec fn words_to_nat_u64(words: &[u64], num_words: int, bits_per_word: int) -> nat {
+    words_to_nat_gen(words@.map(|i: int, x: u64| x as nat), num_words, bits_per_word)
+}
+
+// ============================================================================
+// Word extraction from byte sequences (generic over any length)
+// ============================================================================
+//
+// NOTE: These functions are specialized for u8 (bytes) because they implement
+// the common "extract 64-bit words from byte arrays" pattern.
+//
+// For other element types (u16, u32, etc.), use words_to_nat_gen directly:
+//   - u16 array: words_to_nat_gen(arr@.map(|i, x| x as nat), len, 16)
+//   - u32 array: words_to_nat_gen(arr@.map(|i, x| x as nat), len, 32)
+
+/// Extract a 64-bit word (8 bytes) from any byte sequence.
+/// Returns bytes[base..base+8] as little-endian u64 value.
+#[verusfmt::skip]
+pub open spec fn word_from_bytes(bytes: Seq<u8>, word_idx: int) -> nat {
+    let num_words = bytes.len() as int / 8;
+    if !(0 <= word_idx && word_idx < num_words) {
+        0
+    } else {
+        let base = word_idx * 8;
+        (bytes[(base + 0) as int] as nat) * pow2( 0) +
+        (bytes[(base + 1) as int] as nat) * pow2( 8) +
+        (bytes[(base + 2) as int] as nat) * pow2(16) +
+        (bytes[(base + 3) as int] as nat) * pow2(24) +
+        (bytes[(base + 4) as int] as nat) * pow2(32) +
+        (bytes[(base + 5) as int] as nat) * pow2(40) +
+        (bytes[(base + 6) as int] as nat) * pow2(48) +
+        (bytes[(base + 7) as int] as nat) * pow2(56)
+    }
+}
+
+/// Extract partial word (first `upto` bytes of a word).
+/// Used for proofs involving partial word construction.
+pub open spec fn word_from_bytes_partial(bytes: Seq<u8>, word_idx: int, upto: int) -> nat
+    decreases
+            if upto <= 0 {
+                0
+            } else if upto >= 8 {
+                0
+            } else {
+                upto as nat
+            },
+{
+    let num_words = bytes.len() as int / 8;
+    if !(0 <= word_idx && word_idx < num_words) {
+        0
+    } else if upto <= 0 {
+        0
+    } else if upto >= 8 {
+        word_from_bytes(bytes, word_idx)
+    } else {
+        let j = upto - 1;
+        word_from_bytes_partial(bytes, word_idx, j) + (bytes[(word_idx * 8 + j) as int] as nat)
+            * pow2((j * 8) as nat)
+    }
+}
+
+/// Sum of extracted words to nat (first `count` 64-bit words).
+/// Computes: sum_{i=0}^{count-1} word_from_bytes(bytes, i) * 2^(i*64)
+pub open spec fn words_from_bytes_to_nat(bytes: Seq<u8>, count: int) -> nat
+    decreases
+            if count <= 0 {
+                0
+            } else {
+                count as nat
+            },
+{
+    let num_words = bytes.len() as int / 8;
+    if count <= 0 {
+        0
+    } else if count > num_words {
+        words_from_bytes_to_nat(bytes, num_words)
+    } else {
+        let idx = count - 1;
+        words_from_bytes_to_nat(bytes, idx) + word_from_bytes(bytes, idx) * pow2((idx * 64) as nat)
+    }
+}
+
+// ============================================================================
+// Bit array to nat conversion
+// ============================================================================
+
+/// Convert a boolean array (bits in little-endian order) to a natural number.
+/// bits[0] is the least significant bit.
+/// Computes: sum_{i=0}^{255} bits[i] * 2^i
+pub open spec fn bits_to_nat(bits: &[bool; 256]) -> nat {
+    bits_to_nat_rec(bits, 0)
+}
+
+/// Recursive helper for bits_to_nat.
+pub open spec fn bits_to_nat_rec(bits: &[bool; 256], index: int) -> nat
+    decreases 256 - index,
+{
+    if index >= 256 {
+        0
+    } else {
+        let bit_value = if bits[index] {
+            1nat
+        } else {
+            0nat
+        };
+        bit_value * pow2(index as nat) + bits_to_nat_rec(bits, index + 1)
+    }
+}
+
+/// Convert a boolean slice (bits in big-endian order) to a natural number.
+/// bits[0] is the most significant bit.
+/// Used for scalar multiplication where bits are processed MSB first.
+pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
+    recommends
+        0 <= len <= bits.len(),
+    decreases len,
+{
+    if len <= 0 {
+        0
+    } else {
+        let bit_value = if bits[len - 1] {
+            1nat
+        } else {
+            0nat
+        };
+        bit_value + 2 * bits_be_to_nat(bits, len - 1)
+    }
+}
+
 } // verus!

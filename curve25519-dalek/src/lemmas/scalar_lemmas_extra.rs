@@ -188,7 +188,7 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
         0 <= upto <= 8,
     ensures
         bytes_wide_to_nat_rec(bytes, word_idx * 8) == pow2(((word_idx * 8) * 8) as nat)
-            * word_from_bytes_partial(bytes, word_idx, upto) + bytes_wide_to_nat_rec(
+            * word_from_bytes_partial(bytes@, word_idx, upto) + bytes_wide_to_nat_rec(
             bytes,
             word_idx * 8 + upto,
         ),
@@ -198,7 +198,7 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
     let pow_base = pow2((base * 8) as nat);
     if upto == 0 {
         assert(pow_base * 0 + bytes_wide_to_nat_rec(bytes, base + 0) == pow_base
-            * word_from_bytes_partial(bytes, word_idx, 0) + bytes_wide_to_nat_rec(bytes, base + 0));
+            * word_from_bytes_partial(bytes@, word_idx, 0) + bytes_wide_to_nat_rec(bytes, base + 0));
     } else {
         let prev = upto - 1;
         lemma_bytes_wide_to_nat_rec_matches_word_partial(bytes, word_idx, prev);
@@ -206,7 +206,7 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
             // Inline lemma_word_from_bytes_partial_step_last
             reveal_with_fuel(word_from_bytes_partial, 9);
         }
-        let partial_prev = word_from_bytes_partial(bytes, word_idx, prev);
+        let partial_prev = word_from_bytes_partial(bytes@, word_idx, prev);
         let byte_val = bytes[(base + prev) as int] as nat;
         lemma_pow2_adds(((base * 8) as nat), ((prev * 8) as nat));
 
@@ -220,85 +220,10 @@ pub proof fn lemma_bytes_wide_to_nat_rec_matches_word_partial(
     }
 }
 
-pub proof fn lemma_words_to_nat_gen_u64_bound_le(words: &[u64; 8], count: int)
-    requires
-        0 <= count <= 8,
-        forall|k: int| 0 <= k < 8 ==> words[k] < pow2(64),
-    ensures
-        words_to_nat_gen_u64(words, count, 64) <= pow2((count * 64) as nat) - 1,
-    decreases count,
-{
-    reveal_with_fuel(words_to_nat_gen_u64, 9);
-
-    if count == 0 {
-        lemma2_to64();
-    } else {
-        let idx = count - 1;
-        lemma_words_to_nat_gen_u64_bound_le(words, idx);
-        let word_val = words[idx] as nat;
-
-        lemma_mul_upper_bound(
-            word_val as int,
-            (pow2(64) - 1) as int,
-            pow2((idx * 64) as nat) as int,
-            pow2((idx * 64) as nat) as int,
-        );
-
-        assert(words_to_nat_gen_u64(words, count, 64) <= pow2((count * 64) as nat) - 1) by {
-            let pow_prefix = pow2((idx * 64) as nat) as int;
-            let pow64 = pow2(64) as int;
-            let word_i = word_val as int;
-            let prefix_i = words_to_nat_gen_u64(words, idx, 64) as int;
-
-            lemma_pow2_adds((idx * 64) as nat, 64);
-            lemma_mul_is_distributive_sub(pow_prefix, pow64, word_i);
-            lemma_mul_is_distributive_add(pow_prefix, pow64 - 1 - word_i, 1 as int);
-        };
-    }
-}
-
-pub proof fn lemma_words_to_nat_gen_u64_prefix_matches_bytes(
-    words: &[u64; 8],
-    bytes: &[u8; 64],
-    count: int,
-)
-    requires
-        0 <= count <= 8,
-        forall|k: int| #![auto] 0 <= k < 8 ==> words@[k] as nat == word_from_bytes(bytes, k),
-    ensures
-        words_to_nat_gen_u64(words, count, 64) == words_from_bytes_to_nat(bytes, count),
-    decreases count,
-{
-    reveal_with_fuel(words_to_nat_gen_u64, 9);
-    reveal_with_fuel(words_from_bytes_to_nat, 9);
-}
-
-pub proof fn lemma_words_from_bytes_to_nat_wide(bytes: &[u8; 64])
-    ensures
-        words_from_bytes_to_nat(bytes, 8) == word_from_bytes(bytes, 0) + pow2(64) * word_from_bytes(
-            bytes,
-            1,
-        ) + pow2(128) * word_from_bytes(bytes, 2) + pow2(192) * word_from_bytes(bytes, 3) + pow2(
-            256,
-        ) * word_from_bytes(bytes, 4) + pow2(320) * word_from_bytes(bytes, 5) + pow2(384)
-            * word_from_bytes(bytes, 6) + pow2(448) * word_from_bytes(bytes, 7),
-{
-    reveal_with_fuel(words_from_bytes_to_nat, 9);
-    lemma2_to64();
-    assert(words_from_bytes_to_nat(bytes, 1) == words_from_bytes_to_nat(bytes, 0) + word_from_bytes(
-        bytes,
-        0,
-    ) * pow2((0 * 64) as nat));
-    // Reorder multiplications using commutativity
-    assert(words_from_bytes_to_nat(bytes, 8) == word_from_bytes(bytes, 0) + pow2(64)
-        * word_from_bytes(bytes, 1) + pow2(128) * word_from_bytes(bytes, 2) + pow2(192)
-        * word_from_bytes(bytes, 3) + pow2(256) * word_from_bytes(bytes, 4) + pow2(320)
-        * word_from_bytes(bytes, 5) + pow2(384) * word_from_bytes(bytes, 6) + pow2(448)
-        * word_from_bytes(bytes, 7)) by {
-        broadcast use lemma_mul_is_commutative;
-
-    };
-}
+// NOTE: The following lemmas have been moved to core_lemmas.rs with clearer names:
+// - lemma_words_to_nat_gen_u64_bound_le → lemma_words_to_nat_upper_bound
+// - lemma_words_to_nat_gen_u64_prefix_matches_bytes → lemma_words_to_nat_equals_bytes  
+// - lemma_words_from_bytes_to_nat_wide → lemma_words_from_bytes_to_nat_wide (same name)
 
 pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], mask: u64)
     requires

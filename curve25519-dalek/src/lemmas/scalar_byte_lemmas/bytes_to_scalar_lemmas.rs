@@ -213,7 +213,7 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
 /// # Mathematical relationship
 /// If `words[i]` contains `bytes[i*8..i*8+8]` in little-endian order, then:
 /// ```text
-/// bytes_to_nat(bytes) = words_to_nat(words)
+/// bytes_to_nat(bytes) = words_to_nat_u64(&words, 4, 64)
 /// = words[0] + words[1]*2^64 + words[2]*2^128 + words[3]*2^192
 /// ```
 ///
@@ -228,7 +228,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
                 8,
             )),
     ensures
-        bytes_to_nat(bytes) == words_to_nat(&words),
+        bytes_to_nat(bytes) == words_to_nat_u64(&words, 4, 64),
 {
     // For each of the 4 words, prove it equals the sum of its 8 bytes with appropriate powers of 2
     assert(words[0] == bytes[0] * pow2(0) + bytes[1] * pow2(8) + bytes[2] * pow2(16) + bytes[3]
@@ -380,8 +380,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     );
 
     reveal(bytes_to_nat);
-    reveal(words_to_nat);
-    reveal_with_fuel(words_to_nat_gen_u64, 5);
+    reveal_with_fuel(words_to_nat_gen, 5);
 }
 
 /// Proves that 5 Scalar52 limbs correctly represent 4 u64 words
@@ -416,7 +415,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
         s.limbs[3] == ((words[2] >> 28) | (words[3] << 36)) & mask,
         s.limbs[4] == (words[3] >> 16) & top_mask,
     ensures
-        words_to_nat(&words) == to_nat(&s.limbs),
+        words_to_nat_u64(&words, 4, 64) == scalar52_to_nat(&s.limbs),
         limbs_bounded(&s),
 {
     // Bit-vector proofs that masks work correctly
@@ -613,12 +612,11 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
         lemma_u64_shr_is_div(words3, 16);
     }
 
-    reveal(to_nat);
+    reveal(scalar52_to_nat);
     reveal_with_fuel(seq_to_nat, 10);
-    reveal(words_to_nat);
-    reveal_with_fuel(words_to_nat_gen_u64, 5);
+    reveal_with_fuel(words_to_nat_gen, 5);
 
-    assert(words_to_nat(&words) == words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3]
+    assert(words_to_nat_u64(&words, 4, 64) == words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3]
         * pow2(192)) by {
         assert(pow2(0) == 1) by {
             lemma_pow2(0);
@@ -629,7 +627,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
 
     calc! {
         (==)
-        words_to_nat(&words); (==) {}
+        words_to_nat_u64(&words, 4, 64); (==) {}
         (words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3] * pow2(
             192,
         )) as nat; (==) {}
@@ -672,7 +670,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
 
     calc! {
         (==)
-        to_nat(&s.limbs) as int; (==) {}
+        scalar52_to_nat(&s.limbs) as int; (==) {}
         // Start expression
         a + (b + (c + (d + e * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(
             52,

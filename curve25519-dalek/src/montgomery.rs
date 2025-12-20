@@ -294,7 +294,7 @@ impl MontgomeryPoint {
             ({
                 let P = canonical_montgomery_lift(spec_montgomery_point(self));
                 let clamped_bytes = spec_clamp_integer(bytes);
-                let n = bytes_to_nat(&clamped_bytes);
+                let n = bytes32_to_nat(&clamped_bytes);
                 let R = montgomery_scalar_mul(P, n);
                 spec_montgomery_point(result) == spec_u_coordinate(R)
             }),
@@ -313,7 +313,7 @@ impl MontgomeryPoint {
             assume({
                 let P = canonical_montgomery_lift(spec_montgomery_point(self));
                 let clamped_bytes = spec_clamp_integer(bytes);
-                let n = bytes_to_nat(&clamped_bytes);
+                let n = bytes32_to_nat(&clamped_bytes);
                 let R = montgomery_scalar_mul(P, n);
                 spec_montgomery_point(result) == spec_u_coordinate(R)
             });

@@ -4,9 +4,9 @@ use crate::specs::scalar_specs_u64::group_order;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs_u64::limbs_bounded;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs_u64::spec_mul_internal;
-#[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs_u64::scalar52_to_nat;
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs_u64::spec_mul_internal;
 use vstd::prelude::*;
 
 verus! {

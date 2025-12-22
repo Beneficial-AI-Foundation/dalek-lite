@@ -27,11 +27,11 @@ use crate::constants;
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::bit_lemmas::*;
 #[allow(unused_imports)]
-use crate::lemmas::common_lemmas::to_nat_lemmas::*;
-#[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::shift_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::load8_lemmas::*;
 #[allow(unused_imports)]
@@ -58,10 +58,16 @@ use vstd::arithmetic::power2::*;
 use vstd::calc;
 use vstd::prelude::*;
 
+#[cfg(verus_keep_ghost)]
+use crate::lemmas::common_lemmas::to_nat_lemmas::lemma_bytes32_to_nat_equals_suffix_64;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas_extra::*;
 #[cfg(verus_keep_ghost)]
+use crate::specs::core_specs::bytes32_to_nat;
+#[cfg(verus_keep_ghost)]
 use crate::specs::core_specs::bytes_seq_to_nat;
+#[cfg(verus_keep_ghost)]
+use crate::specs::core_specs::bytes_to_nat_prefix;
 #[cfg(verus_keep_ghost)]
 use crate::specs::core_specs::bytes_to_nat_suffix;
 #[cfg(verus_keep_ghost)]
@@ -70,12 +76,6 @@ use crate::specs::core_specs::spec_load8_at;
 use crate::specs::core_specs::word64_from_bytes;
 #[cfg(verus_keep_ghost)]
 use crate::specs::core_specs::words64_from_bytes_to_nat;
-#[cfg(verus_keep_ghost)]
-use crate::specs::core_specs::bytes_to_nat_prefix;
-#[cfg(verus_keep_ghost)]
-use crate::specs::core_specs::bytes32_to_nat;
-#[cfg(verus_keep_ghost)]
-use crate::lemmas::common_lemmas::to_nat_lemmas::lemma_bytes32_to_nat_equals_suffix_64;
 
 verus! {
 
@@ -262,8 +262,10 @@ impl Scalar52 {
             proof {
                 let i_int = i as int;
                 // spec_load8_at uses pow2(k*8) * byte, word64_from_bytes uses byte * pow2(k*8)
-                assert(spec_load8_at(bytes, (i_int * 8) as usize) == word64_from_bytes(bytes@, i_int))
-                    by {
+                assert(spec_load8_at(bytes, (i_int * 8) as usize) == word64_from_bytes(
+                    bytes@,
+                    i_int,
+                )) by {
                     broadcast use lemma_mul_is_commutative;
 
                 };
@@ -272,8 +274,7 @@ impl Scalar52 {
                 };
                 reveal_with_fuel(words64_from_bytes_to_nat, 9);
                 assert(bytes_to_nat_suffix(bytes, i_int * 8) == word64_from_bytes(bytes@, i_int)
-                    * pow2((i_int * 64) as nat) + bytes_to_nat_suffix(bytes, (i_int + 1) * 8))
-                    by {
+                    * pow2((i_int * 64) as nat) + bytes_to_nat_suffix(bytes, (i_int + 1) * 8)) by {
                     lemma_bytes_suffix_matches_word_partial(bytes, i_int, 8);
                     broadcast use lemma_mul_is_commutative;
 
@@ -452,7 +453,11 @@ impl Scalar52 {
                 wide_input,
             );
 
-            lemma_cancel_mul_pow2_mod(scalar52_to_nat(&result.limbs), wide_input, montgomery_radix());
+            lemma_cancel_mul_pow2_mod(
+                scalar52_to_nat(&result.limbs),
+                wide_input,
+                montgomery_radix(),
+            );
         }
 
         result
@@ -520,7 +525,8 @@ impl Scalar52 {
             scalar52_to_nat(&a.limbs) < group_order(),
             scalar52_to_nat(&b.limbs) < group_order(),
         ensures
-            scalar52_to_nat(&s.limbs) == (scalar52_to_nat(&a.limbs) + scalar52_to_nat(&b.limbs)) % group_order(),
+            scalar52_to_nat(&s.limbs) == (scalar52_to_nat(&a.limbs) + scalar52_to_nat(&b.limbs))
+                % group_order(),
             // VERIFICATION NOTE: Result is canonical
             scalar52_to_nat(&s.limbs) < group_order(),
             // VERIFICATION NOTE: Result has bounded limbs (from sub)
@@ -595,7 +601,10 @@ impl Scalar52 {
             lemma_l_equals_group_order();
         }
         proof {
-            lemma_mod_sub_multiples_vanish(scalar52_to_nat(&sum.limbs) as int, group_order() as int);
+            lemma_mod_sub_multiples_vanish(
+                scalar52_to_nat(&sum.limbs) as int,
+                group_order() as int,
+            );
         }
         Scalar52::sub(&sum, &constants::L)
     }
@@ -608,7 +617,8 @@ impl Scalar52 {
             limbs_bounded(b),
             -group_order() <= scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) < group_order(),
         ensures
-            scalar52_to_nat(&s.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (group_order() as int),
+            scalar52_to_nat(&s.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (
+            group_order() as int),
     {
         assume(false);  // TODO: complete the proof
         let mut difference = Scalar52::ZERO;
@@ -636,16 +646,15 @@ impl Scalar52 {
         ensures
     // The mathematical value modulo group_order doesn't change (since L = group_order)
 
-            scalar52_to_nat(&self.limbs) % group_order() == scalar52_to_nat(&old(self).limbs) % group_order(),
+            scalar52_to_nat(&self.limbs) % group_order() == scalar52_to_nat(&old(self).limbs)
+                % group_order(),
             // VERIFICATION NOTE: expression below unsupported by Verus
             //limbs_bounded(&self),
             // Meaning of conditional addition
-            super::subtle_assumes::choice_is_true(condition) ==> scalar52_to_nat(&self.limbs) == scalar52_to_nat(
-                &old(self).limbs,
-            ) + group_order(),
-            !super::subtle_assumes::choice_is_true(condition) ==> scalar52_to_nat(&self.limbs) == scalar52_to_nat(
-                &old(self).limbs,
-            ),
+            super::subtle_assumes::choice_is_true(condition) ==> scalar52_to_nat(&self.limbs)
+                == scalar52_to_nat(&old(self).limbs) + group_order(),
+            !super::subtle_assumes::choice_is_true(condition) ==> scalar52_to_nat(&self.limbs)
+                == scalar52_to_nat(&old(self).limbs),
     {
         let mut carry: u64 = 0;
 
@@ -690,12 +699,14 @@ impl Scalar52 {
 
         proof {
             // TODO: Prove the postconditions
-            assume(scalar52_to_nat(&self.limbs) % group_order() == scalar52_to_nat(&old(self).limbs) % group_order());
+            assume(scalar52_to_nat(&self.limbs) % group_order() == scalar52_to_nat(&old(self).limbs)
+                % group_order());
             //   assume(limbs_bounded(&self));
             assume(super::subtle_assumes::choice_is_true(condition) ==> scalar52_to_nat(&self.limbs)
                 == scalar52_to_nat(&old(self).limbs) + group_order());
-            assume(!super::subtle_assumes::choice_is_true(condition) ==> scalar52_to_nat(&self.limbs)
-                == scalar52_to_nat(&old(self).limbs));
+            assume(!super::subtle_assumes::choice_is_true(condition) ==> scalar52_to_nat(
+                &self.limbs,
+            ) == scalar52_to_nat(&old(self).limbs));
         }
 
         carry
@@ -712,7 +723,8 @@ impl Scalar52 {
             // In the 2nd case, `sub` doesn't always do subtraction mod group_order
             -group_order() <= scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) < group_order(),
         ensures
-            scalar52_to_nat(&s.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (group_order() as int),
+            scalar52_to_nat(&s.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (
+            group_order() as int),
             limbs_bounded(&s),
             // VERIFICATION NOTE: Result is in canonical form
             scalar52_to_nat(&s.limbs) < group_order(),
@@ -970,13 +982,15 @@ impl Scalar52 {
                 limbs_bounded(bounded1) && limbs_bounded(bounded2) && spec_mul_internal(
                     bounded1,
                     bounded2,
-                ) == limbs) ==> ((scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order()
-                == slice128_to_nat(limbs) % group_order() && limbs_bounded(&result)),
+                ) == limbs) ==> ((scalar52_to_nat(&result.limbs) * montgomery_radix())
+                % group_order() == slice128_to_nat(limbs) % group_order() && limbs_bounded(
+                &result,
+            )),
             (exists|bounded: &Scalar52, canonical: &Scalar52|
-                limbs_bounded(bounded) && limbs_bounded(canonical) && scalar52_to_nat(&canonical.limbs)
-                    < group_order() && spec_mul_internal(bounded, canonical) == limbs) ==> scalar52_to_nat(
-                &result.limbs,
-            ) < group_order(),
+                limbs_bounded(bounded) && limbs_bounded(canonical) && scalar52_to_nat(
+                    &canonical.limbs,
+                ) < group_order() && spec_mul_internal(bounded, canonical) == limbs)
+                ==> scalar52_to_nat(&result.limbs) < group_order(),
     {
         assume(false);  // TODO: Add proofs
 
@@ -1070,8 +1084,8 @@ impl Scalar52 {
             limbs_bounded(a),
             limbs_bounded(b),
         ensures
-            scalar52_to_nat(&result.limbs) % group_order() == (scalar52_to_nat(&a.limbs) * scalar52_to_nat(&b.limbs))
-                % group_order(),
+            scalar52_to_nat(&result.limbs) % group_order() == (scalar52_to_nat(&a.limbs)
+                * scalar52_to_nat(&b.limbs)) % group_order(),
             // VER NOTE: Result has bounded limbs from montgomery_reduce
             limbs_bounded(&result),
             // VER NOTE: Result is canonical from montgomery_reduce
@@ -1084,15 +1098,15 @@ impl Scalar52 {
         // First montgomery_reduce: ab*R ≡ a*b (mod L)
         let ab = Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b));
 
-        assert((scalar52_to_nat(&ab.limbs) * montgomery_radix()) % group_order() == (scalar52_to_nat(&a.limbs)
-            * scalar52_to_nat(&b.limbs)) % group_order());
+        assert((scalar52_to_nat(&ab.limbs) * montgomery_radix()) % group_order() == (
+        scalar52_to_nat(&a.limbs) * scalar52_to_nat(&b.limbs)) % group_order());
 
         // Second montgomery_reduce: result*R ≡ ab*RR (mod L)
         // Since RR < group_order, this triggers the stronger postcondition
         let result = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&ab, &constants::RR));
 
-        assert((scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (scalar52_to_nat(&ab.limbs)
-            * scalar52_to_nat(&constants::RR.limbs)) % group_order());
+        assert((scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (
+        scalar52_to_nat(&ab.limbs) * scalar52_to_nat(&constants::RR.limbs)) % group_order());
 
         proof {
             // 1. Prove RR ≡ R² (mod L)
@@ -1120,7 +1134,9 @@ impl Scalar52 {
         requires
             limbs_bounded(self),
         ensures
-            scalar52_to_nat(&result.limbs) == (scalar52_to_nat(&self.limbs) * scalar52_to_nat(&self.limbs)) % group_order(),
+            scalar52_to_nat(&result.limbs) == (scalar52_to_nat(&self.limbs) * scalar52_to_nat(
+                &self.limbs,
+            )) % group_order(),
     {
         proof {
             lemma_rr_limbs_bounded();
@@ -1130,8 +1146,8 @@ impl Scalar52 {
         // montgomery_reduce spec
         let aa = Scalar52::montgomery_reduce(&Scalar52::square_internal(self));
 
-        assert((scalar52_to_nat(&aa.limbs) * montgomery_radix()) % group_order() == (scalar52_to_nat(&self.limbs)
-            * scalar52_to_nat(&self.limbs)) % group_order());
+        assert((scalar52_to_nat(&aa.limbs) * montgomery_radix()) % group_order() == (
+        scalar52_to_nat(&self.limbs) * scalar52_to_nat(&self.limbs)) % group_order());
 
         // square_internal ensures
         // ensures
@@ -1141,8 +1157,8 @@ impl Scalar52 {
         // montgomery_reduce spec, which is what this function's postcondition wants
         let result = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR));
 
-        assert((scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (scalar52_to_nat(&aa.limbs)
-            * scalar52_to_nat(&constants::RR.limbs)) % group_order());
+        assert((scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (
+        scalar52_to_nat(&aa.limbs) * scalar52_to_nat(&constants::RR.limbs)) % group_order());
 
         proof {
             // 1. prove (scalar52_to_nat(&constants::RR.limbs) % group_order() == (montgomery_radix()*montgomery_radix()) % group_order()
@@ -1160,8 +1176,8 @@ impl Scalar52 {
             lemma_small_mod((scalar52_to_nat(&result.limbs)), group_order())
         }
 
-        assert((scalar52_to_nat(&result.limbs)) % group_order() == (scalar52_to_nat(&aa.limbs) * montgomery_radix())
-            % group_order());
+        assert((scalar52_to_nat(&result.limbs)) % group_order() == (scalar52_to_nat(&aa.limbs)
+            * montgomery_radix()) % group_order());
 
         result
     }
@@ -1174,8 +1190,8 @@ impl Scalar52 {
             limbs_bounded(b),
         ensures
             limbs_bounded(&result),
-            (scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (scalar52_to_nat(&a.limbs)
-                * scalar52_to_nat(&b.limbs)) % group_order(),
+            (scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (
+            scalar52_to_nat(&a.limbs) * scalar52_to_nat(&b.limbs)) % group_order(),
     {
         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))
     }
@@ -1187,8 +1203,8 @@ impl Scalar52 {
             limbs_bounded(self),
         ensures
             limbs_bounded(&result),
-            (scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (scalar52_to_nat(&self.limbs)
-                * scalar52_to_nat(&self.limbs)) % group_order(),
+            (scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == (
+            scalar52_to_nat(&self.limbs) * scalar52_to_nat(&self.limbs)) % group_order(),
     {
         Scalar52::montgomery_reduce(&Scalar52::square_internal(self))
     }
@@ -1200,8 +1216,8 @@ impl Scalar52 {
             limbs_bounded(self),
         ensures
             limbs_bounded(&result),
-            #[trigger] (scalar52_to_nat(&result.limbs) % group_order()) == #[trigger] ((scalar52_to_nat(&self.limbs)
-                * montgomery_radix()) % group_order()),
+            #[trigger] (scalar52_to_nat(&result.limbs) % group_order()) == #[trigger] ((
+            scalar52_to_nat(&self.limbs) * montgomery_radix()) % group_order()),
     {
         proof {
             lemma_rr_limbs_bounded();
@@ -1233,8 +1249,8 @@ impl Scalar52 {
             limbs_bounded(self),
         ensures
             limbs_bounded(&result),
-            (scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order() == scalar52_to_nat(&self.limbs)
-                % group_order(),
+            (scalar52_to_nat(&result.limbs) * montgomery_radix()) % group_order()
+                == scalar52_to_nat(&self.limbs) % group_order(),
             // Result is canonical (< group_order). This follows from montgomery_reduce's postcondition
             scalar52_to_nat(&result.limbs) < group_order(),
     {

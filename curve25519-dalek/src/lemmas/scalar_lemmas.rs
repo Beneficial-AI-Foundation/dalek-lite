@@ -679,9 +679,9 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
 /// Using lemma_mod_add_multiples_vanish in a big proof made the proof hang
 pub proof fn lemma_mod_cancel(a: &Scalar52, b: &Scalar52)
     ensures
-        (group_order() + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (group_order() as int) == (scalar52_to_nat(
-            &a.limbs,
-        ) - scalar52_to_nat(&b.limbs)) % (group_order() as int),
+        (group_order() + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (
+        group_order() as int) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (
+        group_order() as int),
 {
     lemma_mod_add_multiples_vanish(
         (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) as int,
@@ -1116,11 +1116,14 @@ pub(crate) proof fn lemma_sub_correct_after_loops(
         ) == seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) - (borrow >> 63)
             * pow2((52 * (5) as nat)),
     ensures
-        scalar52_to_nat(&difference.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (group_order() as int),
+        scalar52_to_nat(&difference.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(
+            &b.limbs,
+        )) % (group_order() as int),
 {
     assert(borrow >> 63 == 1 || borrow >> 63 == 0) by (bit_vector);
-    assert(seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&difference.limbs))
-        by {
+    assert(seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(
+        &difference.limbs,
+    )) by {
         assert(seq_u64_to_nat(difference.limbs@) == scalar52_to_nat(&difference.limbs));
         assert(difference.limbs@ == difference.limbs@.subrange(0, 5 as int));
     }
@@ -1141,12 +1144,18 @@ pub(crate) proof fn lemma_sub_correct_after_loops(
         assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
             b.limbs@.subrange(0, 5 as int),
         ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)));
-        assert(scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) == scalar52_to_nat(&difference.limbs));
+        assert(scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) == scalar52_to_nat(
+            &difference.limbs,
+        ));
         assert(scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) >= 0);
         assert(scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) < group_order());
-        lemma_small_mod((scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) as nat, group_order());
-        assert(scalar52_to_nat(&difference.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (
-        group_order() as int));
+        lemma_small_mod(
+            (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) as nat,
+            group_order(),
+        );
+        assert(scalar52_to_nat(&difference.limbs) == (scalar52_to_nat(&a.limbs) - scalar52_to_nat(
+            &b.limbs,
+        )) % (group_order() as int));
     }
     if borrow >> 63 == 1 {
         assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) + seq_u64_to_nat(
@@ -1215,8 +1224,8 @@ pub(crate) proof fn lemma_sub_correct_after_loops(
             (==)
             scalar52_to_nat(&difference.limbs) as int; {}
             group_order() as int + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs); {
-                assert(group_order() as int + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) < group_order())
-                    by {
+                assert(group_order() as int + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)
+                    < group_order()) by {
                     assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int))
                         == scalar52_to_nat(&difference_after_loop1.limbs)) by {
                         assert(seq_u64_to_nat(difference_after_loop1.limbs@) == scalar52_to_nat(
@@ -1231,11 +1240,14 @@ pub(crate) proof fn lemma_sub_correct_after_loops(
                     lemma_bound_scalar(&difference_after_loop1);
                 };
                 lemma_small_mod(
-                    (group_order() as int + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) as nat,
+                    (group_order() as int + scalar52_to_nat(&a.limbs) - scalar52_to_nat(
+                        &b.limbs,
+                    )) as nat,
                     group_order(),
                 );
             }
-            (group_order() as int + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (group_order() as int); {
+            (group_order() as int + scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (
+            group_order() as int); {
                 lemma_mod_cancel(a, b);
             }
             (scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs)) % (group_order() as int);
@@ -1544,16 +1556,14 @@ pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, 
         assert(seq_u64_to_nat(sum.limbs@) == scalar52_to_nat(&sum.limbs));
     }
 
-    assert(scalar52_to_nat(&a.limbs) + scalar52_to_nat(&b.limbs) == scalar52_to_nat(&sum.limbs) + (carry >> 52) * pow2(
-        (52 * (5) as nat),
-    ));
+    assert(scalar52_to_nat(&a.limbs) + scalar52_to_nat(&b.limbs) == scalar52_to_nat(&sum.limbs) + (
+    carry >> 52) * pow2((52 * (5) as nat)));
 
     // From the loop invariant, we have: a + b == sum + (carry >> 52) * 2^260
     assert(52 * 5 == 260) by (compute);
     assert(pow2((52 * 5) as nat) == pow2(260));
-    assert(scalar52_to_nat(&a.limbs) + scalar52_to_nat(&b.limbs) == scalar52_to_nat(&sum.limbs) + (carry >> 52) as nat * pow2(
-        260,
-    ));
+    assert(scalar52_to_nat(&a.limbs) + scalar52_to_nat(&b.limbs) == scalar52_to_nat(&sum.limbs) + (
+    carry >> 52) as nat * pow2(260));
 
     // Since a < group_order() and b < group_order(), we have a + b < 2 * group_order()
     // This is just basic arithmetic: if x < A and y < A, then x + y < A + A = 2*A
@@ -1578,12 +1588,13 @@ pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, 
     lemma_pow2_pos(260);
     assert(pow2(260) > 0);
     assert((carry >> 52) as nat * pow2(260) >= 0);
-    assert(scalar52_to_nat(&sum.limbs) <= scalar52_to_nat(&sum.limbs) + (carry >> 52) as nat * pow2(260));
+    assert(scalar52_to_nat(&sum.limbs) <= scalar52_to_nat(&sum.limbs) + (carry >> 52) as nat * pow2(
+        260,
+    ));
     assert(scalar52_to_nat(&sum.limbs) < 2 * group_order());
 }
 
 // NOTE: lemma_bytes32_to_nat_lower_bound has been moved to common_lemmas/to_nat_lemmas.rs
-
 /// Proof that the group order is less than 2^255
 pub proof fn lemma_group_order_bound()
     ensures
@@ -1894,7 +1905,8 @@ pub proof fn lemma_is_canonical_correctness(self_bytes: &[u8; 32], reduced_bytes
         // Step 4: By contradiction - if self_bytes < group_order, it would equal itself mod group_order
         assert(!(bytes32_to_nat(self_bytes) < group_order())) by {
             if bytes32_to_nat(self_bytes) < group_order() {
-                assert(bytes32_to_nat(self_bytes) % group_order() == bytes32_to_nat(self_bytes)) by {
+                assert(bytes32_to_nat(self_bytes) % group_order() == bytes32_to_nat(self_bytes))
+                    by {
                     lemma_small_mod(bytes32_to_nat(self_bytes), group_order());
                 }
             }

@@ -85,7 +85,6 @@ fn get_selected_backend() -> (result: BackendKind)
 }
 
 } // verus!
-
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
 pub fn pippenger_optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
@@ -110,7 +109,6 @@ where
         }
     }
 }
-
 
 #[cfg(feature = "alloc")]
 pub(crate) enum VartimePrecomputedStraus {

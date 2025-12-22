@@ -16,9 +16,7 @@ use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::cmp::Ordering;
 
-use crate::backend::serial::curve_models::{
-    CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
-};
+use crate::backend::serial::curve_models::{CompletedPoint, ProjectiveNielsPoint, ProjectivePoint};
 use crate::edwards::EdwardsPoint;
 use crate::scalar::Scalar;
 use crate::traits::Identity;
@@ -110,16 +108,16 @@ impl MultiscalarMul for Straus {
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
-    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-    requires
-        scalars.len() == points.len(),
-        forall|i| is_well_formed_edwards_point(points[i]),
-    ensures
-        is_well_formed_edwards_point(result),
-        edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
-    
-    VERIFICATION NOTE: see `Straus::multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
-    */
+        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+        requires
+            scalars.len() == points.len(),
+            forall|i| is_well_formed_edwards_point(points[i]),
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
+
+        VERIFICATION NOTE: see `Straus::multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
+        */
     {
         let lookup_tables: Vec<_> = points
             .into_iter()
@@ -171,17 +169,17 @@ impl VartimeMultiscalarMul for Straus {
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
-    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-    requires
-        scalars.len() == points.len(),
-        forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
-    ensures
-        result.is_some() <==> all_points_some(points),
-        result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-        result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
-    
-    VERIFICATION NOTE: see `optional_multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
-    */
+        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+        requires
+            scalars.len() == points.len(),
+            forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
+        ensures
+            result.is_some() <==> all_points_some(points),
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
+
+        VERIFICATION NOTE: see `optional_multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
+        */
     {
         let nafs: Vec<_> = scalars
             .into_iter()
@@ -227,13 +225,13 @@ use crate::specs::edwards_specs::*;
 // Import spec functions from scalar_mul_specs (ghost only)
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_mul_specs::{
-    spec_scalars_from_iter, spec_optional_points_from_iter, spec_points_from_iter,
-    all_points_some, unwrap_points,
+    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
+    unwrap_points,
 };
 
 // Import runtime helpers from scalar_mul_specs
 use crate::specs::scalar_mul_specs::{
-    collect_scalars_from_iter, collect_optional_points_from_iter, collect_points_from_iter,
+    collect_optional_points_from_iter, collect_points_from_iter, collect_scalars_from_iter,
 };
 
 verus! {
@@ -244,89 +242,96 @@ supported by Verus. This version uses explicit loops and concrete types.
 The function signature uses Iterator (not IntoIterator) similar to Sum::sum.
 PROOF BYPASS: Complex loop invariants not yet verified; uses assume(false).
 </VERIFICATION NOTE> */
-
 impl Straus {
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
-    pub fn optional_multiscalar_mul_verus<S, I, J>(
-    scalars: I,
-    points: J,
-) -> (result: Option<EdwardsPoint>)
-where
-    S: Borrow<Scalar>,
-    I: Iterator<Item = S>,
-    J: Iterator<Item = Option<EdwardsPoint>>,
-    requires
-        // Same number of scalars and points
-        spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(points).len(),
-        // All input points (when Some) must be well-formed
-        forall|i: int| 0 <= i < spec_optional_points_from_iter::<J>(points).len()
-            && (#[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
-            ==> is_well_formed_edwards_point(spec_optional_points_from_iter::<J>(points)[i].unwrap()),
-    ensures
-        // Result is Some if and only if all input points are Some
-        result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
-        // If result is Some, it is a well-formed Edwards point
-        result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-        // Semantic correctness: result = sum(scalars[i] * points[i])
-        result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
-            spec_scalars_from_iter::<S, I>(scalars),
-            unwrap_points(spec_optional_points_from_iter::<J>(points)),
-        ),
-{
-    // Capture ghost spec values before consuming iterators
-    let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
-    let ghost spec_points = spec_optional_points_from_iter::<J>(points);
+    pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
+        EdwardsPoint,
+    >) where S: Borrow<Scalar>, I: Iterator<Item = S>, J: Iterator<Item = Option<EdwardsPoint>>
+        requires
+    // Same number of scalars and points
 
-    // Collect scalars and points (via external_body helpers from pippenger)
-    let scalars_vec = collect_scalars_from_iter(scalars);
-    let points_vec = collect_optional_points_from_iter(points);
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(
+                points,
+            ).len(),
+            // All input points (when Some) must be well-formed
+            forall|i: int|
+                0 <= i < spec_optional_points_from_iter::<J>(points).len() && (
+                #[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
+                    ==> is_well_formed_edwards_point(
+                    spec_optional_points_from_iter::<J>(points)[i].unwrap(),
+                ),
+        ensures
+    // Result is Some if and only if all input points are Some
 
-    /* <ORIGINAL CODE>
+            result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
+            // If result is Some, it is a well-formed Edwards point
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            // Semantic correctness: result = sum(scalars[i] * points[i])
+            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
+                spec_scalars_from_iter::<S, I>(scalars),
+                unwrap_points(spec_optional_points_from_iter::<J>(points)),
+            ),
+    {
+        // Capture ghost spec values before consuming iterators
+        let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
+        let ghost spec_points = spec_optional_points_from_iter::<J>(points);
+
+        // Collect scalars and points (via external_body helpers from pippenger)
+        let scalars_vec = collect_scalars_from_iter(scalars);
+        let points_vec = collect_optional_points_from_iter(points);
+
+        /* <ORIGINAL CODE>
     let nafs: Vec<_> = scalars
         .into_iter()
         .map(|c| c.borrow().non_adjacent_form(5))
         .collect();
     </ORIGINAL CODE> */
-    let mut nafs: Vec<[i8; 256]> = Vec::new();
-    let mut idx: usize = 0;
-    while idx < scalars_vec.len()
-        decreases scalars_vec.len() - idx,
-    {
-        proof { assume(false); } // PROOF BYPASS
-        nafs.push(scalars_vec[idx].non_adjacent_form(5));
-        idx = idx + 1;
-    }
+        let mut nafs: Vec<[i8; 256]> = Vec::new();
+        let mut idx: usize = 0;
+        while idx < scalars_vec.len()
+            decreases scalars_vec.len() - idx,
+        {
+            proof {
+                assume(false);
+            }  // PROOF BYPASS
+            nafs.push(scalars_vec[idx].non_adjacent_form(5));
+            idx = idx + 1;
+        }
 
-    /* <ORIGINAL CODE>
+        /* <ORIGINAL CODE>
     let lookup_tables = points
         .into_iter()
         .map(|P_opt| P_opt.map(|P| NafLookupTable5::<ProjectiveNielsPoint>::from(&P)))
         .collect::<Option<Vec<_>>>()?;
     </ORIGINAL CODE> */
-    let mut lookup_tables: Vec<NafLookupTable5<ProjectiveNielsPoint>> = Vec::new();
-    idx = 0;
-    while idx < points_vec.len()
-        decreases points_vec.len() - idx,
-    {
-        proof { assume(false); } // PROOF BYPASS
-        match points_vec[idx] {
-            Some(P) => {
-                lookup_tables.push(NafLookupTable5::<ProjectiveNielsPoint>::from(&P));
+        let mut lookup_tables: Vec<NafLookupTable5<ProjectiveNielsPoint>> = Vec::new();
+        idx = 0;
+        while idx < points_vec.len()
+            decreases points_vec.len() - idx,
+        {
+            proof {
+                assume(false);
+            }  // PROOF BYPASS
+            match points_vec[idx] {
+                Some(P) => {
+                    lookup_tables.push(NafLookupTable5::<ProjectiveNielsPoint>::from(&P));
+                },
+                None => {
+                    // PROOF BYPASS: Found a None point, so not all_points_some
+                    proof {
+                        assume(!all_points_some(spec_points));
+                    }
+                    return None;
+                },
             }
-            None => {
-                // PROOF BYPASS: Found a None point, so not all_points_some
-                proof { assume(!all_points_some(spec_points)); }
-                return None;
-            }
+            idx = idx + 1;
         }
-        idx = idx + 1;
-    }
 
-    let mut r = ProjectivePoint::identity();
+        let mut r = ProjectivePoint::identity();
 
-    /* <ORIGINAL CODE>
+        /* <ORIGINAL CODE>
     for i in (0..256).rev() {
         let mut t: CompletedPoint = r.double();
 
@@ -343,79 +348,91 @@ where
         r = t.as_projective();
     }
     </ORIGINAL CODE> */
-    let mut i: usize = 256;
-    loop
-        decreases i,
-    {
-        proof { assume(false); } // PROOF BYPASS
-        if i == 0 {
-            break;
-        }
-        i = i - 1;
-
-        let mut t: CompletedPoint = r.double();
-
-        // Inner loop: iterate over nafs and lookup_tables
-        let mut j: usize = 0;
-        let min_len = if nafs.len() < lookup_tables.len() { nafs.len() } else { lookup_tables.len() };
-        while j < min_len
-            decreases min_len - j,
+        let mut i: usize = 256;
+        loop
+            decreases i,
         {
-            proof { assume(false); } // PROOF BYPASS
-            let naf = &nafs[j];
-            let lookup_table = &lookup_tables[j];
-
-            match naf[i].cmp(&0) {
-                Ordering::Greater => {
-                    t = &t.as_extended() + &lookup_table.select(naf[i] as usize);
-                }
-                Ordering::Less => {
-                    t = &t.as_extended() - &lookup_table.select((-naf[i]) as usize);
-                }
-                Ordering::Equal => {}
+            proof {
+                assume(false);
+            }  // PROOF BYPASS
+            if i == 0 {
+                break ;
             }
-            j = j + 1;
+            i = i - 1;
+
+            let mut t: CompletedPoint = r.double();
+
+            // Inner loop: iterate over nafs and lookup_tables
+            let mut j: usize = 0;
+            let min_len = if nafs.len() < lookup_tables.len() {
+                nafs.len()
+            } else {
+                lookup_tables.len()
+            };
+            while j < min_len
+                decreases min_len - j,
+            {
+                proof {
+                    assume(false);
+                }  // PROOF BYPASS
+                let naf = &nafs[j];
+                let lookup_table = &lookup_tables[j];
+
+                match naf[i].cmp(&0) {
+                    Ordering::Greater => {
+                        t = &t.as_extended() + &lookup_table.select(naf[i] as usize);
+                    },
+                    Ordering::Less => {
+                        t = &t.as_extended() - &lookup_table.select((-naf[i]) as usize);
+                    },
+                    Ordering::Equal => {},
+                }
+                j = j + 1;
+            }
+
+            r = t.as_projective();
         }
 
-        r = t.as_projective();
+        assume(false);  // PROOF BYPASS: as_extended precondition requires loop invariants
+        let result = r.as_extended();
+
+        // PROOF BYPASS: Assert postconditions for verification goal
+        proof {
+            assume(all_points_some(spec_points));
+            assume(is_well_formed_edwards_point(result));
+            assume(edwards_point_as_affine(result) == sum_of_scalar_muls(
+                spec_scalars,
+                unwrap_points(spec_points),
+            ));
+        }
+
+        Some(result)
     }
-
-    assume(false);  // PROOF BYPASS: as_extended precondition requires loop invariants
-    let result = r.as_extended();
-
-    // PROOF BYPASS: Assert postconditions for verification goal
-    proof {
-        assume(all_points_some(spec_points));
-        assume(is_well_formed_edwards_point(result));
-        assume(edwards_point_as_affine(result) == sum_of_scalar_muls(
-            spec_scalars,
-            unwrap_points(spec_points),
-        ));
-    }
-
-    Some(result)
-}
 
     /// Verus-compatible version of multiscalar_mul (constant-time).
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Computes sum(scalars[i] * points[i]).
-    pub fn multiscalar_mul_verus<S, P, I, J>(
-        scalars: I,
-        points: J,
-    ) -> (result: EdwardsPoint)
-    where
+    pub fn multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> (result: EdwardsPoint) where
         S: Borrow<Scalar>,
         P: Borrow<EdwardsPoint>,
         I: Iterator<Item = S>,
         J: Iterator<Item = P>,
+
         requires
-            // Same number of scalars and points
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(points).len(),
+    // Same number of scalars and points
+
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(
+                points,
+            ).len(),
             // All input points must be well-formed
-            forall|i: int| 0 <= i < spec_points_from_iter::<P, J>(points).len()
-                ==> is_well_formed_edwards_point(#[trigger] spec_points_from_iter::<P, J>(points)[i]),
+            forall|i: int|
+                0 <= i < spec_points_from_iter::<P, J>(points).len()
+                    ==> is_well_formed_edwards_point(
+                    #[trigger] spec_points_from_iter::<P, J>(points)[i],
+                ),
         ensures
-            // Result is a well-formed Edwards point
+    // Result is a well-formed Edwards point
+
             is_well_formed_edwards_point(result),
             // Semantic correctness: result = sum(scalars[i] * points[i])
             edwards_point_as_affine(result) == sum_of_scalar_muls(
@@ -444,7 +461,9 @@ where
         while idx < points_vec.len()
             decreases points_vec.len() - idx,
         {
-            proof { assume(false); } // PROOF BYPASS
+            proof {
+                assume(false);
+            }  // PROOF BYPASS
             lookup_tables.push(LookupTable::<ProjectiveNielsPoint>::from(&points_vec[idx]));
             idx = idx + 1;
         }
@@ -460,7 +479,9 @@ where
         while idx < scalars_vec.len()
             decreases scalars_vec.len() - idx,
         {
-            proof { assume(false); } // PROOF BYPASS
+            proof {
+                assume(false);
+            }  // PROOF BYPASS
             scalar_digits.push(scalars_vec[idx].as_radix_16());
             idx = idx + 1;
         }
@@ -481,9 +502,11 @@ where
         loop
             decreases j,
         {
-            proof { assume(false); } // PROOF BYPASS
+            proof {
+                assume(false);
+            }  // PROOF BYPASS
             if j == 0 {
-                break;
+                break ;
             }
             j = j - 1;
 
@@ -491,11 +514,17 @@ where
 
             // Inner loop: iterate over scalar_digits and lookup_tables
             let mut k: usize = 0;
-            let min_len = if scalar_digits.len() < lookup_tables.len() { scalar_digits.len() } else { lookup_tables.len() };
+            let min_len = if scalar_digits.len() < lookup_tables.len() {
+                scalar_digits.len()
+            } else {
+                lookup_tables.len()
+            };
             while k < min_len
                 decreases min_len - k,
             {
-                proof { assume(false); } // PROOF BYPASS
+                proof {
+                    assume(false);
+                }  // PROOF BYPASS
                 let s_i = &scalar_digits[k];
                 let lookup_table_i = &lookup_tables[k];
                 let R_i = lookup_table_i.select(s_i[j]);
@@ -507,14 +536,12 @@ where
         // PROOF BYPASS: Assume postconditions (requires full loop invariant proofs)
         proof {
             assume(is_well_formed_edwards_point(Q));
-            assume(edwards_point_as_affine(Q) == sum_of_scalar_muls(
-                spec_scalars,
-                spec_points,
-            ));
+            assume(edwards_point_as_affine(Q) == sum_of_scalar_muls(spec_scalars, spec_points));
         }
 
         Q
     }
-} // impl Straus
+}
 
+// impl Straus
 } // verus!

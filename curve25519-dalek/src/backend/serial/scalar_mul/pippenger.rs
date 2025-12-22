@@ -577,7 +577,7 @@ mod test {
     }
 
     #[test]
-    fn test_edwards_dispatcher_original_vs_verus() {
+    fn test_edwards_optional_dispatcher_original_vs_verus() {
         use crate::traits::VartimeMultiscalarMul;
         
         // Test sizes on both sides of the dispatch threshold (190)
@@ -632,6 +632,60 @@ mod test {
             }
         }
         
-        println!("Edwards dispatcher original vs verus: {} comparisons passed!", total_comparisons);
+        println!("Edwards optional dispatcher original vs verus: {} comparisons passed!", total_comparisons);
+    }
+
+    #[test]
+    fn test_edwards_multiscalar_dispatcher_original_vs_verus() {
+        use crate::traits::MultiscalarMul;
+        
+        // Test sizes (constant-time version only dispatches to Straus)
+        let test_sizes = [1, 10, 50, 100, 150, 189];
+        
+        let num_rounds = 10;
+        let mut total_comparisons = 0;
+        
+        for size in test_sizes {
+            for round in 0..num_rounds {
+                let seed_base = (size as u64) * 1000 + (round as u64);
+                
+                let points: Vec<_> = (0..size)
+                    .map(|i| {
+                        let seed = Scalar::from(seed_base + (i as u64) * 7 + 1);
+                        constants::ED25519_BASEPOINT_POINT * seed
+                    })
+                    .collect();
+                
+                let scalars: Vec<_> = (0..size)
+                    .map(|i| {
+                        let a = Scalar::from(seed_base * 3 + (i as u64) * 13 + 5);
+                        let b = Scalar::from((i as u64) + 1);
+                        a * b
+                    })
+                    .collect();
+                
+                // Original EdwardsPoint dispatcher (via trait)
+                let original = EdwardsPoint::multiscalar_mul(
+                    scalars.iter(),
+                    points.iter(),
+                );
+                
+                // Verus EdwardsPoint dispatcher
+                let verus = EdwardsPoint::multiscalar_mul_verus(
+                    scalars.iter(),
+                    points.iter(),
+                );
+                
+                assert_eq!(
+                    original.compress(),
+                    verus.compress(),
+                    "Mismatch at size={}, round={}", size, round
+                );
+                
+                total_comparisons += 1;
+            }
+        }
+        
+        println!("Edwards multiscalar_mul dispatcher original vs verus: {} comparisons passed!", total_comparisons);
     }
 }

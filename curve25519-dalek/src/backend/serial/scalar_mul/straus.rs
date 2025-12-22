@@ -523,10 +523,10 @@ where
 mod test {
     use super::*;
     use crate::constants;
-    use crate::traits::VartimeMultiscalarMul;
+    use crate::traits::{MultiscalarMul, VartimeMultiscalarMul};
 
     #[test]
-    fn test_straus_original_vs_verus() {
+    fn test_straus_optional_original_vs_verus() {
         // Test various sizes
         let test_sizes = [1, 2, 3, 4, 8, 16, 32, 64, 100, 150];
         
@@ -578,6 +578,59 @@ mod test {
             }
         }
         
-        println!("Straus original vs verus: {} comparisons passed!", total_comparisons);
+        println!("Straus optional original vs verus: {} comparisons passed!", total_comparisons);
+    }
+
+    #[test]
+    fn test_straus_multiscalar_original_vs_verus() {
+        // Test various sizes (constant-time multiscalar_mul)
+        let test_sizes = [1, 2, 3, 4, 8, 16, 32, 64, 100, 150];
+        
+        let num_rounds = 20;  // Random rounds per size
+        let mut total_comparisons = 0;
+        
+        for size in test_sizes {
+            for round in 0..num_rounds {
+                // Generate pseudo-random scalars and points using deterministic seeds
+                let seed_base = (size as u64) * 1000 + (round as u64);
+                
+                let points: Vec<_> = (0..size)
+                    .map(|i| {
+                        let seed = Scalar::from(seed_base + (i as u64) * 7 + 1);
+                        constants::ED25519_BASEPOINT_POINT * seed
+                    })
+                    .collect();
+                
+                let scalars: Vec<_> = (0..size)
+                    .map(|i| {
+                        let a = Scalar::from(seed_base * 3 + (i as u64) * 13 + 5);
+                        let b = Scalar::from((i as u64) + 1);
+                        a * b
+                    })
+                    .collect();
+                
+                // Original implementation (via trait)
+                let original = Straus::multiscalar_mul(
+                    scalars.iter(),
+                    points.iter(),
+                );
+                
+                // Verus implementation
+                let verus = Straus::multiscalar_mul_verus(
+                    scalars.iter(),
+                    points.iter(),
+                );
+                
+                assert_eq!(
+                    original.compress(),
+                    verus.compress(),
+                    "Mismatch at size={}, round={}", size, round
+                );
+                
+                total_comparisons += 1;
+            }
+        }
+        
+        println!("Straus multiscalar_mul original vs verus: {} comparisons passed!", total_comparisons);
     }
 }

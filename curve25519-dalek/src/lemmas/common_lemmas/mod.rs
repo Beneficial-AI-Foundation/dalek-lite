@@ -15,5 +15,3 @@ pub mod shift_lemmas;
 pub mod sum_lemmas;
 
 pub mod to_nat_lemmas;
-
-// Unused lemmas kept for reference

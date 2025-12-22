@@ -10,6 +10,15 @@ Converting bytes and words to natural numbers (little-endian interpretation) is 
 - The `*_to_nat` naming convention
 - Lemma organization
 
+### Two Main Representations
+
+| Representation | Spec Function | Form | Primary Use Case |
+|----------------|---------------|------|------------------|
+| **Prefix sum** | `bytes_to_nat_prefix` | b₀·2⁰ + b₁·2⁸ + ... | Small fixed-size inputs, `From<uXX>` |
+| **Horner form** | `bytes_seq_to_nat` | b₀ + 256·(b₁ + 256·(...)) | Any-length sequences, loop-based processing |
+
+**Design rationale:** The prefix form is simpler for small fixed-size inputs where we know the exact length at compile time. The Horner form works with any-length `Seq<u8>` and is preferred for loop-based processing (e.g., `from_bytes_wide` with 64-byte inputs) where the recursive structure aligns naturally with iteration.
+
 ## Naming Convention: `*_to_nat`
 
 All conversion functions follow the `*_to_nat` naming convention:
@@ -38,10 +47,21 @@ All conversion functions follow the `*_to_nat` naming convention:
 
 ## Part 1: Byte-to-Nat Conversions
 
-### For Any-Length Sequences
+### Prefix Sum Form (Primary for small inputs)
 
 ```rust
-/// Canonical byte-sequence to natural number conversion (little-endian, Horner form).
+/// Direct-sum form for the first n bytes.
+pub open spec fn bytes_to_nat_prefix(bytes: Seq<u8>, n: nat) -> nat
+```
+
+- Computes: `b₀·2⁰ + b₁·2⁸ + ... + bₙ₋₁·2^((n-1)·8)`
+- **Primary use:** `From<u16>`, `From<u32>`, `From<u64>`, `From<u128>` implementations
+- **Advantage:** Direct form, no need for Horner-to-prefix bridge lemmas
+
+### Horner Form (For any-length sequences)
+
+```rust
+/// Horner-form conversion (little-endian) for arbitrary-length sequences.
 pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat
     decreases bytes.len(),
 {
@@ -50,8 +70,9 @@ pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat
 }
 ```
 
-- Works with `Seq<u8>` of **any length**
+- **Primary use:** `from_bytes_wide` (64-byte inputs), `from_bytes_mod_order_wide`
 - Uses Horner form: `bytes[0] + 256 * (bytes[1] + 256 * (...))`
+- Bridge lemma: `lemma_bytes_seq_to_nat_equals_prefix` connects to prefix form
 
 ### For 32-byte Arrays
 
@@ -72,13 +93,6 @@ Use `bytes_seq_to_nat(bytes@)` directly. For loop invariants, use:
 ```rust
 /// Generic suffix sum with original positional weights.
 pub open spec fn bytes_to_nat_suffix<const N: usize>(bytes: &[u8; N], start: int) -> nat
-```
-
-### Prefix Sum Helper
-
-```rust
-/// Direct-sum form for the first n bytes.
-pub open spec fn bytes_to_nat_prefix(bytes: Seq<u8>, n: nat) -> nat
 ```
 
 ---
@@ -185,11 +199,11 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
 │                                                                             │
 │  BYTE-TO-NAT:                                                               │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ bytes_seq_to_nat(Seq<u8>)       ← GENERAL (any length, Horner)      │   │
+│  │ bytes_to_nat_prefix(Seq, n)     ← PRIMARY for small inputs (2-16B)  │   │
 │  │ bytes32_to_nat(&[u8; 32])       ← 32-BYTE (explicit form)           │   │
+│  │ bytes_seq_to_nat(Seq<u8>)       ← ANY-LENGTH sequences (Horner)     │   │
+│  │ bytes_to_nat_suffix<N>          ← LOOP INVARIANTS (any size)        │   │
 │  │ bytes32_to_nat_rec              ← 32-BYTE (recursive helper)        │   │
-│  │ bytes_to_nat_suffix<N>          ← GENERIC SUFFIX (any size)         │   │
-│  │ bytes_to_nat_prefix             ← PREFIX SUM (sequences)            │   │
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  WORD-TO-NAT:                                                               │
@@ -224,13 +238,12 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
 │                                                                             │
 │  to_nat_lemmas.rs (common_lemmas/):                                         │
 │  BYTE LEMMAS:                         │  WORD LEMMAS:                       │
-│  • lemma_bytes32_to_nat_equals_rec    │  • lemma_words_to_nat_upper_bound   │
-│  • lemma_bytes_to_nat_equals_suffix_* │  • lemma_words_to_nat_equals_bytes  │
-│  • lemma_bytes_seq_to_nat_equals_...  │  • lemma_words64_from_bytes_to_nat_ │
-│  • bytes32_to_nat_le_pow2_256         │                                     │
+│  • lemma_from_le_bytes (From<uXX>)    │  • lemma_words_to_nat_upper_bound   │
+│  • lemma_bytes32_to_nat_with_trailing │  • lemma_words_to_nat_equals_bytes  │
+│  • lemma_prefix_equal_when_bytes_...  │  • lemma_words64_from_bytes_to_nat_ │
+│  • lemma_bytes_seq_to_nat_equals_...  │                                     │
 │  • lemma_canonical_bytes_equal        │                                     │
-│  • lemma_bytes32_to_nat_mod_truncates │                                     │
-│  • lemma_from_le_bytes                │                                     │
+│  • lemma_bytes32_to_nat_equals_rec    │                                     │
 │                                       │                                     │
 │  u64_5_as_nat_lemmas.rs:              │  scalar_lemmas.rs:                  │
 │  • lemma_u64_5_as_nat_add/sub/squared │  • lemma_five_limbs_equals_to_nat   │
@@ -243,13 +256,14 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
 
 ## Domain Usage Summary
 
-| Domain | Import | Usage |
-|--------|--------|-------|
-| Scalar (32-byte) | `core_specs::*` | `bytes32_to_nat(&bytes)` |
-| Scalar (64-byte) | `core_specs::*` | `bytes_seq_to_nat(bytes@)` |
-| Field bytes | `core_specs::*` | `bytes32_to_nat(&bytes)` |
-| Field element | `field_specs::*` | `fe_to_nat(&fe)` |
-| Word extraction | `core_specs::*` | `words64_from_bytes_to_nat(bytes@, count)` |
+| Domain | Import | Usage | Form |
+|--------|--------|-------|------|
+| Scalar (32-byte) | `core_specs::*` | `bytes32_to_nat(&bytes)` | Explicit sum |
+| Any-length sequences | `core_specs::*` | `bytes_seq_to_nat(seq)` | Horner |
+| `From<u16/u32/u64/u128>` | `core_specs::*` | `bytes_to_nat_prefix(bytes@, N)` | Prefix sum |
+| Field bytes | `core_specs::*` | `bytes32_to_nat(&bytes)` | Explicit sum |
+| Field element | `field_specs::*` | `fe_to_nat(&fe)` | Domain-specific |
+| Word extraction | `core_specs::*` | `words64_from_bytes_to_nat(bytes@, count)` | Word-based |
 
 **No aliases for bytes!** One canonical `bytes32_to_nat` in `core_specs.rs`.
 
@@ -260,21 +274,27 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
 ### Byte-to-Nat Lemmas (`common_lemmas/to_nat_lemmas.rs`)
 
 ```rust
-// Bridge lemmas
-lemma_bytes32_to_nat_equals_rec(bytes)      // explicit ↔ recursive (32-byte)
-lemma_bytes32_to_nat_equals_suffix(bytes)   // explicit ↔ suffix (32-byte)
-lemma_bytes64_to_nat_equals_suffix(bytes)   // Horner ↔ suffix (64-byte)
-lemma_bytes_seq_to_nat_equals_prefix(seq)   // Horner ↔ prefix (any length)
+// Bridge lemmas (prefix form)
+lemma_bytes32_to_nat_equals_rec(bytes)          // explicit ↔ recursive (32-byte)
+lemma_bytes32_to_nat_with_trailing_zeros(b, n)  // explicit → prefix when zeros at end
+lemma_prefix_equal_when_bytes_match(s1, s2, n)  // prefix equal if bytes match
 
-// Bound lemmas
-bytes32_to_nat_le_pow2_256(bytes)           // < 2^256
-bytes_seq_to_nat_64_le_pow2_512(bytes)      // < 2^512
-
-// Injectivity
-lemma_canonical_bytes32_equal(b1, b2)       // same nat → same bytes
+// Bridge lemmas (Horner form - for 64-byte wide inputs)
+lemma_bytes_seq_to_nat_equals_prefix(seq)       // Horner ↔ prefix (any length)
+lemma_bytes32_to_nat_equals_suffix_64(bytes)    // Horner ↔ suffix (64-byte)
 
 // Conversion helpers
-lemma_from_le_bytes(le_seq, bytes, n)       // sequence matches array prefix
+lemma_from_le_bytes(le_seq, bytes, n)           // For From<uXX> implementations
+
+// Injectivity
+lemma_canonical_bytes_equal(b1, b2)             // same nat → same bytes
+```
+
+**Unused lemmas** (in `unused_to_nat_lemmas.rs`):
+```rust
+lemma_bytes32_to_nat_equals_horner(bytes)   // No longer needed after simplification
+bytes32_to_nat_le_pow2_256(bytes)           // Upper bound (kept for reference)
+bytes_seq_to_nat_64_le_pow2_512(bytes)      // Upper bound (kept for reference)
 ```
 
 ### Word-to-Nat Lemmas (`common_lemmas/to_nat_lemmas.rs`)
@@ -321,6 +341,18 @@ Many proofs unfold `bytes32_to_nat` to reason about individual bytes. Using `byt
 - Avoids `reveal_with_fuel` in most proofs
 - Better verification performance
 
+### Key Bridge: `lemma_bytes32_to_nat_with_trailing_zeros`
+
+This lemma is now the primary bridge for connecting `bytes32_to_nat` to smaller inputs:
+```rust
+// When bytes n..31 are zero:
+bytes32_to_nat(bytes) == bytes_to_nat_prefix(bytes@, n)
+```
+
+**Used by:** `lemma_from_le_bytes` for `From<u16/u32/u64/u128>` implementations.
+
+For 64-byte inputs, use `lemma_bytes_seq_to_nat_equals_prefix` to bridge Horner ↔ prefix forms.
+
 ### Why `Seq<nat>` for `words_to_nat_gen`?
 
 Works with any integer type via `.map(|i, x| x as nat)`. No need for separate `words_to_nat_u128`, etc.
@@ -361,12 +393,12 @@ Different radixes (51 vs 52 bits) are fundamental to field vs scalar operations.
 ## Recommendations for New Code
 
 1. **32-byte arrays:** `bytes32_to_nat(&array)` from `core_specs.rs`
-2. **64-byte arrays:** `bytes_seq_to_nat(bytes@)` directly
-3. **Arbitrary sequences:** `bytes_seq_to_nat(seq)` from `core_specs.rs`
+2. **Small byte sequences (2-16 bytes):** `bytes_to_nat_prefix(bytes@, N)` — simpler, no Horner needed
+3. **64-byte arrays:** `bytes_seq_to_nat(bytes@)` — uses Horner form for `from_bytes_wide`
 4. **Loop invariants:** `bytes_to_nat_suffix(bytes, start)`
 5. **Word arrays:** `words_to_nat_gen` or `words_to_nat_u64`
 6. **Field elements:** `fe_to_nat(&fe)` from `field_specs.rs`
-7. **New proofs:** Use equivalence lemmas to connect representations
+7. **`From<uXX>` implementations:** Use `lemma_from_le_bytes` with `bytes_to_nat_prefix`
 
 ---
 
@@ -376,7 +408,7 @@ Different radixes (51 vs 52 bits) are fundamental to field vs scalar operations.
 - `curve25519-dalek/src/specs/field_specs.rs` — Field-specific (`fe_to_nat`, postconditions)
 - `curve25519-dalek/src/specs/field_specs_u64.rs` — Field limb functions (51-bit)
 - `curve25519-dalek/src/specs/scalar_specs_u64.rs` — Scalar limb functions (52-bit)
-- `curve25519-dalek/src/lemmas/common_lemmas/bytes_lemmas.rs` — Byte-to-nat lemmas
-- `curve25519-dalek/src/lemmas/core_lemmas.rs` — Word-to-nat lemmas
+- `curve25519-dalek/src/lemmas/common_lemmas/to_nat_lemmas.rs` — Active byte/word-to-nat lemmas
+- `curve25519-dalek/src/lemmas/common_lemmas/unused_to_nat_lemmas.rs` — Deprecated/unused lemmas
 - `curve25519-dalek/src/lemmas/scalar_lemmas.rs` — Limb equivalence lemmas
 

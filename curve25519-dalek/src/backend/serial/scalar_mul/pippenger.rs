@@ -192,6 +192,7 @@ PROOF BYPASS: Complex loop invariants not yet verified; uses assume(false).
 // (Verus cannot reason about iterators directly)
 pub uninterp spec fn spec_scalars_from_iter<S, I>(iter: I) -> Seq<Scalar>;
 pub uninterp spec fn spec_optional_points_from_iter<J>(iter: J) -> Seq<Option<EdwardsPoint>>;
+pub uninterp spec fn spec_points_from_iter<P, J>(iter: J) -> Seq<EdwardsPoint>;
 
 /// Spec: Check if all optional points are Some
 pub open spec fn all_points_some(points: Seq<Option<EdwardsPoint>>) -> bool {
@@ -224,6 +225,18 @@ where
         result@ == spec_optional_points_from_iter::<J>(iter),
 {
     iter.collect()
+}
+
+// Helper to collect iterator of points into Vec<EdwardsPoint>
+#[verifier::external_body]
+pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>)
+where
+    P: Borrow<EdwardsPoint>,
+    J: Iterator<Item = P>,
+    ensures
+        result@ == spec_points_from_iter::<P, J>(iter),
+{
+    iter.map(|p| *p.borrow()).collect()
 }
 
 impl Pippenger {

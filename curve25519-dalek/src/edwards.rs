@@ -1900,16 +1900,16 @@ impl MultiscalarMul for EdwardsPoint {
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
-    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-    requires
-        scalars.len() == points.len(),
-        forall|i| is_well_formed_edwards_point(points[i]),
-    ensures
-        is_well_formed_edwards_point(result),
-        edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
-    
-    VERIFICATION NOTE: see `EdwardsPoint::multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
-    */
+        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+        requires
+            scalars.len() == points.len(),
+            forall|i| is_well_formed_edwards_point(points[i]),
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
+
+        VERIFICATION NOTE: see `EdwardsPoint::multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
+        */
     {
         // Sanity-check lengths of input iterators
         let mut scalars = scalars.into_iter();
@@ -1941,17 +1941,17 @@ impl VartimeMultiscalarMul for EdwardsPoint {
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
-    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-    requires
-        scalars.len() == points.len(),
-        forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
-    ensures
-        result.is_some() <==> all_points_some(points),
-        result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-        result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
-    
-    VERIFICATION NOTE: see `EdwardsPoint::optional_multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
-    */
+        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+        requires
+            scalars.len() == points.len(),
+            forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
+        ensures
+            result.is_some() <==> all_points_some(points),
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
+
+        VERIFICATION NOTE: see `EdwardsPoint::optional_multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
+        */
     {
         // Sanity-check lengths of input iterators
         let mut scalars = scalars.into_iter();
@@ -2018,14 +2018,13 @@ impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
 // Import spec functions from scalar_mul_specs for multiscalar verification
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_mul_specs::{
-    spec_scalars_from_iter, spec_optional_points_from_iter,
-    all_points_some, unwrap_points,
+    all_points_some, spec_optional_points_from_iter, spec_scalars_from_iter, unwrap_points,
 };
 
 // Import runtime helpers from scalar_mul_specs
 #[cfg(feature = "alloc")]
 use crate::specs::scalar_mul_specs::{
-    collect_scalars_from_iter, collect_optional_points_from_iter,
+    collect_optional_points_from_iter, collect_scalars_from_iter,
 };
 
 verus! {
@@ -2052,23 +2051,25 @@ impl EdwardsPoint {
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Dispatches to Straus (size < 190) or Pippenger (size >= 190) algorithm.
     #[cfg(feature = "alloc")]
-    pub fn optional_multiscalar_mul_verus<S, I, J>(
-        scalars: I,
-        points: J,
-    ) -> (result: Option<EdwardsPoint>)
-    where
-        S: Borrow<Scalar>,
-        I: Iterator<Item = S>,
-        J: Iterator<Item = Option<EdwardsPoint>>,
+    pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
+        EdwardsPoint,
+    >) where S: Borrow<Scalar>, I: Iterator<Item = S>, J: Iterator<Item = Option<EdwardsPoint>>
         requires
-            // Same number of scalars and points
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(points).len(),
+    // Same number of scalars and points
+
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(
+                points,
+            ).len(),
             // All input points (when Some) must be well-formed
-            forall|i: int| 0 <= i < spec_optional_points_from_iter::<J>(points).len()
-                && (#[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
-                ==> is_well_formed_edwards_point(spec_optional_points_from_iter::<J>(points)[i].unwrap()),
+            forall|i: int|
+                0 <= i < spec_optional_points_from_iter::<J>(points).len() && (
+                #[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
+                    ==> is_well_formed_edwards_point(
+                    spec_optional_points_from_iter::<J>(points)[i].unwrap(),
+                ),
         ensures
-            // Result is Some if and only if all input points are Some
+    // Result is Some if and only if all input points are Some
+
             result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
             // If result is Some, it is a well-formed Edwards point
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
@@ -2085,7 +2086,7 @@ impl EdwardsPoint {
         // Collect into Vecs to get the size
         let scalars_vec = collect_scalars_from_iter(scalars);
         let points_vec = collect_optional_points_from_iter(points);
-        
+
         let size = scalars_vec.len();
 
         // Dispatch to appropriate algorithm based on size
@@ -2093,18 +2094,20 @@ impl EdwardsPoint {
         // size >= 190: Pippenger is faster
         if size < 190 {
             // PROOF BYPASS: Straus verus implementation has same spec
-            proof { assume(false); }
+            proof {
+                assume(false);
+            }
             crate::backend::serial::scalar_mul::straus::Straus::optional_multiscalar_mul_verus(
                 scalars_vec.into_iter(),
                 points_vec.into_iter(),
             )
         } else {
             // PROOF BYPASS: Pippenger verus implementation has same spec
-            proof { assume(false); }
+            proof {
+                assume(false);
+            }
             crate::backend::serial::scalar_mul::pippenger::Pippenger::optional_multiscalar_mul_verus(
-                scalars_vec.into_iter(),
-                points_vec.into_iter(),
-            )
+            scalars_vec.into_iter(), points_vec.into_iter())
         }
     }
 
@@ -2112,23 +2115,27 @@ impl EdwardsPoint {
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Dispatches to Straus algorithm (constant-time).
     #[cfg(feature = "alloc")]
-    pub fn multiscalar_mul_verus<S, P, I, J>(
-        scalars: I,
-        points: J,
-    ) -> (result: EdwardsPoint)
-    where
+    pub fn multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> (result: EdwardsPoint) where
         S: Borrow<Scalar>,
         P: Borrow<EdwardsPoint>,
         I: Iterator<Item = S>,
         J: Iterator<Item = P>,
+
         requires
-            // Same number of scalars and points
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(points).len(),
+    // Same number of scalars and points
+
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(
+                points,
+            ).len(),
             // All input points must be well-formed
-            forall|i: int| 0 <= i < spec_points_from_iter::<P, J>(points).len()
-                ==> is_well_formed_edwards_point(#[trigger] spec_points_from_iter::<P, J>(points)[i]),
+            forall|i: int|
+                0 <= i < spec_points_from_iter::<P, J>(points).len()
+                    ==> is_well_formed_edwards_point(
+                    #[trigger] spec_points_from_iter::<P, J>(points)[i],
+                ),
         ensures
-            // Result is a well-formed Edwards point
+    // Result is a well-formed Edwards point
+
             is_well_formed_edwards_point(result),
             // Semantic correctness: result = sum(scalars[i] * points[i])
             edwards_point_as_affine(result) == sum_of_scalar_muls(
@@ -2146,7 +2153,9 @@ impl EdwardsPoint {
 
         // Dispatch to Straus (constant-time, always used for multiscalar_mul)
         // PROOF BYPASS: Straus verus implementation has same spec
-        proof { assume(false); }
+        proof {
+            assume(false);
+        }
         crate::backend::serial::scalar_mul::straus::Straus::multiscalar_mul_verus(
             scalars_vec.into_iter(),
             points_vec.into_iter(),

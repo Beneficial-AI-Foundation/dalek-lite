@@ -29,9 +29,6 @@ use super::scalar_specs::spec_scalar;
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
 };
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
-use crate::scalar::Scalar;
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
@@ -42,6 +39,9 @@ use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D}
 use crate::edwards::EdwardsBasepointTable;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::scalar::Scalar;
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
@@ -767,7 +767,11 @@ pub open spec fn sum_of_points(points: Seq<EdwardsPoint>) -> (nat, nat)
 pub open spec fn sum_of_scalar_muls(scalars: Seq<Scalar>, points: Seq<EdwardsPoint>) -> (nat, nat)
     decreases scalars.len(),
 {
-    let len = if scalars.len() <= points.len() { scalars.len() } else { points.len() };
+    let len = if scalars.len() <= points.len() {
+        scalars.len()
+    } else {
+        points.len()
+    };
     if len == 0 {
         // Identity point in affine coordinates: (0, 1)
         (0, 1)

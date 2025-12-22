@@ -2,7 +2,6 @@
 //!
 //! Contains spec functions for reasoning about iterators and sequences
 //! used in multiscalar multiplication algorithms.
-
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
@@ -21,7 +20,6 @@ verus! {
 // Uninterpreted spec functions for iterator-to-sequence conversion
 // (Verus cannot reason about iterators directly)
 // ============================================================================
-
 /// Spec function to convert an iterator of scalars to a sequence.
 pub uninterp spec fn spec_scalars_from_iter<S, I>(iter: I) -> Seq<Scalar>;
 
@@ -34,7 +32,6 @@ pub uninterp spec fn spec_points_from_iter<P, J>(iter: J) -> Seq<EdwardsPoint>;
 // ============================================================================
 // Spec functions for optional point sequences
 // ============================================================================
-
 /// Check if all optional points in a sequence are Some.
 pub open spec fn all_points_some(points: Seq<Option<EdwardsPoint>>) -> bool {
     forall|i: int| 0 <= i < points.len() ==> points[i].is_some()
@@ -49,14 +46,13 @@ pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<Edwards
 // Helper functions to collect iterators into Vecs (external_body)
 // These bridge the gap between generic iterators and concrete Vec types
 // ============================================================================
-
 /// Collect an iterator of scalars into Vec<Scalar>.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
-pub fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>)
-where
+pub fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>) where
     S: Borrow<Scalar>,
     I: Iterator<Item = S>,
+
     ensures
         result@ == spec_scalars_from_iter::<S, I>(iter),
 {
@@ -66,9 +62,9 @@ where
 /// Collect an iterator of optional points into Vec<Option<EdwardsPoint>>.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
-pub fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<EdwardsPoint>>)
-where
+pub fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<EdwardsPoint>>) where
     J: Iterator<Item = Option<EdwardsPoint>>,
+
     ensures
         result@ == spec_optional_points_from_iter::<J>(iter),
 {
@@ -78,10 +74,10 @@ where
 /// Collect an iterator of points into Vec<EdwardsPoint>.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
-pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>)
-where
+pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>) where
     P: Borrow<EdwardsPoint>,
     J: Iterator<Item = P>,
+
     ensures
         result@ == spec_points_from_iter::<P, J>(iter),
 {
@@ -89,4 +85,3 @@ where
 }
 
 } // verus!
-

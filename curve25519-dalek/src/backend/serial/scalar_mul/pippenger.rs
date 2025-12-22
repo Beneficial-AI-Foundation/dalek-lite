@@ -205,7 +205,7 @@ pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<Edwards
 
 // Helper to collect iterator of scalars into Vec<Scalar>
 #[verifier::external_body]
-fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>)
+pub fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>)
 where
     S: Borrow<Scalar>,
     I: Iterator<Item = S>,
@@ -217,7 +217,7 @@ where
 
 // Helper to collect iterator of optional points into Vec<Option<EdwardsPoint>>
 #[verifier::external_body]
-fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<EdwardsPoint>>)
+pub fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<EdwardsPoint>>)
 where
     J: Iterator<Item = Option<EdwardsPoint>>,
     ensures
@@ -226,10 +226,11 @@ where
     iter.collect()
 }
 
-/// Verus-compatible version of optional_multiscalar_mul.
-/// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
-/// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
-pub fn optional_multiscalar_mul_verus<S, I, J>(
+impl Pippenger {
+    /// Verus-compatible version of optional_multiscalar_mul.
+    /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
+    /// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
+    pub fn optional_multiscalar_mul_verus<S, I, J>(
     scalars: I,
     points: J,
 ) -> (result: Option<EdwardsPoint>)
@@ -257,6 +258,10 @@ where
 {
     use crate::traits::Identity;
 
+    // Capture ghost spec values before consuming iterators
+    let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
+    let ghost spec_points = spec_optional_points_from_iter::<J>(points);
+
     // Collect scalars and points (via external_body helpers)
     let scalars_vec = collect_scalars_from_iter(scalars);
     let size = scalars_vec.len();
@@ -280,7 +285,7 @@ where
 
     if digits_count == 0 || buckets_count == 0 {
         // PROOF BYPASS: Dead code for valid w (6,7,8), assume postcondition
-        proof { assume(!all_points_some(spec_optional_points_from_iter::<J>(points))); }
+        proof { assume(!all_points_some(spec_points)); }
         return None;
     }
 
@@ -304,7 +309,7 @@ where
             Some(p) => scalars_points.push((digits, p)),
             None => {
                 // PROOF BYPASS: Found a None point, so not all_points_some
-                proof { assume(!all_points_some(spec_optional_points_from_iter::<J>(points))); }
+                proof { assume(!all_points_some(spec_points)); }
                 return None;
             }
         }
@@ -485,16 +490,17 @@ where
     // PROOF BYPASS: Assume postconditions (requires full loop invariant proofs)
     // At this point, we reached the end without returning None, so all points were Some
     proof {
-        assume(all_points_some(spec_optional_points_from_iter::<J>(points)));
+        assume(all_points_some(spec_points));
         assume(is_well_formed_edwards_point(total));
         assume(edwards_point_as_affine(total) == sum_of_scalar_muls(
-            spec_scalars_from_iter::<S, I>(scalars),
-            unwrap_points(spec_optional_points_from_iter::<J>(points)),
+            spec_scalars,
+            unwrap_points(spec_points),
         ));
     }
 
     Some(total)
 }
+} // impl Pippenger
 
 } // verus!
 
@@ -574,7 +580,7 @@ mod test {
                 );
                 
                 // Verus implementation
-                let verus = optional_multiscalar_mul_verus(
+                let verus = Pippenger::optional_multiscalar_mul_verus(
                     scalars.iter(),
                     points.iter().map(|p| Some(*p)),
                 );
@@ -593,5 +599,64 @@ mod test {
         }
         
         println!("Pippenger original vs verus: {} comparisons passed!", total_comparisons);
+    }
+
+    #[test]
+    fn test_edwards_dispatcher_original_vs_verus() {
+        use crate::traits::VartimeMultiscalarMul;
+        
+        // Test sizes on both sides of the dispatch threshold (190)
+        // size < 190: uses Straus
+        // size >= 190: uses Pippenger
+        let test_sizes = [1, 10, 50, 100, 150, 189, 190, 191, 200, 300];
+        
+        let num_rounds = 10;
+        let mut total_comparisons = 0;
+        
+        for size in test_sizes {
+            for round in 0..num_rounds {
+                let seed_base = (size as u64) * 1000 + (round as u64);
+                
+                let points: Vec<_> = (0..size)
+                    .map(|i| {
+                        let seed = Scalar::from(seed_base + (i as u64) * 7 + 1);
+                        constants::ED25519_BASEPOINT_POINT * seed
+                    })
+                    .collect();
+                
+                let scalars: Vec<_> = (0..size)
+                    .map(|i| {
+                        let a = Scalar::from(seed_base * 3 + (i as u64) * 13 + 5);
+                        let b = Scalar::from((i as u64) + 1);
+                        a * b
+                    })
+                    .collect();
+                
+                // Original EdwardsPoint dispatcher
+                let original = EdwardsPoint::optional_multiscalar_mul(
+                    scalars.iter(),
+                    points.iter().map(|p| Some(*p)),
+                );
+                
+                // Verus EdwardsPoint dispatcher
+                let verus = EdwardsPoint::optional_multiscalar_mul_verus(
+                    scalars.iter(),
+                    points.iter().map(|p| Some(*p)),
+                );
+                
+                assert!(original.is_some(), "Original returned None at size={}, round={}", size, round);
+                assert!(verus.is_some(), "Verus returned None at size={}, round={}", size, round);
+                
+                assert_eq!(
+                    original.unwrap().compress(),
+                    verus.unwrap().compress(),
+                    "Mismatch at size={}, round={}", size, round
+                );
+                
+                total_comparisons += 1;
+            }
+        }
+        
+        println!("Edwards dispatcher original vs verus: {} comparisons passed!", total_comparisons);
     }
 }

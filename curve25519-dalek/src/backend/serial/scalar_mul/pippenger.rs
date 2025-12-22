@@ -179,6 +179,19 @@ use vstd::prelude::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::*;
 
+// Re-export spec functions from scalar_mul_specs for use by other modules
+#[cfg(verus_keep_ghost)]
+pub use crate::specs::scalar_mul_specs::{
+    spec_scalars_from_iter, spec_optional_points_from_iter, spec_points_from_iter,
+    all_points_some, unwrap_points,
+};
+
+// Re-export runtime helpers from scalar_mul_specs
+#[cfg(feature = "alloc")]
+pub use crate::specs::scalar_mul_specs::{
+    collect_scalars_from_iter, collect_optional_points_from_iter, collect_points_from_iter,
+};
+
 verus! {
 
 /* <VERIFICATION NOTE>
@@ -187,57 +200,6 @@ supported by Verus. This version uses explicit loops and concrete types.
 The function signature uses Iterator (not IntoIterator) similar to Sum::sum.
 PROOF BYPASS: Complex loop invariants not yet verified; uses assume(false).
 </VERIFICATION NOTE> */
-
-// Uninterpreted spec functions for iterator-to-sequence conversion
-// (Verus cannot reason about iterators directly)
-pub uninterp spec fn spec_scalars_from_iter<S, I>(iter: I) -> Seq<Scalar>;
-pub uninterp spec fn spec_optional_points_from_iter<J>(iter: J) -> Seq<Option<EdwardsPoint>>;
-pub uninterp spec fn spec_points_from_iter<P, J>(iter: J) -> Seq<EdwardsPoint>;
-
-/// Spec: Check if all optional points are Some
-pub open spec fn all_points_some(points: Seq<Option<EdwardsPoint>>) -> bool {
-    forall|i: int| 0 <= i < points.len() ==> points[i].is_some()
-}
-
-/// Spec: Extract EdwardsPoints from Option sequence (assumes all are Some)
-pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<EdwardsPoint> {
-    points.map(|_i, opt: Option<EdwardsPoint>| opt.unwrap())
-}
-
-// Helper to collect iterator of scalars into Vec<Scalar>
-#[verifier::external_body]
-pub fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>)
-where
-    S: Borrow<Scalar>,
-    I: Iterator<Item = S>,
-    ensures
-        result@ == spec_scalars_from_iter::<S, I>(iter),
-{
-    iter.map(|s| *s.borrow()).collect()
-}
-
-// Helper to collect iterator of optional points into Vec<Option<EdwardsPoint>>
-#[verifier::external_body]
-pub fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<EdwardsPoint>>)
-where
-    J: Iterator<Item = Option<EdwardsPoint>>,
-    ensures
-        result@ == spec_optional_points_from_iter::<J>(iter),
-{
-    iter.collect()
-}
-
-// Helper to collect iterator of points into Vec<EdwardsPoint>
-#[verifier::external_body]
-pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>)
-where
-    P: Borrow<EdwardsPoint>,
-    J: Iterator<Item = P>,
-    ensures
-        result@ == spec_points_from_iter::<P, J>(iter),
-{
-    iter.map(|p| *p.borrow()).collect()
-}
 
 impl Pippenger {
     /// Verus-compatible version of optional_multiscalar_mul.

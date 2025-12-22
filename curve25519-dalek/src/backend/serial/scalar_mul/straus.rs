@@ -224,15 +224,15 @@ use vstd::prelude::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::*;
 
-// Import spec functions from pippenger module (ghost only)
+// Import spec functions from scalar_mul_specs (ghost only)
 #[cfg(verus_keep_ghost)]
-use crate::backend::serial::scalar_mul::pippenger::{
+use crate::specs::scalar_mul_specs::{
     spec_scalars_from_iter, spec_optional_points_from_iter, spec_points_from_iter,
     all_points_some, unwrap_points,
 };
 
-// Import runtime helpers from pippenger module
-use crate::backend::serial::scalar_mul::pippenger::{
+// Import runtime helpers from scalar_mul_specs
+use crate::specs::scalar_mul_specs::{
     collect_scalars_from_iter, collect_optional_points_from_iter, collect_points_from_iter,
 };
 

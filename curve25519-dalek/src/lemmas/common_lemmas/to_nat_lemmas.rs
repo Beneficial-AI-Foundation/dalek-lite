@@ -87,7 +87,7 @@ pub proof fn lemma_bytes_to_nat_prefix_bounded(bytes: Seq<u8>, n: nat)
 
 /// Lemma: Horner form equals direct sum form for any sequence.
 ///
-/// This is THE key lemma that connects the two recursion patterns:
+/// This is the key lemma that connects the two recursion patterns:
 /// - bytes_seq_to_nat uses Horner's method: b[0] + 256*(b[1] + 256*(...))
 /// - bytes_to_nat_prefix uses direct sums: b[0]*2^0 + b[1]*2^8 + ...
 ///
@@ -113,113 +113,37 @@ pub proof fn lemma_bytes_seq_to_nat_equals_prefix(seq: Seq<u8>)
 
             // bytes_seq_to_nat(seq) = seq[0] + 256 * bytes_seq_to_nat(tail)
             //                       = seq[0] + 256 * prefix(tail, n-1)
-            //                       = prefix(seq, n)               [by lemma_horner_shift_equivalence]
+            //                       = prefix(seq, n)
             assert(seq[0] as nat + pow2(8) * bytes_to_nat_prefix(
                 tail,
                 (seq.len() - 1) as nat,
             ) == bytes_to_nat_prefix(seq, seq.len() as nat)) by {
-                lemma_horner_shift_equivalence(seq);
+                // lemma_horner_to_prefix_step gives:
+                //   seq[0] * pow2(0) + pow2(8) * prefix(tail, n-1) == prefix(seq, n)
+                lemma_horner_to_prefix_step(seq, (seq.len() - 1) as nat);
+                // Since pow2(0) == 1, seq[0] * pow2(0) == seq[0]
+                lemma2_to64();
             }
         }
     }
 }
 
-/// Helper lemma: Shows that Horner's method equals the direct sum for a single step.
+/// Shows one step of the Horner-to-prefix conversion.
 ///
-/// For a sequence [b₀, b₁, ..., bₙ₋₁]:
-/// b₀ + 256 * Σᵢ₌₀ⁿ⁻² bᵢ₊₁ * 2^{8i} = Σᵢ₌₀ⁿ⁻¹ bᵢ * 2^{8i}
-proof fn lemma_horner_shift_equivalence(seq: Seq<u8>)
+/// Proves: seq[0] + 256 * prefix(tail, k) == prefix(seq, k+1)
+///
+/// This is the key inductive step showing how Horner's method
+/// (multiply by 256, add first byte) relates to the prefix sum form.
+proof fn lemma_horner_to_prefix_step(seq: Seq<u8>, k: nat)
     requires
         seq.len() > 0,
+        k <= seq.len() - 1,
     ensures
-        seq[0] as nat + pow2(8) * bytes_to_nat_prefix(seq.skip(1), (seq.len() - 1) as nat)
-            == bytes_to_nat_prefix(seq, seq.len() as nat),
-    decreases seq.len(),
-{
-    let n = seq.len() as nat;
-    let tail = seq.skip(1);
-    let goal = seq[0] as nat + pow2(8) * bytes_to_nat_prefix(tail, (n - 1) as nat)
-        == bytes_to_nat_prefix(seq, n);
-
-    assert(goal) by {
-        reveal_with_fuel(bytes_to_nat_prefix, 2);
-        lemma2_to64();
-
-        if n == 1 {
-            // Base case: seq = [b₀], tail = []
-            // LHS: b₀ + 256 * 0 = b₀
-            // RHS: prefix([b₀], 1) = 0 + pow2(0) * b₀ = b₀
-
-            // Subgoal 1: prefix(tail, 0) == 0, so 256 * 0 == 0
-            assert(bytes_to_nat_prefix(tail, 0) == 0);
-            assert(pow2(8) * 0 == 0) by {
-                lemma_mul_basics(pow2(8) as int);
-            }
-
-            // Subgoal 2: prefix(seq, 1) == seq[0]
-            assert(bytes_to_nat_prefix(seq, 0) == 0);
-            assert(pow2(0) == 1);
-            assert(bytes_to_nat_prefix(seq, 1) == bytes_to_nat_prefix(seq, 0) + pow2(0) * seq[0]
-                as nat);
-            assert(pow2(0) * seq[0] as nat == seq[0] as nat) by {
-                lemma_mul_basics(seq[0] as int);
-            }
-        } else {
-            // n > 1: delegate to lemma_shift_prefix
-            assert(goal) by {
-                lemma_shift_prefix(seq, tail, n);
-            }
-        }
-    }
-}
-
-/// Helper: Shows that 256 * prefix(tail, k) + seq[0] relates to prefix(seq, k+1)
-proof fn lemma_shift_prefix(seq: Seq<u8>, tail: Seq<u8>, n: nat)
-    requires
-        n == seq.len() as nat,
-        n > 1,
-        tail == seq.skip(1),
-        tail.len() == n - 1,
-    ensures
-        seq[0] as nat + pow2(8) * bytes_to_nat_prefix(tail, (n - 1) as nat)
-            == bytes_to_nat_prefix(seq, n),
-    decreases n,
-{
-    let goal = seq[0] as nat + pow2(8) * bytes_to_nat_prefix(tail, (n - 1) as nat)
-        == bytes_to_nat_prefix(seq, n);
-
-    assert(goal) by {
-        // lemma_prefix_shift_induction gives:
-        //   seq[0] * pow2(0) + pow2(8) * prefix(tail, n-1) == prefix(seq, n)
-        assert(seq[0] as nat * pow2(0) + pow2(8) * bytes_to_nat_prefix(tail, (n - 1) as nat)
-            == bytes_to_nat_prefix(seq, n)) by {
-            lemma_prefix_shift_induction(seq, tail, n, (n - 1) as nat);
-        }
-
-        // Since pow2(0) == 1, seq[0] * pow2(0) == seq[0]
-        assert(seq[0] as nat * pow2(0) == seq[0] as nat) by {
-            lemma2_to64();
-        }
-    }
-}
-
-/// Inductive helper for the shift proof
-///
-/// This lemma establishes the key relationship between Horner's method
-/// and the direct sum representation:
-///   seq[0] + 256 * prefix(tail, k) == prefix(seq, k+1)
-proof fn lemma_prefix_shift_induction(seq: Seq<u8>, tail: Seq<u8>, n: nat, k: nat)
-    requires
-        n == seq.len() as nat,
-        n > 0,
-        tail == seq.skip(1),
-        tail.len() == n - 1,
-        k <= n - 1,
-    ensures
-        seq[0] as nat * pow2(0) + pow2(8) * bytes_to_nat_prefix(tail, k)
+        seq[0] as nat * pow2(0) + pow2(8) * bytes_to_nat_prefix(seq.skip(1), k)
             == bytes_to_nat_prefix(seq, (k + 1) as nat),
     decreases k,
 {
+    let tail = seq.skip(1);
     let goal = seq[0] as nat * pow2(0) + pow2(8) * bytes_to_nat_prefix(tail, k)
         == bytes_to_nat_prefix(seq, (k + 1) as nat);
 
@@ -239,7 +163,7 @@ proof fn lemma_prefix_shift_induction(seq: Seq<u8>, tail: Seq<u8>, n: nat, k: na
 
             // Subgoal 1: IH - holds for k-1
             assert(seq[0] as nat * pow2(0) + pow2(8) * tail_prev == bytes_to_nat_prefix(seq, k)) by {
-                lemma_prefix_shift_induction(seq, tail, n, k1);
+                lemma_horner_to_prefix_step(seq, k1);
             }
 
             // Subgoal 2: pow2(8) * pow2((k-1)*8) == pow2(k*8)
@@ -691,7 +615,7 @@ pub proof fn lemma_prefix_equal_when_bytes_match(seq1: Seq<u8>, seq2: Seq<u8>, n
 /// - The first n bytes of the array match the sequence
 /// - The remaining bytes (n..31) are zero
 ///
-/// Proves that bytes32_to_nat of the array equals bytes_seq_to_nat of the sequence.
+/// Proves that bytes32_to_nat of the array equals bytes_to_nat_prefix of the sequence.
 ///
 /// (This lemma captures the common proof pattern for From<u16>, From<u32>,
 /// From<u64>, and From<u128>.)
@@ -702,53 +626,13 @@ pub proof fn lemma_from_le_bytes(le_seq: Seq<u8>, bytes: &[u8; 32], n: nat)
         forall|i: int| #![auto] 0 <= i < n ==> le_seq[i] == bytes[i],
         forall|i: int| n <= i < 32 ==> bytes[i] == 0,
     ensures
-        bytes32_to_nat(bytes) == bytes_seq_to_nat(le_seq),
+        bytes32_to_nat(bytes) == bytes_to_nat_prefix(le_seq, n),
 {
-    let goal = bytes32_to_nat(bytes) == bytes_seq_to_nat(le_seq);
-
-    assert(goal) by {
-        // Subgoal 1: bytes_seq_to_nat(le_seq) == bytes_to_nat_prefix(le_seq, n)
-        lemma_bytes_seq_to_nat_equals_prefix(le_seq);
-
-        // Subgoal 2: bytes_to_nat_prefix(le_seq, n) == bytes_to_nat_prefix(bytes@, n)
-        assert(bytes_to_nat_prefix(le_seq, n) == bytes_to_nat_prefix(bytes@, n)) by {
-            lemma_prefix_equal_when_bytes_match(le_seq, bytes@, n);
-        }
-
-        // Subgoal 3: bytes32_to_nat(bytes) == bytes_to_nat_prefix(bytes@, n)
-        lemma_bytes32_to_nat_with_trailing_zeros(bytes, n);
-    }
-}
-
-// ============================================================================
-// Upper bound lemmas for bytes32_to_nat
-// ============================================================================
-
-/// Proves that bytes32_to_nat of a 32-byte array is strictly less than 2^256.
-/// Also establishes that bytes32_to_nat(bytes) == bytes32_to_nat(bytes) % pow2(256).
-pub proof fn bytes32_to_nat_le_pow2_256(bytes: &[u8; 32])
-    ensures
-        bytes32_to_nat(&bytes) < pow2(256),
-        bytes32_to_nat(&bytes) == bytes32_to_nat(&bytes) % pow2(256),
-{
-    assert forall|i: nat| 0 <= i <= 31 implies #[trigger] bytes[i as int] * pow2(i * 8) <= pow2(
-        (i + 1) * 8,
-    ) - pow2(i * 8) by {
-        let b = bytes[i as int];
-        assert(b < pow2(8)) by {
-            lemma_u8_lt_pow2_8(b);
-        }
-        lemma_pow2_mul_bound_general(b as nat, 8, i * 8);
-        assert(i * 8 + 8 == (i + 1) * 8) by {
-            lemma_mul_is_distributive_add_other_way(i as int, 1, 8);
-        }
-    }
-    assert(pow2(0 * 8) == 1) by {
-        lemma2_to64();
-    }
-    assert(bytes32_to_nat(&bytes) % pow2(256) == bytes32_to_nat(&bytes)) by {
-        lemma_small_mod(bytes32_to_nat(&bytes), pow2(256));
-    }
+    // Step 1: bytes32_to_nat(bytes) == prefix(bytes@, n)  [trailing zeros]
+    lemma_bytes32_to_nat_with_trailing_zeros(bytes, n);
+    
+    // Step 2: prefix(bytes@, n) == prefix(le_seq, n)  [first n bytes match]
+    lemma_prefix_equal_when_bytes_match(bytes@, le_seq, n);
 }
 
 // ============================================================================
@@ -789,19 +673,6 @@ proof fn lemma_bytes32_to_nat_rec_bound(bytes: &[u8; 32], start: usize, target: 
 }
 
 // ============================================================================
-// 64-byte array lemmas
-// ============================================================================
-
-/// Upper bound for 64-byte array to nat: strictly less than 2^512
-pub proof fn bytes_seq_to_nat_64_le_pow2_512(bytes: &[u8; 64])
-    ensures
-        bytes_seq_to_nat(bytes@) < pow2(512),
-{
-    lemma_bytes_seq_to_nat_equals_prefix(bytes@);
-    lemma_bytes_to_nat_prefix_bounded(bytes@, 64);
-}
-
-// ============================================================================
 // Bridge lemmas: connecting different byte-to-nat representations
 // ============================================================================
 
@@ -812,14 +683,6 @@ pub proof fn lemma_bytes32_to_nat_equals_rec(bytes: &[u8; 32])
 {
     reveal_with_fuel(bytes32_to_nat_rec, 33);
     assert(bytes32_to_nat_rec(bytes, 32) == 0);
-}
-
-/// Lemma: bytes32_to_nat (32-byte) equals bytes_to_nat_suffix starting at 0
-pub proof fn lemma_bytes32_to_nat_equals_suffix_32(bytes: &[u8; 32])
-    ensures
-        bytes32_to_nat(bytes) == bytes_to_nat_suffix(bytes, 0),
-{
-    reveal_with_fuel(bytes_to_nat_suffix, 33);
 }
 
 /// Helper: bytes_to_nat_prefix equals bytes_to_nat_suffix for matching ranges

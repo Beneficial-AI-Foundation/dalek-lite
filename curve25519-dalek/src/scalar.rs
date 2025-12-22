@@ -1165,8 +1165,7 @@ impl From<u16> for Scalar {
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from2(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 2);
+            lemma_from_le_bytes(x_bytes@, &result.bytes, 2);
         }
         result
     }
@@ -1199,8 +1198,7 @@ impl From<u32> for Scalar {
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from4(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 4);
+            lemma_from_le_bytes(x_bytes@, &result.bytes, 4);
         }
         result
     }
@@ -1253,8 +1251,7 @@ impl From<u64> for Scalar {
         /* </MODIFIED CODE> */
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from8(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 8);
+            lemma_from_le_bytes(x_bytes@, &result.bytes, 8);
         }
         result
     }
@@ -1287,8 +1284,7 @@ impl From<u128> for Scalar {
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            let le_seq = seq_from16(&x_bytes);
-            lemma_from_le_bytes(le_seq, &result.bytes, 16);
+            lemma_from_le_bytes(x_bytes@, &result.bytes, 16);
         }
         result
     }

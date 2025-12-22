@@ -21,11 +21,9 @@ verus! {
 // ============================================================================
 // PART 1: BYTE-TO-NAT LEMMAS
 // ============================================================================
-
 // ============================================================================
 // Properties of bytes_to_nat_prefix
 // ============================================================================
-
 /// Helper: Bound bytes_to_nat_prefix - geometric series bound
 /// Each byte contributes at most 255 * pow2(j*8) < pow2((j+1)*8)
 pub proof fn lemma_bytes_to_nat_prefix_bounded(bytes: Seq<u8>, n: nat)
@@ -84,7 +82,6 @@ pub proof fn lemma_bytes_to_nat_prefix_bounded(bytes: Seq<u8>, n: nat)
 // The key insight is that bytes_seq_to_nat (Horner form) and bytes_to_nat_prefix
 // (direct sum form) compute the same value.
 // ============================================================================
-
 /// Lemma: Horner form equals direct sum form for any sequence.
 ///
 /// This is the key lemma that connects the two recursion patterns:
@@ -106,18 +103,15 @@ pub proof fn lemma_bytes_seq_to_nat_equals_prefix(seq: Seq<u8>)
             let tail = seq.skip(1);
 
             // IH: bytes_seq_to_nat(tail) == bytes_to_nat_prefix(tail, tail.len())
-            assert(bytes_seq_to_nat(tail) == bytes_to_nat_prefix(tail, tail.len() as nat))
-                by {
+            assert(bytes_seq_to_nat(tail) == bytes_to_nat_prefix(tail, tail.len() as nat)) by {
                 lemma_bytes_seq_to_nat_equals_prefix(tail);
             }
 
             // bytes_seq_to_nat(seq) = seq[0] + 256 * bytes_seq_to_nat(tail)
             //                       = seq[0] + 256 * prefix(tail, n-1)
             //                       = prefix(seq, n)
-            assert(seq[0] as nat + pow2(8) * bytes_to_nat_prefix(
-                tail,
-                (seq.len() - 1) as nat,
-            ) == bytes_to_nat_prefix(seq, seq.len() as nat)) by {
+            assert(seq[0] as nat + pow2(8) * bytes_to_nat_prefix(tail, (seq.len() - 1) as nat)
+                == bytes_to_nat_prefix(seq, seq.len() as nat)) by {
                 // lemma_horner_to_prefix_step gives:
                 //   seq[0] * pow2(0) + pow2(8) * prefix(tail, n-1) == prefix(seq, n)
                 lemma_horner_to_prefix_step(seq, (seq.len() - 1) as nat);
@@ -162,7 +156,8 @@ proof fn lemma_horner_to_prefix_step(seq: Seq<u8>, k: nat)
             let tail_term = pow2((k1 * 8) as nat) * tail[k1 as int] as nat;
 
             // Subgoal 1: IH - holds for k-1
-            assert(seq[0] as nat * pow2(0) + pow2(8) * tail_prev == bytes_to_nat_prefix(seq, k)) by {
+            assert(seq[0] as nat * pow2(0) + pow2(8) * tail_prev == bytes_to_nat_prefix(seq, k))
+                by {
                 lemma_horner_to_prefix_step(seq, k1);
             }
 
@@ -198,14 +193,16 @@ proof fn lemma_horner_to_prefix_step(seq: Seq<u8>, k: nat)
 // ============================================================================
 // Key Structural Lemmas using bytes32_to_nat_rec
 // ============================================================================
-
 /// Lemma: Decomposition of bytes32_to_nat_rec into prefix and suffix
 /// This is the key structural insight: the recursive sum can be split at any point
 pub proof fn lemma_decomposition_prefix_rec(bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
     ensures
-        bytes32_to_nat_rec(bytes, 0) == bytes_to_nat_prefix(bytes@, n) + bytes32_to_nat_rec(bytes, n),
+        bytes32_to_nat_rec(bytes, 0) == bytes_to_nat_prefix(bytes@, n) + bytes32_to_nat_rec(
+            bytes,
+            n,
+        ),
     decreases n,
 {
     let goal = bytes32_to_nat_rec(bytes, 0) == bytes_to_nat_prefix(bytes@, n) + bytes32_to_nat_rec(
@@ -305,7 +302,6 @@ pub proof fn lemma_rec_suffix_divisible(bytes: &[u8; 32], n: nat)
 // ============================================================================
 // Main Theorems: Byte Extraction and Injectivity
 // ============================================================================
-
 /// Lemma 1: Modulo truncates bytes32_to_nat to the first n bytes
 ///
 /// This is the KEY lemma: taking modulo pow2(n*8) naturally truncates all bytes
@@ -452,8 +448,8 @@ pub proof fn lemma_extract_byte_at_index(bytes: &[u8; 32], i: nat)
         }
 
         // Subgoal 4: (prefix(i+1) / pow2(i*8)) % pow2(8) == bytes[i]
-        assert((bytes_to_nat_prefix(bytes@, i + 1) / pow2(i * 8)) % pow2(8) == bytes[i as int]
-            as nat) by {
+        assert((bytes_to_nat_prefix(bytes@, i + 1) / pow2(i * 8)) % pow2(8)
+            == bytes[i as int] as nat) by {
             lemma_prefix_div_extracts_byte(bytes, i);
         }
     }
@@ -462,7 +458,6 @@ pub proof fn lemma_extract_byte_at_index(bytes: &[u8; 32], i: nat)
 // ============================================================================
 // Main Theorem: Injectivity
 // ============================================================================
-
 /// Main theorem: bytes32_to_nat is injective
 ///
 /// If two 32-byte arrays have the same bytes32_to_nat value, then they are
@@ -489,7 +484,6 @@ pub proof fn lemma_canonical_bytes_equal(bytes1: &[u8; 32], bytes2: &[u8; 32])
 // ============================================================================
 // Trailing Zeros and Prefix Lemmas
 // ============================================================================
-
 /// Lemma: bytes32_to_nat_rec from index n is 0 when all bytes from n onwards are zero.
 ///
 /// This is the key insight: the "suffix" part of the sum vanishes when trailing bytes are zero.
@@ -576,8 +570,8 @@ pub proof fn lemma_bytes32_to_nat_first_byte_only(bytes: &[u8; 32])
         lemma2_to64();
 
         assert(bytes_to_nat_prefix(bytes@, 0) == 0);
-        assert(bytes_to_nat_prefix(bytes@, 1) == bytes_to_nat_prefix(bytes@, 0) + pow2(0) * bytes[0]
-            as nat);
+        assert(bytes_to_nat_prefix(bytes@, 1) == bytes_to_nat_prefix(bytes@, 0) + pow2(0)
+            * bytes[0] as nat);
         assert(pow2(0) == 1);
         assert(pow2(0) * bytes[0] as nat == bytes[0] as nat);
     }
@@ -630,7 +624,7 @@ pub proof fn lemma_from_le_bytes(le_seq: Seq<u8>, bytes: &[u8; 32], n: nat)
 {
     // Step 1: bytes32_to_nat(bytes) == prefix(bytes@, n)  [trailing zeros]
     lemma_bytes32_to_nat_with_trailing_zeros(bytes, n);
-    
+
     // Step 2: prefix(bytes@, n) == prefix(le_seq, n)  [first n bytes match]
     lemma_prefix_equal_when_bytes_match(bytes@, le_seq, n);
 }
@@ -638,7 +632,6 @@ pub proof fn lemma_from_le_bytes(le_seq: Seq<u8>, bytes: &[u8; 32], n: nat)
 // ============================================================================
 // Lower bound lemmas for bytes32_to_nat
 // ============================================================================
-
 /// Proves that bytes32_to_nat is at least as large as any individual term in its sum.
 /// Useful for showing that if bytes[i] is non-zero, then bytes32_to_nat >= 2^(i*8).
 pub proof fn lemma_bytes32_to_nat_lower_bound(bytes: &[u8; 32], index: usize)
@@ -675,7 +668,6 @@ proof fn lemma_bytes32_to_nat_rec_bound(bytes: &[u8; 32], start: usize, target: 
 // ============================================================================
 // Bridge lemmas: connecting different byte-to-nat representations
 // ============================================================================
-
 /// Lemma: bytes32_to_nat (32-byte) equals bytes32_to_nat_rec starting at index 0
 pub proof fn lemma_bytes32_to_nat_equals_rec(bytes: &[u8; 32])
     ensures
@@ -745,7 +737,6 @@ pub proof fn lemma_bytes32_to_nat_equals_suffix_64(bytes: &[u8; 64])
 // NOTE: These lemmas are currently specialized for 8-word (64-byte) inputs,
 // matching the from_bytes_wide use case. They could be made generic over
 // array size if other use cases emerge (e.g., for 32-byte or 128-byte inputs).
-
 /// Upper bound: result ≤ 2^(count×64) - 1
 /// Note: Currently specialized for &[u64; 8]. Could be made generic over size N.
 pub proof fn lemma_words_to_nat_upper_bound(words: &[u64; 8], count: int)
@@ -787,11 +778,7 @@ pub proof fn lemma_words_to_nat_upper_bound(words: &[u64; 8], count: int)
 
 /// Equivalence: words_to_nat on word array == words_from_bytes on underlying bytes
 /// Note: Currently specialized for &[u64; 8] and &[u8; 64]. Could be made generic over size N.
-pub proof fn lemma_words_to_nat_equals_bytes(
-    words: &[u64; 8],
-    bytes: &[u8; 64],
-    count: int,
-)
+pub proof fn lemma_words_to_nat_equals_bytes(words: &[u64; 8], bytes: &[u8; 64], count: int)
     requires
         0 <= count <= 8,
         forall|k: int| #![auto] 0 <= k < 8 ==> words@[k] as nat == word64_from_bytes(bytes@, k),
@@ -808,20 +795,16 @@ pub proof fn lemma_words_to_nat_equals_bytes(
 /// For other sizes, similar expansion lemmas could be added as needed.
 pub proof fn lemma_words64_from_bytes_to_nat_wide(bytes: &[u8; 64])
     ensures
-        words64_from_bytes_to_nat(bytes@, 8) == word64_from_bytes(bytes@, 0) + pow2(64) * word64_from_bytes(
-            bytes@,
-            1,
-        ) + pow2(128) * word64_from_bytes(bytes@, 2) + pow2(192) * word64_from_bytes(bytes@, 3) + pow2(
-            256,
-        ) * word64_from_bytes(bytes@, 4) + pow2(320) * word64_from_bytes(bytes@, 5) + pow2(384)
-            * word64_from_bytes(bytes@, 6) + pow2(448) * word64_from_bytes(bytes@, 7),
+        words64_from_bytes_to_nat(bytes@, 8) == word64_from_bytes(bytes@, 0) + pow2(64)
+            * word64_from_bytes(bytes@, 1) + pow2(128) * word64_from_bytes(bytes@, 2) + pow2(192)
+            * word64_from_bytes(bytes@, 3) + pow2(256) * word64_from_bytes(bytes@, 4) + pow2(320)
+            * word64_from_bytes(bytes@, 5) + pow2(384) * word64_from_bytes(bytes@, 6) + pow2(448)
+            * word64_from_bytes(bytes@, 7),
 {
     reveal_with_fuel(words64_from_bytes_to_nat, 9);
     lemma2_to64();
-    assert(words64_from_bytes_to_nat(bytes@, 1) == words64_from_bytes_to_nat(bytes@, 0) + word64_from_bytes(
-        bytes@,
-        0,
-    ) * pow2((0 * 64) as nat));
+    assert(words64_from_bytes_to_nat(bytes@, 1) == words64_from_bytes_to_nat(bytes@, 0)
+        + word64_from_bytes(bytes@, 0) * pow2((0 * 64) as nat));
     // Reorder multiplications using commutativity
     assert(words64_from_bytes_to_nat(bytes@, 8) == word64_from_bytes(bytes@, 0) + pow2(64)
         * word64_from_bytes(bytes@, 1) + pow2(128) * word64_from_bytes(bytes@, 2) + pow2(192)
@@ -834,4 +817,3 @@ pub proof fn lemma_words64_from_bytes_to_nat_wide(bytes: &[u8; 64])
 }
 
 } // verus!
-

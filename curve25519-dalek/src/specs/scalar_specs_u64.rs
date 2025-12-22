@@ -65,8 +65,6 @@ pub open spec fn scalar52_mod_order(limbs: &[u64; 5]) -> nat {
 
 // bytes32_to_nat, bytes_seq_to_nat, and bytes_to_nat_suffix (all generic)
 // are now in core_specs.rs. They are imported via `use super::core_specs::*`
-
-
 // Group order: the value of L as a natural number
 pub open spec fn group_order() -> nat {
     pow2(252) + 27742317777372353535851937790883648493nat

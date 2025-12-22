@@ -7,11 +7,11 @@ use core::convert::TryInto;
 #[allow(unused_imports)]
 use crate::montgomery::MontgomeryPoint;
 #[allow(unused_imports)]
+use crate::specs::core_specs::*;
+#[allow(unused_imports)]
 use crate::specs::field_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs_u64::*;
-#[allow(unused_imports)]
-use crate::specs::core_specs::*;
 #[allow(unused_imports)]
 use crate::Scalar;
 use vstd::prelude::*;

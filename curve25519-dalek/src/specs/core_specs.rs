@@ -82,7 +82,6 @@ pub open spec fn bytes32_to_nat_rec(bytes: &[u8; 32], index: nat) -> nat
 
 // NOTE: Bridge lemmas (lemma_bytes32_to_nat_equals_rec, lemma_bytes32_to_nat_equals_suffix_32,
 // lemma_bytes32_to_nat_equals_suffix_64) have been moved to to_nat_lemmas.rs
-
 /// Load 8 consecutive bytes from a byte array and interpret as a little-endian u64.
 ///
 /// Returns: bytes[i] + bytes[i+1] * 2^8 + ... + bytes[i+7] * 2^56
@@ -114,7 +113,6 @@ pub open spec fn u64_5_as_nat_generic_radix(arr: [u64;5], radix: nat) -> nat {
 // ============================================================================
 // Byte sequence to nat conversion
 // ============================================================================
-
 /// Little-endian natural value of an arbitrary-length byte sequence.
 /// Computes: bytes[0] + bytes[1] * 2^8 + bytes[2] * 2^16 + ...
 pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat
@@ -148,7 +146,6 @@ pub open spec fn bytes_to_nat_prefix(bytes: Seq<u8>, j: nat) -> nat
 // ============================================================================
 // Word-to-nat conversion (generic over word type)
 // ============================================================================
-
 /// THE fully generic primitive for word-to-nat conversion.
 /// Works with any word type via Seq<nat> - use arr@.map(|i, x| x as nat) to convert.
 ///
@@ -181,7 +178,6 @@ pub open spec fn words_to_nat_u64(words: &[u64], num_words: int, bits_per_word: 
 // For other element types (u16, u32, etc.), use words_to_nat_gen directly:
 //   - u16 array: words_to_nat_gen(arr@.map(|i, x| x as nat), len, 16)
 //   - u32 array: words_to_nat_gen(arr@.map(|i, x| x as nat), len, 32)
-
 /// Extract a 64-bit word (8 bytes) from any byte sequence.
 /// Returns bytes[base..base+8] as little-endian u64 value.
 #[verusfmt::skip]
@@ -245,22 +241,21 @@ pub open spec fn words64_from_bytes_to_nat(bytes: Seq<u8>, count: int) -> nat
         words64_from_bytes_to_nat(bytes, num_words)
     } else {
         let idx = count - 1;
-        words64_from_bytes_to_nat(bytes, idx) + word64_from_bytes(bytes, idx) * pow2((idx * 64) as nat)
+        words64_from_bytes_to_nat(bytes, idx) + word64_from_bytes(bytes, idx) * pow2(
+            (idx * 64) as nat,
+        )
     }
 }
 
 // ============================================================================
 // Wide (64-byte) array to nat conversion
 // ============================================================================
-
 // NOTE: bytes_wide_to_nat has been inlined to bytes_seq_to_nat(bytes@)
 // Use bytes_seq_to_nat(bytes@) directly for 64-byte arrays.
 // bytes64_to_nat_suffix has been replaced by the generic bytes_to_nat_suffix<const N>.
-
 // ============================================================================
 // Bit array to nat conversion
 // ============================================================================
-
 /// Convert a boolean array (bits in little-endian order) to a natural number.
 /// bits[0] is the least significant bit.
 /// Computes: sum_{i=0}^{255} bits[i] * 2^i
@@ -305,4 +300,3 @@ pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
 }
 
 } // verus!
-

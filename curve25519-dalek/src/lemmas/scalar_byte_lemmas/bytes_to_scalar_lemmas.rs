@@ -174,8 +174,9 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
         j as nat,
     ));
 
-    assert(bytes_to_nat_prefix(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat)
-        + pow2((j as nat) * 8) * bytes[(i as int) * 8 + j] == bytes_to_nat_prefix(
+    assert(bytes_to_nat_prefix(Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]), j as nat) + pow2(
+        (j as nat) * 8,
+    ) * bytes[(i as int) * 8 + j] == bytes_to_nat_prefix(
         Seq::new(8, |j2: int| bytes[(i as int) * 8 + j2]),
         (j + 1) as nat,
     )) by {
@@ -616,8 +617,8 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
     reveal_with_fuel(seq_to_nat_52, 10);
     reveal_with_fuel(words_to_nat_gen, 5);
 
-    assert(words_to_nat_u64(&words, 4, 64) == words[0] + words[1] * pow2(64) + words[2] * pow2(128) + words[3]
-        * pow2(192)) by {
+    assert(words_to_nat_u64(&words, 4, 64) == words[0] + words[1] * pow2(64) + words[2] * pow2(128)
+        + words[3] * pow2(192)) by {
         assert(pow2(0) == 1) by {
             lemma_pow2(0);
             assert(pow(2, 0) == 1) by (compute);

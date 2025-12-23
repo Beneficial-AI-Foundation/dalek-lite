@@ -38,7 +38,6 @@ jobs:
       project_path: curve25519-dalek
       deploy_mode: subpath
       subpath: callgraph
-      base_url: /dalek-lite/callgraph/
       skip_verification: false
       skip_similar_lemmas: false
 
@@ -134,6 +133,17 @@ jobs:
         with:
           name: callgraph-viewer
           path: site/callgraph
+
+      - name: Fix callgraph asset paths for subpath deployment
+        run: |
+          # The callgraph viewer references /callgraph/assets/... but we're at /dalek-lite/callgraph/
+          # Fix the paths in the HTML file
+          if [ -f site/callgraph/index.html ]; then
+            sed -i 's|"/callgraph/|"/dalek-lite/callgraph/|g' site/callgraph/index.html
+            sed -i 's|href="/assets/|href="/dalek-lite/callgraph/assets/|g' site/callgraph/index.html
+            sed -i 's|src="/assets/|src="/dalek-lite/callgraph/assets/|g' site/callgraph/index.html
+            echo "Fixed asset paths in callgraph/index.html"
+          fi
 
       - name: List final site structure
         run: |

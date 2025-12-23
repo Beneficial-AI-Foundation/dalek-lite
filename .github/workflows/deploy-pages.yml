@@ -38,6 +38,7 @@ jobs:
       project_path: curve25519-dalek
       deploy_mode: subpath
       subpath: callgraph
+      base_url: /dalek-lite/callgraph/
       skip_verification: false
       skip_similar_lemmas: false
 

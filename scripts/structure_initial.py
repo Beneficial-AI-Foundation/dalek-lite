@@ -1,7 +1,9 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = []
+# dependencies = [
+#   "beartype",
+# ]
 # ///
 """
 Initialize verilib structure files from functions_to_track.csv.

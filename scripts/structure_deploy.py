@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "requests",
 #   "intervaltree",
 #   "python-frontmatter"
 # ]
@@ -20,12 +21,15 @@ Usage:
     uv run scripts/structure_deploy.py
 """
 
+import hashlib
 import json
+import os
 import shutil
 import subprocess
 from collections import Counter, defaultdict
 from pathlib import Path
 
+import requests
 import frontmatter
 from intervaltree import IntervalTree
 
@@ -33,6 +37,9 @@ from intervaltree import IntervalTree
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 VERILIB_PATH = PROJECT_ROOT / ".verilib"
 SCIP_ATOMS_PATH = VERILIB_PATH / "scip_atoms.json"
+DEBUG_PATH = VERILIB_PATH / "structure_deploy.log"
+METADATA_PATH = VERILIB_PATH / "metadata.json"
+
 
 # SCIP configuration
 SCIP_ATOMS_REPO = "https://github.com/Beneficial-AI-Foundation/scip-atoms"
@@ -437,6 +444,169 @@ def populate_structure_metadata(
     print(f"Skipped: {skipped_count}")
 
 
+def structure_to_tree(verilib_path: Path) -> list[dict]:
+    """
+    Convert structure files to a JSON tree format.
+
+    Walks the VERILIB_PATH folder recursively and builds a nested tree structure
+    where:
+    - Folder hierarchy determines the children relationships
+    - Identifiers use paths derived from .md file locations
+    - Content comes from .atom.verilib files
+    - Dependencies are mapped from scip-names to paths
+
+    Args:
+        verilib_path: Path to the .verilib directory containing structure files.
+
+    Returns:
+        List of root tree nodes. Each node is a dict with:
+        - identifier: Path for files, folder path for folders
+        - content: Source code text (empty for folders)
+        - children: List of child nodes
+        - file_type: "file" or "folder"
+        - dependencies: List of dependency paths (files only)
+        - specified: Boolean flag (files only)
+    """
+    # First pass: build scip-name to path mapping
+    scip_to_path: dict[str, str] = {}
+    for md_file in verilib_path.rglob("*.md"):
+        meta_file = md_file.with_suffix(".meta.verilib")
+        if not meta_file.exists():
+            continue
+
+        with open(meta_file, encoding="utf-8") as f:
+            meta_data = json.load(f)
+
+        scip_name = meta_data.get("scip-name", "")
+        if not scip_name:
+            continue
+
+        # Construct path from .md file location relative to verilib_path
+        relative_path = md_file.relative_to(verilib_path)
+        # Remove .md extension and prepend /
+        path = "/" + str(relative_path.with_suffix(""))
+        scip_to_path[scip_name] = path
+
+    def build_tree_recursive(dir_path: Path, parent_identifier: str = "") -> list[dict]:
+        """Recursively build tree nodes from directory structure."""
+        nodes = []
+
+        # Get all items in directory, sorted for consistent ordering
+        items = sorted(dir_path.iterdir())
+
+        # Separate directories and files
+        subdirs = [item for item in items if item.is_dir()]
+        md_files = [item for item in items if item.is_file() and item.suffix == ".md"]
+
+        # Process subdirectories as folder nodes
+        for subdir in subdirs:
+            folder_name = subdir.name
+            folder_identifier = f"{parent_identifier}/{folder_name}" if parent_identifier else folder_name
+
+            children = build_tree_recursive(subdir, folder_identifier)
+
+            # Only add folder if it has children
+            if children:
+                folder_node = {
+                    "identifier": folder_identifier,
+                    "content": "",
+                    "children": children,
+                    "file_type": "folder",
+                }
+                nodes.append(folder_node)
+
+        # Process .md files as file nodes
+        for md_file in md_files:
+            meta_file = md_file.with_suffix(".meta.verilib")
+            atom_file = md_file.with_suffix(".atom.verilib")
+
+            # Skip if meta file doesn't exist
+            if not meta_file.exists():
+                continue
+
+            # Read metadata
+            with open(meta_file, encoding="utf-8") as f:
+                meta_data = json.load(f)
+
+            scip_name = meta_data.get("scip-name", "")
+            if not scip_name:
+                continue
+
+            # Get identifier from path mapping
+            identifier = scip_to_path.get(scip_name, "")
+            if not identifier:
+                continue
+
+            # Get content from atom file
+            content = ""
+            if atom_file.exists():
+                content = atom_file.read_text(encoding="utf-8")
+
+            # Get dependencies and map to paths
+            scip_dependencies = meta_data.get("dependencies", [])
+            dependencies = [scip_to_path.get(dep, dep) for dep in scip_dependencies]
+
+            # Get specified flag
+            specified = meta_data.get("specified", False)
+
+            file_node = {
+                "identifier": identifier,
+                "content": content,
+                "children": [],
+                "file_type": "file",
+                "dependencies": dependencies,
+                "specified": specified,
+            }
+            nodes.append(file_node)
+
+        return nodes
+
+    # Build tree starting from verilib_path
+    return build_tree_recursive(verilib_path)
+
+
+def deploy(url, repo, api_key, tree, debug=False, debug_path=DEBUG_PATH):
+    """Send POST request to deploy endpoint.
+
+    Args:
+        url: Base URL of the deployment server
+        repo: Repository ID
+        tree: Tree structure to deploy
+        api_key: API key for authorization
+        debug: If True, write json_body to file for debugging
+        debug_path: Path to the debug log file
+    """
+    # Create json_body from tree
+    json_body = {"tree": tree}
+
+    deploy_url = f"{url}/v2/repo/deploy/{repo}"
+
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"ApiKey {api_key}",
+    }
+
+    # Write json_body to file with pretty printing (only if debug mode)
+    if debug:
+        debug_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(debug_path, "a", encoding="utf-8") as f:
+            f.write("\n=== deploy json_body ===\n")
+            json.dump(json_body, f, indent=4)
+            f.write("\n")
+        print(f"json_body written to {debug_path}")
+
+    # Send POST request with JSON body
+    response = requests.post(deploy_url, headers=headers, json=json_body)
+
+    # Print response details
+    print(f"Status Code: {response.status_code}")
+    print(f"Response Headers: {dict(response.headers)}")
+    print(f"Response Body: {response.text}")
+
+    return response
+
+
 def main() -> None:
     """
     Deploy verilib structure files by syncing with SCIP atoms.
@@ -447,12 +617,38 @@ def main() -> None:
         3. Build interval tree index for line lookups
         4. Sync structure .md files with SCIP data
         5. Generate metadata files (.meta.verilib, .atom.verilib)
+        6. Construct tree from structure files
+        7. Deploy tree to server
     """
-    scip_atoms = generate_scip_atoms()
-    scip_atoms = filter_scip_atoms(scip_atoms, SCIP_PREFIX)
-    scip_index = generate_scip_index(scip_atoms)
-    sync_structure_with_atoms(scip_index, scip_atoms, VERILIB_PATH)
-    populate_structure_metadata(scip_atoms, VERILIB_PATH, PROJECT_ROOT)
+    # Load config
+    with open(METADATA_PATH, encoding="utf-8") as f:
+        config = json.load(f)
+    repo = config["repo"]["id"]
+    url = config["repo"]["url"]
+
+    # Get API key from environment
+    api_key = os.environ.get("VERILIB_API_KEY")
+    if not api_key:
+        raise ValueError("VERILIB_API_KEY environment variable is not set")
+
+    # Get debug flag
+    debug = os.environ.get("VERILIB_DEBUG", "").lower() in ("true", "1", "yes")
+
+    # # Generate and sync SCIP atoms
+    # scip_atoms = generate_scip_atoms()
+    # scip_atoms = filter_scip_atoms(scip_atoms, SCIP_PREFIX)
+    # scip_index = generate_scip_index(scip_atoms)
+    # sync_structure_with_atoms(scip_index, scip_atoms, VERILIB_PATH)
+    # populate_structure_metadata(scip_atoms, VERILIB_PATH, PROJECT_ROOT)
+
+    print(f"api key {api_key}")
+    # Construct tree from structure files and deploy
+    print("Constructing tree from structure files...")
+    tree = structure_to_tree(VERILIB_PATH)
+    print(f"Tree constructed with {len(tree)} root node(s)")
+
+    print("Deploying tree...")
+    deploy(url, repo, api_key, tree, debug=debug)
 
 
 if __name__ == "__main__":

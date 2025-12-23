@@ -28,7 +28,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  # Job 1: Generate the call graph (runs in parallel with dashboard build)
+  callgraph:
+    name: Generate Call Graph
+    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    with:
+      github_url: https://github.com/Beneficial-AI-Foundation/dalek-lite
+      github_path_prefix: curve25519-dalek
+      project_path: curve25519-dalek
+      deploy_mode: subpath
+      subpath: callgraph
+      skip_verification: false
+      skip_similar_lemmas: false
+
+  # Job 2: Build the dashboard (existing logic)
+  build-dashboard:
+    name: Build Dashboard
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -91,15 +106,61 @@ jobs:
           cp outputs/stats.json docs/outputs/
           cp outputs/stats_history.jsonl docs/outputs/
 
+      - name: Upload dashboard artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard
+          path: docs
+          retention-days: 1
+
+  # Job 3: Merge dashboard and callgraph, then deploy
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: [callgraph, build-dashboard]
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Download dashboard
+        uses: actions/download-artifact@v4
+        with:
+          name: dashboard
+          path: site
+
+      - name: Download callgraph viewer
+        uses: actions/download-artifact@v4
+        with:
+          name: callgraph-viewer
+          path: site/callgraph
+
+      - name: Fix callgraph asset paths for subpath deployment
+        run: |
+          # The callgraph viewer references /callgraph/assets/... but we're at /dalek-lite/callgraph/
+          # Fix the paths in the HTML file
+          if [ -f site/callgraph/index.html ]; then
+            sed -i 's|"/callgraph/|"/dalek-lite/callgraph/|g' site/callgraph/index.html
+            sed -i 's|href="/assets/|href="/dalek-lite/callgraph/assets/|g' site/callgraph/index.html
+            sed -i 's|src="/assets/|src="/dalek-lite/callgraph/assets/|g' site/callgraph/index.html
+            echo "Fixed asset paths in callgraph/index.html"
+          fi
+
+      - name: List final site structure
+        run: |
+          echo "=== Final site structure ==="
+          find site -type f | head -50
+          echo "..."
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Upload artifact
+      - name: Upload combined artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './docs'
+          path: site
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-

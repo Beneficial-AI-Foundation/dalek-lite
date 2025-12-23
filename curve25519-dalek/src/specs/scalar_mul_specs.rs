@@ -16,9 +16,25 @@ use crate::scalar::Scalar;
 
 verus! {
 
-// ============================================================================
-// Uninterpreted spec functions for iterator-to-sequence conversion
-// (Verus cannot reason about iterators directly)
+/*
+ * Uninterpreted spec functions for iterator-to-sequence conversion
+ * ================================================================
+ *
+ * Verus cannot reason about Rust iterators directly. We introduce uninterpreted
+ * spec functions that map iterators to logical sequences:
+ *
+ *   spec_scalars_from_iter, spec_optional_points_from_iter, spec_points_from_iter
+ *
+ * Runtime helper functions (collect_*_from_iter) bridge this abstraction. They are
+ * marked external_body with assumed postconditions linking the collected Vec to
+ * the abstract spec sequence:
+ *
+ *   ensures result@ == spec_*_from_iter(iter)
+ *
+ * This establishes that indexing into the collected Vec is equivalent to indexing
+ * into the spec sequence, enabling verification over concrete data while specs
+ * reason about abstract sequences.
+ */
 // ============================================================================
 /// Spec function to convert an iterator of scalars to a sequence.
 pub uninterp spec fn spec_scalars_from_iter<S, I>(iter: I) -> Seq<Scalar>;

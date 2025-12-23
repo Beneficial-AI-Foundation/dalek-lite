@@ -8,26 +8,31 @@ use vstd::prelude::*;
 
 verus! {
 
-pub open spec fn seq_to_nat(limbs: Seq<nat>) -> nat
+/// Convert a sequence of limbs to nat using 52-bit radix (Horner form).
+/// This is the base recursive function for Scalar52 limb interpretation.
+/// Computes: limbs[0] + limbs[1]*2^52 + limbs[2]*2^104 + ...
+pub open spec fn seq_to_nat_52(limbs: Seq<nat>) -> nat
     decreases limbs.len(),
 {
     if limbs.len() == 0 {
         0
     } else {
-        limbs[0] + seq_to_nat(limbs.subrange(1, limbs.len() as int)) * pow2(52)
+        limbs[0] + seq_to_nat_52(limbs.subrange(1, limbs.len() as int)) * pow2(52)
     }
 }
 
 pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat {
-    seq_to_nat(limbs@.map(|i, x| x as nat))
+    seq_to_nat_52(limbs@.map(|i, x| x as nat))
 }
 
 pub open spec fn seq_u64_to_nat(limbs: Seq<u64>) -> nat {
-    seq_to_nat(limbs.map(|i, x| x as nat))
+    seq_to_nat_52(limbs.map(|i, x| x as nat))
 }
 
-pub open spec fn to_nat(limbs: &[u64]) -> nat {
-    seq_to_nat(limbs@.map(|i, x| x as nat))
+/// Convert radix-2^52 scalar limbs to natural number.
+/// This is the primary spec function for Scalar52 limb interpretation.
+pub open spec fn scalar52_to_nat(limbs: &[u64]) -> nat {
+    seq_to_nat_52(limbs@.map(|i, x| x as nat))
 }
 
 #[verusfmt::skip]
@@ -52,157 +57,14 @@ pub open spec fn five_limbs_to_nat_aux(limbs: [u64; 5]) -> nat {
     pow2(208) * (limbs[4] as nat)
 }
 
-// Modular reduction of to_nat mod L
-pub open spec fn to_scalar(limbs: &[u64; 5]) -> nat {
-    to_nat(limbs) % group_order()
+/// Modular reduction of scalar52 limbs mod group order (L).
+/// Returns the mathematical scalar value in [0, L).
+pub open spec fn scalar52_mod_order(limbs: &[u64; 5]) -> nat {
+    scalar52_to_nat(limbs) % group_order()
 }
 
-/// natural value of a 256 bit bitstring represented as array of 32 bytes
-///
-/// Note: This is now an alias for the shared `u8_32_as_nat` function from core_specs.
-/// Both field and scalar code use the same underlying byte-to-nat conversion.
-pub open spec fn bytes_to_nat(bytes: &[u8; 32]) -> nat {
-    u8_32_as_nat(bytes)
-}
-
-/// Recursive version of bytes_to_nat (now delegating to core_specs)
-pub open spec fn bytes_to_nat_rec(bytes: &[u8; 32], index: int) -> nat
-    decreases 32 - index,
-{
-    u8_32_as_nat_rec(bytes, index as nat)
-}
-
-/// natural value of a 512 bit bitstring represented as array of 64 bytes
-pub open spec fn bytes_wide_to_nat(bytes: &[u8; 64]) -> nat {
-    // Convert bytes to nat in little-endian order using recursive helper
-    bytes_wide_to_nat_rec(bytes, 0)
-}
-
-pub open spec fn bytes_wide_to_nat_rec(bytes: &[u8; 64], index: int) -> nat
-    decreases 64 - index,
-{
-    if index >= 64 {
-        0
-    } else {
-        (bytes[index] as nat) * pow2((index * 8) as nat) + bytes_wide_to_nat_rec(bytes, index + 1)
-    }
-}
-
-/// Little-endian natural value of an arbitrary-length byte sequence
-pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat
-    decreases bytes.len(),
-{
-    if bytes.len() == 0 {
-        0
-    } else {
-        (bytes[0] as nat) + pow2(8) * bytes_seq_to_nat(bytes.skip(1))
-    }
-}
-
-/// Little-endian natural value of first j bytes of a sequence
-/// Used for incremental byte-to-word conversion proofs
-pub open spec fn bytes_seq_to_nat_clear_aux(bytes: Seq<u8>, j: nat) -> nat
-    recommends
-        j <= bytes.len(),
-    decreases j,
-{
-    if j == 0 {
-        0
-    } else {
-        let j1: nat = (j - 1) as nat;
-        bytes_seq_to_nat_clear_aux(bytes, j1) + pow2(((j1) * 8) as nat) * bytes[j1 as int] as nat
-    }
-}
-
-// Generic function to convert array of words to natural number
-// Takes: array of words, number of words, bits per word
-// Note: This is a specification function that works with concrete types
-pub open spec fn words_to_nat_gen_u64(words: &[u64], num_words: int, bits_per_word: int) -> nat
-    decreases num_words,
-{
-    if num_words <= 0 {
-        0
-    } else {
-        let word_value = (words[num_words - 1] as nat) * pow2(
-            ((num_words - 1) * bits_per_word) as nat,
-        );
-        word_value + words_to_nat_gen_u64(words, num_words - 1, bits_per_word)
-    }
-}
-
-pub open spec fn words_to_nat_gen_u32(words: &[u32], num_words: int, bits_per_word: int) -> nat
-    decreases num_words,
-{
-    if num_words <= 0 {
-        0
-    } else {
-        let word_value = (words[num_words - 1] as nat) * pow2(
-            ((num_words - 1) * bits_per_word) as nat,
-        );
-        word_value + words_to_nat_gen_u32(words, num_words - 1, bits_per_word)
-    }
-}
-
-pub open spec fn word_from_bytes(bytes: &[u8; 64], word_idx: int) -> nat {
-    if !(0 <= word_idx && word_idx < 8) {
-        0
-    } else {
-        let base = word_idx * 8;
-        (bytes[(base + 0) as int] as nat) * pow2(0) + (bytes[(base + 1) as int] as nat) * pow2(8)
-            + (bytes[(base + 2) as int] as nat) * pow2(16) + (bytes[(base + 3) as int] as nat)
-            * pow2(24) + (bytes[(base + 4) as int] as nat) * pow2(32) + (bytes[(base
-            + 5) as int] as nat) * pow2(40) + (bytes[(base + 6) as int] as nat) * pow2(48) + (
-        bytes[(base + 7) as int] as nat) * pow2(56)
-    }
-}
-
-pub open spec fn word_from_bytes_partial(bytes: &[u8; 64], word_idx: int, upto: int) -> nat
-    decreases
-            if upto <= 0 {
-                0
-            } else if upto >= 8 {
-                0
-            } else {
-                upto as nat
-            },
-{
-    if !(0 <= word_idx && word_idx < 8) {
-        0
-    } else if upto <= 0 {
-        0
-    } else if upto >= 8 {
-        word_from_bytes(bytes, word_idx)
-    } else {
-        let j = upto - 1;
-        word_from_bytes_partial(bytes, word_idx, j) + (bytes[(word_idx * 8 + j) as int] as nat)
-            * pow2((j * 8) as nat)
-    }
-}
-
-pub open spec fn words_from_bytes_to_nat(bytes: &[u8; 64], count: int) -> nat
-    decreases
-            if count <= 0 {
-                0
-            } else {
-                count as nat
-            },
-{
-    if count <= 0 {
-        0
-    } else if count > 8 {
-        words_from_bytes_to_nat(bytes, 8)
-    } else {
-        let idx = count - 1;
-        words_from_bytes_to_nat(bytes, idx) + word_from_bytes(bytes, idx) * pow2((idx * 64) as nat)
-    }
-}
-
-// natural value of a 256 bit bitstring represented as an array of 4 words of 64 bits
-// Now implemented using the generic function
-pub open spec fn words_to_nat(words: &[u64; 4]) -> nat {
-    words_to_nat_gen_u64(words, 4, 64)
-}
-
+// bytes32_to_nat, bytes_seq_to_nat, and bytes_to_nat_suffix (all generic)
+// are now in core_specs.rs. They are imported via `use super::core_specs::*`
 // Group order: the value of L as a natural number
 pub open spec fn group_order() -> nat {
     pow2(252) + 27742317777372353535851937790883648493nat

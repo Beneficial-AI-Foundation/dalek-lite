@@ -286,8 +286,8 @@ impl Scalar {
         </ORIGINAL CODE> */
         /* <MODIFIED CODE> */
         // The proof chain:
-        // 1. from_bytes_wide ensures: scalar52_to_nat(&s.limbs) < group_order() AND limbs_bounded(&s)
-        // 2. pack() requires limbs_bounded, ensures: scalar52_to_nat(&self.limbs) < group_order() ==> is_canonical_scalar(&result)
+        // 1. from_bytes_wide ensures: scalar52_to_nat(&s) < group_order() AND limbs_bounded(&s)
+        // 2. pack() requires limbs_bounded, ensures: scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result)
         // 3. is_canonical_scalar includes bytes[31] <= 127
         let unpacked = UnpackedScalar::from_bytes_wide(input);
         let result = unpacked.pack();
@@ -295,18 +295,18 @@ impl Scalar {
         proof {
             // from_bytes_wide postconditions:
             // - limbs_bounded(&unpacked)
-            // - scalar52_to_nat(&unpacked.limbs) % group_order() == bytes_seq_to_nat(input@) % group_order()
-            // - scalar52_to_nat(&unpacked.limbs) < group_order()
+            // - scalar52_to_nat(&unpacked) % group_order() == bytes_seq_to_nat(input@) % group_order()
+            // - scalar52_to_nat(&unpacked) < group_order()
             // pack() postconditions:
-            // - bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked.limbs) % pow2(256)
-            // - scalar52_to_nat(&unpacked.limbs) < group_order() ==> is_canonical_scalar(&result)
-            // Since scalar52_to_nat(&unpacked.limbs) < group_order() < pow2(256),
-            // we have scalar52_to_nat(&unpacked.limbs) % pow2(256) == scalar52_to_nat(&unpacked.limbs)
+            // - bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked) % pow2(256)
+            // - scalar52_to_nat(&unpacked) < group_order() ==> is_canonical_scalar(&result)
+            // Since scalar52_to_nat(&unpacked) < group_order() < pow2(256),
+            // we have scalar52_to_nat(&unpacked) % pow2(256) == scalar52_to_nat(&unpacked)
             lemma_group_order_smaller_than_pow256();
-            lemma_small_mod(scalar52_to_nat(&unpacked.limbs), pow2(256));
+            lemma_small_mod(scalar52_to_nat(&unpacked), pow2(256));
 
-            // Therefore bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked.limbs)
-            // And bytes32_to_nat(&result.bytes) % group_order() == scalar52_to_nat(&unpacked.limbs) % group_order()
+            // Therefore bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked)
+            // And bytes32_to_nat(&result.bytes) % group_order() == scalar52_to_nat(&unpacked) % group_order()
             //                                                 == bytes_seq_to_nat(input@) % group_order()
         }
 
@@ -491,38 +491,37 @@ impl<'a> MulAssign<&'a Scalar> for Scalar {
         let self_unpacked = self.unpack();
         let rhs_unpacked = _rhs.unpack();
         proof {
-            assert(scalar52_to_nat(&self_unpacked.limbs) == bytes32_to_nat(&old(self).bytes));
-            assert(scalar52_to_nat(&rhs_unpacked.limbs) == bytes32_to_nat(&_rhs.bytes));
+            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&old(self).bytes));
+            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
         }
 
         let result_unpacked = UnpackedScalar::mul(&self_unpacked, &rhs_unpacked);
         proof {
-            assert(scalar52_to_nat(&result_unpacked.limbs) % group_order() == (scalar52_to_nat(
-                &self_unpacked.limbs,
-            ) * scalar52_to_nat(&rhs_unpacked.limbs)) % group_order());
+            assert(scalar52_to_nat(&result_unpacked) % group_order() == (scalar52_to_nat(
+                &self_unpacked,
+            ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
             assert(limbs_bounded(&result_unpacked));
-            assert(scalar52_to_nat(&result_unpacked.limbs) % group_order() == (scalar52_to_nat(
-                &self_unpacked.limbs,
-            ) * scalar52_to_nat(&rhs_unpacked.limbs)) % group_order());
+            assert(scalar52_to_nat(&result_unpacked) % group_order() == (scalar52_to_nat(
+                &self_unpacked,
+            ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
             assert(limbs_bounded(&result_unpacked));
         }
 
         *self = result_unpacked.pack();
         proof {
-            assert(scalar52_to_nat(&result_unpacked.limbs) == scalar52_to_nat(
-                &result_unpacked.limbs,
-            ) % pow2(256)) by {
+            assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
+                256,
+            )) by {
                 assert(group_order() < pow2(256)) by {
                     lemma_group_order_bound();
                     lemma_pow2_strictly_increases(255, 256);
                 }
-                lemma_small_mod(scalar52_to_nat(&result_unpacked.limbs), pow2(256));
+                lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
             }
-            assert(bytes32_to_nat(&self.bytes) % group_order() == scalar52_to_nat(
-                &result_unpacked.limbs,
-            ) % group_order());
+            assert(bytes32_to_nat(&self.bytes) % group_order() == scalar52_to_nat(&result_unpacked)
+                % group_order());
             assert(bytes32_to_nat(&self.bytes) % group_order() == (bytes32_to_nat(&old(self).bytes)
                 * bytes32_to_nat(&_rhs.bytes)) % group_order());
         }
@@ -568,38 +567,38 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
         let self_unpacked = self.unpack();
         let rhs_unpacked = _rhs.unpack();
         proof {
-            assert(scalar52_to_nat(&self_unpacked.limbs) == bytes32_to_nat(&self.bytes));
-            assert(scalar52_to_nat(&rhs_unpacked.limbs) == bytes32_to_nat(&_rhs.bytes));
+            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&self.bytes));
+            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
         }
         let result_unpacked = UnpackedScalar::mul(&self_unpacked, &rhs_unpacked);
         proof {
-            assert(scalar52_to_nat(&result_unpacked.limbs) == scalar52_to_nat(
-                &result_unpacked.limbs,
-            ) % pow2(256)) by {
+            assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
+                256,
+            )) by {
                 assert(group_order() < pow2(256)) by {
                     lemma_group_order_bound();
                     lemma_pow2_strictly_increases(255, 256);
                 }
-                lemma_small_mod(scalar52_to_nat(&result_unpacked.limbs), pow2(256));
+                lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
             }
-            assert(scalar52_to_nat(&result_unpacked.limbs) % group_order() == (scalar52_to_nat(
-                &self_unpacked.limbs,
-            ) * scalar52_to_nat(&rhs_unpacked.limbs)) % group_order());
+            assert(scalar52_to_nat(&result_unpacked) % group_order() == (scalar52_to_nat(
+                &self_unpacked,
+            ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
             assert(limbs_bounded(&result_unpacked));
         }
-        // UnpackedScalar::mul ensures scalar52_to_nat(&result_unpacked.limbs) < group_order()
-        // pack() ensures: scalar52_to_nat(&self.limbs) < group_order() ==> is_canonical_scalar(&result)
+        // UnpackedScalar::mul ensures scalar52_to_nat(&result_unpacked) < group_order()
+        // pack() ensures: scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result)
         let result = result_unpacked.pack();
         proof {
             assert(bytes32_to_nat(&result.bytes) % group_order() == scalar52_to_nat(
-                &result_unpacked.limbs,
+                &result_unpacked,
             ) % group_order());
             assert(bytes32_to_nat(&result.bytes) % group_order() == (bytes32_to_nat(&self.bytes)
                 * bytes32_to_nat(&_rhs.bytes)) % group_order());
             // Trigger pack()'s conditional postcondition for is_canonical_scalar
-            assert(scalar52_to_nat(&result_unpacked.limbs) < group_order());
+            assert(scalar52_to_nat(&result_unpacked) < group_order());
             assert(is_canonical_scalar(&result));
         }
         /* </MODIFIED CODE> */
@@ -656,8 +655,8 @@ impl<'a> Add<&'a Scalar> for &Scalar {
         let self_unpacked = self.unpack();
         let rhs_unpacked = _rhs.unpack();
         proof {
-            assert(scalar52_to_nat(&self_unpacked.limbs) == bytes32_to_nat(&self.bytes));
-            assert(scalar52_to_nat(&rhs_unpacked.limbs) == bytes32_to_nat(&_rhs.bytes));
+            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&self.bytes));
+            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
         }
@@ -667,28 +666,28 @@ impl<'a> Add<&'a Scalar> for &Scalar {
         // However, we cannot add requires clauses to trait implementations,
         // so we assume this property holds
         proof {
-            assume(scalar52_to_nat(&self_unpacked.limbs) < group_order());
-            assume(scalar52_to_nat(&rhs_unpacked.limbs) < group_order());
+            assume(scalar52_to_nat(&self_unpacked) < group_order());
+            assume(scalar52_to_nat(&rhs_unpacked) < group_order());
         }
 
         let result_unpacked = UnpackedScalar::add(&self_unpacked, &rhs_unpacked);
         proof {
-            assert(scalar52_to_nat(&result_unpacked.limbs) == (scalar52_to_nat(&self_unpacked.limbs)
-                + scalar52_to_nat(&rhs_unpacked.limbs)) % group_order());
+            assert(scalar52_to_nat(&result_unpacked) == (scalar52_to_nat(&self_unpacked)
+                + scalar52_to_nat(&rhs_unpacked)) % group_order());
             assert(limbs_bounded(&result_unpacked));
         }
 
         let result = result_unpacked.pack();
         proof {
-            assert(scalar52_to_nat(&result_unpacked.limbs) == scalar52_to_nat(
-                &result_unpacked.limbs,
-            ) % pow2(256)) by {
+            assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
+                256,
+            )) by {
                 assert(group_order() < pow2(256)) by {
                     assume(false);
                 }
-                lemma_small_mod(scalar52_to_nat(&result_unpacked.limbs), pow2(256));
+                lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
             }
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked.limbs));
+            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked));
             assert(bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(
                 &_rhs.bytes,
             )) % group_order());
@@ -759,18 +758,18 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
         proof {
             // unpack() ensures these properties:
-            assert(scalar52_to_nat(&self_unpacked.limbs) == bytes32_to_nat(&self.bytes));
-            assert(scalar52_to_nat(&rhs_unpacked.limbs) == bytes32_to_nat(&_rhs.bytes));
+            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&self.bytes));
+            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
         }
 
-        // UnpackedScalar::sub requires: -group_order() <= scalar52_to_nat(&a.limbs) - scalar52_to_nat(&b.limbs) < group_order()
+        // UnpackedScalar::sub requires: -group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order()
         proof {
-            // -group_order() < scalar52_to_nat(&self_unpacked.limbs) - scalar52_to_nat(&rhs_unpacked.limbs) < grour_order()
+            // -group_order() < scalar52_to_nat(&self_unpacked) - scalar52_to_nat(&rhs_unpacked) < grour_order()
             lemma_sub_symmetric_bound(
-                scalar52_to_nat(&self_unpacked.limbs),
-                scalar52_to_nat(&rhs_unpacked.limbs),
+                scalar52_to_nat(&self_unpacked),
+                scalar52_to_nat(&rhs_unpacked),
                 group_order(),
             );
         }
@@ -779,34 +778,34 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
         proof {
             // Postconditions from sub - need to strengthen, review connections
-            assert(scalar52_to_nat(&result_unpacked.limbs) == (scalar52_to_nat(&self_unpacked.limbs)
-                - scalar52_to_nat(&rhs_unpacked.limbs)) % (group_order() as int));
+            assert(scalar52_to_nat(&result_unpacked) == (scalar52_to_nat(&self_unpacked)
+                - scalar52_to_nat(&rhs_unpacked)) % (group_order() as int));
             assert(limbs_bounded(&result_unpacked));
-            assert(scalar52_to_nat(&result_unpacked.limbs) < group_order());
+            assert(scalar52_to_nat(&result_unpacked) < group_order());
 
             // Since result < group_order(), taking mod again gives the same value
-            lemma_small_mod(scalar52_to_nat(&result_unpacked.limbs), group_order());
-            assert(scalar52_to_nat(&result_unpacked.limbs) % group_order() == scalar52_to_nat(
-                &result_unpacked.limbs,
+            lemma_small_mod(scalar52_to_nat(&result_unpacked), group_order());
+            assert(scalar52_to_nat(&result_unpacked) % group_order() == scalar52_to_nat(
+                &result_unpacked,
             ));
         }
 
         let result = result_unpacked.pack();
 
         proof {
-            // Goal: bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked.limbs)
+            // Goal: bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked)
             // pack postcondition gives: bytes32_to_nat(...) == scalar52_to_nat(...) % pow2(256)
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked.limbs)) by {
-                assert(scalar52_to_nat(&result_unpacked.limbs) % pow2(256) == scalar52_to_nat(
-                    &result_unpacked.limbs,
+            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked)) by {
+                assert(scalar52_to_nat(&result_unpacked) % pow2(256) == scalar52_to_nat(
+                    &result_unpacked,
                 )) by {
-                    assert(scalar52_to_nat(&result_unpacked.limbs) < pow2(256)) by {
+                    assert(scalar52_to_nat(&result_unpacked) < pow2(256)) by {
                         // sub postcondition: scalar52_to_nat(...) < group_order()
                         // and group_order() < pow2(256)
                         lemma_group_order_smaller_than_pow256();
                         lemma_scalar52_lt_pow2_256_if_canonical(&result_unpacked);
                     }
-                    lemma_small_mod(scalar52_to_nat(&result_unpacked.limbs), pow2(256));
+                    lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
                 }
             }
 
@@ -895,27 +894,27 @@ impl Neg for &Scalar {
         /* </MODIFIED CODE> */
 
         proof {
-            // Prove congruence: scalar52_to_nat(&self_mod_l.limbs) % L == scalar_to_nat(self) % L
+            // Prove congruence: scalar52_to_nat(&self_mod_l) % L == scalar_to_nat(self) % L
             lemma_mul_factors_congruent_implies_products_congruent(
-                scalar52_to_nat(&self_unpacked.limbs) as int,
+                scalar52_to_nat(&self_unpacked) as int,
                 montgomery_radix() as int,
-                scalar52_to_nat(&constants::R.limbs) as int,
+                scalar52_to_nat(&constants::R) as int,
                 group_order() as int,
             );
             lemma_cancel_mul_pow2_mod(
-                scalar52_to_nat(&self_mod_l.limbs),
-                scalar52_to_nat(&self_unpacked.limbs),
+                scalar52_to_nat(&self_mod_l),
+                scalar52_to_nat(&self_unpacked),
                 montgomery_radix(),
             );
 
             // Prove result is in canonical form
             lemma_group_order_smaller_than_pow256();
-            lemma_small_mod(scalar52_to_nat(&sub_result.limbs), pow2(256));
+            lemma_small_mod(scalar52_to_nat(&sub_result), pow2(256));
 
             // Prove the negation property
             lemma_negation_sums_to_zero(
                 scalar_to_nat(self),
-                scalar52_to_nat(&self_mod_l.limbs),
+                scalar52_to_nat(&self_mod_l),
                 scalar_to_nat(&result),
                 group_order(),
             );
@@ -1666,11 +1665,11 @@ impl Scalar {
         proof {
             // Step 1: invert ensures scalar52_to_nat(inv_unpacked) < group_order < pow2(256)
             lemma_group_order_smaller_than_pow256();
-            assert(scalar52_to_nat(&inv_unpacked.limbs) < pow2(256));
+            assert(scalar52_to_nat(&inv_unpacked) < pow2(256));
 
             // Step 2: Since inv_unpacked < pow2(256), pack preserves the value (no modular reduction)
-            lemma_small_mod(scalar52_to_nat(&inv_unpacked.limbs), pow2(256));
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&inv_unpacked.limbs));
+            lemma_small_mod(scalar52_to_nat(&inv_unpacked), pow2(256));
+            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&inv_unpacked));
 
             // Step 3: The inverse property follows from invert's postcondition
             assert((bytes32_to_nat(&result.bytes) * bytes32_to_nat(&self.bytes)) % group_order()
@@ -2649,7 +2648,7 @@ impl Scalar {
 
         ensures
             limbs_bounded(&result),
-            scalar52_to_nat(&result.limbs) == bytes32_to_nat(&self.bytes),
+            scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),
     {
         UnpackedScalar::from_bytes(&self.bytes)
     }
@@ -2672,7 +2671,7 @@ impl Scalar {
 
         }
 
-        assert(scalar52_to_nat(&constants::R.limbs) < group_order()) by {
+        assert(scalar52_to_nat(&constants::R) < group_order()) by {
             lemma_r_equals_spec(constants::R);
         };
 
@@ -2681,46 +2680,44 @@ impl Scalar {
         let result = x_mod_l.pack();
 
         proof {
-            assert(slice128_to_nat(&xR) == scalar52_to_nat(&x.limbs) * scalar52_to_nat(
-                &constants::R.limbs,
-            ));
+            assert(slice128_to_nat(&xR) == scalar52_to_nat(&x) * scalar52_to_nat(&constants::R));
 
             // montgomery_reduce ensures:
-            assert((scalar52_to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order()
+            assert((scalar52_to_nat(&x_mod_l) * montgomery_radix()) % group_order()
                 == slice128_to_nat(&xR) % group_order());
 
-            assert((scalar52_to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order() == (
-            scalar52_to_nat(&x.limbs) * scalar52_to_nat(&constants::R.limbs)) % group_order());
+            assert((scalar52_to_nat(&x_mod_l) * montgomery_radix()) % group_order() == (
+            scalar52_to_nat(&x) * scalar52_to_nat(&constants::R)) % group_order());
 
             lemma_r_equals_spec(constants::R);
 
             lemma_mul_factors_congruent_implies_products_congruent(
-                scalar52_to_nat(&x.limbs) as int,
+                scalar52_to_nat(&x) as int,
                 montgomery_radix() as int,
-                scalar52_to_nat(&constants::R.limbs) as int,
+                scalar52_to_nat(&constants::R) as int,
                 group_order() as int,
             );
 
-            assert((scalar52_to_nat(&x_mod_l.limbs) * montgomery_radix()) % group_order() == (
-            scalar52_to_nat(&x.limbs) * montgomery_radix()) % group_order());
+            assert((scalar52_to_nat(&x_mod_l) * montgomery_radix()) % group_order() == (
+            scalar52_to_nat(&x) * montgomery_radix()) % group_order());
 
             lemma_cancel_mul_pow2_mod(
-                scalar52_to_nat(&x_mod_l.limbs),
-                scalar52_to_nat(&x.limbs),
+                scalar52_to_nat(&x_mod_l),
+                scalar52_to_nat(&x),
                 montgomery_radix(),
             );
 
-            assert(scalar52_to_nat(&x_mod_l.limbs) % group_order() == scalar52_to_nat(&x.limbs)
+            assert(scalar52_to_nat(&x_mod_l) % group_order() == scalar52_to_nat(&x)
                 % group_order());
 
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&x_mod_l.limbs) % pow2(256));
-            assert(scalar52_to_nat(&x_mod_l.limbs) < group_order());
+            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&x_mod_l) % pow2(256));
+            assert(scalar52_to_nat(&x_mod_l) < group_order());
 
             assert(group_order() < pow2(256)) by { lemma_group_order_smaller_than_pow256() };
 
-            assert(scalar52_to_nat(&x_mod_l.limbs) < pow2(256));
-            lemma_small_mod(scalar52_to_nat(&x_mod_l.limbs), pow2(256));
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&x_mod_l.limbs));
+            assert(scalar52_to_nat(&x_mod_l) < pow2(256));
+            lemma_small_mod(scalar52_to_nat(&x_mod_l), pow2(256));
+            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&x_mod_l));
         }
 
         result
@@ -2768,12 +2765,12 @@ fn square_multiply(
         limbs_bounded(x),
         // VERIFICATION NOTE: Changed postcondition from the original incorrect version
         // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`
-        (scalar52_to_nat(&y.limbs) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
-            % group_order() == (pow(scalar52_to_nat(&old(y).limbs) as int, pow2(squarings as nat))
-            * scalar52_to_nat(&x.limbs)) % (group_order() as int),
+        (scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
+            % group_order() == (pow(scalar52_to_nat(old(y)) as int, pow2(squarings as nat))
+            * scalar52_to_nat(x)) % (group_order() as int),
 {
-    let ghost y0: nat = scalar52_to_nat(&y.limbs);
-    let ghost xv: nat = scalar52_to_nat(&x.limbs);
+    let ghost y0: nat = scalar52_to_nat(y);
+    let ghost xv: nat = scalar52_to_nat(&x);
     let ghost R: nat = montgomery_radix();
     let ghost L: nat = group_order();
 
@@ -2795,17 +2792,19 @@ fn square_multiply(
             R == montgomery_radix(),
             L > 0,
             R > 0,
-            (scalar52_to_nat(&y.limbs) * pow(R as int, (pow2(idx as nat) - 1) as nat) as nat) % L
-                == (pow(y0 as int, pow2(idx as nat)) as nat) % L,
+            (scalar52_to_nat(y) * pow(R as int, (pow2(idx as nat) - 1) as nat) as nat) % L == (pow(
+                y0 as int,
+                pow2(idx as nat),
+            ) as nat) % L,
     {
-        let ghost y_before: nat = scalar52_to_nat(&y.limbs);
+        let ghost y_before: nat = scalar52_to_nat(y);
         *y = y.montgomery_square();
         proof {
-            lemma_square_multiply_step(scalar52_to_nat(&y.limbs), y_before, y0, R, L, idx as nat);
+            lemma_square_multiply_step(scalar52_to_nat(y), y_before, y0, R, L, idx as nat);
         }
     }
 
-    let ghost y_after: nat = scalar52_to_nat(&y.limbs);
+    let ghost y_after: nat = scalar52_to_nat(y);
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
 
     *y = UnpackedScalar::montgomery_mul(y, x);
@@ -2817,7 +2816,7 @@ fn square_multiply(
             pow2(squarings as nat),
         ) as nat) % L);
 
-        let final_y: nat = scalar52_to_nat(&y.limbs);
+        let final_y: nat = scalar52_to_nat(y);
         let n: nat = squarings as nat;
         let R_exp: int = pow(R as int, exp_final);
         let R_pow2n: int = pow(R as int, pow2(n));
@@ -2860,9 +2859,9 @@ impl UnpackedScalar {
         requires
             limbs_bounded(self),
         ensures
-            bytes32_to_nat(&result.bytes) == scalar52_to_nat(&self.limbs) % pow2(256),
+            bytes32_to_nat(&result.bytes) == scalar52_to_nat(self) % pow2(256),
             // VERIFICATION NOTE: If input is canonical (< group order), output satisfies Scalar invariants
-            scalar52_to_nat(&self.limbs) < group_order() ==> is_canonical_scalar(&result),
+            scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result),
     {
         let bytes = self.as_bytes();
         proof {
@@ -2883,13 +2882,13 @@ impl UnpackedScalar {
         // which shows that a recursive defn equals a large polynomial
 
         proof {
-            if scalar52_to_nat(&self.limbs) < group_order() {
+            if scalar52_to_nat(self) < group_order() {
                 use crate::lemmas::scalar_lemmas::lemma_scalar52_lt_pow2_256_if_canonical;
 
                 lemma_scalar52_lt_pow2_256_if_canonical(self);
-                lemma_small_mod(scalar52_to_nat(&self.limbs), pow2(256));
-                assert(scalar52_to_nat(&self.limbs) % pow2(256) == scalar52_to_nat(&self.limbs));
-                assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&self.limbs));
+                lemma_small_mod(scalar52_to_nat(self), pow2(256));
+                assert(scalar52_to_nat(self) % pow2(256) == scalar52_to_nat(self));
+                assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(self));
 
                 let v = bytes32_to_nat(&result.bytes);
 
@@ -2948,7 +2947,7 @@ impl UnpackedScalar {
             limbs_bounded(&self),
         ensures
             limbs_bounded(&result),
-            (scalar52_to_nat(&result.limbs) * scalar52_to_nat(&self.limbs)) % group_order() == (
+            (scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == (
             montgomery_radix() * montgomery_radix())
                 % group_order(),
     // Equivalent to: from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)
@@ -3010,7 +3009,7 @@ impl UnpackedScalar {
 
         proof {
             assume(limbs_bounded(&y));
-            assume((scalar52_to_nat(&y.limbs) * scalar52_to_nat(&self.limbs)) % group_order() == (
+            assume((scalar52_to_nat(&y) * scalar52_to_nat(self)) % group_order() == (
             montgomery_radix() * montgomery_radix()) % group_order());
         }
 
@@ -3024,9 +3023,9 @@ impl UnpackedScalar {
         ensures
             limbs_bounded(&result),
             // Postcondition: result * self ≡ 1 (mod group_order)
-            scalar52_to_nat(&result.limbs) * scalar52_to_nat(&self.limbs) % group_order() == 1,
+            scalar52_to_nat(&result) * scalar52_to_nat(self) % group_order() == 1,
             // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar
-            scalar52_to_nat(&result.limbs) < group_order(),
+            scalar52_to_nat(&result) < group_order(),
     {
         /* <ORIGINAL CODE>
                 self.as_montgomery().montgomery_invert().from_montgomery()
@@ -3036,15 +3035,15 @@ impl UnpackedScalar {
         let inv = mont.montgomery_invert();
         // montgomery_invert ensures limbs_bounded(&inv)
         let result = inv.from_montgomery();
-        // from_montgomery ensures limbs_bounded(&result) and scalar52_to_nat(&result.limbs) < group_order()
+        // from_montgomery ensures limbs_bounded(&result) and scalar52_to_nat(&result) < group_order()
 
         proof {
             // Apply the invert correctness lemma
             lemma_invert_correctness(
-                scalar52_to_nat(&self.limbs),
-                scalar52_to_nat(&mont.limbs),
-                scalar52_to_nat(&inv.limbs),
-                scalar52_to_nat(&result.limbs),
+                scalar52_to_nat(self),
+                scalar52_to_nat(&mont),
+                scalar52_to_nat(&inv),
+                scalar52_to_nat(&result),
             );
         }
 

@@ -29,10 +29,16 @@ pub open spec fn seq_u64_to_nat(limbs: Seq<u64>) -> nat {
     seq_to_nat_52(limbs.map(|i, x| x as nat))
 }
 
-/// Convert radix-2^52 scalar limbs to natural number.
-/// This is the primary spec function for Scalar52 limb interpretation.
-pub open spec fn scalar52_to_nat(limbs: &[u64]) -> nat {
+/// Convert a slice of u64 limbs to nat using 52-bit radix.
+/// This is for low-level lemmas that work with raw arrays.
+pub open spec fn limbs52_to_nat(limbs: &[u64]) -> nat {
     seq_to_nat_52(limbs@.map(|i, x| x as nat))
+}
+
+/// Convert a Scalar52 to its natural number representation.
+/// This is the primary spec function for Scalar52 interpretation.
+pub open spec fn scalar52_to_nat(s: &Scalar52) -> nat {
+    limbs52_to_nat(&s.limbs)
 }
 
 #[verusfmt::skip]
@@ -57,10 +63,10 @@ pub open spec fn five_limbs_to_nat_aux(limbs: [u64; 5]) -> nat {
     pow2(208) * (limbs[4] as nat)
 }
 
-/// Modular reduction of scalar52 limbs mod group order (L).
+/// Modular reduction of Scalar52 mod group order (L).
 /// Returns the mathematical scalar value in [0, L).
-pub open spec fn scalar52_mod_order(limbs: &[u64; 5]) -> nat {
-    scalar52_to_nat(limbs) % group_order()
+pub open spec fn scalar52_mod_order(s: &Scalar52) -> nat {
+    scalar52_to_nat(s) % group_order()
 }
 
 // bytes32_to_nat, bytes_seq_to_nat, and bytes_to_nat_suffix (all generic)

@@ -416,7 +416,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
         s.limbs[3] == ((words[2] >> 28) | (words[3] << 36)) & mask,
         s.limbs[4] == (words[3] >> 16) & top_mask,
     ensures
-        words_to_nat_u64(&words, 4, 64) == scalar52_to_nat(&s.limbs),
+        words_to_nat_u64(&words, 4, 64) == scalar52_to_nat(&s),
         limbs_bounded(&s),
 {
     // Bit-vector proofs that masks work correctly
@@ -671,7 +671,7 @@ pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_
 
     calc! {
         (==)
-        scalar52_to_nat(&s.limbs) as int; (==) {}
+        scalar52_to_nat(&s) as int; (==) {}
         // Start expression
         a + (b + (c + (d + e * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(52) as int)) * (pow2(
             52,

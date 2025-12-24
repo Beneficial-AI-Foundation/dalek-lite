@@ -26,7 +26,7 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
             ) == limbs),
         // Stronger postcondition: one of them is canonical (< group_order)
         (exists|bounded: &Scalar52, canonical: &Scalar52|
-            limbs_bounded(bounded) && limbs_bounded(canonical) && scalar52_to_nat(&canonical.limbs)
+            limbs_bounded(bounded) && limbs_bounded(canonical) && scalar52_to_nat(&canonical)
                 < group_order() && spec_mul_internal(bounded, canonical) == limbs),
 {
     let one = Scalar52 { limbs: [1, 0, 0, 0, 0] };

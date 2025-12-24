@@ -20,8 +20,8 @@ verus! {
 ///   scalar52_to_nat(RR.limbs) % L == (R * R) % L
 pub(crate) proof fn lemma_rr_equals_radix_squared()
     ensures
-        scalar52_to_nat(&constants::RR.limbs) % group_order() == (montgomery_radix()
-            * montgomery_radix()) % group_order(),
+        scalar52_to_nat(&constants::RR) % group_order() == (montgomery_radix() * montgomery_radix())
+            % group_order(),
 {
     // Enable conversion between scalar52_to_nat and five_limbs_to_nat_aux representations
     lemma_five_limbs_equals_to_nat(&constants::RR.limbs);

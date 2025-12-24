@@ -40,8 +40,8 @@ All conversion functions follow the `*_to_nat` naming convention:
 | **Domain-Specific** | | |
 | `fe_to_nat` | `field_specs.rs` | FieldElement51 limbs → nat |
 | `u64_5_as_nat` | `field_specs_u64.rs` | 5 limbs × 51-bit radix → nat |
-| `five_limbs_to_nat_aux` | `scalar_specs_u64.rs` | 5 limbs × 52-bit radix → nat |
-| `seq_to_nat_52` | `scalar_specs_u64.rs` | Seq<nat> × 52-bit radix → nat (Horner) |
+| `five_limbs_to_nat_aux` | `scalar52_specs.rs` | 5 limbs × 52-bit radix → nat |
+| `seq_to_nat_52` | `scalar52_specs.rs` | Seq<nat> × 52-bit radix → nat (Horner) |
 
 ---
 
@@ -171,7 +171,7 @@ pub open spec fn fe_to_nat(fe: &FieldElement51) -> nat {
 }
 ```
 
-### Scalar Domain (52-bit radix) — `scalar_specs_u64.rs`
+### Scalar Domain (52-bit radix) — `scalar52_specs.rs`
 
 ```rust
 /// Base recursive (52-bit radix, Horner form)
@@ -224,7 +224,7 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
         ┌───────────┼───────────────────────┐
         ▼           ▼                       ▼
 ┌───────────────┐ ┌─────────────────┐ ┌─────────────────────────────────────┐
-│ field_specs   │ │ field_specs_u64 │ │ scalar_specs_u64                    │
+│ field_specs   │ │ field_specs_u64 │ │ scalar52_specs                    │
 │               │ │                 │ │                                     │
 │ fe_to_nat     │ │ u64_5_as_nat    │ │ seq_to_nat_52 (52-bit, Horner)      │
 │ (alias)       │ │ (51-bit radix)  │ │ five_limbs_to_nat_aux               │
@@ -407,7 +407,7 @@ Different radixes (51 vs 52 bits) are fundamental to field vs scalar operations.
 - `curve25519-dalek/src/specs/core_specs.rs` — All core conversion specs
 - `curve25519-dalek/src/specs/field_specs.rs` — Field-specific (`fe_to_nat`, postconditions)
 - `curve25519-dalek/src/specs/field_specs_u64.rs` — Field limb functions (51-bit)
-- `curve25519-dalek/src/specs/scalar_specs_u64.rs` — Scalar limb functions (52-bit)
+- `curve25519-dalek/src/specs/scalar52_specs.rs` — Scalar limb functions (52-bit)
 - `curve25519-dalek/src/lemmas/common_lemmas/to_nat_lemmas.rs` — Active byte/word-to-nat lemmas
 - `curve25519-dalek/src/lemmas/common_lemmas/unused_to_nat_lemmas.rs` — Deprecated/unused lemmas
 - `curve25519-dalek/src/lemmas/scalar_lemmas.rs` — Limb equivalence lemmas

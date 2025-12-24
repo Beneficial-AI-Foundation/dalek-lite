@@ -7,9 +7,9 @@ use crate::backend::serial::u64::constants;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::scalar::Scalar52;
 #[allow(unused_imports)]
-use crate::specs::scalar_specs::*;
+use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar_specs::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
@@ -38,8 +38,8 @@ verus! {
 proof fn lemma_verify_invert_correct(
     x: Scalar52,
 )
-//     requires scalar52_mod_order(&x.limbs) != 0
-//    ensures (scalar52_mod_order(&x.limbs) * invert_spec(&x.limbs)) % group_order() == 1
+//     requires spec_scalar52(&x.limbs) != 0
+//    ensures (spec_scalar52(&x.limbs) * invert_spec(&x.limbs)) % group_order() == 1
 {
     assume(false);
 

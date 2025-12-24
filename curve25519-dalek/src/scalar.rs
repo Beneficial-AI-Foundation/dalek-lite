@@ -164,7 +164,7 @@ use crate::specs::field_specs_u64::spec_as_bytes;
 #[allow(unused_imports)]
 use crate::specs::core_specs::*;
 #[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar52_specs::*;
 
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas::*;
@@ -3025,11 +3025,11 @@ impl UnpackedScalar {
         requires
             limbs_bounded(self),
         ensures
-            limbs_bounded(&result),
-            // Postcondition: result * self ≡ 1 (mod group_order)
+    // Postcondition: result * self ≡ 1 (mod group_order)
+
             scalar52_to_nat(&result) * scalar52_to_nat(self) % group_order() == 1,
             // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar
-            scalar52_to_nat(&result) < group_order(),
+            is_canonical_scalar52(&result),
     {
         /* <ORIGINAL CODE>
                 self.as_montgomery().montgomery_invert().from_montgomery()

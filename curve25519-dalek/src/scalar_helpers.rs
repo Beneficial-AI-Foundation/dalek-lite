@@ -9,7 +9,7 @@ use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 #[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar52_specs::*;
 
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::to_nat_lemmas::*;

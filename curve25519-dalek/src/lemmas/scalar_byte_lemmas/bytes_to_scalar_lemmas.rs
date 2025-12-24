@@ -32,7 +32,7 @@ use super::super::field_lemmas::limbs_to_bytes_lemmas::*;
 
 use crate::backend::serial::u64::scalar::Scalar52;
 use crate::specs::core_specs::*;
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar52_specs::*;
 
 verus! {
 

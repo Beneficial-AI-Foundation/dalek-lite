@@ -63,9 +63,10 @@ pub open spec fn five_limbs_to_nat_aux(limbs: [u64; 5]) -> nat {
     pow2(208) * (limbs[4] as nat)
 }
 
-/// Modular reduction of Scalar52 mod group order (L).
-/// Returns the mathematical scalar value in [0, L).
-pub open spec fn scalar52_mod_order(s: &Scalar52) -> nat {
+/// Returns the mathematical value of a Scalar52 modulo the group order.
+/// This is the Scalar52 equivalent of spec_scalar for Scalar.
+/// Returns a value in [0, L).
+pub open spec fn spec_scalar52(s: &Scalar52) -> nat {
     scalar52_to_nat(s) % group_order()
 }
 
@@ -90,6 +91,15 @@ pub open spec fn inv_montgomery_radix() -> nat {
 // Check that all limbs of a Scalar52 are properly bounded (< 2^52)
 pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
     forall|i: int| 0 <= i < 5 ==> s.limbs[i] < (1u64 << 52)
+}
+
+/// Checks if a Scalar52 is in canonical form:
+/// - All limbs are properly bounded (< 2^52)
+/// - The value is reduced modulo group order (< L)
+///
+/// This is the Scalar52 equivalent of is_canonical_scalar for Scalar.
+pub open spec fn is_canonical_scalar52(s: &Scalar52) -> bool {
+    limbs_bounded(s) && scalar52_to_nat(s) < group_order()
 }
 
 pub open spec fn spec_mul_internal(a: &Scalar52, b: &Scalar52) -> [u128; 9]

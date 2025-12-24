@@ -72,11 +72,11 @@ use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
 #[allow(unused_imports)]
+use crate::specs::scalar52_specs::*;
+#[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
-#[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
 
 use crate::traits::Identity;
 

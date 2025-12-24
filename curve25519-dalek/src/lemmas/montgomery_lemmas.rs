@@ -2,8 +2,8 @@
 use super::common_lemmas::pow_lemmas::*;
 use super::scalar_lemmas::*;
 use crate::backend::serial::u64::constants;
+use crate::specs::scalar52_specs::*;
 use crate::specs::scalar_specs::*;
-use crate::specs::scalar_specs_u64::*;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::power2::*;
 use vstd::prelude::*;

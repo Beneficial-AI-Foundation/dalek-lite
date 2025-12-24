@@ -15,7 +15,7 @@ use super::super::common_lemmas::shift_lemmas::*;
 use super::super::field_lemmas::limbs_to_bytes_lemmas::*;
 
 use crate::specs::core_specs::*;
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar52_specs::*;
 
 verus! {
 

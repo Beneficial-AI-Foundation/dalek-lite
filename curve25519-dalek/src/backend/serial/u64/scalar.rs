@@ -47,7 +47,7 @@ use crate::lemmas::scalar_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*; // TODO: see https://github.com/Beneficial-AI-Foundation/dalek-lite/issues/386
 #[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
@@ -229,8 +229,7 @@ impl Scalar52 {
         ensures
     // VERIFICATION NOTE: Result is canonical
 
-            limbs_bounded(&s),
-            scalar52_to_nat(&s) < group_order(),
+            is_canonical_scalar52(&s),
             scalar52_to_nat(&s) == bytes_seq_to_nat(bytes@) % group_order(),
     {
         let ghost wide_input = bytes_seq_to_nat(bytes@);
@@ -722,9 +721,8 @@ impl Scalar52 {
         ensures
             scalar52_to_nat(&s) == (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (
             group_order() as int),
-            limbs_bounded(&s),
             // VERIFICATION NOTE: Result is in canonical form
-            scalar52_to_nat(&s) < group_order(),
+            is_canonical_scalar52(&s),
     {
         let mut difference = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
         proof {
@@ -1080,10 +1078,8 @@ impl Scalar52 {
         ensures
             scalar52_to_nat(&result) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b))
                 % group_order(),
-            // VER NOTE: Result has bounded limbs from montgomery_reduce
-            limbs_bounded(&result),
             // VER NOTE: Result is canonical from montgomery_reduce
-            scalar52_to_nat(&result) < group_order(),
+            is_canonical_scalar52(&result),
     {
         proof {
             lemma_rr_limbs_bounded();
@@ -1245,11 +1241,10 @@ impl Scalar52 {
         requires
             limbs_bounded(self),
         ensures
-            limbs_bounded(&result),
             (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == scalar52_to_nat(self)
                 % group_order(),
             // Result is canonical (< group_order). This follows from montgomery_reduce's postcondition
-            scalar52_to_nat(&result) < group_order(),
+            is_canonical_scalar52(&result),
     {
         let mut limbs = [0u128;9];
         #[allow(clippy::needless_range_loop)]

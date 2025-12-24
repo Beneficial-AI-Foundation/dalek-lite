@@ -11,7 +11,7 @@ use crate::specs::core_specs::*;
 #[allow(unused_imports)]
 use crate::specs::field_specs::*;
 #[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
 use crate::Scalar;
 use vstd::prelude::*;

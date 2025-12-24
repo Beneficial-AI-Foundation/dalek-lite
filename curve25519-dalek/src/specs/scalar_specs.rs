@@ -8,7 +8,7 @@ use vstd::prelude::*;
 #[allow(unused_imports)]
 use super::core_specs::*;
 #[allow(unused_imports)]
-use super::scalar_specs_u64::*;
+use super::scalar52_specs::*;
 
 verus! {
 

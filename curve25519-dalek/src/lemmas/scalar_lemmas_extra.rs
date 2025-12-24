@@ -7,9 +7,9 @@ use crate::backend::serial::u64::constants;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::scalar::Scalar52;
 #[allow(unused_imports)]
-use crate::specs::scalar_specs::*;
+use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar_specs::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]

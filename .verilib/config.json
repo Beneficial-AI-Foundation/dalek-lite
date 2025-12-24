@@ -1,4 +1,5 @@
 {
-  "structure-format": "dalek-lite",
+  "structure-type": "dalek-lite",
+  "structure-form": "files",
   "structure-root": ".verilib"
 }

@@ -22,11 +22,11 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
       "scip:core/https://github.com/rust-lang/rust/library/core/array/Hash#hash()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_from_bytes()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_to_bytes()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_to_bytes()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_from_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -53,9 +53,9 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/montgomery/spec_montgomery()",
+      "scip:curve25519-dalek/4.1.3/core_assumes/zeroize_bytes32()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_from_bytes()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/zeroize_bytes32()"
+      "scip:curve25519-dalek/4.1.3/montgomery/spec_montgomery()"
     ],
     "specified": false,
     "visible": true
@@ -69,13 +69,13 @@
     "code-module": "montgomery",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_x25519_basepoint_u()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul_u()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&Scalar>#mul_base()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<MontgomeryPoint>#to_montgomery()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&Scalar>#mul_base()",
       "scip:curve25519-dalek/4.1.3/montgomery/spec_montgomery()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul_u()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
@@ -89,14 +89,14 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_clamp_integer()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_clamp_integer()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()"
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()"
     ],
     "specified": false,
     "visible": true
@@ -109,14 +109,14 @@
     },
     "code-module": "montgomery/MontgomeryPoint<[u8;",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint<&Scalar>#mul_base()",
-      "scip:curve25519-dalek/4.1.3/montgomery/spec_montgomery()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_x25519_basepoint_u()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_clamp_integer()",
+      "scip:curve25519-dalek/4.1.3/montgomery/spec_montgomery()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_x25519_basepoint_u()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()",
       "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul_u()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()"
+      "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint<&Scalar>#mul_base()"
     ],
     "specified": false,
     "visible": true
@@ -129,21 +129,21 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
+      "scip:subtle/2.6.1/Choice#From#from()",
       "scip:curve25519-dalek/4.1.3/montgomery/&ProjectivePoint#ProjectivePoint<MontgomeryPoint>#as_affine()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
       "scip:core/https://github.com/rust-lang/rust/library/core/slice/len()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()",
       "scip:curve25519-dalek/4.1.3/montgomery/differential_add_and_double()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_swap_montgomery_projective()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/bits_be_to_nat()",
-      "scip:subtle/2.6.1/Choice#From#from()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
       "scip:core/https://github.com/rust-lang/rust/library/core/convert/Into#into()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
       "scip:curve25519-dalek/4.1.3/montgomery/ProjectivePoint#Identity<ProjectivePoint>#identity()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/bits_be_to_nat()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/core_assumes/zeroize_bool()"
     ],
     "specified": false,
@@ -179,13 +179,13 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
-      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<Option<EdwardsPoint>>#decompress()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_equal_to_minus_one()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_corresponds_to_edwards()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_equal_to_minus_one()",
+      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<Option<EdwardsPoint>>#decompress()"
     ],
     "specified": false,
     "visible": true
@@ -198,20 +198,20 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_select_field_element()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_elligator_encode()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_select_field_element()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
-      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_not()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_negate_field_element()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square2()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()"
+      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_elligator_encode()"
     ],
     "specified": false,
     "visible": true
@@ -238,12 +238,12 @@
     "code-module": "montgomery",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_inv()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_inv()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()"
     ],
     "specified": false,
     "visible": true
@@ -256,14 +256,14 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_u_coordinate()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_projective_u_coordinate()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_sub()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_add()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_add()"
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_projective_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_sub()"
     ],
     "specified": false,
     "visible": true
@@ -276,13 +276,13 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[bool;/256]>#bits_le()",
       "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<&[bool]>#mul_bits_be()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()"
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[bool;/256]>#bits_le()"
     ],
     "specified": false,
     "visible": true
@@ -295,12 +295,12 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()"
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/is_valid_montgomery_point()"
     ],
     "specified": false,
     "visible": true
@@ -313,11 +313,11 @@
     },
     "code-module": "montgomery",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
       "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_montgomery_point()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()"
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_scalar_mul()"
     ],
     "specified": false,
     "visible": true
@@ -331,9 +331,9 @@
     "code-module": "scalar/Scalar<[u8;",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Scalar>#reduce()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()"
     ],
     "specified": false,
     "visible": true
@@ -346,16 +346,16 @@
     },
     "code-module": "scalar/Scalar<&[u8;",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_wide_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&[u8;/64]>#from_bytes_wide()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()"
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()"
     ],
     "specified": false,
     "visible": true
@@ -368,15 +368,15 @@
     },
     "code-module": "scalar/Scalar<[u8;",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_option_value()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_and()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_option_new()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_canonical_bytes_high_bit_clear()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_option_has_value()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_option_value()",
       "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Choice>#is_canonical()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_and()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_u8()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_option_has_value()"
     ],
     "specified": false,
     "visible": true
@@ -414,17 +414,17 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_bound()",
       "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#mul()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_bound()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_strictly_increases()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#mul()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()"
     ],
     "specified": false,
@@ -439,16 +439,16 @@
     "code-module": "scalar",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_strictly_increases()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
       "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#mul()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_strictly_increases()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_bound()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()"
     ],
     "specified": false,
@@ -462,9 +462,9 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()"
     ],
     "specified": false,
     "visible": true
@@ -477,15 +477,15 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#add()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#add()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -498,8 +498,8 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
     ],
     "specified": false,
@@ -514,17 +514,17 @@
     "code-module": "scalar",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_scalar52_lt_pow2_256_if_canonical()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_scalar52_lt_pow2_256_if_canonical()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
+      "scip:curve25519-dalek/4.1.3/sum_lemmas/common_lemmas/lemmas/lemma_sub_symmetric_bound()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/sum_lemmas/common_lemmas/lemmas/lemma_sub_symmetric_bound()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()"
     ],
     "specified": false,
     "visible": true
@@ -539,22 +539,22 @@
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_zero_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_pow2_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_equals_spec()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_factors_congruent_implies_products_congruent()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_negation_sums_to_zero()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_equals_spec()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_pow2_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_factors_congruent_implies_products_congruent()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -582,11 +582,11 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_helpers/Scalar<&[Scalar]>#product_of_slice()",
       "scip:curve25519-dalek/4.1.3/scalar/collect_scalars_from_iter()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar/spec_scalars_from_iter()",
+      "scip:curve25519-dalek/4.1.3/scalar_helpers/Scalar<&[Scalar]>#product_of_slice()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/product_of_scalars()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_congruent_nat()"
     ],
@@ -601,8 +601,8 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_bytes_to_nat_first_byte_only()"
+      "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_bytes_to_nat_first_byte_only()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -615,10 +615,10 @@
     },
     "code-module": "scalar",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/core_assumes/u16_to_le_bytes()",
       "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_from_le_bytes()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from2()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/u16_to_le_bytes()"
+      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from2()"
     ],
     "specified": false,
     "visible": true
@@ -631,10 +631,10 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_from_le_bytes()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
       "scip:curve25519-dalek/4.1.3/core_assumes/seq_from4()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/u32_to_le_bytes()"
+      "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_from_le_bytes()",
+      "scip:curve25519-dalek/4.1.3/core_assumes/u32_to_le_bytes()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -647,10 +647,10 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_from_le_bytes()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/u64_to_le_bytes()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from8()"
+      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from8()",
+      "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_from_le_bytes()",
+      "scip:curve25519-dalek/4.1.3/core_assumes/u64_to_le_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -663,10 +663,10 @@
     },
     "code-module": "scalar",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from16()",
       "scip:curve25519-dalek/4.1.3/scalar_helpers/lemma_from_le_bytes()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/u128_to_le_bytes()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from16()"
+      "scip:curve25519-dalek/4.1.3/core_assumes/u128_to_le_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -693,9 +693,9 @@
     "code-module": "scalar",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/scalar/Scalar<D>#from_hash()",
-      "scip:digest/0.10.7/digest/Digest#update()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
       "scip:core/https://github.com/rust-lang/rust/library/core/default/Default#default()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()"
+      "scip:digest/0.10.7/digest/Digest#update()"
     ],
     "specified": false,
     "visible": true
@@ -708,10 +708,10 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/slice/copy_from_slice()",
       "scip:curve25519-dalek/4.1.3/scalar/Scalar<&[u8;/64]>#from_bytes_mod_order_wide()",
       "scip:digest/0.10.7/digest/Digest#finalize()",
       "scip:generic-array/0.14.9/GenericArray#as_slice()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/slice/copy_from_slice()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()"
     ],
     "specified": false,
@@ -725,8 +725,8 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -739,8 +739,8 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -753,17 +753,17 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
       "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#invert()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()"
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()"
     ],
     "specified": false,
     "visible": true
@@ -776,21 +776,21 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#new()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_inverse()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_inverse_of_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#from_montgomery()",
+      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#len()",
       "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#push()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#as_montgomery()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/product_of_scalars()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_inverse()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#montgomery_invert()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#from_montgomery()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()",
-      "scip:zeroize/1.8.2/Vec#Zeroize#zeroize()",
-      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#len()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/slice/len()",
       "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_inverse_of_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#montgomery_invert()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/product_of_scalars()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#new()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/slice/len()",
+      "scip:zeroize/1.8.2/Vec#Zeroize#zeroize()"
     ],
     "specified": false,
     "visible": true
@@ -803,9 +803,9 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/bits_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/bits_to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -820,9 +820,9 @@
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/reconstruct()",
       "scip:curve25519-dalek/4.1.3/core_assumes/u64_from_le_bytes()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_valid_naf()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/num/wrapping_sub()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_valid_naf()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/num/wrapping_sub()"
     ],
     "specified": false,
     "visible": true
@@ -835,12 +835,12 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/reconstruct_radix_16()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/radix_16_all_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_valid_radix_16()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar/top_half()",
-      "scip:curve25519-dalek/4.1.3/scalar/bot_half()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/radix_16_all_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_valid_radix_16()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/reconstruct_radix_16()",
+      "scip:curve25519-dalek/4.1.3/scalar/bot_half()"
     ],
     "specified": false,
     "visible": true
@@ -864,13 +864,13 @@
     },
     "code-module": "scalar",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_valid_radix_2w()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_valid_radix_16()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/reconstruct_radix_2w()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_16()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/reconstruct_radix_16()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/u64_from_le_bytes()"
+      "scip:curve25519-dalek/4.1.3/core_assumes/u64_from_le_bytes()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_16()"
     ],
     "specified": false,
     "visible": true
@@ -883,10 +883,10 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&[u8;/32]>#from_bytes()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -899,24 +899,24 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/slice128_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_bounded()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_pow2_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_factors_congruent_implies_products_congruent()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_equals_spec()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_factors_congruent_implies_products_congruent()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/slice128_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_smaller_than_pow256()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_equals_spec()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_pow2_mod()"
     ],
     "specified": false,
     "visible": true
@@ -929,11 +929,11 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_is_canonical_correctness()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Scalar>#reduce()",
-      "scip:curve25519-dalek/4.1.3/scalar/Scalar#ConstantTimeEq<&Self>#ct_eq()"
+      "scip:curve25519-dalek/4.1.3/scalar/Scalar#ConstantTimeEq<&Self>#ct_eq()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_is_canonical_correctness()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Scalar>#reduce()"
     ],
     "specified": false,
     "visible": true
@@ -946,22 +946,22 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/core_specs/specs/u8_32_as_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_bytes_to_nat_lower_bound()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_adds()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_five_limbs_equals_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_bound()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Scalar52<[u8;/32]>#as_bytes()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_scalar52_lt_pow2_256_if_canonical()",
       "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_inequality()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_five_limbs_equals_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/is_canonical_scalar()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_group_order_bound()",
+      "scip:curve25519-dalek/4.1.3/core_specs/specs/u8_32_as_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_bytes_to_nat_lower_bound()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_scalar52_lt_pow2_256_if_canonical()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Scalar52<[u8;/32]>#as_bytes()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()"
     ],
     "specified": false,
     "visible": true
@@ -974,13 +974,13 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()",
       "scip:curve25519-dalek/4.1.3/scalar/square_multiply()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#montgomery_square()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -993,13 +993,13 @@
     },
     "code-module": "scalar",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#as_montgomery()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#montgomery_invert()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#from_montgomery()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_invert_correctness()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#as_montgomery()"
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_invert_correctness()"
     ],
     "specified": false,
     "visible": true
@@ -1012,9 +1012,9 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/core_assumes/u64_from_le_bytes()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_seq_to_nat()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/slice/len()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/slice/len()",
+      "scip:curve25519-dalek/4.1.3/core_assumes/u64_from_le_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -1041,8 +1041,8 @@
     },
     "code-module": "window",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table5_projective_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table5_projective_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1098,14 +1098,14 @@
     "code-module": "window",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_naf_lookup_table5_projective()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#double()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table5_projective_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table5_projective_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1118,16 +1118,16 @@
     },
     "code-module": "window",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<AffineNielsPoint>#as_affine_niels()",
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table5_affine_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#double()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<AffineNielsPoint>#as_affine_niels()",
       "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_naf_lookup_table5_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table5_affine_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -1140,15 +1140,15 @@
     },
     "code-module": "window",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#double()",
       "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table8_projective_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_naf_lookup_table8_projective()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1161,16 +1161,16 @@
     },
     "code-module": "window",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table8_affine_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_naf_lookup_table8_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<AffineNielsPoint>#as_affine_niels()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#double()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<AffineNielsPoint>#as_affine_niels()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/naf_lookup_table8_affine_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_naf_lookup_table8_affine()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1183,13 +1183,13 @@
     },
     "code-module": "window",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_u16()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/identity_affine_niels()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_assign_generic()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/negate_affine_niels()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#Identity<AffineNielsPoint>#identity()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_u16()",
+      "scip:subtle/2.6.1/Choice#From#from()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_negate_generic()",
-      "scip:subtle/2.6.1/Choice#From#from()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/identity_affine_niels()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#Identity<AffineNielsPoint>#identity()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/negate_affine_niels()"
     ],
     "specified": false,
     "visible": true
@@ -1202,15 +1202,15 @@
     },
     "code-module": "window",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/negate_projective_niels()",
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/lookup_table_projective_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_u16()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_negate_generic()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/identity_projective_niels()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectiveNielsPoint#Identity<ProjectiveNielsPoint>#identity()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_assign_generic()",
       "scip:subtle/2.6.1/Choice#From#from()",
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/lookup_table_projective_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/negate_projective_niels()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_u16()"
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_assign_generic()"
     ],
     "specified": false,
     "visible": true
@@ -1223,13 +1223,13 @@
     },
     "code-module": "window",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_lookup_table_projective()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/lookup_table_projective_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_lookup_table_projective()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()",
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/lookup_table_projective_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1244,10 +1244,10 @@
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_lookup_table_affine()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<AffineNielsPoint>#as_affine_niels()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/window_specs/specs/is_valid_lookup_table_affine()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -1260,13 +1260,13 @@
     },
     "code-module": "field",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_bytes32()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_to_bytes()",
-      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_seq_eq_implies_array_eq()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
       "scip:curve25519-dalek/4.1.3/core_assumes/seq_from32()",
-      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_equals_spec_fe51_to_bytes()"
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_to_bytes()",
+      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_equals_spec_fe51_to_bytes()",
+      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_seq_eq_implies_array_eq()"
     ],
     "specified": false,
     "visible": true
@@ -1279,11 +1279,11 @@
     },
     "code-module": "field",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_to_bytes()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
-      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_equals_spec_fe51_to_bytes()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/convert/From#from()"
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_to_bytes()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/convert/From#from()",
+      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_equals_spec_fe51_to_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -1296,12 +1296,12 @@
     },
     "code-module": "field",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_bytes32()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
-      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_equals_spec_fe51_to_bytes()",
+      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from32()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_bytes32()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_fe51_to_bytes()",
-      "scip:curve25519-dalek/4.1.3/core_assumes/seq_from32()"
+      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_equals_spec_fe51_to_bytes()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -1314,19 +1314,19 @@
     },
     "code-module": "field",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/pow255_gt_19()",
       "scip:curve25519-dalek/4.1.3/pow22501_t3_lemma/field_lemmas/lemmas/lemma_pow22501_prove_t3()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/pow255_gt_19()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mul_mod_noop_general()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
       "scip:curve25519-dalek/4.1.3/pow22501_t19_lemma/field_lemmas/lemmas/lemma_pow22501_prove_t19()",
       "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_bridge_pow_as_nat_to_spec()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()"
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mul_mod_noop_general()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()"
     ],
     "specified": false,
     "visible": true
@@ -1339,17 +1339,17 @@
     },
     "code-module": "field",
     "dependencies": [
-      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#new()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
-      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#push()",
       "scip:core/https://github.com/rust-lang/rust/library/core/slice/len()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_not()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_inverse_field()",
-      "scip:subtle/2.6.1/From#from()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_zero()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#new()",
+      "scip:subtle/2.6.1/From#from()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
+      "scip:alloc/https://github.com/rust-lang/rust/library/alloc/vec/Vec#push()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_not()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_inverse_field()"
     ],
     "specified": false,
     "visible": true
@@ -1362,13 +1362,13 @@
     },
     "code-module": "field",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_inv()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(FieldElement,/FieldElement)>#pow22501()",
-      "scip:curve25519-dalek/4.1.3/invert_lemmas/field_lemmas/lemmas/lemma_invert_correctness()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()"
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/invert_lemmas/field_lemmas/lemmas/lemma_invert_correctness()"
     ],
     "specified": false,
     "visible": true
@@ -1381,20 +1381,20 @@
     },
     "code-module": "field",
     "dependencies": [
+      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow_mod_noop()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(FieldElement,/FieldElement)>#pow22501()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/pow255_gt_19()",
       "scip:curve25519-dalek/4.1.3/pow_lemmas/common_lemmas/lemmas/lemma_pow_nonnegative()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/pow_p58_lemma/field_lemmas/lemmas/lemma_pow_p58_prove()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_bridge_pow_as_nat_to_spec()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()",
       "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mul_mod_noop_general()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/pow255_gt_19()",
-      "scip:curve25519-dalek/4.1.3/pow_p58_lemma/field_lemmas/lemmas/lemma_pow_p58_prove()",
-      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_bridge_pow_as_nat_to_spec()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow_mod_noop()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(FieldElement,/FieldElement)>#pow22501()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
     ],
     "specified": false,
     "visible": true
@@ -1407,20 +1407,20 @@
     },
     "code-module": "field/FieldElement51<(Choice,",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#pow_p58()",
       "scip:curve25519-dalek/4.1.3/field/FieldElement51#ConstantTimeEq<&FieldElement>#ct_eq()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_negate_field_element()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/core_assumes/negate_field()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_or()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio_times_i()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_negate_field_element()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()"
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#pow_p58()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio_times_i()"
     ],
     "specified": false,
     "visible": true
@@ -1433,11 +1433,11 @@
     },
     "code-module": "field",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio_times_i()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()"
+      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio_times_i()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()"
     ],
     "specified": false,
     "visible": true
@@ -1450,8 +1450,8 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/ct_eq_bytes32()"
     ],
     "specified": false,
@@ -1487,18 +1487,18 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_on_edwards_curve()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_from_bytes()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/decompress/edwards/step_2()",
-      "scip:curve25519-dalek/4.1.3/decompress_lemmas/edwards_lemmas/lemmas/lemma_decompress_valid_branch()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_from_bytes()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_on_edwards_curve()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_is_valid_y_coordinate()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_into()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_sign_bit()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
       "scip:curve25519-dalek/4.1.3/decompress/edwards/step_1()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/compressed_y_has_valid_sign_bit()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_is_valid_y_coordinate()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_sign_bit()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_into()"
+      "scip:curve25519-dalek/4.1.3/decompress_lemmas/edwards_lemmas/lemmas/lemma_decompress_valid_branch()"
     ],
     "specified": false,
     "visible": true
@@ -1511,32 +1511,32 @@
     },
     "code-module": "decompress/edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
-      "scip:curve25519-dalek/4.1.3/constants_lemmas/edwards_lemmas/lemmas/lemma_edwards_d_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_from_bytes()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_as_nat()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sqrt_ratio_i_bounded_post()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_is_valid_y_coordinate()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_add()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_sub()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sqrt_ratio_i_math_post()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_is_commutative()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sqrt_ratio_i_post()",
-      "scip:curve25519-dalek/4.1.3/constants_lemmas/field_lemmas/lemmas/lemma_one_limbs_bounded_51()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_square()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
-      "scip:curve25519-dalek/4.1.3/constants_lemmas/field_lemmas/lemmas/lemma_one_field_element_value()",
-      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()",
+      "scip:curve25519-dalek/4.1.3/constants_lemmas/field_lemmas/lemmas/lemma_one_limbs_bounded_51()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_from_bytes()",
+      "scip:curve25519-dalek/4.1.3/step1_lemmas/edwards_lemmas/lemmas/lemma_step1_case_analysis()",
       "scip:curve25519-dalek/4.1.3/field_algebra_lemmas/field_lemmas/lemmas/lemma_square_matches_math_field_square()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_is_valid_y_coordinate()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_on_edwards_curve()",
-      "scip:curve25519-dalek/4.1.3/step1_lemmas/edwards_lemmas/lemmas/lemma_step1_case_analysis()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sqrt_ratio_i_post()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sqrt_ratio_i_bounded_post()",
+      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_is_commutative()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/constants_lemmas/edwards_lemmas/lemmas/lemma_edwards_d_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_add()",
+      "scip:curve25519-dalek/4.1.3/constants_lemmas/field_lemmas/lemmas/lemma_one_field_element_value()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sqrt_ratio_i_math_post()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_sub()",
+      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_as_nat()"
     ],
     "specified": false,
     "visible": true
@@ -1549,14 +1549,14 @@
     },
     "code-module": "decompress/edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_neg()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/convert/From#from()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/conditional_negate_field_element()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/convert/From#from()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_neg()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()"
     ],
     "specified": false,
     "visible": true
@@ -1582,9 +1582,9 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_identity_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
     ],
     "specified": false,
     "visible": true
@@ -1623,11 +1623,11 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectivePoint>#as_projective()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#ValidityCheck<bool>#is_valid()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectivePoint>#as_projective()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#ValidityCheck<bool>#is_valid()"
     ],
     "specified": false,
     "visible": true
@@ -1640,8 +1640,8 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_select()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_select()",
       "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()"
     ],
     "specified": false,
@@ -1655,10 +1655,10 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/field/FieldElement51#ConstantTimeEq<&FieldElement>#ct_eq()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_and()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()"
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_is_true()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/choice_and()"
     ],
     "specified": false,
     "visible": true
@@ -1671,10 +1671,10 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_niels_corresponds_to_edwards()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_niels_corresponds_to_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_sum_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1701,11 +1701,11 @@
     },
     "code-module": "edwards",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/affine_niels_corresponds_to_edwards()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/affine_niels_corresponds_to_edwards()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1719,10 +1719,10 @@
     "code-module": "edwards",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_corresponds_to_edwards()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
+      "scip:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_corresponds_to_edwards()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1736,13 +1736,13 @@
     "code-module": "edwards",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:subtle/2.6.1/Choice#unwrap_u8()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_inv()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/compressed_edwards_y_corresponds_to_edwards()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:subtle/2.6.1/Choice#unwrap_u8()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_inv()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -1755,15 +1755,15 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_cofactor()",
-      "scip:digest/0.10.7/digest/Digest#update()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/option/Option#expect()",
+      "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<u8>#to_edwards()",
       "scip:curve25519-dalek/4.1.3/montgomery/elligator_encode()",
-      "scip:digest/0.10.7/digest/Digest#new()",
-      "scip:digest/0.10.7/digest/Digest#finalize()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
       "scip:core/https://github.com/rust-lang/rust/library/core/slice/copy_from_slice()",
-      "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<u8>#to_edwards()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/option/Option#expect()",
+      "scip:digest/0.10.7/digest/Digest#finalize()",
+      "scip:digest/0.10.7/digest/Digest#update()",
+      "scip:digest/0.10.7/digest/Digest#new()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_cofactor()"
     ],
     "specified": false,
     "visible": true
@@ -1776,19 +1776,19 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectivePoint>#as_projective()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_double()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectivePoint>#as_projective()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -1801,15 +1801,15 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_add()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_add()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()"
     ],
     "specified": false,
     "visible": true
@@ -1822,10 +1822,10 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_add()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_add()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -1838,14 +1838,14 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_sub()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()"
     ],
     "specified": false,
     "visible": true
@@ -1858,10 +1858,10 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_sub()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -1901,10 +1901,10 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()"
     ],
     "specified": false,
     "visible": true
@@ -1919,9 +1919,9 @@
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/backend/variable_base_mul()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()"
     ],
     "specified": false,
     "visible": true
@@ -1935,9 +1935,9 @@
     "code-module": "edwards",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()"
     ],
     "specified": false,
     "visible": true
@@ -1950,11 +1950,11 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -1967,12 +1967,12 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_clamp_integer()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
-      "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_clamp_integer()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()"
     ],
     "specified": false,
     "visible": true
@@ -1985,14 +1985,14 @@
     },
     "code-module": "edwards/EdwardsPoint<[u8;",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&Scalar>#mul_base()",
       "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_clamp_integer()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&Scalar>#mul_base()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()"
     ],
     "specified": false,
     "visible": true
@@ -2005,13 +2005,13 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_add()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
       "scip:curve25519-dalek/4.1.3/backend/vartime_double_base_mul()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_add()"
     ],
     "specified": false,
     "visible": true
@@ -2024,11 +2024,11 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -2041,17 +2041,17 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectivePoint>#as_projective()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()"
     ],
     "specified": false,
     "visible": true
@@ -2066,10 +2066,10 @@
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_cofactor()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_edwards_identity()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/traits/&Self#IsIdentity<bool>#is_identity()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_edwards_identity()",
+      "scip:curve25519-dalek/4.1.3/traits/&Self#IsIdentity<bool>#is_identity()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -2082,13 +2082,13 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
+      "scip:curve25519-dalek/4.1.3/traits/&Self#IsIdentity<bool>#is_identity()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_edwards_identity()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_edwards_identity()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/traits/&Self#IsIdentity<bool>#is_identity()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -2101,8 +2101,8 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#size_hint()",
       "scip:curve25519-dalek/4.1.3/backend/straus_multiscalar_mul()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#size_hint()",
       "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#by_ref()"
     ],
     "specified": false,
@@ -2116,10 +2116,10 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/backend/pippenger_optional_multiscalar_mul()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#by_ref()",
       "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#size_hint()",
-      "scip:curve25519-dalek/4.1.3/backend/straus_optional_multiscalar_mul()"
+      "scip:curve25519-dalek/4.1.3/backend/straus_optional_multiscalar_mul()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#by_ref()",
+      "scip:curve25519-dalek/4.1.3/backend/pippenger_optional_multiscalar_mul()"
     ],
     "specified": false,
     "visible": true
@@ -2132,8 +2132,8 @@
     },
     "code-module": "ristretto",
     "dependencies": [
-      "scip:subtle/2.6.1/ConstantTimeEq#ct_eq()",
-      "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<[u8;/32]>#as_bytes()"
+      "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<[u8;/32]>#as_bytes()",
+      "scip:subtle/2.6.1/ConstantTimeEq#ct_eq()"
     ],
     "specified": false,
     "visible": true
@@ -2179,8 +2179,8 @@
     },
     "code-module": "ristretto",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/convert/Into#into()",
       "scip:curve25519-dalek/4.1.3/decompress/ristretto/step_1()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/convert/Into#into()",
       "scip:curve25519-dalek/4.1.3/decompress/ristretto/step_2()"
     ],
     "specified": false,
@@ -2195,9 +2195,9 @@
     "code-module": "decompress/ristretto",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
       "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<[u8;/32]>#as_bytes()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -2210,11 +2210,11 @@
     },
     "code-module": "decompress/ristretto",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(Choice,/FieldElement)>#invsqrt()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_zero()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:subtle/2.6.1/ConditionallyNegatable#conditional_negate()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()"
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(Choice,/FieldElement)>#invsqrt()"
     ],
     "specified": false,
     "visible": true
@@ -2239,11 +2239,11 @@
     "code-module": "ristretto",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
-      "scip:subtle/2.6.1/ConditionallyNegatable#conditional_negate()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
-      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(Choice,/FieldElement)>#invsqrt()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()"
+      "scip:subtle/2.6.1/ConditionallyNegatable#conditional_negate()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(Choice,/FieldElement)>#invsqrt()",
+      "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()"
     ],
     "specified": false,
     "visible": true
@@ -2278,17 +2278,17 @@
     },
     "code-module": "",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/slice/iter()",
-      "scip:curve25519-dalek/4.1.3/BatchCompressState<FieldElement>#efgh()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#zip()",
       "scip:curve25519-dalek/4.1.3/field/FieldElement51#batch_invert()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()",
+      "scip:subtle/2.6.1/ConditionallyNegatable#conditional_negate()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()",
+      "scip:curve25519-dalek/4.1.3/BatchCompressState<FieldElement>#efgh()",
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
       "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#collect()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#zip()",
-      "scip:subtle/2.6.1/ConditionallyNegatable#conditional_negate()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/slice/iter()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
     ],
     "specified": false,
     "visible": true
@@ -2313,10 +2313,10 @@
     "code-module": "ristretto",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
-      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:subtle/2.6.1/ConditionallyNegatable#conditional_negate()",
+      "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()"
     ],
     "specified": false,
@@ -2330,9 +2330,9 @@
     },
     "code-module": "ristretto",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<D>#from_hash()",
       "scip:core/https://github.com/rust-lang/rust/library/core/default/Default#default()",
-      "scip:digest/0.10.7/digest/Digest#update()",
-      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<D>#from_hash()"
+      "scip:digest/0.10.7/digest/Digest#update()"
     ],
     "specified": false,
     "visible": true
@@ -2345,10 +2345,10 @@
     },
     "code-module": "ristretto",
     "dependencies": [
-      "scip:digest/0.10.7/digest/Digest#finalize()",
-      "scip:generic-array/0.14.9/GenericArray#as_slice()",
       "scip:core/https://github.com/rust-lang/rust/library/core/slice/copy_from_slice()",
-      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&[u8;/64]>#from_uniform_bytes()"
+      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&[u8;/64]>#from_uniform_bytes()",
+      "scip:digest/0.10.7/digest/Digest#finalize()",
+      "scip:generic-array/0.14.9/GenericArray#as_slice()"
     ],
     "specified": false,
     "visible": true
@@ -2361,9 +2361,9 @@
     },
     "code-module": "ristretto/RistrettoPoint<&[u8;",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/slice/copy_from_slice()",
+      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<RistrettoPoint>#elligator_ristretto_flavor()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
-      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<RistrettoPoint>#elligator_ristretto_flavor()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/slice/copy_from_slice()"
     ],
     "specified": false,
     "visible": true
@@ -2612,8 +2612,8 @@
     },
     "code-module": "ristretto",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#MultiscalarMul<J>#multiscalar_mul()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#MultiscalarMul<J>#multiscalar_mul()"
     ],
     "specified": false,
     "visible": true
@@ -2627,8 +2627,8 @@
     "code-module": "ristretto",
     "dependencies": [
       "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()",
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#VartimeMultiscalarMul<J>#optional_multiscalar_mul()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/option/Option#map()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/option/Option#map()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
     ],
     "specified": false,
     "visible": true
@@ -2678,15 +2678,15 @@
     },
     "code-module": "scalar/u64/serial/backend/Scalar52<&[u8;",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_seq_to_nat_clear_aux()",
+      "scip:curve25519-dalek/4.1.3/bytes_to_scalar_lemmas/scalar_byte_lemmas/lemmas/lemma_bytes_to_word_equivalence()",
+      "scip:curve25519-dalek/4.1.3/bytes_to_scalar_lemmas/scalar_byte_lemmas/lemmas/lemma_byte_to_word_step()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_pos()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/bytes_to_scalar_lemmas/scalar_byte_lemmas/lemmas/lemma_bytes_to_word_equivalence()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_seq_to_nat_clear_aux()",
       "scip:curve25519-dalek/4.1.3/bytes_to_scalar_lemmas/scalar_byte_lemmas/lemmas/lemma_words_to_scalar()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/bytes_to_scalar_lemmas/scalar_byte_lemmas/lemmas/lemma_byte_to_word_step()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -2699,45 +2699,45 @@
     },
     "code-module": "scalar/u64/serial/backend/Scalar52<&[u8;",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_montgomery_reduced_sum_congruent()",
-      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_spec_load8_at_fits_u64()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_wide_to_nat_rec()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_low_limbs_encode_low_expr()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/word_from_bytes()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_high_low_recombine()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_lo_limbs_bounded()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_adds()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/load8_at()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_pow2_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_hi_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#add()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_equals_spec()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mod_multiples_vanish()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_five_limbs_equals_to_nat()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_multiply_divide_lt()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_equals_spec()",
-      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_is_commutative()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_high_limbs_encode_high_expr()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_fundamental_div_mod_converse()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_bytes_wide_to_nat_rec_matches_word_partial()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_limbs_bounded()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64_rest()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_bound_scalar()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_montgomery_reduce_cancels_r()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_words_to_nat_gen_u64_bound_le()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_wide_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_words_to_nat_gen_u64_prefix_matches_bytes()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_is_commutative()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_words_from_bytes_to_nat_wide()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_bytes_wide_to_nat_rec_matches_word_partial()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#add()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_fundamental_div_mod_converse()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_multiply_divide_lt()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_low_limbs_encode_low_expr()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_high_limbs_encode_high_expr()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_equals_spec()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_bound_scalar()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mod_multiples_vanish()",
+      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_spec_load8_at_fits_u64()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_r_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_montgomery_reduced_sum_congruent()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_equals_spec()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/word_from_bytes()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_words_to_nat_gen_u64_bound_le()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64_rest()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_pow2_mod()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/words_from_bytes_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_wide_to_nat_rec()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_hi_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_montgomery_reduce_cancels_r()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas_extra/lemmas/lemma_high_low_recombine()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_adds()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_wide_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_five_limbs_equals_to_nat()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/load8_at()"
     ],
     "specified": false,
     "visible": true
@@ -2750,12 +2750,12 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/lemma_as_bytes_52()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_five_limbs_equals_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/bytes_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_five_limbs_equals_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -2768,20 +2768,20 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_add_sum_simplify()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mod_sub_multiples_vanish()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_add_carry_and_sum_bounds()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_add_loop_invariant()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_l_equals_group_order()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_add_loop_bounds()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_add_carry_and_sum_bounds()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_l_value_properties()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/seq_u64_to_nat()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/seq_u64_to_nat()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_l_equals_group_order()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mod_sub_multiples_vanish()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_add_loop_invariant()"
     ],
     "specified": false,
     "visible": true
@@ -2794,19 +2794,19 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:subtle/2.6.1/Choice#From#from()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_sub_correct_after_loops()",
-      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/select()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_borrow_and_mask_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/seq_u64_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_sub_loop1_invariant()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_scalar_subtract_no_overflow()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_sub_loop2_invariant()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_carry_bounded_after_mask()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_sub_correct_after_loops()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/subtle_assumes/u64/serial/backend/select()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_scalar_subtract_no_overflow()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/seq_u64_to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_sub_loop2_invariant()",
+      "scip:subtle/2.6.1/Choice#From#from()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_sub_loop1_invariant()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -2819,13 +2819,13 @@
     },
     "code-module": "scalar/u64/serial/backend/Scalar52<[u128;",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_internal_no_overflow()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/spec_mul_internal()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_internal_correct()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/slice128_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/spec_mul_internal()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_internal_correct()"
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_mul_internal_no_overflow()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -2838,13 +2838,13 @@
     },
     "code-module": "scalar/u64/serial/backend/Scalar52<[u128;",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/slice128_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_square_internal_no_overflow()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/spec_mul_internal()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_square_internal_no_overflow()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_square_internal_correct()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/slice128_to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_square_internal_correct()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/spec_mul_internal()"
     ],
     "specified": false,
     "visible": true
@@ -2857,16 +2857,16 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part2()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part1()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/slice128_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/spec_mul_internal()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part2()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()"
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part1()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/slice128_to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -2879,16 +2879,16 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_equals_spec()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_montgomery_mod()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_equals_spec()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_montgomery_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()"
     ],
     "specified": false,
     "visible": true
@@ -2901,17 +2901,17 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_montgomery_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#square_internal()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_montgomery_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#square_internal()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_equals_spec()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_small_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -2924,12 +2924,12 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -2942,12 +2942,12 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#square_internal()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#square_internal()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -2960,14 +2960,14 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/montgomery_lemmas/lemmas/lemma_rr_equals_radix_squared()",
       "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_cancel_mul_montgomery_mod()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_rr_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/montgomery_lemmas/lemmas/lemma_rr_equals_radix_squared()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -2980,12 +2980,12 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_from_montgomery_limbs_conversion()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()"
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -3011,12 +3011,12 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_add_fe51_limbs()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_add()",
       "scip:curve25519-dalek/4.1.3/add_lemmas/field_lemmas/lemmas/lemma_field51_add()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_as_nat()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_add()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
     ],
     "specified": false,
     "visible": true
@@ -3029,12 +3029,12 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_as_nat()",
       "scip:curve25519-dalek/4.1.3/add_lemmas/field_lemmas/lemmas/lemma_field51_add()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_add()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_add_fe51_limbs()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element_as_nat()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_add_fe51_limbs()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -3047,10 +3047,10 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_sub()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sub_limbs()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_sub()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -3063,20 +3063,20 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_u64_5_as_nat_add()",
       "scip:curve25519-dalek/4.1.3/div_mod_lemmas/common_lemmas/lemmas/lemma_mod_sum_factor()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<[u64;/5]>#reduce()",
-      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mod_twice()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_sub()",
+      "scip:curve25519-dalek/4.1.3/add_lemmas/field_lemmas/lemmas/lemma_field_add_16p_no_overflow()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sub_limbs()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_u64_5_as_nat_add()",
       "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_sub_mod_noop()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_sub()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
-      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_u64_5_as_nat_sub()",
-      "scip:curve25519-dalek/4.1.3/add_lemmas/field_lemmas/lemmas/lemma_field_add_16p_no_overflow()",
+      "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mod_twice()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<[u64;/5]>#reduce()",
       "scip:curve25519-dalek/4.1.3/to_bytes_reduction_lemmas/field_lemmas/lemmas/lemma_sub_constants_equal_16p()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_sub_limbs()"
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_u64_5_as_nat_sub()"
     ],
     "specified": false,
     "visible": true
@@ -3090,8 +3090,8 @@
     "code-module": "field/u64/serial/backend",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()"
     ],
     "specified": false,
     "visible": true
@@ -3104,10 +3104,10 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/m()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_mul()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()"
     ],
     "specified": false,
     "visible": true
@@ -3120,10 +3120,10 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/negate_lemmas/field_lemmas/lemmas/lemma_neg()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_neg()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&mut/FieldElement51#FieldElement51#negate()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&mut/FieldElement51#FieldElement51#negate()"
+      "scip:curve25519-dalek/4.1.3/negate_lemmas/field_lemmas/lemmas/lemma_neg()"
     ],
     "specified": false,
     "visible": true
@@ -3163,10 +3163,10 @@
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/negate_lemmas/field_lemmas/lemmas/proof_negate()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<[u64;/5]>#reduce()",
-      "scip:curve25519-dalek/4.1.3/negate_lemmas/field_lemmas/lemmas/lemma_neg_no_underflow()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/spec_negate()"
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/spec_negate()",
+      "scip:curve25519-dalek/4.1.3/negate_lemmas/field_lemmas/lemmas/lemma_neg_no_underflow()"
     ],
     "specified": false,
     "visible": true
@@ -3179,11 +3179,11 @@
     },
     "code-module": "field/u64/serial/backend/FieldElement51<[u64;",
     "dependencies": [
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/lemma_reduce_bound_2p()",
       "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/lemma_reduce_boundaries()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/spec_reduce()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
       "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/proof_reduce()",
-      "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/lemma_reduce_bound_2p()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()"
     ],
     "specified": false,
@@ -3197,22 +3197,22 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/limbs_to_bytes_lemmas/field_lemmas/lemmas/lemma_limbs_to_bytes()",
-      "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/lemma_reduce_bound_2p()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/to_bytes_reduction_lemmas/field_lemmas/lemmas/lemma_to_bytes_reduction()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/bytes_as_nat()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<[u64;/5]>#reduce()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/spec_reduce()",
       "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_boundaries2()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/compute_q_spec()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
-      "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/proof_reduce()",
-      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_boundaries1()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/reduce_with_q_spec()",
-      "scip:curve25519-dalek/4.1.3/compute_q_lemmas/field_lemmas/lemmas/lemma_compute_q()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/compute_q_lemmas/field_lemmas/lemmas/lemma_compute_q()",
+      "scip:curve25519-dalek/4.1.3/as_bytes_lemmas/field_lemmas/lemmas/lemma_as_bytes_boundaries1()",
+      "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/proof_reduce()",
+      "scip:curve25519-dalek/4.1.3/limbs_to_bytes_lemmas/field_lemmas/lemmas/lemma_limbs_to_bytes()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<[u64;/5]>#reduce()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/bit_arrange()",
-      "scip:curve25519-dalek/4.1.3/to_bytes_reduction_lemmas/field_lemmas/lemmas/lemma_to_bytes_reduction()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/compute_q_spec()",
+      "scip:curve25519-dalek/4.1.3/reduce_lemmas/field_lemmas/lemmas/lemma_reduce_bound_2p()"
     ],
     "specified": false,
     "visible": true
@@ -3225,13 +3225,13 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/pow2k_lemmas/field_lemmas/lemmas/lemma_pow2k_loop_value()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/m()",
       "scip:curve25519-dalek/4.1.3/pow2k_lemmas/field_lemmas/lemmas/lemma_pow2k_loop_boundary()",
       "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/m()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/pow2k_lemmas/field_lemmas/lemmas/lemma_pow2k_loop_value()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
       "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow1()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()"
     ],
@@ -3246,11 +3246,11 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
       "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()"
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()"
     ],
     "specified": false,
     "visible": true
@@ -3263,17 +3263,17 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
-      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_u64_5_as_nat_k()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()",
-      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_left_inequality()",
-      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_strict_inequality()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
-      "scip:curve25519-dalek/4.1.3/pow_lemmas/common_lemmas/lemmas/lemma_pow_nat_is_nat()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/u64_5_as_nat()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
+      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_left_inequality()",
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/pow255_gt_19()",
       "scip:vstd/0.0.0-2025-11-23-0053/div_mod/arithmetic/lemma_mul_mod_noop()",
-      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/pow255_gt_19()"
+      "scip:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "scip:curve25519-dalek/4.1.3/u64_5_as_nat_lemmas/field_lemmas/lemmas/lemma_u64_5_as_nat_k()",
+      "scip:vstd/0.0.0-2025-11-23-0053/mul/arithmetic/lemma_mul_strict_inequality()",
+      "scip:curve25519-dalek/4.1.3/pow_lemmas/common_lemmas/lemmas/lemma_pow_nat_is_nat()"
     ],
     "specified": false,
     "visible": true
@@ -3286,14 +3286,14 @@
     },
     "code-module": "variable_base/scalar_mul/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()",
-      "scip:curve25519-dalek/4.1.3/window/LookupTable<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_16()",
       "scip:curve25519-dalek/4.1.3/window/&LookupTable<ProjectiveNielsPoint>#LookupTable<i8>#select()",
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_16()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()",
       "scip:curve25519-dalek/4.1.3/window/&LookupTable<AffineNielsPoint>#LookupTable<i8>#select()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()"
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
+      "scip:curve25519-dalek/4.1.3/window/LookupTable<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
     ],
     "specified": false,
     "visible": true
@@ -3306,17 +3306,17 @@
     },
     "code-module": "vartime_double_base/scalar_mul/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/256]>#non_adjacent_form()",
       "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()",
-      "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<AffineNielsPoint>#NafLookupTable8<usize>#select()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#Identity<ProjectivePoint>#identity()",
-      "scip:curve25519-dalek/4.1.3/window/&NafLookupTable5<ProjectiveNielsPoint>#NafLookupTable5<usize>#select()",
-      "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<ProjectiveNielsPoint>#NafLookupTable8<usize>#select()",
-      "scip:curve25519-dalek/4.1.3/window/NafLookupTable5<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/256]>#non_adjacent_form()",
       "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<EdwardsPoint>#as_extended()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
+      "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<AffineNielsPoint>#NafLookupTable8<usize>#select()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()",
       "scip:curve25519-dalek/4.1.3/window/&NafLookupTable5<AffineNielsPoint>#NafLookupTable5<usize>#select()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()"
+      "scip:curve25519-dalek/4.1.3/window/&NafLookupTable5<ProjectiveNielsPoint>#NafLookupTable5<usize>#select()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#Identity<ProjectivePoint>#identity()",
+      "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<ProjectiveNielsPoint>#NafLookupTable8<usize>#select()",
+      "scip:curve25519-dalek/4.1.3/window/NafLookupTable5<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
     ],
     "specified": false,
     "visible": true
@@ -3329,15 +3329,15 @@
     },
     "code-module": "straus/scalar_mul/serial/backend",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#zip()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()",
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/convert/From#from()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#rev()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/slice/iter()",
+      "scip:zeroize/1.8.2/Zeroize#zeroize()",
       "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#collect()",
       "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()",
-      "scip:zeroize/1.8.2/Zeroize#zeroize()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#rev()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/slice/iter()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#zip()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/convert/From#from()"
     ],
     "specified": false,
     "visible": true
@@ -3350,16 +3350,16 @@
     },
     "code-module": "straus/scalar_mul/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<EdwardsPoint>#as_extended()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#collect()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#zip()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
       "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/slice/iter()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#rev()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#Identity<ProjectivePoint>#identity()",
       "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()",
-      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#zip()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#Identity<ProjectivePoint>#identity()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#rev()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#collect()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/slice/iter()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()",
+      "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<EdwardsPoint>#as_extended()"
     ],
     "specified": false,
     "visible": true
@@ -3372,18 +3372,18 @@
     },
     "code-module": "pippenger/scalar_mul/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#collect()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/option/Option#expect()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#size_hint()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#rev()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#by_ref()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/map/adapters/iter/Map#Iterator#fold()",
       "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
-      "scip:curve25519-dalek/4.1.3/scalar/Scalar<usize>#to_radix_2w_size_hint()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#rev()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#size_hint()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#cmp()",
       "scip:core/https://github.com/rust-lang/rust/library/core/map/adapters/iter/Map#Iterator#next()",
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#cmp()"
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#by_ref()",
+      "scip:curve25519-dalek/4.1.3/scalar/Scalar<usize>#to_radix_2w_size_hint()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/option/Option#expect()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#map()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/map/adapters/iter/Map#Iterator#fold()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#collect()"
     ],
     "specified": false,
     "visible": true
@@ -3448,11 +3448,11 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_on_edwards_curve_projective()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
       "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/spec_field_element()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/math_on_edwards_curve_projective()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -3491,13 +3491,13 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_projective_to_extended()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_projective_to_extended()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
@@ -3511,13 +3511,13 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_completed_to_projective()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_projective_point_edwards()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_projective_point_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()"
     ],
     "specified": false,
@@ -3531,14 +3531,14 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_edwards_point()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_completed_to_extended()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_edwards_point()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_completed_to_extended()"
     ],
     "specified": false,
     "visible": true
@@ -3551,16 +3551,16 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_point_as_affine_edwards()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_projective_point()",
-      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square2()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_double()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()"
+      "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square2()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -3573,11 +3573,11 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_edwards_add_projective_niels()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
@@ -3591,13 +3591,13 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_niels_point_as_affine_edwards()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_sub()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()"
     ],
     "specified": false,
@@ -3612,11 +3612,11 @@
     "code-module": "curve_models/serial/backend",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_edwards_add_affine_niels()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()"
     ],
     "specified": false,
     "visible": true
@@ -3629,13 +3629,13 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_sub()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/completed_point_as_affine_edwards()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_completed_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/affine_niels_point_as_affine_edwards()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/affine_niels_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_sub()"
     ],
     "specified": false,
     "visible": true
@@ -3648,8 +3648,8 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/core_assumes/negate_field()",
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_neg()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/projective_niels_point_as_affine_edwards()"
     ],
@@ -3664,9 +3664,9 @@
     },
     "code-module": "curve_models/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/core_assumes/negate_field()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/math_field_neg()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/affine_niels_point_as_affine_edwards()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/affine_niels_point_as_affine_edwards()",
+      "scip:curve25519-dalek/4.1.3/core_assumes/negate_field()"
     ],
     "specified": false,
     "visible": true
@@ -3679,10 +3679,10 @@
     },
     "code-module": "field/u64/serial/backend",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_load8_at_versions_equivalent()",
-      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_load8_at_plus_version_is_spec()",
       "scip:curve25519-dalek/4.1.3/core_specs/specs/spec_load8_at()",
-      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_load8_at_rec_version_is_exec()"
+      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_load8_at_versions_equivalent()",
+      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_load8_at_rec_version_is_exec()",
+      "scip:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_load8_at_plus_version_is_spec()"
     ],
     "specified": false,
     "visible": true
@@ -3717,21 +3717,21 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#montgomery_square()",
+      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_square_multiply_step()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()",
       "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow_adds()",
       "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/pow()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
-      "scip:curve25519-dalek/4.1.3/pow_lemmas/common_lemmas/lemmas/lemma_pow_nonnegative()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma2_to64()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow0()",
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#montgomery_square()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow1()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
+      "scip:curve25519-dalek/4.1.3/pow_lemmas/common_lemmas/lemmas/lemma_pow_nonnegative()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/montgomery_radix()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()",
-      "scip:curve25519-dalek/4.1.3/scalar_lemmas/lemmas/lemma_square_multiply_step()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
       "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/lemma_pow2_pos()",
-      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow1()"
+      "scip:vstd/0.0.0-2025-11-23-0053/power2/arithmetic/pow2()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/to_nat()",
+      "scip:vstd/0.0.0-2025-11-23-0053/power/arithmetic/lemma_pow0()"
     ],
     "specified": false,
     "visible": true
@@ -3744,8 +3744,8 @@
     },
     "code-module": "scalar/u64/serial/backend",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/num/wrapping_mul()",
-      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()"
+      "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/num/wrapping_mul()"
     ],
     "specified": false,
     "visible": true
@@ -3771,14 +3771,14 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/window/LookupTable#Default<LookupTable<ProjectiveNielsPoint>>#default()",
       "scip:core/https://github.com/rust-lang/rust/library/core/convert/From#from()",
-      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_basepoint_table()",
-      "scip:curve25519-dalek/4.1.3/window/LookupTable#Default<LookupTable<AffineNielsPoint>>#default()",
+      "scip:curve25519-dalek/4.1.3/window/LookupTable#Default<LookupTable<ProjectiveNielsPoint>>#default()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
+      "scip:curve25519-dalek/4.1.3/window/LookupTable#Default<LookupTable<AffineNielsPoint>>#default()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_valid_edwards_basepoint_table()",
+      "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()"
     ],
     "specified": false,
     "visible": true
@@ -3792,11 +3792,11 @@
     "code-module": "edwards",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()"
+      "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()"
     ],
     "specified": false,
     "visible": true
@@ -3809,17 +3809,17 @@
     },
     "code-module": "edwards",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_scalar_mul()",
-      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_2w()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
       "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/sum_of_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
+      "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()",
       "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/spec_scalar()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_limbs_bounded()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/spec_ed25519_basepoint()"
+      "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_2w()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()"
     ],
     "specified": false,
     "visible": true
@@ -3832,13 +3832,13 @@
     },
     "code-module": "scalar",
     "dependencies": [
-      "scip:curve25519-dalek/4.1.3/scalar_helpers/Scalar<&[Scalar]>#sum_of_slice()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()",
-      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_congruent_nat()",
       "scip:curve25519-dalek/4.1.3/scalar/collect_scalars_from_iter()",
+      "scip:curve25519-dalek/4.1.3/scalar/spec_scalars_from_iter()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_congruent_nat()",
       "scip:curve25519-dalek/4.1.3/scalar_specs/specs/sum_of_scalars()",
       "scip:curve25519-dalek/4.1.3/scalar_specs_u64/specs/group_order()",
-      "scip:curve25519-dalek/4.1.3/scalar/spec_scalars_from_iter()"
+      "scip:curve25519-dalek/4.1.3/scalar_helpers/Scalar<&[Scalar]>#sum_of_slice()",
+      "scip:curve25519-dalek/4.1.3/scalar_specs/specs/scalar_to_nat()"
     ],
     "specified": false,
     "visible": true
@@ -3852,12 +3852,12 @@
     "code-module": "edwards",
     "dependencies": [
       "scip:curve25519-dalek/4.1.3/edwards/collect_points_from_iter()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/sum_of_points()",
-      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
       "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&[EdwardsPoint]>#sum_of_slice()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/sum_of_points()",
       "scip:curve25519-dalek/4.1.3/field_specs/specs/fe51_limbs_bounded()",
-      "scip:curve25519-dalek/4.1.3/edwards/spec_points_from_iter()"
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/is_well_formed_edwards_point()",
+      "scip:curve25519-dalek/4.1.3/edwards/spec_points_from_iter()",
+      "scip:curve25519-dalek/4.1.3/edwards_specs/specs/edwards_point_as_affine()"
     ],
     "specified": false,
     "visible": true
@@ -3870,8 +3870,8 @@
     },
     "code-module": "ristretto",
     "dependencies": [
-      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#fold()",
-      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Identity<RistrettoPoint>#identity()"
+      "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Identity<RistrettoPoint>#identity()",
+      "scip:core/https://github.com/rust-lang/rust/library/core/iterator/traits/iter/Iterator#fold()"
     ],
     "specified": false,
     "visible": true

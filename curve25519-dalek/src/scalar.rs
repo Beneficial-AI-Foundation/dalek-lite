@@ -295,7 +295,7 @@ impl Scalar {
         proof {
             // from_bytes_wide postconditions:
             // - limbs_bounded(&unpacked)
-            // - scalar52_to_nat(&unpacked) % group_order() == bytes_seq_to_nat(input@) % group_order()
+            // - scalar52_to_nat(&unpacked) == bytes_seq_to_nat(input@) % group_order()
             // - scalar52_to_nat(&unpacked) < group_order()
             // pack() postconditions:
             // - bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked) % pow2(256)
@@ -306,8 +306,12 @@ impl Scalar {
             lemma_small_mod(scalar52_to_nat(&unpacked), pow2(256));
 
             // Therefore bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked)
-            // And bytes32_to_nat(&result.bytes) % group_order() == scalar52_to_nat(&unpacked) % group_order()
-            //                                                 == bytes_seq_to_nat(input@) % group_order()
+            //                                        == bytes_seq_to_nat(input@) % group_order()
+            // Since bytes_seq_to_nat(input@) % group_order() < group_order(),
+            // bytes32_to_nat(&result.bytes) % group_order() == bytes32_to_nat(&result.bytes)
+            //                                              == bytes_seq_to_nat(input@) % group_order()
+            lemma_mod_bound(bytes_seq_to_nat(input@) as int, group_order() as int);
+            lemma_small_mod(bytes32_to_nat(&result.bytes), group_order());
         }
 
         result  /* </MODIFIED CODE> */

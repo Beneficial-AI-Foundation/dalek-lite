@@ -227,10 +227,11 @@ impl Scalar52 {
     #[rustfmt::skip]  // keep alignment of lo[*] and hi[*] calculations
     pub fn from_bytes_wide(bytes: &[u8; 64]) -> (s: Scalar52)
         ensures
+    // VERIFICATION NOTE: Result is canonical
+
             limbs_bounded(&s),
-            scalar52_to_nat(&s) % group_order() == bytes_seq_to_nat(bytes@) % group_order(),
-            // VERIFICATION NOTE: Result is canonical
             scalar52_to_nat(&s) < group_order(),
+            scalar52_to_nat(&s) == bytes_seq_to_nat(bytes@) % group_order(),
     {
         let ghost wide_input = bytes_seq_to_nat(bytes@);
 
@@ -456,6 +457,10 @@ impl Scalar52 {
             );
 
             lemma_cancel_mul_pow2_mod(scalar52_to_nat(&result), wide_input, montgomery_radix());
+
+            // Since result < group_order() (from add's postcondition),
+            // we have scalar52_to_nat(&result) % group_order() == scalar52_to_nat(&result)
+            lemma_small_mod(scalar52_to_nat(&result), group_order());
         }
 
         result

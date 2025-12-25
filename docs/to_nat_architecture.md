@@ -23,25 +23,25 @@ Converting bytes and words to natural numbers (little-endian interpretation) is 
 
 All conversion functions follow the `*_to_nat` naming convention:
 
-| Function | Location | Purpose |
-|----------|----------|---------|
-| **Byte Conversions** | | |
-| `bytes32_to_nat` | `core_specs.rs` | 32-byte array → nat (explicit form) |
-| `bytes_seq_to_nat` | `core_specs.rs` | Seq<u8> (any length) → nat (Horner form) |
-| `bytes_to_nat_prefix` | `core_specs.rs` | First n bytes of sequence → nat |
-| `bytes_to_nat_suffix` | `core_specs.rs` | bytes[start..N] with positional weights → nat |
-| `bytes32_to_nat_rec` | `core_specs.rs` | Recursive helper for 32-byte |
-| **Word Conversions** | | |
-| `words_to_nat_gen` | `core_specs.rs` | Generic word array → nat (any radix) |
-| `words_to_nat_u64` | `core_specs.rs` | u64 word array → nat (convenience) |
-| `word64_from_bytes` | `core_specs.rs` | Extract 64-bit word from byte sequence |
-| `word64_from_bytes_partial` | `core_specs.rs` | Extract partial 64-bit word |
-| `words64_from_bytes_to_nat` | `core_specs.rs` | Extract multiple 64-bit words → nat |
-| **Domain-Specific** | | |
-| `fe_to_nat` | `field_specs.rs` | FieldElement51 limbs → nat |
-| `u64_5_as_nat` | `field_specs_u64.rs` | 5 limbs × 51-bit radix → nat |
-| `five_limbs_to_nat_aux` | `scalar52_specs.rs` | 5 limbs × 52-bit radix → nat |
-| `seq_to_nat_52` | `scalar52_specs.rs` | Seq<nat> × 52-bit radix → nat (Horner) |
+| Function | Purpose |
+|----------|---------|
+| **Byte Conversions** | |
+| `bytes32_to_nat` | 32-byte array → nat (explicit form) |
+| `bytes_seq_to_nat` | Seq<u8> (any length) → nat (Horner form) |
+| `bytes_to_nat_prefix` | First n bytes of sequence → nat |
+| `bytes_to_nat_suffix` | bytes[start..N] with positional weights → nat |
+| `bytes32_to_nat_rec` | Recursive helper for 32-byte |
+| **Word Conversions** | |
+| `words_to_nat_gen` | Generic word array → nat (any radix) |
+| `words_to_nat_u64` | u64 word array → nat (convenience) |
+| `word64_from_bytes` | Extract 64-bit word from byte sequence |
+| `word64_from_bytes_partial` | Extract partial 64-bit word |
+| `words64_from_bytes_to_nat` | Extract multiple 64-bit words → nat |
+| **Domain-Specific** | *(see domain spec files)* |
+| `spec_field_element_as_nat` | FieldElement51 limbs → nat |
+| `u64_5_as_nat` | 5 limbs × 51-bit radix → nat |
+| `five_limbs_to_nat_aux` | 5 limbs × 52-bit radix → nat |
+| `seq_to_nat_52` | Seq<nat> × 52-bit radix → nat (Horner) |
 
 ---
 
@@ -163,14 +163,6 @@ pub open spec fn u64_5_as_nat(limbs: [u64; 5]) -> nat {
 }
 ```
 
-**Alias in `field_specs.rs`:**
-```rust
-/// Intuitive name for field element interpretation
-pub open spec fn fe_to_nat(fe: &FieldElement51) -> nat {
-    u64_5_as_nat(fe.limbs)
-}
-```
-
 ### Scalar Domain (52-bit radix) — `scalar52_specs.rs`
 
 ```rust
@@ -223,13 +215,13 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
                     │
         ┌───────────┼───────────────────────┐
         ▼           ▼                       ▼
-┌───────────────┐ ┌─────────────────┐ ┌─────────────────────────────────────┐
-│ field_specs   │ │ field_specs_u64 │ │ scalar52_specs                    │
-│               │ │                 │ │                                     │
-│ fe_to_nat     │ │ u64_5_as_nat    │ │ seq_to_nat_52 (52-bit, Horner)      │
-│ (alias)       │ │ (51-bit radix)  │ │ five_limbs_to_nat_aux               │
-│               │ │                 │ │ nine_limbs_to_nat_aux               │
-└───────────────┘ └─────────────────┘ └─────────────────────────────────────┘
+┌─────────────────────────┐ ┌─────────────────────────────────────┐
+│ field_specs             │ │ scalar52_specs                      │
+│                         │ │                                     │
+│ spec_field_element_as_  │ │ seq_to_nat_52 (52-bit, Horner)      │
+│   nat (uses u64_5_as_   │ │ five_limbs_to_nat_aux               │
+│   nat from u64 specs)   │ │ nine_limbs_to_nat_aux               │
+└─────────────────────────┘ └─────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -262,7 +254,7 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
 | Any-length sequences | `core_specs::*` | `bytes_seq_to_nat(seq)` | Horner |
 | `From<u16/u32/u64/u128>` | `core_specs::*` | `bytes_to_nat_prefix(bytes@, N)` | Prefix sum |
 | Field bytes | `core_specs::*` | `bytes32_to_nat(&bytes)` | Explicit sum |
-| Field element | `field_specs::*` | `fe_to_nat(&fe)` | Domain-specific |
+| Field element | `field_specs::*` | `spec_field_element_as_nat(&fe)` | Domain-specific |
 | Word extraction | `core_specs::*` | `words64_from_bytes_to_nat(bytes@, count)` | Word-based |
 
 **No aliases for bytes!** One canonical `bytes32_to_nat` in `core_specs.rs`.
@@ -397,7 +389,7 @@ Different radixes (51 vs 52 bits) are fundamental to field vs scalar operations.
 3. **64-byte arrays:** `bytes_seq_to_nat(bytes@)` — uses Horner form for `from_bytes_wide`
 4. **Loop invariants:** `bytes_to_nat_suffix(bytes, start)`
 5. **Word arrays:** `words_to_nat_gen` or `words_to_nat_u64`
-6. **Field elements:** `fe_to_nat(&fe)` from `field_specs.rs`
+6. **Field elements:** `spec_field_element_as_nat(&fe)` from `field_specs.rs`
 7. **`From<uXX>` implementations:** Use `lemma_from_le_bytes` with `bytes_to_nat_prefix`
 
 ---
@@ -405,10 +397,11 @@ Different radixes (51 vs 52 bits) are fundamental to field vs scalar operations.
 ## Related Files
 
 - `curve25519-dalek/src/specs/core_specs.rs` — All core conversion specs
-- `curve25519-dalek/src/specs/field_specs.rs` — Field-specific (`fe_to_nat`, postconditions)
+- `curve25519-dalek/src/specs/field_specs.rs` — Field-specific (`spec_field_element_as_nat`, postconditions)
 - `curve25519-dalek/src/specs/field_specs_u64.rs` — Field limb functions (51-bit)
 - `curve25519-dalek/src/specs/scalar52_specs.rs` — Scalar limb functions (52-bit)
 - `curve25519-dalek/src/lemmas/common_lemmas/to_nat_lemmas.rs` — Active byte/word-to-nat lemmas
 - `curve25519-dalek/src/lemmas/common_lemmas/unused_to_nat_lemmas.rs` — Deprecated/unused lemmas
 - `curve25519-dalek/src/lemmas/scalar_lemmas.rs` — Limb equivalence lemmas
 
+🤖 Generated with Claude Opus 4.5

@@ -308,3 +308,4 @@ proof fn lemma_canonical_pack(s: &Scalar52)
 - `curve25519-dalek/src/lemmas/scalar_montgomery_lemmas.rs` — Montgomery lemmas
 - `curve25519-dalek/src/constants.rs` — `L`, `R`, `RR`, `LFACTOR` constants
 
+🤖 Generated with Claude Opus 4.5

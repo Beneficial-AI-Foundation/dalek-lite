@@ -77,17 +77,6 @@ pub open spec fn spec_field_element(fe: &FieldElement51) -> nat {
 }
 
 // ============================================================================
-// Intuitive aliases for field element specs
-// These provide clearer names that map directly to function postconditions
-// ============================================================================
-/// The numeric value represented by a field element's internal limbs (before mod p).
-/// This is what the limbs encode as a natural number.
-/// Alias for `spec_field_element_as_nat` / `u64_5_as_nat(fe.limbs)`.
-pub open spec fn fe_to_nat(fe: &FieldElement51) -> nat {
-    u64_5_as_nat(fe.limbs)
-}
-
-// ============================================================================
 // Function postcondition predicates
 // These capture the ensures clauses of as_bytes/from_bytes for use in lemmas
 // ============================================================================
@@ -100,7 +89,7 @@ pub open spec fn as_bytes_post(fe: &FieldElement51, bytes: &[u8; 32]) -> bool {
 /// Postcondition of `from_bytes`: fe's limbs decode the bytes (clearing bit 255).
 /// Use this to state that `fe` is the result of `FieldElement51::from_bytes(bytes)`.
 pub open spec fn from_bytes_post(bytes: &[u8; 32], fe: &FieldElement51) -> bool {
-    fe_to_nat(fe) == bytes32_to_nat(bytes) % pow2(255)
+    spec_field_element_as_nat(fe) == bytes32_to_nat(bytes) % pow2(255)
 }
 
 /// Returns the canonical mathematical value when creating a field element from bytes.

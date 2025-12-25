@@ -382,9 +382,9 @@ pub proof fn lemma_seq_eq_implies_array_eq(bytes1: &[u8; 32], bytes2: &[u8; 32])
 /// }
 /// ```
 ///
-/// ## Proof outline (let v = fe_to_nat(fe_orig)):
+/// ## Proof outline (let v = spec_field_element_as_nat(fe_orig)):
 /// 1. as_bytes postcondition: bytes32_to_nat(bytes) = v % p
-/// 2. from_bytes postcondition: fe_to_nat(fe_decoded) = bytes32_to_nat(bytes) % pow2(255)
+/// 2. from_bytes postcondition: spec_field_element_as_nat(fe_decoded) = bytes32_to_nat(bytes) % pow2(255)
 /// 3. Since v % p < p < pow2(255), by lemma_small_mod: (v % p) % pow2(255) = v % p
 /// 4. By lemma_mod_twice: spec_field_element(fe_decoded) = (v % p) % p = v % p = spec_field_element(fe_orig)
 pub proof fn lemma_from_bytes_as_bytes_roundtrip(
@@ -399,7 +399,7 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
     ensures
         spec_field_element(fe_decoded) == spec_field_element(fe_orig),
 {
-    let v = fe_to_nat(fe_orig);
+    let v = spec_field_element_as_nat(fe_orig);
 
     assert(spec_field_element(fe_decoded) == spec_field_element(fe_orig)) by {
         assert(0 < p() < pow2(255)) by {
@@ -450,7 +450,7 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
 ///
 /// ## Proof outline (let v = bytes32_to_nat(bytes_orig)):
 /// 1. Since v < p < pow2(255), by lemma_small_mod: v % pow2(255) = v
-/// 2. So from_bytes gives: fe_to_nat(fe) = v
+/// 2. So from_bytes gives: spec_field_element_as_nat(fe) = v
 /// 3. Since v < p, by lemma_small_mod: v % p = v
 /// 4. So as_bytes gives: bytes32_to_nat(bytes_decoded) = v
 pub proof fn lemma_as_bytes_from_bytes_roundtrip(

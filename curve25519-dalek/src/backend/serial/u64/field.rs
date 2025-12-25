@@ -923,7 +923,7 @@ impl FieldElement51 {
         ensures
     // Decode bytes to limbs (bit 255 is cleared)
 
-            fe_to_nat(&r) == bytes32_to_nat(bytes) % pow2(255),
+            spec_field_element_as_nat(&r) == bytes32_to_nat(bytes) % pow2(255),
             // Each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),
     {

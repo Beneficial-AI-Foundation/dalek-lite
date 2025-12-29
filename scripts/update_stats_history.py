@@ -30,6 +30,7 @@ import argparse
 import csv
 import io
 import json
+import ssl
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,6 +38,90 @@ from typing import Dict, List
 
 from beartype import beartype
 from git import Repo
+
+# Validation thresholds
+MIN_EXPECTED_ENTRIES = 100  # Minimum entries we expect in history
+MAX_GAP_DAYS = 14  # Maximum days between entries before flagging as corrupted
+MAX_STALE_DAYS = 7  # Maximum days since last entry before flagging as stale
+
+
+@beartype
+def validate_fetched_history(history: List[Dict], local_history: List[Dict]) -> bool:
+    """
+    Validate fetched history to detect corruption or data loss.
+    
+    Returns True if history looks valid, False if it appears corrupted.
+    """
+    if not history:
+        print("  Validation FAILED: Empty history")
+        return False
+    
+    # Check minimum entries
+    if len(history) < MIN_EXPECTED_ENTRIES:
+        print(f"  Validation WARNING: Only {len(history)} entries (expected >= {MIN_EXPECTED_ENTRIES})")
+        # Don't fail yet, check other criteria
+    
+    # Sort by date
+    sorted_history = sorted(history, key=lambda x: x["date"])
+    
+    # Check for big gaps in dates
+    gaps_found = []
+    for i in range(1, len(sorted_history)):
+        prev_date = datetime.fromisoformat(sorted_history[i-1]["date"].replace("+00:00", "+00:00"))
+        curr_date = datetime.fromisoformat(sorted_history[i]["date"].replace("+00:00", "+00:00"))
+        gap_days = (curr_date - prev_date).days
+        if gap_days > MAX_GAP_DAYS:
+            gaps_found.append((sorted_history[i-1]["date"][:10], sorted_history[i]["date"][:10], gap_days))
+    
+    if gaps_found:
+        print(f"  Validation WARNING: Found {len(gaps_found)} gap(s) > {MAX_GAP_DAYS} days:")
+        for start, end, days in gaps_found[:3]:  # Show first 3
+            print(f"    {start} -> {end} ({days} days)")
+    
+    # Check if local history has more entries (indicates data loss in fetched)
+    if local_history and len(local_history) > len(history):
+        print(f"  Validation WARNING: Local history has more entries ({len(local_history)}) than fetched ({len(history)})")
+        # This is a strong indicator of data loss
+        return False
+    
+    # Check if fetched history is missing recent dates that local has
+    if local_history:
+        local_dates = {e["date"][:10] for e in local_history}
+        fetched_dates = {e["date"][:10] for e in history}
+        missing_dates = local_dates - fetched_dates
+        if len(missing_dates) > 5:  # More than 5 dates missing
+            print(f"  Validation WARNING: Fetched history missing {len(missing_dates)} dates present in local")
+            return False
+    
+    # If we have significant gaps but local history is smaller or empty, 
+    # we might still want to use fetched (it's better than nothing)
+    if gaps_found and len(gaps_found) > 2:
+        print(f"  Validation FAILED: Too many gaps in fetched history")
+        return False
+    
+    print(f"  Validation PASSED: {len(history)} entries, data looks consistent")
+    return True
+
+
+@beartype  
+def merge_histories(local: List[Dict], fetched: List[Dict]) -> List[Dict]:
+    """
+    Merge local and fetched histories, keeping all unique entries.
+    This ensures we don't lose data from either source.
+    """
+    seen_commits = set()
+    merged = []
+    
+    # Add all entries, deduplicating by commit hash
+    for entry in local + fetched:
+        commit = entry["commit"]
+        if commit not in seen_commits:
+            seen_commits.add(commit)
+            merged.append(entry)
+    
+    # Sort by date
+    merged.sort(key=lambda x: x["date"])
+    return merged
 
 
 def get_csv_column_names(first_row: dict) -> tuple[str, str]:
@@ -303,30 +388,48 @@ def main():
 
     # Step 1: Read existing history
     existing_history = []
+    local_history = []
+    
+    # Always read local file first (for validation comparison)
+    if args.history.exists():
+        local_history = read_existing_history(args.history)
+        print(f"Read {len(local_history)} entries from local file")
 
     if args.fetch_url:
         print(f"Fetching history from {args.fetch_url}...")
+        fetched_history = []
         try:
-            with urllib.request.urlopen(args.fetch_url, timeout=10) as response:
+            # Create SSL context (some environments need this)
+            ssl_context = ssl.create_default_context()
+            with urllib.request.urlopen(args.fetch_url, timeout=10, context=ssl_context) as response:
                 content = response.read().decode("utf-8")
                 for line_num, line in enumerate(content.strip().split("\n"), 1):
                     if line:
                         try:
-                            existing_history.append(json.loads(line))
+                            fetched_history.append(json.loads(line))
                         except json.JSONDecodeError as e:
                             print(
                                 f"  Warning: Skipping malformed JSON at line {line_num}: {e}"
                             )
                             continue
-            print(f"  Fetched {len(existing_history)} existing entries")
+            print(f"  Fetched {len(fetched_history)} entries from URL")
+            
+            # Validate fetched history
+            if validate_fetched_history(fetched_history, local_history):
+                existing_history = fetched_history
+            else:
+                print("  Fetched history failed validation, merging with local file...")
+                # Merge both histories to avoid losing data from either source
+                existing_history = merge_histories(local_history, fetched_history)
+                print(f"  Merged history: {len(existing_history)} entries")
+                
         except Exception as e:
             print(f"  Warning: Could not fetch from URL: {e}")
             print("  Falling back to local file...")
-
-    # Fallback to local file
-    if not existing_history and args.history.exists():
-        existing_history = read_existing_history(args.history)
-        print(f"Read {len(existing_history)} entries from local file")
+            existing_history = local_history
+    else:
+        # No fetch URL, use local file
+        existing_history = local_history
 
     # Step 2: Fill missing history from git if requested
     if args.fill_missing:

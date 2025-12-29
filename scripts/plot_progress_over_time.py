@@ -470,9 +470,10 @@ def plot_absolute_counts(df: pd.DataFrame, output_dir: Path):
     # Set x-axis limits to actual data range
     ax.set_xlim(df["date"].min(), df["date"].max())
 
-    # Format x-axis dates
-    from matplotlib.dates import DateFormatter
+    # Format x-axis dates with weekly ticks
+    from matplotlib.dates import DateFormatter, WeekdayLocator, MO
 
+    ax.xaxis.set_major_locator(WeekdayLocator(byweekday=MO))  # Every Monday
     ax.xaxis.set_major_formatter(DateFormatter("%b %d"))
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()

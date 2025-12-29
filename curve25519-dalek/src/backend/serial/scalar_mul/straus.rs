@@ -25,6 +25,23 @@ use crate::traits::VartimeMultiscalarMul;
 use crate::window::LookupTable;
 use crate::window::NafLookupTable5;
 
+use vstd::prelude::*;
+
+#[cfg(verus_keep_ghost)]
+use crate::specs::edwards_specs::*;
+
+// Import spec functions from scalar_mul_specs (ghost only)
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_mul_specs::{
+    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
+    unwrap_points,
+};
+
+// Import runtime helpers from scalar_mul_specs
+use crate::specs::scalar_mul_specs::{
+    collect_optional_points_from_iter, collect_points_from_iter, collect_scalars_from_iter,
+};
+
 /// Perform multiscalar multiplication by the interleaved window
 /// method, also known as Straus' method (since it was apparently
 /// [first published][solution] by Straus in 1964, as a solution to [a
@@ -108,16 +125,21 @@ impl MultiscalarMul for Straus {
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
-        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-        requires
-            scalars.len() == points.len(),
-            forall|i| is_well_formed_edwards_point(points[i]),
-        ensures
-            is_well_formed_edwards_point(result),
-            edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
-
-        VERIFICATION NOTE: see `Straus::multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
-        */
+        /*
+         * VERUS SPEC (intended):
+         *   requires
+         *       scalars.len() == points.len(),
+         *       forall|i| is_well_formed_edwards_point(points[i]),
+         *   ensures
+         *       is_well_formed_edwards_point(result),
+         *       edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
+         *
+         * NOTE: Verus doesn't support IntoIterator with I::Item projections.
+         * The verified version `multiscalar_mul_verus` below uses:
+         *   - Iterator bounds instead of IntoIterator
+         *   - spec_scalars_from_iter / spec_points_from_iter to convert
+         *     iterators to logical sequences (see specs/scalar_mul_specs.rs)
+         */
     {
         let lookup_tables: Vec<_> = points
             .into_iter()
@@ -169,17 +191,23 @@ impl VartimeMultiscalarMul for Straus {
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
-        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-        requires
-            scalars.len() == points.len(),
-            forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
-        ensures
-            result.is_some() <==> all_points_some(points),
-            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
-
-        VERIFICATION NOTE: see `optional_multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
-        */
+        /*
+         * VERUS SPEC (intended):
+         *   requires
+         *       scalars.len() == points.len(),
+         *       forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
+         *   ensures
+         *       result.is_some() <==> all_points_some(points),
+         *       result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+         *       result.is_some() ==> edwards_point_as_affine(result.unwrap())
+         *           == sum_of_scalar_muls(scalars, unwrap_points(points)),
+         *
+         * NOTE: Verus doesn't support IntoIterator with I::Item projections.
+         * The verified version `optional_multiscalar_mul_verus` below uses:
+         *   - Iterator bounds instead of IntoIterator
+         *   - spec_scalars_from_iter / spec_optional_points_from_iter to convert
+         *     iterators to logical sequences (see specs/scalar_mul_specs.rs)
+         */
     {
         let nafs: Vec<_> = scalars
             .into_iter()
@@ -217,31 +245,20 @@ impl VartimeMultiscalarMul for Straus {
 // Verus-compatible version
 // ============================================================================
 
-use vstd::prelude::*;
-
-#[cfg(verus_keep_ghost)]
-use crate::specs::edwards_specs::*;
-
-// Import spec functions from scalar_mul_specs (ghost only)
-#[cfg(verus_keep_ghost)]
-use crate::specs::scalar_mul_specs::{
-    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
-    unwrap_points,
-};
-
-// Import runtime helpers from scalar_mul_specs
-use crate::specs::scalar_mul_specs::{
-    collect_optional_points_from_iter, collect_points_from_iter, collect_scalars_from_iter,
-};
-
 verus! {
 
-/* <VERIFICATION NOTE>
-Iterator operations, closures capturing &mut, and Borrow trait are not directly
-supported by Verus. This version uses explicit loops and concrete types.
-The function signature uses Iterator (not IntoIterator) similar to Sum::sum.
-PROOF BYPASS: Complex loop invariants not yet verified; uses assume(false).
-</VERIFICATION NOTE> */
+/*
+ * VERIFICATION NOTE
+ * =================
+ * Verus limitations addressed in these _verus versions:
+ * - IntoIterator with I::Item projections → use Iterator bounds instead
+ * - Iterator adapters (map, zip) with closures → use explicit while loops
+ * - Op-assignment (+=, -=) on EdwardsPoint → use explicit a = a + b
+ *
+ * TESTING: in `scalar_mul_tests.rs`, tests on random inputs support functional equivalence:
+ *          forall scalars, points: optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
+ *          forall scalars, points: multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
+ */
 impl Straus {
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
@@ -288,6 +305,10 @@ impl Straus {
         .map(|c| c.borrow().non_adjacent_form(5))
         .collect();
     </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Convert each scalar to non-adjacent form (NAF) with width 5.
+         * NAF representation allows efficient signed-digit multiplication.
+         */
         let mut nafs: Vec<[i8; 256]> = Vec::new();
         let mut idx: usize = 0;
         while idx < scalars_vec.len()
@@ -299,6 +320,7 @@ impl Straus {
             nafs.push(scalars_vec[idx].non_adjacent_form(5));
             idx = idx + 1;
         }
+        /* </REFACTORED CODE> */
 
         /* <ORIGINAL CODE>
     let lookup_tables = points
@@ -306,6 +328,10 @@ impl Straus {
         .map(|P_opt| P_opt.map(|P| NafLookupTable5::<ProjectiveNielsPoint>::from(&P)))
         .collect::<Option<Vec<_>>>()?;
     </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Build lookup tables for each point: precompute odd multiples [1P, 3P, 5P, 7P, ...]
+         * Returns None if any point is None (propagates optional failure).
+         */
         let mut lookup_tables: Vec<NafLookupTable5<ProjectiveNielsPoint>> = Vec::new();
         idx = 0;
         while idx < points_vec.len()
@@ -328,6 +354,7 @@ impl Straus {
             }
             idx = idx + 1;
         }
+        /* </REFACTORED CODE> */
 
         let mut r = ProjectivePoint::identity();
 
@@ -348,6 +375,13 @@ impl Straus {
         r = t.as_projective();
     }
     </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Main double-and-add loop: iterate bit positions 255..0.
+         * For each bit position i:
+         *   1. Double the accumulator r
+         *   2. For each (scalar, point) pair, add/sub the appropriate table entry
+         *      based on the NAF digit at position i
+         */
         let mut i: usize = 256;
         loop
             decreases i,
@@ -392,6 +426,7 @@ impl Straus {
 
             r = t.as_projective();
         }
+        /* </REFACTORED CODE> */
 
         assume(false);  // PROOF BYPASS: as_extended precondition requires loop invariants
         let result = r.as_extended();
@@ -456,6 +491,9 @@ impl Straus {
             .map(|point| LookupTable::<ProjectiveNielsPoint>::from(point.borrow()))
             .collect();
         </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Build lookup tables for each point: precompute multiples [1P, 2P, ..., 8P]
+         */
         let mut lookup_tables: Vec<LookupTable<ProjectiveNielsPoint>> = Vec::new();
         let mut idx: usize = 0;
         while idx < points_vec.len()
@@ -467,6 +505,7 @@ impl Straus {
             lookup_tables.push(LookupTable::<ProjectiveNielsPoint>::from(&points_vec[idx]));
             idx = idx + 1;
         }
+        /* </REFACTORED CODE> */
 
         /* <ORIGINAL CODE>
         let mut scalar_digits: Vec<_> = scalars
@@ -474,6 +513,9 @@ impl Straus {
             .map(|s| s.borrow().as_radix_16())
             .collect();
         </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Convert each scalar to radix-16 signed digits: s = sum(s_j * 16^j)
+         */
         let mut scalar_digits: Vec<[i8; 64]> = Vec::new();
         idx = 0;
         while idx < scalars_vec.len()
@@ -485,6 +527,7 @@ impl Straus {
             scalar_digits.push(scalars_vec[idx].as_radix_16());
             idx = idx + 1;
         }
+        /* </REFACTORED CODE> */
 
         let mut Q = EdwardsPoint::identity();
 
@@ -498,6 +541,12 @@ impl Straus {
             }
         }
         </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Main loop: iterate digit positions 63..0 (radix-16 has 64 digits).
+         * For each position j:
+         *   1. Multiply accumulator Q by 16 (= 2^4)
+         *   2. For each (scalar, point) pair, add s_j * P_i from lookup table
+         */
         let mut j: usize = 64;
         loop
             decreases j,
@@ -532,6 +581,7 @@ impl Straus {
                 k = k + 1;
             }
         }
+        /* </REFACTORED CODE> */
 
         // PROOF BYPASS: Assume postconditions (requires full loop invariant proofs)
         proof {

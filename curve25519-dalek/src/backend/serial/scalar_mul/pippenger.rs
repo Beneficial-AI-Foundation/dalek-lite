@@ -19,6 +19,24 @@ use crate::edwards::EdwardsPoint;
 use crate::scalar::Scalar;
 use crate::traits::VartimeMultiscalarMul;
 
+use vstd::prelude::*;
+
+#[cfg(verus_keep_ghost)]
+use crate::specs::edwards_specs::*;
+
+// Re-export spec functions from scalar_mul_specs for use by other modules
+#[cfg(verus_keep_ghost)]
+pub use crate::specs::scalar_mul_specs::{
+    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
+    unwrap_points,
+};
+
+// Re-export runtime helpers from scalar_mul_specs
+#[cfg(feature = "alloc")]
+pub use crate::specs::scalar_mul_specs::{
+    collect_optional_points_from_iter, collect_points_from_iter, collect_scalars_from_iter,
+};
+
 /// Implements a version of Pippenger's algorithm.
 ///
 /// The algorithm works as follows:
@@ -68,17 +86,23 @@ impl VartimeMultiscalarMul for Pippenger {
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
-        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-        requires
-            scalars.len() == points.len(),
-            forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
-        ensures
-            result.is_some() <==> all_points_some(points),
-            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
-
-        VERIFICATION NOTE: see `optional_multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
-        */
+        /*
+         * VERUS SPEC (intended):
+         *   requires
+         *       scalars.len() == points.len(),
+         *       forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
+         *   ensures
+         *       result.is_some() <==> all_points_some(points),
+         *       result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+         *       result.is_some() ==> edwards_point_as_affine(result.unwrap())
+         *           == sum_of_scalar_muls(scalars, unwrap_points(points)),
+         *
+         * NOTE: Verus doesn't support IntoIterator with I::Item projections.
+         * The verified version `optional_multiscalar_mul_verus` below uses:
+         *   - Iterator bounds instead of IntoIterator
+         *   - spec_scalars_from_iter / spec_optional_points_from_iter to convert
+         *     iterators to logical sequences (see specs/scalar_mul_specs.rs)
+         */
     {
         use crate::traits::Identity;
 
@@ -174,35 +198,21 @@ impl VartimeMultiscalarMul for Pippenger {
 // Verus-compatible version
 // ============================================================================
 
-use vstd::prelude::*;
-
-#[cfg(verus_keep_ghost)]
-use crate::specs::edwards_specs::*;
-
-// Re-export spec functions from scalar_mul_specs for use by other modules
-#[cfg(verus_keep_ghost)]
-pub use crate::specs::scalar_mul_specs::{
-    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
-    unwrap_points,
-};
-
-// Re-export runtime helpers from scalar_mul_specs
-#[cfg(feature = "alloc")]
-pub use crate::specs::scalar_mul_specs::{
-    collect_optional_points_from_iter, collect_points_from_iter, collect_scalars_from_iter,
-};
-
 verus! {
 
-/* <VERIFICATION NOTE>
-Iterator operations, closures capturing &mut, and Borrow trait are not directly
-supported by Verus. This version uses explicit loops and concrete types.
-The function signature uses Iterator (not IntoIterator) similar to Sum::sum.
-PROOF BYPASS: Complex loop invariants not yet verified; uses assume(false).
-</VERIFICATION NOTE> */
+/*
+ * VERIFICATION NOTE
+ * =================
+ * Verus limitations addressed in this _verus version:
+ * - IntoIterator with I::Item projections → use Iterator bounds instead
+ * - Iterator adapters (map, zip) with closures → use explicit while loops
+ * - Op-assignment (+=, -=) on EdwardsPoint → use explicit a = a + b
+ *
+ * TESTING: in `scalar_mul_tests.rs`, tests on random inputs support functional equivalence:
+ *          forall scalars, points: optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
+ */
 impl Pippenger {
     /// Verus-compatible version of optional_multiscalar_mul.
-    /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
     pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
         EdwardsPoint,
@@ -221,7 +231,7 @@ impl Pippenger {
                     spec_optional_points_from_iter::<J>(points)[i].unwrap(),
                 ),
         ensures
-    // Result is Some if and only if all input points are Some
+    // Result is Some iff all input points are Some
 
             result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
             // If result is Some, it is a well-formed Edwards point
@@ -273,6 +283,10 @@ impl Pippenger {
     let points = points.into_iter().map(|p| p.map(|P| P.as_projective_niels()));
     let scalars_points = scalars.zip(points).map(|(s, maybe_p)| maybe_p.map(|p| (s, p))).collect::<Option<Vec<_>>>()?;
     </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels).
+         * Returns None if any point is None.
+         */
 
         let mut scalars_points: Vec<([i8; 64], ProjectiveNielsPoint)> = Vec::new();
         let mut idx: usize = 0;
@@ -299,12 +313,17 @@ impl Pippenger {
             }
             idx = idx + 1;
         }
+        /* </REFACTORED CODE> */
 
         // Prepare 2^w/2 buckets.
         // buckets[i] corresponds to a multiplication factor (i+1).
         /* <ORIGINAL CODE>
     let mut buckets: Vec<_> = (0..buckets_count).map(|_| EdwardsPoint::identity()).collect();
     </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Initialize 2^(w-1) buckets with identity points.
+         * Bucket i will accumulate points with digit value (i+1).
+         */
         let mut buckets: Vec<EdwardsPoint> = Vec::new();
         let mut init_idx: usize = 0;
         while init_idx < buckets_count
@@ -314,6 +333,7 @@ impl Pippenger {
             buckets.push(EdwardsPoint::identity());
             init_idx = init_idx + 1;
         }
+        /* </REFACTORED CODE> */
 
         /* <ORIGINAL CODE>
     let mut columns = (0..digits_count).rev().map(|digit_index| {
@@ -350,7 +370,14 @@ impl Pippenger {
     let hi_column = columns.next().expect("should have more than zero digits");
     Some(columns.fold(hi_column, |total, p| total.mul_by_pow_2(w as u32) + p))
     </ORIGINAL CODE> */
-
+        /* <REFACTORED CODE>
+         * Pippenger bucket method: process digit columns right-to-left.
+         * For each column:
+         *   1. Clear buckets to identity
+         *   2. Sort points into buckets based on scalar digit value
+         *   3. Sum buckets: bucket[i] contributes (i+1) * bucket[i] to column sum
+         *   4. Accumulate: total = total * 2^w + column_sum
+         */
         // Process hi_column (digit_index = digits_count - 1)
         let digit_index_hi: usize = digits_count - 1;
 
@@ -469,7 +496,7 @@ impl Pippenger {
                 }
                 digit_index = digit_index - 1;
             }
-        }
+        }  /* </REFACTORED CODE> */
         // PROOF BYPASS: Assume postconditions (requires full loop invariant proofs)
         // At this point, we reached the end without returning None, so all points were Some
 

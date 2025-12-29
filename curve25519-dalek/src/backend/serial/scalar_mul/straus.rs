@@ -459,13 +459,14 @@ impl Straus {
         requires
     // Same number of scalars and points
 
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<J>(
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(
                 points,
             ).len(),
             // All input points must be well-formed
             forall|i: int|
-                0 <= i < spec_points_from_iter::<J>(points).len() ==> is_well_formed_edwards_point(
-                    #[trigger] spec_points_from_iter::<J>(points)[i],
+                0 <= i < spec_points_from_iter::<P, J>(points).len()
+                    ==> is_well_formed_edwards_point(
+                    #[trigger] spec_points_from_iter::<P, J>(points)[i],
                 ),
         ensures
     // Result is a well-formed Edwards point
@@ -474,14 +475,14 @@ impl Straus {
             // Semantic correctness: result = sum(scalars[i] * points[i])
             edwards_point_as_affine(result) == sum_of_scalar_muls(
                 spec_scalars_from_iter::<S, I>(scalars),
-                spec_points_from_iter::<J>(points),
+                spec_points_from_iter::<P, J>(points),
             ),
     {
         use crate::traits::Identity;
 
         /* Ghost vars to capture spec values before iterator consumption */
         let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
-        let ghost spec_points = spec_points_from_iter::<J>(points);
+        let ghost spec_points = spec_points_from_iter::<P, J>(points);
 
         /* <ORIGINAL CODE>
         let lookup_tables: Vec<_> = points

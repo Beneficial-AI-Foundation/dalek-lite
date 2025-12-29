@@ -49,8 +49,7 @@ pub uninterp spec fn spec_scalars_from_iter<S, I>(iter: I) -> Seq<Scalar>;
 pub uninterp spec fn spec_optional_points_from_iter<J>(iter: J) -> Seq<Option<EdwardsPoint>>;
 
 /// Spec function to convert an iterator of points to a sequence.
-/// Note: Only takes the iterator type J (not the item type P) to simplify SMT reasoning.
-pub uninterp spec fn spec_points_from_iter<J>(iter: J) -> Seq<EdwardsPoint>;
+pub uninterp spec fn spec_points_from_iter<P, J>(iter: J) -> Seq<EdwardsPoint>;
 
 // ============================================================================
 // Spec functions for optional point sequences
@@ -102,7 +101,7 @@ pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>) wh
     J: Iterator<Item = P>,
 
     ensures
-        result@ == spec_points_from_iter::<J>(iter),
+        result@ == spec_points_from_iter::<P, J>(iter),
         // Assume all collected points are well-formed (trusted boundary)
         forall|i: int|
             0 <= i < result@.len() ==> is_well_formed_edwards_point(#[trigger] result@[i]),

@@ -1625,7 +1625,7 @@ impl<T> Sum<T> for EdwardsPoint where T: Borrow<EdwardsPoint> {
     fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
         ensures
             is_well_formed_edwards_point(result),
-            edwards_point_as_affine(result) == sum_of_points(spec_points_from_iter::<I>(iter)),
+            edwards_point_as_affine(result) == sum_of_points(spec_points_from_iter::<T, I>(iter)),
     {
         let points = collect_points_from_iter(iter);
         EdwardsPoint::sum_of_slice(&points)
@@ -2123,13 +2123,14 @@ impl EdwardsPoint {
         requires
     // Same number of scalars and points
 
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<J>(
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(
                 points,
             ).len(),
             // All input points must be well-formed
             forall|i: int|
-                0 <= i < spec_points_from_iter::<J>(points).len() ==> is_well_formed_edwards_point(
-                    #[trigger] spec_points_from_iter::<J>(points)[i],
+                0 <= i < spec_points_from_iter::<P, J>(points).len()
+                    ==> is_well_formed_edwards_point(
+                    #[trigger] spec_points_from_iter::<P, J>(points)[i],
                 ),
         ensures
     // Result is a well-formed Edwards point
@@ -2138,7 +2139,7 @@ impl EdwardsPoint {
             // Semantic correctness: result = sum(scalars[i] * points[i])
             edwards_point_as_affine(result) == sum_of_scalar_muls(
                 spec_scalars_from_iter::<S, I>(scalars),
-                spec_points_from_iter::<J>(points),
+                spec_points_from_iter::<P, J>(points),
             ),
     {
         /* <ORIGINAL CODE>

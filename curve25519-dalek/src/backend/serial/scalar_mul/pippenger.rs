@@ -208,8 +208,8 @@ verus! {
  * - Iterator adapters (map, zip) with closures → use explicit while loops
  * - Op-assignment (+=, -=) on EdwardsPoint → use explicit a = a + b
  *
- * TESTING: in `scalar_mul_tests.rs`, tests on random inputs support functional equivalence:
- *          forall scalars, points: optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
+ * EQUIVALENCE TESTS: `scalar_mul_tests.rs` supports functional equivalence between original and refactored:
+ *     forall scalars s, points p: optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
  */
 impl Pippenger {
     /// Verus-compatible version of optional_multiscalar_mul.

@@ -2031,7 +2031,10 @@ impl EdwardsPoint {
     // Verus doesn't support Iterator::clone() or Iterator::count().
     #[verifier::external_body]
     #[cfg(feature = "alloc")]
-    fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize) {
+    fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize)
+        ensures
+            size == spec_scalars_from_iter::<T, I>(*iter).len(),
+    {
         iter.clone().count()
     }
 

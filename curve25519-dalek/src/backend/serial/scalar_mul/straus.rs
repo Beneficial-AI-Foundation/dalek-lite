@@ -291,13 +291,9 @@ impl Straus {
                 unwrap_points(spec_optional_points_from_iter::<J>(points)),
             ),
     {
-        // Capture ghost spec values before consuming iterators
+        /* Ghost vars to capture spec values before iterator consumption */
         let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
         let ghost spec_points = spec_optional_points_from_iter::<J>(points);
-
-        // Collect scalars and points (via external_body helpers from pippenger)
-        let scalars_vec = collect_scalars_from_iter(scalars);
-        let points_vec = collect_optional_points_from_iter(points);
 
         /* <ORIGINAL CODE>
     let nafs: Vec<_> = scalars
@@ -306,9 +302,12 @@ impl Straus {
         .collect();
     </ORIGINAL CODE> */
         /* <REFACTORED CODE>
-         * Convert each scalar to non-adjacent form (NAF) with width 5.
-         * NAF representation allows efficient signed-digit multiplication.
+         * Collect iterators to Vec (Verus doesn't support iterator adapters).
+         * Then convert each scalar to non-adjacent form (NAF) with width 5.
          */
+        let scalars_vec = collect_scalars_from_iter(scalars);
+        let points_vec = collect_optional_points_from_iter(points);
+
         let mut nafs: Vec<[i8; 256]> = Vec::new();
         let mut idx: usize = 0;
         while idx < scalars_vec.len()
@@ -356,6 +355,7 @@ impl Straus {
         }
         /* </REFACTORED CODE> */
 
+        /* UNCHANGED FROM ORIGINAL */
         let mut r = ProjectivePoint::identity();
 
         /* <ORIGINAL CODE>
@@ -476,13 +476,9 @@ impl Straus {
     {
         use crate::traits::Identity;
 
-        // Capture ghost spec values before consuming iterators
+        /* Ghost vars to capture spec values before iterator consumption */
         let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
         let ghost spec_points = spec_points_from_iter::<J>(points);
-
-        // Collect scalars and points (via external_body helpers)
-        let scalars_vec = collect_scalars_from_iter(scalars);
-        let points_vec = collect_points_from_iter(points);
 
         /* <ORIGINAL CODE>
         let lookup_tables: Vec<_> = points
@@ -491,8 +487,11 @@ impl Straus {
             .collect();
         </ORIGINAL CODE> */
         /* <REFACTORED CODE>
-         * Build lookup tables for each point: precompute multiples [1P, 2P, ..., 8P]
+         * Collect iterators to Vec (Verus doesn't support iterator adapters).
+         * Then build lookup tables for each point: precompute multiples [1P, 2P, ..., 8P]
          */
+        let scalars_vec = collect_scalars_from_iter(scalars);
+        let points_vec = collect_points_from_iter(points);
         let mut lookup_tables: Vec<LookupTable<ProjectiveNielsPoint>> = Vec::new();
         let mut idx: usize = 0;
         while idx < points_vec.len()
@@ -528,6 +527,7 @@ impl Straus {
         }
         /* </REFACTORED CODE> */
 
+        /* UNCHANGED FROM ORIGINAL */
         let mut Q = EdwardsPoint::identity();
 
         /* <ORIGINAL CODE>

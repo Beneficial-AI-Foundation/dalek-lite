@@ -244,16 +244,24 @@ impl Pippenger {
     {
         use crate::traits::Identity;
 
-        // Capture ghost spec values before consuming iterators
+        /* Ghost vars to capture spec values before iterator consumption */
         let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
         let ghost spec_points = spec_optional_points_from_iter::<J>(points);
 
-        // Collect scalars and points (via external_body helpers)
+        /* <ORIGINAL CODE>
+    let mut scalars = scalars.into_iter();
+    let size = scalars.by_ref().size_hint().0;
+    </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Collect iterators to Vec (Verus doesn't support size_hint on &mut).
+         * Get size from collected Vec.
+         */
         let scalars_vec = collect_scalars_from_iter(scalars);
         let size = scalars_vec.len();
-
         let points_vec = collect_optional_points_from_iter(points);
+        /* </REFACTORED CODE> */
 
+        /* UNCHANGED FROM ORIGINAL: Digit width selection based on input size */
         // Digit width in bits. As digit width grows,
         // number of point additions goes down, but amount of
         // buckets and bucket additions grows exponentially.
@@ -265,6 +273,7 @@ impl Pippenger {
             8
         };
 
+        /* UNCHANGED FROM ORIGINAL: Bucket configuration */
         let max_digit: usize = 1 << w;
         let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
         let buckets_count: usize = max_digit / 2;  // digits are signed+centered hence 2^w/2, excluding 0-th bucket

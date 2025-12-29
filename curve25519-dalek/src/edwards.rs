@@ -1601,24 +1601,6 @@ impl EdwardsPoint {
     }
 }
 
-// Spec function: extracts the points collected from an iterator
-pub uninterp spec fn spec_points_from_iter<T, I>(iter: I) -> Seq<EdwardsPoint>;
-
-// Helper to collect iterator into Vec<EdwardsPoint>
-#[verifier::external_body]
-fn collect_points_from_iter<T, I>(iter: I) -> (result: Vec<EdwardsPoint>) where
-    T: Borrow<EdwardsPoint>,
-    I: Iterator<Item = T>,
-
-    ensures
-        result@ == spec_points_from_iter::<T, I>(iter),
-        // Assume all collected points are well-formed (trusted boundary)
-        forall|i: int|
-            0 <= i < result@.len() ==> is_well_formed_edwards_point(#[trigger] result@[i]),
-{
-    iter.map(|item| *item.borrow()).collect()
-}
-
 /* <ORIGINAL CODE>
 impl<T> Sum<T> for EdwardsPoint
 where
@@ -1643,7 +1625,7 @@ impl<T> Sum<T> for EdwardsPoint where T: Borrow<EdwardsPoint> {
     fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
         ensures
             is_well_formed_edwards_point(result),
-            edwards_point_as_affine(result) == sum_of_points(spec_points_from_iter::<T, I>(iter)),
+            edwards_point_as_affine(result) == sum_of_points(spec_points_from_iter::<I>(iter)),
     {
         let points = collect_points_from_iter(iter);
         EdwardsPoint::sum_of_slice(&points)
@@ -2018,14 +2000,13 @@ impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
 // Import spec functions from scalar_mul_specs for multiscalar verification
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_mul_specs::{
-    all_points_some, spec_optional_points_from_iter, spec_scalars_from_iter, unwrap_points,
+    all_points_some, spec_optional_points_from_iter, spec_points_from_iter,
+    spec_scalars_from_iter, unwrap_points,
 };
-
-// Import runtime helpers from scalar_mul_specs
+// Import runtime helper for Sum<T> trait
 #[cfg(feature = "alloc")]
-use crate::specs::scalar_mul_specs::{
-    collect_optional_points_from_iter, collect_scalars_from_iter,
-};
+use crate::specs::scalar_mul_specs::collect_points_from_iter;
+
 
 verus! {
 
@@ -2047,13 +2028,29 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
+    // Helper to count iterator elements without consuming (clones internally)
+    // Verus doesn't support Iterator::clone() or Iterator::count()
+    #[verifier::external_body]
+    #[cfg(feature = "alloc")]
+    fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize)
+        ensures
+            size == spec_scalars_from_iter::<T, I>(*iter).len() || true,  // Weak spec: actual linking is unproven
+    {
+        iter.clone().count()
+    }
+
     /// Verus-compatible version of optional_multiscalar_mul.
-    /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
+    /// Uses Iterator + Clone instead of IntoIterator (Verus doesn't support I::Item projections).
+    /// Clone allows peeking at size without consuming the iterator (similar to original's size_hint).
     /// Dispatches to Straus (size < 190) or Pippenger (size >= 190) algorithm.
     #[cfg(feature = "alloc")]
     pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
         EdwardsPoint,
-    >) where S: Borrow<Scalar>, I: Iterator<Item = S>, J: Iterator<Item = Option<EdwardsPoint>>
+    >) where
+        S: Borrow<Scalar>,
+        I: Iterator<Item = S> + Clone,
+        J: Iterator<Item = Option<EdwardsPoint>> + Clone,
+
         requires
     // Same number of scalars and points
 
@@ -2079,35 +2076,26 @@ impl EdwardsPoint {
                 unwrap_points(spec_optional_points_from_iter::<J>(points)),
             ),
     {
-        // Capture ghost spec values before consuming iterators
-        let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
-        let ghost spec_points = spec_optional_points_from_iter::<J>(points);
-
-        // Collect into Vecs to get the size
-        let scalars_vec = collect_scalars_from_iter(scalars);
-        let points_vec = collect_optional_points_from_iter(points);
-
-        let size = scalars_vec.len();
+        /* <ORIGINAL CODE>
+            let (s_lo, s_hi) = scalars.by_ref().size_hint();
+            let size = s_lo;
+        </ORIGINAL CODE> */
+        // Clone to count without consuming (similar to original's size_hint)
+        let size = Self::iter_count(&scalars);
 
         // Dispatch to appropriate algorithm based on size
         // size < 190: Straus is faster
         // size >= 190: Pippenger is faster
         if size < 190 {
-            // PROOF BYPASS: Straus verus implementation has same spec
-            proof {
-                assume(false);
-            }
             crate::backend::serial::scalar_mul::straus::Straus::optional_multiscalar_mul_verus(
-                scalars_vec.into_iter(),
-                points_vec.into_iter(),
+                scalars,
+                points,
             )
         } else {
-            // PROOF BYPASS: Pippenger verus implementation has same spec
-            proof {
-                assume(false);
-            }
             crate::backend::serial::scalar_mul::pippenger::Pippenger::optional_multiscalar_mul_verus(
-            scalars_vec.into_iter(), points_vec.into_iter())
+                scalars,
+                points,
+            )
         }
     }
 
@@ -2124,14 +2112,14 @@ impl EdwardsPoint {
         requires
     // Same number of scalars and points
 
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<J>(
                 points,
             ).len(),
             // All input points must be well-formed
             forall|i: int|
-                0 <= i < spec_points_from_iter::<P, J>(points).len()
+                0 <= i < spec_points_from_iter::<J>(points).len()
                     ==> is_well_formed_edwards_point(
-                    #[trigger] spec_points_from_iter::<P, J>(points)[i],
+                    #[trigger] spec_points_from_iter::<J>(points)[i],
                 ),
         ensures
     // Result is a well-formed Edwards point
@@ -2140,25 +2128,17 @@ impl EdwardsPoint {
             // Semantic correctness: result = sum(scalars[i] * points[i])
             edwards_point_as_affine(result) == sum_of_scalar_muls(
                 spec_scalars_from_iter::<S, I>(scalars),
-                spec_points_from_iter::<P, J>(points),
+                spec_points_from_iter::<J>(points),
             ),
     {
-        // Capture ghost spec values before consuming iterators
-        let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
-        let ghost spec_points = spec_points_from_iter::<P, J>(points);
-
-        // Collect into Vecs
-        let scalars_vec = collect_scalars_from_iter(scalars);
-        let points_vec = collect_points_from_iter(points);
-
-        // Dispatch to Straus (constant-time, always used for multiscalar_mul)
-        // PROOF BYPASS: Straus verus implementation has same spec
-        proof {
-            assume(false);
-        }
+        /* <ORIGINAL CODE>
+            // No size-based dispatch: constant-time always uses Straus
+            crate::backend::straus_multiscalar_mul(scalars, points)
+        </ORIGINAL CODE> */
+        // Pass iterators directly to Straus (no size dispatch needed)
         crate::backend::serial::scalar_mul::straus::Straus::multiscalar_mul_verus(
-            scalars_vec.into_iter(),
-            points_vec.into_iter(),
+            scalars,
+            points,
         )
     }
 }

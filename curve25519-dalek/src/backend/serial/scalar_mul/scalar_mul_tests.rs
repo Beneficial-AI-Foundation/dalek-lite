@@ -246,7 +246,7 @@ fn test_edwards_optional_dispatcher_original_vs_verus() {
 
             // Verus EdwardsPoint dispatcher
             let verus = EdwardsPoint::optional_multiscalar_mul_verus(
-                scalars.iter(),
+                scalars.iter().cloned(),
                 points.iter().map(|p| Some(*p)),
             );
 

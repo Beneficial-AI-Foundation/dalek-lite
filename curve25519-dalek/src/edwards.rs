@@ -2052,7 +2052,6 @@ impl EdwardsPoint {
      *         optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
      *         multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
      */
-
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator + Clone instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Clone allows peeking at size without consuming the iterator (similar to original's size_hint).

@@ -38,15 +38,20 @@ from typing import Dict, List
 
 from beartype import beartype
 from git import Repo
+from git.exc import GitCommandError
 
-# Validation thresholds
-MIN_EXPECTED_ENTRIES = 100  # Minimum entries we expect in history
-MAX_GAP_DAYS = 14  # Maximum days between entries before flagging as corrupted
-MAX_STALE_DAYS = 7  # Maximum days since last entry before flagging as stale
+# Default validation thresholds (can be overridden via CLI)
+DEFAULT_MIN_EXPECTED_ENTRIES = 100  # Minimum entries we expect in history
+DEFAULT_MAX_GAP_DAYS = 14  # Maximum days between entries before flagging as corrupted
 
 
 @beartype
-def validate_fetched_history(history: List[Dict], local_history: List[Dict]) -> bool:
+def validate_fetched_history(
+    history: List[Dict],
+    local_history: List[Dict],
+    min_entries: int = DEFAULT_MIN_EXPECTED_ENTRIES,
+    max_gap_days: int = DEFAULT_MAX_GAP_DAYS,
+) -> bool:
     """
     Validate fetched history to detect corruption or data loss.
 
@@ -57,14 +62,14 @@ def validate_fetched_history(history: List[Dict], local_history: List[Dict]) -> 
         return False
 
     # Check minimum entries
-    if len(history) < MIN_EXPECTED_ENTRIES:
+    if len(history) < min_entries:
         print(
-            f"  Validation WARNING: Only {len(history)} entries (expected >= {MIN_EXPECTED_ENTRIES})"
+            f"  Validation WARNING: Only {len(history)} entries (expected >= {min_entries})"
         )
         # Don't fail yet, check other criteria
 
-    # Sort by date
-    sorted_history = sorted(history, key=lambda x: x["date"])
+    # Sort by parsed datetime
+    sorted_history = sorted(history, key=lambda x: datetime.fromisoformat(x["date"]))
 
     # Check for big gaps in dates
     gaps_found = []
@@ -72,7 +77,7 @@ def validate_fetched_history(history: List[Dict], local_history: List[Dict]) -> 
         prev_date = datetime.fromisoformat(sorted_history[i - 1]["date"])
         curr_date = datetime.fromisoformat(sorted_history[i]["date"])
         gap_days = (curr_date - prev_date).days
-        if gap_days > MAX_GAP_DAYS:
+        if gap_days > max_gap_days:
             gaps_found.append(
                 (
                     sorted_history[i - 1]["date"][:10],
@@ -83,7 +88,7 @@ def validate_fetched_history(history: List[Dict], local_history: List[Dict]) -> 
 
     if gaps_found:
         print(
-            f"  Validation WARNING: Found {len(gaps_found)} gap(s) > {MAX_GAP_DAYS} days:"
+            f"  Validation WARNING: Found {len(gaps_found)} gap(s) > {max_gap_days} days:"
         )
         for start, end, days in gaps_found[:3]:  # Show first 3
             print(f"    {start} -> {end} ({days} days)")
@@ -133,8 +138,8 @@ def merge_histories(local: List[Dict], fetched: List[Dict]) -> List[Dict]:
             seen_commits.add(commit)
             merged.append(entry)
 
-    # Sort by date
-    merged.sort(key=lambda x: x["date"])
+    # Sort by parsed datetime
+    merged.sort(key=lambda x: datetime.fromisoformat(x["date"]))
     return merged
 
 
@@ -299,7 +304,8 @@ def fill_missing_history(
     print(f"Scanning git history (max {max_commits} commits)...")
     try:
         commits = list(repo.iter_commits("main", max_count=max_commits))
-    except Exception:
+    except GitCommandError:
+        # "main" branch doesn't exist, try current branch
         commits = list(repo.iter_commits(max_count=max_commits))
 
     new_entries = []
@@ -347,8 +353,8 @@ def fill_missing_history(
 @beartype
 def write_history(history: List[Dict], output_file: Path) -> None:
     """Write stats history to JSONL file."""
-    # Sort by date
-    history_sorted = sorted(history, key=lambda x: x["date"])
+    # Sort by parsed datetime
+    history_sorted = sorted(history, key=lambda x: datetime.fromisoformat(x["date"]))
 
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -395,6 +401,18 @@ def main():
         default=1000,
         help="Maximum number of commits to scan when filling history",
     )
+    parser.add_argument(
+        "--min-entries",
+        type=int,
+        default=DEFAULT_MIN_EXPECTED_ENTRIES,
+        help=f"Minimum expected history entries for validation to pass (default: {DEFAULT_MIN_EXPECTED_ENTRIES})",
+    )
+    parser.add_argument(
+        "--max-gap-days",
+        type=int,
+        default=DEFAULT_MAX_GAP_DAYS,
+        help=f"Maximum allowed gap in days between entries before flagging as corrupted (default: {DEFAULT_MAX_GAP_DAYS})",
+    )
 
     args = parser.parse_args()
 
@@ -419,7 +437,7 @@ def main():
                 args.fetch_url, timeout=10, context=ssl_context
             ) as response:
                 content = response.read().decode("utf-8")
-                for line_num, line in enumerate(content.strip().split("\n"), 1):
+                for line_num, line in enumerate(content.strip().splitlines(), 1):
                     if line:
                         try:
                             fetched_history.append(json.loads(line))
@@ -431,7 +449,9 @@ def main():
             print(f"  Fetched {len(fetched_history)} entries from URL")
 
             # Validate fetched history
-            if validate_fetched_history(fetched_history, local_history):
+            if validate_fetched_history(
+                fetched_history, local_history, args.min_entries, args.max_gap_days
+            ):
                 existing_history = fetched_history
             else:
                 print("  Fetched history failed validation, merging with local file...")
@@ -450,13 +470,26 @@ def main():
     # Step 2: Fill missing history from git if requested
     if args.fill_missing:
         # Convert CSV path to relative path for git history lookup
-        csv_relative_path = str(
-            args.csv.relative_to(repo_path) if args.csv.is_absolute() else args.csv
-        )
-        new_entries = fill_missing_history(
-            repo_path, existing_history, csv_relative_path, args.since, args.max_commits
-        )
-        existing_history.extend(new_entries)
+        try:
+            csv_relative_path = str(
+                args.csv.relative_to(repo_path) if args.csv.is_absolute() else args.csv
+            )
+        except ValueError:
+            # CSV is outside repo - can't look it up in git history
+            print(
+                f"Warning: CSV path {args.csv} is outside repository, skipping git history fill"
+            )
+            csv_relative_path = None
+
+        if csv_relative_path:
+            new_entries = fill_missing_history(
+                repo_path,
+                existing_history,
+                csv_relative_path,
+                args.since,
+                args.max_commits,
+            )
+            existing_history.extend(new_entries)
 
     # Step 3: Add current commit
     try:
@@ -495,8 +528,10 @@ def main():
     print("\nSummary:")
     print(f"  Total entries: {len(existing_history)}")
     if existing_history:
-        dates = [e["date"] for e in existing_history]
-        print(f"  Date range: {min(dates)} to {max(dates)}")
+        parsed_dates = [datetime.fromisoformat(e["date"]) for e in existing_history]
+        print(
+            f"  Date range: {min(parsed_dates).isoformat()} to {max(parsed_dates).isoformat()}"
+        )
 
 
 if __name__ == "__main__":

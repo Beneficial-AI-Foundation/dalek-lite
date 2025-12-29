@@ -22,9 +22,6 @@
 //
 #[allow(unused_imports)]
 use super::field_specs::*;
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
-use super::scalar_specs::spec_scalar;
 
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::curve_models::{

@@ -2027,15 +2027,11 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
-    // Helper to count iterator elements without consuming (clones internally)
-    // Verus doesn't support Iterator::clone() or Iterator::count()
+    // Helper to count iterator elements without consuming (clones internally).
+    // Verus doesn't support Iterator::clone() or Iterator::count().
     #[verifier::external_body]
     #[cfg(feature = "alloc")]
-    fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize)
-        ensures
-            size == spec_scalars_from_iter::<T, I>(*iter).len()
-                || true,  // Weak spec: actual linking is unproven
-    {
+    fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize) {
         iter.clone().count()
     }
 

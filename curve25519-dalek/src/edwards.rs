@@ -2038,6 +2038,21 @@ impl EdwardsPoint {
         iter.clone().count()
     }
 
+    /*
+     * VERIFICATION NOTE
+     * =================
+     * Verus limitations addressed in these _verus versions:
+     * - IntoIterator with I::Item projections → use Iterator bounds instead
+     * - size_hint() on &mut iterator → use Clone + iter_count helper
+     *
+     * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
+     * run both original and _verus implementations, and assert equality of results.
+     * This is evidence of functional equivalence between the original and refactored versions:
+     *     forall scalars s, points p:
+     *         optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
+     *         multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
+     */
+
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator + Clone instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Clone allows peeking at size without consuming the iterator (similar to original's size_hint).

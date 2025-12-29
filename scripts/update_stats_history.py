@@ -96,7 +96,7 @@ def validate_fetched_history(history: List[Dict], local_history: List[Dict]) -> 
     # If we have significant gaps but local history is smaller or empty, 
     # we might still want to use fetched (it's better than nothing)
     if gaps_found and len(gaps_found) > 2:
-        print(f"  Validation FAILED: Too many gaps in fetched history")
+        print("  Validation FAILED: Too many gaps in fetched history")
         return False
     
     print(f"  Validation PASSED: {len(history)} entries, data looks consistent")

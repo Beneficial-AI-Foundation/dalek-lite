@@ -14,7 +14,11 @@ use crate::edwards::EdwardsPoint;
 #[allow(unused_imports)]
 use crate::scalar::Scalar;
 #[cfg(verus_keep_ghost)]
-use crate::specs::edwards_specs::is_well_formed_edwards_point;
+use crate::specs::edwards_specs::{
+    edwards_add, edwards_point_as_affine, edwards_scalar_mul, is_well_formed_edwards_point,
+};
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::spec_scalar;
 
 verus! {
 
@@ -104,6 +108,32 @@ pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>) wh
             0 <= i < result@.len() ==> is_well_formed_edwards_point(#[trigger] result@[i]),
 {
     iter.map(|p| *p.borrow()).collect()
+}
+
+// ============================================================================
+// Spec function for multiscalar multiplication result
+// ============================================================================
+/// Spec function to compute sum of scalar multiplications.
+/// Returns the affine coordinates of sum(scalars[i] * points[i] for i in 0..min(len_s, len_p)).
+pub open spec fn sum_of_scalar_muls(scalars: Seq<Scalar>, points: Seq<EdwardsPoint>) -> (nat, nat)
+    decreases scalars.len(),
+{
+    let len = if scalars.len() <= points.len() {
+        scalars.len()
+    } else {
+        points.len()
+    };
+    if len == 0 {
+        // Identity point in affine coordinates: (0, 1)
+        (0, 1)
+    } else {
+        let last = (len - 1) as int;
+        let prev = sum_of_scalar_muls(scalars.subrange(0, last), points.subrange(0, last));
+        let point_affine = edwards_point_as_affine(points[last]);
+        let scalar_nat = spec_scalar(&scalars[last]);
+        let scaled = edwards_scalar_mul(point_affine, scalar_nat);
+        edwards_add(prev.0, prev.1, scaled.0, scaled.1)
+    }
 }
 
 } // verus!

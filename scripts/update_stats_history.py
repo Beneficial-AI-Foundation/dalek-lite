@@ -30,6 +30,7 @@ import argparse
 import csv
 import io
 import json
+import logging
 import ssl
 import urllib.request
 from datetime import datetime, timezone
@@ -39,6 +40,13 @@ from typing import Dict, List
 from beartype import beartype
 from git import Repo
 from git.exc import GitCommandError
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Default validation thresholds (can be overridden via CLI)
 DEFAULT_MIN_EXPECTED_ENTRIES = 100  # Minimum entries we expect in history
@@ -58,12 +66,12 @@ def validate_fetched_history(
     Returns True if history looks valid, False if it appears corrupted.
     """
     if not history:
-        print("  Validation FAILED: Empty history")
+        logger.error("  Validation FAILED: Empty history")
         return False
 
     # Check minimum entries
     if len(history) < min_entries:
-        print(
+        logger.info(
             f"  Validation WARNING: Only {len(history)} entries (expected >= {min_entries})"
         )
         # Don't fail yet, check other criteria
@@ -87,15 +95,15 @@ def validate_fetched_history(
             )
 
     if gaps_found:
-        print(
+        logger.info(
             f"  Validation WARNING: Found {len(gaps_found)} gap(s) > {max_gap_days} days:"
         )
         for start, end, days in gaps_found[:3]:  # Show first 3
-            print(f"    {start} -> {end} ({days} days)")
+            logger.warning(f"    {start} -> {end} ({days} days)")
 
     # Check if local history has more entries (indicates data loss in fetched)
     if local_history and len(local_history) > len(history):
-        print(
+        logger.info(
             f"  Validation WARNING: Local history has more entries ({len(local_history)}) than fetched ({len(history)})"
         )
         # This is a strong indicator of data loss
@@ -107,18 +115,18 @@ def validate_fetched_history(
         fetched_dates = {e["date"][:10] for e in history}
         missing_dates = local_dates - fetched_dates
         if len(missing_dates) > 5:  # More than 5 dates missing
-            print(
-                f"  Validation WARNING: Fetched history missing {len(missing_dates)} dates present in local"
+            logger.warning(
+                f"  Fetched history missing {len(missing_dates)} dates present in local"
             )
             return False
 
     # If we have significant gaps but local history is smaller or empty,
     # we might still want to use fetched (it's better than nothing)
     if gaps_found and len(gaps_found) > 2:
-        print("  Validation FAILED: Too many gaps in fetched history")
+        logger.error("  Validation FAILED: Too many gaps in fetched history")
         return False
 
-    print(f"  Validation PASSED: {len(history)} entries, data looks consistent")
+    logger.info(f"  Validation PASSED: {len(history)} entries, data looks consistent")
     return True
 
 
@@ -170,7 +178,7 @@ def read_existing_history(history_file: Path) -> List[Dict]:
                 try:
                     history.append(json.loads(line))
                 except json.JSONDecodeError as e:
-                    print(f"Warning: Skipping malformed JSON at line {line_num}: {e}")
+                    logger.warning(f" Skipping malformed JSON at line {line_num}: {e}")
                     continue
     return history
 
@@ -276,7 +284,7 @@ def analyze_csv_at_commit(
         }
 
     except Exception as e:
-        print(f"  Warning: Could not analyze commit {commit_hash[:8]}: {e}")
+        logger.warning(f"   Could not analyze commit {commit_hash[:8]}: {e}")
         return None
 
 
@@ -301,7 +309,7 @@ def fill_missing_history(
     existing_commits = {entry["commit"] for entry in existing_history}
 
     # Get commit history
-    print(f"Scanning git history (max {max_commits} commits)...")
+    logger.info(f"Scanning git history (max {max_commits} commits)...")
     try:
         commits = list(repo.iter_commits("main", max_count=max_commits))
     except GitCommandError:
@@ -329,7 +337,7 @@ def fill_missing_history(
 
         processed += 1
         if processed % 10 == 0:
-            print(f"  Processed {processed} new commits...")
+            logger.info(f"  Processed {processed} new commits...")
 
         # Try to analyze CSV at this commit
         stats = analyze_csv_at_commit(repo, commit_hash, csv_path)
@@ -346,7 +354,7 @@ def fill_missing_history(
                 }
             )
 
-    print(f"Found {len(new_entries)} new commits with data")
+    logger.info(f"Found {len(new_entries)} new commits with data")
     return new_entries
 
 
@@ -362,7 +370,7 @@ def write_history(history: List[Dict], output_file: Path) -> None:
         for entry in history_sorted:
             f.write(json.dumps(entry) + "\n")
 
-    print(f"Wrote {len(history_sorted)} entries to {output_file}")
+    logger.info(f"Wrote {len(history_sorted)} entries to {output_file}")
 
 
 @beartype
@@ -425,10 +433,10 @@ def main():
     # Always read local file first (for validation comparison)
     if args.history.exists():
         local_history = read_existing_history(args.history)
-        print(f"Read {len(local_history)} entries from local file")
+        logger.info(f"Read {len(local_history)} entries from local file")
 
     if args.fetch_url:
-        print(f"Fetching history from {args.fetch_url}...")
+        logger.info(f"Fetching history from {args.fetch_url}...")
         fetched_history = []
         try:
             # Create SSL context (some environments need this)
@@ -442,11 +450,11 @@ def main():
                         try:
                             fetched_history.append(json.loads(line))
                         except json.JSONDecodeError as e:
-                            print(
-                                f"  Warning: Skipping malformed JSON at line {line_num}: {e}"
+                            logger.warning(
+                                f"  Skipping malformed JSON at line {line_num}: {e}"
                             )
                             continue
-            print(f"  Fetched {len(fetched_history)} entries from URL")
+            logger.info(f"  Fetched {len(fetched_history)} entries from URL")
 
             # Validate fetched history
             if validate_fetched_history(
@@ -454,14 +462,16 @@ def main():
             ):
                 existing_history = fetched_history
             else:
-                print("  Fetched history failed validation, merging with local file...")
+                logger.warning(
+                    "  Fetched history failed validation, merging with local file..."
+                )
                 # Merge both histories to avoid losing data from either source
                 existing_history = merge_histories(local_history, fetched_history)
-                print(f"  Merged history: {len(existing_history)} entries")
+                logger.info(f"  Merged history: {len(existing_history)} entries")
 
         except Exception as e:
-            print(f"  Warning: Could not fetch from URL: {e}")
-            print("  Falling back to local file...")
+            logger.warning(f"  Could not fetch from URL: {e}")
+            logger.info("  Falling back to local file...")
             existing_history = local_history
     else:
         # No fetch URL, use local file
@@ -476,8 +486,8 @@ def main():
             )
         except ValueError:
             # CSV is outside repo - can't look it up in git history
-            print(
-                f"Warning: CSV path {args.csv} is outside repository, skipping git history fill"
+            logger.warning(
+                f"CSV path {args.csv} is outside repository, skipping git history fill"
             )
             csv_relative_path = None
 
@@ -502,7 +512,7 @@ def main():
 
         # Check if current commit already in history
         if not any(e["commit"] == current_hash for e in existing_history):
-            print(f"Adding current commit {current_hash[:8]}...")
+            logger.info(f"Adding current commit {current_hash[:8]}...")
             current_stats = get_current_stats(args.csv)
 
             existing_history.append(
@@ -515,21 +525,21 @@ def main():
                     "proofs": current_stats["proofs"],
                 }
             )
-            print(f"  Stats: {current_stats}")
+            logger.info(f"  Stats: {current_stats}")
         else:
-            print(f"Current commit {current_hash[:8]} already in history")
+            logger.info(f"Current commit {current_hash[:8]} already in history")
 
     except Exception as e:
-        print(f"Warning: Could not add current commit: {e}")
+        logger.warning(f" Could not add current commit: {e}")
 
     # Step 4: Write updated history
     write_history(existing_history, args.history)
 
-    print("\nSummary:")
-    print(f"  Total entries: {len(existing_history)}")
+    logger.info("\nSummary:")
+    logger.info(f"  Total entries: {len(existing_history)}")
     if existing_history:
         parsed_dates = [datetime.fromisoformat(e["date"]) for e in existing_history]
-        print(
+        logger.info(
             f"  Date range: {min(parsed_dates).isoformat()} to {max(parsed_dates).isoformat()}"
         )
 

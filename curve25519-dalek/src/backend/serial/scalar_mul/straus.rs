@@ -461,8 +461,7 @@ impl Straus {
             ).len(),
             // All input points must be well-formed
             forall|i: int|
-                0 <= i < spec_points_from_iter::<J>(points).len()
-                    ==> is_well_formed_edwards_point(
+                0 <= i < spec_points_from_iter::<J>(points).len() ==> is_well_formed_edwards_point(
                     #[trigger] spec_points_from_iter::<J>(points)[i],
                 ),
         ensures

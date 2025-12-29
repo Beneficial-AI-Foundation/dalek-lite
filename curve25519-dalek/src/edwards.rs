@@ -2000,13 +2000,12 @@ impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
 // Import spec functions from scalar_mul_specs for multiscalar verification
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_mul_specs::{
-    all_points_some, spec_optional_points_from_iter, spec_points_from_iter,
-    spec_scalars_from_iter, unwrap_points,
+    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
+    unwrap_points,
 };
 // Import runtime helper for Sum<T> trait
 #[cfg(feature = "alloc")]
 use crate::specs::scalar_mul_specs::collect_points_from_iter;
-
 
 verus! {
 
@@ -2034,7 +2033,8 @@ impl EdwardsPoint {
     #[cfg(feature = "alloc")]
     fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize)
         ensures
-            size == spec_scalars_from_iter::<T, I>(*iter).len() || true,  // Weak spec: actual linking is unproven
+            size == spec_scalars_from_iter::<T, I>(*iter).len()
+                || true,  // Weak spec: actual linking is unproven
     {
         iter.clone().count()
     }
@@ -2093,9 +2093,7 @@ impl EdwardsPoint {
             )
         } else {
             crate::backend::serial::scalar_mul::pippenger::Pippenger::optional_multiscalar_mul_verus(
-                scalars,
-                points,
-            )
+            scalars, points)
         }
     }
 
@@ -2117,8 +2115,7 @@ impl EdwardsPoint {
             ).len(),
             // All input points must be well-formed
             forall|i: int|
-                0 <= i < spec_points_from_iter::<J>(points).len()
-                    ==> is_well_formed_edwards_point(
+                0 <= i < spec_points_from_iter::<J>(points).len() ==> is_well_formed_edwards_point(
                     #[trigger] spec_points_from_iter::<J>(points)[i],
                 ),
         ensures
@@ -2136,10 +2133,7 @@ impl EdwardsPoint {
             crate::backend::straus_multiscalar_mul(scalars, points)
         </ORIGINAL CODE> */
         // Pass iterators directly to Straus (no size dispatch needed)
-        crate::backend::serial::scalar_mul::straus::Straus::multiscalar_mul_verus(
-            scalars,
-            points,
-        )
+        crate::backend::serial::scalar_mul::straus::Straus::multiscalar_mul_verus(scalars, points)
     }
 }
 

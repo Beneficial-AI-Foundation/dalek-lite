@@ -22,7 +22,6 @@
 //
 #[allow(unused_imports)]
 use super::field_specs::*;
-
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,

@@ -69,12 +69,8 @@ def validate_fetched_history(history: List[Dict], local_history: List[Dict]) -> 
     # Check for big gaps in dates
     gaps_found = []
     for i in range(1, len(sorted_history)):
-        prev_date = datetime.fromisoformat(
-            sorted_history[i - 1]["date"].replace("+00:00", "+00:00")
-        )
-        curr_date = datetime.fromisoformat(
-            sorted_history[i]["date"].replace("+00:00", "+00:00")
-        )
+        prev_date = datetime.fromisoformat(sorted_history[i - 1]["date"])
+        curr_date = datetime.fromisoformat(sorted_history[i]["date"])
         gap_days = (curr_date - prev_date).days
         if gap_days > MAX_GAP_DAYS:
             gaps_found.append(

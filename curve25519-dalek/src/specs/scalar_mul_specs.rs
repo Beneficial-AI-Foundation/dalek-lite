@@ -23,23 +23,28 @@ use crate::specs::scalar_specs::spec_scalar;
 verus! {
 
 /*
- * Uninterpreted spec functions for iterator-to-sequence conversion
- * ================================================================
+ * Iterator-to-sequence abstraction for Verus
+ * ==========================================
  *
  * Verus cannot reason about Rust iterators directly. We introduce uninterpreted
- * spec functions that map iterators to logical sequences:
+ * spec functions that map iterators to Seq types representing their contents:
  *
- *   spec_scalars_from_iter, spec_optional_points_from_iter, spec_points_from_iter
+ *   spec_scalars_from_iter         -> Seq<Scalar>
+ *   spec_optional_points_from_iter -> Seq<Option<EdwardsPoint>>
+ *   spec_points_from_iter          -> Seq<EdwardsPoint>
  *
- * Runtime helper functions (collect_*_from_iter) bridge this abstraction. They are
- * marked external_body with assumed postconditions linking the collected Vec to
- * the abstract spec sequence:
+ * Verus can reason about Seq (indexing, length, etc.), so requires/ensures
+ * clauses use these sequences to express properties about scalars and points.
+ *
+ * To work with iterator data in verified code, we need to collect elements into
+ * a Vec. The collect_*_from_iter functions do this, consuming the iterator and
+ * returning a Vec. They are marked external_body (unverified) with assumed
+ * postconditions linking the Vec to the spec sequence:
  *
  *   ensures result@ == spec_*_from_iter(iter)
  *
- * This establishes that indexing into the collected Vec is equivalent to indexing
- * into the spec sequence, enabling verification over concrete data while specs
- * reason about abstract sequences.
+ * This links the Seq view of the Vec (result@) to the abstract spec sequence,
+ * allowing verified code to reason about the concrete Vec data.
  */
 // ============================================================================
 /// Spec function to convert an iterator of scalars to a sequence.

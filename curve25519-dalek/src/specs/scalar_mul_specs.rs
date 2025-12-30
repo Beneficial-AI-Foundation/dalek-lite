@@ -34,7 +34,7 @@ verus! {
  *   spec_points_from_iter          -> Seq<EdwardsPoint>
  *
  * Verus can reason about Seq (indexing, length, etc.), so requires/ensures
- * clauses use these sequences to express properties about scalars and points.
+ * clauses use these sequences to express properties about scalars and points contained in the iterator.
  *
  * To work with iterator data in verified code, we need to collect elements into
  * a Vec. The collect_*_from_iter functions do this, consuming the iterator and

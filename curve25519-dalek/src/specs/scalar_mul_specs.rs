@@ -65,7 +65,10 @@ pub open spec fn all_points_some(points: Seq<Option<EdwardsPoint>>) -> bool {
 }
 
 /// Extract EdwardsPoints from an Option sequence (assumes all are Some).
-pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<EdwardsPoint> {
+pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<EdwardsPoint>
+    recommends
+        all_points_some(points),
+{
     points.map(|_i, opt: Option<EdwardsPoint>| opt.unwrap())
 }
 

@@ -2090,23 +2090,47 @@ impl EdwardsPoint {
             ),
     {
         /* <ORIGINAL CODE>
-            let (s_lo, s_hi) = scalars.by_ref().size_hint();
-            let size = s_lo;
+        // Sanity-check lengths of input iterators
+        let mut scalars = scalars.into_iter();
+        let mut points = points.into_iter();
+
+        // Lower and upper bounds on iterators
+        let (s_lo, s_hi) = scalars.by_ref().size_hint();
+        let (p_lo, p_hi) = points.by_ref().size_hint();
+
+        // They should all be equal
+        assert_eq!(s_lo, p_lo);
+        assert_eq!(s_hi, Some(s_lo));
+        assert_eq!(p_hi, Some(p_lo));
+
+        // Now we know there's a single size.
+        // Use this as the hint to decide which algorithm to use.
+        let size = s_lo;
+
+        if size < 190 {
+            crate::backend::straus_optional_multiscalar_mul(scalars, points)
+        } else {
+            crate::backend::pippenger_optional_multiscalar_mul(scalars, points)
+        }
         </ORIGINAL CODE> */
-        // Clone to count without consuming (similar to original's size_hint)
+        /* Uses Clone instead of by_ref() since Verus doesn't support &mut on iterators. */
+        // Sanity-check lengths of input iterators (skipped by Verus, checked via requires clause)
+        #[cfg(not(verus_keep_ghost))]
+        {
+            let (s_lo, s_hi) = scalars.clone().size_hint();
+            let (p_lo, p_hi) = points.clone().size_hint();
+            assert_eq!(s_lo, p_lo);
+            assert_eq!(s_hi, Some(s_lo));
+            assert_eq!(p_hi, Some(p_lo));
+        }
+
+        // Get size for algorithm dispatch
         let size = Self::iter_count(&scalars);
 
-        // Dispatch to appropriate algorithm based on size
-        // size < 190: Straus is faster
-        // size >= 190: Pippenger is faster
         if size < 190 {
-            crate::backend::serial::scalar_mul::straus::Straus::optional_multiscalar_mul_verus(
-                scalars,
-                points,
-            )
+            crate::backend::straus_optional_multiscalar_mul_verus(scalars, points)
         } else {
-            crate::backend::serial::scalar_mul::pippenger::Pippenger::optional_multiscalar_mul_verus(
-            scalars, points)
+            crate::backend::pippenger_optional_multiscalar_mul_verus(scalars, points)
         }
     }
 
@@ -2117,8 +2141,8 @@ impl EdwardsPoint {
     pub fn multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> (result: EdwardsPoint) where
         S: Borrow<Scalar>,
         P: Borrow<EdwardsPoint>,
-        I: Iterator<Item = S>,
-        J: Iterator<Item = P>,
+        I: Iterator<Item = S> + Clone,
+        J: Iterator<Item = P> + Clone,
 
         requires
     // Same number of scalars and points
@@ -2143,11 +2167,38 @@ impl EdwardsPoint {
             ),
     {
         /* <ORIGINAL CODE>
-            // No size-based dispatch: constant-time always uses Straus
-            crate::backend::straus_multiscalar_mul(scalars, points)
+        // Sanity-check lengths of input iterators
+        let mut scalars = scalars.into_iter();
+        let mut points = points.into_iter();
+
+        // Lower and upper bounds on iterators
+        let (s_lo, s_hi) = scalars.by_ref().size_hint();
+        let (p_lo, p_hi) = points.by_ref().size_hint();
+
+        // They should all be equal
+        assert_eq!(s_lo, p_lo);
+        assert_eq!(s_hi, Some(s_lo));
+        assert_eq!(p_hi, Some(p_lo));
+
+        // Now we know there's a single size.  When we do
+        // size-dependent algorithm dispatch, use this as the hint.
+        let _size = s_lo;
+
+        crate::backend::straus_multiscalar_mul(scalars, points)
         </ORIGINAL CODE> */
-        // Pass iterators directly to Straus (no size dispatch needed)
-        crate::backend::serial::scalar_mul::straus::Straus::multiscalar_mul_verus(scalars, points)
+        /* Uses Clone instead of by_ref() since Verus doesn't support &mut on iterators. */
+        // Sanity-check lengths of input iterators (skipped by Verus, checked via requires clause)
+        #[cfg(not(verus_keep_ghost))]
+        {
+            let (s_lo, s_hi) = scalars.clone().size_hint();
+            let (p_lo, p_hi) = points.clone().size_hint();
+            assert_eq!(s_lo, p_lo);
+            assert_eq!(s_hi, Some(s_lo));
+            assert_eq!(p_hi, Some(p_lo));
+        }
+
+        // Dispatch to Straus (constant-time)
+        crate::backend::straus_multiscalar_mul_verus(scalars, points)
     }
 }
 

@@ -179,6 +179,20 @@ use digest::Digest;
 use crate::constants;
 
 use crate::field::FieldElement;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::backend::serial::u64::subtle_assumes::{choice_into, choice_is_true, choice_not, choice_or, conditional_negate_field_element, ct_eq_bytes32};
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::core_assumes::try_into_32_bytes_array;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::edwards_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::field_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::field_specs_u64::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::ristretto_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::scalar_specs::*;
 use vstd::prelude::*;
 
 #[cfg(feature = "group")]
@@ -208,6 +222,8 @@ use crate::traits::Identity;
 #[cfg(feature = "alloc")]
 use crate::traits::{MultiscalarMul, VartimeMultiscalarMul, VartimePrecomputedMultiscalarMul};
 
+verus! {
+
 // ------------------------------------------------------------------------
 // Compressed points
 // ------------------------------------------------------------------------
@@ -220,8 +236,14 @@ use crate::traits::{MultiscalarMul, VartimeMultiscalarMul, VartimePrecomputedMul
 pub struct CompressedRistretto(pub [u8; 32]);
 
 impl ConstantTimeEq for CompressedRistretto {
-    fn ct_eq(&self, other: &CompressedRistretto) -> Choice {
-        self.as_bytes().ct_eq(other.as_bytes())
+    fn ct_eq(&self, other: &CompressedRistretto) -> (result: Choice)
+        ensures
+            choice_is_true(result) == (self.0 == other.0),
+    {
+        // Use wrapper function for Verus compatibility
+        // ct_eq_bytes32 ensures: choice_is_true(result) == (*a == *b)
+        // as_bytes() returns &self.0, and *(&self.0) == self.0
+        ct_eq_bytes32(&self.0, &other.0)
     }
 }
 
@@ -243,9 +265,23 @@ impl CompressedRistretto {
     /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
     /// a length of 32.
     pub fn from_slice(bytes: &[u8]) -> Result<CompressedRistretto, TryFromSliceError> {
-        bytes.try_into().map(CompressedRistretto)
+        // ORIGINAL CODE: bytes.try_into().map(CompressedRistretto)
+        // VERUS WORKAROUND: Verus doesn't allow datatype constructors like CompressedRistretto as function values,
+        // so we use a closure |arr| CompressedRistretto(arr) instead of CompressedRistretto directly.
+        // Also, try_into is wrapped in an external function for Verus compatibility.
+        let arr_result = try_into_32_bytes_array(bytes);
+        arr_result.map(|arr| CompressedRistretto(arr))
     }
 
+}
+
+impl Identity for CompressedRistretto {
+    fn identity() -> CompressedRistretto {
+        CompressedRistretto([0u8; 32])
+    }
+}
+
+impl CompressedRistretto {
     /// Attempt to decompress to an `RistrettoPoint`.
     ///
     /// # Return
@@ -256,13 +292,14 @@ impl CompressedRistretto {
     pub fn decompress(&self) -> Option<RistrettoPoint> {
         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);
 
-        if (!s_encoding_is_canonical | s_is_negative).into() {
+        // Use choice_or and choice_into wrappers for Verus compatibility
+        if choice_into(choice_or(choice_not(s_encoding_is_canonical), s_is_negative)) {
             return None;
         }
 
         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
 
-        if (!ok | t_is_negative | y_is_zero).into() {
+        if choice_into(choice_or(choice_or(choice_not(ok), t_is_negative), y_is_zero)) {
             None
         } else {
             Some(res)
@@ -273,7 +310,7 @@ impl CompressedRistretto {
 mod decompress {
     use super::*;
 
-    pub(super) fn step_1(repr: &CompressedRistretto) -> (Choice, Choice, FieldElement) {
+    pub(super) fn step_1(repr: &CompressedRistretto) -> (result: (Choice, Choice, FieldElement)) {
         // Step 1. Check s for validity:
         // 1.a) s must be 32 bytes (we get this from the type system)
         // 1.b) s < p
@@ -287,13 +324,18 @@ mod decompress {
 
         let s = FieldElement::from_bytes(repr.as_bytes());
         let s_bytes_check = s.as_bytes();
-        let s_encoding_is_canonical = s_bytes_check[..].ct_eq(repr.as_bytes());
+        // ORIGINAL CODE: let s_encoding_is_canonical = s_bytes_check[..].ct_eq(repr.as_bytes());
+        // VERUS WORKAROUND: Use ct_eq_bytes32 wrapper for Verus compatibility
+        let s_encoding_is_canonical = ct_eq_bytes32(&s_bytes_check, repr.as_bytes());
         let s_is_negative = s.is_negative();
 
         (s_encoding_is_canonical, s_is_negative, s)
     }
 
-    pub(super) fn step_2(s: FieldElement) -> (Choice, Choice, Choice, RistrettoPoint) {
+    pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint)) {
+        // VERIFICATION NOTE: assume(false) postpones limb bounds tracking and other proof obligations.
+        proof { assume(false); }
+        
         // Step 2.  Compute (X:Y:Z:T).
         let one = FieldElement::ONE;
         let ss = s.square();
@@ -302,7 +344,12 @@ mod decompress {
         let u2_sqr = u2.square(); // (1 - as²)²
 
         // v == ad(1+as²)² - (1-as²)²            where d=-121665/121666
-        let v = &(&(-&constants::EDWARDS_D) * &u1.square()) - &u2_sqr;
+        // ORIGINAL CODE: let v = &(&(-&constants::EDWARDS_D) * &u1.square()) - &u2_sqr;
+        // VERUS WORKAROUND: Use Neg::neg explicitly to avoid Verus operator parsing issue
+        use core::ops::Neg;
+        let neg_d = Neg::neg(&constants::EDWARDS_D);
+        let u1_sqr = u1.square();
+        let v = &(&neg_d * &u1_sqr) - &u2_sqr;
 
         let (ok, I) = (&v * &u2_sqr).invsqrt(); // 1/sqrt(v*u_2²)
 
@@ -312,7 +359,9 @@ mod decompress {
         // x == | 2s/sqrt(v) | == + sqrt(4s²/(ad(1+as²)² - (1-as²)²))
         let mut x = &(&s + &s) * &Dx;
         let x_neg = x.is_negative();
-        x.conditional_negate(x_neg);
+        // ORIGINAL CODE: x.conditional_negate(x_neg);
+        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
+        conditional_negate_field_element(&mut x, x_neg);
 
         // y == (1-as²)/(1+as²)
         let y = &u1 * &Dy;
@@ -334,22 +383,8 @@ mod decompress {
     }
 }
 
-impl Identity for CompressedRistretto {
-    fn identity() -> CompressedRistretto {
-        CompressedRistretto([0u8; 32])
-    }
-}
-
-verus! {
-
-#[verifier::external]
-impl crate::traits::IsIdentitySpecImpl for CompressedRistretto {
-    open spec fn is_identity_spec(&self) -> bool {
-        arbitrary()
-    }
-}
-
 } // verus!
+
 impl Default for CompressedRistretto {
     fn default() -> CompressedRistretto {
         CompressedRistretto::identity()
@@ -481,6 +516,8 @@ impl<'de> Deserialize<'de> for CompressedRistretto {
 // Internal point representations
 // ------------------------------------------------------------------------
 
+verus! {
+
 /// A `RistrettoPoint` represents a point in the Ristretto group for
 /// Curve25519.  Ristretto, a variant of Decaf, constructs a
 /// prime-order group as a quotient group of a subgroup of (the
@@ -493,7 +530,9 @@ impl<'de> Deserialize<'de> for CompressedRistretto {
 /// `EdwardsPoint`s.
 ///
 #[derive(Copy, Clone)]
-pub struct RistrettoPoint(pub(crate) EdwardsPoint);
+pub struct RistrettoPoint(pub EdwardsPoint);
+
+} // verus!
 
 impl RistrettoPoint {
     /// Compress this point using the Ristretto encoding.
@@ -814,22 +853,15 @@ impl RistrettoPoint {
     }
 }
 
+verus! {
+
 impl Identity for RistrettoPoint {
     fn identity() -> RistrettoPoint {
         RistrettoPoint(EdwardsPoint::identity())
     }
 }
 
-verus! {
 
-#[verifier::external]
-impl crate::traits::IsIdentitySpecImpl for RistrettoPoint {
-    open spec fn is_identity_spec(&self) -> bool {
-        arbitrary()
-    }
-}
-
-} // verus!
 impl Default for RistrettoPoint {
     fn default() -> RistrettoPoint {
         RistrettoPoint::identity()
@@ -842,7 +874,10 @@ impl Default for RistrettoPoint {
 
 impl PartialEq for RistrettoPoint {
     fn eq(&self, other: &RistrettoPoint) -> bool {
-        self.ct_eq(other).into()
+        // VERIFICATION NOTE: assume(false) postpones proof obligations
+        proof { assume(false); }
+        // ORIGINAL CODE: self.ct_eq(other).into()
+        choice_into(self.ct_eq(other))
     }
 }
 
@@ -854,28 +889,59 @@ impl ConstantTimeEq for RistrettoPoint {
     /// * `Choice(1)` if the two `RistrettoPoint`s are equal;
     /// * `Choice(0)` otherwise.
     fn ct_eq(&self, other: &RistrettoPoint) -> Choice {
+        // VERIFICATION NOTE: assume(false) postpones proof obligations
+        proof { assume(false); }
         let X1Y2 = &self.0.X * &other.0.Y;
         let Y1X2 = &self.0.Y * &other.0.X;
         let X1X2 = &self.0.X * &other.0.X;
         let Y1Y2 = &self.0.Y * &other.0.Y;
 
-        X1Y2.ct_eq(&Y1X2) | X1X2.ct_eq(&Y1Y2)
+        // ORIGINAL CODE: X1Y2.ct_eq(&Y1X2) | X1X2.ct_eq(&Y1Y2)
+        choice_or(X1Y2.ct_eq(&Y1X2), X1X2.ct_eq(&Y1Y2))
     }
 }
 
 impl Eq for RistrettoPoint {}
 
+} // verus!
+
 // ------------------------------------------------------------------------
 // Arithmetic
 // ------------------------------------------------------------------------
 
+// NOTE: MulSpecImpl for RistrettoPoint * Scalar combinations are in specs/mul_specs.rs
+
+#[cfg(verus_keep_ghost)]
+verus! {
+/// Spec for &RistrettoPoint + &RistrettoPoint
+impl vstd::std_specs::ops::AddSpecImpl<&RistrettoPoint> for &RistrettoPoint {
+    open spec fn obeys_add_spec() -> bool {
+        false  // Set to false since we use ensures clause instead of concrete spec
+    }
+
+    open spec fn add_req(self, rhs: &RistrettoPoint) -> bool {
+        // Requires both underlying EdwardsPoints to be well-formed
+        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
+    }
+
+    open spec fn add_spec(self, rhs: &RistrettoPoint) -> RistrettoPoint {
+        arbitrary() // postcondition provided in function body
+    }
+}
+}
+
+verus! {
 impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn add(self, other: &'b RistrettoPoint) -> RistrettoPoint {
-        RistrettoPoint(self.0 + other.0)
+    fn add(self, other: &'b RistrettoPoint) -> RistrettoPoint
+        // requires clause inherited from AddSpecImpl::add_req:
+        //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+    {
+        RistrettoPoint(&self.0 + &other.0)
     }
 }
+} // verus!
 
 define_add_variants!(
     LHS = RistrettoPoint,
@@ -883,21 +949,55 @@ define_add_variants!(
     Output = RistrettoPoint
 );
 
+verus! {
+
 impl<'b> AddAssign<&'b RistrettoPoint> for RistrettoPoint {
-    fn add_assign(&mut self, _rhs: &RistrettoPoint) {
-        *self = (self as &RistrettoPoint) + _rhs;
+    fn add_assign(&mut self, _rhs: &RistrettoPoint)
+        requires
+            is_well_formed_edwards_point(old(self).0),
+            is_well_formed_edwards_point(_rhs.0),
+    {
+        // ORIGINAL CODE: *self = (self as &RistrettoPoint) + _rhs;
+        // VERUS WORKAROUND: Use &*self instead of cast
+        *self = &*self + _rhs;
     }
 }
+
+} // verus!
 
 define_add_assign_variants!(LHS = RistrettoPoint, RHS = RistrettoPoint);
 
+#[cfg(verus_keep_ghost)]
+verus! {
+/// Spec for &RistrettoPoint - &RistrettoPoint
+impl vstd::std_specs::ops::SubSpecImpl<&RistrettoPoint> for &RistrettoPoint {
+    open spec fn obeys_sub_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_req(self, rhs: &RistrettoPoint) -> bool {
+        // Requires both underlying EdwardsPoints to be well-formed
+        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
+    }
+
+    open spec fn sub_spec(self, rhs: &RistrettoPoint) -> RistrettoPoint {
+        arbitrary() // postcondition provided in function body
+    }
+}
+}
+
+verus! {
 impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn sub(self, other: &'b RistrettoPoint) -> RistrettoPoint {
-        RistrettoPoint(self.0 - other.0)
+    fn sub(self, other: &'b RistrettoPoint) -> RistrettoPoint
+        // requires clause inherited from SubSpecImpl::sub_req:
+        //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+    {
+        RistrettoPoint(&self.0 - &other.0)
     }
 }
+} // verus!
 
 define_sub_variants!(
     LHS = RistrettoPoint,
@@ -905,11 +1005,21 @@ define_sub_variants!(
     Output = RistrettoPoint
 );
 
+verus! {
+
 impl<'b> SubAssign<&'b RistrettoPoint> for RistrettoPoint {
-    fn sub_assign(&mut self, _rhs: &RistrettoPoint) {
-        *self = (self as &RistrettoPoint) - _rhs;
+    fn sub_assign(&mut self, _rhs: &RistrettoPoint)
+        requires
+            is_well_formed_edwards_point(old(self).0),
+            is_well_formed_edwards_point(_rhs.0),
+    {
+        // ORIGINAL CODE: *self = (self as &RistrettoPoint) - _rhs;
+        // VERUS WORKAROUND: Use &*self instead of cast
+        *self = &*self - _rhs;
     }
 }
+
+} // verus!
 
 define_sub_assign_variants!(LHS = RistrettoPoint, RHS = RistrettoPoint);
 
@@ -925,25 +1035,75 @@ where
     }
 }
 
+#[cfg(verus_keep_ghost)]
+verus! {
+/// Spec for -&RistrettoPoint
+impl vstd::std_specs::ops::NegSpecImpl for &RistrettoPoint {
+    open spec fn obeys_neg_spec() -> bool {
+        false
+    }
+
+    open spec fn neg_req(self) -> bool {
+        // Requires limb bounds on X and T for field element negation
+        fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+    }
+
+    open spec fn neg_spec(self) -> RistrettoPoint {
+        arbitrary() // postcondition provided in function body
+    }
+}
+
+/// Spec for -RistrettoPoint (owned)
+impl vstd::std_specs::ops::NegSpecImpl for RistrettoPoint {
+    open spec fn obeys_neg_spec() -> bool {
+        false
+    }
+
+    open spec fn neg_req(self) -> bool {
+        // Requires limb bounds on X and T for field element negation
+        fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+    }
+
+    open spec fn neg_spec(self) -> RistrettoPoint {
+        arbitrary() // postcondition provided in function body
+    }
+}
+}
+
+verus! {
 impl<'a> Neg for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn neg(self) -> RistrettoPoint {
-        RistrettoPoint(-&self.0)
+    fn neg(self) -> RistrettoPoint
+        // requires clause inherited from NegSpecImpl::neg_req:
+        //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+    {
+        // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
+        RistrettoPoint(Neg::neg(&self.0))
     }
 }
 
 impl Neg for RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn neg(self) -> RistrettoPoint {
-        -&self
+    fn neg(self) -> RistrettoPoint
+        // requires clause inherited from NegSpecImpl::neg_req:
+        //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+    {
+        // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
+        Neg::neg(&self)
     }
 }
 
 impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
-    fn mul_assign(&mut self, scalar: &'b Scalar) {
-        let result = (self as &RistrettoPoint) * scalar;
+    fn mul_assign(&mut self, scalar: &'b Scalar)
+        requires
+            scalar.bytes[31] <= 127,
+            is_well_formed_edwards_point(old(self).0),
+    {
+        // ORIGINAL CODE: let result = (self as &RistrettoPoint) * scalar;
+        // VERUS WORKAROUND: Use &*self instead of cast
+        let result = &*self * scalar;
         *self = result;
     }
 }
@@ -951,7 +1111,10 @@ impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
 impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
     /// Scalar multiplication: compute `scalar * self`.
-    fn mul(self, scalar: &'b Scalar) -> RistrettoPoint {
+    fn mul(self, scalar: &'b Scalar) -> RistrettoPoint
+        // requires clause inherited from MulSpecImpl::mul_req:
+        //   scalar.bytes[31] <= 127 && is_well_formed_edwards_point(self.0)
+    {
         RistrettoPoint(self.0 * scalar)
     }
 }
@@ -960,10 +1123,15 @@ impl<'a, 'b> Mul<&'b RistrettoPoint> for &'a Scalar {
     type Output = RistrettoPoint;
 
     /// Scalar multiplication: compute `self * scalar`.
-    fn mul(self, point: &'b RistrettoPoint) -> RistrettoPoint {
+    fn mul(self, point: &'b RistrettoPoint) -> RistrettoPoint
+        // requires clause inherited from MulSpecImpl::mul_req:
+        //   self.bytes[31] <= 127 && is_well_formed_edwards_point(point.0)
+    {
         RistrettoPoint(self * point.0)
     }
 }
+
+} // verus!
 
 impl RistrettoPoint {
     /// Fixed-base scalar multiplication by the Ristretto base point.

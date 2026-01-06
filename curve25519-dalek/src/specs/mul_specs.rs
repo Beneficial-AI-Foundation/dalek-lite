@@ -328,6 +328,51 @@ impl vstd::std_specs::ops::MulSpecImpl<&EdwardsBasepointTable> for &Scalar {
 }
 
 // =============================================================================
+// SECTION 6: RistrettoBasepointTable * Scalar
+// =============================================================================
+// Specifications for basepoint table scalar multiplication (Ristretto)
+
+use crate::ristretto::RistrettoBasepointTable;
+
+/// Spec for &RistrettoBasepointTable * &Scalar
+/// Postcondition provided in function body (see `ristretto.rs`)
+#[cfg(feature = "precomputed-tables")]
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &RistrettoBasepointTable {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &Scalar) -> bool {
+        rhs.bytes[31] <= 127
+    }
+
+    // Result spec provided via `ensures` in the `Mul` impl
+    open spec fn mul_spec(self, rhs: &Scalar) -> RistrettoPoint {
+        arbitrary()
+    }
+}
+
+/// Spec for &Scalar * &RistrettoBasepointTable
+/// Postcondition provided in function body (see `ristretto.rs`)
+#[cfg(feature = "precomputed-tables")]
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulSpecImpl<&RistrettoBasepointTable> for &Scalar {
+    open spec fn obeys_mul_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_req(self, rhs: &RistrettoBasepointTable) -> bool {
+        self.bytes[31] <= 127
+    }
+
+    // Result spec provided via `ensures` in the `Mul` impl
+    open spec fn mul_spec(self, rhs: &RistrettoBasepointTable) -> RistrettoPoint {
+        arbitrary()
+    }
+}
+
+// =============================================================================
 // SECTION 4: RistrettoPoint * Scalar
 // =============================================================================
 // Specifications for multiplication between RistrettoPoint and Scalar

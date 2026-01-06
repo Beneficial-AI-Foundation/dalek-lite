@@ -30,7 +30,7 @@ use crate::backend::serial::curve_models::{
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
+use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D, EIGHT_TORSION};
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::edwards::EdwardsBasepointTable;
@@ -111,6 +111,72 @@ pub proof fn axiom_ed25519_basepoint_table_valid()
         is_valid_edwards_basepoint_table(*ED25519_BASEPOINT_TABLE, spec_ed25519_basepoint()),
 {
 }
+
+/// Axiom: All 8-torsion points are well-formed.
+/// 
+/// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
+/// Each element has:
+/// - Explicit limb constants that are all < 2^54 (satisfying limb bounds)
+/// - Z = 1 ≠ 0 (valid projective coordinate)
+/// - Sum of limbs within bounds
+///
+/// This is verified by the `test_eight_torsion_well_formed` test below.
+pub proof fn axiom_eight_torsion_well_formed()
+    ensures
+        is_well_formed_edwards_point(EIGHT_TORSION[0]),
+        is_well_formed_edwards_point(EIGHT_TORSION[1]),
+        is_well_formed_edwards_point(EIGHT_TORSION[2]),
+        is_well_formed_edwards_point(EIGHT_TORSION[3]),
+        is_well_formed_edwards_point(EIGHT_TORSION[4]),
+        is_well_formed_edwards_point(EIGHT_TORSION[5]),
+        is_well_formed_edwards_point(EIGHT_TORSION[6]),
+        is_well_formed_edwards_point(EIGHT_TORSION[7]),
+{
+    admit();
+}
+
+} // verus!
+
+/// Test that all 8-torsion points satisfy the well-formedness conditions.
+/// This validates the axiom_eight_torsion_well_formed() axiom.
+#[cfg(test)]
+mod eight_torsion_tests {
+    use super::*;
+
+    const LIMB_BOUND_54: u64 = 1u64 << 54;
+
+    fn limbs_bounded(fe: &crate::backend::serial::u64::field::FieldElement51, bound: u64) -> bool {
+        fe.limbs.iter().all(|&limb| limb < bound)
+    }
+
+    fn point_limbs_bounded(p: &EdwardsPoint) -> bool {
+        limbs_bounded(&p.X, LIMB_BOUND_54)
+            && limbs_bounded(&p.Y, LIMB_BOUND_54)
+            && limbs_bounded(&p.Z, LIMB_BOUND_54)
+            && limbs_bounded(&p.T, LIMB_BOUND_54)
+    }
+
+    fn z_nonzero(p: &EdwardsPoint) -> bool {
+        p.Z.limbs.iter().any(|&limb| limb != 0)
+    }
+
+    fn sum_bounded(p: &EdwardsPoint) -> bool {
+        // Check Y + X doesn't overflow
+        p.Y.limbs.iter().zip(p.X.limbs.iter())
+            .all(|(&y, &x)| (y as u128) + (x as u128) <= u64::MAX as u128)
+    }
+
+    #[test]
+    fn test_eight_torsion_well_formed() {
+        for (i, point) in EIGHT_TORSION.iter().enumerate() {
+            assert!(z_nonzero(point), "EIGHT_TORSION[{}] has Z = 0", i);
+            assert!(point_limbs_bounded(point), "EIGHT_TORSION[{}] limbs exceed 2^54", i);
+            assert!(sum_bounded(point), "EIGHT_TORSION[{}] Y+X would overflow", i);
+        }
+    }
+}
+
+verus! {
 
 // =============================================================================
 // Curve Equation Specifications

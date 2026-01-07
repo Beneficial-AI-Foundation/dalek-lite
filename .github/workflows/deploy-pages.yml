@@ -130,21 +130,71 @@ jobs:
           name: dashboard
           path: site
 
+      # NOTE: This step depends on the upstream "callgraph" job/workflow
+      # producing an artifact named "callgraph-viewer". If that artifact name
+      # changes, update both the "name" below and the verification step that
+      # checks for the presence of site/callgraph/index.html.
       - name: Download callgraph viewer
         uses: actions/download-artifact@v4
         with:
           name: callgraph-viewer
           path: site/callgraph
 
+      - name: Verify callgraph viewer artifact was downloaded
+        run: |
+          if [ ! -f site/callgraph/index.html ]; then
+            echo "Error: Expected callgraph viewer artifact (site/callgraph/index.html) not found."
+            echo "Ensure the upstream workflow produces an artifact named 'callgraph-viewer'."
+            exit 1
+          fi
       - name: Fix callgraph asset paths for subpath deployment
         run: |
           # The callgraph viewer references /callgraph/assets/... but we're at /dalek-lite/callgraph/
-          # Fix the paths in the HTML file
+          # Fix the paths in the HTML file and verify that the replacements succeeded
           if [ -f site/callgraph/index.html ]; then
+            echo "Updating asset paths in site/callgraph/index.html"
+
+            # Count occurrences of original paths before replacement (for logging)
+            orig_callgraph_refs=$(grep -o '"/callgraph/' site/callgraph/index.html | wc -l || true)
+            orig_href_assets_refs=$(grep -o 'href="/assets/' site/callgraph/index.html | wc -l || true)
+            orig_src_assets_refs=$(grep -o 'src="/assets/' site/callgraph/index.html | wc -l || true)
+
             sed -i 's|"/callgraph/|"/dalek-lite/callgraph/|g' site/callgraph/index.html
             sed -i 's|href="/assets/|href="/dalek-lite/callgraph/assets/|g' site/callgraph/index.html
             sed -i 's|src="/assets/|src="/dalek-lite/callgraph/assets/|g' site/callgraph/index.html
+
+            # Count occurrences of updated paths after replacement
+            new_callgraph_refs=$(grep -o '"/dalek-lite/callgraph/' site/callgraph/index.html | wc -l || true)
+            new_href_assets_refs=$(grep -o 'href="/dalek-lite/callgraph/assets/' site/callgraph/index.html | wc -l || true)
+            new_src_assets_refs=$(grep -o 'src="/dalek-lite/callgraph/assets/' site/callgraph/index.html | wc -l || true)
+
+            echo "callgraph path references: original=${orig_callgraph_refs}, updated=${new_callgraph_refs}"
+            echo "href asset references:     original=${orig_href_assets_refs}, updated=${new_href_assets_refs}"
+            echo "src asset references:      original=${orig_src_assets_refs}, updated=${new_src_assets_refs}"
+
+            # Basic validation: if we had any original references, we expect at least one updated reference
+            validation_failed=0
+            if [ "${orig_callgraph_refs}" -gt 0 ] && [ "${new_callgraph_refs}" -eq 0 ]; then
+              echo "ERROR: Expected updated \"/dalek-lite/callgraph/\" references, but none were found."
+              validation_failed=1
+            fi
+            if [ "${orig_href_assets_refs}" -gt 0 ] && [ "${new_href_assets_refs}" -eq 0 ]; then
+              echo "ERROR: Expected updated \"href=\\\"/dalek-lite/callgraph/assets/\\\"\" references, but none were found."
+              validation_failed=1
+            fi
+            if [ "${orig_src_assets_refs}" -gt 0 ] && [ "${new_src_assets_refs}" -eq 0 ]; then
+              echo "ERROR: Expected updated \"src=\\\"/dalek-lite/callgraph/assets/\\\"\" references, but none were found."
+              validation_failed=1
+            fi
+
+            if [ "${validation_failed}" -ne 0 ]; then
+              echo "Callgraph asset path rewrite validation failed. See logs above for details."
+              exit 1
+            fi
+
             echo "Fixed asset paths in callgraph/index.html"
+          else
+            echo "site/callgraph/index.html not found; skipping callgraph asset path fixes."
           fi
 
       - name: List final site structure

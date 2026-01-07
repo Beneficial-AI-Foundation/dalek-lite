@@ -135,6 +135,8 @@ use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 use crate::constants;
 use crate::core_assumes::negate_field;
 #[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken;
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
@@ -522,11 +524,11 @@ impl CompletedPoint {
             is_valid_projective_point(result),
             spec_projective_point_edwards(result) == spec_completed_to_projective(*self),
             projective_point_as_affine_edwards(result) == completed_point_as_affine_edwards(*self),
-            // Limb bounds from mul() postconditions
-            fe51_limbs_bounded(&result.X, 54),
-            fe51_limbs_bounded(&result.Y, 54),
-            fe51_limbs_bounded(&result.Z, 54),
-            // Sum bounded: X, Y each < 2^54, so sum < 2^55 < u64::MAX
+            // Limb bounds from mul() postconditions (mul produces 52-bounded output)
+            fe51_limbs_bounded(&result.X, 52),
+            fe51_limbs_bounded(&result.Y, 52),
+            fe51_limbs_bounded(&result.Z, 52),
+            // Sum bounded: X, Y each < 2^52, so sum < 2^53 < u64::MAX
             sum_of_limbs_bounded(&result.X, &result.Y, u64::MAX),
     {
         let result = ProjectivePoint {
@@ -535,12 +537,12 @@ impl CompletedPoint {
             Z: &self.Z * &self.T,
         };
         proof {
-            // Limb bounds follow from mul() postconditions
-            assert(fe51_limbs_bounded(&result.X, 54));
-            assert(fe51_limbs_bounded(&result.Y, 54));
-            assert(fe51_limbs_bounded(&result.Z, 54));
-            // Sum bounded: each limb < 2^54, so X[i] + Y[i] < 2^55 < u64::MAX
-            assert((1u64 << 54) + (1u64 << 54) < u64::MAX) by (bit_vector);
+            // Limb bounds follow from mul() postconditions (mul produces 52-bounded)
+            assert(fe51_limbs_bounded(&result.X, 52));
+            assert(fe51_limbs_bounded(&result.Y, 52));
+            assert(fe51_limbs_bounded(&result.Z, 52));
+            // Sum bounded: each limb < 2^52, so X[i] + Y[i] < 2^53 < u64::MAX
+            assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
             assume(sum_of_limbs_bounded(&result.X, &result.Y, u64::MAX));
             // Semantic postconditions
             assume(is_valid_projective_point(result));
@@ -596,10 +598,10 @@ impl ProjectivePoint {
     pub fn double(&self) -> (result: CompletedPoint)
         requires
             is_valid_projective_point(*self),
-            // preconditions for arithmetic traits
-            fe51_limbs_bounded(&self.X, 54),
-            fe51_limbs_bounded(&self.Y, 54),
-            fe51_limbs_bounded(&self.Z, 54),
+            // preconditions for arithmetic traits (ProjectivePoint invariant: 52-bounded)
+            fe51_limbs_bounded(&self.X, 52),
+            fe51_limbs_bounded(&self.Y, 52),
+            fe51_limbs_bounded(&self.Z, 52),
             sum_of_limbs_bounded(&self.X, &self.Y, u64::MAX),
         ensures
             is_valid_completed_point(result),
@@ -613,6 +615,19 @@ impl ProjectivePoint {
             fe51_limbs_bounded(&result.Z, 54),
             fe51_limbs_bounded(&result.T, 54),
     {
+        proof {
+            // Establish that 52-bounded implies 54-bounded for square() preconditions
+            assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
+            assert forall|i: int| 0 <= i < 5 implies self.X.limbs[i] < (1u64 << 54) by {
+                assert(self.X.limbs[i] < (1u64 << 52));  // from precondition
+            }
+            assert forall|i: int| 0 <= i < 5 implies self.Y.limbs[i] < (1u64 << 54) by {
+                assert(self.Y.limbs[i] < (1u64 << 52));  // from precondition
+            }
+            assert forall|i: int| 0 <= i < 5 implies self.Z.limbs[i] < (1u64 << 54) by {
+                assert(self.Z.limbs[i] < (1u64 << 52));  // from precondition
+            }
+        }
         // Double()
         let XX = self.X.square();
         let YY = self.Y.square();
@@ -620,21 +635,45 @@ impl ProjectivePoint {
 
         let X_plus_Y = &self.X + &self.Y;
         proof {
-            // preconditions for arithmetic traits
-            assume(fe51_limbs_bounded(&X_plus_Y, 54));  // for X_plus_Y_sq = X_plus_Y.square()
-            assume(sum_of_limbs_bounded(&YY, &XX, u64::MAX));  // for YY_plus_XX = &YY + &XX and YY_minus_XX = &YY - &XX
-            assume(fe51_limbs_bounded(&YY, 54) && fe51_limbs_bounded(&XX, 54));  // for YY_plus_XX = &YY + &XX and YY_minus_XX = &YY - &XX
+            // XX, YY are 52-bounded from square() postcondition
+            assert(fe51_limbs_bounded(&XX, 52));  // from square() postcondition
+            assert(fe51_limbs_bounded(&YY, 52));  // from square() postcondition
+            // With 52-bounded inputs: X_plus_Y is at most 53-bounded (2^52 + 2^52 = 2^53)
+            // This implies 54-bounded since 2^53 < 2^54
+            assert((1u64 << 53) < (1u64 << 54)) by (bit_vector);
+            assume(fe51_limbs_bounded(&X_plus_Y, 53));  // TODO: prove from add semantics
+            // Establish 54-bounded for X_plus_Y.square() precondition
+            assert forall|i: int| 0 <= i < 5 implies X_plus_Y.limbs[i] < (1u64 << 54) by {
+                assert(X_plus_Y.limbs[i] < (1u64 << 53));
+            }
+            // sum_of_limbs_bounded follows from 52-bounded: 2^52 + 2^52 = 2^53 < u64::MAX
+            assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
+            assume(sum_of_limbs_bounded(&YY, &XX, u64::MAX));  // TODO: prove from 52-bounded
         }
         let X_plus_Y_sq = X_plus_Y.square();
         let YY_plus_XX = &YY + &XX;
         let YY_minus_XX = &YY - &XX;
 
         proof {
-            // preconditions for arithmetic traits
-            assume(fe51_limbs_bounded(&X_plus_Y_sq, 54));  // for &X_plus_Y_sq - &YY_plus_XX
-            assume(fe51_limbs_bounded(&YY_plus_XX, 54));  // for &X_plus_Y_sq - &YY_plus_XX
-            assume(fe51_limbs_bounded(&YY_minus_XX, 54));  // for &ZZ2 - &YY_minus_XX
-            assume(fe51_limbs_bounded(&ZZ2, 54));  // for &ZZ2 - &YY_minus_XX
+            // X_plus_Y_sq: 52-bounded from square() postcondition
+            assert(fe51_limbs_bounded(&X_plus_Y_sq, 52));  // from square() postcondition
+            // YY_minus_XX: 54-bounded from subtraction postcondition
+            assert(fe51_limbs_bounded(&YY_minus_XX, 54));  // from subtraction postcondition
+            // YY_plus_XX: 53-bounded (52 + 52), but need to prove this
+            assume(fe51_limbs_bounded(&YY_plus_XX, 53));  // 52 + 52 = 53 (TODO: prove from add)
+            // ZZ2: need square2() postcondition
+            assume(fe51_limbs_bounded(&ZZ2, 54));  // from square2() (TODO: add postcondition)
+
+            // For subtraction &X_plus_Y_sq - &YY_plus_XX: need both 54-bounded
+            // X_plus_Y_sq is 52-bounded, YY_plus_XX is 53-bounded, both < 54
+            assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
+            assert((1u64 << 53) < (1u64 << 54)) by (bit_vector);
+            assert forall|i: int| 0 <= i < 5 implies X_plus_Y_sq.limbs[i] < (1u64 << 54) by {
+                assert(X_plus_Y_sq.limbs[i] < (1u64 << 52));
+            }
+            assert forall|i: int| 0 <= i < 5 implies YY_plus_XX.limbs[i] < (1u64 << 54) by {
+                assert(YY_plus_XX.limbs[i] < (1u64 << 53));
+            }
         }
         let result = CompletedPoint {
             X: &X_plus_Y_sq - &YY_plus_XX,
@@ -643,7 +682,21 @@ impl ProjectivePoint {
             T: &ZZ2 - &YY_minus_XX,
         };
         proof {
-            // postconditions
+            // Bounds postconditions:
+            // result.X: from subtraction → 54-bounded (directly from sub postcondition)
+            assert(fe51_limbs_bounded(&result.X, 54));  // subtraction postcondition
+            // result.Y: YY_plus_XX is 53-bounded, which implies 54-bounded
+            assert forall|i: int| 0 <= i < 5 implies result.Y.limbs[i] < (1u64 << 54) by {
+                assert(YY_plus_XX.limbs[i] < (1u64 << 53));
+                assert((1u64 << 53) < (1u64 << 54)) by (bit_vector);
+            }
+            assert(fe51_limbs_bounded(&result.Y, 54));
+            // result.Z: YY_minus_XX is 54-bounded (directly from sub postcondition)
+            assert(fe51_limbs_bounded(&result.Z, 54));  // subtraction postcondition
+            // result.T: from subtraction → 54-bounded (directly from sub postcondition)
+            assert(fe51_limbs_bounded(&result.T, 54));  // subtraction postcondition
+
+            // Semantic postconditions
             assume(is_valid_completed_point(result));
             assume(completed_point_as_affine_edwards(result) == edwards_double(
                 projective_point_as_affine_edwards(*self).0,
@@ -691,7 +744,7 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     fn add(self, other: &'b ProjectiveNielsPoint) -> (result:
         CompletedPoint)/* VERIFICATION NOTE: requires clause is in AddSpecImpl::add_req
         requires
-            is_well_formed_edwards_point(*self),
+            is_well_formed_edwards_point(*self),  // EdwardsPoint invariant: 52-bounded
             fe51_limbs_bounded(&other.Y_plus_X, 54),
             fe51_limbs_bounded(&other.Y_minus_X, 54),
             fe51_limbs_bounded(&other.Z, 54),
@@ -712,6 +765,13 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             fe51_limbs_bounded(&result.Z, 54),
             fe51_limbs_bounded(&result.T, 54),
     {
+        proof {
+            // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
+            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+        }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
@@ -787,7 +847,7 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     fn sub(self, other: &'b ProjectiveNielsPoint) -> (result:
         CompletedPoint)/* VERIFICATION NOTE: requires clause is in SubSpecImpl::sub_req
         requires
-            is_well_formed_edwards_point(*self),
+            is_well_formed_edwards_point(*self),  // EdwardsPoint invariant: 52-bounded
             fe51_limbs_bounded(&other.Y_plus_X, 54),
             fe51_limbs_bounded(&other.Y_minus_X, 54),
             fe51_limbs_bounded(&other.Z, 54),
@@ -809,6 +869,13 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
                 )
             }),
     {
+        proof {
+            // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
+            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+        }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
@@ -883,7 +950,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
     fn add(self, other: &'b AffineNielsPoint) -> (result:
         CompletedPoint)/* VERIFICATION NOTE: requires clause is in AddSpecImpl::add_req
         requires
-            is_well_formed_edwards_point(*self),
+            is_well_formed_edwards_point(*self),  // EdwardsPoint invariant: 52-bounded
             sum_of_limbs_bounded(&self.Z, &self.Z, u64::MAX),
             fe51_limbs_bounded(&other.y_plus_x, 54),
             fe51_limbs_bounded(&other.y_minus_x, 54),
@@ -899,6 +966,13 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
                 *other,
             ),
     {
+        proof {
+            // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
+            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+        }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
@@ -964,7 +1038,7 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
     fn sub(self, other: &'b AffineNielsPoint) -> (result:
         CompletedPoint)/* VERIFICATION NOTE: requires clause is in SubSpecImpl::sub_req
         requires
-            is_well_formed_edwards_point(*self),
+            is_well_formed_edwards_point(*self),  // EdwardsPoint invariant: 52-bounded
             sum_of_limbs_bounded(&self.Z, &self.Z, u64::MAX),
             fe51_limbs_bounded(&other.y_plus_x, 54),
             fe51_limbs_bounded(&other.y_minus_x, 54),
@@ -986,6 +1060,13 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
                 )
             }),
     {
+        proof {
+            // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
+            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+        }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {

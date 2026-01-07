@@ -246,12 +246,14 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
 }
 
 /// Limb bounds for safe field arithmetic on an EdwardsPoint.
-/// All coordinate limbs must fit in 54 bits for safe arithmetic operations.
+/// All coordinate limbs must fit in 52 bits.
+/// EdwardsPoint invariant: 52-bounded (multiplication reduces to 52-bit output).
+/// This gives 1 bit of headroom: 52 + 52 = 53 < 54 needed for square().
 pub open spec fn edwards_point_limbs_bounded(point: crate::edwards::EdwardsPoint) -> bool {
-    fe51_limbs_bounded(&point.X, 54) && fe51_limbs_bounded(&point.Y, 54) && fe51_limbs_bounded(
+    fe51_limbs_bounded(&point.X, 52) && fe51_limbs_bounded(&point.Y, 52) && fe51_limbs_bounded(
         &point.Z,
-        54,
-    ) && fe51_limbs_bounded(&point.T, 54)
+        52,
+    ) && fe51_limbs_bounded(&point.T, 52)
 }
 
 /// Sum bound needed for operations like as_projective_niels that compute Y+X.

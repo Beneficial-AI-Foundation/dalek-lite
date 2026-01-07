@@ -322,7 +322,8 @@ impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &FieldElement51 {
         true
     }
 
-    // Pre-condition of sub - delegates to spec_sub_limbs_bounded for consistency
+    // Pre-condition of sub - 54-bounded is the standard requirement
+    // Note: 52-bounded also works since 16*p > 2^52, use lemma_fe51_limbs_bounded_weaken if needed
     open spec fn sub_req(self, rhs: &FieldElement51) -> bool {
         fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
     }

@@ -136,15 +136,20 @@ use crate::constants;
 use crate::core_assumes::negate_field;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::add_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for as_projective proof
+use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks for p() and spec_field_element_as_nat
+use crate::specs::field_specs_u64::*;
 
 use crate::edwards::EdwardsPoint;
 use crate::field::FieldElement;
 use crate::traits::ValidityCheck;
 
+use vstd::arithmetic::div_mod::*;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -541,15 +546,80 @@ impl CompletedPoint {
             assert(fe51_limbs_bounded(&result.X, 52));
             assert(fe51_limbs_bounded(&result.Y, 52));
             assert(fe51_limbs_bounded(&result.Z, 52));
-            // Sum bounded: each limb < 2^52, so X[i] + Y[i] < 2^53 < u64::MAX
-            assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
-            assume(sum_of_limbs_bounded(&result.X, &result.Y, u64::MAX));
-            // Semantic postconditions
-            assume(is_valid_projective_point(result));
-            assume(spec_projective_point_edwards(result) == spec_completed_to_projective(*self));
-            assume(projective_point_as_affine_edwards(result) == completed_point_as_affine_edwards(
+
+            // Sum bounded: use lemma with n=52
+            assert(sum_of_limbs_bounded(&result.X, &result.Y, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&result.X, &result.Y, 52);
+            };
+
+            // Extract spec values from precondition
+            let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
+
+            // From is_valid_completed_point: z_abs != 0 and t_abs != 0
+            assert(z_abs != 0 && t_abs != 0);
+
+            // spec_field_element returns values < p, so z_abs < p and t_abs < p
+            // Therefore z_abs % p == z_abs and t_abs % p == t_abs
+            assert(z_abs < p() && t_abs < p()) by {
+                p_gt_2();  // Establish p() > 0 for lemma_mod_bound
+                lemma_mod_bound(spec_field_element_as_nat(&self.Z) as int, p() as int);
+                lemma_mod_bound(spec_field_element_as_nat(&self.T) as int, p() as int);
+            };
+
+            // Since z_abs < p and z_abs != 0, we have z_abs % p == z_abs != 0
+            assert(z_abs % p() != 0) by {
+                lemma_small_mod(z_abs, p());
+            };
+            assert(t_abs % p() != 0) by {
+                lemma_small_mod(t_abs, p());
+            };
+
+            // Result Z = Z * T, which is non-zero since both Z and T are non-zero
+            let result_z = math_field_mul(z_abs, t_abs);
+            assert(result_z != 0) by {
+                lemma_nonzero_product(z_abs, t_abs);
+            };
+
+            // Spec equivalence: show concrete multiplication matches spec
+            assert(spec_projective_point_edwards(result) == spec_completed_to_projective(*self));
+
+            // Now prove is_valid_projective_point(result)
+            // Need to show:
+            // 1. result.Z != 0 (shown above via result_z != 0)
+            // 2. (result.X/result.Z, result.Y/result.Z) is on the curve
+            //
+            // result.X/result.Z = (X*T)/(Z*T) = X/Z (by cancellation)
+            // result.Y/result.Z = (Y*Z)/(Z*T) = Y/T (by cancellation)
+            // From is_valid_completed_point: (X/Z, Y/T) is on the curve
+
+            // Cancellation for X coordinate: (X*T)/(Z*T) = X/Z
+            assert(math_field_mul(
+                math_field_mul(x_abs, t_abs),
+                math_field_inv(math_field_mul(z_abs, t_abs)),
+            ) == math_field_mul(x_abs, math_field_inv(z_abs))) by {
+                lemma_cancel_common_factor(x_abs, z_abs, t_abs);
+            };
+
+            // Cancellation for Y coordinate: (Y*Z)/(Z*T) = Y/T
+            // Rewrite as (Y*Z)/(T*Z) = Y/T using commutativity
+            assert(math_field_mul(z_abs, t_abs) == math_field_mul(t_abs, z_abs)) by {
+                lemma_field_mul_comm(z_abs, t_abs);
+            };
+            assert(math_field_mul(
+                math_field_mul(y_abs, z_abs),
+                math_field_inv(math_field_mul(t_abs, z_abs)),
+            ) == math_field_mul(y_abs, math_field_inv(t_abs))) by {
+                lemma_cancel_common_factor(y_abs, t_abs, z_abs);
+            };
+
+            // The affine coordinates of result equal those of the completed point
+            assert(projective_point_as_affine_edwards(result) == completed_point_as_affine_edwards(
                 *self,
             ));
+
+            // Therefore result is a valid projective point (same affine point as completed,
+            // which is on the curve by precondition)
+            assert(is_valid_projective_point(result));
         }
         result
     }

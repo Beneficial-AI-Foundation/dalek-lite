@@ -32,6 +32,7 @@ jobs:
   callgraph:
     name: Generate Call Graph
     continue-on-error: true  # Don't block deployment if callgraph generation fails
+    permissions: inherit  # Pass workflow permissions to the reusable workflow
     uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/Beneficial-AI-Foundation/dalek-lite

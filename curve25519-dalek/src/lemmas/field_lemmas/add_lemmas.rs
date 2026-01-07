@@ -107,13 +107,67 @@ pub proof fn lemma_fe51_limbs_bounded_weaken(fe: &FieldElement51, a: u64, b: u64
         fe51_limbs_bounded(fe, a),
         a < b,
         b <= 63,  // so 1u64 << b doesn't overflow
+
     ensures
         fe51_limbs_bounded(fe, b),
 {
-    assert forall |i: int| 0 <= i < 5 implies fe.limbs[i] < (1u64 << b) by {
+    assert forall|i: int| 0 <= i < 5 implies fe.limbs[i] < (1u64 << b) by {
         assert(fe.limbs[i] < (1u64 << a));
         assert((1u64 << a) < (1u64 << b)) by (bit_vector)
-            requires a < b, b <= 63;
+            requires
+                a < b,
+                b <= 63,
+        ;
+    }
+}
+
+/// Lemma: addition bounds propagation - if both inputs are n-bounded, result is (n+1)-bounded.
+/// This is because: limb[i] < 2^n + limb[i] < 2^n implies result[i] < 2^(n+1).
+pub proof fn lemma_add_bounds_propagate(a: &FieldElement51, b: &FieldElement51, n: u64)
+    requires
+        fe51_limbs_bounded(a, n),
+        fe51_limbs_bounded(b, n),
+        n < 63,  // so n+1 <= 63 and shifts don't overflow
+
+    ensures
+        fe51_limbs_bounded(&spec_add_fe51_limbs(a, b), (n + 1) as u64),
+{
+    let result = spec_add_fe51_limbs(a, b);
+    assert forall|i: int| 0 <= i < 5 implies result.limbs[i] < (1u64 << ((n + 1) as u64)) by {
+        // Each limb: a.limbs[i] < 2^n and b.limbs[i] < 2^n
+        // So: a.limbs[i] + b.limbs[i] < 2^n + 2^n = 2^(n+1)
+        assert(a.limbs[i] < (1u64 << n));
+        assert(b.limbs[i] < (1u64 << n));
+        assert((1u64 << n) + (1u64 << n) == (1u64 << ((n + 1) as u64))) by (bit_vector)
+            requires
+                n < 63,
+        ;
+    }
+}
+
+/// Lemma: if both inputs are n-bounded (n <= 62), then sum_of_limbs_bounded holds.
+/// This is because: 2^n + 2^n = 2^(n+1) <= 2^63 < u64::MAX when n <= 62.
+pub proof fn lemma_sum_of_limbs_bounded_from_fe51_bounded(
+    a: &FieldElement51,
+    b: &FieldElement51,
+    n: u64,
+)
+    requires
+        fe51_limbs_bounded(a, n),
+        fe51_limbs_bounded(b, n),
+        n <= 62,  // so 2^n + 2^n <= 2^63 < u64::MAX
+
+    ensures
+        sum_of_limbs_bounded(a, b, u64::MAX),
+{
+    assert forall|i: int| 0 <= i < 5 implies a.limbs[i] + b.limbs[i] < u64::MAX by {
+        assert(a.limbs[i] < (1u64 << n));
+        assert(b.limbs[i] < (1u64 << n));
+        // 2^n + 2^n = 2^(n+1) < u64::MAX when n <= 62
+        assert((1u64 << n) + (1u64 << n) < u64::MAX) by (bit_vector)
+            requires
+                n <= 62,
+        ;
     }
 }
 

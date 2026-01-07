@@ -135,7 +135,7 @@ use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 use crate::constants;
 use crate::core_assumes::negate_field;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken;
+use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -638,17 +638,18 @@ impl ProjectivePoint {
             // XX, YY are 52-bounded from square() postcondition
             assert(fe51_limbs_bounded(&XX, 52));  // from square() postcondition
             assert(fe51_limbs_bounded(&YY, 52));  // from square() postcondition
-            // With 52-bounded inputs: X_plus_Y is at most 53-bounded (2^52 + 2^52 = 2^53)
-            // This implies 54-bounded since 2^53 < 2^54
-            assert((1u64 << 53) < (1u64 << 54)) by (bit_vector);
-            assume(fe51_limbs_bounded(&X_plus_Y, 53));  // TODO: prove from add semantics
-            // Establish 54-bounded for X_plus_Y.square() precondition
-            assert forall|i: int| 0 <= i < 5 implies X_plus_Y.limbs[i] < (1u64 << 54) by {
-                assert(X_plus_Y.limbs[i] < (1u64 << 53));
+            // X_plus_Y is 53-bounded: 52-bounded + 52-bounded = 53-bounded
+            assert(fe51_limbs_bounded(&X_plus_Y, 53)) by {
+                lemma_add_bounds_propagate(&self.X, &self.Y, 52);
             }
-            // sum_of_limbs_bounded follows from 52-bounded: 2^52 + 2^52 = 2^53 < u64::MAX
-            assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
-            assume(sum_of_limbs_bounded(&YY, &XX, u64::MAX));  // TODO: prove from 52-bounded
+            // Establish 54-bounded for X_plus_Y.square() precondition
+            assert(fe51_limbs_bounded(&X_plus_Y, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&X_plus_Y, 53, 54);
+            }
+            // sum_of_limbs_bounded for YY + XX: both are 52-bounded
+            assert(sum_of_limbs_bounded(&YY, &XX, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&YY, &XX, 52);
+            }
         }
         let X_plus_Y_sq = X_plus_Y.square();
         let YY_plus_XX = &YY + &XX;
@@ -659,20 +660,19 @@ impl ProjectivePoint {
             assert(fe51_limbs_bounded(&X_plus_Y_sq, 52));  // from square() postcondition
             // YY_minus_XX: 54-bounded from subtraction postcondition
             assert(fe51_limbs_bounded(&YY_minus_XX, 54));  // from subtraction postcondition
-            // YY_plus_XX: 53-bounded (52 + 52), but need to prove this
-            assume(fe51_limbs_bounded(&YY_plus_XX, 53));  // 52 + 52 = 53 (TODO: prove from add)
-            // ZZ2: need square2() postcondition
-            assume(fe51_limbs_bounded(&ZZ2, 54));  // from square2() (TODO: add postcondition)
+            // YY_plus_XX: 53-bounded (52 + 52 = 53)
+            assert(fe51_limbs_bounded(&YY_plus_XX, 53)) by {
+                lemma_add_bounds_propagate(&YY, &XX, 52);
+            }
+            // ZZ2: 54-bounded from square2() postcondition
+            assert(fe51_limbs_bounded(&ZZ2, 54));  // from square2() postcondition
 
             // For subtraction &X_plus_Y_sq - &YY_plus_XX: need both 54-bounded
-            // X_plus_Y_sq is 52-bounded, YY_plus_XX is 53-bounded, both < 54
-            assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
-            assert((1u64 << 53) < (1u64 << 54)) by (bit_vector);
-            assert forall|i: int| 0 <= i < 5 implies X_plus_Y_sq.limbs[i] < (1u64 << 54) by {
-                assert(X_plus_Y_sq.limbs[i] < (1u64 << 52));
+            assert(fe51_limbs_bounded(&X_plus_Y_sq, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&X_plus_Y_sq, 52, 54);
             }
-            assert forall|i: int| 0 <= i < 5 implies YY_plus_XX.limbs[i] < (1u64 << 54) by {
-                assert(YY_plus_XX.limbs[i] < (1u64 << 53));
+            assert(fe51_limbs_bounded(&YY_plus_XX, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&YY_plus_XX, 53, 54);
             }
         }
         let result = CompletedPoint {

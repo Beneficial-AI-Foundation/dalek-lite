@@ -151,7 +151,7 @@ jobs:
             exit 1
           fi
       - name: Fix callgraph asset paths for subpath deployment
-        if: always()  # Only run if callgraph was downloaded
+        if: always()  # Always run to handle callgraph path fixes when available
         run: |
           # The callgraph viewer references /callgraph/assets/... but we're at /dalek-lite/callgraph/
           # Fix the paths in the HTML file and verify that the replacements succeeded

@@ -847,7 +847,7 @@ impl Identity for EdwardsPoint {
             // is_well_formed_edwards_point requires:
             // - is_valid_edwards_point (identity is on curve)
             // - edwards_point_limbs_bounded (all limbs < 2^54)
-            // - edwards_point_sum_bounded (Y + X doesn't overflow)
+            // - sum_of_limbs_bounded (Y + X doesn't overflow)
             // ZERO/ONE have limbs [0/1, 0, 0, 0, 0] which are trivially bounded
             assume(is_well_formed_edwards_point(result));
         }
@@ -1114,7 +1114,7 @@ impl EdwardsPoint {
     pub(crate) fn as_projective_niels(&self) -> (result: ProjectiveNielsPoint)
         requires
             edwards_point_limbs_bounded(*self),
-            edwards_point_sum_bounded(*self),
+            sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX),
         ensures
             projective_niels_corresponds_to_edwards(result, *self),
             fe51_limbs_bounded(&result.Y_plus_X, 54),

@@ -1,0 +1,152 @@
+name: Certify Verification Results
+
+on:
+  push:
+    branches:
+      - main
+      - la/try_cert
+    paths:
+      - '.github/workflows/certify-verification.yml'  # For testing, remove after merge
+      - 'curve25519-dalek/src/**/*.rs'
+      - 'curve25519-dalek/build.rs'
+  workflow_dispatch:
+
+
+jobs:
+  verify-and-certify:
+    name: Run Verification & Certify On-Chain
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout dalek repository
+        uses: actions/checkout@v4
+        with:
+          path: dalek
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.91.0
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-certify-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-certify-
+            ${{ runner.os }}-cargo-
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Install verus-analyzer
+        run: |
+          VERUS_URL=$(curl -s https://api.github.com/repos/verus-lang/verus-analyzer/releases/latest | jq -r '.assets[] | select(.name == "verus-analyzer-x86_64-unknown-linux-gnu.gz") | .browser_download_url')
+          wget "$VERUS_URL" -O verus-analyzer.gz
+          gunzip verus-analyzer.gz
+          chmod +x verus-analyzer
+          sudo mv verus-analyzer /usr/local/bin/
+          verus-analyzer --version
+
+      - name: Install Verus
+        run: |
+          # Use specific Verus version compatible with Rust 1.91.0
+          # Same as dalek-lite CI: https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/.github/workflows/ci.yml
+          wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
+          unzip verus-0.2025.11.23.41c5885-x86-linux.zip
+          mv verus-x86-linux ~/.cargo/bin
+          cd ~/.cargo/bin
+          ln -s verus-x86-linux/cargo-verus
+          echo "Verus installed"
+
+      - name: Install scip CLI
+        run: |
+          SCIP_URL=$(curl -s https://api.github.com/repos/sourcegraph/scip/releases/latest | jq -r '.assets[] | select(.name == "scip-linux-amd64.tar.gz") | .browser_download_url')
+          wget "$SCIP_URL" -O scip-linux.tar.gz
+          tar -xzf scip-linux.tar.gz
+          chmod +x scip
+          sudo mv scip /usr/local/bin/
+          scip --version
+
+      - name: Install scip-atoms
+        run: |
+          cargo install --git https://github.com/Beneficial-AI-Foundation/scip-atoms
+
+      - name: Run scip-atoms verify
+        id: verify
+        working-directory: dalek
+        run: |
+          # Run verification and generate JSON results
+          scip-atoms verify ./curve25519-dalek \
+            -p curve25519-dalek \
+            --json-output results.json \
+            --with-scip-names
+          
+          # Output file path for later steps
+          echo "results_file=$PWD/results.json" >> $GITHUB_OUTPUT
+          
+          # Show summary
+          echo "=== Verification Results Summary ==="
+          cat results.json | jq '.summary'
+
+      - name: Upload verification results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-results
+          path: dalek/results.json
+          retention-days: 90
+
+      # --- Certification to Sepolia ---
+      
+      - name: Checkout eth_certify
+        uses: actions/checkout@v4
+        with:
+          repository: Beneficial-AI-Foundation/eth_certify
+          token: ${{ secrets.CERTIFY_REPO_PAT }}
+          path: certify
+          submodules: recursive
+
+      - name: Install Python and uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install certify dependencies
+        working-directory: certify
+        run: |
+          uv sync
+
+      - name: Create certify.conf for verification results
+        working-directory: certify
+        env:
+          RESULTS_FILE: ${{ steps.verify.outputs.results_file }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          # Configure to certify the local verification results file
+          echo "# Auto-generated for CI certification" > certify.conf
+          echo "CERTIFY_SOURCE=\"${RESULTS_FILE}\"" >> certify.conf
+          echo "CERTIFY_DESCRIPTION=\"Dalek-Lite Verus Verification Results - Commit ${COMMIT_SHA}\"" >> certify.conf
+          
+          echo "=== certify.conf ==="
+          cat certify.conf
+
+      - name: Certify verification results on Sepolia
+        working-directory: certify
+        env:
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.CERTIFY_PRIVATE_KEY }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+          CERTIFY_ADDRESS: ${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}
+        run: |
+          echo "Certifying verification results hash on Sepolia testnet..."
+          uv run certify-cli certify --network sepolia
+          
+          echo ""
+          echo "✅ Verification results certified on-chain!"
+          echo "View events: https://sepolia.etherscan.io/address/${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}#events"
+

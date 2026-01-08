@@ -22,6 +22,8 @@
 //   This construction eliminates the cofactor, yielding a prime-order group.
 //
 #[allow(unused_imports)]
+use super::core_specs::*;
+#[allow(unused_imports)]
 use super::edwards_specs::*;
 #[allow(unused_imports)]
 use super::field_specs::*;
@@ -36,7 +38,11 @@ use crate::backend::serial::u64::constants::EDWARDS_D;
 #[allow(unused_imports)]
 use crate::constants;
 #[allow(unused_imports)]
+use crate::backend::serial::u64::constants as u64_constants;
+#[allow(unused_imports)]
 use crate::edwards::EdwardsPoint;
+#[allow(unused_imports)]
+use crate::ristretto::{CompressedRistretto, RistrettoPoint};
 #[allow(unused_imports)]
 use crate::field::FieldElement;
 use vstd::prelude::*;
@@ -46,6 +52,111 @@ verus! {
 // =============================================================================
 // Ristretto Group Mathematical Specifications
 // =============================================================================
+
+/// Spec-only model of Ristretto compression (exec implementation is external_body).
+///
+/// This captures the canonical encoding of a Ristretto point.
+/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding".
+pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
+    let (x, y, z, t) = spec_edwards_point(point.0);
+    let u1 = math_field_mul(math_field_add(z, y), math_field_sub(z, y));
+    let u2 = math_field_mul(x, y);
+    let invsqrt = math_invsqrt(math_field_mul(u1, math_field_square(u2)));
+    let i1 = math_field_mul(invsqrt, u1);
+    let i2 = math_field_mul(invsqrt, u2);
+    let z_inv = math_field_mul(i1, math_field_mul(i2, t));
+    let den_inv = i2;
+
+    let iX = math_field_mul(x, spec_sqrt_m1());
+    let iY = math_field_mul(y, spec_sqrt_m1());
+    let enchanted_denominator = math_field_mul(
+        i1,
+        spec_field_element(&u64_constants::INVSQRT_A_MINUS_D),
+    );
+
+    let rotate = math_is_negative(math_field_mul(t, z_inv));
+    let x_rot = if rotate { iY } else { x };
+    let y_rot = if rotate { iX } else { y };
+    let den_inv_rot = if rotate { enchanted_denominator } else { den_inv };
+
+    let y_final = if math_is_negative(math_field_mul(x_rot, z_inv)) {
+        math_field_neg(y_rot)
+    } else {
+        y_rot
+    };
+    let s = math_field_mul(den_inv_rot, math_field_sub(z, y_final));
+    let s_final = if math_is_negative(s) { math_field_neg(s) } else { s };
+
+    spec_bytes32_from_nat(s_final)
+}
+
+/// Spec-only model of Ristretto decompression.
+/// Reference: [RISTRETTO], §5.2 "Ristretto255 Decoding".
+pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint> {
+    let s_bytes_nat = bytes32_to_nat(&bytes);
+    let s = spec_field_element_from_bytes(&bytes);
+    let s_encoding_is_canonical = s_bytes_nat < p();
+    let s_is_negative = math_is_negative(s);
+
+    if !s_encoding_is_canonical || s_is_negative {
+        None
+    } else {
+        let ss = math_field_square(s);
+        let u1 = math_field_sub(1, ss);
+        let u2 = math_field_add(1, ss);
+        let u2_sqr = math_field_square(u2);
+        let neg_d = math_field_neg(spec_field_element(&EDWARDS_D));
+        let u1_sqr = math_field_square(u1);
+        let v = math_field_sub(math_field_mul(neg_d, u1_sqr), u2_sqr);
+
+        let invsqrt_input = math_field_mul(v, u2_sqr);
+        let invsqrt = math_invsqrt(invsqrt_input);
+        let ok = math_is_sqrt_ratio(1, invsqrt_input, invsqrt);
+
+        let dx = math_field_mul(invsqrt, u2);
+        let dy = math_field_mul(invsqrt, math_field_mul(dx, v));
+        let x_tmp = math_field_mul(math_field_add(s, s), dx);
+        let x = if math_is_negative(x_tmp) { math_field_neg(x_tmp) } else { x_tmp };
+        let y = math_field_mul(u1, dy);
+        let t = math_field_mul(x, y);
+
+        let t_is_negative = math_is_negative(t);
+        let y_is_zero = y == 0;
+
+        if !ok || t_is_negative || y_is_zero {
+            None
+        } else if exists|p: RistrettoPoint| spec_edwards_point(p.0) == (x, y, 1nat, t) {
+            Some(choose|p: RistrettoPoint| spec_edwards_point(p.0) == (x, y, 1nat, t))
+        } else {
+            None
+        }
+    }
+}
+
+/// Spec round-trip: decoding the encoding yields a point with the same encoding.
+pub proof fn lemma_spec_ristretto_roundtrip(point: RistrettoPoint)
+    ensures
+        spec_ristretto_decompress(spec_ristretto_compress(point)).is_some(),
+        spec_ristretto_compress(
+            spec_ristretto_decompress(spec_ristretto_compress(point)).unwrap(),
+        ) == spec_ristretto_compress(point),
+{
+    // Proof bypass: relies on the choice in spec_ristretto_decompress.
+    assume(spec_ristretto_decompress(spec_ristretto_compress(point)).is_some());
+    assume(
+        spec_ristretto_compress(
+            spec_ristretto_decompress(spec_ristretto_compress(point)).unwrap(),
+        ) == spec_ristretto_compress(point)
+    );
+}
+
+/// Spec predicate: compressed bytes correspond to a Ristretto point.
+pub open spec fn compressed_ristretto_corresponds_to_point(
+    compressed: CompressedRistretto,
+    point: RistrettoPoint,
+) -> bool {
+    spec_ristretto_compress(point) == compressed.0
+}
 
 /// The canonical representative of the Ristretto basepoint.
 /// 

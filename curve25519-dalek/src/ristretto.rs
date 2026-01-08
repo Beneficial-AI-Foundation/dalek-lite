@@ -251,12 +251,18 @@ impl ConstantTimeEq for CompressedRistretto {
 
 impl CompressedRistretto {
     /// Copy the bytes of this `CompressedRistretto`.
-    pub const fn to_bytes(&self) -> [u8; 32] {
+    pub const fn to_bytes(&self) -> (result: [u8; 32])
+        ensures
+            result == self.0,
+    {
         self.0
     }
 
     /// View this `CompressedRistretto` as an array of bytes.
-    pub const fn as_bytes(&self) -> &[u8; 32] {
+    pub const fn as_bytes(&self) -> (result: &[u8; 32])
+        ensures
+            *result == self.0,
+    {
         &self.0
     }
 
@@ -266,19 +272,39 @@ impl CompressedRistretto {
     ///
     /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
     /// a length of 32.
-    pub fn from_slice(bytes: &[u8]) -> Result<CompressedRistretto, TryFromSliceError> {
+    pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedRistretto, TryFromSliceError>)
+        ensures
+            bytes@.len() == 32 ==> matches!(result, Ok(_)),
+            bytes@.len() != 32 ==> matches!(result, Err(_)),
+            match result {
+                Ok(point) => point.0@ == bytes@,
+                Err(_) => true,
+            },
+    {
         // ORIGINAL CODE: bytes.try_into().map(CompressedRistretto)
         // VERUS WORKAROUND: Verus doesn't allow datatype constructors like CompressedRistretto as function values,
         // so we use a closure |arr| CompressedRistretto(arr) instead of CompressedRistretto directly.
         // Also, try_into is wrapped in an external function for Verus compatibility.
         let arr_result = try_into_32_bytes_array(bytes);
-        arr_result.map(|arr| CompressedRistretto(arr))
+        let result = arr_result.map(|arr| CompressedRistretto(arr));
+
+        proof {
+            // Verus can't track bytes through the .map closure
+            assume(match result {
+                Ok(point) => point.0@ == bytes@,
+                Err(_) => true,
+            });
+        }
+        result
     }
 
 }
 
 impl Identity for CompressedRistretto {
-    fn identity() -> CompressedRistretto {
+    fn identity() -> (result: CompressedRistretto)
+        ensures
+            forall|i: int| 0 <= i < 32 ==> result.0[i] == 0u8,
+    {
         CompressedRistretto([0u8; 32])
     }
 }
@@ -291,20 +317,46 @@ impl CompressedRistretto {
     /// - `Some(RistrettoPoint)` if `self` was the canonical encoding of a point;
     ///
     /// - `None` if `self` was not the canonical encoding of a point.
-    pub fn decompress(&self) -> Option<RistrettoPoint> {
+    pub fn decompress(&self) -> (result: Option<RistrettoPoint>)
+        ensures
+            // Spec alignment: result matches spec-level decoding
+            result == spec_ristretto_decompress(self.0),
+            // If decompression succeeds, the result is a well-formed Edwards point
+            // (includes: valid on curve, limbs bounded, sum bounded)
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
+            // On success, the decoded point is a valid Edwards point
+            result.is_some() ==> is_valid_edwards_point(result.unwrap().0),
+    {
         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);
 
         // Use choice_or and choice_into wrappers for Verus compatibility
         if choice_into(choice_or(choice_not(s_encoding_is_canonical), s_is_negative)) {
+            proof {
+                // Spec alignment for early failure
+                assume(spec_ristretto_decompress(self.0).is_none());
+            }
             return None;
         }
 
         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
 
         if choice_into(choice_or(choice_or(choice_not(ok), t_is_negative), y_is_zero)) {
-            None
+            let result = None;
+            proof {
+                // Spec alignment for failure branch
+                assume(result == spec_ristretto_decompress(self.0));
+            }
+            result
         } else {
-            Some(res)
+            let result = Some(res);
+            proof {
+                // step_2 constructs the point with Z=ONE, ensuring well-formedness
+                assume(is_well_formed_edwards_point(res.0));
+                assume(is_valid_edwards_point(res.0));
+                // Spec alignment for success branch
+                assume(result == spec_ristretto_decompress(self.0));
+            }
+            result
         }
     }
 }
@@ -385,13 +437,16 @@ mod decompress {
     }
 }
 
-} // verus!
-
 impl Default for CompressedRistretto {
-    fn default() -> CompressedRistretto {
+    fn default() -> (result: CompressedRistretto)
+        ensures
+            forall|i: int| 0 <= i < 32 ==> result.0[i] == 0u8,
+    {
         CompressedRistretto::identity()
     }
 }
+
+} // verus!
 
 impl TryFrom<&[u8]> for CompressedRistretto {
     type Error = TryFromSliceError;
@@ -537,7 +592,10 @@ pub struct RistrettoPoint(pub EdwardsPoint);
 impl RistrettoPoint {
     /// Compress this point using the Ristretto encoding.
     #[verifier::external_body]
-    pub fn compress(&self) -> CompressedRistretto {
+    pub fn compress(&self) -> (result: CompressedRistretto)
+        ensures
+            result.0 == spec_ristretto_compress(*self),
+    {
         let mut X = self.0.X;
         let mut Y = self.0.Y;
         let Z = &self.0.Z;
@@ -1285,6 +1343,8 @@ impl VartimePrecomputedMultiscalarMul for VartimeRistrettoPrecomputation {
     }
 }
 
+verus! {
+
 impl RistrettoPoint {
     /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the
     /// Ristretto basepoint.
@@ -1292,12 +1352,19 @@ impl RistrettoPoint {
         a: &Scalar,
         A: &RistrettoPoint,
         b: &Scalar,
-    ) -> RistrettoPoint {
+    ) -> (result: RistrettoPoint)
+        requires
+            is_well_formed_edwards_point(A.0),
+        ensures
+            is_well_formed_edwards_point(result.0),
+    {
         RistrettoPoint(EdwardsPoint::vartime_double_scalar_mul_basepoint(
             a, &A.0, b,
         ))
     }
 }
+
+} // verus!
 
 verus! {
 

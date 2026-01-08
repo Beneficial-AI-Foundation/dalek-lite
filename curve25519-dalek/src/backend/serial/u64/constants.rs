@@ -76,8 +76,10 @@ pub(crate) const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
     ],
 };
 
+verus! {
+
 /// `= 1/sqrt(a-d)`, where `a = -1 (mod p)`, `d` are the Edwards curve parameters.
-pub(crate) const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
+pub const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
     limbs: [
         278908739862762,
         821645201101625,
@@ -86,8 +88,6 @@ pub(crate) const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
         2118520810568447,
     ],
 };
-
-verus! {
 
 /// `APLUS2_OVER_FOUR` is (A+2)/4. (This is used internally within the Montgomery ladder.)
 pub(crate) const APLUS2_OVER_FOUR: FieldElement51 = FieldElement51 { limbs: [121666, 0, 0, 0, 0] };

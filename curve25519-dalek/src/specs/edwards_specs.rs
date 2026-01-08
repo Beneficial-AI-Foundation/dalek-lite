@@ -113,7 +113,7 @@ pub proof fn axiom_ed25519_basepoint_table_valid()
 }
 
 /// Axiom: All 8-torsion points are well-formed.
-/// 
+///
 /// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
 /// Each element has:
 /// - Explicit limb constants that are all < 2^54 (satisfying limb bounds)
@@ -136,7 +136,6 @@ pub proof fn axiom_eight_torsion_well_formed()
 }
 
 } // verus!
-
 /// Test that all 8-torsion points satisfy the well-formedness conditions.
 /// This validates the axiom_eight_torsion_well_formed() axiom.
 #[cfg(test)]
@@ -162,7 +161,9 @@ mod eight_torsion_tests {
 
     fn sum_bounded(p: &EdwardsPoint) -> bool {
         // Check Y + X doesn't overflow
-        p.Y.limbs.iter().zip(p.X.limbs.iter())
+        p.Y.limbs
+            .iter()
+            .zip(p.X.limbs.iter())
             .all(|(&y, &x)| (y as u128) + (x as u128) <= u64::MAX as u128)
     }
 
@@ -170,8 +171,16 @@ mod eight_torsion_tests {
     fn test_eight_torsion_well_formed() {
         for (i, point) in EIGHT_TORSION.iter().enumerate() {
             assert!(z_nonzero(point), "EIGHT_TORSION[{}] has Z = 0", i);
-            assert!(point_limbs_bounded(point), "EIGHT_TORSION[{}] limbs exceed 2^54", i);
-            assert!(sum_bounded(point), "EIGHT_TORSION[{}] Y+X would overflow", i);
+            assert!(
+                point_limbs_bounded(point),
+                "EIGHT_TORSION[{}] limbs exceed 2^54",
+                i
+            );
+            assert!(
+                sum_bounded(point),
+                "EIGHT_TORSION[{}] Y+X would overflow",
+                i
+            );
         }
     }
 }

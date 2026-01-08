@@ -93,10 +93,42 @@ pub const X25519_BASEPOINT: MontgomeryPoint = MontgomeryPoint(
 );
 
 /// The Ristretto basepoint, in `CompressedRistretto` format.
-pub const RISTRETTO_BASEPOINT_COMPRESSED: CompressedRistretto = CompressedRistretto([
-    0xe2, 0xf2, 0xae, 0x0a, 0x6a, 0xbc, 0x4e, 0x71, 0xa8, 0x84, 0xa9, 0x61, 0xc5, 0x00, 0x51, 0x5f,
-    0x58, 0xe3, 0x0b, 0x6a, 0xa5, 0x82, 0xdd, 0x8d, 0xb6, 0xa6, 0x59, 0x45, 0xe0, 0x8d, 0x2d, 0x76,
-]);
+pub const RISTRETTO_BASEPOINT_COMPRESSED: CompressedRistretto = CompressedRistretto(
+    [
+        0xe2,
+        0xf2,
+        0xae,
+        0x0a,
+        0x6a,
+        0xbc,
+        0x4e,
+        0x71,
+        0xa8,
+        0x84,
+        0xa9,
+        0x61,
+        0xc5,
+        0x00,
+        0x51,
+        0x5f,
+        0x58,
+        0xe3,
+        0x0b,
+        0x6a,
+        0xa5,
+        0x82,
+        0xdd,
+        0x8d,
+        0xb6,
+        0xa6,
+        0x59,
+        0x45,
+        0xe0,
+        0x8d,
+        0x2d,
+        0x76,
+    ],
+);
 
 /// The Ristretto basepoint, as a `RistrettoPoint`.
 ///
@@ -105,7 +137,6 @@ pub const RISTRETTO_BASEPOINT_COMPRESSED: CompressedRistretto = CompressedRistre
 pub const RISTRETTO_BASEPOINT_POINT: RistrettoPoint = RistrettoPoint(ED25519_BASEPOINT_POINT);
 
 } // verus!
-
 /// `BASEPOINT_ORDER` is the order of the Ristretto group and of the Ed25519 basepoint, i.e.,
 /// $$
 /// \ell = 2^\{252\} + 27742317777372353535851937790883648493.
@@ -170,13 +201,11 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 };
 
 } // verus!
-
 // #[cfg(test)]
 // mod test {
 //     use crate::constants;
 //     use crate::field::FieldElement;
 //     use crate::traits::{IsIdentity, ValidityCheck};
-
 //     #[test]
 //     fn test_eight_torsion() {
 //         for i in 0..8 {
@@ -185,7 +214,6 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 //             assert!(Q.is_identity());
 //         }
 //     }
-
 //     #[test]
 //     fn test_four_torsion() {
 //         for i in (0..8).filter(|i| i % 2 == 0) {
@@ -194,7 +222,6 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 //             assert!(Q.is_identity());
 //         }
 //     }
-
 //     #[test]
 //     fn test_two_torsion() {
 //         for i in (0..8).filter(|i| i % 4 == 0) {
@@ -203,7 +230,6 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 //             assert!(Q.is_identity());
 //         }
 //     }
-
 //     /// Test that SQRT_M1 is the positive square root of -1
 //     #[test]
 //     fn test_sqrt_minus_one() {
@@ -212,7 +238,6 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 //         assert_eq!(minus_one, sqrt_m1_sq);
 //         assert!(bool::from(!constants::SQRT_M1.is_negative()));
 //     }
-
 //     #[test]
 //     fn test_sqrt_constants_sign() {
 //         let minus_one = FieldElement::MINUS_ONE;
@@ -221,7 +246,6 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 //         let sign_test_sqrt = &invsqrt_m1 * &constants::SQRT_M1;
 //         assert_eq!(sign_test_sqrt, minus_one);
 //     }
-
 //     /// Test that d = -121665/121666
 //     #[test]
 //     #[cfg(all(curve25519_dalek_bits = "32", not(curve25519_dalek_backend = "fiat")))]
@@ -234,7 +258,6 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 //         assert_eq!(d, constants::EDWARDS_D);
 //         assert_eq!(d2, constants::EDWARDS_D2);
 //     }
-
 //     /// Test that d = -121665/121666
 //     #[test]
 //     #[cfg(all(curve25519_dalek_bits = "64", not(curve25519_dalek_backend = "fiat")))]
@@ -247,7 +270,6 @@ pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
 //         assert_eq!(d, constants::EDWARDS_D);
 //         assert_eq!(d2, constants::EDWARDS_D2);
 //     }
-
 //     #[test]
 //     fn test_sqrt_ad_minus_one() {
 //         let a = FieldElement::MINUS_ONE;

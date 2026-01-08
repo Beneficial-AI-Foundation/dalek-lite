@@ -178,13 +178,16 @@ use digest::Digest;
 
 use crate::constants;
 
-use crate::field::FieldElement;
-#[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::subtle_assumes::{choice_into, choice_not, choice_or, conditional_assign_generic, conditional_negate_field_element, ct_eq_bytes32};
 #[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)] // Used in verus! blocks
+use crate::backend::serial::u64::subtle_assumes::{
+    choice_into, choice_not, choice_or, conditional_assign_generic,
+    conditional_negate_field_element, ct_eq_bytes32,
+};
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
+use crate::field::FieldElement;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -229,7 +232,6 @@ verus! {
 // ------------------------------------------------------------------------
 // Compressed points
 // ------------------------------------------------------------------------
-
 /// A Ristretto point, in compressed wire format.
 ///
 /// The Ristretto encoding is canonical, so two points are equal if and
@@ -297,7 +299,6 @@ impl CompressedRistretto {
         }
         result
     }
-
 }
 
 impl Identity for CompressedRistretto {
@@ -305,7 +306,7 @@ impl Identity for CompressedRistretto {
         ensures
             forall|i: int| 0 <= i < 32 ==> result.0[i] == 0u8,
     {
-        CompressedRistretto([0u8; 32])
+        CompressedRistretto([0u8;32])
     }
 }
 
@@ -319,7 +320,8 @@ impl CompressedRistretto {
     /// - `None` if `self` was not the canonical encoding of a point.
     pub fn decompress(&self) -> (result: Option<RistrettoPoint>)
         ensures
-            // Spec alignment: result matches spec-level decoding
+    // Spec alignment: result matches spec-level decoding
+
             result == spec_ristretto_decompress(self.0),
             // If decompression succeeds, the result is a well-formed Edwards point
             // (includes: valid on curve, limbs bounded, sum bounded)
@@ -337,7 +339,6 @@ impl CompressedRistretto {
             }
             return None;
         }
-
         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
 
         if choice_into(choice_or(choice_or(choice_not(ok), t_is_negative), y_is_zero)) {
@@ -375,7 +376,6 @@ mod decompress {
         // as s+p in 2^255-19..2^255-1.  We can check this by
         // converting back to bytes, and checking that we get the
         // original input, since our encoding routine is canonical.
-
         let s = FieldElement::from_bytes(repr.as_bytes());
         let s_bytes_check = s.as_bytes();
         // ORIGINAL CODE: let s_encoding_is_canonical = s_bytes_check[..].ct_eq(repr.as_bytes());
@@ -388,14 +388,16 @@ mod decompress {
 
     pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint)) {
         // VERIFICATION NOTE: assume(false) postpones limb bounds tracking and other proof obligations.
-        proof { assume(false); }
-        
+        proof {
+            assume(false);
+        }
+
         // Step 2.  Compute (X:Y:Z:T).
         let one = FieldElement::ONE;
         let ss = s.square();
-        let u1 = &one - &ss; //  1 + as²
-        let u2 = &one + &ss; //  1 - as²    where a=-1
-        let u2_sqr = u2.square(); // (1 - as²)²
+        let u1 = &one - &ss;  //  1 + as²
+        let u2 = &one + &ss;  //  1 - as²    where a=-1
+        let u2_sqr = u2.square();  // (1 - as²)²
 
         // v == ad(1+as²)² - (1-as²)²            where d=-121665/121666
         // ORIGINAL CODE: let v = &(&(-&constants::EDWARDS_D) * &u1.square()) - &u2_sqr;
@@ -405,10 +407,10 @@ mod decompress {
         let u1_sqr = u1.square();
         let v = &(&neg_d * &u1_sqr) - &u2_sqr;
 
-        let (ok, I) = (&v * &u2_sqr).invsqrt(); // 1/sqrt(v*u_2²)
+        let (ok, I) = (&v * &u2_sqr).invsqrt();  // 1/sqrt(v*u_2²)
 
-        let Dx = &I * &u2; // 1/sqrt(v)
-        let Dy = &I * &(&Dx * &v); // 1/u2
+        let Dx = &I * &u2;  // 1/sqrt(v)
+        let Dy = &I * &(&Dx * &v);  // 1/u2
 
         // x == | 2s/sqrt(v) | == + sqrt(4s²/(ad(1+as²)² - (1-as²)²))
         let mut x = &(&s + &s) * &Dx;
@@ -427,14 +429,10 @@ mod decompress {
             ok,
             t.is_negative(),
             y.is_zero(),
-            RistrettoPoint(EdwardsPoint {
-                X: x,
-                Y: y,
-                Z: one,
-                T: t,
-            }),
+            RistrettoPoint(EdwardsPoint { X: x, Y: y, Z: one, T: t }),
         )
     }
+
 }
 
 impl Default for CompressedRistretto {
@@ -447,7 +445,6 @@ impl Default for CompressedRistretto {
 }
 
 } // verus!
-
 impl TryFrom<&[u8]> for CompressedRistretto {
     type Error = TryFromSliceError;
 
@@ -596,7 +593,9 @@ impl RistrettoPoint {
             result.0 == spec_ristretto_compress(*self),
     {
         // VERIFICATION NOTE: assume(false) postpones proof obligations for compress
-        proof { assume(false); }
+        proof {
+            assume(false);
+        }
 
         let mut X = self.0.X;
         let mut Y = self.0.Y;
@@ -674,7 +673,7 @@ impl RistrettoPoint {
     #[verifier::external_body]
     pub fn double_and_compress_batch<'a, I>(points: I) -> Vec<CompressedRistretto> where
         I: IntoIterator<Item = &'a RistrettoPoint>,
-    {
+     {
         #[derive(Copy, Clone, Debug)]
         struct BatchCompressState {
             e: FieldElement,
@@ -692,72 +691,74 @@ impl RistrettoPoint {
         }
 
         impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
-            #[rustfmt::skip] // keep alignment of explanatory comments
+            #[rustfmt::skip]  // keep alignment of explanatory comments
             fn from(P: &'a RistrettoPoint) -> BatchCompressState {
                 let XX = P.0.X.square();
                 let YY = P.0.Y.square();
                 let ZZ = P.0.Z.square();
                 let dTT = &P.0.T.square() * &constants::EDWARDS_D;
 
-                let e = &P.0.X * &(&P.0.Y + &P.0.Y); // = 2*X*Y
-                let f = &ZZ + &dTT;                  // = Z^2 + d*T^2
-                let g = &YY + &XX;                   // = Y^2 - a*X^2
-                let h = &ZZ - &dTT;                  // = Z^2 - d*T^2
+                let e = &P.0.X * &(&P.0.Y + &P.0.Y);  // = 2*X*Y
+                let f = &ZZ + &dTT;  // = Z^2 + d*T^2
+                let g = &YY + &XX;  // = Y^2 - a*X^2
+                let h = &ZZ - &dTT;  // = Z^2 - d*T^2
 
                 let eg = &e * &g;
                 let fh = &f * &h;
 
-                BatchCompressState{ e, f, g, h, eg, fh }
+                BatchCompressState { e, f, g, h, eg, fh }
             }
         }
 
-        let states: Vec<BatchCompressState> =
-            points.into_iter().map(BatchCompressState::from).collect();
+        let states: Vec<BatchCompressState> = points.into_iter().map(
+            BatchCompressState::from,
+        ).collect();
 
         let mut invs: Vec<FieldElement> = states.iter().map(|state| state.efgh()).collect();
 
-        FieldElement::batch_invert(&mut invs[..]);
+        // ORIGINAL CODE: FieldElement::batch_invert(&mut invs[..]);
+        // VERUSFMT WORKAROUND: Use as_mut_slice() instead of [..] which verusfmt can't parse
+        FieldElement::batch_invert(invs.as_mut_slice());
 
-        states
-            .iter()
-            .zip(invs.iter())
-            .map(|(state, inv): (&BatchCompressState, &FieldElement)| {
-                let Zinv = &state.eg * inv;
-                let Tinv = &state.fh * inv;
+        states.iter().zip(invs.iter()).map(
+            |(state, inv): (&BatchCompressState, &FieldElement)|
+                {
+                    let Zinv = &state.eg * inv;
+                    let Tinv = &state.fh * inv;
 
-                let mut magic = constants::INVSQRT_A_MINUS_D;
+                    let mut magic = constants::INVSQRT_A_MINUS_D;
 
-                let negcheck1 = (&state.eg * &Zinv).is_negative();
+                    let negcheck1 = (&state.eg * &Zinv).is_negative();
 
-                let mut e = state.e;
-                let mut g = state.g;
-                let mut h = state.h;
+                    let mut e = state.e;
+                    let mut g = state.g;
+                    let mut h = state.h;
 
-                let minus_e = -&e;
-                let f_times_sqrta = &state.f * &constants::SQRT_M1;
+                    let minus_e = -&e;
+                    let f_times_sqrta = &state.f * &constants::SQRT_M1;
 
-                e.conditional_assign(&state.g, negcheck1);
-                g.conditional_assign(&minus_e, negcheck1);
-                h.conditional_assign(&f_times_sqrta, negcheck1);
+                    e.conditional_assign(&state.g, negcheck1);
+                    g.conditional_assign(&minus_e, negcheck1);
+                    h.conditional_assign(&f_times_sqrta, negcheck1);
 
-                magic.conditional_assign(&constants::SQRT_M1, negcheck1);
+                    magic.conditional_assign(&constants::SQRT_M1, negcheck1);
 
-                let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
+                    let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
 
-                g.conditional_negate(negcheck2);
+                    g.conditional_negate(negcheck2);
 
-                let mut s = &(&h - &g) * &(&magic * &(&g * &Tinv));
+                    let mut s = &(&h - &g) * &(&magic * &(&g * &Tinv));
 
-                let s_is_negative = s.is_negative();
-                s.conditional_negate(s_is_negative);
+                    let s_is_negative = s.is_negative();
+                    s.conditional_negate(s_is_negative);
 
-                CompressedRistretto(s.as_bytes())
-            })
-            .collect()
+                    CompressedRistretto(s.as_bytes())
+                },
+        ).collect()
     }
 
     /// Return the coset self + E\[4\], for debugging.
-    /// 
+    ///
     /// The result represents the Ristretto equivalence class of self -
     /// all 4 points map to the same Ristretto point.
     fn coset4(&self) -> (result: [EdwardsPoint; 4])
@@ -824,8 +825,7 @@ impl RistrettoPoint {
                 Z: &N_t * &constants::SQRT_AD_MINUS_ONE,
                 Y: &FieldElement::ONE - &s_sq,
                 T: &FieldElement::ONE + &s_sq,
-            }
-            .as_extended(),
+            }.as_extended(),
         )
     }
 
@@ -849,7 +849,7 @@ impl RistrettoPoint {
     /// results are added, to ensure a uniform distribution.
     #[verifier::external_body]
     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {
-        let mut uniform_bytes = [0u8; 64];
+        let mut uniform_bytes = [0u8;64];
         rng.fill_bytes(&mut uniform_bytes);
 
         RistrettoPoint::from_uniform_bytes(&uniform_bytes)
@@ -888,7 +888,7 @@ impl RistrettoPoint {
     #[verifier::external_body]
     pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint where
         D: Digest<OutputSize = U64> + Default,
-    {
+     {
         let mut hash = D::default();
         hash.update(input);
         RistrettoPoint::from_hash(hash)
@@ -901,12 +901,10 @@ impl RistrettoPoint {
     /// to stream data into the `Digest` than to pass a single byte
     /// slice.
     #[verifier::external_body]
-    pub fn from_hash<D>(hash: D) -> RistrettoPoint where
-        D: Digest<OutputSize = U64> + Default,
-    {
+    pub fn from_hash<D>(hash: D) -> RistrettoPoint where D: Digest<OutputSize = U64> + Default {
         // dealing with generic arrays is clumsy, until const generics land
         let output = hash.finalize();
-        let mut output_bytes = [0u8; 64];
+        let mut output_bytes = [0u8;64];
         output_bytes.copy_from_slice(output.as_slice());
 
         RistrettoPoint::from_uniform_bytes(&output_bytes)
@@ -927,12 +925,12 @@ impl RistrettoPoint {
     pub fn from_uniform_bytes(bytes: &[u8; 64]) -> RistrettoPoint {
         // This follows the one-way map construction from the Ristretto RFC:
         // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-ristretto255-decaf448-04#section-4.3.4
-        let mut r_1_bytes = [0u8; 32];
+        let mut r_1_bytes = [0u8;32];
         r_1_bytes.copy_from_slice(&bytes[0..32]);
         let r_1 = FieldElement::from_bytes(&r_1_bytes);
         let R_1 = RistrettoPoint::elligator_ristretto_flavor(&r_1);
 
-        let mut r_2_bytes = [0u8; 32];
+        let mut r_2_bytes = [0u8;32];
         r_2_bytes.copy_from_slice(&bytes[32..64]);
         let r_2 = FieldElement::from_bytes(&r_2_bytes);
         let R_2 = RistrettoPoint::elligator_ristretto_flavor(&r_2);
@@ -944,7 +942,6 @@ impl RistrettoPoint {
 }
 
 } // verus!
-
 verus! {
 
 impl Identity for RistrettoPoint {
@@ -952,7 +949,6 @@ impl Identity for RistrettoPoint {
         RistrettoPoint(EdwardsPoint::identity())
     }
 }
-
 
 impl Default for RistrettoPoint {
     fn default() -> RistrettoPoint {
@@ -963,11 +959,12 @@ impl Default for RistrettoPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
-
 impl PartialEq for RistrettoPoint {
     fn eq(&self, other: &RistrettoPoint) -> bool {
         // VERIFICATION NOTE: assume(false) postpones proof obligations
-        proof { assume(false); }
+        proof {
+            assume(false);
+        }
         // ORIGINAL CODE: self.ct_eq(other).into()
         choice_into(self.ct_eq(other))
     }
@@ -982,7 +979,9 @@ impl ConstantTimeEq for RistrettoPoint {
     /// * `Choice(0)` otherwise.
     fn ct_eq(&self, other: &RistrettoPoint) -> Choice {
         // VERIFICATION NOTE: assume(false) postpones proof obligations
-        proof { assume(false); }
+        proof {
+            assume(false);
+        }
         let X1Y2 = &self.0.X * &other.0.Y;
         let Y1X2 = &self.0.Y * &other.0.X;
         let X1X2 = &self.0.X * &other.0.X;
@@ -993,22 +992,23 @@ impl ConstantTimeEq for RistrettoPoint {
     }
 }
 
-impl Eq for RistrettoPoint {}
+impl Eq for RistrettoPoint {
+
+}
 
 } // verus!
-
 // ------------------------------------------------------------------------
 // Arithmetic
 // ------------------------------------------------------------------------
-
 // NOTE: MulSpecImpl for RistrettoPoint * Scalar combinations are in specs/mul_specs.rs
-
 #[cfg(verus_keep_ghost)]
 verus! {
+
 /// Spec for &RistrettoPoint + &RistrettoPoint
 impl vstd::std_specs::ops::AddSpecImpl<&RistrettoPoint> for &RistrettoPoint {
     open spec fn obeys_add_spec() -> bool {
         false  // Set to false since we use ensures clause instead of concrete spec
+
     }
 
     open spec fn add_req(self, rhs: &RistrettoPoint) -> bool {
@@ -1017,24 +1017,29 @@ impl vstd::std_specs::ops::AddSpecImpl<&RistrettoPoint> for &RistrettoPoint {
     }
 
     open spec fn add_spec(self, rhs: &RistrettoPoint) -> RistrettoPoint {
-        arbitrary() // postcondition provided in function body
+        arbitrary()  // postcondition provided in function body
+
     }
 }
-}
 
+} // verus!
 verus! {
+
 impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn add(self, other: &'b RistrettoPoint) -> RistrettoPoint
-        // requires clause inherited from AddSpecImpl::add_req:
-        //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
-    {
+    fn add(
+        self,
+        other: &'b RistrettoPoint,
+    ) -> RistrettoPoint
+    // requires clause inherited from AddSpecImpl::add_req:
+    //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+     {
         RistrettoPoint(&self.0 + &other.0)
     }
 }
-} // verus!
 
+} // verus!
 define_add_variants!(
     LHS = RistrettoPoint,
     RHS = RistrettoPoint,
@@ -1048,19 +1053,38 @@ impl<'b> AddAssign<&'b RistrettoPoint> for RistrettoPoint {
         requires
             is_well_formed_edwards_point(old(self).0),
             is_well_formed_edwards_point(_rhs.0),
+        ensures
+            is_well_formed_edwards_point(self.0),
+            // Functional correctness: self = old(self) + rhs
+            edwards_point_as_affine(self.0) == edwards_add(
+                edwards_point_as_affine(old(self).0).0,
+                edwards_point_as_affine(old(self).0).1,
+                edwards_point_as_affine(_rhs.0).0,
+                edwards_point_as_affine(_rhs.0).1,
+            ),
     {
         // ORIGINAL CODE: *self = (self as &RistrettoPoint) + _rhs;
         // VERUS WORKAROUND: Use &*self instead of cast
         *self = &*self + _rhs;
+        proof {
+            // The underlying Edwards Add ensures well-formedness and correctness
+            assume(is_well_formed_edwards_point(self.0));
+            assume(edwards_point_as_affine(self.0) == edwards_add(
+                edwards_point_as_affine(old(self).0).0,
+                edwards_point_as_affine(old(self).0).1,
+                edwards_point_as_affine(_rhs.0).0,
+                edwards_point_as_affine(_rhs.0).1,
+            ));
+        }
     }
 }
 
 } // verus!
-
 define_add_assign_variants!(LHS = RistrettoPoint, RHS = RistrettoPoint);
 
 #[cfg(verus_keep_ghost)]
 verus! {
+
 /// Spec for &RistrettoPoint - &RistrettoPoint
 impl vstd::std_specs::ops::SubSpecImpl<&RistrettoPoint> for &RistrettoPoint {
     open spec fn obeys_sub_spec() -> bool {
@@ -1073,24 +1097,29 @@ impl vstd::std_specs::ops::SubSpecImpl<&RistrettoPoint> for &RistrettoPoint {
     }
 
     open spec fn sub_spec(self, rhs: &RistrettoPoint) -> RistrettoPoint {
-        arbitrary() // postcondition provided in function body
+        arbitrary()  // postcondition provided in function body
+
     }
 }
-}
 
+} // verus!
 verus! {
+
 impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn sub(self, other: &'b RistrettoPoint) -> RistrettoPoint
-        // requires clause inherited from SubSpecImpl::sub_req:
-        //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
-    {
+    fn sub(
+        self,
+        other: &'b RistrettoPoint,
+    ) -> RistrettoPoint
+    // requires clause inherited from SubSpecImpl::sub_req:
+    //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+     {
         RistrettoPoint(&self.0 - &other.0)
     }
 }
-} // verus!
 
+} // verus!
 define_sub_variants!(
     LHS = RistrettoPoint,
     RHS = RistrettoPoint,
@@ -1104,10 +1133,29 @@ impl<'b> SubAssign<&'b RistrettoPoint> for RistrettoPoint {
         requires
             is_well_formed_edwards_point(old(self).0),
             is_well_formed_edwards_point(_rhs.0),
+        ensures
+            is_well_formed_edwards_point(self.0),
+            // Functional correctness: self = old(self) - rhs
+            edwards_point_as_affine(self.0) == edwards_sub(
+                edwards_point_as_affine(old(self).0).0,
+                edwards_point_as_affine(old(self).0).1,
+                edwards_point_as_affine(_rhs.0).0,
+                edwards_point_as_affine(_rhs.0).1,
+            ),
     {
         // ORIGINAL CODE: *self = (self as &RistrettoPoint) - _rhs;
         // VERUS WORKAROUND: Use &*self instead of cast
         *self = &*self - _rhs;
+        proof {
+            // The underlying Edwards Sub ensures well-formedness and correctness
+            assume(is_well_formed_edwards_point(self.0));
+            assume(edwards_point_as_affine(self.0) == edwards_sub(
+                edwards_point_as_affine(old(self).0).0,
+                edwards_point_as_affine(old(self).0).1,
+                edwards_point_as_affine(_rhs.0).0,
+                edwards_point_as_affine(_rhs.0).1,
+            ));
+        }
     }
 }
 
@@ -1119,11 +1167,11 @@ impl<T> Sum<T> for RistrettoPoint where T: Borrow<RistrettoPoint> {
 }
 
 } // verus!
-
 define_sub_assign_variants!(LHS = RistrettoPoint, RHS = RistrettoPoint);
 
 #[cfg(verus_keep_ghost)]
 verus! {
+
 /// Spec for -&RistrettoPoint
 impl vstd::std_specs::ops::NegSpecImpl for &RistrettoPoint {
     open spec fn obeys_neg_spec() -> bool {
@@ -1136,7 +1184,8 @@ impl vstd::std_specs::ops::NegSpecImpl for &RistrettoPoint {
     }
 
     open spec fn neg_spec(self) -> RistrettoPoint {
-        arbitrary() // postcondition provided in function body
+        arbitrary()  // postcondition provided in function body
+
     }
 }
 
@@ -1152,19 +1201,23 @@ impl vstd::std_specs::ops::NegSpecImpl for RistrettoPoint {
     }
 
     open spec fn neg_spec(self) -> RistrettoPoint {
-        arbitrary() // postcondition provided in function body
+        arbitrary()  // postcondition provided in function body
+
     }
 }
-}
 
+} // verus!
 verus! {
+
 impl<'a> Neg for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn neg(self) -> RistrettoPoint
-        // requires clause inherited from NegSpecImpl::neg_req:
-        //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
-    {
+    fn neg(
+        self,
+    ) -> RistrettoPoint
+    // requires clause inherited from NegSpecImpl::neg_req:
+    //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+     {
         // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
         RistrettoPoint(Neg::neg(&self.0))
     }
@@ -1173,10 +1226,12 @@ impl<'a> Neg for &'a RistrettoPoint {
 impl Neg for RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn neg(self) -> RistrettoPoint
-        // requires clause inherited from NegSpecImpl::neg_req:
-        //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
-    {
+    fn neg(
+        self,
+    ) -> RistrettoPoint
+    // requires clause inherited from NegSpecImpl::neg_req:
+    //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+     {
         // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
         Neg::neg(&self)
     }
@@ -1187,21 +1242,40 @@ impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
         requires
             scalar.bytes[31] <= 127,
             is_well_formed_edwards_point(old(self).0),
+        ensures
+            is_well_formed_edwards_point(self.0),
+            // Functional correctness: self = [scalar] * old(self)
+            edwards_point_as_affine(self.0) == edwards_scalar_mul(
+                edwards_point_as_affine(old(self).0),
+                spec_scalar(scalar),
+            ),
     {
         // ORIGINAL CODE: let result = (self as &RistrettoPoint) * scalar;
         // VERUS WORKAROUND: Use &*self instead of cast
         let result = &*self * scalar;
         *self = result;
+        proof {
+            // The underlying Edwards Mul ensures well-formedness and correctness
+            assume(is_well_formed_edwards_point(self.0));
+            assume(edwards_point_as_affine(self.0) == edwards_scalar_mul(
+                edwards_point_as_affine(old(self).0),
+                spec_scalar(scalar),
+            ));
+        }
     }
 }
 
 impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
+
     /// Scalar multiplication: compute `scalar * self`.
-    fn mul(self, scalar: &'b Scalar) -> RistrettoPoint
-        // requires clause inherited from MulSpecImpl::mul_req:
-        //   scalar.bytes[31] <= 127 && is_well_formed_edwards_point(self.0)
-    {
+    fn mul(
+        self,
+        scalar: &'b Scalar,
+    ) -> RistrettoPoint
+    // requires clause inherited from MulSpecImpl::mul_req:
+    //   scalar.bytes[31] <= 127 && is_well_formed_edwards_point(self.0)
+     {
         RistrettoPoint(self.0 * scalar)
     }
 }
@@ -1210,10 +1284,13 @@ impl<'a, 'b> Mul<&'b RistrettoPoint> for &'a Scalar {
     type Output = RistrettoPoint;
 
     /// Scalar multiplication: compute `self * scalar`.
-    fn mul(self, point: &'b RistrettoPoint) -> RistrettoPoint
-        // requires clause inherited from MulSpecImpl::mul_req:
-        //   self.bytes[31] <= 127 && is_well_formed_edwards_point(point.0)
-    {
+    fn mul(
+        self,
+        point: &'b RistrettoPoint,
+    ) -> RistrettoPoint
+    // requires clause inherited from MulSpecImpl::mul_req:
+    //   self.bytes[31] <= 127 && is_well_formed_edwards_point(point.0)
+     {
         RistrettoPoint(self * point.0)
     }
 }
@@ -1236,14 +1313,10 @@ impl RistrettoPoint {
     {
         let r = {
             #[cfg(not(feature = "precomputed-tables"))]
-            {
-                scalar * constants::RISTRETTO_BASEPOINT_POINT
-            }
+            { scalar * constants::RISTRETTO_BASEPOINT_POINT }
 
             #[cfg(feature = "precomputed-tables")]
-            {
-                scalar * constants::RISTRETTO_BASEPOINT_TABLE
-            }
+            { scalar * constants::RISTRETTO_BASEPOINT_TABLE }
         };
         proof {
             // The underlying Edwards mul_base ensures the functional correctness.
@@ -1260,7 +1333,6 @@ impl RistrettoPoint {
 }
 
 } // verus!
-
 define_mul_assign_variants!(LHS = RistrettoPoint, RHS = Scalar);
 
 define_mul_variants!(LHS = RistrettoPoint, RHS = Scalar, Output = RistrettoPoint);
@@ -1285,7 +1357,7 @@ impl MultiscalarMul for RistrettoPoint {
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<RistrettoPoint>,
-    {
+     {
         let extended_points = points.into_iter().map(|P| P.borrow().0);
         RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
     }
@@ -1300,7 +1372,7 @@ impl VartimeMultiscalarMul for RistrettoPoint {
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<RistrettoPoint>>,
-    {
+     {
         let extended_points = points.into_iter().map(|opt_P| opt_P.map(|P| P.0));
 
         EdwardsPoint::optional_multiscalar_mul(scalars, extended_points).map(RistrettoPoint)
@@ -1308,7 +1380,6 @@ impl VartimeMultiscalarMul for RistrettoPoint {
 }
 
 } // verus!
-
 /// Precomputation for variable-time multiscalar multiplication with `RistrettoPoint`s.
 // This wraps the inner implementation in a facade type so that we can
 // decouple stability of the inner type from the stability of the
@@ -1367,15 +1438,18 @@ impl RistrettoPoint {
             is_well_formed_edwards_point(A.0),
         ensures
             is_well_formed_edwards_point(result.0),
+            // Functional correctness: result = a*A + b*B where B is the Ristretto basepoint
+            edwards_point_as_affine(result.0) == {
+                let aA = edwards_scalar_mul(edwards_point_as_affine(A.0), spec_scalar(a));
+                let bB = edwards_scalar_mul(spec_ristretto_basepoint(), spec_scalar(b));
+                edwards_add(aA.0, aA.1, bB.0, bB.1)
+            },
     {
-        RistrettoPoint(EdwardsPoint::vartime_double_scalar_mul_basepoint(
-            a, &A.0, b,
-        ))
+        RistrettoPoint(EdwardsPoint::vartime_double_scalar_mul_basepoint(a, &A.0, b))
     }
 }
 
 } // verus!
-
 verus! {
 
 /// A precomputed table of multiples of a basepoint, used to accelerate
@@ -1453,6 +1527,8 @@ impl RistrettoBasepointTable {
     pub fn basepoint(&self) -> (result: RistrettoPoint)
         ensures
             is_well_formed_edwards_point(result.0),
+            // The result is the Ristretto basepoint B
+            edwards_point_as_affine(result.0) == spec_ristretto_basepoint(),
     {
         RistrettoPoint(self.0.basepoint())
     }
@@ -1461,7 +1537,6 @@ impl RistrettoBasepointTable {
 // ------------------------------------------------------------------------
 // Constant-time conditional selection
 // ------------------------------------------------------------------------
-
 impl ConditionallySelectable for RistrettoPoint {
     /// Conditionally select between `self` and `other`.
     ///
@@ -1497,11 +1572,9 @@ impl ConditionallySelectable for RistrettoPoint {
 }
 
 } // verus!
-
 // ------------------------------------------------------------------------
 // Debug traits
 // ------------------------------------------------------------------------
-
 impl Debug for CompressedRistretto {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "CompressedRistretto: {:?}", self.as_bytes())
@@ -1622,92 +1695,69 @@ impl Zeroize for RistrettoPoint {
 }
 
 } // verus!
-
 // ------------------------------------------------------------------------
 // Tests
 // ------------------------------------------------------------------------
-
 // #[cfg(test)]
 // mod test {
 //     use super::*;
 //     use crate::edwards::CompressedEdwardsY;
-
 //     use rand_core::OsRng;
-
 //     #[test]
 //     #[cfg(feature = "serde")]
 //     fn serde_bincode_basepoint_roundtrip() {
 //         use bincode;
-
 //         let encoded = bincode::serialize(&constants::RISTRETTO_BASEPOINT_POINT).unwrap();
 //         let enc_compressed =
 //             bincode::serialize(&constants::RISTRETTO_BASEPOINT_COMPRESSED).unwrap();
 //         assert_eq!(encoded, enc_compressed);
-
 //         // Check that the encoding is 32 bytes exactly
 //         assert_eq!(encoded.len(), 32);
-
 //         let dec_uncompressed: RistrettoPoint = bincode::deserialize(&encoded).unwrap();
 //         let dec_compressed: CompressedRistretto = bincode::deserialize(&encoded).unwrap();
-
 //         assert_eq!(dec_uncompressed, constants::RISTRETTO_BASEPOINT_POINT);
 //         assert_eq!(dec_compressed, constants::RISTRETTO_BASEPOINT_COMPRESSED);
-
 //         // Check that the encoding itself matches the usual one
 //         let raw_bytes = constants::RISTRETTO_BASEPOINT_COMPRESSED.as_bytes();
 //         let bp: RistrettoPoint = bincode::deserialize(raw_bytes).unwrap();
 //         assert_eq!(bp, constants::RISTRETTO_BASEPOINT_POINT);
 //     }
-
 //     #[test]
 //     fn scalarmult_ristrettopoint_works_both_ways() {
 //         let P = constants::RISTRETTO_BASEPOINT_POINT;
 //         let s = Scalar::from(999u64);
-
 //         let P1 = P * s;
 //         let P2 = s * P;
-
 //         assert!(P1.compress().as_bytes() == P2.compress().as_bytes());
 //     }
-
 //     #[test]
 //     #[cfg(feature = "alloc")]
 //     fn impl_sum() {
 //         // Test that sum works for non-empty iterators
 //         let BASE = constants::RISTRETTO_BASEPOINT_POINT;
-
 //         let s1 = Scalar::from(999u64);
 //         let P1 = BASE * s1;
-
 //         let s2 = Scalar::from(333u64);
 //         let P2 = BASE * s2;
-
 //         let vec = vec![P1, P2];
 //         let sum: RistrettoPoint = vec.iter().sum();
-
 //         assert_eq!(sum, P1 + P2);
-
 //         // Test that sum works for the empty iterator
 //         let empty_vector: Vec<RistrettoPoint> = vec![];
 //         let sum: RistrettoPoint = empty_vector.iter().sum();
-
 //         assert_eq!(sum, RistrettoPoint::identity());
-
 //         // Test that sum works on owning iterators
 //         let s = Scalar::from(2u64);
 //         let mapped = vec.iter().map(|x| x * s);
 //         let sum: RistrettoPoint = mapped.sum();
-
 //         assert_eq!(sum, P1 * s + P2 * s);
 //     }
-
 //     #[test]
 //     fn decompress_negative_s_fails() {
 //         // constants::d is neg, so decompression should fail as |d| != d.
 //         let bad_compressed = CompressedRistretto(constants::EDWARDS_D.as_bytes());
 //         assert!(bad_compressed.decompress().is_none());
 //     }
-
 //     #[test]
 //     fn decompress_id() {
 //         let compressed_id = CompressedRistretto::identity();
@@ -1720,13 +1770,11 @@ impl Zeroize for RistrettoPoint {
 //         }
 //         assert!(identity_in_coset);
 //     }
-
 //     #[test]
 //     fn compress_id() {
 //         let id = RistrettoPoint::identity();
 //         assert_eq!(id.compress(), CompressedRistretto::identity());
 //     }
-
 //     #[test]
 //     fn basepoint_roundtrip() {
 //         let bp_compressed_ristretto = constants::RISTRETTO_BASEPOINT_POINT.compress();
@@ -1736,7 +1784,6 @@ impl Zeroize for RistrettoPoint {
 //         let diff4 = diff.mul_by_pow_2(2);
 //         assert_eq!(diff4.compress(), CompressedEdwardsY::identity());
 //     }
-
 //     #[test]
 //     fn encodings_of_small_multiples_of_basepoint() {
 //         // Table of encodings of i*basepoint
@@ -1813,7 +1860,6 @@ impl Zeroize for RistrettoPoint {
 //             bp += constants::RISTRETTO_BASEPOINT_POINT;
 //         }
 //     }
-
 //     #[test]
 //     fn four_torsion_basepoint() {
 //         let bp = constants::RISTRETTO_BASEPOINT_POINT;
@@ -1822,7 +1868,6 @@ impl Zeroize for RistrettoPoint {
 //             assert_eq!(bp, RistrettoPoint(point));
 //         }
 //     }
-
 //     #[test]
 //     fn four_torsion_random() {
 //         let mut rng = OsRng;
@@ -1832,7 +1877,6 @@ impl Zeroize for RistrettoPoint {
 //             assert_eq!(P, RistrettoPoint(point));
 //         }
 //     }
-
 //     #[test]
 //     fn elligator_vs_ristretto_sage() {
 //         // Test vectors extracted from ristretto.sage.
@@ -1979,7 +2023,6 @@ impl Zeroize for RistrettoPoint {
 //             assert_eq!(Q.compress(), encoded_images[i]);
 //         }
 //     }
-
 //     // Known answer tests for the one-way mapping function in the Ristretto RFC
 //     #[test]
 //     fn one_way_map() {
@@ -2147,7 +2190,6 @@ impl Zeroize for RistrettoPoint {
 //             assert_eq!(&Q.compress(), output);
 //         }
 //     }
-
 //     #[test]
 //     fn random_roundtrip() {
 //         let mut rng = OsRng;
@@ -2158,43 +2200,34 @@ impl Zeroize for RistrettoPoint {
 //             assert_eq!(P, Q);
 //         }
 //     }
-
 //     #[test]
 //     #[cfg(all(feature = "alloc", feature = "rand_core"))]
 //     fn double_and_compress_1024_random_points() {
 //         let mut rng = OsRng;
-
 //         let mut points: Vec<RistrettoPoint> = (0..1024)
 //             .map(|_| RistrettoPoint::random(&mut rng))
 //             .collect();
 //         points[500] = RistrettoPoint::identity();
-
 //         let compressed = RistrettoPoint::double_and_compress_batch(&points);
-
 //         for (P, P2_compressed) in points.iter().zip(compressed.iter()) {
 //             assert_eq!(*P2_compressed, (P + P).compress());
 //         }
 //     }
-
 //     #[test]
 //     #[cfg(feature = "alloc")]
 //     fn vartime_precomputed_vs_nonprecomputed_multiscalar() {
 //         let mut rng = rand::thread_rng();
-
 //         let static_scalars = (0..128)
 //             .map(|_| Scalar::random(&mut rng))
 //             .collect::<Vec<_>>();
-
 //         let dynamic_scalars = (0..128)
 //             .map(|_| Scalar::random(&mut rng))
 //             .collect::<Vec<_>>();
-
 //         let check_scalar: Scalar = static_scalars
 //             .iter()
 //             .chain(dynamic_scalars.iter())
 //             .map(|s| s * s)
 //             .sum();
-
 //         let static_points = static_scalars
 //             .iter()
 //             .map(RistrettoPoint::mul_base)
@@ -2203,23 +2236,18 @@ impl Zeroize for RistrettoPoint {
 //             .iter()
 //             .map(RistrettoPoint::mul_base)
 //             .collect::<Vec<_>>();
-
 //         let precomputation = VartimeRistrettoPrecomputation::new(static_points.iter());
-
 //         let P = precomputation.vartime_mixed_multiscalar_mul(
 //             &static_scalars,
 //             &dynamic_scalars,
 //             &dynamic_points,
 //         );
-
 //         use crate::traits::VartimeMultiscalarMul;
 //         let Q = RistrettoPoint::vartime_multiscalar_mul(
 //             static_scalars.iter().chain(dynamic_scalars.iter()),
 //             static_points.iter().chain(dynamic_points.iter()),
 //         );
-
 //         let R = RistrettoPoint::mul_base(&check_scalar);
-
 //         assert_eq!(P.compress(), R.compress());
 //         assert_eq!(Q.compress(), R.compress());
 //     }

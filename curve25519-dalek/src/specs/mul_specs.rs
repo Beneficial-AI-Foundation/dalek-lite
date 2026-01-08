@@ -159,6 +159,7 @@ impl vstd::std_specs::ops::MulSpecImpl<EdwardsPoint> for Scalar {
 impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
     open spec fn obeys_mul_spec() -> bool {
         false  // Set to false since we use ensures clause instead of concrete spec
+
     }
 
     open spec fn mul_req(self, rhs: &Scalar) -> bool {
@@ -167,6 +168,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
 
     open spec fn mul_spec(self, rhs: &Scalar) -> MontgomeryPoint {
         arbitrary()  // Placeholder - actual spec is in ensures clause
+
     }
 }
 
@@ -331,7 +333,6 @@ impl vstd::std_specs::ops::MulSpecImpl<&EdwardsBasepointTable> for &Scalar {
 // SECTION 6: RistrettoBasepointTable * Scalar
 // =============================================================================
 // Specifications for basepoint table scalar multiplication (Ristretto)
-
 use crate::ristretto::RistrettoBasepointTable;
 
 /// Spec for &RistrettoBasepointTable * &Scalar
@@ -376,7 +377,6 @@ impl vstd::std_specs::ops::MulSpecImpl<&RistrettoBasepointTable> for &Scalar {
 // SECTION 4: RistrettoPoint * Scalar
 // =============================================================================
 // Specifications for multiplication between RistrettoPoint and Scalar
-
 use crate::ristretto::RistrettoPoint;
 
 /// Spec for &RistrettoPoint * &Scalar (reference implementation)
@@ -446,7 +446,6 @@ impl vstd::std_specs::ops::MulSpecImpl<Scalar> for RistrettoPoint {
 // =============================================================================
 // SECTION 5: Scalar * RistrettoPoint
 // =============================================================================
-
 /// Spec for &Scalar * &RistrettoPoint
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::ops::MulSpecImpl<&RistrettoPoint> for &Scalar {

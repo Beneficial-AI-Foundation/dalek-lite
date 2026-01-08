@@ -493,8 +493,11 @@ pub open spec fn math_invsqrt(a: nat) -> nat {
         0
     } else {
         choose|r: nat|
-            !math_is_negative(r)
-                && (math_is_sqrt_ratio(1, a, r) || math_is_sqrt_ratio_times_i(1, a, r))
+            !math_is_negative(r) && (math_is_sqrt_ratio(1, a, r) || math_is_sqrt_ratio_times_i(
+                1,
+                a,
+                r,
+            ))
     }
 }
 

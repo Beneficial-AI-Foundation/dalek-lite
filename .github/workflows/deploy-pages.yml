@@ -96,6 +96,22 @@ jobs:
           cp outputs/stats.json docs/outputs/
           cp outputs/stats_history.jsonl docs/outputs/
 
+      - name: Inject certifications link
+        env:
+          SEPOLIA_CERTIFIER_ADDRESS: ${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}
+        run: |
+          if [ -n "$SEPOLIA_CERTIFIER_ADDRESS" ]; then
+            echo "Injecting certifications link for address: $SEPOLIA_CERTIFIER_ADDRESS"
+            ETHERSCAN_URL="https://sepolia.etherscan.io/address/${SEPOLIA_CERTIFIER_ADDRESS}#events"
+            LINK_HTML="<a href=\"${ETHERSCAN_URL}\" class=\"btn btn-primary\" target=\"_blank\">View On-Chain Events on Etherscan ↗</a>"
+            sed -i "s|<!-- CERTIFICATIONS_LINK_PLACEHOLDER -->|${LINK_HTML}|g" docs/index.html
+            echo "✓ Certifications link injected successfully"
+          else
+            echo "⚠ SEPOLIA_CERTIFIER_ADDRESS variable not set, using fallback message"
+            FALLBACK_HTML="<em>On-chain certifications coming soon.</em>"
+            sed -i "s|<!-- CERTIFICATIONS_LINK_PLACEHOLDER -->|${FALLBACK_HTML}|g" docs/index.html
+          fi
+
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@v4
         with:

@@ -639,6 +639,11 @@ impl CompletedPoint {
         ensures
             is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
+            // Explicit bounds: mul() produces 52-bounded output
+            fe51_limbs_bounded(&result.X, 52),
+            fe51_limbs_bounded(&result.Y, 52),
+            fe51_limbs_bounded(&result.Z, 52),
+            fe51_limbs_bounded(&result.T, 52),
             spec_edwards_point(result) == spec_completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
@@ -649,10 +654,23 @@ impl CompletedPoint {
             T: &self.X * &self.Y,
         };
         proof {
-            // postconditions
+            // Limb bounds: mul() produces 52-bounded output (from its postcondition)
+            assert(fe51_limbs_bounded(&result.X, 52));  // X = self.X * self.T
+            assert(fe51_limbs_bounded(&result.Y, 52));  // Y = self.Y * self.Z
+            assert(fe51_limbs_bounded(&result.Z, 52));  // Z = self.Z * self.T
+            assert(fe51_limbs_bounded(&result.T, 52));  // T = self.X * self.Y
+
+            // edwards_point_limbs_bounded requires 52-bounded (the new invariant)
+            assert(edwards_point_limbs_bounded(result));
+
+            // sum_of_limbs_bounded follows from 52-bounded via lemma
+            assert(sum_of_limbs_bounded(&result.Y, &result.X, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&result.Y, &result.X, 52);
+            };
+
+            // Therefore is_well_formed_edwards_point holds (pending is_valid_edwards_point)
+            // Semantic postconditions still need assumes
             assume(is_valid_edwards_point(result));
-            // mul ensures limbs bounded by 54, and sum bounded follows from field properties
-            assume(is_well_formed_edwards_point(result));
             assume(spec_edwards_point(result) == spec_completed_to_extended(*self));
             assume(edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self));
         }

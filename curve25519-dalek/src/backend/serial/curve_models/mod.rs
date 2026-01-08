@@ -855,10 +855,7 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     {
         proof {
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -959,10 +956,7 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     {
         proof {
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -1056,10 +1050,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
     {
         proof {
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
@@ -1150,10 +1141,7 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
     {
         proof {
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;

@@ -6,6 +6,8 @@ use vstd::prelude::*;
 use super::u64_5_as_nat_lemmas::*;
 
 use crate::backend::serial::u64::field::FieldElement51;
+use crate::edwards::EdwardsPoint;
+use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 
@@ -119,6 +121,22 @@ pub proof fn lemma_fe51_limbs_bounded_weaken(fe: &FieldElement51, a: u64, b: u64
                 b <= 63,
         ;
     }
+}
+
+/// Weaken EdwardsPoint from 52-bounded (invariant) to 54-bounded (operation precondition)
+pub proof fn lemma_edwards_point_weaken_to_54(point: &EdwardsPoint)
+    requires
+        edwards_point_limbs_bounded(*point),
+    ensures
+        fe51_limbs_bounded(&point.X, 54),
+        fe51_limbs_bounded(&point.Y, 54),
+        fe51_limbs_bounded(&point.Z, 54),
+        fe51_limbs_bounded(&point.T, 54),
+{
+    lemma_fe51_limbs_bounded_weaken(&point.X, 52, 54);
+    lemma_fe51_limbs_bounded_weaken(&point.Y, 52, 54);
+    lemma_fe51_limbs_bounded_weaken(&point.Z, 52, 54);
+    lemma_fe51_limbs_bounded_weaken(&point.T, 52, 54);
 }
 
 /// Lemma: addition bounds propagation - if both inputs are n-bounded, result is (n+1)-bounded.

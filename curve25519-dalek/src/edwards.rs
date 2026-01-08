@@ -937,10 +937,7 @@ impl ValidityCheck for EdwardsPoint {
 
         proof {
             // Weaken self's coordinates for mul preconditions
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
         }
         let on_segre_image = (&self.X * &self.Y) == (&self.Z * &self.T);
 
@@ -1028,9 +1025,7 @@ impl ConstantTimeEq for EdwardsPoint {
             */
             assume(self.ct_eq_req(other));
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (mul precondition)
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
             lemma_fe51_limbs_bounded_weaken(&other.X, 52, 54);
             lemma_fe51_limbs_bounded_weaken(&other.Y, 52, 54);
             lemma_fe51_limbs_bounded_weaken(&other.Z, 52, 54);
@@ -1124,9 +1119,7 @@ impl EdwardsPoint {
     {
         proof {
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (sub/mul precondition)
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.T, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
             assume(fe51_limbs_bounded(&constants::EDWARDS_D2, 54));  // for T2d
         }
 
@@ -1178,9 +1171,7 @@ impl EdwardsPoint {
     {
         proof {
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
         }
         let recip = self.Z.invert();
         // recip bounded by 54 from invert() postcondition
@@ -1267,9 +1258,7 @@ impl EdwardsPoint {
     {
         proof {
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
-            lemma_fe51_limbs_bounded_weaken(&self.X, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Y, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&self.Z, 52, 54);
+            lemma_edwards_point_weaken_to_54(self);
         }
         let recip = self.Z.invert();
         let ghost z_abs = spec_field_element(&self.Z);

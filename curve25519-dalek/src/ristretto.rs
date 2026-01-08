@@ -180,7 +180,7 @@ use crate::constants;
 
 use crate::field::FieldElement;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::subtle_assumes::{choice_into, choice_not, choice_or, conditional_negate_field_element, ct_eq_bytes32};
+use crate::backend::serial::u64::subtle_assumes::{choice_into, choice_not, choice_or, conditional_assign_generic, conditional_negate_field_element, ct_eq_bytes32};
 #[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -591,11 +591,13 @@ pub struct RistrettoPoint(pub EdwardsPoint);
 
 impl RistrettoPoint {
     /// Compress this point using the Ristretto encoding.
-    #[verifier::external_body]
     pub fn compress(&self) -> (result: CompressedRistretto)
         ensures
             result.0 == spec_ristretto_compress(*self),
     {
+        // VERIFICATION NOTE: assume(false) postpones proof obligations for compress
+        proof { assume(false); }
+
         let mut X = self.0.X;
         let mut Y = self.0.Y;
         let Z = &self.0.Z;
@@ -617,15 +619,23 @@ impl RistrettoPoint {
 
         let rotate = (T * &z_inv).is_negative();
 
-        X.conditional_assign(&iY, rotate);
-        Y.conditional_assign(&iX, rotate);
-        den_inv.conditional_assign(&enchanted_denominator, rotate);
+        // ORIGINAL CODE: X.conditional_assign(&iY, rotate);
+        // VERUS WORKAROUND: Use conditional_assign_generic wrapper for Verus compatibility
+        conditional_assign_generic(&mut X, &iY, rotate);
+        // ORIGINAL CODE: Y.conditional_assign(&iX, rotate);
+        conditional_assign_generic(&mut Y, &iX, rotate);
+        // ORIGINAL CODE: den_inv.conditional_assign(&enchanted_denominator, rotate);
+        conditional_assign_generic(&mut den_inv, &enchanted_denominator, rotate);
 
-        Y.conditional_negate((&X * &z_inv).is_negative());
+        // ORIGINAL CODE: Y.conditional_negate((&X * &z_inv).is_negative());
+        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
+        conditional_negate_field_element(&mut Y, (&X * &z_inv).is_negative());
 
         let mut s = &den_inv * &(Z - &Y);
         let s_is_negative = s.is_negative();
-        s.conditional_negate(s_is_negative);
+        // ORIGINAL CODE: s.conditional_negate(s_is_negative);
+        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
+        conditional_negate_field_element(&mut s, s_is_negative);
 
         CompressedRistretto(s.as_bytes())
     }

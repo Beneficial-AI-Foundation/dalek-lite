@@ -56,7 +56,8 @@ verus! {
 /// Spec-only model of Ristretto compression (exec implementation is external_body).
 ///
 /// This captures the canonical encoding of a Ristretto point.
-/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding".
+/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding";
+///            [DECAF], Section 6 (encoding formulas), and https://ristretto.group/formulas/encoding.html.
 pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
     let (x, y, z, t) = spec_edwards_point(point.0);
     let u1 = math_field_mul(math_field_add(z, y), math_field_sub(z, y));
@@ -91,7 +92,8 @@ pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
 }
 
 /// Spec-only model of Ristretto decompression.
-/// Reference: [RISTRETTO], §5.2 "Ristretto255 Decoding".
+/// Reference: [RISTRETTO], §5.2 "Ristretto255 Decoding";
+///            [DECAF], Section 6 (decoding formulas), and https://ristretto.group/formulas/decoding.html.
 pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint> {
     let s_bytes_nat = bytes32_to_nat(&bytes);
     let s = spec_field_element_from_bytes(&bytes);

@@ -244,9 +244,8 @@ impl ConstantTimeEq for CompressedRistretto {
         ensures
             choice_is_true(result) == (self.0 == other.0),
     {
-        // Use wrapper function for Verus compatibility
-        // ct_eq_bytes32 ensures: choice_is_true(result) == (*a == *b)
-        // as_bytes() returns &self.0, and *(&self.0) == self.0
+        // ORIGINAL CODE: self.as_bytes().ct_eq(other.as_bytes())
+        // VERUS WORKAROUND: Use ct_eq_bytes32 wrapper for Verus compatibility
         ct_eq_bytes32(&self.0, &other.0)
     }
 }
@@ -324,10 +323,8 @@ impl CompressedRistretto {
 
             result == spec_ristretto_decompress(self.0),
             // If decompression succeeds, the result is a well-formed Edwards point
-            // (includes: valid on curve, limbs bounded, sum bounded)
+            // (well-formed includes: valid on curve, limbs bounded, sum bounded)
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
-            // On success, the decoded point is a valid Edwards point
-            result.is_some() ==> is_valid_edwards_point(result.unwrap().0),
             // On success, the decoded point lies in the even subgroup
             result.is_some() ==> is_in_even_subgroup(result.unwrap().0),
     {
@@ -355,7 +352,6 @@ impl CompressedRistretto {
             proof {
                 // step_2 constructs the point with Z=ONE, ensuring well-formedness
                 assume(is_well_formed_edwards_point(res.0));
-                assume(is_valid_edwards_point(res.0));
                 assume(is_in_even_subgroup(res.0));
                 // Spec alignment for success branch
                 assume(result == spec_ristretto_decompress(self.0));
@@ -944,9 +940,6 @@ impl RistrettoPoint {
     }
 }
 
-} // verus!
-verus! {
-
 impl Identity for RistrettoPoint {
     fn identity() -> RistrettoPoint {
         RistrettoPoint(EdwardsPoint::identity())
@@ -1031,14 +1024,31 @@ verus! {
 impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn add(
-        self,
-        other: &'b RistrettoPoint,
-    ) -> RistrettoPoint
+    fn add(self, other: &'b RistrettoPoint) -> (result:
+        RistrettoPoint)
     // requires clause inherited from AddSpecImpl::add_req:
     //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
-     {
-        RistrettoPoint(&self.0 + &other.0)
+
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == edwards_add(
+                edwards_point_as_affine(self.0).0,
+                edwards_point_as_affine(self.0).1,
+                edwards_point_as_affine(other.0).0,
+                edwards_point_as_affine(other.0).1,
+            ),
+    {
+        let r = RistrettoPoint(&self.0 + &other.0);
+        proof {
+            assume(is_well_formed_edwards_point(r.0));
+            assume(edwards_point_as_affine(r.0) == edwards_add(
+                edwards_point_as_affine(self.0).0,
+                edwards_point_as_affine(self.0).1,
+                edwards_point_as_affine(other.0).0,
+                edwards_point_as_affine(other.0).1,
+            ));
+        }
+        r
     }
 }
 
@@ -1111,14 +1121,31 @@ verus! {
 impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn sub(
-        self,
-        other: &'b RistrettoPoint,
-    ) -> RistrettoPoint
+    fn sub(self, other: &'b RistrettoPoint) -> (result:
+        RistrettoPoint)
     // requires clause inherited from SubSpecImpl::sub_req:
     //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
-     {
-        RistrettoPoint(&self.0 - &other.0)
+
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == edwards_sub(
+                edwards_point_as_affine(self.0).0,
+                edwards_point_as_affine(self.0).1,
+                edwards_point_as_affine(other.0).0,
+                edwards_point_as_affine(other.0).1,
+            ),
+    {
+        let r = RistrettoPoint(&self.0 - &other.0);
+        proof {
+            assume(is_well_formed_edwards_point(r.0));
+            assume(edwards_point_as_affine(r.0) == edwards_sub(
+                edwards_point_as_affine(self.0).0,
+                edwards_point_as_affine(self.0).1,
+                edwards_point_as_affine(other.0).0,
+                edwards_point_as_affine(other.0).1,
+            ));
+        }
+        r
     }
 }
 
@@ -1215,28 +1242,44 @@ verus! {
 impl<'a> Neg for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn neg(
-        self,
-    ) -> RistrettoPoint
+    fn neg(self) -> (result:
+        RistrettoPoint)
     // requires clause inherited from NegSpecImpl::neg_req:
     //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
-     {
+
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == edwards_neg(edwards_point_as_affine(self.0)),
+    {
         // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
-        RistrettoPoint(Neg::neg(&self.0))
+        let r = RistrettoPoint(Neg::neg(&self.0));
+        proof {
+            assume(is_well_formed_edwards_point(r.0));
+            assume(edwards_point_as_affine(r.0) == edwards_neg(edwards_point_as_affine(self.0)));
+        }
+        r
     }
 }
 
 impl Neg for RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn neg(
-        self,
-    ) -> RistrettoPoint
+    fn neg(self) -> (result:
+        RistrettoPoint)
     // requires clause inherited from NegSpecImpl::neg_req:
     //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
-     {
+
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == edwards_neg(edwards_point_as_affine(self.0)),
+    {
         // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
-        Neg::neg(&self)
+        let r = Neg::neg(&self);
+        proof {
+            assume(is_well_formed_edwards_point(r.0));
+            assume(edwards_point_as_affine(r.0) == edwards_neg(edwards_point_as_affine(self.0)));
+        }
+        r
     }
 }
 
@@ -1272,14 +1315,27 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
     /// Scalar multiplication: compute `scalar * self`.
-    fn mul(
-        self,
-        scalar: &'b Scalar,
-    ) -> RistrettoPoint
+    fn mul(self, scalar: &'b Scalar) -> (result:
+        RistrettoPoint)
     // requires clause inherited from MulSpecImpl::mul_req:
     //   scalar.bytes[31] <= 127 && is_well_formed_edwards_point(self.0)
-     {
-        RistrettoPoint(self.0 * scalar)
+
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == edwards_scalar_mul(
+                edwards_point_as_affine(self.0),
+                spec_scalar(scalar),
+            ),
+    {
+        let r = RistrettoPoint(self.0 * scalar);
+        proof {
+            assume(is_well_formed_edwards_point(r.0));
+            assume(edwards_point_as_affine(r.0) == edwards_scalar_mul(
+                edwards_point_as_affine(self.0),
+                spec_scalar(scalar),
+            ));
+        }
+        r
     }
 }
 
@@ -1287,14 +1343,27 @@ impl<'a, 'b> Mul<&'b RistrettoPoint> for &'a Scalar {
     type Output = RistrettoPoint;
 
     /// Scalar multiplication: compute `self * scalar`.
-    fn mul(
-        self,
-        point: &'b RistrettoPoint,
-    ) -> RistrettoPoint
+    fn mul(self, point: &'b RistrettoPoint) -> (result:
+        RistrettoPoint)
     // requires clause inherited from MulSpecImpl::mul_req:
     //   self.bytes[31] <= 127 && is_well_formed_edwards_point(point.0)
-     {
-        RistrettoPoint(self * point.0)
+
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == edwards_scalar_mul(
+                edwards_point_as_affine(point.0),
+                spec_scalar(self),
+            ),
+    {
+        let r = RistrettoPoint(self * point.0);
+        proof {
+            assume(is_well_formed_edwards_point(r.0));
+            assume(edwards_point_as_affine(r.0) == edwards_scalar_mul(
+                edwards_point_as_affine(point.0),
+                spec_scalar(self),
+            ));
+        }
+        r
     }
 }
 

@@ -702,6 +702,12 @@ pub open spec fn spec_edwards_add_affine_niels(
     edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
 }
 
+/// Affine Edwards negation for twisted Edwards curves with a=-1.
+/// The negation of point (x, y) is (-x, y).
+pub open spec fn edwards_neg(point: (nat, nat)) -> (nat, nat) {
+    (math_field_neg(point.0), point.1)
+}
+
 /// Affine Edwards subtraction for twisted Edwards curves.
 /// Given (x1,y1) and (x2,y2) on the curve, returns (x3,y3) = (x1,y1) - (x2,y2).
 /// Subtraction is defined as addition with the negation of the second point.

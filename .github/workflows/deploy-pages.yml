@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - la/try_cert  # Temporary for testing
     paths:
       - 'docs/**'
       - 'functions_to_track.csv'

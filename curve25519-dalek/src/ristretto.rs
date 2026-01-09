@@ -1456,9 +1456,6 @@ impl RistrettoPoint {
     }
 }
 
-} // verus!
-verus! {
-
 /// A precomputed table of multiples of a basepoint, used to accelerate
 /// scalar multiplication.
 ///

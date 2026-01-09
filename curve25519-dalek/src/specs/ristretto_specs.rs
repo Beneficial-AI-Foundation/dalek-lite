@@ -150,8 +150,8 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoP
 
         if !ok || t_is_negative || y_is_zero {
             None
-        } else if exists|p: RistrettoPoint| spec_edwards_point(p.0) == (x, y, 1nat, t) {
-            Some(choose|p: RistrettoPoint| spec_edwards_point(p.0) == (x, y, 1nat, t))
+        } else if exists|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t) {
+            Some(choose|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t))
         } else {
             None
         }

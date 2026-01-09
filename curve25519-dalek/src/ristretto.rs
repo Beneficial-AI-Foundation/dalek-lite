@@ -1038,17 +1038,8 @@ impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
                 edwards_point_as_affine(other.0).1,
             ),
     {
-        let r = RistrettoPoint(&self.0 + &other.0);
-        proof {
-            assume(is_well_formed_edwards_point(r.0));
-            assume(edwards_point_as_affine(r.0) == edwards_add(
-                edwards_point_as_affine(self.0).0,
-                edwards_point_as_affine(self.0).1,
-                edwards_point_as_affine(other.0).0,
-                edwards_point_as_affine(other.0).1,
-            ));
-        }
-        r
+        // Edwards add ensures: is_well_formed_edwards_point(result) and affine correctness
+        RistrettoPoint(&self.0 + &other.0)
     }
 }
 
@@ -1078,17 +1069,8 @@ impl<'b> AddAssign<&'b RistrettoPoint> for RistrettoPoint {
     {
         // ORIGINAL CODE: *self = (self as &RistrettoPoint) + _rhs;
         // VERUS WORKAROUND: Use &*self instead of cast
+        // RistrettoPoint add ensures: well-formedness and edwards_add correctness
         *self = &*self + _rhs;
-        proof {
-            // The underlying Edwards Add ensures well-formedness and correctness
-            assume(is_well_formed_edwards_point(self.0));
-            assume(edwards_point_as_affine(self.0) == edwards_add(
-                edwards_point_as_affine(old(self).0).0,
-                edwards_point_as_affine(old(self).0).1,
-                edwards_point_as_affine(_rhs.0).0,
-                edwards_point_as_affine(_rhs.0).1,
-            ));
-        }
     }
 }
 
@@ -1135,17 +1117,8 @@ impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
                 edwards_point_as_affine(other.0).1,
             ),
     {
-        let r = RistrettoPoint(&self.0 - &other.0);
-        proof {
-            assume(is_well_formed_edwards_point(r.0));
-            assume(edwards_point_as_affine(r.0) == edwards_sub(
-                edwards_point_as_affine(self.0).0,
-                edwards_point_as_affine(self.0).1,
-                edwards_point_as_affine(other.0).0,
-                edwards_point_as_affine(other.0).1,
-            ));
-        }
-        r
+        // Edwards sub ensures: is_well_formed_edwards_point(result) and affine correctness
+        RistrettoPoint(&self.0 - &other.0)
     }
 }
 
@@ -1175,17 +1148,8 @@ impl<'b> SubAssign<&'b RistrettoPoint> for RistrettoPoint {
     {
         // ORIGINAL CODE: *self = (self as &RistrettoPoint) - _rhs;
         // VERUS WORKAROUND: Use &*self instead of cast
+        // RistrettoPoint sub ensures: well-formedness and edwards_sub correctness
         *self = &*self - _rhs;
-        proof {
-            // The underlying Edwards Sub ensures well-formedness and correctness
-            assume(is_well_formed_edwards_point(self.0));
-            assume(edwards_point_as_affine(self.0) == edwards_sub(
-                edwards_point_as_affine(old(self).0).0,
-                edwards_point_as_affine(old(self).0).1,
-                edwards_point_as_affine(_rhs.0).0,
-                edwards_point_as_affine(_rhs.0).1,
-            ));
-        }
     }
 }
 
@@ -1252,12 +1216,8 @@ impl<'a> Neg for &'a RistrettoPoint {
             edwards_point_as_affine(result.0) == edwards_neg(edwards_point_as_affine(self.0)),
     {
         // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
-        let r = RistrettoPoint(Neg::neg(&self.0));
-        proof {
-            assume(is_well_formed_edwards_point(r.0));
-            assume(edwards_point_as_affine(r.0) == edwards_neg(edwards_point_as_affine(self.0)));
-        }
-        r
+        // Edwards neg ensures: is_well_formed_edwards_point(result) and edwards_neg correctness
+        RistrettoPoint(Neg::neg(&self.0))
     }
 }
 
@@ -1274,12 +1234,8 @@ impl Neg for RistrettoPoint {
             edwards_point_as_affine(result.0) == edwards_neg(edwards_point_as_affine(self.0)),
     {
         // VERUS WORKAROUND: Use explicit trait method because Verus interprets -x as 0-x (integer)
-        let r = Neg::neg(&self);
-        proof {
-            assume(is_well_formed_edwards_point(r.0));
-            assume(edwards_point_as_affine(r.0) == edwards_neg(edwards_point_as_affine(self.0)));
-        }
-        r
+        // Delegates to &RistrettoPoint neg which delegates to Edwards neg
+        Neg::neg(&self)
     }
 }
 
@@ -1298,16 +1254,9 @@ impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
     {
         // ORIGINAL CODE: let result = (self as &RistrettoPoint) * scalar;
         // VERUS WORKAROUND: Use &*self instead of cast
+        // Edwards mul ensures: is_well_formed_edwards_point(result) and scalar_mul correctness
         let result = &*self * scalar;
         *self = result;
-        proof {
-            // The underlying Edwards Mul ensures well-formedness and correctness
-            assume(is_well_formed_edwards_point(self.0));
-            assume(edwards_point_as_affine(self.0) == edwards_scalar_mul(
-                edwards_point_as_affine(old(self).0),
-                spec_scalar(scalar),
-            ));
-        }
     }
 }
 
@@ -1327,15 +1276,8 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoPoint {
                 spec_scalar(scalar),
             ),
     {
-        let r = RistrettoPoint(self.0 * scalar);
-        proof {
-            assume(is_well_formed_edwards_point(r.0));
-            assume(edwards_point_as_affine(r.0) == edwards_scalar_mul(
-                edwards_point_as_affine(self.0),
-                spec_scalar(scalar),
-            ));
-        }
-        r
+        // Edwards mul ensures: is_well_formed_edwards_point(result) and scalar_mul correctness
+        RistrettoPoint(&self.0 * scalar)
     }
 }
 
@@ -1355,15 +1297,8 @@ impl<'a, 'b> Mul<&'b RistrettoPoint> for &'a Scalar {
                 spec_scalar(self),
             ),
     {
-        let r = RistrettoPoint(self * point.0);
-        proof {
-            assume(is_well_formed_edwards_point(r.0));
-            assume(edwards_point_as_affine(r.0) == edwards_scalar_mul(
-                edwards_point_as_affine(point.0),
-                spec_scalar(self),
-            ));
-        }
-        r
+        // Edwards mul ensures: is_well_formed_edwards_point(result) and scalar_mul correctness
+        RistrettoPoint(self * &point.0)
     }
 }
 

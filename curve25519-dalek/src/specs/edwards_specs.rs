@@ -116,7 +116,7 @@ pub proof fn axiom_ed25519_basepoint_table_valid()
 ///
 /// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
 /// Each element has:
-/// - Explicit limb constants that are all < 2^54 (satisfying limb bounds)
+/// - Explicit limb constants that are all < 2^52 (satisfying limb bounds)
 /// - Z = 1 ≠ 0 (valid projective coordinate)
 /// - Sum of limbs within bounds
 ///
@@ -142,17 +142,17 @@ pub proof fn axiom_eight_torsion_well_formed()
 mod eight_torsion_tests {
     use super::*;
 
-    const LIMB_BOUND_54: u64 = 1u64 << 54;
+    const LIMB_BOUND_52: u64 = 1u64 << 52;
 
     fn limbs_bounded(fe: &crate::backend::serial::u64::field::FieldElement51, bound: u64) -> bool {
         fe.limbs.iter().all(|&limb| limb < bound)
     }
 
     fn point_limbs_bounded(p: &EdwardsPoint) -> bool {
-        limbs_bounded(&p.X, LIMB_BOUND_54)
-            && limbs_bounded(&p.Y, LIMB_BOUND_54)
-            && limbs_bounded(&p.Z, LIMB_BOUND_54)
-            && limbs_bounded(&p.T, LIMB_BOUND_54)
+        limbs_bounded(&p.X, LIMB_BOUND_52)
+            && limbs_bounded(&p.Y, LIMB_BOUND_52)
+            && limbs_bounded(&p.Z, LIMB_BOUND_52)
+            && limbs_bounded(&p.T, LIMB_BOUND_52)
     }
 
     fn z_nonzero(p: &EdwardsPoint) -> bool {
@@ -173,7 +173,7 @@ mod eight_torsion_tests {
             assert!(z_nonzero(point), "EIGHT_TORSION[{}] has Z = 0", i);
             assert!(
                 point_limbs_bounded(point),
-                "EIGHT_TORSION[{}] limbs exceed 2^54",
+                "EIGHT_TORSION[{}] limbs exceed 2^52",
                 i
             );
             assert!(

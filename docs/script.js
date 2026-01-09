@@ -345,8 +345,107 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Load certifications history
+    async function loadCertifications() {
+        try {
+            const response = await fetch('certifications.json');
+            const data = await response.json();
+            
+            const tbody = document.getElementById('certificationsTableBody');
+            const description = document.getElementById('certificationsDescription');
+            
+            if (!data.certifications || data.certifications.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="certifications-empty">
+                            No certifications recorded yet. Certifications will appear here after verification runs.
+                        </td>
+                    </tr>
+                `;
+                description.innerHTML = '<em>Certifications will be recorded automatically on each verification run.</em>';
+                return;
+            }
+            
+            // Format date nicely
+            const formatDate = (isoDate) => {
+                const date = new Date(isoDate);
+                return date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+            
+            // Truncate hash for display
+            const truncateHash = (hash) => {
+                if (!hash) return '';
+                return hash.slice(0, 10) + '...' + hash.slice(-6);
+            };
+            
+            tbody.innerHTML = data.certifications.map(cert => {
+                const mainnetLink = cert.mainnet_etherscan 
+                    ? `<a href="${cert.mainnet_etherscan}" target="_blank" class="tx-link">View ↗</a>`
+                    : '<span class="no-data">—</span>';
+                    
+                const sepoliaLink = cert.sepolia_etherscan
+                    ? `<a href="${cert.sepolia_etherscan}" target="_blank" class="tx-link">View ↗</a>`
+                    : '<span class="no-data">—</span>';
+                    
+                const commitLink = `<a href="https://github.com/Beneficial-AI-Foundation/dalek-lite/commit/${cert.commit_sha}" target="_blank" class="commit-link">${cert.commit_short}</a>`;
+                
+                const artifactLink = cert.artifact_url
+                    ? `<a href="${cert.artifact_url}" target="_blank" class="artifact-link">Download ↗</a>`
+                    : '<span class="no-data">—</span>';
+                
+                const contentHashDisplay = cert.content_hash
+                    ? `<span class="content-hash" title="${cert.content_hash}">${truncateHash(cert.content_hash)}</span>`
+                    : '<span class="no-data">—</span>';
+                
+                const verifiedDisplay = cert.verified_count !== undefined && cert.total_functions !== undefined
+                    ? `<span class="verified-count">${cert.verified_count}</span>/${cert.total_functions}`
+                    : '<span class="no-data">—</span>';
+                
+                return `
+                    <tr>
+                        <td>${formatDate(cert.timestamp)}</td>
+                        <td>${commitLink}</td>
+                        <td>${verifiedDisplay}</td>
+                        <td>${contentHashDisplay}</td>
+                        <td>${mainnetLink}</td>
+                        <td>${sepoliaLink}</td>
+                        <td>${artifactLink}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const totalCerts = data.certifications.length;
+            const latestCert = data.certifications[0];
+            description.innerHTML = `
+                <strong>${totalCerts} certification${totalCerts !== 1 ? 's' : ''}</strong> recorded. 
+                Latest: ${formatDate(latestCert.timestamp)} 
+                (<a href="https://github.com/Beneficial-AI-Foundation/dalek-lite/commit/${latestCert.commit_sha}" target="_blank">${latestCert.commit_short}</a>)
+            `;
+            
+        } catch (error) {
+            console.error('Error loading certifications:', error);
+            const tbody = document.getElementById('certificationsTableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="certifications-empty">
+                        Unable to load certifications. They will appear here after the first verification run.
+                    </td>
+                </tr>
+            `;
+            document.getElementById('certificationsDescription').innerHTML = 
+                '<em>Certifications will be recorded automatically on each verification run.</em>';
+        }
+    }
+    
     // Load time period on page load
     loadTimePeriod();
     loadStats();
+    loadCertifications();
 });
 

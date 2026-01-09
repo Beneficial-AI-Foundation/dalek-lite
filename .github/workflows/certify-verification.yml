@@ -11,6 +11,9 @@ on:
       - 'curve25519-dalek/build.rs'
   workflow_dispatch:
 
+permissions:
+  contents: write  # Needed to commit certifications.json updates
+
 
 jobs:
   verify-and-certify:
@@ -143,6 +146,7 @@ jobs:
       # --- Certification to Ethereum Mainnet via Gnosis Safe ---
 
       - name: Certify verification results on Mainnet (via Safe)
+        id: certify_mainnet
         working-directory: certify
         env:
           MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
@@ -150,10 +154,29 @@ jobs:
           CERTIFY_ADDRESS: ${{ vars.MAINNET_CERTIFIER_ADDRESS }}
         run: |
           echo "Certifying verification results hash on Ethereum Mainnet via Gnosis Safe..."
-          uv run python3 -m certify_cli certify \
+          OUTPUT=$(uv run python3 -m certify_cli certify \
             --network mainnet \
             --safe ${{ vars.MAINNET_SAFE_ADDRESS }} \
-            --execute
+            --execute 2>&1) || true
+          echo "$OUTPUT"
+          
+          # Extract transaction hash from output
+          TX_HASH=$(echo "$OUTPUT" | grep -oP 'Tx Hash:\s*\K[a-fA-F0-9]+' | head -1)
+          CONTENT_HASH=$(echo "$OUTPUT" | grep -oP 'Content Hash:\s*\K0x[a-fA-F0-9]+' | head -1)
+          
+          if [ -n "$TX_HASH" ]; then
+            echo "mainnet_tx_hash=0x${TX_HASH}" >> $GITHUB_OUTPUT
+            echo "mainnet_etherscan_url=https://etherscan.io/tx/0x${TX_HASH}" >> $GITHUB_OUTPUT
+            echo "✅ Captured Mainnet Tx Hash: 0x${TX_HASH}"
+          else
+            echo "mainnet_tx_hash=" >> $GITHUB_OUTPUT
+            echo "mainnet_etherscan_url=" >> $GITHUB_OUTPUT
+            echo "⚠️ Could not extract transaction hash from output"
+          fi
+          
+          if [ -n "$CONTENT_HASH" ]; then
+            echo "content_hash=${CONTENT_HASH}" >> $GITHUB_OUTPUT
+          fi
           
           echo ""
           echo "✅ Verification results certified on Ethereum Mainnet!"
@@ -162,6 +185,7 @@ jobs:
       # --- Certification to Sepolia (Testnet) ---
 
       - name: Certify verification results on Sepolia
+        id: certify_sepolia
         working-directory: certify
         env:
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
@@ -170,9 +194,100 @@ jobs:
           CERTIFY_ADDRESS: ${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}
         run: |
           echo "Certifying verification results hash on Sepolia testnet..."
-          uv run python3 -m certify_cli certify --network sepolia
+          OUTPUT=$(uv run python3 -m certify_cli certify --network sepolia 2>&1) || true
+          echo "$OUTPUT"
+          
+          # Extract transaction hash from output
+          TX_HASH=$(echo "$OUTPUT" | grep -oP 'Tx Hash:\s*\K[a-fA-F0-9]+' | head -1)
+          
+          if [ -n "$TX_HASH" ]; then
+            echo "sepolia_tx_hash=0x${TX_HASH}" >> $GITHUB_OUTPUT
+            echo "sepolia_etherscan_url=https://sepolia.etherscan.io/tx/0x${TX_HASH}" >> $GITHUB_OUTPUT
+            echo "✅ Captured Sepolia Tx Hash: 0x${TX_HASH}"
+          else
+            echo "sepolia_tx_hash=" >> $GITHUB_OUTPUT
+            echo "sepolia_etherscan_url=" >> $GITHUB_OUTPUT
+            echo "⚠️ Could not extract transaction hash from output"
+          fi
           
           echo ""
           echo "✅ Verification results certified on Sepolia!"
           echo "View events: https://sepolia.etherscan.io/address/${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}#events"
+
+      # --- Update Certifications History ---
+
+      - name: Update certifications.json
+        working-directory: dalek
+        env:
+          MAINNET_TX_HASH: ${{ steps.certify_mainnet.outputs.mainnet_tx_hash }}
+          MAINNET_ETHERSCAN_URL: ${{ steps.certify_mainnet.outputs.mainnet_etherscan_url }}
+          SEPOLIA_TX_HASH: ${{ steps.certify_sepolia.outputs.sepolia_tx_hash }}
+          SEPOLIA_ETHERSCAN_URL: ${{ steps.certify_sepolia.outputs.sepolia_etherscan_url }}
+          CONTENT_HASH: ${{ steps.certify_mainnet.outputs.content_hash }}
+          RESULTS_FILE: ${{ steps.verify.outputs.results_file }}
+        run: |
+          # Build artifact URL
+          ARTIFACT_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          # Get verification summary from results.json
+          VERIFIED_COUNT=$(cat "$RESULTS_FILE" | jq -r '.summary.verified // 0')
+          TOTAL_FUNCTIONS=$(cat "$RESULTS_FILE" | jq -r '.summary.total // 0')
+          
+          # Create new certification entry
+          NEW_ENTRY=$(jq -n \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg commit_sha "${{ github.sha }}" \
+            --arg commit_short "$(echo '${{ github.sha }}' | cut -c1-7)" \
+            --arg artifact_url "$ARTIFACT_URL" \
+            --arg content_hash "${CONTENT_HASH:-}" \
+            --arg mainnet_tx "${MAINNET_TX_HASH:-}" \
+            --arg mainnet_etherscan "${MAINNET_ETHERSCAN_URL:-}" \
+            --arg sepolia_tx "${SEPOLIA_TX_HASH:-}" \
+            --arg sepolia_etherscan "${SEPOLIA_ETHERSCAN_URL:-}" \
+            --argjson verified_count "${VERIFIED_COUNT:-0}" \
+            --argjson total_functions "${TOTAL_FUNCTIONS:-0}" \
+            '{
+              timestamp: $timestamp,
+              commit_sha: $commit_sha,
+              commit_short: $commit_short,
+              artifact_url: $artifact_url,
+              content_hash: $content_hash,
+              mainnet_tx: $mainnet_tx,
+              mainnet_etherscan: $mainnet_etherscan,
+              sepolia_tx: $sepolia_tx,
+              sepolia_etherscan: $sepolia_etherscan,
+              verified_count: $verified_count,
+              total_functions: $total_functions
+            }')
+          
+          # Update or create certifications.json
+          CERT_FILE="docs/certifications.json"
+          if [ -f "$CERT_FILE" ]; then
+            # Prepend new entry to existing certifications array
+            jq --argjson new "$NEW_ENTRY" '.certifications = [$new] + .certifications' "$CERT_FILE" > tmp.json
+            mv tmp.json "$CERT_FILE"
+          else
+            # Create new file with initial entry
+            mkdir -p docs
+            jq -n --argjson entry "$NEW_ENTRY" '{ certifications: [$entry] }' > "$CERT_FILE"
+          fi
+          
+          echo "=== Updated certifications.json ==="
+          cat "$CERT_FILE" | jq '.'
+
+      - name: Commit certifications.json
+        working-directory: dalek
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add docs/certifications.json
+          
+          if git diff --cached --quiet; then
+            echo "No changes to certifications.json"
+          else
+            git commit -m "chore: update certifications.json with tx ${{ steps.certify_mainnet.outputs.mainnet_tx_hash }}"
+            git push
+            echo "✅ Committed and pushed certifications.json update"
+          fi
 

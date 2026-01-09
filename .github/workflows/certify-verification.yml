@@ -54,12 +54,17 @@ jobs:
         run: |
           # Use specific Verus version compatible with Rust 1.91.0
           # Same as dalek-lite CI: https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/.github/workflows/ci.yml
-          wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
-          unzip verus-0.2025.11.23.41c5885-x86-linux.zip
-          mv verus-x86-linux ~/.cargo/bin
-          cd ~/.cargo/bin
-          ln -s verus-x86-linux/cargo-verus
-          echo "Verus installed"
+          if [ -x ~/.cargo/bin/verus-x86-linux/verus ]; then
+            echo "Verus already installed (from cache)"
+          else
+            wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
+            unzip verus-0.2025.11.23.41c5885-x86-linux.zip
+            rm -rf ~/.cargo/bin/verus-x86-linux
+            mv verus-x86-linux ~/.cargo/bin
+            cd ~/.cargo/bin
+            ln -sf verus-x86-linux/cargo-verus
+            echo "Verus installed"
+          fi
 
       - name: Install scip CLI
         run: |
@@ -72,7 +77,7 @@ jobs:
 
       - name: Install scip-atoms
         run: |
-          cargo install --git https://github.com/Beneficial-AI-Foundation/scip-atoms
+          cargo install --force --git https://github.com/Beneficial-AI-Foundation/scip-atoms
 
       - name: Run scip-atoms verify
         id: verify
@@ -98,7 +103,7 @@ jobs:
           path: dalek/results.json
           retention-days: 90
 
-      # --- Certification to Sepolia ---
+      # --- Certification Setup ---
       
       - name: Checkout eth_certify
         uses: actions/checkout@v4
@@ -135,18 +140,39 @@ jobs:
           echo "=== certify.conf ==="
           cat certify.conf
 
+      # --- Certification to Ethereum Mainnet via Gnosis Safe ---
+
+      - name: Certify verification results on Mainnet (via Safe)
+        working-directory: certify
+        env:
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          MAINNET_PRIVATE_KEY: ${{ secrets.MAINNET_PRIVATE_KEY }}
+          CERTIFY_ADDRESS: ${{ vars.MAINNET_CERTIFIER_ADDRESS }}
+        run: |
+          echo "Certifying verification results hash on Ethereum Mainnet via Gnosis Safe..."
+          uv run python3 -m certify_cli certify \
+            --network mainnet \
+            --safe ${{ vars.MAINNET_SAFE_ADDRESS }} \
+            --execute
+          
+          echo ""
+          echo "✅ Verification results certified on Ethereum Mainnet!"
+          echo "View events: https://etherscan.io/address/${{ vars.MAINNET_CERTIFIER_ADDRESS }}#events"
+
+      # --- Certification to Sepolia (Testnet) ---
+
       - name: Certify verification results on Sepolia
         working-directory: certify
         env:
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
-          PRIVATE_KEY: ${{ secrets.CERTIFY_PRIVATE_KEY }}
+          SEPOLIA_PRIVATE_KEY: ${{ secrets.CERTIFY_PRIVATE_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
           CERTIFY_ADDRESS: ${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}
         run: |
           echo "Certifying verification results hash on Sepolia testnet..."
-          uv run certify-cli certify --network sepolia
+          uv run python3 -m certify_cli certify --network sepolia
           
           echo ""
-          echo "✅ Verification results certified on-chain!"
+          echo "✅ Verification results certified on Sepolia!"
           echo "View events: https://sepolia.etherscan.io/address/${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}#events"
 

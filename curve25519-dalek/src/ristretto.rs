@@ -328,6 +328,8 @@ impl CompressedRistretto {
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
             // On success, the decoded point is a valid Edwards point
             result.is_some() ==> is_valid_edwards_point(result.unwrap().0),
+            // On success, the decoded point lies in the even subgroup
+            result.is_some() ==> is_in_even_subgroup(result.unwrap().0),
     {
         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);
 
@@ -354,6 +356,7 @@ impl CompressedRistretto {
                 // step_2 constructs the point with Z=ONE, ensuring well-formedness
                 assume(is_well_formed_edwards_point(res.0));
                 assume(is_valid_edwards_point(res.0));
+                assume(is_in_even_subgroup(res.0));
                 // Spec alignment for success branch
                 assume(result == spec_ristretto_decompress(self.0));
             }

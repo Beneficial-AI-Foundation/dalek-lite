@@ -12,14 +12,18 @@
 //   https://eprint.iacr.org/2015/673.pdf
 //
 // - The Ristretto group is a prime-order quotient group constructed from the
-//   cofactor-8 Edwards curve Curve25519. The curve has an 8-torsion subgroup
-//   E[8] = {T[0], T[1], ..., T[7]} where T[i] = i·P for a generator P of order 8.
-//   The 4-torsion subgroup is E[4] = {T[0], T[2], T[4], T[6]} (the even multiples).
+//   cofactor-8 Edwards curve Curve25519.
 //
-//   Ristretto points are equivalence classes [Q] = {Q + T : T ∈ E[4]}, i.e.,
-//   Edwards points that differ by a 4-torsion element are considered equal.
-//   The quotient G/E[4] is well-defined because the curve group is abelian.
-//   This construction eliminates the cofactor, yielding a prime-order group.
+//   The curve E has order 8ℓ. Ristretto eliminates the cofactor 8 in two steps:
+//     1. Restrict to even subgroup 2E (points that are doubles): gives a subgroup of order 4ℓ
+//     2. Group points into equivalence classes: P ~ Q if P - Q ∈ E[4].
+//        E[4] = {P : 4P = O} is the 4-torsion subgroup (4 points that vanish when multiplied by 4).
+//        Each class has 4 points, so 4ℓ points form ℓ classes.
+//
+//   Result: a prime-order group of order ℓ, where each Ristretto point is a class of 4 Edwards points.
+//
+//   Ristretto points are equivalence classes [P] = {P + T : T ∈ E[4]} where P ∈ 2E.
+//   This yields a prime-order group of order ℓ with no cofactor issues.
 //
 #[allow(unused_imports)]
 use super::core_specs::*;
@@ -52,7 +56,7 @@ verus! {
 // =============================================================================
 // Ristretto Group Mathematical Specifications
 // =============================================================================
-/// Spec-only model of Ristretto compression (exec implementation is external_body).
+/// Spec-only model of Ristretto compression
 ///
 /// This captures the canonical encoding of a Ristretto point.
 /// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding";
@@ -168,14 +172,6 @@ pub proof fn lemma_spec_ristretto_roundtrip(point: RistrettoPoint)
     ) == spec_ristretto_compress(point));
 }
 
-/// Spec predicate: compressed bytes correspond to a Ristretto point.
-pub open spec fn compressed_ristretto_corresponds_to_point(
-    compressed: CompressedRistretto,
-    point: RistrettoPoint,
-) -> bool {
-    spec_ristretto_compress(point) == compressed.0
-}
-
 /// The canonical representative of the Ristretto basepoint.
 ///
 /// The Ristretto basepoint is the equivalence class [B] where B is the
@@ -209,6 +205,12 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 // =============================================================================
 // Ristretto Equivalence Classes (Cosets)
 // =============================================================================
+/// Point is in the even subgroup 2E = {2Q : Q ∈ E}; valid Ristretto points must lie in 2E.
+pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {
+    exists|q: EdwardsPoint|
+        edwards_point_as_affine(point) == edwards_scalar_mul(edwards_point_as_affine(q), 2)
+}
+
 /// Check if 4 Edwards points form a coset of the 4-torsion subgroup E[4].
 ///
 /// A coset P + E[4] = {P, P + T[2], P + T[4], P + T[6]} represents a single

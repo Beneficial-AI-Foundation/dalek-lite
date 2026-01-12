@@ -364,7 +364,26 @@ impl CompressedRistretto {
 mod decompress {
     use super::*;
 
-    pub(super) fn step_1(repr: &CompressedRistretto) -> (result: (Choice, Choice, FieldElement)) {
+    /// Decompress step 1: Parse and validate the Ristretto encoding.
+    ///
+    /// Returns (s_encoding_is_canonical, s_is_negative, s) where:
+    /// - s_encoding_is_canonical: true iff input bytes are canonical (< p)
+    /// - s_is_negative: true iff s has its low bit set
+    /// - s: the field element decoded from the compressed representation
+    pub(super) fn step_1(repr: &CompressedRistretto) -> (result: (Choice, Choice, FieldElement))
+        ensures
+    // s has 51-bit limb bounds (ensured by from_bytes)
+
+            fe51_limbs_bounded(&result.2, 51),
+            // Parsed value matches the bytes-to-field-element spec
+            spec_field_element(&result.2) == spec_field_element_from_bytes(&repr.0),
+            // s_encoding_is_canonical: true iff re-encoding s gives the original bytes
+            choice_is_true(result.0) == (spec_fe51_to_bytes(&result.2) == repr.0@),
+            // s_is_negative: true iff low bit of canonical encoding is 1
+            choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),
+            // s_is_negative matches the math-level sign bit of the decoded value
+            choice_is_true(result.1) == math_is_negative(spec_field_element_from_bytes(&repr.0)),
+    {
         // Step 1. Check s for validity:
         // 1.a) s must be 32 bytes (we get this from the type system)
         // 1.b) s < p
@@ -382,10 +401,43 @@ mod decompress {
         let s_encoding_is_canonical = ct_eq_bytes32(&s_bytes_check, repr.as_bytes());
         let s_is_negative = s.is_negative();
 
+        proof {
+            // VERIFICATION NOTE: only postcondition left to prove
+            assume(choice_is_true(s_encoding_is_canonical) == (spec_fe51_to_bytes(&s) == repr.0@));
+            assume(spec_field_element(&s) == spec_field_element_from_bytes(&repr.0));
+            assume(choice_is_true(s_is_negative) == math_is_negative(
+                spec_field_element_from_bytes(&repr.0),
+            ));
+        }
+
         (s_encoding_is_canonical, s_is_negative, s)
     }
 
-    pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint)) {
+    /// Decompress step 2: Compute the Edwards point from the field element s.
+    ///
+    /// Returns (ok, t_is_negative, y_is_zero, point) where:
+    /// - ok: true iff the sqrt_ratio succeeded (s encodes a valid point)
+    /// - t_is_negative: true iff T coordinate has low bit set
+    /// - y_is_zero: true iff Y coordinate is zero
+    /// - point: the computed RistrettoPoint
+    pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint))
+        ensures
+    // Z is set to ONE by construction
+
+            spec_field_element(&result.3.0.Z) == 1,
+            // T is the product of X and Y in affine form (Z = 1)
+            spec_field_element(&result.3.0.T) == math_field_mul(
+                spec_field_element(&result.3.0.X),
+                spec_field_element(&result.3.0.Y),
+            ),
+            // If decoding succeeds, the output point is well-formed and in the even subgroup
+            choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
+            choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
+            // t_is_negative reflects the sign bit of T
+            choice_is_true(result.1) == math_is_negative(spec_field_element(&result.3.0.T)),
+            // y_is_zero reflects whether Y is zero
+            choice_is_true(result.2) == (spec_field_element(&result.3.0.Y) == 0),
+    {
         // VERIFICATION NOTE: assume(false) postpones limb bounds tracking and other proof obligations.
         proof {
             assume(false);

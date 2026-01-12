@@ -1174,7 +1174,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &RistrettoPoint {
 
     open spec fn neg_req(self) -> bool {
         // Requires limb bounds on X and T for field element negation
-        fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+        fe51_limbs_bounded(&self.0.X, 52) && fe51_limbs_bounded(&self.0.T, 52)
     }
 
     open spec fn neg_spec(self) -> RistrettoPoint {
@@ -1191,7 +1191,7 @@ impl vstd::std_specs::ops::NegSpecImpl for RistrettoPoint {
 
     open spec fn neg_req(self) -> bool {
         // Requires limb bounds on X and T for field element negation
-        fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+        fe51_limbs_bounded(&self.0.X, 52) && fe51_limbs_bounded(&self.0.T, 52)
     }
 
     open spec fn neg_spec(self) -> RistrettoPoint {
@@ -1209,7 +1209,7 @@ impl<'a> Neg for &'a RistrettoPoint {
     fn neg(self) -> (result:
         RistrettoPoint)
     // requires clause inherited from NegSpecImpl::neg_req:
-    //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+    //   fe51_limbs_bounded(&self.0.X, 52) && fe51_limbs_bounded(&self.0.T, 52)
 
         ensures
             is_well_formed_edwards_point(result.0),
@@ -1227,7 +1227,7 @@ impl Neg for RistrettoPoint {
     fn neg(self) -> (result:
         RistrettoPoint)
     // requires clause inherited from NegSpecImpl::neg_req:
-    //   fe51_limbs_bounded(&self.0.X, 51) && fe51_limbs_bounded(&self.0.T, 51)
+    //   fe51_limbs_bounded(&self.0.X, 52) && fe51_limbs_bounded(&self.0.T, 52)
 
         ensures
             is_well_formed_edwards_point(result.0),

@@ -1671,7 +1671,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
 
     open spec fn neg_req(self) -> bool {
         // Preconditions: limbs must be bounded for field element negation
-        fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+        fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
     }
 
     open spec fn neg_spec(self) -> EdwardsPoint {
@@ -1686,7 +1686,7 @@ impl<'a> Neg for &'a EdwardsPoint {
     fn neg(self) -> (result:
         EdwardsPoint)
     // requires clause in NegSpecImpl for &EdwardsPoint above:
-    //   fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+    //   fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
 
         ensures
             is_well_formed_edwards_point(result),
@@ -1722,7 +1722,7 @@ impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
 
     open spec fn neg_req(self) -> bool {
         // Same requirements as &EdwardsPoint
-        fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+        fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
     }
 
     open spec fn neg_spec(self) -> EdwardsPoint {
@@ -1737,7 +1737,7 @@ impl Neg for EdwardsPoint {
     fn neg(self) -> (result:
         EdwardsPoint)
     // requires clause in NegSpecImpl for EdwardsPoint above:
-    //   fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+    //   fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
 
         ensures
             is_well_formed_edwards_point(result),

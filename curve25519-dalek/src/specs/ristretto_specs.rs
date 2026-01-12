@@ -208,7 +208,10 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 /// Point is in the even subgroup 2E = {2Q : Q ∈ E}; valid Ristretto points must lie in 2E.
 pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {
     exists|q: EdwardsPoint|
-        edwards_point_as_affine(point) == edwards_scalar_mul(edwards_point_as_affine(q), 2)
+        edwards_point_as_affine(point) == edwards_scalar_mul(
+            #[trigger] edwards_point_as_affine(q),
+            2,
+        )
 }
 
 /// Check if 4 Edwards points form a coset of the 4-torsion subgroup E[4].

@@ -636,4 +636,88 @@ lemma_left_right_shift!(lemma_u64_left_right_shift, lemma_u64_shl_is_mul, lemma_
 
 // TODO: missing lemma_u128_shl_is_mul from vstd
 // lemma_left_right_shift!(lemma_u128_left_right_shift, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, u128);
+// =============================================================================
+// Right-Left Shift Round-Trip Lemmas (when divisible by 2^n)
+// =============================================================================
+// If x is divisible by 2^n, then (x >> n) << n == x
+// This is the inverse direction of left_right_shift
+macro_rules! lemma_right_left_shift_divisible {
+    ($name:ident, $shl_is_mul:ident, $shr_is_div:ident, $pow2_le_max:ident, $uN:ty) => {
+        #[cfg(verus_keep_ghost)]
+        verus! {
+        /// If x is divisible by 2^n, then right-shift then left-shift gives back x.
+        ///
+        /// Mathematical reasoning:
+        /// - x % 2^n == 0 implies x = k * 2^n for some k
+        /// - x >> n == x / 2^n == k
+        /// - k << n == k * 2^n == x
+        pub proof fn $name(x: $uN, n: $uN)
+            requires
+                n < <$uN>::BITS,
+                (x as nat) % pow2(n as nat) == 0,
+            ensures
+                (x >> n) << n == x,
+        {
+            let n_nat = n as nat;
+
+            // Establish pow2(n) properties
+            lemma_pow2_pos(n_nat);
+            $pow2_le_max(n_nat);
+
+            // x >> n == x / 2^n
+            assert(x >> n == (x as nat) / pow2(n_nat)) by {
+                $shr_is_div(x, n);
+            }
+
+            // Let k = x / 2^n
+            let k = (x as nat) / pow2(n_nat);
+
+            // Since x % 2^n == 0, we have x == k * 2^n
+            assert(x == k * pow2(n_nat)) by {
+                lemma_fundamental_div_mod(x as int, pow2(n_nat) as int);
+            }
+
+            // k * 2^n <= x <= MAX, so k * 2^n <= MAX
+            // Therefore (x >> n) << n == k << n == k * 2^n == x
+            assert((x >> n) << n == x) by {
+                assert(k * pow2(n_nat) <= <$uN>::MAX);
+                $shl_is_mul(k as $uN, n);
+            }
+        }
+    }
+    };
+}
+
+lemma_right_left_shift_divisible!(lemma_u8_right_left_shift_divisible, lemma_u8_shl_is_mul, lemma_u8_shr_is_div, lemma_u8_pow2_le_max, u8);
+
+lemma_right_left_shift_divisible!(lemma_u16_right_left_shift_divisible, lemma_u16_shl_is_mul, lemma_u16_shr_is_div, lemma_u16_pow2_le_max, u16);
+
+lemma_right_left_shift_divisible!(lemma_u32_right_left_shift_divisible, lemma_u32_shl_is_mul, lemma_u32_shr_is_div, lemma_u32_pow2_le_max, u32);
+
+lemma_right_left_shift_divisible!(lemma_u64_right_left_shift_divisible, lemma_u64_shl_is_mul, lemma_u64_shr_is_div, lemma_u64_pow2_le_max, u64);
+
+// TODO: missing lemma_u128_shl_is_mul from vstd
+// lemma_right_left_shift_divisible!(lemma_u128_right_left_shift_divisible, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, lemma_u128_pow2_le_max, u128);
+/// Specialized u128 version for n=52: if x is divisible by 2^52, then (x >> 52) << 52 == x.
+///
+/// This is a specialized version because the generalized `lemma_u128_right_left_shift_divisible`
+/// cannot be created due to missing `lemma_u128_shl_is_mul` in vstd.
+/// This version uses `by (bit_vector)` which works because 52 is a concrete value.
+pub proof fn lemma_u128_right_left_shift_divisible_52(x: u128)
+    requires
+        (x as nat) % pow2(52) == 0,
+    ensures
+        (x >> 52u128) << 52u128 == x,
+{
+    assert(pow2(52) == 0x10000000000000nat) by {
+        lemma2_to64_rest();
+    }
+
+    // If x % 2^52 == 0 (low 52 bits are zero), then (x >> 52) << 52 == x
+    // Reasoning: x = k * 2^52 for some k, so (x >> 52) = k and k << 52 = x
+    assert(forall|v: u128|
+        v % 0x10000000000000u128 == 0 ==> #[trigger] ((v >> 52u128) << 52u128) == v)
+        by (bit_vector);
+}
+
 } // verus!

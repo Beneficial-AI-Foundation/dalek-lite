@@ -20,10 +20,7 @@
 //        E[4] = {P : 4P = O} is the 4-torsion subgroup (4 points that vanish when multiplied by 4).
 //        Each class has 4 points, so 4ℓ points form ℓ classes.
 //
-//   Result: a prime-order group of order ℓ, where each Ristretto point is a class of 4 Edwards points.
-//
-//   Ristretto points are equivalence classes [P] = {P + T : T ∈ E[4]} where P ∈ 2E.
-//   This yields a prime-order group of order ℓ with no cofactor issues.
+//   Result: a prime-order group of order ℓ with equivalence classes [P] = {P + T : T ∈ E[4]} for P ∈ 2E.
 //
 #[allow(unused_imports)]
 use super::core_specs::*;
@@ -246,7 +243,11 @@ pub open spec fn is_ristretto_coset(points: [EdwardsPoint; 4], base: EdwardsPoin
 }
 
 /// Two Edwards points are Ristretto-equivalent if they differ by a 4-torsion element.
-pub open spec fn ristretto_equivalent(p1: EdwardsPoint, p2: EdwardsPoint) -> bool {
+pub open spec fn ristretto_equivalent(p1: EdwardsPoint, p2: EdwardsPoint) -> bool
+    recommends
+        is_well_formed_edwards_point(p1),
+        is_well_formed_edwards_point(p2),
+{
     let p1_affine = edwards_point_as_affine(p1);
     let p2_affine = edwards_point_as_affine(p2);
     let diff = edwards_sub(p1_affine.0, p1_affine.1, p2_affine.0, p2_affine.1);

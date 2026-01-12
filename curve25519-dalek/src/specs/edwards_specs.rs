@@ -115,10 +115,10 @@ pub proof fn axiom_ed25519_basepoint_table_valid()
 /// Axiom: All 8-torsion points are well-formed.
 ///
 /// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
-/// Each element has:
-/// - Explicit limb constants that are all < 2^52 (satisfying limb bounds)
-/// - Z = 1 ≠ 0 (valid projective coordinate)
-/// - Sum of limbs within bounds
+/// Each element satisfies `is_well_formed_edwards_point`, which requires:
+/// - `is_valid_edwards_point`: Z ≠ 0, point on curve, T = XY/Z
+/// - `edwards_point_limbs_bounded`: all limbs < 2^52
+/// - `sum_of_limbs_bounded(Y, X)`: Y + X doesn't overflow
 ///
 /// This is verified by the `test_eight_torsion_well_formed` test below.
 pub proof fn axiom_eight_torsion_well_formed()
@@ -136,18 +136,22 @@ pub proof fn axiom_eight_torsion_well_formed()
 }
 
 } // verus!
-/// Test that all 8-torsion points satisfy the well-formedness conditions.
-/// This validates the axiom_eight_torsion_well_formed() axiom.
+/// Test that all 8-torsion points satisfy the structural well-formedness conditions.
+/// This partially validates axiom_eight_torsion_well_formed() by checking:
+/// - Z ≠ 0, limbs < 2^52, Y+X bounded
+/// Note: The curve equation and T=XY/Z are trusted from the constant definition.
 #[cfg(test)]
 mod eight_torsion_tests {
     use super::*;
 
     const LIMB_BOUND_52: u64 = 1u64 << 52;
 
+    // Tests that all limbs are < bound
     fn limbs_bounded(fe: &crate::backend::serial::u64::field::FieldElement51, bound: u64) -> bool {
         fe.limbs.iter().all(|&limb| limb < bound)
     }
 
+    // Tests edwards_point_limbs_bounded - all coordinate limbs < 2^52
     fn point_limbs_bounded(p: &EdwardsPoint) -> bool {
         limbs_bounded(&p.X, LIMB_BOUND_52)
             && limbs_bounded(&p.Y, LIMB_BOUND_52)
@@ -155,12 +159,13 @@ mod eight_torsion_tests {
             && limbs_bounded(&p.T, LIMB_BOUND_52)
     }
 
+    // Tests Z ≠ 0 (part of is_valid_edwards_point)
     fn z_nonzero(p: &EdwardsPoint) -> bool {
         p.Z.limbs.iter().any(|&limb| limb != 0)
     }
 
+    // Tests sum_of_limbs_bounded(Y, X) - Y + X doesn't overflow
     fn sum_bounded(p: &EdwardsPoint) -> bool {
-        // Check Y + X doesn't overflow
         p.Y.limbs
             .iter()
             .zip(p.X.limbs.iter())

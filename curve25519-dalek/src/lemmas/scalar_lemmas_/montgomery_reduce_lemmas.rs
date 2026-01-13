@@ -56,9 +56,8 @@ pub(crate) proof fn lemma_part1_divisible(s: u64, p: nat)
 
     // Step 1: LFACTOR property - (1 + LFACTOR * L[0]) % 2^52 = 0
     assert((1 + lfac * L0) % p52 == 0) by {
-        assert(((constants::L.limbs[0] as nat) * (constants::LFACTOR as nat) + 1)
+        assert(((constants::LFACTOR as nat) * (constants::L.limbs[0] as nat) + 1)
             % 0x10000000000000nat == 0) by (compute);
-        lemma_mul_is_commutative(lfac as int, L0 as int);
     }
 
     // Step 2: Scale - s * (1 + LFACTOR * L[0]) % 2^52 = 0
@@ -121,12 +120,11 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
 
     // Goal 1: p < 2^52 (masking bounds the result)
     assert(p < (1u64 << 52)) by {
-        assert(p < 0x10000000000000u64) by (bit_vector)
+        assert(p < 0x10000000000000u64 == (1u64 << 52)) by (bit_vector)
             requires
                 p == (product as u64) & mask52,
                 mask52 == 0xFFFFFFFFFFFFFu64,
         ;
-        assert(0x10000000000000u64 == (1u64 << 52)) by (bit_vector);
     }
 
     // Goal 2: total == carry << 52

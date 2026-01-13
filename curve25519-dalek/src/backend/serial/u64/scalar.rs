@@ -45,8 +45,6 @@ use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas::*;
 #[allow(unused_imports)]
-use crate::lemmas::scalar_lemmas_::constants_lemmas::*;
-#[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*;
 #[allow(unused_imports)]
 use crate::specs::scalar52_specs::*;
@@ -1061,9 +1059,6 @@ impl Scalar52 {
         assert(0x10000000000000u64 == (1u64 << 52)) by (bit_vector);
         assert(p < (1u64 << 52));
 
-        proof {
-            lemma_l_limbs_bounds();
-        }
         assert(constants::L.limbs[0] < (1u64 << 52));
 
         let pL0: u128 = m(p, constants::L.limbs[0]);

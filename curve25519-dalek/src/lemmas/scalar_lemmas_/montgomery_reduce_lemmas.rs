@@ -9,7 +9,6 @@ use super::super::common_lemmas::div_mod_lemmas::*;
 use super::super::common_lemmas::mul_lemmas::*;
 use super::super::common_lemmas::pow_lemmas::*;
 use super::super::common_lemmas::shift_lemmas::*;
-use super::constants_lemmas::*;
 
 use crate::backend::serial::u64::constants;
 use crate::specs::field_specs_u64::*;
@@ -155,7 +154,6 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
 
         // Step 4: Extend to full sum - (sum + p*L[0]) % 2^52 == 0
         // First, prove no overflow
-        lemma_l_limbs_bounds();
         assert((p as u128) * (constants::L.limbs[0] as u128) < (1u128 << 102)) by (bit_vector)
             requires
                 p < 0x10000000000000u64,

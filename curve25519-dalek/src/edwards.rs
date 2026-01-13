@@ -1649,6 +1649,10 @@ then call the verified sum_of_slice function for the actual computation.
 
 impl<T> Sum<T> for EdwardsPoint where T: Borrow<EdwardsPoint> {
     fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
+        requires
+            forall|i: int|
+                0 <= i < spec_points_from_iter::<T, I>(iter).len()
+                    ==> #[trigger] is_well_formed_edwards_point(spec_points_from_iter::<T, I>(iter)[i]),
         ensures
             is_well_formed_edwards_point(result),
             edwards_point_as_affine(result) == sum_of_points(spec_points_from_iter::<T, I>(iter)),

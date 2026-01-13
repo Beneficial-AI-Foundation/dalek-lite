@@ -12,6 +12,8 @@ use vstd::prelude::*;
 #[allow(unused_imports)]
 use crate::edwards::EdwardsPoint;
 #[allow(unused_imports)]
+use crate::ristretto::RistrettoPoint;
+#[allow(unused_imports)]
 use crate::scalar::Scalar;
 #[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::{
@@ -110,9 +112,6 @@ pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>) wh
 
     ensures
         result@ == spec_points_from_iter::<P, J>(iter),
-        // Assume all collected points are well-formed (trusted boundary)
-        forall|i: int|
-            0 <= i < result@.len() ==> is_well_formed_edwards_point(#[trigger] result@[i]),
 {
     iter.map(|p| *p.borrow()).collect()
 }
@@ -140,6 +139,41 @@ pub open spec fn sum_of_scalar_muls(scalars: Seq<Scalar>, points: Seq<EdwardsPoi
         let scalar_nat = spec_scalar(&scalars[last]);
         let scaled = edwards_scalar_mul(point_affine, scalar_nat);
         edwards_add(prev.0, prev.1, scaled.0, scaled.1)
+    }
+}
+
+// ============================================================================
+// RistrettoPoint iterator specs and helpers
+// ============================================================================
+/// Spec function to convert an iterator of RistrettoPoints to a sequence.
+pub uninterp spec fn spec_ristretto_points_from_iter<P, J>(iter: J) -> Seq<RistrettoPoint>;
+
+/// Collect an iterator of RistrettoPoints into Vec<RistrettoPoint>.
+#[cfg(feature = "alloc")]
+#[verifier::external_body]
+pub fn collect_ristretto_points_from_iter<P, J>(iter: J) -> (result: Vec<RistrettoPoint>) where
+    P: Borrow<RistrettoPoint>,
+    J: Iterator<Item = P>,
+
+    ensures
+        result@ == spec_ristretto_points_from_iter::<P, J>(iter),
+{
+    iter.map(|p| *p.borrow()).collect()
+}
+
+/// Spec function to compute sum of all RistrettoPoints in a sequence.
+/// Returns the affine coordinates of the result.
+pub open spec fn sum_of_ristretto_points(points: Seq<RistrettoPoint>) -> (nat, nat)
+    decreases points.len(),
+{
+    if points.len() == 0 {
+        // Identity point in affine coordinates: (0, 1)
+        (0, 1)
+    } else {
+        let last = (points.len() - 1) as int;
+        let prev = sum_of_ristretto_points(points.subrange(0, last));
+        let point_affine = edwards_point_as_affine(points[last].0);
+        edwards_add(prev.0, prev.1, point_affine.0, point_affine.1)
     }
 }
 

@@ -188,6 +188,8 @@ use crate::backend::serial::u64::subtle_assumes::{
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
 use crate::field::FieldElement;
+#[allow(unused_imports)] // Used in verus! blocks for bound weakening
+use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -196,10 +198,12 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::ristretto_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks for Sum trait
+use crate::specs::scalar_mul_specs::{
+    collect_ristretto_points_from_iter, spec_ristretto_points_from_iter, sum_of_ristretto_points,
+};
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::scalar_specs::*;
-#[allow(unused_imports)] // Used in verus! blocks for bound weakening
-use crate::lemmas::field_lemmas::add_lemmas::*;
 use vstd::prelude::*;
 
 #[cfg(feature = "group")]
@@ -221,8 +225,8 @@ use zeroize::Zeroize;
 use crate::edwards::EdwardsBasepointTable;
 use crate::edwards::EdwardsPoint;
 
-use crate::scalar::Scalar;
 use crate::core_assumes::negate_field;
+use crate::scalar::Scalar;
 
 #[cfg(feature = "precomputed-tables")]
 use crate::traits::BasepointTable;
@@ -697,7 +701,6 @@ impl RistrettoPoint {
 // ORIGINAL CODE: BatchCompressState was defined inside double_and_compress_batch
 // Moved outside for Verus compatibility (doesn't support internal item statements)
 // Fields made pub for Verus ensures clause visibility
-
 /// Internal state for batch double-and-compress operation.
 /// Stores intermediate field elements computed from a RistrettoPoint's
 /// underlying Edwards point (X, Y, Z, T) for efficient batched inversion.
@@ -726,8 +729,10 @@ impl BatchCompressState {
             fe51_limbs_bounded(&self.fh, 54),
         ensures
             fe51_limbs_bounded(&result, 54),
-            spec_field_element(&result)
-                == math_field_mul(spec_field_element(&self.eg), spec_field_element(&self.fh)),
+            spec_field_element(&result) == math_field_mul(
+                spec_field_element(&self.eg),
+                spec_field_element(&self.fh),
+            ),
     {
         &self.eg * &self.fh
     }
@@ -745,39 +750,44 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
             fe51_limbs_bounded(&result.eg, 54),
             fe51_limbs_bounded(&result.fh, 54),
             // e = 2*X*Y
-            spec_field_element(&result.e)
-                == math_field_mul(2, math_field_mul(spec_field_element(&P.0.X), spec_field_element(&P.0.Y))),
+            spec_field_element(&result.e) == math_field_mul(
+                2,
+                math_field_mul(spec_field_element(&P.0.X), spec_field_element(&P.0.Y)),
+            ),
             // f = Z^2 + d*T^2
-            spec_field_element(&result.f)
-                == math_field_add(
-                    math_field_square(spec_field_element(&P.0.Z)),
-                    math_field_mul(
-                        spec_field_element(&constants::EDWARDS_D),
-                        math_field_square(spec_field_element(&P.0.T)),
-                    ),
+            spec_field_element(&result.f) == math_field_add(
+                math_field_square(spec_field_element(&P.0.Z)),
+                math_field_mul(
+                    spec_field_element(&constants::EDWARDS_D),
+                    math_field_square(spec_field_element(&P.0.T)),
                 ),
+            ),
             // g = Y^2 + X^2 (a = -1)
-            spec_field_element(&result.g)
-                == math_field_add(
-                    math_field_square(spec_field_element(&P.0.Y)),
-                    math_field_square(spec_field_element(&P.0.X)),
-                ),
+            spec_field_element(&result.g) == math_field_add(
+                math_field_square(spec_field_element(&P.0.Y)),
+                math_field_square(spec_field_element(&P.0.X)),
+            ),
             // h = Z^2 - d*T^2
-            spec_field_element(&result.h)
-                == math_field_sub(
-                    math_field_square(spec_field_element(&P.0.Z)),
-                    math_field_mul(
-                        spec_field_element(&constants::EDWARDS_D),
-                        math_field_square(spec_field_element(&P.0.T)),
-                    ),
+            spec_field_element(&result.h) == math_field_sub(
+                math_field_square(spec_field_element(&P.0.Z)),
+                math_field_mul(
+                    spec_field_element(&constants::EDWARDS_D),
+                    math_field_square(spec_field_element(&P.0.T)),
                 ),
+            ),
             // eg = e * g, fh = f * h
-            spec_field_element(&result.eg)
-                == math_field_mul(spec_field_element(&result.e), spec_field_element(&result.g)),
-            spec_field_element(&result.fh)
-                == math_field_mul(spec_field_element(&result.f), spec_field_element(&result.h)),
+            spec_field_element(&result.eg) == math_field_mul(
+                spec_field_element(&result.e),
+                spec_field_element(&result.g),
+            ),
+            spec_field_element(&result.fh) == math_field_mul(
+                spec_field_element(&result.f),
+                spec_field_element(&result.h),
+            ),
     {
-        proof { assume(false); }  // VERIFICATION NOTE: postpone limb bounds tracking and other proof obligations
+        proof {
+            assume(false);
+        }  // VERIFICATION NOTE: postpone limb bounds tracking and other proof obligations
 
         let XX = P.0.X.square();
         let YY = P.0.Y.square();
@@ -836,14 +846,14 @@ impl RistrettoPoint {
     /// [`double_and_compress_batch_verus`]: RistrettoPoint::double_and_compress_batch_verus
     #[cfg(feature = "alloc")]
     #[verifier::external_body]
-    pub fn double_and_compress_batch<'a, I>(points: I) -> (result: Vec<CompressedRistretto>)
-    where
+    pub fn double_and_compress_batch<'a, I>(points: I) -> (result: Vec<CompressedRistretto>) where
         I: IntoIterator<Item = &'a RistrettoPoint>,
-    {
+     {
         // ORIGINAL CODE: BatchCompressState was defined inline here
         // Moved outside function for Verus compatibility (doesn't support internal item statements)
-        let states: Vec<BatchCompressState> =
-            points.into_iter().map(BatchCompressState::from).collect();
+        let states: Vec<BatchCompressState> = points.into_iter().map(
+            BatchCompressState::from,
+        ).collect();
 
         let mut invs: Vec<FieldElement> = states.iter().map(|state| state.efgh()).collect();
 
@@ -851,42 +861,41 @@ impl RistrettoPoint {
         // VERUSFMT WORKAROUND: Use as_mut_slice() instead of [..] which verusfmt can't parse
         FieldElement::batch_invert(invs.as_mut_slice());
 
-        states
-            .iter()
-            .zip(invs.iter())
-            .map(|(state, inv): (&BatchCompressState, &FieldElement)| {
-                let Zinv = &state.eg * inv;
-                let Tinv = &state.fh * inv;
+        states.iter().zip(invs.iter()).map(
+            |(state, inv): (&BatchCompressState, &FieldElement)|
+                {
+                    let Zinv = &state.eg * inv;
+                    let Tinv = &state.fh * inv;
 
-                let mut magic = constants::INVSQRT_A_MINUS_D;
+                    let mut magic = constants::INVSQRT_A_MINUS_D;
 
-                let negcheck1 = (&state.eg * &Zinv).is_negative();
+                    let negcheck1 = (&state.eg * &Zinv).is_negative();
 
-                let mut e = state.e;
-                let mut g = state.g;
-                let mut h = state.h;
+                    let mut e = state.e;
+                    let mut g = state.g;
+                    let mut h = state.h;
 
-                let minus_e = -&e;
-                let f_times_sqrta = &state.f * &constants::SQRT_M1;
+                    let minus_e = -&e;
+                    let f_times_sqrta = &state.f * &constants::SQRT_M1;
 
-                e.conditional_assign(&state.g, negcheck1);
-                g.conditional_assign(&minus_e, negcheck1);
-                h.conditional_assign(&f_times_sqrta, negcheck1);
+                    e.conditional_assign(&state.g, negcheck1);
+                    g.conditional_assign(&minus_e, negcheck1);
+                    h.conditional_assign(&f_times_sqrta, negcheck1);
 
-                magic.conditional_assign(&constants::SQRT_M1, negcheck1);
+                    magic.conditional_assign(&constants::SQRT_M1, negcheck1);
 
-                let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
+                    let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
 
-                g.conditional_negate(negcheck2);
+                    g.conditional_negate(negcheck2);
 
-                let mut s = &(&h - &g) * &(&magic * &(&g * &Tinv));
+                    let mut s = &(&h - &g) * &(&magic * &(&g * &Tinv));
 
-                let s_is_negative = s.is_negative();
-                s.conditional_negate(s_is_negative);
+                    let s_is_negative = s.is_negative();
+                    s.conditional_negate(s_is_negative);
 
-                CompressedRistretto(s.as_bytes())
-            })
-            .collect()
+                    CompressedRistretto(s.as_bytes())
+                },
+        ).collect()
     }
 
     // ========================================================================
@@ -894,7 +903,6 @@ impl RistrettoPoint {
     // The following functions are refactored for Verus verification.
     // See double_and_compress_batch above for the original implementation.
     // ========================================================================
-
     /// Verus-compatible version that takes a slice instead of IntoIterator.
     /// Use this for verification; the original double_and_compress_batch API is external_body.
     ///
@@ -907,20 +915,28 @@ impl RistrettoPoint {
     ///
     /// Spec: each output[i] = compress(2 * points[i])
     #[cfg(feature = "alloc")]
-    pub fn double_and_compress_batch_verus(points: &[RistrettoPoint]) -> (result: Vec<CompressedRistretto>)
+    pub fn double_and_compress_batch_verus(points: &[RistrettoPoint]) -> (result: Vec<
+        CompressedRistretto,
+    >)
         requires
             forall|i: int|
-                0 <= i < points@.len() ==>  is_well_formed_edwards_point( #[trigger] points@[i].0),
+                0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i].0),
         ensures
             result@.len() == points@.len(),
             // Functional correctness: each result[i] = compress(2 * points[i])
-            forall|i: int| 0 <= i < result@.len() ==> {
-                let point_affine = edwards_point_as_affine(#[trigger] points@[i].0);
-                let doubled_affine = edwards_double(point_affine.0, point_affine.1);
-                #[trigger]result@[i].0@ == spec_ristretto_compress_affine(doubled_affine.0, doubled_affine.1)@
-            },
+            forall|i: int|
+                0 <= i < result@.len() ==> {
+                    let point_affine = edwards_point_as_affine(#[trigger] points@[i].0);
+                    let doubled_affine = edwards_double(point_affine.0, point_affine.1);
+                    #[trigger] result@[i].0@ == spec_ristretto_compress_affine(
+                        doubled_affine.0,
+                        doubled_affine.1,
+                    )@
+                },
     {
-        proof { assume(false); }  // VERIFICATION NOTE: postpone full proof
+        proof {
+            assume(false);
+        }  // VERIFICATION NOTE: postpone full proof
 
         // ORIGINAL CODE: let states: Vec<BatchCompressState> = points.into_iter().map(BatchCompressState::from).collect();
         // Refactored to explicit loop for Verus compatibility
@@ -931,9 +947,11 @@ impl RistrettoPoint {
                 k <= points.len(),
                 states.len() == k,
                 // Track limb bounds from From ensures
-                forall|idx: int| #![auto]
+                forall|idx: int|
+                    #![auto]
                     0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].eg, 54),
-                forall|idx: int| #![auto]
+                forall|idx: int|
+                    #![auto]
                     0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].fh, 54),
             decreases points.len() - k,
         {
@@ -950,9 +968,11 @@ impl RistrettoPoint {
                 i <= states.len(),
                 invs.len() == i,
                 // Track limb bounds from From ensures
-                forall|idx: int| #![auto]
+                forall|idx: int|
+                    #![auto]
                     0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].eg, 54),
-                forall|idx: int| #![auto]
+                forall|idx: int|
+                    #![auto]
                     0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].fh, 54),
             decreases states.len() - i,
         {
@@ -973,7 +993,9 @@ impl RistrettoPoint {
                 results.len() == j,
             decreases states.len() - j,
         {
-            proof { assume(false); }  // VERIFICATION NOTE: postpone loop body proof
+            proof {
+                assume(false);
+            }  // VERIFICATION NOTE: postpone loop body proof
 
             let state = &states[j];
             let inv = &invs[j];
@@ -1038,14 +1060,12 @@ impl RistrettoPoint {
             invs.len() == old(invs).len(),
             // From FieldElement::batch_invert ensures (field.rs:535-549):
             // Each non-zero element is replaced by its multiplicative inverse
-            forall|i: int| #![auto]
-                0 <= i < invs.len() ==> (
-                    (spec_field_element(&old(invs)[i]) != 0) ==>
-                        is_inverse_field(&old(invs)[i], &invs[i])
-                ) && (
-                    (spec_field_element(&old(invs)[i]) == 0) ==>
-                        spec_field_element(&invs[i]) == 0
-                ),
+            forall|i: int|
+                #![auto]
+                0 <= i < invs.len() ==> ((spec_field_element(&old(invs)[i]) != 0)
+                    ==> is_inverse_field(&old(invs)[i], &invs[i])) && ((spec_field_element(
+                    &old(invs)[i],
+                ) == 0) ==> spec_field_element(&invs[i]) == 0),
     {
         // Delegates to Verus-verified FieldElement::batch_invert
         FieldElement::batch_invert(invs.as_mut_slice());
@@ -1085,12 +1105,14 @@ impl RistrettoPoint {
     ///
     /// This method is not public because it's just used for hashing
     /// to a point -- proper elligator support is deferred for now.
-  //  #[verifier::external_body]
+    //  #[verifier::external_body]
     pub(crate) fn elligator_ristretto_flavor(r_0: &FieldElement) -> (result: RistrettoPoint)
         ensures
-            // The result is the Elligator map applied to r_0
-            edwards_point_as_affine(result.0)
-                == spec_elligator_ristretto_flavor(spec_field_element(r_0)),
+    // The result is the Elligator map applied to r_0
+
+            edwards_point_as_affine(result.0) == spec_elligator_ristretto_flavor(
+                spec_field_element(r_0),
+            ),
             // The result is a valid Ristretto point: well-formed and in the even subgroup
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
@@ -1257,7 +1279,9 @@ impl Identity for RistrettoPoint {
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
     {
-        proof { assume(false); }  
+        proof {
+            assume(false);
+        }
         RistrettoPoint(EdwardsPoint::identity())
     }
 }
@@ -1306,11 +1330,13 @@ impl ConstantTimeEq for RistrettoPoint {
     ///
     /// * `Choice(1)` if the two `RistrettoPoint`s are equal;
     /// * `Choice(0)` otherwise.
-    fn ct_eq(&self, other: &RistrettoPoint) -> (result: Choice)
-        /* requires clause in ConstantTimeEqSpecImplRistretto:
+    fn ct_eq(&self, other: &RistrettoPoint) -> (result:
+        Choice)/* requires clause in ConstantTimeEqSpecImplRistretto:
            is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0) */
+
         ensures
-            // Two Ristretto points are equal iff they are in the same equivalence class
+    // Two Ristretto points are equal iff they are in the same equivalence class
+
             choice_is_true(result) == ristretto_equivalent(self.0, other.0),
     {
         proof {
@@ -1330,7 +1356,9 @@ impl ConstantTimeEq for RistrettoPoint {
         let X1X2 = &self.0.X * &other.0.X;
         let Y1Y2 = &self.0.Y * &other.0.Y;
 
-        proof { assume(false); }  // VERIFICATION NOTE: postpone remainder of proof
+        proof {
+            assume(false);
+        }  // VERIFICATION NOTE: postpone remainder of proof
 
         // ORIGINAL CODE: X1Y2.ct_eq(&Y1X2) | X1X2.ct_eq(&Y1Y2)
         choice_or(X1Y2.ct_eq(&Y1X2), X1X2.ct_eq(&Y1Y2))
@@ -1502,10 +1530,86 @@ impl<'b> SubAssign<&'b RistrettoPoint> for RistrettoPoint {
     }
 }
 
+/* <ORIGINAL CODE>
 impl<T> Sum<T> for RistrettoPoint where T: Borrow<RistrettoPoint> {
-    #[verifier::external_body]
     fn sum<I>(iter: I) -> Self where I: Iterator<Item = T> {
         iter.fold(RistrettoPoint::identity(), |acc, item| acc + item.borrow())
+    }
+}
+</ORIGINAL CODE> */
+
+/* <VERIFICATION NOTE>
+Iterator operations and Borrow trait are not directly supported by Verus.
+We use an external_body helper to collect the iterator into Vec<RistrettoPoint>,
+then call the verified sum_of_slice function for the actual computation.
+</VERIFICATION NOTE> */
+
+impl RistrettoPoint {
+    /// Compute the sum of all RistrettoPoints in a slice.
+    ///
+    /// # Returns
+    ///
+    /// The sum of all points using elliptic curve addition.
+    #[allow(clippy::needless_range_loop, clippy::op_ref)]
+    pub fn sum_of_slice(points: &[RistrettoPoint]) -> (result: RistrettoPoint)
+        requires
+            forall|i: int|
+                0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i].0),
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == sum_of_ristretto_points(points@),
+    {
+        let n = points.len();
+        let mut acc = RistrettoPoint::identity();
+
+        proof {
+            assert(points@.subrange(0, 0) =~= Seq::<RistrettoPoint>::empty());
+            // identity() has affine coords (0, 1) which equals sum_of_ristretto_points(empty)
+            lemma_identity_affine_coords(acc.0);
+        }
+
+        for i in 0..n
+            invariant
+                n == points.len(),
+                is_well_formed_edwards_point(acc.0),
+                edwards_point_as_affine(acc.0) == sum_of_ristretto_points(
+                    points@.subrange(0, i as int),
+                ),
+                forall|j: int|
+                    0 <= j < points@.len() ==> is_well_formed_edwards_point(
+                        #[trigger] points@[j].0,
+                    ),
+        {
+            proof {
+                let sub = points@.subrange(0, (i + 1) as int);
+                assert(sub.subrange(0, i as int) =~= points@.subrange(0, i as int));
+            }
+
+            acc = &acc + &points[i];
+        }
+
+        proof {
+            assert(points@.subrange(0, n as int) =~= points@);
+        }
+
+        acc
+    }
+}
+
+impl<T> Sum<T> for RistrettoPoint where T: Borrow<RistrettoPoint> {
+    fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
+        requires
+            forall|i: int|
+                0 <= i < spec_ristretto_points_from_iter::<T, I>(iter).len()
+                    ==> #[trigger] is_well_formed_edwards_point(spec_ristretto_points_from_iter::<T, I>(iter)[i].0),
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == sum_of_ristretto_points(
+                spec_ristretto_points_from_iter::<T, I>(iter),
+            ),
+    {
+        let points = collect_ristretto_points_from_iter(iter);
+        RistrettoPoint::sum_of_slice(&points)
     }
 }
 
@@ -1915,13 +2019,11 @@ impl ConditionallySelectable for RistrettoPoint {
     /// assert_eq!(P, B);
     /// # }
     /// ```
-    fn conditional_select(
-        a: &RistrettoPoint,
-        b: &RistrettoPoint,
-        choice: Choice,
-    ) -> (result: RistrettoPoint)
+    fn conditional_select(a: &RistrettoPoint, b: &RistrettoPoint, choice: Choice) -> (result:
+        RistrettoPoint)
         ensures
-            // If choice is false (0), return a
+    // If choice is false (0), return a
+
             !choice_is_true(choice) ==> result.0 == a.0,
             // If choice is true (1), return b
             choice_is_true(choice) ==> result.0 == b.0,
@@ -2611,7 +2713,6 @@ impl Zeroize for RistrettoPoint {
 //         assert_eq!(Q.compress(), R.compress());
 //     }
 // }
-
 // ------------------------------------------------------------------------
 // Functional Equivalence Tests for Verus implementations
 // ------------------------------------------------------------------------

@@ -119,13 +119,11 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
     }
 
     // Goal 1: p < 2^52 (masking bounds the result)
-    assert(p < (1u64 << 52)) by {
-        assert(p < 0x10000000000000u64 == (1u64 << 52)) by (bit_vector)
-            requires
-                p == (product as u64) & mask52,
-                mask52 == 0xFFFFFFFFFFFFFu64,
-        ;
-    }
+    assert(p < (1u64 << 52)) by (bit_vector)
+        requires
+            p == (product as u64) & mask52,
+            mask52 == 0xFFFFFFFFFFFFFu64,
+    ;
 
     // Goal 2: total == carry << 52
     assert(total == carry << 52) by {

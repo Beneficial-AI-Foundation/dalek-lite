@@ -180,9 +180,14 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
         }
 
         // Step 5: Shift round-trip
-        assert((total >> 52) << 52 == total) by {
-            lemma_u128_right_left_shift_divisible_52(total);
+        // Since (total as nat) % pow2(52) == 0, we have (total >> 52) << 52 == total
+        assert(pow2(52) == 0x10000000000000nat) by {
+            lemma2_to64_rest();
         }
+        assert((total >> 52u128) << 52u128 == total) by (bit_vector)
+            requires
+                total % 0x10000000000000u128 == 0,
+        ;
     }
 }
 

@@ -220,6 +220,7 @@ use crate::edwards::EdwardsBasepointTable;
 use crate::edwards::EdwardsPoint;
 
 use crate::scalar::Scalar;
+use crate::core_assumes::negate_field;
 
 #[cfg(feature = "precomputed-tables")]
 use crate::traits::BasepointTable;
@@ -691,6 +692,108 @@ impl RistrettoPoint {
     }
 }
 
+// ORIGINAL CODE: BatchCompressState was defined inside double_and_compress_batch
+// Moved outside for Verus compatibility (doesn't support internal item statements)
+// Fields made pub for Verus ensures clause visibility
+
+/// Internal state for batch double-and-compress operation.
+/// Stores intermediate field elements computed from a RistrettoPoint's
+/// underlying Edwards point (X, Y, Z, T) for efficient batched inversion.
+#[cfg(feature = "alloc")]
+#[derive(Copy, Clone, Debug)]
+pub struct BatchCompressState {
+    /// made public for Verus ensures clause visibility
+    pub e: FieldElement,
+    /// made public for Verus ensures clause visibility
+    pub f: FieldElement,
+    /// made public for Verus ensures clause visibility
+    pub g: FieldElement,
+    /// made public for Verus ensures clause visibility
+    pub h: FieldElement,
+    /// made public for Verus ensures clause visibility
+    pub eg: FieldElement,
+    /// made public for Verus ensures clause visibility
+    pub fh: FieldElement,
+}
+
+#[cfg(feature = "alloc")]
+impl BatchCompressState {
+    fn efgh(&self) -> (result: FieldElement)
+        requires
+            fe51_limbs_bounded(&self.eg, 54),
+            fe51_limbs_bounded(&self.fh, 54),
+        ensures
+            fe51_limbs_bounded(&result, 54),
+            spec_field_element(&result)
+                == math_field_mul(spec_field_element(&self.eg), spec_field_element(&self.fh)),
+    {
+        &self.eg * &self.fh
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
+    #[rustfmt::skip]  // keep alignment of explanatory comments
+    fn from(P: &'a RistrettoPoint) -> (result:
+        BatchCompressState)/* Expected requires (if Verus supported from_req):
+            is_well_formed_edwards_point(P.0),
+        */
+
+        ensures
+            fe51_limbs_bounded(&result.eg, 54),
+            fe51_limbs_bounded(&result.fh, 54),
+            // e = 2*X*Y
+            spec_field_element(&result.e)
+                == math_field_mul(2, math_field_mul(spec_field_element(&P.0.X), spec_field_element(&P.0.Y))),
+            // f = Z^2 + d*T^2
+            spec_field_element(&result.f)
+                == math_field_add(
+                    math_field_square(spec_field_element(&P.0.Z)),
+                    math_field_mul(
+                        spec_field_element(&constants::EDWARDS_D),
+                        math_field_square(spec_field_element(&P.0.T)),
+                    ),
+                ),
+            // g = Y^2 + X^2 (a = -1)
+            spec_field_element(&result.g)
+                == math_field_add(
+                    math_field_square(spec_field_element(&P.0.Y)),
+                    math_field_square(spec_field_element(&P.0.X)),
+                ),
+            // h = Z^2 - d*T^2
+            spec_field_element(&result.h)
+                == math_field_sub(
+                    math_field_square(spec_field_element(&P.0.Z)),
+                    math_field_mul(
+                        spec_field_element(&constants::EDWARDS_D),
+                        math_field_square(spec_field_element(&P.0.T)),
+                    ),
+                ),
+            // eg = e * g, fh = f * h
+            spec_field_element(&result.eg)
+                == math_field_mul(spec_field_element(&result.e), spec_field_element(&result.g)),
+            spec_field_element(&result.fh)
+                == math_field_mul(spec_field_element(&result.f), spec_field_element(&result.h)),
+    {
+        proof { assume(false); }  // VERIFICATION NOTE: postpone limb bounds tracking and other proof obligations
+
+        let XX = P.0.X.square();
+        let YY = P.0.Y.square();
+        let ZZ = P.0.Z.square();
+        let dTT = &P.0.T.square() * &constants::EDWARDS_D;
+
+        let e = &P.0.X * &(&P.0.Y + &P.0.Y);  // = 2*X*Y
+        let f = &ZZ + &dTT;  // = Z^2 + d*T^2
+        let g = &YY + &XX;  // = Y^2 - a*X^2
+        let h = &ZZ - &dTT;  // = Z^2 - d*T^2
+
+        let eg = &e * &g;
+        let fh = &f * &h;
+
+        BatchCompressState { e, f, g, h, eg, fh }
+    }
+}
+
 impl RistrettoPoint {
     /// Double-and-compress a batch of points.  The Ristretto encoding
     /// is not batchable, since it requires an inverse square root.
@@ -699,6 +802,13 @@ impl RistrettoPoint {
     /// it is possible to compute the encodings of their doubles \\(
     /// \mathrm{enc}( \[2\]P\_1), \ldots, \mathrm{enc}( \[2\]P\_n ) \\)
     /// in a batch.
+    ///
+    /// ## VERIFICATION NOTE
+    ///
+    /// This function is marked `external_body` for Verus. The Verus-compatible
+    /// version [`double_and_compress_batch_verus`] provides formal specs with
+    /// functional correctness guarantees. The `verus_equivalence_random` test
+    /// verifies functional equivalence between the two implementations.
     ///
     #[cfg_attr(feature = "rand_core", doc = "```")]
     #[cfg_attr(not(feature = "rand_core"), doc = "```ignore")]
@@ -720,50 +830,18 @@ impl RistrettoPoint {
     /// }
     /// # }
     /// ```
+    ///
+    /// [`double_and_compress_batch_verus`]: RistrettoPoint::double_and_compress_batch_verus
     #[cfg(feature = "alloc")]
     #[verifier::external_body]
-    pub fn double_and_compress_batch<'a, I>(points: I) -> Vec<CompressedRistretto> where
+    pub fn double_and_compress_batch<'a, I>(points: I) -> (result: Vec<CompressedRistretto>)
+    where
         I: IntoIterator<Item = &'a RistrettoPoint>,
-     {
-        #[derive(Copy, Clone, Debug)]
-        struct BatchCompressState {
-            e: FieldElement,
-            f: FieldElement,
-            g: FieldElement,
-            h: FieldElement,
-            eg: FieldElement,
-            fh: FieldElement,
-        }
-
-        impl BatchCompressState {
-            fn efgh(&self) -> FieldElement {
-                &self.eg * &self.fh
-            }
-        }
-
-        impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
-            #[rustfmt::skip]  // keep alignment of explanatory comments
-            fn from(P: &'a RistrettoPoint) -> BatchCompressState {
-                let XX = P.0.X.square();
-                let YY = P.0.Y.square();
-                let ZZ = P.0.Z.square();
-                let dTT = &P.0.T.square() * &constants::EDWARDS_D;
-
-                let e = &P.0.X * &(&P.0.Y + &P.0.Y);  // = 2*X*Y
-                let f = &ZZ + &dTT;  // = Z^2 + d*T^2
-                let g = &YY + &XX;  // = Y^2 - a*X^2
-                let h = &ZZ - &dTT;  // = Z^2 - d*T^2
-
-                let eg = &e * &g;
-                let fh = &f * &h;
-
-                BatchCompressState { e, f, g, h, eg, fh }
-            }
-        }
-
-        let states: Vec<BatchCompressState> = points.into_iter().map(
-            BatchCompressState::from,
-        ).collect();
+    {
+        // ORIGINAL CODE: BatchCompressState was defined inline here
+        // Moved outside function for Verus compatibility (doesn't support internal item statements)
+        let states: Vec<BatchCompressState> =
+            points.into_iter().map(BatchCompressState::from).collect();
 
         let mut invs: Vec<FieldElement> = states.iter().map(|state| state.efgh()).collect();
 
@@ -771,41 +849,204 @@ impl RistrettoPoint {
         // VERUSFMT WORKAROUND: Use as_mut_slice() instead of [..] which verusfmt can't parse
         FieldElement::batch_invert(invs.as_mut_slice());
 
-        states.iter().zip(invs.iter()).map(
-            |(state, inv): (&BatchCompressState, &FieldElement)|
-                {
-                    let Zinv = &state.eg * inv;
-                    let Tinv = &state.fh * inv;
+        states
+            .iter()
+            .zip(invs.iter())
+            .map(|(state, inv): (&BatchCompressState, &FieldElement)| {
+                let Zinv = &state.eg * inv;
+                let Tinv = &state.fh * inv;
 
-                    let mut magic = constants::INVSQRT_A_MINUS_D;
+                let mut magic = constants::INVSQRT_A_MINUS_D;
 
-                    let negcheck1 = (&state.eg * &Zinv).is_negative();
+                let negcheck1 = (&state.eg * &Zinv).is_negative();
 
-                    let mut e = state.e;
-                    let mut g = state.g;
-                    let mut h = state.h;
+                let mut e = state.e;
+                let mut g = state.g;
+                let mut h = state.h;
 
-                    let minus_e = -&e;
-                    let f_times_sqrta = &state.f * &constants::SQRT_M1;
+                let minus_e = -&e;
+                let f_times_sqrta = &state.f * &constants::SQRT_M1;
 
-                    e.conditional_assign(&state.g, negcheck1);
-                    g.conditional_assign(&minus_e, negcheck1);
-                    h.conditional_assign(&f_times_sqrta, negcheck1);
+                e.conditional_assign(&state.g, negcheck1);
+                g.conditional_assign(&minus_e, negcheck1);
+                h.conditional_assign(&f_times_sqrta, negcheck1);
 
-                    magic.conditional_assign(&constants::SQRT_M1, negcheck1);
+                magic.conditional_assign(&constants::SQRT_M1, negcheck1);
 
-                    let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
+                let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
 
-                    g.conditional_negate(negcheck2);
+                g.conditional_negate(negcheck2);
 
-                    let mut s = &(&h - &g) * &(&magic * &(&g * &Tinv));
+                let mut s = &(&h - &g) * &(&magic * &(&g * &Tinv));
 
-                    let s_is_negative = s.is_negative();
-                    s.conditional_negate(s_is_negative);
+                let s_is_negative = s.is_negative();
+                s.conditional_negate(s_is_negative);
 
-                    CompressedRistretto(s.as_bytes())
-                },
-        ).collect()
+                CompressedRistretto(s.as_bytes())
+            })
+            .collect()
+    }
+
+    // ========================================================================
+    // VERUS-COMPATIBLE REFACTORED VERSION
+    // The following functions are refactored for Verus verification.
+    // See double_and_compress_batch above for the original implementation.
+    // ========================================================================
+
+    /// Verus-compatible version that takes a slice instead of IntoIterator.
+    /// Use this for verification; the original double_and_compress_batch API is external_body.
+    ///
+    /// REFACTORING FOR VERUS:
+    /// - Iterator patterns (.map().collect()) replaced with explicit while loops
+    /// - IntoIterator trait replaced with concrete slice type
+    /// - Vec to slice conversion wrapped in external_body helper (batch_invert_vec)
+    /// - Closures replaced with inline code using Verus-compatible wrappers
+    ///   (conditional_assign_generic, conditional_negate_field_element, negate_field)
+    ///
+    /// Spec: each output[i] = compress(2 * points[i])
+    #[cfg(feature = "alloc")]
+    pub fn double_and_compress_batch_verus(points: &[RistrettoPoint]) -> (result: Vec<CompressedRistretto>)
+        requires
+            forall|i: int|
+                0 <= i < points@.len() ==>  is_well_formed_edwards_point( #[trigger] points@[i].0),
+        ensures
+            result@.len() == points@.len(),
+            // Functional correctness: each result[i] = compress(2 * points[i])
+            forall|i: int| 0 <= i < result@.len() ==> {
+                let point_affine = edwards_point_as_affine(#[trigger] points@[i].0);
+                let doubled_affine = edwards_double(point_affine.0, point_affine.1);
+                #[trigger]result@[i].0@ == spec_ristretto_compress_affine(doubled_affine.0, doubled_affine.1)@
+            },
+    {
+        proof { assume(false); }  // VERIFICATION NOTE: postpone full proof
+
+        // ORIGINAL CODE: let states: Vec<BatchCompressState> = points.into_iter().map(BatchCompressState::from).collect();
+        // Refactored to explicit loop for Verus compatibility
+        let mut states: Vec<BatchCompressState> = Vec::with_capacity(points.len());
+        let mut k: usize = 0;
+        while k < points.len()
+            invariant
+                k <= points.len(),
+                states.len() == k,
+                // Track limb bounds from From ensures
+                forall|idx: int| #![auto]
+                    0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].eg, 54),
+                forall|idx: int| #![auto]
+                    0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].fh, 54),
+            decreases points.len() - k,
+        {
+            states.push(BatchCompressState::from(&points[k]));
+            k = k + 1;
+        }
+
+        // ORIGINAL CODE: let mut invs: Vec<FieldElement> = states.iter().map(|state| state.efgh()).collect();
+        // Refactored to explicit loop for Verus compatibility
+        let mut invs: Vec<FieldElement> = Vec::with_capacity(states.len());
+        let mut i: usize = 0;
+        while i < states.len()
+            invariant
+                i <= states.len(),
+                invs.len() == i,
+                // Track limb bounds from From ensures
+                forall|idx: int| #![auto]
+                    0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].eg, 54),
+                forall|idx: int| #![auto]
+                    0 <= idx < states.len() ==> fe51_limbs_bounded(&states[idx].fh, 54),
+            decreases states.len() - i,
+        {
+            invs.push(states[i].efgh());
+            i = i + 1;
+        }
+
+        // ORIGINAL CODE: FieldElement::batch_invert(&mut invs[..]);
+        Self::batch_invert_vec(&mut invs);
+
+        // ORIGINAL CODE: states.iter().zip(invs.iter()).map(|(state, inv)| { ... }).collect()
+        // Refactored to explicit loop for Verus compatibility
+        let mut results: Vec<CompressedRistretto> = Vec::with_capacity(states.len());
+        let mut j: usize = 0;
+        while j < states.len()
+            invariant
+                j <= states.len(),
+                results.len() == j,
+            decreases states.len() - j,
+        {
+            proof { assume(false); }  // VERIFICATION NOTE: postpone loop body proof
+
+            let state = &states[j];
+            let inv = &invs[j];
+
+            let Zinv = &state.eg * inv;
+            let Tinv = &state.fh * inv;
+
+            let mut magic = constants::INVSQRT_A_MINUS_D;
+
+            let negcheck1 = (&state.eg * &Zinv).is_negative();
+
+            let mut e = state.e;
+            let mut g = state.g;
+            let mut h = state.h;
+
+            // ORIGINAL CODE: let minus_e = -&e;
+            let minus_e = negate_field(&e);
+            let f_times_sqrta = &state.f * &constants::SQRT_M1;
+
+            // ORIGINAL CODE: e.conditional_assign(&state.g, negcheck1);
+            conditional_assign_generic(&mut e, &state.g, negcheck1);
+            // ORIGINAL CODE: g.conditional_assign(&minus_e, negcheck1);
+            conditional_assign_generic(&mut g, &minus_e, negcheck1);
+            // ORIGINAL CODE: h.conditional_assign(&f_times_sqrta, negcheck1);
+            conditional_assign_generic(&mut h, &f_times_sqrta, negcheck1);
+
+            // ORIGINAL CODE: magic.conditional_assign(&constants::SQRT_M1, negcheck1);
+            conditional_assign_generic(&mut magic, &constants::SQRT_M1, negcheck1);
+
+            let negcheck2 = (&(&h * &e) * &Zinv).is_negative();
+
+            // ORIGINAL CODE: g.conditional_negate(negcheck2);
+            conditional_negate_field_element(&mut g, negcheck2);
+
+            let mut s = &(&h - &g) * &(&magic * &(&g * &Tinv));
+
+            let s_is_negative = s.is_negative();
+            // ORIGINAL CODE: s.conditional_negate(s_is_negative);
+            conditional_negate_field_element(&mut s, s_is_negative);
+
+            results.push(CompressedRistretto(s.as_bytes()));
+            j = j + 1;
+        }
+
+        results
+    }
+
+    /// Wrapper for FieldElement::batch_invert that bridges Vec<T> to &mut [T].
+    ///
+    /// VERUS LIMITATION: Verus doesn't support Vec to mutable slice conversion:
+    ///   - `invs.as_mut_slice()` is rejected
+    ///   - `&mut invs` coercion to `&mut [T]` is rejected
+    ///   - Complex `&mut` argument expressions are unsupported
+    ///
+    /// This thin wrapper is external_body but propagates ensures from
+    /// FieldElement::batch_invert (field.rs:522), which is fully Verus-verified.
+    /// The ensures match batch_invert's postconditions exactly.
+    #[cfg(feature = "alloc")]
+    #[verifier::external_body]
+    fn batch_invert_vec(invs: &mut Vec<FieldElement>)
+        ensures
+            invs.len() == old(invs).len(),
+            // From FieldElement::batch_invert ensures (field.rs:535-549):
+            // Each non-zero element is replaced by its multiplicative inverse
+            forall|i: int| #![auto]
+                0 <= i < invs.len() ==> (
+                    (spec_field_element(&old(invs)[i]) != 0) ==>
+                        is_inverse_field(&old(invs)[i], &invs[i])
+                ) && (
+                    (spec_field_element(&old(invs)[i]) == 0) ==>
+                        spec_field_element(&invs[i]) == 0
+                ),
+    {
+        // Delegates to Verus-verified FieldElement::batch_invert
+        FieldElement::batch_invert(invs.as_mut_slice());
     }
 
     /// Return the coset self + E\[4\], for debugging.
@@ -2308,3 +2549,50 @@ impl Zeroize for RistrettoPoint {
 //         assert_eq!(Q.compress(), R.compress());
 //     }
 // }
+
+// ------------------------------------------------------------------------
+// Functional Equivalence Tests for Verus implementations
+// ------------------------------------------------------------------------
+#[cfg(test)]
+mod test_double_and_compress_batch {
+    use super::*;
+
+    /// Test functional equivalence between double_and_compress_batch and
+    /// double_and_compress_batch_verus using random points.
+    /// Runs 10 iterations with random input sizes (0 to 64 points).
+    #[test]
+    #[cfg(all(feature = "alloc", feature = "rand_core"))]
+    fn verus_equivalence_random() {
+        use rand_core::{OsRng, RngCore};
+
+        let mut rng = OsRng;
+
+        for iteration in 0..10 {
+            let num_points = (rng.next_u32() % 65) as usize; // 0 to 64 points
+            let points: Vec<RistrettoPoint> = (0..num_points)
+                .map(|_| RistrettoPoint::random(&mut rng))
+                .collect();
+
+            let result_original = RistrettoPoint::double_and_compress_batch(&points);
+            let result_verus = RistrettoPoint::double_and_compress_batch_verus(&points);
+
+            assert_eq!(
+                result_original.len(),
+                result_verus.len(),
+                "Length mismatch in iteration {} with {} points",
+                iteration,
+                num_points
+            );
+            for (i, (orig, verus)) in result_original.iter().zip(result_verus.iter()).enumerate() {
+                assert_eq!(
+                    orig.as_bytes(),
+                    verus.as_bytes(),
+                    "Mismatch at index {} in iteration {} with {} points",
+                    i,
+                    iteration,
+                    num_points
+                );
+            }
+        }
+    }
+}

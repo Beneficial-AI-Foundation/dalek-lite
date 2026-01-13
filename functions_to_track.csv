@@ -125,7 +125,7 @@ step_1(&CompressedRistretto),curve25519_dalek::ristretto,
 step_2(FieldElement),curve25519_dalek::ristretto,
 CompressedRistretto::identity(),curve25519_dalek::ristretto,Identity for CompressedRistretto
 RistrettoPoint::compress(&self),curve25519_dalek::ristretto,RistrettoPoint
-RistrettoPoint::double_and_compress_batch(I),curve25519_dalek::ristretto,RistrettoPoint
+RistrettoPoint::double_and_compress_batch_verus(&[RistrettoPoint]),curve25519_dalek::ristretto,RistrettoPoint
 BatchCompressState::efgh(&self),curve25519_dalek::ristretto,BatchCompressState
 BatchCompressState::from(&RistrettoPoint),curve25519_dalek::ristretto,From<&'a RistrettoPoint> for BatchCompressState
 coset4(&self),curve25519_dalek::ristretto,

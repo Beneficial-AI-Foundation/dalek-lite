@@ -53,13 +53,14 @@ verus! {
 // =============================================================================
 // Ristretto Group Mathematical Specifications
 // =============================================================================
-/// Spec-only model of Ristretto compression
+/// Core Ristretto compression from extended coordinates (X, Y, Z, T).
 ///
-/// This captures the canonical encoding of a Ristretto point.
+/// This is the shared implementation used by both `spec_ristretto_compress`
+/// and `spec_ristretto_compress_affine`.
+///
 /// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding";
 ///            [DECAF], Section 6 (encoding formulas), and https://ristretto.group/formulas/encoding.html.
-pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
-    let (x, y, z, t) = spec_edwards_point(point.0);
+pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {
     let u1 = math_field_mul(math_field_add(z, y), math_field_sub(z, y));
     let u2 = math_field_mul(x, y);
     let invsqrt = math_invsqrt(math_field_mul(u1, math_field_square(u2)));
@@ -105,6 +106,25 @@ pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
     };
 
     spec_bytes32_from_nat(s_final)
+}
+
+/// Spec-only model of Ristretto compression from a RistrettoPoint.
+///
+/// This captures the canonical encoding of a Ristretto point.
+/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding"
+pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
+    let (x, y, z, t) = spec_edwards_point(point.0);
+    spec_ristretto_compress_extended(x, y, z, t)
+}
+
+/// Spec-only model of Ristretto compression from affine coordinates.
+///
+/// For affine coords (x, y), we use z = 1 and t = x * y
+/// (since T = XY/Z = xy/1 = xy in extended coords).
+///
+/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding"
+pub open spec fn spec_ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
+    spec_ristretto_compress_extended(x, y, 1, math_field_mul(x, y))
 }
 
 /// Spec-only model of Ristretto decompression.

@@ -22,8 +22,10 @@ use crate::{
 
 use vstd::prelude::*;
 
+verus! {
+
 /// The value of minus one, equal to `-&FieldElement::ONE`
-pub(crate) const MINUS_ONE: FieldElement51 = FieldElement51 {
+pub const MINUS_ONE: FieldElement51 = FieldElement51 {
     limbs: [
         2251799813685228,
         2251799813685247,
@@ -32,6 +34,8 @@ pub(crate) const MINUS_ONE: FieldElement51 = FieldElement51 {
         2251799813685247,
     ],
 };
+
+} // verus!
 
 /// sqrt(-486664)
 // #[cfg(feature = "digest")]
@@ -43,8 +47,10 @@ pub(crate) const MINUS_ONE: FieldElement51 = FieldElement51 {
 //     266558006233600,
 // ]);
 
+verus! {
+
 /// One minus edwards `d` value squared, equal to `(1 - (-121665/121666) mod p) pow 2`
-pub(crate) const ONE_MINUS_EDWARDS_D_SQUARED: FieldElement51 = FieldElement51 {
+pub const ONE_MINUS_EDWARDS_D_SQUARED: FieldElement51 = FieldElement51 {
     limbs: [
         1136626929484150,
         1998550399581263,
@@ -55,7 +61,7 @@ pub(crate) const ONE_MINUS_EDWARDS_D_SQUARED: FieldElement51 = FieldElement51 {
 };
 
 /// Edwards `d` value minus one squared, equal to `(((-121665/121666) mod p) - 1) pow 2`
-pub(crate) const EDWARDS_D_MINUS_ONE_SQUARED: FieldElement51 = FieldElement51 {
+pub const EDWARDS_D_MINUS_ONE_SQUARED: FieldElement51 = FieldElement51 {
     limbs: [
         1507062230895904,
         1572317787530805,
@@ -66,7 +72,7 @@ pub(crate) const EDWARDS_D_MINUS_ONE_SQUARED: FieldElement51 = FieldElement51 {
 };
 
 /// `= sqrt(a*d - 1)`, where `a = -1 (mod p)`, `d` are the Edwards curve parameters.
-pub(crate) const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
+pub const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
     limbs: [
         2241493124984347,
         425987919032274,
@@ -75,6 +81,8 @@ pub(crate) const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
         974799131293748,
     ],
 };
+
+} // verus!
 
 verus! {
 

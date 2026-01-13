@@ -220,6 +220,97 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 }
 
 // =============================================================================
+// Ristretto Elligator Map
+// =============================================================================
+/// Spec-only model of the Ristretto Elligator map (MAP function).
+///
+/// This maps a field element r_0 to a Ristretto point deterministically.
+/// Reference: [RISTRETTO], §4.3.4 "MAP" function;
+///            https://ristretto.group/formulas/elligator.html
+///
+/// The algorithm:
+/// 1. r = i * r_0²  (where i = sqrt(-1))
+/// 2. N_s = (r + 1) * (1 - d²)
+/// 3. D = (c - d*r) * (r + d) where c = -1 initially
+/// 4. (was_square, s) = sqrt_ratio_i(N_s, D)
+/// 5. Conditionally adjust s and c based on was_square
+/// 6. Compute final point coordinates
+///
+/// Returns the affine (x, y) coordinates of the resulting Ristretto point.
+pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
+    let i = spec_sqrt_m1();
+    let d = spec_field_element(&EDWARDS_D);
+    let one_minus_d_sq = math_field_mul(
+        math_field_sub(1, d),
+        math_field_add(1, d),
+    );  // (1-d)(1+d) = 1 - d²
+    let d_minus_one_sq = math_field_square(math_field_sub(d, 1));  // (d-1)²
+    let c_init: nat = math_field_neg(1);  // -1
+
+    let r = math_field_mul(i, math_field_square(r_0));
+    let n_s = math_field_mul(math_field_add(r, 1), one_minus_d_sq);
+    let d_val = math_field_mul(
+        math_field_sub(c_init, math_field_mul(d, r)),
+        math_field_add(r, d),
+    );
+
+    // sqrt_ratio_i(N_s, D) returns (was_square, s)
+    let invsqrt = math_invsqrt(math_field_mul(n_s, d_val));
+    let was_square = math_is_sqrt_ratio(n_s, d_val, invsqrt);
+    let s_if_square = math_field_mul(invsqrt, n_s);
+
+    // s' = s * r_0, then conditionally negate to make it negative
+    let s_prime_raw = math_field_mul(s_if_square, r_0);
+    let s_prime = if !math_is_negative(s_prime_raw) {
+        math_field_neg(s_prime_raw)
+    } else {
+        s_prime_raw
+    };
+
+    // If !was_square: s = s', c = r
+    let s = if was_square {
+        s_if_square
+    } else {
+        s_prime
+    };
+    let c = if was_square {
+        c_init
+    } else {
+        r
+    };
+
+    // N_t = c * (r - 1) * (d - 1)² - D
+    let n_t = math_field_sub(
+        math_field_mul(math_field_mul(c, math_field_sub(r, 1)), d_minus_one_sq),
+        d_val,
+    );
+    let s_sq = math_field_square(s);
+
+    // Final point in completed coordinates, then converted to affine:
+    // X = 2*s*D, Z = N_t * sqrt(a*d - 1), Y = 1 - s², T = 1 + s²
+    // Affine: x = X*T / (Z*T) = X/Z, y = Y*Z / (Z*T) = Y/T
+    let sqrt_ad_minus_one = spec_sqrt_ad_minus_one();
+    let x_completed = math_field_mul(math_field_mul(2, s), d_val);
+    let z_completed = math_field_mul(n_t, sqrt_ad_minus_one);
+    let y_completed = math_field_sub(1, s_sq);
+    let t_completed = math_field_add(1, s_sq);
+
+    // Convert completed point ((X:Z), (Y:T)) to affine (X/Z, Y/T)
+    let x_affine = math_field_mul(x_completed, math_field_inv(z_completed));
+    let y_affine = math_field_mul(y_completed, math_field_inv(t_completed));
+
+    (x_affine, y_affine)
+}
+
+/// Spec for sqrt(a*d - 1) where a = -1 for Ed25519.
+/// This equals sqrt(-d - 1).
+pub open spec fn spec_sqrt_ad_minus_one() -> nat {
+    // sqrt(-1 * d - 1) = sqrt(-d - 1)
+    // This is a constant defined in the codebase
+    spec_field_element(&u64_constants::SQRT_AD_MINUS_ONE)
+}
+
+// =============================================================================
 // Ristretto Equivalence Classes (Cosets)
 // =============================================================================
 /// Point is in the even subgroup 2E = {2Q : Q ∈ E}; valid Ristretto points must lie in 2E.

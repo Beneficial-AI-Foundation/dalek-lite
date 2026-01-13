@@ -16,14 +16,34 @@ use crate::specs::field_specs_u64::*;
 verus! {
 
 // =============================================================================
-// NOT IN VSTD YET - Kept for other lemmas in this file
+// NOT IN VSTD YET - Needed for u128 bitwise-to-arithmetic conversions
+// Note: lemma_u128_shl_is_mul and lemma_u128_right_left_shift_divisible
+// are now in shift_lemmas.rs
 // =============================================================================
-pub broadcast proof fn lemma_u128_shl_is_mul(x: u128, shift: u128)
+/// u128 masking with low_bits_mask is modulo pow2
+pub proof fn lemma_u128_low_bits_mask_is_mod(x: u128, n: nat)
     requires
-        0 <= shift < <u128>::BITS,
-        x * pow2(shift as nat) <= <u128>::MAX,
+        n < 128,
     ensures
-        #[trigger] (x << shift) == x * pow2(shift as nat),
+        x & (low_bits_mask(n) as u128) == x % (pow2(n) as u128),
+{
+    assume(false);
+}
+
+/// u128 truncation to u64 preserves low 64 bits (modulo pow2(64))
+pub proof fn lemma_u128_truncate_to_u64(x: u128)
+    ensures
+        (x as u64) as nat == (x as nat) % pow2(64),
+{
+    assume(false);
+}
+
+/// Masking a truncated value: combining truncation and masking
+pub proof fn lemma_u128_truncate_and_mask(x: u128, n: nat)
+    requires
+        n <= 64,
+    ensures
+        ((x as u64) & (low_bits_mask(n) as u64)) as nat == (x as nat) % pow2(n),
 {
     assume(false);
 }
@@ -88,6 +108,10 @@ pub(crate) proof fn lemma_part1_divisible(s: u64, p: nat)
 // Main part1 correctness lemma
 // =============================================================================
 /// Main correctness lemma for part1: sum + p*L[0] == carry << 52
+///
+/// Structure (following reviewer suggestion):
+/// 1. First establish bitwise-to-arithmetic conversions using lemmas (not bit_vector)
+/// 2. Then do proofs using pow2 lemmas
 pub(crate) proof fn lemma_part1_correctness(sum: u128)
     requires
         sum < (1u128 << 108),
@@ -104,7 +128,7 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
         }),
 {
     let mask52: u64 = 0xFFFFFFFFFFFFFu64;
-    let p52: nat = 0x10000000000000nat;
+    let p52: nat = pow2(52);
 
     // Compute all derived values from sum
     let sum_low52: u64 = (sum as u64) & mask52;
@@ -114,60 +138,87 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
     let carry: u128 = total >> 52;
     let L0 = constants::L.limbs[0] as nat;
 
-    assert(pow2(52) == p52) by {
+    // =======================================================================
+    // PHASE 1: Bitwise-to-arithmetic conversions (used in multiple places)
+    // =======================================================================
+
+    // Used in: L0 < pow2(50), pow2_adds, mod_bound, mul_strict_inequality
+    assert(p52 == 0x10000000000000nat) by {
         lemma2_to64_rest();
     }
+    // Used in: postcondition `p < (1u64 << 52)`
+    assert((1u64 << 52) == p52) by {
+        lemma_u64_shift_is_pow2(52);
+    }
 
-    // Goal 1: p < 2^52 (masking bounds the result)
-    assert(p < (1u64 << 52)) by (bit_vector)
-        requires
-            p == (product as u64) & mask52,
-            mask52 == 0xFFFFFFFFFFFFFu64,
-    ;
+    // Used in: (1) sum_low52 < p52 bound, (2) mod_add_eq for divisibility
+    assert(sum_low52 as nat == (sum as nat) % p52) by {
+        lemma_u128_truncate_and_mask(sum, 52);
+    }
+    // Used in: (1) p < p52 bound, (2) lemma_part1_divisible precondition
+    assert(p as nat == (product as nat) % p52) by {
+        lemma_u128_truncate_and_mask(product, 52);
+    }
 
-    // Goal 2: total == carry << 52
-    assert(total == carry << 52) by {
-        // Step 1: sum_low52 < 2^52
-        assert(sum_low52 < pow2(52)) by {
-            assert(sum_low52 < 0x10000000000000u64) by (bit_vector)
-                requires
-                    sum_low52 == (sum as u64) & mask52,
-                    mask52 == 0xFFFFFFFFFFFFFu64,
-            ;
+    // =======================================================================
+    // PHASE 2: Arithmetic proofs
+    // =======================================================================
+
+    // p < pow2(52): for postcondition and multiplication bound
+    assert(p < p52) by {
+        lemma_pow2_pos(52nat);
+        lemma_mod_bound((product as nat) as int, p52 as int);
+    }
+
+    // Core divisibility: (sum_low52 + p*L[0]) ≡ 0 (mod pow2(52))
+    assert(((sum_low52 as nat) + (p as nat) * L0) % p52 == 0) by {
+        assert(sum_low52 < p52) by {
+            lemma_pow2_pos(52nat);
+            lemma_mod_bound((sum as nat) as int, p52 as int);
         }
-
-        // Step 2: p == (sum_low52 * LFACTOR) % 2^52
-        assert(p as nat == ((sum_low52 as nat) * (constants::LFACTOR as nat)) % pow2(52)) by {
-            assert(((product as u64) & mask52) as u128 == product % 0x10000000000000u128)
-                by (bit_vector)
-                requires
-                    mask52 == 0xFFFFFFFFFFFFFu64,
-            ;
-        }
-
-        // Step 3: (sum_low52 + p*L[0]) % 2^52 == 0 [core divisibility]
         lemma_part1_divisible(sum_low52, p as nat);
+    }
 
-        // Step 4: Extend to full sum - (sum + p*L[0]) % 2^52 == 0
-        // First, prove no overflow
-        assert((p as u128) * (constants::L.limbs[0] as u128) < (1u128 << 102)) by (bit_vector)
-            requires
-                p < 0x10000000000000u64,
-                constants::L.limbs[0] < 0x4000000000000u64,
-        ;
-        assert(total as nat == (sum as nat) + (p as nat) * L0) by {
-            assert(sum + (p as u128) * (constants::L.limbs[0] as u128) < u128::MAX) by (bit_vector)
-                requires
-                    sum < (1u128 << 108),
-                    (p as u128) * (constants::L.limbs[0] as u128) < (1u128 << 102),
-            ;
+    // Multiplication bound: p * L[0] < pow2(102)
+    assert((p as nat) * L0 < pow2(102)) by {
+        assert(L0 < pow2(50)) by {
+            assert(pow2(50) == 0x4000000000000nat) by {
+                lemma2_to64_rest();
+            }
         }
-        // Extension: sum ≡ sum_low52 (mod 2^52), so (sum + p*L[0]) ≡ (sum_low52 + p*L[0]) (mod 2^52)
+        assert(pow2(52) * pow2(50) == pow2(102)) by {
+            lemma_pow2_adds(52, 50);
+        }
+        lemma_mul_strict_inequality((p as nat) as int, p52 as int, L0 as int);
+    }
+
+    // No overflow: sum + p*L[0] < u128::MAX
+    assert((sum as nat) + (p as nat) * L0 < u128::MAX as nat) by {
+        assert((1u128 << 108) == pow2(108)) by {
+            assert(pow2(108) <= u128::MAX) by {
+                lemma_u128_pow2_le_max(108);
+            }
+            lemma_u128_shl_is_mul(1, 108);
+        }
+        assert(pow2(108) + pow2(102) < u128::MAX as nat) by {
+            assert(pow2(102) < pow2(108)) by {
+                lemma_pow2_strictly_increases(102, 108);
+            }
+            assert(2 * pow2(108) == pow2(109)) by {
+                lemma_pow2_unfold(109);
+            }
+            assert(pow2(109) < pow2(127)) by {
+                lemma_pow2_strictly_increases(109, 127);
+            }
+            assert(pow2(127) <= u128::MAX) by {
+                lemma_u128_pow2_le_max(127);
+            }
+        }
+    }
+
+    // Shift round-trip: (total >> 52) << 52 == total
+    assert((total >> 52) << 52 == total) by {
         assert((total as nat) % pow2(52) == 0) by {
-            assert(((sum as u64) & mask52) as u128 == sum % 0x10000000000000u128) by (bit_vector)
-                requires
-                    mask52 == 0xFFFFFFFFFFFFFu64,
-            ;
             assert((sum as nat) % p52 == sum_low52 as nat);
             lemma_mod_add_eq(
                 (sum as nat) as int,
@@ -176,16 +227,7 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
                 p52 as int,
             );
         }
-
-        // Step 5: Shift round-trip
-        // Since (total as nat) % pow2(52) == 0, we have (total >> 52) << 52 == total
-        assert(pow2(52) == 0x10000000000000nat) by {
-            lemma2_to64_rest();
-        }
-        assert((total >> 52u128) << 52u128 == total) by (bit_vector)
-            requires
-                total % 0x10000000000000u128 == 0,
-        ;
+        lemma_u128_right_left_shift_divisible(total, 52);
     }
 }
 

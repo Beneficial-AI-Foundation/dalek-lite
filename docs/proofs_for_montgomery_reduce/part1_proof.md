@@ -86,7 +86,16 @@ This can be verified by direct computation.
 
 # Part 2: Verus Implementation
 
-The proof uses **two lemmas** that mirror the mathematical structure.
+The proof uses **two lemmas** that mirror the mathematical structure, with a **two-phase approach** to eliminate bitvector solver calls.
+
+## Design Philosophy
+
+Following reviewer feedback, the proof converts bitwise operations to arithmetic equivalents early, then proceeds with pure arithmetic reasoning:
+
+1. **Phase 1**: Convert bitwise ops → arithmetic using dedicated lemmas
+2. **Phase 2**: Chain of arithmetic proofs using `pow2` and modulo lemmas
+
+This approach reduces bitvector solver overhead and makes the proof structure mirror the mathematical reasoning.
 
 ## Lemma 1: `lemma_part1_divisible`
 
@@ -118,14 +127,28 @@ proof fn lemma_part1_correctness(sum: u128)
     ensures  p < 2^52 && sum + p*L[0] == carry << 52
 ```
 
-**Proof structure**:
-1. **p < 2^52**: `by (bit_vector)` (masking bounds the result)
-2. **s < 2^52**: `by (bit_vector)` (masking bounds the result)
-3. **p == (s * LFACTOR) % 2^52**: `by (bit_vector)` for mask property
-4. **(s + p*L[0]) % 2^52 == 0**: Call `lemma_part1_divisible(s, p)`
-5. **No overflow**: `by (bit_vector)` for `p*L[0] < 2^102`
-6. **Extension**: `s == sum % 2^52` via `by (bit_vector)`, then `lemma_mod_add_eq`
-7. **Shift round-trip**: `lemma_u128_right_left_shift_divisible_52`
+### Phase 1: Bitwise-to-Arithmetic Conversions (used in multiple places)
+
+These conversions are established at the top level because they're used in multiple Phase 2 assertions:
+
+| Conversion | Lemma Used | Used In |
+|------------|------------|---------|
+| `pow2(52) == 0x10000000000000` | `lemma2_to64_rest` | L0 bound, pow2_adds, mod_bound |
+| `(1u64 << 52) == pow2(52)` | `lemma_u64_shift_is_pow2` | Postcondition `p < (1u64 << 52)` |
+| `sum_low52 == sum % pow2(52)` | `lemma_u128_truncate_and_mask` | (1) sum_low52 < p52, (2) mod_add_eq |
+| `p == product % pow2(52)` | `lemma_u128_truncate_and_mask` | (1) p < p52, (2) divisibility |
+
+### Phase 2: Arithmetic Proofs
+
+Each goal is proven with its preconditions nested inside where they're needed:
+
+| Goal | Nested Preconditions | Lemmas Used |
+|------|---------------------|-------------|
+| `p < pow2(52)` | — | `lemma_pow2_pos`, `lemma_mod_bound` |
+| `(s + p*L[0]) % pow2(52) == 0` | `sum_low52 < pow2(52)` | `lemma_part1_divisible` |
+| `p * L[0] < pow2(102)` | `L0 < pow2(50)`, `pow2(52)*pow2(50) == pow2(102)` | `lemma_pow2_adds`, `lemma_mul_strict_inequality` |
+| No overflow | `(1u128 << 108) == pow2(108)`, overflow bound chain | `lemma_pow2_strictly_increases`, `lemma_pow2_unfold` |
+| `(total >> 52) << 52 == total` | `total % pow2(52) == 0` via mod_add_eq | `lemma_u128_right_left_shift_divisible` |
 
 ---
 
@@ -133,9 +156,13 @@ proof fn lemma_part1_correctness(sum: u128)
 
 | Lemma | Location | Purpose |
 |-------|----------|---------|
-| `lemma_l_limbs_bounds` | `constants_lemmas.rs` | Bounds on L limbs for overflow checking |
-| `lemma_u128_right_left_shift_divisible_52` | `shift_lemmas.rs` | Shift round-trip for divisible values |
+| `lemma_part1_divisible` | `montgomery_reduce_lemmas.rs` | Core divisibility from LFACTOR property |
+| `lemma_u128_truncate_and_mask` | `montgomery_reduce_lemmas.rs` | `(x as u64) & mask52 == x % pow2(52)` |
+| `lemma_u128_shl_is_mul` | `shift_lemmas.rs` | `x << n == x * pow2(n)` for u128 |
+| `lemma_u64_shift_is_pow2` | `shift_lemmas.rs` | `1 << n == pow2(n)` for u64 |
+| `lemma_u128_right_left_shift_divisible` | `shift_lemmas.rs` | Shift round-trip when divisible |
 | `lemma_mod_add_eq` | `div_mod_lemmas.rs` | `a ≡ b (mod m) ⟹ (a+c) ≡ (b+c) (mod m)` |
+| `lemma_pow2_adds` | `vstd` | `pow2(a) * pow2(b) == pow2(a+b)` |
 
 ---
 
@@ -157,10 +184,18 @@ proof fn lemma_part1_correctness(sum: u128)
                         │                                     │
                         ▼                                     ▼
 ┌─────────────────────────────────────────┐    ┌────────────────────────────────────┐
-│  Extension: sum ≡ s (mod 2^52)          │    │ lemma_part1_correctness(sum)       │
-│  Shift: (x >> 52) << 52 = x if x%2^52=0 │    │   • calls lemma_part1_divisible    │
-│                                         │    │   • inline extension (bit_vector)  │
-│  ∴ sum + p*L[0] == carry << 52         │    │   • shift round-trip               │
+│  Phase 1: Bitwise → Arithmetic          │    │ lemma_part1_correctness(sum)       │
+│    • mask & truncate → % pow2(52)       │    │   PHASE 1: Conversions             │
+│    • shift → * pow2(n)                  │    │     • lemma_u128_truncate_and_mask │
+│                                         │    │     • lemma_u64_shift_is_pow2      │
+├─────────────────────────────────────────┤    ├────────────────────────────────────┤
+│  Phase 2: Pure Arithmetic               │    │   PHASE 2: Arithmetic              │
+│    • p < 2^52 from mod bound            │    │     • lemma_mod_bound              │
+│    • divisibility from LFACTOR          │    │     • calls lemma_part1_divisible  │
+│    • no overflow from bounds            │    │     • lemma_mul_strict_inequality  │
+│    • shift round-trip                   │    │     • lemma_right_left_shift_div   │
+│                                         │    │                                    │
+│  ∴ sum + p*L[0] == carry << 52         │    │                                    │
 └─────────────────────────────────────────┘    └────────────────────────────────────┘
 ```
 
@@ -168,4 +203,6 @@ proof fn lemma_part1_correctness(sum: u128)
 
 # Notes
 
-**Original code** used `wrapping_mul` which Verus can't handle in `by (bit_vector)`. The refactored code extracts low 52 bits first, avoiding wrapping semantics.
+1. **Placeholder lemmas**: Some `u128` bitwise-to-arithmetic lemmas (e.g., `lemma_u128_shl_is_mul`, `lemma_u128_truncate_and_mask`) currently use `assume(false)` and need proper proofs.
+
+2. **Original code** used `wrapping_mul` which Verus can't handle in `by (bit_vector)`. The refactored code extracts low 52 bits first, avoiding wrapping semantics.

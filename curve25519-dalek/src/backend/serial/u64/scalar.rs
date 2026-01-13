@@ -45,7 +45,7 @@ use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas::*;
 #[allow(unused_imports)]
-use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*;
+use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*; // TODO: see https://github.com/Beneficial-AI-Foundation/dalek-lite/issues/386
 #[allow(unused_imports)]
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
@@ -1036,9 +1036,7 @@ impl Scalar52 {
         }
          */
         //
-        // VERUS WORKAROUND: The original code uses wrapping_mul.
-        // However, Verus's spec for wrapping_mul uses `nat` casts internally, which
-        // are not supported in `by (bit_vector)` mode (error: "not supported: nat cast here").
+        // Verus's `by (bit_vector)` mode cannot reason about wrapping_mul.
         //
         // EQUIVALENT REFACTORING: Extract low 52 bits first, then multiply in u128.
         // This avoids wrapping_mul and is mathematically equivalent because:

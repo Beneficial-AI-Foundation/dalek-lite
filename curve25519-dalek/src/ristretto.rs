@@ -198,6 +198,8 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::ristretto_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::scalar_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks for bound weakening
+use crate::lemmas::field_lemmas::add_lemmas::*;
 use vstd::prelude::*;
 
 #[cfg(feature = "group")]
@@ -1249,13 +1251,24 @@ impl RistrettoPoint {
 }
 
 impl Identity for RistrettoPoint {
-    fn identity() -> RistrettoPoint {
+    fn identity() -> (result: RistrettoPoint)
+        ensures
+            is_identity_edwards_point(result.0),
+            is_well_formed_edwards_point(result.0),
+            is_in_even_subgroup(result.0),
+    {
+        proof { assume(false); }  
         RistrettoPoint(EdwardsPoint::identity())
     }
 }
 
 impl Default for RistrettoPoint {
-    fn default() -> RistrettoPoint {
+    fn default() -> (result: RistrettoPoint)
+        ensures
+            is_identity_edwards_point(result.0),
+            is_well_formed_edwards_point(result.0),
+            is_in_even_subgroup(result.0),
+    {
         RistrettoPoint::identity()
     }
 }
@@ -1274,6 +1287,18 @@ impl PartialEq for RistrettoPoint {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+pub trait ConstantTimeEqSpecImplRistretto {
+    spec fn ct_eq_req(&self, other: &Self) -> bool;
+}
+
+#[cfg(verus_keep_ghost)]
+impl ConstantTimeEqSpecImplRistretto for RistrettoPoint {
+    open spec fn ct_eq_req(&self, other: &RistrettoPoint) -> bool {
+        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+    }
+}
+
 impl ConstantTimeEq for RistrettoPoint {
     /// Test equality between two `RistrettoPoint`s.
     ///
@@ -1281,15 +1306,31 @@ impl ConstantTimeEq for RistrettoPoint {
     ///
     /// * `Choice(1)` if the two `RistrettoPoint`s are equal;
     /// * `Choice(0)` otherwise.
-    fn ct_eq(&self, other: &RistrettoPoint) -> Choice {
-        // VERIFICATION NOTE: assume(false) postpones proof obligations
+    fn ct_eq(&self, other: &RistrettoPoint) -> (result: Choice)
+        /* requires clause in ConstantTimeEqSpecImplRistretto:
+           is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0) */
+        ensures
+            // Two Ristretto points are equal iff they are in the same equivalence class
+            choice_is_true(result) == ristretto_equivalent(self.0, other.0),
+    {
         proof {
-            assume(false);
+            // Precondition from ConstantTimeEqSpecImplRistretto::ct_eq_req needed for multiplications below
+            /* VERIFICATION NOTE:
+            - Verus does not support adding a "requires" clause to ct_eq with ConstantTimeEqSpecImplRistretto,
+            - For standard types like Add, a "requires" clause for "add" was supported through the AddSpecImpl
+            */
+            assume(self.ct_eq_req(other));
+            // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (mul precondition)
+            lemma_edwards_point_weaken_to_54(&self.0);
+            lemma_edwards_point_weaken_to_54(&other.0);
         }
+
         let X1Y2 = &self.0.X * &other.0.Y;
         let Y1X2 = &self.0.Y * &other.0.X;
         let X1X2 = &self.0.X * &other.0.X;
         let Y1Y2 = &self.0.Y * &other.0.Y;
+
+        proof { assume(false); }  // VERIFICATION NOTE: postpone remainder of proof
 
         // ORIGINAL CODE: X1Y2.ct_eq(&Y1X2) | X1X2.ct_eq(&Y1Y2)
         choice_or(X1Y2.ct_eq(&Y1X2), X1X2.ct_eq(&Y1Y2))
@@ -1878,7 +1919,13 @@ impl ConditionallySelectable for RistrettoPoint {
         a: &RistrettoPoint,
         b: &RistrettoPoint,
         choice: Choice,
-    ) -> RistrettoPoint {
+    ) -> (result: RistrettoPoint)
+        ensures
+            // If choice is false (0), return a
+            !choice_is_true(choice) ==> result.0 == a.0,
+            // If choice is true (1), return b
+            choice_is_true(choice) ==> result.0 == b.0,
+    {
         RistrettoPoint(EdwardsPoint::conditional_select(&a.0, &b.0, choice))
     }
 }

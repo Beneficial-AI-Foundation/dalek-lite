@@ -53,6 +53,8 @@ verus! {
 // =============================================================================
 // Ristretto Group Mathematical Specifications
 // =============================================================================
+// TODO: Add subgroup-preservation lemmas (e.g., closure of 2*E under edwards_add)
+//       once group-law lemmas for Edwards points are available.
 /// Core Ristretto compression from extended coordinates (X, Y, Z, T).
 ///
 /// This is the shared implementation used by both `spec_ristretto_compress`
@@ -300,6 +302,29 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     let y_affine = math_field_mul(y_completed, math_field_inv(t_completed));
 
     (x_affine, y_affine)
+}
+
+// NOTE: axiom_uniform_elligator is in proba_specs.rs
+
+/// Spec helper: first 32 bytes of a 64-byte input.
+pub open spec fn spec_uniform_bytes_first(bytes: &[u8; 64]) -> [u8; 32] {
+    choose|b: [u8; 32]| b@ == bytes@.subrange(0, 32)
+}
+
+/// Spec helper: second 32 bytes of a 64-byte input.
+pub open spec fn spec_uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
+    choose|b: [u8; 32]| b@ == bytes@.subrange(32, 64)
+}
+
+/// Spec-only model of RistrettoPoint::from_uniform_bytes.
+pub open spec fn spec_ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
+    let b1 = spec_uniform_bytes_first(bytes);
+    let b2 = spec_uniform_bytes_second(bytes);
+    let r1 = spec_field_element_from_bytes(&b1);
+    let r2 = spec_field_element_from_bytes(&b2);
+    let p1 = spec_elligator_ristretto_flavor(r1);
+    let p2 = spec_elligator_ristretto_flavor(r2);
+    edwards_add(p1.0, p1.1, p2.0, p2.1)
 }
 
 /// Spec for sqrt(a*d - 1) where a = -1 for Ed25519.

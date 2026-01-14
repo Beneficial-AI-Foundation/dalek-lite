@@ -1796,7 +1796,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
     /// For scalar multiplication of a basepoint,
     /// `EdwardsBasepointTable` is approximately 4x faster.
     fn mul(self, scalar: &'b Scalar) -> (result:
-        EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsPoint in mul_specs.rs:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsPoint in arithm_trait_specs.rs:
             requires rhs.bytes[31] <= 127 && is_well_formed_edwards_point(*self)
         */
 
@@ -1819,7 +1819,7 @@ impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
     /// For scalar multiplication of a basepoint,
     /// `EdwardsBasepointTable` is approximately 4x faster.
     fn mul(self, point: &'b EdwardsPoint) -> (result:
-        EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsPoint> for &Scalar in mul_specs.rs:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsPoint> for &Scalar in arithm_trait_specs.rs:
             requires self.bytes[31] <= 127 && is_well_formed_edwards_point(*rhs)
         */
 
@@ -2526,7 +2526,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
     /// Construct an `EdwardsPoint` from a `Scalar` \\(a\\) by
     /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
     fn mul(self, scalar: &'b Scalar) -> (result:
-        EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsBasepointTable in mul_specs.rs:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&Scalar> for &EdwardsBasepointTable in arithm_trait_specs.rs:
         requires scalar.bytes[31] <= 127
     */
 
@@ -2548,7 +2548,7 @@ impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
     /// Construct an `EdwardsPoint` from a `Scalar` \\(a\\) by
     /// computing the multiple \\(aB\\) of this basepoint \\(B\\).
     fn mul(self, basepoint_table: &'a EdwardsBasepointTable) -> (result:
-        EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsBasepointTable> for &Scalar in mul_specs.rs:
+        EdwardsPoint)/* requires clause in MulSpecImpl<&EdwardsBasepointTable> for &Scalar in arithm_trait_specs.rs:
         requires self.bytes[31] <= 127
     */
 

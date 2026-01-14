@@ -585,4 +585,6 @@ pub open spec fn spec_sqrt_m1() -> nat {
     spec_field_element(&constants::SQRT_M1)
 }
 
+// NOTE: axiom_from_bytes_uniform is in proba_specs.rs
+
 } // verus!

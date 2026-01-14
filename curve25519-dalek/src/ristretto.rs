@@ -187,6 +187,9 @@ use crate::backend::serial::u64::subtle_assumes::{
 };
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::proba_specs::*;
+#[cfg(feature = "digest")]
 use crate::field::FieldElement;
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
 use crate::lemmas::field_lemmas::add_lemmas::*;
@@ -1214,13 +1217,48 @@ impl RistrettoPoint {
     /// # }
     /// ```
     ///
+    /* <VERIFICATION NOTE>
+     Marked as external_body due to complexity of Digest trait.
+     For Verus verification, use hash_from_bytes_verus instead.
+    </VERIFICATION NOTE> */
     #[verifier::external_body]
-    pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint where
+    pub fn hash_from_bytes<D>(input: &[u8]) -> (result: RistrettoPoint) where
         D: Digest<OutputSize = U64> + Default,
+
+        ensures
+            // Result is a well-formed Ristretto point (valid Edwards point in even subgroup)
+            is_well_formed_edwards_point(result.0),
+            is_in_even_subgroup(result.0),
+            // Uniform input bytes produce uniformly distributed point
+            is_uniform_bytes(input) ==> is_uniform_ristretto_point(&result),
      {
         let mut hash = D::default();
         hash.update(input);
         RistrettoPoint::from_hash(hash)
+    }
+
+    /// Verus-compatible version of hash_from_bytes that uses SHA-512.
+    ///
+    /// This function is designed for Verus verification and directly computes
+    /// a SHA-512 hash. For regular code with generic hash functions, use `hash_from_bytes` instead.
+    ///
+    /// # Inputs
+    ///
+    /// * `input`: a byte slice to hash
+    ///
+    /// # Returns
+    ///
+    /// A RistrettoPoint derived from the hash
+    #[cfg(feature = "digest")]
+    pub fn hash_from_bytes_verus(input: &[u8]) -> (result: RistrettoPoint)
+        ensures
+            is_well_formed_edwards_point(result.0),
+            is_in_even_subgroup(result.0),
+            // Uniform input bytes produce uniformly distributed point
+            is_uniform_bytes(input) ==> is_uniform_ristretto_point(&result),
+    {
+        let hash_bytes: [u8; 64] = sha512_hash_bytes(input);
+        RistrettoPoint::from_uniform_bytes(&hash_bytes)
     }
 
     #[cfg(feature = "digest")]
@@ -1229,8 +1267,18 @@ impl RistrettoPoint {
     /// Use this instead of `hash_from_bytes` if it is more convenient
     /// to stream data into the `Digest` than to pass a single byte
     /// slice.
+    /* <VERIFICATION NOTE>
+     Marked as external_body due to GenericArray having private fields.
+     For Verus verification, see from_uniform_bytes.
+    </VERIFICATION NOTE> */
     #[verifier::external_body]
-    pub fn from_hash<D>(hash: D) -> RistrettoPoint where D: Digest<OutputSize = U64> + Default {
+    pub fn from_hash<D>(hash: D) -> (result: RistrettoPoint) where
+        D: Digest<OutputSize = U64> + Default,
+
+        ensures
+            is_well_formed_edwards_point(result.0),
+            is_in_even_subgroup(result.0),
+    {
         // dealing with generic arrays is clumsy, until const generics land
         let output = hash.finalize();
         let mut output_bytes = [0u8;64];
@@ -1250,23 +1298,46 @@ impl RistrettoPoint {
     /// This function splits the input array into two 32-byte halves,
     /// takes the low 255 bits of each half mod p, applies the
     /// Ristretto-flavored Elligator map to each, and adds the results.
-    #[verifier::external_body]
-    pub fn from_uniform_bytes(bytes: &[u8; 64]) -> RistrettoPoint {
+    pub fn from_uniform_bytes(bytes: &[u8; 64]) -> (result: RistrettoPoint)
+        ensures
+            is_well_formed_edwards_point(result.0),
+            is_in_even_subgroup(result.0),
+            edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes),
+            // Uniform input bytes produce uniformly distributed point
+            is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result),
+    {
+        use crate::core_assumes::{first_32_bytes, last_32_bytes};
         // This follows the one-way map construction from the Ristretto RFC:
         // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-ristretto255-decaf448-04#section-4.3.4
-        let mut r_1_bytes = [0u8;32];
-        r_1_bytes.copy_from_slice(&bytes[0..32]);
+        /* ORIGINAL CODE: let mut r_1_bytes = [0u8;32]; r_1_bytes.copy_from_slice(&bytes[0..32]); */
+        let r_1_bytes = first_32_bytes(bytes);  // Verus: copy_from_slice unsupported
         let r_1 = FieldElement::from_bytes(&r_1_bytes);
         let R_1 = RistrettoPoint::elligator_ristretto_flavor(&r_1);
 
-        let mut r_2_bytes = [0u8;32];
-        r_2_bytes.copy_from_slice(&bytes[32..64]);
+        /* ORIGINAL CODE: let mut r_2_bytes = [0u8;32]; r_2_bytes.copy_from_slice(&bytes[32..64]); */
+        let r_2_bytes = last_32_bytes(bytes);  // Verus: copy_from_slice unsupported
         let r_2 = FieldElement::from_bytes(&r_2_bytes);
         let R_2 = RistrettoPoint::elligator_ristretto_flavor(&r_2);
 
         // Applying Elligator twice and adding the results ensures a
         // uniform distribution.
-        R_1 + R_2
+        // Note: elligator_ristretto_flavor ensures is_well_formed_edwards_point for R_1 and R_2
+        let result = R_1 + R_2;
+        proof {
+            // Add postcondition proves is_well_formed_edwards_point(result.0)
+            assume(is_in_even_subgroup(result.0));
+            assume(edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes));
+            // Chain for uniform distribution (axioms from proba_specs):
+            // 1. Split uniform bytes into uniform halves
+            axiom_uniform_bytes_split(bytes, &r_1_bytes, &r_2_bytes);
+            // 2. from_bytes ensures: uniform bytes → uniform field element (automatic from postcondition)
+            // 3. Elligator preserves uniformity (field element → point)
+            axiom_uniform_elligator(&r_1, &R_1);
+            axiom_uniform_elligator(&r_2, &R_2);
+            // 4. Sum of uniform points is uniform
+            axiom_uniform_point_add(&R_1, &R_2, &result);
+        }
+        result
     }
 }
 
@@ -1371,39 +1442,14 @@ impl Eq for RistrettoPoint {
 // ------------------------------------------------------------------------
 // Arithmetic
 // ------------------------------------------------------------------------
-// NOTE: MulSpecImpl for RistrettoPoint * Scalar combinations are in specs/mul_specs.rs
-#[cfg(verus_keep_ghost)]
-verus! {
-
-/// Spec for &RistrettoPoint + &RistrettoPoint
-impl vstd::std_specs::ops::AddSpecImpl<&RistrettoPoint> for &RistrettoPoint {
-    open spec fn obeys_add_spec() -> bool {
-        false  // Set to false since we use ensures clause instead of concrete spec
-
-    }
-
-    open spec fn add_req(self, rhs: &RistrettoPoint) -> bool {
-        // Requires both underlying EdwardsPoints to be well-formed
-        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
-    }
-
-    open spec fn add_spec(self, rhs: &RistrettoPoint) -> RistrettoPoint {
-        arbitrary()  // postcondition provided in function body
-
-    }
-}
-
-} // verus!
+// NOTE: AddSpecImpl, SubSpecImpl, MulSpecImpl are in specs/arithm_trait_specs.rs
 verus! {
 
 impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn add(self, other: &'b RistrettoPoint) -> (result:
-        RistrettoPoint)
-    // requires clause inherited from AddSpecImpl::add_req:
-    //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
-
+    fn add(self, other: &'b RistrettoPoint) -> (result: RistrettoPoint)
+        // requires (from AddSpecImpl::add_req): is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
         ensures
             is_well_formed_edwards_point(result.0),
             edwards_point_as_affine(result.0) == edwards_add(
@@ -1419,11 +1465,8 @@ impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
 }
 
 } // verus!
-define_add_variants!(
-    LHS = RistrettoPoint,
-    RHS = RistrettoPoint,
-    Output = RistrettoPoint
-);
+// Variants: T + &T, &T + T, T + T (delegate to &T + &T above)
+define_ristretto_add_variants!();
 
 verus! {
 
@@ -1452,37 +1495,13 @@ impl<'b> AddAssign<&'b RistrettoPoint> for RistrettoPoint {
 } // verus!
 define_add_assign_variants!(LHS = RistrettoPoint, RHS = RistrettoPoint);
 
-#[cfg(verus_keep_ghost)]
-verus! {
-
-/// Spec for &RistrettoPoint - &RistrettoPoint
-impl vstd::std_specs::ops::SubSpecImpl<&RistrettoPoint> for &RistrettoPoint {
-    open spec fn obeys_sub_spec() -> bool {
-        false
-    }
-
-    open spec fn sub_req(self, rhs: &RistrettoPoint) -> bool {
-        // Requires both underlying EdwardsPoints to be well-formed
-        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
-    }
-
-    open spec fn sub_spec(self, rhs: &RistrettoPoint) -> RistrettoPoint {
-        arbitrary()  // postcondition provided in function body
-
-    }
-}
-
-} // verus!
 verus! {
 
 impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn sub(self, other: &'b RistrettoPoint) -> (result:
-        RistrettoPoint)
-    // requires clause inherited from SubSpecImpl::sub_req:
-    //   is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
-
+    fn sub(self, other: &'b RistrettoPoint) -> (result: RistrettoPoint)
+        // requires (from SubSpecImpl::sub_req): is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
         ensures
             is_well_formed_edwards_point(result.0),
             edwards_point_as_affine(result.0) == edwards_sub(
@@ -1498,11 +1517,8 @@ impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
 }
 
 } // verus!
-define_sub_variants!(
-    LHS = RistrettoPoint,
-    RHS = RistrettoPoint,
-    Output = RistrettoPoint
-);
+// Variants: T - &T, &T - T, T - T (delegate to &T - &T above)
+define_ristretto_sub_variants!();
 
 verus! {
 
@@ -2078,7 +2094,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoBasepointTable {
     type Output = RistrettoPoint;
 
     fn mul(self, scalar: &'b Scalar) -> (result:
-        RistrettoPoint)/* requires clause in MulSpecImpl<&Scalar> for &RistrettoBasepointTable in mul_specs.rs:
+        RistrettoPoint)/* requires clause in MulSpecImpl<&Scalar> for &RistrettoBasepointTable in arithm_trait_specs.rs:
         requires scalar.bytes[31] <= 127
     */
 
@@ -2099,7 +2115,7 @@ impl<'a, 'b> Mul<&'a RistrettoBasepointTable> for &'b Scalar {
     type Output = RistrettoPoint;
 
     fn mul(self, basepoint_table: &'a RistrettoBasepointTable) -> (result:
-        RistrettoPoint)/* requires clause in MulSpecImpl<&RistrettoBasepointTable> for &Scalar in mul_specs.rs:
+        RistrettoPoint)/* requires clause in MulSpecImpl<&RistrettoBasepointTable> for &Scalar in arithm_trait_specs.rs:
         requires self.bytes[31] <= 127
     */
 

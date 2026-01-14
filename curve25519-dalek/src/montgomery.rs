@@ -892,7 +892,7 @@ define_mul_variants_verus!(
     Output = MontgomeryPoint
 );
 
-// NOTE: MulSpecImpl for &MontgomeryPoint * &Scalar moved to mul_specs.rs
+// NOTE: MulSpecImpl for &MontgomeryPoint * &Scalar in arithm_trait_specs.rs
 /// Multiply this `MontgomeryPoint` by a `Scalar`.
 impl Mul<&Scalar> for &MontgomeryPoint {
     type Output = MontgomeryPoint;
@@ -960,7 +960,7 @@ impl MulAssign<&Scalar> for MontgomeryPoint {
     }
 }
 
-// NOTE: MulSpecImpl for &Scalar * &MontgomeryPoint moved to mul_specs.rs
+// NOTE: MulSpecImpl for &Scalar * &MontgomeryPoint in arithm_trait_specs.rs
 impl Mul<&MontgomeryPoint> for &Scalar {
     type Output = MontgomeryPoint;
 
@@ -984,7 +984,7 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 }
 
 // NOTE: MulSpecImpl and owned-type Mul implementations for Scalar * MontgomeryPoint
-// have been moved to mul_specs.rs
+// are in arithm_trait_specs.rs
 } // verus!
 // ------------------------------------------------------------------------
 // Tests

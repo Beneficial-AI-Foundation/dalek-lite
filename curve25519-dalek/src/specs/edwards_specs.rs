@@ -1,4 +1,6 @@
 // Specifications for mathematical operations on Curve25519 (Edwards curve)
+// TODO: Add group-law lemmas (associativity/commutativity/identity/inverses and scalar-mul linearity)
+//       for edwards_add/edwards_scalar_mul to support subgroup proofs in Ristretto specs.
 //
 // ## References
 //

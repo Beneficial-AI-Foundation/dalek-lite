@@ -185,6 +185,9 @@ use crate::core_assumes::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
 
+#[allow(unused_imports)]
+use crate::specs::proba_specs::*;
+
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
 use digest::Digest;
@@ -1421,7 +1424,7 @@ impl Scalar {
     </VERIFICATION NOTE> */
     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> (result: Self)
         ensures
-            is_random_scalar(&result),
+            is_uniform_scalar(&result),
             is_canonical_scalar(&result),
     {
         let mut scalar_bytes = [0u8;64];
@@ -1478,14 +1481,14 @@ impl Scalar {
     /// # Returns
     ///
     /// A scalar reduced modulo the group order
+    #[cfg(feature = "digest")]
     pub fn hash_from_bytes_verus(input: &[u8]) -> (result: Scalar)
         ensures
-            is_random_bytes(input) ==> is_random_scalar(&result),
+            is_uniform_bytes(input) ==> is_uniform_scalar(&result),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
     {
-        use crate::core_assumes as assumes;
-        let hash_bytes: [u8; 64] = assumes::sha512_hash_bytes(input);
+        let hash_bytes: [u8; 64] = sha512_hash_bytes(input);
         Scalar::from_hash_verus(hash_bytes)
     }
 
@@ -1533,9 +1536,8 @@ impl Scalar {
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64>,
 
         ensures
-    //is_random_digest(&hash) ==> is_random_scalar(&result),
-    // Result satisfies Scalar invariants #1 and #2
-
+            // is_uniform_digest(&hash) ==> is_uniform_scalar(&result),
+            // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
     {
         let mut output = [0u8;64];
@@ -1557,7 +1559,7 @@ impl Scalar {
     /// A scalar reduced modulo the group order
     pub fn from_hash_verus(hash_bytes: [u8; 64]) -> (result: Scalar)
         ensures
-            is_random_bytes(&hash_bytes) ==> is_random_scalar(&result),
+            is_uniform_bytes(&hash_bytes) ==> is_uniform_scalar(&result),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
     {

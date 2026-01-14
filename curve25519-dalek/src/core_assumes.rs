@@ -5,7 +5,11 @@ use core::array::TryFromSliceError;
 use core::convert::TryInto;
 
 #[allow(unused_imports)]
+use crate::field::FieldElement;
+#[allow(unused_imports)]
 use crate::montgomery::MontgomeryPoint;
+#[allow(unused_imports)]
+use crate::ristretto::RistrettoPoint;
 #[allow(unused_imports)]
 use crate::specs::core_specs::*;
 #[allow(unused_imports)]
@@ -47,6 +51,34 @@ pub fn try_into_32_bytes_array(bytes: &[u8]) -> (result: Result<[u8; 32], TryFro
 {
     bytes.try_into()
 }
+
+/// Extract the first 32 bytes from a 64-byte array.
+/// Used by from_uniform_bytes to split hash output.
+#[verifier::external_body]
+pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
+    ensures
+        forall|i: int| 0 <= i < 32 ==> result[i] == bytes[i],
+        result@ == bytes@.subrange(0, 32),
+{
+    let mut result = [0u8; 32];
+    result.copy_from_slice(&bytes[0..32]);
+    result
+}
+
+/// Extract the last 32 bytes from a 64-byte array.
+/// Used by from_uniform_bytes to split hash output.
+#[verifier::external_body]
+pub fn last_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
+    ensures
+        forall|i: int| 0 <= i < 32 ==> result[i] == bytes[(32 + i) as int],
+        result@ == bytes@.subrange(32, 64),
+{
+    let mut result = [0u8; 32];
+    result.copy_from_slice(&bytes[32..64]);
+    result
+}
+
+// NOTE: Probabilistic specs (is_uniform_*, axiom_uniform_*) are in proba_specs.rs
 
 // External type specifications for formatters
 #[verifier::external_type_specification]
@@ -153,36 +185,6 @@ pub fn u128_from_le_bytes(bytes: [u8; 16]) -> (x: u128)
 #[verifier::external_body]
 pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg<Output = T> {
     -a
-}
-
-// annotations for random values
-pub uninterp spec fn is_random(x: u8) -> bool;
-
-pub uninterp spec fn is_random_bytes(bytes: &[u8]) -> bool;
-
-pub uninterp spec fn is_random_scalar(scalar: &Scalar) -> bool;
-
-#[cfg(feature = "rand_core")]
-#[verifier::external_body]
-pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
-    ensures
-        is_random_bytes(bytes),
-{
-    rng.fill_bytes(bytes)
-}
-
-/* Hash and Digest specifications */
-
-#[cfg(feature = "digest")]
-#[verifier::external_body]
-pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64])
-    ensures
-        is_random_bytes(input) ==> is_random_bytes(&result),
-{
-    use digest::Digest;
-    let mut hasher = sha2::Sha512::new();
-    hasher.update(input);
-    hasher.finalize().into()
 }
 
 // Assume specification for array hash implementation

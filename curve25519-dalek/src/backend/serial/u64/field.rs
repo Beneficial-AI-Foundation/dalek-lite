@@ -78,7 +78,11 @@ use crate::specs::core_specs::*;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
 #[allow(unused_imports)]
+use crate::core_assumes::*;
+#[allow(unused_imports)]
 use crate::specs::field_specs::*;
+#[allow(unused_imports)]
+use crate::specs::proba_specs::*;
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
 
@@ -924,11 +928,13 @@ impl FieldElement51 {
     #[rustfmt::skip]  // keep alignment of bit shifts
     pub const fn from_bytes(bytes: &[u8; 32]) -> (r: FieldElement51)
         ensures
-    // Decode bytes to limbs (bit 255 is cleared)
-
+            // Decode bytes to limbs (bit 255 is cleared)
             spec_field_element_as_nat(&r) == bytes32_to_nat(bytes) % pow2(255),
             // Each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),
+            // If input bytes are uniform over [0, 2^256), result is statistically
+            // close to uniform over F_p (bias away from uniform is 19/2^255)
+            is_uniform_bytes(bytes) ==> is_uniform_field_element(&r),
     {
         /* MANUALLY moved outside */
         /*
@@ -979,7 +985,7 @@ impl FieldElement51 {
         }
         let low_51_bit_mask = (1u64 << 51) - 1;
         // ADAPTED CODE LINE: limbs is now a named field
-        FieldElement51 {
+        let result = FieldElement51 {
             limbs:
             // load bits [  0, 64), no shift
             [
@@ -1001,7 +1007,12 @@ impl FieldElement51 {
                 ,
                 (load8_at(bytes, 24) >> 12) & low_51_bit_mask,
             ],
+        };
+        proof {
+            // Use axiom: clearing bit 255 preserves uniform distribution
+            crate::specs::proba_specs::axiom_from_bytes_uniform(bytes, &result);
         }
+        result
     }
 
     /// Serialize this `FieldElement51` to a 32-byte array.  The

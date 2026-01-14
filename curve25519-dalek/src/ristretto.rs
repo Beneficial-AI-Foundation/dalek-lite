@@ -1269,7 +1269,7 @@ impl RistrettoPoint {
     /// slice.
     /* <VERIFICATION NOTE>
      Marked as external_body due to GenericArray having private fields.
-     For Verus verification, see from_uniform_bytes.
+     For Verus verification, use from_hash_verus instead.
     </VERIFICATION NOTE> */
     #[verifier::external_body]
     pub fn from_hash<D>(hash: D) -> (result: RistrettoPoint) where
@@ -1285,6 +1285,29 @@ impl RistrettoPoint {
         output_bytes.copy_from_slice(output.as_slice());
 
         RistrettoPoint::from_uniform_bytes(&output_bytes)
+    }
+
+    /// Verus-compatible version of from_hash that takes finalized hash bytes directly.
+    ///
+    /// This function is designed for Verus verification. It takes the 64-byte
+    /// hash output directly, avoiding GenericArray complexity.
+    ///
+    /// # Inputs
+    ///
+    /// * `hash_bytes`: 64-byte hash output (e.g., from SHA-512)
+    ///
+    /// # Returns
+    ///
+    /// A RistrettoPoint derived from the hash
+    pub fn from_hash_verus(hash_bytes: [u8; 64]) -> (result: RistrettoPoint)
+        ensures
+            is_well_formed_edwards_point(result.0),
+            is_in_even_subgroup(result.0),
+            edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(&hash_bytes),
+            // Uniform hash output produces uniformly distributed point
+            is_uniform_bytes(&hash_bytes) ==> is_uniform_ristretto_point(&result),
+    {
+        RistrettoPoint::from_uniform_bytes(&hash_bytes)
     }
 
     /// Construct a `RistrettoPoint` from 64 bytes of data.

@@ -37,8 +37,8 @@ Scalar::from(u32),curve25519_dalek::scalar,From<u32> for Scalar
 Scalar::from(u64),curve25519_dalek::scalar,From<u64> for Scalar
 Scalar::from(u128),curve25519_dalek::scalar,From<u128> for Scalar
 Scalar::zeroize(&self),curve25519_dalek::scalar,Zeroize for Scalar
-Scalar::hash_from_bytes(&[u8]),curve25519_dalek::scalar,Scalar
-Scalar::from_hash(D),curve25519_dalek::scalar,Scalar
+Scalar::hash_from_bytes_verus(&[u8]),curve25519_dalek::scalar,Scalar
+Scalar::from_hash_verus([u8; 64]),curve25519_dalek::scalar,Scalar
 Scalar::to_bytes(&self),curve25519_dalek::scalar,Scalar
 Scalar::as_bytes(&self),curve25519_dalek::scalar,Scalar
 Scalar::invert(&self),curve25519_dalek::scalar,Scalar
@@ -130,9 +130,10 @@ BatchCompressState::efgh(&self),curve25519_dalek::ristretto,BatchCompressState
 BatchCompressState::from(&RistrettoPoint),curve25519_dalek::ristretto,From<&'a RistrettoPoint> for BatchCompressState
 coset4(&self),curve25519_dalek::ristretto,
 elligator_ristretto_flavor(&FieldElement),curve25519_dalek::ristretto,
-hash_from_bytes(&[u8]),curve25519_dalek::ristretto,
-from_hash(D),curve25519_dalek::ristretto,
-from_uniform_bytes(&[u8; 64]),curve25519_dalek::ristretto,
+RistrettoPoint::hash_from_bytes_verus(&[u8]),curve25519_dalek::ristretto,RistrettoPoint
+from_uniform_bytes(&[u8; 64]),curve25519_dalek::ristretto,RistrettoPoint
+RistrettoPoint::from_hash(D),curve25519_dalek::ristretto,RistrettoPoint
+RistrettoPoint::from_hash_verus([u8; 64]),curve25519_dalek::ristretto,RistrettoPoint
 RistrettoPoint::identity(),curve25519_dalek::ristretto,Identity for RistrettoPoint
 RistrettoPoint::default(),curve25519_dalek::ristretto,Default for RistrettoPoint
 RistrettoPoint::ct_eq(&RistrettoPoint),curve25519_dalek::ristretto,ConstantTimeEq for RistrettoPoint

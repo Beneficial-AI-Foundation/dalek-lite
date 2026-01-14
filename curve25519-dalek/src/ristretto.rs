@@ -1608,18 +1608,22 @@ impl<T> Sum<T> for RistrettoPoint where T: Borrow<RistrettoPoint> {
                 spec_edwards_from_ristretto_iter::<T, I>(iter),
             ),
     {
+        // Capture the spec view of the iterator before consuming it
+        let ghost iter_spec: Seq<EdwardsPoint> = spec_edwards_from_ristretto_iter::<T, I>(iter);
+
         let points = collect_ristretto_points(iter);
         let result = RistrettoPoint::sum_of_slice(&points);
 
         proof {
             // sum_of_slice ensures: edwards_point_as_affine(result.0) == sum_of_ristretto_points(points@)
-            // We need: edwards_point_as_affine(result.0) == sum_of_points(spec_edwards_from_ristretto_iter(iter))
+            // We need: edwards_point_as_affine(result.0) == sum_of_points(iter_spec)
             // The lemma proves: sum_of_ristretto_points(r) == sum_of_points(Seq::new(r.len(), |i| r[i].0))
             lemma_sum_ristretto_edwards_equiv(points@);
-            // From collect_ristretto_points: points@[i].0 == spec_edwards_from_ristretto_iter(iter)[i]
-            // So Seq::new(points@.len(), |i| points@[i].0) == spec_edwards_from_ristretto_iter(iter)
-            assert(Seq::new(points@.len(), |i: int| points@[i].0)
-                =~= spec_edwards_from_ristretto_iter::<T, I>(iter));
+            // From collect_ristretto_points ensures:
+            //   points@.len() == iter_spec.len()
+            //   forall i: points@[i].0 == iter_spec[i]
+            // Therefore: Seq::new(points@.len(), |i| points@[i].0) == iter_spec
+            assert(Seq::new(points@.len(), |i: int| points@[i].0) =~= iter_spec);
         }
 
         result

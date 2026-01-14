@@ -1350,15 +1350,26 @@ impl RistrettoPoint {
             // Add postcondition proves is_well_formed_edwards_point(result.0)
             assume(is_in_even_subgroup(result.0));
             assume(edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes));
-            // Chain for uniform distribution (axioms from proba_specs):
-            // 1. Split uniform bytes into uniform halves
-            axiom_uniform_bytes_split(bytes, &r_1_bytes, &r_2_bytes);
-            // 2. from_bytes ensures: uniform bytes → uniform field element (automatic from postcondition)
-            // 3. Elligator preserves uniformity (field element → point)
-            axiom_uniform_elligator(&r_1, &R_1);
-            axiom_uniform_elligator(&r_2, &R_2);
-            // 4. Sum of uniform points is uniform
-            axiom_uniform_point_add(&R_1, &R_2, &result);
+            assert(is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result)) by {
+                // Chain for uniform distribution (axioms from proba_specs):
+                // 1. Split uniform bytes into uniform halves
+                axiom_uniform_bytes_split(bytes, &r_1_bytes, &r_2_bytes);
+                // 2. from_bytes ensures: uniform bytes → uniform field element
+                // 3. Elligator preserves uniformity (field element → point)
+                axiom_uniform_elligator(&r_1, &R_1);
+                axiom_uniform_elligator(&r_2, &R_2);
+                // 4. Sum of uniform points is uniform
+                axiom_uniform_point_add(&R_1, &R_2, &result);
+
+                assume(is_uniform_bytes(bytes));
+                assert(is_uniform_bytes(&r_1_bytes));
+                assert(is_uniform_bytes(&r_2_bytes));
+                assert(is_uniform_field_element(&r_1));
+                assert(is_uniform_field_element(&r_2));
+                assert(is_uniform_ristretto_point(&R_1));
+                assert(is_uniform_ristretto_point(&R_2));
+                assert(is_uniform_ristretto_point(&result));
+            }
         }
         result
     }

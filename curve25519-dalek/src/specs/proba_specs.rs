@@ -29,7 +29,11 @@ use crate::Scalar;
 #[allow(unused_imports)]
 use super::core_specs::bytes32_to_nat;
 #[allow(unused_imports)]
+use super::edwards_specs::*;
+#[allow(unused_imports)]
 use super::field_specs::*;
+#[allow(unused_imports)]
+use super::ristretto_specs::*;
 
 use vstd::prelude::*;
 #[allow(unused_imports)]
@@ -73,6 +77,9 @@ pub uninterp spec fn is_uniform_ristretto_point(point: &RistrettoPoint) -> bool;
 /// If X is uniform over [0, 2^512), then the first 256 bits and last 256 bits
 /// are each uniform over [0, 2^256) (they are independent uniform samples).
 pub proof fn axiom_uniform_bytes_split(bytes: &[u8; 64], first: &[u8; 32], second: &[u8; 32])
+    requires
+        first@ == bytes@.subrange(0, 32),
+        second@ == bytes@.subrange(32, 64),
     ensures
         is_uniform_bytes(bytes) ==> is_uniform_bytes(first),
         is_uniform_bytes(bytes) ==> is_uniform_bytes(second),
@@ -113,6 +120,8 @@ pub proof fn axiom_from_bytes_uniform(bytes: &[u8; 32], fe: &FieldElement51)
 /// The Elligator map is designed to be a uniform map from field elements to curve points.
 /// See: Bernstein et al., "Elligator: Elliptic-curve points indistinguishable from uniform random strings"
 pub proof fn axiom_uniform_elligator(fe: &FieldElement, point: &RistrettoPoint)
+    requires
+        edwards_point_as_affine(point.0) == spec_elligator_ristretto_flavor(spec_field_element(fe)),
     ensures
         is_uniform_field_element(fe) ==> is_uniform_ristretto_point(point),
 {
@@ -130,6 +139,13 @@ pub proof fn axiom_uniform_elligator(fe: &FieldElement, point: &RistrettoPoint)
 /// then X + Y is also uniform over G. This follows from the fact that for any
 /// fixed X, the map Y ↦ X + Y is a bijection on G.
 pub proof fn axiom_uniform_point_add(p1: &RistrettoPoint, p2: &RistrettoPoint, sum: &RistrettoPoint)
+    requires
+        edwards_point_as_affine(sum.0) == edwards_add(
+            edwards_point_as_affine(p1.0).0,
+            edwards_point_as_affine(p1.0).1,
+            edwards_point_as_affine(p2.0).0,
+            edwards_point_as_affine(p2.0).1,
+        ),
     ensures
         (is_uniform_ristretto_point(p1) && is_uniform_ristretto_point(p2))
             ==> is_uniform_ristretto_point(sum),

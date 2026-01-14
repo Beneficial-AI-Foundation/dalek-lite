@@ -2038,15 +2038,15 @@ impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
     }
 }
 
-// Import spec functions from scalar_mul_specs for multiscalar verification
+// Import spec functions from iterator_specs for multiscalar verification
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_mul_specs::{
+use crate::specs::iterator_specs::{
     all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
     sum_of_scalar_muls, unwrap_points,
 };
 // Import runtime helper for Sum<T> trait
 #[cfg(feature = "alloc")]
-use crate::specs::scalar_mul_specs::collect_points_from_iter;
+use crate::specs::iterator_specs::collect_points_from_iter;
 
 verus! {
 

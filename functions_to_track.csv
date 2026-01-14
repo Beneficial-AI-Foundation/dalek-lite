@@ -153,8 +153,8 @@ RistrettoBasepointTable::basepoint(&self),curve25519_dalek::ristretto,RistrettoB
 "RistrettoPoint::conditional_select(&RistrettoPoint, &RistrettoPoint, Choice)",curve25519_dalek::ristretto,ConditionallySelectable for RistrettoPoint
 CompressedRistretto::zeroize(&self),curve25519_dalek::ristretto,Zeroize for CompressedRistretto
 RistrettoPoint::zeroize(&self),curve25519_dalek::ristretto,Zeroize for RistrettoPoint
-"RistrettoPoint::multiscalar_mul(I, J)",curve25519_dalek::ristretto,MultiscalarMul for RistrettoPoint
-"RistrettoPoint::optional_multiscalar_mul(I, J)",curve25519_dalek::ristretto,VartimeMultiscalarMul for RistrettoPoint
+"RistrettoPoint::multiscalar_mul_verus(I, J)",curve25519_dalek::ristretto,RistrettoPoint
+"RistrettoPoint::optional_multiscalar_mul_verus(I, J)",curve25519_dalek::ristretto,RistrettoPoint
 Scalar52::zeroize(&self),curve25519_dalek::backend::serial::u64::scalar,Zeroize for Scalar52
 Scalar52::index(usize),curve25519_dalek::backend::serial::u64::scalar,Index<usize> for Scalar52
 "m(u64, u64)",curve25519_dalek::backend::serial::u64::scalar,

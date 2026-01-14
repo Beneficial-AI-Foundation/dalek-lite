@@ -1,0 +1,169 @@
+//! Probabilistic specifications and axioms for uniform distribution.
+//!
+//! This module collects all specifications related to uniform distribution,
+//! which are cryptographic properties that cannot be proven in standard program logic.
+//!
+//! ## Overview
+//!
+//! The uniform distribution properties form a chain:
+//! 1. `is_uniform_bytes` - uniform random bytes (from RNG or hash)
+//! 2. `is_uniform_field_element` - uniform field element (from bytes via from_bytes)
+//! 3. `is_uniform_ristretto_point` - uniform group element (from field element via Elligator)
+//!
+//! ## Axioms
+//!
+//! Each axiom corresponds to a cryptographic/mathematical fact:
+//! - `axiom_uniform_bytes_split`: Independent halves of uniform bytes are uniform
+//! - `axiom_from_bytes_uniform`: Clearing bit 255 preserves uniformity (negligible bias)
+//! - `axiom_uniform_elligator`: Elligator map produces uniform points
+//! - `axiom_uniform_point_add`: Sum of uniform group elements is uniform
+
+#[allow(unused_imports)]
+use crate::backend::serial::u64::field::FieldElement51;
+#[allow(unused_imports)]
+use crate::field::FieldElement;
+#[allow(unused_imports)]
+use crate::ristretto::RistrettoPoint;
+#[allow(unused_imports)]
+use crate::Scalar;
+#[allow(unused_imports)]
+use super::core_specs::bytes32_to_nat;
+#[allow(unused_imports)]
+use super::field_specs::*;
+
+use vstd::prelude::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::pow2;
+
+#[cfg(feature = "rand_core")]
+use rand_core::RngCore;
+
+verus! {
+
+// =============================================================================
+// Uninterpreted Spec Functions for Uniform Distribution
+// =============================================================================
+
+/// Uniform distribution predicate for a single byte.
+pub uninterp spec fn is_uniform(x: u8) -> bool;
+
+/// Uniform distribution predicate for a byte slice.
+/// True if the bytes are uniformly distributed over their domain.
+pub uninterp spec fn is_uniform_bytes(bytes: &[u8]) -> bool;
+
+/// Uniform distribution predicate for a field element.
+/// True if the field element is uniformly distributed over F_p.
+pub uninterp spec fn is_uniform_field_element(fe: &FieldElement) -> bool;
+
+/// Uniform distribution predicate for a scalar.
+/// True if the scalar is uniformly distributed over [0, l) where l is the group order.
+pub uninterp spec fn is_uniform_scalar(scalar: &Scalar) -> bool;
+
+/// Uniform distribution predicate for a Ristretto point.
+/// True if the point is uniformly distributed over the Ristretto group.
+pub uninterp spec fn is_uniform_ristretto_point(point: &RistrettoPoint) -> bool;
+
+// =============================================================================
+// Axiom 1: Splitting uniform bytes preserves uniformity
+// =============================================================================
+
+/// Axiom: Splitting uniform bytes preserves uniformity on each half.
+///
+/// Mathematical justification:
+/// If X is uniform over [0, 2^512), then the first 256 bits and last 256 bits
+/// are each uniform over [0, 2^256) (they are independent uniform samples).
+pub proof fn axiom_uniform_bytes_split(bytes: &[u8; 64], first: &[u8; 32], second: &[u8; 32])
+    ensures
+        is_uniform_bytes(bytes) ==> is_uniform_bytes(first),
+        is_uniform_bytes(bytes) ==> is_uniform_bytes(second),
+{
+    assume(is_uniform_bytes(bytes) ==> is_uniform_bytes(first));
+    assume(is_uniform_bytes(bytes) ==> is_uniform_bytes(second));
+}
+
+// =============================================================================
+// Axiom 2: from_bytes preserves uniformity
+// =============================================================================
+
+/// Axiom: Clearing bit 255 of uniform bytes preserves uniform distribution.
+///
+/// Mathematical justification:
+/// - If X is uniform over [0, 2^256), then X mod 2^255 is uniform over [0, 2^255)
+/// - This is because the high bit is independent of the lower 255 bits
+/// - The limb representation is a bijection from 255-bit values to FieldElement51
+///
+/// Note: There's negligible bias (19/2^255 ≈ 5.4e-77) from values in [p, 2^255)
+/// that wrap when used in field arithmetic, but this is cryptographically negligible.
+pub proof fn axiom_from_bytes_uniform(bytes: &[u8; 32], fe: &FieldElement51)
+    requires
+        spec_field_element_as_nat(fe) == bytes32_to_nat(bytes) % pow2(255),
+    ensures
+        is_uniform_bytes(bytes) ==> is_uniform_field_element(fe),
+{
+    assume(is_uniform_bytes(bytes) ==> is_uniform_field_element(fe));
+}
+
+// =============================================================================
+// Axiom 3: Elligator map preserves uniformity
+// =============================================================================
+
+/// Axiom: Elligator map on uniform field element produces uniform point.
+///
+/// Mathematical justification:
+/// The Elligator map is designed to be a uniform map from field elements to curve points.
+/// See: Bernstein et al., "Elligator: Elliptic-curve points indistinguishable from uniform random strings"
+pub proof fn axiom_uniform_elligator(fe: &FieldElement, point: &RistrettoPoint)
+    ensures
+        is_uniform_field_element(fe) ==> is_uniform_ristretto_point(point),
+{
+    assume(is_uniform_field_element(fe) ==> is_uniform_ristretto_point(point));
+}
+
+// =============================================================================
+// Axiom 4: Group addition preserves uniformity
+// =============================================================================
+
+/// Axiom: Sum of two uniform points is uniform (group theory property).
+///
+/// Mathematical justification:
+/// In a prime-order group G, if X and Y are independent uniform elements of G,
+/// then X + Y is also uniform over G. This follows from the fact that for any
+/// fixed X, the map Y ↦ X + Y is a bijection on G.
+pub proof fn axiom_uniform_point_add(p1: &RistrettoPoint, p2: &RistrettoPoint, sum: &RistrettoPoint)
+    ensures
+        (is_uniform_ristretto_point(p1) && is_uniform_ristretto_point(p2))
+            ==> is_uniform_ristretto_point(sum),
+{
+    assume((is_uniform_ristretto_point(p1) && is_uniform_ristretto_point(p2))
+        ==> is_uniform_ristretto_point(sum));
+}
+
+// =============================================================================
+// External Functions with Uniform Ensures
+// =============================================================================
+
+#[cfg(feature = "rand_core")]
+#[verifier::external_body]
+/// Fill bytes from a cryptographic RNG, producing uniform random bytes.
+pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
+    ensures
+        is_uniform_bytes(bytes),
+{
+    rng.fill_bytes(bytes)
+}
+
+#[cfg(feature = "digest")]
+#[verifier::external_body]
+/// Compute SHA-512 hash of input bytes.
+/// If input is uniform, output is computationally indistinguishable from uniform.
+pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64])
+    ensures
+        is_uniform_bytes(input) ==> is_uniform_bytes(&result),
+{
+    use digest::Digest;
+    let mut hasher = sha2::Sha512::new();
+    hasher.update(input);
+    hasher.finalize().into()
+}
+
+} // verus!

@@ -62,9 +62,6 @@ pub const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
     limbs: [2241493124984347, 425987919032274, 2207028919301688, 1220490630685848, 974799131293748],
 };
 
-} // verus!
-verus! {
-
 /// `= 1/sqrt(a-d)`, where `a = -1 (mod p)`, `d` are the Edwards curve parameters.
 pub const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
     limbs: [278908739862762, 821645201101625, 8113234426968, 1777959178193151, 2118520810568447],
@@ -90,9 +87,6 @@ pub(crate) const MONTGOMERY_A_NEG: FieldElement51 = FieldElement51 {
         2251799813685247,
     ],
 };
-
-} // verus!
-verus! {
 
 /// Precomputed value of one of the square roots of -1 (mod p)
 pub const SQRT_M1: FieldElement51 = FieldElement51 {

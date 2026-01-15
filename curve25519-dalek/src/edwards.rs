@@ -1307,16 +1307,7 @@ impl EdwardsPoint {
         ).mul_by_cofactor()
     }
 
-    /// Verus-compatible version of nonspec_map_to_curve that uses SHA-512.
-    ///
-    /// This function is designed for Verus verification and directly computes
-    /// a SHA-512 hash. For regular code with generic hash functions, use
-    /// `nonspec_map_to_curve` instead.
-    ///
-    /// # Warning
-    ///
-    /// This is NOT a secure hash-to-curve function. The output distribution
-    /// is not uniform over the curve.
+    /// VERIFICATION NOTE: Verus-compatible version of nonspec_map_to_curve that uses SHA-512 instead of Digest.   
     #[cfg(feature = "digest")]
     pub fn nonspec_map_to_curve_verus(bytes: &[u8]) -> (result: EdwardsPoint)
         ensures
@@ -1348,13 +1339,15 @@ impl EdwardsPoint {
 
         // Unwrap and multiply by cofactor
         proof {
-            assume(E1_opt.is_some());  // Negligible failure probability axiom
+            assume(E1_opt.is_some());  
+            // Assume "negligible" failure probability 
+            
             // CRYPTOGRAPHIC ASSUMPTION: to_edwards returns None only when the u-coordinate of M1
             // equals -1, because the birational map y = (u-1)/(u+1) has a zero denominator there.
             // For random field elements from Elligator, this occurs with probability 1/p ≈ 2^-255
 
-            // VERIFICATION NOTE: we had to do this assumption because Verus vstd spec for "expect"
-            // requires is_some(); this is probably too strong.
+            // VERIFICATION NOTE: we had to make this assumption because Verus vstd spec for "expect"
+            // requires is_some(); this is probably too strong on vstd's part.
 
             // VERIFICATION NOTE: to remove the assume, we could make a case split on the result of to_edwards
         }

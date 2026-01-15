@@ -933,8 +933,11 @@ impl FieldElement51 {
             spec_field_element_as_nat(&r) == bytes32_to_nat(bytes) % pow2(255),
             // Each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),
-            // If input bytes are uniform over [0, 2^256), result is statistically
-            // close to uniform over F_p (bias away from uniform is 19/2^255)
+            // Uniformity note (if the input bytes are uniform):
+            // - `from_bytes` clears the top bit, so `bytes32_to_nat(bytes) % 2^255` is uniform over [0, 2^255).
+            // - Field arithmetic interprets this 255-bit value modulo p = 2^255 - 19.
+            //   Exactly 19 inputs (the interval [p, 2^255)) wrap around modulo p, creating a tiny bias
+            //   of at most 19/2^255 in statistical distance from uniform over F_p.
             is_uniform_bytes(bytes) ==> is_uniform_field_element(&r),
     {
         /* MANUALLY moved outside */

@@ -2338,16 +2338,24 @@ verus! {
 
 #[cfg(feature = "zeroize")]
 impl Zeroize for CompressedRistretto {
-    #[verifier::external_body]
-    fn zeroize(&mut self) {
-        self.0.zeroize();
+    fn zeroize(&mut self)
+        ensures
+            forall|i: int| 0 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
+    {
+        crate::core_assumes::zeroize_bytes32(&mut self.0);
     }
 }
 
 #[cfg(feature = "zeroize")]
 impl Zeroize for RistrettoPoint {
-    #[verifier::external_body]
-    fn zeroize(&mut self) {
+    fn zeroize(&mut self)
+        ensures
+            // Inner EdwardsPoint is set to identity (0, 1, 1, 0)
+            forall|i: int| 0 <= i < 5 ==> self.0.X.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> self.0.T.limbs[i] == 0,
+            self.0.Y == FieldElement::ONE,
+            self.0.Z == FieldElement::ONE,
+    {
         self.0.zeroize();
     }
 }

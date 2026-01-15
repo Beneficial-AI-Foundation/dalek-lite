@@ -27,8 +27,6 @@ use crate::ristretto::RistrettoPoint;
 #[allow(unused_imports)]
 use crate::Scalar;
 #[allow(unused_imports)]
-use super::core_specs::bytes32_to_nat;
-#[allow(unused_imports)]
 use super::edwards_specs::*;
 #[allow(unused_imports)]
 use super::field_specs::*;
@@ -36,13 +34,18 @@ use super::field_specs::*;
 use super::ristretto_specs::*;
 
 use vstd::prelude::*;
-#[allow(unused_imports)]
-use vstd::arithmetic::power2::pow2;
 
 #[cfg(feature = "rand_core")]
 use rand_core::RngCore;
 
 verus! {
+
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use super::core_specs::bytes32_to_nat;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::pow2;
 
 // =============================================================================
 // Uninterpreted Spec Functions for Uniform Distribution

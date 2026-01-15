@@ -24,8 +24,6 @@
 //
 #[allow(unused_imports)]
 use super::field_specs::*;
-#[allow(unused_imports)]
-use super::core_specs::{bytes32_to_nat, bytes_seq_to_nat};
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
@@ -53,6 +51,10 @@ use vstd::arithmetic::power2::pow2;
 use vstd::prelude::*;
 
 verus! {
+
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use super::core_specs::{bytes32_to_nat, bytes_seq_to_nat};
 
 // =============================================================================
 // Ed25519 Basepoint

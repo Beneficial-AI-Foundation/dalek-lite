@@ -24,6 +24,8 @@
 //
 #[allow(unused_imports)]
 use super::field_specs::*;
+#[allow(unused_imports)]
+use super::core_specs::{bytes32_to_nat, bytes_seq_to_nat};
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
@@ -135,6 +137,45 @@ pub proof fn axiom_eight_torsion_well_formed()
         is_well_formed_edwards_point(EIGHT_TORSION[7]),
 {
     admit();
+}
+
+// =============================================================================
+// Spec for nonspec_map_to_curve_verus
+// =============================================================================
+
+/// Spec helper: interpret the Montgomery-to-Edwards conversion used by
+/// `MontgomeryPoint::to_edwards` as choosing an `x` with the requested sign.
+///
+/// This avoids modeling decompression in full detail, but still gives an
+/// interpreted spec (via `choose`) for the affine point.
+pub open spec fn spec_montgomery_to_edwards_affine_with_sign(u: nat, sign_bit: u8) -> (nat, nat) {
+    let y = edwards_y_from_montgomery_u(u);
+    let want_neg = sign_bit == 1u8;
+    let x = choose|x: nat|
+        #![auto]
+        math_on_edwards_curve(x, y) && (math_is_negative(x) == want_neg);
+    (x, y)
+}
+
+/// Interpreted spec for `EdwardsPoint::nonspec_map_to_curve_verus`.
+///
+/// Mapping: bytes -> field element -> Elligator2 (Montgomery u) -> Edwards affine point
+/// with a chosen x-sign -> multiply by cofactor [8].
+///
+/// Reference: RFC 9380 Section 6.7.1 - Elligator 2 Method
+/// <https://www.rfc-editor.org/rfc/rfc9380.html#section-6.7.1>
+///
+/// Note: This is NOT a proper hash-to-curve (non-uniform distribution).
+/// A proper hash-to-curve applies Elligator twice and adds the results.
+pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
+    recommends
+        hash_bytes.len() == 32,
+{
+    let sign_bit: u8 = (hash_bytes[31] & 0x80u8) >> 7;
+    let fe_nat = bytes_seq_to_nat(hash_bytes) % pow2(255);
+    let u = spec_elligator_encode(fe_nat);
+    let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
+    edwards_scalar_mul(P, 8)
 }
 
 } // verus!

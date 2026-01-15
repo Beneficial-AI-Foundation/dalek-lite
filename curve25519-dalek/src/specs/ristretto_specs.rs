@@ -304,7 +304,6 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     (x_affine, y_affine)
 }
 
-// NOTE: axiom_uniform_elligator is in proba_specs.rs
 
 /// Spec helper: first 32 bytes of a 64-byte input.
 pub open spec fn spec_uniform_bytes_first(bytes: &[u8; 64]) -> [u8; 32] {

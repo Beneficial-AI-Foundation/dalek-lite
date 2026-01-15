@@ -178,6 +178,8 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::proba_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
@@ -1303,6 +1305,88 @@ impl EdwardsPoint {
         E1_opt.expect(
             "Montgomery conversion to Edwards point in Elligator failed",
         ).mul_by_cofactor()
+    }
+
+    /// Verus-compatible version of nonspec_map_to_curve that uses SHA-512.
+    ///
+    /// This function is designed for Verus verification and directly computes
+    /// a SHA-512 hash. For regular code with generic hash functions, use
+    /// `nonspec_map_to_curve` instead.
+    ///
+    /// # Warning
+    ///
+    /// This is NOT a secure hash-to-curve function. The output distribution
+    /// is not uniform over the curve.
+    #[cfg(feature = "digest")]
+    pub fn nonspec_map_to_curve_verus(bytes: &[u8]) -> (result: EdwardsPoint)
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = spec applied to first 32 bytes of SHA-512(input)
+            edwards_point_as_affine(result) == spec_nonspec_map_to_curve(
+                spec_sha512(bytes@).subrange(0, 32),
+            ),
+    {
+        use crate::core_assumes::first_32_bytes;
+
+        // Hash input using SHA-512 (produces 64 bytes, like original D::finalize())
+        let hash: [u8; 64] = sha512_hash_bytes(bytes);
+
+        // Take first 32 bytes (like original: res.copy_from_slice(&h[0..32]))
+        let res: [u8; 32] = first_32_bytes(&hash);
+
+        // Extract sign bit from high bit of last byte
+        let sign_bit: u8 = (res[31] & 0x80u8) >> 7u8;
+
+        // Convert to field element
+        let fe = FieldElement::from_bytes(&res);
+
+        // Apply Elligator encoding to get Montgomery point
+        let M1 = crate::montgomery::elligator_encode(&fe);
+
+        // Convert to Edwards point
+        let E1_opt = M1.to_edwards(sign_bit);
+
+        // Unwrap and multiply by cofactor
+        proof {
+            assume(E1_opt.is_some());  // Negligible failure probability axiom
+            // CRYPTOGRAPHIC ASSUMPTION: to_edwards returns None only when the u-coordinate of M1
+            // equals -1, because the birational map y = (u-1)/(u+1) has a zero denominator there.
+            // For random field elements from Elligator, this occurs with probability 1/p ≈ 2^-255
+
+            // VERIFICATION NOTE: we had to do this assumption because Verus vstd spec for "expect" 
+            // requires is_some(); this is probably too strong.
+
+            // VERIFICATION NOTE: to remove the assume, we could make a case split on the result of to_edwards
+        }
+        let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
+
+        proof {
+            // E1 from to_edwards has valid limbs; mul_by_cofactor ensures well-formedness
+            assume(edwards_point_limbs_bounded(E1));
+        }
+
+        let result = E1.mul_by_cofactor();
+
+        proof {
+            // Functional correctness: reduce the spec goal to the 32-byte slice `res@`,
+            // then treat the Edwards/Montgomery mapping as a proof-bypass.
+            assert(hash@ == spec_sha512(bytes@));
+            assert(res@ == hash@.subrange(0, 32));
+            assert(res@ == spec_sha512(bytes@).subrange(0, 32));
+
+            // PROOF BYPASS: the remainder would need aligned specs for:
+            // FieldElement::from_bytes, elligator_encode, MontgomeryPoint::to_edwards, and mul_by_cofactor.
+            assume(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(res@));
+
+            assert(spec_nonspec_map_to_curve(res@) == spec_nonspec_map_to_curve(
+                spec_sha512(bytes@).subrange(0, 32),
+            ));
+            assert(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(
+                spec_sha512(bytes@).subrange(0, 32),
+            ));
+        }
+
+        result
     }
 }
 

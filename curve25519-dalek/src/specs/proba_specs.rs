@@ -168,12 +168,24 @@ pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
     rng.fill_bytes(bytes)
 }
 
+/// Uninterpreted spec function for SHA-512 hash.
+/// Models the SHA-512 hash as a function from input bytes to 64 output bytes.
+pub uninterp spec fn spec_sha512(input: Seq<u8>) -> Seq<u8>;
+
+/// Axiom: SHA-512 always produces exactly 64 bytes of output.
+pub proof fn axiom_sha512_output_length(input: Seq<u8>)
+    ensures spec_sha512(input).len() == 64,
+{
+    admit();
+}
+
 #[cfg(feature = "digest")]
 #[verifier::external_body]
 /// Compute SHA-512 hash of input bytes.
 /// If input is uniform, output is computationally indistinguishable from uniform.
 pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64])
     ensures
+        result@ == spec_sha512(input@),
         is_uniform_bytes(input) ==> is_uniform_bytes(&result),
 {
     use digest::Digest;

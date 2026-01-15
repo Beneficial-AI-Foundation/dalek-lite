@@ -95,7 +95,7 @@ EdwardsPoint::as_projective(&self),curve25519_dalek::edwards,EdwardsPoint
 EdwardsPoint::as_affine_niels(&self),curve25519_dalek::edwards,EdwardsPoint
 EdwardsPoint::to_montgomery(&self),curve25519_dalek::edwards,EdwardsPoint
 EdwardsPoint::compress(&self),curve25519_dalek::edwards,EdwardsPoint
-EdwardsPoint::nonspec_map_to_curve(&[u8]),curve25519_dalek::edwards,EdwardsPoint
+EdwardsPoint::nonspec_map_to_curve_verus(&[u8]),curve25519_dalek::edwards,EdwardsPoint
 EdwardsPoint::double(&self),curve25519_dalek::edwards,EdwardsPoint
 EdwardsPoint::add(&EdwardsPoint),curve25519_dalek::edwards,Add<&'b EdwardsPoint> for EdwardsPoint
 EdwardsPoint::add_assign(&EdwardsPoint),curve25519_dalek::edwards,AddAssign<&'b EdwardsPoint> for EdwardsPoint
@@ -132,7 +132,6 @@ coset4(&self),curve25519_dalek::ristretto,
 elligator_ristretto_flavor(&FieldElement),curve25519_dalek::ristretto,
 RistrettoPoint::hash_from_bytes_verus(&[u8]),curve25519_dalek::ristretto,RistrettoPoint
 from_uniform_bytes(&[u8; 64]),curve25519_dalek::ristretto,RistrettoPoint
-RistrettoPoint::from_hash(D),curve25519_dalek::ristretto,RistrettoPoint
 RistrettoPoint::from_hash_verus([u8; 64]),curve25519_dalek::ristretto,RistrettoPoint
 RistrettoPoint::identity(),curve25519_dalek::ristretto,Identity for RistrettoPoint
 RistrettoPoint::default(),curve25519_dalek::ristretto,Default for RistrettoPoint

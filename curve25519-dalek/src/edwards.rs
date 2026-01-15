@@ -1307,7 +1307,7 @@ impl EdwardsPoint {
         ).mul_by_cofactor()
     }
 
-    /// VERIFICATION NOTE: Verus-compatible version of nonspec_map_to_curve that uses SHA-512 instead of Digest.   
+    /// VERIFICATION NOTE: Verus-compatible version of nonspec_map_to_curve that uses SHA-512 instead of Digest.
     #[cfg(feature = "digest")]
     pub fn nonspec_map_to_curve_verus(bytes: &[u8]) -> (result: EdwardsPoint)
         ensures
@@ -1317,6 +1317,14 @@ impl EdwardsPoint {
                 spec_sha512(bytes@).subrange(0, 32),
             ),
     {
+        /* ORIGINAL CODE:
+        let mut hash = D::new();
+        hash.update(bytes);
+        let h = hash.finalize();
+        let mut res = [0u8;32];
+        res.copy_from_slice(&h[0..32]);
+        */
+        /* REFACTOR START: */
         use crate::core_assumes::first_32_bytes;
 
         // Hash input using SHA-512 (produces 64 bytes, like original D::finalize())
@@ -1324,6 +1332,7 @@ impl EdwardsPoint {
 
         // Take first 32 bytes (like original: res.copy_from_slice(&h[0..32]))
         let res: [u8; 32] = first_32_bytes(&hash);
+        /* REFACTOR END*/
 
         // Extract sign bit from high bit of last byte
         let sign_bit: u8 = (res[31] & 0x80u8) >> 7u8;
@@ -1339,9 +1348,9 @@ impl EdwardsPoint {
 
         // Unwrap and multiply by cofactor
         proof {
-            assume(E1_opt.is_some());  
-            // Assume "negligible" failure probability 
-            
+            assume(E1_opt.is_some());
+            // Assume "negligible" failure probability
+
             // CRYPTOGRAPHIC ASSUMPTION: to_edwards returns None only when the u-coordinate of M1
             // equals -1, because the birational map y = (u-1)/(u+1) has a zero denominator there.
             // For random field elements from Elligator, this occurs with probability 1/p ≈ 2^-255

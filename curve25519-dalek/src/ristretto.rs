@@ -903,6 +903,8 @@ impl RistrettoPoint {
     // VERUS-COMPATIBLE REFACTORED VERSION
     // The following functions are refactored for Verus verification.
     // See double_and_compress_batch above for the original implementation.
+    // Functional equivalence against the original implementation is covered by
+    // `mod test_double_and_compress_batch` at the bottom of this file.
     // ========================================================================
     /// Verus-compatible version that takes a slice instead of IntoIterator.
     /// Use this for verification; the original double_and_compress_batch API is external_body.

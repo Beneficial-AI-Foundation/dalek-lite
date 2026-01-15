@@ -1596,6 +1596,8 @@ impl<T> Sum<T> for RistrettoPoint where T: Borrow<RistrettoPoint> {
 Iterator operations and Borrow trait are not directly supported by Verus.
 We use an external_body helper to collect the iterator into Vec<RistrettoPoint>,
 then call the verified sum_of_slice function for the actual computation.
+TESTING: `mod test_sum` (at the bottom of this file) checks functional equivalence between
+`sum_original` and the refactored `Sum::sum` implementation on random inputs.
 </VERIFICATION NOTE> */
 
 impl RistrettoPoint {
@@ -1603,6 +1605,7 @@ impl RistrettoPoint {
     ///
     /// This is used for exec correctness/performance, but is not verified directly.
     /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
+    /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
     #[verifier::external_body]
     pub fn sum_original<T, I>(iter: I) -> (result: RistrettoPoint) where
         T: Borrow<RistrettoPoint>,
@@ -3058,6 +3061,39 @@ mod test_multiscalar_mul {
                     b.is_some()
                 ),
             }
+        }
+    }
+}
+
+// ------------------------------------------------------------------------
+// Sum Equivalence Tests
+// ------------------------------------------------------------------------
+#[cfg(test)]
+mod test_sum {
+    use super::*;
+
+    #[test]
+    #[cfg(all(feature = "alloc", feature = "rand_core"))]
+    fn verus_equivalence_random_sum() {
+        use rand_core::{OsRng, RngCore};
+
+        let mut rng = OsRng;
+
+        for iteration in 0..10 {
+            let n = (rng.next_u32() % 65) as usize; // 0..=64
+            let points: Vec<RistrettoPoint> =
+                (0..n).map(|_| RistrettoPoint::random(&mut rng)).collect();
+
+            let original = RistrettoPoint::sum_original(points.iter());
+            let refactored: RistrettoPoint = points.iter().sum();
+
+            assert_eq!(
+                original.compress().as_bytes(),
+                refactored.compress().as_bytes(),
+                "Mismatch in iteration {} with {} points",
+                iteration,
+                n
+            );
         }
     }
 }

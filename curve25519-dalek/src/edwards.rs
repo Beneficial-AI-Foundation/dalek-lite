@@ -1731,6 +1731,8 @@ where
 Iterator operations and Borrow trait are not directly supported by Verus.
 We use an external_body helper to collect the iterator into Vec<EdwardsPoint>,
 then call the verified sum_of_slice function for the actual computation.
+TESTING: `mod test_sum` (at the bottom of this file) checks functional equivalence between
+`sum_original` and the refactored `Sum::sum` implementation on random inputs.
 </VERIFICATION NOTE> */
 
 impl EdwardsPoint {
@@ -1738,6 +1740,7 @@ impl EdwardsPoint {
     ///
     /// This is used for exec correctness/performance, but is not verified directly.
     /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
+    /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
     #[verifier::external_body]
     pub fn sum_original<T, I>(iter: I) -> (result: EdwardsPoint) where
         T: Borrow<EdwardsPoint>,
@@ -3196,6 +3199,43 @@ impl CofactorGroup for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Tests
 // ------------------------------------------------------------------------
+
+#[cfg(test)]
+mod test_sum {
+    use super::*;
+
+    #[test]
+    #[cfg(all(feature = "alloc", feature = "rand_core"))]
+    fn verus_equivalence_random_sum() {
+        use rand_core::{OsRng, RngCore};
+
+        let mut rng = OsRng;
+
+        for iteration in 0..10 {
+            let n = (rng.next_u32() % 65) as usize; // 0..=64
+            let mut points: Vec<EdwardsPoint> = Vec::with_capacity(n);
+
+            while points.len() < n {
+                let mut bytes = [0u8; 32];
+                rng.fill_bytes(&mut bytes);
+                if let Some(p) = CompressedEdwardsY(bytes).decompress() {
+                    points.push(p);
+                }
+            }
+
+            let original = EdwardsPoint::sum_original(points.iter());
+            let refactored: EdwardsPoint = points.iter().sum();
+
+            assert_eq!(
+                original.compress().as_bytes(),
+                refactored.compress().as_bytes(),
+                "Mismatch in iteration {} with {} points",
+                iteration,
+                n
+            );
+        }
+    }
+}
 
 // #[cfg(test)]
 // mod test {

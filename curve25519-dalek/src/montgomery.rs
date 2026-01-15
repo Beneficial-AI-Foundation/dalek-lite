@@ -188,7 +188,7 @@ impl Hash for MontgomeryPoint {
                  where initial_state is the value of *state before this call.
                  However, Verus doesn't support old() on &mut types in ensures clauses.
                  The property is for now established via assumes in the function body (lines 192-194).
-            (2) The spec is completed by lemma_hash_is_canonical: equal field elements hash identically. */
+            (2) The spec is completed by axiom_hash_is_canonical: equal field elements hash identically. */
 
             true,
     {

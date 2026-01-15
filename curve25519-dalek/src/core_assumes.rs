@@ -53,7 +53,6 @@ pub fn try_into_32_bytes_array(bytes: &[u8]) -> (result: Result<[u8; 32], TryFro
 }
 
 /// Extract the first 32 bytes from a 64-byte array.
-/// Used by from_uniform_bytes to split hash output.
 #[verifier::external_body]
 pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
     ensures
@@ -66,7 +65,6 @@ pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
 }
 
 /// Extract the last 32 bytes from a 64-byte array.
-/// Used by from_uniform_bytes to split hash output.
 #[verifier::external_body]
 pub fn last_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
     ensures
@@ -78,7 +76,7 @@ pub fn last_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
     result
 }
 
-// NOTE: Probabilistic specs (is_uniform_*, axiom_uniform_*) are in proba_specs.rs
+// NOTE: Probabilistic specs (is_uniform_*, axiom_uniform_*) are in proba_specs.rs.
 // External type specifications for formatters
 #[verifier::external_type_specification]
 #[verifier::external_body]
@@ -210,7 +208,7 @@ pub open spec fn spec_state_after_hash_montgomery<H>(
     spec_state_after_hash(initial_state, &canonical_bytes)
 }
 
-pub proof fn lemma_hash_is_canonical<H>(
+pub proof fn axiom_hash_is_canonical<H>(
     point1: &MontgomeryPoint,
     point2: &MontgomeryPoint,
     state: H,
@@ -227,17 +225,8 @@ pub proof fn lemma_hash_is_canonical<H>(
             point2,
         ),
 {
-    // Get canonical byte sequences
-    let ghost canonical_seq1 = spec_fe51_to_bytes(&spec_fe51_from_bytes(&point1.0));
-    let ghost canonical_seq2 = spec_fe51_to_bytes(&spec_fe51_from_bytes(&point2.0));
-
-    // Convert to arrays for use with hash_determinism_axiom
-    let ghost canonical1 = seq_to_array_32(canonical_seq1);
-    let ghost canonical2 = seq_to_array_32(canonical_seq2);
-
-    assume(canonical_seq1 == canonical_seq2);
-    assert(canonical1@ == canonical2@);
-
+    // Axiom: hashing depends only on the canonical field-element value.
+    admit();
 }
 
 // Convert a Seq<u8> to a [u8; 32] array (requires seq.len() >= 32)

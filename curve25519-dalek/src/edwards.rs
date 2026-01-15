@@ -1733,6 +1733,20 @@ We use an external_body helper to collect the iterator into Vec<EdwardsPoint>,
 then call the verified sum_of_slice function for the actual computation.
 </VERIFICATION NOTE> */
 
+impl EdwardsPoint {
+    /// Original `Sum` implementation using `Iterator::fold`.
+    ///
+    /// This is used for exec correctness/performance, but is not verified directly.
+    /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
+    #[verifier::external_body]
+    pub fn sum_original<T, I>(iter: I) -> (result: EdwardsPoint) where
+        T: Borrow<EdwardsPoint>,
+        I: Iterator<Item = T>,
+     {
+        iter.fold(EdwardsPoint::identity(), |acc, item| acc + item.borrow())
+    }
+}
+
 impl<T> Sum<T> for EdwardsPoint where T: Borrow<EdwardsPoint> {
     fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
         requires

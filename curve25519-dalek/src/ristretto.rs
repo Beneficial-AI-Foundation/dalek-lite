@@ -1108,7 +1108,6 @@ impl RistrettoPoint {
     ///
     /// This method is not public because it's just used for hashing
     /// to a point -- proper elligator support is deferred for now.
-    //  #[verifier::external_body]
     pub(crate) fn elligator_ristretto_flavor(r_0: &FieldElement) -> (result: RistrettoPoint)
         ensures
     // The result is the Elligator map applied to r_0
@@ -1600,6 +1599,18 @@ then call the verified sum_of_slice function for the actual computation.
 </VERIFICATION NOTE> */
 
 impl RistrettoPoint {
+    /// Original `Sum` implementation using `Iterator::fold`.
+    ///
+    /// This is used for exec correctness/performance, but is not verified directly.
+    /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
+    #[verifier::external_body]
+    pub fn sum_original<T, I>(iter: I) -> (result: RistrettoPoint) where
+        T: Borrow<RistrettoPoint>,
+        I: Iterator<Item = T>,
+     {
+        iter.fold(RistrettoPoint::identity(), |acc, item| acc + item.borrow())
+    }
+
     /// Compute the sum of all RistrettoPoints in a slice.
     ///
     /// # Returns
@@ -1914,16 +1925,19 @@ impl VartimeMultiscalarMul for RistrettoPoint {
 }
 
 /*
- * VERIFICATION NOTE
- * =================
- * Verus limitations addressed in these _verus versions:
- * - IntoIterator with I::Item projections → use Iterator bounds instead
- *
- * RistrettoPoint wraps EdwardsPoint, so these delegate to EdwardsPoint::*_verus.
- * We collect iterators to Vec (since Verus doesn't support map), then call
- * the Edwards versions. Specs are expressed directly in terms of Edwards
- * operations since we just extract the inner EdwardsPoint and delegate.
- */
+  * VERIFICATION NOTE
+  * =================
+  * Verus limitations addressed in these _verus versions:
+  * - IntoIterator with I::Item projections → use Iterator bounds instead
+  *
+  * RistrettoPoint wraps EdwardsPoint, so these delegate to EdwardsPoint::*_verus.
+  * We collect iterators to Vec (since Verus doesn't support map), then call
+  * the Edwards versions. Specs are expressed directly in terms of Edwards
+  * operations since we just extract the inner EdwardsPoint and delegate.
+  *
+  * Functional equivalence against the original (external_body) implementations is covered by
+  * `mod test_multiscalar_mul` at the bottom of this file.
+  */
 
 impl RistrettoPoint {
     /// Verus-compatible version of multiscalar_mul (constant-time).
@@ -2968,6 +2982,81 @@ mod test_double_and_compress_batch {
                     iteration,
                     num_points
                 );
+            }
+        }
+    }
+}
+
+// ------------------------------------------------------------------------
+// Multiscalar Multiplication Equivalence Tests
+// ------------------------------------------------------------------------
+#[cfg(test)]
+mod test_multiscalar_mul {
+    use super::*;
+
+    #[test]
+    #[cfg(all(feature = "alloc", feature = "rand_core"))]
+    fn verus_equivalence_random_multiscalar_mul() {
+        use crate::traits::MultiscalarMul;
+        use rand_core::{OsRng, RngCore};
+
+        let mut rng = OsRng;
+
+        for _iteration in 0..10 {
+            let n = (rng.next_u32() % 65) as usize; // 0..=64
+
+            let scalars: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+            let points: Vec<RistrettoPoint> =
+                (0..n).map(|_| RistrettoPoint::random(&mut rng)).collect();
+
+            let original =
+                <RistrettoPoint as MultiscalarMul>::multiscalar_mul(scalars.iter(), points.iter());
+            let verus = RistrettoPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
+
+            assert_eq!(original.compress().as_bytes(), verus.compress().as_bytes());
+        }
+    }
+
+    #[test]
+    #[cfg(all(feature = "alloc", feature = "rand_core"))]
+    fn verus_equivalence_random_optional_multiscalar_mul() {
+        use crate::traits::VartimeMultiscalarMul;
+        use rand_core::{OsRng, RngCore};
+
+        let mut rng = OsRng;
+
+        for _iteration in 0..10 {
+            let n = (rng.next_u32() % 65) as usize; // 0..=64
+
+            let scalars: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+            let points: Vec<Option<RistrettoPoint>> = (0..n)
+                .map(|_| {
+                    // Roughly half the time, insert a missing point.
+                    if (rng.next_u32() & 1) == 0 {
+                        None
+                    } else {
+                        Some(RistrettoPoint::random(&mut rng))
+                    }
+                })
+                .collect();
+
+            let original = <RistrettoPoint as VartimeMultiscalarMul>::optional_multiscalar_mul(
+                scalars.iter(),
+                points.iter().cloned(),
+            );
+            let verus = RistrettoPoint::optional_multiscalar_mul_verus(
+                scalars.iter(),
+                points.iter().cloned(),
+            );
+
+            match (original, verus) {
+                (None, None) => {}
+                (Some(o), Some(v)) => assert_eq!(o.compress().as_bytes(), v.compress().as_bytes()),
+                (a, b) => panic!(
+                    "Mismatch: original={:?} verus={:?}",
+                    a.is_some(),
+                    b.is_some()
+                ),
             }
         }
     }

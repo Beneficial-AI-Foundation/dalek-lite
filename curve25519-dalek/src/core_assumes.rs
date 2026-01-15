@@ -60,7 +60,7 @@ pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
         forall|i: int| 0 <= i < 32 ==> result[i] == bytes[i],
         result@ == bytes@.subrange(0, 32),
 {
-    let mut result = [0u8; 32];
+    let mut result = [0u8;32];
     result.copy_from_slice(&bytes[0..32]);
     result
 }
@@ -73,13 +73,12 @@ pub fn last_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
         forall|i: int| 0 <= i < 32 ==> result[i] == bytes[(32 + i) as int],
         result@ == bytes@.subrange(32, 64),
 {
-    let mut result = [0u8; 32];
+    let mut result = [0u8;32];
     result.copy_from_slice(&bytes[32..64]);
     result
 }
 
 // NOTE: Probabilistic specs (is_uniform_*, axiom_uniform_*) are in proba_specs.rs
-
 // External type specifications for formatters
 #[verifier::external_type_specification]
 #[verifier::external_body]

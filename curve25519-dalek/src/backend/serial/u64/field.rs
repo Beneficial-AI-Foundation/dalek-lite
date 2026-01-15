@@ -82,9 +82,9 @@ use crate::core_assumes::*;
 #[allow(unused_imports)]
 use crate::specs::field_specs::*;
 #[allow(unused_imports)]
-use crate::specs::proba_specs::*;
-#[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
+#[allow(unused_imports)]
+use crate::specs::proba_specs::*;
 
 verus! {
 
@@ -928,7 +928,8 @@ impl FieldElement51 {
     #[rustfmt::skip]  // keep alignment of bit shifts
     pub const fn from_bytes(bytes: &[u8; 32]) -> (r: FieldElement51)
         ensures
-            // Decode bytes to limbs (bit 255 is cleared)
+    // Decode bytes to limbs (bit 255 is cleared)
+
             spec_field_element_as_nat(&r) == bytes32_to_nat(bytes) % pow2(255),
             // Each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),

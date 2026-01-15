@@ -187,8 +187,6 @@ use crate::backend::serial::u64::subtle_assumes::{
 };
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
-#[allow(unused_imports)] // Used in verus! blocks
-use crate::specs::proba_specs::*;
 #[cfg(feature = "digest")]
 use crate::field::FieldElement;
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
@@ -199,10 +197,12 @@ use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs_u64::*;
-#[allow(unused_imports)] // Used in verus! blocks
-use crate::specs::ristretto_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks for Sum trait and multiscalar_mul
 use crate::specs::iterator_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::proba_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::ristretto_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::scalar_specs::*;
 use vstd::prelude::*;
@@ -1226,12 +1226,13 @@ impl RistrettoPoint {
         D: Digest<OutputSize = U64> + Default,
 
         ensures
-            // Result is a well-formed Ristretto point (valid Edwards point in even subgroup)
+    // Result is a well-formed Ristretto point (valid Edwards point in even subgroup)
+
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
             // Uniform input bytes produce uniformly distributed point
             is_uniform_bytes(input) ==> is_uniform_ristretto_point(&result),
-     {
+    {
         let mut hash = D::default();
         hash.update(input);
         RistrettoPoint::from_hash(hash)
@@ -1482,8 +1483,10 @@ verus! {
 impl<'a, 'b> Add<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn add(self, other: &'b RistrettoPoint) -> (result: RistrettoPoint)
-        // requires (from AddSpecImpl::add_req): is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+    fn add(self, other: &'b RistrettoPoint) -> (result:
+        RistrettoPoint)
+    // requires (from AddSpecImpl::add_req): is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+
         ensures
             is_well_formed_edwards_point(result.0),
             edwards_point_as_affine(result.0) == edwards_add(
@@ -1534,8 +1537,10 @@ verus! {
 impl<'a, 'b> Sub<&'b RistrettoPoint> for &'a RistrettoPoint {
     type Output = RistrettoPoint;
 
-    fn sub(self, other: &'b RistrettoPoint) -> (result: RistrettoPoint)
-        // requires (from SubSpecImpl::sub_req): is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+    fn sub(self, other: &'b RistrettoPoint) -> (result:
+        RistrettoPoint)
+    // requires (from SubSpecImpl::sub_req): is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)
+
         ensures
             is_well_formed_edwards_point(result.0),
             edwards_point_as_affine(result.0) == edwards_sub(
@@ -2350,7 +2355,8 @@ impl Zeroize for CompressedRistretto {
 impl Zeroize for RistrettoPoint {
     fn zeroize(&mut self)
         ensures
-            // Inner EdwardsPoint is set to identity (0, 1, 1, 0)
+    // Inner EdwardsPoint is set to identity (0, 1, 1, 0)
+
             forall|i: int| 0 <= i < 5 ==> self.0.X.limbs[i] == 0,
             forall|i: int| 0 <= i < 5 ==> self.0.T.limbs[i] == 0,
             self.0.Y == FieldElement::ONE,

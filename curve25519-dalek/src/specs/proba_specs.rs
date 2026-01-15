@@ -17,7 +17,12 @@
 //! - `axiom_from_bytes_uniform`: Clearing bit 255 preserves uniformity (negligible bias)
 //! - `axiom_uniform_elligator`: Elligator map produces uniform points
 //! - `axiom_uniform_point_add`: Sum of uniform group elements is uniform
-
+#[allow(unused_imports)]
+use super::edwards_specs::*;
+#[allow(unused_imports)]
+use super::field_specs::*;
+#[allow(unused_imports)]
+use super::ristretto_specs::*;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::field::FieldElement51;
 #[allow(unused_imports)]
@@ -26,12 +31,6 @@ use crate::field::FieldElement;
 use crate::ristretto::RistrettoPoint;
 #[allow(unused_imports)]
 use crate::Scalar;
-#[allow(unused_imports)]
-use super::edwards_specs::*;
-#[allow(unused_imports)]
-use super::field_specs::*;
-#[allow(unused_imports)]
-use super::ristretto_specs::*;
 
 use vstd::prelude::*;
 
@@ -50,7 +49,6 @@ use vstd::arithmetic::power2::pow2;
 // =============================================================================
 // Uninterpreted Spec Functions for Uniform Distribution
 // =============================================================================
-
 /// Uniform distribution predicate for a single byte.
 pub uninterp spec fn is_uniform(x: u8) -> bool;
 
@@ -73,7 +71,6 @@ pub uninterp spec fn is_uniform_ristretto_point(point: &RistrettoPoint) -> bool;
 // =============================================================================
 // Axiom 1: Splitting uniform bytes preserves uniformity
 // =============================================================================
-
 /// Axiom: Splitting uniform bytes preserves uniformity on each half.
 ///
 /// Mathematical justification:
@@ -94,7 +91,6 @@ pub proof fn axiom_uniform_bytes_split(bytes: &[u8; 64], first: &[u8; 32], secon
 // =============================================================================
 // Axiom 2: from_bytes preserves uniformity
 // =============================================================================
-
 /// Axiom: Clearing bit 255 of uniform bytes preserves uniform distribution.
 ///
 /// Mathematical justification:
@@ -116,7 +112,6 @@ pub proof fn axiom_from_bytes_uniform(bytes: &[u8; 32], fe: &FieldElement51)
 // =============================================================================
 // Axiom 3: Elligator map preserves uniformity
 // =============================================================================
-
 /// Axiom: Elligator map on uniform field element produces uniform point.
 ///
 /// Mathematical justification:
@@ -134,7 +129,6 @@ pub proof fn axiom_uniform_elligator(fe: &FieldElement, point: &RistrettoPoint)
 // =============================================================================
 // Axiom 4: Group addition preserves uniformity
 // =============================================================================
-
 /// Axiom: Sum of two uniform points is uniform (group theory property).
 ///
 /// Mathematical justification:
@@ -160,7 +154,6 @@ pub proof fn axiom_uniform_point_add(p1: &RistrettoPoint, p2: &RistrettoPoint, s
 // =============================================================================
 // External Functions with Uniform Ensures
 // =============================================================================
-
 #[cfg(feature = "rand_core")]
 #[verifier::external_body]
 /// Fill bytes from a cryptographic RNG, producing uniform random bytes.
@@ -177,7 +170,8 @@ pub uninterp spec fn spec_sha512(input: Seq<u8>) -> Seq<u8>;
 
 /// Axiom: SHA-512 always produces exactly 64 bytes of output.
 pub proof fn axiom_sha512_output_length(input: Seq<u8>)
-    ensures spec_sha512(input).len() == 64,
+    ensures
+        spec_sha512(input).len() == 64,
 {
     admit();
 }

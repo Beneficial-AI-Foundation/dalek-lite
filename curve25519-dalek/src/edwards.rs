@@ -1353,7 +1353,7 @@ impl EdwardsPoint {
             // equals -1, because the birational map y = (u-1)/(u+1) has a zero denominator there.
             // For random field elements from Elligator, this occurs with probability 1/p ≈ 2^-255
 
-            // VERIFICATION NOTE: we had to do this assumption because Verus vstd spec for "expect" 
+            // VERIFICATION NOTE: we had to do this assumption because Verus vstd spec for "expect"
             // requires is_some(); this is probably too strong.
 
             // VERIFICATION NOTE: to remove the assume, we could make a case split on the result of to_edwards
@@ -1736,7 +1736,9 @@ impl<T> Sum<T> for EdwardsPoint where T: Borrow<EdwardsPoint> {
         requires
             forall|i: int|
                 0 <= i < spec_points_from_iter::<T, I>(iter).len()
-                    ==> #[trigger] is_well_formed_edwards_point(spec_points_from_iter::<T, I>(iter)[i]),
+                    ==> #[trigger] is_well_formed_edwards_point(
+                    spec_points_from_iter::<T, I>(iter)[i],
+                ),
         ensures
             is_well_formed_edwards_point(result),
             edwards_point_as_affine(result) == sum_of_points(spec_points_from_iter::<T, I>(iter)),

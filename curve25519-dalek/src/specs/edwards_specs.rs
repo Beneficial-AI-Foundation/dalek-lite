@@ -144,7 +144,6 @@ pub proof fn axiom_eight_torsion_well_formed()
 // =============================================================================
 // Spec for nonspec_map_to_curve_verus
 // =============================================================================
-
 /// Spec helper: interpret the Montgomery-to-Edwards conversion used by
 /// `MontgomeryPoint::to_edwards` as choosing an `x` with the requested sign.
 ///

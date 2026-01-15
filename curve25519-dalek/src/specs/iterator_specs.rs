@@ -158,10 +158,14 @@ pub fn clone_ristretto_iter_with_spec<P, J>(iter: J) -> (result: (J, J)) where
     J: Iterator<Item = P> + Clone,
 
     ensures
-        spec_edwards_from_ristretto_iter::<P, J>(result.0)
-            == spec_edwards_from_ristretto_iter::<P, J>(iter),
-        spec_edwards_from_ristretto_iter::<P, J>(result.1)
-            == spec_edwards_from_ristretto_iter::<P, J>(iter),
+        spec_edwards_from_ristretto_iter::<P, J>(result.0) == spec_edwards_from_ristretto_iter::<
+            P,
+            J,
+        >(iter),
+        spec_edwards_from_ristretto_iter::<P, J>(result.1) == spec_edwards_from_ristretto_iter::<
+            P,
+            J,
+        >(iter),
 {
     let cloned = iter.clone();
     (iter, cloned)

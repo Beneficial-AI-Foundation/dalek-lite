@@ -242,19 +242,13 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     let i = spec_sqrt_m1();
     let d = spec_field_element(&EDWARDS_D);
-    let one_minus_d_sq = math_field_mul(
-        math_field_sub(1, d),
-        math_field_add(1, d),
-    );  // (1-d)(1+d) = 1 - d²
+    let one_minus_d_sq = math_field_mul(math_field_sub(1, d), math_field_add(1, d));  // (1-d)(1+d) = 1 - d²
     let d_minus_one_sq = math_field_square(math_field_sub(d, 1));  // (d-1)²
     let c_init: nat = math_field_neg(1);  // -1
 
     let r = math_field_mul(i, math_field_square(r_0));
     let n_s = math_field_mul(math_field_add(r, 1), one_minus_d_sq);
-    let d_val = math_field_mul(
-        math_field_sub(c_init, math_field_mul(d, r)),
-        math_field_add(r, d),
-    );
+    let d_val = math_field_mul(math_field_sub(c_init, math_field_mul(d, r)), math_field_add(r, d));
 
     // sqrt_ratio_i(N_s, D) returns (was_square, s)
     let invsqrt = math_invsqrt(math_field_mul(n_s, d_val));
@@ -303,7 +297,6 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
 
     (x_affine, y_affine)
 }
-
 
 /// Spec helper: first 32 bytes of a 64-byte input.
 pub open spec fn spec_uniform_bytes_first(bytes: &[u8; 64]) -> [u8; 32] {

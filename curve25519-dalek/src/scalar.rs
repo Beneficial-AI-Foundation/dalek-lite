@@ -1536,8 +1536,9 @@ impl Scalar {
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64>,
 
         ensures
-            // is_uniform_digest(&hash) ==> is_uniform_scalar(&result),
-            // Result satisfies Scalar invariants #1 and #2
+    // is_uniform_digest(&hash) ==> is_uniform_scalar(&result),
+    // Result satisfies Scalar invariants #1 and #2
+
             is_canonical_scalar(&result),
     {
         let mut output = [0u8;64];

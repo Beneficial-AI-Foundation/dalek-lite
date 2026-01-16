@@ -532,20 +532,19 @@ impl FieldElement {
                 #![trigger old(inputs)[i]]
                 0 <= i < old(inputs).len() ==> fe51_limbs_bounded(&old(inputs)[i], 54),
         ensures
-            // Each element is replaced appropriately:
+    // Each element is replaced appropriately:
+
             forall|i: int|
                 #![auto]
                 0 <= i < inputs.len() ==> (
-                    // If input was non-zero, it's replaced with its inverse
-                    ((spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
-                        &old(inputs)[i],
-                        &inputs[i],
-                    ))
-                    &&
-                    // If input was zero, it remains zero
-                    ((spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(&inputs[i])
-                        == 0)
-                ),
+                // If input was non-zero, it's replaced with its inverse
+                ((spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
+                    &old(inputs)[i],
+                    &inputs[i],
+                )) &&
+                // If input was zero, it remains zero
+                ((spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(&inputs[i])
+                    == 0)),
     {
         // Montgomery's Trick and Fast Implementation of Masked AES
         // Genelle, Prouff and Quisquater
@@ -614,16 +613,16 @@ impl FieldElement {
                     0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
         {
             scratch[i] = acc;
-            
+
             proof {
                 // After assignment, scratch[i] is bounded because acc is bounded
                 assert(fe51_limbs_bounded(&scratch[i as int], 54));
             }
-            
+
             // acc <- acc * input, but skipping zeros (constant-time)
             let new_acc = &acc * &inputs[i];
             acc.conditional_assign(&new_acc, choice_not(inputs[i].is_zero()));
-            
+
             proof {
                 // After conditional_assign, acc remains bounded:
                 // - If choice is false, acc unchanged (still bounded by invariant)
@@ -672,22 +671,15 @@ impl FieldElement {
                     #![auto]
                     0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
                 // Elements below i haven't been modified yet in backward loop
-                forall|j: int|
-                    #![auto]
-                    0 <= j < i ==> inputs[j] === original_inputs[j],
+                forall|j: int| #![auto] 0 <= j < i ==> inputs[j] === original_inputs[j],
                 // Postcondition for already processed elements (i..n)
                 // Each element at index j >= i has been replaced with its inverse (or remains 0)
                 forall|j: int|
                     #![auto]
-                    i <= j < n ==> (
-                        ((spec_field_element(&original_inputs[j]) != 0) ==> is_inverse_field(
-                            &original_inputs[j],
-                            &inputs[j],
-                        ))
-                        && ((spec_field_element(&original_inputs[j]) == 0) ==> spec_field_element(
-                            &inputs[j]
-                        ) == 0)
-                    ),
+                    i <= j < n ==> (((spec_field_element(&original_inputs[j]) != 0)
+                        ==> is_inverse_field(&original_inputs[j], &inputs[j])) && ((
+                    spec_field_element(&original_inputs[j]) == 0) ==> spec_field_element(&inputs[j])
+                        == 0)),
             decreases i,
         {
             i -= 1;
@@ -709,15 +701,12 @@ impl FieldElement {
                 //   * scratch[i] contains product of original_inputs[0..i] (skipping zeros)
                 //   * acc contains inverse of original_inputs[i..n] product
                 //   * Therefore acc * scratch[i] = 1 / original_inputs[i]
-                assume(
-                    ((spec_field_element(&original_inputs[i as int]) != 0) ==> is_inverse_field(
-                        &original_inputs[i as int],
-                        &inputs[i as int],
-                    ))
-                    && ((spec_field_element(&original_inputs[i as int]) == 0) ==> spec_field_element(
-                        &inputs[i as int]
-                    ) == 0)
-                );
+                assume(((spec_field_element(&original_inputs[i as int]) != 0) ==> is_inverse_field(
+                    &original_inputs[i as int],
+                    &inputs[i as int],
+                )) && ((spec_field_element(&original_inputs[i as int]) == 0) ==> spec_field_element(
+                    &inputs[i as int],
+                ) == 0));
             }
         }
 
@@ -726,15 +715,10 @@ impl FieldElement {
             // The loop invariant already establishes the postcondition for all indices
             assert(forall|j: int|
                 #![auto]
-                0 <= j < n ==> (
-                    ((spec_field_element(&original_inputs[j]) != 0) ==> is_inverse_field(
-                        &original_inputs[j],
-                        &inputs[j],
-                    ))
-                    && ((spec_field_element(&original_inputs[j]) == 0) ==> spec_field_element(
-                        &inputs[j]
-                    ) == 0)
-                ));
+                0 <= j < n ==> (((spec_field_element(&original_inputs[j]) != 0)
+                    ==> is_inverse_field(&original_inputs[j], &inputs[j])) && ((spec_field_element(
+                    &original_inputs[j],
+                ) == 0) ==> spec_field_element(&inputs[j]) == 0)));
         }
     }
 

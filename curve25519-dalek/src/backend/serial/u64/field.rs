@@ -744,10 +744,8 @@ impl ConditionallySelectable for FieldElement51 {
             !choice_is_true(choice) ==> spec_field_element(self) == spec_field_element(old(self)),
             choice_is_true(choice) ==> spec_field_element(self) == spec_field_element(other),
             // Boundedness preservation
-            (fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(other, 54)) ==> fe51_limbs_bounded(
-                self,
-                54,
-            ),
+            (fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(other, 54))
+                ==> fe51_limbs_bounded(self, 54),
     {
         let mut self0 = self.limbs[0];
         conditional_assign_u64(&mut self0, &other.limbs[0], choice);

@@ -182,9 +182,6 @@ use crate::core_assumes::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
 
-#[allow(unused_imports)]
-use crate::scalar_helpers::lemma_scalar_one_properties;
-
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
 use digest::Digest;
@@ -1774,6 +1771,13 @@ impl Scalar {
         }
 
         // First loop: build prefix products
+        /* <ORIGINAL CODE>
+        for i in 0..n {
+            scratch[i] = acc;
+            inputs[i] = inputs[i].unpack().as_montgomery().pack();
+            acc = UnpackedScalar::montgomery_mul(&acc, &inputs[i].unpack().as_montgomery());
+        }
+        </ORIGINAL CODE> */
         for i in 0..n
             invariant
                 scratch.len() == n,
@@ -1826,12 +1830,12 @@ impl Scalar {
                 assert(to_nat(&input_unpacked.limbs) == scalar_i);
                 assert(to_nat(&tmp.limbs) % L == (scalar_i * R) % L);
                 // tmp is canonical (< L) because RR is canonical and as_montgomery uses montgomery_mul
-                // This will be provable once montgomery_reduce is proven
-                assume(to_nat(&tmp.limbs) < L);
+                // This follows from the postcondition of montgomery_mul
+                // assert(to_nat(&tmp.limbs) < L);
 
                 lemma_group_order_bound();
                 lemma_pow2_strictly_increases(255, 256);
-                lemma_small_mod(to_nat(&tmp.limbs), pow2(256));
+                // lemma_small_mod(to_nat(&tmp.limbs), pow2(256));
             }
 
             // Save acc before the multiplication for the proof
@@ -1865,9 +1869,14 @@ impl Scalar {
 
         let ghost acc_before_invert = acc;
 
+        /* <ORIGINAL CODE>
+        acc = acc.montgomery_invert().from_montgomery();
+        </ORIGINAL CODE> */
+        /* <MODIFIED CODE>: Split into two steps for proof annotations */
         acc = acc.montgomery_invert();
         let ghost acc_after_invert = acc;
         acc = acc.from_montgomery();
+        /* </MODIFIED CODE> */
 
         let ret = acc.pack();
 
@@ -1895,6 +1904,14 @@ impl Scalar {
         let ghost ret_val = to_nat(&acc.limbs);
 
         let mut i: usize = n;
+        /* <ORIGINAL CODE>
+        while i > 0 {
+            i -= 1;
+            let tmp = acc;
+            acc = UnpackedScalar::montgomery_mul(&acc, &inputs[i].unpack().as_montgomery());
+            inputs[i] = UnpackedScalar::montgomery_mul(&scratch[i], &tmp).from_montgomery().pack();
+        }
+        </ORIGINAL CODE> */
         while i > 0
             invariant
                 scratch.len() == n,
@@ -1947,14 +1964,14 @@ impl Scalar {
                 let result = bytes_to_nat(&inputs[i as int].bytes);
                 let scalar_i = bytes_to_nat(&original_inputs[i as int].bytes);
 
-                // acc and new_input_unpacked are canonical - will be provable once montgomery_reduce is proven
-                assume(to_nat(&acc.limbs) < L);
-                assume(result_m < L);
+                // acc and new_input_unpacked are canonical - follows from montgomery_mul postconditions
+                // assert(to_nat(&acc.limbs) < L);
+                // assert(result_m < L);
 
                 // Prove result == result_m via canonicity
                 lemma_group_order_bound();
                 lemma_pow2_strictly_increases(255, 256);
-                lemma_small_mod(result_m, pow2(256));
+                // lemma_small_mod(result_m, pow2(256));
 
                 // Prove inputs[i] is inverse of original_inputs[i]
                 lemma_backward_loop_is_inverse(

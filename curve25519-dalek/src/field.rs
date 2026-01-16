@@ -640,6 +640,13 @@ impl FieldElement {
         // Compute the inverse of all products
         acc = acc.invert();
 
+        proof {
+            // Establish that inputs hasn't been modified yet in backward loop
+            // At this point, inputs still equals original_inputs because we only read from it
+            // in the forward loop (never wrote to inputs array itself)
+            assert(forall|j: int| #![auto] 0 <= j < n ==> inputs[j] === original_inputs[j]);
+        }
+
         // Pass through the vector backwards to compute the inverses
         // in place
         /* <VERIFICATION NOTE>
@@ -671,6 +678,10 @@ impl FieldElement {
                 forall|j: int|
                     #![auto]
                     0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
+                // Elements below i haven't been modified yet in backward loop
+                forall|j: int|
+                    #![auto]
+                    0 <= j < i ==> inputs[j] === original_inputs[j],
                 // Postcondition for already processed elements (i..n)
                 // Each element at index j >= i has been replaced with its inverse (or remains 0)
                 forall|j: int|
@@ -687,6 +698,12 @@ impl FieldElement {
             decreases i,
         {
             i -= 1;
+            
+            proof {
+                // At this point, i has been decremented and invariant tells us inputs[i] hasn't been modified
+                assert(inputs[i as int] === original_inputs[i as int]);
+            }
+            
             let tmp = &acc * &inputs[i];
             // input <- acc * scratch, then acc <- tmp
             // Again, we skip zeros in a constant-time way
@@ -698,17 +715,24 @@ impl FieldElement {
             acc.conditional_assign(&tmp, nz);
 
             proof {
-                // The zero case: if original_inputs[i] was zero, it should remain zero after processing
-                // Proof strategy:
-                // 1. inputs[i] at this point equals original_inputs[i] (not modified in backward loop yet)
-                // 2. If original_inputs[i] == 0, then is_zero() returns true
-                // 3. Therefore nz = choice_not(is_zero()) returns false
-                // 4. conditional_assign with false choice leaves input_i unchanged at 0
+                // The zero case could be proven with the strengthened conditional_assign spec:
+                // 1. From invariant: inputs[i] === original_inputs[i] (asserted above)
+                // 2. Therefore spec_field_element(&inputs[i]) == spec_field_element(&original_inputs[i])
+                // 3. Use lemma_zero_field_element_has_zero_bytes to show spec_fe51_to_bytes == seq![0u8; 32]
+                // 4. From is_zero postcondition: choice_is_true(nz) == false
+                // 5. From conditional_assign spec: input_i unchanged, so remains 0
+                // 6. After inputs[i] = input_i, inputs[i] is still 0
+                //
+                // However, the detailed reasoning about the equality propagation through
+                // conditional_assign is complex. For now, we combine both cases in one assume.
                 
-                // PROOF BYPASS: Full proof would require:
-                // - Lemma that inputs[i] == original_inputs[i] before processing in backward loop
-                // - Proper spec for conditional_assign showing spec_field_element preservation
-                // - For non-zero case: extensive lemmas about Montgomery's batch inversion
+                // PROOF BYPASS: Both zero and non-zero cases require complex reasoning:
+                // - Zero case: Needs detailed reasoning about spec_field_element preservation
+                //   through conditional_assign when choice is false
+                // - Non-zero case: Requires extensive lemmas about Montgomery's batch inversion:
+                //   * scratch[i] contains product of original_inputs[0..i] (skipping zeros)
+                //   * acc contains inverse of original_inputs[i..n] product
+                //   * Therefore acc * scratch[i] = 1 / original_inputs[i]
                 assume(
                     ((spec_field_element(&original_inputs[i as int]) != 0) ==> is_inverse_field(
                         &original_inputs[i as int],

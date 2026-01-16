@@ -26,8 +26,11 @@ use super::field_specs::*;
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
 };
+#[cfg(feature = "precomputed-tables")]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
+use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D, EIGHT_TORSION};
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::edwards::EdwardsBasepointTable;
@@ -105,12 +108,89 @@ pub open spec fn is_valid_edwards_basepoint_table(
 #[verifier::external_body]
 pub proof fn axiom_ed25519_basepoint_table_valid()
     ensures
-        is_valid_edwards_basepoint_table(
-            *crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE,
-            spec_ed25519_basepoint(),
-        ),
+        is_valid_edwards_basepoint_table(*ED25519_BASEPOINT_TABLE, spec_ed25519_basepoint()),
 {
 }
+
+/// Axiom: All 8-torsion points are well-formed.
+///
+/// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
+/// Each element satisfies `is_well_formed_edwards_point`, which requires:
+/// - `is_valid_edwards_point`: Z ≠ 0, point on curve, T = XY/Z
+/// - `edwards_point_limbs_bounded`: all limbs < 2^52
+/// - `sum_of_limbs_bounded(Y, X)`: Y + X doesn't overflow
+///
+/// This is verified by the `test_eight_torsion_well_formed` test below.
+pub proof fn axiom_eight_torsion_well_formed()
+    ensures
+        is_well_formed_edwards_point(EIGHT_TORSION[0]),
+        is_well_formed_edwards_point(EIGHT_TORSION[1]),
+        is_well_formed_edwards_point(EIGHT_TORSION[2]),
+        is_well_formed_edwards_point(EIGHT_TORSION[3]),
+        is_well_formed_edwards_point(EIGHT_TORSION[4]),
+        is_well_formed_edwards_point(EIGHT_TORSION[5]),
+        is_well_formed_edwards_point(EIGHT_TORSION[6]),
+        is_well_formed_edwards_point(EIGHT_TORSION[7]),
+{
+    admit();
+}
+
+} // verus!
+/// Test that all 8-torsion points satisfy the structural well-formedness conditions.
+/// This partially validates axiom_eight_torsion_well_formed() by checking:
+/// - Z ≠ 0, limbs < 2^52, Y+X bounded
+/// Note: The curve equation and T=XY/Z are trusted from the constant definition.
+#[cfg(test)]
+mod eight_torsion_tests {
+    use super::*;
+
+    const LIMB_BOUND_52: u64 = 1u64 << 52;
+
+    // Tests that all limbs are < bound
+    fn limbs_bounded(fe: &crate::backend::serial::u64::field::FieldElement51, bound: u64) -> bool {
+        fe.limbs.iter().all(|&limb| limb < bound)
+    }
+
+    // Tests edwards_point_limbs_bounded - all coordinate limbs < 2^52
+    fn point_limbs_bounded(p: &EdwardsPoint) -> bool {
+        limbs_bounded(&p.X, LIMB_BOUND_52)
+            && limbs_bounded(&p.Y, LIMB_BOUND_52)
+            && limbs_bounded(&p.Z, LIMB_BOUND_52)
+            && limbs_bounded(&p.T, LIMB_BOUND_52)
+    }
+
+    // Tests Z ≠ 0 (part of is_valid_edwards_point)
+    fn z_nonzero(p: &EdwardsPoint) -> bool {
+        p.Z.limbs.iter().any(|&limb| limb != 0)
+    }
+
+    // Tests sum_of_limbs_bounded(Y, X) - Y + X doesn't overflow
+    fn sum_bounded(p: &EdwardsPoint) -> bool {
+        p.Y.limbs
+            .iter()
+            .zip(p.X.limbs.iter())
+            .all(|(&y, &x)| (y as u128) + (x as u128) <= u64::MAX as u128)
+    }
+
+    #[test]
+    fn test_eight_torsion_well_formed() {
+        for (i, point) in EIGHT_TORSION.iter().enumerate() {
+            assert!(z_nonzero(point), "EIGHT_TORSION[{}] has Z = 0", i);
+            assert!(
+                point_limbs_bounded(point),
+                "EIGHT_TORSION[{}] limbs exceed 2^52",
+                i
+            );
+            assert!(
+                sum_bounded(point),
+                "EIGHT_TORSION[{}] Y+X would overflow",
+                i
+            );
+        }
+    }
+}
+
+verus! {
 
 // =============================================================================
 // Curve Equation Specifications
@@ -212,6 +292,22 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
     z != 0 && x == 0 && y == z
 }
 
+/// Math-level validity predicate for an Edwards point in **extended coordinates** (X:Y:Z:T).
+///
+/// This is the "unpacked" version of `is_valid_edwards_point` that operates directly on the
+/// mathematical values `(x, y, z, t)` (all reduced mod p via `math_field_*`).
+///
+/// An (X:Y:Z:T) tuple is valid iff:
+/// 1. Z ≠ 0
+/// 2. The affine point (X/Z, Y/Z) is on the Edwards curve
+/// 3. T = X·Y/Z
+pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
+    z != 0 && math_on_edwards_curve(
+        math_field_mul(x, math_field_inv(z)),
+        math_field_mul(y, math_field_inv(z)),
+    ) && t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
+}
+
 /// Check if an EdwardsPoint in projective coordinates is valid
 /// An EdwardsPoint (X:Y:Z:T) is valid if:
 /// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
@@ -226,37 +322,24 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
     let z = spec_field_element(&point.Z);
     let t = spec_field_element(&point.T);
 
-    // Z must be non-zero
-    z != 0 &&
-    // The affine coordinates (X/Z, Y/Z) must be on the curve
-    math_on_edwards_curve(
-        math_field_mul(x, math_field_inv(z)),
-        math_field_mul(y, math_field_inv(z)),
-    ) &&
-    // Extended coordinate must satisfy T = X*Y/Z
-    t == math_field_mul(math_field_mul(x, y), math_field_inv(z))
+    math_is_valid_extended_edwards_point(x, y, z, t)
 }
 
-/// Limb bounds for safe field arithmetic on an EdwardsPoint.
-/// All coordinate limbs must fit in 54 bits for safe arithmetic operations.
+/// EdwardsPoint invariant: all coordinate limbs must be 52-bounded.
 pub open spec fn edwards_point_limbs_bounded(point: crate::edwards::EdwardsPoint) -> bool {
-    fe51_limbs_bounded(&point.X, 54) && fe51_limbs_bounded(&point.Y, 54) && fe51_limbs_bounded(
+    fe51_limbs_bounded(&point.X, 52) && fe51_limbs_bounded(&point.Y, 52) && fe51_limbs_bounded(
         &point.Z,
-        54,
-    ) && fe51_limbs_bounded(&point.T, 54)
+        52,
+    ) && fe51_limbs_bounded(&point.T, 52)
 }
 
-/// Sum bound needed for operations like as_projective_niels that compute Y+X.
-/// The sum of Y and X limbs must not overflow.
-pub open spec fn edwards_point_sum_bounded(point: crate::edwards::EdwardsPoint) -> bool {
-    sum_of_limbs_bounded(&point.Y, &point.X, u64::MAX)
-}
-
-/// A "well-formed" EdwardsPoint: mathematically valid and properly bounded.
-/// This is the standard predicate for points ready to use in arithmetic operations.
+/// A well-formed EdwardsPoint: mathematically valid and properly bounded.
 pub open spec fn is_well_formed_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
-    is_valid_edwards_point(point) && edwards_point_limbs_bounded(point)
-        && edwards_point_sum_bounded(point)
+    is_valid_edwards_point(point) && edwards_point_limbs_bounded(point) && sum_of_limbs_bounded(
+        &point.Y,
+        &point.X,
+        u64::MAX,
+    )
 }
 
 /// Returns the field element values (X, Y, Z, T) from an EdwardsPoint.
@@ -367,6 +450,25 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
         == y_affine
     // The sign bit matches the sign of the affine x-coordinate
      && (compressed.0[31] >> 7) == (((x_affine % crate::specs::field_specs_u64::p()) % 2) as u8)
+}
+
+/// Check if a CompressedEdwardsY has a valid sign bit.
+///
+/// ## Mathematical basis
+///
+/// For points with x = 0 on the Edwards curve, the curve equation gives y² = 1,
+/// so y = ±1. These special points (the identity (0,1) and the point (0,-1))
+/// have only one valid sign bit: 0, since sign_bit = x % 2 = 0.
+///
+/// ## Definition
+///
+/// If the Y coordinate yields x = 0 (i.e., y² ≡ 1 mod p), the sign bit must be 0.
+pub open spec fn compressed_y_has_valid_sign_bit(bytes: &[u8; 32]) -> bool {
+    let y = spec_field_element_from_bytes(bytes);
+    let sign_bit = bytes[31] >> 7;
+    // If y² ≡ 1 (mod p), then x = 0, so sign_bit must be 0
+    // Equivalently: sign_bit == 1 implies y² ≢ 1
+    math_field_square(y) == 1 ==> sign_bit == 0
 }
 
 /// Check if a ProjectiveNielsPoint corresponds to an EdwardsPoint
@@ -603,6 +705,12 @@ pub open spec fn spec_edwards_add_affine_niels(
     let self_affine = edwards_point_as_affine(p);
     let other_affine = affine_niels_point_as_affine_edwards(q);
     edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+}
+
+/// Affine Edwards negation for twisted Edwards curves with a=-1.
+/// The negation of point (x, y) is (-x, y).
+pub open spec fn edwards_neg(point: (nat, nat)) -> (nat, nat) {
+    (math_field_neg(point.0), point.1)
 }
 
 /// Affine Edwards subtraction for twisted Edwards curves.

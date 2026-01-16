@@ -37,8 +37,8 @@ pub proof fn lemma_add_then_shift(a: u64, b: u64)
     assert(1u64 << 53 == (1u64 << 51) * 4) by (bit_vector);
     // 0 < b  /\ a < b * c => a/b < c
     lemma_multiply_divide_lt((a + b) as int, (1u64 << 51) as int, 4int);
-    lemma_shift_is_pow2(51);
-    lemma_shift_is_pow2(53);
+    lemma_u64_shift_is_pow2(51);
+    lemma_u64_shift_is_pow2(53);
     assert((a + b) as u64 >> 51 == (a + b) as u64 / (pow2(51) as u64)) by {
         lemma_u64_shr_is_div((a + b) as u64, 51);
     }
@@ -109,8 +109,8 @@ pub proof fn lemma_masked_lt_51(v: u64)
     lemma_u64_masked_lt(v, 51);
 }
 
-// lemma_div_and_mod specialization for k = 51, using mask51 == low_bits_mask(51)
-pub proof fn lemma_div_and_mod_51(ai: u64, bi: u64, v: u64)
+// lemma_u64_div_and_mod specialization for k = 51, using mask51 == low_bits_mask(51)
+pub proof fn lemma_u64_div_and_mod_51(ai: u64, bi: u64, v: u64)
     requires
         ai == v >> 51,
         bi == v & mask51,
@@ -120,7 +120,7 @@ pub proof fn lemma_div_and_mod_51(ai: u64, bi: u64, v: u64)
         v == ai * pow2(51) + bi,
 {
     l51_bit_mask_lt();  // mask51 == low_bits_mask(51)
-    lemma_div_and_mod(ai, bi, v, 51);
+    lemma_u64_div_and_mod(ai, bi, v, 51);
 }
 
 pub broadcast proof fn lemma_cast_then_mask_51(x: u128)

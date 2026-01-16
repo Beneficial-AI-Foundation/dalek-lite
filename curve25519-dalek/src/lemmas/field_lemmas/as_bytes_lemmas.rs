@@ -9,7 +9,7 @@ use super::compute_q_lemmas::*;
 use super::limbs_to_bytes_lemmas::*;
 use super::reduce_lemmas::*;
 use super::to_bytes_reduction_lemmas::*;
-use super::u8_32_as_nat_injectivity_lemmas::*;
+use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 
@@ -56,23 +56,23 @@ pub proof fn lemma_as_bytes_boundaries1(raw_limbs: [u64; 5])
     let q4 = q_arr[4];
 
     assert(q0 <= 2) by {
-        lemma_shr_le_u64((limbs[0] + 19) as u64, ((1u64 << 52) + 19) as u64, 51);
+        lemma_u64_shr_le((limbs[0] + 19) as u64, ((1u64 << 52) + 19) as u64, 51);
     }
 
     assert(q1 <= 2) by {
-        lemma_shr_le_u64((limbs[1] + q0) as u64, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le((limbs[1] + q0) as u64, ((1u64 << 52) + 2) as u64, 51);
     }
 
     assert(q2 <= 2) by {
-        lemma_shr_le_u64((limbs[2] + q1) as u64, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le((limbs[2] + q1) as u64, ((1u64 << 52) + 2) as u64, 51);
     }
 
     assert(q3 <= 2) by {
-        lemma_shr_le_u64((limbs[3] + q2) as u64, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le((limbs[3] + q2) as u64, ((1u64 << 52) + 2) as u64, 51);
     }
 
     assert(q4 <= 2) by {
-        lemma_shr_le_u64((limbs[4] + q3) as u64, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le((limbs[4] + q3) as u64, ((1u64 << 52) + 2) as u64, 51);
     }
 }
 
@@ -114,23 +114,23 @@ pub proof fn lemma_as_bytes_boundaries2(raw_limbs: [u64; 5])
     let l4 = l[4];
 
     assert(l0 >> 51 <= 2) by {
-        lemma_shr_le_u64(l0, ((1u64 << 52) + 19) as u64, 51);
+        lemma_u64_shr_le(l0, ((1u64 << 52) + 19) as u64, 51);
     }
 
     assert(l1 >> 51 <= 2) by {
-        lemma_shr_le_u64(l1, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le(l1, ((1u64 << 52) + 2) as u64, 51);
     }
 
     assert(l2 >> 51 <= 2) by {
-        lemma_shr_le_u64(l2, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le(l2, ((1u64 << 52) + 2) as u64, 51);
     }
 
     assert(l3 >> 51 <= 2) by {
-        lemma_shr_le_u64(l3, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le(l3, ((1u64 << 52) + 2) as u64, 51);
     }
 
     assert(l4 >> 51 <= 2) by {
-        lemma_shr_le_u64(l4, ((1u64 << 52) + 2) as u64, 51);
+        lemma_u64_shr_le(l4, ((1u64 << 52) + 2) as u64, 51);
     }
 }
 
@@ -141,7 +141,7 @@ pub proof fn lemma_as_bytes_boundaries2(raw_limbs: [u64; 5])
 /// the as_bytes postcondition), when converted to a sequence, it equals spec_fe51_to_bytes().
 ///
 /// The lemma relates:
-/// - bytes: a byte array satisfying as_bytes postcondition (u8_32_as_nat(&bytes) == u64_5_as_nat(fe.limbs) % p())
+/// - bytes: a byte array satisfying as_bytes postcondition (bytes32_to_nat(&bytes) == u64_5_as_nat(fe.limbs) % p())
 /// - seq_from32(&bytes): the sequence representation of those bytes
 /// - spec_fe51_to_bytes(fe): the spec-level byte sequence
 ///
@@ -152,13 +152,13 @@ pub proof fn lemma_as_bytes_boundaries2(raw_limbs: [u64; 5])
 /// - Therefore, they produce the same byte sequence
 pub proof fn lemma_as_bytes_equals_spec_fe51_to_bytes(fe: &FieldElement51, bytes: &[u8; 32])
     requires
-        u8_32_as_nat(bytes) == u64_5_as_nat(fe.limbs) % p(),
+        bytes32_to_nat(bytes) == u64_5_as_nat(fe.limbs) % p(),
     ensures
         seq_from32(bytes) == spec_fe51_to_bytes(fe),
 {
     // Step 1: Derive that bytes is canonical (< p)
     // This follows from x % p < p for any x
-    assert(u8_32_as_nat(bytes) < p()) by {
+    assert(bytes32_to_nat(bytes) < p()) by {
         pow255_gt_19();
         lemma_mod_is_mod_recursive(u64_5_as_nat(fe.limbs) as int, p() as int);
     }
@@ -181,7 +181,7 @@ pub proof fn lemma_as_bytes_equals_spec_fe51_to_bytes(fe: &FieldElement51, bytes
 /// Lemma: spec_fe51_to_bytes produces the same bytes as as_bytes, element by element
 proof fn lemma_spec_fe51_to_bytes_matches_array(fe: &FieldElement51, bytes: &[u8; 32])
     requires
-        u8_32_as_nat(bytes) == u64_5_as_nat(fe.limbs) % p(),
+        bytes32_to_nat(bytes) == u64_5_as_nat(fe.limbs) % p(),
     ensures
         forall|i: int| 0 <= i < 32 ==> spec_fe51_to_bytes(fe)[i] == bytes[i],
 {
@@ -253,7 +253,7 @@ proof fn lemma_spec_fe51_to_bytes_matches_array(fe: &FieldElement51, bytes: &[u8
     // produce the same canonical limbs and therefore the same packed bytes.
     //
     // We know:
-    // - u8_32_as_nat(bytes) == u64_5_as_nat(fe.limbs) % p() (from requires)
+    // - bytes32_to_nat(bytes) == u64_5_as_nat(fe.limbs) % p() (from requires)
     // - The canonical limbs [limbs0_canon, ...] represent u64_5_as_nat(fe.limbs) % p()
     // - Both are < p() (canonical form)
     // - The byte packing formulas are deterministic
@@ -317,23 +317,23 @@ proof fn lemma_spec_fe51_to_bytes_matches_array(fe: &FieldElement51, bytes: &[u8
     lemma_to_bytes_reduction(limbs, canonical_limbs, q);
     // Now we know: canonical_limbs[i] < 2^51 and u64_5_as_nat(canonical_limbs) == u64_5_as_nat(limbs) % p()
 
-    // Use lemma_limbs_to_bytes to show u8_32_as_nat(spec_bytes) == u64_5_as_nat(canonical_limbs)
+    // Use lemma_limbs_to_bytes to show bytes32_to_nat(spec_bytes) == u64_5_as_nat(canonical_limbs)
     lemma_limbs_to_bytes(canonical_limbs, spec_bytes);
-    assert(u8_32_as_nat(&spec_bytes) == u64_5_as_nat(canonical_limbs));
+    assert(bytes32_to_nat(&spec_bytes) == u64_5_as_nat(canonical_limbs));
 
     // From proof_reduce (called earlier), we know:
     // u64_5_as_nat(spec_reduce(fe.limbs)) % p() == u64_5_as_nat(fe.limbs) % p()
     // Since limbs = spec_reduce(fe.limbs), we have:
     assert(u64_5_as_nat(limbs) % p() == u64_5_as_nat(fe.limbs) % p());
 
-    // Therefore: u8_32_as_nat(spec_bytes) == u64_5_as_nat(fe.limbs) % p()
-    assert(u8_32_as_nat(&spec_bytes) == u64_5_as_nat(fe.limbs) % p());
+    // Therefore: bytes32_to_nat(spec_bytes) == u64_5_as_nat(fe.limbs) % p()
+    assert(bytes32_to_nat(&spec_bytes) == u64_5_as_nat(fe.limbs) % p());
 
     // Both bytes and spec_bytes represent u64_5_as_nat(fe.limbs) % p()
     // By uniqueness of canonical representation, they must be equal
-    assert(u8_32_as_nat(bytes) == u8_32_as_nat(&spec_bytes));
+    assert(bytes32_to_nat(bytes) == bytes32_to_nat(&spec_bytes));
 
-    // If two byte arrays have the same u8_32_as_nat value,
+    // If two byte arrays have the same bytes32_to_nat value,
     // they must be equal element-wise (by injectivity of little-endian encoding)
     lemma_canonical_bytes_equal(bytes, &spec_bytes);
 }
@@ -360,6 +360,130 @@ pub proof fn lemma_seq_eq_implies_array_eq(bytes1: &[u8; 32], bytes2: &[u8; 32])
     }
     // Verus axiom: arrays are equal iff all elements are equal
     assert(*bytes1 == *bytes2);
+}
+
+/// Lemma: from_bytes(as_bytes(fe_orig)) preserves the field element value
+///
+/// This is the fundamental roundtrip property for field element serialization.
+/// Encoding to bytes and decoding back yields the same math field element.
+///
+/// ## Parameters:
+/// - `fe_orig`: the original field element
+/// - `bytes`: output of `as_bytes(fe_orig)`
+/// - `fe_decoded`: output of `from_bytes(bytes)`
+///
+/// ## Usage:
+/// ```
+/// let bytes = fe_orig.as_bytes();
+/// let fe_decoded = FieldElement51::from_bytes(&bytes);
+/// proof {
+///     lemma_from_bytes_as_bytes_roundtrip(&fe_orig, &bytes, &fe_decoded);
+///     // Now: spec_field_element(&fe_decoded) == spec_field_element(&fe_orig)
+/// }
+/// ```
+///
+/// ## Proof outline (let v = spec_field_element_as_nat(fe_orig)):
+/// 1. as_bytes postcondition: bytes32_to_nat(bytes) = v % p
+/// 2. from_bytes postcondition: spec_field_element_as_nat(fe_decoded) = bytes32_to_nat(bytes) % pow2(255)
+/// 3. Since v % p < p < pow2(255), by lemma_small_mod: (v % p) % pow2(255) = v % p
+/// 4. By lemma_mod_twice: spec_field_element(fe_decoded) = (v % p) % p = v % p = spec_field_element(fe_orig)
+pub proof fn lemma_from_bytes_as_bytes_roundtrip(
+    fe_orig: &FieldElement51,
+    bytes: &[u8; 32],
+    fe_decoded: &FieldElement51,
+)
+    requires
+        as_bytes_post(fe_orig, bytes),  // bytes = as_bytes(fe_orig)
+        from_bytes_post(bytes, fe_decoded),  // fe_decoded = from_bytes(bytes)
+
+    ensures
+        spec_field_element(fe_decoded) == spec_field_element(fe_orig),
+{
+    let v = spec_field_element_as_nat(fe_orig);
+
+    assert(spec_field_element(fe_decoded) == spec_field_element(fe_orig)) by {
+        assert(0 < p() < pow2(255)) by {
+            pow255_gt_19();
+        };
+        // Subgoal 1: (v % p) % pow2(255) == v % p
+        // The canonical value fits in 255 bits, so from_bytes preserves it
+        assert((v % p()) % pow2(255) == v % p()) by {
+            assert(v % p() < p()) by {
+                lemma_mod_bound(v as int, p() as int);
+            };
+            lemma_small_mod((v % p()) as nat, pow2(255));
+        };
+
+        // Subgoal 2: (v % p) % p == v % p (mod idempotence)
+        // Taking mod p again doesn't change the canonical value
+        assert((v % p()) % p() == v % p()) by {
+            lemma_mod_twice(v as int, p() as int);
+        };
+    };
+}
+
+/// Lemma: as_bytes(from_bytes(bytes_orig)) preserves the byte value (for canonical inputs)
+///
+/// This is the reverse roundtrip property for field element serialization.
+/// It only holds when the input bytes represent a canonical value (< p).
+///
+/// ## Parameters:
+/// - `bytes_orig`: the original bytes (must be canonical: bytes32_to_nat < p)
+/// - `fe`: output of `from_bytes(bytes_orig)`
+/// - `bytes_decoded`: output of `as_bytes(fe)`
+///
+/// ## Usage:
+/// ```
+/// let fe = FieldElement51::from_bytes(&bytes_orig);
+/// let bytes_decoded = fe.as_bytes();
+/// proof {
+///     lemma_as_bytes_from_bytes_roundtrip(&bytes_orig, &fe, &bytes_decoded);
+///     // Now: bytes32_to_nat(&bytes_decoded) == bytes32_to_nat(&bytes_orig)
+/// }
+/// ```
+///
+/// ## Why canonical is required:
+/// If bytes_orig encodes a value v where p <= v < 2^255, then:
+/// - from_bytes preserves v (since v < 2^255)
+/// - as_bytes reduces to v % p
+/// So as_bytes(from_bytes(bytes)) would encode (v % p), not v.
+///
+/// ## Proof outline (let v = bytes32_to_nat(bytes_orig)):
+/// 1. Since v < p < pow2(255), by lemma_small_mod: v % pow2(255) = v
+/// 2. So from_bytes gives: spec_field_element_as_nat(fe) = v
+/// 3. Since v < p, by lemma_small_mod: v % p = v
+/// 4. So as_bytes gives: bytes32_to_nat(bytes_decoded) = v
+pub proof fn lemma_as_bytes_from_bytes_roundtrip(
+    bytes_orig: &[u8; 32],
+    fe: &FieldElement51,
+    bytes_decoded: &[u8; 32],
+)
+    requires
+        bytes32_to_nat(bytes_orig) < p(),  // bytes_orig is canonical
+        from_bytes_post(bytes_orig, fe),  // fe = from_bytes(bytes_orig)
+        as_bytes_post(fe, bytes_decoded),  // bytes_decoded = as_bytes(fe)
+
+    ensures
+        bytes32_to_nat(bytes_decoded) == bytes32_to_nat(bytes_orig),
+{
+    let v = bytes32_to_nat(bytes_orig);
+
+    assert(0 < p() < pow2(255)) by {
+        pow255_gt_19();
+    };
+    assert(bytes32_to_nat(bytes_decoded) == v) by {
+        // Subgoal 1: v % pow2(255) == v
+        // Since v < p < pow2(255), v fits in 255 bits
+        assert(v % pow2(255) == v) by {
+            lemma_small_mod(v, pow2(255));
+        };
+
+        // Subgoal 2: v % p == v
+        // Since v < p (canonical), taking mod p doesn't change it
+        assert(v % p() == v) by {
+            lemma_small_mod(v, p());
+        };
+    };
 }
 
 } // verus!

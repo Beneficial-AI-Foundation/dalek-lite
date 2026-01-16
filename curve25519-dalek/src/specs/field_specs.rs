@@ -76,11 +76,27 @@ pub open spec fn spec_field_element(fe: &FieldElement51) -> nat {
     spec_field_element_as_nat(fe) % p()
 }
 
+// ============================================================================
+// Function postcondition predicates
+// These capture the ensures clauses of as_bytes/from_bytes for use in lemmas
+// ============================================================================
+/// Postcondition of `as_bytes`: bytes is the canonical encoding of fe.
+/// Use this to state that `bytes` is the result of `fe.as_bytes()`.
+pub open spec fn as_bytes_post(fe: &FieldElement51, bytes: &[u8; 32]) -> bool {
+    bytes32_to_nat(bytes) == spec_field_element(fe)
+}
+
+/// Postcondition of `from_bytes`: fe's limbs decode the bytes (clearing bit 255).
+/// Use this to state that `fe` is the result of `FieldElement51::from_bytes(bytes)`.
+pub open spec fn from_bytes_post(bytes: &[u8; 32], fe: &FieldElement51) -> bool {
+    spec_field_element_as_nat(fe) == bytes32_to_nat(bytes) % pow2(255)
+}
+
 /// Returns the canonical mathematical value when creating a field element from bytes.
 /// The bytes are interpreted as a little-endian integer with the high bit of byte[31] ignored.
 /// The result is the canonical value in [0, p) where p = 2^255 - 19.
 pub open spec fn spec_field_element_from_bytes(bytes: &[u8; 32]) -> nat {
-    (u8_32_as_nat(bytes) % pow2(255)) % p()
+    (bytes32_to_nat(bytes) % pow2(255)) % p()
 }
 
 /// Spec function: Get the sign bit of a field element
@@ -450,6 +466,85 @@ pub open spec fn is_sqrt_ratio_times_i(
     spec_field_element(&constants::SQRT_M1) * spec_field_element(u)) % p()
 }
 
+/// Spec function: r² * v = u (mod p) — math version operating on nat values
+/// This is the mathematical equivalent of is_sqrt_ratio but without FieldElement wrappers.
+/// Use this when working with mathematical values directly in lemmas.
+pub open spec fn math_is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {
+    (r * r * v) % p() == u
+}
+
+/// Spec function: r² * v = i*u (mod p) — math version operating on nat values
+/// Used for the nonsquare case in sqrt_ratio_i.
+/// This is the mathematical equivalent of is_sqrt_ratio_times_i.
+pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
+    (r * r * v) % p() == (spec_sqrt_m1() * u) % p()
+}
+
+/// Spec predicate: a field element is negative if its canonical low bit is 1.
+pub open spec fn math_is_negative(a: nat) -> bool {
+    (a % p()) % 2 == 1
+}
+
+/// Spec-only model of inverse square root with a canonical sign choice.
+///
+/// Returns a nonnegative r such that either r^2 * a = 1 (mod p) or r^2 * a = i (mod p).
+pub open spec fn math_invsqrt(a: nat) -> nat {
+    if a % p() == 0 {
+        0
+    } else {
+        choose|r: nat|
+            #![auto]
+            !math_is_negative(r) && (math_is_sqrt_ratio(1, a, r) || math_is_sqrt_ratio_times_i(
+                1,
+                a,
+                r,
+            ))
+    }
+}
+
+/// Canonical little-endian bytes for a nat (mod 2^256).
+pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32] {
+    choose|b: [u8; 32]| bytes32_to_nat(&b) == n % pow2(256)
+}
+
+/// Spec function capturing sqrt_ratio_i math correctness postconditions.
+///
+/// This encapsulates the four mathematical postconditions of sqrt_ratio_i:
+/// 1. When u = 0: returns (true, 0)
+/// 2. When v = 0 and u ≠ 0: returns (false, 0)
+/// 3. When success and v ≠ 0: r² · v ≡ u (mod p)
+/// 4. When failure and v ≠ 0 and u ≠ 0: r² · v ≡ i·u (mod p)
+pub open spec fn spec_sqrt_ratio_i_math_post(u: nat, v: nat, success: bool, r: nat) -> bool {
+    // When u = 0: always return (true, 0)
+    ((u == 0) ==> (success && r == 0))
+        &&
+    // When v = 0 but u ≠ 0: return (false, 0) [division by zero case]
+    ((v == 0 && u != 0) ==> (!success && r == 0))
+        &&
+    // When successful and v ≠ 0: r² * v ≡ u (mod p)
+    ((success && v != 0) ==> math_is_sqrt_ratio(u, v, r))
+        &&
+    // When unsuccessful and v ≠ 0 and u ≠ 0: r² * v ≡ i*u (mod p)
+    ((!success && v != 0 && u != 0) ==> math_is_sqrt_ratio_times_i(u, v, r))
+}
+
+/// Spec function capturing sqrt_ratio_i boundedness postconditions.
+///
+/// The result r is:
+/// - Reduced modulo p (r < p)
+/// - The "non-negative" square root (even, i.e., LSB = 0)
+pub open spec fn spec_sqrt_ratio_i_bounded_post(r: nat) -> bool {
+    r < p() && r % 2 == 0
+}
+
+/// Complete spec function for sqrt_ratio_i postconditions.
+///
+/// Combines math correctness and boundedness postconditions.
+/// Use this in lemmas instead of listing all postconditions separately.
+pub open spec fn spec_sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -> bool {
+    spec_sqrt_ratio_i_math_post(u, v, success, r) && spec_sqrt_ratio_i_bounded_post(r)
+}
+
 // Square-ness mod p (spec-only).
 pub open spec fn is_square_mod_p(a: nat) -> bool {
     exists|y: nat| (#[trigger] (y * y) % p()) == (a % p())
@@ -463,6 +558,12 @@ pub open spec fn has_inv_mod_p(v: nat) -> bool {
 // Spec: witness-based inverse predicate (lets callers quantify the inverse).
 pub open spec fn is_inv_witness(v: nat, w: nat) -> bool {
     ((v % p()) * (w % p())) % p() == 1
+}
+
+/// The mathematical value of SQRT_M1 (sqrt(-1) mod p)
+/// This is the 4th root of unity i such that i² = -1 (mod p)
+pub open spec fn spec_sqrt_m1() -> nat {
+    spec_field_element(&constants::SQRT_M1)
 }
 
 } // verus!

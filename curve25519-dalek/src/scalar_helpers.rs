@@ -9,8 +9,12 @@ use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 #[allow(unused_imports)]
-use crate::specs::scalar_specs_u64::*;
+use crate::specs::scalar52_specs::*;
 
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::to_nat_lemmas::*;
+#[allow(unused_imports)]
+use crate::specs::core_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
 
@@ -19,10 +23,10 @@ verus! {
 // ============================================================================
 // Core lemmas for Scalar::ZERO and Scalar::ONE
 // ============================================================================
-/// Lemma: bytes_to_nat of all-zero bytes equals 0
-pub proof fn lemma_bytes_to_nat_zero()
+/// Lemma: bytes32_to_nat of all-zero bytes equals 0
+pub proof fn lemma_bytes32_to_nat_zero()
     ensures
-        bytes_to_nat(&Scalar::ZERO.bytes) == 0,
+        bytes32_to_nat(&Scalar::ZERO.bytes) == 0,
 {
     // 0 * x == 0 for all terms
     assert forall|i: nat| i < 32 implies (0nat) * #[trigger] pow2(i * 8) == 0 by {
@@ -30,10 +34,10 @@ pub proof fn lemma_bytes_to_nat_zero()
     }
 }
 
-/// Lemma: bytes_to_nat of ONE's bytes equals 1
-pub proof fn lemma_bytes_to_nat_one()
+/// Lemma: bytes32_to_nat of ONE's bytes equals 1
+pub proof fn lemma_bytes32_to_nat_one()
     ensures
-        bytes_to_nat(&Scalar::ONE.bytes) == 1,
+        bytes32_to_nat(&Scalar::ONE.bytes) == 1,
 {
     let bytes = Scalar::ONE.bytes;
     assert(bytes[0] == 1);
@@ -52,7 +56,7 @@ pub proof fn lemma_scalar_zero_properties()
         scalar_to_nat(&Scalar::ZERO) < group_order(),
         scalar_congruent_nat(&Scalar::ZERO, 0),
 {
-    lemma_bytes_to_nat_zero();
+    lemma_bytes32_to_nat_zero();
     lemma_small_mod(0nat, group_order());
 }
 
@@ -63,7 +67,7 @@ pub proof fn lemma_scalar_one_properties()
         scalar_to_nat(&Scalar::ONE) < group_order(),
         scalar_congruent_nat(&Scalar::ONE, 1),
 {
-    lemma_bytes_to_nat_one();
+    lemma_bytes32_to_nat_one();
     lemma_small_mod(1nat, group_order());
 }
 
@@ -122,9 +126,9 @@ impl Scalar {
 
             proof {
                 let L = group_order();
-                let acc_val = bytes_to_nat(&acc.bytes);
-                let old_acc_val = bytes_to_nat(&_old_acc.bytes);
-                let scalar_val = bytes_to_nat(&scalars[i as int].bytes);
+                let acc_val = bytes32_to_nat(&acc.bytes);
+                let old_acc_val = bytes32_to_nat(&_old_acc.bytes);
+                let scalar_val = bytes32_to_nat(&scalars[i as int].bytes);
                 let prod_prev = product_of_scalars(scalars@.subrange(0, i as int));
 
                 lemma_mul_mod_noop_general(old_acc_val as int, scalar_val as int, L as int);
@@ -191,9 +195,9 @@ impl Scalar {
 
             proof {
                 let L = group_order();
-                let acc_val = bytes_to_nat(&acc.bytes);
-                let old_acc_val = bytes_to_nat(&_old_acc.bytes);
-                let scalar_val = bytes_to_nat(&scalars[i as int].bytes);
+                let acc_val = bytes32_to_nat(&acc.bytes);
+                let old_acc_val = bytes32_to_nat(&_old_acc.bytes);
+                let scalar_val = bytes32_to_nat(&scalars[i as int].bytes);
                 let sum_prev = sum_of_scalars(scalars@.subrange(0, i as int));
 
                 lemma_mod_bound(old_acc_val as int + scalar_val as int, L as int);

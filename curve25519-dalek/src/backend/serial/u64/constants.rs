@@ -76,18 +76,12 @@ pub(crate) const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
     ],
 };
 
-/// `= 1/sqrt(a-d)`, where `a = -1 (mod p)`, `d` are the Edwards curve parameters.
-pub(crate) const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
-    limbs: [
-        278908739862762,
-        821645201101625,
-        8113234426968,
-        1777959178193151,
-        2118520810568447,
-    ],
-};
-
 verus! {
+
+/// `= 1/sqrt(a-d)`, where `a = -1 (mod p)`, `d` are the Edwards curve parameters.
+pub const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
+    limbs: [278908739862762, 821645201101625, 8113234426968, 1777959178193151, 2118520810568447],
+};
 
 /// `APLUS2_OVER_FOUR` is (A+2)/4. (This is used internally within the Montgomery ladder.)
 pub(crate) const APLUS2_OVER_FOUR: FieldElement51 = FieldElement51 { limbs: [121666, 0, 0, 0, 0] };
@@ -200,7 +194,6 @@ pub const ED25519_BASEPOINT_POINT: EdwardsPoint = EdwardsPoint {
     },
 };
 
-} // verus!
 /// The 8-torsion subgroup \\(\mathcal E \[8\]\\).
 ///
 /// In the case of Curve25519, it is cyclic; the \\(i\\)-th element of
@@ -214,147 +207,184 @@ pub const EIGHT_TORSION: [EdwardsPoint; 8] = EIGHT_TORSION_INNER_DOC_HIDDEN;
 /// Inner item used to hide limb constants from cargo doc output.
 #[doc(hidden)]
 pub const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8] = [
+// T[0] = identity (0, 1)
+
     EdwardsPoint {
-        X: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Y: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Y: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[1]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            358744748052810,
-            1691584618240980,
-            977650209285361,
-            1429865912637724,
-            560044844278676,
-        ]),
-        Y: FieldElement51::from_limbs([
-            84926274344903,
-            473620666599931,
-            365590438845504,
-            1028470286882429,
-            2146499180330972,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            1448326834587521,
-            1857896831960481,
-            1093722731865333,
-            1677408490711241,
-            1915505153018406,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                358744748052810,
+                1691584618240980,
+                977650209285361,
+                1429865912637724,
+                560044844278676,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                84926274344903,
+                473620666599931,
+                365590438845504,
+                1028470286882429,
+                2146499180330972,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                1448326834587521,
+                1857896831960481,
+                1093722731865333,
+                1677408490711241,
+                1915505153018406,
+            ],
+        },
     },
+    // T[2] - 4-torsion element
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            533094393274173,
-            2016890930128738,
-            18285341111199,
-            134597186663265,
-            1486323764102114,
-        ]),
-        Y: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 {
+            limbs: [
+                533094393274173,
+                2016890930128738,
+                18285341111199,
+                134597186663265,
+                1486323764102114,
+            ],
+        },
+        Y: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[3]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            358744748052810,
-            1691584618240980,
-            977650209285361,
-            1429865912637724,
-            560044844278676,
-        ]),
-        Y: FieldElement51::from_limbs([
-            2166873539340326,
-            1778179147085316,
-            1886209374839743,
-            1223329526802818,
-            105300633354275,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            803472979097708,
-            393902981724766,
-            1158077081819914,
-            574391322974006,
-            336294660666841,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                358744748052810,
+                1691584618240980,
+                977650209285361,
+                1429865912637724,
+                560044844278676,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                2166873539340326,
+                1778179147085316,
+                1886209374839743,
+                1223329526802818,
+                105300633354275,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                803472979097708,
+                393902981724766,
+                1158077081819914,
+                574391322974006,
+                336294660666841,
+            ],
+        },
     },
+    // T[4] - 2-torsion element (0, -1)
     EdwardsPoint {
-        X: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Y: FieldElement51::from_limbs([
-            2251799813685228,
-            2251799813685247,
-            2251799813685247,
-            2251799813685247,
-            2251799813685247,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Y: FieldElement51 {
+            limbs: [
+                2251799813685228,
+                2251799813685247,
+                2251799813685247,
+                2251799813685247,
+                2251799813685247,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[5]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            1893055065632419,
-            560215195444267,
-            1274149604399886,
-            821933901047523,
-            1691754969406571,
-        ]),
-        Y: FieldElement51::from_limbs([
-            2166873539340326,
-            1778179147085316,
-            1886209374839743,
-            1223329526802818,
-            105300633354275,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            1448326834587521,
-            1857896831960481,
-            1093722731865333,
-            1677408490711241,
-            1915505153018406,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                1893055065632419,
+                560215195444267,
+                1274149604399886,
+                821933901047523,
+                1691754969406571,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                2166873539340326,
+                1778179147085316,
+                1886209374839743,
+                1223329526802818,
+                105300633354275,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                1448326834587521,
+                1857896831960481,
+                1093722731865333,
+                1677408490711241,
+                1915505153018406,
+            ],
+        },
     },
+    // T[6] - 4-torsion element
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            1718705420411056,
-            234908883556509,
-            2233514472574048,
-            2117202627021982,
-            765476049583133,
-        ]),
-        Y: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 {
+            limbs: [
+                1718705420411056,
+                234908883556509,
+                2233514472574048,
+                2117202627021982,
+                765476049583133,
+            ],
+        },
+        Y: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[7]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            1893055065632419,
-            560215195444267,
-            1274149604399886,
-            821933901047523,
-            1691754969406571,
-        ]),
-        Y: FieldElement51::from_limbs([
-            84926274344903,
-            473620666599931,
-            365590438845504,
-            1028470286882429,
-            2146499180330972,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            803472979097708,
-            393902981724766,
-            1158077081819914,
-            574391322974006,
-            336294660666841,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                1893055065632419,
+                560215195444267,
+                1274149604399886,
+                821933901047523,
+                1691754969406571,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                84926274344903,
+                473620666599931,
+                365590438845504,
+                1028470286882429,
+                2146499180330972,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                803472979097708,
+                393902981724766,
+                1158077081819914,
+                574391322974006,
+                336294660666841,
+            ],
+        },
     },
 ];
-
-verus! {
 
 /// Table containing precomputed multiples of the Ed25519 basepoint \\(B = (x, 4/5)\\).
 ///
@@ -6340,9 +6370,17 @@ static ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN: EdwardsBasepointTable = Edwards
 ]);
 
 /// Odd multiples of the basepoint `[B, 3B, 5B, 7B, 9B, 11B, 13B, 15B, ..., 127B]`.
+///
+/// VERIFICATION NOTE: Renamed to `_INNER` to support Verus `external_body` wrapper pattern.
+/// The public constant `AFFINE_ODD_MULTIPLES_OF_BASEPOINT` is defined in a verus! block
+/// below with `#[verifier::external_body]` to avoid verification overhead on the 1475-line
+/// table data. Its correctness is specified via `axiom_affine_odd_multiples_of_basepoint_valid()`
+/// in `specs/window_specs.rs`, which asserts:
+/// - `naf_lookup_table8_affine_limbs_bounded`: all limbs are within 54-bit bounds
+/// - `is_valid_naf_lookup_table8_affine`: table[i] == (2i+1)·B for i in 0..64
 #[cfg(feature = "precomputed-tables")]
 #[allow(dead_code)]
-pub(crate) const AFFINE_ODD_MULTIPLES_OF_BASEPOINT: NafLookupTable8<AffineNielsPoint> =
+const AFFINE_ODD_MULTIPLES_OF_BASEPOINT_INNER: NafLookupTable8<AffineNielsPoint> =
     NafLookupTable8([
         AffineNielsPoint {
             y_plus_x: FieldElement51::from_limbs([
@@ -7817,3 +7855,18 @@ pub(crate) const AFFINE_ODD_MULTIPLES_OF_BASEPOINT: NafLookupTable8<AffineNielsP
             ]),
         },
     ]);
+
+verus! {
+
+/// Odd multiples of the basepoint `[B, 3B, 5B, 7B, 9B, 11B, 13B, 15B, ..., 127B]`.
+///
+/// VERIFICATION NOTE: This is the Verus-accessible wrapper for `AFFINE_ODD_MULTIPLES_OF_BASEPOINT_INNER`.
+/// The table data is marked `external_body` to avoid bloating verification.
+/// Its correctness is specified via `axiom_affine_odd_multiples_of_basepoint_valid()` in
+/// `specs/window_specs.rs`.
+#[cfg(feature = "precomputed-tables")]
+#[verifier::external_body]
+pub const AFFINE_ODD_MULTIPLES_OF_BASEPOINT: NafLookupTable8<AffineNielsPoint> =
+    AFFINE_ODD_MULTIPLES_OF_BASEPOINT_INNER;
+
+} // verus!

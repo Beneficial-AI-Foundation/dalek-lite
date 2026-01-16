@@ -158,16 +158,34 @@ use crate::traits::{VartimeMultiscalarMul, VartimePrecomputedMultiscalarMul};
 use crate::backend::serial::u64::field::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::*;
+#[allow(unused_imports)] // Used in verus! blocks for Edwards curve constants
+use crate::lemmas::edwards_lemmas::constants_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for decompress proofs
+use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for decompress proofs
+use crate::lemmas::edwards_lemmas::step1_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for bound weakening
+use crate::lemmas::field_lemmas::add_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for general field constants (ONE, ZERO)
+use crate::lemmas::field_lemmas::constants_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for field algebra lemmas
+use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::field_specs_u64::*;
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
-#[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
-#[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs_u64::group_order;
+#[allow(unused_imports)]
+use crate::specs::scalar52_specs::*;
+#[allow(unused_imports)]
+use crate::specs::scalar_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::mul::*;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -228,26 +246,35 @@ impl CompressedEdwardsY {
     ///
     /// Returns `None` if the input is not the \\(y\\)-coordinate of a
     /// curve point.
+    ///
     pub fn decompress(&self) -> (result: Option<
         EdwardsPoint,
     >)
-    // VERIFICATION NOTE: PROOF BYPASS
+    // The compressed point must have a valid sign bit. This is automatically
+    // satisfied for points produced by `compress()`. For externally-sourced
+    // bytes (e.g., from network input), callers must ensure this invariant.
+    //
+    // See `compressed_y_has_valid_sign_bit` in `edwards_specs.rs` for full justification.
 
+        requires
+            compressed_y_has_valid_sign_bit(&self.0),
         ensures
+    // Decompression succeeds iff the y-coordinate is valid
+
             math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
-                ==> result.is_some()
+                <==> result.is_some(),
+            // When successful, the result has these properties:
+            result.is_some() ==> (
             // The Y coordinate matches the one from the compressed representation
-             && spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes(
+            spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes(
                 &self.0,
             )
-            // The point is valid
+            // The point is valid on the Edwards curve
              && is_valid_edwards_point(
                 result.unwrap(),
             )
             // The X coordinate sign bit matches the sign bit from the compressed representation
-             && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7),
-            !math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
-                <==> result.is_none(),
+             && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
@@ -264,17 +291,24 @@ impl CompressedEdwardsY {
             let point = decompress::step_2(self, X, Y, Z);
             let result = Some(point);
             proof {
-                // Gap 1: step_2 produces a valid Edwards point when (X, Y) is on curve
-                // Requires: math_on_edwards_curve(X, Y) && T = X*Y/Z ==> is_valid_edwards_point
-                assume(is_valid_edwards_point(point));
+                // Extract values for lemma
+                let x_orig = spec_field_element(&X);
 
-                // Gap 2: Y coordinate is preserved through decompression
-                // From step_1: spec_field_element(&Y) == spec_field_element_from_bytes(&self.0)
-                // step_2 doesn't modify Y
-                assume(spec_field_element(&point.Y) == spec_field_element_from_bytes(&self.0));
+                // Establish step_2 postconditions needed by lemma
+                // step_2 ensures Y and Z are preserved by reference equality
+                assert(&point.Y == &Y);
+                assert(&point.Z == &Z);
+                assert(spec_field_element(&point.Y) == spec_field_element_from_bytes(&self.0));
+                assert(spec_field_element(&point.Z) == 1);
 
-                // Gap 3: Sign bit is correctly applied by conditional_negate
-                assume(spec_field_element_sign_bit(&point.X) == (self.0[31] >> 7));
+                // x_orig < p() is trivially true since x_orig = spec_field_element(&X) = ...%p()
+                pow255_gt_19();
+                assert(x_orig < p()) by {
+                    lemma_mod_bound(spec_field_element_as_nat(&X) as int, p() as int);
+                };
+
+                // Use the unified lemma to prove all postconditions
+                lemma_decompress_valid_branch(&self.0, x_orig, &point);
             }
             result
         } else {
@@ -311,71 +345,131 @@ mod decompress {
                     spec_field_element(&Y),
                 )) &&
                 // Limb bounds for step_2
-                fe51_limbs_bounded(&X, 51) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded(
+                // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)
+                fe51_limbs_bounded(&X, 52) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded(
                     &Z,
                     51,
                 )
+                    &&
+                // X is the non-negative root (LSB = 0) - from sqrt_ratio_i
+                // This is needed in the proof of decompress
+                spec_field_element(&X) % 2 == 0
             }),
     {
+        // =================================================================
+        // PHASE 1: Setup Y, Z, compute u = y² - 1, v = d·y² + 1
+        // =================================================================
         let Y = FieldElement::from_bytes(repr.as_bytes());
         assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
         let Z = FieldElement::ONE;
         proof {
-            // from_bytes ensures fe51_limbs_bounded(&Y, 51)
-            assert(fe51_limbs_bounded(&Y, 51));  // from postcondition
+            // Y is 51-bit bounded (from from_bytes), which implies 54-bit for square
             assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
-            // Since limbs < 2^51 < 2^54, we have fe51_limbs_bounded(&Y, 54)
         }
-        proof {
-            // Y is bounded by 51 bits from from_bytes, which implies bounded by 54 for square()
-            assert(fe51_limbs_bounded(&Y, 51));  // from from_bytes postcondition
-        }
-        let YY = Y.square();
+
+        let YY = Y.square();  // Y² - requires 54-bit bounded input
 
         proof {
-            // YY is bounded by 54 bits from square() postcondition
-            assert(fe51_limbs_bounded(&YY, 54));
-
-            // Z = ONE has limbs [1, 0, 0, 0, 0], trivially bounded
-            assert(Z.limbs[0] == 1 && Z.limbs[1] == 0 && Z.limbs[2] == 0 && Z.limbs[3] == 0
-                && Z.limbs[4] == 0);
-            // Help Verus: 1 < 2^51 and 0 < 2^51
-            assert(1u64 < (1u64 << 51)) by (bit_vector);
-            assert(0u64 < (1u64 << 51)) by (bit_vector);
-            assert(fe51_limbs_bounded(&Z, 54));
-            // For fe51_limbs_bounded(&Z, 51), we need to help Verus see all limbs < 2^51
-            assume(fe51_limbs_bounded(&Z, 51));  // trivially true but Verus needs quantifier help
-
-            // EDWARDS_D is a constant with all limbs < 2^51 (checked at definition site)
-            // limbs: [929955233495203, 466365720129213, 1662059464998953, 2033849074728123, 1442794654840575]
-            // All these values are < 2^51 < 2^54
-            assume(fe51_limbs_bounded(&constants::EDWARDS_D, 54));
+            // Limb bounds for field operation preconditions (overflow prevention):
+            // - lemma_one_limbs_bounded_51: ONE.limbs[i] < 2^51, needed for `u = &YY - &Z`
+            // - lemma_edwards_d_limbs_bounded: EDWARDS_D.limbs[i] < 2^51, needed for `yy_times_d = &YY * &EDWARDS_D`
+            lemma_one_limbs_bounded_51();
+            lemma_edwards_d_limbs_bounded();
         }
-        let u = &YY - &Z;  // u =  y²-1
+
+        let u = &YY - &Z;  // u = y² - 1
         let yy_times_d = &YY * &constants::EDWARDS_D;
+
         proof {
-            // For Add (yy_times_d + Z): requires no overflow
-            assume(sum_of_limbs_bounded(&yy_times_d, &Z, u64::MAX));
+            // Setup for Add: yy_times_d (52-bit from mul) + Z = ONE
+            // (inlined from lemma_decompress_add_no_overflow)
+            // 2^52 + 1 < u64::MAX
+            assert((1u64 << 52) + 1 < u64::MAX) by (bit_vector);
+            // Each limb sum is bounded
+            assert forall|i: int| 0 <= i < 5 implies yy_times_d.limbs[i] + Z.limbs[i]
+                < u64::MAX by {
+                // limb[i] < 2^52 (from 52-bit bound)
+                // Z.limbs[0] = 1, Z.limbs[1..4] = 0
+            };
         }
-        let v = &yy_times_d + &Z;  // v = dy²+1
+
+        let v = &yy_times_d + &Z;  // v = d·y² + 1
+
+        proof {
+            // v bounds: 52-bit + 1 < 54-bit
+            assert((1u64 << 52) + 1 < (1u64 << 54)) by (bit_vector);
+            assert(forall|i: int| 0 <= i < 5 ==> v.limbs[i] < (1u64 << 54));
+        }
 
         let (is_valid_y_coord, X) = FieldElement::sqrt_ratio_i(&u, &v);
 
         proof {
-            // Assume postconditions that depend on sqrt_ratio_i behavior
-            assume(spec_field_element(&Z) == 1);
-            // Note: Using <==> (bi-implication) to match the postcondition exactly
-            assume(choice_is_true(is_valid_y_coord) <==> math_is_valid_y_coordinate(
-                spec_field_element(&Y),
-            ));
-            assume(choice_is_true(is_valid_y_coord) ==> math_on_edwards_curve(
-                spec_field_element(&X),
-                spec_field_element(&Y),
-            ));
-            // X limb bounds from sqrt_ratio_i (not yet proven in sqrt_ratio_i ensures)
-            // sqrt_ratio_i computes r through pow_p58 and multiplications, ending with
-            // conditional_negate which produces bounded output
-            assume(fe51_limbs_bounded(&X, 51));
+            // =================================================================
+            // PHASE 2: sqrt_ratio_i postconditions
+            // =================================================================
+            // Ghost variable definitions for connecting to math specs
+            let ghost y = spec_field_element(&Y);
+            let ghost d = spec_field_element(&constants::EDWARDS_D);
+            let ghost y2 = math_field_square(y);
+            let ghost u_math = math_field_sub(y2, 1);
+            let ghost v_math = math_field_add(math_field_mul(d, y2), 1);
+            let ghost x = spec_field_element(&X);
+
+            // sqrt_ratio_i postconditions encapsulated in spec_sqrt_ratio_i_post
+            assert(spec_sqrt_ratio_i_post(u_math, v_math, choice_is_true(is_valid_y_coord), x)) by {
+                // Boundedness (spec_sqrt_ratio_i_bounded_post):
+                // x = spec_field_element(&X) is always < p() by definition (it's mod p)
+                // From step_1 postcondition: x % 2 == 0 (non-negative square root)
+                pow255_gt_19();  // proves p() > 0
+                assert(x < p()) by {
+                    // spec_field_element is defined as spec_field_element_as_nat % p()
+                    // so it's always < p()
+                    lemma_mod_bound(spec_field_element_as_nat(&X) as int, p() as int);
+                };
+                assert(x % 2 == 0);  // From step_1 postcondition
+                assert(spec_sqrt_ratio_i_bounded_post(x));
+
+                // Connect field elements to math versions (needed for spec_sqrt_ratio_i_math_post)
+                // YY = Y.square() → spec_field_element(&YY) == math_field_square(y)
+                lemma_square_matches_math_field_square(
+                    spec_field_element_as_nat(&Y),
+                    spec_field_element_as_nat(&YY),
+                );
+                assert(spec_field_element(&YY) == y2);
+
+                // u = YY - Z → spec_field_element(&u) == u_math
+                lemma_one_field_element_value();
+                assert(spec_field_element(&u) == u_math);
+
+                // v = yy_times_d + Z → spec_field_element(&v) == v_math
+                assert(math_field_mul(y2, d) == math_field_mul(d, y2)) by {
+                    lemma_mul_is_commutative(y2 as int, d as int);
+                    assert(y2 * d == d * y2);
+                };
+                assert(spec_field_element(&v) == v_math);
+
+                // Math correctness (spec_sqrt_ratio_i_math_post):
+                // All four cases follow from sqrt_ratio_i ensures clauses
+                assert(spec_sqrt_ratio_i_math_post(
+                    u_math,
+                    v_math,
+                    choice_is_true(is_valid_y_coord),
+                    x,
+                ));
+            };
+
+            // =================================================================
+            // PHASE 3: Additional preconditions for lemma_step1_case_analysis
+            // =================================================================
+            assert(spec_field_element(&Z) == 1) by {
+                lemma_one_field_element_value();
+            };
+
+            // Limb bound for step_1 postcondition (not covered by spec_sqrt_ratio_i_post)
+            assert(fe51_limbs_bounded(&X, 52));
+
+            // Use lemma to prove curve semantics from sqrt_ratio_i result
+            lemma_step1_case_analysis(y, x, u_math, v_math, choice_is_true(is_valid_y_coord));
         }
         (is_valid_y_coord, X, Y, Z)
     }
@@ -389,8 +483,9 @@ mod decompress {
     ) -> (result: EdwardsPoint)
         requires
     // Limb bounds for inputs (X from sqrt_ratio_i, Y from from_bytes, Z = ONE)
+    // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)
 
-            fe51_limbs_bounded(&X, 51),
+            fe51_limbs_bounded(&X, 52),
             fe51_limbs_bounded(&Y, 51),
             fe51_limbs_bounded(&Z, 51),
         ensures
@@ -423,6 +518,11 @@ mod decompress {
         X.conditional_negate(compressed_sign_bit);
         </ORIGINAL CODE> */
         let ghost original_X = X;
+        proof {
+            // 51-bit bounded implies 52-bit bounded (for conditional_negate precondition)
+            assert((1u64 << 51) < (1u64 << 52)) by (bit_vector);
+            assert(fe51_limbs_bounded(&X, 52));
+        }
         conditional_negate_field_element(&mut X, compressed_sign_bit);
 
         proof {
@@ -747,7 +847,7 @@ impl Identity for EdwardsPoint {
             // is_well_formed_edwards_point requires:
             // - is_valid_edwards_point (identity is on curve)
             // - edwards_point_limbs_bounded (all limbs < 2^54)
-            // - edwards_point_sum_bounded (Y + X doesn't overflow)
+            // - sum_of_limbs_bounded (Y + X doesn't overflow)
             // ZERO/ONE have limbs [0/1, 0, 0, 0, 0] which are trivially bounded
             assume(is_well_formed_edwards_point(result));
         }
@@ -824,13 +924,21 @@ impl ValidityCheck for EdwardsPoint {
         let proj = self.as_projective();
         proof {
             // The limb bounds are preserved by as_projective() (proj.X == self.X, etc.)
-            // and self has limbs_bounded from the preconditions
-            assert(fe51_limbs_bounded(&proj.X, 54));
-            assert(fe51_limbs_bounded(&proj.Y, 54));
-            assert(fe51_limbs_bounded(&proj.Z, 54));
+            // EdwardsPoint invariant is 52-bounded
+            assert(fe51_limbs_bounded(&proj.X, 52));
+            assert(fe51_limbs_bounded(&proj.Y, 52));
+            assert(fe51_limbs_bounded(&proj.Z, 52));
+            // Weaken to 54-bounded for mul preconditions
+            lemma_fe51_limbs_bounded_weaken(&proj.X, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&proj.Y, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&proj.Z, 52, 54);
         }
         let point_on_curve = proj.is_valid();
 
+        proof {
+            // Weaken self's coordinates for mul preconditions
+            lemma_edwards_point_weaken_to_54(self);
+        }
         let on_segre_image = (&self.X * &self.Y) == (&self.Z * &self.T);
 
         let result = point_on_curve && on_segre_image;
@@ -916,6 +1024,11 @@ impl ConstantTimeEq for EdwardsPoint {
             - For standard types like Add, a "requires" clause for "add" was supported through the AddSpecImpl
             */
             assume(self.ct_eq_req(other));
+            // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (mul precondition)
+            lemma_edwards_point_weaken_to_54(self);
+            lemma_fe51_limbs_bounded_weaken(&other.X, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&other.Y, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&other.Z, 52, 54);
         }
 
         // We would like to check that the point (X/Z, Y/Z) is equal to
@@ -996,7 +1109,7 @@ impl EdwardsPoint {
     pub(crate) fn as_projective_niels(&self) -> (result: ProjectiveNielsPoint)
         requires
             edwards_point_limbs_bounded(*self),
-            edwards_point_sum_bounded(*self),
+            sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX),
         ensures
             projective_niels_corresponds_to_edwards(result, *self),
             fe51_limbs_bounded(&result.Y_plus_X, 54),
@@ -1005,6 +1118,8 @@ impl EdwardsPoint {
             fe51_limbs_bounded(&result.T2d, 54),
     {
         proof {
+            // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (sub/mul precondition)
+            lemma_edwards_point_weaken_to_54(self);
             assume(fe51_limbs_bounded(&constants::EDWARDS_D2, 54));  // for T2d
         }
 
@@ -1038,8 +1153,9 @@ impl EdwardsPoint {
             result.X == self.X,
             result.Y == self.Y,
             result.Z == self.Z,
-            fe51_limbs_bounded(&result.X, 54) && fe51_limbs_bounded(&result.Y, 54)
-                && fe51_limbs_bounded(&result.Z, 54),
+            // ProjectivePoint invariant: 52-bounded (from EdwardsPoint invariant)
+            fe51_limbs_bounded(&result.X, 52) && fe51_limbs_bounded(&result.Y, 52)
+                && fe51_limbs_bounded(&result.Z, 52),
     {
         let result = ProjectivePoint { X: self.X, Y: self.Y, Z: self.Z };
         result
@@ -1053,6 +1169,10 @@ impl EdwardsPoint {
         ensures
             affine_niels_corresponds_to_edwards(result, *self),
     {
+        proof {
+            // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
+            lemma_edwards_point_weaken_to_54(self);
+        }
         let recip = self.Z.invert();
         // recip bounded by 54 from invert() postcondition
 
@@ -1136,6 +1256,10 @@ impl EdwardsPoint {
         ensures
             compressed_edwards_y_corresponds_to_edwards(result, *self),
     {
+        proof {
+            // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
+            lemma_edwards_point_weaken_to_54(self);
+        }
         let recip = self.Z.invert();
         let ghost z_abs = spec_field_element(&self.Z);
         assert(spec_field_element(&recip) == math_field_inv(z_abs));
@@ -1205,10 +1329,12 @@ impl EdwardsPoint {
         let proj = self.as_projective();
         proof {
             assert(is_valid_projective_point(proj));
-            // preconditions for projective double()
-            assert(fe51_limbs_bounded(&proj.X, 54) && fe51_limbs_bounded(&proj.Y, 54)
-                && fe51_limbs_bounded(&proj.Z, 54));
-            assume(sum_of_limbs_bounded(&proj.X, &proj.Y, u64::MAX));
+            // ProjectivePoint invariant: 52-bounded (from as_projective postcondition)
+            assert(fe51_limbs_bounded(&proj.X, 52) && fe51_limbs_bounded(&proj.Y, 52)
+                && fe51_limbs_bounded(&proj.Z, 52));
+            // sum_of_limbs_bounded follows from 52-bounded: 2^52 + 2^52 = 2^53 < u64::MAX
+            assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
+            assume(sum_of_limbs_bounded(&proj.X, &proj.Y, u64::MAX));  // TODO: prove from 52-bounded
         }
 
         let doubled = proj.double();
@@ -1264,7 +1390,6 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
         */
 
         ensures
-            is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
             // Semantic correctness: affine addition law
             ({
@@ -1330,7 +1455,6 @@ impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
             is_well_formed_edwards_point(*old(self)),
             is_well_formed_edwards_point(*_rhs),
         ensures
-            is_valid_edwards_point(*self),
             is_well_formed_edwards_point(*self),
             // Semantic correctness: result is the addition of old(self) + rhs
             ({
@@ -1375,7 +1499,7 @@ impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
         */
 
         ensures
-            is_valid_edwards_point(result),
+            is_well_formed_edwards_point(result),
             // Semantic correctness: affine subtraction law
             ({
                 let (x1, y1) = edwards_point_as_affine(*self);
@@ -1410,7 +1534,7 @@ impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
 
         proof {
             // Assume postconditions
-            assume(is_valid_edwards_point(result));
+            assume(is_well_formed_edwards_point(result));
             assume({
                 let (x1, y1) = edwards_point_as_affine(*self);
                 let (x2, y2) = edwards_point_as_affine(*other);
@@ -1434,7 +1558,7 @@ impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
             is_well_formed_edwards_point(*old(self)),
             is_well_formed_edwards_point(*_rhs),
         ensures
-            is_valid_edwards_point(*self),
+            is_well_formed_edwards_point(*self),
             // Semantic correctness: result is the subtraction of old(self) - rhs
             ({
                 let (x1, y1) = edwards_point_as_affine(*old(self));
@@ -1503,24 +1627,6 @@ impl EdwardsPoint {
     }
 }
 
-// Spec function: extracts the points collected from an iterator
-pub uninterp spec fn spec_points_from_iter<T, I>(iter: I) -> Seq<EdwardsPoint>;
-
-// Helper to collect iterator into Vec<EdwardsPoint>
-#[verifier::external_body]
-fn collect_points_from_iter<T, I>(iter: I) -> (result: Vec<EdwardsPoint>) where
-    T: Borrow<EdwardsPoint>,
-    I: Iterator<Item = T>,
-
-    ensures
-        result@ == spec_points_from_iter::<T, I>(iter),
-        // Assume all collected points are well-formed (trusted boundary)
-        forall|i: int|
-            0 <= i < result@.len() ==> is_well_formed_edwards_point(#[trigger] result@[i]),
-{
-    iter.map(|item| *item.borrow()).collect()
-}
-
 /* <ORIGINAL CODE>
 impl<T> Sum<T> for EdwardsPoint
 where
@@ -1565,7 +1671,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
 
     open spec fn neg_req(self) -> bool {
         // Preconditions: limbs must be bounded for field element negation
-        fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+        fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
     }
 
     open spec fn neg_spec(self) -> EdwardsPoint {
@@ -1577,12 +1683,15 @@ impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
 impl<'a> Neg for &'a EdwardsPoint {
     type Output = EdwardsPoint;
 
-    fn neg(
-        self,
-    ) -> EdwardsPoint/* requires clause in NegSpecImpl for &EdwardsPoint above:
-           requires fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
-        */
-     {
+    fn neg(self) -> (result:
+        EdwardsPoint)
+    // requires clause in NegSpecImpl for &EdwardsPoint above:
+    //   fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
+
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == edwards_neg(edwards_point_as_affine(*self)),
+    {
         /* ORIGINAL CODE
         EdwardsPoint {
             X: -(&self.X),
@@ -1594,7 +1703,12 @@ impl<'a> Neg for &'a EdwardsPoint {
         // REFACTORED: Use explicit Neg::neg() calls instead of operator shortcuts
         // to avoid Verus panic
         use core::ops::Neg;
-        EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) }
+        let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
+        proof {
+            assume(is_well_formed_edwards_point(r));
+            assume(edwards_point_as_affine(r) == edwards_neg(edwards_point_as_affine(*self)));
+        }
+        r
     }
 }
 
@@ -1608,7 +1722,7 @@ impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
 
     open spec fn neg_req(self) -> bool {
         // Same requirements as &EdwardsPoint
-        fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
+        fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
     }
 
     open spec fn neg_spec(self) -> EdwardsPoint {
@@ -1620,12 +1734,15 @@ impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
 impl Neg for EdwardsPoint {
     type Output = EdwardsPoint;
 
-    fn neg(
-        self,
-    ) -> EdwardsPoint/* requires clause in NegSpecImpl for EdwardsPoint above:
-            requires fe51_limbs_bounded(&self.X, 51) && fe51_limbs_bounded(&self.T, 51)
-        */
-     {
+    fn neg(self) -> (result:
+        EdwardsPoint)
+    // requires clause in NegSpecImpl for EdwardsPoint above:
+    //   fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
+
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == edwards_neg(edwards_point_as_affine(self)),
+    {
         /* ORIGINAL CODE
         -&self
         */
@@ -1802,6 +1919,16 @@ impl MultiscalarMul for EdwardsPoint {
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
+        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+        requires
+            scalars.len() == points.len(),
+            forall|i| is_well_formed_edwards_point(points[i]),
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
+
+        VERIFICATION NOTE: see `EdwardsPoint::multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
+        */
     {
         // Sanity-check lengths of input iterators
         let mut scalars = scalars.into_iter();
@@ -1833,6 +1960,17 @@ impl VartimeMultiscalarMul for EdwardsPoint {
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
+        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+        requires
+            scalars.len() == points.len(),
+            forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
+        ensures
+            result.is_some() <==> all_points_some(points),
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
+
+        VERIFICATION NOTE: see `EdwardsPoint::optional_multiscalar_mul_verus` below for the verified version using Iterator (not IntoIterator).
+        */
     {
         // Sanity-check lengths of input iterators
         let mut scalars = scalars.into_iter();
@@ -1896,22 +2034,215 @@ impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
     }
 }
 
+// Import spec functions from scalar_mul_specs for multiscalar verification
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_mul_specs::{
+    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
+    sum_of_scalar_muls, unwrap_points,
+};
+// Import runtime helper for Sum<T> trait
+#[cfg(feature = "alloc")]
+use crate::specs::scalar_mul_specs::collect_points_from_iter;
+
+verus! {
+
 impl EdwardsPoint {
     /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
-    pub fn vartime_double_scalar_mul_basepoint(
-        a: &Scalar,
-        A: &EdwardsPoint,
-        b: &Scalar,
-    ) -> EdwardsPoint {
+    pub fn vartime_double_scalar_mul_basepoint(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (result:
+        EdwardsPoint)
+        requires
+            is_well_formed_edwards_point(*A),
+        ensures
+            is_well_formed_edwards_point(result),
+            // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint
+            edwards_point_as_affine(result) == {
+                let aA = edwards_scalar_mul(edwards_point_as_affine(*A), spec_scalar(a));
+                let bB = edwards_scalar_mul(spec_ed25519_basepoint(), spec_scalar(b));
+                edwards_add(aA.0, aA.1, bB.0, bB.1)
+            },
+    {
         crate::backend::vartime_double_base_mul(a, A, b)
+    }
+
+    // Helper to count iterator elements without consuming (clones internally).
+    // Verus doesn't support Iterator::clone() or Iterator::count().
+    #[verifier::external_body]
+    #[cfg(feature = "alloc")]
+    fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize)
+        ensures
+            size == spec_scalars_from_iter::<T, I>(*iter).len(),
+    {
+        iter.clone().count()
+    }
+
+    /*
+     * VERIFICATION NOTE
+     * =================
+     * Verus limitations addressed in these _verus versions:
+     * - IntoIterator with I::Item projections → use Iterator bounds instead
+     * - size_hint() on &mut iterator → use Clone + iter_count helper
+     *
+     * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
+     * run both original and _verus implementations, and assert equality of results.
+     * This is evidence of functional equivalence between the original and refactored versions:
+     *     forall scalars s, points p:
+     *         optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
+     *         multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
+     */
+    /// Verus-compatible version of optional_multiscalar_mul.
+    /// Uses Iterator + Clone instead of IntoIterator (Verus doesn't support I::Item projections).
+    /// Clone allows peeking at size without consuming the iterator (similar to original's size_hint).
+    /// Dispatches to Straus (size < 190) or Pippenger (size >= 190) algorithm.
+    #[cfg(feature = "alloc")]
+    pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
+        EdwardsPoint,
+    >) where
+        S: Borrow<Scalar>,
+        I: Iterator<Item = S> + Clone,
+        J: Iterator<Item = Option<EdwardsPoint>> + Clone,
+
+        requires
+    // Same number of scalars and points
+
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(
+                points,
+            ).len(),
+            // All input points (when Some) must be well-formed
+            forall|i: int|
+                0 <= i < spec_optional_points_from_iter::<J>(points).len() && (
+                #[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
+                    ==> is_well_formed_edwards_point(
+                    spec_optional_points_from_iter::<J>(points)[i].unwrap(),
+                ),
+        ensures
+    // Result is Some if and only if all input points are Some
+
+            result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
+            // If result is Some, it is a well-formed Edwards point
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            // Semantic correctness: result = sum(scalars[i] * points[i])
+            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
+                spec_scalars_from_iter::<S, I>(scalars),
+                unwrap_points(spec_optional_points_from_iter::<J>(points)),
+            ),
+    {
+        /* <ORIGINAL CODE>
+        // Sanity-check lengths of input iterators
+        let mut scalars = scalars.into_iter();
+        let mut points = points.into_iter();
+
+        // Lower and upper bounds on iterators
+        let (s_lo, s_hi) = scalars.by_ref().size_hint();
+        let (p_lo, p_hi) = points.by_ref().size_hint();
+
+        // They should all be equal
+        assert_eq!(s_lo, p_lo);
+        assert_eq!(s_hi, Some(s_lo));
+        assert_eq!(p_hi, Some(p_lo));
+
+        // Now we know there's a single size.
+        // Use this as the hint to decide which algorithm to use.
+        let size = s_lo;
+
+        if size < 190 {
+            crate::backend::straus_optional_multiscalar_mul(scalars, points)
+        } else {
+            crate::backend::pippenger_optional_multiscalar_mul(scalars, points)
+        }
+        </ORIGINAL CODE> */
+        /* Uses Clone instead of by_ref() since Verus doesn't support &mut on iterators. */
+        // Sanity-check lengths of input iterators (skipped by Verus, checked via requires clause)
+        #[cfg(not(verus_keep_ghost))]
+        {
+            let (s_lo, s_hi) = scalars.clone().size_hint();
+            let (p_lo, p_hi) = points.clone().size_hint();
+            assert_eq!(s_lo, p_lo);
+            assert_eq!(s_hi, Some(s_lo));
+            assert_eq!(p_hi, Some(p_lo));
+        }
+
+        // Get size for algorithm dispatch
+        let size = Self::iter_count(&scalars);
+
+        if size < 190 {
+            crate::backend::straus_optional_multiscalar_mul_verus(scalars, points)
+        } else {
+            crate::backend::pippenger_optional_multiscalar_mul_verus(scalars, points)
+        }
+    }
+
+    /// Verus-compatible version of multiscalar_mul (constant-time).
+    /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
+    /// Dispatches to Straus algorithm (constant-time).
+    #[cfg(feature = "alloc")]
+    pub fn multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> (result: EdwardsPoint) where
+        S: Borrow<Scalar>,
+        P: Borrow<EdwardsPoint>,
+        I: Iterator<Item = S> + Clone,
+        J: Iterator<Item = P> + Clone,
+
+        requires
+    // Same number of scalars and points
+
+            spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(
+                points,
+            ).len(),
+            // All input points must be well-formed
+            forall|i: int|
+                0 <= i < spec_points_from_iter::<P, J>(points).len()
+                    ==> is_well_formed_edwards_point(
+                    #[trigger] spec_points_from_iter::<P, J>(points)[i],
+                ),
+        ensures
+    // Result is a well-formed Edwards point
+
+            is_well_formed_edwards_point(result),
+            // Semantic correctness: result = sum(scalars[i] * points[i])
+            edwards_point_as_affine(result) == sum_of_scalar_muls(
+                spec_scalars_from_iter::<S, I>(scalars),
+                spec_points_from_iter::<P, J>(points),
+            ),
+    {
+        /* <ORIGINAL CODE>
+        // Sanity-check lengths of input iterators
+        let mut scalars = scalars.into_iter();
+        let mut points = points.into_iter();
+
+        // Lower and upper bounds on iterators
+        let (s_lo, s_hi) = scalars.by_ref().size_hint();
+        let (p_lo, p_hi) = points.by_ref().size_hint();
+
+        // They should all be equal
+        assert_eq!(s_lo, p_lo);
+        assert_eq!(s_hi, Some(s_lo));
+        assert_eq!(p_hi, Some(p_lo));
+
+        // Now we know there's a single size.  When we do
+        // size-dependent algorithm dispatch, use this as the hint.
+        let _size = s_lo;
+
+        crate::backend::straus_multiscalar_mul(scalars, points)
+        </ORIGINAL CODE> */
+        /* Uses Clone instead of by_ref() since Verus doesn't support &mut on iterators. */
+        // Sanity-check lengths of input iterators (skipped by Verus, checked via requires clause)
+        #[cfg(not(verus_keep_ghost))]
+        {
+            let (s_lo, s_hi) = scalars.clone().size_hint();
+            let (p_lo, p_hi) = points.clone().size_hint();
+            assert_eq!(s_lo, p_lo);
+            assert_eq!(s_hi, Some(s_lo));
+            assert_eq!(p_hi, Some(p_lo));
+        }
+
+        // Dispatch to Straus (constant-time)
+        crate::backend::straus_multiscalar_mul_verus(scalars, points)
     }
 }
 
+} // verus!
 /* VERIFICATION NOTE: Removed unused impl_basepoint_table! macro since EdwardsBasepointTable
 (radix-16) was manually expanded. */
-
 // The number of additions required is ceil(256/w) where w is the radix representation.
-
 /* VERIFICATION NOTE: Manually expanded impl_basepoint_table! macro for radix-16 (EdwardsBasepointTable).
    Removed macro invocations for radix-32, 64, 128, 256 variants to focus verification
    on the primary radix-16 implementation used as a constructor for consts.
@@ -1925,7 +2256,6 @@ impl EdwardsPoint {
        Additions = 64
    }
 */
-
 cfg_if! {
     if #[cfg(feature = "precomputed-tables")] {
 
@@ -1992,10 +2322,13 @@ impl BasepointTable for EdwardsBasepointTable {
             // P = (16²)^i * basepoint
             table.0[i] = LookupTableRadix16::from(&P);
             proof {
-                assume(fe51_limbs_bounded(&P.X, 54));
-                assume(fe51_limbs_bounded(&P.Y, 54));
-                assume(fe51_limbs_bounded(&P.Z, 54));
-                assume(fe51_limbs_bounded(&P.T, 54));
+                // P is 52-bounded via loop invariant:
+                // - Initial: is_well_formed_edwards_point(*basepoint) includes edwards_point_limbs_bounded (52)
+                // - Maintained: mul_by_pow_2 ensures is_well_formed_edwards_point(result)
+                assume(fe51_limbs_bounded(&P.X, 52));
+                assume(fe51_limbs_bounded(&P.Y, 52));
+                assume(fe51_limbs_bounded(&P.Z, 52));
+                assume(fe51_limbs_bounded(&P.T, 52));
             }
             P = P.mul_by_pow_2(4 + 4);  // P = P * 2^8 = P * 256 = P * 16²
         }
@@ -2301,12 +2634,14 @@ impl EdwardsPoint {
             proof {
                 assume(is_valid_projective_point(s));
                 assume(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX));
-                assume(fe51_limbs_bounded(&s.X, 54));
-                assume(fe51_limbs_bounded(&s.Y, 54));
-                assume(fe51_limbs_bounded(&s.Z, 54));
+                // ProjectivePoint invariant: 52-bounded (from as_projective postcondition)
+                assume(fe51_limbs_bounded(&s.X, 52));
+                assume(fe51_limbs_bounded(&s.Y, 52));
+                assume(fe51_limbs_bounded(&s.Z, 52));
             }
             r = s.double();
             proof {
+                // CompletedPoint invariant: 54-bounded
                 assume(fe51_limbs_bounded(&r.X, 54));
                 assume(fe51_limbs_bounded(&r.Y, 54));
                 assume(fe51_limbs_bounded(&r.Z, 54));
@@ -2317,9 +2652,10 @@ impl EdwardsPoint {
         proof {
             assume(is_valid_projective_point(s));
             assume(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX));
-            assume(fe51_limbs_bounded(&s.X, 54));
-            assume(fe51_limbs_bounded(&s.Y, 54));
-            assume(fe51_limbs_bounded(&s.Z, 54));
+            // ProjectivePoint invariant: 52-bounded
+            assume(fe51_limbs_bounded(&s.X, 52));
+            assume(fe51_limbs_bounded(&s.Y, 52));
+            assume(fe51_limbs_bounded(&s.Z, 52));
         }
         let result = s.double().as_extended();
         proof {

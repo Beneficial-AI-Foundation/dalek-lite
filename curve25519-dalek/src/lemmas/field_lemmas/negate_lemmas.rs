@@ -26,19 +26,20 @@ pub open spec fn all_neg_limbs_positive(limbs: [u64; 5]) -> bool {
 
 pub proof fn lemma_neg_no_underflow(limbs: [u64; 5])
     requires
-        forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 51),
+        forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
     ensures
         all_neg_limbs_positive(limbs),
 {
     lemma2_to64_rest();  // pow2(51)
     assert forall|i: int| 0 <= i < 5 implies limbs[i] < 16 * (pow2(51) - 19) by {
-        lemma_shift_is_pow2(51);
+        lemma_u64_shift_is_pow2(52);
+        // 16 * (2^51 - 19) = 2^55 - 304 > 2^52
     }
 }
 
 pub proof fn proof_negate(limbs: [u64; 5])
     requires
-        forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 51),
+        forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
         all_neg_limbs_positive(limbs),
     ensures
         forall|i: int| 0 <= i < 5 ==> spec_negate(limbs)[i] < (1u64 << 52),
@@ -118,7 +119,7 @@ pub proof fn proof_negate(limbs: [u64; 5])
     assert((p() * (16 - k)) as nat % p() == 0) by {
         assert(k <= 16) by {
             assert(k <= (16 * pow2(51)) as u64 >> 51) by {
-                lemma_shr_le_u64((16 * c - l4) as u64, (16 * pow2(51)) as u64, 51);
+                lemma_u64_shr_le((16 * c - l4) as u64, (16 * pow2(51)) as u64, 51);
             }
             // 16 * 2^51 / 2^51 = 16
             assert(((16 * 0x8000000000000) as u64 >> 51) == 16) by (compute);

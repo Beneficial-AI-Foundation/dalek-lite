@@ -322,7 +322,7 @@ impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &FieldElement51 {
         true
     }
 
-    // Pre-condition of sub - delegates to spec_sub_limbs_bounded for consistency
+    // Pre-condition: both operands must be 54-bounded for subtraction
     open spec fn sub_req(self, rhs: &FieldElement51) -> bool {
         fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
     }
@@ -440,13 +440,17 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
 }
 
 impl<'a> MulAssign<&'a FieldElement51> for FieldElement51 {
-    fn mul_assign(&mut self, _rhs: &'a FieldElement51) {
-        proof {
-            // PROOF BYPASS: Assume preconditions for Mul
-            // For Mul (self * rhs): requires limbs < 2^54
-            assume(forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 54));
-            assume(forall|i: int| 0 <= i < 5 ==> _rhs.limbs[i] < (1u64 << 54));
-        }
+    fn mul_assign(&mut self, _rhs: &'a FieldElement51)
+        requires
+            fe51_limbs_bounded(old(self), 54),
+            fe51_limbs_bounded(_rhs, 54),
+        ensures
+            spec_field_element(self) == math_field_mul(
+                spec_field_element(old(self)),
+                spec_field_element(_rhs),
+            ),
+            fe51_limbs_bounded(self, 54),
+    {
         let result = &*self * _rhs;
         self.limbs = result.limbs;
     }
@@ -628,7 +632,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &FieldElement51 {
 
     // Pre-condition of neg
     open spec fn neg_req(self) -> bool {
-        fe51_limbs_bounded(self, 51)
+        fe51_limbs_bounded(self, 52)
     }
 
     // Postcondition of neg
@@ -786,9 +790,17 @@ impl FieldElement51 {
     };
 
     /// Invert the sign of this field element
+    ///
+    /// # Implementation Note on Limb Bounds
+    ///
+    /// The implementation adds 16*p (constants around 2^55) then subtracts and reduces.
+    /// The math shows it can actually handle larger inputs without underflow:
+    /// - For 52-bit limbs (< 2^52): 2^55 - 2^52 = 7*2^52 > 0 ✓ (no underflow)
+    /// - For 54-bit limbs (< 2^54): 2^55 - 2^54 = 2^54 > 0 ✓ (no underflow)
+    ///
     pub fn negate(&mut self)
         requires
-            forall|i: int| 0 <= i < 5 ==> old(self).limbs[i] < (1u64 << 51),
+            forall|i: int| 0 <= i < 5 ==> old(self).limbs[i] < (1u64 << 52),
         ensures
             forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 52),
             // Assume we start with l = (l0, l1, l2, l3, l4).
@@ -906,10 +918,10 @@ impl FieldElement51 {
     #[rustfmt::skip]  // keep alignment of bit shifts
     pub const fn from_bytes(bytes: &[u8; 32]) -> (r: FieldElement51)
         ensures
-    // last bit is ignored
+    // Decode bytes to limbs (bit 255 is cleared)
 
-            u64_5_as_nat(r.limbs) == u8_32_as_nat(bytes) % pow2(255),
-            // each limb is masked with (2^51 - 1), so bounded by 51 bits
+            spec_field_element_as_nat(&r) == bytes32_to_nat(bytes) % pow2(255),
+            // Each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),
     {
         /* MANUALLY moved outside */
@@ -951,8 +963,8 @@ impl FieldElement51 {
                 (l4 as u64 >> 12) & mask51,
             ];
 
-            assert(u64_5_as_nat(rr) == u8_32_as_nat(bytes) % pow2(255)) by {
-                lemma_from_bytes_as_nat(bytes);
+            assert(u64_5_as_nat(rr) == bytes32_to_nat(bytes) % pow2(255)) by {
+                lemma_from_bytes32_to_nat(bytes);
                 lemma_as_nat_32_mod_255(bytes);
             }
 
@@ -991,9 +1003,9 @@ impl FieldElement51 {
     #[rustfmt::skip]  // keep alignment of s[*] calculations
     pub fn as_bytes(self) -> (r: [u8; 32])
         ensures
-    // canonical encoding, i.e. mod p value
+    // Canonical encoding: bytes represent the field element value
 
-            u8_32_as_nat(&r) == u64_5_as_nat(self.limbs) % p(),
+            bytes32_to_nat(&r) == spec_field_element(&self),
     {
         proof {
             // No overflows
@@ -1314,6 +1326,10 @@ impl FieldElement51 {
         ensures
             u64_5_as_nat(r.limbs) % p() == (2 * pow(u64_5_as_nat(self.limbs) as int, 2)) as nat
                 % p(),
+            // Bounds: pow2k gives 52-bounded, doubling gives 53-bounded
+            forall|i: int| 0 <= i < 5 ==> r.limbs[i] < 1u64 << 53,
+            // 53-bounded implies 54-bounded (for compatibility)
+            fe51_limbs_bounded(&r, 54),
     {
         let mut square = self.pow2k(1);
 
@@ -1377,12 +1393,30 @@ impl FieldElement51 {
                 forall|j: int| 0 <= j < 5 ==> old_limbs[j] < (1u64 << 52),
                 forall|j: int| 0 <= j < i ==> #[trigger] square.limbs[j] == 2 * old_limbs[j],
                 forall|j: int| i <= j < 5 ==> #[trigger] square.limbs[j] == old_limbs[j],
+                // Bounds invariant: processed limbs are 53-bounded (2 * 52-bit < 2^53)
+                forall|j: int| 0 <= j < i ==> square.limbs[j] < (1u64 << 53),
         {
             proof {
                 assert(2 * (1u64 << 52) <= u64::MAX) by (compute);
                 lemma_mul_strict_inequality(square.limbs[i as int] as int, (1u64 << 52) as int, 2);
+                // After doubling: 2 * old_limbs[i] < 2 * 2^52 = 2^53
+                assert(2 * (1u64 << 52) == (1u64 << 53)) by (bit_vector);
             }
             square.limbs[i] *= 2;
+        }
+
+        proof {
+            // After loop: all limbs are 53-bounded
+            assert forall|j: int| 0 <= j < 5 implies square.limbs[j] < (1u64 << 53) by {
+                assert(square.limbs[j] == 2 * old_limbs[j]);
+                assert(old_limbs[j] < (1u64 << 52));
+                assert(2 * (1u64 << 52) == (1u64 << 53)) by (bit_vector);
+            }
+            // 53-bounded implies 54-bounded
+            assert forall|j: int| 0 <= j < 5 implies square.limbs[j] < (1u64 << 54) by {
+                assert(square.limbs[j] < (1u64 << 53));
+                assert((1u64 << 53) < (1u64 << 54)) by (bit_vector);
+            }
         }
 
         square

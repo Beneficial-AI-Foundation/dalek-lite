@@ -164,13 +164,13 @@ impl ConstantTimeEq for FieldElement {
             // Proof chain:
             // 1. ct_eq_bytes32 ensures: choice_is_true(result) == (self_bytes == other_bytes)
             // 2. Array equality <==> sequence equality
-            // 3. as_bytes postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
+            // 3. as_bytes postcondition: bytes32_to_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
             // 4. lemma_as_bytes_equals_spec_fe51_to_bytes: seq_from32(&bytes) == spec_fe51_to_bytes(fe)
-            //    when u8_32_as_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
+            //    when bytes32_to_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
             // 5. Therefore: choice_is_true(result) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
             // From as_bytes() postcondition, we know:
-            // - u8_32_as_nat(&self_bytes) == u64_5_as_nat(self.limbs) % p()
-            // - u8_32_as_nat(&other_bytes) == u64_5_as_nat(other.limbs) % p()
+            // - bytes32_to_nat(&self_bytes) == u64_5_as_nat(self.limbs) % p()
+            // - bytes32_to_nat(&other_bytes) == u64_5_as_nat(other.limbs) % p()
             // Apply lemmas with the bytes and the postcondition requirement
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &self_bytes);
             lemma_as_bytes_equals_spec_fe51_to_bytes(other, &other_bytes);
@@ -227,7 +227,7 @@ impl FieldElement {
         let result = Choice::from(bytes[0] & 1);
 
         proof {
-            // From as_bytes() postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
+            // From as_bytes() postcondition: bytes32_to_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
             // Apply lemma to establish that bytes matches spec_fe51_to_bytes
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &bytes);
         }
@@ -262,7 +262,7 @@ impl FieldElement {
             // Proof: choice_is_true(result) == (spec_fe51_to_bytes(self) == seq![0u8; 32])
             //
             // From ct_eq_bytes32 postcondition: choice_is_true(result) == (bytes == zero)
-            // From as_bytes() postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
+            // From as_bytes() postcondition: bytes32_to_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
             //
             // Apply lemma to establish: seq_from32(&bytes) == spec_fe51_to_bytes(self)
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &bytes);
@@ -792,6 +792,12 @@ impl FieldElement {
         Choice,
         FieldElement,
     ))
+        requires
+    // Input bounds for sqrt_ratio_i
+    // u and v can be up to 54-bit bounded (from sub/add operations in decompress)
+
+            fe51_limbs_bounded(u, 54),
+            fe51_limbs_bounded(v, 54),
         ensures
     // When u = 0: always return (true, 0)
 
@@ -810,10 +816,15 @@ impl FieldElement {
             ),
             // When unsuccessful and v ≠ 0: r² * v ≡ i*u (mod p) [nonsquare case]
             (!choice_is_true(result.0) && spec_field_element(v) != 0 && spec_field_element(u) != 0)
-                ==> is_sqrt_ratio_times_i(
-                u,
-                v,
+                ==> is_sqrt_ratio_times_i(u, v, &result.1),
+            // NEW: The result is always the "non-negative" square root (LSB = 0)
+            // This is a fundamental property of sqrt_ratio_i that the original code
+            // relies on for decompression sign bit handling
+            spec_field_element(&result.1) % 2 == 0,
+            // Limb bounds: result is 52-bit bounded (from conditional_negate)
+            fe51_limbs_bounded(
                 &result.1,
+                52,
             ),
     // VERIFICATION NOTE: PROOF BYPASS
 

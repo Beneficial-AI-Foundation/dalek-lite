@@ -1861,6 +1861,8 @@ impl Scalar {
             acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
 
             proof {
+                use crate::scalar_helpers::lemma_montgomery_mul_partial_product;
+                
                 let acc_val = to_nat(&acc.limbs);
                 let acc_before_val = to_nat(&acc_before.limbs);
                 let tmp_val = to_nat(&tmp.limbs);
@@ -1881,6 +1883,7 @@ impl Scalar {
         // - scratch[j] contains R * partial_product(original_inputs, j)
 
         proof {
+            use crate::specs::scalar_specs::lemma_partial_product_full;
             lemma_partial_product_full(original_inputs);
         }
 
@@ -1909,6 +1912,7 @@ impl Scalar {
             use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
             use vstd::arithmetic::div_mod::lemma_small_mod;
             use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
+            use crate::scalar_helpers::lemma_invert_chain;
 
             let L = group_order();
             let R = montgomery_radix();
@@ -1918,6 +1922,7 @@ impl Scalar {
             let final_acc_val = to_nat(&acc.limbs);
 
             lemma_invert_chain(acc_before_val, acc_after_val, final_acc_val, P);
+            
             lemma_small_mod(1nat, L);
 
             lemma_group_order_bound();
@@ -2017,6 +2022,11 @@ impl Scalar {
                 lemma_small_mod(result_m, pow2(256));
 
                 // Prove inputs[i] is inverse of original_inputs[i]
+                use crate::scalar_helpers::{
+                    lemma_backward_loop_is_inverse,
+                    lemma_backward_loop_acc_invariant,
+                };
+                
                 lemma_backward_loop_is_inverse(
                     acc_before_val,
                     scratch_val,

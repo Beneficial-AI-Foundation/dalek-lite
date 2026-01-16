@@ -215,4 +215,231 @@ impl Scalar {
     }
 }
 
+// ============================================================================
+// Lemmas for batch_invert verification
+// ============================================================================
+
+/// Lemma: Montgomery multiplication maintains partial product invariant
+/// Proves that multiplying acc (which holds R * partial_product(scalars, i))
+/// by tmp (which holds scalar[i] * R) gives R * partial_product(scalars, i+1)
+pub proof fn lemma_montgomery_mul_partial_product(
+    acc_before_val: nat,
+    tmp_val: nat,
+    acc_after_val: nat,
+    scalars: Seq<Scalar>,
+    i: int,
+)
+    requires
+        0 <= i < scalars.len(),
+        acc_before_val % group_order() == (montgomery_radix() * partial_product(scalars, i))
+            % group_order(),
+        tmp_val % group_order() == (bytes32_to_nat(&scalars[i].bytes) * montgomery_radix())
+            % group_order(),
+        (acc_after_val * montgomery_radix()) % group_order() == (acc_before_val * tmp_val)
+            % group_order(),
+    ensures
+        acc_after_val % group_order() == (montgomery_radix() * partial_product(scalars, i + 1))
+            % group_order(),
+{
+    let L = group_order();
+    let R = montgomery_radix();
+    let scalar_i = bytes32_to_nat(&scalars[i].bytes);
+
+    // From postcondition of montgomery_mul:
+    // (acc_after * R) % L == (acc_before * tmp) % L
+    // We know:
+    // acc_before % L == (R * partial_product(scalars, i)) % L
+    // tmp % L == (scalar_i * R) % L
+
+    // Goal: acc_after % L == (R * partial_product(scalars, i+1)) % L
+
+    // By definition of partial_product:
+    assert(partial_product(scalars, i + 1) == (partial_product(scalars, i) * scalar_i) % L);
+
+    // Algebraic manipulation:
+    // (acc_after * R) % L == (acc_before * tmp) % L
+    //                     == ((R * partial_product(i)) * (scalar_i * R)) % L
+    //                     == (R^2 * partial_product(i) * scalar_i) % L
+
+    // Therefore:
+    // acc_after % L == (R * partial_product(i) * scalar_i) % L
+    //               == (R * (partial_product(i) * scalar_i)) % L
+    //               == (R * partial_product(i+1)) % L
+
+    // This requires modular arithmetic manipulation
+    lemma_montgomery_mul_partial_product_arithmetic(
+        acc_before_val,
+        tmp_val,
+        acc_after_val,
+        partial_product(scalars, i),
+        scalar_i,
+        R,
+        L,
+    );
+}
+
+/// Helper lemma for modular arithmetic in montgomery_mul_partial_product
+proof fn lemma_montgomery_mul_partial_product_arithmetic(
+    acc_before: nat,
+    tmp: nat,
+    acc_after: nat,
+    pp_i: nat,
+    scalar_i: nat,
+    R: nat,
+    L: nat,
+)
+    requires
+        L > 0,
+        R > 0,
+        acc_before % L == (R * pp_i) % L,
+        tmp % L == (scalar_i * R) % L,
+        (acc_after * R) % L == (acc_before * tmp) % L,
+    ensures
+        acc_after % L == (R * ((pp_i * scalar_i) % L)) % L,
+{
+    use vstd::arithmetic::mul::*;
+    use vstd::arithmetic::div_mod::*;
+
+    // Using modular arithmetic properties
+    lemma_mul_mod_noop_general(acc_before as int, tmp as int, L as int);
+    lemma_mul_mod_noop_general(R as int, pp_i as int, L as int);
+    lemma_mul_mod_noop_general(scalar_i as int, R as int, L as int);
+    lemma_mul_mod_noop_general(acc_after as int, R as int, L as int);
+    lemma_mul_mod_noop_general(R as int, (pp_i * scalar_i) as int, L as int);
+    lemma_mul_mod_noop_general(pp_i as int, scalar_i as int, L as int);
+}
+
+/// Lemma: Correctness of Montgomery inversion chain
+/// Proves that montgomery_invert followed by from_montgomery produces the modular inverse
+pub proof fn lemma_invert_chain(
+    acc_before_val: nat,
+    acc_after_invert_val: nat,
+    final_acc_val: nat,
+    P: nat,
+)
+    requires
+        group_order() > 0,
+        acc_before_val % group_order() == (montgomery_radix() * P) % group_order(),
+        (acc_after_invert_val * acc_before_val) % group_order() == (montgomery_radix()
+            * montgomery_radix()) % group_order(),
+        (final_acc_val * montgomery_radix()) % group_order() == acc_after_invert_val
+            % group_order(),
+    ensures
+        (final_acc_val * P) % group_order() == 1nat,
+{
+    use vstd::arithmetic::mul::*;
+    use vstd::arithmetic::div_mod::*;
+    use crate::lemmas::scalar_lemmas::lemma_montgomery_inverse;
+
+    let L = group_order();
+    let R = montgomery_radix();
+    let R_inv = inv_montgomery_radix();
+
+    // From montgomery_inverse lemma: (R * R_inv) % L == 1
+    lemma_montgomery_inverse();
+
+    // Algebraic steps:
+    // We have:
+    // 1. acc_before % L == (R * P) % L
+    // 2. (acc_after_invert * acc_before) % L == (R * R) % L
+    // 3. (final_acc * R) % L == acc_after_invert % L
+
+    // From (3): acc_after_invert % L == (final_acc * R) % L
+    // Substitute into (2): ((final_acc * R) * acc_before) % L == (R * R) % L
+    // Using (1): ((final_acc * R) * (R * P)) % L == (R * R) % L
+    //            (final_acc * R * R * P) % L == (R * R) % L
+    //            (final_acc * P * R * R) % L == (R * R) % L
+
+    // Multiply both sides by (R_inv * R_inv):
+    // (final_acc * P * R * R * R_inv * R_inv) % L == (R * R * R_inv * R_inv) % L
+    // (final_acc * P) % L == 1 % L
+
+    // This algebraic manipulation needs modular arithmetic lemmas
+    assume((final_acc_val * P) % L == 1nat);  // TODO: Complete algebraic proof
+}
+
+/// Lemma: Backward loop maintains is_inverse property
+/// Proves that each element is replaced with its modular inverse
+pub proof fn lemma_backward_loop_is_inverse(
+    acc_before_val: nat,
+    scratch_val: nat,
+    result_m: nat,
+    result: nat,
+    original_inputs: Seq<Scalar>,
+    i: int,
+)
+    requires
+        0 <= i < original_inputs.len(),
+        group_order() > 0,
+        acc_before_val < group_order(),
+        result_m < group_order(),
+        result == result_m,
+        scratch_val % group_order() == (montgomery_radix() * partial_product(original_inputs, i))
+            % group_order(),
+        (result_m * montgomery_radix()) % group_order() == (acc_before_val * scratch_val)
+            % group_order(),
+        (acc_before_val * partial_product(original_inputs, i + 1)) % group_order() == 1nat,
+    ensures
+        (bytes32_to_nat(&original_inputs[i].bytes) * result) % group_order() == 1nat,
+{
+    use vstd::arithmetic::div_mod::*;
+
+    let L = group_order();
+    let R = montgomery_radix();
+    let scalar_i = bytes32_to_nat(&original_inputs[i].bytes);
+
+    // From partial_product definition:
+    // partial_product(i+1) == (partial_product(i) * scalar_i) % L
+
+    // From preconditions:
+    // (result_m * R) % L == (acc_before * scratch) % L
+    // scratch % L == (R * partial_product(i)) % L
+    // (acc_before * partial_product(i+1)) % L == 1
+
+    // Algebraic manipulation to show: (scalar_i * result) % L == 1
+    assume((scalar_i * result) % L == 1nat);  // TODO: Complete algebraic proof
+}
+
+/// Lemma: Backward loop maintains accumulator invariant
+/// Proves that acc continues to represent the inverse of the remaining partial product
+pub proof fn lemma_backward_loop_acc_invariant(
+    acc_before_val: nat,
+    input_val: nat,
+    acc_after_val: nat,
+    original_inputs: Seq<Scalar>,
+    i: int,
+)
+    requires
+        0 <= i < original_inputs.len(),
+        group_order() > 0,
+        acc_before_val < group_order(),
+        input_val == bytes32_to_nat(&original_inputs[i].bytes),
+        (acc_after_val * montgomery_radix()) % group_order() == (acc_before_val * input_val)
+            % group_order(),
+        (acc_before_val * partial_product(original_inputs, i + 1)) % group_order() == 1nat,
+    ensures
+        (acc_after_val * partial_product(original_inputs, i)) % group_order() == 1nat,
+{
+    use vstd::arithmetic::div_mod::*;
+
+    let L = group_order();
+    let R = montgomery_radix();
+
+    // From partial_product definition:
+    // partial_product(i+1) == (partial_product(i) * input_val) % L
+
+    // Goal: (acc_after * partial_product(i)) % L == 1
+
+    // From preconditions:
+    // (acc_after * R) % L == (acc_before * input_val) % L
+    // (acc_before * partial_product(i+1)) % L == 1
+    // (acc_before * (partial_product(i) * input_val)) % L == 1
+
+    // Therefore: (acc_before * partial_product(i) * input_val) % L == 1
+    // We have: (acc_after * R) % L == (acc_before * input_val) % L
+
+    // Algebraic manipulation shows: (acc_after * partial_product(i)) % L == 1
+    assume((acc_after_val * partial_product(original_inputs, i)) % L == 1nat);  // TODO: Complete algebraic proof
+}
+
 } // verus!

@@ -698,14 +698,17 @@ impl FieldElement {
             acc.conditional_assign(&tmp, nz);
 
             proof {
-                // PROOF BYPASS: The inverse property for the current element requires
-                // reasoning about Montgomery's batch inversion algorithm:
-                // - scratch[i] contains the product of original_inputs[0..i] (skipping zeros)
-                // - acc (before update) contains the inverse of original_inputs[i..n] product
-                // - Therefore, acc * scratch[i] = 1 / original_inputs[i] when original_inputs[i] != 0
-                // - When original_inputs[i] == 0, conditional_assign keeps it as 0
-                // This mathematical relationship is non-trivial and would require
-                // extensive lemmas about products and modular arithmetic.
+                // The zero case: if original_inputs[i] was zero, it should remain zero after processing
+                // Proof strategy:
+                // 1. inputs[i] at this point equals original_inputs[i] (not modified in backward loop yet)
+                // 2. If original_inputs[i] == 0, then is_zero() returns true
+                // 3. Therefore nz = choice_not(is_zero()) returns false
+                // 4. conditional_assign with false choice leaves input_i unchanged at 0
+                
+                // PROOF BYPASS: Full proof would require:
+                // - Lemma that inputs[i] == original_inputs[i] before processing in backward loop
+                // - Proper spec for conditional_assign showing spec_field_element preservation
+                // - For non-zero case: extensive lemmas about Montgomery's batch inversion
                 assume(
                     ((spec_field_element(&original_inputs[i as int]) != 0) ==> is_inverse_field(
                         &original_inputs[i as int],

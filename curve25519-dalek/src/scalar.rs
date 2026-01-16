@@ -1737,16 +1737,10 @@ impl Scalar {
         // field elements.
         let n = inputs.len();
         let one_unpacked = Scalar::ONE.unpack();
-
-        proof {
-            assume(limbs_bounded(&one_unpacked));
-        }
+        // limbs_bounded(&one_unpacked) follows from unpack() postcondition
 
         let one: UnpackedScalar = one_unpacked.as_montgomery();
-
-        proof {
-            assume(limbs_bounded(&one));
-        }
+        // limbs_bounded(&one) follows from as_montgomery() postcondition
 
         /* <VERIFICATION NOTE>
          Build vec manually instead of vec![one; n] for Verus compatibility
@@ -1755,23 +1749,20 @@ impl Scalar {
          let mut scratch = vec![one; n];
          </ORIGINAL CODE> */
         let mut scratch = Vec::new();
-        for _ in 0..n {
+        for _ in 0..n
+            invariant
+                scratch.len() <= n,
+        {
             scratch.push(one);
         }
+        // After loop: scratch.len() == n
 
         // Keep an accumulator of all of the previous products
         let acc_unpacked = Scalar::ONE.unpack();
-
-        proof {
-            assume(scratch.len() == n);
-            assume(limbs_bounded(&acc_unpacked));
-        }
+        // limbs_bounded(&acc_unpacked) follows from unpack() postcondition
 
         let mut acc = acc_unpacked.as_montgomery();
-
-        proof {
-            assume(limbs_bounded(&acc));
-        }
+        // limbs_bounded(&acc) follows from as_montgomery() postcondition
 
         // Pass through the input vector, recording the previous
         // products in the scratch space
@@ -1793,35 +1784,24 @@ impl Scalar {
                 scratch.len() == n,
                 n == inputs.len(),
                 limbs_bounded(&acc),
+                // Track that all previous scratch elements have bounded limbs
+                forall|j: int| 0 <= j < i ==> #[trigger] limbs_bounded(&scratch[j]),
         {
             scratch[i] = acc;
 
             // Avoid unnecessary Montgomery multiplication in second pass by
             // keeping inputs in Montgomery form
             let input_unpacked = inputs[i].unpack();
-
-            proof {
-                assume(limbs_bounded(&input_unpacked));
-            }
+            // limbs_bounded(&input_unpacked) follows from unpack() postcondition
 
             let tmp = input_unpacked.as_montgomery();
-
-            proof {
-                assume(limbs_bounded(&tmp));
-            }
+            // limbs_bounded(&tmp) follows from as_montgomery() postcondition
 
             inputs[i] = tmp.pack();
             acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
-
-            proof {
-                assume(limbs_bounded(&acc));
-            }
+            // limbs_bounded(&acc) follows from montgomery_mul() postcondition
         }
-
-        proof {
-            // Assert that all scratch elements have bounded limbs
-            assume(forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]));
-        }
+        // After loop: forall|j: int| 0 <= j < n ==> limbs_bounded(&scratch[j])
 
         // acc is nonzero iff all inputs are nonzero
         #[cfg(not(verus_keep_ghost))]
@@ -1830,16 +1810,15 @@ impl Scalar {
         // Compute the inverse of all products
         // ORIGINAL CODE: acc = acc.montgomery_invert().from_montgomery();
         acc = acc.montgomery_invert();
-
+        // TODO: limbs_bounded(&acc) should follow from montgomery_invert() postcondition
+        // Need to verify/strengthen montgomery_invert spec
         proof {
-            assume(limbs_bounded(&acc));
+            assume(limbs_bounded(&acc));  // TODO: Should be provable
         }
 
         acc = acc.from_montgomery();
-
-        proof {
-            assume(limbs_bounded(&acc));
-        }
+        // limbs_bounded(&acc) follows from from_montgomery() postcondition
+        // is_canonical_scalar52(&acc) also follows
 
         // We need to return the product of all inverses later
         let ret = acc.pack();
@@ -1868,16 +1847,10 @@ impl Scalar {
         {
             i -= 1;
             let input_unpacked = inputs[i].unpack();
-
-            proof {
-                assume(limbs_bounded(&input_unpacked));
-            }
+            // limbs_bounded(&input_unpacked) follows from unpack() postcondition
 
             let tmp = UnpackedScalar::montgomery_mul(&acc, &input_unpacked);
-
-            proof {
-                assume(limbs_bounded(&tmp));
-            }
+            // limbs_bounded(&tmp) follows from montgomery_mul() postcondition
 
             inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
             acc = tmp;
@@ -1888,7 +1861,12 @@ impl Scalar {
         Zeroize::zeroize(&mut scratch);
 
         proof {
-            // Assume the postconditions
+            // TODO: Prove the main postconditions
+            // These require:
+            // 1. Lemmas about partial_product and product_of_scalars
+            // 2. Loop invariants tracking Montgomery form transformations
+            // 3. Correctness of montgomery_invert (lemma_invert_correctness available)
+            // For now, keeping as assumptions until full proof is developed
             assume(is_inverse_of_nat(&ret, product_of_scalars(old(inputs)@)));
             assume(forall|i: int|
                 0 <= i < inputs.len() ==> #[trigger] is_inverse(

@@ -28,7 +28,7 @@ use crate::specs::edwards_specs::*;
 #[cfg(verus_keep_ghost)]
 pub use crate::specs::iterator_specs::{
     all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
-    sum_of_scalar_muls, unwrap_points,
+    unwrap_points,
 };
 
 // Re-export runtime helpers from iterator_specs

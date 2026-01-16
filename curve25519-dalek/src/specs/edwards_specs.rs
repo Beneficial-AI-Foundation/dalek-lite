@@ -39,9 +39,14 @@ use crate::edwards::EdwardsBasepointTable;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 #[allow(unused_imports)]
+use crate::scalar::Scalar;
+#[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::scalar_specs::spec_scalar;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::{lemma_mod_bound, lemma_small_mod};
@@ -840,6 +845,29 @@ pub open spec fn sum_of_points(points: Seq<EdwardsPoint>) -> (nat, nat)
         let prev = sum_of_points(points.subrange(0, last));
         let point_affine = edwards_point_as_affine(points[last]);
         edwards_add(prev.0, prev.1, point_affine.0, point_affine.1)
+    }
+}
+
+/// Spec function to compute sum of scalar multiplications.
+/// Returns the affine coordinates of sum(scalars[i] * points[i] for i in 0..min(len_s, len_p)).
+pub open spec fn sum_of_scalar_muls(scalars: Seq<Scalar>, points: Seq<EdwardsPoint>) -> (nat, nat)
+    decreases scalars.len(),
+{
+    let len = if scalars.len() <= points.len() {
+        scalars.len()
+    } else {
+        points.len()
+    };
+    if len == 0 {
+        // Identity point in affine coordinates: (0, 1)
+        (0, 1)
+    } else {
+        let last = (len - 1) as int;
+        let prev = sum_of_scalar_muls(scalars.subrange(0, last), points.subrange(0, last));
+        let point_affine = edwards_point_as_affine(points[last]);
+        let scalar_nat = spec_scalar(&scalars[last]);
+        let scaled = edwards_scalar_mul(point_affine, scalar_nat);
+        edwards_add(prev.0, prev.1, scaled.0, scaled.1)
     }
 }
 

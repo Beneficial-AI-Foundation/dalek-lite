@@ -922,23 +922,33 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 //   - spec_elligator_encode                -- field element -> Montgomery u (montgomery_specs)
 //   - edwards_y_from_montgomery_u          -- birational map (montgomery_specs)
 //   - edwards_scalar_mul                   -- P -> [k]P (this file)
+//
+// Cofactor clearing ([8]P):
+//   The full Edwards curve has order 8·ℓ where ℓ is the prime subgroup order.
+//   Multiplying by 8 ensures the result is in the prime-order subgroup,
+//   killing any small-order component from the 8-torsion. This is required
+//   for the Ristretto abstraction which operates on the prime-order quotient.
 // =============================================================================
-
 /// Top-level spec for `EdwardsPoint::nonspec_map_to_curve_verus`.
 ///
 /// Reference: RFC 9380 Section 6.7.1 - Elligator 2 Method
 /// <https://www.rfc-editor.org/rfc/rfc9380.html#section-6.7.1>
 ///
-/// Comment from Dalek code: This is NOT a proper hash-to-curve (non-uniform distribution).
+/// Note from Dakek code: This is NOT a proper hash-to-curve (non-uniform distribution).
 /// A proper hash-to-curve applies Elligator twice and adds the results.
 pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     recommends
         hash_bytes.len() == 32,
 {
+    // Extract sign bit from bit 255 (MSB of last byte)
     let sign_bit: u8 = (hash_bytes[31] & 0x80u8) >> 7;
+    // Interpret bytes as field element (mod 2^255 to clear high bit)
     let fe_nat = bytes_seq_to_nat(hash_bytes) % pow2(255);
+    // Elligator2 encoding: field element -> Montgomery u-coordinate
     let u = spec_elligator_encode(fe_nat);
+    // Convert Montgomery to Edwards with sign bit selecting x
     let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
+    // Cofactor clearing: multiply by 8 to ensure prime-order subgroup
     edwards_scalar_mul(P, 8)
 }
 
@@ -977,8 +987,10 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
         // When y² = 1, we have x = 0, and sign_bit must be 0
         None
     } else {
+        // VERFIFICATION NOTE: "choose" could be replaced with concrete value using sqrt_ratio_i upon need.
         // Choose x such that (x, y) is on the curve with the correct sign
-        let x = choose|x: nat| math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
+        let x = choose|x: nat|
+            math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
         Some((x, y))
     }
 }

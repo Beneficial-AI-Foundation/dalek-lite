@@ -305,6 +305,20 @@ pub open spec fn spec_uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
 }
 
 /// Spec-only model of RistrettoPoint::from_uniform_bytes.
+///
+/// Constructs a Ristretto point from 64 uniform random bytes using the
+/// "hash-to-group" construction for Ristretto.
+///
+/// Reference: [RISTRETTO], §4.3.4 "Hash-to-group";
+///            https://ristretto.group/formulas/encoding.html
+///
+/// Algorithm:
+/// 1. Split 64 bytes into two 32-byte halves: b1 = bytes[0..32], b2 = bytes[32..64]
+/// 2. Convert each half to a field element: r1 = from_bytes(b1), r2 = from_bytes(b2)
+/// 3. Map each field element to a Ristretto point via Elligator: p1 = MAP(r1), p2 = MAP(r2)
+/// 4. Add the two points: result = p1 + p2
+///
+/// Returns the affine (x, y) coordinates of the resulting Ristretto point.
 pub open spec fn spec_ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
     let b1 = spec_uniform_bytes_first(bytes);
     let b2 = spec_uniform_bytes_second(bytes);

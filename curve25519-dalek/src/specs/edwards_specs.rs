@@ -1015,7 +1015,7 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
         // When y² = 1, we have x = 0, and sign_bit must be 0
         None
     } else {
-        // VERFIFICATION NOTE: "choose" could be replaced with concrete value using sqrt_ratio_i upon need.
+        // VERIFICATION NOTE: "choose" could be replaced with concrete value using sqrt_ratio_i upon need.
         // Choose x such that (x, y) is on the curve with the correct sign
         let x = choose|x: nat|
             math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);

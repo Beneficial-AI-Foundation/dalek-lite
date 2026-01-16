@@ -55,11 +55,8 @@ verus! {
 // =============================================================================
 // TODO: Add subgroup-preservation lemmas (e.g., closure of 2*E under edwards_add)
 //       once group-law lemmas for Edwards points are available.
+
 /// Core Ristretto compression from extended coordinates (X, Y, Z, T).
-///
-/// This is the shared implementation used by both `spec_ristretto_compress`
-/// and `spec_ristretto_compress_affine`.
-///
 /// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding";
 ///            [DECAF], Section 6 (encoding formulas), and https://ristretto.group/formulas/encoding.html.
 pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {

@@ -141,44 +141,6 @@ pub proof fn axiom_eight_torsion_well_formed()
     admit();
 }
 
-// =============================================================================
-// Spec for nonspec_map_to_curve_verus
-// =============================================================================
-/// Spec helper: interpret the Montgomery-to-Edwards conversion used by
-/// `MontgomeryPoint::to_edwards` as choosing an `x` with the requested sign.
-///
-/// This avoids modeling decompression in full detail, but still gives an
-/// interpreted spec (via `choose`) for the affine point.
-pub open spec fn spec_montgomery_to_edwards_affine_with_sign(u: nat, sign_bit: u8) -> (nat, nat) {
-    let y = edwards_y_from_montgomery_u(u);
-    let want_neg = sign_bit == 1u8;
-    let x = choose|x: nat|
-        #![auto]
-        math_on_edwards_curve(x, y) && (math_is_negative(x) == want_neg);
-    (x, y)
-}
-
-/// Interpreted spec for `EdwardsPoint::nonspec_map_to_curve_verus`.
-///
-/// Mapping: bytes -> field element -> Elligator2 (Montgomery u) -> Edwards affine point
-/// with a chosen x-sign -> multiply by cofactor [8].
-///
-/// Reference: RFC 9380 Section 6.7.1 - Elligator 2 Method
-/// <https://www.rfc-editor.org/rfc/rfc9380.html#section-6.7.1>
-///
-/// Note: This is NOT a proper hash-to-curve (non-uniform distribution).
-/// A proper hash-to-curve applies Elligator twice and adds the results.
-pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
-    recommends
-        hash_bytes.len() == 32,
-{
-    let sign_bit: u8 = (hash_bytes[31] & 0x80u8) >> 7;
-    let fe_nat = bytes_seq_to_nat(hash_bytes) % pow2(255);
-    let u = spec_elligator_encode(fe_nat);
-    let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
-    edwards_scalar_mul(P, 8)
-}
-
 } // verus!
 /// Test that all 8-torsion points satisfy the structural well-formedness conditions.
 /// This partially validates axiom_eight_torsion_well_formed() by checking:
@@ -934,6 +896,91 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
     // Since z % p() == z, we have z * z_inv % p() == 1
     assert(math_field_mul(z, z_inv) == 1nat);
     assert(math_field_mul(y, z_inv) == 1nat);
+}
+
+// =============================================================================
+// Spec for nonspec_map_to_curve_verus
+// =============================================================================
+//
+// The hash-to-curve pipeline is:
+//
+//   bytes ──┬──> field element ──> Elligator2 ──> Montgomery u ──> Edwards (x,y) ──> [8]P
+//           │         │                 │                │                │
+//           │    from_bytes        elligator         birational      cofactor
+//           │    (mod 2^255)        encode        y=(u-1)/(u+1)       clear
+//           │
+//           └──> sign_bit (bit 255)  ─────────────────────────────────────┘
+//                                                                    selects x sign
+//
+// Spec functions (in pipeline order):
+//   1. spec_nonspec_map_to_curve           -- top-level: bytes -> [8]P
+//   2. spec_montgomery_to_edwards_affine   -- Montgomery u -> Edwards (x,y)
+//   3. spec_edwards_decompress_from_y      -- Edwards y + sign -> (x,y)
+//
+// Helper functions (defined elsewhere):
+//   - bytes_seq_to_nat                     -- bytes -> nat (core_specs)
+//   - spec_elligator_encode                -- field element -> Montgomery u (montgomery_specs)
+//   - edwards_y_from_montgomery_u          -- birational map (montgomery_specs)
+//   - edwards_scalar_mul                   -- P -> [k]P (this file)
+// =============================================================================
+
+/// Top-level spec for `EdwardsPoint::nonspec_map_to_curve_verus`.
+///
+/// Reference: RFC 9380 Section 6.7.1 - Elligator 2 Method
+/// <https://www.rfc-editor.org/rfc/rfc9380.html#section-6.7.1>
+///
+/// Comment from Dalek code: This is NOT a proper hash-to-curve (non-uniform distribution).
+/// A proper hash-to-curve applies Elligator twice and adds the results.
+pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
+    recommends
+        hash_bytes.len() == 32,
+{
+    let sign_bit: u8 = (hash_bytes[31] & 0x80u8) >> 7;
+    let fe_nat = bytes_seq_to_nat(hash_bytes) % pow2(255);
+    let u = spec_elligator_encode(fe_nat);
+    let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
+    edwards_scalar_mul(P, 8)
+}
+
+/// Spec for Montgomery-to-Edwards conversion with sign bit selection.
+///
+/// Converts Montgomery u-coordinate to Edwards affine (x, y) via:
+/// 1. Birational map: y = (u-1)/(u+1)
+/// 2. Decompression: recover x from y with given sign_bit
+///
+/// Returns identity (0, 1) on failure (u = -1 or invalid y).
+pub open spec fn spec_montgomery_to_edwards_affine_with_sign(u: nat, sign_bit: u8) -> (nat, nat) {
+    if u == math_field_sub(0, 1) {
+        // u = -1: birational map has zero denominator
+        math_edwards_identity()
+    } else {
+        let y = edwards_y_from_montgomery_u(u);
+        match spec_edwards_decompress_from_y_and_sign(y, sign_bit) {
+            Some(P) => P,
+            None => math_edwards_identity(),
+        }
+    }
+}
+
+/// Spec for Edwards decompression: given y and a sign bit, compute (x, y) on the curve.
+///
+/// Mathematical definition:
+/// - Returns None if y is not a valid y-coordinate (no x exists on curve)
+/// - Returns None if x = 0 but sign_bit = 1 (invalid sign for zero)
+/// - Otherwise returns the unique (x, y) on the curve with x % 2 == sign_bit
+pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<
+    (nat, nat),
+> {
+    if !math_is_valid_y_coordinate(y) {
+        None
+    } else if math_field_square(y) == 1 && sign_bit == 1u8 {
+        // When y² = 1, we have x = 0, and sign_bit must be 0
+        None
+    } else {
+        // Choose x such that (x, y) is on the curve with the correct sign
+        let x = choose|x: nat| math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
+        Some((x, y))
+    }
 }
 
 } // verus!

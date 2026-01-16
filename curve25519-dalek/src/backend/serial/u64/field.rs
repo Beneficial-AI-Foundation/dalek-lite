@@ -768,21 +768,6 @@ impl ConditionallySelectable for FieldElement51 {
         let mut self4 = self.limbs[4];
         conditional_assign_u64(&mut self4, &other.limbs[4], choice);
         self.limbs[4] = self4;
-
-        proof {
-            // Prove field element value preservation from limb preservation
-            // spec_field_element is defined in terms of limbs, so if limbs match, spec_field_element matches
-            assert(!choice_is_true(choice) ==> spec_field_element(self) == spec_field_element(
-                old(self),
-            ));
-            assert(choice_is_true(choice) ==> spec_field_element(self) == spec_field_element(other));
-
-            // Prove boundedness preservation
-            // If both old(self) and other are bounded by 54 bits, then self is bounded
-            // This follows from the limb-level assignments preserving boundedness
-            assert((fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(other, 54))
-                ==> fe51_limbs_bounded(self, 54));
-        }
     }
 }
 

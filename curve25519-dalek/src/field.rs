@@ -640,13 +640,6 @@ impl FieldElement {
         // Compute the inverse of all products
         acc = acc.invert();
 
-        proof {
-            // Establish that inputs hasn't been modified yet in backward loop
-            // At this point, inputs still equals original_inputs because we only read from it
-            // in the forward loop (never wrote to inputs array itself)
-            assert(forall|j: int| #![auto] 0 <= j < n ==> inputs[j] === original_inputs[j]);
-        }
-
         // Pass through the vector backwards to compute the inverses
         // in place
         /* <VERIFICATION NOTE>
@@ -698,12 +691,6 @@ impl FieldElement {
             decreases i,
         {
             i -= 1;
-            
-            proof {
-                // At this point, i has been decremented and invariant tells us inputs[i] hasn't been modified
-                assert(inputs[i as int] === original_inputs[i as int]);
-            }
-            
             let tmp = &acc * &inputs[i];
             // input <- acc * scratch, then acc <- tmp
             // Again, we skip zeros in a constant-time way
@@ -715,20 +702,9 @@ impl FieldElement {
             acc.conditional_assign(&tmp, nz);
 
             proof {
-                // The zero case could be proven with the strengthened conditional_assign spec:
-                // 1. From invariant: inputs[i] === original_inputs[i] (asserted above)
-                // 2. Therefore spec_field_element(&inputs[i]) == spec_field_element(&original_inputs[i])
-                // 3. Use lemma_zero_field_element_has_zero_bytes to show spec_fe51_to_bytes == seq![0u8; 32]
-                // 4. From is_zero postcondition: choice_is_true(nz) == false
-                // 5. From conditional_assign spec: input_i unchanged, so remains 0
-                // 6. After inputs[i] = input_i, inputs[i] is still 0
-                //
-                // However, the detailed reasoning about the equality propagation through
-                // conditional_assign is complex. For now, we combine both cases in one assume.
-                
                 // PROOF BYPASS: Both zero and non-zero cases require complex reasoning:
-                // - Zero case: Needs detailed reasoning about spec_field_element preservation
-                //   through conditional_assign when choice is false
+                // - Zero case: With strengthened conditional_assign spec, could prove that
+                //   when original_inputs[i] == 0, the element remains 0 through the operation
                 // - Non-zero case: Requires extensive lemmas about Montgomery's batch inversion:
                 //   * scratch[i] contains product of original_inputs[0..i] (skipping zeros)
                 //   * acc contains inverse of original_inputs[i..n] product

@@ -55,7 +55,6 @@ verus! {
 // =============================================================================
 // TODO: Add subgroup-preservation lemmas (e.g., closure of 2*E under edwards_add)
 //       once group-law lemmas for Edwards points are available.
-
 /// Core Ristretto compression from extended coordinates (X, Y, Z, T).
 /// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding";
 ///            [DECAF], Section 6 (encoding formulas), and https://ristretto.group/formulas/encoding.html.

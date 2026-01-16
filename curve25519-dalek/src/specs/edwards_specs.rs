@@ -934,7 +934,7 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 /// Reference: RFC 9380 Section 6.7.1 - Elligator 2 Method
 /// <https://www.rfc-editor.org/rfc/rfc9380.html#section-6.7.1>
 ///
-/// Note from Dakek code: This is NOT a proper hash-to-curve (non-uniform distribution).
+/// Note from Dalek code: This is NOT a proper hash-to-curve (non-uniform distribution).
 /// A proper hash-to-curve applies Elligator twice and adds the results.
 pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     recommends

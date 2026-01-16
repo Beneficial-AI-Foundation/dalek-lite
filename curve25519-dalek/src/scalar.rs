@@ -1832,7 +1832,7 @@ impl Scalar {
             inputs[i] = tmp.pack();
 
             proof {
-                use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
+                use crate::lemmas::scalar_lemmas::{lemma_group_order_bound, lemma_rr_equals_spec};
                 use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
                 use vstd::arithmetic::div_mod::lemma_small_mod;
 
@@ -1842,9 +1842,13 @@ impl Scalar {
 
                 assert(to_nat(&input_unpacked.limbs) == scalar_i);
                 assert(to_nat(&tmp.limbs) % L == (scalar_i * R) % L);
-                // tmp is canonical (< L) because RR is canonical and as_montgomery uses montgomery_mul
-                // This will be provable once montgomery_reduce is proven
-                assume(to_nat(&tmp.limbs) < L);
+                
+                // Prove tmp is canonical (< L) using montgomery_reduce's spec
+                // as_montgomery multiplies input_unpacked (bounded) with RR (canonical)
+                // montgomery_reduce spec says: if one input is canonical → result is canonical
+                lemma_rr_equals_spec(constants::RR);  // Proves RR is canonical
+                // Now montgomery_reduce's second postcondition applies, so tmp is canonical
+                assert(to_nat(&tmp.limbs) < L);
 
                 lemma_group_order_bound();
                 lemma_pow2_strictly_increases(255, 256);
@@ -1892,11 +1896,7 @@ impl Scalar {
         </ORIGINAL CODE> */
         /* <MODIFIED CODE>: Split into two steps for proof annotations */
         acc = acc.montgomery_invert();
-        // TODO: limbs_bounded(&acc) should follow from montgomery_invert() postcondition
-        // Need to verify/strengthen montgomery_invert spec
-        proof {
-            assume(limbs_bounded(&acc));  // TODO: Should be provable
-        }
+        // limbs_bounded(&acc) follows from montgomery_invert() postcondition
 
         let ghost acc_after_invert = acc;
         acc = acc.from_montgomery();
@@ -1993,9 +1993,23 @@ impl Scalar {
                 let result = bytes_to_nat(&inputs[i as int].bytes);
                 let scalar_i = bytes_to_nat(&original_inputs[i as int].bytes);
 
-                // acc and new_input_unpacked are canonical - will be provable once montgomery_reduce is proven
-                assume(to_nat(&acc.limbs) < L);
-                assume(result_m < L);
+                // Prove acc_before and input_unpacked are canonical
+                // acc_before is canonical from loop invariant (line 1954)
+                assert(to_nat(&acc_before.limbs) < L);
+                
+                // input_unpacked is canonical because inputs[i] is a Scalar (has Scalar invariant)
+                // From unpack postcondition: scalar52_to_nat(&input_unpacked) == bytes32_to_nat(&inputs[i].bytes)
+                // From Scalar invariant: bytes32_to_nat(&inputs[i].bytes) < group_order()
+                assert(is_canonical_scalar(&inputs[i as int]));
+                assert(to_nat(&input_unpacked.limbs) == bytes_to_nat(&inputs[i as int].bytes));
+                assert(to_nat(&input_unpacked.limbs) < L);
+                
+                // Now montgomery_mul produces canonical results:
+                // tmp = montgomery_mul(acc_before [canonical], input_unpacked [canonical])
+                // new_input_unpacked = montgomery_mul(acc_before [canonical], scratch[i] [bounded])
+                // Since acc_before is canonical, montgomery_reduce's spec applies
+                assert(to_nat(&acc.limbs) < L);
+                assert(result_m < L);
 
                 // Prove result == result_m via canonicity
                 lemma_group_order_bound();

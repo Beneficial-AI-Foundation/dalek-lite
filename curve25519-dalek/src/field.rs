@@ -612,12 +612,24 @@ impl FieldElement {
                 forall|j: int|
                     #![auto]
                     0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
-                // Ghost invariant: scratch[i] contains product of inputs[0..i] (skipping zeros)
-                forall|j: int| #![auto] 0 <= j < i ==> fe51_limbs_bounded(&scratch[j], 54),
         {
             scratch[i] = acc;
+            
+            proof {
+                // After assignment, scratch[i] is bounded because acc is bounded
+                assert(fe51_limbs_bounded(&scratch[i as int], 54));
+            }
+            
             // acc <- acc * input, but skipping zeros (constant-time)
-            acc.conditional_assign(&(&acc * &inputs[i]), choice_not(inputs[i].is_zero()));
+            let new_acc = &acc * &inputs[i];
+            acc.conditional_assign(&new_acc, choice_not(inputs[i].is_zero()));
+            
+            proof {
+                // After conditional_assign, acc remains bounded:
+                // - If choice is false, acc unchanged (still bounded by invariant)
+                // - If choice is true, acc = new_acc which is bounded by mul postcondition
+                assert(fe51_limbs_bounded(&acc, 54));
+            }
         }
 
         // acc is nonzero because we skipped zeros in inputs
@@ -627,14 +639,6 @@ impl FieldElement {
 
         // Compute the inverse of all products
         acc = acc.invert();
-
-        proof {
-            // After invert, acc contains the inverse of the product of all non-zero inputs
-            // This is required to establish the postcondition in the backward loop
-            // The mathematical relationship is complex and requires detailed reasoning about
-            // Montgomery's batch inversion algorithm
-            assume(forall|j: int| #![auto] 0 <= j < scratch.len() ==> fe51_limbs_bounded(&scratch[j], 54));
-        }
 
         // Pass through the vector backwards to compute the inverses
         // in place

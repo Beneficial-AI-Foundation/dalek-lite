@@ -13,18 +13,16 @@
 //! ## Axioms
 //!
 //! Each axiom corresponds to a cryptographic/mathematical fact:
-//! - `axiom_uniform_bytes_split`: Independent halves of uniform bytes are uniform
+//! - `axiom_uniform_bytes_split`: Splitting uniform bytes yields independent uniform halves
 //! - `axiom_from_bytes_uniform`: Clearing bit 255 preserves uniformity (negligible bias)
 //! - `axiom_uniform_elligator`: Elligator map produces uniform points
-//! - `axiom_uniform_point_add`: Sum of uniform group elements is uniform
+//! - `axiom_uniform_point_add`: Sum of *independent* uniform group elements is uniform
 #[allow(unused_imports)]
 use super::edwards_specs::*;
 #[allow(unused_imports)]
 use super::field_specs::*;
 #[allow(unused_imports)]
 use super::ristretto_specs::*;
-#[allow(unused_imports)]
-use crate::backend::serial::u64::field::FieldElement51;
 #[allow(unused_imports)]
 use crate::field::FieldElement;
 #[allow(unused_imports)]
@@ -68,6 +66,30 @@ pub uninterp spec fn is_uniform_scalar(scalar: &Scalar) -> bool;
 /// True if the point is uniformly distributed over the Ristretto group.
 pub uninterp spec fn is_uniform_ristretto_point(point: &RistrettoPoint) -> bool;
 
+/// Independence predicate for two 32-byte strings.
+///
+/// This is intended to be used together with `is_uniform_bytes(..)` to model
+/// two *independent uniform* samples when needed.
+pub uninterp spec fn is_independent_uniform_bytes32(first: &[u8; 32], second: &[u8; 32]) -> bool;
+
+/// Independence predicate for two field elements.
+///
+/// This is intended to be used together with `is_uniform_field_element(..)` to
+/// model two *independent uniform* samples when needed.
+pub uninterp spec fn is_independent_uniform_field_elements(
+    fe1: &FieldElement,
+    fe2: &FieldElement,
+) -> bool;
+
+/// Independence predicate for two Ristretto points.
+///
+/// This is intended to be used together with `is_uniform_ristretto_point(..)` to
+/// model two *independent uniform* samples when needed.
+pub uninterp spec fn is_independent_uniform_ristretto_points(
+    p1: &RistrettoPoint,
+    p2: &RistrettoPoint,
+) -> bool;
+
 // =============================================================================
 // Axiom 1: Splitting uniform bytes preserves uniformity
 // =============================================================================
@@ -83,9 +105,11 @@ pub proof fn axiom_uniform_bytes_split(bytes: &[u8; 64], first: &[u8; 32], secon
     ensures
         is_uniform_bytes(bytes) ==> is_uniform_bytes(first),
         is_uniform_bytes(bytes) ==> is_uniform_bytes(second),
+        is_uniform_bytes(bytes) ==> is_independent_uniform_bytes32(first, second),
 {
     assume(is_uniform_bytes(bytes) ==> is_uniform_bytes(first));
     assume(is_uniform_bytes(bytes) ==> is_uniform_bytes(second));
+    assume(is_uniform_bytes(bytes) ==> is_independent_uniform_bytes32(first, second));
 }
 
 // =============================================================================
@@ -96,17 +120,42 @@ pub proof fn axiom_uniform_bytes_split(bytes: &[u8; 64], first: &[u8; 32], secon
 /// Mathematical justification:
 /// - If X is uniform over [0, 2^256), then X mod 2^255 is uniform over [0, 2^255)
 /// - This is because the high bit is independent of the lower 255 bits
-/// - The limb representation is a bijection from 255-bit values to FieldElement51
+/// - The limb representation is a bijection from 255-bit values to FieldElement
 ///
 /// Note: There's negligible bias (19/2^255 ≈ 5.4e-77) from values in [p, 2^255)
 /// that wrap when used in field arithmetic, but this is cryptographically negligible.
-pub proof fn axiom_from_bytes_uniform(bytes: &[u8; 32], fe: &FieldElement51)
+pub proof fn axiom_from_bytes_uniform(bytes: &[u8; 32], fe: &FieldElement)
     requires
         spec_field_element_as_nat(fe) == bytes32_to_nat(bytes) % pow2(255),
     ensures
         is_uniform_bytes(bytes) ==> is_uniform_field_element(fe),
 {
     assume(is_uniform_bytes(bytes) ==> is_uniform_field_element(fe));
+}
+
+/// Axiom: `from_bytes` preserves independence.
+///
+/// If two 32-byte strings are sampled independently, then the corresponding
+/// field elements produced by `from_bytes` are also sampled independently.
+pub proof fn axiom_from_bytes_independent(
+    bytes1: &[u8; 32],
+    bytes2: &[u8; 32],
+    fe1: &FieldElement,
+    fe2: &FieldElement,
+)
+    requires
+        spec_field_element_as_nat(fe1) == bytes32_to_nat(bytes1) % pow2(255),
+        spec_field_element_as_nat(fe2) == bytes32_to_nat(bytes2) % pow2(255),
+    ensures
+        is_independent_uniform_bytes32(bytes1, bytes2) ==> is_independent_uniform_field_elements(
+            fe1,
+            fe2,
+        ),
+{
+    assume(is_independent_uniform_bytes32(bytes1, bytes2) ==> is_independent_uniform_field_elements(
+        fe1,
+        fe2,
+    ));
 }
 
 // =============================================================================
@@ -126,15 +175,37 @@ pub proof fn axiom_uniform_elligator(fe: &FieldElement, point: &RistrettoPoint)
     assume(is_uniform_field_element(fe) ==> is_uniform_ristretto_point(point));
 }
 
+/// Axiom: Elligator preserves independence.
+///
+/// If two field elements are sampled independently, then applying the Elligator
+/// map to each yields independently sampled Ristretto points.
+pub proof fn axiom_uniform_elligator_independent(
+    fe1: &FieldElement,
+    fe2: &FieldElement,
+    p1: &RistrettoPoint,
+    p2: &RistrettoPoint,
+)
+    requires
+        edwards_point_as_affine(p1.0) == spec_elligator_ristretto_flavor(spec_field_element(fe1)),
+        edwards_point_as_affine(p2.0) == spec_elligator_ristretto_flavor(spec_field_element(fe2)),
+    ensures
+        is_independent_uniform_field_elements(fe1, fe2) ==> is_independent_uniform_ristretto_points(
+            p1,
+            p2,
+        ),
+{
+    admit();
+}
+
 // =============================================================================
 // Axiom 4: Group addition preserves uniformity
 // =============================================================================
-/// Axiom: Sum of two uniform points is uniform (group theory property).
+/// Axiom: Sum of two *independent* uniform points is uniform (group theory property).
 ///
 /// Mathematical justification:
 /// In a prime-order group G, if X and Y are independent uniform elements of G,
-/// then X + Y is also uniform over G. This follows from the fact that for any
-/// fixed X, the map Y ↦ X + Y is a bijection on G.
+/// then X + Y is also uniform over G. Without independence this is false
+/// (e.g. if Y = -X then X + Y is always the identity).
 pub proof fn axiom_uniform_point_add(p1: &RistrettoPoint, p2: &RistrettoPoint, sum: &RistrettoPoint)
     requires
         edwards_point_as_affine(sum.0) == edwards_add(
@@ -144,11 +215,10 @@ pub proof fn axiom_uniform_point_add(p1: &RistrettoPoint, p2: &RistrettoPoint, s
             edwards_point_as_affine(p2.0).1,
         ),
     ensures
-        (is_uniform_ristretto_point(p1) && is_uniform_ristretto_point(p2))
-            ==> is_uniform_ristretto_point(sum),
+        (is_uniform_ristretto_point(p1) && is_uniform_ristretto_point(p2)
+            && is_independent_uniform_ristretto_points(p1, p2)) ==> is_uniform_ristretto_point(sum),
 {
-    assume((is_uniform_ristretto_point(p1) && is_uniform_ristretto_point(p2))
-        ==> is_uniform_ristretto_point(sum));
+    admit();
 }
 
 // =============================================================================

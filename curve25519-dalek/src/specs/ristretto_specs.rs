@@ -247,9 +247,11 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     let d_val = math_field_mul(math_field_sub(c_init, math_field_mul(d, r)), math_field_add(r, d));
 
     // sqrt_ratio_i(N_s, D) returns (was_square, s)
+    // invsqrt = 1/sqrt(N_s * D), so s = invsqrt * N_s = sqrt(N_s/D)
     let invsqrt = math_invsqrt(math_field_mul(n_s, d_val));
-    let was_square = math_is_sqrt_ratio(n_s, d_val, invsqrt);
     let s_if_square = math_field_mul(invsqrt, n_s);
+    // was_square checks if s² · D = N_s (i.e., N_s/D is a square)
+    let was_square = math_is_sqrt_ratio(n_s, d_val, s_if_square);
 
     // s' = s * r_0, then conditionally negate to make it negative
     let s_prime_raw = math_field_mul(s_if_square, r_0);

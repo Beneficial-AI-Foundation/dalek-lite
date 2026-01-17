@@ -1513,8 +1513,7 @@ impl Scalar {
     /// h.update(b"perhaps all architecture, rather than being about functional standards, is");
     /// h.update(b"about love and death.");
     ///
-    /// let hash_bytes: [u8; 64] = h.finalize().into();
-    /// let s = Scalar::from_hash(hash_bytes);
+    /// let s = Scalar::from_hash(h);
     ///
     /// println!("{:?}", s.to_bytes());
     /// assert_eq!(

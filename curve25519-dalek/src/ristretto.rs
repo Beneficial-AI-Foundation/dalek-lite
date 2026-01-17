@@ -1323,6 +1323,7 @@ impl RistrettoPoint {
     /// This function splits the input array into two 32-byte halves,
     /// takes the low 255 bits of each half mod p, applies the
     /// Ristretto-flavored Elligator map to each, and adds the results.
+    #[verifier::rlimit(20)]
     pub fn from_uniform_bytes(bytes: &[u8; 64]) -> (result: RistrettoPoint)
         ensures
             is_well_formed_edwards_point(result.0),
@@ -1353,24 +1354,34 @@ impl RistrettoPoint {
             assume(is_in_even_subgroup(result.0));
             assume(edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes));
             assert(is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result)) by {
-                // Chain for uniform distribution (axioms from proba_specs):
-                // 1. Split uniform bytes into uniform halves
+                // Chain for uniform distribution (axioms from proba_specs).
+                // All axioms use implications in ensures, so SMT chains them automatically.
+                //
+                // The chain is:
+                //   is_uniform_bytes(bytes)
+                //   ==> is_uniform_bytes(&r_1_bytes) ∧ is_uniform_bytes(&r_2_bytes)
+                //       ∧ is_independent_uniform_bytes32(&r_1_bytes, &r_2_bytes)
+                //   ==> is_uniform_field_element(&r_1) ∧ is_uniform_field_element(&r_2)
+                //       ∧ is_independent_uniform_field_elements(&r_1, &r_2)
+                //   ==> is_uniform_ristretto_point(&R_1) ∧ is_uniform_ristretto_point(&R_2)
+                //       ∧ is_independent_uniform_ristretto_points(&R_1, &R_2)
+                //   ==> is_uniform_ristretto_point(&result)
+                // 1. Split uniform bytes into independent uniform halves
                 axiom_uniform_bytes_split(bytes, &r_1_bytes, &r_2_bytes);
-                // 2. from_bytes ensures: uniform bytes → uniform field element
-                // 3. Elligator preserves uniformity (field element → point)
+
+                // 2. from_bytes: uniform bytes → uniform field element (from from_bytes ensures)
+                //    from_bytes_independent: independence is preserved
+                axiom_from_bytes_independent(&r_1_bytes, &r_2_bytes, &r_1, &r_2);
+
+                // 3. Elligator: uniform field element → uniform point
                 axiom_uniform_elligator(&r_1, &R_1);
                 axiom_uniform_elligator(&r_2, &R_2);
-                // 4. Sum of uniform points is uniform
-                axiom_uniform_point_add(&R_1, &R_2, &result);
 
-                assume(is_uniform_bytes(bytes));
-                assert(is_uniform_bytes(&r_1_bytes));
-                assert(is_uniform_bytes(&r_2_bytes));
-                assert(is_uniform_field_element(&r_1));
-                assert(is_uniform_field_element(&r_2));
-                assert(is_uniform_ristretto_point(&R_1));
-                assert(is_uniform_ristretto_point(&R_2));
-                assert(is_uniform_ristretto_point(&result));
+                // 4. Elligator preserves independence
+                axiom_uniform_elligator_independent(&r_1, &r_2, &R_1, &R_2);
+
+                // 5. Sum of independent uniform points is uniform
+                axiom_uniform_point_add(&R_1, &R_2, &result);
             }
         }
         result

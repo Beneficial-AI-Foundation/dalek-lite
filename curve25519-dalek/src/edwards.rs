@@ -178,8 +178,12 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
-#[allow(unused_imports)] // Used in verus! blocks
-use crate::specs::proba_specs::*;
+#[cfg(feature = "digest")]
+#[allow(unused_imports)]
+use crate::specs::proba_specs::sha512_hash_bytes;
+#[cfg(all(feature = "digest", verus_keep_ghost))]
+#[allow(unused_imports)]
+use crate::specs::proba_specs::spec_sha512;
 #[allow(unused_imports)]
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]

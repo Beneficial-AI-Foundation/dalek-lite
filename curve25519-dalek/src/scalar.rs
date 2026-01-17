@@ -365,7 +365,6 @@ impl Scalar {
 
         proof {
             if bytes32_to_nat(&bytes) < group_order() {
-                use crate::lemmas::scalar_lemmas::lemma_canonical_bytes_high_bit_clear;
                 lemma_canonical_bytes_high_bit_clear(&candidate.bytes);
                 assert(high_byte >> 7 == 0) by (bit_vector)
                     requires
@@ -1763,7 +1762,6 @@ impl Scalar {
         let ghost original_inputs: Seq<Scalar> = inputs@;
 
         proof {
-            use crate::scalar_helpers::lemma_scalar_one_properties;
             lemma_scalar_one_properties();
             assert(scalar52_to_nat(&acc_unpacked) == 1);
             assert(scalar52_to_nat(&acc) % group_order() == (1 * montgomery_radix())
@@ -1823,10 +1821,7 @@ impl Scalar {
 
             let tmp = input_unpacked.as_montgomery();
 
-            inputs[i] = tmp.pack();
-
             proof {
-                use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
                 use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
                 use vstd::arithmetic::div_mod::lemma_small_mod;
 
@@ -1844,6 +1839,8 @@ impl Scalar {
                 lemma_pow2_strictly_increases(255, 256);
                 lemma_small_mod(scalar52_to_nat(&tmp), pow2(256));
             }
+
+            inputs[i] = tmp.pack();
 
             // Save acc before the multiplication for the proof
             let ghost acc_before = acc;
@@ -1892,7 +1889,6 @@ impl Scalar {
         let ret = acc.pack();
 
         proof {
-            use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
             use vstd::arithmetic::div_mod::lemma_small_mod;
             use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
 
@@ -1965,7 +1961,6 @@ impl Scalar {
             acc = tmp;
 
             proof {
-                use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
                 use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
                 use vstd::arithmetic::div_mod::lemma_small_mod;
 
@@ -2993,8 +2988,6 @@ impl UnpackedScalar {
 
         proof {
             if scalar52_to_nat(self) < group_order() {
-                use crate::lemmas::scalar_lemmas::lemma_scalar52_lt_pow2_256_if_canonical;
-
                 lemma_scalar52_lt_pow2_256_if_canonical(self);
                 lemma_small_mod(scalar52_to_nat(self), pow2(256));
                 assert(scalar52_to_nat(self) % pow2(256) == scalar52_to_nat(self));
@@ -3007,7 +3000,6 @@ impl UnpackedScalar {
                 assert(v == bytes32_to_nat(&result.bytes));
                 assert(v < group_order());
                 {
-                    use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
                     lemma_group_order_bound();
                     assert(group_order() < pow2(255));
 

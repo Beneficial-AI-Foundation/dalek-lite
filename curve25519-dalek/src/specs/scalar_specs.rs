@@ -3,6 +3,8 @@
 use crate::scalar::Scalar;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::div_mod::*;
 use vstd::prelude::*;
 
 #[allow(unused_imports)]
@@ -258,7 +260,7 @@ pub open spec fn partial_product(scalars: Seq<Scalar>, n: int) -> nat
     if n <= 0 {
         1nat
     } else {
-        (partial_product(scalars, n - 1) * bytes_to_nat(&scalars[n - 1].bytes)) % group_order()
+        (partial_product(scalars, n - 1) * bytes32_to_nat(&scalars[n - 1].bytes)) % group_order()
     }
 }
 
@@ -287,10 +289,10 @@ pub proof fn lemma_partial_product_full(scalars: Seq<Scalar>)
         lemma_partial_product_full(prefix);
 
         // Now show partial_product(scalars, n) == product_of_scalars(scalars)
-        assert(partial_product(scalars, n) == (partial_product(scalars, n - 1) * bytes_to_nat(
+        assert(partial_product(scalars, n) == (partial_product(scalars, n - 1) * bytes32_to_nat(
             &scalars[n - 1].bytes,
         )) % group_order());
-        assert(product_of_scalars(scalars) == (product_of_scalars(prefix) * bytes_to_nat(
+        assert(product_of_scalars(scalars) == (product_of_scalars(prefix) * bytes32_to_nat(
             &scalars[n - 1].bytes,
         )) % group_order());
 
@@ -341,7 +343,7 @@ pub proof fn lemma_montgomery_mul_partial_product(
         0 <= i < scalars.len(),
         acc_before % group_order() == (montgomery_radix() * partial_product(scalars, i))
             % group_order(),
-        tmp % group_order() == (bytes_to_nat(&scalars[i].bytes) * montgomery_radix())
+        tmp % group_order() == (bytes32_to_nat(&scalars[i].bytes) * montgomery_radix())
             % group_order(),
         (acc_after * montgomery_radix()) % group_order() == (acc_before * tmp) % group_order(),
     ensures
@@ -353,7 +355,7 @@ pub proof fn lemma_montgomery_mul_partial_product(
         group_order(),
         montgomery_radix(),
         partial_product(scalars, i),
-        bytes_to_nat(&scalars[i].bytes),
+        bytes32_to_nat(&scalars[i].bytes),
     );
     lemma_mul_congruence(acc_before, tmp, R * pp_i, s_i * R, L);
     assert((R * pp_i) * (s_i * R) == (R * pp_i * s_i) * R) by (nonlinear_arith);
@@ -372,7 +374,7 @@ pub proof fn lemma_backward_loop_acc_invariant(
     requires
         0 <= i < scalars.len(),
         (acc_before * partial_product(scalars, i + 1)) % group_order() == 1nat,
-        input_val % group_order() == (bytes_to_nat(&scalars[i].bytes) * montgomery_radix())
+        input_val % group_order() == (bytes32_to_nat(&scalars[i].bytes) * montgomery_radix())
             % group_order(),
         (acc_after * montgomery_radix()) % group_order() == (acc_before * input_val)
             % group_order(),
@@ -384,7 +386,7 @@ pub proof fn lemma_backward_loop_acc_invariant(
         group_order(),
         montgomery_radix(),
         partial_product(scalars, i),
-        bytes_to_nat(&scalars[i].bytes),
+        bytes32_to_nat(&scalars[i].bytes),
     );
     lemma_mul_congruence(acc_before, input_val, acc_before, s_i * R, L);
     assert((acc_before * s_i) * R == acc_before * (s_i * R)) by (nonlinear_arith);
@@ -432,14 +434,14 @@ pub proof fn lemma_backward_loop_is_inverse(
         result_m < pow2(256),
         result == result_m,
     ensures
-        (result * bytes_to_nat(&scalars[i].bytes)) % group_order() == 1nat,
+        (result * bytes32_to_nat(&scalars[i].bytes)) % group_order() == 1nat,
 {
     use crate::lemmas::scalar_lemmas::lemma_cancel_mul_pow2_mod;
     let (L, R, pp_i, s_i) = (
         group_order(),
         montgomery_radix(),
         partial_product(scalars, i),
-        bytes_to_nat(&scalars[i].bytes),
+        bytes32_to_nat(&scalars[i].bytes),
     );
     lemma_mul_congruence(acc_before, scratch_val, acc_before, R * pp_i, L);
     assert(acc_before * (R * pp_i) == (acc_before * pp_i) * R) by (nonlinear_arith);

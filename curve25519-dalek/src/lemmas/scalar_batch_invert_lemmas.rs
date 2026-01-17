@@ -19,6 +19,35 @@ use vstd::prelude::*;
 
 verus! {
 
+// ============================================================================
+// Helper specs for batch_invert
+// ============================================================================
+/// Partial product of scalars from 0 to n-1 (mod group_order)
+/// This computes: ∏_{j=0}^{n-1} scalars[j] (mod L)
+pub open spec fn partial_product(scalars: Seq<Scalar>, n: int) -> nat
+    recommends
+        0 <= n <= scalars.len(),
+    decreases n,
+{
+    if n <= 0 {
+        1nat
+    } else {
+        (partial_product(scalars, n - 1) * bytes32_to_nat(&scalars[n - 1].bytes)) % group_order()
+    }
+}
+
+/// Partial product in Montgomery form (multiplied by R)
+/// This represents what acc holds in the first loop: R * ∏_{j=0}^{i-1} inputs[j] (mod L)
+pub open spec fn partial_product_montgomery(scalars: Seq<Scalar>, n: int) -> nat
+    recommends
+        0 <= n <= scalars.len(),
+{
+    (montgomery_radix() * partial_product(scalars, n)) % group_order()
+}
+
+// ============================================================================
+// Proof lemmas for batch_invert
+// ============================================================================
 /// Lemma: partial_product equals product_of_scalars when n equals length
 pub proof fn lemma_partial_product_full(scalars: Seq<Scalar>)
     ensures

@@ -1774,6 +1774,19 @@ impl Scalar {
         }
 
         // First loop: build prefix products
+        /* <VERIFICATION NOTE>
+         Rewritten with index loop instead of .zip() for Verus compatibility
+        </VERIFICATION NOTE> */
+        /* <ORIGINAL CODE>
+         for (input, scratch) in inputs.iter_mut().zip(scratch.iter_mut()) {
+             *scratch = acc;
+             // Avoid unnecessary Montgomery multiplication in second pass by
+             // keeping inputs in Montgomery form
+             let tmp = input.unpack().as_montgomery();
+             *input = tmp.pack();
+             acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
+         }
+        </ORIGINAL CODE> */
         for i in 0..n
             invariant
                 scratch.len() == n,
@@ -1863,12 +1876,21 @@ impl Scalar {
             lemma_partial_product_full(original_inputs);
         }
 
+        // acc is nonzero iff all inputs are nonzero
+        #[cfg(not(verus_keep_ghost))]
+        debug_assert!(acc.pack() != Scalar::ZERO);
+
+        // Compute the inverse of all products
         let ghost acc_before_invert = acc;
 
+        /* <ORIGINAL CODE>
+         acc = acc.montgomery_invert().from_montgomery();
+        </ORIGINAL CODE> */
         acc = acc.montgomery_invert();
         let ghost acc_after_invert = acc;
         acc = acc.from_montgomery();
 
+        // We need to return the product of all inverses later
         let ret = acc.pack();
 
         proof {
@@ -1894,6 +1916,17 @@ impl Scalar {
         // Second loop: compute inverses in place
         let ghost ret_val = scalar52_to_nat(&acc);
 
+        // Pass through the vector backwards to compute the inverses in place
+        /* <VERIFICATION NOTE>
+         Manual reverse loop instead of .rev() for Verus compatibility
+        </VERIFICATION NOTE> */
+        /* <ORIGINAL CODE>
+        for (input, scratch) in inputs.iter_mut().rev().zip(scratch.iter().rev()) {
+             let tmp = UnpackedScalar::montgomery_mul(&acc, &input.unpack());
+             *input = UnpackedScalar::montgomery_mul(&acc, scratch).pack();
+             acc = tmp;
+         }
+        </ORIGINAL CODE> */
         let mut i: usize = n;
         while i > 0
             invariant

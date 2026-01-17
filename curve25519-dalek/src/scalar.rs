@@ -182,8 +182,6 @@ use crate::core_assumes::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
 
-#[allow(unused_imports)]
-use crate::scalar_helpers::lemma_scalar_one_properties;
 
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
@@ -1766,6 +1764,7 @@ impl Scalar {
         let ghost original_inputs: Seq<Scalar> = inputs@;
 
         proof {
+            use crate::scalar_helpers::lemma_scalar_one_properties;
             lemma_scalar_one_properties();
             assert(scalar52_to_nat(&acc_unpacked) == 1);
             assert(scalar52_to_nat(&acc) % group_order() == (1 * montgomery_radix()) % group_order());
@@ -1802,7 +1801,7 @@ impl Scalar {
                 original_inputs == old(inputs)@,
                 original_inputs.len() == n,
                 // inputs[i..n] are still unmodified (equal to original_inputs[i..n])
-                forall|j: int| i <= j < n ==> inputs[j] == original_inputs[j],
+                forall|j: int| i <= j < n ==> #[trigger] inputs[j] == #[trigger] original_inputs[j],
                 // SEMANTIC INVARIANT: scratch[j] contains R * partial_product(original_inputs, j)
                 forall|j: int|
                     #![auto]

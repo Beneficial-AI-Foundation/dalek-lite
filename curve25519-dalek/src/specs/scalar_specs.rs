@@ -3,6 +3,8 @@
 use crate::scalar::Scalar;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::div_mod::*;
 use vstd::prelude::*;
 
 #[allow(unused_imports)]

@@ -174,6 +174,9 @@ use crate::specs::scalar52_specs::*;
 use crate::lemmas::scalar_lemmas::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::scalar_batch_invert_lemmas::*;
+
+#[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
 
 #[allow(unused_imports)]
@@ -2002,9 +2005,9 @@ impl Scalar {
                     i as int,
                 );
             }
-            /* ORIGINAL CODE: inlined before proof block 
-            inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack;
-            acc = tmp;
+            /* ORIGINAL CODE (inlined before proof block):
+               inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
+               acc = tmp;
             */
         }
 

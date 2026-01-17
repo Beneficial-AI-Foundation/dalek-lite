@@ -2002,6 +2002,10 @@ impl Scalar {
                     i as int,
                 );
             }
+            /* ORIGINAL CODE: inlined before proof block 
+            let inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack;
+            acc = tmp;
+            */
         }
 
         #[cfg(feature = "zeroize")]

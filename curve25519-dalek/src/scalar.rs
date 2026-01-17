@@ -1885,9 +1885,6 @@ impl Scalar {
         let ghost acc_after_invert = acc;
         acc = acc.from_montgomery();
 
-        // We need to return the product of all inverses later
-        let ret = acc.pack();
-
         proof {
             use vstd::arithmetic::div_mod::lemma_small_mod;
             use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
@@ -1907,6 +1904,8 @@ impl Scalar {
             lemma_small_mod(final_acc_val, pow2(256));
         }
 
+        // We need to return the product of all inverses later
+        let ret = acc.pack();
         // Second loop: compute inverses in place
         let ghost ret_val = scalar52_to_nat(&acc);
 

@@ -329,33 +329,39 @@ pub proof fn lemma_invert_chain(
 {
     use vstd::arithmetic::mul::*;
     use vstd::arithmetic::div_mod::*;
-    use crate::lemmas::scalar_lemmas::lemma_montgomery_inverse;
+    use crate::lemmas::scalar_lemmas::{lemma_montgomery_inverse, lemma_cancel_mul_pow2_mod};
 
     let L = group_order();
     let R = montgomery_radix();
-    let R_inv = inv_montgomery_radix();
 
     // From montgomery_inverse lemma: (R * R_inv) % L == 1
     lemma_montgomery_inverse();
 
-    // Algebraic steps:
-    // We have:
-    // 1. acc_before % L == (R * P) % L
-    // 2. (acc_after_invert * acc_before) % L == (R * R) % L
-    // 3. (final_acc * R) % L == acc_after_invert % L
+    // Step 1: From precondition (3): (final_acc * R) % L == acc_after_invert % L
+    // Step 2: Substitute into precondition (2): ((final_acc * R) * acc_before) % L == (R * R) % L
+    
+    // Prove: ((final_acc * R) * acc_before) % L == (R * R) % L
+    lemma_mul_mod_noop_general(final_acc_val as int, R as int, L as int);
+    lemma_mul_mod_noop_general((final_acc_val * R) as int, acc_before_val as int, L as int);
+    lemma_mul_mod_noop_general(acc_after_invert_val as int, acc_before_val as int, L as int);
+    assert(((final_acc_val * R) * acc_before_val) % L == (acc_after_invert_val * acc_before_val) % L);
+    assert(((final_acc_val * R) * acc_before_val) % L == (R * R) % L);
 
-    // From (3): acc_after_invert % L == (final_acc * R) % L
-    // Substitute into (2): ((final_acc * R) * acc_before) % L == (R * R) % L
-    // Using (1): ((final_acc * R) * (R * P)) % L == (R * R) % L
-    //            (final_acc * R * R * P) % L == (R * R) % L
-    //            (final_acc * P * R * R) % L == (R * R) % L
+    // Step 3: Substitute acc_before from precondition (1): acc_before % L == (R * P) % L
+    lemma_mul_mod_noop_general(R as int, P as int, L as int);
+    lemma_mul_mod_noop_general((final_acc_val * R) as int, (R * P) as int, L as int);
+    assert(((final_acc_val * R) * (R * P)) % L == (R * R) % L);
 
-    // Multiply both sides by (R_inv * R_inv):
-    // (final_acc * P * R * R * R_inv * R_inv) % L == (R * R * R_inv * R_inv) % L
-    // (final_acc * P) % L == 1 % L
+    // Step 4: Rearrange: (final_acc * R * R * P) % L == (R * R) % L
+    // Commute and associate: (final_acc * P * R * R) % L == (R * R) % L
+    lemma_mul_is_associative(final_acc_val as int, R as int, (R * P) as int);
+    lemma_mul_is_associative(final_acc_val as int, (R * R) as int, P as int);
+    lemma_mul_is_commutative(final_acc_val as int, P as int);
+    assert(((final_acc_val * P) * (R * R)) % L == (R * R) % L);
 
-    // This algebraic manipulation needs modular arithmetic lemmas
-    assume((final_acc_val * P) % L == 1nat);  // TODO: Complete algebraic proof
+    // Step 5: Apply cancel lemma to remove R*R from both sides
+    lemma_cancel_mul_pow2_mod((final_acc_val * P), 1nat, R);
+    assert((final_acc_val * P) % L == 1nat);
 }
 
 /// Lemma: Backward loop maintains is_inverse property
@@ -383,21 +389,66 @@ pub proof fn lemma_backward_loop_is_inverse(
         (bytes32_to_nat(&original_inputs[i].bytes) * result) % group_order() == 1nat,
 {
     use vstd::arithmetic::div_mod::*;
+    use vstd::arithmetic::mul::*;
+    use crate::lemmas::scalar_lemmas::lemma_cancel_mul_pow2_mod;
 
     let L = group_order();
     let R = montgomery_radix();
     let scalar_i = bytes32_to_nat(&original_inputs[i].bytes);
 
     // From partial_product definition:
-    // partial_product(i+1) == (partial_product(i) * scalar_i) % L
+    assert(partial_product(original_inputs, i + 1) == (partial_product(original_inputs, i)
+        * scalar_i) % L);
 
-    // From preconditions:
+    // Step 1: From preconditions:
     // (result_m * R) % L == (acc_before * scratch) % L
     // scratch % L == (R * partial_product(i)) % L
-    // (acc_before * partial_product(i+1)) % L == 1
+    
+    // Substitute scratch into first equation:
+    lemma_mul_mod_noop_general(acc_before_val as int, scratch_val as int, L as int);
+    lemma_mul_mod_noop_general(acc_before_val as int, (R * partial_product(original_inputs, i))
+        as int, L as int);
+    assert((result_m * R) % L == (acc_before_val * (R * partial_product(original_inputs, i))) % L);
 
-    // Algebraic manipulation to show: (scalar_i * result) % L == 1
-    assume((scalar_i * result) % L == 1nat);  // TODO: Complete algebraic proof
+    // Step 2: Rearrange: (result_m * R) % L == (acc_before * R * partial_product(i)) % L
+    lemma_mul_is_associative(acc_before_val as int, R as int, partial_product(original_inputs, i)
+        as int);
+    assert((result_m * R) % L == ((acc_before_val * partial_product(original_inputs, i)) * R) % L);
+
+    // Step 3: Use partial_product(i+1) == (partial_product(i) * scalar_i) % L
+    // So: partial_product(i) = (partial_product(i+1) / scalar_i) modulo L
+    // From precondition: (acc_before * partial_product(i+1)) % L == 1
+    // Therefore: acc_before is the inverse of partial_product(i+1)
+    
+    // Multiply both sides of (result_m * R) == (acc_before * R * partial_product(i)) by scalar_i:
+    // (result_m * R * scalar_i) % L == (acc_before * R * partial_product(i) * scalar_i) % L
+    lemma_mul_mod_noop_general((result_m * R) as int, scalar_i as int, L as int);
+    lemma_mul_mod_noop_general(((acc_before_val * partial_product(original_inputs, i)) * R) as int,
+        scalar_i as int, L as int);
+    
+    // Right side becomes: (acc_before * R * partial_product(i+1)) % L
+    lemma_mul_is_associative(partial_product(original_inputs, i) as int, scalar_i as int, 1);
+    assert((result_m * R * scalar_i) % L == (acc_before_val * R * partial_product(original_inputs,
+        i + 1)) % L);
+
+    // Step 4: From precondition (acc_before * partial_product(i+1)) % L == 1:
+    lemma_mul_is_associative(acc_before_val as int, R as int, partial_product(original_inputs, i
+        + 1) as int);
+    lemma_mul_is_associative(acc_before_val as int, partial_product(original_inputs, i + 1) as int,
+        R as int);
+    lemma_mul_is_commutative(R as int, partial_product(original_inputs, i + 1) as int);
+    assert((result_m * R * scalar_i) % L == ((acc_before_val * partial_product(original_inputs, i
+        + 1)) * R) % L);
+    assert((result_m * R * scalar_i) % L == (1 * R) % L);
+    assert((result_m * R * scalar_i) % L == R % L);
+    
+    // Step 5: Apply cancel lemma: ((result_m * scalar_i) * R) % L == R % L
+    lemma_mul_is_associative(result_m as int, scalar_i as int, R as int);
+    lemma_cancel_mul_pow2_mod((result_m * scalar_i), 1nat, R);
+    assert((result_m * scalar_i) % L == 1nat);
+    
+    // Since result == result_m:
+    assert((scalar_i * result) % L == 1nat);
 }
 
 /// Lemma: Backward loop maintains accumulator invariant
@@ -421,25 +472,61 @@ pub proof fn lemma_backward_loop_acc_invariant(
         (acc_after_val * partial_product(original_inputs, i)) % group_order() == 1nat,
 {
     use vstd::arithmetic::div_mod::*;
+    use vstd::arithmetic::mul::*;
+    use crate::lemmas::scalar_lemmas::lemma_cancel_mul_pow2_mod;
 
     let L = group_order();
     let R = montgomery_radix();
 
     // From partial_product definition:
-    // partial_product(i+1) == (partial_product(i) * input_val) % L
+    assert(partial_product(original_inputs, i + 1) == (partial_product(original_inputs, i)
+        * input_val) % L);
 
-    // Goal: (acc_after * partial_product(i)) % L == 1
-
-    // From preconditions:
-    // (acc_after * R) % L == (acc_before * input_val) % L
-    // (acc_before * partial_product(i+1)) % L == 1
+    // Step 1: From precondition: (acc_before * partial_product(i+1)) % L == 1
+    // Expand partial_product(i+1):
     // (acc_before * (partial_product(i) * input_val)) % L == 1
+    lemma_mul_is_associative(acc_before_val as int, partial_product(original_inputs, i) as int,
+        input_val as int);
+    assert((acc_before_val * partial_product(original_inputs, i) * input_val) % L == 1nat);
 
-    // Therefore: (acc_before * partial_product(i) * input_val) % L == 1
-    // We have: (acc_after * R) % L == (acc_before * input_val) % L
+    // Step 2: From precondition: (acc_after * R) % L == (acc_before * input_val) % L
+    // Multiply both sides by partial_product(i):
+    lemma_mul_mod_noop_general((acc_after_val * R) as int, partial_product(original_inputs, i)
+        as int, L as int);
+    lemma_mul_mod_noop_general((acc_before_val * input_val) as int, partial_product(
+        original_inputs,
+        i,
+    ) as int, L as int);
+    assert(((acc_after_val * R) * partial_product(original_inputs, i)) % L == ((acc_before_val
+        * input_val) * partial_product(original_inputs, i)) % L);
 
-    // Algebraic manipulation shows: (acc_after * partial_product(i)) % L == 1
-    assume((acc_after_val * partial_product(original_inputs, i)) % L == 1nat);  // TODO: Complete algebraic proof
+    // Step 3: Rearrange right side using associativity:
+    lemma_mul_is_associative(acc_before_val as int, input_val as int, partial_product(
+        original_inputs,
+        i,
+    ) as int);
+    lemma_mul_is_commutative(input_val as int, partial_product(original_inputs, i) as int);
+    lemma_mul_is_associative(acc_before_val as int, partial_product(original_inputs, i) as int,
+        input_val as int);
+    assert(((acc_after_val * R) * partial_product(original_inputs, i)) % L == (acc_before_val
+        * partial_product(original_inputs, i) * input_val) % L);
+
+    // Step 4: From Step 1, we know the right side equals 1:
+    assert(((acc_after_val * R) * partial_product(original_inputs, i)) % L == 1nat);
+
+    // Step 5: Rearrange left side:
+    lemma_mul_is_associative(acc_after_val as int, R as int, partial_product(original_inputs, i)
+        as int);
+    lemma_mul_is_commutative(R as int, partial_product(original_inputs, i) as int);
+    lemma_mul_is_associative(acc_after_val as int, partial_product(original_inputs, i) as int, R
+        as int);
+    assert(((acc_after_val * partial_product(original_inputs, i)) * R) % L == 1nat);
+    
+    // Step 6: We have: ((acc_after * partial_product(i)) * R) % L == 1 % L
+    // Apply: ((acc_after * partial_product(i)) * R) % L == (1 * R) % L
+    // Cancel R from both sides:
+    lemma_cancel_mul_pow2_mod((acc_after_val * partial_product(original_inputs, i)), 1nat, R);
+    assert((acc_after_val * partial_product(original_inputs, i)) % L == 1nat);
 }
 
 } // verus!

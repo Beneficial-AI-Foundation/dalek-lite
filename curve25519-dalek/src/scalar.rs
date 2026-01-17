@@ -2003,7 +2003,7 @@ impl Scalar {
                 );
             }
             /* ORIGINAL CODE: inlined before proof block 
-            let inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack;
+            inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack;
             acc = tmp;
             */
         }

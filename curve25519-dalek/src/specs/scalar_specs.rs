@@ -2,9 +2,9 @@
 #[allow(unused_imports)]
 use crate::scalar::Scalar;
 #[allow(unused_imports)]
-use vstd::arithmetic::power2::*;
-#[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 #[allow(unused_imports)]

@@ -182,7 +182,6 @@ use crate::core_assumes::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
 
-
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
 use digest::Digest;
@@ -1767,7 +1766,8 @@ impl Scalar {
             use crate::scalar_helpers::lemma_scalar_one_properties;
             lemma_scalar_one_properties();
             assert(scalar52_to_nat(&acc_unpacked) == 1);
-            assert(scalar52_to_nat(&acc) % group_order() == (1 * montgomery_radix()) % group_order());
+            assert(scalar52_to_nat(&acc) % group_order() == (1 * montgomery_radix())
+                % group_order());
             assert((montgomery_radix() * 1) % group_order() == montgomery_radix() % group_order());
             assert(partial_product(original_inputs, 0) == 1nat);
         }
@@ -1805,15 +1805,14 @@ impl Scalar {
                 // SEMANTIC INVARIANT: scratch[j] contains R * partial_product(original_inputs, j)
                 forall|j: int|
                     #![auto]
-                    0 <= j < i ==> scalar52_to_nat(&scratch[j]) % group_order() == (montgomery_radix()
-                        * partial_product(original_inputs, j)) % group_order(),
+                    0 <= j < i ==> scalar52_to_nat(&scratch[j]) % group_order() == (
+                    montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
                 // SEMANTIC INVARIANT: inputs[j] for j < i contains scalar[j] in Montgomery form
                 // i.e., bytes32_to_nat(&inputs[j].bytes) % L == (bytes32_to_nat(&original_inputs[j].bytes) * R) % L
                 forall|j: int|
                     #![auto]
-                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (bytes32_to_nat(
-                        &original_inputs[j].bytes,
-                    ) * montgomery_radix()) % group_order(),
+                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (
+                    bytes32_to_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
         {
             scratch[i] = acc;
 
@@ -1943,14 +1942,13 @@ impl Scalar {
                 // SEMANTIC INVARIANT: scratch[j] still contains R * partial_product(original_inputs, j)
                 forall|j: int|
                     #![auto]
-                    0 <= j < n ==> scalar52_to_nat(&scratch[j]) % group_order() == (montgomery_radix()
-                        * partial_product(original_inputs, j)) % group_order(),
+                    0 <= j < n ==> scalar52_to_nat(&scratch[j]) % group_order() == (
+                    montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
                 // SEMANTIC INVARIANT: inputs[j] for unprocessed j < i contains scalar[j] in Montgomery form
                 forall|j: int|
                     #![auto]
-                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (bytes32_to_nat(
-                        &original_inputs[j].bytes,
-                    ) * montgomery_radix()) % group_order(),
+                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (
+                    bytes32_to_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
                 // SEMANTIC INVARIANT: acc represents the inverse of partial_product(original_inputs, i)
                 // i.e., (scalar52_to_nat(&acc) * partial_product(original_inputs, i)) % L == 1
                 (scalar52_to_nat(&acc) * partial_product(original_inputs, i as int)) % group_order()

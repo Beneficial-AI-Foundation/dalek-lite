@@ -3015,7 +3015,7 @@ impl UnpackedScalar {
     {
         let bytes = self.as_bytes();
         proof {
-            lemma_five_limbs_equals_scalar52_to_nat(&self.limbs);
+            lemma_five_limbs_equals_to_nat(&self.limbs);
         }
         let result = Scalar { bytes: bytes };
         // VERIFICATION NOTE: TODO: Prove these follow from as_bytes() spec

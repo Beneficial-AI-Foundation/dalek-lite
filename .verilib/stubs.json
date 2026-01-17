@@ -2,1116 +2,1116 @@
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.ct_eq(&MontgomeryPoint).md": {
     "code-line": 111,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#ConstantTimeEq<&MontgomeryPoint>#ct_eq()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#ConstantTimeEq<&MontgomeryPoint>#ct_eq()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.hash(&H).md": {
     "code-line": 180,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#Hash<&H>#hash()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#Hash<&H>#hash()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.identity().md": {
     "code-line": 210,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#Identity<MontgomeryPoint>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#Identity<MontgomeryPoint>#identity()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.zeroize(&self).md": {
     "code-line": 234,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.mul_base(&Scalar).md": {
     "code-line": 253,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint<&Scalar>#mul_base()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint<&Scalar>#mul_base()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.mul_clamped([u8; 32]).md": {
     "code-line": 286,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#MontgomeryPoint<[u8;/32]>#mul_clamped()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#MontgomeryPoint<[u8;/32]>#mul_clamped()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.mul_base_clamped([u8; 32]).md": {
     "code-line": 324,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint<[u8;/32]>#mul_base_clamped()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint<[u8;/32]>#mul_base_clamped()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.mul_bits_be(impl Iterator<Item = bool>).md": {
     "code-line": 392,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<&[bool]>#mul_bits_be()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<&[bool]>#mul_bits_be()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.as_bytes(&self).md": {
     "code-line": 459,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<[u8;/32]>#as_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<[u8;/32]>#as_bytes()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.to_bytes(&self).md": {
     "code-line": 467,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<[u8;/32]>#to_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<[u8;/32]>#to_bytes()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.to_edwards(u8).md": {
     "code-line": 490,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<u8>#to_edwards()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<u8>#to_edwards()"
   },
   "curve25519-dalek/src/montgomery.rs/elligator_encode(&FieldElement).md": {
     "code-line": 554,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/elligator_encode()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/elligator_encode()"
   },
   "curve25519-dalek/src/montgomery.rs/ProjectivePoint.identity().md": {
     "code-line": 655,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/ProjectivePoint#Identity<ProjectivePoint>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/ProjectivePoint#Identity<ProjectivePoint>#identity()"
   },
   "curve25519-dalek/src/montgomery.rs/ProjectivePoint.as_affine(&self).md": {
     "code-line": 745,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/&ProjectivePoint#ProjectivePoint<MontgomeryPoint>#as_affine()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/&ProjectivePoint#ProjectivePoint<MontgomeryPoint>#as_affine()"
   },
   "curve25519-dalek/src/montgomery.rs/differential_add_and_double(&ProjectivePoint, &ProjectivePoint, &FieldElement).md": {
     "code-line": 794,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/differential_add_and_double()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/differential_add_and_double()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.mul(&Scalar).md": {
     "code-line": 897,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#Mul<&Scalar>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#Mul<&Scalar>#mul()"
   },
   "curve25519-dalek/src/montgomery.rs/MontgomeryPoint.mul_assign(&Scalar).md": {
     "code-line": 940,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#MulAssign<&Scalar>#mul_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/MontgomeryPoint#MulAssign<&Scalar>#mul_assign()"
   },
   "curve25519-dalek/src/montgomery.rs/Scalar.mul(&MontgomeryPoint).md": {
     "code-line": 966,
     "code-path": "curve25519-dalek/src/montgomery.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/montgomery/&Scalar#Mul<&MontgomeryPoint>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/montgomery/&Scalar#Mul<&MontgomeryPoint>#mul()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from_bytes_mod_order([u8; 32]).md": {
     "code-line": 248,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<[u8;/32]>#from_bytes_mod_order()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<[u8;/32]>#from_bytes_mod_order()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from_bytes_mod_order_wide(&[u8; 64]).md": {
     "code-line": 277,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<&[u8;/64]>#from_bytes_mod_order_wide()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<&[u8;/64]>#from_bytes_mod_order_wide()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from_canonical_bytes([u8; 32]).md": {
     "code-line": 328,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<[u8;/32]>#from_canonical_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<[u8;/32]>#from_canonical_bytes()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.ct_eq(&Self).md": {
     "code-line": 436,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#ConstantTimeEq<&Self>#ct_eq()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#ConstantTimeEq<&Self>#ct_eq()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.index(usize).md": {
     "code-line": 454,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Index<usize>#index()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Index<usize>#index()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.mul_assign(&Scalar).md": {
     "code-line": 474,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#MulAssign<&Scalar>#mul_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#MulAssign<&Scalar>#mul_assign()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.mul(&Scalar).md": {
     "code-line": 553,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Mul<&Scalar>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Mul<&Scalar>#mul()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.add_assign(&Scalar).md": {
     "code-line": 698,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#AddAssign<&Scalar>#add_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#AddAssign<&Scalar>#add_assign()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.add(&Scalar).md": {
     "code-line": 633,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Add<&Scalar>#add()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Add<&Scalar>#add()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.sub_assign(&Scalar).md": {
     "code-line": 818,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#SubAssign<&Scalar>#sub_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#SubAssign<&Scalar>#sub_assign()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.sub(&Scalar).md": {
     "code-line": 733,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Sub<&Scalar>#sub()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Sub<&Scalar>#sub()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.neg(self)_0.md": {
     "code-line": 854,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Neg<Scalar>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Neg<Scalar>#neg()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.neg(self)_1.md": {
     "code-line": 940,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Neg<Scalar>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Neg<Scalar>#neg()"
   },
   "curve25519-dalek/src/scalar.rs/product(I).md": {
     "code-line": 1008,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Product<I>#product()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Product<I>#product()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from(u8).md": {
     "code-line": 1119,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u8>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u8>#from()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from(u16).md": {
     "code-line": 1139,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u16>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u16>#from()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from(u32).md": {
     "code-line": 1176,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u32>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u32>#from()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from(u64).md": {
     "code-line": 1231,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u64>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u64>#from()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from(u128).md": {
     "code-line": 1264,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u128>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#From<u128>#from()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.zeroize(&self).md": {
     "code-line": 1301,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.hash_from_bytes(&[u8]).md": {
     "code-line": 1457,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<&[u8]>#hash_from_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<&[u8]>#hash_from_bytes()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.from_hash(D).md": {
     "code-line": 1533,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<D>#from_hash()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<D>#from_hash()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.to_bytes(&self).md": {
     "code-line": 1581,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[u8;/32]>#to_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[u8;/32]>#to_bytes()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.as_bytes(&self).md": {
     "code-line": 1600,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[u8;/32]>#as_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[u8;/32]>#as_bytes()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.invert(&self).md": {
     "code-line": 1648,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Scalar>#invert()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Scalar>#invert()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.batch_invert(&[Scalar]).md": {
     "code-line": 1718,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<&[Scalar]>#batch_invert()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<&[Scalar]>#batch_invert()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.bits_le(&self).md": {
     "code-line": 2047,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[bool;/256]>#bits_le()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[bool;/256]>#bits_le()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.non_adjacent_form(usize).md": {
     "code-line": 2167,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/256]>#non_adjacent_form()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/256]>#non_adjacent_form()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.as_radix_16(&self).md": {
     "code-line": 2305,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_16()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_16()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.to_radix_2w_size_hint(usize).md": {
     "code-line": 2380,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<usize>#to_radix_2w_size_hint()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar<usize>#to_radix_2w_size_hint()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.as_radix_2w(usize).md": {
     "code-line": 2439,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_2w()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<[i8;/64]>#as_radix_2w()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.unpack(&self).md": {
     "code-line": 2640,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<UnpackedScalar>#unpack()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.reduce(&self).md": {
     "code-line": 2653,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Scalar>#reduce()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Scalar>#reduce()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.is_canonical(&self).md": {
     "code-line": 2721,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Choice>#is_canonical()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar#Scalar<Choice>#is_canonical()"
   },
   "curve25519-dalek/src/scalar.rs/UnpackedScalar.pack(&self).md": {
     "code-line": 2852,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<Scalar>#pack()"
   },
   "curve25519-dalek/src/scalar.rs/UnpackedScalar.montgomery_invert(&self).md": {
     "code-line": 2936,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#montgomery_invert()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#montgomery_invert()"
   },
   "curve25519-dalek/src/scalar.rs/UnpackedScalar.invert(&self).md": {
     "code-line": 3015,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#invert()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#invert()"
   },
   "curve25519-dalek/src/scalar.rs/read_le_u64_into(&[u8], &[u64]).md": {
     "code-line": 3191,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/read_le_u64_into()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/read_le_u64_into()"
   },
   "curve25519-dalek/src/scalar.rs/clamp_integer([u8; 32]).md": {
     "code-line": 3271,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/clamp_integer()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable5<ProjectiveNielsPoint>.select(usize).md": {
     "code-line": 468,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable5<ProjectiveNielsPoint>#NafLookupTable5<usize>#select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable5<ProjectiveNielsPoint>#NafLookupTable5<usize>#select()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable5<AffineNielsPoint>.select(usize).md": {
     "code-line": 493,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable5<AffineNielsPoint>#NafLookupTable5<usize>#select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable5<AffineNielsPoint>#NafLookupTable5<usize>#select()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable8<ProjectiveNielsPoint>.select(usize).md": {
     "code-line": 684,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<ProjectiveNielsPoint>#NafLookupTable8<usize>#select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<ProjectiveNielsPoint>#NafLookupTable8<usize>#select()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable8<AffineNielsPoint>.select(usize).md": {
     "code-line": 710,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<AffineNielsPoint>#NafLookupTable8<usize>#select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/&NafLookupTable8<AffineNielsPoint>#NafLookupTable8<usize>#select()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable5.from(&EdwardsPoint)_0.md": {
     "code-line": 532,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable5<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable5<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable5.from(&EdwardsPoint)_1.md": {
     "code-line": 590,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable5<AffineNielsPoint>#From<&EdwardsPoint>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable5<AffineNielsPoint>#From<&EdwardsPoint>#from()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable8.from(&EdwardsPoint)_0.md": {
     "code-line": 756,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable8<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable8<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
   },
   "curve25519-dalek/src/window.rs/NafLookupTable8.from(&EdwardsPoint)_1.md": {
     "code-line": 815,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable8<AffineNielsPoint>#From<&EdwardsPoint>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/NafLookupTable8<AffineNielsPoint>#From<&EdwardsPoint>#from()"
   },
   "curve25519-dalek/src/window.rs/LookupTable<AffineNielsPoint>.select(i8).md": {
     "code-line": 103,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/&LookupTable<AffineNielsPoint>#LookupTable<i8>#select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/&LookupTable<AffineNielsPoint>#LookupTable<i8>#select()"
   },
   "curve25519-dalek/src/window.rs/LookupTable<ProjectiveNielsPoint>.select(i8).md": {
     "code-line": 153,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/&LookupTable<ProjectiveNielsPoint>#LookupTable<i8>#select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/&LookupTable<ProjectiveNielsPoint>#LookupTable<i8>#select()"
   },
   "curve25519-dalek/src/window.rs/LookupTable<ProjectiveNielsPoint>.from(&EdwardsPoint).md": {
     "code-line": 286,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/LookupTable<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/LookupTable<ProjectiveNielsPoint>#From<&EdwardsPoint>#from()"
   },
   "curve25519-dalek/src/window.rs/LookupTable<AffineNielsPoint>.from(&EdwardsPoint).md": {
     "code-line": 355,
     "code-path": "curve25519-dalek/src/window.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/window/LookupTable<AffineNielsPoint>#From<&EdwardsPoint>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/window/LookupTable<AffineNielsPoint>#From<&EdwardsPoint>#from()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.ct_eq(&FieldElement).md": {
     "code-line": 142,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/FieldElement51#ConstantTimeEq<&FieldElement>#ct_eq()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/FieldElement51#ConstantTimeEq<&FieldElement>#ct_eq()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.is_negative(&self).md": {
     "code-line": 217,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_negative()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.is_zero(&self).md": {
     "code-line": 243,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_zero()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<Choice>#is_zero()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.pow22501(&self).md": {
     "code-line": 289,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(FieldElement,/FieldElement)>#pow22501()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(FieldElement,/FieldElement)>#pow22501()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.batch_invert(&[FieldElement]).md": {
     "code-line": 522,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/FieldElement51#batch_invert()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/FieldElement51#batch_invert()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.invert(&self).md": {
     "code-line": 672,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#invert()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.pow_p58(&self).md": {
     "code-line": 708,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#pow_p58()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<FieldElement>#pow_p58()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.sqrt_ratio_i(&FieldElement, &FieldElement).md": {
     "code-line": 791,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/FieldElement51<(Choice,/FieldElement)>#sqrt_ratio_i()"
   },
   "curve25519-dalek/src/field.rs/FieldElement.invsqrt(&self).md": {
     "code-line": 915,
     "code-path": "curve25519-dalek/src/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(Choice,/FieldElement)>#invsqrt()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/&FieldElement51#FieldElement51<(Choice,/FieldElement)>#invsqrt()"
   },
   "curve25519-dalek/src/edwards.rs/CompressedEdwardsY.ct_eq(&CompressedEdwardsY).md": {
     "code-line": 204,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#ConstantTimeEq<&CompressedEdwardsY>#ct_eq()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#ConstantTimeEq<&CompressedEdwardsY>#ct_eq()"
   },
   "curve25519-dalek/src/edwards.rs/CompressedEdwardsY.as_bytes(&self).md": {
     "code-line": 228,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#as_bytes()"
   },
   "curve25519-dalek/src/edwards.rs/CompressedEdwardsY.to_bytes(&self).md": {
     "code-line": 236,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#to_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<[u8;/32]>#to_bytes()"
   },
   "curve25519-dalek/src/edwards.rs/CompressedEdwardsY.decompress(&self).md": {
     "code-line": 248,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<Option<EdwardsPoint>>#decompress()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&CompressedEdwardsY#CompressedEdwardsY<Option<EdwardsPoint>>#decompress()"
   },
   "curve25519-dalek/src/edwards.rs/step_1(&CompressedEdwardsY).md": {
     "code-line": 317,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/decompress/edwards/step_1()"
+    "code-name": "scip:curve25519-dalek/4.1.3/decompress/edwards/step_1()"
   },
   "curve25519-dalek/src/edwards.rs/step_2(&CompressedEdwardsY, FieldElement, FieldElement, FieldElement).md": {
     "code-line": 471,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/decompress/edwards/step_2()"
+    "code-name": "scip:curve25519-dalek/4.1.3/decompress/edwards/step_2()"
   },
   "curve25519-dalek/src/edwards.rs/CompressedEdwardsY.identity().md": {
     "code-line": 704,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#Identity<CompressedEdwardsY>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#Identity<CompressedEdwardsY>#identity()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.identity().md": {
     "code-line": 821,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Identity<EdwardsPoint>#identity()"
   },
   "curve25519-dalek/src/edwards.rs/CompressedEdwardsY.zeroize(&self).md": {
     "code-line": 873,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.zeroize(&self).md": {
     "code-line": 893,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.is_valid(&self).md": {
     "code-line": 911,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#ValidityCheck<bool>#is_valid()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#ValidityCheck<bool>#is_valid()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.conditional_select(&EdwardsPoint, &EdwardsPoint, Choice).md": {
     "code-line": 942,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#ConditionallySelectable<&EdwardsPoint>#conditional_select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#ConditionallySelectable<&EdwardsPoint>#conditional_select()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.ct_eq(&EdwardsPoint).md": {
     "code-line": 990,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#ConstantTimeEq<&EdwardsPoint>#ct_eq()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#ConstantTimeEq<&EdwardsPoint>#ct_eq()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.as_projective_niels(&self).md": {
     "code-line": 1089,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectiveNielsPoint>#as_projective_niels()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.as_projective(&self).md": {
     "code-line": 1127,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectivePoint>#as_projective()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<ProjectivePoint>#as_projective()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.as_affine_niels(&self).md": {
     "code-line": 1143,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<AffineNielsPoint>#as_affine_niels()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<AffineNielsPoint>#as_affine_niels()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.to_montgomery(&self).md": {
     "code-line": 1188,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<MontgomeryPoint>#to_montgomery()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<MontgomeryPoint>#to_montgomery()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.compress(&self).md": {
     "code-line": 1226,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<CompressedEdwardsY>#compress()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<CompressedEdwardsY>#compress()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.nonspec_map_to_curve(&[u8]).md": {
     "code-line": 1256,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&[u8]>#nonspec_map_to_curve()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&[u8]>#nonspec_map_to_curve()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.double(&self).md": {
     "code-line": 1283,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#double()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#double()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.add(&EdwardsPoint).md": {
     "code-line": 1354,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Add<&EdwardsPoint>#add()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Add<&EdwardsPoint>#add()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.add_assign(&EdwardsPoint).md": {
     "code-line": 1421,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#AddAssign<&EdwardsPoint>#add_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#AddAssign<&EdwardsPoint>#add_assign()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.sub(&EdwardsPoint).md": {
     "code-line": 1465,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Sub<&EdwardsPoint>#sub()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Sub<&EdwardsPoint>#sub()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.sub_assign(&EdwardsPoint).md": {
     "code-line": 1525,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#SubAssign<&EdwardsPoint>#sub_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#SubAssign<&EdwardsPoint>#sub_assign()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.neg(self)_0.md": {
     "code-line": 1673,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Neg<EdwardsPoint>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Neg<EdwardsPoint>#neg()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.neg(self)_1.md": {
     "code-line": 1716,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Neg<EdwardsPoint>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Neg<EdwardsPoint>#neg()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.mul_assign(&Scalar).md": {
     "code-line": 1735,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#MulAssign<&Scalar>#mul_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#MulAssign<&Scalar>#mul_assign()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.mul(&Scalar).md": {
     "code-line": 1770,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Mul<&Scalar>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#Mul<&Scalar>#mul()"
   },
   "curve25519-dalek/src/edwards.rs/Scalar.mul(&EdwardsPoint).md": {
     "code-line": 1793,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&Scalar#Mul<&EdwardsPoint>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&Scalar#Mul<&EdwardsPoint>#mul()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.mul_base(&Scalar).md": {
     "code-line": 1814,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&Scalar>#mul_base()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&Scalar>#mul_base()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.mul_clamped([u8; 32]).md": {
     "code-line": 1833,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#EdwardsPoint<[u8;/32]>#mul_clamped()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#EdwardsPoint<[u8;/32]>#mul_clamped()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.mul_base_clamped([u8; 32]).md": {
     "code-line": 1865,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<[u8;/32]>#mul_base_clamped()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<[u8;/32]>#mul_base_clamped()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.vartime_double_scalar_mul_basepoint(&Scalar, &EdwardsPoint, &Scalar).md": {
     "code-line": 1996,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&EdwardsPoint>#vartime_double_scalar_mul_basepoint()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&EdwardsPoint>#vartime_double_scalar_mul_basepoint()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.mul_by_cofactor(&self).md": {
     "code-line": 2361,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_cofactor()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_cofactor()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.mul_by_pow_2(u32).md": {
     "code-line": 2385,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_pow_2()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.is_small_order(&self).md": {
     "code-line": 2459,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<bool>#is_small_order()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<bool>#is_small_order()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.is_torsion_free(&self).md": {
     "code-line": 2506,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<bool>#is_torsion_free()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<bool>#is_torsion_free()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.multiscalar_mul(I, J).md": {
     "code-line": 1892,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#MultiscalarMul<J>#multiscalar_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#MultiscalarMul<J>#multiscalar_mul()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.optional_multiscalar_mul(I, J).md": {
     "code-line": 1924,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
   },
   "curve25519-dalek/src/ristretto.rs/CompressedRistretto.ct_eq(&CompressedRistretto).md": {
     "code-line": 223,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto#ConstantTimeEq<&CompressedRistretto>#ct_eq()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto#ConstantTimeEq<&CompressedRistretto>#ct_eq()"
   },
   "curve25519-dalek/src/ristretto.rs/CompressedRistretto.to_bytes(&self).md": {
     "code-line": 230,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<[u8;/32]>#to_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<[u8;/32]>#to_bytes()"
   },
   "curve25519-dalek/src/ristretto.rs/CompressedRistretto.as_bytes(&self).md": {
     "code-line": 235,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<[u8;/32]>#as_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<[u8;/32]>#as_bytes()"
   },
   "curve25519-dalek/src/ristretto.rs/CompressedRistretto.from_slice(&[u8]).md": {
     "code-line": 245,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto<&[u8]>#from_slice()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto<&[u8]>#from_slice()"
   },
   "curve25519-dalek/src/ristretto.rs/CompressedRistretto.decompress(&self).md": {
     "code-line": 256,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<Option<RistrettoPoint>>#decompress()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&CompressedRistretto#CompressedRistretto<Option<RistrettoPoint>>#decompress()"
   },
   "curve25519-dalek/src/ristretto.rs/step_1(&CompressedRistretto).md": {
     "code-line": 276,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/decompress/ristretto/step_1()"
+    "code-name": "scip:curve25519-dalek/4.1.3/decompress/ristretto/step_1()"
   },
   "curve25519-dalek/src/ristretto.rs/step_2(FieldElement).md": {
     "code-line": 296,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/decompress/ristretto/step_2()"
+    "code-name": "scip:curve25519-dalek/4.1.3/decompress/ristretto/step_2()"
   },
   "curve25519-dalek/src/ristretto.rs/CompressedRistretto.identity().md": {
     "code-line": 338,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto#Identity<CompressedRistretto>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto#Identity<CompressedRistretto>#identity()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.compress(&self).md": {
     "code-line": 500,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#RistrettoPoint<CompressedRistretto>#compress()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#RistrettoPoint<CompressedRistretto>#compress()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.double_and_compress_batch(I).md": {
     "code-line": 564,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<I>#double_and_compress_batch()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<I>#double_and_compress_batch()"
   },
   "curve25519-dalek/src/ristretto.rs/BatchCompressState.efgh(&self).md": {
     "code-line": 579,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/BatchCompressState<FieldElement>#efgh()"
+    "code-name": "scip:curve25519-dalek/4.1.3/BatchCompressState<FieldElement>#efgh()"
   },
   "curve25519-dalek/src/ristretto.rs/BatchCompressState.from(&RistrettoPoint).md": {
     "code-line": 586,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/BatchCompressState#From<&RistrettoPoint>#from()"
+    "code-name": "scip:curve25519-dalek/4.1.3/BatchCompressState#From<&RistrettoPoint>#from()"
   },
   "curve25519-dalek/src/ristretto.rs/coset4(&self).md": {
     "code-line": 650,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#RistrettoPoint<[EdwardsPoint;/4]>#coset4()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#RistrettoPoint<[EdwardsPoint;/4]>#coset4()"
   },
   "curve25519-dalek/src/ristretto.rs/elligator_ristretto_flavor(&FieldElement).md": {
     "code-line": 667,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<RistrettoPoint>#elligator_ristretto_flavor()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<RistrettoPoint>#elligator_ristretto_flavor()"
   },
   "curve25519-dalek/src/ristretto.rs/hash_from_bytes(&[u8]).md": {
     "code-line": 760,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&[u8]>#hash_from_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&[u8]>#hash_from_bytes()"
   },
   "curve25519-dalek/src/ristretto.rs/from_hash(D).md": {
     "code-line": 775,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<D>#from_hash()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<D>#from_hash()"
   },
   "curve25519-dalek/src/ristretto.rs/from_uniform_bytes(&[u8; 64]).md": {
     "code-line": 798,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&[u8;/64]>#from_uniform_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&[u8;/64]>#from_uniform_bytes()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.identity().md": {
     "code-line": 818,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Identity<RistrettoPoint>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Identity<RistrettoPoint>#identity()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.default().md": {
     "code-line": 834,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Default<RistrettoPoint>#default()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Default<RistrettoPoint>#default()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.ct_eq(&RistrettoPoint).md": {
     "code-line": 856,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#ConstantTimeEq<&RistrettoPoint>#ct_eq()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#ConstantTimeEq<&RistrettoPoint>#ct_eq()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.add(&RistrettoPoint).md": {
     "code-line": 875,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Add<&RistrettoPoint>#add()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Add<&RistrettoPoint>#add()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.add_assign(&RistrettoPoint).md": {
     "code-line": 887,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#AddAssign<&RistrettoPoint>#add_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#AddAssign<&RistrettoPoint>#add_assign()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.sub(&RistrettoPoint).md": {
     "code-line": 897,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Sub<&RistrettoPoint>#sub()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Sub<&RistrettoPoint>#sub()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.sub_assign(&RistrettoPoint).md": {
     "code-line": 909,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#SubAssign<&RistrettoPoint>#sub_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#SubAssign<&RistrettoPoint>#sub_assign()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.neg(self)_0.md": {
     "code-line": 931,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Neg<RistrettoPoint>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Neg<RistrettoPoint>#neg()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.neg(self)_1.md": {
     "code-line": 939,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Neg<RistrettoPoint>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Neg<RistrettoPoint>#neg()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.mul_assign(&Scalar).md": {
     "code-line": 945,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#MulAssign<&Scalar>#mul_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#MulAssign<&Scalar>#mul_assign()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.mul(&Scalar).md": {
     "code-line": 954,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Mul<&Scalar>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoPoint#Mul<&Scalar>#mul()"
   },
   "curve25519-dalek/src/ristretto.rs/Scalar.mul(&RistrettoPoint).md": {
     "code-line": 963,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&Scalar#Mul<&RistrettoPoint>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&Scalar#Mul<&RistrettoPoint>#mul()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.mul_base(&Scalar).md": {
     "code-line": 973,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&Scalar>#mul_base()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<&Scalar>#mul_base()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoBasepointTable.mul(&Scalar).md": {
     "code-line": 1109,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoBasepointTable#Mul<&Scalar>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoBasepointTable#Mul<&Scalar>#mul()"
   },
   "curve25519-dalek/src/ristretto.rs/Scalar.mul(&RistrettoBasepointTable).md": {
     "code-line": 1118,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&Scalar#Mul<&RistrettoBasepointTable>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&Scalar#Mul<&RistrettoBasepointTable>#mul()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoBasepointTable.create(&RistrettoPoint).md": {
     "code-line": 1126,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoBasepointTable<&RistrettoPoint>#create()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoBasepointTable<&RistrettoPoint>#create()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoBasepointTable.basepoint(&self).md": {
     "code-line": 1131,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoBasepointTable#RistrettoBasepointTable<RistrettoPoint>#basepoint()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/&RistrettoBasepointTable#RistrettoBasepointTable<RistrettoPoint>#basepoint()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.conditional_select(&RistrettoPoint, &RistrettoPoint, Choice).md": {
     "code-line": 1165,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#ConditionallySelectable<&RistrettoPoint>#conditional_select()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#ConditionallySelectable<&RistrettoPoint>#conditional_select()"
   },
   "curve25519-dalek/src/ristretto.rs/CompressedRistretto.zeroize(&self).md": {
     "code-line": 1281,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/CompressedRistretto#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.zeroize(&self).md": {
     "code-line": 1288,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.multiscalar_mul(I, J).md": {
     "code-line": 1002,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#MultiscalarMul<J>#multiscalar_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#MultiscalarMul<J>#multiscalar_mul()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.optional_multiscalar_mul(I, J).md": {
     "code-line": 1018,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.zeroize(&self).md": {
     "code-line": 89,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.index(usize).md": {
     "code-line": 101,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Index<usize>#index()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Index<usize>#index()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/m(u64, u64).md": {
     "code-line": 123,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/m()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.from_bytes(&[u8; 32]).md": {
     "code-line": 143,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&[u8;/32]>#from_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&[u8;/32]>#from_bytes()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.from_bytes_wide(&[u8; 64]).md": {
     "code-line": 212,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&[u8;/64]>#from_bytes_wide()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&[u8;/64]>#from_bytes_wide()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.as_bytes(&self).md": {
     "code-line": 446,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Scalar52<[u8;/32]>#as_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52#Scalar52<[u8;/32]>#as_bytes()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.add(&Scalar52, &Scalar52).md": {
     "code-line": 497,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#add()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#add()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.sub(&Scalar52, &Scalar52).md": {
     "code-line": 686,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#sub()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.mul_internal(&Scalar52, &Scalar52).md": {
     "code-line": 843,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#mul_internal()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.square_internal(&Scalar52).md": {
     "code-line": 904,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#square_internal()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<[u128;/9]>#square_internal()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.montgomery_reduce(&[u128; 9]).md": {
     "code-line": 937,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<Scalar52>#montgomery_reduce()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.mul(&Scalar52, &Scalar52).md": {
     "code-line": 1049,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#mul()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.square(&self).md": {
     "code-line": 1100,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#square()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#square()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.montgomery_mul(&Scalar52, &Scalar52).md": {
     "code-line": 1152,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<&Scalar52>#montgomery_mul()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.montgomery_square(&self).md": {
     "code-line": 1166,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#montgomery_square()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#montgomery_square()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.as_montgomery(&self).md": {
     "code-line": 1179,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#as_montgomery()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#as_montgomery()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/Scalar52.from_montgomery(&self).md": {
     "code-line": 1212,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#from_montgomery()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/&Scalar52#Scalar52<Scalar52>#from_montgomery()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.zeroize(&self).md": {
     "code-line": 125,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.add_assign(&FieldElement51).md": {
     "code-line": 168,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#AddAssign<&FieldElement51>#add_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#AddAssign<&FieldElement51>#add_assign()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.add(&FieldElement51).md": {
     "code-line": 225,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Add<&FieldElement51>#add()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Add<&FieldElement51>#add()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.sub_assign(&FieldElement51).md": {
     "code-line": 281,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#SubAssign<&FieldElement51>#sub_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#SubAssign<&FieldElement51>#sub_assign()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.sub(&FieldElement51).md": {
     "code-line": 339,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Sub<&FieldElement51>#sub()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Sub<&FieldElement51>#sub()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.mul_assign(&FieldElement51).md": {
     "code-line": 443,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#MulAssign<&FieldElement51>#mul_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#MulAssign<&FieldElement51>#mul_assign()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.mul(&FieldElement51).md": {
     "code-line": 484,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Mul<&FieldElement51>#mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Mul<&FieldElement51>#mul()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.neg(self).md": {
     "code-line": 648,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Neg<FieldElement51>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#Neg<FieldElement51>#neg()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.conditional_assign(&FieldElement51, Choice).md": {
     "code-line": 734,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#ConditionallySelectable<&FieldElement51>#conditional_assign()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.from_limbs([u64; 5]).md": {
     "code-line": 770,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<FieldElement51>#from_limbs()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<FieldElement51>#from_limbs()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.negate(&self).md": {
     "code-line": 804,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&mut/FieldElement51#FieldElement51#negate()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&mut/FieldElement51#FieldElement51#negate()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.reduce([u64; 5]).md": {
     "code-line": 860,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<[u64;/5]>#reduce()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<[u64;/5]>#reduce()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.as_bytes(&self).md": {
     "code-line": 1007,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51#FieldElement51<[u8;/32]>#as_bytes()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.pow2k(u32).md": {
     "code-line": 1130,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<u32>#pow2k()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.square(&self).md": {
     "code-line": 1303,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/FieldElement51.square2(&self).md": {
     "code-line": 1324,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square2()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/&FieldElement51#FieldElement51<FieldElement51>#square2()"
   },
   "curve25519-dalek/src/backend/serial/scalar_mul/variable_base.rs/mul(&EdwardsPoint, &Scalar).md": {
     "code-line": 29,
     "code-path": "curve25519-dalek/src/backend/serial/scalar_mul/variable_base.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/variable_base/scalar_mul/serial/backend/mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/variable_base/scalar_mul/serial/backend/mul()"
   },
   "curve25519-dalek/src/backend/serial/scalar_mul/vartime_double_base.rs/mul(&Scalar, &EdwardsPoint, &Scalar).md": {
     "code-line": 42,
     "code-path": "curve25519-dalek/src/backend/serial/scalar_mul/vartime_double_base.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/vartime_double_base/scalar_mul/serial/backend/mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/vartime_double_base/scalar_mul/serial/backend/mul()"
   },
   "curve25519-dalek/src/backend/serial/scalar_mul/straus.rs/Straus.multiscalar_mul(I, J).md": {
     "code-line": 101,
     "code-path": "curve25519-dalek/src/backend/serial/scalar_mul/straus.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/straus/scalar_mul/serial/backend/Straus#MultiscalarMul<J>#multiscalar_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/straus/scalar_mul/serial/backend/Straus#MultiscalarMul<J>#multiscalar_mul()"
   },
   "curve25519-dalek/src/backend/serial/scalar_mul/straus.rs/Straus.optional_multiscalar_mul(I, J).md": {
     "code-line": 157,
     "code-path": "curve25519-dalek/src/backend/serial/scalar_mul/straus.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/straus/scalar_mul/serial/backend/Straus#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/straus/scalar_mul/serial/backend/Straus#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
   },
   "curve25519-dalek/src/backend/serial/scalar_mul/pippenger.rs/Pippenger.optional_multiscalar_mul(I, J).md": {
     "code-line": 65,
     "code-path": "curve25519-dalek/src/backend/serial/scalar_mul/pippenger.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/pippenger/scalar_mul/serial/backend/Pippenger#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
+    "code-name": "scip:curve25519-dalek/4.1.3/pippenger/scalar_mul/serial/backend/Pippenger#VartimeMultiscalarMul<J>#optional_multiscalar_mul()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/AffineNielsPoint.zeroize(&self).md": {
     "code-line": 201,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/ProjectiveNielsPoint.zeroize(&self).md": {
     "code-line": 231,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectiveNielsPoint#Zeroize#zeroize()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectiveNielsPoint#Zeroize#zeroize()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/ProjectiveNielsPoint.identity().md": {
     "code-line": 265,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectiveNielsPoint#Identity<ProjectiveNielsPoint>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectiveNielsPoint#Identity<ProjectiveNielsPoint>#identity()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/AffineNielsPoint.identity().md": {
     "code-line": 288,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#Identity<AffineNielsPoint>#identity()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#Identity<AffineNielsPoint>#identity()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/ProjectivePoint.is_valid(&self).md": {
     "code-line": 316,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#ValidityCheck<bool>#is_valid()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectivePoint#ValidityCheck<bool>#is_valid()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/ProjectiveNielsPoint.conditional_assign(&Self, Choice).md": {
     "code-line": 405,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectiveNielsPoint#ConditionallySelectable<&Self>#conditional_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/ProjectiveNielsPoint#ConditionallySelectable<&Self>#conditional_assign()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/AffineNielsPoint.conditional_assign(&Self, Choice).md": {
     "code-line": 451,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#ConditionallySelectable<&Self>#conditional_assign()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/AffineNielsPoint#ConditionallySelectable<&Self>#conditional_assign()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/ProjectivePoint.as_extended(&self).md": {
     "code-line": 480,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<EdwardsPoint>#as_extended()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<EdwardsPoint>#as_extended()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/CompletedPoint.as_projective(&self).md": {
     "code-line": 513,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<ProjectivePoint>#as_projective()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/CompletedPoint.as_extended(&self).md": {
     "code-line": 559,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&CompletedPoint#CompletedPoint<EdwardsPoint>#as_extended()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/ProjectivePoint.double(&self).md": {
     "code-line": 596,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectivePoint#ProjectivePoint<CompletedPoint>#double()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/EdwardsPoint.add(&ProjectiveNielsPoint).md": {
     "code-line": 691,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Add<&ProjectiveNielsPoint>#add()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Add<&ProjectiveNielsPoint>#add()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/EdwardsPoint.sub(&ProjectiveNielsPoint).md": {
     "code-line": 787,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Sub<&ProjectiveNielsPoint>#sub()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Sub<&ProjectiveNielsPoint>#sub()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/EdwardsPoint.add(&AffineNielsPoint).md": {
     "code-line": 883,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Add<&AffineNielsPoint>#add()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Add<&AffineNielsPoint>#add()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/EdwardsPoint.sub(&AffineNielsPoint).md": {
     "code-line": 964,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Sub<&AffineNielsPoint>#sub()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&EdwardsPoint#Sub<&AffineNielsPoint>#sub()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/ProjectiveNielsPoint.neg(self).md": {
     "code-line": 1054,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectiveNielsPoint#Neg<ProjectiveNielsPoint>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&ProjectiveNielsPoint#Neg<ProjectiveNielsPoint>#neg()"
   },
   "curve25519-dalek/src/backend/serial/curve_models/mod.rs/AffineNielsPoint.neg(self).md": {
     "code-line": 1115,
     "code-path": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&AffineNielsPoint#Neg<AffineNielsPoint>#neg()"
+    "code-name": "scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&AffineNielsPoint#Neg<AffineNielsPoint>#neg()"
   },
   "curve25519-dalek/src/backend/serial/u64/field.rs/load8_at(&[u8], usize).md": {
     "code-line": 136,
     "code-path": "curve25519-dalek/src/backend/serial/u64/field.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/load8_at()"
+    "code-name": "scip:curve25519-dalek/4.1.3/field/u64/serial/backend/load8_at()"
   },
   "curve25519-dalek/src/scalar.rs/bot_half(u8).md": {
     "code-line": 1986,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/bot_half()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/bot_half()"
   },
   "curve25519-dalek/src/scalar.rs/top_half(u8).md": {
     "code-line": 2006,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/top_half()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/top_half()"
   },
   "curve25519-dalek/src/scalar.rs/square_multiply(&mut UnpackedScalar, usize, &UnpackedScalar).md": {
     "code-line": 2743,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/square_multiply()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/square_multiply()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/part1(u128).md": {
     "code-line": 992,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part1()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part1()"
   },
   "curve25519-dalek/src/backend/serial/u64/scalar.rs/part2(u128).md": {
     "code-line": 1030,
     "code-path": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part2()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/u64/serial/backend/Scalar52<u128>#part2()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsBasepointTable.create(&EdwardsPoint).md": {
     "code-line": 2083,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsBasepointTable#BasepointTable<&EdwardsPoint>#create()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsBasepointTable#BasepointTable<&EdwardsPoint>#create()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsBasepointTable.basepoint(&self).md": {
     "code-line": 2110,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsBasepointTable#BasepointTable<EdwardsPoint>#basepoint()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsBasepointTable#BasepointTable<EdwardsPoint>#basepoint()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsBasepointTable.mul_base(&self, &Scalar).md": {
     "code-line": 2190,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsBasepointTable#BasepointTable<&Scalar>#mul_base()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsBasepointTable#BasepointTable<&Scalar>#mul_base()"
   },
   "curve25519-dalek/src/scalar.rs/Scalar.sum(I).md": {
     "code-line": 1039,
     "code-path": "curve25519-dalek/src/scalar.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Sum<I>#sum()"
+    "code-name": "scip:curve25519-dalek/4.1.3/scalar/Scalar#Sum<I>#sum()"
   },
   "curve25519-dalek/src/edwards.rs/EdwardsPoint.sum(I).md": {
     "code-line": 1638,
     "code-path": "curve25519-dalek/src/edwards.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Sum<I>#sum()"
+    "code-name": "scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Sum<I>#sum()"
   },
   "curve25519-dalek/src/ristretto.rs/RistrettoPoint.sum(I).md": {
     "code-line": 920,
     "code-path": "curve25519-dalek/src/ristretto.rs",
-    "scip-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Sum<I>#sum()"
+    "code-name": "scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint#Sum<I>#sum()"
   }
 }

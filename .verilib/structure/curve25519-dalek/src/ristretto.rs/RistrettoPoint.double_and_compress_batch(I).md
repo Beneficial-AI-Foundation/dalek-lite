@@ -1,5 +1,5 @@
 ---
 code-line: 564
 code-path: curve25519-dalek/src/ristretto.rs
-scip-name: scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<I>#double_and_compress_batch()
+code-name: scip:curve25519-dalek/4.1.3/ristretto/RistrettoPoint<I>#double_and_compress_batch()
 ---

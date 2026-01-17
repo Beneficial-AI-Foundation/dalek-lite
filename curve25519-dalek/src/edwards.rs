@@ -2016,7 +2016,6 @@ impl EdwardsPoint {
     }
 }
 
-} // verus!
 // ------------------------------------------------------------------------
 // Multiscalar Multiplication impls
 // ------------------------------------------------------------------------
@@ -2026,13 +2025,13 @@ impl EdwardsPoint {
 impl MultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
-    fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint
-    where
+    #[verifier::external_body]
+    fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
-        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
         requires
             scalars.len() == points.len(),
             forall|i| is_well_formed_edwards_point(points[i]),
@@ -2068,12 +2067,12 @@ impl MultiscalarMul for EdwardsPoint {
 impl VartimeMultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
-    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
-    where
+    #[verifier::external_body]
+    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint> where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
-        /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
+    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
         requires
             scalars.len() == points.len(),
             forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
@@ -2110,6 +2109,7 @@ impl VartimeMultiscalarMul for EdwardsPoint {
     }
 }
 
+} // verus!
 /// Precomputation for variable-time multiscalar multiplication with `EdwardsPoint`s.
 // This wraps the inner implementation in a facade type so that we can
 // decouple stability of the inner type from the stability of the

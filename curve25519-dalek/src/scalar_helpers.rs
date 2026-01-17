@@ -360,7 +360,9 @@ pub proof fn lemma_invert_chain(
     assert(((final_acc_val * P) * (R * R)) % L == (R * R) % L);
 
     // Step 5: Apply cancel lemma to remove R*R from both sides
-    lemma_cancel_mul_pow2_mod((final_acc_val * P), 1nat, R);
+    // R = montgomery_radix() = pow2(260)
+    use vstd::arithmetic::power2::pow2;
+    lemma_cancel_mul_pow2_mod((final_acc_val * P), 1nat, pow2(260));
     assert((final_acc_val * P) % L == 1nat);
 }
 
@@ -444,7 +446,9 @@ pub proof fn lemma_backward_loop_is_inverse(
     
     // Step 5: Apply cancel lemma: ((result_m * scalar_i) * R) % L == R % L
     lemma_mul_is_associative(result_m as int, scalar_i as int, R as int);
-    lemma_cancel_mul_pow2_mod((result_m * scalar_i), 1nat, R);
+    // R = montgomery_radix() = pow2(260)
+    use vstd::arithmetic::power2::pow2;
+    lemma_cancel_mul_pow2_mod((result_m * scalar_i), 1nat, pow2(260));
     assert((result_m * scalar_i) % L == 1nat);
     
     // Since result == result_m:
@@ -525,7 +529,9 @@ pub proof fn lemma_backward_loop_acc_invariant(
     // Step 6: We have: ((acc_after * partial_product(i)) * R) % L == 1 % L
     // Apply: ((acc_after * partial_product(i)) * R) % L == (1 * R) % L
     // Cancel R from both sides:
-    lemma_cancel_mul_pow2_mod((acc_after_val * partial_product(original_inputs, i)), 1nat, R);
+    // R = montgomery_radix() = pow2(260)
+    use vstd::arithmetic::power2::pow2;
+    lemma_cancel_mul_pow2_mod((acc_after_val * partial_product(original_inputs, i)), 1nat, pow2(260));
     assert((acc_after_val * partial_product(original_inputs, i)) % L == 1nat);
 }
 

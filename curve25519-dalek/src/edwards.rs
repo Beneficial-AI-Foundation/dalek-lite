@@ -158,6 +158,12 @@ use crate::traits::{VartimeMultiscalarMul, VartimePrecomputedMultiscalarMul};
 use crate::backend::serial::u64::field::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::*;
+#[cfg(feature = "digest")]
+#[allow(unused_imports)]
+use crate::core_assumes::sha512_hash_bytes;
+#[cfg(all(feature = "digest", verus_keep_ghost))]
+#[allow(unused_imports)]
+use crate::core_assumes::spec_sha512;
 #[allow(unused_imports)] // Used in verus! blocks for Edwards curve constants
 use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
@@ -178,12 +184,6 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::montgomery_specs::*;
-#[cfg(feature = "digest")]
-#[allow(unused_imports)]
-use crate::core_assumes::sha512_hash_bytes;
-#[cfg(all(feature = "digest", verus_keep_ghost))]
-#[allow(unused_imports)]
-use crate::core_assumes::spec_sha512;
 #[allow(unused_imports)]
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]

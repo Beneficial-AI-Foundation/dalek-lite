@@ -1354,34 +1354,36 @@ impl RistrettoPoint {
             assume(is_in_even_subgroup(result.0));
             assume(edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes));
             assert(is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result)) by {
-                // Chain for uniform distribution (axioms from proba_specs).
-                // All axioms use implications in ensures, so SMT chains them automatically.
-                //
-                // The chain is:
-                //   is_uniform_bytes(bytes)
-                //   ==> is_uniform_bytes(&r_1_bytes) ∧ is_uniform_bytes(&r_2_bytes)
-                //       ∧ is_independent_uniform_bytes32(&r_1_bytes, &r_2_bytes)
-                //   ==> is_uniform_field_element(&r_1) ∧ is_uniform_field_element(&r_2)
-                //       ∧ is_independent_uniform_field_elements(&r_1, &r_2)
-                //   ==> is_uniform_ristretto_point(&R_1) ∧ is_uniform_ristretto_point(&R_2)
-                //       ∧ is_independent_uniform_ristretto_points(&R_1, &R_2)
-                //   ==> is_uniform_ristretto_point(&result)
+                // To prove A ==> B, assume A and derive B.
+                assume(is_uniform_bytes(bytes));
+
                 // 1. Split uniform bytes into independent uniform halves
                 axiom_uniform_bytes_split(bytes, &r_1_bytes, &r_2_bytes);
+                assert(is_uniform_bytes(&r_1_bytes));
+                assert(is_uniform_bytes(&r_2_bytes));
+                assert(is_independent_uniform_bytes32(&r_1_bytes, &r_2_bytes));
 
-                // 2. from_bytes: uniform bytes → uniform field element (from from_bytes ensures)
+                // 2. from_bytes: uniform bytes -> uniform field elements (from from_bytes ensures)
+                assert(is_uniform_field_element(&r_1));
+                assert(is_uniform_field_element(&r_2));
+
                 //    from_bytes_independent: independence is preserved
                 axiom_from_bytes_independent(&r_1_bytes, &r_2_bytes, &r_1, &r_2);
+                assert(is_independent_uniform_field_elements(&r_1, &r_2));
 
-                // 3. Elligator: uniform field element → uniform point
+                // 3. Elligator: uniform field element -> uniform over Elligator IMAGE (~half group)
                 axiom_uniform_elligator(&r_1, &R_1);
                 axiom_uniform_elligator(&r_2, &R_2);
+                assert(is_uniform_over_elligator_image(&R_1));
+                assert(is_uniform_over_elligator_image(&R_2));
 
                 // 4. Elligator preserves independence
                 axiom_uniform_elligator_independent(&r_1, &r_2, &R_1, &R_2);
+                assert(is_independent_uniform_ristretto_points(&R_1, &R_2));
 
-                // 5. Sum of independent uniform points is uniform
-                axiom_uniform_point_add(&R_1, &R_2, &result);
+                // 5. Two independent Elligator-image points sum to a full-uniform point
+                axiom_uniform_elligator_sum(&R_1, &R_2, &result);
+                assert(is_uniform_ristretto_point(&result));
             }
         }
         result

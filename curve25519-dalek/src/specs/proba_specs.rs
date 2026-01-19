@@ -8,14 +8,16 @@
 //! The uniform distribution properties form a chain:
 //! 1. `is_uniform_bytes` - uniform random bytes (from RNG or hash)
 //! 2. `is_uniform_field_element` - uniform field element (from bytes via from_bytes)
-//! 3. `is_uniform_ristretto_point` - uniform group element (from field element via Elligator)
+//! 3. `is_uniform_over_elligator_image` - uniform over Elligator image (~half the group)
+//! 4. `is_uniform_ristretto_point` - uniform over FULL Ristretto group (requires 2 Elligator + add)
 //!
 //! ## Axioms
 //!
 //! Each axiom corresponds to a cryptographic/mathematical fact:
 //! - `axiom_uniform_bytes_split`: Splitting uniform bytes yields independent uniform halves
 //! - `axiom_from_bytes_uniform`: Clearing bit 255 preserves uniformity (negligible bias)
-//! - `axiom_uniform_elligator`: Elligator map produces uniform points
+//! - `axiom_uniform_elligator`: Elligator produces uniform over its IMAGE (not full group!)
+//! - `axiom_uniform_elligator_sum`: Two independent Elligator outputs sum to FULL uniform
 //! - `axiom_uniform_point_add`: Sum of *independent* uniform group elements is uniform
 #[allow(unused_imports)]
 use super::edwards_specs::*;
@@ -83,12 +85,20 @@ pub uninterp spec fn is_independent_uniform_field_elements(
 
 /// Independence predicate for two Ristretto points.
 ///
-/// This is intended to be used together with `is_uniform_ristretto_point(..)` to
-/// model two *independent uniform* samples when needed.
+/// This captures that two points are sampled independently. It can be used for
+/// either full-group-uniform samples (`is_uniform_ristretto_point(..)`) or for
+/// other sampling distributions (e.g. Elligator-image samples).
 pub uninterp spec fn is_independent_uniform_ristretto_points(
     p1: &RistrettoPoint,
     p2: &RistrettoPoint,
 ) -> bool;
+
+/// Uniform distribution over the Elligator image (roughly half the Ristretto group).
+///
+/// A single Elligator call does NOT produce a uniform point over the full group.
+/// It only reaches points with a certain Jacobi symbol - approximately half the group.
+/// This predicate captures uniformity over that restricted image.
+pub uninterp spec fn is_uniform_over_elligator_image(point: &RistrettoPoint) -> bool;
 
 // =============================================================================
 // Axiom 1: Splitting uniform bytes preserves uniformity
@@ -102,14 +112,13 @@ pub proof fn axiom_uniform_bytes_split(bytes: &[u8; 64], first: &[u8; 32], secon
     requires
         first@ == bytes@.subrange(0, 32),
         second@ == bytes@.subrange(32, 64),
+        is_uniform_bytes(bytes),
     ensures
-        is_uniform_bytes(bytes) ==> is_uniform_bytes(first),
-        is_uniform_bytes(bytes) ==> is_uniform_bytes(second),
-        is_uniform_bytes(bytes) ==> is_independent_uniform_bytes32(first, second),
+        is_uniform_bytes(first),
+        is_uniform_bytes(second),
+        is_independent_uniform_bytes32(first, second),
 {
-    assume(is_uniform_bytes(bytes) ==> is_uniform_bytes(first));
-    assume(is_uniform_bytes(bytes) ==> is_uniform_bytes(second));
-    assume(is_uniform_bytes(bytes) ==> is_independent_uniform_bytes32(first, second));
+    admit();
 }
 
 // =============================================================================
@@ -146,39 +155,41 @@ pub proof fn axiom_from_bytes_independent(
     requires
         spec_field_element_as_nat(fe1) == bytes32_to_nat(bytes1) % pow2(255),
         spec_field_element_as_nat(fe2) == bytes32_to_nat(bytes2) % pow2(255),
+        is_independent_uniform_bytes32(bytes1, bytes2),
     ensures
-        is_independent_uniform_bytes32(bytes1, bytes2) ==> is_independent_uniform_field_elements(
-            fe1,
-            fe2,
-        ),
+        is_independent_uniform_field_elements(fe1, fe2),
 {
-    assume(is_independent_uniform_bytes32(bytes1, bytes2) ==> is_independent_uniform_field_elements(
-        fe1,
-        fe2,
-    ));
+    admit();
 }
 
 // =============================================================================
-// Axiom 3: Elligator map preserves uniformity
+// Axiom 3: Elligator map produces uniform points over its IMAGE (not the full group)
 // =============================================================================
-/// Axiom: Elligator map on uniform field element produces uniform point.
+/// Axiom: Elligator map on uniform field element produces uniform point
+/// over the Elligator IMAGE (approximately half the Ristretto group).
 ///
-/// Mathematical justification:
-/// The Elligator map is designed to be a uniform map from field elements to curve points.
-/// See: Bernstein et al., "Elligator: Elliptic-curve points indistinguishable from uniform random strings"
+/// IMPORTANT: A single Elligator call does NOT produce a uniform point over
+/// the full Ristretto group. Elligator maps F_p to roughly half the curve points
+/// (those with a certain Jacobi symbol). See:
+/// - Bernstein et al., "Elligator: Elliptic-curve points indistinguishable from uniform random strings"
+/// - https://ristretto.group/formulas/elligator.html
+///
+/// To get uniform distribution over the FULL group, use two independent Elligator
+/// calls and add the results (see `axiom_uniform_elligator_sum`).
 pub proof fn axiom_uniform_elligator(fe: &FieldElement, point: &RistrettoPoint)
     requires
         edwards_point_as_affine(point.0) == spec_elligator_ristretto_flavor(spec_field_element(fe)),
+        is_uniform_field_element(fe),
     ensures
-        is_uniform_field_element(fe) ==> is_uniform_ristretto_point(point),
+        is_uniform_over_elligator_image(point),
 {
-    assume(is_uniform_field_element(fe) ==> is_uniform_ristretto_point(point));
+    admit();
 }
 
 /// Axiom: Elligator preserves independence.
 ///
 /// If two field elements are sampled independently, then applying the Elligator
-/// map to each yields independently sampled Ristretto points.
+/// map to each yields independently sampled points (over the Elligator image).
 pub proof fn axiom_uniform_elligator_independent(
     fe1: &FieldElement,
     fe2: &FieldElement,
@@ -188,17 +199,48 @@ pub proof fn axiom_uniform_elligator_independent(
     requires
         edwards_point_as_affine(p1.0) == spec_elligator_ristretto_flavor(spec_field_element(fe1)),
         edwards_point_as_affine(p2.0) == spec_elligator_ristretto_flavor(spec_field_element(fe2)),
+        is_independent_uniform_field_elements(fe1, fe2),
     ensures
-        is_independent_uniform_field_elements(fe1, fe2) ==> is_independent_uniform_ristretto_points(
-            p1,
-            p2,
-        ),
+        is_independent_uniform_ristretto_points(p1, p2),
 {
     admit();
 }
 
 // =============================================================================
-// Axiom 4: Group addition preserves uniformity
+// Axiom 4: Two independent Elligator outputs sum to FULL uniform
+// =============================================================================
+/// Axiom: Sum of two *independent* uniform-over-Elligator-image points
+/// produces a point uniform over the FULL Ristretto group.
+///
+/// Mathematical justification (Bernstein et al., ristretto.group):
+/// - Elligator(fe1) is uniform over ~half the group (Elligator image)
+/// - Elligator(fe2) is uniform over ~half the group (independent)
+/// - p1 + p2 covers the full group uniformly
+///
+/// This is precisely why `from_uniform_bytes` uses TWO Elligator calls + addition.
+pub proof fn axiom_uniform_elligator_sum(
+    p1: &RistrettoPoint,
+    p2: &RistrettoPoint,
+    sum: &RistrettoPoint,
+)
+    requires
+        edwards_point_as_affine(sum.0) == edwards_add(
+            edwards_point_as_affine(p1.0).0,
+            edwards_point_as_affine(p1.0).1,
+            edwards_point_as_affine(p2.0).0,
+            edwards_point_as_affine(p2.0).1,
+        ),
+        is_uniform_over_elligator_image(p1),
+        is_uniform_over_elligator_image(p2),
+        is_independent_uniform_ristretto_points(p1, p2),
+    ensures
+        is_uniform_ristretto_point(sum),
+{
+    admit();
+}
+
+// =============================================================================
+// Axiom 5: Group addition preserves uniformity (for already-uniform points)
 // =============================================================================
 /// Axiom: Sum of two *independent* uniform points is uniform (group theory property).
 ///
@@ -214,9 +256,11 @@ pub proof fn axiom_uniform_point_add(p1: &RistrettoPoint, p2: &RistrettoPoint, s
             edwards_point_as_affine(p2.0).0,
             edwards_point_as_affine(p2.0).1,
         ),
+        is_uniform_ristretto_point(p1),
+        is_uniform_ristretto_point(p2),
+        is_independent_uniform_ristretto_points(p1, p2),
     ensures
-        (is_uniform_ristretto_point(p1) && is_uniform_ristretto_point(p2)
-            && is_independent_uniform_ristretto_points(p1, p2)) ==> is_uniform_ristretto_point(sum),
+        is_uniform_ristretto_point(sum),
 {
     admit();
 }

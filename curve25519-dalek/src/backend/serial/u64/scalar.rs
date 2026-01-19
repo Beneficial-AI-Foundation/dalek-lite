@@ -1222,11 +1222,17 @@ impl Scalar52 {
                 ==> scalar52_to_nat(&result) < group_order(),
     {
         proof {
-            // Establish the precondition for montgomery_reduce's canonicity postcondition
+            // Establish the existential witness for montgomery_reduce's canonicity postcondition.
+            // montgomery_reduce's postcondition 2 requires: exists|bounded, canonical| ...
+            // We provide the witness directly with assert.
             if scalar52_to_nat(b) < group_order() {
-                lemma_mul_internal_one_canonical(a, b);
+                // Witness: bounded = a, canonical = b
+                assert(limbs_bounded(a) && limbs_bounded(b) && scalar52_to_nat(b) < group_order()
+                    && spec_mul_internal(a, b) == spec_mul_internal(a, b));
             } else if scalar52_to_nat(a) < group_order() {
-                lemma_mul_internal_first_canonical(a, b);
+                // Witness: bounded = b, canonical = a (commutativity inferred by Verus)
+                assert(limbs_bounded(b) && limbs_bounded(a) && scalar52_to_nat(a) < group_order()
+                    && spec_mul_internal(b, a) == spec_mul_internal(a, b));
             }
         }
         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))

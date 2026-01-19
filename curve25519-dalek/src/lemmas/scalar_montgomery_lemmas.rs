@@ -74,6 +74,47 @@ pub proof fn lemma_mul_internal_one_canonical(a: &Scalar52, b: &Scalar52)
     assert(spec_mul_internal(a, b) == spec_mul_internal(a, b));
 }
 
+/// Lemma: spec_mul_internal is commutative
+/// This follows from commutativity of multiplication for each coefficient
+pub proof fn lemma_mul_internal_commutative(a: &Scalar52, b: &Scalar52)
+    ensures
+        spec_mul_internal(a, b) == spec_mul_internal(b, a),
+{
+    let ab = spec_mul_internal(a, b);
+    let ba = spec_mul_internal(b, a);
+
+    // Each coefficient is symmetric due to commutativity of integer multiplication
+    // z[0] = a[0]*b[0] = b[0]*a[0]
+    assert(ab[0] == ba[0]);
+
+    // z[1] = a[0]*b[1] + a[1]*b[0] = b[0]*a[1] + b[1]*a[0]
+    assert(ab[1] == ba[1]);
+
+    // z[2] = a[0]*b[2] + a[1]*b[1] + a[2]*b[0] = b[0]*a[2] + b[1]*a[1] + b[2]*a[0]
+    assert(ab[2] == ba[2]);
+
+    // z[3] = a[0]*b[3] + a[1]*b[2] + a[2]*b[1] + a[3]*b[0]
+    assert(ab[3] == ba[3]);
+
+    // z[4] = a[0]*b[4] + a[1]*b[3] + a[2]*b[2] + a[3]*b[1] + a[4]*b[0]
+    assert(ab[4] == ba[4]);
+
+    // z[5] = a[1]*b[4] + a[2]*b[3] + a[3]*b[2] + a[4]*b[1]
+    assert(ab[5] == ba[5]);
+
+    // z[6] = a[2]*b[4] + a[3]*b[3] + a[4]*b[2]
+    assert(ab[6] == ba[6]);
+
+    // z[7] = a[3]*b[4] + a[4]*b[3]
+    assert(ab[7] == ba[7]);
+
+    // z[8] = a[4]*b[4] = b[4]*a[4]
+    assert(ab[8] == ba[8]);
+
+    // Array equality from element-wise equality
+    assert(ab =~= ba);
+}
+
 /// Symmetric version: first argument is canonical
 pub proof fn lemma_mul_internal_first_canonical(a: &Scalar52, b: &Scalar52)
     requires
@@ -88,13 +129,15 @@ pub proof fn lemma_mul_internal_first_canonical(a: &Scalar52, b: &Scalar52)
                 b,
             )),
 {
-    // Provide explicit witness: bounded = b, canonical = a
+    // Prove commutativity first
+    lemma_mul_internal_commutative(a, b);
+
+    // Now use witness: bounded = b, canonical = a
+    // spec_mul_internal(b, a) == spec_mul_internal(a, b) by commutativity
     assert(limbs_bounded(b));
     assert(limbs_bounded(a));
     assert(scalar52_to_nat(a) < group_order());
-    assert(spec_mul_internal(b, a) == spec_mul_internal(b, a));
-    // Need commutativity: spec_mul_internal(a, b) == spec_mul_internal(b, a)
-    assume(spec_mul_internal(a, b) == spec_mul_internal(b, a));  // TODO: prove commutativity
+    assert(spec_mul_internal(b, a) == spec_mul_internal(a, b));
 }
 
 } // verus!

@@ -134,9 +134,9 @@ use crate::backend::serial::curve_models::CompletedPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::curve_models::ProjectivePoint;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::core_assumes::try_into_32_bytes_array;
+use crate::core_assumes::{compressed_edwards_y_from_array_result, try_into_32_bytes_array};
 #[cfg(verus_keep_ghost)]
-use vstd::arithmetic::power2::{lemma2_to64, pow2};
+use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_strictly_increases, pow2};
 
 /* VERIFICATION NOTE: Only importing LookupTableRadix16 since other radix variants
 were removed during manual expansion focusing on radix-16. */
@@ -170,12 +170,16 @@ use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::step1_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for identity bytes proof
+use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for general field constants (ONE, ZERO)
 use crate::lemmas::field_lemmas::constants_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for field algebra lemmas
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -776,7 +780,27 @@ impl Identity for CompressedEdwardsY {
 
             // spec_field_element_from_bytes([1, 0, ...]) = 1
             // The bytes represent 1 in little-endian: byte[0] = 1, rest = 0
-            assume(spec_field_element_from_bytes(&result.0) == 1);
+
+            // Step 1: Prove bytes32_to_nat(&result.0) == 1
+            assert(result.0[0] == 1);
+            assert(forall|i: int| 1 <= i < 32 ==> result.0[i] == 0);
+            lemma_bytes32_to_nat_identity(&result.0);
+
+            // Step 2: 1 % pow2(255) == 1 (since 1 < pow2(255))
+            lemma2_to64();
+            assert(pow2(255) > 1) by {
+                lemma_pow2_strictly_increases(0, 255);
+            }
+            lemma_small_mod(1nat, pow2(255));
+
+            // Step 3: 1 % p() == 1 (since 1 < p() = 2^255 - 19)
+            assert(p() > 1) by {
+                p_gt_2();
+            }
+            lemma_small_mod(1nat, p());
+
+            // Conclude: spec_field_element_from_bytes = (1 % pow2(255)) % p() = 1 % p() = 1
+            assert(spec_field_element_from_bytes(&result.0) == 1);
         }
 
         result
@@ -824,18 +848,16 @@ impl CompressedEdwardsY {
             },
     {
         // ORIGINAL CODE: bytes.try_into().map(CompressedEdwardsY)
-        // VERUS WORKAROUND: Verus doesn't allow datatype constructors like CompressedEdwardsY as function values,
-        // so we use a closure |arr| CompressedEdwardsY(arr) instead of CompressedEdwardsY directly.
-        // Also, try_into is wrapped in an external function for Verus compatibility.
+        // Verus does not support try_into and map 
+        // We use external wrapper functions with core_assumes for these functions.
         let arr_result = try_into_32_bytes_array(bytes);
-        let result = arr_result.map(|arr| CompressedEdwardsY(arr));
+        let result = compressed_edwards_y_from_array_result(arr_result);
 
         proof {
-            // postcondition
-            assume(match result {
-                Ok(point) => point.0@ == bytes@,
-                Err(_) => true,
-            });
+            // WORKS AUTOMATICALLY
+            // From try_into_32_bytes_array: arr_result.is_ok() ==> arr_result.unwrap()@ == bytes@
+            // From compressed_edwards_y_from_array_result: result.unwrap().0@ == arr_result.unwrap()@
+            // Combined: result.unwrap().0@ == bytes@
         }
         result
     }

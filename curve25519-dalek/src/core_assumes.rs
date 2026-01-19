@@ -59,6 +59,26 @@ pub fn try_into_32_bytes_array(bytes: &[u8]) -> (result: Result<[u8; 32], TryFro
     bytes.try_into()
 }
 
+/// Construct a CompressedEdwardsY from an array result.
+///
+/// CompressedEdwardsY is a wrapper around [u8; 32]. This function maps
+/// a Result<[u8; 32], TryFromSliceError> to Result<CompressedEdwardsY, TryFromSliceError>,
+/// wrapping successful arrays in the CompressedEdwardsY struct.
+///
+/// The postcondition guarantees that:
+/// - Success/failure status is preserved
+/// - On success, CompressedEdwardsY's inner array (accessed via .0) equals the input array
+#[verifier::external_body]
+pub fn compressed_edwards_y_from_array_result(
+    arr_result: Result<[u8; 32], TryFromSliceError>,
+) -> (result: Result<crate::edwards::CompressedEdwardsY, TryFromSliceError>)
+    ensures
+        arr_result.is_ok() <==> result.is_ok(),
+        arr_result.is_ok() ==> result.unwrap().0@ == arr_result.unwrap()@,
+{
+    arr_result.map(|arr| crate::edwards::CompressedEdwardsY(arr))
+}
+
 /// Extract the first 32 bytes from a 64-byte array.
 #[verifier::external_body]
 pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])

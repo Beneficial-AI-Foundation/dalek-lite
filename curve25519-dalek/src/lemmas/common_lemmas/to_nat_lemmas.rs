@@ -745,12 +745,9 @@ pub proof fn lemma_bytes32_to_nat_identity(bytes: &[u8; 32])
     ensures
         bytes32_to_nat(bytes) == 1,
 {
-    // pow2(0) == 1
-    lemma2_to64();
-
     // bytes[0] * pow2(0) = 1 * 1 = 1
     assert(bytes[0] as nat * pow2(0) == 1) by {
-        assert(pow2(0) == 1);
+        lemma2_to64();
     }
 
     // All other terms are 0 * pow2(k*8) = 0

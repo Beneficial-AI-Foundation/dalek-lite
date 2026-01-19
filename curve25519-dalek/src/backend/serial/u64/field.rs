@@ -78,9 +78,13 @@ use crate::specs::core_specs::*;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
 #[allow(unused_imports)]
+use crate::core_assumes::*;
+#[allow(unused_imports)]
 use crate::specs::field_specs::*;
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
+#[allow(unused_imports)]
+use crate::specs::proba_specs::*;
 
 verus! {
 
@@ -322,7 +326,7 @@ impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &FieldElement51 {
         true
     }
 
-    // Pre-condition of sub - delegates to spec_sub_limbs_bounded for consistency
+    // Pre-condition: both operands must be 54-bounded for subtraction
     open spec fn sub_req(self, rhs: &FieldElement51) -> bool {
         fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
     }
@@ -632,7 +636,7 @@ impl vstd::std_specs::ops::NegSpecImpl for &FieldElement51 {
 
     // Pre-condition of neg
     open spec fn neg_req(self) -> bool {
-        fe51_limbs_bounded(self, 51)
+        fe51_limbs_bounded(self, 52)
     }
 
     // Postcondition of neg
@@ -740,6 +744,12 @@ impl ConditionallySelectable for FieldElement51 {
             // If choice is true, self is assigned from other
             choice_is_true(choice) ==> (forall|i: int|
                 0 <= i < 5 ==> #[trigger] self.limbs[i] == other.limbs[i]),
+            // Field element value preservation
+            !choice_is_true(choice) ==> spec_field_element(self) == spec_field_element(old(self)),
+            choice_is_true(choice) ==> spec_field_element(self) == spec_field_element(other),
+            // Boundedness preservation
+            (fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(other, 54))
+                ==> fe51_limbs_bounded(self, 54),
     {
         let mut self0 = self.limbs[0];
         conditional_assign_u64(&mut self0, &other.limbs[0], choice);
@@ -798,12 +808,9 @@ impl FieldElement51 {
     /// - For 52-bit limbs (< 2^52): 2^55 - 2^52 = 7*2^52 > 0 ✓ (no underflow)
     /// - For 54-bit limbs (< 2^54): 2^55 - 2^54 = 2^54 > 0 ✓ (no underflow)
     ///
-    /// The verified spec conservatively requires 51-bit input, but the implementation
-    /// safely handles up to 54-bit. Wrappers like `negate_field_element` and
-    /// `conditional_negate_field_element` in `subtle_assumes.rs` use relaxed 52-bit bounds.
     pub fn negate(&mut self)
         requires
-            forall|i: int| 0 <= i < 5 ==> old(self).limbs[i] < (1u64 << 51),
+            forall|i: int| 0 <= i < 5 ==> old(self).limbs[i] < (1u64 << 52),
         ensures
             forall|i: int| 0 <= i < 5 ==> self.limbs[i] < (1u64 << 52),
             // Assume we start with l = (l0, l1, l2, l3, l4).
@@ -926,6 +933,12 @@ impl FieldElement51 {
             spec_field_element_as_nat(&r) == bytes32_to_nat(bytes) % pow2(255),
             // Each limb is masked with (2^51 - 1), so bounded by 51 bits
             fe51_limbs_bounded(&r, 51),
+            // Uniformity note (if the input bytes are uniform):
+            // - `from_bytes` clears the top bit, so `bytes32_to_nat(bytes) % 2^255` is uniform over [0, 2^255).
+            // - Field arithmetic interprets this 255-bit value modulo p = 2^255 - 19.
+            //   Exactly 19 inputs (the interval [p, 2^255)) wrap around modulo p, creating a tiny bias
+            //   of at most 19/2^255 in statistical distance from uniform over F_p.
+            is_uniform_bytes(bytes) ==> is_uniform_field_element(&r),
     {
         /* MANUALLY moved outside */
         /*
@@ -976,7 +989,7 @@ impl FieldElement51 {
         }
         let low_51_bit_mask = (1u64 << 51) - 1;
         // ADAPTED CODE LINE: limbs is now a named field
-        FieldElement51 {
+        let result = FieldElement51 {
             limbs:
             // load bits [  0, 64), no shift
             [
@@ -998,7 +1011,12 @@ impl FieldElement51 {
                 ,
                 (load8_at(bytes, 24) >> 12) & low_51_bit_mask,
             ],
+        };
+        proof {
+            // Use axiom: clearing bit 255 preserves uniform distribution
+            crate::specs::proba_specs::axiom_from_bytes_uniform(bytes, &result);
         }
+        result
     }
 
     /// Serialize this `FieldElement51` to a 32-byte array.  The
@@ -1329,6 +1347,10 @@ impl FieldElement51 {
         ensures
             u64_5_as_nat(r.limbs) % p() == (2 * pow(u64_5_as_nat(self.limbs) as int, 2)) as nat
                 % p(),
+            // Bounds: pow2k gives 52-bounded, doubling gives 53-bounded
+            forall|i: int| 0 <= i < 5 ==> r.limbs[i] < 1u64 << 53,
+            // 53-bounded implies 54-bounded (for compatibility)
+            fe51_limbs_bounded(&r, 54),
     {
         let mut square = self.pow2k(1);
 
@@ -1392,12 +1414,30 @@ impl FieldElement51 {
                 forall|j: int| 0 <= j < 5 ==> old_limbs[j] < (1u64 << 52),
                 forall|j: int| 0 <= j < i ==> #[trigger] square.limbs[j] == 2 * old_limbs[j],
                 forall|j: int| i <= j < 5 ==> #[trigger] square.limbs[j] == old_limbs[j],
+                // Bounds invariant: processed limbs are 53-bounded (2 * 52-bit < 2^53)
+                forall|j: int| 0 <= j < i ==> square.limbs[j] < (1u64 << 53),
         {
             proof {
                 assert(2 * (1u64 << 52) <= u64::MAX) by (compute);
                 lemma_mul_strict_inequality(square.limbs[i as int] as int, (1u64 << 52) as int, 2);
+                // After doubling: 2 * old_limbs[i] < 2 * 2^52 = 2^53
+                assert(2 * (1u64 << 52) == (1u64 << 53)) by (bit_vector);
             }
             square.limbs[i] *= 2;
+        }
+
+        proof {
+            // After loop: all limbs are 53-bounded
+            assert forall|j: int| 0 <= j < 5 implies square.limbs[j] < (1u64 << 53) by {
+                assert(square.limbs[j] == 2 * old_limbs[j]);
+                assert(old_limbs[j] < (1u64 << 52));
+                assert(2 * (1u64 << 52) == (1u64 << 53)) by (bit_vector);
+            }
+            // 53-bounded implies 54-bounded
+            assert forall|j: int| 0 <= j < 5 implies square.limbs[j] < (1u64 << 54) by {
+                assert(square.limbs[j] < (1u64 << 53));
+                assert((1u64 << 53) < (1u64 << 54)) by (bit_vector);
+            }
         }
 
         square

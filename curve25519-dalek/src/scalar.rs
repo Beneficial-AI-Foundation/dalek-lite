@@ -117,9 +117,9 @@ use crate::lemmas::common_lemmas::sum_lemmas::*;
 use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 use crate::scalar_helpers::*;
 #[cfg(feature = "alloc")]
-use crate::specs::scalar_mul_specs::collect_scalars_from_iter;
+use crate::specs::iterator_specs::collect_scalars_from_iter;
 #[cfg(all(feature = "alloc", verus_keep_ghost))]
-use crate::specs::scalar_mul_specs::spec_scalars_from_iter;
+use crate::specs::iterator_specs::spec_scalars_from_iter;
 use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::iter::{Product, Sum};
@@ -174,6 +174,9 @@ use crate::specs::scalar52_specs::*;
 use crate::lemmas::scalar_lemmas::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::scalar_batch_invert_lemmas::*;
+
+#[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
 
 #[allow(unused_imports)]
@@ -181,6 +184,9 @@ use crate::core_assumes::*;
 
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
+
+#[allow(unused_imports)]
+use crate::specs::proba_specs::*;
 
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
@@ -284,6 +290,9 @@ impl Scalar {
                 % group_order(),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
+            // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.
+            // Bias: at most L/2^512 ≈ 2^-259 statistical distance from uniform (cryptographically negligible).
+            is_uniform_bytes(input) ==> is_uniform_scalar(&result),
     {
         /* <ORIGINAL CODE>
         UnpackedScalar::from_bytes_wide(input).pack()
@@ -316,6 +325,10 @@ impl Scalar {
             //                                              == bytes_seq_to_nat(input@) % group_order()
             lemma_mod_bound(bytes_seq_to_nat(input@) as int, group_order() as int);
             lemma_small_mod(bytes32_to_nat(&result.bytes), group_order());
+
+            // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.
+            // Bias: at most L/2^512 ≈ 2^-259 statistical distance (cryptographically negligible).
+            axiom_uniform_mod_reduction(input, &result);
         }
 
         result  /* </MODIFIED CODE> */
@@ -365,7 +378,6 @@ impl Scalar {
 
         proof {
             if bytes32_to_nat(&bytes) < group_order() {
-                use crate::lemmas::scalar_lemmas::lemma_canonical_bytes_high_bit_clear;
                 lemma_canonical_bytes_high_bit_clear(&candidate.bytes);
                 assert(high_byte >> 7 == 0) by (bit_vector)
                     requires
@@ -995,7 +1007,7 @@ impl ConditionallySelectable for Scalar {
 
 /* <VERIFICATION NOTE>
  Trait implementations for Product and Sum use iterators which are not directly supported by Verus.
- Both use external_body helpers (collect_scalars_from_iter from scalar_mul_specs) to collect
+ Both use external_body helpers (collect_scalars_from_iter from iterator_specs) to collect
  the iterator into Vec<Scalar>, then call verified product_of_slice/sum_of_slice functions.
 </VERIFICATION NOTE> */
 
@@ -1422,14 +1434,18 @@ impl Scalar {
     /// let a: Scalar = Scalar::random(&mut csprng);
     /// # }
     /* <VERIFICATION NOTE>
-     No verifier::external_body annotation but it is NOT verified
+     Uses fill_bytes wrapper from core_assumes to establish is_uniform_bytes,
+     then from_bytes_mod_order_wide propagates uniformity to is_uniform_scalar.
     </VERIFICATION NOTE> */
     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> (result: Self)
         ensures
-            is_random_scalar(&result),
+            is_uniform_scalar(&result),
             is_canonical_scalar(&result),
     {
         let mut scalar_bytes = [0u8;64];
+        #[cfg(verus_keep_ghost)]
+        crate::core_assumes::fill_bytes(rng, &mut scalar_bytes);
+        #[cfg(not(verus_keep_ghost))]
         rng.fill_bytes(&mut scalar_bytes);
         Scalar::from_bytes_mod_order_wide(&scalar_bytes)
     }
@@ -1483,14 +1499,14 @@ impl Scalar {
     /// # Returns
     ///
     /// A scalar reduced modulo the group order
+    #[cfg(feature = "digest")]
     pub fn hash_from_bytes_verus(input: &[u8]) -> (result: Scalar)
         ensures
-            is_random_bytes(input) ==> is_random_scalar(&result),
+            is_uniform_bytes(input) ==> is_uniform_scalar(&result),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
     {
-        use crate::core_assumes as assumes;
-        let hash_bytes: [u8; 64] = assumes::sha512_hash_bytes(input);
+        let hash_bytes: [u8; 64] = sha512_hash_bytes(input);
         Scalar::from_hash_verus(hash_bytes)
     }
 
@@ -1515,8 +1531,7 @@ impl Scalar {
     /// h.update(b"perhaps all architecture, rather than being about functional standards, is");
     /// h.update(b"about love and death.");
     ///
-    /// let hash_bytes: [u8; 64] = h.finalize().into();
-    /// let s = Scalar::from_hash(hash_bytes);
+    /// let s = Scalar::from_hash(h);
     ///
     /// println!("{:?}", s.to_bytes());
     /// assert_eq!(
@@ -1538,7 +1553,7 @@ impl Scalar {
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64>,
 
         ensures
-    //is_random_digest(&hash) ==> is_random_scalar(&result),
+    // is_uniform_digest(&hash) ==> is_uniform_scalar(&result),
     // Result satisfies Scalar invariants #1 and #2
 
             is_canonical_scalar(&result),
@@ -1562,7 +1577,7 @@ impl Scalar {
     /// A scalar reduced modulo the group order
     pub fn from_hash_verus(hash_bytes: [u8; 64]) -> (result: Scalar)
         ensures
-            is_random_bytes(&hash_bytes) ==> is_random_scalar(&result),
+            is_uniform_bytes(&hash_bytes) ==> is_uniform_scalar(&result),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
     {
@@ -1744,7 +1759,7 @@ impl Scalar {
         // field elements.
         let n = inputs.len();
         let one_unpacked = Scalar::ONE.unpack();
-        
+
         let one: UnpackedScalar = one_unpacked.as_montgomery();
 
         /* <VERIFICATION NOTE>
@@ -1754,30 +1769,39 @@ impl Scalar {
          let mut scratch = vec![one; n];
          </ORIGINAL CODE> */
         let mut scratch = Vec::new();
-        for _ in 0..n {
+        for j in 0..n
+            invariant
+                scratch.len() == j,
+        {
             scratch.push(one);
         }
 
         // Keep an accumulator of all of the previous products
         let acc_unpacked = Scalar::ONE.unpack();
 
-        proof {
-            assume(scratch.len() == n);
-        }
-
+        // scratch.len() == n follows from the loop above
         let mut acc = acc_unpacked.as_montgomery();
 
+        let ghost original_inputs: Seq<Scalar> = inputs@;
 
-        // Pass through the input vector, recording the previous
-        // products in the scratch space
+        proof {
+            lemma_scalar_one_properties();
+            assert(scalar52_to_nat(&acc_unpacked) == 1);
+            assert(scalar52_to_nat(&acc) % group_order() == (1 * montgomery_radix())
+                % group_order());
+            assert((montgomery_radix() * 1) % group_order() == montgomery_radix() % group_order());
+            assert(partial_product(original_inputs, 0) == 1nat);
+        }
+
+        // First loop: build prefix products
         /* <VERIFICATION NOTE>
          Rewritten with index loop instead of .zip() for Verus compatibility
         </VERIFICATION NOTE> */
         /* <ORIGINAL CODE>
          for (input, scratch) in inputs.iter_mut().zip(scratch.iter_mut()) {
              *scratch = acc;
-        //     // Avoid unnecessary Montgomery multiplication in second pass by
-        //     // keeping inputs in Montgomery form
+             // Avoid unnecessary Montgomery multiplication in second pass by
+             // keeping inputs in Montgomery form
              let tmp = input.unpack().as_montgomery();
              *input = tmp.pack();
              acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
@@ -1788,23 +1812,86 @@ impl Scalar {
                 scratch.len() == n,
                 n == inputs.len(),
                 limb_prod_bounded_u128(acc.limbs, acc.limbs, 5),
+                limbs_bounded(&acc),
+                forall|j: int| 0 <= j < i ==> #[trigger] limbs_bounded(&scratch[j]),
+                // SEMANTIC INVARIANT: acc represents R * partial_product(original_inputs, i) in Montgomery form
+                scalar52_to_nat(&acc) % group_order() == (montgomery_radix() * partial_product(
+                    original_inputs,
+                    i as int,
+                )) % group_order(),
+                // Track original inputs sequence
+                original_inputs == old(inputs)@,
+                original_inputs.len() == n,
+                // inputs[i..n] are still unmodified (equal to original_inputs[i..n])
+                forall|j: int| i <= j < n ==> #[trigger] inputs[j] == #[trigger] original_inputs[j],
+                // SEMANTIC INVARIANT: scratch[j] contains R * partial_product(original_inputs, j)
+                forall|j: int|
+                    #![auto]
+                    0 <= j < i ==> scalar52_to_nat(&scratch[j]) % group_order() == (
+                    montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
+                // SEMANTIC INVARIANT: inputs[j] for j < i contains scalar[j] in Montgomery form
+                // i.e., bytes32_to_nat(&inputs[j].bytes) % L == (bytes32_to_nat(&original_inputs[j].bytes) * R) % L
+                forall|j: int|
+                    #![auto]
+                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (
+                    bytes32_to_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
         {
             scratch[i] = acc;
 
             // Avoid unnecessary Montgomery multiplication in second pass by
             // keeping inputs in Montgomery form
+            // At this point: inputs[i] == original_inputs[i]
             let input_unpacked = inputs[i].unpack();
+
             let tmp = input_unpacked.as_montgomery();
+
+            proof {
+                use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
+                use vstd::arithmetic::div_mod::lemma_small_mod;
+
+                let L = group_order();
+                let R = montgomery_radix();
+                let scalar_i = bytes32_to_nat(&original_inputs[i as int].bytes);
+
+                assert(scalar52_to_nat(&input_unpacked) == scalar_i);
+                assert(scalar52_to_nat(&tmp) % L == (scalar_i * R) % L);
+                // tmp is canonical (< L) from as_montgomery's postcondition
+
+                lemma_group_order_bound();
+                lemma_pow2_strictly_increases(255, 256);
+                lemma_small_mod(scalar52_to_nat(&tmp), pow2(256));
+            }
+
             inputs[i] = tmp.pack();
-            assert(limb_prod_bounded_u128(acc.limbs, tmp.limbs, 5)) by {
-                lemma_limbs_bounded_implies_prod_bounded(&acc, &tmp);
+
+            // Save acc before the multiplication for the proof
+            let ghost acc_before = acc;
+
+            acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
+
+            proof {
+                let acc_val = scalar52_to_nat(&acc);
+                let acc_before_val = scalar52_to_nat(&acc_before);
+                let tmp_val = scalar52_to_nat(&tmp);
+
+                lemma_montgomery_mul_partial_product(
+                    acc_before_val,
+                    tmp_val,
+                    acc_val,
+                    original_inputs,
+                    i as int,
+                );
             }
             acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
         }
+        // After the loop: forall|j| 0 <= j < n ==> limbs_bounded(&scratch[j])
+
+        // After the first loop:
+        // - acc represents R * product_of_scalars(original_inputs) in Montgomery form
+        // - scratch[j] contains R * partial_product(original_inputs, j)
 
         proof {
-            // Assert that all scratch elements have bounded limbs
-            assume(forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]));
+            lemma_partial_product_full(original_inputs);
         }
 
         // acc is nonzero iff all inputs are nonzero
@@ -1812,16 +1899,40 @@ impl Scalar {
         debug_assert!(acc.pack() != Scalar::ZERO);
 
         // Compute the inverse of all products
-        // ORIGINAL CODE: acc = acc.montgomery_invert().from_montgomery();
-        acc = acc.montgomery_invert();
+        let ghost acc_before_invert = acc;
 
+        /* <ORIGINAL CODE>
+         acc = acc.montgomery_invert().from_montgomery();
+        </ORIGINAL CODE> */
+        acc = acc.montgomery_invert();
+        let ghost acc_after_invert = acc;
         acc = acc.from_montgomery();
+
+        proof {
+            use vstd::arithmetic::div_mod::lemma_small_mod;
+            use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
+
+            let L = group_order();
+            let R = montgomery_radix();
+            let P = product_of_scalars(original_inputs);
+            let acc_before_val = scalar52_to_nat(&acc_before_invert);
+            let acc_after_val = scalar52_to_nat(&acc_after_invert);
+            let final_acc_val = scalar52_to_nat(&acc);
+
+            lemma_invert_chain(acc_before_val, acc_after_val, final_acc_val, P);
+            lemma_small_mod(1nat, L);
+
+            lemma_group_order_bound();
+            lemma_pow2_strictly_increases(255, 256);
+            lemma_small_mod(final_acc_val, pow2(256));
+        }
 
         // We need to return the product of all inverses later
         let ret = acc.pack();
+        // Second loop: compute inverses in place
+        let ghost ret_val = scalar52_to_nat(&acc);
 
-        // Pass through the vector backwards to compute the inverses
-        // in place
+        // Pass through the vector backwards to compute the inverses in place
         /* <VERIFICATION NOTE>
          Manual reverse loop instead of .rev() for Verus compatibility
         </VERIFICATION NOTE> */
@@ -1839,7 +1950,27 @@ impl Scalar {
                 n == inputs.len(),
                 i <= n,
                 limbs_bounded(&acc),
+                scalar52_to_nat(&acc) < group_order(),
                 forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]),
+                original_inputs == old(inputs)@,
+                n == original_inputs.len(),
+                forall|j: int| #![auto] i <= j < n ==> is_inverse(&original_inputs[j], &inputs[j]),
+                // Track that ret is still inverse of product_of_all
+                is_inverse_of_nat(&ret, product_of_scalars(original_inputs)),
+                // SEMANTIC INVARIANT: scratch[j] still contains R * partial_product(original_inputs, j)
+                forall|j: int|
+                    #![auto]
+                    0 <= j < n ==> scalar52_to_nat(&scratch[j]) % group_order() == (
+                    montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
+                // SEMANTIC INVARIANT: inputs[j] for unprocessed j < i contains scalar[j] in Montgomery form
+                forall|j: int|
+                    #![auto]
+                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (
+                    bytes32_to_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
+                // SEMANTIC INVARIANT: acc represents the inverse of partial_product(original_inputs, i)
+                // i.e., (scalar52_to_nat(&acc) * partial_product(original_inputs, i)) % L == 1
+                (scalar52_to_nat(&acc) * partial_product(original_inputs, i as int)) % group_order()
+                    == 1nat,
             decreases i,
         {
             i -= 1;
@@ -1848,30 +1979,68 @@ impl Scalar {
             assert(limb_prod_bounded_u128(acc.limbs, input_unpacked.limbs, 5)) by {
                 lemma_limbs_bounded_implies_prod_bounded(&acc, &input_unpacked);
             }
+            let ghost acc_before = acc;
 
             let tmp = UnpackedScalar::montgomery_mul(&acc, &input_unpacked);
 
             assert(limb_prod_bounded_u128(acc.limbs, scratch[i as int].limbs, 5)) by {
-                lemma_limbs_bounded_implies_prod_bounded(&acc, &scratch[i as int]);
-            }
-
-            inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
+                lemma_limbs_bounded_implies_prod_bounded(&acc, &scratch[i as int]);          
+          
+            let new_input_unpacked = UnpackedScalar::montgomery_mul(&acc, &scratch[i]);
+            inputs[i] = new_input_unpacked.pack();
             acc = tmp;
+
+            proof {
+                use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
+                use vstd::arithmetic::div_mod::lemma_small_mod;
+
+                let L = group_order();
+                let R = montgomery_radix();
+                let acc_before_val = scalar52_to_nat(&acc_before);
+                let scratch_val = scalar52_to_nat(&scratch[i as int]);
+                let result_m = scalar52_to_nat(&new_input_unpacked);
+                let result = bytes32_to_nat(&inputs[i as int].bytes);
+                let scalar_i = bytes32_to_nat(&original_inputs[i as int].bytes);
+
+                // acc and new_input_unpacked are canonical from montgomery_mul's postcondition
+                // because acc_before is canonical (loop invariant)
+
+                // Prove result == result_m via canonicity
+                lemma_group_order_bound();
+                lemma_pow2_strictly_increases(255, 256);
+                lemma_small_mod(result_m, pow2(256));
+
+                // Prove inputs[i] is inverse of original_inputs[i]
+                lemma_backward_loop_is_inverse(
+                    acc_before_val,
+                    scratch_val,
+                    result_m,
+                    result,
+                    original_inputs,
+                    i as int,
+                );
+                assert((scalar_i * result) % L == (result * scalar_i) % L) by (nonlinear_arith);
+
+                // Prove acc invariant is maintained
+                let input_val = scalar52_to_nat(&input_unpacked);
+                let acc_after_val = scalar52_to_nat(&acc);
+                lemma_backward_loop_acc_invariant(
+                    acc_before_val,
+                    input_val,
+                    acc_after_val,
+                    original_inputs,
+                    i as int,
+                );
+            }
+            /* ORIGINAL CODE (inlined before proof block):
+               inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
+               acc = tmp;
+            */
         }
 
         #[cfg(feature = "zeroize")]
         #[cfg(not(verus_keep_ghost))]
         Zeroize::zeroize(&mut scratch);
-
-        proof {
-            // Assume the postconditions
-            assume(is_inverse_of_nat(&ret, product_of_scalars(old(inputs)@)));
-            assume(forall|i: int|
-                0 <= i < inputs.len() ==> #[trigger] is_inverse(
-                    &(#[trigger] old(inputs)[i]),
-                    &(#[trigger] inputs[i]),
-                ));
-        }
 
         ret
     }
@@ -2861,8 +3030,6 @@ impl UnpackedScalar {
 
         proof {
             if scalar52_to_nat(self) < group_order() {
-                use crate::lemmas::scalar_lemmas::lemma_scalar52_lt_pow2_256_if_canonical;
-
                 lemma_scalar52_lt_pow2_256_if_canonical(self);
                 lemma_small_mod(scalar52_to_nat(self), pow2(256));
                 assert(scalar52_to_nat(self) % pow2(256) == scalar52_to_nat(self));
@@ -2875,7 +3042,6 @@ impl UnpackedScalar {
                 assert(v == bytes32_to_nat(&result.bytes));
                 assert(v < group_order());
                 {
-                    use crate::lemmas::scalar_lemmas::lemma_group_order_bound;
                     lemma_group_order_bound();
                     assert(group_order() < pow2(255));
 

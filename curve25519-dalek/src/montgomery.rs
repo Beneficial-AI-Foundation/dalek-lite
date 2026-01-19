@@ -75,6 +75,9 @@ use crate::specs::montgomery_specs::*;
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
+// Explicit import to disambiguate from core_specs::bits_be_to_nat
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::bits_be_to_nat;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
 
@@ -185,7 +188,7 @@ impl Hash for MontgomeryPoint {
                  where initial_state is the value of *state before this call.
                  However, Verus doesn't support old() on &mut types in ensures clauses.
                  The property is for now established via assumes in the function body (lines 192-194).
-            (2) The spec is completed by lemma_hash_is_canonical: equal field elements hash identically. */
+            (2) The spec is completed by axiom_hash_is_canonical: equal field elements hash identically. */
 
             true,
     {
@@ -877,7 +880,7 @@ fn differential_add_and_double(
 
 define_mul_assign_variants!(LHS = MontgomeryPoint, RHS = Scalar);
 
-define_mul_variants!(
+define_mul_variants_verus!(
     LHS = MontgomeryPoint,
     RHS = Scalar,
     Output = MontgomeryPoint
@@ -889,7 +892,7 @@ define_mul_variants_verus!(
     Output = MontgomeryPoint
 );
 
-// NOTE: MulSpecImpl for &MontgomeryPoint * &Scalar moved to mul_specs.rs
+// NOTE: MulSpecImpl for &MontgomeryPoint * &Scalar in arithm_trait_specs.rs
 /// Multiply this `MontgomeryPoint` by a `Scalar`.
 impl Mul<&Scalar> for &MontgomeryPoint {
     type Output = MontgomeryPoint;
@@ -957,7 +960,7 @@ impl MulAssign<&Scalar> for MontgomeryPoint {
     }
 }
 
-// NOTE: MulSpecImpl for &Scalar * &MontgomeryPoint moved to mul_specs.rs
+// NOTE: MulSpecImpl for &Scalar * &MontgomeryPoint in arithm_trait_specs.rs
 impl Mul<&MontgomeryPoint> for &Scalar {
     type Output = MontgomeryPoint;
 
@@ -981,7 +984,7 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 }
 
 // NOTE: MulSpecImpl and owned-type Mul implementations for Scalar * MontgomeryPoint
-// have been moved to mul_specs.rs
+// are in arithm_trait_specs.rs
 } // verus!
 // ------------------------------------------------------------------------
 // Tests

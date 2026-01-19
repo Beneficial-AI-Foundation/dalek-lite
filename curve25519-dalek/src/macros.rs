@@ -38,6 +38,62 @@ macro_rules! define_add_variants {
     };
 }
 
+/// Define Add variants for RistrettoPoint inside verus! block.
+/// Includes well-formedness and functional correctness (edwards_add).
+macro_rules! define_ristretto_add_variants {
+    () => {
+        verus! {
+        impl<'b> Add<&'b RistrettoPoint> for RistrettoPoint {
+            type Output = RistrettoPoint;
+            fn add(self, rhs: &'b RistrettoPoint) -> (result: RistrettoPoint)
+                ensures
+                    is_well_formed_edwards_point(result.0),
+                    edwards_point_as_affine(result.0) == edwards_add(
+                        edwards_point_as_affine(self.0).0,
+                        edwards_point_as_affine(self.0).1,
+                        edwards_point_as_affine(rhs.0).0,
+                        edwards_point_as_affine(rhs.0).1,
+                    ),
+            {
+                &self + rhs
+            }
+        }
+
+        impl<'a> Add<RistrettoPoint> for &'a RistrettoPoint {
+            type Output = RistrettoPoint;
+            fn add(self, rhs: RistrettoPoint) -> (result: RistrettoPoint)
+                ensures
+                    is_well_formed_edwards_point(result.0),
+                    edwards_point_as_affine(result.0) == edwards_add(
+                        edwards_point_as_affine(self.0).0,
+                        edwards_point_as_affine(self.0).1,
+                        edwards_point_as_affine(rhs.0).0,
+                        edwards_point_as_affine(rhs.0).1,
+                    ),
+            {
+                self + &rhs
+            }
+        }
+
+        impl Add<RistrettoPoint> for RistrettoPoint {
+            type Output = RistrettoPoint;
+            fn add(self, rhs: RistrettoPoint) -> (result: RistrettoPoint)
+                ensures
+                    is_well_formed_edwards_point(result.0),
+                    edwards_point_as_affine(result.0) == edwards_add(
+                        edwards_point_as_affine(self.0).0,
+                        edwards_point_as_affine(self.0).1,
+                        edwards_point_as_affine(rhs.0).0,
+                        edwards_point_as_affine(rhs.0).1,
+                    ),
+            {
+                &self + &rhs
+            }
+        }
+        }
+    };
+}
+
 /// Define non-borrow variants of `AddAssign`.
 macro_rules! define_add_assign_variants {
     (LHS = $lhs:ty, RHS = $rhs:ty) => {
@@ -71,6 +127,62 @@ macro_rules! define_sub_variants {
             fn sub(self, rhs: $rhs) -> $out {
                 &self - &rhs
             }
+        }
+    };
+}
+
+/// Define Sub variants for RistrettoPoint inside verus! block.
+/// Includes well-formedness and functional correctness (edwards_sub).
+macro_rules! define_ristretto_sub_variants {
+    () => {
+        verus! {
+        impl<'b> Sub<&'b RistrettoPoint> for RistrettoPoint {
+            type Output = RistrettoPoint;
+            fn sub(self, rhs: &'b RistrettoPoint) -> (result: RistrettoPoint)
+                ensures
+                    is_well_formed_edwards_point(result.0),
+                    edwards_point_as_affine(result.0) == edwards_sub(
+                        edwards_point_as_affine(self.0).0,
+                        edwards_point_as_affine(self.0).1,
+                        edwards_point_as_affine(rhs.0).0,
+                        edwards_point_as_affine(rhs.0).1,
+                    ),
+            {
+                &self - rhs
+            }
+        }
+
+        impl<'a> Sub<RistrettoPoint> for &'a RistrettoPoint {
+            type Output = RistrettoPoint;
+            fn sub(self, rhs: RistrettoPoint) -> (result: RistrettoPoint)
+                ensures
+                    is_well_formed_edwards_point(result.0),
+                    edwards_point_as_affine(result.0) == edwards_sub(
+                        edwards_point_as_affine(self.0).0,
+                        edwards_point_as_affine(self.0).1,
+                        edwards_point_as_affine(rhs.0).0,
+                        edwards_point_as_affine(rhs.0).1,
+                    ),
+            {
+                self - &rhs
+            }
+        }
+
+        impl Sub<RistrettoPoint> for RistrettoPoint {
+            type Output = RistrettoPoint;
+            fn sub(self, rhs: RistrettoPoint) -> (result: RistrettoPoint)
+                ensures
+                    is_well_formed_edwards_point(result.0),
+                    edwards_point_as_affine(result.0) == edwards_sub(
+                        edwards_point_as_affine(self.0).0,
+                        edwards_point_as_affine(self.0).1,
+                        edwards_point_as_affine(rhs.0).0,
+                        edwards_point_as_affine(rhs.0).1,
+                    ),
+            {
+                &self - &rhs
+            }
+        }
         }
     };
 }
@@ -112,11 +224,11 @@ macro_rules! define_mul_variants {
     };
 }
 
-/// This is the same as define_mul_variants,
-/// except it's for types where we've specified what mul does
+/// Define borrow and non-borrow variants of `Mul` inside verus! block.
+/// Use this when the macro-generated functions are called from within verus! blocks.
 macro_rules! define_mul_variants_verus {
     (LHS = $lhs:ty, RHS = $rhs:ty, Output = $out:ty) => {
-        verus!{
+        verus! {
         impl<'b> Mul<&'b $rhs> for $lhs {
             type Output = $out;
             fn mul(self, rhs: &'b $rhs) -> $out {

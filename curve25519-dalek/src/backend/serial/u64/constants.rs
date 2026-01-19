@@ -22,8 +22,10 @@ use crate::{
 
 use vstd::prelude::*;
 
+verus! {
+
 /// The value of minus one, equal to `-&FieldElement::ONE`
-pub(crate) const MINUS_ONE: FieldElement51 = FieldElement51 {
+pub const MINUS_ONE: FieldElement51 = FieldElement51 {
     limbs: [
         2251799813685228,
         2251799813685247,
@@ -33,6 +35,7 @@ pub(crate) const MINUS_ONE: FieldElement51 = FieldElement51 {
     ],
 };
 
+} // verus!
 /// sqrt(-486664)
 // #[cfg(feature = "digest")]
 // pub(crate) const ED25519_SQRTAM2: FieldElement51 = FieldElement51::from_limbs([
@@ -42,52 +45,27 @@ pub(crate) const MINUS_ONE: FieldElement51 = FieldElement51 {
 //     947681270984193,
 //     266558006233600,
 // ]);
+verus! {
 
 /// One minus edwards `d` value squared, equal to `(1 - (-121665/121666) mod p) pow 2`
-pub(crate) const ONE_MINUS_EDWARDS_D_SQUARED: FieldElement51 = FieldElement51 {
-    limbs: [
-        1136626929484150,
-        1998550399581263,
-        496427632559748,
-        118527312129759,
-        45110755273534,
-    ],
+pub const ONE_MINUS_EDWARDS_D_SQUARED: FieldElement51 = FieldElement51 {
+    limbs: [1136626929484150, 1998550399581263, 496427632559748, 118527312129759, 45110755273534],
 };
 
 /// Edwards `d` value minus one squared, equal to `(((-121665/121666) mod p) - 1) pow 2`
-pub(crate) const EDWARDS_D_MINUS_ONE_SQUARED: FieldElement51 = FieldElement51 {
-    limbs: [
-        1507062230895904,
-        1572317787530805,
-        683053064812840,
-        317374165784489,
-        1572899562415810,
-    ],
+pub const EDWARDS_D_MINUS_ONE_SQUARED: FieldElement51 = FieldElement51 {
+    limbs: [1507062230895904, 1572317787530805, 683053064812840, 317374165784489, 1572899562415810],
 };
 
 /// `= sqrt(a*d - 1)`, where `a = -1 (mod p)`, `d` are the Edwards curve parameters.
-pub(crate) const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
-    limbs: [
-        2241493124984347,
-        425987919032274,
-        2207028919301688,
-        1220490630685848,
-        974799131293748,
-    ],
+pub const SQRT_AD_MINUS_ONE: FieldElement51 = FieldElement51 {
+    limbs: [2241493124984347, 425987919032274, 2207028919301688, 1220490630685848, 974799131293748],
 };
 
 /// `= 1/sqrt(a-d)`, where `a = -1 (mod p)`, `d` are the Edwards curve parameters.
-pub(crate) const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
-    limbs: [
-        278908739862762,
-        821645201101625,
-        8113234426968,
-        1777959178193151,
-        2118520810568447,
-    ],
+pub const INVSQRT_A_MINUS_D: FieldElement51 = FieldElement51 {
+    limbs: [278908739862762, 821645201101625, 8113234426968, 1777959178193151, 2118520810568447],
 };
-
-verus! {
 
 /// `APLUS2_OVER_FOUR` is (A+2)/4. (This is used internally within the Montgomery ladder.)
 pub(crate) const APLUS2_OVER_FOUR: FieldElement51 = FieldElement51 { limbs: [121666, 0, 0, 0, 0] };
@@ -109,9 +87,6 @@ pub(crate) const MONTGOMERY_A_NEG: FieldElement51 = FieldElement51 {
         2251799813685247,
     ],
 };
-
-} // verus!
-verus! {
 
 /// Precomputed value of one of the square roots of -1 (mod p)
 pub const SQRT_M1: FieldElement51 = FieldElement51 {
@@ -200,7 +175,6 @@ pub const ED25519_BASEPOINT_POINT: EdwardsPoint = EdwardsPoint {
     },
 };
 
-} // verus!
 /// The 8-torsion subgroup \\(\mathcal E \[8\]\\).
 ///
 /// In the case of Curve25519, it is cyclic; the \\(i\\)-th element of
@@ -214,147 +188,184 @@ pub const EIGHT_TORSION: [EdwardsPoint; 8] = EIGHT_TORSION_INNER_DOC_HIDDEN;
 /// Inner item used to hide limb constants from cargo doc output.
 #[doc(hidden)]
 pub const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8] = [
+// T[0] = identity (0, 1)
+
     EdwardsPoint {
-        X: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Y: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Y: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[1]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            358744748052810,
-            1691584618240980,
-            977650209285361,
-            1429865912637724,
-            560044844278676,
-        ]),
-        Y: FieldElement51::from_limbs([
-            84926274344903,
-            473620666599931,
-            365590438845504,
-            1028470286882429,
-            2146499180330972,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            1448326834587521,
-            1857896831960481,
-            1093722731865333,
-            1677408490711241,
-            1915505153018406,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                358744748052810,
+                1691584618240980,
+                977650209285361,
+                1429865912637724,
+                560044844278676,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                84926274344903,
+                473620666599931,
+                365590438845504,
+                1028470286882429,
+                2146499180330972,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                1448326834587521,
+                1857896831960481,
+                1093722731865333,
+                1677408490711241,
+                1915505153018406,
+            ],
+        },
     },
+    // T[2] - 4-torsion element
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            533094393274173,
-            2016890930128738,
-            18285341111199,
-            134597186663265,
-            1486323764102114,
-        ]),
-        Y: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 {
+            limbs: [
+                533094393274173,
+                2016890930128738,
+                18285341111199,
+                134597186663265,
+                1486323764102114,
+            ],
+        },
+        Y: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[3]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            358744748052810,
-            1691584618240980,
-            977650209285361,
-            1429865912637724,
-            560044844278676,
-        ]),
-        Y: FieldElement51::from_limbs([
-            2166873539340326,
-            1778179147085316,
-            1886209374839743,
-            1223329526802818,
-            105300633354275,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            803472979097708,
-            393902981724766,
-            1158077081819914,
-            574391322974006,
-            336294660666841,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                358744748052810,
+                1691584618240980,
+                977650209285361,
+                1429865912637724,
+                560044844278676,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                2166873539340326,
+                1778179147085316,
+                1886209374839743,
+                1223329526802818,
+                105300633354275,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                803472979097708,
+                393902981724766,
+                1158077081819914,
+                574391322974006,
+                336294660666841,
+            ],
+        },
     },
+    // T[4] - 2-torsion element (0, -1)
     EdwardsPoint {
-        X: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Y: FieldElement51::from_limbs([
-            2251799813685228,
-            2251799813685247,
-            2251799813685247,
-            2251799813685247,
-            2251799813685247,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Y: FieldElement51 {
+            limbs: [
+                2251799813685228,
+                2251799813685247,
+                2251799813685247,
+                2251799813685247,
+                2251799813685247,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[5]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            1893055065632419,
-            560215195444267,
-            1274149604399886,
-            821933901047523,
-            1691754969406571,
-        ]),
-        Y: FieldElement51::from_limbs([
-            2166873539340326,
-            1778179147085316,
-            1886209374839743,
-            1223329526802818,
-            105300633354275,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            1448326834587521,
-            1857896831960481,
-            1093722731865333,
-            1677408490711241,
-            1915505153018406,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                1893055065632419,
+                560215195444267,
+                1274149604399886,
+                821933901047523,
+                1691754969406571,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                2166873539340326,
+                1778179147085316,
+                1886209374839743,
+                1223329526802818,
+                105300633354275,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                1448326834587521,
+                1857896831960481,
+                1093722731865333,
+                1677408490711241,
+                1915505153018406,
+            ],
+        },
     },
+    // T[6] - 4-torsion element
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            1718705420411056,
-            234908883556509,
-            2233514472574048,
-            2117202627021982,
-            765476049583133,
-        ]),
-        Y: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([0, 0, 0, 0, 0]),
+        X: FieldElement51 {
+            limbs: [
+                1718705420411056,
+                234908883556509,
+                2233514472574048,
+                2117202627021982,
+                765476049583133,
+            ],
+        },
+        Y: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 { limbs: [0, 0, 0, 0, 0] },
     },
+    // T[7]
     EdwardsPoint {
-        X: FieldElement51::from_limbs([
-            1893055065632419,
-            560215195444267,
-            1274149604399886,
-            821933901047523,
-            1691754969406571,
-        ]),
-        Y: FieldElement51::from_limbs([
-            84926274344903,
-            473620666599931,
-            365590438845504,
-            1028470286882429,
-            2146499180330972,
-        ]),
-        Z: FieldElement51::from_limbs([1, 0, 0, 0, 0]),
-        T: FieldElement51::from_limbs([
-            803472979097708,
-            393902981724766,
-            1158077081819914,
-            574391322974006,
-            336294660666841,
-        ]),
+        X: FieldElement51 {
+            limbs: [
+                1893055065632419,
+                560215195444267,
+                1274149604399886,
+                821933901047523,
+                1691754969406571,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                84926274344903,
+                473620666599931,
+                365590438845504,
+                1028470286882429,
+                2146499180330972,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                803472979097708,
+                393902981724766,
+                1158077081819914,
+                574391322974006,
+                336294660666841,
+            ],
+        },
     },
 ];
-
-verus! {
 
 /// Table containing precomputed multiples of the Ed25519 basepoint \\(B = (x, 4/5)\\).
 ///

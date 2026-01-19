@@ -80,39 +80,39 @@ pub proof fn lemma_mul_internal_commutative(a: &Scalar52, b: &Scalar52)
     ensures
         spec_mul_internal(a, b) == spec_mul_internal(b, a),
 {
-    let ab = spec_mul_internal(a, b);
-    let ba = spec_mul_internal(b, a);
+    let a_times_b = spec_mul_internal(a, b);
+    let b_times_a = spec_mul_internal(b, a);
 
     // Each coefficient is symmetric due to commutativity of integer multiplication
     // z[0] = a[0]*b[0] = b[0]*a[0]
-    assert(ab[0] == ba[0]);
+    assert(a_times_b[0] == b_times_a[0]);
 
     // z[1] = a[0]*b[1] + a[1]*b[0] = b[0]*a[1] + b[1]*a[0]
-    assert(ab[1] == ba[1]);
+    assert(a_times_b[1] == b_times_a[1]);
 
     // z[2] = a[0]*b[2] + a[1]*b[1] + a[2]*b[0] = b[0]*a[2] + b[1]*a[1] + b[2]*a[0]
-    assert(ab[2] == ba[2]);
+    assert(a_times_b[2] == b_times_a[2]);
 
     // z[3] = a[0]*b[3] + a[1]*b[2] + a[2]*b[1] + a[3]*b[0]
-    assert(ab[3] == ba[3]);
+    assert(a_times_b[3] == b_times_a[3]);
 
     // z[4] = a[0]*b[4] + a[1]*b[3] + a[2]*b[2] + a[3]*b[1] + a[4]*b[0]
-    assert(ab[4] == ba[4]);
+    assert(a_times_b[4] == b_times_a[4]);
 
     // z[5] = a[1]*b[4] + a[2]*b[3] + a[3]*b[2] + a[4]*b[1]
-    assert(ab[5] == ba[5]);
+    assert(a_times_b[5] == b_times_a[5]);
 
     // z[6] = a[2]*b[4] + a[3]*b[3] + a[4]*b[2]
-    assert(ab[6] == ba[6]);
+    assert(a_times_b[6] == b_times_a[6]);
 
     // z[7] = a[3]*b[4] + a[4]*b[3]
-    assert(ab[7] == ba[7]);
+    assert(a_times_b[7] == b_times_a[7]);
 
     // z[8] = a[4]*b[4] = b[4]*a[4]
-    assert(ab[8] == ba[8]);
+    assert(a_times_b[8] == b_times_a[8]);
 
     // Array equality from element-wise equality
-    assert(ab =~= ba);
+    assert(a_times_b =~= b_times_a);
 }
 
 /// Symmetric version: first argument is canonical

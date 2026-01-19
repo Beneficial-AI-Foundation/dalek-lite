@@ -1834,9 +1834,8 @@ impl Scalar {
 
                 assert(scalar52_to_nat(&input_unpacked) == scalar_i);
                 assert(scalar52_to_nat(&tmp) % L == (scalar_i * R) % L);
-                // tmp is canonical (< L) because RR is canonical and as_montgomery uses montgomery_mul
-                // This will be provable once montgomery_reduce is proven
-                assume(scalar52_to_nat(&tmp) < L);
+                // tmp is canonical (< L) from as_montgomery's postcondition (RR is canonical)
+                assert(scalar52_to_nat(&tmp) < L);
 
                 lemma_group_order_bound();
                 lemma_pow2_strictly_increases(255, 256);
@@ -1974,9 +1973,11 @@ impl Scalar {
                 let result = bytes32_to_nat(&inputs[i as int].bytes);
                 let scalar_i = bytes32_to_nat(&original_inputs[i as int].bytes);
 
-                // acc and new_input_unpacked are canonical - will be provable once montgomery_reduce is proven
-                assume(scalar52_to_nat(&acc) < L);
-                assume(result_m < L);
+                // acc (= tmp) and new_input_unpacked are canonical from montgomery_mul's postcondition
+                // because acc_before is canonical (loop invariant)
+                assert(scalar52_to_nat(&acc_before) < L);  // from loop invariant
+                assert(scalar52_to_nat(&acc) < L);  // tmp is canonical because acc_before is canonical
+                assert(result_m < L);  // new_input_unpacked is canonical because acc_before is canonical
 
                 // Prove result == result_m via canonicity
                 lemma_group_order_bound();

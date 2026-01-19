@@ -49,4 +49,52 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
     assert(1 < group_order());
 }
 
+/// Lemma: If the second input to mul_internal is canonical, the product satisfies
+/// the precondition for montgomery_reduce's canonicity postcondition.
+///
+/// This enables proving that montgomery_mul(a, b) produces a canonical result
+/// when b is canonical (< group_order).
+pub proof fn lemma_mul_internal_one_canonical(a: &Scalar52, b: &Scalar52)
+    requires
+        limbs_bounded(a),
+        limbs_bounded(b),
+        scalar52_to_nat(b) < group_order(),
+    ensures
+        (exists|bounded: &Scalar52, canonical: &Scalar52|
+            limbs_bounded(bounded) && limbs_bounded(canonical) && scalar52_to_nat(canonical)
+                < group_order() && spec_mul_internal(bounded, canonical) == spec_mul_internal(
+                a,
+                b,
+            )),
+{
+    // Provide explicit witness: bounded = a, canonical = b
+    assert(limbs_bounded(a));
+    assert(limbs_bounded(b));
+    assert(scalar52_to_nat(b) < group_order());
+    assert(spec_mul_internal(a, b) == spec_mul_internal(a, b));
+}
+
+/// Symmetric version: first argument is canonical
+pub proof fn lemma_mul_internal_first_canonical(a: &Scalar52, b: &Scalar52)
+    requires
+        limbs_bounded(a),
+        limbs_bounded(b),
+        scalar52_to_nat(a) < group_order(),
+    ensures
+        (exists|bounded: &Scalar52, canonical: &Scalar52|
+            limbs_bounded(bounded) && limbs_bounded(canonical) && scalar52_to_nat(canonical)
+                < group_order() && spec_mul_internal(bounded, canonical) == spec_mul_internal(
+                a,
+                b,
+            )),
+{
+    // Provide explicit witness: bounded = b, canonical = a
+    assert(limbs_bounded(b));
+    assert(limbs_bounded(a));
+    assert(scalar52_to_nat(a) < group_order());
+    assert(spec_mul_internal(b, a) == spec_mul_internal(b, a));
+    // Need commutativity: spec_mul_internal(a, b) == spec_mul_internal(b, a)
+    assume(spec_mul_internal(a, b) == spec_mul_internal(b, a));  // TODO: prove commutativity
+}
+
 } // verus!

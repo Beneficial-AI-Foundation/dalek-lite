@@ -185,6 +185,9 @@ use crate::backend::serial::u64::subtle_assumes::{
     choice_into, choice_not, choice_or, conditional_assign_generic,
     conditional_negate_field_element, ct_eq_bytes32,
 };
+#[cfg(feature = "digest")]
+#[allow(unused_imports)]
+use crate::core_assumes::sha512_hash_bytes;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::try_into_32_bytes_array;
 #[cfg(feature = "digest")]

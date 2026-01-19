@@ -19,6 +19,7 @@
 //! - `axiom_uniform_elligator`: Elligator produces uniform over its IMAGE (not full group!)
 //! - `axiom_uniform_elligator_sum`: Two independent Elligator outputs sum to FULL uniform
 //! - `axiom_uniform_point_add`: Sum of *independent* uniform group elements is uniform
+//! - `axiom_uniform_mod_reduction`: Reducing 512 uniform bits mod L produces uniform scalar
 #[allow(unused_imports)]
 use super::edwards_specs::*;
 #[allow(unused_imports)]
@@ -32,10 +33,17 @@ use crate::ristretto::RistrettoPoint;
 #[allow(unused_imports)]
 use crate::Scalar;
 
-use vstd::prelude::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use super::core_specs::bytes_seq_to_nat;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use super::scalar52_specs::group_order;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use super::scalar_specs::scalar_to_nat;
 
-#[cfg(feature = "rand_core")]
-use rand_core::RngCore;
+use vstd::prelude::*;
 
 verus! {
 
@@ -266,43 +274,24 @@ pub proof fn axiom_uniform_point_add(p1: &RistrettoPoint, p2: &RistrettoPoint, s
 }
 
 // =============================================================================
-// External Functions with Uniform Ensures
+// Axiom 6: Modular reduction preserves uniformity (for scalars)
 // =============================================================================
-#[cfg(feature = "rand_core")]
-#[verifier::external_body]
-/// Fill bytes from a cryptographic RNG, producing uniform random bytes.
-pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
-    ensures
-        is_uniform_bytes(bytes),
-{
-    rng.fill_bytes(bytes)
-}
+/// Axiom: Reducing 512 uniform bits modulo L produces a nearly uniform scalar.
+///
+/// Mathematical justification:
+/// - Input: 64 bytes = 512 bits, uniform over [0, 2^512)
+/// - Output: reduced modulo L (group order ≈ 2^253)
+/// - Each residue r ∈ [0, L) appears floor(2^512/L) or ceil(2^512/L) times
+/// - Statistical distance from uniform: at most L/2^512 ≈ 2^-259 (cryptographically negligible)
+pub proof fn axiom_uniform_mod_reduction(input: &[u8; 64], result: &Scalar)
+    requires
+// result is the reduction of input mod group_order
 
-/// Uninterpreted spec function for SHA-512 hash.
-/// Models the SHA-512 hash as a function from input bytes to 64 output bytes.
-pub uninterp spec fn spec_sha512(input: Seq<u8>) -> Seq<u8>;
-
-/// Axiom: SHA-512 always produces exactly 64 bytes of output.
-pub proof fn axiom_sha512_output_length(input: Seq<u8>)
+        scalar_to_nat(result) == bytes_seq_to_nat(input@) % group_order(),
     ensures
-        spec_sha512(input).len() == 64,
+        is_uniform_bytes(input) ==> is_uniform_scalar(result),
 {
     admit();
-}
-
-#[cfg(feature = "digest")]
-#[verifier::external_body]
-/// Compute SHA-512 hash of input bytes.
-/// If input is uniform, output is computationally indistinguishable from uniform.
-pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64])
-    ensures
-        result@ == spec_sha512(input@),
-        is_uniform_bytes(input) ==> is_uniform_bytes(&result),
-{
-    use digest::Digest;
-    let mut hasher = sha2::Sha512::new();
-    hasher.update(input);
-    hasher.finalize().into()
 }
 
 } // verus!

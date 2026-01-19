@@ -290,6 +290,9 @@ impl Scalar {
                 % group_order(),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
+            // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.
+            // Bias: at most L/2^512 ≈ 2^-259 statistical distance from uniform (cryptographically negligible).
+            is_uniform_bytes(input) ==> is_uniform_scalar(&result),
     {
         /* <ORIGINAL CODE>
         UnpackedScalar::from_bytes_wide(input).pack()
@@ -322,6 +325,10 @@ impl Scalar {
             //                                              == bytes_seq_to_nat(input@) % group_order()
             lemma_mod_bound(bytes_seq_to_nat(input@) as int, group_order() as int);
             lemma_small_mod(bytes32_to_nat(&result.bytes), group_order());
+
+            // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.
+            // Bias: at most L/2^512 ≈ 2^-259 statistical distance (cryptographically negligible).
+            axiom_uniform_mod_reduction(input, &result);
         }
 
         result  /* </MODIFIED CODE> */
@@ -1420,7 +1427,8 @@ impl Scalar {
     /// let a: Scalar = Scalar::random(&mut csprng);
     /// # }
     /* <VERIFICATION NOTE>
-     No verifier::external_body annotation but it is NOT verified
+     Uses fill_bytes wrapper from core_assumes to establish is_uniform_bytes,
+     then from_bytes_mod_order_wide propagates uniformity to is_uniform_scalar.
     </VERIFICATION NOTE> */
     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> (result: Self)
         ensures
@@ -1428,6 +1436,9 @@ impl Scalar {
             is_canonical_scalar(&result),
     {
         let mut scalar_bytes = [0u8;64];
+        #[cfg(verus_keep_ghost)]
+        crate::core_assumes::fill_bytes(rng, &mut scalar_bytes);
+        #[cfg(not(verus_keep_ghost))]
         rng.fill_bytes(&mut scalar_bytes);
         Scalar::from_bytes_mod_order_wide(&scalar_bytes)
     }

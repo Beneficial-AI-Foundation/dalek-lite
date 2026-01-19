@@ -180,10 +180,10 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
-use crate::specs::proba_specs::sha512_hash_bytes;
+use crate::core_assumes::sha512_hash_bytes;
 #[cfg(all(feature = "digest", verus_keep_ghost))]
 #[allow(unused_imports)]
-use crate::specs::proba_specs::spec_sha512;
+use crate::core_assumes::spec_sha512;
 #[allow(unused_imports)]
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]

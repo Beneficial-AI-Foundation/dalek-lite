@@ -65,9 +65,12 @@ pub fn try_into_32_bytes_array(bytes: &[u8]) -> (result: Result<[u8; 32], TryFro
 /// a Result<[u8; 32], TryFromSliceError> to Result<CompressedEdwardsY, TryFromSliceError>,
 /// wrapping successful arrays in the CompressedEdwardsY struct.
 ///
-/// The postcondition guarantees that:
-/// - Success/failure status is preserved
-/// - On success, CompressedEdwardsY's inner array (accessed via .0) equals the input array
+/// The postcondition specifies properties expected to hold for Result::map:
+/// - Success/failure status is preserved (Ok maps to Ok, Err maps to Err)
+/// - On success, the wrapped value is transformed (CompressedEdwardsY(arr).0 == arr)
+///
+/// Verus cannot automatically verify these properties through Result::map,
+/// so we provide this wrapper with explicit postconditions.
 #[verifier::external_body]
 pub fn compressed_edwards_y_from_array_result(
     arr_result: Result<[u8; 32], TryFromSliceError>,

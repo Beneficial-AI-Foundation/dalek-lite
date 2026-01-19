@@ -503,6 +503,7 @@ impl<'a> MulAssign<&'a Scalar> for Scalar {
             assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
+            lemma_limbs_bounded_implies_prod_bounded(&self_unpacked, &rhs_unpacked);
         }
 
         let result_unpacked = UnpackedScalar::mul(&self_unpacked, &rhs_unpacked);
@@ -579,6 +580,7 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
             assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
+            lemma_limbs_bounded_implies_prod_bounded(&self_unpacked, &rhs_unpacked);
         }
         let result_unpacked = UnpackedScalar::mul(&self_unpacked, &rhs_unpacked);
         proof {
@@ -888,6 +890,11 @@ impl Neg for &Scalar {
 
         // Execute the actual computation
         let self_unpacked = self.unpack();
+
+        proof {
+            lemma_limbs_bounded_implies_prod_bounded(&self_unpacked, &constants::R);
+        }
+
         let self_R = UnpackedScalar::mul_internal(&self_unpacked, &constants::R);
         /* </MODIFIED CODE> */
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
@@ -1737,16 +1744,8 @@ impl Scalar {
         // field elements.
         let n = inputs.len();
         let one_unpacked = Scalar::ONE.unpack();
-
-        proof {
-            assume(limbs_bounded(&one_unpacked));
-        }
-
+        
         let one: UnpackedScalar = one_unpacked.as_montgomery();
-
-        proof {
-            assume(limbs_bounded(&one));
-        }
 
         /* <VERIFICATION NOTE>
          Build vec manually instead of vec![one; n] for Verus compatibility
@@ -1764,14 +1763,10 @@ impl Scalar {
 
         proof {
             assume(scratch.len() == n);
-            assume(limbs_bounded(&acc_unpacked));
         }
 
         let mut acc = acc_unpacked.as_montgomery();
 
-        proof {
-            assume(limbs_bounded(&acc));
-        }
 
         // Pass through the input vector, recording the previous
         // products in the scratch space
@@ -1792,30 +1787,19 @@ impl Scalar {
             invariant
                 scratch.len() == n,
                 n == inputs.len(),
-                limbs_bounded(&acc),
+                limb_prod_bounded_u128(acc.limbs, acc.limbs, 5),
         {
             scratch[i] = acc;
 
             // Avoid unnecessary Montgomery multiplication in second pass by
             // keeping inputs in Montgomery form
             let input_unpacked = inputs[i].unpack();
-
-            proof {
-                assume(limbs_bounded(&input_unpacked));
-            }
-
             let tmp = input_unpacked.as_montgomery();
-
-            proof {
-                assume(limbs_bounded(&tmp));
-            }
-
             inputs[i] = tmp.pack();
-            acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
-
-            proof {
-                assume(limbs_bounded(&acc));
+            assert(limb_prod_bounded_u128(acc.limbs, tmp.limbs, 5)) by {
+                lemma_limbs_bounded_implies_prod_bounded(&acc, &tmp);
             }
+            acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
         }
 
         proof {
@@ -1831,15 +1815,7 @@ impl Scalar {
         // ORIGINAL CODE: acc = acc.montgomery_invert().from_montgomery();
         acc = acc.montgomery_invert();
 
-        proof {
-            assume(limbs_bounded(&acc));
-        }
-
         acc = acc.from_montgomery();
-
-        proof {
-            assume(limbs_bounded(&acc));
-        }
 
         // We need to return the product of all inverses later
         let ret = acc.pack();
@@ -1869,14 +1845,14 @@ impl Scalar {
             i -= 1;
             let input_unpacked = inputs[i].unpack();
 
-            proof {
-                assume(limbs_bounded(&input_unpacked));
+            assert(limb_prod_bounded_u128(acc.limbs, input_unpacked.limbs, 5)) by {
+                lemma_limbs_bounded_implies_prod_bounded(&acc, &input_unpacked);
             }
 
             let tmp = UnpackedScalar::montgomery_mul(&acc, &input_unpacked);
 
-            proof {
-                assume(limbs_bounded(&tmp));
+            assert(limb_prod_bounded_u128(acc.limbs, scratch[i as int].limbs, 5)) by {
+                lemma_limbs_bounded_implies_prod_bounded(&acc, &scratch[i as int]);
             }
 
             inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
@@ -2641,6 +2617,7 @@ impl Scalar {
 
         ensures
             limbs_bounded(&result),
+            limb_prod_bounded_u128(result.limbs, result.limbs, 5),
             scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),
     {
         UnpackedScalar::from_bytes(&self.bytes)
@@ -2667,6 +2644,10 @@ impl Scalar {
         assert(scalar52_to_nat(&constants::R) < group_order()) by {
             lemma_r_equals_spec(constants::R);
         };
+
+        proof {
+            lemma_limbs_bounded_implies_prod_bounded(&x, &constants::R)
+        }
 
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);
         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
@@ -2745,17 +2726,16 @@ fn square_multiply(
     squarings: usize,
     x: &UnpackedScalar,
 )/*  VERIFICATION NOTE:
-- PROOF BYPASS
 - This function was initially inside the body of montgomery_invert, but was moved outside for Verus
 */
 
     requires
-        limbs_bounded(old(y)),  // Use old() for &mut parameters in requires
-        limbs_bounded(x),  // No old() needed for & parameters
+        limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),
+        limbs_bounded(x),
 
     ensures
         limbs_bounded(y),
-        limbs_bounded(x),
+        limb_prod_bounded_u128(y.limbs, y.limbs, 5),
         // VERIFICATION NOTE: Changed postcondition from the original incorrect version
         // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`
         (scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
@@ -2774,13 +2754,13 @@ fn square_multiply(
         lemma_pow1(y0 as int);
         assert(pow(R as int, 0nat) == 1);
         assert((y0 * 1) as nat == y0);
+
     }
 
     // VERIFICATION NOTE: Named loop variable allows tracking iteration count
     for idx in 0..squarings
         invariant
-            limbs_bounded(y),
-            limbs_bounded(x),
+            limb_prod_bounded_u128(y.limbs, y.limbs, 5),
             L == group_order(),
             R == montgomery_radix(),
             L > 0,
@@ -2794,11 +2774,16 @@ fn square_multiply(
         *y = y.montgomery_square();
         proof {
             lemma_square_multiply_step(scalar52_to_nat(y), y_before, y0, R, L, idx as nat);
+            lemma_limbs_bounded_implies_prod_bounded(y, y);
         }
     }
 
     let ghost y_after: nat = scalar52_to_nat(y);
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
+
+    proof {
+        lemma_limbs_bounded_implies_prod_bounded(y, x);
+    }
 
     *y = UnpackedScalar::montgomery_mul(y, x);
 
@@ -2937,9 +2922,10 @@ impl UnpackedScalar {
     */
 
         requires
-            limbs_bounded(&self),
+            limb_prod_bounded_u128(self.limbs, self.limbs, 5),
         ensures
             limbs_bounded(&result),
+            limb_prod_bounded_u128(result.limbs, result.limbs, 5),
             (scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == (
             montgomery_radix() * montgomery_radix())
                 % group_order(),
@@ -2950,27 +2936,38 @@ impl UnpackedScalar {
         // Uses the addition chain from
         // https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion
         let _1 = *self;
-        assume(limbs_bounded(&_1));
         let _10 = _1.montgomery_square();
-        assume(limbs_bounded(&_10));
         let _100 = _10.montgomery_square();
-        assume(limbs_bounded(&_100));
+        assert(limb_prod_bounded_u128(_10.limbs, _1.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&_10, &_1);
+        }
         let _11 = UnpackedScalar::montgomery_mul(&_10, &_1);
-        assume(limbs_bounded(&_11));
+        assert(limb_prod_bounded_u128(_10.limbs, _11.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&_10, &_11);
+        }
         let _101 = UnpackedScalar::montgomery_mul(&_10, &_11);
-        assume(limbs_bounded(&_101));
+        assert(limb_prod_bounded_u128(_10.limbs, _101.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&_10, &_101);
+        }
         let _111 = UnpackedScalar::montgomery_mul(&_10, &_101);
-        assume(limbs_bounded(&_111));
+        assert(limb_prod_bounded_u128(_10.limbs, _111.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&_10, &_111);
+        }
         let _1001 = UnpackedScalar::montgomery_mul(&_10, &_111);
-        assume(limbs_bounded(&_1001));
+        assert(limb_prod_bounded_u128(_10.limbs, _1001.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&_10, &_1001);
+        }
         let _1011 = UnpackedScalar::montgomery_mul(&_10, &_1001);
-        assume(limbs_bounded(&_1011));
+        assert(limb_prod_bounded_u128(_100.limbs, _1011.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&_100, &_1011);
+        }
         let _1111 = UnpackedScalar::montgomery_mul(&_100, &_1011);
-        assume(limbs_bounded(&_1111));
+        assert(limb_prod_bounded_u128(_1111.limbs, _1.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&_1111, &_1);
+        }
 
         // _10000
         let mut y = UnpackedScalar::montgomery_mul(&_1111, &_1);
-        assume(limbs_bounded(&y));
 
         square_multiply(&mut y, 123 + 3, &_101);
         square_multiply(&mut y, 2 + 2, &_11);
@@ -3001,7 +2998,6 @@ impl UnpackedScalar {
         square_multiply(&mut y, 1 + 2, &_11);
 
         proof {
-            assume(limbs_bounded(&y));
             assume((scalar52_to_nat(&y) * scalar52_to_nat(self)) % group_order() == (
             montgomery_radix() * montgomery_radix()) % group_order());
         }
@@ -3027,6 +3023,9 @@ impl UnpackedScalar {
         // as_montgomery ensures limbs_bounded(&mont)
         let inv = mont.montgomery_invert();
         // montgomery_invert ensures limbs_bounded(&inv)
+        proof {
+            lemma_limbs_bounded_implies_prod_bounded(&inv, &inv);
+        }
         let result = inv.from_montgomery();
         // from_montgomery ensures limbs_bounded(&result) and scalar52_to_nat(&result) < group_order()
 

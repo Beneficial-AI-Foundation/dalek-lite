@@ -164,14 +164,16 @@ use crate::core_assumes::sha512_hash_bytes;
 #[cfg(all(feature = "digest", verus_keep_ghost))]
 #[allow(unused_imports)]
 use crate::core_assumes::spec_sha512;
+#[allow(unused_imports)] // Used in verus! blocks for identity bytes proof
+use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for Edwards curve constants
 use crate::lemmas::edwards_lemmas::constants_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for curve equation proofs
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::step1_lemmas::*;
-#[allow(unused_imports)] // Used in verus! blocks for identity bytes proof
-use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for general field constants (ONE, ZERO)
@@ -784,22 +786,24 @@ impl Identity for CompressedEdwardsY {
             // Step 1: Prove bytes32_to_nat(&result.0) == 1
             assert(result.0[0] == 1);
             assert(forall|i: int| 1 <= i < 32 ==> result.0[i] == 0);
-            lemma_bytes32_to_nat_identity(&result.0);
+            assert(bytes32_to_nat(&result.0) == 1) by {
+                lemma_bytes32_to_nat_identity(&result.0);
+            }
 
             // Step 2: 1 % pow2(255) == 1 (since 1 < pow2(255))
-            lemma2_to64();
-            assert(pow2(255) > 1) by {
+            assert(1nat % pow2(255) == 1) by {
+                lemma2_to64();
                 lemma_pow2_strictly_increases(0, 255);
+                lemma_small_mod(1nat, pow2(255));
             }
-            lemma_small_mod(1nat, pow2(255));
 
             // Step 3: 1 % p() == 1 (since 1 < p() = 2^255 - 19)
-            assert(p() > 1) by {
+            assert(1nat % p() == 1) by {
                 p_gt_2();
+                lemma_small_mod(1nat, p());
             }
-            lemma_small_mod(1nat, p());
 
-            // Conclude: spec_field_element_from_bytes = (1 % pow2(255)) % p() = 1 % p() = 1
+            // Conclude: spec_field_element_from_bytes = (bytes32_to_nat % pow2(255)) % p() = 1
             assert(spec_field_element_from_bytes(&result.0) == 1);
         }
 
@@ -848,7 +852,7 @@ impl CompressedEdwardsY {
             },
     {
         // ORIGINAL CODE: bytes.try_into().map(CompressedEdwardsY)
-        // Verus does not support try_into and map 
+        // Verus does not support try_into and map
         // We use external wrapper functions with core_assumes for these functions.
         let arr_result = try_into_32_bytes_array(bytes);
         let result = compressed_edwards_y_from_array_result(arr_result);
@@ -878,17 +882,37 @@ impl Identity for EdwardsPoint {
         proof {
             // ZERO has limbs [0,0,0,0,0] → spec_field_element = 0
             // ONE has limbs [1,0,0,0,0] → spec_field_element = 1
-            assume(spec_field_element(&FieldElement::ZERO) == 0);
-            assume(spec_field_element(&FieldElement::ONE) == 1);
+            assert(spec_field_element(&FieldElement::ZERO) == 0) by {
+                lemma_zero_field_element_value();
+            }
+            assert(spec_field_element(&FieldElement::ONE) == 1) by {
+                lemma_one_field_element_value();
+            }
+
             // is_identity_edwards_point requires: z != 0, x == 0, y == z
             // With X=ZERO, Y=ONE, Z=ONE: z=1≠0, x=0, y=z=1 ✓
 
             // is_well_formed_edwards_point requires:
-            // - is_valid_edwards_point (identity is on curve)
-            // - edwards_point_limbs_bounded (all limbs < 2^54)
-            // - sum_of_limbs_bounded (Y + X doesn't overflow)
-            // ZERO/ONE have limbs [0/1, 0, 0, 0, 0] which are trivially bounded
-            assume(is_well_formed_edwards_point(result));
+            // 1. is_valid_edwards_point (identity is on curve)
+            assert(is_valid_edwards_point(result)) by {
+                lemma_identity_is_valid_extended();
+            }
+
+            // 2. edwards_point_limbs_bounded (all limbs < 2^52)
+            // ZERO/ONE have limbs [0/1, 0, 0, 0, 0] which are trivially < 2^52
+            assert(edwards_point_limbs_bounded(result)) by {
+                lemma_zero_limbs_bounded_51();
+                lemma_one_limbs_bounded_51();
+                assert(0u64 < (1u64 << 52) && 1u64 < (1u64 << 52)) by (bit_vector);
+            }
+
+            // 3. sum_of_limbs_bounded (Y + X doesn't overflow)
+            // Y=ONE=[1,0,0,0,0], X=ZERO=[0,0,0,0,0]
+            // 1+0 < u64::MAX, 0+0 < u64::MAX
+            assert(sum_of_limbs_bounded(&result.Y, &result.X, u64::MAX)) by {
+                assert(1u64 + 0u64 < u64::MAX) by (bit_vector);
+                assert(0u64 + 0u64 < u64::MAX) by (bit_vector);
+            }
         }
         result
     }

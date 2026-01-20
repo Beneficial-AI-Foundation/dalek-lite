@@ -28,7 +28,6 @@ use crate::specs::field_specs_u64::*;
 
 verus! {
 
-
 pub proof fn lemma_as_bytes_boundaries1(raw_limbs: [u64; 5])
     ensures
         spec_reduce(raw_limbs)[0] + 19 < u64::MAX,
@@ -76,7 +75,6 @@ pub proof fn lemma_as_bytes_boundaries1(raw_limbs: [u64; 5])
         lemma_u64_shr_le((limbs[4] + q3) as u64, ((1u64 << 52) + 2) as u64, 51);
     }
 }
-
 
 pub proof fn lemma_as_bytes_boundaries2(raw_limbs: [u64; 5])
     ensures
@@ -152,7 +150,6 @@ pub proof fn lemma_as_bytes_boundaries2(raw_limbs: [u64; 5])
 /// - Both preserve the value modulo p (u64_5_as_nat(fe.limbs) % p())
 /// - The canonical representation modulo p is unique
 /// - Therefore, they produce the same byte sequence
-
 pub proof fn lemma_as_bytes_equals_spec_fe51_to_bytes(fe: &FieldElement51, bytes: &[u8; 32])
     requires
         bytes32_to_nat(bytes) == u64_5_as_nat(fe.limbs) % p(),
@@ -182,7 +179,6 @@ pub proof fn lemma_as_bytes_equals_spec_fe51_to_bytes(fe: &FieldElement51, bytes
 }
 
 /// Lemma: spec_fe51_to_bytes produces the same bytes as as_bytes, element by element
-
 proof fn lemma_spec_fe51_to_bytes_matches_array(fe: &FieldElement51, bytes: &[u8; 32])
     requires
         bytes32_to_nat(bytes) == u64_5_as_nat(fe.limbs) % p(),
@@ -343,7 +339,6 @@ proof fn lemma_spec_fe51_to_bytes_matches_array(fe: &FieldElement51, bytes: &[u8
 }
 
 /// Lemma: Sequence equality implies array equality
-
 pub proof fn lemma_seq_eq_implies_array_eq(bytes1: &[u8; 32], bytes2: &[u8; 32])
     requires
         seq_from32(bytes1) == seq_from32(bytes2),
@@ -392,7 +387,6 @@ pub proof fn lemma_seq_eq_implies_array_eq(bytes1: &[u8; 32], bytes2: &[u8; 32])
 /// 2. from_bytes postcondition: spec_field_element_as_nat(fe_decoded) = bytes32_to_nat(bytes) % pow2(255)
 /// 3. Since v % p < p < pow2(255), by lemma_small_mod: (v % p) % pow2(255) = v % p
 /// 4. By lemma_mod_twice: spec_field_element(fe_decoded) = (v % p) % p = v % p = spec_field_element(fe_orig)
-
 pub proof fn lemma_from_bytes_as_bytes_roundtrip(
     fe_orig: &FieldElement51,
     bytes: &[u8; 32],
@@ -459,7 +453,6 @@ pub proof fn lemma_from_bytes_as_bytes_roundtrip(
 /// 2. So from_bytes gives: spec_field_element_as_nat(fe) = v
 /// 3. Since v < p, by lemma_small_mod: v % p = v
 /// 4. So as_bytes gives: bytes32_to_nat(bytes_decoded) = v
-
 pub proof fn lemma_as_bytes_from_bytes_roundtrip(
     bytes_orig: &[u8; 32],
     fe: &FieldElement51,

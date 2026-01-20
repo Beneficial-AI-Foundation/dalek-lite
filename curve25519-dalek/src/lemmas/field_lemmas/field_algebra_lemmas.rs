@@ -33,7 +33,6 @@ verus! {
 /// Lemma: If a ≡ 0 (mod p), then a·b ≡ 0 (mod p) in field arithmetic
 ///
 /// This is useful for zero-case handling in proofs.
-
 pub proof fn lemma_field_mul_zero_left(a: nat, b: nat)
     requires
         a % p() == 0,
@@ -55,7 +54,6 @@ pub proof fn lemma_field_mul_zero_left(a: nat, b: nat)
 /// Lemma: If b ≡ 0 (mod p), then a·b ≡ 0 (mod p) in field arithmetic
 ///
 /// This is useful for zero-case handling in proofs.
-
 pub proof fn lemma_field_mul_zero_right(a: nat, b: nat)
     requires
         b % p() == 0,
@@ -80,7 +78,6 @@ pub proof fn lemma_field_mul_zero_right(a: nat, b: nat)
 /// Lemma: inv(1) = 1
 ///
 /// Uses field_inv_property: ((a % p) * inv(a)) % p = 1
-
 pub proof fn lemma_field_inv_one()
     ensures
         math_field_inv(1) == 1,
@@ -111,7 +108,6 @@ pub proof fn lemma_field_inv_one()
 /// Lemma: (-x)² = x² (mod p)
 ///
 /// Mathematical proof: (p-a)² = p² - 2pa + a² ≡ a² (mod p)
-
 pub proof fn lemma_neg_square_eq(x: nat)
     ensures
         math_field_square(math_field_neg(x)) == math_field_square(x % p()),
@@ -144,7 +140,6 @@ pub proof fn lemma_neg_square_eq(x: nat)
 ///   = (a·b + a·c) % p           [integer distributivity]
 ///   = ((a·b)%p + (a·c)%p) % p   [mod distributes over add]
 /// ```
-
 pub proof fn lemma_field_mul_distributes_over_add(a: nat, b: nat, c: nat)
     ensures
         math_field_mul(a, math_field_add(b, c)) == math_field_add(
@@ -172,7 +167,6 @@ pub proof fn lemma_field_mul_distributes_over_add(a: nat, b: nat, c: nat)
 }
 
 /// Lemma: (x % p)² = x² (mod p)
-
 pub proof fn lemma_square_mod_noop(x: nat)
     ensures
         math_field_square(x % p()) == math_field_square(x),
@@ -199,7 +193,6 @@ pub proof fn lemma_square_mod_noop(x: nat)
 ///            = ((y_raw % p) * (y_raw % p)) % p [by lemma_mul_mod_noop_general]
 ///            = math_field_square(y_raw % p)   [definition]
 /// ```
-
 pub proof fn lemma_square_matches_math_field_square(y_raw: nat, y2_raw: nat)
     requires
         y2_raw % p() == pow(y_raw as int, 2) as nat % p(),
@@ -236,7 +229,6 @@ pub proof fn lemma_square_matches_math_field_square(y_raw: nat, y2_raw: nat)
 /// Subtract b: a + 1 ≡ c - b (mod p)  ✓
 /// ```
 ///
-
 pub proof fn lemma_field_add_sub_rearrange(a: nat, b: nat, c: nat)
     requires
         a < p(),
@@ -287,7 +279,6 @@ pub proof fn lemma_field_add_sub_rearrange(a: nat, b: nat, c: nat)
 ///
 /// By uniqueness of inverse: inv(a · b) = inv(a) · inv(b)
 /// ```
-
 pub proof fn lemma_inv_of_product(a: nat, b: nat)
     ensures
         math_field_inv(math_field_mul(a, b)) == math_field_mul(
@@ -437,7 +428,6 @@ pub proof fn lemma_inv_of_product(a: nat, b: nat)
 /// Lemma: inv(x²) = inv(x)² (mod p)
 ///
 /// Special case of inv(a·b) = inv(a)·inv(b) where a = b = x
-
 pub proof fn lemma_inv_of_square(x: nat)
     ensures
         math_field_inv(math_field_square(x)) == math_field_square(math_field_inv(x)),
@@ -471,7 +461,6 @@ pub proof fn lemma_inv_of_square(x: nat)
 ///       = (a · inv(b))²          [since (xy)² = x²y²]
 ///       = (a/b)²
 /// ```
-
 pub proof fn lemma_quotient_of_squares(a: nat, b: nat)
     ensures
         math_field_mul(math_field_square(a), math_field_inv(math_field_square(b)))
@@ -508,7 +497,6 @@ pub proof fn lemma_quotient_of_squares(a: nat, b: nat)
 ///         = x · x · y · y          [commutativity: swap middle y,x]
 ///         = x² · y²
 /// ```
-
 pub proof fn lemma_product_of_squares_eq_square_of_product(x: nat, y: nat)
     ensures
         math_field_mul(math_field_square(x), math_field_square(y)) == math_field_square(
@@ -561,7 +549,6 @@ pub proof fn lemma_product_of_squares_eq_square_of_product(x: nat, y: nat)
 /// So x is the inverse of y = inv(x).
 /// By uniqueness: x = inv(inv(x)).
 /// ```
-
 pub proof fn lemma_inv_of_inv(x: nat)
     ensures
         math_field_inv(math_field_inv(x)) == x % p(),
@@ -637,7 +624,6 @@ pub proof fn lemma_inv_of_inv(x: nat)
 ///   a · 1 ≡ c · inv(b) (mod p)
 ///   a ≡ c · inv(b) (mod p)
 /// ```
-
 pub proof fn lemma_solve_for_left_factor(a: nat, b: nat, c: nat)
     requires
         b % p() != 0,
@@ -702,7 +688,6 @@ pub proof fn lemma_solve_for_left_factor(a: nat, b: nat, c: nat)
 /// Lemma: Field multiplication is associative
 ///
 /// (a · b) · c = a · (b · c) in field arithmetic
-
 pub proof fn lemma_field_mul_assoc(a: nat, b: nat, c: nat)
     ensures
         math_field_mul(math_field_mul(a, b), c) == math_field_mul(a, math_field_mul(b, c)),
@@ -727,7 +712,6 @@ pub proof fn lemma_field_mul_assoc(a: nat, b: nat, c: nat)
 /// Lemma: Field multiplication is commutative
 ///
 /// a · b = b · a in field arithmetic
-
 pub proof fn lemma_field_mul_comm(a: nat, b: nat)
     ensures
         math_field_mul(a, b) == math_field_mul(b, a),
@@ -744,7 +728,6 @@ pub proof fn lemma_field_mul_comm(a: nat, b: nat)
 ///              = 1 · inv(b)              [by inverse property]
 ///              = inv(b)
 /// ```
-
 pub proof fn lemma_a_times_inv_ab_is_inv_b(a: nat, b: nat)
     requires
         a % p() != 0,
@@ -863,7 +846,6 @@ pub proof fn lemma_a_times_inv_ab_is_inv_b(a: nat, b: nat)
 ///          = (p - a % p) mod p        [definition of negation]
 ///          = -a
 /// ```
-
 pub proof fn lemma_neg_one_times_is_neg(a: nat)
     ensures
         math_field_mul(math_field_neg(1), a) == math_field_neg(a),
@@ -973,7 +955,6 @@ pub proof fn lemma_neg_one_times_is_neg(a: nat)
 ///                 = (-1) · (a · inv(a·b))     [by associativity]
 ///                 = (-1) · inv(b)             [by lemma_a_times_inv_ab_is_inv_b]
 /// ```
-
 pub proof fn lemma_neg_a_times_inv_ab(a: nat, b: nat)
     requires
         a % p() != 0,
@@ -1050,7 +1031,6 @@ pub proof fn lemma_neg_a_times_inv_ab(a: nat, b: nat)
 ///             = a mod p                          [since p·k ≡ 0 mod p]
 ///             = a                                [if a < p]
 /// ```
-
 pub proof fn lemma_double_negation(a: nat)
     requires
         a < p(),
@@ -1126,7 +1106,6 @@ pub proof fn lemma_double_negation(a: nat)
 /// = a · 1 · inv(b)                [by field_inv_property: c · inv(c) = 1]
 /// = a · inv(b)
 /// ```
-
 pub proof fn lemma_cancel_common_factor(a: nat, b: nat, c: nat)
     requires
         b % p() != 0,
@@ -1238,7 +1217,6 @@ pub proof fn lemma_cancel_common_factor(a: nat, b: nat, c: nat)
 /// Lemma: Product of non-zero field elements is non-zero
 ///
 /// In a prime field, if a ≢ 0 and b ≢ 0, then a·b ≢ 0
-
 pub proof fn lemma_nonzero_product(a: nat, b: nat)
     requires
         a % p() != 0,

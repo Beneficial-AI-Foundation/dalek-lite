@@ -29,7 +29,6 @@ pub open spec fn load8_at_or_version_rec(input: &[u8], i: usize, k: nat) -> u64
     }
 }
 
-
 pub proof fn lemma_load8_at_rec_version_is_exec(input: &[u8], i: usize)
     ensures
         load8_at_or_version_rec(input, i, 7) == (input[i as int] as u64) | ((input[i + 1] as u64)
@@ -56,7 +55,6 @@ pub open spec fn load8_at_plus_version_rec(input: &[u8], i: usize, k: nat) -> u6
             * 8)) as u64
     }
 }
-
 
 pub proof fn lemma_load8_at_plus_version_rec_is_bounded(input: &[u8], i: usize, k: nat)
     requires
@@ -129,7 +127,6 @@ pub proof fn lemma_load8_at_plus_version_rec_is_bounded(input: &[u8], i: usize, 
     }
 }
 
-
 proof fn lemma_load8_at_plus_version_is_spec_aux(input: &[u8], i: usize, j: nat)
     requires
         1 <= j <= 7,
@@ -175,7 +172,6 @@ proof fn lemma_load8_at_plus_version_is_spec_aux(input: &[u8], i: usize, j: nat)
     }
     lemma_u64_shl_is_mul((input[i + j] as u64), (j * 8) as u64);
 }
-
 
 pub proof fn lemma_load8_at_plus_version_is_spec(input: &[u8], i: usize)
     ensures
@@ -233,7 +229,6 @@ pub proof fn lemma_load8_at_plus_version_is_spec(input: &[u8], i: usize)
     }
 }
 
-
 pub proof fn lemma_load8_at_versions_equivalent(input: &[u8], i: usize, k: nat)
     requires
         k <= 7,
@@ -261,7 +256,6 @@ pub proof fn lemma_load8_at_versions_equivalent(input: &[u8], i: usize, k: nat)
         lemma_u64_bit_or_is_plus(prev, input[i + k] as u64, (8 * k) as u64);
     }
 }
-
 
 pub proof fn lemma_load8_at_plus_fits_u64(input: &[u8], i: usize, k: nat)
     requires
@@ -293,7 +287,6 @@ pub proof fn lemma_load8_at_plus_fits_u64(input: &[u8], i: usize, k: nat)
     }
 }
 
-
 pub proof fn lemma_spec_load8_at_fits_u64(input: &[u8], i: usize)
     requires
         i + 7 < input.len(),
@@ -303,7 +296,6 @@ pub proof fn lemma_spec_load8_at_fits_u64(input: &[u8], i: usize)
     lemma_load8_at_plus_version_is_spec(input, i);
     lemma_load8_at_plus_fits_u64(input, i, 7);
 }
-
 
 pub proof fn lemma_load8_plus_ver_div_mod(input: &[u8], i: usize, k: nat, s: nat)
     requires
@@ -373,7 +365,6 @@ pub proof fn lemma_load8_plus_ver_div_mod(input: &[u8], i: usize, k: nat, s: nat
 // where s_j = s[j]_0 and a_{j+1} = a[j] in the lemma_load8_shift_mod body.
 // s_j represents the j-th partial sum (of load8 summands)
 // The myriad of `requires` conditions captures the local scope in lemma_load8_shift_mod
-
 proof fn lemma_load8_shift_mod_aux(
     s_jplus1: u64,
     s_j: u64,
@@ -442,7 +433,6 @@ proof fn lemma_load8_shift_mod_aux(
         }
     }
 }
-
 
 pub proof fn lemma_load8_shift_mod(input: &[u8], i: usize, s64: u64, t: nat)
     requires
@@ -670,7 +660,6 @@ pub proof fn lemma_load8_shift_mod(input: &[u8], i: usize, s64: u64, t: nat)
     }
 }
 
-
 pub proof fn lemma_load8_at_limb_base(input: &[u8], i: usize, k: u64)
     requires
         i + 7 < input.len(),
@@ -744,7 +733,6 @@ pub open spec fn pow2_mul_div_mod_small_mod_u8_t51_cond(k: nat, j: nat) -> bool 
 //   or larger, so in general, the best we can assert is that they reduce to coefficient masking
 // - the last few summands have large enough exponents that masking zeroes them
 // The particular indices where these happen depend on the limb (i.e. the shift value k)
-
 pub proof fn lemma_load8_at_limb_X(
     input: &[u8],
     i: usize,
@@ -835,7 +823,6 @@ pub proof fn lemma_load8_at_limb_X(
     }
 }
 
-
 pub proof fn lemma_load8_at_limb0(input: &[u8])
     requires
         0 + 7 < input.len(),
@@ -883,7 +870,6 @@ pub proof fn lemma_load8_at_limb0(input: &[u8])
 
 }
 
-
 pub proof fn lemma_load8_at_limb1(input: &[u8])
     requires
         6 + 7 < input.len(),
@@ -920,7 +906,6 @@ pub proof fn lemma_load8_at_limb1(input: &[u8])
         k as nat,
     ) as u64)) % (pow2(51) as u64));
 }
-
 
 pub proof fn lemma_load8_at_limb2(input: &[u8])
     requires
@@ -959,7 +944,6 @@ pub proof fn lemma_load8_at_limb2(input: &[u8])
     ) as u64)) % (pow2(51) as u64));
 }
 
-
 pub proof fn lemma_load8_at_limb3(input: &[u8])
     requires
         19 + 7 < input.len(),
@@ -995,7 +979,6 @@ pub proof fn lemma_load8_at_limb3(input: &[u8])
         k as nat,
     ) as u64)) % (pow2(51) as u64));
 }
-
 
 pub proof fn lemma_load8_at_limb4(input: &[u8])
     requires

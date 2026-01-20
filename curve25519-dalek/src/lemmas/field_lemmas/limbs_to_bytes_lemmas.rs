@@ -46,7 +46,6 @@ pub open spec fn bytes_match_limbs_packing(limbs: [u64; 5], bytes: [u8; 32]) -> 
 ///
 /// This is the main lemma we need to complete the `to_bytes` proof.
 /// It connects the byte representation with the limb representation.
-
 pub proof fn lemma_limbs_to_bytes(limbs: [u64; 5], bytes: [u8; 32])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 51),
@@ -64,7 +63,6 @@ pub proof fn lemma_limbs_to_bytes(limbs: [u64; 5], bytes: [u8; 32])
 // ============================================================================
 /// Core algebraic lemma: The sum of bytes equals the sum of limbs
 /// This is where we do the heavy algebraic lifting to show the equivalence
-
 proof fn lemma_byte_sum_equals_limb_sum(limbs: [u64; 5], bytes: [u8; 32])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < pow2(51),
@@ -132,7 +130,6 @@ proof fn lemma_byte_sum_equals_limb_sum(limbs: [u64; 5], bytes: [u8; 32])
 }
 
 /// Helper: A byte formed by simple right shift has a direct arithmetic interpretation
-
 proof fn lemma_byte_from_limb_shift(limb: u64, shift: u64, byte: u8)
     requires
         limb < pow2(51),
@@ -224,7 +221,6 @@ spec fn limb4_byte_contribution(limbs: [u64; 5], bytes: [u8; 32]) -> nat {
 /// (x / 2^(k*8)) % 256 == ((x % 2^m) / 2^(k*8)) % 256
 ///
 /// This is a specialized version of lemma_chunk_extraction_commutes_with_mod for bytes (b=8).
-
 pub proof fn lemma_byte_extraction_commutes_with_mod(x: nat, k: nat, m: nat)
     requires
         k * 8 + 8
@@ -244,7 +240,6 @@ pub proof fn lemma_byte_extraction_commutes_with_mod(x: nat, k: nat, m: nat)
 // Phase 3: Per-Limb Contribution Correctness Proofs
 // ============================================================================
 /// Proves that limb 0's byte contribution equals limbs[0] * pow2(0) = limbs[0]
-
 proof fn lemma_limb0_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[0] < pow2(51),
@@ -415,7 +410,6 @@ proof fn lemma_limb0_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 
 /// Helper: 5-byte reconstruction lemma
 /// Proves that 5 consecutive bytes reconstruct a 40-bit value
-
 proof fn lemma_5_bytes_reconstruct(
     value: nat,
     byte0: u8,
@@ -482,7 +476,6 @@ proof fn lemma_5_bytes_reconstruct(
 
 /// Helper: 6-byte reconstruction lemma
 /// Proves that 6 consecutive bytes reconstruct a 48-bit value
-
 pub proof fn lemma_6_bytes_reconstruct(
     value: nat,
     byte0: u8,
@@ -562,7 +555,6 @@ pub proof fn lemma_6_bytes_reconstruct(
 }
 
 /// Proves that limb 1's byte contribution equals limbs[1] * pow2(51)
-
 proof fn lemma_limb1_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[0] < pow2(51),  // Need limb 0 for boundary byte 6
@@ -953,7 +945,6 @@ proof fn lemma_limb1_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 }
 
 /// Proves that limb 2's byte contribution equals limbs[2] * pow2(102)
-
 proof fn lemma_limb2_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[1] < pow2(51),  // Need limb 1 for boundary byte 12
@@ -1332,7 +1323,6 @@ proof fn lemma_limb2_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 }
 
 /// Proves that limb 3's byte contribution equals limbs[3] * pow2(153)
-
 proof fn lemma_limb3_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[2] < pow2(51),  // Need limb 2 for boundary byte 19
@@ -1670,7 +1660,6 @@ proof fn lemma_limb3_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 
 /// Proves that limb 4's byte contribution equals limbs[4] * pow2(204)
 #[verifier::spinoff_prover]
-
 proof fn lemma_limb4_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[3] < pow2(51),  // Need limb 3 for boundary byte 25
@@ -1937,7 +1926,6 @@ proof fn lemma_limb4_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 // Key insight: Boundary bytes are formed by OR'ing bits from two adjacent limbs.
 // The proof uses the Modular Bit Partitioning Theorem to show that the bitwise
 // operations correspond exactly to the arithmetic formula.
-
 proof fn lemma_boundary_byte_combines(
     low_limb: u64,
     high_limb: u64,
@@ -2066,7 +2054,6 @@ proof fn lemma_boundary_byte_combines(
 }
 
 /// Proves that the sum of all limb contributions equals bytes32_to_nat(&bytes)
-
 proof fn lemma_sum_equals_byte_nat(limbs: [u64; 5], bytes: [u8; 32])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < pow2(51),

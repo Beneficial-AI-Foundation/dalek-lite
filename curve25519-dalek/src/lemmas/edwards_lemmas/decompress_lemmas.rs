@@ -56,7 +56,6 @@ verus! {
 ///                    Since p is odd and x is even: odd - even = odd
 ///                    So LSB = 1 ✓
 /// ```
-
 pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
     requires
         (x % p()) % 2 == 0,  // x is non-negative root (LSB = 0)
@@ -115,7 +114,6 @@ pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
 /// Top-level lemma for decompress sign bit using concrete field element
 ///
 /// Connects to spec_field_element_sign_bit: ((x % p) % 2) as u8
-
 pub proof fn lemma_decompress_field_element_sign_bit(
     x_before_negate: nat,
     x_after_negate: nat,
@@ -168,7 +166,6 @@ pub proof fn lemma_decompress_field_element_sign_bit(
 /// From precondition: sign_bit = 1 ==> y² ≠ 1
 /// From curve: y² ≠ 1 ==> x ≠ 0
 /// Combined: sign_bit = 1 ==> x ≠ 0
-
 pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: nat)
     requires
         compressed_y_has_valid_sign_bit(bytes),  // decompress precondition
@@ -215,7 +212,6 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
 /// - is_valid_edwards_point(point)
 /// - spec_field_element(&point.Y) == spec_field_element_from_bytes(repr_bytes)
 /// - spec_field_element_sign_bit(&point.X) == (repr_bytes[31] >> 7)
-
 pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, point: &EdwardsPoint)
     requires
         compressed_y_has_valid_sign_bit(repr_bytes),

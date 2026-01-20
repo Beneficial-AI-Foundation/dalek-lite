@@ -25,7 +25,6 @@ pub open spec fn seq_sum(coefs: Seq<nat>, k: nat) -> nat
     }
 }
 
-
 pub proof fn lemma_sum_bounds(coefs: Seq<nat>, k: nat, s: nat)
     requires
         k <= coefs.len(),
@@ -77,7 +76,6 @@ pub proof fn lemma_sum_bounds(coefs: Seq<nat>, k: nat, s: nat)
 }
 
 /// Proves that if 0 <= a, b < L => -L < a - b < L
-
 pub proof fn lemma_sub_symmetric_bound(a: nat, b: nat, L: nat)
     requires
         L > 0,

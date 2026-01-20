@@ -567,8 +567,13 @@ mod decompress {
 
 #[cfg(verus_keep_ghost)]
 impl vstd::std_specs::convert::TryFromSpecImpl<&[u8]> for CompressedEdwardsY {
-    open spec fn obeys_try_from_spec() -> bool { false }
-    open spec fn try_from_spec(v: &[u8]) -> Result<Self, Self::Error> { arbitrary() }
+    open spec fn obeys_try_from_spec() -> bool {
+        false
+    }
+
+    open spec fn try_from_spec(v: &[u8]) -> Result<Self, Self::Error> {
+        arbitrary()
+    }
 }
 
 impl TryFrom<&[u8]> for CompressedEdwardsY {

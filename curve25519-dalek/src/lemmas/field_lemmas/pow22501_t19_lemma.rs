@@ -63,7 +63,6 @@ verus! {
 /// # Postconditions
 /// * u64_5_as_nat(t19_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, (pow2(250) - 1) as nat) as nat % p()
 /// * Also proves all intermediate values through the chain
-
 pub proof fn lemma_pow22501_prove_t19(
     self_limbs: [u64; 5],
     t0_limbs: [u64; 5],

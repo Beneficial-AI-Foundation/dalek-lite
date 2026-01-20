@@ -29,7 +29,6 @@ verus! {
 ///
 /// **Strategy**: Since spec_field_element(x) = u64_5_as_nat(x.limbs) % p() by definition,
 /// we use modular congruence properties to show that pow(limbs, k) ≡ pow(field_element, k) (mod p).
-
 pub proof fn lemma_pow2k_to_field_element(fe: &FieldElement51, result: &FieldElement51, k: nat)
     requires
         k > 0,  // Required by lemma0_pow and lemma_pow_positive
@@ -80,7 +79,6 @@ pub proof fn lemma_pow2k_to_field_element(fe: &FieldElement51, result: &FieldEle
 /// Lemma: When the input is zero, the invert result is zero
 ///
 /// Strategy: Show that 0^11 = 0, therefore t3 = 0, therefore t21 = t20 * 0 = 0
-
 pub proof fn lemma_invert_zero_case(
     self_fe: &FieldElement51,
     t3: &FieldElement51,
@@ -119,7 +117,6 @@ pub proof fn lemma_invert_zero_case(
 ///
 /// Shows that: (2^250 - 1) * 2^5 + 11 = 2^255 - 21 = p - 2
 /// where p = 2^255 - 19
-
 pub proof fn lemma_invert_exponent_arithmetic()
     ensures
         (pow2(250) - 1) * pow2(5) == pow2(255) - 32,
@@ -147,7 +144,6 @@ pub proof fn lemma_invert_exponent_arithmetic()
 /// It establishes:
 /// 1. t20 = x^(2^255 - 32) mod p (by chaining lifting, composition, and arithmetic lemmas)
 /// 2. t21 = (x^(2^255 - 32) mod p * x^11 mod p) mod p (by expanding mul and substituting)
-
 pub proof fn lemma_invert_power_chain(
     self_fe: &FieldElement51,
     t19: &FieldElement51,
@@ -234,7 +230,6 @@ pub proof fn lemma_invert_power_chain(
 ///
 /// Proves that (x^(p-2) * x) % p = x^(p-1) % p in modular arithmetic.
 /// This is a key step in applying Fermat's Little Theorem.
-
 pub proof fn lemma_multiply_by_base_power_addition(
     x: nat,
     self_fe: &FieldElement51,
@@ -293,7 +288,6 @@ pub proof fn lemma_multiply_by_base_power_addition(
 ///
 /// Uses Fermat's Little Theorem: a^(p-1) ≡ 1 (mod p) for non-zero a
 /// Therefore: a^(p-2) * a ≡ 1 (mod p)
-
 pub proof fn lemma_invert_is_multiplicative_inverse(
     self_fe: &FieldElement51,
     t19: &FieldElement51,
@@ -401,7 +395,6 @@ pub proof fn lemma_invert_is_multiplicative_inverse(
 /// Lemma: The computed value equals math_field_inv
 ///
 /// Shows that spec_field_element(t21) satisfies the definition of math_field_inv
-
 pub proof fn lemma_invert_equals_math_field_inv(self_fe: &FieldElement51, t21: &FieldElement51)
     requires
 // When x != 0, t21 is the multiplicative inverse
@@ -472,7 +465,6 @@ pub proof fn lemma_invert_equals_math_field_inv(self_fe: &FieldElement51, t21: &
 /// Main lemma: Correctness of the invert implementation
 ///
 /// Ties together all the smaller lemmas to prove the complete specification
-
 pub proof fn lemma_invert_correctness(
     self_fe: &FieldElement51,
     t19: &FieldElement51,

@@ -88,7 +88,6 @@ lemma_pow2_le_max!(lemma_u128_pow2_le_max, u128);
 
 verus! {
 
-
 pub proof fn lemma_pow2_plus_one(n: nat)
     ensures
         pow2(n + 1) == pow2(n) + pow2(n),
@@ -106,7 +105,6 @@ pub proof fn lemma_pow2_plus_one(n: nat)
 }
 
 /// Helper: Division bounds - if x < 2^b then x/2^a < 2^(b-a)
-
 pub proof fn lemma_div_bound(x: nat, a: nat, b: nat)
     requires
         a <= b,
@@ -125,7 +123,6 @@ pub proof fn lemma_div_bound(x: nat, a: nat, b: nat)
 // Not generalizing, marginal value for vstd
 // Rewriting lemma; 2^(a + b) * x = 2^a * (2^b * x)
 // Parenthesis placement matters here
-
 pub proof fn lemma_two_factoring(a: nat, b: nat, v: u64)
     ensures
         pow2(a + b) * v == pow2(a) * (pow2(b) * v),
@@ -135,7 +132,6 @@ pub proof fn lemma_two_factoring(a: nat, b: nat, v: u64)
 }
 
 // (v^(2^k))^2 = v^(2^(k + 1))
-
 pub proof fn lemma_pow2_square(v: int, i: nat)
     ensures
         pow(v, pow2(i)) * pow(v, pow2(i)) == pow(v, pow2(i + 1)),
@@ -147,7 +143,6 @@ pub proof fn lemma_pow2_square(v: int, i: nat)
 }
 
 // v^(2^i) >= 0
-
 pub proof fn lemma_pow_nat_is_nat(v: nat, i: nat)
     ensures
         pow(v as int, pow2(i)) >= 0,
@@ -159,7 +154,6 @@ pub proof fn lemma_pow_nat_is_nat(v: nat, i: nat)
         lemma_pow_positive(v as int, pow2(i));
     }
 }
-
 
 pub proof fn lemma_pow2_mul_bound_general(a: nat, s: nat, k: nat)
     requires
@@ -216,7 +210,6 @@ lemma_pow2_mul_bound!(lemma_u64_pow2_mul_bound, lemma_u64_lt_pow2_64, u64);
 
 lemma_pow2_mul_bound!(lemma_u128_pow2_mul_bound, lemma_u128_lt_pow2_128, u128);
 
-
 pub proof fn lemma_binary_sum_div_decomposition(a: nat, b: nat, s: nat, k: nat)
     requires
         a < pow2(s),
@@ -257,7 +250,6 @@ pub proof fn lemma_binary_sum_div_decomposition(a: nat, b: nat, s: nat, k: nat)
         lemma_mul_equality_converse(pk as int, (z / pk) as int, (x / pk + y / pk) as int);
     }
 }
-
 
 pub proof fn lemma_binary_sum_mod_decomposition(a: nat, b: nat, s: nat, k: nat)
     requires
@@ -468,7 +460,6 @@ lemma_uN_times_pow2_fits_uM!(lemma_u32_times_pow2_fits_u128, lemma_u32_pow2_mul_
 
 lemma_uN_times_pow2_fits_uM!(lemma_u64_times_pow2_fits_u128, lemma_u64_pow2_mul_bound, lemma_u128_pow2_bound, u64, u128);
 
-
 pub proof fn lemma_pow2_mul_mod(x: nat, k: nat, s: nat)
     requires
         k <= s,
@@ -491,7 +482,6 @@ pub proof fn lemma_pow2_mul_mod(x: nat, k: nat, s: nat)
         lemma_truncate_middle(x as int, pow2(k) as int, pow2(d) as int);
     }
 }
-
 
 pub proof fn lemma_pow2_div_mod(x: nat, k: nat, s: nat)
     ensures
@@ -579,7 +569,6 @@ pub proof fn lemma_pow2_div_mod(x: nat, k: nat, s: nat)
     }
 }
 
-
 pub proof fn pow2_MUL_div(x: nat, k: nat, s: nat)
     requires
         k >= s,
@@ -601,7 +590,6 @@ pub proof fn pow2_MUL_div(x: nat, k: nat, s: nat)
         lemma_div_by_multiple((x * pow2(d)) as int, pow2(s) as int);
     }
 }
-
 
 pub proof fn lemma_pow2_mul_div(x: nat, k: nat, s: nat)
     requires
@@ -628,7 +616,6 @@ pub proof fn lemma_pow2_mul_div(x: nat, k: nat, s: nat)
         lemma_div_by_multiple(x as int, pow2(k) as int);
     }
 }
-
 
 pub proof fn lemma_pow2_mul_div_mod_small_div(x: nat, px: nat, k: nat, s: nat, t: nat)
     requires
@@ -693,7 +680,6 @@ lemma_pow2_mul_div_mod_small_div_uN!(lemma_u32_pow2_mul_div_mod_small_div, lemma
 lemma_pow2_mul_div_mod_small_div_uN!(lemma_u64_pow2_mul_div_mod_small_div, lemma_u64_pow2_bound, u64);
 
 lemma_pow2_mul_div_mod_small_div_uN!(lemma_u128_pow2_mul_div_mod_small_div, lemma_u128_pow2_bound, u128);
-
 
 pub proof fn lemma_pow2_mul_div_mod_small_mul(x: nat, px: nat, k: nat, s: nat, t: nat)
     requires
@@ -766,7 +752,6 @@ lemma_pow2_mul_div_mod_small_mul_uN!(lemma_u64_pow2_mul_div_mod_small_mul, lemma
 
 lemma_pow2_mul_div_mod_small_mul_uN!(lemma_u128_pow2_mul_div_mod_small_mul, lemma_u128_pow2_bound, u128);
 
-
 pub proof fn lemma_pow2_mul_div_mod_close_mod(x: nat, k: nat, s: nat, t: nat)
     requires
         s <= k,
@@ -788,7 +773,6 @@ pub proof fn lemma_pow2_mul_div_mod_close_mod(x: nat, k: nat, s: nat, t: nat)
         lemma_pow2_mul_mod(x, d, t);
     }
 }
-
 
 pub proof fn lemma_pow2_mul_div_mod_small_mod(x: nat, k: nat, s: nat, t: nat)
     requires
@@ -888,7 +872,6 @@ lemma_div_pow2_preserves_decomposition!(lemma_u128_div_pow2_preserves_decomposit
 /// - b=8 for byte extraction (256 = 2^8)
 /// - b=16 for 16-bit word extraction
 /// - b=32 for 32-bit word extraction
-
 pub proof fn lemma_chunk_extraction_commutes_with_mod(x: nat, k: nat, b: nat, m: nat)
     requires
         b > 0,
@@ -1030,7 +1013,6 @@ lemma_pow2_sum_bounds!(lemma_pow2_sum_u128_bounds, pow2_sum_u128, u128);
 /// 2. When we shift 'b' left by k, it only affects bits [k, n-1]
 /// 3. No carry occurs between the two regions
 /// 4. The sum fits within n bits
-
 pub proof fn lemma_modular_bit_partitioning(a: nat, b: nat, k: nat, n: nat)
     requires
         k <= n,
@@ -1058,7 +1040,6 @@ pub proof fn lemma_modular_bit_partitioning(a: nat, b: nat, k: nat, n: nat)
 }
 
 // Proof that pow2(n) is even for n >= 1
-
 pub proof fn lemma_pow2_even(n: nat)
     requires
         n >= 1,
@@ -1087,7 +1068,6 @@ pub proof fn lemma_pow2_even(n: nat)
 }
 
 // If x ≡ 1 (mod m) then x^n ≡ 1 (mod m)
-
 pub proof fn lemma_pow_mod_one(x: int, n: nat, m: int)
     requires
         m > 1,
@@ -1123,7 +1103,6 @@ pub proof fn lemma_pow_mod_one(x: int, n: nat, m: int)
 
 // Helper lemmas for pow22501 proof
 // Proves: (2^n - 1) * 2^n + (2^n - 1) = 2^(2n) - 1
-
 pub proof fn lemma_pow2_geometric_double(n: nat)
     ensures
         (pow2(n) - 1) * pow2(n) + (pow2(n) - 1) == pow2(2 * n) - 1,
@@ -1140,7 +1119,6 @@ pub proof fn lemma_pow2_geometric_double(n: nat)
 }
 
 // Proves: (2^a - 1) * 2^b + (2^b - 1) = 2^(a+b) - 1
-
 pub proof fn lemma_pow2_geometric(a: nat, b: nat)
     ensures
         (pow2(a) - 1) * pow2(b) + (pow2(b) - 1) == pow2(a + b) - 1,
@@ -1154,7 +1132,6 @@ pub proof fn lemma_pow2_geometric(a: nat, b: nat)
 }
 
 // Modular congruence preserves powers
-
 pub proof fn lemma_pow_mod_congruent(a: int, b: int, n: nat, m: int)
     requires
         m > 0,
@@ -1175,7 +1152,6 @@ pub proof fn lemma_pow_mod_congruent(a: int, b: int, n: nat, m: int)
 /// always yields non-negative results.
 ///
 /// This lemma extends vstd's `lemma_pow_positive` to handle the case when base = 0.
-
 pub proof fn lemma_pow_nonnegative(base: int, n: nat)
     requires
         base >= 0,
@@ -1203,7 +1179,6 @@ pub proof fn lemma_pow_nonnegative(base: int, n: nat)
 ///
 /// This is essential for chaining power operations in modular arithmetic.
 /// For example, in the invert proof we compute: (x^(2^250-1))^(2^5) = x^((2^250-1)*2^5)
-
 pub proof fn lemma_pow_mod_composition(x: nat, a: nat, b: nat, m: nat)
     requires
         a > 0,
@@ -1285,7 +1260,6 @@ pub proof fn lemma_pow_mod_composition(x: nat, a: nat, b: nat, m: nat)
 /// - Power addition: x^(a+b) = x^a * x^b (from lemma_pow_adds)
 /// - Modular multiplication property (from lemma_mul_mod_noop_general)
 /// - Int/nat modulo equivalence (via lemma_int_nat_mod_equiv)
-
 pub proof fn lemma_modular_power_addition(x: nat, a: nat, b: nat, m: nat)
     requires
         a > 0,
@@ -1366,7 +1340,6 @@ pub proof fn lemma_modular_power_addition(x: nat, a: nat, b: nat, m: nat)
 
     // The int-level equality now carries over to the nat-level postcondition ✓
 }
-
 
 pub proof fn lemma_pow2_distributivity_over_word(
     word: nat,

@@ -26,7 +26,6 @@ verus! {
 // ============================================================================
 /// Helper: Bound bytes_to_nat_prefix - geometric series bound
 /// Each byte contributes at most 255 * pow2(j*8) < pow2((j+1)*8)
-
 pub proof fn lemma_bytes_to_nat_prefix_bounded(bytes: Seq<u8>, n: nat)
     requires
         n <= bytes.len(),
@@ -90,7 +89,6 @@ pub proof fn lemma_bytes_to_nat_prefix_bounded(bytes: Seq<u8>, n: nat)
 /// - bytes_to_nat_prefix uses direct sums: b[0]*2^0 + b[1]*2^8 + ...
 ///
 /// Both compute the same polynomial value.
-
 pub proof fn lemma_bytes_seq_to_nat_equals_prefix(seq: Seq<u8>)
     ensures
         bytes_seq_to_nat(seq) == bytes_to_nat_prefix(seq, seq.len() as nat),
@@ -130,7 +128,6 @@ pub proof fn lemma_bytes_seq_to_nat_equals_prefix(seq: Seq<u8>)
 ///
 /// This is the key inductive step showing how Horner's method
 /// (multiply by 256, add first byte) relates to the prefix sum form.
-
 proof fn lemma_horner_to_prefix_step(seq: Seq<u8>, k: nat)
     requires
         seq.len() > 0,
@@ -198,7 +195,6 @@ proof fn lemma_horner_to_prefix_step(seq: Seq<u8>, k: nat)
 // ============================================================================
 /// Lemma: Decomposition of bytes32_to_nat_rec into prefix and suffix
 /// This is the key structural insight: the recursive sum can be split at any point
-
 pub proof fn lemma_decomposition_prefix_rec(bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
@@ -249,7 +245,6 @@ pub proof fn lemma_decomposition_prefix_rec(bytes: &[u8; 32], n: nat)
 
 /// Lemma: The suffix bytes32_to_nat_rec(bytes, n) is divisible by pow2(n*8)
 /// Every term in the sum has a factor of pow2(j*8) where j >= n, so the whole sum is divisible by pow2(n*8)
-
 pub proof fn lemma_rec_suffix_divisible(bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
@@ -311,7 +306,6 @@ pub proof fn lemma_rec_suffix_divisible(bytes: &[u8; 32], n: nat)
 ///
 /// This is the KEY lemma: taking modulo pow2(n*8) naturally truncates all bytes
 /// beyond index n-1, leaving only the contribution of the first n bytes.
-
 pub proof fn lemma_bytes32_to_nat_mod_truncates(bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
@@ -378,7 +372,6 @@ pub proof fn lemma_bytes32_to_nat_mod_truncates(bytes: &[u8; 32], n: nat)
 ///
 /// Once we have the first i+1 bytes via modulo, dividing by pow2(i*8)
 /// shifts right by i bytes, leaving byte i in the lowest position.
-
 pub proof fn lemma_prefix_div_extracts_byte(bytes: &[u8; 32], i: nat)
     requires
         i < 32,
@@ -426,7 +419,6 @@ pub proof fn lemma_prefix_div_extracts_byte(bytes: &[u8; 32], i: nat)
 ///
 /// Using lemma_pow2_div_mod and the modulo truncation approach,
 /// we can extract any byte from bytes32_to_nat via division and modulo.
-
 pub proof fn lemma_extract_byte_at_index(bytes: &[u8; 32], i: nat)
     requires
         i < 32,
@@ -471,7 +463,6 @@ pub proof fn lemma_extract_byte_at_index(bytes: &[u8; 32], i: nat)
 /// If two 32-byte arrays have the same bytes32_to_nat value, then they are
 /// equal byte-by-byte. This is proven by extracting each byte using
 /// lemma_extract_byte_at_index and showing they must be equal.
-
 pub proof fn lemma_canonical_bytes_equal(bytes1: &[u8; 32], bytes2: &[u8; 32])
     requires
         bytes32_to_nat(bytes1) == bytes32_to_nat(bytes2),
@@ -496,7 +487,6 @@ pub proof fn lemma_canonical_bytes_equal(bytes1: &[u8; 32], bytes2: &[u8; 32])
 /// Lemma: bytes32_to_nat_rec from index n is 0 when all bytes from n onwards are zero.
 ///
 /// This is the key insight: the "suffix" part of the sum vanishes when trailing bytes are zero.
-
 pub proof fn lemma_suffix_zero_when_bytes_zero(bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
@@ -530,7 +520,6 @@ pub proof fn lemma_suffix_zero_when_bytes_zero(bytes: &[u8; 32], n: nat)
 ///   bytes32_to_nat = prefix(n) + suffix(n)    [by lemma_decomposition_prefix_rec]
 ///   suffix(n) = 0                           [by lemma_suffix_zero_when_bytes_zero]
 ///   Therefore: bytes32_to_nat = prefix(n)
-
 pub proof fn lemma_bytes32_to_nat_with_trailing_zeros(bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
@@ -564,7 +553,6 @@ pub proof fn lemma_bytes32_to_nat_with_trailing_zeros(bytes: &[u8; 32], n: nat)
 /// Lemma: bytes32_to_nat of a 32-byte array with only the first byte set equals that byte.
 ///
 /// This is a special case of lemma_bytes32_to_nat_with_trailing_zeros for n=1.
-
 pub proof fn lemma_bytes32_to_nat_first_byte_only(bytes: &[u8; 32])
     requires
         forall|i: int| 1 <= i < 32 ==> bytes[i] == 0,
@@ -590,7 +578,6 @@ pub proof fn lemma_bytes32_to_nat_first_byte_only(bytes: &[u8; 32])
 }
 
 /// Helper: bytes_to_nat_prefix values are equal when the sequences agree on first n bytes.
-
 pub proof fn lemma_prefix_equal_when_bytes_match(seq1: Seq<u8>, seq2: Seq<u8>, n: nat)
     requires
         seq1.len() >= n,
@@ -626,7 +613,6 @@ pub proof fn lemma_prefix_equal_when_bytes_match(seq1: Seq<u8>, seq2: Seq<u8>, n
 ///
 /// (This lemma captures the common proof pattern for From<u16>, From<u32>,
 /// From<u64>, and From<u128>.)
-
 pub proof fn lemma_from_le_bytes(le_seq: Seq<u8>, bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
@@ -648,7 +634,6 @@ pub proof fn lemma_from_le_bytes(le_seq: Seq<u8>, bytes: &[u8; 32], n: nat)
 // ============================================================================
 /// Proves that bytes32_to_nat is at least as large as any individual term in its sum.
 /// Useful for showing that if bytes[i] is non-zero, then bytes32_to_nat >= 2^(i*8).
-
 pub proof fn lemma_bytes32_to_nat_lower_bound(bytes: &[u8; 32], index: usize)
     requires
         index < 32,
@@ -662,7 +647,6 @@ pub proof fn lemma_bytes32_to_nat_lower_bound(bytes: &[u8; 32], index: usize)
 }
 
 /// Helper lemma showing that bytes32_to_nat_rec is >= a specific term
-
 proof fn lemma_bytes32_to_nat_rec_bound(bytes: &[u8; 32], start: usize, target: usize)
     requires
         start <= target < 32,
@@ -685,7 +669,6 @@ proof fn lemma_bytes32_to_nat_rec_bound(bytes: &[u8; 32], start: usize, target: 
 // Bridge lemmas: connecting different byte-to-nat representations
 // ============================================================================
 /// Lemma: bytes32_to_nat (32-byte) equals bytes32_to_nat_rec starting at index 0
-
 pub proof fn lemma_bytes32_to_nat_equals_rec(bytes: &[u8; 32])
     ensures
         bytes32_to_nat(bytes) == bytes32_to_nat_rec(bytes, 0),
@@ -698,7 +681,6 @@ pub proof fn lemma_bytes32_to_nat_equals_rec(bytes: &[u8; 32])
 ///
 /// For a fixed-size array, prefix(bytes@, k) equals the sum of suffix terms from 0 to k-1.
 /// This is proven by induction: at each step, prefix adds the same term as suffix would include.
-
 proof fn lemma_prefix_equals_suffix_partial<const N: usize>(bytes: &[u8; N], k: nat)
     requires
         k <= N,
@@ -724,7 +706,6 @@ proof fn lemma_prefix_equals_suffix_partial<const N: usize>(bytes: &[u8; N], k: 
 }
 
 /// Helper: For a full array, prefix(N) equals suffix(0)
-
 proof fn lemma_prefix_equals_suffix_full<const N: usize>(bytes: &[u8; N])
     ensures
         bytes_to_nat_prefix(bytes@, N as nat) == bytes_to_nat_suffix(bytes, 0),
@@ -738,7 +719,6 @@ proof fn lemma_prefix_equals_suffix_full<const N: usize>(bytes: &[u8; N])
 }
 
 /// Lemma: For 64-byte arrays, bytes_seq_to_nat equals bytes_to_nat_suffix starting at 0
-
 pub proof fn lemma_bytes32_to_nat_equals_suffix_64(bytes: &[u8; 64])
     ensures
         bytes_seq_to_nat(bytes@) == bytes_to_nat_suffix(bytes, 0),
@@ -759,7 +739,6 @@ pub proof fn lemma_bytes32_to_nat_equals_suffix_64(bytes: &[u8; 64])
 // array size if other use cases emerge (e.g., for 32-byte or 128-byte inputs).
 /// Upper bound: result ≤ 2^(count×64) - 1
 /// Note: Currently specialized for &[u64; 8]. Could be made generic over size N.
-
 pub proof fn lemma_words_to_nat_upper_bound(words: &[u64; 8], count: int)
     requires
         0 <= count <= 8,
@@ -799,7 +778,6 @@ pub proof fn lemma_words_to_nat_upper_bound(words: &[u64; 8], count: int)
 
 /// Equivalence: words_to_nat on word array == words_from_bytes on underlying bytes
 /// Note: Currently specialized for &[u64; 8] and &[u8; 64]. Could be made generic over size N.
-
 pub proof fn lemma_words_to_nat_equals_bytes(words: &[u64; 8], bytes: &[u8; 64], count: int)
     requires
         0 <= count <= 8,
@@ -815,7 +793,6 @@ pub proof fn lemma_words_to_nat_equals_bytes(words: &[u64; 8], bytes: &[u8; 64],
 /// Expands to explicit 8-term sum (used for from_bytes_wide verification)
 /// Note: This is inherently size-specific (explicit 8-term expansion).
 /// For other sizes, similar expansion lemmas could be added as needed.
-
 pub proof fn lemma_words64_from_bytes_to_nat_wide(bytes: &[u8; 64])
     ensures
         words64_from_bytes_to_nat(bytes@, 8) == word64_from_bytes(bytes@, 0) + pow2(64)

@@ -35,7 +35,6 @@ pub open spec fn spec_gcd(a: nat, b: nat) -> nat
 }
 
 /// Helper: If d divides both x and y, then d divides x + k*y for any k
-
 pub proof fn lemma_divides_linear_combo(x: nat, y: nat, k: nat, d: nat)
     requires
         d > 0,
@@ -56,7 +55,6 @@ pub proof fn lemma_divides_linear_combo(x: nat, y: nat, k: nat, d: nat)
 }
 
 /// Helper: If d divides both x and y, then d divides x - k*y (when x >= k*y)
-
 pub proof fn lemma_divides_linear_combo_sub(x: nat, y: nat, k: nat, d: nat)
     requires
         d > 0,
@@ -78,7 +76,6 @@ pub proof fn lemma_divides_linear_combo_sub(x: nat, y: nat, k: nat, d: nat)
 }
 
 /// Lemma: gcd(a, b) divides both a and b
-
 pub proof fn lemma_gcd_divides_both(a: nat, b: nat)
     ensures
         a % spec_gcd(a, b) == 0 || spec_gcd(a, b) == 0,
@@ -106,7 +103,6 @@ pub proof fn lemma_gcd_divides_both(a: nat, b: nat)
 }
 
 /// Lemma: gcd(a, b) is positive when a > 0 or b > 0
-
 pub proof fn lemma_gcd_positive(a: nat, b: nat)
     requires
         a > 0 || b > 0,
@@ -125,7 +121,6 @@ pub proof fn lemma_gcd_positive(a: nat, b: nat)
 }
 
 /// Lemma: Any common divisor of a and b divides gcd(a, b)
-
 pub proof fn lemma_common_divisor_divides_gcd(a: nat, b: nat, d: nat)
     requires
         d > 0,
@@ -157,7 +152,6 @@ pub proof fn lemma_common_divisor_divides_gcd(a: nat, b: nat, d: nat)
 }
 
 /// Lemma: If prime p does not divide a, then gcd(a % p, p) = 1
-
 pub proof fn lemma_gcd_with_prime(a: nat, prime: nat)
     requires
         is_prime(prime),
@@ -194,7 +188,6 @@ pub proof fn lemma_gcd_with_prime(a: nat, prime: nat)
 }
 
 /// Helper: if n % d == 0 and d > 0, then d <= n (or n == 0)
-
 proof fn lemma_mod_is_zero_when_divisible(n: nat, d: nat)
     requires
         d > 0,
@@ -249,7 +242,6 @@ pub open spec fn binomial(n: nat, k: nat) -> nat
 }
 
 /// For prime p and 0 < k < p, p | C(p,k)
-
 pub proof fn lemma_binomial_divisible_by_prime(p: nat, k: nat)
     requires
         is_prime(p),
@@ -274,7 +266,6 @@ pub proof fn lemma_binomial_divisible_by_prime(p: nat, k: nat)
 }
 
 /// k * C(p,k) = p * C(p-1,k-1), combined with gcd(p,k)=1 implies p | C(p,k)
-
 proof fn lemma_binomial_prime_divisibility_helper(p: nat, k: nat)
     requires
         is_prime(p),
@@ -302,7 +293,6 @@ proof fn lemma_binomial_prime_divisibility_helper(p: nat, k: nat)
 }
 
 /// Absorption: k * C(n,k) = n * C(n-1,k-1)
-
 pub proof fn lemma_binomial_absorption(n: nat, k: nat)
     requires
         n >= 1,
@@ -346,7 +336,6 @@ pub proof fn lemma_binomial_absorption(n: nat, k: nat)
 }
 
 /// C(n,1) = n
-
 proof fn lemma_binomial_n_1(n: nat)
     requires
         n >= 1,
@@ -365,7 +354,6 @@ proof fn lemma_binomial_n_1(n: nat)
 }
 
 /// Factorial-based absorption proof
-
 proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
     requires
         n >= 1,
@@ -430,7 +418,6 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
 }
 
 /// C(n,k) * k! * (n-k)! = n! (well-known combinatorial identity)
-
 proof fn lemma_binomial_factorial_relation(n: nat, k: nat)
     requires
         k <= n,
@@ -441,7 +428,6 @@ proof fn lemma_binomial_factorial_relation(n: nat, k: nat)
 }
 
 /// n! > 0
-
 proof fn lemma_factorial_positive(n: nat)
     ensures
         factorial(n) > 0,
@@ -457,7 +443,6 @@ proof fn lemma_factorial_positive(n: nat)
 }
 
 /// a^p ≡ a (mod p) for all a >= 0 (proved by induction using binomial theorem)
-
 pub proof fn lemma_fermat_strong(a: nat, p: nat)
     requires
         is_prime(p),
@@ -507,7 +492,6 @@ pub proof fn lemma_fermat_strong(a: nat, p: nat)
 }
 
 /// (a+1)^p ≡ a^p + 1 (mod p) - middle terms C(p,k) vanish for 0 < k < p
-
 proof fn lemma_binomial_expansion_mod_p(a: nat, p: nat)
     requires
         is_prime(p),
@@ -530,7 +514,6 @@ spec fn binomial_sum(a: nat, n: nat, max_k: nat) -> nat
 }
 
 /// Binomial Theorem: (a+1)^n = Σ_{k=0}^{n} C(n,k) * a^k (axiom)
-
 proof fn axiom_binomial_theorem(a: nat, n: nat)
     ensures
         binomial_sum(a, n, n) == pow((a + 1) as int, n) as nat,
@@ -539,7 +522,6 @@ proof fn axiom_binomial_theorem(a: nat, n: nat)
 }
 
 /// Partial binomial sum modulo p
-
 proof fn lemma_partial_binomial_sum_mod_p(a: nat, p: nat, j: nat)
     requires
         is_prime(p),
@@ -685,7 +667,6 @@ proof fn lemma_partial_binomial_sum_mod_p(a: nat, p: nat, j: nat)
 }
 
 /// Cancellation for Fermat: if a * a^(p-1) ≡ a (mod p) and a ≠ 0 (mod p), then a^(p-1) ≡ 1 (mod p)
-
 proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
     requires
         is_prime(p),
@@ -766,7 +747,6 @@ proof fn lemma_fermat_cancellation(a: nat, n: nat, p: nat)
 }
 
 /// If x % m == y % m then (x - y) % m == 0
-
 proof fn lemma_mod_sub_eq_implies_zero(x: int, y: int, m: int)
     requires
         m > 0,
@@ -792,7 +772,6 @@ pub open spec fn product_of_multiples(a: nat, n: nat) -> nat
 }
 
 /// Product of multiples equals a^n * n!
-
 pub proof fn lemma_product_of_multiples_eq(a: nat, n: nat)
     ensures
         product_of_multiples(a, n) == pow(a as int, n) as nat * factorial(n),
@@ -919,7 +898,6 @@ pub open spec fn spec_extended_gcd(a: nat, b: nat) -> ExtGcdResult
 }
 
 /// Lemma: Extended GCD computes the same gcd as spec_gcd
-
 pub proof fn lemma_extended_gcd_is_gcd(a: nat, b: nat)
     ensures
         spec_extended_gcd(a, b).gcd == spec_gcd(a, b),
@@ -934,7 +912,6 @@ pub proof fn lemma_extended_gcd_is_gcd(a: nat, b: nat)
 }
 
 /// Lemma: Bezout's Identity - a*x + b*y = gcd(a,b)
-
 pub proof fn lemma_bezout_identity(a: nat, b: nat)
     ensures
         ({
@@ -997,7 +974,6 @@ pub open spec fn spec_mod_inverse(a: nat, m: nat) -> nat
 }
 
 /// Lemma: The modular inverse satisfies (a * spec_mod_inverse(a, m)) % m == 1
-
 pub proof fn lemma_mod_inverse_correct(a: nat, m: nat)
     requires
         m > 1,
@@ -1055,7 +1031,6 @@ pub proof fn lemma_mod_inverse_correct(a: nat, m: nat)
 // PART 5: Euclid's Lemma and Related Helpers
 // =============================================================================
 /// If a % p != 0 and i % p != 0, then (a * i) % p != 0
-
 pub proof fn lemma_product_nonzero_mod_prime(a: nat, i: nat, p: nat)
     requires
         is_prime(p),
@@ -1077,7 +1052,6 @@ pub proof fn lemma_product_nonzero_mod_prime(a: nat, i: nat, p: nat)
 }
 
 /// Euclid's lemma: if p is prime and p | (a * b), then p | a or p | b
-
 pub proof fn lemma_euclid_prime(a: nat, b: nat, p: nat)
     requires
         is_prime(p),
@@ -1124,7 +1098,6 @@ pub proof fn lemma_euclid_prime(a: nat, b: nat, p: nat)
 }
 
 /// Helper for Euclid's lemma: works with a already reduced mod p
-
 proof fn lemma_euclid_prime_helper(a: nat, b: nat, p: nat)
     requires
         is_prime(p),
@@ -1228,7 +1201,6 @@ proof fn lemma_euclid_prime_helper(a: nat, b: nat, p: nat)
 }
 
 /// If a % m == 0 and b % m == 0 and a >= b, then (a - b) % m == 0
-
 proof fn lemma_mod_difference_zero(a: int, b: int, m: int)
     requires
         m > 0,
@@ -1244,7 +1216,6 @@ proof fn lemma_mod_difference_zero(a: int, b: int, m: int)
 }
 
 /// If 1 <= i < j < p and a % p != 0, then (a * i) % p != (a * j) % p
-
 pub proof fn lemma_multiples_distinct_mod_prime(a: nat, i: nat, j: nat, p: nat)
     requires
         is_prime(p),
@@ -1291,7 +1262,6 @@ pub proof fn lemma_multiples_distinct_mod_prime(a: nat, i: nat, j: nat, p: nat)
 }
 
 /// Helper: if a % m == b % m then (a - b) % m == 0 (for a >= b)
-
 proof fn lemma_mod_sub_eq(a: nat, b: nat, m: nat)
     requires
         m > 0,
@@ -1359,7 +1329,6 @@ proof fn lemma_mod_sub_eq(a: nat, b: nat, m: nat)
 // =============================================================================
 /// The function f(i) = (a * i) % p maps {1, ..., p-1} to {1, ..., p-1}
 /// (i.e., the image is contained in {1, ..., p-1})
-
 pub proof fn lemma_mult_maps_to_nonzero(a: nat, i: nat, p: nat)
     requires
         is_prime(p),
@@ -1384,7 +1353,6 @@ pub proof fn lemma_mult_maps_to_nonzero(a: nat, i: nat, p: nat)
 ///
 /// Proof: f(i) = (i * a) % p is a bijection on {1..p-1} (injective + pigeonhole),
 /// so ∏ f(i) = ∏ i = (p-1)!
-
 pub proof fn lemma_product_of_multiples_mod_eq_factorial(a: nat, p: nat)
     requires
         is_prime(p),
@@ -1497,7 +1465,6 @@ pub proof fn lemma_product_of_multiples_mod_eq_factorial(a: nat, p: nat)
 /// 1. The sequence {a, 2a, ..., (p-1)a} mod p is a permutation of {1, 2, ..., p-1}
 /// 2. Therefore their products are equal mod p: a^(p-1) * (p-1)! ≡ (p-1)! (mod p)
 /// 3. Since gcd((p-1)!, p) = 1 for prime p, we can cancel to get a^(p-1) ≡ 1 (mod p)
-
 pub proof fn lemma_fermat_little_theorem(x: nat, prime: nat)
     requires
         is_prime(prime),
@@ -1601,7 +1568,6 @@ pub proof fn lemma_fermat_little_theorem(x: nat, prime: nat)
 }
 
 /// Any factorial of n < prime is coprime to prime
-
 proof fn lemma_factorial_coprime_to_prime(n: nat, prime: nat)
     requires
         is_prime(prime),
@@ -1648,7 +1614,6 @@ proof fn lemma_factorial_coprime_to_prime(n: nat, prime: nat)
 }
 
 /// Cancellation: if a * b ≡ b (mod p) and b % p != 0, then a ≡ 1 (mod p)
-
 proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
     requires
         is_prime(prime),
@@ -1730,7 +1695,6 @@ proof fn lemma_cancellation_mod_prime(a: nat, b: nat, prime: nat)
 ///   So (p - a)(p - b) % p = ab % p
 ///
 /// This lemma generalizes the property that negation preserves products in finite fields.
-
 pub proof fn lemma_product_of_complements(a: nat, b: nat, p: nat)
     requires
         p > 0,
@@ -1775,7 +1739,6 @@ pub proof fn lemma_product_of_complements(a: nat, b: nat, p: nat)
 /// - 2^255 is even (by lemma_pow2_even)
 /// - 19 is odd (19 % 2 == 1)
 /// - even - odd = odd
-
 pub proof fn lemma_p_is_odd()
     ensures
         p() % 2 == 1,

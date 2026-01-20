@@ -20,7 +20,6 @@ verus! {
 // ============================================================================
 // LEMMA 1: Computing q (the quotient when dividing by p)
 // ============================================================================
-
 pub proof fn lemma_bounded_shr_51(x: u64)
     requires
         x < 3 * pow2(51),
@@ -37,7 +36,6 @@ pub proof fn lemma_bounded_shr_51(x: u64)
 
 /// Helper lemma: Proves the algebraic expansion and cancellation of intermediate terms
 /// Shows that when expanding the substituted limbs, q0, q1, q2, q3 all cancel out
-
 proof fn lemma_radix51_telescoping_expansion(
     q0: int,
     q1: int,
@@ -137,7 +135,6 @@ proof fn lemma_radix51_telescoping_expansion(
 ///    - q1 appears as: +q1*2^102 - q1*2^102 = 0  (and so on)
 /// 4. After cancellation: value = q4 * 2^255 + remainder, where remainder < 2^255
 /// 5. By uniqueness of division, q4 = value / 2^255
-
 pub proof fn lemma_radix51_telescoping_direct(
     limbs: [u64; 5],
     q0: int,
@@ -249,7 +246,6 @@ pub proof fn lemma_radix51_telescoping_direct(
 }
 
 /// Helper: Proves the remainder from radix-51 representation is bounded by 2^255
-
 pub proof fn lemma_radix51_remainder_bound(r0: int, r1: int, r2: int, r3: int, r4: int)
     requires
         0 <= r0 < (pow2(51) as int),
@@ -291,7 +287,6 @@ pub proof fn lemma_radix51_remainder_bound(r0: int, r1: int, r2: int, r3: int, r
 }
 
 /// Helper: Establishes basic power-of-2 facts needed for carry propagation
-
 pub proof fn lemma_carry_propagation_setup()
     ensures
         (1u64 << 51) == pow2(51),
@@ -323,7 +318,6 @@ pub proof fn lemma_carry_propagation_setup()
 /// and establishes the division theorem relationship
 ///
 /// Note: carry_in is typically < 3 for stages 1-4, but equals 19 for stage 0
-
 pub proof fn lemma_single_stage_division(limb: u64, carry_in: u64, stage_input: u64, carry_out: u64)
     requires
         limb < (1u64 << 52),
@@ -349,7 +343,6 @@ pub proof fn lemma_single_stage_division(limb: u64, carry_in: u64, stage_input: 
 /// Given the inputs and outputs of a stage, proves the division/modulo relationship
 ///
 /// Note: carry_in is typically < 3 for stages 1-4, but equals 19 for stage 0
-
 pub proof fn lemma_stage_division_theorem(limb: u64, carry_in: int, carry_out: int) -> (r: int)
     requires
         limb < (1u64 << 52),
@@ -371,7 +364,6 @@ pub proof fn lemma_stage_division_theorem(limb: u64, carry_in: int, carry_out: i
 /// This shows that q represents (u64_5_as_nat(limbs) + 19) / 2^255
 ///
 /// Refactored into smaller pieces for better readability and maintainability.
-
 pub proof fn lemma_carry_propagation_is_division(limbs: [u64; 5], q: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -433,7 +425,6 @@ pub proof fn lemma_carry_propagation_is_division(limbs: [u64; 5], q: u64)
 
 // lemma_radix_51_geometric_sum: MOVED to unused_helper_lemmas.rs (superseded by lemma_radix_51_partial_geometric_sum)
 /// Helper: Proves all intermediate carries are bounded by 3
-
 pub proof fn lemma_all_carries_bounded_by_3(limbs: [u64; 5])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -478,7 +469,6 @@ pub proof fn lemma_all_carries_bounded_by_3(limbs: [u64; 5])
 
 /// Helper: Proves q can only be 0 or 1 (not 2)
 /// Also establishes the division relationship for reuse
-
 pub proof fn lemma_q_is_binary(limbs: [u64; 5], q: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -515,7 +505,6 @@ pub proof fn lemma_q_is_binary(limbs: [u64; 5], q: u64)
 ///
 /// With the tight bound u64_5_as_nat(limbs) < 2*p(), the value is either in [0, p) or [p, 2*p),
 /// which maps directly to q=0 or q=1. This makes the biconditional proofs straightforward.
-
 pub proof fn lemma_q_biconditional(limbs: [u64; 5], q: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -566,7 +555,6 @@ pub proof fn lemma_q_biconditional(limbs: [u64; 5], q: u64)
 ///
 /// The precondition `u64_5_as_nat(limbs) < 2 * p()` is satisfied when limbs come from
 /// `reduce()` output, which now ensures this property in its postcondition.
-
 pub proof fn lemma_compute_q(limbs: [u64; 5], q: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),

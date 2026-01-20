@@ -21,7 +21,6 @@ use crate::specs::field_specs_u64::*;
 verus! {
 
 // Auxiliary lemma for reordering terms in the pow2k proof
-
 pub proof fn lemma_reorder_mul(a: int, b: int)
     ensures
         2 * (a * (19 * b)) == 19 * (2 * (a * b)),
@@ -136,7 +135,6 @@ pub open spec fn term_product_bounds_spec(a: [u64; 5], bound: u64) -> bool {
     &&& (a[1] as u128) * (a[3] as u128) < (bound * bound)
 }
 
-
 pub proof fn lemma_term_product_bounds(a: [u64; 5], bound: u64)
     requires
         19 * bound <= u64::MAX,
@@ -165,7 +163,6 @@ pub open spec fn ci_0_val_boundaries(a: [u64; 5], bound: u64) -> bool {
     &&& c4_0_val(a) < 5 * (bound * bound)
 }
 
-
 pub proof fn lemma_c_i_0_bounded(a: [u64; 5], bound: u64)
     requires
         19 * bound <= u64::MAX,
@@ -183,7 +180,6 @@ pub open spec fn ci_val_boundaries(a: [u64; 5]) -> bool {
     &&& (c3_val(a) >> 51) <= (u64::MAX as u128)
     &&& (c4_val(a) >> 51) <= (u64::MAX as u128)
 }
-
 
 pub proof fn lemma_c_i_shift_bounded(a: [u64; 5], bound: u64)
     requires
@@ -236,7 +232,6 @@ pub open spec fn pow2k_loop_boundary_spec(a: [u64; 5]) -> bool {
     &&& pow2k_loop_return(a)[3] < 1u64 << 54
     &&& pow2k_loop_return(a)[4] < 1u64 << 54
 }
-
 
 pub proof fn lemma_pow2k_loop_boundary(a: [u64; 5])
     requires
@@ -328,7 +323,6 @@ pub proof fn lemma_pow2k_loop_boundary(a: [u64; 5])
     assert((1u64 << 51) < (1u64 << 52)) by (bit_vector);
     assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
 }
-
 
 pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
     requires

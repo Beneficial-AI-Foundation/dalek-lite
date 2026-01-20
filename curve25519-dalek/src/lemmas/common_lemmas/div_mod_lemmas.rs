@@ -207,7 +207,6 @@ pub proof fn lemma_mod_sum_both_divisible(a: nat, b: nat, d: nat)
 /// If n is divisible by (a·b), then (n/a) is divisible by b.
 ///
 /// Mathematical property: Divisibility distribution across division
-// TODO: Fix proof for Verus 88f7396 - nonlinear_arith fails
 pub proof fn lemma_divisibility_factor(n: nat, a: nat, b: nat)
     requires
         n % (a * b) == 0,
@@ -216,21 +215,23 @@ pub proof fn lemma_divisibility_factor(n: nat, a: nat, b: nat)
     ensures
         (n / a) % b == 0,
 {
-    assume(false);  // TODO: fix for Verus 88f7396
     // Use lemma_mod_breakdown: n % (a * b) = a * ((n / a) % b) + n % a
     // Since n % (a * b) == 0: 0 = a * ((n / a) % b) + n % a
     // Both terms are non-negative and sum to 0, so both must be 0
     assert((n / a) % b == 0) by {
         lemma_mod_breakdown(n as int, a as int, b as int);
-        assert(0 == a * ((n / a) % b) + n % a);
-        // Since a > 0 and a * ((n / a) % b) = 0, we have (n / a) % b = 0
-        assert((n / a) % b == 0) by (nonlinear_arith)
+        let qb = (n / a) % b;
+        let ra = n % a;
+        assert(0 == a * qb + ra);
+        assert(qb >= 0);
+        assert(ra >= 0);
+        assert(a * qb == 0);
+        assert(qb == 0) by (nonlinear_arith)
             requires
                 a > 0,
-                a * ((n / a) % b) == 0,
-        {
-            assume(false);  // TODO: fix for Verus 88f7396
-        }
+                qb >= 0,
+                a * qb == 0,
+        ;
     }
 }
 

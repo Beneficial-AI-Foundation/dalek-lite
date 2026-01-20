@@ -189,10 +189,15 @@ pub proof fn lemma_neg(elem: &FieldElement51)
                 lemma_small_mod((p() - (x % p())) as nat, p());
             }
 
+            // Define z outside the by block so the solver can connect it to (y + x) % p() == 0
+            let z = y + x;
+            // This follows from (y + x) % p() == 0 established at line 153
+            assert(z % p() == 0);
+
             assert(y + x == p()) by {
-                let z = y + x;
                 assert(z == p() * (z / p())) by {
-                    // we know z % p == 0
+                    // lemma_fundamental_div_mod gives: z = p() * (z / p()) + z % p()
+                    // Combined with z % p() == 0, we get z = p() * (z / p())
                     lemma_fundamental_div_mod(z as int, p() as int);
                 }
                 assert(z / p() == 1) by {
@@ -225,6 +230,11 @@ pub proof fn lemma_neg(elem: &FieldElement51)
                         );
                     }
                 }
+                // Connect the pieces: z == p() * (z / p()) and z / p() == 1 imply z == p()
+                assert(z == p() * 1) by {
+                    lemma_mul_basics(p() as int);
+                }
+                assert(z == p());
             }
 
         }

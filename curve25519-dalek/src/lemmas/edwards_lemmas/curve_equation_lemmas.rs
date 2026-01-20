@@ -172,48 +172,64 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
     ensures
         math_is_valid_extended_edwards_point(x, y, 1, t),
 {
-    // Goal: Show (X:Y:Z:T) with Z=1 is a valid extended point
-    //
-    // Need to prove:
-    //   1. Z ≠ 0
-    //   2. (X/Z, Y/Z) is on curve
-    //   3. T = X·Y/Z
     let p = p();
     p_gt_2();
 
-    // Part 1: Z = 1 ≠ 0 (trivially true)
+    // New validity definition uses:
+    // - Z != 0
+    // - projective curve equation
+    // - Segre relation X·Y == Z·T
 
-    // Part 2: (X/Z, Y/Z) is on curve
-    assert(math_on_edwards_curve(
-        math_field_mul(x, math_field_inv(1)),
-        math_field_mul(y, math_field_inv(1)),
-    )) by {
-        // Since Z = 1, inv(Z) = 1
-        assert(math_field_inv(1) == 1) by {
-            lemma_field_inv_one();
+    // 1) Z != 0 (Z = 1)
+
+    // 2) Projective curve equation holds for Z = 1
+    assert(math_on_edwards_curve_projective(x, y, 1)) by {
+        let x2 = math_field_square(x);
+        let y2 = math_field_square(y);
+        let z2 = math_field_square(1);
+        let z4 = math_field_square(z2);
+        let d = spec_field_element(&EDWARDS_D);
+
+        // z2 = 1^2 = 1, z4 = 1^4 = 1
+        assert(z2 == 1) by {
+            lemma_mul_basics(1int);
+            lemma_small_mod(1, p);
+        };
+        assert(z4 == 1) by {
+            assert(z2 == 1);
+            lemma_mul_basics(1int);
+            lemma_small_mod(1, p);
         };
 
-        // X · inv(Z) = X · 1 = X % p
-        assert(math_field_mul(x, math_field_inv(1)) == (x * 1) % p);
-        assert(math_field_mul(y, math_field_inv(1)) == (y * 1) % p);
+        // LHS: (y2 - x2)·1 = (y2 - x2)
+        let lhs = math_field_mul(math_field_sub(y2, x2), z2);
+        assert(lhs == math_field_sub(y2, x2)) by {
+            assert(z2 == 1);
+            lemma_mul_basics((math_field_sub(y2, x2)) as int);
+            // lhs = (sub * 1) % p = sub % p = sub (since sub is already reduced mod p)
+            lemma_mod_twice((((y2 % p) + p) - (x2 % p)) as int, p as int);
+        };
 
-        // on_curve(X % p, Y % p) ⟺ on_curve(X, Y) via square_mod_noop
-        // (inlined from lemma_curve_mod_noop)
-        lemma_square_mod_noop(x);
-        lemma_square_mod_noop(y);
+        // RHS: 1 + d·x2·y2
+        let rhs = math_field_add(z4, math_field_mul(d, math_field_mul(x2, y2)));
+        assert(rhs == math_field_add(1, math_field_mul(d, math_field_mul(x2, y2)))) by {
+            assert(z4 == 1);
+        };
+
+        // Affine curve equation gives the same equality.
+        assert(math_field_sub(y2, x2) == math_field_add(1, math_field_mul(d, math_field_mul(x2, y2))));
+        assert(lhs == rhs);
     };
 
-    // Part 3: T = X·Y/Z
-    assert(t == math_field_mul(math_field_mul(x, y), math_field_inv(1))) by {
-        lemma_field_inv_one();
-        let xy = math_field_mul(x, y);
-        // xy < p (mod result), so xy · 1 = xy
-        assert(xy < p) by {
+    // 3) Segre relation: X·Y == Z·T (with Z = 1 and T = X·Y)
+    assert(math_field_mul(x, y) == math_field_mul(1, t)) by {
+        assert(t == math_field_mul(x, y));
+        // 1·t = t in the field
+        assert(t < p) by {
             lemma_mod_bound((x * y) as int, p as int);
         };
-        lemma_small_mod(xy, p);
-        assert(math_field_mul(xy, math_field_inv(1)) == xy);
-        // t = xy (from precondition)
+        lemma_small_mod(t, p);
+        lemma_mul_basics(t as int);
     };
 }
 

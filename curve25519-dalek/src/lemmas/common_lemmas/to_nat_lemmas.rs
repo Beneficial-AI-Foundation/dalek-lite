@@ -481,6 +481,24 @@ pub proof fn lemma_canonical_bytes_equal(bytes1: &[u8; 32], bytes2: &[u8; 32])
     }
 }
 
+/// Lemma: if the little-endian value is 0, then all bytes are 0.
+pub proof fn lemma_bytes32_to_nat_zero_implies_all_bytes_zero(bytes: &[u8; 32])
+    requires
+        bytes32_to_nat(bytes) == 0,
+    ensures
+        forall|i: int| 0 <= i < 32 ==> bytes[i] == 0u8,
+{
+    assert forall|i: int| 0 <= i < 32 implies #[trigger] bytes[i] == 0u8 by {
+        let i_nat: nat = i as nat;
+        lemma_extract_byte_at_index(bytes, i_nat);
+
+        assert(bytes[i] as nat == (bytes32_to_nat(bytes) / pow2(i_nat * 8)) % pow2(8));
+        assert((bytes32_to_nat(bytes) / pow2(i_nat * 8)) % pow2(8) == 0);
+        assert(bytes[i] as nat == 0);
+        assert(bytes[i] == 0u8);
+    }
+}
+
 // ============================================================================
 // Trailing Zeros and Prefix Lemmas
 // ============================================================================

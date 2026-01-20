@@ -178,6 +178,50 @@ pub proof fn lemma_as_bytes_equals_spec_fe51_to_bytes(fe: &FieldElement51, bytes
     assert(seq_from32(bytes) =~= spec_fe51_to_bytes(fe));
 }
 
+/// Lemma: the canonical byte encoding is all-zero iff the field element value is 0.
+pub proof fn lemma_spec_fe51_to_bytes_zero_iff_field_element_zero(fe: &FieldElement51, bytes: &[u8; 32])
+    requires
+        bytes32_to_nat(bytes) == spec_field_element(fe),
+    ensures
+        (spec_fe51_to_bytes(fe) == seq![0u8; 32]) == (spec_field_element(fe) == 0),
+{
+    lemma_as_bytes_equals_spec_fe51_to_bytes(fe, bytes);
+
+    assert((spec_fe51_to_bytes(fe) == seq![0u8; 32]) == (spec_field_element(fe) == 0)) by {
+        // => direction
+        if spec_fe51_to_bytes(fe) == seq![0u8; 32] {
+            assert(seq_from32(bytes) == seq![0u8; 32]);
+
+            assert forall|i: int| 0 <= i < 32 implies bytes[i] == 0u8 by {
+                assert(seq_from32(bytes)[i] == bytes[i]);
+                assert(seq_from32(bytes)[i] == seq![0u8; 32][i]);
+                assert(seq![0u8; 32][i] == 0u8);
+            }
+
+            lemma_bytes32_to_nat_with_trailing_zeros(bytes, 0);
+            assert(bytes_to_nat_prefix(bytes@, 0) == 0);
+            assert(bytes32_to_nat(bytes) == 0);
+            assert(spec_field_element(fe) == 0);
+        }
+
+        // <= direction
+        if spec_field_element(fe) == 0 {
+            assert(bytes32_to_nat(bytes) == 0);
+            lemma_bytes32_to_nat_zero_implies_all_bytes_zero(bytes);
+
+            assert(seq_from32(bytes) == seq![0u8; 32]) by {
+                assert forall|i: int| 0 <= i < 32 implies seq_from32(bytes)[i] == seq![0u8; 32][i] by {
+                    assert(seq_from32(bytes)[i] == bytes[i]);
+                    assert(bytes[i] == 0u8);
+                    assert(seq![0u8; 32][i] == 0u8);
+                }
+            }
+
+            assert(spec_fe51_to_bytes(fe) == seq![0u8; 32]);
+        }
+    };
+}
+
 /// Lemma: spec_fe51_to_bytes produces the same bytes as as_bytes, element by element
 proof fn lemma_spec_fe51_to_bytes_matches_array(fe: &FieldElement51, bytes: &[u8; 32])
     requires

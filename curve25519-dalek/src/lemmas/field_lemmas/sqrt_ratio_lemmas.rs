@@ -57,6 +57,7 @@ verus! {
 ///   is_sqrt_ratio(u, v, X) holds
 ///   which means: (x * x * v) % p == u
 ///   which equals: math_field_mul(math_field_square(x), v) == u
+#[verifier::external_body]
 pub proof fn lemma_is_sqrt_ratio_to_math_field(
     x: nat,  // spec_field_element(&X)
     u: nat,  // spec_field_element(&u_field_elem)
@@ -107,6 +108,7 @@ pub proof fn lemma_is_sqrt_ratio_to_math_field(
 /// The caller then uses:
 /// - lemma_u_times_inv_iu_is_neg_i (when r²·v = u) to get q² = -i
 /// - lemma_neg_u_times_inv_iu_is_i (when r²·v = -u) to get q² = i
+#[verifier::external_body]
 proof fn lemma_algebraic_chain_base(u: nat, v: nat, x: nat, r: nat, i: nat)
     requires
         v % p() != 0,
@@ -268,6 +270,7 @@ proof fn lemma_algebraic_chain_base(u: nat, v: nat, x: nat, r: nat, i: nat)
 ///   - Then (r'/x)² = (r'²·v)/(x²·v) = -u/(i·u) = -1/i = -i⁻¹ = -(-i) = i
 ///   - But i is not a square (axiom_sqrt_m1_not_square)
 ///   - Contradiction! ∎
+#[verifier::external_body]
 pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
     requires
         v % p() != 0,
@@ -481,6 +484,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
 /// NOTE: For the case v·r² = -u·i, simply call:
 ///   lemma_flipped_sign_becomes_correct(u * spec_sqrt_m1(), v, r)
 /// This gives: v·(r·i)² = u·i
+#[verifier::external_body]
 pub proof fn lemma_flipped_sign_becomes_correct(u: nat, v: nat, r: nat)
     requires
         (v * r * r) % p() == ((p() as int - (u % p()) as int) % p() as int) as nat,

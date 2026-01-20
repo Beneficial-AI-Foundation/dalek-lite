@@ -13,6 +13,7 @@ use crate::specs::field_specs_u64::*;
 
 verus! {
 
+#[verifier::external_body]
 pub proof fn lemma_field51_add(lhs: &FieldElement51, rhs: &FieldElement51)
     requires
         sum_of_limbs_bounded(lhs, rhs, u64::MAX),
@@ -46,6 +47,7 @@ pub proof fn lemma_field51_add(lhs: &FieldElement51, rhs: &FieldElement51)
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_field_add_16p_no_overflow(lhs: &FieldElement51, rhs: &FieldElement51)
     requires
         fe51_limbs_bounded(lhs, 54),
@@ -104,6 +106,7 @@ pub proof fn lemma_field_add_16p_no_overflow(lhs: &FieldElement51, rhs: &FieldEl
 
 /// Lemma: bound weakening - if limbs are bounded by `a` bits, they're also bounded by `b` bits when a < b.
 /// This is useful when an invariant guarantees 52-bounded but a precondition requires 54-bounded.
+#[verifier::external_body]
 pub proof fn lemma_fe51_limbs_bounded_weaken(fe: &FieldElement51, a: u64, b: u64)
     requires
         fe51_limbs_bounded(fe, a),
@@ -124,6 +127,7 @@ pub proof fn lemma_fe51_limbs_bounded_weaken(fe: &FieldElement51, a: u64, b: u64
 }
 
 /// Weaken EdwardsPoint from 52-bounded (invariant) to 54-bounded (operation precondition)
+#[verifier::external_body]
 pub proof fn lemma_edwards_point_weaken_to_54(point: &EdwardsPoint)
     requires
         edwards_point_limbs_bounded(*point),
@@ -141,6 +145,7 @@ pub proof fn lemma_edwards_point_weaken_to_54(point: &EdwardsPoint)
 
 /// Lemma: addition bounds propagation - if both inputs are n-bounded, result is (n+1)-bounded.
 /// This is because: limb[i] < 2^n + limb[i] < 2^n implies result[i] < 2^(n+1).
+#[verifier::external_body]
 pub proof fn lemma_add_bounds_propagate(a: &FieldElement51, b: &FieldElement51, n: u64)
     requires
         fe51_limbs_bounded(a, n),
@@ -165,6 +170,7 @@ pub proof fn lemma_add_bounds_propagate(a: &FieldElement51, b: &FieldElement51, 
 
 /// Lemma: if both inputs are n-bounded (n <= 62), then sum_of_limbs_bounded holds.
 /// This is because: 2^n + 2^n = 2^(n+1) <= 2^63 < u64::MAX when n <= 62.
+#[verifier::external_body]
 pub proof fn lemma_sum_of_limbs_bounded_from_fe51_bounded(
     a: &FieldElement51,
     b: &FieldElement51,

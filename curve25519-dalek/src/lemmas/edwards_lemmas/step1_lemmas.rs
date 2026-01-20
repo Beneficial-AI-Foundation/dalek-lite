@@ -43,6 +43,7 @@ verus! {
 ///
 /// This is the fundamental property that connects the square root computation
 /// in decompress to the curve equation.
+#[verifier::external_body]
 pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
     requires
         ({
@@ -127,6 +128,7 @@ pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
 ///
 /// When sqrt_ratio_i returns (true, r), it means u/v is a square,
 /// which is exactly what math_is_valid_y_coordinate checks.
+#[verifier::external_body]
 pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, r: nat)
     requires
         ({
@@ -196,6 +198,7 @@ pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, r: nat)
 /// When sqrt_ratio_i succeeds with v ≠ 0, we can prove:
 /// - math_is_valid_y_coordinate(y)
 /// - math_on_edwards_curve(x, y)
+#[verifier::external_body]
 pub proof fn lemma_step1_curve_semantics(
     y: nat,  // spec_field_element(&Y)
     x: nat,  // spec_field_element(&X) from sqrt_ratio_i
@@ -257,6 +260,7 @@ pub proof fn lemma_step1_curve_semantics(
 // Note: lemma_square_matches_math_field_square is in field_lemmas/field_algebra_lemmas.rs.
 /// When y² = 1 in decompress, (0, y) is on the Edwards curve.
 /// This is the edge case where y = ±1 (identity-related points).
+#[verifier::external_body]
 pub proof fn lemma_u_zero_implies_identity_point(y: nat)
     requires
         math_field_sub(math_field_square(y), 1) == 0,
@@ -358,6 +362,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
 /// ## Precondition about exists|x|
 /// The caller must establish that there exists x with x²·v = i·u.
 /// This comes from sqrt_ratio_i's postcondition `is_sqrt_ratio_times_i` when it fails.
+#[verifier::external_body]
 pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
     requires
         ({
@@ -411,6 +416,7 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
 /// ## Proves
 /// - sqrt_ratio_succeeded <==> math_is_valid_y_coordinate(y)
 /// - sqrt_ratio_succeeded ==> math_on_edwards_curve(x, y)
+#[verifier::external_body]
 pub proof fn lemma_step1_case_analysis(
     y: nat,
     x: nat,

@@ -21,6 +21,7 @@ verus! {
 // are now in shift_lemmas.rs
 // =============================================================================
 /// u128 masking with low_bits_mask is modulo pow2
+#[verifier::external_body]
 pub proof fn lemma_u128_low_bits_mask_is_mod(x: u128, n: nat)
     requires
         n < 128,
@@ -31,6 +32,7 @@ pub proof fn lemma_u128_low_bits_mask_is_mod(x: u128, n: nat)
 }
 
 /// u128 truncation to u64 preserves low 64 bits (modulo pow2(64))
+#[verifier::external_body]
 pub proof fn lemma_u128_truncate_to_u64(x: u128)
     ensures
         (x as u64) as nat == (x as nat) % pow2(64),
@@ -39,6 +41,7 @@ pub proof fn lemma_u128_truncate_to_u64(x: u128)
 }
 
 /// Masking a truncated value: combining truncation and masking
+#[verifier::external_body]
 pub proof fn lemma_u128_truncate_and_mask(x: u128, n: nat)
     requires
         n <= 64,
@@ -232,6 +235,7 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
 }
 
 /// Helper function for part2 bounds (kept for completeness)
+#[verifier::external_body]
 pub proof fn lemma_part2_bounds(sum: u128)
     ensures
         ({

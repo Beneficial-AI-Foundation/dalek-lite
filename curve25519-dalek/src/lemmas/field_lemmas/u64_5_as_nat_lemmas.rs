@@ -14,6 +14,7 @@ use crate::specs::field_specs_u64::*;
 
 verus! {
 
+#[verifier::external_body]
 pub proof fn lemma_mul_v0_and_reorder(
     v0: int,
     s1: int,
@@ -37,6 +38,7 @@ pub proof fn lemma_mul_v0_and_reorder(
     lemma_mul_is_associative(v0, v4, s4);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_mul_si_vi_and_reorder(
     si: int,
     vi: int,
@@ -68,6 +70,7 @@ pub proof fn lemma_mul_si_vi_and_reorder(
 }
 
 // Lemma: Bridges from u64_5_as_nat postcondition to spec_field_element postcondition for power operations
+#[verifier::external_body]
 pub proof fn lemma_bridge_pow_as_nat_to_spec(
     result: &FieldElement51,
     base: &FieldElement51,
@@ -116,6 +119,7 @@ pub proof fn lemma_bridge_pow_as_nat_to_spec(
     assert((pow(x as int, exp) as nat) % p() == (pow(y as int, exp) as nat) % p());
 }
 
+#[verifier::external_body]
 pub proof fn lemma_u64_5_as_nat_add(a: [u64; 5], b: [u64; 5])
     requires
         forall|i: int| 0 <= i < 5 ==> b[i] as nat + a[i] as nat <= u64::MAX,
@@ -149,6 +153,7 @@ pub proof fn lemma_u64_5_as_nat_add(a: [u64; 5], b: [u64; 5])
 }
 
 // Lemma: If a > b pointwise, then u64_5_as_nat(a - b) = u64_5_as_nat(a) - u64_5_as_nat(b)
+#[verifier::external_body]
 pub proof fn lemma_u64_5_as_nat_sub(a: [u64; 5], b: [u64; 5])
     requires
         forall|i: int| 0 <= i < 5 ==> b[i] <= a[i],
@@ -183,6 +188,7 @@ pub proof fn lemma_u64_5_as_nat_sub(a: [u64; 5], b: [u64; 5])
 
 // Explicit and mod-p identities for squaring u64_5_as_nat conversion
 #[verusfmt::skip]
+#[verifier::external_body]
 pub proof fn lemma_u64_5_as_nat_squared(v: [u64; 5])
     ensures
         u64_5_as_nat(v) * u64_5_as_nat(v) ==
@@ -513,6 +519,7 @@ pub proof fn lemma_u64_5_as_nat_squared(v: [u64; 5])
     assert(c0 == (v[0] * v[0] + 19 * (2 * (v[2] * v[3]) + 2 * (v[1] * v[4]))));
 }
 
+#[verifier::external_body]
 pub proof fn lemma_u64_5_as_nat_k(a: [u64; 5], k: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> (k * a[i]) <= u64::MAX,

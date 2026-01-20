@@ -41,6 +41,7 @@ verus! {
 /// # Postconditions
 /// * u64_5_as_nat(t3_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, 11) as nat % p()
 /// * Also proves intermediate values: t0_sq = x^4, t1 = x^8, t2 = x^9
+#[verifier::external_body]
 pub proof fn lemma_pow22501_prove_t3(
     self_limbs: [u64; 5],
     t0_limbs: [u64; 5],

@@ -141,6 +141,7 @@ pub open spec fn limb4_byte_contribution_52(limbs: [u64; 5], bytes: [u8; 32]) ->
 ///
 /// This follows the same proof strategy as lemma_limbs_to_bytes from field_lemmas,
 /// but adapted for 52-bit limbs instead of 51-bit limbs.
+#[verifier::external_body]
 pub proof fn lemma_as_bytes_52(limbs: [u64; 5], bytes: [u8; 32])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -242,6 +243,7 @@ pub proof fn lemma_as_bytes_52(limbs: [u64; 5], bytes: [u8; 32])
 // ============================================================================
 /// Helper: A byte formed by simple right shift has a direct arithmetic interpretation
 /// This is the 52-bit version of lemma_byte_from_limb_shift
+#[verifier::external_body]
 proof fn lemma_byte_from_limb_shift_52(limb: u64, shift: u64, byte: u8)
     requires
         limb < pow2(52),
@@ -273,6 +275,7 @@ proof fn lemma_byte_from_limb_shift_52(limb: u64, shift: u64, byte: u8)
 ///
 /// The key insight here is that the byte contributions partition the bytes
 /// such that each byte (or parts of bytes at boundaries) is accounted for exactly once.
+#[verifier::external_body]
 pub proof fn lemma_sum_equals_byte_nat_52(limbs: [u64; 5], bytes: [u8; 32])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -384,6 +387,7 @@ pub proof fn lemma_sum_equals_byte_nat_52(limbs: [u64; 5], bytes: [u8; 32])
 }
 
 /// Helper lemma: proves that a boundary byte correctly combines parts from two limbs (52-bit version)
+#[verifier::external_body]
 proof fn lemma_boundary_byte_combines_52(
     low_limb: u64,
     high_limb: u64,
@@ -545,6 +549,7 @@ proof fn lemma_boundary_byte_combines_52(
 }
 
 /// Per-limb correctness lemmas (one for each limb 0-4)
+#[verifier::external_body]
 pub proof fn lemma_limb0_contribution_correctness_52(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[0] < (1u64 << 52),
@@ -664,6 +669,7 @@ pub proof fn lemma_limb0_contribution_correctness_52(limbs: [u64; 5], bytes: [u8
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_limb1_contribution_correctness_52(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[0] < (1u64 << 52),  // Need limb 0 for boundary byte 6
@@ -864,6 +870,7 @@ pub proof fn lemma_limb1_contribution_correctness_52(limbs: [u64; 5], bytes: [u8
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_limb2_contribution_correctness_52(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[2] < (1u64 << 52),
@@ -1018,6 +1025,7 @@ pub proof fn lemma_limb2_contribution_correctness_52(limbs: [u64; 5], bytes: [u8
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_limb3_contribution_correctness_52(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[2] < (1u64 << 52),  // Need limb 2 for boundary byte 19
@@ -1219,6 +1227,7 @@ pub proof fn lemma_limb3_contribution_correctness_52(limbs: [u64; 5], bytes: [u8
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_limb4_contribution_correctness_52(limbs: [u64; 5], bytes: [u8; 32])
     requires
         limbs[4] < (1u64 << 52),

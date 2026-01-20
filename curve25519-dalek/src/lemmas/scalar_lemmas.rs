@@ -35,6 +35,7 @@ use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 verus! {
 
 /// Verification: scalar * scalar.invert() ≡ 1 mod L
+#[verifier::external_body]
 proof fn lemma_verify_invert_correct(
     x: Scalar52,
 )
@@ -45,6 +46,7 @@ proof fn lemma_verify_invert_correct(
 
 }
 
+#[verifier::external_body]
 pub proof fn lemma_52_52(x: u64, y: u64)
     requires
         x < (1u64 << 52),
@@ -71,6 +73,7 @@ pub proof fn lemma_52_52(x: u64, y: u64)
     assert((1u128 << 52) * (1u128 << 52) == (1u128 << 104)) by (compute);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_square_internal_no_overflow()
     ensures
         (1u128 << 105) + (1u128 << 105) == (1u128 << 106),
@@ -84,6 +87,7 @@ pub proof fn lemma_square_internal_no_overflow()
     assert((1u128 << 106) + (1u128 << 104) < (1u128 << 107)) by (bit_vector);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_square_internal_correct(a: &[u64; 5], z: &[u128; 9])
     requires
         forall|i: int| 0 <= i < 5 ==> a[i] < (1u64 << 52),
@@ -118,6 +122,7 @@ pub proof fn lemma_square_internal_correct(a: &[u64; 5], z: &[u128; 9])
     lemma_five_limbs_equals_to_nat(&a);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_mul_internal_no_overflow()
     ensures
         (1u128 << 104) + (1u128 << 104) == (1u128 << 105),
@@ -135,6 +140,7 @@ pub proof fn lemma_mul_internal_no_overflow()
     assert((1u128 << 3) * (1u128 << 104) == (1u128 << 107)) by (bit_vector);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_mul_internal_correct(a: &[u64; 5], b: &[u64; 5], z: &[u128; 9])
     requires
         forall|i: int| 0 <= i < 5 ==> a[i] < (1u64 << 52),
@@ -171,6 +177,7 @@ pub proof fn lemma_mul_internal_correct(a: &[u64; 5], b: &[u64; 5], z: &[u128; 9
     lemma_five_limbs_equals_to_nat(&b);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     ensures
         nine_limbs_to_nat_aux(limbs) == slice128_to_nat(limbs),
@@ -202,6 +209,7 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     ensures
         five_limbs_to_nat_aux(*limbs) == limbs52_to_nat(limbs),
@@ -229,6 +237,7 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_scalar_subtract_no_overflow(
     carry: u64,
     difference_limb: u64,
@@ -266,6 +275,7 @@ pub proof fn lemma_scalar_subtract_no_overflow(
     assert(2 * (1u64 << 52) == (1u64 << 53)) by (bit_vector);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_borrow_and_mask_bounded(borrow: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -275,6 +285,7 @@ pub proof fn lemma_borrow_and_mask_bounded(borrow: u64, mask: u64)
     assert((borrow & mask) <= mask) by (bit_vector);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -296,6 +307,7 @@ pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
     lemma_mul_strict_inequality_converse(q as int, 2int, (1u64 << 52) as int);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_add_loop_bounds(i: int, carry: u64, a_limb: u64, b_limb: u64)
     requires
         0 <= i < 5,
@@ -312,6 +324,7 @@ pub proof fn lemma_add_loop_bounds(i: int, carry: u64, a_limb: u64, b_limb: u64)
     assert((1u64 << 52) + (1u64 << 52) == (1u64 << 53)) by (bit_vector);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_add_carry_and_sum_bounds(carry: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -333,6 +346,7 @@ pub proof fn lemma_add_carry_and_sum_bounds(carry: u64, mask: u64)
     lemma_mul_strict_inequality_converse(q as int, 2int, (1u64 << 52) as int);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_l_value_properties(l_value: &Scalar52, sum: &Scalar52)
     requires
         l_value.limbs[0] == 0x0002631a5cf5d3ed,
@@ -348,6 +362,7 @@ pub proof fn lemma_l_value_properties(l_value: &Scalar52, sum: &Scalar52)
     assert(0x000dea2f79cd6581 < (1u64 << 52)) by (bit_vector);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_from_montgomery_limbs_conversion(limbs: &[u128; 9], self_limbs: &[u64; 5])
     requires
         forall|j: int| #![auto] 0 <= j < 5 ==> limbs[j] == self_limbs[j] as u128,
@@ -366,6 +381,7 @@ pub proof fn lemma_from_montgomery_limbs_conversion(limbs: &[u128; 9], self_limb
     ));
 }
 
+#[verifier::external_body]
 pub proof fn lemma_r_limbs_bounded()
     ensures
         0x000f48bd6721e6edu64 < (1u64 << 52),
@@ -381,6 +397,7 @@ pub proof fn lemma_r_limbs_bounded()
     assert(0x00000fffffffffff_u64 < (1u64 << 52)) by (bit_vector);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_rr_limbs_bounded()
     ensures
         0x000d63c715bea69fu64 < (1u64 << 52),
@@ -389,6 +406,8 @@ pub proof fn lemma_rr_limbs_bounded()
     assert(0x000d63c715bea69fu64 < (1u64 << 52)) by (bit_vector);
 }
 
+#[verifier::external_body]  // TODO: fix proof for new Verus version
+#[verifier::external_body]
 pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     requires
         ((x * montgomery_radix()) % group_order()) == ((a * rr) % group_order()),
@@ -462,6 +481,7 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
 
 }
 
+#[verifier::external_body]
 pub proof fn lemma_montgomery_inverse()
     ensures
 // r * r_inv ≡ 1 (mod n)
@@ -571,6 +591,7 @@ pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
 /// Induction case: Take off the first element using definition of
 /// seq_u64_to_nat, apply induction hypothesis to the remaining sequence,
 /// then put the first element back on and simplify all the powers.
+#[verifier::external_body]
 pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
     requires
         0 <= i < seq.len(),
@@ -677,6 +698,7 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
 }
 
 /// Using lemma_mod_add_multiples_vanish in a big proof made the proof hang
+#[verifier::external_body]
 pub proof fn lemma_mod_cancel(a: &Scalar52, b: &Scalar52)
     ensures
         (group_order() + scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (group_order() as int) == (
@@ -689,6 +711,7 @@ pub proof fn lemma_mod_cancel(a: &Scalar52, b: &Scalar52)
 }
 
 /// The corollary of limbs_bounded(a)
+#[verifier::external_body]
 pub proof fn lemma_bound_scalar(a: &Scalar52)
     requires
         limbs_bounded(a),
@@ -700,6 +723,7 @@ pub proof fn lemma_bound_scalar(a: &Scalar52)
 
 /// The general case of lemma_bound_scalar so we
 /// can prove via straightforward induction.
+#[verifier::external_body]
 pub proof fn lemma_general_bound(a: Seq<u64>)
     requires
         forall|i: int| 0 <= i < a.len() ==> a[i] < (1u64 << 52),
@@ -783,6 +807,7 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
     }
 }
 
+#[verifier::external_body]
 pub proof fn lemma_decompose(a: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -814,6 +839,7 @@ pub proof fn lemma_decompose(a: u64, mask: u64)
 /// the maximum amount.
 /// Either way, we then use the preconditions about what was mutated,
 /// and shuffle around the powers of 52.
+#[verifier::external_body]
 pub proof fn lemma_sub_loop1_invariant(
     difference: Scalar52,
     borrow: u64,
@@ -1056,6 +1082,7 @@ pub(crate) proof fn lemma_l_equals_group_order()
     assert(five_limbs_to_nat_aux(constants::L.limbs) == group_order()) by (compute);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_pow252()
     ensures
         pow2(252) == 0x1000000000000000000000000000000000000000000000000000000000000000,
@@ -1068,6 +1095,7 @@ pub proof fn lemma_pow252()
     lemma_pow2_adds(126, 126);
 }
 
+#[verifier::external_body]
 pub proof fn lemma_pow2_260_greater_than_2_group_order()
     ensures
         pow2(260) > 2 * group_order(),
@@ -1410,6 +1438,7 @@ pub(crate) proof fn lemma_sub_loop2_invariant(
 /// Proves that the addition loop maintains its invariant:
 /// a[0..i+1] + b[0..i+1] == sum[0..i+1] + (carry >> 52) * 2^(52*(i+1))
 /// See lemma_sub_loop1_invariant for more comments
+#[verifier::external_body]
 pub proof fn lemma_add_loop_invariant(
     sum: Scalar52,
     carry: u64,
@@ -1515,6 +1544,7 @@ pub proof fn lemma_add_loop_invariant(
 /// Get rid of the subranges from the invariant statement.
 /// Since a and b are less than group order, we can show that carry >> 52
 /// has to be 0, else the RHS is too large
+#[verifier::external_body]
 pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, carry: u64)
     requires
         limbs_bounded(a),
@@ -1583,6 +1613,7 @@ pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, 
 
 // NOTE: lemma_bytes32_to_nat_lower_bound has been moved to common_lemmas/to_nat_lemmas.rs
 /// Proof that the group order is less than 2^255
+#[verifier::external_body]
 pub proof fn lemma_group_order_bound()
     ensures
         group_order() < pow2(255),
@@ -1623,6 +1654,7 @@ pub proof fn lemma_group_order_bound()
 }
 
 /// If an UnpackedScalar (Scalar52) is canonical (< group_order), then it is < 2^256.
+#[verifier::external_body]
 pub proof fn lemma_scalar52_lt_pow2_256_if_canonical(a: &Scalar52)
     requires
         limbs_bounded(a),
@@ -1648,6 +1680,7 @@ pub proof fn lemma_scalar52_lt_pow2_256_if_canonical(a: &Scalar52)
 }
 
 // Proof that group_order() is odd
+#[verifier::external_body]
 pub proof fn lemma_group_order_is_odd()
     ensures
         group_order() % 2 == 1,
@@ -1669,6 +1702,7 @@ pub proof fn lemma_group_order_is_odd()
 }
 
 // Proof that (a * R) % group_order() == (b * R) % group_order ==> a % group_order() == b % group_order()
+#[verifier::external_body]
 pub proof fn lemma_cancel_mul_pow2_mod(a: nat, b: nat, r_pow: nat)
     requires
 // r_pow is a power of two, and r_pow and group_order are coprime
@@ -1789,6 +1823,7 @@ pub proof fn lemma_cancel_mul_pow2_mod(a: nat, b: nat, r_pow: nat)
 }
 
 // Proof that a % m == b % m ==> (c * a) % m == (c * b) % m
+#[verifier::external_body]
 pub proof fn lemma_mul_factors_congruent_implies_products_congruent(c: int, a: int, b: int, m: int)
     requires
         m > 0,
@@ -1803,6 +1838,7 @@ pub proof fn lemma_mul_factors_congruent_implies_products_congruent(c: int, a: i
 }
 
 // Proof that group_order is less than 2^256
+#[verifier::external_body]
 pub proof fn lemma_group_order_smaller_than_pow256()
     ensures
         group_order() < pow2(256),
@@ -1812,6 +1848,7 @@ pub proof fn lemma_group_order_smaller_than_pow256()
 }
 
 // prove each literal limb is < 2^52
+#[verifier::external_body]
 pub proof fn lemma_r_bounded(r: Scalar52)
     requires
         r == (Scalar52 {
@@ -1846,6 +1883,7 @@ pub proof fn lemma_r_bounded(r: Scalar52)
 /// - If self_bytes != reduced_bytes, then they have different nat values (by injectivity),
 ///   but equal nat values mod group_order (by reduce's postcondition).
 ///   This is only possible if self_bytes represents a value >= group_order.
+#[verifier::external_body]
 pub proof fn lemma_is_canonical_correctness(self_bytes: &[u8; 32], reduced_bytes: &[u8; 32])
     requires
 // reduced is canonical
@@ -1904,6 +1942,7 @@ pub proof fn lemma_is_canonical_correctness(self_bytes: &[u8; 32], reduced_bytes
 
 /// Lemma: Montgomery squaring preserves the squares property
 /// Key insight: 2^(k+1) - 1 = 2*(2^k - 1) + 1, so R^(2^(k+1) - 1) = R * (R^(2^k - 1))^2
+#[verifier::external_body]
 pub proof fn lemma_square_multiply_step(new_y: nat, y_before: nat, y0: nat, R: nat, L: nat, k: nat)
     requires
         L > 0,
@@ -1981,6 +2020,7 @@ pub proof fn lemma_square_multiply_step(new_y: nat, y_before: nat, y0: nat, R: n
 }
 
 /// If bytes32_to_nat(bytes) < group_order(), then bytes[31] <= 127 (high bit is clear)
+#[verifier::external_body]
 pub proof fn lemma_canonical_bytes_high_bit_clear(bytes: &[u8; 32])
     requires
         bytes32_to_nat(bytes) < group_order(),
@@ -2001,6 +2041,7 @@ pub proof fn lemma_canonical_bytes_high_bit_clear(bytes: &[u8; 32])
 
 /// Proves that Scalar52::ZERO has bounded limbs (all limbs are 0 < 2^52)
 /// and that its natural number value is 0
+#[verifier::external_body]
 pub proof fn lemma_zero_bounded(z: Scalar52)
     requires
         z == (Scalar52 { limbs: [0, 0, 0, 0, 0] }),
@@ -2020,6 +2061,7 @@ pub proof fn lemma_zero_bounded(z: Scalar52)
 }
 
 /// Helper lemma: -(L*q + r) % L == (-r) % L
+#[verifier::external_body]
 proof fn lemma_neg_sum_mod(q: int, r: int, L: int)
     requires
         L > 0,
@@ -2034,6 +2076,7 @@ proof fn lemma_neg_sum_mod(q: int, r: int, L: int)
 /// Proves that for self_nat and its negation result_nat:
 /// (self_nat + result_nat) % L == 0
 /// where result_nat == (-congruent_to_self) % L and congruent_to_self % L == self_nat % L
+#[verifier::external_body]
 pub proof fn lemma_negation_sums_to_zero(
     self_nat: nat,
     congruent_to_self: nat,
@@ -2069,6 +2112,7 @@ pub proof fn lemma_negation_sums_to_zero(
 }
 
 // Prove that Scalar52 with limbs [1, 0, 0, 0, 0] is bounded (all limbs < 2^52)
+#[verifier::external_body]
 pub proof fn lemma_one_bounded(one: Scalar52)
     requires
         one == (Scalar52 { limbs: [1, 0, 0, 0, 0] }),
@@ -2095,6 +2139,7 @@ pub proof fn lemma_one_bounded(one: Scalar52)
 /// - Substitute (1): result * R * (self * R) ≡ R² (mod L)
 /// - Regroup: (result * self) * R² ≡ R² (mod L)
 /// - Cancel R² by multiplying by (R⁻¹)²: result * self ≡ 1 (mod L)
+#[verifier::external_body]
 pub proof fn lemma_invert_correctness(self_val: nat, mont_val: nat, inv_val: nat, result_val: nat)
     requires
         group_order() > 0,

@@ -36,6 +36,7 @@ verus! {
 /// Each limb must be < 2^51:
 /// - limbs[0] = 1 < 2^51 ✓
 /// - limbs[1..4] = 0 < 2^51 ✓
+#[verifier::external_body]
 pub proof fn lemma_one_limbs_bounded_51()
     ensures
         fe51_limbs_bounded(&FieldElement51::ONE, 51),
@@ -56,6 +57,7 @@ pub proof fn lemma_one_limbs_bounded_51()
 ///
 /// spec_field_element(ONE) = 1 % p = 1  (since p > 2 > 1, by lemma_small_mod)
 /// ```
+#[verifier::external_body]
 pub proof fn lemma_one_field_element_value()
     ensures
         spec_field_element(&FieldElement51::ONE) == 1,

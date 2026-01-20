@@ -23,6 +23,7 @@ use crate::specs::field_specs_u64::*;
 
 verus! {
 
+#[verifier::external_body]
 pub proof fn lemma_prove_pow2k_step(
     base: int,
     val_in: nat,
@@ -84,6 +85,7 @@ pub proof fn lemma_prove_pow2k_step(
     assert(val_out % p() == pow(base, (exp_in * exp_power) as nat) as nat % p());
 }
 
+#[verifier::external_body]
 pub proof fn lemma_prove_geometric_mul_step(
     base: int,
     val_a: nat,

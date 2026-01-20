@@ -24,6 +24,7 @@ verus! {
 // ============================================================================
 /// Telescoping lemma for reduction: expands u64_5_as_nat through the carry propagation
 /// This is analogous to lemma_radix51_telescoping_direct but for the reduction case
+#[verifier::external_body]
 pub proof fn lemma_reduction_telescoping(
     input_limbs: [u64; 5],
     final_limbs: [u64; 5],
@@ -202,6 +203,7 @@ pub proof fn lemma_reduction_telescoping(
 }
 
 /// Helper lemma: Multiplication preserves upper bounds
+#[verifier::external_body]
 proof fn lemma_mul_upper_bound(a: nat, x: nat, b: nat)
     requires
         x <= b,
@@ -221,6 +223,7 @@ proof fn lemma_mul_upper_bound(a: nat, x: nat, b: nat)
 
 /// Helper lemma: Proves the geometric series identity for 5 terms with base 2^51
 /// (2^51 - 1) * (1 + 2^51 + 2^102 + 2^153 + 2^204) = 2^255 - 1
+#[verifier::external_body]
 proof fn lemma_geometric_sum_5_terms()
     ensures
         (pow2(51) - 1) * (1 + pow2(51) + pow2(102) + pow2(153) + pow2(204)) == pow2(255) - 1,
@@ -279,6 +282,7 @@ proof fn lemma_geometric_sum_5_terms()
 
 /// Helper lemma: u64_5_as_nat bound for 51-bit limbs
 /// If each limb < 2^51, then u64_5_as_nat < 2^255
+#[verifier::external_body]
 pub proof fn lemma_as_nat_bound_from_51bit_limbs(limbs: [u64; 5])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 51),
@@ -346,6 +350,7 @@ pub proof fn lemma_as_nat_bound_from_51bit_limbs(limbs: [u64; 5])
 
 /// Helper lemma: Proves that the carry propagation in reduction computes the division by 2^255
 /// This is analogous to lemma_carry_propagation_is_division but for the reduction step
+#[verifier::external_body]
 pub proof fn lemma_reduction_carry_propagation_is_division(input_limbs: [u64; 5], q: u64, c4: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> input_limbs[i] < (1u64 << 52),
@@ -448,6 +453,7 @@ pub proof fn lemma_reduction_carry_propagation_is_division(input_limbs: [u64; 5]
 }
 
 /// Helper lemma: Show that the carry out of l4 equals q
+#[verifier::external_body]
 pub proof fn lemma_carry_out_equals_q(input_limbs: [u64; 5], q: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> input_limbs[i] < (1u64 << 52),
@@ -558,6 +564,7 @@ pub proof fn lemma_carry_out_equals_q(input_limbs: [u64; 5], q: u64)
 
 /// Proves that after adding 19*q and propagating carries while masking to 51 bits,
 /// the result equals u64_5_as_nat(input_limbs) mod p
+#[verifier::external_body]
 pub proof fn lemma_to_bytes_reduction(input_limbs: [u64; 5], final_limbs: [u64; 5], q: u64)
     requires
         forall|i: int| 0 <= i < 5 ==> input_limbs[i] < (1u64 << 52),
@@ -696,6 +703,7 @@ pub proof fn lemma_to_bytes_reduction(input_limbs: [u64; 5], final_limbs: [u64; 
 }
 
 /// Proves that the subtraction constants expand to 16 * p() in radix-2^51 form.
+#[verifier::external_body]
 pub proof fn lemma_sub_constants_equal_16p()
     ensures
         (36028797018963664u64 as nat + pow2(51) * (36028797018963952u64 as nat) + pow2(102) * (
@@ -744,6 +752,7 @@ pub proof fn lemma_sub_constants_equal_16p()
 }
 
 /// Helper lemma establishing the radix-2^51 expansion of p().
+#[verifier::external_body]
 pub proof fn lemma_p_radix_representation()
     ensures
         (pow2(51) - 19) + pow2(51) * (pow2(51) - 1) + pow2(102) * (pow2(51) - 1) + pow2(153) * (

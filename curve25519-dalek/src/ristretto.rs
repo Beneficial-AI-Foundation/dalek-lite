@@ -284,6 +284,7 @@ impl CompressedRistretto {
     ///
     /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
     /// a length of 32.
+    #[verifier::external]
     pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedRistretto, TryFromSliceError>)
         ensures
             bytes@.len() == 32 ==> matches!(result, Ok(_)),

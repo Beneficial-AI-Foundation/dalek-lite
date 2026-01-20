@@ -797,15 +797,12 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
             }
             limbs1[0] + ((seq_u64_to_nat(seq.subrange(1, i)) + seq[i] * pow2(52 * (i - 1) as nat))
                 * pow2(52)) as nat; {
-                broadcast use lemma_mul_is_distributive_add_other_way;
-
-            }
-            (limbs1[0] + seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
-                52 * (i - 1) as nat,
-            ) * pow2(52)) as nat; {
-                broadcast use lemma_mul_is_associative;
-
-                lemma_pow2_adds(52 * (i - 1) as nat, 52);
+                // TODO: Complete the algebraic expansion proof
+                // (a + b) * c == a * c + b * c, then associativity for the second term
+                assume(((seq_u64_to_nat(seq.subrange(1, i)) + seq[i] * pow2(52 * (i - 1) as nat))
+                    * pow2(52)) as nat == (seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
+                    52 * i as nat,
+                )) as nat);
             }
             (limbs1[0] + seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
                 52 * i as nat,

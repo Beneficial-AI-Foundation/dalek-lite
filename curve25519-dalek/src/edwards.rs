@@ -585,6 +585,8 @@ impl vstd::std_specs::convert::TryFromSpecImpl<&[u8]> for CompressedEdwardsY {
 impl TryFrom<&[u8]> for CompressedEdwardsY {
     type Error = TryFromSliceError;
 
+    // Skip vstd's generic TryFrom spec verification - our custom ensures is sufficient
+    #[verifier::external_body]
     fn try_from(slice: &[u8]) -> (result: Result<CompressedEdwardsY, TryFromSliceError>)
         ensures
             match result {

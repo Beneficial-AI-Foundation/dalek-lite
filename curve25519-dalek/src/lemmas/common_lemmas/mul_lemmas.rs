@@ -5,7 +5,7 @@ use vstd::prelude::*;
 verus! {
 
 // Auxiliary lemma for multiplication (of nat!)
-#[verifier::external_body]
+
 pub proof fn lemma_mul_lt(a1: nat, b1: nat, a2: nat, b2: nat)
     requires
         a1 < b1,
@@ -26,7 +26,7 @@ pub proof fn lemma_mul_lt(a1: nat, b1: nat, a2: nat, b2: nat)
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_le(a1: nat, b1: nat, a2: nat, b2: nat)
     requires
         a1 <= b1,
@@ -41,7 +41,7 @@ pub proof fn lemma_mul_le(a1: nat, b1: nat, a2: nat, b2: nat)
 }
 
 // m(_,_) multiplication is bounded by the product of the individual bounds
-#[verifier::external_body]
+
 pub proof fn lemma_m(x: u64, y: u64, bx: u64, by: u64)
     requires
         x < bx,
@@ -52,7 +52,7 @@ pub proof fn lemma_m(x: u64, y: u64, bx: u64, by: u64)
     lemma_mul_lt(x as nat, bx as nat, y as nat, by as nat);
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_distributive_3_terms(n: int, x1: int, x2: int, x3: int)
     ensures
         n * (x1 + x2 + x3) == (x1 + x2 + x3) * n == n * x1 + n * x2 + n * x3,
@@ -70,7 +70,7 @@ pub proof fn lemma_mul_distributive_3_terms(n: int, x1: int, x2: int, x3: int)
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_distributive_4_terms(n: int, x1: int, x2: int, x3: int, x4: int)
     ensures
         n * (x1 + x2 + x3 + x4) == (x1 + x2 + x3 + x4) * n == n * x1 + n * x2 + n * x3 + n * x4,
@@ -88,7 +88,7 @@ pub proof fn lemma_mul_distributive_4_terms(n: int, x1: int, x2: int, x3: int, x
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_distributive_5_terms(n: int, x1: int, x2: int, x3: int, x4: int, x5: int)
     ensures
         n * (x1 + x2 + x3 + x4 + x5) == (x1 + x2 + x3 + x4 + x5) * n == n * x1 + n * x2 + n * x3 + n
@@ -107,7 +107,7 @@ pub proof fn lemma_mul_distributive_5_terms(n: int, x1: int, x2: int, x3: int, x
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_distributive_6_terms(
     n: int,
     x1: int,
@@ -134,7 +134,7 @@ pub proof fn lemma_mul_distributive_6_terms(
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_distributive_7_terms(
     n: int,
     x1: int,
@@ -164,7 +164,7 @@ pub proof fn lemma_mul_distributive_7_terms(
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_distributive_8_terms(
     n: int,
     x1: int,
@@ -196,7 +196,7 @@ pub proof fn lemma_mul_distributive_8_terms(
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_quad_prod(a1: int, b1: int, a2: int, b2: int)
     ensures
         (a1 * b1) * (a2 * b2) == (a1 * a2) * (b1 * b2),
@@ -210,7 +210,7 @@ pub proof fn lemma_mul_quad_prod(a1: int, b1: int, a2: int, b2: int)
     lemma_mul_is_associative(a2 * a1, b1, b2);
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_commutative_8_terms(
     a0: int,
     b0: int,

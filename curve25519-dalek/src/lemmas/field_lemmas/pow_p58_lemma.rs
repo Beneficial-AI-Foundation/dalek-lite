@@ -39,7 +39,7 @@ verus! {
 ///
 /// # Postconditions
 /// * u64_5_as_nat(t21_limbs) % p() == pow(u64_5_as_nat(self_limbs) as int, (pow2(252) - 3) as nat) % p()
-#[verifier::external_body]
+
 pub proof fn lemma_pow_p58_prove(
     self_limbs: [u64; 5],
     t19_limbs: [u64; 5],

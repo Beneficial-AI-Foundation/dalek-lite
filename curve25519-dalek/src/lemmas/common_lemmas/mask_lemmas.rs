@@ -100,7 +100,7 @@ lemma_low_bits_masks_fit!(lemma_u64_low_bits_masks_fit, u64);
 verus! {
 
 // a < b => (2^a - 1) < (2^b - 1)
-#[verifier::external_body]
+
 pub proof fn lemma_low_bits_mask_increases(a: nat, b: nat)
     requires
         a < b,

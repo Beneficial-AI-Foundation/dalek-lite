@@ -49,7 +49,7 @@ verus! {
 ///
 /// Used in: lemma_sqrt_m1_neq_one, lemma_sqrt_m1_neq_neg_one,
 ///          lemma_multiply_by_i_flips_sign, lemma_no_square_root_when_times_i
-#[verifier::external_body]
+
 pub proof fn axiom_sqrt_m1_squared()
     ensures
         (spec_sqrt_m1() * spec_sqrt_m1()) % p() == (p() - 1),
@@ -68,7 +68,7 @@ pub proof fn axiom_sqrt_m1_squared()
 /// - By Euler's criterion, i is NOT a square
 ///
 /// Used in: lemma_no_square_root_when_times_i
-#[verifier::external_body]
+
 pub proof fn axiom_sqrt_m1_not_square()
     ensures
         !is_square_mod_p(spec_sqrt_m1()),
@@ -86,7 +86,7 @@ pub proof fn axiom_sqrt_m1_not_square()
 /// - By Euler's criterion, -i is NOT a square
 ///
 /// Used in: lemma_no_square_root_when_times_i
-#[verifier::external_body]
+
 pub proof fn axiom_neg_sqrt_m1_not_square()
     ensures
         !is_square_mod_p((p() - spec_sqrt_m1()) as nat),
@@ -106,7 +106,7 @@ pub proof fn axiom_neg_sqrt_m1_not_square()
 ///         ≡ p - r² mod p     [representation of negation]
 ///
 /// Used in: lemma_flipped_sign_becomes_correct
-#[verifier::external_body]
+
 pub proof fn lemma_multiply_by_i_flips_sign(r: nat)
     ensures
         math_field_square(math_field_mul(r, spec_sqrt_m1())) == math_field_neg(
@@ -188,7 +188,7 @@ pub proof fn lemma_multiply_by_i_flips_sign(r: nat)
 /// Therefore: -i = i⁻¹  (by definition of multiplicative inverse)
 /// ```
 ///
-#[verifier::external_body]
+
 pub proof fn lemma_i_inverse_is_neg_i()
     ensures
         math_field_mul(spec_sqrt_m1(), math_field_neg(spec_sqrt_m1())) == 1,
@@ -325,7 +325,7 @@ pub proof fn lemma_i_inverse_is_neg_i()
 ///   u · inv(i·u) = u · inv(u·i)           [commutativity]
 ///                = inv(i)                  [by lemma_a_times_inv_ab_is_inv_b]
 ///                = -i                      [by lemma_i_inverse_is_neg_i]
-#[verifier::external_body]
+
 pub proof fn lemma_u_times_inv_iu_is_neg_i(u: nat, i: nat)
     requires
         u % p() != 0,
@@ -369,7 +369,7 @@ pub proof fn lemma_u_times_inv_iu_is_neg_i(u: nat, i: nat)
 ///                   = (-1) · inv(i)        [by lemma_neg_a_times_inv_ab]
 ///                   = (-1) · (-i)          [by lemma_i_inverse_is_neg_i]
 ///                   = i                    [by lemma_double_negation]
-#[verifier::external_body]
+
 pub proof fn lemma_neg_u_times_inv_iu_is_i(u: nat, i: nat)
     requires
         u % p() != 0,

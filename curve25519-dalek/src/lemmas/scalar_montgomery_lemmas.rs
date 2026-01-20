@@ -13,7 +13,6 @@ verus! {
 
 /// Lemma: A 9-limb array with first 5 limbs matching self and last 4 being 0
 /// can be viewed as the product of self and 1
-#[verifier::external_body]
 pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, limbs: &[u128; 9])
     requires
         limbs_bounded(self_scalar),

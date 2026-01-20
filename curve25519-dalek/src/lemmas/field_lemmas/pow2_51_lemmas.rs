@@ -15,7 +15,7 @@ use crate::specs::field_specs_u64::*;
 verus! {
 
 // Specialization for b = 51
-#[verifier::external_body]
+
 pub proof fn lemma_two_factoring_51(k: nat, ai: u64)
     ensures
         pow2(k + 51) * ai == pow2(k) * (pow2(51) * ai),
@@ -23,7 +23,7 @@ pub proof fn lemma_two_factoring_51(k: nat, ai: u64)
     lemma_two_factoring(k, 51, ai);
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_add_then_shift(a: u64, b: u64)
     requires
         a < (1u64 << 52),
@@ -51,7 +51,7 @@ pub proof fn lemma_add_then_shift(a: u64, b: u64)
 
 // >> preserves [<=]. Unfortunately, these operations are u128 and
 // we need lemma_u128_shr_is_div.
-#[verifier::external_body]
+
 pub proof fn lemma_shr_51_le(a: u128, b: u128)
     requires
         a <= b,
@@ -66,7 +66,7 @@ pub proof fn lemma_shr_51_le(a: u128, b: u128)
 }
 
 // Corollary of above, using the identity (a << x) >> x == a for u64::MAX
-#[verifier::external_body]
+
 pub proof fn lemma_shr_51_fits_u64(a: u128)
     requires
         a <= (u64::MAX as u128) << 51,
@@ -81,7 +81,7 @@ pub proof fn lemma_shr_51_fits_u64(a: u128)
 // Should work for any k <= 64, but the proofs are convoluted and we can't use BV
 // (x as u64) = x % 2^64, so x = 2^64 * (x / 2^64) + (x as u64). Thus
 // (x as u64) % 2^k = (x as u64) % 2^k, because 2^k | 2^64 * (...) for k <= 64
-#[verifier::external_body]
+
 pub proof fn lemma_cast_then_mod_51(x: u128)
     ensures
         (x as u64) % (pow2(51) as u64) == x % (pow2(51) as u128),
@@ -90,7 +90,7 @@ pub proof fn lemma_cast_then_mod_51(x: u128)
     assert((x as u64) % 0x8000000000000 == x % 0x8000000000000) by (bit_vector);
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_mul_sub(ci: int, cj: int, cj_0: int, k: nat)
     ensures
         pow2(k) * (ci - pow2(51) * (cj - cj_0)) == pow2(k) * ci - pow2(k + 51) * cj + pow2(k + 51)
@@ -107,7 +107,7 @@ pub proof fn lemma_mul_sub(ci: int, cj: int, cj_0: int, k: nat)
 }
 
 // Masking with low_bits_mask(51) gives a value bounded by 2^51
-#[verifier::external_body]
+
 pub proof fn lemma_masked_lt_51(v: u64)
     ensures
         v & mask51 < (1u64 << 51),
@@ -117,7 +117,7 @@ pub proof fn lemma_masked_lt_51(v: u64)
 }
 
 // lemma_u64_div_and_mod specialization for k = 51, using mask51 == low_bits_mask(51)
-#[verifier::external_body]
+
 pub proof fn lemma_u64_div_and_mod_51(ai: u64, bi: u64, v: u64)
     requires
         ai == v >> 51,

@@ -49,7 +49,7 @@ pub open spec fn partial_product_montgomery(scalars: Seq<Scalar>, n: int) -> nat
 // Proof lemmas for batch_invert
 // ============================================================================
 /// Lemma: partial_product equals product_of_scalars when n equals length
-#[verifier::external_body]
+
 pub proof fn lemma_partial_product_full(scalars: Seq<Scalar>)
     ensures
         partial_product(scalars, scalars.len() as int) == product_of_scalars(scalars),
@@ -79,7 +79,7 @@ pub proof fn lemma_partial_product_full(scalars: Seq<Scalar>)
 }
 
 /// Lemma: partial_product only depends on prefix elements
-#[verifier::external_body]
+
 pub proof fn lemma_partial_product_prefix_eq(scalars1: Seq<Scalar>, scalars2: Seq<Scalar>, n: int)
     requires
         0 <= n <= scalars1.len(),
@@ -97,7 +97,7 @@ pub proof fn lemma_partial_product_prefix_eq(scalars1: Seq<Scalar>, scalars2: Se
 }
 
 /// Helper lemma: if a ≡ c (mod L) and b ≡ d (mod L), then a*b ≡ c*d (mod L)
-#[verifier::external_body]
+
 pub proof fn lemma_mul_congruence(a: nat, b: nat, c: nat, d: nat, L: nat)
     requires
         L > 0,
@@ -116,7 +116,7 @@ pub proof fn lemma_mul_congruence(a: nat, b: nat, c: nat, d: nat, L: nat)
 /// and tmp holds scalars[i] * R (mod L),
 /// and acc_after = montgomery_mul(acc_before, tmp),
 /// then acc_after holds R * partial_product(scalars, i+1) (mod L).
-#[verifier::external_body]
+
 pub proof fn lemma_montgomery_mul_partial_product(
     acc_before: nat,
     tmp: nat,
@@ -154,7 +154,7 @@ pub proof fn lemma_montgomery_mul_partial_product(
 /// If acc_before * partial_product(scalars, i+1) ≡ 1 (mod L),
 /// and we compute acc_after = montgomery_mul(acc_before, input_val),
 /// then acc_after * partial_product(scalars, i) ≡ 1 (mod L).
-#[verifier::external_body]
+
 pub proof fn lemma_backward_loop_acc_invariant(
     acc_before: nat,
     input_val: nat,
@@ -190,7 +190,7 @@ pub proof fn lemma_backward_loop_acc_invariant(
 /// Lemma: After inverting the accumulated product, we have the inverse of the product
 ///
 /// This connects the inversion step to the final postcondition.
-#[verifier::external_body]
+
 pub proof fn lemma_invert_chain(acc_before: nat, acc_after: nat, final_acc: nat, product: nat)
     requires
         acc_before % group_order() == (montgomery_radix() * product) % group_order(),
@@ -214,7 +214,7 @@ pub proof fn lemma_invert_chain(acc_before: nat, acc_after: nat, final_acc: nat,
 /// Lemma: In the backward loop, the computed result is the inverse of the input scalar
 ///
 /// This is the key lemma that proves each inputs[i] becomes the inverse of original_inputs[i].
-#[verifier::external_body]
+
 pub proof fn lemma_backward_loop_is_inverse(
     acc_before: nat,
     scratch_val: nat,

@@ -30,7 +30,7 @@ verus! {
 ///
 /// If (x, y) is on the curve, then (-x, y) is also on the curve.
 /// This is because the curve equation involves x² which is the same for x and -x.
-#[verifier::external_body]
+
 pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
     requires
         math_on_edwards_curve(x, y),
@@ -75,7 +75,7 @@ pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
 /// - Z ≠ 0 ✓
 /// - (X/1, Y/1) = (X, Y) is on curve (given)
 /// - T = X·Y/1 = X·Y ✓
-#[verifier::external_body]
+
 pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
     requires
         math_on_edwards_curve(x, y),
@@ -142,7 +142,7 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
 /// - x²·y² = 0 * y² = 0
 /// - Curve becomes: y² - 0 = 1 + d·0
 /// - Therefore: y² = 1 (mod p)
-#[verifier::external_body]
+
 pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
     requires
         math_on_edwards_curve(x, y),

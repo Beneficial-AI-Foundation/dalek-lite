@@ -22,7 +22,7 @@ verus! {
 // ensures forall |i: int| 0 <= i < 5 ==> spec_reduce(limbs)[i] < (1u64 << 52)
 // is that the solver treats `spec_reduce`` above as symbolic and does _not_ instantiate e.g.
 // ((limbs[4] & mask51) + (limbs[3] >> 51)) as u64 < (1u64 << 52)
-#[verifier::external_body]
+
 pub proof fn lemma_reduce_boundaries(limbs: [u64; 5])
     ensures
         ((limbs[0] & mask51) + (limbs[4] >> 51) * 19) < (1u64 << 52),
@@ -64,7 +64,7 @@ pub proof fn lemma_reduce_boundaries(limbs: [u64; 5])
     // The solver can prove this automatically
 }
 
-#[verifier::external_body]
+
 pub proof fn proof_reduce(limbs: [u64; 5])
     ensures
         forall|i: int| 0 <= i < 5 ==> spec_reduce(limbs)[i] < (1u64 << 52),
@@ -204,7 +204,7 @@ pub proof fn proof_reduce(limbs: [u64; 5])
 /// This is the key property needed for to_bytes(): after reduce(),
 /// the value is bounded by 2*p = 2^256 - 38, not just by the loose
 /// bound from individual limb sizes.
-#[verifier::external_body]
+
 pub proof fn lemma_reduce_bound_2p(limbs: [u64; 5])
     ensures
         u64_5_as_nat(spec_reduce(limbs)) < 2 * p(),

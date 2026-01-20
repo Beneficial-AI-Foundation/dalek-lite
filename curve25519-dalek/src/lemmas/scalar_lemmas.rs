@@ -35,7 +35,6 @@ use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 verus! {
 
 /// Verification: scalar * scalar.invert() ≡ 1 mod L
-
 proof fn lemma_verify_invert_correct(
     x: Scalar52,
 )
@@ -45,7 +44,6 @@ proof fn lemma_verify_invert_correct(
     assume(false);
 
 }
-
 
 pub proof fn lemma_52_52(x: u64, y: u64)
     requires
@@ -73,7 +71,6 @@ pub proof fn lemma_52_52(x: u64, y: u64)
     assert((1u128 << 52) * (1u128 << 52) == (1u128 << 104)) by (compute);
 }
 
-
 pub proof fn lemma_square_internal_no_overflow()
     ensures
         (1u128 << 105) + (1u128 << 105) == (1u128 << 106),
@@ -86,7 +83,6 @@ pub proof fn lemma_square_internal_no_overflow()
     assert((1u128 << 104) * 2 == (1u128 << 105)) by (bit_vector);
     assert((1u128 << 106) + (1u128 << 104) < (1u128 << 107)) by (bit_vector);
 }
-
 
 pub proof fn lemma_square_internal_correct(a: &[u64; 5], z: &[u128; 9])
     requires
@@ -122,7 +118,6 @@ pub proof fn lemma_square_internal_correct(a: &[u64; 5], z: &[u128; 9])
     lemma_five_limbs_equals_to_nat(&a);
 }
 
-
 pub proof fn lemma_mul_internal_no_overflow()
     ensures
         (1u128 << 104) + (1u128 << 104) == (1u128 << 105),
@@ -139,7 +134,6 @@ pub proof fn lemma_mul_internal_no_overflow()
     assert(8u128 == (1u128 << 3)) by (bit_vector);
     assert((1u128 << 3) * (1u128 << 104) == (1u128 << 107)) by (bit_vector);
 }
-
 
 pub proof fn lemma_mul_internal_correct(a: &[u64; 5], b: &[u64; 5], z: &[u128; 9])
     requires
@@ -177,7 +171,6 @@ pub proof fn lemma_mul_internal_correct(a: &[u64; 5], b: &[u64; 5], z: &[u128; 9
     lemma_five_limbs_equals_to_nat(&b);
 }
 
-
 pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     ensures
         nine_limbs_to_nat_aux(limbs) == slice128_to_nat(limbs),
@@ -209,7 +202,6 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     }
 }
 
-
 pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     ensures
         five_limbs_to_nat_aux(*limbs) == limbs52_to_nat(limbs),
@@ -236,7 +228,6 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
         five_limbs_to_nat_aux(*limbs);
     }
 }
-
 
 pub proof fn lemma_scalar_subtract_no_overflow(
     carry: u64,
@@ -275,7 +266,6 @@ pub proof fn lemma_scalar_subtract_no_overflow(
     assert(2 * (1u64 << 52) == (1u64 << 53)) by (bit_vector);
 }
 
-
 pub proof fn lemma_borrow_and_mask_bounded(borrow: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
@@ -284,7 +274,6 @@ pub proof fn lemma_borrow_and_mask_bounded(borrow: u64, mask: u64)
 {
     assert((borrow & mask) <= mask) by (bit_vector);
 }
-
 
 pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
     requires
@@ -307,7 +296,6 @@ pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
     lemma_mul_strict_inequality_converse(q as int, 2int, (1u64 << 52) as int);
 }
 
-
 pub proof fn lemma_add_loop_bounds(i: int, carry: u64, a_limb: u64, b_limb: u64)
     requires
         0 <= i < 5,
@@ -323,7 +311,6 @@ pub proof fn lemma_add_loop_bounds(i: int, carry: u64, a_limb: u64, b_limb: u64)
     }
     assert((1u64 << 52) + (1u64 << 52) == (1u64 << 53)) by (bit_vector);
 }
-
 
 pub proof fn lemma_add_carry_and_sum_bounds(carry: u64, mask: u64)
     requires
@@ -346,7 +333,6 @@ pub proof fn lemma_add_carry_and_sum_bounds(carry: u64, mask: u64)
     lemma_mul_strict_inequality_converse(q as int, 2int, (1u64 << 52) as int);
 }
 
-
 pub proof fn lemma_l_value_properties(l_value: &Scalar52, sum: &Scalar52)
     requires
         l_value.limbs[0] == 0x0002631a5cf5d3ed,
@@ -361,7 +347,6 @@ pub proof fn lemma_l_value_properties(l_value: &Scalar52, sum: &Scalar52)
     assert(0x0002631a5cf5d3ed < (1u64 << 52)) by (bit_vector);
     assert(0x000dea2f79cd6581 < (1u64 << 52)) by (bit_vector);
 }
-
 
 pub proof fn lemma_from_montgomery_limbs_conversion(limbs: &[u128; 9], self_limbs: &[u64; 5])
     requires
@@ -381,7 +366,6 @@ pub proof fn lemma_from_montgomery_limbs_conversion(limbs: &[u128; 9], self_limb
     ));
 }
 
-
 pub proof fn lemma_r_limbs_bounded()
     ensures
         0x000f48bd6721e6edu64 < (1u64 << 52),
@@ -396,7 +380,6 @@ pub proof fn lemma_r_limbs_bounded()
     assert(0x000fffffffffffffu64 < (1u64 << 52)) by (bit_vector);
     assert(0x00000fffffffffff_u64 < (1u64 << 52)) by (bit_vector);
 }
-
 
 pub proof fn lemma_rr_limbs_bounded()
     ensures
@@ -480,7 +463,6 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     );
 
 }
-
 
 pub proof fn lemma_montgomery_inverse()
     ensures
@@ -1086,7 +1068,6 @@ pub(crate) proof fn lemma_l_equals_group_order()
     assert(five_limbs_to_nat_aux(constants::L.limbs) == group_order()) by (compute);
 }
 
-
 pub proof fn lemma_pow252()
     ensures
         pow2(252) == 0x1000000000000000000000000000000000000000000000000000000000000000,
@@ -1098,7 +1079,6 @@ pub proof fn lemma_pow252()
     assert(pow2(126) == 0x40000000000000000000000000000000);
     lemma_pow2_adds(126, 126);
 }
-
 
 pub proof fn lemma_pow2_260_greater_than_2_group_order()
     ensures

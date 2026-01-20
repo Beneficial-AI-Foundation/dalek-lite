@@ -54,7 +54,6 @@ pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
 
 }
 
-
 pub proof fn lemma_assemble_pow_a_pow(a: nat, j: nat, k: nat, l: nat)
     requires
         k * 8 > l,
@@ -405,7 +404,6 @@ pub proof fn lemma_from_bytes32_to_nat_01234(bytes: &[u8; 32])
     }
 }
 
-
 pub proof fn lemma_from_bytes32_to_nat(bytes: &[u8; 32])
     ensures
         u64_5_as_nat(
@@ -431,7 +429,6 @@ pub proof fn lemma_from_bytes32_to_nat(bytes: &[u8; 32])
 {
     lemma_from_bytes32_to_nat_01234(bytes);
 }
-
 
 pub proof fn lemma_as_nat_32_mod_255(bytes: &[u8; 32])
     ensures

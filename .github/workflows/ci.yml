@@ -70,7 +70,7 @@ jobs:
     - name: Checkout dalek-lite
       uses: actions/checkout@v4
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@1.88.0
+      uses: dtolnay/rust-toolchain@1.92.0
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y protobuf-compiler cmake pkg-config clang
     - name: Get libsignal

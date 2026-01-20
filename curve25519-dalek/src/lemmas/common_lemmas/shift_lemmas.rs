@@ -664,7 +664,7 @@ macro_rules! lemma_right_left_shift {
         #[cfg(verus_keep_ghost)]
         verus! {
         /// Right-shift then left-shift by n zeros out the low n bits.
-        #[verifier::external_body]
+        #[verifier::external_body]  // TODO: fix proof for Verus 88f7396
         ///
         /// Mathematical reasoning:
         /// - x >> n == x / 2^n (integer division, drops low n bits)

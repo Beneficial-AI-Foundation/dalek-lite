@@ -19,7 +19,7 @@ use crate::specs::field_specs_u64::*;
 
 verus! {
 
-#[verifier::external_body]
+#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
 pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
     ensures
         (a % pow2(d)) * pow2(b) + pow2(b + d) * (a / pow2(d)) == a * pow2(b),
@@ -53,7 +53,7 @@ pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
 
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_assemble_pow_a_pow(a: nat, j: nat, k: nat, l: nat)
     requires
         k * 8 > l,
@@ -80,7 +80,7 @@ pub proof fn lemma_assemble_pow_a_pow(a: nat, j: nat, k: nat, l: nat)
     }
 }
 
-#[verifier::external_body]
+#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_01(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -147,7 +147,7 @@ pub proof fn lemma_from_bytes32_to_nat_01(bytes: &[u8; 32])
     }
 }
 
-#[verifier::external_body]
+#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_012(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -230,7 +230,7 @@ pub proof fn lemma_from_bytes32_to_nat_012(bytes: &[u8; 32])
     }
 }
 
-#[verifier::external_body]
+#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_0123(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -312,7 +312,7 @@ pub proof fn lemma_from_bytes32_to_nat_0123(bytes: &[u8; 32])
     }
 }
 
-#[verifier::external_body]
+#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_01234(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -400,7 +400,7 @@ pub proof fn lemma_from_bytes32_to_nat_01234(bytes: &[u8; 32])
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_from_bytes32_to_nat(bytes: &[u8; 32])
     ensures
         u64_5_as_nat(
@@ -427,7 +427,7 @@ pub proof fn lemma_from_bytes32_to_nat(bytes: &[u8; 32])
     lemma_from_bytes32_to_nat_01234(bytes);
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_as_nat_32_mod_255(bytes: &[u8; 32])
     ensures
         bytes32_to_nat(bytes) % pow2(255) == (bytes[0] * pow2(0 * 8)) + (bytes[1] * pow2(1 * 8)) + (

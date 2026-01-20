@@ -24,7 +24,7 @@ pub open spec fn all_neg_limbs_positive(limbs: [u64; 5]) -> bool {
     &&& 36028797018963952u64 >= limbs[4]
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_neg_no_underflow(limbs: [u64; 5])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -38,7 +38,7 @@ pub proof fn lemma_neg_no_underflow(limbs: [u64; 5])
     }
 }
 
-#[verifier::external_body]
+#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
 pub proof fn proof_negate(limbs: [u64; 5])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -130,7 +130,7 @@ pub proof fn proof_negate(limbs: [u64; 5])
     }
 }
 
-#[verifier::external_body]
+#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
 pub proof fn lemma_neg(elem: &FieldElement51)
     requires
 // negate postcondition

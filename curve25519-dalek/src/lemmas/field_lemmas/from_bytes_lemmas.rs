@@ -39,11 +39,11 @@ pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
         lemma_mul_is_commutative(pb as int, (pd * adiv) as int);
     }
 
-    // (b + c) * a == b * a + c * a
-    assert(amod * pb + (pd * adiv) * pb == (amod + pd * adiv) * pb) by (nonlinear_arith)
-        requires
-            true,
-    ;
+    // (y + z) * x == y * x + z * x (distributive property)
+    assert(amod * pb + (pd * adiv) * pb == (amod + pd * adiv) * pb) by {
+        assert((amod + pd * adiv) * pb == amod * pb + pd * adiv * pb) by (nonlinear_arith);
+        assert(pd * adiv * pb == (pd * adiv) * pb) by (nonlinear_arith);
+    }
 
     assert(amod + pd * adiv == a) by {
         assert(pd > 0) by {

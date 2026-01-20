@@ -198,6 +198,13 @@ pub proof fn lemma_neg(elem: &FieldElement51)
                         assert(z >= p()) by {
                             lemma_mod_is_zero(z, p());
                         }
+                        assert(z / p() >= p() / p()) by {
+                            // we already know p > 0
+                            lemma_div_is_ordered(p() as int, z as int, p() as int);
+                        }
+                        assert(p() / p() == 1) by {
+                            lemma_div_by_self(p() as int);
+                        }
                     }
                     assert(z / p() < 2) by {
                         assert(z <= 2 * p()) by {

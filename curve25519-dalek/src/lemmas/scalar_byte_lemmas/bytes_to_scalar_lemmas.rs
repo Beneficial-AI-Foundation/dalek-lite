@@ -50,7 +50,7 @@ verus! {
 ///
 /// # Loop context
 /// This is used in: `words[i] |= (bytes[(i * 8) + j] as u64) << (j * 8);`
-#[verifier::external_body]
+
 pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize, j: usize)
     requires
         0 <= j < 8 && 0 <= i < 4,
@@ -222,7 +222,7 @@ pub proof fn lemma_byte_to_word_step(bytes: [u8; 32], words: [u64; 4], i: usize,
 /// # Arguments
 /// * `bytes` - The 32-byte input array
 /// * `words` - The 4 u64 words built from the bytes
-#[verifier::external_body]
+
 pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
     requires
         forall|i2: int|
@@ -408,7 +408,7 @@ pub proof fn lemma_bytes_to_word_equivalence(bytes: &[u8; 32], words: [u64; 4])
 /// * `s` - The Scalar52 with 5 limbs extracted from the words
 /// * `mask` - The 52-bit mask (2^52 - 1)
 /// * `top_mask` - The 48-bit mask (2^48 - 1) for the final limb
-#[verifier::external_body]
+
 pub proof fn lemma_words_to_scalar(words: [u64; 4], s: Scalar52, mask: u64, top_mask: u64)
     requires
         mask == (1u64 << 52) - 1,

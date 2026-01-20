@@ -43,7 +43,7 @@ verus! {
 ///   pow2(scale) * word == pow2(scale) * low_part + pow2(scale + split_pos) * high_part
 /// where low_part = word & (u64::MAX >> mask_shift) and high_part = word >> split_pos
 /// Note: mask_shift = 64 - split_pos
-#[verifier::external_body]
+
 pub proof fn lemma_word_contribution_decomposition(
     word: u64,
     scale: nat,
@@ -119,7 +119,7 @@ pub proof fn lemma_word_contribution_decomposition(
 /// - `limb`: The computed limb value
 /// - `high_part`: (prev_word >> prev_shift) as nat
 /// - `low_part`: (next_word & low_mask) as nat
-#[verifier::external_body]
+
 pub proof fn lemma_limb_from_adjacent_words(
     prev_word: u64,
     next_word: u64,
@@ -182,7 +182,7 @@ pub proof fn lemma_limb_from_adjacent_words(
 
 /// Lemma: suffix sum at word boundary equals word contribution + remaining suffix.
 /// Shows how bytes_to_nat_suffix decomposes at word (8-byte) boundaries.
-#[verifier::external_body]
+
 pub proof fn lemma_bytes_suffix_matches_word_partial(bytes: &[u8; 64], word_idx: int, upto: int)
     requires
         0 <= word_idx < 8,
@@ -224,7 +224,7 @@ pub proof fn lemma_bytes_suffix_matches_word_partial(bytes: &[u8; 64], word_idx:
     }
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], mask: u64)
     requires
         mask == (1u64 << 52) - 1u64,
@@ -325,7 +325,7 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
     assert(masked_words_sum == unmasked_words_sum);
 }
 
-#[verifier::external_body]
+
 pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], mask: u64)
     requires
         mask == (1u64 << 52) - 1u64,
@@ -423,7 +423,7 @@ pub proof fn lemma_high_limbs_encode_high_expr(hi: &[u64; 5], words: &[u64; 8], 
 
 /// Proves that the lo limbs constructed from 8 words with the given mask are bounded by 2^52.
 /// This is part of Stage 3 in from_bytes_wide.
-#[verifier::external_body]
+
 pub proof fn lemma_lo_limbs_bounded(lo: &Scalar52, words: &[u64; 8], mask: u64)
     requires
         mask == (1u64 << 52) - 1u64,
@@ -444,7 +444,7 @@ pub proof fn lemma_lo_limbs_bounded(lo: &Scalar52, words: &[u64; 8], mask: u64)
 
 /// Proves that the hi limbs constructed from 8 words with the given mask are bounded by 2^52.
 /// This is part of Stage 3 in from_bytes_wide.
-#[verifier::external_body]
+
 pub proof fn lemma_hi_limbs_bounded(hi: &Scalar52, words: &[u64; 8], mask: u64)
     requires
         mask == (1u64 << 52) - 1u64,
@@ -473,7 +473,7 @@ pub proof fn lemma_hi_limbs_bounded(hi: &Scalar52, words: &[u64; 8], mask: u64)
 /// Usage in from_bytes_wide:
 /// - For lo: const_nat = R, extra_factor = 1 → after ≡ before (mod L)
 /// - For hi: const_nat = R², extra_factor = R → after ≡ before * R (mod L)
-#[verifier::external_body]
+
 pub proof fn lemma_montgomery_reduce_cancels_r(
     after_nat: nat,
     before_nat: nat,
@@ -515,7 +515,7 @@ pub proof fn lemma_montgomery_reduce_cancels_r(
 /// - wide_sum = w0 + 2^64*w1 + 2^128*w2 + 2^192*w3 + 2^256*w4 + 2^320*w5 + 2^384*w6 + 2^448*w7
 ///
 /// Proves: 2^260 * high_expr + low_expr == wide_sum
-#[verifier::external_body]
+
 pub proof fn lemma_high_low_recombine(
     w0: nat,
     w1: nat,
@@ -573,7 +573,7 @@ pub proof fn lemma_high_low_recombine(
 /// - result = (hi + lo) mod L
 ///
 /// Proves: result * R ≡ wide_input * R (mod L)
-#[verifier::external_body]
+
 pub proof fn lemma_montgomery_reduced_sum_congruent(
     result_nat: nat,
     hi_nat: nat,

@@ -683,12 +683,6 @@ macro_rules! lemma_right_left_shift {
             assert(pow2(n_nat) > 0) by { lemma_pow2_pos(n_nat); }
             assert(pow2(n_nat) <= <$uN>::MAX) by { $pow2_le_max(n_nat); }
 
-            // r = x % pow2(n) < pow2(n) <= MAX, so r fits in $uN
-            assert(r < pow2(n_nat)) by {
-                vstd::arithmetic::div_mod::lemma_mod_bound(x as int, pow2(n_nat) as int);
-            }
-            assert(r <= <$uN>::MAX as nat) by {}
-
             assert((x >> n) << n == x - r) by {
                 // x >> n == x / 2^n == q
                 assert(x >> n == q) by { $shr_is_div(x, n); }
@@ -700,6 +694,11 @@ macro_rules! lemma_right_left_shift {
                     assert(r < pow2(n_nat)) by {
                         vstd::arithmetic::div_mod::lemma_mod_bound(x as int, pow2(n_nat) as int);
                     }
+                }
+
+                // r = x % pow2(n) < pow2(n) <= MAX, so r fits in $uN
+                assert(r < pow2(n_nat)) by {
+                    vstd::arithmetic::div_mod::lemma_mod_bound(x as int, pow2(n_nat) as int);
                 }
 
                 // q * 2^n <= x <= MAX, so q * 2^n fits in $uN

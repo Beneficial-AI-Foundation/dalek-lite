@@ -191,18 +191,40 @@ pub proof fn lemma_neg(elem: &FieldElement51)
 
             assert(y + x == p()) by {
                 let z = y + x;
-                // z % p == 0 and z > 0 and 0 < z < 2*p implies z == p
-                assert(z % p() == 0);
-                assert(z > 0);
-                assert(z < 2 * p());  // since x < p and y < p
-                // Use nonlinear_arith to conclude z == p
-                assert(z == p()) by (nonlinear_arith)
-                    requires
-                        z % p() == 0,
-                        z > 0,
-                        z < 2 * p(),
-                        p() > 0,
-                ;
+                assert(z == p() * (z / p())) by {
+                    // we know z % p == 0
+                    lemma_fundamental_div_mod(z as int, p() as int);
+                }
+                assert(z / p() == 1) by {
+                    assert(z / p() >= 1) by {
+                        assert(z >= p()) by {
+                            lemma_mod_is_zero(z, p());
+                        }
+                        assert(z / p() >= p() / p()) by {
+                            // we already know p > 0
+                            lemma_div_is_ordered(p() as int, z as int, p() as int);
+                        }
+                        assert(p() / p() == 1) by {
+                            lemma_div_by_self(p() as int);
+                        }
+                    }
+                    assert(z / p() < 2) by {
+                        assert(z <= 2 * p()) by {
+                            // known
+                            assert(x < p());
+                            assert(y < p());
+                        }
+                        assert(2 * p() / p() == 2) by {
+                            lemma_div_by_multiple(2, p() as int);
+                        }
+                        lemma_div_by_multiple_is_strongly_ordered(
+                            z as int,
+                            (2 * p()) as int,
+                            2,
+                            p() as int,
+                        );
+                    }
+                }
             }
 
         }

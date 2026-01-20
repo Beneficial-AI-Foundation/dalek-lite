@@ -34,17 +34,6 @@ use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 
 verus! {
 
-/// Verification: scalar * scalar.invert() ≡ 1 mod L
-proof fn lemma_verify_invert_correct(
-    x: Scalar52,
-)
-//     requires spec_scalar52(&x.limbs) != 0
-//    ensures (spec_scalar52(&x.limbs) * invert_spec(&x.limbs)) % group_order() == 1
-{
-    assume(false);
-
-}
-
 pub proof fn lemma_52_52(x: u64, y: u64)
     requires
         x < (1u64 << 52),

@@ -138,14 +138,10 @@ pub proof fn lemma_common_divisor_divides_gcd(a: nat, b: nat, d: nat)
 
         lemma_fundamental_div_mod(a as int, b as int);
 
-        assert((b * q) % d == 0) by {
-            lemma_mul_mod_noop_right(q as int, b as int, d as int);
-            lemma_mul_is_commutative(q as int, b as int);
-        };
-
-        assert(r % d == 0) by {
-            lemma_sub_mod_noop(a as int, (b * q) as int, d as int);
-        };
+        // r = a - b * q, and we need r % d == 0
+        // We have a % d == 0 and b % d == 0
+        // Use the existing lemma_divides_linear_combo_sub
+        lemma_divides_linear_combo_sub(a, b, q, d);
 
         lemma_common_divisor_divides_gcd(b, r, d);
     }
@@ -638,6 +634,9 @@ proof fn lemma_partial_binomial_sum_mod_p(a: nat, p: nat, j: nat)
         let term_p = binomial(p, p) * pow_a_p;
         assert(term_p == pow_a_p) by {
             assert(binomial(p, p) == 1);
+            assert(1 * pow_a_p == pow_a_p) by {
+                lemma_mul_basics(pow_a_p as int);
+            }
         };
 
         // S_p = S_{p-1} + a^p

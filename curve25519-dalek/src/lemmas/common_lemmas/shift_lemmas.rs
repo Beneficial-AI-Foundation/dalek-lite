@@ -669,23 +669,27 @@ macro_rules! lemma_right_left_shift {
         /// - (x / 2^n) << n == (x / 2^n) * 2^n
         /// - By division/mod identity: x == (x / 2^n) * 2^n + (x % 2^n)
         /// - Therefore: (x / 2^n) * 2^n == x - (x % 2^n)
-        // TODO: fix proof for Verus 88f7396
         pub proof fn $name(x: $uN, n: $uN)
             requires
                 n < <$uN>::BITS,
             ensures
                 (x >> n) << n == x - ((x as nat) % pow2(n as nat)) as $uN,
         {
-            assume(false);  // TODO: fix for Verus 88f7396
             let n_nat = n as nat;
             let q = (x as nat) / pow2(n_nat);
             let r = (x as nat) % pow2(n_nat);
 
-            assert((x >> n) << n == x - r) by {
-                // pow2(n) > 0 and pow2(n) <= MAX
-                assert(pow2(n_nat) > 0) by { lemma_pow2_pos(n_nat); }
-                assert(pow2(n_nat) <= <$uN>::MAX) by { $pow2_le_max(n_nat); }
+            // pow2(n) > 0 and pow2(n) <= MAX
+            assert(pow2(n_nat) > 0) by { lemma_pow2_pos(n_nat); }
+            assert(pow2(n_nat) <= <$uN>::MAX) by { $pow2_le_max(n_nat); }
 
+            // r = x % pow2(n) < pow2(n) <= MAX, so r fits in $uN
+            assert(r < pow2(n_nat)) by {
+                vstd::arithmetic::div_mod::lemma_mod_bound(x as int, pow2(n_nat) as int);
+            }
+            assert(r <= <$uN>::MAX as nat) by {}
+
+            assert((x >> n) << n == x - r) by {
                 // x >> n == x / 2^n == q
                 assert(x >> n == q) by { $shr_is_div(x, n); }
 

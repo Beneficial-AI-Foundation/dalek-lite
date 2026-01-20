@@ -19,12 +19,10 @@ use crate::specs::field_specs_u64::*;
 
 verus! {
 
-// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
     ensures
         (a % pow2(d)) * pow2(b) + pow2(b + d) * (a / pow2(d)) == a * pow2(b),
 {
-    assume(false);  // TODO: fix for Verus 88f7396
     let pb = pow2(b);
     let pd = pow2(d);
     let pbd = pow2(b + d);
@@ -41,9 +39,11 @@ pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
         lemma_mul_is_commutative(pb as int, (pd * adiv) as int);
     }
 
-    assert(amod * pb + (pd * adiv) * pb == (amod + pd * adiv) * pb) by {
-        lemma_mul_is_distributive_add_other_way(pb as int, amod as int, (pd * adiv) as int);
-    }
+    // (b + c) * a == b * a + c * a
+    assert(amod * pb + (pd * adiv) * pb == (amod + pd * adiv) * pb) by (nonlinear_arith)
+        requires
+            true,
+    ;
 
     assert(amod + pd * adiv == a) by {
         assert(pd > 0) by {

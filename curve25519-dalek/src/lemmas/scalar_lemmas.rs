@@ -406,8 +406,7 @@ pub proof fn lemma_rr_limbs_bounded()
     assert(0x000d63c715bea69fu64 < (1u64 << 52)) by (bit_vector);
 }
 
-#[verifier::external_body]  // TODO: fix proof for new Verus version
-
+// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     requires
         ((x * montgomery_radix()) % group_order()) == ((a * rr) % group_order()),
@@ -416,6 +415,7 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     ensures
         (x % group_order()) == ((a * montgomery_radix()) % group_order()),
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     // 1. Substitute rr with r*r
     lemma_mul_mod_noop_right(a as int, rr as int, group_order() as int);
     lemma_mul_mod_noop_right(

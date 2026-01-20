@@ -19,8 +19,8 @@ jobs:
       uses: dtolnay/rust-toolchain@1.91.0
     - name: Install Verus
       run: |
-        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
-        unzip verus-0.2025.11.23.41c5885-x86-linux.zip
+        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2026.01.14.88f7396/verus-0.2026.01.14.88f7396-x86-linux.zip
+        unzip verus-0.2026.01.14.88f7396-x86-linux.zip
         mv verus-x86-linux ~/.cargo/bin
         cd ~/.cargo/bin
         ln -s verus-x86-linux/cargo-verus
@@ -104,8 +104,8 @@ jobs:
       uses: dtolnay/rust-toolchain@1.91.0
     - name: Install Verus
       run: |
-        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
-        unzip verus-0.2025.11.23.41c5885-x86-linux.zip
+        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2026.01.14.88f7396/verus-0.2026.01.14.88f7396-x86-linux.zip
+        unzip verus-0.2026.01.14.88f7396-x86-linux.zip
         mv verus-x86-linux ~/.cargo/bin
         cd ~/.cargo/bin
         ln -s verus-x86-linux/cargo-verus

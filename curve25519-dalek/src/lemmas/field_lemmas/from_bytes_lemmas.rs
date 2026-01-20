@@ -19,11 +19,12 @@ use crate::specs::field_specs_u64::*;
 
 verus! {
 
-#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
+// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
     ensures
         (a % pow2(d)) * pow2(b) + pow2(b + d) * (a / pow2(d)) == a * pow2(b),
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     let pb = pow2(b);
     let pd = pow2(d);
     let pbd = pow2(b + d);
@@ -80,7 +81,7 @@ pub proof fn lemma_assemble_pow_a_pow(a: nat, j: nat, k: nat, l: nat)
     }
 }
 
-#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
+// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_01(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -91,6 +92,7 @@ pub proof fn lemma_from_bytes32_to_nat_01(bytes: &[u8; 32])
         bytes[9] * pow2(9 * 8)) + (bytes[10] * pow2(10 * 8)) + (bytes[11] * pow2(11 * 8)) + ((
         bytes[12] as nat % pow2(6)) * pow2((12 * 8) as nat)),
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     assert((spec_load8_at(bytes, 0) as u64) & mask51 == (bytes[0] * pow2(0 * 8)) + (bytes[1] * pow2(
         1 * 8,
     )) + (bytes[2] * pow2(2 * 8)) + (bytes[3] * pow2(3 * 8)) + (bytes[4] * pow2(4 * 8)) + (bytes[5]
@@ -147,7 +149,7 @@ pub proof fn lemma_from_bytes32_to_nat_01(bytes: &[u8; 32])
     }
 }
 
-#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
+// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_012(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -161,6 +163,7 @@ pub proof fn lemma_from_bytes32_to_nat_012(bytes: &[u8; 32])
         bytes[16] * pow2(16 * 8)) + (bytes[17] * pow2(17 * 8)) + (bytes[18] * pow2(18 * 8)) + ((
         bytes[19] as nat % pow2(1)) * pow2((19 * 8) as nat)),
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     assert((spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
         >> 3) & mask51) == (bytes[0] * pow2(0 * 8)) + (bytes[1] * pow2(1 * 8)) + (bytes[2] * pow2(
         2 * 8,
@@ -230,7 +233,7 @@ pub proof fn lemma_from_bytes32_to_nat_012(bytes: &[u8; 32])
     }
 }
 
-#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
+// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_0123(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -248,6 +251,7 @@ pub proof fn lemma_from_bytes32_to_nat_0123(bytes: &[u8; 32])
         bytes[23] * pow2(23 * 8)) + (bytes[24] * pow2(24 * 8)) + ((bytes[25] as nat % pow2(4))
             * pow2((25 * 8) as nat)),
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     assert((spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
         >> 3) & mask51) + pow2(102) * ((spec_load8_at(bytes, 12) as u64 >> 6) & mask51) == (bytes[0]
         * pow2(0 * 8)) + (bytes[1] * pow2(1 * 8)) + (bytes[2] * pow2(2 * 8)) + (bytes[3] * pow2(
@@ -312,7 +316,7 @@ pub proof fn lemma_from_bytes32_to_nat_0123(bytes: &[u8; 32])
     }
 }
 
-#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
+// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_from_bytes32_to_nat_01234(bytes: &[u8; 32])
     ensures
         (spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
@@ -334,6 +338,7 @@ pub proof fn lemma_from_bytes32_to_nat_01234(bytes: &[u8; 32])
         bytes[27] * pow2(27 * 8)) + (bytes[28] * pow2(28 * 8)) + (bytes[29] * pow2(29 * 8)) + (
         bytes[30] * pow2(30 * 8)) + ((bytes[31] as nat % pow2(7)) * pow2((31 * 8) as nat)),
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     assert((spec_load8_at(bytes, 0) as u64 & mask51) + pow2(51) * ((spec_load8_at(bytes, 6) as u64
         >> 3) & mask51) + pow2(102) * ((spec_load8_at(bytes, 12) as u64 >> 6) & mask51) + pow2(153)
         * ((spec_load8_at(bytes, 19) as u64 >> 1) & mask51) == (bytes[0] * pow2(0 * 8)) + (bytes[1]

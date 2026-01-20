@@ -38,7 +38,7 @@ pub proof fn lemma_neg_no_underflow(limbs: [u64; 5])
     }
 }
 
-#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
+// TODO: fix proof for Verus 88f7396
 pub proof fn proof_negate(limbs: [u64; 5])
     requires
         forall|i: int| 0 <= i < 5 ==> limbs[i] < (1u64 << 52),
@@ -64,6 +64,7 @@ pub proof fn proof_negate(limbs: [u64; 5])
         36028797018963952u64 - limbs[4]) as u64 >> 51),
         (u64_5_as_nat(spec_negate(limbs)) + u64_5_as_nat(limbs)) % p() == 0,
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     proof_reduce(pre_reduce_limbs(limbs));
 
     let c0 = (pow2(51) - 19);
@@ -130,7 +131,7 @@ pub proof fn proof_negate(limbs: [u64; 5])
     }
 }
 
-#[verifier::external_body]  // TODO: fix proof for Verus 88f7396
+// TODO: fix proof for Verus 88f7396
 pub proof fn lemma_neg(elem: &FieldElement51)
     requires
 // negate postcondition
@@ -139,6 +140,7 @@ pub proof fn lemma_neg(elem: &FieldElement51)
     ensures
         u64_5_as_nat(spec_negate(elem.limbs)) % p() == math_field_neg(spec_field_element(elem)),
 {
+    assume(false);  // TODO: fix for Verus 88f7396
     let x = spec_field_element(elem);
     let y = u64_5_as_nat(spec_negate(elem.limbs)) % p();
 

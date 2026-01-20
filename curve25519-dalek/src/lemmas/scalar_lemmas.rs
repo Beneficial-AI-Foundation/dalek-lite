@@ -785,17 +785,15 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
     }
 }
 
-// TODO: Fix for Verus 88f7396 - original proof causes Z3 panic
+// TODO: Fix for Verus 88f7396 - original proof causes Z3 panic (even with assume(false))
 pub proof fn lemma_decompose(a: u64, mask: u64)
     requires
         mask == (1u64 << 52) - 1,
     ensures
         a == (a >> 52) * pow2(52) + (a & mask),
 {
-    // TEMPORARY: assume(false) to discharge proof - causes Z3 panic otherwise
-    assume(false);
-
-    // Original proof (causes Z3 panic in Verus 88f7396):
+    assume(false);  // TODO: fix for Verus 88f7396
+    // Original proof causes Z3 panic during query building:
     // lemma2_to64_rest();  // pow2(52)
     // assert(a >> 52 == a / (pow2(52) as u64)) by {
     //     lemma_u64_shr_is_div(a, 52);

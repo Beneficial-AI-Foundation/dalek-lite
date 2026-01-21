@@ -833,13 +833,15 @@ pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
 
 }
 
-/// Need to use induction because the postcondition expands
-/// seq_u64_to_nat in the opposite way from how it's defined.
-/// The base case is straightforward, but it takes a few steps
-/// to get Verus to prove it.
-/// Induction case: Take off the first element using definition of
-/// seq_u64_to_nat, apply induction hypothesis to the remaining sequence,
-/// then put the first element back on and simplify all the powers.
+/// Proves that extending a subrange by one element adds `seq[i] * pow2(52 * i)`.
+///
+/// This uses induction because the postcondition expands seq_u64_to_nat
+/// in the opposite direction from how it's defined (seq_to_nat_52 peels
+/// from the front, but we want to add to the back).
+///
+/// Proof strategy:
+/// - Base case (i=0): seq[0..1] = seq[0] = seq[0] * pow2(0) = 0 + seq[0] * pow2(0)
+/// - Inductive case: Unfold definition, apply IH to tail, then use algebra
 pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
     requires
         0 <= i < seq.len(),
@@ -849,93 +851,130 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
     decreases i,
 {
     if i == 0 {
+        // Base case: seq_u64_to_nat(seq[0..1]) == 0 + seq[0] * pow2(0)
         reveal_with_fuel(seq_to_nat_52, 3);
-        assert(seq.len() > 0);
-        assert(seq.subrange(0, 1) == seq![seq[0]]);
-        calc! {
-            (==)
-            seq_u64_to_nat(seq.subrange(0, 0 + 1 as int)); {
-                assert(seq.subrange(0, 1) == seq![seq[0]]);
-            }
-            seq_u64_to_nat(seq![seq[0]]); {
-                let single_elem = seq![seq[0]];
-                let nat_single = single_elem.map(|idx, x| x as nat);
-                assert(nat_single == seq![seq[0] as nat]);
-                assert(seq_u64_to_nat(single_elem) == seq_to_nat_52(nat_single));
-                assert(nat_single.len() == 1);
-                assert(seq_to_nat_52(nat_single) == nat_single[0] + seq_to_nat_52(
-                    nat_single.subrange(1, 1),
-                ) * pow2(52));
-                assert(nat_single.subrange(1, 1).len() == 0);
-                assert(seq_to_nat_52(nat_single.subrange(1, 1)) == 0);
-                assert(seq_to_nat_52(nat_single) == nat_single[0]);
-                assert(nat_single[0] == seq[0] as nat);
-            }
-            seq[0] as nat; {
-                assert(pow2(0) == 1) by {
-                    lemma2_to64();
-                }
-                assert(52 * 0 == 0);
-                assert(pow2(52 * 0 as nat) == pow2(0));
-                assert((seq[0] * pow2(0)) as nat == (seq[0] * 1) as nat);
-                assert((seq[0] * 1) as nat == seq[0] as nat);
-            }
-            (seq[0] * pow2(52 * 0 as nat)) as nat; {}
-            (seq_u64_to_nat(seq.subrange(0, 0)) + seq[0] * pow2(52 * 0 as nat)) as nat;
+
+        // Show seq_u64_to_nat of a singleton is just that element
+        assert(seq_u64_to_nat(seq.subrange(0, 1)) == seq[0] as nat) by {
+            let single = seq![seq[0]];
+            let nat_single = single.map(|idx, x| x as nat);
+            assert(seq.subrange(0, 1) == single);
+            assert(nat_single == seq![seq[0] as nat]);
+            // Unfold seq_to_nat_52: s[0] + seq_to_nat_52(s[1..]) * pow2(52)
+            // For length-1 seq, s[1..] is empty, so result is s[0]
+            assert(seq_to_nat_52(nat_single) == nat_single[0] + seq_to_nat_52(
+                nat_single.subrange(1, 1),
+            ) * pow2(52));
+            assert(nat_single.subrange(1, 1).len() == 0);
+            assert(seq_to_nat_52(nat_single.subrange(1, 1)) == 0);
         }
-        return ;
+
+        // Show seq[0] == seq[0] * pow2(0) since pow2(0) == 1
+        assert(seq[0] as nat == (seq[0] * pow2(52 * 0 as nat)) as nat) by {
+            assert(pow2(0) == 1) by {
+                lemma2_to64();
+            }
+        }
+
+        // And seq_u64_to_nat(seq[0..0]) == 0
+        assert(seq_u64_to_nat(seq.subrange(0, 0)) == 0) by {
+            assert(seq.subrange(0, 0).len() == 0);
+        }
     } else {
-        let limbs1 = seq.subrange(0, i + 1).map(|i, x| x as nat);
-        let limbs2 = seq.subrange(0, i).map(|i, x| x as nat);
+        // Inductive case: i >= 1
+        // We'll show the chain of equalities using calc!
+        let limbs1 = seq.subrange(0, i + 1).map(|j, x| x as nat);
+        let limbs2 = seq.subrange(0, i).map(|j, x| x as nat);
+
         calc! {
             (==)
-            seq_u64_to_nat(seq.subrange(0, i + 1)); {
-                assert(seq_to_nat_52(limbs1) == limbs1[0] + seq_to_nat_52(
-                    limbs1.subrange(1, limbs1.len() as int),
-                ) * pow2(52));
+            // Start: seq_u64_to_nat(seq[0..i+1])
+            seq_u64_to_nat(seq.subrange(0, i + 1));
+
+            // Step 1: Unfold definition: s[0] + seq_to_nat_52(s[1..]) * pow2(52)
+            {
+                assert(seq_u64_to_nat(seq.subrange(0, i + 1)) == seq_to_nat_52(limbs1));
             }
-            limbs1[0] + seq_to_nat_52(limbs1.subrange(1, limbs1.len() as int)) * pow2(52); {
-                assert(seq.subrange(1, i + 1).map(|i, x| x as nat) == limbs1.subrange(
+            limbs1[0] + seq_to_nat_52(limbs1.subrange(1, limbs1.len() as int)) * pow2(52);
+
+            // Step 2: Convert back to seq_u64_to_nat on the tail
+            {
+                assert(seq.subrange(1, i + 1).map(|j, x| x as nat) == limbs1.subrange(
                     1,
                     limbs1.len() as int,
                 ));
             }
-            limbs1[0] + seq_u64_to_nat(seq.subrange(1, i + 1)) * pow2(52); {
+            limbs1[0] + seq_u64_to_nat(seq.subrange(1, i + 1)) * pow2(52);
+
+            // Step 3: Apply induction hypothesis to the tail
+            // IH gives: seq_u64_to_nat(tail[0..i]) = seq_u64_to_nat(tail[0..i-1]) + tail[i-1] * pow2(52*(i-1))
+            {
                 let tail = seq.subrange(1, i + 1);
-                assert(i >= 1);
-                assert(0 <= i - 1 < tail.len());
-                lemma_seq_u64_to_nat_subrange_extend(tail, i - 1);
-                assert(seq_u64_to_nat(tail.subrange(0, i)) == seq_u64_to_nat(
-                    tail.subrange(0, i - 1),
-                ) + tail[i - 1] * pow2(52 * (i - 1) as nat));
-                assert(tail.subrange(0, i) == seq.subrange(1, i + 1));
-                assert(tail.subrange(0, i - 1) == seq.subrange(1, i));
                 assert(seq_u64_to_nat(seq.subrange(1, i + 1)) == seq_u64_to_nat(seq.subrange(1, i))
-                    + seq[i] * pow2(52 * (i - 1) as nat));
+                    + seq[i] * pow2(52 * (i - 1) as nat)) by {
+                    assert(0 <= i - 1 < tail.len());
+                    lemma_seq_u64_to_nat_subrange_extend(tail, i - 1);
+                    assert(tail.subrange(0, i) == seq.subrange(1, i + 1));
+                    assert(tail.subrange(0, i - 1) == seq.subrange(1, i));
+                    assert(tail[i - 1] == seq[i]);
+                }
             }
             limbs1[0] + ((seq_u64_to_nat(seq.subrange(1, i)) + seq[i] * pow2(52 * (i - 1) as nat))
-                * pow2(52)) as nat; {
-                // TODO: Complete the algebraic expansion proof
-                // (a + b) * c == a * c + b * c, then associativity for the second term
-                assume(((seq_u64_to_nat(seq.subrange(1, i)) + seq[i] * pow2(52 * (i - 1) as nat))
-                    * pow2(52)) as nat == (seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i]
-                    * pow2(52 * i as nat)) as nat);
+                * pow2(52)) as nat;
+
+            // Step 4: Distribute and simplify powers
+            // (a + b) * c = a * c + b * c, and b * c = seq[i] * pow2(52*i)
+            {
+                let a = seq_u64_to_nat(seq.subrange(1, i)) as int;
+                let b = (seq[i] * pow2(52 * (i - 1) as nat)) as int;
+                let c = pow2(52) as int;
+
+                assert((a + b) * c == a * c + b * c) by {
+                    lemma_mul_is_distributive_add(c, a, b);
+                }
+
+                assert(b * c == (seq[i] * pow2(52 * i as nat)) as int) by {
+                    assert(seq[i] as int * pow2(52 * (i - 1) as nat) as int * pow2(52) as int
+                        == seq[i] as int * (pow2(52 * (i - 1) as nat) as int * pow2(52) as int)) by {
+                        lemma_mul_is_associative(
+                            seq[i] as int,
+                            pow2(52 * (i - 1) as nat) as int,
+                            pow2(52) as int,
+                        );
+                    }
+                    assert(pow2(52 * (i - 1) as nat) * pow2(52) == pow2(52 * i as nat)) by {
+                        assert(52 * (i - 1) as nat + 52 == 52 * i as nat) by {
+                            assert(52 * (i - 1) + 52 == 52 * i);
+                        }
+                        lemma_pow2_adds(52 * (i - 1) as nat, 52);
+                    }
+                }
             }
             (limbs1[0] + seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
                 52 * i as nat,
-            )) as nat; {
-                assert(seq.subrange(1, i).map(|i, x| x as nat) == limbs2.subrange(
+            )) as nat;
+
+            // Step 5: Recognize limbs1[0] + seq_u64_to_nat(tail) * pow2(52) as seq_u64_to_nat(seq[0..i])
+            {
+                assert(limbs1[0] == limbs2[0]);
+                assert(seq.subrange(1, i).map(|j, x| x as nat) == limbs2.subrange(
                     1,
                     limbs2.len() as int,
                 ));
             }
             (limbs2[0] + seq_to_nat_52(limbs2.subrange(1, limbs2.len() as int)) * pow2(52) + seq[i]
-                * pow2(52 * i as nat)) as nat; {
+                * pow2(52 * i as nat)) as nat;
+
+            // Step 6: Fold back to seq_to_nat_52(limbs2)
+            {
                 assert(seq_to_nat_52(limbs2) == limbs2[0] + seq_to_nat_52(
                     limbs2.subrange(1, limbs2.len() as int),
                 ) * pow2(52));
             }
-            (seq_to_nat_52(limbs2) + seq[i] * pow2(52 * i as nat)) as nat; {}
+            (seq_to_nat_52(limbs2) + seq[i] * pow2(52 * i as nat)) as nat;
+
+            // Step 7: Final form
+            { }
             (seq_u64_to_nat(seq.subrange(0, i)) + seq[i] * pow2(52 * i as nat)) as nat;
         }
     }

@@ -167,10 +167,6 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     let seq = limbs@.map(|i, x| x as nat);
     let p = pow2(52);
 
-    // Step 1: Expand the recursive definition
-    reveal_with_fuel(seq_to_nat_52, 10);
-    assert(slice128_to_nat(limbs) == seq_to_nat_52(seq));
-
     let a0 = limbs[0] as nat;
     let a1 = limbs[1] as nat;
     let a2 = limbs[2] as nat;
@@ -181,112 +177,227 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     let a7 = limbs[7] as nat;
     let a8 = limbs[8] as nat;
 
-    // Nested form from recursive expansion
-    let nested = a0 + (a1 + (a2 + (a3 + (a4 + (a5 + (a6 + (a7 + a8 * p) * p) * p) * p) * p) * p)
-        * p) * p;
-    assert(seq_to_nat_52(seq) == nested);
+    // Define the nested form from recursive expansion
+    let nested = a0 + (a1 + (a2 + (a3 + (a4 + (a5 + (a6 + (a7 + a8 * p) * p) * p) * p) * p) * p) * p) * p;
 
-    // Expand step by step from innermost to outermost
-    // Step: (a7 + a8 * p) * p
-    lemma_mul_is_commutative((a7 + a8 * p) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a7 as int, (a8 * p) as int);
-    lemma_mul_is_commutative(p as int, a7 as int);
-    lemma_mul_is_commutative(p as int, (a8 * p) as int);
-    lemma_mul_is_associative(a8 as int, p as int, p as int);
-    lemma_pow2_adds(52, 52);
+    // Step 1: Show slice128_to_nat equals the nested polynomial form
+    assert(slice128_to_nat(limbs) == nested) by {
+        reveal_with_fuel(seq_to_nat_52, 10);
+    };
+
+    // Define intermediate sums for step-by-step expansion
+    // s7 = a7*p + a8*p²
     let s7 = a7 * p + a8 * pow2(104);
-
-    // Step: (a6 + s7) * p
-    lemma_mul_is_commutative((a6 + s7) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a6 as int, s7 as int);
-    lemma_mul_is_commutative(p as int, a6 as int);
-    lemma_mul_is_commutative(p as int, s7 as int);
-    lemma_mul_is_distributive_add(p as int, (a7 * p) as int, (a8 * pow2(104)) as int);
-    lemma_mul_is_commutative(p as int, (a7 * p) as int);
-    lemma_mul_is_commutative(p as int, (a8 * pow2(104)) as int);
-    lemma_mul_is_associative(a7 as int, p as int, p as int);
-    lemma_pow2_adds(104, 52);
-    lemma_mul_is_associative(a8 as int, pow2(104) as int, p as int);
+    // s6 = a6*p + a7*p² + a8*p³
     let s6 = a6 * p + a7 * pow2(104) + a8 * pow2(156);
-
-    // Step: (a5 + s6) * p
-    lemma_mul_is_commutative((a5 + s6) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a5 as int, s6 as int);
-    lemma_mul_is_commutative(p as int, a5 as int);
-    lemma_mul_is_commutative(p as int, s6 as int);
-    lemma_mul_is_distributive_add(
-        p as int,
-        (a6 * p) as int,
-        (a7 * pow2(104) + a8 * pow2(156)) as int,
-    );
-    lemma_mul_is_distributive_add(p as int, (a7 * pow2(104)) as int, (a8 * pow2(156)) as int);
-    lemma_mul_is_commutative(p as int, (a6 * p) as int);
-    lemma_mul_is_commutative(p as int, (a7 * pow2(104)) as int);
-    lemma_mul_is_commutative(p as int, (a8 * pow2(156)) as int);
-    lemma_mul_is_associative(a6 as int, p as int, p as int);
-    lemma_pow2_adds(156, 52);
-    lemma_mul_is_associative(a7 as int, pow2(104) as int, p as int);
-    lemma_mul_is_associative(a8 as int, pow2(156) as int, p as int);
+    // s5 = a5*p + a6*p² + a7*p³ + a8*p⁴
     let s5 = a5 * p + a6 * pow2(104) + a7 * pow2(156) + a8 * pow2(208);
-
-    // Step: (a4 + s5) * p
-    lemma_mul_is_commutative((a4 + s5) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a4 as int, s5 as int);
-    lemma_mul_is_commutative(p as int, a4 as int);
-    lemma_mul_is_commutative(p as int, s5 as int);
-    lemma_pow2_adds(208, 52);
+    // s4 = a4*p + a5*p² + a6*p³ + a7*p⁴ + a8*p⁵
     let s4 = a4 * p + a5 * pow2(104) + a6 * pow2(156) + a7 * pow2(208) + a8 * pow2(260);
+    // s3 = a3*p + a4*p² + a5*p³ + a6*p⁴ + a7*p⁵ + a8*p⁶
+    let s3 = a3 * p + a4 * pow2(104) + a5 * pow2(156) + a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(312);
+    // s2 = a2*p + a3*p² + a4*p³ + a5*p⁴ + a6*p⁵ + a7*p⁶ + a8*p⁷
+    let s2 = a2 * p + a3 * pow2(104) + a4 * pow2(156) + a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(312) + a8 * pow2(364);
+    // s1 = a1*p + a2*p² + a3*p³ + a4*p⁴ + a5*p⁵ + a6*p⁶ + a7*p⁷ + a8*p⁸
+    let s1 = a1 * p + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208) + a5 * pow2(260) + a6 * pow2(312) + a7 * pow2(364) + a8 * pow2(416);
 
-    // Step: (a3 + s4) * p
-    lemma_mul_is_commutative((a3 + s4) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a3 as int, s4 as int);
-    lemma_mul_is_commutative(p as int, a3 as int);
-    lemma_mul_is_commutative(p as int, s4 as int);
-    lemma_pow2_adds(260, 52);
-    let s3 = a3 * p + a4 * pow2(104) + a5 * pow2(156) + a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(
-        312,
-    );
+    // Step 2: Expand innermost: (a7 + a8*p) * p = a7*p + a8*p²
+    assert((a7 + a8 * p) * p == s7) by {
+        lemma_mul_is_commutative((a7 + a8 * p) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a7 as int, (a8 * p) as int);
+        lemma_mul_is_commutative(p as int, a7 as int);
+        lemma_mul_is_commutative(p as int, (a8 * p) as int);
+        assert(a8 * p * p == a8 * pow2(104)) by {
+            lemma_mul_is_associative(a8 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+        };
+    };
 
-    // Step: (a2 + s3) * p
-    lemma_mul_is_commutative((a2 + s3) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a2 as int, s3 as int);
-    lemma_mul_is_commutative(p as int, a2 as int);
-    lemma_mul_is_commutative(p as int, s3 as int);
-    lemma_pow2_adds(312, 52);
-    let s2 = a2 * p + a3 * pow2(104) + a4 * pow2(156) + a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(
-        312,
-    ) + a8 * pow2(364);
+    // Step 3: (a6 + s7) * p = a6*p + s7*p = s6
+    assert((a6 + s7) * p == s6) by {
+        lemma_mul_is_commutative((a6 + s7) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a6 as int, s7 as int);
+        lemma_mul_is_commutative(p as int, a6 as int);
+        lemma_mul_is_commutative(p as int, s7 as int);
+        // s7 * p = (a7*p + a8*pow2(104)) * p
+        assert(s7 * p == a7 * pow2(104) + a8 * pow2(156)) by {
+            lemma_mul_is_distributive_add(p as int, (a7 * p) as int, (a8 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a7 * p) as int);
+            lemma_mul_is_commutative(p as int, (a8 * pow2(104)) as int);
+            lemma_mul_is_associative(a7 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a8 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+        };
+    };
 
-    // Step: (a1 + s2) * p
-    lemma_mul_is_commutative((a1 + s2) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a1 as int, s2 as int);
-    lemma_mul_is_commutative(p as int, a1 as int);
-    lemma_mul_is_commutative(p as int, s2 as int);
-    lemma_pow2_adds(364, 52);
-    let s1 = a1 * p + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208) + a5 * pow2(260) + a6 * pow2(
-        312,
-    ) + a7 * pow2(364) + a8 * pow2(416);
+    // Step 4: (a5 + s6) * p = s5
+    assert((a5 + s6) * p == s5) by {
+        lemma_mul_is_commutative((a5 + s6) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a5 as int, s6 as int);
+        lemma_mul_is_commutative(p as int, a5 as int);
+        lemma_mul_is_commutative(p as int, s6 as int);
+        // s6 * p = (a6*p + a7*pow2(104) + a8*pow2(156)) * p
+        assert(s6 * p == a6 * pow2(104) + a7 * pow2(156) + a8 * pow2(208)) by {
+            lemma_mul_is_distributive_add(p as int, (a6 * p) as int, (a7 * pow2(104) + a8 * pow2(156)) as int);
+            lemma_mul_is_distributive_add(p as int, (a7 * pow2(104)) as int, (a8 * pow2(156)) as int);
+            lemma_mul_is_commutative(p as int, (a6 * p) as int);
+            lemma_mul_is_commutative(p as int, (a7 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a8 * pow2(156)) as int);
+            lemma_mul_is_associative(a6 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a7 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+            lemma_mul_is_associative(a8 as int, pow2(156) as int, p as int);
+            lemma_pow2_adds(156, 52);
+        };
+    };
 
-    // Final: nested == a0 + s1
-    // = a0 + a1*p + a2*p² + ... + a8*p⁸
-    // TODO: Complete the full algebraic expansion proof
-    // The intermediate steps need explicit distributive/associative lemma invocations
-    // For now, assume the final result which follows from the algebraic identities
-    assume(nested == a0 + s1);
+    // Step 5: (a4 + s5) * p = s4
+    assert((a4 + s5) * p == s4) by {
+        lemma_mul_is_commutative((a4 + s5) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a4 as int, s5 as int);
+        lemma_mul_is_commutative(p as int, a4 as int);
+        lemma_mul_is_commutative(p as int, s5 as int);
+        // s5 * p
+        assert(s5 * p == a5 * pow2(104) + a6 * pow2(156) + a7 * pow2(208) + a8 * pow2(260)) by {
+            lemma_mul_is_distributive_add(p as int, (a5 * p) as int, (a6 * pow2(104) + a7 * pow2(156) + a8 * pow2(208)) as int);
+            lemma_mul_is_distributive_add(p as int, (a6 * pow2(104)) as int, (a7 * pow2(156) + a8 * pow2(208)) as int);
+            lemma_mul_is_distributive_add(p as int, (a7 * pow2(156)) as int, (a8 * pow2(208)) as int);
+            lemma_mul_is_commutative(p as int, (a5 * p) as int);
+            lemma_mul_is_commutative(p as int, (a6 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a7 * pow2(156)) as int);
+            lemma_mul_is_commutative(p as int, (a8 * pow2(208)) as int);
+            lemma_mul_is_associative(a5 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a6 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+            lemma_mul_is_associative(a7 as int, pow2(156) as int, p as int);
+            lemma_pow2_adds(156, 52);
+            lemma_mul_is_associative(a8 as int, pow2(208) as int, p as int);
+            lemma_pow2_adds(208, 52);
+        };
+    };
 
-    // Commutativity for final form
-    lemma_mul_is_commutative(a1 as int, pow2(52) as int);
-    lemma_mul_is_commutative(a2 as int, pow2(104) as int);
-    lemma_mul_is_commutative(a3 as int, pow2(156) as int);
-    lemma_mul_is_commutative(a4 as int, pow2(208) as int);
-    lemma_mul_is_commutative(a5 as int, pow2(260) as int);
-    lemma_mul_is_commutative(a6 as int, pow2(312) as int);
-    lemma_mul_is_commutative(a7 as int, pow2(364) as int);
-    lemma_mul_is_commutative(a8 as int, pow2(416) as int);
+    // Step 6: (a3 + s4) * p = s3
+    assert((a3 + s4) * p == s3) by {
+        lemma_mul_is_commutative((a3 + s4) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a3 as int, s4 as int);
+        lemma_mul_is_commutative(p as int, a3 as int);
+        lemma_mul_is_commutative(p as int, s4 as int);
+        // s4 * p
+        assert(s4 * p == a4 * pow2(104) + a5 * pow2(156) + a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(312)) by {
+            lemma_mul_is_distributive_add(p as int, (a4 * p) as int, (a5 * pow2(104) + a6 * pow2(156) + a7 * pow2(208) + a8 * pow2(260)) as int);
+            lemma_mul_is_distributive_add(p as int, (a5 * pow2(104)) as int, (a6 * pow2(156) + a7 * pow2(208) + a8 * pow2(260)) as int);
+            lemma_mul_is_distributive_add(p as int, (a6 * pow2(156)) as int, (a7 * pow2(208) + a8 * pow2(260)) as int);
+            lemma_mul_is_distributive_add(p as int, (a7 * pow2(208)) as int, (a8 * pow2(260)) as int);
+            lemma_mul_is_commutative(p as int, (a4 * p) as int);
+            lemma_mul_is_commutative(p as int, (a5 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a6 * pow2(156)) as int);
+            lemma_mul_is_commutative(p as int, (a7 * pow2(208)) as int);
+            lemma_mul_is_commutative(p as int, (a8 * pow2(260)) as int);
+            lemma_mul_is_associative(a4 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a5 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+            lemma_mul_is_associative(a6 as int, pow2(156) as int, p as int);
+            lemma_pow2_adds(156, 52);
+            lemma_mul_is_associative(a7 as int, pow2(208) as int, p as int);
+            lemma_pow2_adds(208, 52);
+            lemma_mul_is_associative(a8 as int, pow2(260) as int, p as int);
+            lemma_pow2_adds(260, 52);
+        };
+    };
 
-    // nine_limbs_to_nat_aux uses a * pow2(k) form
-    assert(nine_limbs_to_nat_aux(limbs) == a0 + a1 * pow2(52) + a2 * pow2(104) + a3 * pow2(156) + a4
-        * pow2(208) + a5 * pow2(260) + a6 * pow2(312) + a7 * pow2(364) + a8 * pow2(416));
+    // Step 7: (a2 + s3) * p = s2
+    assert((a2 + s3) * p == s2) by {
+        lemma_mul_is_commutative((a2 + s3) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a2 as int, s3 as int);
+        lemma_mul_is_commutative(p as int, a2 as int);
+        lemma_mul_is_commutative(p as int, s3 as int);
+        // s3 * p
+        assert(s3 * p == a3 * pow2(104) + a4 * pow2(156) + a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(312) + a8 * pow2(364)) by {
+            lemma_mul_is_distributive_add(p as int, (a3 * p) as int, (a4 * pow2(104) + a5 * pow2(156) + a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(312)) as int);
+            lemma_mul_is_distributive_add(p as int, (a4 * pow2(104)) as int, (a5 * pow2(156) + a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(312)) as int);
+            lemma_mul_is_distributive_add(p as int, (a5 * pow2(156)) as int, (a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(312)) as int);
+            lemma_mul_is_distributive_add(p as int, (a6 * pow2(208)) as int, (a7 * pow2(260) + a8 * pow2(312)) as int);
+            lemma_mul_is_distributive_add(p as int, (a7 * pow2(260)) as int, (a8 * pow2(312)) as int);
+            lemma_mul_is_commutative(p as int, (a3 * p) as int);
+            lemma_mul_is_commutative(p as int, (a4 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a5 * pow2(156)) as int);
+            lemma_mul_is_commutative(p as int, (a6 * pow2(208)) as int);
+            lemma_mul_is_commutative(p as int, (a7 * pow2(260)) as int);
+            lemma_mul_is_commutative(p as int, (a8 * pow2(312)) as int);
+            lemma_mul_is_associative(a3 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a4 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+            lemma_mul_is_associative(a5 as int, pow2(156) as int, p as int);
+            lemma_pow2_adds(156, 52);
+            lemma_mul_is_associative(a6 as int, pow2(208) as int, p as int);
+            lemma_pow2_adds(208, 52);
+            lemma_mul_is_associative(a7 as int, pow2(260) as int, p as int);
+            lemma_pow2_adds(260, 52);
+            lemma_mul_is_associative(a8 as int, pow2(312) as int, p as int);
+            lemma_pow2_adds(312, 52);
+        };
+    };
+
+    // Step 8: (a1 + s2) * p = s1
+    assert((a1 + s2) * p == s1) by {
+        lemma_mul_is_commutative((a1 + s2) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a1 as int, s2 as int);
+        lemma_mul_is_commutative(p as int, a1 as int);
+        lemma_mul_is_commutative(p as int, s2 as int);
+        // s2 * p
+        assert(s2 * p == a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208) + a5 * pow2(260) + a6 * pow2(312) + a7 * pow2(364) + a8 * pow2(416)) by {
+            lemma_mul_is_distributive_add(p as int, (a2 * p) as int, (a3 * pow2(104) + a4 * pow2(156) + a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(312) + a8 * pow2(364)) as int);
+            lemma_mul_is_distributive_add(p as int, (a3 * pow2(104)) as int, (a4 * pow2(156) + a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(312) + a8 * pow2(364)) as int);
+            lemma_mul_is_distributive_add(p as int, (a4 * pow2(156)) as int, (a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(312) + a8 * pow2(364)) as int);
+            lemma_mul_is_distributive_add(p as int, (a5 * pow2(208)) as int, (a6 * pow2(260) + a7 * pow2(312) + a8 * pow2(364)) as int);
+            lemma_mul_is_distributive_add(p as int, (a6 * pow2(260)) as int, (a7 * pow2(312) + a8 * pow2(364)) as int);
+            lemma_mul_is_distributive_add(p as int, (a7 * pow2(312)) as int, (a8 * pow2(364)) as int);
+            lemma_mul_is_commutative(p as int, (a2 * p) as int);
+            lemma_mul_is_commutative(p as int, (a3 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a4 * pow2(156)) as int);
+            lemma_mul_is_commutative(p as int, (a5 * pow2(208)) as int);
+            lemma_mul_is_commutative(p as int, (a6 * pow2(260)) as int);
+            lemma_mul_is_commutative(p as int, (a7 * pow2(312)) as int);
+            lemma_mul_is_commutative(p as int, (a8 * pow2(364)) as int);
+            lemma_mul_is_associative(a2 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a3 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+            lemma_mul_is_associative(a4 as int, pow2(156) as int, p as int);
+            lemma_pow2_adds(156, 52);
+            lemma_mul_is_associative(a5 as int, pow2(208) as int, p as int);
+            lemma_pow2_adds(208, 52);
+            lemma_mul_is_associative(a6 as int, pow2(260) as int, p as int);
+            lemma_pow2_adds(260, 52);
+            lemma_mul_is_associative(a7 as int, pow2(312) as int, p as int);
+            lemma_pow2_adds(312, 52);
+            lemma_mul_is_associative(a8 as int, pow2(364) as int, p as int);
+            lemma_pow2_adds(364, 52);
+        };
+    };
+
+    // Step 9: Conclude nested == a0 + s1 by chaining the equalities
+    // nested = a0 + (a1 + (a2 + ...) * p) * p
+    //        = a0 + (a1 + s2) * p   [by steps 7,6,5,4,3,2]
+    //        = a0 + s1              [by step 8]
+    assert(nested == a0 + s1);
+
+    // Step 10: Convert from p*a form to a*p form for final result
+    assert(nine_limbs_to_nat_aux(limbs) == a0 + a1 * pow2(52) + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208) + a5 * pow2(260) + a6 * pow2(312) + a7 * pow2(364) + a8 * pow2(416)) by {
+        lemma_mul_is_commutative(a1 as int, pow2(52) as int);
+        lemma_mul_is_commutative(a2 as int, pow2(104) as int);
+        lemma_mul_is_commutative(a3 as int, pow2(156) as int);
+        lemma_mul_is_commutative(a4 as int, pow2(208) as int);
+        lemma_mul_is_commutative(a5 as int, pow2(260) as int);
+        lemma_mul_is_commutative(a6 as int, pow2(312) as int);
+        lemma_mul_is_commutative(a7 as int, pow2(364) as int);
+        lemma_mul_is_commutative(a8 as int, pow2(416) as int);
+    };
 }
 
 pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
@@ -296,103 +407,95 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     let seq = limbs@.map(|i, x| x as nat);
     let p = pow2(52);
 
-    // Step 1: Expand the recursive definition
-    reveal_with_fuel(seq_to_nat_52, 6);
-    assert(limbs52_to_nat(limbs) == seq_to_nat_52(seq));
-
     let a0 = limbs[0] as nat;
     let a1 = limbs[1] as nat;
     let a2 = limbs[2] as nat;
     let a3 = limbs[3] as nat;
     let a4 = limbs[4] as nat;
 
-    // Step 2: The recursive expansion gives us nested form
+    // Define the nested form from recursive expansion
     // seq_to_nat_52 = a0 + (a1 + (a2 + (a3 + a4 * p) * p) * p) * p
     let nested = a0 + (a1 + (a2 + (a3 + a4 * p) * p) * p) * p;
-    assert(seq_to_nat_52(seq) == nested);
 
-    // Step 3: Expand innermost multiplication step by step
-    // (a3 + a4 * p) * p = p * (a3 + a4 * p) = p * a3 + p * a4 * p
-    lemma_mul_is_commutative((a3 + a4 * p) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a3 as int, (a4 * p) as int);
-    lemma_mul_is_commutative(p as int, a3 as int);
-    lemma_mul_is_commutative(p as int, (a4 * p) as int);
-    assert((a3 + a4 * p) * p == a3 * p + a4 * p * p);
-
-    // a4 * p * p = a4 * pow2(104)
-    lemma_pow2_adds(52, 52);
-    lemma_mul_is_associative(a4 as int, p as int, p as int);
-    assert(a4 * p * p == a4 * pow2(104));
-
-    // So (a3 + a4 * p) * p = a3 * p + a4 * pow2(104)
+    // Define intermediate sums for step-by-step expansion
+    // inner1 = a3*p + a4*p²
     let inner1 = a3 * p + a4 * pow2(104);
-    assert((a3 + a4 * p) * p == inner1);
-
-    // Step 4: (a2 + inner1) * p = a2 * p + inner1 * p
-    lemma_mul_is_commutative((a2 + inner1) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a2 as int, inner1 as int);
-    lemma_mul_is_commutative(p as int, a2 as int);
-    lemma_mul_is_commutative(p as int, inner1 as int);
-    assert((a2 + inner1) * p == a2 * p + inner1 * p);
-
-    // inner1 * p = (a3 * p + a4 * pow2(104)) * p = a3 * p² + a4 * pow2(156)
-    lemma_mul_is_commutative(inner1 as int, p as int);
-    lemma_mul_is_distributive_add(p as int, (a3 * p) as int, (a4 * pow2(104)) as int);
-    lemma_mul_is_commutative(p as int, (a3 * p) as int);
-    lemma_mul_is_commutative(p as int, (a4 * pow2(104)) as int);
-    lemma_mul_is_associative(a3 as int, p as int, p as int);
-    lemma_pow2_adds(104, 52);
-    lemma_mul_is_associative(a4 as int, pow2(104) as int, p as int);
-    assert(inner1 * p == a3 * pow2(104) + a4 * pow2(156));
-
+    // inner2 = a2*p + a3*p² + a4*p³
     let inner2 = a2 * p + a3 * pow2(104) + a4 * pow2(156);
-    assert((a2 + inner1) * p == inner2);
-
-    // Step 5: (a1 + inner2) * p
-    lemma_mul_is_commutative((a1 + inner2) as int, p as int);
-    lemma_mul_is_distributive_add(p as int, a1 as int, inner2 as int);
-    lemma_mul_is_commutative(p as int, a1 as int);
-    lemma_mul_is_commutative(p as int, inner2 as int);
-    assert((a1 + inner2) * p == a1 * p + inner2 * p);
-
-    // inner2 * p = (a2 * p + a3 * pow2(104) + a4 * pow2(156)) * p
-    lemma_mul_is_commutative(inner2 as int, p as int);
-    lemma_mul_is_distributive_add(
-        p as int,
-        (a2 * p) as int,
-        (a3 * pow2(104) + a4 * pow2(156)) as int,
-    );
-    lemma_mul_is_distributive_add(p as int, (a3 * pow2(104)) as int, (a4 * pow2(156)) as int);
-    lemma_mul_is_commutative(p as int, (a2 * p) as int);
-    lemma_mul_is_commutative(p as int, (a3 * pow2(104) + a4 * pow2(156)) as int);
-    lemma_mul_is_commutative(p as int, (a3 * pow2(104)) as int);
-    lemma_mul_is_commutative(p as int, (a4 * pow2(156)) as int);
-    lemma_mul_is_associative(a2 as int, p as int, p as int);
-    lemma_pow2_adds(104, 52);
-    lemma_mul_is_associative(a3 as int, pow2(104) as int, p as int);
-    lemma_pow2_adds(156, 52);
-    lemma_mul_is_associative(a4 as int, pow2(156) as int, p as int);
-    assert(inner2 * p == a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208));
-
+    // inner3 = a1*p + a2*p² + a3*p³ + a4*p⁴
     let inner3 = a1 * p + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208);
-    assert((a1 + inner2) * p == inner3);
 
-    // Step 6: Final result
+    // Step 1: Show limbs52_to_nat equals the nested polynomial form
+    assert(limbs52_to_nat(limbs) == nested) by {
+        reveal_with_fuel(seq_to_nat_52, 6);
+    };
+
+    // Step 2: Expand innermost: (a3 + a4*p) * p = a3*p + a4*p²
+    assert((a3 + a4 * p) * p == inner1) by {
+        lemma_mul_is_commutative((a3 + a4 * p) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a3 as int, (a4 * p) as int);
+        lemma_mul_is_commutative(p as int, a3 as int);
+        lemma_mul_is_commutative(p as int, (a4 * p) as int);
+        assert(a4 * p * p == a4 * pow2(104)) by {
+            lemma_mul_is_associative(a4 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+        };
+    };
+
+    // Step 3: (a2 + inner1) * p = a2*p + inner1*p = inner2
+    assert((a2 + inner1) * p == inner2) by {
+        lemma_mul_is_commutative((a2 + inner1) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a2 as int, inner1 as int);
+        lemma_mul_is_commutative(p as int, a2 as int);
+        lemma_mul_is_commutative(p as int, inner1 as int);
+        // inner1 * p = (a3*p + a4*pow2(104)) * p
+        assert(inner1 * p == a3 * pow2(104) + a4 * pow2(156)) by {
+            lemma_mul_is_distributive_add(p as int, (a3 * p) as int, (a4 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a3 * p) as int);
+            lemma_mul_is_commutative(p as int, (a4 * pow2(104)) as int);
+            lemma_mul_is_associative(a3 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a4 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+        };
+    };
+
+    // Step 4: (a1 + inner2) * p = a1*p + inner2*p = inner3
+    assert((a1 + inner2) * p == inner3) by {
+        lemma_mul_is_commutative((a1 + inner2) as int, p as int);
+        lemma_mul_is_distributive_add(p as int, a1 as int, inner2 as int);
+        lemma_mul_is_commutative(p as int, a1 as int);
+        lemma_mul_is_commutative(p as int, inner2 as int);
+        // inner2 * p = (a2*p + a3*pow2(104) + a4*pow2(156)) * p
+        assert(inner2 * p == a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208)) by {
+            lemma_mul_is_distributive_add(p as int, (a2 * p) as int, (a3 * pow2(104) + a4 * pow2(156)) as int);
+            lemma_mul_is_distributive_add(p as int, (a3 * pow2(104)) as int, (a4 * pow2(156)) as int);
+            lemma_mul_is_commutative(p as int, (a2 * p) as int);
+            lemma_mul_is_commutative(p as int, (a3 * pow2(104)) as int);
+            lemma_mul_is_commutative(p as int, (a4 * pow2(156)) as int);
+            lemma_mul_is_associative(a2 as int, p as int, p as int);
+            lemma_pow2_adds(52, 52);
+            lemma_mul_is_associative(a3 as int, pow2(104) as int, p as int);
+            lemma_pow2_adds(104, 52);
+            lemma_mul_is_associative(a4 as int, pow2(156) as int, p as int);
+            lemma_pow2_adds(156, 52);
+        };
+    };
+
+    // Step 5: Conclude nested == a0 + inner3 by chaining the equalities
+    // nested = a0 + (a1 + (a2 + (a3 + a4*p) * p) * p) * p
+    //        = a0 + (a1 + (a2 + inner1) * p) * p   [by step 2]
+    //        = a0 + (a1 + inner2) * p              [by step 3]
+    //        = a0 + inner3                         [by step 4]
     assert(nested == a0 + inner3);
-    assert(inner3 == a1 * p + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208));
 
-    // Combine: a0 + a1*p + a2*p² + a3*p³ + a4*p⁴
-    assert(nested == a0 + a1 * pow2(52) + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208));
-
-    // This equals five_limbs_to_nat_aux
-    assert(five_limbs_to_nat_aux(*limbs) == a0 + pow2(52) * a1 + pow2(104) * a2 + pow2(156) * a3
-        + pow2(208) * a4);
-
-    // Commutativity of multiplication for final match
-    lemma_mul_is_commutative(a1 as int, pow2(52) as int);
-    lemma_mul_is_commutative(a2 as int, pow2(104) as int);
-    lemma_mul_is_commutative(a3 as int, pow2(156) as int);
-    lemma_mul_is_commutative(a4 as int, pow2(208) as int);
+    // Step 6: Convert from p*a form to a*p form for final result
+    assert(five_limbs_to_nat_aux(*limbs) == a0 + a1 * pow2(52) + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208)) by {
+        lemma_mul_is_commutative(a1 as int, pow2(52) as int);
+        lemma_mul_is_commutative(a2 as int, pow2(104) as int);
+        lemma_mul_is_commutative(a3 as int, pow2(156) as int);
+        lemma_mul_is_commutative(a4 as int, pow2(208) as int);
+    };
 }
 
 pub proof fn lemma_scalar_subtract_no_overflow(

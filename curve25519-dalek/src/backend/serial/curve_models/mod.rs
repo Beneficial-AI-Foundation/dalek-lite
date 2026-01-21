@@ -622,13 +622,24 @@ impl CompletedPoint {
             // Therefore result is a valid projective point (same affine point as completed,
             // which is on the curve by precondition)
             // Use the lemma to convert from affine curve equation to projective form
-            let (result_x, result_y, result_z) = spec_projective_point_edwards(result);
-            assert(result_z != 0);
+            let (result_x, result_y, result_z_spec) = spec_projective_point_edwards(result);
+
+            // result_z_spec = spec_field_element(&result.Z) = math_field_mul(z_abs, t_abs) = result_z
+            // We showed result_z != 0 above, and result_z < p (since it's a field element)
+            // Therefore result_z_spec % p == result_z_spec != 0
+            assert(result_z_spec == result_z);  // They're the same value
+            assert(result_z_spec < p()) by {
+                lemma_mod_bound((z_abs * t_abs) as int, p() as int);
+            };
+            assert(result_z_spec % p() != 0) by {
+                lemma_small_mod(result_z_spec, p());
+            };
+
             assert(math_on_edwards_curve(
-                math_field_mul(result_x, math_field_inv(result_z)),
-                math_field_mul(result_y, math_field_inv(result_z)),
+                math_field_mul(result_x, math_field_inv(result_z_spec)),
+                math_field_mul(result_y, math_field_inv(result_z_spec)),
             ));
-            lemma_affine_curve_implies_projective(result_x, result_y, result_z);
+            lemma_affine_curve_implies_projective(result_x, result_y, result_z_spec);
             assert(is_valid_projective_point(result));
         }
         result

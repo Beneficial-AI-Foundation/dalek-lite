@@ -352,7 +352,7 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
 /// This is exactly the projective curve equation.
 pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     requires
-        z != 0,
+        z % p() != 0,  // Z must be non-zero in the field (not just non-zero as nat)
         math_on_edwards_curve(
             math_field_mul(x, math_field_inv(z)),
             math_field_mul(y, math_field_inv(z)),
@@ -402,24 +402,153 @@ pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     let proj_lhs = math_field_mul(math_field_sub(y2, x2), z2);
     let proj_rhs = math_field_add(z4, math_field_mul(d, math_field_mul(x2, y2)));
 
-    // The core algebraic equivalence: multiplying the affine equation by z⁴ gives projective.
-    //
-    // From the affine equation (y/z)² - (x/z)² = 1 + d·(x/z)²·(y/z)²:
-    //   y²·inv(z²) - x²·inv(z²) = 1 + d·x²·y²·inv(z⁴)
-    //
-    // Multiplying both sides by z⁴ (which is non-zero since z ≠ 0):
-    //   LHS: (y²·inv(z²) - x²·inv(z²))·z⁴ = (y² - x²)·inv(z²)·z⁴ = (y² - x²)·z²
-    //   RHS: (1 + d·x²·y²·inv(z⁴))·z⁴ = z⁴ + d·x²·y²
-    //
-    // This gives the projective equation: (y² - x²)·z² = z⁴ + d·x²·y²
-    //
-    // The detailed field algebra proof would require:
-    // 1. Distributivity of field multiplication over subtraction
-    // 2. inv(z²)·z⁴ = z² (since z⁴ = z²·z² and z²·inv(z²) = 1)
-    // 3. inv(z⁴)·z⁴ = 1
-    //
-    // We admit this classical algebraic fact.
-    assume(proj_lhs == proj_rhs);
+    // === STEP 1: Rewrite affine_lhs ===
+    // affine_lhs = y²·inv(z²) - x²·inv(z²) = (y² - x²)·inv(z²)
+    // by factoring out inv(z²)
+
+    // First show: y²·inv(z²) - x²·inv(z²) = (y² - x²)·inv(z²)
+    let y2_inv_z2 = math_field_mul(y2, inv_z2);
+    let x2_inv_z2 = math_field_mul(x2, inv_z2);
+    let y2_minus_x2 = math_field_sub(y2, x2);
+
+    assert(affine_lhs == math_field_mul(y2_minus_x2, inv_z2)) by {
+        lemma_field_mul_distributes_over_sub_right(y2, x2, inv_z2);
+    };
+
+    // === STEP 2: Rewrite affine_rhs ===
+    // We need: (x/z)²·(y/z)² = x²·y²·inv(z⁴)
+    // Since (x/z)² = x²·inv(z²) and (y/z)² = y²·inv(z²)
+    // their product is x²·inv(z²)·y²·inv(z²) = x²·y²·inv(z²)·inv(z²) = x²·y²·inv(z⁴)
+
+    let inv_z4 = math_field_inv(z4);
+    let x2_y2 = math_field_mul(x2, y2);
+    let x2_y2_inv_z4 = math_field_mul(x2_y2, inv_z4);
+
+    // inv(z²)·inv(z²) = inv(z⁴)
+    assert(math_field_mul(inv_z2, inv_z2) == inv_z4) by {
+        // z4 = z² · z², so inv(z4) = inv(z²·z²) = inv(z²)·inv(z²)
+        lemma_inv_of_product(z2, z2);
+    };
+
+    // (x/z)²·(y/z)² = x²·y²·inv(z⁴)
+    assert(math_field_mul(x_div_z_sq, y_div_z_sq) == x2_y2_inv_z4) by {
+        // (x²·inv(z²))·(y²·inv(z²)) = x²·y²·inv(z²)·inv(z²) = x²·y²·inv(z⁴)
+        lemma_field_mul_assoc(x2, inv_z2, math_field_mul(y2, inv_z2));
+        lemma_field_mul_comm(inv_z2, math_field_mul(y2, inv_z2));
+        lemma_field_mul_assoc(y2, inv_z2, inv_z2);
+        lemma_field_mul_assoc(x2, y2, math_field_mul(inv_z2, inv_z2));
+    };
+
+    // So affine_rhs = 1 + d·x²·y²·inv(z⁴)
+    assert(affine_rhs == math_field_add(1, math_field_mul(d, x2_y2_inv_z4)));
+
+    // === STEP 3: Multiply both sides by z⁴ ===
+    // We need: if A = B in the field, then A·z⁴ = B·z⁴
+
+    // First prove z² ≠ 0 and z⁴ ≠ 0 (mod p) since z ≠ 0 and p is prime
+
+    // z2 = math_field_square(z) = (z * z) % p = math_field_mul(z, z)
+    // Since z % p != 0 (precondition), math_field_mul(z, z) != 0 in a prime field
+    lemma_nonzero_product(z, z);
+    // Now we have: math_field_mul(z, z) != 0
+    // z2 = math_field_square(z) = (z * z) % p = math_field_mul(z, z) (by definition)
+    assert(z2 == math_field_mul(z, z));
+    // z2 < p (since it's the result of % p), so z2 % p = z2
+    assert(z2 < p) by { lemma_mod_bound((z * z) as int, p as int); };
+    assert(z2 % p == z2) by { lemma_small_mod(z2, p); };
+    assert(z2 % p != 0);
+
+    // Similarly for z4: z4 = z2 * z2 % p = math_field_mul(z2, z2)
+    // Since z2 % p != 0, math_field_mul(z2, z2) != 0
+    lemma_nonzero_product(z2, z2);
+    assert(z4 == math_field_mul(z2, z2));
+    assert(z4 < p) by { lemma_mod_bound((z2 * z2) as int, p as int); };
+    assert(z4 % p == z4) by { lemma_small_mod(z4, p); };
+    assert(z4 % p != 0);
+
+    // LHS after multiplying: (y² - x²)·inv(z²)·z⁴ = (y² - x²)·z²
+    // because inv(z²)·z⁴ = inv(z²)·z²·z² = z² (since inv(z²)·z² = 1)
+
+    // Show inv(z²)·z⁴ = z² when z ≠ 0
+    assert(math_field_mul(inv_z2, z4) == z2) by {
+        // z4 = z2 · z2
+        // inv(z2) · z4 = inv(z2) · (z2 · z2) = (inv(z2) · z2) · z2 = 1 · z2 = z2
+        lemma_field_mul_assoc(inv_z2, z2, z2);
+        lemma_inv_mul_cancel(z2);
+        lemma_field_mul_one_left(z2);
+    };
+
+    // So (y² - x²)·inv(z²)·z⁴ = (y² - x²)·z²
+    assert(math_field_mul(math_field_mul(y2_minus_x2, inv_z2), z4) == proj_lhs) by {
+        lemma_field_mul_assoc(y2_minus_x2, inv_z2, z4);
+    };
+
+    // RHS after multiplying: (1 + d·x²·y²·inv(z⁴))·z⁴ = z⁴ + d·x²·y²
+    // because inv(z⁴)·z⁴ = 1
+
+    // Show inv(z⁴)·z⁴ = 1 when z ≠ 0
+    assert(math_field_mul(inv_z4, z4) == 1) by {
+        lemma_inv_mul_cancel(z4);
+    };
+
+    // d·x²·y²·inv(z⁴)·z⁴ = d·x²·y² (since inv(z⁴)·z⁴ = 1)
+    // We need to show: (d · x2_y2_inv_z4) · z4 = d · x2_y2
+    // where x2_y2_inv_z4 = x2_y2 · inv_z4
+
+    // Step 1: (d · x2_y2_inv_z4) · z4 = d · (x2_y2_inv_z4 · z4) by associativity
+    lemma_field_mul_assoc(d, x2_y2_inv_z4, z4);
+    assert(math_field_mul(math_field_mul(d, x2_y2_inv_z4), z4) == math_field_mul(
+        d,
+        math_field_mul(x2_y2_inv_z4, z4),
+    ));
+
+    // Step 2: x2_y2_inv_z4 · z4 = (x2_y2 · inv_z4) · z4 = x2_y2 · (inv_z4 · z4) by associativity
+    lemma_field_mul_assoc(x2_y2, inv_z4, z4);
+    assert(math_field_mul(x2_y2_inv_z4, z4) == math_field_mul(x2_y2, math_field_mul(inv_z4, z4)));
+
+    // Step 3: inv_z4 · z4 = 1 (already shown above)
+    assert(math_field_mul(inv_z4, z4) == 1);
+
+    // Step 4: x2_y2 · 1 = x2_y2 % p
+    lemma_field_mul_one_right(x2_y2);
+    assert(math_field_mul(x2_y2, 1) == x2_y2 % p);
+
+    // Step 5: x2_y2 is already reduced (it's x2 * y2 % p), so x2_y2 % p = x2_y2
+    assert(x2_y2 < p) by { lemma_mod_bound((x2 * y2) as int, p as int); };
+    assert(x2_y2 % p == x2_y2) by { lemma_small_mod(x2_y2, p); };
+
+    // Combine: x2_y2_inv_z4 · z4 = x2_y2 · (inv_z4 · z4) = x2_y2 · 1 = x2_y2
+    assert(math_field_mul(x2_y2_inv_z4, z4) == x2_y2);
+
+    // Therefore: (d · x2_y2_inv_z4) · z4 = d · (x2_y2_inv_z4 · z4) = d · x2_y2
+    assert(math_field_mul(math_field_mul(d, x2_y2_inv_z4), z4) == math_field_mul(d, x2_y2));
+
+    // (1 + d·x²·y²·inv(z⁴))·z⁴ = z⁴ + d·x²·y²·inv(z⁴)·z⁴ = z⁴ + d·x²·y²
+    assert(math_field_mul(affine_rhs, z4) == proj_rhs) by {
+        lemma_field_mul_distributes_over_add(z4, 1, math_field_mul(d, x2_y2_inv_z4));
+        lemma_field_mul_comm(z4, 1);
+        lemma_field_mul_one_right(z4);
+        lemma_field_mul_comm(z4, math_field_mul(d, x2_y2_inv_z4));
+    };
+
+    // === STEP 4: Connect via the affine equation ===
+    // Since affine_lhs = affine_rhs, we have:
+    // affine_lhs · z⁴ = affine_rhs · z⁴
+    // (y² - x²)·inv(z²)·z⁴ = (1 + d·x²·y²·inv(z⁴))·z⁴
+    // (y² - x²)·z² = z⁴ + d·x²·y²
+    // proj_lhs = proj_rhs
+
+    assert(math_field_mul(affine_lhs, z4) == math_field_mul(affine_rhs, z4));
+
+    // affine_lhs · z⁴ = (y² - x²)·inv(z²)·z⁴ = proj_lhs
+    assert(math_field_mul(affine_lhs, z4) == proj_lhs) by {
+        // affine_lhs = (y² - x²)·inv(z²)
+        lemma_field_mul_assoc(y2_minus_x2, inv_z2, z4);
+    };
+
+    // affine_rhs · z⁴ = proj_rhs (shown above)
+
+    assert(proj_lhs == proj_rhs);
 }
 
 } // verus!

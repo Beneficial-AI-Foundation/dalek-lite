@@ -218,44 +218,24 @@ pub proof fn lemma_load8_at_plus_version_is_spec(input: &[u8], i: usize)
                     let byte_val = input[i + j] as u64;
                     let shift_bits = (j * 8) as u64;
 
-                    // First establish that byte_val * pow2(shift_bits) <= u64::MAX
                     // byte_val <= 255, j <= 7, so shift_bits <= 56
                     // 255 * 2^56 < 2^64
-                    assert(shift_bits < 64);
-                    assert(byte_val <= 255);
-                    // Use u8::MAX * pow2(j*8) <= pow2((j+1)*8) - pow2(j*8) < pow2(64)
-                    assert(byte_val * pow2(shift_bits as nat) <= u64::MAX as nat) by {
-                        // u8::MAX * pow2(j*8) = (256-1) * pow2(j*8) = pow2((j+1)*8) - pow2(j*8)
-                        // Since j <= 7, (j+1)*8 <= 64, so pow2((j+1)*8) <= pow2(64)
-                        lemma_mul_inequality(
-                            byte_val as int,
-                            u8::MAX as int,
-                            pow2(shift_bits as nat) as int,
-                        );
-                        // Show u8::MAX * pow2(j*8) < pow2(64)
-                        assert(u8::MAX as nat * pow2(j * 8) < pow2(64)) by {
-                            lemma2_to64();
-                            assert(u8::MAX as nat + 1 == pow2(8));
-                            // (pow2(8) - 1) * pow2(j*8) = pow2(8+j*8) - pow2(j*8) = pow2((j+1)*8) - pow2(j*8)
-                            lemma_pow2_adds(8, j * 8);
-                            assert(pow2(8) * pow2(j * 8) == pow2(8 + j * 8));
-                            lemma_mul_is_distributive_sub_other_way(
-                                pow2(j * 8) as int,
-                                pow2(8) as int,
-                                1,
-                            );
-                            // pow2((j+1)*8) <= pow2(64) since (j+1)*8 <= 64
-                            if j + 1 < 8 {
-                                lemma_pow2_strictly_increases((j + 1) * 8, 64);
-                            }
-                        }
-                        lemma2_to64_rest();
+                    lemma2_to64();
+                    assert(u8::MAX as nat * pow2(56) <= u64::MAX as nat) by (compute);
+                    if shift_bits < 56 {
+                        lemma_pow2_strictly_increases(shift_bits as nat, 56);
                     }
+                    lemma_mul_le(
+                        byte_val as nat,
+                        u8::MAX as nat,
+                        pow2(shift_bits as nat),
+                        pow2(56),
+                    );
 
-                    // Now convert shift to multiplication
+                    // Convert shift to multiplication
                     lemma_u64_shl_is_mul(byte_val, shift_bits);
 
-                    // Apply multiplication inequality
+                    // Establish the actual goal: byte_val * pow2(j*8) <= u8::MAX * pow2(j*8)
                     lemma_mul_inequality(byte_val as int, u8::MAX as int, pow2(j * 8) as int);
                 }
 

@@ -121,6 +121,10 @@ pub proof fn lemma_gcd_positive(a: nat, b: nat)
 }
 
 /// Lemma: Any common divisor of a and b divides gcd(a, b)
+///
+/// Proof by induction on b, following the Euclidean algorithm structure:
+/// - Base case: gcd(a, 0) = a, and d | a by assumption
+/// - Inductive case: gcd(a, b) = gcd(b, a % b), show d | (a % b), then apply IH
 pub proof fn lemma_common_divisor_divides_gcd(a: nat, b: nat, d: nat)
     requires
         d > 0,
@@ -131,19 +135,35 @@ pub proof fn lemma_common_divisor_divides_gcd(a: nat, b: nat, d: nat)
     decreases b,
 {
     if b == 0 {
-        // gcd(a, 0) = a, and d | a by assumption
+        // Base case: gcd(a, 0) = a, and d | a by assumption
+        assert(spec_gcd(a, b) == a);
+        // d | a is given in precondition
     } else {
+        // Inductive case: gcd(a, b) = gcd(b, a % b)
         let q = a / b;
         let r = a % b;
 
-        lemma_fundamental_div_mod(a as int, b as int);
+        // Step 1: Establish a = b * q + r (fundamental division property)
+        assert(a == b * q + r) by {
+            lemma_fundamental_div_mod(a as int, b as int);
+        }
 
-        // r = a - b * q, and we need r % d == 0
-        // We have a % d == 0 and b % d == 0
-        // Use the existing lemma_divides_linear_combo_sub
-        lemma_divides_linear_combo_sub(a, b, q, d);
+        // Step 2: Show r % d == 0 (d divides the remainder)
+        // Since r = a - b * q, and d | a and d | b, we have d | r
+        assert(r % d == 0) by {
+            assert(a >= q * b) by {
+                lemma_fundamental_div_mod(a as int, b as int);
+            }
+            lemma_divides_linear_combo_sub(a, b, q, d);
+        }
 
-        lemma_common_divisor_divides_gcd(b, r, d);
+        // Step 3: Apply induction hypothesis to gcd(b, r)
+        assert(spec_gcd(b, r) % d == 0) by {
+            lemma_common_divisor_divides_gcd(b, r, d);
+        }
+
+        // Step 4: Conclude since gcd(a, b) = gcd(b, r)
+        assert(spec_gcd(a, b) == spec_gcd(b, r));
     }
 }
 

@@ -1085,23 +1085,48 @@ impl ConditionallySelectable for EdwardsPoint {
             !choice_is_true(choice) ==> result == *a,
             // If choice is true (1), return b
             choice_is_true(choice) ==> result == *b,
+            // Well-formedness is preserved by selection
+            is_well_formed_edwards_point(*a) && is_well_formed_edwards_point(*b)
+                ==> is_well_formed_edwards_point(result),
     {
-        let result = EdwardsPoint {
-            X: FieldElement::conditional_select(&a.X, &b.X, choice),
-            Y: FieldElement::conditional_select(&a.Y, &b.Y, choice),
-            Z: FieldElement::conditional_select(&a.Z, &b.Z, choice),
-            T: FieldElement::conditional_select(&a.T, &b.T, choice),
-        };
+        let X = FieldElement::conditional_select(&a.X, &b.X, choice);
+        let Y = FieldElement::conditional_select(&a.Y, &b.Y, choice);
+        let Z = FieldElement::conditional_select(&a.Z, &b.Z, choice);
+        let T = FieldElement::conditional_select(&a.T, &b.T, choice);
+
+        let result = EdwardsPoint { X, Y, Z, T };
 
         proof {
-            // When all limbs of all fields match, the structs should be equal by extensionality
-            // However, Verus requires explicit extensionality axioms for struct equality
-            // To prove this without assumes would require:
-            // 1. Lemma: FieldElement equality from limb equality (extensionality for FieldElement)
-            // 2. Lemma: EdwardsPoint equality from field equality (extensionality for EdwardsPoint)
-            // For now, we assume the postcondition as it's straightforward from the field-level specs
-            assume(!choice_is_true(choice) ==> result == *a);
-            assume(choice_is_true(choice) ==> result == *b);
+            if choice_is_true(choice) {
+                lemma_field_element51_eq_from_limbs_eq(&X, &b.X);
+                lemma_field_element51_eq_from_limbs_eq(&Y, &b.Y);
+                lemma_field_element51_eq_from_limbs_eq(&Z, &b.Z);
+                lemma_field_element51_eq_from_limbs_eq(&T, &b.T);
+
+                assert(result.X == b.X);
+                assert(result.Y == b.Y);
+                assert(result.Z == b.Z);
+                assert(result.T == b.T);
+                assert(result == *b);
+                if is_well_formed_edwards_point(*a) && is_well_formed_edwards_point(*b) {
+                    assert(is_well_formed_edwards_point(result));
+                }
+            } else {
+                // choice is false: result should be exactly `a`
+                lemma_field_element51_eq_from_limbs_eq(&X, &a.X);
+                lemma_field_element51_eq_from_limbs_eq(&Y, &a.Y);
+                lemma_field_element51_eq_from_limbs_eq(&Z, &a.Z);
+                lemma_field_element51_eq_from_limbs_eq(&T, &a.T);
+
+                assert(result.X == a.X);
+                assert(result.Y == a.Y);
+                assert(result.Z == a.Z);
+                assert(result.T == a.T);
+                assert(result == *a);
+                if is_well_formed_edwards_point(*a) && is_well_formed_edwards_point(*b) {
+                    assert(is_well_formed_edwards_point(result));
+                }
+            }
         }
 
         result

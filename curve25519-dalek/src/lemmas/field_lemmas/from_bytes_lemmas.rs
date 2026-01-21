@@ -41,8 +41,7 @@ pub proof fn lemma_assemble_mod_div(a: nat, d: nat, b: nat)
 
     // (y + z) * x == y * x + z * x (distributive property)
     assert(amod * pb + (pd * adiv) * pb == (amod + pd * adiv) * pb) by {
-        assert((amod + pd * adiv) * pb == amod * pb + pd * adiv * pb) by (nonlinear_arith);
-        assert(pd * adiv * pb == (pd * adiv) * pb) by (nonlinear_arith);
+        lemma_mul_is_distributive_add_other_way(pb as int, amod as int, ( pd * adiv) as int);
     }
 
     assert(amod + pd * adiv == a) by {

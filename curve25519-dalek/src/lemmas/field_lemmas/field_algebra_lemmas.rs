@@ -267,7 +267,6 @@ pub proof fn lemma_field_add_sub_rearrange(a: nat, b: nat, c: nat)
 // =============================================================================
 // Multiplicative Identity Lemmas (one)
 // =============================================================================
-
 /// Lemma: 1 · a = a (mod p)
 pub proof fn lemma_field_mul_one_left(a: nat)
     ensures
@@ -295,7 +294,6 @@ pub proof fn lemma_field_mul_one_right(a: nat)
 // =============================================================================
 // Inverse Cancellation Lemmas
 // =============================================================================
-
 /// Lemma: inv(a) · a = 1 when a ≠ 0 (mod p)
 ///
 /// This is the core inverse property expressed in field multiplication notation.
@@ -325,7 +323,6 @@ pub proof fn lemma_inv_mul_cancel(a: nat)
 // =============================================================================
 // Subtraction and Negation Lemmas
 // =============================================================================
-
 /// Lemma: sub(a, b) = add(a, neg(b)) in field arithmetic
 ///
 /// Field subtraction is addition with the additive inverse.
@@ -340,9 +337,44 @@ pub proof fn lemma_field_sub_eq_add_neg(a: nat, b: nat)
     ensures
         math_field_sub(a, b) == math_field_add(a, math_field_neg(b)),
 {
-    // This is a classical field algebra identity.
-    // The detailed modular arithmetic proof is tedious but mathematically sound.
-    assume(math_field_sub(a, b) == math_field_add(a, math_field_neg(b)));
+    let p = p();
+    p_gt_2();
+
+    let a_mod = a % p;
+    let b_mod = b % p;
+    let neg_b_raw: nat = (p - b_mod) as nat;
+
+    assert(a_mod < p) by {
+        lemma_mod_bound(a as int, p as int);
+    };
+    assert(b_mod < p) by {
+        lemma_mod_bound(b as int, p as int);
+    };
+
+    // neg(b) = (p - (b % p)) % p = neg_b_raw % p
+    assert(math_field_neg(b) == neg_b_raw % p);
+
+    // sub(a, b) = ((a % p) + p - (b % p)) % p = (a_mod + neg_b_raw) % p
+    assert(math_field_sub(a, b) == (a_mod + neg_b_raw) % p) by {
+        assert(((a_mod + p) - b_mod) as nat == a_mod + neg_b_raw);
+    };
+
+    // add(a, neg(b)) = (a + neg(b)) % p = (a_mod + neg_b_raw) % p
+    assert(math_field_add(a, math_field_neg(b)) == (a_mod + neg_b_raw) % p) by {
+        // (a + (neg_b_raw % p)) % p == (a + neg_b_raw) % p
+        assert((a + math_field_neg(b)) % p == (a + neg_b_raw) % p) by {
+            lemma_add_mod_noop(a as int, (neg_b_raw % p) as int, p as int);
+            lemma_add_mod_noop(a as int, neg_b_raw as int, p as int);
+            lemma_mod_twice(neg_b_raw as int, p as int);
+        };
+
+        // (a + neg_b_raw) % p == (a_mod + neg_b_raw) % p
+        assert((a + neg_b_raw) % p == (a_mod + neg_b_raw) % p) by {
+            lemma_add_mod_noop(a as int, neg_b_raw as int, p as int);
+            lemma_add_mod_noop(a_mod as int, neg_b_raw as int, p as int);
+            lemma_small_mod(a_mod, p);
+        };
+    };
 }
 
 /// Lemma: add(a, neg(b)) = sub(a, b) when a and b are field elements (< p)
@@ -369,25 +401,29 @@ pub proof fn lemma_field_mul_neg(c: nat, b: nat)
     let p = p();
     p_gt_2();
 
-    // The key lemma from div_mod_lemmas:
+    let b_mod = b % p;
+    let neg_b_raw: nat = (p - b_mod) as nat;
+
     // (c * ((p - b % p) as nat)) % p == ((p - (c * b) % p) as nat) % p
-    //
-    // This establishes: c * neg(b) ≡ neg(c * b) (mod p)
-    // where neg(x) = (p - x % p) % p
     lemma_mul_distributes_over_neg_mod(c, b, p);
 
-    // The connection to our field operations requires showing:
-    // math_field_mul(c, math_field_neg(b)) = (c * neg_b) % p
-    // math_field_neg(math_field_mul(c, b)) = (p - cb) % p
-    //
-    // These match the LHS and RHS of the key lemma respectively.
-    assume(math_field_mul(c, math_field_neg(b)) == math_field_neg(math_field_mul(c, b)));
+    // Rewrite the LHS into the form used by lemma_mul_distributes_over_neg_mod.
+    assert(math_field_mul(c, math_field_neg(b)) == (c * neg_b_raw) % p) by {
+        // math_field_mul(c, math_field_neg(b))
+        // = (c * ((p - (b % p)) as nat % p)) % p
+        // = (c * ((p - (b % p)) as nat)) % p
+        lemma_mul_mod_noop_right(c as int, neg_b_raw as int, p as int);
+    };
+
+    // Rewrite the RHS into the form used by lemma_mul_distributes_over_neg_mod.
+    assert(math_field_neg(math_field_mul(c, b)) == ((p - (c * b) % p) as nat) % p) by {
+        lemma_mod_twice((c * b) as int, p as int);
+    };
 }
 
 // =============================================================================
 // Distributivity over Subtraction
 // =============================================================================
-
 /// Lemma: (a - b) · c = a·c - b·c (mod p)
 ///
 /// Distributivity of field multiplication over subtraction (on the right).
@@ -428,8 +464,12 @@ pub proof fn lemma_field_mul_distributes_over_sub_right(a: nat, b: nat, c: nat)
 
     // Step 4: add(ac, neg(bc)) = sub(ac, bc)
     // ac and bc are already < p (field elements)
-    assert(ac < p) by { lemma_mod_bound((a * c) as int, p as int); };
-    assert(bc < p) by { lemma_mod_bound((b * c) as int, p as int); };
+    assert(ac < p) by {
+        lemma_mod_bound((a * c) as int, p as int);
+    };
+    assert(bc < p) by {
+        lemma_mod_bound((b * c) as int, p as int);
+    };
     lemma_field_add_neg_eq_sub(ac, bc);
     assert(math_field_add(ac, math_field_neg(bc)) == math_field_sub(ac, bc));
 

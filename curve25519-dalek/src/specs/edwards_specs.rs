@@ -127,7 +127,7 @@ pub proof fn axiom_ed25519_basepoint_table_valid()
 ///
 /// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
 /// Each element satisfies `is_well_formed_edwards_point`, which requires:
-/// - `is_valid_edwards_point`: Z ≠ 0, point on curve, T = XY/Z
+/// - `is_valid_edwards_point`: Z ≠ 0, projective curve equation, X·Y = Z·T
 /// - `edwards_point_limbs_bounded`: all limbs < 2^52
 /// - `sum_of_limbs_bounded(Y, X)`: Y + X doesn't overflow
 ///
@@ -310,8 +310,8 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 ///
 /// An (X:Y:Z:T) tuple is valid iff:
 /// 1. Z ≠ 0
-/// 2. The affine point (X/Z, Y/Z) is on the Edwards curve
-/// 3. T = X·Y/Z
+/// 2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²
+/// 3. The Segre relation holds: X·Y = Z·T
 pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
     z != 0 && math_on_edwards_curve_projective(x, y, z) && math_field_mul(x, y) == math_field_mul(
         z,
@@ -319,13 +319,13 @@ pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t:
     )
 }
 
-/// Check if an EdwardsPoint in projective coordinates is valid
+/// Check if an EdwardsPoint in extended coordinates is valid
 /// An EdwardsPoint (X:Y:Z:T) is valid if:
-/// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
-/// 2. The extended coordinate satisfies T = X*Y/Z
-/// 3. Z ≠ 0
+/// 1. Z ≠ 0
+/// 2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²
+/// 3. The Segre relation holds: X·Y = Z·T
 ///
-/// Extended coordinates (X:Y:Z:T) with T = XY/Z enable faster point arithmetic.
+/// Extended coordinates (X:Y:Z:T) with X·Y = Z·T enable faster point arithmetic.
 /// Reference: [HWCD2008] Section 3 for extended twisted Edwards coordinates
 pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
     let x = spec_field_element(&point.X);

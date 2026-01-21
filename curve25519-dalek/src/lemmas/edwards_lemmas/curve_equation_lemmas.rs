@@ -454,16 +454,24 @@ pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     // z2 = math_field_square(z) = (z * z) % p = math_field_mul(z, z) (by definition)
     assert(z2 == math_field_mul(z, z));
     // z2 < p (since it's the result of % p), so z2 % p = z2
-    assert(z2 < p) by { lemma_mod_bound((z * z) as int, p as int); };
-    assert(z2 % p == z2) by { lemma_small_mod(z2, p); };
+    assert(z2 < p) by {
+        lemma_mod_bound((z * z) as int, p as int);
+    };
+    assert(z2 % p == z2) by {
+        lemma_small_mod(z2, p);
+    };
     assert(z2 % p != 0);
 
     // Similarly for z4: z4 = z2 * z2 % p = math_field_mul(z2, z2)
     // Since z2 % p != 0, math_field_mul(z2, z2) != 0
     lemma_nonzero_product(z2, z2);
     assert(z4 == math_field_mul(z2, z2));
-    assert(z4 < p) by { lemma_mod_bound((z2 * z2) as int, p as int); };
-    assert(z4 % p == z4) by { lemma_small_mod(z4, p); };
+    assert(z4 < p) by {
+        lemma_mod_bound((z2 * z2) as int, p as int);
+    };
+    assert(z4 % p == z4) by {
+        lemma_small_mod(z4, p);
+    };
     assert(z4 % p != 0);
 
     // LHS after multiplying: (y² - x²)·inv(z²)·z⁴ = (y² - x²)·z²
@@ -514,8 +522,12 @@ pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     assert(math_field_mul(x2_y2, 1) == x2_y2 % p);
 
     // Step 5: x2_y2 is already reduced (it's x2 * y2 % p), so x2_y2 % p = x2_y2
-    assert(x2_y2 < p) by { lemma_mod_bound((x2 * y2) as int, p as int); };
-    assert(x2_y2 % p == x2_y2) by { lemma_small_mod(x2_y2, p); };
+    assert(x2_y2 < p) by {
+        lemma_mod_bound((x2 * y2) as int, p as int);
+    };
+    assert(x2_y2 % p == x2_y2) by {
+        lemma_small_mod(x2_y2, p);
+    };
 
     // Combine: x2_y2_inv_z4 · z4 = x2_y2 · (inv_z4 · z4) = x2_y2 · 1 = x2_y2
     assert(math_field_mul(x2_y2_inv_z4, z4) == x2_y2);

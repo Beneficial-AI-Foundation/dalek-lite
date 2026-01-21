@@ -1136,6 +1136,7 @@ impl ConditionallySelectable for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
+
 /// Spec for ConstantTimeEq trait implementation
 #[cfg(verus_keep_ghost)]
 pub trait ConstantTimeEqSpecImpl {
@@ -1166,10 +1167,12 @@ impl ConstantTimeEq for EdwardsPoint {
             )),
     {
         proof {
-            // Preconditions from ConstantTimeEqSpecImpl::ct_eq_req needed for multiplications below
-            /* VERIFICATION NOTE:
-            - Verus does not support adding a "requires" clause to ct_eq with ConstantTimeEqSpecImpl,
-            - For standard types like Add, a "requires" clause for "add" was supported through the AddSpecImpl
+            /* VERUS LIMITATION: Must assume precondition
+
+            ConstantTimeEq is an external trait (subtle crate). Approaches tried:
+            - External trait specs don't support precondition methods (unlike AddSpecImpl::add_req)
+            - Cannot use assume_specification (we implement the trait = duplicate spec error)
+            - Type invariants don't work (require private fields; pub(crate) treated as opaque)
             */
             assume(self.ct_eq_req(other));
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (mul precondition)

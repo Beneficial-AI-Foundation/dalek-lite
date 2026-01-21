@@ -227,7 +227,11 @@ pub proof fn lemma_load8_at_plus_version_is_spec(input: &[u8], i: usize)
                     assert(byte_val * pow2(shift_bits as nat) <= u64::MAX as nat) by {
                         // u8::MAX * pow2(j*8) = (256-1) * pow2(j*8) = pow2((j+1)*8) - pow2(j*8)
                         // Since j <= 7, (j+1)*8 <= 64, so pow2((j+1)*8) <= pow2(64)
-                        lemma_mul_inequality(byte_val as int, u8::MAX as int, pow2(shift_bits as nat) as int);
+                        lemma_mul_inequality(
+                            byte_val as int,
+                            u8::MAX as int,
+                            pow2(shift_bits as nat) as int,
+                        );
                         // Show u8::MAX * pow2(j*8) < pow2(64)
                         assert(u8::MAX as nat * pow2(j * 8) < pow2(64)) by {
                             lemma2_to64();
@@ -235,7 +239,11 @@ pub proof fn lemma_load8_at_plus_version_is_spec(input: &[u8], i: usize)
                             // (pow2(8) - 1) * pow2(j*8) = pow2(8+j*8) - pow2(j*8) = pow2((j+1)*8) - pow2(j*8)
                             lemma_pow2_adds(8, j * 8);
                             assert(pow2(8) * pow2(j * 8) == pow2(8 + j * 8));
-                            lemma_mul_is_distributive_sub_other_way(pow2(j * 8) as int, pow2(8) as int, 1);
+                            lemma_mul_is_distributive_sub_other_way(
+                                pow2(j * 8) as int,
+                                pow2(8) as int,
+                                1,
+                            );
                             // pow2((j+1)*8) <= pow2(64) since (j+1)*8 <= 64
                             if j + 1 < 8 {
                                 lemma_pow2_strictly_increases((j + 1) * 8, 64);

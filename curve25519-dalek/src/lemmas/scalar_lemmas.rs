@@ -182,7 +182,8 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     let a8 = limbs[8] as nat;
 
     // Nested form from recursive expansion
-    let nested = a0 + (a1 + (a2 + (a3 + (a4 + (a5 + (a6 + (a7 + a8 * p) * p) * p) * p) * p) * p) * p) * p;
+    let nested = a0 + (a1 + (a2 + (a3 + (a4 + (a5 + (a6 + (a7 + a8 * p) * p) * p) * p) * p) * p)
+        * p) * p;
     assert(seq_to_nat_52(seq) == nested);
 
     // Expand step by step from innermost to outermost
@@ -213,7 +214,11 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     lemma_mul_is_distributive_add(p as int, a5 as int, s6 as int);
     lemma_mul_is_commutative(p as int, a5 as int);
     lemma_mul_is_commutative(p as int, s6 as int);
-    lemma_mul_is_distributive_add(p as int, (a6 * p) as int, (a7 * pow2(104) + a8 * pow2(156)) as int);
+    lemma_mul_is_distributive_add(
+        p as int,
+        (a6 * p) as int,
+        (a7 * pow2(104) + a8 * pow2(156)) as int,
+    );
     lemma_mul_is_distributive_add(p as int, (a7 * pow2(104)) as int, (a8 * pow2(156)) as int);
     lemma_mul_is_commutative(p as int, (a6 * p) as int);
     lemma_mul_is_commutative(p as int, (a7 * pow2(104)) as int);
@@ -238,7 +243,9 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     lemma_mul_is_commutative(p as int, a3 as int);
     lemma_mul_is_commutative(p as int, s4 as int);
     lemma_pow2_adds(260, 52);
-    let s3 = a3 * p + a4 * pow2(104) + a5 * pow2(156) + a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(312);
+    let s3 = a3 * p + a4 * pow2(104) + a5 * pow2(156) + a6 * pow2(208) + a7 * pow2(260) + a8 * pow2(
+        312,
+    );
 
     // Step: (a2 + s3) * p
     lemma_mul_is_commutative((a2 + s3) as int, p as int);
@@ -246,7 +253,9 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     lemma_mul_is_commutative(p as int, a2 as int);
     lemma_mul_is_commutative(p as int, s3 as int);
     lemma_pow2_adds(312, 52);
-    let s2 = a2 * p + a3 * pow2(104) + a4 * pow2(156) + a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(312) + a8 * pow2(364);
+    let s2 = a2 * p + a3 * pow2(104) + a4 * pow2(156) + a5 * pow2(208) + a6 * pow2(260) + a7 * pow2(
+        312,
+    ) + a8 * pow2(364);
 
     // Step: (a1 + s2) * p
     lemma_mul_is_commutative((a1 + s2) as int, p as int);
@@ -254,7 +263,9 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     lemma_mul_is_commutative(p as int, a1 as int);
     lemma_mul_is_commutative(p as int, s2 as int);
     lemma_pow2_adds(364, 52);
-    let s1 = a1 * p + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208) + a5 * pow2(260) + a6 * pow2(312) + a7 * pow2(364) + a8 * pow2(416);
+    let s1 = a1 * p + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208) + a5 * pow2(260) + a6 * pow2(
+        312,
+    ) + a7 * pow2(364) + a8 * pow2(416);
 
     // Final: nested == a0 + s1
     // = a0 + a1*p + a2*p² + ... + a8*p⁸
@@ -274,8 +285,8 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     lemma_mul_is_commutative(a8 as int, pow2(416) as int);
 
     // nine_limbs_to_nat_aux uses a * pow2(k) form
-    assert(nine_limbs_to_nat_aux(limbs) == a0 + a1 * pow2(52) + a2 * pow2(104) + a3 * pow2(156)
-        + a4 * pow2(208) + a5 * pow2(260) + a6 * pow2(312) + a7 * pow2(364) + a8 * pow2(416));
+    assert(nine_limbs_to_nat_aux(limbs) == a0 + a1 * pow2(52) + a2 * pow2(104) + a3 * pow2(156) + a4
+        * pow2(208) + a5 * pow2(260) + a6 * pow2(312) + a7 * pow2(364) + a8 * pow2(416));
 }
 
 pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
@@ -346,7 +357,11 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
 
     // inner2 * p = (a2 * p + a3 * pow2(104) + a4 * pow2(156)) * p
     lemma_mul_is_commutative(inner2 as int, p as int);
-    lemma_mul_is_distributive_add(p as int, (a2 * p) as int, (a3 * pow2(104) + a4 * pow2(156)) as int);
+    lemma_mul_is_distributive_add(
+        p as int,
+        (a2 * p) as int,
+        (a3 * pow2(104) + a4 * pow2(156)) as int,
+    );
     lemma_mul_is_distributive_add(p as int, (a3 * pow2(104)) as int, (a4 * pow2(156)) as int);
     lemma_mul_is_commutative(p as int, (a2 * p) as int);
     lemma_mul_is_commutative(p as int, (a3 * pow2(104) + a4 * pow2(156)) as int);
@@ -800,9 +815,8 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
                 // TODO: Complete the algebraic expansion proof
                 // (a + b) * c == a * c + b * c, then associativity for the second term
                 assume(((seq_u64_to_nat(seq.subrange(1, i)) + seq[i] * pow2(52 * (i - 1) as nat))
-                    * pow2(52)) as nat == (seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
-                    52 * i as nat,
-                )) as nat);
+                    * pow2(52)) as nat == (seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i]
+                    * pow2(52 * i as nat)) as nat);
             }
             (limbs1[0] + seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
                 52 * i as nat,

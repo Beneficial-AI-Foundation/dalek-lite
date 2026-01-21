@@ -334,19 +334,25 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
 
         // x2 = (0 * 0) % p = 0
         assert(x2 == 0) by {
-            assert(0int * 0int == 0int) by { lemma_mul_basics(0int); }
+            assert(0int * 0int == 0int) by {
+                lemma_mul_basics(0int);
+            }
             lemma_small_mod(0nat, p);
         }
 
         // x2y2 = (0 * y2) % p = 0
         assert(x2y2 == 0) by {
-            assert(0int * (y2 as int) == 0int) by { lemma_mul_basics(y2 as int); }
+            assert(0int * (y2 as int) == 0int) by {
+                lemma_mul_basics(y2 as int);
+            }
             lemma_small_mod(0nat, p);
         }
 
         // d_x2y2 = (d * 0) % p = 0
         assert(d_x2y2 == 0) by {
-            assert((d as int) * 0int == 0int) by { lemma_mul_basics(d as int); }
+            assert((d as int) * 0int == 0int) by {
+                lemma_mul_basics(d as int);
+            }
             lemma_small_mod(0nat, p);
         }
 
@@ -365,8 +371,12 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
             // math_field_sub(1, 0) = (((1 % p) + p) - (0 % p)) % p
             //                      = ((1 + p) - 0) % p
             //                      = (p + 1) % p = 1
-            assert(1nat % p == 1) by { lemma_small_mod(1nat, p); }
-            assert(0nat % p == 0) by { lemma_small_mod(0nat, p); }
+            assert(1nat % p == 1) by {
+                lemma_small_mod(1nat, p);
+            }
+            assert(0nat % p == 0) by {
+                lemma_small_mod(0nat, p);
+            }
             // (p + 1) % p = 1
             assert((p + 1) % p == 1) by {
                 lemma_mod_adds(p as int, 1, p as int);

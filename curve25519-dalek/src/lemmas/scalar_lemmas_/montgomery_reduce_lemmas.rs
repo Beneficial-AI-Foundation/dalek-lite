@@ -80,12 +80,8 @@ pub(crate) proof fn lemma_part1_divisible(s: u64, p: nat)
     // The product lfac * L0 = 0x51da312547e1b * 0x0002631a5cf5d3ed is too large for
     // compute mode (~2^100), so we establish this via a helper lemma.
     assert((1 + lfac * L0) % p52 == 0) by {
-<<<<<<< HEAD
         assert(((constants::LFACTOR as nat) * (constants::L.limbs[0] as nat) + 1)
             % 0x10000000000000nat == 0) by (compute);
-=======
-        lemma_lfactor_l0_property();
->>>>>>> 333004566 (Fix Verus verification errors in negate and montgomery_reduce lemmas)
     }
 
     // Step 2: Scale - s * (1 + LFACTOR * L[0]) % 2^52 = 0

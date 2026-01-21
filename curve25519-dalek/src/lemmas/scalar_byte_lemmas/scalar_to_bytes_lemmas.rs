@@ -1338,7 +1338,11 @@ pub proof fn lemma_limb4_contribution_correctness_52(limbs: [u64; 5], bytes: [u8
         // = (b26 + b27 + b28 + b29 + b30) * p + b31 * p
         // ... and so on
 
-        lemma_mul_is_distributive_add_other_way(p, (b26 + b27 + b28 + b29 + b30) as int, b31 as int);
+        lemma_mul_is_distributive_add_other_way(
+            p,
+            (b26 + b27 + b28 + b29 + b30) as int,
+            b31 as int,
+        );
         lemma_mul_is_distributive_add_other_way(p, (b26 + b27 + b28 + b29) as int, b30 as int);
         lemma_mul_is_distributive_add_other_way(p, (b26 + b27 + b28) as int, b29 as int);
         lemma_mul_is_distributive_add_other_way(p, (b26 + b27) as int, b28 as int);

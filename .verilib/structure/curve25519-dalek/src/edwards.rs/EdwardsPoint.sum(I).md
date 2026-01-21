@@ -1,5 +1,6 @@
 ---
-code-line: 1638
+code-name: null
 code-path: curve25519-dalek/src/edwards.rs
-code-name: scip:curve25519-dalek/4.1.3/edwards/EdwardsPoint#Sum<I>#sum()
+code-line: 1638
 ---
+

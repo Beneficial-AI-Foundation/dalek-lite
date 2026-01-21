@@ -1,5 +1,6 @@
 ---
-code-line: 3191
 code-path: curve25519-dalek/src/scalar.rs
-code-name: scip:curve25519-dalek/4.1.3/scalar/read_le_u64_into()
+code-line: 3191
+code-name: null
 ---
+

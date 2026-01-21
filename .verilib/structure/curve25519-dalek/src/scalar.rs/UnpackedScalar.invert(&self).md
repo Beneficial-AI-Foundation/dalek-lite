@@ -1,5 +1,6 @@
 ---
-code-line: 3015
+code-name: null
 code-path: curve25519-dalek/src/scalar.rs
-code-name: scip:curve25519-dalek/4.1.3/scalar/&Scalar52#Scalar52<UnpackedScalar>#invert()
+code-line: 3015
 ---
+

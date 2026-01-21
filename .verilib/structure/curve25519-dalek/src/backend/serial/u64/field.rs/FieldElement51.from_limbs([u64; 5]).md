@@ -1,5 +1,6 @@
 ---
-code-line: 770
 code-path: curve25519-dalek/src/backend/serial/u64/field.rs
-code-name: scip:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<FieldElement51>#from_limbs()
+code-line: 770
+code-name: null
 ---
+

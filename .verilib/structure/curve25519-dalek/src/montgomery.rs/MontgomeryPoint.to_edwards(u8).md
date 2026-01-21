@@ -1,5 +1,6 @@
 ---
-code-line: 490
+code-name: null
 code-path: curve25519-dalek/src/montgomery.rs
-code-name: scip:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<u8>#to_edwards()
+code-line: 490
 ---
+

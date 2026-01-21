@@ -1,5 +1,6 @@
 ---
-code-line: 1115
+code-name: null
 code-path: curve25519-dalek/src/backend/serial/curve_models/mod.rs
-code-name: scip:curve25519-dalek/4.1.3/curve_models/serial/backend/&AffineNielsPoint#Neg<AffineNielsPoint>#neg()
+code-line: 1115
 ---
+

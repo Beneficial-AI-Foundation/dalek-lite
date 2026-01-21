@@ -698,7 +698,7 @@ macro_rules! lemma_right_left_shift {
 
                 // r = x % pow2(n) < pow2(n) <= MAX, so r fits in $uN
                 assert(r < pow2(n_nat)) by {
-                    vstd::arithmetic::div_mod::lemma_mod_bound(x as int, pow2(n_nat) as int);
+                    lemma_mod_bound(x as int, pow2(n_nat) as int);
                 }
 
                 // q * 2^n <= x <= MAX, so q * 2^n fits in $uN

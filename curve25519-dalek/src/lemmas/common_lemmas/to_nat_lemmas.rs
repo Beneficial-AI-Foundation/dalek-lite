@@ -493,6 +493,18 @@ pub proof fn lemma_bytes32_to_nat_zero_implies_all_bytes_zero(bytes: &[u8; 32])
         lemma_extract_byte_at_index(bytes, i_nat);
 
         assert(bytes[i] as nat == (bytes32_to_nat(bytes) / pow2(i_nat * 8)) % pow2(8));
+        // bytes32_to_nat(bytes) == 0, so 0 / pow2(...) == 0, and 0 % pow2(8) == 0
+        assert(pow2(i_nat * 8) > 0) by {
+            lemma_pow2_pos(i_nat * 8);
+        };
+        lemma_div_basics(pow2(i_nat * 8) as int);
+        assert(0int / pow2(i_nat * 8) as int == 0);
+        assert(bytes32_to_nat(bytes) / pow2(i_nat * 8) == 0);
+        assert(pow2(8) > 0) by {
+            lemma_pow2_pos(8);
+        };
+        lemma_small_mod(0nat, pow2(8));
+        assert(0nat % pow2(8) == 0);
         assert((bytes32_to_nat(bytes) / pow2(i_nat * 8)) % pow2(8) == 0);
         assert(bytes[i] as nat == 0);
         assert(bytes[i] == 0u8);

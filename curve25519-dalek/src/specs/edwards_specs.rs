@@ -313,9 +313,10 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// 2. The affine point (X/Z, Y/Z) is on the Edwards curve
 /// 3. T = X·Y/Z
 pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
-    z != 0
-        && math_on_edwards_curve_projective(x, y, z)
-        && math_field_mul(x, y) == math_field_mul(z, t)
+    z != 0 && math_on_edwards_curve_projective(x, y, z) && math_field_mul(x, y) == math_field_mul(
+        z,
+        t,
+    )
 }
 
 /// Check if an EdwardsPoint in projective coordinates is valid
@@ -752,18 +753,15 @@ pub open spec fn is_valid_completed_point(
 
 /// Check if a ProjectivePoint is valid
 /// A ProjectivePoint (X:Y:Z) in P² is valid if:
-/// 1. The affine point (X/Z, Y/Z) lies on the Edwards curve
-/// 2. Z ≠ 0
+/// 1. Z ≠ 0
+/// 2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²
+///
+/// This is equivalent to the affine point (X/Z, Y/Z) lying on the Edwards curve.
 pub open spec fn is_valid_projective_point(point: ProjectivePoint) -> bool {
     let (x, y, z) = spec_projective_point_edwards(point);
 
-    // Z must be non-zero
-    z != 0 &&
-    // The affine coordinates (X/Z, Y/Z) must be on the curve
-    math_on_edwards_curve(
-        math_field_mul(x, math_field_inv(z)),
-        math_field_mul(y, math_field_inv(z)),
-    )
+    // Z must be non-zero and projective curve equation must hold
+    z != 0 && math_on_edwards_curve_projective(x, y, z)
 }
 
 /// Spec for CompletedPoint::as_projective conversion

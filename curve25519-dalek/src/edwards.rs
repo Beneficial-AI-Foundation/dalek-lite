@@ -984,22 +984,9 @@ impl ValidityCheck for EdwardsPoint {
     fn is_valid(&self) -> (result: bool)
         requires
             edwards_point_limbs_bounded(*self),
+            spec_field_element(&self.Z) != 0,
         ensures
-            spec_field_element(&self.Z) != 0 ==> (result == is_valid_edwards_point(
-                *self,
-            )),/* VERIFICATION NOTE:
-            The stronger postcondition `result == is_valid_edwards_point(*self)` does not hold
-            under only `edwards_point_limbs_bounded(*self)` precondition.
-
-            Reason: the runtime checks are:
-             - `proj.is_valid()`: the homogenized (projective) curve equation, which can hold even when `Z == 0`,
-             - `X*Y == Z*T`: the Segre relation, which can also hold when `Z == 0` (e.g. `X == 0, Z == 0` makes it
-               true for any `Y, T`).
-
-            But `is_valid_edwards_point` is an *affine* validity predicate and requires `Z != 0` (so that (X/Z, Y/Z)
-            is well-defined and `T = X*Y/Z` is meaningful). Therefore, we only state the equivalence when `Z != 0`.
-            */
-
+            result == is_valid_edwards_point(*self),
     {
         let proj = self.as_projective();
         proof {
@@ -1064,23 +1051,19 @@ impl ValidityCheck for EdwardsPoint {
                 }
             };
 
-            // If Z ≠ 0 and result is true, then the spec validity predicate holds.
-            assert(z != 0 ==> (result == is_valid_edwards_point(*self))) by {
-                if z != 0 {
-                    let curve_eq = math_on_edwards_curve_projective(x, y, z);
-                    let segre_eq = math_field_mul(x, y) == math_field_mul(z, t);
+            // With Z ≠ 0 as precondition, prove result equals the spec validity predicate.
+            let curve_eq = math_on_edwards_curve_projective(x, y, z);
+            let segre_eq = math_field_mul(x, y) == math_field_mul(z, t);
 
-                    assert(result == (curve_eq && segre_eq)) by {
-                        assert(result == (point_on_curve && on_segre_image));
-                        assert(point_on_curve == curve_eq);
-                        assert(on_segre_image == segre_eq);
-                    };
-
-                    assert(is_valid_edwards_point(*self) == (z != 0 && curve_eq && segre_eq));
-                    assert(is_valid_edwards_point(*self) == (curve_eq && segre_eq));
-                    assert(result == is_valid_edwards_point(*self));
-                }
+            assert(result == (curve_eq && segre_eq)) by {
+                assert(result == (point_on_curve && on_segre_image));
+                assert(point_on_curve == curve_eq);
+                assert(on_segre_image == segre_eq);
             };
+
+            assert(is_valid_edwards_point(*self) == (z != 0 && curve_eq && segre_eq));
+            assert(is_valid_edwards_point(*self) == (curve_eq && segre_eq));
+            assert(result == is_valid_edwards_point(*self));
         }
         result
     }

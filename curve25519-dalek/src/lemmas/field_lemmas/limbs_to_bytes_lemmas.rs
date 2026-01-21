@@ -512,11 +512,16 @@ proof fn lemma_5_bytes_scale(
     let t4 = byte4 as nat * pow2(32);
 
     // Distribute: (t0 + t1 + t2 + t3 + t4) * p == t0*p + t1*p + t2*p + t3*p + t4*p
-    // Use nonlinear_arith for clean distributivity proof
-    assert(sum * p == t0 * p + t1 * p + t2 * p + t3 * p + t4 * p) by (nonlinear_arith)
-        requires
-            sum == t0 + t1 + t2 + t3 + t4,
-    ;
+    assert(sum * p == t0 * p + t1 * p + t2 * p + t3 * p + t4 * p) by {
+        lemma_mul_distributive_5_terms(
+            p as int,
+            t0 as int,
+            t1 as int,
+            t2 as int,
+            t3 as int,
+            t4 as int,
+        );
+    }
 
     // Step 3: Simplify each term using associativity and pow2 addition
     // t0 * p = byte0 * pow2(0) * pow2(scale) = byte0 * pow2(scale)

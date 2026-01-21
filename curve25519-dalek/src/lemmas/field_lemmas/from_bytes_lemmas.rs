@@ -138,36 +138,23 @@ pub proof fn lemma_from_bytes32_to_nat_01(bytes: &[u8; 32])
     assert(n * (A as int) == n * x1 + n * x2 + n * x3 + n * x4 + n * x5 + n * x6 + n * x7);
 
     // Step 5: Final result
-    // TODO: The gap is in converting between nat * nat and int * int arithmetic.
-    // We've proven in int arithmetic that n * (A as int) == n*x1 + ... + n*x7
-    // But connecting this to the nat form requires showing that
-    // (pow2(51) * a) as int == (pow2(51) as int) * (a as int) for nat a,
-    // which Verus doesn't automatically derive.
-    //
-    // Original assert (for later reference):
-    // assert(pow2(51) * ((spec_load8_at(bytes, 6) as u64 >> 3) & mask51) == pow2(51) * (
-    // bytes[6] as nat / pow2(3)) + pow2(51) * (bytes[7] * pow2((1 * 8 - 3) as nat)) + pow2(51) * (
-    // bytes[8] * pow2((2 * 8 - 3) as nat)) + pow2(51) * (bytes[9] * pow2((3 * 8 - 3) as nat)) + pow2(
-    //     51,
-    // ) * (bytes[10] * pow2((4 * 8 - 3) as nat)) + pow2(51) * (bytes[11] * pow2((5 * 8 - 3) as nat))
-    //     + pow2(51) * ((bytes[12] as nat % pow2(6)) * pow2((6 * 8 - 3) as nat))) by {
-    //     lemma_mul_distributive_7_terms(
-    //         pow2(51) as int,
-    //         (bytes[6] as nat / pow2(3)) as int,
-    //         (bytes[7] * pow2((1 * 8 - 3) as nat)) as int,
-    //         (bytes[8] * pow2((2 * 8 - 3) as nat)) as int,
-    //         (bytes[9] * pow2((3 * 8 - 3) as nat)) as int,
-    //         (bytes[10] * pow2((4 * 8 - 3) as nat)) as int,
-    //         (bytes[11] * pow2((5 * 8 - 3) as nat)) as int,
-    //         ((bytes[12] as nat % pow2(6)) * pow2((6 * 8 - 3) as nat)) as int,
-    //     );
-    // }
-    assume(pow2(51) * ((spec_load8_at(bytes, 6) as u64 >> 3) & mask51) == pow2(51) * (
+    assert(pow2(51) * ((spec_load8_at(bytes, 6) as u64 >> 3) & mask51) == pow2(51) * (
     bytes[6] as nat / pow2(3)) + pow2(51) * (bytes[7] * pow2((1 * 8 - 3) as nat)) + pow2(51) * (
     bytes[8] * pow2((2 * 8 - 3) as nat)) + pow2(51) * (bytes[9] * pow2((3 * 8 - 3) as nat)) + pow2(
         51,
     ) * (bytes[10] * pow2((4 * 8 - 3) as nat)) + pow2(51) * (bytes[11] * pow2((5 * 8 - 3) as nat))
-        + pow2(51) * ((bytes[12] as nat % pow2(6)) * pow2((6 * 8 - 3) as nat)));
+        + pow2(51) * ((bytes[12] as nat % pow2(6)) * pow2((6 * 8 - 3) as nat))) by {
+        lemma_mul_distributive_7_terms(
+            pow2(51) as int,
+            (bytes[6] as nat / pow2(3)) as int,
+            (bytes[7] * pow2((1 * 8 - 3) as nat)) as int,
+            (bytes[8] * pow2((2 * 8 - 3) as nat)) as int,
+            (bytes[9] * pow2((3 * 8 - 3) as nat)) as int,
+            (bytes[10] * pow2((4 * 8 - 3) as nat)) as int,
+            (bytes[11] * pow2((5 * 8 - 3) as nat)) as int,
+            ((bytes[12] as nat % pow2(6)) * pow2((6 * 8 - 3) as nat)) as int,
+        );
+    }
 
     assert(((bytes[6] as nat % pow2(3)) * pow2(6 * 8)) + pow2(51) * (bytes[6] as nat / pow2(3))
         == bytes[6] * pow2(6 * 8)) by {
@@ -228,37 +215,26 @@ pub proof fn lemma_from_bytes32_to_nat_012(bytes: &[u8; 32])
         lemma_load8_at_limb2(bytes);
     }
 
-    // TODO: Replace assume with assert once we understand the gap
-    //
-    // Original assert (for later reference):
-    // assert(pow2(102) * ((spec_load8_at(bytes, 12) as u64 >> 6) & mask51) == pow2(102) * (
-    // bytes[12] as nat / pow2(6)) + pow2(102) * (bytes[13] * pow2((1 * 8 - 6) as nat)) + pow2(102) * (
-    // bytes[14] * pow2((2 * 8 - 6) as nat)) + pow2(102) * (bytes[15] * pow2((3 * 8 - 6) as nat))
-    //     + pow2(102) * (bytes[16] * pow2((4 * 8 - 6) as nat)) + pow2(102) * (bytes[17] * pow2(
-    //     (5 * 8 - 6) as nat,
-    // )) + pow2(102) * (bytes[18] * pow2((6 * 8 - 6) as nat)) + pow2(102) * ((bytes[19] as nat % pow2(
-    //     1,
-    // )) * pow2((7 * 8 - 6) as nat))) by {
-    //     lemma_mul_distributive_8_terms(
-    //         pow2(102) as int,
-    //         (bytes[12] as nat / pow2(6)) as int,
-    //         (bytes[13] * pow2((1 * 8 - 6) as nat)) as int,
-    //         (bytes[14] * pow2((2 * 8 - 6) as nat)) as int,
-    //         (bytes[15] * pow2((3 * 8 - 6) as nat)) as int,
-    //         (bytes[16] * pow2((4 * 8 - 6) as nat)) as int,
-    //         (bytes[17] * pow2((5 * 8 - 6) as nat)) as int,
-    //         (bytes[18] * pow2((6 * 8 - 6) as nat)) as int,
-    //         ((bytes[19] as nat % pow2(1)) * pow2((7 * 8 - 6) as nat)) as int,
-    //     );
-    // }
-    assume(pow2(102) * ((spec_load8_at(bytes, 12) as u64 >> 6) & mask51) == pow2(102) * (
+    assert(pow2(102) * ((spec_load8_at(bytes, 12) as u64 >> 6) & mask51) == pow2(102) * (
     bytes[12] as nat / pow2(6)) + pow2(102) * (bytes[13] * pow2((1 * 8 - 6) as nat)) + pow2(102) * (
     bytes[14] * pow2((2 * 8 - 6) as nat)) + pow2(102) * (bytes[15] * pow2((3 * 8 - 6) as nat))
         + pow2(102) * (bytes[16] * pow2((4 * 8 - 6) as nat)) + pow2(102) * (bytes[17] * pow2(
         (5 * 8 - 6) as nat,
     )) + pow2(102) * (bytes[18] * pow2((6 * 8 - 6) as nat)) + pow2(102) * ((bytes[19] as nat % pow2(
         1,
-    )) * pow2((7 * 8 - 6) as nat)));
+    )) * pow2((7 * 8 - 6) as nat))) by {
+        lemma_mul_distributive_8_terms(
+            pow2(102) as int,
+            (bytes[12] as nat / pow2(6)) as int,
+            (bytes[13] * pow2((1 * 8 - 6) as nat)) as int,
+            (bytes[14] * pow2((2 * 8 - 6) as nat)) as int,
+            (bytes[15] * pow2((3 * 8 - 6) as nat)) as int,
+            (bytes[16] * pow2((4 * 8 - 6) as nat)) as int,
+            (bytes[17] * pow2((5 * 8 - 6) as nat)) as int,
+            (bytes[18] * pow2((6 * 8 - 6) as nat)) as int,
+            ((bytes[19] as nat % pow2(1)) * pow2((7 * 8 - 6) as nat)) as int,
+        );
+    }
 
     assert(((bytes[12] as nat % pow2(6)) * pow2((12 * 8) as nat)) + pow2(102) * (bytes[12] as nat
         / pow2(6)) == bytes[12] * pow2(12 * 8)) by {
@@ -329,32 +305,23 @@ pub proof fn lemma_from_bytes32_to_nat_0123(bytes: &[u8; 32])
         lemma_load8_at_limb3(bytes);
     }
 
-    // TODO: Replace assume with assert once we understand the gap
-    //
-    // Original assert (for later reference):
-    // assert(pow2(153) * (((spec_load8_at(bytes, 19) as u64) >> 1) & mask51) == pow2(153) * (
-    // bytes[19] as nat / pow2(1)) + pow2(153) * (bytes[20] * pow2((1 * 8 - 1) as nat)) + pow2(153) * (
-    // bytes[21] * pow2((2 * 8 - 1) as nat)) + pow2(153) * (bytes[22] * pow2((3 * 8 - 1) as nat))
-    //     + pow2(153) * (bytes[23] * pow2((4 * 8 - 1) as nat)) + pow2(153) * (bytes[24] * pow2(
-    //     (5 * 8 - 1) as nat,
-    // )) + pow2(153) * ((bytes[25] as nat % pow2(4)) * pow2((6 * 8 - 1) as nat))) by {
-    //     lemma_mul_distributive_7_terms(
-    //         pow2(153) as int,
-    //         (bytes[19] as nat / pow2(1)) as int,
-    //         (bytes[20] * pow2((1 * 8 - 1) as nat)) as int,
-    //         (bytes[21] * pow2((2 * 8 - 1) as nat)) as int,
-    //         (bytes[22] * pow2((3 * 8 - 1) as nat)) as int,
-    //         (bytes[23] * pow2((4 * 8 - 1) as nat)) as int,
-    //         (bytes[24] * pow2((5 * 8 - 1) as nat)) as int,
-    //         ((bytes[25] as nat % pow2(4)) * pow2((6 * 8 - 1) as nat)) as int,
-    //     );
-    // }
-    assume(pow2(153) * (((spec_load8_at(bytes, 19) as u64) >> 1) & mask51) == pow2(153) * (
+    assert(pow2(153) * (((spec_load8_at(bytes, 19) as u64) >> 1) & mask51) == pow2(153) * (
     bytes[19] as nat / pow2(1)) + pow2(153) * (bytes[20] * pow2((1 * 8 - 1) as nat)) + pow2(153) * (
     bytes[21] * pow2((2 * 8 - 1) as nat)) + pow2(153) * (bytes[22] * pow2((3 * 8 - 1) as nat))
         + pow2(153) * (bytes[23] * pow2((4 * 8 - 1) as nat)) + pow2(153) * (bytes[24] * pow2(
         (5 * 8 - 1) as nat,
-    )) + pow2(153) * ((bytes[25] as nat % pow2(4)) * pow2((6 * 8 - 1) as nat)));
+    )) + pow2(153) * ((bytes[25] as nat % pow2(4)) * pow2((6 * 8 - 1) as nat))) by {
+        lemma_mul_distributive_7_terms(
+            pow2(153) as int,
+            (bytes[19] as nat / pow2(1)) as int,
+            (bytes[20] * pow2((1 * 8 - 1) as nat)) as int,
+            (bytes[21] * pow2((2 * 8 - 1) as nat)) as int,
+            (bytes[22] * pow2((3 * 8 - 1) as nat)) as int,
+            (bytes[23] * pow2((4 * 8 - 1) as nat)) as int,
+            (bytes[24] * pow2((5 * 8 - 1) as nat)) as int,
+            ((bytes[25] as nat % pow2(4)) * pow2((6 * 8 - 1) as nat)) as int,
+        );
+    }
 
     assert(((bytes[19] as nat % pow2(1)) * pow2((19 * 8) as nat)) + pow2(153) * (bytes[19] as nat
         / pow2(1)) == bytes[19] * pow2(19 * 8)) by {
@@ -426,34 +393,24 @@ pub proof fn lemma_from_bytes32_to_nat_01234(bytes: &[u8; 32])
         lemma_load8_at_limb4(bytes);
     }
 
-    // TODO: Replace assume with assert once we understand the gap
-    //
-    // Original assert (for later reference):
-    // assert(pow2(204) * (((spec_load8_at(bytes, 24) as u64) >> 12) & mask51) == pow2(204) * (
-    // bytes[25] as nat / pow2(4)) + pow2(204) * (bytes[26] * pow2((2 * 8 - 12) as nat)) + pow2(204)
-    //     * (bytes[27] * pow2((3 * 8 - 12) as nat)) + pow2(204) * (bytes[28] * pow2(
-    //     (4 * 8 - 12) as nat,
-    // )) + pow2(204) * (bytes[29] * pow2((5 * 8 - 12) as nat)) + pow2(204) * (bytes[30] * pow2(
-    //     (6 * 8 - 12) as nat,
-    // )) + pow2(204) * ((bytes[31] as nat % pow2(7)) * pow2((7 * 8 - 12) as nat))) by {
-    //     lemma_mul_distributive_7_terms(
-    //         pow2(204) as int,
-    //         (bytes[25] as nat / pow2(4)) as int,
-    //         (bytes[26] * pow2((2 * 8 - 12) as nat)) as int,
-    //         (bytes[27] * pow2((3 * 8 - 12) as nat)) as int,
-    //         (bytes[28] * pow2((4 * 8 - 12) as nat)) as int,
-    //         (bytes[29] * pow2((5 * 8 - 12) as nat)) as int,
-    //         (bytes[30] * pow2((6 * 8 - 12) as nat)) as int,
-    //         ((bytes[31] as nat % pow2(7)) * pow2((7 * 8 - 12) as nat)) as int,
-    //     );
-    // }
-    assume(pow2(204) * (((spec_load8_at(bytes, 24) as u64) >> 12) & mask51) == pow2(204) * (
+    assert(pow2(204) * (((spec_load8_at(bytes, 24) as u64) >> 12) & mask51) == pow2(204) * (
     bytes[25] as nat / pow2(4)) + pow2(204) * (bytes[26] * pow2((2 * 8 - 12) as nat)) + pow2(204)
         * (bytes[27] * pow2((3 * 8 - 12) as nat)) + pow2(204) * (bytes[28] * pow2(
         (4 * 8 - 12) as nat,
     )) + pow2(204) * (bytes[29] * pow2((5 * 8 - 12) as nat)) + pow2(204) * (bytes[30] * pow2(
         (6 * 8 - 12) as nat,
-    )) + pow2(204) * ((bytes[31] as nat % pow2(7)) * pow2((7 * 8 - 12) as nat)));
+    )) + pow2(204) * ((bytes[31] as nat % pow2(7)) * pow2((7 * 8 - 12) as nat))) by {
+        lemma_mul_distributive_7_terms(
+            pow2(204) as int,
+            (bytes[25] as nat / pow2(4)) as int,
+            (bytes[26] * pow2((2 * 8 - 12) as nat)) as int,
+            (bytes[27] * pow2((3 * 8 - 12) as nat)) as int,
+            (bytes[28] * pow2((4 * 8 - 12) as nat)) as int,
+            (bytes[29] * pow2((5 * 8 - 12) as nat)) as int,
+            (bytes[30] * pow2((6 * 8 - 12) as nat)) as int,
+            ((bytes[31] as nat % pow2(7)) * pow2((7 * 8 - 12) as nat)) as int,
+        );
+    }
 
     assert(((bytes[25] as nat % pow2(4)) * pow2((25 * 8) as nat)) + pow2(204) * (bytes[25] as nat
         / pow2(4)) == bytes[25] * pow2(25 * 8)) by {

@@ -136,7 +136,10 @@ use crate::backend::serial::curve_models::ProjectivePoint;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::{compressed_edwards_y_from_array_result, try_into_32_bytes_array};
 #[cfg(verus_keep_ghost)]
-use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_strictly_increases, pow2};
+use vstd::arithmetic::power2::{
+    lemma2_to64, lemma2_to64_rest, lemma_pow2_adds, lemma_pow2_pos, lemma_pow2_strictly_increases,
+    pow2,
+};
 
 /* VERIFICATION NOTE: Only importing LookupTableRadix16 since other radix variants
 were removed during manual expansion focusing on radix-16. */
@@ -164,6 +167,8 @@ use crate::core_assumes::sha512_hash_bytes;
 #[cfg(all(feature = "digest", verus_keep_ghost))]
 #[allow(unused_imports)]
 use crate::core_assumes::spec_sha512;
+#[allow(unused_imports)] // Used in verus! blocks for pow2 arithmetic facts
+use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for identity bytes proof
 use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for Edwards curve constants
@@ -183,6 +188,10 @@ use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
 use crate::lemmas::field_lemmas::constants_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for field algebra lemmas
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for bytes/word conversion lemmas
+use crate::lemmas::scalar_byte_lemmas::bytes_to_scalar_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for bytes_to_nat_prefix / words_to_nat_u64
+use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -1098,33 +1107,20 @@ impl ConditionallySelectable for EdwardsPoint {
 
         proof {
             if choice_is_true(choice) {
-                lemma_field_element51_eq_from_limbs_eq(&X, &b.X);
-                lemma_field_element51_eq_from_limbs_eq(&Y, &b.Y);
-                lemma_field_element51_eq_from_limbs_eq(&Z, &b.Z);
-                lemma_field_element51_eq_from_limbs_eq(&T, &b.T);
-
-                assert(result.X == b.X);
-                assert(result.Y == b.Y);
-                assert(result.Z == b.Z);
-                assert(result.T == b.T);
-                assert(result == *b);
-                if is_well_formed_edwards_point(*a) && is_well_formed_edwards_point(*b) {
-                    assert(is_well_formed_edwards_point(result));
+                // choice is true: result should be exactly `b`
+                assert(result == *b) by {
+                    lemma_field_element51_eq_from_limbs_eq(&X, &b.X);
+                    lemma_field_element51_eq_from_limbs_eq(&Y, &b.Y);
+                    lemma_field_element51_eq_from_limbs_eq(&Z, &b.Z);
+                    lemma_field_element51_eq_from_limbs_eq(&T, &b.T);
                 }
             } else {
                 // choice is false: result should be exactly `a`
-                lemma_field_element51_eq_from_limbs_eq(&X, &a.X);
-                lemma_field_element51_eq_from_limbs_eq(&Y, &a.Y);
-                lemma_field_element51_eq_from_limbs_eq(&Z, &a.Z);
-                lemma_field_element51_eq_from_limbs_eq(&T, &a.T);
-
-                assert(result.X == a.X);
-                assert(result.Y == a.Y);
-                assert(result.Z == a.Z);
-                assert(result.T == a.T);
-                assert(result == *a);
-                if is_well_formed_edwards_point(*a) && is_well_formed_edwards_point(*b) {
-                    assert(is_well_formed_edwards_point(result));
+                assert(result == *a) by {
+                    lemma_field_element51_eq_from_limbs_eq(&X, &a.X);
+                    lemma_field_element51_eq_from_limbs_eq(&Y, &a.Y);
+                    lemma_field_element51_eq_from_limbs_eq(&Z, &a.Z);
+                    lemma_field_element51_eq_from_limbs_eq(&T, &a.T);
                 }
             }
         }
@@ -1136,7 +1132,6 @@ impl ConditionallySelectable for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
-
 /// Spec for ConstantTimeEq trait implementation
 #[cfg(verus_keep_ghost)]
 pub trait ConstantTimeEqSpecImpl {
@@ -1513,7 +1508,7 @@ impl EdwardsPoint {
 
         proof {
             // E1 from to_edwards has valid limbs; mul_by_cofactor ensures well-formedness
-            assume(edwards_point_limbs_bounded(E1));
+            assume(is_well_formed_edwards_point(E1));
         }
 
         let result = E1.mul_by_cofactor();
@@ -2025,7 +2020,7 @@ impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
             is_well_formed_edwards_point(*self),
             edwards_point_as_affine(*self) == edwards_scalar_mul(
                 edwards_point_as_affine(*old(self)),
-                spec_scalar(scalar),
+                scalar_to_nat(scalar),
             ),
     {
         /* ORIGINAL CODE
@@ -2039,7 +2034,7 @@ impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
 } // verus!
 define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 
-define_mul_variants_verus!(LHS = EdwardsPoint, RHS = Scalar, Output = EdwardsPoint);
+define_edwards_scalar_mul_variants_verus!();
 
 define_mul_variants_verus!(LHS = Scalar, RHS = EdwardsPoint, Output = EdwardsPoint);
 
@@ -2061,7 +2056,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
             is_well_formed_edwards_point(result),
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(*self),
-                spec_scalar(scalar),
+                scalar_to_nat(scalar),
             ),
     {
         crate::backend::variable_base_mul(self, scalar)
@@ -2084,7 +2079,7 @@ impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
             is_well_formed_edwards_point(result),
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(*point),
-                spec_scalar(self),
+                scalar_to_nat(self),
             ),
     {
         point * self
@@ -2104,7 +2099,7 @@ impl EdwardsPoint {
             // Functional correctness: result = [scalar] * B where B is the basepoint
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                spec_scalar(scalar),
+                scalar_to_nat(scalar),
             ),
     {
         #[cfg(not(feature = "precomputed-tables"))]
@@ -2123,7 +2118,7 @@ impl EdwardsPoint {
             // Result is scalar multiplication of self by the clamped scalar
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(self),
-                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
             ),
     {
         // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
@@ -2139,7 +2134,7 @@ impl EdwardsPoint {
             assume(is_well_formed_edwards_point(result));
             assume(edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(self),
-                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
             ));
         }
         result
@@ -2153,7 +2148,7 @@ impl EdwardsPoint {
             // Functional correctness: result = [clamped_scalar] * B where B is the basepoint
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                spec_scalar(&Scalar { bytes: spec_clamp_integer(bytes) }),
+                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
             ),
     {
         // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
@@ -2317,8 +2312,8 @@ impl EdwardsPoint {
             is_well_formed_edwards_point(result),
             // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint
             edwards_point_as_affine(result) == {
-                let aA = edwards_scalar_mul(edwards_point_as_affine(*A), spec_scalar(a));
-                let bB = edwards_scalar_mul(spec_ed25519_basepoint(), spec_scalar(b));
+                let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_to_nat(a));
+                let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_to_nat(b));
                 edwards_add(aA.0, aA.1, bB.0, bB.1)
             },
     {
@@ -2579,18 +2574,13 @@ impl BasepointTable for EdwardsBasepointTable {
         // XXX use init_with
         let mut table = EdwardsBasepointTable([LookupTableRadix16::default();32]);
         let mut P = *basepoint;
-        for i in 0..32 {
+        for i in 0..32
+            invariant
+                is_well_formed_edwards_point(*basepoint),
+                is_well_formed_edwards_point(P),
+        {
             // P = (16²)^i * basepoint
             table.0[i] = LookupTableRadix16::from(&P);
-            proof {
-                // P is 52-bounded via loop invariant:
-                // - Initial: is_well_formed_edwards_point(*basepoint) includes edwards_point_limbs_bounded (52)
-                // - Maintained: mul_by_pow_2 ensures is_well_formed_edwards_point(result)
-                assume(fe51_limbs_bounded(&P.X, 52));
-                assume(fe51_limbs_bounded(&P.Y, 52));
-                assume(fe51_limbs_bounded(&P.Z, 52));
-                assume(fe51_limbs_bounded(&P.T, 52));
-            }
             P = P.mul_by_pow_2(4 + 4);  // P = P * 2^8 = P * 256 = P * 16²
         }
         proof {
@@ -2688,7 +2678,7 @@ impl BasepointTable for EdwardsBasepointTable {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                spec_scalar(scalar),
+                scalar_to_nat(scalar),
             ),
     {
         let a = scalar.as_radix_2w(4);
@@ -2730,8 +2720,8 @@ impl BasepointTable for EdwardsBasepointTable {
         }
 
         proof {
-            assume(edwards_point_limbs_bounded(P));
-            assume(fe51_limbs_bounded(&P.T, 54));
+            assume(is_well_formed_edwards_point(P));
+            assume(fe51_limbs_bounded(&P.T, 54));  // T limb bound is tighter than well-formedness requires
         }
         P = P.mul_by_pow_2(4);
         // ORIGINAL CODE (doesn't work with Verus - .filter() not supported in ghost for loops):
@@ -2770,7 +2760,7 @@ impl BasepointTable for EdwardsBasepointTable {
             assume(is_well_formed_edwards_point(P));
             assume(edwards_point_as_affine(P) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                spec_scalar(scalar),
+                scalar_to_nat(scalar),
             ));
         }
         P
@@ -2792,7 +2782,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                spec_scalar(scalar),
+                scalar_to_nat(scalar),
             ),
     {
         self.mul_base(scalar)
@@ -2814,7 +2804,7 @@ impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                spec_scalar(self),
+                scalar_to_nat(self),
             ),
     {
         basepoint_table * self
@@ -2849,11 +2839,199 @@ since only radix-16 is kept and no conversions between radix sizes are needed.
 
 verus! {
 
+/// Lemma: scalar multiplication by a power-of-two exponent unfolds to a doubling.
+pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat)
+    ensures
+        edwards_scalar_mul(point_affine, pow2(k + 1)) == {
+            let half = edwards_scalar_mul(point_affine, pow2(k));
+            edwards_double(half.0, half.1)
+        },
+{
+    // Unfold one step of scalar multiplication at n = 2^(k+1).
+    reveal_with_fuel(edwards_scalar_mul, 1);
+
+    // pow2(k+1) is positive and even.
+    lemma_pow2_pos(k + 1);
+    lemma_pow2_even(k + 1);
+    assert(pow2(k + 1) != 0);
+    assert(pow2(k + 1) % 2 == 0);
+
+    // pow2(k+1) / 2 == pow2(k).
+    pow2_MUL_div(1, k + 1, 1);
+    assert(pow2(1) == 2) by {
+        lemma2_to64();
+    }
+    assert(pow2(k + 1) / 2 == pow2(k)) by {
+        // From pow2_MUL_div: (1 * pow2(k+1)) / pow2(1) == 1 * pow2(k)
+        assert((1 * pow2(k + 1)) / pow2(1) == pow2(k));
+    }
+
+    // Since pow2(k+1) is even and nonzero, it cannot be 1.
+    assert(pow2(k + 1) != 1) by {
+        assert(1nat % 2 == 1) by (compute);
+    }
+
+    // Now the even branch applies.
+    assert(edwards_scalar_mul(point_affine, pow2(k + 1)) == {
+        let half = edwards_scalar_mul(point_affine, (pow2(k + 1) / 2) as nat);
+        edwards_double(half.0, half.1)
+    });
+}
+
+/// BASEPOINT_ORDER_PRIVATE encodes the (prime) subgroup order ℓ in little-endian bytes.
+///
+/// This lemma bridges the byte-level constant to the `group_order()` nat used in specs.
+pub(crate) proof fn lemma_scalar_to_nat_basepoint_order_private_equals_group_order()
+    ensures
+        scalar_to_nat(&constants::BASEPOINT_ORDER_PRIVATE) == group_order(),
+{
+    // Expand the (little-endian) 32-byte constant into its nat value.
+    //
+    // bytes = [ed, d3, f5, 5c, 1a, 63, 12, 58, d6, 9c, f7, a2, de, f9, de, 14,
+    //          00 .. 00, 10]
+    let expanded: nat = 237nat * pow2(0) + 211nat * pow2(8) + 245nat * pow2(16) + 92nat * pow2(24)
+        + 26nat * pow2(32) + 99nat * pow2(40) + 18nat * pow2(48) + 88nat * pow2(56) + 214nat * pow2(
+        64,
+    ) + 156nat * pow2(72) + 247nat * pow2(80) + 162nat * pow2(88) + 222nat * pow2(96) + 249nat
+        * pow2(104) + 222nat * pow2(112) + 20nat * pow2(120) + 16nat * pow2(248);
+
+    // Make the constant bytes available to SMT (compute can read the array, SMT typically won't).
+    // Using the fully-qualified path avoids `compute_only` panicking on local variables.
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[0] == 0xed_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[1] == 0xd3_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[2] == 0xf5_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[3] == 0x5c_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[4] == 0x1a_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[5] == 0x63_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[6] == 0x12_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[7] == 0x58_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[8] == 0xd6_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[9] == 0x9c_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[10] == 0xf7_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[11] == 0xa2_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[12] == 0xde_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[13] == 0xf9_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[14] == 0xde_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[15] == 0x14_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[16] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[17] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[18] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[19] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[20] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[21] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[22] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[23] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[24] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[25] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[26] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[27] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[28] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[29] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[30] == 0_u8) by (compute_only);
+    assert(constants::BASEPOINT_ORDER_PRIVATE.bytes[31] == 0x10_u8) by (compute_only);
+
+    // Now the spec-level conversion agrees with our concrete expansion.
+    assert(scalar_to_nat(&constants::BASEPOINT_ORDER_PRIVATE) == expanded);
+
+    // Basic pow2 facts for the 64-bit word computations.
+    assert(pow2(0) == 1) by {
+        lemma2_to64();
+    }
+    assert(pow2(4) == 16) by {
+        lemma2_to64();
+    }
+    assert(pow2(8) == 256) by {
+        lemma2_to64();
+    }
+    assert(pow2(16) == 65536) by {
+        lemma2_to64();
+    }
+    assert(pow2(24) == 16777216) by {
+        lemma2_to64();
+    }
+    assert(pow2(32) == 4294967296) by {
+        lemma2_to64();
+    }
+    assert(pow2(40) == 1099511627776) by {
+        lemma2_to64_rest();
+    }
+    assert(pow2(48) == 281474976710656) by {
+        lemma2_to64_rest();
+    }
+    assert(pow2(56) == 72057594037927936) by {
+        lemma2_to64_rest();
+    }
+
+    // 2^64 = 2^56 * 2^8.
+    assert(pow2(64) == 0x10000000000000000) by {
+        lemma_pow2_adds(56, 8);
+        assert(pow2(64) == pow2(56) * pow2(8));
+    }
+
+    // Split into two 64-bit words (low 128 bits) plus the top byte (bit 252 set).
+    let word0: nat = 237nat * pow2(0) + 211nat * pow2(8) + 245nat * pow2(16) + 92nat * pow2(24)
+        + 26nat * pow2(32) + 99nat * pow2(40) + 18nat * pow2(48) + 88nat * pow2(56);
+
+    let word1: nat = 214nat * pow2(0) + 156nat * pow2(8) + 247nat * pow2(16) + 162nat * pow2(24)
+        + 222nat * pow2(32) + 249nat * pow2(40) + 222nat * pow2(48) + 20nat * pow2(56);
+
+    // The upper word is shifted by 64 bits in the full 256-bit value.
+    let shifted_word1: nat = 214nat * pow2(64) + 156nat * pow2(72) + 247nat * pow2(80) + 162nat
+        * pow2(88) + 222nat * pow2(96) + 249nat * pow2(104) + 222nat * pow2(112) + 20nat * pow2(
+        120,
+    );
+
+    // Relate the shifted word to `word1 * 2^64` using pow2-addition identities.
+    assert(shifted_word1 == word1 * pow2(64)) by {
+        lemma_pow2_adds(64, 0);
+        lemma_pow2_adds(64, 8);
+        lemma_pow2_adds(64, 16);
+        lemma_pow2_adds(64, 24);
+        lemma_pow2_adds(64, 32);
+        lemma_pow2_adds(64, 40);
+        lemma_pow2_adds(64, 48);
+        lemma_pow2_adds(64, 56);
+    }
+
+    // The high byte is 16 at position 248, i.e. 16 * 2^248 = 2^252.
+    lemma_pow2_adds(4, 248);
+    assert(pow2(252) == pow2(4) * pow2(248));
+    assert(16nat * pow2(248) == pow2(252));
+
+    // Evaluate the 64-bit words to concrete constants.
+    let word0_num: nat = 237nat * 1nat + 211nat * 256nat + 245nat * 65536nat + 92nat * 16777216nat
+        + 26nat * 4294967296nat + 99nat * 1099511627776nat + 18nat * 281474976710656nat + 88nat
+        * 72057594037927936nat;
+    assert(237nat * 1nat + 211nat * 256nat + 245nat * 65536nat + 92nat * 16777216nat + 26nat
+        * 4294967296nat + 99nat * 1099511627776nat + 18nat * 281474976710656nat + 88nat
+        * 72057594037927936nat == 0x5812631a5cf5d3ed_u64 as nat) by (compute_only);
+    assert(word0 == word0_num);
+
+    let word1_num: nat = 214nat * 1nat + 156nat * 256nat + 247nat * 65536nat + 162nat * 16777216nat
+        + 222nat * 4294967296nat + 249nat * 1099511627776nat + 222nat * 281474976710656nat + 20nat
+        * 72057594037927936nat;
+    assert(214nat * 1nat + 156nat * 256nat + 247nat * 65536nat + 162nat * 16777216nat + 222nat
+        * 4294967296nat + 249nat * 1099511627776nat + 222nat * 281474976710656nat + 20nat
+        * 72057594037927936nat == 0x14def9dea2f79cd6_u64 as nat) by (compute_only);
+    assert(word1 == word1_num);
+
+    // Compute the low 128-bit constant c.
+    assert(0x5812631a5cf5d3ed_u64 as nat + (0x14def9dea2f79cd6_u64 as nat) * 0x10000000000000000
+        == 27742317777372353535851937790883648493nat) by (compute_only);
+    assert(word0 + word1 * pow2(64) == 27742317777372353535851937790883648493nat);
+
+    // Reconstruct expanded and conclude.
+    assert(expanded == word0 + shifted_word1 + 16nat * pow2(248));
+    assert(expanded == pow2(252) + 27742317777372353535851937790883648493nat);
+    assert(group_order() == pow2(252) + 27742317777372353535851937790883648493nat);
+    assert(scalar_to_nat(&constants::BASEPOINT_ORDER_PRIVATE) == group_order());
+}
+
 impl EdwardsPoint {
     /// Multiply by the cofactor: return \\(\[8\]P\\).
     pub fn mul_by_cofactor(&self) -> (result: EdwardsPoint)
         requires
-            edwards_point_limbs_bounded(*self),
+            is_well_formed_edwards_point(*self),
         ensures
             is_well_formed_edwards_point(result),
             // Functional correctness: result = [8]P
@@ -2878,7 +3056,7 @@ impl EdwardsPoint {
     pub(crate) fn mul_by_pow_2(&self, k: u32) -> (result: EdwardsPoint)
         requires
             k > 0,
-            edwards_point_limbs_bounded(*self),
+            is_well_formed_edwards_point(*self),
         ensures
             is_well_formed_edwards_point(result),
             // Functional correctness: result = [2^k]P
@@ -2889,43 +3067,103 @@ impl EdwardsPoint {
     {
         #[cfg(not(verus_keep_ghost))]
         debug_assert!(k > 0);
-        let mut r: CompletedPoint;
+        let ghost point_affine = edwards_point_as_affine(*self);
         let mut s = self.as_projective();
-        for _ in 0..(k - 1) {
-            proof {
-                assume(is_valid_projective_point(s));
-                assume(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX));
-                // ProjectivePoint invariant: 52-bounded (from as_projective postcondition)
-                assume(fe51_limbs_bounded(&s.X, 52));
-                assume(fe51_limbs_bounded(&s.Y, 52));
-                assume(fe51_limbs_bounded(&s.Z, 52));
+
+        proof {
+            // Establish ProjectivePoint::double preconditions for the initial s.
+            assert(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&s.X, &s.Y, 52);
             }
-            r = s.double();
-            proof {
-                // CompletedPoint invariant: 54-bounded
-                assume(fe51_limbs_bounded(&r.X, 54));
-                assume(fe51_limbs_bounded(&r.Y, 54));
-                assume(fe51_limbs_bounded(&r.Z, 54));
+            assert(is_valid_projective_point(s)) by {
+                // Valid extended coordinates imply valid projective coordinates (same X,Y,Z).
+                assert(is_valid_edwards_point(*self));
             }
+
+            // Base case: pow2(0) == 1 and 1*P == P.
+            assert(pow2(0) == 1) by {
+                lemma2_to64();
+            }
+            reveal_with_fuel(edwards_scalar_mul, 1);
+            assert(projective_point_as_affine_edwards(s) == point_affine);
+            assert(projective_point_as_affine_edwards(s) == edwards_scalar_mul(
+                point_affine,
+                pow2(0),
+            ));
+        }
+
+        let n = k - 1;
+        for i in 0..n
+            invariant
+                n == k - 1,
+                is_valid_projective_point(s),
+                fe51_limbs_bounded(&s.X, 52),
+                fe51_limbs_bounded(&s.Y, 52),
+                fe51_limbs_bounded(&s.Z, 52),
+                sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX),
+                projective_point_as_affine_edwards(s) == edwards_scalar_mul(
+                    point_affine,
+                    pow2(i as nat),
+                ),
+        {
+            let s_old = s;
+            let r = s_old.double();
             s = r.as_projective();
+
+            proof {
+                // Affine correctness: doubling corresponds to multiplying by 2.
+                assert(projective_point_as_affine_edwards(s) == completed_point_as_affine_edwards(
+                    r,
+                ));
+                assert(completed_point_as_affine_edwards(r) == {
+                    let (x, y) = projective_point_as_affine_edwards(s_old);
+                    edwards_double(x, y)
+                });
+
+                let si = edwards_scalar_mul(point_affine, pow2(i as nat));
+                assert(projective_point_as_affine_edwards(s_old) == si);
+                assert(projective_point_as_affine_edwards(s) == edwards_double(si.0, si.1));
+
+                // Relate the spec scalar multiplication at pow2(i+1) to one doubling step.
+                lemma_edwards_scalar_mul_pow2_succ(point_affine, i as nat);
+                assert(edwards_scalar_mul(point_affine, pow2((i + 1) as nat)) == edwards_double(
+                    si.0,
+                    si.1,
+                ));
+                assert(projective_point_as_affine_edwards(s) == edwards_scalar_mul(
+                    point_affine,
+                    pow2((i + 1) as nat),
+                ));
+            }
         }
-        // Unroll last iteration so we can go directly as_extended()
+
+        // Final doubling and conversion back to extended coordinates.
+        let completed = s.double();
+        let result = completed.as_extended();
         proof {
-            assume(is_valid_projective_point(s));
-            assume(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX));
-            // ProjectivePoint invariant: 52-bounded
-            assume(fe51_limbs_bounded(&s.X, 52));
-            assume(fe51_limbs_bounded(&s.Y, 52));
-            assume(fe51_limbs_bounded(&s.Z, 52));
-        }
-        let result = s.double().as_extended();
-        proof {
-            assume(is_well_formed_edwards_point(result));
-            assume(edwards_point_as_affine(result) == edwards_scalar_mul(
-                edwards_point_as_affine(*self),
+            assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(completed));
+            assert(completed_point_as_affine_edwards(completed) == {
+                let (x, y) = projective_point_as_affine_edwards(s);
+                edwards_double(x, y)
+            });
+
+            // At loop exit, i == n == k-1, so s corresponds to pow2(k-1).
+            let sk = edwards_scalar_mul(point_affine, pow2(n as nat));
+            assert(projective_point_as_affine_edwards(s) == sk);
+
+            lemma_edwards_scalar_mul_pow2_succ(point_affine, n as nat);
+            assert(edwards_scalar_mul(point_affine, pow2((n + 1) as nat)) == edwards_double(
+                sk.0,
+                sk.1,
+            ));
+            assert(n + 1 == k);
+            assert((n + 1) as nat == k as nat);
+            assert(edwards_point_as_affine(result) == edwards_scalar_mul(
+                point_affine,
                 pow2(k as nat),
             ));
         }
+
         result
     }
 
@@ -2954,7 +3192,7 @@ impl EdwardsPoint {
     /// ```
     pub fn is_small_order(&self) -> (result: bool)
         requires
-            edwards_point_limbs_bounded(*self),
+            is_well_formed_edwards_point(*self),
         ensures
     // A point has small order iff [8]P = O (identity)
 
@@ -3010,13 +3248,16 @@ impl EdwardsPoint {
     {
         /* ORIGINAL CODE: (self * constants::BASEPOINT_ORDER_PRIVATE).is_identity() */
         let order_mul = self * constants::BASEPOINT_ORDER_PRIVATE;
-        // Mul ensures: edwards_point_as_affine(order_mul) == edwards_scalar_mul(..., spec_scalar(&BASEPOINT_ORDER_PRIVATE))
         let result = order_mul.is_identity();
         // is_identity ensures: result == (edwards_point_as_affine(order_mul) == math_edwards_identity())
         proof {
-            // TODO: Need lemma that spec_scalar(&BASEPOINT_ORDER_PRIVATE) == group_order()
-            // BASEPOINT_ORDER_PRIVATE represents ℓ = 2^252 + 27742317777372353535851937790883648493
-            assume(spec_scalar(&constants::BASEPOINT_ORDER_PRIVATE) == group_order());
+            // BASEPOINT_ORDER_PRIVATE encodes ℓ in little-endian bytes.
+            lemma_scalar_to_nat_basepoint_order_private_equals_group_order();
+
+            assert(edwards_point_as_affine(order_mul) == edwards_scalar_mul(
+                edwards_point_as_affine(*self),
+                group_order(),
+            ));
         }
         result
     }

@@ -20,8 +20,8 @@ pub struct ExChoice(Choice);
 pub trait ExConstantTimeEq {
     type ExternalTraitSpecificationFor: ConstantTimeEq;
 
-    // Note: Cannot add spec methods like AddSpecImpl here - external trait doesn't have them
-    // Implementations define preconditions via separate companion spec traits (see ConstantTimeEqSpecImpl)
+    // Note: Implementations should define their own preconditions via a companion spec trait
+    // For EdwardsPoint, see ConstantTimeEqSpecImpl in edwards.rs
     fn ct_eq(&self, other: &Self) -> Choice;
 }
 

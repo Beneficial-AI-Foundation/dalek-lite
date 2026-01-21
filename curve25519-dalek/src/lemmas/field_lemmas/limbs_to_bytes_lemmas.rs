@@ -1511,14 +1511,7 @@ proof fn lemma_limb3_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 
     lemma_pow2_adds(160, 32);
 
-    // Final result
-    // TODO: Replace assume with assert once we understand the gap
-    //
-    // Original assert (for later reference):
-    // assert(bytes[20] as nat * pow2(20 * 8) + bytes[21] as nat * pow2(21 * 8) + bytes[22] as nat
-    //     * pow2(22 * 8) + bytes[23] as nat * pow2(23 * 8) + bytes[24] as nat * pow2(24 * 8)
-    //     == middle_value * pow2(160));
-    assume(bytes[20] as nat * pow2(20 * 8) + bytes[21] as nat * pow2(21 * 8) + bytes[22] as nat
+    assert(bytes[20] as nat * pow2(20 * 8) + bytes[21] as nat * pow2(21 * 8) + bytes[22] as nat
         * pow2(22 * 8) + bytes[23] as nat * pow2(23 * 8) + bytes[24] as nat * pow2(24 * 8)
         == middle_value * pow2(160));
 

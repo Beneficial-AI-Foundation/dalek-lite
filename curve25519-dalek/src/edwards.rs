@@ -1061,7 +1061,11 @@ impl ValidityCheck for EdwardsPoint {
                 assert(on_segre_image == segre_eq);
             };
 
+            // Connect local z to precondition: z == spec_field_element(&self.Z) != 0
+            assert(z != 0);  // Follows from precondition spec_field_element(&self.Z) != 0
+
             assert(is_valid_edwards_point(*self) == (z != 0 && curve_eq && segre_eq));
+            // Since z != 0 is known, simplify: (true && curve_eq && segre_eq) == (curve_eq && segre_eq)
             assert(is_valid_edwards_point(*self) == (curve_eq && segre_eq));
             assert(result == is_valid_edwards_point(*self));
         }

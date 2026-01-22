@@ -36,17 +36,6 @@ use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 
 verus! {
 
-/// Verification: scalar * scalar.invert() ≡ 1 mod L
-proof fn lemma_verify_invert_correct(
-    x: Scalar52,
-)
-//     requires spec_scalar52(&x.limbs) != 0
-//    ensures (spec_scalar52(&x.limbs) * invert_spec(&x.limbs)) % group_order() == 1
-{
-    assume(false);
-
-}
-
 pub proof fn lemma_square_internal_no_overflow()
     ensures
         (1u128 << 105) + (1u128 << 105) == (1u128 << 106),
@@ -754,6 +743,7 @@ pub proof fn lemma_limbs_bounded_implies_prod_bounded(s: &Scalar52, t: &Scalar52
     }
 }
 
+/// R = 2^260 % L, its limbs are defined in `constatns.rs` and are all bounded
 pub proof fn lemma_r_limbs_bounded()
     ensures
         0x000f48bd6721e6edu64 < (1u64 << 52),

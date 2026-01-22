@@ -639,8 +639,9 @@ impl CompletedPoint {
                 math_field_mul(result_x, math_field_inv(result_z_spec)),
                 math_field_mul(result_y, math_field_inv(result_z_spec)),
             ));
-            lemma_affine_curve_implies_projective(result_x, result_y, result_z_spec);
-            assert(is_valid_projective_point(result));
+            assert(is_valid_projective_point(result)) by {
+                lemma_affine_curve_implies_projective(result_x, result_y, result_z_spec);
+            };
         }
         result
     }

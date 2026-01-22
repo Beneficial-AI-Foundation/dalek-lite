@@ -265,6 +265,22 @@ pub proof fn lemma_field_add_sub_rearrange(a: nat, b: nat, c: nat)
 }
 
 // =============================================================================
+// Field Element Reduction Lemma
+// =============================================================================
+/// Lemma: A value that is the result of a mod p operation is reduced.
+///
+/// If x < p (which is always true for results of % p), then x % p == x.
+/// This captures a common pattern where we need to show a field element is reduced.
+pub proof fn lemma_field_element_reduced(x: nat)
+    requires
+        x < p(),
+    ensures
+        x % p() == x,
+{
+    lemma_small_mod(x, p());
+}
+
+// =============================================================================
 // Multiplicative Identity Lemmas (one)
 // =============================================================================
 /// Lemma: 1 · a = a (mod p)

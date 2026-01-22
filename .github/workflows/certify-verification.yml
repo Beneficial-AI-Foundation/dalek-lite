@@ -78,19 +78,19 @@ jobs:
           sudo mv scip /usr/local/bin/
           scip --version
 
-      - name: Install scip-atoms
+      - name: Install probe-verus
         run: |
-          cargo install --force --git https://github.com/Beneficial-AI-Foundation/scip-atoms
+          cargo install --force --git https://github.com/Beneficial-AI-Foundation/probe-verus
 
-      - name: Run scip-atoms verify
+      - name: Run probe-verus verify
         id: verify
         working-directory: dalek
         run: |
           # Run verification and generate JSON results
-          scip-atoms verify ./curve25519-dalek \
+          probe-verus verify ./curve25519-dalek \
             -p curve25519-dalek \
-            --json-output results.json \
-            --with-scip-names
+            -o results.json \
+            -a
           
           # Output file path for later steps
           echo "results_file=$PWD/results.json" >> $GITHUB_OUTPUT

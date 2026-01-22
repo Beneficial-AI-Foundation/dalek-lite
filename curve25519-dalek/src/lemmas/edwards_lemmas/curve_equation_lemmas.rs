@@ -407,8 +407,6 @@ pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     // by factoring out inv(z²)
 
     // First show: y²·inv(z²) - x²·inv(z²) = (y² - x²)·inv(z²)
-    let y2_inv_z2 = math_field_mul(y2, inv_z2);
-    let x2_inv_z2 = math_field_mul(x2, inv_z2);
     let y2_minus_x2 = math_field_sub(y2, x2);
 
     assert(affine_lhs == math_field_mul(y2_minus_x2, inv_z2)) by {

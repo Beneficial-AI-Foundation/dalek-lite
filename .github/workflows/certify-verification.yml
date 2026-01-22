@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - main
-      - la/try_cert
+
     paths:
-      - '.github/workflows/certify-verification.yml'  # For testing, remove after merge
+
       - 'curve25519-dalek/src/**/*.rs'
       - 'curve25519-dalek/build.rs'
   workflow_dispatch:
@@ -33,7 +33,7 @@ jobs:
       - name: Extract versions from Cargo.toml
         id: extract
         run: |
-          METADATA=$(grep -A15 '\[package.metadata.verus\]' curve25519-dalek/Cargo.toml)
+          METADATA=$(awk '/^\[package.metadata.verus\]/{flag=1;next}/^\[.*\]/{flag=0}flag' curve25519-dalek/Cargo.toml)
           
           VERSION=$(echo "$METADATA" | grep -E '^\s*release\s*=' | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
           RUST_VERSION=$(echo "$METADATA" | grep -E '^\s*rust-version\s*=' | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
@@ -88,7 +88,14 @@ jobs:
       - name: Install verus-analyzer
         run: |
           VERUS_URL=$(curl -s https://api.github.com/repos/verus-lang/verus-analyzer/releases/latest | jq -r '.assets[] | select(.name == "verus-analyzer-x86_64-unknown-linux-gnu.gz") | .browser_download_url')
-          wget "$VERUS_URL" -O verus-analyzer.gz
+          if [ -z "$VERUS_URL" ] || [ "$VERUS_URL" = "null" ]; then
+            echo "Error: Failed to determine verus-analyzer download URL from GitHub API." >&2
+            exit 1
+          fi
+          if ! wget "$VERUS_URL" -O verus-analyzer.gz; then
+            echo "Error: Downloading verus-analyzer from $VERUS_URL failed." >&2
+            exit 1
+          fi
           gunzip verus-analyzer.gz
           chmod +x verus-analyzer
           sudo mv verus-analyzer /usr/local/bin/
@@ -125,6 +132,11 @@ jobs:
       - name: Install scip CLI
         run: |
           SCIP_URL=$(curl -s https://api.github.com/repos/sourcegraph/scip/releases/latest | jq -r '.assets[] | select(.name == "scip-linux-amd64.tar.gz") | .browser_download_url')
+          if [ -z "$SCIP_URL" ] || [ "$SCIP_URL" = "null" ]; then
+            echo "Error: Failed to determine SCIP download URL from GitHub API." >&2
+            echo "This may be due to API rate limiting, network issues, or a missing scip-linux-amd64.tar.gz asset." >&2
+            exit 1
+          fi
           wget "$SCIP_URL" -O scip-linux.tar.gz
           tar -xzf scip-linux.tar.gz
           chmod +x scip
@@ -230,15 +242,30 @@ jobs:
           CERTIFY_ADDRESS: ${{ vars.MAINNET_CERTIFIER_ADDRESS }}
         run: |
           echo "Certifying verification results hash on Ethereum Mainnet via Gnosis Safe..."
+          
+          # Capture stdout and stderr separately to avoid leaking sensitive info from error messages
+          set +e
           OUTPUT=$(uv run python3 -m certify_cli certify \
             --network mainnet \
             --safe ${{ vars.MAINNET_SAFE_ADDRESS }} \
-            --execute 2>&1) || true
+            --execute 2>/tmp/certify_mainnet_stderr.log)
+          EXIT_CODE=$?
+          set -e
+          
+          # Log only stdout (contains hashes and success info, not sensitive data)
           echo "$OUTPUT"
           
-          # Extract transaction hash from output
-          TX_HASH=$(echo "$OUTPUT" | grep -oP 'Tx Hash:\s*\K[a-fA-F0-9]+' | head -1)
-          CONTENT_HASH=$(echo "$OUTPUT" | grep -oP 'Content Hash:\s*\K0x[a-fA-F0-9]+' | head -1)
+          # If command failed, show sanitized error (exclude lines that might contain secrets)
+          if [ $EXIT_CODE -ne 0 ] && [ -f /tmp/certify_mainnet_stderr.log ]; then
+            echo "⚠️ Certification command exited with code $EXIT_CODE"
+            echo "Filtered error output (excluding potentially sensitive lines):"
+            grep -vi -E '(key|secret|password|token|private)' /tmp/certify_mainnet_stderr.log || echo "(no safe error lines to display)"
+          fi
+          
+          # Extract transaction hash from output (expecting Tx Hash: 0x<64 hex chars>)
+          TX_HASH=$(echo "$OUTPUT" | grep -Eo 'Tx Hash:[[:space:]]*0x[a-fA-F0-9]{64}' | head -1 | sed -E 's/.*0x([a-fA-F0-9]{64})$/\1/')
+          # Extract content hash from output (keep 0x-prefixed hex string)
+          CONTENT_HASH=$(echo "$OUTPUT" | grep -Eo 'Content Hash:[[:space:]]*0x[0-9a-fA-F]+' | head -1 | sed -E 's/.*(0x[0-9a-fA-F]+)/\1/')
           
           if [ -n "$TX_HASH" ]; then
             echo "mainnet_tx_hash=0x${TX_HASH}" >> $GITHUB_OUTPUT
@@ -254,9 +281,11 @@ jobs:
             echo "content_hash=${CONTENT_HASH}" >> $GITHUB_OUTPUT
           fi
           
-          echo ""
-          echo "✅ Verification results certified on Ethereum Mainnet!"
-          echo "View events: https://etherscan.io/address/${{ vars.MAINNET_CERTIFIER_ADDRESS }}#events"
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo ""
+            echo "✅ Verification results certified on Ethereum Mainnet!"
+            echo "View events: https://etherscan.io/address/${{ vars.MAINNET_CERTIFIER_ADDRESS }}#events"
+          fi
 
       # --- Certification to Sepolia (Testnet) ---
 
@@ -265,16 +294,32 @@ jobs:
         working-directory: certify
         env:
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
-          SEPOLIA_PRIVATE_KEY: ${{ secrets.CERTIFY_PRIVATE_KEY }}
+          SEPOLIA_PRIVATE_KEY: ${{ secrets.SEPOLIA_PRIVATE_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
           CERTIFY_ADDRESS: ${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}
         run: |
           echo "Certifying verification results hash on Sepolia testnet..."
-          OUTPUT=$(uv run python3 -m certify_cli certify --network sepolia 2>&1) || true
+          
+          # Capture stdout and stderr separately to avoid leaking sensitive info from error messages
+          set +e
+          OUTPUT=$(uv run python3 -m certify_cli certify --network sepolia 2>/tmp/certify_sepolia_stderr.log)
+          EXIT_CODE=$?
+          set -e
+          
+          # Log only stdout (contains hashes and success info, not sensitive data)
           echo "$OUTPUT"
           
-          # Extract transaction hash from output
-          TX_HASH=$(echo "$OUTPUT" | grep -oP 'Tx Hash:\s*\K[a-fA-F0-9]+' | head -1)
+          # If command failed, show sanitized error (exclude lines that might contain secrets)
+          if [ $EXIT_CODE -ne 0 ] && [ -f /tmp/certify_sepolia_stderr.log ]; then
+            echo "⚠️ Certification command exited with code $EXIT_CODE"
+            echo "Filtered error output (excluding potentially sensitive lines):"
+            grep -vi -E '(key|secret|password|token|private)' /tmp/certify_sepolia_stderr.log || echo "(no safe error lines to display)"
+          fi
+          
+          # Extract transaction hash from output (standardized with Mainnet style)
+          TX_HASH=$(echo "$OUTPUT" | grep -Eo 'Tx Hash:[[:space:]]*0x[a-fA-F0-9]{64}' | sed -E 's/.*0x//' | head -1)
+          # Extract content hash as fallback if Mainnet fails
+          CONTENT_HASH=$(echo "$OUTPUT" | grep -Eo 'Content Hash:[[:space:]]*0x[0-9a-fA-F]+' | head -1 | sed -E 's/.*(0x[0-9a-fA-F]+)/\1/')
           
           if [ -n "$TX_HASH" ]; then
             echo "sepolia_tx_hash=0x${TX_HASH}" >> $GITHUB_OUTPUT
@@ -286,9 +331,37 @@ jobs:
             echo "⚠️ Could not extract transaction hash from output"
           fi
           
+          if [ -n "$CONTENT_HASH" ]; then
+            echo "content_hash=${CONTENT_HASH}" >> $GITHUB_OUTPUT
+            echo "✅ Captured Sepolia Content Hash: ${CONTENT_HASH}"
+          fi
+          
+          if [ "$EXIT_CODE" -eq 0 ]; then
+            echo ""
+            echo "✅ Verification results certified on Sepolia!"
+            echo "View events: https://sepolia.etherscan.io/address/${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}#events"
+          fi
+
+      # --- Validate Certifications ---
+
+      - name: Validate at least one certification succeeded
+        env:
+          MAINNET_TX_HASH: ${{ steps.certify_mainnet.outputs.mainnet_tx_hash }}
+          SEPOLIA_TX_HASH: ${{ steps.certify_sepolia.outputs.sepolia_tx_hash }}
+        run: |
+          echo "=== Certification Results ==="
+          echo "Mainnet TX: ${MAINNET_TX_HASH:-'(none)'}"
+          echo "Sepolia TX: ${SEPOLIA_TX_HASH:-'(none)'}"
+          
+          if [ -z "$MAINNET_TX_HASH" ] && [ -z "$SEPOLIA_TX_HASH" ]; then
+            echo ""
+            echo "::error::Both Mainnet and Sepolia certifications failed. No transaction hashes captured."
+            echo "Skipping certifications.json update to avoid recording empty entries."
+            exit 1
+          fi
+          
           echo ""
-          echo "✅ Verification results certified on Sepolia!"
-          echo "View events: https://sepolia.etherscan.io/address/${{ vars.SEPOLIA_CERTIFIER_ADDRESS }}#events"
+          echo "✅ At least one certification succeeded, proceeding with certifications.json update"
 
       # --- Update Certifications History ---
 
@@ -299,15 +372,25 @@ jobs:
           MAINNET_ETHERSCAN_URL: ${{ steps.certify_mainnet.outputs.mainnet_etherscan_url }}
           SEPOLIA_TX_HASH: ${{ steps.certify_sepolia.outputs.sepolia_tx_hash }}
           SEPOLIA_ETHERSCAN_URL: ${{ steps.certify_sepolia.outputs.sepolia_etherscan_url }}
-          CONTENT_HASH: ${{ steps.certify_mainnet.outputs.content_hash }}
+          MAINNET_CONTENT_HASH: ${{ steps.certify_mainnet.outputs.content_hash }}
+          SEPOLIA_CONTENT_HASH: ${{ steps.certify_sepolia.outputs.content_hash }}
           RESULTS_FILE: ${{ steps.verify.outputs.results_file }}
         run: |
           # Build artifact URL
           ARTIFACT_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           
-          # Get verification summary from results.json
-          VERIFIED_COUNT=$(cat "$RESULTS_FILE" | jq -r '.summary.verified // 0')
-          TOTAL_FUNCTIONS=$(cat "$RESULTS_FILE" | jq -r '.summary.total // 0')
+          # Use Mainnet content hash if available, otherwise fall back to Sepolia
+          CONTENT_HASH="${MAINNET_CONTENT_HASH:-$SEPOLIA_CONTENT_HASH}"
+          
+          # Get verification summary from results.json (defensively)
+          if [ -n "$RESULTS_FILE" ] && [ -f "$RESULTS_FILE" ]; then
+            VERIFIED_COUNT=$(jq -r 'try (.summary.verified // 0) catch 0' "$RESULTS_FILE") || VERIFIED_COUNT=0
+            TOTAL_FUNCTIONS=$(jq -r 'try (.summary.total // 0) catch 0' "$RESULTS_FILE") || TOTAL_FUNCTIONS=0
+          else
+            echo "WARNING: RESULTS_FILE not found; defaulting verification summary counts to 0."
+            VERIFIED_COUNT=0
+            TOTAL_FUNCTIONS=0
+          fi
           
           # Create new certification entry
           NEW_ENTRY=$(jq -n \
@@ -353,6 +436,9 @@ jobs:
 
       - name: Commit certifications.json
         working-directory: dalek
+        env:
+          MAINNET_TX_HASH: ${{ steps.certify_mainnet.outputs.mainnet_tx_hash }}
+          SEPOLIA_TX_HASH: ${{ steps.certify_sepolia.outputs.sepolia_tx_hash }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -360,10 +446,15 @@ jobs:
           git add docs/certifications.json
           
           if git diff --cached --quiet; then
-            echo "No changes to certifications.json"
-          else
-            git commit -m "chore: update certifications.json with tx ${{ steps.certify_mainnet.outputs.mainnet_tx_hash }}"
-            git push
-            echo "✅ Committed and pushed certifications.json update"
+            # Since we validated certification succeeded, no changes is unexpected
+            echo "::error::No changes to certifications.json despite successful certification. This is unexpected."
+            exit 1
           fi
+          
+          # Use whichever tx hash is available for commit message
+          TX_REF="${MAINNET_TX_HASH:-$SEPOLIA_TX_HASH}"
+          
+          git commit -m "chore: update certifications.json with tx ${TX_REF}"
+          git push
+          echo "✅ Committed and pushed certifications.json update"
 

@@ -366,10 +366,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // Format date nicely
-            const formatDate = (isoDate) => {
+            // Escape HTML special characters to prevent XSS
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                const div = document.createElement('div');
+                div.textContent = String(str);
+                return div.innerHTML;
+            };
+            
+            // Validate URL matches expected patterns
+            const isValidEtherscanUrl = (url) => {
+                if (!url) return false;
+                return /^https:\/\/(sepolia\.)?etherscan\.io\/tx\/0x[a-fA-F0-9]{64}$/.test(url);
+            };
+            
+            const isValidGitHubUrl = (url) => {
+                if (!url) return false;
+                // Disallow consecutive dots and trailing dots in owner/repo; require alpha/underscore start; constrain final segment
+                return /^https:\/\/github\.com\/(?!.*\.\.)[a-zA-Z_](?:[\w.-]*[\w])?\/[a-zA-Z_](?:[\w.-]*[\w])?\/(commit|actions\/runs)\/(?:[0-9a-fA-F]{40}|\d+)$/.test(url);
+            };
+            
+            const isValidHex = (str) => {
+                if (!str) return false;
+                return /^(0x)?[a-fA-F0-9]+$/.test(str);
+            };
+            
+            // Format date and time nicely
+            const formatDateTime = (isoDate) => {
+                if (!isoDate) return '—';
                 const date = new Date(isoDate);
-                return date.toLocaleDateString('en-US', { 
+                // Check if date is valid
+                if (isNaN(date.getTime())) {
+                    return '—';
+                }
+                return date.toLocaleString('en-US', { 
                     month: 'short', 
                     day: 'numeric',
                     year: 'numeric',
@@ -381,35 +411,55 @@ document.addEventListener('DOMContentLoaded', function() {
             // Truncate hash for display
             const truncateHash = (hash) => {
                 if (!hash) return '';
-                return hash.slice(0, 10) + '...' + hash.slice(-6);
+                
+                const hashStr = String(hash);
+                
+                // If the hash is too short to meaningfully truncate (10 + 6),
+                // return it as-is to avoid overlapping or duplicated segments.
+                if (hashStr.length <= 16) {
+                    return escapeHtml(hashStr);
+                }
+                
+                return escapeHtml(hashStr.slice(0, 10) + '...' + hashStr.slice(-6));
             };
             
             tbody.innerHTML = data.certifications.map(cert => {
-                const mainnetLink = cert.mainnet_etherscan 
-                    ? `<a href="${cert.mainnet_etherscan}" target="_blank" class="tx-link">View ↗</a>`
+                // Validate and sanitize URLs before use
+                const mainnetLink = (cert.mainnet_etherscan && isValidEtherscanUrl(cert.mainnet_etherscan))
+                    ? `<a href="${escapeHtml(cert.mainnet_etherscan)}" target="_blank" rel="noopener noreferrer" class="tx-link">View ↗</a>`
                     : '<span class="no-data">—</span>';
                     
-                const sepoliaLink = cert.sepolia_etherscan
-                    ? `<a href="${cert.sepolia_etherscan}" target="_blank" class="tx-link">View ↗</a>`
-                    : '<span class="no-data">—</span>';
-                    
-                const commitLink = `<a href="https://github.com/Beneficial-AI-Foundation/dalek-lite/commit/${cert.commit_sha}" target="_blank" class="commit-link">${cert.commit_short}</a>`;
-                
-                const artifactLink = cert.artifact_url
-                    ? `<a href="${cert.artifact_url}" target="_blank" class="artifact-link">Download ↗</a>`
+                const sepoliaLink = (cert.sepolia_etherscan && isValidEtherscanUrl(cert.sepolia_etherscan))
+                    ? `<a href="${escapeHtml(cert.sepolia_etherscan)}" target="_blank" rel="noopener noreferrer" class="tx-link">View ↗</a>`
                     : '<span class="no-data">—</span>';
                 
-                const contentHashDisplay = cert.content_hash
-                    ? `<span class="content-hash" title="${cert.content_hash}">${truncateHash(cert.content_hash)}</span>`
+                // Validate commit SHA is hex before constructing URL
+                const commitSha = isValidHex(cert.commit_sha) ? String(cert.commit_sha).toLowerCase() : '';
+                const commitShort = escapeHtml(cert.commit_short || '');
+                const commitLink = commitSha
+                    ? `<a href="https://github.com/Beneficial-AI-Foundation/dalek-lite/commit/${commitSha}" target="_blank" rel="noopener noreferrer" class="commit-link">${commitShort}</a>`
+                    : `<span class="no-data">${commitShort || '—'}</span>`;
+                
+                const artifactLink = (cert.artifact_url && isValidGitHubUrl(cert.artifact_url))
+                    ? `<a href="${escapeHtml(cert.artifact_url)}" target="_blank" rel="noopener noreferrer" class="artifact-link">Download ↗</a>`
                     : '<span class="no-data">—</span>';
                 
-                const verifiedDisplay = cert.verified_count !== undefined && cert.total_functions !== undefined
-                    ? `<span class="verified-count">${cert.verified_count}</span>/${cert.total_functions}`
+                // Validate content hash is hex
+                const safeContentHash = isValidHex(cert.content_hash) ? escapeHtml(cert.content_hash) : '';
+                const contentHashDisplay = safeContentHash
+                    ? `<span class="content-hash" title="${safeContentHash}">${truncateHash(cert.content_hash)}</span>`
+                    : '<span class="no-data">—</span>';
+                
+                // Validate numeric values
+                const verifiedCount = Number.isInteger(cert.verified_count) ? cert.verified_count : null;
+                const totalFunctions = Number.isInteger(cert.total_functions) ? cert.total_functions : null;
+                const verifiedDisplay = (verifiedCount !== null && totalFunctions !== null)
+                    ? `<span class="verified-count">${verifiedCount}</span>/${totalFunctions}`
                     : '<span class="no-data">—</span>';
                 
                 return `
                     <tr>
-                        <td>${formatDate(cert.timestamp)}</td>
+                        <td>${formatDateTime(cert.timestamp)}</td>
                         <td>${commitLink}</td>
                         <td>${verifiedDisplay}</td>
                         <td>${contentHashDisplay}</td>
@@ -422,10 +472,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const totalCerts = data.certifications.length;
             const latestCert = data.certifications[0];
+            const latestCommitSha = isValidHex(latestCert.commit_sha) ? String(latestCert.commit_sha) : '';
+            const latestCommitShort = escapeHtml(latestCert.commit_short || '');
+            const latestCommitLink = latestCommitSha
+                ? `<a href="https://github.com/Beneficial-AI-Foundation/dalek-lite/commit/${latestCommitSha}" target="_blank" rel="noopener noreferrer">${latestCommitShort}</a>`
+                : latestCommitShort;
             description.innerHTML = `
-                <strong>${totalCerts} certification${totalCerts !== 1 ? 's' : ''}</strong> recorded. 
-                Latest: ${formatDate(latestCert.timestamp)} 
-                (<a href="https://github.com/Beneficial-AI-Foundation/dalek-lite/commit/${latestCert.commit_sha}" target="_blank">${latestCert.commit_short}</a>)
+                <strong>${totalCerts} certification${totalCerts === 1 ? '' : 's'}</strong> recorded. 
+                Latest: ${formatDateTime(latestCert.timestamp)} 
+                (${latestCommitLink})
             `;
             
         } catch (error) {

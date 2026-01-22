@@ -135,15 +135,38 @@ jobs:
         run: |
           cargo install --force --git https://github.com/Beneficial-AI-Foundation/probe-verus
 
+      - name: Run probe-verus atomize
+        working-directory: dalek
+        run: |
+          echo "=== Running probe-verus atomize ==="
+          echo "Working directory: $(pwd)"
+          echo "Project path: ./curve25519-dalek"
+          
+          probe-verus atomize ./curve25519-dalek \
+            -o atoms.json
+          
+          echo ""
+          echo "=== Generated atoms.json ==="
+          ls -la atoms.json
+          echo "Number of entries: $(jq 'length' atoms.json)"
+
       - name: Run probe-verus verify
         id: verify
         working-directory: dalek
         run: |
+          echo "=== Running probe-verus verify ==="
+          echo "Working directory: $(pwd)"
+          echo "atoms.json exists: $(test -f atoms.json && echo 'yes' || echo 'no')"
+          
           # Run verification and generate JSON results
           probe-verus verify ./curve25519-dalek \
             -p curve25519-dalek \
             -o results.json \
-            -a
+            -a atoms.json
+          
+          echo ""
+          echo "=== Generated results.json ==="
+          ls -la results.json
           
           # Output file path for later steps
           echo "results_file=$PWD/results.json" >> $GITHUB_OUTPUT

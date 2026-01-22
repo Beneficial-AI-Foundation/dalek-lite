@@ -974,16 +974,10 @@ impl Scalar52 {
     // and test_canonical_scalar_generator (if it's then unused)
 
         ensures
-            (exists|bounded1: &Scalar52, bounded2: &Scalar52|
-                limb_prod_bounded_u128(bounded1.limbs, bounded2.limbs, 5) && spec_mul_internal(
-                    bounded1,
-                    bounded2,
-                ) == limbs) ==> ((scalar52_to_nat(&result) * montgomery_radix()) % group_order()
-                == slice128_to_nat(limbs) % group_order() && limbs_bounded(&result) && limb_prod_bounded_u128(result.limbs, result.limbs, 5)),
-            (exists|bounded: &Scalar52, canonical: &Scalar52|
-                limb_prod_bounded_u128(bounded.limbs, canonical.limbs, 5) && scalar52_to_nat(&canonical)
-                    < group_order() && spec_mul_internal(bounded, canonical) == limbs)
-                ==> scalar52_to_nat(&result) < group_order(),
+            limbs_bounded(&result),
+            limb_prod_bounded_u128(result.limbs, result.limbs, 5),
+            is_canonical_scalar52(&result), // Sub returns a value equal to (a - b) % L, so it's always < L and canonical
+            (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == slice128_to_nat(limbs) % group_order(),
     {
         assume(false);  // TODO: Add proofs
 

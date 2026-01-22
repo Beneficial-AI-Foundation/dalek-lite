@@ -21,15 +21,12 @@ pub proof fn lemma_from_montgomery_is_product_with_one(self_scalar: &Scalar52, l
         forall|j: int| #![auto] 0 <= j < 5 ==> limbs[j] == self_scalar.limbs[j] as u128,
         forall|j: int| #![auto] 5 <= j < 9 ==> limbs[j] == 0,
     ensures
-        (exists|bounded1: &Scalar52, bounded2: &Scalar52|
-            limb_prod_bounded_u128(bounded1.limbs, bounded2.limbs, 5) && spec_mul_internal(
-                bounded1,
-                bounded2,
-            ) == limbs),
-        // Stronger postcondition: one of them is canonical (< group_order)
-        (exists|bounded: &Scalar52, canonical: &Scalar52|
-            limb_prod_bounded_u128(bounded.limbs, canonical.limbs, 5) && scalar52_to_nat(&canonical)
-                < group_order() && spec_mul_internal(bounded, canonical) == limbs),
+        ({
+            let one = Scalar52 { limbs: [1, 0, 0, 0, 0] };
+            &&& limb_prod_bounded_u128(self_scalar.limbs, one.limbs, 5)
+            &&& spec_mul_internal(&self_scalar, &one) == limbs   
+            &&& scalar52_to_nat(&one) < group_order()
+        })
 {
     let one = Scalar52 { limbs: [1, 0, 0, 0, 0] };
     assert(1 < (1u64 << 52)) by (bit_vector);

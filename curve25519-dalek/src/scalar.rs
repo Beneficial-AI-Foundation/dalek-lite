@@ -1906,6 +1906,11 @@ impl Scalar {
         /* <ORIGINAL CODE>
          acc = acc.montgomery_invert().from_montgomery();
         </ORIGINAL CODE> */
+        
+        assert(limb_prod_bounded_u128(acc.limbs, acc.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(&acc, &acc);
+        }
+        
         acc = acc.montgomery_invert();
         let ghost acc_after_invert = acc;
         acc = acc.from_montgomery();

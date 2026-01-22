@@ -1227,11 +1227,11 @@ impl Scalar52 {
             // We provide the witness directly with assert.
             if scalar52_to_nat(b) < group_order() {
                 // Witness: bounded = a, canonical = b
-                assert(limbs_bounded(a) && limbs_bounded(b) && scalar52_to_nat(b) < group_order()
+                assert(limb_prod_bounded_u128(a.limbs, b.limbs, 5) && scalar52_to_nat(b) < group_order()
                     && spec_mul_internal(a, b) == spec_mul_internal(a, b));
             } else if scalar52_to_nat(a) < group_order() {
                 // Witness: bounded = b, canonical = a (commutativity inferred by Verus)
-                assert(limbs_bounded(b) && limbs_bounded(a) && scalar52_to_nat(a) < group_order()
+                assert(limb_prod_bounded_u128(b.limbs, a.limbs, 5) && scalar52_to_nat(a) < group_order()
                     && spec_mul_internal(b, a) == spec_mul_internal(a, b));
             }
         }
@@ -1267,12 +1267,9 @@ impl Scalar52 {
     {
         proof {
             lemma_rr_limbs_bounded();
-<<<<<<< HEAD
             lemma_limbs_bounded_implies_prod_bounded(&self, &constants::RR);
-=======
             // RR is canonical (< group_order), so montgomery_mul's canonicity postcondition applies
             lemma_rr_equals_spec(constants::RR);
->>>>>>> a9a4c320 (Complete the proof of Scalar batch_invert  (#646))
             assert(group_order() > 0);
         }
         let result = Scalar52::montgomery_mul(self, &constants::RR);

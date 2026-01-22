@@ -743,7 +743,7 @@ pub proof fn lemma_limbs_bounded_implies_prod_bounded(s: &Scalar52, t: &Scalar52
     }
 }
 
-/// R = 2^260 % L, its limbs are defined in `constatns.rs` and are all bounded
+/// R = 2^260 % L, its limbs are defined in `constants.rs` and are all bounded
 pub proof fn lemma_r_limbs_bounded()
     ensures
         0x000f48bd6721e6edu64 < (1u64 << 52),

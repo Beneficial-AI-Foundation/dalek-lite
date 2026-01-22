@@ -16,8 +16,47 @@ permissions:
 
 
 jobs:
+  # Extract Verus and Rust versions from Cargo.toml metadata
+  get-versions:
+    name: Get Verus and Rust Version
+    runs-on: ubuntu-latest
+    outputs:
+      verus_version: ${{ steps.extract.outputs.version }}
+      rust_version: ${{ steps.extract.outputs.rust_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: curve25519-dalek/Cargo.toml
+          sparse-checkout-cone-mode: false
+      
+      - name: Extract versions from Cargo.toml
+        id: extract
+        run: |
+          METADATA=$(grep -A15 '\[package.metadata.verus\]' curve25519-dalek/Cargo.toml)
+          
+          VERSION=$(echo "$METADATA" | grep -E '^\s*release\s*=' | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+          RUST_VERSION=$(echo "$METADATA" | grep -E '^\s*rust-version\s*=' | sed 's/.*= *"\([^"]*\)".*/\1/' | head -1)
+          
+          if [ -n "$VERSION" ]; then
+            echo "Found Verus release version: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "::error::No Verus release version found in Cargo.toml"
+            exit 1
+          fi
+          
+          if [ -n "$RUST_VERSION" ]; then
+            echo "Found Rust version: $RUST_VERSION"
+            echo "rust_version=$RUST_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "::error::No Rust version found in Cargo.toml"
+            exit 1
+          fi
+
   verify-and-certify:
     name: Run Verification & Certify On-Chain
+    needs: get-versions
     runs-on: ubuntu-latest
     
     steps:
@@ -27,7 +66,9 @@ jobs:
           path: dalek
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@1.91.0
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ needs.get-versions.outputs.rust_version }}
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -54,19 +95,31 @@ jobs:
           verus-analyzer --version
 
       - name: Install Verus
+        env:
+          VERUS_VERSION: ${{ needs.get-versions.outputs.verus_version }}
         run: |
-          # Use specific Verus version compatible with Rust 1.91.0
-          # Same as dalek-lite CI: https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/.github/workflows/ci.yml
+          echo "Installing Verus version: $VERUS_VERSION"
+          VERUS_URL="https://github.com/verus-lang/verus/releases/download/release%2F${VERUS_VERSION}/verus-${VERUS_VERSION}-x86-linux.zip"
+          
           if [ -x ~/.cargo/bin/verus-x86-linux/verus ]; then
-            echo "Verus already installed (from cache)"
-          else
-            wget https://github.com/verus-lang/verus/releases/download/release%2F0.2025.11.23.41c5885/verus-0.2025.11.23.41c5885-x86-linux.zip
-            unzip verus-0.2025.11.23.41c5885-x86-linux.zip
-            rm -rf ~/.cargo/bin/verus-x86-linux
+            # Check if cached version matches
+            CACHED_VERSION=$(~/.cargo/bin/verus-x86-linux/verus --version 2>/dev/null | head -1 || echo "unknown")
+            if echo "$CACHED_VERSION" | grep -q "$VERUS_VERSION"; then
+              echo "Verus $VERUS_VERSION already installed (from cache)"
+            else
+              echo "Cached Verus version mismatch, reinstalling..."
+              rm -rf ~/.cargo/bin/verus-x86-linux
+            fi
+          fi
+          
+          if [ ! -x ~/.cargo/bin/verus-x86-linux/verus ]; then
+            echo "Downloading Verus from: $VERUS_URL"
+            wget "$VERUS_URL" -O verus.zip
+            unzip verus.zip
             mv verus-x86-linux ~/.cargo/bin
             cd ~/.cargo/bin
             ln -sf verus-x86-linux/cargo-verus
-            echo "Verus installed"
+            echo "Verus $VERUS_VERSION installed"
           fi
 
       - name: Install scip CLI

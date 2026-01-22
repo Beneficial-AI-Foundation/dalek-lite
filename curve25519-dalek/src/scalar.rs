@@ -1906,11 +1906,11 @@ impl Scalar {
         /* <ORIGINAL CODE>
          acc = acc.montgomery_invert().from_montgomery();
         </ORIGINAL CODE> */
-        
+
         assert(limb_prod_bounded_u128(acc.limbs, acc.limbs, 5)) by {
             lemma_limbs_bounded_implies_prod_bounded(&acc, &acc);
         }
-        
+
         acc = acc.montgomery_invert();
         let ghost acc_after_invert = acc;
         acc = acc.from_montgomery();
@@ -1989,7 +1989,7 @@ impl Scalar {
             }
 
             let tmp = UnpackedScalar::montgomery_mul(&acc, &input_unpacked);
-            
+
             assert(limb_prod_bounded_u128(acc.limbs, scratch[i as int].limbs, 5)) by {
                 lemma_limbs_bounded_implies_prod_bounded(&acc, &scratch[i as int]);
             }
@@ -2822,9 +2822,7 @@ impl Scalar {
             lemma_r_equals_spec(constants::R);
         };
 
-        proof {
-            lemma_limbs_bounded_implies_prod_bounded(&x, &constants::R)
-        }
+        proof { lemma_limbs_bounded_implies_prod_bounded(&x, &constants::R) }
 
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);
         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
@@ -2909,7 +2907,6 @@ fn square_multiply(
     requires
         limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),
         limbs_bounded(x),
-
     ensures
         limbs_bounded(y),
         limb_prod_bounded_u128(y.limbs, y.limbs, 5),

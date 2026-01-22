@@ -158,7 +158,7 @@ impl Scalar52 {
         ensures
             bytes32_to_nat(bytes) == scalar52_to_nat(&s),
             limbs_bounded(&s),
-            limb_prod_bounded_u128(s.limbs, s.limbs, 5)
+            limb_prod_bounded_u128(s.limbs, s.limbs, 5),
     {
         let mut words = [0u64;4];
         for i in 0..4
@@ -870,7 +870,7 @@ impl Scalar52 {
     #[rustfmt::skip]  // keep alignment of z[*] calculations
     pub(crate) fn mul_internal(a: &Scalar52, b: &Scalar52) -> (z: [u128; 9])
         requires
-            limb_prod_bounded_u128(a.limbs, b.limbs, 5)
+            limb_prod_bounded_u128(a.limbs, b.limbs, 5),
         ensures
             slice128_to_nat(&z) == scalar52_to_nat(&a) * scalar52_to_nat(&b),
             spec_mul_internal(a, b) == z,
@@ -976,8 +976,10 @@ impl Scalar52 {
         ensures
             limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
-            is_canonical_scalar52(&result), // Sub returns a value equal to (a - b) % L, so it's always < L and canonical
-            (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == slice128_to_nat(limbs) % group_order(),
+            is_canonical_scalar52(&result),  // Sub returns a value equal to (a - b) % L, so it's always < L and canonical
+            (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == slice128_to_nat(
+                limbs,
+            ) % group_order(),
     {
         assume(false);  // TODO: Add proofs
 
@@ -1102,7 +1104,7 @@ impl Scalar52 {
     #[inline(never)]
     pub fn mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)
         requires
-            limb_prod_bounded_u128(a.limbs, b.limbs, 5)
+            limb_prod_bounded_u128(a.limbs, b.limbs, 5),
         ensures
             scalar52_to_nat(&result) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b))
                 % group_order(),
@@ -1205,7 +1207,7 @@ impl Scalar52 {
     #[inline(never)]
     pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)
         requires
-            limb_prod_bounded_u128(a.limbs, b.limbs, 5)
+            limb_prod_bounded_u128(a.limbs, b.limbs, 5),
         ensures
             limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
@@ -1221,12 +1223,12 @@ impl Scalar52 {
             // We provide the witness directly with assert.
             if scalar52_to_nat(b) < group_order() {
                 // Witness: bounded = a, canonical = b
-                assert(limb_prod_bounded_u128(a.limbs, b.limbs, 5) && scalar52_to_nat(b) < group_order()
-                    && spec_mul_internal(a, b) == spec_mul_internal(a, b));
+                assert(limb_prod_bounded_u128(a.limbs, b.limbs, 5) && scalar52_to_nat(b)
+                    < group_order() && spec_mul_internal(a, b) == spec_mul_internal(a, b));
             } else if scalar52_to_nat(a) < group_order() {
                 // Witness: bounded = b, canonical = a (commutativity inferred by Verus)
-                assert(limb_prod_bounded_u128(b.limbs, a.limbs, 5) && scalar52_to_nat(a) < group_order()
-                    && spec_mul_internal(b, a) == spec_mul_internal(a, b));
+                assert(limb_prod_bounded_u128(b.limbs, a.limbs, 5) && scalar52_to_nat(a)
+                    < group_order() && spec_mul_internal(b, a) == spec_mul_internal(a, b));
             }
         }
         Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))
@@ -1289,7 +1291,7 @@ impl Scalar52 {
     #[inline(never)]
     pub fn from_montgomery(&self) -> (result: Scalar52)
         requires
-            limb_prod_bounded_u128(self.limbs, self.limbs, 5)
+            limb_prod_bounded_u128(self.limbs, self.limbs, 5),
         ensures
             (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == scalar52_to_nat(self)
                 % group_order(),

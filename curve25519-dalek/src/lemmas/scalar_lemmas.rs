@@ -38,18 +38,15 @@ verus! {
 
 pub proof fn lemma_spec_mul_internal_commutative(a: &Scalar52, b: &Scalar52)
     ensures
-        spec_mul_internal(a,b) == spec_mul_internal(b,a)
+        spec_mul_internal(a, b) == spec_mul_internal(b, a),
 {
     // spec_mul_internal contains sums of the form \sum_{i=0}^k a[i] * b[k-i]
-    // and 
-    // \sum_{i=0}^k a[i] * b[k-i] == 
+    // and
+    // \sum_{i=0}^k a[i] * b[k-i] ==
     // \sum_{i=0}^k b[k-i] * a[i] == {introduce j = k - i}
     // \sum_{j=0}^k b[j] * a[k-j]
-    assert forall |i: int,j: int| 0 <= i < 9 && 0 <= j < 9 implies 
-        ((a.limbs[i] as u128) * (b.limbs[j] as u128)) as u128 
-        ==
-        ((b.limbs[j] as u128) * (a.limbs[i] as u128)) as u128
-    by {
+    assert forall|i: int, j: int| 0 <= i < 9 && 0 <= j < 9 implies ((a.limbs[i] as u128) * (
+    b.limbs[j] as u128)) as u128 == ((b.limbs[j] as u128) * (a.limbs[i] as u128)) as u128 by {
         lemma_mul_is_commutative(a.limbs[i] as int, b.limbs[j] as int);
     }
 }
@@ -986,18 +983,22 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
         // Show seq_u64_to_nat of a singleton is just that element
         assert(seq_u64_to_nat(seq.subrange(0, 1)) == seq[0] as nat) by {
             // definition
-            assert(seq_u64_to_nat(seq.subrange(0, 1)) == seq_to_nat_52(seq.subrange(0, 1).map(|i, x| x as nat)));
+            assert(seq_u64_to_nat(seq.subrange(0, 1)) == seq_to_nat_52(
+                seq.subrange(0, 1).map(|i, x| x as nat),
+            ));
             // subrange(0,1)
             assert(seq.subrange(0, 1).map(|i, x| x as nat) == seq![seq[0] as nat]);
             // definition, else branch
-            assert(seq_to_nat_52(seq![seq[0] as nat]) == seq[0] as nat + seq_to_nat_52(seq![seq[0] as nat].subrange(1, 1)) * pow2(52));
+            assert(seq_to_nat_52(seq![seq[0] as nat]) == seq[0] as nat + seq_to_nat_52(
+                seq![seq[0] as nat].subrange(1, 1),
+            ) * pow2(52));
             // subrange(1,1)
             assert(seq![seq[0] as nat].subrange(1, 1).len() == 0);
             // definition, if branch
             assert(seq_to_nat_52(seq![seq[0] as nat].subrange(1, 1)) == 0);
             // solver hint since pow2(52) is not evaluated!
             assert(0 * pow2(52) == 0) by {
-                lemma_mul_basics_1(pow2(52) as int); 
+                lemma_mul_basics_1(pow2(52) as int);
             };
         }
 
@@ -1239,22 +1240,22 @@ pub proof fn lemma_decompose(a: u64, mask: u64)
 
     let r = a % (pow2(52) as u64);
     let q = a / (pow2(52) as u64);
-    
+
     assert(a >> 52 == q) by {
         lemma_u64_shr_is_div(a, 52);
     }
-    
+
     assert(mask == low_bits_mask(52)) by {
         assert(1u64 << 52 == pow2(52)) by {
             lemma_u64_shift_is_pow2(52);
         }
     }
-    
+
     assert(a & mask == r) by {
         lemma_u64_low_bits_mask_is_mod(a, 52);
     }
-    
-    assert( a == q * pow2(52) + r) by {
+
+    assert(a == q * pow2(52) + r) by {
         lemma_fundamental_div_mod(a as int, pow2(52) as int);
         lemma_mul_is_commutative(q as int, pow2(52) as int);
     }

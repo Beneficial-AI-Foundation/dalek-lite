@@ -1469,21 +1469,29 @@ proof fn lemma_limb3_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     // This gives us:
     assert(bytes[20] as nat * pow2(0) + bytes[21] as nat * pow2(8) + bytes[22] as nat * pow2(16)
         + bytes[23] as nat * pow2(24) + bytes[24] as nat * pow2(32) == middle_value) by {
-            lemma_5_bytes_reconstruct(middle_value, bytes[20], bytes[21], bytes[22], bytes[23], bytes[24]);
-        }
+        lemma_5_bytes_reconstruct(
+            middle_value,
+            bytes[20],
+            bytes[21],
+            bytes[22],
+            bytes[23],
+            bytes[24],
+        );
+    }
 
     // Now multiply both sides by 2^160 to get the bytes at their actual positions
-    assert(middle_value * pow2(160) == 
-        bytes[20] as nat * pow2(20 * 8) + bytes[21] as nat * pow2(21 * 8) + bytes[22] as nat
-        * pow2(22 * 8) + bytes[23] as nat * pow2(23 * 8) + bytes[24] as nat * pow2(24 * 8)
-    ) by {
+    assert(middle_value * pow2(160) == bytes[20] as nat * pow2(20 * 8) + bytes[21] as nat * pow2(
+        21 * 8,
+    ) + bytes[22] as nat * pow2(22 * 8) + bytes[23] as nat * pow2(23 * 8) + bytes[24] as nat * pow2(
+        24 * 8,
+    )) by {
         lemma_mul_distributive_5_terms(
             pow2(160) as int,
             (bytes[20] as nat * pow2(0)) as int,
             (bytes[21] as nat * pow2(8)) as int,
             (bytes[22] as nat * pow2(16)) as int,
             (bytes[23] as nat * pow2(24)) as int,
-            (bytes[24] as nat * pow2(32)) as int
+            (bytes[24] as nat * pow2(32)) as int,
         );
 
         // Distribute the multiplication into each term

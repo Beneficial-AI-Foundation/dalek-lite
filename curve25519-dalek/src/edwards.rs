@@ -177,8 +177,7 @@ use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
-#[allow(unused_imports)]
-// Used in verus! blocks for scalar mul proofs (mul_by_pow_2, is_torsion_free)
+#[allow(unused_imports)] // Used in verus! blocks for mul_by_pow_2 proof
 use crate::lemmas::edwards_lemmas::scalar_mul_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::step1_lemmas::*;
@@ -2883,6 +2882,7 @@ impl EdwardsPoint {
         #[cfg(not(verus_keep_ghost))]
         debug_assert!(k > 0);
         let ghost point_affine = edwards_point_as_affine(*self);
+        let mut r: CompletedPoint;
         let mut s = self.as_projective();
 
         proof {
@@ -2891,11 +2891,10 @@ impl EdwardsPoint {
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&s.X, &s.Y, 52);
             }
             assert(is_valid_projective_point(s)) by {
-                // Valid extended coordinates imply valid projective coordinates (same X,Y,Z).
                 assert(is_valid_edwards_point(*self));
             }
 
-            // Base case: pow2(0) == 1 and 1*P == P.
+            // Base case: pow2(0) == 1 and [1]P == P.
             assert(pow2(0) == 1) by {
                 lemma2_to64();
             }
@@ -2907,10 +2906,10 @@ impl EdwardsPoint {
             ));
         }
 
-        let n = k - 1;
-        for i in 0..n
+        // ORIGINAL: for _ in 0..(k - 1) { ... }
+        // Changed to track iteration index `i` for loop invariant
+        for i in 0..(k - 1)
             invariant
-                n == k - 1,
                 is_valid_projective_point(s),
                 fe51_limbs_bounded(&s.X, 52),
                 fe51_limbs_bounded(&s.Y, 52),
@@ -2921,62 +2920,51 @@ impl EdwardsPoint {
                     pow2(i as nat),
                 ),
         {
-            let s_old = s;
-            let r = s_old.double();
+            let ghost s_old = s;  // ghost copy for proof
+            r = s.double();
             s = r.as_projective();
 
             proof {
-                // Affine correctness: doubling corresponds to multiplying by 2.
-                assert(projective_point_as_affine_edwards(s) == completed_point_as_affine_edwards(
-                    r,
-                ));
-                assert(completed_point_as_affine_edwards(r) == {
-                    let (x, y) = projective_point_as_affine_edwards(s_old);
-                    edwards_double(x, y)
-                });
-
                 let si = edwards_scalar_mul(point_affine, pow2(i as nat));
-                assert(projective_point_as_affine_edwards(s_old) == si);
-                assert(projective_point_as_affine_edwards(s) == edwards_double(si.0, si.1));
-
-                // Relate the spec scalar multiplication at pow2(i+1) to one doubling step.
-                lemma_edwards_scalar_mul_pow2_succ(point_affine, i as nat);
-                assert(edwards_scalar_mul(point_affine, pow2((i + 1) as nat)) == edwards_double(
-                    si.0,
-                    si.1,
-                ));
                 assert(projective_point_as_affine_edwards(s) == edwards_scalar_mul(
                     point_affine,
                     pow2((i + 1) as nat),
-                ));
+                )) by {
+                    assert(projective_point_as_affine_edwards(s)
+                        == completed_point_as_affine_edwards(r));
+                    assert(completed_point_as_affine_edwards(r) == {
+                        let (x, y) = projective_point_as_affine_edwards(s_old);
+                        edwards_double(x, y)
+                    });
+                    assert(projective_point_as_affine_edwards(s_old) == si);
+                    assert(projective_point_as_affine_edwards(s) == edwards_double(si.0, si.1));
+                    lemma_edwards_scalar_mul_pow2_succ(point_affine, i as nat);
+                }
             }
         }
 
-        // Final doubling and conversion back to extended coordinates.
-        let completed = s.double();
-        let result = completed.as_extended();
+        // Unroll last iteration so we can go directly to as_extended()
+        // ORIGINAL: let result = s.double().as_extended();
+        // Split for proof to reference intermediate CompletedPoint
+        r = s.double();
+        let result = r.as_extended();
         proof {
-            assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(completed));
-            assert(completed_point_as_affine_edwards(completed) == {
-                let (x, y) = projective_point_as_affine_edwards(s);
-                edwards_double(x, y)
-            });
-
-            // At loop exit, i == n == k-1, so s corresponds to pow2(k-1).
-            let sk = edwards_scalar_mul(point_affine, pow2(n as nat));
-            assert(projective_point_as_affine_edwards(s) == sk);
-
-            lemma_edwards_scalar_mul_pow2_succ(point_affine, n as nat);
-            assert(edwards_scalar_mul(point_affine, pow2((n + 1) as nat)) == edwards_double(
-                sk.0,
-                sk.1,
-            ));
-            assert(n + 1 == k);
-            assert((n + 1) as nat == k as nat);
+            // At loop exit, i == k-1, so s corresponds to [2^(k-1)]P
+            let n = (k - 1) as nat;
+            let sk = edwards_scalar_mul(point_affine, pow2(n));
             assert(edwards_point_as_affine(result) == edwards_scalar_mul(
                 point_affine,
                 pow2(k as nat),
-            ));
+            )) by {
+                assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(r));
+                assert(completed_point_as_affine_edwards(r) == {
+                    let (x, y) = projective_point_as_affine_edwards(s);
+                    edwards_double(x, y)
+                });
+                assert(projective_point_as_affine_edwards(s) == sk);
+                lemma_edwards_scalar_mul_pow2_succ(point_affine, n);
+                assert(n + 1 == k as nat);
+            }
         }
 
         result
@@ -3064,15 +3052,14 @@ impl EdwardsPoint {
         /* ORIGINAL CODE: (self * constants::BASEPOINT_ORDER_PRIVATE).is_identity() */
         let order_mul = self * constants::BASEPOINT_ORDER_PRIVATE;
         let result = order_mul.is_identity();
-        // is_identity ensures: result == (edwards_point_as_affine(order_mul) == math_edwards_identity())
         proof {
-            // BASEPOINT_ORDER_PRIVATE encodes ℓ in little-endian bytes.
-            lemma_scalar_to_nat_basepoint_order_private_equals_group_order();
-
             assert(edwards_point_as_affine(order_mul) == edwards_scalar_mul(
                 edwards_point_as_affine(*self),
                 group_order(),
-            ));
+            )) by {
+                // BASEPOINT_ORDER_PRIVATE encodes ℓ in little-endian bytes.
+                lemma_scalar_to_nat_basepoint_order_private_equals_group_order();
+            }
         }
         result
     }

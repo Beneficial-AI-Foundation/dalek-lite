@@ -798,17 +798,10 @@ pub open spec fn spec_projective_to_extended(point: ProjectivePoint) -> (nat, na
 
 /// Scalar multiplication on Edwards curve points (affine coordinates).
 ///
-/// Uses double-and-add instead of linear recursion to match proof structure:
+/// Uses double-and-add instead of linear recursion to closer match the implementation of mul_by_pow_2
 ///
 /// - **Linear**: `n*P = (n-1)*P + P` — reveal gives `add(scalar_mul(P, n-1), P)`
 /// - **Double-and-add**: even n → `double(scalar_mul(P, n/2))`
-///
-/// For `mul_by_pow_2`, we need `[2^(k+1)]P = double([2^k]P)`. Since `pow2(k+1)` is even,
-/// double-and-add directly gives this via one `reveal_with_fuel`. Linear recursion would
-/// give `add(scalar_mul(P, 2^(k+1)-1), P)` which doesn't match the doubling structure.
-///
-/// Both definitions compute the same `n*P` (equivalence via associativity of curve addition,
-/// not formally proven here). Small scalars (1-8) work identically for lookup table proofs.
 pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, nat)
     decreases n,
 {

@@ -276,6 +276,7 @@ macro_rules! define_edwards_scalar_mul_variants_verus {
                         $crate::specs::scalar_specs::scalar_to_nat(scalar),
                     ),
             {
+                // Calls &EdwardsPoint * &Scalar (the verified implementation)
                 &self * scalar
             }
         }
@@ -292,6 +293,7 @@ macro_rules! define_edwards_scalar_mul_variants_verus {
                         $crate::specs::scalar_specs::scalar_to_nat(&scalar),
                     ),
             {
+                // Calls &EdwardsPoint * &Scalar (the verified implementation)
                 self * &scalar
             }
         }
@@ -308,6 +310,7 @@ macro_rules! define_edwards_scalar_mul_variants_verus {
                         $crate::specs::scalar_specs::scalar_to_nat(&scalar),
                     ),
             {
+                // Calls &EdwardsPoint * &Scalar (the verified implementation)
                 &self * &scalar
             }
         }

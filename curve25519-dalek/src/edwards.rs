@@ -177,8 +177,6 @@ use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
-#[allow(unused_imports)] // Used in verus! blocks for mul_by_pow_2 proof
-use crate::lemmas::edwards_lemmas::scalar_mul_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::step1_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening

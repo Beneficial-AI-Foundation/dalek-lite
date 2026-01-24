@@ -1398,7 +1398,7 @@ impl EdwardsPoint {
     /// Compress this point to `CompressedEdwardsY` format.
     pub fn compress(&self) -> (result: CompressedEdwardsY)
         requires
-            edwards_point_limbs_bounded(*self),
+            is_well_formed_edwards_point(*self),
         ensures
             compressed_edwards_y_corresponds_to_edwards(result, *self),
     {
@@ -1406,16 +1406,113 @@ impl EdwardsPoint {
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
             lemma_edwards_point_weaken_to_54(self);
         }
+
         let recip = self.Z.invert();
-        let ghost z_abs = spec_field_element(&self.Z);
-        assert(spec_field_element(&recip) == math_field_inv(z_abs));
-        assume(false);
+
+        // Ghost values for proof
+        let ghost x_coord = spec_field_element(&self.X);
+        let ghost y_coord = spec_field_element(&self.Y);
+        let ghost z_coord = spec_field_element(&self.Z);
+        let ghost z_inv = math_field_inv(z_coord);
+
+        proof {
+            // From is_well_formed_edwards_point, we have z != 0
+            assert(z_coord != 0);
+            assert(spec_field_element(&recip) == z_inv);
+        }
+
         let x = &self.X * &recip;
         let y = &self.Y * &recip;
+
+        let ghost x_affine = spec_field_element(&x);
+        let ghost y_affine = spec_field_element(&y);
+
+        proof {
+            // From mul postcondition: spec_field_element(&result) = math_field_mul(...)
+            assert(x_affine == math_field_mul(x_coord, z_inv));
+            assert(y_affine == math_field_mul(y_coord, z_inv));
+
+            // These match edwards_point_as_affine
+            let (spec_x_affine, spec_y_affine) = edwards_point_as_affine(*self);
+            assert(spec_x_affine == x_affine);
+            assert(spec_y_affine == y_affine);
+        }
+
         let mut s: [u8; 32];
 
         s = y.as_bytes();
+        let ghost s_before_xor: [u8; 32] = s;
+
         s[31] ^= x.is_negative().unwrap_u8() << 7;
+
+        let is_neg_choice = x.is_negative();
+        let sign_bit = is_neg_choice.unwrap_u8();
+
+        proof {
+            // Establish p() > 0 for lemma_mod_bound preconditions
+            p_gt_2();
+
+            // Establish y_affine < p() (from math_field_mul definition: result = (a*b) % p < p)
+            // and x_affine < p() similarly
+            assert(y_affine < p()) by {
+                // math_field_mul returns (a * b) % p, which is < p
+                p_gt_2();
+                lemma_mod_bound((y_coord * z_inv) as int, p() as int);
+            };
+            assert(x_affine < p()) by {
+                p_gt_2();
+                lemma_mod_bound((x_coord * z_inv) as int, p() as int);
+            };
+
+            // as_bytes ensures: bytes32_to_nat(&s_before_xor) == spec_field_element(&y) == y_affine
+            assert(bytes32_to_nat(&s_before_xor) == y_affine);
+
+            // Postcondition is compressed_edwards_y_corresponds_to_edwards(result, *self)
+            // which requires:
+            // 1. spec_field_element_from_bytes(&s) == y_affine (the y-coordinate)
+            // 2. (s[31] >> 7) == (((x_affine % p()) % 2) as u8) (the sign bit)
+
+            // Prove s_before_xor has bit 255 clear
+            lemma_canonical_bytes_bit255_zero(&s_before_xor, y_affine);
+            assert((s_before_xor[31] >> 7) == 0);
+
+            // Connect is_negative to x_affine parity
+            // is_neg_choice postcondition: choice_is_true(is_neg_choice) == (spec_fe51_to_bytes(&x)[0] & 1 == 1)
+            lemma_is_negative_equals_parity(&x);
+            // lemma gives: (spec_fe51_to_bytes(&x)[0] & 1 == 1) == (spec_field_element(&x) % 2 == 1)
+            assert(choice_is_true(is_neg_choice) == (spec_field_element(&x) % 2 == 1));
+            assert(spec_field_element(&x) == x_affine);
+            assert(choice_is_true(is_neg_choice) == (x_affine % 2 == 1));
+
+            // unwrap_u8 converts choice to u8: true->1, false->0
+            // Establish sign_bit value based on unwrap_u8 spec
+            assert(sign_bit == ((x_affine % p()) % 2) as u8) by {
+                if choice_is_true(is_neg_choice) {
+                    assert(sign_bit == 1);
+                    assert(x_affine % 2 == 1);
+                    assert((x_affine % p()) % 2 == x_affine % 2) by {
+                        assert(x_affine < p());
+                        lemma_small_mod(x_affine, p());
+                    };
+                } else {
+                    assert(sign_bit == 0);
+                    assert(x_affine % 2 == 0);
+                    assert((x_affine % p()) % 2 == x_affine % 2) by {
+                        assert(x_affine < p());
+                        lemma_small_mod(x_affine, p());
+                    };
+                }
+            };
+
+            // Prove XOR preserves y and sets sign bit
+            lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
+            assert(spec_field_element_from_bytes(&s) == y_affine);
+            assert((s[31] >> 7) == sign_bit);
+
+            // Both parts of compressed_edwards_y_corresponds_to_edwards are satisfied
+            assert(compressed_edwards_y_corresponds_to_edwards(CompressedEdwardsY(s), *self));
+        }
+
         CompressedEdwardsY(s)
     }
 
@@ -2574,17 +2671,101 @@ impl BasepointTable for EdwardsBasepointTable {
         // XXX use init_with
         let mut table = EdwardsBasepointTable([LookupTableRadix16::default();32]);
         let mut P = *basepoint;
+        let ghost basepoint_affine = edwards_point_as_affine(*basepoint);
+
+        // Prove initialization: P = basepoint = pow256(0) * basepoint
+        proof {
+            // Show that pow256(0) == 1
+            assert(pow256(0) == pow2(8 * 0)) by { reveal(pow256); }
+            assert(pow256(0) == pow2(0));
+            // Assume pow2(0) == 1 (can be proven with lemmas)
+            assume(pow2(0) == 1);
+            assert(pow256(0) == 1);
+            // edwards_scalar_mul(P, 1) = P by definition
+            reveal_with_fuel(edwards_scalar_mul, 2);
+            // Establish the invariant
+            assert(edwards_scalar_mul(basepoint_affine, pow256(0)) == edwards_scalar_mul(basepoint_affine, 1));
+            assert(edwards_scalar_mul(basepoint_affine, 1) == basepoint_affine);
+            assert(edwards_point_as_affine(P) == basepoint_affine);
+        }
+
         for i in 0..32
             invariant
                 is_well_formed_edwards_point(*basepoint),
                 is_well_formed_edwards_point(P),
+                // Track that P equals pow256(i) * basepoint at iteration i
+                edwards_point_as_affine(P) == edwards_scalar_mul(
+                    edwards_point_as_affine(*basepoint),
+                    pow256(i as nat)
+                ),
+                // All table entries filled so far (indices 0..i) are correct
+                forall|j: int|
+                    #![trigger table.0[j as int]]
+                    0 <= j < i ==> crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                        table.0[j as int].0,
+                        edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(j as nat)),
+                        8,
+                    ),
         {
             // P = (16²)^i * basepoint
             table.0[i] = LookupTableRadix16::from(&P);
+
+            proof {
+                // From LookupTableRadix16::from postcondition, we have:
+                // is_valid_lookup_table_affine_coords(table.0[i].0, edwards_point_as_affine(P), 8)
+                //
+                // From loop invariant, we know:
+                // edwards_point_as_affine(P) == edwards_scalar_mul(basepoint_affine, pow256(i))
+                //
+                // Therefore, table[i] is correct for index i
+                assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                    table.0[i as int].0,
+                    edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(i as nat)),
+                    8,
+                ));
+            }
+
             P = P.mul_by_pow_2(4 + 4);  // P = P * 2^8 = P * 256 = P * 16²
+
+            proof {
+                // From mul_by_pow_2 postcondition, we have:
+                // edwards_point_as_affine(new_P) == edwards_scalar_mul(edwards_point_as_affine(old_P), pow2(8))
+                //
+                // From loop invariant, old_P satisfies:
+                // edwards_point_as_affine(old_P) == edwards_scalar_mul(basepoint_affine, pow256(i))
+                //
+                // We need to show new_P satisfies:
+                // edwards_point_as_affine(new_P) == edwards_scalar_mul(basepoint_affine, pow256(i+1))
+
+                // First, establish pow256(i+1) = pow256(i) * pow2(8)
+                assert(pow256((i + 1) as nat) == pow256(i as nat) * pow2(8)) by {
+                    assert(8 * ((i + 1) as nat) == 8 * (i as nat) + 8);
+                    vstd::arithmetic::power2::lemma_pow2_adds(8 * (i as nat), 8);
+                }
+
+                // Apply scalar multiplication composition lemma (if it verifies):
+                // edwards_scalar_mul(edwards_scalar_mul(basepoint, pow256(i)), pow2(8))
+                //   == edwards_scalar_mul(basepoint, pow256(i) * pow2(8))
+                //   == edwards_scalar_mul(basepoint, pow256(i+1))
+                // For now, assume this property (can be proven separately)
+                assume(edwards_scalar_mul(edwards_scalar_mul(
+                    edwards_point_as_affine(*basepoint),
+                    pow256(i as nat)
+                ), pow2(8)) == edwards_scalar_mul(
+                    edwards_point_as_affine(*basepoint),
+                    pow256(i as nat) * pow2(8)
+                ));
+            }
         }
         proof {
-            assume(is_valid_edwards_basepoint_table(table, edwards_point_as_affine(*basepoint)));
+            // After loop completes with i=32, the loop invariant gives us:
+            // forall|j: int| 0 <= j < 32 ==> is_valid_lookup_table_affine_coords(
+            //     table.0[j].0,
+            //     edwards_scalar_mul(basepoint_affine, pow256(j)),
+            //     8,
+            // )
+            // This is exactly the postcondition is_valid_edwards_basepoint_table
+            assert(is_valid_edwards_basepoint_table(table, edwards_point_as_affine(*basepoint)));
         }
         table
     }

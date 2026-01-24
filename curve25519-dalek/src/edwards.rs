@@ -2746,14 +2746,14 @@ impl BasepointTable for EdwardsBasepointTable {
                     vstd::arithmetic::power2::lemma_pow2_adds(8 * (i as nat), 8);
                 }
 
-                // Apply scalar multiplication composition lemma:
+                // Apply scalar multiplication composition lemma for powers of 2:
                 // edwards_scalar_mul(edwards_scalar_mul(basepoint, pow256(i)), pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i) * pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i+1))
-                crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_mul(
+                crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_mul_pow2(
                     edwards_point_as_affine(*basepoint),
                     pow256(i as nat),
-                    pow2(8)
+                    8
                 );
             }
         }

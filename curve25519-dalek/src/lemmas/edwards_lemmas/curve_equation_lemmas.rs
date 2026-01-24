@@ -1277,7 +1277,7 @@ pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat
 ///
 /// The proof proceeds by induction on `k`, using `lemma_edwards_scalar_mul_pow2_succ` to
 /// unfold the `pow2(k)` recursion and basic arithmetic facts about powers of 2.
-pub proof fn lemma_edwards_scalar_mul_mul_pow2(point_affine: (nat, nat), a: nat, k: nat)
+pub proof fn lemma_edwards_scalar_mul_composition_pow2(point_affine: (nat, nat), a: nat, k: nat)
     ensures
         edwards_scalar_mul(edwards_scalar_mul(point_affine, a), pow2(k)) == edwards_scalar_mul(point_affine, a * pow2(k)),
     decreases k,
@@ -1297,7 +1297,7 @@ pub proof fn lemma_edwards_scalar_mul_mul_pow2(point_affine: (nat, nat), a: nat,
         let km1 = (k - 1) as nat;
 
         // Induction hypothesis at k-1.
-        lemma_edwards_scalar_mul_mul_pow2(point_affine, a, km1);
+        lemma_edwards_scalar_mul_composition_pow2(point_affine, a, km1);
 
         // Unfold the `pow2(k)` scalar multiplication on the left.
         lemma_edwards_scalar_mul_pow2_succ(edwards_scalar_mul(point_affine, a), km1);
@@ -1402,7 +1402,7 @@ pub proof fn lemma_edwards_scalar_mul_mul_pow2(point_affine: (nat, nat), a: nat,
 ///
 /// **Note**: This is a fundamental algebraic property. The full proof for arbitrary b is complex
 /// (requiring case analysis on parity and careful arithmetic reasoning). For powers of 2,
-/// use `lemma_edwards_scalar_mul_mul_pow2` which has a complete proof. The odd-b case relies on
+/// use `lemma_edwards_scalar_mul_composition_pow2` which has a complete proof. The odd-b case relies on
 /// the admitted associativity lemma `lemma_edwards_add_associative`.
 pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: nat, b: nat)
     ensures

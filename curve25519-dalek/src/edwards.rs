@@ -2750,7 +2750,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 // edwards_scalar_mul(edwards_scalar_mul(basepoint, pow256(i)), pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i) * pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i+1))
-                crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_mul_pow2(
+                crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_composition_pow2(
                     edwards_point_as_affine(*basepoint),
                     pow256(i as nat),
                     8

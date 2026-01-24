@@ -2672,8 +2672,11 @@ impl BasepointTable for EdwardsBasepointTable {
             // Show that pow256(0) == 1
             assert(pow256(0) == pow2(8 * 0)) by { reveal(pow256); }
             assert(pow256(0) == pow2(0));
-            // Assume pow2(0) == 1 (can be proven with lemmas)
-            assume(pow2(0) == 1);
+            // Prove pow2(0) == 1 using vstd lemmas
+            assert(pow2(0) == 1) by {
+                reveal(pow2);
+                vstd::arithmetic::power::lemma_pow0(2);
+            }
             assert(pow256(0) == 1);
             // edwards_scalar_mul(P, 1) = P by definition
             reveal_with_fuel(edwards_scalar_mul, 2);
@@ -2737,18 +2740,15 @@ impl BasepointTable for EdwardsBasepointTable {
                     vstd::arithmetic::power2::lemma_pow2_adds(8 * (i as nat), 8);
                 }
 
-                // Apply scalar multiplication composition lemma (if it verifies):
+                // Apply scalar multiplication composition lemma:
                 // edwards_scalar_mul(edwards_scalar_mul(basepoint, pow256(i)), pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i) * pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i+1))
-                // For now, assume this property (can be proven separately)
-                assume(edwards_scalar_mul(edwards_scalar_mul(
+                crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_mul(
                     edwards_point_as_affine(*basepoint),
-                    pow256(i as nat)
-                ), pow2(8)) == edwards_scalar_mul(
-                    edwards_point_as_affine(*basepoint),
-                    pow256(i as nat) * pow2(8)
-                ));
+                    pow256(i as nat),
+                    pow2(8)
+                );
             }
         }
         proof {

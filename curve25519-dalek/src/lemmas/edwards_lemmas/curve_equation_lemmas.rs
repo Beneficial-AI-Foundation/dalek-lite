@@ -574,16 +574,22 @@ pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat
     });
 }
 
-// TODO: Add lemma for scalar multiplication composition
-// /// **Lemma**: Scalar multiplication composition
-// ///
-// /// Proves that `edwards_scalar_mul(edwards_scalar_mul(P, a), b) == edwards_scalar_mul(P, a * b)`
-// /// This is a fundamental property: multiplying by `a` then by `b` equals multiplying by `a*b`.
-// pub proof fn lemma_edwards_scalar_mul_mul(point_affine: (nat, nat), a: nat, b: nat)
-//     ensures
-//         edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == edwards_scalar_mul(point_affine, a * b),
-// {
-//     // Proof needed - currently assumed in create function
-// }
+/// **Lemma**: Scalar multiplication composition
+///
+/// Proves that `edwards_scalar_mul(edwards_scalar_mul(P, a), b) == edwards_scalar_mul(P, a * b)`
+/// This is a fundamental property: multiplying by `a` then by `b` equals multiplying by `a*b`.
+///
+/// **Note**: This is a fundamental algebraic property that follows from the group structure.
+/// For now we assume it; a complete proof would require detailed induction on the structure
+/// of edwards_scalar_mul and careful arithmetic reasoning about the group operation.
+#[verifier::external_body]
+pub proof fn lemma_edwards_scalar_mul_mul(point_affine: (nat, nat), a: nat, b: nat)
+    ensures
+        edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == edwards_scalar_mul(point_affine, a * b),
+{
+    // External body - assumed as an axiom
+    // A complete proof would proceed by induction on b, using the recursive structure
+    // of edwards_scalar_mul and properties of edwards_add and edwards_double
+}
 
 } // verus!

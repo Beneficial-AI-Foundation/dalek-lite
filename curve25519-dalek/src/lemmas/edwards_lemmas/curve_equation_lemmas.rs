@@ -574,4 +574,16 @@ pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat
     });
 }
 
+// TODO: Add lemma for scalar multiplication composition
+// /// **Lemma**: Scalar multiplication composition
+// ///
+// /// Proves that `edwards_scalar_mul(edwards_scalar_mul(P, a), b) == edwards_scalar_mul(P, a * b)`
+// /// This is a fundamental property: multiplying by `a` then by `b` equals multiplying by `a*b`.
+// pub proof fn lemma_edwards_scalar_mul_mul(point_affine: (nat, nat), a: nat, b: nat)
+//     ensures
+//         edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == edwards_scalar_mul(point_affine, a * b),
+// {
+//     // Proof needed - currently assumed in create function
+// }
+
 } // verus!

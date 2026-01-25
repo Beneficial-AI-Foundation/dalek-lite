@@ -237,12 +237,37 @@ pub proof fn lemma_valid_radix_16_implies_all_bounded(digits: &[i8; 64])
     ensures
         radix_16_all_bounded(digits),
 {
-    // is_valid_radix_16 expands to is_valid_radix_2w with w=4, digits_count=64
-    // For w=4: bound = pow2(3) = 8
-    // For i < 63: -8 <= digits[i] < 8, which implies -8 <= digits[i] <= 8
-    // For i = 63: -8 <= digits[i] <= 8
-    // TODO: Proper proof with trigger instantiation
-    assume(radix_16_all_bounded(digits));
+    // Expand the definitions:
+    //
+    // - is_valid_radix_16(digits) = is_valid_radix_2w(digits, 4, 64)
+    // - is_valid_radix_2w gives, for each i in [0, 64):
+    //     -8 <= digits[i] and (digits[i] < 8) for i < 63, while (digits[63] <= 8)
+    // This implies the simpler predicate radix_16_all_bounded(digits):
+    //     forall i in [0, 64): -8 <= digits[i] <= 8
+    // `is_valid_radix_16(digits)` is `is_valid_radix_2w(digits, 4, 64)`.
+    assert(is_valid_radix_2w(digits, 4, 64));
+
+    // Prove the pointwise bound `-8 <= digits[i] <= 8` for all i in [0, 64).
+    assert forall|i: int| 0 <= i < 64 implies radix_16_digit_bounded(#[trigger] digits[i]) by {
+        // From `is_valid_radix_2w(digits, 4, 64)` we get:
+        // - for i < 63: -8 <= digits[i] < 8
+        // - for i = 63: -8 <= digits[i] <= 8
+        //
+        // because bound = pow2(w-1) = pow2(3) = 8.
+        assert(pow2(3) == 8) by {
+            vstd::arithmetic::power2::lemma2_to64();
+        }
+        if i < 63 {
+            assert(-8 <= digits[i] && digits[i] < 8);
+            // Strengthen `< 8` to `<= 8`.
+            assert(digits[i] <= 8);
+        } else {
+            assert(i == 63);
+            assert(-8 <= digits[i] && digits[i] <= 8);
+        }
+    }
+
+    assert(radix_16_all_bounded(digits));
 }
 
 /// Convert a boolean slice (bits in big-endian order) to a natural number

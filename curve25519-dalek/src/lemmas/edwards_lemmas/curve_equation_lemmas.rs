@@ -13,6 +13,7 @@
 #![allow(unused_imports)]
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
+use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow2_even, pow2_MUL_div};
@@ -847,6 +848,64 @@ pub proof fn lemma_edwards_add_associative(x1: nat, y1: nat, x2: nat, y2: nat, x
             edwards_add(x1, y1, bc.0, bc.1)
         }),
 {
+    admit();
+}
+
+// =============================================================================
+// Axioms: Signed scalar multiplication linearity (group law)
+// =============================================================================
+
+/// Axiom: [a]P + [b]P = [a+b]P for signed scalars a, b.
+pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: int)
+    ensures
+        ({
+            let pa = edwards_scalar_mul_signed(P, a);
+            let pb = edwards_scalar_mul_signed(P, b);
+            edwards_add(pa.0, pa.1, pb.0, pb.1)
+        }) == edwards_scalar_mul_signed(P, a + b),
+{
+    admit();
+}
+
+/// Axiom: [b]([a]P) = [a*b]P for signed a, unsigned b.
+pub proof fn axiom_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, b: nat)
+    ensures
+        edwards_scalar_mul(edwards_scalar_mul_signed(P, a), b)
+            == edwards_scalar_mul_signed(P, a * (b as int)),
+{
+    admit();
+}
+
+// =============================================================================
+// Lemma: select correctness (connects table lookup to signed scalar mul)
+// =============================================================================
+
+/// Lemma: The result of select(x) on a valid table equals [x]*basepoint in affine coords.
+///
+/// Combines three facts:
+/// - x > 0: table[x-1] decodes to x*basepoint (from table validity)
+/// - x == 0: identity decodes to (0,1) = [0]*P
+/// - x < 0: negate(table[-x-1]) decodes to [-x]*P negated = [x]*P
+pub proof fn lemma_select_is_signed_scalar_mul(
+    table: [AffineNielsPoint; 8],
+    x: i8,
+    result: AffineNielsPoint,
+    basepoint: (nat, nat),
+)
+    requires
+        -8 <= x <= 8,
+        crate::specs::window_specs::is_valid_lookup_table_affine_coords(table, basepoint, 8),
+        // select's postconditions (what we know about result):
+        (x > 0 ==> result == table[(x - 1) as int]),
+        (x == 0 ==> result == identity_affine_niels()),
+        (x < 0 ==> result == negate_affine_niels(table[((-x) - 1) as int])),
+    ensures
+        affine_niels_point_as_affine_edwards(result)
+            == edwards_scalar_mul_signed(basepoint, x as int),
+{
+    // For x > 0: result = table[x-1] decodes to edwards_scalar_mul(basepoint, x)
+    // For x == 0: identity_affine_niels decodes to (0,1) = edwards_scalar_mul_signed(P, 0)
+    // For x < 0: negate decodes to edwards_neg, and edwards_neg([n]P) = [-n]P
     admit();
 }
 

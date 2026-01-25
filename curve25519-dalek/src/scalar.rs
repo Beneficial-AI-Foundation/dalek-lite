@@ -642,7 +642,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&Scalar> for &Scalar {
     }
 
     open spec fn add_req(self, rhs: &Scalar) -> bool {
-        true  // No preconditions yet
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
 
     }
 
@@ -656,10 +656,13 @@ impl<'a> Add<&'a Scalar> for &Scalar {
     type Output = Scalar;
 
     /* <VERIFICATION NOTE>
-    PROOF BYPASS; may need to add preconditions to spec
+    PRECONDITIONS are added to the SpecImpl above
     </VERIFICATION NOTE> */
     #[allow(non_snake_case)]
     fn add(self, _rhs: &'a Scalar) -> (result: Scalar)
+        requires
+            is_canonical_scalar(self),
+            is_canonical_scalar(_rhs),
         ensures
             bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(
                 &_rhs.bytes,
@@ -684,12 +687,12 @@ impl<'a> Add<&'a Scalar> for &Scalar {
         }
 
         // UnpackedScalar::add requires inputs < group_order()
-        // By Scalar invariant #2, scalars should be canonical
-        // However, we cannot add requires clauses to trait implementations,
-        // so we assume this property holds
+        // This is guaranteed by Scalar invariant #2 (canonical scalars)
         proof {
-            assume(scalar52_to_nat(&self_unpacked) < group_order());
-            assume(scalar52_to_nat(&rhs_unpacked) < group_order());
+            // is_canonical_scalar ensures bytes32_to_nat < group_order
+            // and our unpacking preserves this invariant
+            assert(scalar52_to_nat(&self_unpacked) < group_order());
+            assert(scalar52_to_nat(&rhs_unpacked) < group_order());
         }
 
         let result_unpacked = UnpackedScalar::add(&self_unpacked, &rhs_unpacked);
@@ -704,8 +707,11 @@ impl<'a> Add<&'a Scalar> for &Scalar {
             assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
                 256,
             )) by {
-                assert(group_order() < pow2(256)) by {
-                    assume(false);
+                assert(scalar52_to_nat(&result_unpacked) < pow2(256)) by {
+                    // add() ensures: scalar52_to_nat(...) < group_order()
+                    // and group_order() < pow2(256)
+                    lemma_group_order_smaller_than_pow256();
+                    lemma_scalar52_lt_pow2_256_if_canonical(&result_unpacked);
                 }
                 lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
             }

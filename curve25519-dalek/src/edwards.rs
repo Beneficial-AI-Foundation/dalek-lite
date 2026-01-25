@@ -2808,13 +2808,11 @@ impl BasepointTable for EdwardsBasepointTable {
             assume(crate::specs::window_specs::lookup_table_affine_limbs_bounded((*self).0[0int].0));
         }
         let selected = self.0[0].select(1);
+        // selected limb bounds come from select postcondition
         proof {
-            // Preconditions for addition
+            // Preconditions for addition (identity must be well-formed)
             assume(is_well_formed_edwards_point(identity));
             assume(sum_of_limbs_bounded(&identity.Z, &identity.Z, u64::MAX));
-            assume(fe51_limbs_bounded(&selected.y_plus_x, 54));
-            assume(fe51_limbs_bounded(&selected.y_minus_x, 54));
-            assume(fe51_limbs_bounded(&selected.xy2d, 54));
         }
         let completed = &identity + &selected;
         proof {
@@ -2908,13 +2906,11 @@ impl BasepointTable for EdwardsBasepointTable {
                     assume(crate::specs::window_specs::lookup_table_affine_limbs_bounded(tables[(i / 2) as int].0));
                 }
                 let selected = tables[i / 2].select(a[i]);
+                // selected limb bounds come from select postcondition
                 proof {
-                    // preconditions for addition
+                    // preconditions for addition (P must be well-formed)
                     assume(is_well_formed_edwards_point(P));
                     assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // extra bound for Z2 = &P.Z + &P.Z in add
-                    assume(fe51_limbs_bounded(&selected.y_plus_x, 54));
-                    assume(fe51_limbs_bounded(&selected.y_minus_x, 54));
-                    assume(fe51_limbs_bounded(&selected.xy2d, 54));
                 }
                 let tmp = &P + &selected;
                 proof {
@@ -2948,13 +2944,11 @@ impl BasepointTable for EdwardsBasepointTable {
                     assume(crate::specs::window_specs::lookup_table_affine_limbs_bounded(tables[(i / 2) as int].0));
                 }
                 let selected = tables[i / 2].select(a[i]);
+                // selected limb bounds come from select postcondition
                 proof {
-                    // preconditions for addition
+                    // preconditions for addition (P must be well-formed)
                     assume(is_well_formed_edwards_point(P));
                     assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // extra bound for Z2 = &P.Z + &P.Z in add
-                    assume(fe51_limbs_bounded(&selected.y_plus_x, 54));
-                    assume(fe51_limbs_bounded(&selected.y_minus_x, 54));
-                    assume(fe51_limbs_bounded(&selected.xy2d, 54));
                 }
                 let tmp = &P + &selected;
                 proof {

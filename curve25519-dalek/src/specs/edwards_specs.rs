@@ -96,6 +96,7 @@ pub open spec fn pow256(n: nat) -> nat {
 
 /// Spec: A valid EdwardsBasepointTable for a basepoint B contains 32 LookupTables where:
 /// - table.0[i] contains [1·(16²)^i·B, 2·(16²)^i·B, ..., 8·(16²)^i·B]
+/// - All entries have bounded limbs (< 2^54)
 ///
 /// This enables computing [scalar] * B via radix-16 representation of scalar.
 #[cfg(feature = "precomputed-tables")]
@@ -104,13 +105,17 @@ pub open spec fn is_valid_edwards_basepoint_table(
     basepoint: (nat, nat),
 ) -> bool {
     // Each of the 32 LookupTables contains correct multiples of (16²)^i * B
+    // and has bounded limbs
     forall|i: int|
         #![trigger table.0[i]]
-        0 <= i < 32 ==> crate::specs::window_specs::is_valid_lookup_table_affine_coords(
-            table.0[i].0,
-            edwards_scalar_mul(basepoint, pow256(i as nat)),
-            8,
-        )
+        0 <= i < 32 ==> {
+            &&& crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                table.0[i].0,
+                edwards_scalar_mul(basepoint, pow256(i as nat)),
+                8,
+            )
+            &&& crate::specs::window_specs::lookup_table_affine_limbs_bounded(table.0[i].0)
+        }
 }
 
 /// Axiom: ED25519_BASEPOINT_TABLE is a valid basepoint table for the Ed25519 basepoint.

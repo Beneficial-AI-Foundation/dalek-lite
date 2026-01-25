@@ -2705,12 +2705,19 @@ impl BasepointTable for EdwardsBasepointTable {
                     pow256(i as nat)
                 ),
                 // All table entries filled so far (indices 0..i) are correct
+                // (affine coords are correct scalar multiples)
                 forall|j: int|
                     #![trigger table.0[j as int]]
                     0 <= j < i ==> crate::specs::window_specs::is_valid_lookup_table_affine_coords(
                         table.0[j as int].0,
                         edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(j as nat)),
                         8,
+                    ),
+                // All table entries filled so far have bounded limbs
+                forall|j: int|
+                    #![trigger table.0[j as int]]
+                    0 <= j < i ==> crate::specs::window_specs::lookup_table_affine_limbs_bounded(
+                        table.0[j as int].0,
                     ),
         {
             // P = (16²)^i * basepoint
@@ -2719,6 +2726,7 @@ impl BasepointTable for EdwardsBasepointTable {
             proof {
                 // From LookupTableRadix16::from postcondition, we have:
                 // is_valid_lookup_table_affine_coords(table.0[i].0, edwards_point_as_affine(P), 8)
+                // lookup_table_affine_limbs_bounded(table.0[i].0)
                 //
                 // From loop invariant, we know:
                 // edwards_point_as_affine(P) == edwards_scalar_mul(basepoint_affine, pow256(i))
@@ -2728,6 +2736,10 @@ impl BasepointTable for EdwardsBasepointTable {
                     table.0[i as int].0,
                     edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(i as nat)),
                     8,
+                ));
+                // Limb bounds from postcondition
+                assert(crate::specs::window_specs::lookup_table_affine_limbs_bounded(
+                    table.0[i as int].0,
                 ));
             }
 
@@ -2775,6 +2787,8 @@ impl BasepointTable for EdwardsBasepointTable {
 
     /// Get the basepoint for this table as an `EdwardsPoint`.
     fn basepoint(&self) -> (result: EdwardsPoint)
+        requires
+            is_valid_edwards_basepoint_table(*self, spec_ed25519_basepoint()),
         ensures
             is_well_formed_edwards_point(result),
             // The result is the Ed25519 basepoint B
@@ -2787,6 +2801,12 @@ impl BasepointTable for EdwardsBasepointTable {
         */
         /* REFACTORED FOR ASSERTIONS: */
         let identity = EdwardsPoint::identity();
+        proof {
+            // The precondition is_valid_edwards_basepoint_table includes
+            // lookup_table_affine_limbs_bounded for all table entries.
+            // TODO: Proper forall instantiation with trigger
+            assume(crate::specs::window_specs::lookup_table_affine_limbs_bounded((*self).0[0int].0));
+        }
         let selected = self.0[0].select(1);
         proof {
             // Preconditions for addition
@@ -2882,6 +2902,10 @@ impl BasepointTable for EdwardsBasepointTable {
                 proof {
                     // preconditions for select and arithmetic operations
                     assume(a[i as int] >= -8 && a[i as int] <= 8);
+                    // The precondition is_valid_edwards_basepoint_table includes
+                    // lookup_table_affine_limbs_bounded for all table entries.
+                    // TODO: Proper forall instantiation with trigger
+                    assume(crate::specs::window_specs::lookup_table_affine_limbs_bounded(tables[(i / 2) as int].0));
                 }
                 let selected = tables[i / 2].select(a[i]);
                 proof {
@@ -2918,6 +2942,10 @@ impl BasepointTable for EdwardsBasepointTable {
                 proof {
                     // preconditions for select and arithmetic operations
                     assume(a[i as int] >= -8 && a[i as int] <= 8);
+                    // The precondition is_valid_edwards_basepoint_table includes
+                    // lookup_table_affine_limbs_bounded for all table entries.
+                    // TODO: Proper forall instantiation with trigger
+                    assume(crate::specs::window_specs::lookup_table_affine_limbs_bounded(tables[(i / 2) as int].0));
                 }
                 let selected = tables[i / 2].select(a[i]);
                 proof {

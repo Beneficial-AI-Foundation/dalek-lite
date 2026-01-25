@@ -2225,11 +2225,15 @@ impl RistrettoBasepointTable {
 
     /// Get the basepoint for this table as a `RistrettoPoint`.
     pub fn basepoint(&self) -> (result: RistrettoPoint)
+        requires
+            is_valid_edwards_basepoint_table(self.0, spec_ristretto_basepoint()),
         ensures
             is_well_formed_edwards_point(result.0),
             // The result is the Ristretto basepoint B
             edwards_point_as_affine(result.0) == spec_ristretto_basepoint(),
     {
+        // Since spec_ristretto_basepoint() == spec_ed25519_basepoint(),
+        // the EdwardsBasepointTable::basepoint precondition is satisfied
         RistrettoPoint(self.0.basepoint())
     }
 }

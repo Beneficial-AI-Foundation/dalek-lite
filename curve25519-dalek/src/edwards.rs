@@ -2999,9 +2999,21 @@ impl BasepointTable for EdwardsBasepointTable {
             assert(pow2(4) == 16) by { vstd::arithmetic::power2::lemma2_to64(); }
             reveal(even_sum_up_to);
             reveal(pippenger_partial);
-            // pippenger_partial(a@, 0, B) = edwards_add(16*odd_sum, identity) = 16*odd_sum
-            // TODO: Prove edwards_add(P, identity) == P (group identity law)
-            assume(edwards_point_as_affine(P) == pippenger_partial(a@, 0, B));
+
+            // From loop 1 exit invariant: old_P = odd_sum_up_to(a@, 64, B)
+            // From mul_by_pow_2 postcondition: P = edwards_scalar_mul(old_P, 16)
+            let odd_sum = odd_sum_up_to(a@, 64, B);
+            let scaled = edwards_scalar_mul(odd_sum, 16);
+            // By mul_by_pow_2 postcondition:
+            assert(edwards_point_as_affine(P) == scaled);
+
+            // pippenger_partial(a@, 0, B) = edwards_add(scaled, even_sum_up_to(a@, 0, B))
+            //                            = edwards_add(scaled, identity)
+            //                            = scaled (by identity law)
+            assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
+            crate::lemmas::edwards_lemmas::curve_equation_lemmas::axiom_edwards_add_identity_right(scaled);
+            assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled);
+            assert(pippenger_partial(a@, 0, B) == scaled);
         }
 
         // ORIGINAL CODE (doesn't work with Verus - .filter() not supported in ghost for loops):

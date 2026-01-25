@@ -876,6 +876,15 @@ pub proof fn axiom_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, 
     admit();
 }
 
+/// Axiom: P + O = P (group identity law).
+/// The identity point is (0, 1) in affine coordinates.
+pub proof fn axiom_edwards_add_identity_right(P: (nat, nat))
+    ensures
+        edwards_add(P.0, P.1, 0, 1) == P,
+{
+    admit();
+}
+
 // =============================================================================
 // Lemma: select correctness (connects table lookup to signed scalar mul)
 // =============================================================================

@@ -2202,7 +2202,10 @@ impl EdwardsPoint {
         #[cfg(not(feature = "precomputed-tables"))]
         { scalar * constants::ED25519_BASEPOINT_POINT }
         #[cfg(feature = "precomputed-tables")]
-        { scalar * constants::ED25519_BASEPOINT_TABLE }
+        {
+            proof { axiom_ed25519_basepoint_table_valid(); }
+            scalar * constants::ED25519_BASEPOINT_TABLE
+        }
     }
 
     /// Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see
@@ -2854,6 +2857,7 @@ impl BasepointTable for EdwardsBasepointTable {
     fn mul_base(&self, scalar: &Scalar) -> (result: EdwardsPoint)
         requires
             scalar.bytes[31] <= 127,
+            is_valid_edwards_basepoint_table(*self, spec_ed25519_basepoint()),
         ensures
             is_well_formed_edwards_point(result),
             // Functional correctness: result = [scalar] * B

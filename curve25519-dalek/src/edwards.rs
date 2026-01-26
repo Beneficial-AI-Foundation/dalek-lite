@@ -3161,8 +3161,47 @@ impl BasepointTable for EdwardsBasepointTable {
                     // pippenger_partial(a@, i+1, B) = edwards_add(16*odd_sum, even_sum_up_to(a@, i+1, B))
                     // where even_sum_up_to(a@, i+1, B) = edwards_add(even_sum_up_to(a@, i, B), term_i)
                     // So pippenger_partial(a@, i+1, B) = edwards_add(pippenger_partial(a@, i, B), term_i)
-                    // ... if we had associativity. Use assume for now.
-                    assume(edwards_point_as_affine(P) == pippenger_partial(a@, (i + 1) as int, B));
+                    // ... using group-law associativity.
+                    let term_i = edwards_scalar_mul_signed(table_base, a[i as int] as int);
+                    assert(selected_affine == term_i);
+
+                    let p_i = pippenger_partial(a@, i as int, B);
+                    let p_ip1 = pippenger_partial(a@, (i + 1) as int, B);
+                    assert(old_P2_affine == p_i);
+
+                    let odd_sum = odd_sum_up_to(a@, 64, B);
+                    let scaled = edwards_scalar_mul(odd_sum, 16);
+                    let even_i = even_sum_up_to(a@, i as int, B);
+                    let even_ip1 = even_sum_up_to(a@, (i + 1) as int, B);
+                    assert(p_i == edwards_add(scaled.0, scaled.1, even_i.0, even_i.1));
+
+                    // Unfold even_sum_up_to at i+1 (since i is even in this branch).
+                    assert(even_ip1 == {
+                        let prev = even_sum_up_to(a@, i as int, B);
+                        edwards_add(prev.0, prev.1, term_i.0, term_i.1)
+                    });
+                    assert(even_ip1 == edwards_add(even_i.0, even_i.1, term_i.0, term_i.1));
+
+                    // Re-associate: (scaled + even_i) + term_i == scaled + (even_i + term_i).
+                    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_add_associative(
+                        scaled.0,
+                        scaled.1,
+                        even_i.0,
+                        even_i.1,
+                        term_i.0,
+                        term_i.1,
+                    );
+
+                    assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == edwards_add(scaled.0, scaled.1, even_ip1.0, even_ip1.1)) by {
+                        assert(p_i == edwards_add(scaled.0, scaled.1, even_i.0, even_i.1));
+                        assert(even_ip1 == edwards_add(even_i.0, even_i.1, term_i.0, term_i.1));
+                    }
+                    assert(p_ip1 == edwards_add(scaled.0, scaled.1, even_ip1.0, even_ip1.1));
+                    assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == p_ip1);
+
+                    // Our updated point is p_i + term_i, hence equals p_{i+1}.
+                    assert(edwards_point_as_affine(P) == edwards_add(p_i.0, p_i.1, term_i.0, term_i.1));
+                    assert(edwards_point_as_affine(P) == p_ip1);
                 }
             } else {
                 proof {
@@ -3182,8 +3221,17 @@ impl BasepointTable for EdwardsBasepointTable {
             // Now connect radix16_sum to edwards_scalar_mul:
             // radix16_sum(a@, B) == edwards_scalar_mul(B, reconstruct_radix_16(a@))
             // And from as_radix_2w postcondition: reconstruct_radix_16(a@) == scalar_to_nat(scalar)
-            // TODO: Prove lemma_radix16_sum_equals_scalar_mul
-            assume(radix16_sum(a@, B) == edwards_scalar_mul(B, scalar_to_nat(scalar)));
+            assert(reconstruct_radix_2w(a@.take(64), 4) == scalar_to_nat(scalar) as int);
+            assert(a@.take(64) =~= a@);
+            reveal(reconstruct_radix_16);
+            assert(reconstruct_radix_16(a@) == scalar_to_nat(scalar) as int);
+
+            crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_radix16_sum_correct(
+                a@,
+                B,
+                scalar_to_nat(scalar),
+            );
+            assert(radix16_sum(a@, B) == edwards_scalar_mul(B, scalar_to_nat(scalar)));
 
             // Postconditions:
             assert(is_well_formed_edwards_point(P));

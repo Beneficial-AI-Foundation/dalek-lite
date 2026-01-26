@@ -2918,51 +2918,21 @@ impl EdwardsPoint {
                     pow2(i as nat),
                 ),
         {
-            let ghost s_old = s;  // ghost copy for proof
             r = s.double();
             s = r.as_projective();
 
             proof {
-                let si = edwards_scalar_mul(point_affine, pow2(i as nat));
-                assert(projective_point_as_affine_edwards(s) == edwards_scalar_mul(
-                    point_affine,
-                    pow2((i + 1) as nat),
-                )) by {
-                    assert(projective_point_as_affine_edwards(s)
-                        == completed_point_as_affine_edwards(r));
-                    assert(completed_point_as_affine_edwards(r) == {
-                        let (x, y) = projective_point_as_affine_edwards(s_old);
-                        edwards_double(x, y)
-                    });
-                    assert(projective_point_as_affine_edwards(s_old) == si);
-                    assert(projective_point_as_affine_edwards(s) == edwards_double(si.0, si.1));
-                    lemma_edwards_scalar_mul_pow2_succ(point_affine, i as nat);
-                }
+                lemma_edwards_scalar_mul_pow2_succ(point_affine, i as nat);
             }
         }
 
-        // Unroll last iteration so we can go directly to as_extended()
+        // Unroll last iteration to go directly to as_extended() (avoids extra as_projective conversion)
         // ORIGINAL: let result = s.double().as_extended();
-        // Split for proof to reference intermediate CompletedPoint
         r = s.double();
         let result = r.as_extended();
+
         proof {
-            // At loop exit, i == k-1, so s corresponds to [2^(k-1)]P
-            let n = (k - 1) as nat;
-            let sk = edwards_scalar_mul(point_affine, pow2(n));
-            assert(edwards_point_as_affine(result) == edwards_scalar_mul(
-                point_affine,
-                pow2(k as nat),
-            )) by {
-                assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(r));
-                assert(completed_point_as_affine_edwards(r) == {
-                    let (x, y) = projective_point_as_affine_edwards(s);
-                    edwards_double(x, y)
-                });
-                assert(projective_point_as_affine_edwards(s) == sk);
-                lemma_edwards_scalar_mul_pow2_succ(point_affine, n);
-                assert(n + 1 == k as nat);
-            }
+            lemma_edwards_scalar_mul_pow2_succ(point_affine, (k - 1) as nat);
         }
 
         result

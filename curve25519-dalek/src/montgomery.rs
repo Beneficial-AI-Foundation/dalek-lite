@@ -79,7 +79,7 @@ use crate::specs::scalar_specs::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::bits_be_to_nat;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::{spec_clamp_integer, spec_scalar};
+use crate::specs::scalar_specs::spec_clamp_integer;
 
 use crate::traits::Identity;
 

@@ -831,7 +831,6 @@ proof fn lemma_seq_to_array_32_roundtrip(s: Seq<u8>)
 // =============================================================================
 // Lemmas for compress function
 // =============================================================================
-
 /// Lemma: If a value is < p() < 2^255, then bit 255 (high bit of byte 31) of its
 /// canonical byte encoding is 0.
 ///
@@ -850,7 +849,6 @@ pub proof fn lemma_canonical_bytes_bit255_zero(bytes: &[u8; 32], val: nat)
     // p() = 2^255 - 19 < 2^255, so val < 2^255
     // In little-endian encoding, if val < 2^255, then byte[31] < 128
     // Therefore (byte[31] >> 7) == 0
-
     let byte31 = bytes[31];
 
     // Step 1: Establish that val < pow2(255)
@@ -879,7 +877,9 @@ pub proof fn lemma_canonical_bytes_bit255_zero(bytes: &[u8; 32], val: nat)
             assert(bytes32_to_nat(bytes) >= (byte31 as nat) * pow2(248));
             // byte31 >= 128, so byte31 * pow2(248) >= 128 * pow2(248)
             assert((byte31 as nat) * pow2(248) >= 128 * pow2(248)) by (nonlinear_arith)
-                requires byte31 >= 128;
+                requires
+                    byte31 >= 128,
+            ;
             // 128 * pow2(248) = pow2(255)
             assert(128 * pow2(248) == pow2(255));
             // Therefore bytes32_to_nat(bytes) >= pow2(255)
@@ -893,7 +893,9 @@ pub proof fn lemma_canonical_bytes_bit255_zero(bytes: &[u8; 32], val: nat)
     // Step 5: High bit is 0
     // byte31 < 128 means byte31 < 2^7, so bit 7 (the high bit) must be 0
     assert((byte31 >> 7) == 0) by (bit_vector)
-        requires byte31 < 128;
+        requires
+            byte31 < 128,
+    ;
 }
 
 /// Lemma: is_negative captures parity of the field element value
@@ -906,7 +908,6 @@ pub proof fn lemma_is_negative_equals_parity(fe: &FieldElement51)
 {
     // The canonical byte encoding has bytes32_to_nat(bytes) == spec_field_element(fe)
     // In little-endian: bytes[0] & 1 = value % 2
-
     // Step 1: Connect spec_fe51_to_bytes to spec_field_element
     lemma_bytes32_to_nat_of_spec_fe51_to_bytes(fe);
     let bytes = seq_to_array_32(spec_fe51_to_bytes(fe));
@@ -925,7 +926,8 @@ pub proof fn lemma_is_negative_equals_parity(fe: &FieldElement51)
         lemma2_to64();
         assert(bytes@[0] == byte0);
         assert(bytes_to_nat_prefix(bytes@, 0) == 0);
-        assert(bytes_to_nat_prefix(bytes@, 1) == bytes_to_nat_prefix(bytes@, 0) + pow2(0) * bytes@[0] as nat);
+        assert(bytes_to_nat_prefix(bytes@, 1) == bytes_to_nat_prefix(bytes@, 0) + pow2(0)
+            * bytes@[0] as nat);
         assert(pow2(0) == 1);
         assert(bytes_to_nat_prefix(bytes@, 1) == 0 + 1 * (byte0 as nat));
     };
@@ -982,20 +984,22 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
     // spec_field_element_from_bytes(bytes) = (bytes32_to_nat(bytes) % pow2(255)) % p()
     // XOR only changes bit 255, which is cleared by % pow2(255)
     // So spec_field_element_from_bytes(s_after) == y_val
-
     let byte31_before = s_before[31];
     let byte31_after = s_after[31];
 
     // Establish byte31_before < 128 from the precondition
     assert(byte31_before < 128) by (bit_vector)
-        requires (byte31_before >> 7) == 0;
+        requires
+            (byte31_before >> 7) == 0,
+    ;
 
     // Step 1: Show XOR acts as addition when high bit is 0
     assert(byte31_after == byte31_before + sign_bit * 128) by (bit_vector)
         requires
             (byte31_before >> 7) == 0,
             sign_bit == 0 || sign_bit == 1,
-            byte31_after == (byte31_before ^ (sign_bit << 7));
+            byte31_after == (byte31_before ^ (sign_bit << 7)),
+    ;
 
     // Step 2: Establish pow2 relationships
     assert(pow2(7) == 128) by {
@@ -1064,18 +1068,21 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
         // bytes32_to_nat_rec(s_before, 31) = (byte31_before as nat) * pow2(248)
         // So: bytes32_to_nat(s_after) - bytes32_to_nat(s_before)
         //   = (byte31_after - byte31_before) * pow2(248)
-        assert(bytes32_to_nat(s_after) == bytes32_to_nat(s_before)
-            + ((byte31_after as nat) - (byte31_before as nat)) * pow2(248)) by (nonlinear_arith)
+        assert(bytes32_to_nat(s_after) == bytes32_to_nat(s_before) + ((byte31_after as nat) - (
+        byte31_before as nat)) * pow2(248)) by (nonlinear_arith)
             requires
                 bytes32_to_nat(s_after) == prefix_after + (byte31_after as nat) * pow2(248),
                 bytes32_to_nat(s_before) == prefix_before + (byte31_before as nat) * pow2(248),
-                prefix_after == prefix_before;
+                prefix_after == prefix_before,
+        ;
 
         assert((byte31_after as nat) == (byte31_before as nat) + (sign_bit as nat) * 128);
 
-        assert(((byte31_after as nat) - (byte31_before as nat)) * pow2(248)
-            == (sign_bit as nat) * 128 * pow2(248)) by (nonlinear_arith)
-            requires (byte31_after as nat) == (byte31_before as nat) + (sign_bit as nat) * 128;
+        assert(((byte31_after as nat) - (byte31_before as nat)) * pow2(248) == (sign_bit as nat)
+            * 128 * pow2(248)) by (nonlinear_arith)
+            requires
+                (byte31_after as nat) == (byte31_before as nat) + (sign_bit as nat) * 128,
+        ;
 
         assert((sign_bit as nat) * 128 * pow2(248) == (sign_bit as nat) * pow2(255)) by {
             assert((sign_bit as nat) * 128 * pow2(248) == (sign_bit as nat) * (128 * pow2(248)))
@@ -1126,7 +1133,8 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
         requires
             byte31_after == byte31_before + sign_bit * 128,
             byte31_before < 128,
-            sign_bit == 0 || sign_bit == 1;
+            sign_bit == 0 || sign_bit == 1,
+    ;
 }
 
 } // verus!

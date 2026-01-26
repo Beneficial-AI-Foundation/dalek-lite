@@ -1446,15 +1446,10 @@ impl EdwardsPoint {
             // Establish p() > 0 for lemma_mod_bound preconditions
             p_gt_2();
 
-            // Establish y_affine < p() (from math_field_mul definition: result = (a*b) % p < p)
-            // and x_affine < p() similarly
-            assert(y_affine < p()) by {
-                // math_field_mul returns (a * b) % p, which is < p
-                p_gt_2();
+            // Establish x_affine < p() and y_affine < p()
+            // (math_field_mul returns (a*b) % p, which is < p)
+            assert(y_affine < p() && x_affine < p()) by {
                 lemma_mod_bound((y_coord * z_inv) as int, p() as int);
-            };
-            assert(x_affine < p()) by {
-                p_gt_2();
                 lemma_mod_bound((x_coord * z_inv) as int, p() as int);
             };
 
@@ -2670,7 +2665,9 @@ impl BasepointTable for EdwardsBasepointTable {
         // Prove initialization: P = basepoint = pow256(0) * basepoint
         proof {
             // Show that pow256(0) == 1
-            assert(pow256(0) == pow2(8 * 0)) by { reveal(pow256); }
+            assert(pow256(0) == pow2(8 * 0)) by {
+                reveal(pow256);
+            }
             assert(pow256(0) == pow2(0));
             // Prove pow2(0) == 1 using vstd lemmas
             assert(pow2(0) == 1) by {
@@ -2681,7 +2678,10 @@ impl BasepointTable for EdwardsBasepointTable {
             // edwards_scalar_mul(P, 1) = P by definition
             reveal_with_fuel(edwards_scalar_mul, 2);
             // Establish the invariant
-            assert(edwards_scalar_mul(basepoint_affine, pow256(0)) == edwards_scalar_mul(basepoint_affine, 1));
+            assert(edwards_scalar_mul(basepoint_affine, pow256(0)) == edwards_scalar_mul(
+                basepoint_affine,
+                1,
+            ));
             assert(edwards_scalar_mul(basepoint_affine, 1) == basepoint_affine);
             assert(edwards_point_as_affine(P) == basepoint_affine);
         }
@@ -2693,7 +2693,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 // Track that P equals pow256(i) * basepoint at iteration i
                 edwards_point_as_affine(P) == edwards_scalar_mul(
                     edwards_point_as_affine(*basepoint),
-                    pow256(i as nat)
+                    pow256(i as nat),
                 ),
                 // All table entries filled so far (indices 0..i) are correct
                 forall|j: int|
@@ -2733,7 +2733,6 @@ impl BasepointTable for EdwardsBasepointTable {
                 //
                 // We need to show new_P satisfies:
                 // edwards_point_as_affine(new_P) == edwards_scalar_mul(basepoint_affine, pow256(i+1))
-
                 // First, establish pow256(i+1) = pow256(i) * pow2(8)
                 assert(pow256((i + 1) as nat) == pow256(i as nat) * pow2(8)) by {
                     assert(8 * ((i + 1) as nat) == 8 * (i as nat) + 8);
@@ -2745,10 +2744,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 //   == edwards_scalar_mul(basepoint, pow256(i) * pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i+1))
                 crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_composition_pow2(
-                    edwards_point_as_affine(*basepoint),
-                    pow256(i as nat),
-                    8
-                );
+                edwards_point_as_affine(*basepoint), pow256(i as nat), 8);
             }
         }
         proof {

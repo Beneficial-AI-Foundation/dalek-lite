@@ -17,6 +17,8 @@ use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 use crate::specs::core_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
+#[allow(unused_imports)]
+use crate::lemmas::scalar_lemmas::*;
 
 verus! {
 
@@ -165,9 +167,12 @@ impl Scalar {
     /// ```
     #[allow(clippy::needless_range_loop, clippy::op_ref)]
     pub fn sum_of_slice(scalars: &[Scalar]) -> (result: Scalar)
+        requires
+            forall|i: int| #![trigger scalars[i]] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars[i]),
         ensures
             scalar_to_nat(&result) < group_order(),
             scalar_congruent_nat(&result, sum_of_scalars(scalars@)),
+            is_canonical_scalar(&result),
     {
         let n = scalars.len();
         let mut acc = Scalar::ZERO;
@@ -175,6 +180,8 @@ impl Scalar {
         proof {
             lemma_scalar_zero_properties();
             assert(scalars@.subrange(0, 0) =~= Seq::<Scalar>::empty());
+            lemma_canonical_bytes_high_bit_clear(&Scalar::ZERO.bytes);
+            assert(is_canonical_scalar(&acc));
         }
 
         for i in 0..n
@@ -182,6 +189,7 @@ impl Scalar {
                 n == scalars.len(),
                 scalar_to_nat(&acc) < group_order(),
                 scalar_congruent_nat(&acc, sum_of_scalars(scalars@.subrange(0, i as int))),
+                is_canonical_scalar(&acc),
         {
             let _old_acc = acc;
 
@@ -189,6 +197,12 @@ impl Scalar {
                 // Inline: sum extends by one element
                 let sub = scalars@.subrange(0, (i + 1) as int);
                 assert(sub.subrange(0, i as int) =~= scalars@.subrange(0, i as int));
+                
+                // The loop ensures i < n == scalars.len()
+                // So the precondition forall should apply
+                // Try to manually trigger by referencing the indexed element
+                let _trigger = &scalars[i as int];
+                assert(is_canonical_scalar(_trigger));
             }
 
             acc = &acc + &scalars[i];

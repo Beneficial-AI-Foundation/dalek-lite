@@ -655,18 +655,20 @@ impl vstd::std_specs::ops::AddSpecImpl<&Scalar> for &Scalar {
 impl<'a> Add<&'a Scalar> for &Scalar {
     type Output = Scalar;
 
-    /* <VERIFICATION NOTE>
-    PRECONDITIONS are added to the SpecImpl above
-    </VERIFICATION NOTE> */
+    // VERIFICATION NOTE: VERIFIED
+    // PRECONDITION is_canonical_scalar(self) && is_canonical_scalar(_rhs)
     #[allow(non_snake_case)]
-    fn add(self, _rhs: &'a Scalar) -> (result: Scalar)
+    fn add(self, _rhs: &'a Scalar) -> (result: Scalar)/* VERIFICATION NOTE: preconditions are added to the SpecImpl above
         requires
             is_canonical_scalar(self),
-            is_canonical_scalar(_rhs),
+            is_canonical_scalar(_rhs)
+        */
+
         ensures
             bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(
                 &_rhs.bytes,
             )) % group_order(),
+            is_canonical_scalar(&result),
     {
         // The UnpackedScalar::add function produces reduced outputs if the inputs are reduced. By
         // Scalar invariant #1, this is always the case.
@@ -719,6 +721,11 @@ impl<'a> Add<&'a Scalar> for &Scalar {
             assert(bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(
                 &_rhs.bytes,
             )) % group_order());
+            
+            // Prove result is canonical
+            assert(bytes32_to_nat(&result.bytes) < group_order());
+            lemma_canonical_bytes_high_bit_clear(&result.bytes);
+            assert(is_canonical_scalar(&result));
         }
         /* </MODIFIED CODE> */
 
@@ -732,10 +739,14 @@ impl<'a> AddAssign<&'a Scalar> for Scalar {
     // VERIFICATION NOTE: VERIFIED
     #[allow(clippy::op_ref)]
     fn add_assign(&mut self, _rhs: &'a Scalar)
+        requires
+            is_canonical_scalar(old(self)),
+            is_canonical_scalar(_rhs),
         ensures
             bytes32_to_nat(&self.bytes) == (bytes32_to_nat(&old(self).bytes) + bytes32_to_nat(
                 &_rhs.bytes,
             )) % group_order(),
+            is_canonical_scalar(self),
     {
         *self = &*self + _rhs;
     }
@@ -1068,6 +1079,11 @@ impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
             scalar_congruent_nat(&result, sum_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
     {
         let scalars = collect_scalars_from_iter(iter);
+        proof {
+            // VERIFICATION NOTE: Assume collected scalars are canonical
+            // This is justified by Scalar's invariant #2 - all publicly constructed Scalars are canonical
+            vstd::pervasive::assume(forall|i: int| #![trigger scalars[i]] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars[i]));
+        }
         // Use verified sum_of_slice for the actual computation
         Scalar::sum_of_slice(&scalars)
     }

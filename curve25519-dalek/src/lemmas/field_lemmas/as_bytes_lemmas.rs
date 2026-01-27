@@ -831,14 +831,10 @@ proof fn lemma_seq_to_array_32_roundtrip(s: Seq<u8>)
 // =============================================================================
 // Lemmas for compress function
 // =============================================================================
-/// Lemma: If a value is < p() < 2^255, then bit 255 (high bit of byte 31) of its
-/// canonical byte encoding is 0.
+/// Canonical field element bytes have high bit (bit 255) equal to 0.
 ///
-/// ## Mathematical basis
-/// - p = 2^255 - 19 < 2^255
-/// - If val < p, then val < 2^255
-/// - In little-endian, bit 255 = byte[31] >> 7
-/// - If val < 2^255, then byte[31] < 128, so (byte[31] >> 7) == 0
+/// Since p = 2^255 - 19 < 2^255, any value < p has byte[31] < 128,
+/// so (byte[31] >> 7) == 0.
 pub proof fn lemma_canonical_bytes_bit255_zero(bytes: &[u8; 32], val: nat)
     requires
         bytes32_to_nat(bytes) == val,
@@ -898,10 +894,9 @@ pub proof fn lemma_canonical_bytes_bit255_zero(bytes: &[u8; 32], val: nat)
     ;
 }
 
-/// Lemma: is_negative captures parity of the field element value
+/// The low bit of the byte encoding equals the parity of the field element.
 ///
-/// Connects the spec of is_negative (spec_fe51_to_bytes(fe)[0] & 1)
-/// to spec_field_element(fe) % 2
+/// (spec_fe51_to_bytes(fe)[0] & 1 == 1) <==> (spec_field_element(fe) % 2 == 1)
 pub proof fn lemma_is_negative_equals_parity(fe: &FieldElement51)
     ensures
         (spec_fe51_to_bytes(fe)[0] & 1 == 1) == (spec_field_element(fe) % 2 == 1),
@@ -958,11 +953,11 @@ pub proof fn lemma_is_negative_equals_parity(fe: &FieldElement51)
     assert((byte0 & 1 == 1) == ((byte0 as nat) % 2 == 1)) by (bit_vector);
 }
 
-/// Lemma: XOR-ing the sign bit into byte[31] preserves the y-value
-/// when interpreted via spec_field_element_from_bytes
+/// Point compression stores the sign of x in bit 255 of the y-encoding.
 ///
-/// spec_field_element_from_bytes clears bit 255 (via % pow2(255)) before taking mod p,
-/// so it recovers the original value regardless of the sign bit.
+/// After XOR-ing sign_bit into s_before[31]'s high bit:
+/// 1. Decoding s_after still recovers y_val (bit 255 is cleared by % pow2(255))
+/// 2. s_after[31]'s high bit equals sign_bit
 pub proof fn lemma_xor_sign_bit_preserves_y(
     s_before: &[u8; 32],
     s_after: &[u8; 32],
@@ -970,15 +965,20 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
     sign_bit: u8,
 )
     requires
+// s_before encodes y_val (a canonical field element)
+
         bytes32_to_nat(s_before) == y_val,
         y_val < p(),
-        (s_before[31] >> 7) == 0,  // original high bit is 0
+        (s_before[31] >> 7) == 0,  // bit 255 is 0 (since y_val < p < 2^255)
         sign_bit == 0 || sign_bit == 1,
-        // s_after is s_before with byte[31] XOR'd with sign_bit << 7
+        // s_after = s_before with sign_bit XOR'd into bit 255
         forall|i: int| 0 <= i < 31 ==> s_after[i] == s_before[i],
         s_after[31] == (s_before[31] ^ (sign_bit << 7)),
     ensures
+// decoding s_after still yields y_val
+
         spec_field_element_from_bytes(s_after) == y_val,
+        // bit 255 now contains sign_bit
         (s_after[31] >> 7) == sign_bit,
 {
     // spec_field_element_from_bytes(bytes) = (bytes32_to_nat(bytes) % pow2(255)) % p()
@@ -1010,8 +1010,12 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
     };
 
     // Step 3: Compute bytes32_to_nat(s_after)
-    lemma_bytes32_to_nat_lower_bound(s_after, 31);
-    lemma_bytes32_to_nat_lower_bound(s_before, 31);
+    assert(bytes32_to_nat(s_after) >= (s_after[31] as nat) * pow2(248)) by {
+        lemma_bytes32_to_nat_lower_bound(s_after, 31);
+    };
+    assert(bytes32_to_nat(s_before) >= (s_before[31] as nat) * pow2(248)) by {
+        lemma_bytes32_to_nat_lower_bound(s_before, 31);
+    };
 
     // For bytes32_to_nat, we can express the difference due to byte31 change
     // bytes32_to_nat(s_after) = bytes32_to_nat(s_before) + (byte31_after - byte31_before) * pow2(248)

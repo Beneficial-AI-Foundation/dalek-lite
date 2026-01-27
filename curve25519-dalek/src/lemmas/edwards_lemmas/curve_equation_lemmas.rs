@@ -966,8 +966,8 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
         };
 
         // [m]P + [n-1]P = [m+n-1]P (inductive hypothesis)
-        assert(edwards_add(pm.0, pm.1, pnm1.0, pnm1.1)
-            == edwards_scalar_mul(point_affine, m + nm1)) by {
+        assert(edwards_add(pm.0, pm.1, pnm1.0, pnm1.1) == edwards_scalar_mul(point_affine, m + nm1))
+            by {
             lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
         };
 
@@ -982,14 +982,20 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
         };
 
         // [m]P + ([n-1]P + P) = ([m]P + [n-1]P) + P (associativity)
-        assert(edwards_add(pm.0, pm.1, pn.0, pn.1)
-            == edwards_add(
-                edwards_add(pm.0, pm.1, pnm1.0, pnm1.1).0,
-                edwards_add(pm.0, pm.1, pnm1.0, pnm1.1).1,
+        assert(edwards_add(pm.0, pm.1, pn.0, pn.1) == edwards_add(
+            edwards_add(pm.0, pm.1, pnm1.0, pnm1.1).0,
+            edwards_add(pm.0, pm.1, pnm1.0, pnm1.1).1,
+            point_affine.0,
+            point_affine.1,
+        )) by {
+            lemma_edwards_add_associative(
+                pm.0,
+                pm.1,
+                pnm1.0,
+                pnm1.1,
                 point_affine.0,
                 point_affine.1,
-            )) by {
-            lemma_edwards_add_associative(pm.0, pm.1, pnm1.0, pnm1.1, point_affine.0, point_affine.1);
+            );
         };
     }
 }
@@ -1009,14 +1015,30 @@ pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat
         },
 {
     reveal_with_fuel(edwards_scalar_mul, 1);
-    lemma_pow2_pos(k + 1);
-    lemma_pow2_even(k + 1);
-    lemma2_to64();
-    pow2_MUL_div(1, k + 1, 1);
 
-    // pow2(k+1) is positive, even, != 1, and pow2(k+1)/2 == pow2(k)
-    assert(pow2(k + 1) != 0 && pow2(k + 1) % 2 == 0 && pow2(k + 1) != 1);
-    assert(pow2(k + 1) / 2 == pow2(k));
+    // pow2(k+1) > 0
+    assert(pow2(k + 1) != 0) by {
+        lemma_pow2_pos(k + 1);
+        lemma2_to64();
+    };
+
+    // pow2(k+1) is even (for k+1 >= 1)
+    assert(pow2(k + 1) % 2 == 0) by {
+        lemma_pow2_even(k + 1);
+        lemma2_to64();
+    };
+
+    // pow2(k+1) >= 2 for k >= 0, so != 1
+    assert(pow2(k + 1) != 1) by {
+        lemma_pow2_pos(k + 1);
+        lemma2_to64();
+    };
+
+    // pow2(k+1) / 2 == pow2(k)
+    assert(pow2(k + 1) / 2 == pow2(k)) by {
+        pow2_MUL_div(1, k + 1, 1);
+        lemma2_to64();
+    };
 }
 
 /// **Lemma**: Scalar multiplication composition for powers of 2

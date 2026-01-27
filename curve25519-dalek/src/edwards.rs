@@ -1462,16 +1462,16 @@ impl EdwardsPoint {
             // 2. (s[31] >> 7) == (((x_affine % p()) % 2) as u8) (the sign bit)
 
             // Prove s_before_xor has bit 255 clear
-            lemma_canonical_bytes_bit255_zero(&s_before_xor, y_affine);
-            assert((s_before_xor[31] >> 7) == 0);
+            assert((s_before_xor[31] >> 7) == 0) by {
+                lemma_canonical_bytes_bit255_zero(&s_before_xor, y_affine);
+            };
 
             // Connect is_negative to x_affine parity
-            // is_neg_choice postcondition: choice_is_true(is_neg_choice) == (spec_fe51_to_bytes(&x)[0] & 1 == 1)
-            lemma_is_negative_equals_parity(&x);
-            // lemma gives: (spec_fe51_to_bytes(&x)[0] & 1 == 1) == (spec_field_element(&x) % 2 == 1)
-            assert(choice_is_true(is_neg_choice) == (spec_field_element(&x) % 2 == 1));
-            assert(spec_field_element(&x) == x_affine);
-            assert(choice_is_true(is_neg_choice) == (x_affine % 2 == 1));
+            assert(choice_is_true(is_neg_choice) == (x_affine % 2 == 1)) by {
+                lemma_is_negative_equals_parity(&x);
+                assert(choice_is_true(is_neg_choice) == (spec_field_element(&x) % 2 == 1));
+                assert(spec_field_element(&x) == x_affine);
+            };
 
             // unwrap_u8 converts choice to u8: true->1, false->0
             // Establish sign_bit value based on unwrap_u8 spec
@@ -1494,9 +1494,9 @@ impl EdwardsPoint {
             };
 
             // Prove XOR preserves y and sets sign bit
-            lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
-            assert(spec_field_element_from_bytes(&s) == y_affine);
-            assert((s[31] >> 7) == sign_bit);
+            assert(spec_field_element_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit) by {
+                lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
+            };
 
             // Both parts of compressed_edwards_y_corresponds_to_edwards are satisfied
             assert(compressed_edwards_y_corresponds_to_edwards(CompressedEdwardsY(s), *self));

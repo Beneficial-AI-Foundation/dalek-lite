@@ -1,0 +1,27 @@
+name: Proof Counter CI
+
+on:
+  pull_request:
+
+jobs:
+  check-csv:
+    name: Check CSV generation works
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for temporal charts
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Generate CSV from seed file
+        run: |
+          scripts/analyze_verus_specs_proofs.py
+          scripts/csv_to_markdown.py
+      - name: Upload CSV as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: curve25519-functions-csv
+          path: outputs/curve25519_functions.csv
+          retention-days: 30

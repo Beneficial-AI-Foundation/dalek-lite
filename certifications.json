@@ -1,6 +1,21 @@
 {
   "certifications": [
     {
+      "timestamp": "2026-01-27T11:31:49Z",
+      "commit_sha": "6755d42533beb6228c41537a7a8184f37aaf94b7",
+      "commit_short": "6755d42",
+      "artifact_url": "https://github.com/Beneficial-AI-Foundation/dalek-lite/actions/runs/21395421992",
+      "content_hash": "0x2eb059274929c497fa9aa1df6be606127bdc7a592ba8ffb7ec52a6366892b2ed",
+      "mainnet_tx": "",
+      "mainnet_etherscan": "",
+      "sepolia_tx": "0x3346d0f9c8c50233110522b114b809483dd0675c639ab06db3171fdd5cb38615",
+      "sepolia_etherscan": "https://sepolia.etherscan.io/tx/0x3346d0f9c8c50233110522b114b809483dd0675c639ab06db3171fdd5cb38615",
+      "verus_version": "0.2026.01.14.88f7396",
+      "rust_version": "1.92.0",
+      "verified_count": 505,
+      "total_functions": 581
+    },
+    {
       "timestamp": "2026-01-27T10:51:01Z",
       "commit_sha": "b8aceee61623a241b804cd625ace7c098caaebcc",
       "commit_short": "b8aceee",

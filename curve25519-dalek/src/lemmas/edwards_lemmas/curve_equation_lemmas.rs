@@ -570,44 +570,9 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
     ensures
         edwards_add(0, 1, x, y) == (x % p(), y % p()),
 {
-    // Field facts used throughout
-    p_gt_2();
-    lemma_field_inv_one();
-    lemma_small_mod(0nat, p());
-    lemma_small_mod(1nat, p());
-    lemma_small_mod(x % p(), p());
-    lemma_small_mod(y % p(), p());
-    lemma_mod_multiples_vanish(1, 1, p() as int);
-
-    // Multiplication lemmas: 0*a=0, 1*a=a
-    lemma_field_mul_zero_left(0nat, x);
-    lemma_field_mul_zero_left(0nat, y);
-    lemma_field_mul_one_left(x);
-    lemma_field_mul_one_left(y);
-    lemma_field_mul_one_right(x % p());
-    lemma_field_mul_one_right(y % p());
-
-    // Intermediate values
-    let x1x2 = math_field_mul(0nat, x);
-    let y1y2 = math_field_mul(1nat, y);
-    let x1y2 = math_field_mul(0nat, y);
-    let y1x2 = math_field_mul(1nat, x);
-    assert(x1x2 == 0 && x1y2 == 0 && y1y2 == y % p() && y1x2 == x % p());
-
-    // t = d * 0 = 0
-    let t = math_field_mul(spec_field_element(&EDWARDS_D), math_field_mul(x1x2, y1y2));
-    assert(t == 0) by {
-        lemma_field_mul_zero_left(x1x2, y1y2);
-        lemma_field_mul_zero_right(spec_field_element(&EDWARDS_D), 0nat);
-    }
-
-    // Denominators: 1+0=1, 1-0=1, inv(1)=1
-    let denom_x = math_field_add(1nat, t);
-    let denom_y = math_field_sub(1nat, t);
-    assert(denom_x == 1 && denom_y == 1);
-    assert(math_field_inv(denom_x) == 1 && math_field_inv(denom_y) == 1);
-
-    // Result: x3 = (0 + x%p) * 1 = x%p, y3 = (y%p + 0) * 1 = y%p
+    // Follows from commutativity and right-identity
+    lemma_edwards_add_commutative(0, 1, x, y);
+    lemma_edwards_add_identity_right(x, y);
 }
 
 /// Lemma: The Edwards identity `(0, 1)` is a right-identity for `edwards_add`.

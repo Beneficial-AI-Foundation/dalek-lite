@@ -539,66 +539,28 @@ pub proof fn lemma_edwards_double_identity()
     ensures
         edwards_double(0, 1) == (0nat, 1nat),
 {
-    // Expand edwards_double into edwards_add and simplify using field algebra.
+    // Field facts used throughout
     p_gt_2();
     lemma_field_inv_one();
+    lemma_small_mod(0nat, p());
+    lemma_small_mod(1nat, p());
+    lemma_mod_multiples_vanish(1, 1, p() as int);
 
-    // Unfold `edwards_add(0,1,0,1)` enough to simplify the constants.
-    let d = spec_field_element(&EDWARDS_D);
-
+    // Intermediate values: 0*0=0, 1*1=1, d*0*1=0
     let x1x2 = math_field_mul(0nat, 0nat);
-    assert(x1x2 == 0) by {
-        lemma_small_mod(0nat, p());
-    }
-
     let y1y2 = math_field_mul(1nat, 1nat);
-    assert(y1y2 == 1) by {
-        lemma_small_mod(1nat, p());
-    }
+    assert(x1x2 == 0);
+    assert(y1y2 == 1);
+    let t = math_field_mul(spec_field_element(&EDWARDS_D), math_field_mul(x1x2, y1y2));
+    assert(t == 0);
 
-    let x1y2 = math_field_mul(0nat, 1nat);
-    assert(x1y2 == 0) by {
-        lemma_small_mod(0nat, p());
-    }
-
-    let y1x2 = math_field_mul(1nat, 0nat);
-    assert(y1x2 == 0) by {
-        lemma_small_mod(0nat, p());
-    }
-
-    let t = math_field_mul(d, math_field_mul(x1x2, y1y2));
-    assert(t == 0) by {
-        lemma_small_mod(0nat, p());
-    }
-
+    // Denominators: 1+0=1, 1-0=1, inv(1)=1
     let denom_x = math_field_add(1nat, t);
-    assert(denom_x == 1) by {
-        lemma_small_mod(1nat, p());
-    }
-
     let denom_y = math_field_sub(1nat, t);
-    assert(denom_y == 1) by {
-        lemma_small_mod(1nat, p());
-        lemma_small_mod(0nat, p());
-        // math_field_sub(1,0) = ((1%p + p) - (0%p)) % p = (1+p) % p = 1
-        lemma_mod_multiples_vanish(1, 1, p() as int);
-    }
+    assert(denom_x == 1 && denom_y == 1);
+    assert(math_field_inv(denom_x) == 1 && math_field_inv(denom_y) == 1);
 
-    assert(math_field_inv(denom_x) == 1);
-    assert(math_field_inv(denom_y) == 1);
-
-    let x3 = math_field_mul(math_field_add(x1y2, y1x2), math_field_inv(denom_x));
-    assert(x3 == 0) by {
-        lemma_small_mod(0nat, p());
-    }
-
-    let y3 = math_field_mul(math_field_add(y1y2, x1x2), math_field_inv(denom_y));
-    assert(y3 == 1) by {
-        lemma_small_mod(1nat, p());
-    }
-
-    assert(edwards_add(0, 1, 0, 1) == (0nat, 1nat));
-    assert(edwards_double(0, 1) == (0nat, 1nat));
+    // Result follows from edwards_add definition
 }
 
 /// Lemma: The Edwards identity `(0, 1)` is a left-identity for `edwards_add`.
@@ -608,105 +570,44 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
     ensures
         edwards_add(0, 1, x, y) == (x % p(), y % p()),
 {
+    // Field facts used throughout
     p_gt_2();
     lemma_field_inv_one();
+    lemma_small_mod(0nat, p());
+    lemma_small_mod(1nat, p());
+    lemma_small_mod(x % p(), p());
+    lemma_small_mod(y % p(), p());
+    lemma_mod_multiples_vanish(1, 1, p() as int);
 
-    let d = spec_field_element(&EDWARDS_D);
+    // Multiplication lemmas: 0*a=0, 1*a=a
+    lemma_field_mul_zero_left(0nat, x);
+    lemma_field_mul_zero_left(0nat, y);
+    lemma_field_mul_one_left(x);
+    lemma_field_mul_one_left(y);
+    lemma_field_mul_one_right(x % p());
+    lemma_field_mul_one_right(y % p());
 
-    // x1x2 = 0*x = 0
+    // Intermediate values
     let x1x2 = math_field_mul(0nat, x);
-    assert(x1x2 == 0) by {
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_left(0nat, x);
-    }
-
-    // y1y2 = 1*y = y % p
     let y1y2 = math_field_mul(1nat, y);
-    assert(y1y2 == y % p()) by {
-        lemma_field_mul_one_left(y);
-    }
-
-    // x1y2 = 0*y = 0
     let x1y2 = math_field_mul(0nat, y);
-    assert(x1y2 == 0) by {
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_left(0nat, y);
-    }
-
-    // y1x2 = 1*x = x % p
     let y1x2 = math_field_mul(1nat, x);
-    assert(y1x2 == x % p()) by {
-        lemma_field_mul_one_left(x);
-    }
+    assert(x1x2 == 0 && x1y2 == 0 && y1y2 == y % p() && y1x2 == x % p());
 
-    // t = d * (0 * (y%p)) = 0
-    let t = math_field_mul(d, math_field_mul(x1x2, y1y2));
+    // t = d * 0 = 0
+    let t = math_field_mul(spec_field_element(&EDWARDS_D), math_field_mul(x1x2, y1y2));
     assert(t == 0) by {
-        assert(math_field_mul(x1x2, y1y2) == 0) by {
-            assert(x1x2 % p() == 0) by {
-                lemma_small_mod(0nat, p());
-            }
-            lemma_field_mul_zero_left(x1x2, y1y2);
-        }
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_right(d, 0nat);
+        lemma_field_mul_zero_left(x1x2, y1y2);
+        lemma_field_mul_zero_right(spec_field_element(&EDWARDS_D), 0nat);
     }
 
+    // Denominators: 1+0=1, 1-0=1, inv(1)=1
     let denom_x = math_field_add(1nat, t);
-    assert(denom_x == 1) by {
-        lemma_small_mod(1nat, p());
-    }
-
     let denom_y = math_field_sub(1nat, t);
-    assert(denom_y == 1) by {
-        lemma_small_mod(1nat, p());
-        lemma_small_mod(0nat, p());
-        lemma_mod_multiples_vanish(1, 1, p() as int);
-    }
+    assert(denom_x == 1 && denom_y == 1);
+    assert(math_field_inv(denom_x) == 1 && math_field_inv(denom_y) == 1);
 
-    assert(math_field_inv(denom_x) == 1);
-    assert(math_field_inv(denom_y) == 1);
-
-    // x3 = (0*y + 1*x) / 1 = x % p
-    let x3 = math_field_mul(math_field_add(x1y2, y1x2), math_field_inv(denom_x));
-    assert(x3 == x % p()) by {
-        assert(math_field_add(x1y2, y1x2) == x % p()) by {
-            assert(x1y2 == 0);
-            assert(y1x2 == x % p());
-            assert(math_field_add(0nat, x % p()) == x % p()) by {
-                assert(0nat + x % p() == x % p());
-                lemma_small_mod(x % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_x) == 1);
-        // (x%p) * 1 = x%p (mod p)
-        lemma_field_mul_one_right(x % p());
-        lemma_small_mod(x % p(), p());
-    }
-
-    // y3 = (1*y + 0*x) / 1 = y % p
-    let y3 = math_field_mul(math_field_add(y1y2, x1x2), math_field_inv(denom_y));
-    assert(y3 == y % p()) by {
-        assert(math_field_add(y1y2, x1x2) == y % p()) by {
-            assert(y1y2 == y % p());
-            assert(x1x2 == 0);
-            assert(math_field_add(y % p(), 0nat) == y % p()) by {
-                assert(y % p() + 0nat == y % p());
-                lemma_small_mod(y % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_y) == 1);
-        lemma_field_mul_one_right(y % p());
-        lemma_small_mod(y % p(), p());
-    }
-
-    assert(edwards_add(0, 1, x, y) == (x % p(), y % p()));
+    // Result: x3 = (0 + x%p) * 1 = x%p, y3 = (y%p + 0) * 1 = y%p
 }
 
 /// Lemma: The Edwards identity `(0, 1)` is a right-identity for `edwards_add`.
@@ -716,104 +617,44 @@ pub proof fn lemma_edwards_add_identity_right(x: nat, y: nat)
     ensures
         edwards_add(x, y, 0, 1) == (x % p(), y % p()),
 {
+    // Field facts used throughout
     p_gt_2();
     lemma_field_inv_one();
+    lemma_small_mod(0nat, p());
+    lemma_small_mod(1nat, p());
+    lemma_small_mod(x % p(), p());
+    lemma_small_mod(y % p(), p());
+    lemma_mod_multiples_vanish(1, 1, p() as int);
 
-    let d = spec_field_element(&EDWARDS_D);
+    // Multiplication lemmas: a*0=0, a*1=a
+    lemma_field_mul_zero_right(x, 0nat);
+    lemma_field_mul_zero_right(y, 0nat);
+    lemma_field_mul_one_right(x);
+    lemma_field_mul_one_right(y);
+    lemma_field_mul_one_right(x % p());
+    lemma_field_mul_one_right(y % p());
 
-    // x1x2 = x*0 = 0
+    // Intermediate values
     let x1x2 = math_field_mul(x, 0nat);
-    assert(x1x2 == 0) by {
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_right(x, 0nat);
-    }
-
-    // y1y2 = y*1 = y % p
     let y1y2 = math_field_mul(y, 1nat);
-    assert(y1y2 == y % p()) by {
-        lemma_field_mul_one_right(y);
-    }
-
-    // x1y2 = x*1 = x % p
     let x1y2 = math_field_mul(x, 1nat);
-    assert(x1y2 == x % p()) by {
-        lemma_field_mul_one_right(x);
-    }
-
-    // y1x2 = y*0 = 0
     let y1x2 = math_field_mul(y, 0nat);
-    assert(y1x2 == 0) by {
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_right(y, 0nat);
-    }
+    assert(x1x2 == 0 && y1x2 == 0 && y1y2 == y % p() && x1y2 == x % p());
 
-    // t = d * ((x*0) * (y%p)) = 0
-    let t = math_field_mul(d, math_field_mul(x1x2, y1y2));
+    // t = d * 0 = 0
+    let t = math_field_mul(spec_field_element(&EDWARDS_D), math_field_mul(x1x2, y1y2));
     assert(t == 0) by {
-        assert(math_field_mul(x1x2, y1y2) == 0) by {
-            assert(x1x2 % p() == 0) by {
-                lemma_small_mod(0nat, p());
-            }
-            lemma_field_mul_zero_left(x1x2, y1y2);
-        }
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_right(d, 0nat);
+        lemma_field_mul_zero_left(x1x2, y1y2);
+        lemma_field_mul_zero_right(spec_field_element(&EDWARDS_D), 0nat);
     }
 
+    // Denominators: 1+0=1, 1-0=1, inv(1)=1
     let denom_x = math_field_add(1nat, t);
-    assert(denom_x == 1) by {
-        lemma_small_mod(1nat, p());
-    }
-
     let denom_y = math_field_sub(1nat, t);
-    assert(denom_y == 1) by {
-        lemma_small_mod(1nat, p());
-        lemma_small_mod(0nat, p());
-        lemma_mod_multiples_vanish(1, 1, p() as int);
-    }
+    assert(denom_x == 1 && denom_y == 1);
+    assert(math_field_inv(denom_x) == 1 && math_field_inv(denom_y) == 1);
 
-    assert(math_field_inv(denom_x) == 1);
-    assert(math_field_inv(denom_y) == 1);
-
-    // x3 = (x*1 + y*0) / 1 = x % p
-    let x3 = math_field_mul(math_field_add(x1y2, y1x2), math_field_inv(denom_x));
-    assert(x3 == x % p()) by {
-        assert(math_field_add(x1y2, y1x2) == x % p()) by {
-            assert(x1y2 == x % p());
-            assert(y1x2 == 0);
-            assert(math_field_add(x % p(), 0nat) == x % p()) by {
-                assert(x % p() + 0nat == x % p());
-                lemma_small_mod(x % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_x) == 1);
-        lemma_field_mul_one_right(x % p());
-        lemma_small_mod(x % p(), p());
-    }
-
-    // y3 = (y*1 + x*0) / 1 = y % p
-    let y3 = math_field_mul(math_field_add(y1y2, x1x2), math_field_inv(denom_y));
-    assert(y3 == y % p()) by {
-        assert(math_field_add(y1y2, x1x2) == y % p()) by {
-            assert(y1y2 == y % p());
-            assert(x1x2 == 0);
-            assert(math_field_add(y % p(), 0nat) == y % p()) by {
-                assert(y % p() + 0nat == y % p());
-                lemma_small_mod(y % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_y) == 1);
-        lemma_field_mul_one_right(y % p());
-        lemma_small_mod(y % p(), p());
-    }
-
-    assert(edwards_add(x, y, 0, 1) == (x % p(), y % p()));
+    // Result: x3 = (x%p + 0) * 1 = x%p, y3 = (y%p + 0) * 1 = y%p
 }
 
 /// Lemma: Edwards addition is commutative.

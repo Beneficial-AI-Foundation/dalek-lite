@@ -136,10 +136,7 @@ use crate::backend::serial::curve_models::ProjectivePoint;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::core_assumes::{compressed_edwards_y_from_array_result, try_into_32_bytes_array};
 #[cfg(verus_keep_ghost)]
-use vstd::arithmetic::power2::{
-    lemma2_to64, lemma2_to64_rest, lemma_pow2_adds, lemma_pow2_pos, lemma_pow2_strictly_increases,
-    pow2,
-};
+use vstd::arithmetic::power2::*;
 
 /* VERIFICATION NOTE: Only importing LookupTableRadix16 since other radix variants
 were removed during manual expansion focusing on radix-16. */
@@ -2897,6 +2894,9 @@ impl EdwardsPoint {
                 lemma2_to64();
             }
             reveal_with_fuel(edwards_scalar_mul, 1);
+            // Add mul_basics lemmas for stability (1 * x == x inference)
+            vstd::arithmetic::mul::lemma_mul_basics_3(1int);
+            vstd::arithmetic::mul::lemma_mul_basics_4(1int);
             assert(projective_point_as_affine_edwards(s) == point_affine);
             assert(projective_point_as_affine_edwards(s) == edwards_scalar_mul(
                 point_affine,

@@ -134,39 +134,19 @@ pub(crate) proof fn lemma_scalar_to_nat_basepoint_order_private_equals_group_ord
     assert(scalar_to_nat(&constants::BASEPOINT_ORDER_PRIVATE) == expanded);
 
     // Basic pow2 facts for the 64-bit word computations.
-    assert(pow2(0) == 1) by {
-        lemma2_to64();
-    }
-    assert(pow2(4) == 16) by {
-        lemma2_to64();
-    }
-    assert(pow2(8) == 256) by {
-        lemma2_to64();
-    }
-    assert(pow2(16) == 65536) by {
-        lemma2_to64();
-    }
-    assert(pow2(24) == 16777216) by {
-        lemma2_to64();
-    }
-    assert(pow2(32) == 4294967296) by {
-        lemma2_to64();
-    }
-    assert(pow2(40) == 1099511627776) by {
-        lemma2_to64_rest();
-    }
-    assert(pow2(48) == 281474976710656) by {
-        lemma2_to64_rest();
-    }
-    assert(pow2(56) == 72057594037927936) by {
-        lemma2_to64_rest();
-    }
-
-    // 2^64 = 2^56 * 2^8.
-    assert(pow2(64) == 0x10000000000000000) by {
-        lemma_pow2_adds(56, 8);
-        assert(pow2(64) == pow2(56) * pow2(8));
-    }
+    // Call lemmas once at the top for all pow2 values needed below.
+    lemma2_to64();
+    lemma2_to64_rest();
+    assert(pow2(0) == 1);
+    assert(pow2(4) == 16);
+    assert(pow2(8) == 256);
+    assert(pow2(16) == 65536);
+    assert(pow2(24) == 16777216);
+    assert(pow2(32) == 4294967296);
+    assert(pow2(40) == 1099511627776);
+    assert(pow2(48) == 281474976710656);
+    assert(pow2(56) == 72057594037927936);
+    assert(pow2(64) == 0x10000000000000000);
 
     // Split into two 64-bit words (low 128 bits) plus the top byte (bit 252 set).
     let word0: nat = 237nat * pow2(0) + 211nat * pow2(8) + 245nat * pow2(16) + 92nat * pow2(24)

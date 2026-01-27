@@ -956,21 +956,41 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
         lemma_edwards_scalar_mul_succ(point_affine, m);
     } else {
         let nm1 = (n - 1) as nat;
-
-        // Set up lemmas for induction
-        lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
-        lemma_edwards_scalar_mul_succ(point_affine, nm1);
-        lemma_edwards_scalar_mul_succ(point_affine, m + nm1);
-
         let pm = edwards_scalar_mul(point_affine, m);
         let pnm1 = edwards_scalar_mul(point_affine, nm1);
-        let pm_plus_nm1 = edwards_scalar_mul(point_affine, m + nm1);
+        let pn = edwards_scalar_mul(point_affine, n);
 
-        // Use associativity: [m]P + ([n-1]P + P) = ([m]P + [n-1]P) + P
-        lemma_edwards_add_associative(pm.0, pm.1, pnm1.0, pnm1.1, point_affine.0, point_affine.1);
+        // [n]P = [n-1]P + P
+        assert(pn == edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1)) by {
+            lemma_edwards_scalar_mul_succ(point_affine, nm1);
+        };
 
-        // Chain: [m]P + [n]P = [m]P + ([n-1]P + P) = ([m]P + [n-1]P) + P
-        //                    = [m+n-1]P + P = [m+n]P
+        // [m]P + [n-1]P = [m+n-1]P (inductive hypothesis)
+        assert(edwards_add(pm.0, pm.1, pnm1.0, pnm1.1)
+            == edwards_scalar_mul(point_affine, m + nm1)) by {
+            lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
+        };
+
+        // [m+n-1]P + P = [m+n]P
+        assert(edwards_scalar_mul(point_affine, m + n) == edwards_add(
+            edwards_scalar_mul(point_affine, m + nm1).0,
+            edwards_scalar_mul(point_affine, m + nm1).1,
+            point_affine.0,
+            point_affine.1,
+        )) by {
+            lemma_edwards_scalar_mul_succ(point_affine, m + nm1);
+        };
+
+        // [m]P + ([n-1]P + P) = ([m]P + [n-1]P) + P (associativity)
+        assert(edwards_add(pm.0, pm.1, pn.0, pn.1)
+            == edwards_add(
+                edwards_add(pm.0, pm.1, pnm1.0, pnm1.1).0,
+                edwards_add(pm.0, pm.1, pnm1.0, pnm1.1).1,
+                point_affine.0,
+                point_affine.1,
+            )) by {
+            lemma_edwards_add_associative(pm.0, pm.1, pnm1.0, pnm1.1, point_affine.0, point_affine.1);
+        };
     }
 }
 

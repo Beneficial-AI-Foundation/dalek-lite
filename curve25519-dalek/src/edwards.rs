@@ -203,6 +203,8 @@ use crate::specs::montgomery_specs::*;
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
+#[allow(unused_imports)]
+use crate::specs::window_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
@@ -2698,7 +2700,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 // All table entries filled so far (indices 0..i) are correct
                 forall|j: int|
                     #![trigger table.0[j as int]]
-                    0 <= j < i ==> crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                    0 <= j < i ==> is_valid_lookup_table_affine_coords(
                         table.0[j as int].0,
                         edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(j as nat)),
                         8,
@@ -2715,7 +2717,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 // edwards_point_as_affine(P) == edwards_scalar_mul(basepoint_affine, pow256(i))
                 //
                 // Therefore, table[i] is correct for index i
-                assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                assert(is_valid_lookup_table_affine_coords(
                     table.0[i as int].0,
                     edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(i as nat)),
                     8,
@@ -2743,8 +2745,11 @@ impl BasepointTable for EdwardsBasepointTable {
                 // edwards_scalar_mul(edwards_scalar_mul(basepoint, pow256(i)), pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i) * pow2(8))
                 //   == edwards_scalar_mul(basepoint, pow256(i+1))
-                crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_composition_pow2(
-                edwards_point_as_affine(*basepoint), pow256(i as nat), 8);
+                lemma_edwards_scalar_mul_composition_pow2(
+                    edwards_point_as_affine(*basepoint),
+                    pow256(i as nat),
+                    8,
+                );
             }
         }
         proof {

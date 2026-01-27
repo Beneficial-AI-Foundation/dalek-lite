@@ -2727,39 +2727,26 @@ impl BasepointTable for EdwardsBasepointTable {
             P = P.mul_by_pow_2(4 + 4);  // P = P * 2^8 = P * 256 = P * 16²
 
             proof {
-                // From mul_by_pow_2 postcondition, we have:
-                // edwards_point_as_affine(new_P) == edwards_scalar_mul(edwards_point_as_affine(old_P), pow2(8))
-                //
-                // From loop invariant, old_P satisfies:
-                // edwards_point_as_affine(old_P) == edwards_scalar_mul(basepoint_affine, pow256(i))
-                //
-                // We need to show new_P satisfies:
-                // edwards_point_as_affine(new_P) == edwards_scalar_mul(basepoint_affine, pow256(i+1))
-                // First, establish pow256(i+1) = pow256(i) * pow2(8)
-                assert(pow256((i + 1) as nat) == pow256(i as nat) * pow2(8)) by {
+                // scalar_mul(scalar_mul(B, pow256(i)), pow2(8)) == scalar_mul(B, pow256(i+1))
+                assert(edwards_scalar_mul(
+                    edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(i as nat)),
+                    pow2(8),
+                ) == edwards_scalar_mul(
+                    edwards_point_as_affine(*basepoint),
+                    pow256((i + 1) as nat),
+                )) by {
                     assert(8 * ((i + 1) as nat) == 8 * (i as nat) + 8);
                     vstd::arithmetic::power2::lemma_pow2_adds(8 * (i as nat), 8);
-                }
-
-                // Apply scalar multiplication composition lemma for powers of 2:
-                // edwards_scalar_mul(edwards_scalar_mul(basepoint, pow256(i)), pow2(8))
-                //   == edwards_scalar_mul(basepoint, pow256(i) * pow2(8))
-                //   == edwards_scalar_mul(basepoint, pow256(i+1))
-                lemma_edwards_scalar_mul_composition_pow2(
-                    edwards_point_as_affine(*basepoint),
-                    pow256(i as nat),
-                    8,
-                );
+                    lemma_edwards_scalar_mul_composition_pow2(
+                        edwards_point_as_affine(*basepoint),
+                        pow256(i as nat),
+                        8,
+                    );
+                };
             }
         }
         proof {
-            // After loop completes with i=32, the loop invariant gives us:
-            // forall|j: int| 0 <= j < 32 ==> is_valid_lookup_table_affine_coords(
-            //     table.0[j].0,
-            //     edwards_scalar_mul(basepoint_affine, pow256(j)),
-            //     8,
-            // )
-            // This is exactly the postcondition is_valid_edwards_basepoint_table
+            // Loop invariant at i=32 gives the postcondition
             assert(is_valid_edwards_basepoint_table(table, edwards_point_as_affine(*basepoint)));
         }
         table

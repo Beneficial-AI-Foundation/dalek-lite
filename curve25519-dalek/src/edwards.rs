@@ -3073,7 +3073,9 @@ impl BasepointTable for EdwardsBasepointTable {
             //                            = edwards_add(scaled, identity)
             //                            = scaled (by identity law)
             assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
-            crate::lemmas::edwards_lemmas::curve_equation_lemmas::axiom_edwards_add_identity_right(scaled);
+            // scaled comes from edwards_scalar_mul, which produces reduced coordinates
+            lemma_edwards_scalar_mul_reduced(odd_sum, 16);
+            crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_add_identity_right_reduced(scaled);
             assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled);
             assert(pippenger_partial(a@, 0, B) == scaled);
         }

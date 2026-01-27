@@ -1105,20 +1105,17 @@ impl ConditionallySelectable for EdwardsPoint {
         proof {
             if choice_is_true(choice) {
                 // choice is true: result should be exactly `b`
-                assert(result == *b) by {
-                    lemma_field_element51_eq_from_limbs_eq(&X, &b.X);
-                    lemma_field_element51_eq_from_limbs_eq(&Y, &b.Y);
-                    lemma_field_element51_eq_from_limbs_eq(&Z, &b.Z);
-                    lemma_field_element51_eq_from_limbs_eq(&T, &b.T);
-                }
+                // Use extensional equality on limbs to prove struct equality
+                assert(X.limbs =~= b.X.limbs);
+                assert(Y.limbs =~= b.Y.limbs);
+                assert(Z.limbs =~= b.Z.limbs);
+                assert(T.limbs =~= b.T.limbs);
             } else {
                 // choice is false: result should be exactly `a`
-                assert(result == *a) by {
-                    lemma_field_element51_eq_from_limbs_eq(&X, &a.X);
-                    lemma_field_element51_eq_from_limbs_eq(&Y, &a.Y);
-                    lemma_field_element51_eq_from_limbs_eq(&Z, &a.Z);
-                    lemma_field_element51_eq_from_limbs_eq(&T, &a.T);
-                }
+                assert(X.limbs =~= a.X.limbs);
+                assert(Y.limbs =~= a.Y.limbs);
+                assert(Z.limbs =~= a.Z.limbs);
+                assert(T.limbs =~= a.T.limbs);
             }
         }
 

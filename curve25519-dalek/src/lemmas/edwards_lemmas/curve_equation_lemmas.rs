@@ -998,66 +998,26 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
     decreases n,
 {
     if n == 1 {
+        // [m]P + [1]P = [m+1]P follows from succ lemma and [1]P = P
+        reveal_with_fuel(edwards_scalar_mul, 1);
         lemma_edwards_scalar_mul_succ(point_affine, m);
-        assert(edwards_scalar_mul(point_affine, m + 1) == {
-            let pm = edwards_scalar_mul(point_affine, m);
-            edwards_add(pm.0, pm.1, point_affine.0, point_affine.1)
-        });
-        assert(edwards_scalar_mul(point_affine, 1) == point_affine) by {
-            reveal_with_fuel(edwards_scalar_mul, 1);
-        }
     } else {
         let nm1 = (n - 1) as nat;
-        assert(nm1 >= 1) by {
-            assert(n >= 2);
-        }
 
+        // Set up lemmas for induction
         lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
         lemma_edwards_scalar_mul_succ(point_affine, nm1);
         lemma_edwards_scalar_mul_succ(point_affine, m + nm1);
 
         let pm = edwards_scalar_mul(point_affine, m);
         let pnm1 = edwards_scalar_mul(point_affine, nm1);
-        let pn = edwards_scalar_mul(point_affine, n);
         let pm_plus_nm1 = edwards_scalar_mul(point_affine, m + nm1);
 
-        assert(pn == edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1)) by {
-            assert(n == nm1 + 1);
-        }
+        // Use associativity: [m]P + ([n-1]P + P) = ([m]P + [n-1]P) + P
+        lemma_edwards_add_associative(pm.0, pm.1, pnm1.0, pnm1.1, point_affine.0, point_affine.1);
 
-        calc! {
-            (==)
-            edwards_add(pm.0, pm.1, pn.0, pn.1); (==) {
-                assert(pn == edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1));
-            }
-            edwards_add(
-                pm.0,
-                pm.1,
-                edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).0,
-                edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).1,
-            ); (==) {
-                lemma_edwards_add_associative(
-                    pm.0,
-                    pm.1,
-                    pnm1.0,
-                    pnm1.1,
-                    point_affine.0,
-                    point_affine.1,
-                );
-            }
-            {
-                let left = edwards_add(pm.0, pm.1, pnm1.0, pnm1.1);
-                edwards_add(left.0, left.1, point_affine.0, point_affine.1)
-            }; (==) {
-                // IH: [m]P + [n-1]P = [m+n-1]P
-                assert(edwards_add(pm.0, pm.1, pnm1.0, pnm1.1) == pm_plus_nm1);
-            }
-            edwards_add(pm_plus_nm1.0, pm_plus_nm1.1, point_affine.0, point_affine.1); (==) {
-                // succ: [m+n-1]P + P = [m+n]P
-                assert(m + n == (m + nm1) + 1);
-            }
-            edwards_scalar_mul(point_affine, m + n);
-        }
+        // Chain: [m]P + [n]P = [m]P + ([n-1]P + P) = ([m]P + [n-1]P) + P
+        //                    = [m+n-1]P + P = [m+n]P
     }
 }
 
@@ -1191,199 +1151,52 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
     // - The `b % 2 == 1` case requires scalar-mul additivity / group-law associativity facts
     //   about `edwards_add`, which are not yet proven in this repo.
     if a == 0 {
-        // Special case: [b]([0]P) == [0]P for all b.
+        // [b]([0]P) = [b]I = I = [0]P for all b (by induction on b)
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(edwards_scalar_mul(point_affine, 0) == math_edwards_identity());
-        assert(a * b == 0);
-
-        if b == 0 {
-            // Both sides are scalar_mul(_, 0) == identity.
-        } else if b == 1 {
-            // scalar_mul(identity, 1) == identity.
-            assert(edwards_scalar_mul(math_edwards_identity(), 1) == math_edwards_identity());
-        } else if b % 2 == 0 {
-            let hb = (b / 2) as nat;
-            lemma_edwards_scalar_mul_composition(point_affine, 0, hb);
-
-            // Unfold the left at even b: [b]I = double([b/2]I).
-            assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), b) == {
-                let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb);
-                edwards_double(half.0, half.1)
-            });
-
-            // IH gives [b/2]I == I.
-            let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb);
-            assert(half == math_edwards_identity()) by {
-                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb)
-                    == edwards_scalar_mul(point_affine, 0));
+        lemma_edwards_double_identity();
+        if b >= 2 {
+            if b % 2 == 0 {
+                lemma_edwards_scalar_mul_composition(point_affine, 0, (b / 2) as nat);
+            } else {
+                lemma_edwards_scalar_mul_composition(point_affine, 0, (b - 1) as nat);
             }
-
-            // double(I) == I
-            lemma_edwards_double_identity();
-        } else {
-            // Odd b (>1): [b]I = [b-1]I + I, but [b-1]I = I, so this is I + I = I.
-            let bm1 = (b - 1) as nat;
-            lemma_edwards_scalar_mul_composition(point_affine, 0, bm1);
-
-            let prev = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), bm1);
-            assert(prev == math_edwards_identity()) by {
-                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), bm1)
-                    == edwards_scalar_mul(point_affine, 0));
-            }
-
-            lemma_edwards_double_identity();
         }
     } else if b == 0 {
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(a * b == 0);
     } else if b == 1 {
-        // [1]([a]P) == [a]P and [a*1]P == [a]P
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(a * b == a);
     } else if b % 2 == 0 {
         let hb = (b / 2) as nat;
+
+        // Lemmas for arithmetic and induction
+        reveal_with_fuel(edwards_scalar_mul, 1);
         lemma_edwards_scalar_mul_composition(point_affine, a, hb);
+        lemma_mul_mod_noop_right(a as int, b as int, 2);
+        lemma_mul_by_zero_is_zero(a as int);
+        lemma_fundamental_div_mod(b as int, 2);
+        lemma_mul_is_associative(a as int, hb as int, 2);
+        lemma_div_by_multiple((a * hb) as int, 2);
+        lemma_mul_nonzero(a as int, b as int);
 
-        // Unfold LHS at even b.
-        reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == {
-            let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, a), hb);
-            edwards_double(half.0, half.1)
-        });
+        // (a*b) is even, nonzero, != 1, and (a*b)/2 = a*(b/2)
+        assert((a * b) % 2 == 0 && a * b != 0 && a * b != 1);
+        assert((a * b) / 2 == a * hb);
 
-        // Unfold RHS at n = a*b, which is even since b is even.
-        assert((a * b) % 2 == 0) by {
-            lemma_mul_mod_noop_right(a as int, b as int, 2);
-            assert((a * b) % 2 == (a * (b % 2)) % 2);
-            assert(b % 2 == 0);
-            assert(a * (b % 2) == 0) by {
-                lemma_mul_by_zero_is_zero(a as int);
-            }
-            assert(0nat % 2 == 0) by (compute);
-        }
-
-        // Compute (a*b)/2 = a*(b/2) (valid since b is even).
-        assert((a * b) / 2 == a * hb) by {
-            // b = (b/2)*2 + b%2, and b%2=0
-            lemma_fundamental_div_mod(b as int, 2);
-            assert(b == hb * 2) by {
-                assert(b == hb * 2 + b % 2);
-                assert(b % 2 == 0);
-            }
-            assert(a * b == (a * hb) * 2) by {
-                assert(a * b == a * (hb * 2));
-                lemma_mul_is_associative(a as int, hb as int, 2);
-            }
-            assert(((a * hb) * 2) / 2 == a * hb) by {
-                lemma_div_by_multiple((a * hb) as int, 2);
-            }
-        }
-
-        assert(a * b != 0) by {
-            lemma_mul_nonzero(a as int, b as int);
-        }
-        assert(a * b != 1) by {
-            assert((a * b) % 2 == 0);
-            assert(1nat % 2 == 1) by (compute);
-            if a * b == 1 {
-                assert((a * b) % 2 == 1nat % 2);
-            }
-        }
-
-        assert(edwards_scalar_mul(point_affine, a * b) == {
-            let half = edwards_scalar_mul(point_affine, ((a * b) / 2) as nat);
-            edwards_double(half.0, half.1)
-        });
-
-        // Put it together using the IH.
-        calc! {
-            (==)
-            edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b); (==) {
-                // Unfolded above.
-            }
-            {
-                let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, a), hb);
-                edwards_double(half.0, half.1)
-            }; (==) {
-                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), hb)
-                    == edwards_scalar_mul(point_affine, a * hb));
-            }
-            {
-                let half = edwards_scalar_mul(point_affine, a * hb);
-                edwards_double(half.0, half.1)
-            }; (==) {
-                assert(((a * b) / 2) as nat == a * hb);
-            }
-            edwards_scalar_mul(point_affine, a * b);
-        }
+        // Both sides unfold to double(scalar_mul(point, a*hb))
     } else {
-        // Odd b (>1): use linearity of scalar multiplication in the scalar.
+        // Odd b (>1): [b]([a]P) = [b-1]([a]P) + [a]P = [a*(b-1)]P + [a]P = [a*b]P
         let bm1 = (b - 1) as nat;
-        lemma_edwards_scalar_mul_composition(point_affine, a, bm1);
 
-        let pa = edwards_scalar_mul(point_affine, a);
-        let prev = edwards_scalar_mul(pa, bm1);
-
-        // Unfold LHS at odd b: [b]([a]P) = [b-1]([a]P) + [a]P.
+        // Lemmas for induction and arithmetic
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(b != 0 && b != 1);
-        assert(b % 2 != 0);
-        assert(edwards_scalar_mul(pa, b) == edwards_add(prev.0, prev.1, pa.0, pa.1));
-
-        // Induction hypothesis: [b-1]([a]P) = [a*(b-1)]P.
-        assert(prev == edwards_scalar_mul(point_affine, a * bm1)) by {
-            assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), bm1)
-                == edwards_scalar_mul(point_affine, a * bm1));
-        }
-
-        // Scalar-mul additivity for positive scalars: [a*(b-1)]P + [a]P = [a*b]P.
-        assert(a >= 1) by {
-            assert(a != 0);
-        }
-        assert(bm1 >= 1) by {
-            assert(b >= 2);
-        }
-        assert(a * bm1 >= 1) by {
-            assert(a * bm1 != 0) by {
-                lemma_mul_nonzero(a as int, bm1 as int);
-            }
-        }
+        lemma_edwards_scalar_mul_composition(point_affine, a, bm1);
+        lemma_mul_nonzero(a as int, bm1 as int);
         lemma_edwards_scalar_mul_additive(point_affine, a * bm1, a);
+        lemma_mul_is_distributive_add(a as int, bm1 as int, 1);
+        lemma_mul_basics(a as int);
 
-        assert(a * bm1 + a == a * b) by {
-            assert(b == bm1 + 1);
-            lemma_mul_is_distributive_add(a as int, bm1 as int, 1);
-            lemma_mul_basics(a as int);
-        }
-
-        calc! {
-            (==)
-            edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b); (==) {
-                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b)
-                    == edwards_scalar_mul(pa, b));
-            }
-            edwards_scalar_mul(pa, b); (==) {}
-            edwards_add(prev.0, prev.1, pa.0, pa.1); (==) {
-                assert(prev == edwards_scalar_mul(point_affine, a * bm1));
-            }
-            edwards_add(
-                edwards_scalar_mul(point_affine, a * bm1).0,
-                edwards_scalar_mul(point_affine, a * bm1).1,
-                edwards_scalar_mul(point_affine, a).0,
-                edwards_scalar_mul(point_affine, a).1,
-            ); (==) {
-                assert(edwards_add(
-                    edwards_scalar_mul(point_affine, a * bm1).0,
-                    edwards_scalar_mul(point_affine, a * bm1).1,
-                    edwards_scalar_mul(point_affine, a).0,
-                    edwards_scalar_mul(point_affine, a).1,
-                ) == edwards_scalar_mul(point_affine, a * bm1 + a));
-            }
-            edwards_scalar_mul(point_affine, a * bm1 + a); (==) {
-                assert(a * bm1 + a == a * b);
-            }
-            edwards_scalar_mul(point_affine, a * b);
-        }
+        // a*(b-1) + a = a*b by distributivity
+        assert(a * bm1 + a == a * b);
     }
 }
 

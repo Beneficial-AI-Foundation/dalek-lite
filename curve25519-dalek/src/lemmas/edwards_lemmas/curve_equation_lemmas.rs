@@ -785,21 +785,11 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
     decreases n,
 {
     if n == 1 {
+        // 2P = double(P) = P + P
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(edwards_scalar_mul(point_affine, 2) == {
-            let half = edwards_scalar_mul(point_affine, (2nat / 2nat) as nat);
-            edwards_double(half.0, half.1)
-        });
         assert((2nat / 2nat) as nat == 1nat) by (compute);
         assert(edwards_scalar_mul(point_affine, 1) == point_affine);
-        assert(edwards_scalar_mul(point_affine, 2) == edwards_double(
-            point_affine.0,
-            point_affine.1,
-        ));
-        assert(edwards_double(point_affine.0, point_affine.1) == {
-            let prev = edwards_scalar_mul(point_affine, 1);
-            edwards_add(prev.0, prev.1, point_affine.0, point_affine.1)
-        });
+        // double(P) = add(P, P) by definition of edwards_double
     } else {
         let np1 = (n + 1) as nat;
         assert(np1 >= 3) by {
@@ -817,45 +807,17 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
             assert((np1 - 1) as nat == n);
         } else {
             // Even (n+1): relate the double-and-add recursion to a linear step.
-            assert(np1 % 2 == 0) by {
-                // For modulus 2, the only residues are 0 and 1.
-                if np1 % 2 != 0 {
-                    assert(np1 % 2 == 1) by {
-                        assert(np1 % 2 < 2) by (compute);
-                    }
-                    assert(false);
-                }
-            }
+            // Since np1 % 2 != 1 (we're in else branch), np1 % 2 == 0
+            lemma_add_mod_noop(n as int, 1, 2);
+            lemma_fundamental_div_mod(np1 as int, 2);
 
-            // n must be odd, so scalar_mul(P, n) uses the odd branch.
-            assert(n % 2 != 0) by {
-                if n % 2 == 0 {
-                    // (n+1) % 2 == ((n%2) + 1) % 2
-                    lemma_add_mod_noop(n as int, 1, 2);
-                    assert((n + 1) % 2 == ((n % 2) + 1) % 2);
-                    assert(((n % 2) + 1) % 2 == 1) by (compute);
-                }
-            }
+            assert(np1 % 2 == 0);
+            assert(n % 2 != 0);  // If n were even, (n+1) would be odd
 
             // Write n+1 = 2*m (since it's even).
             let m = (np1 / 2) as nat;
-            assert(np1 == m * 2) by {
-                lemma_fundamental_div_mod(np1 as int, 2);
-                assert(np1 == m * 2 + np1 % 2);
-                assert(np1 % 2 == 0);
-            }
-            assert(m >= 2) by {
-                // np1 >= 4 since it is even and >= 3.
-                assert(np1 != 0 && np1 != 1);
-                if m < 2 {
-                    assert(m == 0 || m == 1) by (compute);
-                    if m == 0 {
-                        assert(np1 == 0);
-                    } else {
-                        assert(np1 == 2);
-                    }
-                }
-            }
+            assert(np1 == m * 2);
+            assert(m >= 2);  // np1 >= 3 and even implies m >= 2
 
             let mm1 = (m - 1) as nat;
             assert(mm1 >= 1) by {
@@ -1113,33 +1075,15 @@ pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat
             edwards_double(half.0, half.1)
         },
 {
-    // Unfold one step of scalar multiplication at n = 2^(k+1).
     reveal_with_fuel(edwards_scalar_mul, 1);
+    lemma_pow2_pos(k + 1);
+    lemma_pow2_even(k + 1);
+    lemma2_to64();
+    pow2_MUL_div(1, k + 1, 1);
 
-    // pow2(k+1) is positive and even.
-    assert(pow2(k + 1) != 0 && pow2(k + 1) % 2 == 0) by {
-        lemma_pow2_pos(k + 1);
-        lemma_pow2_even(k + 1);
-    }
-
-    // pow2(k+1) / 2 == pow2(k).
-    assert(pow2(k + 1) / 2 == pow2(k)) by {
-        pow2_MUL_div(1, k + 1, 1);  // (1 * pow2(k+1)) / pow2(1) == 1 * pow2(k)
-        assert(pow2(1) == 2) by {
-            lemma2_to64();
-        }
-    }
-
-    // Since pow2(k+1) is even and nonzero, it cannot be 1.
-    assert(pow2(k + 1) != 1) by {
-        assert(1nat % 2 == 1) by (compute);
-    }
-
-    // Now the even branch applies.
-    assert(edwards_scalar_mul(point_affine, pow2(k + 1)) == {
-        let half = edwards_scalar_mul(point_affine, (pow2(k + 1) / 2) as nat);
-        edwards_double(half.0, half.1)
-    });
+    // pow2(k+1) is positive, even, != 1, and pow2(k+1)/2 == pow2(k)
+    assert(pow2(k + 1) != 0 && pow2(k + 1) % 2 == 0 && pow2(k + 1) != 1);
+    assert(pow2(k + 1) / 2 == pow2(k));
 }
 
 /// **Lemma**: Scalar multiplication composition for powers of 2
@@ -1158,20 +1102,11 @@ pub proof fn lemma_edwards_scalar_mul_composition_pow2(point_affine: (nat, nat),
     decreases k,
 {
     if k == 0 {
-        assert(pow2(0) == 1) by {
-            lemma2_to64();
-        }
-
-        // One-step unfold for the outer scalar-mul by 1.
+        lemma2_to64();
         reveal_with_fuel(edwards_scalar_mul, 1);
-
-        assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), pow2(0))
-            == edwards_scalar_mul(point_affine, a));
+        assert(pow2(0) == 1);
+        assert(a * 1 == a) by (nonlinear_arith);
         assert(a * pow2(0) == a);
-        assert(edwards_scalar_mul(point_affine, a) == edwards_scalar_mul(
-            point_affine,
-            a * pow2(0),
-        ));
     } else {
         let km1 = (k - 1) as nat;
 
@@ -1182,68 +1117,29 @@ pub proof fn lemma_edwards_scalar_mul_composition_pow2(point_affine: (nat, nat),
         lemma_edwards_scalar_mul_pow2_succ(edwards_scalar_mul(point_affine, a), km1);
 
         if a == 0 {
-            // Reduce to "doubling preserves identity" using the induction hypothesis.
+            // scalar_mul(P, 0) = identity, and doubling identity = identity
             reveal_with_fuel(edwards_scalar_mul, 1);
+            lemma_edwards_double_identity();
             assert(edwards_scalar_mul(point_affine, 0) == math_edwards_identity());
             assert(0nat * pow2(k) == 0);
-
-            let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), pow2(km1));
-            assert(half == math_edwards_identity()) by {
-                // IH gives scalar_mul(scalar_mul(P,0), pow2(k-1)) == scalar_mul(P,0).
-                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), pow2(km1))
-                    == edwards_scalar_mul(point_affine, 0));
-            }
-
-            lemma_edwards_double_identity();
-            assert(edwards_double(half.0, half.1) == (0nat, 1nat)) by {
-                assert(half.0 == 0nat);
-                assert(half.1 == 1nat);
-            }
+            // IH: scalar_mul(scalar_mul(P,0), pow2(k-1)) == scalar_mul(P,0) == identity
+            // So double(identity) == identity
         } else {
-            // Unfold the RHS at n = a * 2^k (which is even for k>0).
+            // Lemmas needed for arithmetic reasoning
             reveal_with_fuel(edwards_scalar_mul, 1);
+            lemma_pow2_even(k);
+            lemma_pow2_pos(k);
+            lemma2_to64();
+            pow2_MUL_div(a, k, 1);
+            lemma_mul_mod_noop_right(a as int, pow2(k) as int, 2);
+            lemma_mul_by_zero_is_zero(a as int);
+            lemma_mul_nonzero(a as int, pow2(k) as int);
 
-            assert(pow2(k) % 2 == 0) by {
-                lemma_pow2_even(k);
-            }
-
-            assert((a * pow2(k)) % 2 == 0) by {
-                // Reduce to the fact that `pow2(k)` is even.
-                lemma_mul_mod_noop_right(a as int, pow2(k) as int, 2);
-                assert((a * pow2(k)) % 2 == (a * (pow2(k) % 2)) % 2);
-                assert(pow2(k) % 2 == 0);
-                assert(a * (pow2(k) % 2) == 0) by {
-                    lemma_mul_by_zero_is_zero(a as int);
-                }
-                assert(0nat % 2 == 0) by (compute);
-            }
-
-            assert((a * pow2(k)) / 2 == a * pow2(km1)) by {
-                pow2_MUL_div(a, k, 1);
-                assert(pow2(1) == 2) by {
-                    lemma2_to64();
-                }
-            }
-
-            assert(a * pow2(k) != 0) by {
-                // `a != 0` and `pow2(k) > 0` implies the product is non-zero.
-                lemma_pow2_pos(k);
-                assert(pow2(k) != 0);
-                lemma_mul_nonzero(a as int, pow2(k) as int);
-            }
-
-            assert(a * pow2(k) != 1) by {
-                assert((a * pow2(k)) % 2 == 0);
-                assert(1nat % 2 == 1) by (compute);
-                if a * pow2(k) == 1 {
-                    assert((a * pow2(k)) % 2 == 1nat % 2);
-                }
-            }
-
-            assert(edwards_scalar_mul(point_affine, a * pow2(k)) == {
-                let half = edwards_scalar_mul(point_affine, ((a * pow2(k)) / 2) as nat);
-                edwards_double(half.0, half.1)
-            });
+            // a * pow2(k) is even, nonzero, != 1, and divides correctly
+            assert(pow2(k) % 2 == 0);
+            assert((a * pow2(k)) % 2 == 0);
+            assert((a * pow2(k)) / 2 == a * pow2(km1));
+            assert(a * pow2(k) != 0 && a * pow2(k) != 1);
 
             // Rewrite both sides to the same "double" form.
             calc! {

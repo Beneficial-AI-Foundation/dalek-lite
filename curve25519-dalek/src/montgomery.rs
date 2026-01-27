@@ -449,22 +449,28 @@ impl MontgomeryPoint {
                 assert(u0 == bytes_nat % p());
             }
 
-            // Bounds for initial points
-            assert(fe51_limbs_bounded(&x0.U, 54));
-            assert(fe51_limbs_bounded(&x0.W, 54));
-            assert(fe51_limbs_bounded(&affine_u, 51));
+	            // Bounds for initial points
+	            // x0 = (1:0) by ProjectivePoint::identity().
+	            assert(fe51_limbs_bounded(&x0.U, 51));
+	            assert(fe51_limbs_bounded(&x0.W, 51));
+	            lemma_fe51_limbs_bounded_weaken(&x0.U, 51, 52);
+	            lemma_fe51_limbs_bounded_weaken(&x0.W, 51, 52);
+	            assert(fe51_limbs_bounded(&x0.U, 52));
+	            assert(fe51_limbs_bounded(&x0.W, 52));
+	            assert(fe51_limbs_bounded(&affine_u, 51));
 
-            lemma_one_limbs_bounded_51();
-            assert(fe51_limbs_bounded(&x1.W, 51));
-            lemma_fe51_limbs_bounded_weaken(&x1.W, 51, 54);
+	            lemma_one_limbs_bounded_51();
+	            assert(fe51_limbs_bounded(&x1.W, 51));
+            lemma_fe51_limbs_bounded_weaken(&x1.W, 51, 52);
             lemma_fe51_limbs_bounded_weaken(
                 &affine_u,
                 51,
-                54,
+                52,
             );
-            assert(fe51_limbs_bounded(&x1.U, 54));
-            assert(fe51_limbs_bounded(&x1.W, 54));
+            assert(fe51_limbs_bounded(&x1.U, 52));
+            assert(fe51_limbs_bounded(&x1.W, 52));
             assert(fe51_limbs_bounded(&affine_u, 51));
+            assert(is_valid_u_coordinate(spec_field_element(&affine_u)));
 
             // Scalar invariant at i = 0: k = 0
             assert(bits_be_to_nat(bits, 0) == 0);
@@ -532,14 +538,15 @@ impl MontgomeryPoint {
             invariant
                 i <= bits.len(),
                 // Limb bounds needed for `differential_add_and_double` and `as_affine`
-                fe51_limbs_bounded(&x0.U, 54),
-                fe51_limbs_bounded(&x0.W, 54),
-                fe51_limbs_bounded(&x1.U, 54),
-                fe51_limbs_bounded(&x1.W, 54),
+                fe51_limbs_bounded(&x0.U, 52),
+                fe51_limbs_bounded(&x0.W, 52),
+                fe51_limbs_bounded(&x1.U, 52),
+                fe51_limbs_bounded(&x1.W, 52),
                 fe51_limbs_bounded(&affine_u, 51),
                 // Basepoint decoding/validity (needed for canonical lift reasoning)
                 spec_field_element(&affine_u) == spec_montgomery_point(*self),
                 is_valid_u_coordinate(spec_montgomery_point(*self)),
+                is_valid_u_coordinate(spec_field_element(&affine_u)),
                 // Scalar-multiplication relationship (Montgomery ladder invariant)
                 ({
                     let u0 = spec_montgomery_point(*self);
@@ -678,6 +685,10 @@ impl MontgomeryPoint {
                 assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
             }
             // Bounds needed for as_affine
+            assert(fe51_limbs_bounded(&x0.U, 52));
+            assert(fe51_limbs_bounded(&x0.W, 52));
+            lemma_fe51_limbs_bounded_weaken(&x0.U, 52, 54);
+            lemma_fe51_limbs_bounded_weaken(&x0.W, 52, 54);
             assert(fe51_limbs_bounded(&x0.U, 54));
             assert(fe51_limbs_bounded(&x0.W, 54));
         }
@@ -897,6 +908,9 @@ impl Identity for ProjectivePoint {
             // The identity point is (1:0) in projective coordinates
             spec_field_element(&result.U) == 1,
             spec_field_element(&result.W) == 0,
+            // Actual representation uses field constants ONE/ZERO
+            fe51_limbs_bounded(&result.U, 51),
+            fe51_limbs_bounded(&result.W, 51),
             // Limb bounds (for callers that chain operations requiring bounds)
             fe51_limbs_bounded(&result.U, 54),
             fe51_limbs_bounded(&result.W, 54),
@@ -911,6 +925,12 @@ impl Identity for ProjectivePoint {
                 lemma_zero_field_element_value();
             }
             // Limb bounds: first establish at 51, then weaken to 54
+            assert(fe51_limbs_bounded(&result.U, 51)) by {
+                lemma_one_limbs_bounded_51();
+            }
+            assert(fe51_limbs_bounded(&result.W, 51)) by {
+                lemma_zero_limbs_bounded_51();
+            }
             assert(fe51_limbs_bounded(&result.U, 54)) by {
                 lemma_one_limbs_bounded_51();
                 lemma_fe51_limbs_bounded_weaken(&result.U, 51, 54);
@@ -1053,17 +1073,20 @@ fn differential_add_and_double(
 	)
 	    requires
 	        // Bounds needed for the underlying field operations
-	        fe51_limbs_bounded(&old(P).U, 54),
-	        fe51_limbs_bounded(&old(P).W, 54),
-	        fe51_limbs_bounded(&old(Q).U, 54),
-	        fe51_limbs_bounded(&old(Q).W, 54),
+	        // NOTE: we require 52-bounded points so that intermediate sums (U±W) stay < 2^54,
+	        // matching the preconditions of `square()` and other field ops.
+	        fe51_limbs_bounded(&old(P).U, 52),
+	        fe51_limbs_bounded(&old(P).W, 52),
+	        fe51_limbs_bounded(&old(Q).U, 52),
+	        fe51_limbs_bounded(&old(Q).W, 52),
 	        fe51_limbs_bounded(affine_PmQ, 51),
+	        is_valid_u_coordinate(spec_field_element(affine_PmQ)),
 	    ensures
 	        // Bounds preserved for callers
-	        fe51_limbs_bounded(&P.U, 54),
-	        fe51_limbs_bounded(&P.W, 54),
-	        fe51_limbs_bounded(&Q.U, 54),
-	        fe51_limbs_bounded(&Q.W, 54),
+	        fe51_limbs_bounded(&P.U, 52),
+	        fe51_limbs_bounded(&P.W, 52),
+	        fe51_limbs_bounded(&Q.U, 52),
+	        fe51_limbs_bounded(&Q.W, 52),
 	        // VERIFICATION NOTE: ladder-friendly scalar-mul step (used by mul_bits_be proof).
 	        ({
 	            let base = canonical_montgomery_lift(spec_field_element(affine_PmQ));
@@ -1096,43 +1119,187 @@ fn differential_add_and_double(
                         montgomery_scalar_mul(base, 2nat * k + 1nat),
                     )
                 }
-        }),
-{
-    assume(false);  // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations
-    let t0 = &P.U + &P.W;
-    let t1 = &P.U - &P.W;
-    let t2 = &Q.U + &Q.W;
-    let t3 = &Q.U - &Q.W;
+	        }),
+	{
+	    proof {
+	        // Precondition plumbing for field ops used below.
+	        lemma_fe51_limbs_bounded_weaken(&P.U, 52, 54);
+	        lemma_fe51_limbs_bounded_weaken(&P.W, 52, 54);
+	        lemma_fe51_limbs_bounded_weaken(&Q.U, 52, 54);
+	        lemma_fe51_limbs_bounded_weaken(&Q.W, 52, 54);
+	        lemma_fe51_limbs_bounded_weaken(affine_PmQ, 51, 54);
 
-    let t4 = t0.square();  // (U_P + W_P)^2 = U_P^2 + 2 U_P W_P + W_P^2
-    let t5 = t1.square();  // (U_P - W_P)^2 = U_P^2 - 2 U_P W_P + W_P^2
+	        // APLUS2_OVER_FOUR is a small constant ([121666, 0, 0, 0, 0]).
+	        assert(fe51_limbs_bounded(&APLUS2_OVER_FOUR, 51)) by {
+	            assert(APLUS2_OVER_FOUR.limbs[0] == 121666);
+	            assert(APLUS2_OVER_FOUR.limbs[1] == 0);
+	            assert(APLUS2_OVER_FOUR.limbs[2] == 0);
+	            assert(APLUS2_OVER_FOUR.limbs[3] == 0);
+	            assert(APLUS2_OVER_FOUR.limbs[4] == 0);
+	            assert forall|i: int|
+	                0 <= i < 5 implies APLUS2_OVER_FOUR.limbs[i] < (1u64 << 51) by {
+	                if i == 0 {
+	                    assert(121666u64 < (1u64 << 51)) by (bit_vector);
+	                } else {
+	                    assert(APLUS2_OVER_FOUR.limbs[i] == 0);
+	                    assert(0u64 < (1u64 << 51)) by (bit_vector);
+	                }
+	            }
+	        }
+	        lemma_fe51_limbs_bounded_weaken(&APLUS2_OVER_FOUR, 51, 54);
 
-    let t6 = &t4 - &t5;  // 4 U_P W_P
+	        // Sums used for t0/t2 must not overflow u64.
+	        lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.U, &P.W, 52);
+	        lemma_sum_of_limbs_bounded_from_fe51_bounded(&Q.U, &Q.W, 52);
+	    }
+	    let t0 = &P.U + &P.W;
+	    let t1 = &P.U - &P.W;
+	    let t2 = &Q.U + &Q.W;
+	    let t3 = &Q.U - &Q.W;
 
-    let t7 = &t0 * &t3;  // (U_P + W_P) (U_Q - W_Q) = U_P U_Q + W_P U_Q - U_P W_Q - W_P W_Q
-    let t8 = &t1 * &t2;  // (U_P - W_P) (U_Q + W_Q) = U_P U_Q - W_P U_Q + U_P W_Q - W_P W_Q
+	    proof {
+	        // Bounds for t0 and t2 (used by square and mul preconditions).
+	        lemma_add_bounds_propagate(&P.U, &P.W, 52);
+	        assert(fe51_limbs_bounded(&t0, 53));
+	        lemma_fe51_limbs_bounded_weaken(&t0, 53, 54);
+	        assert(fe51_limbs_bounded(&t0, 54));
 
-    let t9 = &t7 + &t8;  // 2 (U_P U_Q - W_P W_Q)
-    let t10 = &t7 - &t8;  // 2 (W_P U_Q - U_P W_Q)
+	        lemma_add_bounds_propagate(&Q.U, &Q.W, 52);
+	        assert(fe51_limbs_bounded(&t2, 53));
+	        lemma_fe51_limbs_bounded_weaken(&t2, 53, 54);
+	        assert(fe51_limbs_bounded(&t2, 54));
 
-    let t11 = t9.square();  // 4 (U_P U_Q - W_P W_Q)^2
-    let t12 = t10.square();  // 4 (W_P U_Q - U_P W_Q)^2
+	        // Sub results are 54-bounded by spec.
+	        assert(fe51_limbs_bounded(&t1, 54));
+	        assert(fe51_limbs_bounded(&t3, 54));
+	    }
+	    let t4 = t0.square();  // (U_P + W_P)^2 = U_P^2 + 2 U_P W_P + W_P^2
+	    let t5 = t1.square();  // (U_P - W_P)^2 = U_P^2 - 2 U_P W_P + W_P^2
 
-    let t13 = &APLUS2_OVER_FOUR * &t6;  // (A + 2) U_P U_Q
+	    proof {
+	        // square() produces 52-bounded outputs; weaken as needed for subtraction/multiplication.
+	        assert(fe51_limbs_bounded(&t4, 52));
+	        assert(fe51_limbs_bounded(&t5, 52));
+	        lemma_fe51_limbs_bounded_weaken(&t4, 52, 54);
+	        lemma_fe51_limbs_bounded_weaken(&t5, 52, 54);
+	    }
+	    let t6 = &t4 - &t5;  // 4 U_P W_P
 
-    let t14 = &t4 * &t5;  // ((U_P + W_P)(U_P - W_P))^2 = (U_P^2 - W_P^2)^2
-    let t15 = &t13 + &t5;  // (U_P - W_P)^2 + (A + 2) U_P W_P
+	    proof {
+	        // Multiplication requires 54-bounded operands.
+	        assert(fe51_limbs_bounded(&t6, 54));
+	    }
+	    let t7 = &t0 * &t3;  // (U_P + W_P) (U_Q - W_Q) = U_P U_Q + W_P U_Q - U_P W_Q - W_P W_Q
+	    let t8 = &t1 * &t2;  // (U_P - W_P) (U_Q + W_Q) = U_P U_Q - W_P U_Q + U_P W_Q - W_P W_Q
 
-    let t16 = &t6 * &t15;  // 4 (U_P W_P) ((U_P - W_P)^2 + (A + 2) U_P W_P)
+	    proof {
+	        // Sums used for t9 must not overflow u64.
+	        assert(fe51_limbs_bounded(&t7, 52));
+	        assert(fe51_limbs_bounded(&t8, 52));
+	        lemma_sum_of_limbs_bounded_from_fe51_bounded(&t7, &t8, 52);
+	        // And subtraction precondition for t10.
+	        lemma_fe51_limbs_bounded_weaken(&t7, 52, 54);
+	        lemma_fe51_limbs_bounded_weaken(&t8, 52, 54);
+	    }
+	    let t9 = &t7 + &t8;  // 2 (U_P U_Q - W_P W_Q)
+	    let t10 = &t7 - &t8;  // 2 (W_P U_Q - U_P W_Q)
 
-    let t17 = affine_PmQ * &t12;  // U_D * 4 (W_P U_Q - U_P W_Q)^2
-    let t18 = t11;  // W_D * 4 (U_P U_Q - W_P W_Q)^2
+	    proof {
+	        // Bounds for t9 (used by square precondition).
+	        lemma_add_bounds_propagate(&t7, &t8, 52);
+	        assert(fe51_limbs_bounded(&t9, 53));
+	        lemma_fe51_limbs_bounded_weaken(&t9, 53, 54);
+	        assert(fe51_limbs_bounded(&t9, 54));
+	        // Sub gives 54-bounded output
+	        assert(fe51_limbs_bounded(&t10, 54));
+	    }
+	    let t11 = t9.square();  // 4 (U_P U_Q - W_P W_Q)^2
+	    let t12 = t10.square();  // 4 (W_P U_Q - U_P W_Q)^2
 
-    P.U = t14;  // U_{P'} = (U_P + W_P)^2 (U_P - W_P)^2
-    P.W = t16;  // W_{P'} = (4 U_P W_P) ((U_P - W_P)^2 + ((A + 2)/4) 4 U_P W_P)
-    Q.U = t18;  // U_{Q'} = W_D * 4 (U_P U_Q - W_P W_Q)^2
-    Q.W = t17;  // W_{Q'} = U_D * 4 (W_P U_Q - U_P W_Q)^2
-}
+	    proof {
+	        // Bounds needed for subsequent multiplications.
+	        assert(fe51_limbs_bounded(&t11, 52));
+	        assert(fe51_limbs_bounded(&t12, 54));
+	    }
+	    let t13 = &APLUS2_OVER_FOUR * &t6;  // (A + 2) U_P U_Q
+
+	    let t14 = &t4 * &t5;  // ((U_P + W_P)(U_P - W_P))^2 = (U_P^2 - W_P^2)^2
+	    proof {
+	        // Precondition for t15 addition.
+	        assert(fe51_limbs_bounded(&t13, 52));
+	        assert(fe51_limbs_bounded(&t5, 52));
+	        lemma_sum_of_limbs_bounded_from_fe51_bounded(&t13, &t5, 52);
+	    }
+	    let t15 = &t13 + &t5;  // (U_P - W_P)^2 + (A + 2) U_P W_P
+
+	    proof {
+	        // Precondition for t16 multiplication.
+	        lemma_add_bounds_propagate(&t13, &t5, 52);
+	        assert(fe51_limbs_bounded(&t15, 53));
+	        lemma_fe51_limbs_bounded_weaken(&t15, 53, 54);
+	        assert(fe51_limbs_bounded(&t15, 54));
+	    }
+	    let t16 = &t6 * &t15;  // 4 (U_P W_P) ((U_P - W_P)^2 + (A + 2) U_P W_P)
+
+	    proof {
+	        // Precondition for affine_PmQ * t12.
+	        lemma_fe51_limbs_bounded_weaken(affine_PmQ, 51, 54);
+	        assert(fe51_limbs_bounded(&t12, 54));
+	    }
+	    let t17 = affine_PmQ * &t12;  // U_D * 4 (W_P U_Q - U_P W_Q)^2
+	    let t18 = t11;  // W_D * 4 (U_P U_Q - W_P W_Q)^2
+
+	    P.U = t14;  // U_{P'} = (U_P + W_P)^2 (U_P - W_P)^2
+	    P.W = t16;  // W_{P'} = (4 U_P W_P) ((U_P - W_P)^2 + ((A + 2)/4) 4 U_P W_P)
+	    Q.U = t18;  // U_{Q'} = W_D * 4 (U_P U_Q - W_P W_Q)^2
+	    Q.W = t17;  // W_{Q'} = U_D * 4 (W_P U_Q - U_P W_Q)^2
+
+	    proof {
+	        // Bound postconditions
+	        assert(fe51_limbs_bounded(&t14, 52));
+	        assert(fe51_limbs_bounded(&t16, 52));
+	        assert(fe51_limbs_bounded(&t18, 52));
+	        assert(fe51_limbs_bounded(&t17, 52));
+	        assert(fe51_limbs_bounded(&P.U, 52));
+	        assert(fe51_limbs_bounded(&P.W, 52));
+	        assert(fe51_limbs_bounded(&Q.U, 52));
+	        assert(fe51_limbs_bounded(&Q.W, 52));
+
+	        // PROOF BYPASS: ladder-step mathematical correctness.
+	        assume({
+	            let base = canonical_montgomery_lift(spec_field_element(affine_PmQ));
+	            forall|k: nat|
+	                spec_projective_u_coordinate(*old(P)) == #[trigger] spec_u_coordinate(
+	                    montgomery_scalar_mul(base, k),
+	                ) && spec_projective_u_coordinate(*old(Q)) == #[trigger] spec_u_coordinate(
+	                    montgomery_scalar_mul(base, k + 1),
+	                ) ==> {
+	                    &&& spec_projective_u_coordinate(*P) == spec_u_coordinate(
+	                        montgomery_scalar_mul(base, 2nat * k),
+	                    )
+	                    &&& spec_projective_u_coordinate(*Q) == spec_u_coordinate(
+	                        montgomery_scalar_mul(base, 2nat * k + 1nat),
+	                    )
+	                }
+	        });
+	        assume({
+	            let base = canonical_montgomery_lift(spec_field_element(affine_PmQ));
+	            forall|k: nat|
+	                spec_projective_u_coordinate(*old(P)) == #[trigger] spec_u_coordinate(
+	                    montgomery_scalar_mul(base, k + 1),
+	                ) && spec_projective_u_coordinate(*old(Q)) == #[trigger] spec_u_coordinate(
+	                    montgomery_scalar_mul(base, k),
+	                ) ==> {
+	                    &&& spec_projective_u_coordinate(*P) == spec_u_coordinate(
+	                        montgomery_scalar_mul(base, 2nat * k + 2nat),
+	                    )
+	                    &&& spec_projective_u_coordinate(*Q) == spec_u_coordinate(
+	                        montgomery_scalar_mul(base, 2nat * k + 1nat),
+	                    )
+	                }
+	        });
+	    }
+	}
 
 define_mul_assign_variants!(LHS = MontgomeryPoint, RHS = Scalar);
 

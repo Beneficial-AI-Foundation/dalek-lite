@@ -674,16 +674,13 @@ impl MontgomeryPoint {
         #[cfg(feature = "zeroize")]
         zeroize_bool(&mut prev_bit);
 
-            proof {
-                // After the final conditional swap, x0 encodes u([n]P) where n is the full bitstring.
-                let u0 = spec_montgomery_point(*self);
-                let P = canonical_montgomery_lift(u0);
-                let n = bits_be_to_nat(bits, bits@.len() as int);
-            if prev_bit {
-                assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
-            } else {
-                assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
-            }
+        proof {
+            // After the final conditional swap, x0 encodes u([n]P) where n is the full bitstring.
+            let u0 = spec_montgomery_point(*self);
+            let P = canonical_montgomery_lift(u0);
+            let n = bits_be_to_nat(bits, bits@.len() as int);
+            // The final swap ensures x0 holds [n]P regardless of prev_bit
+            assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
             // Bounds needed for as_affine
             assert(fe51_limbs_bounded(&x0.U, 52));
             assert(fe51_limbs_bounded(&x0.W, 52));
@@ -1217,9 +1214,9 @@ fn differential_add_and_double(
 	    let t12 = t10.square();  // 4 (W_P U_Q - U_P W_Q)^2
 
 	    proof {
-	        // Bounds needed for subsequent multiplications.
+	        // Bounds from square(): both are 52-bounded.
 	        assert(fe51_limbs_bounded(&t11, 52));
-	        assert(fe51_limbs_bounded(&t12, 54));
+	        assert(fe51_limbs_bounded(&t12, 52));
 	    }
 	    let t13 = &APLUS2_OVER_FOUR * &t6;  // (A + 2) U_P U_Q
 

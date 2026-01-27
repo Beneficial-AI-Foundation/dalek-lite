@@ -78,6 +78,19 @@ use crate::specs::scalar_specs::*;
 // Explicit import to disambiguate from core_specs::bits_be_to_nat
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::bits_be_to_nat;
+
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::add_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::constants_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)]
+use vstd::arithmetic::power2::*;
+#[allow(unused_imports)]
+use vstd::prelude::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::spec_clamp_integer;
 
@@ -421,23 +434,232 @@ impl MontgomeryPoint {
         // Go through the bits from most to least significant, using a sliding window of 2
         let mut prev_bit = false;
         let mut i: usize = 0;
+        proof {
+            // Establish the loop invariant at i = 0.
+            let u0 = spec_montgomery_point(*self);
+            let P = canonical_montgomery_lift(u0);
+            assert(is_valid_u_coordinate(u0));
+
+            // Connect affine_u to u0 (both are the canonical field element decoded from self.0).
+            assert(spec_field_element(&affine_u) == u0) by {
+                let bytes_nat = bytes32_to_nat(&self.0) % pow2(255);
+                assert(spec_field_element_as_nat(&affine_u) == bytes_nat);
+                assert(spec_field_element(&affine_u) == bytes_nat % p());
+                assert(u0 == spec_field_element_from_bytes(&self.0));
+                assert(u0 == bytes_nat % p());
+            }
+
+            // Bounds for initial points
+            assert(fe51_limbs_bounded(&x0.U, 54));
+            assert(fe51_limbs_bounded(&x0.W, 54));
+            assert(fe51_limbs_bounded(&affine_u, 51));
+
+            lemma_one_limbs_bounded_51();
+            assert(fe51_limbs_bounded(&x1.W, 51));
+            lemma_fe51_limbs_bounded_weaken(&x1.W, 51, 54);
+            lemma_fe51_limbs_bounded_weaken(
+                &affine_u,
+                51,
+                54,
+            );
+            assert(fe51_limbs_bounded(&x1.U, 54));
+            assert(fe51_limbs_bounded(&x1.W, 54));
+            assert(fe51_limbs_bounded(&affine_u, 51));
+
+            // Scalar invariant at i = 0: k = 0
+            assert(bits_be_to_nat(bits, 0) == 0);
+            assert(spec_projective_u_coordinate(x0) == 0);
+            assert(spec_u_coordinate(montgomery_scalar_mul(P, 0)) == 0);
+            assert(spec_projective_u_coordinate(x1) == u0) by {
+                // x1 = (affine_u : 1), so its u-coordinate is affine_u.
+                lemma_one_field_element_value();
+                lemma_field_inv_one();
+                assert(spec_field_element(&x1.W) == 1);
+                assert(spec_projective_u_coordinate(x1) == math_field_mul(
+                    spec_field_element(&x1.U),
+                    math_field_inv(1),
+                ));
+                assert(math_field_inv(1) == 1);
+                assert(spec_projective_u_coordinate(x1) == math_field_mul(spec_field_element(&x1.U), 1));
+                lemma_field_mul_one_right(
+                    spec_field_element(&x1.U),
+                );
+                assert(spec_projective_u_coordinate(x1) == spec_field_element(&x1.U) % p());
+                assert(spec_field_element(&x1.U) % p() == spec_field_element(&x1.U)) by {
+                    let t = spec_field_element_as_nat(&x1.U) % p();
+                    assert(spec_field_element(&x1.U) == t);
+                    assert(spec_field_element(&x1.U) % p() == t % p());
+                    p_gt_2();
+                    lemma_mod_division_less_than_divisor(
+                        spec_field_element_as_nat(&x1.U) as int,
+                        p() as int,
+                    );
+                    assert(t < p());
+                    lemma_small_mod(t, p());
+                    assert(t % p() == t);
+                }
+                // x1.U was initialized from affine_u
+                assert(x1.U == affine_u);
+                assert(spec_projective_u_coordinate(x1) == spec_field_element(&affine_u));
+                assert(spec_field_element(&affine_u) == u0);
+            }
+            assert(spec_u_coordinate(montgomery_scalar_mul(P, 1)) == u0) by {
+                // montgomery_scalar_mul(P, 1) = P + [0]P = P
+                assert(montgomery_scalar_mul(P, 0) == MontgomeryAffine::Infinity);
+                assert(montgomery_scalar_mul(P, 1) == montgomery_add(P, montgomery_scalar_mul(P, 0)));
+                assert(montgomery_scalar_mul(P, 1) == montgomery_add(P, MontgomeryAffine::Infinity));
+                assert(montgomery_add(P, MontgomeryAffine::Infinity) == P);
+                assert(montgomery_scalar_mul(P, 1) == P);
+                // P is the canonical lift of u0, so its u-coordinate is u0
+                assert(spec_u_coordinate(P) == u0) by {
+                    // canonical_montgomery_lift(u0) returns (u0 % p, v), and u0 is already reduced mod p
+                    assert(u0 == u0 % p()) by {
+                        assert(u0 == spec_field_element_from_bytes(&self.0));
+                        let t = bytes32_to_nat(&self.0) % pow2(255);
+                        assert(u0 == t % p());
+                        assert(u0 % p() == (t % p()) % p());
+                        p_gt_2();
+                        lemma_mod_division_less_than_divisor(t as int, p() as int);
+                        assert((t % p()) < p());
+                        lemma_small_mod(t % p(), p());
+                        assert((t % p()) % p() == t % p());
+                    }
+                    assert(spec_u_coordinate(canonical_montgomery_lift(u0)) == u0);
+                }
+            }
+        }
         while i < bits.len()
             invariant
                 i <= bits.len(),
+                // Limb bounds needed for `differential_add_and_double` and `as_affine`
+                fe51_limbs_bounded(&x0.U, 54),
+                fe51_limbs_bounded(&x0.W, 54),
+                fe51_limbs_bounded(&x1.U, 54),
+                fe51_limbs_bounded(&x1.W, 54),
+                fe51_limbs_bounded(&affine_u, 51),
+                // Basepoint decoding/validity (needed for canonical lift reasoning)
+                spec_field_element(&affine_u) == spec_montgomery_point(*self),
+                is_valid_u_coordinate(spec_montgomery_point(*self)),
+                // Scalar-multiplication relationship (Montgomery ladder invariant)
+                ({
+                    let u0 = spec_montgomery_point(*self);
+                    let P = canonical_montgomery_lift(u0);
+                    let k = bits_be_to_nat(bits, i as int);
+                    &&& spec_projective_u_coordinate(x0) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, if prev_bit { k + 1 } else { k }),
+                    )
+                    &&& spec_projective_u_coordinate(x1) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, if prev_bit { k } else { k + 1 }),
+                    )
+                }),
             decreases bits.len() - i,
         {
             let cur_bit = bits[i];
             let choice: u8 = (prev_bit ^ cur_bit) as u8;
+            let swap_choice = Choice::from(choice);
 
             #[cfg(not(verus_keep_ghost))]
             debug_assert!(choice == 0 || choice == 1);
 
-            conditional_swap_montgomery_projective(&mut x0, &mut x1, choice.into());
-            assume(false);  // VERIFICATION NOTE: need to prove preconditions for differential_add_and_double
+            let ghost x0_before_swap = x0;
+            let ghost x1_before_swap = x1;
+            conditional_swap_montgomery_projective(&mut x0, &mut x1, swap_choice);
+            proof {
+                let u0 = spec_montgomery_point(*self);
+                let P = canonical_montgomery_lift(u0);
+                let k = bits_be_to_nat(bits, i as int);
+
+                // Connect affine_u to u0
+                assert(spec_field_element(&affine_u) == u0);
+
+                // Determine whether the swap occurred: swap iff (prev_bit ^ cur_bit)
+                let swapped_now = prev_bit ^ cur_bit;
+                if swapped_now {
+                    assert(choice == 1u8);
+                    assert(choice_is_true(swap_choice));
+                    // From conditional_swap spec: x0 = old(x1), x1 = old(x0)
+                    assert(x0.U == x1_before_swap.U);
+                    assert(x0.W == x1_before_swap.W);
+                    assert(x1.U == x0_before_swap.U);
+                    assert(x1.W == x0_before_swap.W);
+                } else {
+                    assert(choice == 0u8);
+                    assert(!choice_is_true(swap_choice));
+                    // No swap: x0,x1 unchanged
+                    assert(x0.U == x0_before_swap.U);
+                    assert(x0.W == x0_before_swap.W);
+                    assert(x1.U == x1_before_swap.U);
+                    assert(x1.W == x1_before_swap.W);
+                }
+
+                // Use the loop invariant (captured before the swap) to relate x0_before_swap/x1_before_swap
+                // to consecutive scalar multiples of P.
+                let pre_x0_u = spec_projective_u_coordinate(x0_before_swap);
+                let pre_x1_u = spec_projective_u_coordinate(x1_before_swap);
+                assert(pre_x0_u == spec_u_coordinate(montgomery_scalar_mul(P, if prev_bit { k + 1 } else { k })));
+                assert(pre_x1_u == spec_u_coordinate(montgomery_scalar_mul(P, if prev_bit { k } else { k + 1 })));
+
+                // After the swap, the ordering depends only on cur_bit:
+                if cur_bit {
+                    assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, k + 1),
+                    ));
+                    assert(spec_projective_u_coordinate(x1) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, k),
+                    ));
+                } else {
+                    assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, k),
+                    ));
+                    assert(spec_projective_u_coordinate(x1) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, k + 1),
+                    ));
+                }
+
+                // The call to `differential_add_and_double` below is justified by the limb-bound
+                // invariants on x0/x1 and affine_u.
+            }
             differential_add_and_double(&mut x0, &mut x1, &affine_u);
 
             prev_bit = cur_bit;
             i = i + 1;
+            proof {
+                // Re-establish the full loop invariant for the next iteration.
+                let u0 = spec_montgomery_point(*self);
+                let P = canonical_montgomery_lift(u0);
+                let k = bits_be_to_nat(bits, (i - 1) as int);
+
+                // Instantiate the ladder-step postcondition of `differential_add_and_double`.
+                let base = canonical_montgomery_lift(spec_field_element(&affine_u));
+                assert(base == P);
+                assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(
+                    montgomery_scalar_mul(P, 2nat * k + if cur_bit { 2nat } else { 0nat }),
+                ));
+                assert(spec_projective_u_coordinate(x1) == spec_u_coordinate(
+                    montgomery_scalar_mul(P, 2nat * k + 1nat),
+                ));
+
+                // bits_be_to_nat update: k_next = 2*k + b
+                let b = if cur_bit { 1nat } else { 0nat };
+                assert(bits_be_to_nat(bits, i as int) == b + 2nat * k);
+
+                // Match the swapped-form invariant expected at loop head, now with prev_bit == cur_bit.
+                if cur_bit {
+                    assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, bits_be_to_nat(bits, i as int) + 1),
+                    ));
+                    assert(spec_projective_u_coordinate(x1) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, bits_be_to_nat(bits, i as int)),
+                    ));
+                } else {
+                    assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, bits_be_to_nat(bits, i as int)),
+                    ));
+                    assert(spec_projective_u_coordinate(x1) == spec_u_coordinate(
+                        montgomery_scalar_mul(P, bits_be_to_nat(bits, i as int) + 1),
+                    ));
+                }
+            }
         }
         // The final value of prev_bit above is scalar.bits()[0], i.e., the LSB of scalar
         conditional_swap_montgomery_projective(&mut x0, &mut x1, Choice::from(prev_bit as u8));
@@ -445,21 +667,30 @@ impl MontgomeryPoint {
         #[cfg(feature = "zeroize")]
         zeroize_bool(&mut prev_bit);
 
-        proof {
-            // preconditions for as_affine
-            assume(crate::specs::field_specs::fe51_limbs_bounded(&x0.U, 54));
-            assume(crate::specs::field_specs::fe51_limbs_bounded(&x0.W, 54));
+            proof {
+                // After the final conditional swap, x0 encodes u([n]P) where n is the full bitstring.
+                let u0 = spec_montgomery_point(*self);
+                let P = canonical_montgomery_lift(u0);
+                let n = bits_be_to_nat(bits, bits@.len() as int);
+            if prev_bit {
+                assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
+            } else {
+                assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
+            }
+            // Bounds needed for as_affine
+            assert(fe51_limbs_bounded(&x0.U, 54));
+            assert(fe51_limbs_bounded(&x0.W, 54));
         }
         let result = x0.as_affine();
         proof {
-            // postcondition using canonical lift
-            assume({
-                let u0 = spec_montgomery(*self);
-                let P = canonical_montgomery_lift(u0);
-                let n = bits_be_to_nat(bits, bits@.len() as int);
-                let R = montgomery_scalar_mul(P, n);
-                spec_montgomery(result) == spec_u_coordinate(R)
-            });
+            // Discharge the function postcondition.
+            let u0 = spec_montgomery_point(*self);
+            let P = canonical_montgomery_lift(u0);
+            let n = bits_be_to_nat(bits, bits@.len() as int);
+            // as_affine returns the affine u-coordinate of x0
+            assert(spec_montgomery_point(result) == spec_projective_u_coordinate(x0));
+            // From loop invariant at exit and final conditional swap, x0 encodes u([n]P)
+            assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
         }
         result
     }
@@ -663,19 +894,30 @@ pub struct ProjectivePoint {
 impl Identity for ProjectivePoint {
     fn identity() -> (result: ProjectivePoint)
         ensures
-    // The identity point is (1:0) in projective coordinates
-
+            // The identity point is (1:0) in projective coordinates
             spec_field_element(&result.U) == 1,
             spec_field_element(&result.W) == 0,
+            // Limb bounds (for callers that chain operations requiring bounds)
+            fe51_limbs_bounded(&result.U, 54),
+            fe51_limbs_bounded(&result.W, 54),
     {
         let result = ProjectivePoint { U: FieldElement::ONE, W: FieldElement::ZERO };
         proof {
-            // The identity point is (1, 0) in projective coordinates
+            // Field element values
             assert(spec_field_element(&result.U) == 1) by {
                 lemma_one_field_element_value();
             }
             assert(spec_field_element(&result.W) == 0) by {
                 lemma_zero_field_element_value();
+            }
+            // Limb bounds: first establish at 51, then weaken to 54
+            assert(fe51_limbs_bounded(&result.U, 54)) by {
+                lemma_one_limbs_bounded_51();
+                lemma_fe51_limbs_bounded_weaken(&result.U, 51, 54);
+            }
+            assert(fe51_limbs_bounded(&result.W, 54)) by {
+                lemma_zero_limbs_bounded_51();
+                lemma_fe51_limbs_bounded_weaken(&result.W, 51, 54);
             }
         }
         result
@@ -757,8 +999,8 @@ impl ProjectivePoint {
     /// The resulting MontgomeryPoint has u-coordinate equal to U/W (or 0 if W=0)
     pub fn as_affine(&self) -> (result: MontgomeryPoint)
         requires
-            crate::specs::field_specs::fe51_limbs_bounded(&self.U, 54),
-            crate::specs::field_specs::fe51_limbs_bounded(&self.W, 54),
+            fe51_limbs_bounded(&self.U, 54),
+            fe51_limbs_bounded(&self.W, 54),
         ensures
     // For projective point (U:W), the affine u-coordinate is u = U/W (or 0 if W=0)
 
@@ -808,46 +1050,52 @@ fn differential_add_and_double(
     P: &mut ProjectivePoint,
     Q: &mut ProjectivePoint,
     affine_PmQ: &FieldElement,
-)
-    requires
-// The differential relationship: P and Q have valid u-coordinates,
-// and affine_PmQ is u(P - Q) using canonical lifts
-
-        ({
-            let u_P = spec_projective_u_coordinate(*old(P));
-            let u_Q = spec_projective_u_coordinate(*old(Q));
-            let P_aff = canonical_montgomery_lift(u_P);
-            let Q_aff = canonical_montgomery_lift(u_Q);
-
-            // Both u-coordinates must be valid (allowing canonical Montgomery lift)
-            is_valid_u_coordinate(u_P) && is_valid_u_coordinate(u_Q)
-                &&
-            // P and Q are distinct points
-            P_aff != Q_aff
-                &&
-            // affine_PmQ is exactly u(canonical_lift(P) - canonical_lift(Q))
-            match montgomery_sub(P_aff, Q_aff) {
-                MontgomeryAffine::Finite { u: u_diff, .. } => spec_field_element(affine_PmQ)
-                    == u_diff,
-                MontgomeryAffine::Infinity => false,
-            }
+	)
+	    requires
+	        // Bounds needed for the underlying field operations
+	        fe51_limbs_bounded(&old(P).U, 54),
+	        fe51_limbs_bounded(&old(P).W, 54),
+	        fe51_limbs_bounded(&old(Q).U, 54),
+	        fe51_limbs_bounded(&old(Q).W, 54),
+	        fe51_limbs_bounded(affine_PmQ, 51),
+	    ensures
+	        // Bounds preserved for callers
+	        fe51_limbs_bounded(&P.U, 54),
+	        fe51_limbs_bounded(&P.W, 54),
+	        fe51_limbs_bounded(&Q.U, 54),
+	        fe51_limbs_bounded(&Q.W, 54),
+	        // VERIFICATION NOTE: ladder-friendly scalar-mul step (used by mul_bits_be proof).
+	        ({
+	            let base = canonical_montgomery_lift(spec_field_element(affine_PmQ));
+	            forall|k: nat|
+                spec_projective_u_coordinate(*old(P)) == #[trigger] spec_u_coordinate(
+                    montgomery_scalar_mul(base, k),
+                ) && spec_projective_u_coordinate(*old(Q)) == #[trigger] spec_u_coordinate(
+                    montgomery_scalar_mul(base, k + 1),
+                ) ==> {
+                    &&& spec_projective_u_coordinate(*P) == spec_u_coordinate(
+                        montgomery_scalar_mul(base, 2nat * k),
+                    )
+                    &&& spec_projective_u_coordinate(*Q) == spec_u_coordinate(
+                        montgomery_scalar_mul(base, 2nat * k + 1nat),
+                    )
+                }
         }),
-    ensures
-// After the operation, P represents [2]P_old and Q represents P_old + Q_old
-
         ({
-            let u_P = spec_projective_u_coordinate(*old(P));
-            let u_Q = spec_projective_u_coordinate(*old(Q));
-            let u_P_new = spec_projective_u_coordinate(*P);
-            let u_Q_new = spec_projective_u_coordinate(*Q);
-            let P_aff = canonical_montgomery_lift(u_P);
-            let Q_aff = canonical_montgomery_lift(u_Q);
-
-            // P now represents [2]P_old
-            u_P_new == spec_u_coordinate(montgomery_add(P_aff, P_aff))
-                &&
-            // Q now represents P_old + Q_old
-            u_Q_new == spec_u_coordinate(montgomery_add(P_aff, Q_aff))
+            let base = canonical_montgomery_lift(spec_field_element(affine_PmQ));
+            forall|k: nat|
+                spec_projective_u_coordinate(*old(P)) == #[trigger] spec_u_coordinate(
+                    montgomery_scalar_mul(base, k + 1),
+                ) && spec_projective_u_coordinate(*old(Q)) == #[trigger] spec_u_coordinate(
+                    montgomery_scalar_mul(base, k),
+                ) ==> {
+                    &&& spec_projective_u_coordinate(*P) == spec_u_coordinate(
+                        montgomery_scalar_mul(base, 2nat * k + 2nat),
+                    )
+                    &&& spec_projective_u_coordinate(*Q) == spec_u_coordinate(
+                        montgomery_scalar_mul(base, 2nat * k + 1nat),
+                    )
+                }
         }),
 {
     assume(false);  // VERIFICATION NOTE: need to prove preconditions for FieldElement arithmetic operations

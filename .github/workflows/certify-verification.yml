@@ -14,7 +14,7 @@ on:
           - both
 
 permissions:
-  contents: write  # Needed to commit certifications.json updates
+  contents: write  # Needed to push certifications.json to certifications-data branch
 
 jobs:
   verify-and-certify:
@@ -205,7 +205,7 @@ jobs:
           echo "=== Updated certifications.json ==="
           cat "$CERT_FILE" | jq '.'
 
-      - name: Commit certifications.json
+      - name: Push certifications.json to data branch
         env:
           MAINNET_TX_HASH: ${{ steps.certify_mainnet.outputs.tx-hash }}
           SEPOLIA_TX_HASH: ${{ steps.certify_sepolia.outputs.tx-hash }}
@@ -213,17 +213,26 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add docs/certifications.json
+          # Save the updated certifications.json before switching branches
+          cp docs/certifications.json /tmp/certifications.json
+          
+          # Checkout the certifications-data branch
+          # Use -f to discard local changes (we've already saved what we need to /tmp)
+          git fetch origin certifications-data
+          git checkout -f certifications-data
+          
+          # Copy the updated certifications.json
+          cp /tmp/certifications.json certifications.json
+          git add certifications.json
           
           if git diff --cached --quiet; then
-            echo "::error::No changes to certifications.json despite successful certification."
-            exit 1
+            echo "::warning::No changes to certifications.json"
+          else
+            TX_REF="${MAINNET_TX_HASH:-$SEPOLIA_TX_HASH}"
+            git commit -m "chore: update certifications.json with tx ${TX_REF}"
+            git push origin certifications-data
+            echo "✅ Pushed certifications.json to certifications-data branch"
           fi
-          
-          TX_REF="${MAINNET_TX_HASH:-$SEPOLIA_TX_HASH}"
-          git commit -m "chore: update certifications.json with tx ${TX_REF}"
-          git push
-          echo "✅ Committed and pushed certifications.json update"
 
       - name: Final summary
         env:

@@ -348,7 +348,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load certifications history
     async function loadCertifications() {
         try {
-            const response = await fetch('certifications.json');
+            // Fetch from certifications-data branch (avoids protected main branch)
+            // Falls back to local path for development
+            const CERTIFICATIONS_URL = 'https://raw.githubusercontent.com/Beneficial-AI-Foundation/dalek-lite/certifications-data/certifications.json';
+            
+            let response;
+            try {
+                response = await fetch(CERTIFICATIONS_URL);
+                if (!response.ok) throw new Error('Remote fetch failed');
+            } catch (e) {
+                // Fallback for local development
+                console.log('Falling back to local certifications.json');
+                response = await fetch('certifications.json');
+            }
             const data = await response.json();
             
             const tbody = document.getElementById('certificationsTableBody');

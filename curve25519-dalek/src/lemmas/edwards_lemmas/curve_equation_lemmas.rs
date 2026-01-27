@@ -563,18 +563,6 @@ pub proof fn lemma_edwards_double_identity()
     // Result follows from edwards_add definition
 }
 
-/// Lemma: The Edwards identity `(0, 1)` is a left-identity for `edwards_add`.
-///
-/// Note: `edwards_add` always reduces inputs modulo `p()`, so the result is `(x % p(), y % p())`.
-pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
-    ensures
-        edwards_add(0, 1, x, y) == (x % p(), y % p()),
-{
-    // Follows from commutativity and right-identity
-    lemma_edwards_add_commutative(0, 1, x, y);
-    lemma_edwards_add_identity_right(x, y);
-}
-
 /// Lemma: The Edwards identity `(0, 1)` is a right-identity for `edwards_add`.
 ///
 /// Note: `edwards_add` always reduces inputs modulo `p()`, so the result is `(x % p(), y % p())`.

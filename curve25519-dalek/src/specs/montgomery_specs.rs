@@ -6,6 +6,8 @@ use crate::backend::serial::u64::constants::MONTGOMERY_A;
 #[allow(unused_imports)]
 use crate::constants::X25519_BASEPOINT;
 #[allow(unused_imports)]
+use crate::constants::APLUS2_OVER_FOUR;
+#[allow(unused_imports)]
 use crate::montgomery::ProjectivePoint;
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
@@ -299,6 +301,158 @@ pub open spec fn projective_represents_montgomery(
             U == math_field_mul(u, W)
         },
     }
+}
+
+/// Check if a Montgomery ProjectivePoint (U:W) represents a MontgomeryAffine point, including ∞.
+///
+/// This is a more precise relation than comparing only `spec_projective_u_coordinate`, because
+/// `spec_projective_u_coordinate` maps the projective point at infinity (W=0) to 0 (same as
+/// `spec_u_coordinate(∞)`), which would otherwise conflate ∞ with the finite u=0 point.
+pub open spec fn projective_represents_montgomery_or_infinity(
+    P_proj: ProjectivePoint,
+    P_aff: MontgomeryAffine,
+) -> bool {
+    match P_aff {
+        MontgomeryAffine::Infinity => {
+            // Infinity is represented by W = 0 in projective coordinates.
+            spec_field_element(&P_proj.W) == 0
+        },
+        MontgomeryAffine::Finite { u, v: _ } => {
+            // Same encoding requirement as `projective_represents_montgomery`.
+            let W = spec_field_element(&P_proj.W);
+            let U = spec_field_element(&P_proj.U);
+            W != 0 && U == math_field_mul(u, W)
+        },
+    }
+}
+
+/// Nat-only variant of `projective_represents_montgomery_or_infinity`.
+///
+/// This is convenient for stating algebraic properties of x-only algorithms without needing
+/// to construct concrete `FieldElement`s in specs.
+pub open spec fn projective_represents_montgomery_or_infinity_nats(
+    U: nat,
+    W: nat,
+    P_aff: MontgomeryAffine,
+) -> bool {
+    match P_aff {
+        MontgomeryAffine::Infinity => {
+            W == 0
+        },
+        MontgomeryAffine::Finite { u, v: _ } => {
+            W != 0 && U == math_field_mul(u, W)
+        },
+    }
+}
+
+// =============================================================================
+// X-ONLY PROJECTIVE FORMULAS (Costello–Smith 2017, Equations 9–10)
+// =============================================================================
+//
+// These spec functions define the *purely algebraic* Montgomery xDBL and xADD
+// formulas over FieldElements. They are the formal contracts for
+// `differential_add_and_double` in montgomery.rs.
+//
+// ## Design Rationale
+//
+// - **Purely algebraic**: No curve equation, y-coordinate, or group law is referenced.
+// - **Twist-agnostic**: Parameter B never appears; formulas work on curve or twist.
+// - **Projective equality**: Results are in ℙ¹; equality is up to scaling.
+//
+// The *semantic meaning* (that these compute [2]P and P+Q) is captured by the
+// axioms `axiom_xdbl_projective_correct` and `axiom_xadd_projective_correct`
+// in `montgomery_curve_lemmas.rs`.
+
+/// Montgomery doubling formula (xDBL) — Costello–Smith Equation 10.
+///
+/// Given projective u-coordinate `(U:W)` representing some point P,
+/// computes `(U':W')` representing the u-coordinate of `[2]P`.
+///
+/// ## Formula
+///
+/// Let `a24 = (A+2)/4 = 121666` for Curve25519.
+///
+/// ```text
+/// U' = (U + W)² · (U − W)²
+/// W' = [(U + W)² − (U − W)²] · [(U − W)² + a24 · ((U + W)² − (U − W)²)]
+/// ```
+///
+/// ## Notes
+///
+/// - This is a *specification* of the algebra; it does not claim correctness.
+/// - Correctness (that the output represents `[2]P`) is stated by `axiom_xdbl_projective_correct`.
+pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
+    let t0 = math_field_add(U, W);       // U + W
+    let t1 = math_field_sub(U, W);       // U - W
+    let t4 = math_field_square(t0);      // u = (U + W)²
+    let t5 = math_field_square(t1);      // v = (U - W)²
+    let t6 = math_field_sub(t4, t5);     // u - v
+    let a24 = spec_field_element(&APLUS2_OVER_FOUR);
+    let t13 = math_field_mul(a24, t6);   // A24 · (u - v)
+    let t15 = math_field_add(t13, t5);   // v + A24 · (u - v)
+    let U2 = math_field_mul(t4, t5);     // U' = u · v
+    let W2 = math_field_mul(t6, t15);    // W' = (u - v) · (v + A24 · (u - v))
+    (U2, W2)
+}
+
+/// Montgomery differential addition formula (xADD) — Costello–Smith Equation 9.
+///
+/// Given projective u-coordinates `(U_P:W_P)` and `(U_Q:W_Q)` representing points P and Q,
+/// and the affine u-coordinate `u_diff = u(P−Q)`, computes `(U':W')` representing `P + Q`.
+///
+/// ## Formula
+///
+/// ```text
+/// U' = [(U_P − W_P)(U_Q + W_Q) + (U_P + W_P)(U_Q − W_Q)]²
+/// W' = u_diff · [(U_P − W_P)(U_Q + W_Q) − (U_P + W_P)(U_Q − W_Q)]²
+/// ```
+///
+/// ## Preconditions (for semantic correctness)
+///
+/// - `P ≠ Q` (otherwise use xDBL)
+/// - `u(P−Q) ≠ 0` (P−Q is not the 2-torsion point)
+///
+/// ## Notes
+///
+/// - This is a *specification* of the algebra; it does not claim correctness.
+/// - Correctness (that the output represents `P+Q`) is stated by `axiom_xadd_projective_correct`.
+pub(crate) open spec fn spec_xadd_projective(
+    U_P: nat,
+    W_P: nat,
+    U_Q: nat,
+    W_Q: nat,
+    affine_PmQ: nat,
+) -> (nat, nat) {
+    let t0 = math_field_add(U_P, W_P);   // U_P + W_P
+    let t1 = math_field_sub(U_P, W_P);   // U_P - W_P
+    let t2 = math_field_add(U_Q, W_Q);   // U_Q + W_Q
+    let t3 = math_field_sub(U_Q, W_Q);   // U_Q - W_Q
+    let t7 = math_field_mul(t0, t3);     // (U_P + W_P)(U_Q - W_Q) = v
+    let t8 = math_field_mul(t1, t2);     // (U_P - W_P)(U_Q + W_Q) = u
+    let t9 = math_field_add(t7, t8);     // u + v
+    let t10 = math_field_sub(t7, t8);    // v - u (note: could also be u - v, symmetric in ℙ¹)
+    let U_PpQ = math_field_square(t9);   // U' = (u + v)²
+    let W_PpQ = math_field_mul(affine_PmQ, math_field_square(t10));  // W' = u(P-Q) · (u - v)²
+    (U_PpQ, W_PpQ)
+}
+
+/// Combined xDBLADD step for the Montgomery ladder.
+///
+/// Returns `(U_dbl, W_dbl, U_add, W_add)` where:
+/// - `(U_dbl:W_dbl)` is `xDBL(U_P, W_P)` — the doubled point `[2]P`
+/// - `(U_add:W_add)` is `xADD(U_P, W_P, U_Q, W_Q, affine_PmQ)` — the sum `P + Q`
+///
+/// This matches the computation in `differential_add_and_double`.
+pub(crate) open spec fn spec_xdbladd_projective(
+    U_P: nat,
+    W_P: nat,
+    U_Q: nat,
+    W_Q: nat,
+    affine_PmQ: nat,
+) -> (nat, nat, nat, nat) {
+    let (U2, W2) = spec_xdbl_projective(U_P, W_P);
+    let (U3, W3) = spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ);
+    (U2, W2, U3, W3)
 }
 
 /// Scalar multiplication on Montgomery curve (abstract specification)

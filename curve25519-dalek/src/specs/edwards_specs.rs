@@ -1037,7 +1037,6 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
 // =============================================================================
 // Partial sum specs for Pippenger mul_base algorithm
 // =============================================================================
-
 /// Partial sum of odd-indexed radix-16 digits: sum over odd i < upper_i of a[i] * 256^(i/2) * B
 ///
 /// This matches the structure of Loop 1 in mul_base which processes odd indices.
@@ -1089,7 +1088,10 @@ pub open spec fn even_sum_up_to(digits: Seq<i8>, upper_i: int, B: (nat, nat)) ->
 ///
 /// After loop 1 and mul_by_pow_2(4), the point equals 16 * odd_sum.
 /// Loop 2 then adds even-indexed terms one at a time.
-pub open spec fn pippenger_partial(digits: Seq<i8>, even_upper_i: int, B: (nat, nat)) -> (nat, nat) {
+pub open spec fn pippenger_partial(digits: Seq<i8>, even_upper_i: int, B: (nat, nat)) -> (
+    nat,
+    nat,
+) {
     let odd_sum = odd_sum_up_to(digits, 64, B);
     let scaled = edwards_scalar_mul(odd_sum, 16);
     let even_sum = even_sum_up_to(digits, even_upper_i, B);

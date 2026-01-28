@@ -121,7 +121,6 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
     if a >= 0 {
         // Reduce to the nat-nat composition lemma.
         let an = a as nat;
-        lemma_edwards_scalar_mul_composition(P, k, an);
 
         assert(edwards_scalar_mul_signed(edwards_scalar_mul(P, k), a) == edwards_scalar_mul(
             edwards_scalar_mul(P, k),
@@ -133,19 +132,18 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
         ));
 
         // Show k*an == (a*k) as nat.
-        assert((a * (k as int)) as nat == an * k) by {
-            assert(a == an as int);
+        assert((a * (k as int)) as nat == an * k);
+        assert(an * k == k * an) by {
+            lemma_mul_is_commutative(an as int, k as int);
         }
-        lemma_mul_is_commutative(an as int, k as int);
-        assert(an * k == k * an);
 
-        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), an) == edwards_scalar_mul(P, k * an));
-        assert(k * an == an * k);
+        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), an) == edwards_scalar_mul(P, k * an)) by {
+            lemma_edwards_scalar_mul_composition(P, k, an);
+        }
         assert(edwards_scalar_mul(P, (a * (k as int)) as nat) == edwards_scalar_mul(P, k * an));
     } else {
         // a < 0: expand via definition and use nat composition on (-a).
         let ap = (-a) as nat;
-        lemma_edwards_scalar_mul_composition(P, k, ap);
 
         assert(edwards_scalar_mul_signed(edwards_scalar_mul(P, k), a) == {
             let (x, y) = edwards_scalar_mul(edwards_scalar_mul(P, k), ap);
@@ -153,16 +151,18 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
         });
 
         // Rewrite the inner scalar multiplication using nat composition.
-        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), ap) == edwards_scalar_mul(P, k * ap));
+        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), ap) == edwards_scalar_mul(P, k * ap)) by {
+            lemma_edwards_scalar_mul_composition(P, k, ap);
+        }
 
         // For a < 0 and k > 0, a*k < 0, so signed scalar mul uses the negation branch.
         assert(k as int > 0);
         assert(-a > 0);
-        lemma_mul_strictly_positive(-a, k as int);
-        lemma_mul_unary_negation(a, k as int);
-        assert((-a) * (k as int) > 0);
+        assert((-a) * (k as int) > 0) by {
+            lemma_mul_strictly_positive(-a, k as int);
+        }
         assert(-(a * (k as int)) > 0) by {
-            assert((-a) * (k as int) == -(a * (k as int)));
+            lemma_mul_unary_negation(a, k as int);
         }
         assert(a * (k as int) < 0);
 
@@ -174,7 +174,8 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
 
         // Show that -(a*k) as nat equals k * (-a) as nat.
         assert((-(a * (k as int))) as nat == k * ap) by {
-            // (-a) * k == -(a * k)
+            // (-a) * k == -(a * k) by integer multiplication properties
+            lemma_mul_unary_negation(a, k as int);
             assert((-a) * (k as int) == -(a * (k as int)));
             assert(-(a * (k as int)) == (-a) * (k as int));
             assert(-a == ap as int);
@@ -728,19 +729,21 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     assert(even_sum == edwards_scalar_mul_signed(basepoint, radix16_even_scalar(digits, n)));
 
     // Scale the odd sum by 16, then add the even sum.
-    lemma_edwards_scalar_mul_signed_composition(basepoint, radix16_odd_scalar(digits, n), 16);
     let scaled = edwards_scalar_mul(odd_sum, 16);
-    assert(scaled == edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n) * 16));
+    assert(scaled == edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n) * 16)) by {
+        lemma_edwards_scalar_mul_signed_composition(basepoint, radix16_odd_scalar(digits, n), 16);
+    }
 
-    axiom_edwards_scalar_mul_signed_additive(
-        basepoint,
-        radix16_odd_scalar(digits, n) * 16,
-        radix16_even_scalar(digits, n),
-    );
     assert(edwards_add(scaled.0, scaled.1, even_sum.0, even_sum.1) == edwards_scalar_mul_signed(
         basepoint,
         radix16_odd_scalar(digits, n) * 16 + radix16_even_scalar(digits, n),
-    ));
+    )) by {
+        axiom_edwards_scalar_mul_signed_additive(
+            basepoint,
+            radix16_odd_scalar(digits, n) * 16,
+            radix16_even_scalar(digits, n),
+        );
+    }
 
     // Use the arithmetic lemma to rewrite the scalar as the radix-16 reconstruction.
     assert(digits.take(64) =~= digits);
@@ -751,9 +754,7 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     assert(reconstruct_radix_16(digits) == radix16_even_scalar(digits, n) + 16 * radix16_odd_scalar(
         digits,
         n,
-    )) by {
-        assert(reconstruct_radix_16(digits) == reconstruct_radix_16(digits.take(64)));
-    }
+    ));
     assert(radix16_odd_scalar(digits, n) * 16 + radix16_even_scalar(digits, n)
         == radix16_even_scalar(digits, n) + 16 * radix16_odd_scalar(digits, n)) by {
         lemma_mul_is_commutative(radix16_odd_scalar(digits, n), 16);
@@ -785,9 +786,7 @@ pub proof fn lemma_radix16_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), s
 {
     lemma_radix16_sum_correct_signed(digits, basepoint);
     assert(edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits))
-        == edwards_scalar_mul_signed(basepoint, scalar_nat as int)) by {
-        assert(reconstruct_radix_16(digits) == scalar_nat as int);
-    }
+        == edwards_scalar_mul_signed(basepoint, scalar_nat as int));
     assert(edwards_scalar_mul_signed(basepoint, scalar_nat as int) == edwards_scalar_mul(
         basepoint,
         scalar_nat,
@@ -798,12 +797,164 @@ pub proof fn lemma_radix16_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), s
 }
 
 // =============================================================================
+// Field algebra helper lemmas for AffineNiels point operations
+// =============================================================================
+/// Helper lemma: field subtraction is antisymmetric: sub(b, a) == neg(sub(a, b))
+proof fn lemma_field_sub_antisymmetric(a: nat, b: nat)
+    ensures
+        math_field_sub(b, a) == math_field_neg(math_field_sub(a, b)),
+{
+    // Field algebra fact: (b - a) = -(a - b) in any field
+    // TODO: prove using modular arithmetic lemmas
+    admit();
+}
+
+// =============================================================================
 // Lemma: Table lookup correctness (select function)
 // =============================================================================
+/// Helper lemma: identity_affine_niels decodes to the identity point (0, 1).
+proof fn lemma_identity_affine_niels_is_identity()
+    ensures
+        affine_niels_point_as_affine_edwards(identity_affine_niels()) == math_edwards_identity(),
+{
+    // identity_affine_niels has y_plus_x = [1,0,0,0,0], y_minus_x = [1,0,0,0,0]
+    // so spec_field_element gives 1 for both
+    let id = identity_affine_niels();
+    let y_plus_x = spec_field_element(&id.y_plus_x);
+    let y_minus_x = spec_field_element(&id.y_minus_x);
+
+    // Show y_plus_x == 1 and y_minus_x == 1
+    // id.y_plus_x.limbs = [1, 0, 0, 0, 0]
+    // u64_5_as_nat([1,0,0,0,0]) = 1 + 0 + 0 + 0 + 0 = 1
+    // spec_field_element = u64_5_as_nat % p = 1 % p = 1 (since 1 < p)
+    assert(y_plus_x == 1) by {
+        assert(id.y_plus_x.limbs[0] == 1);
+        assert(id.y_plus_x.limbs[1] == 0);
+        assert(id.y_plus_x.limbs[2] == 0);
+        assert(id.y_plus_x.limbs[3] == 0);
+        assert(id.y_plus_x.limbs[4] == 0);
+        // u64_5_as_nat gives 1 + 0 + 0 + 0 + 0 = 1
+        assert(spec_field_element_as_nat(&id.y_plus_x) == 1nat) by {
+            reveal(pow2);
+            assert(pow2(51) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(102) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(153) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(204) * 0 == 0) by (nonlinear_arith);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+    assert(y_minus_x == 1) by {
+        assert(id.y_minus_x.limbs[0] == 1);
+        assert(id.y_minus_x.limbs[1] == 0);
+        assert(id.y_minus_x.limbs[2] == 0);
+        assert(id.y_minus_x.limbs[3] == 0);
+        assert(id.y_minus_x.limbs[4] == 0);
+        assert(spec_field_element_as_nat(&id.y_minus_x) == 1nat) by {
+            reveal(pow2);
+            assert(pow2(51) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(102) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(153) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(204) * 0 == 0) by (nonlinear_arith);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+
+    // x = (y_plus_x - y_minus_x) * inv(2) = (1 - 1) * inv(2) = 0 * inv(2) = 0
+    let diff = math_field_sub(y_plus_x, y_minus_x);
+    assert(diff == 0) by {
+        // math_field_sub(1, 1) = (((1 % p) + p) - (1 % p)) % p = (1 + p - 1) % p = p % p = 0
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+        lemma_mod_self_0(p() as int);
+    }
+    let x = math_field_mul(diff, math_field_inv(2));
+    assert(x == 0) by {
+        // diff == 0, so diff % p() == 0
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        assert(diff % p() == 0);
+        lemma_field_mul_zero_left(diff, math_field_inv(2));
+    }
+
+    // y = (y_plus_x + y_minus_x) * inv(2) = (1 + 1) * inv(2) = 2 * inv(2) = 1
+    let sum = math_field_add(y_plus_x, y_minus_x);
+    assert(sum == 2) by {
+        // math_field_add(1, 1) = (1 + 1) % p = 2 (since 2 < p)
+        p_gt_2();
+        lemma_small_mod(2nat, p());
+    }
+    let y = math_field_mul(sum, math_field_inv(2));
+    assert(y == 1) by {
+        // 2 * inv(2) = 1 by field_inv_property
+        p_gt_2();
+        assert(2nat % p() != 0) by { lemma_small_mod(2nat, p()); }
+        field_inv_property(2nat);
+        lemma_field_mul_comm(2nat, math_field_inv(2));
+    }
+}
+
+/// Helper lemma: negating an AffineNielsPoint negates the x-coordinate.
+proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
+    ensures
+        affine_niels_point_as_affine_edwards(negate_affine_niels(pt)) == edwards_neg(
+            affine_niels_point_as_affine_edwards(pt),
+        ),
+{
+    // negate_affine_niels swaps y_plus_x and y_minus_x:
+    //   neg.y_plus_x = pt.y_minus_x
+    //   neg.y_minus_x = pt.y_plus_x
+    let y_plus_x = spec_field_element(&pt.y_plus_x);
+    let y_minus_x = spec_field_element(&pt.y_minus_x);
+    let inv2 = math_field_inv(2);
+
+    // Original point coords:
+    let x = math_field_mul(math_field_sub(y_plus_x, y_minus_x), inv2);
+    let y = math_field_mul(math_field_add(y_plus_x, y_minus_x), inv2);
+
+    // Negated point coords (after swapping y_plus_x and y_minus_x):
+    let x_neg = math_field_mul(math_field_sub(y_minus_x, y_plus_x), inv2);
+    let y_neg = math_field_mul(math_field_add(y_minus_x, y_plus_x), inv2);
+
+    // y' = y because field addition is commutative: (a + b) % p == (b + a) % p
+    assert(y_neg == y) by {
+        assert((y_minus_x + y_plus_x) == (y_plus_x + y_minus_x));
+    }
+
+    // x' = -x because:
+    // 1. sub(b, a) == neg(sub(a, b)) -- antisymmetry
+    // 2. neg(a) * b == neg(a * b) -- negation distributes
+    assert(x_neg == math_field_neg(x)) by {
+        let diff = math_field_sub(y_plus_x, y_minus_x);
+        let neg_diff = math_field_neg(diff);
+
+        // Step 1: sub(y_minus_x, y_plus_x) == neg(sub(y_plus_x, y_minus_x))
+        lemma_field_sub_antisymmetric(y_plus_x, y_minus_x);
+        assert(math_field_sub(y_minus_x, y_plus_x) == neg_diff);
+
+        // Step 2: x_neg = mul(neg_diff, inv2)
+        //               = mul(inv2, neg_diff)   [by commutativity]
+        //               = neg(mul(inv2, diff))   [by lemma_field_mul_neg]
+        //               = neg(mul(diff, inv2))   [by commutativity]
+        //               = neg(x)
+        lemma_field_mul_comm(neg_diff, inv2);
+        assert(math_field_mul(neg_diff, inv2) == math_field_mul(inv2, neg_diff));
+
+        lemma_field_mul_neg(inv2, diff);
+        assert(math_field_mul(inv2, neg_diff) == math_field_neg(math_field_mul(inv2, diff)));
+
+        lemma_field_mul_comm(inv2, diff);
+        assert(math_field_mul(inv2, diff) == math_field_mul(diff, inv2));
+    }
+
+    // Therefore (x', y') = (-x, y) = edwards_neg((x, y))
+}
+
 /// Lemma: The result of select(x) on a valid table equals [x]*basepoint in affine coords.
 ///
 /// The `select` function performs constant-time lookup from a precomputed table
-/// of basepoint multiples. This lemma proves that for a digit x in [-8, 8]:
+/// of basepoint multiples. For a digit x in [-8, 8]:
 /// - x > 0: `table[x-1]` decodes to `[x]*P` (positive multiple from table)
 /// - x == 0: identity decodes to `[0]*P = O` (identity element)
 /// - x < 0: `negate(table[-x-1])` decodes to `[-x]*P` negated = `[x]*P`
@@ -826,10 +977,44 @@ pub proof fn lemma_select_is_signed_scalar_mul(
             x as int,
         ),
 {
-    // For x > 0: result = table[x-1] decodes to edwards_scalar_mul(basepoint, x)
-    // For x == 0: identity_affine_niels decodes to (0,1) = edwards_scalar_mul_signed(P, 0)
-    // For x < 0: negate decodes to edwards_neg, and edwards_neg([n]P) = [-n]P
-    admit();
+    reveal(edwards_scalar_mul_signed);
+
+    if x > 0 {
+        // result == table[(x-1) as int]
+        // From the table spec: affine_niels_point_as_affine_edwards(table[j]) == edwards_scalar_mul(basepoint, j+1)
+        // With j = x-1: edwards_scalar_mul(basepoint, x)
+        // Since x > 0, edwards_scalar_mul_signed(basepoint, x) == edwards_scalar_mul(basepoint, x)
+        let j = (x - 1) as int;
+        assert(0 <= j < 8);
+        assert(affine_niels_point_as_affine_edwards(table[j]) == edwards_scalar_mul(
+            basepoint,
+            (j + 1) as nat,
+        ));
+        assert((j + 1) as nat == x as nat);
+    } else if x == 0 {
+        // result == identity_affine_niels()
+        // edwards_scalar_mul_signed(basepoint, 0) == edwards_scalar_mul(basepoint, 0) == identity
+        lemma_identity_affine_niels_is_identity();
+        reveal_with_fuel(edwards_scalar_mul, 1);
+        assert(edwards_scalar_mul(basepoint, 0) == math_edwards_identity());
+    } else {
+        // x < 0: result == negate_affine_niels(table[((-x) - 1) as int])
+        // table[(-x)-1] decodes to edwards_scalar_mul(basepoint, -x)
+        // negate_affine_niels gives edwards_neg of that
+        // edwards_scalar_mul_signed(basepoint, x) for x < 0 is edwards_neg(edwards_scalar_mul(basepoint, -x))
+        let j = ((-x) - 1) as int;
+        assert(0 <= j < 8);
+        assert(affine_niels_point_as_affine_edwards(table[j]) == edwards_scalar_mul(
+            basepoint,
+            (j + 1) as nat,
+        ));
+        assert((j + 1) as nat == (-x) as nat);
+
+        lemma_negate_affine_niels_is_edwards_neg(table[j]);
+        assert(affine_niels_point_as_affine_edwards(negate_affine_niels(table[j])) == edwards_neg(
+            edwards_scalar_mul(basepoint, (-x) as nat),
+        ));
+    }
 }
 
 } // verus!

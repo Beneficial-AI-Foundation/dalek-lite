@@ -202,7 +202,6 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
             lemma_small_mod(1, p);
         };
         assert(z4 == 1) by {
-            assert(z2 == 1);
             lemma_mul_basics(1int);
             lemma_small_mod(1, p);
         };
@@ -210,17 +209,13 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
         // LHS: (y2 - x2)·1 = (y2 - x2)
         let lhs = math_field_mul(math_field_sub(y2, x2), z2);
         assert(lhs == math_field_sub(y2, x2)) by {
-            assert(z2 == 1);
             lemma_mul_basics((math_field_sub(y2, x2)) as int);
-            // lhs = (sub * 1) % p = sub % p = sub (since sub is already reduced mod p)
             lemma_mod_twice((((y2 % p) + p) - (x2 % p)) as int, p as int);
         };
 
-        // RHS: 1 + d·x2·y2
+        // RHS: 1 + d·x2·y2 (z4 == 1)
         let rhs = math_field_add(z4, math_field_mul(d, math_field_mul(x2, y2)));
-        assert(rhs == math_field_add(1, math_field_mul(d, math_field_mul(x2, y2)))) by {
-            assert(z4 == 1);
-        };
+        assert(rhs == math_field_add(1, math_field_mul(d, math_field_mul(x2, y2))));
 
         // Affine curve equation gives the same equality.
         assert(math_field_sub(y2, x2) == math_field_add(
@@ -798,15 +793,10 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
                 assert(nm1 == m * 2 - 2);
                 assert(m * 2 - 2 == (m - 1) * 2) by (compute);
             }
+            // nm1 == mm1 * 2, so nm1 % 2 == 0
             assert(nm1 % 2 == 0) by {
-                assert(nm1 == mm1 * 2);
                 lemma_mul_mod_noop_right(mm1 as int, 2, 2);
-                assert(nm1 % 2 == (mm1 * (2nat % 2nat)) % 2);
-                assert(2nat % 2nat == 0nat) by (compute);
-                assert(mm1 * 0 == 0) by {
-                    lemma_mul_by_zero_is_zero(mm1 as int);
-                }
-                assert(0nat % 2 == 0) by (compute);
+                lemma_mul_by_zero_is_zero(mm1 as int);
             }
 
             reveal_with_fuel(edwards_scalar_mul, 1);
@@ -816,7 +806,6 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
                 edwards_double(half.0, half.1)
             });
             assert((nm1 / 2) as nat == mm1) by {
-                assert(nm1 == mm1 * 2);
                 lemma_div_by_multiple(mm1 as int, 2);
             }
 
@@ -989,9 +978,7 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
     // x1y2 = 0*y = 0
     let x1y2 = math_field_mul(0nat, y);
     assert(x1y2 == 0) by {
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
+        lemma_small_mod(0nat, p());
         lemma_field_mul_zero_left(0nat, y);
     }
 
@@ -1004,15 +991,8 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
     // t = d * (0 * (y%p)) = 0
     let t = math_field_mul(d, math_field_mul(x1x2, y1y2));
     assert(t == 0) by {
-        assert(math_field_mul(x1x2, y1y2) == 0) by {
-            assert(x1x2 % p() == 0) by {
-                lemma_small_mod(0nat, p());
-            }
-            lemma_field_mul_zero_left(x1x2, y1y2);
-        }
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
+        lemma_small_mod(0nat, p());
+        lemma_field_mul_zero_left(x1x2, y1y2);
         lemma_field_mul_zero_right(d, 0nat);
     }
 
@@ -1034,34 +1014,15 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
     // x3 = (0*y + 1*x) / 1 = x % p
     let x3 = math_field_mul(math_field_add(x1y2, y1x2), math_field_inv(denom_x));
     assert(x3 == x % p()) by {
-        assert(math_field_add(x1y2, y1x2) == x % p()) by {
-            assert(x1y2 == 0);
-            assert(y1x2 == x % p());
-            assert(math_field_add(0nat, x % p()) == x % p()) by {
-                assert(0nat + x % p() == x % p());
-                lemma_small_mod(x % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_x) == 1);
-        // (x%p) * 1 = x%p (mod p)
-        lemma_field_mul_one_right(x % p());
         lemma_small_mod(x % p(), p());
+        lemma_field_mul_one_right(x % p());
     }
 
     // y3 = (1*y + 0*x) / 1 = y % p
     let y3 = math_field_mul(math_field_add(y1y2, x1x2), math_field_inv(denom_y));
     assert(y3 == y % p()) by {
-        assert(math_field_add(y1y2, x1x2) == y % p()) by {
-            assert(y1y2 == y % p());
-            assert(x1x2 == 0);
-            assert(math_field_add(y % p(), 0nat) == y % p()) by {
-                assert(y % p() + 0nat == y % p());
-                lemma_small_mod(y % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_y) == 1);
-        lemma_field_mul_one_right(y % p());
         lemma_small_mod(y % p(), p());
+        lemma_field_mul_one_right(y % p());
     }
 
     assert(edwards_add(0, 1, x, y) == (x % p(), y % p()));
@@ -1397,8 +1358,8 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
         assert(a * bm1 >= 1);
         lemma_edwards_scalar_mul_additive(point_affine, a * bm1, a);
 
+        // b == bm1 + 1, so a * bm1 + a == a * (bm1 + 1) == a * b
         assert(a * bm1 + a == a * b) by {
-            assert(b == bm1 + 1);
             lemma_mul_is_distributive_add(a as int, bm1 as int, 1);
             lemma_mul_basics(a as int);
         }

@@ -1882,7 +1882,9 @@ impl RistrettoPoint {
 
             #[cfg(feature = "precomputed-tables")]
             {
-                proof { axiom_ristretto_basepoint_table_valid(); }
+                proof {
+                    axiom_ristretto_basepoint_table_valid();
+                }
                 scalar * constants::RISTRETTO_BASEPOINT_TABLE
             }
         };
@@ -2184,7 +2186,9 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoBasepointTable {
                 scalar_to_nat(scalar),
             ),
     {
-        proof { axiom_ristretto_basepoint_table_valid(); }
+        proof {
+            axiom_ristretto_basepoint_table_valid();
+        }
         RistrettoPoint(&self.0 * scalar)
     }
 }
@@ -2206,7 +2210,9 @@ impl<'a, 'b> Mul<&'a RistrettoBasepointTable> for &'b Scalar {
                 scalar_to_nat(self),
             ),
     {
-        proof { axiom_ristretto_basepoint_table_valid(); }
+        proof {
+            axiom_ristretto_basepoint_table_valid();
+        }
         RistrettoPoint(self * &basepoint_table.0)
     }
 }

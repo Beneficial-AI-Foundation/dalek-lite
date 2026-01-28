@@ -46,7 +46,7 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::specs::scalar_specs::scalar_to_nat;
+use crate::specs::scalar_specs::{scalar_to_nat, spec_scalar};
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::{lemma_mod_bound, lemma_small_mod};
@@ -96,6 +96,7 @@ pub open spec fn pow256(n: nat) -> nat {
 
 /// Spec: A valid EdwardsBasepointTable for a basepoint B contains 32 LookupTables where:
 /// - table.0[i] contains [1·(16²)^i·B, 2·(16²)^i·B, ..., 8·(16²)^i·B]
+/// - All entries have bounded limbs (< 2^54)
 ///
 /// This enables computing [scalar] * B via radix-16 representation of scalar.
 #[cfg(feature = "precomputed-tables")]
@@ -104,13 +105,17 @@ pub open spec fn is_valid_edwards_basepoint_table(
     basepoint: (nat, nat),
 ) -> bool {
     // Each of the 32 LookupTables contains correct multiples of (16²)^i * B
+    // and has bounded limbs
     forall|i: int|
         #![trigger table.0[i]]
-        0 <= i < 32 ==> crate::specs::window_specs::is_valid_lookup_table_affine_coords(
-            table.0[i].0,
-            edwards_scalar_mul(basepoint, pow256(i as nat)),
-            8,
-        )
+        0 <= i < 32 ==> {
+            &&& crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                table.0[i].0,
+                edwards_scalar_mul(basepoint, pow256(i as nat)),
+                8,
+            )
+            &&& crate::specs::window_specs::lookup_table_affine_limbs_bounded(table.0[i].0)
+        }
 }
 
 /// Axiom: ED25519_BASEPOINT_TABLE is a valid basepoint table for the Ed25519 basepoint.
@@ -1027,6 +1032,81 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
             math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
         Some((x, y))
     }
+}
+
+// =============================================================================
+// Partial sum specs for Pippenger mul_base algorithm
+// =============================================================================
+
+/// Partial sum of odd-indexed radix-16 digits: sum over odd i < upper_i of a[i] * 256^(i/2) * B
+///
+/// This matches the structure of Loop 1 in mul_base which processes odd indices.
+/// For odd index i, table[i/2] contains 256^(i/2) * B multiples.
+pub open spec fn odd_sum_up_to(digits: Seq<i8>, upper_i: int, B: (nat, nat)) -> (nat, nat)
+    decreases upper_i,
+{
+    if upper_i <= 0 {
+        math_edwards_identity()
+    } else {
+        let i = upper_i - 1;
+        if i % 2 == 1 {
+            // Odd index - add term a[i] * 256^(i/2) * B
+            let prev = odd_sum_up_to(digits, i, B);
+            let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
+            let term = edwards_scalar_mul_signed(base, digits[i] as int);
+            edwards_add(prev.0, prev.1, term.0, term.1)
+        } else {
+            // Even index - skip
+            odd_sum_up_to(digits, i, B)
+        }
+    }
+}
+
+/// Partial sum of even-indexed radix-16 digits: sum over even i < upper_i of a[i] * 256^(i/2) * B
+///
+/// This matches the structure of Loop 2 in mul_base which processes even indices.
+pub open spec fn even_sum_up_to(digits: Seq<i8>, upper_i: int, B: (nat, nat)) -> (nat, nat)
+    decreases upper_i,
+{
+    if upper_i <= 0 {
+        math_edwards_identity()
+    } else {
+        let i = upper_i - 1;
+        if i % 2 == 0 {
+            // Even index - add term a[i] * 256^(i/2) * B
+            let prev = even_sum_up_to(digits, i, B);
+            let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
+            let term = edwards_scalar_mul_signed(base, digits[i] as int);
+            edwards_add(prev.0, prev.1, term.0, term.1)
+        } else {
+            // Odd index - skip
+            even_sum_up_to(digits, i, B)
+        }
+    }
+}
+
+/// Partial state during loop 2: 16 * odd_sum + even_sum_up_to(digits, even_upper_i, B)
+///
+/// After loop 1 and mul_by_pow_2(4), the point equals 16 * odd_sum.
+/// Loop 2 then adds even-indexed terms one at a time.
+pub open spec fn pippenger_partial(digits: Seq<i8>, even_upper_i: int, B: (nat, nat)) -> (nat, nat) {
+    let odd_sum = odd_sum_up_to(digits, 64, B);
+    let scaled = edwards_scalar_mul(odd_sum, 16);
+    let even_sum = even_sum_up_to(digits, even_upper_i, B);
+    edwards_add(scaled.0, scaled.1, even_sum.0, even_sum.1)
+}
+
+/// Full radix-16 sum: sum of a[i] * 16^i * B for i in 0..64
+///
+/// This equals [scalar] * B when digits are the radix-16 representation of scalar.
+pub open spec fn radix16_sum(digits: Seq<i8>, B: (nat, nat)) -> (nat, nat)
+    recommends
+        digits.len() == 64,
+{
+    // The algorithm computes: 16 * odd_sum + even_sum
+    // where odd_sum = sum(a[2j+1] * 256^j * B) and even_sum = sum(a[2j] * 256^j * B)
+    // This equals sum(a[i] * 16^i * B) since 256 = 16^2
+    pippenger_partial(digits, 64, B)
 }
 
 } // verus!

@@ -21,6 +21,7 @@ use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
+#[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::{reconstruct_radix_16, reconstruct_radix_2w};
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;

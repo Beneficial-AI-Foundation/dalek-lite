@@ -1075,15 +1075,12 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
 // Axioms: Signed scalar multiplication linearity (group law)
 // =============================================================================
 /// Axiom: Scalar multiplication distributes over point negation.
-/// [n](-P) = -([n]P) where -P = (neg_x, y) for P = (x, y).
+/// [n](-P) = -([n]P)
 ///
 /// This is a fundamental group theory fact: scalar multiplication is a group homomorphism.
 pub proof fn axiom_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
     ensures
-        edwards_scalar_mul((math_field_neg(P.0), P.1), n) == ({
-            let (x, y) = edwards_scalar_mul(P, n);
-            (math_field_neg(x), y)
-        }),
+        edwards_scalar_mul(edwards_neg(P), n) == edwards_neg(edwards_scalar_mul(P, n)),
 {
     admit();
 }

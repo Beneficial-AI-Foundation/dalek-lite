@@ -1192,10 +1192,9 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
 
 /// Proves that `edwards_scalar_mul(edwards_scalar_mul(P, a), b) == edwards_scalar_mul(P, a * b)`
 ///
-/// **Note**: This is a fundamental algebraic property. The full proof for arbitrary b is complex
-/// (requiring case analysis on parity and careful arithmetic reasoning). For powers of 2,
-/// use `lemma_edwards_scalar_mul_composition_pow2` which has a complete proof. The odd-b case relies on
-/// the admitted associativity lemma `lemma_edwards_add_associative`.
+/// This is the scalar multiplication composition lemma: applying scalar multiplication twice
+/// composes multiplicatively. The proof uses `lemma_edwards_scalar_mul_additive` for the odd-b
+/// case, which in turn relies on the admitted `lemma_edwards_add_associative`.
 pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: nat, b: nat)
     ensures
         edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == edwards_scalar_mul(
@@ -1204,11 +1203,10 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
         ),
     decreases b,
 {
-    // NOTE:
-    // - The `b % 2 == 0` case is provable directly from the definition of `edwards_scalar_mul`
-    //   (both sides take the even branch and reduce to the induction hypothesis).
-    // - The `b % 2 == 1` case requires scalar-mul additivity / group-law associativity facts
-    //   about `edwards_add`, which are not yet proven in this repo.
+    // The proof proceeds by induction on b:
+    // - The `b % 2 == 0` case unfolds to doubling and uses the induction hypothesis.
+    // - The `b % 2 == 1` case uses `lemma_edwards_scalar_mul_additive` to rewrite
+    //   [b]Q = [b-1]Q + Q, then applies the IH.
     if a == 0 {
         // Special case: [b]([0]P) == [0]P for all b.
         reveal_with_fuel(edwards_scalar_mul, 1);

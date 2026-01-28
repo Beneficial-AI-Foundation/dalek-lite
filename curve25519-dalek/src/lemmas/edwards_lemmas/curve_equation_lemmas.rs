@@ -1085,7 +1085,31 @@ pub proof fn axiom_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
     admit();
 }
 
+/// Axiom: Negation distributes over addition (group homomorphism property).
+/// (-P) + (-Q) = -(P + Q)
+pub proof fn axiom_neg_distributes_over_add(P: (nat, nat), Q: (nat, nat))
+    ensures
+        edwards_add(edwards_neg(P).0, edwards_neg(P).1, edwards_neg(Q).0, edwards_neg(Q).1)
+            == edwards_neg(edwards_add(P.0, P.1, Q.0, Q.1)),
+{
+    admit();
+}
+
+/// Axiom: Adding a point and its negation gives identity.
+/// P + (-P) = O (identity)
+pub proof fn axiom_add_neg_is_identity(P: (nat, nat))
+    ensures
+        edwards_add(P.0, P.1, edwards_neg(P).0, edwards_neg(P).1) == math_edwards_identity(),
+{
+    admit();
+}
+
 /// Axiom: [a]P + [b]P = [a+b]P for signed scalars a, b.
+///
+/// This is the group law for scalar multiplication linearity.
+/// The proof requires careful case analysis on signs and uses
+/// lemma_edwards_scalar_mul_additive, axiom_neg_distributes_over_add,
+/// and axiom_add_neg_is_identity.
 pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: int)
     ensures
         ({

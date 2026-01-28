@@ -174,6 +174,8 @@ use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for radix-16 scalar multiplication proofs
+use crate::lemmas::edwards_lemmas::radix16_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::step1_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
@@ -3024,8 +3026,12 @@ impl BasepointTable for EdwardsBasepointTable {
                         8,
                     ));
 
-                    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_select_is_signed_scalar_mul(
-                    self.0[table_idx].0, a[i as int], selected, table_base);
+                    lemma_select_is_signed_scalar_mul(
+                        self.0[table_idx].0,
+                        a[i as int],
+                        selected,
+                        table_base,
+                    );
                     assert(selected_affine == edwards_scalar_mul_signed(
                         table_base,
                         a[i as int] as int,
@@ -3073,8 +3079,7 @@ impl BasepointTable for EdwardsBasepointTable {
             assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
             // scaled comes from edwards_scalar_mul, which produces reduced coordinates
             lemma_edwards_scalar_mul_reduced(odd_sum, 16);
-            crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_add_identity_right_reduced(
-            scaled);
+            lemma_edwards_add_identity_right_reduced(scaled);
             assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled);
             assert(pippenger_partial(a@, 0, B) == scaled);
         }
@@ -3159,8 +3164,12 @@ impl BasepointTable for EdwardsBasepointTable {
                         table_base,
                         8,
                     ));
-                    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_select_is_signed_scalar_mul(
-                    self.0[table_idx].0, a[i as int], selected, table_base);
+                    lemma_select_is_signed_scalar_mul(
+                        self.0[table_idx].0,
+                        a[i as int],
+                        selected,
+                        table_base,
+                    );
                     assert(selected_affine == edwards_scalar_mul_signed(
                         table_base,
                         a[i as int] as int,
@@ -3194,8 +3203,14 @@ impl BasepointTable for EdwardsBasepointTable {
                     assert(even_ip1 == edwards_add(even_i.0, even_i.1, term_i.0, term_i.1));
 
                     // Re-associate: (scaled + even_i) + term_i == scaled + (even_i + term_i).
-                    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_add_associative(
-                    scaled.0, scaled.1, even_i.0, even_i.1, term_i.0, term_i.1);
+                    axiom_edwards_add_associative(
+                        scaled.0,
+                        scaled.1,
+                        even_i.0,
+                        even_i.1,
+                        term_i.0,
+                        term_i.1,
+                    );
 
                     assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == edwards_add(
                         scaled.0,
@@ -3241,11 +3256,7 @@ impl BasepointTable for EdwardsBasepointTable {
             reveal(reconstruct_radix_16);
             assert(reconstruct_radix_16(a@) == scalar_to_nat(scalar) as int);
 
-            crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_radix16_sum_correct(
-                a@,
-                B,
-                scalar_to_nat(scalar),
-            );
+            lemma_radix16_sum_correct(a@, B, scalar_to_nat(scalar));
             assert(radix16_sum(a@, B) == edwards_scalar_mul(B, scalar_to_nat(scalar)));
 
             // Postconditions:

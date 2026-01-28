@@ -967,85 +967,16 @@ pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat
 
 /// **Lemma**: Scalar multiplication composition for powers of 2
 ///
-/// Simplified version for powers of 2: `edwards_scalar_mul(edwards_scalar_mul(P, a), pow2(k)) == edwards_scalar_mul(P, a * pow2(k))`
-/// This is easier to prove than the general case because powers of 2 always take the even branch.
-///
-/// The proof proceeds by induction on `k`, using `lemma_edwards_scalar_mul_pow2_succ` to
-/// unfold the `pow2(k)` recursion and basic arithmetic facts about powers of 2.
+/// Specialized version for powers of 2: `edwards_scalar_mul(edwards_scalar_mul(P, a), pow2(k)) == edwards_scalar_mul(P, a * pow2(k))`
+/// This is just an instantiation of the general composition lemma with b = pow2(k).
 pub proof fn lemma_edwards_scalar_mul_composition_pow2(point_affine: (nat, nat), a: nat, k: nat)
     ensures
         edwards_scalar_mul(edwards_scalar_mul(point_affine, a), pow2(k)) == edwards_scalar_mul(
             point_affine,
             a * pow2(k),
         ),
-    decreases k,
 {
-    if k == 0 {
-        lemma2_to64();
-        reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(pow2(0) == 1);
-        assert(a * 1 == a) by (nonlinear_arith);
-        assert(a * pow2(0) == a);
-    } else {
-        let km1 = (k - 1) as nat;
-
-        // Induction hypothesis at k-1.
-        lemma_edwards_scalar_mul_composition_pow2(point_affine, a, km1);
-
-        // Unfold the `pow2(k)` scalar multiplication on the left.
-        lemma_edwards_scalar_mul_pow2_succ(edwards_scalar_mul(point_affine, a), km1);
-
-        if a == 0 {
-            // scalar_mul(P, 0) = identity, and doubling identity = identity
-            reveal_with_fuel(edwards_scalar_mul, 1);
-            lemma_edwards_double_identity();
-            assert(edwards_scalar_mul(point_affine, 0) == math_edwards_identity());
-            assert(0nat * pow2(k) == 0);
-            // IH: scalar_mul(scalar_mul(P,0), pow2(k-1)) == scalar_mul(P,0) == identity
-            // So double(identity) == identity
-        } else {
-            // Lemmas needed for arithmetic reasoning
-            reveal_with_fuel(edwards_scalar_mul, 1);
-            lemma_pow2_even(k);
-            lemma_pow2_pos(k);
-            lemma2_to64();
-            pow2_MUL_div(a, k, 1);
-            lemma_mul_mod_noop_right(a as int, pow2(k) as int, 2);
-            lemma_mul_by_zero_is_zero(a as int);
-            lemma_mul_nonzero(a as int, pow2(k) as int);
-
-            // a * pow2(k) is even, nonzero, != 1, and divides correctly
-            assert(pow2(k) % 2 == 0);
-            assert((a * pow2(k)) % 2 == 0);
-            assert((a * pow2(k)) / 2 == a * pow2(km1));
-            assert(a * pow2(k) != 0 && a * pow2(k) != 1);
-
-            // Rewrite both sides to the same "double" form.
-            calc! {
-                (==)
-                edwards_scalar_mul(edwards_scalar_mul(point_affine, a), pow2(k)); (==) {
-                    // From lemma_edwards_scalar_mul_pow2_succ on the left:
-                    // scalar_mul(Q, 2^k) = double(scalar_mul(Q, 2^(k-1))).
-                }
-                {
-                    let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, a), pow2(km1));
-                    edwards_double(half.0, half.1)
-                }; (==) {
-                    // Apply IH to rewrite the inner scalar multiplication.
-                    assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), pow2(km1))
-                        == edwards_scalar_mul(point_affine, a * pow2(km1)));
-                }
-                {
-                    let half = edwards_scalar_mul(point_affine, a * pow2(km1));
-                    edwards_double(half.0, half.1)
-                }; (==) {
-                    // Unfold RHS at n = a*pow2(k) and use the computed half.
-                    assert(((a * pow2(k)) / 2) as nat == a * pow2(km1));
-                }
-                edwards_scalar_mul(point_affine, a * pow2(k));
-            }
-        }
-    }
+    lemma_edwards_scalar_mul_composition(point_affine, a, pow2(k));
 }
 
 pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)

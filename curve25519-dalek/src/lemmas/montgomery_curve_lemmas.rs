@@ -32,7 +32,6 @@
 //! - `axiom_montgomery_add_identity`: P + ∞ = P
 //! - `axiom_montgomery_add_identity_left`: ∞ + P = P
 //! - `axiom_montgomery_add_inverse`: P + (-P) = ∞
-
 #![allow(unused)]
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
@@ -51,10 +50,13 @@ verus! {
 // =============================================================================
 // These are fundamental properties of the Montgomery curve group structure.
 // They follow from the algebraic definition but are complex to verify formally.
-
 /// Axiom: Montgomery addition is associative
 /// (P + Q) + R = P + (Q + R)
-pub proof fn axiom_montgomery_add_associative(P: MontgomeryAffine, Q: MontgomeryAffine, R: MontgomeryAffine)
+pub proof fn axiom_montgomery_add_associative(
+    P: MontgomeryAffine,
+    Q: MontgomeryAffine,
+    R: MontgomeryAffine,
+)
     ensures
         montgomery_add(montgomery_add(P, Q), R) == montgomery_add(P, montgomery_add(Q, R)),
 {
@@ -110,7 +112,6 @@ pub proof fn axiom_montgomery_add_inverse(P: MontgomeryAffine)
 //
 // - Costello & Smith, "Montgomery curves and their arithmetic", 2017 (ePrint 2017/212)
 // - RFC 7748: Elliptic Curves for Security
-
 /// **xDBL Axiom**: Montgomery doubling formula correctness.
 ///
 /// If `(U:W)` is a projective representation of point P, then `spec_xdbl_projective(U, W)`
@@ -164,9 +165,9 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
     let t4 = math_field_square(t0);
     let t5 = math_field_square(t1);
     let t6 = math_field_sub(t4, t5);
-    
+
     p_gt_2();
-    
+
     // Show t4 == t5
     if U == 0 {
         // t0 = (0 + W) % p = W % p
@@ -199,15 +200,12 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
         assert(t0 == t1);
         assert(t4 == t5);
     }
-    
+
     lemma_field_sub_self(t4);
     assert(t6 == 0);
-    
+
     // W2 = t6 * t15 = 0 * anything = 0
-    let t15 = math_field_add(
-        math_field_mul(spec_field_element(&APLUS2_OVER_FOUR), t6),
-        t5,
-    );
+    let t15 = math_field_add(math_field_mul(spec_field_element(&APLUS2_OVER_FOUR), t6), t5);
     lemma_field_mul_zero_left(0, t15);
 }
 
@@ -246,8 +244,9 @@ pub(crate) proof fn axiom_xadd_projective_correct(
         P != Q,
         affine_PmQ != 0,
         // u-coordinate is symmetric: u(P-Q) = u(Q-P) since u is invariant under negation
-        affine_PmQ == spec_u_coordinate(montgomery_sub(P, Q))
-            || affine_PmQ == spec_u_coordinate(montgomery_sub(Q, P)),
+        affine_PmQ == spec_u_coordinate(montgomery_sub(P, Q)) || affine_PmQ == spec_u_coordinate(
+            montgomery_sub(Q, P),
+        ),
     ensures
         ({
             let (U_PpQ, W_PpQ) = spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ);
@@ -260,7 +259,6 @@ pub(crate) proof fn axiom_xadd_projective_correct(
 // =============================================================================
 // SCALAR MULTIPLICATION LEMMAS
 // =============================================================================
-
 /// Lemma: If an affine point has reduced u-coordinate (< p), then any projective representation
 /// of its u-coordinate yields the same value via `spec_projective_u_coordinate`.
 pub proof fn lemma_projective_represents_implies_u_coordinate(
@@ -299,10 +297,16 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
 
             // spec_projective_u_coordinate = U / W = (u*W) / W = u
             assert(spec_projective_u_coordinate(P_proj) == math_field_mul(U, math_field_inv(W)));
-            assert(spec_projective_u_coordinate(P_proj) == math_field_mul(math_field_mul(u, W), math_field_inv(W)));
+            assert(spec_projective_u_coordinate(P_proj) == math_field_mul(
+                math_field_mul(u, W),
+                math_field_inv(W),
+            ));
 
             lemma_field_mul_assoc(u, W, math_field_inv(W));
-            assert(spec_projective_u_coordinate(P_proj) == math_field_mul(u, math_field_mul(W, math_field_inv(W))));
+            assert(spec_projective_u_coordinate(P_proj) == math_field_mul(
+                u,
+                math_field_mul(W, math_field_inv(W)),
+            ));
 
             lemma_inv_mul_cancel(W);
             lemma_field_mul_comm(math_field_inv(W), W);
@@ -318,7 +322,6 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
 // -----------------------------------------------------------------------------
 // Basic scalar multiplication lemmas
 // -----------------------------------------------------------------------------
-
 /// Lemma: scalar multiplication by 0 gives the identity (infinity)
 ///
 /// NOTE: Currently unused; kept for completeness.
@@ -397,7 +400,10 @@ pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat
             assert(m >= 1);
             assert(m_minus_1 == m - 1);
         }
-        assert(montgomery_scalar_mul(P, m + n) == montgomery_add(P, montgomery_scalar_mul(P, m_minus_1 + n)));
+        assert(montgomery_scalar_mul(P, m + n) == montgomery_add(
+            P,
+            montgomery_scalar_mul(P, m_minus_1 + n),
+        ));
 
         // Expand IH on [m-1+n]P.
         assert(montgomery_scalar_mul(P, m_minus_1 + n) == montgomery_add(
@@ -405,12 +411,24 @@ pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat
             montgomery_scalar_mul(P, n),
         ));
 
-        axiom_montgomery_add_associative(P, montgomery_scalar_mul(P, m_minus_1), montgomery_scalar_mul(P, n));
-        assert(montgomery_add(P, montgomery_add(montgomery_scalar_mul(P, m_minus_1), montgomery_scalar_mul(P, n)))
-            == montgomery_add(montgomery_add(P, montgomery_scalar_mul(P, m_minus_1)), montgomery_scalar_mul(P, n)));
+        axiom_montgomery_add_associative(
+            P,
+            montgomery_scalar_mul(P, m_minus_1),
+            montgomery_scalar_mul(P, n),
+        );
+        assert(montgomery_add(
+            P,
+            montgomery_add(montgomery_scalar_mul(P, m_minus_1), montgomery_scalar_mul(P, n)),
+        ) == montgomery_add(
+            montgomery_add(P, montgomery_scalar_mul(P, m_minus_1)),
+            montgomery_scalar_mul(P, n),
+        ));
 
         // By definition: [m]P = P + [m-1]P.
-        assert(montgomery_scalar_mul(P, m) == montgomery_add(P, montgomery_scalar_mul(P, m_minus_1)));
+        assert(montgomery_scalar_mul(P, m) == montgomery_add(
+            P,
+            montgomery_scalar_mul(P, m_minus_1),
+        ));
 
         assert(montgomery_scalar_mul(P, m + n) == montgomery_add(
             montgomery_scalar_mul(P, m),
@@ -477,7 +495,6 @@ pub proof fn lemma_spec_u_coordinate_finite(u: nat, v: nat)
 //
 // Used by: `lemma_u_coordinate_scalar_mul_canonical_lift_zero` which is called
 // from `mul_bits_be` for the u=0 edge case.
-
 /// Lemma: the unique square root of 0 is 0.
 pub proof fn lemma_math_sqrt_zero()
     ensures
@@ -561,10 +578,18 @@ pub proof fn lemma_canonical_montgomery_lift_zero()
         p_gt_2();
         lemma_small_mod(0, p());
         assert(0nat % p() == 0nat);
-        assert(u2 == 0) by { lemma_field_mul_zero_left(0, 0); }
-        assert(u2 % p() == 0) by { assert(u2 == 0); }
-        assert(u3 == 0) by { lemma_field_mul_zero_left(u2, 0); }
-        assert(Au2 == 0) by { lemma_field_mul_zero_right(A, u2); }
+        assert(u2 == 0) by {
+            lemma_field_mul_zero_left(0, 0);
+        }
+        assert(u2 % p() == 0) by {
+            assert(u2 == 0);
+        }
+        assert(u3 == 0) by {
+            lemma_field_mul_zero_left(u2, 0);
+        }
+        assert(Au2 == 0) by {
+            lemma_field_mul_zero_right(A, u2);
+        }
         assert(math_field_add(math_field_add(0, 0), 0) == 0) by {
             p_gt_2();
             assert(math_field_add(0, 0) == (0nat + 0nat) % p());
@@ -575,7 +600,10 @@ pub proof fn lemma_canonical_montgomery_lift_zero()
         }
         assert(montgomery_rhs(0) == 0);
     }
-    assert(canonical_montgomery_lift(0) == MontgomeryAffine::Finite { u: 0nat % p(), v: canonical_sqrt(montgomery_rhs(0)) });
+    assert(canonical_montgomery_lift(0) == MontgomeryAffine::Finite {
+        u: 0nat % p(),
+        v: canonical_sqrt(montgomery_rhs(0)),
+    });
     assert(0nat % p() == 0nat) by {
         p_gt_2();
         lemma_mod_self_0(p() as int);
@@ -674,7 +702,7 @@ pub proof fn lemma_canonical_scalar_mul_u_coord_reduced(u0: nat, n: nat)
     let P = canonical_montgomery_lift(u0);
     let R = montgomery_scalar_mul(P, n);
     p_gt_2();
-    
+
     if n == 0 {
         // montgomery_scalar_mul(P, 0) = Infinity
         // spec_u_coordinate(Infinity) = 0 < p()
@@ -685,7 +713,7 @@ pub proof fn lemma_canonical_scalar_mul_u_coord_reduced(u0: nat, n: nat)
         let R_prev = montgomery_scalar_mul(P, (n - 1) as nat);
         lemma_canonical_scalar_mul_u_coord_reduced(u0, (n - 1) as nat);
         assert(spec_u_coordinate(R_prev) < p());
-        
+
         // Now R = montgomery_add(P, R_prev)
         // montgomery_add returns either Infinity (u-coord 0) or Finite with u computed
         // via math_field_* operations which always return values < p()
@@ -704,14 +732,14 @@ proof fn lemma_montgomery_add_u_coord_reduced(P: MontgomeryAffine, Q: Montgomery
 {
     p_gt_2();
     let R = montgomery_add(P, Q);
-    
+
     // P = canonical_montgomery_lift(u0) means P = Finite{u: u0 % p(), v: ...}
     // So spec_u_coordinate(P) = u0 % p() < p()
     assert(spec_u_coordinate(P) < p()) by {
         // canonical_montgomery_lift creates Finite{u: u % p(), v: ...}
         lemma_mod_division_less_than_divisor(u0 as int, p() as int);
     }
-    
+
     match R {
         MontgomeryAffine::Infinity => {
             assert(spec_u_coordinate(R) == 0);

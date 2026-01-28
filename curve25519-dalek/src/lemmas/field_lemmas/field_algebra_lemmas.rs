@@ -1481,7 +1481,7 @@ pub proof fn lemma_field_sub_self(x: nat)
     let p = p();
     p_gt_2();
     let x_mod = x % p;
-    
+
     // math_field_sub(x, x) = (((x % p) + p) - (x % p)) % p
     assert(math_field_sub(x, x) == (((x_mod + p) - x_mod) as nat) % p);
     assert((x_mod + p) - x_mod == p);

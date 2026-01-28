@@ -1191,9 +1191,7 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
         }
     } else {
         let nm1 = (n - 1) as nat;
-        assert(nm1 >= 1) by {
-            assert(n >= 2);
-        }
+        assert(nm1 >= 1);
 
         lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
         lemma_edwards_scalar_mul_succ(point_affine, nm1);
@@ -1335,19 +1333,10 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
 
         // Compute (a*b)/2 = a*(b/2) (valid since b is even).
         assert((a * b) / 2 == a * hb) by {
-            // b = (b/2)*2 + b%2, and b%2=0
+            // b = (b/2)*2 + b%2, and b%2=0, so b == hb * 2
             lemma_fundamental_div_mod(b as int, 2);
-            assert(b == hb * 2) by {
-                assert(b == hb * 2 + b % 2);
-                assert(b % 2 == 0);
-            }
-            assert(a * b == (a * hb) * 2) by {
-                assert(a * b == a * (hb * 2));
-                lemma_mul_is_associative(a as int, hb as int, 2);
-            }
-            assert(((a * hb) * 2) / 2 == a * hb) by {
-                lemma_div_by_multiple((a * hb) as int, 2);
-            }
+            lemma_mul_is_associative(a as int, hb as int, 2);
+            lemma_div_by_multiple((a * hb) as int, 2);
         }
 
         assert(a * b != 0) by {
@@ -1408,17 +1397,10 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
         }
 
         // Scalar-mul additivity for positive scalars: [a*(b-1)]P + [a]P = [a*b]P.
-        assert(a >= 1) by {
-            assert(a != 0);
-        }
-        assert(bm1 >= 1) by {
-            assert(b >= 2);
-        }
-        assert(a * bm1 >= 1) by {
-            assert(a * bm1 != 0) by {
-                lemma_mul_nonzero(a as int, bm1 as int);
-            }
-        }
+        assert(a >= 1);
+        assert(bm1 >= 1);
+        lemma_mul_nonzero(a as int, bm1 as int);
+        assert(a * bm1 >= 1);
         lemma_edwards_scalar_mul_additive(point_affine, a * bm1, a);
 
         assert(a * bm1 + a == a * b) by {

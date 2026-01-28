@@ -444,7 +444,7 @@ impl MontgomeryPoint {
         let mut i: usize = 0;
         proof {
             // Establish the loop invariant at i = 0.
-            let u0 = spec_montgomery_point(*self);
+            let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
             assert(is_valid_u_coordinate(u0));
 
@@ -579,12 +579,12 @@ impl MontgomeryPoint {
                 fe51_limbs_bounded(&x1.W, 52),
                 fe51_limbs_bounded(&affine_u, 51),
                 // Basepoint decoding/validity (needed for canonical lift reasoning)
-                spec_field_element(&affine_u) == spec_montgomery_point(*self),
-                is_valid_u_coordinate(spec_montgomery_point(*self)),
+                spec_field_element(&affine_u) == spec_montgomery(*self),
+                is_valid_u_coordinate(spec_montgomery(*self)),
                 is_valid_u_coordinate(spec_field_element(&affine_u)),
 	                // Scalar-multiplication relationship (Montgomery ladder invariant)
 	                ({
-	                    let u0 = spec_montgomery_point(*self);
+	                    let u0 = spec_montgomery(*self);
 	                    if u0 == 0 {
 	                        // Special case: u0 = 0 corresponds to the (0,0) 2-torsion point, whose
 	                        // u-coordinate is 0 for all scalar multiples (including ∞ by convention).
@@ -617,7 +617,7 @@ impl MontgomeryPoint {
             let ghost x1_before_swap = x1;
 	            conditional_swap_montgomery_projective(&mut x0, &mut x1, swap_choice);
 	            proof {
-	                let u0 = spec_montgomery_point(*self);
+	                let u0 = spec_montgomery(*self);
 	                let k = bits_be_to_nat(bits, i as int);
 
 	                // Connect affine_u to u0
@@ -692,7 +692,7 @@ impl MontgomeryPoint {
             i = i + 1;
 	            proof {
 	                // Re-establish the full loop invariant for the next iteration.
-	                let u0 = spec_montgomery_point(*self);
+	                let u0 = spec_montgomery(*self);
 	                let P = canonical_montgomery_lift(u0);
 	                let k = bits_be_to_nat(bits, (i - 1) as int);
 
@@ -757,7 +757,7 @@ impl MontgomeryPoint {
 
 	        proof {
 	            // After the final conditional swap, x0 encodes u([n]P) where n is the full bitstring.
-	            let u0 = spec_montgomery_point(*self);
+	            let u0 = spec_montgomery(*self);
 	            let P = canonical_montgomery_lift(u0);
 	            let n = bits_be_to_nat(bits, bits@.len() as int);
 	
@@ -821,11 +821,11 @@ impl MontgomeryPoint {
         let result = x0.as_affine();
         proof {
             // Discharge the function postcondition.
-            let u0 = spec_montgomery_point(*self);
+            let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
             let n = bits_be_to_nat(bits, bits@.len() as int);
             // as_affine returns the affine u-coordinate of x0
-            assert(spec_montgomery_point(result) == spec_projective_u_coordinate(x0));
+            assert(spec_montgomery(result) == spec_projective_u_coordinate(x0));
             // From loop invariant at exit and final conditional swap, x0 encodes u([n]P)
             assert(spec_projective_u_coordinate(x0) == spec_u_coordinate(montgomery_scalar_mul(P, n)));
         }

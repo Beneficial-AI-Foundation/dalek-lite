@@ -1088,6 +1088,20 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
 // =============================================================================
 // Axioms: Signed scalar multiplication linearity (group law)
 // =============================================================================
+/// Axiom: Scalar multiplication distributes over point negation.
+/// [n](-P) = -([n]P) where -P = (neg_x, y) for P = (x, y).
+///
+/// This is a fundamental group theory fact: scalar multiplication is a group homomorphism.
+pub proof fn axiom_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
+    ensures
+        edwards_scalar_mul((math_field_neg(P.0), P.1), n) == ({
+            let (x, y) = edwards_scalar_mul(P, n);
+            (math_field_neg(x), y)
+        }),
+{
+    admit();
+}
+
 /// Axiom: [a]P + [b]P = [a+b]P for signed scalars a, b.
 pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: int)
     ensures
@@ -1100,15 +1114,57 @@ pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: 
     admit();
 }
 
-/// Axiom: [b]([a]P) = [a*b]P for signed a, unsigned b.
-pub proof fn axiom_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, b: nat)
+/// Lemma: [b]([a]P) = [a*b]P for signed a, unsigned b.
+/// Proved using the unsigned composition lemma and axiom_scalar_mul_distributes_over_neg.
+pub proof fn lemma_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, b: nat)
     ensures
         edwards_scalar_mul(edwards_scalar_mul_signed(P, a), b) == edwards_scalar_mul_signed(
             P,
             a * (b as int),
         ),
 {
-    admit();
+    reveal(edwards_scalar_mul_signed);
+    if a >= 0 {
+        // a >= 0: both sides use unsigned scalar_mul
+        let an = a as nat;
+        lemma_edwards_scalar_mul_composition(P, an, b);
+        assert(a * (b as int) >= 0) by {
+            lemma_mul_nonnegative(a, b as int);
+        }
+        assert((a * (b as int)) as nat == an * b) by {
+            lemma_mul_is_commutative(a, b as int);
+        }
+    } else {
+        // a < 0: LHS = [b](-[|a|]P), RHS = -[|a|*b]P
+        let abs_a = (-a) as nat;
+        let (x, y) = edwards_scalar_mul(P, abs_a);
+
+        // LHS: [b]((neg_x, y)) where (x, y) = [|a|]P
+        // By axiom: [b](-Q) = -([b]Q)
+        axiom_scalar_mul_distributes_over_neg(edwards_scalar_mul(P, abs_a), b);
+
+        // [b]([|a|]P) = [|a|*b]P by unsigned composition
+        lemma_edwards_scalar_mul_composition(P, abs_a, b);
+
+        // a * b <= 0 since a < 0 and b >= 0
+        // So RHS = -[|a*b|]P = -[|a|*b]P (or identity if b = 0)
+        if b == 0 {
+            // Special case: both sides are identity
+            reveal_with_fuel(edwards_scalar_mul, 1);
+            assert(a * (b as int) == 0) by {
+                lemma_mul_by_zero_is_zero(a);
+            }
+        } else {
+            // a < 0 and b > 0, so a * b < 0
+            assert(a * (b as int) < 0) by {
+                lemma_mul_strictly_positive(-a, b as int);
+                lemma_mul_unary_negation(a, b as int);
+            }
+            assert((-(a * (b as int))) as nat == abs_a * b) by {
+                lemma_mul_unary_negation(a, b as int);
+            }
+        }
+    }
 }
 
 /// Lemma: Scalar multiplication is additive in the scalar for positive scalars:
@@ -2101,7 +2157,7 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     assert(even_sum == edwards_scalar_mul_signed(basepoint, radix16_even_scalar(digits, n)));
 
     // Scale the odd sum by 16, then add the even sum.
-    axiom_edwards_scalar_mul_signed_composition(basepoint, radix16_odd_scalar(digits, n), 16);
+    lemma_edwards_scalar_mul_signed_composition(basepoint, radix16_odd_scalar(digits, n), 16);
     let scaled = edwards_scalar_mul(odd_sum, 16);
     assert(scaled == edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n) * 16));
 

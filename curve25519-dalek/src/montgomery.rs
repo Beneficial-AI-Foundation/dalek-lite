@@ -1587,13 +1587,10 @@ fn differential_add_and_double(
 	                    assert(U_old % p() == U_old);
 	                }
 	            }
-	            // With U=0 or W=0, the xDBL formula gives W2 = 0.
-	            // xDBL: W2 = ((U+W)^2 - (U-W)^2) * (something)
-	            // If U=0: (0+W)^2 - (0-W)^2 = W^2 - W^2 = 0
-	            // If W=0: (U+0)^2 - (U-0)^2 = U^2 - U^2 = 0
-	            // Either way, the first factor is 0, so W2 = 0.
-	            // TODO: Add field algebra lemmas to prove this rigorously.
-	            assume(spec_field_element(&P.W) == 0);
+	            // xDBL produces W2=0 when U=0 or W=0
+	            assert(spec_field_element(&P.W) == 0) by {
+	                lemma_xdbl_degenerate_gives_w_zero(U_old, W_old);
+	            }
 	            assert(spec_projective_u_coordinate(*P) == 0);
 	        }
 

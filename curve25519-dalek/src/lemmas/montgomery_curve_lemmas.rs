@@ -36,7 +36,7 @@
 #![allow(unused)]
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
-use crate::constants::MONTGOMERY_A;
+use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A};
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 use crate::specs::primality_specs::*;
@@ -135,6 +135,80 @@ pub(crate) proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W
         }),
 {
     admit();
+}
+
+/// **Lemma**: xDBL produces W2=0 when input has U=0 or W=0.
+///
+/// This handles the degenerate case in the Montgomery ladder where the projective
+/// point represents infinity (W=0) or has u-coordinate 0 (U=0).
+///
+/// ## Mathematical Reasoning
+///
+/// The xDBL formula computes: W2 = t6 * t15, where t6 = (U+W)² - (U-W)²
+///
+/// - If U=0: t6 = W² - (-W)² = W² - W² = 0  (since (-W)² = W²)
+/// - If W=0: t6 = U² - U² = 0
+///
+/// Either way, t6 = 0, so W2 = 0 * t15 = 0.
+pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
+    requires
+        U == 0 || W == 0,
+    ensures
+        ({
+            let (_, W2) = spec_xdbl_projective(U, W);
+            W2 == 0
+        }),
+{
+    let t0 = math_field_add(U, W);
+    let t1 = math_field_sub(U, W);
+    let t4 = math_field_square(t0);
+    let t5 = math_field_square(t1);
+    let t6 = math_field_sub(t4, t5);
+    
+    p_gt_2();
+    
+    // Show t4 == t5
+    if U == 0 {
+        // t0 = (0 + W) % p = W % p
+        assert(t0 == W % p());
+        // t1 = math_field_sub(0, W) = (((0 % p) + p) - (W % p)) % p = (p - (W % p)) % p = math_field_neg(W)
+        assert(t1 == math_field_neg(W)) by {
+            lemma_small_mod(0, p());
+            assert(0nat % p() == 0);
+        }
+        // (-W)² = (W % p)²
+        lemma_neg_square_eq(W);
+        assert(t5 == math_field_square(W % p()));
+        // t4 = (W % p)²
+        lemma_square_mod_noop(W);
+        assert(t4 == math_field_square(W % p()));
+        assert(t4 == t5);
+    } else {
+        // W == 0 case: t0 = U % p, t1 = U % p
+        assert(W == 0);
+        assert(t0 == U % p());
+        // math_field_sub(U, 0) = (((U % p) + p) - 0) % p = ((U % p) + p) % p = U % p
+        assert(t1 == U % p()) by {
+            lemma_small_mod(0nat, p());
+            // t1 = ((U % p) + p) % p
+            // lemma_mod_add_multiples_vanish: (x + p) % p == x % p
+            lemma_mod_add_multiples_vanish((U % p()) as int, p() as int);
+            // (U % p) % p == U % p
+            lemma_mod_twice(U as int, p() as int);
+        }
+        assert(t0 == t1);
+        assert(t4 == t5);
+    }
+    
+    lemma_field_sub_self(t4);
+    assert(t6 == 0);
+    
+    // W2 = t6 * t15 = 0 * anything = 0
+    let t15 = math_field_add(
+        math_field_mul(spec_field_element(&APLUS2_OVER_FOUR), t6),
+        t5,
+    );
+    lemma_field_mul_zero_left(0, t15);
 }
 
 /// **xADD Axiom**: Montgomery differential addition formula correctness.
@@ -595,10 +669,63 @@ pub proof fn lemma_canonical_scalar_mul_u_coord_reduced(u0: nat, n: nat)
             let R = montgomery_scalar_mul(P, n);
             spec_u_coordinate(R) < p()
         }),
+    decreases n,
 {
-    // The Montgomery curve operations use field arithmetic which keeps all values < p.
-    // This is an axiom-level fact that follows from the definition of field operations.
-    admit();
+    let P = canonical_montgomery_lift(u0);
+    let R = montgomery_scalar_mul(P, n);
+    p_gt_2();
+    
+    if n == 0 {
+        // montgomery_scalar_mul(P, 0) = Infinity
+        // spec_u_coordinate(Infinity) = 0 < p()
+        assert(R == MontgomeryAffine::Infinity);
+        assert(spec_u_coordinate(R) == 0);
+    } else {
+        // montgomery_scalar_mul(P, n) = montgomery_add(P, montgomery_scalar_mul(P, n-1))
+        let R_prev = montgomery_scalar_mul(P, (n - 1) as nat);
+        lemma_canonical_scalar_mul_u_coord_reduced(u0, (n - 1) as nat);
+        assert(spec_u_coordinate(R_prev) < p());
+        
+        // Now R = montgomery_add(P, R_prev)
+        // montgomery_add returns either Infinity (u-coord 0) or Finite with u computed
+        // via math_field_* operations which always return values < p()
+        lemma_montgomery_add_u_coord_reduced(P, R_prev, u0);
+    }
+}
+
+/// Helper lemma: montgomery_add preserves the property that u-coordinates are < p()
+proof fn lemma_montgomery_add_u_coord_reduced(P: MontgomeryAffine, Q: MontgomeryAffine, u0: nat)
+    requires
+        u0 != 0,
+        P == canonical_montgomery_lift(u0),
+        spec_u_coordinate(Q) < p(),
+    ensures
+        spec_u_coordinate(montgomery_add(P, Q)) < p(),
+{
+    p_gt_2();
+    let R = montgomery_add(P, Q);
+    
+    // P = canonical_montgomery_lift(u0) means P = Finite{u: u0 % p(), v: ...}
+    // So spec_u_coordinate(P) = u0 % p() < p()
+    assert(spec_u_coordinate(P) < p()) by {
+        // canonical_montgomery_lift creates Finite{u: u % p(), v: ...}
+        lemma_mod_division_less_than_divisor(u0 as int, p() as int);
+    }
+    
+    match R {
+        MontgomeryAffine::Infinity => {
+            assert(spec_u_coordinate(R) == 0);
+        },
+        MontgomeryAffine::Finite { u, v } => {
+            // u is computed via math_field_sub which returns a value < p()
+            // The montgomery_add formula computes u3 = math_field_sub(math_field_sub(...), ...)
+            // All math_field_* operations return values % p() which are < p()
+            assert(u < p()) by {
+                // math_field_sub(a, b) = (((a % p()) + p()) - (b % p())) % p() < p()
+                lemma_mod_division_less_than_divisor(u as int, p() as int);
+            }
+        },
+    }
 }
 
 } // verus!

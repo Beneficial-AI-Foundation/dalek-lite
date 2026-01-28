@@ -11,6 +11,7 @@
 //! 3. **x=0 implies y²=1**: If x ≡ 0 and (x, y) is on curve, then y² = 1
 //! 4. **Scalar mul pow2 successor**: [2^(k+1)]P = double([2^k]P)
 #![allow(unused_imports)]
+use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -20,6 +21,7 @@ use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
+use crate::specs::scalar_specs::{reconstruct_radix_16, reconstruct_radix_2w};
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
@@ -1151,151 +1153,9 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
     assert(edwards_add(0, 1, x, y) == (x % p(), y % p()));
 }
 
-/// Lemma: The Edwards identity `(0, 1)` is a right-identity for `edwards_add`.
-///
-/// Note: `edwards_add` always reduces inputs modulo `p()`, so the result is `(x % p(), y % p())`.
-pub proof fn lemma_edwards_add_identity_right(x: nat, y: nat)
-    ensures
-        edwards_add(x, y, 0, 1) == (x % p(), y % p()),
-{
-    p_gt_2();
-    lemma_field_inv_one();
-
-    let d = spec_field_element(&EDWARDS_D);
-
-    // x1x2 = x*0 = 0
-    let x1x2 = math_field_mul(x, 0nat);
-    assert(x1x2 == 0) by {
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_right(x, 0nat);
-    }
-
-    // y1y2 = y*1 = y % p
-    let y1y2 = math_field_mul(y, 1nat);
-    assert(y1y2 == y % p()) by {
-        lemma_field_mul_one_right(y);
-    }
-
-    // x1y2 = x*1 = x % p
-    let x1y2 = math_field_mul(x, 1nat);
-    assert(x1y2 == x % p()) by {
-        lemma_field_mul_one_right(x);
-    }
-
-    // y1x2 = y*0 = 0
-    let y1x2 = math_field_mul(y, 0nat);
-    assert(y1x2 == 0) by {
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_right(y, 0nat);
-    }
-
-    // t = d * ((x*0) * (y%p)) = 0
-    let t = math_field_mul(d, math_field_mul(x1x2, y1y2));
-    assert(t == 0) by {
-        assert(math_field_mul(x1x2, y1y2) == 0) by {
-            assert(x1x2 % p() == 0) by {
-                lemma_small_mod(0nat, p());
-            }
-            lemma_field_mul_zero_left(x1x2, y1y2);
-        }
-        assert(0nat % p() == 0) by {
-            lemma_small_mod(0nat, p());
-        }
-        lemma_field_mul_zero_right(d, 0nat);
-    }
-
-    let denom_x = math_field_add(1nat, t);
-    assert(denom_x == 1) by {
-        lemma_small_mod(1nat, p());
-    }
-
-    let denom_y = math_field_sub(1nat, t);
-    assert(denom_y == 1) by {
-        lemma_small_mod(1nat, p());
-        lemma_small_mod(0nat, p());
-        lemma_mod_multiples_vanish(1, 1, p() as int);
-    }
-
-    assert(math_field_inv(denom_x) == 1);
-    assert(math_field_inv(denom_y) == 1);
-
-    // x3 = (x*1 + y*0) / 1 = x % p
-    let x3 = math_field_mul(math_field_add(x1y2, y1x2), math_field_inv(denom_x));
-    assert(x3 == x % p()) by {
-        assert(math_field_add(x1y2, y1x2) == x % p()) by {
-            assert(x1y2 == x % p());
-            assert(y1x2 == 0);
-            assert(math_field_add(x % p(), 0nat) == x % p()) by {
-                assert(x % p() + 0nat == x % p());
-                lemma_small_mod(x % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_x) == 1);
-        lemma_field_mul_one_right(x % p());
-        lemma_small_mod(x % p(), p());
-    }
-
-    // y3 = (y*1 + x*0) / 1 = y % p
-    let y3 = math_field_mul(math_field_add(y1y2, x1x2), math_field_inv(denom_y));
-    assert(y3 == y % p()) by {
-        assert(math_field_add(y1y2, x1x2) == y % p()) by {
-            assert(y1y2 == y % p());
-            assert(x1x2 == 0);
-            assert(math_field_add(y % p(), 0nat) == y % p()) by {
-                assert(y % p() + 0nat == y % p());
-                lemma_small_mod(y % p(), p());
-            }
-        }
-        assert(math_field_inv(denom_y) == 1);
-        lemma_field_mul_one_right(y % p());
-        lemma_small_mod(y % p(), p());
-    }
-
-    assert(edwards_add(x, y, 0, 1) == (x % p(), y % p()));
-}
-
-/// Lemma: Edwards addition is commutative.
-///
-/// This follows directly from the symmetry of the affine addition formulas.
-pub proof fn lemma_edwards_add_commutative(x1: nat, y1: nat, x2: nat, y2: nat)
-    ensures
-        edwards_add(x1, y1, x2, y2) == edwards_add(x2, y2, x1, y1),
-{
-    // Help the solver with the commutativity of the `math_field_mul` terms that appear
-    // in the numerators/denominators.
-    lemma_field_mul_comm(x1, x2);
-    lemma_field_mul_comm(y1, y2);
-    lemma_field_mul_comm(x1, y2);
-    lemma_field_mul_comm(y1, x2);
-
-    assert(edwards_add(x1, y1, x2, y2) == edwards_add(x2, y2, x1, y1));
-}
-
-/// Lemma: Edwards addition is associative.
-///
-/// This is a standard group-law property. We admit it for now to unblock proofs that rely on
-/// re-associating long addition chains (e.g. scalar multiplication linearity).
-pub proof fn lemma_edwards_add_associative(x1: nat, y1: nat, x2: nat, y2: nat, x3: nat, y3: nat)
-    ensures
-        ({
-            let ab = edwards_add(x1, y1, x2, y2);
-            edwards_add(ab.0, ab.1, x3, y3)
-        }) == ({
-            let bc = edwards_add(x2, y2, x3, y3);
-            edwards_add(x1, y1, bc.0, bc.1)
-        }),
-{
-    admit();
-}
-
 // =============================================================================
 // Axioms: Signed scalar multiplication linearity (group law)
 // =============================================================================
-
 /// Axiom: [a]P + [b]P = [a+b]P for signed scalars a, b.
 pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: int)
     ensures
@@ -1311,10 +1171,307 @@ pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: 
 /// Axiom: [b]([a]P) = [a*b]P for signed a, unsigned b.
 pub proof fn axiom_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, b: nat)
     ensures
-        edwards_scalar_mul(edwards_scalar_mul_signed(P, a), b)
-            == edwards_scalar_mul_signed(P, a * (b as int)),
+        edwards_scalar_mul(edwards_scalar_mul_signed(P, a), b) == edwards_scalar_mul_signed(
+            P,
+            a * (b as int),
+        ),
 {
     admit();
+}
+
+/// Lemma: Scalar multiplication is additive in the scalar for positive scalars:
+///
+///   [m]P + [n]P = [m+n]P, for m,n ≥ 1.
+pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat, n: nat)
+    requires
+        m >= 1,
+        n >= 1,
+    ensures
+        ({
+            let pm = edwards_scalar_mul(point_affine, m);
+            let pn = edwards_scalar_mul(point_affine, n);
+            edwards_add(pm.0, pm.1, pn.0, pn.1)
+        }) == edwards_scalar_mul(point_affine, m + n),
+    decreases n,
+{
+    if n == 1 {
+        lemma_edwards_scalar_mul_succ(point_affine, m);
+        assert(edwards_scalar_mul(point_affine, m + 1) == {
+            let pm = edwards_scalar_mul(point_affine, m);
+            edwards_add(pm.0, pm.1, point_affine.0, point_affine.1)
+        });
+        assert(edwards_scalar_mul(point_affine, 1) == point_affine) by {
+            reveal_with_fuel(edwards_scalar_mul, 1);
+        }
+    } else {
+        let nm1 = (n - 1) as nat;
+        assert(nm1 >= 1) by {
+            assert(n >= 2);
+        }
+
+        lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
+        lemma_edwards_scalar_mul_succ(point_affine, nm1);
+        lemma_edwards_scalar_mul_succ(point_affine, m + nm1);
+
+        let pm = edwards_scalar_mul(point_affine, m);
+        let pnm1 = edwards_scalar_mul(point_affine, nm1);
+        let pn = edwards_scalar_mul(point_affine, n);
+        let pm_plus_nm1 = edwards_scalar_mul(point_affine, m + nm1);
+
+        assert(pn == edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1)) by {
+            assert(n == nm1 + 1);
+        }
+
+        calc! {
+            (==)
+            edwards_add(pm.0, pm.1, pn.0, pn.1); (==) {
+                assert(pn == edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1));
+            }
+            edwards_add(
+                pm.0,
+                pm.1,
+                edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).0,
+                edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).1,
+            ); (==) {
+                lemma_edwards_add_associative(
+                    pm.0,
+                    pm.1,
+                    pnm1.0,
+                    pnm1.1,
+                    point_affine.0,
+                    point_affine.1,
+                );
+            }
+            {
+                let left = edwards_add(pm.0, pm.1, pnm1.0, pnm1.1);
+                edwards_add(left.0, left.1, point_affine.0, point_affine.1)
+            }; (==) {
+                // IH: [m]P + [n-1]P = [m+n-1]P
+                assert(edwards_add(pm.0, pm.1, pnm1.0, pnm1.1) == pm_plus_nm1);
+            }
+            edwards_add(pm_plus_nm1.0, pm_plus_nm1.1, point_affine.0, point_affine.1); (==) {
+                // succ: [m+n-1]P + P = [m+n]P
+                assert(m + n == (m + nm1) + 1);
+            }
+            edwards_scalar_mul(point_affine, m + n);
+        }
+    }
+}
+
+/// Proves that `edwards_scalar_mul(edwards_scalar_mul(P, a), b) == edwards_scalar_mul(P, a * b)`
+///
+/// **Note**: This is a fundamental algebraic property. The full proof for arbitrary b is complex
+/// (requiring case analysis on parity and careful arithmetic reasoning). For powers of 2,
+/// use `lemma_edwards_scalar_mul_composition_pow2` which has a complete proof. The odd-b case relies on
+/// the admitted associativity lemma `lemma_edwards_add_associative`.
+pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: nat, b: nat)
+    ensures
+        edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == edwards_scalar_mul(
+            point_affine,
+            a * b,
+        ),
+    decreases b,
+{
+    // NOTE:
+    // - The `b % 2 == 0` case is provable directly from the definition of `edwards_scalar_mul`
+    //   (both sides take the even branch and reduce to the induction hypothesis).
+    // - The `b % 2 == 1` case requires scalar-mul additivity / group-law associativity facts
+    //   about `edwards_add`, which are not yet proven in this repo.
+    if a == 0 {
+        // Special case: [b]([0]P) == [0]P for all b.
+        reveal_with_fuel(edwards_scalar_mul, 1);
+        assert(edwards_scalar_mul(point_affine, 0) == math_edwards_identity());
+        assert(a * b == 0);
+
+        if b == 0 {
+            // Both sides are scalar_mul(_, 0) == identity.
+        } else if b == 1 {
+            // scalar_mul(identity, 1) == identity.
+            assert(edwards_scalar_mul(math_edwards_identity(), 1) == math_edwards_identity());
+        } else if b % 2 == 0 {
+            let hb = (b / 2) as nat;
+            lemma_edwards_scalar_mul_composition(point_affine, 0, hb);
+
+            // Unfold the left at even b: [b]I = double([b/2]I).
+            assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), b) == {
+                let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb);
+                edwards_double(half.0, half.1)
+            });
+
+            // IH gives [b/2]I == I.
+            let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb);
+            assert(half == math_edwards_identity()) by {
+                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb)
+                    == edwards_scalar_mul(point_affine, 0));
+            }
+
+            // double(I) == I
+            lemma_edwards_double_identity();
+        } else {
+            // Odd b (>1): [b]I = [b-1]I + I, but [b-1]I = I, so this is I + I = I.
+            let bm1 = (b - 1) as nat;
+            lemma_edwards_scalar_mul_composition(point_affine, 0, bm1);
+
+            let prev = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), bm1);
+            assert(prev == math_edwards_identity()) by {
+                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), bm1)
+                    == edwards_scalar_mul(point_affine, 0));
+            }
+
+            lemma_edwards_double_identity();
+        }
+    } else if b == 0 {
+        reveal_with_fuel(edwards_scalar_mul, 1);
+        assert(a * b == 0);
+    } else if b == 1 {
+        // [1]([a]P) == [a]P and [a*1]P == [a]P
+        reveal_with_fuel(edwards_scalar_mul, 1);
+        assert(a * b == a);
+    } else if b % 2 == 0 {
+        let hb = (b / 2) as nat;
+        lemma_edwards_scalar_mul_composition(point_affine, a, hb);
+
+        // Unfold LHS at even b.
+        reveal_with_fuel(edwards_scalar_mul, 1);
+        assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == {
+            let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, a), hb);
+            edwards_double(half.0, half.1)
+        });
+
+        // Unfold RHS at n = a*b, which is even since b is even.
+        assert((a * b) % 2 == 0) by {
+            lemma_mul_mod_noop_right(a as int, b as int, 2);
+            assert((a * b) % 2 == (a * (b % 2)) % 2);
+            assert(b % 2 == 0);
+            assert(a * (b % 2) == 0) by {
+                lemma_mul_by_zero_is_zero(a as int);
+            }
+            assert(0nat % 2 == 0) by (compute);
+        }
+
+        // Compute (a*b)/2 = a*(b/2) (valid since b is even).
+        assert((a * b) / 2 == a * hb) by {
+            // b = (b/2)*2 + b%2, and b%2=0
+            lemma_fundamental_div_mod(b as int, 2);
+            assert(b == hb * 2) by {
+                assert(b == hb * 2 + b % 2);
+                assert(b % 2 == 0);
+            }
+            assert(a * b == (a * hb) * 2) by {
+                assert(a * b == a * (hb * 2));
+                lemma_mul_is_associative(a as int, hb as int, 2);
+            }
+            assert(((a * hb) * 2) / 2 == a * hb) by {
+                lemma_div_by_multiple((a * hb) as int, 2);
+            }
+        }
+
+        assert(a * b != 0) by {
+            lemma_mul_nonzero(a as int, b as int);
+        }
+        assert(a * b != 1) by {
+            assert((a * b) % 2 == 0);
+            assert(1nat % 2 == 1) by (compute);
+            if a * b == 1 {
+                assert((a * b) % 2 == 1nat % 2);
+            }
+        }
+
+        assert(edwards_scalar_mul(point_affine, a * b) == {
+            let half = edwards_scalar_mul(point_affine, ((a * b) / 2) as nat);
+            edwards_double(half.0, half.1)
+        });
+
+        // Put it together using the IH.
+        calc! {
+            (==)
+            edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b); (==) {
+                // Unfolded above.
+            }
+            {
+                let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, a), hb);
+                edwards_double(half.0, half.1)
+            }; (==) {
+                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), hb)
+                    == edwards_scalar_mul(point_affine, a * hb));
+            }
+            {
+                let half = edwards_scalar_mul(point_affine, a * hb);
+                edwards_double(half.0, half.1)
+            }; (==) {
+                assert(((a * b) / 2) as nat == a * hb);
+            }
+            edwards_scalar_mul(point_affine, a * b);
+        }
+    } else {
+        // Odd b (>1): use linearity of scalar multiplication in the scalar.
+        let bm1 = (b - 1) as nat;
+        lemma_edwards_scalar_mul_composition(point_affine, a, bm1);
+
+        let pa = edwards_scalar_mul(point_affine, a);
+        let prev = edwards_scalar_mul(pa, bm1);
+
+        // Unfold LHS at odd b: [b]([a]P) = [b-1]([a]P) + [a]P.
+        reveal_with_fuel(edwards_scalar_mul, 1);
+        assert(b != 0 && b != 1);
+        assert(b % 2 != 0);
+        assert(edwards_scalar_mul(pa, b) == edwards_add(prev.0, prev.1, pa.0, pa.1));
+
+        // Induction hypothesis: [b-1]([a]P) = [a*(b-1)]P.
+        assert(prev == edwards_scalar_mul(point_affine, a * bm1)) by {
+            assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), bm1)
+                == edwards_scalar_mul(point_affine, a * bm1));
+        }
+
+        // Scalar-mul additivity for positive scalars: [a*(b-1)]P + [a]P = [a*b]P.
+        assert(a >= 1) by {
+            assert(a != 0);
+        }
+        assert(bm1 >= 1) by {
+            assert(b >= 2);
+        }
+        assert(a * bm1 >= 1) by {
+            assert(a * bm1 != 0) by {
+                lemma_mul_nonzero(a as int, bm1 as int);
+            }
+        }
+        lemma_edwards_scalar_mul_additive(point_affine, a * bm1, a);
+
+        assert(a * bm1 + a == a * b) by {
+            assert(b == bm1 + 1);
+            lemma_mul_is_distributive_add(a as int, bm1 as int, 1);
+            lemma_mul_basics(a as int);
+        }
+
+        calc! {
+            (==)
+            edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b); (==) {
+                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b)
+                    == edwards_scalar_mul(pa, b));
+            }
+            edwards_scalar_mul(pa, b); (==) {}
+            edwards_add(prev.0, prev.1, pa.0, pa.1); (==) {
+                assert(prev == edwards_scalar_mul(point_affine, a * bm1));
+            }
+            edwards_add(
+                edwards_scalar_mul(point_affine, a * bm1).0,
+                edwards_scalar_mul(point_affine, a * bm1).1,
+                edwards_scalar_mul(point_affine, a).0,
+                edwards_scalar_mul(point_affine, a).1,
+            ); (==) {
+                assert(edwards_add(
+                    edwards_scalar_mul(point_affine, a * bm1).0,
+                    edwards_scalar_mul(point_affine, a * bm1).1,
+                    edwards_scalar_mul(point_affine, a).0,
+                    edwards_scalar_mul(point_affine, a).1,
+                ) == edwards_scalar_mul(point_affine, a * bm1 + a));
+            }
+            edwards_scalar_mul(point_affine, a * bm1 + a); (==) {
+                assert(a * bm1 + a == a * b);
+            }
+            edwards_scalar_mul(point_affine, a * b);
+        }
+    }
 }
 
 /// Lemma: P + O = P (group identity law) for reduced points.
@@ -1376,8 +1533,7 @@ pub proof fn lemma_edwards_add_reduced(x1: nat, y1: nat, x2: nat, y2: nat)
     // math_field_mul(a, b) = (a * b) % p(), so result is always < p()
     p_gt_2();
     lemma_mod_bound(
-        math_field_add(math_field_mul(x1, y2), math_field_mul(y1, x2)) as int
-            * math_field_inv(
+        math_field_add(math_field_mul(x1, y2), math_field_mul(y1, x2)) as int * math_field_inv(
             math_field_add(
                 1,
                 math_field_mul(
@@ -1389,8 +1545,7 @@ pub proof fn lemma_edwards_add_reduced(x1: nat, y1: nat, x2: nat, y2: nat)
         p() as int,
     );
     lemma_mod_bound(
-        math_field_add(math_field_mul(y1, y2), math_field_mul(x1, x2)) as int
-            * math_field_inv(
+        math_field_add(math_field_mul(y1, y2), math_field_mul(x1, x2)) as int * math_field_inv(
             math_field_sub(
                 1,
                 math_field_mul(
@@ -1406,7 +1561,6 @@ pub proof fn lemma_edwards_add_reduced(x1: nat, y1: nat, x2: nat, y2: nat)
 // =============================================================================
 // Lemmas: Radix-16 decomposition correctness (spec-level)
 // =============================================================================
-
 /// Scalar contribution of the even-indexed radix-16 digits:
 ///
 /// `sum_{j=0..n-1} digits[2j] * 256^j`
@@ -1442,8 +1596,10 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
     requires
         k > 0,
     ensures
-        edwards_scalar_mul_signed(edwards_scalar_mul(P, k), a)
-            == edwards_scalar_mul_signed(P, a * (k as int)),
+        edwards_scalar_mul_signed(edwards_scalar_mul(P, k), a) == edwards_scalar_mul_signed(
+            P,
+            a * (k as int),
+        ),
 {
     reveal(edwards_scalar_mul_signed);
     if a >= 0 {
@@ -1451,8 +1607,14 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
         let an = a as nat;
         lemma_edwards_scalar_mul_composition(P, k, an);
 
-        assert(edwards_scalar_mul_signed(edwards_scalar_mul(P, k), a) == edwards_scalar_mul(edwards_scalar_mul(P, k), an));
-        assert(edwards_scalar_mul_signed(P, a * (k as int)) == edwards_scalar_mul(P, (a * (k as int)) as nat));
+        assert(edwards_scalar_mul_signed(edwards_scalar_mul(P, k), a) == edwards_scalar_mul(
+            edwards_scalar_mul(P, k),
+            an,
+        ));
+        assert(edwards_scalar_mul_signed(P, a * (k as int)) == edwards_scalar_mul(
+            P,
+            (a * (k as int)) as nat,
+        ));
 
         // Show k*an == (a*k) as nat.
         assert((a * (k as int)) as nat == an * k) by {
@@ -1517,7 +1679,10 @@ pub proof fn lemma_even_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat
     requires
         digits.len() >= 2 * n,
     ensures
-        even_sum_up_to(digits, (2 * n) as int, B) == edwards_scalar_mul_signed(B, radix16_even_scalar(digits, n)),
+        even_sum_up_to(digits, (2 * n) as int, B) == edwards_scalar_mul_signed(
+            B,
+            radix16_even_scalar(digits, n),
+        ),
     decreases n,
 {
     if n == 0 {
@@ -1532,8 +1697,8 @@ pub proof fn lemma_even_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat
 
         // Unfold the spec once to skip the odd index (2n-1), then once to add the even index (2n-2).
         let upper = (2 * n) as int;
-        let u1 = upper - 1; // 2n-1 (odd)
-        let u2 = upper - 2; // 2n-2 (even)
+        let u1 = upper - 1;  // 2n-1 (odd)
+        let u2 = upper - 2;  // 2n-2 (even)
 
         assert(u1 % 2 == 1) by (compute);
         assert(u2 % 2 == 0) by (compute);
@@ -1562,14 +1727,20 @@ pub proof fn lemma_even_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat
         assert(term == edwards_scalar_mul_signed(B, (digits[u2] as int) * (pow256(nm1) as int)));
 
         // Combine via signed additivity.
-        axiom_edwards_scalar_mul_signed_additive(B, radix16_even_scalar(digits, nm1), (digits[u2] as int) * (pow256(nm1) as int));
-        assert(edwards_add(prev.0, prev.1, term.0, term.1)
-            == edwards_scalar_mul_signed(B, radix16_even_scalar(digits, nm1) + (digits[u2] as int) * (pow256(nm1) as int)));
+        axiom_edwards_scalar_mul_signed_additive(
+            B,
+            radix16_even_scalar(digits, nm1),
+            (digits[u2] as int) * (pow256(nm1) as int),
+        );
+        assert(edwards_add(prev.0, prev.1, term.0, term.1) == edwards_scalar_mul_signed(
+            B,
+            radix16_even_scalar(digits, nm1) + (digits[u2] as int) * (pow256(nm1) as int),
+        ));
 
         // Relate the scalar update to the low-end recursive definition.
         // radix16_even_scalar(digits, n) = radix16_even_scalar(digits, n-1) + digits[2n-2]*256^(n-1)
-        assert(radix16_even_scalar(digits, n)
-            == radix16_even_scalar(digits, nm1) + (digits[u2] as int) * (pow256(nm1) as int)) by {
+        assert(radix16_even_scalar(digits, n) == radix16_even_scalar(digits, nm1) + (
+        digits[u2] as int) * (pow256(nm1) as int)) by {
             // Prove the step lemma for radix16_even_scalar by induction on n.
             lemma_radix16_even_scalar_step(digits, n);
         }
@@ -1581,7 +1752,10 @@ pub proof fn lemma_odd_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat)
     requires
         digits.len() >= 2 * n,
     ensures
-        odd_sum_up_to(digits, (2 * n) as int, B) == edwards_scalar_mul_signed(B, radix16_odd_scalar(digits, n)),
+        odd_sum_up_to(digits, (2 * n) as int, B) == edwards_scalar_mul_signed(
+            B,
+            radix16_odd_scalar(digits, n),
+        ),
     decreases n,
 {
     if n == 0 {
@@ -1595,8 +1769,8 @@ pub proof fn lemma_odd_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat)
         lemma_odd_sum_up_to_correct(digits, B, nm1);
 
         let upper = (2 * n) as int;
-        let idx = upper - 1; // 2n-1 (odd)
-        let prev_u = upper - 2; // 2n-2
+        let idx = upper - 1;  // 2n-1 (odd)
+        let prev_u = upper - 2;  // 2n-2
 
         assert(idx % 2 == 1) by (compute);
         assert((idx / 2) as nat == nm1) by (compute);
@@ -1605,7 +1779,12 @@ pub proof fn lemma_odd_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat)
         let prev_full = odd_sum_up_to(digits, idx, B);
         let base = edwards_scalar_mul(B, pow256(nm1));
         let term = edwards_scalar_mul_signed(base, digits[idx] as int);
-        assert(odd_sum_up_to(digits, upper, B) == edwards_add(prev_full.0, prev_full.1, term.0, term.1));
+        assert(odd_sum_up_to(digits, upper, B) == edwards_add(
+            prev_full.0,
+            prev_full.1,
+            term.0,
+            term.1,
+        ));
 
         // For idx = 2n-1, the preceding index prev_u = idx-1 is even, so odd_sum_up_to skips it:
         reveal(odd_sum_up_to);
@@ -1624,12 +1803,18 @@ pub proof fn lemma_odd_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat)
         lemma_edwards_scalar_mul_signed_of_scalar_mul(B, pow256(nm1), digits[idx] as int);
         assert(term == edwards_scalar_mul_signed(B, (digits[idx] as int) * (pow256(nm1) as int)));
 
-        axiom_edwards_scalar_mul_signed_additive(B, radix16_odd_scalar(digits, nm1), (digits[idx] as int) * (pow256(nm1) as int));
-        assert(edwards_add(prev_full.0, prev_full.1, term.0, term.1)
-            == edwards_scalar_mul_signed(B, radix16_odd_scalar(digits, nm1) + (digits[idx] as int) * (pow256(nm1) as int)));
+        axiom_edwards_scalar_mul_signed_additive(
+            B,
+            radix16_odd_scalar(digits, nm1),
+            (digits[idx] as int) * (pow256(nm1) as int),
+        );
+        assert(edwards_add(prev_full.0, prev_full.1, term.0, term.1) == edwards_scalar_mul_signed(
+            B,
+            radix16_odd_scalar(digits, nm1) + (digits[idx] as int) * (pow256(nm1) as int),
+        ));
 
-        assert(radix16_odd_scalar(digits, n)
-            == radix16_odd_scalar(digits, nm1) + (digits[idx] as int) * (pow256(nm1) as int)) by {
+        assert(radix16_odd_scalar(digits, n) == radix16_odd_scalar(digits, nm1) + (
+        digits[idx] as int) * (pow256(nm1) as int)) by {
             lemma_radix16_odd_scalar_step(digits, n);
         }
     }
@@ -1641,9 +1826,8 @@ pub proof fn lemma_radix16_even_scalar_step(digits: Seq<i8>, n: nat)
         n > 0,
         digits.len() >= 2 * n,
     ensures
-        radix16_even_scalar(digits, n)
-            == radix16_even_scalar(digits, (n - 1) as nat)
-                + (digits[(2 * ((n - 1) as nat)) as int] as int) * (pow256((n - 1) as nat) as int),
+        radix16_even_scalar(digits, n) == radix16_even_scalar(digits, (n - 1) as nat) + (digits[(2
+            * ((n - 1) as nat)) as int] as int) * (pow256((n - 1) as nat) as int),
     decreases n,
 {
     if n == 1 {
@@ -1654,14 +1838,15 @@ pub proof fn lemma_radix16_even_scalar_step(digits: Seq<i8>, n: nat)
             lemma2_to64();
         }
         // radix16_even_scalar(digits, 1) = digits[0] and pow256(0) = 1.
-        assert(radix16_even_scalar(digits, 1)
-            == (digits[0] as int) + (pow256(1) as int) * radix16_even_scalar(digits.skip(2), 0));
+        assert(radix16_even_scalar(digits, 1) == (digits[0] as int) + (pow256(1) as int)
+            * radix16_even_scalar(digits.skip(2), 0));
         assert(radix16_even_scalar(digits.skip(2), 0) == 0);
         vstd::arithmetic::mul::lemma_mul_basics_2(pow256(1) as int);
         assert((pow256(1) as int) * radix16_even_scalar(digits.skip(2), 0) == 0);
         assert(radix16_even_scalar(digits, 1) == digits[0] as int);
         vstd::arithmetic::mul::lemma_mul_basics_3(digits[0] as int);
-        assert(radix16_even_scalar(digits, 0) + (digits[0] as int) * (pow256(0) as int) == digits[0] as int);
+        assert(radix16_even_scalar(digits, 0) + (digits[0] as int) * (pow256(0) as int)
+            == digits[0] as int);
     } else {
         let nm1 = (n - 1) as nat;
         let nm2 = (nm1 - 1) as nat;
@@ -1695,20 +1880,19 @@ pub proof fn lemma_radix16_even_scalar_step(digits: Seq<i8>, n: nat)
         reveal(radix16_even_scalar);
         calc! {
             (==)
-            radix16_even_scalar(digits, n);
-            (==) { }
-            (digits[0] as int) + (pow256(1) as int) * radix16_even_scalar(suf, nm1);
-            (==) {
-                assert(radix16_even_scalar(suf, nm1)
-                    == radix16_even_scalar(suf, nm2)
-                        + (suf[suf_idx] as int) * (pow256(nm2) as int));
-                lemma_mul_is_distributive_add((pow256(1) as int), radix16_even_scalar(suf, nm2),
-                    (suf[suf_idx] as int) * (pow256(nm2) as int));
+            radix16_even_scalar(digits, n); (==) {}
+            (digits[0] as int) + (pow256(1) as int) * radix16_even_scalar(suf, nm1); (==) {
+                assert(radix16_even_scalar(suf, nm1) == radix16_even_scalar(suf, nm2) + (
+                suf[suf_idx] as int) * (pow256(nm2) as int));
+                lemma_mul_is_distributive_add(
+                    (pow256(1) as int),
+                    radix16_even_scalar(suf, nm2),
+                    (suf[suf_idx] as int) * (pow256(nm2) as int),
+                );
             }
-            (digits[0] as int)
-                + (pow256(1) as int) * radix16_even_scalar(suf, nm2)
-                + (pow256(1) as int) * ((suf[suf_idx] as int) * (pow256(nm2) as int));
-            (==) {
+            (digits[0] as int) + (pow256(1) as int) * radix16_even_scalar(suf, nm2) + (pow256(
+                1,
+            ) as int) * ((suf[suf_idx] as int) * (pow256(nm2) as int)); (==) {
                 // (pow256(1) * (d * pow256(nm2))) == d * pow256(nm1)
                 let d = suf[suf_idx] as int;
                 let p = pow256(nm2) as int;
@@ -1723,16 +1907,15 @@ pub proof fn lemma_radix16_even_scalar_step(digits: Seq<i8>, n: nat)
                 assert((pow256(1) as int) * (pow256(nm2) as int) == (pow256(nm1) as int));
                 assert(suf[suf_idx] == digits[(2 * nm1) as int]);
             }
-            (digits[0] as int)
-                + (pow256(1) as int) * radix16_even_scalar(suf, nm2)
-                + (digits[(2 * nm1) as int] as int) * (pow256(nm1) as int);
-            (==) {
+            (digits[0] as int) + (pow256(1) as int) * radix16_even_scalar(suf, nm2) + (digits[(2
+                * nm1) as int] as int) * (pow256(nm1) as int); (==) {
                 // radix16_even_scalar(digits, nm1) = digits[0] + pow256(1) * radix16_even_scalar(suf, nm2)
-                assert(radix16_even_scalar(digits, nm1)
-                    == (digits[0] as int) + (pow256(1) as int) * radix16_even_scalar(suf, nm2));
+                assert(radix16_even_scalar(digits, nm1) == (digits[0] as int) + (pow256(1) as int)
+                    * radix16_even_scalar(suf, nm2));
             }
-            radix16_even_scalar(digits, nm1)
-                + (digits[(2 * nm1) as int] as int) * (pow256(nm1) as int);
+            radix16_even_scalar(digits, nm1) + (digits[(2 * nm1) as int] as int) * (pow256(
+                nm1,
+            ) as int);
         }
     }
 }
@@ -1743,9 +1926,8 @@ pub proof fn lemma_radix16_odd_scalar_step(digits: Seq<i8>, n: nat)
         n > 0,
         digits.len() >= 2 * n,
     ensures
-        radix16_odd_scalar(digits, n)
-            == radix16_odd_scalar(digits, (n - 1) as nat)
-                + (digits[(2 * ((n - 1) as nat) + 1) as int] as int) * (pow256((n - 1) as nat) as int),
+        radix16_odd_scalar(digits, n) == radix16_odd_scalar(digits, (n - 1) as nat) + (digits[(2 * (
+        (n - 1) as nat) + 1) as int] as int) * (pow256((n - 1) as nat) as int),
     decreases n,
 {
     if n == 1 {
@@ -1755,14 +1937,15 @@ pub proof fn lemma_radix16_odd_scalar_step(digits: Seq<i8>, n: nat)
             reveal(pow256);
             lemma2_to64();
         }
-        assert(radix16_odd_scalar(digits, 1)
-            == (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(digits.skip(2), 0));
+        assert(radix16_odd_scalar(digits, 1) == (digits[1] as int) + (pow256(1) as int)
+            * radix16_odd_scalar(digits.skip(2), 0));
         assert(radix16_odd_scalar(digits.skip(2), 0) == 0);
         vstd::arithmetic::mul::lemma_mul_basics_2(pow256(1) as int);
         assert((pow256(1) as int) * radix16_odd_scalar(digits.skip(2), 0) == 0);
         assert(radix16_odd_scalar(digits, 1) == digits[1] as int);
         vstd::arithmetic::mul::lemma_mul_basics_3(digits[1] as int);
-        assert(radix16_odd_scalar(digits, 0) + (digits[1] as int) * (pow256(0) as int) == digits[1] as int);
+        assert(radix16_odd_scalar(digits, 0) + (digits[1] as int) * (pow256(0) as int)
+            == digits[1] as int);
     } else {
         let nm1 = (n - 1) as nat;
         let nm2 = (nm1 - 1) as nat;
@@ -1791,20 +1974,19 @@ pub proof fn lemma_radix16_odd_scalar_step(digits: Seq<i8>, n: nat)
         reveal(radix16_odd_scalar);
         calc! {
             (==)
-            radix16_odd_scalar(digits, n);
-            (==) { }
-            (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(suf, nm1);
-            (==) {
-                assert(radix16_odd_scalar(suf, nm1)
-                    == radix16_odd_scalar(suf, nm2)
-                        + (suf[suf_idx] as int) * (pow256(nm2) as int));
-                lemma_mul_is_distributive_add((pow256(1) as int), radix16_odd_scalar(suf, nm2),
-                    (suf[suf_idx] as int) * (pow256(nm2) as int));
+            radix16_odd_scalar(digits, n); (==) {}
+            (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(suf, nm1); (==) {
+                assert(radix16_odd_scalar(suf, nm1) == radix16_odd_scalar(suf, nm2) + (
+                suf[suf_idx] as int) * (pow256(nm2) as int));
+                lemma_mul_is_distributive_add(
+                    (pow256(1) as int),
+                    radix16_odd_scalar(suf, nm2),
+                    (suf[suf_idx] as int) * (pow256(nm2) as int),
+                );
             }
-            (digits[1] as int)
-                + (pow256(1) as int) * radix16_odd_scalar(suf, nm2)
-                + (pow256(1) as int) * ((suf[suf_idx] as int) * (pow256(nm2) as int));
-            (==) {
+            (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(suf, nm2) + (pow256(
+                1,
+            ) as int) * ((suf[suf_idx] as int) * (pow256(nm2) as int)); (==) {
                 let d = suf[suf_idx] as int;
                 let p = pow256(nm2) as int;
                 let b = pow256(1) as int;
@@ -1818,15 +2000,14 @@ pub proof fn lemma_radix16_odd_scalar_step(digits: Seq<i8>, n: nat)
                 assert((pow256(1) as int) * (pow256(nm2) as int) == (pow256(nm1) as int));
                 assert(suf[suf_idx] == digits[(2 * nm1 + 1) as int]);
             }
-            (digits[1] as int)
-                + (pow256(1) as int) * radix16_odd_scalar(suf, nm2)
-                + (digits[(2 * nm1 + 1) as int] as int) * (pow256(nm1) as int);
-            (==) {
-                assert(radix16_odd_scalar(digits, nm1)
-                    == (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(suf, nm2));
+            (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(suf, nm2) + (digits[(2
+                * nm1 + 1) as int] as int) * (pow256(nm1) as int); (==) {
+                assert(radix16_odd_scalar(digits, nm1) == (digits[1] as int) + (pow256(1) as int)
+                    * radix16_odd_scalar(suf, nm2));
             }
-            radix16_odd_scalar(digits, nm1)
-                + (digits[(2 * nm1 + 1) as int] as int) * (pow256(nm1) as int);
+            radix16_odd_scalar(digits, nm1) + (digits[(2 * nm1 + 1) as int] as int) * (pow256(
+                nm1,
+            ) as int);
         }
     }
 }
@@ -1836,8 +2017,8 @@ pub proof fn lemma_reconstruct_radix16_even_odd(digits: Seq<i8>, n: nat)
     requires
         digits.len() >= 2 * n,
     ensures
-        reconstruct_radix_16(digits.take((2 * n) as int))
-            == radix16_even_scalar(digits, n) + 16 * radix16_odd_scalar(digits, n),
+        reconstruct_radix_16(digits.take((2 * n) as int)) == radix16_even_scalar(digits, n) + 16
+            * radix16_odd_scalar(digits, n),
     decreases n,
 {
     if n == 0 {
@@ -1858,15 +2039,25 @@ pub proof fn lemma_reconstruct_radix16_even_odd(digits: Seq<i8>, n: nat)
         let r1 = reconstruct_radix_2w(pref.skip(1), 4);
         assert(reconstruct_radix_16(pref) == (pref[0] as int) + pow2(4) * r1);
         assert(pref.skip(1).len() > 0);
-        assert(r1 == (pref.skip(1)[0] as int) + pow2(4) * reconstruct_radix_2w(pref.skip(1).skip(1), 4)) by {
+        assert(r1 == (pref.skip(1)[0] as int) + pow2(4) * reconstruct_radix_2w(
+            pref.skip(1).skip(1),
+            4,
+        )) by {
             reveal(reconstruct_radix_2w);
         }
         assert(pref.skip(1).skip(1) =~= pref.skip(2));
-        assert(reconstruct_radix_2w(pref.skip(1).skip(1), 4) == reconstruct_radix_2w(pref.skip(2), 4));
+        assert(reconstruct_radix_2w(pref.skip(1).skip(1), 4) == reconstruct_radix_2w(
+            pref.skip(2),
+            4,
+        ));
         assert(pref.skip(1)[0] == pref[1]);
 
-        assert(pow2(4) == 16) by { lemma2_to64(); }
-        assert(pow2(8) == 256) by { lemma2_to64(); }
+        assert(pow2(4) == 16) by {
+            lemma2_to64();
+        }
+        assert(pow2(8) == 256) by {
+            lemma2_to64();
+        }
         vstd::arithmetic::power2::lemma_pow2_adds(4, 4);
 
         // Relate the remainder prefix: pref.skip(2) == digits.skip(2).take(2*(n-1)).
@@ -1874,8 +2065,8 @@ pub proof fn lemma_reconstruct_radix16_even_odd(digits: Seq<i8>, n: nat)
         assert(pref.skip(2) =~= rest);
 
         // Use IH on the remainder.
-        assert(reconstruct_radix_16(rest)
-            == radix16_even_scalar(digits.skip(2), nm1) + 16 * radix16_odd_scalar(digits.skip(2), nm1));
+        assert(reconstruct_radix_16(rest) == radix16_even_scalar(digits.skip(2), nm1) + 16
+            * radix16_odd_scalar(digits.skip(2), nm1));
         assert(reconstruct_radix_16(pref.skip(2)) == reconstruct_radix_16(rest));
 
         // Now finish by rewriting both sides to `a0 + 16*a1 + 256*(...)`.
@@ -1883,46 +2074,67 @@ pub proof fn lemma_reconstruct_radix16_even_odd(digits: Seq<i8>, n: nat)
         reveal(radix16_odd_scalar);
         calc! {
             (==)
-            reconstruct_radix_16(pref);
-            (==) { }
-            (pref[0] as int) + pow2(4) * r1;
-            (==) {
+            reconstruct_radix_16(pref); (==) {}
+            (pref[0] as int) + pow2(4) * r1; (==) {
                 assert(r1 == (pref[1] as int) + pow2(4) * reconstruct_radix_2w(pref.skip(2), 4));
             }
-            (pref[0] as int) + pow2(4) * ((pref[1] as int) + pow2(4) * reconstruct_radix_2w(pref.skip(2), 4));
-            (==) {
-                lemma_mul_is_distributive_add(pow2(4) as int, pref[1] as int, (pow2(4) as int) * (reconstruct_radix_2w(pref.skip(2), 4) as int));
+            (pref[0] as int) + pow2(4) * ((pref[1] as int) + pow2(4) * reconstruct_radix_2w(
+                pref.skip(2),
+                4,
+            )); (==) {
+                lemma_mul_is_distributive_add(
+                    pow2(4) as int,
+                    pref[1] as int,
+                    (pow2(4) as int) * (reconstruct_radix_2w(pref.skip(2), 4) as int),
+                );
             }
-            (pref[0] as int) + (pow2(4) as int) * (pref[1] as int)
-                + (pow2(4) as int) * ((pow2(4) as int) * (reconstruct_radix_2w(pref.skip(2), 4) as int));
-            (==) {
-                lemma_mul_is_associative(pow2(4) as int, pow2(4) as int, reconstruct_radix_2w(pref.skip(2), 4) as int);
+            (pref[0] as int) + (pow2(4) as int) * (pref[1] as int) + (pow2(4) as int) * ((pow2(
+                4,
+            ) as int) * (reconstruct_radix_2w(pref.skip(2), 4) as int)); (==) {
+                lemma_mul_is_associative(
+                    pow2(4) as int,
+                    pow2(4) as int,
+                    reconstruct_radix_2w(pref.skip(2), 4) as int,
+                );
                 assert((pow2(4) as int) * (pow2(4) as int) == (pow2(8) as int));
             }
-            (pref[0] as int) + 16 * (pref[1] as int) + (pow2(8) as int) * (reconstruct_radix_16(pref.skip(2)) as int);
-            (==) {
-                assert(pow2(8) == pow256(1)) by { reveal(pow256); }
+            (pref[0] as int) + 16 * (pref[1] as int) + (pow2(8) as int) * (reconstruct_radix_16(
+                pref.skip(2),
+            ) as int); (==) {
+                assert(pow2(8) == pow256(1)) by {
+                    reveal(pow256);
+                }
                 assert(pref[0] == digits[0]);
                 assert(pref[1] == digits[1]);
-                assert(reconstruct_radix_16(pref.skip(2))
-                    == radix16_even_scalar(digits.skip(2), nm1) + 16 * radix16_odd_scalar(digits.skip(2), nm1));
+                assert(reconstruct_radix_16(pref.skip(2)) == radix16_even_scalar(
+                    digits.skip(2),
+                    nm1,
+                ) + 16 * radix16_odd_scalar(digits.skip(2), nm1));
             }
-            (digits[0] as int) + 16 * (digits[1] as int)
-                + (pow256(1) as int) * ((radix16_even_scalar(digits.skip(2), nm1) + 16 * radix16_odd_scalar(digits.skip(2), nm1)) as int);
-            (==) {
-                lemma_mul_is_distributive_add((pow256(1) as int), radix16_even_scalar(digits.skip(2), nm1),
-                    16 * radix16_odd_scalar(digits.skip(2), nm1));
+            (digits[0] as int) + 16 * (digits[1] as int) + (pow256(1) as int) * ((
+            radix16_even_scalar(digits.skip(2), nm1) + 16 * radix16_odd_scalar(
+                digits.skip(2),
+                nm1,
+            )) as int); (==) {
+                lemma_mul_is_distributive_add(
+                    (pow256(1) as int),
+                    radix16_even_scalar(digits.skip(2), nm1),
+                    16 * radix16_odd_scalar(digits.skip(2), nm1),
+                );
             }
-            (digits[0] as int)
-                + 16 * (digits[1] as int)
-                + (pow256(1) as int) * radix16_even_scalar(digits.skip(2), nm1)
-                + (pow256(1) as int) * (16 * radix16_odd_scalar(digits.skip(2), nm1));
-            (==) {
-                assert(radix16_even_scalar(digits, n)
-                    == (digits[0] as int) + (pow256(1) as int) * radix16_even_scalar(digits.skip(2), nm1));
-                assert(radix16_odd_scalar(digits, n)
-                    == (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(digits.skip(2), nm1));
-                lemma_mul_is_associative((pow256(1) as int), 16, radix16_odd_scalar(digits.skip(2), nm1));
+            (digits[0] as int) + 16 * (digits[1] as int) + (pow256(1) as int) * radix16_even_scalar(
+                digits.skip(2),
+                nm1,
+            ) + (pow256(1) as int) * (16 * radix16_odd_scalar(digits.skip(2), nm1)); (==) {
+                assert(radix16_even_scalar(digits, n) == (digits[0] as int) + (pow256(1) as int)
+                    * radix16_even_scalar(digits.skip(2), nm1));
+                assert(radix16_odd_scalar(digits, n) == (digits[1] as int) + (pow256(1) as int)
+                    * radix16_odd_scalar(digits.skip(2), nm1));
+                lemma_mul_is_associative(
+                    (pow256(1) as int),
+                    16,
+                    radix16_odd_scalar(digits.skip(2), nm1),
+                );
             }
             radix16_even_scalar(digits, n) + 16 * radix16_odd_scalar(digits, n);
         }
@@ -1934,7 +2146,10 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     requires
         digits.len() == 64,
     ensures
-        radix16_sum(digits, basepoint) == edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits)),
+        radix16_sum(digits, basepoint) == edwards_scalar_mul_signed(
+            basepoint,
+            reconstruct_radix_16(digits),
+        ),
 {
     // Split into odd/even parts, prove each part is a signed scalar multiplication of basepoint,
     // then combine using the signed scalar-mul axioms.
@@ -1960,16 +2175,26 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     let scaled = edwards_scalar_mul(odd_sum, 16);
     assert(scaled == edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n) * 16));
 
-    axiom_edwards_scalar_mul_signed_additive(basepoint, radix16_odd_scalar(digits, n) * 16, radix16_even_scalar(digits, n));
-    assert(edwards_add(scaled.0, scaled.1, even_sum.0, even_sum.1)
-        == edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n) * 16 + radix16_even_scalar(digits, n)));
+    axiom_edwards_scalar_mul_signed_additive(
+        basepoint,
+        radix16_odd_scalar(digits, n) * 16,
+        radix16_even_scalar(digits, n),
+    );
+    assert(edwards_add(scaled.0, scaled.1, even_sum.0, even_sum.1) == edwards_scalar_mul_signed(
+        basepoint,
+        radix16_odd_scalar(digits, n) * 16 + radix16_even_scalar(digits, n),
+    ));
 
     // Use the arithmetic lemma to rewrite the scalar as the radix-16 reconstruction.
     assert(digits.take(64) =~= digits);
-    assert(reconstruct_radix_16(digits.take(64)) == radix16_even_scalar(digits, n) + 16 * radix16_odd_scalar(digits, n)) by {
+    assert(reconstruct_radix_16(digits.take(64)) == radix16_even_scalar(digits, n) + 16
+        * radix16_odd_scalar(digits, n)) by {
         lemma_reconstruct_radix16_even_odd(digits, n);
     }
-    assert(reconstruct_radix_16(digits) == radix16_even_scalar(digits, n) + 16 * radix16_odd_scalar(digits, n)) by {
+    assert(reconstruct_radix_16(digits) == radix16_even_scalar(digits, n) + 16 * radix16_odd_scalar(
+        digits,
+        n,
+    )) by {
         assert(reconstruct_radix_16(digits) == reconstruct_radix_16(digits.take(64)));
     }
     assert(radix16_odd_scalar(digits, n) * 16 + radix16_even_scalar(digits, n)
@@ -1978,9 +2203,16 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     }
 
     // Close: unfold radix16_sum into edwards_add(scaled, even_sum) and rewrite the scalar.
-    assert(radix16_sum(digits, basepoint) == edwards_add(scaled.0, scaled.1, even_sum.0, even_sum.1));
-    assert(edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n) * 16 + radix16_even_scalar(digits, n))
-        == edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits)));
+    assert(radix16_sum(digits, basepoint) == edwards_add(
+        scaled.0,
+        scaled.1,
+        even_sum.0,
+        even_sum.1,
+    ));
+    assert(edwards_scalar_mul_signed(
+        basepoint,
+        radix16_odd_scalar(digits, n) * 16 + radix16_even_scalar(digits, n),
+    ) == edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits)));
 }
 
 /// Convenience lemma: `radix16_sum` equals unsigned scalar multiplication when reconstruction is nonnegative.
@@ -1992,10 +2224,14 @@ pub proof fn lemma_radix16_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), s
         radix16_sum(digits, basepoint) == edwards_scalar_mul(basepoint, scalar_nat),
 {
     lemma_radix16_sum_correct_signed(digits, basepoint);
-    assert(edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits)) == edwards_scalar_mul_signed(basepoint, scalar_nat as int)) by {
+    assert(edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits))
+        == edwards_scalar_mul_signed(basepoint, scalar_nat as int)) by {
         assert(reconstruct_radix_16(digits) == scalar_nat as int);
     }
-    assert(edwards_scalar_mul_signed(basepoint, scalar_nat as int) == edwards_scalar_mul(basepoint, scalar_nat)) by {
+    assert(edwards_scalar_mul_signed(basepoint, scalar_nat as int) == edwards_scalar_mul(
+        basepoint,
+        scalar_nat,
+    )) by {
         // scalar_nat is nonnegative, so signed and unsigned scalar multiplication coincide.
         reveal(edwards_scalar_mul_signed);
     }
@@ -2004,7 +2240,6 @@ pub proof fn lemma_radix16_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), s
 // =============================================================================
 // Lemma: select correctness (connects table lookup to signed scalar mul)
 // =============================================================================
-
 /// Lemma: The result of select(x) on a valid table equals [x]*basepoint in affine coords.
 ///
 /// Combines three facts:
@@ -2025,8 +2260,10 @@ pub proof fn lemma_select_is_signed_scalar_mul(
         (x == 0 ==> result == identity_affine_niels()),
         (x < 0 ==> result == negate_affine_niels(table[((-x) - 1) as int])),
     ensures
-        affine_niels_point_as_affine_edwards(result)
-            == edwards_scalar_mul_signed(basepoint, x as int),
+        affine_niels_point_as_affine_edwards(result) == edwards_scalar_mul_signed(
+            basepoint,
+            x as int,
+        ),
 {
     // For x > 0: result = table[x-1] decodes to edwards_scalar_mul(basepoint, x)
     // For x == 0: identity_affine_niels decodes to (0,1) = edwards_scalar_mul_signed(P, 0)

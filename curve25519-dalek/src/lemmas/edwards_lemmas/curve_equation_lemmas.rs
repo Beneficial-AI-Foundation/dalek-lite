@@ -966,20 +966,6 @@ pub proof fn lemma_edwards_scalar_mul_pow2_succ(point_affine: (nat, nat), k: nat
     };
 }
 
-/// **Lemma**: Scalar multiplication composition for powers of 2
-///
-/// Specialized version for powers of 2: `edwards_scalar_mul(edwards_scalar_mul(P, a), pow2(k)) == edwards_scalar_mul(P, a * pow2(k))`
-/// This is just an instantiation of the general composition lemma with b = pow2(k).
-pub proof fn lemma_edwards_scalar_mul_composition_pow2(point_affine: (nat, nat), a: nat, k: nat)
-    ensures
-        edwards_scalar_mul(edwards_scalar_mul(point_affine, a), pow2(k)) == edwards_scalar_mul(
-            point_affine,
-            a * pow2(k),
-        ),
-{
-    lemma_edwards_scalar_mul_composition(point_affine, a, pow2(k));
-}
-
 pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
     ensures
         edwards_add(0, 1, x, y) == (x % p(), y % p()),

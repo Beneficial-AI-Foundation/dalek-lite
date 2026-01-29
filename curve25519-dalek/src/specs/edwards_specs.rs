@@ -46,7 +46,7 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::specs::scalar_specs::{scalar_to_nat, spec_scalar};
+use crate::specs::scalar_specs::scalar_to_nat;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::{lemma_mod_bound, lemma_small_mod};

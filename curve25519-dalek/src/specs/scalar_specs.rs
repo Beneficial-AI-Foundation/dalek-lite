@@ -19,8 +19,8 @@ pub open spec fn scalar_to_nat(s: &Scalar) -> nat {
 }
 
 /// Returns the scalar value reduced modulo group order.
-/// This is the value used in scalar multiplication: [n]P where n = spec_scalar(s).
-pub open spec fn spec_scalar(s: &Scalar) -> nat {
+/// This is the value used in scalar multiplication: [n]P where n = scalar_as_canonical(s).
+pub open spec fn scalar_as_canonical(s: &Scalar) -> nat {
     bytes32_to_nat(&s.bytes) % group_order()
 }
 

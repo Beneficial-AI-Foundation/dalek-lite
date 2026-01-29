@@ -1,45 +1,21 @@
-//! Lemmas and axioms for Montgomery curve operations
+//! Lemmas and axioms for Montgomery curve operations.
 //!
-//! This module provides the foundational axioms and derived lemmas needed to verify
-//! the Montgomery ladder scalar multiplication algorithm.
+//! Provides axioms and lemmas for verifying the Montgomery ladder.
 //!
-//! ## Architecture
+//! ## Contents
 //!
-//! The verification uses a layered approach:
-//!
-//! 1. **Group Axioms** — Standard abelian group properties (associativity, identity, inverse)
-//! 2. **X-Only Algorithm Axioms** — Correctness of xDBL and xADD formulas (Costello–Smith 2017)
-//! 3. **Scalar Multiplication Lemmas** — Properties like `[m+n]P = [m]P + [n]P`
-//! 4. **Projective Representation Lemmas** — Connecting projective (U:W) to affine u-coordinates
-//!
-//! ## X-Only Algorithm Axioms (xDBL, xADD)
-//!
-//! These are the key axioms that bridge the algebraic formulas to curve semantics:
-//!
-//! - **xADD Axiom**: The projective differential addition formula computes `P + Q`
-//!   given projective representations of P, Q, and the affine u-coordinate of `P - Q`.
-//!
-//! - **xDBL Axiom**: The projective doubling formula computes `[2]P` given a
-//!   projective representation of P.
-//!
-//! These axioms are purely algebraic contracts — they state *what* the formulas compute,
-//! not *why* they are correct. The algebraic formulas themselves are defined in
-//! `specs/montgomery_specs.rs` as `spec_xadd_projective` and `spec_xdbl_projective`.
-//!
-//! ## Group Axioms
-//!
-//! - `axiom_montgomery_add_associative`: (P + Q) + R = P + (Q + R)
-//! - `axiom_montgomery_add_identity`: P + ∞ = P
-//! - `axiom_montgomery_add_identity_left`: ∞ + P = P
-//! - `axiom_montgomery_add_inverse`: P + (-P) = ∞
+//! - **Group Axioms**: associativity, identity, inverse
+//! - **xDBL/xADD Axioms**: correctness of projective formulas (Costello–Smith 2017, Equations 9–10)
+//! - **Scalar Multiplication Lemmas**: properties of `[n]P`
+//! - **Projective Representation Lemmas**: connecting (U:W) to affine u-coordinates
 #![allow(unused)]
+use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A};
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
-use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A};
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
-use crate::specs::primality_specs::*;
 use crate::specs::montgomery_specs::*;
+use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
 use vstd::prelude::*;
 
@@ -91,41 +67,32 @@ pub proof fn axiom_montgomery_add_inverse(P: MontgomeryAffine)
 }
 
 // =============================================================================
-// X-ONLY ALGORITHM AXIOMS (Costello–Smith 2017, Equations 9–10)
+// X-ONLY PROJECTIVE FORMULAS AND AXIOMS (Costello–Smith 2017, Equations 9–10)
 // =============================================================================
 //
-// These axioms state that the projective xDBL and xADD formulas (defined algebraically
-// in `specs/montgomery_specs.rs`) compute the correct group operations on the
-// Montgomery curve.
-//
-// ## Why Axioms?
-//
-// Proving these from first principles requires verifying the Montgomery curve
-// addition law — a substantial algebraic effort involving the curve equation
-// B·v² = u³ + A·u² + u. We treat them as axioms because:
-//
-// 1. The formulas are well-established (Costello–Smith 2017, RFC 7748).
-// 2. The correctness proof is purely algebraic and orthogonal to the ladder logic.
-// 3. This separation keeps the verification tractable and modular.
-//
-// ## References
-//
-// - Costello & Smith, "Montgomery curves and their arithmetic", 2017 (ePrint 2017/212)
-// - RFC 7748: Elliptic Curves for Security
-/// **xDBL Axiom**: Montgomery doubling formula correctness.
+// Each formula is defined as a spec function, paired with an axiom asserting
+// that it correctly computes the corresponding group operation.
+/// **Equation 10 (xDBL)** — doubling [2]P:
 ///
-/// If `(U:W)` is a projective representation of point P, then `spec_xdbl_projective(U, W)`
-/// produces a projective representation of `[2]P = P + P`.
-///
-/// ## Algebraic Statement
-///
-/// Let `(U':W') = spec_xdbl_projective(U, W)`. Then:
-/// - If P is finite with u-coordinate u, then `U' = u([2]P) · W'` (projective encoding)
-/// - If P is infinity (W=0), the formula degenerates appropriately
-///
-/// ## Reference
-///
-/// Costello–Smith 2017, Equation 10.
+/// ```text
+/// U' = (U + W)² · (U - W)²
+/// W' = 4·U·W · ((U - W)² + ((A+2)/4) · 4·U·W)
+/// ```
+pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
+    let t0 = math_field_add(U, W);
+    let t1 = math_field_sub(U, W);
+    let t4 = math_field_square(t0);
+    let t5 = math_field_square(t1);
+    let t6 = math_field_sub(t4, t5);
+    let a24 = spec_field_element(&APLUS2_OVER_FOUR);
+    let t13 = math_field_mul(a24, t6);
+    let t15 = math_field_add(t13, t5);
+    let U2 = math_field_mul(t4, t5);
+    let W2 = math_field_mul(t6, t15);
+    (U2, W2)
+}
+
+/// **xDBL Axiom**: `spec_xdbl_projective` correctly computes [2]P.
 pub(crate) proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
     requires
         projective_represents_montgomery_or_infinity_nats(U, W, P),
@@ -138,19 +105,9 @@ pub(crate) proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W
     admit();
 }
 
-/// **Lemma**: xDBL produces W2=0 when input has U=0 or W=0.
+/// **Lemma**: xDBL gives W'=0 when U=0 or W=0.
 ///
-/// This handles the degenerate case in the Montgomery ladder where the projective
-/// point represents infinity (W=0) or has u-coordinate 0 (U=0).
-///
-/// ## Mathematical Reasoning
-///
-/// The xDBL formula computes: W2 = t6 * t15, where t6 = (U+W)² - (U-W)²
-///
-/// - If U=0: t6 = W² - (-W)² = W² - W² = 0  (since (-W)² = W²)
-/// - If W=0: t6 = U² - U² = 0
-///
-/// Either way, t6 = 0, so W2 = 0 * t15 = 0.
+/// When U=0 or W=0, we have (U+W)² = (U-W)², so t6 = 0 and W' = t6 * ... = 0.
 pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
     requires
         U == 0 || W == 0,
@@ -209,26 +166,35 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
     lemma_field_mul_zero_left(0, t15);
 }
 
-/// **xADD Axiom**: Montgomery differential addition formula correctness.
+/// **Equation 9 (xADD)** — differential addition P + Q given u(P - Q):
 ///
-/// If `(U_P:W_P)` represents P, `(U_Q:W_Q)` represents Q, and `affine_PmQ` is the
-/// u-coordinate of `P - Q`, then `spec_xadd_projective(...)` produces a projective
-/// representation of `P + Q`.
+/// ```text
+/// U' = W(P-Q) · [(U_P - W_P)(U_Q + W_Q) + (U_P + W_P)(U_Q - W_Q)]²
+/// W' = U(P-Q) · [(U_P - W_P)(U_Q + W_Q) - (U_P + W_P)(U_Q - W_Q)]²
+/// ```
+pub(crate) open spec fn spec_xadd_projective(
+    U_P: nat,
+    W_P: nat,
+    U_Q: nat,
+    W_Q: nat,
+    affine_PmQ: nat,
+) -> (nat, nat) {
+    let t0 = math_field_add(U_P, W_P);
+    let t1 = math_field_sub(U_P, W_P);
+    let t2 = math_field_add(U_Q, W_Q);
+    let t3 = math_field_sub(U_Q, W_Q);
+    let t7 = math_field_mul(t0, t3);  // v = (U_P + W_P)(U_Q - W_Q)
+    let t8 = math_field_mul(t1, t2);  // w = (U_P - W_P)(U_Q + W_Q)
+    let t9 = math_field_add(t7, t8);  // v + w
+    let t10 = math_field_sub(t7, t8);  // v - w
+    let U_PpQ = math_field_square(t9);
+    let W_PpQ = math_field_mul(affine_PmQ, math_field_square(t10));
+    (U_PpQ, W_PpQ)
+}
+
+/// **xADD Axiom**: `spec_xadd_projective` correctly computes P + Q.
 ///
-/// ## Preconditions
-///
-/// - `P ≠ Q` (use xDBL for doubling)
-/// - `affine_PmQ ≠ 0` (the difference P-Q is not the 2-torsion point (0,0))
-/// - `affine_PmQ` equals `u(P-Q)` or `u(Q-P)` (symmetric since u is even in v)
-///
-/// ## Algebraic Statement
-///
-/// Let `(U':W') = spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ)`. Then:
-/// - `U' = u(P+Q) · W'` (projective encoding of the sum)
-///
-/// ## Reference
-///
-/// Costello–Smith 2017, Equation 9.
+/// Requires P ≠ Q and u(P - Q) ≠ 0.
 pub(crate) proof fn axiom_xadd_projective_correct(
     P: MontgomeryAffine,
     Q: MontgomeryAffine,

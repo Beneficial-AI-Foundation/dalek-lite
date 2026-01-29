@@ -137,7 +137,8 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
             lemma_mul_is_commutative(an as int, k as int);
         }
 
-        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), an) == edwards_scalar_mul(P, k * an)) by {
+        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), an) == edwards_scalar_mul(P, k * an))
+            by {
             lemma_edwards_scalar_mul_composition(P, k, an);
         }
         assert(edwards_scalar_mul(P, (a * (k as int)) as nat) == edwards_scalar_mul(P, k * an));
@@ -151,7 +152,8 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
         });
 
         // Rewrite the inner scalar multiplication using nat composition.
-        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), ap) == edwards_scalar_mul(P, k * ap)) by {
+        assert(edwards_scalar_mul(edwards_scalar_mul(P, k), ap) == edwards_scalar_mul(P, k * ap))
+            by {
             lemma_edwards_scalar_mul_composition(P, k, ap);
         }
 
@@ -816,15 +818,25 @@ proof fn lemma_field_sub_antisymmetric(a: nat, b: nat)
     let sub_ba = math_field_sub(b, a);
 
     // Both are < p by definition of mod
-    assert(sub_ab < p) by { lemma_mod_bound(((a_mod + p) - b_mod) as int, p as int); }
-    assert(sub_ba < p) by { lemma_mod_bound(((b_mod + p) - a_mod) as int, p as int); }
+    assert(sub_ab < p) by {
+        lemma_mod_bound(((a_mod + p) - b_mod) as int, p as int);
+    }
+    assert(sub_ba < p) by {
+        lemma_mod_bound(((b_mod + p) - a_mod) as int, p as int);
+    }
 
     // Case analysis based on a_mod vs b_mod
     if a_mod == b_mod {
         // sub_ab = p % p = 0, sub_ba = p % p = 0, neg(0) = p % p = 0
-        assert(sub_ab == 0) by { lemma_mod_self_0(p as int); }
-        assert(sub_ba == 0) by { lemma_mod_self_0(p as int); }
-        assert(math_field_neg(sub_ab) == 0) by { lemma_mod_self_0(p as int); }
+        assert(sub_ab == 0) by {
+            lemma_mod_self_0(p as int);
+        }
+        assert(sub_ba == 0) by {
+            lemma_mod_self_0(p as int);
+        }
+        assert(math_field_neg(sub_ab) == 0) by {
+            lemma_mod_self_0(p as int);
+        }
     } else if a_mod > b_mod {
         // sub_ab = (a_mod + p - b_mod) % p = (a_mod - b_mod) since sum > p
         // sub_ba = (b_mod + p - a_mod) % p = (p - (a_mod - b_mod)) since sum < p
@@ -1001,7 +1013,9 @@ proof fn lemma_identity_affine_niels_is_identity()
     assert(y == 1) by {
         // 2 * inv(2) = 1 by field_inv_property
         p_gt_2();
-        assert(2nat % p() != 0) by { lemma_small_mod(2nat, p()); }
+        assert(2nat % p() != 0) by {
+            lemma_small_mod(2nat, p());
+        }
         field_inv_property(2nat);
         lemma_field_mul_comm(2nat, math_field_inv(2));
     }

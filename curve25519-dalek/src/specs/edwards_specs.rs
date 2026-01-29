@@ -76,6 +76,26 @@ pub open spec fn spec_ed25519_basepoint() -> (nat, nat) {
     (u64_5_as_nat(ED25519_BASEPOINT_POINT.X.limbs), u64_5_as_nat(ED25519_BASEPOINT_POINT.Y.limbs))
 }
 
+/// The Ed25519 basepoint has reduced coordinates (both < p)
+///
+/// This is a property of the specific basepoint constant definition from the Ed25519 spec.
+/// The basepoint X and Y coordinates are canonical field elements < p.
+///
+/// ## Values
+/// - X = 15112221349535807912866137220509078935008241517709382056166116785143545249788
+/// - Y = 46316835694926478169428394003475163141307993866256225615783033603165251855960
+/// - p = 57896044618658097711785492504343953926634992332820282019728792003956564819949
+///
+/// Both X < p and Y < p by direct comparison.
+///
+pub proof fn axiom_ed25519_basepoint_reduced()
+    ensures
+        spec_ed25519_basepoint().0 < p(),
+        spec_ed25519_basepoint().1 < p(),
+{
+    admit();
+}
+
 /// Proof: The basepoint is on the Edwards curve
 /* SEE IF WE NEED THIS
 pub proof fn lemma_basepoint_on_curve()

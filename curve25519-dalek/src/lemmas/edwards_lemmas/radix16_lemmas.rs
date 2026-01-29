@@ -178,14 +178,10 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
         assert((-(a * (k as int))) as nat == k * ap) by {
             // (-a) * k == -(a * k) by integer multiplication properties
             lemma_mul_unary_negation(a, k as int);
-            assert((-a) * (k as int) == -(a * (k as int)));
             assert(-(a * (k as int)) == (-a) * (k as int));
             assert(-a == ap as int);
-            assert((-(a * (k as int))) as nat == (ap * k)) by {
-                assert((-(a * (k as int))) == (ap * k) as int);
-            }
+            assert((-(a * (k as int))) == (ap * k) as int);
             lemma_mul_is_commutative(ap as int, k as int);
-            assert(ap * k == k * ap);
         }
 
         // Conclude both sides are the same negation of the same positive scalar multiplication.
@@ -395,9 +391,7 @@ pub proof fn lemma_radix16_even_scalar_step(digits: Seq<i8>, n: nat)
 
         // Map the suffix index back to the original digits: suf[2*nm2] = digits[2*nm1].
         let suf_idx = (2 * nm2) as int;
-        assert(suf_idx + 2 < digits.len()) by {
-            assert(digits.len() >= 2 * n);
-        }
+        assert(suf_idx + 2 < digits.len());
         assert(suf[suf_idx] == digits[suf_idx + 2]);
         assert(suf_idx + 2 == (2 * nm1) as int) by (compute);
         assert(suf[suf_idx] == digits[(2 * nm1) as int]);
@@ -432,12 +426,15 @@ pub proof fn lemma_radix16_even_scalar_step(digits: Seq<i8>, n: nat)
                 let d = suf[suf_idx] as int;
                 let p = pow256(nm2) as int;
                 let b = pow256(1) as int;
-                lemma_mul_is_associative(b, d, p);
-                lemma_mul_is_commutative(b, d);
-                lemma_mul_is_associative(d, b, p);
-                assert(b * (d * p) == (b * d) * p);
-                assert(b * d == d * b);
-                assert((d * b) * p == d * (b * p));
+                assert(b * (d * p) == (b * d) * p) by {
+                    lemma_mul_is_associative(b, d, p);
+                }
+                assert(b * d == d * b) by {
+                    lemma_mul_is_commutative(b, d);
+                }
+                assert((d * b) * p == d * (b * p)) by {
+                    lemma_mul_is_associative(d, b, p);
+                }
                 assert(b * (d * p) == d * (b * p));
                 assert((pow256(1) as int) * (pow256(nm2) as int) == (pow256(nm1) as int));
                 assert(suf[suf_idx] == digits[(2 * nm1) as int]);
@@ -491,14 +488,10 @@ pub proof fn lemma_radix16_odd_scalar_step(digits: Seq<i8>, n: nat)
         lemma_radix16_odd_scalar_step(digits.skip(2), nm1);
 
         let suf = digits.skip(2);
-        assert(suf.len() >= 2 * nm1) by {
-            assert(digits.len() >= 2 * n);
-        }
+        assert(suf.len() >= 2 * nm1);
 
         let suf_idx = (2 * nm2 + 1) as int;
-        assert(suf_idx + 2 < digits.len()) by {
-            assert(digits.len() >= 2 * n);
-        }
+        assert(suf_idx + 2 < digits.len());
         assert(suf[suf_idx] == digits[suf_idx + 2]);
         assert(suf_idx + 2 == (2 * nm1 + 1) as int) by (compute);
         assert(suf[suf_idx] == digits[(2 * nm1 + 1) as int]);
@@ -529,12 +522,15 @@ pub proof fn lemma_radix16_odd_scalar_step(digits: Seq<i8>, n: nat)
                 let d = suf[suf_idx] as int;
                 let p = pow256(nm2) as int;
                 let b = pow256(1) as int;
-                lemma_mul_is_associative(b, d, p);
-                lemma_mul_is_commutative(b, d);
-                lemma_mul_is_associative(d, b, p);
-                assert(b * (d * p) == (b * d) * p);
-                assert(b * d == d * b);
-                assert((d * b) * p == d * (b * p));
+                assert(b * (d * p) == (b * d) * p) by {
+                    lemma_mul_is_associative(b, d, p);
+                }
+                assert(b * d == d * b) by {
+                    lemma_mul_is_commutative(b, d);
+                }
+                assert((d * b) * p == d * (b * p)) by {
+                    lemma_mul_is_associative(d, b, p);
+                }
                 assert(b * (d * p) == d * (b * p));
                 assert((pow256(1) as int) * (pow256(nm2) as int) == (pow256(nm1) as int));
                 assert(suf[suf_idx] == digits[(2 * nm1 + 1) as int]);
@@ -880,7 +876,7 @@ proof fn lemma_field_sub_antisymmetric(a: nat, b: nat)
 
 /// Helper lemma: edwards_scalar_mul_signed always returns reduced coordinates.
 /// This follows from the definition: either edwards_scalar_mul (induction) or neg + edwards_scalar_mul.
-pub proof fn lemma_edwards_scalar_mul_signed_reduced(point_affine: (nat, nat), n: int)
+pub proof fn lemma_edwards_scalar_mul_signed_canonical(point_affine: (nat, nat), n: int)
     requires
         point_affine.0 < p(),
         point_affine.1 < p(),
@@ -890,9 +886,9 @@ pub proof fn lemma_edwards_scalar_mul_signed_reduced(point_affine: (nat, nat), n
 {
     reveal(edwards_scalar_mul_signed);
     if n >= 0 {
-        lemma_edwards_scalar_mul_reduced(point_affine, n as nat);
+        lemma_edwards_scalar_mul_canonical(point_affine, n as nat);
     } else {
-        lemma_edwards_scalar_mul_reduced(point_affine, (-n) as nat);
+        lemma_edwards_scalar_mul_canonical(point_affine, (-n) as nat);
         // neg(x) = (p - x%p) % p, so < p
         p_gt_2();
         let (x, y) = edwards_scalar_mul(point_affine, (-n) as nat);
@@ -902,7 +898,7 @@ pub proof fn lemma_edwards_scalar_mul_signed_reduced(point_affine: (nat, nat), n
 
 /// Helper lemma: odd_sum_up_to always returns reduced coordinates.
 /// By induction: base case is identity (0,1), recursive case uses edwards_add which is always reduced.
-pub proof fn lemma_odd_sum_up_to_reduced(digits: Seq<i8>, upper_i: int, B: (nat, nat))
+pub proof fn lemma_odd_sum_up_to_canonical(digits: Seq<i8>, upper_i: int, B: (nat, nat))
     requires
         B.0 < p(),
         B.1 < p(),
@@ -919,16 +915,16 @@ pub proof fn lemma_odd_sum_up_to_reduced(digits: Seq<i8>, upper_i: int, B: (nat,
         let i = upper_i - 1;
         if i % 2 == 1 {
             // Recursive case with addition
-            lemma_odd_sum_up_to_reduced(digits, i, B);
+            lemma_odd_sum_up_to_canonical(digits, i, B);
             let prev = odd_sum_up_to(digits, i, B);
             let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
-            lemma_edwards_scalar_mul_reduced(B, pow256((i / 2) as nat));
+            lemma_edwards_scalar_mul_canonical(B, pow256((i / 2) as nat));
             let term = edwards_scalar_mul_signed(base, digits[i] as int);
-            lemma_edwards_scalar_mul_signed_reduced(base, digits[i] as int);
-            lemma_edwards_add_reduced(prev.0, prev.1, term.0, term.1);
+            lemma_edwards_scalar_mul_signed_canonical(base, digits[i] as int);
+            lemma_edwards_add_canonical(prev.0, prev.1, term.0, term.1);
         } else {
             // Even index - skip, just recurse
-            lemma_odd_sum_up_to_reduced(digits, i, B);
+            lemma_odd_sum_up_to_canonical(digits, i, B);
         }
     }
 }

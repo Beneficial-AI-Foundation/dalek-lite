@@ -1154,51 +1154,45 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
         let nm1 = (n - 1) as nat;
         assert(nm1 >= 1);
 
-        lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
-        lemma_edwards_scalar_mul_succ(point_affine, nm1);
-        lemma_edwards_scalar_mul_succ(point_affine, m + nm1);
-
         let pm = edwards_scalar_mul(point_affine, m);
         let pnm1 = edwards_scalar_mul(point_affine, nm1);
         let pn = edwards_scalar_mul(point_affine, n);
         let pm_plus_nm1 = edwards_scalar_mul(point_affine, m + nm1);
 
+        // pn == [n-1]P + P by successor lemma (n == nm1 + 1)
         assert(pn == edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1)) by {
-            assert(n == nm1 + 1);
+            lemma_edwards_scalar_mul_succ(point_affine, nm1);
         }
 
-        calc! {
-            (==)
-            edwards_add(pm.0, pm.1, pn.0, pn.1); (==) {
-                assert(pn == edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1));
-            }
-            edwards_add(
+        // By associativity: [m]P + ([n-1]P + P) == ([m]P + [n-1]P) + P
+        assert(edwards_add(
+            pm.0,
+            pm.1,
+            edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).0,
+            edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).1,
+        ) == {
+            let left = edwards_add(pm.0, pm.1, pnm1.0, pnm1.1);
+            edwards_add(left.0, left.1, point_affine.0, point_affine.1)
+        }) by {
+            axiom_edwards_add_associative(
                 pm.0,
                 pm.1,
-                edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).0,
-                edwards_add(pnm1.0, pnm1.1, point_affine.0, point_affine.1).1,
-            ); (==) {
-                axiom_edwards_add_associative(
-                    pm.0,
-                    pm.1,
-                    pnm1.0,
-                    pnm1.1,
-                    point_affine.0,
-                    point_affine.1,
-                );
-            }
-            {
-                let left = edwards_add(pm.0, pm.1, pnm1.0, pnm1.1);
-                edwards_add(left.0, left.1, point_affine.0, point_affine.1)
-            }; (==) {
-                // IH: [m]P + [n-1]P = [m+n-1]P
-                assert(edwards_add(pm.0, pm.1, pnm1.0, pnm1.1) == pm_plus_nm1);
-            }
-            edwards_add(pm_plus_nm1.0, pm_plus_nm1.1, point_affine.0, point_affine.1); (==) {
-                // succ: [m+n-1]P + P = [m+n]P
-                assert(m + n == (m + nm1) + 1);
-            }
-            edwards_scalar_mul(point_affine, m + n);
+                pnm1.0,
+                pnm1.1,
+                point_affine.0,
+                point_affine.1,
+            );
+        }
+
+        // By IH: [m]P + [n-1]P == [m+n-1]P
+        assert(edwards_add(pm.0, pm.1, pnm1.0, pnm1.1) == pm_plus_nm1) by {
+            lemma_edwards_scalar_mul_additive(point_affine, m, nm1);
+        }
+
+        // By successor: [m+n-1]P + P == [m+n]P
+        assert(edwards_add(pm_plus_nm1.0, pm_plus_nm1.1, point_affine.0, point_affine.1)
+            == edwards_scalar_mul(point_affine, m + n)) by {
+            lemma_edwards_scalar_mul_succ(point_affine, m + nm1);
         }
     }
 }
@@ -1243,25 +1237,24 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
 
             // IH gives [b/2]I == I.
             let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb);
-            assert(half == math_edwards_identity()) by {
-                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb)
-                    == edwards_scalar_mul(point_affine, 0));
-            }
+            assert(half == math_edwards_identity());
 
             // double(I) == I
-            lemma_edwards_double_identity();
+            assert(edwards_double(half.0, half.1) == math_edwards_identity()) by {
+                lemma_edwards_double_identity();
+            }
         } else {
             // Odd b (>1): [b]I = [b-1]I + I, but [b-1]I = I, so this is I + I = I.
             let bm1 = (b - 1) as nat;
             lemma_edwards_scalar_mul_composition(point_affine, 0, bm1);
 
             let prev = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), bm1);
-            assert(prev == math_edwards_identity()) by {
-                assert(edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), bm1)
-                    == edwards_scalar_mul(point_affine, 0));
-            }
+            assert(prev == math_edwards_identity());
 
-            lemma_edwards_double_identity();
+            // I + I == I (identity added to itself is identity)
+            assert(edwards_add(0, 1, 0, 1) == math_edwards_identity()) by {
+                lemma_edwards_double_identity();
+            }
         }
     } else if b == 0 {
         reveal_with_fuel(edwards_scalar_mul, 1);
@@ -1300,8 +1293,9 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
             lemma_div_by_multiple((a * hb) as int, 2);
         }
 
-        lemma_mul_nonzero(a as int, b as int);
-        assert(a * b != 0);
+        assert(a * b != 0) by {
+            lemma_mul_nonzero(a as int, b as int);
+        }
         // a * b is even (since b is even), so a * b != 1
         assert(a * b != 1) by (compute);
 
@@ -1354,9 +1348,9 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
         // Scalar-mul additivity for positive scalars: [a*(b-1)]P + [a]P = [a*b]P.
         assert(a >= 1);
         assert(bm1 >= 1);
-        lemma_mul_nonzero(a as int, bm1 as int);
-        assert(a * bm1 >= 1);
-        lemma_edwards_scalar_mul_additive(point_affine, a * bm1, a);
+        assert(a * bm1 >= 1) by {
+            lemma_mul_nonzero(a as int, bm1 as int);
+        }
 
         // b == bm1 + 1, so a * bm1 + a == a * (bm1 + 1) == a * b
         assert(a * bm1 + a == a * b) by {
@@ -1380,12 +1374,8 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
                 edwards_scalar_mul(point_affine, a).0,
                 edwards_scalar_mul(point_affine, a).1,
             ); (==) {
-                assert(edwards_add(
-                    edwards_scalar_mul(point_affine, a * bm1).0,
-                    edwards_scalar_mul(point_affine, a * bm1).1,
-                    edwards_scalar_mul(point_affine, a).0,
-                    edwards_scalar_mul(point_affine, a).1,
-                ) == edwards_scalar_mul(point_affine, a * bm1 + a));
+                // [a*(b-1)]P + [a]P = [a*(b-1) + a]P by scalar-mul additivity
+                lemma_edwards_scalar_mul_additive(point_affine, a * bm1, a);
             }
             edwards_scalar_mul(point_affine, a * bm1 + a); (==) {
                 assert(a * bm1 + a == a * b);
@@ -1397,7 +1387,7 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
 
 /// Lemma: P + O = P (group identity law) for reduced points.
 /// The identity point is (0, 1) in affine coordinates.
-pub proof fn lemma_edwards_add_identity_right_reduced(P: (nat, nat))
+pub proof fn lemma_edwards_add_identity_right_canonical(P: (nat, nat))
     requires
         P.0 < p(),
         P.1 < p(),
@@ -1412,7 +1402,7 @@ pub proof fn lemma_edwards_add_identity_right_reduced(P: (nat, nat))
 /// Lemma: edwards_scalar_mul always produces reduced coordinates (< p()).
 /// This follows from the fact that edwards_add/edwards_double use math_field_* operations
 /// which always return results mod p().
-pub proof fn lemma_edwards_scalar_mul_reduced(point_affine: (nat, nat), n: nat)
+pub proof fn lemma_edwards_scalar_mul_canonical(point_affine: (nat, nat), n: nat)
     requires
         point_affine.0 < p(),
         point_affine.1 < p(),
@@ -1431,20 +1421,20 @@ pub proof fn lemma_edwards_scalar_mul_reduced(point_affine: (nat, nat), n: nat)
     } else if n % 2 == 0 {
         reveal_with_fuel(edwards_scalar_mul, 1);
         let half = edwards_scalar_mul(point_affine, (n / 2) as nat);
-        lemma_edwards_scalar_mul_reduced(point_affine, (n / 2) as nat);
+        lemma_edwards_scalar_mul_canonical(point_affine, (n / 2) as nat);
         // edwards_double returns math_field_mul results which are < p()
-        lemma_edwards_add_reduced(half.0, half.1, half.0, half.1);
+        lemma_edwards_add_canonical(half.0, half.1, half.0, half.1);
     } else {
         reveal_with_fuel(edwards_scalar_mul, 1);
         let prev = edwards_scalar_mul(point_affine, (n - 1) as nat);
-        lemma_edwards_scalar_mul_reduced(point_affine, (n - 1) as nat);
+        lemma_edwards_scalar_mul_canonical(point_affine, (n - 1) as nat);
         // edwards_add returns math_field_mul results which are < p()
-        lemma_edwards_add_reduced(prev.0, prev.1, point_affine.0, point_affine.1);
+        lemma_edwards_add_canonical(prev.0, prev.1, point_affine.0, point_affine.1);
     }
 }
 
 /// Lemma: edwards_add always produces reduced coordinates (< p()).
-pub proof fn lemma_edwards_add_reduced(x1: nat, y1: nat, x2: nat, y2: nat)
+pub proof fn lemma_edwards_add_canonical(x1: nat, y1: nat, x2: nat, y2: nat)
     ensures
         edwards_add(x1, y1, x2, y2).0 < p(),
         edwards_add(x1, y1, x2, y2).1 < p(),

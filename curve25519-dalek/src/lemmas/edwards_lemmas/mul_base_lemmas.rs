@@ -1,21 +1,26 @@
-//! Lemmas for radix-16 (Pippenger) scalar multiplication
+//! Specs and lemmas for `mul_base` (Pippenger scalar multiplication)
 //!
-//! This module contains proofs for the radix-16 decomposition used in the Pippenger
-//! algorithm for efficient scalar multiplication. The algorithm splits a 256-bit scalar
-//! into 64 signed radix-16 digits (each in range [-8, 8]) and computes the scalar
-//! multiplication as a sum of signed multiples of the basepoint.
+//! This module contains specs and proofs for the radix-16 decomposition used in the
+//! Pippenger algorithm (`mul_base`) for efficient scalar multiplication.
 //!
 //! ## Algorithm Overview
 //!
-//! The radix-16 decomposition represents a scalar `s` as:
+//! The algorithm splits a 256-bit scalar into 64 signed radix-16 digits (each in [-8, 8])
+//! and represents scalar `s` as:
 //!     `s = sum_{i=0..63} d_i * 16^i`
-//! where each `d_i` is a signed 4-bit digit in range [-8, 8].
 //!
 //! The Pippenger algorithm optimizes evaluation by separating even and odd indexed digits:
 //!     - Even digits: `d_0, d_2, d_4, ...` contribute `sum_{j} d_{2j} * 256^j`
 //!     - Odd digits:  `d_1, d_3, d_5, ...` contribute `16 * sum_{j} d_{2j+1} * 256^j`
 //!
 //! This allows computing two separate sums and combining them with a single doubling.
+//!
+//! ## Key Specs
+//!
+//! - `odd_sum_up_to`: Partial sum of odd-indexed digit contributions
+//! - `even_sum_up_to`: Partial sum of even-indexed digit contributions
+//! - `pippenger_partial`: State during loop 2 (16 * odd_sum + partial even_sum)
+//! - `radix16_sum`: Full radix-16 sum equals [scalar] * B
 //!
 //! ## Key Lemmas
 //!
@@ -36,7 +41,10 @@ use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::{reconstruct_radix_16, reconstruct_radix_2w};
+use crate::specs::scalar_specs::{
+    is_valid_radix_16, is_valid_radix_2w, radix_16_all_bounded, radix_16_digit_bounded,
+    reconstruct_radix_16, reconstruct_radix_2w,
+};
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
@@ -97,6 +105,83 @@ pub open spec fn radix16_odd_scalar(digits: Seq<i8>, n: nat) -> int
         let nm1 = (n - 1) as nat;
         (digits[1] as int) + (pow256(1) as int) * radix16_odd_scalar(digits.skip(2), nm1)
     }
+}
+
+// =============================================================================
+// Spec Functions: Partial sum specs for Pippenger mul_base algorithm
+// =============================================================================
+/// Partial sum of odd-indexed radix-16 digits: sum over odd i < upper_i of a[i] * 256^(i/2) * B
+///
+/// This matches the structure of Loop 1 in mul_base which processes odd indices.
+/// For odd index i, table[i/2] contains 256^(i/2) * B multiples.
+pub open spec fn odd_sum_up_to(digits: Seq<i8>, upper_i: int, B: (nat, nat)) -> (nat, nat)
+    decreases upper_i,
+{
+    if upper_i <= 0 {
+        math_edwards_identity()
+    } else {
+        let i = upper_i - 1;
+        if i % 2 == 1 {
+            // Odd index - add term a[i] * 256^(i/2) * B
+            let prev = odd_sum_up_to(digits, i, B);
+            let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
+            let term = edwards_scalar_mul_signed(base, digits[i] as int);
+            edwards_add(prev.0, prev.1, term.0, term.1)
+        } else {
+            // Even index - skip
+            odd_sum_up_to(digits, i, B)
+        }
+    }
+}
+
+/// Partial sum of even-indexed radix-16 digits: sum over even i < upper_i of a[i] * 256^(i/2) * B
+///
+/// This matches the structure of Loop 2 in mul_base which processes even indices.
+pub open spec fn even_sum_up_to(digits: Seq<i8>, upper_i: int, B: (nat, nat)) -> (nat, nat)
+    decreases upper_i,
+{
+    if upper_i <= 0 {
+        math_edwards_identity()
+    } else {
+        let i = upper_i - 1;
+        if i % 2 == 0 {
+            // Even index - add term a[i] * 256^(i/2) * B
+            let prev = even_sum_up_to(digits, i, B);
+            let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
+            let term = edwards_scalar_mul_signed(base, digits[i] as int);
+            edwards_add(prev.0, prev.1, term.0, term.1)
+        } else {
+            // Odd index - skip
+            even_sum_up_to(digits, i, B)
+        }
+    }
+}
+
+/// Partial state during loop 2: 16 * odd_sum + even_sum_up_to(digits, even_upper_i, B)
+///
+/// After loop 1 and mul_by_pow_2(4), the point equals 16 * odd_sum.
+/// Loop 2 then adds even-indexed terms one at a time.
+pub open spec fn pippenger_partial(digits: Seq<i8>, even_upper_i: int, B: (nat, nat)) -> (
+    nat,
+    nat,
+) {
+    let odd_sum = odd_sum_up_to(digits, 64, B);
+    let scaled = edwards_scalar_mul(odd_sum, 16);
+    let even_sum = even_sum_up_to(digits, even_upper_i, B);
+    edwards_add(scaled.0, scaled.1, even_sum.0, even_sum.1)
+}
+
+/// Full radix-16 sum: sum of a[i] * 16^i * B for i in 0..64
+///
+/// This equals [scalar] * B when digits are the radix-16 representation of scalar.
+pub open spec fn radix16_sum(digits: Seq<i8>, B: (nat, nat)) -> (nat, nat)
+    recommends
+        digits.len() == 64,
+{
+    // The algorithm computes: 16 * odd_sum + even_sum
+    // where odd_sum = sum(a[2j+1] * 256^j * B) and even_sum = sum(a[2j] * 256^j * B)
+    // This equals sum(a[i] * 16^i * B) since 256 = 16^2
+    pippenger_partial(digits, 64, B)
 }
 
 // =============================================================================
@@ -897,6 +982,52 @@ pub proof fn lemma_select_is_signed_scalar_mul(
             edwards_scalar_mul(basepoint, (-x) as nat),
         ));
     }
+}
+
+// =============================================================================
+// Lemma: Valid radix-16 implies bounded digits
+// =============================================================================
+/// Lemma: is_valid_radix_16 implies radix_16_all_bounded
+///
+/// is_valid_radix_16 gives tighter bounds (-8 <= d < 8 for non-last, -8 <= d <= 8 for last)
+/// but radix_16_all_bounded (-8 <= d <= 8 for all) is still implied.
+pub proof fn lemma_valid_radix_16_implies_all_bounded(digits: &[i8; 64])
+    requires
+        is_valid_radix_16(digits),
+    ensures
+        radix_16_all_bounded(digits),
+{
+    // Expand the definitions:
+    //
+    // - is_valid_radix_16(digits) = is_valid_radix_2w(digits, 4, 64)
+    // - is_valid_radix_2w gives, for each i in [0, 64):
+    //     -8 <= digits[i] and (digits[i] < 8) for i < 63, while (digits[63] <= 8)
+    // This implies the simpler predicate radix_16_all_bounded(digits):
+    //     forall i in [0, 64): -8 <= digits[i] <= 8
+    // `is_valid_radix_16(digits)` is `is_valid_radix_2w(digits, 4, 64)`.
+    assert(is_valid_radix_2w(digits, 4, 64));
+
+    // Prove the pointwise bound `-8 <= digits[i] <= 8` for all i in [0, 64).
+    assert forall|i: int| 0 <= i < 64 implies radix_16_digit_bounded(#[trigger] digits[i]) by {
+        // From `is_valid_radix_2w(digits, 4, 64)` we get:
+        // - for i < 63: -8 <= digits[i] < 8
+        // - for i = 63: -8 <= digits[i] <= 8
+        //
+        // because bound = pow2(w-1) = pow2(3) = 8.
+        assert(pow2(3) == 8) by {
+            vstd::arithmetic::power2::lemma2_to64();
+        }
+        if i < 63 {
+            assert(-8 <= digits[i] && digits[i] < 8);
+            // Strengthen `< 8` to `<= 8`.
+            assert(digits[i] <= 8);
+        } else {
+            assert(i == 63);
+            assert(-8 <= digits[i] && digits[i] <= 8);
+        }
+    }
+
+    assert(radix_16_all_bounded(digits));
 }
 
 } // verus!

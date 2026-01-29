@@ -174,8 +174,8 @@ use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
-#[allow(unused_imports)] // Used in verus! blocks for radix-16 scalar multiplication proofs
-use crate::lemmas::edwards_lemmas::radix16_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for mul_base (Pippenger) proofs
+use crate::lemmas::edwards_lemmas::mul_base_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for decompress proofs
 use crate::lemmas::edwards_lemmas::step1_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
@@ -463,6 +463,8 @@ mod decompress {
                 assert(spec_field_element(&YY) == y2);
 
                 // u = YY - Z → spec_field_element(&u) == u_math
+                // (lemma_one_field_element_value establishes spec_field_element(&Z) == 1,
+                // needed for both u_math and v_math assertions)
                 lemma_one_field_element_value();
                 assert(spec_field_element(&u) == u_math);
 
@@ -1474,12 +1476,14 @@ impl EdwardsPoint {
             // 2. (s[31] >> 7) == (((x_affine % p()) % 2) as u8) (the sign bit)
 
             // Prove s_before_xor has bit 255 clear
-            lemma_canonical_bytes_bit255_zero(&s_before_xor, y_affine);
-            assert((s_before_xor[31] >> 7) == 0);
+            assert((s_before_xor[31] >> 7) == 0) by {
+                lemma_canonical_bytes_bit255_zero(&s_before_xor, y_affine);
+            }
 
             // Connect is_negative to x_affine parity
-            lemma_is_negative_equals_parity(&x);
-            assert(choice_is_true(is_neg_choice) == (spec_field_element(&x) % 2 == 1));
+            assert(choice_is_true(is_neg_choice) == (spec_field_element(&x) % 2 == 1)) by {
+                lemma_is_negative_equals_parity(&x);
+            }
             assert(spec_field_element(&x) == x_affine);
             assert(choice_is_true(is_neg_choice) == (x_affine % 2 == 1));
 
@@ -1504,9 +1508,9 @@ impl EdwardsPoint {
             };
 
             // Prove XOR preserves y and sets sign bit
-            lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
-            assert(spec_field_element_from_bytes(&s) == y_affine);
-            assert((s[31] >> 7) == sign_bit);
+            assert(spec_field_element_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit) by {
+                lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
+            }
 
             // Both parts of compressed_edwards_y_corresponds_to_edwards are satisfied
             assert(compressed_edwards_y_corresponds_to_edwards(CompressedEdwardsY(s), *self));
@@ -1660,7 +1664,7 @@ impl EdwardsPoint {
                 && fe51_limbs_bounded(&proj.Z, 52));
             // sum_of_limbs_bounded follows from 52-bounded: 2^52 + 2^52 = 2^53 < u64::MAX
             assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
-            assume(sum_of_limbs_bounded(&proj.X, &proj.Y, u64::MAX));  // TODO: prove from 52-bounded
+            assume(sum_of_limbs_bounded(&proj.X, &proj.Y, u64::MAX));
         }
 
         let doubled = proj.double();
@@ -2660,38 +2664,6 @@ impl Clone for EdwardsBasepointTable {
     }
 }
 
-pub proof fn lemma_basepoint_table_entry_affine_limbs_bounded(table: &EdwardsBasepointTable, i: int)
-    requires
-        is_valid_edwards_basepoint_table(*table, spec_ed25519_basepoint()),
-        0 <= i < 32,
-    ensures
-        crate::specs::window_specs::lookup_table_affine_limbs_bounded(table.0[i].0),
-{
-    // Unfold the definition and instantiate the quantified property at index `i`.
-    reveal(crate::specs::edwards_specs::is_valid_edwards_basepoint_table);
-    assert(crate::specs::window_specs::lookup_table_affine_limbs_bounded(table.0[i].0));
-}
-
-/// Helper lemma: Extract is_valid_lookup_table_affine_coords from basepoint table validity.
-pub proof fn lemma_basepoint_table_entry_valid(table: &EdwardsBasepointTable, i: int)
-    requires
-        is_valid_edwards_basepoint_table(*table, spec_ed25519_basepoint()),
-        0 <= i < 32,
-    ensures
-        crate::specs::window_specs::is_valid_lookup_table_affine_coords(
-            table.0[i].0,
-            edwards_scalar_mul(spec_ed25519_basepoint(), pow256(i as nat)),
-            8,
-        ),
-{
-    reveal(crate::specs::edwards_specs::is_valid_edwards_basepoint_table);
-    assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
-        table.0[i].0,
-        edwards_scalar_mul(spec_ed25519_basepoint(), pow256(i as nat)),
-        8,
-    ));
-}
-
 impl BasepointTable for EdwardsBasepointTable {
     type Point = EdwardsPoint;
 
@@ -2746,7 +2718,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 // (affine coords are correct scalar multiples)
                 forall|j: int|
                     #![trigger table.0[j as int]]
-                    0 <= j < i ==> crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                    0 <= j < i ==> is_valid_lookup_table_affine_coords(
                         table.0[j as int].0,
                         edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(j as nat)),
                         8,
@@ -2754,9 +2726,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 // All table entries filled so far have bounded limbs
                 forall|j: int|
                     #![trigger table.0[j as int]]
-                    0 <= j < i ==> crate::specs::window_specs::lookup_table_affine_limbs_bounded(
-                        table.0[j as int].0,
-                    ),
+                    0 <= j < i ==> lookup_table_affine_limbs_bounded(table.0[j as int].0),
         {
             // P = (16²)^i * basepoint
             table.0[i] = LookupTableRadix16::from(&P);
@@ -2770,15 +2740,13 @@ impl BasepointTable for EdwardsBasepointTable {
                 // edwards_point_as_affine(P) == edwards_scalar_mul(basepoint_affine, pow256(i))
                 //
                 // Therefore, table[i] is correct for index i
-                assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                assert(is_valid_lookup_table_affine_coords(
                     table.0[i as int].0,
                     edwards_scalar_mul(edwards_point_as_affine(*basepoint), pow256(i as nat)),
                     8,
                 ));
                 // Limb bounds from postcondition
-                assert(crate::specs::window_specs::lookup_table_affine_limbs_bounded(
-                    table.0[i as int].0,
-                ));
+                assert(lookup_table_affine_limbs_bounded(table.0[i as int].0));
             }
 
             P = P.mul_by_pow_2(4 + 4);  // P = P * 2^8 = P * 256 = P * 16²
@@ -2828,10 +2796,7 @@ impl BasepointTable for EdwardsBasepointTable {
         proof {
             // The precondition is_valid_edwards_basepoint_table includes
             // lookup_table_affine_limbs_bounded for all table entries.
-            // TODO: Proper forall instantiation with trigger
-            assume(crate::specs::window_specs::lookup_table_affine_limbs_bounded(
-                (*self).0[0int].0,
-            ));
+            assume(lookup_table_affine_limbs_bounded((*self).0[0int].0));
         }
         let selected = self.0[0].select(1);
         // selected limb bounds come from select postcondition
@@ -2921,14 +2886,14 @@ impl BasepointTable for EdwardsBasepointTable {
             // From `as_radix_2w(4)` postcondition: the digits are a valid radix-16 representation.
             assert(is_valid_radix_2w(&a, 4, 64));
             assert(is_valid_radix_16(&a));
-            lemma_valid_radix_16_implies_all_bounded(&a);
-            assert(radix_16_all_bounded(&a));
+            assert(radix_16_all_bounded(&a)) by {
+                lemma_valid_radix_16_implies_all_bounded(&a);
+            }
 
             // Initial invariant: identity == odd_sum_up_to(digits, 0, B)
-            // identity() postcondition gives is_identity_edwards_point(P)
-            // lemma_identity_affine_coords shows this implies edwards_point_as_affine(P) == (0, 1)
-            lemma_identity_affine_coords(P);
-            assert(edwards_point_as_affine(P) == math_edwards_identity());
+            assert(edwards_point_as_affine(P) == math_edwards_identity()) by {
+                lemma_identity_affine_coords(P);
+            }
             // odd_sum_up_to(_, 0, _) = math_edwards_identity() = (0, 1) by definition
             reveal(odd_sum_up_to);
             assert(odd_sum_up_to(a@, 0, spec_ed25519_basepoint()) == math_edwards_identity());
@@ -2944,11 +2909,14 @@ impl BasepointTable for EdwardsBasepointTable {
                 is_well_formed_edwards_point(P),
                 radix_16_all_bounded(&a),
                 is_valid_edwards_basepoint_table(*self, spec_ed25519_basepoint()),
+                tables == &self.0,  // track tables alias
                 B == spec_ed25519_basepoint(),  // track ghost variable
                 // Functional correctness: P = odd_sum_up_to(a, i, B)
                 edwards_point_as_affine(P) == odd_sum_up_to(a@, i as int, B),
         {
             if i % 2 == 1 {
+                // ORIGINAL CODE: need to add intermediate variables for pre and post conditions
+                //     P = (&P + &tables[i / 2].select(a[i])).as_extended();
                 proof {
                     // Preconditions for `select`.
                     assert(-8 <= a[i as int] && a[i as int] <= 8);
@@ -2957,12 +2925,11 @@ impl BasepointTable for EdwardsBasepointTable {
                     let ti: int = (i / 2) as int;
                     assert(0 <= ti < 32);
                     // Establish select precondition via the table validity.
-                    lemma_basepoint_table_entry_affine_limbs_bounded(self, ti);
-                    assert(crate::specs::window_specs::lookup_table_affine_limbs_bounded(
-                        self.0[ti].0,
-                    ));
+                    assert(lookup_table_affine_limbs_bounded(tables[ti].0)) by {
+                        reveal(is_valid_edwards_basepoint_table);
+                    }
                 }
-                let selected = self.0[i / 2].select(a[i]);
+                let selected = tables[i / 2].select(a[i]);
                 proof {
                     // Preconditions for `&EdwardsPoint + &AffineNielsPoint`.
                     // - `P` is well-formed from the loop invariant.
@@ -3010,32 +2977,29 @@ impl BasepointTable for EdwardsBasepointTable {
                     let table_idx = (i / 2) as int;
                     let table_base = edwards_scalar_mul(B, pow256(table_idx as nat));
 
-                    // Use helper lemma to instantiate table validity from basepoint table
+                    // Use reveal to instantiate table validity from basepoint table
                     assert(0 <= table_idx < 32);
-                    lemma_basepoint_table_entry_valid(self, table_idx);
-                    // Lemma gives us validity with spec_ed25519_basepoint()
-                    // Since B == spec_ed25519_basepoint(), table_base matches
                     assert(B == spec_ed25519_basepoint());
                     assert(table_base == edwards_scalar_mul(
                         spec_ed25519_basepoint(),
                         pow256(table_idx as nat),
                     ));
-                    assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
-                        self.0[table_idx].0,
-                        table_base,
-                        8,
-                    ));
+                    assert(is_valid_lookup_table_affine_coords(tables[table_idx].0, table_base, 8))
+                        by {
+                        reveal(is_valid_edwards_basepoint_table);
+                    }
 
-                    lemma_select_is_signed_scalar_mul(
-                        self.0[table_idx].0,
-                        a[i as int],
-                        selected,
-                        table_base,
-                    );
                     assert(selected_affine == edwards_scalar_mul_signed(
                         table_base,
                         a[i as int] as int,
-                    ));
+                    )) by {
+                        lemma_select_is_signed_scalar_mul(
+                            tables[table_idx].0,
+                            a[i as int],
+                            selected,
+                            table_base,
+                        );
+                    }
 
                     // 6. Unfold odd_sum_up_to(a@, i+1, B) - since i is odd, this includes term for i
                     reveal(odd_sum_up_to);
@@ -3078,13 +3042,14 @@ impl BasepointTable for EdwardsBasepointTable {
             //                            = scaled (by identity law)
             assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
             // scaled comes from edwards_scalar_mul, which produces canonical coordinates
-            // First establish that the basepoint B is canonical
-            axiom_ed25519_basepoint_canonical();
-            // Then odd_sum is canonical (from lemma_odd_sum_up_to_canonical)
-            lemma_odd_sum_up_to_canonical(a@, 64, B);
-            lemma_edwards_scalar_mul_canonical(odd_sum, 16);
-            lemma_edwards_add_identity_right_canonical(scaled);
-            assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled);
+            assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled) by {
+                // First establish that the basepoint B is canonical
+                axiom_ed25519_basepoint_canonical();
+                // Then odd_sum is canonical (from lemma_odd_sum_up_to_canonical)
+                lemma_odd_sum_up_to_canonical(a@, 64, B);
+                lemma_edwards_scalar_mul_canonical(odd_sum, 16);
+                lemma_edwards_add_identity_right_canonical(scaled);
+            }
             assert(pippenger_partial(a@, 0, B) == scaled);
         }
 
@@ -3097,11 +3062,14 @@ impl BasepointTable for EdwardsBasepointTable {
                 is_well_formed_edwards_point(P),
                 radix_16_all_bounded(&a),
                 is_valid_edwards_basepoint_table(*self, spec_ed25519_basepoint()),
+                tables == &self.0,  // track tables alias
                 B == spec_ed25519_basepoint(),  // track ghost variable
                 // Functional correctness: P = pippenger_partial(a, i, B)
                 edwards_point_as_affine(P) == pippenger_partial(a@, i as int, B),
         {
             if i % 2 == 0 {
+                // ORIGINAL CODE: need to add intermediate variables for pre and post conditions
+                //     P = (&P + &tables[i / 2].select(a[i])).as_extended();
                 proof {
                     // Preconditions for `select`.
                     assert(-8 <= a[i as int] && a[i as int] <= 8);
@@ -3110,12 +3078,11 @@ impl BasepointTable for EdwardsBasepointTable {
                     let ti: int = (i / 2) as int;
                     assert(0 <= ti < 32);
                     // Establish select precondition via the table validity.
-                    lemma_basepoint_table_entry_affine_limbs_bounded(self, ti);
-                    assert(crate::specs::window_specs::lookup_table_affine_limbs_bounded(
-                        self.0[ti].0,
-                    ));
+                    assert(lookup_table_affine_limbs_bounded(tables[ti].0)) by {
+                        reveal(is_valid_edwards_basepoint_table);
+                    }
                 }
-                let selected = self.0[i / 2].select(a[i]);
+                let selected = tables[i / 2].select(a[i]);
                 proof {
                     // Preconditions for `&EdwardsPoint + &AffineNielsPoint`.
                     assert(edwards_point_limbs_bounded(P));
@@ -3156,28 +3123,26 @@ impl BasepointTable for EdwardsBasepointTable {
                     let table_idx = (i / 2) as int;
                     let table_base = edwards_scalar_mul(B, pow256(table_idx as nat));
                     assert(0 <= table_idx < 32);
-                    lemma_basepoint_table_entry_valid(self, table_idx);
-                    // Lemma gives validity with spec_ed25519_basepoint(), which equals B
                     assert(B == spec_ed25519_basepoint());
                     assert(table_base == edwards_scalar_mul(
                         spec_ed25519_basepoint(),
                         pow256(table_idx as nat),
                     ));
-                    assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
-                        self.0[table_idx].0,
-                        table_base,
-                        8,
-                    ));
-                    lemma_select_is_signed_scalar_mul(
-                        self.0[table_idx].0,
-                        a[i as int],
-                        selected,
-                        table_base,
-                    );
+                    assert(is_valid_lookup_table_affine_coords(tables[table_idx].0, table_base, 8))
+                        by {
+                        reveal(is_valid_edwards_basepoint_table);
+                    }
                     assert(selected_affine == edwards_scalar_mul_signed(
                         table_base,
                         a[i as int] as int,
-                    ));
+                    )) by {
+                        lemma_select_is_signed_scalar_mul(
+                            tables[table_idx].0,
+                            a[i as int],
+                            selected,
+                            table_base,
+                        );
+                    }
 
                     // Unfold pippenger_partial(a@, i+1, B) - since i is even, even_sum_up_to includes term for i
                     reveal(pippenger_partial);
@@ -3207,26 +3172,17 @@ impl BasepointTable for EdwardsBasepointTable {
                     assert(even_ip1 == edwards_add(even_i.0, even_i.1, term_i.0, term_i.1));
 
                     // Re-associate: (scaled + even_i) + term_i == scaled + (even_i + term_i).
-                    axiom_edwards_add_associative(
-                        scaled.0,
-                        scaled.1,
-                        even_i.0,
-                        even_i.1,
-                        term_i.0,
-                        term_i.1,
-                    );
-
-                    assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == edwards_add(
-                        scaled.0,
-                        scaled.1,
-                        even_ip1.0,
-                        even_ip1.1,
-                    )) by {
-                        assert(p_i == edwards_add(scaled.0, scaled.1, even_i.0, even_i.1));
-                        assert(even_ip1 == edwards_add(even_i.0, even_i.1, term_i.0, term_i.1));
+                    // p_i + term_i == scaled + even_ip1 == p_ip1
+                    assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == p_ip1) by {
+                        axiom_edwards_add_associative(
+                            scaled.0,
+                            scaled.1,
+                            even_i.0,
+                            even_i.1,
+                            term_i.0,
+                            term_i.1,
+                        );
                     }
-                    assert(p_ip1 == edwards_add(scaled.0, scaled.1, even_ip1.0, even_ip1.1));
-                    assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == p_ip1);
 
                     // Our updated point is p_i + term_i, hence equals p_{i+1}.
                     assert(edwards_point_as_affine(P) == edwards_add(

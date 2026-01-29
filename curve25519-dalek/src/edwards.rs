@@ -3079,7 +3079,7 @@ impl BasepointTable for EdwardsBasepointTable {
             assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
             // scaled comes from edwards_scalar_mul, which produces reduced coordinates
             // First establish that the basepoint B is reduced
-            lemma_basepoint_reduced();
+            axiom_ed25519_basepoint_reduced();
             // Then odd_sum is reduced (from lemma_odd_sum_up_to_reduced)
             lemma_odd_sum_up_to_reduced(a@, 64, B);
             lemma_edwards_scalar_mul_reduced(odd_sum, 16);

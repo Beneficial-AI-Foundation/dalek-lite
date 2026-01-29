@@ -1413,6 +1413,9 @@ pub proof fn lemma_edwards_add_identity_right_reduced(P: (nat, nat))
 /// This follows from the fact that edwards_add/edwards_double use math_field_* operations
 /// which always return results mod p().
 pub proof fn lemma_edwards_scalar_mul_reduced(point_affine: (nat, nat), n: nat)
+    requires
+        point_affine.0 < p(),
+        point_affine.1 < p(),
     ensures
         edwards_scalar_mul(point_affine, n).0 < p(),
         edwards_scalar_mul(point_affine, n).1 < p(),
@@ -1424,11 +1427,7 @@ pub proof fn lemma_edwards_scalar_mul_reduced(point_affine: (nat, nat), n: nat)
         // identity is (0, 1), both < p()
     } else if n == 1 {
         reveal_with_fuel(edwards_scalar_mul, 1);
-        // result is point_affine, need to show it's reduced
-        // Actually for n==1, we just return point_affine which may not be reduced
-        // But edwards_add reduces its inputs, so we need a different approach
-        // For now, assume the input is reduced (this is a precondition we should add)
-        assume(point_affine.0 < p() && point_affine.1 < p());
+        // result is point_affine, which is reduced by precondition
     } else if n % 2 == 0 {
         reveal_with_fuel(edwards_scalar_mul, 1);
         let half = edwards_scalar_mul(point_affine, (n / 2) as nat);

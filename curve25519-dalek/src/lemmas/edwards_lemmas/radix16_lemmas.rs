@@ -804,9 +804,121 @@ proof fn lemma_field_sub_antisymmetric(a: nat, b: nat)
     ensures
         math_field_sub(b, a) == math_field_neg(math_field_sub(a, b)),
 {
-    // Field algebra fact: (b - a) = -(a - b) in any field
-    // TODO: prove using modular arithmetic lemmas
-    admit();
+    let p = p();
+    p_gt_2();
+
+    let a_mod = a % p;
+    let b_mod = b % p;
+
+    // sub(a, b) = ((a_mod + p) - b_mod) % p
+    // sub(b, a) = ((b_mod + p) - a_mod) % p
+    let sub_ab = math_field_sub(a, b);
+    let sub_ba = math_field_sub(b, a);
+
+    // Both are < p by definition of mod
+    assert(sub_ab < p) by { lemma_mod_bound(((a_mod + p) - b_mod) as int, p as int); }
+    assert(sub_ba < p) by { lemma_mod_bound(((b_mod + p) - a_mod) as int, p as int); }
+
+    // Case analysis based on a_mod vs b_mod
+    if a_mod == b_mod {
+        // sub_ab = p % p = 0, sub_ba = p % p = 0, neg(0) = p % p = 0
+        assert(sub_ab == 0) by { lemma_mod_self_0(p as int); }
+        assert(sub_ba == 0) by { lemma_mod_self_0(p as int); }
+        assert(math_field_neg(sub_ab) == 0) by { lemma_mod_self_0(p as int); }
+    } else if a_mod > b_mod {
+        // sub_ab = (a_mod + p - b_mod) % p = (a_mod - b_mod) since sum > p
+        // sub_ba = (b_mod + p - a_mod) % p = (p - (a_mod - b_mod)) since sum < p
+        let diff = (a_mod - b_mod) as nat;
+        assert(sub_ab == diff) by {
+            assert(a_mod + p - b_mod == p + diff);
+            lemma_mod_add_multiples_vanish(diff as int, p as int);
+            lemma_small_mod(diff, p);
+        }
+        assert(sub_ba == p - diff) by {
+            assert(b_mod + p - a_mod == p - diff);
+            lemma_small_mod((p - diff) as nat, p);
+        }
+        // neg(sub_ab) = (p - diff) % p = p - diff (since diff > 0, so p - diff < p)
+        assert(math_field_neg(sub_ab) == p - diff) by {
+            lemma_small_mod(diff, p);
+            lemma_small_mod((p - diff) as nat, p);
+        }
+    } else {
+        // a_mod < b_mod
+        // sub_ab = (a_mod + p - b_mod) % p = (p - (b_mod - a_mod)) since sum < p
+        // sub_ba = (b_mod + p - a_mod) % p = (b_mod - a_mod) since sum > p
+        let diff = (b_mod - a_mod) as nat;
+        assert(sub_ab == p - diff) by {
+            assert(a_mod + p - b_mod == p - diff);
+            lemma_small_mod((p - diff) as nat, p);
+        }
+        assert(sub_ba == diff) by {
+            assert(b_mod + p - a_mod == p + diff);
+            lemma_mod_add_multiples_vanish(diff as int, p as int);
+            lemma_small_mod(diff, p);
+        }
+        // neg(sub_ab) = (p - (p - diff)) % p = diff % p = diff
+        assert(math_field_neg(sub_ab) == diff) by {
+            assert(p - (p - diff) == diff);
+            lemma_small_mod((p - diff) as nat, p);
+            lemma_small_mod(diff, p);
+        }
+    }
+}
+
+/// Helper lemma: edwards_scalar_mul_signed always returns reduced coordinates.
+/// This follows from the definition: either edwards_scalar_mul (induction) or neg + edwards_scalar_mul.
+pub proof fn lemma_edwards_scalar_mul_signed_reduced(point_affine: (nat, nat), n: int)
+    requires
+        point_affine.0 < p(),
+        point_affine.1 < p(),
+    ensures
+        edwards_scalar_mul_signed(point_affine, n).0 < p(),
+        edwards_scalar_mul_signed(point_affine, n).1 < p(),
+{
+    reveal(edwards_scalar_mul_signed);
+    if n >= 0 {
+        lemma_edwards_scalar_mul_reduced(point_affine, n as nat);
+    } else {
+        lemma_edwards_scalar_mul_reduced(point_affine, (-n) as nat);
+        // neg(x) = (p - x%p) % p, so < p
+        p_gt_2();
+        let (x, y) = edwards_scalar_mul(point_affine, (-n) as nat);
+        lemma_mod_bound((p() - (x % p())) as int, p() as int);
+    }
+}
+
+/// Helper lemma: odd_sum_up_to always returns reduced coordinates.
+/// By induction: base case is identity (0,1), recursive case uses edwards_add which is always reduced.
+pub proof fn lemma_odd_sum_up_to_reduced(digits: Seq<i8>, upper_i: int, B: (nat, nat))
+    requires
+        B.0 < p(),
+        B.1 < p(),
+    ensures
+        odd_sum_up_to(digits, upper_i, B).0 < p(),
+        odd_sum_up_to(digits, upper_i, B).1 < p(),
+    decreases upper_i,
+{
+    reveal(odd_sum_up_to);
+    p_gt_2();
+    if upper_i <= 0 {
+        // Base case: identity (0, 1), both < p
+    } else {
+        let i = upper_i - 1;
+        if i % 2 == 1 {
+            // Recursive case with addition
+            lemma_odd_sum_up_to_reduced(digits, i, B);
+            let prev = odd_sum_up_to(digits, i, B);
+            let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
+            lemma_edwards_scalar_mul_reduced(B, pow256((i / 2) as nat));
+            let term = edwards_scalar_mul_signed(base, digits[i] as int);
+            lemma_edwards_scalar_mul_signed_reduced(base, digits[i] as int);
+            lemma_edwards_add_reduced(prev.0, prev.1, term.0, term.1);
+        } else {
+            // Even index - skip, just recurse
+            lemma_odd_sum_up_to_reduced(digits, i, B);
+        }
+    }
 }
 
 // =============================================================================

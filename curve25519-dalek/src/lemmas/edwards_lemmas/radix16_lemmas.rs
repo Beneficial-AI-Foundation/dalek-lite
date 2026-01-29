@@ -712,10 +712,6 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     let n = 32nat;
     assert(digits.len() >= 2 * n);
 
-    lemma_even_sum_up_to_correct(digits, basepoint, n);
-    lemma_odd_sum_up_to_correct(digits, basepoint, n);
-    lemma_reconstruct_radix16_even_odd(digits, n);
-
     // Unfold radix16_sum/pippenger_partial and rewrite via the proved equalities.
     reveal(radix16_sum);
     reveal(pippenger_partial);
@@ -723,8 +719,12 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     let odd_sum = odd_sum_up_to(digits, 64, basepoint);
     let even_sum = even_sum_up_to(digits, 64, basepoint);
 
-    assert(odd_sum == edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n)));
-    assert(even_sum == edwards_scalar_mul_signed(basepoint, radix16_even_scalar(digits, n)));
+    assert(odd_sum == edwards_scalar_mul_signed(basepoint, radix16_odd_scalar(digits, n))) by {
+        lemma_odd_sum_up_to_correct(digits, basepoint, n);
+    }
+    assert(even_sum == edwards_scalar_mul_signed(basepoint, radix16_even_scalar(digits, n))) by {
+        lemma_even_sum_up_to_correct(digits, basepoint, n);
+    }
 
     // Scale the odd sum by 16, then add the even sum.
     let scaled = edwards_scalar_mul(odd_sum, 16);
@@ -795,107 +795,8 @@ pub proof fn lemma_radix16_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), s
 }
 
 // =============================================================================
-// Field algebra helper lemmas for AffineNiels point operations
+// Coordinate bounds lemmas for AffineNiels point operations
 // =============================================================================
-/// Helper lemma: field subtraction is antisymmetric: sub(b, a) == neg(sub(a, b))
-proof fn lemma_field_sub_antisymmetric(a: nat, b: nat)
-    ensures
-        math_field_sub(b, a) == math_field_neg(math_field_sub(a, b)),
-{
-    let p = p();
-    p_gt_2();
-
-    let a_mod = a % p;
-    let b_mod = b % p;
-
-    // sub(a, b) = ((a_mod + p) - b_mod) % p
-    // sub(b, a) = ((b_mod + p) - a_mod) % p
-    let sub_ab = math_field_sub(a, b);
-    let sub_ba = math_field_sub(b, a);
-
-    // Both are < p by definition of mod
-    assert(sub_ab < p) by {
-        lemma_mod_bound(((a_mod + p) - b_mod) as int, p as int);
-    }
-    assert(sub_ba < p) by {
-        lemma_mod_bound(((b_mod + p) - a_mod) as int, p as int);
-    }
-
-    // Case analysis based on a_mod vs b_mod
-    if a_mod == b_mod {
-        // sub_ab = p % p = 0, sub_ba = p % p = 0, neg(0) = p % p = 0
-        assert(sub_ab == 0) by {
-            lemma_mod_self_0(p as int);
-        }
-        assert(sub_ba == 0) by {
-            lemma_mod_self_0(p as int);
-        }
-        assert(math_field_neg(sub_ab) == 0) by {
-            lemma_mod_self_0(p as int);
-        }
-    } else if a_mod > b_mod {
-        // sub_ab = (a_mod + p - b_mod) % p = (a_mod - b_mod) since sum > p
-        // sub_ba = (b_mod + p - a_mod) % p = (p - (a_mod - b_mod)) since sum < p
-        let diff = (a_mod - b_mod) as nat;
-        assert(sub_ab == diff) by {
-            assert(a_mod + p - b_mod == p + diff);
-            lemma_mod_add_multiples_vanish(diff as int, p as int);
-            lemma_small_mod(diff, p);
-        }
-        assert(sub_ba == p - diff) by {
-            assert(b_mod + p - a_mod == p - diff);
-            lemma_small_mod((p - diff) as nat, p);
-        }
-        // neg(sub_ab) = (p - diff) % p = p - diff (since diff > 0, so p - diff < p)
-        assert(math_field_neg(sub_ab) == p - diff) by {
-            lemma_small_mod(diff, p);
-            lemma_small_mod((p - diff) as nat, p);
-        }
-    } else {
-        // a_mod < b_mod
-        // sub_ab = (a_mod + p - b_mod) % p = (p - (b_mod - a_mod)) since sum < p
-        // sub_ba = (b_mod + p - a_mod) % p = (b_mod - a_mod) since sum > p
-        let diff = (b_mod - a_mod) as nat;
-        assert(sub_ab == p - diff) by {
-            assert(a_mod + p - b_mod == p - diff);
-            lemma_small_mod((p - diff) as nat, p);
-        }
-        assert(sub_ba == diff) by {
-            assert(b_mod + p - a_mod == p + diff);
-            lemma_mod_add_multiples_vanish(diff as int, p as int);
-            lemma_small_mod(diff, p);
-        }
-        // neg(sub_ab) = (p - (p - diff)) % p = diff % p = diff
-        assert(math_field_neg(sub_ab) == diff) by {
-            assert(p - (p - diff) == diff);
-            lemma_small_mod((p - diff) as nat, p);
-            lemma_small_mod(diff, p);
-        }
-    }
-}
-
-/// Helper lemma: edwards_scalar_mul_signed always returns reduced coordinates.
-/// This follows from the definition: either edwards_scalar_mul (induction) or neg + edwards_scalar_mul.
-pub proof fn lemma_edwards_scalar_mul_signed_canonical(point_affine: (nat, nat), n: int)
-    requires
-        point_affine.0 < p(),
-        point_affine.1 < p(),
-    ensures
-        edwards_scalar_mul_signed(point_affine, n).0 < p(),
-        edwards_scalar_mul_signed(point_affine, n).1 < p(),
-{
-    reveal(edwards_scalar_mul_signed);
-    if n >= 0 {
-        lemma_edwards_scalar_mul_canonical(point_affine, n as nat);
-    } else {
-        lemma_edwards_scalar_mul_canonical(point_affine, (-n) as nat);
-        // neg(x) = (p - x%p) % p, so < p
-        p_gt_2();
-        let (x, y) = edwards_scalar_mul(point_affine, (-n) as nat);
-        lemma_mod_bound((p() - (x % p())) as int, p() as int);
-    }
-}
-
 /// Helper lemma: odd_sum_up_to always returns reduced coordinates.
 /// By induction: base case is identity (0,1), recursive case uses edwards_add which is always reduced.
 pub proof fn lemma_odd_sum_up_to_canonical(digits: Seq<i8>, upper_i: int, B: (nat, nat))
@@ -932,147 +833,6 @@ pub proof fn lemma_odd_sum_up_to_canonical(digits: Seq<i8>, upper_i: int, B: (na
 // =============================================================================
 // Lemma: Table lookup correctness (select function)
 // =============================================================================
-/// Helper lemma: identity_affine_niels decodes to the identity point (0, 1).
-proof fn lemma_identity_affine_niels_is_identity()
-    ensures
-        affine_niels_point_as_affine_edwards(identity_affine_niels()) == math_edwards_identity(),
-{
-    // identity_affine_niels has y_plus_x = [1,0,0,0,0], y_minus_x = [1,0,0,0,0]
-    // so spec_field_element gives 1 for both
-    let id = identity_affine_niels();
-    let y_plus_x = spec_field_element(&id.y_plus_x);
-    let y_minus_x = spec_field_element(&id.y_minus_x);
-
-    // Show y_plus_x == 1 and y_minus_x == 1
-    // id.y_plus_x.limbs = [1, 0, 0, 0, 0]
-    // u64_5_as_nat([1,0,0,0,0]) = 1 + 0 + 0 + 0 + 0 = 1
-    // spec_field_element = u64_5_as_nat % p = 1 % p = 1 (since 1 < p)
-    assert(y_plus_x == 1) by {
-        assert(id.y_plus_x.limbs[0] == 1);
-        assert(id.y_plus_x.limbs[1] == 0);
-        assert(id.y_plus_x.limbs[2] == 0);
-        assert(id.y_plus_x.limbs[3] == 0);
-        assert(id.y_plus_x.limbs[4] == 0);
-        // u64_5_as_nat gives 1 + 0 + 0 + 0 + 0 = 1
-        assert(spec_field_element_as_nat(&id.y_plus_x) == 1nat) by {
-            reveal(pow2);
-            assert(pow2(51) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(102) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(153) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(204) * 0 == 0) by (nonlinear_arith);
-        }
-        p_gt_2();
-        lemma_small_mod(1nat, p());
-    }
-    assert(y_minus_x == 1) by {
-        assert(id.y_minus_x.limbs[0] == 1);
-        assert(id.y_minus_x.limbs[1] == 0);
-        assert(id.y_minus_x.limbs[2] == 0);
-        assert(id.y_minus_x.limbs[3] == 0);
-        assert(id.y_minus_x.limbs[4] == 0);
-        assert(spec_field_element_as_nat(&id.y_minus_x) == 1nat) by {
-            reveal(pow2);
-            assert(pow2(51) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(102) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(153) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(204) * 0 == 0) by (nonlinear_arith);
-        }
-        p_gt_2();
-        lemma_small_mod(1nat, p());
-    }
-
-    // x = (y_plus_x - y_minus_x) * inv(2) = (1 - 1) * inv(2) = 0 * inv(2) = 0
-    let diff = math_field_sub(y_plus_x, y_minus_x);
-    assert(diff == 0) by {
-        // math_field_sub(1, 1) = (((1 % p) + p) - (1 % p)) % p = (1 + p - 1) % p = p % p = 0
-        p_gt_2();
-        lemma_small_mod(1nat, p());
-        lemma_mod_self_0(p() as int);
-    }
-    let x = math_field_mul(diff, math_field_inv(2));
-    assert(x == 0) by {
-        // diff == 0, so diff % p() == 0
-        p_gt_2();
-        lemma_small_mod(0nat, p());
-        assert(diff % p() == 0);
-        lemma_field_mul_zero_left(diff, math_field_inv(2));
-    }
-
-    // y = (y_plus_x + y_minus_x) * inv(2) = (1 + 1) * inv(2) = 2 * inv(2) = 1
-    let sum = math_field_add(y_plus_x, y_minus_x);
-    assert(sum == 2) by {
-        // math_field_add(1, 1) = (1 + 1) % p = 2 (since 2 < p)
-        p_gt_2();
-        lemma_small_mod(2nat, p());
-    }
-    let y = math_field_mul(sum, math_field_inv(2));
-    assert(y == 1) by {
-        // 2 * inv(2) = 1 by field_inv_property
-        p_gt_2();
-        assert(2nat % p() != 0) by {
-            lemma_small_mod(2nat, p());
-        }
-        field_inv_property(2nat);
-        lemma_field_mul_comm(2nat, math_field_inv(2));
-    }
-}
-
-/// Helper lemma: negating an AffineNielsPoint negates the x-coordinate.
-proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
-    ensures
-        affine_niels_point_as_affine_edwards(negate_affine_niels(pt)) == edwards_neg(
-            affine_niels_point_as_affine_edwards(pt),
-        ),
-{
-    // negate_affine_niels swaps y_plus_x and y_minus_x:
-    //   neg.y_plus_x = pt.y_minus_x
-    //   neg.y_minus_x = pt.y_plus_x
-    let y_plus_x = spec_field_element(&pt.y_plus_x);
-    let y_minus_x = spec_field_element(&pt.y_minus_x);
-    let inv2 = math_field_inv(2);
-
-    // Original point coords:
-    let x = math_field_mul(math_field_sub(y_plus_x, y_minus_x), inv2);
-    let y = math_field_mul(math_field_add(y_plus_x, y_minus_x), inv2);
-
-    // Negated point coords (after swapping y_plus_x and y_minus_x):
-    let x_neg = math_field_mul(math_field_sub(y_minus_x, y_plus_x), inv2);
-    let y_neg = math_field_mul(math_field_add(y_minus_x, y_plus_x), inv2);
-
-    // y' = y because field addition is commutative: (a + b) % p == (b + a) % p
-    assert(y_neg == y) by {
-        assert((y_minus_x + y_plus_x) == (y_plus_x + y_minus_x));
-    }
-
-    // x' = -x because:
-    // 1. sub(b, a) == neg(sub(a, b)) -- antisymmetry
-    // 2. neg(a) * b == neg(a * b) -- negation distributes
-    assert(x_neg == math_field_neg(x)) by {
-        let diff = math_field_sub(y_plus_x, y_minus_x);
-        let neg_diff = math_field_neg(diff);
-
-        // Step 1: sub(y_minus_x, y_plus_x) == neg(sub(y_plus_x, y_minus_x))
-        lemma_field_sub_antisymmetric(y_plus_x, y_minus_x);
-        assert(math_field_sub(y_minus_x, y_plus_x) == neg_diff);
-
-        // Step 2: x_neg = mul(neg_diff, inv2)
-        //               = mul(inv2, neg_diff)   [by commutativity]
-        //               = neg(mul(inv2, diff))   [by lemma_field_mul_neg]
-        //               = neg(mul(diff, inv2))   [by commutativity]
-        //               = neg(x)
-        lemma_field_mul_comm(neg_diff, inv2);
-        assert(math_field_mul(neg_diff, inv2) == math_field_mul(inv2, neg_diff));
-
-        lemma_field_mul_neg(inv2, diff);
-        assert(math_field_mul(inv2, neg_diff) == math_field_neg(math_field_mul(inv2, diff)));
-
-        lemma_field_mul_comm(inv2, diff);
-        assert(math_field_mul(inv2, diff) == math_field_mul(diff, inv2));
-    }
-
-    // Therefore (x', y') = (-x, y) = edwards_neg((x, y))
-}
-
 /// Lemma: The result of select(x) on a valid table equals [x]*basepoint in affine coords.
 ///
 /// The `select` function performs constant-time lookup from a precomputed table

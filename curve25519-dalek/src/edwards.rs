@@ -3077,13 +3077,13 @@ impl BasepointTable for EdwardsBasepointTable {
             //                            = edwards_add(scaled, identity)
             //                            = scaled (by identity law)
             assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
-            // scaled comes from edwards_scalar_mul, which produces reduced coordinates
-            // First establish that the basepoint B is reduced
-            axiom_ed25519_basepoint_reduced();
-            // Then odd_sum is reduced (from lemma_odd_sum_up_to_reduced)
-            lemma_odd_sum_up_to_reduced(a@, 64, B);
-            lemma_edwards_scalar_mul_reduced(odd_sum, 16);
-            lemma_edwards_add_identity_right_reduced(scaled);
+            // scaled comes from edwards_scalar_mul, which produces canonical coordinates
+            // First establish that the basepoint B is canonical
+            axiom_ed25519_basepoint_canonical();
+            // Then odd_sum is canonical (from lemma_odd_sum_up_to_canonical)
+            lemma_odd_sum_up_to_canonical(a@, 64, B);
+            lemma_edwards_scalar_mul_canonical(odd_sum, 16);
+            lemma_edwards_add_identity_right_canonical(scaled);
             assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled);
             assert(pippenger_partial(a@, 0, B) == scaled);
         }

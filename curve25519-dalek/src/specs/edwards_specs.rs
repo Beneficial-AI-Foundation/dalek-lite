@@ -88,7 +88,7 @@ pub open spec fn spec_ed25519_basepoint() -> (nat, nat) {
 ///
 /// Both X < p and Y < p by direct comparison.
 ///
-pub proof fn axiom_ed25519_basepoint_reduced()
+pub proof fn axiom_ed25519_basepoint_canonical()
     ensures
         spec_ed25519_basepoint().0 < p(),
         spec_ed25519_basepoint().1 < p(),

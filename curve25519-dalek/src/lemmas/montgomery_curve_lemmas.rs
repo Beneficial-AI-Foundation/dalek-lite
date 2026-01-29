@@ -70,8 +70,11 @@ pub proof fn axiom_montgomery_add_inverse(P: MontgomeryAffine)
 // X-ONLY PROJECTIVE FORMULAS AND AXIOMS (Costello–Smith 2017, Equations 9–10)
 // =============================================================================
 //
-// Each formula is defined as a spec function, paired with an axiom asserting
-// that it correctly computes the corresponding group operation.
+// Each formula is defined as a `spec fn`, paired with an axiom that ensures:
+//   - `spec_xdbl_projective(U, W)` returns (U', W') representing u([2]P)
+//   - `spec_xadd_projective(...)` returns (U', W') representing u(P + Q)
+//
+// These axioms connect the algebraic formulas to group-theoretic semantics.
 /// **Equation 10 (xDBL)** — doubling [2]P:
 ///
 /// ```text
@@ -220,6 +223,23 @@ pub(crate) proof fn axiom_xadd_projective_correct(
         }),
 {
     admit();
+}
+
+/// Combined xDBLADD step for the Montgomery ladder.
+///
+/// Returns `(U_dbl, W_dbl, U_add, W_add)` where:
+/// - `(U_dbl:W_dbl)` is `xDBL(U_P, W_P)` — the doubled point `[2]P`
+/// - `(U_add:W_add)` is `xADD(U_P, W_P, U_Q, W_Q, affine_PmQ)` — the sum `P + Q`
+pub(crate) open spec fn spec_xdbladd_projective(
+    U_P: nat,
+    W_P: nat,
+    U_Q: nat,
+    W_Q: nat,
+    affine_PmQ: nat,
+) -> (nat, nat, nat, nat) {
+    let (U2, W2) = spec_xdbl_projective(U_P, W_P);
+    let (U3, W3) = spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ);
+    (U2, W2, U3, W3)
 }
 
 // =============================================================================

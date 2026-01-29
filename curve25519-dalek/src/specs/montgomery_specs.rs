@@ -11,9 +11,6 @@ use crate::constants::X25519_BASEPOINT;
 use crate::montgomery::ProjectivePoint;
 #[allow(unused_imports)]
 use crate::specs::field_specs_u64::*;
-// Import xDBL/xADD specs from lemmas module (defined alongside their axioms)
-#[allow(unused_imports)]
-use crate::lemmas::montgomery_curve_lemmas::{spec_xadd_projective, spec_xdbl_projective};
 use vstd::prelude::*;
 
 verus! {
@@ -342,31 +339,6 @@ pub open spec fn projective_represents_montgomery_or_infinity_nats(
         MontgomeryAffine::Infinity => { W == 0 },
         MontgomeryAffine::Finite { u, v: _ } => { W != 0 && U == math_field_mul(u, W) },
     }
-}
-
-// =============================================================================
-// X-ONLY PROJECTIVE FORMULAS (Costello–Smith 2017, Equations 9–10)
-// =============================================================================
-//
-// The xDBL and xADD spec functions are defined in `montgomery_curve_lemmas.rs`
-// alongside their correctness axioms. Imported here for use by `spec_xdbladd_projective`.
-/// Combined xDBLADD step for the Montgomery ladder.
-///
-/// Returns `(U_dbl, W_dbl, U_add, W_add)` where:
-/// - `(U_dbl:W_dbl)` is `xDBL(U_P, W_P)` — the doubled point `[2]P`
-/// - `(U_add:W_add)` is `xADD(U_P, W_P, U_Q, W_Q, affine_PmQ)` — the sum `P + Q`
-///
-/// This matches the computation in `differential_add_and_double`.
-pub(crate) open spec fn spec_xdbladd_projective(
-    U_P: nat,
-    W_P: nat,
-    U_Q: nat,
-    W_Q: nat,
-    affine_PmQ: nat,
-) -> (nat, nat, nat, nat) {
-    let (U2, W2) = spec_xdbl_projective(U_P, W_P);
-    let (U3, W3) = spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ);
-    (U2, W2, U3, W3)
 }
 
 /// Scalar multiplication on Montgomery curve (abstract specification)

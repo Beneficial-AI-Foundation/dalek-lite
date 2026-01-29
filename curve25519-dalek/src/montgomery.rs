@@ -87,6 +87,8 @@ use crate::lemmas::field_lemmas::constants_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::montgomery_curve_lemmas::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::spec_clamp_integer;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
@@ -95,8 +97,6 @@ use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
 #[allow(unused_imports)]
 use vstd::prelude::*;
-#[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::spec_clamp_integer;
 
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::field_lemmas::constants_lemmas::*;

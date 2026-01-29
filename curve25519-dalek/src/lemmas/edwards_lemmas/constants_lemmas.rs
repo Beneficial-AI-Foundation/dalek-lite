@@ -23,6 +23,7 @@
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::constants;
+use crate::specs::edwards_specs::spec_ed25519_basepoint;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[cfg(verus_keep_ghost)]
@@ -206,6 +207,24 @@ pub(crate) proof fn lemma_scalar_to_nat_basepoint_order_private_equals_group_ord
     assert(expanded == pow2(252) + 27742317777372353535851937790883648493nat);
     assert(group_order() == pow2(252) + 27742317777372353535851937790883648493nat);
     assert(scalar_to_nat(&constants::BASEPOINT_ORDER_PRIVATE) == group_order());
+}
+
+// =============================================================================
+// Basepoint Reduction Lemmas
+// =============================================================================
+/// The Ed25519 basepoint has reduced coordinates (both < p)
+///
+/// This is a property of the specific basepoint constant definition.
+/// The basepoint X and Y coordinates are canonical field elements < p.
+pub proof fn lemma_basepoint_reduced()
+    ensures
+        spec_ed25519_basepoint().0 < p(),
+        spec_ed25519_basepoint().1 < p(),
+{
+    // The basepoint is defined with specific limb values that when expanded
+    // give a value < p. This is a property of the Ed25519 specification.
+    // The coordinates are the canonical representations of specific curve points.
+    admit();  // TODO: prove by computing u64_5_as_nat of the constant limbs and showing < p
 }
 
 } // verus!

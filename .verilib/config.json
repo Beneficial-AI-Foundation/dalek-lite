@@ -1,3 +1,8 @@
 {
+  "repo": {
+    "id": "4375",
+    "is_admin": true,
+    "url": "http://ec2-3-23-60-0.us-east-2.compute.amazonaws.com"
+  },
   "structure-root": ".verilib/structure"
 }

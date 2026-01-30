@@ -1,4 +1,21 @@
-// Specifications for Montgomery curve operations on Curve25519
+//! Specifications for Montgomery curve operations on Curve25519.
+//!
+//! ## Montgomery Curve (Curve25519)
+//!
+//! Curve equation: `B·v² = u·(u² + A·u + 1)` with `A = 486662`, `B = 1`.
+//!
+//! Point representations:
+//! - **Affine**: `(u, v)` satisfying the curve equation, plus point at infinity `∞`
+//! - **Projective x-only**: `(U:W)` where affine `u = U/W`; infinity when `W = 0`
+//!
+//! ## Contents
+//!
+//! - **MontgomeryAffine**: Affine point type with `Infinity` and `Finite { u, v }`
+//! - **Group operations**: `montgomery_add`, `montgomery_neg`, `montgomery_sub`
+//! - **Scalar multiplication**: `montgomery_scalar_mul` computing `[n]P`
+//! - **Projective representation**: specs connecting `(U:W)` to affine points
+//! - **Edwards-Montgomery maps**: birational equivalence `u = (1+y)/(1-y)`
+//! - **Elligator2**: hash-to-curve mapping
 #[allow(unused_imports)]
 use super::field_specs::*;
 #[allow(unused_imports)]
@@ -15,15 +32,18 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Affine Montgomery point (u, v)
-/// Curve equation is: v² = u³ + A·u² + u with A = 486662
+/// Affine Montgomery point: either infinity or a finite point (u, v).
+///
+/// General Montgomery curve: `B·v² = u·(u² + A·u + 1)`.
+/// For Curve25519: `A = 486662`, `B = 1`, so the equation simplifies to `v² = u·(u² + A·u + 1)`.
 pub enum MontgomeryAffine {
+    /// Point at infinity (identity element of the group)
     Infinity,
+    /// Finite point with u-coordinate and v-coordinate
     Finite { u: nat, v: nat },
 }
 
-/// Montgomery curve equation: B·v² = u³ + A·u² + u
-/// Check if a point (u, v) satisfies the Montgomery curve equation
+/// Check if `(u, v)` satisfies the Montgomery curve equation `v² = u·(u² + A·u + 1)`.
 pub open spec fn math_on_montgomery_curve(u: nat, v: nat) -> bool {
     let a = spec_field_element(&MONTGOMERY_A);
     let u2 = math_field_square(u);
@@ -315,7 +335,10 @@ pub open spec fn projective_represents_montgomery_or_infinity(
     match P_aff {
         MontgomeryAffine::Infinity => {
             // Infinity is represented by W = 0 in projective coordinates.
-            spec_field_element(&P_proj.W) == 0
+            //
+            // We additionally exclude the degenerate pair (0:0), which would otherwise satisfy
+            // W=0 but break the correctness of x-only formulas (e.g. xADD with ∞ as an input).
+            spec_field_element(&P_proj.W) == 0 && spec_field_element(&P_proj.U) != 0
         },
         MontgomeryAffine::Finite { u, v: _ } => {
             // Same encoding requirement as `projective_represents_montgomery`.
@@ -336,14 +359,13 @@ pub open spec fn projective_represents_montgomery_or_infinity_nats(
     P_aff: MontgomeryAffine,
 ) -> bool {
     match P_aff {
-        MontgomeryAffine::Infinity => { W == 0 },
+        MontgomeryAffine::Infinity => { W == 0 && U != 0 },
         MontgomeryAffine::Finite { u, v: _ } => { W != 0 && U == math_field_mul(u, W) },
     }
 }
 
 /// Scalar multiplication on Montgomery curve (abstract specification)
 /// Computes [n]P where n is a scalar and P is a Montgomery point
-/// This is the standard recursive definition: [n]P = P + [n-1]P
 pub open spec fn montgomery_scalar_mul(P: MontgomeryAffine, n: nat) -> MontgomeryAffine
     decreases n,
 {

@@ -392,13 +392,9 @@ impl MontgomeryPoint {
             debug_assert!(choice == 0 || choice == 1);
 
             ProjectivePoint::conditional_swap(&mut x0, &mut x1, choice.into());
-	            let ghost x0_before_dad = x0;
-	            let ghost x1_before_dad = x1;
-	            let ghost x0_before_dad = x0;
-	            let ghost x1_before_dad = x1;
-	            let ghost x0_before_dad = x0;
-	            let ghost x1_before_dad = x1;
-	            differential_add_and_double(&mut x0, &mut x1, &affine_u);
+            let ghost x0_before_dad = x0;
+            let ghost x1_before_dad = x1;
+            differential_add_and_double(&mut x0, &mut x1, &affine_u);
 
             prev_bit = cur_bit;
         }
@@ -1743,6 +1739,7 @@ fn differential_add_and_double(
                     match P_aff {
                         MontgomeryAffine::Infinity => {
                             assert(W_P0 == 0);
+                            assert(U_P0 != 0);
                         },
                         MontgomeryAffine::Finite { u, v: _ } => {
                             assert(W_P0 != 0);
@@ -1754,6 +1751,7 @@ fn differential_add_and_double(
                     match Q_aff {
                         MontgomeryAffine::Infinity => {
                             assert(W_Q0 == 0);
+                            assert(U_Q0 != 0);
                         },
                         MontgomeryAffine::Finite { u, v: _ } => {
                             assert(W_Q0 != 0);
@@ -1853,6 +1851,7 @@ fn differential_add_and_double(
                     match P_aff {
                         MontgomeryAffine::Infinity => {
                             assert(W_P0 == 0);
+                            assert(U_P0 != 0);
                         },
                         MontgomeryAffine::Finite { u, v: _ } => {
                             assert(W_P0 != 0);
@@ -1956,7 +1955,6 @@ impl Mul<&Scalar> for &MontgomeryPoint {
                 spec_montgomery(result) == spec_u_coordinate(R)
             });
         }
-        ;
         result
     }
 }

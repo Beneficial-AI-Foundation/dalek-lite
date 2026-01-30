@@ -2,12 +2,20 @@
 //!
 //! Provides axioms and lemmas for verifying the Montgomery ladder.
 //!
+//! ## Reference
+//!
+//! The xDBL and xADD formulas are from:
+//! > Craig Costello & Benjamin Smith (2017).
+//! > *Montgomery curves and their arithmetic*.
+//! > <https://eprint.iacr.org/2017/212.pdf>
+//!
 //! ## Contents
 //!
-//! - **Group Axioms**: associativity, identity, inverse
-//! - **xDBL/xADD Axioms**: correctness of projective formulas (Costello–Smith 2017, Equations 9–10)
-//! - **Scalar Multiplication Lemmas**: properties of `[n]P`
-//! - **Projective Representation Lemmas**: connecting (U:W) to affine u-coordinates
+//! - **Group Axioms**: associativity, identity, inverse for Montgomery curve addition
+//! - **xDBL Axiom** (Equation 10): doubling `[2]P` in projective coordinates `(U:W)`
+//! - **xADD Axiom** (Equation 9): differential addition `P + Q` given `P - Q`
+//! - **Scalar Multiplication Lemmas**: distribution `[m+n]P = [m]P + [n]P`, doubling `[2n]P = [n]P + [n]P`
+//! - **Projective Representation Lemmas**: connecting projective `(U:W)` to affine `u = U/W`
 #![allow(unused)]
 use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A};
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -22,10 +30,8 @@ use vstd::prelude::*;
 verus! {
 
 // =============================================================================
-// GROUP AXIOMS
+// GROUP AXIOMS: properties of the Montgomery curve group structure.
 // =============================================================================
-// These are fundamental properties of the Montgomery curve group structure.
-// They follow from the algebraic definition but are complex to verify formally.
 /// Axiom: Montgomery addition is associative
 /// (P + Q) + R = P + (Q + R)
 pub proof fn axiom_montgomery_add_associative(
@@ -67,31 +73,44 @@ pub proof fn axiom_montgomery_add_inverse(P: MontgomeryAffine)
 }
 
 // =============================================================================
-// X-ONLY PROJECTIVE FORMULAS AND AXIOMS (Costello–Smith 2017, Equations 9–10)
+// X-ONLY PROJECTIVE FORMULAS AND AXIOMS
+// Costello–Smith 2017: https://eprint.iacr.org/2017/212.pdf (Equations 9–10)
 // =============================================================================
 //
-// Each formula is defined as a `spec fn`, paired with an axiom that ensures:
-//   - `spec_xdbl_projective(U, W)` returns (U', W') representing u([2]P)
-//   - `spec_xadd_projective(...)` returns (U', W') representing u(P + Q)
+// The Montgomery ladder operates on x-coordinates only, using projective (U:W)
+// representation where the affine x-coordinate is u = U/W.
 //
-// These axioms connect the algebraic formulas to group-theoretic semantics.
-/// **Equation 10 (xDBL)** — doubling [2]P:
+// Montgomery curve: By² = x(x² + Ax + 1)
+// - Affine point: (u, v) where u is x-coord, v is y-coord; plus point at infinity ∞
+// - Projective x-only: (U:W) represents affine u = U/W; infinity when W = 0
+//
+// Notation: uppercase U, W = projective coords; lowercase u = affine coord (u = U/W).
+//
+// Each algebraic formula is defined as a `spec fn`:
+//   - `spec_xdbl_projective(U, W)` computes (U', W') for [2]P
+//   - `spec_xadd_projective(...)` computes (U', W') for P + Q
+//
+// Each formula has a corresponding axiom asserting correctness:
+//   - `axiom_xdbl_projective_correct`: if (U:W) represents P, then (U':W') represents [2]P
+//   - `axiom_xadd_projective_correct`: if inputs represent P, Q, P-Q, then output represents P+Q
+//
+/// **Equation 10 (xDBL)** — compute [2]P from P in projective coordinates:
 ///
 /// ```text
 /// U' = (U + W)² · (U - W)²
 /// W' = 4·U·W · ((U - W)² + ((A+2)/4) · 4·U·W)
 /// ```
 pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
-    let t0 = math_field_add(U, W);
-    let t1 = math_field_sub(U, W);
-    let t4 = math_field_square(t0);
-    let t5 = math_field_square(t1);
-    let t6 = math_field_sub(t4, t5);
-    let a24 = spec_field_element(&APLUS2_OVER_FOUR);
-    let t13 = math_field_mul(a24, t6);
-    let t15 = math_field_add(t13, t5);
-    let U2 = math_field_mul(t4, t5);
-    let W2 = math_field_mul(t6, t15);
+    let t0 = math_field_add(U, W);  // t0 = U + W
+    let t1 = math_field_sub(U, W);  // t1 = U - W
+    let t4 = math_field_square(t0);  // t4 = (U + W)²
+    let t5 = math_field_square(t1);  // t5 = (U - W)²
+    let t6 = math_field_sub(t4, t5);  // t6 = (U + W)² - (U - W)² = 4·U·W
+    let a24 = spec_field_element(&APLUS2_OVER_FOUR);  // a24 = (A+2)/4
+    let t13 = math_field_mul(a24, t6);  // t13 = ((A+2)/4) · 4·U·W
+    let t15 = math_field_add(t13, t5);  // t15 = (U - W)² + ((A+2)/4) · 4·U·W
+    let U2 = math_field_mul(t4, t5);  // U' = (U + W)² · (U - W)²
+    let W2 = math_field_mul(t6, t15);  // W' = 4·U·W · ((U - W)² + ((A+2)/4) · 4·U·W)
     (U2, W2)
 }
 
@@ -169,29 +188,37 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
     lemma_field_mul_zero_left(0, t15);
 }
 
-/// **Equation 9 (xADD)** — differential addition P + Q given u(P - Q):
+/// **Equation 9 (xADD)** — differential addition P + Q given affine u(P - Q):
 ///
+/// The general projective formula is:
 /// ```text
 /// U' = W(P-Q) · [(U_P - W_P)(U_Q + W_Q) + (U_P + W_P)(U_Q - W_Q)]²
 /// W' = U(P-Q) · [(U_P - W_P)(U_Q + W_Q) - (U_P + W_P)(U_Q - W_Q)]²
+/// ```
+///
+/// In the Montgomery ladder, P-Q is always the fixed base point B, which is given
+/// in affine form (u = U/W with W = 1). So U(P-Q) = u(P-Q) and W(P-Q) = 1:
+/// ```text
+/// U' = (v + w)²              where v = (U_P + W_P)(U_Q - W_Q), w = (U_P - W_P)(U_Q + W_Q)
+/// W' = u(P-Q) · (v - w)²
 /// ```
 pub(crate) open spec fn spec_xadd_projective(
     U_P: nat,
     W_P: nat,
     U_Q: nat,
     W_Q: nat,
-    affine_PmQ: nat,
+    affine_PmQ: nat,  // u(P-Q) in affine coordinates
 ) -> (nat, nat) {
-    let t0 = math_field_add(U_P, W_P);
-    let t1 = math_field_sub(U_P, W_P);
-    let t2 = math_field_add(U_Q, W_Q);
-    let t3 = math_field_sub(U_Q, W_Q);
+    let t0 = math_field_add(U_P, W_P);  // t0 = U_P + W_P
+    let t1 = math_field_sub(U_P, W_P);  // t1 = U_P - W_P
+    let t2 = math_field_add(U_Q, W_Q);  // t2 = U_Q + W_Q
+    let t3 = math_field_sub(U_Q, W_Q);  // t3 = U_Q - W_Q
     let t7 = math_field_mul(t0, t3);  // v = (U_P + W_P)(U_Q - W_Q)
     let t8 = math_field_mul(t1, t2);  // w = (U_P - W_P)(U_Q + W_Q)
     let t9 = math_field_add(t7, t8);  // v + w
     let t10 = math_field_sub(t7, t8);  // v - w
-    let U_PpQ = math_field_square(t9);
-    let W_PpQ = math_field_mul(affine_PmQ, math_field_square(t10));
+    let U_PpQ = math_field_square(t9);  // U' = (v + w)²
+    let W_PpQ = math_field_mul(affine_PmQ, math_field_square(t10));  // W' = u(P-Q) · (v - w)²
     (U_PpQ, W_PpQ)
 }
 

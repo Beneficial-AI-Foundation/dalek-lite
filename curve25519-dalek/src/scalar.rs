@@ -177,6 +177,9 @@ use crate::lemmas::scalar_lemmas::*;
 use crate::lemmas::scalar_batch_invert_lemmas::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*;
+
+#[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
 
 #[allow(unused_imports)]
@@ -908,8 +911,18 @@ impl Neg for &Scalar {
         }
 
         let self_R = UnpackedScalar::mul_internal(&self_unpacked, &constants::R);
+
+        proof {
+            // Establish montgomery_reduce's preconditions
+            lemma_bounded_product_satisfies_input_bounds(&self_unpacked, &constants::R, &self_R);
+            lemma_bounded_product_satisfies_r4_safe_bound(&self_unpacked, &constants::R, &self_R);
+            // R is canonical (< L), so product satisfies canonical_bound
+            lemma_r_equals_spec(constants::R);
+            lemma_canonical_product_satisfies_canonical_bound(&self_unpacked, &constants::R, &self_R);
+        }
         /* </MODIFIED CODE> */
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
+        // is_canonical_scalar52(&self_mod_l) follows from montgomery_reduce postcondition
 
         /* <ORIGINAL CODE>
         let result = UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack();
@@ -2825,7 +2838,18 @@ impl Scalar {
         proof { lemma_limbs_bounded_implies_prod_bounded(&x, &constants::R) }
 
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);
+
+        proof {
+            // Establish montgomery_reduce's preconditions
+            lemma_bounded_product_satisfies_input_bounds(&x, &constants::R, &xR);
+            lemma_bounded_product_satisfies_r4_safe_bound(&x, &constants::R, &xR);
+            // R is canonical (< L), so product satisfies canonical_bound
+            lemma_r_equals_spec(constants::R);
+            lemma_canonical_product_satisfies_canonical_bound(&x, &constants::R, &xR);
+        }
+
         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
+        // is_canonical_scalar52(&x_mod_l) follows from montgomery_reduce postcondition
         let result = x_mod_l.pack();
 
         proof {
@@ -2905,7 +2929,7 @@ fn square_multiply(
 */
 
     requires
-        limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),
+        limbs_bounded(old(y)),
         limbs_bounded(x),
     ensures
         limbs_bounded(y),
@@ -2934,7 +2958,7 @@ fn square_multiply(
     // VERIFICATION NOTE: Named loop variable allows tracking iteration count
     for idx in 0..squarings
         invariant
-            limb_prod_bounded_u128(y.limbs, y.limbs, 5),
+            limbs_bounded(y),
             L == group_order(),
             R == montgomery_radix(),
             L > 0,
@@ -2948,7 +2972,7 @@ fn square_multiply(
         *y = y.montgomery_square();
         proof {
             lemma_square_multiply_step(scalar52_to_nat(y), y_before, y0, R, L, idx as nat);
-            lemma_limbs_bounded_implies_prod_bounded(y, y);
+            // limbs_bounded is maintained by montgomery_square's ensures clause
         }
     }
 
@@ -3085,6 +3109,15 @@ impl UnpackedScalar {
     }
 
     /// Inverts an UnpackedScalar in Montgomery form.
+    ///
+    /// # Precondition: Why `limbs_bounded` instead of `limb_prod_bounded_u128`
+    ///
+    /// This function calls `montgomery_square` internally. Since `montgomery_square`
+    /// requires `limbs_bounded(self)` (see its documentation), this function
+    /// transitively requires `limbs_bounded(self)` as well.
+    ///
+    /// See `docs/proofs_for_montgomery_reduce/precondition_analysis.md` for the full
+    /// derivation of why `limbs_bounded` is necessary for `montgomery_square`.
     #[rustfmt::skip]  // keep alignment of addition chain and squarings
     #[allow(clippy::just_underscores_and_digits)]
     pub fn montgomery_invert(&self) -> (result:
@@ -3093,7 +3126,7 @@ impl UnpackedScalar {
     */
 
         requires
-            limb_prod_bounded_u128(self.limbs, self.limbs, 5),
+            limbs_bounded(self),
         ensures
             limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
@@ -3107,6 +3140,7 @@ impl UnpackedScalar {
         // Uses the addition chain from
         // https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion
         let _1 = *self;
+        // _1 has limbs_bounded from self's precondition
         let _10 = _1.montgomery_square();
         let _100 = _10.montgomery_square();
         assert(limb_prod_bounded_u128(_10.limbs, _1.limbs, 5)) by {

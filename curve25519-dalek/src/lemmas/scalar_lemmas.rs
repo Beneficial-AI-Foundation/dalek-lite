@@ -782,6 +782,43 @@ pub proof fn lemma_rr_limbs_bounded()
     assert(0x000d63c715bea69fu64 < (1u64 << 52)) by (bit_vector);
 }
 
+/// Proves that constants::L has limbs_bounded
+pub(crate) proof fn lemma_l_limbs_bounded()
+    ensures
+        limbs_bounded(&crate::backend::serial::u64::constants::L),
+{
+    // L = [0x0002631a5cf5d3ed, 0x000dea2f79cd6581, 0x000000000014def9, 0x0000000000000000, 0x0000100000000000]
+    // All limbs are clearly < 2^52
+    assert(0x0002631a5cf5d3edu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000dea2f79cd6581u64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000000000014def9u64 < (1u64 << 52)) by (bit_vector);
+    assert(0x0000000000000000u64 < (1u64 << 52)) by (bit_vector);
+    assert(0x0000100000000000u64 < (1u64 << 52)) by (bit_vector);
+}
+
+/// Backwards compatibility lemma: limbs_bounded implies limbs_bounded_for_sub
+/// 
+/// This ensures that existing callers of sub that provide bounded inputs
+/// still satisfy the relaxed precondition.
+pub proof fn lemma_limbs_bounded_implies_limbs_bounded_for_sub(a: &Scalar52, b: &Scalar52)
+    requires
+        limbs_bounded(a),
+        limbs_bounded(b),
+    ensures
+        limbs_bounded_for_sub(a, b),
+{
+    // limbs_bounded(a) means forall|i| 0 <= i < 5 ==> a.limbs[i] < 2^52
+    // limbs_bounded_for_sub requires:
+    //   - forall|i| 0 <= i < 4 ==> a.limbs[i] < 2^52  (satisfied by limbs_bounded)
+    //   - a.limbs[4] < 2^52 + b.limbs[4]
+    // 
+    // Since a.limbs[4] < 2^52 and b.limbs[4] >= 0, we have:
+    // a.limbs[4] < 2^52 <= 2^52 + b.limbs[4]
+    assert(a.limbs[4] < (1u64 << 52));
+    assert(b.limbs[4] >= 0);
+    assert(a.limbs[4] < (1u64 << 52) + b.limbs[4]);
+}
+
 pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     requires
         ((x * montgomery_radix()) % group_order()) == ((a * rr) % group_order()),
@@ -812,6 +849,17 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     // 2. use the inverse to remove r from both sides
 
     // Step 1: Multiply both sides by inv_montgomery_radix() using modular properties
+    // We know: (x * R) % L == (a * R * R) % L
+    // We want: (x * R * R^-1) % L == (a * R * R * R^-1) % L
+    
+    // Use associativity to rewrite as (R^-1 * (x * R)) and (R^-1 * (a * R * R))
+    lemma_mul_is_commutative((x * montgomery_radix()) as int, inv_montgomery_radix() as int);
+    lemma_mul_is_commutative(
+        (a * montgomery_radix() * montgomery_radix()) as int,
+        inv_montgomery_radix() as int,
+    );
+    
+    // Now apply: if (A % n) == (B % n), then (c * A) % n == (c * B) % n
     lemma_mul_mod_noop_right(
         inv_montgomery_radix() as int,
         (x * montgomery_radix()) as int,
@@ -822,6 +870,10 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
         (a * montgomery_radix() * montgomery_radix()) as int,
         group_order() as int,
     );
+    
+    // Both sides equal when multiplied by R^-1
+    assert((inv_montgomery_radix() * (x * montgomery_radix())) % group_order() 
+        == (inv_montgomery_radix() * (a * montgomery_radix() * montgomery_radix())) % group_order());
 
     assert((x * montgomery_radix() * inv_montgomery_radix()) % group_order() == (a
         * montgomery_radix() * montgomery_radix() * inv_montgomery_radix()) % group_order());
@@ -1270,6 +1322,10 @@ pub proof fn lemma_decompose(a: u64, mask: u64)
 /// the maximum amount.
 /// Either way, we then use the preconditions about what was mutated,
 /// and shuffle around the powers of 52.
+/// 
+/// PRECONDITION RELAXATION: Uses `limbs_bounded_for_sub(a, b)` instead of `limbs_bounded(a)`.
+/// This allows a.limbs[4] to exceed 2^52 (up to 2^52 + b.limbs[4]).
+/// See docs/proofs_for_montgomery_reduce/sub_and_bounds_analysis.md for details.
 pub proof fn lemma_sub_loop1_invariant(
     difference: Scalar52,
     borrow: u64,
@@ -1281,7 +1337,7 @@ pub proof fn lemma_sub_loop1_invariant(
     difference_loop1_start: Scalar52,
 )
     requires
-        limbs_bounded(a),
+        limbs_bounded_for_sub(a, b),
         limbs_bounded(b),
         0 <= i < 5,
         forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
@@ -1460,11 +1516,24 @@ pub proof fn lemma_sub_loop1_invariant(
                         52 * (i + 1) as nat,
                     ) + difference.limbs[i as int] * pow2(52 * i as nat); {
                         lemma_seq_u64_to_nat_subrange_extend(difference.limbs@, i as int);
+                        // borrow < 2^52 in the no-underflow case
+                        // Uses relaxed bound: limbs_bounded_for_sub(a, b)
+                        // For i < 4: a.limbs[i] < 2^52, so borrow <= a.limbs[i] < 2^52
+                        // For i == 4: a.limbs[4] < 2^52 + b.limbs[4], so
+                        //   borrow = a.limbs[4] - b.limbs[4] - old_borrow < 2^52
                         assert(borrow < 1u64 << 52) by {
                             assert(borrow == (a.limbs[i as int] - ((b.limbs[i as int] + (old_borrow
                                 >> 63)) as u64)) as u64);
-                            assert(a.limbs[i as int] < (1u64 << 52));
-                            assert((b.limbs[i as int] + (old_borrow >> 63)) as u64 >= 0);
+                            assert(old_borrow >> 63 <= 1) by (bit_vector);
+                            if i < 4 {
+                                // For i < 4: a.limbs[i] < 2^52 from limbs_bounded_for_sub
+                                assert(a.limbs[i as int] < (1u64 << 52));
+                            } else {
+                                // For i == 4: a.limbs[4] < 2^52 + b.limbs[4] from limbs_bounded_for_sub
+                                // So a.limbs[4] - b.limbs[4] < 2^52
+                                assert(a.limbs[4] < (1u64 << 52) + b.limbs[4]);
+                                assert(b.limbs[4] < (1u64 << 52));  // from limbs_bounded(b)
+                            }
                         }
                         assert(borrow >> 52 == 0) by (bit_vector)
                             requires
@@ -1546,6 +1615,8 @@ pub proof fn lemma_pow2_260_greater_than_2_group_order()
 /// 0 and group order.
 /// If borrow >> 63 == 1, we apply (1) to show that carry >> 52 can't be 0.
 /// This makes the excess terms in the borrow >> 63 == 1 precondition disappear
+/// 
+/// PRECONDITION RELAXATION: Uses `limbs_bounded_for_sub(a, b)` instead of `limbs_bounded(a)`.
 pub(crate) proof fn lemma_sub_correct_after_loops(
     difference: Scalar52,
     carry: u64,
@@ -1555,7 +1626,7 @@ pub(crate) proof fn lemma_sub_correct_after_loops(
     borrow: u64,
 )
     requires
-        limbs_bounded(a),
+        limbs_bounded_for_sub(a, b),
         limbs_bounded(b),
         limbs_bounded(&difference),
         limbs_bounded(&difference_after_loop1),

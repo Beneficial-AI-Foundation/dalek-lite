@@ -163,11 +163,13 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
             assert(0nat % p() == 0);
         }
         // (-W)² = (W % p)²
-        lemma_neg_square_eq(W);
-        assert(t5 == math_field_square(W % p()));
+        assert(t5 == math_field_square(W % p())) by {
+            lemma_neg_square_eq(W);
+        }
         // t4 = (W % p)²
-        lemma_square_mod_noop(W);
-        assert(t4 == math_field_square(W % p()));
+        assert(t4 == math_field_square(W % p())) by {
+            lemma_square_mod_noop(W);
+        }
         assert(t4 == t5);
     } else {
         // W == 0 case: t0 = U % p, t1 = U % p
@@ -186,12 +188,15 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
         assert(t4 == t5);
     }
 
-    lemma_field_sub_self(t4);
-    assert(t6 == 0);
+    assert(t6 == 0) by {
+        lemma_field_sub_self(t4);
+    }
 
     // W2 = t6 * t15 = 0 * anything = 0
-    let t15 = math_field_add(math_field_mul(spec_field_element(&APLUS2_OVER_FOUR), t6), t5);
-    lemma_field_mul_zero_left(0, t15);
+    assert(spec_xdbl_projective(U, W).1 == 0) by {
+        let t15 = math_field_add(math_field_mul(spec_field_element(&APLUS2_OVER_FOUR), t6), t5);
+        lemma_field_mul_zero_left(0, t15);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -311,11 +316,13 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
             assert(W % p() != 0) by {
                 let W_raw = spec_field_element_as_nat(&P_proj.W);
                 assert(W == W_raw % p());
-                p_gt_2();
-                lemma_mod_division_less_than_divisor(W_raw as int, p() as int);
-                assert(W_raw % p() < p());
-                lemma_small_mod(W, p());
-                assert(W % p() == W);
+                assert(W_raw % p() < p()) by {
+                    p_gt_2();
+                    lemma_mod_division_less_than_divisor(W_raw as int, p() as int);
+                }
+                assert(W % p() == W) by {
+                    lemma_small_mod(W, p());
+                }
             }
 
             // spec_projective_u_coordinate = U / W = (u*W) / W = u
@@ -325,11 +332,12 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
                 math_field_inv(W),
             ));
 
-            lemma_field_mul_assoc(u, W, math_field_inv(W));
             assert(spec_projective_u_coordinate(P_proj) == math_field_mul(
                 u,
                 math_field_mul(W, math_field_inv(W)),
-            ));
+            )) by {
+                lemma_field_mul_assoc(u, W, math_field_inv(W));
+            }
 
             assert(math_field_mul(W, math_field_inv(W)) == 1) by {
                 lemma_inv_mul_cancel(W);
@@ -553,9 +561,6 @@ pub proof fn lemma_canonical_montgomery_lift_zero()
         assert(u2 == 0) by {
             lemma_field_mul_zero_left(0, 0);
         }
-        assert(u2 % p() == 0) by {
-            assert(u2 == 0);
-        }
         assert(u3 == 0) by {
             lemma_field_mul_zero_left(u2, 0);
         }
@@ -591,9 +596,10 @@ pub proof fn lemma_montgomery_add_zero_point_doubles_to_infinity()
             montgomery_add(P, P) == MontgomeryAffine::Infinity
         }),
 {
-    lemma_canonical_montgomery_lift_zero();
     let P = canonical_montgomery_lift(0);
-    assert(P == MontgomeryAffine::Finite { u: 0, v: 0 });
+    assert(P == MontgomeryAffine::Finite { u: 0, v: 0 }) by {
+        lemma_canonical_montgomery_lift_zero();
+    }
     // Unfold montgomery_add on (0,0)+(0,0): it matches the P = -Q case.
     assert(montgomery_add(P, P) == MontgomeryAffine::Infinity);
 }
@@ -623,8 +629,9 @@ pub proof fn lemma_montgomery_scalar_mul_zero_point_closed(n: nat)
             assert(montgomery_scalar_mul(P, n) == P);
         } else {
             // R_prev == P, so P + P = ∞
-            lemma_montgomery_add_zero_point_doubles_to_infinity();
-            assert(montgomery_scalar_mul(P, n) == MontgomeryAffine::Infinity);
+            assert(montgomery_scalar_mul(P, n) == MontgomeryAffine::Infinity) by {
+                lemma_montgomery_add_zero_point_doubles_to_infinity();
+            }
         }
     }
 }

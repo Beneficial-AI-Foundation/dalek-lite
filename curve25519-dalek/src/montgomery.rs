@@ -1735,7 +1735,7 @@ fn differential_add_and_double(
                 let Q_aff = montgomery_scalar_mul(B, k + 1);
 
                 // Lift projective representation facts to nat form for the xDBL/xADD axioms.
-                assert(projective_represents_montgomery_or_infinity_nats(U_P0, W_P0, P_aff)) by {
+                assert(projective_represents_montgomery_or_infinity_nat(U_P0, W_P0, P_aff)) by {
                     match P_aff {
                         MontgomeryAffine::Infinity => {
                             assert(W_P0 == 0);
@@ -1747,7 +1747,7 @@ fn differential_add_and_double(
                         },
                     }
                 }
-                assert(projective_represents_montgomery_or_infinity_nats(U_Q0, W_Q0, Q_aff)) by {
+                assert(projective_represents_montgomery_or_infinity_nat(U_Q0, W_Q0, Q_aff)) by {
                     match Q_aff {
                         MontgomeryAffine::Infinity => {
                             assert(W_Q0 == 0);
@@ -1762,7 +1762,7 @@ fn differential_add_and_double(
 
                 // xDBL: output P represents montgomery_add(P_aff, P_aff) = [2k]B
                 axiom_xdbl_projective_correct(P_aff, U_P0, W_P0);
-                assert(projective_represents_montgomery_or_infinity_nats(
+                assert(projective_represents_montgomery_or_infinity_nat(
                     spec_field_element(&P.U),
                     spec_field_element(&P.W),
                     montgomery_add(P_aff, P_aff),
@@ -1847,7 +1847,7 @@ fn differential_add_and_double(
                 let Q_aff = montgomery_scalar_mul(B, k);
 
                 // xDBL: output P represents [2]P_aff = [2k+2]B
-                assert(projective_represents_montgomery_or_infinity_nats(U_P0, W_P0, P_aff)) by {
+                assert(projective_represents_montgomery_or_infinity_nat(U_P0, W_P0, P_aff)) by {
                     match P_aff {
                         MontgomeryAffine::Infinity => {
                             assert(W_P0 == 0);

@@ -115,13 +115,17 @@ pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
 }
 
 /// **xDBL Axiom**: `spec_xdbl_projective` correctly computes [2]P.
+///
+/// If `(U:W)` represents affine point `P`, then `xDBL(U,W)` represents `[2]P`.
 pub(crate) proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
     requires
-        projective_represents_montgomery_or_infinity_nats(U, W, P),
+// (U:W) represents P: for finite points u = U/W; for ∞ we have W = 0, U ≠ 0
+
+        projective_represents_montgomery_or_infinity_nat(U, W, P),
     ensures
         ({
             let (U2, W2) = spec_xdbl_projective(U, W);
-            projective_represents_montgomery_or_infinity_nats(U2, W2, montgomery_add(P, P))
+            projective_represents_montgomery_or_infinity_nat(U2, W2, montgomery_add(P, P))
         }),
 {
     admit();
@@ -235,8 +239,10 @@ pub(crate) proof fn axiom_xadd_projective_correct(
     affine_PmQ: nat,
 )
     requires
-        projective_represents_montgomery_or_infinity_nats(U_P, W_P, P),
-        projective_represents_montgomery_or_infinity_nats(U_Q, W_Q, Q),
+// (U_P:W_P) represents P; (U_Q:W_Q) represents Q
+
+        projective_represents_montgomery_or_infinity_nat(U_P, W_P, P),
+        projective_represents_montgomery_or_infinity_nat(U_Q, W_Q, Q),
         P != Q,
         affine_PmQ != 0,
         // u-coordinate is symmetric: u(P-Q) = u(Q-P) since u is invariant under negation
@@ -246,7 +252,7 @@ pub(crate) proof fn axiom_xadd_projective_correct(
     ensures
         ({
             let (U_PpQ, W_PpQ) = spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ);
-            projective_represents_montgomery_or_infinity_nats(U_PpQ, W_PpQ, montgomery_add(P, Q))
+            projective_represents_montgomery_or_infinity_nat(U_PpQ, W_PpQ, montgomery_add(P, Q))
         }),
 {
     admit();
@@ -346,8 +352,6 @@ pub proof fn lemma_montgomery_scalar_mul_zero(P: MontgomeryAffine)
 }
 
 /// Lemma: scalar multiplication by 1 gives P
-///
-/// Used by: `lemma_montgomery_double_is_add`
 pub proof fn lemma_montgomery_scalar_mul_one(P: MontgomeryAffine)
     ensures
         montgomery_scalar_mul(P, 1) == P,
@@ -368,19 +372,6 @@ pub proof fn lemma_montgomery_scalar_mul_succ(P: MontgomeryAffine, n: nat)
         montgomery_scalar_mul(P, n + 1) == montgomery_add(P, montgomery_scalar_mul(P, n)),
 {
     // Follows directly from the recursive definition
-}
-
-/// Lemma: [2]P = P + P (doubling is adding point to itself)
-///
-/// NOTE: Currently unused; kept for reference.
-pub proof fn lemma_montgomery_double_is_add(P: MontgomeryAffine)
-    ensures
-        montgomery_scalar_mul(P, 2) == montgomery_add(P, P),
-{
-    // [2]P = P + [1]P = P + P
-    lemma_montgomery_scalar_mul_one(P);
-    assert(montgomery_scalar_mul(P, 2) == montgomery_add(P, montgomery_scalar_mul(P, 1)));
-    assert(montgomery_scalar_mul(P, 1) == P);
 }
 
 /// Lemma: scalar multiplication distributes over addition of scalars
@@ -465,21 +456,9 @@ pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
     lemma_montgomery_scalar_mul_add(P, n, n);
 }
 
-/// Lemma: [n]P + [n+1]P = [2n+1]P (adding consecutive scalar multiples)
-///
-/// NOTE: Currently unused; `lemma_montgomery_scalar_mul_add` is used directly instead.
-pub proof fn lemma_montgomery_scalar_mul_consecutive(P: MontgomeryAffine, n: nat)
-    ensures
-        montgomery_add(montgomery_scalar_mul(P, n), montgomery_scalar_mul(P, n + 1))
-            == montgomery_scalar_mul(P, 2 * n + 1),
-{
-    // [n]P + [n+1]P = [n]P + [n]P + P = [2n]P + P = [2n+1]P
-    // Using scalar_mul_add: [n + (n+1)]P = [n]P + [n+1]P
-    assert(n + (n + 1) == 2 * n + 1);
-    lemma_montgomery_scalar_mul_add(P, n, n + 1);
-}
-
 /// Lemma: extracting u-coordinate from [0]P = Infinity gives 0
+///
+/// Note: Kept as explicit lemma (not inlined) to help the SMT solver
 pub proof fn lemma_spec_u_coordinate_infinity()
     ensures
         spec_u_coordinate(MontgomeryAffine::Infinity) == 0,
@@ -488,6 +467,8 @@ pub proof fn lemma_spec_u_coordinate_infinity()
 }
 
 /// Lemma: For a finite point, spec_u_coordinate extracts the u value
+///
+/// Note: Kept as explicit lemma (not inlined) to help the SMT solver
 pub proof fn lemma_spec_u_coordinate_finite(u: nat, v: nat)
     ensures
         spec_u_coordinate(MontgomeryAffine::Finite { u, v }) == u,

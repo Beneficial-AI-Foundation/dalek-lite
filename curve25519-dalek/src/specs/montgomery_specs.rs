@@ -353,7 +353,7 @@ pub open spec fn projective_represents_montgomery_or_infinity(
 ///
 /// This is convenient for stating algebraic properties of x-only algorithms without needing
 /// to construct concrete `FieldElement`s in specs.
-pub open spec fn projective_represents_montgomery_or_infinity_nats(
+pub open spec fn projective_represents_montgomery_or_infinity_nat(
     U: nat,
     W: nat,
     P_aff: MontgomeryAffine,

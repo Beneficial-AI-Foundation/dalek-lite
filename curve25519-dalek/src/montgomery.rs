@@ -438,9 +438,7 @@ impl MontgomeryPoint {
         let mut i: usize = 0;
         proof {
             // Establish the loop invariant at i = 0.
-            // VERIFICATION NOTE: 
-            // This proof block is rlimit-sensitive. Refactoring lemma calls into `assert...by` style
-            // broke rlimit.
+            // VERIFICATION NOTE: refactoring lemma calls into `assert...by` style breaks rlimit.
             let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
             assert(is_valid_u_coordinate(u0));
@@ -575,9 +573,7 @@ impl MontgomeryPoint {
                 }
             }
         }
-        // VERIFICATION NOTE: 
-        // This loop and its proof blocks are rlimit-sensitive. The proof structure
-        // (order of lemma calls, intermediate assertions) affects SMT solver performance.
+        // VERIFICATION NOTE: refactoring lemma calls into `assert...by` style breaks rlimit.
         while i < bits.len()
             invariant
                 i <= bits.len(),
@@ -1269,8 +1265,6 @@ fn differential_add_and_double(
 )
     requires
 // Bounds needed for the underlying field operations
-// NOTE: we require 52-bounded points so that intermediate sums (U±W) stay < 2^54,
-// matching the preconditions of `square()` and other field ops.
 
         fe51_limbs_bounded(&old(P).U, 52),
         fe51_limbs_bounded(&old(P).W, 52),
@@ -1286,33 +1280,12 @@ fn differential_add_and_double(
         fe51_limbs_bounded(&P.W, 52),
         fe51_limbs_bounded(&Q.U, 52),
         fe51_limbs_bounded(&Q.W, 52),
-        // === Degenerate basepoint case: u(P-Q) = 0 ===
-        //
-        // When `affine_PmQ` encodes u=0, the ladder basepoint is the (0,0) 2-torsion point.
-        // In this case, every scalar multiple has u-coordinate 0 (including ∞ by convention),
-        // so the ladder should preserve u=0 across steps.
-        //
-        // We only claim this preservation under the (stable) condition that both inputs have
-        // u-coordinate 0.
+        // Degenerate case: if u(P-Q)=0 and both inputs have u=0, outputs preserve u=0.
         (spec_field_element(affine_PmQ) == 0 && spec_projective_u_coordinate(*old(P)) == 0
             && spec_projective_u_coordinate(*old(Q)) == 0) ==> (spec_projective_u_coordinate(*P)
             == 0 && spec_projective_u_coordinate(*Q) == 0),
-        // === Montgomery Ladder Step (Case 1): P = [k]B, Q = [k+1]B ===
-        //
-        // This is a conditional guarantee: if the inputs satisfy the pattern for some k,
-        // then the outputs satisfy the doubled pattern. The caller (mul_bits_be) establishes
-        // the existence of such a k through its loop invariant and instantiates this forall.
-        //
-        // Mathematical property (u-coordinate level):
-        //   If u(P) = u([k]B) and u(Q) = u([k+1]B)
-        //   Then u(P') = u([2k]B) and u(Q') = u([2k+1]B)
-        //
-        // This follows from:
-        //   - P' = [2]P = [2][k]B = [2k]B           (doubling)
-        //   - Q' = P + Q = [k]B + [k+1]B = [2k+1]B  (differential addition)
-        //
-        // Case 1: P represents [k]B, Q represents [k+1]B
-        // Output: P' represents [2k]B, Q' represents [2k+1]B
+        // Montgomery ladder step: P' = [2]P (xDBL), Q' = P + Q (xADD).
+        // Case 1: P = [k]B, Q = [k+1]B  ==>  P' = [2k]B, Q' = [2k+1]B
         ({
             let B = canonical_montgomery_lift(spec_field_element(affine_PmQ));
             forall|k: nat|
@@ -1334,8 +1307,7 @@ fn differential_add_and_double(
                     )
                 }
         }),
-        // Case 2: P represents [k+1]B, Q represents [k]B (swapped)
-        // Output: P' represents [2k+2]B, Q' represents [2k+1]B
+        // Case 2 (swapped): P = [k+1]B, Q = [k]B  ==>  P' = [2k+2]B, Q' = [2k+1]B
         ({
             let B = canonical_montgomery_lift(spec_field_element(affine_PmQ));
             forall|k: nat|
@@ -1397,15 +1369,19 @@ fn differential_add_and_double(
 
     proof {
         // Bounds for t0 and t2 (used by square and mul preconditions).
-        lemma_add_bounds_propagate(&P.U, &P.W, 52);
-        assert(fe51_limbs_bounded(&t0, 53));
-        lemma_fe51_limbs_bounded_weaken(&t0, 53, 54);
-        assert(fe51_limbs_bounded(&t0, 54));
+        assert(fe51_limbs_bounded(&t0, 53)) by {
+            lemma_add_bounds_propagate(&P.U, &P.W, 52);
+        }
+        assert(fe51_limbs_bounded(&t0, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&t0, 53, 54);
+        }
 
-        lemma_add_bounds_propagate(&Q.U, &Q.W, 52);
-        assert(fe51_limbs_bounded(&t2, 53));
-        lemma_fe51_limbs_bounded_weaken(&t2, 53, 54);
-        assert(fe51_limbs_bounded(&t2, 54));
+        assert(fe51_limbs_bounded(&t2, 53)) by {
+            lemma_add_bounds_propagate(&Q.U, &Q.W, 52);
+        }
+        assert(fe51_limbs_bounded(&t2, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&t2, 53, 54);
+        }
 
         // Sub results are 54-bounded by spec.
         assert(fe51_limbs_bounded(&t1, 54));
@@ -1418,8 +1394,12 @@ fn differential_add_and_double(
         // square() produces 52-bounded outputs; weaken as needed for subtraction/multiplication.
         assert(fe51_limbs_bounded(&t4, 52));
         assert(fe51_limbs_bounded(&t5, 52));
-        lemma_fe51_limbs_bounded_weaken(&t4, 52, 54);
-        lemma_fe51_limbs_bounded_weaken(&t5, 52, 54);
+        assert(fe51_limbs_bounded(&t4, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&t4, 52, 54);
+        }
+        assert(fe51_limbs_bounded(&t5, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&t5, 52, 54);
+        }
     }
     let t6 = &t4 - &t5;  // 4 U_P W_P
 
@@ -1444,10 +1424,12 @@ fn differential_add_and_double(
 
     proof {
         // Bounds for t9 (used by square precondition).
-        lemma_add_bounds_propagate(&t7, &t8, 52);
-        assert(fe51_limbs_bounded(&t9, 53));
-        lemma_fe51_limbs_bounded_weaken(&t9, 53, 54);
-        assert(fe51_limbs_bounded(&t9, 54));
+        assert(fe51_limbs_bounded(&t9, 53)) by {
+            lemma_add_bounds_propagate(&t7, &t8, 52);
+        }
+        assert(fe51_limbs_bounded(&t9, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&t9, 53, 54);
+        }
         // Sub gives 54-bounded output
         assert(fe51_limbs_bounded(&t10, 54));
     }
@@ -1472,16 +1454,20 @@ fn differential_add_and_double(
 
     proof {
         // Precondition for t16 multiplication.
-        lemma_add_bounds_propagate(&t13, &t5, 52);
-        assert(fe51_limbs_bounded(&t15, 53));
-        lemma_fe51_limbs_bounded_weaken(&t15, 53, 54);
-        assert(fe51_limbs_bounded(&t15, 54));
+        assert(fe51_limbs_bounded(&t15, 53)) by {
+            lemma_add_bounds_propagate(&t13, &t5, 52);
+        }
+        assert(fe51_limbs_bounded(&t15, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&t15, 53, 54);
+        }
     }
     let t16 = &t6 * &t15;  // 4 (U_P W_P) ((U_P - W_P)^2 + (A + 2) U_P W_P)
 
     proof {
         // Precondition for affine_PmQ * t12.
-        lemma_fe51_limbs_bounded_weaken(affine_PmQ, 51, 54);
+        assert(fe51_limbs_bounded(affine_PmQ, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(affine_PmQ, 51, 54);
+        }
         assert(fe51_limbs_bounded(&t12, 54));
     }
     let t17 = affine_PmQ * &t12;  // U_D * 4 (W_P U_Q - U_P W_Q)^2

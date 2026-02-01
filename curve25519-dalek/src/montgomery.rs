@@ -1068,22 +1068,36 @@ impl Identity for ProjectivePoint {
 
             spec_field_element(&result.U) == 1,
             spec_field_element(&result.W) == 0,
+            // Actual representation uses field constants ONE/ZERO
             fe51_limbs_bounded(&result.U, 51),
             fe51_limbs_bounded(&result.W, 51),
+            // Weakened bounds help SMT solver in callers
+            fe51_limbs_bounded(&result.U, 54),
+            fe51_limbs_bounded(&result.W, 54),
     {
         let result = ProjectivePoint { U: FieldElement::ONE, W: FieldElement::ZERO };
         proof {
+            // Field element values
             assert(spec_field_element(&result.U) == 1) by {
                 lemma_one_field_element_value();
             }
             assert(spec_field_element(&result.W) == 0) by {
                 lemma_zero_field_element_value();
             }
+            // Limb bounds: first establish at 51, then weaken to 54
             assert(fe51_limbs_bounded(&result.U, 51)) by {
                 lemma_one_limbs_bounded_51();
             }
             assert(fe51_limbs_bounded(&result.W, 51)) by {
                 lemma_zero_limbs_bounded_51();
+            }
+            assert(fe51_limbs_bounded(&result.U, 54)) by {
+                lemma_one_limbs_bounded_51();
+                lemma_fe51_limbs_bounded_weaken(&result.U, 51, 54);
+            }
+            assert(fe51_limbs_bounded(&result.W, 54)) by {
+                lemma_zero_limbs_bounded_51();
+                lemma_fe51_limbs_bounded_weaken(&result.W, 51, 54);
             }
         }
         result

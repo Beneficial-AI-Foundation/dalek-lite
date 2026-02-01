@@ -664,11 +664,13 @@ pub proof fn lemma_u_coordinate_scalar_mul_canonical_lift_zero(n: nat)
     let P = canonical_montgomery_lift(0);
     let R = montgomery_scalar_mul(P, n);
     if R == MontgomeryAffine::Infinity {
-        lemma_spec_u_coordinate_infinity();
+        // Testing: inline instead of lemma_spec_u_coordinate_infinity()
+        assert(spec_u_coordinate(MontgomeryAffine::Infinity) == 0);
     } else {
         assert(R == P);
         assert(P == MontgomeryAffine::Finite { u: 0, v: 0 });
-        lemma_spec_u_coordinate_finite(0, 0);
+        // Testing: inline instead of lemma_spec_u_coordinate_finite(0, 0)
+        assert(spec_u_coordinate(MontgomeryAffine::Finite { u: 0, v: 0 }) == 0);
     }
 }
 

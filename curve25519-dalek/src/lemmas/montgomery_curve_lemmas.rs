@@ -86,20 +86,22 @@ pub proof fn axiom_montgomery_add_inverse(P: MontgomeryAffine)
 //
 // Notation: uppercase U, W = projective coords; lowercase u = affine coord (u = U/W).
 //
-// Each algebraic formula is defined as a `spec fn`:
-//   - `spec_xdbl_projective(U, W)` computes (U', W') for [2]P
-//   - `spec_xadd_projective(...)` computes (U', W') for P + Q
+// Each formula is modeled as a `spec fn` (the algebraic computation) paired with
+// an `axiom` (asserting the computation equals the mathematical operation).
 //
-// Each formula has a corresponding axiom asserting correctness:
-//   - `axiom_xdbl_projective_correct`: if (U:W) represents P, then (U':W') represents [2]P
-//   - `axiom_xadd_projective_correct`: if inputs represent P, Q, P-Q, then output represents P+Q
+// -----------------------------------------------------------------------------
+// xDBL (Equation 10): Doubling P → [2]P
+// -----------------------------------------------------------------------------
 //
-/// **Equation 10 (xDBL)** — compute [2]P from P in projective coordinates:
-///
-/// ```text
-/// U' = (U + W)² · (U - W)²
-/// W' = 4·U·W · ((U - W)² + ((A+2)/4) · 4·U·W)
-/// ```
+// Input:  (U : W) representing point P
+// Output: (U' : W') representing [2]P
+//
+// Precondition: (U:W) validly represents P (for ∞, requires W = 0 and U ≠ 0).
+//
+// Formulas:
+//   U' = (U + W)² · (U - W)²
+//   W' = ((U + W)² - (U - W)²) · ((U - W)² + ((A+2)/4) · ((U + W)² - (U - W)²))
+//
 pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
     let t0 = math_field_add(U, W);  // t0 = U + W
     let t1 = math_field_sub(U, W);  // t1 = U - W
@@ -192,20 +194,21 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
     lemma_field_mul_zero_left(0, t15);
 }
 
-/// **Equation 9 (xADD)** — differential addition P + Q given affine u(P - Q):
-///
-/// The general projective formula is:
-/// ```text
-/// U' = W(P-Q) · [(U_P - W_P)(U_Q + W_Q) + (U_P + W_P)(U_Q - W_Q)]²
-/// W' = U(P-Q) · [(U_P - W_P)(U_Q + W_Q) - (U_P + W_P)(U_Q - W_Q)]²
-/// ```
-///
-/// In the Montgomery ladder, P-Q is always the fixed base point B, which is given
-/// in affine form (u = U/W with W = 1). So U(P-Q) = u(P-Q) and W(P-Q) = 1:
-/// ```text
-/// U' = (v + w)²              where v = (U_P + W_P)(U_Q - W_Q), w = (U_P - W_P)(U_Q + W_Q)
-/// W' = u(P-Q) · (v - w)²
-/// ```
+// -----------------------------------------------------------------------------
+// xADD (Equation 9): Differential addition P + Q given P - Q
+// -----------------------------------------------------------------------------
+//
+// Input:  (U_P : W_P) representing P
+//         (U_Q : W_Q) representing Q
+//         u(P-Q)      affine x-coordinate of P - Q
+// Output: (U' : W') representing P + Q
+//
+// Preconditions: P ≠ Q and u(P-Q) ≠ 0.
+//
+// Formulas (with P - Q in affine form, i.e., W(P-Q) = 1):
+//   U' = [(U_P + W_P)(U_Q - W_Q) + (U_P - W_P)(U_Q + W_Q)]²
+//   W' = u(P-Q) · [(U_P + W_P)(U_Q - W_Q) - (U_P - W_P)(U_Q + W_Q)]²
+//
 pub(crate) open spec fn spec_xadd_projective(
     U_P: nat,
     W_P: nat,
@@ -217,12 +220,12 @@ pub(crate) open spec fn spec_xadd_projective(
     let t1 = math_field_sub(U_P, W_P);  // t1 = U_P - W_P
     let t2 = math_field_add(U_Q, W_Q);  // t2 = U_Q + W_Q
     let t3 = math_field_sub(U_Q, W_Q);  // t3 = U_Q - W_Q
-    let t7 = math_field_mul(t0, t3);  // v = (U_P + W_P)(U_Q - W_Q)
-    let t8 = math_field_mul(t1, t2);  // w = (U_P - W_P)(U_Q + W_Q)
-    let t9 = math_field_add(t7, t8);  // v + w
-    let t10 = math_field_sub(t7, t8);  // v - w
-    let U_PpQ = math_field_square(t9);  // U' = (v + w)²
-    let W_PpQ = math_field_mul(affine_PmQ, math_field_square(t10));  // W' = u(P-Q) · (v - w)²
+    let t7 = math_field_mul(t0, t3);  // t7 = (U_P + W_P)(U_Q - W_Q)
+    let t8 = math_field_mul(t1, t2);  // t8 = (U_P - W_P)(U_Q + W_Q)
+    let t9 = math_field_add(t7, t8);  // t7 + t8
+    let t10 = math_field_sub(t7, t8);  // t7 - t8
+    let U_PpQ = math_field_square(t9);  // U' = (t7 + t8)²
+    let W_PpQ = math_field_mul(affine_PmQ, math_field_square(t10));  // W' = u(P-Q) · (t7 - t8)²
     (U_PpQ, W_PpQ)
 }
 
@@ -295,9 +298,10 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
             assert(spec_field_element(&P_proj.W) == 0);
             assert(spec_projective_u_coordinate(P_proj) == 0);
             assert(spec_u_coordinate(P_aff) == 0);
-            p_gt_2();
-            lemma_small_mod(0, p());
-            assert(spec_u_coordinate(P_aff) % p() == 0);
+            assert(spec_u_coordinate(P_aff) % p() == 0) by {
+                p_gt_2();
+                lemma_small_mod(0, p());
+            }
         },
         MontgomeryAffine::Finite { u, v: _ } => {
             let U = spec_field_element(&P_proj.U);
@@ -327,12 +331,14 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
                 math_field_mul(W, math_field_inv(W)),
             ));
 
-            lemma_inv_mul_cancel(W);
-            lemma_field_mul_comm(math_field_inv(W), W);
-            assert(math_field_mul(W, math_field_inv(W)) == 1);
+            assert(math_field_mul(W, math_field_inv(W)) == 1) by {
+                lemma_inv_mul_cancel(W);
+                lemma_field_mul_comm(math_field_inv(W), W);
+            }
 
-            lemma_field_mul_one_right(u);
-            assert(math_field_mul(u, 1) == u % p());
+            assert(math_field_mul(u, 1) == u % p()) by {
+                lemma_field_mul_one_right(u);
+            }
             assert(spec_projective_u_coordinate(P_proj) == u % p());
         },
     }
@@ -485,13 +491,15 @@ pub proof fn lemma_math_sqrt_zero()
     assert((y * y) % p() == 0);
 
     // If y^2 ≡ 0 (mod p) and p is prime, then y ≡ 0 (mod p).
-    axiom_p_is_prime();
-    lemma_euclid_prime(y, y, p());
-    assert(y % p() == 0);
+    assert(y % p() == 0) by {
+        axiom_p_is_prime();
+        lemma_euclid_prime(y, y, p());
+    }
 
     // Since y < p, y % p = y, so y = 0.
-    lemma_small_mod(y, p());
-    assert(y == 0);
+    assert(y == 0) by {
+        lemma_small_mod(y, p());
+    }
 }
 
 /// Lemma: canonical_sqrt(0) = 0.

@@ -392,8 +392,6 @@ impl MontgomeryPoint {
             debug_assert!(choice == 0 || choice == 1);
 
             ProjectivePoint::conditional_swap(&mut x0, &mut x1, choice.into());
-            let ghost x0_before_dad = x0;
-            let ghost x1_before_dad = x1;
             differential_add_and_double(&mut x0, &mut x1, &affine_u);
 
             prev_bit = cur_bit;
@@ -440,6 +438,9 @@ impl MontgomeryPoint {
         let mut i: usize = 0;
         proof {
             // Establish the loop invariant at i = 0.
+            // VERIFICATION NOTE: 
+            // This proof block is rlimit-sensitive. Refactoring lemma calls into `assert...by` style
+            // broke rlimit.
             let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
             assert(is_valid_u_coordinate(u0));
@@ -574,6 +575,9 @@ impl MontgomeryPoint {
                 }
             }
         }
+        // VERIFICATION NOTE: 
+        // This loop and its proof blocks are rlimit-sensitive. The proof structure
+        // (order of lemma calls, intermediate assertions) affects SMT solver performance.
         while i < bits.len()
             invariant
                 i <= bits.len(),

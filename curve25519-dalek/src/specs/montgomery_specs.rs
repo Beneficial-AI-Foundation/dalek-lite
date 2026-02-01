@@ -325,9 +325,9 @@ pub open spec fn projective_represents_montgomery(
 
 /// Check if a Montgomery ProjectivePoint (U:W) represents a MontgomeryAffine point, including ∞.
 ///
-/// This is a more precise relation than comparing only `spec_projective_u_coordinate`, because
-/// `spec_projective_u_coordinate` maps the projective point at infinity (W=0) to 0 (same as
-/// `spec_u_coordinate(∞)`), which would otherwise conflate ∞ with the finite u=0 point.
+/// We cannot use u-coordinates alone because both ∞ and the finite point (0,0) have u=0.
+/// Instead, we distinguish them structurally: ∞ requires W=0 (and U≠0), while finite points
+/// require W≠0.
 pub open spec fn projective_represents_montgomery_or_infinity(
     P_proj: ProjectivePoint,
     P_aff: MontgomeryAffine,
@@ -335,9 +335,7 @@ pub open spec fn projective_represents_montgomery_or_infinity(
     match P_aff {
         MontgomeryAffine::Infinity => {
             // Infinity is represented by W = 0 in projective coordinates.
-            //
-            // We additionally exclude the degenerate pair (0:0), which would otherwise satisfy
-            // W=0 but break the correctness of x-only formulas (e.g. xADD with ∞ as an input).
+            // We require U ≠ 0 to exclude the degenerate (0:0), which represents no valid point.
             spec_field_element(&P_proj.W) == 0 && spec_field_element(&P_proj.U) != 0
         },
         MontgomeryAffine::Finite { u, v: _ } => {

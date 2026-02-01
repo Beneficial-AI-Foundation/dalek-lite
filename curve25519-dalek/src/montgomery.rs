@@ -406,6 +406,42 @@ impl MontgomeryPoint {
     }
     </ORIGINAL CODE>
     */
+    /// Montgomery ladder invariant used in the proof of `mul_bits_be`.
+    ///
+    /// x0 and x1 represent consecutive scalar multiples of P:
+    /// - When `bit` is true:  x0 = [k+1]P, x1 = [k]P
+    /// - When `bit` is false: x0 = [k]P,   x1 = [k+1]P
+    pub open spec fn ladder_invariant(
+        x0: ProjectivePoint,
+        x1: ProjectivePoint,
+        P: MontgomeryAffine,
+        k: nat,
+        bit: bool,
+    ) -> bool {
+        &&& projective_represents_montgomery_or_infinity(
+            x0,
+            montgomery_scalar_mul(
+                P,
+                if bit {
+                    k + 1
+                } else {
+                    k
+                },
+            ),
+        )
+        &&& projective_represents_montgomery_or_infinity(
+            x1,
+            montgomery_scalar_mul(
+                P,
+                if bit {
+                    k
+                } else {
+                    k + 1
+                },
+            ),
+        )
+    }
+
     /// Version of mul_bits_be that takes a slice of bits instead of an iterator.
     /// This version uses a while loop instead of for-loop to be Verus-compatible.
     ///
@@ -591,35 +627,13 @@ impl MontgomeryPoint {
                 ({
                     let u0 = spec_montgomery(*self);
                     if u0 == 0 {
-                        // Special case: u0 = 0 corresponds to the (0,0) 2-torsion point, whose
-                        // u-coordinate is 0 for all scalar multiples (including ∞ by convention).
+                        // Degenerate case: u0=0 is the (0,0) 2-torsion point; all multiples have u=0.
                         &&& spec_projective_u_coordinate(x0) == 0
                         &&& spec_projective_u_coordinate(x1) == 0
                     } else {
                         let P = canonical_montgomery_lift(u0);
                         let k = bits_be_to_nat(bits, i as int);
-                        &&& projective_represents_montgomery_or_infinity(
-                            x0,
-                            montgomery_scalar_mul(
-                                P,
-                                if prev_bit {
-                                    k + 1
-                                } else {
-                                    k
-                                },
-                            ),
-                        )
-                        &&& projective_represents_montgomery_or_infinity(
-                            x1,
-                            montgomery_scalar_mul(
-                                P,
-                                if prev_bit {
-                                    k
-                                } else {
-                                    k + 1
-                                },
-                            ),
-                        )
+                        Self::ladder_invariant(x0, x1, P, k, prev_bit)
                     }
                 }),
             decreases bits.len() - i,
@@ -653,28 +667,7 @@ impl MontgomeryPoint {
                     let P = canonical_montgomery_lift(u0);
 
                     // Representation facts from the loop invariant (before the swap).
-                    assert(projective_represents_montgomery_or_infinity(
-                        x0_before_swap,
-                        montgomery_scalar_mul(
-                            P,
-                            if prev_bit {
-                                k + 1
-                            } else {
-                                k
-                            },
-                        ),
-                    ));
-                    assert(projective_represents_montgomery_or_infinity(
-                        x1_before_swap,
-                        montgomery_scalar_mul(
-                            P,
-                            if prev_bit {
-                                k
-                            } else {
-                                k + 1
-                            },
-                        ),
-                    ));
+                    assert(Self::ladder_invariant(x0_before_swap, x1_before_swap, P, k, prev_bit));
 
                     // Determine whether the swap occurred: swap iff (prev_bit ^ cur_bit)
                     let swapped_now = prev_bit ^ cur_bit;
@@ -696,33 +689,8 @@ impl MontgomeryPoint {
                         assert(x1.W == x1_before_swap.W);
                     }
 
-                    // Use the loop invariant (captured before the swap) to relate x0_before_swap/x1_before_swap
-                    // to consecutive scalar multiples of P.
-                    // From the loop invariant, we have projective_represents_montgomery_or_infinity for
-                    // x0_before_swap and x1_before_swap.
-
-                    // After the swap, establish representation invariants for x0, x1.
-                    // After swap: cur_bit=1 means x0 has [k+1]P, x1 has [k]P
-                    //             cur_bit=0 means x0 has [k]P, x1 has [k+1]P
-                    if cur_bit {
-                        assert(projective_represents_montgomery_or_infinity(
-                            x0,
-                            montgomery_scalar_mul(P, k + 1),
-                        ));
-                        assert(projective_represents_montgomery_or_infinity(
-                            x1,
-                            montgomery_scalar_mul(P, k),
-                        ));
-                    } else {
-                        assert(projective_represents_montgomery_or_infinity(
-                            x0,
-                            montgomery_scalar_mul(P, k),
-                        ));
-                        assert(projective_represents_montgomery_or_infinity(
-                            x1,
-                            montgomery_scalar_mul(P, k + 1),
-                        ));
-                    }
+                    // After the swap, the invariant switches from prev_bit to cur_bit.
+                    assert(Self::ladder_invariant(x0, x1, P, k, cur_bit));
 
                 }
 

@@ -341,16 +341,6 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
 // -----------------------------------------------------------------------------
 // Basic scalar multiplication lemmas
 // -----------------------------------------------------------------------------
-/// Lemma: scalar multiplication by 0 gives the identity (infinity)
-///
-/// NOTE: Currently unused; kept for completeness.
-pub proof fn lemma_montgomery_scalar_mul_zero(P: MontgomeryAffine)
-    ensures
-        montgomery_scalar_mul(P, 0) == MontgomeryAffine::Infinity,
-{
-    // Follows directly from the definition
-}
-
 /// Lemma: scalar multiplication by 1 gives P
 pub proof fn lemma_montgomery_scalar_mul_one(P: MontgomeryAffine)
     ensures
@@ -366,7 +356,7 @@ pub proof fn lemma_montgomery_scalar_mul_one(P: MontgomeryAffine)
 ///
 /// [n+1]P = P + [n]P (by definition)
 ///
-/// Used by: `differential_add_and_double` proof
+/// Note: Kept as explicit lemma; inlining causes rlimit issues in the ladder loop.
 pub proof fn lemma_montgomery_scalar_mul_succ(P: MontgomeryAffine, n: nat)
     ensures
         montgomery_scalar_mul(P, n + 1) == montgomery_add(P, montgomery_scalar_mul(P, n)),
@@ -454,26 +444,6 @@ pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
     // [2n]P = [n + n]P = [n]P + [n]P
     assert(2 * n == n + n);
     lemma_montgomery_scalar_mul_add(P, n, n);
-}
-
-/// Lemma: extracting u-coordinate from [0]P = Infinity gives 0
-///
-/// Note: Kept as explicit lemma (not inlined) to help the SMT solver
-pub proof fn lemma_spec_u_coordinate_infinity()
-    ensures
-        spec_u_coordinate(MontgomeryAffine::Infinity) == 0,
-{
-    // By definition of spec_u_coordinate
-}
-
-/// Lemma: For a finite point, spec_u_coordinate extracts the u value
-///
-/// Note: Kept as explicit lemma (not inlined) to help the SMT solver
-pub proof fn lemma_spec_u_coordinate_finite(u: nat, v: nat)
-    ensures
-        spec_u_coordinate(MontgomeryAffine::Finite { u, v }) == u,
-{
-    // By definition of spec_u_coordinate
 }
 
 // =============================================================================
@@ -664,12 +634,10 @@ pub proof fn lemma_u_coordinate_scalar_mul_canonical_lift_zero(n: nat)
     let P = canonical_montgomery_lift(0);
     let R = montgomery_scalar_mul(P, n);
     if R == MontgomeryAffine::Infinity {
-        // Testing: inline instead of lemma_spec_u_coordinate_infinity()
         assert(spec_u_coordinate(MontgomeryAffine::Infinity) == 0);
     } else {
         assert(R == P);
         assert(P == MontgomeryAffine::Finite { u: 0, v: 0 });
-        // Testing: inline instead of lemma_spec_u_coordinate_finite(0, 0)
         assert(spec_u_coordinate(MontgomeryAffine::Finite { u: 0, v: 0 }) == 0);
     }
 }

@@ -455,8 +455,7 @@ pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
             montgomery_scalar_mul(P, n),
         ),
 {
-    // [2n]P = [n + n]P = [n]P + [n]P
-    assert(2 * n == n + n);
+    // [2n]P = [n + n]P = [n]P + [n]P (by lemma_montgomery_scalar_mul_add)
     lemma_montgomery_scalar_mul_add(P, n, n);
 }
 
@@ -478,34 +477,23 @@ pub proof fn lemma_math_sqrt_zero()
     ensures
         math_sqrt(0) == 0,
 {
-    assert(math_is_square(0)) by {
-        assert(exists|y: nat| (#[trigger] (y * y) % p()) == (0nat % p())) by {
-            let y: nat = 0;
-            assert((y * y) % p() == 0nat % p());
-        };
-    }
+    // Witness: 0 is a square root of 0 mod p
     assert(exists|y: nat| y < p() && #[trigger] ((y * y) % p()) == (0nat % p())) by {
         let y: nat = 0;
         p_gt_2();
-        assert(y < p());
-        assert((y * y) % p() == 0nat % p());
+        assert(y < p() && (y * y) % p() == 0nat % p());
     };
+
     reveal(math_sqrt);
     let y = math_sqrt(0);
-    assert(y < p() && ((y * y) % p()) == (0nat % p()));
-    // From the definition of math_sqrt (choose), we have:
-    assert(y < p());
-    assert(((y * y) % p()) == (0nat % p()));
-    assert((y * y) % p() == 0);
+    // From math_sqrt definition: y < p and y^2 ≡ 0 (mod p)
+    assert(y < p() && (y * y) % p() == 0);
 
     // If y^2 ≡ 0 (mod p) and p is prime, then y ≡ 0 (mod p).
-    assert(y % p() == 0) by {
+    // Since y < p, we have y = 0.
+    assert(y == 0) by {
         axiom_p_is_prime();
         lemma_euclid_prime(y, y, p());
-    }
-
-    // Since y < p, y % p = y, so y = 0.
-    assert(y == 0) by {
         lemma_small_mod(y, p());
     }
 }
@@ -516,30 +504,17 @@ pub proof fn lemma_canonical_sqrt_zero()
         canonical_sqrt(0) == 0,
 {
     lemma_math_sqrt_zero();
-    assert(math_is_square(0)) by {
-        assert(exists|y: nat| (#[trigger] (y * y) % p()) == (0nat % p())) by {
-            let y: nat = 0;
-            assert((y * y) % p() == 0nat % p());
-        };
-    }
     let s1 = math_sqrt(0);
     assert(s1 == 0);
-    let s2 = math_field_neg(s1);
-    assert(s2 == 0) by {
-        assert(s1 % p() == 0) by {
-            assert(s1 == 0);
-            p_gt_2();
-            lemma_small_mod(0, p());
-        }
-        assert(math_field_neg(0) == 0) by {
-            p_gt_2();
-            assert(0nat % p() == 0nat);
-            assert(math_field_neg(0) == (p() - (0nat % p())) as nat % p());
-            assert(math_field_neg(0) == p() % p());
-            lemma_mod_self_0(p() as int);
-        }
-    };
-    // s1 is even, so canonical_sqrt returns s1.
+
+    // math_field_neg(0) == 0
+    assert(math_field_neg(0) == 0) by {
+        p_gt_2();
+        assert(math_field_neg(0) == (p() - (0nat % p())) as nat % p());
+        lemma_mod_self_0(p() as int);
+    }
+
+    // s1 is even (0 % 2 == 0), so canonical_sqrt returns s1.
     assert(canonical_sqrt(0) == s1);
 }
 

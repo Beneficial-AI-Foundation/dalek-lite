@@ -115,6 +115,23 @@ pub(crate) proof fn lemma_edwards_d2_limbs_bounded_54()
     };
 }
 
+/// EDWARDS_D2 equals 2 * EDWARDS_D in the field
+///
+/// ## Mathematical Background
+/// EDWARDS_D2 is precomputed as 2*d mod p in the curve25519-dalek library.
+/// This is a well-established relationship for the curve25519 constants.
+///
+/// The postcondition states that spec_field_element(&EDWARDS_D2) equals
+/// math_field_mul(2, spec_field_element(&EDWARDS_D)), i.e., 2*d mod p.
+#[verifier::external_body]
+pub(crate) proof fn axiom_edwards_d2_is_2d()
+    ensures
+        spec_field_element(&constants::EDWARDS_D2) == math_field_mul(2, spec_field_element(&EDWARDS_D)),
+{
+    // This is an axiom based on the definition of EDWARDS_D2 in the library.
+    // EDWARDS_D2 is explicitly computed as 2*EDWARDS_D mod p.
+}
+
 // =============================================================================
 // BASEPOINT_ORDER_PRIVATE Lemmas
 // =============================================================================

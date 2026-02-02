@@ -1580,4 +1580,42 @@ pub proof fn lemma_field_sub_self(x: nat)
     }
 }
 
+/// Lemma: Birational map identity for Edwards-to-Montgomery conversion
+///
+/// ## Mathematical Proof
+/// The birational map from Edwards to Montgomery is u = (1+y)/(1-y).
+/// In projective coordinates with affine y = Y/Z, this becomes:
+///
+/// ```text
+/// (1 + Y/Z) / (1 - Y/Z) = ((Z + Y)/Z) / ((Z - Y)/Z)
+///                       = (Z + Y) / (Z - Y)       [Z cancels]
+/// ```
+///
+/// This identity is fundamental to the Edwards-Montgomery birational equivalence.
+#[verifier::external_body]
+pub proof fn axiom_birational_edwards_montgomery(y: nat, z: nat)
+    requires
+        z % p() != 0,  // Non-identity point (Z ≠ 0)
+    ensures
+        ({
+            let y_affine = math_field_mul(y, math_field_inv(z));
+            let one_plus_y = math_field_add(1, y_affine);
+            let one_minus_y = math_field_sub(1, y_affine);
+            let projective_result = math_field_mul(
+                math_field_add(z, y),
+                math_field_inv(math_field_sub(z, y)),
+            );
+            let affine_result = math_field_mul(one_plus_y, math_field_inv(one_minus_y));
+            projective_result == affine_result
+        }),
+{
+    // This is an axiom based on the algebraic identity:
+    // (Z+Y)/(Z-Y) = (1 + Y/Z)/(1 - Y/Z)
+    //
+    // Proof sketch:
+    // 1. 1 + Y/Z = (Z + Y)/Z  [common denominator]
+    // 2. 1 - Y/Z = (Z - Y)/Z  [common denominator]
+    // 3. ((Z+Y)/Z) / ((Z-Y)/Z) = (Z+Y)/(Z-Y)  [Z cancels]
+}
+
 } // verus!

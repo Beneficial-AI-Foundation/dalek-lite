@@ -153,6 +153,63 @@ pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
     };
 }
 
+/// Lemma: Negation preserves extended Edwards point validity
+///
+/// If (X, Y, Z, T) is a valid extended Edwards point, then (-X, Y, Z, -T) is also valid.
+/// This is because:
+/// 1. Z ≠ 0 is unchanged
+/// 2. The projective curve equation uses X² and (-X)² = X²
+/// 3. The Segre relation: (-X)·Y = -(X·Y) = -(Z·T) = Z·(-T)
+pub proof fn lemma_negation_preserves_extended_validity(x: nat, y: nat, z: nat, t: nat)
+    requires
+        math_is_valid_extended_edwards_point(x, y, z, t),
+    ensures
+        math_is_valid_extended_edwards_point(math_field_neg(x), y, z, math_field_neg(t)),
+{
+    let p = p();
+    p_gt_2();
+    let neg_x = math_field_neg(x);
+    let neg_t = math_field_neg(t);
+
+    // From precondition: z != 0, curve equation holds, x*y = z*t
+
+    // 1) Z ≠ 0 is unchanged (z remains the same)
+
+    // 2) Projective curve equation: uses X², and (-X)² = X²
+    assert(math_on_edwards_curve_projective(neg_x, y, z)) by {
+        // Key insight: (-x)² = x²
+        assert(math_field_square(neg_x) == math_field_square(x)) by {
+            lemma_neg_square_eq(x);
+            lemma_square_mod_noop(x);
+        };
+        // With (-x)² = x², the projective curve equation is unchanged
+    };
+
+    // 3) Segre relation: (-X)·Y = Z·(-T)
+    // Need to prove: math_field_mul(neg_x, y) == math_field_mul(z, neg_t)
+    assert(math_field_mul(neg_x, y) == math_field_mul(z, neg_t)) by {
+        // From precondition: x*y = z*t
+        let xy = math_field_mul(x, y);
+        let zt = math_field_mul(z, t);
+        assert(xy == zt);
+
+        // (-x)*y = -(x*y)
+        assert(math_field_mul(neg_x, y) == math_field_neg(xy)) by {
+            lemma_field_mul_neg(y, x);  // y * neg(x) = neg(y * x)
+            lemma_field_mul_comm(neg_x, y);
+            lemma_field_mul_comm(y, x);
+        };
+
+        // z*(-t) = -(z*t)
+        assert(math_field_mul(z, neg_t) == math_field_neg(zt)) by {
+            lemma_field_mul_neg(z, t);
+        };
+
+        // neg(x*y) = neg(z*t) since x*y = z*t
+        assert(math_field_neg(xy) == math_field_neg(zt));
+    };
+}
+
 // =============================================================================
 // Extended Coordinates Validity
 // =============================================================================

@@ -1269,7 +1269,8 @@ impl EdwardsPoint {
         proof {
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (sub/mul precondition)
             lemma_edwards_point_weaken_to_54(self);
-            assume(fe51_limbs_bounded(&constants::EDWARDS_D2, 54));  // for T2d
+            // EDWARDS_D2 is 54-bounded (actually 51-bounded)
+            lemma_edwards_d2_limbs_bounded_54();
         }
 
         let result = ProjectiveNielsPoint {
@@ -1280,12 +1281,34 @@ impl EdwardsPoint {
         };
 
         proof {
-            // postconditions:
+            // === Limb bounds proofs ===
+            // Y_plus_X: add of 52-bounded gives 53-bounded, weaken to 54
+            lemma_add_bounds_propagate(&self.Y, &self.X, 52);
+            assert(fe51_limbs_bounded(&spec_add_fe51_limbs(&self.Y, &self.X), 53));
+            lemma_fe51_limbs_bounded_weaken(&result.Y_plus_X, 53, 54);
+
+            // Y_minus_X: sub postcondition guarantees 54-bounded (nothing to do)
+            assert(fe51_limbs_bounded(&result.Y_minus_X, 54));
+
+            // Z: copy of 52-bounded, weaken to 54
+            lemma_fe51_limbs_bounded_weaken(&result.Z, 52, 54);
+
+            // T2d: mul postcondition guarantees 54-bounded (nothing to do)
+            assert(fe51_limbs_bounded(&result.T2d, 54));
+
+            // === Correspondence proof ===
+            // Need: projective_niels_corresponds_to_edwards(result, *self)
+            // Which requires:
+            //   y_plus_x == math_field_add(y, x)           -- from add postcondition
+            //   y_minus_x == math_field_sub(y, x)         -- from sub postcondition
+            //   niels_z == z                               -- trivial (Z is copied)
+            //   t2d == math_field_mul(math_field_mul(2, d), t)  -- requires EDWARDS_D2 = 2*d
+            //
+            // The first three are proven by operation postconditions.
+            // The t2d relation requires a lemma that EDWARDS_D2 = 2*EDWARDS_D mod p.
+            // PROOF BYPASS: Assume the correspondence for now; proving EDWARDS_D2 = 2*d
+            // requires a dedicated constants lemma.
             assume(projective_niels_corresponds_to_edwards(result, *self));
-            assume(fe51_limbs_bounded(&result.Y_plus_X, 54));
-            assume(fe51_limbs_bounded(&result.Y_minus_X, 54));
-            assume(fe51_limbs_bounded(&result.Z, 54));
-            assume(fe51_limbs_bounded(&result.T2d, 54));
         }
 
         result
@@ -1381,6 +1404,11 @@ impl EdwardsPoint {
             assert(fe51_limbs_bounded(&self.Y, 54));
             assert(fe51_limbs_bounded(&self.Z, 54));
         }
+
+        // Ghost values for proof
+        let ghost z = spec_field_element(&self.Z);
+        let ghost y = spec_field_element(&self.Y);
+
         let U = &self.Z + &self.Y;
         let W = &self.Z - &self.Y;
         // W bounded by 54 from sub() postcondition
@@ -1390,9 +1418,57 @@ impl EdwardsPoint {
             assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
             assert(fe51_limbs_bounded(&U, 54));
         }
-        let u = &U * &W.invert();
-        let result = MontgomeryPoint(u.as_bytes());
+
+        // Ghost: track field element values through operations
+        let ghost u_val = spec_field_element(&U);
+        let ghost w_val = spec_field_element(&W);
         proof {
+            // Operation postconditions give us:
+            assert(u_val == math_field_add(z, y));  // add postcondition
+            assert(w_val == math_field_sub(z, y));  // sub postcondition
+        }
+
+        let W_inv = W.invert();
+        let ghost w_inv_val = spec_field_element(&W_inv);
+        proof {
+            // invert postcondition
+            assert(w_inv_val == math_field_inv(w_val));
+        }
+
+        let u = &U * &W_inv;
+        let ghost u_field = spec_field_element(&u);
+        proof {
+            // mul postcondition: u_field = (Z+Y) * inv(Z-Y)
+            assert(u_field == math_field_mul(u_val, w_inv_val));
+            assert(u_field == math_field_mul(math_field_add(z, y), math_field_inv(math_field_sub(z, y))));
+        }
+
+        let result = MontgomeryPoint(u.as_bytes());
+
+        proof {
+            // === Correspondence proof ===
+            // Need: montgomery_corresponds_to_edwards(result, *self)
+            //
+            // The spec requires (for non-identity case):
+            //   spec_montgomery(result) == (1+y_affine)/(1-y_affine)
+            // where y_affine = Y/Z in affine coords.
+            //
+            // We computed: u = (Z+Y)/(Z-Y) in projective coords.
+            //
+            // Algebraic identity: (Z+Y)/(Z-Y) = (1 + Y/Z)/(1 - Y/Z)
+            // Proof: multiply numerator and denominator of RHS by Z:
+            //   (Z/Z + Y/Z)/(Z/Z - Y/Z) = ((Z+Y)/Z)/((Z-Y)/Z) = (Z+Y)/(Z-Y)
+            //
+            // We can trace:
+            // 1. as_bytes postcondition: bytes32_to_nat(&u.as_bytes()) == spec_field_element(&u)
+            // 2. spec_montgomery(result) = spec_field_element_from_bytes(&result.0)
+            //                            = (bytes32_to_nat(&result.0) % pow2(255)) % p()
+            //    Since spec_field_element(&u) < p() < pow2(255):
+            //                            = spec_field_element(&u)
+            // 3. The algebraic identity requires a dedicated lemma about field fractions.
+            //
+            // PROOF BYPASS: Assume the correspondence; proving the algebraic identity
+            // (Z+Y)/(Z-Y) = (1+y_affine)/(1-y_affine) requires field algebra lemmas.
             assume(montgomery_corresponds_to_edwards(result, *self));
         }
         result
@@ -1663,8 +1739,7 @@ impl EdwardsPoint {
             assert(fe51_limbs_bounded(&proj.X, 52) && fe51_limbs_bounded(&proj.Y, 52)
                 && fe51_limbs_bounded(&proj.Z, 52));
             // sum_of_limbs_bounded follows from 52-bounded: 2^52 + 2^52 = 2^53 < u64::MAX
-            assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
-            assume(sum_of_limbs_bounded(&proj.X, &proj.Y, u64::MAX));
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&proj.X, &proj.Y, 52);
         }
 
         let doubled = proj.double();
@@ -1731,27 +1806,31 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
         /* ORIGINAL CODE
         (self + &other.as_projective_niels()).as_extended()
         */
+        // From is_well_formed_edwards_point preconditions:
+        // - edwards_point_limbs_bounded(*self) and (*other)
+        // - sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX) and for other
         assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+        assert(edwards_point_limbs_bounded(*other));
+        assert(sum_of_limbs_bounded(&other.Y, &other.X, u64::MAX));
 
         let other_niels = other.as_projective_niels();
 
         proof {
-            // Preconditions for EdwardsPoint + ProjectiveNielsPoint addition
-            // The limb bounds for self are inherited from the outer function's add_req
-            // We need to assume the sum_of_limbs_bounded precondition
-            assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
-
-            // Assume limb bounds for other_niels (from as_projective_niels postconditions)
-            assume(fe51_limbs_bounded(&other_niels.Y_plus_X, 54));
-            assume(fe51_limbs_bounded(&other_niels.Y_minus_X, 54));
-            assume(fe51_limbs_bounded(&other_niels.Z, 54));
-            assume(fe51_limbs_bounded(&other_niels.T2d, 54));
+            // Limb bounds for other_niels follow from as_projective_niels postconditions
+            // (which we proved earlier in this file)
+            assert(fe51_limbs_bounded(&other_niels.Y_plus_X, 54));
+            assert(fe51_limbs_bounded(&other_niels.Y_minus_X, 54));
+            assert(fe51_limbs_bounded(&other_niels.Z, 54));
+            assert(fe51_limbs_bounded(&other_niels.T2d, 54));
         }
 
         let sum = self + &other_niels;
 
         proof {
-            // preconditions for CompletedPoint.as_extended()
+            // PROOF BYPASS: The inner addition (EdwardsPoint + ProjectiveNielsPoint)
+            // returns a CompletedPoint. We need its validity and limb bounds.
+            // These should follow from the inner add operation's postconditions,
+            // but that function also has assumes. Propagate the assume here.
             assume(is_valid_completed_point(sum));
             assume(fe51_limbs_bounded(&sum.X, 54) && fe51_limbs_bounded(&sum.Y, 54)
                 && fe51_limbs_bounded(&sum.Z, 54) && fe51_limbs_bounded(&sum.T, 54));
@@ -1761,7 +1840,10 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
 
         proof {
             // CompletedPoint::as_extended ensures is_well_formed_edwards_point(result)
-            // Assume affine semantics postcondition
+            // PROOF BYPASS: The affine semantics postcondition requires proving the
+            // group law correctness through the chain:
+            //   EdwardsPoint -> ProjectiveNielsPoint -> (add) -> CompletedPoint -> EdwardsPoint
+            // Each step needs its correspondence spec proven.
             assume({
                 let (x1, y1) = edwards_point_as_affine(*self);
                 let (x2, y2) = edwards_point_as_affine(*other);
@@ -2023,8 +2105,9 @@ impl vstd::std_specs::ops::NegSpecImpl for &EdwardsPoint {
     }
 
     open spec fn neg_req(self) -> bool {
-        // Preconditions: limbs must be bounded for field element negation
-        fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
+        // Strengthened precondition: require well-formed point (validity + bounds + sum bounded)
+        // This enables proving all postconditions without assumes
+        is_well_formed_edwards_point(*self)
     }
 
     open spec fn neg_spec(self) -> EdwardsPoint {
@@ -2039,7 +2122,7 @@ impl<'a> Neg for &'a EdwardsPoint {
     fn neg(self) -> (result:
         EdwardsPoint)
     // requires clause in NegSpecImpl for &EdwardsPoint above:
-    //   fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
+    //   is_well_formed_edwards_point(*self)
 
         ensures
             is_well_formed_edwards_point(result),
@@ -2059,10 +2142,60 @@ impl<'a> Neg for &'a EdwardsPoint {
 
         assert(1u64 << 52 < 1u64 << 54) by (bit_vector);
 
+        // Store ghost values before negation
+        let ghost old_x = spec_field_element(&self.X);
+        let ghost old_y = spec_field_element(&self.Y);
+        let ghost old_z = spec_field_element(&self.Z);
+        let ghost old_t = spec_field_element(&self.T);
+
         let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
+
         proof {
-            assume(is_well_formed_edwards_point(r));
-            assume(edwards_point_as_affine(r) == edwards_neg(edwards_point_as_affine(*self)));
+            // Ghost values for r
+            let new_x = spec_field_element(&r.X);
+            let new_y = spec_field_element(&r.Y);
+            let new_z = spec_field_element(&r.Z);
+            let new_t = spec_field_element(&r.T);
+
+            // From FieldElement51::neg postconditions:
+            // - new_x = math_field_neg(old_x)
+            // - new_t = math_field_neg(old_t)
+            // - X and T limbs are 52-bounded
+            assert(new_x == math_field_neg(old_x));
+            assert(new_t == math_field_neg(old_t));
+            assert(new_y == old_y);  // Y unchanged
+            assert(new_z == old_z);  // Z unchanged
+
+            // 1. Prove edwards_point_limbs_bounded(r)
+            // X and T are 52-bounded from neg postcondition
+            assert(fe51_limbs_bounded(&r.X, 52));
+            assert(fe51_limbs_bounded(&r.T, 52));
+            // Y and Z bounds from precondition: is_well_formed_edwards_point implies edwards_point_limbs_bounded
+            assert(fe51_limbs_bounded(&r.Y, 52));  // Y unchanged, bounded from precondition
+            assert(fe51_limbs_bounded(&r.Z, 52));  // Z unchanged, bounded from precondition
+
+            // 2. Prove sum_of_limbs_bounded(&r.Y, &r.X, u64::MAX)
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&r.Y, &r.X, 52);
+
+            // 3. Prove is_valid_edwards_point(r)
+            // Use lemma_negation_preserves_extended_validity: (-X, Y, Z, -T) is valid if (X, Y, Z, T) is
+            lemma_negation_preserves_extended_validity(old_x, old_y, old_z, old_t);
+            assert(is_valid_edwards_point(r));
+
+            // 4. Prove affine semantics: edwards_point_as_affine(r) == edwards_neg(edwards_point_as_affine(*self))
+            let z_inv = math_field_inv(old_z);
+
+            // Key algebraic fact: (-x) * z_inv = -(x * z_inv)
+            assert(math_field_mul(new_x, z_inv) == math_field_neg(math_field_mul(old_x, z_inv))) by {
+                // new_x = math_field_neg(old_x)
+                // math_field_mul(neg(a), b) = neg(math_field_mul(a, b)) by field algebra
+                lemma_field_mul_comm(new_x, z_inv);
+                lemma_field_mul_neg(z_inv, old_x);
+                lemma_field_mul_comm(z_inv, old_x);
+            };
+
+            // The affine coords match: (neg(x/z), y/z) = edwards_neg((x/z, y/z))
+            assert(edwards_point_as_affine(r) == edwards_neg(edwards_point_as_affine(*self)));
         }
         r
     }
@@ -2077,8 +2210,8 @@ impl vstd::std_specs::ops::NegSpecImpl for EdwardsPoint {
     }
 
     open spec fn neg_req(self) -> bool {
-        // Same requirements as &EdwardsPoint
-        fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
+        // Same requirements as &EdwardsPoint - strengthened to require well-formed point
+        is_well_formed_edwards_point(self)
     }
 
     open spec fn neg_spec(self) -> EdwardsPoint {

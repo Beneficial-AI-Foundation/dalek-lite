@@ -1752,11 +1752,18 @@ fn differential_add_and_double(
                 assert(B != MontgomeryAffine::Infinity);
                 assert(P_aff != Q_aff) by {
                     if P_aff == Q_aff {
-                        lemma_add_gives_same_implies_identity(B, P_aff);
+                        assert(montgomery_add(B, P_aff) == P_aff);
+                        axiom_montgomery_add_associative(B, P_aff, montgomery_neg(P_aff));
+                        axiom_montgomery_add_inverse(P_aff);
+                        axiom_montgomery_add_identity(B);
+                        assert(B == MontgomeryAffine::Infinity);
+                        assert(false);
                     }
                 }
                 assert(montgomery_sub(Q_aff, P_aff) == B) by {
-                    lemma_consecutive_diff_is_base(B, P_aff);
+                    axiom_montgomery_add_associative(B, P_aff, montgomery_neg(P_aff));
+                    axiom_montgomery_add_inverse(P_aff);
+                    axiom_montgomery_add_identity(B);
                 }
                 axiom_xadd_projective_correct(P_aff, Q_aff, U_P0, W_P0, U_Q0, W_Q0, u_diff);
                 assert(projective_represents_montgomery_or_infinity(
@@ -1823,11 +1830,18 @@ fn differential_add_and_double(
                 assert(P_aff == montgomery_add(B, Q_aff));
                 assert(P_aff != Q_aff) by {
                     if P_aff == Q_aff {
-                        lemma_add_gives_same_implies_identity(B, Q_aff);
+                        assert(montgomery_add(B, Q_aff) == Q_aff);
+                        axiom_montgomery_add_associative(B, Q_aff, montgomery_neg(Q_aff));
+                        axiom_montgomery_add_inverse(Q_aff);
+                        axiom_montgomery_add_identity(B);
+                        assert(B == MontgomeryAffine::Infinity);
+                        assert(false);
                     }
                 }
                 assert(montgomery_sub(P_aff, Q_aff) == B) by {
-                    lemma_consecutive_diff_is_base(B, Q_aff);
+                    axiom_montgomery_add_associative(B, Q_aff, montgomery_neg(Q_aff));
+                    axiom_montgomery_add_inverse(Q_aff);
+                    axiom_montgomery_add_identity(B);
                 }
                 axiom_xadd_projective_correct(P_aff, Q_aff, U_P0, W_P0, U_Q0, W_Q0, u_diff);
                 assert(projective_represents_montgomery_or_infinity(

@@ -459,37 +459,6 @@ pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
     lemma_montgomery_scalar_mul_add(P, n, n);
 }
 
-/// Lemma: If B + P = P, then B = ∞ (no non-identity fixed point under translation)
-///
-/// Used by: `differential_add_and_double` to show P_aff != Q_aff when Q_aff = B + P_aff
-pub proof fn lemma_add_gives_same_implies_identity(B: MontgomeryAffine, P: MontgomeryAffine)
-    requires
-        montgomery_add(B, P) == P,
-    ensures
-        B == MontgomeryAffine::Infinity,
-{
-    // B + P = P => (B + P) + (-P) = P + (-P) => B + (P + (-P)) = ∞ => B + ∞ = ∞ => B = ∞
-    axiom_montgomery_add_associative(B, P, montgomery_neg(P));
-    axiom_montgomery_add_inverse(P);
-    axiom_montgomery_add_identity(B);
-}
-
-/// Lemma: If Q = B + P, then Q - P = B (difference of consecutive scalar multiples)
-///
-/// Used by: `differential_add_and_double` to establish the difference for xADD
-pub proof fn lemma_consecutive_diff_is_base(B: MontgomeryAffine, P: MontgomeryAffine)
-    requires
-        B != MontgomeryAffine::Infinity,
-    ensures
-        montgomery_sub(montgomery_add(B, P), P) == B,
-{
-    // (B + P) - P = (B + P) + (-P) = B + (P + (-P)) = B + ∞ = B
-    let Q = montgomery_add(B, P);
-    axiom_montgomery_add_associative(B, P, montgomery_neg(P));
-    axiom_montgomery_add_inverse(P);
-    axiom_montgomery_add_identity(B);
-}
-
 // =============================================================================
 // DEGENERATE BASEPOINT (u=0) LEMMAS
 // =============================================================================

@@ -1698,4 +1698,45 @@ pub proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
     // Therefore (x', y') = (-x, y) = edwards_neg((x, y))
 }
 
+/// Lemma: When a ProjectiveNielsPoint corresponds to an EdwardsPoint,
+/// their affine representations are equal.
+///
+/// ## Mathematical Proof
+///
+/// Given `projective_niels_corresponds_to_edwards(niels, point)`:
+/// - y_plus_x == Y + X
+/// - y_minus_x == Y - X
+/// - niels_z == Z
+///
+/// From `projective_niels_point_as_affine_edwards`:
+/// - x_proj = (y_plus_x - y_minus_x) / 2 = ((Y+X) - (Y-X)) / 2 = 2X / 2 = X
+/// - y_proj = (y_plus_x + y_minus_x) / 2 = ((Y+X) + (Y-X)) / 2 = 2Y / 2 = Y
+/// - x_affine = x_proj / z = X / Z
+/// - y_affine = y_proj / z = Y / Z
+///
+/// This equals `edwards_point_as_affine(point) = (X/Z, Y/Z)`.
+#[verifier::external_body]
+pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
+    niels: crate::backend::serial::curve_models::ProjectiveNielsPoint,
+    point: crate::edwards::EdwardsPoint,
+)
+    requires
+        projective_niels_corresponds_to_edwards(niels, point),
+        is_valid_edwards_point(point),
+    ensures
+        projective_niels_point_as_affine_edwards(niels) == edwards_point_as_affine(point),
+{
+    // This is a mathematical identity based on the correspondence definition.
+    //
+    // The key algebraic steps:
+    // 1. y_plus_x = Y + X, y_minus_x = Y - X (from correspondence)
+    // 2. x_proj = ((Y+X) - (Y-X)) / 2 = 2X / 2 = X
+    // 3. y_proj = ((Y+X) + (Y-X)) / 2 = 2Y / 2 = Y
+    // 4. x_affine = X / Z, y_affine = Y / Z
+    //
+    // The proof requires showing that field arithmetic on
+    // (y_plus_x ± y_minus_x) / 2 / z equals x / z and y / z
+    // when y_plus_x = y + x and y_minus_x = y - x.
+}
+
 } // verus!

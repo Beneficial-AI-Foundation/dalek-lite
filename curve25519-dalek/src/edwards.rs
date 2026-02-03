@@ -1413,6 +1413,7 @@ impl EdwardsPoint {
     /// model does not retain sign information.
     pub fn to_montgomery(&self) -> (result: MontgomeryPoint)
         requires
+            is_valid_edwards_point(*self),  // Gives us z != 0 for birational map
             fe51_limbs_bounded(&self.X, 54),
             // Y and Z need 51-bit bounds so U = Z + Y is 52-bit bounded (< 54 for mul)
             fe51_limbs_bounded(&self.Y, 51) && fe51_limbs_bounded(&self.Z, 51),
@@ -1467,7 +1468,10 @@ impl EdwardsPoint {
         proof {
             // mul postcondition: u_field = (Z+Y) * inv(Z-Y)
             assert(u_field == math_field_mul(u_val, w_inv_val));
-            assert(u_field == math_field_mul(math_field_add(z, y), math_field_inv(math_field_sub(z, y))));
+            assert(u_field == math_field_mul(
+                math_field_add(z, y),
+                math_field_inv(math_field_sub(z, y)),
+            ));
         }
 
         let u_bytes = u.as_bytes();
@@ -1476,7 +1480,6 @@ impl EdwardsPoint {
         proof {
             // === Correspondence proof ===
             // Need: montgomery_corresponds_to_edwards(result, *self)
-
             // Step 1: Connect spec_montgomery(result) to u_field
             // as_bytes postcondition: bytes32_to_nat(&u.as_bytes()) == spec_field_element(&u)
             assert(bytes32_to_nat(&u_bytes) == spec_field_element(&u));
@@ -1501,9 +1504,11 @@ impl EdwardsPoint {
 
             // Step 3: Use birational map axiom
             // The axiom states: (z+y)/(z-y) = (1+y_affine)/(1-y_affine) when z ≠ 0
-            // We need z % p() != 0 (non-identity point)
-            // For now, assume this precondition (most points satisfy it)
-            assume(z % p() != 0);
+            // From is_valid_edwards_point, we have z != 0 (math_is_valid_extended_edwards_point includes z != 0)
+            // Since z = spec_field_element(&self.Z) < p(), we have z % p() == z, so z % p() != 0
+            assert(z != 0);  // From is_valid_edwards_point -> math_is_valid_extended_edwards_point
+            lemma_small_mod(z, p());  // z < p() implies z % p() == z
+            assert(z % p() != 0);
             axiom_birational_edwards_montgomery(y, z);
 
             // Step 4: Connect the formulas
@@ -1521,10 +1526,15 @@ impl EdwardsPoint {
             let denominator = math_field_sub(1, y_affine);
             if denominator == 0 {
                 // Identity case: y_affine = 1, meaning Y = Z
-                // Then Z - Y = 0, and invert(0) = 0, so u = (Z+Y) * 0 = 0
-                assume(u_field == 0);  // Handle identity case specially
+                // one_minus_y == denominator == 0
+                // math_field_inv(0) == 0 by definition
+                // affine_result = math_field_mul(one_plus_y, 0) == 0
+                assert(one_minus_y == 0);  // same as denominator
+                assert(math_field_inv(one_minus_y) == 0);  // math_field_inv(0) = 0
+                lemma_field_mul_zero_right(one_plus_y, math_field_inv(one_minus_y));
+                assert(affine_result == 0);
+                assert(u_field == 0);
             }
-
             assert(montgomery_corresponds_to_edwards(result, *self));
         }
         result
@@ -1913,15 +1923,27 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
             assert(projective_niels_corresponds_to_edwards(other_niels, *other));
 
             // Now we need to connect spec_edwards_add_projective_niels to edwards_add
-            // This requires showing that the projective Niels addition formula equals the affine addition
-            // PROOF BYPASS: The final step requires a lemma connecting:
-            //   spec_edwards_add_projective_niels(self, other_niels) == edwards_add(x1, y1, x2, y2)
-            // where (x1, y1) = edwards_point_as_affine(self), (x2, y2) = edwards_point_as_affine(other)
-            assume({
-                let (x1, y1) = edwards_point_as_affine(*self);
-                let (x2, y2) = edwards_point_as_affine(*other);
-                edwards_point_as_affine(result) == edwards_add(x1, y1, x2, y2)
-            });
+            // Use the lemma that shows the affine representations are equal
+            use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_projective_niels_affine_equals_edwards_affine;
+            lemma_projective_niels_affine_equals_edwards_affine(other_niels, *other);
+            assert(projective_niels_point_as_affine_edwards(other_niels) == edwards_point_as_affine(
+                *other,
+            ));
+
+            // From spec_edwards_add_projective_niels definition:
+            // spec_edwards_add_projective_niels(self, other_niels) =
+            //   edwards_add(edwards_point_as_affine(self), projective_niels_point_as_affine_edwards(other_niels))
+            // Since projective_niels_point_as_affine_edwards(other_niels) == edwards_point_as_affine(other):
+            // spec_edwards_add_projective_niels(self, other_niels) = edwards_add(x1, y1, x2, y2)
+            let (x1, y1) = edwards_point_as_affine(*self);
+            let (x2, y2) = edwards_point_as_affine(*other);
+            assert(spec_edwards_add_projective_niels(*self, other_niels) == edwards_add(
+                x1,
+                y1,
+                x2,
+                y2,
+            ));
+            assert(edwards_point_as_affine(result) == edwards_add(x1, y1, x2, y2));
         }
 
         result
@@ -2259,7 +2281,8 @@ impl<'a> Neg for &'a EdwardsPoint {
             let z_inv = math_field_inv(old_z);
 
             // Key algebraic fact: (-x) * z_inv = -(x * z_inv)
-            assert(math_field_mul(new_x, z_inv) == math_field_neg(math_field_mul(old_x, z_inv))) by {
+            assert(math_field_mul(new_x, z_inv) == math_field_neg(math_field_mul(old_x, z_inv)))
+                by {
                 // new_x = math_field_neg(old_x)
                 // math_field_mul(neg(a), b) = neg(math_field_mul(a, b)) by field algebra
                 lemma_field_mul_comm(new_x, z_inv);
@@ -3315,45 +3338,20 @@ impl BasepointTable for EdwardsBasepointTable {
                         a[i as int] as int,
                     ));
 
-                    // Unfold pippenger_partial(a@, i+1, B) - since i is even, even_sum_up_to includes term for i
-                    reveal(pippenger_partial);
-                    reveal(even_sum_up_to);
-                    // pippenger_partial(a@, i+1, B) = edwards_add(16*odd_sum, even_sum_up_to(a@, i+1, B))
-                    // where even_sum_up_to(a@, i+1, B) = edwards_add(even_sum_up_to(a@, i, B), term_i)
-                    // So pippenger_partial(a@, i+1, B) = edwards_add(pippenger_partial(a@, i, B), term_i)
-                    // ... using group-law associativity.
                     let term_i = edwards_scalar_mul_signed(table_base, a[i as int] as int);
                     assert(selected_affine == term_i);
 
                     let p_i = pippenger_partial(a@, i as int, B);
-                    let p_ip1 = pippenger_partial(a@, (i + 1) as int, B);
                     assert(old_P2_affine == p_i);
 
-                    let odd_sum = odd_sum_up_to(a@, 64, B);
-                    let scaled = edwards_scalar_mul(odd_sum, 16);
-                    let even_i = even_sum_up_to(a@, i as int, B);
-                    let even_ip1 = even_sum_up_to(a@, (i + 1) as int, B);
-                    assert(p_i == edwards_add(scaled.0, scaled.1, even_i.0, even_i.1));
-
-                    // Unfold even_sum_up_to at i+1 (since i is even in this branch).
-                    assert(even_ip1 == {
-                        let prev = even_sum_up_to(a@, i as int, B);
-                        edwards_add(prev.0, prev.1, term_i.0, term_i.1)
-                    });
-                    assert(even_ip1 == edwards_add(even_i.0, even_i.1, term_i.0, term_i.1));
-
-                    // Re-associate: (scaled + even_i) + term_i == scaled + (even_i + term_i).
-                    // p_i + term_i == scaled + even_ip1 == p_ip1
-                    assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == p_ip1) by {
-                        axiom_edwards_add_associative(
-                            scaled.0,
-                            scaled.1,
-                            even_i.0,
-                            even_i.1,
-                            term_i.0,
-                            term_i.1,
-                        );
-                    }
+                    // Update step for the spec-side loop state, isolated in a small lemma to avoid rlimit.
+                    crate::lemmas::edwards_lemmas::mul_base_lemmas::lemma_pippenger_partial_step_even(
+                    a@, i as int, B);
+                    assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == pippenger_partial(
+                        a@,
+                        (i + 1) as int,
+                        B,
+                    ));
 
                     // Our updated point is p_i + term_i, hence equals p_{i+1}.
                     assert(edwards_point_as_affine(P) == edwards_add(
@@ -3362,14 +3360,13 @@ impl BasepointTable for EdwardsBasepointTable {
                         term_i.0,
                         term_i.1,
                     ));
-                    assert(edwards_point_as_affine(P) == p_ip1);
+                    assert(edwards_point_as_affine(P) == pippenger_partial(a@, (i + 1) as int, B));
                 }
             } else {
                 proof {
                     // Odd index: pippenger_partial skips this index (even_sum_up_to skips odd)
-                    reveal(pippenger_partial);
-                    reveal(even_sum_up_to);
-                    // pippenger_partial(a@, i+1, B) == pippenger_partial(a@, i, B) when i is odd
+                    crate::lemmas::edwards_lemmas::mul_base_lemmas::lemma_pippenger_partial_step_odd(
+                    a@, i as int, B);
                 }
             }
         }

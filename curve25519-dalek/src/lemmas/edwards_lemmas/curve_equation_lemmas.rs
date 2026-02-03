@@ -1734,53 +1734,60 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     let y_minus_x = spec_field_element(&niels.Y_minus_X);
     let niels_z = spec_field_element(&niels.Z);
 
-    // From correspondence:
-    assert(y_plus_x == math_field_add(y, x));
-    assert(y_minus_x == math_field_sub(y, x));
-    assert(niels_z == z);
+    assert(y_plus_x == math_field_add(y, x)) by {
+        reveal(projective_niels_corresponds_to_edwards);
+    }
+    assert(y_minus_x == math_field_sub(y, x)) by {
+        reveal(projective_niels_corresponds_to_edwards);
+    }
+    assert(niels_z == z) by {
+        reveal(projective_niels_corresponds_to_edwards);
+    }
 
     let inv2 = math_field_inv(2);
 
-    // Step 1: Show (y_plus_x - y_minus_x) / 2 = x
-    // (y+x) - (y-x) = 2x by lemma_field_add_sub_recover_double
-    lemma_field_add_sub_recover_double(y, x);
+    // Step 1: Recover X in projective coordinates.
     let diff = math_field_sub(y_plus_x, y_minus_x);
-    assert(diff == math_field_mul(2, x));
-    // 2x * inv(2) = x by lemma_field_halve_double
-    lemma_field_halve_double(x);
     let x_proj = math_field_mul(diff, inv2);
-    assert(x_proj == x % p());
+    assert(diff == math_field_mul(2, x)) by {
+        lemma_field_add_sub_recover_double(y, x);
+    }
+    assert(x_proj == x % p()) by {
+        // (2x) * inv(2) = x (mod p)
+        lemma_field_halve_double(x);
+    }
 
-    // Step 2: Show (y_plus_x + y_minus_x) / 2 = y
-    // (y+x) + (y-x) = 2y by lemma_field_add_add_recover_double
-    lemma_field_add_add_recover_double(y, x);
+    // Step 2: Recover Y in projective coordinates.
     let sum = math_field_add(y_plus_x, y_minus_x);
-    assert(sum == math_field_mul(2, y));
-    // 2y * inv(2) = y by lemma_field_halve_double
-    lemma_field_halve_double(y);
     let y_proj = math_field_mul(sum, inv2);
-    assert(y_proj == y % p());
+    assert(sum == math_field_mul(2, y)) by {
+        lemma_field_add_add_recover_double(y, x);
+    }
+    assert(y_proj == y % p()) by {
+        // (2y) * inv(2) = y (mod p)
+        lemma_field_halve_double(y);
+    }
 
     // Step 3: x_affine = x_proj / z = x / z (since x_proj == x % p and x < p)
     // y_affine = y_proj / z = y / z
     // This matches edwards_point_as_affine(point) = (x/z, y/z)
 
     // spec_field_element returns (val % p) which is always < p
-    p_gt_2();
     assert(x < p()) by {
-        // spec_field_element returns spec_field_element_as_nat(fe) % p()
-        // which is always < p() for p > 0
+        p_gt_2();
         lemma_mod_bound(spec_field_element_as_nat(&point.X) as int, p() as int);
     }
     assert(y < p()) by {
+        p_gt_2();
         lemma_mod_bound(spec_field_element_as_nat(&point.Y) as int, p() as int);
     }
 
-    // The specs reduce x % p() = x since x < p
-    lemma_small_mod(x, p());
-    assert(x_proj == x);
-    lemma_small_mod(y, p());
-    assert(y_proj == y);
+    assert(x_proj == x) by {
+        lemma_small_mod(x, p());
+    }
+    assert(y_proj == y) by {
+        lemma_small_mod(y, p());
+    }
 }
 
 } // verus!

@@ -19,12 +19,12 @@
 //!
 //! - `odd_sum_up_to`: Partial sum of odd-indexed digit contributions
 //! - `even_sum_up_to`: Partial sum of even-indexed digit contributions
-//! - `pippenger_partial`: State during loop 2 (16 * odd_sum + partial even_sum)
-//! - `radix16_sum`: Full radix-16 sum equals [scalar] * B
+//! - `pippenger_partial`: State during Pippenger loop (16 * odd_sum + partial even_sum);
+//!   `pippenger_partial(digits, 64, B)` is the full sum equal to [scalar] * B
 //!
 //! ## Key Lemmas
 //!
-//! - `lemma_radix16_sum_correct`: Proves `radix16_sum(digits, P) == [reconstruct(digits)] P`
+//! - `lemma_pippenger_sum_correct`: Proves `pippenger_partial(digits, 64, P) == [reconstruct(digits)] P`
 //! - `lemma_even_sum_up_to_correct`: Proves even digit accumulation equals scalar multiplication
 //! - `lemma_odd_sum_up_to_correct`: Proves odd digit accumulation equals scalar multiplication
 //! - `lemma_select_is_signed_scalar_mul`: Proves table lookup correctness for signed digits
@@ -169,19 +169,6 @@ pub open spec fn pippenger_partial(digits: Seq<i8>, even_upper_i: int, B: (nat, 
     let scaled = edwards_scalar_mul(odd_sum, 16);
     let even_sum = even_sum_up_to(digits, even_upper_i, B);
     edwards_add(scaled.0, scaled.1, even_sum.0, even_sum.1)
-}
-
-/// Full radix-16 sum: sum of a[i] * 16^i * B for i in 0..64
-///
-/// This equals [scalar] * B when digits are the radix-16 representation of scalar.
-pub open spec fn radix16_sum(digits: Seq<i8>, B: (nat, nat)) -> (nat, nat)
-    recommends
-        digits.len() == 64,
-{
-    // The algorithm computes: 16 * odd_sum + even_sum
-    // where odd_sum = sum(a[2j+1] * 256^j * B) and even_sum = sum(a[2j] * 256^j * B)
-    // This equals sum(a[i] * 16^i * B) since 256 = 16^2
-    pippenger_partial(digits, 64, B)
 }
 
 // =============================================================================
@@ -771,23 +758,23 @@ pub proof fn lemma_reconstruct_radix16_even_odd(digits: Seq<i8>, n: nat)
 }
 
 // =============================================================================
-// Main correctness lemmas for radix16_sum
+// Main correctness lemmas for Pippenger sum
 // =============================================================================
-/// Main lemma: `radix16_sum` equals signed scalar multiplication by the reconstructed scalar.
+/// Main lemma: Pippenger sum equals signed scalar multiplication by the reconstructed scalar.
 ///
 /// This is the core correctness theorem for the Pippenger algorithm. It proves:
-///     `radix16_sum(digits, P) == [reconstruct_radix_16(digits)] P`
+///     `pippenger_partial(digits, 64, P) == [reconstruct_radix_16(digits)] P`
 ///
 /// The proof combines:
 /// 1. Even digit sum correctness (`lemma_even_sum_up_to_correct`)
 /// 2. Odd digit sum correctness (`lemma_odd_sum_up_to_correct`)
 /// 3. Reconstruction equals even + 16*odd (`lemma_reconstruct_radix16_even_odd`)
 /// 4. Signed additivity axiom to combine the sums
-pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, nat))
+pub proof fn lemma_pippenger_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, nat))
     requires
         digits.len() == 64,
     ensures
-        radix16_sum(digits, basepoint) == edwards_scalar_mul_signed(
+        pippenger_partial(digits, 64, basepoint) == edwards_scalar_mul_signed(
             basepoint,
             reconstruct_radix_16(digits),
         ),
@@ -797,8 +784,7 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     let n = 32nat;
     assert(digits.len() >= 2 * n);
 
-    // Unfold radix16_sum/pippenger_partial and rewrite via the proved equalities.
-    reveal(radix16_sum);
+    // Unfold pippenger_partial and rewrite via the proved equalities.
     reveal(pippenger_partial);
 
     let odd_sum = odd_sum_up_to(digits, 64, basepoint);
@@ -843,8 +829,8 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
         lemma_mul_is_commutative(radix16_odd_scalar(digits, n), 16);
     }
 
-    // Close: unfold radix16_sum into edwards_add(scaled, even_sum) and rewrite the scalar.
-    assert(radix16_sum(digits, basepoint) == edwards_add(
+    // Close: pippenger_partial(digits, 64, basepoint) is edwards_add(scaled, even_sum).
+    assert(pippenger_partial(digits, 64, basepoint) == edwards_add(
         scaled.0,
         scaled.1,
         even_sum.0,
@@ -856,18 +842,18 @@ pub proof fn lemma_radix16_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, 
     ) == edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits)));
 }
 
-/// Convenience lemma: `radix16_sum` equals unsigned scalar multiplication when scalar is nonnegative.
+/// Convenience lemma: Pippenger sum equals unsigned scalar multiplication when scalar is nonnegative.
 ///
 /// When the reconstructed scalar is known to be a natural number (nonnegative),
 /// this simplifies to the unsigned scalar multiplication.
-pub proof fn lemma_radix16_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), scalar_nat: nat)
+pub proof fn lemma_pippenger_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), scalar_nat: nat)
     requires
         digits.len() == 64,
         reconstruct_radix_16(digits) == scalar_nat as int,
     ensures
-        radix16_sum(digits, basepoint) == edwards_scalar_mul(basepoint, scalar_nat),
+        pippenger_partial(digits, 64, basepoint) == edwards_scalar_mul(basepoint, scalar_nat),
 {
-    lemma_radix16_sum_correct_signed(digits, basepoint);
+    lemma_pippenger_sum_correct_signed(digits, basepoint);
     assert(edwards_scalar_mul_signed(basepoint, reconstruct_radix_16(digits))
         == edwards_scalar_mul_signed(basepoint, scalar_nat as int));
     assert(edwards_scalar_mul_signed(basepoint, scalar_nat as int) == edwards_scalar_mul(
@@ -985,17 +971,67 @@ pub proof fn lemma_select_is_signed_scalar_mul(
 }
 
 // =============================================================================
+// Lemma: Basepoint table select gives signed scalar multiplication
+// =============================================================================
+/// Lemma: For a valid basepoint table, selecting digit a[i] gives [a[i]] * (256^(i/2) * B).
+///
+/// This lemma combines table validity with `lemma_select_is_signed_scalar_mul` to prove
+/// that the selected point corresponds to signed scalar multiplication by the digit.
+/// Used in both loop 1 and loop 2 of mul_base.
+#[cfg(feature = "precomputed-tables")]
+pub proof fn lemma_basepoint_table_select(
+    table: crate::edwards::EdwardsBasepointTable,
+    a: Seq<i8>,
+    i: int,
+    selected: AffineNielsPoint,
+    B: (nat, nat),
+)
+    requires
+        is_valid_edwards_basepoint_table(table, B),
+        B == spec_ed25519_basepoint(),
+        0 <= i < 64,
+        -8 <= a[i] <= 8,
+        // select postconditions (from LookupTable::select):
+        (a[i] > 0 ==> selected == table.0[(i / 2) as int].0[(a[i] - 1) as int]),
+        (a[i] == 0 ==> selected == identity_affine_niels()),
+        (a[i] < 0 ==> selected == negate_affine_niels(
+            table.0[(i / 2) as int].0[((-a[i]) - 1) as int],
+        )),
+    ensures
+        affine_niels_point_as_affine_edwards(selected) == edwards_scalar_mul_signed(
+            edwards_scalar_mul(B, pow256((i / 2) as nat)),
+            a[i] as int,
+        ),
+{
+    let table_idx = i / 2;
+    let table_base = edwards_scalar_mul(B, pow256(table_idx as nat));
+
+    // From is_valid_edwards_basepoint_table, extract validity for this table index
+    assert(0 <= table_idx < 32);
+    assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+        table.0[table_idx].0,
+        table_base,
+        8,
+    )) by {
+        reveal(is_valid_edwards_basepoint_table);
+    }
+
+    // Apply lemma_select_is_signed_scalar_mul
+    lemma_select_is_signed_scalar_mul(table.0[table_idx].0, a[i], selected, table_base);
+}
+
+// =============================================================================
 // Lemma: Valid radix-16 implies bounded digits
 // =============================================================================
 /// Lemma: is_valid_radix_16 implies radix_16_all_bounded
 ///
 /// is_valid_radix_16 gives tighter bounds (-8 <= d < 8 for non-last, -8 <= d <= 8 for last)
 /// but radix_16_all_bounded (-8 <= d <= 8 for all) is still implied.
-pub proof fn lemma_valid_radix_16_implies_all_bounded(digits: &[i8; 64])
+pub proof fn lemma_valid_radix_16_implies_all_bounded(digits: [i8; 64])
     requires
-        is_valid_radix_16(digits),
+        is_valid_radix_16(&digits),
     ensures
-        radix_16_all_bounded(digits),
+        radix_16_all_bounded(&digits),
 {
     // Expand the definitions:
     //
@@ -1005,7 +1041,7 @@ pub proof fn lemma_valid_radix_16_implies_all_bounded(digits: &[i8; 64])
     // This implies the simpler predicate radix_16_all_bounded(digits):
     //     forall i in [0, 64): -8 <= digits[i] <= 8
     // `is_valid_radix_16(digits)` is `is_valid_radix_2w(digits, 4, 64)`.
-    assert(is_valid_radix_2w(digits, 4, 64));
+    assert(is_valid_radix_2w(&digits, 4, 64));
 
     // Prove the pointwise bound `-8 <= digits[i] <= 8` for all i in [0, 64).
     assert forall|i: int| 0 <= i < 64 implies radix_16_digit_bounded(#[trigger] digits[i]) by {
@@ -1027,7 +1063,7 @@ pub proof fn lemma_valid_radix_16_implies_all_bounded(digits: &[i8; 64])
         }
     }
 
-    assert(radix_16_all_bounded(digits));
+    assert(radix_16_all_bounded(&digits));
 }
 
 } // verus!

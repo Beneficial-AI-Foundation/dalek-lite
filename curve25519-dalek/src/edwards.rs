@@ -1112,18 +1112,18 @@ impl ConditionallySelectable for EdwardsPoint {
             if choice_is_true(choice) {
                 // choice is true: result should be exactly `b`
                 assert(result == *b) by {
-                    lemma_field_element51_eq_from_limbs_eq(&X, &b.X);
-                    lemma_field_element51_eq_from_limbs_eq(&Y, &b.Y);
-                    lemma_field_element51_eq_from_limbs_eq(&Z, &b.Z);
-                    lemma_field_element51_eq_from_limbs_eq(&T, &b.T);
+                    lemma_field_element51_eq_from_limbs_eq(X, b.X);
+                    lemma_field_element51_eq_from_limbs_eq(Y, b.Y);
+                    lemma_field_element51_eq_from_limbs_eq(Z, b.Z);
+                    lemma_field_element51_eq_from_limbs_eq(T, b.T);
                 }
             } else {
                 // choice is false: result should be exactly `a`
                 assert(result == *a) by {
-                    lemma_field_element51_eq_from_limbs_eq(&X, &a.X);
-                    lemma_field_element51_eq_from_limbs_eq(&Y, &a.Y);
-                    lemma_field_element51_eq_from_limbs_eq(&Z, &a.Z);
-                    lemma_field_element51_eq_from_limbs_eq(&T, &a.T);
+                    lemma_field_element51_eq_from_limbs_eq(X, a.X);
+                    lemma_field_element51_eq_from_limbs_eq(Y, a.Y);
+                    lemma_field_element51_eq_from_limbs_eq(Z, a.Z);
+                    lemma_field_element51_eq_from_limbs_eq(T, a.T);
                 }
             }
         }
@@ -2821,10 +2821,10 @@ impl BasepointTable for EdwardsBasepointTable {
         result
     }
 
-    /// The computation uses Pippeneger's algorithm, as described for the
+    /// The computation uses Pippenger's algorithm, as described for the
     /// specific case of radix-16 on page 13 of the Ed25519 paper.
     ///
-    /// # Piggenger's Algorithm Generalised
+    /// # Pippenger's Algorithm Generalised
     ///
     /// Write the scalar \\(a\\) in radix-\\(w\\), where \\(w\\) is a power of
     /// 2, with coefficients in \\([\frac{-w}{2},\frac{w}{2})\\), i.e.,
@@ -2887,7 +2887,7 @@ impl BasepointTable for EdwardsBasepointTable {
             assert(is_valid_radix_2w(&a, 4, 64));
             assert(is_valid_radix_16(&a));
             assert(radix_16_all_bounded(&a)) by {
-                lemma_valid_radix_16_implies_all_bounded(&a);
+                lemma_valid_radix_16_implies_all_bounded(a);
             }
 
             // Initial invariant: identity == odd_sum_up_to(digits, 0, B)
@@ -2973,33 +2973,14 @@ impl BasepointTable for EdwardsBasepointTable {
                     ));
 
                     // 4. By loop invariant: old_P_affine == odd_sum_up_to(a@, i, B)
-                    // 5. Get selected_affine from table validity + lemma_select_is_signed_scalar_mul
+                    // 5. Get selected_affine from table validity
                     let table_idx = (i / 2) as int;
                     let table_base = edwards_scalar_mul(B, pow256(table_idx as nat));
-
-                    // Use reveal to instantiate table validity from basepoint table
-                    assert(0 <= table_idx < 32);
-                    assert(B == spec_ed25519_basepoint());
-                    assert(table_base == edwards_scalar_mul(
-                        spec_ed25519_basepoint(),
-                        pow256(table_idx as nat),
-                    ));
-                    assert(is_valid_lookup_table_affine_coords(tables[table_idx].0, table_base, 8))
-                        by {
-                        reveal(is_valid_edwards_basepoint_table);
-                    }
-
+                    lemma_basepoint_table_select(*self, a@, i as int, selected, B);
                     assert(selected_affine == edwards_scalar_mul_signed(
                         table_base,
                         a[i as int] as int,
-                    )) by {
-                        lemma_select_is_signed_scalar_mul(
-                            tables[table_idx].0,
-                            a[i as int],
-                            selected,
-                            table_base,
-                        );
-                    }
+                    ));
 
                     // 6. Unfold odd_sum_up_to(a@, i+1, B) - since i is odd, this includes term for i
                     reveal(odd_sum_up_to);
@@ -3122,27 +3103,11 @@ impl BasepointTable for EdwardsBasepointTable {
                     // Get selected_affine from table validity
                     let table_idx = (i / 2) as int;
                     let table_base = edwards_scalar_mul(B, pow256(table_idx as nat));
-                    assert(0 <= table_idx < 32);
-                    assert(B == spec_ed25519_basepoint());
-                    assert(table_base == edwards_scalar_mul(
-                        spec_ed25519_basepoint(),
-                        pow256(table_idx as nat),
-                    ));
-                    assert(is_valid_lookup_table_affine_coords(tables[table_idx].0, table_base, 8))
-                        by {
-                        reveal(is_valid_edwards_basepoint_table);
-                    }
+                    lemma_basepoint_table_select(*self, a@, i as int, selected, B);
                     assert(selected_affine == edwards_scalar_mul_signed(
                         table_base,
                         a[i as int] as int,
-                    )) by {
-                        lemma_select_is_signed_scalar_mul(
-                            tables[table_idx].0,
-                            a[i as int],
-                            selected,
-                            table_base,
-                        );
-                    }
+                    ));
 
                     // Unfold pippenger_partial(a@, i+1, B) - since i is even, even_sum_up_to includes term for i
                     reveal(pippenger_partial);
@@ -3204,20 +3169,19 @@ impl BasepointTable for EdwardsBasepointTable {
         }
 
         proof {
-            // After loop 2: P = pippenger_partial(a@, 64, B) = radix16_sum(a@, B)
-            reveal(radix16_sum);
-            assert(edwards_point_as_affine(P) == radix16_sum(a@, B));
+            // After loop 2: P = pippenger_partial(a@, 64, B)
+            assert(edwards_point_as_affine(P) == pippenger_partial(a@, 64, B));
 
-            // Now connect radix16_sum to edwards_scalar_mul:
-            // radix16_sum(a@, B) == edwards_scalar_mul(B, reconstruct_radix_16(a@))
+            // Now connect pippenger_partial to edwards_scalar_mul:
+            // pippenger_partial(a@, 64, B) == edwards_scalar_mul(B, reconstruct_radix_16(a@))
             // And from as_radix_2w postcondition: reconstruct_radix_16(a@) == scalar_to_nat(scalar)
             assert(reconstruct_radix_2w(a@.take(64), 4) == scalar_to_nat(scalar) as int);
             assert(a@.take(64) =~= a@);
             reveal(reconstruct_radix_16);
             assert(reconstruct_radix_16(a@) == scalar_to_nat(scalar) as int);
 
-            lemma_radix16_sum_correct(a@, B, scalar_to_nat(scalar));
-            assert(radix16_sum(a@, B) == edwards_scalar_mul(B, scalar_to_nat(scalar)));
+            lemma_pippenger_sum_correct(a@, B, scalar_to_nat(scalar));
+            assert(pippenger_partial(a@, 64, B) == edwards_scalar_mul(B, scalar_to_nat(scalar)));
 
             // Postconditions:
             assert(is_well_formed_edwards_point(P));

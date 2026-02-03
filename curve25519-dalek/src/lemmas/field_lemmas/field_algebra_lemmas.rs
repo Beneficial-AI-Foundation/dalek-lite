@@ -1780,7 +1780,6 @@ pub proof fn lemma_field_sub_self(x: nat)
 /// ```
 ///
 /// This identity is fundamental to the Edwards-Montgomery birational equivalence.
-#[verifier::external_body]
 pub proof fn axiom_birational_edwards_montgomery(y: nat, z: nat)
     requires
         z % p() != 0,  // Non-identity point (Z ≠ 0)
@@ -1798,13 +1797,15 @@ pub proof fn axiom_birational_edwards_montgomery(y: nat, z: nat)
             projective_result == affine_result
         }),
 {
-    // This is an axiom based on the algebraic identity:
-    // (Z+Y)/(Z-Y) = (1 + Y/Z)/(1 - Y/Z)
+    // Admitted (trusted) lemma.
     //
-    // Proof sketch:
-    // 1. 1 + Y/Z = (Z + Y)/Z  [common denominator]
-    // 2. 1 - Y/Z = (Z - Y)/Z  [common denominator]
-    // 3. ((Z+Y)/Z) / ((Z-Y)/Z) = (Z+Y)/(Z-Y)  [Z cancels]
+    // This is a standard algebraic identity for the Edwards↔Montgomery birational map:
+    // rewriting `y_affine = y * inv(z)` and putting `1 ± y_affine` over a common denominator
+    // yields `(1 + y/z)/(1 - y/z) = (z + y)/(z - y)` when `z != 0`.
+    //
+    // A mechanized proof needs inversion-cancellation lemmas (and tends to trigger rlimit),
+    // so we keep this as a small trusted bridge between the affine and projective forms.
+    admit();
 }
 
 } // verus!

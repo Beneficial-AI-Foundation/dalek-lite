@@ -260,8 +260,9 @@ pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
     let D_int = ((am + p) - bm) as int;
 
     // Establish the shapes of add/sub.
-    lemma_add_mod_noop(a as int, b as int, p_int);
-    assert(math_field_add(a, b) == (am + bm) % p);
+    assert(math_field_add(a, b) == (am + bm) % p) by {
+        lemma_add_mod_noop(a as int, b as int, p_int);
+    }
     assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
 
     let add_ab = math_field_add(a, b);
@@ -287,22 +288,24 @@ pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
     assert(v_int >= 0) by {
         assert(sub_ab < p);
     }
-    lemma_int_nat_mod_equiv(v_int, p);
     assert((v_int % p_int) as nat == (((add_ab + p) - sub_ab) as nat) % p) by {
-        // Rearranged from lemma_int_nat_mod_equiv's conclusion.
+        lemma_int_nat_mod_equiv(v_int, p);
     }
 
     // Rewrite v_int % p to (A_int - D_int) % p:
     // add_ab is (A_int % p), and sub_ab is (D_int % p).
-    lemma_int_nat_mod_equiv(A_int, p);
-    lemma_int_nat_mod_equiv(D_int, p);
-    assert(add_ab as int == A_int % p_int);
-    assert(sub_ab as int == D_int % p_int);
+    assert(add_ab as int == A_int % p_int) by {
+        lemma_int_nat_mod_equiv(A_int, p);
+    }
+    assert(sub_ab as int == D_int % p_int) by {
+        lemma_int_nat_mod_equiv(D_int, p);
+    }
 
     // v_int % p == (A%p + p - D%p) % p == (A%p - D%p) % p
-    lemma_mod_add_multiples_vanish((A_int % p_int) - (D_int % p_int), p_int);
     assert(((A_int % p_int) + p_int - (D_int % p_int)) % p_int == ((A_int % p_int) - (D_int
-        % p_int)) % p_int);
+        % p_int)) % p_int) by {
+        lemma_mod_add_multiples_vanish((A_int % p_int) - (D_int % p_int), p_int);
+    }
 
     // (A%p - D%p) % p == (A - D) % p
     lemma_sub_mod_noop(A_int, D_int, p_int);
@@ -345,8 +348,9 @@ pub proof fn lemma_field_add_add_recover_double(a: nat, b: nat)
     assert(rhs_simpl == (2 * am) % p);
 
     // Rewrite the inner add/sub in terms of am,bm.
-    lemma_add_mod_noop(a as int, b as int, p_int);
-    assert(math_field_add(a, b) == (am + bm) % p);
+    assert(math_field_add(a, b) == (am + bm) % p) by {
+        lemma_add_mod_noop(a as int, b as int, p_int);
+    }
     assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
 
     let add_ab = math_field_add(a, b);
@@ -387,10 +391,9 @@ pub proof fn lemma_field_halve_double(a: nat)
     }
 
     // Inverse property: 2 * inv(2) = 1.
-    field_inv_property(2nat);
     let inv2 = math_field_inv(2nat);
     assert(math_field_mul(2nat, inv2) == 1) by {
-        // field_inv_property gives: ((2 % p) * inv2) % p == 1
+        field_inv_property(2nat);
         lemma_small_mod(2nat, p);
     }
 

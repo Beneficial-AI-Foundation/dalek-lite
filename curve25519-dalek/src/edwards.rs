@@ -1283,15 +1283,20 @@ impl EdwardsPoint {
         proof {
             // === Limb bounds proofs ===
             // Y_plus_X: add of 52-bounded gives 53-bounded, weaken to 54
-            lemma_add_bounds_propagate(&self.Y, &self.X, 52);
-            assert(fe51_limbs_bounded(&spec_add_fe51_limbs(&self.Y, &self.X), 53));
-            lemma_fe51_limbs_bounded_weaken(&result.Y_plus_X, 53, 54);
+            assert(fe51_limbs_bounded(&spec_add_fe51_limbs(&self.Y, &self.X), 53)) by {
+                lemma_add_bounds_propagate(&self.Y, &self.X, 52);
+            }
+            assert(fe51_limbs_bounded(&result.Y_plus_X, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&result.Y_plus_X, 53, 54);
+            }
 
             // Y_minus_X: sub postcondition guarantees 54-bounded (nothing to do)
             assert(fe51_limbs_bounded(&result.Y_minus_X, 54));
 
             // Z: copy of 52-bounded, weaken to 54
-            lemma_fe51_limbs_bounded_weaken(&result.Z, 52, 54);
+            assert(fe51_limbs_bounded(&result.Z, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&result.Z, 52, 54);
+            }
 
             // T2d: mul postcondition guarantees 54-bounded (nothing to do)
             assert(fe51_limbs_bounded(&result.T2d, 54));
@@ -1325,14 +1330,23 @@ impl EdwardsPoint {
             assert(niels_z == z);
 
             // 4. t2d == math_field_mul(math_field_mul(2, d), t)
-            // From mul postcondition: t2d == math_field_mul(t, spec_field_element(&EDWARDS_D2))
-            // Using axiom: spec_field_element(&EDWARDS_D2) == math_field_mul(2, d)
-            axiom_edwards_d2_is_2d();
-            assert(spec_field_element(&constants::EDWARDS_D2) == math_field_mul(2, d));
-            // So: t2d == math_field_mul(t, math_field_mul(2, d))
-            // By commutativity: math_field_mul(t, math_field_mul(2, d)) == math_field_mul(math_field_mul(2, d), t)
-            lemma_field_mul_comm(t, math_field_mul(2, d));
-            assert(t2d == math_field_mul(math_field_mul(2, d), t));
+            assert(t2d == math_field_mul(math_field_mul(2, d), t)) by {
+                // From mul postcondition: t2d == t * EDWARDS_D2
+                assert(t2d == math_field_mul(t, spec_field_element(&constants::EDWARDS_D2)));
+
+                // EDWARDS_D2 equals 2*d in the field.
+                assert(spec_field_element(&constants::EDWARDS_D2) == math_field_mul(2, d)) by {
+                    axiom_edwards_d2_is_2d();
+                }
+
+                // Rewrite and commute.
+                assert(t2d == math_field_mul(t, math_field_mul(2, d)));
+                lemma_field_mul_comm(t, math_field_mul(2, d));
+                assert(math_field_mul(t, math_field_mul(2, d)) == math_field_mul(
+                    math_field_mul(2, d),
+                    t,
+                ));
+            }
 
             // All four conditions are satisfied, so correspondence holds
             assert(projective_niels_corresponds_to_edwards(result, *self));
@@ -1456,6 +1470,13 @@ impl EdwardsPoint {
             assert(w_val == math_field_sub(z, y));  // sub postcondition
         }
 
+        /* ORIGINAL CODE:
+         *   let u = &U * &W.invert();
+         *   let result = MontgomeryPoint(u.as_bytes());
+         *
+         * Refactor: split `invert()`/`as_bytes()` into named intermediates to use their
+         * postconditions locally
+         */
         let W_inv = W.invert();
         let ghost w_inv_val = spec_field_element(&W_inv);
         proof {
@@ -1487,37 +1508,42 @@ impl EdwardsPoint {
             // spec_montgomery(result) = spec_field_element_from_bytes(&result.0)
             //                         = (bytes32_to_nat(&result.0) % pow2(255)) % p()
             // Since spec_field_element(&u) < p() < pow2(255), double mod is identity
-            pow255_gt_19();  // establishes p() < pow2(255)
-            assert(spec_field_element(&u) < p());
-            assert(p() < pow2(255));
+            assert(spec_field_element(&u) < p()) by {
+                p_gt_2();
+                lemma_mod_bound(spec_field_element_as_nat(&u) as int, p() as int);
+            }
+            assert(p() < pow2(255)) by {
+                pow255_gt_19();  // establishes p() < pow2(255)
+            }
 
             // u_field = spec_field_element(&u) < p() < pow2(255)
             // So: spec_field_element(&u) % pow2(255) = spec_field_element(&u)
             //     spec_field_element(&u) % p() = spec_field_element(&u)
-            lemma_small_mod(u_field, pow2(255));
-            lemma_small_mod(u_field, p());
-            assert(spec_field_element_from_bytes(&result.0) == u_field);
+            assert(spec_field_element_from_bytes(&result.0) == u_field) by {
+                lemma_small_mod(u_field, pow2(255));
+                lemma_small_mod(u_field, p());
+            }
 
             // Step 2: Get affine y-coordinate
             let (_x_affine, y_affine) = edwards_point_as_affine(*self);
             assert(y_affine == math_field_mul(y, math_field_inv(z)));
 
-            // Step 3: Use birational map axiom
-            // The axiom states: (z+y)/(z-y) = (1+y_affine)/(1-y_affine) when z ≠ 0
-            // From is_valid_edwards_point, we have z != 0 (math_is_valid_extended_edwards_point includes z != 0)
-            // Since z = spec_field_element(&self.Z) < p(), we have z % p() == z, so z % p() != 0
-            assert(z != 0);  // From is_valid_edwards_point -> math_is_valid_extended_edwards_point
-            lemma_small_mod(z, p());  // z < p() implies z % p() == z
-            assert(z % p() != 0);
-            axiom_birational_edwards_montgomery(y, z);
-
+            // Step 3: Establish the birational map precondition.
+            // Since `is_valid_edwards_point(*self)` implies `z != 0` and `z < p()`,
+            // we get `z % p() != 0`.
+            assert(z % p() != 0) by {
+                assert(z != 0);  // From is_valid_edwards_point -> math_is_valid_extended_edwards_point
+                lemma_small_mod(z, p());  // z < p() implies z % p() == z
+            }
             // Step 4: Connect the formulas
             // u_field = (z+y) * inv(z-y)  [from operations above]
             // By axiom: this equals (1+y_affine) * inv(1-y_affine)
             let one_plus_y = math_field_add(1, y_affine);
             let one_minus_y = math_field_sub(1, y_affine);
             let affine_result = math_field_mul(one_plus_y, math_field_inv(one_minus_y));
-            assert(u_field == affine_result);
+            assert(u_field == affine_result) by {
+                axiom_birational_edwards_montgomery(y, z);
+            }
 
             // Step 5: Match the spec
             // montgomery_corresponds_to_edwards requires:
@@ -1531,8 +1557,9 @@ impl EdwardsPoint {
                 // affine_result = math_field_mul(one_plus_y, 0) == 0
                 assert(one_minus_y == 0);  // same as denominator
                 assert(math_field_inv(one_minus_y) == 0);  // math_field_inv(0) = 0
-                lemma_field_mul_zero_right(one_plus_y, math_field_inv(one_minus_y));
-                assert(affine_result == 0);
+                assert(affine_result == 0) by {
+                    lemma_field_mul_zero_right(one_plus_y, math_field_inv(one_minus_y));
+                }
                 assert(u_field == 0);
             }
             assert(montgomery_corresponds_to_edwards(result, *self));

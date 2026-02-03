@@ -1596,6 +1596,7 @@ pub proof fn lemma_field_sub_self(x: nat)
 pub proof fn axiom_birational_edwards_montgomery(y: nat, z: nat)
     requires
         z % p() != 0,  // Non-identity point (Z ≠ 0)
+
     ensures
         ({
             let y_affine = math_field_mul(y, math_field_inv(z));

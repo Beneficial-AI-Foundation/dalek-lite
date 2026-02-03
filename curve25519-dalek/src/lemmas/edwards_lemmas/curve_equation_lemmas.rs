@@ -14,6 +14,7 @@
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
+#[cfg(verus_keep_ghost)]
 use crate::lemmas::common_lemmas::div_mod_lemmas::lemma_int_nat_mod_equiv;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 #[cfg(verus_keep_ghost)]

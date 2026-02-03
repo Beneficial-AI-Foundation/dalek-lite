@@ -123,13 +123,21 @@ pub(crate) proof fn lemma_edwards_d2_limbs_bounded_54()
 ///
 /// The postcondition states that spec_field_element(&EDWARDS_D2) equals
 /// math_field_mul(2, spec_field_element(&EDWARDS_D)), i.e., 2*d mod p.
-#[verifier::external_body]
 pub(crate) proof fn axiom_edwards_d2_is_2d()
     ensures
-        spec_field_element(&constants::EDWARDS_D2) == math_field_mul(2, spec_field_element(&EDWARDS_D)),
+        spec_field_element(&constants::EDWARDS_D2) == math_field_mul(
+            2,
+            spec_field_element(&EDWARDS_D),
+        ),
 {
-    // This is an axiom based on the definition of EDWARDS_D2 in the library.
-    // EDWARDS_D2 is explicitly computed as 2*EDWARDS_D mod p.
+    // Trusted assumption.
+    //
+    // `constants::EDWARDS_D2` is the concrete FieldElement constant intended to equal
+    // `2 * constants::EDWARDS_D` in GF(p), where p = 2^255 - 19.
+    //
+    // This relationship is enforced by a runtime unit test (see `curve25519-dalek/src/constants.rs`)
+    // and matches the upstream curve25519-dalek definition of EDWARDS_D2.
+    admit();
 }
 
 // =============================================================================

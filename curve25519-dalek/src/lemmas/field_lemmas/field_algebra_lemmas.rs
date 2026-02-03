@@ -221,6 +221,191 @@ pub proof fn lemma_square_matches_math_field_square(y_raw: nat, y2_raw: nat)
 // =============================================================================
 // Field Equation Rearrangement Lemmas
 // =============================================================================
+/// Lemma: (a+b) - (a-b) = 2b in field arithmetic.
+///
+/// This is a general identity in any field (here GF(p)), useful for recovering `b` from
+/// the pair `(a+b, a-b)` when division by 2 is available.
+pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
+    ensures
+        math_field_sub(math_field_add(a, b), math_field_sub(a, b)) == math_field_mul(2, b),
+{
+    let p = p();
+    let p_int = p as int;
+    p_gt_2();
+
+    let am = a % p;
+    let bm = b % p;
+
+    let lhs = math_field_sub(math_field_add(a, b), math_field_sub(a, b));
+    let rhs = math_field_mul(2, b);
+    let rhs_simpl = math_field_mul(2, bm);
+
+    // Simplify RHS to depend only on b % p.
+    assert(rhs == rhs_simpl) by {
+        // (2 * b) % p == (2 * (b % p)) % p
+        lemma_mul_mod_noop_right(2int, b as int, p_int);
+    }
+    assert(rhs_simpl == (2 * bm) % p);
+
+    // Unfold LHS and reduce to a modular arithmetic fact.
+    //
+    // Let A = (am + bm) and D = (am + p - bm).
+    // Then:
+    //   add(a,b) = A % p
+    //   sub(a,b) = D % p
+    // and
+    //   (A % p) - (D % p) ≡ (A - D) ≡ (2bm - p) ≡ 2bm (mod p)
+    let b_int = bm as int;
+    let A_int = (am + bm) as int;
+    let D_int = ((am + p) - bm) as int;
+
+    // Establish the shapes of add/sub.
+    lemma_add_mod_noop(a as int, b as int, p_int);
+    assert(math_field_add(a, b) == (am + bm) % p);
+    assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
+
+    let add_ab = math_field_add(a, b);
+    let sub_ab = math_field_sub(a, b);
+    assert(add_ab == (am + bm) % p);
+    assert(sub_ab == (((am + p) - bm) as nat) % p);
+
+    // Unfold the outer subtraction and simplify the internal %p's since add_ab, sub_ab are reduced (< p).
+    assert(lhs == (((add_ab + p) - sub_ab) as nat) % p) by {
+        assert(add_ab < p) by {
+            lemma_mod_bound((am + bm) as int, p_int);
+        }
+        assert(sub_ab < p) by {
+            lemma_mod_bound(((am + p) - bm) as int, p_int);
+        }
+        lemma_small_mod(add_ab, p);
+        lemma_small_mod(sub_ab, p);
+    }
+
+    // Convert the nat modulo to int modulo using lemma_int_nat_mod_equiv.
+    // v = add_ab + p - sub_ab is nonnegative because p > sub_ab and add_ab >= 0.
+    let v_int = (add_ab as int + p_int) - sub_ab as int;
+    assert(v_int >= 0) by {
+        assert(sub_ab < p);
+    }
+    lemma_int_nat_mod_equiv(v_int, p);
+    assert((v_int % p_int) as nat == (((add_ab + p) - sub_ab) as nat) % p) by {
+        // Rearranged from lemma_int_nat_mod_equiv's conclusion.
+    }
+
+    // Rewrite v_int % p to (A_int - D_int) % p:
+    // add_ab is (A_int % p), and sub_ab is (D_int % p).
+    lemma_int_nat_mod_equiv(A_int, p);
+    lemma_int_nat_mod_equiv(D_int, p);
+    assert(add_ab as int == A_int % p_int);
+    assert(sub_ab as int == D_int % p_int);
+
+    // v_int % p == (A%p + p - D%p) % p == (A%p - D%p) % p
+    lemma_mod_add_multiples_vanish((A_int % p_int) - (D_int % p_int), p_int);
+    assert(((A_int % p_int) + p_int - (D_int % p_int)) % p_int == ((A_int % p_int) - (D_int
+        % p_int)) % p_int);
+
+    // (A%p - D%p) % p == (A - D) % p
+    lemma_sub_mod_noop(A_int, D_int, p_int);
+
+    // A - D == 2bm - p
+    assert(A_int - D_int == 2 * b_int - p_int);
+
+    // (2bm - p) % p == (2bm) % p
+    lemma_mod_add_multiples_vanish((2 * b_int) - p_int, p_int);
+    assert(((2 * b_int) - p_int) % p_int == (2 * b_int) % p_int);
+
+    // Conclude lhs == rhs_simpl == rhs.
+    assert(lhs == rhs_simpl);
+    assert(lhs == rhs);
+}
+
+/// Lemma: (a+b) + (a-b) = 2a in field arithmetic.
+///
+/// This is a general identity in any field (here GF(p)), useful for recovering `a` from
+/// the pair `(a+b, a-b)` when division by 2 is available.
+pub proof fn lemma_field_add_add_recover_double(a: nat, b: nat)
+    ensures
+        math_field_add(math_field_add(a, b), math_field_sub(a, b)) == math_field_mul(2, a),
+{
+    let p = p();
+    let p_int = p as int;
+    p_gt_2();
+
+    let am = a % p;
+    let bm = b % p;
+
+    let lhs = math_field_add(math_field_add(a, b), math_field_sub(a, b));
+    let rhs = math_field_mul(2, a);
+    let rhs_simpl = math_field_mul(2, am);
+
+    // Simplify RHS to depend only on a % p.
+    assert(rhs == rhs_simpl) by {
+        lemma_mul_mod_noop_right(2int, a as int, p_int);
+    }
+    assert(rhs_simpl == (2 * am) % p);
+
+    // Rewrite the inner add/sub in terms of am,bm.
+    lemma_add_mod_noop(a as int, b as int, p_int);
+    assert(math_field_add(a, b) == (am + bm) % p);
+    assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
+
+    let add_ab = math_field_add(a, b);
+    let sub_ab = math_field_sub(a, b);
+    assert(add_ab == (am + bm) % p);
+    assert(sub_ab == (((am + p) - bm) as nat) % p);
+
+    // Unfold outer add: (add_ab + sub_ab) % p
+    assert(lhs == (add_ab + sub_ab) % p);
+
+    let A_int = (am + bm) as int;
+    let D_int = ((am + p) - bm) as int;
+
+    // (A % p + D % p) % p == (A + D) % p
+    lemma_add_mod_noop(A_int, D_int, p_int);
+
+    // A + D == 2am + p
+    assert(A_int + D_int == (2 * (am as int)) + p_int);
+    // (2am + p) % p == (2am) % p
+    lemma_mod_add_multiples_vanish(2 * (am as int), p_int);
+    assert(((2 * (am as int)) + p_int) % p_int == (2 * (am as int)) % p_int);
+
+    assert(lhs == rhs_simpl);
+    assert(lhs == rhs);
+}
+
+/// Lemma: (2·a)·inv(2) = a in field arithmetic.
+pub proof fn lemma_field_halve_double(a: nat)
+    ensures
+        math_field_mul(math_field_mul(2, a), math_field_inv(2)) == a % p(),
+{
+    let p = p();
+    p_gt_2();
+
+    // 2 is non-zero in the field since p > 2.
+    assert(2nat % p != 0) by {
+        lemma_small_mod(2nat, p);
+    }
+
+    // Inverse property: 2 * inv(2) = 1.
+    field_inv_property(2nat);
+    let inv2 = math_field_inv(2nat);
+    assert(math_field_mul(2nat, inv2) == 1) by {
+        // field_inv_property gives: ((2 % p) * inv2) % p == 1
+        lemma_small_mod(2nat, p);
+    }
+
+    // Re-associate: (2*a)*inv2 == a*(2*inv2) == a*1 == a (mod p)
+    lemma_field_mul_comm(2nat, a);
+    assert(math_field_mul(2nat, a) == math_field_mul(a, 2nat));
+    lemma_field_mul_assoc(a, 2nat, inv2);
+    assert(math_field_mul(math_field_mul(a, 2nat), inv2) == math_field_mul(
+        a,
+        math_field_mul(2nat, inv2),
+    ));
+    assert(math_field_mul(a, math_field_mul(2nat, inv2)) == math_field_mul(a, 1nat));
+    lemma_field_mul_one_right(a);
+}
+
 /// Lemma: If a + b ≡ c - 1, then a + 1 ≡ c - b (mod p)
 ///
 /// ## Mathematical Proof

@@ -14,6 +14,7 @@
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
+use crate::lemmas::common_lemmas::div_mod_lemmas::lemma_int_nat_mod_equiv;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow2_even, pow2_MUL_div};
@@ -1698,6 +1699,188 @@ pub proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
     // Therefore (x', y') = (-x, y) = edwards_neg((x, y))
 }
 
+/// Helper lemma: (a+b) - (a-b) = 2b in field arithmetic
+/// This is the key algebraic identity for recovering x from y_plus_x and y_minus_x.
+pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
+    ensures
+        math_field_sub(math_field_add(a, b), math_field_sub(a, b)) == math_field_mul(2, b),
+{
+    let p = p();
+    let p_int = p as int;
+    p_gt_2();
+
+    let am = a % p;
+    let bm = b % p;
+
+    let lhs = math_field_sub(math_field_add(a, b), math_field_sub(a, b));
+    let rhs = math_field_mul(2, b);
+    let rhs_simpl = math_field_mul(2, bm);
+
+    // Simplify RHS to depend only on b % p.
+    assert(rhs == rhs_simpl) by {
+        // (2 * b) % p == (2 * (b % p)) % p
+        lemma_mul_mod_noop_right(2int, b as int, p_int);
+    }
+    assert(rhs_simpl == (2 * bm) % p);
+
+    // Unfold LHS and reduce to a modular arithmetic fact.
+    //
+    // Let A = (am + bm) and D = (am + p - bm).
+    // Then:
+    //   add(a,b) = A % p
+    //   sub(a,b) = D % p
+    // and
+    //   (A % p) - (D % p) ≡ (A - D) ≡ (2bm - p) ≡ 2bm (mod p)
+    let a_int = am as int;
+    let b_int = bm as int;
+    let A_int = (am + bm) as int;
+    let D_int = ((am + p) - bm) as int;
+
+    // Establish the shapes of add/sub.
+    lemma_add_mod_noop(a as int, b as int, p_int);
+    assert(math_field_add(a, b) == (am + bm) % p);
+    assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
+
+    let add_ab = math_field_add(a, b);
+    let sub_ab = math_field_sub(a, b);
+    assert(add_ab == (am + bm) % p);
+    assert(sub_ab == (((am + p) - bm) as nat) % p);
+
+    // Unfold the outer subtraction and simplify the internal %p's since add_ab, sub_ab are reduced (< p).
+    assert(lhs == (((add_ab + p) - sub_ab) as nat) % p) by {
+        assert(add_ab < p) by {
+            lemma_mod_bound((am + bm) as int, p_int);
+        }
+        assert(sub_ab < p) by {
+            lemma_mod_bound(((am + p) - bm) as int, p_int);
+        }
+        lemma_small_mod(add_ab, p);
+        lemma_small_mod(sub_ab, p);
+    }
+
+    // Convert the nat modulo to int modulo using lemma_int_nat_mod_equiv.
+    // v = add_ab + p - sub_ab is nonnegative because p > sub_ab and add_ab >= 0.
+    let v_int = (add_ab as int + p_int) - sub_ab as int;
+    assert(v_int >= 0) by {
+        assert(sub_ab < p);
+    }
+    lemma_int_nat_mod_equiv(v_int, p);
+    assert((v_int % p_int) as nat == (((add_ab + p) - sub_ab) as nat) % p) by {
+        // Rearranged from lemma_int_nat_mod_equiv's conclusion.
+    }
+
+    // Rewrite v_int % p to (A_int - D_int) % p:
+    // add_ab is (A_int % p), and sub_ab is (D_int % p).
+    lemma_int_nat_mod_equiv(A_int, p);
+    lemma_int_nat_mod_equiv(D_int, p);
+    assert(add_ab as int == A_int % p_int);
+    assert(sub_ab as int == D_int % p_int);
+
+    // v_int % p == (A%p + p - D%p) % p == (A%p - D%p) % p
+    lemma_mod_add_multiples_vanish((A_int % p_int) - (D_int % p_int), p_int);
+    assert(((A_int % p_int) + p_int - (D_int % p_int)) % p_int == ((A_int % p_int) - (D_int
+        % p_int)) % p_int);
+
+    // (A%p - D%p) % p == (A - D) % p
+    lemma_sub_mod_noop(A_int, D_int, p_int);
+
+    // A - D == 2bm - p
+    assert(A_int - D_int == 2 * b_int - p_int);
+
+    // (2bm - p) % p == (2bm) % p
+    lemma_mod_add_multiples_vanish((2 * b_int) - p_int, p_int);
+    assert(((2 * b_int) - p_int) % p_int == (2 * b_int) % p_int);
+
+    // Conclude lhs == rhs_simpl == rhs.
+    assert(lhs == rhs_simpl);
+    assert(lhs == rhs);
+}
+
+/// Helper lemma: (a+b) + (a-b) = 2a in field arithmetic
+/// This is the key algebraic identity for recovering y from y_plus_x and y_minus_x.
+pub proof fn lemma_field_add_add_recover_double(a: nat, b: nat)
+    ensures
+        math_field_add(math_field_add(a, b), math_field_sub(a, b)) == math_field_mul(2, a),
+{
+    let p = p();
+    let p_int = p as int;
+    p_gt_2();
+
+    let am = a % p;
+    let bm = b % p;
+
+    let lhs = math_field_add(math_field_add(a, b), math_field_sub(a, b));
+    let rhs = math_field_mul(2, a);
+    let rhs_simpl = math_field_mul(2, am);
+
+    // Simplify RHS to depend only on a % p.
+    assert(rhs == rhs_simpl) by {
+        lemma_mul_mod_noop_right(2int, a as int, p_int);
+    }
+    assert(rhs_simpl == (2 * am) % p);
+
+    // Rewrite the inner add/sub in terms of am,bm.
+    lemma_add_mod_noop(a as int, b as int, p_int);
+    assert(math_field_add(a, b) == (am + bm) % p);
+    assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
+
+    let add_ab = math_field_add(a, b);
+    let sub_ab = math_field_sub(a, b);
+    assert(add_ab == (am + bm) % p);
+    assert(sub_ab == (((am + p) - bm) as nat) % p);
+
+    // Unfold outer add: (add_ab + sub_ab) % p
+    assert(lhs == (add_ab + sub_ab) % p);
+
+    let A_int = (am + bm) as int;
+    let D_int = ((am + p) - bm) as int;
+
+    // (A % p + D % p) % p == (A + D) % p
+    lemma_add_mod_noop(A_int, D_int, p_int);
+
+    // A + D == 2am + p
+    assert(A_int + D_int == (2 * (am as int)) + p_int);
+    // (2am + p) % p == (2am) % p
+    lemma_mod_add_multiples_vanish(2 * (am as int), p_int);
+    assert(((2 * (am as int)) + p_int) % p_int == (2 * (am as int)) % p_int);
+
+    assert(lhs == rhs_simpl);
+    assert(lhs == rhs);
+}
+
+/// Helper lemma: 2a * inv(2) = a when 2 is non-zero in the field
+pub proof fn lemma_field_halve_double(a: nat)
+    ensures
+        math_field_mul(math_field_mul(2, a), math_field_inv(2)) == a % p(),
+{
+    let p = p();
+    p_gt_2();
+
+    // 2 is non-zero in the field since p > 2.
+    assert(2nat % p != 0) by {
+        lemma_small_mod(2nat, p);
+    }
+
+    // Inverse property: 2 * inv(2) = 1.
+    field_inv_property(2nat);
+    let inv2 = math_field_inv(2nat);
+    assert(math_field_mul(2nat, inv2) == 1) by {
+        // field_inv_property gives: ((2 % p) * inv2) % p == 1
+        lemma_small_mod(2nat, p);
+    }
+
+    // Re-associate: (2*a)*inv2 == a*(2*inv2) == a*1 == a (mod p)
+    lemma_field_mul_comm(2nat, a);
+    assert(math_field_mul(2nat, a) == math_field_mul(a, 2nat));
+    lemma_field_mul_assoc(a, 2nat, inv2);
+    assert(math_field_mul(math_field_mul(a, 2nat), inv2) == math_field_mul(
+        a,
+        math_field_mul(2nat, inv2),
+    ));
+    assert(math_field_mul(a, math_field_mul(2nat, inv2)) == math_field_mul(a, 1nat));
+    lemma_field_mul_one_right(a);
+}
+
 /// Lemma: When a ProjectiveNielsPoint corresponds to an EdwardsPoint,
 /// their affine representations are equal.
 ///
@@ -1715,7 +1898,6 @@ pub proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
 /// - y_affine = y_proj / z = Y / Z
 ///
 /// This equals `edwards_point_as_affine(point) = (X/Z, Y/Z)`.
-#[verifier::external_body]
 pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     niels: crate::backend::serial::curve_models::ProjectiveNielsPoint,
     point: crate::edwards::EdwardsPoint,
@@ -1726,17 +1908,62 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     ensures
         projective_niels_point_as_affine_edwards(niels) == edwards_point_as_affine(point),
 {
-    // This is a mathematical identity based on the correspondence definition.
-    //
-    // The key algebraic steps:
-    // 1. y_plus_x = Y + X, y_minus_x = Y - X (from correspondence)
-    // 2. x_proj = ((Y+X) - (Y-X)) / 2 = 2X / 2 = X
-    // 3. y_proj = ((Y+X) + (Y-X)) / 2 = 2Y / 2 = Y
-    // 4. x_affine = X / Z, y_affine = Y / Z
-    //
-    // The proof requires showing that field arithmetic on
-    // (y_plus_x ± y_minus_x) / 2 / z equals x / z and y / z
-    // when y_plus_x = y + x and y_minus_x = y - x.
+    // Extract field values from correspondence
+    let x = spec_field_element(&point.X);
+    let y = spec_field_element(&point.Y);
+    let z = spec_field_element(&point.Z);
+
+    let y_plus_x = spec_field_element(&niels.Y_plus_X);
+    let y_minus_x = spec_field_element(&niels.Y_minus_X);
+    let niels_z = spec_field_element(&niels.Z);
+
+    // From correspondence:
+    assert(y_plus_x == math_field_add(y, x));
+    assert(y_minus_x == math_field_sub(y, x));
+    assert(niels_z == z);
+
+    let inv2 = math_field_inv(2);
+
+    // Step 1: Show (y_plus_x - y_minus_x) / 2 = x
+    // (y+x) - (y-x) = 2x by lemma_field_add_sub_recover_double
+    lemma_field_add_sub_recover_double(y, x);
+    let diff = math_field_sub(y_plus_x, y_minus_x);
+    assert(diff == math_field_mul(2, x));
+    // 2x * inv(2) = x by lemma_field_halve_double
+    lemma_field_halve_double(x);
+    let x_proj = math_field_mul(diff, inv2);
+    assert(x_proj == x % p());
+
+    // Step 2: Show (y_plus_x + y_minus_x) / 2 = y
+    // (y+x) + (y-x) = 2y by lemma_field_add_add_recover_double
+    lemma_field_add_add_recover_double(y, x);
+    let sum = math_field_add(y_plus_x, y_minus_x);
+    assert(sum == math_field_mul(2, y));
+    // 2y * inv(2) = y by lemma_field_halve_double
+    lemma_field_halve_double(y);
+    let y_proj = math_field_mul(sum, inv2);
+    assert(y_proj == y % p());
+
+    // Step 3: x_affine = x_proj / z = x / z (since x_proj == x % p and x < p)
+    // y_affine = y_proj / z = y / z
+    // This matches edwards_point_as_affine(point) = (x/z, y/z)
+
+    // spec_field_element returns (val % p) which is always < p
+    p_gt_2();
+    assert(x < p()) by {
+        // spec_field_element returns spec_field_element_as_nat(fe) % p()
+        // which is always < p() for p > 0
+        lemma_mod_bound(spec_field_element_as_nat(&point.X) as int, p() as int);
+    }
+    assert(y < p()) by {
+        lemma_mod_bound(spec_field_element_as_nat(&point.Y) as int, p() as int);
+    }
+
+    // The specs reduce x % p() = x since x < p
+    lemma_small_mod(x, p());
+    assert(x_proj == x);
+    lemma_small_mod(y, p());
+    assert(y_proj == y);
 }
 
 } // verus!

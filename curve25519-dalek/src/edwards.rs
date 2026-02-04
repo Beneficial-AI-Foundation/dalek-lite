@@ -3163,26 +3163,48 @@ impl BasepointTable for EdwardsBasepointTable {
         proof {
             // The precondition is_valid_edwards_basepoint_table includes
             // lookup_table_affine_limbs_bounded for all table entries.
-            assume(lookup_table_affine_limbs_bounded((*self).0[0int].0));
+            // Reveal the spec and instantiate with i=0
+            reveal(is_valid_edwards_basepoint_table);
+            assert(lookup_table_affine_limbs_bounded((*self).0[0int].0));
         }
         let selected = self.0[0].select(1);
         // selected limb bounds come from select postcondition
         proof {
-            // Preconditions for addition (identity must be well-formed)
-            assume(is_well_formed_edwards_point(identity));
-            assume(sum_of_limbs_bounded(&identity.Z, &identity.Z, u64::MAX));
+            // is_well_formed_edwards_point(identity) follows directly from identity() postcondition
+            assert(is_well_formed_edwards_point(identity));
+
+            // sum_of_limbs_bounded(&identity.Z, &identity.Z, u64::MAX):
+            // From is_well_formed_edwards_point(identity), we have edwards_point_limbs_bounded(identity)
+            // which means fe51_limbs_bounded(&identity.Z, 52), i.e., all Z limbs < 2^52.
+            // Therefore Z.limbs[i] + Z.limbs[i] < 2^53 < u64::MAX
+            use crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded;
+            assert(fe51_limbs_bounded(&identity.Z, 52));  // from edwards_point_limbs_bounded
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&identity.Z, &identity.Z, 52);
         }
         let completed = &identity + &selected;
         proof {
-            // Preconditions for as_extended
-            assume(fe51_limbs_bounded(&completed.X, 54));
-            assume(fe51_limbs_bounded(&completed.Y, 54));
-            assume(fe51_limbs_bounded(&completed.Z, 54));
-            assume(fe51_limbs_bounded(&completed.T, 54));
+            // Limb bounds for completed follow from inner add postconditions
+            // (EdwardsPoint + AffineNielsPoint → CompletedPoint)
+            assert(fe51_limbs_bounded(&completed.X, 54));
+            assert(fe51_limbs_bounded(&completed.Y, 54));
+            assert(fe51_limbs_bounded(&completed.Z, 54));
+            assert(fe51_limbs_bounded(&completed.T, 54));
         }
         let result = completed.as_extended();
         proof {
-            assume(is_well_formed_edwards_point(result));
+            // is_well_formed_edwards_point follows from as_extended postcondition
+            assert(is_well_formed_edwards_point(result));
+
+            // === Functional correctness ===
+            // PROOF BYPASS: The full proof requires lemmas connecting:
+            // 1. spec_edwards_add_affine_niels(identity, selected) == affine_niels_as_affine(selected)
+            //    (identity is neutral element)
+            // 2. is_valid_lookup_table_affine_coords implies affine_niels_as_affine(table[0]) == base
+            //    (table entry 0 with index 1 gives 1*base = base)
+            // 3. as_extended preserves affine representation
+            //
+            // These would require new lemmas about the neutral element property and
+            // lookup table semantics.
             assume(edwards_point_as_affine(result) == spec_ed25519_basepoint());
         }
         result

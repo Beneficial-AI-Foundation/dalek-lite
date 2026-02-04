@@ -24,8 +24,13 @@ use vstd::prelude::*;
 verus! {
 
 /// Spec predicate: all limbs are bounded by a given bit limit
+pub open spec fn u64_5_bounded(limbs: [u64;5 ], bit_limit: u64) -> bool {
+    forall|i: int| 0 <= i < 5 ==> #[trigger] limbs[i] < (1u64 << bit_limit)
+}
+
+/// Spec predicate: all limbs are bounded by a given bit limit
 pub open spec fn fe51_limbs_bounded(fe: &FieldElement51, bit_limit: u64) -> bool {
-    forall|i: int| 0 <= i < 5 ==> fe.limbs[i] < (1u64 << bit_limit)
+    u64_5_bounded(fe.limbs, bit_limit)
 }
 
 /// Spec predicate: sum of limbs are bounded by a given bit limit
@@ -66,14 +71,14 @@ pub open spec fn spec_sub_limbs(a: &FieldElement51, b: &FieldElement51) -> Field
     }
 }
 
-pub open spec fn spec_field_element_as_nat(fe: &FieldElement51) -> nat {
+pub open spec fn fe51_as_nat(fe: &FieldElement51) -> nat {
     u64_5_as_nat(fe.limbs)
 }
 
 /// Returns the canonical mathematical value of a field element in [0, p)
 /// where p = 2^255 - 19
-pub open spec fn spec_field_element(fe: &FieldElement51) -> nat {
-    spec_field_element_as_nat(fe) % p()
+pub open spec fn fe51_as_canonical_nat(fe: &FieldElement51) -> nat {
+    u64_5_as_field_canonical(fe.limbs)
 }
 
 // ============================================================================
@@ -83,51 +88,51 @@ pub open spec fn spec_field_element(fe: &FieldElement51) -> nat {
 /// Postcondition of `as_bytes`: bytes is the canonical encoding of fe.
 /// Use this to state that `bytes` is the result of `fe.as_bytes()`.
 pub open spec fn as_bytes_post(fe: &FieldElement51, bytes: &[u8; 32]) -> bool {
-    bytes32_to_nat(bytes) == spec_field_element(fe)
+    u8_32_as_nat(bytes) == fe51_as_canonical_nat(fe)
 }
 
 /// Postcondition of `from_bytes`: fe's limbs decode the bytes (clearing bit 255).
 /// Use this to state that `fe` is the result of `FieldElement51::from_bytes(bytes)`.
 pub open spec fn from_bytes_post(bytes: &[u8; 32], fe: &FieldElement51) -> bool {
-    spec_field_element_as_nat(fe) == bytes32_to_nat(bytes) % pow2(255)
+    fe51_as_nat(fe) == u8_32_as_nat(bytes) % pow2(255)
 }
 
 /// Returns the canonical mathematical value when creating a field element from bytes.
 /// The bytes are interpreted as a little-endian integer with the high bit of byte[31] ignored.
 /// The result is the canonical value in [0, p) where p = 2^255 - 19.
-pub open spec fn spec_field_element_from_bytes(bytes: &[u8; 32]) -> nat {
-    (bytes32_to_nat(bytes) % pow2(255)) % p()
+pub open spec fn fe51_as_canonical_nat_from_bytes(bytes: &[u8; 32]) -> nat {
+    field_canonical(u8_32_as_nat(bytes) % pow2(255))
 }
 
 /// Spec function: Get the sign bit of a field element
 /// In Curve25519, the sign bit is the least significant bit of the canonical representation
-pub open spec fn spec_field_element_sign_bit(fe: &FieldElement51) -> u8 {
-    ((spec_field_element(fe) % p()) % 2) as u8
+pub open spec fn fe51_as_canonical_nat_sign_bit(fe: &FieldElement51) -> u8 {
+    ((fe51_as_canonical_nat(fe) % p()) % 2) as u8
 }
 
 // Spec-level field operations on natural numbers (mod p)
 /// Math-level field addition
-pub open spec fn math_field_add(a: nat, b: nat) -> nat {
+pub open spec fn field_add(a: nat, b: nat) -> nat {
     (a + b) % p()
 }
 
 /// Math-level field subtraction
-pub open spec fn math_field_sub(a: nat, b: nat) -> nat {
+pub open spec fn field_sub(a: nat, b: nat) -> nat {
     (((a % p()) + p()) - (b % p())) as nat % p()
 }
 
 /// Math-level field multiplication
-pub open spec fn math_field_mul(a: nat, b: nat) -> nat {
+pub open spec fn field_mul(a: nat, b: nat) -> nat {
     (a * b) % p()
 }
 
 /// Math-level field negation
-pub open spec fn math_field_neg(a: nat) -> nat {
+pub open spec fn field_neg(a: nat) -> nat {
     (p() - (a % p())) as nat % p()
 }
 
 /// Math-level field squaring
-pub open spec fn math_field_square(a: nat) -> nat {
+pub open spec fn field_square(a: nat) -> nat {
     (a * a) % p()
 }
 
@@ -138,7 +143,7 @@ pub open spec fn math_field_square(a: nat) -> nat {
 ///
 /// The existence of inverses for non-zero elements is guaranteed by field_inv_property,
 /// which relies on p being prime.
-pub open spec fn math_field_inv(a: nat) -> nat {
+pub open spec fn field_inv(a: nat) -> nat {
     if a % p() == 0 {
         0  // Convention: inverse of 0 is defined as 0
 
@@ -154,8 +159,8 @@ pub proof fn field_inv_property(a: nat)
     requires
         a % p() != 0,
     ensures
-        math_field_inv(a) < p(),
-        ((a % p()) * math_field_inv(a)) % p() == 1,
+        field_inv(a) < p(),
+        ((a % p()) * field_inv(a)) % p() == 1,
 {
     assert(p() > 1) by {
         pow255_gt_19();
@@ -238,11 +243,11 @@ proof fn lemma_inverse_unique_core(a: nat, w: nat, z: nat, p: nat)
 
 /// Theorem: Uniqueness of multiplicative inverse
 ///
-/// If a value w satisfies the inverse property for a, then w equals math_field_inv(a).
+/// If a value w satisfies the inverse property for a, then w equals field_inv(a).
 /// This captures the uniqueness of the multiplicative inverse in a field.
 ///
 /// Proof: Standard field theory argument using modular arithmetic:
-/// w = w * 1 = w * (a * z) = (w * a) * z = 1 * z = z, where z = math_field_inv(a)
+/// w = w * 1 = w * (a * z) = (w * a) * z = 1 * z = z, where z = field_inv(a)
 ///
 /// Note: This theorem only requires modular arithmetic properties; it does NOT
 /// require p to be prime (though the existence from field_inv_property does).
@@ -252,10 +257,10 @@ pub proof fn field_inv_unique(a: nat, w: nat)
         w < p(),
         ((a % p()) * w) % p() == 1,
     ensures
-        w == math_field_inv(a),
+        w == field_inv(a),
 {
     let a_red = a % p();
-    let z = math_field_inv(a);
+    let z = field_inv(a);
 
     // Establish that z satisfies the inverse property
     field_inv_property(a);
@@ -273,16 +278,16 @@ pub proof fn field_inv_unique(a: nat, w: nat)
     lemma_inverse_unique_core(a_red, w, z, p());
 }
 
-/// Theorem: By convention, math_field_inv(0) returns 0
+/// Theorem: By convention, field_inv(0) returns 0
 ///
-/// This is proven directly from the definition of math_field_inv.
+/// This is proven directly from the definition of field_inv.
 /// When the input is 0 (which has no multiplicative inverse),
 /// we conventionally define the result to be 0.
 pub proof fn field_inv_zero()
     ensures
-        math_field_inv(0nat) == 0,
+        field_inv(0nat) == 0,
 {
-    // Proof: By definition of math_field_inv, when a % p() == 0, it returns 0
+    // Proof: By definition of field_inv, when a % p() == 0, it returns 0
     assert(p() > 0) by {
         pow255_gt_19();
     };
@@ -290,7 +295,7 @@ pub proof fn field_inv_zero()
     // Since p() > 0, we have 0 % p() == 0
     assert(0nat % p() == 0);
 
-    // By the if-branch in math_field_inv's definition: math_field_inv(0) == 0
+    // By the if-branch in field_inv's definition: field_inv(0) == 0
 }
 
 /// Lemma: Fermat's Little Theorem applied to p() = 2^255 - 19
@@ -424,12 +429,12 @@ pub open spec fn spec_fe51_to_bytes(fe: &FieldElement51) -> Seq<u8> {
 
 /// Spec function: two field elements are inverses if their product is 1 (mod p)
 pub open spec fn is_inverse_field(a: &FieldElement51, b: &FieldElement51) -> bool {
-    (spec_field_element(a) * spec_field_element(b)) % p() == 1
+    (fe51_as_canonical_nat(a) * fe51_as_canonical_nat(b)) % p() == 1
 }
 
 /// Spec function: field element is inverse of a natural number (mod p)
 pub open spec fn is_inverse_field_of_nat(fe: &FieldElement51, n: nat) -> bool {
-    (spec_field_element(fe) * n) % p() == 1
+    (fe51_as_canonical_nat(fe) * n) % p() == 1
 }
 
 /// Spec function to compute product of all field elements in a sequence (mod p)
@@ -440,7 +445,7 @@ pub open spec fn spec_product_of_field_elems(fields: Seq<FieldElement51>) -> nat
     if fields.len() == 0 {
         1
     } else {
-        (spec_product_of_field_elems(fields.skip(1)) * spec_field_element(&fields[0])) % p()
+        (spec_product_of_field_elems(fields.skip(1)) * fe51_as_canonical_nat(&fields[0])) % p()
     }
 }
 
@@ -452,7 +457,7 @@ pub open spec fn spec_product_of_nonzeros(fields: Seq<FieldElement51>) -> nat
     if fields.len() == 0 {
         1
     } else {
-        let first_val = spec_field_element(&fields[0]);
+        let first_val = fe51_as_canonical_nat(&fields[0]);
         let rest_product = spec_product_of_nonzeros(fields.subrange(1, fields.len() as int));
         // Skip zeros: if first_val is 0, treat it as 1 (multiply by identity)
         if first_val == 0 {
@@ -465,13 +470,13 @@ pub open spec fn spec_product_of_nonzeros(fields: Seq<FieldElement51>) -> nat
 
 /// Spec function: b is a square root of a (mod p), i.e., b^2 = a (mod p)
 pub open spec fn is_square_of(a: &FieldElement51, b: &FieldElement51) -> bool {
-    (spec_field_element(b) * spec_field_element(b)) % p() == spec_field_element(a) % p()
+    (fe51_as_canonical_nat(b) * fe51_as_canonical_nat(b)) % p() == fe51_as_canonical_nat(a) % p()
 }
 
 /// Spec function: b^2 * v = u (mod p)
 pub open spec fn is_sqrt_ratio(u: &FieldElement51, v: &FieldElement51, r: &FieldElement51) -> bool {
-    (spec_field_element(r) * spec_field_element(r) * spec_field_element(v)) % p()
-        == spec_field_element(u)
+    (fe51_as_canonical_nat(r) * fe51_as_canonical_nat(r) * fe51_as_canonical_nat(v)) % p()
+        == fe51_as_canonical_nat(u)
 }
 
 /// Spec function: r^2 * v = i*u (mod p), where i = sqrt(-1)
@@ -481,8 +486,8 @@ pub open spec fn is_sqrt_ratio_times_i(
     v: &FieldElement51,
     r: &FieldElement51,
 ) -> bool {
-    (spec_field_element(r) * spec_field_element(r) * spec_field_element(v)) % p() == (
-    spec_field_element(&constants::SQRT_M1) * spec_field_element(u)) % p()
+    (fe51_as_canonical_nat(r) * fe51_as_canonical_nat(r) * fe51_as_canonical_nat(v)) % p() == (
+    fe51_as_canonical_nat(&constants::SQRT_M1) * fe51_as_canonical_nat(u)) % p()
 }
 
 /// Spec function: r² * v = u (mod p) — math version operating on nat values
@@ -523,7 +528,7 @@ pub open spec fn math_invsqrt(a: nat) -> nat {
 
 /// Canonical little-endian bytes for a nat (mod 2^256).
 pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32] {
-    choose|b: [u8; 32]| bytes32_to_nat(&b) == n % pow2(256)
+    choose|b: [u8; 32]| u8_32_as_nat(&b) == n % pow2(256)
 }
 
 /// Spec function capturing sqrt_ratio_i math correctness postconditions.
@@ -582,7 +587,7 @@ pub open spec fn is_inv_witness(v: nat, w: nat) -> bool {
 /// The mathematical value of SQRT_M1 (sqrt(-1) mod p)
 /// This is the 4th root of unity i such that i² = -1 (mod p)
 pub open spec fn spec_sqrt_m1() -> nat {
-    spec_field_element(&constants::SQRT_M1)
+    fe51_as_canonical_nat(&constants::SQRT_M1)
 }
 
 } // verus!

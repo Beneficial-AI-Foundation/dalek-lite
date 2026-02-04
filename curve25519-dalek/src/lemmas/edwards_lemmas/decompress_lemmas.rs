@@ -65,7 +65,7 @@ pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
     ensures
         ({
             let result = if sign_bit == 1 {
-                math_field_neg(x)
+                field_neg(x)
             } else {
                 x % p()
             };
@@ -75,7 +75,7 @@ pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
     let pval = p();
     let x_red = x % pval;
     let result = if sign_bit == 1 {
-        math_field_neg(x)
+        field_neg(x)
     } else {
         x % pval
     };
@@ -113,7 +113,7 @@ pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
 // =============================================================================
 /// Top-level lemma for decompress sign bit using concrete field element
 ///
-/// Connects to spec_field_element_sign_bit: ((x % p) % 2) as u8
+/// Connects to fe51_as_canonical_nat_sign_bit: ((x % p) % 2) as u8
 pub proof fn lemma_decompress_field_element_sign_bit(
     x_before_negate: nat,
     x_after_negate: nat,
@@ -124,7 +124,7 @@ pub proof fn lemma_decompress_field_element_sign_bit(
         (x_before_negate % p()) % 2 == 0,  // sqrt_ratio_i returns even
         sign_bit == 1 ==> x_before_negate % p() != 0,  // x ≠ 0 when negating
         x_after_negate == if sign_bit == 1 {
-            math_field_neg(x_before_negate)
+            field_neg(x_before_negate)
         } else {
             x_before_negate % p()
         },
@@ -169,7 +169,7 @@ pub proof fn lemma_decompress_field_element_sign_bit(
 pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: nat)
     requires
         compressed_y_has_valid_sign_bit(bytes),  // decompress precondition
-        y == spec_field_element_from_bytes(bytes),  // Y from bytes
+        y == fe51_as_canonical_nat_from_bytes(bytes),  // Y from bytes
         math_on_edwards_curve(x, y),  // (x, y) on curve
         x < p(),  // X bounded
 
@@ -179,7 +179,7 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
         (bytes[31] >> 7) == 1 ==> x % p() != 0,
 {
     let sign_bit = bytes[31] >> 7;
-    let y_sq = math_field_square(y);
+    let y_sq = field_square(y);
 
     if sign_bit == 1 {
         // From compressed_y_has_valid_sign_bit: y² == 1 ==> sign_bit == 0
@@ -210,39 +210,39 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
 ///
 /// ## Proves
 /// - is_valid_edwards_point(point)
-/// - spec_field_element(&point.Y) == spec_field_element_from_bytes(repr_bytes)
-/// - spec_field_element_sign_bit(&point.X) == (repr_bytes[31] >> 7)
+/// - fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(repr_bytes)
+/// - fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7)
 pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, point: &EdwardsPoint)
     requires
         compressed_y_has_valid_sign_bit(repr_bytes),
         // step_1 postconditions
-        spec_field_element(&point.Y) == spec_field_element_from_bytes(repr_bytes),
-        math_on_edwards_curve(x_orig, spec_field_element(&point.Y)),
+        fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(repr_bytes),
+        math_on_edwards_curve(x_orig, fe51_as_canonical_nat(&point.Y)),
         // X is non-negative root (LSB = 0)
         x_orig % 2 == 0,
-        // x_orig < p() is trivially true since x_orig = spec_field_element(&X)
-        // which is defined as spec_field_element_as_nat % p(). Required by internal lemma calls.
+        // x_orig < p() is trivially true since x_orig = fe51_as_canonical_nat(&X)
+        // which is defined as fe51_as_nat % p(). Required by internal lemma calls.
         x_orig < p(),
         // step_2 postconditions
-        spec_field_element(&point.X) == (if (repr_bytes[31] >> 7) == 1 {
-            math_field_neg(x_orig)
+        fe51_as_canonical_nat(&point.X) == (if (repr_bytes[31] >> 7) == 1 {
+            field_neg(x_orig)
         } else {
             x_orig
         }),
-        spec_field_element(&point.Z) == 1,
-        spec_field_element(&point.T) == math_field_mul(
-            spec_field_element(&point.X),
-            spec_field_element(&point.Y),
+        fe51_as_canonical_nat(&point.Z) == 1,
+        fe51_as_canonical_nat(&point.T) == field_mul(
+            fe51_as_canonical_nat(&point.X),
+            fe51_as_canonical_nat(&point.Y),
         ),
     ensures
         is_valid_edwards_point(*point),
-        spec_field_element(&point.Y) == spec_field_element_from_bytes(repr_bytes),
-        spec_field_element_sign_bit(&point.X) == (repr_bytes[31] >> 7),
+        fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(repr_bytes),
+        fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7),
 {
-    let x_final = spec_field_element(&point.X);
-    let y_final = spec_field_element(&point.Y);
-    let z_final = spec_field_element(&point.Z);
-    let t_final = spec_field_element(&point.T);
+    let x_final = fe51_as_canonical_nat(&point.X);
+    let y_final = fe51_as_canonical_nat(&point.Y);
+    let z_final = fe51_as_canonical_nat(&point.Z);
+    let t_final = fe51_as_canonical_nat(&point.T);
     let sign_bit = repr_bytes[31] >> 7;
 
     // =========================================================================
@@ -253,7 +253,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
         assert(math_on_edwards_curve(x_final, y_final)) by {
             // X is conditionally negated; negation preserves curve membership
             if sign_bit == 1 {
-                assert(x_final == math_field_neg(x_orig));
+                assert(x_final == field_neg(x_orig));
                 lemma_negation_preserves_curve(x_orig, y_final);
             } else {
                 assert(x_final == x_orig);
@@ -262,7 +262,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
 
         // Z = 1, T = X * Y
         assert(z_final == 1);
-        assert(t_final == math_field_mul(x_final, y_final));
+        assert(t_final == field_mul(x_final, y_final));
 
         // Apply the validity lemma (from curve_equation_lemmas)
         lemma_affine_to_extended_valid(x_final, y_final, t_final);
@@ -275,7 +275,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
     // =========================================================================
     // Goal 3: Sign bit correctness
     // =========================================================================
-    assert(spec_field_element_sign_bit(&point.X) == (repr_bytes[31] >> 7)) by {
+    assert(fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7)) by {
         let x_before = x_orig;
         let x_after = x_final;
         let repr_byte_31 = repr_bytes[31];
@@ -303,7 +303,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
 
             // Precondition 3: x_after matches conditional expression
             assert(x_after == if sign_bit == 1 {
-                math_field_neg(x_before)
+                field_neg(x_before)
             } else {
                 x_before % p()
             }) by {

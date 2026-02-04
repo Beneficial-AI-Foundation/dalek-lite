@@ -288,12 +288,12 @@ impl CompressedEdwardsY {
         ensures
     // Decompression succeeds iff the y-coordinate is valid
 
-            math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))
+            math_is_valid_y_coordinate(fe51_as_canonical_nat_from_bytes(&self.0))
                 <==> result.is_some(),
             // When successful, the result has these properties:
             result.is_some() ==> (
             // The Y coordinate matches the one from the compressed representation
-            spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes(
+            fe51_as_canonical_nat(&result.unwrap().Y) == fe51_as_canonical_nat_from_bytes(
                 &self.0,
             )
             // The point is valid on the Edwards curve
@@ -301,17 +301,17 @@ impl CompressedEdwardsY {
                 result.unwrap(),
             )
             // The X coordinate sign bit matches the sign bit from the compressed representation
-             && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),
+             && fe51_as_canonical_nat_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
         proof {
             assert(choice_is_true(is_valid_y_coord) ==> math_is_valid_y_coordinate(
-                spec_field_element_from_bytes(&self.0),
+                fe51_as_canonical_nat_from_bytes(&self.0),
             ));
             assert(choice_is_true(is_valid_y_coord) ==> math_on_edwards_curve(
-                spec_field_element(&X),
-                spec_field_element(&Y),
+                fe51_as_canonical_nat(&X),
+                fe51_as_canonical_nat(&Y),
             ));
         }
         if choice_into(is_valid_y_coord) {
@@ -319,19 +319,19 @@ impl CompressedEdwardsY {
             let result = Some(point);
             proof {
                 // Extract values for lemma
-                let x_orig = spec_field_element(&X);
+                let x_orig = fe51_as_canonical_nat(&X);
 
                 // Establish step_2 postconditions needed by lemma
                 // step_2 ensures Y and Z are preserved by reference equality
                 assert(&point.Y == &Y);
                 assert(&point.Z == &Z);
-                assert(spec_field_element(&point.Y) == spec_field_element_from_bytes(&self.0));
-                assert(spec_field_element(&point.Z) == 1);
+                assert(fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(&self.0));
+                assert(fe51_as_canonical_nat(&point.Z) == 1);
 
-                // x_orig < p() is trivially true since x_orig = spec_field_element(&X) = ...%p()
+                // x_orig < p() is trivially true since x_orig = fe51_as_canonical_nat(&X) = ...%p()
                 pow255_gt_19();
                 assert(x_orig < p()) by {
-                    lemma_mod_bound(spec_field_element_as_nat(&X) as int, p() as int);
+                    lemma_mod_bound(fe51_as_nat(&X) as int, p() as int);
                 };
 
                 // Use the unified lemma to prove all postconditions
@@ -360,16 +360,16 @@ mod decompress {
 
             ({
                 let (is_valid, X, Y, Z) = result;
-                spec_field_element(&Y) == spec_field_element_from_bytes(&repr.0)
+                fe51_as_canonical_nat(&Y) == fe51_as_canonical_nat_from_bytes(&repr.0)
                     &&
                 // The returned Z field element is 1
-                spec_field_element(&Z) == 1
+                fe51_as_canonical_nat(&Z) == 1
                     &&
                 // The choice is true iff the Y is valid and (X, Y) is on the curve
-                (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(spec_field_element(&Y)))
+                (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(fe51_as_canonical_nat(&Y)))
                     && (choice_is_true(is_valid) ==> math_on_edwards_curve(
-                    spec_field_element(&X),
-                    spec_field_element(&Y),
+                    fe51_as_canonical_nat(&X),
+                    fe51_as_canonical_nat(&Y),
                 )) &&
                 // Limb bounds for step_2
                 // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)
@@ -380,14 +380,14 @@ mod decompress {
                     &&
                 // X is the non-negative root (LSB = 0) - from sqrt_ratio_i
                 // This is needed in the proof of decompress
-                spec_field_element(&X) % 2 == 0
+                fe51_as_canonical_nat(&X) % 2 == 0
             }),
     {
         // =================================================================
         // PHASE 1: Setup Y, Z, compute u = y² - 1, v = d·y² + 1
         // =================================================================
         let Y = FieldElement::from_bytes(repr.as_bytes());
-        assert(spec_field_element_from_bytes(&repr.0) == spec_field_element(&Y));
+        assert(fe51_as_canonical_nat_from_bytes(&repr.0) == fe51_as_canonical_nat(&Y));
         let Z = FieldElement::ONE;
         proof {
             // Y is 51-bit bounded (from from_bytes), which implies 54-bit for square
@@ -435,47 +435,47 @@ mod decompress {
             // PHASE 2: sqrt_ratio_i postconditions
             // =================================================================
             // Ghost variable definitions for connecting to math specs
-            let ghost y = spec_field_element(&Y);
-            let ghost d = spec_field_element(&constants::EDWARDS_D);
-            let ghost y2 = math_field_square(y);
-            let ghost u_math = math_field_sub(y2, 1);
-            let ghost v_math = math_field_add(math_field_mul(d, y2), 1);
-            let ghost x = spec_field_element(&X);
+            let ghost y = fe51_as_canonical_nat(&Y);
+            let ghost d = fe51_as_canonical_nat(&constants::EDWARDS_D);
+            let ghost y2 = field_square(y);
+            let ghost u_math = field_sub(y2, 1);
+            let ghost v_math = field_add(field_mul(d, y2), 1);
+            let ghost x = fe51_as_canonical_nat(&X);
 
             // sqrt_ratio_i postconditions encapsulated in spec_sqrt_ratio_i_post
             assert(spec_sqrt_ratio_i_post(u_math, v_math, choice_is_true(is_valid_y_coord), x)) by {
                 // Boundedness (spec_sqrt_ratio_i_bounded_post):
-                // x = spec_field_element(&X) is always < p() by definition (it's mod p)
+                // x = fe51_as_canonical_nat(&X) is always < p() by definition (it's mod p)
                 // From step_1 postcondition: x % 2 == 0 (non-negative square root)
                 pow255_gt_19();  // proves p() > 0
                 assert(x < p()) by {
-                    // spec_field_element is defined as spec_field_element_as_nat % p()
+                    // fe51_as_canonical_nat is defined as fe51_as_nat % p()
                     // so it's always < p()
-                    lemma_mod_bound(spec_field_element_as_nat(&X) as int, p() as int);
+                    lemma_mod_bound(fe51_as_nat(&X) as int, p() as int);
                 };
                 assert(x % 2 == 0);  // From step_1 postcondition
                 assert(spec_sqrt_ratio_i_bounded_post(x));
 
                 // Connect field elements to math versions (needed for spec_sqrt_ratio_i_math_post)
-                // YY = Y.square() → spec_field_element(&YY) == math_field_square(y)
-                lemma_square_matches_math_field_square(
-                    spec_field_element_as_nat(&Y),
-                    spec_field_element_as_nat(&YY),
+                // YY = Y.square() → fe51_as_canonical_nat(&YY) == field_square(y)
+                lemma_square_matches_field_square(
+                    fe51_as_nat(&Y),
+                    fe51_as_nat(&YY),
                 );
-                assert(spec_field_element(&YY) == y2);
+                assert(fe51_as_canonical_nat(&YY) == y2);
 
-                // u = YY - Z → spec_field_element(&u) == u_math
-                // (lemma_one_field_element_value establishes spec_field_element(&Z) == 1,
+                // u = YY - Z → fe51_as_canonical_nat(&u) == u_math
+                // (lemma_one_field_element_value establishes fe51_as_canonical_nat(&Z) == 1,
                 // needed for both u_math and v_math assertions)
                 lemma_one_field_element_value();
-                assert(spec_field_element(&u) == u_math);
+                assert(fe51_as_canonical_nat(&u) == u_math);
 
-                // v = yy_times_d + Z → spec_field_element(&v) == v_math
-                assert(math_field_mul(y2, d) == math_field_mul(d, y2)) by {
+                // v = yy_times_d + Z → fe51_as_canonical_nat(&v) == v_math
+                assert(field_mul(y2, d) == field_mul(d, y2)) by {
                     lemma_mul_is_commutative(y2 as int, d as int);
                     assert(y2 * d == d * y2);
                 };
-                assert(spec_field_element(&v) == v_math);
+                assert(fe51_as_canonical_nat(&v) == v_math);
 
                 // Math correctness (spec_sqrt_ratio_i_math_post):
                 // All four cases follow from sqrt_ratio_i ensures clauses
@@ -490,7 +490,7 @@ mod decompress {
             // =================================================================
             // PHASE 3: Additional preconditions for lemma_step1_case_analysis
             // =================================================================
-            assert(spec_field_element(&Z) == 1) by {
+            assert(fe51_as_canonical_nat(&Z) == 1) by {
                 lemma_one_field_element_value();
             };
 
@@ -518,22 +518,22 @@ mod decompress {
             fe51_limbs_bounded(&Y, 51),
             fe51_limbs_bounded(&Z, 51),
         ensures
-            spec_field_element(&result.X)
+            fe51_as_canonical_nat(&result.X)
                 ==
             // If the sign bit is 1, negate the X field element
             if (repr.0[31] >> 7) == 1 {
-                math_field_neg(spec_field_element(&X))
+                field_neg(fe51_as_canonical_nat(&X))
             } else {
-                spec_field_element(&X)
+                fe51_as_canonical_nat(&X)
             },
             // Y and Z are unchanged
             &result.Y == &Y && &result.Z == &Z
                 &&
             // X is conditionally negated based on the sign bit
             // T = X * Y (after conditional negation)
-            spec_field_element(&result.T) == math_field_mul(
-                spec_field_element(&result.X),
-                spec_field_element(&result.Y),
+            fe51_as_canonical_nat(&result.T) == field_mul(
+                fe51_as_canonical_nat(&result.X),
+                fe51_as_canonical_nat(&result.Y),
             ),
     {
         // FieldElement::sqrt_ratio_i always returns the nonnegative square root,
@@ -570,10 +570,10 @@ mod decompress {
             // Y is bounded by 51 < 54 from requires
             assert(fe51_limbs_bounded(&Y, 51));
             // conditional_negate_field_element ensures the semantic property
-            assert(spec_field_element(&X) == if choice_is_true(compressed_sign_bit) {
-                math_field_neg(spec_field_element(&original_X))
+            assert(fe51_as_canonical_nat(&X) == if choice_is_true(compressed_sign_bit) {
+                field_neg(fe51_as_canonical_nat(&original_X))
             } else {
-                spec_field_element(&original_X)
+                fe51_as_canonical_nat(&original_X)
             });
             // For multiplication: need bounds by 54
             // 52 < 54 and 51 < 54, so we need to help Verus see the implication
@@ -586,10 +586,10 @@ mod decompress {
         let result = EdwardsPoint { X, Y, Z, T: &X * &Y };
 
         proof {
-            // multiplication produces correct math_field_mul result
-            assert(spec_field_element(&result.T) == math_field_mul(
-                spec_field_element(&result.X),
-                spec_field_element(&result.Y),
+            // multiplication produces correct field_mul result
+            assert(fe51_as_canonical_nat(&result.T) == field_mul(
+                fe51_as_canonical_nat(&result.X),
+                fe51_as_canonical_nat(&result.Y),
             ));
         }
 
@@ -762,7 +762,7 @@ impl Identity for CompressedEdwardsY {
         ensures
     // Identity point has y = 1 and sign bit = 0
 
-            spec_field_element_from_bytes(&result.0) == 1,
+            fe51_as_canonical_nat_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
     {
         let result = CompressedEdwardsY(
@@ -807,14 +807,14 @@ impl Identity for CompressedEdwardsY {
             assert(result.0[31] == 0);
             assert((0u8 >> 7) == 0) by (bit_vector);
 
-            // spec_field_element_from_bytes([1, 0, ...]) = 1
+            // fe51_as_canonical_nat_from_bytes([1, 0, ...]) = 1
             // The bytes represent 1 in little-endian: byte[0] = 1, rest = 0
 
-            // Step 1: Prove bytes32_to_nat(&result.0) == 1
+            // Step 1: Prove u8_32_as_nat(&result.0) == 1
             assert(result.0[0] == 1);
             assert(forall|i: int| 1 <= i < 32 ==> result.0[i] == 0);
-            assert(bytes32_to_nat(&result.0) == 1) by {
-                lemma_bytes32_to_nat_identity(&result.0);
+            assert(u8_32_as_nat(&result.0) == 1) by {
+                lemma_u8_32_as_nat_identity(&result.0);
             }
 
             // Step 2: 1 % pow2(255) == 1 (since 1 < pow2(255))
@@ -830,8 +830,8 @@ impl Identity for CompressedEdwardsY {
                 lemma_small_mod(1nat, p());
             }
 
-            // Conclude: spec_field_element_from_bytes = (bytes32_to_nat % pow2(255)) % p() = 1
-            assert(spec_field_element_from_bytes(&result.0) == 1);
+            // Conclude: fe51_as_canonical_nat_from_bytes = (u8_32_as_nat % pow2(255)) % p() = 1
+            assert(fe51_as_canonical_nat_from_bytes(&result.0) == 1);
         }
 
         result
@@ -841,7 +841,7 @@ impl Identity for CompressedEdwardsY {
 impl crate::traits::IsIdentitySpecImpl for CompressedEdwardsY {
     /// For CompressedEdwardsY, is_identity returns true iff y-coordinate is 1 with sign bit 0
     open spec fn is_identity_spec(&self) -> bool {
-        spec_field_element_from_bytes(&self.0) == 1 && (self.0[31] >> 7) == 0
+        fe51_as_canonical_nat_from_bytes(&self.0) == 1 && (self.0[31] >> 7) == 0
     }
 }
 
@@ -850,7 +850,7 @@ impl Default for CompressedEdwardsY {
         ensures
     // Identity point has y = 1 and sign bit = 0
 
-            spec_field_element_from_bytes(&result.0) == 1,
+            fe51_as_canonical_nat_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
     {
         CompressedEdwardsY::identity()
@@ -907,12 +907,12 @@ impl Identity for EdwardsPoint {
             T: FieldElement::ZERO,
         };
         proof {
-            // ZERO has limbs [0,0,0,0,0] → spec_field_element = 0
-            // ONE has limbs [1,0,0,0,0] → spec_field_element = 1
-            assert(spec_field_element(&FieldElement::ZERO) == 0) by {
+            // ZERO has limbs [0,0,0,0,0] → fe51_as_canonical_nat = 0
+            // ONE has limbs [1,0,0,0,0] → fe51_as_canonical_nat = 1
+            assert(fe51_as_canonical_nat(&FieldElement::ZERO) == 0) by {
                 lemma_zero_field_element_value();
             }
-            assert(spec_field_element(&FieldElement::ONE) == 1) by {
+            assert(fe51_as_canonical_nat(&FieldElement::ONE) == 1) by {
                 lemma_one_field_element_value();
             }
 
@@ -1008,7 +1008,7 @@ impl ValidityCheck for EdwardsPoint {
     fn is_valid(&self) -> (result: bool)
         requires
             edwards_point_limbs_bounded(*self),
-            spec_field_element(&self.Z) != 0,
+            fe51_as_canonical_nat(&self.Z) != 0,
         ensures
             result == is_valid_edwards_point(*self),
     {
@@ -1039,10 +1039,10 @@ impl ValidityCheck for EdwardsPoint {
         let result = point_on_curve && on_segre_image;
         proof {
             // Connect runtime checks to spec predicate
-            let x = spec_field_element(&self.X);
-            let y = spec_field_element(&self.Y);
-            let z = spec_field_element(&self.Z);
-            let t = spec_field_element(&self.T);
+            let x = fe51_as_canonical_nat(&self.X);
+            let y = fe51_as_canonical_nat(&self.Y);
+            let z = fe51_as_canonical_nat(&self.Z);
+            let t = fe51_as_canonical_nat(&self.T);
 
             // proj.is_valid() checks ONLY the projective curve equation (not z != 0)
             assert(proj.X == self.X && proj.Y == self.Y && proj.Z == self.Z);
@@ -1052,23 +1052,23 @@ impl ValidityCheck for EdwardsPoint {
             // PartialEq ensures: (a == b) <==> spec_fe51_to_bytes(a) == spec_fe51_to_bytes(b)
             assert(on_segre_image == (spec_fe51_to_bytes(&xy) == spec_fe51_to_bytes(&zt)));
 
-            // Multiplication postcondition: spec_field_element of product = math_field_mul
-            assert(spec_field_element(&xy) == math_field_mul(x, y));
-            assert(spec_field_element(&zt) == math_field_mul(z, t));
+            // Multiplication postcondition: fe51_as_canonical_nat of product = field_mul
+            assert(fe51_as_canonical_nat(&xy) == field_mul(x, y));
+            assert(fe51_as_canonical_nat(&zt) == field_mul(z, t));
 
             // Relate the exec equality check to the math-level equality.
-            assert(on_segre_image == (math_field_mul(x, y) == math_field_mul(z, t))) by {
+            assert(on_segre_image == (field_mul(x, y) == field_mul(z, t))) by {
                 // Forward: bytes_equal ==> values_equal
                 if on_segre_image {
                     assert(spec_fe51_to_bytes(&xy) == spec_fe51_to_bytes(&zt));
                     lemma_fe51_to_bytes_equal_implies_field_element_equal(&xy, &zt);
-                    assert(spec_field_element(&xy) == spec_field_element(&zt));
-                    assert(math_field_mul(x, y) == math_field_mul(z, t));
+                    assert(fe51_as_canonical_nat(&xy) == fe51_as_canonical_nat(&zt));
+                    assert(field_mul(x, y) == field_mul(z, t));
                 }
                 // Reverse: values_equal ==> bytes_equal
 
-                if math_field_mul(x, y) == math_field_mul(z, t) {
-                    assert(spec_field_element(&xy) == spec_field_element(&zt));
+                if field_mul(x, y) == field_mul(z, t) {
+                    assert(fe51_as_canonical_nat(&xy) == fe51_as_canonical_nat(&zt));
                     lemma_field_element_equal_implies_fe51_to_bytes_equal(&xy, &zt);
                     assert(spec_fe51_to_bytes(&xy) == spec_fe51_to_bytes(&zt));
                     assert(on_segre_image);
@@ -1077,7 +1077,7 @@ impl ValidityCheck for EdwardsPoint {
 
             // With Z ≠ 0 as precondition, prove result equals the spec validity predicate.
             let curve_eq = math_on_edwards_curve_projective(x, y, z);
-            let segre_eq = math_field_mul(x, y) == math_field_mul(z, t);
+            let segre_eq = field_mul(x, y) == field_mul(z, t);
 
             assert(result == (curve_eq && segre_eq)) by {
                 assert(result == (point_on_curve && on_segre_image));
@@ -1085,8 +1085,8 @@ impl ValidityCheck for EdwardsPoint {
                 assert(on_segre_image == segre_eq);
             };
 
-            // Connect local z to precondition: z == spec_field_element(&self.Z) != 0
-            assert(z != 0);  // Follows from precondition spec_field_element(&self.Z) != 0
+            // Connect local z to precondition: z == fe51_as_canonical_nat(&self.Z) != 0
+            assert(z != 0);  // Follows from precondition fe51_as_canonical_nat(&self.Z) != 0
 
             assert(is_valid_edwards_point(*self) == (z != 0 && curve_eq && segre_eq));
             // Since z != 0 is known, simplify: (true && curve_eq && segre_eq) == (curve_eq && segre_eq)
@@ -1622,27 +1622,27 @@ impl EdwardsPoint {
         let recip = self.Z.invert();
 
         // Ghost values for proof
-        let ghost x_coord = spec_field_element(&self.X);
-        let ghost y_coord = spec_field_element(&self.Y);
-        let ghost z_coord = spec_field_element(&self.Z);
-        let ghost z_inv = math_field_inv(z_coord);
+        let ghost x_coord = fe51_as_canonical_nat(&self.X);
+        let ghost y_coord = fe51_as_canonical_nat(&self.Y);
+        let ghost z_coord = fe51_as_canonical_nat(&self.Z);
+        let ghost z_inv = field_inv(z_coord);
 
         proof {
             // From is_well_formed_edwards_point, we have z != 0
             assert(z_coord != 0);
-            assert(spec_field_element(&recip) == z_inv);
+            assert(fe51_as_canonical_nat(&recip) == z_inv);
         }
 
         let x = &self.X * &recip;
         let y = &self.Y * &recip;
 
-        let ghost x_affine = spec_field_element(&x);
-        let ghost y_affine = spec_field_element(&y);
+        let ghost x_affine = fe51_as_canonical_nat(&x);
+        let ghost y_affine = fe51_as_canonical_nat(&y);
 
         proof {
-            // From mul postcondition: spec_field_element(&result) = math_field_mul(...)
-            assert(x_affine == math_field_mul(x_coord, z_inv));
-            assert(y_affine == math_field_mul(y_coord, z_inv));
+            // From mul postcondition: fe51_as_canonical_nat(&result) = field_mul(...)
+            assert(x_affine == field_mul(x_coord, z_inv));
+            assert(y_affine == field_mul(y_coord, z_inv));
 
             // These match edwards_point_as_affine
             let (spec_x_affine, spec_y_affine) = edwards_point_as_affine(*self);
@@ -1664,10 +1664,10 @@ impl EdwardsPoint {
             // Establish p() > 0 for lemma_mod_bound preconditions
             p_gt_2();
 
-            // Establish y_affine < p() (from math_field_mul definition: result = (a*b) % p < p)
+            // Establish y_affine < p() (from field_mul definition: result = (a*b) % p < p)
             // and x_affine < p() similarly
             assert(y_affine < p()) by {
-                // math_field_mul returns (a * b) % p, which is < p
+                // field_mul returns (a * b) % p, which is < p
                 p_gt_2();
                 lemma_mod_bound((y_coord * z_inv) as int, p() as int);
             };
@@ -1676,12 +1676,12 @@ impl EdwardsPoint {
                 lemma_mod_bound((x_coord * z_inv) as int, p() as int);
             };
 
-            // as_bytes ensures: bytes32_to_nat(&s_before_xor) == spec_field_element(&y) == y_affine
-            assert(bytes32_to_nat(&s_before_xor) == y_affine);
+            // as_bytes ensures: u8_32_as_nat(&s_before_xor) == fe51_as_canonical_nat(&y) == y_affine
+            assert(u8_32_as_nat(&s_before_xor) == y_affine);
 
             // Postcondition is compressed_edwards_y_corresponds_to_edwards(result, *self)
             // which requires:
-            // 1. spec_field_element_from_bytes(&s) == y_affine (the y-coordinate)
+            // 1. fe51_as_canonical_nat_from_bytes(&s) == y_affine (the y-coordinate)
             // 2. (s[31] >> 7) == (((x_affine % p()) % 2) as u8) (the sign bit)
 
             // Prove s_before_xor has bit 255 clear
@@ -1690,10 +1690,10 @@ impl EdwardsPoint {
             }
 
             // Connect is_negative to x_affine parity
-            assert(choice_is_true(is_neg_choice) == (spec_field_element(&x) % 2 == 1)) by {
+            assert(choice_is_true(is_neg_choice) == (fe51_as_canonical_nat(&x) % 2 == 1)) by {
                 lemma_is_negative_equals_parity(&x);
             }
-            assert(spec_field_element(&x) == x_affine);
+            assert(fe51_as_canonical_nat(&x) == x_affine);
             assert(choice_is_true(is_neg_choice) == (x_affine % 2 == 1));
 
             // unwrap_u8 converts choice to u8: true->1, false->0
@@ -1717,7 +1717,7 @@ impl EdwardsPoint {
             };
 
             // Prove XOR preserves y and sets sign bit
-            assert(spec_field_element_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit) by {
+            assert(fe51_as_canonical_nat_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit) by {
                 lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
             }
 

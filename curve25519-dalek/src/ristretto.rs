@@ -388,13 +388,13 @@ mod decompress {
 
             fe51_limbs_bounded(&result.2, 51),
             // Parsed value matches the bytes-to-field-element spec
-            spec_field_element(&result.2) == spec_field_element_from_bytes(&repr.0),
+            fe51_as_canonical_nat(&result.2) == fe51_as_canonical_nat_from_bytes(&repr.0),
             // s_encoding_is_canonical: true iff re-encoding s gives the original bytes
             choice_is_true(result.0) == (spec_fe51_to_bytes(&result.2) == repr.0@),
             // s_is_negative: true iff low bit of canonical encoding is 1
             choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),
             // s_is_negative matches the math-level sign bit of the decoded value
-            choice_is_true(result.1) == math_is_negative(spec_field_element_from_bytes(&repr.0)),
+            choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),
     {
         // Step 1. Check s for validity:
         // 1.a) s must be 32 bytes (we get this from the type system)
@@ -416,9 +416,9 @@ mod decompress {
         proof {
             // VERIFICATION NOTE: only postcondition left to prove
             assume(choice_is_true(s_encoding_is_canonical) == (spec_fe51_to_bytes(&s) == repr.0@));
-            assume(spec_field_element(&s) == spec_field_element_from_bytes(&repr.0));
+            assume(fe51_as_canonical_nat(&s) == fe51_as_canonical_nat_from_bytes(&repr.0));
             assume(choice_is_true(s_is_negative) == math_is_negative(
-                spec_field_element_from_bytes(&repr.0),
+                fe51_as_canonical_nat_from_bytes(&repr.0),
             ));
         }
 
@@ -436,19 +436,19 @@ mod decompress {
         ensures
     // Z is set to ONE by construction
 
-            spec_field_element(&result.3.0.Z) == 1,
+            fe51_as_canonical_nat(&result.3.0.Z) == 1,
             // T is the product of X and Y in affine form (Z = 1)
-            spec_field_element(&result.3.0.T) == math_field_mul(
-                spec_field_element(&result.3.0.X),
-                spec_field_element(&result.3.0.Y),
+            fe51_as_canonical_nat(&result.3.0.T) == field_mul(
+                fe51_as_canonical_nat(&result.3.0.X),
+                fe51_as_canonical_nat(&result.3.0.Y),
             ),
             // If decoding succeeds, the output point is well-formed and in the even subgroup
             choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
             choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
             // t_is_negative reflects the sign bit of T
-            choice_is_true(result.1) == math_is_negative(spec_field_element(&result.3.0.T)),
+            choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat(&result.3.0.T)),
             // y_is_zero reflects whether Y is zero
-            choice_is_true(result.2) == (spec_field_element(&result.3.0.Y) == 0),
+            choice_is_true(result.2) == (fe51_as_canonical_nat(&result.3.0.Y) == 0),
     {
         // VERIFICATION NOTE: assume(false) postpones limb bounds tracking and other proof obligations.
         proof {
@@ -734,9 +734,9 @@ impl BatchCompressState {
             fe51_limbs_bounded(&self.fh, 54),
         ensures
             fe51_limbs_bounded(&result, 54),
-            spec_field_element(&result) == math_field_mul(
-                spec_field_element(&self.eg),
-                spec_field_element(&self.fh),
+            fe51_as_canonical_nat(&result) == field_mul(
+                fe51_as_canonical_nat(&self.eg),
+                fe51_as_canonical_nat(&self.fh),
             ),
     {
         &self.eg * &self.fh
@@ -755,39 +755,39 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
             fe51_limbs_bounded(&result.eg, 54),
             fe51_limbs_bounded(&result.fh, 54),
             // e = 2*X*Y
-            spec_field_element(&result.e) == math_field_mul(
+            fe51_as_canonical_nat(&result.e) == field_mul(
                 2,
-                math_field_mul(spec_field_element(&P.0.X), spec_field_element(&P.0.Y)),
+                field_mul(fe51_as_canonical_nat(&P.0.X), fe51_as_canonical_nat(&P.0.Y)),
             ),
             // f = Z^2 + d*T^2
-            spec_field_element(&result.f) == math_field_add(
-                math_field_square(spec_field_element(&P.0.Z)),
-                math_field_mul(
-                    spec_field_element(&constants::EDWARDS_D),
-                    math_field_square(spec_field_element(&P.0.T)),
+            fe51_as_canonical_nat(&result.f) == field_add(
+                field_square(fe51_as_canonical_nat(&P.0.Z)),
+                field_mul(
+                    fe51_as_canonical_nat(&constants::EDWARDS_D),
+                    field_square(fe51_as_canonical_nat(&P.0.T)),
                 ),
             ),
             // g = Y^2 + X^2 (a = -1)
-            spec_field_element(&result.g) == math_field_add(
-                math_field_square(spec_field_element(&P.0.Y)),
-                math_field_square(spec_field_element(&P.0.X)),
+            fe51_as_canonical_nat(&result.g) == field_add(
+                field_square(fe51_as_canonical_nat(&P.0.Y)),
+                field_square(fe51_as_canonical_nat(&P.0.X)),
             ),
             // h = Z^2 - d*T^2
-            spec_field_element(&result.h) == math_field_sub(
-                math_field_square(spec_field_element(&P.0.Z)),
-                math_field_mul(
-                    spec_field_element(&constants::EDWARDS_D),
-                    math_field_square(spec_field_element(&P.0.T)),
+            fe51_as_canonical_nat(&result.h) == field_sub(
+                field_square(fe51_as_canonical_nat(&P.0.Z)),
+                field_mul(
+                    fe51_as_canonical_nat(&constants::EDWARDS_D),
+                    field_square(fe51_as_canonical_nat(&P.0.T)),
                 ),
             ),
             // eg = e * g, fh = f * h
-            spec_field_element(&result.eg) == math_field_mul(
-                spec_field_element(&result.e),
-                spec_field_element(&result.g),
+            fe51_as_canonical_nat(&result.eg) == field_mul(
+                fe51_as_canonical_nat(&result.e),
+                fe51_as_canonical_nat(&result.g),
             ),
-            spec_field_element(&result.fh) == math_field_mul(
-                spec_field_element(&result.f),
-                spec_field_element(&result.h),
+            fe51_as_canonical_nat(&result.fh) == field_mul(
+                fe51_as_canonical_nat(&result.f),
+                fe51_as_canonical_nat(&result.h),
             ),
     {
         proof {
@@ -1069,10 +1069,10 @@ impl RistrettoPoint {
             // Each non-zero element is replaced by its multiplicative inverse
             forall|i: int|
                 #![auto]
-                0 <= i < invs.len() ==> ((spec_field_element(&old(invs)[i]) != 0)
-                    ==> is_inverse_field(&old(invs)[i], &invs[i])) && ((spec_field_element(
+                0 <= i < invs.len() ==> ((fe51_as_canonical_nat(&old(invs)[i]) != 0)
+                    ==> is_inverse_field(&old(invs)[i], &invs[i])) && ((fe51_as_canonical_nat(
                     &old(invs)[i],
-                ) == 0) ==> spec_field_element(&invs[i]) == 0),
+                ) == 0) ==> fe51_as_canonical_nat(&invs[i]) == 0),
     {
         // Delegates to Verus-verified FieldElement::batch_invert
         FieldElement::batch_invert(invs.as_mut_slice());
@@ -1117,7 +1117,7 @@ impl RistrettoPoint {
     // The result is the Elligator map applied to r_0
 
             edwards_point_as_affine(result.0) == spec_elligator_ristretto_flavor(
-                spec_field_element(r_0),
+                fe51_as_canonical_nat(r_0),
             ),
             // The result is a valid Ristretto point: well-formed and in the even subgroup
             is_well_formed_edwards_point(result.0),

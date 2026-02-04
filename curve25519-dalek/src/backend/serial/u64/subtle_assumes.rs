@@ -3,7 +3,7 @@ use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTi
 
 use crate::backend::serial::u64::field::FieldElement51;
 #[cfg(verus_keep_ghost)]
-use crate::specs::field_specs::{fe51_limbs_bounded, math_field_neg, spec_field_element};
+use crate::specs::field_specs::{fe51_limbs_bounded, field_neg, fe51_as_canonical_nat};
 
 use vstd::prelude::*;
 
@@ -294,7 +294,7 @@ pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
         spec_field_element(a) == if choice_is_true(choice) {
             math_field_neg(spec_field_element(old(a)))
         } else {
-            spec_field_element(old(a))
+            fe51_as_canonical_nat(old(a))
         },
 {
     a.conditional_negate(choice);

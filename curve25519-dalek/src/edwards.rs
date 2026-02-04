@@ -2503,8 +2503,6 @@ define_mul_assign_variants!(LHS = EdwardsPoint, RHS = Scalar);
 
 define_edwards_scalar_mul_variants_verus!();
 
-define_mul_variants_verus!(LHS = Scalar, RHS = EdwardsPoint, Output = EdwardsPoint);
-
 verus! {
 
 impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
@@ -2601,13 +2599,26 @@ impl EdwardsPoint {
         // issues arising from the fact that the curve point is not necessarily in the prime-order
         // subgroup.
         let s = Scalar { bytes: clamp_integer(bytes) };
+        proof {
+            // From clamp_integer postcondition: is_clamped_integer(&s.bytes)
+            // which includes s.bytes[31] <= 127 (needed for multiplication precondition)
+            assert(is_clamped_integer(&s.bytes));
+            assert(s.bytes[31] <= 127);
+
+            // Also from clamp_integer: s.bytes == spec_clamp_integer(bytes)
+            assert(s.bytes == spec_clamp_integer(bytes));
+        }
+        // Multiplication: s * self requires s.bytes[31] <= 127 and is_well_formed_edwards_point(self)
+        // Both are satisfied. The new macro provides ensures clauses for owned variants.
         let result = s * self;
         proof {
-            assume(is_well_formed_edwards_point(result));
-            assume(edwards_point_as_affine(result) == edwards_scalar_mul(
-                edwards_point_as_affine(self),
-                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
-            ));
+            // The multiplication postcondition gives us:
+            // - is_well_formed_edwards_point(result)
+            // - edwards_point_as_affine(result) == edwards_scalar_mul(edwards_point_as_affine(self), scalar_to_nat(&s))
+
+            // We need to show: scalar_to_nat(&s) == scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) })
+            // This follows from s.bytes == spec_clamp_integer(bytes) and the definition of scalar_to_nat
+            assert(scalar_to_nat(&s) == scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }));
         }
         result
     }

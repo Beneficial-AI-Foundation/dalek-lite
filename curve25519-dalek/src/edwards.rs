@@ -3195,17 +3195,76 @@ impl BasepointTable for EdwardsBasepointTable {
             // is_well_formed_edwards_point follows from as_extended postcondition
             assert(is_well_formed_edwards_point(result));
 
-            // === Functional correctness ===
-            // PROOF BYPASS: The full proof requires lemmas connecting:
-            // 1. spec_edwards_add_affine_niels(identity, selected) == affine_niels_as_affine(selected)
-            //    (identity is neutral element)
-            // 2. is_valid_lookup_table_affine_coords implies affine_niels_as_affine(table[0]) == base
-            //    (table entry 0 with index 1 gives 1*base = base)
-            // 3. as_extended preserves affine representation
-            //
-            // These would require new lemmas about the neutral element property and
-            // lookup table semantics.
-            assume(edwards_point_as_affine(result) == spec_ed25519_basepoint());
+            // === Functional correctness proof ===
+            let B = spec_ed25519_basepoint();
+
+            // Step 1: pow256(0) == 1, so the table base for index 0 is just B
+            assert(pow256(0) == 1) by {
+                reveal(pow256);
+                reveal(pow2);
+                vstd::arithmetic::power::lemma_pow0(2);
+            }
+
+            // Step 2: edwards_scalar_mul(B, 1) == B
+            assert(edwards_scalar_mul(B, 1) == B) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+
+            // Step 3: From table validity, table[0] is valid for edwards_scalar_mul(B, pow256(0)) = B
+            // The spec says: for j in 0..8, affine_niels_point_as_affine_edwards(table[j]) == edwards_scalar_mul(base, j+1)
+            // Since select(1) with x=1 > 0 returns self.0[0].0[(1-1)] = self.0[0].0[0]
+            // And is_valid_lookup_table_affine_coords says entry at index 0 gives 1*base = base
+            assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                (*self).0[0int].0,
+                edwards_scalar_mul(B, pow256(0)),
+                8,
+            ));
+            assert(crate::specs::window_specs::is_valid_lookup_table_affine_coords(
+                (*self).0[0int].0,
+                B,
+                8,
+            ));
+            // Instantiate the forall at j=0: table[0] decodes to 1*B = B
+            assert(affine_niels_point_as_affine_edwards((*self).0[0int].0[0int]) == edwards_scalar_mul(B, 1));
+            assert(affine_niels_point_as_affine_edwards((*self).0[0int].0[0int]) == B);
+            // select(1) returns self.0[0].0[0]
+            assert(selected == (*self).0[0int].0[0int]);
+            assert(affine_niels_point_as_affine_edwards(selected) == B);
+
+            // Step 4: identity() postcondition gives is_identity_edwards_point(identity)
+            // Use lemma_identity_affine_coords to get edwards_point_as_affine(identity) == (0, 1)
+            use crate::specs::edwards_specs::lemma_identity_affine_coords;
+            assert(is_identity_edwards_point(identity));  // from identity() postcondition
+            lemma_identity_affine_coords(identity);
+            assert(edwards_point_as_affine(identity) == (0nat, 1nat));
+            assert(math_edwards_identity() == (0nat, 1nat));
+
+            // Step 5: Inner add postcondition
+            // completed_point_as_affine_edwards(completed) == spec_edwards_add_affine_niels(identity, selected)
+            //   == edwards_add(edwards_point_as_affine(identity), affine_niels_point_as_affine_edwards(selected))
+            //   == edwards_add((0, 1), B)
+            assert(completed_point_as_affine_edwards(completed) == spec_edwards_add_affine_niels(identity, selected));
+            assert(spec_edwards_add_affine_niels(identity, selected) == edwards_add(0nat, 1nat, B.0, B.1));
+
+            // Step 6: Use lemma_edwards_add_identity_left: edwards_add(0, 1, x, y) == (x % p(), y % p())
+            use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_add_identity_left;
+            lemma_edwards_add_identity_left(B.0, B.1);
+            assert(edwards_add(0nat, 1nat, B.0, B.1) == (B.0 % p(), B.1 % p()));
+
+            // Step 7: B is canonical (< p), so B % p == B
+            use crate::specs::edwards_specs::axiom_ed25519_basepoint_canonical;
+            axiom_ed25519_basepoint_canonical();
+            assert(B.0 < p() && B.1 < p());
+            vstd::arithmetic::div_mod::lemma_small_mod(B.0, p());
+            vstd::arithmetic::div_mod::lemma_small_mod(B.1, p());
+            assert(B.0 % p() == B.0 && B.1 % p() == B.1);
+            assert((B.0 % p(), B.1 % p()) == B);
+
+            // Step 8: as_extended preserves affine representation
+            assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(completed));
+
+            // Chain it all together
+            assert(edwards_point_as_affine(result) == B);
         }
         result
     }

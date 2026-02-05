@@ -281,71 +281,6 @@ impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
-// Forwarding impls for `&&FieldElement51` to avoid refactoring exec code just to
-// satisfy Verus's stricter operator-trait resolution.
-impl<'a, 'b> Add<&'b FieldElement51> for &&'a FieldElement51 {
-    type Output = FieldElement51;
-
-    fn add(self, _rhs: &'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            output == spec_add_fe51_limbs(*self, _rhs),
-            spec_field_element_as_nat(&output) == spec_field_element_as_nat(*self)
-                + spec_field_element_as_nat(_rhs),
-            spec_field_element(&output) == math_field_add(
-                spec_field_element(*self),
-                spec_field_element(_rhs),
-            ),
-            fe51_limbs_bounded(*self, 51) && fe51_limbs_bounded(_rhs, 51) ==> fe51_limbs_bounded(
-                &output,
-                52,
-            ),
-    {
-        (*self) + _rhs
-    }
-}
-
-impl<'a, 'b> Add<&&'b FieldElement51> for &'a FieldElement51 {
-    type Output = FieldElement51;
-
-    fn add(self, _rhs: &&'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            output == spec_add_fe51_limbs(self, *_rhs),
-            spec_field_element_as_nat(&output) == spec_field_element_as_nat(self)
-                + spec_field_element_as_nat(*_rhs),
-            spec_field_element(&output) == math_field_add(
-                spec_field_element(self),
-                spec_field_element(*_rhs),
-            ),
-            fe51_limbs_bounded(self, 51) && fe51_limbs_bounded(*_rhs, 51) ==> fe51_limbs_bounded(
-                &output,
-                52,
-            ),
-    {
-        self + (*_rhs)
-    }
-}
-
-impl<'a, 'b> Add<&&'b FieldElement51> for &&'a FieldElement51 {
-    type Output = FieldElement51;
-
-    fn add(self, _rhs: &&'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            output == spec_add_fe51_limbs(*self, *_rhs),
-            spec_field_element_as_nat(&output) == spec_field_element_as_nat(*self)
-                + spec_field_element_as_nat(*_rhs),
-            spec_field_element(&output) == math_field_add(
-                spec_field_element(*self),
-                spec_field_element(*_rhs),
-            ),
-            fe51_limbs_bounded(*self, 51) && fe51_limbs_bounded(*_rhs, 51) ==> fe51_limbs_bounded(
-                &output,
-                52,
-            ),
-    {
-        (*self) + (*_rhs)
-    }
-}
-
 impl<'a> SubAssign<&'a FieldElement51> for FieldElement51 {
     fn sub_assign(
         &mut self,
@@ -399,51 +334,6 @@ impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &FieldElement51 {
     // Postcondition of sub - delegates to spec_sub_limbs for consistency
     open spec fn sub_spec(self, rhs: &FieldElement51) -> FieldElement51 {
         spec_sub_limbs(self, rhs)
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &&FieldElement51 {
-    open spec fn obeys_sub_spec() -> bool {
-        true
-    }
-
-    open spec fn sub_req(self, rhs: &FieldElement51) -> bool {
-        fe51_limbs_bounded(*self, 54) && fe51_limbs_bounded(rhs, 54)
-    }
-
-    open spec fn sub_spec(self, rhs: &FieldElement51) -> FieldElement51 {
-        spec_sub_limbs(*self, rhs)
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::SubSpecImpl<&&FieldElement51> for &FieldElement51 {
-    open spec fn obeys_sub_spec() -> bool {
-        true
-    }
-
-    open spec fn sub_req(self, rhs: &&FieldElement51) -> bool {
-        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(*rhs, 54)
-    }
-
-    open spec fn sub_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
-        spec_sub_limbs(self, *rhs)
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::SubSpecImpl<&&FieldElement51> for &&FieldElement51 {
-    open spec fn obeys_sub_spec() -> bool {
-        true
-    }
-
-    open spec fn sub_req(self, rhs: &&FieldElement51) -> bool {
-        fe51_limbs_bounded(*self, 54) && fe51_limbs_bounded(*rhs, 54)
-    }
-
-    open spec fn sub_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
-        spec_sub_limbs(*self, *rhs)
     }
 }
 
@@ -553,54 +443,6 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
-impl<'a, 'b> Sub<&'b FieldElement51> for &&'a FieldElement51 {
-    type Output = FieldElement51;
-
-    fn sub(self, _rhs: &'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            output == spec_sub_limbs(*self, _rhs),
-            spec_field_element(&output) == math_field_sub(
-                spec_field_element(*self),
-                spec_field_element(_rhs),
-            ),
-            fe51_limbs_bounded(&output, 54),
-    {
-        (*self) - _rhs
-    }
-}
-
-impl<'a, 'b> Sub<&&'b FieldElement51> for &'a FieldElement51 {
-    type Output = FieldElement51;
-
-    fn sub(self, _rhs: &&'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            output == spec_sub_limbs(self, *_rhs),
-            spec_field_element(&output) == math_field_sub(
-                spec_field_element(self),
-                spec_field_element(*_rhs),
-            ),
-            fe51_limbs_bounded(&output, 54),
-    {
-        self - (*_rhs)
-    }
-}
-
-impl<'a, 'b> Sub<&&'b FieldElement51> for &&'a FieldElement51 {
-    type Output = FieldElement51;
-
-    fn sub(self, _rhs: &&'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            output == spec_sub_limbs(*self, *_rhs),
-            spec_field_element(&output) == math_field_sub(
-                spec_field_element(*self),
-                spec_field_element(*_rhs),
-            ),
-            fe51_limbs_bounded(&output, 54),
-    {
-        (*self) - (*_rhs)
-    }
-}
-
 impl<'a> MulAssign<&'a FieldElement51> for FieldElement51 {
     fn mul_assign(&mut self, _rhs: &'a FieldElement51)
         requires
@@ -635,51 +477,6 @@ impl vstd::std_specs::ops::MulSpecImpl<&FieldElement51> for &FieldElement51 {
     // Postcondition of mul
     open spec fn mul_spec(self, rhs: &FieldElement51) -> FieldElement51 {
         // VERIFICATION NOTE: WE DON'T PROVIDE A SPEC EXPRESSION FOR mul RESULT
-        arbitrary()
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&FieldElement51> for &&FieldElement51 {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: &FieldElement51) -> bool {
-        fe51_limbs_bounded(*self, 54) && fe51_limbs_bounded(rhs, 54)
-    }
-
-    open spec fn mul_spec(self, rhs: &FieldElement51) -> FieldElement51 {
-        arbitrary()
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&&FieldElement51> for &FieldElement51 {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: &&FieldElement51) -> bool {
-        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(*rhs, 54)
-    }
-
-    open spec fn mul_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
-        arbitrary()
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::MulSpecImpl<&&FieldElement51> for &&FieldElement51 {
-    open spec fn obeys_mul_spec() -> bool {
-        false
-    }
-
-    open spec fn mul_req(self, rhs: &&FieldElement51) -> bool {
-        fe51_limbs_bounded(*self, 54) && fe51_limbs_bounded(*rhs, 54)
-    }
-
-    open spec fn mul_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
         arbitrary()
     }
 }
@@ -826,57 +623,6 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
 
         // Now out[i] < 2^(51 + epsilon) for all i.
         FieldElement51 { limbs: out }
-    }
-}
-
-impl<'a, 'b> Mul<&'b FieldElement51> for &&'a FieldElement51 {
-    type Output = FieldElement51;
-
-    #[rustfmt::skip]  // keep alignment of c* calculations
-    fn mul(self, _rhs: &'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            spec_field_element(&output) == math_field_mul(
-                spec_field_element(*self),
-                spec_field_element(_rhs),
-            ),
-            fe51_limbs_bounded(&output, 52),
-            fe51_limbs_bounded(&output, 54),
-    {
-        (*self) * _rhs
-    }
-}
-
-impl<'a, 'b> Mul<&&'b FieldElement51> for &'a FieldElement51 {
-    type Output = FieldElement51;
-
-    #[rustfmt::skip]  // keep alignment of c* calculations
-    fn mul(self, _rhs: &&'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            spec_field_element(&output) == math_field_mul(
-                spec_field_element(self),
-                spec_field_element(*_rhs),
-            ),
-            fe51_limbs_bounded(&output, 52),
-            fe51_limbs_bounded(&output, 54),
-    {
-        self * (*_rhs)
-    }
-}
-
-impl<'a, 'b> Mul<&&'b FieldElement51> for &&'a FieldElement51 {
-    type Output = FieldElement51;
-
-    #[rustfmt::skip]  // keep alignment of c* calculations
-    fn mul(self, _rhs: &&'b FieldElement51) -> (output: FieldElement51)
-        ensures
-            spec_field_element(&output) == math_field_mul(
-                spec_field_element(*self),
-                spec_field_element(*_rhs),
-            ),
-            fe51_limbs_bounded(&output, 52),
-            fe51_limbs_bounded(&output, 54),
-    {
-        (*self) * (*_rhs)
     }
 }
 

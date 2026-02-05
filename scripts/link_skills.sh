@@ -5,20 +5,26 @@ usage() {
   cat <<'EOF'
 Usage: scripts/link_skills.sh [--codex] [--claude]
 
-Creates symlinks from your global skill directories back into this repo so that
-editing the repo-scoped skills is immediately reflected in your local installs.
+Creates symlinks from your global skill directories back into this repository.
+This lets you edit the repo-scoped skills and have the changes immediately
+reflected in your local Codex/Claude installs.
 
 Examples:
   scripts/link_skills.sh --codex
   scripts/link_skills.sh --claude
   scripts/link_skills.sh --codex --claude
+
+Notes:
+  - This script is never run automatically by builds or tests.
+  - If a target path exists and is not a symlink, it is moved aside to a
+    timestamped *.bak.* backup before the symlink is created.
 EOF
 }
 
 want_codex=0
 want_claude=0
 
-for arg in "${@:-}"; do
+for arg in "$@"; do
   case "$arg" in
     --codex) want_codex=1 ;;
     --claude) want_claude=1 ;;
@@ -62,4 +68,3 @@ fi
 if [[ "$want_claude" -eq 1 ]]; then
   link_one "${HOME}/.claude/skills/verus-proof-helper" "${repo_root}/.claude/skills/verus-proof-helper"
 fi
-

@@ -15,7 +15,7 @@ build*.txt
 .aider*
 .claude/settings.local.json
 
-# Track repo-scoped Claude/Codex skills (keep local settings ignored)
+# Repository-scoped Claude/Codex skills (keep local settings ignored)
 !.claude/
 !.claude/skills/
 !.claude/skills/**

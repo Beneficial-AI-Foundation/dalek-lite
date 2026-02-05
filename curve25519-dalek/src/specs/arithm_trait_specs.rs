@@ -5,6 +5,8 @@
 //!
 //! The actual implementations are in their respective files (edwards.rs, ristretto.rs, etc.).
 //! These specs define preconditions (via *_req) that Verus uses for verification.
+#[allow(unused_imports)]
+use crate::backend::serial::u64::field::FieldElement51;
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::edwards::EdwardsBasepointTable;
@@ -16,6 +18,8 @@ use crate::ristretto::RistrettoPoint;
 #[allow(unused_imports)]
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)]
+use crate::specs::field_specs::*;
+#[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
@@ -24,6 +28,59 @@ use crate::{EdwardsPoint, MontgomeryPoint, Scalar};
 use vstd::prelude::*;
 
 verus! {
+
+// =============================================================================
+// SECTION 0: FieldElement51 (AddSpecImpl forwarding for &&)
+// =============================================================================
+/* ORIGINAL CODE:
+These forwarding `AddSpecImpl` impls lived in `backend/serial/u64/field.rs`.
+*/
+// Verus does not (yet) reliably apply Rust's auto-deref coercions for `&&T` when
+// resolving operator traits. Provide explicit `&&FieldElement51` forwarding specs.
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddSpecImpl<&FieldElement51> for &&FieldElement51 {
+    open spec fn obeys_add_spec() -> bool {
+        true
+    }
+
+    open spec fn add_req(self, rhs: &FieldElement51) -> bool {
+        sum_of_limbs_bounded(*self, rhs, u64::MAX)
+    }
+
+    open spec fn add_spec(self, rhs: &FieldElement51) -> FieldElement51 {
+        spec_add_fe51_limbs(*self, rhs)
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddSpecImpl<&&FieldElement51> for &FieldElement51 {
+    open spec fn obeys_add_spec() -> bool {
+        true
+    }
+
+    open spec fn add_req(self, rhs: &&FieldElement51) -> bool {
+        sum_of_limbs_bounded(self, *rhs, u64::MAX)
+    }
+
+    open spec fn add_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
+        spec_add_fe51_limbs(self, *rhs)
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddSpecImpl<&&FieldElement51> for &&FieldElement51 {
+    open spec fn obeys_add_spec() -> bool {
+        true
+    }
+
+    open spec fn add_req(self, rhs: &&FieldElement51) -> bool {
+        sum_of_limbs_bounded(*self, *rhs, u64::MAX)
+    }
+
+    open spec fn add_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
+        spec_add_fe51_limbs(*self, *rhs)
+    }
+}
 
 // =============================================================================
 // SECTION 1: RistrettoPoint + RistrettoPoint (AddSpecImpl)

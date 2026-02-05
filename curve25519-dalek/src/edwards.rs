@@ -551,6 +551,8 @@ mod decompress {
             // 51-bit bounded implies 52-bit bounded (for conditional_negate precondition)
             assert((1u64 << 51) < (1u64 << 52)) by (bit_vector);
             assert(fe51_limbs_bounded(&X, 52));
+            // Also establish 54-bit bound, since the wrapper uses the standard 54-bit precondition.
+            lemma_fe51_limbs_bounded_weaken(&X, 52, 54);
         }
         conditional_negate_field_element(&mut X, compressed_sign_bit);
 
@@ -1789,25 +1791,38 @@ impl EdwardsPoint {
         // Convert to Edwards point
         let E1_opt = M1.to_edwards(sign_bit);
 
-        // Unwrap and multiply by cofactor
+        // Unwrap and multiply by cofactor.
+        // Avoid using `expect` here because Verus's vstd spec requires `is_some()`.
+        let E1 = match E1_opt {
+            Some(E1) => E1,
+            None => {
+                /* ORIGINAL CODE:
+                let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
+                */
+                // Tell rustc this panics, while keeping Verus happy.
+                #[cfg(not(verus_keep_ghost))]
+                panic!("Montgomery conversion to Edwards point in Elligator failed");
+
+                // In verification mode, pick a well-formed placeholder (this branch corresponds to
+                // the `expect` panic in exec builds, so it never returns at runtime).
+                #[cfg(verus_keep_ghost)]
+                EdwardsPoint::identity()
+            },
+        };
+
         proof {
-            assume(E1_opt.is_some());
-            // Assume "negligible" failure probability
-
-            // CRYPTOGRAPHIC ASSUMPTION: to_edwards returns None only when the u-coordinate of M1
-            // equals -1, because the birational map y = (u-1)/(u+1) has a zero denominator there.
-            // For random field elements from Elligator, this occurs with probability 1/p ≈ 2^-255
-
-            // VERIFICATION NOTE: we had to make this assumption because Verus vstd spec for "expect"
-            // requires is_some(); this is probably too strong on vstd's part.
-
-            // VERIFICATION NOTE: to remove the assume, we could make a case split on the result of to_edwards
-        }
-        let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
-
-        proof {
-            // E1 from to_edwards has valid limbs; mul_by_cofactor ensures well-formedness
-            assume(is_well_formed_edwards_point(E1));
+            // mul_by_cofactor requires well-formedness; this holds:
+            // - for Some(E1): from MontgomeryPoint::to_edwards postcondition
+            // - for None: E1 is identity (well-formed)
+            match E1_opt {
+                Some(ed) => {
+                    assert(ed == E1);
+                    assert(is_well_formed_edwards_point(E1));
+                },
+                None => {
+                    assert(is_well_formed_edwards_point(E1));
+                },
+            }
         }
 
         let result = E1.mul_by_cofactor();

@@ -223,53 +223,6 @@ impl vstd::std_specs::ops::AddSpecImpl<&FieldElement51> for &FieldElement51 {
     }
 }
 
-// Verus does not (yet) reliably apply Rust's auto-deref coercions for `&&T` when
-// resolving operator traits. Provide explicit `&&FieldElement51` forwarding specs.
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::AddSpecImpl<&FieldElement51> for &&FieldElement51 {
-    open spec fn obeys_add_spec() -> bool {
-        true
-    }
-
-    open spec fn add_req(self, rhs: &FieldElement51) -> bool {
-        sum_of_limbs_bounded(*self, rhs, u64::MAX)
-    }
-
-    open spec fn add_spec(self, rhs: &FieldElement51) -> FieldElement51 {
-        spec_add_fe51_limbs(*self, rhs)
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::AddSpecImpl<&&FieldElement51> for &FieldElement51 {
-    open spec fn obeys_add_spec() -> bool {
-        true
-    }
-
-    open spec fn add_req(self, rhs: &&FieldElement51) -> bool {
-        sum_of_limbs_bounded(self, *rhs, u64::MAX)
-    }
-
-    open spec fn add_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
-        spec_add_fe51_limbs(self, *rhs)
-    }
-}
-
-#[cfg(verus_keep_ghost)]
-impl vstd::std_specs::ops::AddSpecImpl<&&FieldElement51> for &&FieldElement51 {
-    open spec fn obeys_add_spec() -> bool {
-        true
-    }
-
-    open spec fn add_req(self, rhs: &&FieldElement51) -> bool {
-        sum_of_limbs_bounded(*self, *rhs, u64::MAX)
-    }
-
-    open spec fn add_spec(self, rhs: &&FieldElement51) -> FieldElement51 {
-        spec_add_fe51_limbs(*self, *rhs)
-    }
-}
-
 impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
 

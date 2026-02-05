@@ -32,6 +32,8 @@ pub mod pow_p58_lemma;
 
 pub mod constants_lemmas;
 
+pub mod montgomery_constants_lemmas;
+
 pub mod field_algebra_lemmas;
 
 pub mod sqrt_m1_lemmas;

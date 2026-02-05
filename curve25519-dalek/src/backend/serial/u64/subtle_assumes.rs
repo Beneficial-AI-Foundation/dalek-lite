@@ -268,8 +268,8 @@ pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
     requires
         fe51_limbs_bounded(
             old(a),
-            52,
-        ),  // Relaxed from 51 to 52 to match mul/square output
+            54,
+        ),  // Allow the standard 54-bit bound used by most field ops
 
     ensures
         fe51_limbs_bounded(a, 52),

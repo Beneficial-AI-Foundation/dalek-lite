@@ -1131,9 +1131,12 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         assert(fe51_limbs_bounded(&a_neg, 51));
         lemma_fe51_limbs_bounded_weaken(&a_neg, 51, 54);
     }
-    conditional_negate_field_element(&mut a_neg, Choice::from(1u8));
+    // ORIGINAL CODE: conditional_negate_field_element(&mut a_neg, Choice::from(1u8));
+    let neg_choice = Choice::from(1u8);
+    conditional_negate_field_element(&mut a_neg, neg_choice);
     proof {
-        // Negation produces a 52-bounded output; weaken to satisfy mul precondition.
+        // Negation (choice true) produces a 52-bounded output; weaken to satisfy mul precondition.
+        assert(choice_is_true(neg_choice));
         lemma_fe51_limbs_bounded_weaken(&a_neg, 52, 54);
     }
     let d_1_inv = d_1.invert();

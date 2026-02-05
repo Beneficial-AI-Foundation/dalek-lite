@@ -557,8 +557,16 @@ mod decompress {
         conditional_negate_field_element(&mut X, compressed_sign_bit);
 
         proof {
-            // conditional_negate_field_element ensures limbs bounded by 52 < 54
-            assert(fe51_limbs_bounded(&X, 52));
+            // `conditional_negate_field_element` is a no-op when `compressed_sign_bit` is false,
+            // and performs a reduce()'d negation (52-bit bounded) when it is true.
+            assert(fe51_limbs_bounded(&X, 52)) by {
+                if choice_is_true(compressed_sign_bit) {
+                    assert(choice_is_true(compressed_sign_bit) ==> fe51_limbs_bounded(&X, 52));
+                } else {
+                    assert(!choice_is_true(compressed_sign_bit) ==> X == original_X);
+                    assert(X == original_X);
+                }
+            }
             // Y is bounded by 51 < 54 from requires
             assert(fe51_limbs_bounded(&Y, 51));
             // conditional_negate_field_element ensures the semantic property

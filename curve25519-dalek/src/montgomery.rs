@@ -88,8 +88,6 @@ use crate::lemmas::field_lemmas::constants_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[allow(unused_imports)]
-use crate::lemmas::field_lemmas::montgomery_constants_lemmas::*;
-#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::montgomery_curve_lemmas::*;

@@ -16,6 +16,9 @@ on:
       - '.github/workflows/deploy-pages.yml'
       - 'curve25519-dalek/src/**/*.rs'  # Dashboard analyzes Rust files
       - 'curve25519-dalek/build.rs'
+      - 'data/libsignal_verus_specs/generated/spec_functions.csv'
+      - 'data/libsignal_verus_specs/generated/verified_functions.csv'
+      - 'scripts/extract_specs.py'
       # Note: Callgraph is generated separately by generate-callgraph.yml
       # and cached. This workflow deploys immediately using cached callgraph.
       # Note: certifications.json is stored in the certifications-data branch
@@ -86,6 +89,10 @@ jobs:
           scripts/plot_progress.py
           scripts/plot_progress_over_time.py
           scripts/plot_csv_preview.py
+
+      - name: Generate specs data
+        run: |
+          python3 scripts/extract_specs.py --output docs/specs_data.json
 
       - name: Copy charts and CSV to docs
         run: |

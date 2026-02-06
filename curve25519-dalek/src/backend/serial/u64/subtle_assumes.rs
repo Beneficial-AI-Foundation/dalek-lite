@@ -260,13 +260,21 @@ pub fn conditional_negate_generic<T>(a: &mut T, choice: Choice) where
 /// Specialized wrapper for conditional_negate on FieldElement51 with proper specs.
 /// Use this when you need verified limb bounds and functional correctness guarantees.
 ///
-/// Note: The implementation internally uses field negation which calls reduce(),
-/// so 54-bit bounded input is safe (this is the standard precondition for most field ops).
+/// # How reduction happens
+///
+/// The `subtle` crate provides a blanket impl of `ConditionallyNegatable` for any type
+/// implementing `ConditionallySelectable` + `Neg`. When called, it invokes our local impls:
+///
+/// ```text
+/// subtle::conditional_negate()  // blanket impl
+///     ├─► Neg::neg()            // field.rs - calls negate()
+///     │       └─► reduce()      // field.rs - performs modular reduction
+///     └─► conditional_assign()  // field.rs - selects original or negated
+/// ```
 ///
 /// Verus note: we keep this as an `external_body` wrapper because the underlying
-/// `subtle::ConditionallyNegatable::conditional_negate` is defined in an external crate and is
-/// implemented as low-level constant-time bit-twiddling. We attach a precise functional contract
-/// here without verifying the external implementation.
+/// `subtle::ConditionallyNegatable::conditional_negate` is defined in an external crate.
+/// We attach a precise functional contract here without verifying the external implementation.
 ///
 /// Bounds note:
 /// - If `choice` is true, this performs a field negation, which calls `reduce()` and yields a 52-bit bound.

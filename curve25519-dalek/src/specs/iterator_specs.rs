@@ -19,6 +19,7 @@ use crate::scalar::Scalar;
 use crate::specs::edwards_specs::{
     edwards_add, edwards_point_as_affine, is_well_formed_edwards_point, sum_of_points,
 };
+#[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::is_canonical_scalar;
 

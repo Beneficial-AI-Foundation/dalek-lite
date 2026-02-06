@@ -564,8 +564,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &Scalar {
     }
 
     open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        true  // No preconditions
-
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
     }
 
     open spec fn mul_spec(self, rhs: &Scalar) -> Scalar {
@@ -578,8 +577,7 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
     type Output = Scalar;
 
     // VERIFICATION NOTE: VERIFIED
-    // NOTE: Scalar invariant #2 ensures both inputs are canonical (< L)
-    // We assume canonicity here since Scalar's invariant guarantees it
+    // NOTE: MulSpecImpl::mul_req requires is_canonical_scalar for both inputs
     fn mul(self, _rhs: &'b Scalar) -> (result: Scalar)
         ensures
             bytes32_to_nat(&result.bytes) % group_order() == (bytes32_to_nat(&self.bytes)
@@ -597,10 +595,6 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
             assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
-            // Both inputs are canonical (from Scalar invariant #2)
-            // We assume this since Scalar's invariant guarantees it
-            assume(scalar52_to_nat(&self_unpacked) < group_order());
-            assume(scalar52_to_nat(&rhs_unpacked) < group_order());
             lemma_limbs_bounded_implies_prod_bounded(&self_unpacked, &rhs_unpacked);
         }
         let result_unpacked = UnpackedScalar::mul(&self_unpacked, &rhs_unpacked);
@@ -2820,6 +2814,7 @@ impl Scalar {
             limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
             scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),
+            is_canonical_scalar(self) ==> is_canonical_scalar52(&result),
     {
         UnpackedScalar::from_bytes(&self.bytes)
     }

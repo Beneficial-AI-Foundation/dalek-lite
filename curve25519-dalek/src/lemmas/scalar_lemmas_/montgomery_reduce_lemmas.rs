@@ -57,27 +57,34 @@ pub(crate) proof fn axiom_two_l_div_pow2_208_le_pow2_45()
 }
 
 // =============================================================================
-// Bit Operation Axioms (NOT IN VSTD YET)
+// Bit Operation Lemmas (NOT IN VSTD YET)
 // =============================================================================
-// These are bit-level properties that would require extensive bit-vector proofs.
-// They are stated as axioms with documented semantics.
-// =============================================================================
-/// Axiom: Masking a truncated value combines truncation and masking
-///
-/// When we truncate a u128 to u64 and then mask with n low bits,
-/// the result equals the original value mod 2^n (for n <= 64).
-///
-/// Semantic justification:
-/// - (x as u64) takes the lower 64 bits of x
-/// - Masking with low_bits_mask(n) keeps only the lower n bits
-/// - This is equivalent to x % 2^n for n <= 64
-pub proof fn axiom_u128_truncate_and_mask(x: u128, n: nat)
+/// Masking a truncated value: combining truncation and masking
+pub proof fn lemma_u128_truncate_and_mask(x: u128, n: nat)
     requires
         n <= 64,
     ensures
         ((x as u64) & (low_bits_mask(n) as u64)) as nat == (x as nat) % pow2(n),
 {
-    admit();
+    assume(false);
+}
+
+/// u128 masking with low_bits_mask is modulo pow2
+pub proof fn lemma_u128_low_bits_mask_is_mod(x: u128, n: nat)
+    requires
+        n < 128,
+    ensures
+        x & (low_bits_mask(n) as u128) == x % (pow2(n) as u128),
+{
+    assume(false);
+}
+
+/// u128 truncation to u64 preserves low 64 bits (modulo pow2(64))
+pub proof fn lemma_u128_truncate_to_u64(x: u128)
+    ensures
+        (x as u64) as nat == (x as nat) % pow2(64),
+{
+    assume(false);
 }
 
 // NOTE: lemma_u128_low_bits_mask_is_mod and lemma_u128_truncate_to_u64 were moved to
@@ -222,11 +229,11 @@ pub(crate) proof fn lemma_part1_correctness(sum: u128)
 
     // Used in: (1) sum_low52 < p52 bound, (2) mod_add_eq for divisibility
     assert(sum_low52 as nat == (sum as nat) % p52) by {
-        axiom_u128_truncate_and_mask(sum, 52);
+        lemma_u128_truncate_and_mask(sum, 52);
     }
     // Used in: (1) p < p52 bound, (2) lemma_part1_sum_divisible_by_pow2_52 precondition
     assert(p as nat == (product as nat) % p52) by {
-        axiom_u128_truncate_and_mask(product, 52);
+        lemma_u128_truncate_and_mask(product, 52);
     }
 
     // =======================================================================

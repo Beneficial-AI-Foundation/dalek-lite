@@ -432,7 +432,6 @@ impl Scalar52 {
         proof {
             // Establish montgomery_reduce's preconditions
             lemma_bounded_product_satisfies_input_bounds(&lo, &constants::R, &lo_product);
-            lemma_bounded_product_satisfies_r4_safe_bound(&lo, &constants::R, &lo_product);
             // R is canonical (< L), so the product satisfies canonical_bound
             lemma_r_equals_spec(constants::R);  // gives scalar52_to_nat(&R) < group_order()
             lemma_canonical_product_satisfies_canonical_bound(&lo, &constants::R, &lo_product);
@@ -444,7 +443,6 @@ impl Scalar52 {
         proof {
             // Establish montgomery_reduce's preconditions
             lemma_bounded_product_satisfies_input_bounds(&hi, &constants::RR, &hi_product);
-            lemma_bounded_product_satisfies_r4_safe_bound(&hi, &constants::RR, &hi_product);
             // RR is canonical (< L), so the product satisfies canonical_bound
             lemma_rr_equals_spec();  // gives scalar52_to_nat(&RR) < group_order()
             lemma_canonical_product_satisfies_canonical_bound(&hi, &constants::RR, &hi_product);
@@ -1512,9 +1510,6 @@ impl Scalar52 {
             // =========================================================================
             // SECTION 5: Call pre_sub lemma for quotient relationship
             // =========================================================================
-            lemma_canonical_bound_implies_r4_safe_bound(limbs);
-            assert(slice128_to_nat(limbs) < pow2(520));
-
             lemma_montgomery_reduce_pre_sub(
                 limbs,
                 n0,
@@ -2050,8 +2045,6 @@ impl Scalar52 {
             // Establish montgomery_reduce's preconditions
             lemma_identity_array_satisfies_input_bounds(self, &limbs);
             lemma_identity_array_satisfies_canonical_bound(self, &limbs);
-            // canonical_bound implies r4_safe_bound (since R*L < 2^520)
-            lemma_canonical_bound_implies_r4_safe_bound(&limbs);
         }
         let result = Scalar52::montgomery_reduce(&limbs);
         // is_canonical_scalar52(&result) follows from montgomery_reduce postcondition

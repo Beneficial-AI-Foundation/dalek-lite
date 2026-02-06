@@ -174,9 +174,15 @@ pub(crate) proof fn lemma_part1_sum_divisible_by_pow2_52(s: u64, p: nat)
         lemma_mul_is_associative(sn as int, lfac as int, L0 as int);
     }
 
+    // Step 5: Combine Steps 2+3 - (s + s*LFACTOR*L[0]) % 2^52 = 0
+    assert((sn + sn * lfac * L0) % p52 == 0);
+
     // Goal: (s + p * L[0]) % 2^52 = 0
+    // Bridge: (sn + p*L0) and (sn + sn*lfac*L0) are congruent mod p52
+    // because p*L0 ≡ sn*lfac*L0 (mod p52) from Step 4
     assert((sn + p * L0) % p52 == 0) by {
         lemma_add_mod_noop(sn as int, (p * L0) as int, p52 as int);
+        lemma_add_mod_noop(sn as int, (sn * lfac * L0) as int, p52 as int);
     }
 }
 
@@ -504,65 +510,9 @@ pub(crate) proof fn lemma_bounded_product_satisfies_input_bounds(
     lemma_u128_shift_is_pow2(107);
 }
 
-/// Bridge lemma: bounded × bounded product satisfies montgomery_reduce_r4_safe_bound
-///
-/// r4_safe_bound requires: montgomery_reduce_input_bounds(limbs) && slice128_to_nat(limbs) < pow2(520)
-///
-/// For bounded a, b: a, b < 2^260, so a * b < 2^520.
-pub(crate) proof fn lemma_bounded_product_satisfies_r4_safe_bound(
-    a: &Scalar52,
-    b: &Scalar52,
-    limbs: &[u128; 9],
-)
-    requires
-        limbs_bounded(a),
-        limbs_bounded(b),
-        spec_mul_internal(a, b) == *limbs,
-        slice128_to_nat(limbs) == scalar52_to_nat(a) * scalar52_to_nat(b),
-    ensures
-        montgomery_reduce_r4_safe_bound(limbs),
-{
-    let a_nat = scalar52_to_nat(a);
-    let b_nat = scalar52_to_nat(b);
-
-    // Subgoal 1: input_bounds hold
-    lemma_bounded_product_satisfies_input_bounds(a, b, limbs);
-
-    // Subgoal 2: a < 2^260 and b < 2^260
-    super::super::scalar_lemmas::lemma_bound_scalar(a);
-    super::super::scalar_lemmas::lemma_bound_scalar(b);
-    assert(a_nat < pow2(260));
-    assert(b_nat < pow2(260));
-
-    // Subgoal 3: 2^260 * 2^260 = 2^520
-    assert(pow2(260) * pow2(260) == pow2(520)) by {
-        lemma_pow2_adds(260, 260);
-    }
-
-    // Subgoal 4: a * b < 2^520
-    if b_nat > 0 {
-        // a < 2^260, b > 0 → a * b < 2^260 * b
-        lemma_mul_strict_inequality(a_nat as int, pow2(260) as int, b_nat as int);
-        assert(a_nat * b_nat < pow2(260) * b_nat);
-
-        // b < 2^260, 2^260 > 0 → 2^260 * b < 2^260 * 2^260 = 2^520
-        lemma_pow2_pos(260);
-        lemma_mul_strict_inequality(b_nat as int, pow2(260) as int, pow2(260) as int);
-        assert(pow2(260) * b_nat < pow2(260) * pow2(260));
-
-        // Transitivity: a * b < 2^520
-        assert(a_nat * b_nat < pow2(520));
-    } else {
-        // b == 0 → a * b = 0 < 2^520
-        lemma_mul_basics(a_nat as int);
-        assert(a_nat * b_nat == 0);
-        lemma_pow2_pos(520);
-        assert(a_nat * b_nat < pow2(520));
-    }
-
-    assert(slice128_to_nat(limbs) < pow2(520));
-}
-
+// NOTE: lemma_bounded_product_satisfies_r4_safe_bound was moved to
+// unused_montgomery_reduce_lemmas.rs. montgomery_reduce does not require
+// r4_safe_bound as a precondition (it requires canonical_bound, which is stronger).
 // =============================================================================
 // Bridge Lemma: Canonical Input → Canonical Output
 // =============================================================================
@@ -638,50 +588,9 @@ pub(crate) proof fn lemma_canonical_product_satisfies_canonical_bound(
     assert(slice128_to_nat(limbs) < montgomery_radix() * group_order());
 }
 
-/// Helper lemma: canonical_bound implies r4_safe_bound (value constraint only)
-///
-/// canonical_bound: slice128_to_nat(limbs) < R × L
-/// r4_safe_bound: slice128_to_nat(limbs) < 2^520
-///
-/// Since R × L = 2^260 × L < 2^260 × 2^255 = 2^515 < 2^520, canonical_bound implies r4_safe_bound.
-pub(crate) proof fn lemma_canonical_bound_implies_r4_safe_bound(limbs: &[u128; 9])
-    requires
-        montgomery_reduce_canonical_bound(limbs),
-    ensures
-        montgomery_reduce_r4_safe_bound(limbs),
-{
-    let val = slice128_to_nat(limbs);
-    let R = montgomery_radix();
-    let L = group_order();
-
-    // Goal: val < pow2(520)
-    // Strategy: val < R × L < pow2(515) < pow2(520)
-
-    assert(val < pow2(520)) by {
-        // Subgoal 1: L < pow2(255)
-        assert(L < pow2(255)) by {
-            lemma_group_order_bound();
-        }
-
-        // Subgoal 2: R × L < pow2(515)
-        assert(R * L < pow2(515)) by {
-            // L < pow2(255) and R > 0 implies L * R < pow2(255) * R
-            lemma_pow2_pos(260);
-            lemma_mul_strict_inequality(L as int, pow2(255) as int, R as int);
-
-            // Commutativity: L * R == R * L and pow2(255) * R == R * pow2(255)
-            lemma_mul_is_commutative(L as int, R as int);
-            lemma_mul_is_commutative(pow2(255) as int, R as int);
-
-            // R * pow2(255) == pow2(260) * pow2(255) == pow2(515)
-            lemma_pow2_adds(260, 255);
-        }
-
-        // Subgoal 3: pow2(515) < pow2(520)
-        lemma_pow2_strictly_increases(515, 520);
-    }
-}
-
+// NOTE: lemma_canonical_bound_implies_r4_safe_bound was moved to
+// unused_montgomery_reduce_lemmas.rs. It is not needed by montgomery_reduce's
+// proof since r4_safe_bound is not a precondition.
 // =============================================================================
 // Bridge Lemmas: Identity Array (from_montgomery) → montgomery_reduce Preconditions
 // =============================================================================

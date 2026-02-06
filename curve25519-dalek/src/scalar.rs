@@ -915,7 +915,6 @@ impl Neg for &Scalar {
         proof {
             // Establish montgomery_reduce's preconditions
             lemma_bounded_product_satisfies_input_bounds(&self_unpacked, &constants::R, &self_R);
-            lemma_bounded_product_satisfies_r4_safe_bound(&self_unpacked, &constants::R, &self_R);
             // R is canonical (< L), so product satisfies canonical_bound
             lemma_r_equals_spec(constants::R);
             lemma_canonical_product_satisfies_canonical_bound(
@@ -2848,7 +2847,6 @@ impl Scalar {
         proof {
             // Establish montgomery_reduce's preconditions
             lemma_bounded_product_satisfies_input_bounds(&x, &constants::R, &xR);
-            lemma_bounded_product_satisfies_r4_safe_bound(&x, &constants::R, &xR);
             // R is canonical (< L), so product satisfies canonical_bound
             lemma_r_equals_spec(constants::R);
             lemma_canonical_product_satisfies_canonical_bound(&x, &constants::R, &xR);

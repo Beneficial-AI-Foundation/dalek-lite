@@ -75,27 +75,9 @@ pub open spec fn montgomery_reduce_input_bounds(limbs: &[u128; 9]) -> bool {
     limbs[8] < pow2(104)     // 1 product term
 }
 
-/// The value bound that ensures r4 < 2^52 in montgomery_reduce.
-/// This is weaker than canonical_bound and is satisfied by mul_internal(bounded, bounded).
-///
-/// # Derivation (see docs/montgomery_reduce_r4_bound_derivation.md)
-/// - r4 < 2^52 requires result_raw < 2^260
-/// - result_raw = (T + N×L) / R < T/R + L (where N < R)
-/// - For result_raw < 2^260: T < R × (R - L) ≈ 2^520
-///
-/// # Why this matters
-/// - canonical_bound (T < R×L ≈ 2^512) is too strong for bounded × bounded products
-/// - bounded × bounded can produce T up to 2^520, violating canonical_bound
-/// - But r4_safe_bound (T < 2^520) IS satisfied, ensuring sub works correctly
-/// - This allows mul to work without requiring canonical inputs
-///
-/// # Note
-/// This is purely a VALUE constraint. The per-limb overflow bounds
-/// (montgomery_reduce_input_bounds) must be established separately.
-pub open spec fn montgomery_reduce_r4_safe_bound(limbs: &[u128; 9]) -> bool {
-    slice128_to_nat(limbs) < pow2(520)
-}
-
+// NOTE: montgomery_reduce_r4_safe_bound was moved to unused_montgomery_reduce_lemmas.rs.
+// It is not a precondition of montgomery_reduce (which uses canonical_bound instead).
+// The spec and its bridge lemmas are preserved as reference for an alternative proof path.
 /// The value bound that montgomery_reduce requires to produce a canonical output.
 /// When the total value is < R * L, the intermediate result_raw will be < 2L,
 /// which allows sub(result_raw, L) to produce a canonical result.

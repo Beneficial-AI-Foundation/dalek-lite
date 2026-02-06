@@ -527,10 +527,6 @@ impl<'a> MulAssign<&'a Scalar> for Scalar {
                 &self_unpacked,
             ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
             assert(limbs_bounded(&result_unpacked));
-            assert(scalar52_to_nat(&result_unpacked) % group_order() == (scalar52_to_nat(
-                &self_unpacked,
-            ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
-            assert(limbs_bounded(&result_unpacked));
         }
 
         *self = result_unpacked.pack();

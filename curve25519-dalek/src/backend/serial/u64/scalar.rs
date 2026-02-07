@@ -402,8 +402,9 @@ impl Scalar52 {
         };
         // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
         assert(scalar52_to_nat(&hi_raw) == wide_input / pow2(260)) by {
-            // Re-assert the precondition to help Z3
-            assert(wide_input == pow2_260 * high_expr + low_expr);
+            // Bridge operand order: line 391 proves wide_input == pow2_260 * high_expr + low_expr,
+            // but lemma requires x == q * d + r, i.e., wide_input == high_expr * pow2_260 + low_expr
+            lemma_mul_is_commutative(pow2_260 as int, high_expr as int);
             lemma_fundamental_div_mod_converse(
                 wide_input as int,
                 pow2_260 as int,

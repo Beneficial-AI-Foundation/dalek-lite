@@ -520,7 +520,6 @@ pub(crate) proof fn lemma_bounded_product_satisfies_input_bounds(
 /// 1. limbs_bounded(a) → a < R = 2^260
 /// 2. b is canonical → b < L
 /// 3. Therefore: a × b < R × L → canonical_bound holds
-#[verifier::rlimit(20)]
 pub(crate) proof fn lemma_canonical_product_satisfies_canonical_bound(
     a: &Scalar52,
     b: &Scalar52,

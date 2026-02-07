@@ -1372,14 +1372,9 @@ impl Scalar52 {
         // =====================================================================
         // Proof: Establish sub() preconditions
         // =====================================================================
-        // lemma_montgomery_reduce_pre_sub establishes:
-        // - r4 < 2^52 + L[4] (for limbs_bounded_for_sub)
-        // - intermediate < 2L (for sub's value range precondition)
-        //
-        // The proof uses the REDC theorem:
-        // 1. Part 1 chain proves: (T + N×L) ≡ 0 (mod R)
-        // 2. Part 2 chain proves: intermediate = (T + N×L) / R
-        // 3. REDC theorem: canonical_bound → intermediate < 2L → r4 bounded
+        // 1. Part 1 chain proves: (T + N×L) ≡ 0 (mod R) and N < R
+        // 2. Part 2 chain proves: intermediate × R = T + N×L
+        // 3. Direct REDC bound: T < R×L ∧ N < R → intermediate < 2L → r4 bounded
         // =====================================================================
 
         proof {
@@ -1535,14 +1530,13 @@ impl Scalar52 {
             );
 
             // =========================================================================
-            // SECTION 6: Establish sub() preconditions via REDC theorem
+            // SECTION 6: Establish sub() preconditions via direct REDC bound
             // =========================================================================
             lemma_l_equals_group_order();
             let inter_val = scalar52_to_nat(&intermediate);
             let l_val = group_order();
-            let t = slice128_to_nat(limbs);
 
-            // Connect scalar52_to_nat to explicit limb sum (inlined)
+            // Connect scalar52_to_nat to explicit limb sum
             // lemma_five_limbs_equals_to_nat gives: five_limbs_to_nat_aux(limbs) == scalar52_to_nat
             lemma_five_limbs_equals_to_nat(&intermediate.limbs);
             // Apply commutativity: pow2(k) * limb == limb * pow2(k)
@@ -1551,15 +1545,9 @@ impl Scalar52 {
             lemma_mul_is_commutative(pow2(156) as int, r3 as int);
             lemma_mul_is_commutative(pow2(208) as int, r4 as int);
 
-            // Establish intermediate == montgomery_intermediate(t) for REDC theorem
-            assert((t + n * group_order()) % montgomery_radix() == 0) by {
-                assert(inter_val * montgomery_radix() == t + n * group_order());
-                lemma_mod_multiples_basic(inter_val as int, montgomery_radix() as int);
-            }
-            lemma_intermediate_equals_spec(t, n, inter_val);
-
-            // Apply REDC theorem: canonical_bound → intermediate < 2L, r4 bounded
-            lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4);
+            // Apply direct REDC bound: canonical_bound + N < R + quotient → r4 bounded
+            // No uniqueness chain needed — works directly from intermediate × R = T + N×L
+            lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4, n);
 
             // Results: sub's preconditions
             assert(limbs_bounded_for_sub(&intermediate, l));  // r4 < 2^52 + L[4]

@@ -6,7 +6,7 @@
 //! - L is the group order (prime order of the ed25519 curve)
 //!
 //! The algorithm computes:
-//! 1. N = (-T × L⁻¹) mod R  (the Montgomery quotient)
+//! 1. N such that (T + N×L) ≡ 0 (mod R)  (the Montgomery adjustment)
 //! 2. intermediate = (T + N×L) / R  (guaranteed to be an integer)
 //! 3. result = intermediate mod L  (conditional subtraction)
 use super::scalar52_specs::*;
@@ -17,39 +17,11 @@ use vstd::prelude::*;
 
 verus! {
 
-/// The modular inverse of L modulo R: L⁻¹ mod R
-/// This is a constant that satisfies: L × L⁻¹ ≡ 1 (mod R)
-///
-/// Defined using spec_mod_inverse from number_theory_lemmas.
-pub open spec fn l_inv_mod_r() -> nat {
-    use crate::lemmas::common_lemmas::number_theory_lemmas::spec_mod_inverse;
-    spec_mod_inverse(group_order(), montgomery_radix())
-}
-
-/// The Montgomery quotient N for a given T
-/// N = (-T * L^{-1}) mod R = (R - (T * L^{-1}) mod R) mod R
-/// This is the unique value N ∈ [0, R) such that T + N*L ≡ 0 (mod R)
-pub open spec fn montgomery_quotient(t: nat) -> nat {
-    let r = montgomery_radix();
-    let l_inv = l_inv_mod_r();
-    // N = (-T * L^{-1}) mod R
-    // Use int arithmetic then cast back to nat (result is always in [0, R))
-    ((r as int - ((t * l_inv) % r) as int) % (r as int)) as nat
-}
-
-/// The intermediate value in Montgomery reduction
-/// intermediate = (T + N*L) / R
-/// where N = montgomery_quotient(T)
-pub open spec fn montgomery_intermediate(t: nat) -> nat {
-    let r = montgomery_radix();
-    let l = group_order();
-    let n = montgomery_quotient(t);
-    (t + n * l) / r
-}
-
-// NOTE: lower_limbs_of_l and montgomery_safe_input were moved to
-// lemmas/scalar_lemmas_/unused_montgomery_reduce_lemmas.rs.
-// They are not used by the active proof path (which uses canonical_bound instead).
+// NOTE: l_inv_mod_r, montgomery_quotient, and montgomery_intermediate spec functions
+// were removed. The proof now works directly from the quotient relationship
+// (intermediate × R = T + N×L) without routing through these abstract definitions.
+// This eliminated the need for the uniqueness chain (lemma_montgomery_quotient_unique,
+// lemma_gcd_l_r_is_one, lemma_l_inv_mod_r_property, etc.).
 // ============================================================================
 // FUNCTION-CENTRIC PREDICATES FOR montgomery_reduce
 // ============================================================================

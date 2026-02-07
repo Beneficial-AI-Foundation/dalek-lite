@@ -7,7 +7,6 @@ use vstd::prelude::*;
 
 use super::super::common_lemmas::div_mod_lemmas::*;
 use super::super::common_lemmas::mul_lemmas::*;
-use super::super::common_lemmas::number_theory_lemmas::*;
 use super::super::common_lemmas::pow_lemmas::*;
 use super::super::common_lemmas::shift_lemmas::*;
 use super::super::scalar_lemmas::*;
@@ -27,10 +26,6 @@ verus! {
 // These are well-established number theory results that would require significant
 // proof infrastructure to formalize. They are stated with `admit()` and documented
 // with external verification (e.g., Python computations).
-//
-// GCD axioms (axiom_gcd_symmetric, axiom_gcd_mod_noop, axiom_gcd_pow2_odd) are
-// defined in common_lemmas/number_theory_lemmas.rs and imported via
-// `use super::super::common_lemmas::number_theory_lemmas::*`.
 // =============================================================================
 /// Axiom: 2L / 2^208 <= 2^45
 ///
@@ -1027,481 +1022,32 @@ pub(crate) proof fn lemma_montgomery_reduce_post_sub(
 }
 
 // =============================================================================
-// REDC Theorem: Top-Down Proof of Intermediate Bound
+// REDC Bound: Direct Proof that intermediate < 2L
 // =============================================================================
-// These lemmas prove the key REDC result: T < R×L implies intermediate < 2L
-// This gives us a much tighter bound on r4 than the bottom-up approach.
+// This lemma proves the key REDC result directly from the quotient relationship
+// intermediate × R = T + N×L, without routing through spec-level functions
+// (montgomery_quotient, montgomery_intermediate, l_inv_mod_r).
+//
+// The proof is simple:
+//   1. N < R (each n_i < 2^52, so N < 2^260 = R)
+//   2. T < R×L (from canonical_bound)
+//   3. N×L < R×L, so T + N×L < 2R×L
+//   4. intermediate = (T + N×L)/R < 2L
 // =============================================================================
-/// The Montgomery quotient N is always bounded by R.
-/// This is because N = (-T × L⁻¹) mod R is defined as a modulo operation.
+
+/// Bridging lemma: canonical_bound + quotient relationship implies
+/// r4 < 2^52 + L[4] and intermediate < 2L.
 ///
-/// Proof: N = (R - ((T × L_INV) % R)) % R
-///   - (T × L_INV) % R ∈ [0, R)
-///   - R - ((T × L_INV) % R) ∈ (0, R]  (when T×L_INV ≢ 0 mod R)
-///   - (R - ((T × L_INV) % R)) % R ∈ [0, R)
-pub(crate) proof fn lemma_montgomery_quotient_bounded(t: nat)
-    ensures
-        montgomery_quotient(t) < montgomery_radix(),
-{
-    let r = montgomery_radix();
-    let l_inv = l_inv_mod_r();
-
-    // Step 1: (t * l_inv) % r < r
-    // This is a basic property of modulo
-    let inner = (t * l_inv) % r;
-    assert(inner < r) by {
-        // x % m < m for m > 0
-        lemma_pow2_pos(260);
-        assert(r == pow2(260));
-        assert(r > 0);
-        // vstd gives us: x % m < m when m > 0
-    }
-
-    // Step 2: r - inner is in (0, r] when inner < r
-    // Specifically: 0 < r - inner <= r
-    let diff = (r as int - inner as int);
-    assert(0 < diff) by {
-        // inner < r, so r - inner > 0
-        assert(inner < r);
-    }
-    // diff = r - inner where inner >= 0, so diff <= r
-    // inner is a nat, so inner >= 0, thus diff = r - inner <= r
-    // (Verus auto-proves: nat type guarantees inner >= 0, hence diff <= r)
-
-    // Step 3: diff % r is in [0, r)
-    // When diff is in (0, r], then diff % r is diff (if diff < r) or 0 (if diff == r)
-    // Either way, the result is in [0, r)
-    let result = (diff % (r as int)) as nat;
-
-    // By definition of montgomery_quotient
-    assert(montgomery_quotient(t) == result);
-
-    // result < r because x % m ∈ [0, m) for m > 0
-    assert(result < r) by {
-        // Establish r > 0 for lemma_mod_bound's precondition
-        lemma_pow2_pos(260);
-        assert(r == pow2(260));
-        assert(r > 0);
-        // diff % r is in [0, r) by lemma_mod_bound
-        lemma_mod_bound(diff, r as int);
-    }
-}
-
-// =============================================================================
-// GCD and Inverse Properties for L and R
-// =============================================================================
-/// gcd(L % R, R) == 1 where L = group_order() and R = montgomery_radix() = 2^260
-///
-/// This follows from:
-/// 1. L is odd (lemma_group_order_is_odd)
-/// 2. L % R is also odd (since L is odd and R is a power of 2)
-/// 3. gcd(odd, power_of_2) == 1
-pub(crate) proof fn lemma_gcd_l_r_is_one()
-    ensures
-        spec_gcd(group_order() % montgomery_radix(), montgomery_radix()) == 1,
-{
-    let l = group_order();
-    let r = montgomery_radix();
-
-    // L is odd
-    lemma_group_order_is_odd();
-    assert(l % 2 == 1);
-
-    // L % R is also odd (since R is a power of 2, L % R preserves the lowest bit)
-    // If L is odd, then L % (2^k) is also odd for any k
-    assert((l % r) % 2 == 1) by {
-        // L % R = L % 2^260 = L % (2 * 2^259)
-        // (L % (2 * 2^259)) % 2 == L % 2 by lemma_mod_mod
-        lemma_pow2_pos(259);
-        assert(pow2(260) == 2 * pow2(259)) by {
-            lemma_pow2_unfold(260);
-        }
-        assert(r == 2 * pow2(259));
-        lemma_mod_mod(l as int, 2, pow2(259) as int);
-        // Now we have: (l % (2 * pow2(259))) % 2 == l % 2
-        // i.e., (l % r) % 2 == l % 2 == 1
-    }
-
-    // gcd(odd, power_of_2) == 1 (from number_theory_lemmas)
-    // axiom_gcd_pow2_odd gives gcd(2^260, l%r) == 1, then symmetry gives gcd(l%r, 2^260) == 1
-    axiom_gcd_pow2_odd(260, l % r);
-    axiom_gcd_symmetric(pow2(260), l % r);
-}
-
-/// l_inv_mod_r() is the multiplicative inverse of L modulo R.
-///
-/// This is now a THEOREM (not an axiom) because:
-/// 1. gcd(L % R, R) == 1 (from lemma_gcd_l_r_is_one)
-/// 2. l_inv_mod_r() is defined as spec_mod_inverse(L, R)
-/// 3. lemma_mod_inverse_correct proves the inverse property
-pub(crate) proof fn lemma_l_inv_mod_r_property()
-    ensures
-        (l_inv_mod_r() * group_order()) % montgomery_radix() == 1,
-        l_inv_mod_r() < montgomery_radix(),  // l_inv is in [0, R)
-{
-    let l = group_order();
-    let r = montgomery_radix();
-
-    // Establish R > 1
-    lemma_pow2_pos(260);
-    assert(r == pow2(260));
-    // pow2(260) = 2^260 > 1 (trivially true for any power >= 1)
-    assert(r > 1) by {
-        // pow2(260) = pow2(259) + pow2(259) >= 2
-        lemma_pow2_plus_one(259);
-        assert(pow2(260) == pow2(259) + pow2(259));
-        lemma_pow2_pos(259);
-        assert(pow2(259) > 0);
-    }
-
-    // Establish gcd(L % R, R) == 1
-    lemma_gcd_l_r_is_one();
-    assert(spec_gcd(l % r, r) == 1);
-
-    // Apply lemma_mod_inverse_correct
-    lemma_mod_inverse_correct(l, r);
-
-    // l_inv_mod_r() is defined as spec_mod_inverse(l, r)
-    // lemma_mod_inverse_correct gives us:
-    // - spec_mod_inverse(l, r) < r
-    // - (l * spec_mod_inverse(l, r)) % r == 1
-
-    assert(l_inv_mod_r() < r);
-    assert((l * l_inv_mod_r()) % r == 1);
-
-    // By commutativity: (l_inv * l) % r == (l * l_inv) % r
-    lemma_mul_is_commutative(l_inv_mod_r() as int, l as int);
-}
-
-/// If (a + b) % m == 0, then b % m == (m - a % m) % m (i.e., b ≡ -a mod m)
-///
-/// This is the fundamental property that relates addition to negation in modular arithmetic.
-/// When a + b ≡ 0 (mod m), b is the additive inverse of a modulo m.
-///
-/// # Proof Structure
-/// 1. (a + b) % m == 0 implies (a%m + b%m) % m == 0
-/// 2. Since a%m, b%m ∈ [0, m), their sum ∈ [0, 2m)
-/// 3. For sum % m == 0 with sum ∈ [0, 2m): sum == 0 or sum == m
-/// 4. Case split shows b%m equals the canonical negation of a%m
-pub(crate) proof fn lemma_sum_zero_implies_neg(a: nat, b: nat, m: nat)
-    requires
-        m > 0,
-        (a + b) % m == 0,
-    ensures
-        b % m == ((m as int - (a % m) as int) % (m as int)) as nat,
-{
-    let a_mod = a % m;
-    let b_mod = b % m;
-    let neg_a: nat = ((m as int - a_mod as int) % (m as int)) as nat;
-
-    // Subgoal 1: (a_mod + b_mod) % m == 0
-    lemma_add_mod_noop(a as int, b as int, m as int);
-    assert((a_mod + b_mod) % m == 0);
-
-    // Subgoal 2: Both a_mod and b_mod are in [0, m), so sum in [0, 2m)
-    assert(a_mod < m && b_mod < m);
-    let sum = a_mod + b_mod;
-    assert(sum < 2 * m);
-
-    // Subgoal 3: sum == 0 or sum == m (since sum % m == 0 and sum < 2m)
-    assert(sum == 0 || sum == m) by {
-        if sum < m {
-            lemma_small_mod(sum, m);
-            // sum % m == sum, so sum == 0
-        } else {
-            // m <= sum < 2m implies sum % m == sum - m
-            lemma_fundamental_div_mod_converse(sum as int, m as int, 1, (sum - m) as int);
-            // sum - m == 0 from sum % m == 0
-        }
-    }
-
-    // Subgoal 4: b_mod == neg_a in both cases
-    if sum == 0 {
-        // Case 1: a_mod == b_mod == 0
-        lemma_mod_self_0(m as int);
-        assert(neg_a == 0);
-    } else {
-        // Case 2: sum == m, so b_mod == m - a_mod
-        // Must have a_mod > 0 (else b_mod == m, contradicting b_mod < m)
-        assert(a_mod > 0) by {
-            if a_mod == 0 {
-                assert(b_mod == m);
-                assert(false);  // contradiction with b_mod < m
-            }
-        }
-        // 0 < m - a_mod < m, so (m - a_mod) % m == m - a_mod
-        lemma_small_mod((m - a_mod) as nat, m);
-    }
-}
-
-/// Uniqueness of Montgomery quotient: If (T + n*L) ≡ 0 (mod R) and n < R,
-/// then n == montgomery_quotient(T).
-///
-/// This is crucial for connecting the computed n from part1 to the spec definition.
-///
-/// Mathematical proof:
-/// 1. (T + n*L) ≡ 0 (mod R)  implies  n*L ≡ -T (mod R)
-/// 2. montgomery_quotient(T) * L ≡ -T (mod R)  (by definition of montgomery_quotient)
-/// 3. Therefore n*L ≡ montgomery_quotient(T)*L (mod R)
-/// 4. By lemma_cancel_mul_L_mod_R: n ≡ montgomery_quotient(T) (mod R)
-/// 5. Since both are in [0, R): n == montgomery_quotient(T)
-pub(crate) proof fn lemma_montgomery_quotient_unique(t: nat, n: nat)
-    requires
-        n < montgomery_radix(),  // n in [0, R)
-        (t + n * group_order()) % montgomery_radix() == 0,  // R | (T + n*L)
-
-    ensures
-        n == montgomery_quotient(t),
-{
-    let r = montgomery_radix();
-    let l = group_order();
-    let l_inv = l_inv_mod_r();
-    let q = montgomery_quotient(t);
-
-    // Establish R > 1 (needed for modular arithmetic)
-    lemma_pow2_pos(260);
-    assert(r == pow2(260));
-    assert(r > 1) by {
-        lemma_pow2_plus_one(259);
-        assert(pow2(260) == pow2(259) + pow2(259));
-        lemma_pow2_pos(259);
-    }
-
-    // Get the property: l_inv * L ≡ 1 (mod R)
-    lemma_l_inv_mod_r_property();
-    assert((l_inv * l) % r == 1);
-    assert(l_inv < r);
-
-    // Step 1: montgomery_quotient(t) < R
-    lemma_montgomery_quotient_bounded(t);
-    assert(q < r);
-
-    // ===========================================================================
-    // Step 2: From (T + n*L) ≡ 0 (mod R), derive (n*L) % R == neg_t
-    // where neg_t = (R - (T % R)) % R is the representation of -T mod R
-    // ===========================================================================
-
-    let t_mod = t % r;
-    let neg_t: nat = ((r as int - t_mod as int) % (r as int)) as nat;  // -T mod R
-
-    // (t + n*l) % r == 0 implies (n*l) % r == neg_t
-    // Use lemma_sum_zero_implies_neg: if (a + b) % m == 0 then b % m == (m - a % m) % m
-    lemma_sum_zero_implies_neg(t, n * l, r);
-    assert((n * l) % r == neg_t);
-
-    // ===========================================================================
-    // Step 3: Show (q * L) % R == neg_t (i.e., q*L ≡ -T mod R)
-    // where q = montgomery_quotient(t) = ((r - ((t * l_inv) % r)) % r)
-    // ===========================================================================
-
-    // q = (-t * l_inv) mod r (as an unsigned computation)
-    // q * l ≡ (-t * l_inv) * l ≡ -t * (l_inv * l) ≡ -t * 1 ≡ -t (mod r)
-
-    assert((q * l) % r == neg_t) by {
-        let t_linv_mod = (t * l_inv) % r;
-
-        // Key fact: (l * t * l_inv) % r == t % r
-        // Because l_inv * l ≡ 1 (mod r), we have l * t * l_inv = t * (l * l_inv) ≡ t (mod r)
-        lemma_mul_is_associative(l as int, t as int, l_inv as int);
-        lemma_mul_is_commutative(l as int, t as int);
-        assert(l * t * l_inv == t * l * l_inv);
-        lemma_mul_is_associative(t as int, l as int, l_inv as int);
-        assert(t * l * l_inv == t * (l * l_inv));
-        lemma_mul_is_commutative(l as int, l_inv as int);
-        assert(l * l_inv == l_inv * l);
-        assert(t * (l * l_inv) == t * (l_inv * l));
-        lemma_mul_mod_noop_right(t as int, (l_inv * l) as int, r as int);
-        assert((t * (l_inv * l)) % r == (t * ((l_inv * l) % r)) % r);
-        assert((t * ((l_inv * l) % r)) % r == (t * 1) % r);
-        lemma_mul_basics(t as int);
-        assert((t * (l_inv * l)) % r == t % r);
-        assert((l * t * l_inv) % r == t_mod);
-
-        // Also establish (l * (t * l_inv)) % r == t_mod
-        lemma_mul_is_associative(l as int, t as int, l_inv as int);
-        assert(l * (t * l_inv) == l * t * l_inv);
-        assert((l * (t * l_inv)) % r == t_mod);
-
-        // q = ((r - ((t * l_inv) % r)) % r) by definition of montgomery_quotient
-        // We need: (q * l) % r == neg_t
-
-        // Use lemma_mul_distributes_over_neg_mod for the key step
-        // lemma_mul_distributes_over_neg_mod(a, b, m) gives:
-        // (a * ((m - b % m) as nat)) % m == ((m - (a * b) % m) as nat) % m
-        // With a = l, b = t * l_inv, m = r:
-        // (l * ((r - (t * l_inv) % r) as nat)) % r == ((r - (l * (t * l_inv)) % r) as nat) % r
-        lemma_mul_distributes_over_neg_mod(l, t * l_inv, r);
-
-        // Let's name the key quantities:
-        let raw_neg: nat = (r - t_linv_mod) as nat;  // r - (t * l_inv) % r, possibly = r when t_linv_mod == 0
-
-        // From the lemma:
-        // (l * raw_neg) % r == ((r - (l * (t * l_inv)) % r) as nat) % r
-
-        // RHS: ((r - (l * (t * l_inv)) % r) as nat) % r
-        // Since (l * (t * l_inv)) % r == t_mod, this is ((r - t_mod) as nat) % r
-        // When t_mod == 0: (r - 0) % r = r % r = 0 = neg_t
-        // When t_mod > 0: (r - t_mod) % r = r - t_mod = neg_t (since r - t_mod < r)
-        let rhs: nat = ((r as int - ((l * (t * l_inv)) % r) as int)) as nat % r;
-        assert(rhs == neg_t) by {
-            assert((l * (t * l_inv)) % r == t_mod);
-            if t_mod == 0 {
-                lemma_mod_self_0(r as int);
-                assert(neg_t == 0);
-            } else {
-                assert(r - t_mod < r);
-                lemma_small_mod((r - t_mod) as nat, r);
-                assert(neg_t == (r - t_mod) as nat);
-            }
-        }
-
-        // LHS: (l * raw_neg) % r
-        // We need to show this equals (q * l) % r
-        // q = ((r - t_linv_mod) % r) as nat
-        // raw_neg = (r - t_linv_mod) as nat (without the % r)
-        // When t_linv_mod == 0: raw_neg = r, q = r % r = 0
-        //   (l * raw_neg) % r = (l * r) % r = 0 = (l * q) % r ✓
-        // When t_linv_mod > 0: raw_neg = r - t_linv_mod = q (since r - t_linv_mod < r)
-        //   (l * raw_neg) % r = (l * q) % r ✓
-
-        assert((l * raw_neg) % r == (l * q) % r) by {
-            if t_linv_mod == 0 {
-                // raw_neg = r, q = 0
-                lemma_mod_self_0(r as int);
-                assert(q == 0);
-                assert(raw_neg == r);
-                // (l * r) % r = 0 = (l * 0) % r
-                lemma_mod_multiples_basic(l as int, r as int);
-                lemma_mul_basics(l as int);
-            } else {
-                // raw_neg = r - t_linv_mod = q (both < r)
-                assert(raw_neg < r);
-                lemma_small_mod(raw_neg, r);
-                assert(q == raw_neg);
-            }
-        }
-
-        // By commutativity: (l * q) % r = (q * l) % r
-        lemma_mul_is_commutative(l as int, q as int);
-        assert((l * q) % r == (q * l) % r);
-
-        // Chain: (q * l) % r == (l * q) % r == (l * raw_neg) % r == rhs == neg_t
-        assert((q * l) % r == neg_t);
-    }
-
-    // ===========================================================================
-    // Step 4: Since (n*L) % R == neg_t and (q*L) % R == neg_t, we have (n*L) % R == (q*L) % R
-    // ===========================================================================
-    assert((n * l) % r == (q * l) % r);
-
-    // ===========================================================================
-    // Step 5: By lemma_cancel_mul_L_mod_R: n % R == q % R
-    // ===========================================================================
-    lemma_cancel_mul_L_mod_R(n, q);
-    assert(n % r == q % r);
-
-    // ===========================================================================
-    // Step 6: Since n < R and q < R, n % R == q % R implies n == q
-    // ===========================================================================
-    // Inlined lemma_mod_unique: if a < m and b < m, then a % m == a and b % m == b
-    assert(n == q) by {
-        lemma_small_mod(n, r);  // n < r implies n % r == n
-        lemma_small_mod(q, r);  // q < r implies q % r == q
-    };
-}
-
-/// Connects computed intermediate to montgomery_intermediate spec.
-///
-/// Given that intermediate * R == T + n * L (from part2 chain), if n satisfies
-/// the Montgomery quotient property, then intermediate == montgomery_intermediate(T).
-///
-/// Proof:
-/// 1. By uniqueness (lemma_montgomery_quotient_unique), n == montgomery_quotient(t)
-/// 2. So intermediate * R == T + montgomery_quotient(T) * L
-/// 3. By definition: montgomery_intermediate(T) = (T + montgomery_quotient(T) * L) / R
-/// 4. Since (intermediate * R) / R == intermediate, we have the result
-pub(crate) proof fn lemma_intermediate_equals_spec(t: nat, n: nat, intermediate: nat)
-    requires
-        n < montgomery_radix(),
-        (t + n * group_order()) % montgomery_radix() == 0,
-        intermediate * montgomery_radix() == t + n * group_order(),
-    ensures
-        intermediate == montgomery_intermediate(t),
-{
-    // By uniqueness, n == montgomery_quotient(t)
-    lemma_montgomery_quotient_unique(t, n);
-
-    // intermediate * R == T + montgomery_quotient(T) * L
-    // By definition: montgomery_intermediate(T) = (T + montgomery_quotient(T) * L) / R
-    // Since (intermediate * R) / R == intermediate, we have the result
-    lemma_pow2_pos(260);
-    lemma_div_by_multiple(intermediate as int, montgomery_radix() as int);
-}
-
-/// Main REDC Theorem: If T < R × L, then intermediate < 2L.
-///
-/// This is the core correctness property of Montgomery reduction from the paper.
-///
-/// Proof strategy:
-/// 1. N = montgomery_quotient(T) < R  [from lemma_montgomery_quotient_bounded]
-/// 2. T + N×L < R×L + R×L = 2×R×L  [since T < R×L and N×L < R×L]
-/// 3. intermediate = (T + N×L) / R < 2L  [by division]
-pub(crate) proof fn lemma_canonical_bound_implies_intermediate_less_than_2L(t: nat)
-    requires
-        t < montgomery_radix() * group_order(),  // T < R × L
-
-    ensures
-        montgomery_intermediate(t) < 2 * group_order(),  // intermediate < 2L
-{
-    let r = montgomery_radix();
-    let l = group_order();
-    let n = montgomery_quotient(t);
-    let sum = t + n * l;
-    let intermediate = sum / r;
-
-    // Goal: intermediate < 2L
-    assert(intermediate < 2 * l) by {
-        // Subgoal 1: N < R
-        assert(n < r) by {
-            lemma_montgomery_quotient_bounded(t);
-        }
-
-        // Subgoal 2: N×L < R×L (since N < R and L > 0)
-        assert(n * l < r * l) by {
-            assert(l > 0) by {
-                assert(l == pow2(252) + 27742317777372353535851937790883648493);
-            }
-            lemma_mul_strict_inequality(n as int, r as int, l as int);
-        }
-
-        // Subgoal 3: sum < 2×R×L
-        assert(sum < 2 * r * l) by {
-            // T + N×L < R×L + R×L (since T < R×L and N×L < R×L)
-            // R×L + R×L = 2×R×L by distributivity and associativity
-            lemma_mul_is_distributive_add_other_way((r * l) as int, 1, 1);
-            lemma_mul_is_associative(2, r as int, l as int);
-        }
-
-        // Subgoal 4: sum / R < 2L
-        lemma_pow2_pos(260);
-        // Rewrite 2×R×L as R×(2×L) for lemma_div_strictly_bounded
-        lemma_mul_is_commutative(2, r as int);
-        lemma_mul_is_associative(r as int, 2, l as int);
-        lemma_div_strictly_bounded(sum as int, r as int, (2 * l) as int);
-    }
-
-    // Connect to spec
-    assert(montgomery_intermediate(t) == intermediate);
-}
-
-/// Bridging lemma: canonical_bound implies r4 < 2^52 + L[4] via REDC theorem.
+/// This is a direct proof that avoids the uniqueness chain
+/// (montgomery_quotient, l_inv_mod_r, etc.) entirely.
 ///
 /// # Proof Strategy
 ///
 /// ```text
-/// canonical_bound ⟹ intermediate < 2L
-///                 ⟹ r4 ≤ inter/2^208 ≤ 2L/2^208 ≤ 2^45
-///                 ⟹ r4 < 2^52 + L[4]
+/// N < R, T < R×L  ⟹  T + N×L < 2R×L
+///                  ⟹  intermediate = (T + N×L)/R < 2L
+///                  ⟹  r4 ≤ inter/2^208 ≤ 2L/2^208 ≤ 2^45
+///                  ⟹  r4 < 2^52 + L[4]
 /// ```
 pub(crate) proof fn lemma_r4_bound_from_canonical(
     limbs: &[u128; 9],
@@ -1510,14 +1056,17 @@ pub(crate) proof fn lemma_r4_bound_from_canonical(
     r2: u64,
     r3: u64,
     r4: u64,
+    n: nat,  // Montgomery adjustment factor from Part 1
 )
     requires
         montgomery_reduce_canonical_bound(limbs),
+        // N < R (from Part 1: each n_i < 2^52, so N < 2^260)
+        n < montgomery_radix(),
+        // Quotient relationship from Part 2: intermediate × R = T + N×L
         ({
-            let t = slice128_to_nat(limbs);
-            let inter_computed = (r0 as nat) + (r1 as nat) * pow2(52) + (r2 as nat) * pow2(104) + (
+            let inter = (r0 as nat) + (r1 as nat) * pow2(52) + (r2 as nat) * pow2(104) + (
             r3 as nat) * pow2(156) + (r4 as nat) * pow2(208);
-            inter_computed == montgomery_intermediate(t)
+            inter * montgomery_radix() == slice128_to_nat(limbs) + n * group_order()
         }),
     ensures
         (r4 as nat) < pow2(52) + (constants::L.limbs[4] as nat),
@@ -1528,15 +1077,42 @@ pub(crate) proof fn lemma_r4_bound_from_canonical(
         }),
 {
     let t = slice128_to_nat(limbs);
+    let r = montgomery_radix();
+    let l = group_order();
     let inter = (r0 as nat) + (r1 as nat) * pow2(52) + (r2 as nat) * pow2(104) + (r3 as nat) * pow2(
         156,
     ) + (r4 as nat) * pow2(208);
     let two_l = 2 * group_order();
     let l4 = constants::L.limbs[4] as nat;
 
-    // Subgoal 1: inter < 2L (from REDC theorem)
+    // Subgoal 1: inter < 2L (direct REDC proof — no spec functions needed)
     assert(inter < two_l) by {
-        lemma_canonical_bound_implies_intermediate_less_than_2L(t);
+        let sum = t + n * l;
+        // inter * R == sum (from precondition)
+        assert(inter * r == sum);
+
+        // N×L < R×L (since N < R and L > 0)
+        assert(n * l < r * l) by {
+            assert(l > 0) by {
+                assert(l == pow2(252) + 27742317777372353535851937790883648493);
+            }
+            lemma_mul_strict_inequality(n as int, r as int, l as int);
+        }
+
+        // sum = T + N×L < R×L + R×L = 2×R×L
+        assert(sum < 2 * r * l) by {
+            lemma_mul_is_distributive_add_other_way((r * l) as int, 1, 1);
+            lemma_mul_is_associative(2, r as int, l as int);
+        }
+
+        // inter = sum / R < 2L
+        // Since inter * R == sum, we have inter == sum / R
+        lemma_pow2_pos(260);
+        lemma_div_by_multiple(inter as int, r as int);
+        // Rewrite 2×R×L as R×(2×L) for lemma_div_strictly_bounded
+        lemma_mul_is_commutative(2, r as int);
+        lemma_mul_is_associative(r as int, 2, l as int);
+        lemma_div_strictly_bounded(sum as int, r as int, (2 * l) as int);
     }
 
     // Subgoal 2: r4 <= 2L / 2^208

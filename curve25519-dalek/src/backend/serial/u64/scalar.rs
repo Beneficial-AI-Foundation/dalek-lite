@@ -1160,7 +1160,7 @@ impl Scalar52 {
                 lemma_pow2_strictly_increases(104, 108);
             };
         }
-        let (carry, n0) = Self::part1(limbs[0]);  
+        let (carry, n0) = Self::part1(limbs[0]);
         let ghost carry0 = carry;
 
         let m_n0_l1 = m(n0, l.limbs[1]);
@@ -1172,10 +1172,9 @@ impl Scalar52 {
             };
         }
         let sum1 = carry + limbs[1] + m_n0_l1;
-         /* ORIGINAL CODE: 
-         let (carry, n1) = Self::part1(carry + limbs[1] + m(n0, l.limbs[1])); 
-         */
-        let (carry, n1) = Self::part1(sum1); 
+        /* ORIGINAL CODE:
+         let (carry, n1) = Self::part1(carry + limbs[1] + m(n0, l.limbs[1])); */
+        let (carry, n1) = Self::part1(sum1);
         let ghost carry1 = carry;
 
         let m_n0_l2 = m(n0, l.limbs[2]);
@@ -1189,10 +1188,9 @@ impl Scalar52 {
             };
         }
         let sum2 = carry + limbs[2] + m_n0_l2 + m_n1_l1;
-        /* ORIGINAL CODE: 
-        let (carry, n2) = Self::part1(carry + limbs[2] + m(n0, l.limbs[2]) + m(n1, l.limbs[1])); 
-        */
-        let (carry, n2) = Self::part1(sum2);  
+        /* ORIGINAL CODE:
+        let (carry, n2) = Self::part1(carry + limbs[2] + m(n0, l.limbs[2]) + m(n1, l.limbs[1])); */
+        let (carry, n2) = Self::part1(sum2);
         let ghost carry2 = carry;
 
         let m_n1_l2 = m(n1, l.limbs[2]);
@@ -1206,8 +1204,9 @@ impl Scalar52 {
             };
         }
         let sum3 = carry + limbs[3] + m_n1_l2 + m_n2_l1;
-        /* ORIGINAL CODE: let (carry, n3) = Self::part1(carry + limbs[3] + m(n1, l.limbs[2]) + m(n2, l.limbs[1])); */
-        let (carry, n3) = Self::part1(sum3);  
+        /* ORIGINAL CODE:
+        let (carry, n3) = Self::part1(carry + limbs[3] + m(n1, l.limbs[2]) + m(n2, l.limbs[1])); */
+        let (carry, n3) = Self::part1(sum3);
         let ghost carry3 = carry;
 
         let m_n0_l4 = m(n0, l.limbs[4]);
@@ -1223,8 +1222,9 @@ impl Scalar52 {
             };
         }
         let sum4 = carry + limbs[4] + m_n0_l4 + m_n2_l2 + m_n3_l1;
-        /* ORIGINAL CODE: let (carry, n4) = Self::part1(carry + limbs[4] + m(n0, l.limbs[4]) + m(n2, l.limbs[2]) + m(n3, l.limbs[1])); */
-        let (carry, n4) = Self::part1(sum4);  
+        /* ORIGINAL CODE:
+        let (carry, n4) = Self::part1(carry + limbs[4] + m(n0, l.limbs[4]) + m(n2, l.limbs[2]) + m(n3, l.limbs[1])); */
+        let (carry, n4) = Self::part1(sum4);
         let ghost carry4 = carry;
 
         // =====================================================================

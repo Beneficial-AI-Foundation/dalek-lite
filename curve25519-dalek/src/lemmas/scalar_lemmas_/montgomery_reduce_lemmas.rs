@@ -55,35 +55,83 @@ pub(crate) proof fn axiom_two_l_div_pow2_208_le_pow2_45()
 // Bit Operation Lemmas (NOT IN VSTD YET)
 // =============================================================================
 /// Masking a truncated value: combining truncation and masking
+///
+/// Proof outline:
+///   (x as u64) = x % 2^64             [lemma_u128_cast_64_is_mod]
+///   y & mask(n) = y % pow2(n)          [lemma_u64_low_bits_mask_is_mod]
+///   (x % 2^64) % pow2(n) = x % pow2(n) [lemma_mod_mod with 2^64 = pow2(n) * pow2(64-n)]
 pub proof fn lemma_u128_truncate_and_mask(x: u128, n: nat)
     requires
         n <= 64,
     ensures
         ((x as u64) & (low_bits_mask(n) as u64)) as nat == (x as nat) % pow2(n),
 {
-    assume(false);
+    let trunc = x as u64;  // truncation: x mod 2^64
+
+    // Establish pow2(64) == 0x10000000000000000 once
+    assert(pow2(64) == 0x10000000000000000nat) by {
+        lemma_u128_shift_is_pow2(64);
+        assert((1u128 << 64) == 0x10000000000000000u128) by (bit_vector);
+    }
+
+    if n == 64 {
+        // low_bits_mask(64) = pow2(64) - 1 = u64::MAX, so mask is identity
+        assert(low_bits_mask(64) as u64 == u64::MAX) by {
+            assert(low_bits_mask(64) == pow2(64) - 1) by {
+                reveal(low_bits_mask);
+            }
+            assert(0x10000000000000000nat - 1 == u64::MAX as nat);
+        }
+        assert((trunc & u64::MAX) == trunc) by (bit_vector);
+        // (x as u64) as nat == x % pow2(64)
+        lemma_u128_cast_64_is_mod(x);
+        assert((trunc as nat) == (x as nat) % pow2(64));
+    } else {
+        // n < 64
+        // Step 1: mask on u64 = mod pow2(n) on u64
+        lemma_u64_low_bits_mask_is_mod(trunc, n);
+        // gives: trunc & (low_bits_mask(n) as u64) == trunc % (pow2(n) as u64)
+        let masked = trunc & (low_bits_mask(n) as u64);
+        assert(masked == trunc % (pow2(n) as u64));
+
+        // Step 2: truncation is mod 2^64
+        lemma_u128_cast_64_is_mod(x);
+        assert((trunc as nat) == (x as nat) % pow2(64));
+
+        // Step 3: nested mod: (x % pow2(64)) % pow2(n) == x % pow2(n)
+        // Use lemma_mod_mod(x, a, b) which gives (x % (a*b)) % a == x % a
+        // Set a = pow2(n), b = pow2(64-n), so a*b = pow2(64)
+        let d = (64 - n) as nat;
+        lemma_pow2_pos(n);
+        lemma_pow2_pos(d);
+        lemma_pow2_adds(n, d);
+        assert(pow2(n) * pow2(d) == pow2(64));
+        lemma_mod_mod(x as nat as int, pow2(n) as int, pow2(d) as int);
+        // gives: ((x as nat) % pow2(64)) % pow2(n) == (x as nat) % pow2(n)
+        assert(((x as nat) % pow2(64)) % pow2(n) == (x as nat) % pow2(n));
+
+        // Step 4: connect u64 mod to nat mod
+        // (trunc % (pow2(n) as u64)) as nat == (trunc as nat) % pow2(n)
+        // Since trunc: u64 and pow2(n) fits in u64 for n < 64
+        assert(pow2(n) <= u64::MAX as nat) by {
+            lemma_pow2_strictly_increases(n, 64);
+        }
+        assert((trunc % (pow2(n) as u64)) as nat == (trunc as nat) % pow2(n)) by {
+            // For unsigned types, (a % b) as nat == (a as nat) % (b as nat) when b > 0
+            assert(pow2(n) > 0) by {
+                lemma_pow2_pos(n);
+            }
+        }
+
+        // Combine all steps
+        assert((masked as nat) == (trunc as nat) % pow2(n));
+        assert((trunc as nat) % pow2(n) == ((x as nat) % pow2(64)) % pow2(n));
+        assert(((x as nat) % pow2(64)) % pow2(n) == (x as nat) % pow2(n));
+    }
 }
 
-/// u128 masking with low_bits_mask is modulo pow2
-pub proof fn lemma_u128_low_bits_mask_is_mod(x: u128, n: nat)
-    requires
-        n < 128,
-    ensures
-        x & (low_bits_mask(n) as u128) == x % (pow2(n) as u128),
-{
-    assume(false);
-}
-
-/// u128 truncation to u64 preserves low 64 bits (modulo pow2(64))
-pub proof fn lemma_u128_truncate_to_u64(x: u128)
-    ensures
-        (x as u64) as nat == (x as nat) % pow2(64),
-{
-    assume(false);
-}
-
-// NOTE: lemma_u128_low_bits_mask_is_mod and lemma_u128_truncate_to_u64 were moved to
-// unused_montgomery_reduce_lemmas.rs. They were defined but never called in the active proof.
+// NOTE: lemma_u128_low_bits_mask_is_mod and lemma_u128_truncate_to_u64 were removed.
+// They were defined with assume(false) but never called in the active proof.
 // =============================================================================
 // Carry Shift-to-Nat Conversion
 // =============================================================================
@@ -1033,7 +1081,6 @@ pub(crate) proof fn lemma_montgomery_reduce_post_sub(
 //   3. N×L < R×L, so T + N×L < 2R×L
 //   4. intermediate = (T + N×L)/R < 2L
 // =============================================================================
-
 /// Bridging lemma: canonical_bound + quotient relationship implies
 /// r4 < 2^52 + L[4] and intermediate < 2L.
 ///
@@ -1063,8 +1110,8 @@ pub(crate) proof fn lemma_r4_bound_from_canonical(
         n < montgomery_radix(),
         // Quotient relationship from Part 2: intermediate × R = T + N×L
         ({
-            let inter = (r0 as nat) + (r1 as nat) * pow2(52) + (r2 as nat) * pow2(104) + (
-            r3 as nat) * pow2(156) + (r4 as nat) * pow2(208);
+            let inter = (r0 as nat) + (r1 as nat) * pow2(52) + (r2 as nat) * pow2(104) + (r3 as nat)
+                * pow2(156) + (r4 as nat) * pow2(208);
             inter * montgomery_radix() == slice128_to_nat(limbs) + n * group_order()
         }),
     ensures

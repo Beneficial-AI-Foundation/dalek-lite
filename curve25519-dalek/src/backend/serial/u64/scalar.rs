@@ -1155,67 +1155,76 @@ impl Scalar52 {
             lemma_u128_shift_is_pow2(108);
         }
 
-        // part1 call 0: limbs[0] < 2^104 < 2^108 ✓
         proof {
-            lemma_pow2_strictly_increases(104, 108);
+            assert(limbs[0] < (1u128 << 108)) by {
+                lemma_pow2_strictly_increases(104, 108);
+            };
         }
-        let (carry, n0) = Self::part1(limbs[0]);
+        let (carry, n0) = Self::part1(limbs[0]);  
         let ghost carry0 = carry;
 
-        // part1 call 1: sum1 = carry + limbs[1] + m(n0,l[1])
         let m_n0_l1 = m(n0, l.limbs[1]);
-        // Goal: sum1 < 2^108 (part1's precondition)
         proof {
-            lemma_m(n0, l.limbs[1], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 57) + (1u128 << 105) + (1u128 << 104) <= (1u128 << 108))
-                by (bit_vector);
+            assert(carry + limbs[1] + m_n0_l1 < (1u128 << 108)) by {
+                lemma_m(n0, l.limbs[1], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 57) + (1u128 << 105) + (1u128 << 104) <= (1u128 << 108))
+                    by (bit_vector);
+            };
         }
         let sum1 = carry + limbs[1] + m_n0_l1;
-        let (carry, n1) = Self::part1(sum1);
+         /* ORIGINAL CODE: 
+         let (carry, n1) = Self::part1(carry + limbs[1] + m(n0, l.limbs[1])); 
+         */
+        let (carry, n1) = Self::part1(sum1); 
         let ghost carry1 = carry;
 
-        // part1 call 2 (n2): sum2 = carry + limbs[2] + m(n0,l[2]) + m(n1,l[1])
         let m_n0_l2 = m(n0, l.limbs[2]);
         let m_n1_l1 = m(n1, l.limbs[1]);
-        // Goal: sum2 < 2^108 (part1's precondition)
         proof {
-            lemma_m(n0, l.limbs[2], (1u64 << 52), (1u64 << 52));
-            lemma_m(n1, l.limbs[1], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 57) + (1u128 << 106) + 2 * (1u128 << 104) <= (1u128 << 108))
-                by (bit_vector);
+            assert(carry + limbs[2] + m_n0_l2 + m_n1_l1 < (1u128 << 108)) by {
+                lemma_m(n0, l.limbs[2], (1u64 << 52), (1u64 << 52));
+                lemma_m(n1, l.limbs[1], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 57) + (1u128 << 106) + 2 * (1u128 << 104) <= (1u128 << 108))
+                    by (bit_vector);
+            };
         }
         let sum2 = carry + limbs[2] + m_n0_l2 + m_n1_l1;
-        let (carry, n2) = Self::part1(sum2);
+        /* ORIGINAL CODE: 
+        let (carry, n2) = Self::part1(carry + limbs[2] + m(n0, l.limbs[2]) + m(n1, l.limbs[1])); 
+        */
+        let (carry, n2) = Self::part1(sum2);  
         let ghost carry2 = carry;
 
-        // part1 call 3 (n3): sum3 = carry + limbs[3] + m(n1,l[2]) + m(n2,l[1])
         let m_n1_l2 = m(n1, l.limbs[2]);
         let m_n2_l1 = m(n2, l.limbs[1]);
-        // Goal: sum3 < 2^108 (part1's precondition)
         proof {
-            lemma_m(n1, l.limbs[2], (1u64 << 52), (1u64 << 52));
-            lemma_m(n2, l.limbs[1], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 57) + (1u128 << 107) + 2 * (1u128 << 104) <= (1u128 << 108))
-                by (bit_vector);
+            assert(carry + limbs[3] + m_n1_l2 + m_n2_l1 < (1u128 << 108)) by {
+                lemma_m(n1, l.limbs[2], (1u64 << 52), (1u64 << 52));
+                lemma_m(n2, l.limbs[1], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 57) + (1u128 << 107) + 2 * (1u128 << 104) <= (1u128 << 108))
+                    by (bit_vector);
+            };
         }
         let sum3 = carry + limbs[3] + m_n1_l2 + m_n2_l1;
-        let (carry, n3) = Self::part1(sum3);
+        /* ORIGINAL CODE: let (carry, n3) = Self::part1(carry + limbs[3] + m(n1, l.limbs[2]) + m(n2, l.limbs[1])); */
+        let (carry, n3) = Self::part1(sum3);  
         let ghost carry3 = carry;
 
-        // part1 call 4 (n4): sum4 = carry + limbs[4] + m(n0,l[4]) + m(n2,l[2]) + m(n3,l[1])
         let m_n0_l4 = m(n0, l.limbs[4]);
         let m_n2_l2 = m(n2, l.limbs[2]);
         let m_n3_l1 = m(n3, l.limbs[1]);
-        // Goal: sum4 < 2^108 (part1's precondition)
         proof {
-            lemma_m(n0, l.limbs[4], (1u64 << 52), (1u64 << 52));
-            lemma_m(n2, l.limbs[2], (1u64 << 52), (1u64 << 52));
-            lemma_m(n3, l.limbs[1], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 57) + (1u128 << 107) + 3 * (1u128 << 104) <= (1u128 << 108))
-                by (bit_vector);
+            assert(carry + limbs[4] + m_n0_l4 + m_n2_l2 + m_n3_l1 < (1u128 << 108)) by {
+                lemma_m(n0, l.limbs[4], (1u64 << 52), (1u64 << 52));
+                lemma_m(n2, l.limbs[2], (1u64 << 52), (1u64 << 52));
+                lemma_m(n3, l.limbs[1], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 57) + (1u128 << 107) + 3 * (1u128 << 104) <= (1u128 << 108))
+                    by (bit_vector);
+            };
         }
         let sum4 = carry + limbs[4] + m_n0_l4 + m_n2_l2 + m_n3_l1;
-        let (carry, n4) = Self::part1(sum4);
+        /* ORIGINAL CODE: let (carry, n4) = Self::part1(carry + limbs[4] + m(n0, l.limbs[4]) + m(n2, l.limbs[2]) + m(n3, l.limbs[1])); */
+        let (carry, n4) = Self::part1(sum4);  
         let ghost carry4 = carry;
 
         // =====================================================================
@@ -1224,65 +1233,68 @@ impl Scalar52 {
         // Note: After part1, carry < 2^57. After part2, carry < 2^56.
         // =====================================================================
 
-        // part2 call 0 (r0): carry + limbs[5] + m(n1,l[4]) + m(n3,l[2]) + m(n4,l[1])
         let m_n1_l4 = m(n1, l.limbs[4]);
         let m_n3_l2 = m(n3, l.limbs[2]);
         let m_n4_l1 = m(n4, l.limbs[1]);
-        // Goal: sum5 < 2^108 (part2's precondition)
         proof {
-            lemma_m(n1, l.limbs[4], (1u64 << 52), (1u64 << 52));
-            lemma_m(n3, l.limbs[2], (1u64 << 52), (1u64 << 52));
-            lemma_m(n4, l.limbs[1], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 57) + (1u128 << 107) + 3 * (1u128 << 104) <= (1u128 << 108))
-                by (bit_vector);
+            assert(carry + limbs[5] + m_n1_l4 + m_n3_l2 + m_n4_l1 < (1u128 << 108)) by {
+                lemma_m(n1, l.limbs[4], (1u64 << 52), (1u64 << 52));
+                lemma_m(n3, l.limbs[2], (1u64 << 52), (1u64 << 52));
+                lemma_m(n4, l.limbs[1], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 57) + (1u128 << 107) + 3 * (1u128 << 104) <= (1u128 << 108))
+                    by (bit_vector);
+            };
         }
         let sum5 = carry + limbs[5] + m_n1_l4 + m_n3_l2 + m_n4_l1;
         let (carry, r0) = Self::part2(sum5);
+        /* ORIGINAL CODE: let (carry, r0) = Self::part2(carry + limbs[5] + m(n1, l.limbs[4]) + m(n3, l.limbs[2]) + m(n4, l.limbs[1]),); */
         let ghost carry5 = carry;
         assert(r0 < (1u64 << 52));  // from part2 postcondition
 
-        // part2 call 1 (r1): carry + limbs[6] + m(n2,l[4]) + m(n4,l[2])
         let m_n2_l4 = m(n2, l.limbs[4]);
         let m_n4_l2 = m(n4, l.limbs[2]);
-        // Goal: sum6 < 2^108 (part2's precondition)
         proof {
-            lemma_m(n2, l.limbs[4], (1u64 << 52), (1u64 << 52));
-            lemma_m(n4, l.limbs[2], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 56) + (1u128 << 106) + 2 * (1u128 << 104) <= (1u128 << 108))
-                by (bit_vector);
+            assert(carry + limbs[6] + m_n2_l4 + m_n4_l2 < (1u128 << 108)) by {
+                lemma_m(n2, l.limbs[4], (1u64 << 52), (1u64 << 52));
+                lemma_m(n4, l.limbs[2], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 56) + (1u128 << 106) + 2 * (1u128 << 104) <= (1u128 << 108))
+                    by (bit_vector);
+            };
         }
         let sum6 = carry + limbs[6] + m_n2_l4 + m_n4_l2;
         let (carry, r1) = Self::part2(sum6);
+        /* ORIGINAL CODE: let (carry, r1) = Self::part2(carry + limbs[6] + m(n2, l.limbs[4]) + m(n4, l.limbs[2])); */
         let ghost carry6 = carry;
         assert(r1 < (1u64 << 52));  // from part2 postcondition
 
-        // part2 call 2 (r2): carry + limbs[7] + m(n3,l[4])
         let m_n3_l4 = m(n3, l.limbs[4]);
-        // Goal: sum7 < 2^108 (part2's precondition)
         proof {
-            lemma_m(n3, l.limbs[4], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 56) + (1u128 << 105) + (1u128 << 104) <= (1u128 << 108))
-                by (bit_vector);
+            assert(carry + limbs[7] + m_n3_l4 < (1u128 << 108)) by {
+                lemma_m(n3, l.limbs[4], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 56) + (1u128 << 105) + (1u128 << 104) <= (1u128 << 108))
+                    by (bit_vector);
+            };
         }
         let sum7 = carry + limbs[7] + m_n3_l4;
         let (carry, r2) = Self::part2(sum7);
+        /* ORIGINAL CODE: let (carry, r2) = Self::part2(carry + limbs[7] + m(n3, l.limbs[4])); */
         let ghost carry7 = carry;
         assert(r2 < (1u64 << 52));  // from part2 postcondition
 
-        // part2 call 3 (r3): carry + limbs[8] + m(n4,l[4])
         let m_n4_l4 = m(n4, l.limbs[4]);
-        // Goal: sum8 < 2^108 (part2's precondition)
         proof {
-            lemma_m(n4, l.limbs[4], (1u64 << 52), (1u64 << 52));
-            assert((1u128 << 56) + 2 * (1u128 << 104) <= (1u128 << 108)) by (bit_vector);
+            assert(carry + limbs[8] + m_n4_l4 < (1u128 << 108)) by {
+                lemma_m(n4, l.limbs[4], (1u64 << 52), (1u64 << 52));
+                assert((1u128 << 56) + 2 * (1u128 << 104) <= (1u128 << 108)) by (bit_vector);
+            };
         }
         let sum8 = carry + limbs[8] + m_n4_l4;
         let (carry, r3) = Self::part2(sum8);
+        /* ORIGINAL CODE: let (carry, r3) = Self::part2(carry + limbs[8] + m(n4, l.limbs[4])); */
         let ghost carry8 = carry;  // Ghost: save for algorithm correctness proof (this becomes r4)
-        // r3 < 2^52 from part2's postcondition (w < 2^52)
-        assert(r3 < (1u64 << 52));
+        assert(r3 < (1u64 << 52));  // from part2 postcondition
 
-        // Final carry becomes r4
+        /* ORIGINAL CODE: let r4 = carry as u64; */
         // KEY INSIGHT: r4 can exceed 2^52! (verified empirically with 1M+ test cases)
         // But r4 < 2^52 + L[4], which is sufficient for sub's relaxed precondition.
         //

@@ -17,11 +17,6 @@ use vstd::prelude::*;
 
 verus! {
 
-// NOTE: l_inv_mod_r, montgomery_quotient, and montgomery_intermediate spec functions
-// were removed. The proof now works directly from the quotient relationship
-// (intermediate × R = T + N×L) without routing through these abstract definitions.
-// This eliminated the need for the uniqueness chain (lemma_montgomery_quotient_unique,
-// lemma_gcd_l_r_is_one, lemma_l_inv_mod_r_property, etc.).
 // ============================================================================
 // FUNCTION-CENTRIC PREDICATES FOR montgomery_reduce
 // ============================================================================
@@ -47,9 +42,6 @@ pub open spec fn montgomery_reduce_input_bounds(limbs: &[u128; 9]) -> bool {
     limbs[8] < pow2(104)     // 1 product term
 }
 
-// NOTE: montgomery_reduce_r4_safe_bound was moved to unused_montgomery_reduce_lemmas.rs.
-// It is not a precondition of montgomery_reduce (which uses canonical_bound instead).
-// The spec and its bridge lemmas are preserved as reference for an alternative proof path.
 /// The value bound that montgomery_reduce requires to produce a canonical output.
 /// When the total value is < R * L, the intermediate result_raw will be < 2L,
 /// which allows sub(result_raw, L) to produce a canonical result.

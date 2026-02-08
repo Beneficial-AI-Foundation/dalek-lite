@@ -21,34 +21,63 @@ use crate::specs::scalar52_specs::*;
 verus! {
 
 // =============================================================================
-// AXIOMS - Mathematical facts accepted without formal proof
+// LEMMA: 2L / 2^208 == 2^45
 // =============================================================================
-// These are well-established number theory results that would require significant
-// proof infrastructure to formalize. They are stated with `admit()` and documented
-// with external verification (e.g., Python computations).
-// =============================================================================
-/// Axiom: 2L / 2^208 <= 2^45
+/// Proves 2L / 2^208 == 2^45, where L = group_order() = 2^252 + delta.
 ///
-/// Where L = group_order() = 2^252 + 27742317777372353535851937790883648493
-///
-/// Mathematical derivation:
-/// - L = 2^252 + delta where delta ≈ 2.77×10^37 < 2^126
-/// - 2L = 2^253 + 2*delta < 2^253 + 2^127
-/// - 2L / 2^208 = 2^45 + floor(2*delta / 2^208)
-/// - Since 2*delta < 2^127 < 2^208: floor(2*delta / 2^208) = 0
-/// - Therefore 2L / 2^208 = 2^45 exactly
-///
-/// Verified in Python:
-/// ```python
-/// >>> L = 2**252 + 27742317777372353535851937790883648493
-/// >>> (2 * L) // (2**208) == 2**45
-/// True
-/// ```
-pub(crate) proof fn axiom_two_l_div_pow2_208_le_pow2_45()
+/// Proof: 2L = pow2(253) + 2*delta, pow2(253) = pow2(45) * pow2(208),
+/// and 2*delta < pow2(127) < pow2(208), so the quotient is pow2(45).
+pub(crate) proof fn lemma_two_l_div_pow2_208_eq_pow2_45()
     ensures
-        (2 * group_order()) / pow2(208) <= pow2(45),
+        (2 * group_order()) / pow2(208) == pow2(45),
 {
-    admit();
+    let delta: nat = 27742317777372353535851937790883648493nat;
+    let two_l = 2 * group_order();
+
+    // Step 1: 2L = pow2(253) + 2*delta
+    assert(two_l == pow2(253) + 2 * delta) by {
+        assert(group_order() == pow2(252) + delta);
+        lemma_pow2_plus_one(252);  // pow2(253) = 2 * pow2(252)
+    }
+
+    // Step 2: pow2(253) = pow2(45) * pow2(208)
+    assert(pow2(253) == pow2(45) * pow2(208)) by {
+        assert(45 + 208 == 253nat);
+        lemma_pow2_adds(45, 208);
+    }
+
+    // Step 3: 2*delta < pow2(208)
+    // Strategy (following lemma_group_order_bound pattern):
+    //   - Compare delta against pow2(126) using hex literals
+    //   - Build pow2(126) = pow2(63) * pow2(63)
+    //   - Then 2*delta < 2*pow2(126) = pow2(127) < pow2(208)
+    assert(2 * delta < pow2(208)) by {
+        // delta < pow2(126): compare decimal literal against hex (pattern from lemma_group_order_bound)
+        assert(27742317777372353535851937790883648493nat < 0x40000000000000000000000000000000nat)
+            by (compute_only);
+        assert(pow2(63) == 0x8000000000000000nat) by {
+            lemma2_to64_rest();
+        }
+        lemma_pow2_adds(63, 63);
+        assert(pow2(126) == 0x40000000000000000000000000000000nat);
+        assert(delta < pow2(126));
+
+        // 2*delta < 2*pow2(126) = pow2(127)
+        lemma_pow2_plus_one(126);  // pow2(127) = 2 * pow2(126)
+
+        // pow2(127) < pow2(208)
+        lemma_pow2_strictly_increases(127, 208);
+    }
+
+    // Step 4: Apply fundamental_div_mod_converse
+    // two_l = pow2(45) * pow2(208) + 2*delta, with 0 <= 2*delta < pow2(208)
+    // => two_l / pow2(208) = pow2(45)
+    lemma_fundamental_div_mod_converse(
+        two_l as int,
+        pow2(208) as int,
+        pow2(45) as int,
+        (2 * delta) as int,
+    );
 }
 
 // =============================================================================
@@ -130,8 +159,6 @@ pub proof fn lemma_u128_truncate_and_mask(x: u128, n: nat)
     }
 }
 
-// NOTE: lemma_u128_low_bits_mask_is_mod and lemma_u128_truncate_to_u64 were removed.
-// They were defined with assume(false) but never called in the active proof.
 // =============================================================================
 // Carry Shift-to-Nat Conversion
 // =============================================================================
@@ -234,9 +261,9 @@ pub(crate) proof fn lemma_part1_sum_divisible_by_pow2_52(s: u64, p: nat)
 // =============================================================================
 /// Main correctness lemma for part1: sum + p*L[0] == carry << 52
 ///
-/// Structure (following reviewer suggestion):
-/// 1. First establish bitwise-to-arithmetic conversions using lemmas (not bit_vector)
-/// 2. Then do proofs using pow2 lemmas
+/// Structure:
+/// 1. Establish bitwise-to-arithmetic conversions using lemmas (not bit_vector)
+/// 2. Prove arithmetic properties using pow2 lemmas
 pub(crate) proof fn lemma_part1_correctness(sum: u128)
     requires
         sum < (1u128 << 108),
@@ -553,9 +580,6 @@ pub(crate) proof fn lemma_bounded_product_satisfies_input_bounds(
     lemma_u128_shift_is_pow2(107);
 }
 
-// NOTE: lemma_bounded_product_satisfies_r4_safe_bound was moved to
-// unused_montgomery_reduce_lemmas.rs. montgomery_reduce does not require
-// r4_safe_bound as a precondition (it requires canonical_bound, which is stronger).
 // =============================================================================
 // Bridge Lemma: Canonical Input → Canonical Output
 // =============================================================================
@@ -630,9 +654,6 @@ pub(crate) proof fn lemma_canonical_product_satisfies_canonical_bound(
     assert(slice128_to_nat(limbs) < montgomery_radix() * group_order());
 }
 
-// NOTE: lemma_canonical_bound_implies_r4_safe_bound was moved to
-// unused_montgomery_reduce_lemmas.rs. It is not needed by montgomery_reduce's
-// proof since r4_safe_bound is not a precondition.
 // =============================================================================
 // Bridge Lemmas: Identity Array (from_montgomery) → montgomery_reduce Preconditions
 // =============================================================================
@@ -723,7 +744,6 @@ pub(crate) proof fn lemma_identity_array_satisfies_canonical_bound(a: &Scalar52,
 
 // =============================================================================
 // r4 Bounds Lemmas - Proving r4 < 2^52 + L[4]
-// See docs/proofs_for_montgomery_reduce/r4_bounds_proof.md for paper proof
 // =============================================================================
 /// L[4] = 2^44 (the highest limb of the group order L)
 pub(crate) proof fn lemma_l_limb4_is_pow2_44()
@@ -744,10 +764,8 @@ pub(crate) proof fn lemma_l_limb4_is_pow2_44()
 }
 
 // =============================================================================
-// Option B: Pre-sub and Post-sub lemmas
+// Pre-sub and Post-sub lemmas
 // =============================================================================
-// These lemmas encapsulate the Option B proof strategy for montgomery_reduce.
-// See docs/proofs_for_montgomery_reduce/option_b_paper_proofs.md
 /// Pre-subtraction lemma: Establishes the quotient relationship for post_sub.
 ///
 /// # What This Lemma Proves
@@ -1069,30 +1087,16 @@ pub(crate) proof fn lemma_montgomery_reduce_post_sub(
 }
 
 // =============================================================================
-// REDC Bound: Direct Proof that intermediate < 2L
+// REDC Bound: intermediate < 2L
 // =============================================================================
-// This lemma proves the key REDC result directly from the quotient relationship
-// intermediate × R = T + N×L, without routing through spec-level functions
-// (montgomery_quotient, montgomery_intermediate, l_inv_mod_r).
-//
-// The proof is simple:
-//   1. N < R (each n_i < 2^52, so N < 2^260 = R)
-//   2. T < R×L (from canonical_bound)
-//   3. N×L < R×L, so T + N×L < 2R×L
-//   4. intermediate = (T + N×L)/R < 2L
-// =============================================================================
-/// Bridging lemma: canonical_bound + quotient relationship implies
-/// r4 < 2^52 + L[4] and intermediate < 2L.
-///
-/// This is a direct proof that avoids the uniqueness chain
-/// (montgomery_quotient, l_inv_mod_r, etc.) entirely.
+/// Proves r4 < 2^52 + L[4] and intermediate < 2L from the quotient relationship.
 ///
 /// # Proof Strategy
 ///
 /// ```text
 /// N < R, T < R×L  ⟹  T + N×L < 2R×L
 ///                  ⟹  intermediate = (T + N×L)/R < 2L
-///                  ⟹  r4 ≤ inter/2^208 ≤ 2L/2^208 ≤ 2^45
+///                  ⟹  r4 ≤ inter/2^208 ≤ 2L/2^208 = 2^45
 ///                  ⟹  r4 < 2^52 + L[4]
 /// ```
 pub(crate) proof fn lemma_r4_bound_from_canonical(
@@ -1180,8 +1184,8 @@ pub(crate) proof fn lemma_r4_bound_from_canonical(
 
     // Subgoal 3: r4 < 2^52 + L[4]
     assert((r4 as nat) < pow2(52) + l4) by {
-        // 2L / 2^208 <= 2^45 (from axiom about L's structure)
-        axiom_two_l_div_pow2_208_le_pow2_45();
+        // 2L / 2^208 == 2^45 (fully proven)
+        lemma_two_l_div_pow2_208_eq_pow2_45();
         assert((r4 as nat) <= pow2(45));
 
         // L[4] == 2^44

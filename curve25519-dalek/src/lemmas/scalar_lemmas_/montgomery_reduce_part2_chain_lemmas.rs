@@ -313,10 +313,6 @@ proof fn lemma_part2_carry_cancellation(
 // =============================================================================
 // Main Quotient Lemma
 // =============================================================================
-//
-// Note: The original "telescoping" lemma was removed because it had an incorrect
-// formulation - it didn't account for carry chaining in the sum definitions.
-// The proof now works directly via carry cancellation analysis in the main lemma.
 /// After all 4 part2 calls, intermediate = (T + N×L) / R
 ///
 /// This chains the individual part2 postconditions with the divisibility

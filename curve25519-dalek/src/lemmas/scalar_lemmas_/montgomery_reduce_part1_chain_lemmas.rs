@@ -1,27 +1,18 @@
 //! Lemmas for proving `lemma_part1_chain_divisibility`
 //!
-//! This module contains the proof that after 5 calls to `part1`, we have:
+//! This module proves that after 5 calls to `part1`:
 //!   `(T + N×L) ≡ 0 (mod 2^260)`
 //!
 //! ## Proof Structure
 //!
-//! The proof uses two helper lemmas:
+//! 1. **`lemma_part1_telescoping_expansion`**: Weighted stage equations sum
+//!    and intermediate carries cancel (telescope), leaving `c4 × 2^260`.
 //!
-//! 1. **`lemma_part1_telescoping_expansion`**: Shows that when we weight each
-//!    stage equation by its positional factor and sum, the intermediate carries
-//!    cancel (telescope), leaving only `c4 × 2^260`.
-//!
-//! 2. **`lemma_n_times_l_expansion`**: Shows that `(N × L_low) mod 2^260` equals
+//! 2. **`lemma_n_times_l_expansion`**: `(N × L_low) mod 2^260` equals
 //!    the weighted sum of polynomial coefficients at positions 0-4.
 //!
-//! ## Status: FULLY PROVEN ✅
-//!
-//! All assumes have been eliminated:
-//! - **Polynomial multiplication**: Proven via `lemma_poly_mul_5x5_decomposition`
-//! - **Final connection**: Proven using enhanced ensures from polynomial expansion
-//!
-//! See `docs/proofs_for_montgomery_reduce/montgomery_reduce_proofs.md` Part 1 for
-//! the mathematical proof.
+//! 3. **`lemma_poly_mul_5x5_decomposition`**: 5×5 polynomial multiplication
+//!    decomposes into low (positions 0-4) and high (positions 5-8) parts.
 #![allow(unused)]
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
@@ -45,8 +36,6 @@ pub(crate) open spec fn l0() -> nat {
     constants::L.limbs[0] as nat
 }
 
-// NOTE: five_u64_limbs_to_nat is now defined in specs/scalar52_specs.rs
-// and imported via `use crate::specs::scalar52_specs::*;`
 // =============================================================================
 // Core Polynomial Multiplication Decomposition
 // =============================================================================

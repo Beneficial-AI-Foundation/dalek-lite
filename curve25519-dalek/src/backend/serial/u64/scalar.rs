@@ -1543,25 +1543,17 @@ impl Scalar52 {
             }
 
             // Direct REDC bound: connect scalar52_to_nat to explicit limb sum,
-            // then apply lemma_r4_bound_from_canonical for r4 < 2^52 + L[4] and inter < 2L
-            assert(limbs_bounded_for_sub(&intermediate, l)) by {
-                lemma_l_equals_group_order();
-                lemma_five_limbs_equals_to_nat(&intermediate.limbs);
-                lemma_mul_is_commutative(pow2(52) as int, r1 as int);
-                lemma_mul_is_commutative(pow2(104) as int, r2 as int);
-                lemma_mul_is_commutative(pow2(156) as int, r3 as int);
-                lemma_mul_is_commutative(pow2(208) as int, r4 as int);
-                lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4, n);
-            }
-            assert(inter_val < 2 * l_val) by {
-                lemma_l_equals_group_order();
-                lemma_five_limbs_equals_to_nat(&intermediate.limbs);
-                lemma_mul_is_commutative(pow2(52) as int, r1 as int);
-                lemma_mul_is_commutative(pow2(104) as int, r2 as int);
-                lemma_mul_is_commutative(pow2(156) as int, r3 as int);
-                lemma_mul_is_commutative(pow2(208) as int, r4 as int);
-                lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4, n);
-            }
+            // then apply lemma_r4_bound_from_canonical for r4 < 2^52 + L[4] and inter < 2L.
+            // Call shared lemmas once — both facts follow from lemma_r4_bound_from_canonical.
+            lemma_l_equals_group_order();
+            lemma_five_limbs_equals_to_nat(&intermediate.limbs);
+            lemma_mul_is_commutative(pow2(52) as int, r1 as int);
+            lemma_mul_is_commutative(pow2(104) as int, r2 as int);
+            lemma_mul_is_commutative(pow2(156) as int, r3 as int);
+            lemma_mul_is_commutative(pow2(208) as int, r4 as int);
+            lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4, n);
+            assert(limbs_bounded_for_sub(&intermediate, l));
+            assert(inter_val < 2 * l_val);
             // diff bounds follow from 0 <= inter_val < 2*l_val
             assert((inter_val as int) - (l_val as int) >= -(l_val as int));
             assert((inter_val as int) - (l_val as int) < (l_val as int));

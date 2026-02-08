@@ -35,6 +35,11 @@ IMPL_FN_PATTERN = re.compile(
     r"^(\s*)(?:pub\s+)?fn\s+(\w+)"
 )
 
+# Regex to match proof fn axiom_* declarations
+AXIOM_FN_PATTERN = re.compile(
+    r"^\s*(?:pub(?:\([^)]*\))?\s+)?proof\s+fn\s+(axiom_\w+)"
+)
+
 FUZZY_LINE_RANGE = 40
 
 DEFAULT_SPEC_CSV = "data/libsignal_verus_specs/generated/spec_functions.csv"
@@ -55,6 +60,237 @@ def derive_module(filepath: str) -> str:
 def derive_short_module(filepath: str) -> str:
     """Get just the file stem (edwards, scalar, ristretto, montgomery)."""
     return Path(filepath).stem
+
+
+# Map spec source paths to the same short module names used by verified functions
+_SPEC_MODULE_MAP = {
+    "edwards_specs": "edwards",
+    "montgomery_specs": "montgomery",
+    "ristretto_specs": "ristretto",
+    "scalar_specs": "scalar",
+    "scalar52_specs": "scalar",
+    "field_specs": "field",
+    "field_specs_u64": "field",
+    "core_specs": "core",
+}
+
+
+def derive_category_module(filepath: str) -> str:
+    """Map a spec source file to a short category module name.
+
+    This ensures spec functions use the same module names as verified functions
+    (e.g. 'edwards' instead of 'specs::edwards_specs') for consistent filtering.
+    """
+    stem = Path(filepath).stem
+    if stem in _SPEC_MODULE_MAP:
+        return _SPEC_MODULE_MAP[stem]
+    # For lemma files, use a generic 'lemmas' category
+    if "lemmas" in filepath:
+        return "lemmas"
+    return stem
+
+
+# ── Auto-generate math interpretation for axioms ──────────────────────
+
+# Words that start a prose line (not a formula line) in doc comments
+_PROSE_STARTERS = re.compile(
+    r"^(This|The|If|Each|For|Used|Note|See|From|Both|Mathematical|"
+    r"Requires|Admitted|In|Without|To|Output|Statistical|"
+    r"All|Every|Points|Axiom|AXIOM|Here)", re.IGNORECASE
+)
+
+
+def _extract_math_from_doc(doc_comment: str) -> str:
+    """Try to extract a concise formula line from a doc comment.
+
+    Looks for lines containing = or ≡ that look like mathematical formulas
+    rather than prose sentences.
+    """
+    if not doc_comment:
+        return ""
+    for line in doc_comment.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        # Must contain an equals/equiv sign
+        if "=" not in line and "≡" not in line:
+            continue
+        # Skip lines that start with prose words
+        if _PROSE_STARTERS.match(line):
+            continue
+        # Skip very long lines (likely prose)
+        if len(line) > 100:
+            continue
+        # Skip lines with many English words (more than 4 non-math words)
+        words = re.findall(r'[a-zA-Z]{4,}', line)
+        math_symbols = sum(1 for w in words if w.lower() in {
+            "sqrt", "mod", "sum", "prod", "lim", "inf",
+            "prime", "identity", "basepoint", "torsion",
+        })
+        if len(words) - math_symbols > 4:
+            continue
+        return line
+    return ""
+
+
+# Symbolic substitution patterns for ensures clause → math notation
+_MATH_SUBSTITUTIONS = [
+    # Edwards operations
+    (r'edwards_add\(edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1,\s*edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1\)', r'-\1 + (-\3)'),
+    (r'edwards_neg\(edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*(\w+)\.0,\s*(\w+)\.1\)\)', r'-(\1 + \3)'),
+    (r'edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1\)', r'\1 + (-\3)'),
+    (r'edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*(\w+)\.0,\s*(\w+)\.1\)', r'\1 + \3'),
+    (r'edwards_add\((\w+),\s*(\w+),\s*(\w+),\s*(\w+)\)', r'(\1,\2) + (\3,\4)'),
+    (r'edwards_scalar_mul_signed\((\w+),\s*(\w+)\)', r'[\2]\1'),
+    (r'edwards_scalar_mul\(edwards_neg\((\w+)\),\s*(\w+)\)', r'[\2](-\1)'),
+    (r'edwards_neg\(edwards_scalar_mul\((\w+),\s*(\w+)\)\)', r'-[\2]\1'),
+    (r'edwards_scalar_mul\((\w+),\s*(\w+)\)', r'[\2]\1'),
+    (r'edwards_neg\((\w+)\)', r'-\1'),
+    (r'math_edwards_identity\(\)', 'O'),
+    # Montgomery operations
+    (r'montgomery_add\(montgomery_add\((\w+),\s*(\w+)\),\s*(\w+)\)', r'(\1 + \2) + \3'),
+    (r'montgomery_add\((\w+),\s*montgomery_add\((\w+),\s*(\w+)\)\)', r'\1 + (\2 + \3)'),
+    (r'montgomery_add\((\w+),\s*montgomery_neg\((\w+)\)\)', r'\1 + (-\2)'),
+    (r'montgomery_add\((\w+),\s*(\w+)\)', r'\1 + \2'),
+    (r'montgomery_neg\((\w+)\)', r'-\1'),
+    (r'MontgomeryAffine::Infinity', '∞'),
+    # Field operations
+    (r'math_field_mul\((\w+),\s*math_field_inv\((\w+)\)\)', r'\1 / \2'),
+    (r'math_field_mul\((\w+),\s*(\w+)\)', r'\1 * \2'),
+    (r'math_field_add\((\w+),\s*(\w+)\)', r'\1 + \2'),
+    (r'math_field_sub\((\w+),\s*(\w+)\)', r'\1 - \2'),
+    (r'math_field_inv\((\w+)\)', r'\1^(-1)'),
+    # Other
+    (r'is_prime\(p\(\)\)', 'p is prime'),
+    (r'is_square_mod_p\((\w+)\)', r'\1 is QR mod p'),
+    (r'!is_square_mod_p\(([^)]+)\)', r'\1 is not QR mod p'),
+    (r'spec_sqrt_m1\(\)', 'i'),
+    (r'p\(\)\s*-\s*1', 'p - 1'),
+    (r'p\(\)', 'p'),
+    (r'pow\(([^,]+),\s*(\w+)\)', r'(\1)^\2'),
+    (r'binomial_sum\((\w+),\s*(\w+),\s*(\w+)\)', r'Σ C(\2,k)·\1^k'),
+    (r'\bas\s+(?:int|nat)\b', ''),
+    (r'\s*==\s*', ' = '),
+    (r'\s*%\s*', ' mod '),
+]
+
+
+# Manual math overrides for axioms whose ensures clauses are too complex
+# for automated simplification
+_AXIOM_MATH_OVERRIDES = {
+    "axiom_hash_is_canonical":
+        "field_element(P1) = field_element(P2) => hash(P1) = hash(P2)",
+    "axiom_edwards_d2_is_2d":
+        "D2 = 2*D in F_p",
+    "axiom_edwards_add_associative":
+        "(P + Q) + R = P + (Q + R) on Edwards curve",
+    "axiom_edwards_scalar_mul_signed_additive":
+        "[a]P + [b]P = [a+b]P (signed scalars)",
+    "axiom_xadd_projective_correct":
+        "xADD(U_P:W_P, U_Q:W_Q) represents P + Q",
+    "axiom_xdbl_projective_correct":
+        "xDBL(U:W) represents [2]P",
+    "axiom_ed25519_basepoint_canonical":
+        "B_x < p, B_y < p",
+    "axiom_ed25519_basepoint_table_valid":
+        "ED25519_BASEPOINT_TABLE is valid for B",
+    "axiom_eight_torsion_well_formed":
+        "All E[8] torsion points are well-formed",
+    "axiom_ristretto_basepoint_table_valid":
+        "RISTRETTO_BASEPOINT_TABLE is valid for Ristretto basepoint",
+    "axiom_affine_odd_multiples_of_basepoint_valid":
+        "[1*B, 3*B, ..., 127*B] table is valid",
+    "axiom_birational_edwards_montgomery":
+        "(z+y)/(z-y) = (1+y/z)/(1-y/z) (birational map)",
+    "axiom_uniform_bytes_split":
+        "split(uniform_64) -> (uniform_32, uniform_32, independent)",
+    "axiom_uniform_elligator_sum":
+        "P1 + P2 is uniform if P1, P2 independent from Elligator",
+    "axiom_uniform_point_add":
+        "P1 + P2 is uniform if P1, P2 uniform and independent",
+    "axiom_uniform_mod_reduction":
+        "X mod L is uniform over Z_L when X uniform over [0, 2^512)",
+    "axiom_sqrt_m1_squared":
+        "i^2 = -1 (mod p), where i = sqrt(-1)",
+    "axiom_sqrt_m1_not_square":
+        "sqrt(-1) is not a quadratic residue mod p",
+    "axiom_neg_sqrt_m1_not_square":
+        "-sqrt(-1) is not a quadratic residue mod p",
+    "axiom_p_is_prime":
+        "p = 2^255 - 19 is prime",
+    "axiom_sha512_output_length":
+        "|SHA-512(input)| = 64 bytes",
+    "axiom_from_bytes_uniform":
+        "uniform bytes => uniform field element",
+    "axiom_from_bytes_independent":
+        "independent bytes => independent field elements",
+    "axiom_uniform_elligator":
+        "uniform field element => uniform over Elligator image",
+    "axiom_uniform_elligator_independent":
+        "independent field elements => independent Ristretto points",
+}
+
+
+def _generate_math_from_ensures(ensures_clauses: list[str], contract_text: str = "") -> str:
+    """Best-effort symbolic substitution on ensures clauses."""
+    # Try to extract raw ensures section from contract text (avoids comma-splitting issues)
+    text = ""
+    if contract_text:
+        ensures_match = re.search(r'\bensures\b\s*\n?(.*?)(?:\n\s*\{|$)', contract_text, re.DOTALL)
+        if ensures_match:
+            text = ensures_match.group(1).strip()
+            # Remove trailing comma
+            text = text.rstrip(",").strip()
+
+    if not text and ensures_clauses:
+        text = ", ".join(c.rstrip(",") for c in ensures_clauses)
+
+    if not text:
+        return ""
+
+    # Strip outer ({ ... })
+    text = re.sub(r'^\(\{', '', text)
+    text = re.sub(r'\}\)$', '', text)
+    text = text.strip()
+
+    for pattern, repl in _MATH_SUBSTITUTIONS:
+        text = re.sub(pattern, repl, text)
+
+    # Clean up remaining Rust syntax
+    text = re.sub(r'\blet\s+\w+\s*=\s*', '', text)  # remove let bindings
+    text = re.sub(r'\{|\}', '', text)  # remove remaining braces
+    text = re.sub(r'\s+', ' ', text).strip()  # normalize whitespace
+
+    # If the result still looks too Rust-like (many :: or parens), skip
+    if text.count("::") > 2 or text.count("(") > 6:
+        return ""
+    # If result is too long, skip
+    if len(text) > 100:
+        return ""
+    return text
+
+
+def generate_axiom_math_interpretation(
+    fn_name: str, doc_comment: str, ensures_clauses: list[str], contract_text: str = ""
+) -> str:
+    """Auto-generate a math_interpretation for an axiom.
+
+    Strategy:
+      0. Check manual overrides
+      1. Try to extract from doc comment (many axioms have concise formulas)
+      2. Fall back to symbolic substitution on ensures clause
+    """
+    # Pass 0: manual override
+    if fn_name in _AXIOM_MATH_OVERRIDES:
+        return _AXIOM_MATH_OVERRIDES[fn_name]
+
+    # Pass 1: extract from doc comment
+    math = _extract_math_from_doc(doc_comment)
+    if math:
+        return math
+
+    # Pass 2: symbolic substitution
+    return _generate_math_from_ensures(ensures_clauses, contract_text)
 
 
 def extract_doc_comment(lines: list[str], fn_line_idx: int) -> str:
@@ -217,6 +453,7 @@ def extract_spec_functions(csv_path: str) -> list[dict]:
             informal_interp = row.get("informal_interpretation", "").strip()
 
             module = derive_module(source_path)
+            short_module = derive_category_module(source_path)
             result = find_spec_fn_in_source(source_path, name, source_line)
 
             if result:
@@ -251,6 +488,7 @@ def extract_spec_functions(csv_path: str) -> list[dict]:
                 "file": source_path,
                 "line": actual_line,
                 "module": module,
+                "short_module": short_module,
                 "visibility": visibility,
                 "doc_comment": doc_comment,
                 "math_interpretation": math_interp,
@@ -483,6 +721,95 @@ def extract_verified_functions(csv_path: str, spec_names: set[str]) -> list[dict
     return verified
 
 
+# ── Axiom extraction (auto-discovery) ─────────────────────────────────
+
+def extract_axioms(src_dir: str, spec_names: set[str]) -> list[dict]:
+    """Walk all .rs files and extract proof fn axiom_* functions."""
+    axioms = []
+    src_path = Path(src_dir)
+    if not src_path.exists():
+        print(f"  Warning: source directory {src_dir} not found", file=sys.stderr)
+        return axioms
+
+    rs_files = sorted(src_path.rglob("*.rs"))
+    print(f"  Scanning {len(rs_files)} .rs files for axiom functions...")
+
+    for rs_file in rs_files:
+        filepath = str(rs_file)
+        lines = _read_file_lines(filepath)
+        if lines is None:
+            continue
+
+        for line_idx, line in enumerate(lines):
+            match = AXIOM_FN_PATTERN.match(line)
+            if not match:
+                continue
+
+            fn_name = match.group(1)
+
+            # Extract contract using the existing brace-aware parser
+            result = extract_contract_from_source(filepath, fn_name, line_idx + 1)
+            if not result:
+                print(f"    Warning: could not extract contract for {fn_name} in {filepath}:{line_idx+1}",
+                      file=sys.stderr)
+                continue
+
+            doc_comment = result["doc_comment"]
+            contract = result["contract"]
+            requires = result["requires"]
+            ensures = result["ensures"]
+            actual_line = result["line"]
+
+            # Derive module info
+            module = derive_module(filepath)
+            short_module = derive_category_module(filepath)
+
+            # Auto-generate interpretations
+            math_interp = generate_axiom_math_interpretation(fn_name, doc_comment, ensures, contract)
+            # Use only the first meaningful line of the doc comment as informal description
+            # (the full doc comment is shown separately in the card)
+            informal_lines = [l.strip() for l in doc_comment.split("\n") if l.strip()] if doc_comment else []
+            informal_interp = informal_lines[0] if informal_lines else ""
+
+            # Detect referenced spec functions
+            contract_text = contract + " " + " ".join(requires) + " " + " ".join(ensures)
+            referenced = sorted([
+                s for s in spec_names
+                if re.search(r'\b' + re.escape(s) + r'\b', contract_text)
+            ])
+
+            fn_id = f"{module.replace('::', '__')}__{fn_name}"
+            github_link = f"{GITHUB_BASE}{filepath}#L{actual_line}"
+
+            axioms.append({
+                "id": fn_id,
+                "name": fn_name,
+                "signature": "",  # will build from contract first line
+                "body": contract,  # axiom cards show the contract (like verified)
+                "file": filepath,
+                "line": actual_line,
+                "module": module,
+                "short_module": short_module,
+                "visibility": "proof fn",
+                "doc_comment": doc_comment,
+                "math_interpretation": math_interp,
+                "informal_interpretation": informal_interp,
+                "github_link": github_link,
+                "category": "axiom",
+                "referenced_specs": referenced,
+            })
+
+    # Build signatures from contract first lines
+    for ax in axioms:
+        contract = ax["body"]
+        if contract:
+            first_line = contract.split("\n")[0]
+            ax["signature"] = re.sub(r"\s+", " ", first_line).strip()
+
+    print(f"  Found {len(axioms)} axiom functions")
+    return axioms
+
+
 # ── Main ──────────────────────────────────────────────────────────────
 
 def main():
@@ -530,9 +857,17 @@ def main():
         print(f"Warning: {args.verified_csv} not found, skipping verified functions.", file=sys.stderr)
         verified_functions = []
 
-    # 3. Output combined JSON
+    # 3. Extract axiom functions (auto-discovered from source)
+    print(f"Extracting axiom functions from {args.src_dir}...")
+    axiom_functions = extract_axioms(args.src_dir, spec_names)
+    axiom_functions.sort(key=lambda a: (a["module"], a["name"]))
+
+    # Append axioms to spec_functions list so they appear in the right panel
+    all_right_panel = spec_functions + axiom_functions
+
+    # 4. Output combined JSON
     output = {
-        "spec_functions": spec_functions,
+        "spec_functions": all_right_panel,
         "verified_functions": verified_functions,
     }
 
@@ -545,6 +880,7 @@ def main():
     # Summary
     spec_mods = sorted(set(s["module"] for s in spec_functions))
     print(f"\n{len(spec_functions)} spec functions from {len(spec_mods)} modules")
+    print(f"{len(axiom_functions)} axiom functions")
     verified_mods = sorted(set(s["module"] for s in verified_functions))
     print(f"{len(verified_functions)} verified functions from {len(verified_mods)} modules")
 
@@ -554,6 +890,10 @@ def main():
     for v in verified_functions:
         unique_refs.update(v["referenced_specs"])
     print(f"{total_refs} total spec references, {len(unique_refs)} unique spec functions referenced")
+
+    # Show axiom math interpretation coverage
+    axioms_with_math = sum(1 for a in axiom_functions if a["math_interpretation"])
+    print(f"{axioms_with_math}/{len(axiom_functions)} axioms have auto-generated math interpretations")
     print(f"\nOutput written to {out_path}")
 
 

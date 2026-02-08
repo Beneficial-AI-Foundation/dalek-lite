@@ -277,6 +277,22 @@
     margin-top: 0;
 }
 
+/* Axiom group header at bottom of right panel */
+.axiom-group-header {
+    color: #92400e;
+    border-bottom-color: #f59e0b;
+    margin-top: 1rem;
+}
+
+.axiom-group-count {
+    font-size: 0.65rem;
+    font-weight: 600;
+    background: #fef3c7;
+    padding: 0.08rem 0.35rem;
+    border-radius: 8px;
+    margin-left: 0.3rem;
+}
+
 /* ── Accordion cards (shared) ─────────────────────────────── */
 .spec-card {
     background: white;
@@ -365,6 +381,28 @@
     font-size: 0.7rem;
     color: var(--primary-color);
     font-style: italic;
+}
+
+/* Axiom badge (amber pill) */
+.axiom-badge {
+    display: inline-block;
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 4px;
+    padding: 0.06rem 0.35rem;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+/* Axiom card — subtle amber left border */
+.spec-card.axiom-card {
+    border-left: 3px solid #f59e0b;
 }
 
 .spec-github {

@@ -71,8 +71,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         verifiedFunctions = data.verified_functions || [];
         specFunctions = data.spec_functions || [];
     } catch (err) {
-        document.getElementById("listLeft").innerHTML =
-            '<div class="no-results"><h3>Failed to load data</h3><p>Could not load specs_data.json</p></div>';
+        const errorHtml = '<div class="no-results"><h3>Failed to load data</h3><p>Could not load specs_data.json</p></div>';
+        document.getElementById("listLeft").innerHTML = errorHtml;
+        document.getElementById("listRight").innerHTML = errorHtml;
         console.error("Failed to load specs:", err);
         return;
     }
@@ -87,11 +88,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Stats
     const modules = [...new Set(verifiedFunctions.map(v => v.module))];
+    const axiomCount = specFunctions.filter(s => s.category === "axiom").length;
+    const specOnlyCount = specFunctions.filter(s => s.category !== "axiom").length;
     document.getElementById("totalVerified").textContent = verifiedFunctions.length;
-    document.getElementById("totalSpecs").textContent = specFunctions.length;
+    document.getElementById("totalSpecs").textContent = specOnlyCount;
+    document.getElementById("totalAxioms").textContent = axiomCount;
     document.getElementById("totalModules").textContent = modules.length;
 
-    // Build sidebar
+    // Build module pills (filters verified functions only)
     buildModuleTree(modules);
 
     // Initial render of both panels
@@ -338,7 +342,18 @@ function getFilteredSpecs() {
         });
     }
 
-    list.sort((a, b) => a.module.localeCompare(b.module) || a.name.localeCompare(b.name));
+    // Sort: specs first (by module, then name), axioms last (by name only)
+    list.sort((a, b) => {
+        const aIsAxiom = a.category === "axiom" ? 1 : 0;
+        const bIsAxiom = b.category === "axiom" ? 1 : 0;
+        if (aIsAxiom !== bIsAxiom) return aIsAxiom - bIsAxiom;
+        if (!aIsAxiom) {
+            // Both are specs — sort by module then name
+            return a.module.localeCompare(b.module) || a.name.localeCompare(b.name);
+        }
+        // Both are axioms — sort by name only (no module grouping)
+        return a.name.localeCompare(b.name);
+    });
     return list;
 }
 
@@ -368,10 +383,20 @@ function renderRightPanel() {
 
     let html = "";
     let currentMod = null;
+    let axiomHeaderShown = false;
     for (const spec of filtered) {
-        if (spec.module !== currentMod) {
-            currentMod = spec.module;
-            html += `<div class="module-group-header">${escapeHtml(currentMod)}</div>`;
+        if (spec.category === "axiom") {
+            // Single header for all axioms
+            if (!axiomHeaderShown) {
+                axiomHeaderShown = true;
+                const axiomCount = filtered.filter(s => s.category === "axiom").length;
+                html += `<div class="module-group-header axiom-group-header">Axioms <span class="axiom-group-count">${axiomCount}</span></div>`;
+            }
+        } else {
+            if (spec.module !== currentMod) {
+                currentMod = spec.module;
+                html += `<div class="module-group-header">${escapeHtml(currentMod)}</div>`;
+            }
         }
         html += renderSpecCard(spec);
     }
@@ -480,6 +505,7 @@ function renderInlineRefCard(spec, visited) {
 
 function renderSpecCard(spec) {
     const escapedBody = escapeHtml(spec.body);
+    const isAxiom = spec.category === "axiom";
     const hasDoc = spec.doc_comment && spec.doc_comment.trim();
     const hasMath = spec.math_interpretation && spec.math_interpretation.trim();
     const hasInformal = spec.informal_interpretation && spec.informal_interpretation.trim();
@@ -501,15 +527,17 @@ function renderSpecCard(spec) {
             }).join("")}
         </div>` : "";
 
+    const axiomBadge = isAxiom ? `<span class="axiom-badge">AXIOM</span>` : "";
+
     return `
-    <div class="spec-card" data-id="${spec.id}" data-spec-name="${spec.name}" data-module="${spec.module}">
+    <div class="spec-card${isAxiom ? " axiom-card" : ""}" data-id="${spec.id}" data-spec-name="${spec.name}" data-module="${spec.module}" data-category="${spec.category || "spec"}">
         <div class="spec-header">
             <div class="spec-toggle">&#9654;</div>
             <div class="spec-info">
-                <div class="spec-name">${escapeHtml(spec.name)}</div>
+                <div class="spec-name">${escapeHtml(spec.name)} ${axiomBadge}</div>
                 <div class="spec-meta">
                     <span class="spec-module">${escapeHtml(spec.module)}</span>
-                    ${spec.visibility ? `<span class="spec-visibility">${escapeHtml(spec.visibility)}</span>` : ""}
+                    ${spec.visibility && !isAxiom ? `<span class="spec-visibility">${escapeHtml(spec.visibility)}</span>` : ""}
                     ${hasMath ? `<span class="spec-math">${escapeHtml(spec.math_interpretation)}</span>` : ""}
                 </div>
             </div>
@@ -520,11 +548,21 @@ function renderSpecCard(spec) {
         </div>
         <div class="spec-body">
             ${hasDoc ? `<div class="spec-doc">${docHtml}</div>` : ""}
-            ${hasInterpretations ? `
-            <div class="spec-interpretations">
-                ${hasMath ? `<div class="spec-interp"><span class="spec-interp-label">Math:</span> <span class="spec-interp-value">${escapeHtml(spec.math_interpretation)}</span></div>` : ""}
-                ${hasInformal ? `<div class="spec-interp"><span class="spec-interp-label">Meaning:</span> <span class="spec-interp-value">${escapeHtml(spec.informal_interpretation)}</span></div>` : ""}
-            </div>` : ""}
+            ${(() => {
+                // For axioms: skip "Meaning" (redundant with docstring), show only Math
+                // For specs: show both Math and Meaning
+                if (isAxiom) {
+                    return hasMath ? `
+                    <div class="spec-interpretations">
+                        <div class="spec-interp"><span class="spec-interp-label">Math:</span> <span class="spec-interp-value">${escapeHtml(spec.math_interpretation)}</span></div>
+                    </div>` : "";
+                }
+                return hasInterpretations ? `
+                <div class="spec-interpretations">
+                    ${hasMath ? `<div class="spec-interp"><span class="spec-interp-label">Math:</span> <span class="spec-interp-value">${escapeHtml(spec.math_interpretation)}</span></div>` : ""}
+                    ${hasInformal ? `<div class="spec-interp"><span class="spec-interp-label">Meaning:</span> <span class="spec-interp-value">${escapeHtml(spec.informal_interpretation)}</span></div>` : ""}
+                </div>` : "";
+            })()}
             <div class="spec-code-wrapper">
                 <button class="copy-btn">Copy</button>
                 <pre><code class="language-rust">${escapedBody}</code></pre>

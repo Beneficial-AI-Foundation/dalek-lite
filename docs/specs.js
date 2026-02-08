@@ -117,6 +117,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("collapseAllLeft").addEventListener("click", () => toggleAllIn("listLeft", false));
     document.getElementById("expandAllRight").addEventListener("click", () => toggleAllIn("listRight", true));
     document.getElementById("collapseAllRight").addEventListener("click", () => toggleAllIn("listRight", false));
+
+    // Event delegation for inline ref cards in right panel (registered once)
+    document.getElementById("listRight").addEventListener("click", e => {
+        const refHeader = e.target.closest(".inline-ref-header");
+        if (refHeader) {
+            e.stopPropagation();
+            const card = refHeader.parentElement;
+            if (card && card.classList.contains("inline-ref-card") && !card.classList.contains("inline-ref-cycle")) {
+                card.classList.toggle("open");
+                if (card.classList.contains("open")) {
+                    const body = card.querySelector(":scope > .inline-ref-body");
+                    if (body) {
+                        body.querySelectorAll(":scope > pre code:not(.prism-highlighted)").forEach(block => {
+                            Prism.highlightElement(block);
+                            block.classList.add("prism-highlighted");
+                        });
+                    }
+                }
+            }
+        }
+    });
 });
 
 // ── Module filter (horizontal pills) ─────────────────────────
@@ -421,30 +442,6 @@ function renderRightPanel() {
                 setTimeout(() => { btn.textContent = "Copy"; }, 1500);
             });
         });
-    });
-
-    // Event delegation for inline ref cards (recursive tree)
-    container.addEventListener("click", e => {
-        // Toggle inline ref card open/closed
-        const refHeader = e.target.closest(".inline-ref-header");
-        if (refHeader) {
-            e.stopPropagation();
-            const card = refHeader.parentElement; // direct parent = the .inline-ref-card
-            if (card && card.classList.contains("inline-ref-card") && !card.classList.contains("inline-ref-cycle")) {
-                card.classList.toggle("open");
-                // Syntax-highlight only THIS card's direct code block
-                if (card.classList.contains("open")) {
-                    const body = card.querySelector(":scope > .inline-ref-body");
-                    if (body) {
-                        body.querySelectorAll(":scope > pre code:not(.prism-highlighted)").forEach(block => {
-                            Prism.highlightElement(block);
-                            block.classList.add("prism-highlighted");
-                        });
-                    }
-                }
-            }
-            return;
-        }
     });
 
     // Comment toggle
@@ -895,7 +892,7 @@ function escapeAttr(str) {
 // Escape a string for safe use inside a CSS attribute selector value.
 function cssSelectorEscape(str) {
     if (!str) return "";
-    if (CSS && CSS.escape) return CSS.escape(str);
+    if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(str);
     // Fallback: escape special chars
     return String(str).replace(/([!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~])/g, "\\$1");
 }

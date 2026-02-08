@@ -3,8 +3,8 @@
 Extract Verus spec functions and verified function contracts for the specs browser.
 
 Outputs JSON with two sections:
-  - spec_functions: 56 spec fn definitions (full body)
-  - verified_functions: 34 implementation function contracts (signature + requires/ensures only)
+  - spec_functions: spec fn definitions (full body)
+  - verified_functions: implementation function contracts (signature + requires/ensures only)
 
 Default (hybrid) mode re-extracts live code from .rs source files.
 
@@ -49,9 +49,19 @@ DEFAULT_VERIFIED_CSV = "data/libsignal_verus_specs/generated/verified_functions.
 # ── Shared helpers ────────────────────────────────────────────────────
 
 def derive_module(filepath: str) -> str:
-    """Derive a short module name from a file path."""
-    rel = filepath.replace("curve25519-dalek/src/", "")
-    rel = rel.replace(".rs", "").replace("/", "::")
+    """Derive a short module name from a file path.
+
+    Works with both relative paths (curve25519-dalek/src/foo.rs) and
+    absolute paths (/home/.../curve25519-dalek/src/foo.rs) by finding the
+    ``src`` path segment and building the module path from everything after it.
+    """
+    parts = Path(filepath).with_suffix("").parts
+    if "src" in parts:
+        src_idx = parts.index("src")
+        rel_parts = parts[src_idx + 1 :]
+    else:
+        rel_parts = parts
+    rel = "::".join(rel_parts)
     if rel.endswith("::mod"):
         rel = rel[: -len("::mod")]
     return rel

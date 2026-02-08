@@ -122,6 +122,41 @@ def extract_signature(lines: list[str], start_idx: int, end_idx: int, indent: st
 _file_cache: dict[str, list[str] | None] = {}
 
 
+def _strip_comments_and_strings(line: str) -> str:
+    """Remove // comments and string literals so brace counting is accurate."""
+    result = []
+    in_string = False
+    escape = False
+    i = 0
+    while i < len(line):
+        c = line[i]
+        if escape:
+            escape = False
+            i += 1
+            continue
+        if c == '\\' and in_string:
+            escape = True
+            i += 1
+            continue
+        if c == '"' and not in_string:
+            in_string = True
+            i += 1
+            continue
+        if c == '"' and in_string:
+            in_string = False
+            i += 1
+            continue
+        if in_string:
+            i += 1
+            continue
+        # Check for // comment
+        if c == '/' and i + 1 < len(line) and line[i + 1] == '/':
+            break
+        result.append(c)
+        i += 1
+    return ''.join(result)
+
+
 def _read_file_lines(filepath: str) -> list[str] | None:
     if filepath not in _file_cache:
         try:
@@ -260,12 +295,14 @@ def extract_contract_from_source(
 
             # Found the function declaration. Now extract the contract
             # (everything from this line up to the opening { of the body)
+            # We track brace depth to handle match { ... } blocks inside contracts.
             contract_lines = []
             indent = lines[line_idx][: len(lines[line_idx]) - len(lines[line_idx].lstrip())]
             requires_clauses = []
             ensures_clauses = []
             current_section = None  # "requires" or "ensures"
             current_clause_lines = []
+            brace_depth = 0  # Track nested braces (match blocks, etc.)
 
             i = line_idx
             while i < len(lines):
@@ -276,38 +313,45 @@ def extract_contract_from_source(
                 else:
                     display_line = raw_line
 
-                # Check if we've hit the opening brace of the body
-                # The body starts with { at the end of requires/ensures block
-                brace_stripped = raw_line.lstrip()
-                if brace_stripped.startswith("{") and i > line_idx:
-                    # We've reached the body -- stop
-                    # Flush any pending clause
-                    if current_clause_lines:
-                        clause_text = " ".join(l.strip() for l in current_clause_lines).strip()
-                        if clause_text:
-                            if current_section == "requires":
-                                requires_clauses.append(clause_text)
-                            elif current_section == "ensures":
-                                ensures_clauses.append(clause_text)
-                    break
+                # Count braces on this line (ignoring string literals and comments)
+                line_for_braces = _strip_comments_and_strings(raw_line)
+                opens = line_for_braces.count("{")
+                closes = line_for_braces.count("}")
 
-                # Check for { appearing at the end of a line (e.g., "ensures foo, {")
-                if "{" in raw_line and i > line_idx:
-                    # Take everything before the brace
-                    pre_brace = display_line[: display_line.index("{")].rstrip()
-                    if pre_brace.strip():
-                        contract_lines.append(pre_brace)
-                        # Also add to clause
-                        current_clause_lines.append(pre_brace)
-                    # Flush clause
-                    if current_clause_lines:
-                        clause_text = " ".join(l.strip() for l in current_clause_lines).strip()
-                        if clause_text and clause_text not in ("requires", "ensures"):
-                            if current_section == "requires":
-                                requires_clauses.append(clause_text)
-                            elif current_section == "ensures":
-                                ensures_clauses.append(clause_text)
-                    break
+                if i > line_idx and brace_depth == 0 and opens > 0:
+                    # A { at depth 0 (after the fn declaration) could be:
+                    # (a) the function body opening brace, or
+                    # (b) a match/if block inside the contract
+                    brace_stripped = raw_line.lstrip()
+                    # If the line starts with { alone, it's the body
+                    if brace_stripped.startswith("{") and not brace_stripped.startswith("{|"):
+                        # Flush any pending clause
+                        if current_clause_lines:
+                            clause_text = " ".join(l.strip() for l in current_clause_lines).strip()
+                            if clause_text:
+                                if current_section == "requires":
+                                    requires_clauses.append(clause_text)
+                                elif current_section == "ensures":
+                                    ensures_clauses.append(clause_text)
+                        break
+                    # Otherwise it's an inline { (e.g. "match result {") — enter nested
+                    brace_depth += opens - closes
+                    contract_lines.append(display_line)
+                    current_clause_lines.append(display_line.strip())
+                    i += 1
+                    continue
+
+                if brace_depth > 0:
+                    # Inside a nested brace block (match arms, etc.)
+                    brace_depth += opens - closes
+                    contract_lines.append(display_line)
+                    current_clause_lines.append(display_line.strip())
+                    # If we just closed back to depth 0, the match block ended
+                    if brace_depth <= 0:
+                        brace_depth = 0
+                        # Check if the next meaningful line is the body brace
+                    i += 1
+                    continue
 
                 contract_lines.append(display_line)
 

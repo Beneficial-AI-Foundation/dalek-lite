@@ -569,7 +569,7 @@
     transition: transform 0.2s;
 }
 
-.inline-ref-card.open .inline-ref-toggle {
+.inline-ref-card.open > .inline-ref-header > .inline-ref-toggle {
     transform: rotate(90deg);
 }
 
@@ -601,7 +601,7 @@
     border-top: 1px solid #e2e8f0;
 }
 
-.inline-ref-card.open .inline-ref-body {
+.inline-ref-card.open > .inline-ref-body {
     display: block;
 }
 
@@ -627,6 +627,43 @@
     font-size: 0.7rem;
     color: #94a3b8;
     font-style: italic;
+}
+
+/* Label for the always-visible referenced specs section */
+.inline-refs-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6366f1;
+    padding: 0.25rem 0 0.15rem;
+}
+
+.inline-refs-label .refs-count {
+    background: rgba(99, 102, 241, 0.12);
+    padding: 0.08rem 0.35rem;
+    border-radius: 8px;
+    font-size: 0.6rem;
+}
+
+/* Cycle detection marker */
+.inline-ref-cycle {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.inline-ref-cycle-label {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-style: italic;
+    margin-left: 0.3rem;
+}
+
+/* Nested refs inside inline ref cards (same style as top-level container) */
+.inline-refs-nested {
+    border-top: 1px solid #e2e8f0;
+    margin: 0.25rem 0 0;
+    padding: 0.3rem 0.4rem 0.3rem 0.5rem;
 }
 
 /* ── Clickable spec links inside contract code ────────────── */
@@ -763,6 +800,29 @@
     margin-top: 0.25rem;
     color: var(--text-primary);
     line-height: 1.5;
+}
+
+/* Outdated comment (spec/contract changed since this comment was posted) */
+.comment-item.outdated {
+    opacity: 0.6;
+    border-left: 3px solid #f59e0b;
+    background: #fffbeb;
+    padding-left: calc(0.75rem - 3px);
+}
+
+.comment-outdated-badge {
+    display: inline-block;
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+    border-radius: 4px;
+    padding: 0.08rem 0.35rem;
+    margin-left: 0.4rem;
+    vertical-align: middle;
 }
 
 .comment-empty {

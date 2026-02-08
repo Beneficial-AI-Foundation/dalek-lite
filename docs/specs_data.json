@@ -1243,17 +1243,21 @@
       "name": "vartime_double_scalar_mul_basepoint",
       "display_name": "EdwardsPoint::vartime_double_scalar_mul_basepoint",
       "impl_type": "EdwardsPoint",
-      "contract": "pub fn vartime_double_scalar_mul_basepoint(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (result:\n    EdwardsPoint)\n    requires\n        is_well_formed_edwards_point(*A),\n    ensures\n        is_well_formed_edwards_point(result),\n        // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint\n        edwards_point_as_affine(result) ==",
+      "contract": "pub fn vartime_double_scalar_mul_basepoint(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (result:\n    EdwardsPoint)\n    requires\n        is_well_formed_edwards_point(*A),\n    ensures\n        is_well_formed_edwards_point(result),\n        // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint\n        edwards_point_as_affine(result) == {\n            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_to_nat(a));\n            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_to_nat(b));\n            edwards_add(aA.0, aA.1, bB.0, bB.1)\n        },",
       "requires": [
         "is_well_formed_edwards_point(*A),"
       ],
       "ensures": [
         "is_well_formed_edwards_point(result),",
-        "edwards_point_as_affine(result) =="
+        "edwards_point_as_affine(result) == { let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_to_nat(a)); let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_to_nat(b)); edwards_add(aA.0, aA.1, bB.0, bB.1) },"
       ],
       "referenced_specs": [
+        "edwards_add",
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "edwards_scalar_mul",
+        "is_well_formed_edwards_point",
+        "scalar_to_nat",
+        "spec_ed25519_basepoint"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
       "line": 2731,
@@ -1269,12 +1273,16 @@
       "name": "to_edwards",
       "display_name": "MontgomeryPoint::to_edwards",
       "impl_type": "MontgomeryPoint",
-      "contract": "pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)\n    ensures\n        match result",
+      "contract": "pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)\n    ensures\n        match result {\n            Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards),\n            None => is_equal_to_minus_one(spec_montgomery(*self)),\n        },",
       "requires": [],
       "ensures": [
-        "match result"
+        "match result { Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards), None => is_equal_to_minus_one(spec_montgomery(*self)), },"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "is_equal_to_minus_one",
+        "montgomery_corresponds_to_edwards",
+        "spec_montgomery"
+      ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 1009,
       "module": "montgomery",
@@ -1355,12 +1363,12 @@
       "name": "from_slice",
       "display_name": "CompressedRistretto::from_slice",
       "impl_type": "CompressedRistretto",
-      "contract": "pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedRistretto, TryFromSliceError>)\n    ensures\n        bytes@.len() == 32 ==> matches!(result, Ok(_)),\n        bytes@.len() != 32 ==> matches!(result, Err(_)),\n        match result",
+      "contract": "pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedRistretto, TryFromSliceError>)\n    ensures\n        bytes@.len() == 32 ==> matches!(result, Ok(_)),\n        bytes@.len() != 32 ==> matches!(result, Err(_)),\n        match result {\n            Ok(point) => point.0@ == bytes@,\n            Err(_) => true,\n        },",
       "requires": [],
       "ensures": [
         "bytes@.len() == 32 ==> matches!(result, Ok(_)),",
         "bytes@.len() != 32 ==> matches!(result, Err(_)),",
-        "match result"
+        "match result { Ok(point) => point.0@ == bytes@, Err(_) => true, },"
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/ristretto.rs",

@@ -6,6 +6,26 @@
 // ============================================================
 
 // ── Firebase Configuration ───────────────────────────────────
+// Fill in your Firebase project config to enable commenting.
+// Firestore security rules should allow anonymous read/create with:
+//
+//   rules_version = '2';
+//   service cloud.firestore {
+//     match /databases/{database}/documents {
+//       match /comments/{commentId} {
+//         allow read: if true;
+//         allow create: if request.resource.data.keys().hasAll(
+//                            ['functionId', 'name', 'message', 'timestamp'])
+//                       && request.resource.data.name is string
+//                       && request.resource.data.message is string
+//                       && request.resource.data.name.size() > 0
+//                       && request.resource.data.message.size() > 0;
+//         allow update, delete: if false;
+//       }
+//     }
+//   }
+//
+// The optional 'contentHash' field is stored automatically for version tracking.
 const FIREBASE_CONFIG = {
     apiKey: "",
     authDomain: "",
@@ -30,6 +50,7 @@ let specFilterSource = "";        // display name of the function that set the f
 
 let db = null;
 let commentsCache = {};
+let contentHashes = {};           // functionId -> hash of body/contract
 
 // ── Initialization ───────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
@@ -60,6 +81,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     for (const s of specFunctions) {
         specLookup[s.name] = s;
     }
+
+    // Build content hashes for comment version tracking
+    buildContentHashes();
 
     // Stats
     const modules = [...new Set(verifiedFunctions.map(v => v.module))];
@@ -374,59 +398,28 @@ function renderRightPanel() {
         });
     });
 
-    // "Show referenced specs" buttons on spec cards — inline toggle
-    container.querySelectorAll(".spec-show-deps-btn").forEach(btn => {
-        btn.addEventListener("click", e => {
+    // Event delegation for inline ref cards (recursive tree)
+    container.addEventListener("click", e => {
+        // Toggle inline ref card open/closed
+        const refHeader = e.target.closest(".inline-ref-header");
+        if (refHeader) {
             e.stopPropagation();
-            const specName = btn.dataset.specName;
-            const inlineContainer = btn.nextElementSibling; // .inline-refs-container
-            if (!inlineContainer) return;
-
-            const isOpen = inlineContainer.style.display !== "none";
-            if (isOpen) {
-                inlineContainer.style.display = "none";
-                btn.classList.remove("active");
-                return;
+            const card = refHeader.parentElement; // direct parent = the .inline-ref-card
+            if (card && card.classList.contains("inline-ref-card") && !card.classList.contains("inline-ref-cycle")) {
+                card.classList.toggle("open");
+                // Syntax-highlight only THIS card's direct code block
+                if (card.classList.contains("open")) {
+                    const body = card.querySelector(":scope > .inline-ref-body");
+                    if (body) {
+                        body.querySelectorAll(":scope > pre code:not(.prism-highlighted)").forEach(block => {
+                            Prism.highlightElement(block);
+                            block.classList.add("prism-highlighted");
+                        });
+                    }
+                }
             }
-
-            // Build inline cards for each referenced spec
-            const spec = specLookup[specName];
-            if (!spec || !spec.referenced_specs) return;
-
-            const html = spec.referenced_specs.map(refName => {
-                const refSpec = specLookup[refName];
-                if (!refSpec) return `<div class="inline-ref-card"><div class="inline-ref-name">${escapeHtml(refName)}</div><div class="inline-ref-missing">Definition not found</div></div>`;
-                return renderInlineRefCard(refSpec);
-            }).join("");
-
-            inlineContainer.innerHTML = html;
-            inlineContainer.style.display = "block";
-            btn.classList.add("active");
-
-            // Syntax highlight the new code blocks
-            inlineContainer.querySelectorAll("pre code").forEach(block => Prism.highlightElement(block));
-
-            // Toggle inline cards open/closed
-            inlineContainer.querySelectorAll(".inline-ref-header").forEach(h => {
-                h.addEventListener("click", () => h.closest(".inline-ref-card").classList.toggle("open"));
-            });
-
-            // Scroll-to-spec clicks on tags inside inline cards
-            inlineContainer.querySelectorAll(".spec-to-spec-tag").forEach(tag => {
-                tag.addEventListener("click", ev => {
-                    ev.stopPropagation();
-                    scrollToSpecCard(tag.dataset.spec);
-                });
-            });
-        });
-    });
-
-    // Spec-to-spec ref tag clicks — scroll to that spec card
-    container.querySelectorAll(".spec-to-spec-tag").forEach(tag => {
-        tag.addEventListener("click", e => {
-            e.stopPropagation();
-            scrollToSpecCard(tag.dataset.spec);
-        });
+            return;
+        }
     });
 
     // Comment toggle
@@ -441,13 +434,35 @@ function renderRightPanel() {
     });
 }
 
-function renderInlineRefCard(spec) {
+function renderInlineRefCard(spec, visited) {
+    // visited tracks already-rendered specs to prevent infinite recursion
+    if (!visited) visited = new Set();
+    if (visited.has(spec.name)) {
+        return `<div class="inline-ref-card inline-ref-cycle">
+            <div class="inline-ref-header">
+                <span class="inline-ref-name">${escapeHtml(spec.name)}</span>
+                <span class="inline-ref-cycle-label">(already shown above)</span>
+            </div>
+        </div>`;
+    }
+    visited = new Set(visited);
+    visited.add(spec.name);
+
     const escapedBody = escapeHtml(spec.body);
     const hasMath = spec.math_interpretation && spec.math_interpretation.trim();
     const hasNestedRefs = spec.referenced_specs && spec.referenced_specs.length > 0;
-    const nestedTagsHtml = hasNestedRefs
-        ? `<div class="inline-ref-tags">${spec.referenced_specs.map(s => `<span class="contract-ref-tag spec-to-spec-tag" data-spec="${escapeHtml(s)}" title="Scroll to definition">${escapeHtml(s)}</span>`).join("")}</div>`
-        : "";
+
+    // Recursively render nested referenced specs (same layout as top level)
+    const nestedRefsHtml = hasNestedRefs ? `
+        <div class="inline-refs-container inline-refs-nested">
+            <div class="inline-refs-label">Referenced specs <span class="refs-count">${spec.referenced_specs.length}</span></div>
+            ${spec.referenced_specs.map(refName => {
+                const refSpec = specLookup[refName];
+                if (!refSpec) return `<div class="inline-ref-card"><div class="inline-ref-header"><span class="inline-ref-name">${escapeHtml(refName)}</span><span class="inline-ref-missing">not found</span></div></div>`;
+                return renderInlineRefCard(refSpec, visited);
+            }).join("")}
+        </div>` : "";
+
     return `
     <div class="inline-ref-card">
         <div class="inline-ref-header">
@@ -457,8 +472,8 @@ function renderInlineRefCard(spec) {
             ${hasMath ? `<span class="inline-ref-math">${escapeHtml(spec.math_interpretation)}</span>` : ""}
         </div>
         <div class="inline-ref-body">
-            ${nestedTagsHtml}
             <pre><code class="language-rust">${escapedBody}</code></pre>
+            ${nestedRefsHtml}
         </div>
     </div>`;
 }
@@ -475,19 +490,16 @@ function renderSpecCard(spec) {
         ? spec.doc_comment.split("\n").filter(Boolean).map(p => `<p>${escapeHtml(p)}</p>`).join("")
         : "";
 
-    const refsHtml = hasRefs ? `
-        <div class="contract-refs">
-            <div class="contract-refs-label">Uses Spec Functions</div>
-            <div class="contract-refs-list">
-                ${spec.referenced_specs.map(s => `<span class="contract-ref-tag spec-to-spec-tag" data-spec="${escapeHtml(s)}" title="Click to scroll to definition">${escapeHtml(s)}</span>`).join("")}
-            </div>
+    const visited = new Set([spec.name]);
+    const inlineRefsHtml = hasRefs ? `
+        <div class="inline-refs-container">
+            <div class="inline-refs-label">Referenced specs <span class="refs-count">${spec.referenced_specs.length}</span></div>
+            ${spec.referenced_specs.map(refName => {
+                const refSpec = specLookup[refName];
+                if (!refSpec) return `<div class="inline-ref-card"><div class="inline-ref-header"><span class="inline-ref-name">${escapeHtml(refName)}</span><span class="inline-ref-missing">not found</span></div></div>`;
+                return renderInlineRefCard(refSpec, visited);
+            }).join("")}
         </div>` : "";
-
-    const showRefsBtn = hasRefs ? `
-        <button class="show-refs-btn spec-show-deps-btn" data-spec-name="${escapeHtml(spec.name)}" title="Expand referenced spec definitions below">
-            Show referenced specs <span class="refs-count">${spec.referenced_specs.length}</span>
-        </button>
-        <div class="inline-refs-container" data-for-spec="${escapeHtml(spec.name)}" style="display:none;"></div>` : "";
 
     return `
     <div class="spec-card" data-id="${spec.id}" data-spec-name="${spec.name}" data-module="${spec.module}">
@@ -513,12 +525,11 @@ function renderSpecCard(spec) {
                 ${hasMath ? `<div class="spec-interp"><span class="spec-interp-label">Math:</span> <span class="spec-interp-value">${escapeHtml(spec.math_interpretation)}</span></div>` : ""}
                 ${hasInformal ? `<div class="spec-interp"><span class="spec-interp-label">Meaning:</span> <span class="spec-interp-value">${escapeHtml(spec.informal_interpretation)}</span></div>` : ""}
             </div>` : ""}
-            ${refsHtml}
-            ${showRefsBtn}
             <div class="spec-code-wrapper">
                 <button class="copy-btn">Copy</button>
                 <pre><code class="language-rust">${escapedBody}</code></pre>
             </div>
+            ${inlineRefsHtml}
             <div class="spec-comments">
                 <button class="comments-toggle" data-fn-id="${spec.id}">
                     <span>Comments</span>
@@ -661,6 +672,7 @@ function renderComments(functionId, comments) {
         listEl.innerHTML = `<div class="comment-empty">No comments yet. Be the first!</div>`;
         return;
     }
+    const currentHash = contentHashes[functionId] || "";
     listEl.innerHTML = comments.map(c => {
         const time = c.timestamp?.toDate
             ? c.timestamp.toDate().toLocaleDateString("en-US", {
@@ -668,10 +680,17 @@ function renderComments(functionId, comments) {
                 hour: "2-digit", minute: "2-digit"
               })
             : "";
+        // A comment is outdated if it has a contentHash that differs from current
+        const isOutdated = c.contentHash && currentHash && c.contentHash !== currentHash;
+        const outdatedClass = isOutdated ? " outdated" : "";
+        const outdatedBadge = isOutdated
+            ? `<span class="comment-outdated-badge">earlier version</span>`
+            : "";
         return `
-            <div class="comment-item">
+            <div class="comment-item${outdatedClass}">
                 <span class="comment-author">${escapeHtml(c.name)}</span>
                 <span class="comment-time">${time}</span>
+                ${outdatedBadge}
                 <div class="comment-text">${escapeHtml(c.message)}</div>
             </div>`;
     }).join("");
@@ -693,6 +712,7 @@ window.submitComment = async function(functionId) {
     try {
         await db.collection("comments").add({
             functionId, name, message,
+            contentHash: contentHashes[functionId] || "",
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         nameInput.value = "";
@@ -707,6 +727,26 @@ window.submitComment = async function(functionId) {
         btn.textContent = "Post Comment";
     }
 };
+
+// ── Content hashing (for comment version tracking) ──────────
+// Fast synchronous djb2 hash — produces a short hex string fingerprint
+function computeContentHash(text) {
+    if (!text) return "";
+    let hash = 5381;
+    for (let i = 0; i < text.length; i++) {
+        hash = ((hash << 5) + hash + text.charCodeAt(i)) & 0xffffffff;
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function buildContentHashes() {
+    for (const spec of specFunctions) {
+        contentHashes[spec.id] = computeContentHash(spec.body || "");
+    }
+    for (const fn of verifiedFunctions) {
+        contentHashes[fn.id] = computeContentHash(fn.contract || "");
+    }
+}
 
 // ── Utilities ────────────────────────────────────────────────
 function escapeHtml(str) {

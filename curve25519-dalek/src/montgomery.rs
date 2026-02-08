@@ -1108,12 +1108,8 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     // ORIGINAL CODE: let d_1 = &one + &r_0.square2(); // 2r^2
     let r_0_sq2 = r_0.square2();
     proof {
-        // square2 produces 53-bit bounded limbs
-        assert(fe51_limbs_bounded(&r_0_sq2, 53)) by {
-            assert forall|i: int| 0 <= i < 5 implies r_0_sq2.limbs[i] < (1u64 << 53) by {
-                // direct from square2 postcondition
-            }
-        }
+        // square2 produces 53-bit bounded limbs (from square2 postcondition)
+        assert(fe51_limbs_bounded(&r_0_sq2, 53));
         // Add precondition: no per-limb overflow in u64
         lemma_fe51_limbs_bounded_weaken(&one, 51, 53);
         lemma_sum_of_limbs_bounded_from_fe51_bounded(&one, &r_0_sq2, 53);
@@ -1167,12 +1163,8 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     proof {
         // (52-bounded + 52-bounded) => 53-bounded, then add ONE
         assert(fe51_limbs_bounded(&d_sq_plus_au, 53)) by {
-            lemma_fe51_limbs_bounded_weaken(d_sq, 52, 54);
-            lemma_fe51_limbs_bounded_weaken(&au, 52, 54);
-            // We only need the weaker fact "bounded by 53"; obtain it from the definition directly.
             assert forall|i: int| 0 <= i < 5 implies d_sq_plus_au.limbs[i] < (1u64 << 53) by {
-                // d_sq_plus_au.limbs[i] = d_sq.limbs[i] + au.limbs[i]
-                // and each side is < 2^52 (from mul/square), so sum < 2^53.
+                // each side is < 2^52 (from mul/square postconditions), so sum < 2^53
                 assert(d_sq.limbs[i] < (1u64 << 52));
                 assert(au.limbs[i] < (1u64 << 52));
                 assert((1u64 << 52) + (1u64 << 52) == (1u64 << 53)) by (bit_vector);
@@ -1496,16 +1488,13 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         // Step 3: bridge MontgomeryPoint encoding and finish postconditions
         // ---------------------------------------------------------------------
         let u_bytes = result.0;
-        assert(spec_field_element_from_bytes(&u_bytes) == spec_field_element(&u)) by {
+        assert(spec_montgomery(result) == spec_field_element(&u)) by {
             // as_bytes gives canonical bytes whose nat value equals the field element (already < p)
             assert(bytes32_to_nat(&u_bytes) == spec_field_element(&u));
             pow255_gt_19();
             lemma_small_mod(spec_field_element(&u), pow2(255));
             lemma_small_mod(spec_field_element(&u), p());
         }
-
-        assert(spec_montgomery(result) == spec_field_element_from_bytes(&u_bytes));
-        assert(spec_montgomery(result) == spec_field_element(&u));
 
         // Now match the spec_elligator_encode definition.
         let spec_u = spec_elligator_encode(r);
@@ -1551,13 +1540,13 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         }
 
         assert(spec_montgomery(result) < p()) by {
-            // spec_montgomery is a field element derived by mod p
             p_gt_2();
             lemma_mod_bound(spec_montgomery(result) as int, p() as int);
         }
 
-        // Elligator never produces u = -1
-        lemma_elligator_never_minus_one(r);
+        assert(!is_equal_to_minus_one(spec_montgomery(result))) by {
+            lemma_elligator_never_minus_one(r);
+        }
     }
 
     result

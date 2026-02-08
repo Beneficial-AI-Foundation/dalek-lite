@@ -428,6 +428,9 @@ impl Scalar52 {
             lemma_limbs_bounded_implies_prod_bounded(&hi, &constants::RR);
         }
 
+        /* ORIGINAL CODE:
+        lo = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&lo, &constants::R));
+        */
         let lo_product = Scalar52::mul_internal(&lo, &constants::R);
         proof {
             // Establish montgomery_reduce's preconditions
@@ -439,6 +442,9 @@ impl Scalar52 {
         lo = Scalar52::montgomery_reduce(&lo_product);  // (lo * R) / R = lo
         // is_canonical_scalar52(&lo) follows from montgomery_reduce postcondition
 
+        /* ORIGINAL CODE:
+        hi = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&hi, &constants::RR));
+        */
         let hi_product = Scalar52::mul_internal(&hi, &constants::RR);
         proof {
             // Establish montgomery_reduce's preconditions
@@ -1748,6 +1754,9 @@ impl Scalar52 {
         }
 
         // First montgomery_reduce: ab*R ≡ a*b (mod L)
+        /* ORIGINAL CODE:
+        let ab = Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b));
+        */
         let z1 = Scalar52::mul_internal(a, b);
         proof {
             // Establish montgomery_reduce's preconditions
@@ -1773,6 +1782,9 @@ impl Scalar52 {
 
         // Second montgomery_reduce: result*R ≡ ab*RR (mod L)
         // RR is canonical (< L), so product satisfies canonical_bound
+        /* ORIGINAL CODE:
+        let result = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&ab, &constants::RR));
+        */
         let z2 = Scalar52::mul_internal(&ab, &constants::RR);
         proof {
             // Establish montgomery_reduce's preconditions
@@ -1828,6 +1840,9 @@ impl Scalar52 {
             lemma_limbs_bounded_implies_prod_bounded(self, self);
         }
 
+        /* ORIGINAL CODE:
+        let aa = Scalar52::montgomery_reduce(&Scalar52::square_internal(self));
+        */
         let z1 = Scalar52::square_internal(self);
         proof {
             // Establish montgomery_reduce's preconditions for first call
@@ -1845,6 +1860,9 @@ impl Scalar52 {
             lemma_limbs_bounded_implies_prod_bounded(&aa, &constants::RR);
         }
 
+        /* ORIGINAL CODE:
+        let result = Scalar52::montgomery_reduce(&Scalar52::mul_internal(&aa, &constants::RR));
+        */
         let z2 = Scalar52::mul_internal(&aa, &constants::RR);
         proof {
             // Establish montgomery_reduce's preconditions for second call
@@ -1907,6 +1925,9 @@ impl Scalar52 {
             // Derive limb_prod_bounded_u128 for mul_internal's precondition
             lemma_limbs_bounded_implies_prod_bounded(a, b);
         }
+        /* ORIGINAL CODE:
+        Scalar52::montgomery_reduce(&Scalar52::mul_internal(a, b))
+        */
         let z = Scalar52::mul_internal(a, b);
         proof {
             // Establish montgomery_reduce's preconditions
@@ -1954,6 +1975,9 @@ impl Scalar52 {
             // Derive limb_prod_bounded_u128 for square_internal's precondition
             lemma_limbs_bounded_implies_prod_bounded(self, self);
         }
+        /* ORIGINAL CODE:
+        Scalar52::montgomery_reduce(&Scalar52::square_internal(self))
+        */
         let z = Scalar52::square_internal(self);
         proof {
             // Establish montgomery_reduce's preconditions

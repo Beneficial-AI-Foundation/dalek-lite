@@ -402,8 +402,6 @@ impl Scalar52 {
         };
         // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
         assert(scalar52_to_nat(&hi_raw) == wide_input / pow2(260)) by {
-            // Bridge operand order: line 391 proves wide_input == pow2_260 * high_expr + low_expr,
-            // but lemma requires x == q * d + r, i.e., wide_input == high_expr * pow2_260 + low_expr
             lemma_mul_is_commutative(pow2_260 as int, high_expr as int);
             lemma_fundamental_div_mod_converse(
                 wide_input as int,
@@ -748,17 +746,12 @@ impl Scalar52 {
     /// PRECONDITION RELAXATION: `a` doesn't need to be fully bounded.
     /// Limbs 0-3 must be < 2^52, but limb 4 can be up to 2^52 + b[4].
     /// This is needed for montgomery_reduce where the intermediate has r4 > 2^52.
-    /// See docs/proofs_for_montgomery_reduce/sub_and_bounds_analysis.md for analysis.
     pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)
         requires
     // Relaxed bound: limbs 0-3 bounded, limb 4 can exceed 2^52 by up to b[4]
 
             limbs_bounded_for_sub(a, b),
-            limbs_bounded(
-                b,
-            ),
-    // NOTE: Value constraint removed from requires - now conditional in ensures
-
+            limbs_bounded(b),
         ensures
     // UNCONDITIONAL: limbs are always bounded due to masking in both loops
 
@@ -800,7 +793,6 @@ impl Scalar52 {
         for i in 0..5
             invariant
                 limbs_bounded(b),
-                // Relaxed bound on a: limbs 0-3 are bounded, limb 4 can be up to 2^52 + b[4]
                 limbs_bounded_for_sub(a, b),
                 forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
                 mask == (1u64 << 52) - 1,
@@ -942,8 +934,6 @@ impl Scalar52 {
         difference
     }
 
-    // NOTE: sub_for_montgomery was moved to unused_scalar_backup.rs (local backup, not committed)
-    // It was an alternative sub variant with different preconditions (a >= b instead of -L <= a-b < L)
     /// Compute `a * b`
     #[inline(always)]
     #[rustfmt::skip]  // keep alignment of z[*] calculations
@@ -1072,9 +1062,7 @@ impl Scalar52 {
         z
     }
 
-    /// Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^260
-    ///
-    /// /* ORIGINAL CODE - from dalek-cryptography/curve25519-dalek @ 61533d75
+    /* ORIGINAL CODE for montgomery_reduce - from dalek-cryptography/curve25519-dalek @ 61533d75
     /// pub (crate) fn montgomery_reduce(limbs: &[u128; 9]) -> Scalar52 {
     ///     #[inline(always)]
     ///     fn part1(sum: u128) -> (u128, u64) {
@@ -1103,7 +1091,8 @@ impl Scalar52 {
     ///     // result may be >= l, so attempt to subtract l
     ///     Scalar52::sub(&Scalar52([r0, r1, r2, r3, r4]), l)
     /// }
-    /// */
+    </ORIGINAL CODE> */
+    /// Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^260
     ///
     /// # Preconditions
     /// - `montgomery_reduce_input_bounds(limbs)`: Per-limb bounds for overflow-safe computation
@@ -1302,79 +1291,51 @@ impl Scalar52 {
         assert(r3 < (1u64 << 52));  // from part2 postcondition
 
         /* ORIGINAL CODE: let r4 = carry as u64; */
-        // KEY INSIGHT: r4 can exceed 2^52! (verified empirically with 1M+ test cases)
-        // But r4 < 2^52 + L[4], which is sufficient for sub's relaxed precondition.
+        // Unlike r0-r3 (which are masked to 52 bits by part2), r4 is the raw final carry
+        // and can exceed 2^52. Two separate bounds are needed:
         //
-        // =====================================================================
-        // TWO r4 BOUNDS (for different purposes)
-        // =====================================================================
+        //   1. CAST SAFETY: carry8 < 2^53
+        //      Proven here by lemma_carry8_bound from the computation structure:
+        //      sum8 = carry7 + limb8 + n4*L[4] < 2^105, so carry8 = sum8 >> 52 < 2^53.
+        //      This allows the safe u128 -> u64 cast.
         //
-        // 1. CAST SAFETY (lemma_carry8_bound): carry8 < 2^53
-        //    Proven from computation structure: sum8 = carry7 + limb8 + n4×L[4] < 2^105
-        //    → carry8 = sum8 >> 52 < 2^53
-        //    This allows safe cast from u128 to u64.
+        //   2. SUB PRECONDITION: r4 < 2^52 + L[4]
+        //      Proven later by lemma_r4_bound_from_canonical, using the REDC value
+        //      constraint (T < R*L) to show intermediate < 2L, which bounds r4.
+        //      This satisfies sub's relaxed limbs_bounded_for_sub precondition.
         //
-        // 2. SUB PRECONDITION (REDC theorem, proven later via lemma_r4_bound_from_canonical):
-        //    r4 < 2^52 + L[4]
-        //    Proven from value constraint: canonical_bound → intermediate < 2L → r4 bounded
-        //    This satisfies limbs_bounded_for_sub for sub's precondition.
-        //
-        // =====================================================================
-
-        // Call lemma_carry8_bound to establish carry < 2^53 BEFORE the cast.
-        // This solves the chicken-and-egg problem (lemma_montgomery_reduce_pre_sub
-        // takes r4: u64 as input, so we need the bound proven first).
+        // We must prove (1) before the cast since lemma_montgomery_reduce_pre_sub
+        // takes r4: u64 as input, creating a chicken-and-egg dependency.
         proof {
-            // Call lemma_carry8_bound with all required parameters to establish carry8 < pow2(53)
-            // This is a direct proof from sum8 bounds - no assume needed!
-            //
-            // Inputs:
-            //   - limb8 = limbs[8]: bounded < 2^104 (from input_bounds precondition)
-            //   - n4: from part1, bounded < 2^52
-            //   - l4 = L[4] = 2^44 (constant)
-            //   - carry7: from part2(sum7), bounded < 2^56
-            //   - sum8: = carry7 + limbs[8] + n4×L[4]
-            //   - carry8: = sum8 >> 52
-            //
-            // The lemma proves: sum8 < 2^105, so carry8 < 2^53
-            // Establish preconditions
             let limb8 = limbs[8];
             let l4 = l.limbs[4];
 
-            // limb8 < 2^104 from input_bounds precondition
-            lemma_u128_shift_is_pow2(104);
-            assert(limb8 < (1u128 << 104));
+            assert(limb8 < (1u128 << 104)) by {
+                lemma_u128_shift_is_pow2(104);
+            }
 
-            // l4 = L[4] = 2^44
-            lemma_l_limb4_is_pow2_44();
             assert(l4 == (1u64 << 44)) by {
+                lemma_l_limb4_is_pow2_44();
                 assert(pow2(44) == (1u64 << 44) as nat) by {
                     lemma_u64_shift_is_pow2(44);
                 }
             }
 
-            // Establish sum8 definition for the precondition
-            assert(sum8 == carry7 + limb8 + m_n4_l4);
-            assert(m_n4_l4 == (n4 as u128) * (l4 as u128));
-
-            // Derive carry8 == sum8 >> 52 from part2 postcondition
-            // part2(sum8) postcondition: sum8 == (r3 as u128) + (carry8 << 52) and r3 < 2^52
-            // This implies: carry8 == sum8 >> 52
-            assert(sum8 == (r3 as u128) + (carry8 << 52));
-            assert(r3 < (1u64 << 52));
             assert(carry8 == sum8 >> 52) by (bit_vector)
                 requires
                     sum8 == (r3 as u128) + (carry8 << 52),
                     r3 < (1u64 << 52),
                     carry8 < (1u128 << 56),
-            ;  // from part2 postcondition
+            ;
 
-            lemma_carry8_bound(limb8, n4, l4, carry7, sum8, carry8);
+            assert(carry8 < pow2(53)) by {
+                assert(m_n4_l4 == (n4 as u128) * (l4 as u128));
+                lemma_carry8_bound(limb8, n4, l4, carry7, sum8, carry8);
+            }
 
-            // Now we have carry8 < pow2(53), which allows safe cast
-            assert(carry8 < pow2(53));
-            lemma_u128_shift_is_pow2(53);
-            assert(carry < (1u128 << 53));
+            assert(carry < (1u128 << 53)) by {
+                lemma_u128_shift_is_pow2(53);
+            }
         }
         // Safe cast: carry < 2^53 proven by lemma_carry8_bound
         let r4 = carry as u64;
@@ -1399,7 +1360,10 @@ impl Scalar52 {
             // =========================================================================
             // SECTION 1: Result limb bounds (r0-r3 from part2 postconditions)
             // =========================================================================
-            lemma_u64_shift_is_pow2(52);
+            // Establish pow2(52) == (1u64 << 52) once — needed throughout (n_i bounds, etc.)
+            assert(pow2(52) == (1u64 << 52) as nat) by {
+                lemma_u64_shift_is_pow2(52);
+            }
             assert(r0 < pow2(52) as u64 && r1 < pow2(52) as u64 && r2 < pow2(52) as u64 && r3
                 < pow2(52) as u64);
 
@@ -1408,51 +1372,76 @@ impl Scalar52 {
             // =========================================================================
             // Part1 postconditions use u128: sum + p*L[0] == carry << 52
             // Divisibility lemma needs nat: sum + p*l0() == carry * pow2(52)
+            // Each stage equation pairs with lemma_carry_shift_to_nat for its carry.
 
-            // Convert all part1 carries (< 2^57) to nat form
-            // First establish pow2(57) == (1u128 << 57) for precondition
-            lemma_u128_shift_is_pow2(57);
-            assert((1u128 << 57) as nat == pow2(57));
-            lemma_carry_shift_to_nat(carry0, 57);
-            lemma_carry_shift_to_nat(carry1, 57);
-            lemma_carry_shift_to_nat(carry2, 57);
-            lemma_carry_shift_to_nat(carry3, 57);
-            lemma_carry_shift_to_nat(carry4, 57);
-
-            // Stage equations in nat form (follow directly from part1 postconditions)
-            assert(limbs[0] as nat + (n0 as nat) * l0() == (carry0 as nat) * pow2(52));
+            assert((1u128 << 57) as nat == pow2(57)) by {
+                lemma_u128_shift_is_pow2(57);
+            }
+            assert(limbs[0] as nat + (n0 as nat) * l0() == (carry0 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry0, 57);
+            }
             assert((carry0 as nat + limbs[1] as nat + (n0 as nat) * (constants::L.limbs[1] as nat))
-                + (n1 as nat) * l0() == (carry1 as nat) * pow2(52));
+                + (n1 as nat) * l0() == (carry1 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry1, 57);
+            }
             assert((carry1 as nat + limbs[2] as nat + (n0 as nat) * (constants::L.limbs[2] as nat)
                 + (n1 as nat) * (constants::L.limbs[1] as nat)) + (n2 as nat) * l0() == (
-            carry2 as nat) * pow2(52));
+            carry2 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry2, 57);
+            }
             assert((carry2 as nat + limbs[3] as nat + (n1 as nat) * (constants::L.limbs[2] as nat)
                 + (n2 as nat) * (constants::L.limbs[1] as nat)) + (n3 as nat) * l0() == (
-            carry3 as nat) * pow2(52));
+            carry3 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry3, 57);
+            }
             assert((carry3 as nat + limbs[4] as nat + (n0 as nat) * (constants::L.limbs[4] as nat)
                 + (n2 as nat) * (constants::L.limbs[2] as nat) + (n3 as nat) * (
-            constants::L.limbs[1] as nat)) + (n4 as nat) * l0() == (carry4 as nat) * pow2(52));
+            constants::L.limbs[1] as nat)) + (n4 as nat) * l0() == (carry4 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry4, 57);
+            }
 
             // =========================================================================
             // SECTION 3: Call divisibility lemma and establish N < 2^260
             // =========================================================================
-            lemma_part1_chain_divisibility(
-                limbs,
-                n0,
-                n1,
-                n2,
-                n3,
-                n4,
-                carry0,
-                carry1,
-                carry2,
-                carry3,
-                carry4,
-            );
-
             let n = five_u64_limbs_to_nat(n0, n1, n2, n3, n4);
+            let t_low = limbs[0] as nat + limbs[1] as nat * pow2(52) + limbs[2] as nat * pow2(104)
+                + limbs[3] as nat * pow2(156) + limbs[4] as nat * pow2(208);
+            let l_low = constants::L.limbs[0] as nat + constants::L.limbs[1] as nat * pow2(52)
+                + constants::L.limbs[2] as nat * pow2(104) + constants::L.limbs[3] as nat * pow2(
+                156,
+            ) + constants::L.limbs[4] as nat * pow2(208);
 
-            // Prove N < 2^260 via lemma_general_bound
+            // Quotient relationship: t_low + nl_low_coeffs == carry4 × 2^260
+            let l0_val = constants::L.limbs[0] as nat;
+            let l1_val = constants::L.limbs[1] as nat;
+            let l2_val = constants::L.limbs[2] as nat;
+            let l4_val = constants::L.limbs[4] as nat;
+            let coeff0 = (n0 as nat) * l0_val;
+            let coeff1 = (n0 as nat) * l1_val + (n1 as nat) * l0_val;
+            let coeff2 = (n0 as nat) * l2_val + (n1 as nat) * l1_val + (n2 as nat) * l0_val;
+            let coeff3 = (n1 as nat) * l2_val + (n2 as nat) * l1_val + (n3 as nat) * l0_val;
+            let coeff4 = (n0 as nat) * l4_val + (n2 as nat) * l2_val + (n3 as nat) * l1_val + (
+            n4 as nat) * l0_val;
+            let nl_low_coeffs = coeff0 + coeff1 * pow2(52) + coeff2 * pow2(104) + coeff3 * pow2(156)
+                + coeff4 * pow2(208);
+
+            assert((t_low + n * l_low) % pow2(260) == 0 && t_low + nl_low_coeffs == (carry4 as nat)
+                * pow2(260)) by {
+                lemma_part1_chain_divisibility(
+                    limbs,
+                    n0,
+                    n1,
+                    n2,
+                    n3,
+                    n4,
+                    carry0,
+                    carry1,
+                    carry2,
+                    carry3,
+                    carry4,
+                );
+            }
+
             assert(n < pow2(260)) by {
                 let n_arr: [u64; 5] = [n0, n1, n2, n3, n4];
                 lemma_five_limbs_equals_to_nat(&n_arr);
@@ -1471,15 +1460,6 @@ impl Scalar52 {
                 assert(52 * 5 == 260nat) by (compute_only);
             }
 
-            // Divisibility result from lemma_part1_chain_divisibility
-            let t_low = limbs[0] as nat + limbs[1] as nat * pow2(52) + limbs[2] as nat * pow2(104)
-                + limbs[3] as nat * pow2(156) + limbs[4] as nat * pow2(208);
-            let l_low = constants::L.limbs[0] as nat + constants::L.limbs[1] as nat * pow2(52)
-                + constants::L.limbs[2] as nat * pow2(104) + constants::L.limbs[3] as nat * pow2(
-                156,
-            ) + constants::L.limbs[4] as nat * pow2(208);
-            assert((t_low + n * l_low) % pow2(260) == 0);
-
             // =========================================================================
             // SECTION 4: Part 2 - Convert part2 postconditions to nat
             // =========================================================================
@@ -1494,19 +1474,19 @@ impl Scalar52 {
             assert(sum8 as nat == carry7 as nat + limbs[8] as nat + (n4 as nat) * (
             constants::L.limbs[4] as nat));
 
-            // Convert part2 carries (< 2^56) to nat form
-            // First establish pow2(56) == (1u128 << 56) for precondition
-            lemma_u128_shift_is_pow2(56);
-            assert((1u128 << 56) as nat == pow2(56));
-            lemma_carry_shift_to_nat(carry5, 56);
-            lemma_carry_shift_to_nat(carry6, 56);
-            lemma_carry_shift_to_nat(carry7, 56);
-            lemma_carry_shift_to_nat(carry8, 56);
-
-            // Part2 stage equations: sum == r + carry * pow2(52)
-            assert(sum5 as nat == (r0 as nat) + (carry5 as nat) * pow2(52));
-            assert(sum6 as nat == (r1 as nat) + (carry6 as nat) * pow2(52));
-            assert(sum7 as nat == (r2 as nat) + (carry7 as nat) * pow2(52));
+            // Convert part2 carries (< 2^56) and stage equations: sum == r + carry * pow2(52)
+            assert((1u128 << 56) as nat == pow2(56)) by {
+                lemma_u128_shift_is_pow2(56);
+            }
+            assert(sum5 as nat == (r0 as nat) + (carry5 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry5, 56);
+            }
+            assert(sum6 as nat == (r1 as nat) + (carry6 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry6, 56);
+            }
+            assert(sum7 as nat == (r2 as nat) + (carry7 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry7, 56);
+            }
 
             // carry8 becomes r4: prove r4 == carry8 (truncation preserves value)
             assert((r4 as nat) == (carry8 as nat)) by {
@@ -1518,58 +1498,71 @@ impl Scalar52 {
                 assert((1u128 << 64) == 0x10000000000000000u128) by (bit_vector);
                 lemma_small_mod(carry8 as nat, 0x10000000000000000nat);
             }
-            assert(sum8 as nat == (r3 as nat) + (r4 as nat) * pow2(52));
+            assert(sum8 as nat == (r3 as nat) + (r4 as nat) * pow2(52)) by {
+                lemma_carry_shift_to_nat(carry8, 56);
+            }
 
             // =========================================================================
             // SECTION 5: Call pre_sub lemma for quotient relationship
             // =========================================================================
-            lemma_montgomery_reduce_pre_sub(
-                limbs,
-                n0,
-                n1,
-                n2,
-                n3,
-                n4,
-                n,
-                carry4,
-                sum5,
-                sum6,
-                sum7,
-                sum8,
-                carry5,
-                carry6,
-                carry7,
-                r0,
-                r1,
-                r2,
-                r3,
-                r4,
-                &intermediate,
-            );
+            assert(scalar52_to_nat(&intermediate) * montgomery_radix() == slice128_to_nat(limbs) + n
+                * group_order()) by {
+                lemma_montgomery_reduce_pre_sub(
+                    limbs,
+                    n0,
+                    n1,
+                    n2,
+                    n3,
+                    n4,
+                    n,
+                    carry4,
+                    sum5,
+                    sum6,
+                    sum7,
+                    sum8,
+                    carry5,
+                    carry6,
+                    carry7,
+                    r0,
+                    r1,
+                    r2,
+                    r3,
+                    r4,
+                    &intermediate,
+                );
+            }
 
             // =========================================================================
             // SECTION 6: Establish sub() preconditions via direct REDC bound
             // =========================================================================
-            lemma_l_equals_group_order();
             let inter_val = scalar52_to_nat(&intermediate);
             let l_val = group_order();
 
-            // Connect scalar52_to_nat to explicit limb sum
-            // lemma_five_limbs_equals_to_nat gives: five_limbs_to_nat_aux(limbs) == scalar52_to_nat
-            lemma_five_limbs_equals_to_nat(&intermediate.limbs);
-            // Apply commutativity: pow2(k) * limb == limb * pow2(k)
-            lemma_mul_is_commutative(pow2(52) as int, r1 as int);
-            lemma_mul_is_commutative(pow2(104) as int, r2 as int);
-            lemma_mul_is_commutative(pow2(156) as int, r3 as int);
-            lemma_mul_is_commutative(pow2(208) as int, r4 as int);
+            assert(scalar52_to_nat(l) == group_order()) by {
+                lemma_l_equals_group_order();
+            }
 
-            // Apply direct REDC bound: canonical_bound + N < R + quotient → r4 bounded
-            // No uniqueness chain needed — works directly from intermediate × R = T + N×L
-            lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4, n);
-
-            // Results: sub's preconditions
-            assert(limbs_bounded_for_sub(&intermediate, l));  // r4 < 2^52 + L[4]
-            assert(inter_val < 2 * l_val);  // intermediate < 2L
+            // Direct REDC bound: connect scalar52_to_nat to explicit limb sum,
+            // then apply lemma_r4_bound_from_canonical for r4 < 2^52 + L[4] and inter < 2L
+            assert(limbs_bounded_for_sub(&intermediate, l)) by {
+                lemma_l_equals_group_order();
+                lemma_five_limbs_equals_to_nat(&intermediate.limbs);
+                lemma_mul_is_commutative(pow2(52) as int, r1 as int);
+                lemma_mul_is_commutative(pow2(104) as int, r2 as int);
+                lemma_mul_is_commutative(pow2(156) as int, r3 as int);
+                lemma_mul_is_commutative(pow2(208) as int, r4 as int);
+                lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4, n);
+            }
+            assert(inter_val < 2 * l_val) by {
+                lemma_l_equals_group_order();
+                lemma_five_limbs_equals_to_nat(&intermediate.limbs);
+                lemma_mul_is_commutative(pow2(52) as int, r1 as int);
+                lemma_mul_is_commutative(pow2(104) as int, r2 as int);
+                lemma_mul_is_commutative(pow2(156) as int, r3 as int);
+                lemma_mul_is_commutative(pow2(208) as int, r4 as int);
+                lemma_r4_bound_from_canonical(limbs, r0, r1, r2, r3, r4, n);
+            }
+            // diff bounds follow from 0 <= inter_val < 2*l_val
             assert((inter_val as int) - (l_val as int) >= -(l_val as int));
             assert((inter_val as int) - (l_val as int) < (l_val as int));
         }
@@ -1906,7 +1899,6 @@ impl Scalar52 {
     /// # Preconditions
     /// - Both inputs must have `limbs_bounded` (ensures `input_bounds` for the product)
     /// - At least one input must be canonical for `montgomery_reduce`'s `canonical_bound`
-    /// See `docs/proofs_for_montgomery_reduce/precondition_analysis.md`.
     #[inline(never)]
     pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)
         requires
@@ -2037,11 +2029,6 @@ impl Scalar52 {
 
     /// Takes a Scalar52 out of Montgomery form, i.e. computes `a/R (mod l)`
     ///
-    /// # Precondition: Why `limbs_bounded` instead of `limb_prod_bounded_u128`
-    ///
-    /// For consistency with `montgomery_square` and `montgomery_invert`, and because
-    /// all callers have `limbs_bounded` anyway (from `montgomery_invert`'s ensures).
-    /// See `docs/proofs_for_montgomery_reduce/precondition_analysis.md`.
     #[allow(clippy::wrong_self_convention)]
     #[inline(never)]
     pub fn from_montgomery(&self) -> (result: Scalar52)

@@ -51,25 +51,21 @@
         </div>
     </section>
 
+    <!-- Horizontal module filter toolbar -->
+    <section class="module-toolbar-section">
+        <div class="container">
+            <div class="module-toolbar">
+                <span class="module-toolbar-label">Module:</span>
+                <nav class="module-pills" id="moduleTree">
+                    <!-- Populated by JS -->
+                </nav>
+            </div>
+        </div>
+    </section>
+
     <section class="specs-browser">
         <div class="container">
             <div class="specs-layout">
-                <!-- Left sidebar: module filter -->
-                <aside class="specs-sidebar">
-                    <h3 class="sidebar-heading">Modules</h3>
-                    <nav class="module-tree" id="moduleTree">
-                        <!-- Populated by JS -->
-                    </nav>
-                    <div class="sidebar-actions">
-                        <button id="expandAllLeft" class="sidebar-btn" title="Expand all verified">Expand Left</button>
-                        <button id="collapseAllLeft" class="sidebar-btn" title="Collapse all verified">Collapse Left</button>
-                    </div>
-                    <div class="sidebar-actions">
-                        <button id="expandAllRight" class="sidebar-btn" title="Expand all specs">Expand Right</button>
-                        <button id="collapseAllRight" class="sidebar-btn" title="Collapse all specs">Collapse Right</button>
-                    </div>
-                </aside>
-
                 <!-- Left panel: verified function contracts -->
                 <div class="panel panel-left">
                     <div class="panel-header">
@@ -77,6 +73,8 @@
                         <div class="panel-toolbar">
                             <input type="text" id="searchLeft" placeholder="Search contracts..." class="search-input search-sm">
                             <span class="panel-count" id="countLeft">0</span>
+                            <button id="expandAllLeft" class="toolbar-btn" title="Expand all">&#9660;</button>
+                            <button id="collapseAllLeft" class="toolbar-btn" title="Collapse all">&#9650;</button>
                         </div>
                     </div>
                     <div class="panel-scroll">
@@ -93,6 +91,8 @@
                         <div class="panel-toolbar">
                             <input type="text" id="searchRight" placeholder="Search specs..." class="search-input search-sm">
                             <span class="panel-count" id="countRight">0</span>
+                            <button id="expandAllRight" class="toolbar-btn" title="Expand all">&#9660;</button>
+                            <button id="collapseAllRight" class="toolbar-btn" title="Collapse all">&#9650;</button>
                         </div>
                     </div>
                     <!-- Filter banner (shown when filtering by a verified function's refs) -->

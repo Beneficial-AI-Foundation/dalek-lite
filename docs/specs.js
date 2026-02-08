@@ -91,30 +91,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("collapseAllRight").addEventListener("click", () => toggleAllIn("listRight", false));
 });
 
-// ── Sidebar (module filter) ──────────────────────────────────
+// ── Module filter (horizontal pills) ─────────────────────────
 function buildModuleTree(modules) {
-    const tree = document.getElementById("moduleTree");
+    const container = document.getElementById("moduleTree");
 
-    const allItem = createModuleItem("All", verifiedFunctions.length, null);
-    allItem.classList.add("active");
-    tree.appendChild(allItem);
+    const allPill = createModulePill("All", verifiedFunctions.length, null);
+    allPill.classList.add("active");
+    container.appendChild(allPill);
 
     const sorted = [...modules].sort();
     for (const mod of sorted) {
         const count = verifiedFunctions.filter(v => v.module === mod).length;
-        tree.appendChild(createModuleItem(mod, count, mod));
+        container.appendChild(createModulePill(mod, count, mod));
     }
 }
 
-function createModuleItem(displayName, count, moduleId) {
-    const el = document.createElement("div");
-    el.className = "module-item";
+function createModulePill(displayName, count, moduleId) {
+    const el = document.createElement("span");
+    el.className = "module-pill";
     el.innerHTML = `
-        <span class="module-name" title="${moduleId || 'all'}">${displayName}</span>
-        <span class="module-count">${count}</span>
+        ${displayName}
+        <span class="pill-count">${count}</span>
     `;
     el.addEventListener("click", () => {
-        document.querySelectorAll(".module-item").forEach(m => m.classList.remove("active"));
+        document.querySelectorAll(".module-pill").forEach(m => m.classList.remove("active"));
         el.classList.add("active");
         activeModule = moduleId;
         renderLeftPanel();
@@ -327,7 +327,7 @@ function renderRightPanel() {
     // Show/hide filter banner
     if (specFilterRefs) {
         banner.style.display = "flex";
-        bannerText.textContent = `Showing ${specFilterRefs.size} specs referenced by ${specFilterSource}`;
+        bannerText.textContent = `Showing ${specFilterRefs.size} specs related to ${specFilterSource}`;
     } else {
         banner.style.display = "none";
     }
@@ -374,6 +374,61 @@ function renderRightPanel() {
         });
     });
 
+    // "Show referenced specs" buttons on spec cards — inline toggle
+    container.querySelectorAll(".spec-show-deps-btn").forEach(btn => {
+        btn.addEventListener("click", e => {
+            e.stopPropagation();
+            const specName = btn.dataset.specName;
+            const inlineContainer = btn.nextElementSibling; // .inline-refs-container
+            if (!inlineContainer) return;
+
+            const isOpen = inlineContainer.style.display !== "none";
+            if (isOpen) {
+                inlineContainer.style.display = "none";
+                btn.classList.remove("active");
+                return;
+            }
+
+            // Build inline cards for each referenced spec
+            const spec = specLookup[specName];
+            if (!spec || !spec.referenced_specs) return;
+
+            const html = spec.referenced_specs.map(refName => {
+                const refSpec = specLookup[refName];
+                if (!refSpec) return `<div class="inline-ref-card"><div class="inline-ref-name">${escapeHtml(refName)}</div><div class="inline-ref-missing">Definition not found</div></div>`;
+                return renderInlineRefCard(refSpec);
+            }).join("");
+
+            inlineContainer.innerHTML = html;
+            inlineContainer.style.display = "block";
+            btn.classList.add("active");
+
+            // Syntax highlight the new code blocks
+            inlineContainer.querySelectorAll("pre code").forEach(block => Prism.highlightElement(block));
+
+            // Toggle inline cards open/closed
+            inlineContainer.querySelectorAll(".inline-ref-header").forEach(h => {
+                h.addEventListener("click", () => h.closest(".inline-ref-card").classList.toggle("open"));
+            });
+
+            // Scroll-to-spec clicks on tags inside inline cards
+            inlineContainer.querySelectorAll(".spec-to-spec-tag").forEach(tag => {
+                tag.addEventListener("click", ev => {
+                    ev.stopPropagation();
+                    scrollToSpecCard(tag.dataset.spec);
+                });
+            });
+        });
+    });
+
+    // Spec-to-spec ref tag clicks — scroll to that spec card
+    container.querySelectorAll(".spec-to-spec-tag").forEach(tag => {
+        tag.addEventListener("click", e => {
+            e.stopPropagation();
+            scrollToSpecCard(tag.dataset.spec);
+        });
+    });
+
     // Comment toggle
     container.querySelectorAll(".comments-toggle").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -386,16 +441,53 @@ function renderRightPanel() {
     });
 }
 
+function renderInlineRefCard(spec) {
+    const escapedBody = escapeHtml(spec.body);
+    const hasMath = spec.math_interpretation && spec.math_interpretation.trim();
+    const hasNestedRefs = spec.referenced_specs && spec.referenced_specs.length > 0;
+    const nestedTagsHtml = hasNestedRefs
+        ? `<div class="inline-ref-tags">${spec.referenced_specs.map(s => `<span class="contract-ref-tag spec-to-spec-tag" data-spec="${escapeHtml(s)}" title="Scroll to definition">${escapeHtml(s)}</span>`).join("")}</div>`
+        : "";
+    return `
+    <div class="inline-ref-card">
+        <div class="inline-ref-header">
+            <span class="inline-ref-toggle">&#9654;</span>
+            <span class="inline-ref-name">${escapeHtml(spec.name)}</span>
+            <span class="inline-ref-module">${escapeHtml(spec.module)}</span>
+            ${hasMath ? `<span class="inline-ref-math">${escapeHtml(spec.math_interpretation)}</span>` : ""}
+        </div>
+        <div class="inline-ref-body">
+            ${nestedTagsHtml}
+            <pre><code class="language-rust">${escapedBody}</code></pre>
+        </div>
+    </div>`;
+}
+
 function renderSpecCard(spec) {
     const escapedBody = escapeHtml(spec.body);
     const hasDoc = spec.doc_comment && spec.doc_comment.trim();
     const hasMath = spec.math_interpretation && spec.math_interpretation.trim();
     const hasInformal = spec.informal_interpretation && spec.informal_interpretation.trim();
     const hasInterpretations = hasMath || hasInformal;
+    const hasRefs = spec.referenced_specs && spec.referenced_specs.length > 0;
 
     const docHtml = hasDoc
         ? spec.doc_comment.split("\n").filter(Boolean).map(p => `<p>${escapeHtml(p)}</p>`).join("")
         : "";
+
+    const refsHtml = hasRefs ? `
+        <div class="contract-refs">
+            <div class="contract-refs-label">Uses Spec Functions</div>
+            <div class="contract-refs-list">
+                ${spec.referenced_specs.map(s => `<span class="contract-ref-tag spec-to-spec-tag" data-spec="${escapeHtml(s)}" title="Click to scroll to definition">${escapeHtml(s)}</span>`).join("")}
+            </div>
+        </div>` : "";
+
+    const showRefsBtn = hasRefs ? `
+        <button class="show-refs-btn spec-show-deps-btn" data-spec-name="${escapeHtml(spec.name)}" title="Expand referenced spec definitions below">
+            Show referenced specs <span class="refs-count">${spec.referenced_specs.length}</span>
+        </button>
+        <div class="inline-refs-container" data-for-spec="${escapeHtml(spec.name)}" style="display:none;"></div>` : "";
 
     return `
     <div class="spec-card" data-id="${spec.id}" data-spec-name="${spec.name}" data-module="${spec.module}">
@@ -421,6 +513,8 @@ function renderSpecCard(spec) {
                 ${hasMath ? `<div class="spec-interp"><span class="spec-interp-label">Math:</span> <span class="spec-interp-value">${escapeHtml(spec.math_interpretation)}</span></div>` : ""}
                 ${hasInformal ? `<div class="spec-interp"><span class="spec-interp-label">Meaning:</span> <span class="spec-interp-value">${escapeHtml(spec.informal_interpretation)}</span></div>` : ""}
             </div>` : ""}
+            ${refsHtml}
+            ${showRefsBtn}
             <div class="spec-code-wrapper">
                 <button class="copy-btn">Copy</button>
                 <pre><code class="language-rust">${escapedBody}</code></pre>

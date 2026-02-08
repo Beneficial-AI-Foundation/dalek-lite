@@ -1,0 +1,1880 @@
+{
+  "spec_functions": [
+    {
+      "id": "lemmas__common_lemmas__number_theory_lemmas__spec_extended_gcd",
+      "name": "spec_extended_gcd",
+      "signature": "pub open spec fn spec_extended_gcd(a: nat, b: nat) -> ExtGcdResult decreases b,",
+      "body": "pub open spec fn spec_extended_gcd(a: nat, b: nat) -> ExtGcdResult\n    decreases b,\n{\n    if b == 0 {\n        ExtGcdResult { gcd: a, x: 1, y: 0 }\n    } else {\n        let r = spec_extended_gcd(b, a % b);\n        ExtGcdResult { gcd: r.gcd, x: r.y, y: r.x - (a / b) as int * r.y }\n    }\n}",
+      "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
+      "line": 908,
+      "module": "lemmas::common_lemmas::number_theory_lemmas",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: Extended Euclidean Algorithm\n\nComputes (gcd, x, y) such that gcd(a, b) = a*x + b*y (Bezout's identity)\n\nThis is a constructive algorithm that produces the Bezout coefficients.\nBase case: gcd(a, 0) = a = a*1 + 0*0, so (a, 1, 0)\nRecursive case: if gcd(b, a%b) = b*x' + (a%b)*y' = b*x' + (a - b*(a/b))*y'\n= a*y' + b*(x' - (a/b)*y')\nso (gcd, y', x' - (a/b)*y')",
+      "math_interpretation": "gcd(a,b) = ax + by (Bezout coefficients)",
+      "informal_interpretation": "Spec function: Extended Euclidean Algorithm\\n\\nComputes (gcd, x, y) such that gcd(a, b) = a*x + b*y (Bezout's identity)\\n\\nThis is a constructive algorithm that produces the Bezout coefficients.\\nBase case: gcd(a, 0) = a = a*1 + 0*0, so (a, 1, 0)\\nRecursive case: if gcd(b, a%b) = b*x' + (a%b)*y' = b*x' + (a - b*(a/b))*y'\\n= a*y' + b*(x' - (a/b)*y')\\nso (gcd, y', x' - (a/b)*y')",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L908",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "lemmas__common_lemmas__number_theory_lemmas__spec_gcd",
+      "name": "spec_gcd",
+      "signature": "pub open spec fn spec_gcd(a: nat, b: nat) -> nat decreases b,",
+      "body": "pub open spec fn spec_gcd(a: nat, b: nat) -> nat\n    decreases b,\n{\n    if b == 0 {\n        a\n    } else {\n        spec_gcd(b, a % b)\n    }\n}",
+      "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
+      "line": 27,
+      "module": "lemmas::common_lemmas::number_theory_lemmas",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: Greatest Common Divisor using Euclidean algorithm\n\nThis is a constructive definition that computes gcd(a, b) recursively.\nThe algorithm is: gcd(a, 0) = a; gcd(a, b) = gcd(b, a % b) for b > 0",
+      "math_interpretation": "gcd(a, b) via Euclidean algorithm",
+      "informal_interpretation": "Spec function: Greatest Common Divisor using Euclidean algorithm\\n\\nThis is a constructive definition that computes gcd(a, b) recursively.\\nThe algorithm is: gcd(a, 0) = a; gcd(a, b) = gcd(b, a % b) for b > 0",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L27",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "lemmas__common_lemmas__number_theory_lemmas__spec_mod_inverse",
+      "name": "spec_mod_inverse",
+      "signature": "pub open spec fn spec_mod_inverse(a: nat, m: nat) -> nat recommends m > 1, spec_gcd(a % m, m) == 1,",
+      "body": "pub open spec fn spec_mod_inverse(a: nat, m: nat) -> nat\n    recommends\n        m > 1,\n        spec_gcd(a % m, m) == 1,\n{\n    if m <= 1 || spec_gcd(a % m, m) != 1 {\n        0  // Undefined case - return 0 by convention\n\n    } else {\n        let r = spec_extended_gcd(a % m, m);\n        // r.x might be negative, so normalize to [0, m)\n        (((r.x % (m as int)) + (m as int)) % (m as int)) as nat\n    }\n}",
+      "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
+      "line": 980,
+      "module": "lemmas::common_lemmas::number_theory_lemmas",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: Compute modular inverse using extended Euclidean algorithm\n\nFor a and m coprime (gcd(a, m) = 1), returns the unique x in [0, m) such that\na * x ≡ 1 (mod m).\n\nThe inverse is computed from Bezout's identity: a*x + m*y = 1\nTaking mod m: (a*x) % m = 1\n\nWe normalize the result to be in [0, m) by computing x % m (handling negative x).",
+      "math_interpretation": "a^(-1) mod m, via extended GCD",
+      "informal_interpretation": "Spec function: Compute modular inverse using extended Euclidean algorithm\\n\\nFor a and m coprime (gcd(a, m) = 1), returns the unique x in [0, m) such that\\na * x ≡ 1 (mod m).\\n\\nThe inverse is computed from Bezout's identity: a*x + m*y = 1\\nTaking mod m: (a*x) % m = 1\\n\\nWe normalize the result to be in [0, m) by computing x % m (handling negative x).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L980",
+      "category": "spec",
+      "referenced_specs": [
+        "spec_extended_gcd",
+        "spec_gcd"
+      ]
+    },
+    {
+      "id": "specs__core_specs__bytes32_to_nat",
+      "name": "bytes32_to_nat",
+      "signature": "pub open spec fn bytes32_to_nat(bytes: &[u8; 32]) -> nat",
+      "body": "pub open spec fn bytes32_to_nat(bytes: &[u8; 32]) -> nat {\n    (bytes[ 0] as nat) * pow2( 0 * 8) +\n    (bytes[ 1] as nat) * pow2( 1 * 8) +\n    (bytes[ 2] as nat) * pow2( 2 * 8) +\n    (bytes[ 3] as nat) * pow2( 3 * 8) +\n    (bytes[ 4] as nat) * pow2( 4 * 8) +\n    (bytes[ 5] as nat) * pow2( 5 * 8) +\n    (bytes[ 6] as nat) * pow2( 6 * 8) +\n    (bytes[ 7] as nat) * pow2( 7 * 8) +\n    (bytes[ 8] as nat) * pow2( 8 * 8) +\n    (bytes[ 9] as nat) * pow2( 9 * 8) +\n    (bytes[10] as nat) * pow2(10 * 8) +\n    (bytes[11] as nat) * pow2(11 * 8) +\n    (bytes[12] as nat) * pow2(12 * 8) +\n    (bytes[13] as nat) * pow2(13 * 8) +\n    (bytes[14] as nat) * pow2(14 * 8) +\n    (bytes[15] as nat) * pow2(15 * 8) +\n    (bytes[16] as nat) * pow2(16 * 8) +\n    (bytes[17] as nat) * pow2(17 * 8) +\n    (bytes[18] as nat) * pow2(18 * 8) +\n    (bytes[19] as nat) * pow2(19 * 8) +\n    (bytes[20] as nat) * pow2(20 * 8) +\n    (bytes[21] as nat) * pow2(21 * 8) +\n    (bytes[22] as nat) * pow2(22 * 8) +\n    (bytes[23] as nat) * pow2(23 * 8) +\n    (bytes[24] as nat) * pow2(24 * 8) +\n    (bytes[25] as nat) * pow2(25 * 8) +\n    (bytes[26] as nat) * pow2(26 * 8) +\n    (bytes[27] as nat) * pow2(27 * 8) +\n    (bytes[28] as nat) * pow2(28 * 8) +\n    (bytes[29] as nat) * pow2(29 * 8) +\n    (bytes[30] as nat) * pow2(30 * 8) +\n    (bytes[31] as nat) * pow2(31 * 8)\n}",
+      "file": "curve25519-dalek/src/specs/core_specs.rs",
+      "line": 20,
+      "module": "specs::core_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Convert a 32-byte array to its natural number representation (little-endian).\n\nThis function interprets a byte array as a 256-bit little-endian integer:\nbytes[0] + bytes[1] * 2^8 + bytes[2] * 2^16 + ... + bytes[31] * 2^248\n\nIMPORTANT: This explicit 32-term form is kept for SMT solver efficiency.\nFor generic arrays, use `bytes_seq_to_nat(bytes@)` directly.",
+      "math_interpretation": "sum_i b[i] * 2^(8i), little-endian 256-bit",
+      "informal_interpretation": "Interprets a 32-byte little-endian array as a natural number.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/core_specs.rs#L20",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__core_specs__bytes_seq_to_nat",
+      "name": "bytes_seq_to_nat",
+      "signature": "pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat decreases bytes.len(),",
+      "body": "pub open spec fn bytes_seq_to_nat(bytes: Seq<u8>) -> nat\n    decreases bytes.len(),\n{\n    if bytes.len() == 0 {\n        0\n    } else {\n        (bytes[0] as nat) + pow2(8) * bytes_seq_to_nat(bytes.skip(1))\n    }\n}",
+      "file": "curve25519-dalek/src/specs/core_specs.rs",
+      "line": 118,
+      "module": "specs::core_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Little-endian natural value of an arbitrary-length byte sequence.\nComputes: bytes[0] + bytes[1] * 2^8 + bytes[2] * 2^16 + ...",
+      "math_interpretation": "sum_i b[i] * 2^(8i), variable-length",
+      "informal_interpretation": "Interprets a sequence of bytes as a natural number in little-endian order.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/core_specs.rs#L118",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__edwards_specs__compressed_edwards_y_corresponds_to_edwards",
+      "name": "compressed_edwards_y_corresponds_to_edwards",
+      "signature": "pub open spec fn compressed_edwards_y_corresponds_to_edwards( compressed: CompressedEdwardsY, point: EdwardsPoint, ) -> bool",
+      "body": "pub open spec fn compressed_edwards_y_corresponds_to_edwards(\n    compressed: CompressedEdwardsY,\n    point: EdwardsPoint,\n) -> bool {\n    let (x_affine, y_affine) = edwards_point_as_affine(point);\n    // The y-coordinate in the compressed form matches the affine y-coordinate\n    spec_field_element_from_bytes(&compressed.0)\n        == y_affine\n    // The sign bit matches the sign of the affine x-coordinate\n     && (compressed.0[31] >> 7) == (((x_affine % crate::specs::field_specs_u64::p()) % 2) as u8)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 480,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: check if a CompressedEdwardsY corresponds to an EdwardsPoint\nThe compressed form should match the affine y-coordinate and x sign bit",
+      "math_interpretation": "Compressed(y,sign) matches (X:Y:Z:T) in E(F_p)",
+      "informal_interpretation": "Relates a `CompressedEdwardsY` encoding to an `EdwardsPoint` (y-coordinate matches; sign bit matches x).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L480",
+      "category": "spec",
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "p",
+        "spec_field_element_from_bytes"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__compressed_y_has_valid_sign_bit",
+      "name": "compressed_y_has_valid_sign_bit",
+      "signature": "pub open spec fn compressed_y_has_valid_sign_bit(bytes: &[u8; 32]) -> bool",
+      "body": "pub open spec fn compressed_y_has_valid_sign_bit(bytes: &[u8; 32]) -> bool {\n    let y = spec_field_element_from_bytes(bytes);\n    let sign_bit = bytes[31] >> 7;\n    // If y² ≡ 1 (mod p), then x = 0, so sign_bit must be 0\n    // Equivalently: sign_bit == 1 implies y² ≢ 1\n    math_field_square(y) == 1 ==> sign_bit == 0\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 503,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Check if a CompressedEdwardsY has a valid sign bit.\n\n## Mathematical basis\n\nFor points with x = 0 on the Edwards curve, the curve equation gives y² = 1,\nso y = ±1. These special points (the identity (0,1) and the point (0,-1))\nhave only one valid sign bit: 0, since sign_bit = x % 2 = 0.\n\n## Definition\n\nIf the Y coordinate yields x = 0 (i.e., y² ≡ 1 mod p), the sign bit must be 0.",
+      "math_interpretation": "y^2 = 1 mod p => sign_bit = 0",
+      "informal_interpretation": "Predicate capturing when the sign bit in a compressed Edwards-Y encoding is valid for decoding.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L503",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_square",
+        "p",
+        "spec_field_element_from_bytes"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__edwards_add",
+      "name": "edwards_add",
+      "signature": "pub open spec fn edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat)",
+      "body": "pub open spec fn edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {\n    let d = spec_field_element(&EDWARDS_D);\n    let x1x2 = math_field_mul(x1, x2);\n    let y1y2 = math_field_mul(y1, y2);\n    let x1y2 = math_field_mul(x1, y2);\n    let y1x2 = math_field_mul(y1, x2);\n    let t = math_field_mul(d, math_field_mul(x1x2, y1y2));\n    let denom_x = math_field_add(1, t);\n    let denom_y = math_field_sub(1, t);\n    let x3 = math_field_mul(math_field_add(x1y2, y1x2), math_field_inv(denom_x));\n    let y3 = math_field_mul(math_field_add(y1y2, x1x2), math_field_inv(denom_y));\n    (x3, y3)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 706,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Affine Edwards addition for a = -1 twisted Edwards curves (Ed25519).\nGiven (x1,y1) and (x2,y2) on the curve, returns (x3,y3) = (x1,y1) + (x2,y2).\nFormulas:\nx3 = (x1*y2 + y1*x2) / (1 + d*x1*x2*y1*y2)\ny3 = (y1*y2 + x1*x2) / (1 - d*x1*x2*y1*y2)\n\nThese are the unified addition formulas for twisted Edwards curves with a = -1.\nReference: [BBJLP2008] Section 3.1, [RFC8032] Section 5.1.4",
+      "math_interpretation": "(x1,y1) + (x2,y2) on -x^2+y^2=1+dx^2y^2",
+      "informal_interpretation": "Adds two affine Edwards points (group law).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L706",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_add",
+        "math_field_inv",
+        "math_field_mul",
+        "math_field_sub",
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__edwards_double",
+      "name": "edwards_double",
+      "signature": "pub open spec fn edwards_double(x: nat, y: nat) -> (nat, nat)",
+      "body": "pub open spec fn edwards_double(x: nat, y: nat) -> (nat, nat) {\n    edwards_add(x, y, x, y)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 721,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Affine Edwards doubling defined as addition with itself.",
+      "math_interpretation": "2P = P + P on twisted Edwards",
+      "informal_interpretation": "Affine Edwards doubling defined as addition with itself.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L721",
+      "category": "spec",
+      "referenced_specs": [
+        "edwards_add"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__edwards_neg",
+      "name": "edwards_neg",
+      "signature": "pub open spec fn edwards_neg(point: (nat, nat)) -> (nat, nat)",
+      "body": "pub open spec fn edwards_neg(point: (nat, nat)) -> (nat, nat) {\n    (math_field_neg(point.0), point.1)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 749,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Affine Edwards negation for twisted Edwards curves with a=-1.\nThe negation of point (x, y) is (-x, y).",
+      "math_interpretation": "(x,y) -> (-x,y) on twisted Edwards",
+      "informal_interpretation": "Negates an affine Edwards point (group inverse).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L749",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_neg"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__edwards_point_as_affine",
+      "name": "edwards_point_as_affine",
+      "signature": "pub open spec fn edwards_point_as_affine(point: crate::edwards::EdwardsPoint) -> (nat, nat)",
+      "body": "pub open spec fn edwards_point_as_affine(point: crate::edwards::EdwardsPoint) -> (nat, nat) {\n    let (x, y, z, _t) = spec_edwards_point(point);\n    let z_inv = math_field_inv(z);\n    (math_field_mul(x, z_inv), math_field_mul(y, z_inv))\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 394,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Returns the abstract affine coordinates (x, y) from an EdwardsPoint.\nAn EdwardsPoint (X:Y:Z:T) represents affine point (X/Z, Y/Z).",
+      "math_interpretation": "(X:Y:Z:T) -> (X/Z, Y/Z) in F_p x F_p",
+      "informal_interpretation": "Converts an extended/projective Edwards point representation to affine coordinates.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L394",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_inv",
+        "math_field_mul",
+        "spec_edwards_point"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__edwards_point_limbs_bounded",
+      "name": "edwards_point_limbs_bounded",
+      "signature": "pub open spec fn edwards_point_limbs_bounded(point: crate::edwards::EdwardsPoint) -> bool",
+      "body": "pub open spec fn edwards_point_limbs_bounded(point: crate::edwards::EdwardsPoint) -> bool {\n    fe51_limbs_bounded(&point.X, 52) && fe51_limbs_bounded(&point.Y, 52) && fe51_limbs_bounded(\n        &point.Z,\n        52,\n    ) && fe51_limbs_bounded(&point.T, 52)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 366,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "EdwardsPoint invariant: all coordinate limbs must be 52-bounded.",
+      "math_interpretation": "all limbs of (X,Y,Z,T) < 2^52",
+      "informal_interpretation": "EdwardsPoint invariant: all coordinate limbs must be 52-bounded.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L366",
+      "category": "spec",
+      "referenced_specs": [
+        "fe51_limbs_bounded"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__edwards_scalar_mul",
+      "name": "edwards_scalar_mul",
+      "signature": "pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, nat) decreases n,",
+      "body": "pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, nat)\n    decreases n,\n{\n    if n == 0 {\n        math_edwards_identity()  // (0, 1)\n\n    } else if n == 1 {\n        point_affine\n    } else if n % 2 == 0 {\n        let half = edwards_scalar_mul(point_affine, (n / 2) as nat);\n        edwards_double(half.0, half.1)\n    } else {\n        let prev = edwards_scalar_mul(point_affine, (n - 1) as nat);\n        edwards_add(prev.0, prev.1, point_affine.0, point_affine.1)\n    }\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 831,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Scalar multiplication on Edwards curve points (affine coordinates).\n\nUses double-and-add instead of linear recursion to closer match the implementation of mul_by_pow_2\n\n- **Linear**: `n*P = (n-1)*P + P` — reveal gives `add(scalar_mul(P, n-1), P)`\n- **Double-and-add**: even n → `double(scalar_mul(P, n/2))`",
+      "math_interpretation": "[n]P via double-and-add on E(F_p)",
+      "informal_interpretation": "Computes scalar multiplication of an affine Edwards point by a natural number.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L831",
+      "category": "spec",
+      "referenced_specs": [
+        "edwards_add",
+        "edwards_double",
+        "math_edwards_identity"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__edwards_sub",
+      "name": "edwards_sub",
+      "signature": "pub open spec fn edwards_sub(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat)",
+      "body": "pub open spec fn edwards_sub(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {\n    edwards_add(x1, y1, math_field_neg(x2), y2)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 757,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Affine Edwards subtraction for twisted Edwards curves.\nGiven (x1,y1) and (x2,y2) on the curve, returns (x3,y3) = (x1,y1) - (x2,y2).\nSubtraction is defined as addition with the negation of the second point.\nFor twisted Edwards curves, the negation of (x, y) is (-x, y).",
+      "math_interpretation": "(x1,y1) - (x2,y2) = (x1,y1) + (-x2,y2)",
+      "informal_interpretation": "Subtracts two affine Edwards points.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L757",
+      "category": "spec",
+      "referenced_specs": [
+        "edwards_add",
+        "math_field_neg"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__is_identity_edwards_point",
+      "name": "is_identity_edwards_point",
+      "signature": "pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) -> bool",
+      "body": "pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {\n    let x = spec_field_element(&point.X);\n    let y = spec_field_element(&point.Y);\n    let z = spec_field_element(&point.Z);\n\n    z != 0 && x == 0 && y == z\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 324,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Check if an EdwardsPoint represents the identity point\nThe identity point is (0, 1) in affine coordinates\nIn projective coordinates (X:Y:Z:T), this means X/Z = 0 and Y/Z = 1\nWhich is equivalent to X ≡ 0 (mod p) and Y ≡ Z (mod p) with Z ≠ 0",
+      "math_interpretation": "X = 0, Y = Z, Z != 0 (projective identity)",
+      "informal_interpretation": "Checks whether an Edwards point is the identity (neutral element).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L324",
+      "category": "spec",
+      "referenced_specs": [
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__is_valid_edwards_point",
+      "name": "is_valid_edwards_point",
+      "signature": "pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool",
+      "body": "pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {\n    let x = spec_field_element(&point.X);\n    let y = spec_field_element(&point.Y);\n    let z = spec_field_element(&point.Z);\n    let t = spec_field_element(&point.T);\n\n    math_is_valid_extended_edwards_point(x, y, z, t)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 356,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Check if an EdwardsPoint in extended coordinates is valid\nAn EdwardsPoint (X:Y:Z:T) is valid if:\n1. Z ≠ 0\n2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²\n3. The Segre relation holds: X·Y = Z·T\n\nExtended coordinates (X:Y:Z:T) with X·Y = Z·T enable faster point arithmetic.\nReference: [HWCD2008] Section 3 for extended twisted Edwards coordinates",
+      "math_interpretation": "(X:Y:Z:T) satisfies curve eq + XY = ZT",
+      "informal_interpretation": "Checks that an Edwards point satisfies the curve equation (mathematically valid).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L356",
+      "category": "spec",
+      "referenced_specs": [
+        "math_is_valid_extended_edwards_point",
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__is_well_formed_edwards_point",
+      "name": "is_well_formed_edwards_point",
+      "signature": "pub open spec fn is_well_formed_edwards_point(point: crate::edwards::EdwardsPoint) -> bool",
+      "body": "pub open spec fn is_well_formed_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {\n    is_valid_edwards_point(point) && edwards_point_limbs_bounded(point) && sum_of_limbs_bounded(\n        &point.Y,\n        &point.X,\n        u64::MAX,\n    )\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 374,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "A well-formed EdwardsPoint: mathematically valid and properly bounded.",
+      "math_interpretation": "valid on curve + limbs bounded",
+      "informal_interpretation": "Stronger validity predicate: point is valid and its internal representation satisfies required bounds.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L374",
+      "category": "spec",
+      "referenced_specs": [
+        "edwards_point_limbs_bounded",
+        "is_valid_edwards_point",
+        "sum_of_limbs_bounded"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__math_edwards_identity",
+      "name": "math_edwards_identity",
+      "signature": "pub open spec fn math_edwards_identity() -> (nat, nat)",
+      "body": "pub open spec fn math_edwards_identity() -> (nat, nat) {\n    (0, 1)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 311,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "The identity point in affine coordinates (0, 1)",
+      "math_interpretation": "O = (0, 1) in affine coordinates",
+      "informal_interpretation": "The affine identity point of the Edwards group.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L311",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__edwards_specs__math_is_valid_extended_edwards_point",
+      "name": "math_is_valid_extended_edwards_point",
+      "signature": "pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool",
+      "body": "pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {\n    z != 0 && math_on_edwards_curve_projective(x, y, z) && math_field_mul(x, y) == math_field_mul(\n        z,\n        t,\n    )\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 341,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Math-level validity predicate for an Edwards point in **extended coordinates** (X:Y:Z:T).\n\nThis is the \"unpacked\" version of `is_valid_edwards_point` that operates directly on the\nmathematical values `(x, y, z, t)` (all reduced mod p via `math_field_*`).\n\nAn (X:Y:Z:T) tuple is valid iff:\n1. Z ≠ 0\n2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²\n3. The Segre relation holds: X·Y = Z·T",
+      "math_interpretation": "Z != 0, curve eq holds, XY = ZT",
+      "informal_interpretation": "Math-level validity predicate for an Edwards point in **extended coordinates** (X:Y:Z:T).\\n\\nThis is the \"unpacked\" version of `is_valid_edwards_point` that operates directly on the\\nmathematical values `(x, y, z, t)` (all reduced mod p via `math_field_*`).\\n\\nAn (X:Y:Z:T) tuple is valid iff:\\n1. Z ≠ 0\\n2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²\\n3. The Segre relation holds: X·Y = Z·T",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L341",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_mul",
+        "math_on_edwards_curve_projective"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__math_is_valid_y_coordinate",
+      "name": "math_is_valid_y_coordinate",
+      "signature": "pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool",
+      "body": "pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool {\n    let d = spec_field_element(&EDWARDS_D);\n    let y2 = math_field_square(y);\n\n    // Compute u = y² - 1\n    let u = math_field_sub(y2, 1);\n\n    // Compute v = d·y² + 1\n    let v = math_field_add(math_field_mul(d, y2), 1);\n\n    if u % p() == 0 {\n        // If u = 0, then y² = 1, so y = ±1, which gives valid points (x=0, y=±1)\n        true\n    } else if v % p() == 0 {\n        // If v = 0 but u ≠ 0, division by zero case - invalid\n        false\n    } else {\n        // Check if there exists r such that r² * v ≡ ±u (mod p)\n        // This is what sqrt_ratio_i determines\n        exists|r: nat|\n            r < p() && (#[trigger] math_field_mul(math_field_square(r), v) == u % p()\n                || #[trigger] math_field_mul(math_field_square(r), v) == math_field_neg(u))\n    }\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 285,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: Check if a y-coordinate corresponds to a valid point on the curve.\nMirrors the sqrt_ratio_i computation from field.rs to determine if u/v is a square.\nFrom the curve equation: x² = (y² - 1) / (d·y² + 1)\nThis computes the same check as sqrt_ratio_i(&u, &v) where:\nu = y² - 1\nv = d·y² + 1\nReturns true if u/v is a square (i.e., x can be recovered)",
+      "math_interpretation": "exists x. (x, y) in E(F_p)",
+      "informal_interpretation": "Checks whether a field element can be a y-coordinate of some Edwards curve point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L285",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_add",
+        "math_field_mul",
+        "math_field_neg",
+        "math_field_square",
+        "math_field_sub",
+        "p",
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__math_on_edwards_curve_projective",
+      "name": "math_on_edwards_curve_projective",
+      "signature": "pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool",
+      "body": "pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {\n    let d = spec_field_element(&EDWARDS_D);\n\n    // Compute X², Y², Z²\n    let x2 = math_field_square(x);\n    let y2 = math_field_square(y);\n    let z2 = math_field_square(z);\n    let z4 = math_field_square(z2);\n\n    // LHS: (-X² + Y²)·Z² = (Y² - X²)·Z²\n    let lhs = math_field_mul(math_field_sub(y2, x2), z2);\n\n    // RHS: Z⁴ + d·X²·Y²\n    let rhs = math_field_add(z4, math_field_mul(d, math_field_mul(x2, y2)));\n\n    lhs == rhs\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 260,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Homogenized Edwards curve equation for projective coordinates\nA projective point (X:Y:Z) represents the affine point (X/Z, Y/Z)\nThe homogenized curve equation is: (-X² + Y²)·Z² = Z⁴ + d·X²·Y²\nThis is equivalent to the affine equation when Z ≠ 0\n\nReference: [BBJLP2008] Section 3",
+      "math_interpretation": "(Y^2 - X^2)Z^2 = Z^4 + dX^2Y^2",
+      "informal_interpretation": "Homogenized Edwards curve equation for projective coordinates\\nA projective point (X:Y:Z) represents the affine point (X/Z, Y/Z)\\nThe homogenized curve equation is: (-X² + Y²)·Z² = Z⁴ + d·X²·Y²\\nThis is equivalent to the affine equation when Z ≠ 0\\n\\nReference: [BBJLP2008] Section 3",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L260",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_add",
+        "math_field_mul",
+        "math_field_square",
+        "math_field_sub",
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__spec_ed25519_basepoint",
+      "name": "spec_ed25519_basepoint",
+      "signature": "pub open spec fn spec_ed25519_basepoint() -> (nat, nat)",
+      "body": "pub open spec fn spec_ed25519_basepoint() -> (nat, nat) {\n    (u64_5_as_nat(ED25519_BASEPOINT_POINT.X.limbs), u64_5_as_nat(ED25519_BASEPOINT_POINT.Y.limbs))\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 75,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "The Ed25519 basepoint B in affine coordinates (x, y).\nThis is the generator point of the prime-order subgroup.\n\nReferences the actual constant ED25519_BASEPOINT_POINT from constants.rs.\nThe y-coordinate is 4/5 mod p (the first 255 bits of the compressed form).\nThe x-coordinate is the positive square root satisfying the curve equation.\n\nReference: [RFC8032] Section 5.1",
+      "math_interpretation": "B = (x_B, y_B), Ed25519 generator",
+      "informal_interpretation": "Returns the Ed25519 basepoint in affine coordinates (spec-level).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L75",
+      "category": "spec",
+      "referenced_specs": [
+        "u64_5_as_nat"
+      ]
+    },
+    {
+      "id": "specs__edwards_specs__spec_edwards_point",
+      "name": "spec_edwards_point",
+      "signature": "pub open spec fn spec_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat, nat, nat, nat)",
+      "body": "pub open spec fn spec_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat, nat, nat, nat) {\n    let x = spec_field_element(&point.X);\n    let y = spec_field_element(&point.Y);\n    let z = spec_field_element(&point.Z);\n    let t = spec_field_element(&point.T);\n    (x, y, z, t)\n}",
+      "file": "curve25519-dalek/src/specs/edwards_specs.rs",
+      "line": 384,
+      "module": "specs::edwards_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Returns the field element values (X, Y, Z, T) from an EdwardsPoint.\nAn EdwardsPoint (X:Y:Z:T) is in extended projective coordinates.",
+      "math_interpretation": "(X, Y, Z, T) field values of extended point",
+      "informal_interpretation": "Returns the field element values (X, Y, Z, T) from an EdwardsPoint.\\nAn EdwardsPoint (X:Y:Z:T) is in extended projective coordinates.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L384",
+      "category": "spec",
+      "referenced_specs": [
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__field_specs__fe51_limbs_bounded",
+      "name": "fe51_limbs_bounded",
+      "signature": "pub open spec fn fe51_limbs_bounded(fe: &FieldElement51, bit_limit: u64) -> bool",
+      "body": "pub open spec fn fe51_limbs_bounded(fe: &FieldElement51, bit_limit: u64) -> bool {\n    forall|i: int| 0 <= i < 5 ==> fe.limbs[i] < (1u64 << bit_limit)\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 27,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec predicate: all limbs are bounded by a given bit limit",
+      "math_interpretation": "forall i in [0..5). limb[i] < 2^b",
+      "informal_interpretation": "Checks that a field element’s radix-2^51 limbs are within the given bound.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L27",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__field_specs__math_field_add",
+      "name": "math_field_add",
+      "signature": "pub open spec fn math_field_add(a: nat, b: nat) -> nat",
+      "body": "pub open spec fn math_field_add(a: nat, b: nat) -> nat {\n    (a + b) % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 110,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Math-level field addition",
+      "math_interpretation": "(a + b) mod p, p = 2^255-19",
+      "informal_interpretation": "Math-level field addition",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L110",
+      "category": "spec",
+      "referenced_specs": [
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_field_inv",
+      "name": "math_field_inv",
+      "signature": "pub open spec fn math_field_inv(a: nat) -> nat",
+      "body": "pub open spec fn math_field_inv(a: nat) -> nat {\n    if a % p() == 0 {\n        0  // Convention: inverse of 0 is defined as 0\n\n    } else {\n        spec_mod_inverse(a, p())\n    }\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 141,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Math-level field inversion: returns w such that (a * w) % p == 1\n\nFor non-zero elements (a % p() != 0), this returns the unique multiplicative\ninverse modulo p. By convention, when a % p() == 0, this returns 0.\n\nThe existence of inverses for non-zero elements is guaranteed by field_inv_property,\nwhich relies on p being prime.",
+      "math_interpretation": "a^(-1) mod p, p = 2^255-19",
+      "informal_interpretation": "Math-level field inversion: returns w such that (a * w) % p == 1\\n\\nFor non-zero elements (a % p() != 0), this returns the unique multiplicative\\ninverse modulo p. By convention, when a % p() == 0, this returns 0.\\n\\nThe existence of inverses for non-zero elements is guaranteed by field_inv_property,\\nwhich relies on p being prime.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L141",
+      "category": "spec",
+      "referenced_specs": [
+        "p",
+        "spec_mod_inverse"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_field_mul",
+      "name": "math_field_mul",
+      "signature": "pub open spec fn math_field_mul(a: nat, b: nat) -> nat",
+      "body": "pub open spec fn math_field_mul(a: nat, b: nat) -> nat {\n    (a * b) % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 120,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Math-level field multiplication",
+      "math_interpretation": "(a * b) mod p, p = 2^255-19",
+      "informal_interpretation": "Math-level field multiplication",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L120",
+      "category": "spec",
+      "referenced_specs": [
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_field_neg",
+      "name": "math_field_neg",
+      "signature": "pub open spec fn math_field_neg(a: nat) -> nat",
+      "body": "pub open spec fn math_field_neg(a: nat) -> nat {\n    (p() - (a % p())) as nat % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 125,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Math-level field negation",
+      "math_interpretation": "-a mod p, p = 2^255-19",
+      "informal_interpretation": "Math-level field negation",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L125",
+      "category": "spec",
+      "referenced_specs": [
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_field_square",
+      "name": "math_field_square",
+      "signature": "pub open spec fn math_field_square(a: nat) -> nat",
+      "body": "pub open spec fn math_field_square(a: nat) -> nat {\n    (a * a) % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 130,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Math-level field squaring",
+      "math_interpretation": "a^2 mod p, p = 2^255-19",
+      "informal_interpretation": "Math-level field squaring",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L130",
+      "category": "spec",
+      "referenced_specs": [
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_field_sub",
+      "name": "math_field_sub",
+      "signature": "pub open spec fn math_field_sub(a: nat, b: nat) -> nat",
+      "body": "pub open spec fn math_field_sub(a: nat, b: nat) -> nat {\n    (((a % p()) + p()) - (b % p())) as nat % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 115,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Math-level field subtraction",
+      "math_interpretation": "(a - b) mod p, p = 2^255-19",
+      "informal_interpretation": "Math-level field subtraction",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L115",
+      "category": "spec",
+      "referenced_specs": [
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_invsqrt",
+      "name": "math_invsqrt",
+      "signature": "pub open spec fn math_invsqrt(a: nat) -> nat",
+      "body": "pub open spec fn math_invsqrt(a: nat) -> nat {\n    if a % p() == 0 {\n        0\n    } else {\n        choose|r: nat|\n            #![auto]\n            !math_is_negative(r) && (math_is_sqrt_ratio(1, a, r) || math_is_sqrt_ratio_times_i(\n                1,\n                a,\n                r,\n            ))\n    }\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 510,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec-only model of inverse square root with a canonical sign choice.\n\nReturns a nonnegative r such that either r^2 * a = 1 (mod p) or r^2 * a = i (mod p).",
+      "math_interpretation": "1/sqrt(a) mod p (canonical sign)",
+      "informal_interpretation": "Spec-only model of inverse square root with a canonical sign choice.\\n\\nReturns a nonnegative r such that either r^2 * a = 1 (mod p) or r^2 * a = i (mod p).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L510",
+      "category": "spec",
+      "referenced_specs": [
+        "math_is_negative",
+        "math_is_sqrt_ratio",
+        "math_is_sqrt_ratio_times_i",
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_is_negative",
+      "name": "math_is_negative",
+      "signature": "pub open spec fn math_is_negative(a: nat) -> bool",
+      "body": "pub open spec fn math_is_negative(a: nat) -> bool {\n    (a % p()) % 2 == 1\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 503,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec predicate: a field element is negative if its canonical low bit is 1.",
+      "math_interpretation": "a mod p is odd (sign convention)",
+      "informal_interpretation": "Spec predicate: a field element is negative if its canonical low bit is 1.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L503",
+      "category": "spec",
+      "referenced_specs": [
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_is_sqrt_ratio",
+      "name": "math_is_sqrt_ratio",
+      "signature": "pub open spec fn math_is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool",
+      "body": "pub open spec fn math_is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {\n    (r * r * v) % p() == u\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 491,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: r² * v = u (mod p) — math version operating on nat values\nThis is the mathematical equivalent of is_sqrt_ratio but without FieldElement wrappers.\nUse this when working with mathematical values directly in lemmas.",
+      "math_interpretation": "r^2 * v = u (mod p)",
+      "informal_interpretation": "Spec function: r² * v = u (mod p) — math version operating on nat values\\nThis is the mathematical equivalent of is_sqrt_ratio but without FieldElement wrappers.\\nUse this when working with mathematical values directly in lemmas.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L491",
+      "category": "spec",
+      "referenced_specs": [
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__math_is_sqrt_ratio_times_i",
+      "name": "math_is_sqrt_ratio_times_i",
+      "signature": "pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool",
+      "body": "pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {\n    (r * r * v) % p() == (spec_sqrt_m1() * u) % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 498,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: r² * v = i*u (mod p) — math version operating on nat values\nUsed for the nonsquare case in sqrt_ratio_i.\nThis is the mathematical equivalent of is_sqrt_ratio_times_i.",
+      "math_interpretation": "r^2 * v = i*u (mod p), i = sqrt(-1)",
+      "informal_interpretation": "Spec function: r² * v = i*u (mod p) — math version operating on nat values\\nUsed for the nonsquare case in sqrt_ratio_i.\\nThis is the mathematical equivalent of is_sqrt_ratio_times_i.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L498",
+      "category": "spec",
+      "referenced_specs": [
+        "p",
+        "spec_sqrt_m1"
+      ]
+    },
+    {
+      "id": "specs__field_specs__spec_bytes32_from_nat",
+      "name": "spec_bytes32_from_nat",
+      "signature": "pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32]",
+      "body": "pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32] {\n    choose|b: [u8; 32]| bytes32_to_nat(&b) == n % pow2(256)\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 525,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Canonical little-endian bytes for a nat (mod 2^256).",
+      "math_interpretation": "n mod 2^256 -> [u8;32] little-endian",
+      "informal_interpretation": "Canonical little-endian bytes for a nat (mod 2^256).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L525",
+      "category": "spec",
+      "referenced_specs": [
+        "bytes32_to_nat"
+      ]
+    },
+    {
+      "id": "specs__field_specs__spec_field_element",
+      "name": "spec_field_element",
+      "signature": "pub open spec fn spec_field_element(fe: &FieldElement51) -> nat",
+      "body": "pub open spec fn spec_field_element(fe: &FieldElement51) -> nat {\n    spec_field_element_as_nat(fe) % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 75,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Returns the canonical mathematical value of a field element in [0, p)\nwhere p = 2^255 - 19",
+      "math_interpretation": "fe -> fe mod p, canonical in [0, p)",
+      "informal_interpretation": "Interprets a field element value as an integer modulo the prime p.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L75",
+      "category": "spec",
+      "referenced_specs": [
+        "p",
+        "spec_field_element_as_nat"
+      ]
+    },
+    {
+      "id": "specs__field_specs__spec_field_element_as_nat",
+      "name": "spec_field_element_as_nat",
+      "signature": "pub open spec fn spec_field_element_as_nat(fe: &FieldElement51) -> nat",
+      "body": "pub open spec fn spec_field_element_as_nat(fe: &FieldElement51) -> nat {\n    u64_5_as_nat(fe.limbs)\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 69,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "",
+      "math_interpretation": "sum_i limb[i] * 2^(51i)",
+      "informal_interpretation": "",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L69",
+      "category": "spec",
+      "referenced_specs": [
+        "u64_5_as_nat"
+      ]
+    },
+    {
+      "id": "specs__field_specs__spec_field_element_from_bytes",
+      "name": "spec_field_element_from_bytes",
+      "signature": "pub open spec fn spec_field_element_from_bytes(bytes: &[u8; 32]) -> nat",
+      "body": "pub open spec fn spec_field_element_from_bytes(bytes: &[u8; 32]) -> nat {\n    (bytes32_to_nat(bytes) % pow2(255)) % p()\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 98,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Returns the canonical mathematical value when creating a field element from bytes.\nThe bytes are interpreted as a little-endian integer with the high bit of byte[31] ignored.\nThe result is the canonical value in [0, p) where p = 2^255 - 19.",
+      "math_interpretation": "LE(b) mod 2^255 mod p",
+      "informal_interpretation": "Interprets 32 bytes as a field element (spec-level decoding).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L98",
+      "category": "spec",
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "p"
+      ]
+    },
+    {
+      "id": "specs__field_specs__spec_field_element_sign_bit",
+      "name": "spec_field_element_sign_bit",
+      "signature": "pub open spec fn spec_field_element_sign_bit(fe: &FieldElement51) -> u8",
+      "body": "pub open spec fn spec_field_element_sign_bit(fe: &FieldElement51) -> u8 {\n    ((spec_field_element(fe) % p()) % 2) as u8\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 104,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function: Get the sign bit of a field element\nIn Curve25519, the sign bit is the least significant bit of the canonical representation",
+      "math_interpretation": "(fe mod p) mod 2 (parity bit)",
+      "informal_interpretation": "Returns the sign bit used in point compression (typically the parity of x).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L104",
+      "category": "spec",
+      "referenced_specs": [
+        "p",
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__field_specs__spec_sqrt_m1",
+      "name": "spec_sqrt_m1",
+      "signature": "pub open spec fn spec_sqrt_m1() -> nat",
+      "body": "pub open spec fn spec_sqrt_m1() -> nat {\n    spec_field_element(&constants::SQRT_M1)\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 584,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "The mathematical value of SQRT_M1 (sqrt(-1) mod p)\nThis is the 4th root of unity i such that i² = -1 (mod p)",
+      "math_interpretation": "i in F_p : i^2 = -1 (mod p)",
+      "informal_interpretation": "The mathematical value of SQRT_M1 (sqrt(-1) mod p)\\nThis is the 4th root of unity i such that i² = -1 (mod p)",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L584",
+      "category": "spec",
+      "referenced_specs": [
+        "spec_field_element"
+      ]
+    },
+    {
+      "id": "specs__field_specs__sum_of_limbs_bounded",
+      "name": "sum_of_limbs_bounded",
+      "signature": "pub open spec fn sum_of_limbs_bounded( fe1: &FieldElement51, fe2: &FieldElement51, bound: u64, ) -> bool",
+      "body": "pub open spec fn sum_of_limbs_bounded(\n    fe1: &FieldElement51,\n    fe2: &FieldElement51,\n    bound: u64,\n) -> bool {\n    forall|i: int| 0 <= i < 5 ==> fe1.limbs[i] + fe2.limbs[i] < bound\n}",
+      "file": "curve25519-dalek/src/specs/field_specs.rs",
+      "line": 32,
+      "module": "specs::field_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec predicate: sum of limbs are bounded by a given bit limit",
+      "math_interpretation": "forall i. limb1[i] + limb2[i] < bound",
+      "informal_interpretation": "Checks that adding two field-element limb arrays stays within a safe bound (used to justify u64/u128 arithmetic).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L32",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__field_specs_u64__p",
+      "name": "p",
+      "signature": "pub open spec fn p() -> nat",
+      "body": "pub open spec fn p() -> nat {\n    (pow2(255) - 19) as nat\n}",
+      "file": "curve25519-dalek/src/specs/field_specs_u64.rs",
+      "line": 11,
+      "module": "specs::field_specs_u64",
+      "visibility": "pub open spec fn",
+      "doc_comment": "",
+      "math_interpretation": "p = 2^255 - 19 (Curve25519 prime)",
+      "informal_interpretation": "",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs_u64.rs#L11",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__field_specs_u64__u64_5_as_nat",
+      "name": "u64_5_as_nat",
+      "signature": "pub open spec fn u64_5_as_nat(limbs: [u64; 5]) -> nat",
+      "body": "pub open spec fn u64_5_as_nat(limbs: [u64; 5]) -> nat {\n                (limbs[0] as nat) +\n    pow2( 51) * (limbs[1] as nat) +\n    pow2(102) * (limbs[2] as nat) +\n    pow2(153) * (limbs[3] as nat) +\n    pow2(204) * (limbs[4] as nat)\n}",
+      "file": "curve25519-dalek/src/specs/field_specs_u64.rs",
+      "line": 52,
+      "module": "specs::field_specs_u64",
+      "visibility": "pub open spec fn",
+      "doc_comment": "",
+      "math_interpretation": "sum_i limb[i] * 2^(51i), radix-2^51",
+      "informal_interpretation": "",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs_u64.rs#L52",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__montgomery_specs__is_equal_to_minus_one",
+      "name": "is_equal_to_minus_one",
+      "signature": "pub open spec fn is_equal_to_minus_one(u: nat) -> bool",
+      "body": "pub open spec fn is_equal_to_minus_one(u: nat) -> bool {\n    u == math_field_sub(0, 1)  // u == -1\n\n}",
+      "file": "curve25519-dalek/src/specs/montgomery_specs.rs",
+      "line": 258,
+      "module": "specs::montgomery_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Check if a Montgomery u-coordinate is invalid for conversion to Edwards\nu = -1 is invalid because it corresponds to a point on the twist",
+      "math_interpretation": "u = p - 1 (i.e. u = -1 mod p)",
+      "informal_interpretation": "Checks whether a field element equals -1 modulo the prime field.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/montgomery_specs.rs#L258",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_sub"
+      ]
+    },
+    {
+      "id": "specs__montgomery_specs__montgomery_corresponds_to_edwards",
+      "name": "montgomery_corresponds_to_edwards",
+      "signature": "pub open spec fn montgomery_corresponds_to_edwards( montgomery: crate::montgomery::MontgomeryPoint, edwards: crate::edwards::EdwardsPoint, ) -> bool",
+      "body": "pub open spec fn montgomery_corresponds_to_edwards(\n    montgomery: crate::montgomery::MontgomeryPoint,\n    edwards: crate::edwards::EdwardsPoint,\n) -> bool {\n    let u = spec_montgomery(montgomery);\n    let (x, y) = crate::specs::edwards_specs::edwards_point_as_affine(edwards);\n    let denominator = math_field_sub(1, y);\n\n    if denominator == 0 {\n        // Special case: Edwards identity (x=0, y=1) maps to Montgomery u=0\n        u == 0\n    } else {\n        // General case: u = (1+y)/(1-y)\n        let numerator = math_field_add(1, y);\n        u == math_field_mul(numerator, math_field_inv(denominator))\n    }\n}",
+      "file": "curve25519-dalek/src/specs/montgomery_specs.rs",
+      "line": 213,
+      "module": "specs::montgomery_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Check if a MontgomeryPoint corresponds to an EdwardsPoint\nvia the birational map u = (1+y)/(1-y)\nSpecial case: Edwards identity (y=1) maps to u=0",
+      "math_interpretation": "u = (1+y)/(1-y), birational map",
+      "informal_interpretation": "Relates a Montgomery u-coordinate representation to an Edwards point under the standard birational map.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/montgomery_specs.rs#L213",
+      "category": "spec",
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "math_field_add",
+        "math_field_inv",
+        "math_field_mul",
+        "math_field_sub",
+        "spec_montgomery"
+      ]
+    },
+    {
+      "id": "specs__montgomery_specs__spec_montgomery",
+      "name": "spec_montgomery",
+      "signature": "pub open spec fn spec_montgomery(point: crate::montgomery::MontgomeryPoint) -> nat",
+      "body": "pub open spec fn spec_montgomery(point: crate::montgomery::MontgomeryPoint) -> nat {\n    spec_field_element_from_bytes(&point.0)\n}",
+      "file": "curve25519-dalek/src/specs/montgomery_specs.rs",
+      "line": 206,
+      "module": "specs::montgomery_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Returns the u-coordinate of a Montgomery point as a field element\nMontgomery points only store the u-coordinate; sign information is lost",
+      "math_interpretation": "MontgomeryPoint -> u in F_p",
+      "informal_interpretation": "Interprets a `MontgomeryPoint` as a field element u-coordinate (spec-level).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/montgomery_specs.rs#L206",
+      "category": "spec",
+      "referenced_specs": [
+        "spec_field_element_from_bytes"
+      ]
+    },
+    {
+      "id": "specs__ristretto_specs__is_in_even_subgroup",
+      "name": "is_in_even_subgroup",
+      "signature": "pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool",
+      "body": "pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {\n    exists|q: EdwardsPoint|\n        edwards_point_as_affine(point) == edwards_scalar_mul(\n            #[trigger] edwards_point_as_affine(q),\n            2,\n        )\n}",
+      "file": "curve25519-dalek/src/specs/ristretto_specs.rs",
+      "line": 346,
+      "module": "specs::ristretto_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Point is in the even subgroup 2E = {2Q : Q ∈ E}; valid Ristretto points must lie in 2E.",
+      "math_interpretation": "P in 2E = {2Q : Q in E(F_p)}",
+      "informal_interpretation": "Predicate that an Edwards point lies in the even (torsion-free) subgroup used by Ristretto decoding.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/ristretto_specs.rs#L346",
+      "category": "spec",
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "edwards_scalar_mul"
+      ]
+    },
+    {
+      "id": "specs__ristretto_specs__spec_ristretto_basepoint",
+      "name": "spec_ristretto_basepoint",
+      "signature": "pub open spec fn spec_ristretto_basepoint() -> (nat, nat)",
+      "body": "pub open spec fn spec_ristretto_basepoint() -> (nat, nat) {\n    spec_ed25519_basepoint()\n}",
+      "file": "curve25519-dalek/src/specs/ristretto_specs.rs",
+      "line": 194,
+      "module": "specs::ristretto_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "The canonical representative of the Ristretto basepoint.\n\nThe Ristretto basepoint is the equivalence class [B] where B is the\nEd25519 basepoint. We use B itself as the canonical representative.",
+      "math_interpretation": "[B] (Ristretto basepoint = Ed25519 B)",
+      "informal_interpretation": "Returns the Ristretto basepoint (spec-level).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/ristretto_specs.rs#L194",
+      "category": "spec",
+      "referenced_specs": [
+        "spec_ed25519_basepoint"
+      ]
+    },
+    {
+      "id": "specs__ristretto_specs__spec_ristretto_compress",
+      "name": "spec_ristretto_compress",
+      "signature": "pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32]",
+      "body": "pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {\n    let (x, y, z, t) = spec_edwards_point(point.0);\n    spec_ristretto_compress_extended(x, y, z, t)\n}",
+      "file": "curve25519-dalek/src/specs/ristretto_specs.rs",
+      "line": 113,
+      "module": "specs::ristretto_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec-only model of Ristretto compression from a RistrettoPoint.\n\nThis captures the canonical encoding of a Ristretto point.\nReference: [RISTRETTO], §5.3 \"Ristretto255 Encoding\"",
+      "math_interpretation": "E/~ -> [u8;32], Ristretto encoding",
+      "informal_interpretation": "Spec-level function computing the canonical compressed encoding of a Ristretto point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/ristretto_specs.rs#L113",
+      "category": "spec",
+      "referenced_specs": [
+        "spec_edwards_point",
+        "spec_ristretto_compress_extended"
+      ]
+    },
+    {
+      "id": "specs__ristretto_specs__spec_ristretto_compress_extended",
+      "name": "spec_ristretto_compress_extended",
+      "signature": "pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32]",
+      "body": "pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {\n    let u1 = math_field_mul(math_field_add(z, y), math_field_sub(z, y));\n    let u2 = math_field_mul(x, y);\n    let invsqrt = math_invsqrt(math_field_mul(u1, math_field_square(u2)));\n    let i1 = math_field_mul(invsqrt, u1);\n    let i2 = math_field_mul(invsqrt, u2);\n    let z_inv = math_field_mul(i1, math_field_mul(i2, t));\n    let den_inv = i2;\n\n    let iX = math_field_mul(x, spec_sqrt_m1());\n    let iY = math_field_mul(y, spec_sqrt_m1());\n    let enchanted_denominator = math_field_mul(\n        i1,\n        spec_field_element(&u64_constants::INVSQRT_A_MINUS_D),\n    );\n\n    let rotate = math_is_negative(math_field_mul(t, z_inv));\n    let x_rot = if rotate {\n        iY\n    } else {\n        x\n    };\n    let y_rot = if rotate {\n        iX\n    } else {\n        y\n    };\n    let den_inv_rot = if rotate {\n        enchanted_denominator\n    } else {\n        den_inv\n    };\n\n    let y_final = if math_is_negative(math_field_mul(x_rot, z_inv)) {\n        math_field_neg(y_rot)\n    } else {\n        y_rot\n    };\n    let s = math_field_mul(den_inv_rot, math_field_sub(z, y_final));\n    let s_final = if math_is_negative(s) {\n        math_field_neg(s)\n    } else {\n        s\n    };\n\n    spec_bytes32_from_nat(s_final)\n}",
+      "file": "curve25519-dalek/src/specs/ristretto_specs.rs",
+      "line": 61,
+      "module": "specs::ristretto_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Core Ristretto compression from extended coordinates (X, Y, Z, T).\nReference: [RISTRETTO], §5.3 \"Ristretto255 Encoding\";\n[DECAF], Section 6 (encoding formulas), and https://ristretto.group/formulas/encoding.html.",
+      "math_interpretation": "(X,Y,Z,T) -> [u8;32], core encoding",
+      "informal_interpretation": "Core Ristretto compression from extended coordinates (X, Y, Z, T).\\nReference: [RISTRETTO], §5.3 \"Ristretto255 Encoding\";\\n[DECAF], Section 6 (encoding formulas), and https://ristretto.group/formulas/encoding.html.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/ristretto_specs.rs#L61",
+      "category": "spec",
+      "referenced_specs": [
+        "math_field_add",
+        "math_field_mul",
+        "math_field_neg",
+        "math_field_square",
+        "math_field_sub",
+        "math_invsqrt",
+        "math_is_negative",
+        "spec_bytes32_from_nat",
+        "spec_field_element",
+        "spec_sqrt_m1"
+      ]
+    },
+    {
+      "id": "specs__ristretto_specs__spec_ristretto_decompress",
+      "name": "spec_ristretto_decompress",
+      "signature": "pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint>",
+      "body": "pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint> {\n    let s_bytes_nat = bytes32_to_nat(&bytes);\n    let s = spec_field_element_from_bytes(&bytes);\n    let s_encoding_is_canonical = s_bytes_nat < p();\n    let s_is_negative = math_is_negative(s);\n\n    if !s_encoding_is_canonical || s_is_negative {\n        None\n    } else {\n        let ss = math_field_square(s);\n        let u1 = math_field_sub(1, ss);\n        let u2 = math_field_add(1, ss);\n        let u2_sqr = math_field_square(u2);\n        let neg_d = math_field_neg(spec_field_element(&EDWARDS_D));\n        let u1_sqr = math_field_square(u1);\n        let v = math_field_sub(math_field_mul(neg_d, u1_sqr), u2_sqr);\n\n        let invsqrt_input = math_field_mul(v, u2_sqr);\n        let invsqrt = math_invsqrt(invsqrt_input);\n        let ok = math_is_sqrt_ratio(1, invsqrt_input, invsqrt);\n\n        let dx = math_field_mul(invsqrt, u2);\n        let dy = math_field_mul(invsqrt, math_field_mul(dx, v));\n        let x_tmp = math_field_mul(math_field_add(s, s), dx);\n        let x = if math_is_negative(x_tmp) {\n            math_field_neg(x_tmp)\n        } else {\n            x_tmp\n        };\n        let y = math_field_mul(u1, dy);\n        let t = math_field_mul(x, y);\n\n        let t_is_negative = math_is_negative(t);\n        let y_is_zero = y == 0;\n\n        if !ok || t_is_negative || y_is_zero {\n            None\n        } else if exists|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t) {\n            Some(choose|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t))\n        } else {\n            None\n        }\n    }\n}",
+      "file": "curve25519-dalek/src/specs/ristretto_specs.rs",
+      "line": 131,
+      "module": "specs::ristretto_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec-only model of Ristretto decompression.\nReference: [RISTRETTO], §5.2 \"Ristretto255 Decoding\";\n[DECAF], Section 6 (decoding formulas), and https://ristretto.group/formulas/decoding.html.",
+      "math_interpretation": "[u8;32] -> Option<E/~>, Ristretto decoding",
+      "informal_interpretation": "Spec-level function decoding a compressed Ristretto encoding to an optional point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/ristretto_specs.rs#L131",
+      "category": "spec",
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "math_field_add",
+        "math_field_mul",
+        "math_field_neg",
+        "math_field_square",
+        "math_field_sub",
+        "math_invsqrt",
+        "math_is_negative",
+        "math_is_sqrt_ratio",
+        "p",
+        "spec_edwards_point",
+        "spec_field_element",
+        "spec_field_element_from_bytes"
+      ]
+    },
+    {
+      "id": "specs__scalar52_specs__group_order",
+      "name": "group_order",
+      "signature": "pub open spec fn group_order() -> nat",
+      "body": "pub open spec fn group_order() -> nat {\n    pow2(252) + 27742317777372353535851937790883648493nat\n}",
+      "file": "curve25519-dalek/src/specs/scalar52_specs.rs",
+      "line": 69,
+      "module": "specs::scalar52_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "",
+      "math_interpretation": "L = 2^252 + 27742317777372353535851937790883648493",
+      "informal_interpretation": "Returns the Curve25519/Ed25519 scalar field modulus (group order).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar52_specs.rs#L69",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__scalar_specs__is_canonical_scalar",
+      "name": "is_canonical_scalar",
+      "signature": "pub open spec fn is_canonical_scalar(s: &Scalar) -> bool",
+      "body": "pub open spec fn is_canonical_scalar(s: &Scalar) -> bool {\n    // Invariant #2: Scalar is reduced (< group order)\n    bytes32_to_nat(&s.bytes)\n        < group_order()\n    // Invariant #1: High bit is clear (< 2^255)\n     && s.bytes[31] <= 127\n}",
+      "file": "curve25519-dalek/src/specs/scalar_specs.rs",
+      "line": 30,
+      "module": "specs::scalar_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Checks if a Scalar satisfies the canonical representation invariants:\n- Invariant #1: High bit (bit 255) is clear, ensuring s < 2^255\n- Invariant #2: Scalar is reduced modulo group order, i.e., s < ℓ",
+      "math_interpretation": "0 <= s < L and s < 2^255",
+      "informal_interpretation": "Predicate that a `Scalar` is in canonical form (reduced modulo the group order).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar_specs.rs#L30",
+      "category": "spec",
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "group_order"
+      ]
+    },
+    {
+      "id": "specs__scalar_specs__is_clamped_integer",
+      "name": "is_clamped_integer",
+      "signature": "pub open spec fn is_clamped_integer(bytes: &[u8; 32]) -> bool",
+      "body": "pub open spec fn is_clamped_integer(bytes: &[u8; 32]) -> bool {\n    // The 3 least significant bits are cleared (divisible by 8)\n    bytes[0] & 0b0000_0111\n        == 0\n    // Bit 255 (MSB) is cleared, making it < 2^255\n     && bytes[31] & 0b1000_0000 == 0\n    // Bit 254 is set, so result >= 2^254\n     && bytes[31] & 0b0100_0000\n        == 0b0100_0000\n    // MSB cleared implies bytes[31] <= 127 (needed for mul_req precondition)\n     && bytes[31] <= 127\n}",
+      "file": "curve25519-dalek/src/specs/scalar_specs.rs",
+      "line": 90,
+      "module": "specs::scalar_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Returns true iff a byte array represents a clamped integer for X25519.\nA clamped integer has:\n- The 3 least significant bits cleared (divisible by 8)\n- Bit 255 (MSB) cleared (< 2^255), which means bytes[31] <= 127\n- Bit 254 set (>= 2^254)\nThis creates values in range: 2^254 + 8*{0, 1, 2, ..., 2^251 - 1}",
+      "math_interpretation": "bits 0-2 clear, bit 254 set, bit 255 clear",
+      "informal_interpretation": "Checks that a 32-byte array satisfies X25519 clamping (bit constraints).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar_specs.rs#L90",
+      "category": "spec",
+      "referenced_specs": []
+    },
+    {
+      "id": "specs__scalar_specs__scalar_to_nat",
+      "name": "scalar_to_nat",
+      "signature": "pub open spec fn scalar_to_nat(s: &Scalar) -> nat",
+      "body": "pub open spec fn scalar_to_nat(s: &Scalar) -> nat {\n    bytes32_to_nat(&s.bytes)\n}",
+      "file": "curve25519-dalek/src/specs/scalar_specs.rs",
+      "line": 17,
+      "module": "specs::scalar_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "",
+      "math_interpretation": "LE(s.bytes) -> nat",
+      "informal_interpretation": "Interprets a `Scalar`’s canonical byte encoding as a natural number.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar_specs.rs#L17",
+      "category": "spec",
+      "referenced_specs": [
+        "bytes32_to_nat"
+      ]
+    },
+    {
+      "id": "specs__scalar_specs__spec_clamp_integer",
+      "name": "spec_clamp_integer",
+      "signature": "pub open spec fn spec_clamp_integer(bytes: [u8; 32]) -> [u8; 32]",
+      "body": "pub open spec fn spec_clamp_integer(bytes: [u8; 32]) -> [u8; 32] {\n    // Build the result array element by element\n    [\n        bytes[0] & 0b1111_1000,  // Clear low 3 bits of byte 0\n        bytes[1],\n        bytes[2],\n        bytes[3],\n        bytes[4],\n        bytes[5],\n        bytes[6],\n        bytes[7],\n        bytes[8],\n        bytes[9],\n        bytes[10],\n        bytes[11],\n        bytes[12],\n        bytes[13],\n        bytes[14],\n        bytes[15],\n        bytes[16],\n        bytes[17],\n        bytes[18],\n        bytes[19],\n        bytes[20],\n        bytes[21],\n        bytes[22],\n        bytes[23],\n        bytes[24],\n        bytes[25],\n        bytes[26],\n        bytes[27],\n        bytes[28],\n        bytes[29],\n        bytes[30],\n        (bytes[31] & 0b0111_1111) | 0b0100_0000,  // Clear bit 7 and set bit 6 of byte 31\n    ]\n}",
+      "file": "curve25519-dalek/src/specs/scalar_specs.rs",
+      "line": 112,
+      "module": "specs::scalar_specs",
+      "visibility": "pub open spec fn",
+      "doc_comment": "Spec function for clamping a byte array to produce a valid X25519 scalar.\nThis is the spec-level version of the `clamp_integer` exec function.\n\nThe clamping operation:\n- Clears the 3 least significant bits (bits 0-2 of byte 0)\n- Clears bit 255 (bit 7 of byte 31)\n- Sets bit 6 of byte 31)\n\nThis produces a value in the range [2^254, 2^255) that is divisible by 8.",
+      "math_interpretation": "clamp: clear bits 0-2 and 255, set bit 254",
+      "informal_interpretation": "Specification function computing the clamped 32-byte scalar used in X25519.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar_specs.rs#L112",
+      "category": "spec",
+      "referenced_specs": []
+    }
+  ],
+  "verified_functions": [
+    {
+      "id": "compressededwardsy__as_bytes",
+      "name": "as_bytes",
+      "display_name": "CompressedEdwardsY::as_bytes",
+      "impl_type": "CompressedEdwardsY",
+      "contract": "pub const fn as_bytes(&self) -> (result: &[u8; 32])\n    ensures\n        result == self.0,",
+      "requires": [],
+      "ensures": [
+        "result == self.0,"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 255,
+      "module": "edwards",
+      "doc_comment": "View this `CompressedEdwardsY` as an array of bytes.",
+      "math_interpretation": "&CompressedEdwardsY -> &[u8; 32]",
+      "informal_interpretation": "Returns the byte representation of a compressed Edwards Y point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L255",
+      "category": "verified"
+    },
+    {
+      "id": "compressededwardsy__decompress",
+      "name": "decompress",
+      "display_name": "CompressedEdwardsY::decompress",
+      "impl_type": "CompressedEdwardsY",
+      "contract": "pub fn decompress(&self) -> (result: Option<\n    EdwardsPoint,\n>)\n// The compressed point must have a valid sign bit. This is automatically\n// satisfied for points produced by `compress()`. For externally-sourced\n// bytes (e.g., from network input), callers must ensure this invariant.\n//\n// See `compressed_y_has_valid_sign_bit` in `edwards_specs.rs` for full justification.\n\n    requires\n        compressed_y_has_valid_sign_bit(&self.0),\n    ensures\n// Decompression succeeds iff the y-coordinate is valid\n\n        math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0))\n            <==> result.is_some(),\n        // When successful, the result has these properties:\n        result.is_some() ==> (\n        // The Y coordinate matches the one from the compressed representation\n        spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes(\n            &self.0,\n        )\n        // The point is valid on the Edwards curve\n         && is_valid_edwards_point(\n            result.unwrap(),\n        )\n        // The X coordinate sign bit matches the sign bit from the compressed representation\n         && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),",
+      "requires": [
+        "compressed_y_has_valid_sign_bit(&self.0),"
+      ],
+      "ensures": [
+        "math_is_valid_y_coordinate(spec_field_element_from_bytes(&self.0)) <==> result.is_some(),",
+        "result.is_some() ==> ( spec_field_element(&result.unwrap().Y) == spec_field_element_from_bytes( &self.0,",
+        ") && is_valid_edwards_point( result.unwrap(),",
+        ") && spec_field_element_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),"
+      ],
+      "referenced_specs": [
+        "compressed_y_has_valid_sign_bit",
+        "is_valid_edwards_point",
+        "math_is_valid_y_coordinate",
+        "spec_field_element",
+        "spec_field_element_from_bytes",
+        "spec_field_element_sign_bit"
+      ],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 275,
+      "module": "edwards",
+      "doc_comment": "Attempt to decompress to an `EdwardsPoint`.\n\nReturns `None` if the input is not the \\\\(y\\\\)-coordinate of a\ncurve point.\n",
+      "math_interpretation": "[u8; 32] -> Option<P in E(F_p)>",
+      "informal_interpretation": "Decompresses a 32-byte encoding to an Edwards point (if valid).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L275",
+      "category": "verified"
+    },
+    {
+      "id": "edwardspoint__compress",
+      "name": "compress",
+      "display_name": "EdwardsPoint::compress",
+      "impl_type": "EdwardsPoint",
+      "contract": "pub fn compress(&self) -> (result: CompressedEdwardsY)\n    requires\n        is_well_formed_edwards_point(*self),\n    ensures\n        compressed_edwards_y_corresponds_to_edwards(result, *self),",
+      "requires": [
+        "is_well_formed_edwards_point(*self),"
+      ],
+      "ensures": [
+        "compressed_edwards_y_corresponds_to_edwards(result, *self),"
+      ],
+      "referenced_specs": [
+        "compressed_edwards_y_corresponds_to_edwards",
+        "is_well_formed_edwards_point"
+      ],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 1599,
+      "module": "edwards",
+      "doc_comment": "Compress this point to `CompressedEdwardsY` format.",
+      "math_interpretation": "P in E(F_p) -> CompressedEdwardsY",
+      "informal_interpretation": "Compresses an Edwards point to its canonical 32-byte encoding.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L1599",
+      "category": "verified"
+    },
+    {
+      "id": "edwardspoint__is_small_order",
+      "name": "is_small_order",
+      "display_name": "EdwardsPoint::is_small_order",
+      "impl_type": "EdwardsPoint",
+      "contract": "pub fn is_small_order(&self) -> (result: bool)\n    requires\n        is_well_formed_edwards_point(*self),\n    ensures\n// A point has small order iff [8]P = O (identity)\n\n        result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)\n            == math_edwards_identity()),",
+      "requires": [
+        "is_well_formed_edwards_point(*self),"
+      ],
+      "ensures": [
+        "result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == math_edwards_identity()),"
+      ],
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "edwards_scalar_mul",
+        "is_well_formed_edwards_point",
+        "math_edwards_identity"
+      ],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 3727,
+      "module": "edwards",
+      "doc_comment": "Determine if this point is of small order.\n\n# Return\n\n* `true` if `self` is in the torsion subgroup \\\\( \\mathcal E\\[8\\] \\\\);\n* `false` if `self` is not in the torsion subgroup \\\\( \\mathcal E\\[8\\] \\\\).\n\n# Example\n\n```\nuse curve25519_dalek::constants;\n\n// Generator of the prime-order subgroup\nlet P = constants::ED25519_BASEPOINT_POINT;\n// Generator of the torsion subgroup\nlet Q = constants::EIGHT_TORSION[1];\n\n// P has large order\nassert_eq!(P.is_small_order(), false);\n\n// Q has small order\nassert_eq!(Q.is_small_order(), true);\n```",
+      "math_interpretation": "P in E[8]? (8-torsion test)",
+      "informal_interpretation": "Checks whether a point has small order (lies in the torsion subgroup).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L3727",
+      "category": "verified"
+    },
+    {
+      "id": "edwardspoint__mul_by_cofactor",
+      "name": "mul_by_cofactor",
+      "display_name": "EdwardsPoint::mul_by_cofactor",
+      "impl_type": "EdwardsPoint",
+      "contract": "pub fn mul_by_cofactor(&self) -> (result: EdwardsPoint)\n    requires\n        is_well_formed_edwards_point(*self),\n    ensures\n        is_well_formed_edwards_point(result),\n        // Functional correctness: result = [8]P\n        edwards_point_as_affine(result) == edwards_scalar_mul(\n            edwards_point_as_affine(*self),\n            8,\n        ),",
+      "requires": [
+        "is_well_formed_edwards_point(*self),"
+      ],
+      "ensures": [
+        "is_well_formed_edwards_point(result),",
+        "edwards_point_as_affine(result) == edwards_scalar_mul( edwards_point_as_affine(*self),",
+        "8,",
+        "),"
+      ],
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "edwards_scalar_mul",
+        "is_well_formed_edwards_point"
+      ],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 3604,
+      "module": "edwards",
+      "doc_comment": "Multiply by the cofactor: return \\\\(\\[8\\]P\\\\).",
+      "math_interpretation": "P -> [8]P (cofactor clearing)",
+      "informal_interpretation": "Multiplies a point by the cofactor (8) to clear the torsion component.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L3604",
+      "category": "verified"
+    },
+    {
+      "id": "edwardspoint__neg",
+      "name": "neg",
+      "display_name": "EdwardsPoint::neg",
+      "impl_type": "EdwardsPoint",
+      "contract": "fn neg(self) -> (result:\n    EdwardsPoint)\n// requires clause in NegSpecImpl for &EdwardsPoint above:\n//   is_well_formed_edwards_point(*self)\n\n    ensures\n        is_well_formed_edwards_point(result),\n        edwards_point_as_affine(result) == edwards_neg(edwards_point_as_affine(*self)),",
+      "requires": [],
+      "ensures": [
+        "is_well_formed_edwards_point(result),",
+        "edwards_point_as_affine(result) == edwards_neg(edwards_point_as_affine(*self)),"
+      ],
+      "referenced_specs": [
+        "edwards_neg",
+        "edwards_point_as_affine",
+        "is_well_formed_edwards_point"
+      ],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 2306,
+      "module": "edwards",
+      "doc_comment": "",
+      "math_interpretation": "P -> -P in E(F_p)",
+      "informal_interpretation": "Negates an Edwards point (group inverse).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L2306",
+      "category": "verified"
+    },
+    {
+      "id": "edwardspoint__to_montgomery",
+      "name": "to_montgomery",
+      "display_name": "EdwardsPoint::to_montgomery",
+      "impl_type": "EdwardsPoint",
+      "contract": "pub fn to_montgomery(&self) -> (result: MontgomeryPoint)\n    requires\n        is_valid_edwards_point(*self),  // Gives us z != 0 for birational map\n        fe51_limbs_bounded(&self.X, 54),\n        // Y and Z need 51-bit bounds so U = Z + Y is 52-bit bounded (< 54 for mul)\n        fe51_limbs_bounded(&self.Y, 51) && fe51_limbs_bounded(&self.Z, 51),\n        sum_of_limbs_bounded(&self.Z, &self.Y, u64::MAX),\n    ensures\n        montgomery_corresponds_to_edwards(result, *self),",
+      "requires": [
+        "is_valid_edwards_point(*self),  // Gives us z != 0 for birational map fe51_limbs_bounded(&self.X, 54),",
+        "fe51_limbs_bounded(&self.Y, 51) && fe51_limbs_bounded(&self.Z, 51),",
+        "sum_of_limbs_bounded(&self.Z, &self.Y, u64::MAX),"
+      ],
+      "ensures": [
+        "montgomery_corresponds_to_edwards(result, *self),"
+      ],
+      "referenced_specs": [
+        "fe51_limbs_bounded",
+        "is_valid_edwards_point",
+        "montgomery_corresponds_to_edwards",
+        "sum_of_limbs_bounded"
+      ],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 1456,
+      "module": "edwards",
+      "doc_comment": "Convert this `EdwardsPoint` on the Edwards model to the\ncorresponding `MontgomeryPoint` on the Montgomery model.\n\nThis function has one exceptional case; the identity point of\nthe Edwards curve is sent to the 2-torsion point \\\\((0,0)\\\\)\non the Montgomery curve.\n\nNote that this is a one-way conversion, since the Montgomery\nmodel does not retain sign information.",
+      "math_interpretation": "u = (1+y)/(1-y), birational map E -> M",
+      "informal_interpretation": "Converts an Edwards point to its Montgomery u-coordinate.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L1456",
+      "category": "verified"
+    },
+    {
+      "id": "edwardspoint__vartime_double_scalar_mul_basepoint",
+      "name": "vartime_double_scalar_mul_basepoint",
+      "display_name": "EdwardsPoint::vartime_double_scalar_mul_basepoint",
+      "impl_type": "EdwardsPoint",
+      "contract": "pub fn vartime_double_scalar_mul_basepoint(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (result:\n    EdwardsPoint)\n    requires\n        is_well_formed_edwards_point(*A),\n    ensures\n        is_well_formed_edwards_point(result),\n        // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint\n        edwards_point_as_affine(result) ==",
+      "requires": [
+        "is_well_formed_edwards_point(*A),"
+      ],
+      "ensures": [
+        "is_well_formed_edwards_point(result),",
+        "edwards_point_as_affine(result) =="
+      ],
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "is_well_formed_edwards_point"
+      ],
+      "file": "curve25519-dalek/src/edwards.rs",
+      "line": 2731,
+      "module": "edwards",
+      "doc_comment": "Compute \\\\(aA + bB\\\\) in variable time, where \\\\(B\\\\) is the Ed25519 basepoint.",
+      "math_interpretation": "(a,A,b) -> [a]A + [b]B, B = Ed25519 basepoint",
+      "informal_interpretation": "Computes a double scalar multiplication with the basepoint (variable-time).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L2731",
+      "category": "verified"
+    },
+    {
+      "id": "montgomerypoint__to_edwards",
+      "name": "to_edwards",
+      "display_name": "MontgomeryPoint::to_edwards",
+      "impl_type": "MontgomeryPoint",
+      "contract": "pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)\n    ensures\n        match result",
+      "requires": [],
+      "ensures": [
+        "match result"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/montgomery.rs",
+      "line": 1009,
+      "module": "montgomery",
+      "doc_comment": "Attempt to convert to an `EdwardsPoint`, using the supplied\nchoice of sign for the `EdwardsPoint`.\n\n# Inputs\n\n* `sign`: a `u8` donating the desired sign of the resulting\n`EdwardsPoint`.  `0` denotes positive and `1` negative.\n\n# Return\n\n* `Some(EdwardsPoint)` if `self` is the \\\\(u\\\\)-coordinate of a\npoint on (the Montgomery form of) Curve25519;\n\n* `None` if `self` is the \\\\(u\\\\)-coordinate of a point on the\ntwist of (the Montgomery form of) Curve25519;\n",
+      "math_interpretation": "u -> (x,y) in E(F_p), birational map M -> E",
+      "informal_interpretation": "Converts a Montgomery point to its Edwards representation (with sign).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/montgomery.rs#L1009",
+      "category": "verified"
+    },
+    {
+      "id": "compressedristretto__as_bytes",
+      "name": "as_bytes",
+      "display_name": "CompressedRistretto::as_bytes",
+      "impl_type": "CompressedRistretto",
+      "contract": "pub const fn as_bytes(&self) -> (result: &[u8; 32])\n    ensures\n        *result == self.0,",
+      "requires": [],
+      "ensures": [
+        "*result == self.0,"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 274,
+      "module": "ristretto",
+      "doc_comment": "View this `CompressedRistretto` as an array of bytes.",
+      "math_interpretation": "&CompressedRistretto -> &[u8; 32]",
+      "informal_interpretation": "Returns the byte representation of a compressed Ristretto point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L274",
+      "category": "verified"
+    },
+    {
+      "id": "compressedristretto__ct_eq",
+      "name": "ct_eq",
+      "display_name": "CompressedRistretto::ct_eq",
+      "impl_type": "CompressedRistretto",
+      "contract": "fn ct_eq(&self, other: &CompressedRistretto) -> (result: Choice)\n    ensures\n        choice_is_true(result) == (self.0 == other.0),",
+      "requires": [],
+      "ensures": [
+        "choice_is_true(result) == (self.0 == other.0),"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 254,
+      "module": "ristretto",
+      "doc_comment": "",
+      "math_interpretation": "a =? b (constant-time byte comparison)",
+      "informal_interpretation": "Constant-time equality comparison of two compressed Ristretto points.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L254",
+      "category": "verified"
+    },
+    {
+      "id": "compressedristretto__decompress",
+      "name": "decompress",
+      "display_name": "CompressedRistretto::decompress",
+      "impl_type": "CompressedRistretto",
+      "contract": "pub fn decompress(&self) -> (result: Option<RistrettoPoint>)\n    ensures\n// Spec alignment: result matches spec-level decoding\n\n        result == spec_ristretto_decompress(self.0),\n        // If decompression succeeds, the result is a well-formed Edwards point\n        // (well-formed includes: valid on curve, limbs bounded, sum bounded)\n        result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),\n        // On success, the decoded point lies in the even subgroup\n        result.is_some() ==> is_in_even_subgroup(result.unwrap().0),",
+      "requires": [],
+      "ensures": [
+        "result == spec_ristretto_decompress(self.0),",
+        "result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),",
+        "result.is_some() ==> is_in_even_subgroup(result.unwrap().0),"
+      ],
+      "referenced_specs": [
+        "is_in_even_subgroup",
+        "is_well_formed_edwards_point",
+        "spec_ristretto_decompress"
+      ],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 332,
+      "module": "ristretto",
+      "doc_comment": "Attempt to decompress to an `RistrettoPoint`.\n\n# Return\n\n- `Some(RistrettoPoint)` if `self` was the canonical encoding of a point;\n\n- `None` if `self` was not the canonical encoding of a point.",
+      "math_interpretation": "[u8; 32] -> Option<P in E/~>, Ristretto decoding",
+      "informal_interpretation": "Decompresses a Ristretto encoding to a point (if valid).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L332",
+      "category": "verified"
+    },
+    {
+      "id": "compressedristretto__from_slice",
+      "name": "from_slice",
+      "display_name": "CompressedRistretto::from_slice",
+      "impl_type": "CompressedRistretto",
+      "contract": "pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedRistretto, TryFromSliceError>)\n    ensures\n        bytes@.len() == 32 ==> matches!(result, Ok(_)),\n        bytes@.len() != 32 ==> matches!(result, Err(_)),\n        match result",
+      "requires": [],
+      "ensures": [
+        "bytes@.len() == 32 ==> matches!(result, Ok(_)),",
+        "bytes@.len() != 32 ==> matches!(result, Err(_)),",
+        "match result"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 288,
+      "module": "ristretto",
+      "doc_comment": "Construct a `CompressedRistretto` from a slice of bytes.\n\n# Errors\n\nReturns [`TryFromSliceError`] if the input `bytes` slice does not have\na length of 32.",
+      "math_interpretation": "&[u8] -> CompressedRistretto",
+      "informal_interpretation": "Constructs a compressed Ristretto point from a byte slice.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L288",
+      "category": "verified"
+    },
+    {
+      "id": "compressedristretto__identity",
+      "name": "identity",
+      "display_name": "CompressedRistretto::identity",
+      "impl_type": "CompressedRistretto",
+      "contract": "fn identity() -> (result: CompressedRistretto)\n    ensures\n        forall|i: int| 0 <= i < 32 ==> result.0[i] == 0u8,",
+      "requires": [],
+      "ensures": [
+        "forall|i: int| 0 <= i < 32 ==> result.0[i] == 0u8,"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 316,
+      "module": "ristretto",
+      "doc_comment": "",
+      "math_interpretation": "Encode(O) -> CompressedRistretto",
+      "informal_interpretation": "Returns the compressed identity Ristretto point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L316",
+      "category": "verified"
+    },
+    {
+      "id": "compressedristretto__to_bytes",
+      "name": "to_bytes",
+      "display_name": "CompressedRistretto::to_bytes",
+      "impl_type": "CompressedRistretto",
+      "contract": "pub const fn to_bytes(&self) -> (result: [u8; 32])\n    ensures\n        result == self.0,",
+      "requires": [],
+      "ensures": [
+        "result == self.0,"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 266,
+      "module": "ristretto",
+      "doc_comment": "Copy the bytes of this `CompressedRistretto`.",
+      "math_interpretation": "CompressedRistretto -> [u8; 32]",
+      "informal_interpretation": "Returns the byte array of a compressed Ristretto point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L266",
+      "category": "verified"
+    },
+    {
+      "id": "ristrettopoint__compress",
+      "name": "compress",
+      "display_name": "RistrettoPoint::compress",
+      "impl_type": "RistrettoPoint",
+      "contract": "pub fn compress(&self) -> (result: CompressedRistretto)\n    ensures\n        result.0 == spec_ristretto_compress(*self),",
+      "requires": [],
+      "ensures": [
+        "result.0 == spec_ristretto_compress(*self),"
+      ],
+      "referenced_specs": [
+        "spec_ristretto_compress"
+      ],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 654,
+      "module": "ristretto",
+      "doc_comment": "Compress this point using the Ristretto encoding.",
+      "math_interpretation": "P in E/~ -> [u8; 32], Ristretto encoding",
+      "informal_interpretation": "Compresses a Ristretto point to its canonical 32-byte encoding.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L654",
+      "category": "verified"
+    },
+    {
+      "id": "ristrettopoint__default",
+      "name": "default",
+      "display_name": "RistrettoPoint::default",
+      "impl_type": "RistrettoPoint",
+      "contract": "fn default() -> (result: CompressedRistretto)\n    ensures\n        forall|i: int| 0 <= i < 32 ==> result.0[i] == 0u8,",
+      "requires": [],
+      "ensures": [
+        "forall|i: int| 0 <= i < 32 ==> result.0[i] == 0u8,"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 502,
+      "module": "ristretto",
+      "doc_comment": "",
+      "math_interpretation": "O (identity in E/~)",
+      "informal_interpretation": "Returns the default (identity) Ristretto point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L502",
+      "category": "verified"
+    },
+    {
+      "id": "ristrettopoint__mul",
+      "name": "mul",
+      "display_name": "RistrettoPoint::mul",
+      "impl_type": "RistrettoPoint",
+      "contract": "fn mul(self, scalar: &'b Scalar) -> (result:\n    RistrettoPoint)\n// requires clause inherited from MulSpecImpl::mul_req:\n//   scalar.bytes[31] <= 127 && is_well_formed_edwards_point(self.0)\n\n    ensures\n        is_well_formed_edwards_point(result.0),\n        edwards_point_as_affine(result.0) == edwards_scalar_mul(\n            edwards_point_as_affine(self.0),\n            scalar_to_nat(scalar),\n        ),",
+      "requires": [],
+      "ensures": [
+        "is_well_formed_edwards_point(result.0),",
+        "edwards_point_as_affine(result.0) == edwards_scalar_mul( edwards_point_as_affine(self.0),",
+        "scalar_to_nat(scalar),",
+        "),"
+      ],
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "edwards_scalar_mul",
+        "is_well_formed_edwards_point",
+        "scalar_to_nat"
+      ],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 1825,
+      "module": "ristretto",
+      "doc_comment": "Scalar multiplication: compute `scalar * self`.",
+      "math_interpretation": "(n,P) -> [n]P in E/~, scalar mult",
+      "informal_interpretation": "Scalar multiplication of a Ristretto point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L1825",
+      "category": "verified"
+    },
+    {
+      "id": "ristrettopoint__mul_base",
+      "name": "mul_base",
+      "display_name": "RistrettoPoint::mul_base",
+      "impl_type": "RistrettoPoint",
+      "contract": "pub fn mul_base(scalar: &Scalar) -> (result: Self)\n    requires\n        scalar.bytes[31] <= 127,\n    ensures\n        is_well_formed_edwards_point(result.0),\n        // Functional correctness: result = [scalar] * B where B is the Ristretto basepoint\n        edwards_point_as_affine(result.0) == edwards_scalar_mul(\n            spec_ristretto_basepoint(),\n            scalar_to_nat(scalar),\n        ),",
+      "requires": [
+        "scalar.bytes[31] <= 127,"
+      ],
+      "ensures": [
+        "is_well_formed_edwards_point(result.0),",
+        "edwards_point_as_affine(result.0) == edwards_scalar_mul( spec_ristretto_basepoint(),",
+        "scalar_to_nat(scalar),",
+        "),"
+      ],
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "edwards_scalar_mul",
+        "is_well_formed_edwards_point",
+        "scalar_to_nat",
+        "spec_ristretto_basepoint"
+      ],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 1868,
+      "module": "ristretto",
+      "doc_comment": "Fixed-base scalar multiplication by the Ristretto base point.\n\nUses precomputed basepoint tables when the `precomputed-tables` feature\nis enabled, trading off increased code size for ~4x better performance.",
+      "math_interpretation": "n -> [n]B, B = Ristretto basepoint",
+      "informal_interpretation": "Scalar multiplication of the Ristretto basepoint.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L1868",
+      "category": "verified"
+    },
+    {
+      "id": "ristrettopoint__neg",
+      "name": "neg",
+      "display_name": "RistrettoPoint::neg",
+      "impl_type": "RistrettoPoint",
+      "contract": "fn neg(self) -> (result:\n    RistrettoPoint)\n// requires clause inherited from NegSpecImpl::neg_req:\n//   fe51_limbs_bounded(&self.0.X, 52) && fe51_limbs_bounded(&self.0.T, 52)\n\n    ensures\n        is_well_formed_edwards_point(result.0),\n        edwards_point_as_affine(result.0) == edwards_neg(edwards_point_as_affine(self.0)),",
+      "requires": [],
+      "ensures": [
+        "is_well_formed_edwards_point(result.0),",
+        "edwards_point_as_affine(result.0) == edwards_neg(edwards_point_as_affine(self.0)),"
+      ],
+      "referenced_specs": [
+        "edwards_neg",
+        "edwards_point_as_affine",
+        "fe51_limbs_bounded",
+        "is_well_formed_edwards_point"
+      ],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 1767,
+      "module": "ristretto",
+      "doc_comment": "",
+      "math_interpretation": "P -> -P in E/~",
+      "informal_interpretation": "Negates a Ristretto point.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L1767",
+      "category": "verified"
+    },
+    {
+      "id": "ristrettopoint__sub",
+      "name": "sub",
+      "display_name": "RistrettoPoint::sub",
+      "impl_type": "RistrettoPoint",
+      "contract": "fn sub(self, other: &'b RistrettoPoint) -> (result:\n    RistrettoPoint)\n// requires (from SubSpecImpl::sub_req): is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0)\n\n    ensures\n        is_well_formed_edwards_point(result.0),\n        edwards_point_as_affine(result.0) == edwards_sub(\n            edwards_point_as_affine(self.0).0,\n            edwards_point_as_affine(self.0).1,\n            edwards_point_as_affine(other.0).0,\n            edwards_point_as_affine(other.0).1,\n        ),",
+      "requires": [],
+      "ensures": [
+        "is_well_formed_edwards_point(result.0),",
+        "edwards_point_as_affine(result.0) == edwards_sub( edwards_point_as_affine(self.0).0,",
+        "edwards_point_as_affine(self.0).1,",
+        "edwards_point_as_affine(other.0).0,",
+        "edwards_point_as_affine(other.0).1,",
+        "),"
+      ],
+      "referenced_specs": [
+        "edwards_point_as_affine",
+        "edwards_sub",
+        "is_well_formed_edwards_point"
+      ],
+      "file": "curve25519-dalek/src/ristretto.rs",
+      "line": 1558,
+      "module": "ristretto",
+      "doc_comment": "",
+      "math_interpretation": "(P,Q) -> P - Q in E/~",
+      "informal_interpretation": "Subtracts two Ristretto points.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/ristretto.rs#L1558",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__as_bytes",
+      "name": "as_bytes",
+      "display_name": "Scalar::as_bytes",
+      "impl_type": "Scalar",
+      "contract": "pub const fn as_bytes(&self) -> (result: &[u8; 32])\n    ensures\n        result == &self.bytes,\n        scalar_to_nat(self) == bytes32_to_nat(&result),",
+      "requires": [],
+      "ensures": [
+        "result == &self.bytes,",
+        "scalar_to_nat(self) == bytes32_to_nat(&result),"
+      ],
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "scalar_to_nat"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 1619,
+      "module": "scalar",
+      "doc_comment": "View the little-endian byte encoding of the integer representing this Scalar.\n\n# Example\n\n```\nuse curve25519_dalek::scalar::Scalar;\n\nlet s: Scalar = Scalar::ZERO;\n\nassert!(s.as_bytes() == &[0u8; 32]);\n```",
+      "math_interpretation": "&Scalar -> &[u8; 32]",
+      "informal_interpretation": "Returns a reference to the scalar's byte representation.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L1619",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__ct_eq",
+      "name": "ct_eq",
+      "display_name": "Scalar::ct_eq",
+      "impl_type": "Scalar",
+      "contract": "fn ct_eq(&self, other: &Self) -> (result: Choice)\n    ensures\n        choice_is_true(result) == (self.bytes == other.bytes),",
+      "requires": [],
+      "ensures": [
+        "choice_is_true(result) == (self.bytes == other.bytes),"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 457,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "a =? b in Z/LZ (constant-time)",
+      "informal_interpretation": "Constant-time equality comparison of two scalars.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L457",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__eq",
+      "name": "eq",
+      "display_name": "Scalar::eq",
+      "impl_type": "Scalar",
+      "contract": "fn eq(&self, other: &Self) -> (result: bool)\n    ensures\n        result == (self.bytes == other.bytes),",
+      "requires": [],
+      "ensures": [
+        "result == (self.bytes == other.bytes),"
+      ],
+      "referenced_specs": [],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 436,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "a =? b in Z/LZ",
+      "informal_interpretation": "Equality comparison of two scalars.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L436",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__from",
+      "name": "from",
+      "display_name": "Scalar::from",
+      "impl_type": "Scalar",
+      "contract": "fn from(x: u8) -> (result: Scalar)\n    ensures\n        scalar_to_nat(&result) == x as nat,",
+      "requires": [],
+      "ensures": [
+        "scalar_to_nat(&result) == x as nat,"
+      ],
+      "referenced_specs": [
+        "scalar_to_nat"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 1139,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "n: u64 -> Scalar(n mod L)",
+      "informal_interpretation": "Converts a u64 integer to a Scalar.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L1139",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__from_bytes_mod_order",
+      "name": "from_bytes_mod_order",
+      "display_name": "Scalar::from_bytes_mod_order",
+      "impl_type": "Scalar",
+      "contract": "pub fn from_bytes_mod_order(bytes: [u8; 32]) -> (result: Scalar)\n    ensures\n// Result is equivalent to input modulo the group order\n\n        bytes32_to_nat(&result.bytes) % group_order() == bytes32_to_nat(&bytes) % group_order(),\n        // Result satisfies Scalar invariants #1 and #2\n        is_canonical_scalar(&result),",
+      "requires": [],
+      "ensures": [
+        "bytes32_to_nat(&result.bytes) % group_order() == bytes32_to_nat(&bytes) % group_order(),",
+        "is_canonical_scalar(&result),"
+      ],
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "group_order",
+        "is_canonical_scalar"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 258,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "b -> LE(b) mod L, L = group order",
+      "informal_interpretation": "Constructs a Scalar by reducing a 256-bit integer modulo the group order.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L258",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__from_bytes_mod_order_wide",
+      "name": "from_bytes_mod_order_wide",
+      "display_name": "Scalar::from_bytes_mod_order_wide",
+      "impl_type": "Scalar",
+      "contract": "pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> (result: Scalar)\n    ensures\n        bytes32_to_nat(&result.bytes) % group_order() == bytes_seq_to_nat(input@)\n            % group_order(),\n        // Result satisfies Scalar invariants #1 and #2\n        is_canonical_scalar(&result),\n        // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.\n        // Bias: at most L/2^512 ≈ 2^-259 statistical distance from uniform (cryptographically negligible).\n        is_uniform_bytes(input) ==> is_uniform_scalar(&result),",
+      "requires": [],
+      "ensures": [
+        "bytes32_to_nat(&result.bytes) % group_order() == bytes_seq_to_nat(input@) % group_order(),",
+        "is_canonical_scalar(&result),",
+        "is_uniform_bytes(input) ==> is_uniform_scalar(&result),"
+      ],
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "bytes_seq_to_nat",
+        "group_order",
+        "is_canonical_scalar"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 287,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "b: [u8;64] -> LE(b) mod L",
+      "informal_interpretation": "Constructs a Scalar by reducing a 512-bit integer modulo the group order.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L287",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__from_canonical_bytes",
+      "name": "from_canonical_bytes",
+      "display_name": "Scalar::from_canonical_bytes",
+      "impl_type": "Scalar",
+      "contract": "pub fn from_canonical_bytes(bytes: [u8; 32]) -> (result: CtOption<Scalar>)\n    ensures\n        bytes32_to_nat(&bytes) < group_order() ==> ct_option_has_value(result),\n        bytes32_to_nat(&bytes) >= group_order() ==> !ct_option_has_value(result),\n        ct_option_has_value(result) ==> bytes32_to_nat(&ct_option_value(result).bytes)\n            % group_order() == bytes32_to_nat(&bytes) % group_order(),",
+      "requires": [],
+      "ensures": [
+        "bytes32_to_nat(&bytes) < group_order() ==> ct_option_has_value(result),",
+        "bytes32_to_nat(&bytes) >= group_order() ==> !ct_option_has_value(result),",
+        "ct_option_has_value(result) ==> bytes32_to_nat(&ct_option_value(result).bytes) % group_order() == bytes32_to_nat(&bytes) % group_order(),"
+      ],
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "group_order"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 350,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "b -> Some(s) if LE(b) < L else None",
+      "informal_interpretation": "Constructs a Scalar from canonical bytes (rejects non-canonical).",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L350",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__from_hash",
+      "name": "from_hash",
+      "display_name": "Scalar::from_hash",
+      "impl_type": "Scalar",
+      "contract": "pub fn from_hash<D>(hash: D) -> (result: Scalar) where\n    D: digest::Digest<OutputSize = digest::generic_array::typenum::U64>,\n\n    ensures\n// is_uniform_digest(&hash) ==> is_uniform_scalar(&result),\n// Result satisfies Scalar invariants #1 and #2\n\n        is_canonical_scalar(&result),",
+      "requires": [],
+      "ensures": [
+        "is_canonical_scalar(&result),"
+      ],
+      "referenced_specs": [
+        "is_canonical_scalar"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 1552,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "h: [u8;64] -> LE(h) mod L",
+      "informal_interpretation": "Constructs a Scalar from a 64-byte hash output reduced mod L.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L1552",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__hash_from_bytes",
+      "name": "hash_from_bytes",
+      "display_name": "Scalar::hash_from_bytes",
+      "impl_type": "Scalar",
+      "contract": "pub fn hash_from_bytes<D>(input: &[u8]) -> (result: Scalar) where\n    D: digest::Digest<OutputSize = digest::generic_array::typenum::U64> + Default,\n\n    ensures\n// Result satisfies Scalar invariants #1 and #2\n\n        is_canonical_scalar(&result),",
+      "requires": [],
+      "ensures": [
+        "is_canonical_scalar(&result),"
+      ],
+      "referenced_specs": [
+        "is_canonical_scalar"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 1477,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "input -> SHA-512(input) mod L",
+      "informal_interpretation": "Hashes input bytes with SHA-512 and reduces to a Scalar.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L1477",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__invert",
+      "name": "invert",
+      "display_name": "Scalar::invert",
+      "impl_type": "Scalar",
+      "contract": "pub fn invert(&self) -> (result: Scalar)\n    requires\n        is_canonical_scalar(self),\n    ensures\n// Result is the multiplicative inverse: result * self ≡ 1 (mod group_order)\n\n        (scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1,\n        is_canonical_scalar(&result),",
+      "requires": [
+        "is_canonical_scalar(self),"
+      ],
+      "ensures": [
+        "(scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1,",
+        "is_canonical_scalar(&result),"
+      ],
+      "referenced_specs": [
+        "group_order",
+        "is_canonical_scalar",
+        "scalar_to_nat"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 1667,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "s -> s^(-1) mod L, multiplicative inverse",
+      "informal_interpretation": "Computes the multiplicative inverse of a scalar modulo the group order.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L1667",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__neg",
+      "name": "neg",
+      "display_name": "Scalar::neg",
+      "impl_type": "Scalar",
+      "contract": "fn neg(self) -> (result: Scalar)\n    ensures\n        (scalar_to_nat(&self) + scalar_to_nat(&result)) % group_order() == 0,",
+      "requires": [],
+      "ensures": [
+        "(scalar_to_nat(&self) + scalar_to_nat(&result)) % group_order() == 0,"
+      ],
+      "referenced_specs": [
+        "group_order",
+        "scalar_to_nat"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 975,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "s -> -s mod L",
+      "informal_interpretation": "Negates a scalar modulo the group order.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L975",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__to_bytes",
+      "name": "to_bytes",
+      "display_name": "Scalar::to_bytes",
+      "impl_type": "Scalar",
+      "contract": "pub const fn to_bytes(&self) -> (result: [u8; 32])\n    ensures\n        result == self.bytes,\n        scalar_to_nat(self) == bytes32_to_nat(&result),",
+      "requires": [],
+      "ensures": [
+        "result == self.bytes,",
+        "scalar_to_nat(self) == bytes32_to_nat(&result),"
+      ],
+      "referenced_specs": [
+        "bytes32_to_nat",
+        "scalar_to_nat"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 1600,
+      "module": "scalar",
+      "doc_comment": "Convert this `Scalar` to its underlying sequence of bytes.\n\n# Example\n\n```\nuse curve25519_dalek::scalar::Scalar;\n\nlet s: Scalar = Scalar::ZERO;\n\nassert!(s.to_bytes() == [0u8; 32]);\n```",
+      "math_interpretation": "s in Z/LZ -> [u8; 32] little-endian",
+      "informal_interpretation": "Returns the canonical byte encoding of a scalar.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L1600",
+      "category": "verified"
+    },
+    {
+      "id": "scalar__clamp_integer",
+      "name": "clamp_integer",
+      "display_name": "clamp_integer",
+      "impl_type": "",
+      "contract": "pub const fn clamp_integer(bytes: [u8; 32]) -> (result: [u8; 32])\n    ensures\n// Result is a valid clamped integer for X25519\n\n        is_clamped_integer(&result),\n        // The result matches the spec function\n        result == spec_clamp_integer(bytes),\n        // All bytes except 0 and 31 remain unchanged\n        forall|i: int| 1 <= i < 31 ==> #[trigger] result[i] == bytes[i],\n        // Low byte preserves bits 3-7\n        result[0] & 0b1111_1000 == bytes[0] & 0b1111_1000,\n        // High byte preserves bits 0-5\n        result[31] & 0b0011_1111 == bytes[31] & 0b0011_1111,",
+      "requires": [],
+      "ensures": [
+        "is_clamped_integer(&result),",
+        "result == spec_clamp_integer(bytes),",
+        "forall|i: int| 1 <= i < 31 ==> #[trigger] result[i] == bytes[i],",
+        "result[0] & 0b1111_1000 == bytes[0] & 0b1111_1000,",
+        "result[31] & 0b0011_1111 == bytes[31] & 0b0011_1111,"
+      ],
+      "referenced_specs": [
+        "is_clamped_integer",
+        "spec_clamp_integer"
+      ],
+      "file": "curve25519-dalek/src/scalar.rs",
+      "line": 3439,
+      "module": "scalar",
+      "doc_comment": "",
+      "math_interpretation": "clamp: clear bits 0-2 and 255, set bit 254",
+      "informal_interpretation": "Clamps a 32-byte integer for use as an X25519 scalar.",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L3439",
+      "category": "verified"
+    }
+  ]
+}

@@ -462,6 +462,21 @@ def main():
     # Build set of spec function names for cross-referencing
     spec_names = {s["name"] for s in spec_functions}
 
+    # Add spec-to-spec cross-references (which other specs does each spec call?)
+    print("Computing spec-to-spec cross-references...")
+    for spec in spec_functions:
+        body_text = spec.get("body", "")
+        own_name = spec["name"]
+        referenced = sorted([
+            s for s in spec_names
+            if s != own_name and re.search(r'\b' + re.escape(s) + r'\b', body_text)
+        ])
+        spec["referenced_specs"] = referenced
+
+    spec_refs_total = sum(len(s["referenced_specs"]) for s in spec_functions)
+    specs_with_refs = sum(1 for s in spec_functions if s["referenced_specs"])
+    print(f"  {spec_refs_total} spec-to-spec references across {specs_with_refs} spec functions")
+
     # 2. Extract verified function contracts
     if os.path.exists(args.verified_csv):
         print(f"Extracting verified function contracts from {args.verified_csv}...")

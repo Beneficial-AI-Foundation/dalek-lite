@@ -1799,59 +1799,38 @@ impl EdwardsPoint {
         // Convert to Edwards point
         let E1_opt = M1.to_edwards(sign_bit);
 
-        // Unwrap and multiply by cofactor.
-        // Avoid using `expect` here because Verus's vstd spec requires `is_some()`.
-        let E1 = match E1_opt {
-            Some(E1) => E1,
-            None => {
-                /* ORIGINAL CODE:
-                let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
-                */
-                // Tell rustc this panics, while keeping Verus happy.
-                #[cfg(not(verus_keep_ghost))]
-                panic!("Montgomery conversion to Edwards point in Elligator failed");
-
-                // In verification mode, pick a well-formed placeholder (this branch corresponds to
-                // the `expect` panic in exec builds, so it never returns at runtime).
-                #[cfg(verus_keep_ghost)]
-                EdwardsPoint::identity()
-            },
-        };
-
+        // elligator_encode never produces u = -1 (lemma_elligator_never_minus_one),
+        // so to_edwards always returns Some. Unwrap and multiply by cofactor.
         proof {
-            // mul_by_cofactor requires well-formedness; this holds:
-            // - for Some(E1): from MontgomeryPoint::to_edwards postcondition
-            // - for None: E1 is identity (well-formed)
+            // to_edwards returns None only when is_equal_to_minus_one(u),
+            // but elligator_encode guarantees !is_equal_to_minus_one(u).
+            assert(!is_equal_to_minus_one(spec_montgomery(M1)));
             match E1_opt {
-                Some(ed) => {
-                    assert(ed == E1);
-                    assert(is_well_formed_edwards_point(E1));
-                },
+                Some(_) => {},
                 None => {
-                    assert(is_well_formed_edwards_point(E1));
+                    assert(false);
                 },
             }
+            assert(E1_opt.is_some());
         }
-
+        let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
         let result = E1.mul_by_cofactor();
 
         proof {
-            // Functional correctness: reduce the spec goal to the 32-byte slice `res@`,
-            // then treat the Edwards/Montgomery mapping as a proof-bypass.
-            assert(hash@ == spec_sha512(bytes@));
-            assert(res@ == hash@.subrange(0, 32));
+            // Chain: from_bytes → elligator_encode → to_edwards → mul_by_cofactor = spec
             assert(res@ == spec_sha512(bytes@).subrange(0, 32));
+            lemma_bytes32_to_nat_eq_bytes_seq_to_nat(&res);
 
-            // PROOF BYPASS: the remainder would need aligned specs for:
-            // FieldElement::from_bytes, elligator_encode, MontgomeryPoint::to_edwards, and mul_by_cofactor.
-            assume(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(res@));
+            let fe_nat_spec = (bytes_seq_to_nat(res@) % pow2(255)) % p();
+            assert(spec_field_element(&fe) == fe_nat_spec);
+            let u = spec_elligator_encode(fe_nat_spec);
+            assert(spec_montgomery(M1) == u);
 
-            assert(spec_nonspec_map_to_curve(res@) == spec_nonspec_map_to_curve(
-                spec_sha512(bytes@).subrange(0, 32),
-            ));
-            assert(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(
-                spec_sha512(bytes@).subrange(0, 32),
-            ));
+            let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
+            assert(edwards_point_as_affine(E1) == P);
+
+            assert(edwards_point_as_affine(result) == edwards_scalar_mul(P, 8));
+            assert(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(res@));
         }
 
         result

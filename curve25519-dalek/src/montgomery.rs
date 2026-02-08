@@ -1014,7 +1014,8 @@ impl MontgomeryPoint {
         ensures
             match result {
                 Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards)
-                    && is_well_formed_edwards_point(edwards),
+                    && is_well_formed_edwards_point(edwards) && edwards_point_as_affine(edwards)
+                    == spec_montgomery_to_edwards_affine_with_sign(spec_montgomery(*self), sign),
                 None => is_equal_to_minus_one(spec_montgomery(*self)),
             },
     {
@@ -1057,6 +1058,11 @@ impl MontgomeryPoint {
                 Some(edwards) => {
                     assume(montgomery_corresponds_to_edwards(*self, edwards));
                     assume(is_well_formed_edwards_point(edwards));
+                    assume(edwards_point_as_affine(edwards)
+                        == spec_montgomery_to_edwards_affine_with_sign(
+                        spec_montgomery(*self),
+                        sign,
+                    ));
                 },
                 None => {
                     assume(is_equal_to_minus_one(spec_montgomery(*self)));
@@ -1082,6 +1088,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     ensures
         spec_montgomery(result) == spec_elligator_encode(spec_field_element(r_0)),
         spec_montgomery(result) < p(),
+        !is_equal_to_minus_one(spec_montgomery(result)),
 {
     let one = FieldElement::ONE;
     let zero = FieldElement::ZERO;
@@ -1548,6 +1555,9 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
             p_gt_2();
             lemma_mod_bound(spec_montgomery(result) as int, p() as int);
         }
+
+        // Elligator never produces u = -1
+        lemma_elligator_never_minus_one(r);
     }
 
     result

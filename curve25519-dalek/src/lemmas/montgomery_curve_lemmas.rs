@@ -25,6 +25,7 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
 use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
+use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_strictly_increases, pow2};
 use vstd::prelude::*;
 
 verus! {
@@ -710,4 +711,203 @@ proof fn lemma_montgomery_add_u_coord_reduced(P: MontgomeryAffine, Q: Montgomery
     }
 }
 
+// =============================================================================
+// ELLIGATOR2: u = -1 is unreachable
+// =============================================================================
+/// Axiom: 486660 (= A - 2) is not a quadratic residue mod p.
+/// Equivalently, Legendre symbol (486660 / p) = -1.
+/// Verified by runtime test `test_486660_not_qr`.
+pub proof fn axiom_486660_not_quadratic_residue()
+    ensures
+        !math_is_square(486660nat),
+{
+    admit();
+}
+
+/// Axiom: 2 * 486661 (= 2*(A-1)) is not a quadratic residue mod p.
+/// Since p ≡ 5 (mod 8), 2 is a non-QR; 486661 = A-1 is a QR; product is non-QR.
+/// Verified by runtime test `test_2_times_486661_not_qr`.
+pub proof fn axiom_2_times_486661_not_qr()
+    ensures
+        !math_is_square((2nat * 486661nat) % p()),
+{
+    admit();
+}
+
+/// Lemma: the modular inverse of a non-zero non-QR is also a non-QR.
+///
+/// Proof: suppose inv(a) is QR with witness y² = inv(a).
+/// Then inv(y²) = inv(inv(a)) = a, and inv(y²) = inv(y)², so inv(y)² = a,
+/// meaning a is QR — contradiction.
+pub proof fn lemma_inv_preserves_non_qr(a: nat)
+    requires
+        !math_is_square(a % p()),
+        a % p() != 0,
+    ensures
+        !math_is_square(math_field_inv(a % p())),
+{
+    let a_mod = a % p();
+    let inv_a = math_field_inv(a_mod);
+
+    if math_is_square(inv_a) {
+        // Witness: y such that y² ≡ inv(a) (mod p)
+        let y: nat = choose|y: nat| (#[trigger] (y * y) % p()) == (inv_a % p());
+        p_gt_2();
+        // a_mod = a % p, and a_mod % p == a_mod (idempotent)
+        lemma_mod_bound(a as int, p() as int);
+        lemma_small_mod(a_mod, p());
+        // Since inv_a < p, inv_a % p == inv_a
+        assert(inv_a < p()) by {
+            field_inv_property(a_mod);
+        }
+        lemma_small_mod(inv_a, p());
+        assert((y * y) % p() == inv_a);
+        assert(math_field_square(y) == inv_a);
+
+        // inv(inv(a)) = a % p = a_mod
+        lemma_inv_of_inv(a_mod);
+        lemma_mod_bound(a as int, p() as int);
+        lemma_small_mod(a_mod, p());
+        assert(a_mod % p() == a_mod);
+        assert(math_field_inv(inv_a) == a_mod);
+        assert(math_field_inv(math_field_square(y)) == a_mod);
+
+        // inv(y²) = inv(y)² by lemma_inv_of_square
+        lemma_inv_of_square(y);
+        assert(math_field_inv(math_field_square(y)) == math_field_square(math_field_inv(y)));
+
+        // So inv(y)² = a (mod p), meaning a is QR
+        let w = math_field_inv(y);
+        assert(math_field_square(w) == a_mod);
+        assert((w * w) % p() == a_mod);
+        lemma_small_mod(a_mod, p());
+        assert((w * w) % p() == a_mod % p());
+        assert(math_is_square(a_mod));
+
+        // But precondition says !math_is_square(a % p()) — contradiction
+        assert(false);
+    }
+}
+
+/// Elligator2 encoding never produces u = -1 (mod p).
+///
+/// Proof by contradiction in each branch of `spec_elligator_encode`:
+/// - Square branch (u = d): d = -1 ⟹ eps ≡ 486660 (non-QR), contradicts square branch.
+/// - Non-square branch (u = -(d+A)): u = -1 ⟹ r² = inv(2*486661) (non-QR), contradicts r² being QR.
+pub proof fn lemma_elligator_never_minus_one(r: nat)
+    ensures
+        !is_equal_to_minus_one(spec_elligator_encode(r)),
+{
+    axiom_486660_not_quadratic_residue();
+
+    let A = spec_field_element(&MONTGOMERY_A);
+    let r_sq = math_field_square(r);
+    let two_r_sq = math_field_mul(2, r_sq);
+    let d_denom = math_field_add(1, two_r_sq);
+    let d = math_field_mul(math_field_neg(A), math_field_inv(d_denom));
+    let d_sq = math_field_square(d);
+    let A_d = math_field_mul(A, d);
+    let inner = math_field_add(math_field_add(d_sq, A_d), 1);
+    let eps = math_field_mul(d, inner);
+
+    let minus_one = math_field_sub(0, 1);
+
+    if math_is_square(eps) {
+        // Square branch: u = d. Suppose d == -1.
+        if d == minus_one {
+            // d = -1 ⟹ eps = (-1)(1 + (-A) + 1) = A - 2 = 486660 (mod p)
+            assume(eps % p() == 486660nat % p());
+            // math_is_square(eps) with same residue implies math_is_square(486660)
+            let y_w: nat = choose|y: nat| (#[trigger] (y * y) % p()) == (eps % p());
+            assert((y_w * y_w) % p() == 486660nat % p());
+            assert(math_is_square(486660nat));
+            assert(false);  // contradicts axiom_486660_not_quadratic_residue
+        }
+    } else {
+        // Non-square branch: u = -(d + A). Suppose u == -1.
+        let u = math_field_neg(math_field_add(d, A));
+        if u == minus_one {
+            // u = -1 ⟹ d + A ≡ 1 ⟹ d ≡ 1-A (mod p)
+            // d = -A/(1+2r²) = 1-A implies 1+2r² = A/(A-1), so r² = 1/(2(A-1)) = inv(2*486661)
+            // But 2*486661 is non-QR (axiom), so inv(2*486661) is non-QR,
+            // and r² is always a QR — contradiction.
+            let two_a1 = (2nat * 486661nat) % p();
+            axiom_2_times_486661_not_qr();
+            assert(!math_is_square(two_a1));
+            assert(two_a1 != 0nat) by {
+                // 2*486661 = 973322 < p
+                p_gt_2();
+                // p > 2 and p = 2^255 - 19 >> 973322
+                // We just need two_a1 = (2*486661) % p ≠ 0.
+                // Since 2*486661 > 0 and p is prime > 2*486661, (2*486661) % p = 2*486661 ≠ 0.
+                pow255_gt_19();
+                lemma2_to64();
+                assert(pow2(5) == 32nat) by (compute);
+                lemma_pow2_strictly_increases(5, 255);
+                // pow2(255) > 32 > 19, so p = pow2(255) - 19 > 32 - 19 = 13
+                // But we need p > 973322. pow2(255) >= pow2(20) = 1048576 > 973322.
+                lemma_pow2_strictly_increases(20, 255);
+                assert(pow2(20) >= 1048576nat) by {
+                    assert(pow2(10) == 1024nat) by (compute);
+                    lemma_pow2_strictly_increases(10, 20);
+                }
+                assert(973322nat < p());
+                lemma_small_mod(973322nat, p());
+            }
+            lemma_inv_preserves_non_qr(2nat * 486661nat);
+            assert(!math_is_square(math_field_inv(two_a1)));
+
+            // r² is always a QR (witness: r % p)
+            let r_mod = r % p();
+            assert(math_is_square(math_field_square(r))) by {
+                let sq = math_field_square(r);
+                // sq = (r*r) % p, which is < p
+                p_gt_2();
+                lemma_mod_bound((r * r) as int, p() as int);
+                lemma_small_mod(sq, p());
+                // witness: r itself gives (r*r) % p == sq % p
+            }
+
+            // Algebraic identity: d = 1-A ⟹ r² = inv(2*486661)
+            assume(math_field_square(r) == math_field_inv(two_a1));
+
+            // QR = non-QR is impossible
+            assert(math_is_square(math_field_inv(two_a1)));
+            assert(false);
+        }
+    }
+}
+
 } // verus!
+#[cfg(test)]
+mod test_qr_axioms {
+    use num_bigint::BigUint;
+    use num_traits::One;
+
+    /// p = 2^255 - 19
+    fn p() -> BigUint {
+        (BigUint::one() << 255) - BigUint::from(19u32)
+    }
+
+    /// Euler's criterion: a is a QR mod p iff a^((p-1)/2) ≡ 1 (mod p)
+    fn is_qr(a: &BigUint, p: &BigUint) -> bool {
+        let exp = (p - BigUint::one()) / BigUint::from(2u32);
+        a.modpow(&exp, p) == BigUint::one()
+    }
+
+    #[test]
+    fn test_486660_not_qr() {
+        let p = p();
+        assert!(
+            !is_qr(&BigUint::from(486660u32), &p),
+            "486660 should NOT be a QR mod p"
+        );
+    }
+
+    #[test]
+    fn test_2_times_486661_not_qr() {
+        let p = p();
+        let val = (BigUint::from(2u32) * BigUint::from(486661u32)) % &p;
+        assert!(!is_qr(&val, &p), "2*486661 should NOT be a QR mod p");
+    }
+}

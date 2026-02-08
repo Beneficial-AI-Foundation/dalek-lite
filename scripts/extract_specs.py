@@ -565,7 +565,7 @@ def extract_contract_from_source(
                     if brace_stripped.startswith("{") and not brace_stripped.startswith("{|"):
                         # Flush any pending clause
                         if current_clause_lines:
-                            clause_text = " ".join(l.strip() for l in current_clause_lines).strip()
+                            clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
                             if clause_text:
                                 if current_section == "requires":
                                     requires_clauses.append(clause_text)
@@ -603,7 +603,7 @@ def extract_contract_from_source(
                 if trimmed == "requires" or trimmed.startswith("requires "):
                     # Flush previous clause
                     if current_clause_lines:
-                        clause_text = " ".join(l.strip() for l in current_clause_lines).strip()
+                        clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
                         if clause_text and clause_text not in ("requires", "ensures"):
                             if current_section == "requires":
                                 requires_clauses.append(clause_text)
@@ -613,7 +613,7 @@ def extract_contract_from_source(
                     current_clause_lines = []
                 elif trimmed == "ensures" or trimmed.startswith("ensures "):
                     if current_clause_lines:
-                        clause_text = " ".join(l.strip() for l in current_clause_lines).strip()
+                        clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
                         if clause_text and clause_text not in ("requires", "ensures"):
                             if current_section == "requires":
                                 requires_clauses.append(clause_text)
@@ -625,7 +625,7 @@ def extract_contract_from_source(
                     # If line ends with comma, it's a clause boundary
                     current_clause_lines.append(clause_line)
                     if clause_line.rstrip().endswith(","):
-                        clause_text = " ".join(l.strip() for l in current_clause_lines).strip()
+                        clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
                         if clause_text and clause_text not in ("requires", "ensures"):
                             if current_section == "requires":
                                 requires_clauses.append(clause_text)
@@ -768,7 +768,7 @@ def extract_axioms(src_dir: str, spec_names: set[str]) -> list[dict]:
             math_interp = generate_axiom_math_interpretation(fn_name, doc_comment, ensures, contract)
             # Use only the first meaningful line of the doc comment as informal description
             # (the full doc comment is shown separately in the card)
-            informal_lines = [l.strip() for l in doc_comment.split("\n") if l.strip()] if doc_comment else []
+            informal_lines = [line.strip() for line in doc_comment.split("\n") if line.strip()] if doc_comment else []
             informal_interp = informal_lines[0] if informal_lines else ""
 
             # Detect referenced spec functions

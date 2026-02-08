@@ -31,14 +31,10 @@ SPEC_FN_PATTERN = re.compile(
 )
 
 # Regex to match regular fn declarations (for verified functions)
-IMPL_FN_PATTERN = re.compile(
-    r"^(\s*)(?:pub\s+)?fn\s+(\w+)"
-)
+IMPL_FN_PATTERN = re.compile(r"^(\s*)(?:pub\s+)?fn\s+(\w+)")
 
 # Regex to match proof fn axiom_* declarations
-AXIOM_FN_PATTERN = re.compile(
-    r"^\s*(?:pub(?:\([^)]*\))?\s+)?proof\s+fn\s+(axiom_\w+)"
-)
+AXIOM_FN_PATTERN = re.compile(r"^\s*(?:pub(?:\([^)]*\))?\s+)?proof\s+fn\s+(axiom_\w+)")
 
 FUZZY_LINE_RANGE = 40
 
@@ -47,6 +43,7 @@ DEFAULT_VERIFIED_CSV = "data/libsignal_verus_specs/generated/verified_functions.
 
 
 # ── Shared helpers ────────────────────────────────────────────────────
+
 
 def derive_module(filepath: str) -> str:
     """Derive a short module name from a file path.
@@ -106,7 +103,8 @@ def derive_category_module(filepath: str) -> str:
 _PROSE_STARTERS = re.compile(
     r"^(This|The|If|Each|For|Used|Note|See|From|Both|Mathematical|"
     r"Requires|Admitted|In|Without|To|Output|Statistical|"
-    r"All|Every|Points|Axiom|AXIOM|Here)", re.IGNORECASE
+    r"All|Every|Points|Axiom|AXIOM|Here)",
+    re.IGNORECASE,
 )
 
 
@@ -132,11 +130,24 @@ def _extract_math_from_doc(doc_comment: str) -> str:
         if len(line) > 100:
             continue
         # Skip lines with many English words (more than 4 non-math words)
-        words = re.findall(r'[a-zA-Z]{4,}', line)
-        math_symbols = sum(1 for w in words if w.lower() in {
-            "sqrt", "mod", "sum", "prod", "lim", "inf",
-            "prime", "identity", "basepoint", "torsion",
-        })
+        words = re.findall(r"[a-zA-Z]{4,}", line)
+        math_symbols = sum(
+            1
+            for w in words
+            if w.lower()
+            in {
+                "sqrt",
+                "mod",
+                "sum",
+                "prod",
+                "lim",
+                "inf",
+                "prime",
+                "identity",
+                "basepoint",
+                "torsion",
+            }
+        )
         if len(words) - math_symbols > 4:
             continue
         return line
@@ -146,107 +157,95 @@ def _extract_math_from_doc(doc_comment: str) -> str:
 # Symbolic substitution patterns for ensures clause → math notation
 _MATH_SUBSTITUTIONS = [
     # Edwards operations
-    (r'edwards_add\(edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1,\s*edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1\)', r'-\1 + (-\3)'),
-    (r'edwards_neg\(edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*(\w+)\.0,\s*(\w+)\.1\)\)', r'-(\1 + \3)'),
-    (r'edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1\)', r'\1 + (-\3)'),
-    (r'edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*(\w+)\.0,\s*(\w+)\.1\)', r'\1 + \3'),
-    (r'edwards_add\((\w+),\s*(\w+),\s*(\w+),\s*(\w+)\)', r'(\1,\2) + (\3,\4)'),
-    (r'edwards_scalar_mul_signed\((\w+),\s*(\w+)\)', r'[\2]\1'),
-    (r'edwards_scalar_mul\(edwards_neg\((\w+)\),\s*(\w+)\)', r'[\2](-\1)'),
-    (r'edwards_neg\(edwards_scalar_mul\((\w+),\s*(\w+)\)\)', r'-[\2]\1'),
-    (r'edwards_scalar_mul\((\w+),\s*(\w+)\)', r'[\2]\1'),
-    (r'edwards_neg\((\w+)\)', r'-\1'),
-    (r'math_edwards_identity\(\)', 'O'),
+    (
+        r"edwards_add\(edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1,\s*edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1\)",
+        r"-\1 + (-\3)",
+    ),
+    (
+        r"edwards_neg\(edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*(\w+)\.0,\s*(\w+)\.1\)\)",
+        r"-(\1 + \3)",
+    ),
+    (
+        r"edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*edwards_neg\((\w+)\)\.0,\s*edwards_neg\((\w+)\)\.1\)",
+        r"\1 + (-\3)",
+    ),
+    (r"edwards_add\((\w+)\.0,\s*(\w+)\.1,\s*(\w+)\.0,\s*(\w+)\.1\)", r"\1 + \3"),
+    (r"edwards_add\((\w+),\s*(\w+),\s*(\w+),\s*(\w+)\)", r"(\1,\2) + (\3,\4)"),
+    (r"edwards_scalar_mul_signed\((\w+),\s*(\w+)\)", r"[\2]\1"),
+    (r"edwards_scalar_mul\(edwards_neg\((\w+)\),\s*(\w+)\)", r"[\2](-\1)"),
+    (r"edwards_neg\(edwards_scalar_mul\((\w+),\s*(\w+)\)\)", r"-[\2]\1"),
+    (r"edwards_scalar_mul\((\w+),\s*(\w+)\)", r"[\2]\1"),
+    (r"edwards_neg\((\w+)\)", r"-\1"),
+    (r"math_edwards_identity\(\)", "O"),
     # Montgomery operations
-    (r'montgomery_add\(montgomery_add\((\w+),\s*(\w+)\),\s*(\w+)\)', r'(\1 + \2) + \3'),
-    (r'montgomery_add\((\w+),\s*montgomery_add\((\w+),\s*(\w+)\)\)', r'\1 + (\2 + \3)'),
-    (r'montgomery_add\((\w+),\s*montgomery_neg\((\w+)\)\)', r'\1 + (-\2)'),
-    (r'montgomery_add\((\w+),\s*(\w+)\)', r'\1 + \2'),
-    (r'montgomery_neg\((\w+)\)', r'-\1'),
-    (r'MontgomeryAffine::Infinity', '∞'),
+    (r"montgomery_add\(montgomery_add\((\w+),\s*(\w+)\),\s*(\w+)\)", r"(\1 + \2) + \3"),
+    (r"montgomery_add\((\w+),\s*montgomery_add\((\w+),\s*(\w+)\)\)", r"\1 + (\2 + \3)"),
+    (r"montgomery_add\((\w+),\s*montgomery_neg\((\w+)\)\)", r"\1 + (-\2)"),
+    (r"montgomery_add\((\w+),\s*(\w+)\)", r"\1 + \2"),
+    (r"montgomery_neg\((\w+)\)", r"-\1"),
+    (r"MontgomeryAffine::Infinity", "∞"),
     # Field operations
-    (r'math_field_mul\((\w+),\s*math_field_inv\((\w+)\)\)', r'\1 / \2'),
-    (r'math_field_mul\((\w+),\s*(\w+)\)', r'\1 * \2'),
-    (r'math_field_add\((\w+),\s*(\w+)\)', r'\1 + \2'),
-    (r'math_field_sub\((\w+),\s*(\w+)\)', r'\1 - \2'),
-    (r'math_field_inv\((\w+)\)', r'\1^(-1)'),
+    (r"math_field_mul\((\w+),\s*math_field_inv\((\w+)\)\)", r"\1 / \2"),
+    (r"math_field_mul\((\w+),\s*(\w+)\)", r"\1 * \2"),
+    (r"math_field_add\((\w+),\s*(\w+)\)", r"\1 + \2"),
+    (r"math_field_sub\((\w+),\s*(\w+)\)", r"\1 - \2"),
+    (r"math_field_inv\((\w+)\)", r"\1^(-1)"),
     # Other
-    (r'is_prime\(p\(\)\)', 'p is prime'),
-    (r'is_square_mod_p\((\w+)\)', r'\1 is QR mod p'),
-    (r'!is_square_mod_p\(([^)]+)\)', r'\1 is not QR mod p'),
-    (r'spec_sqrt_m1\(\)', 'i'),
-    (r'p\(\)\s*-\s*1', 'p - 1'),
-    (r'p\(\)', 'p'),
-    (r'pow\(([^,]+),\s*(\w+)\)', r'(\1)^\2'),
-    (r'binomial_sum\((\w+),\s*(\w+),\s*(\w+)\)', r'Σ C(\2,k)·\1^k'),
-    (r'\bas\s+(?:int|nat)\b', ''),
-    (r'\s*==\s*', ' = '),
-    (r'\s*%\s*', ' mod '),
+    (r"is_prime\(p\(\)\)", "p is prime"),
+    (r"is_square_mod_p\((\w+)\)", r"\1 is QR mod p"),
+    (r"!is_square_mod_p\(([^)]+)\)", r"\1 is not QR mod p"),
+    (r"spec_sqrt_m1\(\)", "i"),
+    (r"p\(\)\s*-\s*1", "p - 1"),
+    (r"p\(\)", "p"),
+    (r"pow\(([^,]+),\s*(\w+)\)", r"(\1)^\2"),
+    (r"binomial_sum\((\w+),\s*(\w+),\s*(\w+)\)", r"Σ C(\2,k)·\1^k"),
+    (r"\bas\s+(?:int|nat)\b", ""),
+    (r"\s*==\s*", " = "),
+    (r"\s*%\s*", " mod "),
 ]
 
 
 # Manual math overrides for axioms whose ensures clauses are too complex
 # for automated simplification
 _AXIOM_MATH_OVERRIDES = {
-    "axiom_hash_is_canonical":
-        "field_element(P1) = field_element(P2) => hash(P1) = hash(P2)",
-    "axiom_edwards_d2_is_2d":
-        "D2 = 2*D in F_p",
-    "axiom_edwards_add_associative":
-        "(P + Q) + R = P + (Q + R) on Edwards curve",
-    "axiom_edwards_scalar_mul_signed_additive":
-        "[a]P + [b]P = [a+b]P (signed scalars)",
-    "axiom_xadd_projective_correct":
-        "xADD(U_P:W_P, U_Q:W_Q) represents P + Q",
-    "axiom_xdbl_projective_correct":
-        "xDBL(U:W) represents [2]P",
-    "axiom_ed25519_basepoint_canonical":
-        "B_x < p, B_y < p",
-    "axiom_ed25519_basepoint_table_valid":
-        "ED25519_BASEPOINT_TABLE is valid for B",
-    "axiom_eight_torsion_well_formed":
-        "All E[8] torsion points are well-formed",
-    "axiom_ristretto_basepoint_table_valid":
-        "RISTRETTO_BASEPOINT_TABLE is valid for Ristretto basepoint",
-    "axiom_affine_odd_multiples_of_basepoint_valid":
-        "[1*B, 3*B, ..., 127*B] table is valid",
-    "axiom_birational_edwards_montgomery":
-        "(z+y)/(z-y) = (1+y/z)/(1-y/z) (birational map)",
-    "axiom_uniform_bytes_split":
-        "split(uniform_64) -> (uniform_32, uniform_32, independent)",
-    "axiom_uniform_elligator_sum":
-        "P1 + P2 is uniform if P1, P2 independent from Elligator",
-    "axiom_uniform_point_add":
-        "P1 + P2 is uniform if P1, P2 uniform and independent",
-    "axiom_uniform_mod_reduction":
-        "X mod L is uniform over Z_L when X uniform over [0, 2^512)",
-    "axiom_sqrt_m1_squared":
-        "i^2 = -1 (mod p), where i = sqrt(-1)",
-    "axiom_sqrt_m1_not_square":
-        "sqrt(-1) is not a quadratic residue mod p",
-    "axiom_neg_sqrt_m1_not_square":
-        "-sqrt(-1) is not a quadratic residue mod p",
-    "axiom_p_is_prime":
-        "p = 2^255 - 19 is prime",
-    "axiom_sha512_output_length":
-        "|SHA-512(input)| = 64 bytes",
-    "axiom_from_bytes_uniform":
-        "uniform bytes => uniform field element",
-    "axiom_from_bytes_independent":
-        "independent bytes => independent field elements",
-    "axiom_uniform_elligator":
-        "uniform field element => uniform over Elligator image",
-    "axiom_uniform_elligator_independent":
-        "independent field elements => independent Ristretto points",
+    "axiom_hash_is_canonical": "field_element(P1) = field_element(P2) => hash(P1) = hash(P2)",
+    "axiom_edwards_d2_is_2d": "D2 = 2*D in F_p",
+    "axiom_edwards_add_associative": "(P + Q) + R = P + (Q + R) on Edwards curve",
+    "axiom_edwards_scalar_mul_signed_additive": "[a]P + [b]P = [a+b]P (signed scalars)",
+    "axiom_xadd_projective_correct": "xADD(U_P:W_P, U_Q:W_Q) represents P + Q",
+    "axiom_xdbl_projective_correct": "xDBL(U:W) represents [2]P",
+    "axiom_ed25519_basepoint_canonical": "B_x < p, B_y < p",
+    "axiom_ed25519_basepoint_table_valid": "ED25519_BASEPOINT_TABLE is valid for B",
+    "axiom_eight_torsion_well_formed": "All E[8] torsion points are well-formed",
+    "axiom_ristretto_basepoint_table_valid": "RISTRETTO_BASEPOINT_TABLE is valid for Ristretto basepoint",
+    "axiom_affine_odd_multiples_of_basepoint_valid": "[1*B, 3*B, ..., 127*B] table is valid",
+    "axiom_birational_edwards_montgomery": "(z+y)/(z-y) = (1+y/z)/(1-y/z) (birational map)",
+    "axiom_uniform_bytes_split": "split(uniform_64) -> (uniform_32, uniform_32, independent)",
+    "axiom_uniform_elligator_sum": "P1 + P2 is uniform if P1, P2 independent from Elligator",
+    "axiom_uniform_point_add": "P1 + P2 is uniform if P1, P2 uniform and independent",
+    "axiom_uniform_mod_reduction": "X mod L is uniform over Z_L when X uniform over [0, 2^512)",
+    "axiom_sqrt_m1_squared": "i^2 = -1 (mod p), where i = sqrt(-1)",
+    "axiom_sqrt_m1_not_square": "sqrt(-1) is not a quadratic residue mod p",
+    "axiom_neg_sqrt_m1_not_square": "-sqrt(-1) is not a quadratic residue mod p",
+    "axiom_p_is_prime": "p = 2^255 - 19 is prime",
+    "axiom_sha512_output_length": "|SHA-512(input)| = 64 bytes",
+    "axiom_from_bytes_uniform": "uniform bytes => uniform field element",
+    "axiom_from_bytes_independent": "independent bytes => independent field elements",
+    "axiom_uniform_elligator": "uniform field element => uniform over Elligator image",
+    "axiom_uniform_elligator_independent": "independent field elements => independent Ristretto points",
 }
 
 
-def _generate_math_from_ensures(ensures_clauses: list[str], contract_text: str = "") -> str:
+def _generate_math_from_ensures(
+    ensures_clauses: list[str], contract_text: str = ""
+) -> str:
     """Best-effort symbolic substitution on ensures clauses."""
     # Try to extract raw ensures section from contract text (avoids comma-splitting issues)
     text = ""
     if contract_text:
-        ensures_match = re.search(r'\bensures\b\s*\n?(.*?)(?:\n\s*\{|$)', contract_text, re.DOTALL)
+        ensures_match = re.search(
+            r"\bensures\b\s*\n?(.*?)(?:\n\s*\{|$)", contract_text, re.DOTALL
+        )
         if ensures_match:
             text = ensures_match.group(1).strip()
             # Remove trailing comma
@@ -259,17 +258,17 @@ def _generate_math_from_ensures(ensures_clauses: list[str], contract_text: str =
         return ""
 
     # Strip outer ({ ... })
-    text = re.sub(r'^\(\{', '', text)
-    text = re.sub(r'\}\)$', '', text)
+    text = re.sub(r"^\(\{", "", text)
+    text = re.sub(r"\}\)$", "", text)
     text = text.strip()
 
     for pattern, repl in _MATH_SUBSTITUTIONS:
         text = re.sub(pattern, repl, text)
 
     # Clean up remaining Rust syntax
-    text = re.sub(r'\blet\s+\w+\s*=\s*', '', text)  # remove let bindings
-    text = re.sub(r'\{|\}', '', text)  # remove remaining braces
-    text = re.sub(r'\s+', ' ', text).strip()  # normalize whitespace
+    text = re.sub(r"\blet\s+\w+\s*=\s*", "", text)  # remove let bindings
+    text = re.sub(r"\{|\}", "", text)  # remove remaining braces
+    text = re.sub(r"\s+", " ", text).strip()  # normalize whitespace
 
     # If the result still looks too Rust-like (many :: or parens), skip
     if text.count("::") > 2 or text.count("(") > 6:
@@ -344,17 +343,19 @@ def dedent_body(body: str, indent: str) -> str:
     if not indent:
         return body
     return "\n".join(
-        line[len(indent):] if line.startswith(indent) else line
+        line[len(indent) :] if line.startswith(indent) else line
         for line in body.split("\n")
     )
 
 
-def extract_signature(lines: list[str], start_idx: int, end_idx: int, indent: str) -> str:
+def extract_signature(
+    lines: list[str], start_idx: int, end_idx: int, indent: str
+) -> str:
     sig_lines = []
     for si in range(start_idx, min(end_idx + 1, len(lines))):
         sig_line = lines[si]
         if indent and sig_line.startswith(indent):
-            sig_line = sig_line[len(indent):]
+            sig_line = sig_line[len(indent) :]
         sig_lines.append(sig_line)
         if "{" in lines[si]:
             last = sig_lines[-1]
@@ -380,7 +381,7 @@ def _strip_comments_and_strings(line: str) -> str:
             escape = False
             i += 1
             continue
-        if c == '\\' and in_string:
+        if c == "\\" and in_string:
             escape = True
             i += 1
             continue
@@ -396,11 +397,11 @@ def _strip_comments_and_strings(line: str) -> str:
             i += 1
             continue
         # Check for // comment
-        if c == '/' and i + 1 < len(line) and line[i + 1] == '/':
+        if c == "/" and i + 1 < len(line) and line[i + 1] == "/":
             break
         result.append(c)
         i += 1
-    return ''.join(result)
+    return "".join(result)
 
 
 def _read_file_lines(filepath: str) -> list[str] | None:
@@ -415,6 +416,7 @@ def _read_file_lines(filepath: str) -> list[str] | None:
 
 
 # ── Spec function extraction (hybrid) ─────────────────────────────────
+
 
 def find_spec_fn_in_source(filepath: str, fn_name: str, hint_line: int) -> dict | None:
     lines = _read_file_lines(filepath)
@@ -478,9 +480,16 @@ def extract_spec_functions(csv_path: str) -> list[dict]:
                 doc_comment = csv_doc
                 actual_line = source_line
                 first_line = csv_def.split("\n")[0] if csv_def else ""
-                signature = first_line[: first_line.index("{")].rstrip() if "{" in first_line else first_line.rstrip()
+                signature = (
+                    first_line[: first_line.index("{")].rstrip()
+                    if "{" in first_line
+                    else first_line.rstrip()
+                )
                 signature = re.sub(r"\s+", " ", signature).strip()
-                vis_match = re.match(r"((?:pub(?:\([^)]*\))?\s+)?(?:(?:open|closed|uninterp)\s+)*spec\s+fn)", signature)
+                vis_match = re.match(
+                    r"((?:pub(?:\([^)]*\))?\s+)?(?:(?:open|closed|uninterp)\s+)*spec\s+fn)",
+                    signature,
+                )
                 visibility = vis_match.group(1).strip() if vis_match else ""
                 if csv_def:
                     fell_back += 1
@@ -490,28 +499,31 @@ def extract_spec_functions(csv_path: str) -> list[dict]:
             fn_id = f"{module.replace('::', '__')}__{name}"
             github_link = f"{GITHUB_BASE}{source_path}#L{actual_line}"
 
-            specs.append({
-                "id": fn_id,
-                "name": name,
-                "signature": signature,
-                "body": body,
-                "file": source_path,
-                "line": actual_line,
-                "module": module,
-                "short_module": short_module,
-                "visibility": visibility,
-                "doc_comment": doc_comment,
-                "math_interpretation": math_interp,
-                "informal_interpretation": informal_interp,
-                "github_link": github_link,
-                "category": "spec",
-            })
+            specs.append(
+                {
+                    "id": fn_id,
+                    "name": name,
+                    "signature": signature,
+                    "body": body,
+                    "file": source_path,
+                    "line": actual_line,
+                    "module": module,
+                    "short_module": short_module,
+                    "visibility": visibility,
+                    "doc_comment": doc_comment,
+                    "math_interpretation": math_interp,
+                    "informal_interpretation": informal_interp,
+                    "github_link": github_link,
+                    "category": "spec",
+                }
+            )
 
     print(f"  Spec functions: {found} from source, {fell_back} from CSV")
     return specs
 
 
 # ── Contract extraction for verified functions ────────────────────────
+
 
 def extract_contract_from_source(
     filepath: str, fn_name: str, hint_line: int
@@ -534,10 +546,14 @@ def extract_contract_from_source(
             # Must handle: pub fn name, fn name, pub fn name(
             stripped = lines[line_idx].strip()
             # Check if this line declares the function we're looking for
-            fn_pattern = re.search(r'\bfn\s+' + re.escape(fn_name) + r'\s*[\(<]', stripped)
+            fn_pattern = re.search(
+                r"\bfn\s+" + re.escape(fn_name) + r"\s*[\(<]", stripped
+            )
             if not fn_pattern:
                 # Also try multiline: fn name(\n
-                fn_pattern = re.search(r'\bfn\s+' + re.escape(fn_name) + r'\s*\(', stripped)
+                fn_pattern = re.search(
+                    r"\bfn\s+" + re.escape(fn_name) + r"\s*\(", stripped
+                )
                 if not fn_pattern:
                     continue
 
@@ -545,7 +561,9 @@ def extract_contract_from_source(
             # (everything from this line up to the opening { of the body)
             # We track brace depth to handle match { ... } blocks inside contracts.
             contract_lines = []
-            indent = lines[line_idx][: len(lines[line_idx]) - len(lines[line_idx].lstrip())]
+            indent = lines[line_idx][
+                : len(lines[line_idx]) - len(lines[line_idx].lstrip())
+            ]
             requires_clauses = []
             ensures_clauses = []
             current_section = None  # "requires" or "ensures"
@@ -557,7 +575,7 @@ def extract_contract_from_source(
                 raw_line = lines[i]
                 # Dedent
                 if indent and raw_line.startswith(indent):
-                    display_line = raw_line[len(indent):]
+                    display_line = raw_line[len(indent) :]
                 else:
                     display_line = raw_line
 
@@ -572,10 +590,14 @@ def extract_contract_from_source(
                     # (b) a match/if block inside the contract
                     brace_stripped = raw_line.lstrip()
                     # If the line starts with { alone, it's the body
-                    if brace_stripped.startswith("{") and not brace_stripped.startswith("{|"):
+                    if brace_stripped.startswith("{") and not brace_stripped.startswith(
+                        "{|"
+                    ):
                         # Flush any pending clause
                         if current_clause_lines:
-                            clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
+                            clause_text = " ".join(
+                                line.strip() for line in current_clause_lines
+                            ).strip()
                             if clause_text:
                                 if current_section == "requires":
                                     requires_clauses.append(clause_text)
@@ -613,7 +635,9 @@ def extract_contract_from_source(
                 if trimmed == "requires" or trimmed.startswith("requires "):
                     # Flush previous clause
                     if current_clause_lines:
-                        clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
+                        clause_text = " ".join(
+                            line.strip() for line in current_clause_lines
+                        ).strip()
                         if clause_text and clause_text not in ("requires", "ensures"):
                             if current_section == "requires":
                                 requires_clauses.append(clause_text)
@@ -623,7 +647,9 @@ def extract_contract_from_source(
                     current_clause_lines = []
                 elif trimmed == "ensures" or trimmed.startswith("ensures "):
                     if current_clause_lines:
-                        clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
+                        clause_text = " ".join(
+                            line.strip() for line in current_clause_lines
+                        ).strip()
                         if clause_text and clause_text not in ("requires", "ensures"):
                             if current_section == "requires":
                                 requires_clauses.append(clause_text)
@@ -635,7 +661,9 @@ def extract_contract_from_source(
                     # If line ends with comma, it's a clause boundary
                     current_clause_lines.append(clause_line)
                     if clause_line.rstrip().endswith(","):
-                        clause_text = " ".join(line.strip() for line in current_clause_lines).strip()
+                        clause_text = " ".join(
+                            line.strip() for line in current_clause_lines
+                        ).strip()
                         if clause_text and clause_text not in ("requires", "ensures"):
                             if current_section == "requires":
                                 requires_clauses.append(clause_text)
@@ -689,7 +717,10 @@ def extract_verified_functions(csv_path: str, spec_names: set[str]) -> list[dict
                 actual_line = result["line"]
                 found += 1
             else:
-                print(f"  Warning: {name} not found in {source_path}:{source_line}", file=sys.stderr)
+                print(
+                    f"  Warning: {name} not found in {source_path}:{source_line}",
+                    file=sys.stderr,
+                )
                 contract = f"fn {name}(...)  // contract not found in source"
                 requires = []
                 ensures = []
@@ -697,8 +728,16 @@ def extract_verified_functions(csv_path: str, spec_names: set[str]) -> list[dict
                 actual_line = source_line
 
             # Detect referenced spec functions
-            contract_text = contract + " " + " ".join(requires) + " " + " ".join(ensures)
-            referenced = sorted([s for s in spec_names if re.search(r'\b' + re.escape(s) + r'\b', contract_text)])
+            contract_text = (
+                contract + " " + " ".join(requires) + " " + " ".join(ensures)
+            )
+            referenced = sorted(
+                [
+                    s
+                    for s in spec_names
+                    if re.search(r"\b" + re.escape(s) + r"\b", contract_text)
+                ]
+            )
 
             # Build unique ID: include impl_type to disambiguate (e.g., edwards::compress vs ristretto::compress)
             type_prefix = impl_type.lower().replace("::", "_") if impl_type else module
@@ -708,30 +747,33 @@ def extract_verified_functions(csv_path: str, spec_names: set[str]) -> list[dict
             # Display name includes the impl type
             display_name = f"{impl_type}::{name}" if impl_type else name
 
-            verified.append({
-                "id": fn_id,
-                "name": name,
-                "display_name": display_name,
-                "impl_type": impl_type,
-                "contract": contract,
-                "requires": requires,
-                "ensures": ensures,
-                "referenced_specs": referenced,
-                "file": source_path,
-                "line": actual_line,
-                "module": module,
-                "doc_comment": doc_comment,
-                "math_interpretation": math_interp,
-                "informal_interpretation": informal_interp,
-                "github_link": github_link,
-                "category": "verified",
-            })
+            verified.append(
+                {
+                    "id": fn_id,
+                    "name": name,
+                    "display_name": display_name,
+                    "impl_type": impl_type,
+                    "contract": contract,
+                    "requires": requires,
+                    "ensures": ensures,
+                    "referenced_specs": referenced,
+                    "file": source_path,
+                    "line": actual_line,
+                    "module": module,
+                    "doc_comment": doc_comment,
+                    "math_interpretation": math_interp,
+                    "informal_interpretation": informal_interp,
+                    "github_link": github_link,
+                    "category": "verified",
+                }
+            )
 
     print(f"  Verified functions: {found} contracts extracted from source")
     return verified
 
 
 # ── Axiom extraction (auto-discovery) ─────────────────────────────────
+
 
 def extract_axioms(src_dir: str, spec_names: set[str]) -> list[dict]:
     """Walk all .rs files and extract proof fn axiom_* functions."""
@@ -760,8 +802,10 @@ def extract_axioms(src_dir: str, spec_names: set[str]) -> list[dict]:
             # Extract contract using the existing brace-aware parser
             result = extract_contract_from_source(filepath, fn_name, line_idx + 1)
             if not result:
-                print(f"    Warning: could not extract contract for {fn_name} in {filepath}:{line_idx+1}",
-                      file=sys.stderr)
+                print(
+                    f"    Warning: could not extract contract for {fn_name} in {filepath}:{line_idx + 1}",
+                    file=sys.stderr,
+                )
                 continue
 
             doc_comment = result["doc_comment"]
@@ -775,39 +819,52 @@ def extract_axioms(src_dir: str, spec_names: set[str]) -> list[dict]:
             short_module = derive_category_module(filepath)
 
             # Auto-generate interpretations
-            math_interp = generate_axiom_math_interpretation(fn_name, doc_comment, ensures, contract)
+            math_interp = generate_axiom_math_interpretation(
+                fn_name, doc_comment, ensures, contract
+            )
             # Use only the first meaningful line of the doc comment as informal description
             # (the full doc comment is shown separately in the card)
-            informal_lines = [line.strip() for line in doc_comment.split("\n") if line.strip()] if doc_comment else []
+            informal_lines = (
+                [line.strip() for line in doc_comment.split("\n") if line.strip()]
+                if doc_comment
+                else []
+            )
             informal_interp = informal_lines[0] if informal_lines else ""
 
             # Detect referenced spec functions
-            contract_text = contract + " " + " ".join(requires) + " " + " ".join(ensures)
-            referenced = sorted([
-                s for s in spec_names
-                if re.search(r'\b' + re.escape(s) + r'\b', contract_text)
-            ])
+            contract_text = (
+                contract + " " + " ".join(requires) + " " + " ".join(ensures)
+            )
+            referenced = sorted(
+                [
+                    s
+                    for s in spec_names
+                    if re.search(r"\b" + re.escape(s) + r"\b", contract_text)
+                ]
+            )
 
             fn_id = f"{module.replace('::', '__')}__{fn_name}"
             github_link = f"{GITHUB_BASE}{filepath}#L{actual_line}"
 
-            axioms.append({
-                "id": fn_id,
-                "name": fn_name,
-                "signature": "",  # will build from contract first line
-                "body": contract,  # axiom cards show the contract (like verified)
-                "file": filepath,
-                "line": actual_line,
-                "module": module,
-                "short_module": short_module,
-                "visibility": "proof fn",
-                "doc_comment": doc_comment,
-                "math_interpretation": math_interp,
-                "informal_interpretation": informal_interp,
-                "github_link": github_link,
-                "category": "axiom",
-                "referenced_specs": referenced,
-            })
+            axioms.append(
+                {
+                    "id": fn_id,
+                    "name": fn_name,
+                    "signature": "",  # will build from contract first line
+                    "body": contract,  # axiom cards show the contract (like verified)
+                    "file": filepath,
+                    "line": actual_line,
+                    "module": module,
+                    "short_module": short_module,
+                    "visibility": "proof fn",
+                    "doc_comment": doc_comment,
+                    "math_interpretation": math_interp,
+                    "informal_interpretation": informal_interp,
+                    "github_link": github_link,
+                    "category": "axiom",
+                    "referenced_specs": referenced,
+                }
+            )
 
     # Build signatures from contract first lines
     for ax in axioms:
@@ -822,12 +879,17 @@ def extract_axioms(src_dir: str, spec_names: set[str]) -> list[dict]:
 
 # ── Main ──────────────────────────────────────────────────────────────
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Extract Verus specs for the browser website")
+    parser = argparse.ArgumentParser(
+        description="Extract Verus specs for the browser website"
+    )
     parser.add_argument("--output", "-o", default="docs/specs_data.json")
     parser.add_argument("--spec-csv", default=DEFAULT_SPEC_CSV)
     parser.add_argument("--verified-csv", default=DEFAULT_VERIFIED_CSV)
-    parser.add_argument("--csv-only", action="store_true", help="Skip source re-extraction")
+    parser.add_argument(
+        "--csv-only", action="store_true", help="Skip source re-extraction"
+    )
     parser.add_argument("--src-dir", default="curve25519-dalek/src")
     args = parser.parse_args()
 
@@ -848,15 +910,20 @@ def main():
     for spec in spec_functions:
         body_text = spec.get("body", "")
         own_name = spec["name"]
-        referenced = sorted([
-            s for s in spec_names
-            if s != own_name and re.search(r'\b' + re.escape(s) + r'\b', body_text)
-        ])
+        referenced = sorted(
+            [
+                s
+                for s in spec_names
+                if s != own_name and re.search(r"\b" + re.escape(s) + r"\b", body_text)
+            ]
+        )
         spec["referenced_specs"] = referenced
 
     spec_refs_total = sum(len(s["referenced_specs"]) for s in spec_functions)
     specs_with_refs = sum(1 for s in spec_functions if s["referenced_specs"])
-    print(f"  {spec_refs_total} spec-to-spec references across {specs_with_refs} spec functions")
+    print(
+        f"  {spec_refs_total} spec-to-spec references across {specs_with_refs} spec functions"
+    )
 
     # 2. Extract verified function contracts
     if os.path.exists(args.verified_csv):
@@ -864,7 +931,10 @@ def main():
         verified_functions = extract_verified_functions(args.verified_csv, spec_names)
         verified_functions.sort(key=lambda s: (s["module"], s["display_name"]))
     else:
-        print(f"Warning: {args.verified_csv} not found, skipping verified functions.", file=sys.stderr)
+        print(
+            f"Warning: {args.verified_csv} not found, skipping verified functions.",
+            file=sys.stderr,
+        )
         verified_functions = []
 
     # 3. Extract axiom functions (auto-discovered from source)
@@ -892,18 +962,24 @@ def main():
     print(f"\n{len(spec_functions)} spec functions from {len(spec_mods)} modules")
     print(f"{len(axiom_functions)} axiom functions")
     verified_mods = sorted(set(s["module"] for s in verified_functions))
-    print(f"{len(verified_functions)} verified functions from {len(verified_mods)} modules")
+    print(
+        f"{len(verified_functions)} verified functions from {len(verified_mods)} modules"
+    )
 
     # Show cross-reference stats
     total_refs = sum(len(v["referenced_specs"]) for v in verified_functions)
     unique_refs = set()
     for v in verified_functions:
         unique_refs.update(v["referenced_specs"])
-    print(f"{total_refs} total spec references, {len(unique_refs)} unique spec functions referenced")
+    print(
+        f"{total_refs} total spec references, {len(unique_refs)} unique spec functions referenced"
+    )
 
     # Show axiom math interpretation coverage
     axioms_with_math = sum(1 for a in axiom_functions if a["math_interpretation"])
-    print(f"{axioms_with_math}/{len(axiom_functions)} axioms have auto-generated math interpretations")
+    print(
+        f"{axioms_with_math}/{len(axiom_functions)} axioms have auto-generated math interpretations"
+    )
     print(f"\nOutput written to {out_path}")
 
 

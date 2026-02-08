@@ -47,8 +47,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
+            const href = this.getAttribute('href');
+            const target = document.querySelector(href);
             if (target) {
+                // Immediately highlight the clicked link
+                navItems.forEach(item => item.classList.remove('active'));
+                this.classList.add('active');
+                // Update URL hash without jumping
+                history.pushState(null, '', href);
                 target.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'
@@ -114,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.addEventListener('scroll', highlightNavigation);
+    highlightNavigation(); // highlight on initial load
 
     // CSV Modal functionality
     let csvFunctionsData = [];

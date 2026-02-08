@@ -63,13 +63,13 @@ jobs:
 
       - name: Generate CSV from seed file
         run: |
-          scripts/analyze_verus_specs_proofs.py
+          python3 scripts/analyze_verus_specs_proofs.py
 
       - name: Update stats history
         run: |
           # Try to fetch existing history from deployed site and update
           # If this fails, regenerate from git history (fallback with max commits for full history)
-          scripts/update_stats_history.py \
+          python3 scripts/update_stats_history.py \
             --fetch-url https://beneficial-ai-foundation.github.io/dalek-lite/outputs/stats_history.jsonl \
             --fill-missing \
             --since 2025-10-09 \
@@ -78,7 +78,7 @@ jobs:
             --max-gap-days 14 || \
           (echo "Warning: Stats history fetch failed, regenerating from git..." && \
            if [ -f outputs/curve25519_functions.csv ]; then \
-             scripts/update_stats_history.py --since 2025-10-09 --max-commits 10000 --fill-missing; \
+             python3 scripts/update_stats_history.py --since 2025-10-09 --max-commits 10000 --fill-missing; \
            else \
              echo "Error: CSV file missing, skipping stats history update"; \
              touch outputs/stats_history.jsonl; \
@@ -86,9 +86,9 @@ jobs:
 
       - name: Generate charts
         run: |
-          scripts/plot_progress.py
-          scripts/plot_progress_over_time.py
-          scripts/plot_csv_preview.py
+          python3 scripts/plot_progress.py
+          python3 scripts/plot_progress_over_time.py
+          python3 scripts/plot_csv_preview.py
 
       - name: Generate specs data
         run: |

@@ -273,17 +273,17 @@ function renderVerifiedCard(fn) {
         <div class="contract-refs">
             <div class="contract-refs-label">Referenced Spec Functions</div>
             <div class="contract-refs-list">
-                ${fn.referenced_specs.map(s => `<span class="contract-ref-tag" data-spec="${escapeHtml(s)}" title="Click to scroll to definition">${escapeHtml(s)}</span>`).join("")}
+                ${fn.referenced_specs.map(s => `<span class="contract-ref-tag" data-spec="${escapeAttr(s)}" title="Click to scroll to definition">${escapeHtml(s)}</span>`).join("")}
             </div>
         </div>` : "";
 
     const showRefsBtn = hasRefs ? `
-        <button class="show-refs-btn" data-fn-id="${fn.id}" title="Filter right panel to show only referenced specs">
+        <button class="show-refs-btn" data-fn-id="${escapeAttr(fn.id)}" title="Filter right panel to show only referenced specs">
             Focus referenced specs <span class="refs-count">${fn.referenced_specs.length}</span>
         </button>` : "";
 
     return `
-    <div class="spec-card" data-id="${fn.id}" data-module="${fn.module}">
+    <div class="spec-card" data-id="${escapeAttr(fn.id)}" data-module="${escapeAttr(fn.module)}">
         <div class="spec-header">
             <div class="spec-toggle">&#9654;</div>
             <div class="spec-info">
@@ -293,7 +293,7 @@ function renderVerifiedCard(fn) {
                     ${hasMath ? `<span class="spec-math">${escapeHtml(fn.math_interpretation)}</span>` : ""}
                 </div>
             </div>
-            <a class="spec-github" href="${fn.github_link}" target="_blank" rel="noopener"
+            <a class="spec-github" href="${escapeAttr(fn.github_link)}" target="_blank" rel="noopener"
                title="View source on GitHub" onclick="event.stopPropagation()">
                 Source &nearr;
             </a>
@@ -312,9 +312,9 @@ function renderVerifiedCard(fn) {
                 <pre><code class="language-rust">${contractHtml}</code></pre>
             </div>
             <div class="spec-comments">
-                <button class="comments-toggle" data-fn-id="${fn.id}">
+                <button class="comments-toggle" data-fn-id="${escapeAttr(fn.id)}">
                     <span>Comments</span>
-                    <span class="comment-count" id="count-${fn.id}">...</span>
+                    <span class="comment-count" id="count-${escapeAttr(fn.id)}">...</span>
                 </button>
                 <div class="comments-content" id="comments-${fn.id}"></div>
             </div>
@@ -530,7 +530,7 @@ function renderSpecCard(spec) {
     const axiomBadge = isAxiom ? `<span class="axiom-badge">AXIOM</span>` : "";
 
     return `
-    <div class="spec-card${isAxiom ? " axiom-card" : ""}" data-id="${spec.id}" data-spec-name="${spec.name}" data-module="${spec.module}" data-category="${spec.category || "spec"}">
+    <div class="spec-card${isAxiom ? " axiom-card" : ""}" data-id="${escapeAttr(spec.id)}" data-spec-name="${escapeAttr(spec.name)}" data-module="${escapeAttr(spec.module)}" data-category="${escapeAttr(spec.category || "spec")}">
         <div class="spec-header">
             <div class="spec-toggle">&#9654;</div>
             <div class="spec-info">
@@ -541,7 +541,7 @@ function renderSpecCard(spec) {
                     ${hasMath ? `<span class="spec-math">${escapeHtml(spec.math_interpretation)}</span>` : ""}
                 </div>
             </div>
-            <a class="spec-github" href="${spec.github_link}" target="_blank" rel="noopener"
+            <a class="spec-github" href="${escapeAttr(spec.github_link)}" target="_blank" rel="noopener"
                title="View source on GitHub" onclick="event.stopPropagation()">
                 Source &nearr;
             </a>
@@ -569,9 +569,9 @@ function renderSpecCard(spec) {
             </div>
             ${inlineRefsHtml}
             <div class="spec-comments">
-                <button class="comments-toggle" data-fn-id="${spec.id}">
+                <button class="comments-toggle" data-fn-id="${escapeAttr(spec.id)}">
                     <span>Comments</span>
-                    <span class="comment-count" id="count-${spec.id}">...</span>
+                    <span class="comment-count" id="count-${escapeAttr(spec.id)}">...</span>
                 </button>
                 <div class="comments-content" id="comments-${spec.id}"></div>
             </div>
@@ -603,7 +603,7 @@ function scrollToSpecCard(specName) {
     }
 
     // Find the card
-    const card = document.querySelector(`.panel-right .spec-card[data-spec-name="${specName}"]`);
+    const card = document.querySelector(`.panel-right .spec-card[data-spec-name="${cssSelectorEscape(specName)}"]`);
     if (!card) return;
 
     // Open it
@@ -650,7 +650,7 @@ function highlightSpecNames(contractText, referencedSpecs) {
 
     return segments.map(seg => {
         if (seg.type === "spec") {
-            return `<span class="spec-link" data-spec="${escapeHtml(seg.value)}" title="Click to view definition">${escapeHtml(seg.value)}</span>`;
+            return `<span class="spec-link" data-spec="${escapeAttr(seg.value)}" title="Click to view definition">${escapeHtml(seg.value)}</span>`;
         }
         return escapeHtml(seg.value);
     }).join("");
@@ -884,4 +884,18 @@ function escapeHtml(str) {
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
+}
+
+// Escape a string for safe use inside an HTML attribute value (double-quoted).
+function escapeAttr(str) {
+    if (!str) return "";
+    return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Escape a string for safe use inside a CSS attribute selector value.
+function cssSelectorEscape(str) {
+    if (!str) return "";
+    if (CSS && CSS.escape) return CSS.escape(str);
+    // Fallback: escape special chars
+    return String(str).replace(/([!"#$%&'()*+,.\/:;<=>?@[\\\]^`{|}~])/g, "\\$1");
 }

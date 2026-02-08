@@ -18,21 +18,21 @@
 //                            ['functionId', 'name', 'message', 'timestamp'])
 //                       && request.resource.data.name is string
 //                       && request.resource.data.message is string
-//                       && request.resource.data.name.size() > 0
 //                       && request.resource.data.message.size() > 0;
-//         allow update, delete: if false;
+//         allow delete: if true;
+//         allow update: if false;
 //       }
 //     }
 //   }
 //
 // The optional 'contentHash' field is stored automatically for version tracking.
 const FIREBASE_CONFIG = {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyADcvcLYzwjeOUfjy9nWYv364gjjkJ07rA",
+    authDomain: "dalek-lite-specs.firebaseapp.com",
+    projectId: "dalek-lite-specs",
+    storageBucket: "dalek-lite-specs.firebasestorage.app",
+    messagingSenderId: "533633298026",
+    appId: "1:533633298026:web:ace23bd6c0b26d20e2a413"
 };
 
 const FIREBASE_ENABLED = FIREBASE_CONFIG.apiKey !== "";
@@ -680,7 +680,7 @@ async function loadComments(functionId, container) {
             <div class="comment-empty">Loading comments...</div>
         </div>
         <div class="comment-form">
-            <input type="text" placeholder="Your name" maxlength="100" id="name-${functionId}">
+            <input type="text" placeholder="Your name (optional)" maxlength="100" id="name-${functionId}">
             <textarea placeholder="Your comment..." maxlength="2000" id="msg-${functionId}"></textarea>
             <button onclick="submitComment('${functionId}')">Post Comment</button>
         </div>`;
@@ -691,7 +691,7 @@ async function loadComments(functionId, container) {
             .orderBy("timestamp", "asc")
             .get();
         const comments = [];
-        snapshot.forEach(doc => comments.push(doc.data()));
+        snapshot.forEach(doc => comments.push({ id: doc.id, ...doc.data() }));
         commentsCache[functionId] = comments;
         renderComments(functionId, comments);
         const countEl = document.getElementById(`count-${functionId}`);
@@ -711,37 +711,33 @@ function renderComments(functionId, comments) {
         return;
     }
     const currentHash = contentHashes[functionId] || "";
-    listEl.innerHTML = comments.map(c => {
-        const time = c.timestamp?.toDate
-            ? c.timestamp.toDate().toLocaleDateString("en-US", {
-                month: "short", day: "numeric", year: "numeric",
-                hour: "2-digit", minute: "2-digit"
-              })
-            : "";
+    let html = comments.map(c => {
         // A comment is outdated if it has a contentHash that differs from current
         const isOutdated = c.contentHash && currentHash && c.contentHash !== currentHash;
         const outdatedClass = isOutdated ? " outdated" : "";
         const outdatedBadge = isOutdated
             ? `<span class="comment-outdated-badge">earlier version</span>`
             : "";
+        const displayName = c.name || "anonymous";
         return `
             <div class="comment-item${outdatedClass}">
-                <span class="comment-author">${escapeHtml(c.name)}</span>
-                <span class="comment-time">${time}</span>
+                <span class="comment-author">${escapeHtml(displayName)}</span>
                 ${outdatedBadge}
                 <div class="comment-text">${escapeHtml(c.message)}</div>
+                <button class="comment-delete-btn" onclick="deleteComment('${functionId}','${c.id}')" title="Delete">Delete</button>
             </div>`;
     }).join("");
+    listEl.innerHTML = html;
 }
 
 window.submitComment = async function(functionId) {
     if (!db) return;
     const nameInput = document.getElementById(`name-${functionId}`);
     const msgInput = document.getElementById(`msg-${functionId}`);
-    const name = nameInput.value.trim();
+    const name = nameInput.value.trim() || "anonymous";
     const message = msgInput.value.trim();
-    if (!name || !message) {
-        alert("Please enter both your name and a comment.");
+    if (!message) {
+        alert("Please enter a comment.");
         return;
     }
     const btn = msgInput.closest(".comment-form").querySelector("button");
@@ -766,6 +762,18 @@ window.submitComment = async function(functionId) {
     }
 };
 
+window.deleteComment = async function(functionId, docId) {
+    if (!db) return;
+    try {
+        await db.collection("comments").doc(docId).delete();
+        const container = document.getElementById(`comments-${functionId}`);
+        if (container) await loadComments(functionId, container);
+    } catch (err) {
+        console.error("Error deleting comment:", err);
+        alert("Failed to delete comment.");
+    }
+};
+
 // ── Content hashing (for comment version tracking) ──────────
 // Fast synchronous djb2 hash — produces a short hex string fingerprint
 function computeContentHash(text) {
@@ -785,6 +793,90 @@ function buildContentHashes() {
         contentHashes[fn.id] = computeContentHash(fn.contract || "");
     }
 }
+
+// ── Download helpers ─────────────────────────────────────────
+function triggerDownload(content, filename, mime) {
+    const blob = new Blob([content], { type: mime });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+window.downloadMarkdown = function() {
+    try {
+        let md = "# Verified Function Specifications\n\n";
+
+        md += "## Verified Function Contracts\n\n";
+        for (const fn of verifiedFunctions) {
+            md += `### ${fn.name}\n\n`;
+            md += `**Module:** ${fn.module}  \n`;
+            if (fn.informal_interpretation) md += `**Meaning:** ${fn.informal_interpretation}  \n`;
+            md += `\n\`\`\`rust\n${fn.contract || ""}\n\`\`\`\n\n`;
+            if (fn.referenced_specs && fn.referenced_specs.length) {
+                md += `**Uses spec functions:** ${fn.referenced_specs.join(", ")}  \n\n`;
+            }
+            md += "---\n\n";
+        }
+
+        const specs = specFunctions.filter(s => s.category !== "axiom");
+        md += "## Spec Functions\n\n";
+        for (const s of specs) {
+            md += `### ${s.name}\n\n`;
+            md += `**Module:** ${s.module}  \n`;
+            if (s.math_interpretation) md += `**Math:** ${s.math_interpretation}  \n`;
+            if (s.informal_interpretation) md += `**Meaning:** ${s.informal_interpretation}  \n`;
+            md += `\n\`\`\`rust\n${s.body || ""}\n\`\`\`\n\n---\n\n`;
+        }
+
+        const axioms = specFunctions.filter(s => s.category === "axiom");
+        if (axioms.length) {
+            md += "## Axioms\n\n";
+            for (const a of axioms) {
+                md += `### ${a.name}\n\n`;
+                if (a.math_interpretation) md += `**Math:** ${a.math_interpretation}  \n`;
+                if (a.informal_interpretation) md += `**Meaning:** ${a.informal_interpretation}  \n`;
+                md += `\n\`\`\`rust\n${a.body || ""}\n\`\`\`\n\n---\n\n`;
+            }
+        }
+
+        triggerDownload(md, "verus-specs.md", "text/markdown;charset=utf-8");
+    } catch (e) {
+        console.error("Download MD failed:", e);
+        alert("Download failed — see console for details.");
+    }
+};
+
+window.downloadCSV = function() {
+    try {
+        const esc = v => {
+            if (v == null) return "";
+            const s = String(v).replace(/"/g, '""');
+            return (s.includes(",") || s.includes('"') || s.includes("\n")) ? `"${s}"` : s;
+        };
+
+        let csv = "category,name,module,math_interpretation,informal_interpretation,code\n";
+
+        for (const fn of verifiedFunctions) {
+            csv += [
+                esc("contract"), esc(fn.name), esc(fn.module),
+                esc(""), esc(fn.informal_interpretation), esc(fn.contract)
+            ].join(",") + "\n";
+        }
+        for (const s of specFunctions) {
+            csv += [
+                esc(s.category || "spec"), esc(s.name), esc(s.module),
+                esc(s.math_interpretation), esc(s.informal_interpretation), esc(s.body)
+            ].join(",") + "\n";
+        }
+
+        triggerDownload(csv, "verus-specs.csv", "text/csv;charset=utf-8");
+    } catch (e) {
+        console.error("Download CSV failed:", e);
+        alert("Download failed — see console for details.");
+    }
+};
 
 // ── Utilities ────────────────────────────────────────────────
 function escapeHtml(str) {

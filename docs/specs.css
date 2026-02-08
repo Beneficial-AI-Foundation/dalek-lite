@@ -31,6 +31,42 @@
     gap: 3rem;
 }
 
+.download-bar {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.download-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.download-btn {
+    display: inline-block;
+    background: #e8f0fe;
+    color: var(--primary);
+    border: 1px solid #c2d5f2;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.download-btn:hover {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+}
+
 .spec-stat {
     display: flex;
     flex-direction: column;
@@ -64,7 +100,8 @@
     align-items: center;
     gap: 0.6rem;
     padding: 0.5rem 0;
-    overflow-x: auto;
+    overflow: visible;
+    position: relative;
 }
 
 .module-toolbar-label {
@@ -820,12 +857,42 @@
     padding: 0.55rem 0.75rem;
     border-radius: 8px;
     font-size: 0.8rem;
+    position: relative;
 }
 
 .comment-author {
     font-weight: 600;
     color: var(--text-primary);
     font-size: 0.75rem;
+}
+
+.comment-delete-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 0.65rem;
+    font-weight: 500;
+    line-height: 1;
+    padding: 0.25rem 0.45rem;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.comment-item:hover .comment-delete-btn {
+    opacity: 1;
+}
+
+.comment-delete-btn:hover {
+    color: #ef4444;
+    background: #fef2f2;
 }
 
 .comment-time {

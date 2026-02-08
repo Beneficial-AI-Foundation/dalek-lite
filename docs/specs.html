@@ -33,7 +33,7 @@
     <section class="specs-hero">
         <div class="container">
             <h1>Verified Function Specifications</h1>
-            <p class="subtitle">Browse Verus contracts and their linked spec function definitions side by side</p>
+            <p class="subtitle">contracts, linked spec functions, and proof axioms</p>
             <div class="specs-stats">
                 <div class="spec-stat">
                     <span class="spec-stat-number" id="totalVerified">0</span>
@@ -63,6 +63,11 @@
                 <nav class="module-pills" id="moduleTree">
                     <!-- Populated by JS -->
                 </nav>
+                <div class="download-bar">
+                    <span class="download-label">Download:</span>
+                    <span class="download-btn" onclick="downloadMarkdown()">MD</span>
+                    <span class="download-btn" onclick="downloadCSV()">CSV</span>
+                </div>
             </div>
         </div>
     </section>
@@ -91,7 +96,7 @@
                 <!-- Right panel: spec function definitions -->
                 <div class="panel panel-right">
                     <div class="panel-header">
-                        <h2 class="panel-title">Spec Functions & Axioms</h2>
+                        <h2 class="panel-title">Spec Functions and Axioms</h2>
                         <div class="panel-toolbar">
                             <input type="text" id="searchRight" placeholder="Search specs..." class="search-input search-sm">
                             <span class="panel-count" id="countRight">0</span>

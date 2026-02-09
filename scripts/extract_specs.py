@@ -1112,6 +1112,29 @@ def extract_all_tracked_functions(
     return functions
 
 
+# ── Discover all spec fn names from source ────────────────────────────
+
+_SPEC_FN_RE = re.compile(r"\bspec\s+fn\s+(\w+)")
+
+
+def discover_all_spec_fn_names(src_dir: str) -> set[str]:
+    """Scan all .rs files to find every ``spec fn`` name in the codebase.
+
+    This gives a complete set for reference detection, even for spec functions
+    that are not in the curated CSV list.
+    """
+    names: set[str] = set()
+    src = Path(src_dir)
+    for rs_file in sorted(src.rglob("*.rs")):
+        try:
+            text = rs_file.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        for m in _SPEC_FN_RE.finditer(text):
+            names.add(m.group(1))
+    return names
+
+
 # ── Axiom extraction (auto-discovery) ─────────────────────────────────
 
 
@@ -1243,8 +1266,17 @@ def main():
     spec_functions = extract_spec_functions(args.spec_csv)
     spec_functions.sort(key=lambda s: (s["module"], s["name"]))
 
-    # Build set of spec function names for cross-referencing
+    # Build set of spec function names for cross-referencing.
+    # Start with curated specs, then add ALL spec fn names from source so that
+    # reference detection works even for specs not in the curated CSV.
     spec_names = {s["name"] for s in spec_functions}
+    all_src_specs = discover_all_spec_fn_names(args.src_dir)
+    extra = all_src_specs - spec_names
+    spec_names |= all_src_specs
+    print(
+        f"  {len(spec_names)} spec fn names for reference detection "
+        f"({len(spec_names) - len(extra)} curated + {len(extra)} discovered from source)"
+    )
 
     # Add spec-to-spec cross-references (which other specs does each spec call?)
     print("Computing spec-to-spec cross-references...")

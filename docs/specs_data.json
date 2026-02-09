@@ -6,14 +6,14 @@
       "signature": "pub open spec fn spec_extended_gcd(a: nat, b: nat) -> ExtGcdResult decreases b,",
       "body": "pub open spec fn spec_extended_gcd(a: nat, b: nat) -> ExtGcdResult\n    decreases b,\n{\n    if b == 0 {\n        ExtGcdResult { gcd: a, x: 1, y: 0 }\n    } else {\n        let r = spec_extended_gcd(b, a % b);\n        ExtGcdResult { gcd: r.gcd, x: r.y, y: r.x - (a / b) as int * r.y }\n    }\n}",
       "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
-      "line": 908,
+      "line": 960,
       "module": "lemmas::common_lemmas::number_theory_lemmas",
       "short_module": "lemmas",
       "visibility": "pub open spec fn",
       "doc_comment": "Spec function: Extended Euclidean Algorithm\n\nComputes (gcd, x, y) such that gcd(a, b) = a*x + b*y (Bezout's identity)\n\nThis is a constructive algorithm that produces the Bezout coefficients.\nBase case: gcd(a, 0) = a = a*1 + 0*0, so (a, 1, 0)\nRecursive case: if gcd(b, a%b) = b*x' + (a%b)*y' = b*x' + (a - b*(a/b))*y'\n= a*y' + b*(x' - (a/b)*y')\nso (gcd, y', x' - (a/b)*y')",
       "math_interpretation": "gcd(a,b) = ax + by (Bezout coefficients)",
       "informal_interpretation": "Spec function: Extended Euclidean Algorithm\\n\\nComputes (gcd, x, y) such that gcd(a, b) = a*x + b*y (Bezout's identity)\\n\\nThis is a constructive algorithm that produces the Bezout coefficients.\\nBase case: gcd(a, 0) = a = a*1 + 0*0, so (a, 1, 0)\\nRecursive case: if gcd(b, a%b) = b*x' + (a%b)*y' = b*x' + (a - b*(a/b))*y'\\n= a*y' + b*(x' - (a/b)*y')\\nso (gcd, y', x' - (a/b)*y')",
-      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L908",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L960",
       "category": "spec",
       "referenced_specs": []
     },
@@ -40,14 +40,14 @@
       "signature": "pub open spec fn spec_mod_inverse(a: nat, m: nat) -> nat recommends m > 1, spec_gcd(a % m, m) == 1,",
       "body": "pub open spec fn spec_mod_inverse(a: nat, m: nat) -> nat\n    recommends\n        m > 1,\n        spec_gcd(a % m, m) == 1,\n{\n    if m <= 1 || spec_gcd(a % m, m) != 1 {\n        0  // Undefined case - return 0 by convention\n\n    } else {\n        let r = spec_extended_gcd(a % m, m);\n        // r.x might be negative, so normalize to [0, m)\n        (((r.x % (m as int)) + (m as int)) % (m as int)) as nat\n    }\n}",
       "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
-      "line": 980,
+      "line": 1032,
       "module": "lemmas::common_lemmas::number_theory_lemmas",
       "short_module": "lemmas",
       "visibility": "pub open spec fn",
       "doc_comment": "Spec function: Compute modular inverse using extended Euclidean algorithm\n\nFor a and m coprime (gcd(a, m) = 1), returns the unique x in [0, m) such that\na * x ≡ 1 (mod m).\n\nThe inverse is computed from Bezout's identity: a*x + m*y = 1\nTaking mod m: (a*x) % m = 1\n\nWe normalize the result to be in [0, m) by computing x % m (handling negative x).",
       "math_interpretation": "a^(-1) mod m, via extended GCD",
       "informal_interpretation": "Spec function: Compute modular inverse using extended Euclidean algorithm\\n\\nFor a and m coprime (gcd(a, m) = 1), returns the unique x in [0, m) such that\\na * x ≡ 1 (mod m).\\n\\nThe inverse is computed from Bezout's identity: a*x + m*y = 1\\nTaking mod m: (a*x) % m = 1\\n\\nWe normalize the result to be in [0, m) by computing x % m (handling negative x).",
-      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L980",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L1032",
       "category": "spec",
       "referenced_specs": [
         "spec_extended_gcd",
@@ -1021,14 +1021,14 @@
       "signature": "pub open spec fn group_order() -> nat",
       "body": "pub open spec fn group_order() -> nat {\n    pow2(252) + 27742317777372353535851937790883648493nat\n}",
       "file": "curve25519-dalek/src/specs/scalar52_specs.rs",
-      "line": 69,
+      "line": 85,
       "module": "specs::scalar52_specs",
       "short_module": "scalar",
       "visibility": "pub open spec fn",
       "doc_comment": "",
       "math_interpretation": "L = 2^252 + 27742317777372353535851937790883648493",
       "informal_interpretation": "Returns the Curve25519/Ed25519 scalar field modulus (group order).",
-      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar52_specs.rs#L69",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar52_specs.rs#L85",
       "category": "spec",
       "referenced_specs": []
     },
@@ -1067,7 +1067,9 @@
       "informal_interpretation": "Checks that a 32-byte array satisfies X25519 clamping (bit constraints).",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/scalar_specs.rs#L90",
       "category": "spec",
-      "referenced_specs": []
+      "referenced_specs": [
+        "mul_req"
+      ]
     },
     {
       "id": "specs__scalar_specs__scalar_to_nat",
@@ -1121,7 +1123,8 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/core_assumes.rs#L241",
       "category": "axiom",
       "referenced_specs": [
-        "spec_field_element_from_bytes"
+        "spec_field_element_from_bytes",
+        "spec_state_after_hash_montgomery"
       ]
     },
     {
@@ -1139,7 +1142,9 @@
       "informal_interpretation": "Axiom: SHA-512 always produces exactly 64 bytes of output.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/core_assumes.rs#L374",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "spec_sha512"
+      ]
     },
     {
       "id": "lemmas__common_lemmas__number_theory_lemmas__axiom_binomial_theorem",
@@ -1147,16 +1152,75 @@
       "signature": "proof fn axiom_binomial_theorem(a: nat, n: nat)",
       "body": "proof fn axiom_binomial_theorem(a: nat, n: nat)\n    ensures\n        binomial_sum(a, n, n) == pow((a + 1) as int, n) as nat,",
       "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
-      "line": 533,
+      "line": 585,
       "module": "lemmas::common_lemmas::number_theory_lemmas",
       "short_module": "lemmas",
       "visibility": "proof fn",
       "doc_comment": "Binomial Theorem: (a+1)^n = Σ_{k=0}^{n} C(n,k) * a^k (axiom)",
       "math_interpretation": "Binomial Theorem: (a+1)^n = Σ_{k=0}^{n} C(n,k) * a^k (axiom)",
       "informal_interpretation": "Binomial Theorem: (a+1)^n = Σ_{k=0}^{n} C(n,k) * a^k (axiom)",
-      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L533",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L585",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "binomial_sum"
+      ]
+    },
+    {
+      "id": "lemmas__common_lemmas__number_theory_lemmas__axiom_gcd_mod_noop",
+      "name": "axiom_gcd_mod_noop",
+      "signature": "pub proof fn axiom_gcd_mod_noop(a: nat, m: nat)",
+      "body": "pub proof fn axiom_gcd_mod_noop(a: nat, m: nat)\n    requires\n        m > 0,\n    ensures\n        spec_gcd(a % m, m) == spec_gcd(a, m),",
+      "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
+      "line": 230,
+      "module": "lemmas::common_lemmas::number_theory_lemmas",
+      "short_module": "lemmas",
+      "visibility": "proof fn",
+      "doc_comment": "Axiom: gcd(a % m, m) = gcd(a, m) for m > 0\n\nMathematical proof: By the Euclidean algorithm property,\ngcd(a, m) = gcd(m, a % m) = gcd(a % m, m) (using commutativity).\nThis reflects that reducing a modulo m doesn't change the GCD with m.",
+      "math_interpretation": "gcd(a, m) = gcd(m, a % m) = gcd(a % m, m) (using commutativity).",
+      "informal_interpretation": "Axiom: gcd(a % m, m) = gcd(a, m) for m > 0",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L230",
+      "category": "axiom",
+      "referenced_specs": [
+        "spec_gcd"
+      ]
+    },
+    {
+      "id": "lemmas__common_lemmas__number_theory_lemmas__axiom_gcd_pow2_odd",
+      "name": "axiom_gcd_pow2_odd",
+      "signature": "pub proof fn axiom_gcd_pow2_odd(k: nat, n: nat)",
+      "body": "pub proof fn axiom_gcd_pow2_odd(k: nat, n: nat)\n    requires\n        n % 2 == 1,  // n is odd\n\n    ensures\n        spec_gcd(pow2(k), n) == 1,",
+      "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
+      "line": 248,
+      "module": "lemmas::common_lemmas::number_theory_lemmas",
+      "short_module": "lemmas",
+      "visibility": "proof fn",
+      "doc_comment": "Axiom: gcd(2^k, n) = 1 when n is odd\n\nMathematical proof:\n- 2^k has only factor 2 (repeated k times)\n- An odd number n has no factor of 2\n- Therefore, gcd(2^k, n) = 1\n\nThe only divisors of 2^k are {1, 2, 4, ..., 2^k}.\nSince n is odd, 2 doesn't divide n, so no power of 2 > 1 divides n.",
+      "math_interpretation": "- Therefore, gcd(2^k, n) = 1",
+      "informal_interpretation": "Axiom: gcd(2^k, n) = 1 when n is odd",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L248",
+      "category": "axiom",
+      "referenced_specs": [
+        "spec_gcd"
+      ]
+    },
+    {
+      "id": "lemmas__common_lemmas__number_theory_lemmas__axiom_gcd_symmetric",
+      "name": "axiom_gcd_symmetric",
+      "signature": "pub proof fn axiom_gcd_symmetric(a: nat, b: nat)",
+      "body": "pub proof fn axiom_gcd_symmetric(a: nat, b: nat)\n    ensures\n        spec_gcd(a, b) == spec_gcd(b, a),",
+      "file": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
+      "line": 218,
+      "module": "lemmas::common_lemmas::number_theory_lemmas",
+      "short_module": "lemmas",
+      "visibility": "proof fn",
+      "doc_comment": "Axiom: gcd(a, b) = gcd(b, a) (commutativity of GCD)\n\nMathematical proof: The GCD is defined as the largest common divisor of a and b.\nSince \"common divisor of a and b\" is the same as \"common divisor of b and a\",\nthe GCD is symmetric.",
+      "math_interpretation": "spec_gcd(a, b) = spec_gcd(b, a)",
+      "informal_interpretation": "Axiom: gcd(a, b) = gcd(b, a) (commutativity of GCD)",
+      "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L218",
+      "category": "axiom",
+      "referenced_specs": [
+        "spec_gcd"
+      ]
     },
     {
       "id": "lemmas__edwards_lemmas__constants_lemmas__axiom_edwards_d2_is_2d",
@@ -1234,7 +1298,8 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/edwards_lemmas/curve_equation_lemmas.rs#L1123",
       "category": "axiom",
       "referenced_specs": [
-        "edwards_add"
+        "edwards_add",
+        "edwards_scalar_mul_signed"
       ]
     },
     {
@@ -1316,6 +1381,7 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/field_lemmas/sqrt_m1_lemmas.rs#L87",
       "category": "axiom",
       "referenced_specs": [
+        "is_square_mod_p",
         "p",
         "spec_sqrt_m1"
       ]
@@ -1336,6 +1402,7 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/field_lemmas/sqrt_m1_lemmas.rs#L70",
       "category": "axiom",
       "referenced_specs": [
+        "is_square_mod_p",
         "spec_sqrt_m1"
       ]
     },
@@ -1374,7 +1441,9 @@
       "informal_interpretation": "Axiom: Montgomery addition is associative",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L37",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "montgomery_add"
+      ]
     },
     {
       "id": "lemmas__montgomery_curve_lemmas__axiom_montgomery_add_identity",
@@ -1391,7 +1460,9 @@
       "informal_interpretation": "Axiom: Infinity is the identity element (right identity)",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L59",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "montgomery_add"
+      ]
     },
     {
       "id": "lemmas__montgomery_curve_lemmas__axiom_montgomery_add_identity_left",
@@ -1408,7 +1479,9 @@
       "informal_interpretation": "Axiom: Left identity element",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L50",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "montgomery_add"
+      ]
     },
     {
       "id": "lemmas__montgomery_curve_lemmas__axiom_montgomery_add_inverse",
@@ -1425,7 +1498,10 @@
       "informal_interpretation": "Axiom: every point has an inverse",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L68",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "montgomery_add",
+        "montgomery_neg"
+      ]
     },
     {
       "id": "lemmas__montgomery_curve_lemmas__axiom_xadd_projective_correct",
@@ -1442,7 +1518,13 @@
       "informal_interpretation": "**xADD Axiom**: `spec_xadd_projective` correctly computes P + Q.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L240",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "montgomery_add",
+        "montgomery_sub",
+        "projective_represents_montgomery_or_infinity_nat",
+        "spec_u_coordinate",
+        "spec_xadd_projective"
+      ]
     },
     {
       "id": "lemmas__montgomery_curve_lemmas__axiom_xdbl_projective_correct",
@@ -1459,7 +1541,11 @@
       "informal_interpretation": "**xDBL Axiom**: `spec_xdbl_projective` correctly computes [2]P.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L122",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "montgomery_add",
+        "projective_represents_montgomery_or_infinity_nat",
+        "spec_xdbl_projective"
+      ]
     },
     {
       "id": "specs__edwards_specs__axiom_ed25519_basepoint_canonical",
@@ -1497,6 +1583,7 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L144",
       "category": "axiom",
       "referenced_specs": [
+        "is_valid_edwards_basepoint_table",
         "spec_ed25519_basepoint"
       ]
     },
@@ -1535,6 +1622,7 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/primality_specs.rs#L24",
       "category": "axiom",
       "referenced_specs": [
+        "is_prime",
         "p"
       ]
     },
@@ -1555,6 +1643,8 @@
       "category": "axiom",
       "referenced_specs": [
         "bytes32_to_nat",
+        "is_independent_uniform_bytes32",
+        "is_independent_uniform_field_elements",
         "spec_field_element_as_nat"
       ]
     },
@@ -1575,6 +1665,8 @@
       "category": "axiom",
       "referenced_specs": [
         "bytes32_to_nat",
+        "is_uniform_bytes",
+        "is_uniform_field_element",
         "spec_field_element_as_nat"
       ]
     },
@@ -1593,7 +1685,10 @@
       "informal_interpretation": "Axiom: Splitting uniform bytes preserves uniformity on each half.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/proba_specs.rs#L119",
       "category": "axiom",
-      "referenced_specs": []
+      "referenced_specs": [
+        "is_independent_uniform_bytes32",
+        "is_uniform_bytes"
+      ]
     },
     {
       "id": "specs__proba_specs__axiom_uniform_elligator",
@@ -1612,6 +1707,9 @@
       "category": "axiom",
       "referenced_specs": [
         "edwards_point_as_affine",
+        "is_uniform_field_element",
+        "is_uniform_over_elligator_image",
+        "spec_elligator_ristretto_flavor",
         "spec_field_element"
       ]
     },
@@ -1632,6 +1730,9 @@
       "category": "axiom",
       "referenced_specs": [
         "edwards_point_as_affine",
+        "is_independent_uniform_field_elements",
+        "is_independent_uniform_ristretto_points",
+        "spec_elligator_ristretto_flavor",
         "spec_field_element"
       ]
     },
@@ -1652,7 +1753,10 @@
       "category": "axiom",
       "referenced_specs": [
         "edwards_add",
-        "edwards_point_as_affine"
+        "edwards_point_as_affine",
+        "is_independent_uniform_ristretto_points",
+        "is_uniform_over_elligator_image",
+        "is_uniform_ristretto_point"
       ]
     },
     {
@@ -1673,6 +1777,8 @@
       "referenced_specs": [
         "bytes_seq_to_nat",
         "group_order",
+        "is_uniform_bytes",
+        "is_uniform_scalar",
         "scalar_to_nat"
       ]
     },
@@ -1693,7 +1799,9 @@
       "category": "axiom",
       "referenced_specs": [
         "edwards_add",
-        "edwards_point_as_affine"
+        "edwards_point_as_affine",
+        "is_independent_uniform_ristretto_points",
+        "is_uniform_ristretto_point"
       ]
     },
     {
@@ -1712,6 +1820,7 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/ristretto_specs.rs#L204",
       "category": "axiom",
       "referenced_specs": [
+        "is_valid_edwards_basepoint_table",
         "spec_ristretto_basepoint"
       ]
     },
@@ -1731,6 +1840,8 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/window_specs.rs#L205",
       "category": "axiom",
       "referenced_specs": [
+        "is_valid_naf_lookup_table8_affine_coords",
+        "naf_lookup_table8_affine_limbs_bounded",
         "spec_ed25519_basepoint"
       ]
     }
@@ -1746,7 +1857,9 @@
         "!choice_is_true(choice) ==> *self == *old(self),",
         "choice_is_true(choice) ==> *self == *other,"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true"
+      ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 460,
       "module": "backend",
@@ -1770,7 +1883,9 @@
       "ensures": [
         "result == identity_projective_point_edwards(),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "identity_projective_point_edwards"
+      ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 265,
       "module": "backend",
@@ -1799,6 +1914,7 @@
         "({ let self_affine = affine_niels_point_as_affine_edwards(*self); let result_affine = affine_niels_point_as_affine_edwards(result); result_affine == (math_field_neg(self_affine.0), self_affine.1) }),"
       ],
       "referenced_specs": [
+        "affine_niels_point_as_affine_edwards",
         "fe51_limbs_bounded",
         "math_field_neg"
       ],
@@ -1865,10 +1981,13 @@
         "edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),"
       ],
       "referenced_specs": [
+        "completed_point_as_affine_edwards",
         "edwards_point_as_affine",
         "fe51_limbs_bounded",
+        "is_valid_completed_point",
         "is_valid_edwards_point",
         "is_well_formed_edwards_point",
+        "spec_completed_to_extended",
         "spec_edwards_point"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
@@ -1907,7 +2026,13 @@
         "sum_of_limbs_bounded(&result.X, &result.Y, u64::MAX),"
       ],
       "referenced_specs": [
+        "completed_point_as_affine_edwards",
         "fe51_limbs_bounded",
+        "is_valid_completed_point",
+        "is_valid_projective_point",
+        "projective_point_as_affine_edwards",
+        "spec_completed_to_projective",
+        "spec_projective_point_edwards",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
@@ -1947,8 +2072,13 @@
         "fe51_limbs_bounded(&result.T, 54),"
       ],
       "referenced_specs": [
+        "add",
+        "add_req",
+        "completed_point_as_affine_edwards",
         "fe51_limbs_bounded",
-        "is_well_formed_edwards_point"
+        "is_valid_completed_point",
+        "is_well_formed_edwards_point",
+        "spec_edwards_add_projective_niels"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 854,
@@ -1987,8 +2117,13 @@
         "fe51_limbs_bounded(&result.T, 54),"
       ],
       "referenced_specs": [
+        "add",
+        "add_req",
+        "completed_point_as_affine_edwards",
         "fe51_limbs_bounded",
+        "is_valid_completed_point",
         "is_well_formed_edwards_point",
+        "spec_edwards_add_affine_niels",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
@@ -2025,10 +2160,15 @@
         "fe51_limbs_bounded(&result.T, 54),"
       ],
       "referenced_specs": [
+        "add",
+        "completed_point_as_affine_edwards",
         "edwards_point_as_affine",
         "edwards_sub",
         "fe51_limbs_bounded",
-        "is_well_formed_edwards_point"
+        "is_valid_completed_point",
+        "is_well_formed_edwards_point",
+        "projective_niels_point_as_affine_edwards",
+        "sub_req"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 954,
@@ -2061,10 +2201,14 @@
         "({ let self_affine = edwards_point_as_affine(*self); let other_affine = affine_niels_point_as_affine_edwards(*other); completed_point_as_affine_edwards(result) == edwards_sub( self_affine.0, self_affine.1, other_affine.0, other_affine.1, ) }),"
       ],
       "referenced_specs": [
+        "affine_niels_point_as_affine_edwards",
+        "completed_point_as_affine_edwards",
         "edwards_point_as_affine",
         "edwards_sub",
         "fe51_limbs_bounded",
+        "is_valid_completed_point",
         "is_well_formed_edwards_point",
+        "sub_req",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
@@ -2098,8 +2242,10 @@
         "),"
       ],
       "referenced_specs": [
+        "add",
         "fe51_limbs_bounded",
         "math_field_add",
+        "spec_add_fe51_limbs",
         "spec_field_element",
         "spec_field_element_as_nat"
       ],
@@ -2134,6 +2280,7 @@
       ],
       "referenced_specs": [
         "math_field_add",
+        "spec_add_fe51_limbs",
         "spec_field_element",
         "spec_field_element_as_nat",
         "sum_of_limbs_bounded"
@@ -2193,6 +2340,7 @@
         "(fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(other, 54)) ==> fe51_limbs_bounded(self, 54),"
       ],
       "referenced_specs": [
+        "choice_is_true",
         "fe51_limbs_bounded",
         "spec_field_element"
       ],
@@ -2343,7 +2491,9 @@
         "self.limbs == spec_negate(old(self).limbs),"
       ],
       "referenced_specs": [
+        "l0",
         "p",
+        "spec_negate",
         "u64_5_as_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/field.rs",
@@ -2409,6 +2559,7 @@
       ],
       "referenced_specs": [
         "p",
+        "spec_reduce",
         "u64_5_as_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/field.rs",
@@ -2504,7 +2655,8 @@
       "referenced_specs": [
         "fe51_limbs_bounded",
         "math_field_sub",
-        "spec_field_element"
+        "spec_field_element",
+        "spec_sub_limbs"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/field.rs",
       "line": 343,
@@ -2538,7 +2690,8 @@
       "referenced_specs": [
         "fe51_limbs_bounded",
         "math_field_sub",
-        "spec_field_element"
+        "spec_field_element",
+        "spec_sub_limbs"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/field.rs",
       "line": 285,
@@ -2597,8 +2750,13 @@
         "),"
       ],
       "referenced_specs": [
+        "all_points_some",
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_optional_points_from_iter",
+        "spec_scalars_from_iter",
+        "sum_of_scalar_muls",
+        "unwrap_points"
       ],
       "file": "curve25519-dalek/src/backend/serial/scalar_mul/pippenger.rs",
       "line": 219,
@@ -2624,7 +2782,9 @@
         "!choice_is_true(choice) ==> *self == *old(self),",
         "choice_is_true(choice) ==> *self == *other,"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true"
+      ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 414,
       "module": "backend",
@@ -2648,7 +2808,9 @@
       "ensures": [
         "result == identity_projective_point_edwards(),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "identity_projective_point_edwards"
+      ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 265,
       "module": "backend",
@@ -2679,7 +2841,8 @@
       ],
       "referenced_specs": [
         "fe51_limbs_bounded",
-        "math_field_neg"
+        "math_field_neg",
+        "projective_niels_point_as_affine_edwards"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 1257,
@@ -2741,7 +2904,10 @@
         "edwards_point_as_affine",
         "fe51_limbs_bounded",
         "is_valid_edwards_point",
-        "spec_edwards_point"
+        "is_valid_projective_point",
+        "projective_point_as_affine_edwards",
+        "spec_edwards_point",
+        "spec_projective_to_extended"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
       "line": 489,
@@ -2777,8 +2943,12 @@
         "fe51_limbs_bounded(&result.T, 54),"
       ],
       "referenced_specs": [
+        "completed_point_as_affine_edwards",
         "edwards_double",
         "fe51_limbs_bounded",
+        "is_valid_completed_point",
+        "is_valid_projective_point",
+        "projective_point_as_affine_edwards",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
@@ -2847,10 +3017,13 @@
         "limbs_bounded(&s),"
       ],
       "referenced_specs": [
-        "group_order"
+        "add",
+        "group_order",
+        "limbs_bounded",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 525,
+      "line": 556,
       "module": "backend",
       "doc_comment": "Compute `a + b` (mod l)",
       "math_interpretation": "",
@@ -2875,10 +3048,12 @@
         "bytes32_to_nat(&s) == scalar52_to_nat(&self) % pow2(256),"
       ],
       "referenced_specs": [
-        "bytes32_to_nat"
+        "bytes32_to_nat",
+        "limbs_bounded",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 474,
+      "line": 505,
       "module": "backend",
       "doc_comment": "Pack the limbs of this `Scalar52` into 32 bytes",
       "math_interpretation": "",
@@ -2895,22 +3070,28 @@
       "name": "as_montgomery",
       "display_name": "Scalar52::as_montgomery",
       "impl_type": "Scalar52",
-      "contract": "pub fn as_montgomery(&self) -> (result: Scalar52)\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        #[trigger] (scalar52_to_nat(&result) % group_order()) == #[trigger] ((scalar52_to_nat(\n            self,\n        ) * montgomery_radix()) % group_order()),\n        // Result is canonical because RR is canonical\n        scalar52_to_nat(&result) < group_order(),",
-      "requires": [],
+      "contract": "pub fn as_montgomery(&self) -> (result: Scalar52)\n    requires\n        limbs_bounded(self),\n    ensures\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        #[trigger] (scalar52_to_nat(&result) % group_order()) == #[trigger] ((scalar52_to_nat(\n            self,\n        ) * montgomery_radix()) % group_order()),\n        // Result is canonical because RR is canonical\n        is_canonical_scalar52(&result),",
+      "requires": [
+        "limbs_bounded(self),"
+      ],
       "ensures": [
-        "limbs_bounded(&result),",
         "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
         "#[trigger] (scalar52_to_nat(&result) % group_order()) == #[trigger] ((scalar52_to_nat( self,",
         ") * montgomery_radix()) % group_order()),",
-        "scalar52_to_nat(&result) < group_order(),"
+        "is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limb_prod_bounded_u128",
+        "limbs_bounded",
+        "montgomery_radix",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1292,
+      "line": 1984,
       "module": "backend",
-      "doc_comment": "Puts a Scalar52 in to Montgomery form, i.e. computes `a*R (mod l)`",
+      "doc_comment": "Puts a Scalar52 in to Montgomery form, i.e. computes `a*R (mod l)`\n\n# Precondition\nRequires `limbs_bounded(self)` because `montgomery_mul` (called internally) now\nrequires both inputs to have `limbs_bounded`. This is safe because all `Scalar52`\nvalues in practice have `limbs_bounded` (from `unpack()` or other Montgomery ops).",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1292",
@@ -2933,10 +3114,13 @@
         "limb_prod_bounded_u128(s.limbs, s.limbs, 5),"
       ],
       "referenced_specs": [
-        "bytes32_to_nat"
+        "bytes32_to_nat",
+        "limb_prod_bounded_u128",
+        "limbs_bounded",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 157,
+      "line": 164,
       "module": "backend",
       "doc_comment": "Unpack a 32 byte / 256 bit scalar into 5 52-bit limbs.",
       "math_interpretation": "",
@@ -2961,10 +3145,12 @@
       ],
       "referenced_specs": [
         "bytes_seq_to_nat",
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 228,
+      "line": 235,
       "module": "backend",
       "doc_comment": "Reduce a 64 byte / 512 bit scalar mod l",
       "math_interpretation": "",
@@ -2981,21 +3167,25 @@
       "name": "from_montgomery",
       "display_name": "Scalar52::from_montgomery",
       "impl_type": "Scalar52",
-      "contract": "pub fn from_montgomery(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == scalar52_to_nat(self)\n            % group_order(),\n        // Result is canonical (< group_order). This follows from montgomery_reduce's postcondition\n        is_canonical_scalar52(&result),",
+      "contract": "pub fn from_montgomery(&self) -> (result: Scalar52)\n    requires\n        limbs_bounded(self),\n    ensures\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == scalar52_to_nat(self)\n            % group_order(),\n        // Result is canonical (< group_order). This follows from montgomery_reduce's postcondition\n        is_canonical_scalar52(&result),",
       "requires": [
-        "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
+        "limbs_bounded(self),"
       ],
       "ensures": [
         "(scalar52_to_nat(&result) * montgomery_radix()) % group_order() == scalar52_to_nat(self) % group_order(),",
         "is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limbs_bounded",
+        "montgomery_radix",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1330,
+      "line": 2023,
       "module": "backend",
-      "doc_comment": "Takes a Scalar52 out of Montgomery form, i.e. computes `a/R (mod l)`",
+      "doc_comment": "Takes a Scalar52 out of Montgomery form, i.e. computes `a/R (mod l)`\n",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1330",
@@ -3019,7 +3209,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 119,
+      "line": 126,
       "module": "backend",
       "doc_comment": "",
       "math_interpretation": "",
@@ -3036,23 +3226,29 @@
       "name": "montgomery_mul",
       "display_name": "Scalar52::montgomery_mul",
       "impl_type": "Scalar52",
-      "contract": "pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(&a)\n            * scalar52_to_nat(&b)) % group_order(),\n        // Canonicity: if either input is canonical, result is canonical\n        (scalar52_to_nat(a) < group_order() || scalar52_to_nat(b) < group_order())\n            ==> scalar52_to_nat(&result) < group_order(),",
+      "contract": "pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limbs_bounded(a),\n        limbs_bounded(b),\n        // At least one input must be canonical for montgomery_reduce's canonical_bound\n        is_canonical_scalar52(a) || is_canonical_scalar52(b),\n    ensures\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(&a)\n            * scalar52_to_nat(&b)) % group_order(),\n        // Result is canonical from montgomery_reduce\n        is_canonical_scalar52(&result),",
       "requires": [
-        "limb_prod_bounded_u128(a.limbs, b.limbs, 5),"
+        "limbs_bounded(a),",
+        "limbs_bounded(b),",
+        "is_canonical_scalar52(a) || is_canonical_scalar52(b),"
       ],
       "ensures": [
-        "limbs_bounded(&result),",
         "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
         "(scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b)) % group_order(),",
-        "(scalar52_to_nat(a) < group_order() || scalar52_to_nat(b) < group_order()) ==> scalar52_to_nat(&result) < group_order(),"
+        "is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limb_prod_bounded_u128",
+        "limbs_bounded",
+        "montgomery_radix",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1243,
+      "line": 1893,
       "module": "backend",
-      "doc_comment": "Compute `(a * b) / R` (mod l), where R is the Montgomery modulus 2^260",
+      "doc_comment": "Compute `(a * b) / R` (mod l), where R is the Montgomery modulus 2^260\n\n# Preconditions\n- Both inputs must have `limbs_bounded` (ensures `input_bounds` for the product)\n- At least one input must be canonical for `montgomery_reduce`'s `canonical_bound`",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1243",
@@ -3067,21 +3263,28 @@
       "name": "montgomery_reduce",
       "display_name": "Scalar52::montgomery_reduce",
       "impl_type": "Scalar52",
-      "contract": "pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result:\n    Scalar52)\n// If the input is the product of 2 bounded scalars, we get 2 postconditions.\n// If the 2nd scalar is also canonical, we unlock a 3rd postcondition.\n// Not all calling code needs the 3rd postcondition.\n// Note: This spec is not yet confirmed because the function is unproved.\n// The spec is checked by prop_montgomery_reduce_two_bounded and prop_montgomery_reduce_one_canonical.\n// If you edit this spec, please update the proptests.\n// Once this function and all deps are proved, you can remove those proptests,\n// and montgomery_reduce_non_canonical_product_fails_postcondition,\n// and test_canonical_scalar_generator (if it's then unused)\n\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        is_canonical_scalar52(&result),  // Sub returns a value equal to (a - b) % L, so it's always < L and canonical\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == slice128_to_nat(\n            limbs,\n        ) % group_order(),",
-      "requires": [],
+      "contract": "/// pub (crate) fn montgomery_reduce(limbs: &[u128; 9]) -> Scalar52 {\n///     #[inline(always)]\n///     fn part1(sum: u128) -> (u128, u64) {\n///         let p = (sum as u64).wrapping_mul(constants::LFACTOR) & ((1u64 << 52) - 1);\n///         ((sum + m(p, constants::L[0])) >> 52, p)\n///     }\n///     #[inline(always)]\n///     fn part2(sum: u128) -> (u128, u64) {\n///         let w = (sum as u64) & ((1u64 << 52) - 1);\n///         (sum >> 52, w)\n///     }\n///     // note: l[3] is zero, so its multiples can be skipped\n///     let l = &constants::L;\n///     // the first half computes the Montgomery adjustment factor n, and begins adding n*l to make limbs divisible by R\n///     let (carry, n0) = part1(        limbs[0]);\n///     let (carry, n1) = part1(carry + limbs[1] + m(n0, l[1]));\n///     let (carry, n2) = part1(carry + limbs[2] + m(n0, l[2]) + m(n1, l[1]));\n///     let (carry, n3) = part1(carry + limbs[3]               + m(n1, l[2]) + m(n2, l[1]));\n///     let (carry, n4) = part1(carry + limbs[4] + m(n0, l[4])               + m(n2, l[2]) + m(n3, l[1]));\n///     // limbs is divisible by R now, so we can divide by R by simply storing the upper half as the result\n///     let (carry, r0) = part2(carry + limbs[5]               + m(n1, l[4])               + m(n3, l[2])   + m(n4, l[1]));\n///     let (carry, r1) = part2(carry + limbs[6]                             + m(n2,l[4])                  + m(n4, l[2]));\n///     let (carry, r2) = part2(carry + limbs[7]                                           + m(n3, l[4])                );\n///     let (carry, r3) = part2(carry + limbs[8]                                                           + m(n4, l[4]));\n///     let         r4 = carry as u64;\n///     // result may be >= l, so attempt to subtract l\n///     Scalar52::sub(&Scalar52([r0, r1, r2, r3, r4]), l)\n/// }\n</ORIGINAL CODE> */\n/// Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^260\n///\n/// # Preconditions\n/// - `montgomery_reduce_input_bounds(limbs)`: Per-limb bounds for overflow-safe computation\n/// - `montgomery_reduce_canonical_bound(limbs)`: T < R×L (HAC 14.32's value constraint)\n///\n/// # Postconditions (all unconditional given preconditions)\n/// - `limbs_bounded(&result)`: Result limbs are bounded (< 2^52)\n/// - `montgomery_congruent(&result, limbs)`: (result × R) ≡ T (mod L)\n/// - `is_canonical_scalar52(&result)`: result < L\n///\n/// # Note\n/// The `canonical_bound` precondition corresponds to HAC Algorithm 14.32's requirement\n/// that T < m×R for correct Montgomery reduction. This ensures intermediate < 2L,\n/// which is needed for sub's correctness and the r4 < 2^52 + L[4] bound.\n/// HAC is at https://cacr.uwaterloo.ca/hac/about/chap14.pdf\n/// The `input_bounds` precondition ensures no overflow in u128 arithmetic.\n#[inline(always)]\n#[rustfmt::skip]  // keep alignment of n* and r* calculations\npub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)\n    requires\n// Per-limb bounds for overflow-safe u128 arithmetic\n\n        montgomery_reduce_input_bounds(limbs),\n        // HAC 14.32's value constraint: T < R×L ensures intermediate < 2L\n        montgomery_reduce_canonical_bound(limbs),\n    ensures\n// All postconditions are now unconditional (given preconditions)\n\n        limbs_bounded(&result),\n        montgomery_congruent(&result, limbs),\n        is_canonical_scalar52(&result),",
+      "requires": [
+        "montgomery_reduce_input_bounds(limbs),",
+        "montgomery_reduce_canonical_bound(limbs),"
+      ],
       "ensures": [
         "limbs_bounded(&result),",
-        "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-        "is_canonical_scalar52(&result),  // Sub returns a value equal to (a - b) % L, so it's always < L and canonical (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == slice128_to_nat( limbs,",
-        ") % group_order(),"
+        "montgomery_congruent(&result, limbs),",
+        "is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
-        "group_order"
+        "is_canonical_scalar52",
+        "limbs_bounded",
+        "montgomery_congruent",
+        "montgomery_reduce_canonical_bound",
+        "montgomery_reduce_input_bounds",
+        "p"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 999,
+      "line": 1066,
       "module": "backend",
-      "doc_comment": "Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^260",
+      "doc_comment": "",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L999",
@@ -3096,23 +3299,27 @@
       "name": "montgomery_square",
       "display_name": "Scalar52::montgomery_square",
       "impl_type": "Scalar52",
-      "contract": "pub fn montgomery_square(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(\n            self,\n        ) * scalar52_to_nat(self)) % group_order(),",
+      "contract": "pub fn montgomery_square(&self) -> (result: Scalar52)\n    requires\n// Must be canonical for montgomery_reduce's canonical_bound\n\n        is_canonical_scalar52(self),\n    ensures\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(\n            self,\n        ) * scalar52_to_nat(self)) % group_order(),\n        // Result is canonical from montgomery_reduce\n        is_canonical_scalar52(&result),",
       "requires": [
-        "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
+        "is_canonical_scalar52(self),"
       ],
       "ensures": [
-        "limbs_bounded(&result),",
         "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
         "(scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat( self,",
-        ") * scalar52_to_nat(self)) % group_order(),"
+        ") * scalar52_to_nat(self)) % group_order(),",
+        "is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limb_prod_bounded_u128",
+        "montgomery_radix",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1277,
+      "line": 1942,
       "module": "backend",
-      "doc_comment": "Compute `(a^2) / R` (mod l) in Montgomery form, where R is the Montgomery modulus 2^260",
+      "doc_comment": "Compute `(a^2) / R` (mod l) in Montgomery form, where R is the Montgomery modulus 2^260\n\n# Preconditions\n- Input must be canonical for `montgomery_reduce`'s `canonical_bound`\n\nWhy `limbs_bounded` (part of canonical): `square_internal(self)[0] = self.limbs[0]²`,\nand we need `self.limbs[0]² < 2^104`, so `self.limbs[0] < 2^52`.",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1277",
@@ -3127,21 +3334,26 @@
       "name": "mul",
       "display_name": "Scalar52::mul",
       "impl_type": "Scalar52",
-      "contract": "pub fn mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        scalar52_to_nat(&result) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b))\n            % group_order(),\n        // VER NOTE: Result is canonical from montgomery_reduce\n        is_canonical_scalar52(&result),",
+      "contract": "pub fn mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limbs_bounded(a),\n        limbs_bounded(b),\n        // At least one input must be canonical for montgomery_reduce's canonical_bound\n        is_canonical_scalar52(a) || is_canonical_scalar52(b),\n    ensures\n        scalar52_to_nat(&result) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b))\n            % group_order(),\n        is_canonical_scalar52(&result),",
       "requires": [
-        "limb_prod_bounded_u128(a.limbs, b.limbs, 5),"
+        "limbs_bounded(a),",
+        "limbs_bounded(b),",
+        "is_canonical_scalar52(a) || is_canonical_scalar52(b),"
       ],
       "ensures": [
         "scalar52_to_nat(&result) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b)) % group_order(),",
         "is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limbs_bounded",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1140,
+      "line": 1725,
       "module": "backend",
-      "doc_comment": "Compute `a * b` (mod l)",
+      "doc_comment": "Compute `a * b` (mod l)\n\n# Preconditions\n- Both inputs must be bounded (limbs < 2^52)\n- At least one input must be canonical (< L) for verified first reduction",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1140",
@@ -3164,9 +3376,14 @@
         "slice128_to_nat(&z) == scalar52_to_nat(&a) * scalar52_to_nat(&b),",
         "spec_mul_internal(a, b) == z,"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "limb_prod_bounded_u128",
+        "scalar52_to_nat",
+        "slice128_to_nat",
+        "spec_mul_internal"
+      ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 871,
+      "line": 940,
       "module": "backend",
       "doc_comment": "Compute `a * b`",
       "math_interpretation": "",
@@ -3183,20 +3400,22 @@
       "name": "square",
       "display_name": "Scalar52::square",
       "impl_type": "Scalar52",
-      "contract": "pub fn square(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        scalar52_to_nat(&result) == (scalar52_to_nat(self) * scalar52_to_nat(self))\n            % group_order(),",
+      "contract": "pub fn square(&self) -> (result: Scalar52)\n    requires\n// Must be canonical for montgomery_reduce's canonical_bound\n\n        is_canonical_scalar52(self),\n    ensures\n        scalar52_to_nat(&result) == (scalar52_to_nat(self) * scalar52_to_nat(self))\n            % group_order(),",
       "requires": [
-        "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
+        "is_canonical_scalar52(self),"
       ],
       "ensures": [
         "scalar52_to_nat(&result) == (scalar52_to_nat(self) * scalar52_to_nat(self)) % group_order(),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1189,
+      "line": 1812,
       "module": "backend",
-      "doc_comment": "Compute `a^2` (mod l)",
+      "doc_comment": "Compute `a^2` (mod l)\n\n# Preconditions\n- Input must be canonical (bounded and < L) for verified first reduction",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1189",
@@ -3220,9 +3439,15 @@
         "spec_mul_internal(a, a) == z,",
         "limbs_bounded(&a) ==> forall|i: int| 0 <= i < 9 ==> z[i] < 5 * (1u128 << 104),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "limb_prod_bounded_u128",
+        "limbs_bounded",
+        "scalar52_to_nat",
+        "slice128_to_nat",
+        "spec_mul_internal"
+      ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 903,
+      "line": 972,
       "module": "backend",
       "doc_comment": "",
       "math_interpretation": "",
@@ -3239,23 +3464,27 @@
       "name": "sub",
       "display_name": "Scalar52::sub",
       "impl_type": "Scalar52",
-      "contract": "pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)\n    requires\n        limbs_bounded(a),\n        limbs_bounded(b),\n        // Without the following condition, all we can prove is something like:\n        // scalar52_to_nat(&a) >= scalar52_to_nat(&b) ==> scalar52_to_nat(&s) == scalar52_to_nat(&a) - scalar52_to_nat(&b),\n        // scalar52_to_nat(&a) < scalar52_to_nat(&b) ==> scalar52_to_nat(&s) == (scalar52_to_nat(&a) - scalar52_to_nat(&b) + pow2(260) + group_order()) % (pow2(260) as int),\n        // In the 2nd case, `sub` doesn't always do subtraction mod group_order\n        -group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order(),\n    ensures\n        scalar52_to_nat(&s) == (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (\n        group_order() as int),\n        // VERIFICATION NOTE: Result is in canonical form\n        is_canonical_scalar52(&s),",
+      "contract": "pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)\n    requires\n// Relaxed bound: limbs 0-3 bounded, limb 4 can exceed 2^52 by up to b[4]\n\n        limbs_bounded_for_sub(a, b),\n        limbs_bounded(b),\n    ensures\n// UNCONDITIONAL: limbs are always bounded due to masking in both loops\n\n        limbs_bounded(&s),\n        // CONDITIONAL: modular correctness and canonicity only when value constraint holds\n        // -L <= (a - b) < L\n        ({\n            let diff = scalar52_to_nat(&a) as int - scalar52_to_nat(&b) as int;\n            let l = group_order() as int;\n            -l <= diff && diff < l\n        }) ==> (scalar52_to_nat(&s) == (scalar52_to_nat(&a) as int - scalar52_to_nat(&b) as int)\n            % (group_order() as int)),\n        ({\n            let diff = scalar52_to_nat(&a) as int - scalar52_to_nat(&b) as int;\n            let l = group_order() as int;\n            -l <= diff && diff < l\n        }) ==> is_canonical_scalar52(&s),",
       "requires": [
-        "limbs_bounded(a),",
-        "limbs_bounded(b),",
-        "-group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order(),"
+        "limbs_bounded_for_sub(a, b),",
+        "limbs_bounded(b),"
       ],
       "ensures": [
-        "scalar52_to_nat(&s) == (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % ( group_order() as int),",
-        "is_canonical_scalar52(&s),"
+        "limbs_bounded(&s),",
+        "({ let diff = scalar52_to_nat(&a) as int - scalar52_to_nat(&b) as int; let l = group_order() as int; -l <= diff && diff < l }) ==> (scalar52_to_nat(&s) == (scalar52_to_nat(&a) as int - scalar52_to_nat(&b) as int) % (group_order() as int)),",
+        "({ let diff = scalar52_to_nat(&a) as int - scalar52_to_nat(&b) as int; let l = group_order() as int; -l <= diff && diff < l }) ==> is_canonical_scalar52(&s),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limbs_bounded",
+        "limbs_bounded_for_sub",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 714,
+      "line": 749,
       "module": "backend",
-      "doc_comment": "Compute `a - b` (mod l)",
+      "doc_comment": "Compute `a - b` (mod l)\n\nPRECONDITION RELAXATION: `a` doesn't need to be fully bounded.\nLimbs 0-3 must be < 2^52, but limb 4 can be up to 2^52 + b[4].\nThis is needed for montgomery_reduce where the intermediate has r4 > 2^52.",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L714",
@@ -3277,7 +3506,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 107,
+      "line": 114,
       "module": "backend",
       "doc_comment": "",
       "math_interpretation": "",
@@ -3309,7 +3538,10 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_points_from_iter",
+        "spec_scalars_from_iter",
+        "sum_of_scalar_muls"
       ],
       "file": "curve25519-dalek/src/backend/serial/scalar_mul/straus.rs",
       "line": 453,
@@ -3344,8 +3576,13 @@
         "),"
       ],
       "referenced_specs": [
+        "all_points_some",
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_optional_points_from_iter",
+        "spec_scalars_from_iter",
+        "sum_of_scalar_muls",
+        "unwrap_points"
       ],
       "file": "curve25519-dalek/src/backend/serial/scalar_mul/straus.rs",
       "line": 269,
@@ -3372,7 +3609,9 @@
       "ensures": [
         "r as nat == spec_load8_at(input, i),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "spec_load8_at"
+      ],
       "file": "curve25519-dalek/src/backend/serial/u64/field.rs",
       "line": 140,
       "module": "backend",
@@ -3398,7 +3637,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 141,
+      "line": 148,
       "module": "backend",
       "doc_comment": "u64 * u64 = u128 multiply helper",
       "math_interpretation": "",
@@ -3484,20 +3723,28 @@
       "name": "part1",
       "display_name": "part1",
       "impl_type": "",
-      "contract": "fn part1(sum: u128) -> (res: (u128, u64))\n    requires\n// Bound needed to ensure no overflow and carry bounds\n\n        sum < (1u128 << 108),\n    ensures\n        ({\n            let carry = res.0;\n            let p = res.1;\n            &&& p < (1u64 << 52)  // p is bounded by 52 bits\n            &&& sum + (p as u128) * (constants::L.limbs[0] as u128) == carry << 52\n        }),",
+      "contract": "///     fn part1(sum: u128) -> (u128, u64) {\n///         let p = (sum as u64).wrapping_mul(constants::LFACTOR) & ((1u64 << 52) - 1);\n///         ((sum + m(p, constants::L[0])) >> 52, p)\n///     }\n///     #[inline(always)]\n///     fn part2(sum: u128) -> (u128, u64) {\n///         let w = (sum as u64) & ((1u64 << 52) - 1);\n///         (sum >> 52, w)\n///     }\n///     // note: l[3] is zero, so its multiples can be skipped\n///     let l = &constants::L;\n///     // the first half computes the Montgomery adjustment factor n, and begins adding n*l to make limbs divisible by R\n///     let (carry, n0) = part1(        limbs[0]);\n///     let (carry, n1) = part1(carry + limbs[1] + m(n0, l[1]));\n///     let (carry, n2) = part1(carry + limbs[2] + m(n0, l[2]) + m(n1, l[1]));\n///     let (carry, n3) = part1(carry + limbs[3]               + m(n1, l[2]) + m(n2, l[1]));\n///     let (carry, n4) = part1(carry + limbs[4] + m(n0, l[4])               + m(n2, l[2]) + m(n3, l[1]));\n///     // limbs is divisible by R now, so we can divide by R by simply storing the upper half as the result\n///     let (carry, r0) = part2(carry + limbs[5]               + m(n1, l[4])               + m(n3, l[2])   + m(n4, l[1]));\n///     let (carry, r1) = part2(carry + limbs[6]                             + m(n2,l[4])                  + m(n4, l[2]));\n///     let (carry, r2) = part2(carry + limbs[7]                                           + m(n3, l[4])                );\n///     let (carry, r3) = part2(carry + limbs[8]                                                           + m(n4, l[4]));\n///     let         r4 = carry as u64;\n///     // result may be >= l, so attempt to subtract l\n///     Scalar52::sub(&Scalar52([r0, r1, r2, r3, r4]), l)\n/// }\n</ORIGINAL CODE> */\n/// Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^260\n///\n/// # Preconditions\n/// - `montgomery_reduce_input_bounds(limbs)`: Per-limb bounds for overflow-safe computation\n/// - `montgomery_reduce_canonical_bound(limbs)`: T < R×L (HAC 14.32's value constraint)\n///\n/// # Postconditions (all unconditional given preconditions)\n/// - `limbs_bounded(&result)`: Result limbs are bounded (< 2^52)\n/// - `montgomery_congruent(&result, limbs)`: (result × R) ≡ T (mod L)\n/// - `is_canonical_scalar52(&result)`: result < L\n///\n/// # Note\n/// The `canonical_bound` precondition corresponds to HAC Algorithm 14.32's requirement\n/// that T < m×R for correct Montgomery reduction. This ensures intermediate < 2L,\n/// which is needed for sub's correctness and the r4 < 2^52 + L[4] bound.\n/// HAC is at https://cacr.uwaterloo.ca/hac/about/chap14.pdf\n/// The `input_bounds` precondition ensures no overflow in u128 arithmetic.\n#[inline(always)]\n#[rustfmt::skip]  // keep alignment of n* and r* calculations\npub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)\n    requires\n// Per-limb bounds for overflow-safe u128 arithmetic\n\n        montgomery_reduce_input_bounds(limbs),\n        // HAC 14.32's value constraint: T < R×L ensures intermediate < 2L\n        montgomery_reduce_canonical_bound(limbs),\n    ensures\n// All postconditions are now unconditional (given preconditions)\n\n        limbs_bounded(&result),\n        montgomery_congruent(&result, limbs),\n        is_canonical_scalar52(&result),",
       "requires": [
-        "sum < (1u128 << 108),"
+        "montgomery_reduce_input_bounds(limbs),",
+        "montgomery_reduce_canonical_bound(limbs),"
       ],
       "ensures": [
-        "({ let carry = res.0; let p = res.1; &&& p < (1u64 << 52)  // p is bounded by 52 bits &&& sum + (p as u128) * (constants::L.limbs[0] as u128) == carry << 52 }),"
+        "limbs_bounded(&result),",
+        "montgomery_congruent(&result, limbs),",
+        "is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
+        "is_canonical_scalar52",
+        "limbs_bounded",
+        "montgomery_congruent",
+        "montgomery_reduce_canonical_bound",
+        "montgomery_reduce_input_bounds",
         "p"
       ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1050,
+      "line": 1068,
       "module": "backend",
-      "doc_comment": "Helper function for Montgomery reduction\nComputes p such that sum + p*L[0] is divisible by 2^52, returns (carry, p).\nVER NOTE: spec validation needed concurrent with proof for montgomery_reduce",
+      "doc_comment": "pub (crate) fn montgomery_reduce(limbs: &[u128; 9]) -> Scalar52 {\n#[inline(always)]",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1050",
@@ -3512,16 +3759,27 @@
       "name": "part2",
       "display_name": "part2",
       "impl_type": "",
-      "contract": "fn part2(sum: u128) -> (res: (u128, u64))\n    ensures\n        ({\n            let carry = res.0;\n            let w = res.1;\n            &&& w < (1u64\n                << 52)  // VER NOTE: w is bounded by 52 bits (lower limb)\n            // VER NOTE: The sum equals w plus carry shifted left by 52 bits\n            &&& sum == (w as u128) + (carry << 52)\n        }),",
-      "requires": [],
-      "ensures": [
-        "({ let carry = res.0; let w = res.1; &&& w < (1u64 << 52)  // VER NOTE: w is bounded by 52 bits (lower limb) // VER NOTE: The sum equals w plus carry shifted left by 52 bits &&& sum == (w as u128) + (carry << 52) }),"
+      "contract": "///     fn part2(sum: u128) -> (u128, u64) {\n///         let w = (sum as u64) & ((1u64 << 52) - 1);\n///         (sum >> 52, w)\n///     }\n///     // note: l[3] is zero, so its multiples can be skipped\n///     let l = &constants::L;\n///     // the first half computes the Montgomery adjustment factor n, and begins adding n*l to make limbs divisible by R\n///     let (carry, n0) = part1(        limbs[0]);\n///     let (carry, n1) = part1(carry + limbs[1] + m(n0, l[1]));\n///     let (carry, n2) = part1(carry + limbs[2] + m(n0, l[2]) + m(n1, l[1]));\n///     let (carry, n3) = part1(carry + limbs[3]               + m(n1, l[2]) + m(n2, l[1]));\n///     let (carry, n4) = part1(carry + limbs[4] + m(n0, l[4])               + m(n2, l[2]) + m(n3, l[1]));\n///     // limbs is divisible by R now, so we can divide by R by simply storing the upper half as the result\n///     let (carry, r0) = part2(carry + limbs[5]               + m(n1, l[4])               + m(n3, l[2])   + m(n4, l[1]));\n///     let (carry, r1) = part2(carry + limbs[6]                             + m(n2,l[4])                  + m(n4, l[2]));\n///     let (carry, r2) = part2(carry + limbs[7]                                           + m(n3, l[4])                );\n///     let (carry, r3) = part2(carry + limbs[8]                                                           + m(n4, l[4]));\n///     let         r4 = carry as u64;\n///     // result may be >= l, so attempt to subtract l\n///     Scalar52::sub(&Scalar52([r0, r1, r2, r3, r4]), l)\n/// }\n</ORIGINAL CODE> */\n/// Compute `limbs/R` (mod l), where R is the Montgomery modulus 2^260\n///\n/// # Preconditions\n/// - `montgomery_reduce_input_bounds(limbs)`: Per-limb bounds for overflow-safe computation\n/// - `montgomery_reduce_canonical_bound(limbs)`: T < R×L (HAC 14.32's value constraint)\n///\n/// # Postconditions (all unconditional given preconditions)\n/// - `limbs_bounded(&result)`: Result limbs are bounded (< 2^52)\n/// - `montgomery_congruent(&result, limbs)`: (result × R) ≡ T (mod L)\n/// - `is_canonical_scalar52(&result)`: result < L\n///\n/// # Note\n/// The `canonical_bound` precondition corresponds to HAC Algorithm 14.32's requirement\n/// that T < m×R for correct Montgomery reduction. This ensures intermediate < 2L,\n/// which is needed for sub's correctness and the r4 < 2^52 + L[4] bound.\n/// HAC is at https://cacr.uwaterloo.ca/hac/about/chap14.pdf\n/// The `input_bounds` precondition ensures no overflow in u128 arithmetic.\n#[inline(always)]\n#[rustfmt::skip]  // keep alignment of n* and r* calculations\npub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result: Scalar52)\n    requires\n// Per-limb bounds for overflow-safe u128 arithmetic\n\n        montgomery_reduce_input_bounds(limbs),\n        // HAC 14.32's value constraint: T < R×L ensures intermediate < 2L\n        montgomery_reduce_canonical_bound(limbs),\n    ensures\n// All postconditions are now unconditional (given preconditions)\n\n        limbs_bounded(&result),\n        montgomery_congruent(&result, limbs),\n        is_canonical_scalar52(&result),",
+      "requires": [
+        "montgomery_reduce_input_bounds(limbs),",
+        "montgomery_reduce_canonical_bound(limbs),"
       ],
-      "referenced_specs": [],
+      "ensures": [
+        "limbs_bounded(&result),",
+        "montgomery_congruent(&result, limbs),",
+        "is_canonical_scalar52(&result),"
+      ],
+      "referenced_specs": [
+        "is_canonical_scalar52",
+        "limbs_bounded",
+        "montgomery_congruent",
+        "montgomery_reduce_canonical_bound",
+        "montgomery_reduce_input_bounds"
+      ],
       "file": "curve25519-dalek/src/backend/serial/u64/scalar.rs",
-      "line": 1121,
+      "line": 1073,
       "module": "backend",
-      "doc_comment": "Helper function for Montgomery reduction\nVER NOTE: spec validation needed concurrent with proof for montgomery_reduce",
+      "doc_comment": "pub (crate) fn montgomery_reduce(limbs: &[u128; 9]) -> Scalar52 {\n#[inline(always)]\nfn part1(sum: u128) -> (u128, u64) {\nlet p = (sum as u64).wrapping_mul(constants::LFACTOR) & ((1u64 << 52) - 1);\n((sum + m(p, constants::L[0])) >> 52, p)\n}\n#[inline(always)]",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/backend/serial/u64/scalar.rs#L1121",
@@ -3543,7 +3801,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 255,
+      "line": 257,
       "module": "edwards",
       "doc_comment": "View this `CompressedEdwardsY` as an array of bytes.",
       "math_interpretation": "&CompressedEdwardsY -> &[u8; 32]",
@@ -3565,9 +3823,11 @@
       "ensures": [
         "choice_is_true(result) == (self.0 == other.0),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true"
+      ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 231,
+      "line": 233,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -3603,7 +3863,7 @@
         "spec_field_element_sign_bit"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 275,
+      "line": 277,
       "module": "edwards",
       "doc_comment": "Attempt to decompress to an `EdwardsPoint`.\n\nReturns `None` if the input is not the \\\\(y\\\\)-coordinate of a\ncurve point.\n",
       "math_interpretation": "[u8; 32] -> Option<P in E(F_p)>",
@@ -3630,7 +3890,7 @@
         "spec_field_element_from_bytes"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 749,
+      "line": 751,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -3654,7 +3914,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 263,
+      "line": 265,
       "module": "edwards",
       "doc_comment": "Copy this `CompressedEdwardsY` to an array of bytes.",
       "math_interpretation": "",
@@ -3679,7 +3939,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 958,
+      "line": 960,
       "module": "edwards",
       "doc_comment": "Reset this `CompressedEdwardsY` to the compressed form of the identity element.",
       "math_interpretation": "",
@@ -3706,11 +3966,12 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
+        "is_valid_edwards_basepoint_table",
         "is_well_formed_edwards_point",
         "spec_ed25519_basepoint"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 3100,
+      "line": 3102,
       "module": "edwards",
       "doc_comment": "Get the basepoint for this table as an `EdwardsPoint`.",
       "math_interpretation": "",
@@ -3736,10 +3997,11 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
+        "is_valid_edwards_basepoint_table",
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2992,
+      "line": 2994,
       "module": "edwards",
       "doc_comment": "Create a table of precomputed multiples of `basepoint`.\n\nConstructs 32 LookupTables where table.0[i] = [1·(16²)^i·B, ..., 8·(16²)^i·B]",
       "math_interpretation": "",
@@ -3770,12 +4032,13 @@
       "referenced_specs": [
         "edwards_point_as_affine",
         "edwards_scalar_mul",
+        "is_valid_edwards_basepoint_table",
         "is_well_formed_edwards_point",
         "scalar_to_nat",
         "spec_ed25519_basepoint"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 3229,
+      "line": 3231,
       "module": "edwards",
       "doc_comment": "The computation uses Pippenger's algorithm, as described for the\nspecific case of radix-16 on page 13 of the Ed25519 paper.\n\n# Pippenger's Algorithm Generalised\n\nWrite the scalar \\\\(a\\\\) in radix-\\\\(w\\\\), where \\\\(w\\\\) is a power of\n2, with coefficients in \\\\([\\frac{-w}{2},\\frac{w}{2})\\\\), i.e.,\n$$\na = a\\_0 + a\\_1 w\\^1 + \\cdots + a\\_{x} w\\^{x},\n$$\nwith\n$$\n\\begin{aligned}\n\\frac{-w}{2} \\leq a_i < \\frac{w}{2}\n&&\\cdots&&\n\\frac{-w}{2} \\leq a\\_{x} \\leq \\frac{w}{2}\n\\end{aligned}\n$$\nand the number of additions, \\\\(x\\\\), is given by\n\\\\(x = \\lceil \\frac{256}{w} \\rceil\\\\). Then\n$$\na B = a\\_0 B + a\\_1 w\\^1 B + \\cdots + a\\_{x-1} w\\^{x-1} B.\n$$\nGrouping even and odd coefficients gives\n$$\n\\begin{aligned}\na B = \\quad a\\_0 w\\^0 B +& a\\_2 w\\^2 B + \\cdots + a\\_{x-2} w\\^{x-2} B    \\\\\\\\\n+ a\\_1 w\\^1 B +& a\\_3 w\\^3 B + \\cdots + a\\_{x-1} w\\^{x-1} B    \\\\\\\\\n= \\quad(a\\_0 w\\^0 B +& a\\_2 w\\^2 B + \\cdots + a\\_{x-2} w\\^{x-2} B)   \\\\\\\\\n+ w(a\\_1 w\\^0 B +& a\\_3 w\\^2 B + \\cdots + a\\_{x-1} w\\^{x-2} B).  \\\\\\\\\n\\end{aligned}\n$$\nFor each \\\\(i = 0 \\ldots 31\\\\), we create a lookup table of\n$$\n[w\\^{2i} B, \\ldots, \\frac{w}{2}\\cdot w\\^{2i} B],\n$$\nand use it to select \\\\( y \\cdot w\\^{2i} \\cdot B \\\\) in constant time.\n\nThe radix-\\\\(w\\\\) representation requires that the scalar is bounded\nby \\\\(2\\^{255}\\\\), which is always the case.\n\nThe above algorithm is trivially generalised to other powers-of-2 radices.",
       "math_interpretation": "",
@@ -3799,12 +4062,13 @@
         "({ let (x1, y1) = edwards_point_as_affine(*self); let (x2, y2) = edwards_point_as_affine(*other); edwards_point_as_affine(result) == edwards_add(x1, y1, x2, y2) }),"
       ],
       "referenced_specs": [
+        "add",
         "edwards_add",
         "edwards_point_as_affine",
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1913,
+      "line": 1915,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -3815,7 +4079,7 @@
       "is_libsignal": false,
       "has_spec": true,
       "has_proof": true,
-      "id": "edwardspoint__add_L1913"
+      "id": "edwardspoint__add_L1915"
     },
     {
       "name": "add_assign",
@@ -3836,7 +4100,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2014,
+      "line": 2016,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -3861,10 +4125,11 @@
         "affine_niels_corresponds_to_edwards(result, *self),"
       ],
       "referenced_specs": [
+        "affine_niels_corresponds_to_edwards",
         "edwards_point_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1379,
+      "line": 1381,
       "module": "edwards",
       "doc_comment": "Dehomogenize to a AffineNielsPoint.\nMainly for testing.",
       "math_interpretation": "",
@@ -3896,7 +4161,7 @@
         "fe51_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1362,
+      "line": 1364,
       "module": "edwards",
       "doc_comment": "Convert the representation of this point from extended\ncoordinates to projective coordinates.\n\nFree.",
       "math_interpretation": "",
@@ -3928,10 +4193,11 @@
       "referenced_specs": [
         "edwards_point_limbs_bounded",
         "fe51_limbs_bounded",
+        "projective_niels_corresponds_to_edwards",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1258,
+      "line": 1260,
       "module": "edwards",
       "doc_comment": "Convert to a ProjectiveNielsPoint",
       "math_interpretation": "",
@@ -3960,7 +4226,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1599,
+      "line": 1601,
       "module": "edwards",
       "doc_comment": "Compress this point to `CompressedEdwardsY` format.",
       "math_interpretation": "P in E(F_p) -> CompressedEdwardsY",
@@ -3985,10 +4251,11 @@
         "is_well_formed_edwards_point(*a) && is_well_formed_edwards_point(*b) ==> is_well_formed_edwards_point(result),"
       ],
       "referenced_specs": [
+        "choice_is_true",
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1092,
+      "line": 1094,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4012,10 +4279,13 @@
         ")),"
       ],
       "referenced_specs": [
+        "add",
+        "choice_is_true",
+        "ct_eq_req",
         "edwards_point_as_affine"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1152,
+      "line": 1154,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4048,7 +4318,7 @@
         "is_valid_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1841,
+      "line": 1843,
       "module": "edwards",
       "doc_comment": "Add this point to itself.",
       "math_interpretation": "",
@@ -4076,7 +4346,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 886,
+      "line": 888,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4107,7 +4377,7 @@
         "math_edwards_identity"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 3727,
+      "line": 3729,
       "module": "edwards",
       "doc_comment": "Determine if this point is of small order.\n\n# Return\n\n* `true` if `self` is in the torsion subgroup \\\\( \\mathcal E\\[8\\] \\\\);\n* `false` if `self` is not in the torsion subgroup \\\\( \\mathcal E\\[8\\] \\\\).\n\n# Example\n\n```\nuse curve25519_dalek::constants;\n\n// Generator of the prime-order subgroup\nlet P = constants::ED25519_BASEPOINT_POINT;\n// Generator of the torsion subgroup\nlet Q = constants::EIGHT_TORSION[1];\n\n// P has large order\nassert_eq!(P.is_small_order(), false);\n\n// Q has small order\nassert_eq!(Q.is_small_order(), true);\n```",
       "math_interpretation": "P in E[8]? (8-torsion test)",
@@ -4139,7 +4409,7 @@
         "math_edwards_identity"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 3774,
+      "line": 3776,
       "module": "edwards",
       "doc_comment": "Determine if this point is \"torsion-free\", i.e., is contained in\nthe prime-order subgroup.\n\n# Return\n\n* `true` if `self` has zero torsion component and is in the\nprime-order subgroup;\n* `false` if `self` has a nonzero torsion component and is not\nin the prime-order subgroup.\n\n# Example\n\n```\nuse curve25519_dalek::constants;\n\n// Generator of the prime-order subgroup\nlet P = constants::ED25519_BASEPOINT_POINT;\n// Generator of the torsion subgroup\nlet Q = constants::EIGHT_TORSION[1];\n\n// P is torsion-free\nassert_eq!(P.is_torsion_free(), true);\n\n// P + Q is not torsion-free\nassert_eq!((P+Q).is_torsion_free(), false);\n```",
       "math_interpretation": "",
@@ -4170,7 +4440,7 @@
         "spec_field_element"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 996,
+      "line": 998,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4204,7 +4474,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2466,
+      "line": 2468,
       "module": "edwards",
       "doc_comment": "Scalar multiplication: compute `scalar * self`.\n\nFor scalar multiplication of a basepoint,\n`EdwardsBasepointTable` is approximately 4x faster.",
       "math_interpretation": "",
@@ -4239,7 +4509,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2433,
+      "line": 2435,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4274,7 +4544,7 @@
         "spec_ed25519_basepoint"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2510,
+      "line": 2512,
       "module": "edwards",
       "doc_comment": "Fixed-base scalar multiplication by the Ed25519 base point.\n\nUses precomputed basepoint tables when the `precomputed-tables` feature\nis enabled, trading off increased code size for ~4x better performance.",
       "math_interpretation": "",
@@ -4307,7 +4577,7 @@
         "spec_ed25519_basepoint"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2569,
+      "line": 2571,
       "module": "edwards",
       "doc_comment": "Multiply the basepoint by `clamp_integer(bytes)`. For a description of clamping, see\n[`clamp_integer`].",
       "math_interpretation": "",
@@ -4340,7 +4610,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 3604,
+      "line": 3606,
       "module": "edwards",
       "doc_comment": "Multiply by the cofactor: return \\\\(\\[8\\]P\\\\).",
       "math_interpretation": "P -> [8]P (cofactor clearing)",
@@ -4374,7 +4644,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 3628,
+      "line": 3630,
       "module": "edwards",
       "doc_comment": "Compute \\\\([2\\^k] P \\\\) by successive doublings. Requires \\\\( k > 0 \\\\).",
       "math_interpretation": "",
@@ -4408,7 +4678,7 @@
         "spec_clamp_integer"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2534,
+      "line": 2536,
       "module": "edwards",
       "doc_comment": "Multiply this point by `clamp_integer(bytes)`. For a description of clamping, see\n[`clamp_integer`].",
       "math_interpretation": "",
@@ -4440,10 +4710,13 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_points_from_iter",
+        "spec_scalars_from_iter",
+        "sum_of_scalar_muls"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2858,
+      "line": 2860,
       "module": "edwards",
       "doc_comment": "Verus-compatible version of multiscalar_mul (constant-time).\nUses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).\nDispatches to Straus algorithm (constant-time).",
       "math_interpretation": "",
@@ -4472,7 +4745,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2306,
+      "line": 2308,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "P -> -P in E(F_p)",
@@ -4483,7 +4756,7 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "edwardspoint__neg_L2306"
+      "id": "edwardspoint__neg_L2308"
     },
     {
       "name": "neg",
@@ -4502,7 +4775,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2411,
+      "line": 2413,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "P -> -P in E(F_p)",
@@ -4513,7 +4786,7 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "edwardspoint__neg_L2411"
+      "id": "edwardspoint__neg_L2413"
     },
     {
       "name": "nonspec_map_to_curve_verus",
@@ -4528,10 +4801,12 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_nonspec_map_to_curve",
+        "spec_sha512"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1753,
+      "line": 1755,
       "module": "edwards",
       "doc_comment": "VERIFICATION NOTE: Verus-compatible version of nonspec_map_to_curve that uses SHA-512 instead of Digest.",
       "math_interpretation": "",
@@ -4563,11 +4838,16 @@
         "),"
       ],
       "referenced_specs": [
+        "all_points_some",
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_optional_points_from_iter",
+        "spec_scalars_from_iter",
+        "sum_of_scalar_muls",
+        "unwrap_points"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2777,
+      "line": 2779,
       "module": "edwards",
       "doc_comment": "Verus-compatible version of optional_multiscalar_mul.\nUses Iterator + Clone instead of IntoIterator (Verus doesn't support I::Item projections).\nClone allows peeking at size without consuming the iterator (similar to original's size_hint).\nDispatches to Straus (size < 190) or Pippenger (size >= 190) algorithm.",
       "math_interpretation": "",
@@ -4596,7 +4876,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2057,
+      "line": 2059,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4607,7 +4887,7 @@
       "is_libsignal": false,
       "has_spec": true,
       "has_proof": true,
-      "id": "edwardspoint__sub_L2057"
+      "id": "edwardspoint__sub_L2059"
     },
     {
       "name": "sub_assign",
@@ -4628,7 +4908,7 @@
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2152,
+      "line": 2154,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4650,7 +4930,7 @@
       "ensures": [],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2231,
+      "line": 2233,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4683,7 +4963,7 @@
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 1456,
+      "line": 1458,
       "module": "edwards",
       "doc_comment": "Convert this `EdwardsPoint` on the Edwards model to the\ncorresponding `MontgomeryPoint` on the Montgomery model.\n\nThis function has one exceptional case; the identity point of\nthe Edwards curve is sent to the 2-torsion point \\\\((0,0)\\\\)\non the Montgomery curve.\n\nNote that this is a one-way conversion, since the Montgomery\nmodel does not retain sign information.",
       "math_interpretation": "u = (1+y)/(1-y), birational map E -> M",
@@ -4717,7 +4997,7 @@
         "spec_ed25519_basepoint"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2731,
+      "line": 2733,
       "module": "edwards",
       "doc_comment": "Compute \\\\(aA + bB\\\\) in variable time, where \\\\(B\\\\) is the Ed25519 basepoint.",
       "math_interpretation": "(a,A,b) -> [a]A + [b]B, B = Ed25519 basepoint",
@@ -4742,7 +5022,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 958,
+      "line": 960,
       "module": "edwards",
       "doc_comment": "Reset this `CompressedEdwardsY` to the compressed form of the identity element.",
       "math_interpretation": "",
@@ -4776,7 +5056,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 2466,
+      "line": 2468,
       "module": "edwards",
       "doc_comment": "Scalar multiplication: compute `scalar * self`.\n\nFor scalar multiplication of a basepoint,\n`EdwardsBasepointTable` is approximately 4x faster.",
       "math_interpretation": "",
@@ -4787,7 +5067,7 @@
       "is_libsignal": false,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__mul_L2466"
+      "id": "scalar__mul_L2468"
     },
     {
       "name": "step_1",
@@ -4799,13 +5079,15 @@
         "({ let (is_valid, X, Y, Z) = result; spec_field_element(&Y) == spec_field_element_from_bytes(&repr.0) && // The returned Z field element is 1 spec_field_element(&Z) == 1 && // The choice is true iff the Y is valid and (X, Y) is on the curve (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(spec_field_element(&Y))) && (choice_is_true(is_valid) ==> math_on_edwards_curve( spec_field_element(&X), spec_field_element(&Y), )) && // Limb bounds for step_2 // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51) fe51_limbs_bounded(&X, 52) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded( &Z, 51, ) && // X is the non-negative root (LSB = 0) - from sqrt_ratio_i // This is needed in the proof of decompress spec_field_element(&X) % 2 == 0 }),"
       ],
       "referenced_specs": [
+        "choice_is_true",
         "fe51_limbs_bounded",
         "math_is_valid_y_coordinate",
+        "math_on_edwards_curve",
         "spec_field_element",
         "spec_field_element_from_bytes"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 350,
+      "line": 352,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4840,7 +5122,7 @@
         "spec_field_element"
       ],
       "file": "curve25519-dalek/src/edwards.rs",
-      "line": 505,
+      "line": 507,
       "module": "edwards",
       "doc_comment": "",
       "math_interpretation": "",
@@ -4868,6 +5150,7 @@
       ],
       "referenced_specs": [
         "fe51_limbs_bounded",
+        "is_inverse_field",
         "spec_field_element"
       ],
       "file": "curve25519-dalek/src/field.rs",
@@ -4893,7 +5176,10 @@
       "ensures": [
         "choice_is_true(result) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other)),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true",
+        "spec_fe51_to_bytes"
+      ],
       "file": "curve25519-dalek/src/field.rs",
       "line": 142,
       "module": "field",
@@ -4959,6 +5245,9 @@
         "),"
       ],
       "referenced_specs": [
+        "choice_is_true",
+        "is_sqrt_ratio",
+        "is_sqrt_ratio_times_i",
         "p",
         "spec_field_element"
       ],
@@ -4985,7 +5274,10 @@
       "ensures": [
         "choice_is_true(result) == (spec_fe51_to_bytes(self)[0] & 1 == 1),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true",
+        "spec_fe51_to_bytes"
+      ],
       "file": "curve25519-dalek/src/field.rs",
       "line": 217,
       "module": "field",
@@ -5010,7 +5302,10 @@
         "- (note: maybe an all_zeroes(as_bytes(...)) is sufficient as a spec) </VERIFICATION NOTE> */",
         "choice_is_true(result) == (spec_fe51_to_bytes(self) == seq![0u8; 32]),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true",
+        "spec_fe51_to_bytes"
+      ],
       "file": "curve25519-dalek/src/field.rs",
       "line": 243,
       "module": "field",
@@ -5118,7 +5413,11 @@
         "),"
       ],
       "referenced_specs": [
+        "add",
+        "choice_is_true",
         "fe51_limbs_bounded",
+        "is_sqrt_ratio",
+        "is_sqrt_ratio_times_i",
         "p",
         "spec_field_element"
       ],
@@ -5170,6 +5469,7 @@
         "choice_is_true(result) == (spec_field_element_from_bytes(&self.0) == spec_field_element_from_bytes(&other.0)),"
       ],
       "referenced_specs": [
+        "choice_is_true",
         "p",
         "spec_field_element_from_bytes"
       ],
@@ -5194,7 +5494,9 @@
       "contract": "fn hash<H: Hasher>(&self, state: &mut H)\n    ensures/*  VERIFICATION NOTE:\n         (1) The actual postcondition is: *state == spec_state_after_hash_montgomery(initial_state, self)\n             where initial_state is the value of *state before this call.\n             However, Verus doesn't support old() on &mut types in ensures clauses.\n             The property is for now established via assumes in the function body (lines 192-194).\n        (2) The spec is completed by axiom_hash_is_canonical: equal field elements hash identically. */\n\n        true,",
       "requires": [],
       "ensures": [],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "spec_state_after_hash_montgomery"
+      ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 200,
       "module": "montgomery",
@@ -5245,8 +5547,11 @@
         "({ let P = canonical_montgomery_lift(spec_montgomery(*self)); let n_unreduced = scalar_to_nat(scalar); let R = montgomery_scalar_mul(P, n_unreduced); spec_montgomery(result) == spec_u_coordinate(R) }),"
       ],
       "referenced_specs": [
+        "canonical_montgomery_lift",
+        "montgomery_scalar_mul",
         "scalar_to_nat",
-        "spec_montgomery"
+        "spec_montgomery",
+        "spec_u_coordinate"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 2001,
@@ -5274,8 +5579,12 @@
         "({ let P = canonical_montgomery_lift(spec_montgomery(*old(self))); let n_unreduced = scalar_to_nat(scalar); let R = montgomery_scalar_mul(P, n_unreduced); spec_montgomery(*self) == spec_u_coordinate(R) }),"
       ],
       "referenced_specs": [
+        "canonical_montgomery_lift",
+        "is_valid_montgomery_point",
+        "montgomery_scalar_mul",
         "scalar_to_nat",
-        "spec_montgomery"
+        "spec_montgomery",
+        "spec_u_coordinate"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 2043,
@@ -5306,8 +5615,11 @@
         "),"
       ],
       "referenced_specs": [
+        "is_valid_montgomery_point",
+        "montgomery_scalar_mul_u",
         "scalar_to_nat",
-        "spec_montgomery"
+        "spec_montgomery",
+        "spec_x25519_basepoint_u"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 274,
@@ -5336,9 +5648,12 @@
       ],
       "referenced_specs": [
         "group_order",
+        "is_valid_montgomery_point",
+        "montgomery_scalar_mul_u",
         "scalar_to_nat",
         "spec_clamp_integer",
-        "spec_montgomery"
+        "spec_montgomery",
+        "spec_x25519_basepoint_u"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 346,
@@ -5367,7 +5682,12 @@
         "({ // Let P be the canonical affine lift of input u-coordinate let P = canonical_montgomery_lift(spec_montgomery(*self)); let n = bits_be_to_nat(bits, bits@.len() as int); let R = montgomery_scalar_mul(P, n);  // result encodes u([n]P) spec_montgomery(result) == spec_u_coordinate(R) }),"
       ],
       "referenced_specs": [
-        "spec_montgomery"
+        "bits_be_to_nat",
+        "canonical_montgomery_lift",
+        "is_valid_montgomery_point",
+        "montgomery_scalar_mul",
+        "spec_montgomery",
+        "spec_u_coordinate"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 381,
@@ -5395,8 +5715,12 @@
       "ensures": [],
       "referenced_specs": [
         "bytes32_to_nat",
+        "canonical_montgomery_lift",
+        "is_valid_montgomery_point",
+        "montgomery_scalar_mul",
         "spec_clamp_integer",
-        "spec_montgomery"
+        "spec_montgomery",
+        "spec_u_coordinate"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 308,
@@ -5566,8 +5890,11 @@
         "({ let P = canonical_montgomery_lift(spec_montgomery(*point)); let n_unreduced = scalar_to_nat(self); let R = montgomery_scalar_mul(P, n_unreduced); spec_montgomery(result) == spec_u_coordinate(R) }),"
       ],
       "referenced_specs": [
+        "canonical_montgomery_lift",
+        "montgomery_scalar_mul",
         "scalar_to_nat",
-        "spec_montgomery"
+        "spec_montgomery",
+        "spec_u_coordinate"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 2069,
@@ -5605,8 +5932,13 @@
         "({ let B = canonical_montgomery_lift(spec_field_element(affine_PmQ)); forall|k: nat| spec_field_element(affine_PmQ) != 0 && #[trigger] projective_represents_montgomery_or_infinity( *old(P), montgomery_scalar_mul(B, k), ) && #[trigger] projective_represents_montgomery_or_infinity( *old(Q), montgomery_scalar_mul(B, k + 1), ) ==> { &&& projective_represents_montgomery_or_infinity( *P, montgomery_scalar_mul(B, 2 * k), ) &&& projective_represents_montgomery_or_infinity( *Q, montgomery_scalar_mul(B, 2 * k + 1), ) } }), ({ let B = canonical_montgomery_lift(spec_field_element(affine_PmQ)); forall|k: nat| spec_field_element(affine_PmQ) != 0 && #[trigger] projective_represents_montgomery_or_infinity( *old(P), montgomery_scalar_mul(B, k + 1), ) && #[trigger] projective_represents_montgomery_or_infinity( *old(Q), montgomery_scalar_mul(B, k), ) ==> { &&& projective_represents_montgomery_or_infinity( *P, montgomery_scalar_mul(B, 2 * k + 2), ) &&& projective_represents_montgomery_or_infinity( *Q, montgomery_scalar_mul(B, 2 * k + 1), ) } }),"
       ],
       "referenced_specs": [
+        "canonical_montgomery_lift",
         "fe51_limbs_bounded",
-        "spec_field_element"
+        "is_valid_u_coordinate",
+        "montgomery_scalar_mul",
+        "projective_represents_montgomery_or_infinity",
+        "spec_field_element",
+        "spec_projective_u_coordinate"
       ],
       "file": "curve25519-dalek/src/montgomery.rs",
       "line": 1338,
@@ -5637,6 +5969,7 @@
       "referenced_specs": [
         "fe51_limbs_bounded",
         "p",
+        "spec_elligator_encode",
         "spec_field_element",
         "spec_montgomery"
       ],
@@ -5722,6 +6055,7 @@
       ],
       "referenced_specs": [
         "fe51_limbs_bounded",
+        "from_req",
         "is_well_formed_edwards_point",
         "math_field_add",
         "math_field_mul",
@@ -5776,7 +6110,9 @@
       "ensures": [
         "choice_is_true(result) == (self.0 == other.0),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true"
+      ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 254,
       "module": "ristretto",
@@ -5933,6 +6269,7 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
+        "is_valid_edwards_basepoint_table",
         "is_well_formed_edwards_point",
         "spec_ristretto_basepoint"
       ],
@@ -5963,6 +6300,7 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
+        "is_valid_edwards_basepoint_table",
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
@@ -6029,6 +6367,8 @@
         "),"
       ],
       "referenced_specs": [
+        "add",
+        "add_req",
         "edwards_add",
         "edwards_point_as_affine",
         "is_well_formed_edwards_point"
@@ -6119,7 +6459,9 @@
         "!choice_is_true(choice) ==> result.0 == a.0,",
         "choice_is_true(choice) ==> result.0 == b.0,"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true"
+      ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 2275,
       "module": "ristretto",
@@ -6144,7 +6486,9 @@
         "choice_is_true(result) == ristretto_equivalent(self.0, other.0),"
       ],
       "referenced_specs": [
-        "is_well_formed_edwards_point"
+        "choice_is_true",
+        "is_well_formed_edwards_point",
+        "ristretto_equivalent"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1455,
@@ -6205,7 +6549,8 @@
       "referenced_specs": [
         "edwards_double",
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_ristretto_compress_affine"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 925,
@@ -6236,7 +6581,10 @@
       "referenced_specs": [
         "edwards_point_as_affine",
         "is_in_even_subgroup",
-        "is_well_formed_edwards_point"
+        "is_uniform_bytes",
+        "is_uniform_ristretto_point",
+        "is_well_formed_edwards_point",
+        "spec_ristretto_from_uniform_bytes"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1308,
@@ -6265,6 +6613,8 @@
       ],
       "referenced_specs": [
         "is_in_even_subgroup",
+        "is_uniform_bytes",
+        "is_uniform_ristretto_point",
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
@@ -6327,6 +6677,7 @@
         "edwards_point_as_affine",
         "edwards_scalar_mul",
         "is_well_formed_edwards_point",
+        "mul_req",
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
@@ -6433,7 +6784,10 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_edwards_from_ristretto_iter",
+        "spec_scalars_from_iter",
+        "sum_of_scalar_muls"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1971,
@@ -6463,7 +6817,8 @@
         "edwards_neg",
         "edwards_point_as_affine",
         "fe51_limbs_bounded",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "neg_req"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1767,
@@ -6493,7 +6848,8 @@
         "edwards_neg",
         "edwards_point_as_affine",
         "fe51_limbs_bounded",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "neg_req"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1767,
@@ -6528,8 +6884,13 @@
         "),"
       ],
       "referenced_specs": [
+        "all_points_some",
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_optional_edwards_from_ristretto_iter",
+        "spec_scalars_from_iter",
+        "sum_of_scalar_muls",
+        "unwrap_points"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 2025,
@@ -6562,7 +6923,8 @@
       "referenced_specs": [
         "edwards_point_as_affine",
         "edwards_sub",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "sub_req"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1558,
@@ -6630,7 +6992,9 @@
       ],
       "referenced_specs": [
         "edwards_point_as_affine",
-        "is_well_formed_edwards_point"
+        "is_well_formed_edwards_point",
+        "spec_edwards_from_ristretto_iter",
+        "sum_of_points"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1686,
@@ -6686,6 +7050,7 @@
         "edwards_point_as_affine",
         "edwards_scalar_mul",
         "is_well_formed_edwards_point",
+        "mul_req",
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
@@ -6753,6 +7118,7 @@
         "is_ristretto_coset(result, self.0),"
       ],
       "referenced_specs": [
+        "is_ristretto_coset",
         "is_well_formed_edwards_point"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
@@ -6785,6 +7151,7 @@
         "edwards_point_as_affine",
         "is_in_even_subgroup",
         "is_well_formed_edwards_point",
+        "spec_elligator_ristretto_flavor",
         "spec_field_element"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
@@ -6816,7 +7183,10 @@
       "referenced_specs": [
         "edwards_point_as_affine",
         "is_in_even_subgroup",
-        "is_well_formed_edwards_point"
+        "is_uniform_bytes",
+        "is_uniform_ristretto_point",
+        "is_well_formed_edwards_point",
+        "spec_ristretto_from_uniform_bytes"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",
       "line": 1331,
@@ -6846,8 +7216,10 @@
         "choice_is_true(result.1) == math_is_negative(spec_field_element_from_bytes(&repr.0)),"
       ],
       "referenced_specs": [
+        "choice_is_true",
         "fe51_limbs_bounded",
         "math_is_negative",
+        "spec_fe51_to_bytes",
         "spec_field_element",
         "spec_field_element_from_bytes"
       ],
@@ -6882,6 +7254,7 @@
         "choice_is_true(result.2) == (spec_field_element(&result.3.0.Y) == 0),"
       ],
       "referenced_specs": [
+        "choice_is_true",
         "is_in_even_subgroup",
         "is_well_formed_edwards_point",
         "math_field_mul",
@@ -6906,15 +7279,18 @@
       "name": "add",
       "display_name": "Scalar::add",
       "impl_type": "Scalar",
-      "contract": "fn add(self, _rhs: &'a Scalar) -> (result: Scalar)\n    ensures\n        bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(\n            &_rhs.bytes,\n        )) % group_order(),",
+      "contract": "fn add(self, _rhs: &'a Scalar) -> (result: Scalar)\n    ensures\n        bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(\n            &_rhs.bytes,\n        )) % group_order(),\n        is_canonical_scalar(&result),",
       "requires": [],
       "ensures": [
         "bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat( &_rhs.bytes,",
-        ")) % group_order(),"
+        ")) % group_order(),",
+        "is_canonical_scalar(&result),"
       ],
       "referenced_specs": [
+        "add",
         "bytes32_to_nat",
-        "group_order"
+        "group_order",
+        "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
       "line": 662,
@@ -6934,18 +7310,22 @@
       "name": "add_assign",
       "display_name": "Scalar::add_assign",
       "impl_type": "Scalar",
-      "contract": "fn add_assign(&mut self, _rhs: &'a Scalar)\n    ensures\n        bytes32_to_nat(&self.bytes) == (bytes32_to_nat(&old(self).bytes) + bytes32_to_nat(\n            &_rhs.bytes,\n        )) % group_order(),",
-      "requires": [],
+      "contract": "fn add_assign(&mut self, _rhs: &'a Scalar)\n    requires\n        is_canonical_scalar(old(self)),\n        is_canonical_scalar(_rhs),\n    ensures\n        bytes32_to_nat(&self.bytes) == (bytes32_to_nat(&old(self).bytes) + bytes32_to_nat(\n            &_rhs.bytes,\n        )) % group_order(),",
+      "requires": [
+        "is_canonical_scalar(old(self)),",
+        "is_canonical_scalar(_rhs),"
+      ],
       "ensures": [
         "bytes32_to_nat(&self.bytes) == (bytes32_to_nat(&old(self).bytes) + bytes32_to_nat( &_rhs.bytes,",
         ")) % group_order(),"
       ],
       "referenced_specs": [
         "bytes32_to_nat",
-        "group_order"
+        "group_order",
+        "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 728,
+      "line": 698,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -6973,7 +7353,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1619,
+      "line": 1605,
       "module": "scalar",
       "doc_comment": "View the little-endian byte encoding of the integer representing this Scalar.\n\n# Example\n\n```\nuse curve25519_dalek::scalar::Scalar;\n\nlet s: Scalar = Scalar::ZERO;\n\nassert!(s.as_bytes() == &[0u8; 32]);\n```",
       "math_interpretation": "&Scalar -> &[u8; 32]",
@@ -6990,7 +7370,7 @@
       "name": "as_radix_16",
       "display_name": "Scalar::as_radix_16",
       "impl_type": "Scalar",
-      "contract": "pub(crate) fn as_radix_16(&self) -> (result:\n    [i8; 64])\n// VERIFICATION NOTE: PROOF BYPASS\n\n    requires\n// Top bit must be clear (scalar < 2^255)\n\n        self.bytes[31] <= 127,\n    ensures\n// Result digits are in valid range\n\n        is_valid_radix_16(&result),\n        // Simple bounds: all digits in [-8, 8] for easy access\n        radix_16_all_bounded(&result),\n        // Reconstruction property: digits reconstruct the scalar value\n        reconstruct_radix_16(result@) == scalar_to_nat(self) as int,",
+      "contract": "pub(crate) fn as_radix_16(&self) -> (result: [i8; 64])\n    requires\n// Top bit must be clear (scalar < 2^255)\n\n        self.bytes[31] <= 127,\n    ensures\n// Result digits are in valid range\n\n        is_valid_radix_16(&result),\n        // Simple bounds: all digits in [-8, 8] for easy access\n        radix_16_all_bounded(&result),\n        // Reconstruction property: digits reconstruct the scalar value\n        reconstruct_radix_16(result@) == scalar_to_nat(self) as int,",
       "requires": [
         "self.bytes[31] <= 127,"
       ],
@@ -7000,10 +7380,14 @@
         "reconstruct_radix_16(result@) == scalar_to_nat(self) as int,"
       ],
       "referenced_specs": [
+        "is_valid_radix_16",
+        "radix_16_all_bounded",
+        "reconstruct",
+        "reconstruct_radix_16",
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2456,
+      "line": 2443,
       "module": "scalar",
       "doc_comment": "Write this scalar in radix 16, with coefficients in \\\\([-8,8)\\\\),\ni.e., compute \\\\(a\\_i\\\\) such that\n$$\na = a\\_0 + a\\_1 16\\^1 + \\cdots + a_{63} 16\\^{63},\n$$\nwith \\\\(-8 \\leq a_i < 8\\\\) for \\\\(0 \\leq i < 63\\\\) and \\\\(-8 \\leq a_{63} \\leq 8\\\\).\n\nThe largest value that can be decomposed like this is just over \\\\(2^{255}\\\\). Thus, in\norder to not error, the top bit MUST NOT be set, i.e., `Self` MUST be less than\n\\\\(2^{255}\\\\).",
       "math_interpretation": "",
@@ -7029,10 +7413,13 @@
         "({ let digits_count = if w < 8 { (256 + (w as int) - 1) / (w as int) } else { (256 + (w as int) - 1) / (w as int) + 1 }; // Result digits are in valid range for the given window size is_valid_radix_2w(&result, w as nat, digits_count as nat) && // Reconstruction property: digits reconstruct the scalar value reconstruct_radix_2w(result@.take(digits_count), w as nat) == scalar_to_nat( self, ) as int }),"
       ],
       "referenced_specs": [
+        "is_valid_radix_2w",
+        "reconstruct",
+        "reconstruct_radix_2w",
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2590,
+      "line": 2701,
       "module": "scalar",
       "doc_comment": "Creates a representation of a Scalar in radix \\\\( 2^w \\\\) with \\\\(w = 4, 5, 6, 7, 8\\\\) for\nuse with the Pippenger algorithm. Higher radixes are not supported to save cache space.\nRadix 256 is near-optimal even for very large inputs.\n\nRadix below 16 or above 256 is prohibited.\nThis method returns digits in a fixed-sized array, excess digits are zeroes.\n\nFor radix 16, `Self` must be less than \\\\(2^{255}\\\\). This is because most integers larger\nthan \\\\(2^{255}\\\\) are unrepresentable in the form described below for \\\\(w = 4\\\\). This\nwould be true for \\\\(w = 8\\\\) as well, but it is compensated for by increasing the size\nhint by 1.\n\n## Scalar representation\n\nRadix \\\\(2\\^w\\\\), with \\\\(n = ceil(256/w)\\\\) coefficients in \\\\([-(2\\^w)/2,(2\\^w)/2)\\\\),\ni.e., scalar is represented using digits \\\\(a\\_i\\\\) such that\n$$\na = a\\_0 + a\\_1 2\\^1w + \\cdots + a_{n-1} 2\\^{w*(n-1)},\n$$\nwith \\\\(-2\\^w/2 \\leq a_i < 2\\^w/2\\\\) for \\\\(0 \\leq i < (n-1)\\\\) and \\\\(-2\\^w/2 \\leq a_{n-1} \\leq 2\\^w/2\\\\).\n",
       "math_interpretation": "",
@@ -7057,9 +7444,13 @@
         "&(#[trigger] inputs[i]),",
         "),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "is_inverse",
+        "is_inverse_of_nat",
+        "product_of_scalars"
+      ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1739,
+      "line": 1725,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7082,10 +7473,11 @@
         "bits_to_nat(&result) == bytes32_to_nat(&self.bytes),"
       ],
       "referenced_specs": [
+        "bits_to_nat",
         "bytes32_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2180,
+      "line": 2167,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7107,9 +7499,11 @@
       "ensures": [
         "choice_is_true(result) == (self.bytes == other.bytes),"
       ],
-      "referenced_specs": [],
+      "referenced_specs": [
+        "choice_is_true"
+      ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 457,
+      "line": 463,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "a =? b in Z/LZ (constant-time)",
@@ -7135,7 +7529,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1139,
+      "line": 1125,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "n: u64 -> Scalar(n mod L)",
@@ -7146,7 +7540,7 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__from_L1139"
+      "id": "scalar__from_L1125"
     },
     {
       "name": "from",
@@ -7161,7 +7555,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1139,
+      "line": 1125,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "n: u64 -> Scalar(n mod L)",
@@ -7172,13 +7566,13 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__from_L1139"
+      "id": "scalar__from_L1125"
     },
     {
       "name": "from",
       "display_name": "Scalar::from",
       "impl_type": "Scalar",
-      "contract": "fn from(x: u16) -> (result: Scalar)\n    ensures\n        scalar_to_nat(&result) == x as nat,",
+      "contract": "fn from(x: u32) -> (result: Scalar)\n    ensures\n        scalar_to_nat(&result) == x as nat,",
       "requires": [],
       "ensures": [
         "scalar_to_nat(&result) == x as nat,"
@@ -7187,7 +7581,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1159,
+      "line": 1181,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "n: u64 -> Scalar(n mod L)",
@@ -7198,7 +7592,7 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__from_L1159"
+      "id": "scalar__from_L1181"
     },
     {
       "name": "from",
@@ -7213,7 +7607,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1249,
+      "line": 1235,
       "module": "scalar",
       "doc_comment": "Construct a scalar from the given `u64`.\n\n# Inputs\n\nAn `u64` to convert to a `Scalar`.\n\n# Returns\n\nA `Scalar` corresponding to the input `u64`.\n\n# Example\n\n```\nuse curve25519_dalek::scalar::Scalar;\n\nlet fourtytwo = Scalar::from(42u64);\nlet six = Scalar::from(6u64);\nlet seven = Scalar::from(7u64);\n\nassert!(fourtytwo == six * seven);\n```",
       "math_interpretation": "n: u64 -> Scalar(n mod L)",
@@ -7224,13 +7618,13 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__from_L1249"
+      "id": "scalar__from_L1235"
     },
     {
       "name": "from",
       "display_name": "Scalar::from",
       "impl_type": "Scalar",
-      "contract": "fn from(x: u64) -> (result: Scalar)\n    ensures\n        scalar_to_nat(&result) == x as nat,",
+      "contract": "fn from(x: u128) -> (result: Scalar)\n    ensures\n        scalar_to_nat(&result) == x as nat,",
       "requires": [],
       "ensures": [
         "scalar_to_nat(&result) == x as nat,"
@@ -7239,9 +7633,9 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1249,
+      "line": 1267,
       "module": "scalar",
-      "doc_comment": "Construct a scalar from the given `u64`.\n\n# Inputs\n\nAn `u64` to convert to a `Scalar`.\n\n# Returns\n\nA `Scalar` corresponding to the input `u64`.\n\n# Example\n\n```\nuse curve25519_dalek::scalar::Scalar;\n\nlet fourtytwo = Scalar::from(42u64);\nlet six = Scalar::from(6u64);\nlet seven = Scalar::from(7u64);\n\nassert!(fourtytwo == six * seven);\n```",
+      "doc_comment": "",
       "math_interpretation": "n: u64 -> Scalar(n mod L)",
       "informal_interpretation": "Converts a u64 integer to a Scalar.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L1281",
@@ -7250,7 +7644,7 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__from_L1249"
+      "id": "scalar__from_L1267"
     },
     {
       "name": "from_bytes_mod_order",
@@ -7268,7 +7662,7 @@
         "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 258,
+      "line": 264,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "b -> LE(b) mod L, L = group order",
@@ -7296,10 +7690,12 @@
         "bytes32_to_nat",
         "bytes_seq_to_nat",
         "group_order",
-        "is_canonical_scalar"
+        "is_canonical_scalar",
+        "is_uniform_bytes",
+        "is_uniform_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 287,
+      "line": 293,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "b: [u8;64] -> LE(b) mod L",
@@ -7325,10 +7721,12 @@
       ],
       "referenced_specs": [
         "bytes32_to_nat",
+        "ct_option_has_value",
+        "ct_option_value",
         "group_order"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 350,
+      "line": 356,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "b -> Some(s) if LE(b) < L else None",
@@ -7352,10 +7750,12 @@
         "is_canonical_scalar(&result),"
       ],
       "referenced_specs": [
-        "is_canonical_scalar"
+        "is_canonical_scalar",
+        "is_uniform_bytes",
+        "is_uniform_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1578,
+      "line": 1564,
       "module": "scalar",
       "doc_comment": "Verus-compatible version of from_hash that takes pre-finalized hash bytes.\n\nThis function is designed for Verus verification and takes a byte array directly\ninstead of a generic Digest type. For regular code, use `from_hash` instead.\n\n# Inputs\n\n* `hash_bytes`: a 64-byte array representing the output of a hash function\n\n# Returns\n\nA scalar reduced modulo the group order",
       "math_interpretation": "h: [u8;64] -> LE(h) mod L",
@@ -7379,10 +7779,12 @@
         "is_canonical_scalar(&result),"
       ],
       "referenced_specs": [
-        "is_canonical_scalar"
+        "is_canonical_scalar",
+        "is_uniform_bytes",
+        "is_uniform_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1503,
+      "line": 1489,
       "module": "scalar",
       "doc_comment": "Verus-compatible version of hash_from_bytes that uses SHA-512.\n\nThis function is designed for Verus verification and directly computes\na SHA-512 hash. For regular code with generic hash functions, use `hash_from_bytes` instead.\n\n# Inputs\n\n* `input`: a byte slice to hash\n\n# Returns\n\nA scalar reduced modulo the group order",
       "math_interpretation": "input -> SHA-512(input) mod L",
@@ -7408,7 +7810,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 475,
+      "line": 481,
       "module": "scalar",
       "doc_comment": "Index the bytes of the representative for this `Scalar`.  Mutation is not permitted.",
       "math_interpretation": "",
@@ -7439,7 +7841,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1667,
+      "line": 1653,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "s -> s^(-1) mod L, multiplicative inverse",
@@ -7462,10 +7864,11 @@
         "choice_is_true(result) == is_canonical_scalar(self),"
       ],
       "referenced_specs": [
+        "choice_is_true",
         "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2877,
+      "line": 2999,
       "module": "scalar",
       "doc_comment": "Check whether this `Scalar` is the canonical representative mod \\\\(\\ell\\\\). This is not\npublic because any `Scalar` that is publicly observed is reduced, by scalar invariant #2.",
       "math_interpretation": "",
@@ -7494,7 +7897,7 @@
         "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 578,
+      "line": 580,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7505,7 +7908,7 @@
       "is_libsignal": false,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__mul_L578"
+      "id": "scalar__mul_L580"
     },
     {
       "name": "mul_assign",
@@ -7526,7 +7929,7 @@
         "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 495,
+      "line": 501,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7553,7 +7956,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 884,
+      "line": 857,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "s -> -s mod L",
@@ -7564,7 +7967,7 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__neg_L884"
+      "id": "scalar__neg_L857"
     },
     {
       "name": "neg",
@@ -7580,7 +7983,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 975,
+      "line": 961,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "s -> -s mod L",
@@ -7591,7 +7994,7 @@
       "is_libsignal": true,
       "has_spec": true,
       "has_proof": true,
-      "id": "scalar__neg_L975"
+      "id": "scalar__neg_L961"
     },
     {
       "name": "non_adjacent_form",
@@ -7606,10 +8009,12 @@
         "is_valid_naf(result@, w as nat),"
       ],
       "referenced_specs": [
+        "is_valid_naf",
+        "reconstruct",
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2318,
+      "line": 2305,
       "module": "scalar",
       "doc_comment": "Compute a width-\\\\(w\\\\) \"Non-Adjacent Form\" of this scalar.\n\nA width-\\\\(w\\\\) NAF of a positive integer \\\\(k\\\\) is an expression\n$$\nk = \\sum_{i=0}\\^m n\\_i 2\\^i,\n$$\nwhere each nonzero\ncoefficient \\\\(n\\_i\\\\) is odd and bounded by \\\\(|n\\_i| < 2\\^{w-1}\\\\),\n\\\\(n\\_{m-1}\\\\) is nonzero, and at most one of any \\\\(w\\\\) consecutive\ncoefficients is nonzero.  (Hankerson, Menezes, Vanstone; def 3.32).\n\nThe length of the NAF is at most one more than the length of\nthe binary representation of \\\\(k\\\\).  This is why the\n`Scalar` type maintains an invariant (invariant #1) that the top bit is\n\\\\(0\\\\), so that the NAF of a scalar has at most 256 digits.\n\nIntuitively, this is like a binary expansion, except that we\nallow some coefficients to grow in magnitude up to\n\\\\(2\\^{w-1}\\\\) so that the nonzero coefficients are as sparse\nas possible.\n\nWhen doing scalar multiplication, we can then use a lookup\ntable of precomputed multiples of a point to add the nonzero\nterms \\\\( k_i P \\\\).  Using signed digits cuts the table size\nin half, and using odd digits cuts the table size in half\nagain.\n\nTo compute a \\\\(w\\\\)-NAF, we use a modification of Algorithm 3.35 of HMV:\n\n1. \\\\( i \\gets 0 \\\\)\n2. While \\\\( k \\ge 1 \\\\):\n1. If \\\\(k\\\\) is odd, \\\\( n_i \\gets k \\operatorname{mods} 2^w \\\\), \\\\( k \\gets k - n_i \\\\).\n2. If \\\\(k\\\\) is even, \\\\( n_i \\gets 0 \\\\).\n3. \\\\( k \\gets k / 2 \\\\), \\\\( i \\gets i + 1 \\\\).\n3. Return \\\\( n_0, n_1, ... , \\\\)\n\nHere \\\\( \\bar x = x \\operatorname{mods} 2^w \\\\) means the\n\\\\( \\bar x \\\\) with \\\\( \\bar x \\equiv x \\pmod{2^w} \\\\) and\n\\\\( -2^{w-1} \\leq \\bar x < 2^{w-1} \\\\).\n\nWe implement this by scanning across the bits of \\\\(k\\\\) from\nleast-significant bit to most-significant-bit.\nWrite the bits of \\\\(k\\\\) as\n$$\nk = \\sum\\_{i=0}\\^m k\\_i 2^i,\n$$\nand split the sum as\n$$\nk = \\sum\\_{i=0}^{w-1} k\\_i 2^i + 2^w \\sum\\_{i=0} k\\_{i+w} 2^i\n$$\nwhere the first part is \\\\( k \\mod 2^w \\\\).\n\nIf \\\\( k \\mod 2^w\\\\) is odd, and \\\\( k \\mod 2^w < 2^{w-1} \\\\), then we emit\n\\\\( n_0 = k \\mod 2^w \\\\).  Instead of computing\n\\\\( k - n_0 \\\\), we just advance \\\\(w\\\\) bits and reindex.\n\nIf \\\\( k \\mod 2^w\\\\) is odd, and \\\\( k \\mod 2^w \\ge 2^{w-1} \\\\), then\n\\\\( n_0 = k \\operatorname{mods} 2^w = k \\mod 2^w - 2^w \\\\).\nThe quantity \\\\( k - n_0 \\\\) is\n$$\n\\begin{aligned}\nk - n_0 &= \\sum\\_{i=0}^{w-1} k\\_i 2^i + 2^w \\sum\\_{i=0} k\\_{i+w} 2^i\n- \\sum\\_{i=0}^{w-1} k\\_i 2^i + 2^w \\\\\\\\\n&= 2^w + 2^w \\sum\\_{i=0} k\\_{i+w} 2^i\n\\end{aligned}\n$$\nso instead of computing the subtraction, we can set a carry\nbit, advance \\\\(w\\\\) bits, and reindex.\n\nIf \\\\( k \\mod 2^w\\\\) is even, we emit \\\\(0\\\\), advance 1 bit\nand reindex.  In fact, by setting all digits to \\\\(0\\\\)\ninitially, we don't need to emit anything.",
       "math_interpretation": "",
@@ -7638,7 +8043,7 @@
         "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2805,
+      "line": 2917,
       "module": "scalar",
       "doc_comment": "Reduce this `Scalar` modulo \\\\(\\ell\\\\).",
       "math_interpretation": "",
@@ -7669,7 +8074,7 @@
         "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 763,
+      "line": 736,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7700,7 +8105,7 @@
         "is_canonical_scalar"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 848,
+      "line": 821,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7722,7 +8127,7 @@
       "ensures": [],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1044,
+      "line": 1030,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7750,7 +8155,7 @@
         "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1600,
+      "line": 1586,
       "module": "scalar",
       "doc_comment": "Convert this `Scalar` to its underlying sequence of bytes.\n\n# Example\n\n```\nuse curve25519_dalek::scalar::Scalar;\n\nlet s: Scalar = Scalar::ZERO;\n\nassert!(s.to_bytes() == [0u8; 32]);\n```",
       "math_interpretation": "s in Z/LZ -> [u8; 32] little-endian",
@@ -7775,7 +8180,7 @@
       "ensures": [],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2531,
+      "line": 2642,
       "module": "scalar",
       "doc_comment": "Returns a size hint indicating how many entries of the return\nvalue of `to_radix_2w` are nonzero.",
       "math_interpretation": "",
@@ -7792,18 +8197,24 @@
       "name": "unpack",
       "display_name": "Scalar::unpack",
       "impl_type": "Scalar",
-      "contract": "pub fn unpack(&self) -> (result:\n    UnpackedScalar)\n// VERIFICATION NOTE: VERIFIED (changed pub(crate) to pub)\n\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),",
+      "contract": "pub fn unpack(&self) -> (result:\n    UnpackedScalar)\n// VERIFICATION NOTE: VERIFIED (changed pub(crate) to pub)\n\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),\n        is_canonical_scalar(self) ==> is_canonical_scalar52(&result),",
       "requires": [],
       "ensures": [
         "limbs_bounded(&result),",
         "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-        "scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),"
+        "scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),",
+        "is_canonical_scalar(self) ==> is_canonical_scalar52(&result),"
       ],
       "referenced_specs": [
-        "bytes32_to_nat"
+        "bytes32_to_nat",
+        "is_canonical_scalar",
+        "is_canonical_scalar52",
+        "limb_prod_bounded_u128",
+        "limbs_bounded",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2791,
+      "line": 2902,
       "module": "scalar",
       "doc_comment": "Unpack this `Scalar` to an `UnpackedScalar` for faster arithmetic.",
       "math_interpretation": "",
@@ -7827,7 +8238,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1317,
+      "line": 1303,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7844,21 +8255,23 @@
       "name": "invert",
       "display_name": "UnpackedScalar::invert",
       "impl_type": "UnpackedScalar",
-      "contract": "pub fn invert(&self) -> (result: UnpackedScalar)\n    requires\n        limbs_bounded(self),\n    ensures\n// Postcondition: result * self ≡ 1 (mod group_order)\n\n        scalar52_to_nat(&result) * scalar52_to_nat(self) % group_order() == 1,\n        // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar\n        is_canonical_scalar52(&result),",
+      "contract": "pub fn invert(&self) -> (result: Scalar)\n    requires\n        is_canonical_scalar(self),\n    ensures\n// Result is the multiplicative inverse: result * self ≡ 1 (mod group_order)\n\n        (scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1,\n        is_canonical_scalar(&result),",
       "requires": [
-        "limbs_bounded(self),"
+        "is_canonical_scalar(self),"
       ],
       "ensures": [
-        "scalar52_to_nat(&result) * scalar52_to_nat(self) % group_order() == 1,",
-        "is_canonical_scalar52(&result),"
+        "(scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1,",
+        "is_canonical_scalar(&result),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar",
+        "scalar_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 3180,
+      "line": 1653,
       "module": "scalar",
-      "doc_comment": "Inverts an UnpackedScalar not in Montgomery form.",
+      "doc_comment": "",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L3180",
@@ -7873,22 +8286,26 @@
       "name": "montgomery_invert",
       "display_name": "UnpackedScalar::montgomery_invert",
       "impl_type": "UnpackedScalar",
-      "contract": "pub fn montgomery_invert(&self) -> (result:\n    UnpackedScalar)/* VERIFICATION NOTE:\nPROOF BYPASS\n*/\n\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == (\n        montgomery_radix() * montgomery_radix())\n            % group_order(),\n// Equivalent to: from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)\n// Expressed in Montgomery form: (result/R) * (self/R) ≡ 1, i.e., result * self ≡ R² (mod L)",
+      "contract": "pub fn montgomery_invert(&self) -> (result:\n    UnpackedScalar)/* VERIFICATION NOTE:\nPROOF BYPASS\n*/\n\n    requires\n// Must be canonical for montgomery_square/montgomery_mul\n\n        is_canonical_scalar52(self),\n    ensures\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        // Output is canonical\n        is_canonical_scalar52(&result),\n        (scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == (\n        montgomery_radix() * montgomery_radix())\n            % group_order(),\n// Equivalent to: from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)\n// Expressed in Montgomery form: (result/R) * (self/R) ≡ 1, i.e., result * self ≡ R² (mod L)",
       "requires": [
-        "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
+        "is_canonical_scalar52(self),"
       ],
       "ensures": [
-        "limbs_bounded(&result),",
         "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
+        "is_canonical_scalar52(&result),",
         "(scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == ( montgomery_radix() * montgomery_radix()) % group_order(),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limb_prod_bounded_u128",
+        "montgomery_radix",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 3090,
+      "line": 3221,
       "module": "scalar",
-      "doc_comment": "Inverts an UnpackedScalar in Montgomery form.",
+      "doc_comment": "Inverts an UnpackedScalar in Montgomery form.\n\n# Preconditions\n- Input must be canonical for `montgomery_square`/`montgomery_mul`\n",
       "math_interpretation": "",
       "informal_interpretation": "",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L3090",
@@ -7914,10 +8331,12 @@
       "referenced_specs": [
         "bytes32_to_nat",
         "group_order",
-        "is_canonical_scalar"
+        "is_canonical_scalar",
+        "limbs_bounded",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 3010,
+      "line": 3137,
       "module": "scalar",
       "doc_comment": "Pack the limbs of this `UnpackedScalar` into a `Scalar`.",
       "math_interpretation": "",
@@ -7942,7 +8361,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2137,
+      "line": 2124,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -7973,9 +8392,9 @@
         "spec_clamp_integer"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 3439,
+      "line": 3573,
       "module": "scalar",
-      "doc_comment": "",
+      "doc_comment": "_Clamps_ the given little-endian representation of a 32-byte integer. Clamping the value puts\nit in the range:\n\n**n ∈ 2^254 + 8\\*{0, 1, 2, 3, . . ., 2^251 − 1}**\n\n# Explanation of clamping\n\nFor Curve25519, h = 8, and multiplying by 8 is the same as a binary left-shift by 3 bits.\nIf you take a secret scalar value between 2^251 and 2^252 – 1 and left-shift by 3 bits\nthen you end up with a 255-bit number with the most significant bit set to 1 and\nthe least-significant three bits set to 0.\n\nThe Curve25519 clamping operation takes **an arbitrary 256-bit random value** and\nclears the most-significant bit (making it a 255-bit number), sets the next bit, and then\nclears the 3 least-significant bits. In other words, it directly creates a scalar value that is\nin the right form and pre-multiplied by the cofactor.\n\nSee [here](https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/) for\nmore details.",
       "math_interpretation": "clamp: clear bits 0-2 and 255, set bit 254",
       "informal_interpretation": "Clamps a 32-byte integer for use as an X25519 scalar.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/scalar.rs#L3439",
@@ -7995,7 +8414,7 @@
       "ensures": [],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 1016,
+      "line": 1002,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -8024,7 +8443,7 @@
         "bytes_seq_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 3359,
+      "line": 3494,
       "module": "scalar",
       "doc_comment": "Read one or more u64s stored as little endian bytes.\n\n## Panics\nPanics if `src.len() != 8 * dst.len()`.",
       "math_interpretation": "",
@@ -8041,21 +8460,25 @@
       "name": "square_multiply",
       "display_name": "square_multiply",
       "impl_type": "",
-      "contract": "fn square_multiply(\n    y: &mut UnpackedScalar,\n    squarings: usize,\n    x: &UnpackedScalar,\n)/*  VERIFICATION NOTE:\n- This function was initially inside the body of montgomery_invert, but was moved outside for Verus\n*/\n\n    requires\n        limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),\n        limbs_bounded(x),\n    ensures\n        limbs_bounded(y),\n        limb_prod_bounded_u128(y.limbs, y.limbs, 5),\n        // VERIFICATION NOTE: Changed postcondition from the original incorrect version\n        // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`\n        (scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)\n            % group_order() == (pow(scalar52_to_nat(old(y)) as int, pow2(squarings as nat))\n            * scalar52_to_nat(x)) % (group_order() as int),",
+      "contract": "fn square_multiply(\n    y: &mut UnpackedScalar,\n    squarings: usize,\n    x: &UnpackedScalar,\n)/*  VERIFICATION NOTE:\n- This function was initially inside the body of montgomery_invert, but was moved outside for Verus\n*/\n\n    requires\n// Both inputs must be canonical for montgomery_square/montgomery_mul\n\n        is_canonical_scalar52(old(y)),\n        is_canonical_scalar52(x),\n    ensures\n        limb_prod_bounded_u128(y.limbs, y.limbs, 5),\n        // Output is canonical\n        is_canonical_scalar52(y),\n        // VERIFICATION NOTE: Changed postcondition from the original incorrect version\n        // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`\n        (scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)\n            % group_order() == (pow(scalar52_to_nat(old(y)) as int, pow2(squarings as nat))\n            * scalar52_to_nat(x)) % (group_order() as int),",
       "requires": [
-        "limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),",
-        "limbs_bounded(x),"
+        "is_canonical_scalar52(old(y)),",
+        "is_canonical_scalar52(x),"
       ],
       "ensures": [
-        "limbs_bounded(y),",
         "limb_prod_bounded_u128(y.limbs, y.limbs, 5),",
+        "is_canonical_scalar52(y),",
         "(scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == (pow(scalar52_to_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_to_nat(x)) % (group_order() as int),"
       ],
       "referenced_specs": [
-        "group_order"
+        "group_order",
+        "is_canonical_scalar52",
+        "limb_prod_bounded_u128",
+        "montgomery_radix",
+        "scalar52_to_nat"
       ],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2899,
+      "line": 3021,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -8080,7 +8503,7 @@
       ],
       "referenced_specs": [],
       "file": "curve25519-dalek/src/scalar.rs",
-      "line": 2157,
+      "line": 2144,
       "module": "scalar",
       "doc_comment": "",
       "math_interpretation": "",
@@ -8104,7 +8527,10 @@
         "lookup_table_affine_limbs_bounded(result.0),"
       ],
       "referenced_specs": [
-        "edwards_point_limbs_bounded"
+        "edwards_point_limbs_bounded",
+        "from_req",
+        "is_valid_lookup_table_affine",
+        "lookup_table_affine_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
       "line": 360,
@@ -8156,6 +8582,9 @@
       ],
       "referenced_specs": [
         "edwards_point_limbs_bounded",
+        "from_req",
+        "is_valid_lookup_table_projective",
+        "lookup_table_projective_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8192,7 +8621,10 @@
         "fe51_limbs_bounded(&result.T2d, 54),"
       ],
       "referenced_specs": [
-        "fe51_limbs_bounded"
+        "fe51_limbs_bounded",
+        "identity_projective_niels",
+        "lookup_table_projective_limbs_bounded",
+        "negate_projective_niels"
       ],
       "file": "curve25519-dalek/src/window.rs",
       "line": 158,
@@ -8220,7 +8652,10 @@
       ],
       "referenced_specs": [
         "edwards_point_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table5_projective",
+        "naf_lookup_table5_projective_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8249,7 +8684,10 @@
       ],
       "referenced_specs": [
         "edwards_point_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table5_affine",
+        "naf_lookup_table5_affine_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8276,8 +8714,17 @@
       "referenced_specs": [
         "edwards_point_limbs_bounded",
         "fe51_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table5_affine",
+        "is_valid_naf_lookup_table5_projective",
+        "is_valid_naf_lookup_table8_affine",
+        "is_valid_naf_lookup_table8_projective",
         "is_well_formed_edwards_point",
+        "naf_lookup_table5_affine_limbs_bounded",
+        "naf_lookup_table5_projective_limbs_bounded",
+        "naf_lookup_table8_affine_limbs_bounded",
+        "naf_lookup_table8_projective_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8304,8 +8751,17 @@
       "referenced_specs": [
         "edwards_point_limbs_bounded",
         "fe51_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table5_affine",
+        "is_valid_naf_lookup_table5_projective",
+        "is_valid_naf_lookup_table8_affine",
+        "is_valid_naf_lookup_table8_projective",
         "is_well_formed_edwards_point",
+        "naf_lookup_table5_affine_limbs_bounded",
+        "naf_lookup_table5_projective_limbs_bounded",
+        "naf_lookup_table8_affine_limbs_bounded",
+        "naf_lookup_table8_projective_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8334,7 +8790,10 @@
       ],
       "referenced_specs": [
         "edwards_point_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table8_projective",
+        "naf_lookup_table8_projective_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8363,7 +8822,10 @@
       ],
       "referenced_specs": [
         "edwards_point_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table8_affine",
+        "naf_lookup_table8_affine_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8390,8 +8852,13 @@
       "referenced_specs": [
         "edwards_point_limbs_bounded",
         "fe51_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table8_affine",
+        "is_valid_naf_lookup_table8_projective",
         "is_well_formed_edwards_point",
+        "naf_lookup_table8_affine_limbs_bounded",
+        "naf_lookup_table8_projective_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",
@@ -8418,8 +8885,13 @@
       "referenced_specs": [
         "edwards_point_limbs_bounded",
         "fe51_limbs_bounded",
+        "from_req",
         "is_valid_edwards_point",
+        "is_valid_naf_lookup_table8_affine",
+        "is_valid_naf_lookup_table8_projective",
         "is_well_formed_edwards_point",
+        "naf_lookup_table8_affine_limbs_bounded",
+        "naf_lookup_table8_projective_limbs_bounded",
         "sum_of_limbs_bounded"
       ],
       "file": "curve25519-dalek/src/window.rs",

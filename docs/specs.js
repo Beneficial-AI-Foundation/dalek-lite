@@ -154,7 +154,12 @@ let attrPillLibsignal = null;
 function buildModuleTree(modules) {
     const container = document.getElementById("moduleTree");
 
-    const sorted = [...modules].sort();
+    // Sort modules alphabetically, but push "backend" to the end
+    const sorted = [...modules].sort((a, b) => {
+        if (a === "backend") return 1;
+        if (b === "backend") return -1;
+        return a.localeCompare(b);
+    });
     for (const mod of sorted) {
         const count = verifiedFunctions.filter(v => v.module === mod).length;
         const pill = createModulePill(mod, count, mod);
@@ -271,7 +276,13 @@ function getFilteredVerified() {
             return h.includes(searchLeft);
         });
     }
-    list.sort((a, b) => a.module.localeCompare(b.module) || a.display_name.localeCompare(b.display_name));
+    // Sort by module (backend last), then by display name
+    list.sort((a, b) => {
+        const ma = a.module === "backend" ? 1 : 0;
+        const mb = b.module === "backend" ? 1 : 0;
+        if (ma !== mb) return ma - mb;
+        return a.module.localeCompare(b.module) || a.display_name.localeCompare(b.display_name);
+    });
     return list;
 }
 

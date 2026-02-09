@@ -189,7 +189,9 @@ function createModulePill(displayName, count, moduleId) {
             activeModules.add(moduleId);
             el.classList.add("active");
         }
+        autoFilterBypassed = false;
         renderLeftPanel();
+        renderRightPanel();
     });
     return { el, moduleId, countEl };
 }
@@ -205,7 +207,9 @@ function buildAttributeFilters(publicCount, libsignalCount) {
     publicEl.addEventListener("click", () => {
         filterPublic = !filterPublic;
         publicEl.classList.toggle("active", filterPublic);
+        autoFilterBypassed = false;
         renderLeftPanel();
+        renderRightPanel();
     });
     container.appendChild(publicEl);
     attrPillPublic = { el: publicEl, countEl: publicEl.querySelector(".pill-count") };
@@ -216,7 +220,9 @@ function buildAttributeFilters(publicCount, libsignalCount) {
     libsignalEl.addEventListener("click", () => {
         filterLibsignal = !filterLibsignal;
         libsignalEl.classList.toggle("active", filterLibsignal);
+        autoFilterBypassed = false;
         renderLeftPanel();
+        renderRightPanel();
     });
     container.appendChild(libsignalEl);
     attrPillLibsignal = { el: libsignalEl, countEl: libsignalEl.querySelector(".pill-count") };
@@ -474,12 +480,49 @@ function inflateVerifiedBody(card) {
 }
 
 // ── Right panel: spec functions ──────────────────────────────
+/**
+ * Compute the transitive closure of spec names reachable from a set of
+ * verified functions.  Each verified function's `referenced_specs` are the
+ * seeds; we then recursively follow each spec's own `referenced_specs`.
+ */
+function getReachableSpecs(verifiedList) {
+    const reachable = new Set();
+    const queue = [];
+    for (const fn of verifiedList) {
+        for (const s of (fn.referenced_specs || [])) {
+            if (!reachable.has(s)) { reachable.add(s); queue.push(s); }
+        }
+    }
+    while (queue.length) {
+        const name = queue.pop();
+        const spec = specLookup[name];
+        if (!spec) continue;
+        for (const dep of (spec.referenced_specs || [])) {
+            if (!reachable.has(dep)) { reachable.add(dep); queue.push(dep); }
+        }
+    }
+    return reachable;
+}
+
+/** True when any left-panel filter (module, public, libsignal) is active. */
+function hasLeftFilter() {
+    return activeModules.size > 0 || filterPublic || filterLibsignal;
+}
+
 function getFilteredSpecs() {
     let list = specFunctions;
 
     // Filter by referenced specs (from "Show referenced specs" button)
     if (specFilterRefs) {
         list = list.filter(s => specFilterRefs.has(s.name));
+    }
+
+    // Auto-filter: when a left-panel filter is active, show only specs
+    // reachable (transitively) from the visible verified functions.
+    // Skip when autoFilterBypassed (user navigated to an out-of-scope spec).
+    if (!specFilterRefs && !autoFilterBypassed && hasLeftFilter()) {
+        const reachable = getReachableSpecs(getFilteredVerified());
+        list = list.filter(s => reachable.has(s.name));
     }
 
     if (searchRight) {
@@ -515,14 +558,34 @@ function renderRightPanel() {
     const bannerText = document.getElementById("specFilterText");
 
     // Show/hide filter banner
+    const filtered = getFilteredSpecs();
+    const clearBtn = document.getElementById("specFilterClear");
     if (specFilterRefs) {
         banner.style.display = "flex";
         bannerText.textContent = `Showing ${specFilterRefs.size} specs related to ${specFilterSource}`;
+        clearBtn.style.display = "";
+    } else if (autoFilterBypassed && hasLeftFilter()) {
+        banner.style.display = "flex";
+        bannerText.textContent = `Showing all specs (navigated outside filtered scope)`;
+        clearBtn.textContent = "Re-apply filter";
+        clearBtn.style.display = "";
+        clearBtn.onclick = () => {
+            autoFilterBypassed = false;
+            clearBtn.textContent = "Show All";
+            clearBtn.onclick = clearSpecFilter;
+            renderRightPanel();
+        };
+    } else if (hasLeftFilter()) {
+        banner.style.display = "flex";
+        const labels = [];
+        if (activeModules.size > 0) labels.push([...activeModules].join(", "));
+        if (filterPublic) labels.push("Public");
+        if (filterLibsignal) labels.push("Libsignal");
+        bannerText.textContent = `Showing ${filtered.length} specs referenced by ${labels.join(" + ")} functions`;
+        clearBtn.style.display = "none";
     } else {
         banner.style.display = "none";
     }
-
-    const filtered = getFilteredSpecs();
 
     if (filtered.length === 0) {
         container.innerHTML = '<div class="no-results"><h3>No matching specs</h3><p>Try a different search or clear the filter.</p></div>';
@@ -758,14 +821,27 @@ function clearSpecFilter() {
 }
 
 // ── Scroll to and highlight a spec card on the right ─────────
+let autoFilterBypassed = false;  // true when we showed all specs to reach a target
+
 function scrollToSpecCard(specName) {
-    // If the right panel is filtered and the target isn't visible, clear filter first
+    // If the right panel is filtered by "Focus referenced specs" and the
+    // target isn't in that set, clear the per-function filter first.
     if (specFilterRefs && !specFilterRefs.has(specName)) {
         clearSpecFilter();
     }
 
     // Find the card
-    const card = document.querySelector(`.panel-right .spec-card[data-spec-name="${cssSelectorEscape(specName)}"]`);
+    let card = document.querySelector(`.panel-right .spec-card[data-spec-name="${cssSelectorEscape(specName)}"]`);
+
+    // If the card isn't in the DOM it may be hidden by the auto-filter
+    // (left-panel module/public/libsignal filters).  Bypass the auto-filter
+    // so the full spec list renders, then scroll to the target.
+    if (!card && hasLeftFilter()) {
+        autoFilterBypassed = true;
+        renderRightPanel();
+        card = document.querySelector(`.panel-right .spec-card[data-spec-name="${cssSelectorEscape(specName)}"]`);
+    }
+
     if (!card) return;
 
     // Inflate & open it

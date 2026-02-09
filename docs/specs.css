@@ -32,7 +32,7 @@
 }
 
 .download-bar {
-    margin-left: auto;        /* push to far right */
+    margin-left: 0.75rem;
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -169,7 +169,8 @@
     height: 1.4rem;
     background: var(--border-color);
     flex-shrink: 0;
-    margin: 0 3.75rem;
+    margin-left: auto;         /* push separator + attrs to the right */
+    margin-right: 0.75rem;
 }
 
 /* Attribute filter pills (Public, Libsignal) */

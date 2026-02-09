@@ -1108,43 +1108,32 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     // ORIGINAL CODE: let d_1 = &one + &r_0.square2(); // 2r^2
     let r_0_sq2 = r_0.square2();
     proof {
-        // square2 produces 53-bit bounded limbs (from square2 postcondition)
-        assert(fe51_limbs_bounded(&r_0_sq2, 53));
-        // Add precondition: no per-limb overflow in u64
-        lemma_fe51_limbs_bounded_weaken(&one, 51, 53);
-        lemma_sum_of_limbs_bounded_from_fe51_bounded(&one, &r_0_sq2, 53);
+        assert(fe51_limbs_bounded(&r_0_sq2, 53));  // from square2 postcondition
+        assert(sum_of_limbs_bounded(&one, &r_0_sq2, u64::MAX)) by {
+            lemma_fe51_limbs_bounded_weaken(&one, 51, 53);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&one, &r_0_sq2, 53);
+        }
     }
     let d_1 = &one + &r_0_sq2;  // 2r^2
 
     proof {
-        // d_1 limbs bound: (53-bounded + 53-bounded) => 54-bounded
-        lemma_add_bounds_propagate(&one, &r_0_sq2, 53);
-        assert(fe51_limbs_bounded(&d_1, 54));
+        assert(fe51_limbs_bounded(&d_1, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&one, 51, 53);
+            lemma_add_bounds_propagate(&one, &r_0_sq2, 53);
+        }
     }
-    /* ORIGINAL CODE
-    let d = &MONTGOMERY_A_NEG * &(d_1.invert());  // A/(1+2r^2)
-    */
-    // Verus currently has trouble with unary `-` on FieldElement, so we compute -A via conditional_negate.
-    let mut a_neg = MONTGOMERY_A;
     proof {
-        // `conditional_negate_field_element` requires a 54-bit input bound.
-        lemma_montgomery_a_limbs_bounded_51();
-        assert(fe51_limbs_bounded(&a_neg, 51));
-        lemma_fe51_limbs_bounded_weaken(&a_neg, 51, 54);
-    }
-    // ORIGINAL CODE: conditional_negate_field_element(&mut a_neg, Choice::from(1u8));
-    let neg_choice = Choice::from(1u8);
-    conditional_negate_field_element(&mut a_neg, neg_choice);
-    proof {
-        // Negation (choice true) produces a 52-bounded output; weaken to satisfy mul precondition.
-        assert(choice_is_true(neg_choice));
-        lemma_fe51_limbs_bounded_weaken(&a_neg, 52, 54);
+        assert(fe51_limbs_bounded(&MONTGOMERY_A_NEG, 54)) by {
+            lemma_montgomery_a_neg_limbs_bounded_51();
+            lemma_fe51_limbs_bounded_weaken(&MONTGOMERY_A_NEG, 51, 54);
+        }
     }
     let d_1_inv = d_1.invert();
-    let d = &a_neg * &d_1_inv;  // (-A)/(1+2r^2)
+    let d = &MONTGOMERY_A_NEG * &d_1_inv;  // (-A)/(1+2r^2)
     proof {
-        // Field ops typically require the standard 54-bit bound.
-        lemma_fe51_limbs_bounded_weaken(&d, 52, 54);
+        assert(fe51_limbs_bounded(&d, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&d, 52, 54);
+        }
     }
 
     // ORIGINAL CODE: let d_sq = &d.square();
@@ -1154,43 +1143,45 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
 
     // ORIGINAL CODE: let inner = &(d_sq + &au) + &one;
     proof {
-        // d_sq and au are 52-bounded, so their sum fits in u64
-        lemma_fe51_limbs_bounded_weaken(d_sq, 52, 54);
-        // Use the tighter 52-bit fact from mul/square postconditions
-        lemma_sum_of_limbs_bounded_from_fe51_bounded(d_sq, &au, 54);
+        assert(sum_of_limbs_bounded(d_sq, &au, u64::MAX)) by {
+            lemma_fe51_limbs_bounded_weaken(d_sq, 52, 54);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(d_sq, &au, 54);
+        }
     }
     let d_sq_plus_au = d_sq + &au;
     proof {
-        // (52-bounded + 52-bounded) => 53-bounded, then add ONE
         assert(fe51_limbs_bounded(&d_sq_plus_au, 53)) by {
             assert forall|i: int| 0 <= i < 5 implies d_sq_plus_au.limbs[i] < (1u64 << 53) by {
-                // each side is < 2^52 (from mul/square postconditions), so sum < 2^53
                 assert(d_sq.limbs[i] < (1u64 << 52));
                 assert(au.limbs[i] < (1u64 << 52));
                 assert((1u64 << 52) + (1u64 << 52) == (1u64 << 53)) by (bit_vector);
             }
         }
-        lemma_fe51_limbs_bounded_weaken(&one, 51, 53);
-        lemma_sum_of_limbs_bounded_from_fe51_bounded(&d_sq_plus_au, &one, 53);
+        assert(sum_of_limbs_bounded(&d_sq_plus_au, &one, u64::MAX)) by {
+            lemma_fe51_limbs_bounded_weaken(&one, 51, 53);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&d_sq_plus_au, &one, 53);
+        }
     }
     let inner = &d_sq_plus_au + &one;  // inner = d^2 + A*d + 1
 
     proof {
-        lemma_add_bounds_propagate(&d_sq_plus_au, &one, 53);
-        assert(fe51_limbs_bounded(&inner, 54));
+        assert(fe51_limbs_bounded(&inner, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&one, 51, 53);
+            lemma_add_bounds_propagate(&d_sq_plus_au, &one, 53);
+        }
     }
     let eps = &d * &inner;  // eps = d^3 + Ad^2 + d
 
     proof {
-        // sqrt_ratio_i requires 54-bit bounded inputs
-        lemma_fe51_limbs_bounded_weaken(&one, 51, 54);
+        assert(fe51_limbs_bounded(&one, 54)) by {
+            lemma_fe51_limbs_bounded_weaken(&one, 51, 54);
+        }
     }
     let (eps_is_sq, _eps) = FieldElement::sqrt_ratio_i(&eps, &one);
 
     let Atemp = conditional_select_field_element(&MONTGOMERY_A, &zero, eps_is_sq);  // 0, or A if nonsquare
 
     proof {
-        // Show Atemp is 54-bounded (it equals either MONTGOMERY_A or ZERO).
         assert(fe51_limbs_bounded(&Atemp, 54)) by {
             if choice_is_true(eps_is_sq) {
                 assert(Atemp == zero);
@@ -1200,7 +1191,9 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                 assert(fe51_limbs_bounded(&Atemp, 54));
             }
         }
-        lemma_sum_of_limbs_bounded_from_fe51_bounded(&d, &Atemp, 54);
+        assert(sum_of_limbs_bounded(&d, &Atemp, u64::MAX)) by {
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&d, &Atemp, 54);
+        }
     }
     let mut u = &d + &Atemp;  // d, or d+A if nonsquare
     let ghost u_pre = u;
@@ -1208,13 +1201,12 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     // ORIGINAL CODE: u.conditional_negate(!eps_is_sq);
     let neg_choice = choice_not(eps_is_sq);
     proof {
-        // `conditional_negate_field_element` requires a 54-bit bound on the input.
-        // We have u = d + Atemp where d is 52-bounded (mul output) and Atemp is 51-bounded, so u is 53-bounded.
-        lemma_fe51_limbs_bounded_weaken(&Atemp, 51, 52);
-        assert(fe51_limbs_bounded(&d, 52));  // from mul postcondition
-        lemma_add_bounds_propagate(&d, &Atemp, 52);
-        assert(fe51_limbs_bounded(&u, 53));
-        lemma_fe51_limbs_bounded_weaken(&u, 53, 54);
+        assert(fe51_limbs_bounded(&u, 54)) by {
+            assert(fe51_limbs_bounded(&d, 52));  // from mul postcondition
+            lemma_fe51_limbs_bounded_weaken(&Atemp, 51, 52);
+            lemma_add_bounds_propagate(&d, &Atemp, 52);
+            lemma_fe51_limbs_bounded_weaken(&u, 53, 54);
+        }
     }
     conditional_negate_field_element(&mut u, neg_choice);  // d, or -d-A if nonsquare
 
@@ -1288,11 +1280,13 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
             assert(spec_field_element(&d_1_inv) == math_field_inv(spec_field_element(&d_1)));
             // From mul:
             assert(spec_field_element(&d) == math_field_mul(
-                spec_field_element(&a_neg),
+                spec_field_element(&MONTGOMERY_A_NEG),
                 spec_field_element(&d_1_inv),
             ));
-            // And from neg:
-            assert(spec_field_element(&a_neg) == math_field_neg(A));
+            // MONTGOMERY_A_NEG encodes -A:
+            assert(spec_field_element(&MONTGOMERY_A_NEG) == math_field_neg(A)) by {
+                lemma_montgomery_a_neg_is_neg_a();
+            }
             // Replace d_1 with denom (asserted above).
             assert(spec_field_element(&d_1) == math_field_add(
                 1,

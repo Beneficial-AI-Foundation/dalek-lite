@@ -21,7 +21,7 @@
 //!
 //! - Edwards curve-specific constants (EDWARDS_D, EDWARDS_D2) are in `edwards_lemmas::constants_lemmas`.
 #![allow(unused_imports)]
-use crate::backend::serial::u64::constants::MONTGOMERY_A;
+use crate::backend::serial::u64::constants::{MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
@@ -146,6 +146,17 @@ pub proof fn lemma_montgomery_a_limbs_bounded_51()
 {
     assert(fe51_limbs_bounded(&MONTGOMERY_A, 51)) by {
         assert(0u64 < (1u64 << 51) && 486662u64 < (1u64 << 51)) by (bit_vector);
+    };
+}
+
+/// `MONTGOMERY_A_NEG` has 51-bit bounded limbs.
+pub proof fn lemma_montgomery_a_neg_limbs_bounded_51()
+    ensures
+        fe51_limbs_bounded(&MONTGOMERY_A_NEG, 51),
+{
+    assert(fe51_limbs_bounded(&MONTGOMERY_A_NEG, 51)) by {
+        assert(2251799813198567u64 < (1u64 << 51) && 2251799813685247u64 < (1u64 << 51))
+            by (bit_vector);
     };
 }
 

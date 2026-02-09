@@ -125,10 +125,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    document.getElementById("expandAllLeft").addEventListener("click", () => toggleAllIn("listLeft", true));
-    document.getElementById("collapseAllLeft").addEventListener("click", () => toggleAllIn("listLeft", false));
-    document.getElementById("expandAllRight").addEventListener("click", () => toggleAllIn("listRight", true));
-    document.getElementById("collapseAllRight").addEventListener("click", () => toggleAllIn("listRight", false));
 
     // Event delegation for inline ref cards in right panel (registered once)
     document.getElementById("listRight").addEventListener("click", e => {
@@ -280,11 +276,13 @@ function getFilteredVerified() {
     }
     if (searchLeft) {
         list = list.filter(v => {
+            // Search top-level fields only (name, module, docs,
+            // interpretations) — exclude contract body and referenced
+            // spec names to avoid false matches.
             const h = (
                 v.name + " " + v.display_name + " " + v.module + " " +
-                v.contract + " " + (v.doc_comment || "") + " " +
-                (v.math_interpretation || "") + " " + (v.informal_interpretation || "") +
-                " " + (v.referenced_specs || []).join(" ")
+                (v.doc_comment || "") + " " +
+                (v.math_interpretation || "") + " " + (v.informal_interpretation || "")
             ).toLowerCase();
             return h.includes(searchLeft);
         });
@@ -897,18 +895,6 @@ function highlightSpecNames(contractText, referencedSpecs) {
 }
 
 // ── Expand / Collapse All ────────────────────────────────────
-function toggleAllIn(containerId, open) {
-    const isLeft = containerId === "listLeft";
-    document.getElementById(containerId).querySelectorAll(".spec-card").forEach(card => {
-        if (open) {
-            if (isLeft) inflateVerifiedBody(card); else inflateSpecBody(card);
-            card.classList.add("open");
-        } else {
-            card.classList.remove("open");
-        }
-    });
-}
-
 // ── Comments (Firebase) ──────────────────────────────────────
 async function loadComments(functionId, container) {
     if (!FIREBASE_ENABLED || !db) {

@@ -52,8 +52,8 @@ pub proof fn lemma_u8_32_as_nat_one()
 /// Combined lemma for ZERO: value is 0, less than L, canonical, and congruent to 0
 pub proof fn lemma_scalar_zero_properties()
     ensures
-        scalar_to_nat(&Scalar::ZERO) == 0,
-        scalar_to_nat(&Scalar::ZERO) < group_order(),
+        scalar_as_nat(&Scalar::ZERO) == 0,
+        scalar_as_nat(&Scalar::ZERO) < group_order(),
         is_canonical_scalar(&Scalar::ZERO),
         scalar_congruent_nat(&Scalar::ZERO, 0),
 {
@@ -66,8 +66,8 @@ pub proof fn lemma_scalar_zero_properties()
 /// Combined lemma for ONE: value is 1, less than L, and congruent to 1
 pub proof fn lemma_scalar_one_properties()
     ensures
-        scalar_to_nat(&Scalar::ONE) == 1,
-        scalar_to_nat(&Scalar::ONE) < group_order(),
+        scalar_as_nat(&Scalar::ONE) == 1,
+        scalar_as_nat(&Scalar::ONE) < group_order(),
         scalar_congruent_nat(&Scalar::ONE, 1),
         is_canonical_scalar(&Scalar::ONE),
 {
@@ -103,7 +103,7 @@ impl Scalar {
         requires
             forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
         ensures
-            scalar_to_nat(&result) < group_order(),
+            scalar_as_nat(&result) < group_order(),
             is_canonical_scalar(&result),
             scalar_congruent_nat(&result, product_of_scalars(scalars@)),
     {
@@ -121,7 +121,7 @@ impl Scalar {
                 forall|j: int|
                     #![auto]
                     0 <= j < scalars@.len() ==> is_canonical_scalar(&scalars@[j]),
-                scalar_to_nat(&acc) < group_order(),
+                scalar_as_nat(&acc) < group_order(),
                 is_canonical_scalar(&acc),
                 scalar_congruent_nat(&acc, product_of_scalars(scalars@.subrange(0, i as int))),
         {
@@ -179,7 +179,7 @@ impl Scalar {
         requires
             forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
         ensures
-            scalar_to_nat(&result) < group_order(),
+            scalar_as_nat(&result) < group_order(),
             is_canonical_scalar(&result),
             scalar_congruent_nat(&result, sum_of_scalars(scalars@)),
     {
@@ -197,7 +197,7 @@ impl Scalar {
                 forall|j: int|
                     #![auto]
                     0 <= j < scalars@.len() ==> is_canonical_scalar(&scalars@[j]),
-                scalar_to_nat(&acc) < group_order(),
+                scalar_as_nat(&acc) < group_order(),
                 is_canonical_scalar(&acc),
                 scalar_congruent_nat(&acc, sum_of_scalars(scalars@.subrange(0, i as int))),
         {

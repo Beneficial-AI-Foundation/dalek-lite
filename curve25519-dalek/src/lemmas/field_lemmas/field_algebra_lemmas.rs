@@ -227,7 +227,7 @@ pub proof fn lemma_square_matches_field_square(y_raw: nat, y2_raw: nat)
 /// the pair `(a+b, a-b)` when division by 2 is available.
 pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
     ensures
-        math_field_sub(math_field_add(a, b), math_field_sub(a, b)) == math_field_mul(2, b),
+        field_sub(field_add(a, b), field_sub(a, b)) == field_mul(2, b),
 {
     let p = p();
     let p_int = p as int;
@@ -236,9 +236,9 @@ pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
     let am = a % p;
     let bm = b % p;
 
-    let lhs = math_field_sub(math_field_add(a, b), math_field_sub(a, b));
-    let rhs = math_field_mul(2, b);
-    let rhs_simpl = math_field_mul(2, bm);
+    let lhs = field_sub(field_add(a, b), field_sub(a, b));
+    let rhs = field_mul(2, b);
+    let rhs_simpl = field_mul(2, bm);
 
     // Simplify RHS to depend only on b % p.
     assert(rhs == rhs_simpl) by {
@@ -260,13 +260,13 @@ pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
     let D_int = ((am + p) - bm) as int;
 
     // Establish the shapes of add/sub.
-    assert(math_field_add(a, b) == (am + bm) % p) by {
+    assert(field_add(a, b) == (am + bm) % p) by {
         lemma_add_mod_noop(a as int, b as int, p_int);
     }
-    assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
+    assert(field_sub(a, b) == (((am + p) - bm) as nat) % p);
 
-    let add_ab = math_field_add(a, b);
-    let sub_ab = math_field_sub(a, b);
+    let add_ab = field_add(a, b);
+    let sub_ab = field_sub(a, b);
     assert(add_ab == (am + bm) % p);
     assert(sub_ab == (((am + p) - bm) as nat) % p);
 
@@ -328,7 +328,7 @@ pub proof fn lemma_field_add_sub_recover_double(a: nat, b: nat)
 /// the pair `(a+b, a-b)` when division by 2 is available.
 pub proof fn lemma_field_add_add_recover_double(a: nat, b: nat)
     ensures
-        math_field_add(math_field_add(a, b), math_field_sub(a, b)) == math_field_mul(2, a),
+        field_add(field_add(a, b), field_sub(a, b)) == field_mul(2, a),
 {
     let p = p();
     let p_int = p as int;
@@ -337,9 +337,9 @@ pub proof fn lemma_field_add_add_recover_double(a: nat, b: nat)
     let am = a % p;
     let bm = b % p;
 
-    let lhs = math_field_add(math_field_add(a, b), math_field_sub(a, b));
-    let rhs = math_field_mul(2, a);
-    let rhs_simpl = math_field_mul(2, am);
+    let lhs = field_add(field_add(a, b), field_sub(a, b));
+    let rhs = field_mul(2, a);
+    let rhs_simpl = field_mul(2, am);
 
     // Simplify RHS to depend only on a % p.
     assert(rhs == rhs_simpl) by {
@@ -348,13 +348,13 @@ pub proof fn lemma_field_add_add_recover_double(a: nat, b: nat)
     assert(rhs_simpl == (2 * am) % p);
 
     // Rewrite the inner add/sub in terms of am,bm.
-    assert(math_field_add(a, b) == (am + bm) % p) by {
+    assert(field_add(a, b) == (am + bm) % p) by {
         lemma_add_mod_noop(a as int, b as int, p_int);
     }
-    assert(math_field_sub(a, b) == (((am + p) - bm) as nat) % p);
+    assert(field_sub(a, b) == (((am + p) - bm) as nat) % p);
 
-    let add_ab = math_field_add(a, b);
-    let sub_ab = math_field_sub(a, b);
+    let add_ab = field_add(a, b);
+    let sub_ab = field_sub(a, b);
     assert(add_ab == (am + bm) % p);
     assert(sub_ab == (((am + p) - bm) as nat) % p);
 
@@ -380,7 +380,7 @@ pub proof fn lemma_field_add_add_recover_double(a: nat, b: nat)
 /// Lemma: (2·a)·inv(2) = a in field arithmetic.
 pub proof fn lemma_field_halve_double(a: nat)
     ensures
-        math_field_mul(math_field_mul(2, a), math_field_inv(2)) == a % p(),
+        field_mul(field_mul(2, a), field_inv(2)) == a % p(),
 {
     let p = p();
     p_gt_2();
@@ -391,21 +391,21 @@ pub proof fn lemma_field_halve_double(a: nat)
     }
 
     // Inverse property: 2 * inv(2) = 1.
-    let inv2 = math_field_inv(2nat);
-    assert(math_field_mul(2nat, inv2) == 1) by {
+    let inv2 = field_inv(2nat);
+    assert(field_mul(2nat, inv2) == 1) by {
         field_inv_property(2nat);
         lemma_small_mod(2nat, p);
     }
 
     // Re-associate: (2*a)*inv2 == a*(2*inv2) == a*1 == a (mod p)
     lemma_field_mul_comm(2nat, a);
-    assert(math_field_mul(2nat, a) == math_field_mul(a, 2nat));
+    assert(field_mul(2nat, a) == field_mul(a, 2nat));
     lemma_field_mul_assoc(a, 2nat, inv2);
-    assert(math_field_mul(math_field_mul(a, 2nat), inv2) == math_field_mul(
+    assert(field_mul(field_mul(a, 2nat), inv2) == field_mul(
         a,
-        math_field_mul(2nat, inv2),
+        field_mul(2nat, inv2),
     ));
-    assert(math_field_mul(a, math_field_mul(2nat, inv2)) == math_field_mul(a, 1nat));
+    assert(field_mul(a, field_mul(2nat, inv2)) == field_mul(a, 1nat));
     lemma_field_mul_one_right(a);
 }
 
@@ -564,12 +564,18 @@ pub proof fn lemma_field_sub_antisymmetric(a: nat, b: nat)
     if a_mod == b_mod {
         // sub_ab = p % p = 0, sub_ba = p % p = 0, neg(0) = p % p = 0
         assert(sub_ab == 0) by {
+            assert(a_mod + p - b_mod == p) by {
+                assert(b_mod < p) by {
+                    lemma_mod_bound(b as int, p as int);
+                }
+            }
             lemma_mod_self_0(p as int);
         }
         assert(sub_ba == 0) by {
             lemma_mod_self_0(p as int);
         }
         assert(field_neg(sub_ab) == 0) by {
+            assert(field_canonical(0) == 0);
             lemma_mod_self_0(p as int);
         }
     } else if a_mod > b_mod {
@@ -1393,7 +1399,9 @@ pub proof fn lemma_neg_one_times_is_neg(a: nat)
         assert(neg_a == 0);
 
         // (p-1) * a % p = ((p-1) * (a % p)) % p = ((p-1) * 0) % p = 0 % p = 0
-        assert(((p - 1) * a_mod_p) == 0);
+        assert(((p - 1) * a_mod_p) == 0) by {
+            lemma_mul_basics_2((p-1) as int);
+        }
         assert(((p - 1) as int * a_mod_p as int) % (p as int) == 0) by {
             lemma_small_mod(0, p);
         };
@@ -1786,14 +1794,14 @@ pub proof fn axiom_birational_edwards_montgomery(y: nat, z: nat)
 
     ensures
         ({
-            let y_affine = math_field_mul(y, math_field_inv(z));
-            let one_plus_y = math_field_add(1, y_affine);
-            let one_minus_y = math_field_sub(1, y_affine);
-            let projective_result = math_field_mul(
-                math_field_add(z, y),
-                math_field_inv(math_field_sub(z, y)),
+            let y_affine = field_mul(y, field_inv(z));
+            let one_plus_y = field_add(1, y_affine);
+            let one_minus_y = field_sub(1, y_affine);
+            let projective_result = field_mul(
+                field_add(z, y),
+                field_inv(field_sub(z, y)),
             );
-            let affine_result = math_field_mul(one_plus_y, math_field_inv(one_minus_y));
+            let affine_result = field_mul(one_plus_y, field_inv(one_minus_y));
             projective_result == affine_result
         }),
 {

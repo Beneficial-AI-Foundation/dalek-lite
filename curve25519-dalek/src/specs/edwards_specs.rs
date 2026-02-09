@@ -46,7 +46,7 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::specs::scalar_specs::scalar_to_nat;
+use crate::specs::scalar_specs::scalar_as_nat;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::{lemma_mod_bound, lemma_small_mod};
@@ -896,8 +896,8 @@ pub open spec fn sum_of_scalar_muls(scalars: Seq<Scalar>, points: Seq<EdwardsPoi
         let last = (len - 1) as int;
         let prev = sum_of_scalar_muls(scalars.subrange(0, last), points.subrange(0, last));
         let point_affine = edwards_point_as_affine(points[last]);
-        // Use scalar_to_nat (not spec_scalar) to match implementation ensures clauses
-        let scalar_nat = scalar_to_nat(&scalars[last]);
+        // Use scalar_as_nat (not spec_scalar) to match implementation ensures clauses
+        let scalar_nat = scalar_as_nat(&scalars[last]);
         let scaled = edwards_scalar_mul(point_affine, scalar_nat);
         edwards_add(prev.0, prev.1, scaled.0, scaled.1)
     }

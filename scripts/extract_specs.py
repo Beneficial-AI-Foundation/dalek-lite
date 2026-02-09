@@ -259,11 +259,11 @@ _MATH_SUBSTITUTIONS = [
     (r"montgomery_neg\((\w+)\)", r"-\1"),
     (r"MontgomeryAffine::Infinity", "∞"),
     # Field operations
-    (r"math_field_mul\((\w+),\s*math_field_inv\((\w+)\)\)", r"\1 / \2"),
-    (r"math_field_mul\((\w+),\s*(\w+)\)", r"\1 * \2"),
-    (r"math_field_add\((\w+),\s*(\w+)\)", r"\1 + \2"),
-    (r"math_field_sub\((\w+),\s*(\w+)\)", r"\1 - \2"),
-    (r"math_field_inv\((\w+)\)", r"\1^(-1)"),
+    (r"field_mul\((\w+),\s*field_inv\((\w+)\)\)", r"\1 / \2"),
+    (r"field_mul\((\w+),\s*(\w+)\)", r"\1 * \2"),
+    (r"field_add\((\w+),\s*(\w+)\)", r"\1 + \2"),
+    (r"field_sub\((\w+),\s*(\w+)\)", r"\1 - \2"),
+    (r"field_inv\((\w+)\)", r"\1^(-1)"),
     # Other
     (r"is_prime\(p\(\)\)", "p is prime"),
     (r"is_square_mod_p\((\w+)\)", r"\1 is QR mod p"),

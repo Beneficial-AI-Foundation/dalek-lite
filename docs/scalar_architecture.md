@@ -46,7 +46,7 @@ pub struct Scalar52 {
 
 | Function | Location | Definition | Purpose |
 |----------|----------|------------|---------|
-| `scalar_to_nat` | `scalar_specs.rs` | `u8_32_as_nat(&s.bytes)` | Scalar → nat |
+| `scalar_as_nat` | `scalar_specs.rs` | `u8_32_as_nat(&s.bytes)` | Scalar → nat |
 | `scalar52_to_nat` | `scalar52_specs.rs` | `limbs52_to_nat(&s.limbs)` | Scalar52 → nat |
 | `spec_scalar` | `scalar_specs.rs` | `u8_32_as_nat(&s.bytes) % group_order()` | Scalar → nat mod L |
 | `spec_scalar52` | `scalar52_specs.rs` | `scalar52_to_nat(s) % group_order()` | Scalar52 → nat mod L |
@@ -79,7 +79,7 @@ pub struct Scalar52 {
 │  └──────┴──────┴──────┴─────────────────────────────┴──────┘   │
 │    8-bit   8-bit  8-bit                               8-bit     │
 │                                                                  │
-│  scalar_to_nat = Σ b[i] × 2^(8i)  for i ∈ [0, 31]              │
+│  scalar_as_nat = Σ b[i] × 2^(8i)  for i ∈ [0, 31]              │
 └─────────────────────────────────────────────────────────────────┘
                               ↕
                     from_bytes / pack
@@ -176,7 +176,7 @@ Montgomery multiplication avoids expensive division by L. Instead:
 │  struct Scalar { bytes: [u8; 32] }                                          │
 │                                                                              │
 │  Specs:                                                                      │
-│    scalar_to_nat(&s) = u8_32_as_nat(&s.bytes)                             │
+│    scalar_as_nat(&s) = u8_32_as_nat(&s.bytes)                             │
 │    is_canonical_scalar(&s) = value < L && high_bit_clear                    │
 │                                                                              │
 └─────────────────────────────────┬───────────────────────────────────────────┘
@@ -218,7 +218,7 @@ Montgomery multiplication avoids expensive division by L. Instead:
 scalar_specs.rs                      scalar52_specs.rs
 ───────────────                      ───────────────────
 
-scalar_to_nat(&Scalar)               scalar52_to_nat(&Scalar52)
+scalar_as_nat(&Scalar)               scalar52_to_nat(&Scalar52)
        │                                    │
        └──→ u8_32_as_nat                  └──→ limbs52_to_nat
                   │                                    │
@@ -231,7 +231,7 @@ scalar_to_nat(&Scalar)               scalar52_to_nat(&Scalar52)
                                                                  │
                               u8_32_as_nat ◄───────────────────┘
                               bytes_seq_as_nat
-                              words_as_nat_gen
+                              words_to_nat_gen
 ```
 
 ---
@@ -250,18 +250,18 @@ scalar_to_nat(&Scalar)               scalar52_to_nat(&Scalar52)
 #### 1. Unify `*_to_nat` definitions through a common base
 
 Currently:
-- `scalar_to_nat` → `u8_32_as_nat` (8-bit radix)
+- `scalar_as_nat` → `u8_32_as_nat` (8-bit radix)
 - `scalar52_to_nat` → `seq_to_nat_52` (52-bit radix)
 
-**Potential:** Define both in terms of `words_as_nat_gen`:
+**Potential:** Define both in terms of `words_to_nat_gen`:
 ```rust
 // Theoretical unification (not necessarily better for SMT solver)
 pub open spec fn u8_32_as_nat(bytes: &[u8; 32]) -> nat {
-    words_as_nat_gen(bytes@.map(|i, x| x as nat), 32, 8)
+    words_to_nat_gen(bytes@.map(|i, x| x as nat), 32, 8)
 }
 
 pub open spec fn scalar52_to_nat(s: &Scalar52) -> nat {
-    words_as_nat_gen(s.limbs@.map(|i, x| x as nat), 5, 52)
+    words_to_nat_gen(s.limbs@.map(|i, x| x as nat), 5, 52)
 }
 ```
 

@@ -281,10 +281,10 @@ impl MontgomeryPoint {
         ensures
             is_valid_montgomery_point(result),
             // Functional correctness: result.u = [scalar] * basepoint (u-coordinate)
-            // Use scalar_to_nat (not spec_scalar) to match implementation behavior
+            // Use scalar_as_nat (not spec_scalar) to match implementation behavior
             spec_montgomery(result) == montgomery_scalar_mul_u(
                 spec_x25519_basepoint_u(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         // ORIGINAL CODE: EdwardsPoint::mul_base(scalar).to_montgomery()
@@ -301,7 +301,7 @@ impl MontgomeryPoint {
             assume(is_valid_montgomery_point(result));
             assume(spec_montgomery(result) == montgomery_scalar_mul_u(
                 spec_x25519_basepoint_u(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ));
         }
         result
@@ -351,11 +351,11 @@ impl MontgomeryPoint {
         ensures
             is_valid_montgomery_point(result),
             // Functional correctness: result.u = [clamp(bytes)] * basepoint (u-coordinate)
-            // Use scalar_to_nat (not spec_scalar) because clamped values are in [2^254, 2^255)
+            // Use scalar_as_nat (not spec_scalar) because clamped values are in [2^254, 2^255)
             // which exceeds group_order ℓ ≈ 2^252, so spec_scalar would incorrectly reduce
             spec_montgomery(result) == montgomery_scalar_mul_u(
                 spec_x25519_basepoint_u(),
-                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
+                scalar_as_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
             ),
     {
         // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
@@ -367,7 +367,7 @@ impl MontgomeryPoint {
         proof {
             assume(spec_montgomery(result) == montgomery_scalar_mul_u(
                 spec_x25519_basepoint_u(),
-                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
+                scalar_as_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
             ));
         }
         result
@@ -2119,19 +2119,19 @@ fn differential_add_and_double(
         if u_diff == 0 && spec_projective_u_coordinate(*old(P)) == 0
             && spec_projective_u_coordinate(*old(Q)) == 0 {
             // Q.W includes a factor of u_diff, so Q is ∞ and u(Q)=0.
-            assert(spec_field_element(&Q.W) == 0) by {
+            assert(fe51_as_canonical_nat(&Q.W) == 0) by {
                 assert(Q.W == t17);
-                assert(spec_field_element(&Q.W) == spec_field_element(&t17));
-                assert(spec_field_element(&t17) == math_field_mul(
+                assert(fe51_as_canonical_nat(&Q.W) == fe51_as_canonical_nat(&t17));
+                assert(fe51_as_canonical_nat(&t17) == field_mul(
                     u_diff,
-                    spec_field_element(&t12),
+                    fe51_as_canonical_nat(&t12),
                 ));
                 // u_diff == 0 implies u_diff % p() == 0
                 p_gt_2();
                 lemma_small_mod(0nat, p());
                 assert(u_diff % p() == 0);
-                lemma_field_mul_zero_left(u_diff, spec_field_element(&t12));
-                assert(math_field_mul(u_diff, spec_field_element(&t12)) == 0);
+                lemma_field_mul_zero_left(u_diff, fe51_as_canonical_nat(&t12));
+                assert(field_mul(u_diff, fe51_as_canonical_nat(&t12)) == 0);
             };
             assert(spec_projective_u_coordinate(*Q) == 0);
 
@@ -2400,7 +2400,7 @@ impl Mul<&Scalar> for &MontgomeryPoint {
 
             ({
                 let P = canonical_montgomery_lift(spec_montgomery(*self));
-                let n_unreduced = scalar_to_nat(scalar);
+                let n_unreduced = scalar_as_nat(scalar);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery(result) == spec_u_coordinate(R)
             }),
@@ -2425,7 +2425,7 @@ impl Mul<&Scalar> for &MontgomeryPoint {
             // postcondition: multiplication by unreduced scalar value using canonical lift
             assume({
                 let P = canonical_montgomery_lift(spec_montgomery(*self));
-                let n_unreduced = scalar_to_nat(scalar);
+                let n_unreduced = scalar_as_nat(scalar);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery(result) == spec_u_coordinate(R)
             });
@@ -2444,7 +2444,7 @@ impl MulAssign<&Scalar> for MontgomeryPoint {
 
             ({
                 let P = canonical_montgomery_lift(spec_montgomery(*old(self)));
-                let n_unreduced = scalar_to_nat(scalar);
+                let n_unreduced = scalar_as_nat(scalar);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery(*self) == spec_u_coordinate(R)
             }),
@@ -2467,7 +2467,7 @@ impl Mul<&MontgomeryPoint> for &Scalar {
 
             ({
                 let P = canonical_montgomery_lift(spec_montgomery(*point));
-                let n_unreduced = scalar_to_nat(self);
+                let n_unreduced = scalar_as_nat(self);
                 let R = montgomery_scalar_mul(P, n_unreduced);
                 spec_montgomery(result) == spec_u_coordinate(R)
             }),

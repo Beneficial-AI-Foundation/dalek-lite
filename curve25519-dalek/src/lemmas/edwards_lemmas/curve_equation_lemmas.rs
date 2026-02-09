@@ -164,12 +164,12 @@ pub proof fn lemma_negation_preserves_extended_validity(x: nat, y: nat, z: nat, 
     requires
         math_is_valid_extended_edwards_point(x, y, z, t),
     ensures
-        math_is_valid_extended_edwards_point(math_field_neg(x), y, z, math_field_neg(t)),
+        math_is_valid_extended_edwards_point(field_neg(x), y, z, field_neg(t)),
 {
     let p = p();
     p_gt_2();
-    let neg_x = math_field_neg(x);
-    let neg_t = math_field_neg(t);
+    let neg_x = field_neg(x);
+    let neg_t = field_neg(t);
 
     // From precondition: z != 0, curve equation holds, x*y = z*t
 
@@ -178,7 +178,7 @@ pub proof fn lemma_negation_preserves_extended_validity(x: nat, y: nat, z: nat, 
     // 2) Projective curve equation: uses X², and (-X)² = X²
     assert(math_on_edwards_curve_projective(neg_x, y, z)) by {
         // Key insight: (-x)² = x²
-        assert(math_field_square(neg_x) == math_field_square(x)) by {
+        assert(field_square(neg_x) == field_square(x)) by {
             lemma_neg_square_eq(x);
             lemma_square_mod_noop(x);
         };
@@ -186,27 +186,27 @@ pub proof fn lemma_negation_preserves_extended_validity(x: nat, y: nat, z: nat, 
     };
 
     // 3) Segre relation: (-X)·Y = Z·(-T)
-    // Need to prove: math_field_mul(neg_x, y) == math_field_mul(z, neg_t)
-    assert(math_field_mul(neg_x, y) == math_field_mul(z, neg_t)) by {
+    // Need to prove: field_mul(neg_x, y) == field_mul(z, neg_t)
+    assert(field_mul(neg_x, y) == field_mul(z, neg_t)) by {
         // From precondition: x*y = z*t
-        let xy = math_field_mul(x, y);
-        let zt = math_field_mul(z, t);
+        let xy = field_mul(x, y);
+        let zt = field_mul(z, t);
         assert(xy == zt);
 
         // (-x)*y = -(x*y)
-        assert(math_field_mul(neg_x, y) == math_field_neg(xy)) by {
+        assert(field_mul(neg_x, y) == field_neg(xy)) by {
             lemma_field_mul_neg(y, x);  // y * neg(x) = neg(y * x)
             lemma_field_mul_comm(neg_x, y);
             lemma_field_mul_comm(y, x);
         };
 
         // z*(-t) = -(z*t)
-        assert(math_field_mul(z, neg_t) == math_field_neg(zt)) by {
+        assert(field_mul(z, neg_t) == field_neg(zt)) by {
             lemma_field_mul_neg(z, t);
         };
 
         // neg(x*y) = neg(z*t) since x*y = z*t
-        assert(math_field_neg(xy) == math_field_neg(zt));
+        assert(field_neg(xy) == field_neg(zt));
     };
 }
 
@@ -605,7 +605,11 @@ pub proof fn lemma_edwards_double_identity()
     assert(x1x2 == 0);
     assert(y1y2 == 1);
     let t = field_mul(fe51_as_canonical_nat(&EDWARDS_D), field_mul(x1x2, y1y2));
-    assert(t == 0);
+    assert(t == 0) by {
+        assert(field_mul(fe51_as_canonical_nat(&EDWARDS_D), 0) == 0) by {
+            lemma_mul_basics_2(fe51_as_canonical_nat(&EDWARDS_D) as int);
+        }
+    }
 
     // Denominators: 1+0=1, 1-0=1, inv(1)=1
     let denom_x = field_add(1nat, t);
@@ -1726,30 +1730,30 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
         projective_niels_point_as_affine_edwards(niels) == edwards_point_as_affine(point),
 {
     // Extract field values from correspondence
-    let x = spec_field_element(&point.X);
-    let y = spec_field_element(&point.Y);
-    let z = spec_field_element(&point.Z);
+    let x = fe51_as_canonical_nat(&point.X);
+    let y = fe51_as_canonical_nat(&point.Y);
+    let z = fe51_as_canonical_nat(&point.Z);
 
-    let y_plus_x = spec_field_element(&niels.Y_plus_X);
-    let y_minus_x = spec_field_element(&niels.Y_minus_X);
-    let niels_z = spec_field_element(&niels.Z);
+    let y_plus_x = fe51_as_canonical_nat(&niels.Y_plus_X);
+    let y_minus_x = fe51_as_canonical_nat(&niels.Y_minus_X);
+    let niels_z = fe51_as_canonical_nat(&niels.Z);
 
-    assert(y_plus_x == math_field_add(y, x)) by {
+    assert(y_plus_x == field_add(y, x)) by {
         reveal(projective_niels_corresponds_to_edwards);
     }
-    assert(y_minus_x == math_field_sub(y, x)) by {
+    assert(y_minus_x == field_sub(y, x)) by {
         reveal(projective_niels_corresponds_to_edwards);
     }
     assert(niels_z == z) by {
         reveal(projective_niels_corresponds_to_edwards);
     }
 
-    let inv2 = math_field_inv(2);
+    let inv2 = field_inv(2);
 
     // Step 1: Recover X in projective coordinates.
-    let diff = math_field_sub(y_plus_x, y_minus_x);
-    let x_proj = math_field_mul(diff, inv2);
-    assert(diff == math_field_mul(2, x)) by {
+    let diff = field_sub(y_plus_x, y_minus_x);
+    let x_proj = field_mul(diff, inv2);
+    assert(diff == field_mul(2, x)) by {
         lemma_field_add_sub_recover_double(y, x);
     }
     assert(x_proj == x % p()) by {
@@ -1758,9 +1762,9 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     }
 
     // Step 2: Recover Y in projective coordinates.
-    let sum = math_field_add(y_plus_x, y_minus_x);
-    let y_proj = math_field_mul(sum, inv2);
-    assert(sum == math_field_mul(2, y)) by {
+    let sum = field_add(y_plus_x, y_minus_x);
+    let y_proj = field_mul(sum, inv2);
+    assert(sum == field_mul(2, y)) by {
         lemma_field_add_add_recover_double(y, x);
     }
     assert(y_proj == y % p()) by {
@@ -1772,14 +1776,14 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     // y_affine = y_proj / z = y / z
     // This matches edwards_point_as_affine(point) = (x/z, y/z)
 
-    // spec_field_element returns (val % p) which is always < p
+    // fe51_as_canonical_nat returns (val % p) which is always < p
     assert(x < p()) by {
         p_gt_2();
-        lemma_mod_bound(spec_field_element_as_nat(&point.X) as int, p() as int);
+        lemma_mod_bound(fe51_as_nat(&point.X) as int, p() as int);
     }
     assert(y < p()) by {
         p_gt_2();
-        lemma_mod_bound(spec_field_element_as_nat(&point.Y) as int, p() as int);
+        lemma_mod_bound(fe51_as_nat(&point.Y) as int, p() as int);
     }
 
     assert(x_proj == x) by {

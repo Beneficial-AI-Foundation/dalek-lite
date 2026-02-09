@@ -86,6 +86,14 @@ pub open spec fn group_order() -> nat {
     pow2(252) + 27742317777372353535851937790883648493nat
 }
 
+pub open spec fn group_canonical(n: nat) -> nat {
+    n % group_order()
+}
+
+pub open spec fn u64_5_as_group_canonical(limbs: [u64;5]) -> nat {
+    group_canonical(five_limbs_to_nat_aux(limbs))
+}
+
 // Montgomery radix R = 2^260
 pub open spec fn montgomery_radix() -> nat {
     pow2(260)
@@ -100,6 +108,18 @@ pub open spec fn inv_montgomery_radix() -> nat {
 // Check that all limbs of a Scalar52 are properly bounded (< 2^52)
 pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
     forall|i: int| 0 <= i < 5 ==> s.limbs[i] < (1u64 << 52)
+}
+
+/// Relaxed bound for sub's first argument: limbs 0-3 bounded, limb 4 can exceed 2^52 by up to b[4].
+///
+/// This is needed for montgomery_reduce where the intermediate result has r4 > 2^52.
+/// The sub algorithm still works correctly because:
+///   - For limbs 0-3: standard bounded subtraction
+///   - For limb 4: a[4] - b[4] < 2^52, so masking doesn't lose bits
+///
+pub open spec fn limbs_bounded_for_sub(a: &Scalar52, b: &Scalar52) -> bool {
+    &&& forall|i: int| 0 <= i < 4 ==> a.limbs[i] < (1u64 << 52)
+    &&& a.limbs[4] < (1u64 << 52) + b.limbs[4]
 }
 
 pub open spec fn limb_prod_bounded_u128(limbs1: [u64; 5], limbs2: [u64; 5], k: nat) -> bool {

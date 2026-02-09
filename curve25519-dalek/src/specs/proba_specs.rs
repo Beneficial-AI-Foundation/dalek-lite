@@ -41,7 +41,7 @@ use super::core_specs::bytes_seq_as_nat;
 use super::scalar52_specs::group_order;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use super::scalar_specs::scalar_to_nat;
+use super::scalar_specs::scalar_as_nat;
 
 use vstd::prelude::*;
 
@@ -287,7 +287,7 @@ pub proof fn axiom_uniform_mod_reduction(input: &[u8; 64], result: &Scalar)
     requires
 // result is the reduction of input mod group_order
 
-        scalar_to_nat(result) == bytes_seq_as_nat(input@) % group_order(),
+        scalar_as_nat(result) == bytes_seq_as_nat(input@) % group_order(),
     ensures
         is_uniform_bytes(input) ==> is_uniform_scalar(result),
 {

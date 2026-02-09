@@ -882,7 +882,7 @@ impl Neg for &Scalar {
     #[allow(non_snake_case)]
     fn neg(self) -> (result: Scalar)
         ensures
-            (scalar_to_nat(self) + scalar_to_nat(&result)) % group_order() == 0,
+            (scalar_as_nat(self) + scalar_as_nat(&result)) % group_order() == 0,
     {
         /* <ORIGINAL CODE>
         let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
@@ -933,7 +933,7 @@ impl Neg for &Scalar {
         /* </MODIFIED CODE> */
 
         proof {
-            // Prove congruence: scalar52_to_nat(&self_mod_l) % L == scalar_to_nat(self) % L
+            // Prove congruence: scalar52_to_nat(&self_mod_l) % L == scalar_as_nat(self) % L
             lemma_mul_factors_congruent_implies_products_congruent(
                 scalar52_to_nat(&self_unpacked) as int,
                 montgomery_radix() as int,
@@ -952,9 +952,9 @@ impl Neg for &Scalar {
 
             // Prove the negation property
             lemma_negation_sums_to_zero(
-                scalar_to_nat(self),
+                scalar_as_nat(self),
                 scalar52_to_nat(&self_mod_l),
-                scalar_to_nat(&result),
+                scalar_as_nat(&result),
                 group_order(),
             );
         }
@@ -986,7 +986,7 @@ impl Neg for Scalar {
 
     fn neg(self) -> (result: Scalar)
         ensures
-            (scalar_to_nat(&self) + scalar_to_nat(&result)) % group_order() == 0,
+            (scalar_as_nat(&self) + scalar_as_nat(&result)) % group_order() == 0,
     {
         let result = (&self).neg();
         result
@@ -1039,7 +1039,7 @@ impl<T> Product<T> for Scalar where T: Borrow<Scalar> {
     </VERIFICATION NOTE> */
     fn product<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
         ensures
-            scalar_to_nat(&result) < group_order(),
+            scalar_as_nat(&result) < group_order(),
             scalar_congruent_nat(&result, product_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
     {
         let scalars = collect_scalars_from_iter(iter);
@@ -1070,7 +1070,7 @@ then call the verified sum_of_slice function for the actual computation.
 impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
     fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
         ensures
-            scalar_to_nat(&result) < group_order(),
+            scalar_as_nat(&result) < group_order(),
             scalar_congruent_nat(&result, sum_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
     {
         let scalars = collect_scalars_from_iter(iter);
@@ -1083,10 +1083,10 @@ impl Default for Scalar {
     // VERIFICATION NOTE: PROOF BYPASS
     fn default() -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == 0 as nat,
+            scalar_as_nat(&result) == 0 as nat,
     {
         let result = Scalar::ZERO;
-        assume(scalar_to_nat(&result) == 0 as nat);
+        assume(scalar_as_nat(&result) == 0 as nat);
         result
     }
 }
@@ -1150,14 +1150,14 @@ impl vstd::std_specs::convert::FromSpecImpl<u128> for Scalar {
 impl From<u8> for Scalar {
     fn from(x: u8) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         let mut s_bytes = [0u8;32];
         s_bytes[0] = x;
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            assert(scalar_to_nat(&result) == x as nat) by {
+            assert(scalar_as_nat(&result) == x as nat) by {
                 assert forall|i: int| 1 <= i < 32 implies result.bytes[i] == 0 by {}
                 lemma_u8_32_as_nat_first_byte_only(&result.bytes);
             }
@@ -1170,7 +1170,7 @@ impl From<u16> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u16) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1206,7 +1206,7 @@ impl From<u32> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u32) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1260,7 +1260,7 @@ impl From<u64> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u64) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1292,7 +1292,7 @@ impl From<u128> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u128) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1612,7 +1612,7 @@ impl Scalar {
     pub const fn to_bytes(&self) -> (result: [u8; 32])
         ensures
             result == self.bytes,
-            scalar_to_nat(self) == u8_32_as_nat(&result),
+            scalar_as_nat(self) == u8_32_as_nat(&result),
     {
         self.bytes
     }
@@ -1631,7 +1631,7 @@ impl Scalar {
     pub const fn as_bytes(&self) -> (result: &[u8; 32])
         ensures
             result == &self.bytes,
-            scalar_to_nat(self) == u8_32_as_nat(&result),
+            scalar_as_nat(self) == u8_32_as_nat(&result),
     {
         &self.bytes
     }
@@ -1682,7 +1682,7 @@ impl Scalar {
         ensures
     // Result is the multiplicative inverse: result * self ≡ 1 (mod group_order)
 
-            (scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1,
+            (scalar_as_nat(&result) * scalar_as_nat(self)) % group_order() == 1,
             is_canonical_scalar(&result),
     {
         let unpacked = self.unpack();
@@ -2337,7 +2337,7 @@ impl Scalar {
         ensures
     // result encodes the same integer
 
-            reconstruct(result@) == scalar_to_nat(self) as int,
+            reconstruct(result@) == scalar_as_nat(self) as int,
             // result digits follow NAF rules
             is_valid_naf(result@, w as nat),
     {
@@ -2478,7 +2478,7 @@ impl Scalar {
             // Simple bounds: all digits in [-8, 8] for easy access
             radix_16_all_bounded(&result),
             // Reconstruction property: digits reconstruct the scalar value
-            reconstruct_radix_16(result@) == scalar_to_nat(self) as int,
+            reconstruct_radix_16(result@) == scalar_as_nat(self) as int,
     {
         // VERIFICATION NOTE: we tell verus not to verify debug assertions
         #[cfg(not(verus_keep_ghost))]
@@ -2743,7 +2743,7 @@ impl Scalar {
                 is_valid_radix_2w(&result, w as nat, digits_count as nat)
                     &&
                 // Reconstruction property: digits reconstruct the scalar value
-                reconstruct_radix_2w(result@.take(digits_count), w as nat) == scalar_to_nat(
+                reconstruct_radix_2w(result@.take(digits_count), w as nat) == scalar_as_nat(
                     self,
                 ) as int
             }),
@@ -2918,7 +2918,7 @@ impl Scalar {
             };
             assume(is_valid_radix_2w(&digits, w as nat, final_digits_count as nat));
             assume(reconstruct_radix_2w(digits@.take(final_digits_count), w as nat)
-                == scalar_to_nat(self) as int);
+                == scalar_as_nat(self) as int);
         }
 
         digits
@@ -2932,7 +2932,7 @@ impl Scalar {
         ensures
             limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
-            scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),
+            scalar52_to_nat(&result) == u8_32_as_nat(&self.bytes),
             is_canonical_scalar(self) ==> is_canonical_scalar52(&result),
     {
         UnpackedScalar::from_bytes(&self.bytes)

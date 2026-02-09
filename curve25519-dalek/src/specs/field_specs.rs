@@ -113,27 +113,27 @@ pub open spec fn fe51_as_canonical_nat_sign_bit(fe: &FieldElement51) -> u8 {
 // Spec-level field operations on natural numbers (mod p)
 /// Math-level field addition
 pub open spec fn field_add(a: nat, b: nat) -> nat {
-    (a + b) % p()
+    field_canonical(a + b)
 }
 
 /// Math-level field subtraction
 pub open spec fn field_sub(a: nat, b: nat) -> nat {
-    (((a % p()) + p()) - (b % p())) as nat % p()
+    field_canonical((field_canonical(a) + p() - field_canonical(b)) as nat)
 }
 
 /// Math-level field multiplication
 pub open spec fn field_mul(a: nat, b: nat) -> nat {
-    (a * b) % p()
+    field_canonical(a * b)
 }
 
 /// Math-level field negation
 pub open spec fn field_neg(a: nat) -> nat {
-    (p() - (a % p())) as nat % p()
+    field_canonical((p() - field_canonical(a)) as nat)
 }
 
 /// Math-level field squaring
 pub open spec fn field_square(a: nat) -> nat {
-    (a * a) % p()
+    field_canonical(a * a)
 }
 
 /// Math-level field inversion: returns w such that (a * w) % p == 1

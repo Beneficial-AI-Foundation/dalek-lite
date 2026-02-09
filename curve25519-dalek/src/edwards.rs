@@ -1316,46 +1316,46 @@ impl EdwardsPoint {
             // === Correspondence proof ===
             // Need: projective_niels_corresponds_to_edwards(result, *self)
             // Which requires (from the spec):
-            //   y_plus_x == math_field_add(y, x)
-            //   y_minus_x == math_field_sub(y, x)
+            //   y_plus_x == field_add(y, x)
+            //   y_minus_x == field_sub(y, x)
             //   niels_z == z
-            //   t2d == math_field_mul(math_field_mul(2, d), t)
+            //   t2d == field_mul(field_mul(2, d), t)
 
             // Extract field element values for readability
-            let x = spec_field_element(&self.X);
-            let y = spec_field_element(&self.Y);
-            let z = spec_field_element(&self.Z);
-            let t = spec_field_element(&self.T);
-            let d = spec_field_element(&crate::backend::serial::u64::constants::EDWARDS_D);
-            let y_plus_x = spec_field_element(&result.Y_plus_X);
-            let y_minus_x = spec_field_element(&result.Y_minus_X);
-            let niels_z = spec_field_element(&result.Z);
-            let t2d = spec_field_element(&result.T2d);
+            let x = fe51_as_canonical_nat(&self.X);
+            let y = fe51_as_canonical_nat(&self.Y);
+            let z = fe51_as_canonical_nat(&self.Z);
+            let t = fe51_as_canonical_nat(&self.T);
+            let d = fe51_as_canonical_nat(&crate::backend::serial::u64::constants::EDWARDS_D);
+            let y_plus_x = fe51_as_canonical_nat(&result.Y_plus_X);
+            let y_minus_x = fe51_as_canonical_nat(&result.Y_minus_X);
+            let niels_z = fe51_as_canonical_nat(&result.Z);
+            let t2d = fe51_as_canonical_nat(&result.T2d);
 
-            // 1. y_plus_x == math_field_add(y, x) -- from add postcondition
-            assert(y_plus_x == math_field_add(y, x));
+            // 1. y_plus_x == field_add(y, x) -- from add postcondition
+            assert(y_plus_x == field_add(y, x));
 
-            // 2. y_minus_x == math_field_sub(y, x) -- from sub postcondition
-            assert(y_minus_x == math_field_sub(y, x));
+            // 2. y_minus_x == field_sub(y, x) -- from sub postcondition
+            assert(y_minus_x == field_sub(y, x));
 
             // 3. niels_z == z -- trivial since Z is copied
             assert(niels_z == z);
 
-            // 4. t2d == math_field_mul(math_field_mul(2, d), t)
-            assert(t2d == math_field_mul(math_field_mul(2, d), t)) by {
+            // 4. t2d == field_mul(field_mul(2, d), t)
+            assert(t2d == field_mul(field_mul(2, d), t)) by {
                 // From mul postcondition: t2d == t * EDWARDS_D2
-                assert(t2d == math_field_mul(t, spec_field_element(&constants::EDWARDS_D2)));
+                assert(t2d == field_mul(t, fe51_as_canonical_nat(&constants::EDWARDS_D2)));
 
                 // EDWARDS_D2 equals 2*d in the field.
-                assert(spec_field_element(&constants::EDWARDS_D2) == math_field_mul(2, d)) by {
+                assert(fe51_as_canonical_nat(&constants::EDWARDS_D2) == field_mul(2, d)) by {
                     axiom_edwards_d2_is_2d();
                 }
 
                 // Rewrite and commute.
-                assert(t2d == math_field_mul(t, math_field_mul(2, d)));
-                lemma_field_mul_comm(t, math_field_mul(2, d));
-                assert(math_field_mul(t, math_field_mul(2, d)) == math_field_mul(
-                    math_field_mul(2, d),
+                assert(t2d == field_mul(t, field_mul(2, d)));
+                lemma_field_mul_comm(t, field_mul(2, d));
+                assert(field_mul(t, field_mul(2, d)) == field_mul(
+                    field_mul(2, d),
                     t,
                 ));
             }
@@ -1425,29 +1425,29 @@ impl EdwardsPoint {
 
         proof {
             // Prove affine_niels_corresponds_to_edwards(result, *self)
-            let X = spec_field_element(&self.X);
-            let Y = spec_field_element(&self.Y);
-            let Z = spec_field_element(&self.Z);
-            let d = spec_field_element(&crate::backend::serial::u64::constants::EDWARDS_D);
+            let X = fe51_as_canonical_nat(&self.X);
+            let Y = fe51_as_canonical_nat(&self.Y);
+            let Z = fe51_as_canonical_nat(&self.Z);
+            let d = fe51_as_canonical_nat(&crate::backend::serial::u64::constants::EDWARDS_D);
 
-            let z_inv = math_field_inv(Z);
-            let x_affine = math_field_mul(X, z_inv);  // X/Z
-            let y_affine = math_field_mul(Y, z_inv);  // Y/Z
+            let z_inv = field_inv(Z);
+            let x_affine = field_mul(X, z_inv);  // X/Z
+            let y_affine = field_mul(Y, z_inv);  // Y/Z
 
-            assert(spec_field_element(&recip) == z_inv);
-            assert(spec_field_element(&x) == x_affine);
-            assert(spec_field_element(&y) == y_affine);
+            assert(fe51_as_canonical_nat(&recip) == z_inv);
+            assert(fe51_as_canonical_nat(&x) == x_affine);
+            assert(fe51_as_canonical_nat(&y) == y_affine);
 
-            assert(spec_field_element(&result.y_plus_x) == math_field_add(y_affine, x_affine));
-            assert(spec_field_element(&result.y_minus_x) == math_field_sub(y_affine, x_affine));
+            assert(fe51_as_canonical_nat(&result.y_plus_x) == field_add(y_affine, x_affine));
+            assert(fe51_as_canonical_nat(&result.y_minus_x) == field_sub(y_affine, x_affine));
 
             // xy2d: need to show (x*y)*(2*d) == ((x*y)*2)*d
-            assert(spec_field_element(&xy) == math_field_mul(x_affine, y_affine));
-            assert(spec_field_element(&constants::EDWARDS_D2) == math_field_mul(2, d)) by {
+            assert(fe51_as_canonical_nat(&xy) == field_mul(x_affine, y_affine));
+            assert(fe51_as_canonical_nat(&constants::EDWARDS_D2) == field_mul(2, d)) by {
                 axiom_edwards_d2_is_2d();
             }
 
-            let xy_val = math_field_mul(x_affine, y_affine);
+            let xy_val = field_mul(x_affine, y_affine);
             lemma_field_mul_assoc(xy_val, 2, d);
 
             assert(affine_niels_corresponds_to_edwards(result, *self));
@@ -1488,8 +1488,8 @@ impl EdwardsPoint {
         }
 
         // Ghost values for proof
-        let ghost z = spec_field_element(&self.Z);
-        let ghost y = spec_field_element(&self.Y);
+        let ghost z = fe51_as_canonical_nat(&self.Z);
+        let ghost y = fe51_as_canonical_nat(&self.Y);
 
         let U = &self.Z + &self.Y;
         let W = &self.Z - &self.Y;
@@ -1502,12 +1502,12 @@ impl EdwardsPoint {
         }
 
         // Ghost: track field element values through operations
-        let ghost u_val = spec_field_element(&U);
-        let ghost w_val = spec_field_element(&W);
+        let ghost u_val = fe51_as_canonical_nat(&U);
+        let ghost w_val = fe51_as_canonical_nat(&W);
         proof {
             // Operation postconditions give us:
-            assert(u_val == math_field_add(z, y));  // add postcondition
-            assert(w_val == math_field_sub(z, y));  // sub postcondition
+            assert(u_val == field_add(z, y));  // add postcondition
+            assert(w_val == field_sub(z, y));  // sub postcondition
         }
 
         /* ORIGINAL CODE:
@@ -1518,20 +1518,20 @@ impl EdwardsPoint {
          * postconditions locally
          */
         let W_inv = W.invert();
-        let ghost w_inv_val = spec_field_element(&W_inv);
+        let ghost w_inv_val = fe51_as_canonical_nat(&W_inv);
         proof {
             // invert postcondition
-            assert(w_inv_val == math_field_inv(w_val));
+            assert(w_inv_val == field_inv(w_val));
         }
 
         let u = &U * &W_inv;
-        let ghost u_field = spec_field_element(&u);
+        let ghost u_field = fe51_as_canonical_nat(&u);
         proof {
             // mul postcondition: u_field = (Z+Y) * inv(Z-Y)
-            assert(u_field == math_field_mul(u_val, w_inv_val));
-            assert(u_field == math_field_mul(
-                math_field_add(z, y),
-                math_field_inv(math_field_sub(z, y)),
+            assert(u_field == field_mul(u_val, w_inv_val));
+            assert(u_field == field_mul(
+                field_add(z, y),
+                field_inv(field_sub(z, y)),
             ));
         }
 
@@ -1542,31 +1542,31 @@ impl EdwardsPoint {
             // === Correspondence proof ===
             // Need: montgomery_corresponds_to_edwards(result, *self)
             // Step 1: Connect spec_montgomery(result) to u_field
-            // as_bytes postcondition: bytes32_to_nat(&u.as_bytes()) == spec_field_element(&u)
-            assert(bytes32_to_nat(&u_bytes) == spec_field_element(&u));
+            // as_bytes postcondition: u8_32_as_nat(&u.as_bytes()) == fe51_as_canonical_nat(&u)
+            assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
 
-            // spec_montgomery(result) = spec_field_element_from_bytes(&result.0)
-            //                         = (bytes32_to_nat(&result.0) % pow2(255)) % p()
-            // Since spec_field_element(&u) < p() < pow2(255), double mod is identity
-            assert(spec_field_element(&u) < p()) by {
+            // spec_montgomery(result) = fe51_as_canonical_nat_from_bytes(&result.0)
+            //                         = (u8_32_as_nat(&result.0) % pow2(255)) % p()
+            // Since fe51_as_canonical_nat(&u) < p() < pow2(255), double mod is identity
+            assert(fe51_as_canonical_nat(&u) < p()) by {
                 p_gt_2();
-                lemma_mod_bound(spec_field_element_as_nat(&u) as int, p() as int);
+                lemma_mod_bound(fe51_as_nat(&u) as int, p() as int);
             }
             assert(p() < pow2(255)) by {
                 pow255_gt_19();  // establishes p() < pow2(255)
             }
 
-            // u_field = spec_field_element(&u) < p() < pow2(255)
-            // So: spec_field_element(&u) % pow2(255) = spec_field_element(&u)
-            //     spec_field_element(&u) % p() = spec_field_element(&u)
-            assert(spec_field_element_from_bytes(&result.0) == u_field) by {
+            // u_field = fe51_as_canonical_nat(&u) < p() < pow2(255)
+            // So: fe51_as_canonical_nat(&u) % pow2(255) = fe51_as_canonical_nat(&u)
+            //     fe51_as_canonical_nat(&u) % p() = fe51_as_canonical_nat(&u)
+            assert(fe51_as_canonical_nat_from_bytes(&result.0) == u_field) by {
                 lemma_small_mod(u_field, pow2(255));
                 lemma_small_mod(u_field, p());
             }
 
             // Step 2: Get affine y-coordinate
             let (_x_affine, y_affine) = edwards_point_as_affine(*self);
-            assert(y_affine == math_field_mul(y, math_field_inv(z)));
+            assert(y_affine == field_mul(y, field_inv(z)));
 
             // Step 3: Establish the birational map precondition.
             // Since `is_valid_edwards_point(*self)` implies `z != 0` and `z < p()`,
@@ -1578,9 +1578,9 @@ impl EdwardsPoint {
             // Step 4: Connect the formulas
             // u_field = (z+y) * inv(z-y)  [from operations above]
             // By axiom: this equals (1+y_affine) * inv(1-y_affine)
-            let one_plus_y = math_field_add(1, y_affine);
-            let one_minus_y = math_field_sub(1, y_affine);
-            let affine_result = math_field_mul(one_plus_y, math_field_inv(one_minus_y));
+            let one_plus_y = field_add(1, y_affine);
+            let one_minus_y = field_sub(1, y_affine);
+            let affine_result = field_mul(one_plus_y, field_inv(one_minus_y));
             assert(u_field == affine_result) by {
                 axiom_birational_edwards_montgomery(y, z);
             }
@@ -1589,16 +1589,16 @@ impl EdwardsPoint {
             // montgomery_corresponds_to_edwards requires:
             //   if denominator == 0: u == 0  (identity case)
             //   else: u == (1+y)/(1-y)
-            let denominator = math_field_sub(1, y_affine);
+            let denominator = field_sub(1, y_affine);
             if denominator == 0 {
                 // Identity case: y_affine = 1, meaning Y = Z
                 // one_minus_y == denominator == 0
-                // math_field_inv(0) == 0 by definition
-                // affine_result = math_field_mul(one_plus_y, 0) == 0
+                // field_inv(0) == 0 by definition
+                // affine_result = field_mul(one_plus_y, 0) == 0
                 assert(one_minus_y == 0);  // same as denominator
-                assert(math_field_inv(one_minus_y) == 0);  // math_field_inv(0) = 0
+                assert(field_inv(one_minus_y) == 0);  // field_inv(0) = 0
                 assert(affine_result == 0) by {
-                    lemma_field_mul_zero_right(one_plus_y, math_field_inv(one_minus_y));
+                    lemma_field_mul_zero_right(one_plus_y, field_inv(one_minus_y));
                 }
                 assert(u_field == 0);
             }
@@ -2331,26 +2331,26 @@ impl<'a> Neg for &'a EdwardsPoint {
         assert(1u64 << 52 < 1u64 << 54) by (bit_vector);
 
         // Store ghost values before negation
-        let ghost old_x = spec_field_element(&self.X);
-        let ghost old_y = spec_field_element(&self.Y);
-        let ghost old_z = spec_field_element(&self.Z);
-        let ghost old_t = spec_field_element(&self.T);
+        let ghost old_x = fe51_as_canonical_nat(&self.X);
+        let ghost old_y = fe51_as_canonical_nat(&self.Y);
+        let ghost old_z = fe51_as_canonical_nat(&self.Z);
+        let ghost old_t = fe51_as_canonical_nat(&self.T);
 
         let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
 
         proof {
             // Ghost values for r
-            let new_x = spec_field_element(&r.X);
-            let new_y = spec_field_element(&r.Y);
-            let new_z = spec_field_element(&r.Z);
-            let new_t = spec_field_element(&r.T);
+            let new_x = fe51_as_canonical_nat(&r.X);
+            let new_y = fe51_as_canonical_nat(&r.Y);
+            let new_z = fe51_as_canonical_nat(&r.Z);
+            let new_t = fe51_as_canonical_nat(&r.T);
 
             // From FieldElement51::neg postconditions:
-            // - new_x = math_field_neg(old_x)
-            // - new_t = math_field_neg(old_t)
+            // - new_x = field_neg(old_x)
+            // - new_t = field_neg(old_t)
             // - X and T limbs are 52-bounded
-            assert(new_x == math_field_neg(old_x));
-            assert(new_t == math_field_neg(old_t));
+            assert(new_x == field_neg(old_x));
+            assert(new_t == field_neg(old_t));
             assert(new_y == old_y);  // Y unchanged
             assert(new_z == old_z);  // Z unchanged
 
@@ -2371,13 +2371,13 @@ impl<'a> Neg for &'a EdwardsPoint {
             assert(is_valid_edwards_point(r));
 
             // 4. Prove affine semantics: edwards_point_as_affine(r) == edwards_neg(edwards_point_as_affine(*self))
-            let z_inv = math_field_inv(old_z);
+            let z_inv = field_inv(old_z);
 
             // Key algebraic fact: (-x) * z_inv = -(x * z_inv)
-            assert(math_field_mul(new_x, z_inv) == math_field_neg(math_field_mul(old_x, z_inv)))
+            assert(field_mul(new_x, z_inv) == field_neg(field_mul(old_x, z_inv)))
                 by {
-                // new_x = math_field_neg(old_x)
-                // math_field_mul(neg(a), b) = neg(math_field_mul(a, b)) by field algebra
+                // new_x = field_neg(old_x)
+                // field_mul(neg(a), b) = neg(field_mul(a, b)) by field algebra
                 lemma_field_mul_comm(new_x, z_inv);
                 lemma_field_mul_neg(z_inv, old_x);
                 lemma_field_mul_comm(z_inv, old_x);
@@ -2442,7 +2442,7 @@ impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
             is_well_formed_edwards_point(*self),
             edwards_point_as_affine(*self) == edwards_scalar_mul(
                 edwards_point_as_affine(*old(self)),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         /* ORIGINAL CODE
@@ -2476,7 +2476,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
             is_well_formed_edwards_point(result),
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(*self),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         crate::backend::variable_base_mul(self, scalar)
@@ -2499,7 +2499,7 @@ impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
             is_well_formed_edwards_point(result),
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(*point),
-                scalar_to_nat(self),
+                scalar_as_nat(self),
             ),
     {
         point * self
@@ -2519,7 +2519,7 @@ impl EdwardsPoint {
             // Functional correctness: result = [scalar] * B where B is the basepoint
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         #[cfg(not(feature = "precomputed-tables"))]
@@ -2543,7 +2543,7 @@ impl EdwardsPoint {
             // Result is scalar multiplication of self by the clamped scalar
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 edwards_point_as_affine(self),
-                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
+                scalar_as_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
             ),
     {
         // We have to construct a Scalar that is not reduced mod l, which breaks scalar invariant
@@ -2561,7 +2561,7 @@ impl EdwardsPoint {
         }
         let result = s * self;
         proof {
-            assert(scalar_to_nat(&s) == scalar_to_nat(
+            assert(scalar_as_nat(&s) == scalar_as_nat(
                 &Scalar { bytes: spec_clamp_integer(bytes) },
             ));
         }
@@ -2576,7 +2576,7 @@ impl EdwardsPoint {
             // Functional correctness: result = [clamped_scalar] * B where B is the basepoint
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                scalar_to_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
+                scalar_as_nat(&Scalar { bytes: spec_clamp_integer(bytes) }),
             ),
     {
         // See reasoning in Self::mul_clamped why it is OK to make an unreduced Scalar here. We
@@ -2740,8 +2740,8 @@ impl EdwardsPoint {
             is_well_formed_edwards_point(result),
             // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint
             edwards_point_as_affine(result) == {
-                let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_to_nat(a));
-                let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_to_nat(b));
+                let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_as_nat(a));
+                let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_as_nat(b));
                 edwards_add(aA.0, aA.1, bB.0, bB.1)
             },
     {
@@ -3239,7 +3239,7 @@ impl BasepointTable for EdwardsBasepointTable {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         let a = scalar.as_radix_2w(4);
@@ -3515,14 +3515,14 @@ impl BasepointTable for EdwardsBasepointTable {
 
             // Now connect pippenger_partial to edwards_scalar_mul:
             // pippenger_partial(a@, 64, B) == edwards_scalar_mul(B, reconstruct_radix_16(a@))
-            // And from as_radix_2w postcondition: reconstruct_radix_16(a@) == scalar_to_nat(scalar)
-            assert(reconstruct_radix_2w(a@.take(64), 4) == scalar_to_nat(scalar) as int);
+            // And from as_radix_2w postcondition: reconstruct_radix_16(a@) == scalar_as_nat(scalar)
+            assert(reconstruct_radix_2w(a@.take(64), 4) == scalar_as_nat(scalar) as int);
             assert(a@.take(64) =~= a@);
             reveal(reconstruct_radix_16);
-            assert(reconstruct_radix_16(a@) == scalar_to_nat(scalar) as int);
+            assert(reconstruct_radix_16(a@) == scalar_as_nat(scalar) as int);
 
-            lemma_pippenger_sum_correct(a@, B, scalar_to_nat(scalar));
-            assert(pippenger_partial(a@, 64, B) == edwards_scalar_mul(B, scalar_to_nat(scalar)));
+            lemma_pippenger_sum_correct(a@, B, scalar_as_nat(scalar));
+            assert(pippenger_partial(a@, 64, B) == edwards_scalar_mul(B, scalar_as_nat(scalar)));
 
             // Postconditions:
             assert(is_well_formed_edwards_point(P));
@@ -3546,7 +3546,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         self.mul_base(scalar)
@@ -3568,7 +3568,7 @@ impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result) == edwards_scalar_mul(
                 spec_ed25519_basepoint(),
-                scalar_to_nat(self),
+                scalar_as_nat(self),
             ),
     {
         basepoint_table * self
@@ -3793,7 +3793,7 @@ impl EdwardsPoint {
                 group_order(),
             )) by {
                 // BASEPOINT_ORDER_PRIVATE encodes ℓ in little-endian bytes.
-                lemma_scalar_to_nat_basepoint_order_private_equals_group_order();
+                lemma_scalar_as_nat_basepoint_order_private_equals_group_order();
             }
         }
         result

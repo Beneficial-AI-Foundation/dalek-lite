@@ -95,13 +95,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     const withSpecsCount = verifiedFunctions.filter(v => v.has_spec).length;
     const publicCount = verifiedFunctions.filter(v => v.is_public).length;
     const libsignalCount = verifiedFunctions.filter(v => v.is_libsignal).length;
-    // Count unique spec functions referenced across all contracts
-    const allRefs = new Set();
-    for (const fn of verifiedFunctions) {
-        for (const r of (fn.referenced_specs || [])) allRefs.add(r);
-    }
     document.getElementById("totalFunctions").textContent = verifiedFunctions.length;
-    document.getElementById("totalSpecs").textContent = allRefs.size;
+    document.getElementById("totalSpecs").textContent = specOnlyCount;
     document.getElementById("totalAxioms").textContent = axiomCount;
 
     // Build module pills and attribute filter pills
@@ -121,7 +116,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         searchRight = e.target.value.toLowerCase().trim();
         renderRightPanel();
     });
-    document.getElementById("specFilterClear").addEventListener("click", clearSpecFilter);
+    document.getElementById("specFilterClear").addEventListener("click", () => {
+        if (autoFilterBypassed) {
+            autoFilterBypassed = false;
+            renderRightPanel();
+        } else {
+            clearSpecFilter();
+        }
+    });
 
     document.getElementById("expandAllLeft").addEventListener("click", () => toggleAllIn("listLeft", true));
     document.getElementById("collapseAllLeft").addEventListener("click", () => toggleAllIn("listLeft", false));
@@ -527,8 +529,11 @@ function getFilteredSpecs() {
 
     if (searchRight) {
         list = list.filter(s => {
+            // Search top-level fields only (name, module, signature, docs,
+            // interpretations) — exclude body to avoid matching on referenced
+            // spec names that appear inside the function definition.
             const h = (
-                s.name + " " + s.module + " " + s.signature + " " + s.body + " " +
+                s.name + " " + s.module + " " + s.signature + " " +
                 (s.doc_comment || "") + " " + (s.math_interpretation || "") +
                 " " + (s.informal_interpretation || "")
             ).toLowerCase();
@@ -563,18 +568,13 @@ function renderRightPanel() {
     if (specFilterRefs) {
         banner.style.display = "flex";
         bannerText.textContent = `Showing ${specFilterRefs.size} specs related to ${specFilterSource}`;
+        clearBtn.textContent = "Show All";
         clearBtn.style.display = "";
     } else if (autoFilterBypassed && hasLeftFilter()) {
         banner.style.display = "flex";
         bannerText.textContent = `Showing all specs (navigated outside filtered scope)`;
         clearBtn.textContent = "Re-apply filter";
         clearBtn.style.display = "";
-        clearBtn.onclick = () => {
-            autoFilterBypassed = false;
-            clearBtn.textContent = "Show All";
-            clearBtn.onclick = clearSpecFilter;
-            renderRightPanel();
-        };
     } else if (hasLeftFilter()) {
         banner.style.display = "flex";
         const labels = [];
@@ -593,7 +593,8 @@ function renderRightPanel() {
         return;
     }
 
-    countEl.textContent = filtered.length;
+    // Show only spec count (axioms are counted separately in the hero bar)
+    countEl.textContent = filtered.filter(s => s.category !== "axiom").length;
 
     let html = "";
     let currentMod = null;

@@ -109,7 +109,6 @@ pub open spec fn limbs_bounded(s: &Scalar52) -> bool {
 ///   - For limbs 0-3: standard bounded subtraction
 ///   - For limb 4: a[4] - b[4] < 2^52, so masking doesn't lose bits
 ///
-/// See docs/proofs_for_montgomery_reduce/sub_and_bounds_analysis.md for detailed analysis.
 pub open spec fn limbs_bounded_for_sub(a: &Scalar52, b: &Scalar52) -> bool {
     &&& forall|i: int| 0 <= i < 4 ==> a.limbs[i] < (1u64 << 52)
     &&& a.limbs[4] < (1u64 << 52) + b.limbs[4]

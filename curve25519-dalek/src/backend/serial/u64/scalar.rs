@@ -47,9 +47,9 @@ use crate::lemmas::scalar_byte_lemmas::bytes_to_scalar_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas::*;
 #[allow(unused_imports)]
-use crate::lemmas::scalar_lemmas::*; // TODO: see https://github.com/Beneficial-AI-Foundation/dalek-lite/issues/386
+use crate::lemmas::scalar_lemmas::*;
 #[allow(unused_imports)]
-use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*;
+use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*; // TODO: see https://github.com/Beneficial-AI-Foundation/dalek-lite/issues/386
 #[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas_::montgomery_reduce_part1_chain_lemmas::*;
 #[allow(unused_imports)]
@@ -1788,7 +1788,6 @@ impl Scalar52 {
             // 1. Prove RR ≡ R² (mod L)
             lemma_rr_equals_spec();
 
-            // 1. Prove RR ≡ R² (mod L) (already called above, but needed for subsequent proofs)
             // 2. Apply cancellation lemma to get: result ≡ ab*R (mod L)
             //    Combined with ab*R ≡ a*b (mod L), we get result ≡ a*b (mod L)
             lemma_cancel_mul_montgomery_mod(
@@ -1867,7 +1866,6 @@ impl Scalar52 {
             // 1. prove (scalar52_to_nat(&constants::RR) % group_order() == (montgomery_radix()*montgomery_radix()) % group_order()
             lemma_rr_equals_spec();
 
-            // (already called above, but needed for subsequent proofs)
             // 2. Reduce to (scalar52_to_nat(&result)) % group_order() == (scalar52_to_nat(self) * scalar52_to_nat(self)) % group_order()
             lemma_cancel_mul_montgomery_mod(
                 scalar52_to_nat(&result),
@@ -1940,7 +1938,6 @@ impl Scalar52 {
     ///
     /// Why `limbs_bounded` (part of canonical): `square_internal(self)[0] = self.limbs[0]²`,
     /// and we need `self.limbs[0]² < 2^104`, so `self.limbs[0] < 2^52`.
-    /// See `docs/proofs_for_montgomery_reduce/precondition_analysis.md` for details.
     #[inline(never)]
     pub fn montgomery_square(&self) -> (result: Scalar52)
         requires

@@ -23,8 +23,6 @@
 //! 3. **Connection**: The weighted sum of sums equals (T + N×L) / R
 //!    because Part 1 zeroed out the low 260 bits.
 //!
-//! See `docs/proofs_for_montgomery_reduce/montgomery_reduce_proofs.md` Part 2 for
-//! the mathematical proof.
 #![allow(unused)]
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;

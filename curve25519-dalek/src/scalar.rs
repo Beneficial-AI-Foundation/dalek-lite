@@ -3118,7 +3118,6 @@ impl UnpackedScalar {
     /// # Preconditions
     /// - Input must be canonical for `montgomery_square`/`montgomery_mul`
     ///
-    /// See `docs/proofs_for_montgomery_reduce/precondition_analysis.md` for details.
     #[rustfmt::skip]  // keep alignment of addition chain and squarings
     #[allow(clippy::just_underscores_and_digits)]
     pub fn montgomery_invert(&self) -> (result:

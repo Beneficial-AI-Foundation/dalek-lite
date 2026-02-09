@@ -942,7 +942,7 @@ pub(crate) proof fn lemma_montgomery_reduce_pre_sub(
 /// - We need `carry < 2^53` to safely cast to u64
 /// - `lemma_montgomery_reduce_pre_sub` takes `r4: u64` as input
 ///
-/// # Direct Sum8 Bound Proof (no assume!)
+/// # Direct Sum8 Bound Proof
 ///
 /// From the computation: sum8 = carry7 + limb8 + n4 × L[4]
 ///   - carry7 < 2^56     (from part2(sum7) postcondition)

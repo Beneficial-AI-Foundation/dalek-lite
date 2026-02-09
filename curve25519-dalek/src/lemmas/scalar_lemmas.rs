@@ -1351,7 +1351,6 @@ pub proof fn lemma_decompose(a: u64, mask: u64)
 ///
 /// PRECONDITION RELAXATION: Uses `limbs_bounded_for_sub(a, b)` instead of `limbs_bounded(a)`.
 /// This allows a.limbs[4] to exceed 2^52 (up to 2^52 + b.limbs[4]).
-/// See docs/proofs_for_montgomery_reduce/sub_and_bounds_analysis.md for details.
 pub proof fn lemma_sub_loop1_invariant(
     difference: Scalar52,
     borrow: u64,

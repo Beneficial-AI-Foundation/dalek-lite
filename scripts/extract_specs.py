@@ -1428,7 +1428,14 @@ def main():
     # Append axioms to spec_functions list so they appear in the right panel
     all_right_panel = spec_functions + axiom_functions
 
-    # 5. Output combined JSON
+    # Strip fields not used by the frontend to reduce JSON size
+    for fn in verified_functions:
+        fn.pop("requires", None)
+        fn.pop("ensures", None)
+    for spec in all_right_panel:
+        spec.pop("short_module", None)
+
+    # 5. Output minified JSON (saves ~10% over pretty-printed)
     output = {
         "spec_functions": all_right_panel,
         "verified_functions": verified_functions,
@@ -1438,7 +1445,7 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+        json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
 
     # Summary
     spec_mods = sorted(set(s["module"] for s in spec_functions))

@@ -43,6 +43,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Navigation items — declared early so anchor-click handler below can use them
+    const sections = document.querySelectorAll('section[id]');
+    const navItems = document.querySelectorAll('.nav-links a');
+
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
@@ -97,8 +101,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add active state to nav links based on scroll position
-    const sections = document.querySelectorAll('section[id]');
-    const navItems = document.querySelectorAll('.nav-links a');
 
     function highlightNavigation() {
         const scrollY = window.pageYOffset;

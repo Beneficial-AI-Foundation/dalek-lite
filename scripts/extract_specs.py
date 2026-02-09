@@ -40,6 +40,8 @@ FUZZY_LINE_RANGE = 40
 
 DEFAULT_SPEC_CSV = "data/libsignal_verus_specs/generated/spec_functions.csv"
 DEFAULT_VERIFIED_CSV = "data/libsignal_verus_specs/generated/verified_functions.csv"
+DEFAULT_TRACKED_CSV = "outputs/curve25519_functions.csv"
+DEFAULT_FUNCTIONS_TO_TRACK_CSV = "functions_to_track.csv"
 
 
 # ── Shared helpers ────────────────────────────────────────────────────
@@ -95,6 +97,78 @@ def derive_category_module(filepath: str) -> str:
     if "lemmas" in filepath:
         return "lemmas"
     return stem
+
+
+def _short_module_name(full_module: str) -> str:
+    """Convert full Rust module path to a short display name.
+
+    Examples:
+        curve25519_dalek::montgomery -> montgomery
+        curve25519_dalek::backend::serial::u64::scalar -> backend
+        curve25519_dalek::scalar_mul::straus -> backend
+        curve25519_dalek::backend::serial::curve_models -> backend
+    """
+    prefix = "curve25519_dalek::"
+    short = (
+        full_module[len(prefix) :] if full_module.startswith(prefix) else full_module
+    )
+    # Group internal / backend modules under a single "backend" label:
+    #   backend::serial::* (u64::field, u64::scalar, curve_models, ...)
+    #   scalar_mul::*
+    backend_prefix = "backend::serial::"
+    if short.startswith(backend_prefix):
+        return "backend"
+    if short.startswith("scalar_mul::") or short == "scalar_mul":
+        return "backend"
+    return short
+
+
+def _parse_github_link(link: str) -> tuple[str, int]:
+    """Extract relative source path and line number from a GitHub link."""
+    match = re.search(r"/blob/main/(.+?)#L(\d+)", link)
+    if match:
+        return match.group(1), int(match.group(2))
+    return "", 0
+
+
+def _parse_function_name(raw: str) -> tuple[str, str, str]:
+    """Parse qualified function name into (base_name, display_name, impl_type).
+
+    Examples:
+        MontgomeryPoint::ct_eq(&MontgomeryPoint) -> (ct_eq, MontgomeryPoint::ct_eq, MontgomeryPoint)
+        elligator_encode(&FieldElement) -> (elligator_encode, elligator_encode, "")
+    """
+    raw = raw.strip().strip('"')
+    paren_idx = raw.find("(")
+    before_paren = raw[:paren_idx].strip() if paren_idx != -1 else raw.strip()
+
+    last_sep = before_paren.rfind("::")
+    if last_sep != -1:
+        impl_type = before_paren[:last_sep]
+        base_name = before_paren[last_sep + 2 :]
+        display_name = before_paren
+    else:
+        impl_type = ""
+        base_name = before_paren
+        display_name = before_paren
+
+    return base_name, display_name, impl_type
+
+
+def _detect_is_public(contract_text: str) -> bool:
+    """Check if a function is truly public from its contract text.
+
+    Returns True for ``pub fn`` / ``pub unsafe fn`` but NOT for
+    ``pub(crate)``, ``pub(super)``, or ``pub(in ...)``.
+    """
+    if not contract_text:
+        return False
+    stripped = contract_text.lstrip()
+    # `pub fn` or `pub unsafe fn` — truly public
+    if stripped.startswith("pub "):
+        return True
+    # `pub(crate)`, `pub(super)`, `pub(in ...)` — NOT truly public
+    return False
 
 
 # ── Auto-generate math interpretation for axioms ──────────────────────
@@ -234,6 +308,73 @@ _AXIOM_MATH_OVERRIDES = {
     "axiom_uniform_elligator": "uniform field element => uniform over Elligator image",
     "axiom_uniform_elligator_independent": "independent field elements => independent Ristretto points",
 }
+
+
+# ── Libsignal-used functions ─────────────────────────────────────────
+# (base_name, source_file_stem) pairs.  Derived from SCIP call-graph
+# analysis of libsignal → curve25519-dalek.  Excludes trait functions
+# (is_identity, vartime_multiscalar_mul) and the lizard module.
+_LIBSIGNAL_FUNCTIONS: set[tuple[str, str]] = {
+    # edwards.rs (8)
+    ("as_bytes", "edwards"),
+    ("compress", "edwards"),
+    ("decompress", "edwards"),
+    ("is_small_order", "edwards"),
+    ("mul_by_cofactor", "edwards"),
+    ("neg", "edwards"),
+    ("to_montgomery", "edwards"),
+    ("vartime_double_scalar_mul_basepoint", "edwards"),
+    # montgomery.rs (1)
+    ("to_edwards", "montgomery"),
+    # ristretto.rs (17 unique names)
+    ("as_bytes", "ristretto"),
+    ("compress", "ristretto"),
+    ("conditional_select", "ristretto"),
+    ("ct_eq", "ristretto"),
+    ("decompress", "ristretto"),
+    ("default", "ristretto"),
+    ("double_and_compress_batch", "ristretto"),
+    ("eq", "ristretto"),
+    ("from_slice", "ristretto"),
+    ("from_uniform_bytes", "ristretto"),
+    ("identity", "ristretto"),
+    ("mul", "ristretto"),
+    ("mul_base", "ristretto"),
+    ("multiscalar_mul", "ristretto"),
+    ("neg", "ristretto"),
+    ("sub", "ristretto"),
+    ("to_bytes", "ristretto"),
+    # scalar.rs (13 unique names)
+    ("as_bytes", "scalar"),
+    ("clamp_integer", "scalar"),
+    ("ct_eq", "scalar"),
+    ("eq", "scalar"),
+    ("from", "scalar"),
+    ("from_bytes_mod_order", "scalar"),
+    ("from_bytes_mod_order_wide", "scalar"),
+    ("from_canonical_bytes", "scalar"),
+    ("from_hash", "scalar"),
+    ("hash_from_bytes", "scalar"),
+    ("invert", "scalar"),
+    ("neg", "scalar"),
+    ("to_bytes", "scalar"),
+}
+
+
+def _is_libsignal(base_name: str, module: str) -> bool:
+    """Check if a function is called by libsignal.
+
+    Uses the short module name (e.g. 'edwards', 'scalar') to avoid false
+    positives from backend files that share the same file stem (e.g.
+    'u64::scalar' vs top-level 'scalar').
+    """
+    if (base_name, module) in _LIBSIGNAL_FUNCTIONS:
+        return True
+    # Some dalek-lite functions have _verus suffix; libsignal calls the original
+    if base_name.endswith("_verus"):
+        if (base_name[:-6], module) in _LIBSIGNAL_FUNCTIONS:
+            return True
+    return False
 
 
 def _generate_math_from_ensures(
@@ -772,6 +913,205 @@ def extract_verified_functions(csv_path: str, spec_names: set[str]) -> list[dict
     return verified
 
 
+# ── All tracked functions extraction ──────────────────────────────────
+
+
+def extract_all_tracked_functions(
+    tracked_csv: str,
+    verified_csv: str,
+    spec_names: set[str],
+    functions_to_track_csv: str = DEFAULT_FUNCTIONS_TO_TRACK_CSV,
+) -> list[dict]:
+    """Extract contracts for all 223 tracked functions.
+
+    Uses outputs/curve25519_functions.csv for the function list and metadata,
+    and verified_functions.csv for hand-curated interpretations where available.
+    """
+    # 0. Load impl_block info from functions_to_track.csv
+    #    to detect trait implementations (effectively public).
+    impl_blocks: dict[tuple[str, str], str] = {}
+    if os.path.exists(functions_to_track_csv):
+        with open(functions_to_track_csv, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                raw = row.get("function", "").strip()
+                mod = row.get("module", "").strip()
+                impl_block = row.get("impl_block", "").strip()
+                impl_blocks[(raw, mod)] = impl_block
+        print(
+            f"  Loaded {len(impl_blocks)} impl_block entries "
+            f"from {functions_to_track_csv}"
+        )
+
+    # 1. Load curated interpretations from verified_functions.csv
+    interpretations: dict[tuple[str, str, str], dict] = {}
+    if os.path.exists(verified_csv):
+        with open(verified_csv, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                fn_name = row.get("function_name", "").strip()
+                source_path = row.get("source_path", "").strip()
+                impl_type_val = row.get("impl_type", "").strip()
+                stem = Path(source_path).stem if source_path else ""
+                key = (fn_name, stem, impl_type_val)
+                interpretations[key] = {
+                    "math": row.get("math_interpretation", "").strip(),
+                    "informal": row.get("informal_interpretation", "").strip(),
+                }
+        print(
+            f"  Loaded {len(interpretations)} curated interpretations from {verified_csv}"
+        )
+
+    # 2. Process all tracked functions
+    functions: list[dict] = []
+    found = 0
+
+    with open(tracked_csv, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            raw_fn = row["function"].strip()
+            module_path = row["module"].strip()
+            link = row["link"].strip()
+            has_spec_val = row.get("has_spec", "").strip().lower()
+            has_proof_val = row.get("has_proof", "").strip().lower()
+
+            # Parse source path and line from GitHub link
+            source_path, source_line = _parse_github_link(link)
+            if not source_path:
+                print(f"  Warning: Could not parse link for {raw_fn}", file=sys.stderr)
+                continue
+
+            # Parse function name
+            base_name, display_name, impl_type = _parse_function_name(raw_fn)
+
+            # Derive module
+            module = _short_module_name(module_path)
+
+            # Extract contract from source
+            result = extract_contract_from_source(source_path, base_name, source_line)
+
+            if result:
+                contract = result["contract"]
+                requires = result["requires"]
+                ensures = result["ensures"]
+                doc_comment = result["doc_comment"]
+                actual_line = result["line"]
+                found += 1
+            else:
+                print(
+                    f"  Warning: {base_name} not found near {source_path}:{source_line}",
+                    file=sys.stderr,
+                )
+                contract = f"fn {base_name}(...)  // contract not found in source"
+                requires = []
+                ensures = []
+                doc_comment = ""
+                actual_line = source_line
+
+            # Detect public visibility:
+            # 1. `pub fn` in source, OR
+            # 2. trait impl (impl_block contains " for ") → effectively public
+            impl_block = impl_blocks.get((raw_fn, module_path), "")
+            is_trait_impl = " for " in impl_block
+            is_public = _detect_is_public(contract) or is_trait_impl
+
+            # Detect libsignal usage (use module name to avoid false positives)
+            is_libsignal = _is_libsignal(base_name, module)
+
+            # Look up curated interpretations
+            stem = Path(source_path).stem if source_path else ""
+            interp = interpretations.get((base_name, stem, impl_type))
+            # Also try without _verus suffix for verus-renamed functions
+            if not interp and base_name.endswith("_verus"):
+                interp = interpretations.get((base_name[:-6], stem, impl_type))
+            if not interp:
+                interp = {}
+            math_interp = interp.get("math", "")
+            informal_interp = interp.get("informal", "")
+
+            # Detect referenced spec functions
+            contract_text = (
+                contract + " " + " ".join(requires) + " " + " ".join(ensures)
+            )
+            referenced = sorted(
+                [
+                    s
+                    for s in spec_names
+                    if re.search(r"\b" + re.escape(s) + r"\b", contract_text)
+                ]
+            )
+
+            # Build ID prefix
+            type_prefix = (
+                impl_type.lower()
+                .replace("::", "_")
+                .replace("<", "_")
+                .replace(">", "")
+                .replace(" ", "")
+                if impl_type
+                else module
+            )
+
+            github_link = link if link else f"{GITHUB_BASE}{source_path}#L{actual_line}"
+
+            functions.append(
+                {
+                    "name": base_name,
+                    "display_name": display_name,
+                    "impl_type": impl_type,
+                    "contract": contract,
+                    "requires": requires,
+                    "ensures": ensures,
+                    "referenced_specs": referenced,
+                    "file": source_path,
+                    "line": actual_line,
+                    "module": module,
+                    "doc_comment": doc_comment,
+                    "math_interpretation": math_interp,
+                    "informal_interpretation": informal_interp,
+                    "github_link": github_link,
+                    "category": "tracked",
+                    "is_public": is_public,
+                    "is_libsignal": is_libsignal,
+                    "has_spec": has_spec_val in ("yes", "ext"),
+                    "has_proof": has_proof_val == "yes",
+                    "_type_prefix": type_prefix,
+                }
+            )
+
+    # 3. Assign unique IDs, handling duplicates
+    base_id_groups: dict[str, list[dict]] = {}
+    for fn in functions:
+        base_id = f"{fn['_type_prefix']}__{fn['name']}"
+        base_id_groups.setdefault(base_id, []).append(fn)
+
+    for base_id, group in base_id_groups.items():
+        if len(group) == 1:
+            group[0]["id"] = base_id
+        else:
+            for fn in group:
+                fn["id"] = f"{base_id}_L{fn['line']}"
+
+    # Remove temp fields
+    for fn in functions:
+        del fn["_type_prefix"]
+
+    print(
+        f"  Tracked functions: {found}/{len(functions)} contracts extracted from source"
+    )
+
+    public_count = sum(1 for f in functions if f["is_public"])
+    libsignal_count = sum(1 for f in functions if f["is_libsignal"])
+    spec_count = sum(1 for f in functions if f["has_spec"])
+    proof_count = sum(1 for f in functions if f["has_proof"])
+    print(
+        f"  {public_count} public, {libsignal_count} libsignal-used,"
+        f" {spec_count} with specs, {proof_count} with proofs"
+    )
+
+    return functions
+
+
 # ── Axiom extraction (auto-discovery) ─────────────────────────────────
 
 
@@ -887,6 +1227,7 @@ def main():
     parser.add_argument("--output", "-o", default="docs/specs_data.json")
     parser.add_argument("--spec-csv", default=DEFAULT_SPEC_CSV)
     parser.add_argument("--verified-csv", default=DEFAULT_VERIFIED_CSV)
+    parser.add_argument("--tracked-csv", default=DEFAULT_TRACKED_CSV)
     parser.add_argument(
         "--csv-only", action="store_true", help="Skip source re-extraction"
     )
@@ -925,14 +1266,23 @@ def main():
         f"  {spec_refs_total} spec-to-spec references across {specs_with_refs} spec functions"
     )
 
-    # 2. Extract verified function contracts
-    if os.path.exists(args.verified_csv):
-        print(f"Extracting verified function contracts from {args.verified_csv}...")
+    # 2. Extract all tracked function contracts (223 functions)
+    if os.path.exists(args.tracked_csv):
+        print(f"\nExtracting all tracked function contracts from {args.tracked_csv}...")
+        verified_functions = extract_all_tracked_functions(
+            args.tracked_csv, args.verified_csv, spec_names
+        )
+        verified_functions.sort(key=lambda s: (s["module"], s["display_name"]))
+    elif os.path.exists(args.verified_csv):
+        print(
+            f"\nWarning: {args.tracked_csv} not found, falling back to {args.verified_csv}",
+            file=sys.stderr,
+        )
         verified_functions = extract_verified_functions(args.verified_csv, spec_names)
         verified_functions.sort(key=lambda s: (s["module"], s["display_name"]))
     else:
         print(
-            f"Warning: {args.verified_csv} not found, skipping verified functions.",
+            "Warning: No tracked or verified CSV found, skipping implementation functions.",
             file=sys.stderr,
         )
         verified_functions = []
@@ -963,7 +1313,7 @@ def main():
     print(f"{len(axiom_functions)} axiom functions")
     verified_mods = sorted(set(s["module"] for s in verified_functions))
     print(
-        f"{len(verified_functions)} verified functions from {len(verified_mods)} modules"
+        f"{len(verified_functions)} tracked functions from {len(verified_mods)} modules"
     )
 
     # Show cross-reference stats

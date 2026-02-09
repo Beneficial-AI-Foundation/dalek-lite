@@ -43,6 +43,8 @@ let specFunctions = [];
 let specLookup = {};              // specName -> spec object
 
 let activeModule = null;          // module filter from sidebar
+let filterPublic = false;         // toggle: show only public functions
+let filterLibsignal = false;      // toggle: show only libsignal-used functions
 let searchLeft = "";              // search in left panel
 let searchRight = "";             // search in right panel
 let specFilterRefs = null;        // null = show all, or Set of spec names to filter right panel
@@ -90,13 +92,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const modules = [...new Set(verifiedFunctions.map(v => v.module))];
     const axiomCount = specFunctions.filter(s => s.category === "axiom").length;
     const specOnlyCount = specFunctions.filter(s => s.category !== "axiom").length;
-    document.getElementById("totalVerified").textContent = verifiedFunctions.length;
+    const withSpecsCount = verifiedFunctions.filter(v => v.has_spec).length;
+    const publicCount = verifiedFunctions.filter(v => v.is_public).length;
+    const libsignalCount = verifiedFunctions.filter(v => v.is_libsignal).length;
+    document.getElementById("totalFunctions").textContent = verifiedFunctions.length;
     document.getElementById("totalSpecs").textContent = specOnlyCount;
     document.getElementById("totalAxioms").textContent = axiomCount;
-    document.getElementById("totalModules").textContent = modules.length;
 
-    // Build module pills (filters verified functions only)
+    // Build module pills and attribute filter pills
     buildModuleTree(modules);
+    buildAttributeFilters(publicCount, libsignalCount);
 
     // Initial render of both panels
     renderLeftPanel();
@@ -141,17 +146,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // ── Module filter (horizontal pills) ─────────────────────────
+// Keep references to all pill elements so we can update counts dynamically.
+let modulePills = [];   // { el, moduleId, countEl }
+let attrPillPublic = null;   // { el, countEl }
+let attrPillLibsignal = null;
+
 function buildModuleTree(modules) {
     const container = document.getElementById("moduleTree");
 
     const allPill = createModulePill("All", verifiedFunctions.length, null);
-    allPill.classList.add("active");
-    container.appendChild(allPill);
+    allPill.el.classList.add("active");
+    container.appendChild(allPill.el);
+    modulePills.push(allPill);
 
     const sorted = [...modules].sort();
     for (const mod of sorted) {
         const count = verifiedFunctions.filter(v => v.module === mod).length;
-        container.appendChild(createModulePill(mod, count, mod));
+        const pill = createModulePill(mod, count, mod);
+        container.appendChild(pill.el);
+        modulePills.push(pill);
     }
 }
 
@@ -162,20 +175,99 @@ function createModulePill(displayName, count, moduleId) {
         ${displayName}
         <span class="pill-count">${count}</span>
     `;
+    const countEl = el.querySelector(".pill-count");
     el.addEventListener("click", () => {
         document.querySelectorAll(".module-pill").forEach(m => m.classList.remove("active"));
         el.classList.add("active");
         activeModule = moduleId;
         renderLeftPanel();
     });
-    return el;
+    return { el, moduleId, countEl };
 }
 
-// ── Left panel: verified functions ───────────────────────────
+// ── Attribute filters (Public / Libsignal pills) ────────────
+function buildAttributeFilters(publicCount, libsignalCount) {
+    const container = document.getElementById("attrFilters");
+    if (!container) return;
+
+    const publicEl = document.createElement("span");
+    publicEl.className = "attr-pill attr-public";
+    publicEl.innerHTML = `Public <span class="pill-count">${publicCount}</span>`;
+    publicEl.addEventListener("click", () => {
+        filterPublic = !filterPublic;
+        publicEl.classList.toggle("active", filterPublic);
+        renderLeftPanel();
+    });
+    container.appendChild(publicEl);
+    attrPillPublic = { el: publicEl, countEl: publicEl.querySelector(".pill-count") };
+
+    const libsignalEl = document.createElement("span");
+    libsignalEl.className = "attr-pill attr-libsignal";
+    libsignalEl.innerHTML = `Libsignal <span class="pill-count">${libsignalCount}</span>`;
+    libsignalEl.addEventListener("click", () => {
+        filterLibsignal = !filterLibsignal;
+        libsignalEl.classList.toggle("active", filterLibsignal);
+        renderLeftPanel();
+    });
+    container.appendChild(libsignalEl);
+    attrPillLibsignal = { el: libsignalEl, countEl: libsignalEl.querySelector(".pill-count") };
+}
+
+/**
+ * Recompute and update all filter pill counts based on current active filters.
+ *
+ * Module pill counts reflect the attribute filters (Public / Libsignal).
+ * Attribute pill counts reflect the active module filter.
+ * This way, every count shows "how many would I see if I clicked this pill?".
+ */
+function updateFilterCounts() {
+    // Base list filtered by attribute toggles (for module pills)
+    let attrFiltered = verifiedFunctions;
+    if (filterPublic) attrFiltered = attrFiltered.filter(v => v.is_public);
+    if (filterLibsignal) attrFiltered = attrFiltered.filter(v => v.is_libsignal);
+
+    for (const pill of modulePills) {
+        let cnt;
+        if (pill.moduleId === null) {
+            cnt = attrFiltered.length;
+        } else {
+            cnt = attrFiltered.filter(v => v.module === pill.moduleId).length;
+        }
+        pill.countEl.textContent = cnt;
+        // Hide module pills with 0 matches (but always show "All")
+        if (pill.moduleId !== null) {
+            pill.el.style.display = cnt === 0 ? "none" : "";
+        }
+    }
+
+    // Base list filtered by module (for attribute pills)
+    let modFiltered = verifiedFunctions;
+    if (activeModule) modFiltered = modFiltered.filter(v => v.module === activeModule);
+
+    if (attrPillPublic) {
+        // If libsignal is also active, apply it before counting public
+        let base = modFiltered;
+        if (filterLibsignal) base = base.filter(v => v.is_libsignal);
+        attrPillPublic.countEl.textContent = base.filter(v => v.is_public).length;
+    }
+    if (attrPillLibsignal) {
+        let base = modFiltered;
+        if (filterPublic) base = base.filter(v => v.is_public);
+        attrPillLibsignal.countEl.textContent = base.filter(v => v.is_libsignal).length;
+    }
+}
+
+// ── Left panel: tracked functions ────────────────────────────
 function getFilteredVerified() {
     let list = verifiedFunctions;
     if (activeModule) {
         list = list.filter(v => v.module === activeModule);
+    }
+    if (filterPublic) {
+        list = list.filter(v => v.is_public);
+    }
+    if (filterLibsignal) {
+        list = list.filter(v => v.is_libsignal);
     }
     if (searchLeft) {
         list = list.filter(v => {
@@ -196,6 +288,9 @@ function renderLeftPanel() {
     const container = document.getElementById("listLeft");
     const countEl = document.getElementById("countLeft");
     const filtered = getFilteredVerified();
+
+    // Update all filter pill counts to reflect current state
+    updateFilterCounts();
 
     if (filtered.length === 0) {
         container.innerHTML = '<div class="no-results"><h3>No matching functions</h3><p>Try a different search or module.</p></div>';
@@ -283,12 +378,22 @@ function renderVerifiedCard(fn) {
     const hasInformal = fn.informal_interpretation && fn.informal_interpretation.trim();
     const hasInterpretations = hasMath || hasInformal;
     const hasRefs = fn.referenced_specs && fn.referenced_specs.length > 0;
+    const hasSpec = fn.has_spec;
+    const hasProof = fn.has_proof;
 
     const docHtml = hasDoc
         ? fn.doc_comment.split("\n").filter(Boolean).map(p => `<p>${escapeHtml(p)}</p>`).join("")
         : "";
 
     const contractHtml = highlightSpecNames(fn.contract, fn.referenced_specs || []);
+
+    // Status badges
+    const badges = [];
+    if (hasProof) badges.push(`<span class="fn-badge fn-badge-proof">proved</span>`);
+    else if (hasSpec) badges.push(`<span class="fn-badge fn-badge-spec">spec</span>`);
+    else badges.push(`<span class="fn-badge fn-badge-nospec">no spec</span>`);
+    if (fn.is_libsignal) badges.push(`<span class="fn-badge fn-badge-libsignal">libsignal</span>`);
+    const badgesHtml = badges.join("");
 
     const refsHtml = hasRefs ? `
         <div class="contract-refs">
@@ -304,11 +409,11 @@ function renderVerifiedCard(fn) {
         </button>` : "";
 
     return `
-    <div class="spec-card" data-id="${escapeAttr(fn.id)}" data-module="${escapeAttr(fn.module)}">
+    <div class="spec-card${hasProof ? " card-proved" : hasSpec ? " card-spec" : " card-nospec"}" data-id="${escapeAttr(fn.id)}" data-module="${escapeAttr(fn.module)}">
         <div class="spec-header">
             <div class="spec-toggle">&#9654;</div>
             <div class="spec-info">
-                <div class="spec-name">${escapeHtml(fn.display_name)}</div>
+                <div class="spec-name">${escapeHtml(fn.display_name)} ${badgesHtml}</div>
                 <div class="spec-meta">
                     <span class="spec-module">${escapeHtml(fn.module)}</span>
                     ${hasMath ? `<span class="spec-math">${escapeHtml(fn.math_interpretation)}</span>` : ""}
@@ -801,13 +906,28 @@ function triggerDownload(content, filename, mime) {
     URL.revokeObjectURL(a.href);
 }
 
+/**
+ * Build a filename suffix that reflects the active filters.
+ * E.g. "verus-specs-edwards-public-libsignal.md"
+ */
+function downloadFilenameSuffix() {
+    const parts = ["verus-specs"];
+    if (activeModule) parts.push(activeModule.replace(/::/g, "-"));
+    if (filterPublic) parts.push("public");
+    if (filterLibsignal) parts.push("libsignal");
+    return parts.join("-");
+}
+
 window.downloadMarkdown = function() {
     try {
+        const filteredLeft = getFilteredVerified();
+        const filteredRight = getFilteredSpecs();
+
         let md = "# Verified Function Specifications\n\n";
 
-        md += "## Verified Function Contracts\n\n";
-        for (const fn of verifiedFunctions) {
-            md += `### ${fn.name}\n\n`;
+        md += `## Function Contracts (${filteredLeft.length})\n\n`;
+        for (const fn of filteredLeft) {
+            md += `### ${fn.display_name || fn.name}\n\n`;
             md += `**Module:** ${fn.module}  \n`;
             if (fn.informal_interpretation) md += `**Meaning:** ${fn.informal_interpretation}  \n`;
             md += `\n\`\`\`rust\n${fn.contract || ""}\n\`\`\`\n\n`;
@@ -817,19 +937,21 @@ window.downloadMarkdown = function() {
             md += "---\n\n";
         }
 
-        const specs = specFunctions.filter(s => s.category !== "axiom");
-        md += "## Spec Functions\n\n";
-        for (const s of specs) {
-            md += `### ${s.name}\n\n`;
-            md += `**Module:** ${s.module}  \n`;
-            if (s.math_interpretation) md += `**Math:** ${s.math_interpretation}  \n`;
-            if (s.informal_interpretation) md += `**Meaning:** ${s.informal_interpretation}  \n`;
-            md += `\n\`\`\`rust\n${s.body || ""}\n\`\`\`\n\n---\n\n`;
+        const specs = filteredRight.filter(s => s.category !== "axiom");
+        if (specs.length) {
+            md += `## Spec Functions (${specs.length})\n\n`;
+            for (const s of specs) {
+                md += `### ${s.name}\n\n`;
+                md += `**Module:** ${s.module}  \n`;
+                if (s.math_interpretation) md += `**Math:** ${s.math_interpretation}  \n`;
+                if (s.informal_interpretation) md += `**Meaning:** ${s.informal_interpretation}  \n`;
+                md += `\n\`\`\`rust\n${s.body || ""}\n\`\`\`\n\n---\n\n`;
+            }
         }
 
-        const axioms = specFunctions.filter(s => s.category === "axiom");
+        const axioms = filteredRight.filter(s => s.category === "axiom");
         if (axioms.length) {
-            md += "## Axioms\n\n";
+            md += `## Axioms (${axioms.length})\n\n`;
             for (const a of axioms) {
                 md += `### ${a.name}\n\n`;
                 if (a.math_interpretation) md += `**Math:** ${a.math_interpretation}  \n`;
@@ -838,7 +960,7 @@ window.downloadMarkdown = function() {
             }
         }
 
-        triggerDownload(md, "verus-specs.md", "text/markdown;charset=utf-8");
+        triggerDownload(md, `${downloadFilenameSuffix()}.md`, "text/markdown;charset=utf-8");
     } catch (e) {
         console.error("Download MD failed:", e);
         alert("Download failed — see console for details.");
@@ -847,6 +969,9 @@ window.downloadMarkdown = function() {
 
 window.downloadCSV = function() {
     try {
+        const filteredLeft = getFilteredVerified();
+        const filteredRight = getFilteredSpecs();
+
         const esc = v => {
             if (v == null) return "";
             const s = String(v).replace(/"/g, '""');
@@ -855,20 +980,20 @@ window.downloadCSV = function() {
 
         let csv = "category,name,module,math_interpretation,informal_interpretation,code\n";
 
-        for (const fn of verifiedFunctions) {
+        for (const fn of filteredLeft) {
             csv += [
-                esc("contract"), esc(fn.name), esc(fn.module),
+                esc("contract"), esc(fn.display_name || fn.name), esc(fn.module),
                 esc(""), esc(fn.informal_interpretation), esc(fn.contract)
             ].join(",") + "\n";
         }
-        for (const s of specFunctions) {
+        for (const s of filteredRight) {
             csv += [
                 esc(s.category || "spec"), esc(s.name), esc(s.module),
                 esc(s.math_interpretation), esc(s.informal_interpretation), esc(s.body)
             ].join(",") + "\n";
         }
 
-        triggerDownload(csv, "verus-specs.csv", "text/csv;charset=utf-8");
+        triggerDownload(csv, `${downloadFilenameSuffix()}.csv`, "text/csv;charset=utf-8");
     } catch (e) {
         console.error("Download CSV failed:", e);
         alert("Download failed — see console for details.");

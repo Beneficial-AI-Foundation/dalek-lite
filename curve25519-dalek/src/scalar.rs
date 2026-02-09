@@ -2480,7 +2480,6 @@ impl Scalar {
             </ORIGINAL CODE> */
         for i in 0..32
             invariant
-                self.bytes[31] <= 127,
                 // Assigned entries: nibbles of processed bytes (pair relationship)
                 forall|j: int|
                     #![trigger output[2 * j], output[2 * j + 1]]
@@ -2490,8 +2489,6 @@ impl Scalar {
                 forall|j: int| 0 <= j < 2 * i ==> 0 <= #[trigger] output[j] && output[j] <= 15,
                 // Unassigned entries are still zero
                 forall|j: int| 2 * i <= j < 64 ==> #[trigger] output[j] == 0,
-                // Track output[63] specifically: after processing byte 31, it's <= 7
-                i == 32 ==> output[63] <= 7,
         {
             output[2 * i] = bot_half(self.bytes[i]) as i8;
             output[2 * i + 1] = top_half(self.bytes[i]) as i8;
@@ -2499,26 +2496,31 @@ impl Scalar {
                 // Nibble identity: byte == (byte % 16) + 16 * (byte / 16)
                 let b = self.bytes[i as int];
                 assert((b as u8) == (b as u8) % 16 + 16 * ((b as u8) / 16)) by (bit_vector);
-                // bytes[31] <= 127 implies bytes[31] / 16 <= 7, so output[63] <= 7
-                if i == 31 {
-                    assert(self.bytes[31] <= 127);
-                    assert(output[63] <= 7);
-                }
             }
         }
-        // Establish the reconstruction property after loop 1
         proof {
+            // output[63] <= 7: from nibble identity at j=31 and precondition bytes[31] <= 127
+            // Trigger the quantifier for j=31: output[2*31] and output[2*31+1]
+            let j: int = 31;
+            assert(output[2 * j] as int + 16 * (output[2 * j + 1] as int) == self.bytes[j]
+                as int);
+            assert(output[2 * j] >= 0);
+            assert(self.bytes[31] <= 127);
+            assert(output[63] <= 7) by (nonlinear_arith)
+                requires
+                    output[62] >= 0i8,
+                    output[62] as int + 16 * (output[63] as int) <= 127,
+            ;
+
+            // Establish the reconstruction property
             lemma_bytes32_to_radix16_nibbles(output, self.bytes);
         }
-        let ghost recon_val: int = reconstruct_radix_16(output@);
 
         // Step 2: recenter coefficients from [0,16) to [-8,8)
         for i in 0..63
             invariant
-                self.bytes[31] <= 127,
                 // Reconstruction is preserved through carry operations
-                reconstruct_radix_16(output@) == recon_val,
-                recon_val == scalar_to_nat(self) as int,
+                reconstruct_radix_16(output@) == scalar_to_nat(self) as int,
                 // Recentered prefix: digits 0..i are in [-8, 8)
                 forall|j: int| 0 <= j < i ==> -8 <= #[trigger] output[j] && output[j] < 8,
                 // Current entry: could have received carry from previous iteration

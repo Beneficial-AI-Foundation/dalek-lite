@@ -110,8 +110,6 @@ pub proof fn lemma_carry_preserves_reconstruction(
     ensures
         reconstruct_radix_2w(new_digits, w) == reconstruct_radix_2w(old_digits, w),
 {
-    let n = old_digits.len();
-
     // Split both at position i
     lemma_reconstruct_radix_2w_split(old_digits, i, w);
     lemma_reconstruct_radix_2w_split(new_digits, i, w);
@@ -289,6 +287,52 @@ proof fn lemma_nibbles_equal_bytes_prefix(output: Seq<i8>, bytes: Seq<u8>, k: na
             lemma_mul_is_associative(4, 2, km1 as int);
         }
     }
+}
+
+// =============================================================================
+// Lemma: Valid radix-16 implies bounded digits
+// =============================================================================
+/// Lemma: is_valid_radix_16 implies radix_16_all_bounded
+///
+/// is_valid_radix_16 gives tighter bounds (-8 <= d < 8 for non-last, -8 <= d <= 8 for last)
+/// but radix_16_all_bounded (-8 <= d <= 8 for all) is still implied.
+pub proof fn lemma_valid_radix_16_implies_all_bounded(digits: [i8; 64])
+    requires
+        is_valid_radix_16(&digits),
+    ensures
+        radix_16_all_bounded(&digits),
+{
+    // Expand the definitions:
+    //
+    // - is_valid_radix_16(digits) = is_valid_radix_2w(digits, 4, 64)
+    // - is_valid_radix_2w gives, for each i in [0, 64):
+    //     -8 <= digits[i] and (digits[i] < 8) for i < 63, while (digits[63] <= 8)
+    // This implies the simpler predicate radix_16_all_bounded(digits):
+    //     forall i in [0, 64): -8 <= digits[i] <= 8
+    // `is_valid_radix_16(digits)` is `is_valid_radix_2w(digits, 4, 64)`.
+    assert(is_valid_radix_2w(&digits, 4, 64));
+
+    // Prove the pointwise bound `-8 <= digits[i] <= 8` for all i in [0, 64).
+    assert forall|i: int| 0 <= i < 64 implies radix_16_digit_bounded(#[trigger] digits[i]) by {
+        // From `is_valid_radix_2w(digits, 4, 64)` we get:
+        // - for i < 63: -8 <= digits[i] < 8
+        // - for i = 63: -8 <= digits[i] <= 8
+        //
+        // because bound = pow2(w-1) = pow2(3) = 8.
+        assert(pow2(3) == 8) by {
+            vstd::arithmetic::power2::lemma2_to64();
+        }
+        if i < 63 {
+            assert(-8 <= digits[i] && digits[i] < 8);
+            // Strengthen `< 8` to `<= 8`.
+            assert(digits[i] <= 8);
+        } else {
+            assert(i == 63);
+            assert(-8 <= digits[i] && digits[i] <= 8);
+        }
+    }
+
+    assert(radix_16_all_bounded(&digits));
 }
 
 } // verus!

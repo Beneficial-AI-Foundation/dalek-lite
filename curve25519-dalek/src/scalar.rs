@@ -183,9 +183,6 @@ use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*;
 use crate::lemmas::scalar_lemmas_::radix16_lemmas::*;
 
 #[allow(unused_imports)]
-use crate::lemmas::edwards_lemmas::mul_base_lemmas::*;
-
-#[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
 
 #[allow(unused_imports)]
@@ -2494,7 +2491,7 @@ impl Scalar {
                 // Unassigned entries are still zero
                 forall|j: int| 2 * i <= j < 64 ==> #[trigger] output[j] == 0,
                 // Track output[63] specifically: after processing byte 31, it's <= 7
-                i > 31 ==> output[63] <= 7,
+                i == 32 ==> output[63] <= 7,
         {
             output[2 * i] = bot_half(self.bytes[i]) as i8;
             output[2 * i + 1] = top_half(self.bytes[i]) as i8;

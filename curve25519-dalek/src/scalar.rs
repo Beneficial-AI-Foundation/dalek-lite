@@ -2480,7 +2480,8 @@ impl Scalar {
             </ORIGINAL CODE> */
         for i in 0..32
             invariant
-                // Assigned entries: nibbles of processed bytes (pair relationship)
+        // Assigned entries: nibbles of processed bytes (pair relationship)
+
                 forall|j: int|
                     #![trigger output[2 * j], output[2 * j + 1]]
                     0 <= j < i ==> output[2 * j] as int + 16 * (output[2 * j + 1] as int)
@@ -2502,8 +2503,7 @@ impl Scalar {
             // output[63] <= 7: from nibble identity at j=31 and precondition bytes[31] <= 127
             // Trigger the quantifier for j=31: output[2*31] and output[2*31+1]
             let j: int = 31;
-            assert(output[2 * j] as int + 16 * (output[2 * j + 1] as int) == self.bytes[j]
-                as int);
+            assert(output[2 * j] as int + 16 * (output[2 * j + 1] as int) == self.bytes[j] as int);
             assert(output[2 * j] >= 0);
             assert(self.bytes[31] <= 127);
             assert(output[63] <= 7) by (nonlinear_arith)
@@ -2519,7 +2519,8 @@ impl Scalar {
         // Step 2: recenter coefficients from [0,16) to [-8,8)
         for i in 0..63
             invariant
-                // Reconstruction is preserved through carry operations
+        // Reconstruction is preserved through carry operations
+
                 reconstruct_radix_16(output@) == scalar_to_nat(self) as int,
                 // Recentered prefix: digits 0..i are in [-8, 8)
                 forall|j: int| 0 <= j < i ==> -8 <= #[trigger] output[j] && output[j] < 8,

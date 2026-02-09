@@ -1091,7 +1091,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         !is_equal_to_minus_one(spec_montgomery(result)),
 {
     let one = FieldElement::ONE;
-    let zero = FieldElement::ZERO;
+    let zero = FieldElement::ZERO;  // moved from after sqrt_ratio_i for proof block access
     proof {
         // Constant limb bounds
         lemma_one_limbs_bounded_51();
@@ -1105,7 +1105,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         lemma_fe51_limbs_bounded_weaken(r_0, 51, 54);
     }
 
-    // ORIGINAL CODE: let d_1 = &one + &r_0.square2(); // 2r^2
+    /* ORIGINAL CODE: let d_1 = &one + &r_0.square2(); */
     let r_0_sq2 = r_0.square2();
     proof {
         assert(fe51_limbs_bounded(&r_0_sq2, 53));  // from square2 postcondition
@@ -1128,6 +1128,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
             lemma_fe51_limbs_bounded_weaken(&MONTGOMERY_A_NEG, 51, 54);
         }
     }
+    /* ORIGINAL CODE: let d = &MONTGOMERY_A_NEG * &(d_1.invert()); */
     let d_1_inv = d_1.invert();
     let d = &MONTGOMERY_A_NEG * &d_1_inv;  // (-A)/(1+2r^2)
     proof {
@@ -1136,12 +1137,10 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         }
     }
 
-    // ORIGINAL CODE: let d_sq = &d.square();
-    // VERIFICATION NOTE: keep `d_sq` as a reference; avoid writing `&d_sq` in proofs (Verus doesn't always coerce &&T to &T).
     let d_sq = &d.square();
     let au = &MONTGOMERY_A * &d;
 
-    // ORIGINAL CODE: let inner = &(d_sq + &au) + &one;
+    /* ORIGINAL CODE: let inner = &(d_sq + &au) + &one; */
     proof {
         assert(sum_of_limbs_bounded(d_sq, &au, u64::MAX)) by {
             lemma_fe51_limbs_bounded_weaken(d_sq, 52, 54);
@@ -1179,6 +1178,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     }
     let (eps_is_sq, _eps) = FieldElement::sqrt_ratio_i(&eps, &one);
 
+    /* ORIGINAL CODE: let Atemp = FieldElement::conditional_select(&MONTGOMERY_A, &zero, eps_is_sq); */
     let Atemp = conditional_select_field_element(&MONTGOMERY_A, &zero, eps_is_sq);  // 0, or A if nonsquare
 
     proof {
@@ -1198,7 +1198,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     let mut u = &d + &Atemp;  // d, or d+A if nonsquare
     let ghost u_pre = u;
 
-    // ORIGINAL CODE: u.conditional_negate(!eps_is_sq);
+    /* ORIGINAL CODE: u.conditional_negate(!eps_is_sq); */
     let neg_choice = choice_not(eps_is_sq);
     proof {
         assert(fe51_limbs_bounded(&u, 54)) by {
@@ -1210,6 +1210,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     }
     conditional_negate_field_element(&mut u, neg_choice);  // d, or -d-A if nonsquare
 
+    /* ORIGINAL CODE: MontgomeryPoint(u.as_bytes()) */
     let result = MontgomeryPoint(u.as_bytes());
 
     proof {
@@ -1217,7 +1218,9 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         let A = spec_field_element(&MONTGOMERY_A);
 
         // ---------------------------------------------------------------------
-        // Step 0: relate intermediate exec values to spec-level math
+        // Step 0: Bridge exec variables to spec-level math expressions.
+        //   Show each intermediate FieldElement (r_0_sq2, d_1, d, d_sq, au,
+        //   inner, eps) equals its counterpart in spec_elligator_encode.
         // ---------------------------------------------------------------------
         // r_0_sq2 matches 2*r^2
         assert(spec_field_element(&r_0_sq2) == math_field_mul(2, math_field_square(r))) by {
@@ -1285,7 +1288,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
             ));
             // MONTGOMERY_A_NEG encodes -A:
             assert(spec_field_element(&MONTGOMERY_A_NEG) == math_field_neg(A)) by {
-                lemma_montgomery_a_neg_is_neg_a();
+                axiom_montgomery_a_neg_is_neg_a();
             }
             // Replace d_1 with denom (asserted above).
             assert(spec_field_element(&d_1) == math_field_add(
@@ -1333,7 +1336,10 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         let eps_nat = spec_field_element(&eps);
 
         // ---------------------------------------------------------------------
-        // Step 1: connect sqrt_ratio_i boolean to math_is_square(eps)
+        // Step 1: Prove choice_is_true(eps_is_sq) <==> math_is_square(eps).
+        //   The exec code branches on the Choice from sqrt_ratio_i, but
+        //   spec_elligator_encode branches on math_is_square. This equivalence
+        //   lets Steps 2-3 align the exec branches with the spec branches.
         // ---------------------------------------------------------------------
         assert(choice_is_true(eps_is_sq) <==> math_is_square(eps_nat)) by {
             let v_nat = spec_field_element(&one);
@@ -1423,7 +1429,9 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         }
 
         // ---------------------------------------------------------------------
-        // Step 2: compute spec value of u after select+negate
+        // Step 2: Derive the spec value of u after conditional_select + negate.
+        //   u = d when eps is square, u = -(d+A) otherwise — matching
+        //   the two branches of spec_elligator_encode.
         // ---------------------------------------------------------------------
         assert(spec_field_element(&u) == if choice_is_true(eps_is_sq) {
             spec_field_element(&d)
@@ -1479,7 +1487,9 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         }
 
         // ---------------------------------------------------------------------
-        // Step 3: bridge MontgomeryPoint encoding and finish postconditions
+        // Step 3: Encode u into MontgomeryPoint bytes and prove postconditions.
+        //   Show spec_montgomery(result) == spec_elligator_encode(r),
+        //   result < p(), and result != -1 (for safe to_edwards conversion).
         // ---------------------------------------------------------------------
         let u_bytes = result.0;
         assert(spec_montgomery(result) == spec_field_element(&u)) by {

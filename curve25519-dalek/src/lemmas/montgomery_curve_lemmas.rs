@@ -814,7 +814,7 @@ proof fn lemma_montgomery_a_value()
 /// MONTGOMERY_A_NEG represents math_field_neg(A) where A = 486662.
 /// Its limbs encode p - 486662 in the 51-bit representation.
 /// Verified by runtime test `test_montgomery_a_neg_value`.
-pub proof fn lemma_montgomery_a_neg_is_neg_a()
+pub proof fn axiom_montgomery_a_neg_is_neg_a()
     ensures
         spec_field_element(&MONTGOMERY_A_NEG) == math_field_neg(spec_field_element(&MONTGOMERY_A)),
 {

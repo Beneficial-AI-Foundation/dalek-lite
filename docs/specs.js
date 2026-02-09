@@ -42,7 +42,7 @@ let verifiedFunctions = [];
 let specFunctions = [];
 let specLookup = {};              // specName -> spec object
 
-let activeModule = null;          // module filter from sidebar
+let activeModules = new Set();    // module filter — empty = show all
 let filterPublic = false;         // toggle: show only public functions
 let filterLibsignal = false;      // toggle: show only libsignal-used functions
 let searchLeft = "";              // search in left panel
@@ -154,11 +154,6 @@ let attrPillLibsignal = null;
 function buildModuleTree(modules) {
     const container = document.getElementById("moduleTree");
 
-    const allPill = createModulePill("All", verifiedFunctions.length, null);
-    allPill.el.classList.add("active");
-    container.appendChild(allPill.el);
-    modulePills.push(allPill);
-
     const sorted = [...modules].sort();
     for (const mod of sorted) {
         const count = verifiedFunctions.filter(v => v.module === mod).length;
@@ -177,9 +172,13 @@ function createModulePill(displayName, count, moduleId) {
     `;
     const countEl = el.querySelector(".pill-count");
     el.addEventListener("click", () => {
-        document.querySelectorAll(".module-pill").forEach(m => m.classList.remove("active"));
-        el.classList.add("active");
-        activeModule = moduleId;
+        if (activeModules.has(moduleId)) {
+            activeModules.delete(moduleId);
+            el.classList.remove("active");
+        } else {
+            activeModules.add(moduleId);
+            el.classList.add("active");
+        }
         renderLeftPanel();
     });
     return { el, moduleId, countEl };
@@ -227,25 +226,17 @@ function updateFilterCounts() {
     if (filterLibsignal) attrFiltered = attrFiltered.filter(v => v.is_libsignal);
 
     for (const pill of modulePills) {
-        let cnt;
-        if (pill.moduleId === null) {
-            cnt = attrFiltered.length;
-        } else {
-            cnt = attrFiltered.filter(v => v.module === pill.moduleId).length;
-        }
+        const cnt = attrFiltered.filter(v => v.module === pill.moduleId).length;
         pill.countEl.textContent = cnt;
-        // Hide module pills with 0 matches (but always show "All")
-        if (pill.moduleId !== null) {
-            pill.el.style.display = cnt === 0 ? "none" : "";
-        }
+        // Hide module pills with 0 matches
+        pill.el.style.display = cnt === 0 ? "none" : "";
     }
 
-    // Base list filtered by module (for attribute pills)
+    // Base list filtered by active modules (for attribute pills)
     let modFiltered = verifiedFunctions;
-    if (activeModule) modFiltered = modFiltered.filter(v => v.module === activeModule);
+    if (activeModules.size > 0) modFiltered = modFiltered.filter(v => activeModules.has(v.module));
 
     if (attrPillPublic) {
-        // If libsignal is also active, apply it before counting public
         let base = modFiltered;
         if (filterLibsignal) base = base.filter(v => v.is_libsignal);
         attrPillPublic.countEl.textContent = base.filter(v => v.is_public).length;
@@ -260,8 +251,8 @@ function updateFilterCounts() {
 // ── Left panel: tracked functions ────────────────────────────
 function getFilteredVerified() {
     let list = verifiedFunctions;
-    if (activeModule) {
-        list = list.filter(v => v.module === activeModule);
+    if (activeModules.size > 0) {
+        list = list.filter(v => activeModules.has(v.module));
     }
     if (filterPublic) {
         list = list.filter(v => v.is_public);
@@ -912,7 +903,9 @@ function triggerDownload(content, filename, mime) {
  */
 function downloadFilenameSuffix() {
     const parts = ["verus-specs"];
-    if (activeModule) parts.push(activeModule.replace(/::/g, "-"));
+    if (activeModules.size > 0) {
+        parts.push([...activeModules].sort().map(m => m.replace(/::/g, "-")).join("+"));
+    }
     if (filterPublic) parts.push("public");
     if (filterLibsignal) parts.push("libsignal");
     return parts.join("-");

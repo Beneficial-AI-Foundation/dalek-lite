@@ -95,8 +95,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const withSpecsCount = verifiedFunctions.filter(v => v.has_spec).length;
     const publicCount = verifiedFunctions.filter(v => v.is_public).length;
     const libsignalCount = verifiedFunctions.filter(v => v.is_libsignal).length;
+    // Count unique spec functions referenced across all contracts
+    const allRefs = new Set();
+    for (const fn of verifiedFunctions) {
+        for (const r of (fn.referenced_specs || [])) allRefs.add(r);
+    }
     document.getElementById("totalFunctions").textContent = verifiedFunctions.length;
-    document.getElementById("totalSpecs").textContent = specOnlyCount;
+    document.getElementById("totalSpecs").textContent = allRefs.size;
     document.getElementById("totalAxioms").textContent = axiomCount;
 
     // Build module pills and attribute filter pills

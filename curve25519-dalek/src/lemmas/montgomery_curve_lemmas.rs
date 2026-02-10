@@ -20,6 +20,7 @@
 use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
@@ -955,6 +956,22 @@ proof fn axiom_nonsquare_branch_r_sq(A: nat, d: nat, d_denom: nat, r_sq: nat)
     admit();
 }
 
+// =============================================================================
+// EDWARDS → MONTGOMERY MAP AXIOMS
+// =============================================================================
+/// Axiom: The Edwards-to-Montgomery map sends valid Edwards points to valid Montgomery u-coordinates.
+///
+/// If (x, y) is on the twisted Edwards curve -x² + y² = 1 + d·x²·y²,
+/// then u = (1+y)/(1-y) satisfies u³ + Au² + u being a quadratic residue (mod p).
+pub proof fn axiom_edwards_to_montgomery_preserves_validity(x: nat, y: nat)
+    requires
+        math_on_edwards_curve(x, y),
+    ensures
+        is_valid_u_coordinate(montgomery_u_from_edwards_y(y)),
+{
+    admit();
+}
+
 /// Elligator2 encoding never produces u = -1 (mod p).
 ///
 /// Proof by contradiction in each branch of `spec_elligator_encode`:
@@ -1034,6 +1051,39 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
             assert(false);
         }
     }
+}
+
+/// Axiom: The Ed25519 basepoint maps to the X25519 basepoint under the Edwards-to-Montgomery map.
+///
+/// The map φ: Edwards → Montgomery sends (x, y) to u = (1+y)/(1-y).
+/// For the Ed25519 basepoint B with affine y-coordinate y_B, we have φ(B).u = u_B.
+pub proof fn axiom_edwards_basepoint_maps_to_montgomery_basepoint()
+    ensures
+        montgomery_u_from_edwards_y(spec_ed25519_basepoint().1) == spec_x25519_basepoint_u(),
+{
+    admit();
+}
+
+/// Axiom: The Edwards-to-Montgomery map commutes with scalar multiplication.
+///
+/// The map φ: Edwards → Montgomery is a group homomorphism:
+///   φ([n]P_ed).u = [n](φ(P_ed).u)
+///
+/// Additionally ensures scalar multiplication preserves the curve (closure).
+pub proof fn axiom_edwards_to_montgomery_commutes_with_scalar_mul(x: nat, y: nat, n: nat)
+    requires
+        math_on_edwards_curve(x, y),
+    ensures
+// Scalar multiplication preserves the Edwards curve
+
+        math_on_edwards_curve(edwards_scalar_mul((x, y), n).0, edwards_scalar_mul((x, y), n).1),
+        // The Edwards-to-Montgomery map commutes with scalar multiplication
+        montgomery_u_from_edwards_y(edwards_scalar_mul((x, y), n).1) == montgomery_scalar_mul_u(
+            montgomery_u_from_edwards_y(y),
+            n,
+        ),
+{
+    admit();
 }
 
 } // verus!

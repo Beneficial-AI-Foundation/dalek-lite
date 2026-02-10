@@ -96,15 +96,17 @@ pub proof fn axiom_ed25519_basepoint_canonical()
     admit();
 }
 
-/// Proof: The basepoint is on the Edwards curve
-/* SEE IF WE NEED THIS
-pub proof fn lemma_basepoint_on_curve()
+/// Axiom: The Ed25519 basepoint is on the Edwards curve.
+///
+/// The basepoint (x, y) satisfies -x² + y² = 1 + d·x²·y² (mod p).
+/// This is verified by the `test_basepoint_on_curve` test below.
+pub proof fn axiom_basepoint_on_curve()
     ensures
         math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1),
 {
-    assume(math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1));
+    admit();
 }
-*/
+
 // =============================================================================
 // EdwardsBasepointTable Specification
 // =============================================================================
@@ -224,6 +226,35 @@ mod eight_torsion_tests {
                 i
             );
         }
+    }
+}
+
+/// Test that the Ed25519 basepoint satisfies the curve equation.
+/// Validates axiom_basepoint_on_curve() by computing:
+///   -x² + y² ≡ 1 + d·x²·y² (mod p)
+#[cfg(test)]
+mod basepoint_on_curve_tests {
+    use super::*;
+    use crate::backend::serial::u64::field::FieldElement51;
+    use crate::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
+
+    #[test]
+    fn test_basepoint_on_curve() {
+        // Extract affine coordinates: x = X/Z, y = Y/Z
+        let z_inv = ED25519_BASEPOINT_POINT.Z.invert();
+        let x = &ED25519_BASEPOINT_POINT.X * &z_inv;
+        let y = &ED25519_BASEPOINT_POINT.Y * &z_inv;
+
+        // Compute curve equation: -x² + y² = 1 + d·x²·y²
+        let x2 = x.square();
+        let y2 = y.square();
+        let x2y2 = &x2 * &y2;
+        let dx2y2 = &EDWARDS_D * &x2y2;
+
+        let lhs = &y2 - &x2; // y² - x² (= -x² + y²)
+        let rhs = &FieldElement51::ONE + &dx2y2; // 1 + d·x²·y²
+
+        assert_eq!(lhs, rhs, "Basepoint does not satisfy curve equation");
     }
 }
 

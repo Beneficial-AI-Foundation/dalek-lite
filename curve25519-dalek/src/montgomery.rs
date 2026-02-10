@@ -60,6 +60,12 @@ use crate::core_assumes::zeroize_bool;
 use crate::core_assumes::*;
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::bits_to_nat_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 use crate::scalar::{clamp_integer, Scalar};
 #[allow(unused_imports)]
 use crate::specs::core_specs::*;
@@ -348,11 +354,16 @@ impl MontgomeryPoint {
         // Further, we don't do any reduction or arithmetic with this clamped value, so there's no
         // issues arising from the fact that the curve point is not necessarily in the prime-order
         // subgroup.
-        let s = Scalar { bytes: clamp_integer(bytes) };
-        let result = s * self;
+        let clamped = clamp_integer(bytes);
+        let s = Scalar { bytes: clamped };
+        let result = &self * &s;
         proof {
-            // postcondition
-            assume({
+            // Prove the postcondition using:
+            // - `clamp_integer` ensures `clamped == spec_clamp_integer(bytes)`
+            // - `&MontgomeryPoint * &Scalar` ensures multiplication by `scalar_as_nat(&s)`
+            assert(clamped == spec_clamp_integer(bytes));
+            assert(scalar_as_nat(&s) == u8_32_as_nat(&spec_clamp_integer(bytes)));
+            assert({
                 let P = canonical_montgomery_lift(spec_montgomery(self));
                 let clamped_bytes = spec_clamp_integer(bytes);
                 let n = u8_32_as_nat(&clamped_bytes);
@@ -2410,6 +2421,7 @@ impl Mul<&Scalar> for &MontgomeryPoint {
 
     /// Given `self` \\( = u\_0(P) \\), and a `Scalar` \\(n\\), return \\( u\_0(\[n\]P) \\)
     ///
+    #[verifier::rlimit(40)]
     fn mul(self, scalar: &Scalar) -> (result: MontgomeryPoint)
         ensures
     // The canonical Montgomery lift point P corresponding to this u-coordinate
@@ -2432,20 +2444,67 @@ impl Mul<&Scalar> for &MontgomeryPoint {
         let mut bits_be = [false;255];
         let mut i = 0;
         while i < 255
+            invariant
+                i <= 255,
+                forall|j: int| 0 <= j < i as int ==> bits_be[j] == bits_le[254 - j],
             decreases 255 - i,
         {
             bits_be[i] = bits_le[254 - i];
             i += 1;
         }
+        let bits_be_slice: &[bool] = &bits_be;
+        /* ORIGINAL CODE:
         let result = self.mul_bits_be(&bits_be);
+        */
+        let result = self.mul_bits_be(bits_be_slice);
         proof {
-            // postcondition: multiplication by unreduced scalar value using canonical lift
-            assume({
-                let P = canonical_montgomery_lift(spec_montgomery(*self));
-                let n_unreduced = scalar_as_nat(scalar);
-                let R = montgomery_scalar_mul(P, n_unreduced);
-                spec_montgomery(result) == spec_u_coordinate(R)
-            });
+            // Show that the 255-bit slice `bits_be` represents the same integer as `scalar`.
+            // We rely on scalar invariant #1 (MSB is clear), i.e. scalar.bytes[31] <= 127.
+            assert(scalar.bytes[31] <= 127);
+
+            let scalar_bytes = &scalar.bytes;
+            lemma_u8_32_as_nat_lt_pow2_255(scalar_bytes);
+            assert(bits_as_nat(&bits_le) == u8_32_as_nat(scalar_bytes));
+            assert(bits_as_nat(&bits_le) < pow2(255));
+
+            lemma_bits_as_nat_lt_pow2_255_implies_msb_false(&bits_le);
+            assert(!bits_le[255]);
+
+            assert(bits_be_slice.len() == 255);
+            assert(bits_be_slice.len() as int == 255);
+            assert(i == 255);
+            assert(forall|j: int| 0 <= j < 255 ==> #[trigger] bits_be_slice[j] == bits_le[254 - j])
+                by {
+                assert(forall|j: int| 0 <= j < i as int ==> bits_be[j] == bits_le[254 - j]);
+            }
+
+            // Interpret the big-endian bits as a nat.
+            lemma_bits_be_as_nat_eq_bits_from_index(&bits_le, bits_be_slice, 255);
+            let n = bits_be_as_nat(bits_be_slice, bits_be_slice.len() as int);
+            assert(n == bits_be_as_nat(bits_be_slice, 255));
+            assert(n == bits_from_index_to_nat(&bits_le, 0, 255));
+
+            // Since the MSB is 0, the 255-bit view equals the full 256-bit value.
+            lemma_bits_as_nat_eq_bits_from_index(&bits_le);
+            lemma_bits_from_index_to_nat_split_last(&bits_le, 0, 255);
+            assert((if bits_le[255] {
+                1nat
+            } else {
+                0nat
+            }) == 0nat);
+            assert(bits_from_index_to_nat(&bits_le, 0, 256) == bits_from_index_to_nat(
+                &bits_le,
+                0,
+                255,
+            ));
+            assert(bits_as_nat(&bits_le) == bits_from_index_to_nat(&bits_le, 0, 256));
+            assert(bits_as_nat(&bits_le) == bits_from_index_to_nat(&bits_le, 0, 255));
+
+            // Conclude the scalar value matches the bits interpreted by mul_bits_be.
+            assert(n == scalar_as_nat(scalar)) by {
+                assert(scalar_as_nat(scalar) == u8_32_as_nat(scalar_bytes));
+                assert(n == bits_as_nat(&bits_le));
+            }
         }
         result
     }
@@ -2455,6 +2514,7 @@ impl MulAssign<&Scalar> for MontgomeryPoint {
     fn mul_assign(&mut self, scalar: &Scalar)
         requires
             is_valid_montgomery_point(*old(self)),
+            scalar.bytes[31] <= 127,
         ensures
     // Result represents [n]old(self) where n is the UNREDUCED scalar value
     // Uses canonical Montgomery lift

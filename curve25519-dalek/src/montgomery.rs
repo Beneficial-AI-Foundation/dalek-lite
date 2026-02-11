@@ -75,9 +75,9 @@ use crate::specs::montgomery_specs::*;
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
-// Explicit import to disambiguate from core_specs::bits_be_to_nat
+// Explicit import to disambiguate from core_specs::bits_be_as_nat
 #[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::bits_be_to_nat;
+use crate::specs::scalar_specs::bits_be_as_nat;
 
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
@@ -426,7 +426,7 @@ impl MontgomeryPoint {
             ({
                 // Let P be the canonical affine lift of input u-coordinate
                 let P = canonical_montgomery_lift(spec_montgomery(*self));
-                let n = bits_be_to_nat(bits, bits@.len() as int);
+                let n = bits_be_as_nat(bits, bits@.len() as int);
                 let R = montgomery_scalar_mul(P, n);
 
                 // result encodes u([n]P)
@@ -477,7 +477,7 @@ impl MontgomeryPoint {
             assert(is_valid_u_coordinate(fe51_as_canonical_nat(&affine_u)));
 
             // Scalar invariant at i = 0: k = 0
-            assert(bits_be_to_nat(bits, 0) == 0);
+            assert(bits_be_as_nat(bits, 0) == 0);
             assert(spec_projective_u_coordinate(x0) == 0);
             assert(spec_u_coordinate(montgomery_scalar_mul(P, 0)) == 0);
             assert(spec_projective_u_coordinate(x1) == u0) by {
@@ -605,7 +605,7 @@ impl MontgomeryPoint {
                         &&& spec_projective_u_coordinate(x1) == 0
                     } else {
                         let P = canonical_montgomery_lift(u0);
-                        let k = bits_be_to_nat(bits, i as int);
+                        let k = bits_be_as_nat(bits, i as int);
                         montgomery_ladder_invariant(x0, x1, P, k, prev_bit)
                     }
                 }),
@@ -624,7 +624,7 @@ impl MontgomeryPoint {
             conditional_swap_montgomery_projective(&mut x0, &mut x1, swap_choice);
             proof {
                 let u0 = spec_montgomery(*self);
-                let k = bits_be_to_nat(bits, i as int);
+                let k = bits_be_as_nat(bits, i as int);
 
                 // Connect affine_u to u0
                 assert(fe51_as_canonical_nat(&affine_u) == u0);
@@ -725,7 +725,7 @@ impl MontgomeryPoint {
                 let u0 = spec_montgomery(*self);
                 if u0 != 0 {
                     let P = canonical_montgomery_lift(u0);
-                    let k = bits_be_to_nat(bits, i as int);
+                    let k = bits_be_as_nat(bits, i as int);
                     // After the conditional swap, (x0, x1) satisfy ladder_invariant with `cur_bit`.
                     assert(montgomery_ladder_invariant(x0, x1, P, k, cur_bit));
                     reveal(montgomery_ladder_invariant);
@@ -760,7 +760,7 @@ impl MontgomeryPoint {
                 // Re-establish the full loop invariant for the next iteration.
                 let u0 = spec_montgomery(*self);
                 let P = canonical_montgomery_lift(u0);
-                let k = bits_be_to_nat(bits, (i - 1) as int);
+                let k = bits_be_as_nat(bits, (i - 1) as int);
 
                 let base = canonical_montgomery_lift(fe51_as_canonical_nat(&affine_u));
                 assert(base == P);
@@ -802,16 +802,16 @@ impl MontgomeryPoint {
                     }
                 }
 
-                // bits_be_to_nat update: k_next = 2*k + b
+                // bits_be_as_nat update: k_next = 2*k + b
                 let b = if cur_bit {
                     1nat
                 } else {
                     0nat
                 };
-                assert(bits_be_to_nat(bits, i as int) == b + 2nat * k);
+                assert(bits_be_as_nat(bits, i as int) == b + 2nat * k);
                 // Re-establish ladder_invariant at the updated k (i has been incremented) and prev_bit.
                 if u0 != 0 {
-                    let k_next = bits_be_to_nat(bits, i as int);
+                    let k_next = bits_be_as_nat(bits, i as int);
                     // k_next == 2*k + b
                     assert(k_next == b + 2nat * k);
                     reveal(montgomery_ladder_invariant);
@@ -885,7 +885,7 @@ impl MontgomeryPoint {
             // After the final conditional swap, x0 encodes u([n]P) where n is the full bitstring.
             let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
-            let n = bits_be_to_nat(bits, bits@.len() as int);
+            let n = bits_be_as_nat(bits, bits@.len() as int);
 
             // Connect saved_prev_bit to final_swap_choice.
             // From Choice::from spec: (u == 1) == choice_is_true(Choice::from(u))
@@ -968,7 +968,7 @@ impl MontgomeryPoint {
             // Discharge the function postcondition.
             let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
-            let n = bits_be_to_nat(bits, bits@.len() as int);
+            let n = bits_be_as_nat(bits, bits@.len() as int);
             // as_affine returns the affine u-coordinate of x0
             assert(spec_montgomery(result) == spec_projective_u_coordinate(x0));
             // From loop invariant at exit and final conditional swap, x0 encodes u([n]P)
@@ -1215,8 +1215,8 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
     let result = MontgomeryPoint(u.as_bytes());
 
     proof {
-        let r = spec_field_element(r_0);
-        let A = spec_field_element(&MONTGOMERY_A);
+        let r = fe51_as_canonical_nat(r_0);
+        let A = fe51_as_canonical_nat(&MONTGOMERY_A);
 
         // ---------------------------------------------------------------------
         // Step 0: Bridge exec variables to spec-level math expressions.
@@ -1224,29 +1224,29 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         //   inner, eps) equals its counterpart in spec_elligator_encode.
         // ---------------------------------------------------------------------
         // r_0_sq2 matches 2*r^2
-        assert(spec_field_element(&r_0_sq2) == math_field_mul(2, math_field_square(r))) by {
+        assert(fe51_as_canonical_nat(&r_0_sq2) == field_mul(2, field_square(r))) by {
             // square2 postcondition: u64_5_as_nat(r_0_sq2.limbs) % p == 2 * pow(u64_5_as_nat(r0.limbs),2) % p
             let r0_raw = u64_5_as_nat(r_0.limbs);
             let r0_sq_raw = pow(r0_raw as int, 2) as nat;
-            assert(spec_field_element(r_0) == r0_raw % p());
+            assert(fe51_as_canonical_nat(r_0) == r0_raw % p());
 
             // square2 postcondition
             assert(u64_5_as_nat(r_0_sq2.limbs) % p() == (2 * pow(r0_raw as int, 2)) as nat % p());
 
-            // Reduce r0_sq_raw modulo p to math_field_square(r0_raw%p)
-            assert(r0_sq_raw % p() == math_field_square(r0_raw % p())) by {
+            // Reduce r0_sq_raw modulo p to field_square(r0_raw%p)
+            assert(r0_sq_raw % p() == field_square(r0_raw % p())) by {
                 assert(r0_sq_raw % p() == pow(r0_raw as int, 2) as nat % p());
-                lemma_square_matches_math_field_square(r0_raw, r0_sq_raw);
+                lemma_square_matches_field_square(r0_raw, r0_sq_raw);
             }
 
-            // (2 * r0_sq_raw) % p = math_field_mul(2, r0_sq_raw % p)
-            assert((2 * r0_sq_raw) % p() == math_field_mul(2, r0_sq_raw % p())) by {
+            // (2 * r0_sq_raw) % p = field_mul(2, r0_sq_raw % p)
+            assert((2 * r0_sq_raw) % p() == field_mul(2, r0_sq_raw % p())) by {
                 p_gt_2();
                 lemma_mul_mod_noop_general(2, r0_sq_raw as int, p() as int);
                 lemma_small_mod(2nat, p());
             }
 
-            assert(spec_field_element(&r_0_sq2) == u64_5_as_nat(r_0_sq2.limbs) % p());
+            assert(fe51_as_canonical_nat(&r_0_sq2) == u64_5_as_nat(r_0_sq2.limbs) % p());
             // Connect square2's postcondition to our `r0_sq_raw` name.
             assert(u64_5_as_nat(r_0_sq2.limbs) % p() == (2 * r0_sq_raw) % p()) by {
                 // square2 gives: u64_5_as_nat(...) % p == ((2 * pow(r0_raw,2)) as nat) % p
@@ -1262,88 +1262,88 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         }
 
         // d_1 = 1 + 2*r^2
-        assert(spec_field_element(&d_1) == math_field_add(1, spec_field_element(&r_0_sq2))) by {
+        assert(fe51_as_canonical_nat(&d_1) == field_add(1, fe51_as_canonical_nat(&r_0_sq2))) by {
             lemma_one_field_element_value();
-            assert(spec_field_element(&one) == 1);
-            assert(spec_field_element(&d_1) == math_field_add(
-                spec_field_element(&one),
-                spec_field_element(&r_0_sq2),
+            assert(fe51_as_canonical_nat(&one) == 1);
+            assert(fe51_as_canonical_nat(&d_1) == field_add(
+                fe51_as_canonical_nat(&one),
+                fe51_as_canonical_nat(&r_0_sq2),
             ));
         }
-        assert(spec_field_element(&d_1) == math_field_add(
+        assert(fe51_as_canonical_nat(&d_1) == field_add(
             1,
-            math_field_mul(2, math_field_square(r)),
+            field_mul(2, field_square(r)),
         ));
 
         // d = (-A) / (1 + 2*r^2)
-        assert(spec_field_element(&d) == math_field_mul(
-            math_field_neg(A),
-            math_field_inv(math_field_add(1, math_field_mul(2, math_field_square(r)))),
+        assert(fe51_as_canonical_nat(&d) == field_mul(
+            field_neg(A),
+            field_inv(field_add(1, field_mul(2, field_square(r)))),
         )) by {
             // From invert:
-            assert(spec_field_element(&d_1_inv) == math_field_inv(spec_field_element(&d_1)));
+            assert(fe51_as_canonical_nat(&d_1_inv) == field_inv(fe51_as_canonical_nat(&d_1)));
             // From mul:
-            assert(spec_field_element(&d) == math_field_mul(
-                spec_field_element(&MONTGOMERY_A_NEG),
-                spec_field_element(&d_1_inv),
+            assert(fe51_as_canonical_nat(&d) == field_mul(
+                fe51_as_canonical_nat(&MONTGOMERY_A_NEG),
+                fe51_as_canonical_nat(&d_1_inv),
             ));
             // MONTGOMERY_A_NEG encodes -A:
-            assert(spec_field_element(&MONTGOMERY_A_NEG) == math_field_neg(A)) by {
+            assert(fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(A)) by {
                 axiom_montgomery_a_neg_is_neg_a();
             }
             // Replace d_1 with denom (asserted above).
-            assert(spec_field_element(&d_1) == math_field_add(
+            assert(fe51_as_canonical_nat(&d_1) == field_add(
                 1,
-                math_field_mul(2, math_field_square(r)),
+                field_mul(2, field_square(r)),
             ));
         }
 
         // d_sq = d^2
-        assert(spec_field_element(&d_sq) == math_field_square(spec_field_element(&d))) by {
-            // square postcondition is in terms of u64_5_as_nat; bridge to math_field_square
+        assert(fe51_as_canonical_nat(&d_sq) == field_square(fe51_as_canonical_nat(&d))) by {
+            // square postcondition is in terms of u64_5_as_nat; bridge to field_square
             let d_raw = u64_5_as_nat(d.limbs);
             let d_sq_raw = u64_5_as_nat(d_sq.limbs);
-            assert(spec_field_element(&d) == d_raw % p());
+            assert(fe51_as_canonical_nat(&d) == d_raw % p());
             assert(d_sq_raw % p() == pow(d_raw as int, 2) as nat % p());
-            lemma_square_matches_math_field_square(d_raw, d_sq_raw);
+            lemma_square_matches_field_square(d_raw, d_sq_raw);
         }
 
         // au = A * d
-        assert(spec_field_element(&au) == math_field_mul(A, spec_field_element(&d)));
+        assert(fe51_as_canonical_nat(&au) == field_mul(A, fe51_as_canonical_nat(&d)));
 
         // inner = d^2 + A*d + 1
-        assert(spec_field_element(&inner) == math_field_add(
-            math_field_add(spec_field_element(&d_sq), spec_field_element(&au)),
+        assert(fe51_as_canonical_nat(&inner) == field_add(
+            field_add(fe51_as_canonical_nat(&d_sq), fe51_as_canonical_nat(&au)),
             1,
         )) by {
             lemma_one_field_element_value();
-            assert(spec_field_element(&one) == 1);
-            assert(spec_field_element(&d_sq_plus_au) == math_field_add(
-                spec_field_element(&d_sq),
-                spec_field_element(&au),
+            assert(fe51_as_canonical_nat(&one) == 1);
+            assert(fe51_as_canonical_nat(&d_sq_plus_au) == field_add(
+                fe51_as_canonical_nat(&d_sq),
+                fe51_as_canonical_nat(&au),
             ));
-            assert(spec_field_element(&inner) == math_field_add(
-                spec_field_element(&d_sq_plus_au),
-                spec_field_element(&one),
+            assert(fe51_as_canonical_nat(&inner) == field_add(
+                fe51_as_canonical_nat(&d_sq_plus_au),
+                fe51_as_canonical_nat(&one),
             ));
         }
 
         // eps = d * inner
-        assert(spec_field_element(&eps) == math_field_mul(
-            spec_field_element(&d),
-            spec_field_element(&inner),
+        assert(fe51_as_canonical_nat(&eps) == field_mul(
+            fe51_as_canonical_nat(&d),
+            fe51_as_canonical_nat(&inner),
         ));
 
-        let eps_nat = spec_field_element(&eps);
+        let eps_nat = fe51_as_canonical_nat(&eps);
 
         // ---------------------------------------------------------------------
-        // Step 1: Prove choice_is_true(eps_is_sq) <==> math_is_square(eps).
+        // Step 1: Prove choice_is_true(eps_is_sq) <==> is_square(eps).
         //   The exec code branches on the Choice from sqrt_ratio_i, but
-        //   spec_elligator_encode branches on math_is_square. This equivalence
+        //   spec_elligator_encode branches on is_square. This equivalence
         //   lets Steps 2-3 align the exec branches with the spec branches.
         // ---------------------------------------------------------------------
-        assert(choice_is_true(eps_is_sq) <==> math_is_square(eps_nat)) by {
-            let v_nat = spec_field_element(&one);
+        assert(choice_is_true(eps_is_sq) <==> is_square(eps_nat)) by {
+            let v_nat = fe51_as_canonical_nat(&one);
             p_gt_2();
             assert(v_nat == 1) by {
                 lemma_one_field_element_value();
@@ -1352,14 +1352,16 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
             if choice_is_true(eps_is_sq) {
                 // Success: either eps=0 or is_sqrt_ratio(eps, 1, _eps), giving a square witness.
                 if eps_nat == 0 {
-                    assert(math_is_square(eps_nat)) by {
-                        // witness y = 0
-                        assert((0nat * 0nat) % p() == (eps_nat % p()));
+                    assert(is_square(eps_nat)) by {
+                        assert(exists|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(eps_nat)) by {
+                            // witness y = 0
+                            assert(field_mul(0,0) == field_canonical(eps_nat));
+                        }
                     }
                 } else {
-                    assert(is_sqrt_ratio(&eps, &one, &_eps));
-                    let y = spec_field_element(&_eps);
-                    assert((y * y) % p() == (eps_nat % p())) by {
+                    assert(fe51_is_sqrt_ratio(&eps, &one, &_eps));
+                    let y = fe51_as_canonical_nat(&_eps);
+                    assert(field_mul(y, y) == field_canonical(eps_nat)) by {
                         // is_sqrt_ratio with v=1 means y^2 == eps (mod p)
                         assert((y * y * v_nat) % p() == eps_nat);
                         assert(v_nat == 1);
@@ -1370,47 +1372,47 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                         assert(eps_nat < p());
                         lemma_small_mod(eps_nat, p());
                     }
-                    assert(math_is_square(eps_nat)) by {
-                        assert(exists|w: nat| (#[trigger] (w * w) % p()) == (eps_nat % p())) by {
+                    assert(is_square(eps_nat)) by {
+                        assert(exists|w: nat| (#[trigger] field_mul(w, w)) == field_canonical(eps_nat)) by {
                             let w = y;
-                            assert((w * w) % p() == (eps_nat % p()));
+                            assert(field_mul(w, w) == field_canonical(eps_nat));
                         }
                     }
                 }
             } else {
                 // Failure implies eps != 0 (sqrt_ratio_i spec: u==0 => success).
                 assert(eps_nat != 0);
-                assert(is_sqrt_ratio_times_i(&eps, &one, &_eps));
+                assert(fe51_is_sqrt_ratio_times_i(&eps, &one, &_eps));
                 // Show eps is not a quadratic residue: if it had a sqrt, contradiction.
-                assert(!math_is_square(eps_nat)) by {
-                    if math_is_square(eps_nat) {
+                assert(!is_square(eps_nat)) by {
+                    if is_square(eps_nat) {
                         let y0 = choose|y: nat| (#[trigger] (y * y) % p()) == (eps_nat % p());
                         let y = y0 % p();
                         lemma_square_mod_noop(y0);
-                        assert(math_field_square(y) == math_field_square(y0));
+                        assert(field_square(y) == field_square(y0));
                         // Build the "times i" witness x from sqrt_ratio_i failure.
-                        let x = spec_field_element(&_eps);
+                        let x = fe51_as_canonical_nat(&_eps);
                         assert(x < p()) by {
                             lemma_mod_bound(u64_5_as_nat(_eps.limbs) as int, p() as int);
                         }
                         assert(exists|w: nat|
-                            w < p() && #[trigger] math_field_mul(math_field_square(w), 1) == (
-                            spec_sqrt_m1() * eps_nat) % p()) by {
+                            w < p() && #[trigger] field_mul(field_square(w), 1) == (
+                            sqrt_m1() * eps_nat) % p()) by {
                             let w = x;
                             // from is_sqrt_ratio_times_i with v=1
-                            assert((x * x * 1nat) % p() == (spec_sqrt_m1() * eps_nat) % p());
-                            // math_field_mul(math_field_square(w), 1) == math_field_square(w)
+                            assert((x * x * 1nat) % p() == (sqrt_m1() * eps_nat) % p());
+                            // field_mul(field_square(w), 1) == field_square(w)
                             p_gt_2();
-                            let a = math_field_square(w);
+                            let a = field_square(w);
                             // a is already reduced mod p, so a < p
                             lemma_mod_bound((w * w) as int, p() as int);
                             assert(a < p());
-                            assert(math_field_mul(a, 1) == a) by {
+                            assert(field_mul(a, 1) == a) by {
                                 assert(a * 1 == a);
                                 lemma_small_mod(a, p());
                             }
-                            assert(math_field_square(w) == (spec_sqrt_m1() * eps_nat) % p()) by {
-                                assert((w * w) % p() == (spec_sqrt_m1() * eps_nat) % p());
+                            assert(field_square(w) == (sqrt_m1() * eps_nat) % p()) by {
+                                assert((w * w) % p() == (sqrt_m1() * eps_nat) % p());
                             }
                         }
                         // Apply lemma: no y with y^2 = eps_nat (mod p)
@@ -1434,55 +1436,55 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         //   u = d when eps is square, u = -(d+A) otherwise — matching
         //   the two branches of spec_elligator_encode.
         // ---------------------------------------------------------------------
-        assert(spec_field_element(&u) == if choice_is_true(eps_is_sq) {
-            spec_field_element(&d)
+        assert(fe51_as_canonical_nat(&u) == if choice_is_true(eps_is_sq) {
+            fe51_as_canonical_nat(&d)
         } else {
-            math_field_neg(math_field_add(spec_field_element(&d), A))
+            field_neg(field_add(fe51_as_canonical_nat(&d), A))
         }) by {
             // conditional_select: Atemp = 0 if square, else A
-            assert(spec_field_element(&Atemp) == if choice_is_true(eps_is_sq) {
+            assert(fe51_as_canonical_nat(&Atemp) == if choice_is_true(eps_is_sq) {
                 0
             } else {
                 A
             }) by {
                 if choice_is_true(eps_is_sq) {
                     assert(Atemp == zero);
-                    assert(spec_field_element(&Atemp) == 0) by {
+                    assert(fe51_as_canonical_nat(&Atemp) == 0) by {
                         lemma_zero_field_element_value();
                     }
                 } else {
                     assert(Atemp == MONTGOMERY_A);
-                    // spec_field_element(&MONTGOMERY_A) is A by definition
+                    // fe51_as_canonical_nat(&MONTGOMERY_A) is A by definition
                 }
             }
-            assert(spec_field_element(&u_pre) == if choice_is_true(eps_is_sq) {
-                spec_field_element(&d)
+            assert(fe51_as_canonical_nat(&u_pre) == if choice_is_true(eps_is_sq) {
+                fe51_as_canonical_nat(&d)
             } else {
-                math_field_add(spec_field_element(&d), A)
+                field_add(fe51_as_canonical_nat(&d), A)
             }) by {
                 if choice_is_true(eps_is_sq) {
-                    assert(spec_field_element(&u_pre) == math_field_add(spec_field_element(&d), 0));
-                    // math_field_add(x, 0) = x for any field element x
-                    assert(math_field_add(spec_field_element(&d), 0) == spec_field_element(&d)) by {
-                        let x = spec_field_element(&d);
+                    assert(fe51_as_canonical_nat(&u_pre) == field_add(fe51_as_canonical_nat(&d), 0));
+                    // field_add(x, 0) = x for any field element x
+                    assert(field_add(fe51_as_canonical_nat(&d), 0) == fe51_as_canonical_nat(&d)) by {
+                        let x = fe51_as_canonical_nat(&d);
                         p_gt_2();
                         // x < p, so (x + 0) % p = x
                         lemma_mod_bound(u64_5_as_nat(d.limbs) as int, p() as int);
                         lemma_small_mod(x, p());
                     }
                 } else {
-                    assert(spec_field_element(&u_pre) == math_field_add(spec_field_element(&d), A));
+                    assert(fe51_as_canonical_nat(&u_pre) == field_add(fe51_as_canonical_nat(&d), A));
                 }
             }
             // conditional_negate with choice_not: negates when nonsquare
             if choice_is_true(eps_is_sq) {
                 assert(!choice_is_true(neg_choice));
-                assert(spec_field_element(&u) == spec_field_element(&u_pre));
+                assert(fe51_as_canonical_nat(&u) == fe51_as_canonical_nat(&u_pre));
             } else {
                 assert(choice_is_true(neg_choice));
-                assert(spec_field_element(&u) == math_field_neg(spec_field_element(&u_pre)));
-                assert(spec_field_element(&u) == math_field_neg(
-                    math_field_add(spec_field_element(&d), A),
+                assert(fe51_as_canonical_nat(&u) == field_neg(fe51_as_canonical_nat(&u_pre)));
+                assert(fe51_as_canonical_nat(&u) == field_neg(
+                    field_add(fe51_as_canonical_nat(&d), A),
                 ));
             }
         }
@@ -1493,53 +1495,53 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         //   result < p(), and result != -1 (for safe to_edwards conversion).
         // ---------------------------------------------------------------------
         let u_bytes = result.0;
-        assert(spec_montgomery(result) == spec_field_element(&u)) by {
+        assert(spec_montgomery(result) == fe51_as_canonical_nat(&u)) by {
             // as_bytes gives canonical bytes whose nat value equals the field element (already < p)
-            assert(bytes32_to_nat(&u_bytes) == spec_field_element(&u));
+            assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
             pow255_gt_19();
-            lemma_small_mod(spec_field_element(&u), pow2(255));
-            lemma_small_mod(spec_field_element(&u), p());
+            lemma_small_mod(fe51_as_canonical_nat(&u), pow2(255));
+            lemma_small_mod(fe51_as_canonical_nat(&u), p());
         }
 
         // Now match the spec_elligator_encode definition.
         let spec_u = spec_elligator_encode(r);
         assert(spec_montgomery(result) == spec_u) by {
             // Unfold spec_elligator_encode and rewrite it in terms of our computed `d` and `eps`.
-            let denom = math_field_add(1, math_field_mul(2, math_field_square(r)));
-            let d_spec = math_field_mul(math_field_neg(A), math_field_inv(denom));
-            assert(d_spec == spec_field_element(&d));
+            let denom = field_add(1, field_mul(2, field_square(r)));
+            let d_spec = field_mul(field_neg(A), field_inv(denom));
+            assert(d_spec == fe51_as_canonical_nat(&d));
 
-            let d_sq_spec = math_field_square(d_spec);
-            let eps_spec = math_field_mul(
+            let d_sq_spec = field_square(d_spec);
+            let eps_spec = field_mul(
                 d_spec,
-                math_field_add(math_field_add(d_sq_spec, math_field_mul(A, d_spec)), 1),
+                field_add(field_add(d_sq_spec, field_mul(A, d_spec)), 1),
             );
             assert(eps_spec == eps_nat);
 
             // By definition:
-            //   spec_elligator_encode(r) = if math_is_square(eps_spec) { d_spec } else { -(d_spec + A) }
-            assert(spec_u == if math_is_square(eps_nat) {
-                spec_field_element(&d)
+            //   spec_elligator_encode(r) = if is_square(eps_spec) { d_spec } else { -(d_spec + A) }
+            assert(spec_u == if is_square(eps_nat) {
+                fe51_as_canonical_nat(&d)
             } else {
-                math_field_neg(math_field_add(spec_field_element(&d), A))
+                field_neg(field_add(fe51_as_canonical_nat(&d), A))
             }) by {
                 // Directly unfold the spec function body.
                 // (Avoid `compute` here; the expression involves exec-derived values.)
-                assert(spec_u == if math_is_square(eps_spec) {
+                assert(spec_u == if is_square(eps_spec) {
                     d_spec
                 } else {
-                    math_field_neg(math_field_add(d_spec, A))
+                    field_neg(field_add(d_spec, A))
                 });
             }
 
-            // Finally, use the established case-split for `u` (which matches `math_is_square(eps_nat)`).
-            if math_is_square(eps_nat) {
+            // Finally, use the established case-split for `u` (which matches `is_square(eps_nat)`).
+            if is_square(eps_nat) {
                 assert(choice_is_true(eps_is_sq));
-                assert(spec_montgomery(result) == spec_field_element(&d));
+                assert(spec_montgomery(result) == fe51_as_canonical_nat(&d));
             } else {
                 assert(!choice_is_true(eps_is_sq));
-                assert(spec_montgomery(result) == math_field_neg(
-                    math_field_add(spec_field_element(&d), A),
+                assert(spec_montgomery(result) == field_neg(
+                    field_add(fe51_as_canonical_nat(&d), A),
                 ));
             }
         }

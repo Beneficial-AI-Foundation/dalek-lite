@@ -2210,7 +2210,7 @@ impl Scalar {
     #[allow(dead_code)]
     pub(crate) fn bits_le(&self) -> (result: [bool; 256])
         ensures
-            bits_to_nat(&result) == u8_32_as_nat(&self.bytes),
+            bits_as_nat(&result) == u8_32_as_nat(&self.bytes),
     {
         let mut bits = [false;256];
         let mut i: usize = 0;
@@ -2250,7 +2250,7 @@ impl Scalar {
         }
 
         proof {
-            assume(bits_to_nat(&bits) == u8_32_as_nat(&self.bytes));
+            assume(bits_as_nat(&bits) == u8_32_as_nat(&self.bytes));
         }
 
         bits
@@ -2547,7 +2547,7 @@ impl Scalar {
             invariant
         // Reconstruction is preserved through carry operations
 
-                reconstruct_radix_16(output@) == scalar_to_nat(self) as int,
+                reconstruct_radix_16(output@) == scalar_as_nat(self) as int,
                 // Recentered prefix: digits 0..i are in [-8, 8)
                 forall|j: int| 0 <= j < i ==> -8 <= #[trigger] output[j] && output[j] < 8,
                 // Current entry: could have received carry from previous iteration
@@ -2657,7 +2657,7 @@ impl Scalar {
             lemma_valid_radix_16_implies_all_bounded(output);
 
             // Postcondition 3: reconstruction property (maintained by loop 2 invariant)
-            assert(reconstruct_radix_16(output@) == scalar_to_nat(self) as int);
+            assert(reconstruct_radix_16(output@) == scalar_as_nat(self) as int);
         }
 
         output

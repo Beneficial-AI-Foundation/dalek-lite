@@ -259,12 +259,12 @@ pub open spec fn words64_from_bytes_to_nat(bytes: Seq<u8>, count: int) -> nat
 /// Convert a boolean array (bits in little-endian order) to a natural number.
 /// bits[0] is the least significant bit.
 /// Computes: sum_{i=0}^{255} bits[i] * 2^i
-pub open spec fn bits_to_nat(bits: &[bool; 256]) -> nat {
-    bits_to_nat_rec(bits, 0)
+pub open spec fn bits_as_nat(bits: &[bool; 256]) -> nat {
+    bits_as_nat_rec(bits, 0)
 }
 
-/// Recursive helper for bits_to_nat.
-pub open spec fn bits_to_nat_rec(bits: &[bool; 256], index: int) -> nat
+/// Recursive helper for bits_as_nat.
+pub open spec fn bits_as_nat_rec(bits: &[bool; 256], index: int) -> nat
     decreases 256 - index,
 {
     if index >= 256 {
@@ -275,14 +275,14 @@ pub open spec fn bits_to_nat_rec(bits: &[bool; 256], index: int) -> nat
         } else {
             0nat
         };
-        bit_value * pow2(index as nat) + bits_to_nat_rec(bits, index + 1)
+        bit_value * pow2(index as nat) + bits_as_nat_rec(bits, index + 1)
     }
 }
 
 /// Convert a boolean slice (bits in big-endian order) to a natural number.
 /// bits[0] is the most significant bit.
 /// Used for scalar multiplication where bits are processed MSB first.
-pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
+pub open spec fn bits_be_as_nat(bits: &[bool], len: int) -> nat
     recommends
         0 <= len <= bits.len(),
     decreases len,
@@ -295,7 +295,7 @@ pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
         } else {
             0nat
         };
-        bit_value + 2 * bits_be_to_nat(bits, len - 1)
+        bit_value + 2 * bits_be_as_nat(bits, len - 1)
     }
 }
 

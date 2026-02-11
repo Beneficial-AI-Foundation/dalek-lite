@@ -677,32 +677,28 @@ pub proof fn lemma_u8_32_as_nat_equals_rec(bytes: &[u8; 32])
     assert(u8_32_as_nat_rec(bytes, 32) == 0);
 }
 
-<<<<<<< HEAD
-/// Bridge: bytes32_to_nat on a [u8; 32] array equals bytes_seq_to_nat on its view.
+/// Bridge: u8_32_as_nat on a [u8; 32] array equals bytes_seq_as_nat on its view.
 ///
-/// Connects the fixed-size `bytes32_to_nat(&arr)` with the sequence-based
-/// `bytes_seq_to_nat(arr@)` by going through `bytes_to_nat_prefix`.
-pub proof fn lemma_bytes32_to_nat_eq_bytes_seq_to_nat(bytes: &[u8; 32])
+/// Connects the fixed-size `u8_32_as_nat(&arr)` with the sequence-based
+/// `bytes_seq_as_nat(arr@)` by going through `bytes_as_nat_prefix`.
+pub proof fn lemma_u8_32_as_nat_eq_bytes_seq_as_nat(bytes: &[u8; 32])
     ensures
-        bytes32_to_nat(bytes) == bytes_seq_to_nat(bytes@),
+        u8_32_as_nat(bytes) == bytes_seq_as_nat(bytes@),
 {
-    // Step 1: bytes32_to_nat == bytes32_to_nat_rec(bytes, 0)
-    lemma_bytes32_to_nat_equals_rec(bytes);
+    // Step 1: u8_32_as_nat == u8_32_as_nat_rec(bytes, 0)
+    lemma_u8_32_as_nat_equals_rec(bytes);
 
-    // Step 2: bytes32_to_nat_rec(bytes, 0) == bytes_to_nat_prefix(bytes@, 32)
-    //         because bytes32_to_nat_rec(bytes, 32) == 0
+    // Step 2: u8_32_as_nat_rec(bytes, 0) == bytes_as_nat_prefix(bytes@, 32)
+    //         because u8_32_as_nat_rec(bytes, 32) == 0
     lemma_decomposition_prefix_rec(bytes, 32);
-    reveal_with_fuel(bytes32_to_nat_rec, 33);
-    assert(bytes32_to_nat_rec(bytes, 32) == 0);
+    reveal_with_fuel(u8_32_as_nat_rec, 33);
+    assert(u8_32_as_nat_rec(bytes, 32) == 0);
 
-    // Step 3: bytes_seq_to_nat(bytes@) == bytes_to_nat_prefix(bytes@, 32)
-    lemma_bytes_seq_to_nat_equals_prefix(bytes@);
+    // Step 3: bytes_seq_as_nat(bytes@) == bytes_as_nat_prefix(bytes@, 32)
+    lemma_bytes_seq_as_nat_equals_prefix(bytes@);
 }
 
-/// Helper: bytes_to_nat_prefix equals bytes_to_nat_suffix for matching ranges
-=======
-/// Helper: bytes_as_nat_prefix equals bytes_as_nat_suffix for matching ranges
->>>>>>> b08237df (field_canonical + field64)
+/// Helper: bytes_as_nat_prefix equals bytes_to_nat_suffix for matching ranges
 ///
 /// For a fixed-size array, prefix(bytes@, k) equals the sum of suffix terms from 0 to k-1.
 /// This is proven by induction: at each step, prefix adds the same term as suffix would include.

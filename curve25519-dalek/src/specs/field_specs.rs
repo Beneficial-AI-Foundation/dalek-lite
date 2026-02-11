@@ -567,14 +567,9 @@ pub open spec fn sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -> boo
     sqrt_ratio_i_math_post(u, v, success, r) && sqrt_ratio_i_bounded_post(r)
 }
 
-// Square-ness mod p (spec-only).
-pub open spec fn is_square_mod_p(a: nat) -> bool {
-    exists|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(a)
-}
-
 // Spec: there exists a modular inverse of v (when v != 0).
 pub open spec fn has_inv_mod_p(v: nat) -> bool {
-    v % p() != 0 && exists|w: nat| (#[trigger] field_mul(v, w)) == 1
+    field_canonical(v) != 0 && exists|w: nat| (#[trigger] field_mul(v, w)) == 1
 }
 
 // Spec: witness-based inverse predicate (lets callers quantify the inverse).

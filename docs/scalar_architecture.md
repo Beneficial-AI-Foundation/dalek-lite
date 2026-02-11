@@ -231,7 +231,7 @@ scalar_as_nat(&Scalar)               scalar52_to_nat(&Scalar52)
                                                                  │
                               u8_32_as_nat ◄───────────────────┘
                               bytes_seq_as_nat
-                              words_to_nat_gen
+                              words_as_nat_gen
 ```
 
 ---
@@ -253,15 +253,15 @@ Currently:
 - `scalar_as_nat` → `u8_32_as_nat` (8-bit radix)
 - `scalar52_to_nat` → `seq_to_nat_52` (52-bit radix)
 
-**Potential:** Define both in terms of `words_to_nat_gen`:
+**Potential:** Define both in terms of `words_as_nat_gen`:
 ```rust
 // Theoretical unification (not necessarily better for SMT solver)
 pub open spec fn u8_32_as_nat(bytes: &[u8; 32]) -> nat {
-    words_to_nat_gen(bytes@.map(|i, x| x as nat), 32, 8)
+    words_as_nat_gen(bytes@.map(|i, x| x as nat), 32, 8)
 }
 
 pub open spec fn scalar52_to_nat(s: &Scalar52) -> nat {
-    words_to_nat_gen(s.limbs@.map(|i, x| x as nat), 5, 52)
+    words_as_nat_gen(s.limbs@.map(|i, x| x as nat), 5, 52)
 }
 ```
 

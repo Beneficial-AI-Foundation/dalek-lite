@@ -27,6 +27,7 @@ use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
 #[cfg(verus_keep_ghost)]
 use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_strictly_increases, pow2};
+use vstd::arithmetic::mul::*;
 use vstd::prelude::*;
 
 verus! {
@@ -727,7 +728,7 @@ proof fn lemma_montgomery_add_u_coord_reduced(P: MontgomeryAffine, Q: Montgomery
 /// Verified by runtime test `test_486660_not_qr`.
 pub proof fn axiom_486660_not_quadratic_residue()
     ensures
-        !math_is_square(486660nat),
+        !is_square(486660nat),
 {
     admit();
 }
@@ -737,7 +738,7 @@ pub proof fn axiom_486660_not_quadratic_residue()
 /// Verified by runtime test `test_2_times_486661_not_qr`.
 pub proof fn axiom_2_times_486661_not_qr()
     ensures
-        !math_is_square((2nat * 486661nat) % p()),
+        !is_square((2nat * 486661nat) % p()),
 {
     admit();
 }
@@ -749,20 +750,22 @@ pub proof fn axiom_2_times_486661_not_qr()
 /// meaning a is QR — contradiction.
 pub proof fn lemma_inv_preserves_non_qr(a: nat)
     requires
-        !math_is_square(a % p()),
-        a % p() != 0,
+        !is_square(field_canonical(a)),
+        field_canonical(a) != 0,
     ensures
-        !math_is_square(math_field_inv(a % p())),
+        !is_square(field_inv(field_canonical(a))),
 {
-    let a_mod = a % p();
-    let inv_a = math_field_inv(a_mod);
+    let a_mod = field_canonical(a);
+    let inv_a = field_inv(a_mod);
 
-    if math_is_square(inv_a) {
+    if is_square(inv_a) {
         // Witness: y such that y² ≡ inv(a) (mod p)
-        let y: nat = choose|y: nat| (#[trigger] (y * y) % p()) == (inv_a % p());
+        let y: nat = choose|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(inv_a);
         p_gt_2();
 
-        assert(math_field_square(y) == inv_a) by {
+        let y2 = field_square(y);
+
+        assert(y2 == inv_a) by {
             lemma_mod_bound(a as int, p() as int);
             lemma_small_mod(a_mod, p());
             assert(inv_a < p()) by {
@@ -772,30 +775,35 @@ pub proof fn lemma_inv_preserves_non_qr(a: nat)
         }
 
         // inv(inv(a)) = a_mod, so inv(y²) = a_mod
-        assert(math_field_inv(math_field_square(y)) == a_mod) by {
+        assert(field_inv(y2) == a_mod) by {
             lemma_inv_of_inv(a_mod);
             lemma_mod_bound(a as int, p() as int);
             lemma_small_mod(a_mod, p());
         }
 
         // inv(y²) = inv(y)²
-        assert(math_field_inv(math_field_square(y)) == math_field_square(math_field_inv(y))) by {
+        assert(field_inv(y2) == field_square(field_inv(y))) by {
             lemma_inv_of_square(y);
         }
 
         // So inv(y)² = a_mod, meaning a is QR — contradiction
-        assert(math_is_square(a_mod)) by {
-            let w = math_field_inv(y);
-            lemma_small_mod(a_mod, p());
+        assert(is_square(a_mod)) by {
+            assert(exists|w: nat| (#[trigger] field_mul(w, w)) == field_canonical(a_mod)) by {
+                let w = field_inv(y);    
+                assert(field_mul(w,w) == field_square(w));
+                assert(a_mod == field_canonical(a_mod)) by {
+                    lemma_small_mod(a_mod, p());
+                }
+            }            
         }
         assert(false);
     }
 }
 
-/// Helper: spec_field_element(&MONTGOMERY_A) == 486662.
+/// Helper: fe51_as_canonical_nat(&MONTGOMERY_A) == 486662.
 proof fn lemma_montgomery_a_value()
     ensures
-        spec_field_element(&MONTGOMERY_A) == 486662nat,
+        fe51_as_canonical_nat(&MONTGOMERY_A) == 486662nat,
 {
     // MONTGOMERY_A.limbs = [486662, 0, 0, 0, 0]
     // u64_5_as_nat = 486662 + pow2(51)*0 + ... = 486662
@@ -812,18 +820,18 @@ proof fn lemma_montgomery_a_value()
             lemma_pow2_strictly_increases(5, 204);
         }
     }
-    assert(spec_field_element(&MONTGOMERY_A) == 486662nat) by {
+    assert(fe51_as_canonical_nat(&MONTGOMERY_A) == 486662nat) by {
         lemma_p_gt_small(486662nat);
         lemma_small_mod(486662nat, p());
     }
 }
 
-/// MONTGOMERY_A_NEG represents math_field_neg(A) where A = 486662.
+/// MONTGOMERY_A_NEG represents field_neg(A) where A = 486662.
 /// Its limbs encode p - 486662 in the 51-bit representation.
 /// Verified by runtime test `test_montgomery_a_neg_value`.
 pub proof fn axiom_montgomery_a_neg_is_neg_a()
     ensures
-        spec_field_element(&MONTGOMERY_A_NEG) == math_field_neg(spec_field_element(&MONTGOMERY_A)),
+        fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(fe51_as_canonical_nat(&MONTGOMERY_A)),
 {
     // The limbs of MONTGOMERY_A_NEG are [2^51-19-486662, 2^51-1, 2^51-1, 2^51-1, 2^51-1],
     // which is exactly p - 486662 in the 51-bit limb representation.
@@ -861,14 +869,14 @@ proof fn lemma_p_gt_small(n: nat)
 ///   d * (d² + A*d + 1) = A - 2 = 486660 (mod p).
 proof fn lemma_eps_when_d_is_minus_one(d: nat, A: nat)
     requires
-        d == math_field_sub(0, 1),
+        d == field_sub(0, 1),
         A == 486662nat,
     ensures
         ({
-            let d_sq = math_field_square(d);
-            let A_d = math_field_mul(A, d);
-            let inner = math_field_add(math_field_add(d_sq, A_d), 1);
-            let eps = math_field_mul(d, inner);
+            let d_sq = field_square(d);
+            let A_d = field_mul(A, d);
+            let inner = field_add(field_add(d_sq, A_d), 1);
+            let eps = field_mul(d, inner);
             eps == 486660nat
         }),
 {
@@ -877,33 +885,33 @@ proof fn lemma_eps_when_d_is_minus_one(d: nat, A: nat)
     lemma_p_gt_small(486662nat);
 
     // d = neg(1) = p - 1
-    assert(d == math_field_neg(1)) by {
+    assert(d == field_neg(1)) by {
         lemma_small_mod(0nat, pp);
         lemma_small_mod(1nat, pp);
     }
 
     // d² = (-1)² = 1² = 1
-    let d_sq = math_field_square(d);
+    let d_sq = field_square(d);
     assert(d_sq == 1nat) by {
         lemma_neg_square_eq(1);
         lemma_small_mod(1nat, pp);
-        assert(math_field_square(d) == math_field_square(1nat % pp));
-        assert(math_field_square(1nat) == (1nat * 1nat) % pp);
+        assert(field_square(d) == field_square(1nat % pp));
+        assert(field_square(1nat) == (1nat * 1nat) % pp);
         lemma_small_mod(1nat, pp);
     }
 
     // A*d = A*(-1) = -A
-    let A_d = math_field_mul(A, d);
-    assert(A_d == math_field_neg(A)) by {
+    let A_d = field_mul(A, d);
+    assert(A_d == field_neg(A)) by {
         lemma_field_mul_neg(A, 1);
-        assert(math_field_mul(A, math_field_neg(1)) == math_field_neg(math_field_mul(A, 1)));
+        assert(field_mul(A, field_neg(1)) == field_neg(field_mul(A, 1)));
         lemma_field_mul_one_right(A);
         lemma_small_mod(A, pp);
     }
 
     // d² + A*d = 1 + neg(A) = sub(1, A)
-    let sum1 = math_field_add(d_sq, A_d);
-    assert(sum1 == math_field_sub(1, A)) by {
+    let sum1 = field_add(d_sq, A_d);
+    assert(sum1 == field_sub(1, A)) by {
         lemma_field_sub_eq_add_neg(1, A);
     }
 
@@ -917,7 +925,7 @@ proof fn lemma_eps_when_d_is_minus_one(d: nat, A: nat)
     }
 
     // inner = add(sum1, 1) = add(p - 486661, 1) = p - 486660
-    let inner = math_field_add(sum1, 1);
+    let inner = field_add(sum1, 1);
     let val_486660 = (pp - 486660) as nat;
     assert(inner == val_486660) by {
         lemma_p_gt_small(486660nat);
@@ -925,7 +933,7 @@ proof fn lemma_eps_when_d_is_minus_one(d: nat, A: nat)
     }
 
     // eps = mul(neg(1), inner) = neg(inner) = neg(p - 486660) = 486660
-    let eps = math_field_mul(d, inner);
+    let eps = field_mul(d, inner);
     assert(eps == 486660nat) by {
         lemma_neg_one_times_is_neg(inner);
         // eps == neg(inner) == neg(p - 486660) == 486660
@@ -940,11 +948,11 @@ proof fn lemma_eps_when_d_is_minus_one(d: nat, A: nat)
 proof fn axiom_nonsquare_branch_r_sq(A: nat, d: nat, d_denom: nat, r_sq: nat)
     requires
         A == 486662nat,
-        d_denom == math_field_add(1, math_field_mul(2, r_sq)),
-        d == math_field_mul(math_field_neg(A), math_field_inv(d_denom)),
-        math_field_neg(math_field_add(d, A)) == math_field_sub(0, 1),
+        d_denom == field_add(1, field_mul(2, r_sq)),
+        d == field_mul(field_neg(A), field_inv(d_denom)),
+        field_neg(field_add(d, A)) == field_sub(0, 1),
     ensures
-        r_sq == math_field_inv((2nat * 486661nat) % p()),
+        r_sq == field_inv((2nat * 486661nat) % p()),
 {
     admit();
 }
@@ -960,27 +968,27 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
 {
     axiom_486660_not_quadratic_residue();
 
-    let A = spec_field_element(&MONTGOMERY_A);
-    let r_sq = math_field_square(r);
-    let two_r_sq = math_field_mul(2, r_sq);
-    let d_denom = math_field_add(1, two_r_sq);
-    let d = math_field_mul(math_field_neg(A), math_field_inv(d_denom));
-    let d_sq = math_field_square(d);
-    let A_d = math_field_mul(A, d);
-    let inner = math_field_add(math_field_add(d_sq, A_d), 1);
-    let eps = math_field_mul(d, inner);
+    let A = fe51_as_canonical_nat(&MONTGOMERY_A);
+    let r_sq = field_square(r);
+    let two_r_sq = field_mul(2, r_sq);
+    let d_denom = field_add(1, two_r_sq);
+    let d = field_mul(field_neg(A), field_inv(d_denom));
+    let d_sq = field_square(d);
+    let A_d = field_mul(A, d);
+    let inner = field_add(field_add(d_sq, A_d), 1);
+    let eps = field_mul(d, inner);
 
-    let minus_one = math_field_sub(0, 1);
+    let minus_one = field_sub(0, 1);
 
-    if math_is_square(eps) {
+    if is_square(eps) {
         // Square branch: u = d. Suppose d == -1.
         if d == minus_one {
             assert(eps == 486660nat) by {
                 lemma_montgomery_a_value();
                 lemma_eps_when_d_is_minus_one(d, A);
             }
-            // math_is_square(eps) with eps = 486660 implies math_is_square(486660) — contradiction
-            assert(math_is_square(486660nat)) by {
+            // is_square(eps) with eps = 486660 implies is_square(486660) — contradiction
+            assert(is_square(486660nat)) by {
                 p_gt_2();
                 lemma_p_gt_small(486660nat);
                 lemma_small_mod(eps, p());
@@ -991,18 +999,18 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
         }
     } else {
         // Non-square branch: u = -(d + A). Suppose u == -1.
-        let u = math_field_neg(math_field_add(d, A));
+        let u = field_neg(field_add(d, A));
         if u == minus_one {
             let two_a1 = (2nat * 486661nat) % p();
 
             // r² = inv(2*486661) by axiom
-            assert(r_sq == math_field_inv(two_a1)) by {
+            assert(r_sq == field_inv(two_a1)) by {
                 lemma_montgomery_a_value();
                 axiom_nonsquare_branch_r_sq(A, d, d_denom, r_sq);
             }
 
             // inv(2*486661) is not a QR
-            assert(!math_is_square(math_field_inv(two_a1))) by {
+            assert(!is_square(field_inv(two_a1))) by {
                 axiom_2_times_486661_not_qr();
                 assert(two_a1 != 0nat) by {
                     p_gt_2();
@@ -1014,10 +1022,16 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
             }
 
             // But r² is always a QR — contradiction
-            assert(math_is_square(r_sq)) by {
+            assert(is_square(r_sq)) by {
                 p_gt_2();
-                lemma_mod_bound((r * r) as int, p() as int);
-                lemma_small_mod(r_sq, p());
+                assert(exists|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(r_sq)) by {
+                    assert(field_mul(r, r) < p()) by {
+                        lemma_mod_bound((r * r) as int, p() as int);
+                    }
+                    assert(r_sq == field_canonical(r_sq)) by {
+                        lemma_small_mod(r_sq, p());    
+                    }
+                }
             }
             assert(false);
         }

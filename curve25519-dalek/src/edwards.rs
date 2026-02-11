@@ -191,7 +191,7 @@ use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 use crate::lemmas::scalar_byte_lemmas::bytes_to_scalar_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for radix-16 lemmas
 use crate::lemmas::scalar_lemmas_::radix16_lemmas::*;
-#[allow(unused_imports)] // Used in verus! blocks for bytes_to_nat_prefix / words_to_nat_u64
+#[allow(unused_imports)] // Used in verus! blocks for bytes_as_nat_prefix / words_as_nat_u64
 use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::core_specs::*;
@@ -1819,10 +1819,10 @@ impl EdwardsPoint {
         proof {
             // Chain: from_bytes → elligator_encode → to_edwards → mul_by_cofactor = spec
             assert(res@ == spec_sha512(bytes@).subrange(0, 32));
-            lemma_bytes32_to_nat_eq_bytes_seq_to_nat(&res);
+            lemma_u8_32_as_nat_eq_bytes_seq_as_nat(&res);
 
-            let fe_nat_spec = (bytes_seq_to_nat(res@) % pow2(255)) % p();
-            assert(spec_field_element(&fe) == fe_nat_spec);
+            let fe_nat_spec = (bytes_seq_as_nat(res@) % pow2(255)) % p();
+            assert(fe51_as_canonical_nat(&fe) == fe_nat_spec);
             let u = spec_elligator_encode(fe_nat_spec);
             assert(spec_montgomery(M1) == u);
 

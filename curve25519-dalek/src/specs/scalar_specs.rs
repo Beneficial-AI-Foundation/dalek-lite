@@ -232,7 +232,7 @@ pub open spec fn radix_16_all_bounded(digits: &[i8; 64]) -> bool {
 /// Convert a boolean slice (bits in big-endian order) to a natural number
 /// This interprets bits[0] as the most significant bit
 /// Used for scalar multiplication where bits are processed MSB first
-pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
+pub open spec fn bits_be_as_nat(bits: &[bool], len: int) -> nat
     recommends
         0 <= len <= bits.len(),
     decreases len,
@@ -245,7 +245,7 @@ pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
         } else {
             0nat
         };
-        bit_value + 2 * bits_be_to_nat(bits, len - 1)
+        bit_value + 2 * bits_be_as_nat(bits, len - 1)
     }
 }
 

@@ -69,7 +69,7 @@ pub proof fn axiom_sqrt_m1_squared()
 /// Used in: lemma_no_square_root_when_times_i
 pub proof fn axiom_sqrt_m1_not_square()
     ensures
-        !is_square_mod_p(sqrt_m1()),
+        !is_square(sqrt_m1()),
 {
     admit();
 }
@@ -86,7 +86,7 @@ pub proof fn axiom_sqrt_m1_not_square()
 /// Used in: lemma_no_square_root_when_times_i
 pub proof fn axiom_neg_sqrt_m1_not_square()
     ensures
-        !is_square_mod_p((p() - sqrt_m1()) as nat),
+        !is_square((p() - sqrt_m1()) as nat),
 {
     admit();
 }

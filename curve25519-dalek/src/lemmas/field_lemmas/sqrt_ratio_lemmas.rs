@@ -403,7 +403,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
         };
 
         // Step 7: -i is not a square (axiom) — CONTRADICTION
-        assert(!is_square_mod_p(neg_i)) by {
+        assert(!is_square(neg_i)) by {
             axiom_neg_sqrt_m1_not_square();
         };
 
@@ -412,7 +412,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
             lemma_small_mod(q2, the_p);
             lemma_small_mod(neg_i, the_p);
         };
-        assert(is_square_mod_p(neg_i));
+        assert(is_square(neg_i));
 
         // Contradiction: -i is both a square and not a square
         assert(false);
@@ -447,7 +447,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
         assert(q2 == i % the_p);
 
         // Step 5: i is not a square (axiom) — CONTRADICTION
-        assert(!is_square_mod_p(i)) by {
+        assert(!is_square(i)) by {
             axiom_sqrt_m1_not_square();
         };
 
@@ -456,7 +456,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
             lemma_small_mod(q2, the_p);
             lemma_small_mod(i, the_p);
         };
-        assert(is_square_mod_p(i));
+        assert(is_square(i));
 
         // Contradiction: i is both a square and not a square
         assert(false);

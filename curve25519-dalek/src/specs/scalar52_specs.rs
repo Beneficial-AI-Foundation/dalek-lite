@@ -79,7 +79,7 @@ pub open spec fn five_u64_limbs_to_nat(n0: u64, n1: u64, n2: u64, n3: u64, n4: u
     (n4 as nat) * pow2(208)
 }
 
-// u8_32_as_nat, bytes_seq_to_nat, and bytes_as_nat_suffix (all generic)
+// u8_32_as_nat, bytes_seq_as_nat, and bytes_as_nat_suffix (all generic)
 // are now in core_specs.rs. They are imported via `use super::core_specs::*`
 // Group order: the value of L as a natural number
 pub open spec fn group_order() -> nat {

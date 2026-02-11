@@ -291,8 +291,8 @@ pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
         fe51_limbs_bounded(a, 54),
         choice_is_true(choice) ==> fe51_limbs_bounded(a, 52),
         !choice_is_true(choice) ==> *a == *old(a),
-        spec_field_element(a) == if choice_is_true(choice) {
-            math_field_neg(spec_field_element(old(a)))
+        fe51_as_canonical_nat(a) == if choice_is_true(choice) {
+            field_neg(fe51_as_canonical_nat(old(a)))
         } else {
             fe51_as_canonical_nat(old(a))
         },

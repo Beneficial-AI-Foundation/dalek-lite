@@ -82,12 +82,13 @@ pub open spec fn spec_ed25519_basepoint() -> (nat, nat) {
 /// The basepoint X and Y coordinates are canonical field elements < p.
 ///
 /// ## Values
-/// - X = 15112221349535807912866137220509078935008241517709382056166116785143545249788
+/// - X = 15112221349535400772501151409588531511454012693041857206046113283949847762202
 /// - Y = 46316835694926478169428394003475163141307993866256225615783033603165251855960
 /// - p = 57896044618658097711785492504343953926634992332820282019728792003956564819949
 ///
 /// Both X < p and Y < p by direct comparison.
 ///
+/// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
 pub proof fn axiom_ed25519_basepoint_canonical()
     ensures
         spec_ed25519_basepoint().0 < p(),
@@ -100,6 +101,8 @@ pub proof fn axiom_ed25519_basepoint_canonical()
 ///
 /// The basepoint (x, y) satisfies -x² + y² = 1 + d·x²·y² (mod p).
 /// This is verified by the `test_basepoint_on_curve` test below.
+///
+/// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
 pub proof fn axiom_basepoint_on_curve()
     ensures
         math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1),
@@ -237,6 +240,46 @@ mod basepoint_on_curve_tests {
     use super::*;
     use crate::backend::serial::u64::field::FieldElement51;
     use crate::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
+    use num_bigint::BigUint;
+    use num_traits::Zero;
+
+    /// Reconstruct a natural number from fe51 limbs: sum(limbs[i] * 2^(51*i)).
+    /// Runtime equivalent of `u64_5_as_nat` (spec fn in field_specs_u64.rs).
+    fn fe51_to_biguint(limbs: &[u64; 5]) -> BigUint {
+        let mut result = BigUint::zero();
+        for i in (0..5).rev() {
+            result <<= 51;
+            result += BigUint::from(limbs[i]);
+        }
+        result
+    }
+
+    /// Test that the Ed25519 basepoint X-coordinate matches the RFC 8032 value.
+    ///
+    /// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
+    #[test]
+    fn test_basepoint_x_matches_rfc() {
+        let x = fe51_to_biguint(&ED25519_BASEPOINT_POINT.X.limbs);
+        let expected: BigUint =
+            "15112221349535400772501151409588531511454012693041857206046113283949847762202"
+                .parse()
+                .unwrap();
+        assert_eq!(x, expected, "Basepoint X does not match RFC 8032");
+    }
+
+    /// Test that the Ed25519 basepoint Y-coordinate matches the RFC 8032 value.
+    ///
+    /// The Y-coordinate is 4/5 mod p.
+    /// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
+    #[test]
+    fn test_basepoint_y_matches_rfc() {
+        let y = fe51_to_biguint(&ED25519_BASEPOINT_POINT.Y.limbs);
+        let expected: BigUint =
+            "46316835694926478169428394003475163141307993866256225615783033603165251855960"
+                .parse()
+                .unwrap();
+        assert_eq!(y, expected, "Basepoint Y does not match RFC 8032");
+    }
 
     #[test]
     fn test_basepoint_on_curve() {

@@ -958,11 +958,15 @@ proof fn axiom_nonsquare_branch_r_sq(A: nat, d: nat, d_denom: nat, r_sq: nat)
 
 // =============================================================================
 // EDWARDS → MONTGOMERY MAP AXIOMS
+//
+// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
 // =============================================================================
 /// Axiom: The Edwards-to-Montgomery map sends valid Edwards points to valid Montgomery u-coordinates.
 ///
 /// If (x, y) is on the twisted Edwards curve -x² + y² = 1 + d·x²·y²,
 /// then u = (1+y)/(1-y) satisfies u³ + Au² + u being a quadratic residue (mod p).
+///
+/// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
 pub proof fn axiom_edwards_to_montgomery_preserves_validity(x: nat, y: nat)
     requires
         math_on_edwards_curve(x, y),
@@ -1057,6 +1061,8 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
 ///
 /// The map φ: Edwards → Montgomery sends (x, y) to u = (1+y)/(1-y).
 /// For the Ed25519 basepoint B with affine y-coordinate y_B, we have φ(B).u = u_B.
+///
+/// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
 pub proof fn axiom_edwards_basepoint_maps_to_montgomery_basepoint()
     ensures
         montgomery_u_from_edwards_y(spec_ed25519_basepoint().1) == spec_x25519_basepoint_u(),
@@ -1070,6 +1076,8 @@ pub proof fn axiom_edwards_basepoint_maps_to_montgomery_basepoint()
 ///   φ([n]P_ed).u = [n](φ(P_ed).u)
 ///
 /// Additionally ensures scalar multiplication preserves the curve (closure).
+///
+/// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
 pub proof fn axiom_edwards_to_montgomery_commutes_with_scalar_mul(x: nat, y: nat, n: nat)
     requires
         math_on_edwards_curve(x, y),
@@ -1168,5 +1176,32 @@ mod test_qr_axioms {
         let pow2_204 = BigUint::one() << 204;
         let nat = &l0 + &l1 * &pow2_51 + &l1 * &pow2_102 + &l1 * &pow2_153 + &l1 * &pow2_204;
         assert_eq!(&nat % &p, neg_a, "MONTGOMERY_A_NEG should encode -A mod p");
+    }
+
+    /// Test that the Edwards-to-Montgomery map sends the Ed25519 basepoint to u = 9.
+    ///
+    /// Verifies axiom_edwards_basepoint_maps_to_montgomery_basepoint:
+    ///   u = (1 + y) / (1 - y) mod p = 9
+    ///
+    /// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
+    #[test]
+    fn test_edwards_basepoint_maps_to_montgomery_9() {
+        let p = p();
+        // Ed25519 basepoint Y-coordinate (RFC 8032 Section 5.1)
+        let y: BigUint =
+            "46316835694926478169428394003475163141307993866256225615783033603165251855960"
+                .parse()
+                .unwrap();
+
+        // u = (1 + y) / (1 - y) mod p
+        let one_plus_y = (BigUint::one() + &y) % &p;
+        let one_minus_y = (&p + BigUint::one() - &y) % &p;
+        let u = (&one_plus_y * mod_inv(&one_minus_y, &p)) % &p;
+
+        assert_eq!(
+            u,
+            BigUint::from(9u32),
+            "Edwards basepoint should map to u = 9"
+        );
     }
 }

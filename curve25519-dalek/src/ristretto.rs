@@ -394,7 +394,7 @@ mod decompress {
             // s_is_negative: true iff low bit of canonical encoding is 1
             choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),
             // s_is_negative matches the math-level sign bit of the decoded value
-            choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),
+            choice_is_true(result.1) == is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),
     {
         // Step 1. Check s for validity:
         // 1.a) s must be 32 bytes (we get this from the type system)
@@ -417,7 +417,7 @@ mod decompress {
             // VERIFICATION NOTE: only postcondition left to prove
             assume(choice_is_true(s_encoding_is_canonical) == (spec_fe51_to_bytes(&s) == repr.0@));
             assume(fe51_as_canonical_nat(&s) == fe51_as_canonical_nat_from_bytes(&repr.0));
-            assume(choice_is_true(s_is_negative) == math_is_negative(
+            assume(choice_is_true(s_is_negative) == is_negative(
                 fe51_as_canonical_nat_from_bytes(&repr.0),
             ));
         }
@@ -446,7 +446,7 @@ mod decompress {
             choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
             choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
             // t_is_negative reflects the sign bit of T
-            choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat(&result.3.0.T)),
+            choice_is_true(result.1) == is_negative(fe51_as_canonical_nat(&result.3.0.T)),
             // y_is_zero reflects whether Y is zero
             choice_is_true(result.2) == (fe51_as_canonical_nat(&result.3.0.Y) == 0),
     {

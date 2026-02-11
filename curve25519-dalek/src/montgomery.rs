@@ -417,6 +417,7 @@ impl MontgomeryPoint {
     /// \\(n\\) as a slice, return \\( u\_0(\[n\]P) \\).
     ///
     // VERIFICATION NOTE: refactored mul_bits_be code
+    #[verifier::rlimit(20)]
     pub fn mul_bits_be(&self, bits: &[bool]) -> (result: MontgomeryPoint)
         requires
             bits.len() <= 255,

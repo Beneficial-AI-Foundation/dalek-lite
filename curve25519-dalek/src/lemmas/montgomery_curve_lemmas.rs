@@ -475,21 +475,28 @@ pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
 // Used by: `lemma_u_coordinate_scalar_mul_canonical_lift_zero` which is called
 // from `mul_bits_be` for the u=0 edge case.
 /// Lemma: the unique square root of 0 is 0.
-pub proof fn lemma_math_sqrt_zero()
+pub proof fn lemma_field_sqrt_zero()
     ensures
-        math_sqrt(0) == 0,
+        field_sqrt(0) == 0,
 {
     // Witness: 0 is a square root of 0 mod p
-    assert(exists|y: nat| y < p() && #[trigger] ((y * y) % p()) == (0nat % p())) by {
+    assert(exists|y: nat| y < p() && #[trigger] field_mul(y, y) == field_canonical(0)) by {
         let y: nat = 0;
         p_gt_2();
-        assert(y < p() && (y * y) % p() == 0nat % p());
+        assert(y < p() && field_mul(y, y) == field_canonical(0)) by {
+            assert(0 * 0 == 0) by {
+                lemma_mul_basics(0);
+            }
+            assert(0nat % p() == 0) by {
+                lemma_small_mod(0, p());
+            } 
+        }
     };
 
-    reveal(math_sqrt);
-    let y = math_sqrt(0);
-    // From math_sqrt definition: y < p and y^2 ≡ 0 (mod p)
-    assert(y < p() && (y * y) % p() == 0);
+    reveal(field_sqrt);
+    let y = field_sqrt(0);
+    // From field_sqrt definition: y < p and y^2 ≡ 0 (mod p)
+    assert(y < p() && field_canonical(y * y) == 0);
 
     // If y^2 ≡ 0 (mod p) and p is prime, then y ≡ 0 (mod p).
     // Since y < p, we have y = 0.
@@ -505,8 +512,8 @@ pub proof fn lemma_canonical_sqrt_zero()
     ensures
         canonical_sqrt(0) == 0,
 {
-    lemma_math_sqrt_zero();
-    let s1 = math_sqrt(0);
+    lemma_field_sqrt_zero();
+    let s1 = field_sqrt(0);
     assert(s1 == 0);
 
     // field_neg(0) == 0

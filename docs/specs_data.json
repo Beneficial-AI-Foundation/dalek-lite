@@ -591,10 +591,10 @@
       ]
     },
     {
-      "id": "specs__field_specs__math_invsqrt",
-      "name": "math_invsqrt",
-      "signature": "pub open spec fn math_invsqrt(a: nat) -> nat",
-      "body": "pub open spec fn math_invsqrt(a: nat) -> nat {\n    if a % p() == 0 {\n        0\n    } else {\n        choose|r: nat|\n            #![auto]\n            !math_is_negative(r) && (math_is_sqrt_ratio(1, a, r) || math_is_sqrt_ratio_times_i(\n                1,\n                a,\n                r,\n            ))\n    }\n}",
+      "id": "specs__field_specs__nat_invsqrt",
+      "name": "nat_invsqrt",
+      "signature": "pub open spec fn nat_invsqrt(a: nat) -> nat",
+      "body": "pub open spec fn nat_invsqrt(a: nat) -> nat {\n    if a % p() == 0 {\n        0\n    } else {\n        choose|r: nat|\n            #![auto]\n            !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(\n                1,\n                a,\n                r,\n            ))\n    }\n}",
       "file": "curve25519-dalek/src/specs/field_specs.rs",
       "line": 510,
       "module": "specs::field_specs",
@@ -606,17 +606,17 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L510",
       "category": "spec",
       "referenced_specs": [
-        "math_is_negative",
-        "math_is_sqrt_ratio",
-        "math_is_sqrt_ratio_times_i",
+        "is_negative",
+        "is_sqrt_ratio",
+        "is_sqrt_ratio_times_i",
         "p"
       ]
     },
     {
-      "id": "specs__field_specs__math_is_negative",
-      "name": "math_is_negative",
-      "signature": "pub open spec fn math_is_negative(a: nat) -> bool",
-      "body": "pub open spec fn math_is_negative(a: nat) -> bool {\n    (a % p()) % 2 == 1\n}",
+      "id": "specs__field_specs__is_negative",
+      "name": "is_negative",
+      "signature": "pub open spec fn is_negative(a: nat) -> bool",
+      "body": "pub open spec fn is_negative(a: nat) -> bool {\n    (a % p()) % 2 == 1\n}",
       "file": "curve25519-dalek/src/specs/field_specs.rs",
       "line": 503,
       "module": "specs::field_specs",
@@ -632,18 +632,18 @@
       ]
     },
     {
-      "id": "specs__field_specs__math_is_sqrt_ratio",
-      "name": "math_is_sqrt_ratio",
-      "signature": "pub open spec fn math_is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool",
-      "body": "pub open spec fn math_is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {\n    (r * r * v) % p() == u\n}",
+      "id": "specs__field_specs__is_sqrt_ratio",
+      "name": "is_sqrt_ratio",
+      "signature": "pub open spec fn is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool",
+      "body": "pub open spec fn is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {\n    (r * r * v) % p() == u\n}",
       "file": "curve25519-dalek/src/specs/field_specs.rs",
       "line": 491,
       "module": "specs::field_specs",
       "short_module": "field",
       "visibility": "pub open spec fn",
-      "doc_comment": "Spec function: r² * v = u (mod p) — math version operating on nat values\nThis is the mathematical equivalent of is_sqrt_ratio but without FieldElement wrappers.\nUse this when working with mathematical values directly in lemmas.",
+      "doc_comment": "Spec function: r² * v = u (mod p) — math version operating on nat values\nThis is the mathematical equivalent of fe51_is_sqrt_ratio but without FieldElement wrappers.\nUse this when working with mathematical values directly in lemmas.",
       "math_interpretation": "r^2 * v = u (mod p)",
-      "informal_interpretation": "Spec function: r² * v = u (mod p) — math version operating on nat values\\nThis is the mathematical equivalent of is_sqrt_ratio but without FieldElement wrappers.\\nUse this when working with mathematical values directly in lemmas.",
+      "informal_interpretation": "Spec function: r² * v = u (mod p) — math version operating on nat values\\nThis is the mathematical equivalent of fe51_is_sqrt_ratio but without FieldElement wrappers.\\nUse this when working with mathematical values directly in lemmas.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L491",
       "category": "spec",
       "referenced_specs": [
@@ -651,30 +651,30 @@
       ]
     },
     {
-      "id": "specs__field_specs__math_is_sqrt_ratio_times_i",
-      "name": "math_is_sqrt_ratio_times_i",
-      "signature": "pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool",
-      "body": "pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {\n    (r * r * v) % p() == (spec_sqrt_m1() * u) % p()\n}",
+      "id": "specs__field_specs__is_sqrt_ratio_times_i",
+      "name": "is_sqrt_ratio_times_i",
+      "signature": "pub open spec fn is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool",
+      "body": "pub open spec fn is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {\n    (r * r * v) % p() == (sqrt_m1() * u) % p()\n}",
       "file": "curve25519-dalek/src/specs/field_specs.rs",
       "line": 498,
       "module": "specs::field_specs",
       "short_module": "field",
       "visibility": "pub open spec fn",
-      "doc_comment": "Spec function: r² * v = i*u (mod p) — math version operating on nat values\nUsed for the nonsquare case in sqrt_ratio_i.\nThis is the mathematical equivalent of is_sqrt_ratio_times_i.",
+      "doc_comment": "Spec function: r² * v = i*u (mod p) — math version operating on nat values\nUsed for the nonsquare case in sqrt_ratio_i.\nThis is the mathematical equivalent of fe51_is_sqrt_ratio_times_i.",
       "math_interpretation": "r^2 * v = i*u (mod p), i = sqrt(-1)",
-      "informal_interpretation": "Spec function: r² * v = i*u (mod p) — math version operating on nat values\\nUsed for the nonsquare case in sqrt_ratio_i.\\nThis is the mathematical equivalent of is_sqrt_ratio_times_i.",
+      "informal_interpretation": "Spec function: r² * v = i*u (mod p) — math version operating on nat values\\nUsed for the nonsquare case in sqrt_ratio_i.\\nThis is the mathematical equivalent of fe51_is_sqrt_ratio_times_i.",
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/field_specs.rs#L498",
       "category": "spec",
       "referenced_specs": [
         "p",
-        "spec_sqrt_m1"
+        "sqrt_m1"
       ]
     },
     {
-      "id": "specs__field_specs__spec_bytes32_from_nat",
-      "name": "spec_bytes32_from_nat",
-      "signature": "pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32]",
-      "body": "pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32] {\n    choose|b: [u8; 32]| u8_32_as_nat(&b) == n % pow2(256)\n}",
+      "id": "specs__field_specs__u8_32_from_nat",
+      "name": "u8_32_from_nat",
+      "signature": "pub open spec fn u8_32_from_nat(n: nat) -> [u8; 32]",
+      "body": "pub open spec fn u8_32_from_nat(n: nat) -> [u8; 32] {\n    choose|b: [u8; 32]| u8_32_as_nat(&b) == n % pow2(256)\n}",
       "file": "curve25519-dalek/src/specs/field_specs.rs",
       "line": 525,
       "module": "specs::field_specs",
@@ -769,10 +769,10 @@
       ]
     },
     {
-      "id": "specs__field_specs__spec_sqrt_m1",
-      "name": "spec_sqrt_m1",
-      "signature": "pub open spec fn spec_sqrt_m1() -> nat",
-      "body": "pub open spec fn spec_sqrt_m1() -> nat {\n    fe51_as_canonical_nat(&constants::SQRT_M1)\n}",
+      "id": "specs__field_specs__sqrt_m1",
+      "name": "sqrt_m1",
+      "signature": "pub open spec fn sqrt_m1() -> nat",
+      "body": "pub open spec fn sqrt_m1() -> nat {\n    fe51_as_canonical_nat(&constants::SQRT_M1)\n}",
       "file": "curve25519-dalek/src/specs/field_specs.rs",
       "line": 584,
       "module": "specs::field_specs",
@@ -963,7 +963,7 @@
       "id": "specs__ristretto_specs__spec_ristretto_compress_extended",
       "name": "spec_ristretto_compress_extended",
       "signature": "pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32]",
-      "body": "pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {\n    let u1 = field_mul(field_add(z, y), field_sub(z, y));\n    let u2 = field_mul(x, y);\n    let invsqrt = math_invsqrt(field_mul(u1, field_square(u2)));\n    let i1 = field_mul(invsqrt, u1);\n    let i2 = field_mul(invsqrt, u2);\n    let z_inv = field_mul(i1, field_mul(i2, t));\n    let den_inv = i2;\n\n    let iX = field_mul(x, spec_sqrt_m1());\n    let iY = field_mul(y, spec_sqrt_m1());\n    let enchanted_denominator = field_mul(\n        i1,\n        fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D),\n    );\n\n    let rotate = math_is_negative(field_mul(t, z_inv));\n    let x_rot = if rotate {\n        iY\n    } else {\n        x\n    };\n    let y_rot = if rotate {\n        iX\n    } else {\n        y\n    };\n    let den_inv_rot = if rotate {\n        enchanted_denominator\n    } else {\n        den_inv\n    };\n\n    let y_final = if math_is_negative(field_mul(x_rot, z_inv)) {\n        field_neg(y_rot)\n    } else {\n        y_rot\n    };\n    let s = field_mul(den_inv_rot, field_sub(z, y_final));\n    let s_final = if math_is_negative(s) {\n        field_neg(s)\n    } else {\n        s\n    };\n\n    spec_bytes32_from_nat(s_final)\n}",
+      "body": "pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {\n    let u1 = field_mul(field_add(z, y), field_sub(z, y));\n    let u2 = field_mul(x, y);\n    let invsqrt = nat_invsqrt(field_mul(u1, field_square(u2)));\n    let i1 = field_mul(invsqrt, u1);\n    let i2 = field_mul(invsqrt, u2);\n    let z_inv = field_mul(i1, field_mul(i2, t));\n    let den_inv = i2;\n\n    let iX = field_mul(x, sqrt_m1());\n    let iY = field_mul(y, sqrt_m1());\n    let enchanted_denominator = field_mul(\n        i1,\n        fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D),\n    );\n\n    let rotate = is_negative(field_mul(t, z_inv));\n    let x_rot = if rotate {\n        iY\n    } else {\n        x\n    };\n    let y_rot = if rotate {\n        iX\n    } else {\n        y\n    };\n    let den_inv_rot = if rotate {\n        enchanted_denominator\n    } else {\n        den_inv\n    };\n\n    let y_final = if is_negative(field_mul(x_rot, z_inv)) {\n        field_neg(y_rot)\n    } else {\n        y_rot\n    };\n    let s = field_mul(den_inv_rot, field_sub(z, y_final));\n    let s_final = if is_negative(s) {\n        field_neg(s)\n    } else {\n        s\n    };\n\n    u8_32_from_nat(s_final)\n}",
       "file": "curve25519-dalek/src/specs/ristretto_specs.rs",
       "line": 61,
       "module": "specs::ristretto_specs",
@@ -980,18 +980,18 @@
         "field_neg",
         "field_square",
         "field_sub",
-        "math_invsqrt",
-        "math_is_negative",
-        "spec_bytes32_from_nat",
+        "nat_invsqrt",
+        "is_negative",
+        "u8_32_from_nat",
         "fe51_as_canonical_nat",
-        "spec_sqrt_m1"
+        "sqrt_m1"
       ]
     },
     {
       "id": "specs__ristretto_specs__spec_ristretto_decompress",
       "name": "spec_ristretto_decompress",
       "signature": "pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint>",
-      "body": "pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint> {\n    let s_bytes_nat = u8_32_as_nat(&bytes);\n    let s = fe51_as_canonical_nat_from_bytes(&bytes);\n    let s_encoding_is_canonical = s_bytes_nat < p();\n    let s_is_negative = math_is_negative(s);\n\n    if !s_encoding_is_canonical || s_is_negative {\n        None\n    } else {\n        let ss = field_square(s);\n        let u1 = field_sub(1, ss);\n        let u2 = field_add(1, ss);\n        let u2_sqr = field_square(u2);\n        let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));\n        let u1_sqr = field_square(u1);\n        let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);\n\n        let invsqrt_input = field_mul(v, u2_sqr);\n        let invsqrt = math_invsqrt(invsqrt_input);\n        let ok = math_is_sqrt_ratio(1, invsqrt_input, invsqrt);\n\n        let dx = field_mul(invsqrt, u2);\n        let dy = field_mul(invsqrt, field_mul(dx, v));\n        let x_tmp = field_mul(field_add(s, s), dx);\n        let x = if math_is_negative(x_tmp) {\n            field_neg(x_tmp)\n        } else {\n            x_tmp\n        };\n        let y = field_mul(u1, dy);\n        let t = field_mul(x, y);\n\n        let t_is_negative = math_is_negative(t);\n        let y_is_zero = y == 0;\n\n        if !ok || t_is_negative || y_is_zero {\n            None\n        } else if exists|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t) {\n            Some(choose|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t))\n        } else {\n            None\n        }\n    }\n}",
+      "body": "pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint> {\n    let s_bytes_nat = u8_32_as_nat(&bytes);\n    let s = fe51_as_canonical_nat_from_bytes(&bytes);\n    let s_encoding_is_canonical = s_bytes_nat < p();\n    let s_is_negative = is_negative(s);\n\n    if !s_encoding_is_canonical || s_is_negative {\n        None\n    } else {\n        let ss = field_square(s);\n        let u1 = field_sub(1, ss);\n        let u2 = field_add(1, ss);\n        let u2_sqr = field_square(u2);\n        let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));\n        let u1_sqr = field_square(u1);\n        let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);\n\n        let invsqrt_input = field_mul(v, u2_sqr);\n        let invsqrt = nat_invsqrt(invsqrt_input);\n        let ok = is_sqrt_ratio(1, invsqrt_input, invsqrt);\n\n        let dx = field_mul(invsqrt, u2);\n        let dy = field_mul(invsqrt, field_mul(dx, v));\n        let x_tmp = field_mul(field_add(s, s), dx);\n        let x = if is_negative(x_tmp) {\n            field_neg(x_tmp)\n        } else {\n            x_tmp\n        };\n        let y = field_mul(u1, dy);\n        let t = field_mul(x, y);\n\n        let t_is_negative = is_negative(t);\n        let y_is_zero = y == 0;\n\n        if !ok || t_is_negative || y_is_zero {\n            None\n        } else if exists|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t) {\n            Some(choose|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t))\n        } else {\n            None\n        }\n    }\n}",
       "file": "curve25519-dalek/src/specs/ristretto_specs.rs",
       "line": 131,
       "module": "specs::ristretto_specs",
@@ -1009,9 +1009,9 @@
         "field_neg",
         "field_square",
         "field_sub",
-        "math_invsqrt",
-        "math_is_negative",
-        "math_is_sqrt_ratio",
+        "nat_invsqrt",
+        "is_negative",
+        "is_sqrt_ratio",
         "p",
         "spec_edwards_point",
         "fe51_as_canonical_nat",
@@ -1307,7 +1307,7 @@
       "id": "lemmas__field_lemmas__sqrt_m1_lemmas__axiom_neg_sqrt_m1_not_square",
       "name": "axiom_neg_sqrt_m1_not_square",
       "signature": "pub proof fn axiom_neg_sqrt_m1_not_square()",
-      "body": "pub proof fn axiom_neg_sqrt_m1_not_square()\n    ensures\n        !is_square_mod_p((p() - spec_sqrt_m1()) as nat),",
+      "body": "pub proof fn axiom_neg_sqrt_m1_not_square()\n    ensures\n        !is_square_mod_p((p() - sqrt_m1()) as nat),",
       "file": "curve25519-dalek/src/lemmas/field_lemmas/sqrt_m1_lemmas.rs",
       "line": 87,
       "module": "lemmas::field_lemmas::sqrt_m1_lemmas",
@@ -1320,14 +1320,14 @@
       "category": "axiom",
       "referenced_specs": [
         "p",
-        "spec_sqrt_m1"
+        "sqrt_m1"
       ]
     },
     {
       "id": "lemmas__field_lemmas__sqrt_m1_lemmas__axiom_sqrt_m1_not_square",
       "name": "axiom_sqrt_m1_not_square",
       "signature": "pub proof fn axiom_sqrt_m1_not_square()",
-      "body": "pub proof fn axiom_sqrt_m1_not_square()\n    ensures\n        !is_square_mod_p(spec_sqrt_m1()),",
+      "body": "pub proof fn axiom_sqrt_m1_not_square()\n    ensures\n        !is_square_mod_p(sqrt_m1()),",
       "file": "curve25519-dalek/src/lemmas/field_lemmas/sqrt_m1_lemmas.rs",
       "line": 70,
       "module": "lemmas::field_lemmas::sqrt_m1_lemmas",
@@ -1339,14 +1339,14 @@
       "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/field_lemmas/sqrt_m1_lemmas.rs#L70",
       "category": "axiom",
       "referenced_specs": [
-        "spec_sqrt_m1"
+        "sqrt_m1"
       ]
     },
     {
       "id": "lemmas__field_lemmas__sqrt_m1_lemmas__axiom_sqrt_m1_squared",
       "name": "axiom_sqrt_m1_squared",
       "signature": "pub proof fn axiom_sqrt_m1_squared()",
-      "body": "pub proof fn axiom_sqrt_m1_squared()\n    ensures\n        (spec_sqrt_m1() * spec_sqrt_m1()) % p() == (p() - 1),",
+      "body": "pub proof fn axiom_sqrt_m1_squared()\n    ensures\n        (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),",
       "file": "curve25519-dalek/src/lemmas/field_lemmas/sqrt_m1_lemmas.rs",
       "line": 52,
       "module": "lemmas::field_lemmas::sqrt_m1_lemmas",
@@ -1359,7 +1359,7 @@
       "category": "axiom",
       "referenced_specs": [
         "p",
-        "spec_sqrt_m1"
+        "sqrt_m1"
       ]
     },
     {
@@ -4950,13 +4950,13 @@
       "name": "invsqrt",
       "display_name": "FieldElement::invsqrt",
       "impl_type": "FieldElement",
-      "contract": "pub(crate) fn invsqrt(&self) -> (result: (\n    Choice,\n    FieldElement,\n))\n// VERIFICATION NOTE: PROOF BYPASS\n\n    ensures\n// When self = 0: return (false, 0)\n\n        (fe51_as_canonical_nat(self) == 0) ==> (!choice_is_true(result.0) && fe51_as_canonical_nat(\n            &result.1,\n        ) == 0),\n        // When successful and self ≠ 0: r² * self ≡ 1 (mod p)\n        (choice_is_true(result.0)) ==> is_sqrt_ratio(&FieldElement::ONE, self, &result.1),\n        // When unsuccessful and self ≠ 0: r² * self ≡ i (mod p) [nonsquare case]\n        (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0) ==> is_sqrt_ratio_times_i(\n            &FieldElement::ONE,\n            self,\n            &result.1,\n        ),",
+      "contract": "pub(crate) fn invsqrt(&self) -> (result: (\n    Choice,\n    FieldElement,\n))\n// VERIFICATION NOTE: PROOF BYPASS\n\n    ensures\n// When self = 0: return (false, 0)\n\n        (fe51_as_canonical_nat(self) == 0) ==> (!choice_is_true(result.0) && fe51_as_canonical_nat(\n            &result.1,\n        ) == 0),\n        // When successful and self ≠ 0: r² * self ≡ 1 (mod p)\n        (choice_is_true(result.0)) ==> fe51_is_sqrt_ratio(&FieldElement::ONE, self, &result.1),\n        // When unsuccessful and self ≠ 0: r² * self ≡ i (mod p) [nonsquare case]\n        (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0) ==> fe51_is_sqrt_ratio_times_i(\n            &FieldElement::ONE,\n            self,\n            &result.1,\n        ),",
       "requires": [],
       "ensures": [
         "(fe51_as_canonical_nat(self) == 0) ==> (!choice_is_true(result.0) && fe51_as_canonical_nat( &result.1,",
         ") == 0),",
-        "(choice_is_true(result.0)) ==> is_sqrt_ratio(&FieldElement::ONE, self, &result.1),",
-        "(!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0) ==> is_sqrt_ratio_times_i( &FieldElement::ONE,",
+        "(choice_is_true(result.0)) ==> fe51_is_sqrt_ratio(&FieldElement::ONE, self, &result.1),",
+        "(!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0) ==> fe51_is_sqrt_ratio_times_i( &FieldElement::ONE,",
         "self,",
         "&result.1,",
         "),"
@@ -5100,7 +5100,7 @@
       "name": "sqrt_ratio_i",
       "display_name": "FieldElement::sqrt_ratio_i",
       "impl_type": "FieldElement",
-      "contract": "pub(crate) fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (result: (\n    Choice,\n    FieldElement,\n))\n    requires\n// Input bounds for sqrt_ratio_i\n// u and v can be up to 54-bit bounded (from sub/add operations in decompress)\n\n        fe51_limbs_bounded(u, 54),\n        fe51_limbs_bounded(v, 54),\n    ensures\n// When u = 0: always return (true, 0)\n\n        (fe51_as_canonical_nat(u) == 0) ==> (choice_is_true(result.0) && fe51_as_canonical_nat(\n            &result.1,\n        ) == 0),\n        // When v = 0 but u ≠ 0: return (false, 0) [division by zero case]\n        (fe51_as_canonical_nat(v) == 0 && fe51_as_canonical_nat(u) != 0) ==> (!choice_is_true(\n            result.0,\n        ) && fe51_as_canonical_nat(&result.1) == 0),\n        // When successful and v ≠ 0: r² * v ≡ u (mod p)\n        (choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0) ==> is_sqrt_ratio(\n            u,\n            v,\n            &result.1,\n        ),\n        // When unsuccessful and v ≠ 0: r² * v ≡ i*u (mod p) [nonsquare case]\n        (!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u) != 0)\n            ==> is_sqrt_ratio_times_i(u, v, &result.1),\n        // NEW: The result is always the \"non-negative\" square root (LSB = 0)\n        // This is a fundamental property of sqrt_ratio_i that the original code\n        // relies on for decompression sign bit handling\n        fe51_as_canonical_nat(&result.1) % 2 == 0,\n        // Limb bounds: result is 52-bit bounded (from conditional_negate)\n        fe51_limbs_bounded(\n            &result.1,\n            52,\n        ),\n// VERIFICATION NOTE: PROOF BYPASS",
+      "contract": "pub(crate) fn sqrt_ratio_i(u: &FieldElement, v: &FieldElement) -> (result: (\n    Choice,\n    FieldElement,\n))\n    requires\n// Input bounds for sqrt_ratio_i\n// u and v can be up to 54-bit bounded (from sub/add operations in decompress)\n\n        fe51_limbs_bounded(u, 54),\n        fe51_limbs_bounded(v, 54),\n    ensures\n// When u = 0: always return (true, 0)\n\n        (fe51_as_canonical_nat(u) == 0) ==> (choice_is_true(result.0) && fe51_as_canonical_nat(\n            &result.1,\n        ) == 0),\n        // When v = 0 but u ≠ 0: return (false, 0) [division by zero case]\n        (fe51_as_canonical_nat(v) == 0 && fe51_as_canonical_nat(u) != 0) ==> (!choice_is_true(\n            result.0,\n        ) && fe51_as_canonical_nat(&result.1) == 0),\n        // When successful and v ≠ 0: r² * v ≡ u (mod p)\n        (choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0) ==> fe51_is_sqrt_ratio(\n            u,\n            v,\n            &result.1,\n        ),\n        // When unsuccessful and v ≠ 0: r² * v ≡ i*u (mod p) [nonsquare case]\n        (!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u) != 0)\n            ==> fe51_is_sqrt_ratio_times_i(u, v, &result.1),\n        // NEW: The result is always the \"non-negative\" square root (LSB = 0)\n        // This is a fundamental property of sqrt_ratio_i that the original code\n        // relies on for decompression sign bit handling\n        fe51_as_canonical_nat(&result.1) % 2 == 0,\n        // Limb bounds: result is 52-bit bounded (from conditional_negate)\n        fe51_limbs_bounded(\n            &result.1,\n            52,\n        ),\n// VERIFICATION NOTE: PROOF BYPASS",
       "requires": [
         "fe51_limbs_bounded(u, 54),",
         "fe51_limbs_bounded(v, 54),"
@@ -5110,11 +5110,11 @@
         ") == 0),",
         "(fe51_as_canonical_nat(v) == 0 && fe51_as_canonical_nat(u) != 0) ==> (!choice_is_true( result.0,",
         ") && fe51_as_canonical_nat(&result.1) == 0),",
-        "(choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0) ==> is_sqrt_ratio( u,",
+        "(choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0) ==> fe51_is_sqrt_ratio( u,",
         "v,",
         "&result.1,",
         "),",
-        "(!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u) != 0) ==> is_sqrt_ratio_times_i(u, v, &result.1),",
+        "(!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u) != 0) ==> fe51_is_sqrt_ratio_times_i(u, v, &result.1),",
         "fe51_as_canonical_nat(&result.1) % 2 == 0,",
         "fe51_limbs_bounded( &result.1,",
         "52,",
@@ -6839,18 +6839,18 @@
       "name": "step_1",
       "display_name": "step_1",
       "impl_type": "",
-      "contract": "pub(super) fn step_1(repr: &CompressedRistretto) -> (result: (Choice, Choice, FieldElement))\n    ensures\n// s has 51-bit limb bounds (ensured by from_bytes)\n\n        fe51_limbs_bounded(&result.2, 51),\n        // Parsed value matches the bytes-to-field-element spec\n        fe51_as_canonical_nat(&result.2) == fe51_as_canonical_nat_from_bytes(&repr.0),\n        // s_encoding_is_canonical: true iff re-encoding s gives the original bytes\n        choice_is_true(result.0) == (spec_fe51_to_bytes(&result.2) == repr.0@),\n        // s_is_negative: true iff low bit of canonical encoding is 1\n        choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),\n        // s_is_negative matches the math-level sign bit of the decoded value\n        choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),",
+      "contract": "pub(super) fn step_1(repr: &CompressedRistretto) -> (result: (Choice, Choice, FieldElement))\n    ensures\n// s has 51-bit limb bounds (ensured by from_bytes)\n\n        fe51_limbs_bounded(&result.2, 51),\n        // Parsed value matches the bytes-to-field-element spec\n        fe51_as_canonical_nat(&result.2) == fe51_as_canonical_nat_from_bytes(&repr.0),\n        // s_encoding_is_canonical: true iff re-encoding s gives the original bytes\n        choice_is_true(result.0) == (spec_fe51_to_bytes(&result.2) == repr.0@),\n        // s_is_negative: true iff low bit of canonical encoding is 1\n        choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),\n        // s_is_negative matches the math-level sign bit of the decoded value\n        choice_is_true(result.1) == is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),",
       "requires": [],
       "ensures": [
         "fe51_limbs_bounded(&result.2, 51),",
         "fe51_as_canonical_nat(&result.2) == fe51_as_canonical_nat_from_bytes(&repr.0),",
         "choice_is_true(result.0) == (spec_fe51_to_bytes(&result.2) == repr.0@),",
         "choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),",
-        "choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),"
+        "choice_is_true(result.1) == is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),"
       ],
       "referenced_specs": [
         "fe51_limbs_bounded",
-        "math_is_negative",
+        "is_negative",
         "fe51_as_canonical_nat",
         "fe51_as_canonical_nat_from_bytes"
       ],
@@ -6872,7 +6872,7 @@
       "name": "step_2",
       "display_name": "step_2",
       "impl_type": "",
-      "contract": "pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint))\n    ensures\n// Z is set to ONE by construction\n\n        fe51_as_canonical_nat(&result.3.0.Z) == 1,\n        // T is the product of X and Y in affine form (Z = 1)\n        fe51_as_canonical_nat(&result.3.0.T) == field_mul(\n            fe51_as_canonical_nat(&result.3.0.X),\n            fe51_as_canonical_nat(&result.3.0.Y),\n        ),\n        // If decoding succeeds, the output point is well-formed and in the even subgroup\n        choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),\n        choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),\n        // t_is_negative reflects the sign bit of T\n        choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat(&result.3.0.T)),\n        // y_is_zero reflects whether Y is zero\n        choice_is_true(result.2) == (fe51_as_canonical_nat(&result.3.0.Y) == 0),",
+      "contract": "pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint))\n    ensures\n// Z is set to ONE by construction\n\n        fe51_as_canonical_nat(&result.3.0.Z) == 1,\n        // T is the product of X and Y in affine form (Z = 1)\n        fe51_as_canonical_nat(&result.3.0.T) == field_mul(\n            fe51_as_canonical_nat(&result.3.0.X),\n            fe51_as_canonical_nat(&result.3.0.Y),\n        ),\n        // If decoding succeeds, the output point is well-formed and in the even subgroup\n        choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),\n        choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),\n        // t_is_negative reflects the sign bit of T\n        choice_is_true(result.1) == is_negative(fe51_as_canonical_nat(&result.3.0.T)),\n        // y_is_zero reflects whether Y is zero\n        choice_is_true(result.2) == (fe51_as_canonical_nat(&result.3.0.Y) == 0),",
       "requires": [],
       "ensures": [
         "fe51_as_canonical_nat(&result.3.0.Z) == 1,",
@@ -6881,14 +6881,14 @@
         "),",
         "choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),",
         "choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),",
-        "choice_is_true(result.1) == math_is_negative(fe51_as_canonical_nat(&result.3.0.T)),",
+        "choice_is_true(result.1) == is_negative(fe51_as_canonical_nat(&result.3.0.T)),",
         "choice_is_true(result.2) == (fe51_as_canonical_nat(&result.3.0.Y) == 0),"
       ],
       "referenced_specs": [
         "is_in_even_subgroup",
         "is_well_formed_edwards_point",
         "field_mul",
-        "math_is_negative",
+        "is_negative",
         "fe51_as_canonical_nat"
       ],
       "file": "curve25519-dalek/src/ristretto.rs",

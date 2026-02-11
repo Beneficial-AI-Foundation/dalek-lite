@@ -869,14 +869,14 @@ impl FieldElement {
                 result.0,
             ) && fe51_as_canonical_nat(&result.1) == 0),
             // When successful and v ≠ 0: r² * v ≡ u (mod p)
-            (choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0) ==> is_sqrt_ratio(
+            (choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0) ==> fe51_is_sqrt_ratio(
                 u,
                 v,
                 &result.1,
             ),
             // When unsuccessful and v ≠ 0: r² * v ≡ i*u (mod p) [nonsquare case]
             (!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u) != 0)
-                ==> is_sqrt_ratio_times_i(u, v, &result.1),
+                ==> fe51_is_sqrt_ratio_times_i(u, v, &result.1),
             // NEW: The result is always the "non-negative" square root (LSB = 0)
             // This is a fundamental property of sqrt_ratio_i that the original code
             // relies on for decompression sign bit handling
@@ -983,9 +983,9 @@ impl FieldElement {
                 &result.1,
             ) == 0),
             // When successful and self ≠ 0: r² * self ≡ 1 (mod p)
-            (choice_is_true(result.0)) ==> is_sqrt_ratio(&FieldElement::ONE, self, &result.1),
+            (choice_is_true(result.0)) ==> fe51_is_sqrt_ratio(&FieldElement::ONE, self, &result.1),
             // When unsuccessful and self ≠ 0: r² * self ≡ i (mod p) [nonsquare case]
-            (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0) ==> is_sqrt_ratio_times_i(
+            (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0) ==> fe51_is_sqrt_ratio_times_i(
                 &FieldElement::ONE,
                 self,
                 &result.1,

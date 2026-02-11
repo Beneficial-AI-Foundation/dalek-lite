@@ -107,7 +107,7 @@ pub open spec fn fe51_as_canonical_nat_from_bytes(bytes: &[u8; 32]) -> nat {
 /// Spec function: Get the sign bit of a field element
 /// In Curve25519, the sign bit is the least significant bit of the canonical representation
 pub open spec fn fe51_as_canonical_nat_sign_bit(fe: &FieldElement51) -> u8 {
-    ((fe51_as_canonical_nat(fe) % p()) % 2) as u8
+    ((fe51_as_canonical_nat(fe)) % 2) as u8
 }
 
 // Spec-level field operations on natural numbers (mod p)
@@ -160,7 +160,7 @@ pub proof fn field_inv_property(a: nat)
         a % p() != 0,
     ensures
         field_inv(a) < p(),
-        ((a % p()) * field_inv(a)) % p() == 1,
+        field_mul(field_canonical(a), field_inv(a)) == 1,
 {
     assert(p() > 1) by {
         pow255_gt_19();
@@ -253,9 +253,9 @@ proof fn lemma_inverse_unique_core(a: nat, w: nat, z: nat, p: nat)
 /// require p to be prime (though the existence from field_inv_property does).
 pub proof fn field_inv_unique(a: nat, w: nat)
     requires
-        a % p() != 0,
+        field_canonical(a) != 0,
         w < p(),
-        ((a % p()) * w) % p() == 1,
+        field_mul(field_canonical(a), w) == 1,
     ensures
         w == field_inv(a),
 {
@@ -312,28 +312,28 @@ pub proof fn field_inv_zero()
 /// but this specific application to p() is now a proven lemma rather than an axiom.
 pub proof fn lemma_fermat_for_p(x: nat)
     requires
-        x % p() != 0,
+        field_canonical(x) != 0,
     ensures
-        (pow(x as int, (p() - 1) as nat) as nat) % p() == 1,
+        field_canonical(pow(x as int, (p() - 1) as nat) as nat) == 1,
 {
     axiom_p_is_prime();
     lemma_fermat_little_theorem(x, p());
 }
 
 /// Check if a value is a quadratic residue (square) modulo p
-pub open spec fn math_is_square(a: nat) -> bool {
-    exists|y: nat| (#[trigger] (y * y) % p()) == (a % p())
+pub open spec fn is_square(a: nat) -> bool {
+    exists|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(a)
 }
 
 /// Compute a square root modulo p (if it exists)
 /// Returns some y such that y^2 ≡ a (mod p)
 /// The result is unspecified if a is not a quadratic residue
 /// Note result is not unique
-pub open spec fn math_sqrt(a: nat) -> nat
+pub open spec fn field_sqrt(a: nat) -> nat
     recommends
-        math_is_square(a),
+        is_square(a),
 {
-    choose|y: nat| y < p() && #[trigger] ((y * y) % p()) == (a % p())
+    choose|y: nat| y < p() && #[trigger] field_mul(y, y) == field_canonical(a)
 }
 
 /// Spec function for FieldElement::from_bytes
@@ -429,96 +429,94 @@ pub open spec fn spec_fe51_to_bytes(fe: &FieldElement51) -> Seq<u8> {
 
 /// Spec function: two field elements are inverses if their product is 1 (mod p)
 pub open spec fn is_inverse_field(a: &FieldElement51, b: &FieldElement51) -> bool {
-    (fe51_as_canonical_nat(a) * fe51_as_canonical_nat(b)) % p() == 1
+    field_mul(fe51_as_canonical_nat(a), fe51_as_canonical_nat(b)) == 1
 }
 
 /// Spec function: field element is inverse of a natural number (mod p)
 pub open spec fn is_inverse_field_of_nat(fe: &FieldElement51, n: nat) -> bool {
-    (fe51_as_canonical_nat(fe) * n) % p() == 1
+    field_mul(fe51_as_canonical_nat(fe), n) == 1
 }
 
 /// Spec function to compute product of all field elements in a sequence (mod p)
 /// Returns the natural number representation
-pub open spec fn spec_product_of_field_elems(fields: Seq<FieldElement51>) -> nat
+pub open spec fn product_of_field_elems(fields: Seq<FieldElement51>) -> nat
     decreases fields.len(),
 {
     if fields.len() == 0 {
         1
     } else {
-        (spec_product_of_field_elems(fields.skip(1)) * fe51_as_canonical_nat(&fields[0])) % p()
+        field_mul(product_of_field_elems(fields.skip(1)), fe51_as_canonical_nat(&fields[0]))
     }
 }
 
 /// Spec function: product of non-zero field elements in a sequence (mod p)
 /// Skips zero elements in constant-time fashion by multiplying by 1 instead
-pub open spec fn spec_product_of_nonzeros(fields: Seq<FieldElement51>) -> nat
+pub open spec fn product_of_nonzeros(fields: Seq<FieldElement51>) -> nat
     decreases fields.len(),
 {
     if fields.len() == 0 {
         1
     } else {
         let first_val = fe51_as_canonical_nat(&fields[0]);
-        let rest_product = spec_product_of_nonzeros(fields.subrange(1, fields.len() as int));
+        let rest_product = product_of_nonzeros(fields.subrange(1, fields.len() as int));
         // Skip zeros: if first_val is 0, treat it as 1 (multiply by identity)
         if first_val == 0 {
             rest_product
         } else {
-            (rest_product * first_val) % p()
+            field_mul(rest_product, first_val)
         }
     }
 }
 
 /// Spec function: b is a square root of a (mod p), i.e., b^2 = a (mod p)
 pub open spec fn is_square_of(a: &FieldElement51, b: &FieldElement51) -> bool {
-    (fe51_as_canonical_nat(b) * fe51_as_canonical_nat(b)) % p() == fe51_as_canonical_nat(a) % p()
-}
-
-/// Spec function: b^2 * v = u (mod p)
-pub open spec fn is_sqrt_ratio(u: &FieldElement51, v: &FieldElement51, r: &FieldElement51) -> bool {
-    (fe51_as_canonical_nat(r) * fe51_as_canonical_nat(r) * fe51_as_canonical_nat(v)) % p()
-        == fe51_as_canonical_nat(u)
-}
-
-/// Spec function: r^2 * v = i*u (mod p), where i = sqrt(-1)
-/// Used for the nonsquare case in sqrt_ratio_i
-pub open spec fn is_sqrt_ratio_times_i(
-    u: &FieldElement51,
-    v: &FieldElement51,
-    r: &FieldElement51,
-) -> bool {
-    (fe51_as_canonical_nat(r) * fe51_as_canonical_nat(r) * fe51_as_canonical_nat(v)) % p() == (
-    fe51_as_canonical_nat(&constants::SQRT_M1) * fe51_as_canonical_nat(u)) % p()
+    field_mul(fe51_as_canonical_nat(b), fe51_as_canonical_nat(b)) == fe51_as_canonical_nat(a)
 }
 
 /// Spec function: r² * v = u (mod p) — math version operating on nat values
-/// This is the mathematical equivalent of is_sqrt_ratio but without FieldElement wrappers.
+/// This is the mathematical equivalent of fe51_is_sqrt_ratio but without FieldElement wrappers.
 /// Use this when working with mathematical values directly in lemmas.
-pub open spec fn math_is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {
-    (r * r * v) % p() == u
+pub open spec fn is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {
+    field_canonical(r * r * v) == u
 }
 
 /// Spec function: r² * v = i*u (mod p) — math version operating on nat values
 /// Used for the nonsquare case in sqrt_ratio_i.
-/// This is the mathematical equivalent of is_sqrt_ratio_times_i.
-pub open spec fn math_is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
-    (r * r * v) % p() == (spec_sqrt_m1() * u) % p()
+/// This is the mathematical equivalent of fe51_is_sqrt_ratio_times_i.
+pub open spec fn is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
+    field_canonical(r * r * v) == field_mul(sqrt_m1(), u)
+}
+
+/// Spec function: b^2 * v = u (mod p)
+pub open spec fn fe51_is_sqrt_ratio(u: &FieldElement51, v: &FieldElement51, r: &FieldElement51) -> bool {
+    is_sqrt_ratio(fe51_as_canonical_nat(u), fe51_as_canonical_nat(v), fe51_as_canonical_nat(r))
+}
+
+/// Spec function: r^2 * v = i*u (mod p), where i = sqrt(-1)
+/// Used for the nonsquare case in sqrt_ratio_i
+pub open spec fn fe51_is_sqrt_ratio_times_i(
+    u: &FieldElement51,
+    v: &FieldElement51,
+    r: &FieldElement51,
+) -> bool {
+    is_sqrt_ratio_times_i(fe51_as_canonical_nat(u), fe51_as_canonical_nat(v), fe51_as_canonical_nat(r))
 }
 
 /// Spec predicate: a field element is negative if its canonical low bit is 1.
-pub open spec fn math_is_negative(a: nat) -> bool {
-    (a % p()) % 2 == 1
+pub open spec fn is_negative(a: nat) -> bool {
+    field_canonical(a) % 2 == 1
 }
 
 /// Spec-only model of inverse square root with a canonical sign choice.
 ///
 /// Returns a nonnegative r such that either r^2 * a = 1 (mod p) or r^2 * a = i (mod p).
-pub open spec fn math_invsqrt(a: nat) -> nat {
+pub open spec fn nat_invsqrt(a: nat) -> nat {
     if a % p() == 0 {
         0
     } else {
         choose|r: nat|
             #![auto]
-            !math_is_negative(r) && (math_is_sqrt_ratio(1, a, r) || math_is_sqrt_ratio_times_i(
+            !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(
                 1,
                 a,
                 r,
@@ -527,7 +525,7 @@ pub open spec fn math_invsqrt(a: nat) -> nat {
 }
 
 /// Canonical little-endian bytes for a nat (mod 2^256).
-pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32] {
+pub open spec fn u8_32_from_nat(n: nat) -> [u8; 32] {
     choose|b: [u8; 32]| u8_32_as_nat(&b) == n % pow2(256)
 }
 
@@ -538,7 +536,7 @@ pub open spec fn spec_bytes32_from_nat(n: nat) -> [u8; 32] {
 /// 2. When v = 0 and u ≠ 0: returns (false, 0)
 /// 3. When success and v ≠ 0: r² · v ≡ u (mod p)
 /// 4. When failure and v ≠ 0 and u ≠ 0: r² · v ≡ i·u (mod p)
-pub open spec fn spec_sqrt_ratio_i_math_post(u: nat, v: nat, success: bool, r: nat) -> bool {
+pub open spec fn sqrt_ratio_i_math_post(u: nat, v: nat, success: bool, r: nat) -> bool {
     // When u = 0: always return (true, 0)
     ((u == 0) ==> (success && r == 0))
         &&
@@ -546,10 +544,10 @@ pub open spec fn spec_sqrt_ratio_i_math_post(u: nat, v: nat, success: bool, r: n
     ((v == 0 && u != 0) ==> (!success && r == 0))
         &&
     // When successful and v ≠ 0: r² * v ≡ u (mod p)
-    ((success && v != 0) ==> math_is_sqrt_ratio(u, v, r))
+    ((success && v != 0) ==> is_sqrt_ratio(u, v, r))
         &&
     // When unsuccessful and v ≠ 0 and u ≠ 0: r² * v ≡ i*u (mod p)
-    ((!success && v != 0 && u != 0) ==> math_is_sqrt_ratio_times_i(u, v, r))
+    ((!success && v != 0 && u != 0) ==> is_sqrt_ratio_times_i(u, v, r))
 }
 
 /// Spec function capturing sqrt_ratio_i boundedness postconditions.
@@ -557,7 +555,7 @@ pub open spec fn spec_sqrt_ratio_i_math_post(u: nat, v: nat, success: bool, r: n
 /// The result r is:
 /// - Reduced modulo p (r < p)
 /// - The "non-negative" square root (even, i.e., LSB = 0)
-pub open spec fn spec_sqrt_ratio_i_bounded_post(r: nat) -> bool {
+pub open spec fn sqrt_ratio_i_bounded_post(r: nat) -> bool {
     r < p() && r % 2 == 0
 }
 
@@ -565,28 +563,28 @@ pub open spec fn spec_sqrt_ratio_i_bounded_post(r: nat) -> bool {
 ///
 /// Combines math correctness and boundedness postconditions.
 /// Use this in lemmas instead of listing all postconditions separately.
-pub open spec fn spec_sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -> bool {
-    spec_sqrt_ratio_i_math_post(u, v, success, r) && spec_sqrt_ratio_i_bounded_post(r)
+pub open spec fn sqrt_ratio_i_post(u: nat, v: nat, success: bool, r: nat) -> bool {
+    sqrt_ratio_i_math_post(u, v, success, r) && sqrt_ratio_i_bounded_post(r)
 }
 
 // Square-ness mod p (spec-only).
 pub open spec fn is_square_mod_p(a: nat) -> bool {
-    exists|y: nat| (#[trigger] (y * y) % p()) == (a % p())
+    exists|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(a)
 }
 
 // Spec: there exists a modular inverse of v (when v != 0).
 pub open spec fn has_inv_mod_p(v: nat) -> bool {
-    v % p() != 0 && exists|w: nat| (#[trigger] (v * w) % p()) == 1
+    v % p() != 0 && exists|w: nat| (#[trigger] field_mul(v, w)) == 1
 }
 
 // Spec: witness-based inverse predicate (lets callers quantify the inverse).
 pub open spec fn is_inv_witness(v: nat, w: nat) -> bool {
-    ((v % p()) * (w % p())) % p() == 1
+    field_mul(field_canonical(v), field_canonical(w)) == 1
 }
 
 /// The mathematical value of SQRT_M1 (sqrt(-1) mod p)
 /// This is the 4th root of unity i such that i² = -1 (mod p)
-pub open spec fn spec_sqrt_m1() -> nat {
+pub open spec fn sqrt_m1() -> nat {
     fe51_as_canonical_nat(&constants::SQRT_M1)
 }
 

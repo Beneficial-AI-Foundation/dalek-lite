@@ -58,26 +58,26 @@ verus! {
 /// ```
 pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
     requires
-        (x % p()) % 2 == 0,  // x is non-negative root (LSB = 0)
+        x % 2 == 0,  // x is non-negative root (LSB = 0)
+        x < p(),
         sign_bit == 0 || sign_bit == 1,
-        sign_bit == 1 ==> x % p() != 0,  // if asking for odd, x ≠ 0
+        sign_bit == 1 ==> x != 0,  // if asking for odd, x ≠ 0
 
     ensures
         ({
             let result = if sign_bit == 1 {
                 field_neg(x)
             } else {
-                x % p()
+                x
             };
             (result % 2) as u8 == sign_bit
         }),
 {
     let pval = p();
-    let x_red = x % pval;
     let result = if sign_bit == 1 {
         field_neg(x)
     } else {
-        x % pval
+        x
     };
 
     // Goal: LSB(result) = sign_bit
@@ -85,23 +85,35 @@ pub proof fn lemma_sign_bit_after_conditional_negate(x: nat, sign_bit: u8)
         lemma_p_is_odd();  // p is odd
 
         if sign_bit == 0 {
-            // Case: sign_bit = 0 → result = x % p (even)
-            assert(result == x_red);
+            // Case: sign_bit = 0 → result = x (even)
             assert(result % 2 == 0);
         } else {
-            // Case: sign_bit = 1 → result = -x = p - x_red
-            let neg_x = (pval - x_red) as nat;
+            // Case: sign_bit = 1 → result = -x = p - x
+            let neg_x = field_neg(x);
 
             assert(result % 2 == 1) by {
                 p_gt_2();
 
-                assert(result == neg_x) by {
-                    lemma_small_mod(neg_x, pval);
+                assert(neg_x == (pval - x) as nat) by {
+                    assert(x == field_canonical(x)) by {
+                        lemma_small_mod(x, pval);
+                    }
+                    // since SB == 1, x can't be zero
+                    assert(0 <= pval - x < pval) by {
+                        assert(x != 0);
+                    }
+                    assert((pval - x) as nat % pval == pval - x) by {
+                        lemma_small_mod((pval - x) as nat, pval);
+                    }
                 };
 
-                // (p - x_red) % 2 = (odd - even) % 2 = 1
+                // (p - x) % 2 = (odd - even) % 2 = 1
                 assert(neg_x % 2 == 1) by {
-                    lemma_sub_mod_noop(pval as int, x_red as int, 2int);
+                    assert((pval - x) % 2 == ((pval % 2) - x % 2) % 2) by {
+                        lemma_sub_mod_noop(pval as int, x as int, 2int);
+                    }
+                    assert(pval % 2 == 1);
+                    assert(x % 2 == 0);
                 };
             };
         }
@@ -121,15 +133,16 @@ pub proof fn lemma_decompress_field_element_sign_bit(
 )
     requires
         sign_bit == 0 || sign_bit == 1,
-        (x_before_negate % p()) % 2 == 0,  // sqrt_ratio_i returns even
-        sign_bit == 1 ==> x_before_negate % p() != 0,  // x ≠ 0 when negating
+        x_before_negate % 2 == 0,  // sqrt_ratio_i returns even
+        x_before_negate < p(),
+        sign_bit == 1 ==> x_before_negate != 0,  // x ≠ 0 when negating
         x_after_negate == if sign_bit == 1 {
             field_neg(x_before_negate)
         } else {
-            x_before_negate % p()
+            x_before_negate
         },
     ensures
-        ((x_after_negate % p()) % 2) as u8 == sign_bit,
+        (x_after_negate % 2) as u8 == sign_bit,
 {
     // (x_after % 2) as u8 == sign_bit
     assert((x_after_negate % 2) as u8 == sign_bit) by {
@@ -137,17 +150,17 @@ pub proof fn lemma_decompress_field_element_sign_bit(
     }
 
     // x_after < p, so x_after % p = x_after
-    assert(x_after_negate % p() == x_after_negate) by {
-        assert(x_after_negate < p()) by {
-            p_gt_2();
-            if sign_bit == 1 {
-                lemma_mod_bound((p() as int - (x_before_negate % p()) as int), p() as int);
-            } else {
-                lemma_mod_bound(x_before_negate as int, p() as int);
-            }
-        }
-        lemma_small_mod(x_after_negate, p());
-    }
+    // assert(x_after_negate % p() == x_after_negate) by {
+    //     assert(x_after_negate < p()) by {
+    //         p_gt_2();
+    //         if sign_bit == 1 {
+    //             lemma_mod_bound((p() as int - (x_before_negate) as int), p() as int);
+    //         } else {
+    //             lemma_mod_bound(x_before_negate as int, p() as int);
+    //         }
+    //     }
+    //     lemma_small_mod(x_after_negate, p());
+    // }
 }
 
 // =============================================================================
@@ -176,7 +189,7 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
     ensures
 // If sign bit is 1, x must be non-zero (since -0 = 0)
 
-        (bytes[31] >> 7) == 1 ==> x % p() != 0,
+        (bytes[31] >> 7) == 1 ==> x != 0,
 {
     let sign_bit = bytes[31] >> 7;
     let y_sq = field_square(y);
@@ -187,10 +200,10 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
         assert(y_sq != 1);
 
         // From curve equation and y² != 1, x must be non-zero (contrapositive)
-        assert(x % p() != 0) by {
-            // If x % p == 0, then by lemma_x_zero_implies_y_squared_one, y² == 1
+        assert(x != 0) by {
+            // If x == 0, then by lemma_x_zero_implies_y_squared_one, y² == 1
             // But we have y² != 1, contradiction
-            if x % p() == 0 {
+            if x == 0 {
                 lemma_x_zero_implies_y_squared_one(x, y);
             }
         };
@@ -281,7 +294,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
         let repr_byte_31 = repr_bytes[31];
 
         // ((x_after % p) % 2) as u8 == sign_bit
-        assert(((x_after % p()) % 2) as u8 == (repr_byte_31 >> 7)) by {
+        assert((x_after % 2) as u8 == (repr_byte_31 >> 7)) by {
             let sign_bit = repr_byte_31 >> 7;
 
             // sign_bit ∈ {0, 1}
@@ -292,12 +305,12 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
 
             // Precondition 1: sqrt_ratio_i returns non-negative root (LSB = 0)
             // x_before % 2 == 0 from precondition, and x_before < p() so x_before % p() == x_before
-            assert((x_before % p()) % 2 == 0) by {
-                lemma_small_mod(x_before, p());
-            };
+            // assert(x_before % 2 == 0) by {
+            //     lemma_small_mod(x_before, p());
+            // };
 
             // Precondition 2: sign_bit == 1 ==> x != 0
-            assert(sign_bit == 1 ==> x_before % p() != 0) by {
+            assert(sign_bit == 1 ==> x_before != 0) by {
                 lemma_sign_bit_one_implies_x_nonzero(repr_bytes, x_before, y_final);
             };
 
@@ -305,7 +318,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
             assert(x_after == if sign_bit == 1 {
                 field_neg(x_before)
             } else {
-                x_before % p()
+                x_before
             }) by {
                 lemma_small_mod(x_before, p());
             };

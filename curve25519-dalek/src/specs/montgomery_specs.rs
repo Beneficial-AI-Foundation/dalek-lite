@@ -82,9 +82,9 @@ pub open spec fn montgomery_rhs(u: nat) -> nat {
 /// (This matches Ed25519’s canonical-sign rule.)
 pub open spec fn canonical_sqrt(r: nat) -> nat
     recommends
-        math_is_square(r),
+        is_square(r),
 {
-    let s1 = math_sqrt(r);  // some square root
+    let s1 = field_sqrt(r);  // some square root
     let s2 = field_neg(s1);  // the other root
 
     if (s1 % 2 == 0) {
@@ -95,7 +95,7 @@ pub open spec fn canonical_sqrt(r: nat) -> nat
 }
 
 pub open spec fn is_valid_u_coordinate(u: nat) -> bool {
-    math_is_square(montgomery_rhs(u))
+    is_square(montgomery_rhs(u))
 }
 
 /// Given u-coordinate of a Montgomery point (non-torsion),
@@ -465,7 +465,7 @@ pub open spec fn spec_elligator_encode(r: nat) -> nat {
     let eps = field_mul(d, inner);
 
     // Choose u based on whether eps is a quadratic residue
-    let eps_is_square = math_is_square(eps);
+    let eps_is_square = is_square(eps);
 
     if eps_is_square {
         // eps is square → point is on curve → result u = d

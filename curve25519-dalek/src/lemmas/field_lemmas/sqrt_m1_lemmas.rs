@@ -1,6 +1,6 @@
 //! Lemmas about i = sqrt(-1) in GF(p) where p = 2^255 - 19
 //!
-//! This module contains lemmas about the specific field element `spec_sqrt_m1()`,
+//! This module contains lemmas about the specific field element `sqrt_m1()`,
 //! which is the square root of -1 in the curve25519 prime field.
 //!
 //! ## Axioms
@@ -51,7 +51,7 @@ verus! {
 ///          lemma_multiply_by_i_flips_sign, lemma_no_square_root_when_times_i
 pub proof fn axiom_sqrt_m1_squared()
     ensures
-        (spec_sqrt_m1() * spec_sqrt_m1()) % p() == (p() - 1),
+        (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),
 {
     admit();
 }
@@ -69,7 +69,7 @@ pub proof fn axiom_sqrt_m1_squared()
 /// Used in: lemma_no_square_root_when_times_i
 pub proof fn axiom_sqrt_m1_not_square()
     ensures
-        !is_square_mod_p(spec_sqrt_m1()),
+        !is_square_mod_p(sqrt_m1()),
 {
     admit();
 }
@@ -86,7 +86,7 @@ pub proof fn axiom_sqrt_m1_not_square()
 /// Used in: lemma_no_square_root_when_times_i
 pub proof fn axiom_neg_sqrt_m1_not_square()
     ensures
-        !is_square_mod_p((p() - spec_sqrt_m1()) as nat),
+        !is_square_mod_p((p() - sqrt_m1()) as nat),
 {
     admit();
 }
@@ -105,16 +105,16 @@ pub proof fn axiom_neg_sqrt_m1_not_square()
 /// Used in: lemma_flipped_sign_becomes_correct
 pub proof fn lemma_multiply_by_i_flips_sign(r: nat)
     ensures
-        field_square(field_mul(r, spec_sqrt_m1())) == field_neg(
+        field_square(field_mul(r, sqrt_m1())) == field_neg(
             field_square(r),
         ),
         // Expanded form for callers that need explicit modular arithmetic
-        ((r * spec_sqrt_m1()) % p() * (r * spec_sqrt_m1()) % p()) % p() == ((p() as int - ((r * r)
+        ((r * sqrt_m1()) % p() * (r * sqrt_m1()) % p()) % p() == ((p() as int - ((r * r)
             % p()) as int) % p() as int) as nat,
 {
     pow255_gt_19();  // Needed: establishes p() > 0 for modular arithmetic
 
-    let i = spec_sqrt_m1();
+    let i = sqrt_m1();
     let pn = p();
     let ri = r * i;
     let ri_mod = field_mul(r, i);  // = (r * i) % p
@@ -186,14 +186,14 @@ pub proof fn lemma_multiply_by_i_flips_sign(r: nat)
 ///
 pub proof fn lemma_i_inverse_is_neg_i()
     ensures
-        field_mul(spec_sqrt_m1(), field_neg(spec_sqrt_m1())) == 1,
-        field_inv(spec_sqrt_m1()) == field_neg(spec_sqrt_m1()),
+        field_mul(sqrt_m1(), field_neg(sqrt_m1())) == 1,
+        field_inv(sqrt_m1()) == field_neg(sqrt_m1()),
 {
-    let i = spec_sqrt_m1();
+    let i = sqrt_m1();
     let p = p();
     p_gt_2();
 
-    // Step 1: Show i < p (since spec_sqrt_m1() = fe51_as_canonical_nat(...) % p)
+    // Step 1: Show i < p (since sqrt_m1() = fe51_as_canonical_nat(...) % p)
     assert(i < p) by {
         lemma_mod_bound(fe51_as_nat(&constants::SQRT_M1) as int, p as int);
     };
@@ -323,7 +323,7 @@ pub proof fn lemma_i_inverse_is_neg_i()
 pub proof fn lemma_u_times_inv_iu_is_neg_i(u: nat, i: nat)
     requires
         u % p() != 0,
-        i == spec_sqrt_m1(),
+        i == sqrt_m1(),
         i % p() != 0,
     ensures
         ({
@@ -366,7 +366,7 @@ pub proof fn lemma_u_times_inv_iu_is_neg_i(u: nat, i: nat)
 pub proof fn lemma_neg_u_times_inv_iu_is_i(u: nat, i: nat)
     requires
         u % p() != 0,
-        i == spec_sqrt_m1(),
+        i == sqrt_m1(),
         i % p() != 0,
     ensures
         ({

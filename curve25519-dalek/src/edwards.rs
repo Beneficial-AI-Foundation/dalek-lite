@@ -442,9 +442,9 @@ mod decompress {
             let ghost v_math = field_add(field_mul(d, y2), 1);
             let ghost x = fe51_as_canonical_nat(&X);
 
-            // sqrt_ratio_i postconditions encapsulated in spec_sqrt_ratio_i_post
-            assert(spec_sqrt_ratio_i_post(u_math, v_math, choice_is_true(is_valid_y_coord), x)) by {
-                // Boundedness (spec_sqrt_ratio_i_bounded_post):
+            // sqrt_ratio_i postconditions encapsulated in sqrt_ratio_i_post
+            assert(sqrt_ratio_i_post(u_math, v_math, choice_is_true(is_valid_y_coord), x)) by {
+                // Boundedness (sqrt_ratio_i_bounded_post):
                 // x = fe51_as_canonical_nat(&X) is always < p() by definition (it's mod p)
                 // From step_1 postcondition: x % 2 == 0 (non-negative square root)
                 pow255_gt_19();  // proves p() > 0
@@ -454,9 +454,9 @@ mod decompress {
                     lemma_mod_bound(fe51_as_nat(&X) as int, p() as int);
                 };
                 assert(x % 2 == 0);  // From step_1 postcondition
-                assert(spec_sqrt_ratio_i_bounded_post(x));
+                assert(sqrt_ratio_i_bounded_post(x));
 
-                // Connect field elements to math versions (needed for spec_sqrt_ratio_i_math_post)
+                // Connect field elements to math versions (needed for sqrt_ratio_i_math_post)
                 // YY = Y.square() → fe51_as_canonical_nat(&YY) == field_square(y)
                 lemma_square_matches_field_square(
                     fe51_as_nat(&Y),
@@ -477,9 +477,9 @@ mod decompress {
                 };
                 assert(fe51_as_canonical_nat(&v) == v_math);
 
-                // Math correctness (spec_sqrt_ratio_i_math_post):
+                // Math correctness (sqrt_ratio_i_math_post):
                 // All four cases follow from sqrt_ratio_i ensures clauses
-                assert(spec_sqrt_ratio_i_math_post(
+                assert(sqrt_ratio_i_math_post(
                     u_math,
                     v_math,
                     choice_is_true(is_valid_y_coord),
@@ -494,7 +494,7 @@ mod decompress {
                 lemma_one_field_element_value();
             };
 
-            // Limb bound for step_1 postcondition (not covered by spec_sqrt_ratio_i_post)
+            // Limb bound for step_1 postcondition (not covered by sqrt_ratio_i_post)
             assert(fe51_limbs_bounded(&X, 52));
 
             // Use lemma to prove curve semantics from sqrt_ratio_i result

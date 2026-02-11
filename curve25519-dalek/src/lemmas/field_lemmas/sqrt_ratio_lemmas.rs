@@ -3,7 +3,7 @@
 //!
 //! ## Main Lemmas (Public API)
 //!
-//! - `lemma_is_sqrt_ratio_to_math_field` — converts is_sqrt_ratio to math_field form
+//! - `lemma_fe51_is_sqrt_ratio_to_math_field` — converts fe51_is_sqrt_ratio to math_field form
 //! - `lemma_no_square_root_when_times_i` — failure case: x²·v = i·u implies no r with r²·v = ±u
 //! - `lemma_flipped_sign_becomes_correct` — if v·r² = -u, then v·(r·i)² = u
 //! - `lemma_algebraic_chain_base` — proves q² = (r²·v) · inv(i·u)
@@ -51,19 +51,19 @@ verus! {
 // The algorithm checks if check ∈ {u, -u, u·i, -u·i} to determine
 // whether u/v has a square root.
 //=============================================================================
-/// Prove: is_sqrt_ratio implies the math_field form
+/// Prove: fe51_is_sqrt_ratio implies the math_field form
 ///
 /// When sqrt_ratio_i returns true and v ≠ 0:
-///   is_sqrt_ratio(u, v, X) holds
+///   fe51_is_sqrt_ratio(u, v, X) holds
 ///   which means: (x * x * v) % p == u
 ///   which equals: field_mul(field_square(x), v) == u
-pub proof fn lemma_is_sqrt_ratio_to_math_field(
+pub proof fn lemma_fe51_is_sqrt_ratio_to_math_field(
     x: nat,  // fe51_as_canonical_nat(&X)
     u: nat,  // fe51_as_canonical_nat(&u_field_elem)
     v: nat,  // fe51_as_canonical_nat(&v_field_elem)
 )
     requires
-        math_is_sqrt_ratio(u, v, x),
+        is_sqrt_ratio(u, v, x),
     ensures
         field_mul(field_square(x), v) == u % p(),
 {
@@ -114,7 +114,7 @@ proof fn lemma_algebraic_chain_base(u: nat, v: nat, x: nat, r: nat, i: nat)
         x % p() != 0,
         x < p(),
         r < p(),
-        i == spec_sqrt_m1(),
+        i == sqrt_m1(),
         i % p() != 0,
         field_mul(field_square(x), v) == (i * u) % p(),
     ensures
@@ -275,22 +275,21 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
         r < p(),
         // There exists x with x²·v = i·u
         exists|x: nat|
-            x < p() && #[trigger] field_mul(field_square(x), v) == (spec_sqrt_m1() * u)
-                % p(),
+            x < p() && #[trigger] field_mul(field_square(x), v) == field_mul(sqrt_m1(), u),
     ensures
 // r²·v ≠ u and r²·v ≠ -u
 
-        field_mul(field_square(r), v) != u % p() && field_mul(
+        field_mul(field_square(r), v) != field_canonical(u) && field_mul(
             field_square(r),
             v,
         ) != field_neg(u),
 {
     let the_p = p();
-    let i = spec_sqrt_m1();
+    let i = sqrt_m1();
 
     // Get the witness x with x²·v = i·u
     let x = choose|x: nat|
-        x < p() && #[trigger] field_mul(field_square(x), v) == (spec_sqrt_m1() * u) % p();
+        x < p() && #[trigger] field_mul(field_square(x), v) == field_mul(sqrt_m1(), u);
 
     // ========== Common Setup ==========
     // These facts are needed by both cases
@@ -409,7 +408,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
         };
 
         // But q² = -i means -i IS a square (q is the witness)
-        assert((q * q) % the_p == neg_i % the_p) by {
+        assert(field_mul(q, q) == field_canonical(neg_i)) by {
             lemma_small_mod(q2, the_p);
             lemma_small_mod(neg_i, the_p);
         };
@@ -453,7 +452,7 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
         };
 
         // But q² = i means i IS a square (q is the witness)
-        assert((q * q) % the_p == i % the_p) by {
+        assert(field_mul(q, q) == field_canonical(i)) by {
             lemma_small_mod(q2, the_p);
             lemma_small_mod(i, the_p);
         };
@@ -479,21 +478,21 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
 /// 2. lemma_double_negation: (-1)·(-a) = a
 ///
 /// NOTE: For the case v·r² = -u·i, simply call:
-///   lemma_flipped_sign_becomes_correct(u * spec_sqrt_m1(), v, r)
+///   lemma_flipped_sign_becomes_correct(u * sqrt_m1(), v, r)
 /// This gives: v·(r·i)² = u·i
 pub proof fn lemma_flipped_sign_becomes_correct(u: nat, v: nat, r: nat)
     requires
         (v * r * r) % p() == ((p() as int - (u % p()) as int) % p() as int) as nat,
     ensures
         ({
-            let r_prime = field_mul(r, spec_sqrt_m1());
+            let r_prime = field_mul(r, sqrt_m1());
             field_mul(v, field_square(r_prime)) == u % p()
         }),
 {
     pow255_gt_19();
     p_gt_2();  // Establishes p() > 2, so p() > 1
     let pn = p();
-    let i = spec_sqrt_m1();
+    let i = sqrt_m1();
     let r2 = r * r;
     let i2 = i * i;
     let ri = r * i;

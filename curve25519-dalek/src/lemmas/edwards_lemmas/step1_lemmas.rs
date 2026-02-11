@@ -405,7 +405,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
 ///
 /// ## Precondition about exists|x|
 /// The caller must establish that there exists x with x²·v = i·u.
-/// This comes from sqrt_ratio_i's postcondition `is_sqrt_ratio_times_i` when it fails.
+/// This comes from sqrt_ratio_i's postcondition `fe51_is_sqrt_ratio_times_i` when it fails.
 pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
     requires
         ({
@@ -417,7 +417,7 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
         u % p() != 0,
         // There exists x such that x²·v = i·u (comes from sqrt_ratio_i failure)
         exists|x: nat|
-            x < p() && #[trigger] field_mul(field_square(x), v) == (spec_sqrt_m1() * u)
+            x < p() && #[trigger] field_mul(field_square(x), v) == (sqrt_m1() * u)
                 % p(),
     ensures
         !math_is_valid_y_coordinate(y),
@@ -476,7 +476,7 @@ pub proof fn lemma_step1_case_analysis(
         }),
         // sqrt_ratio_i postconditions (encapsulated in spec function)
         // Includes both math correctness and boundedness (x < p, x % 2 == 0)
-        spec_sqrt_ratio_i_post(u_math, v_math, sqrt_ratio_succeeded, x),
+        sqrt_ratio_i_post(u_math, v_math, sqrt_ratio_succeeded, x),
     ensures
         sqrt_ratio_succeeded <==> math_is_valid_y_coordinate(y),
         sqrt_ratio_succeeded ==> math_on_edwards_curve(x, y),
@@ -488,12 +488,12 @@ pub proof fn lemma_step1_case_analysis(
         if v_math != 0 {
             // Subcase: v ≠ 0 (main case)
             assert(math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)) by {
-                // From precondition: math_is_sqrt_ratio holds
-                assert(math_is_sqrt_ratio(u_math, v_math, x));
+                // From precondition: is_sqrt_ratio holds
+                assert(is_sqrt_ratio(u_math, v_math, x));
                 assert((x * x * v_math) % p() == u_math);
 
                 // Convert to field_mul form for curve semantics
-                lemma_is_sqrt_ratio_to_math_field(x, u_math, v_math);
+                lemma_fe51_is_sqrt_ratio_to_math_field(x, u_math, v_math);
 
                 // Apply curve semantics lemma
                 lemma_step1_curve_semantics(y, x);
@@ -534,20 +534,20 @@ pub proof fn lemma_step1_case_analysis(
                 assert(!sqrt_ratio_succeeded);
                 assert(u_math != 0);
 
-                // From precondition: math_is_sqrt_ratio_times_i(u_math, v_math, x)
-                assert(math_is_sqrt_ratio_times_i(u_math, v_math, x));
-                assert((x * x * v_math) % p() == (spec_sqrt_m1() * u_math) % p());
+                // From precondition: is_sqrt_ratio_times_i(u_math, v_math, x)
+                assert(is_sqrt_ratio_times_i(u_math, v_math, x));
+                assert((x * x * v_math) % p() == (sqrt_m1() * u_math) % p());
 
                 // Establish the existential for lemma_sqrt_ratio_failure_means_invalid_y
-                // We need to prove: exists|r: nat| r < p() && field_mul(field_square(r), v_math) == (spec_sqrt_m1() * u_math) % p()
+                // We need to prove: exists|r: nat| r < p() && field_mul(field_square(r), v_math) == (sqrt_m1() * u_math) % p()
                 // The witness is x, and we know:
                 //   - x < p() (from precondition)
-                //   - (x * x * v_math) % p() == (spec_sqrt_m1() * u_math) % p() (just established)
+                //   - (x * x * v_math) % p() == (sqrt_m1() * u_math) % p() (just established)
 
                 // First show x satisfies the math_field form
                 let x_sq = field_square(x);  // = (x * x) % p
                 let lhs = field_mul(x_sq, v_math);  // = (x_sq * v_math) % p = ((x*x) % p * v_math) % p
-                let rhs = (spec_sqrt_m1() * u_math) % p();
+                let rhs = (sqrt_m1() * u_math) % p();
 
                 assert(lhs == rhs) by {
                     // lhs = ((x*x) % p * v_math) % p
@@ -557,7 +557,7 @@ pub proof fn lemma_step1_case_analysis(
                 };
 
                 // Now we can assert the existential with x as witness
-                assert(x < p() && field_mul(field_square(x), v_math) == (spec_sqrt_m1()
+                assert(x < p() && field_mul(field_square(x), v_math) == (sqrt_m1()
                     * u_math) % p());
 
                 lemma_sqrt_ratio_failure_means_invalid_y(y, u_math, v_math);

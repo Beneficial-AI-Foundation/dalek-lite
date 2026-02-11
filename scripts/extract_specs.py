@@ -268,7 +268,7 @@ _MATH_SUBSTITUTIONS = [
     (r"is_prime\(p\(\)\)", "p is prime"),
     (r"is_square_mod_p\((\w+)\)", r"\1 is QR mod p"),
     (r"!is_square_mod_p\(([^)]+)\)", r"\1 is not QR mod p"),
-    (r"spec_sqrt_m1\(\)", "i"),
+    (r"sqrt_m1\(\)", "i"),
     (r"p\(\)\s*-\s*1", "p - 1"),
     (r"p\(\)", "p"),
     (r"pow\(([^,]+),\s*(\w+)\)", r"(\1)^\2"),

@@ -61,20 +61,20 @@ verus! {
 pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {
     let u1 = field_mul(field_add(z, y), field_sub(z, y));
     let u2 = field_mul(x, y);
-    let invsqrt = math_invsqrt(field_mul(u1, field_square(u2)));
+    let invsqrt = nat_invsqrt(field_mul(u1, field_square(u2)));
     let i1 = field_mul(invsqrt, u1);
     let i2 = field_mul(invsqrt, u2);
     let z_inv = field_mul(i1, field_mul(i2, t));
     let den_inv = i2;
 
-    let iX = field_mul(x, spec_sqrt_m1());
-    let iY = field_mul(y, spec_sqrt_m1());
+    let iX = field_mul(x, sqrt_m1());
+    let iY = field_mul(y, sqrt_m1());
     let enchanted_denominator = field_mul(
         i1,
         fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D),
     );
 
-    let rotate = math_is_negative(field_mul(t, z_inv));
+    let rotate = is_negative(field_mul(t, z_inv));
     let x_rot = if rotate {
         iY
     } else {
@@ -91,19 +91,19 @@ pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat
         den_inv
     };
 
-    let y_final = if math_is_negative(field_mul(x_rot, z_inv)) {
+    let y_final = if is_negative(field_mul(x_rot, z_inv)) {
         field_neg(y_rot)
     } else {
         y_rot
     };
     let s = field_mul(den_inv_rot, field_sub(z, y_final));
-    let s_final = if math_is_negative(s) {
+    let s_final = if is_negative(s) {
         field_neg(s)
     } else {
         s
     };
 
-    spec_bytes32_from_nat(s_final)
+    u8_32_from_nat(s_final)
 }
 
 /// Spec-only model of Ristretto compression from a RistrettoPoint.
@@ -132,7 +132,7 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoP
     let s_bytes_nat = u8_32_as_nat(&bytes);
     let s = fe51_as_canonical_nat_from_bytes(&bytes);
     let s_encoding_is_canonical = s_bytes_nat < p();
-    let s_is_negative = math_is_negative(s);
+    let s_is_negative = is_negative(s);
 
     if !s_encoding_is_canonical || s_is_negative {
         None
@@ -146,13 +146,13 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoP
         let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
 
         let invsqrt_input = field_mul(v, u2_sqr);
-        let invsqrt = math_invsqrt(invsqrt_input);
-        let ok = math_is_sqrt_ratio(1, invsqrt_input, invsqrt);
+        let invsqrt = nat_invsqrt(invsqrt_input);
+        let ok = is_sqrt_ratio(1, invsqrt_input, invsqrt);
 
         let dx = field_mul(invsqrt, u2);
         let dy = field_mul(invsqrt, field_mul(dx, v));
         let x_tmp = field_mul(field_add(s, s), dx);
-        let x = if math_is_negative(x_tmp) {
+        let x = if is_negative(x_tmp) {
             field_neg(x_tmp)
         } else {
             x_tmp
@@ -160,7 +160,7 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoP
         let y = field_mul(u1, dy);
         let t = field_mul(x, y);
 
-        let t_is_negative = math_is_negative(t);
+        let t_is_negative = is_negative(t);
         let y_is_zero = y == 0;
 
         if !ok || t_is_negative || y_is_zero {
@@ -236,7 +236,7 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 ///
 /// Returns the affine (x, y) coordinates of the resulting Ristretto point.
 pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
-    let i = spec_sqrt_m1();
+    let i = sqrt_m1();
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     let one_minus_d_sq = field_mul(field_sub(1, d), field_add(1, d));  // (1-d)(1+d) = 1 - d²
     let d_minus_one_sq = field_square(field_sub(d, 1));  // (d-1)²
@@ -248,14 +248,14 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
 
     // sqrt_ratio_i(N_s, D) returns (was_square, s)
     // invsqrt = 1/sqrt(N_s * D), so s = invsqrt * N_s = sqrt(N_s/D)
-    let invsqrt = math_invsqrt(field_mul(n_s, d_val));
+    let invsqrt = nat_invsqrt(field_mul(n_s, d_val));
     let s_if_square = field_mul(invsqrt, n_s);
     // was_square checks if s² · D = N_s (i.e., N_s/D is a square)
-    let was_square = math_is_sqrt_ratio(n_s, d_val, s_if_square);
+    let was_square = is_sqrt_ratio(n_s, d_val, s_if_square);
 
     // s' = s * r_0, then conditionally negate to make it negative
     let s_prime_raw = field_mul(s_if_square, r_0);
-    let s_prime = if !math_is_negative(s_prime_raw) {
+    let s_prime = if !is_negative(s_prime_raw) {
         field_neg(s_prime_raw)
     } else {
         s_prime_raw

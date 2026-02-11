@@ -106,17 +106,17 @@ Proof:
 
 | Verus Lemma | Location | Statement |
 |-------------|----------|-----------|
-| `lemma_is_sqrt_ratio_to_math_field` | `sqrt_ratio_lemmas.rs` | `is_sqrt_ratio(u, v, x) ⟹ field_mul(field_square(x), v) == u` |
-| `lemma_sqrt_ratio_success_means_valid_y` | `step1_lemmas.rs` | `is_sqrt_ratio success ⟹ math_is_valid_y_coordinate(y)` |
+| `lemma_fe51_is_sqrt_ratio_to_math_field` | `sqrt_ratio_lemmas.rs` | `fe51_is_sqrt_ratio(u, v, x) ⟹ field_mul(field_square(x), v) == u` |
+| `lemma_sqrt_ratio_success_means_valid_y` | `step1_lemmas.rs` | `fe51_is_sqrt_ratio success ⟹ math_is_valid_y_coordinate(y)` |
 
 **Verus code:**
 ```rust
 assert(math_is_valid_y_coordinate(y)) by {
-    // From sqrt_ratio_i: is_sqrt_ratio holds
+    // From sqrt_ratio_i: fe51_is_sqrt_ratio holds
     assert((x * x * v) % p() == u);
     
     // Convert to math_field form
-    lemma_is_sqrt_ratio_to_math_field(x, u_math, v_math);
+    lemma_fe51_is_sqrt_ratio_to_math_field(x, u_math, v_math);
     
     // Apply validity lemma with witness x
     lemma_sqrt_ratio_success_means_valid_y(y, u_math, v_math, x);
@@ -189,7 +189,7 @@ Proof by contradiction:
 **Verus code:**
 ```rust
 assert(!math_is_valid_y_coordinate(y)) by {
-    assert((x * x * v_math) % p() == (spec_sqrt_m1() * u_math) % p());
+    assert((x * x * v_math) % p() == (sqrt_m1() * u_math) % p());
     lemma_sqrt_ratio_failure_means_invalid_y(y, u_math, v_math);
 };
 ```
@@ -345,7 +345,7 @@ step_1 ensures
 │   └── lemma_step1_case_analysis ✅
 │       │
 │       ├── [C1: Success case]
-│       │   ├── lemma_is_sqrt_ratio_to_math_field ✅
+│       │   ├── lemma_fe51_is_sqrt_ratio_to_math_field ✅
 │       │   ├── lemma_sqrt_ratio_success_means_valid_y ✅
 │       │   └── lemma_sqrt_ratio_implies_on_curve ✅
 │       │       ├── lemma_field_mul_distributes_over_add ✅

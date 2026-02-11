@@ -575,7 +575,9 @@ pub proof fn lemma_field_sub_antisymmetric(a: nat, b: nat)
             lemma_mod_self_0(p as int);
         }
         assert(field_neg(sub_ab) == 0) by {
-            assert(field_canonical(0) == 0);
+            assert(field_canonical(0) == 0) by {
+                lemma_small_mod(0, p);
+            }
             lemma_mod_self_0(p as int);
         }
     } else if a_mod > b_mod {

@@ -134,7 +134,7 @@ use zeroize::Zeroize;
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 use crate::constants;
 use crate::core_assumes::negate_field;
-#[allow(unused_imports)] // Used in verus! blocks for add/sub completed point axioms
+#[allow(unused_imports)] // Used in verus! blocks for add/sub completed point lemmas
 use crate::lemmas::edwards_lemmas::add_completed_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for affine↔projective curve equation
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
@@ -899,6 +899,8 @@ impl vstd::std_specs::ops::AddSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
         is_well_formed_edwards_point(*self) && fe51_limbs_bounded(&rhs.Y_plus_X, 54)
             && fe51_limbs_bounded(&rhs.Y_minus_X, 54) && fe51_limbs_bounded(&rhs.Z, 54)
             && fe51_limbs_bounded(&rhs.T2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_projective_niels_point(*rhs)
     }
 
     open spec fn add_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
@@ -1009,42 +1011,42 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             T: &ZZ2 - &TT2d,
         };
         proof {
-            // Establish spec_field_element values of intermediate variables
+            // Establish fe51_as_canonical_nat values of intermediate variables
             // from the postconditions of the field operations.
             // These follow from the add/sub/mul ensures clauses.
-            let pp_val = spec_field_element(&PP);
-            let mm_val = spec_field_element(&MM);
-            let tt2d_val = spec_field_element(&TT2d);
-            let zz_val = spec_field_element(&ZZ);
+            let pp_val = fe51_as_canonical_nat(&PP);
+            let mm_val = fe51_as_canonical_nat(&MM);
+            let tt2d_val = fe51_as_canonical_nat(&TT2d);
+            let zz_val = fe51_as_canonical_nat(&ZZ);
 
-            // Assert the spec_field_element relationships that the axiom needs.
+            // Assert the fe51_as_canonical_nat relationships that the lemma needs.
             // The field operation postconditions guarantee these.
-            assert(pp_val == math_field_mul(
-                math_field_add(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.Y_plus_X),
+            assert(pp_val == field_mul(
+                field_add(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.Y_plus_X),
             ));
-            assert(mm_val == math_field_mul(
-                math_field_sub(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.Y_minus_X),
+            assert(mm_val == field_mul(
+                field_sub(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.Y_minus_X),
             ));
-            assert(tt2d_val == math_field_mul(
-                spec_field_element(&self.T), spec_field_element(&other.T2d),
+            assert(tt2d_val == field_mul(
+                fe51_as_canonical_nat(&self.T), fe51_as_canonical_nat(&other.T2d),
             ));
-            assert(zz_val == math_field_mul(
-                spec_field_element(&self.Z), spec_field_element(&other.Z),
+            assert(zz_val == field_mul(
+                fe51_as_canonical_nat(&self.Z), fe51_as_canonical_nat(&other.Z),
             ));
             // Result component spec values follow from sub/add postconditions
-            assert(spec_field_element(&result.X) == math_field_sub(pp_val, mm_val));
-            assert(spec_field_element(&result.Y) == math_field_add(pp_val, mm_val));
-            assert(spec_field_element(&result.Z) == math_field_add(
-                math_field_add(zz_val, zz_val), tt2d_val,
+            assert(fe51_as_canonical_nat(&result.X) == field_sub(pp_val, mm_val));
+            assert(fe51_as_canonical_nat(&result.Y) == field_add(pp_val, mm_val));
+            assert(fe51_as_canonical_nat(&result.Z) == field_add(
+                field_add(zz_val, zz_val), tt2d_val,
             ));
-            assert(spec_field_element(&result.T) == math_field_sub(
-                math_field_add(zz_val, zz_val), tt2d_val,
+            assert(fe51_as_canonical_nat(&result.T) == field_sub(
+                field_add(zz_val, zz_val), tt2d_val,
             ));
 
-            // Apply the axiom
-            axiom_add_projective_niels_completed_valid(
+            // Apply the algebraic correctness lemma
+            lemma_add_projective_niels_completed_valid(
                 *self, *other, result,
                 pp_val, mm_val, tt2d_val, zz_val,
             );
@@ -1082,6 +1084,8 @@ impl vstd::std_specs::ops::SubSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
         is_well_formed_edwards_point(*self) && fe51_limbs_bounded(&rhs.Y_plus_X, 54)
             && fe51_limbs_bounded(&rhs.Y_minus_X, 54) && fe51_limbs_bounded(&rhs.Z, 54)
             && fe51_limbs_bounded(&rhs.T2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_projective_niels_point(*rhs)
     }
 
     open spec fn sub_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
@@ -1186,36 +1190,36 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             T: &ZZ2 + &TT2d,
         };
         proof {
-            // Establish spec_field_element values of intermediate variables
-            let pm_val = spec_field_element(&PM);
-            let mp_val = spec_field_element(&MP);
-            let tt2d_val = spec_field_element(&TT2d);
-            let zz_val = spec_field_element(&ZZ);
+            // Establish fe51_as_canonical_nat values of intermediate variables
+            let pm_val = fe51_as_canonical_nat(&PM);
+            let mp_val = fe51_as_canonical_nat(&MP);
+            let tt2d_val = fe51_as_canonical_nat(&TT2d);
+            let zz_val = fe51_as_canonical_nat(&ZZ);
 
-            assert(pm_val == math_field_mul(
-                math_field_add(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.Y_minus_X),
+            assert(pm_val == field_mul(
+                field_add(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.Y_minus_X),
             ));
-            assert(mp_val == math_field_mul(
-                math_field_sub(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.Y_plus_X),
+            assert(mp_val == field_mul(
+                field_sub(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.Y_plus_X),
             ));
-            assert(tt2d_val == math_field_mul(
-                spec_field_element(&self.T), spec_field_element(&other.T2d),
+            assert(tt2d_val == field_mul(
+                fe51_as_canonical_nat(&self.T), fe51_as_canonical_nat(&other.T2d),
             ));
-            assert(zz_val == math_field_mul(
-                spec_field_element(&self.Z), spec_field_element(&other.Z),
+            assert(zz_val == field_mul(
+                fe51_as_canonical_nat(&self.Z), fe51_as_canonical_nat(&other.Z),
             ));
-            assert(spec_field_element(&result.X) == math_field_sub(pm_val, mp_val));
-            assert(spec_field_element(&result.Y) == math_field_add(pm_val, mp_val));
-            assert(spec_field_element(&result.Z) == math_field_sub(
-                math_field_add(zz_val, zz_val), tt2d_val,
+            assert(fe51_as_canonical_nat(&result.X) == field_sub(pm_val, mp_val));
+            assert(fe51_as_canonical_nat(&result.Y) == field_add(pm_val, mp_val));
+            assert(fe51_as_canonical_nat(&result.Z) == field_sub(
+                field_add(zz_val, zz_val), tt2d_val,
             ));
-            assert(spec_field_element(&result.T) == math_field_add(
-                math_field_add(zz_val, zz_val), tt2d_val,
+            assert(fe51_as_canonical_nat(&result.T) == field_add(
+                field_add(zz_val, zz_val), tt2d_val,
             ));
 
-            axiom_sub_projective_niels_completed_valid(
+            lemma_sub_projective_niels_completed_valid(
                 *self, *other, result,
                 pm_val, mp_val, tt2d_val, zz_val,
             );
@@ -1252,6 +1256,8 @@ impl vstd::std_specs::ops::AddSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
         )  // for Z2 = &self.Z + &self.Z
          && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
             && fe51_limbs_bounded(&rhs.xy2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_affine_niels_point(*rhs)
     }
 
     open spec fn add_spec(self, rhs: &AffineNielsPoint) -> CompletedPoint {
@@ -1342,32 +1348,32 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
             T: &Z2 - &Txy2d,
         };
         proof {
-            // Establish spec_field_element values of intermediate variables
-            let pp_val = spec_field_element(&PP);
-            let mm_val = spec_field_element(&MM);
-            let txy2d_val = spec_field_element(&Txy2d);
-            let z2_val = spec_field_element(&Z2);
+            // Establish fe51_as_canonical_nat values of intermediate variables
+            let pp_val = fe51_as_canonical_nat(&PP);
+            let mm_val = fe51_as_canonical_nat(&MM);
+            let txy2d_val = fe51_as_canonical_nat(&Txy2d);
+            let z2_val = fe51_as_canonical_nat(&Z2);
 
-            assert(pp_val == math_field_mul(
-                math_field_add(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.y_plus_x),
+            assert(pp_val == field_mul(
+                field_add(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.y_plus_x),
             ));
-            assert(mm_val == math_field_mul(
-                math_field_sub(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.y_minus_x),
+            assert(mm_val == field_mul(
+                field_sub(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.y_minus_x),
             ));
-            assert(txy2d_val == math_field_mul(
-                spec_field_element(&self.T), spec_field_element(&other.xy2d),
+            assert(txy2d_val == field_mul(
+                fe51_as_canonical_nat(&self.T), fe51_as_canonical_nat(&other.xy2d),
             ));
-            assert(z2_val == math_field_add(
-                spec_field_element(&self.Z), spec_field_element(&self.Z),
+            assert(z2_val == field_add(
+                fe51_as_canonical_nat(&self.Z), fe51_as_canonical_nat(&self.Z),
             ));
-            assert(spec_field_element(&result.X) == math_field_sub(pp_val, mm_val));
-            assert(spec_field_element(&result.Y) == math_field_add(pp_val, mm_val));
-            assert(spec_field_element(&result.Z) == math_field_add(z2_val, txy2d_val));
-            assert(spec_field_element(&result.T) == math_field_sub(z2_val, txy2d_val));
+            assert(fe51_as_canonical_nat(&result.X) == field_sub(pp_val, mm_val));
+            assert(fe51_as_canonical_nat(&result.Y) == field_add(pp_val, mm_val));
+            assert(fe51_as_canonical_nat(&result.Z) == field_add(z2_val, txy2d_val));
+            assert(fe51_as_canonical_nat(&result.T) == field_sub(z2_val, txy2d_val));
 
-            axiom_add_affine_niels_completed_valid(
+            lemma_add_affine_niels_completed_valid(
                 *self, *other, result,
                 pp_val, mm_val, txy2d_val, z2_val,
             );
@@ -1404,6 +1410,8 @@ impl vstd::std_specs::ops::SubSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
         )  // for Z2 = &self.Z + &self.Z
          && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
             && fe51_limbs_bounded(&rhs.xy2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_affine_niels_point(*rhs)
     }
 
     open spec fn sub_spec(self, rhs: &AffineNielsPoint) -> CompletedPoint {
@@ -1494,32 +1502,32 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
             T: &Z2 + &Txy2d,
         };
         proof {
-            // Establish spec_field_element values of intermediate variables
-            let pm_val = spec_field_element(&PM);
-            let mp_val = spec_field_element(&MP);
-            let txy2d_val = spec_field_element(&Txy2d);
-            let z2_val = spec_field_element(&Z2);
+            // Establish fe51_as_canonical_nat values of intermediate variables
+            let pm_val = fe51_as_canonical_nat(&PM);
+            let mp_val = fe51_as_canonical_nat(&MP);
+            let txy2d_val = fe51_as_canonical_nat(&Txy2d);
+            let z2_val = fe51_as_canonical_nat(&Z2);
 
-            assert(pm_val == math_field_mul(
-                math_field_add(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.y_minus_x),
+            assert(pm_val == field_mul(
+                field_add(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.y_minus_x),
             ));
-            assert(mp_val == math_field_mul(
-                math_field_sub(spec_field_element(&self.Y), spec_field_element(&self.X)),
-                spec_field_element(&other.y_plus_x),
+            assert(mp_val == field_mul(
+                field_sub(fe51_as_canonical_nat(&self.Y), fe51_as_canonical_nat(&self.X)),
+                fe51_as_canonical_nat(&other.y_plus_x),
             ));
-            assert(txy2d_val == math_field_mul(
-                spec_field_element(&self.T), spec_field_element(&other.xy2d),
+            assert(txy2d_val == field_mul(
+                fe51_as_canonical_nat(&self.T), fe51_as_canonical_nat(&other.xy2d),
             ));
-            assert(z2_val == math_field_add(
-                spec_field_element(&self.Z), spec_field_element(&self.Z),
+            assert(z2_val == field_add(
+                fe51_as_canonical_nat(&self.Z), fe51_as_canonical_nat(&self.Z),
             ));
-            assert(spec_field_element(&result.X) == math_field_sub(pm_val, mp_val));
-            assert(spec_field_element(&result.Y) == math_field_add(pm_val, mp_val));
-            assert(spec_field_element(&result.Z) == math_field_sub(z2_val, txy2d_val));
-            assert(spec_field_element(&result.T) == math_field_add(z2_val, txy2d_val));
+            assert(fe51_as_canonical_nat(&result.X) == field_sub(pm_val, mp_val));
+            assert(fe51_as_canonical_nat(&result.Y) == field_add(pm_val, mp_val));
+            assert(fe51_as_canonical_nat(&result.Z) == field_sub(z2_val, txy2d_val));
+            assert(fe51_as_canonical_nat(&result.T) == field_add(z2_val, txy2d_val));
 
-            axiom_sub_affine_niels_completed_valid(
+            lemma_sub_affine_niels_completed_valid(
                 *self, *other, result,
                 pm_val, mp_val, txy2d_val, z2_val,
             );

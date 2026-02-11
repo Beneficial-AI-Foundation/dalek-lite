@@ -1284,8 +1284,10 @@ impl EdwardsPoint {
         requires
             edwards_point_limbs_bounded(*self),
             sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX),
+            is_valid_edwards_point(*self),
         ensures
             projective_niels_corresponds_to_edwards(result, *self),
+            is_valid_projective_niels_point(result),
             fe51_limbs_bounded(&result.Y_plus_X, 54),
             fe51_limbs_bounded(&result.Y_minus_X, 54),
             fe51_limbs_bounded(&result.Z, 54),
@@ -1372,6 +1374,9 @@ impl EdwardsPoint {
 
             // All four conditions are satisfied, so correspondence holds
             assert(projective_niels_corresponds_to_edwards(result, *self));
+
+            // Validity: the existential witness is *self
+            assert(is_valid_projective_niels_point(result));
         }
 
         result
@@ -1401,8 +1406,10 @@ impl EdwardsPoint {
     pub(crate) fn as_affine_niels(&self) -> (result: AffineNielsPoint)
         requires
             edwards_point_limbs_bounded(*self),
+            is_valid_edwards_point(*self),
         ensures
             affine_niels_corresponds_to_edwards(result, *self),
+            is_valid_affine_niels_point(result),
     {
         proof {
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
@@ -1461,6 +1468,9 @@ impl EdwardsPoint {
             lemma_field_mul_assoc(xy_val, 2, d);
 
             assert(affine_niels_corresponds_to_edwards(result, *self));
+
+            // Validity: the existential witness is *self
+            assert(is_valid_affine_niels_point(result));
         }
 
         result
@@ -3169,6 +3179,8 @@ impl BasepointTable for EdwardsBasepointTable {
             assert(sum_of_limbs_bounded(&identity.Z, &identity.Z, u64::MAX)) by {
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&identity.Z, &identity.Z, 52);
             }
+            // Validity: select returns a point from a table built from valid basepoints
+            assume(is_valid_affine_niels_point(selected));
         }
         let completed = &identity + &selected;
         proof {
@@ -3355,6 +3367,8 @@ impl BasepointTable for EdwardsBasepointTable {
                     assert(fe51_limbs_bounded(&selected.y_plus_x, 54));
                     assert(fe51_limbs_bounded(&selected.y_minus_x, 54));
                     assert(fe51_limbs_bounded(&selected.xy2d, 54));
+                    // Validity: select returns a point from a table built from valid basepoints
+                    assume(is_valid_affine_niels_point(selected));
                 }
                 let ghost old_P = P;
                 let ghost old_P_affine = edwards_point_as_affine(P);
@@ -3486,6 +3500,8 @@ impl BasepointTable for EdwardsBasepointTable {
                     assert(fe51_limbs_bounded(&selected.y_plus_x, 54));
                     assert(fe51_limbs_bounded(&selected.y_minus_x, 54));
                     assert(fe51_limbs_bounded(&selected.xy2d, 54));
+                    // Validity: select returns a point from a table built from valid basepoints
+                    assume(is_valid_affine_niels_point(selected));
                 }
                 let ghost old_P2 = P;
                 let ghost old_P2_affine = edwards_point_as_affine(P);

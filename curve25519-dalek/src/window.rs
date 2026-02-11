@@ -313,6 +313,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         proof {
             assume(edwards_point_limbs_bounded(*P));
             assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
+            assume(is_valid_edwards_point(*P));
         }
 
         let mut points = [P.as_projective_niels();8];
@@ -328,6 +329,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
                 assume(fe51_limbs_bounded(&&points[j as int].Y_minus_X, 54));
                 assume(fe51_limbs_bounded(&&points[j as int].Z, 54));
                 assume(fe51_limbs_bounded(&&points[j as int].T2d, 54));
+                assume(is_valid_projective_niels_point(points[j as int]));
             }
             let sum = P + &points[j];
             proof {
@@ -342,6 +344,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
                 // Preconditions for extended.as_projective_niels()
                 assume(edwards_point_limbs_bounded(extended));
                 assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                assume(is_valid_edwards_point(extended));
             }
             points[j + 1] = extended.as_projective_niels();
         }
@@ -381,6 +384,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         // Preconditions assumed here since Verus does not support from_req
         proof {
             assume(edwards_point_limbs_bounded(*P));
+            assume(is_valid_edwards_point(*P));
         }
 
         let mut points = [P.as_affine_niels();8];
@@ -397,6 +401,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
                 assume(fe51_limbs_bounded(&&points[j as int].y_plus_x, 54));
                 assume(fe51_limbs_bounded(&&points[j as int].y_minus_x, 54));
                 assume(fe51_limbs_bounded(&&points[j as int].xy2d, 54));
+                assume(is_valid_affine_niels_point(points[j as int]));
             }
             let sum = P + &points[j];
             proof {
@@ -410,6 +415,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
             proof {
                 // Preconditions for extended.as_affine_niels()
                 assume(edwards_point_limbs_bounded(extended));
+                assume(is_valid_edwards_point(extended));
             }
             points[j + 1] = extended.as_affine_niels()
         }
@@ -566,6 +572,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
                 assume(fe51_limbs_bounded(&&Ai[i as int].Y_minus_X, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].Z, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].T2d, 54));
+                assume(is_valid_projective_niels_point(Ai[i as int]));
             }
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
             let sum = &A2 + &Ai[i];
@@ -579,6 +586,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
             proof {
                 assume(edwards_point_limbs_bounded(extended));
                 assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                assume(is_valid_edwards_point(extended));
             }
             Ai[i + 1] = extended.as_projective_niels();
         }
@@ -625,6 +633,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
                 assume(fe51_limbs_bounded(&&Ai[i as int].y_plus_x, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].y_minus_x, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].xy2d, 54));
+                assume(is_valid_affine_niels_point(Ai[i as int]));
             }
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
             let sum = &A2 + &Ai[i];
@@ -638,6 +647,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
             proof {
                 assume(edwards_point_limbs_bounded(extended));
                 assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                assume(is_valid_edwards_point(extended));
             }
             Ai[i + 1] = extended.as_affine_niels();
         }
@@ -790,6 +800,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
                 assume(fe51_limbs_bounded(&&Ai[i as int].Y_minus_X, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].Z, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].T2d, 54));
+                assume(is_valid_projective_niels_point(Ai[i as int]));
             }
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
             let sum = &A2 + &Ai[i];
@@ -803,6 +814,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
             proof {
                 assume(edwards_point_limbs_bounded(extended));
                 assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                assume(is_valid_edwards_point(extended));
             }
             Ai[i + 1] = extended.as_projective_niels();
         }
@@ -850,6 +862,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
                 assume(fe51_limbs_bounded(&&Ai[i as int].y_plus_x, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].y_minus_x, 54));
                 assume(fe51_limbs_bounded(&&Ai[i as int].xy2d, 54));
+                assume(is_valid_affine_niels_point(Ai[i as int]));
             }
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
             let sum = &A2 + &Ai[i];
@@ -863,6 +876,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
             proof {
                 assume(edwards_point_limbs_bounded(extended));
                 assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                assume(is_valid_edwards_point(extended));
             }
             Ai[i + 1] = extended.as_affine_niels();
         }

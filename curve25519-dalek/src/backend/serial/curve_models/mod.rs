@@ -134,7 +134,7 @@ use zeroize::Zeroize;
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 use crate::constants;
 use crate::core_assumes::negate_field;
-#[allow(unused_imports)] // Used in verus! blocks for add/sub completed point axioms
+#[allow(unused_imports)] // Used in verus! blocks for add/sub completed point lemmas
 use crate::lemmas::edwards_lemmas::add_completed_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for affine↔projective curve equation
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
@@ -839,6 +839,8 @@ impl vstd::std_specs::ops::AddSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
         is_well_formed_edwards_point(*self) && fe51_limbs_bounded(&rhs.Y_plus_X, 54)
             && fe51_limbs_bounded(&rhs.Y_minus_X, 54) && fe51_limbs_bounded(&rhs.Z, 54)
             && fe51_limbs_bounded(&rhs.T2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_projective_niels_point(*rhs)
     }
 
     open spec fn add_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
@@ -957,7 +959,7 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             let tt2d_val = spec_field_element(&TT2d);
             let zz_val = spec_field_element(&ZZ);
 
-            // Assert the spec_field_element relationships that the axiom needs.
+            // Assert the spec_field_element relationships that the lemma needs.
             // The field operation postconditions guarantee these.
             assert(pp_val == math_field_mul(
                 math_field_add(spec_field_element(&self.Y), spec_field_element(&self.X)),
@@ -983,8 +985,8 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
                 math_field_add(zz_val, zz_val), tt2d_val,
             ));
 
-            // Apply the axiom
-            axiom_add_projective_niels_completed_valid(
+            // Apply the algebraic correctness lemma
+            lemma_add_projective_niels_completed_valid(
                 *self, *other, result,
                 pp_val, mm_val, tt2d_val, zz_val,
             );
@@ -1022,6 +1024,8 @@ impl vstd::std_specs::ops::SubSpecImpl<&ProjectiveNielsPoint> for &EdwardsPoint 
         is_well_formed_edwards_point(*self) && fe51_limbs_bounded(&rhs.Y_plus_X, 54)
             && fe51_limbs_bounded(&rhs.Y_minus_X, 54) && fe51_limbs_bounded(&rhs.Z, 54)
             && fe51_limbs_bounded(&rhs.T2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_projective_niels_point(*rhs)
     }
 
     open spec fn sub_spec(self, rhs: &ProjectiveNielsPoint) -> CompletedPoint {
@@ -1155,7 +1159,7 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
                 math_field_add(zz_val, zz_val), tt2d_val,
             ));
 
-            axiom_sub_projective_niels_completed_valid(
+            lemma_sub_projective_niels_completed_valid(
                 *self, *other, result,
                 pm_val, mp_val, tt2d_val, zz_val,
             );
@@ -1192,6 +1196,8 @@ impl vstd::std_specs::ops::AddSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
         )  // for Z2 = &self.Z + &self.Z
          && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
             && fe51_limbs_bounded(&rhs.xy2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_affine_niels_point(*rhs)
     }
 
     open spec fn add_spec(self, rhs: &AffineNielsPoint) -> CompletedPoint {
@@ -1307,7 +1313,7 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
             assert(spec_field_element(&result.Z) == math_field_add(z2_val, txy2d_val));
             assert(spec_field_element(&result.T) == math_field_sub(z2_val, txy2d_val));
 
-            axiom_add_affine_niels_completed_valid(
+            lemma_add_affine_niels_completed_valid(
                 *self, *other, result,
                 pp_val, mm_val, txy2d_val, z2_val,
             );
@@ -1344,6 +1350,8 @@ impl vstd::std_specs::ops::SubSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
         )  // for Z2 = &self.Z + &self.Z
          && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
             && fe51_limbs_bounded(&rhs.xy2d, 54)
+            // Mathematical validity (for algebraic correctness proof)
+            && is_valid_affine_niels_point(*rhs)
     }
 
     open spec fn sub_spec(self, rhs: &AffineNielsPoint) -> CompletedPoint {
@@ -1459,7 +1467,7 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
             assert(spec_field_element(&result.Z) == math_field_sub(z2_val, txy2d_val));
             assert(spec_field_element(&result.T) == math_field_add(z2_val, txy2d_val));
 
-            axiom_sub_affine_niels_completed_valid(
+            lemma_sub_affine_niels_completed_valid(
                 *self, *other, result,
                 pm_val, mp_val, txy2d_val, z2_val,
             );

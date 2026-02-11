@@ -1176,7 +1176,7 @@ def extract_all_tracked_functions(
         f" {spec_count} with specs, {proof_count} with proofs"
     )
 
-    # 4. Auto-generate interpretations for verified functions missing them
+    # 4. Auto-generate interpretations for tracked functions missing them
     auto_math = 0
     auto_informal = 0
     for fn in functions:
@@ -1206,7 +1206,7 @@ def extract_all_tracked_functions(
 
     print(
         f"  Auto-generated {auto_math} math + {auto_informal} informal"
-        f" interpretations for verified functions"
+        f" interpretations for tracked functions"
     )
 
     return functions

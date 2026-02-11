@@ -276,10 +276,7 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
         assert(rhs == field_add(1, field_mul(d, field_mul(x2, y2))));
 
         // Affine curve equation gives the same equality.
-        assert(field_sub(y2, x2) == field_add(
-            1,
-            field_mul(d, field_mul(x2, y2)),
-        ));
+        assert(field_sub(y2, x2) == field_add(1, field_mul(d, field_mul(x2, y2))));
         assert(lhs == rhs);
     };
 
@@ -403,10 +400,7 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
 pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     requires
         z % p() != 0,  // Z must be non-zero in the field (not just non-zero as nat)
-        math_on_edwards_curve(
-            field_mul(x, field_inv(z)),
-            field_mul(y, field_inv(z)),
-        ),
+        math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
     ensures
         math_on_edwards_curve_projective(x, y, z),
 {

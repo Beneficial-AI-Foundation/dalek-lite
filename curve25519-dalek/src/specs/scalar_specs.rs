@@ -18,7 +18,7 @@ pub open spec fn scalar_as_nat(s: &Scalar) -> nat {
     u8_32_as_nat(&s.bytes)
 }
 
-pub open spec fn u8_32_as_group_canonical(bytes: [u8;32]) -> nat {
+pub open spec fn u8_32_as_group_canonical(bytes: [u8; 32]) -> nat {
     group_canonical(u8_32_as_nat(&bytes))
 }
 
@@ -55,7 +55,9 @@ pub open spec fn product_of_scalars(scalars: Seq<Scalar>) -> nat
         1
     } else {
         let last = (scalars.len() - 1) as int;
-        group_canonical((product_of_scalars(scalars.subrange(0, last)) * scalar_as_nat(&scalars[last])))
+        group_canonical(
+            (product_of_scalars(scalars.subrange(0, last)) * scalar_as_nat(&scalars[last])),
+        )
     }
 }
 
@@ -69,7 +71,9 @@ pub open spec fn sum_of_scalars(scalars: Seq<Scalar>) -> nat
         0
     } else {
         let last = (scalars.len() - 1) as int;
-        group_canonical((sum_of_scalars(scalars.subrange(0, last)) + u8_32_as_nat(&scalars[last].bytes)))
+        group_canonical(
+            (sum_of_scalars(scalars.subrange(0, last)) + u8_32_as_nat(&scalars[last].bytes)),
+        )
     }
 }
 

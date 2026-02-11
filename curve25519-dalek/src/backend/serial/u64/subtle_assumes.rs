@@ -3,7 +3,7 @@ use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTi
 
 use crate::backend::serial::u64::field::FieldElement51;
 #[cfg(verus_keep_ghost)]
-use crate::specs::field_specs::{fe51_limbs_bounded, field_neg, fe51_as_canonical_nat};
+use crate::specs::field_specs::{fe51_as_canonical_nat, fe51_limbs_bounded, field_neg};
 
 use vstd::prelude::*;
 

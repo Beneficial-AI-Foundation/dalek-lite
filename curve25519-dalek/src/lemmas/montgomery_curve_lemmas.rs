@@ -25,9 +25,9 @@ use crate::specs::field_specs_u64::*;
 use crate::specs::montgomery_specs::*;
 use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
+use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
 use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_strictly_increases, pow2};
-use vstd::arithmetic::mul::*;
 use vstd::prelude::*;
 
 verus! {
@@ -335,10 +335,8 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
                 field_inv(W),
             ));
 
-            assert(spec_projective_u_coordinate(P_proj) == field_mul(
-                u,
-                field_mul(W, field_inv(W)),
-            )) by {
+            assert(spec_projective_u_coordinate(P_proj) == field_mul(u, field_mul(W, field_inv(W))))
+                by {
                 lemma_field_mul_assoc(u, W, field_inv(W));
             }
 
@@ -490,7 +488,7 @@ pub proof fn lemma_field_sqrt_zero()
             }
             assert(0nat % p() == 0) by {
                 lemma_small_mod(0, p());
-            } 
+            }
         }
     };
 
@@ -789,12 +787,12 @@ pub proof fn lemma_inv_preserves_non_qr(a: nat)
         // So inv(y)² = a_mod, meaning a is QR — contradiction
         assert(is_square(a_mod)) by {
             assert(exists|w: nat| (#[trigger] field_mul(w, w)) == field_canonical(a_mod)) by {
-                let w = field_inv(y);    
-                assert(field_mul(w,w) == field_square(w));
+                let w = field_inv(y);
+                assert(field_mul(w, w) == field_square(w));
                 assert(a_mod == field_canonical(a_mod)) by {
                     lemma_small_mod(a_mod, p());
                 }
-            }            
+            }
         }
         assert(false);
     }
@@ -1029,7 +1027,7 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
                         lemma_mod_bound((r * r) as int, p() as int);
                     }
                     assert(r_sq == field_canonical(r_sq)) by {
-                        lemma_small_mod(r_sq, p());    
+                        lemma_small_mod(r_sq, p());
                     }
                 }
             }

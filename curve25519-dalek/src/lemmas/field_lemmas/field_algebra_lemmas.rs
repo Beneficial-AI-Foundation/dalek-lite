@@ -143,19 +143,13 @@ pub proof fn lemma_neg_square_eq(x: nat)
 /// ```
 pub proof fn lemma_field_mul_distributes_over_add(a: nat, b: nat, c: nat)
     ensures
-        field_mul(a, field_add(b, c)) == field_add(
-            field_mul(a, b),
-            field_mul(a, c),
-        ),
+        field_mul(a, field_add(b, c)) == field_add(field_mul(a, b), field_mul(a, c)),
 {
     let p = p();
     p_gt_2();
 
     // Goal: a · (b + c) = a·b + a·c in the field
-    assert(field_mul(a, field_add(b, c)) == field_add(
-        field_mul(a, b),
-        field_mul(a, c),
-    )) by {
+    assert(field_mul(a, field_add(b, c)) == field_add(field_mul(a, b), field_mul(a, c))) by {
         // Step 1: a * ((b+c) % p) ≡ a * (b+c) (mod p)
         lemma_mul_mod_noop_right(a as int, (b + c) as int, p as int);
 
@@ -401,10 +395,7 @@ pub proof fn lemma_field_halve_double(a: nat)
     lemma_field_mul_comm(2nat, a);
     assert(field_mul(2nat, a) == field_mul(a, 2nat));
     lemma_field_mul_assoc(a, 2nat, inv2);
-    assert(field_mul(field_mul(a, 2nat), inv2) == field_mul(
-        a,
-        field_mul(2nat, inv2),
-    ));
+    assert(field_mul(field_mul(a, 2nat), inv2) == field_mul(a, field_mul(2nat, inv2)));
     assert(field_mul(a, field_mul(2nat, inv2)) == field_mul(a, 1nat));
     lemma_field_mul_one_right(a);
 }
@@ -728,10 +719,7 @@ pub proof fn lemma_field_mul_neg(c: nat, b: nat)
 /// Uses the helper lemmas: sub = add + neg, mul distributes over add, mul of neg = neg of mul.
 pub proof fn lemma_field_mul_distributes_over_sub_right(a: nat, b: nat, c: nat)
     ensures
-        field_mul(field_sub(a, b), c) == field_sub(
-            field_mul(a, c),
-            field_mul(b, c),
-        ),
+        field_mul(field_sub(a, b), c) == field_sub(field_mul(a, c), field_mul(b, c)),
 {
     let p = p();
     p_gt_2();
@@ -749,10 +737,7 @@ pub proof fn lemma_field_mul_distributes_over_sub_right(a: nat, b: nat, c: nat)
     lemma_field_mul_comm(field_sub(a, b), c);
     lemma_field_mul_comm(field_add(a, neg_b), c);
     lemma_field_mul_distributes_over_add(c, a, neg_b);
-    assert(field_mul(c, field_add(a, neg_b)) == field_add(
-        field_mul(c, a),
-        field_mul(c, neg_b),
-    ));
+    assert(field_mul(c, field_add(a, neg_b)) == field_add(field_mul(c, a), field_mul(c, neg_b)));
 
     // Step 3: c*a = a*c and c*neg(b) = neg(c*b) = neg(b*c)
     lemma_field_mul_comm(c, a);
@@ -792,10 +777,7 @@ pub proof fn lemma_field_mul_distributes_over_sub_right(a: nat, b: nat, c: nat)
 /// ```
 pub proof fn lemma_inv_of_product(a: nat, b: nat)
     ensures
-        field_inv(field_mul(a, b)) == field_mul(
-            field_inv(a),
-            field_inv(b),
-        ),
+        field_inv(field_mul(a, b)) == field_mul(field_inv(a), field_inv(b)),
 {
     let p = p();
     p_gt_2();
@@ -946,19 +928,14 @@ pub proof fn lemma_inv_of_square(x: nat)
     p_gt_2();  // Needed for field operations
 
     // inv(x * x) = inv(x) * inv(x) by lemma_inv_of_product with a = b = x
-    assert(field_inv(field_mul(x, x)) == field_mul(
-        field_inv(x),
-        field_inv(x),
-    )) by {
+    assert(field_inv(field_mul(x, x)) == field_mul(field_inv(x), field_inv(x))) by {
         lemma_inv_of_product(x, x);
     };
 
     // field_mul(x, x) = field_square(x) and
     // field_mul(inv(x), inv(x)) = field_square(inv(x))
     assert(field_mul(x, x) == field_square(x));
-    assert(field_mul(field_inv(x), field_inv(x)) == field_square(
-        field_inv(x),
-    ));
+    assert(field_mul(field_inv(x), field_inv(x)) == field_square(field_inv(x)));
 }
 
 /// Lemma: a²/b² = (a/b)² (mod p)
@@ -974,8 +951,9 @@ pub proof fn lemma_inv_of_square(x: nat)
 /// ```
 pub proof fn lemma_quotient_of_squares(a: nat, b: nat)
     ensures
-        field_mul(field_square(a), field_inv(field_square(b)))
-            == field_square(field_mul(a, field_inv(b))),
+        field_mul(field_square(a), field_inv(field_square(b))) == field_square(
+            field_mul(a, field_inv(b)),
+        ),
 {
     p_gt_2();  // Needed for field operations
 
@@ -1010,9 +988,7 @@ pub proof fn lemma_quotient_of_squares(a: nat, b: nat)
 /// ```
 pub proof fn lemma_product_of_squares_eq_square_of_product(x: nat, y: nat)
     ensures
-        field_mul(field_square(x), field_square(y)) == field_square(
-            field_mul(x, y),
-        ),
+        field_mul(field_square(x), field_square(y)) == field_square(field_mul(x, y)),
 {
     let p = p();
     p_gt_2();
@@ -1402,7 +1378,7 @@ pub proof fn lemma_neg_one_times_is_neg(a: nat)
 
         // (p-1) * a % p = ((p-1) * (a % p)) % p = ((p-1) * 0) % p = 0 % p = 0
         assert(((p - 1) * a_mod_p) == 0) by {
-            lemma_mul_basics_2((p-1) as int);
+            lemma_mul_basics_2((p - 1) as int);
         }
         assert(((p - 1) as int * a_mod_p as int) % (p as int) == 0) by {
             lemma_small_mod(0, p);
@@ -1523,10 +1499,8 @@ pub proof fn lemma_neg_a_times_inv_ab(a: nat, b: nat)
     };
 
     // Step 3: ((-1) · a) · inv(a·b) = (-1) · (a · inv(a·b)) [associativity]
-    assert(field_mul(field_mul(neg_one, a), inv_ab) == field_mul(
-        neg_one,
-        field_mul(a, inv_ab),
-    )) by {
+    assert(field_mul(field_mul(neg_one, a), inv_ab) == field_mul(neg_one, field_mul(a, inv_ab)))
+        by {
         lemma_field_mul_assoc(neg_one, a, inv_ab);
     };
 
@@ -1624,8 +1598,7 @@ pub proof fn lemma_cancel_common_factor(a: nat, b: nat, c: nat)
         b % p() != 0,
         c % p() != 0,
     ensures
-        field_mul(field_mul(a, c), field_inv(field_mul(b, c)))
-            == field_mul(a, field_inv(b)),
+        field_mul(field_mul(a, c), field_inv(field_mul(b, c))) == field_mul(a, field_inv(b)),
 {
     let p = p();
     p_gt_2();
@@ -1799,10 +1772,7 @@ pub proof fn axiom_birational_edwards_montgomery(y: nat, z: nat)
             let y_affine = field_mul(y, field_inv(z));
             let one_plus_y = field_add(1, y_affine);
             let one_minus_y = field_sub(1, y_affine);
-            let projective_result = field_mul(
-                field_add(z, y),
-                field_inv(field_sub(z, y)),
-            );
+            let projective_result = field_mul(field_add(z, y), field_inv(field_sub(z, y)));
             let affine_result = field_mul(one_plus_y, field_inv(one_minus_y));
             projective_result == affine_result
         }),

@@ -90,7 +90,10 @@ pub proof fn lemma_invert_zero_case(
         // From pow22501 postcondition
         fe51_as_canonical_nat(t3) == (pow(fe51_as_canonical_nat(self_fe) as int, 11) as nat) % p(),
         // From mul postcondition
-        fe51_as_canonical_nat(t21) == field_mul(fe51_as_canonical_nat(t20), fe51_as_canonical_nat(t3)),
+        fe51_as_canonical_nat(t21) == field_mul(
+            fe51_as_canonical_nat(t20),
+            fe51_as_canonical_nat(t3),
+        ),
     ensures
         fe51_as_canonical_nat(t21) == 0,
 {
@@ -163,7 +166,10 @@ pub proof fn lemma_invert_power_chain(
         u64_5_as_nat(t20.limbs) % p() == (pow(u64_5_as_nat(t19.limbs) as int, pow2(5)) as nat)
             % p(),
         // From mul postcondition
-        fe51_as_canonical_nat(t21) == field_mul(fe51_as_canonical_nat(t20), fe51_as_canonical_nat(t3)),
+        fe51_as_canonical_nat(t21) == field_mul(
+            fe51_as_canonical_nat(t20),
+            fe51_as_canonical_nat(t3),
+        ),
     ensures
 // Power expression form for t20
 
@@ -172,7 +178,8 @@ pub proof fn lemma_invert_power_chain(
             (pow2(255) - 32) as nat,
         ) as nat) % p(),
         // Simple form for t21 using field_mul expansion
-        fe51_as_canonical_nat(t21) == (fe51_as_canonical_nat(t20) * fe51_as_canonical_nat(t3)) % p(),
+        fe51_as_canonical_nat(t21) == (fe51_as_canonical_nat(t20) * fe51_as_canonical_nat(t3))
+            % p(),
 {
     // PART 1: Establish fe51_as_canonical_nat(t20) through the chain of lemmas
     // Chain: fe51_as_canonical_nat(t20) [lifting lemma]
@@ -180,8 +187,8 @@ pub proof fn lemma_invert_power_chain(
     //     == (pow(x, (2^250 - 1) * 2^5) as nat) % p() [arithmetic]
     //     == (pow(x, 2^255 - 32) as nat) % p()
     // Step 1: Lift from limb-level to field-level using the lifting lemma
-    assert(fe51_as_canonical_nat(t20) == (pow(fe51_as_canonical_nat(t19) as int, pow2(5)) as nat) % p())
-        by {
+    assert(fe51_as_canonical_nat(t20) == (pow(fe51_as_canonical_nat(t19) as int, pow2(5)) as nat)
+        % p()) by {
         // pow2(5) > 0, required by the lifting lemma
         assert(pow2(5) > 0) by {
             lemma_pow2_pos(5);
@@ -307,7 +314,10 @@ pub proof fn lemma_invert_is_multiplicative_inverse(
         u64_5_as_nat(t20.limbs) % p() == (pow(u64_5_as_nat(t19.limbs) as int, pow2(5)) as nat)
             % p(),
         // From mul postcondition
-        fe51_as_canonical_nat(t21) == field_mul(fe51_as_canonical_nat(t20), fe51_as_canonical_nat(t3)),
+        fe51_as_canonical_nat(t21) == field_mul(
+            fe51_as_canonical_nat(t20),
+            fe51_as_canonical_nat(t3),
+        ),
     ensures
         (fe51_as_canonical_nat(t21) * fe51_as_canonical_nat(self_fe)) % p() == 1,
 {
@@ -399,8 +409,9 @@ pub proof fn lemma_invert_equals_field_inv(self_fe: &FieldElement51, t21: &Field
     requires
 // When x != 0, t21 is the multiplicative inverse
 
-        fe51_as_canonical_nat(self_fe) != 0 ==> (fe51_as_canonical_nat(t21) * fe51_as_canonical_nat(self_fe))
-            % p() == 1,
+        fe51_as_canonical_nat(self_fe) != 0 ==> (fe51_as_canonical_nat(t21) * fe51_as_canonical_nat(
+            self_fe,
+        )) % p() == 1,
         // When x == 0, t21 is zero
         fe51_as_canonical_nat(self_fe) == 0 ==> fe51_as_canonical_nat(t21) == 0,
     ensures
@@ -484,12 +495,16 @@ pub proof fn lemma_invert_correctness(
         u64_5_as_nat(t20.limbs) % p() == (pow(u64_5_as_nat(t19.limbs) as int, pow2(5)) as nat)
             % p(),
         // Postcondition from mul
-        fe51_as_canonical_nat(t21) == field_mul(fe51_as_canonical_nat(t20), fe51_as_canonical_nat(t3)),
+        fe51_as_canonical_nat(t21) == field_mul(
+            fe51_as_canonical_nat(t20),
+            fe51_as_canonical_nat(t3),
+        ),
     ensures
 // If self is non-zero, t21 is the multiplicative inverse
 
-        fe51_as_canonical_nat(self_fe) != 0 ==> (fe51_as_canonical_nat(t21) * fe51_as_canonical_nat(self_fe))
-            % p() == 1,
+        fe51_as_canonical_nat(self_fe) != 0 ==> (fe51_as_canonical_nat(t21) * fe51_as_canonical_nat(
+            self_fe,
+        )) % p() == 1,
         // If self is zero, t21 is zero
         fe51_as_canonical_nat(self_fe) == 0 ==> fe51_as_canonical_nat(t21) == 0,
         // t21 equals field_inv

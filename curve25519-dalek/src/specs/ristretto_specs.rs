@@ -274,10 +274,7 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     };
 
     // N_t = c * (r - 1) * (d - 1)² - D
-    let n_t = field_sub(
-        field_mul(field_mul(c, field_sub(r, 1)), d_minus_one_sq),
-        d_val,
-    );
+    let n_t = field_sub(field_mul(field_mul(c, field_sub(r, 1)), d_minus_one_sq), d_val);
     let s_sq = field_square(s);
 
     // Final point in completed coordinates, then converted to affine:

@@ -292,8 +292,7 @@ impl Scalar {
     */
     pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> (result: Scalar)
         ensures
-            u8_32_as_nat(&result.bytes) % group_order() == bytes_seq_as_nat(input@)
-                % group_order(),
+            u8_32_as_nat(&result.bytes) % group_order() == bytes_seq_as_nat(input@) % group_order(),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
             // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.
@@ -616,9 +615,8 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
         // pack() ensures: scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result)
         let result = result_unpacked.pack();
         proof {
-            assert(u8_32_as_nat(&result.bytes) % group_order() == scalar52_to_nat(
-                &result_unpacked,
-            ) % group_order());
+            assert(u8_32_as_nat(&result.bytes) % group_order() == scalar52_to_nat(&result_unpacked)
+                % group_order());
             assert(u8_32_as_nat(&result.bytes) % group_order() == (u8_32_as_nat(&self.bytes)
                 * u8_32_as_nat(&_rhs.bytes)) % group_order());
             // Trigger pack()'s conditional postcondition for is_canonical_scalar
@@ -661,9 +659,8 @@ impl<'a> Add<&'a Scalar> for &Scalar {
     #[allow(non_snake_case)]
     fn add(self, _rhs: &'a Scalar) -> (result: Scalar)
         ensures
-            u8_32_as_nat(&result.bytes) == (u8_32_as_nat(&self.bytes) + u8_32_as_nat(
-                &_rhs.bytes,
-            )) % group_order(),
+            u8_32_as_nat(&result.bytes) == (u8_32_as_nat(&self.bytes) + u8_32_as_nat(&_rhs.bytes))
+                % group_order(),
             is_canonical_scalar(&result),
     {
         // The UnpackedScalar::add function produces reduced outputs if the inputs are reduced. By
@@ -1699,8 +1696,7 @@ impl Scalar {
             assert(u8_32_as_nat(&result.bytes) == scalar52_to_nat(&inv_unpacked));
 
             // Step 3: The inverse property follows from invert's postcondition
-            assert((u8_32_as_nat(&result.bytes) * u8_32_as_nat(&self.bytes)) % group_order()
-                == 1);
+            assert((u8_32_as_nat(&result.bytes) * u8_32_as_nat(&self.bytes)) % group_order() == 1);
         }
 
         result
@@ -1846,8 +1842,9 @@ impl Scalar {
                 // i.e., u8_32_as_nat(&inputs[j].bytes) % L == (u8_32_as_nat(&original_inputs[j].bytes) * R) % L
                 forall|j: int|
                     #![auto]
-                    0 <= j < i ==> u8_32_as_nat(&inputs[j].bytes) % group_order() == (
-                    u8_32_as_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
+                    0 <= j < i ==> u8_32_as_nat(&inputs[j].bytes) % group_order() == (u8_32_as_nat(
+                        &original_inputs[j].bytes,
+                    ) * montgomery_radix()) % group_order(),
         {
             scratch[i] = acc;
 
@@ -1985,8 +1982,9 @@ impl Scalar {
                 // SEMANTIC INVARIANT: inputs[j] for unprocessed j < i contains scalar[j] in Montgomery form
                 forall|j: int|
                     #![auto]
-                    0 <= j < i ==> u8_32_as_nat(&inputs[j].bytes) % group_order() == (
-                    u8_32_as_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
+                    0 <= j < i ==> u8_32_as_nat(&inputs[j].bytes) % group_order() == (u8_32_as_nat(
+                        &original_inputs[j].bytes,
+                    ) * montgomery_radix()) % group_order(),
                 // SEMANTIC INVARIANT: acc represents the inverse of partial_product(original_inputs, i)
                 // i.e., (scalar52_to_nat(&acc) * partial_product(original_inputs, i)) % L == 1
                 (scalar52_to_nat(&acc) * partial_product(original_inputs, i as int)) % group_order()

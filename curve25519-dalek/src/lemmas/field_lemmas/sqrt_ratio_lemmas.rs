@@ -279,10 +279,8 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
     ensures
 // r²·v ≠ u and r²·v ≠ -u
 
-        field_mul(field_square(r), v) != field_canonical(u) && field_mul(
-            field_square(r),
-            v,
-        ) != field_neg(u),
+        field_mul(field_square(r), v) != field_canonical(u) && field_mul(field_square(r), v)
+            != field_neg(u),
 {
     let the_p = p();
     let i = sqrt_m1();

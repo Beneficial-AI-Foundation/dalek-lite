@@ -295,11 +295,12 @@ impl FieldElement {
             fe51_limbs_bounded(&result.0, 54),
             fe51_limbs_bounded(&result.1, 54),
             // Mathematical values
-            fe51_as_canonical_nat(&result.0) == field_canonical(pow(
-                fe51_as_canonical_nat(self) as int,
-                (pow2(250) - 1) as nat,
-            ) as nat),
-            fe51_as_canonical_nat(&result.1) == field_canonical(pow(fe51_as_canonical_nat(self) as int, 11) as nat),
+            fe51_as_canonical_nat(&result.0) == field_canonical(
+                pow(fe51_as_canonical_nat(self) as int, (pow2(250) - 1) as nat) as nat,
+            ),
+            fe51_as_canonical_nat(&result.1) == field_canonical(
+                pow(fe51_as_canonical_nat(self) as int, 11) as nat,
+            ),
     {
         // Instead of managing which temporary variables are used
         // for what, we define as many as we need and leave stack
@@ -677,8 +678,9 @@ impl FieldElement {
                     #![auto]
                     i <= j < n ==> (((fe51_as_canonical_nat(&original_inputs[j]) != 0)
                         ==> is_inverse_field(&original_inputs[j], &inputs[j])) && ((
-                    fe51_as_canonical_nat(&original_inputs[j]) == 0) ==> fe51_as_canonical_nat(&inputs[j])
-                        == 0)),
+                    fe51_as_canonical_nat(&original_inputs[j]) == 0) ==> fe51_as_canonical_nat(
+                        &inputs[j],
+                    ) == 0)),
             decreases i,
         {
             i -= 1;
@@ -700,10 +702,9 @@ impl FieldElement {
                 //   * scratch[i] contains product of original_inputs[0..i] (skipping zeros)
                 //   * acc contains inverse of original_inputs[i..n] product
                 //   * Therefore acc * scratch[i] = 1 / original_inputs[i]
-                assume(((fe51_as_canonical_nat(&original_inputs[i as int]) != 0) ==> is_inverse_field(
-                    &original_inputs[i as int],
-                    &inputs[i as int],
-                )) && ((fe51_as_canonical_nat(&original_inputs[i as int]) == 0) ==> fe51_as_canonical_nat(
+                assume(((fe51_as_canonical_nat(&original_inputs[i as int]) != 0)
+                    ==> is_inverse_field(&original_inputs[i as int], &inputs[i as int])) && ((
+                fe51_as_canonical_nat(&original_inputs[i as int]) == 0) ==> fe51_as_canonical_nat(
                     &inputs[i as int],
                 ) == 0));
             }
@@ -715,9 +716,10 @@ impl FieldElement {
             assert(forall|j: int|
                 #![auto]
                 0 <= j < n ==> (((fe51_as_canonical_nat(&original_inputs[j]) != 0)
-                    ==> is_inverse_field(&original_inputs[j], &inputs[j])) && ((fe51_as_canonical_nat(
-                    &original_inputs[j],
-                ) == 0) ==> fe51_as_canonical_nat(&inputs[j]) == 0)));
+                    ==> is_inverse_field(&original_inputs[j], &inputs[j])) && ((
+                fe51_as_canonical_nat(&original_inputs[j]) == 0) ==> fe51_as_canonical_nat(
+                    &inputs[j],
+                ) == 0)));
         }
     }
 
@@ -740,9 +742,9 @@ impl FieldElement {
         ensures
     // If self is non-zero, result is the multiplicative inverse: result * self ≡ 1 (mod p)
 
-            fe51_as_canonical_nat(self) != 0 ==> field_canonical(fe51_as_canonical_nat(&result) * fe51_as_canonical_nat(
-                self,
-            )) == 1,
+            fe51_as_canonical_nat(self) != 0 ==> field_canonical(
+                fe51_as_canonical_nat(&result) * fe51_as_canonical_nat(self),
+            ) == 1,
             // If self is zero, result is zero
             fe51_as_canonical_nat(self) == 0 ==> fe51_as_canonical_nat(&result) == 0,
             fe51_as_canonical_nat(&result) == field_inv(fe51_as_canonical_nat(self)),
@@ -773,10 +775,9 @@ impl FieldElement {
 
             fe51_limbs_bounded(&result, 54),
             // Mathematical value
-            fe51_as_canonical_nat(&result) == field_canonical(pow(
-                fe51_as_canonical_nat(self) as int,
-                (pow2(252) - 3) as nat,
-            ) as nat),
+            fe51_as_canonical_nat(&result) == field_canonical(
+                pow(fe51_as_canonical_nat(self) as int, (pow2(252) - 3) as nat) as nat,
+            ),
     {
         // The bits of (p-5)/8 are 101111.....11.
         //
@@ -875,8 +876,8 @@ impl FieldElement {
                 &result.1,
             ),
             // When unsuccessful and v ≠ 0: r² * v ≡ i*u (mod p) [nonsquare case]
-            (!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u) != 0)
-                ==> fe51_is_sqrt_ratio_times_i(u, v, &result.1),
+            (!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u)
+                != 0) ==> fe51_is_sqrt_ratio_times_i(u, v, &result.1),
             // NEW: The result is always the "non-negative" square root (LSB = 0)
             // This is a fundamental property of sqrt_ratio_i that the original code
             // relies on for decompression sign bit handling
@@ -979,17 +980,13 @@ impl FieldElement {
         ensures
     // When self = 0: return (false, 0)
 
-            (fe51_as_canonical_nat(self) == 0) ==> (!choice_is_true(result.0) && fe51_as_canonical_nat(
-                &result.1,
-            ) == 0),
+            (fe51_as_canonical_nat(self) == 0) ==> (!choice_is_true(result.0)
+                && fe51_as_canonical_nat(&result.1) == 0),
             // When successful and self ≠ 0: r² * self ≡ 1 (mod p)
             (choice_is_true(result.0)) ==> fe51_is_sqrt_ratio(&FieldElement::ONE, self, &result.1),
             // When unsuccessful and self ≠ 0: r² * self ≡ i (mod p) [nonsquare case]
-            (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0) ==> fe51_is_sqrt_ratio_times_i(
-                &FieldElement::ONE,
-                self,
-                &result.1,
-            ),
+            (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0)
+                ==> fe51_is_sqrt_ratio_times_i(&FieldElement::ONE, self, &result.1),
     {
         assume(false);
         FieldElement::sqrt_ratio_i(&FieldElement::ONE, self)

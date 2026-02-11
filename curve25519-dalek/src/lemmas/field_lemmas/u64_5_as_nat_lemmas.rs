@@ -77,7 +77,8 @@ pub proof fn lemma_bridge_pow_as_nat_to_spec(
         u64_5_as_nat(result.limbs) % p() == (pow(u64_5_as_nat(base.limbs) as int, exp) as nat)
             % p(),
     ensures
-        fe51_as_canonical_nat(result) == (pow(fe51_as_canonical_nat(base) as int, exp) as nat) % p(),
+        fe51_as_canonical_nat(result) == (pow(fe51_as_canonical_nat(base) as int, exp) as nat)
+            % p(),
 {
     // Prove p() > 0
     pow255_gt_19();

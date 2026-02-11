@@ -416,9 +416,7 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
         v % p() != 0,
         u % p() != 0,
         // There exists x such that x²·v = i·u (comes from sqrt_ratio_i failure)
-        exists|x: nat|
-            x < p() && #[trigger] field_mul(field_square(x), v) == (sqrt_m1() * u)
-                % p(),
+        exists|x: nat| x < p() && #[trigger] field_mul(field_square(x), v) == (sqrt_m1() * u) % p(),
     ensures
         !math_is_valid_y_coordinate(y),
 {
@@ -434,16 +432,18 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
     // The lemma now takes r as parameter
     // Note: Must use `assert forall|r|` (not `assert(forall|r|)`) to bind r in the by block
     // Explicit trigger matches math_is_valid_y_coordinate's trigger
-    assert forall|r: nat| r < p() implies #[trigger] field_mul(field_square(r), v) != u
-        % p() && field_mul(field_square(r), v) != field_neg(u) by {
+    assert forall|r: nat| r < p() implies #[trigger] field_mul(field_square(r), v) != u % p()
+        && field_mul(field_square(r), v) != field_neg(u) by {
         lemma_no_square_root_when_times_i(u, v, r);
     };
 
     // Step 2: Restate as negation of the existential
     // Explicit trigger matches math_is_valid_y_coordinate's trigger
     assert(forall|r: nat|
-        r < p() ==> !(#[trigger] field_mul(field_square(r), v) == u % p()
-            || field_mul(field_square(r), v) == field_neg(u)));
+        r < p() ==> !(#[trigger] field_mul(field_square(r), v) == u % p() || field_mul(
+            field_square(r),
+            v,
+        ) == field_neg(u)));
 }
 
 /// Main lemma for step_1: proves curve semantics from sqrt_ratio_i result.
@@ -557,8 +557,7 @@ pub proof fn lemma_step1_case_analysis(
                 };
 
                 // Now we can assert the existential with x as witness
-                assert(x < p() && field_mul(field_square(x), v_math) == (sqrt_m1()
-                    * u_math) % p());
+                assert(x < p() && field_mul(field_square(x), v_math) == (sqrt_m1() * u_math) % p());
 
                 lemma_sqrt_ratio_failure_means_invalid_y(y, u_math, v_math);
             }

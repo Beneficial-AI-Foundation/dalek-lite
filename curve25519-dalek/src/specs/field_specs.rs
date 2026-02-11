@@ -24,7 +24,7 @@ use vstd::prelude::*;
 verus! {
 
 /// Spec predicate: all limbs are bounded by a given bit limit
-pub open spec fn u64_5_bounded(limbs: [u64;5 ], bit_limit: u64) -> bool {
+pub open spec fn u64_5_bounded(limbs: [u64; 5], bit_limit: u64) -> bool {
     forall|i: int| 0 <= i < 5 ==> #[trigger] limbs[i] < (1u64 << bit_limit)
 }
 
@@ -488,7 +488,11 @@ pub open spec fn is_sqrt_ratio_times_i(u: nat, v: nat, r: nat) -> bool {
 }
 
 /// Spec function: b^2 * v = u (mod p)
-pub open spec fn fe51_is_sqrt_ratio(u: &FieldElement51, v: &FieldElement51, r: &FieldElement51) -> bool {
+pub open spec fn fe51_is_sqrt_ratio(
+    u: &FieldElement51,
+    v: &FieldElement51,
+    r: &FieldElement51,
+) -> bool {
     is_sqrt_ratio(fe51_as_canonical_nat(u), fe51_as_canonical_nat(v), fe51_as_canonical_nat(r))
 }
 
@@ -499,7 +503,11 @@ pub open spec fn fe51_is_sqrt_ratio_times_i(
     v: &FieldElement51,
     r: &FieldElement51,
 ) -> bool {
-    is_sqrt_ratio_times_i(fe51_as_canonical_nat(u), fe51_as_canonical_nat(v), fe51_as_canonical_nat(r))
+    is_sqrt_ratio_times_i(
+        fe51_as_canonical_nat(u),
+        fe51_as_canonical_nat(v),
+        fe51_as_canonical_nat(r),
+    )
 }
 
 /// Spec predicate: a field element is negative if its canonical low bit is 1.
@@ -516,11 +524,7 @@ pub open spec fn nat_invsqrt(a: nat) -> nat {
     } else {
         choose|r: nat|
             #![auto]
-            !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(
-                1,
-                a,
-                r,
-            ))
+            !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r))
     }
 }
 

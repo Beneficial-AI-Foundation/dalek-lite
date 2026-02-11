@@ -171,9 +171,8 @@ impl PartialEq for MontgomeryPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &MontgomeryPoint) -> (result: bool)
         ensures
-            result == (fe51_as_canonical_nat_from_bytes(&self.0) == fe51_as_canonical_nat_from_bytes(
-                &other.0,
-            )),
+            result == (fe51_as_canonical_nat_from_bytes(&self.0)
+                == fe51_as_canonical_nat_from_bytes(&other.0)),
     {
         /* <VERIFICATION NOTE>
          Use wrapper function for Choice::into
@@ -501,10 +500,7 @@ impl MontgomeryPoint {
                     assert(fe51_as_canonical_nat(&x1.U) == t);
                     assert(fe51_as_canonical_nat(&x1.U) % p() == t % p());
                     p_gt_2();
-                    lemma_mod_division_less_than_divisor(
-                        fe51_as_nat(&x1.U) as int,
-                        p() as int,
-                    );
+                    lemma_mod_division_less_than_divisor(fe51_as_nat(&x1.U) as int, p() as int);
                     assert(t < p());
                     lemma_small_mod(t, p());
                     assert(t % p() == t);
@@ -1270,10 +1266,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                 fe51_as_canonical_nat(&r_0_sq2),
             ));
         }
-        assert(fe51_as_canonical_nat(&d_1) == field_add(
-            1,
-            field_mul(2, field_square(r)),
-        ));
+        assert(fe51_as_canonical_nat(&d_1) == field_add(1, field_mul(2, field_square(r))));
 
         // d = (-A) / (1 + 2*r^2)
         assert(fe51_as_canonical_nat(&d) == field_mul(
@@ -1292,10 +1285,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                 axiom_montgomery_a_neg_is_neg_a();
             }
             // Replace d_1 with denom (asserted above).
-            assert(fe51_as_canonical_nat(&d_1) == field_add(
-                1,
-                field_mul(2, field_square(r)),
-            ));
+            assert(fe51_as_canonical_nat(&d_1) == field_add(1, field_mul(2, field_square(r))));
         }
 
         // d_sq = d^2
@@ -1353,9 +1343,10 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                 // Success: either eps=0 or is_sqrt_ratio(eps, 1, _eps), giving a square witness.
                 if eps_nat == 0 {
                     assert(is_square(eps_nat)) by {
-                        assert(exists|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(eps_nat)) by {
+                        assert(exists|y: nat|
+                            (#[trigger] field_mul(y, y)) == field_canonical(eps_nat)) by {
                             // witness y = 0
-                            assert(field_mul(0,0) == field_canonical(eps_nat));
+                            assert(field_mul(0, 0) == field_canonical(eps_nat));
                         }
                     }
                 } else {
@@ -1373,7 +1364,8 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                         lemma_small_mod(eps_nat, p());
                     }
                     assert(is_square(eps_nat)) by {
-                        assert(exists|w: nat| (#[trigger] field_mul(w, w)) == field_canonical(eps_nat)) by {
+                        assert(exists|w: nat|
+                            (#[trigger] field_mul(w, w)) == field_canonical(eps_nat)) by {
                             let w = y;
                             assert(field_mul(w, w) == field_canonical(eps_nat));
                         }
@@ -1396,8 +1388,8 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                             lemma_mod_bound(u64_5_as_nat(_eps.limbs) as int, p() as int);
                         }
                         assert(exists|w: nat|
-                            w < p() && #[trigger] field_mul(field_square(w), 1) == (
-                            sqrt_m1() * eps_nat) % p()) by {
+                            w < p() && #[trigger] field_mul(field_square(w), 1) == (sqrt_m1()
+                                * eps_nat) % p()) by {
                             let w = x;
                             // from is_sqrt_ratio_times_i with v=1
                             assert((x * x * 1nat) % p() == (sqrt_m1() * eps_nat) % p());
@@ -1463,9 +1455,13 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                 field_add(fe51_as_canonical_nat(&d), A)
             }) by {
                 if choice_is_true(eps_is_sq) {
-                    assert(fe51_as_canonical_nat(&u_pre) == field_add(fe51_as_canonical_nat(&d), 0));
+                    assert(fe51_as_canonical_nat(&u_pre) == field_add(
+                        fe51_as_canonical_nat(&d),
+                        0,
+                    ));
                     // field_add(x, 0) = x for any field element x
-                    assert(field_add(fe51_as_canonical_nat(&d), 0) == fe51_as_canonical_nat(&d)) by {
+                    assert(field_add(fe51_as_canonical_nat(&d), 0) == fe51_as_canonical_nat(&d))
+                        by {
                         let x = fe51_as_canonical_nat(&d);
                         p_gt_2();
                         // x < p, so (x + 0) % p = x
@@ -1473,7 +1469,10 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                         lemma_small_mod(x, p());
                     }
                 } else {
-                    assert(fe51_as_canonical_nat(&u_pre) == field_add(fe51_as_canonical_nat(&d), A));
+                    assert(fe51_as_canonical_nat(&u_pre) == field_add(
+                        fe51_as_canonical_nat(&d),
+                        A,
+                    ));
                 }
             }
             // conditional_negate with choice_not: negates when nonsquare
@@ -2074,10 +2073,7 @@ fn differential_add_and_double(
             assert(P.W == t16);
             reveal(spec_xdbl_projective);
             assert(W2 == field_mul(
-                field_sub(
-                    field_square(field_add(U_P0, W_P0)),
-                    field_square(field_sub(U_P0, W_P0)),
-                ),
+                field_sub(field_square(field_add(U_P0, W_P0)), field_square(field_sub(U_P0, W_P0))),
                 field_add(
                     field_mul(
                         fe51_as_canonical_nat(&APLUS2_OVER_FOUR),
@@ -2160,8 +2156,10 @@ fn differential_add_and_double(
                 }
                 lemma_inv_mul_cancel(W_old);
                 lemma_field_mul_assoc(U_old, field_inv(W_old), W_old);
-                assert(field_mul(field_mul(U_old, field_inv(W_old)), W_old)
-                    == field_mul(U_old, field_mul(field_inv(W_old), W_old)));
+                assert(field_mul(field_mul(U_old, field_inv(W_old)), W_old) == field_mul(
+                    U_old,
+                    field_mul(field_inv(W_old), W_old),
+                ));
                 assert(field_mul(field_inv(W_old), W_old) == 1);
                 lemma_field_mul_one_right(U_old);
                 assert(field_mul(0, W_old) == 0) by {
@@ -2202,7 +2200,8 @@ fn differential_add_and_double(
                 montgomery_scalar_mul(B, 2 * k + 1),
             )
         } by {
-            if fe51_as_canonical_nat(affine_PmQ) != 0 && projective_represents_montgomery_or_infinity(
+            if fe51_as_canonical_nat(affine_PmQ) != 0
+                && projective_represents_montgomery_or_infinity(
                 *old(P),
                 montgomery_scalar_mul(B, k),
             ) && projective_represents_montgomery_or_infinity(
@@ -2314,7 +2313,8 @@ fn differential_add_and_double(
                 montgomery_scalar_mul(B, 2 * k + 1),
             )
         } by {
-            if fe51_as_canonical_nat(affine_PmQ) != 0 && projective_represents_montgomery_or_infinity(
+            if fe51_as_canonical_nat(affine_PmQ) != 0
+                && projective_represents_montgomery_or_infinity(
                 *old(P),
                 montgomery_scalar_mul(B, k + 1),
             ) && projective_represents_montgomery_or_infinity(

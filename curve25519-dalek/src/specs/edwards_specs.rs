@@ -302,8 +302,10 @@ pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool {
         // Check if there exists r such that r² * v ≡ ±u (mod p)
         // This is what sqrt_ratio_i determines
         exists|r: nat|
-            r < p() && (#[trigger] field_mul(field_square(r), v) == u % p()
-                || #[trigger] field_mul(field_square(r), v) == field_neg(u))
+            r < p() && (#[trigger] field_mul(field_square(r), v) == u % p() || #[trigger] field_mul(
+                field_square(r),
+                v,
+            ) == field_neg(u))
     }
 }
 
@@ -339,10 +341,7 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// 2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²
 /// 3. The Segre relation holds: X·Y = Z·T
 pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
-    z != 0 && math_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(
-        z,
-        t,
-    )
+    z != 0 && math_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(z, t)
 }
 
 /// Check if an EdwardsPoint in extended coordinates is valid
@@ -771,10 +770,7 @@ pub open spec fn is_valid_completed_point(
     z_abs != 0 && t_abs != 0
         &&
     // The affine coordinates (X/Z, Y/T) must be on the curve
-    math_on_edwards_curve(
-        field_mul(x_abs, field_inv(z_abs)),
-        field_mul(y_abs, field_inv(t_abs)),
-    )
+    math_on_edwards_curve(field_mul(x_abs, field_inv(z_abs)), field_mul(y_abs, field_inv(t_abs)))
 }
 
 /// Check if a ProjectivePoint is valid

@@ -126,8 +126,7 @@ pub open spec fn is_valid_montgomery_point(point: crate::montgomery::MontgomeryP
 pub open spec fn montgomery_neg(P: MontgomeryAffine) -> MontgomeryAffine {
     match P {
         MontgomeryAffine::Infinity => MontgomeryAffine::Infinity,
-        MontgomeryAffine::Finite { u, v } => { MontgomeryAffine::Finite { u, v: field_neg(v) }
-        },
+        MontgomeryAffine::Finite { u, v } => { MontgomeryAffine::Finite { u, v: field_neg(v) } },
     }
 }
 
@@ -156,10 +155,7 @@ pub open spec fn montgomery_add(P: MontgomeryAffine, Q: MontgomeryAffine) -> Mon
              else if u1 == u2 && v1 == v2 {
                 let u1_sq = field_square(u1);
                 let numerator = field_add(
-                    field_add(
-                        field_mul(3, u1_sq),
-                        field_mul(field_mul(2, A), u1),
-                    ),
+                    field_add(field_mul(3, u1_sq), field_mul(field_mul(2, A), u1)),
                     1,
                 );
                 let denominator = field_mul(2, v1);

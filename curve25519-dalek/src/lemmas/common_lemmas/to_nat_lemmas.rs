@@ -199,10 +199,7 @@ pub proof fn lemma_decomposition_prefix_rec(bytes: &[u8; 32], n: nat)
     requires
         n <= 32,
     ensures
-        u8_32_as_nat_rec(bytes, 0) == bytes_as_nat_prefix(bytes@, n) + u8_32_as_nat_rec(
-            bytes,
-            n,
-        ),
+        u8_32_as_nat_rec(bytes, 0) == bytes_as_nat_prefix(bytes@, n) + u8_32_as_nat_rec(bytes, n),
     decreases n,
 {
     let goal = u8_32_as_nat_rec(bytes, 0) == bytes_as_nat_prefix(bytes@, n) + u8_32_as_nat_rec(

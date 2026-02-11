@@ -2476,8 +2476,7 @@ pub proof fn lemma_is_canonical_correctness(self_bytes: &[u8; 32], reduced_bytes
         // Step 4: By contradiction - if self_bytes < group_order, it would equal itself mod group_order
         assert(!(u8_32_as_nat(self_bytes) < group_order())) by {
             if u8_32_as_nat(self_bytes) < group_order() {
-                assert(u8_32_as_nat(self_bytes) % group_order() == u8_32_as_nat(self_bytes))
-                    by {
+                assert(u8_32_as_nat(self_bytes) % group_order() == u8_32_as_nat(self_bytes)) by {
                     lemma_small_mod(u8_32_as_nat(self_bytes), group_order());
                 }
             }

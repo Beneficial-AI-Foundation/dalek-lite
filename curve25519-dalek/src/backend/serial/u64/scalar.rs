@@ -74,15 +74,15 @@ use crate::lemmas::scalar_lemmas_extra::*;
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::scalar_montgomery_lemmas::*;
 #[cfg(verus_keep_ghost)]
-use crate::specs::core_specs::u8_32_as_nat;
-#[cfg(verus_keep_ghost)]
-use crate::specs::core_specs::bytes_seq_as_nat;
-#[cfg(verus_keep_ghost)]
 use crate::specs::core_specs::bytes_as_nat_prefix;
 #[cfg(verus_keep_ghost)]
 use crate::specs::core_specs::bytes_as_nat_suffix;
 #[cfg(verus_keep_ghost)]
+use crate::specs::core_specs::bytes_seq_as_nat;
+#[cfg(verus_keep_ghost)]
 use crate::specs::core_specs::spec_load8_at;
+#[cfg(verus_keep_ghost)]
+use crate::specs::core_specs::u8_32_as_nat;
 #[cfg(verus_keep_ghost)]
 use crate::specs::core_specs::word64_from_bytes;
 #[cfg(verus_keep_ghost)]

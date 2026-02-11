@@ -325,7 +325,9 @@ impl CompressedEdwardsY {
                 // step_2 ensures Y and Z are preserved by reference equality
                 assert(&point.Y == &Y);
                 assert(&point.Z == &Z);
-                assert(fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(&self.0));
+                assert(fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(
+                    &self.0,
+                ));
                 assert(fe51_as_canonical_nat(&point.Z) == 1);
 
                 // x_orig < p() is trivially true since x_orig = fe51_as_canonical_nat(&X) = ...%p()
@@ -366,8 +368,9 @@ mod decompress {
                 fe51_as_canonical_nat(&Z) == 1
                     &&
                 // The choice is true iff the Y is valid and (X, Y) is on the curve
-                (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(fe51_as_canonical_nat(&Y)))
-                    && (choice_is_true(is_valid) ==> math_on_edwards_curve(
+                (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(
+                    fe51_as_canonical_nat(&Y),
+                )) && (choice_is_true(is_valid) ==> math_on_edwards_curve(
                     fe51_as_canonical_nat(&X),
                     fe51_as_canonical_nat(&Y),
                 )) &&
@@ -458,10 +461,7 @@ mod decompress {
 
                 // Connect field elements to math versions (needed for sqrt_ratio_i_math_post)
                 // YY = Y.square() → fe51_as_canonical_nat(&YY) == field_square(y)
-                lemma_square_matches_field_square(
-                    fe51_as_nat(&Y),
-                    fe51_as_nat(&YY),
-                );
+                lemma_square_matches_field_square(fe51_as_nat(&Y), fe51_as_nat(&YY));
                 assert(fe51_as_canonical_nat(&YY) == y2);
 
                 // u = YY - Z → fe51_as_canonical_nat(&u) == u_math
@@ -479,12 +479,7 @@ mod decompress {
 
                 // Math correctness (sqrt_ratio_i_math_post):
                 // All four cases follow from sqrt_ratio_i ensures clauses
-                assert(sqrt_ratio_i_math_post(
-                    u_math,
-                    v_math,
-                    choice_is_true(is_valid_y_coord),
-                    x,
-                ));
+                assert(sqrt_ratio_i_math_post(u_math, v_math, choice_is_true(is_valid_y_coord), x));
             };
 
             // =================================================================
@@ -1354,10 +1349,7 @@ impl EdwardsPoint {
                 // Rewrite and commute.
                 assert(t2d == field_mul(t, field_mul(2, d)));
                 lemma_field_mul_comm(t, field_mul(2, d));
-                assert(field_mul(t, field_mul(2, d)) == field_mul(
-                    field_mul(2, d),
-                    t,
-                ));
+                assert(field_mul(t, field_mul(2, d)) == field_mul(field_mul(2, d), t));
             }
 
             // All four conditions are satisfied, so correspondence holds
@@ -1529,10 +1521,7 @@ impl EdwardsPoint {
         proof {
             // mul postcondition: u_field = (Z+Y) * inv(Z-Y)
             assert(u_field == field_mul(u_val, w_inv_val));
-            assert(u_field == field_mul(
-                field_add(z, y),
-                field_inv(field_sub(z, y)),
-            ));
+            assert(u_field == field_mul(field_add(z, y), field_inv(field_sub(z, y))));
         }
 
         let u_bytes = u.as_bytes();
@@ -1717,7 +1706,8 @@ impl EdwardsPoint {
             };
 
             // Prove XOR preserves y and sets sign bit
-            assert(fe51_as_canonical_nat_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit) by {
+            assert(fe51_as_canonical_nat_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit)
+                by {
                 lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
             }
 
@@ -2374,8 +2364,7 @@ impl<'a> Neg for &'a EdwardsPoint {
             let z_inv = field_inv(old_z);
 
             // Key algebraic fact: (-x) * z_inv = -(x * z_inv)
-            assert(field_mul(new_x, z_inv) == field_neg(field_mul(old_x, z_inv)))
-                by {
+            assert(field_mul(new_x, z_inv) == field_neg(field_mul(old_x, z_inv))) by {
                 // new_x = field_neg(old_x)
                 // field_mul(neg(a), b) = neg(field_mul(a, b)) by field algebra
                 lemma_field_mul_comm(new_x, z_inv);

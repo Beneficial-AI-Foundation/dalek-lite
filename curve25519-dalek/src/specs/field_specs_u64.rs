@@ -16,7 +16,7 @@ pub open spec fn field_canonical(n: nat) -> nat {
     n % p()
 }
 
-pub open spec fn u64_5_as_field_canonical(limbs: [u64;5]) -> nat {
+pub open spec fn u64_5_as_field_canonical(limbs: [u64; 5]) -> nat {
     field_canonical(u64_5_as_nat(limbs))
 }
 

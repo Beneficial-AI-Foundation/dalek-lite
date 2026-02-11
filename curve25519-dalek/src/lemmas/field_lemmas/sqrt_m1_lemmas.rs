@@ -105,9 +105,7 @@ pub proof fn axiom_neg_sqrt_m1_not_square()
 /// Used in: lemma_flipped_sign_becomes_correct
 pub proof fn lemma_multiply_by_i_flips_sign(r: nat)
     ensures
-        field_square(field_mul(r, sqrt_m1())) == field_neg(
-            field_square(r),
-        ),
+        field_square(field_mul(r, sqrt_m1())) == field_neg(field_square(r)),
         // Expanded form for callers that need explicit modular arithmetic
         ((r * sqrt_m1()) % p() * (r * sqrt_m1()) % p()) % p() == ((p() as int - ((r * r)
             % p()) as int) % p() as int) as nat,

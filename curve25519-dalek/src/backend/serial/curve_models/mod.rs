@@ -595,10 +595,8 @@ impl CompletedPoint {
             // From is_valid_completed_point: (X/Z, Y/T) is on the curve
 
             // Cancellation for X coordinate: (X*T)/(Z*T) = X/Z
-            assert(field_mul(
-                field_mul(x_abs, t_abs),
-                field_inv(field_mul(z_abs, t_abs)),
-            ) == field_mul(x_abs, field_inv(z_abs))) by {
+            assert(field_mul(field_mul(x_abs, t_abs), field_inv(field_mul(z_abs, t_abs)))
+                == field_mul(x_abs, field_inv(z_abs))) by {
                 lemma_cancel_common_factor(x_abs, z_abs, t_abs);
             };
 
@@ -607,10 +605,8 @@ impl CompletedPoint {
             assert(field_mul(z_abs, t_abs) == field_mul(t_abs, z_abs)) by {
                 lemma_field_mul_comm(z_abs, t_abs);
             };
-            assert(field_mul(
-                field_mul(y_abs, z_abs),
-                field_inv(field_mul(t_abs, z_abs)),
-            ) == field_mul(y_abs, field_inv(t_abs))) by {
+            assert(field_mul(field_mul(y_abs, z_abs), field_inv(field_mul(t_abs, z_abs)))
+                == field_mul(y_abs, field_inv(t_abs))) by {
                 lemma_cancel_common_factor(y_abs, t_abs, z_abs);
             };
 

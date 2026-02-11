@@ -1,0 +1,8 @@
+{
+  "repo": {
+    "id": "5030",
+    "is_admin": true,
+    "url": "https://verilib.org"
+  },
+  "structure-root": ".verilib/structure"
+}

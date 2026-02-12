@@ -2421,7 +2421,6 @@ impl Mul<&Scalar> for &MontgomeryPoint {
 
     /// Given `self` \\( = u\_0(P) \\), and a `Scalar` \\(n\\), return \\( u\_0(\[n\]P) \\)
     ///
-    #[verifier::rlimit(40)]
     fn mul(self, scalar: &Scalar) -> (result: MontgomeryPoint)
         ensures
     // The canonical Montgomery lift point P corresponding to this u-coordinate

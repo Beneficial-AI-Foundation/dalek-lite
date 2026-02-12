@@ -2956,7 +2956,7 @@ impl Scalar {
                     coef <= radix,
                     half_radix == radix / 2u64,
                     radix == 1u64 << (w as u64),
-                    5u64 <= (w as u64) && (w as u64) <= 8u64,
+                    5u64 <= (w as u64) <= 8u64,
             ;
 
             let carry_times_radix: u64 = new_carry * radix;
@@ -2973,7 +2973,7 @@ impl Scalar {
                     coef <= radix,
                     half_radix == radix / 2u64,
                     radix == 1u64 << (w as u64),
-                    5u64 <= (w as u64) && (w as u64) <= 8u64,
+                    5u64 <= (w as u64) <= 8u64,
             ;
 
             /* <ORIGINAL CODE>
@@ -3054,7 +3054,7 @@ impl Scalar {
                             (coef as u64) < (half_radix as u64),
                             half_radix == radix / 2u64,
                             radix == 1u64 << (w as u64),
-                            5u64 <= (w as u64) && (w as u64) <= 8u64,
+                            5u64 <= (w as u64) <= 8u64,
                     ;
                 }
             }

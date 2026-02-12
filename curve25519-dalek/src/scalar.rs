@@ -3081,7 +3081,7 @@ impl Scalar {
             8 => {
                 let idx = digits_count;
                 let carry_i8 = carry as i8;
-                digits[idx] = digits[idx] + carry_i8;
+                digits[idx] += carry_i8;
             },
             _ => {
                 let idx = digits_count - 1;

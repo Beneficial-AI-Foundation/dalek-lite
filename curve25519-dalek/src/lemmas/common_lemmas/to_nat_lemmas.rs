@@ -925,7 +925,7 @@ proof fn lemma_bytes_as_nat_prefix_chunk_inductive(
         lemma_bytes_as_nat_prefix_chunk_inductive(bytes, chunk, k, rm1);
 
         // Unfold bytes_as_nat_prefix at (k*8 + remaining)
-        let idx = (k * 8 + remaining - 1) as nat;
+        let idx = (k * 8 + rm1) as nat;
         assert(bytes_as_nat_prefix(bytes, (k * 8 + remaining) as nat) == bytes_as_nat_prefix(
             bytes,
             idx,
@@ -934,10 +934,10 @@ proof fn lemma_bytes_as_nat_prefix_chunk_inductive(
         // Unfold bytes_as_nat_prefix(chunk, remaining)
         assert(bytes_as_nat_prefix(chunk, remaining) == bytes_as_nat_prefix(chunk, rm1) + pow2(
             (rm1 * 8) as nat,
-        ) * chunk[(remaining - 1) as int] as nat);
+        ) * chunk[rm1 as int] as nat);
 
         // chunk[remaining-1] == bytes[k*8 + remaining - 1]
-        assert(chunk[(remaining - 1) as int] == bytes[(k * 8 + remaining - 1) as int]);
+        assert(chunk[rm1 as int] == bytes[(k * 8 + rm1) as int]);
 
         // Key: pow2(idx * 8) == pow2(rm1 * 8) * pow2(k * 64)
         // since idx * 8 = (k*8 + rm1) * 8 = k*64 + rm1*8
@@ -952,7 +952,7 @@ proof fn lemma_bytes_as_nat_prefix_chunk_inductive(
 
         // Distribute: (prefix + byte_val * pow2(rm1*8)) * pow2(k*64)
         let p = bytes_as_nat_prefix(chunk, rm1) as int;
-        let bv = chunk[(remaining - 1) as int] as nat as int;
+        let bv = chunk[rm1 as int] as nat as int;
         let pw_rm1 = pow2((rm1 * 8) as nat) as int;
         let pw_k = pow2((k * 64) as nat) as int;
 

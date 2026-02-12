@@ -71,9 +71,7 @@ pub open spec fn sum_of_scalars(scalars: Seq<Scalar>) -> nat
         0
     } else {
         let last = (scalars.len() - 1) as int;
-        group_canonical(
-            (sum_of_scalars(scalars.subrange(0, last)) + u8_32_as_nat(&scalars[last].bytes)),
-        )
+        group_canonical((sum_of_scalars(scalars.subrange(0, last)) + scalar_as_nat(&scalars[last])))
     }
 }
 

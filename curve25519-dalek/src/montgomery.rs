@@ -1353,7 +1353,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                     let y = fe51_as_canonical_nat(&_eps);
                     assert(field_mul(y, y) == field_canonical(eps_nat)) by {
                         // is_sqrt_ratio with v=1 means y^2 == eps (mod p)
-                        assert((y * y * v_nat) % p() == eps_nat);
+                        assert((y * y * v_nat) % p() == field_canonical(eps_nat));
                         assert(v_nat == 1);
                         assert((y * y * 1nat) % p() == (y * y) % p()) by (compute);
                         // LHS is a mod result, so eps_nat < p() and eps_nat % p() = eps_nat

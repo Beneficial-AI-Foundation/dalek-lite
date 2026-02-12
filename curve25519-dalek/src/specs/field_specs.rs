@@ -477,7 +477,7 @@ pub open spec fn is_square_of(a: &FieldElement51, b: &FieldElement51) -> bool {
 /// This is the mathematical equivalent of fe51_is_sqrt_ratio but without FieldElement wrappers.
 /// Use this when working with mathematical values directly in lemmas.
 pub open spec fn is_sqrt_ratio(u: nat, v: nat, r: nat) -> bool {
-    field_canonical(r * r * v) == u
+    field_canonical(r * r * v) == field_canonical(u)
 }
 
 /// Spec function: r² * v = i*u (mod p) — math version operating on nat values

@@ -148,19 +148,6 @@ pub proof fn lemma_decompress_field_element_sign_bit(
     assert((x_after_negate % 2) as u8 == sign_bit) by {
         lemma_sign_bit_after_conditional_negate(x_before_negate, sign_bit);
     }
-
-    // x_after < p, so x_after % p = x_after
-    // assert(x_after_negate % p() == x_after_negate) by {
-    //     assert(x_after_negate < p()) by {
-    //         p_gt_2();
-    //         if sign_bit == 1 {
-    //             lemma_mod_bound((p() as int - (x_before_negate) as int), p() as int);
-    //         } else {
-    //             lemma_mod_bound(x_before_negate as int, p() as int);
-    //         }
-    //     }
-    //     lemma_small_mod(x_after_negate, p());
-    // }
 }
 
 // =============================================================================
@@ -304,10 +291,6 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
             ;
 
             // Precondition 1: sqrt_ratio_i returns non-negative root (LSB = 0)
-            // x_before % 2 == 0 from precondition, and x_before < p() so x_before % p() == x_before
-            // assert(x_before % 2 == 0) by {
-            //     lemma_small_mod(x_before, p());
-            // };
 
             // Precondition 2: sign_bit == 1 ==> x != 0
             assert(sign_bit == 1 ==> x_before != 0) by {

@@ -73,13 +73,6 @@ pub proof fn lemma_is_sqrt_ratio_to_field(
     // field_square(x) = (x * x) % p
     let x2 = field_square(x);
 
-    // From requires: (x*x*v) % p == u, so u < p (it's a mod result)
-    // Therefore u % p == u
-    assert(u % p == u) by {
-        lemma_mod_bound(((x * x) * v) as int, p as int);
-        lemma_small_mod(u, p);
-    };
-
     // Apply mod absorption: (x*x * v) % p == ((x*x % p) * (v % p)) % p
     // This gives us field_mul((x*x) % p, v % p) == u % p
     assert(((x * x) * v) % p == (((x * x) % p) * (v % p)) % p) by {

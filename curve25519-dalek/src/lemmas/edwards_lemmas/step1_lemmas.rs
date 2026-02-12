@@ -490,7 +490,11 @@ pub proof fn lemma_step1_case_analysis(
             assert(math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)) by {
                 // From precondition: is_sqrt_ratio holds
                 assert(is_sqrt_ratio(u_math, v_math, x));
-                assert((x * x * v_math) % p() == u_math);
+                assert((x * x * v_math) % p() == u_math) by {
+                    assert(u_math == field_canonical(u_math)) by {
+                        lemma_small_mod(u_math, p());
+                    }
+                }
 
                 // Convert to field_mul form for curve semantics
                 lemma_is_sqrt_ratio_to_field(x, u_math, v_math);

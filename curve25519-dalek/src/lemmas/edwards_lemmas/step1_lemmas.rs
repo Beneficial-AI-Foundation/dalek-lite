@@ -493,7 +493,7 @@ pub proof fn lemma_step1_case_analysis(
                 assert((x * x * v_math) % p() == u_math);
 
                 // Convert to field_mul form for curve semantics
-                lemma_fe51_is_sqrt_ratio_to_math_field(x, u_math, v_math);
+                lemma_is_sqrt_ratio_to_field(x, u_math, v_math);
 
                 // Apply curve semantics lemma
                 lemma_step1_curve_semantics(y, x);

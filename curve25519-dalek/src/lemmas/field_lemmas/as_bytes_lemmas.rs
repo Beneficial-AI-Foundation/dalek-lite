@@ -977,13 +977,13 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
     ensures
 // decoding s_after still yields y_val
 
-        fe51_as_canonical_nat_from_bytes(s_after) == y_val,
+        field_element_from_bytes(s_after) == y_val,
         // bit 255 now contains sign_bit
         (s_after[31] >> 7) == sign_bit,
 {
-    // fe51_as_canonical_nat_from_bytes(bytes) = (u8_32_as_nat(bytes) % pow2(255)) % p()
+    // field_element_from_bytes(bytes) = (u8_32_as_nat(bytes) % pow2(255)) % p()
     // XOR only changes bit 255, which is cleared by % pow2(255)
-    // So fe51_as_canonical_nat_from_bytes(s_after) == y_val
+    // So field_element_from_bytes(s_after) == y_val
     let byte31_before = s_before[31];
     let byte31_after = s_after[31];
 
@@ -1123,10 +1123,10 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
         lemma_small_mod(y_val, pow2(255));
     };
 
-    // Step 6: Combine to get fe51_as_canonical_nat_from_bytes(s_after) == y_val
-    assert(fe51_as_canonical_nat_from_bytes(s_after) == y_val) by {
+    // Step 6: Combine to get field_element_from_bytes(s_after) == y_val
+    assert(field_element_from_bytes(s_after) == y_val) by {
         assert(u8_32_as_nat(s_after) % pow2(255) == y_val);
-        // fe51_as_canonical_nat_from_bytes(s_after) = (u8_32_as_nat(s_after) % pow2(255)) % p()
+        // field_element_from_bytes(s_after) = (u8_32_as_nat(s_after) % pow2(255)) % p()
         //                                        = y_val % p()
         //                                        = y_val (since y_val < p())
         lemma_small_mod(y_val, p());

@@ -482,7 +482,7 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
 ) -> bool {
     let (x_affine, y_affine) = edwards_point_as_affine(point);
     // The y-coordinate in the compressed form matches the affine y-coordinate
-    fe51_as_canonical_nat_from_bytes(&compressed.0)
+    field_element_from_bytes(&compressed.0)
         == y_affine
     // The sign bit matches the sign of the affine x-coordinate
      && (compressed.0[31] >> 7) == (((x_affine % crate::specs::field_specs_u64::p()) % 2) as u8)
@@ -500,7 +500,7 @@ pub open spec fn compressed_edwards_y_corresponds_to_edwards(
 ///
 /// If the Y coordinate yields x = 0 (i.e., y² ≡ 1 mod p), the sign bit must be 0.
 pub open spec fn compressed_y_has_valid_sign_bit(bytes: &[u8; 32]) -> bool {
-    let y = fe51_as_canonical_nat_from_bytes(bytes);
+    let y = field_element_from_bytes(bytes);
     let sign_bit = bytes[31] >> 7;
     // If y² ≡ 1 (mod p), then x = 0, so sign_bit must be 0
     // Equivalently: sign_bit == 1 implies y² ≢ 1

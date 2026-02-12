@@ -288,12 +288,11 @@ impl CompressedEdwardsY {
         ensures
     // Decompression succeeds iff the y-coordinate is valid
 
-            math_is_valid_y_coordinate(fe51_as_canonical_nat_from_bytes(&self.0))
-                <==> result.is_some(),
+            math_is_valid_y_coordinate(field_element_from_bytes(&self.0)) <==> result.is_some(),
             // When successful, the result has these properties:
             result.is_some() ==> (
             // The Y coordinate matches the one from the compressed representation
-            fe51_as_canonical_nat(&result.unwrap().Y) == fe51_as_canonical_nat_from_bytes(
+            fe51_as_canonical_nat(&result.unwrap().Y) == field_element_from_bytes(
                 &self.0,
             )
             // The point is valid on the Edwards curve
@@ -307,7 +306,7 @@ impl CompressedEdwardsY {
 
         proof {
             assert(choice_is_true(is_valid_y_coord) ==> math_is_valid_y_coordinate(
-                fe51_as_canonical_nat_from_bytes(&self.0),
+                field_element_from_bytes(&self.0),
             ));
             assert(choice_is_true(is_valid_y_coord) ==> math_on_edwards_curve(
                 fe51_as_canonical_nat(&X),
@@ -325,9 +324,7 @@ impl CompressedEdwardsY {
                 // step_2 ensures Y and Z are preserved by reference equality
                 assert(&point.Y == &Y);
                 assert(&point.Z == &Z);
-                assert(fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(
-                    &self.0,
-                ));
+                assert(fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(&self.0));
                 assert(fe51_as_canonical_nat(&point.Z) == 1);
 
                 // x_orig < p() is trivially true since x_orig = fe51_as_canonical_nat(&X) = ...%p()
@@ -362,7 +359,7 @@ mod decompress {
 
             ({
                 let (is_valid, X, Y, Z) = result;
-                fe51_as_canonical_nat(&Y) == fe51_as_canonical_nat_from_bytes(&repr.0)
+                fe51_as_canonical_nat(&Y) == field_element_from_bytes(&repr.0)
                     &&
                 // The returned Z field element is 1
                 fe51_as_canonical_nat(&Z) == 1
@@ -390,7 +387,7 @@ mod decompress {
         // PHASE 1: Setup Y, Z, compute u = y² - 1, v = d·y² + 1
         // =================================================================
         let Y = FieldElement::from_bytes(repr.as_bytes());
-        assert(fe51_as_canonical_nat_from_bytes(&repr.0) == fe51_as_canonical_nat(&Y));
+        assert(field_element_from_bytes(&repr.0) == fe51_as_canonical_nat(&Y));
         let Z = FieldElement::ONE;
         proof {
             // Y is 51-bit bounded (from from_bytes), which implies 54-bit for square
@@ -757,7 +754,7 @@ impl Identity for CompressedEdwardsY {
         ensures
     // Identity point has y = 1 and sign bit = 0
 
-            fe51_as_canonical_nat_from_bytes(&result.0) == 1,
+            field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
     {
         let result = CompressedEdwardsY(
@@ -802,7 +799,7 @@ impl Identity for CompressedEdwardsY {
             assert(result.0[31] == 0);
             assert((0u8 >> 7) == 0) by (bit_vector);
 
-            // fe51_as_canonical_nat_from_bytes([1, 0, ...]) = 1
+            // field_element_from_bytes([1, 0, ...]) = 1
             // The bytes represent 1 in little-endian: byte[0] = 1, rest = 0
 
             // Step 1: Prove u8_32_as_nat(&result.0) == 1
@@ -825,8 +822,8 @@ impl Identity for CompressedEdwardsY {
                 lemma_small_mod(1nat, p());
             }
 
-            // Conclude: fe51_as_canonical_nat_from_bytes = (u8_32_as_nat % pow2(255)) % p() = 1
-            assert(fe51_as_canonical_nat_from_bytes(&result.0) == 1);
+            // Conclude: field_element_from_bytes = (u8_32_as_nat % pow2(255)) % p() = 1
+            assert(field_element_from_bytes(&result.0) == 1);
         }
 
         result
@@ -836,7 +833,7 @@ impl Identity for CompressedEdwardsY {
 impl crate::traits::IsIdentitySpecImpl for CompressedEdwardsY {
     /// For CompressedEdwardsY, is_identity returns true iff y-coordinate is 1 with sign bit 0
     open spec fn is_identity_spec(&self) -> bool {
-        fe51_as_canonical_nat_from_bytes(&self.0) == 1 && (self.0[31] >> 7) == 0
+        field_element_from_bytes(&self.0) == 1 && (self.0[31] >> 7) == 0
     }
 }
 
@@ -845,7 +842,7 @@ impl Default for CompressedEdwardsY {
         ensures
     // Identity point has y = 1 and sign bit = 0
 
-            fe51_as_canonical_nat_from_bytes(&result.0) == 1,
+            field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
     {
         CompressedEdwardsY::identity()
@@ -1534,7 +1531,7 @@ impl EdwardsPoint {
             // as_bytes postcondition: u8_32_as_nat(&u.as_bytes()) == fe51_as_canonical_nat(&u)
             assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
 
-            // spec_montgomery(result) = fe51_as_canonical_nat_from_bytes(&result.0)
+            // spec_montgomery(result) = field_element_from_bytes(&result.0)
             //                         = (u8_32_as_nat(&result.0) % pow2(255)) % p()
             // Since fe51_as_canonical_nat(&u) < p() < pow2(255), double mod is identity
             assert(fe51_as_canonical_nat(&u) < p()) by {
@@ -1548,7 +1545,7 @@ impl EdwardsPoint {
             // u_field = fe51_as_canonical_nat(&u) < p() < pow2(255)
             // So: fe51_as_canonical_nat(&u) % pow2(255) = fe51_as_canonical_nat(&u)
             //     fe51_as_canonical_nat(&u) % p() = fe51_as_canonical_nat(&u)
-            assert(fe51_as_canonical_nat_from_bytes(&result.0) == u_field) by {
+            assert(field_element_from_bytes(&result.0) == u_field) by {
                 lemma_small_mod(u_field, pow2(255));
                 lemma_small_mod(u_field, p());
             }
@@ -1670,7 +1667,7 @@ impl EdwardsPoint {
 
             // Postcondition is compressed_edwards_y_corresponds_to_edwards(result, *self)
             // which requires:
-            // 1. fe51_as_canonical_nat_from_bytes(&s) == y_affine (the y-coordinate)
+            // 1. field_element_from_bytes(&s) == y_affine (the y-coordinate)
             // 2. (s[31] >> 7) == (((x_affine % p()) % 2) as u8) (the sign bit)
 
             // Prove s_before_xor has bit 255 clear
@@ -1706,8 +1703,7 @@ impl EdwardsPoint {
             };
 
             // Prove XOR preserves y and sets sign bit
-            assert(fe51_as_canonical_nat_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit)
-                by {
+            assert(field_element_from_bytes(&s) == y_affine && (s[31] >> 7) == sign_bit) by {
                 lemma_xor_sign_bit_preserves_y(&s_before_xor, &s, y_affine, sign_bit);
             }
 

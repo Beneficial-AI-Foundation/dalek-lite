@@ -246,7 +246,7 @@ pub proof fn axiom_hash_is_canonical<H>(
     requires
 // The two points represent the same field element (same canonical value)
 
-        fe51_as_canonical_nat_from_bytes(&point1.0) == fe51_as_canonical_nat_from_bytes(&point2.0),
+        field_element_from_bytes(&point1.0) == field_element_from_bytes(&point2.0),
     ensures
 // Points with equal field element values hash to the same state
 

@@ -130,7 +130,7 @@ pub open spec fn spec_ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
 ///            [DECAF], Section 6 (decoding formulas), and https://ristretto.group/formulas/decoding.html.
 pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint> {
     let s_bytes_nat = u8_32_as_nat(&bytes);
-    let s = fe51_as_canonical_nat_from_bytes(&bytes);
+    let s = field_element_from_bytes(&bytes);
     let s_encoding_is_canonical = s_bytes_nat < p();
     let s_is_negative = is_negative(s);
 
@@ -321,8 +321,8 @@ pub open spec fn spec_uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
 pub open spec fn spec_ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
     let b1 = spec_uniform_bytes_first(bytes);
     let b2 = spec_uniform_bytes_second(bytes);
-    let r1 = fe51_as_canonical_nat_from_bytes(&b1);
-    let r2 = fe51_as_canonical_nat_from_bytes(&b2);
+    let r1 = field_element_from_bytes(&b1);
+    let r2 = field_element_from_bytes(&b2);
     let p1 = spec_elligator_ristretto_flavor(r1);
     let p2 = spec_elligator_ristretto_flavor(r2);
     edwards_add(p1.0, p1.1, p2.0, p2.1)

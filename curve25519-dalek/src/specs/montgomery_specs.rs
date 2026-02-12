@@ -200,7 +200,7 @@ pub open spec fn spec_u_coordinate(point: MontgomeryAffine) -> nat {
 /// Returns the u-coordinate of a Montgomery point as a field element
 /// Montgomery points only store the u-coordinate; sign information is lost
 pub open spec fn spec_montgomery(point: crate::montgomery::MontgomeryPoint) -> nat {
-    fe51_as_canonical_nat_from_bytes(&point.0)
+    field_element_from_bytes(&point.0)
 }
 
 /// Check if a MontgomeryPoint corresponds to an EdwardsPoint
@@ -386,7 +386,7 @@ pub open spec fn montgomery_scalar_mul(P: MontgomeryAffine, n: nat) -> Montgomer
 /// Note: X25519 uses X-only (u-coordinate only) arithmetic, so the full
 /// affine point (u, v) is not needed - we only work with u-coordinates.
 pub open spec fn spec_x25519_basepoint_u() -> nat {
-    fe51_as_canonical_nat_from_bytes(&X25519_BASEPOINT.0)
+    field_element_from_bytes(&X25519_BASEPOINT.0)
 }
 
 /// Extract u-coordinate from a MontgomeryAffine point

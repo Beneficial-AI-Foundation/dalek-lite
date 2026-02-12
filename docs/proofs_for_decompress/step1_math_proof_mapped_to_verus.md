@@ -10,7 +10,7 @@ This document maps the mathematical proof for `step_1` of Edwards point decompre
 
 | Postcondition | What It Means |
 |---------------|---------------|
-| **A.** `fe51_as_canonical_nat(&Y) == fe51_as_canonical_nat_from_bytes(&repr)` | Y is correctly extracted from bytes |
+| **A.** `fe51_as_canonical_nat(&Y) == field_element_from_bytes(&repr)` | Y is correctly extracted from bytes |
 | **B.** `fe51_as_canonical_nat(&Z) == 1` | Z coordinate is set to 1 |
 | **C.** `choice_is_true(is_valid) <==> math_is_valid_y_coordinate(y)` | Validity matches the mathematical definition |
 | **D.** `choice_is_true(is_valid) ==> math_on_edwards_curve(x, y)` | If valid, (X, Y) lies on the curve |
@@ -46,7 +46,7 @@ The Y coordinate is extracted from the compressed representation by interpreting
 
 | Verus Lemma/Ensures | Statement |
 |---------------------|-----------|
-| `from_bytes` ensures | `fe51_as_canonical_nat(&result) == fe51_as_canonical_nat_from_bytes(bytes)` |
+| `from_bytes` ensures | `fe51_as_canonical_nat(&result) == field_element_from_bytes(bytes)` |
 
 **Proof:** Direct from `from_bytes` postcondition. No additional lemmas needed.
 
@@ -106,7 +106,7 @@ Proof:
 
 | Verus Lemma | Location | Statement |
 |-------------|----------|-----------|
-| `lemma_fe51_is_sqrt_ratio_to_math_field` | `sqrt_ratio_lemmas.rs` | `fe51_is_sqrt_ratio(u, v, x) ⟹ field_mul(field_square(x), v) == u` |
+| `lemma_is_sqrt_ratio_to_field` | `sqrt_ratio_lemmas.rs` | `fe51_is_sqrt_ratio(u, v, x) ⟹ field_mul(field_square(x), v) == u` |
 | `lemma_sqrt_ratio_success_means_valid_y` | `step1_lemmas.rs` | `fe51_is_sqrt_ratio success ⟹ math_is_valid_y_coordinate(y)` |
 
 **Verus code:**
@@ -116,7 +116,7 @@ assert(math_is_valid_y_coordinate(y)) by {
     assert((x * x * v) % p() == u);
     
     // Convert to math_field form
-    lemma_fe51_is_sqrt_ratio_to_math_field(x, u_math, v_math);
+    lemma_is_sqrt_ratio_to_field(x, u_math, v_math);
     
     // Apply validity lemma with witness x
     lemma_sqrt_ratio_success_means_valid_y(y, u_math, v_math, x);
@@ -345,7 +345,7 @@ step_1 ensures
 │   └── lemma_step1_case_analysis ✅
 │       │
 │       ├── [C1: Success case]
-│       │   ├── lemma_fe51_is_sqrt_ratio_to_math_field ✅
+│       │   ├── lemma_is_sqrt_ratio_to_field ✅
 │       │   ├── lemma_sqrt_ratio_success_means_valid_y ✅
 │       │   └── lemma_sqrt_ratio_implies_on_curve ✅
 │       │       ├── lemma_field_mul_distributes_over_add ✅

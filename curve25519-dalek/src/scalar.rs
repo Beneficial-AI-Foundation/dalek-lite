@@ -674,38 +674,12 @@ impl<'a> Add<&'a Scalar> for &Scalar {
         /* <MODIFIED CODE> */
         let self_unpacked = self.unpack();
         let rhs_unpacked = _rhs.unpack();
-        proof {
-            assert(scalar52_to_nat(&self_unpacked) == u8_32_as_nat(&self.bytes));
-            assert(scalar52_to_nat(&rhs_unpacked) == u8_32_as_nat(&_rhs.bytes));
-            assert(limbs_bounded(&self_unpacked));
-            assert(limbs_bounded(&rhs_unpacked));
-        }
-
-        // UnpackedScalar::add requires inputs < group_order()
-        // By Scalar invariant #2, scalars should be canonical
-        // However, we cannot add requires clauses to trait implementations,
-        // so we assume this property holds
-        proof {
-            assume(scalar52_to_nat(&self_unpacked) < group_order());
-            assume(scalar52_to_nat(&rhs_unpacked) < group_order());
-        }
-
         let result_unpacked = UnpackedScalar::add(&self_unpacked, &rhs_unpacked);
 
         let result = result_unpacked.pack();
         proof {
-            assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
-                256,
-            )) by {
-                assert(group_order() < pow2(256)) by {
-                    assume(false);
-                }
-                lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
-            }
-            assert(u8_32_as_nat(&result.bytes) == scalar52_to_nat(&result_unpacked));
-            assert(u8_32_as_nat(&result.bytes) == (u8_32_as_nat(&self.bytes) + u8_32_as_nat(
-                &_rhs.bytes,
-            )) % group_order());
+            lemma_group_order_smaller_than_pow256();
+            lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
         }
         /* </MODIFIED CODE> */
 

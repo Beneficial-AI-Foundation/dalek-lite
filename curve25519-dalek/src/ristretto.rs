@@ -388,13 +388,13 @@ mod decompress {
 
             fe51_limbs_bounded(&result.2, 51),
             // Parsed value matches the bytes-to-field-element spec
-            fe51_as_canonical_nat(&result.2) == fe51_as_canonical_nat_from_bytes(&repr.0),
+            fe51_as_canonical_nat(&result.2) == field_element_from_bytes(&repr.0),
             // s_encoding_is_canonical: true iff re-encoding s gives the original bytes
             choice_is_true(result.0) == (spec_fe51_to_bytes(&result.2) == repr.0@),
             // s_is_negative: true iff low bit of canonical encoding is 1
             choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),
             // s_is_negative matches the math-level sign bit of the decoded value
-            choice_is_true(result.1) == is_negative(fe51_as_canonical_nat_from_bytes(&repr.0)),
+            choice_is_true(result.1) == is_negative(field_element_from_bytes(&repr.0)),
     {
         // Step 1. Check s for validity:
         // 1.a) s must be 32 bytes (we get this from the type system)
@@ -416,10 +416,8 @@ mod decompress {
         proof {
             // VERIFICATION NOTE: only postcondition left to prove
             assume(choice_is_true(s_encoding_is_canonical) == (spec_fe51_to_bytes(&s) == repr.0@));
-            assume(fe51_as_canonical_nat(&s) == fe51_as_canonical_nat_from_bytes(&repr.0));
-            assume(choice_is_true(s_is_negative) == is_negative(
-                fe51_as_canonical_nat_from_bytes(&repr.0),
-            ));
+            assume(fe51_as_canonical_nat(&s) == field_element_from_bytes(&repr.0));
+            assume(choice_is_true(s_is_negative) == is_negative(field_element_from_bytes(&repr.0)));
         }
 
         (s_encoding_is_canonical, s_is_negative, s)

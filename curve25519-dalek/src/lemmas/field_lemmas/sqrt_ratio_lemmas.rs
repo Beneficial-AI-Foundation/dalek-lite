@@ -3,7 +3,7 @@
 //!
 //! ## Main Lemmas (Public API)
 //!
-//! - `lemma_fe51_is_sqrt_ratio_to_math_field` — converts fe51_is_sqrt_ratio to math_field form
+//! - `lemma_is_sqrt_ratio_to_field` — converts fe51_is_sqrt_ratio to math_field form
 //! - `lemma_no_square_root_when_times_i` — failure case: x²·v = i·u implies no r with r²·v = ±u
 //! - `lemma_flipped_sign_becomes_correct` — if v·r² = -u, then v·(r·i)² = u
 //! - `lemma_algebraic_chain_base` — proves q² = (r²·v) · inv(i·u)
@@ -57,7 +57,7 @@ verus! {
 ///   fe51_is_sqrt_ratio(u, v, X) holds
 ///   which means: (x * x * v) % p == u
 ///   which equals: field_mul(field_square(x), v) == u
-pub proof fn lemma_fe51_is_sqrt_ratio_to_math_field(
+pub proof fn lemma_is_sqrt_ratio_to_field(
     x: nat,  // fe51_as_canonical_nat(&X)
     u: nat,  // fe51_as_canonical_nat(&u_field_elem)
     v: nat,  // fe51_as_canonical_nat(&v_field_elem)

@@ -136,8 +136,8 @@ impl ConstantTimeEq for MontgomeryPoint {
         ensures
     // Two MontgomeryPoints are equal if their u-coordinates are equal mod p
 
-            choice_is_true(result) == (fe51_as_canonical_nat_from_bytes(&self.0)
-                == fe51_as_canonical_nat_from_bytes(&other.0)),
+            choice_is_true(result) == (field_element_from_bytes(&self.0)
+                == field_element_from_bytes(&other.0)),
     {
         let self_fe = FieldElement::from_bytes(&self.0);
         let other_fe = FieldElement::from_bytes(&other.0);
@@ -146,8 +146,8 @@ impl ConstantTimeEq for MontgomeryPoint {
 
         proof {
             // The postcondition follows from FieldElement::ct_eq's specification
-            assume(choice_is_true(result) == (fe51_as_canonical_nat_from_bytes(&self.0)
-                == fe51_as_canonical_nat_from_bytes(&other.0)));
+            assume(choice_is_true(result) == (field_element_from_bytes(&self.0)
+                == field_element_from_bytes(&other.0)));
         }
 
         result
@@ -163,7 +163,7 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for MontgomeryPoint {
 
     open spec fn eq_spec(&self, other: &Self) -> bool {
         // Two MontgomeryPoints are equal if their u-coordinates are equal mod p
-        fe51_as_canonical_nat_from_bytes(&self.0) == fe51_as_canonical_nat_from_bytes(&other.0)
+        field_element_from_bytes(&self.0) == field_element_from_bytes(&other.0)
     }
 }
 
@@ -171,8 +171,7 @@ impl PartialEq for MontgomeryPoint {
     // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
     fn eq(&self, other: &MontgomeryPoint) -> (result: bool)
         ensures
-            result == (fe51_as_canonical_nat_from_bytes(&self.0)
-                == fe51_as_canonical_nat_from_bytes(&other.0)),
+            result == (field_element_from_bytes(&self.0) == field_element_from_bytes(&other.0)),
     {
         /* <VERIFICATION NOTE>
          Use wrapper function for Choice::into
@@ -184,8 +183,8 @@ impl PartialEq for MontgomeryPoint {
         let result = choice_into(choice);
 
         proof {
-            assert(choice_is_true(choice) == (fe51_as_canonical_nat_from_bytes(&self.0)
-                == fe51_as_canonical_nat_from_bytes(&other.0)));
+            assert(choice_is_true(choice) == (field_element_from_bytes(&self.0)
+                == field_element_from_bytes(&other.0)));
             assert(result == choice_is_true(choice));
         }
 
@@ -239,7 +238,7 @@ impl Identity for MontgomeryPoint {
         let result = MontgomeryPoint([0u8;32]);
         proof {
             // The byte array [0, 0, ..., 0] represents the field element 0
-            assume(fe51_as_canonical_nat_from_bytes(&result.0) == 0);
+            assume(field_element_from_bytes(&result.0) == 0);
         }
         result
     }
@@ -452,7 +451,7 @@ impl MontgomeryPoint {
                 let bytes_nat = u8_32_as_nat(&self.0) % pow2(255);
                 assert(fe51_as_nat(&affine_u) == bytes_nat);
                 assert(fe51_as_canonical_nat(&affine_u) == bytes_nat % p());
-                assert(u0 == fe51_as_canonical_nat_from_bytes(&self.0));
+                assert(u0 == field_element_from_bytes(&self.0));
                 assert(u0 == bytes_nat % p());
             }
 
@@ -527,7 +526,7 @@ impl MontgomeryPoint {
                 assert(spec_u_coordinate(P) == u0) by {
                     // canonical_montgomery_lift(u0) returns (u0 % p, v), and u0 is already reduced mod p
                     assert(u0 == u0 % p()) by {
-                        assert(u0 == fe51_as_canonical_nat_from_bytes(&self.0));
+                        assert(u0 == field_element_from_bytes(&self.0));
                         let t = u8_32_as_nat(&self.0) % pow2(255);
                         assert(u0 == t % p());
                         assert(u0 % p() == (t % p()) % p());

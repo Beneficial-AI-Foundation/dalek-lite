@@ -182,7 +182,7 @@ pub proof fn lemma_decompress_field_element_sign_bit(
 pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: nat)
     requires
         compressed_y_has_valid_sign_bit(bytes),  // decompress precondition
-        y == fe51_as_canonical_nat_from_bytes(bytes),  // Y from bytes
+        y == field_element_from_bytes(bytes),  // Y from bytes
         math_on_edwards_curve(x, y),  // (x, y) on curve
         x < p(),  // X bounded
 
@@ -223,13 +223,13 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
 ///
 /// ## Proves
 /// - is_valid_edwards_point(point)
-/// - fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(repr_bytes)
+/// - fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(repr_bytes)
 /// - fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7)
 pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, point: &EdwardsPoint)
     requires
         compressed_y_has_valid_sign_bit(repr_bytes),
         // step_1 postconditions
-        fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(repr_bytes),
+        fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(repr_bytes),
         math_on_edwards_curve(x_orig, fe51_as_canonical_nat(&point.Y)),
         // X is non-negative root (LSB = 0)
         x_orig % 2 == 0,
@@ -249,7 +249,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
         ),
     ensures
         is_valid_edwards_point(*point),
-        fe51_as_canonical_nat(&point.Y) == fe51_as_canonical_nat_from_bytes(repr_bytes),
+        fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(repr_bytes),
         fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7),
 {
     let x_final = fe51_as_canonical_nat(&point.X);

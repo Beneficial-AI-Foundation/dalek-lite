@@ -100,7 +100,7 @@ pub open spec fn from_bytes_post(bytes: &[u8; 32], fe: &FieldElement51) -> bool 
 /// Returns the canonical mathematical value when creating a field element from bytes.
 /// The bytes are interpreted as a little-endian integer with the high bit of byte[31] ignored.
 /// The result is the canonical value in [0, p) where p = 2^255 - 19.
-pub open spec fn fe51_as_canonical_nat_from_bytes(bytes: &[u8; 32]) -> nat {
+pub open spec fn field_element_from_bytes(bytes: &[u8; 32]) -> nat {
     field_canonical(u8_32_as_nat(bytes) % pow2(255))
 }
 

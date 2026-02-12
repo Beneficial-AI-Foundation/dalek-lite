@@ -56,7 +56,7 @@ pub proof fn lemma_zero_limbs_is_zero(point: MontgomeryPoint)
         spec_montgomery(point) == 0,
 {
     // spec_montgomery(point) ==
-    // fe51_as_canonical_nat_from_bytes(point.0) ==
+    // field_element_from_bytes(point.0) ==
     // (u8_32_as_nat(point.0) % pow2(255)) % p() ==
     // \sum_{i = 0} ^ 31 (bytes[i] as nat) * pow2(i * 8)
     assert(u8_32_as_nat(&point.0) == 0) by {

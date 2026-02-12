@@ -65,9 +65,9 @@ This table maps each mathematical proof step to its corresponding Verus lemma.
 
 | Proof Step | Mathematical Statement | Verus Lemma | Lemma States |
 |------------|----------------------|-------------|--------------|
-| **Part 1** | Y = bytes_le(repr) mod p | `from_bytes` ensures | `fe51_as_canonical_nat(&Y) == fe51_as_canonical_nat_from_bytes(bytes)` |
+| **Part 1** | Y = bytes_le(repr) mod p | `from_bytes` ensures | `fe51_as_canonical_nat(&Y) == field_element_from_bytes(bytes)` |
 | **Part 2** | x² = (y² - 1)/(d·y² + 1) = u/v | Field op ensures | `fe51_is_sqrt_ratio` ⟺ `(x * x * v) % p == u % p` |
-| **Part 3** | sqrt_ratio_i computes √(u/v) | `lemma_fe51_is_sqrt_ratio_to_math_field` | `fe51_is_sqrt_ratio(u, v, x) ==> field_mul(x², v) == u` |
+| **Part 3** | sqrt_ratio_i computes √(u/v) | `lemma_is_sqrt_ratio_to_field` | `fe51_is_sqrt_ratio(u, v, x) ==> field_mul(x², v) == u` |
 | **Part 4** | x²·v = u ⟹ on_curve(x, y) | `lemma_sqrt_ratio_implies_on_curve` | `field_mul(x², v) == u ==> math_on_edwards_curve(x, y)` |
 | **Part 5** | on_curve(x, y) ⟹ on_curve(-x, y) | `lemma_negation_preserves_curve` | `math_on_edwards_curve(x, y) ==> math_on_edwards_curve(-x, y)` |
 | **Part 6** | Z = 1 ⟹ valid extended point | `lemma_decompress_produces_valid_point` | `z == 1 && on_curve(x, y) ==> is_valid_edwards_point(...)` |
@@ -100,7 +100,7 @@ decompress() ✅                                          [edwards.rs]
 │       │   Statement: choice_is_true(is_valid) <==> math_is_valid_y_coordinate(y)
 │       │              AND is_valid ==> math_on_edwards_curve(x, y)
 │       │
-│       ├── lemma_fe51_is_sqrt_ratio_to_math_field ✅        [sqrt_ratio_lemmas.rs]
+│       ├── lemma_is_sqrt_ratio_to_field ✅        [sqrt_ratio_lemmas.rs]
 │       │   └── Statement: fe51_is_sqrt_ratio(u, v, x) ==> field_mul(x², v) == u
 │       │
 │       ├── lemma_sqrt_ratio_success_means_valid_y ✅   [step1_lemmas.rs]
@@ -191,7 +191,7 @@ decompress() ✅                                          [edwards.rs]
 
 | Property | Verus Specification |
 |----------|-------------------|
-| **Ensures** | `fe51_as_canonical_nat(&result) == fe51_as_canonical_nat_from_bytes(bytes)` |
+| **Ensures** | `fe51_as_canonical_nat(&result) == field_element_from_bytes(bytes)` |
 | **Location** | `field.rs` |
 
 ---
@@ -230,7 +230,7 @@ sqrt_ratio_i(u, v) returns (is_square, r) where:
 
 | Lemma | Statement |
 |-------|-----------|
-| `lemma_fe51_is_sqrt_ratio_to_math_field` | `fe51_is_sqrt_ratio(u, v, x) ==> field_mul(field_square(x), v) == u` |
+| `lemma_is_sqrt_ratio_to_field` | `fe51_is_sqrt_ratio(u, v, x) ==> field_mul(field_square(x), v) == u` |
 
 **Spec definition:**
 ```rust
@@ -612,7 +612,7 @@ The proof relies on 4 axioms about number-theoretic properties that are expensiv
 | `lemma_u_times_inv_iu_is_neg_i` | `u · inv(i·u) = -i` | ✅ |
 | `lemma_neg_u_times_inv_iu_is_i` | `(-u) · inv(i·u) = i` | ✅ |
 | `lemma_flipped_sign_becomes_correct` | `v·r² = -u ==> v·(r·i)² = u` | ✅ |
-| `lemma_fe51_is_sqrt_ratio_to_math_field` | `fe51_is_sqrt_ratio(u, v, x) ==> field_mul(x², v) == u` | ✅ |
+| `lemma_is_sqrt_ratio_to_field` | `fe51_is_sqrt_ratio(u, v, x) ==> field_mul(x², v) == u` | ✅ |
 
 ---
 

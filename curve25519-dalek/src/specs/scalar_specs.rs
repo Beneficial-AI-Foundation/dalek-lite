@@ -181,7 +181,7 @@ pub open spec fn is_valid_naf(naf: Seq<i8>, w: nat) -> bool {
 
 /// Interprets four u64 words as a 256-bit little-endian number:
 ///   words[0] + words[1]*2^64 + words[2]*2^128 + words[3]*2^192
-pub open spec fn u64x4_to_nat(words: &[u64; 4]) -> nat {
+pub open spec fn u64_4_as_nat(words: &[u64; 4]) -> nat {
     words[0] as nat + words[1] as nat * pow2(64) + words[2] as nat * pow2(128) + words[3] as nat
         * pow2(192)
 }

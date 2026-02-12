@@ -2807,8 +2807,8 @@ impl Scalar {
                 * pow2(192) == u8_32_as_nat(&self.bytes)) by {
                 lemma_u64x4_from_le_bytes(self.bytes, chunk0, chunk1, chunk2, chunk3);
             }
-            // Bridge: u64x4_to_nat matches scalar_val (used by bit extraction lemmas)
-            assert(u64x4_to_nat(&scalar64x4) == scalar_val);
+            // Bridge: u64_4_as_nat matches scalar_val (used by bit extraction lemmas)
+            assert(u64_4_as_nat(&scalar64x4) == scalar_val);
         }
 
         // Subgoal: Radix and window mask properties
@@ -2911,7 +2911,7 @@ impl Scalar {
             proof {
                 assert(coef <= radix);
                 // Bit extraction: (bit_buf & window_mask) == (scalar_val / pow2(w*i)) % pow2(w)
-                assert((bit_buf & window_mask) as nat == (u64x4_to_nat(&scalar64x4) / pow2(
+                assert((bit_buf & window_mask) as nat == (u64_4_as_nat(&scalar64x4) / pow2(
                     bit_offset as nat,
                 )) % pow2(w as nat)) by {
                     lemma_u64x4_bit_extraction(

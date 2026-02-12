@@ -38,27 +38,27 @@ verus! {
 // =============================================================================
 // Shared helpers for u64x4 word-level decomposition
 // =============================================================================
-/// Strip upper u64 words from u64x4_to_nat under a modular reduction.
+/// Strip upper u64 words from u64_4_as_nat under a modular reduction.
 ///
 /// For a boundary b in (0, 256], the words whose 64-bit base offset >= b do not
-/// affect `u64x4_to_nat(&words) % pow2(b)`.  This lemma factors them out,
+/// affect `u64_4_as_nat(&words) % pow2(b)`.  This lemma factors them out,
 /// leaving only the partial sum of words below the boundary.
 proof fn lemma_u64x4_mod_strip_above(words: [u64; 4], boundary: nat)
     requires
         0 < boundary,
         boundary <= 256,
     ensures
-        u64x4_to_nat(&words) % pow2(boundary) == (if boundary <= 64 {
+        u64_4_as_nat(&words) % pow2(boundary) == (if boundary <= 64 {
             words[0] as nat
         } else if boundary <= 128 {
             words[0] as nat + words[1] as nat * pow2(64)
         } else if boundary <= 192 {
             words[0] as nat + words[1] as nat * pow2(64) + words[2] as nat * pow2(128)
         } else {
-            u64x4_to_nat(&words)
+            u64_4_as_nat(&words)
         }) % pow2(boundary),
 {
-    let val = u64x4_to_nat(&words);
+    let val = u64_4_as_nat(&words);
     let pb = pow2(boundary) as int;
     lemma_pow2_pos(boundary);
 
@@ -256,7 +256,7 @@ pub proof fn lemma_reconstruct_radix_2w_split(digits: Seq<i8>, k: nat, w: nat)
 // Verus for-loops, which breaks bitwise shift operators (`>>`, `<<`) that
 // are only defined on fixed-width types.
 /// Proves that extracting w bits at position bit_offset from a u64x4 array
-/// via shift-and-mask equals (u64x4_to_nat / pow2(bit_offset)) % pow2(w).
+/// via shift-and-mask equals (u64_4_as_nat / pow2(bit_offset)) % pow2(w).
 pub proof fn lemma_u64x4_bit_extraction(
     words: [u64; 4],
     bit_buf: u64,
@@ -276,13 +276,13 @@ pub proof fn lemma_u64x4_bit_extraction(
         !(bit_idx < 64 - w || u64_idx == 3) ==> bit_buf == (words[u64_idx as int] >> (
         bit_idx as u64)) | (words[(1 + u64_idx) as int] << ((64 - bit_idx) as u64)),
     ensures
-        (bit_buf & window_mask) as nat == (u64x4_to_nat(&words) / pow2(bit_offset as nat)) % pow2(
+        (bit_buf & window_mask) as nat == (u64_4_as_nat(&words) / pow2(bit_offset as nat)) % pow2(
             w as nat,
         ),
 {
     if bit_idx < 64 - w || u64_idx == 3 {
         // Single-word case: window fits entirely within one u64 word
-        let val = u64x4_to_nat(&words);
+        let val = u64_4_as_nat(&words);
         let bit_off_nat = bit_offset as nat;
         let w_nat = w as nat;
         let bit_idx_nat = bit_idx as nat;
@@ -337,10 +337,10 @@ proof fn lemma_u64x4_single_word_decompose_generic(
         w_nat >= 5 && w_nat <= 8,
         bit_off_nat <= 255,
     ensures
-        (u64x4_to_nat(&words) % pow2(bit_off_nat + w_nat)) / pow2(bit_off_nat) == ((
+        (u64_4_as_nat(&words) % pow2(bit_off_nat + w_nat)) / pow2(bit_off_nat) == ((
         words[u64_idx as int] as nat) / pow2(bit_idx_nat)) % pow2(w_nat),
 {
-    let val = u64x4_to_nat(&words);
+    let val = u64_4_as_nat(&words);
     let biw = bit_idx_nat + w_nat;
     let biw_total = bit_off_nat + w_nat;
 
@@ -491,7 +491,7 @@ proof fn lemma_u64x4_cross_word_reduce_to_two(
         bit_idx_nat < 64,
     ensures
         ({
-            let val = u64x4_to_nat(&words);
+            let val = u64_4_as_nat(&words);
             let two_val: nat = words[u64_idx as int] as nat + words[(1 + u64_idx) as int] as nat
                 * pow2(64);
             let bit_off_nat = (u64_idx as nat) * 64 + bit_idx_nat;
@@ -499,7 +499,7 @@ proof fn lemma_u64x4_cross_word_reduce_to_two(
                 % pow2(w_nat)
         }),
 {
-    let val = u64x4_to_nat(&words);
+    let val = u64_4_as_nat(&words);
     let base: nat = (u64_idx as nat) * 64;
     let two_val: nat = words[u64_idx as int] as nat + words[(1 + u64_idx) as int] as nat * pow2(64);
     let bit_off_nat = base + bit_idx_nat;
@@ -611,10 +611,10 @@ proof fn lemma_u64x4_cross_word_decompose(
         bit_buf == (words[u64_idx as int] >> (bit_idx_nat as u64)) | (words[(1 + u64_idx) as int]
             << ((64 - bit_idx_nat) as u64)),
     ensures
-        (u64x4_to_nat(&words) % pow2(bit_off_nat + w_nat)) / pow2(bit_off_nat) == (bit_buf as nat)
+        (u64_4_as_nat(&words) % pow2(bit_off_nat + w_nat)) / pow2(bit_off_nat) == (bit_buf as nat)
             % pow2(w_nat),
 {
-    let val = u64x4_to_nat(&words);
+    let val = u64_4_as_nat(&words);
     let remain: nat = (64 - bit_idx_nat) as nat;  // bits from low word
     let cross: nat = (bit_idx_nat + w_nat - 64) as nat;  // bits from high word
     assert(remain + cross == w_nat);
@@ -800,11 +800,11 @@ proof fn lemma_u64x4_cross_word_extraction(
         bit_buf == (words[u64_idx as int] >> (bit_idx as u64)) | (words[(1 + u64_idx) as int] << ((
         64 - bit_idx) as u64)),
     ensures
-        (bit_buf & window_mask) as nat == (u64x4_to_nat(&words) / pow2(bit_offset as nat)) % pow2(
+        (bit_buf & window_mask) as nat == (u64_4_as_nat(&words) / pow2(bit_offset as nat)) % pow2(
             w as nat,
         ),
 {
-    let val = u64x4_to_nat(&words);
+    let val = u64_4_as_nat(&words);
     let bit_off_nat = bit_offset as nat;
     let w_nat = w as nat;
     let bit_idx_nat = bit_idx as nat;

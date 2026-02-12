@@ -883,15 +883,14 @@ pub proof fn lemma_bytes_as_nat_prefix_chunk(bytes: Seq<u8>, chunk: Seq<u8>, k: 
             bytes,
             (k * 8) as nat,
         ) + bytes_as_nat_prefix(chunk, 8) * pow2((k * 64) as nat),
-    decreases 8nat,
 {
-    // Prove by expanding bytes_as_nat_prefix 8 times from k*8 to (k+1)*8
+    // Delegates to the inductive helper, which unfolds bytes_as_nat_prefix
+    // 8 times from k*8 to (k+1)*8, establishing:
     // bytes_as_nat_prefix(bytes, (k+1)*8) - bytes_as_nat_prefix(bytes, k*8)
     //   = sum_{j=0}^{7} bytes[k*8 + j] * pow2((k*8+j)*8)
     //   = sum_{j=0}^{7} chunk[j] * pow2(j*8 + k*64)
     //   = (sum_{j=0}^{7} chunk[j] * pow2(j*8)) * pow2(k*64)
     //   = bytes_as_nat_prefix(chunk, 8) * pow2(k*64)
-    // Inductive approach: unfold 8 steps of bytes_as_nat_prefix
     lemma_bytes_as_nat_prefix_chunk_inductive(bytes, chunk, k, 8);
 }
 

@@ -1,6 +1,6 @@
 pub mod bit_lemmas;
 
-pub mod bits_to_nat_lemmas;
+pub mod bits_as_nat_lemmas;
 
 pub mod div_mod_lemmas;
 

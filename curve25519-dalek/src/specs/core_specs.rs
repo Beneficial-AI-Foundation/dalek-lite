@@ -324,5 +324,5 @@ pub open spec fn bits_from_index_to_nat(bits: &[bool; 256], start: nat, len: nat
 }
 
 // Proof lemmas about these bit-to-nat conversions live in
-// `curve25519-dalek/src/lemmas/common_lemmas/bits_to_nat_lemmas.rs`.
+// `curve25519-dalek/src/lemmas/common_lemmas/bits_as_nat_lemmas.rs`.
 } // verus!

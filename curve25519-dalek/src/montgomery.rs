@@ -62,7 +62,7 @@ use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::lemmas::common_lemmas::bits_to_nat_lemmas::*;
+use crate::lemmas::common_lemmas::bits_as_nat_lemmas::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::to_nat_lemmas::*;
@@ -450,7 +450,7 @@ impl MontgomeryPoint {
             ({
                 // Let P be the canonical affine lift of input u-coordinate
                 let P = canonical_montgomery_lift(spec_montgomery(*self));
-                let n = bits_be_as_nat(bits, bits@.len() as int);
+                let n = bits_be_as_nat(bits, bits.len() as int);
                 let R = montgomery_scalar_mul(P, n);
 
                 // result encodes u([n]P)
@@ -906,7 +906,7 @@ impl MontgomeryPoint {
             // After the final conditional swap, x0 encodes u([n]P) where n is the full bitstring.
             let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
-            let n = bits_be_as_nat(bits, bits@.len() as int);
+            let n = bits_be_as_nat(bits, bits.len() as int);
 
             // Connect saved_prev_bit to final_swap_choice.
             // From Choice::from spec: (u == 1) == choice_is_true(Choice::from(u))
@@ -989,7 +989,7 @@ impl MontgomeryPoint {
             // Discharge the function postcondition.
             let u0 = spec_montgomery(*self);
             let P = canonical_montgomery_lift(u0);
-            let n = bits_be_as_nat(bits, bits@.len() as int);
+            let n = bits_be_as_nat(bits, bits.len() as int);
             // as_affine returns the affine u-coordinate of x0
             assert(spec_montgomery(result) == spec_projective_u_coordinate(x0));
             // From loop invariant at exit and final conditional swap, x0 encodes u([n]P)

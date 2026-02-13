@@ -2949,66 +2949,72 @@ impl Scalar {
             let ghost old_carry = carry;
             let ghost old_digits = digits;
 
-            // Recenter coefficients from [0,2^w) to [-2^w/2, 2^w/2)
-            // VERIFICATION NOTE: Decomposed single-line expressions into intermediate
-            // variables for Verus overflow proofs, and replaced (carry << w) with
-            // (new_carry * radix) for proof compatibility.
-            /* <ORIGINAL CODE>
-            carry = (coef + (radix / 2)) >> w;
-            let coef_i64 = coef as i64;
-            let carry_shifted = (carry << w) as i64;
-            digits[i] = (coef_i64 - carry_shifted) as i8;
-            </ORIGINAL CODE> */
+            // Recenter coefficients from [0,2^w) to [-2^w/2, 2^w/2).
             let half_radix: u64 = radix / 2;
-            // coef + half_radix <= radix + radix/2 = 3*radix/2 <= 384. No u64 overflow.
-            let new_carry: u64 = (coef + half_radix) >> (w as u64);
-            carry = new_carry;
+            carry = (coef + half_radix) >> w;
+            let new_carry: u64 = carry;
 
             // Prove carry bound BEFORE carry_times_radix computation
             assert(new_carry <= 1u64) by (bit_vector)
                 requires
-                    new_carry == ((coef + half_radix) as u64) >> (w as u64),
+                    new_carry == ((coef + half_radix) as u64) >> w,
                     coef <= radix,
                     half_radix == radix / 2u64,
                     radix == 1u64 << (w as u64),
                     5u64 <= (w as u64) <= 8u64,
             ;
 
-            let carry_times_radix: u64 = new_carry * radix;
             let coef_i64: i64 = coef as i64;
-            let ctr_i64: i64 = carry_times_radix as i64;
+            let carry_shifted_u64: u64 = carry << w;
+            let carry_shifted: i64 = carry_shifted_u64 as i64;
+            proof {
+                // Re-establish the algebraic bridge from the original shift to `new_carry * radix`.
+                assert(new_carry * pow2(w as nat) <= u64::MAX) by {
+                    assert(new_carry <= 1);
+                    assert(pow2(w as nat) <= 256) by {
+                        assert(radix as nat == pow2(w as nat));
+                        assert(radix <= 256u64);
+                    }
+                    lemma_mul_upper_bound(new_carry as int, pow2(w as nat) as int, 1, 256);
+                }
+                assert(carry_shifted_u64 == new_carry * pow2(w as nat)) by {
+                    lemma_u64_shl_is_mul(new_carry, w as u64);
+                }
+                assert(pow2(w as nat) == radix as nat);
+                assert(carry_shifted_u64 == new_carry * radix);
+                assert(carry_shifted_u64 <= 256u64);
+                assert(carry_shifted_u64 <= i64::MAX as u64);
+            }
 
             // Prove i8 cast bounds BEFORE the cast
-            assert(coef_i64 - ctr_i64 >= -128i64 && coef_i64 - ctr_i64 <= 127i64) by (bit_vector)
+            assert(coef_i64 - carry_shifted >= -128i64 && coef_i64 - carry_shifted <= 127i64)
+                by (bit_vector)
                 requires
                     coef_i64 == coef as i64,
-                    ctr_i64 == carry_times_radix as i64,
-                    carry_times_radix == new_carry * radix,
-                    new_carry == ((coef + half_radix) as u64) >> (w as u64),
+                    carry_shifted == carry_shifted_u64 as i64,
+                    carry_shifted_u64 == new_carry * radix,
+                    new_carry == ((coef + half_radix) as u64) >> w,
                     coef <= radix,
                     half_radix == radix / 2u64,
                     radix == 1u64 << (w as u64),
                     5u64 <= (w as u64) <= 8u64,
             ;
 
-            /* <ORIGINAL CODE>
-            digits[i] = (coef_i64 - carry_shifted) as i8;
-            </ORIGINAL CODE> */
-            let digit_i8: i8 = (coef_i64 - ctr_i64) as i8;
+            let digit_i8: i8 = (coef_i64 - carry_shifted) as i8;
 
             // Cast preservation: i8 roundtrip preserves value when in [-128, 127]
-            assert(digit_i8 as i64 == coef_i64 - ctr_i64) by (bit_vector)
+            assert(digit_i8 as i64 == coef_i64 - carry_shifted) by (bit_vector)
                 requires
-                    digit_i8 == (coef_i64 - ctr_i64) as i8,
-                    coef_i64 - ctr_i64 >= -128i64,
-                    coef_i64 - ctr_i64 <= 127i64,
+                    digit_i8 == (coef_i64 - carry_shifted) as i8,
+                    coef_i64 - carry_shifted >= -128i64,
+                    coef_i64 - carry_shifted <= 127i64,
             ;
 
             digits[i] = digit_i8;
 
             // Cast bridges: u64->i64 preserves value for small non-negative values
             assert(coef_i64 as int == coef as int);
-            assert(ctr_i64 as int == carry_times_radix as int);
+            assert(carry_shifted as int == carry_shifted_u64 as int);
 
             proof {
                 // ---- Loop invariant preservation (paper Section 6) ----

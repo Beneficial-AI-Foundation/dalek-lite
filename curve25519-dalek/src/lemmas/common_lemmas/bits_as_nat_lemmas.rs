@@ -4,6 +4,7 @@ use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 use crate::specs::core_specs::*;
+use crate::specs::scalar_specs::bits_be_as_nat;
 
 verus! {
 
@@ -214,7 +215,7 @@ pub proof fn lemma_bits_be_as_nat_eq_bits_from_index(
         bits_be.len() == 255,
         forall|i: int| 0 <= i < 255 ==> #[trigger] bits_be[i] == bits_le[254 - i],
     ensures
-        crate::specs::scalar_specs::bits_be_as_nat(bits_be, len as int) == bits_from_index_to_nat(
+        bits_be_as_nat(bits_be, len as int) == bits_from_index_to_nat(
             bits_le,
             (255 - len) as nat,
             len,
@@ -222,7 +223,7 @@ pub proof fn lemma_bits_be_as_nat_eq_bits_from_index(
     decreases len,
 {
     if len == 0 {
-        assert(crate::specs::scalar_specs::bits_be_as_nat(bits_be, 0) == 0);
+        assert(bits_be_as_nat(bits_be, 0) == 0);
         assert(bits_from_index_to_nat(bits_le, 255, 0) == 0);
     } else {
         lemma_bits_be_as_nat_eq_bits_from_index(bits_le, bits_be, (len - 1) as nat);
@@ -243,19 +244,26 @@ pub proof fn lemma_bits_be_as_nat_eq_bits_from_index(
             1nat
         } else {
             0nat
-        }) + 2 * crate::specs::scalar_specs::bits_be_as_nat(bits_be, (len - 1) as int));
+        }) + 2 * bits_be_as_nat(bits_be, (len - 1) as int));
 
         assert(bits_from_index_to_nat(bits_le, start, len) == bit_value + 2
             * bits_from_index_to_nat(bits_le, (start + 1) as nat, (len - 1) as nat));
 
-        assert(crate::specs::scalar_specs::bits_be_as_nat(bits_be, len as int) == bit_value + 2
-            * crate::specs::scalar_specs::bits_be_as_nat(bits_be, (len - 1) as int));
-        assert(crate::specs::scalar_specs::bits_be_as_nat(bits_be, (len - 1) as int)
-            == bits_from_index_to_nat(bits_le, (start + 1) as nat, (len - 1) as nat));
-        assert(crate::specs::scalar_specs::bits_be_as_nat(bits_be, len as int) == bit_value + 2
-            * bits_from_index_to_nat(bits_le, (start + 1) as nat, (len - 1) as nat));
-        assert(crate::specs::scalar_specs::bits_be_as_nat(bits_be, len as int)
-            == bits_from_index_to_nat(bits_le, start, len));
+        assert(bits_be_as_nat(bits_be, len as int) == bit_value + 2 * bits_be_as_nat(
+            bits_be,
+            (len - 1) as int,
+        ));
+        assert(bits_be_as_nat(bits_be, (len - 1) as int) == bits_from_index_to_nat(
+            bits_le,
+            (start + 1) as nat,
+            (len - 1) as nat,
+        ));
+        assert(bits_be_as_nat(bits_be, len as int) == bit_value + 2 * bits_from_index_to_nat(
+            bits_le,
+            (start + 1) as nat,
+            (len - 1) as nat,
+        ));
+        assert(bits_be_as_nat(bits_be, len as int) == bits_from_index_to_nat(bits_le, start, len));
     }
 }
 

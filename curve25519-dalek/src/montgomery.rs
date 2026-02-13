@@ -141,6 +141,9 @@ verus! {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MontgomeryPoint(pub [u8; 32]);
 
+/* ORIGINAL CODE: #[derive(Default)] on MontgomeryPoint — expanded to add Verus
+   postconditions proving all bytes are zero and spec_montgomery(result) == 0. */
+
 impl Default for MontgomeryPoint {
     fn default() -> (result: MontgomeryPoint)
         ensures
@@ -297,6 +300,8 @@ impl Hash for MontgomeryPoint {
     {
         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical
         // 32-byte encoding
+        /* ORIGINAL CODE: let canonical_bytes = FieldElement::from_bytes(&self.0).as_bytes();
+           Split to keep `fe` available for proof blocks. */
         let fe = FieldElement::from_bytes(&self.0);
         let canonical_bytes = fe.as_bytes();
 
@@ -496,6 +501,8 @@ impl MontgomeryPoint {
         // Further, we don't do any reduction or arithmetic with this clamped value, so there's no
         // issues arising from the fact that the curve point is not necessarily in the prime-order
         // subgroup.
+        /* ORIGINAL CODE: let s = Scalar { bytes: clamp_integer(bytes) }; s * self
+           Split to keep `clamped` for proof blocks; uses &self * &s for Verus postcondition. */
         let clamped = clamp_integer(bytes);
         let s = Scalar { bytes: clamped };
         let result = &self * &s;
@@ -1179,20 +1186,16 @@ impl MontgomeryPoint {
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
             is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
                 ==> result.is_some(),
-            // Cofactor-cleared functional correctness:
-            // [8] * exec_result == [8] * spec_result.
-            // Direct equality may fail in the edge case y²=1 ∧ sign=1 (exec clears
-            // sign to 0, spec maps to identity), but cofactor clearing equalises them.
+            // Functional correctness up to cofactor:
+            //   [8]·to_edwards(u, sign) == [8]·spec(u, sign)
+            // Equality is modulo cofactor because the exec sign-bit normalisation
+            // can pick a different low-order representative than the spec when x = 0.
             is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
                 ==> edwards_scalar_mul(edwards_point_as_affine(result.unwrap()), 8)
                 == edwards_scalar_mul(
                 spec_montgomery_to_edwards_affine_with_sign(
                     spec_montgomery(*self),
-                    if (sign & 1u8) == 0u8 {
-                        0u8
-                    } else {
-                        1u8
-                    },
+                    spec_normalize_sign(sign),
                 ),
                 8,
             ),

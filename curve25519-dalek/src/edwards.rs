@@ -1796,6 +1796,7 @@ impl EdwardsPoint {
         /* REFACTOR END*/
 
         // Extract sign bit from high bit of last byte
+        /* ORIGINAL CODE: let sign_bit: u8 = (res[31] & 0x80u8) >> 7u8; */
         let byte31 = res[31];  // extract for proof blocks (avoids Verus array_view issue)
         let sign_bit: u8 = (byte31 & 0x80u8) >> 7u8;
 
@@ -1831,9 +1832,13 @@ impl EdwardsPoint {
 
             // Step 2: sign_bit ∈ {0,1} and normalisation is identity
             assert(sign_bit == 0 || sign_bit == 1) by (bit_vector)
-                requires sign_bit == (byte31 & 0x80u8) >> 7u8;
-            assert(sign_bit == (if (sign_bit & 1u8) == 0u8 { 0u8 } else { 1u8 })) by (bit_vector)
-                requires sign_bit == 0u8 || sign_bit == 1u8;
+                requires
+                    sign_bit == (byte31 & 0x80u8) >> 7u8,
+            ;
+            assert(sign_bit == spec_normalize_sign(sign_bit)) by (bit_vector)
+                requires
+                    sign_bit == 0u8 || sign_bit == 1u8,
+            ;
 
             // Step 3: bridge u8_32_as_nat ↔ bytes_seq_as_nat
             lemma_u8_32_as_nat_eq_bytes_seq_as_nat(&res);
@@ -1853,20 +1858,22 @@ impl EdwardsPoint {
             // Step 6: cofactor-cleared to_edwards matches spec
             // (from the new to_edwards postcondition)
             let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
-            assert(edwards_scalar_mul(edwards_point_as_affine(E1), 8)
-                == edwards_scalar_mul(P, 8)) by {
+            assert(edwards_scalar_mul(edwards_point_as_affine(E1), 8) == edwards_scalar_mul(P, 8))
+                by {
                 assert(is_valid_montgomery_point(M1));
                 assert(!is_equal_to_minus_one(spec_montgomery(M1)));
                 // to_edwards postcondition with sign normalisation
                 assert(spec_montgomery_to_edwards_affine_with_sign(
                     spec_montgomery(M1),
-                    if (sign_bit & 1u8) == 0u8 { 0u8 } else { 1u8 },
+                    spec_normalize_sign(sign_bit),
                 ) == P);
             }
 
             // Step 7: mul_by_cofactor links result to E1
-            assert(edwards_point_as_affine(result)
-                == edwards_scalar_mul(edwards_point_as_affine(E1), 8));
+            assert(edwards_point_as_affine(result) == edwards_scalar_mul(
+                edwards_point_as_affine(E1),
+                8,
+            ));
 
             // Step 8: combine — the result equals the spec
             assert(edwards_point_as_affine(result) == edwards_scalar_mul(P, 8));

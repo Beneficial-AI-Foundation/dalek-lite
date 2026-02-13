@@ -1082,6 +1082,15 @@ pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     edwards_scalar_mul(P, 8)
 }
 
+/// Normalize a sign byte to 0 or 1 (the low bit).
+pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
+    if (sign & 1u8) == 0u8 {
+        0u8
+    } else {
+        1u8
+    }
+}
+
 /// Spec for Montgomery-to-Edwards conversion with sign bit selection.
 ///
 /// Converts Montgomery u-coordinate to Edwards affine (x, y) via:

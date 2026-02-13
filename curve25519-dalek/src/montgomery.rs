@@ -1218,8 +1218,7 @@ impl MontgomeryPoint {
                 Some(edwards) => {
                     assume(montgomery_corresponds_to_edwards(*self, edwards));
                     assume(is_well_formed_edwards_point(edwards));
-                    assume(edwards_point_as_affine(edwards)
-                        == spec_montgomery_to_edwards_affine(
+                    assume(edwards_point_as_affine(edwards) == spec_montgomery_to_edwards_affine(
                         spec_montgomery(*self),
                         sign,
                     ));

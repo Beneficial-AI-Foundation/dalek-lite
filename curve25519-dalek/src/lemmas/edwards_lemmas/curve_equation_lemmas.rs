@@ -846,7 +846,9 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
                 assert(nm1 + 2 == m * 2);
                 assert(nm1 == m * 2 - 2);
                 assert(m * 2 - 2 == (m - 1) * 2) by (nonlinear_arith)
-                    requires m >= 1;
+                    requires
+                        m >= 1,
+                ;
 
             }
             // nm1 == mm1 * 2, so nm1 % 2 == 0
@@ -1354,8 +1356,10 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
         }
         // a * b is even and non-zero, so a * b >= 2 > 1
         assert(a * b != 1) by (nonlinear_arith)
-            requires (a * b) % 2 == 0nat, a * b != 0nat;
-
+            requires
+                (a * b) % 2 == 0nat,
+                a * b != 0nat,
+        ;
 
         assert(edwards_scalar_mul(point_affine, a * b) == {
             let half = edwards_scalar_mul(point_affine, ((a * b) / 2) as nat);
@@ -1793,52 +1797,6 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
 // =============================================================================
 // Axioms and lemmas for decompression and cofactor clearing
 // =============================================================================
-/// Helper: When Z = 1, the affine coordinates of an EdwardsPoint equal (X, Y) directly,
-/// and the affine point is on the Edwards curve.
-pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPoint)
-    requires
-        is_well_formed_edwards_point(point),
-        fe51_as_canonical_nat(&point.Z) == 1,
-    ensures
-        edwards_point_as_affine(point) == (
-            fe51_as_canonical_nat(&point.X),
-            fe51_as_canonical_nat(&point.Y),
-        ),
-        math_on_edwards_curve(fe51_as_canonical_nat(&point.X), fe51_as_canonical_nat(&point.Y)),
-        fe51_as_canonical_nat(&point.X) < p(),
-        fe51_as_canonical_nat(&point.Y) < p(),
-{
-    let x = fe51_as_canonical_nat(&point.X);
-    let y = fe51_as_canonical_nat(&point.Y);
-
-    // x, y < p() from the definition of fe51_as_canonical_nat (= ... % p())
-    p_gt_2();
-    lemma_mod_bound(u64_5_as_nat(point.X.limbs) as int, p() as int);
-    lemma_mod_bound(u64_5_as_nat(point.Y.limbs) as int, p() as int);
-
-    // Z = 1 → field_inv(1) = 1 → field_mul(·, 1) = · for canonical values
-    lemma_field_inv_one();
-    lemma_field_mul_one_right(x);
-    lemma_field_mul_one_right(y);
-    lemma_small_mod(x, p());
-    lemma_small_mod(y, p());
-
-    // Projective curve equation with z=1 implies affine curve equation.
-    // math_on_edwards_curve_projective(x, y, 1) uses field_mul(sub, z²) = field_mul(sub, 1) = sub.
-    let x2 = field_square(x);
-    let y2 = field_square(y);
-    let d = fe51_as_canonical_nat(&EDWARDS_D);
-    let sub = field_sub(y2, x2);
-    lemma_field_mul_one_right(sub);
-    lemma_mod_bound(sub as int, p() as int);
-    lemma_small_mod(sub, p());
-    // field_square(1) = 1, field_square(field_square(1)) = 1
-    assert(field_square(1nat) == 1) by {
-        lemma_field_mul_one_right(1nat);
-        lemma_small_mod(1nat, p());
-    }
-}
-
 /// Axiom: A point on the curve witnesses that the y-coordinate is valid.
 ///
 /// If (x, y) lies on the Ed25519 curve with x, y ∈ [0, p), then y is a valid
@@ -1873,44 +1831,6 @@ pub proof fn axiom_unique_x_with_parity(x1: nat, x2: nat, y: nat)
     admit();
 }
 
-/// Lemma: Decompression from y and sign recovers the original point.
-///
-/// Given (x, y) on the curve with x mod 2 = sign_bit,
-/// `spec_edwards_decompress_from_y_and_sign(y, sign_bit)` returns `Some((x, y))`.
-///
-/// Proved from two algebraic axioms:
-///   1. `axiom_curve_point_implies_valid_y` — witness implies valid y
-///   2. `axiom_unique_x_with_parity` — parity selects a unique x
-pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
-    requires
-        math_on_edwards_curve(x, y),
-        x < p(),
-        y < p(),
-        (x % 2) == (sign_bit as nat),
-        sign_bit == 0 || sign_bit == 1,
-    ensures
-        spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
-{
-    // Step 1: y is a valid y-coordinate (we have a witness x on the curve)
-    axiom_curve_point_implies_valid_y(x, y);
-
-    // Step 2: Rule out the y²=1 ∧ sign=1 case
-    // If y²=1, then x=0 by curve equation, so sign_bit = x%2 = 0.
-    if field_square(y) == 1 {
-        lemma_y_sq_one_implies_x_zero(x, y);
-        // x == 0, so sign_bit == 0, not 1
-    }
-    // Step 3: In the else branch, the spec uses choose|xc| P(xc).
-    // Our x satisfies P, so exists|xc| P(xc) holds.
-    // By choose semantics, x_chosen also satisfies P.
-    // By uniqueness (axiom_unique_x_with_parity), x_chosen == x.
-
-    let x_chosen = choose|xc: nat|
-        math_on_edwards_curve(xc, y) && xc < p() && (xc % 2) == (sign_bit as nat);
-    assert(math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat));
-    axiom_unique_x_with_parity(x, x_chosen, y);
-}
-
 /// Axiom: The Ed25519 curve parameter d satisfies d + 1 ≢ 0 (mod p).
 ///
 /// Equivalent to d ≠ −1, a standard requirement for twisted Edwards curves.
@@ -1922,168 +1842,6 @@ proof fn axiom_d_plus_one_nonzero()
     // The concrete computation of d from EDWARDS_D limbs is too large for
     // the solver. This remains an axiom about the specific Ed25519 constant.
     admit();
-}
-
-/// Lemma: On Ed25519, y² = 1 on the curve implies x = 0.
-///
-/// From the curve equation −x² + y² = 1 + d·x²·y² with y² = 1:
-///   0 = (d+1)·x²
-/// Since d + 1 ≠ 0 (mod p) (axiom_d_plus_one_nonzero) and p is prime, x² = 0, hence x = 0.
-pub proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
-    requires
-        math_on_edwards_curve(x, y),
-        x < p(),
-        field_square(y) == 1,
-    ensures
-        x == 0,
-{
-    let d = fe51_as_canonical_nat(&EDWARDS_D);
-    let x2 = field_square(x);
-    let y2 = field_square(y);
-    p_gt_2();
-
-    // --- Step 1: Simplify curve equation using y² = 1 ---
-    // Curve eq: field_sub(y2, x2) == field_add(1, field_mul(d, field_mul(x2, y2)))
-    // With y2 = 1: field_mul(x2, 1) == x2
-    lemma_field_mul_one_right(x2);
-    assert(field_mul(x2, 1) == x2 % p());
-    // x2 = field_square(x) = (x*x) % p < p, so x2 % p == x2
-    assert(x2 < p()) by {
-        lemma_mod_bound((x * x) as int, p() as int);
-    };
-    lemma_small_mod(x2, p());
-    assert(field_mul(x2, 1) == x2);
-    // So from curve eq: field_sub(1, x2) == field_add(1, field_mul(d, x2))
-
-    // --- Step 2: Subtract 1 from both sides to get field_neg(x2) == field_mul(d, x2) ---
-    // LHS: field_sub(field_sub(1, x2), 1)
-    //     = field_sub(field_add(1, field_neg(x2)), 1)  [by sub_eq_add_neg]
-    //     = field_sub(field_add(field_neg(x2), 1), 1)  [by add_comm]
-    //     = field_neg(x2)                               [by sub_add_cancel]
-    let neg_x2 = field_neg(x2);
-    assert(neg_x2 < p()) by {
-        lemma_mod_bound((p() - x2 % p()) as int, p() as int);
-    };
-    lemma_field_sub_eq_add_neg(1nat, x2);
-    assert(field_sub(1, x2) == field_add(1, neg_x2));
-    lemma_field_add_comm(1nat, neg_x2);
-    // field_sub(1, x2) == field_add(neg_x2, 1)
-    lemma_field_sub_add_cancel(neg_x2, 1nat);
-    assert(field_sub(field_add(neg_x2, 1), 1) == neg_x2);
-
-    // RHS: field_sub(field_add(1, field_mul(d, x2)), 1)
-    let dx2 = field_mul(d, x2);
-    assert(dx2 < p()) by {
-        lemma_mod_bound((d * x2) as int, p() as int);
-    };
-    lemma_field_add_comm(1nat, dx2);
-    // field_add(1, dx2) == field_add(dx2, 1)
-    lemma_field_sub_add_cancel(dx2, 1nat);
-    assert(field_sub(field_add(dx2, 1), 1) == dx2);
-
-    // Since LHS == RHS, their subs from 1 are equal:
-    // neg_x2 == dx2, i.e., field_neg(x2) == field_mul(d, x2)
-    assert(field_sub(1, x2) == field_add(1, dx2));
-    assert(field_add(neg_x2, 1) == field_add(dx2, 1));
-    // field_sub(field_add(neg_x2, 1), 1) == field_sub(field_add(dx2, 1), 1)
-    assert(neg_x2 == dx2);
-
-    // --- Step 3: Add x2 to both sides: 0 == field_add(dx2, x2) ---
-    // LHS: field_add(neg_x2, x2) = field_add(field_neg(x2), x2)
-    //     = field_sub(x2, x2) [by sub_eq_add_neg in reverse... or directly]
-    lemma_field_sub_self(x2);
-    assert(field_sub(x2, x2) == 0);
-    lemma_field_sub_eq_add_neg(x2, x2);
-    assert(field_sub(x2, x2) == field_add(x2, neg_x2));
-    lemma_field_add_comm(x2, neg_x2);
-    assert(field_add(neg_x2, x2) == field_add(x2, neg_x2));
-    assert(field_add(neg_x2, x2) == 0);
-
-    // RHS: field_add(dx2, x2)
-    // Since neg_x2 == dx2: field_add(dx2, x2) == field_add(neg_x2, x2) == 0
-    assert(field_add(dx2, x2) == 0);
-
-    // --- Step 4: Factor: field_add(dx2, x2) == field_mul(field_add(d, 1), x2) ---
-    // field_add(field_mul(d, x2), field_mul(1, x2)) = field_mul(field_add(d, 1), x2) [reversed distrib]
-    lemma_field_mul_one_left(x2);
-    assert(field_mul(1, x2) == x2 % p());
-    assert(field_mul(1, x2) == x2);
-
-    // By distributivity: mul(x2, add(d, 1)) = add(mul(x2, d), mul(x2, 1))
-    lemma_field_mul_distributes_over_add(x2, d, 1);
-    assert(field_mul(x2, field_add(d, 1)) == field_add(field_mul(x2, d), field_mul(x2, 1)));
-
-    // By commutativity: mul(x2, d) == mul(d, x2) and mul(x2, 1) == mul(1, x2)
-    lemma_field_mul_comm(x2, d);
-    lemma_field_mul_comm(x2, 1nat);
-    assert(field_mul(x2, field_add(d, 1)) == field_add(dx2, x2));
-    assert(field_mul(x2, field_add(d, 1)) == 0);
-
-    // By commutativity: mul(field_add(d, 1), x2) == 0
-    lemma_field_mul_comm(field_add(d, 1), x2);
-    assert(field_mul(field_add(d, 1), x2) == 0);
-
-    // --- Step 5: d+1 ≠ 0 (mod p), so x2 must be 0 (mod p) ---
-    axiom_d_plus_one_nonzero();
-    // By contrapositive of nonzero_product: if product is 0 and first factor ≠ 0, then second = 0
-    assert(x2 % p() == 0) by {
-        if x2 % p() != 0 {
-            lemma_nonzero_product(field_add(d, 1), x2);
-            // Contradiction: field_mul(field_add(d, 1), x2) != 0 but we showed it == 0
-        }
-    };
-    // x2 < p, so x2 == 0
-    assert(x2 == 0);
-
-    // --- Step 6: field_square(x) == 0 and x < p implies x == 0 ---
-    assert(x % p() == 0) by {
-        if x % p() != 0 {
-            lemma_nonzero_product(x, x);
-            // field_mul(x, x) != 0, but field_square(x) = field_mul(x, x) = x2 = 0
-            // Contradiction
-        }
-    };
-    // x < p and x % p == 0 implies x == 0
-    lemma_small_mod(x, p());
-}
-
-/// Helper lemma: exact functional correctness for Montgomery→Edwards conversion.
-///
-/// Given an exec-side decompressed point (x_exec, y_nat) and the original Montgomery u,
-/// proves (x_exec, y_nat) == spec_montgomery_to_edwards_affine(u_nat, sign_bit).
-///
-/// This is extracted from `to_edwards` to reduce solver pressure on that function.
-pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8, u_nat: nat)
-    requires
-        math_on_edwards_curve(x_exec, y_nat),
-        x_exec < p(),
-        y_nat < p(),
-        sign_bit == 0 || sign_bit == 1,
-        // When y²≠1 the exec code preserves the sign bit
-        field_square(y_nat) != 1 ==> ((x_exec % 2) as u8 == sign_bit),
-        // y comes from the birational map
-        y_nat == edwards_y_from_montgomery_u(u_nat),
-        u_nat < p(),
-        u_nat != field_sub(0, 1),
-    ensures
-        (x_exec, y_nat) == spec_montgomery_to_edwards_affine(u_nat, sign_bit),
-{
-    // The spec unfolds to: since u_nat != -1, compute y = birational(u),
-    // then effective_sign = if field_square(y)==1 { 0 } else { sign_bit },
-    // then decompress(y, effective_sign).
-    // We have y_nat == edwards_y_from_montgomery_u(u_nat) by precondition.
-    if field_square(y_nat) == 1 {
-        // === EDGE CASE: y² = 1, so x must be 0 ===
-        lemma_y_sq_one_implies_x_zero(x_exec, y_nat);
-        assert(x_exec == 0);
-        // Spec forces effective_sign = 0. Exec also has x_exec%2 == 0.
-        // decompress(y_nat, 0) → Some((0, y_nat))
-        lemma_decompress_spec_matches_point(0nat, y_nat, 0u8);
-    } else {
-        // === COMMON CASE: y² ≠ 1, sign preserved ===
-        // Spec uses effective_sign = sign_bit.
-        lemma_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
-    }
 }
 
 } // verus!

@@ -2015,7 +2015,9 @@ impl Scalar {
                     original_inputs,
                     i as int,
                 );
-                assert((scalar_i * result) % L == (result * scalar_i) % L) by (nonlinear_arith);
+                assert((scalar_i * result) % L == (result * scalar_i) % L) by {
+                    lemma_mul_is_commutative(scalar_i as int, result as int);
+                };
 
                 // Prove acc invariant is maintained
                 let input_val = scalar52_to_nat(&input_unpacked);
@@ -2507,11 +2509,13 @@ impl Scalar {
             assert(output[2 * j] as int + 16 * (output[2 * j + 1] as int) == self.bytes[j] as int);
             assert(output[2 * j] >= 0);
             assert(self.bytes[31] <= 127);
-            assert(output[63] <= 7) by (nonlinear_arith)
-                requires
-                    output[62] >= 0i8,
-                    output[62] as int + 16 * (output[63] as int) <= 127,
-            ;
+            assert(output[63] <= 7) by {
+                if output[63] >= 8i8 {
+                    lemma_mul_left_inequality(8, output[63] as int, 16);
+                    // 128 <= 16 * output[63], plus output[62] >= 0, contradicts sum <= 127
+                    assert(false);
+                }
+            };
 
             // Establish the reconstruction property
             lemma_bytes32_to_radix16_nibbles(output, self.bytes);
@@ -2866,22 +2870,17 @@ impl Scalar {
         {
             proof {
                 assert(w != 4);
-                assert(5 <= w) by (nonlinear_arith)
-                    requires
-                        4 <= w,
-                        w != 4,
-                ;
+                assert(5 <= w);
                 // i*w < digits_count*w (overflow check on the exec multiplication i * w)
                 assert(i * w < digits_count * w) by {
                     lemma_mul_strict_inequality(i as int, digits_count as int, w as int);
                 }
                 // Strengthen bound explicitly so `bit_offset <= 255` is available later.
-                assert((i * w) as int <= 255) by (nonlinear_arith)
-                    requires
-                        i * w < digits_count * w,
-                        digits_count * w <= 256 + w - 1,
-                        5 <= w,
-                ;
+                // (i+1)*w <= digits_count*w <= 256+w-1, so i*w+w <= 256+w-1, hence i*w <= 255
+                assert((i * w) as int <= 255) by {
+                    lemma_mul_inequality(i as int + 1, digits_count as int, w as int);
+                    lemma_mul_is_distributive_add_other_way(w as int, i as int, 1int);
+                };
             }
             let bit_offset = i * w;
             let u64_idx = bit_offset / 64;
@@ -3359,11 +3358,11 @@ fn square_multiply(
         lemma_pow_nonnegative(R as int, exp_final);
         lemma_pow_nonnegative(y0 as int, pow2(n));
 
-        assert((y_after as int * xv as int) * R_exp == (y_after as int * R_exp) * xv as int)
-            by (nonlinear_arith)
-            requires
-                R_exp >= 0,
-        ;
+        assert((y_after as int * xv as int) * R_exp == (y_after as int * R_exp) * xv as int) by {
+            lemma_mul_is_associative(y_after as int, xv as int, R_exp);
+            lemma_mul_is_commutative(xv as int, R_exp);
+            lemma_mul_is_associative(y_after as int, R_exp, xv as int);
+        };
 
         calc! {
             (==)

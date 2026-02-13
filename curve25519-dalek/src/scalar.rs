@@ -2950,6 +2950,12 @@ impl Scalar {
             let ghost old_digits = digits;
 
             // Recenter coefficients from [0,2^w) to [-2^w/2, 2^w/2).
+            /* <ORIGINAL CODE>
+            carry = (coef + (radix / 2)) >> w;
+            let coef_i64 = coef as i64;
+            let carry_shifted = (carry << w) as i64;
+            digits[i] = (coef_i64 - carry_shifted) as i8;
+            </ORIGINAL CODE> */
             let half_radix: u64 = radix / 2;
             carry = (coef + half_radix) >> w;
             let new_carry: u64 = carry;
@@ -3000,6 +3006,9 @@ impl Scalar {
                     5u64 <= (w as u64) <= 8u64,
             ;
 
+            /* <ORIGINAL CODE>
+            digits[i] = (coef_i64 - carry_shifted) as i8;
+            </ORIGINAL CODE> */
             let digit_i8: i8 = (coef_i64 - carry_shifted) as i8;
 
             // Cast preservation: i8 roundtrip preserves value when in [-128, 127]

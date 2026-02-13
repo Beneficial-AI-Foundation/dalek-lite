@@ -85,6 +85,8 @@ use crate::specs::scalar_specs::*;
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
@@ -1177,6 +1179,19 @@ impl MontgomeryPoint {
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
             is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
                 ==> result.is_some(),
+            // Cofactor-cleared functional correctness:
+            // [8] * exec_result == [8] * spec_result.
+            // Direct equality may fail in the edge case y²=1 ∧ sign=1 (exec clears
+            // sign to 0, spec maps to identity), but cofactor clearing equalises them.
+            is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
+                ==> edwards_scalar_mul(edwards_point_as_affine(result.unwrap()), 8)
+                    == edwards_scalar_mul(
+                        spec_montgomery_to_edwards_affine_with_sign(
+                            spec_montgomery(*self),
+                            if (sign & 1u8) == 0u8 { 0u8 } else { 1u8 },
+                        ),
+                        8,
+                    ),
     {
         // To decompress the Montgomery u coordinate to an
         // `EdwardsPoint`, we apply the birational map to obtain the
@@ -1496,6 +1511,105 @@ impl MontgomeryPoint {
                     assert(math_is_valid_y_coordinate(edwards_y_from_montgomery_u(u_nat)));
                 }
                 assert(result.is_some());
+
+                // Cofactor-cleared functional correctness.
+                // Uses math axioms: x-uniqueness (decompress_spec_matches_point),
+                // y²=1 ⟹ x=0, and cofactor clearing of small-order points.
+                {
+                    let point = result.unwrap();
+
+                    // Step 1: Decompress gives Z=1, so affine coords = (X, Y).
+                    lemma_edwards_affine_when_z_is_one(point);
+                    let x_exec = fe51_as_canonical_nat(&point.X);
+                    assert(edwards_point_as_affine(point) == (x_exec, y_nat));
+                    assert(math_on_edwards_curve(x_exec, y_nat));
+                    assert(x_exec < p());
+                    assert(y_nat < p());
+
+                    // Step 2: Connect exec y_sq to spec field_square(y_nat).
+                    let y_raw = u64_5_as_nat(y.limbs);
+                    assert(fe51_as_canonical_nat(&y_sq) == field_square(y_nat)) by {
+                        assert(pow(y_raw as int, 2) == y_raw as int * y_raw as int) by {
+                            reveal(pow);
+                            assert(pow(y_raw as int, 1)
+                                == y_raw as int * pow(y_raw as int, 0));
+                        };
+                        lemma_square_mod_noop(y_raw);
+                    };
+
+                    // Step 3: Relate ONE-bytes encoding to value 1.
+                    lemma_one_field_element_value();
+
+                    // Step 4: Case split on y_sq_is_one.
+                    if choice_is_true(y_sq_is_one) {
+                        // === EDGE CASE: y² = 1 ===
+                        // ct_eq true ⟹ byte arrays equal ⟹ same canonical value.
+                        assert(y_sq_bytes == one_bytes);
+                        assert(fe51_as_canonical_nat(&y_sq) == 1);
+                        assert(field_square(y_nat) == 1);
+
+                        // compressed_y_has_valid_sign_bit: y²=1 ⟹ sign bit is 0.
+                        assert((y_bytes[31] >> 7) == 0u8) by {
+                            assert(compressed_y_has_valid_sign_bit(&y_bytes));
+                        };
+                        assert((x_exec % 2) as u8 == 0u8);
+
+                        // On the curve, y²=1 forces x=0.
+                        axiom_y_sq_one_implies_x_zero(x_exec, y_nat);
+                        assert(x_exec == 0);
+                        assert(edwards_point_as_affine(point) == (0nat, y_nat));
+
+                        // [8]·(0, y_nat) = identity.
+                        axiom_cofactor_clears_low_order_y_sq_1(y_nat);
+                        assert(edwards_scalar_mul(
+                            edwards_point_as_affine(point),
+                            8,
+                        ) == math_edwards_identity());
+
+                        // [8]·identity = identity (identity is also (0,y) with y²=1).
+                        assert(field_square(1nat) == 1) by {
+                            p_gt_2();
+                            lemma_small_mod(1nat, p());
+                        };
+                        axiom_cofactor_clears_low_order_y_sq_1(1nat);
+                        assert(edwards_scalar_mul(math_edwards_identity(), 8)
+                            == math_edwards_identity());
+
+                        // Spec side: regardless of sign_bit, [8]·spec = identity.
+                        if sign_bit == 0u8 {
+                            // decompress(y_nat, 0) → Some((0, y_nat))
+                            axiom_decompress_spec_matches_point(0nat, y_nat, 0u8);
+                        } else {
+                            // decompress(y_nat, 1) → None (y²=1∧sign=1)
+                            // spec returns identity, [8]·identity = identity.
+                        }
+                    } else {
+                        // === COMMON CASE: sign was NOT cleared ===
+                        assert(b31_final == b31);
+                        assert((b31 >> 7) == sign_bit);
+                        assert((y_bytes[31] >> 7) == sign_bit);
+                        assert((x_exec % 2) as u8 == sign_bit);
+
+                        // Establish field_square(y_nat) ≠ 1 for the spec path.
+                        assert(field_square(y_nat) != 1) by {
+                            if field_square(y_nat) == 1 {
+                                assert(fe51_as_canonical_nat(&y_sq) == 1);
+                                lemma_canonical_bytes_equal(&y_sq_bytes, &one_bytes);
+                                assert forall|i: int|
+                                    0 <= i < 32 implies #[trigger] y_sq_bytes[i]
+                                        == one_bytes[i] by {};
+                                assert(y_sq_bytes == one_bytes);
+                                assert(choice_is_true(y_sq_is_one));
+                                // Contradiction.
+                            }
+                        };
+
+                        // By x-uniqueness, spec decompress matches exec point.
+                        axiom_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
+                        // u_nat ≠ −1, so spec returns (x_exec, y_nat).
+                        // Both sides: edwards_scalar_mul((x_exec, y_nat), 8).
+                    }
+                }
             }
         }
 

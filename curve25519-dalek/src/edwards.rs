@@ -1773,6 +1773,10 @@ impl EdwardsPoint {
     pub fn nonspec_map_to_curve_verus(bytes: &[u8]) -> (result: EdwardsPoint)
         ensures
             is_well_formed_edwards_point(result),
+            // Functional correctness: result = spec applied to first 32 bytes of SHA-512(input)
+            edwards_point_as_affine(result) == spec_nonspec_map_to_curve(
+                spec_sha512(bytes@).subrange(0, 32),
+            ),
     {
         /* ORIGINAL CODE:
         let mut hash = D::new();
@@ -1792,8 +1796,8 @@ impl EdwardsPoint {
         /* REFACTOR END*/
 
         // Extract sign bit from high bit of last byte
-        let b31 = res[31];
-        let sign_bit: u8 = (b31 & 0x80u8) >> 7u8;
+        let byte31 = res[31];  // extract for proof blocks (avoids Verus array_view issue)
+        let sign_bit: u8 = (byte31 & 0x80u8) >> 7u8;
 
         // Convert to field element
         let fe = FieldElement::from_bytes(&res);
@@ -1804,18 +1808,70 @@ impl EdwardsPoint {
         // Convert to Edwards point
         let E1_opt = M1.to_edwards(sign_bit);
 
-        // elligator_encode produces a valid Montgomery u-coordinate (not -1), so to_edwards succeeds.
+        // elligator_encode never produces u = -1 (lemma_elligator_never_minus_one),
+        // so to_edwards always returns Some. Unwrap and multiply by cofactor.
         proof {
-            assert(is_valid_montgomery_point(M1));
+            // to_edwards returns None only when is_equal_to_minus_one(u),
+            // but elligator_encode guarantees !is_equal_to_minus_one(u).
             assert(!is_equal_to_minus_one(spec_montgomery(M1)));
+            match E1_opt {
+                Some(_) => {},
+                None => {
+                    assert(false);
+                },
+            }
             assert(E1_opt.is_some());
         }
-
-        /* ORIGINAL CODE:
-        let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
-        */
         let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
         let result = E1.mul_by_cofactor();
+
+        proof {
+            // Step 1: res@ matches the spec hash input
+            assert(res@ == spec_sha512(bytes@).subrange(0, 32));
+
+            // Step 2: sign_bit ∈ {0,1} and normalisation is identity
+            assert(sign_bit == 0 || sign_bit == 1) by (bit_vector)
+                requires sign_bit == (byte31 & 0x80u8) >> 7u8;
+            assert(sign_bit == (if (sign_bit & 1u8) == 0u8 { 0u8 } else { 1u8 })) by (bit_vector)
+                requires sign_bit == 0u8 || sign_bit == 1u8;
+
+            // Step 3: bridge u8_32_as_nat ↔ bytes_seq_as_nat
+            lemma_u8_32_as_nat_eq_bytes_seq_as_nat(&res);
+
+            // Step 4: field element value matches spec
+            let fe_nat_spec = (bytes_seq_as_nat(res@) % pow2(255)) % p();
+            assert(fe51_as_canonical_nat(&fe) == fe_nat_spec) by {
+                // from_bytes: u64_5_as_nat(fe.limbs) == u8_32_as_nat(&res) % pow2(255)
+                // fe51_as_canonical_nat = u64_5_as_nat(fe.limbs) % p()
+                // With lemma: u8_32_as_nat(&res) == bytes_seq_as_nat(res@)
+            }
+
+            // Step 5: elligator result matches spec
+            let u = spec_elligator_encode(fe_nat_spec);
+            assert(spec_montgomery(M1) == u);
+
+            // Step 6: cofactor-cleared to_edwards matches spec
+            // (from the new to_edwards postcondition)
+            let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
+            assert(edwards_scalar_mul(edwards_point_as_affine(E1), 8)
+                == edwards_scalar_mul(P, 8)) by {
+                assert(is_valid_montgomery_point(M1));
+                assert(!is_equal_to_minus_one(spec_montgomery(M1)));
+                // to_edwards postcondition with sign normalisation
+                assert(spec_montgomery_to_edwards_affine_with_sign(
+                    spec_montgomery(M1),
+                    if (sign_bit & 1u8) == 0u8 { 0u8 } else { 1u8 },
+                ) == P);
+            }
+
+            // Step 7: mul_by_cofactor links result to E1
+            assert(edwards_point_as_affine(result)
+                == edwards_scalar_mul(edwards_point_as_affine(E1), 8));
+
+            // Step 8: combine — the result equals the spec
+            assert(edwards_point_as_affine(result) == edwards_scalar_mul(P, 8));
+            assert(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(res@));
+        }
 
         result
     }

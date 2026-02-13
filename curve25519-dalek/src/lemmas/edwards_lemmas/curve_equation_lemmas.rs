@@ -541,9 +541,14 @@ pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
 
     // (1 + d·x²·y²·inv(z⁴))·z⁴ = z⁴ + d·x²·y²·inv(z⁴)·z⁴ = z⁴ + d·x²·y²
     assert(field_mul(affine_rhs, z4) == proj_rhs) by {
+        // Commutativity: field_mul(affine_rhs, z4) == field_mul(z4, affine_rhs)
+        lemma_field_mul_comm(affine_rhs, z4);
+        // Distribution: field_mul(z4, 1 + D) == field_mul(z4, 1) + field_mul(z4, D)
         lemma_field_mul_distributes_over_add(z4, 1, field_mul(d, x2_y2_inv_z4));
-        lemma_field_mul_comm(z4, 1);
+        // field_mul(z4, 1) == z4
         lemma_field_mul_one_right(z4);
+        lemma_small_mod(z4, p);
+        // field_mul(z4, D) == field_mul(D, z4) == field_mul(d, x2_y2)
         lemma_field_mul_comm(z4, field_mul(d, x2_y2_inv_z4));
     };
 
@@ -1777,6 +1782,116 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     assert(y_proj == y) by {
         lemma_small_mod(y, p());
     }
+}
+
+// =============================================================================
+// Axioms for decompression and cofactor clearing
+// =============================================================================
+
+/// Helper: When Z = 1, the affine coordinates of an EdwardsPoint equal (X, Y) directly,
+/// and the affine point is on the Edwards curve.
+pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPoint)
+    requires
+        is_well_formed_edwards_point(point),
+        fe51_as_canonical_nat(&point.Z) == 1,
+    ensures
+        edwards_point_as_affine(point)
+            == (fe51_as_canonical_nat(&point.X), fe51_as_canonical_nat(&point.Y)),
+        math_on_edwards_curve(
+            fe51_as_canonical_nat(&point.X),
+            fe51_as_canonical_nat(&point.Y),
+        ),
+        fe51_as_canonical_nat(&point.X) < p(),
+        fe51_as_canonical_nat(&point.Y) < p(),
+{
+    let x = fe51_as_canonical_nat(&point.X);
+    let y = fe51_as_canonical_nat(&point.Y);
+
+    // x, y < p() from the definition of fe51_as_canonical_nat (= ... % p())
+    p_gt_2();
+    lemma_mod_bound(u64_5_as_nat(point.X.limbs) as int, p() as int);
+    lemma_mod_bound(u64_5_as_nat(point.Y.limbs) as int, p() as int);
+
+    // Z = 1 → field_inv(1) = 1 → field_mul(·, 1) = · for canonical values
+    lemma_field_inv_one();
+    lemma_field_mul_one_right(x);
+    lemma_field_mul_one_right(y);
+    lemma_small_mod(x, p());
+    lemma_small_mod(y, p());
+
+    // Projective curve equation with z=1 implies affine curve equation.
+    // math_on_edwards_curve_projective(x, y, 1) uses field_mul(sub, z²) = field_mul(sub, 1) = sub.
+    let x2 = field_square(x);
+    let y2 = field_square(y);
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let sub = field_sub(y2, x2);
+    lemma_field_mul_one_right(sub);
+    lemma_mod_bound(sub as int, p() as int);
+    lemma_small_mod(sub, p());
+    // field_square(1) = 1, field_square(field_square(1)) = 1
+    assert(field_square(1nat) == 1) by {
+        lemma_field_mul_one_right(1nat);
+        lemma_small_mod(1nat, p());
+    }
+}
+
+/// Axiom: On Ed25519, the x-coordinate is uniquely determined by y and the parity bit.
+///
+/// Given a valid y-coordinate and a sign bit s ∈ {0,1}, if (x,y) lies on the twisted
+/// Edwards curve −x² + y² = 1 + d·x²·y² with x ∈ [0,p) and x mod 2 = s, then
+/// `spec_edwards_decompress_from_y_and_sign(y, s)` returns exactly `Some((x, y))`.
+///
+/// Mathematically, the curve equation determines x² = (y²−1)/(d·y²+1).
+/// Over F_p (p ≡ 3 mod 4 for Ed25519), a nonzero quadratic residue has exactly
+/// two square roots ±r, and the parity bit selects one. When x = 0, only s = 0
+/// is consistent (since 0 mod 2 = 0).
+pub proof fn axiom_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        y < p(),
+        (x % 2) == (sign_bit as nat),
+        sign_bit == 0 || sign_bit == 1,
+    ensures
+        spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
+{
+    admit();
+}
+
+/// Axiom: Cofactor clearing kills the two small-order points with x = 0.
+///
+/// On Ed25519 the only points with x = 0 are (0,1) (identity, order 1)
+/// and (0, p−1) (order 2). Since 8 is the cofactor and 8 = 2³ ≥ 2,
+/// multiplying any such point by 8 yields the identity.
+///
+/// Proof sketch: [2]·(0, p−1) = (0,1) by the doubling formula, and
+/// [n]·(0,1) = (0,1) for all n ≥ 1.
+pub proof fn axiom_cofactor_clears_low_order_y_sq_1(y: nat)
+    requires
+        y < p(),
+        field_square(y) == 1,
+    ensures
+        edwards_scalar_mul((0nat, y), 8) == math_edwards_identity(),
+{
+    admit();
+}
+
+/// Axiom: On Ed25519, y² = 1 on the curve implies x = 0.
+///
+/// From the curve equation −x² + y² = 1 + d·x²·y² with y² = 1:
+///   −x² + 1 = 1 + d·x²
+///   −(1+d)·x² = 0
+/// Since d is not −1 for Ed25519 and p is prime, (1+d) is invertible,
+/// so x² = 0, hence x = 0.
+pub proof fn axiom_y_sq_one_implies_x_zero(x: nat, y: nat)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        field_square(y) == 1,
+    ensures
+        x == 0,
+{
+    admit();
 }
 
 } // verus!

@@ -845,7 +845,9 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
                 assert(nm1 + 2 == np1);
                 assert(nm1 + 2 == m * 2);
                 assert(nm1 == m * 2 - 2);
-                assert(m * 2 - 2 == (m - 1) * 2) by (compute);
+                assert(m * 2 - 2 == (m - 1) * 2) by (nonlinear_arith)
+                    requires m >= 1;
+
             }
             // nm1 == mm1 * 2, so nm1 % 2 == 0
             assert(nm1 % 2 == 0) by {
@@ -1350,8 +1352,10 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
         assert(a * b != 0) by {
             lemma_mul_nonzero(a as int, b as int);
         }
-        // a * b is even (since b is even), so a * b != 1
-        assert(a * b != 1) by (compute);
+        // a * b is even and non-zero, so a * b >= 2 > 1
+        assert(a * b != 1) by (nonlinear_arith)
+            requires (a * b) % 2 == 0nat, a * b != 0nat;
+
 
         assert(edwards_scalar_mul(point_affine, a * b) == {
             let half = edwards_scalar_mul(point_affine, ((a * b) / 2) as nat);
@@ -2055,8 +2059,6 @@ pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8,
         x_exec < p(),
         y_nat < p(),
         sign_bit == 0 || sign_bit == 1,
-        // When y²=1 the exec code clears the sign bit, so x has even parity
-        field_square(y_nat) == 1 ==> (x_exec % 2 == 0),
         // When y²≠1 the exec code preserves the sign bit
         field_square(y_nat) != 1 ==> ((x_exec % 2) as u8 == sign_bit),
         // y comes from the birational map

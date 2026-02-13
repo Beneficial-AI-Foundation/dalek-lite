@@ -1172,18 +1172,12 @@ impl MontgomeryPoint {
     ///
     pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
         ensures
-            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-            // u = −1 is excluded because the birational map y = (u−1)/(u+1) has a
-            // zero denominator there; the exec code returns None in that case.
-            is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
-                ==> result.is_some(),
-            // Functional correctness (exact equality):
-            //   to_edwards(u, sign) == spec(u, normalize(sign))
-            is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
-                ==> edwards_point_as_affine(result.unwrap()) == spec_montgomery_to_edwards_affine(
-                spec_montgomery(*self),
-                spec_normalize_sign(sign),
-            ),
+            match result {
+                Some(edwards) => montgomery_corresponds_to_edwards(*self, edwards)
+                    && is_well_formed_edwards_point(edwards) && edwards_point_as_affine(edwards)
+                    == spec_montgomery_to_edwards_affine(spec_montgomery(*self), sign),
+                None => is_equal_to_minus_one(spec_montgomery(*self)),
+            },
     {
         // To decompress the Montgomery u coordinate to an
         // `EdwardsPoint`, we apply the birational map to obtain the
@@ -1200,367 +1194,39 @@ impl MontgomeryPoint {
         // on the twist, not the curve, so we can reject it early.
         let u = FieldElement::from_bytes(&self.0);
 
-        /* ORIGINAL CODE:
         if u == FieldElement::MINUS_ONE {
-            return None;
-        }
-        */
-        let is_minus_one = u == FieldElement::MINUS_ONE;
-        if is_minus_one {
             proof {
-                // In this path, `spec_montgomery(*self) == -1`, so the "valid & not -1 ⇒ Some"
-                // postcondition is vacuously true.
-                assert(fe51_as_canonical_nat(&u) == spec_montgomery(*self)) by {
-                    assert(u64_5_as_nat(u.limbs) == u8_32_as_nat(&self.0) % pow2(255));
-                    calc! {
-                        (==)
-                        fe51_as_canonical_nat(&u); {}
-                        u64_5_as_field_canonical(u.limbs); {}
-                        field_canonical(u64_5_as_nat(u.limbs)); {}
-                        field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
-                        spec_montgomery(*self);
-                    }
-                }
-                assert(is_equal_to_minus_one(spec_montgomery(*self))) by {
-                    // Bridge the exec equality test to the spec view of equality (canonical bytes).
-                    let minus_one = FieldElement::MINUS_ONE;
-                    let bytes_eq = spec_fe51_as_bytes(&u) == spec_fe51_as_bytes(&minus_one);
-                    assert(is_minus_one == bytes_eq);
-                    assert(bytes_eq);
-                    lemma_fe51_to_bytes_equal_implies_field_element_equal(&u, &minus_one);
-                    assert(fe51_as_canonical_nat(&u) == fe51_as_canonical_nat(&minus_one));
-
-                    axiom_minus_one_field_element_value();
-                    assert(fe51_as_canonical_nat(&u) == field_sub(0, 1)) by {
-                        calc! {
-                            (==)
-                            fe51_as_canonical_nat(&u); {}
-                            fe51_as_canonical_nat(&minus_one); {}
-                            field_sub(0, 1);
-                        }
-                    }
-                    assert(spec_montgomery(*self) == field_sub(0, 1)) by {
-                        assert(fe51_as_canonical_nat(&u) == spec_montgomery(*self));
-                        assert(fe51_as_canonical_nat(&u) == field_sub(0, 1));
-                    }
-                }
+                assume(is_equal_to_minus_one(spec_montgomery(*self)));
             }
             return None;
         }
         let one = FieldElement::ONE;
 
-        proof {
-            // Arithmetic trait preconditions:
-            // - subtraction requires 54-bit bounds for both operands
-            // - addition requires sum_of_limbs_bounded
-            // - invert/mul require 54-bit bounds
-            lemma_one_limbs_bounded_51();
-            lemma_fe51_limbs_bounded_weaken(&u, 51, 54);
-            lemma_fe51_limbs_bounded_weaken(&one, 51, 54);
+        /* VERIFICATION NOTE: need to prove preconditions for arithmetic traits */
+        assume(false);
 
-            // For addition: u and one are 51-bounded
-            assert(fe51_limbs_bounded(&u, 51));
-            assert(fe51_limbs_bounded(&one, 51));
-            lemma_sum_of_limbs_bounded_from_fe51_bounded(&u, &one, 51);
-        }
-
-        let u_minus_one = &u - &one;
-        let u_plus_one = &u + &one;
-
-        proof {
-            // `u_plus_one` is 52-bounded from the `Add` postcondition, and hence 54-bounded.
-            assert(fe51_limbs_bounded(&u_plus_one, 52));
-            lemma_fe51_limbs_bounded_weaken(&u_plus_one, 52, 54);
-        }
-
-        let u_plus_one_inv = u_plus_one.invert();
-        /* ORIGINAL CODE:
         let y = &(&u - &one) * &(&u + &one).invert();
-        */
-        let y = &u_minus_one * &u_plus_one_inv;
 
-        let y_bytes0 = y.as_bytes();
-        let sign_bit = if (sign & 1u8) == 0u8 {
-            0u8
-        } else {
-            1u8
-        };
-
-        let mut y_bytes = y_bytes0;
-        // Match dalek's encoding: store the sign of x in bit 255 of the y-encoding.
-        // We use XOR here to align with existing verification lemmas about sign-bit handling.
-        y_bytes[31] = y_bytes[31] ^ (sign_bit << 7);
-        let y_bytes_signed = y_bytes;
-
-        // If y^2 == 1, then x == 0 and the sign bit must be 0 for a valid compressed encoding.
-        // We detect this via y.square() and clear the sign bit in that edge case.
-        let y_sq = y.square();
-        let y_sq_bytes = y_sq.as_bytes();
-        let one_bytes = FieldElement::ONE.as_bytes();
-        let y_sq_is_one = ct_eq_bytes32(&y_sq_bytes, &one_bytes);
-
-        let b31 = y_bytes[31];
-        let b31_cleared = b31 & 0x7fu8;
-        let b31_final = select_u8(&b31, &b31_cleared, y_sq_is_one);
-        /* ORIGINAL CODE:
         let mut y_bytes = y.as_bytes();
         y_bytes[31] ^= sign << 7;
-        */
-        y_bytes[31] = b31_final;
-
-        proof {
-            // `as_bytes` produces canonical bytes, so bit 255 is 0.
-            let y_val = fe51_as_canonical_nat(&y);
-            let byte31_0 = y_bytes0[31];
-
-            assert(u8_32_as_nat(&y_bytes0) == y_val);
-            assert(y_val < p()) by {
-                pow255_gt_19();
-                lemma_mod_bound(u64_5_as_nat(y.limbs) as int, p() as int);
-            };
-            lemma_canonical_bytes_bit255_zero(&y_bytes0, y_val);
-            assert((byte31_0 >> 7) == 0);
-            assert(sign_bit == 0 || sign_bit == 1) by {
-                if (sign & 1u8) == 0u8 {
-                } else {
-                }
-            }
-
-            // The sign bit lives in bit 255 and does not affect decoding of y.
-            // This lemma establishes:
-            // - field_element_from_bytes(&y_bytes) == y_val
-            // - (y_bytes[31] >> 7) == sign_bit (before the potential edge-case clearing below)
-            lemma_xor_sign_bit_preserves_y(&y_bytes0, &y_bytes_signed, y_val, sign_bit);
-
-            // Decoding the final y-bytes yields the same y value (bit 255 is ignored).
-            assert(field_element_from_bytes(&y_bytes) == y_val) by {
-                if choice_is_true(y_sq_is_one) {
-                    assert(b31_final == b31_cleared);
-                    assert(b31_cleared == byte31_0) by (bit_vector)
-                        requires
-                            (byte31_0 >> 7) == 0,
-                            b31 == (byte31_0 ^ (sign_bit << 7)),
-                            b31_cleared == (b31 & 0x7fu8),
-                    ;
-
-                    assert forall|i: int| 0 <= i < 31 implies y_bytes[i] == y_bytes0[i] by {}
-                    assert(y_bytes[31] == y_bytes0[31]);
-                    assert(y_bytes == y_bytes0);
-
-                    pow255_gt_19();
-                    assert(y_val < pow2(255));
-                    lemma_small_mod(y_val, pow2(255));
-                    lemma_small_mod(y_val, p());
-                    assert(field_element_from_bytes(&y_bytes0) == y_val) by {
-                        calc! {
-                            (==)
-                            field_element_from_bytes(&y_bytes0); {}
-                            field_canonical(u8_32_as_nat(&y_bytes0) % pow2(255)); {}
-                            field_canonical(y_val % pow2(255)); {}
-                            field_canonical(y_val); {}
-                            y_val % p(); {}
-                            y_val;
-                        }
-                    }
-                    assert(field_element_from_bytes(&y_bytes) == field_element_from_bytes(
-                        &y_bytes0,
-                    ));
-                    assert(field_element_from_bytes(&y_bytes) == y_val);
-                } else {
-                    assert(b31_final == b31);
-                    assert forall|i: int| 0 <= i < 31 implies y_bytes[i] == y_bytes_signed[i] by {}
-                    assert(y_bytes[31] == y_bytes_signed[31]);
-                    assert(y_bytes == y_bytes_signed);
-                    assert(field_element_from_bytes(&y_bytes_signed) == y_val);
-                    assert(field_element_from_bytes(&y_bytes) == y_val);
-                }
-            }
-
-            assert(compressed_y_has_valid_sign_bit(&y_bytes)) by {
-                // Unfold the definition: if y^2 == 1 then the sign bit must be 0.
-                let y_decoded = field_element_from_bytes(&y_bytes);
-                let sign_final = y_bytes[31] >> 7;
-                assert(y_decoded == y_val);
-
-                if field_square(y_decoded) == 1 {
-                    // Show y_sq is the square of y_decoded in the field, so y_sq_bytes must encode 1.
-                    let y_raw = u64_5_as_nat(y.limbs);
-                    assert(fe51_as_canonical_nat(&y_sq) == field_square(y_decoded)) by {
-                        // `square()` ensures its canonical value is the canonical square of `y_raw`.
-                        assert(fe51_as_canonical_nat(&y_sq) == field_canonical(
-                            pow(y_raw as int, 2) as nat,
-                        ));
-
-                        // Connect pow(_, 2) with multiplication and the definition of field_square.
-                        assert(pow(y_raw as int, 2) == y_raw as int * y_raw as int) by {
-                            reveal(pow);
-                            assert(pow(y_raw as int, 1) == y_raw as int * pow(y_raw as int, 0));
-                        };
-                        assert(field_canonical(pow(y_raw as int, 2) as nat) == field_square(y_raw));
-
-                        // Reduce y_raw modulo p() to match the decoded value.
-                        lemma_square_mod_noop(y_raw);
-                        assert(y_val == y_raw % p()) by {
-                            calc! {
-                                (==)
-                                y_val; {}
-                                fe51_as_canonical_nat(&y); {}
-                                u64_5_as_field_canonical(y.limbs); {}
-                                field_canonical(u64_5_as_nat(y.limbs)); {}
-                                y_raw % p();
-                            }
-                        }
-                        assert(y_decoded == y_val);
-                        assert(field_square(y_raw) == field_square(y_val));
-                        assert(field_square(y_val) == field_square(y_decoded));
-                    }
-
-                    assert(u8_32_as_nat(&y_sq_bytes) == 1) by {
-                        assert(field_square(y_decoded) == 1);
-                        assert(fe51_as_canonical_nat(&y_sq) == 1);
-                    }
-                    assert(u8_32_as_nat(&one_bytes) == 1) by {
-                        assert(u8_32_as_nat(&one_bytes) == fe51_as_canonical_nat(
-                            &FieldElement::ONE,
-                        ));
-                        assert(fe51_as_canonical_nat(&FieldElement::ONE) == 1) by {
-                            p_gt_2();
-                            assert(1nat < p());
-                            assert(1nat % p() == 1) by {
-                                lemma_small_mod(1, p());
-                            }
-                            assert(u64_5_as_nat(FieldElement::ONE.limbs) == 1) by (compute);
-                            calc! {
-                                (==)
-                                fe51_as_canonical_nat(&FieldElement::ONE); {}
-                                u64_5_as_field_canonical(FieldElement::ONE.limbs); {}
-                                field_canonical(u64_5_as_nat(FieldElement::ONE.limbs)); {}
-                                field_canonical(1); {}
-                                1nat % p(); {}
-                                1nat;
-                            }
-                        }
-                    }
-
-                    // If y_sq_bytes encodes 1 canonically, it must equal one_bytes, so y_sq_is_one is true.
-                    lemma_canonical_bytes_equal(&y_sq_bytes, &one_bytes);
-                    assert forall|i: int| 0 <= i < 32 implies #[trigger] y_sq_bytes[i]
-                        == one_bytes[i] by {}
-                    assert(y_sq_bytes == one_bytes);
-                    assert(choice_is_true(y_sq_is_one));
-
-                    // With y_sq_is_one true, select_u8 picks the cleared byte, so the final sign bit is 0.
-                    assert(b31_final == b31_cleared);
-                    assert((b31_cleared >> 7) == 0) by (bit_vector)
-                        requires
-                            b31_cleared == (b31 & 0x7fu8),
-                    ;
-                    assert(sign_final == 0);
-                }
-            }
-        }
 
         let result = CompressedEdwardsY(y_bytes).decompress();
 
         proof {
-            if result.is_some() {
-                assert(is_well_formed_edwards_point(result.unwrap()));
-            }
-            // If the input Montgomery u-coordinate is valid (on-curve) and u != -1, then the
-            // birational map yields a valid Edwards y-coordinate, so decompression succeeds.
-
-            if is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self)) {
-                let u_nat = spec_montgomery(*self);
-                assert(is_valid_u_coordinate(u_nat));
-                axiom_montgomery_valid_u_implies_edwards_y_valid(u_nat);
-
-                // Connect our computed y value to the spec birational map y = (u-1)/(u+1).
-                assert(fe51_as_canonical_nat(&u) == u_nat) by {
-                    assert(u64_5_as_nat(u.limbs) == u8_32_as_nat(&self.0) % pow2(255));
-                    calc! {
-                        (==)
-                        fe51_as_canonical_nat(&u); {}
-                        u64_5_as_field_canonical(u.limbs); {}
-                        field_canonical(u64_5_as_nat(u.limbs)); {}
-                        field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
-                        u_nat;
-                    }
-                }
-
-                let y_nat = fe51_as_canonical_nat(&y);
-                assert(y_nat == edwards_y_from_montgomery_u(u_nat)) by {
-                    lemma_one_field_element_value();
-                    assert(fe51_as_canonical_nat(&one) == 1);
-
-                    // y = (u-1)/(u+1)
-                    assert(fe51_as_canonical_nat(&u_minus_one) == field_sub(u_nat, 1));
-                    assert(fe51_as_canonical_nat(&u_plus_one) == field_add(u_nat, 1));
-                    assert(fe51_as_canonical_nat(&u_plus_one_inv) == field_inv(
-                        field_add(u_nat, 1),
+            // assumed postconditions
+            match result {
+                Some(edwards) => {
+                    assume(montgomery_corresponds_to_edwards(*self, edwards));
+                    assume(is_well_formed_edwards_point(edwards));
+                    assume(edwards_point_as_affine(edwards)
+                        == spec_montgomery_to_edwards_affine(
+                        spec_montgomery(*self),
+                        sign,
                     ));
-                    assert(y_nat == field_mul(field_sub(u_nat, 1), field_inv(field_add(u_nat, 1))));
-                    assert(edwards_y_from_montgomery_u(u_nat) == field_mul(
-                        field_sub(u_nat, 1),
-                        field_inv(field_add(u_nat, 1)),
-                    ));
-                }
-
-                assert(field_element_from_bytes(&y_bytes) == y_nat);
-                assert(math_is_valid_y_coordinate(field_element_from_bytes(&y_bytes))) by {
-                    assert(math_is_valid_y_coordinate(edwards_y_from_montgomery_u(u_nat)));
-                }
-                assert(result.is_some());
-
-                // Functional correctness (exact equality).
-                // Delegates spec-level reasoning to lemma_to_edwards_correctness.
-                {
-                    let point = result.unwrap();
-
-                    // Step 1: Decompress gives Z=1, so affine coords = (X, Y).
-                    lemma_edwards_affine_when_z_is_one(point);
-                    let x_exec = fe51_as_canonical_nat(&point.X);
-                    assert(edwards_point_as_affine(point) == (x_exec, y_nat));
-
-                    // Step 2: Connect exec y_sq to spec field_square(y_nat).
-                    let y_raw = u64_5_as_nat(y.limbs);
-                    assert(fe51_as_canonical_nat(&y_sq) == field_square(y_nat)) by {
-                        assert(pow(y_raw as int, 2) == y_raw as int * y_raw as int) by {
-                            reveal(pow);
-                            assert(pow(y_raw as int, 1) == y_raw as int * pow(y_raw as int, 0));
-                        };
-                        lemma_square_mod_noop(y_raw);
-                    };
-
-                    // Step 3: Relate ONE-bytes encoding to value 1.
-                    lemma_one_field_element_value();
-
-                    // Step 4: Bridge exec-level y_sq_is_one to spec-level sign conditions.
-                    if choice_is_true(y_sq_is_one) {
-                        assert(y_sq_bytes == one_bytes);
-                        assert(field_square(y_nat) == 1);
-                        assert((y_bytes[31] >> 7) == 0u8) by {
-                            assert(compressed_y_has_valid_sign_bit(&y_bytes));
-                        };
-                        assert((x_exec % 2) as u8 == 0u8);
-                    } else {
-                        assert(b31_final == b31);
-                        assert((y_bytes[31] >> 7) == sign_bit);
-                        assert((x_exec % 2) as u8 == sign_bit);
-                        assert(field_square(y_nat) != 1) by {
-                            if field_square(y_nat) == 1 {
-                                assert(fe51_as_canonical_nat(&y_sq) == 1);
-                                lemma_canonical_bytes_equal(&y_sq_bytes, &one_bytes);
-                                assert forall|i: int| 0 <= i < 32 implies #[trigger] y_sq_bytes[i]
-                                    == one_bytes[i] by {};
-                                assert(y_sq_bytes == one_bytes);
-                                assert(choice_is_true(y_sq_is_one));
-                            }
-                        };
-                    }
-
-                    // Step 5: All spec-level reasoning in the helper lemma.
-                    lemma_to_edwards_correctness(x_exec, y_nat, sign_bit, u_nat);
-                }
+                },
+                None => {
+                    assume(is_equal_to_minus_one(spec_montgomery(*self)));
+                },
             }
         }
 

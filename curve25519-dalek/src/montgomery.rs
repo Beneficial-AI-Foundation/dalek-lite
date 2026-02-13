@@ -174,7 +174,7 @@ impl ConstantTimeEq for MontgomeryPoint {
         proof {
             // FieldElement::ct_eq compares canonical encodings, so it agrees with equality
             // of the corresponding field elements (mod p).
-            let bytes_eq = spec_fe51_to_bytes(&self_fe) == spec_fe51_to_bytes(&other_fe);
+            let bytes_eq = spec_fe51_as_bytes(&self_fe) == spec_fe51_as_bytes(&other_fe);
             let field_eq = field_element_from_bytes(&self.0) == field_element_from_bytes(&other.0);
 
             assert(choice_is_true(result) == bytes_eq);
@@ -292,7 +292,7 @@ impl Hash for MontgomeryPoint {
              (1) The postcondition is expressed using the abstract `spec_state_after_hash*` model for
                  `core::hash::Hash::hash` on fixed-size arrays (see `core_assumes.rs`).
             (2) `spec_state_after_hash_montgomery` hashes the canonical encoding
-                 `spec_fe51_to_bytes(spec_fe51_from_bytes(point.0))`. */
+                 `spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))`. */
 
             *state == spec_state_after_hash_montgomery(*old(state), self),
     {
@@ -309,12 +309,12 @@ impl Hash for MontgomeryPoint {
 
         proof {
             // Relate the spec-side canonical bytes to the exec-side `canonical_bytes`.
-            let canonical_seq = spec_fe51_to_bytes(&spec_fe51_from_bytes(&self.0));
+            let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0));
             let canonical_arr = seq_to_array_32(canonical_seq);
 
             assert(initial_state == *old(state));
 
-            // Step 1: `canonical_bytes` agrees with `spec_fe51_to_bytes(&fe)`.
+            // Step 1: `canonical_bytes` agrees with `spec_fe51_as_bytes(&fe)`.
             assert(u8_32_as_nat(&canonical_bytes) == u64_5_as_nat(fe.limbs) % p()) by {
                 calc! {
                     (==)
@@ -359,7 +359,7 @@ impl Hash for MontgomeryPoint {
             lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
 
             // Step 3: Therefore, the canonical sequence equals the exec-view sequence.
-            assert(spec_fe51_to_bytes(&fe) == canonical_seq);
+            assert(spec_fe51_as_bytes(&fe) == canonical_seq);
             assert(seq_from32(&canonical_bytes) == canonical_seq);
 
             // Step 4: Convert the spec canonical sequence back to an array and match arrays.
@@ -1220,7 +1220,7 @@ impl MontgomeryPoint {
                 assert(is_equal_to_minus_one(spec_montgomery(*self))) by {
                     // Bridge the exec equality test to the spec view of equality (canonical bytes).
                     let minus_one = FieldElement::MINUS_ONE;
-                    let bytes_eq = spec_fe51_to_bytes(&u) == spec_fe51_to_bytes(&minus_one);
+                    let bytes_eq = spec_fe51_as_bytes(&u) == spec_fe51_as_bytes(&minus_one);
                     assert(is_minus_one == bytes_eq);
                     assert(bytes_eq);
                     lemma_fe51_to_bytes_equal_implies_field_element_equal(&u, &minus_one);

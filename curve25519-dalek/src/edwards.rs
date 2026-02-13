@@ -1062,8 +1062,8 @@ impl ValidityCheck for EdwardsPoint {
             assert(point_on_curve == math_on_edwards_curve_projective(x, y, z));
 
             // on_segre_image checks XY == ZT via PartialEq (compares canonical bytes)
-            // PartialEq ensures: (a == b) <==> spec_fe51_to_bytes(a) == spec_fe51_to_bytes(b)
-            assert(on_segre_image == (spec_fe51_to_bytes(&xy) == spec_fe51_to_bytes(&zt)));
+            // PartialEq ensures: (a == b) <==> spec_fe51_as_bytes(a) == spec_fe51_as_bytes(b)
+            assert(on_segre_image == (spec_fe51_as_bytes(&xy) == spec_fe51_as_bytes(&zt)));
 
             // Multiplication postcondition: fe51_as_canonical_nat of product = field_mul
             assert(fe51_as_canonical_nat(&xy) == field_mul(x, y));
@@ -1073,7 +1073,7 @@ impl ValidityCheck for EdwardsPoint {
             assert(on_segre_image == (field_mul(x, y) == field_mul(z, t))) by {
                 // Forward: bytes_equal ==> values_equal
                 if on_segre_image {
-                    assert(spec_fe51_to_bytes(&xy) == spec_fe51_to_bytes(&zt));
+                    assert(spec_fe51_as_bytes(&xy) == spec_fe51_as_bytes(&zt));
                     lemma_fe51_to_bytes_equal_implies_field_element_equal(&xy, &zt);
                     assert(fe51_as_canonical_nat(&xy) == fe51_as_canonical_nat(&zt));
                     assert(field_mul(x, y) == field_mul(z, t));
@@ -1083,7 +1083,7 @@ impl ValidityCheck for EdwardsPoint {
                 if field_mul(x, y) == field_mul(z, t) {
                     assert(fe51_as_canonical_nat(&xy) == fe51_as_canonical_nat(&zt));
                     lemma_field_element_equal_implies_fe51_to_bytes_equal(&xy, &zt);
-                    assert(spec_fe51_to_bytes(&xy) == spec_fe51_to_bytes(&zt));
+                    assert(spec_fe51_as_bytes(&xy) == spec_fe51_as_bytes(&zt));
                     assert(on_segre_image);
                 }
             };

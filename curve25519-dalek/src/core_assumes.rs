@@ -235,8 +235,8 @@ pub open spec fn spec_state_after_hash_montgomery<H>(
     point: &MontgomeryPoint,
 ) -> H {
     // The hash state of a MontgomeryPoint is determined by its canonical bytes
-    // Canonical bytes are: spec_fe51_to_bytes(spec_fe51_from_bytes(point.0))
-    let canonical_seq = spec_fe51_to_bytes(&spec_fe51_from_bytes(&point.0));
+    // Canonical bytes are: spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))
+    let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&point.0));
     let canonical_bytes = seq_to_array_32(canonical_seq);
     spec_state_after_hash(initial_state, &canonical_bytes)
 }

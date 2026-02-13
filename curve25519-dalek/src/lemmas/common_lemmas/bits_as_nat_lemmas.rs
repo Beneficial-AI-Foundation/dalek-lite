@@ -4,7 +4,6 @@ use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 use crate::specs::core_specs::*;
-use crate::specs::scalar_specs::bits_be_as_nat;
 
 verus! {
 
@@ -239,7 +238,7 @@ pub proof fn lemma_bits_be_as_nat_eq_bits_from_index(
             assert(bits_be[(len - 1) as int] == bits_le[254 - (len - 1) as int]);
             assert(254 - (len - 1) as int == start as int);
         }
-        assert(crate::specs::scalar_specs::bits_be_as_nat(bits_be, len as int) == (
+        assert(bits_be_as_nat(bits_be, len as int) == (
         if bits_be[len as int - 1] {
             1nat
         } else {

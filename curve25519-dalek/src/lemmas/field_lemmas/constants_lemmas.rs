@@ -149,14 +149,13 @@ pub proof fn lemma_minus_one_limbs_bounded_51()
     };
 }
 
-/// fe51_as_canonical_nat(MINUS_ONE) = -1 (mod p) ✅ FULLY PROVED
-pub proof fn lemma_minus_one_field_element_value()
+/// Axiom: fe51_as_canonical_nat(MINUS_ONE) = -1 (mod p)
+pub proof fn axiom_minus_one_field_element_value()
     ensures
         fe51_as_canonical_nat(&FieldElement51::MINUS_ONE) == field_sub(0, 1),
 {
     // This constant corresponds to p-1 in GF(p).
-    // The arithmetic proof expands u64_5_as_nat(MINUS_ONE.limbs) and shows it equals p-1.
-    // Keeping it as an axiom avoids interpreter instability when reasoning about array views.
+    // Kept as an axiom for now.
     admit();
 }
 

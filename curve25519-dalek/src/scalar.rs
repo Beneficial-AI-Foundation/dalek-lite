@@ -2734,8 +2734,11 @@ impl Scalar {
             let result = self.as_radix_16();
             // VERIFICATION NOTE: Prove that as_radix_16 postcondition implies as_radix_2w postcondition for w=4
             proof {
+                assert(w == 4);
+                assert(w as int == 4);
                 // For w=4: digits_count = (256 + 4 - 1) / 4 = 259 / 4 = 64
-                assert(((256 + (w as int) - 1) / (w as int)) == 64);
+                assert(((256 + (w as int) - 1) / (w as int)) == ((256 + 4 - 1) / 4));
+                assert(((256 + 4 - 1) / 4) == 64) by (compute);
                 // is_valid_radix_16 is defined as is_valid_radix_2w(digits, 4, 64)
                 assert(is_valid_radix_16(&result) == is_valid_radix_2w(&result, 4, 64));
                 // reconstruct_radix_16 is defined as reconstruct_radix_2w(digits, 4)
@@ -2815,6 +2818,17 @@ impl Scalar {
 
         // Subgoal: Radix and window mask properties
         let radix: u64 = 1 << w;
+        proof {
+            assert(radix >= 1u64) by (bit_vector)
+                requires
+                    radix == 1u64 << (w as u64),
+                    4u64 <= (w as u64) <= 8u64,
+            ;
+        }
+        let window_mask: u64 = radix - 1;
+
+        let mut carry = 0u64;
+        let mut digits = [0i8;64];
         let digits_count = (256 + w - 1) / w;
         proof {
             assert(digits_count <= 52 && digits_count > 0 && digits_count * w >= 256 && digits_count
@@ -2824,12 +2838,6 @@ impl Scalar {
             assert(pow2(w as nat) >= 1) by {
                 lemma_pow2_pos(w as nat);
             }
-        }
-        let window_mask: u64 = radix - 1;
-
-        let mut carry = 0u64;
-        let mut digits = [0i8;64];
-        proof {
             assert(radix as nat == pow2(w as nat));
             // Subgoal: scalar_val < pow2(256)
             assert(scalar_val < pow2(256)) by {
@@ -2949,6 +2957,12 @@ impl Scalar {
             let ghost old_digits = digits;
 
             // Recenter coefficients from [0,2^w) to [-2^w/2, 2^w/2).
+            /* <ORIGINAL CODE>
+            carry = (coef + (radix / 2)) >> w;
+            let coef_i64 = coef as i64;
+            let carry_shifted = (carry << w) as i64;
+            digits[i] = (coef_i64 - carry_shifted) as i8;
+            </ORIGINAL CODE> */
             let half_radix: u64 = radix / 2;
             carry = (coef + half_radix) >> w;
             let new_carry: u64 = carry;
@@ -2999,6 +3013,9 @@ impl Scalar {
                     5u64 <= (w as u64) <= 8u64,
             ;
 
+            /* <ORIGINAL CODE>
+            digits[i] = (coef_i64 - carry_shifted) as i8;
+            </ORIGINAL CODE> */
             let digit_i8: i8 = (coef_i64 - carry_shifted) as i8;
 
             // Cast preservation: i8 roundtrip preserves value when in [-128, 127]

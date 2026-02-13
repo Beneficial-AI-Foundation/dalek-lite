@@ -20,8 +20,9 @@ use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow2_even, pow2_MUL_div};
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
-use crate::specs::montgomery_specs::edwards_y_from_montgomery_u;
 use crate::specs::field_specs_u64::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::montgomery_specs::edwards_y_from_montgomery_u;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
@@ -1786,9 +1787,8 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
 }
 
 // =============================================================================
-// Axioms for decompression and cofactor clearing
+// Axioms and lemmas for decompression and cofactor clearing
 // =============================================================================
-
 /// Helper: When Z = 1, the affine coordinates of an EdwardsPoint equal (X, Y) directly,
 /// and the affine point is on the Edwards curve.
 pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPoint)
@@ -1796,12 +1796,11 @@ pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPo
         is_well_formed_edwards_point(point),
         fe51_as_canonical_nat(&point.Z) == 1,
     ensures
-        edwards_point_as_affine(point)
-            == (fe51_as_canonical_nat(&point.X), fe51_as_canonical_nat(&point.Y)),
-        math_on_edwards_curve(
+        edwards_point_as_affine(point) == (
             fe51_as_canonical_nat(&point.X),
             fe51_as_canonical_nat(&point.Y),
         ),
+        math_on_edwards_curve(fe51_as_canonical_nat(&point.X), fe51_as_canonical_nat(&point.Y)),
         fe51_as_canonical_nat(&point.X) < p(),
         fe51_as_canonical_nat(&point.Y) < p(),
 {
@@ -1878,7 +1877,9 @@ proof fn lemma_edwards_double_x_zero_y_sq_one(y: nat)
 
     // x1x2 = 0*0 = 0
     let x1x2 = field_mul(0nat, 0nat);
-    assert(x1x2 == 0) by { lemma_field_mul_zero_left(0nat, 0nat); };
+    assert(x1x2 == 0) by {
+        lemma_field_mul_zero_left(0nat, 0nat);
+    };
 
     // y1y2 = y*y = field_square(y) = 1
     let y1y2 = field_mul(y, y);
@@ -1887,11 +1888,17 @@ proof fn lemma_edwards_double_x_zero_y_sq_one(y: nat)
     // x1y2 = 0*y = 0, y1x2 = y*0 = 0
     let x1y2 = field_mul(0nat, y);
     let y1x2 = field_mul(y, 0nat);
-    assert(x1y2 == 0) by { lemma_field_mul_zero_left(0nat, y); };
-    assert(y1x2 == 0) by { lemma_field_mul_zero_right(y, 0nat); };
+    assert(x1y2 == 0) by {
+        lemma_field_mul_zero_left(0nat, y);
+    };
+    assert(y1x2 == 0) by {
+        lemma_field_mul_zero_right(y, 0nat);
+    };
 
     // t = d * (x1x2 * y1y2) = d * 0 = 0 (since x1x2 = 0)
-    assert(field_mul(x1x2, y1y2) == 0) by { lemma_field_mul_zero_left(0nat, y1y2); };
+    assert(field_mul(x1x2, y1y2) == 0) by {
+        lemma_field_mul_zero_left(0nat, y1y2);
+    };
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     let t = field_mul(d, field_mul(x1x2, y1y2));
     assert(t == 0) by {
@@ -1901,21 +1908,29 @@ proof fn lemma_edwards_double_x_zero_y_sq_one(y: nat)
     // denom_x = 1 + 0 = 1, denom_y = 1 - 0 = 1
     let denom_x = field_add(1nat, t);
     let denom_y = field_sub(1nat, t);
-    assert(denom_x == 1) by { lemma_mod_multiples_vanish(1, 1, p() as int); };
-    assert(denom_y == 1) by { lemma_mod_multiples_vanish(1, 1, p() as int); };
+    assert(denom_x == 1) by {
+        lemma_mod_multiples_vanish(1, 1, p() as int);
+    };
+    assert(denom_y == 1) by {
+        lemma_mod_multiples_vanish(1, 1, p() as int);
+    };
     assert(field_inv(denom_x) == 1);
     assert(field_inv(denom_y) == 1);
 
     // x3 = (0 + 0) * inv(1) = 0
     let sum_x = field_add(x1y2, y1x2);
-    assert(sum_x == 0) by { lemma_small_mod(0nat, p()); };
+    assert(sum_x == 0) by {
+        lemma_small_mod(0nat, p());
+    };
     assert(field_mul(sum_x, field_inv(denom_x)) == 0) by {
         lemma_field_mul_zero_left(0nat, field_inv(denom_x));
     };
 
     // y3 = (1 + 0) * inv(1) = 1
     let sum_y = field_add(y1y2, x1x2);
-    assert(sum_y == 1) by { lemma_mod_multiples_vanish(1, 1, p() as int); };
+    assert(sum_y == 1) by {
+        lemma_mod_multiples_vanish(1, 1, p() as int);
+    };
     lemma_field_mul_one_left(field_inv(denom_y));
     assert(field_mul(sum_y, field_inv(denom_y)) == 1);
 }
@@ -1939,8 +1954,14 @@ pub proof fn lemma_cofactor_clears_low_order_y_sq_1(y: nat)
     // [2]·(0, y) = double([1]·(0, y)) = double(0, y)
     lemma_edwards_scalar_mul_pow2_succ(P, 0);
     // pow2(0+1) = pow2(1) = 2, pow2(0) = 1
-    assert(pow2(0) == 1nat) by { lemma_pow2_pos(0); lemma2_to64(); };
-    assert(pow2(1) == 2nat) by { lemma_pow2_pos(1); lemma2_to64(); };
+    assert(pow2(0) == 1nat) by {
+        lemma_pow2_pos(0);
+        lemma2_to64();
+    };
+    assert(pow2(1) == 2nat) by {
+        lemma_pow2_pos(1);
+        lemma2_to64();
+    };
     // [1]·P = P (base case of scalar mul)
     assert(edwards_scalar_mul(P, 1) == P);
     // So [2]·P = double(P)
@@ -1951,7 +1972,9 @@ pub proof fn lemma_cofactor_clears_low_order_y_sq_1(y: nat)
     // [4]·(0, y) = double([2]·(0, y)) = double(0, 1)
     lemma_edwards_scalar_mul_pow2_succ(P, 1);
     assert(pow2(2) == 4nat) by {
-        assert(pow2(2) == pow2(1) * pow2(1)) by { vstd::arithmetic::power2::lemma_pow2_adds(1, 1); };
+        assert(pow2(2) == pow2(1) * pow2(1)) by {
+            vstd::arithmetic::power2::lemma_pow2_adds(1, 1);
+        };
     };
     lemma_edwards_double_identity();
     assert(edwards_scalar_mul(P, 4) == (0nat, 1nat));
@@ -1959,7 +1982,9 @@ pub proof fn lemma_cofactor_clears_low_order_y_sq_1(y: nat)
     // [8]·(0, y) = double([4]·(0, y)) = double(0, 1) = (0, 1)
     lemma_edwards_scalar_mul_pow2_succ(P, 2);
     assert(pow2(3) == 8nat) by {
-        assert(pow2(3) == pow2(2) * pow2(1)) by { vstd::arithmetic::power2::lemma_pow2_adds(2, 1); };
+        assert(pow2(3) == pow2(2) * pow2(1)) by {
+            vstd::arithmetic::power2::lemma_pow2_adds(2, 1);
+        };
     };
     assert(edwards_scalar_mul(P, 8) == (0nat, 1nat));
 }
@@ -2001,7 +2026,9 @@ pub proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
     lemma_field_mul_one_right(x2);
     assert(field_mul(x2, 1) == x2 % p());
     // x2 = field_square(x) = (x*x) % p < p, so x2 % p == x2
-    assert(x2 < p()) by { lemma_mod_bound((x * x) as int, p() as int); };
+    assert(x2 < p()) by {
+        lemma_mod_bound((x * x) as int, p() as int);
+    };
     lemma_small_mod(x2, p());
     assert(field_mul(x2, 1) == x2);
     // So from curve eq: field_sub(1, x2) == field_add(1, field_mul(d, x2))
@@ -2012,7 +2039,9 @@ pub proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
     //     = field_sub(field_add(field_neg(x2), 1), 1)  [by add_comm]
     //     = field_neg(x2)                               [by sub_add_cancel]
     let neg_x2 = field_neg(x2);
-    assert(neg_x2 < p()) by { lemma_mod_bound((p() - x2 % p()) as int, p() as int); };
+    assert(neg_x2 < p()) by {
+        lemma_mod_bound((p() - x2 % p()) as int, p() as int);
+    };
     lemma_field_sub_eq_add_neg(1nat, x2);
     assert(field_sub(1, x2) == field_add(1, neg_x2));
     lemma_field_add_comm(1nat, neg_x2);
@@ -2022,7 +2051,9 @@ pub proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
 
     // RHS: field_sub(field_add(1, field_mul(d, x2)), 1)
     let dx2 = field_mul(d, x2);
-    assert(dx2 < p()) by { lemma_mod_bound((d * x2) as int, p() as int); };
+    assert(dx2 < p()) by {
+        lemma_mod_bound((d * x2) as int, p() as int);
+    };
     lemma_field_add_comm(1nat, dx2);
     // field_add(1, dx2) == field_add(dx2, 1)
     lemma_field_sub_add_cancel(dx2, 1nat);
@@ -2121,16 +2152,14 @@ pub proof fn lemma_to_edwards_cofactor_correctness(
         u_nat < p(),
         u_nat != field_sub(0, 1),
     ensures
-        edwards_scalar_mul((x_exec, y_nat), 8)
-            == edwards_scalar_mul(
-                spec_montgomery_to_edwards_affine_with_sign(u_nat, sign_bit),
-                8,
-            ),
+        edwards_scalar_mul((x_exec, y_nat), 8) == edwards_scalar_mul(
+            spec_montgomery_to_edwards_affine_with_sign(u_nat, sign_bit),
+            8,
+        ),
 {
     // The spec function unfolds to: since u_nat != -1, compute y = birational(u),
     // then match decompress(y, sign_bit).
     // We have y_nat == edwards_y_from_montgomery_u(u_nat) by precondition.
-
     if field_square(y_nat) == 1 {
         // === EDGE CASE: y² = 1, so x must be 0 ===
         lemma_y_sq_one_implies_x_zero(x_exec, y_nat);

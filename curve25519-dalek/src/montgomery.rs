@@ -1185,13 +1185,17 @@ impl MontgomeryPoint {
             // sign to 0, spec maps to identity), but cofactor clearing equalises them.
             is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
                 ==> edwards_scalar_mul(edwards_point_as_affine(result.unwrap()), 8)
-                    == edwards_scalar_mul(
-                        spec_montgomery_to_edwards_affine_with_sign(
-                            spec_montgomery(*self),
-                            if (sign & 1u8) == 0u8 { 0u8 } else { 1u8 },
-                        ),
-                        8,
-                    ),
+                == edwards_scalar_mul(
+                spec_montgomery_to_edwards_affine_with_sign(
+                    spec_montgomery(*self),
+                    if (sign & 1u8) == 0u8 {
+                        0u8
+                    } else {
+                        1u8
+                    },
+                ),
+                8,
+            ),
     {
         // To decompress the Montgomery u coordinate to an
         // `EdwardsPoint`, we apply the birational map to obtain the
@@ -1527,8 +1531,7 @@ impl MontgomeryPoint {
                     assert(fe51_as_canonical_nat(&y_sq) == field_square(y_nat)) by {
                         assert(pow(y_raw as int, 2) == y_raw as int * y_raw as int) by {
                             reveal(pow);
-                            assert(pow(y_raw as int, 1)
-                                == y_raw as int * pow(y_raw as int, 0));
+                            assert(pow(y_raw as int, 1) == y_raw as int * pow(y_raw as int, 0));
                         };
                         lemma_square_mod_noop(y_raw);
                     };
@@ -1552,9 +1555,8 @@ impl MontgomeryPoint {
                             if field_square(y_nat) == 1 {
                                 assert(fe51_as_canonical_nat(&y_sq) == 1);
                                 lemma_canonical_bytes_equal(&y_sq_bytes, &one_bytes);
-                                assert forall|i: int|
-                                    0 <= i < 32 implies #[trigger] y_sq_bytes[i]
-                                        == one_bytes[i] by {};
+                                assert forall|i: int| 0 <= i < 32 implies #[trigger] y_sq_bytes[i]
+                                    == one_bytes[i] by {};
                                 assert(y_sq_bytes == one_bytes);
                                 assert(choice_is_true(y_sq_is_one));
                             }

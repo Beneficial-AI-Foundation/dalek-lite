@@ -1195,20 +1195,15 @@ impl MontgomeryPoint {
         // Since this is nonsquare mod p, u = -1 corresponds to a point
         // on the twist, not the curve, so we can reject it early.
         let u = FieldElement::from_bytes(&self.0);
-        let u_bytes = u.as_bytes();
-        let minus_one_bytes = FieldElement::MINUS_ONE.as_bytes();
-        let u_is_minus_one_choice = ct_eq_bytes32(&u_bytes, &minus_one_bytes);
-        let is_minus_one = choice_into(u_is_minus_one_choice);
 
         /* ORIGINAL CODE:
         if u == FieldElement::MINUS_ONE {
             return None;
         }
         */
+        let is_minus_one = u == FieldElement::MINUS_ONE;
         if is_minus_one {
             proof {
-                assert(choice_is_true(u_is_minus_one_choice));
-                assert(u_bytes == minus_one_bytes);
                 // In this path, `spec_montgomery(*self) == -1`, so the "valid & not -1 ⇒ Some"
                 // postcondition is vacuously true.
                 assert(fe51_as_canonical_nat(&u) == spec_montgomery(*self)) by {
@@ -1223,26 +1218,20 @@ impl MontgomeryPoint {
                     }
                 }
                 assert(is_equal_to_minus_one(spec_montgomery(*self))) by {
-                    lemma_minus_one_field_element_value();
-                    assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
-                    assert(u8_32_as_nat(&minus_one_bytes) == fe51_as_canonical_nat(
-                        &FieldElement::MINUS_ONE,
-                    ));
+                    // Bridge the exec equality test to the spec view of equality (canonical bytes).
+                    let minus_one = FieldElement::MINUS_ONE;
+                    let bytes_eq = spec_fe51_to_bytes(&u) == spec_fe51_to_bytes(&minus_one);
+                    assert(is_minus_one == bytes_eq);
+                    assert(bytes_eq);
+                    lemma_fe51_to_bytes_equal_implies_field_element_equal(&u, &minus_one);
+                    assert(fe51_as_canonical_nat(&u) == fe51_as_canonical_nat(&minus_one));
 
-                    assert(fe51_as_canonical_nat(&u) == fe51_as_canonical_nat(
-                        &FieldElement::MINUS_ONE,
-                    )) by {
-                        assert(u8_32_as_nat(&u_bytes) == u8_32_as_nat(&minus_one_bytes));
-                        assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
-                        assert(u8_32_as_nat(&minus_one_bytes) == fe51_as_canonical_nat(
-                            &FieldElement::MINUS_ONE,
-                        ));
-                    }
+                    lemma_minus_one_field_element_value();
                     assert(fe51_as_canonical_nat(&u) == field_sub(0, 1)) by {
                         calc! {
                             (==)
                             fe51_as_canonical_nat(&u); {}
-                            fe51_as_canonical_nat(&FieldElement::MINUS_ONE); {}
+                            fe51_as_canonical_nat(&minus_one); {}
                             field_sub(0, 1);
                         }
                     }

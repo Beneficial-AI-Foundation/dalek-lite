@@ -24,6 +24,15 @@ assert forall|i: int| 0 <= i < 32 implies a[i] == b[i] by {};
 - A constant-time byte equality helper already present in the codebase (`ct_eq_*`), then branch on
   `choice_into(...)` and use `choice_is_true(...)` in the proof.
 
+## Avoid redundant `ct_eq_*` calls
+
+If a type’s `PartialEq::eq` is already specified/implemented via a constant-time equality (common in
+crypto code), don’t call `ct_eq_*` again just to make the proof go through. Prefer:
+
+1) compute the exec boolean once: `let b = x == y;`
+2) in `proof {}` blocks, use the *postcondition* of `eq` (or `PartialEqSpecImpl::eq_spec`) to bridge
+   `b` to the spec-level equality you actually want.
+
 ## “Cannot call function with mode exec”
 
 Call exec functions outside `proof` blocks, bind the result, and reason about the value in `proof`.

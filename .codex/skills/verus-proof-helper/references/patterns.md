@@ -149,3 +149,31 @@ let x = opt.expect("..."); // unchanged exec behavior
 
 If the missing fact is truly out-of-scope, isolate it behind a narrow `axiom_...` lemma instead
 of sprinkling `assume(...)` at call sites.
+
+## Pattern 7: Bridge `==` branches to spec facts (don’t re-compare bytes)
+
+When you write exec code like:
+
+```rust
+let b = x == y;
+if b { ... }
+```
+
+the proof obligation is usually not “prove `b`”, but “use `b` to derive a spec-level equality”.
+If `PartialEq` has an `ensures` relating `b` to a spec predicate (e.g., canonical bytes equality),
+use that directly rather than adding an extra explicit `ct_eq_*` call.
+
+Typical structure:
+
+```rust
+let b = x == y;
+if b {
+    proof {
+        // From `PartialEq::eq` postcondition:
+        //   b == (eq_spec(x, y))   or   b == (spec_bytes(x) == spec_bytes(y))
+        assert(b == eq_spec(&x, &y));
+        assert(eq_spec(&x, &y));
+        // Then lift eq_spec(...) to the semantic equality you need using existing lemmas.
+    }
+}
+```

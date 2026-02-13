@@ -1173,6 +1173,8 @@ impl MontgomeryPoint {
     pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
         ensures
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            // u = −1 is excluded because the birational map y = (u−1)/(u+1) has a
+            // zero denominator there; the exec code returns None in that case.
             is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
                 ==> result.is_some(),
             // Functional correctness (exact equality):

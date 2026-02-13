@@ -1835,18 +1835,49 @@ pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPo
     }
 }
 
-/// Axiom: On Ed25519, the x-coordinate is uniquely determined by y and the parity bit.
+/// Axiom: A point on the curve witnesses that the y-coordinate is valid.
 ///
-/// Given (x,y) on the twisted Edwards curve with x ∈ [0,p) and x mod 2 = s,
-/// `spec_edwards_decompress_from_y_and_sign(y, s)` returns exactly `Some((x, y))`.
+/// If (x, y) lies on the Ed25519 curve with x, y ∈ [0, p), then y is a valid
+/// y-coordinate, i.e. the equation x² = (y²−1)/(d·y²+1) has a solution mod p.
+pub proof fn axiom_curve_point_implies_valid_y(x: nat, y: nat)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        y < p(),
+    ensures
+        math_is_valid_y_coordinate(y),
+{
+    admit();
+}
+
+/// Axiom: On Ed25519, the x-coordinate is uniquely determined by y and parity.
 ///
-/// Proof strategy (not yet mechanized):
-///   1. The curve equation determines x² = (y²−1)/(d·y²+1) uniquely from y.
-///   2. Over F_p a nonzero quadratic residue has exactly two roots ±r with
-///      opposite parities (since p is odd), so the parity bit selects one.
-///   3. When x = 0 the only valid sign is 0.
-///   4. Uniqueness lets us conclude `choose|x| P(x)` equals our x.
-pub proof fn axiom_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
+/// The curve equation determines x² uniquely from y. Over F_p with p odd,
+/// a nonzero square has exactly two roots with opposite parities, so the
+/// parity constraint selects at most one. When x² = 0, x = 0 is unique.
+pub proof fn axiom_unique_x_with_parity(x1: nat, x2: nat, y: nat)
+    requires
+        math_on_edwards_curve(x1, y),
+        math_on_edwards_curve(x2, y),
+        x1 < p(),
+        x2 < p(),
+        y < p(),
+        x1 % 2 == x2 % 2,
+    ensures
+        x1 == x2,
+{
+    admit();
+}
+
+/// Lemma: Decompression from y and sign recovers the original point.
+///
+/// Given (x, y) on the curve with x mod 2 = sign_bit,
+/// `spec_edwards_decompress_from_y_and_sign(y, sign_bit)` returns `Some((x, y))`.
+///
+/// Proved from two algebraic axioms:
+///   1. `axiom_curve_point_implies_valid_y` — witness implies valid y
+///   2. `axiom_unique_x_with_parity` — parity selects a unique x
+pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
     requires
         math_on_edwards_curve(x, y),
         x < p(),
@@ -1856,7 +1887,24 @@ pub proof fn axiom_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
     ensures
         spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
 {
-    admit();
+    // Step 1: y is a valid y-coordinate (we have a witness x on the curve)
+    axiom_curve_point_implies_valid_y(x, y);
+
+    // Step 2: Rule out the y²=1 ∧ sign=1 case
+    // If y²=1, then x=0 by curve equation, so sign_bit = x%2 = 0.
+    if field_square(y) == 1 {
+        lemma_y_sq_one_implies_x_zero(x, y);
+        // x == 0, so sign_bit == 0, not 1
+    }
+    // Step 3: In the else branch, the spec uses choose|xc| P(xc).
+    // Our x satisfies P, so exists|xc| P(xc) holds.
+    // By choose semantics, x_chosen also satisfies P.
+    // By uniqueness (axiom_unique_x_with_parity), x_chosen == x.
+
+    let x_chosen = choose|xc: nat|
+        math_on_edwards_curve(xc, y) && xc < p() && (xc % 2) == (sign_bit as nat);
+    assert(math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat));
+    axiom_unique_x_with_parity(x, x_chosen, y);
 }
 
 /// Axiom: The Ed25519 curve parameter d satisfies d + 1 ≢ 0 (mod p).
@@ -2028,11 +2076,11 @@ pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8,
         assert(x_exec == 0);
         // Spec forces effective_sign = 0. Exec also has x_exec%2 == 0.
         // decompress(y_nat, 0) → Some((0, y_nat))
-        axiom_decompress_spec_matches_point(0nat, y_nat, 0u8);
+        lemma_decompress_spec_matches_point(0nat, y_nat, 0u8);
     } else {
         // === COMMON CASE: y² ≠ 1, sign preserved ===
         // Spec uses effective_sign = sign_bit.
-        axiom_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
+        lemma_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
     }
 }
 

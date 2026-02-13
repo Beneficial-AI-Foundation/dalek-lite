@@ -225,7 +225,7 @@ pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::ha
     state: &mut H,
 ) where H: core::hash::Hasher, T: core::hash::Hash
     ensures
-        *state == spec_state_after_hash(*old(state), bytes)
+        *state == spec_state_after_hash(*old(state), bytes),
 ;
 
 /// Spec function: the hash state after hashing a MontgomeryPoint

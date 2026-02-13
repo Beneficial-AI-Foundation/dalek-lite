@@ -1908,8 +1908,12 @@ impl ProjectivePoint {
                 assert(u8_32_as_nat(&u_bytes) % pow2(255) == u8_32_as_nat(&u_bytes)) by {
                     lemma_small_mod(u8_32_as_nat(&u_bytes), pow2(255));
                 }
-                assert(field_element_from_bytes(&u_bytes) == field_canonical(u8_32_as_nat(&u_bytes)));
-                assert(field_element_from_bytes(&u_bytes) == field_canonical(fe51_as_canonical_nat(&u)));
+                assert(field_element_from_bytes(&u_bytes) == field_canonical(
+                    u8_32_as_nat(&u_bytes),
+                ));
+                assert(field_element_from_bytes(&u_bytes) == field_canonical(
+                    fe51_as_canonical_nat(&u),
+                ));
                 assert(field_canonical(fe51_as_canonical_nat(&u)) == fe51_as_canonical_nat(&u)) by {
                     lemma_small_mod(fe51_as_canonical_nat(&u), p());
                 }

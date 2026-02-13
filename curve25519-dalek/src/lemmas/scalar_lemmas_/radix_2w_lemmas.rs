@@ -45,8 +45,7 @@ verus! {
 /// leaving only the partial sum of words below the boundary.
 proof fn lemma_u64x4_mod_strip_above(words: [u64; 4], boundary: nat)
     requires
-        0 < boundary,
-        boundary <= 256,
+        0 < boundary <= 256,
     ensures
         u64_4_as_nat(&words) % pow2(boundary) == (if boundary <= 64 {
             words[0] as nat

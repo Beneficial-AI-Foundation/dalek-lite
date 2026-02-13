@@ -1870,18 +1870,67 @@ impl ProjectivePoint {
                 }
             },
     {
-        let u = &self.U * &self.W.invert();
-        let result = MontgomeryPoint(u.as_bytes());
+        let w_inv = self.W.invert();
+        let u = &self.U * &w_inv;
+        let u_bytes = u.as_bytes();
+        /* ORIGINAL CODE: let result = MontgomeryPoint(u.as_bytes()); */
+        let result = MontgomeryPoint(u_bytes);
         proof {
-            // postcondition
-            // The affine u-coordinate is U * W^(-1) = U / W
+            // The affine u-coordinate is u = U * W^{-1}.
             let u_proj = fe51_as_canonical_nat(&self.U);
             let w_proj = fe51_as_canonical_nat(&self.W);
-            assume(spec_montgomery(result) == if w_proj == 0 {
-                0
+
+            // First, connect the computed field element `u` to the spec-level expression.
+            assert(fe51_as_canonical_nat(&w_inv) == field_inv(w_proj));
+            assert(fe51_as_canonical_nat(&u) == field_mul(u_proj, field_inv(w_proj)));
+
+            // Next, show that the MontgomeryPoint encoding of `u` decodes back to `u`.
+            assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
+
+            // fe51_as_canonical_nat(&u) is reduced mod p, hence < p.
+            assert(fe51_as_canonical_nat(&u) < p()) by {
+                assert(p() > 0) by {
+                    pow255_gt_19();
+                }
+                lemma_mod_bound(u64_5_as_nat(u.limbs) as int, p() as int);
+            }
+            assert(p() < pow2(255)) by {
+                pow255_gt_19();
+            }
+            assert(fe51_as_canonical_nat(&u) < pow2(255));
+
+            assert(field_element_from_bytes(&u_bytes) == fe51_as_canonical_nat(&u)) by {
+                // field_element_from_bytes(bytes) == field_canonical(u8_32_as_nat(bytes) % 2^255)
+                // and the canonical value fits into 255 bits, so the % 2^255 is a no-op.
+                assert(u8_32_as_nat(&u_bytes) < pow2(255)) by {
+                    assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
+                }
+                assert(u8_32_as_nat(&u_bytes) % pow2(255) == u8_32_as_nat(&u_bytes)) by {
+                    lemma_small_mod(u8_32_as_nat(&u_bytes), pow2(255));
+                }
+                assert(field_element_from_bytes(&u_bytes) == field_canonical(u8_32_as_nat(&u_bytes)));
+                assert(field_element_from_bytes(&u_bytes) == field_canonical(fe51_as_canonical_nat(&u)));
+                assert(field_canonical(fe51_as_canonical_nat(&u)) == fe51_as_canonical_nat(&u)) by {
+                    lemma_small_mod(fe51_as_canonical_nat(&u), p());
+                }
+            }
+
+            assert(result.0 == u_bytes);
+            assert(spec_montgomery(result) == field_element_from_bytes(&u_bytes));
+            assert(spec_montgomery(result) == field_mul(u_proj, field_inv(w_proj)));
+
+            if w_proj == 0 {
+                assert(field_inv(w_proj) == 0) by {
+                    reveal(field_inv);
+                }
+                assert(field_mul(u_proj, field_inv(w_proj)) == 0) by {
+                    reveal(field_mul);
+                    assert(u_proj * 0 == 0) by (compute);
+                }
+                assert(spec_montgomery(result) == 0);
             } else {
-                field_mul(u_proj, field_inv(w_proj))
-            });
+                assert(spec_montgomery(result) == field_mul(u_proj, field_inv(w_proj)));
+            }
         }
         result
     }

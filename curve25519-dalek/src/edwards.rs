@@ -1804,25 +1804,17 @@ impl EdwardsPoint {
         // Convert to Edwards point
         let E1_opt = M1.to_edwards(sign_bit);
 
+        // elligator_encode produces a valid Montgomery u-coordinate (not -1), so to_edwards succeeds.
+        proof {
+            assert(is_valid_montgomery_point(M1));
+            assert(!is_equal_to_minus_one(spec_montgomery(M1)));
+            assert(E1_opt.is_some());
+        }
+
         /* ORIGINAL CODE:
         let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
         */
-        // Verus-friendly total version: fall back to the Edwards identity on failure.
-        let E1 = match E1_opt {
-            Some(p) => {
-                proof {
-                    assert(is_well_formed_edwards_point(p));
-                }
-                p
-            },
-            None => {
-                let id = EdwardsPoint::identity();
-                proof {
-                    assert(is_well_formed_edwards_point(id));
-                }
-                id
-            },
-        };
+        let E1 = E1_opt.expect("Montgomery conversion to Edwards point in Elligator failed");
         let result = E1.mul_by_cofactor();
 
         result

@@ -1178,6 +1178,8 @@ impl MontgomeryPoint {
     pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
         ensures
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
+                ==> result.is_some(),
     {
         // To decompress the Montgomery u coordinate to an
         // `EdwardsPoint`, we apply the birational map to obtain the
@@ -1193,8 +1195,63 @@ impl MontgomeryPoint {
         // Since this is nonsquare mod p, u = -1 corresponds to a point
         // on the twist, not the curve, so we can reject it early.
         let u = FieldElement::from_bytes(&self.0);
+        let u_bytes = u.as_bytes();
+        let minus_one_bytes = FieldElement::MINUS_ONE.as_bytes();
+        let u_is_minus_one_choice = ct_eq_bytes32(&u_bytes, &minus_one_bytes);
+        let is_minus_one = choice_into(u_is_minus_one_choice);
 
+        /* ORIGINAL CODE:
         if u == FieldElement::MINUS_ONE {
+            return None;
+        }
+        */
+        if is_minus_one {
+            proof {
+                assert(choice_is_true(u_is_minus_one_choice));
+                assert(u_bytes == minus_one_bytes);
+                // In this path, `spec_montgomery(*self) == -1`, so the "valid & not -1 ⇒ Some"
+                // postcondition is vacuously true.
+                assert(fe51_as_canonical_nat(&u) == spec_montgomery(*self)) by {
+                    assert(u64_5_as_nat(u.limbs) == u8_32_as_nat(&self.0) % pow2(255));
+                    calc! {
+                        (==)
+                        fe51_as_canonical_nat(&u); {}
+                        u64_5_as_field_canonical(u.limbs); {}
+                        field_canonical(u64_5_as_nat(u.limbs)); {}
+                        field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
+                        spec_montgomery(*self);
+                    }
+                }
+                assert(is_equal_to_minus_one(spec_montgomery(*self))) by {
+                    lemma_minus_one_field_element_value();
+                    assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
+                    assert(u8_32_as_nat(&minus_one_bytes) == fe51_as_canonical_nat(
+                        &FieldElement::MINUS_ONE,
+                    ));
+
+                    assert(fe51_as_canonical_nat(&u) == fe51_as_canonical_nat(
+                        &FieldElement::MINUS_ONE,
+                    )) by {
+                        assert(u8_32_as_nat(&u_bytes) == u8_32_as_nat(&minus_one_bytes));
+                        assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
+                        assert(u8_32_as_nat(&minus_one_bytes) == fe51_as_canonical_nat(
+                            &FieldElement::MINUS_ONE,
+                        ));
+                    }
+                    assert(fe51_as_canonical_nat(&u) == field_sub(0, 1)) by {
+                        calc! {
+                            (==)
+                            fe51_as_canonical_nat(&u); {}
+                            fe51_as_canonical_nat(&FieldElement::MINUS_ONE); {}
+                            field_sub(0, 1);
+                        }
+                    }
+                    assert(spec_montgomery(*self) == field_sub(0, 1)) by {
+                        assert(fe51_as_canonical_nat(&u) == spec_montgomery(*self));
+                        assert(fe51_as_canonical_nat(&u) == field_sub(0, 1));
+                    }
+                }
+            }
             return None;
         }
         let one = FieldElement::ONE;
@@ -1275,53 +1332,55 @@ impl MontgomeryPoint {
             // - (y_bytes[31] >> 7) == sign_bit (before the potential edge-case clearing below)
             lemma_xor_sign_bit_preserves_y(&y_bytes0, &y_bytes_signed, y_val, sign_bit);
 
+            // Decoding the final y-bytes yields the same y value (bit 255 is ignored).
+            assert(field_element_from_bytes(&y_bytes) == y_val) by {
+                if choice_is_true(y_sq_is_one) {
+                    assert(b31_final == b31_cleared);
+                    assert(b31_cleared == byte31_0) by (bit_vector)
+                        requires
+                            (byte31_0 >> 7) == 0,
+                            b31 == (byte31_0 ^ (sign_bit << 7)),
+                            b31_cleared == (b31 & 0x7fu8),
+                    ;
+
+                    assert forall|i: int| 0 <= i < 31 implies y_bytes[i] == y_bytes0[i] by {}
+                    assert(y_bytes[31] == y_bytes0[31]);
+                    assert(y_bytes == y_bytes0);
+
+                    pow255_gt_19();
+                    assert(y_val < pow2(255));
+                    lemma_small_mod(y_val, pow2(255));
+                    lemma_small_mod(y_val, p());
+                    assert(field_element_from_bytes(&y_bytes0) == y_val) by {
+                        calc! {
+                            (==)
+                            field_element_from_bytes(&y_bytes0); {}
+                            field_canonical(u8_32_as_nat(&y_bytes0) % pow2(255)); {}
+                            field_canonical(y_val % pow2(255)); {}
+                            field_canonical(y_val); {}
+                            y_val % p(); {}
+                            y_val;
+                        }
+                    }
+                    assert(field_element_from_bytes(&y_bytes) == field_element_from_bytes(
+                        &y_bytes0,
+                    ));
+                    assert(field_element_from_bytes(&y_bytes) == y_val);
+                } else {
+                    assert(b31_final == b31);
+                    assert forall|i: int| 0 <= i < 31 implies y_bytes[i] == y_bytes_signed[i] by {}
+                    assert(y_bytes[31] == y_bytes_signed[31]);
+                    assert(y_bytes == y_bytes_signed);
+                    assert(field_element_from_bytes(&y_bytes_signed) == y_val);
+                    assert(field_element_from_bytes(&y_bytes) == y_val);
+                }
+            }
+
             assert(compressed_y_has_valid_sign_bit(&y_bytes)) by {
                 // Unfold the definition: if y^2 == 1 then the sign bit must be 0.
                 let y_decoded = field_element_from_bytes(&y_bytes);
                 let sign_final = y_bytes[31] >> 7;
-                assert(y_decoded == y_val) by {
-                    if choice_is_true(y_sq_is_one) {
-                        // b31_final is the cleared byte, which restores the canonical encoding (bit 255 = 0).
-                        assert(b31_final == b31_cleared);
-                        assert(b31_cleared == byte31_0) by (bit_vector)
-                            requires
-                                (byte31_0 >> 7) == 0,
-                                b31 == (byte31_0 ^ (sign_bit << 7)),
-                                b31_cleared == (b31 & 0x7fu8),
-                        ;
-                        // y_bytes agrees with y_bytes0 on all 32 bytes.
-                        assert forall|i: int| 0 <= i < 31 implies y_bytes[i] == y_bytes0[i] by {}
-                        assert(y_bytes[31] == y_bytes0[31]);
-                        assert(y_bytes == y_bytes0);
-
-                        // Decode the canonical bytes to y_val.
-                        pow255_gt_19();
-                        assert(y_val < pow2(255));
-                        lemma_small_mod(y_val, pow2(255));
-                        lemma_small_mod(y_val, p());
-                        assert(field_element_from_bytes(&y_bytes0) == y_val) by {
-                            calc! {
-                                (==)
-                                field_element_from_bytes(&y_bytes0); {}
-                                field_canonical(u8_32_as_nat(&y_bytes0) % pow2(255)); {}
-                                field_canonical(y_val % pow2(255)); {}
-                                field_canonical(y_val); {}
-                                y_val % p(); {}
-                                y_val;
-                            }
-                        }
-                        assert(y_decoded == y_val);
-                    } else {
-                        // Otherwise select_u8 keeps b31, so y_bytes == y_bytes_signed.
-                        assert(b31_final == b31);
-                        assert(y_bytes[31] == y_bytes_signed[31]);
-                        assert forall|i: int| 0 <= i < 31 implies y_bytes[i]
-                            == y_bytes_signed[i] by {}
-                        assert(y_bytes == y_bytes_signed);
-                        assert(field_element_from_bytes(&y_bytes_signed) == y_val);
-                        assert(y_decoded == y_val);
-                    }
-                }
+                assert(y_decoded == y_val);
 
                 if field_square(y_decoded) == 1 {
                     // Show y_sq is the square of y_decoded in the field, so y_sq_bytes must encode 1.
@@ -1407,6 +1466,51 @@ impl MontgomeryPoint {
             if result.is_some() {
                 assert(is_well_formed_edwards_point(result.unwrap()));
             }
+            // If the input Montgomery u-coordinate is valid (on-curve) and u != -1, then the
+            // birational map yields a valid Edwards y-coordinate, so decompression succeeds.
+
+            if is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self)) {
+                let u_nat = spec_montgomery(*self);
+                assert(is_valid_u_coordinate(u_nat));
+                axiom_montgomery_valid_u_implies_edwards_y_valid(u_nat);
+
+                // Connect our computed y value to the spec birational map y = (u-1)/(u+1).
+                assert(fe51_as_canonical_nat(&u) == u_nat) by {
+                    assert(u64_5_as_nat(u.limbs) == u8_32_as_nat(&self.0) % pow2(255));
+                    calc! {
+                        (==)
+                        fe51_as_canonical_nat(&u); {}
+                        u64_5_as_field_canonical(u.limbs); {}
+                        field_canonical(u64_5_as_nat(u.limbs)); {}
+                        field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
+                        u_nat;
+                    }
+                }
+
+                let y_nat = fe51_as_canonical_nat(&y);
+                assert(y_nat == edwards_y_from_montgomery_u(u_nat)) by {
+                    lemma_one_field_element_value();
+                    assert(fe51_as_canonical_nat(&one) == 1);
+
+                    // y = (u-1)/(u+1)
+                    assert(fe51_as_canonical_nat(&u_minus_one) == field_sub(u_nat, 1));
+                    assert(fe51_as_canonical_nat(&u_plus_one) == field_add(u_nat, 1));
+                    assert(fe51_as_canonical_nat(&u_plus_one_inv) == field_inv(
+                        field_add(u_nat, 1),
+                    ));
+                    assert(y_nat == field_mul(field_sub(u_nat, 1), field_inv(field_add(u_nat, 1))));
+                    assert(edwards_y_from_montgomery_u(u_nat) == field_mul(
+                        field_sub(u_nat, 1),
+                        field_inv(field_add(u_nat, 1)),
+                    ));
+                }
+
+                assert(field_element_from_bytes(&y_bytes) == y_nat);
+                assert(math_is_valid_y_coordinate(field_element_from_bytes(&y_bytes))) by {
+                    assert(math_is_valid_y_coordinate(edwards_y_from_montgomery_u(u_nat)));
+                }
+                assert(result.is_some());
+            }
         }
 
         result
@@ -1428,6 +1532,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
         spec_montgomery(result) == spec_elligator_encode(fe51_as_canonical_nat(r_0)),
         spec_montgomery(result) < p(),
         !is_equal_to_minus_one(spec_montgomery(result)),
+        is_valid_montgomery_point(result),
 {
     let one = FieldElement::ONE;
     let zero = FieldElement::ZERO;  // moved from after sqrt_ratio_i for proof block access
@@ -1894,6 +1999,11 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
 
         assert(!is_equal_to_minus_one(spec_montgomery(result))) by {
             lemma_elligator_never_minus_one(r);
+        }
+
+        assert(is_valid_montgomery_point(result)) by {
+            axiom_elligator_encode_outputs_valid_u(r);
+            assert(is_valid_u_coordinate(spec_montgomery(result)));
         }
     }
 

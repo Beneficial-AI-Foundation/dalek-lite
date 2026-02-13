@@ -1855,15 +1855,13 @@ impl EdwardsPoint {
             let u = spec_elligator_encode(fe_nat_spec);
             assert(spec_montgomery(M1) == u);
 
-            // Step 6: cofactor-cleared to_edwards matches spec
-            // (from the new to_edwards postcondition)
-            let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
-            assert(edwards_scalar_mul(edwards_point_as_affine(E1), 8) == edwards_scalar_mul(P, 8))
-                by {
+            // Step 6: to_edwards gives exact equality with spec
+            let P = spec_montgomery_to_edwards_affine(u, sign_bit);
+            assert(edwards_point_as_affine(E1) == P) by {
                 assert(is_valid_montgomery_point(M1));
                 assert(!is_equal_to_minus_one(spec_montgomery(M1)));
                 // to_edwards postcondition with sign normalisation
-                assert(spec_montgomery_to_edwards_affine_with_sign(
+                assert(spec_montgomery_to_edwards_affine(
                     spec_montgomery(M1),
                     spec_normalize_sign(sign_bit),
                 ) == P);

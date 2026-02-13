@@ -867,6 +867,27 @@ assert(u8_32_as_nat(s_after) % pow2(255) == u8_32_as_nat(s_before) % pow2(255)) 
 16. **Reduce rlimit by extracting helper lemmas:** When a function hits CI rlimit failures, prefer extracting spec-level proof reasoning into a separate `proof fn` rather than bumping `#[verifier::rlimit(N)]`. The extracted lemma takes the key spec-level values as parameters and proves the postcondition. The original function then just bridges exec-level facts to spec-level preconditions and calls the helper. This keeps solver pressure low without raising limits.
 17. **Always run `verusfmt`:** Run `verusfmt` on all changed `.rs` files before committing. Verus-specific formatting (e.g., `ensures`, `requires`, proof blocks) won't be handled by `rustfmt`.
 18. **Always check cargo test/clippy alongside Verus:** After Verus verification passes, also run `cargo test` and `cargo clippy` to catch non-Verus build issues (missing imports, cfg guards, etc.).
+19. **Replace `calc!` with assert chains when rlimit fails:** `calc!` blocks create heavier SMT encodings than plain assert chains. When a function hits rlimit, try replacing:
+    ```rust
+    // BEFORE (heavy for solver):
+    assert(a == e) by {
+        calc! { (==) a; {} b; {} c; {} d; {} e; }
+    }
+    // AFTER (lighter):
+    assert(a == b);
+    assert(b == c);
+    assert(c == d);
+    assert(d == e);
+    ```
+    Each assert gives Z3 a smaller fact to process. This is especially effective when the proof has multiple `calc!` blocks in the same function.
+20. **Replace `by (compute)` with plain assertions for simple arithmetic:** `by (compute)` asks Verus to evaluate the expression concretely, which can be expensive for expressions involving variables. For simple arithmetic like `u2 == (2 * nm1) as int` or `8 * nm1 == 8 * nm2 + 8`, Z3 can infer these directly — just drop the `by (compute)`:
+    ```rust
+    // BEFORE (can cause rlimit):
+    assert(u2 == (2 * nm1) as int) by (compute);
+    // AFTER (Z3 handles directly):
+    assert(u2 == (2 * nm1) as int);
+    ```
+    Reserve `by (compute)` for truly concrete evaluations where all operands are literal constants.
 
 ## Example Invocation
 

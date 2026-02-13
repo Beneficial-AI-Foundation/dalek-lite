@@ -319,46 +319,35 @@ impl Hash for MontgomeryPoint {
             assert(initial_state == *old(state));
 
             // Step 1: `canonical_bytes` agrees with `spec_fe51_as_bytes(&fe)`.
-            assert(u8_32_as_nat(&canonical_bytes) == u64_5_as_nat(fe.limbs) % p()) by {
-                calc! {
-                    (==)
-                    u8_32_as_nat(&canonical_bytes); {}
-                    fe51_as_canonical_nat(&fe); {}
-                    u64_5_as_field_canonical(fe.limbs); {}
-                    field_canonical(u64_5_as_nat(fe.limbs)); {}
-                    u64_5_as_nat(fe.limbs) % p();
-                }
-            }
+            assert(u8_32_as_nat(&canonical_bytes) == fe51_as_canonical_nat(&fe));
+            assert(fe51_as_canonical_nat(&fe) == u64_5_as_field_canonical(fe.limbs));
+            assert(u64_5_as_field_canonical(fe.limbs) == field_canonical(u64_5_as_nat(fe.limbs)));
+            assert(field_canonical(u64_5_as_nat(fe.limbs)) == u64_5_as_nat(fe.limbs) % p());
             lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
 
             // Step 2: `spec_fe51_from_bytes` has the same canonical value as `fe`.
             let fe_spec = spec_fe51_from_bytes(&self.0);
-            assert(u64_5_as_nat(fe_spec.limbs) == u8_32_as_nat(&self.0) % pow2(255)) by {
-                // Unfold `spec_fe51_from_bytes` and connect its limbs back to `u8_32_as_nat % 2^255`.
-                lemma_from_u8_32_as_nat(&self.0);
-                lemma_as_nat_32_mod_255(&self.0);
-            }
-            assert(fe51_as_canonical_nat(&fe) == field_element_from_bytes(&self.0)) by {
-                assert(u64_5_as_nat(fe.limbs) == u8_32_as_nat(&self.0) % pow2(255));
-                calc! {
-                    (==)
-                    fe51_as_canonical_nat(&fe); {}
-                    u64_5_as_field_canonical(fe.limbs); {}
-                    field_canonical(u64_5_as_nat(fe.limbs)); {}
-                    field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
-                    field_element_from_bytes(&self.0);
-                }
-            }
-            assert(fe51_as_canonical_nat(&fe_spec) == field_element_from_bytes(&self.0)) by {
-                calc! {
-                    (==)
-                    fe51_as_canonical_nat(&fe_spec); {}
-                    u64_5_as_field_canonical(fe_spec.limbs); {}
-                    field_canonical(u64_5_as_nat(fe_spec.limbs)); {}
-                    field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
-                    field_element_from_bytes(&self.0);
-                }
-            }
+            lemma_from_u8_32_as_nat(&self.0);
+            lemma_as_nat_32_mod_255(&self.0);
+            assert(u64_5_as_nat(fe_spec.limbs) == u8_32_as_nat(&self.0) % pow2(255));
+            assert(u64_5_as_nat(fe.limbs) == u8_32_as_nat(&self.0) % pow2(255));
+
+            assert(fe51_as_canonical_nat(&fe) == field_canonical(
+                u8_32_as_nat(&self.0) % pow2(255),
+            ));
+            assert(field_canonical(u8_32_as_nat(&self.0) % pow2(255)) == field_element_from_bytes(
+                &self.0,
+            ));
+            assert(fe51_as_canonical_nat(&fe) == field_element_from_bytes(&self.0));
+
+            assert(fe51_as_canonical_nat(&fe_spec) == u64_5_as_field_canonical(fe_spec.limbs));
+            assert(u64_5_as_field_canonical(fe_spec.limbs) == field_canonical(
+                u64_5_as_nat(fe_spec.limbs),
+            ));
+            assert(field_canonical(u64_5_as_nat(fe_spec.limbs)) == field_canonical(
+                u8_32_as_nat(&self.0) % pow2(255),
+            ));
+            assert(fe51_as_canonical_nat(&fe_spec) == field_element_from_bytes(&self.0));
             assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec));
             lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
 
@@ -1186,18 +1175,12 @@ impl MontgomeryPoint {
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
             is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
                 ==> result.is_some(),
-            // Functional correctness up to cofactor:
-            //   [8]·to_edwards(u, sign) == [8]·spec(u, sign)
-            // Equality is modulo cofactor because the exec sign-bit normalisation
-            // can pick a different low-order representative than the spec when x = 0.
+            // Functional correctness (exact equality):
+            //   to_edwards(u, sign) == spec(u, normalize(sign))
             is_valid_montgomery_point(*self) && !is_equal_to_minus_one(spec_montgomery(*self))
-                ==> edwards_scalar_mul(edwards_point_as_affine(result.unwrap()), 8)
-                == edwards_scalar_mul(
-                spec_montgomery_to_edwards_affine_with_sign(
-                    spec_montgomery(*self),
-                    spec_normalize_sign(sign),
-                ),
-                8,
+                ==> edwards_point_as_affine(result.unwrap()) == spec_montgomery_to_edwards_affine(
+                spec_montgomery(*self),
+                spec_normalize_sign(sign),
             ),
     {
         // To decompress the Montgomery u coordinate to an
@@ -1519,8 +1502,8 @@ impl MontgomeryPoint {
                 }
                 assert(result.is_some());
 
-                // Cofactor-cleared functional correctness.
-                // Delegates spec-level reasoning to lemma_to_edwards_cofactor_correctness.
+                // Functional correctness (exact equality).
+                // Delegates spec-level reasoning to lemma_to_edwards_correctness.
                 {
                     let point = result.unwrap();
 
@@ -1567,7 +1550,7 @@ impl MontgomeryPoint {
                     }
 
                     // Step 5: All spec-level reasoning in the helper lemma.
-                    lemma_to_edwards_cofactor_correctness(x_exec, y_nat, sign_bit, u_nat);
+                    lemma_to_edwards_correctness(x_exec, y_nat, sign_bit, u_nat);
                 }
             }
         }

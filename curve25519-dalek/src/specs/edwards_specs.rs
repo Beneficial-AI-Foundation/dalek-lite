@@ -1044,7 +1044,7 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 //
 // Spec functions (in pipeline order):
 //   1. spec_nonspec_map_to_curve           -- top-level: bytes -> [8]P
-//   2. spec_montgomery_to_edwards_affine   -- Montgomery u -> Edwards (x,y)
+//   2. spec_montgomery_to_edwards_affine    -- Montgomery u + sign -> Edwards (x,y)
 //   3. spec_edwards_decompress_from_y      -- Edwards y + sign -> (x,y)
 //
 // Helper functions (defined elsewhere):
@@ -1077,7 +1077,7 @@ pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     // Elligator2 encoding: field element -> Montgomery u-coordinate
     let u = spec_elligator_encode(fe_nat);
     // Convert Montgomery to Edwards with sign bit selecting x
-    let P = spec_montgomery_to_edwards_affine_with_sign(u, sign_bit);
+    let P = spec_montgomery_to_edwards_affine(u, sign_bit);
     // Cofactor clearing: multiply by 8 to ensure prime-order subgroup
     edwards_scalar_mul(P, 8)
 }
@@ -1097,14 +1097,24 @@ pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
 /// 1. Birational map: y = (u-1)/(u+1)
 /// 2. Decompression: recover x from y with given sign_bit
 ///
+/// When x = 0 (i.e. y² = 1) the sign is forced to 0, matching the exec code
+/// which clears the sign bit in that edge case. This ensures correspondence
+/// between the executable function and the specification.
+///
 /// Returns identity (0, 1) on failure (u = -1 or invalid y).
-pub open spec fn spec_montgomery_to_edwards_affine_with_sign(u: nat, sign_bit: u8) -> (nat, nat) {
+pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat) {
     if u == field_sub(0, 1) {
         // u = -1: birational map has zero denominator
         math_edwards_identity()
     } else {
         let y = edwards_y_from_montgomery_u(u);
-        match spec_edwards_decompress_from_y_and_sign(y, sign_bit) {
+        // When y² = 1 we have x = 0, so sign must be 0 for a valid encoding.
+        let effective_sign = if field_square(y) == 1 {
+            0u8
+        } else {
+            sign_bit
+        };
+        match spec_edwards_decompress_from_y_and_sign(y, effective_sign) {
             Some(P) => P,
             None => math_edwards_identity(),
         }

@@ -2125,19 +2125,13 @@ pub proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
     lemma_small_mod(x, p());
 }
 
-/// Helper lemma: cofactor-cleared functional correctness for Montgomery→Edwards conversion.
+/// Helper lemma: exact functional correctness for Montgomery→Edwards conversion.
 ///
 /// Given an exec-side decompressed point (x_exec, y_nat) and the original Montgomery u,
-/// proves [8]·(x_exec, y_nat) == [8]·spec_result where spec_result comes from
-/// `spec_montgomery_to_edwards_affine_with_sign`.
+/// proves (x_exec, y_nat) == spec_montgomery_to_edwards_affine(u_nat, sign_bit).
 ///
 /// This is extracted from `to_edwards` to reduce solver pressure on that function.
-pub proof fn lemma_to_edwards_cofactor_correctness(
-    x_exec: nat,
-    y_nat: nat,
-    sign_bit: u8,
-    u_nat: nat,
-)
+pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8, u_nat: nat)
     requires
         math_on_edwards_curve(x_exec, y_nat),
         x_exec < p(),
@@ -2152,41 +2146,23 @@ pub proof fn lemma_to_edwards_cofactor_correctness(
         u_nat < p(),
         u_nat != field_sub(0, 1),
     ensures
-        edwards_scalar_mul((x_exec, y_nat), 8) == edwards_scalar_mul(
-            spec_montgomery_to_edwards_affine_with_sign(u_nat, sign_bit),
-            8,
-        ),
+        (x_exec, y_nat) == spec_montgomery_to_edwards_affine(u_nat, sign_bit),
 {
-    // The spec function unfolds to: since u_nat != -1, compute y = birational(u),
-    // then match decompress(y, sign_bit).
+    // The spec unfolds to: since u_nat != -1, compute y = birational(u),
+    // then effective_sign = if field_square(y)==1 { 0 } else { sign_bit },
+    // then decompress(y, effective_sign).
     // We have y_nat == edwards_y_from_montgomery_u(u_nat) by precondition.
     if field_square(y_nat) == 1 {
         // === EDGE CASE: y² = 1, so x must be 0 ===
         lemma_y_sq_one_implies_x_zero(x_exec, y_nat);
         assert(x_exec == 0);
-
-        // [8]·(0, y_nat) = identity
-        lemma_cofactor_clears_low_order_y_sq_1(y_nat);
-
-        // [8]·identity = identity (identity = (0,1) and 1² = 1)
-        assert(field_square(1nat) == 1) by {
-            p_gt_2();
-            lemma_small_mod(1nat, p());
-        };
-        lemma_cofactor_clears_low_order_y_sq_1(1nat);
-        assert(edwards_scalar_mul(math_edwards_identity(), 8) == math_edwards_identity());
-
-        if sign_bit == 0u8 {
-            // decompress(y_nat, 0) → Some((0, y_nat))
-            axiom_decompress_spec_matches_point(0nat, y_nat, 0u8);
-        } else {
-            // sign_bit == 1, y²=1: decompress returns None → spec returns identity
-            // [8]·identity = identity = [8]·(0, y_nat) ✓
-        }
+        // Spec forces effective_sign = 0. Exec also has x_exec%2 == 0.
+        // decompress(y_nat, 0) → Some((0, y_nat))
+        axiom_decompress_spec_matches_point(0nat, y_nat, 0u8);
     } else {
         // === COMMON CASE: y² ≠ 1, sign preserved ===
+        // Spec uses effective_sign = sign_bit.
         axiom_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
-        // Both sides equal: edwards_scalar_mul((x_exec, y_nat), 8)
     }
 }
 

@@ -15,13 +15,13 @@ proof {
 
 If Verus rejects direct equality on arrays in your context (e.g., `[u8; 32] == [u8; 32]`), use one of:
 
-- Elementwise equality:
+- Derive **elementwise equality** from a fact you already have
 
-```rust
-assert forall|i: int| 0 <= i < 32 implies a[i] == b[i] by {};
-```
 
-- A constant-time byte equality helper already present in the codebase (`ct_eq_*`), then branch on
+- If you have a **sequence equality** fact (e.g., `seq_from32(&a) == seq_from32(&b)`), use the repo’s helper lemma
+  to lift it to array equality first (e.g., `lemma_seq_eq_implies_array_eq(&a, &b)`), then apply the snippet above.
+
+- Use a constant-time byte equality helper already present in the codebase (`ct_eq_*`), then branch on
   `choice_into(...)` and use `choice_is_true(...)` in the proof.
 
 ## Avoid redundant `ct_eq_*` calls

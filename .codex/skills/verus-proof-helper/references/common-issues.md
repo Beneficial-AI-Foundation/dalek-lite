@@ -11,6 +11,19 @@ proof {
 }
 ```
 
+## Array equality not supported / brittle
+
+If Verus rejects direct equality on arrays in your context (e.g., `[u8; 32] == [u8; 32]`), use one of:
+
+- Elementwise equality:
+
+```rust
+assert forall|i: int| 0 <= i < 32 implies a[i] == b[i] by {};
+```
+
+- A constant-time byte equality helper already present in the codebase (`ct_eq_*`), then branch on
+  `choice_into(...)` and use `choice_is_true(...)` in the proof.
+
 ## “Cannot call function with mode exec”
 
 Call exec functions outside `proof` blocks, bind the result, and reason about the value in `proof`.
@@ -104,6 +117,13 @@ Common mitigations:
 Sometimes the vstd spec for `expect`/`unwrap` forces a precondition like `opt.is_some()`, which
 turns into an `assume(...)` in application code.
 
-Workaround: avoid calling `expect` in verified code; do an explicit `match` and preserve exec
-behavior (panic) with `#[cfg(not(verus_keep_ghost))]`, while using a well-formed placeholder value
-under `#[cfg(verus_keep_ghost)]`. Keep the original code in a `/* ORIGINAL CODE: ... */` comment.
+Preferred workaround: keep the exec behavior unchanged and *prove* the precondition.
+
+1) Strengthen or reuse a callee contract/lemma so success is guaranteed under your preconditions.
+2) Add a small `proof { assert(opt.is_some()); }` block.
+3) Keep the original `opt.expect("...")` / `opt.unwrap()` in exec code.
+
+Fallback (when the success fact is genuinely out-of-scope): avoid calling `expect` in verified code;
+do an explicit `match`, preserving exec behavior (panic) with `#[cfg(not(verus_keep_ghost))]`, while
+using a well-formed placeholder value under `#[cfg(verus_keep_ghost)]`. Keep the original code in a
+`/* ORIGINAL CODE: ... */` comment.

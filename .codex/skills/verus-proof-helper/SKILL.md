@@ -18,6 +18,8 @@ description: Help complete and debug Verus proofs in verified-cryptography Rust 
 
 - Cache exec-only calls (e.g., `invert()`) into locals; don’t call exec fns inside `proof {}` blocks (`references/patterns.md`).
 - Preserve executable code as much as possible; when refactoring is needed for verification, keep it targeted and record the original snippet with `/* ORIGINAL CODE: ... */` (or `// ORIGINAL CODE:`) near the change.
+- When specs give only “representation-level” facts (e.g., limb equality), explicitly lift them to semantic equality (field value / struct equality) (`references/patterns.md`).
+- If direct equality is awkward/unsupported, compare canonical encodings (bytes/limbs) using existing helper APIs and reason about their specs (`references/patterns.md`).
 - If you hit rarer tool limitations (e.g., `by (compute)` stability), see `references/common-issues.md`.
 - If the repo uses `verusfmt`, run it on touched files before final verification/commit (`references/workflow.md`).
 

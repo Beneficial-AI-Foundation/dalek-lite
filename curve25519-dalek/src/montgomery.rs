@@ -90,9 +90,13 @@ use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)]
+use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::constants_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::from_bytes_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 #[allow(unused_imports)]
@@ -105,6 +109,8 @@ use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::power::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
+#[allow(unused_imports)]
+use vstd::calc;
 #[allow(unused_imports)]
 use vstd::prelude::*;
 
@@ -132,9 +138,24 @@ verus! {
 
 /// Holds the \\(u\\)-coordinate of a point on the Montgomery form of
 /// Curve25519 or its twist.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MontgomeryPoint(pub [u8; 32]);
+
+impl Default for MontgomeryPoint {
+    fn default() -> (result: MontgomeryPoint)
+        ensures
+            forall|i: int| 0 <= i < 32 ==> #[trigger] result.0[i] == 0u8,
+            spec_montgomery(result) == 0,
+    {
+        let result = MontgomeryPoint([0u8;32]);
+        proof {
+            assert forall|i: int| 0 <= i < 32 implies #[trigger] result.0[i] == 0u8 by {}
+            lemma_zero_limbs_is_zero(result);
+        }
+        result
+    }
+}
 
 /// Equality of `MontgomeryPoint`s is defined mod p.
 impl ConstantTimeEq for MontgomeryPoint {
@@ -151,9 +172,70 @@ impl ConstantTimeEq for MontgomeryPoint {
         let result = self_fe.ct_eq(&other_fe);
 
         proof {
-            // The postcondition follows from FieldElement::ct_eq's specification
-            assume(choice_is_true(result) == (field_element_from_bytes(&self.0)
-                == field_element_from_bytes(&other.0)));
+            // FieldElement::ct_eq compares canonical encodings, so it agrees with equality
+            // of the corresponding field elements (mod p).
+            let bytes_eq = spec_fe51_to_bytes(&self_fe) == spec_fe51_to_bytes(&other_fe);
+            let field_eq = field_element_from_bytes(&self.0) == field_element_from_bytes(&other.0);
+
+            assert(choice_is_true(result) == bytes_eq);
+
+            // Connect the canonical value of `FieldElement::from_bytes` with the spec value of
+            // `field_element_from_bytes`.
+            assert(fe51_as_canonical_nat(&self_fe) == field_element_from_bytes(&self.0)) by {
+                assert(u64_5_as_nat(self_fe.limbs) == u8_32_as_nat(&self.0) % pow2(255));
+                calc! {
+                    (==)
+                    fe51_as_canonical_nat(&self_fe); {}
+                    u64_5_as_field_canonical(self_fe.limbs); {}
+                    field_canonical(u64_5_as_nat(self_fe.limbs)); {}
+                    field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
+                    field_element_from_bytes(&self.0);
+                }
+            }
+            assert(fe51_as_canonical_nat(&other_fe) == field_element_from_bytes(&other.0)) by {
+                assert(u64_5_as_nat(other_fe.limbs) == u8_32_as_nat(&other.0) % pow2(255));
+                calc! {
+                    (==)
+                    fe51_as_canonical_nat(&other_fe); {}
+                    u64_5_as_field_canonical(other_fe.limbs); {}
+                    field_canonical(u64_5_as_nat(other_fe.limbs)); {}
+                    field_canonical(u8_32_as_nat(&other.0) % pow2(255)); {}
+                    field_element_from_bytes(&other.0);
+                }
+            }
+
+            // Canonical bytes are injective for canonical field values.
+            assert(bytes_eq ==> field_eq) by {
+                if bytes_eq {
+                    lemma_fe51_to_bytes_equal_implies_field_element_equal(&self_fe, &other_fe);
+                    assert(fe51_as_canonical_nat(&self_fe) == fe51_as_canonical_nat(&other_fe));
+                    calc! {
+                        (==)
+                        field_element_from_bytes(&self.0); {}
+                        fe51_as_canonical_nat(&self_fe); {}
+                        fe51_as_canonical_nat(&other_fe); {}
+                        field_element_from_bytes(&other.0);
+                    }
+                    assert(field_eq);
+                }
+            }
+            assert(field_eq ==> bytes_eq) by {
+                if field_eq {
+                    calc! {
+                        (==)
+                        fe51_as_canonical_nat(&self_fe); {}
+                        field_element_from_bytes(&self.0); {}
+                        field_element_from_bytes(&other.0); {}
+                        fe51_as_canonical_nat(&other_fe);
+                    }
+                    assert(fe51_as_canonical_nat(&self_fe) == fe51_as_canonical_nat(&other_fe));
+                    lemma_field_element_equal_implies_fe51_to_bytes_equal(&self_fe, &other_fe);
+                    assert(bytes_eq);
+                }
+            }
+
+            assert(bytes_eq == field_eq);
+            assert(choice_is_true(result) == field_eq);
         }
 
         result
@@ -207,17 +289,17 @@ impl Eq for MontgomeryPoint {
 impl Hash for MontgomeryPoint {
     fn hash<H: Hasher>(&self, state: &mut H)
         ensures/*  VERIFICATION NOTE:
-             (1) The actual postcondition is: *state == spec_state_after_hash_montgomery(initial_state, self)
-                 where initial_state is the value of *state before this call.
-                 However, Verus doesn't support old() on &mut types in ensures clauses.
-                 The property is for now established via assumes in the function body (lines 192-194).
-            (2) The spec is completed by axiom_hash_is_canonical: equal field elements hash identically. */
+             (1) The postcondition is expressed using the abstract `spec_state_after_hash*` model for
+                 `core::hash::Hash::hash` on fixed-size arrays (see `core_assumes.rs`).
+            (2) `spec_state_after_hash_montgomery` hashes the canonical encoding
+                 `spec_fe51_to_bytes(spec_fe51_from_bytes(point.0))`. */
 
-            true,
+            *state == spec_state_after_hash_montgomery(*old(state), self),
     {
         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical
         // 32-byte encoding
-        let canonical_bytes = FieldElement::from_bytes(&self.0).as_bytes();
+        let fe = FieldElement::from_bytes(&self.0);
+        let canonical_bytes = fe.as_bytes();
 
         /* GHOST: track the initial state for reasoning about state transformation */
         let ghost initial_state = *state;
@@ -226,9 +308,70 @@ impl Hash for MontgomeryPoint {
         canonical_bytes.hash(state);
 
         proof {
-            assume(canonical_bytes@ == spec_fe51_to_bytes(&spec_fe51_from_bytes(&self.0)));
-            assume(*state == spec_state_after_hash(initial_state, &canonical_bytes));
-            assume(*state == spec_state_after_hash_montgomery(initial_state, self));
+            // Relate the spec-side canonical bytes to the exec-side `canonical_bytes`.
+            let canonical_seq = spec_fe51_to_bytes(&spec_fe51_from_bytes(&self.0));
+            let canonical_arr = seq_to_array_32(canonical_seq);
+
+            assert(initial_state == *old(state));
+
+            // Step 1: `canonical_bytes` agrees with `spec_fe51_to_bytes(&fe)`.
+            assert(u8_32_as_nat(&canonical_bytes) == u64_5_as_nat(fe.limbs) % p()) by {
+                calc! {
+                    (==)
+                    u8_32_as_nat(&canonical_bytes); {}
+                    fe51_as_canonical_nat(&fe); {}
+                    u64_5_as_field_canonical(fe.limbs); {}
+                    field_canonical(u64_5_as_nat(fe.limbs)); {}
+                    u64_5_as_nat(fe.limbs) % p();
+                }
+            }
+            lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
+
+            // Step 2: `spec_fe51_from_bytes` has the same canonical value as `fe`.
+            let fe_spec = spec_fe51_from_bytes(&self.0);
+            assert(u64_5_as_nat(fe_spec.limbs) == u8_32_as_nat(&self.0) % pow2(255)) by {
+                // Unfold `spec_fe51_from_bytes` and connect its limbs back to `u8_32_as_nat % 2^255`.
+                lemma_from_u8_32_as_nat(&self.0);
+                lemma_as_nat_32_mod_255(&self.0);
+            }
+            assert(fe51_as_canonical_nat(&fe) == field_element_from_bytes(&self.0)) by {
+                assert(u64_5_as_nat(fe.limbs) == u8_32_as_nat(&self.0) % pow2(255));
+                calc! {
+                    (==)
+                    fe51_as_canonical_nat(&fe); {}
+                    u64_5_as_field_canonical(fe.limbs); {}
+                    field_canonical(u64_5_as_nat(fe.limbs)); {}
+                    field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
+                    field_element_from_bytes(&self.0);
+                }
+            }
+            assert(fe51_as_canonical_nat(&fe_spec) == field_element_from_bytes(&self.0)) by {
+                calc! {
+                    (==)
+                    fe51_as_canonical_nat(&fe_spec); {}
+                    u64_5_as_field_canonical(fe_spec.limbs); {}
+                    field_canonical(u64_5_as_nat(fe_spec.limbs)); {}
+                    field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
+                    field_element_from_bytes(&self.0);
+                }
+            }
+            assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec));
+            lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
+
+            // Step 3: Therefore, the canonical sequence equals the exec-view sequence.
+            assert(spec_fe51_to_bytes(&fe) == canonical_seq);
+            assert(seq_from32(&canonical_bytes) == canonical_seq);
+
+            // Step 4: Convert the spec canonical sequence back to an array and match arrays.
+            assert(canonical_seq.len() == 32);
+            assert(canonical_seq =~= seq_from32(&canonical_arr));
+            assert(seq_from32(&canonical_bytes) == seq_from32(&canonical_arr));
+            lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+
+            // Step 5: Use the abstract hash model.
+            assert(*state == spec_state_after_hash(initial_state, &canonical_bytes));
+            assert(*state == spec_state_after_hash(initial_state, &canonical_arr));
+            assert(*state == spec_state_after_hash_montgomery(initial_state, self));
         }
     }
 }
@@ -243,8 +386,8 @@ impl Identity for MontgomeryPoint {
     {
         let result = MontgomeryPoint([0u8;32]);
         proof {
-            // The byte array [0, 0, ..., 0] represents the field element 0
-            assume(field_element_from_bytes(&result.0) == 0);
+            assert forall|i: int| 0 <= i < 32 implies #[trigger] result.0[i] == 0u8 by {}
+            lemma_zero_limbs_is_zero(result);
         }
         result
     }
@@ -1676,22 +1819,24 @@ impl ConditionallySelectable for ProjectivePoint {
         };
 
         proof {
-            // What we can derive from FieldElement::conditional_select:
-            assert(!choice_is_true(choice) ==> (forall|i: int|
-                0 <= i < 5 ==> result.U.limbs[i] == a.U.limbs[i]));
-            assert(choice_is_true(choice) ==> (forall|i: int|
-                0 <= i < 5 ==> result.U.limbs[i] == b.U.limbs[i]));
+            // FieldElement::conditional_select postconditions are stated in terms of limb equality.
+            assert(!choice_is_true(choice) ==> result.U.limbs == a.U.limbs);
+            assert(choice_is_true(choice) ==> result.U.limbs == b.U.limbs);
+            assert(!choice_is_true(choice) ==> result.W.limbs == a.W.limbs);
+            assert(choice_is_true(choice) ==> result.W.limbs == b.W.limbs);
 
-            // For result.W = FieldElement::conditional_select(&a.W, &b.W, choice):
-            assert(!choice_is_true(choice) ==> (forall|i: int|
-                0 <= i < 5 ==> result.W.limbs[i] == a.W.limbs[i]));
-            assert(choice_is_true(choice) ==> (forall|i: int|
-                0 <= i < 5 ==> result.W.limbs[i] == b.W.limbs[i]));
-
-            // We need to lift limbs equality to struct equality:
-            // (forall i. fe1.limbs[i] == fe2.limbs[i]) ==> fe1 == fe2
-            assume(!choice_is_true(choice) ==> (result.U == a.U && result.W == a.W));
-            assume(choice_is_true(choice) ==> (result.U == b.U && result.W == b.W));
+            if !choice_is_true(choice) {
+                assert(result.U.limbs == a.U.limbs);
+                assert(result.W.limbs == a.W.limbs);
+                assert(result.U == a.U);
+                assert(result.W == a.W);
+            }
+            if choice_is_true(choice) {
+                assert(result.U.limbs == b.U.limbs);
+                assert(result.W.limbs == b.W.limbs);
+                assert(result.U == b.U);
+                assert(result.W == b.W);
+            }
         }
 
         result

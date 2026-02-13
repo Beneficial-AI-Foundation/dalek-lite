@@ -214,16 +214,19 @@ pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg
     -a
 }
 
-// Assume specification for array hash implementation
-// This is used when hashing fixed-size arrays like [u8; 32] in Hash implementations
-pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
-    _0: &[T; N],
-    _1: &mut H,
-) where H: core::hash::Hasher, T: core::hash::Hash
-;
-
 // Spec function: models the state of a hasher after hashing bytes
 pub spec fn spec_state_after_hash<H, T, const N: usize>(initial_state: H, bytes: &[T; N]) -> H;
+
+// Assume specification for array hash implementation
+// This is used when hashing fixed-size arrays like [u8; 32] in Hash implementations.
+// The specification models hashing as a pure state transition on the hasher state.
+pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
+    bytes: &[T; N],
+    state: &mut H,
+) where H: core::hash::Hasher, T: core::hash::Hash
+    ensures
+        *state == spec_state_after_hash(*old(state), bytes)
+;
 
 /// Spec function: the hash state after hashing a MontgomeryPoint
 /// This is defined as the hash state of its canonical byte representation

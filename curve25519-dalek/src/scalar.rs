@@ -2700,8 +2700,6 @@ impl Scalar {
     ///
     #[cfg(any(feature = "alloc", feature = "precomputed-tables"))]
     #[verifier::loop_isolation(false)]
-    #[verifier::rlimit(80)]
-    #[verifier::spinoff_prover]
     pub(crate) fn as_radix_2w(&self, w: usize) -> (result: [i8; 64])
         requires
             4 <= w <= 8,
@@ -2867,10 +2865,23 @@ impl Scalar {
                 (w < 8 && i == digits_count) ==> carry == 0,
         {
             proof {
+                assert(w != 4);
+                assert(5 <= w) by (nonlinear_arith)
+                    requires
+                        4 <= w,
+                        w != 4,
+                ;
                 // i*w < digits_count*w (overflow check on the exec multiplication i * w)
                 assert(i * w < digits_count * w) by {
                     lemma_mul_strict_inequality(i as int, digits_count as int, w as int);
                 }
+                // Strengthen bound explicitly so `bit_offset <= 255` is available later.
+                assert((i * w) as int <= 255) by (nonlinear_arith)
+                    requires
+                        i * w < digits_count * w,
+                        digits_count * w <= 256 + w - 1,
+                        5 <= w,
+                ;
             }
             let bit_offset = i * w;
             let u64_idx = bit_offset / 64;
@@ -2879,6 +2890,10 @@ impl Scalar {
             proof {
                 // bit_offset + w == (i+1)*w <= digits_count*w <= 256+w-1 <= 263
                 // so bit_offset <= 255, hence u64_idx = bit_offset/64 <= 255/64 = 3
+                assert(bit_offset <= 255) by {
+                    assert(bit_offset == i * w);
+                    assert((i * w) as int <= 255);
+                }
                 assert(bit_offset <= 255 && u64_idx <= 3) by {
                     lemma_mul_is_distributive_add(w as int, i as int, 1);
                     lemma_mul_basics(w as int);

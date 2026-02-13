@@ -1839,8 +1839,6 @@ proof fn axiom_d_plus_one_nonzero()
     ensures
         field_add(fe51_as_canonical_nat(&EDWARDS_D), 1) % p() != 0,
 {
-    // The concrete computation of d from EDWARDS_D limbs is too large for
-    // the solver. This remains an axiom about the specific Ed25519 constant.
     admit();
 }
 

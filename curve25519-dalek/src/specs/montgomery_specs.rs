@@ -109,20 +109,6 @@ pub open spec fn canonical_montgomery_lift(u: nat) -> MontgomeryAffine
     MontgomeryAffine::Finite { u: u % p(), v }
 }
 
-/// Total (recommendation-free) wrapper around `canonical_montgomery_lift`.
-///
-/// This is useful in contexts (e.g. trait postconditions) where we cannot attach
-/// an explicit `requires` clause to satisfy `canonical_montgomery_lift`'s
-/// recommendation. When `u` is a valid u-coordinate, it returns the canonical
-/// lift; otherwise it returns an arbitrary affine point.
-pub open spec fn canonical_montgomery_lift_total(u: nat) -> MontgomeryAffine {
-    if is_valid_u_coordinate(u) {
-        canonical_montgomery_lift(u)
-    } else {
-        arbitrary()
-    }
-}
-
 /// Check if a MontgomeryPoint's u-coordinate corresponds to a valid point on the Montgomery curve.
 ///
 /// A MontgomeryPoint is valid if its u-coordinate allows a canonical Montgomery lift,

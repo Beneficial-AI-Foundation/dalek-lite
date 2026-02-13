@@ -81,9 +81,6 @@ use crate::specs::montgomery_specs::*;
 use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
-// Explicit import to disambiguate from core_specs::bits_be_as_nat
-#[cfg(verus_keep_ghost)]
-use crate::specs::scalar_specs::bits_be_as_nat;
 
 #[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
@@ -2950,8 +2947,9 @@ impl Mul<&Scalar> for &MontgomeryPoint {
 
             // Interpret the big-endian bits as a nat.
             lemma_bits_be_as_nat_eq_bits_from_index(&bits_le, bits_be_slice, 255);
-            let n = bits_be_as_nat(bits_be_slice, bits_be_slice.len() as int);
-            assert(n == bits_be_as_nat(bits_be_slice, 255));
+            let n = bits_be_as_nat(bits_be_slice, 255);
+            assert(n == bits_from_index_to_nat(&bits_le, (255 - 255) as nat, 255));
+            assert((255 - 255) as nat == 0) by (compute);
             assert(n == bits_from_index_to_nat(&bits_le, 0, 255));
 
             // Since the MSB is 0, the 255-bit view equals the full 256-bit value.
@@ -2969,6 +2967,7 @@ impl Mul<&Scalar> for &MontgomeryPoint {
             ));
             assert(bits_as_nat(&bits_le) == bits_from_index_to_nat(&bits_le, 0, 256));
             assert(bits_as_nat(&bits_le) == bits_from_index_to_nat(&bits_le, 0, 255));
+            assert(n == bits_as_nat(&bits_le));
 
             // Conclude the scalar value matches the bits interpreted by mul_bits_be.
             assert(n == scalar_as_nat(scalar)) by {

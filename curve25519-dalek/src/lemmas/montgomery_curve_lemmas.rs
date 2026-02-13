@@ -977,12 +977,6 @@ pub proof fn axiom_edwards_to_montgomery_preserves_validity(x: nat, y: nat)
 }
 
 /// Axiom: Elligator2 always outputs a valid Montgomery u-coordinate (on the curve, not the twist).
-///
-/// This is the key property that justifies the `expect(...)` in Dalek's
-/// `nonspec_map_to_curve*` pipeline.
-///
-/// Note: this is the spec-level statement for `spec_elligator_encode`; it does not depend on
-/// the limb representation.
 pub proof fn axiom_elligator_encode_outputs_valid_u(r: nat)
     ensures
         is_valid_u_coordinate(spec_elligator_encode(r)),

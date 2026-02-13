@@ -153,7 +153,9 @@ impl Default for MontgomeryPoint {
         let result = MontgomeryPoint([0u8;32]);
         proof {
             assert forall|i: int| 0 <= i < 32 implies #[trigger] result.0[i] == 0u8 by {}
-            lemma_zero_limbs_is_zero(result);
+            assert(spec_montgomery(result) == 0) by {
+                lemma_zero_limbs_is_zero(result);
+            }
         }
         result
     }
@@ -323,7 +325,9 @@ impl Hash for MontgomeryPoint {
             assert(fe51_as_canonical_nat(&fe) == u64_5_as_field_canonical(fe.limbs));
             assert(u64_5_as_field_canonical(fe.limbs) == field_canonical(u64_5_as_nat(fe.limbs)));
             assert(field_canonical(u64_5_as_nat(fe.limbs)) == u64_5_as_nat(fe.limbs) % p());
-            lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
+            assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe)) by {
+                lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
+            }
 
             // Step 2: `spec_fe51_from_bytes` has the same canonical value as `fe`.
             let fe_spec = spec_fe51_from_bytes(&self.0);
@@ -349,7 +353,9 @@ impl Hash for MontgomeryPoint {
             ));
             assert(fe51_as_canonical_nat(&fe_spec) == field_element_from_bytes(&self.0));
             assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec));
-            lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
+            assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec)) by {
+                lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
+            }
 
             // Step 3: Therefore, the canonical sequence equals the exec-view sequence.
             assert(spec_fe51_as_bytes(&fe) == canonical_seq);
@@ -359,7 +365,9 @@ impl Hash for MontgomeryPoint {
             assert(canonical_seq.len() == 32);
             assert(canonical_seq =~= seq_from32(&canonical_arr));
             assert(seq_from32(&canonical_bytes) == seq_from32(&canonical_arr));
-            lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+            assert(canonical_bytes == canonical_arr) by {
+                lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+            }
 
             // Step 5: Use the abstract hash model.
             assert(*state == spec_state_after_hash(initial_state, &canonical_bytes));
@@ -380,7 +388,9 @@ impl Identity for MontgomeryPoint {
         let result = MontgomeryPoint([0u8;32]);
         proof {
             assert forall|i: int| 0 <= i < 32 implies #[trigger] result.0[i] == 0u8 by {}
-            lemma_zero_limbs_is_zero(result);
+            assert(spec_montgomery(result) == 0) by {
+                lemma_zero_limbs_is_zero(result);
+            }
         }
         result
     }
@@ -2660,12 +2670,14 @@ impl Mul<&Scalar> for &MontgomeryPoint {
             assert(scalar.bytes[31] <= 127);
 
             let scalar_bytes = &scalar.bytes;
-            lemma_u8_32_as_nat_lt_pow2_255(scalar_bytes);
             assert(bits_as_nat(&bits_le) == u8_32_as_nat(scalar_bytes));
-            assert(bits_as_nat(&bits_le) < pow2(255));
+            assert(bits_as_nat(&bits_le) < pow2(255)) by {
+                lemma_u8_32_as_nat_lt_pow2_255(scalar_bytes);
+            }
 
-            lemma_bits_as_nat_lt_pow2_255_implies_msb_false(&bits_le);
-            assert(!bits_le[255]);
+            assert(!bits_le[255]) by {
+                lemma_bits_as_nat_lt_pow2_255_implies_msb_false(&bits_le);
+            }
 
             assert(bits_be_slice.len() == 255);
             assert(bits_be_slice.len() as int == 255);
@@ -2676,28 +2688,27 @@ impl Mul<&Scalar> for &MontgomeryPoint {
             }
 
             // Interpret the big-endian bits as a nat.
-            lemma_bits_be_as_nat_eq_bits_from_index(&bits_le, bits_be_slice, 255);
             let n = bits_be_as_nat(bits_be_slice, 255);
-            assert(n == bits_from_index_to_nat(&bits_le, (255 - 255) as nat, 255));
-            assert((255 - 255) as nat == 0) by (compute);
-            assert(n == bits_from_index_to_nat(&bits_le, 0, 255));
+            assert(n == bits_from_index_to_nat(&bits_le, 0, 255)) by {
+                lemma_bits_be_as_nat_eq_bits_from_index(&bits_le, bits_be_slice, 255);
+                assert((255 - 255) as nat == 0) by (compute);
+            }
 
             // Since the MSB is 0, the 255-bit view equals the full 256-bit value.
-            lemma_bits_as_nat_eq_bits_from_index(&bits_le);
-            lemma_bits_from_index_to_nat_split_last(&bits_le, 0, 255);
-            assert((if bits_le[255] {
-                1nat
-            } else {
-                0nat
-            }) == 0nat);
-            assert(bits_from_index_to_nat(&bits_le, 0, 256) == bits_from_index_to_nat(
-                &bits_le,
-                0,
-                255,
-            ));
-            assert(bits_as_nat(&bits_le) == bits_from_index_to_nat(&bits_le, 0, 256));
-            assert(bits_as_nat(&bits_le) == bits_from_index_to_nat(&bits_le, 0, 255));
-            assert(n == bits_as_nat(&bits_le));
+            assert(n == bits_as_nat(&bits_le)) by {
+                lemma_bits_as_nat_eq_bits_from_index(&bits_le);
+                lemma_bits_from_index_to_nat_split_last(&bits_le, 0, 255);
+                assert((if bits_le[255] {
+                    1nat
+                } else {
+                    0nat
+                }) == 0nat);
+                assert(bits_from_index_to_nat(&bits_le, 0, 256) == bits_from_index_to_nat(
+                    &bits_le,
+                    0,
+                    255,
+                ));
+            }
 
             // Conclude the scalar value matches the bits interpreted by mul_bits_be.
             assert(n == scalar_as_nat(scalar)) by {

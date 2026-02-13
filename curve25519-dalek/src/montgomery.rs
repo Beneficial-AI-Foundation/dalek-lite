@@ -1274,6 +1274,9 @@ impl MontgomeryPoint {
         }
 
         let u_plus_one_inv = u_plus_one.invert();
+        /* ORIGINAL CODE:
+        let y = &(&u - &one) * &(&u + &one).invert();
+        */
         let y = &u_minus_one * &u_plus_one_inv;
 
         let y_bytes0 = y.as_bytes();
@@ -1299,6 +1302,10 @@ impl MontgomeryPoint {
         let b31 = y_bytes[31];
         let b31_cleared = b31 & 0x7fu8;
         let b31_final = select_u8(&b31, &b31_cleared, y_sq_is_one);
+        /* ORIGINAL CODE:
+        let mut y_bytes = y.as_bytes();
+        y_bytes[31] ^= sign << 7;
+        */
         y_bytes[31] = b31_final;
 
         proof {

@@ -161,6 +161,14 @@ pub proof fn lemma_field_mul_distributes_over_add(a: nat, b: nat, c: nat)
     };
 }
 
+/// Lemma: (a-b)(a+b) = a² - b² in field arithmetic.
+pub proof fn lemma_field_diff_of_squares(a: nat, b: nat)
+    ensures
+        field_mul(field_sub(a, b), field_add(a, b)) == field_sub(field_square(a), field_square(b)),
+{
+    admit();
+}
+
 /// Lemma: (x % p)² = x² (mod p)
 pub proof fn lemma_square_mod_noop(x: nat)
     ensures
@@ -513,6 +521,31 @@ pub proof fn lemma_inv_mul_cancel(a: nat)
     // By mod absorption: (inv(a) * a) % p = ((inv(a) % p) * a) % p = (inv(a) * (a % p)) % p
     lemma_mul_mod_noop_left(a as int, inv_a as int, p as int);
     lemma_mul_mod_noop_right(inv_a as int, a as int, p as int);
+}
+
+// =============================================================================
+// Add/Sub Cancellation Lemmas
+// =============================================================================
+/// Lemma: (a + b) - b = a (mod p)
+pub proof fn lemma_field_sub_add_cancel(a: nat, b: nat)
+    requires
+        a < p(),
+        b < p(),
+    ensures
+        field_sub(field_add(a, b), b) == a,
+{
+    admit();
+}
+
+/// Lemma: (a - b) + b = a (mod p)
+pub proof fn lemma_field_add_sub_cancel(a: nat, b: nat)
+    requires
+        a < p(),
+        b < p(),
+    ensures
+        field_add(field_sub(a, b), b) == a,
+{
+    admit();
 }
 
 // =============================================================================

@@ -1779,4 +1779,101 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     }
 }
 
+/// Axiom: A valid extended Edwards point lies on the affine curve.
+///
+/// If (X, Y, Z, T) is a valid extended Edwards point (Z ≠ 0, projective curve equation
+/// holds, Segre relation X·Y = Z·T), then the affine coordinates (X/Z, Y/Z) satisfy
+/// the Edwards curve equation -x² + y² = 1 + d·x²·y².
+///
+/// This is the converse of `lemma_affine_curve_implies_projective`. The proof would
+/// divide the projective equation (Y²-X²)·Z² = Z⁴ + d·X²·Y² by Z⁴ to recover
+/// the affine equation. Stated as an axiom for now; can be promoted to a proven lemma.
+pub proof fn axiom_valid_extended_point_affine_on_curve(x: nat, y: nat, z: nat, t: nat)
+    requires
+        math_is_valid_extended_edwards_point(x, y, z, t),
+    ensures
+        math_on_edwards_curve(
+            math_field_mul(x, math_field_inv(z)),
+            math_field_mul(y, math_field_inv(z)),
+        ),
+{
+    admit();
+}
+
+/// The affine coordinates extracted from an AffineNielsPoint match the
+/// affine coordinates of the corresponding EdwardsPoint.
+///
+/// This is the AffineNiels analogue of `lemma_projective_niels_affine_equals_edwards_affine`.
+/// Uses field_add_sub_recover_double / field_add_add_recover_double to recover 2x and 2y
+/// from y+x and y-x, then halves by multiplying by inv(2).
+pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
+    niels: crate::backend::serial::curve_models::AffineNielsPoint,
+    point: crate::edwards::EdwardsPoint,
+)
+    requires
+        affine_niels_corresponds_to_edwards(niels, point),
+        is_valid_edwards_point(point),
+    ensures
+        affine_niels_point_as_affine_edwards(niels) == edwards_point_as_affine(point),
+{
+    let x_proj = spec_field_element(&point.X);
+    let y_proj = spec_field_element(&point.Y);
+    let z_proj = spec_field_element(&point.Z);
+
+    let z_inv = math_field_inv(z_proj);
+    let x = math_field_mul(x_proj, z_inv);
+    let y = math_field_mul(y_proj, z_inv);
+
+    let y_plus_x = spec_field_element(&niels.y_plus_x);
+    let y_minus_x = spec_field_element(&niels.y_minus_x);
+
+    assert(y_plus_x == math_field_add(y, x)) by {
+        reveal(affine_niels_corresponds_to_edwards);
+    };
+    assert(y_minus_x == math_field_sub(y, x)) by {
+        reveal(affine_niels_corresponds_to_edwards);
+    };
+
+    let inv2 = math_field_inv(2);
+
+    // Step 1: Recover x from (y+x) - (y-x) = 2x
+    let diff = math_field_sub(y_plus_x, y_minus_x);
+    let x_niels = math_field_mul(diff, inv2);
+    assert(diff == math_field_mul(2, x)) by {
+        lemma_field_add_sub_recover_double(y, x);
+    };
+    assert(x_niels == x % p()) by {
+        lemma_field_halve_double(x);
+    };
+
+    // Step 2: Recover y from (y+x) + (y-x) = 2y
+    let sum = math_field_add(y_plus_x, y_minus_x);
+    let y_niels = math_field_mul(sum, inv2);
+    assert(sum == math_field_mul(2, y)) by {
+        lemma_field_add_add_recover_double(y, x);
+    };
+    assert(y_niels == y % p()) by {
+        lemma_field_halve_double(y);
+    };
+
+    // Step 3: x < p and y < p (field elements), so x%p = x and y%p = y
+    assert(x < p()) by {
+        p_gt_2();
+        lemma_mod_bound(spec_field_element_as_nat(&point.X) as int, p() as int);
+        lemma_mod_bound((x_proj * z_inv) as int, p() as int);
+    };
+    assert(y < p()) by {
+        p_gt_2();
+        lemma_mod_bound(spec_field_element_as_nat(&point.Y) as int, p() as int);
+        lemma_mod_bound((y_proj * z_inv) as int, p() as int);
+    };
+
+    assert(x_niels == x) by {
+        lemma_small_mod(x, p());
+    };
+    assert(y_niels == y) by {
+        lemma_small_mod(y, p());
+    };
+}
+
 } // verus!

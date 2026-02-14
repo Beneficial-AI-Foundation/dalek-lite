@@ -10,6 +10,7 @@
 //! - `step1_lemmas`: Lemmas for step_1 of point decompression (curve equation, validity)
 //! - `decompress_lemmas`: Lemmas for point decompression (sign bit, extended coords)
 //!
+pub mod add_completed_lemmas;
 pub mod constants_lemmas;
 pub mod curve_equation_lemmas;
 pub mod decompress_lemmas;

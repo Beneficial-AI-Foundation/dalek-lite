@@ -309,7 +309,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &MontgomeryPoint {
     }
 
     open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        is_valid_montgomery_point(*self)
+        is_valid_montgomery_point(*self) && rhs.bytes[31] <= 127
     }
 
     open spec fn mul_spec(self, rhs: &Scalar) -> MontgomeryPoint {
@@ -325,7 +325,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for MontgomeryPoint {
     }
 
     open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        is_valid_montgomery_point(self)
+        is_valid_montgomery_point(self) && rhs.bytes[31] <= 127
     }
 
     open spec fn mul_spec(self, rhs: &Scalar) -> MontgomeryPoint {
@@ -341,7 +341,7 @@ impl vstd::std_specs::ops::MulSpecImpl<Scalar> for &MontgomeryPoint {
     }
 
     open spec fn mul_req(self, rhs: Scalar) -> bool {
-        is_valid_montgomery_point(*self)
+        is_valid_montgomery_point(*self) && rhs.bytes[31] <= 127
     }
 
     open spec fn mul_spec(self, rhs: Scalar) -> MontgomeryPoint {
@@ -357,7 +357,7 @@ impl vstd::std_specs::ops::MulSpecImpl<Scalar> for MontgomeryPoint {
     }
 
     open spec fn mul_req(self, rhs: Scalar) -> bool {
-        is_valid_montgomery_point(self)
+        is_valid_montgomery_point(self) && rhs.bytes[31] <= 127
     }
 
     open spec fn mul_spec(self, rhs: Scalar) -> MontgomeryPoint {
@@ -377,7 +377,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for &Scalar {
     }
 
     open spec fn mul_req(self, rhs: &MontgomeryPoint) -> bool {
-        is_valid_montgomery_point(*rhs)
+        self.bytes[31] <= 127 && is_valid_montgomery_point(*rhs)
     }
 
     open spec fn mul_spec(self, rhs: &MontgomeryPoint) -> MontgomeryPoint {
@@ -393,7 +393,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&MontgomeryPoint> for Scalar {
     }
 
     open spec fn mul_req(self, rhs: &MontgomeryPoint) -> bool {
-        is_valid_montgomery_point(*rhs)
+        self.bytes[31] <= 127 && is_valid_montgomery_point(*rhs)
     }
 
     open spec fn mul_spec(self, rhs: &MontgomeryPoint) -> MontgomeryPoint {
@@ -409,7 +409,7 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for &Scalar {
     }
 
     open spec fn mul_req(self, rhs: MontgomeryPoint) -> bool {
-        is_valid_montgomery_point(rhs)
+        self.bytes[31] <= 127 && is_valid_montgomery_point(rhs)
     }
 
     open spec fn mul_spec(self, rhs: MontgomeryPoint) -> MontgomeryPoint {
@@ -425,7 +425,7 @@ impl vstd::std_specs::ops::MulSpecImpl<MontgomeryPoint> for Scalar {
     }
 
     open spec fn mul_req(self, rhs: MontgomeryPoint) -> bool {
-        is_valid_montgomery_point(rhs)
+        self.bytes[31] <= 127 && is_valid_montgomery_point(rhs)
     }
 
     open spec fn mul_spec(self, rhs: MontgomeryPoint) -> MontgomeryPoint {

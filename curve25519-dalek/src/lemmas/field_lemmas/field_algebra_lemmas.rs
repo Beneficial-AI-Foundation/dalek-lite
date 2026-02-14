@@ -170,7 +170,7 @@ pub proof fn lemma_field_add_comm(a: nat, b: nat)
     p_gt_2();
     assert(field_add(a, b) == (a + b) % p);
     assert(field_add(b, a) == (b + a) % p);
-    assert((a + b) as int == (b + a) as int) by (nonlinear_arith);
+    assert((a + b) as int == (b + a) as int);
 }
 
 /// Lemma: (a-b)(a+b) = a² - b² in field arithmetic.
@@ -268,8 +268,7 @@ pub proof fn lemma_field_sub_add_common_right(x: nat, z: nat, y: nat)
         lemma_sub_mod_noop((x + y + p) as int, (z + y) as int, p_i);
     }
 
-    assert((((x + y + p) as int) - (z + y) as int) == ((x + p) as int - z as int))
-        by (nonlinear_arith);
+    assert((((x + y + p) as int) - (z + y) as int) == ((x + p) as int - z as int));
     assert((((x1 + p) as int - z1 as int) % p_i) == (((x + p) as int - z as int) % p_i));
     assert((((x1 + p) - z1) as nat) % p == (((x + p) - z) as nat) % p);
 
@@ -670,7 +669,7 @@ pub proof fn lemma_field_sub_add_cancel(a: nat, b: nat)
         lemma_sub_mod_noop((a + b + p) as int, b as int, p as int);
     }
     assert((((s + p) - b) as nat) % p == (((a + b + p) - b) as nat) % p);
-    assert(((a + b + p) - b) as nat == a + p) by (nonlinear_arith);
+    assert(((a + b + p) - b) as nat == a + p);
     lemma_mod_add_multiples_vanish(a as int, p as int);
     lemma_small_mod(a, p);
 }
@@ -702,7 +701,7 @@ pub proof fn lemma_field_add_sub_cancel(a: nat, b: nat)
         }
         lemma_mod_add_eq(d as int, (((a + p) - b) as int), b as int, p as int);
     }
-    assert((((a + p) - b) + b) as nat == a + p) by (nonlinear_arith);
+    assert((((a + p) - b) + b) as nat == a + p);
     lemma_mod_add_multiples_vanish(a as int, p as int);
     lemma_small_mod(a, p);
 }

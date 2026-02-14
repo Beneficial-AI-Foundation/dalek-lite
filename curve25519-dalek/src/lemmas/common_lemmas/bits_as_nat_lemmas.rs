@@ -190,12 +190,8 @@ pub proof fn lemma_bits_as_nat_lt_pow2_255_implies_msb_false(bits: &[bool; 256])
         ));
 
         let lo = bits_from_index_to_nat(bits, 0, 255);
-        assert(lo + pow2(255) >= pow2(255)) by (nonlinear_arith){}
-        assert(bits_from_index_to_nat(bits, 0, 256) >= pow2(255)) by (nonlinear_arith)
-            requires
-                bits_from_index_to_nat(bits, 0, 256) == lo + pow2(255),
-                lo + pow2(255) >= pow2(255),
-        {}
+        assert(lo + pow2(255) >= pow2(255));
+        assert(bits_from_index_to_nat(bits, 0, 256) >= pow2(255));
         assert(bits_as_nat(bits) == bits_from_index_to_nat(bits, 0, 256));
         assert(bits_as_nat(bits) >= pow2(255));
         assert(false);

@@ -105,6 +105,8 @@ use crate::specs::scalar_specs::spec_clamp_integer;
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
 #[allow(unused_imports)]
+use vstd::arithmetic::mul::*;
+#[allow(unused_imports)]
 use vstd::arithmetic::power::*;
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::*;
@@ -1364,8 +1366,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                 assert(pow(r0_raw as int, 2) >= 0) by {
                     lemma_pow_nonnegative(r0_raw as int, 2);
                 }
-                assert((2 * pow(r0_raw as int, 2)) as nat == 2 * (pow(r0_raw as int, 2) as nat))
-                    by (compute);
+                assert((2 * pow(r0_raw as int, 2)) as nat == 2 * (pow(r0_raw as int, 2) as nat));
                 assert(r0_sq_raw == pow(r0_raw as int, 2) as nat);
             }
             assert(r0_raw % p() == r);
@@ -1470,7 +1471,8 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                         // is_sqrt_ratio with v=1 means y^2 == eps (mod p)
                         assert((y * y * v_nat) % p() == field_canonical(eps_nat));
                         assert(v_nat == 1);
-                        assert((y * y * 1nat) % p() == (y * y) % p()) by (compute);
+                        lemma_mul_basics((y * y) as int);
+                        assert((y * y * 1nat) % p() == (y * y) % p());
                         // LHS is a mod result, so eps_nat < p() and eps_nat % p() = eps_nat
                         p_gt_2();
                         lemma_mod_bound((y * y) as int, p() as int);
@@ -1880,7 +1882,7 @@ impl ProjectivePoint {
                 }
                 assert(field_mul(u_proj, field_inv(w_proj)) == 0) by {
                     reveal(field_mul);
-                    assert(u_proj * 0 == 0) by (compute);
+                    lemma_mul_by_zero_is_zero(u_proj as int);
                 }
                 assert(spec_montgomery(result) == 0);
             } else {
@@ -2632,7 +2634,7 @@ impl Mul<&Scalar> for &MontgomeryPoint {
             let n = bits_be_as_nat(bits_be_slice, 255);
             assert(n == bits_from_index_to_nat(&bits_le, 0, 255)) by {
                 lemma_bits_be_as_nat_eq_bits_from_index(&bits_le, bits_be_slice, 255);
-                assert((255 - 255) as nat == 0) by (compute);
+                assert((255 - 255) as nat == 0);
             }
 
             // Since the MSB is 0, the 255-bit view equals the full 256-bit value.

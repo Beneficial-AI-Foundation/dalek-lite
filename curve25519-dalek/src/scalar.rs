@@ -1055,13 +1055,12 @@ impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
 }
 
 impl Default for Scalar {
-    // VERIFICATION NOTE: PROOF BYPASS
     fn default() -> (result: Scalar)
         ensures
             scalar_as_nat(&result) == 0 as nat,
     {
         let result = Scalar::ZERO;
-        assume(scalar_as_nat(&result) == 0 as nat);
+        proof { lemma_scalar_zero_properties(); }
         result
     }
 }

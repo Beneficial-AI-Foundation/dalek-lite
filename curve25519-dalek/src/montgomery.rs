@@ -183,58 +183,20 @@ impl ConstantTimeEq for MontgomeryPoint {
 
             assert(choice_is_true(result) == bytes_eq);
 
-            // Connect the canonical value of `FieldElement::from_bytes` with the spec value of
-            // `field_element_from_bytes`.
-            assert(fe51_as_canonical_nat(&self_fe) == field_element_from_bytes(&self.0)) by {
-                assert(u64_5_as_nat(self_fe.limbs) == u8_32_as_nat(&self.0) % pow2(255));
-                calc! {
-                    (==)
-                    fe51_as_canonical_nat(&self_fe); {}
-                    u64_5_as_field_canonical(self_fe.limbs); {}
-                    field_canonical(u64_5_as_nat(self_fe.limbs)); {}
-                    field_canonical(u8_32_as_nat(&self.0) % pow2(255)); {}
-                    field_element_from_bytes(&self.0);
-                }
-            }
-            assert(fe51_as_canonical_nat(&other_fe) == field_element_from_bytes(&other.0)) by {
-                assert(u64_5_as_nat(other_fe.limbs) == u8_32_as_nat(&other.0) % pow2(255));
-                calc! {
-                    (==)
-                    fe51_as_canonical_nat(&other_fe); {}
-                    u64_5_as_field_canonical(other_fe.limbs); {}
-                    field_canonical(u64_5_as_nat(other_fe.limbs)); {}
-                    field_canonical(u8_32_as_nat(&other.0) % pow2(255)); {}
-                    field_element_from_bytes(&other.0);
-                }
-            }
+            // from_bytes ensures: u64_5_as_nat(fe.limbs) == u8_32_as_nat(bytes) % pow2(255)
+            // Unfolding open spec fns gives: fe51_as_canonical_nat == field_element_from_bytes
+            assert(fe51_as_canonical_nat(&self_fe) == field_element_from_bytes(&self.0));
+            assert(fe51_as_canonical_nat(&other_fe) == field_element_from_bytes(&other.0));
 
             // Canonical bytes are injective for canonical field values.
             assert(bytes_eq ==> field_eq) by {
                 if bytes_eq {
                     lemma_fe51_to_bytes_equal_implies_field_element_equal(&self_fe, &other_fe);
-                    assert(fe51_as_canonical_nat(&self_fe) == fe51_as_canonical_nat(&other_fe));
-                    calc! {
-                        (==)
-                        field_element_from_bytes(&self.0); {}
-                        fe51_as_canonical_nat(&self_fe); {}
-                        fe51_as_canonical_nat(&other_fe); {}
-                        field_element_from_bytes(&other.0);
-                    }
-                    assert(field_eq);
                 }
             }
             assert(field_eq ==> bytes_eq) by {
                 if field_eq {
-                    calc! {
-                        (==)
-                        fe51_as_canonical_nat(&self_fe); {}
-                        field_element_from_bytes(&self.0); {}
-                        field_element_from_bytes(&other.0); {}
-                        fe51_as_canonical_nat(&other_fe);
-                    }
-                    assert(fe51_as_canonical_nat(&self_fe) == fe51_as_canonical_nat(&other_fe));
                     lemma_field_element_equal_implies_fe51_to_bytes_equal(&self_fe, &other_fe);
-                    assert(bytes_eq);
                 }
             }
 
@@ -321,10 +283,6 @@ impl Hash for MontgomeryPoint {
             assert(initial_state == *old(state));
 
             // Step 1: `canonical_bytes` agrees with `spec_fe51_as_bytes(&fe)`.
-            assert(u8_32_as_nat(&canonical_bytes) == fe51_as_canonical_nat(&fe));
-            assert(fe51_as_canonical_nat(&fe) == u64_5_as_field_canonical(fe.limbs));
-            assert(u64_5_as_field_canonical(fe.limbs) == field_canonical(u64_5_as_nat(fe.limbs)));
-            assert(field_canonical(u64_5_as_nat(fe.limbs)) == u64_5_as_nat(fe.limbs) % p());
             assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe)) by {
                 lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
             }
@@ -333,25 +291,8 @@ impl Hash for MontgomeryPoint {
             let fe_spec = spec_fe51_from_bytes(&self.0);
             lemma_from_u8_32_as_nat(&self.0);
             lemma_as_nat_32_mod_255(&self.0);
-            assert(u64_5_as_nat(fe_spec.limbs) == u8_32_as_nat(&self.0) % pow2(255));
-            assert(u64_5_as_nat(fe.limbs) == u8_32_as_nat(&self.0) % pow2(255));
-
-            assert(fe51_as_canonical_nat(&fe) == field_canonical(
-                u8_32_as_nat(&self.0) % pow2(255),
-            ));
-            assert(field_canonical(u8_32_as_nat(&self.0) % pow2(255)) == field_element_from_bytes(
-                &self.0,
-            ));
-            assert(fe51_as_canonical_nat(&fe) == field_element_from_bytes(&self.0));
-
-            assert(fe51_as_canonical_nat(&fe_spec) == u64_5_as_field_canonical(fe_spec.limbs));
-            assert(u64_5_as_field_canonical(fe_spec.limbs) == field_canonical(
-                u64_5_as_nat(fe_spec.limbs),
-            ));
-            assert(field_canonical(u64_5_as_nat(fe_spec.limbs)) == field_canonical(
-                u8_32_as_nat(&self.0) % pow2(255),
-            ));
-            assert(fe51_as_canonical_nat(&fe_spec) == field_element_from_bytes(&self.0));
+            // Both fe and fe_spec have the same limb value from the same bytes,
+            // so unfolding open spec fns gives equal canonical nats.
             assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec));
             assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec)) by {
                 lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);

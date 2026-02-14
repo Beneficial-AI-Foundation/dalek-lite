@@ -845,10 +845,9 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
                 assert(nm1 + 2 == np1);
                 assert(nm1 + 2 == m * 2);
                 assert(nm1 == m * 2 - 2);
-                assert(m * 2 - 2 == (m - 1) * 2) by (nonlinear_arith)
-                    requires
-                        m >= 1,
-                ;
+                assert(m * 2 - 2 == (m - 1) * 2) by {
+                    lemma_mul_is_distributive_sub_other_way(2, m as int, 1);
+                }
 
             }
             // nm1 == mm1 * 2, so nm1 % 2 == 0

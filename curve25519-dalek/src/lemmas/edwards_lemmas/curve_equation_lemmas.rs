@@ -781,7 +781,7 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
     if n == 1 {
         // 2P = double(P) = P + P
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert((2nat / 2nat) as nat == 1nat) by (compute);
+        assert((2nat / 2nat) as nat == 1nat);
         assert(edwards_scalar_mul(point_affine, 1) == point_affine);
         // double(P) = add(P, P) by definition of edwards_double
     } else {
@@ -838,7 +838,7 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
                 assert(nm1 + 2 == np1);
                 assert(nm1 + 2 == m * 2);
                 assert(nm1 == m * 2 - 2);
-                assert(m * 2 - 2 == (m - 1) * 2) by (compute);
+                assert(m * 2 - 2 == (m - 1) * 2);
             }
             // nm1 == mm1 * 2, so nm1 % 2 == 0
             assert(nm1 % 2 == 0) by {
@@ -1329,7 +1329,7 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
             assert(a * (b % 2) == 0) by {
                 lemma_mul_by_zero_is_zero(a as int);
             }
-            assert(0nat % 2 == 0) by (compute);
+            assert(0nat % 2 == 0);
         }
 
         // Compute (a*b)/2 = a*(b/2) (valid since b is even).
@@ -1344,7 +1344,7 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
             lemma_mul_nonzero(a as int, b as int);
         }
         // a * b is even (since b is even), so a * b != 1
-        assert(a * b != 1) by (compute);
+        assert(a * b != 1);
 
         assert(edwards_scalar_mul(point_affine, a * b) == {
             let half = edwards_scalar_mul(point_affine, ((a * b) / 2) as nat);
@@ -1567,10 +1567,10 @@ pub proof fn lemma_identity_affine_niels_is_identity()
         // u64_5_as_nat gives 1 + 0 + 0 + 0 + 0 = 1
         assert(fe51_as_nat(&id.y_plus_x) == 1nat) by {
             reveal(pow2);
-            assert(pow2(51) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(102) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(153) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(204) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(51) * 0 == 0);
+            assert(pow2(102) * 0 == 0);
+            assert(pow2(153) * 0 == 0);
+            assert(pow2(204) * 0 == 0);
         }
         p_gt_2();
         lemma_small_mod(1nat, p());
@@ -1583,10 +1583,10 @@ pub proof fn lemma_identity_affine_niels_is_identity()
         assert(id.y_minus_x.limbs[4] == 0);
         assert(fe51_as_nat(&id.y_minus_x) == 1nat) by {
             reveal(pow2);
-            assert(pow2(51) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(102) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(153) * 0 == 0) by (nonlinear_arith);
-            assert(pow2(204) * 0 == 0) by (nonlinear_arith);
+            assert(pow2(51) * 0 == 0);
+            assert(pow2(102) * 0 == 0);
+            assert(pow2(153) * 0 == 0);
+            assert(pow2(204) * 0 == 0);
         }
         p_gt_2();
         lemma_small_mod(1nat, p());

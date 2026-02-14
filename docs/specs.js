@@ -366,7 +366,7 @@ function renderVerifiedCard(fn) {
                title="View source on GitHub" onclick="event.stopPropagation()">
                 Source &nearr;
             </a>
-            <a class="spec-github spec-graph" href="${CALLGRAPH_BASE_URL}?source=%22${encodeURIComponent(fn.display_name)}%22" target="_blank" rel="noopener"
+            <a class="spec-github spec-graph" href="${CALLGRAPH_BASE_URL}?source=${encodeURIComponent(fn.display_name)}" target="_blank" rel="noopener"
                title="View call graph" onclick="event.stopPropagation()">
                 Graph &nearr;
             </a>
@@ -699,7 +699,7 @@ function renderSpecCard(spec) {
                title="View source on GitHub" onclick="event.stopPropagation()">
                 Source &nearr;
             </a>
-            <a class="spec-github spec-graph" href="${CALLGRAPH_BASE_URL}?source=%22${encodeURIComponent(spec.name)}%22" target="_blank" rel="noopener"
+            <a class="spec-github spec-graph" href="${CALLGRAPH_BASE_URL}?source=${encodeURIComponent(spec.name)}" target="_blank" rel="noopener"
                title="View call graph" onclick="event.stopPropagation()">
                 Graph &nearr;
             </a>

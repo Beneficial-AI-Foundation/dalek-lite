@@ -181,9 +181,9 @@ use crate::lemmas::scalar_batch_invert_lemmas::*;
 use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*;
 
 #[allow(unused_imports)]
-use crate::lemmas::scalar_lemmas_::radix16_lemmas::*;
-#[allow(unused_imports)]
 use crate::lemmas::scalar_lemmas_::naf_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::scalar_lemmas_::radix16_lemmas::*;
 use crate::lemmas::scalar_lemmas_::radix_2w_lemmas::*;
 
 #[allow(unused_imports)]
@@ -1060,7 +1060,9 @@ impl Default for Scalar {
             scalar_as_nat(&result) == 0 as nat,
     {
         let result = Scalar::ZERO;
-        proof { lemma_scalar_zero_properties(); }
+        proof {
+            lemma_scalar_zero_properties();
+        }
         result
     }
 }
@@ -2304,8 +2306,7 @@ impl Scalar {
     /// If \\( k \mod 2^w\\) is even, we emit \\(0\\), advance 1 bit
     /// and reindex.  In fact, by setting all digits to \\(0\\)
     /// initially, we don't need to emit anything.
-    pub(crate) fn non_adjacent_form(&self, w: usize) -> (result:
-        [i8; 256])
+    pub(crate) fn non_adjacent_form(&self, w: usize) -> (result: [i8; 256])
         requires
             2 <= w <= 8,
             // Scalar must fit in 255 bits (satisfied by canonical scalars since l < 2^253).
@@ -2339,20 +2340,44 @@ impl Scalar {
         let mut x_u64 = [0u64;5];
         // Named byte chunks for lemma_u64x4_from_le_bytes (same pattern as as_radix_2w)
         let chunk0: [u8; 8] = [
-            self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3],
-            self.bytes[4], self.bytes[5], self.bytes[6], self.bytes[7],
+            self.bytes[0],
+            self.bytes[1],
+            self.bytes[2],
+            self.bytes[3],
+            self.bytes[4],
+            self.bytes[5],
+            self.bytes[6],
+            self.bytes[7],
         ];
         let chunk1: [u8; 8] = [
-            self.bytes[8], self.bytes[9], self.bytes[10], self.bytes[11],
-            self.bytes[12], self.bytes[13], self.bytes[14], self.bytes[15],
+            self.bytes[8],
+            self.bytes[9],
+            self.bytes[10],
+            self.bytes[11],
+            self.bytes[12],
+            self.bytes[13],
+            self.bytes[14],
+            self.bytes[15],
         ];
         let chunk2: [u8; 8] = [
-            self.bytes[16], self.bytes[17], self.bytes[18], self.bytes[19],
-            self.bytes[20], self.bytes[21], self.bytes[22], self.bytes[23],
+            self.bytes[16],
+            self.bytes[17],
+            self.bytes[18],
+            self.bytes[19],
+            self.bytes[20],
+            self.bytes[21],
+            self.bytes[22],
+            self.bytes[23],
         ];
         let chunk3: [u8; 8] = [
-            self.bytes[24], self.bytes[25], self.bytes[26], self.bytes[27],
-            self.bytes[28], self.bytes[29], self.bytes[30], self.bytes[31],
+            self.bytes[24],
+            self.bytes[25],
+            self.bytes[26],
+            self.bytes[27],
+            self.bytes[28],
+            self.bytes[29],
+            self.bytes[30],
+            self.bytes[31],
         ];
         x_u64[0] = u64_from_le_bytes(chunk0);
         x_u64[1] = u64_from_le_bytes(chunk1);
@@ -2389,7 +2414,9 @@ impl Scalar {
             assert(reconstruct(naf@.take(0)) == 0) by {
                 assert(naf@.take(0).len() == 0);
             };
-            assert(pow2(0nat) == 1nat) by { lemma2_to64(); };
+            assert(pow2(0nat) == 1nat) by {
+                lemma2_to64();
+            };
             assert((scalar_val as int) % pow2(0nat) as int == 0int) by {
                 lemma_small_mod(0nat, 1nat);
             };
@@ -2400,15 +2427,20 @@ impl Scalar {
         #[verifier::loop_isolation(false)]
         while pos < 256
             invariant
-                // --- Mutable state bounds ---
+        // --- Mutable state bounds ---
+
                 carry <= 1,
                 pos <= 256 + w - 1,
                 // --- Core invariant: reconstruction matches scalar mod pow2(pos) ---
                 // (cap take length at 256 since naf has 256 elements)
                 ({
-                    let p: int = if pos <= 256 { pos as int } else { 256int };
-                    reconstruct(naf@.take(p)) + (carry as int) * pow2(pos as nat) as int
-                        == (scalar_val as int) % pow2(pos as nat) as int
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    reconstruct(naf@.take(p)) + (carry as int) * pow2(pos as nat) as int == (
+                    scalar_val as int) % pow2(pos as nat) as int
                 }),
                 // Unassigned digits are zero
                 forall|j: int| pos <= j < 256 ==> naf@[j] == 0i8,
@@ -2416,26 +2448,42 @@ impl Scalar {
                 pos >= 256 ==> carry == 0,
                 // NAF digit validity: finalized digits satisfy bounds
                 ({
-                    let p: int = if pos <= 256 { pos as int } else { 256int };
-                    forall|i: int| #![trigger naf@[i]] 0 <= i < p ==> {
-                        let d = naf@[i] as int;
-                        d == 0 || (d % 2 != 0 && -pow2((w - 1) as nat) < d && d < pow2(
-                            (w - 1) as nat,
-                        ))
-                    }
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    forall|i: int|
+                        #![trigger naf@[i]]
+                        0 <= i < p ==> {
+                            let d = naf@[i] as int;
+                            d == 0 || (d % 2 != 0 && -pow2((w - 1) as nat) < d && d < pow2(
+                                (w - 1) as nat,
+                            ))
+                        }
                 }),
                 // NAF spacing: nonzero digits at least w behind pos
                 ({
-                    let p: int = if pos <= 256 { pos as int } else { 256int };
-                    forall|i: int| #![trigger naf@[i]] 0 <= i < p && naf@[i] as int != 0 ==> i
-                        + (w as int) <= pos as int
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    forall|i: int|
+                        #![trigger naf@[i]]
+                        0 <= i < p && naf@[i] as int != 0 ==> i + (w as int) <= pos as int
                 }),
                 // NAF non-adjacency: nonzero digit implies next w-1 are zero
                 ({
-                    let p: int = if pos <= 256 { pos as int } else { 256int };
-                    forall|i: int| #![trigger naf@[i]] 0 <= i < p && naf@[i] as int != 0
-                        ==> (forall|j: int|
-                        1 <= j < (w as int) && i + j < 256 ==> (#[trigger] naf@[i + j]) == 0i8)
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    forall|i: int|
+                        #![trigger naf@[i]]
+                        0 <= i < p && naf@[i] as int != 0 ==> (forall|j: int|
+                            1 <= j < (w as int) && i + j < 256 ==> (#[trigger] naf@[i + j]) == 0i8)
                 }),
             decreases 264 - pos,
         {
@@ -2465,16 +2513,23 @@ impl Scalar {
                 if u64_idx == 3 && !(bit_idx < 64 - w) {
                     let w3 = words4[3];
                     assert(bit_buf == w3 >> (bit_idx as u64)) by {
-                        assert((w3 >> (bit_idx as u64))
-                            | (0u64 << ((64 - bit_idx) as u64))
-                            == w3 >> (bit_idx as u64)) by (bit_vector)
-                            requires (bit_idx as u64) < 64u64;
+                        assert((w3 >> (bit_idx as u64)) | (0u64 << ((64 - bit_idx) as u64)) == w3
+                            >> (bit_idx as u64)) by (bit_vector)
+                            requires
+                                (bit_idx as u64) < 64u64,
+                        ;
                     };
                 }
-                assert((bit_buf & window_mask) as nat
-                    == (u64_4_as_nat(&words4) / pow2(pos as nat)) % pow2(w as nat)) by {
+                assert((bit_buf & window_mask) as nat == (u64_4_as_nat(&words4) / pow2(pos as nat))
+                    % pow2(w as nat)) by {
                     lemma_u64x4_bit_extraction(
-                        words4, bit_buf, window_mask, w, pos, u64_idx, bit_idx,
+                        words4,
+                        bit_buf,
+                        window_mask,
+                        w,
+                        pos,
+                        u64_idx,
+                        bit_idx,
                     );
                 };
             }
@@ -2510,14 +2565,24 @@ impl Scalar {
                 // Even window: emit 0, advance by 1
                 proof {
                     assert(window % 2 == 0) by (bit_vector)
-                        requires window & 1u64 == 0u64;
+                        requires
+                            window & 1u64 == 0u64,
+                    ;
                     assert((carry as nat + extracted) % 2 == 0) by {
                         assert(window as nat == carry as nat + extracted);
                     };
                     // Reconstruction invariant advances from pos to pos+1
-                    assert(reconstruct(naf@.take((pos + 1) as int)) + (carry as int) * pow2((pos + 1) as nat) as int
-                        == (scalar_val as int) % pow2((pos + 1) as nat) as int) by {
-                        lemma_naf_even_step(naf@, pos as nat, carry as nat, scalar_val, w as nat, extracted);
+                    assert(reconstruct(naf@.take((pos + 1) as int)) + (carry as int) * pow2(
+                        (pos + 1) as nat,
+                    ) as int == (scalar_val as int) % pow2((pos + 1) as nat) as int) by {
+                        lemma_naf_even_step(
+                            naf@,
+                            pos as nat,
+                            carry as nat,
+                            scalar_val,
+                            w as nat,
+                            extracted,
+                        );
                     };
                     // Terminal carry: pos=255, carry=1 leads to contradiction
                     // (extracted=0, window=1, but window&1==0)
@@ -2534,7 +2599,9 @@ impl Scalar {
                         assert(false) by {
                             assert(window == 1u64);
                             assert(window & 1u64 == 1u64) by (bit_vector)
-                                requires window == 1u64;
+                                requires
+                                    window == 1u64,
+                            ;
                         };
                     }
                     assert(naf@[pos as int] == 0i8);
@@ -2542,20 +2609,25 @@ impl Scalar {
                 pos += 1;
                 continue ;
             }
-
             // Truncate casts are safe: window < width = 2^w with w <= 8, so both fit in i8.
+
             if window < width / 2 {
                 carry = 0;
                 /* ORIGINAL CODE:
                 naf[pos] = window as i8;
                  */
-                naf[pos] = #[verifier::truncate] (window as i8);
+                naf[pos] = #[verifier::truncate]
+                (window as i8);
             } else {
                 carry = 1;
                 /* ORIGINAL CODE:
                 naf[pos] = (window as i8).wrapping_sub(width as i8);
                  */
-                naf[pos] = (#[verifier::truncate] (window as i8)).wrapping_sub(#[verifier::truncate] (width as i8));
+                naf[pos] = (#[verifier::truncate]
+                (window as i8)).wrapping_sub(
+                    #[verifier::truncate]
+                    (width as i8),
+                );
             }
 
             // Odd window: prove invariant preservation at pos + w
@@ -2567,8 +2639,9 @@ impl Scalar {
                 assert(naf@.take(pos as int) =~= old_naf_prefix);
 
                 // Recover the old invariant with old_carry (before carry was modified)
-                assert(reconstruct(naf@.take(pos as int)) + (old_carry as int) * pow2(pos as nat) as int
-                    == (scalar_val as int) % pow2(pos as nat) as int);
+                assert(reconstruct(naf@.take(pos as int)) + (old_carry as int) * pow2(
+                    pos as nat,
+                ) as int == (scalar_val as int) % pow2(pos as nat) as int);
 
                 assert(extracted < pow2(w as nat)) by {
                     lemma_pow2_pos(w as nat);
@@ -2580,7 +2653,10 @@ impl Scalar {
                     // Positive case: naf[pos] = window, carry = 0
                     assert((window as i8) as int == window as int) by {
                         assert(width / 2 <= 128u64) by (bit_vector)
-                            requires width == 1u64 << (w as u64), 2u64 <= (w as u64) && (w as u64) <= 8u64;
+                            requires
+                                width == 1u64 << (w as u64),
+                                2u64 <= (w as u64) && (w as u64) <= 8u64,
+                        ;
                         assert(window <= 127u64);
                     };
                     assert(carry == 0u64);
@@ -2588,7 +2664,9 @@ impl Scalar {
                     // Negative case: naf[pos] = window - width, carry = 1
                     assert(carry == 1u64);
                     assert(window % 2 == 1) by (bit_vector)
-                        requires window & 1u64 != 0u64;
+                        requires
+                            window & 1u64 != 0u64,
+                    ;
                     assert(window <= width) by {
                         assert((bit_buf & window_mask) <= window_mask) by (bit_vector);
                     };
@@ -2599,7 +2677,8 @@ impl Scalar {
                         lemma_u64_shift_is_pow2(w as nat);
                     };
                 }
-                assert(naf@[pos as int] as int == (old_carry as int + extracted as int) - (carry as int) * pow2(w as nat) as int);
+                assert(naf@[pos as int] as int == (old_carry as int + extracted as int) - (
+                carry as int) * pow2(w as nat) as int);
 
                 // NAF digit validity: digit is odd and in (-2^(w-1), 2^(w-1))
                 assert({
@@ -2607,9 +2686,13 @@ impl Scalar {
                     d % 2 != 0 && -pow2((w - 1) as nat) < d && d < pow2((w - 1) as nat)
                 }) by {
                     assert(window % 2 == 1) by (bit_vector)
-                        requires window & 1u64 != 0u64;
+                        requires
+                            window & 1u64 != 0u64,
+                    ;
                     assert(window >= 1u64) by (bit_vector)
-                        requires window & 1u64 != 0u64;
+                        requires
+                            window & 1u64 != 0u64,
+                    ;
                     assert(window <= width) by {
                         assert((bit_buf & window_mask) <= window_mask) by (bit_vector);
                     };
@@ -2620,13 +2703,23 @@ impl Scalar {
 
                 // Reconstruction invariant advances from pos to pos+w
                 assert({
-                    let end_pos = if pos + w <= 256 { (pos + w) as nat } else { 256nat };
-                    reconstruct(naf@.take(end_pos as int)) + (carry as int) * pow2((pos + w) as nat) as int
-                        == (scalar_val as int) % pow2((pos + w) as nat) as int
+                    let end_pos = if pos + w <= 256 {
+                        (pos + w) as nat
+                    } else {
+                        256nat
+                    };
+                    reconstruct(naf@.take(end_pos as int)) + (carry as int) * pow2(
+                        (pos + w) as nat,
+                    ) as int == (scalar_val as int) % pow2((pos + w) as nat) as int
                 }) by {
                     lemma_naf_odd_step(
-                        naf@, pos as nat, w as nat, scalar_val,
-                        old_carry as nat, carry as nat, extracted,
+                        naf@,
+                        pos as nat,
+                        w as nat,
+                        scalar_val,
+                        old_carry as nat,
+                        carry as nat,
+                        extracted,
                     );
                 };
 
@@ -2650,7 +2743,10 @@ impl Scalar {
                             };
                             assert(window <= 1u64);
                             assert(width >= 4u64) by (bit_vector)
-                                requires width == 1u64 << (w as u64), 2u64 <= (w as u64) && (w as u64) <= 8u64;
+                                requires
+                                    width == 1u64 << (w as u64),
+                                    2u64 <= (w as u64) && (w as u64) <= 8u64,
+                            ;
                         };
                     } else {
                         // pos < 255, pos + w >= 256, so gap = 255 - pos < w
@@ -2660,10 +2756,16 @@ impl Scalar {
                                 lemma_pow2_pos(pos as nat);
                                 lemma_pow2_strictly_increases(pos as nat, 255);
                                 lemma_pow2_adds(pos as nat, gap);
-                                lemma_div_strictly_bounded(scalar_val as int, pow2(pos as nat) as int, pow2(gap) as int);
+                                lemma_div_strictly_bounded(
+                                    scalar_val as int,
+                                    pow2(pos as nat) as int,
+                                    pow2(gap) as int,
+                                );
                             };
                             // gap < w, so small_mod gives extracted == scalar_val / pow2(pos)
-                            assert(extracted == scalar_val / pow2(pos as nat) && extracted < pow2(gap)) by {
+                            assert(extracted == scalar_val / pow2(pos as nat) && extracted < pow2(
+                                gap,
+                            )) by {
                                 lemma_pow2_strictly_increases(gap, w as nat);
                                 lemma_small_mod(scalar_val / pow2(pos as nat), pow2(w as nat));
                             };
@@ -2674,7 +2776,9 @@ impl Scalar {
                             };
                             assert(pow2((w - 1) as nat) == width / 2) by {
                                 lemma_pow2_adds((w - 1) as nat, 1);
-                                assert(pow2(1) == 2) by { lemma2_to64(); };
+                                assert(pow2(1) == 2) by {
+                                    lemma2_to64();
+                                };
                                 lemma_u64_shift_is_pow2(w as nat);
                             };
                             // window <= pow2(gap) but window is odd and pow2(gap) is even,
@@ -2683,10 +2787,14 @@ impl Scalar {
                             assert(pow2(gap) % 2 == 0) by {
                                 assert(gap >= 1nat);
                                 lemma_pow2_adds(1, (gap - 1) as nat);
-                                assert(pow2(1) == 2) by { lemma2_to64(); };
+                                assert(pow2(1) == 2) by {
+                                    lemma2_to64();
+                                };
                             };
                             assert(window % 2 == 1) by (bit_vector)
-                                requires window & 1u64 != 0u64;
+                                requires
+                                    window & 1u64 != 0u64,
+                            ;
                             assert(window as nat != pow2(gap));
                             assert(!(window as nat >= pow2(gap)));
                             assert(!((window as nat) >= (width / 2) as nat));
@@ -2701,7 +2809,11 @@ impl Scalar {
         // Post-loop: carry = 0 and reconstruction equals scalar_val
         proof {
             assert(carry == 0);
-            let p: int = if pos <= 256 { pos as int } else { 256int };
+            let p: int = if pos <= 256 {
+                pos as int
+            } else {
+                256int
+            };
 
             // scalar_val % pow2(pos) == scalar_val (since scalar < 2^255 < 2^pos)
             assert((scalar_val as int) % pow2(pos as nat) as int == scalar_val as int) by {

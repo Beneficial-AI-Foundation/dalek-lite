@@ -42,7 +42,6 @@ verus! {
 // =============================================================================
 // Reconstruction lemmas for base-2 (NAF) representation
 // =============================================================================
-
 /// Split a base-2 reconstruction at an arbitrary position k.
 ///
 /// Proves: reconstruct(naf) ==
@@ -61,7 +60,9 @@ proof fn lemma_reconstruct_split(naf: Seq<i8>, k: nat)
         assert(reconstruct(naf.take(0)) == 0);
         assert(naf.skip(0) =~= naf);
         assert(pow2(0) * reconstruct(naf) == reconstruct(naf)) by {
-            assert(pow2(0) == 1) by { lemma2_to64(); };
+            assert(pow2(0) == 1) by {
+                lemma2_to64();
+            };
             lemma_mul_basics(reconstruct(naf));
         };
     } else {
@@ -95,8 +96,8 @@ proof fn lemma_reconstruct_split(naf: Seq<i8>, k: nat)
 
         // Subgoal 2: distribute 2 over the IH sum
         let p2 = 2 as int;
-        assert(p2 * (r_prefix_tail + (pow2(km1) as int) * r_suffix) == p2 * r_prefix_tail + p2
-            * ((pow2(km1) as int) * r_suffix)) by {
+        assert(p2 * (r_prefix_tail + (pow2(km1) as int) * r_suffix) == p2 * r_prefix_tail + p2 * ((
+        pow2(km1) as int) * r_suffix)) by {
             lemma_mul_is_distributive_add(p2, r_prefix_tail, (pow2(km1) as int) * r_suffix);
         }
 
@@ -161,11 +162,9 @@ proof fn lemma_reconstruct_zero_extend(naf: Seq<i8>, k: nat, n: nat)
 // The NAF-specific bit-extraction wrappers have been removed. The call site
 // in non_adjacent_form now calls lemma_u64x4_bit_extraction directly
 // (from radix_2w_lemmas, generalized to w >= 2).
-
 // =============================================================================
 // Even step: invariant preservation when window is even (pos += 1)
 // =============================================================================
-
 /// Proves the invariant holds at pos+1 when the window is even.
 ///
 /// When window = carry + extracted is even and naf[pos] = 0:
@@ -186,8 +185,8 @@ pub proof fn lemma_naf_even_step(
         carry <= 1,
         w >= 2,
         // Old invariant
-        reconstruct(naf.take(pos as int)) + (carry as int) * pow2(pos) as int == (scalar_val
-            as int) % pow2(pos) as int,
+        reconstruct(naf.take(pos as int)) + (carry as int) * pow2(pos) as int == (scalar_val as int)
+            % pow2(pos) as int,
         // naf[pos] is zero
         naf[pos as int] == 0i8,
         // extracted is the w-bit window at pos
@@ -212,7 +211,9 @@ pub proof fn lemma_naf_even_step(
     assert(extracted % 2 == bit_at_pos) by {
         let sv_shifted = (scalar_val / pow2(pos)) as int;
         assert(pow2(w) == 2 * pow2((w - 1) as nat)) by {
-            assert(pow2(1) == 2) by { lemma2_to64(); };
+            assert(pow2(1) == 2) by {
+                lemma2_to64();
+            };
             lemma_pow2_adds(1, (w - 1) as nat);
         };
         lemma_pow2_pos((w - 1) as nat);
@@ -230,7 +231,9 @@ pub proof fn lemma_naf_even_step(
     assert((scalar_val as int) % pow2((pos + 1) as nat) as int == c * p_pos + sv_mod_pos) by {
         lemma_pow2_pos(pos);
         assert(pow2(pos) * 2 == pow2(pos + 1)) by {
-            assert(pow2(1) == 2) by { lemma2_to64(); };
+            assert(pow2(1) == 2) by {
+                lemma2_to64();
+            };
             lemma_pow2_adds(pos, 1);
         };
         lemma_mod_breakdown(scalar_val as int, pow2(pos) as int, 2);
@@ -242,7 +245,9 @@ pub proof fn lemma_naf_even_step(
     //       = (sv_mod_pos - c*p_pos) + 2*c*p_pos
     //       = sv_mod_pos + c*p_pos = sv % pow2(pos+1)
     assert(pow2((pos + 1) as nat) == 2 * pow2(pos)) by {
-        assert(pow2(1) == 2) by { lemma2_to64(); };
+        assert(pow2(1) == 2) by {
+            lemma2_to64();
+        };
         lemma_pow2_adds(1, pos);
         lemma_mul_is_commutative(pow2(1) as int, pow2(pos) as int);
     };
@@ -254,7 +259,6 @@ pub proof fn lemma_naf_even_step(
 // =============================================================================
 // Odd step: invariant preservation when window is odd (pos += w)
 // =============================================================================
-
 /// Proves the invariant holds at pos+w when the window is odd (digit emitted).
 ///
 /// After emitting a digit and advancing by w:
@@ -276,8 +280,8 @@ pub proof fn lemma_naf_odd_step(
         old_carry <= 1,
         new_carry <= 1,
         // Old invariant
-        reconstruct(naf.take(pos as int)) + (old_carry as int) * pow2(pos) as int == (scalar_val
-            as int) % pow2(pos) as int,
+        reconstruct(naf.take(pos as int)) + (old_carry as int) * pow2(pos) as int == (
+        scalar_val as int) % pow2(pos) as int,
         // Digit relationship: naf[pos] = window - new_carry * 2^w
         naf[pos as int] as int == (old_carry as int + extracted as int) - new_carry as int * pow2(
             w,
@@ -294,8 +298,9 @@ pub proof fn lemma_naf_odd_step(
             } else {
                 256nat
             };
-            reconstruct(naf.take(end_pos as int)) + (new_carry as int) * pow2((pos + w) as nat)
-                as int == (scalar_val as int) % pow2((pos + w) as nat) as int
+            reconstruct(naf.take(end_pos as int)) + (new_carry as int) * pow2(
+                (pos + w) as nat,
+            ) as int == (scalar_val as int) % pow2((pos + w) as nat) as int
         }),
 {
     let pw = pow2(w) as int;
@@ -305,7 +310,11 @@ pub proof fn lemma_naf_odd_step(
     let coef_int = old_carry as int + extracted as int;
     let recon_old = reconstruct(naf.take(pos as int));
 
-    let end_pos: nat = if pos + w <= 256 { (pos + w) as nat } else { 256nat };
+    let end_pos: nat = if pos + w <= 256 {
+        (pos + w) as nat
+    } else {
+        256nat
+    };
     let suffix = naf.take(end_pos as int).skip(pos as int);
     let suffix_len: nat = (end_pos - pos) as nat;
 
@@ -348,8 +357,8 @@ pub proof fn lemma_naf_odd_step(
     };
 
     // Step 4: mod_breakdown: sv % pow2(pos+w) == p_pos * extracted + sv % pow2(pos)
-    assert((scalar_val as int) % pow2((pos + w) as nat) as int
-        == extracted as int * p_pos + (scalar_val as int) % p_pos) by {
+    assert((scalar_val as int) % pow2((pos + w) as nat) as int == extracted as int * p_pos + (
+    scalar_val as int) % p_pos) by {
         lemma_pow2_pos(pos);
         lemma_pow2_pos(w);
         lemma_mod_breakdown(scalar_val as int, p_pos, pw);
@@ -373,7 +382,6 @@ pub proof fn lemma_naf_odd_step(
 // =============================================================================
 // Digit bounds for NAF recentering (w >= 2)
 // =============================================================================
-
 /// Proves that the NAF digit after recentering is in (-pow2(w-1), pow2(w-1)).
 ///
 /// The digit is also odd (since window is odd and width is even).
@@ -388,8 +396,10 @@ pub proof fn lemma_naf_digit_bounds(window: u64, w: usize, width: u64)
         window >= 1,
         window <= width,
         window % 2 == 1,  // window is odd
+
     ensures
-        // Positive case bounds
+// Positive case bounds
+
         window < width / 2 ==> window as int >= 1,
         window < width / 2 ==> (window as int) < pow2((w - 1) as nat) as int,
         // Negative case bounds
@@ -410,7 +420,9 @@ pub proof fn lemma_naf_digit_bounds(window: u64, w: usize, width: u64)
     assert(bound == half as int) by {
         assert(pow2((w - 1) as nat) == width as nat / 2) by {
             lemma_pow2_adds((w - 1) as nat, 1);
-            assert(pow2(1) == 2) by { lemma2_to64(); };
+            assert(pow2(1) == 2) by {
+                lemma2_to64();
+            };
         };
     };
 
@@ -424,19 +436,28 @@ pub proof fn lemma_naf_digit_bounds(window: u64, w: usize, width: u64)
         // digit = window - width
         // width is even (bit_vector), so window (odd) != width, and window > half (also even)
         assert(width % 2 == 0) by (bit_vector)
-            requires width == 1u64 << (w as u64), 2u64 <= (w as u64) && (w as u64) <= 8u64;
+            requires
+                width == 1u64 << (w as u64),
+                2u64 <= (w as u64) && (w as u64) <= 8u64,
+        ;
         assert(window > half) by {
             assert(half % 2 == 0) by (bit_vector)
-                requires half == width / 2u64, width == 1u64 << (w as u64),
-                         2u64 <= (w as u64) && (w as u64) <= 8u64;
+                requires
+                    half == width / 2u64,
+                    width == 1u64 << (w as u64),
+                    2u64 <= (w as u64) && (w as u64) <= 8u64,
+            ;
         };
 
         // window > half and width = 2*half, so window - width > -half = -bound
         assert(window_int - width_int > -half_int && window_int - width_int < 0) by {
             assert(width_int == 2 * half_int) by {
                 assert(width == 2 * half) by (bit_vector)
-                    requires half == width / 2u64, width == 1u64 << (w as u64),
-                             2u64 <= (w as u64) && (w as u64) <= 8u64;
+                    requires
+                        half == width / 2u64,
+                        width == 1u64 << (w as u64),
+                        2u64 <= (w as u64) && (w as u64) <= 8u64,
+                ;
             };
         };
 
@@ -458,7 +479,6 @@ pub proof fn lemma_naf_digit_bounds(window: u64, w: usize, width: u64)
 // =============================================================================
 // Terminal carry: carry = 0 at loop exit
 // =============================================================================
-
 /// Proves that carry = 0 when the loop exits, given scalar_val < pow2(255).
 ///
 /// When pos >= 255 and scalar_val < pow2(255), all remaining bits are 0.
@@ -466,10 +486,7 @@ pub proof fn lemma_naf_digit_bounds(window: u64, w: usize, width: u64)
 /// Therefore carry = 0 at loop exit (pos >= 256).
 /// Proves that when scalar_val < pow2(255) and pos >= 255,
 /// the extracted bits are 0, so carry gets consumed.
-pub proof fn lemma_naf_high_bits_zero(
-    scalar_val: nat,
-    pos: nat,
-)
+pub proof fn lemma_naf_high_bits_zero(scalar_val: nat, pos: nat)
     requires
         scalar_val < pow2(255),
         pos >= 255,
@@ -485,7 +502,10 @@ pub proof fn lemma_naf_high_bits_zero(
     assert(scalar_val / pow2(pos) == 0) by {
         lemma_pow2_pos(pos);
         lemma_fundamental_div_mod_converse(
-            scalar_val as int, pow2(pos) as int, 0int, scalar_val as int,
+            scalar_val as int,
+            pow2(pos) as int,
+            0int,
+            scalar_val as int,
         );
     };
 }
@@ -493,7 +513,6 @@ pub proof fn lemma_naf_high_bits_zero(
 // =============================================================================
 // Overflow helpers
 // =============================================================================
-
 /// Proves that window = carry + (bit_buf & window_mask) fits in u64 without overflow.
 pub proof fn lemma_naf_window_no_overflow(carry: u64, bit_buf: u64, window_mask: u64, w: usize)
     requires
@@ -506,14 +525,22 @@ pub proof fn lemma_naf_window_no_overflow(carry: u64, bit_buf: u64, window_mask:
         carry + (bit_buf & window_mask) < u64::MAX,
 {
     assert((bit_buf & window_mask) <= window_mask) by (bit_vector)
-        requires window_mask == (1u64 << (w as u64)) - 1, 2u64 <= (w as u64) && (w as u64) <= 8u64;
+        requires
+            window_mask == (1u64 << (w as u64)) - 1,
+            2u64 <= (w as u64) && (w as u64) <= 8u64,
+    ;
     assert(carry + (bit_buf & window_mask) <= (1u64 << (w as u64))) by {
         assert(1u64 + window_mask == (1u64 << (w as u64))) by (bit_vector)
-            requires window_mask == (1u64 << (w as u64)) - 1, 2u64 <= (w as u64) && (w as u64) <= 8u64;
+            requires
+                window_mask == (1u64 << (w as u64)) - 1,
+                2u64 <= (w as u64) && (w as u64) <= 8u64,
+        ;
     };
     assert(carry + (bit_buf & window_mask) < u64::MAX) by {
         assert((1u64 << (w as u64)) <= 256u64) by (bit_vector)
-            requires 2u64 <= (w as u64) && (w as u64) <= 8u64;
+            requires
+                2u64 <= (w as u64) && (w as u64) <= 8u64,
+        ;
     };
 }
 
@@ -532,41 +559,75 @@ pub proof fn lemma_naf_wrapping_sub_correct(window: u64, width: u64, w: usize)
         }),
 {
     assert(width <= 256u64 && width >= 4u64) by (bit_vector)
-        requires width == 1u64 << (w as u64), 2u64 <= (w as u64) && (w as u64) <= 8u64;
+        requires
+            width == 1u64 << (w as u64),
+            2u64 <= (w as u64) && (w as u64) <= 8u64,
+    ;
     assert(window <= 255u64);  // odd and <= even width
 
     // Use u8 intermediaries to avoid mixing u64 and i8 in bit_vector blocks
-    let w_u8: u8 = #[verifier::truncate] (window as u8);
-    let d_u8: u8 = #[verifier::truncate] (width as u8);
+    let w_u8: u8 = #[verifier::truncate]
+    (window as u8);
+    let d_u8: u8 = #[verifier::truncate]
+    (width as u8);
     assert((window as i8) == (w_u8 as i8)) by (bit_vector)
-        requires w_u8 == window as u8;
+        requires
+            w_u8 == window as u8,
+    ;
     assert((width as i8) == (d_u8 as i8)) by (bit_vector)
-        requires d_u8 == width as u8;
+        requires
+            d_u8 == width as u8,
+    ;
 
     if w <= 7 {
         assert(width <= 128u64) by (bit_vector)
-            requires width == 1u64 << (w as u64), 2u64 <= (w as u64) && (w as u64) <= 7u64;
+            requires
+                width == 1u64 << (w as u64),
+                2u64 <= (w as u64) && (w as u64) <= 7u64,
+        ;
         assert(window <= 127u64);  // odd and <= even width <= 128
         assert((w_u8 as i8).wrapping_sub(d_u8 as i8) as int == w_u8 as int - d_u8 as int)
             by (bit_vector)
-            requires w_u8 <= 127u8, d_u8 <= 128u8, d_u8 >= 4u8, w_u8 >= d_u8 / 2u8;
+            requires
+                w_u8 <= 127u8,
+                d_u8 <= 128u8,
+                d_u8 >= 4u8,
+                w_u8 >= d_u8 / 2u8,
+        ;
         assert(w_u8 as int == window as int) by (bit_vector)
-            requires w_u8 == window as u8, window <= 255u64;
+            requires
+                w_u8 == window as u8,
+                window <= 255u64,
+        ;
         assert(d_u8 as int == width as int) by (bit_vector)
-            requires d_u8 == width as u8, width <= 255u64;
+            requires
+                d_u8 == width as u8,
+                width <= 255u64,
+        ;
     } else {
         // w == 8: width = 256, width as u8 = 0, window in [128, 255]
         assert(width == 256u64) by (bit_vector)
-            requires width == 1u64 << (w as u64), (w as u64) == 8u64;
+            requires
+                width == 1u64 << (w as u64),
+                (w as u64) == 8u64,
+        ;
         assert((w_u8 as i8).wrapping_sub(d_u8 as i8) as int == w_u8 as int - 256) by {
             assert(d_u8 == 0u8) by (bit_vector)
-                requires d_u8 == width as u8, width == 256u64;
+                requires
+                    d_u8 == width as u8,
+                    width == 256u64,
+            ;
             assert((w_u8 as i8).wrapping_sub(0i8) == (w_u8 as i8)) by (bit_vector);
             assert((w_u8 as i8) as int == w_u8 as int - 256) by (bit_vector)
-                requires w_u8 >= 128u8;
+                requires
+                    w_u8 >= 128u8,
+            ;
         };
         assert(w_u8 as int == window as int) by (bit_vector)
-            requires w_u8 == window as u8, window <= 255u64;
+            requires
+                w_u8 == window as u8,
+                window <= 255u64,
+        ;
     }
 }
 
@@ -580,7 +641,9 @@ pub proof fn lemma_naf_width_properties(w: usize)
         (1u64 << (w as u64)) <= 256,
 {
     assert(1u64 << (w as u64) >= 4u64 && 1u64 << (w as u64) <= 256u64) by (bit_vector)
-        requires 2u64 <= (w as u64) && (w as u64) <= 8u64;
+        requires
+            2u64 <= (w as u64) && (w as u64) <= 8u64,
+    ;
     assert((1u64 << (w as u64)) as nat == pow2(w as nat)) by {
         lemma2_to64();
         lemma_u64_shift_is_pow2(w as nat);

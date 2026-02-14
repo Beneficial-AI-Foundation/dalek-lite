@@ -1264,8 +1264,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                 assert(pow(r0_raw as int, 2) >= 0) by {
                     lemma_pow_nonnegative(r0_raw as int, 2);
                 }
-                assert((2 * pow(r0_raw as int, 2)) as nat == 2 * (pow(r0_raw as int, 2) as nat))
-                    by (compute);
+                assert((2 * pow(r0_raw as int, 2)) as nat == 2 * (pow(r0_raw as int, 2) as nat));
                 assert(r0_sq_raw == pow(r0_raw as int, 2) as nat);
             }
             assert(r0_raw % p() == r);
@@ -1370,7 +1369,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
                         // is_sqrt_ratio with v=1 means y^2 == eps (mod p)
                         assert((y * y * v_nat) % p() == field_canonical(eps_nat));
                         assert(v_nat == 1);
-                        assert((y * y * 1nat) % p() == (y * y) % p()) by (compute);
+                        assert((y * y * 1nat) % p() == (y * y) % p());
                         // LHS is a mod result, so eps_nat < p() and eps_nat % p() = eps_nat
                         p_gt_2();
                         lemma_mod_bound((y * y) as int, p() as int);

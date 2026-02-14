@@ -2306,6 +2306,7 @@ impl Scalar {
     /// If \\( k \mod 2^w\\) is even, we emit \\(0\\), advance 1 bit
     /// and reindex.  In fact, by setting all digits to \\(0\\)
     /// initially, we don't need to emit anything.
+    #[verifier::loop_isolation(false)]
     pub(crate) fn non_adjacent_form(&self, w: usize) -> (result: [i8; 256])
         requires
             2 <= w <= 8,
@@ -2424,7 +2425,6 @@ impl Scalar {
 
         let mut pos: usize = 0;
         let mut carry: u64 = 0;
-        #[verifier::loop_isolation(false)]
         while pos < 256
             invariant
         // --- Mutable state bounds ---
@@ -2616,18 +2616,32 @@ impl Scalar {
                 /* ORIGINAL CODE:
                 naf[pos] = window as i8;
                  */
-                naf[pos] = #[verifier::truncate]
-                (window as i8);
+                #[cfg(verus_keep_ghost)]
+                {
+                    naf[pos] = #[verifier::truncate]
+                    (window as i8);
+                }
+                #[cfg(not(verus_keep_ghost))]
+                {
+                    naf[pos] = window as i8;
+                }
             } else {
                 carry = 1;
                 /* ORIGINAL CODE:
                 naf[pos] = (window as i8).wrapping_sub(width as i8);
                  */
-                naf[pos] = (#[verifier::truncate]
-                (window as i8)).wrapping_sub(
-                    #[verifier::truncate]
-                    (width as i8),
-                );
+                #[cfg(verus_keep_ghost)]
+                {
+                    naf[pos] = (#[verifier::truncate]
+                    (window as i8)).wrapping_sub(
+                        #[verifier::truncate]
+                        (width as i8),
+                    );
+                }
+                #[cfg(not(verus_keep_ghost))]
+                {
+                    naf[pos] = (window as i8).wrapping_sub(width as i8);
+                }
             }
 
             // Odd window: prove invariant preservation at pos + w

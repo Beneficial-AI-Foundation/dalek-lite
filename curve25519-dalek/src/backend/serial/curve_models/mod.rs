@@ -134,10 +134,10 @@ use zeroize::Zeroize;
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 use crate::constants;
 use crate::core_assumes::negate_field;
-#[allow(unused_imports)] // Used in verus! blocks for add/sub completed point lemmas
-use crate::lemmas::edwards_lemmas::add_completed_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for affine↔projective curve equation
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for Niels addition correctness lemmas
+use crate::lemmas::edwards_lemmas::niels_addition_correctness::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for as_projective proof

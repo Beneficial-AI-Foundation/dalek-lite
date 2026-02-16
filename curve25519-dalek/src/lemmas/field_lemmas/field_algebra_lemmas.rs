@@ -15,7 +15,6 @@
 //! ## Inverse/Division Properties
 //!
 //! - `lemma_inv_of_product`: inv(a·b) = inv(a)·inv(b)
-//! - `lemma_inv_of_square`: inv(x²) = inv(x)²
 //! - `lemma_quotient_of_squares`: a²/b² = (a/b)²
 //! - `lemma_product_of_squares_eq_square_of_product`: x²·y² = (x·y)²
 #![allow(unused_imports)]
@@ -857,19 +856,6 @@ pub proof fn lemma_field_sub_eq_add_neg(a: nat, b: nat)
     };
 }
 
-/// Lemma: add(a, neg(b)) = sub(a, b) when a and b are field elements (< p)
-///
-/// This is the converse of lemma_field_sub_eq_add_neg for reduced inputs.
-pub proof fn lemma_field_add_neg_eq_sub(a: nat, b: nat)
-    requires
-        a < p(),
-        b < p(),
-    ensures
-        field_add(a, field_neg(b)) == field_sub(a, b),
-{
-    lemma_field_sub_eq_add_neg(a, b);
-}
-
 /// Lemma: c · neg(b) = neg(c · b) in field arithmetic
 ///
 /// Multiplication distributes into negation.
@@ -944,7 +930,7 @@ pub proof fn lemma_field_mul_distributes_over_sub_right(a: nat, b: nat, c: nat)
     assert(bc < p) by {
         lemma_mod_bound((b * c) as int, p as int);
     };
-    lemma_field_add_neg_eq_sub(ac, bc);
+    lemma_field_sub_eq_add_neg(ac, bc);
     assert(field_add(ac, field_neg(bc)) == field_sub(ac, bc));
 
     // Chain: sub(a,b)*c = c*add(a,neg(b)) = c*a + c*neg(b) = ac + neg(bc) = sub(ac, bc)
@@ -1109,26 +1095,6 @@ pub proof fn lemma_inv_of_product(a: nat, b: nat)
     };
 }
 
-/// Lemma: inv(x²) = inv(x)² (mod p)
-///
-/// Special case of inv(a·b) = inv(a)·inv(b) where a = b = x
-pub proof fn lemma_inv_of_square(x: nat)
-    ensures
-        field_inv(field_square(x)) == field_square(field_inv(x)),
-{
-    p_gt_2();  // Needed for field operations
-
-    // inv(x * x) = inv(x) * inv(x) by lemma_inv_of_product with a = b = x
-    assert(field_inv(field_mul(x, x)) == field_mul(field_inv(x), field_inv(x))) by {
-        lemma_inv_of_product(x, x);
-    };
-
-    // field_mul(x, x) = field_square(x) and
-    // field_mul(inv(x), inv(x)) = field_square(inv(x))
-    assert(field_mul(x, x) == field_square(x));
-    assert(field_mul(field_inv(x), field_inv(x)) == field_square(field_inv(x)));
-}
-
 /// Lemma: a²/b² = (a/b)² (mod p)
 ///
 /// Where a/b means a · inv(b)
@@ -1136,7 +1102,7 @@ pub proof fn lemma_inv_of_square(x: nat)
 /// ## Mathematical Proof
 /// ```text
 /// a²/b² = a² · inv(b²)
-///       = a² · inv(b)²           [by lemma_inv_of_square]
+///       = a² · inv(b)²           [by lemma_inv_of_product(b,b)]
 ///       = (a · inv(b))²          [since (xy)² = x²y²]
 ///       = (a/b)²
 /// ```
@@ -1154,9 +1120,9 @@ pub proof fn lemma_quotient_of_squares(a: nat, b: nat)
     let inv_b2 = field_inv(b2);
     let a_div_b = field_mul(a, inv_b);
 
-    // Step 1: inv(b²) = inv(b)²
+    // Step 1: inv(b²) = inv(b)²  (special case of inv(a·b) = inv(a)·inv(b))
     assert(inv_b2 == field_square(inv_b)) by {
-        lemma_inv_of_square(b);
+        lemma_inv_of_product(b, b);
     };
 
     // Step 2: a² · inv(b)² = (a · inv(b))² (product-of-squares property)
@@ -1697,81 +1663,6 @@ pub proof fn lemma_neg_a_times_inv_ab(a: nat, b: nat)
 
     // Chain: (-a) · inv(a·b) = (-1) · inv(b)
     assert(field_mul(neg_a, inv_ab) == field_mul(neg_one, inv_b));
-}
-
-/// Lemma: (-1) · (-a) = a  (double negation in field)
-///
-/// ## Mathematical Proof
-/// ```text
-/// (-1) · (-a) = (p - 1) · (p - a) mod p        [definition of negation]
-///             = p² - pa - p + a mod p
-///             = p(p - a - 1) + a mod p
-///             = a mod p                          [since p·k ≡ 0 mod p]
-///             = a                                [if a < p]
-/// ```
-pub proof fn lemma_double_negation(a: nat)
-    requires
-        a < p(),
-        a != 0,
-    ensures
-        field_mul(field_neg(1), field_neg(a)) == a,
-{
-    let p = p();
-    p_gt_2();
-
-    let neg_one = field_neg(1);
-    let neg_a = field_neg(a);
-
-    // Step 1: neg_one = p - 1 (since 1 < p)
-    assert(neg_one == p - 1) by {
-        lemma_small_mod(1, p);
-        // field_neg(1) = (p - (1 % p)) % p = (p - 1) % p = p - 1
-        lemma_small_mod((p - 1) as nat, p);
-    };
-
-    // Step 2: neg_a = p - a (since a < p)
-    assert(neg_a == p - a) by {
-        lemma_small_mod(a, p);
-        // field_neg(a) = (p - (a % p)) % p = (p - a) % p = p - a
-        lemma_small_mod((p - a) as nat, p);
-    };
-
-    // Step 3: (p-1)(p-a) % p = a
-    //
-    // Direct calculation:
-    // (p-1)(p-a) = p*p - p*a - p + a = p*(p - a - 1) + a
-    // So (p-1)(p-a) % p = (p*(p-a-1) + a) % p = a (since a < p)
-
-    let prod = (p - 1) * (p - a);
-
-    // Algebraic identity: (p-1)(p-a) = p*(p-a-1) + a
-    // p*(p-a-1) + a = p*p - p*a - p + a
-    // (p-1)*(p-a) = p*(p-a) - (p-a) = p*p - p*a - p + a ✓
-    assert(prod == p * (p - a - 1) + a) by {
-        assert((p - 1) * (p - a) == p * (p - a) - (p - a)) by {
-            lemma_mul_is_distributive_sub_other_way((p - a) as int, p as int, 1int);
-        };
-        assert(p * (p - a) == p * p - p * a) by {
-            lemma_mul_is_distributive_sub(p as int, p as int, a as int);
-        };
-        assert(p * (p - a - 1) == p * p - p * a - p) by {
-            lemma_mul_is_distributive_sub(p as int, (p - a) as int, 1int);
-        };
-    };
-
-    // (p*(p-a-1) + a) % p = a since a < p
-    // Using lemma_mod_multiples_vanish(k, b, m): (m*k + b) % m == b % m
-    assert((prod as int) % (p as int) == a as int) by {
-        assert(prod == p * (p - a - 1) + a);
-        // (p * (p-a-1) + a) % p == a % p
-        lemma_mod_multiples_vanish((p - a - 1) as int, a as int, p as int);
-        // a % p == a since a < p
-        lemma_small_mod(a, p);
-    };
-
-    // Step 5: Connect to field_mul
-    // field_mul(neg_one, neg_a) = (neg_one * neg_a) % p = ((p-1) * (p-a)) % p = prod % p = a
-    assert((neg_one * neg_a) % p == a);
 }
 
 /// Lemma: (a·c) / (b·c) = a / b  (common factor cancellation)

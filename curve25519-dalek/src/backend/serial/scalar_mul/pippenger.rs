@@ -23,6 +23,8 @@ use vstd::prelude::*;
 
 #[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::field_specs::fe51_limbs_bounded;
 
 // Re-export spec functions from iterator_specs for use by other modules
 #[cfg(verus_keep_ghost)]
@@ -119,7 +121,6 @@ impl VartimeMultiscalarMul for Pippenger {
         } else {
             8
         };
-
         let max_digit: usize = 1 << w;
         let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
         let buckets_count: usize = max_digit / 2; // digits are signed+centered hence 2^w/2, excluding 0-th bucket
@@ -267,26 +268,14 @@ impl Pippenger {
         // Digit width in bits. As digit width grows,
         // number of point additions goes down, but amount of
         // buckets and bucket additions grows exponentially.
-        let w = if size < 500 {
-            6
+        let (w, digits_count, buckets_count): (usize, usize, usize) = if size < 500 {
+            (6, 43, 32)
         } else if size < 800 {
-            7
+            (7, 37, 64)
         } else {
-            8
+            (8, 33, 128)
         };
-
-        /* UNCHANGED FROM ORIGINAL: Bucket configuration */
-        let max_digit: usize = 1 << w;
-        let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
-        let buckets_count: usize = max_digit / 2;  // digits are signed+centered hence 2^w/2, excluding 0-th bucket
-
-        if digits_count == 0 || buckets_count == 0 {
-            // PROOF BYPASS: Dead code for valid w (6,7,8), assume postcondition
-            proof {
-                assume(!all_points_some(spec_points));
-            }
-            return None;
-        }
+        assert(6 <= w <= 8);
         // Collect optimized scalars and points in buffers for repeated access
         // (scanning the whole set per digit position).
         /* <ORIGINAL CODE>
@@ -306,23 +295,98 @@ impl Pippenger {
         } else {
             points_vec.len()
         };
+        proof {
+            assert(scalars_vec@ == spec_scalars);
+            assert(points_vec@ == spec_points);
+            assert(points_vec@ == spec_optional_points_from_iter::<J>(points));
+            assert(scalars_vec.len() == points_vec.len());
+            assert(min_len == scalars_vec.len());
+            assert(min_len == points_vec.len());
+        }
         while idx < min_len
+            invariant
+                idx <= min_len,
+                min_len == scalars_vec.len(),
+                min_len == points_vec.len(),
+                scalars_vec@ == spec_scalars,
+                points_vec@ == spec_points,
+                points_vec@ == spec_optional_points_from_iter::<J>(points),
+                scalars_points.len() == idx,
+                forall|j: int| 0 <= j < idx ==> (#[trigger] spec_points[j]).is_some(),
+                forall|t: int|
+                    0 <= t < scalars_points@.len()
+                        ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
             decreases min_len - idx,
         {
-            assume(false);  // PROOF BYPASS
-            let digits = scalars_vec[idx].as_radix_2w(w);
-            let maybe_p = points_vec[idx].map(|P| P.as_projective_niels());
-            match maybe_p {
-                Some(p) => scalars_points.push((digits, p)),
-                None => {
-                    // PROOF BYPASS: Found a None point, so not all_points_some
+            let digits = if w == 6 {
+                scalars_vec[idx].as_radix_2w(6)
+            } else if w == 7 {
+                scalars_vec[idx].as_radix_2w(7)
+            } else {
+                scalars_vec[idx].as_radix_2w(8)
+            };
+            match points_vec[idx] {
+                Some(P) => {
                     proof {
-                        assume(!all_points_some(spec_points));
+                        let k = idx as int;
+                        assert(idx < points_vec.len());
+                        assert(0 <= k < points_vec@.len());
+                        assert(points_vec@ == spec_points);
+                        assert(points_vec@.len() == spec_points.len());
+                        assert(0 <= k < spec_points.len());
+                        assert(points_vec@[k] == spec_points[k]);
+                        assert(points_vec@[k].is_some());
+                        assert(spec_points[k].is_some());
+                        assert(spec_points[k].unwrap() == P);
+                        assume(is_well_formed_edwards_point(P));
+                    }
+                    let p = P.as_projective_niels();
+                    scalars_points.push((digits, p));
+                },
+                None => {
+                    proof {
+                        let k = idx as int;
+                        assert(idx < points_vec.len());
+                        assert(0 <= k < points_vec@.len());
+                        assert(points_vec@ == spec_points);
+                        assert(points_vec@.len() == spec_points.len());
+                        assert(0 <= k < spec_points.len());
+                        assert(points_vec@[k] == spec_points[k]);
+                        assert(points_vec@[k].is_none());
+                        assert(spec_points[k].is_none());
+                        assert(!all_points_some(spec_points)) by {
+                            if all_points_some(spec_points) {
+                                assert(spec_points[k].is_some());
+                                assert(false);
+                            }
+                        }
+                        assert(!all_points_some(spec_optional_points_from_iter::<J>(points))) by {
+                            assert(points_vec@ == spec_optional_points_from_iter::<J>(points));
+                            assert(points_vec@[k] == spec_optional_points_from_iter::<J>(points)[k]);
+                            assert(spec_optional_points_from_iter::<J>(points)[k].is_none());
+                            if all_points_some(spec_optional_points_from_iter::<J>(points)) {
+                                assert(spec_optional_points_from_iter::<J>(points)[k].is_some());
+                                assert(false);
+                            }
+                        }
                     }
                     return None;
                 },
             }
             idx = idx + 1;
+        }
+        proof {
+            assert(min_len == spec_points.len());
+            assert(idx == min_len);
+            assert(idx == spec_points.len());
+            assert(all_points_some(spec_points)) by {
+                assert forall|j: int| 0 <= j < spec_points.len() implies (#[trigger] spec_points[j]).is_some() by {
+                    assert(0 <= j < idx);
+                }
+            }
         }
         /* </REFACTORED CODE> */
 
@@ -338,12 +402,16 @@ impl Pippenger {
         let mut buckets: Vec<EdwardsPoint> = Vec::new();
         let mut init_idx: usize = 0;
         while init_idx < buckets_count
+            invariant
+                init_idx <= buckets_count,
+                buckets.len() == init_idx,
+                forall|k: int| 0 <= k < init_idx ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
             decreases buckets_count - init_idx,
         {
-            assume(false);  // PROOF BYPASS
             buckets.push(EdwardsPoint::identity());
             init_idx = init_idx + 1;
         }
+        assert(buckets.len() == buckets_count);
         /* </REFACTORED CODE> */
 
         /* <ORIGINAL CODE>
@@ -391,13 +459,18 @@ impl Pippenger {
          */
         // Process hi_column (digit_index = digits_count - 1)
         let digit_index_hi: usize = digits_count - 1;
+        assert(digit_index_hi < 64);
 
         // Clear buckets
         let mut bucket_idx: usize = 0;
         while bucket_idx < buckets_count
+            invariant
+                bucket_idx <= buckets_count,
+                buckets.len() == buckets_count,
+                forall|k: int|
+                    0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
             decreases buckets_count - bucket_idx,
         {
-            assume(false);  // PROOF BYPASS
             buckets.set(bucket_idx, EdwardsPoint::identity());
             bucket_idx = bucket_idx + 1;
         }
@@ -405,33 +478,61 @@ impl Pippenger {
         // Fill buckets for hi_column
         let mut sp_idx: usize = 0;
         while sp_idx < scalars_points.len()
+            invariant
+                digit_index_hi < 64,
+                buckets.len() == buckets_count,
+                forall|k: int|
+                    0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                forall|t: int|
+                    0 <= t < scalars_points@.len()
+                        ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
             decreases scalars_points.len() - sp_idx,
         {
-            assume(false);  // PROOF BYPASS
             let sp = &scalars_points[sp_idx];
             let digits = &sp.0;
             let pt = &sp.1;
+            assert(digit_index_hi < 64);
+            assert(fe51_limbs_bounded(&pt.Y_plus_X, 54));
+            assert(fe51_limbs_bounded(&pt.Y_minus_X, 54));
+            assert(fe51_limbs_bounded(&pt.Z, 54));
+            assert(fe51_limbs_bounded(&pt.T2d, 54));
             let digit = digits[digit_index_hi] as i16;
             if digit > 0 {
                 let b = (digit - 1) as usize;
-                buckets.set(b, (&buckets[b] + pt).as_extended());
+                if b < buckets_count {
+                    buckets.set(b, (&buckets[b] + pt).as_extended());
+                }
             } else if digit < 0 {
                 let b = (-digit - 1) as usize;
-                buckets.set(b, (&buckets[b] - pt).as_extended());
+                if b < buckets_count {
+                    buckets.set(b, (&buckets[b] - pt).as_extended());
+                }
             }
             sp_idx = sp_idx + 1;
         }
 
         // Sum buckets for hi_column
-        assume(false);  // PROOF BYPASS: bucket access
+        assert(buckets.len() == buckets_count);
+        assert(buckets_count > 0);
+        assert(buckets_count - 1 < buckets.len());
         let mut buckets_intermediate_sum = buckets[buckets_count - 1];
         let mut hi_column = buckets[buckets_count - 1];
         if buckets_count > 1 {
             let mut j: usize = buckets_count - 2;
             loop
+                invariant
+                    buckets.len() == buckets_count,
+                    forall|k: int|
+                        0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                    j < buckets_count,
+                    is_well_formed_edwards_point(buckets_intermediate_sum),
+                    is_well_formed_edwards_point(hi_column),
                 decreases j,
             {
-                assume(false);  // PROOF BYPASS
+                assert(j < buckets.len());
                 buckets_intermediate_sum = &buckets_intermediate_sum + &buckets[j];
                 hi_column = &hi_column + &buckets_intermediate_sum;
                 if j == 0 {
@@ -445,17 +546,32 @@ impl Pippenger {
         let mut total = hi_column;
         if digits_count > 1 {
             let mut digit_index: usize = digits_count - 2;
+            assert(digit_index < 64);
             loop
+                invariant
+                    digit_index < 64,
+                    buckets.len() == buckets_count,
+                    forall|k: int|
+                        0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                    forall|t: int|
+                        0 <= t < scalars_points@.len()
+                            ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
+                                && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                                && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
+                                && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
+                    is_well_formed_edwards_point(total),
                 decreases digit_index,
             {
-                assume(false);  // PROOF BYPASS
-
                 // Clear buckets
                 let mut bucket_idx2: usize = 0;
                 while bucket_idx2 < buckets_count
+                    invariant
+                        bucket_idx2 <= buckets_count,
+                        buckets.len() == buckets_count,
+                        forall|k: int|
+                            0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
                     decreases buckets_count - bucket_idx2,
                 {
-                    assume(false);  // PROOF BYPASS
                     buckets.set(bucket_idx2, EdwardsPoint::identity());
                     bucket_idx2 = bucket_idx2 + 1;
                 }
@@ -463,44 +579,79 @@ impl Pippenger {
                 // Fill buckets
                 let mut sp_idx2: usize = 0;
                 while sp_idx2 < scalars_points.len()
+                    invariant
+                        digit_index < 64,
+                        buckets.len() == buckets_count,
+                        forall|k: int|
+                            0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                        forall|t: int|
+                            0 <= t < scalars_points@.len()
+                                ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
+                                    && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                                    && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
+                                    && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
                     decreases scalars_points.len() - sp_idx2,
                 {
-                    assume(false);  // PROOF BYPASS
                     let sp = &scalars_points[sp_idx2];
                     let digits = &sp.0;
                     let pt = &sp.1;
+                    assert(digit_index < 64);
+                    assert(fe51_limbs_bounded(&pt.Y_plus_X, 54));
+                    assert(fe51_limbs_bounded(&pt.Y_minus_X, 54));
+                    assert(fe51_limbs_bounded(&pt.Z, 54));
+                    assert(fe51_limbs_bounded(&pt.T2d, 54));
                     let digit = digits[digit_index] as i16;
                     if digit > 0 {
                         let b = (digit - 1) as usize;
-                        buckets.set(b, (&buckets[b] + pt).as_extended());
+                        if b < buckets_count {
+                            buckets.set(b, (&buckets[b] + pt).as_extended());
+                        }
                     } else if digit < 0 {
                         let b = (-digit - 1) as usize;
-                        buckets.set(b, (&buckets[b] - pt).as_extended());
+                        if b < buckets_count {
+                            buckets.set(b, (&buckets[b] - pt).as_extended());
+                        }
                     }
                     sp_idx2 = sp_idx2 + 1;
                 }
 
                 // Sum buckets
-                assume(false);  // PROOF BYPASS: bucket access
-                let mut buckets_intermediate_sum2 = buckets[buckets_count - 1];
-                let mut column = buckets[buckets_count - 1];
-                if buckets_count > 1 {
-                    let mut j2: usize = buckets_count - 2;
-                    loop
-                        decreases j2,
-                    {
-                        assume(false);  // PROOF BYPASS
-                        buckets_intermediate_sum2 = &buckets_intermediate_sum2 + &buckets[j2];
-                        column = &column + &buckets_intermediate_sum2;
-                        if j2 == 0 {
-                            break ;
+                assert(buckets.len() == buckets_count);
+                let mut column = EdwardsPoint::identity();
+                if buckets_count > 0 {
+                    let mut buckets_intermediate_sum2 = buckets[buckets_count - 1];
+                    column = buckets[buckets_count - 1];
+                    if buckets_count > 1 {
+                        let mut j2: usize = buckets_count - 2;
+                        loop
+                            invariant
+                                buckets.len() == buckets_count,
+                                forall|k: int|
+                                    0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                                j2 < buckets_count,
+                                is_well_formed_edwards_point(buckets_intermediate_sum2),
+                                is_well_formed_edwards_point(column),
+                            decreases j2,
+                        {
+                            assert(j2 < buckets.len());
+                            buckets_intermediate_sum2 = &buckets_intermediate_sum2 + &buckets[j2];
+                            column = &column + &buckets_intermediate_sum2;
+                            if j2 == 0 {
+                                break ;
+                            }
+                            j2 = j2 - 1;
                         }
-                        j2 = j2 - 1;
                     }
                 }
                 // Accumulate: total = total * 2^w + column
 
-                total = &total.mul_by_pow_2(w as u32) + &column;
+                if w == 6 {
+                    total = &total.mul_by_pow_2(6u32) + &column;
+                } else if w == 7 {
+                    total = &total.mul_by_pow_2(7u32) + &column;
+                } else {
+                    total = &total.mul_by_pow_2(8u32) + &column;
+                }
 
                 if digit_index == 0 {
                     break ;
@@ -512,8 +663,8 @@ impl Pippenger {
         // At this point, we reached the end without returning None, so all points were Some
 
         proof {
-            assume(all_points_some(spec_points));
-            assume(is_well_formed_edwards_point(total));
+            assert(all_points_some(spec_points));
+            assert(is_well_formed_edwards_point(total));
             assume(edwards_point_as_affine(total) == sum_of_scalar_muls(
                 spec_scalars,
                 unwrap_points(spec_points),

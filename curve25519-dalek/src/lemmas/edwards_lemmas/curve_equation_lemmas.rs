@@ -1931,4 +1931,130 @@ pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
     };
 }
 
+/// Axiom: Edwards curve addition is complete and closed.
+/// For the twisted Edwards curve with d non-square: denominators 1 ± d·x₁x₂y₁y₂ ≠ 0,
+/// and the result lies on the curve.
+/// Reference: Bernstein, Birkner, Joye, Lange, Peters (2008), Section 6.
+pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
+    requires
+        math_on_edwards_curve(x1, y1),
+        math_on_edwards_curve(x2, y2),
+    ensures
+        ({
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            let t = field_mul(d, field_mul(field_mul(x1, x2), field_mul(y1, y2)));
+            field_add(1, t) != 0 && field_sub(1, t) != 0
+        }),
+        math_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
+{
+    admit();
+}
+
+/// The P¹×P¹ ratios X/Z and Y/T equal edwards_add, after cancelling the common factor of 2.
+pub proof fn lemma_completed_point_ratios(
+    x1: nat,
+    y1: nat,
+    x2: nat,
+    y2: nat,
+    result_x: nat,
+    result_y: nat,
+    result_z: nat,
+    result_t: nat,
+)
+    requires
+        math_on_edwards_curve(x1, y1),
+        math_on_edwards_curve(x2, y2),
+        result_x == field_mul(2, field_add(field_mul(x1, y2), field_mul(y1, x2))),
+        result_y == field_mul(2, field_add(field_mul(y1, y2), field_mul(x1, x2))),
+        result_z == field_mul(
+            2,
+            field_add(
+                1,
+                field_mul(
+                    fe51_as_canonical_nat(&EDWARDS_D),
+                    field_mul(field_mul(x1, x2), field_mul(y1, y2)),
+                ),
+            ),
+        ),
+        result_t == field_mul(
+            2,
+            field_sub(
+                1,
+                field_mul(
+                    fe51_as_canonical_nat(&EDWARDS_D),
+                    field_mul(field_mul(x1, x2), field_mul(y1, y2)),
+                ),
+            ),
+        ),
+    ensures
+        result_z != 0,
+        result_t != 0,
+        field_mul(result_x, field_inv(result_z)) == edwards_add(x1, y1, x2, y2).0,
+        field_mul(result_y, field_inv(result_t)) == edwards_add(x1, y1, x2, y2).1,
+        math_on_edwards_curve(
+            field_mul(result_x, field_inv(result_z)),
+            field_mul(result_y, field_inv(result_t)),
+        ),
+{
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let x1y2 = field_mul(x1, y2);
+    let y1x2 = field_mul(y1, x2);
+    let y1y2 = field_mul(y1, y2);
+    let x1x2 = field_mul(x1, x2);
+    let t = field_mul(d, field_mul(x1x2, y1y2));
+    let denom_x = field_add(1, t);
+    let denom_y = field_sub(1, t);
+    let num_x = field_add(x1y2, y1x2);
+    let num_y = field_add(y1y2, x1x2);
+    let two: nat = 2;
+
+    // Denominators non-zero and result on curve
+    axiom_edwards_add_complete(x1, y1, x2, y2);
+    p_gt_2();
+
+    assert(two % p() != 0) by {
+        lemma_small_mod(two, p());
+    };
+    assert(denom_x % p() != 0) by {
+        lemma_small_mod(denom_x, p());
+    };
+    assert(denom_y % p() != 0) by {
+        lemma_small_mod(denom_y, p());
+    };
+
+    // result_z = mul(2, denom_x) ≠ 0, result_t = mul(2, denom_y) ≠ 0
+    assert(field_mul(two, denom_x) == field_mul(denom_x, two)) by {
+        lemma_field_mul_comm(two, denom_x);
+    }
+    assert(field_mul(denom_x, two) != 0) by {
+        lemma_nonzero_product(denom_x, two);
+    }
+    assert(field_mul(two, denom_y) == field_mul(denom_y, two)) by {
+        lemma_field_mul_comm(two, denom_y);
+    }
+    assert(field_mul(denom_y, two) != 0) by {
+        lemma_nonzero_product(denom_y, two);
+    }
+
+    // Cancel common factor of 2: mul(2,num)/mul(2,denom) = num/denom
+    assert(field_mul(two, num_x) == field_mul(num_x, two)) by {
+        lemma_field_mul_comm(two, num_x);
+    }
+    assert(field_mul(field_mul(num_x, two), field_inv(field_mul(denom_x, two))) == field_mul(
+        num_x,
+        field_inv(denom_x),
+    )) by {
+        lemma_cancel_common_factor(num_x, denom_x, two);
+    }
+    assert(field_mul(two, num_y) == field_mul(num_y, two)) by {
+        lemma_field_mul_comm(two, num_y);
+    }
+    assert(field_mul(field_mul(num_y, two), field_inv(field_mul(denom_y, two))) == field_mul(
+        num_y,
+        field_inv(denom_y),
+    )) by {
+        lemma_cancel_common_factor(num_y, denom_y, two);
+    }
+}
+
 } // verus!

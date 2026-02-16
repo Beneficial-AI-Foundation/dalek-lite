@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td class="function-module">${displayModule}</td>
                     <td><span class="status-badge status-${status.class}">${status.text}</span></td>
                     <td><a href="${func.link}" target="_blank" class="function-link">View Source →</a></td>
-                    <td><a href="https://beneficial-ai-foundation.github.io/dalek-lite/callgraph/?source=${encodeURIComponent(func.function)}&sink=${encodeURIComponent(func.function)}" target="_blank" class="function-link">Graph →</a></td>
+                    <td><a href="https://beneficial-ai-foundation.github.io/dalek-lite/callgraph/?source=${encodeURIComponent(func.function.replace(/\(.*$/, ''))}&sink=${encodeURIComponent(func.function.replace(/\(.*$/, ''))}" target="_blank" class="function-link">Graph →</a></td>
                 </tr>
             `;
         }).join('');

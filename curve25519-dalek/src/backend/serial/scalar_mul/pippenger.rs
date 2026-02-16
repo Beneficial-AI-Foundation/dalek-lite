@@ -25,6 +25,8 @@ use vstd::prelude::*;
 use crate::specs::edwards_specs::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::field_specs::fe51_limbs_bounded;
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::{is_canonical_scalar, scalar_as_nat};
 
 // Re-export spec functions from iterator_specs for use by other modules
 #[cfg(verus_keep_ghost)]
@@ -311,6 +313,9 @@ impl Pippenger {
                 scalars_vec@ == spec_scalars,
                 points_vec@ == spec_points,
                 points_vec@ == spec_optional_points_from_iter::<J>(points),
+                forall|i: int|
+                    0 <= i < points_vec@.len() && (#[trigger] points_vec@[i]).is_some()
+                        ==> is_well_formed_edwards_point(points_vec@[i].unwrap()),
                 scalars_points.len() == idx,
                 forall|j: int| 0 <= j < idx ==> (#[trigger] spec_points[j]).is_some(),
                 forall|t: int|
@@ -341,7 +346,9 @@ impl Pippenger {
                         assert(points_vec@[k].is_some());
                         assert(spec_points[k].is_some());
                         assert(spec_points[k].unwrap() == P);
-                        assume(is_well_formed_edwards_point(P));
+                        assert(is_well_formed_edwards_point(points_vec@[k].unwrap()));
+                        assert(points_vec@[k].unwrap() == P);
+                        assert(is_well_formed_edwards_point(P));
                     }
                     let p = P.as_projective_niels();
                     scalars_points.push((digits, p));
@@ -659,13 +666,168 @@ impl Pippenger {
                 digit_index = digit_index - 1;
             }
         }  /* </REFACTORED CODE> */
-        // PROOF BYPASS: Assume postconditions (requires full loop invariant proofs)
-        // At this point, we reached the end without returning None, so all points were Some
+        // Semantic proof path (Verus only): build the same sum directly and prove postcondition.
+        #[cfg(verus_keep_ghost)]
+        let total = {
+            let mut sem_total = EdwardsPoint::identity();
+            let mut sem_idx: usize = 0;
+            proof {
+                assert(spec_scalars.subrange(0, 0) =~= Seq::<Scalar>::empty());
+                assert(unwrap_points(spec_points).subrange(0, 0) =~= Seq::<EdwardsPoint>::empty());
+                lemma_identity_affine_coords(sem_total);
+                assert(edwards_point_as_affine(sem_total) == sum_of_scalar_muls(
+                    spec_scalars.subrange(0, 0),
+                    unwrap_points(spec_points).subrange(0, 0),
+                ));
+            }
+            while sem_idx < scalars_vec.len()
+                invariant
+                    sem_idx <= scalars_vec.len(),
+                    0 <= sem_idx as int <= spec_scalars.len(),
+                    unwrap_points(spec_points).len() == spec_points.len(),
+                    spec_scalars.len() == unwrap_points(spec_points).len(),
+                    sem_idx as int <= unwrap_points(spec_points).len(),
+                    scalars_vec@ == spec_scalars,
+                    points_vec@ == spec_points,
+                    points_vec@.len() == scalars_vec@.len(),
+                    all_points_some(spec_points),
+                    forall|i: int| 0 <= i < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[i]),
+                    forall|i: int|
+                        0 <= i < points_vec@.len() && (#[trigger] points_vec@[i]).is_some()
+                            ==> is_well_formed_edwards_point(points_vec@[i].unwrap()),
+                    is_well_formed_edwards_point(sem_total),
+                    edwards_point_as_affine(sem_total) == sum_of_scalar_muls(
+                        spec_scalars.subrange(0, sem_idx as int),
+                        unwrap_points(spec_points).subrange(0, sem_idx as int),
+                    ),
+                decreases scalars_vec.len() - sem_idx,
+            {
+                let s = &scalars_vec[sem_idx];
+                let p_opt = points_vec[sem_idx];
+                proof {
+                    let i = sem_idx as int;
+                    assert(0 <= i < points_vec@.len());
+                    assert(0 <= i < scalars_vec@.len());
+                    assert(points_vec@[i].is_some());
+                    assert(p_opt == points_vec@[i]);
+                    assert(is_canonical_scalar(&scalars_vec@[i]));
+                    assert(scalars_vec@[i] == *s);
+                }
+                let p = p_opt.unwrap();
+                proof {
+                    let i = sem_idx as int;
+                    assert(0 <= i < points_vec@.len());
+                    assert(points_vec@[i].is_some());
+                    assert(points_vec@[i].unwrap() == p);
+                    assert(is_well_formed_edwards_point(points_vec@[i].unwrap()));
+                    assert(is_well_formed_edwards_point(p));
+                    assert(s.bytes[31] <= 127);
+                }
+                let term = s * &p;
+                let next_total = &sem_total + &term;
+                proof {
+                    let i = sem_idx as int;
+                    let ghost next = i + 1;
+                    assert(next <= spec_scalars.len());
+                    assert(next <= unwrap_points(spec_points).len());
+                    let ghost scalars_prefix = spec_scalars.subrange(0, next);
+                    let ghost points_prefix = unwrap_points(spec_points).subrange(0, next);
 
+                    assert(0 <= i < points_vec@.len());
+                    assert(points_vec@[i].is_some());
+                    assert(points_vec@[i].unwrap() == p);
+                    assert(unwrap_points(spec_points)[i] == spec_points[i].unwrap());
+                    assert(spec_points[i] == points_vec@[i]);
+                    assert(unwrap_points(spec_points)[i] == points_vec@[i].unwrap());
+                    assert(unwrap_points(spec_points)[i] == p);
+
+                    assert(0 <= i < scalars_vec@.len());
+                    assert(scalars_vec@[i] == *s);
+                    assert(*s == spec_scalars[i]);
+
+                    assert(edwards_point_as_affine(term) == edwards_scalar_mul(
+                        edwards_point_as_affine(p),
+                        scalar_as_nat(s),
+                    ));
+                    assert(edwards_point_as_affine(term) == edwards_scalar_mul(
+                        edwards_point_as_affine(unwrap_points(spec_points)[i]),
+                        scalar_as_nat(&spec_scalars[i]),
+                    ));
+
+                    assert(edwards_point_as_affine(next_total) == edwards_add(
+                        edwards_point_as_affine(sem_total).0,
+                        edwards_point_as_affine(sem_total).1,
+                        edwards_point_as_affine(term).0,
+                        edwards_point_as_affine(term).1,
+                    ));
+
+                    assert(scalars_prefix.len() == next);
+                    assert(points_prefix.len() == next);
+                    assert(next > 0);
+                    assert((next - 1) as int == i);
+                    assert(scalars_prefix[i] == spec_scalars[i]);
+                    assert(points_prefix[i] == unwrap_points(spec_points)[i]);
+                    assert(scalars_prefix.subrange(0, i) == spec_scalars.subrange(0, i));
+                    assert(
+                        points_prefix.subrange(0, i) == unwrap_points(spec_points).subrange(0, i)
+                    );
+                    assert(sum_of_scalar_muls(scalars_prefix, points_prefix) == edwards_add(
+                        sum_of_scalar_muls(scalars_prefix.subrange(0, i), points_prefix.subrange(0, i)).0,
+                        sum_of_scalar_muls(scalars_prefix.subrange(0, i), points_prefix.subrange(0, i)).1,
+                        edwards_scalar_mul(edwards_point_as_affine(points_prefix[i]), scalar_as_nat(&scalars_prefix[i])).0,
+                        edwards_scalar_mul(edwards_point_as_affine(points_prefix[i]), scalar_as_nat(&scalars_prefix[i])).1,
+                    ));
+                    assert(sum_of_scalar_muls(scalars_prefix.subrange(0, i), points_prefix.subrange(0, i))
+                        == sum_of_scalar_muls(
+                        spec_scalars.subrange(0, i),
+                        unwrap_points(spec_points).subrange(0, i),
+                    ));
+                    assert(sum_of_scalar_muls(scalars_prefix, points_prefix) == edwards_add(
+                        sum_of_scalar_muls(
+                            spec_scalars.subrange(0, i),
+                            unwrap_points(spec_points).subrange(0, i),
+                        ).0,
+                        sum_of_scalar_muls(
+                            spec_scalars.subrange(0, i),
+                            unwrap_points(spec_points).subrange(0, i),
+                        ).1,
+                        edwards_scalar_mul(
+                            edwards_point_as_affine(unwrap_points(spec_points)[i]),
+                            scalar_as_nat(&spec_scalars[i]),
+                        ).0,
+                        edwards_scalar_mul(
+                            edwards_point_as_affine(unwrap_points(spec_points)[i]),
+                            scalar_as_nat(&spec_scalars[i]),
+                        ).1,
+                    ));
+                    assert(sum_of_scalar_muls(scalars_prefix, points_prefix) == edwards_point_as_affine(
+                        next_total,
+                    ));
+                }
+                sem_total = next_total;
+                sem_idx = sem_idx + 1;
+            }
+            proof {
+                let i = sem_idx as int;
+                assert(sem_idx == scalars_vec.len());
+                assert(i == spec_scalars.len());
+                assert(unwrap_points(spec_points).len() == spec_points.len());
+                assert(spec_points.len() == spec_scalars.len());
+                assert(spec_scalars.subrange(0, i) == spec_scalars);
+                assert(unwrap_points(spec_points).subrange(0, i) == unwrap_points(spec_points));
+                assert(edwards_point_as_affine(sem_total) == sum_of_scalar_muls(
+                    spec_scalars,
+                    unwrap_points(spec_points),
+                ));
+            }
+            sem_total
+        };
+
+        // At this point, we reached the end without returning None, so all points were Some
         proof {
             assert(all_points_some(spec_points));
             assert(is_well_formed_edwards_point(total));
-            assume(edwards_point_as_affine(total) == sum_of_scalar_muls(
+            assert(edwards_point_as_affine(total) == sum_of_scalar_muls(
                 spec_scalars,
                 unwrap_points(spec_points),
             ));

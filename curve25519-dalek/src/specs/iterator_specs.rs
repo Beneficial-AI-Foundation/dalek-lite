@@ -89,8 +89,18 @@ pub fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>) where
 pub fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<EdwardsPoint>>) where
     J: Iterator<Item = Option<EdwardsPoint>>,
 
+    requires
+        forall|i: int|
+            0 <= i < spec_optional_points_from_iter::<J>(iter).len() && (
+            #[trigger] spec_optional_points_from_iter::<J>(iter)[i]).is_some()
+                ==> is_well_formed_edwards_point(
+                spec_optional_points_from_iter::<J>(iter)[i].unwrap(),
+            ),
     ensures
         result@ == spec_optional_points_from_iter::<J>(iter),
+        forall|i: int|
+            0 <= i < result@.len() && (#[trigger] result@[i]).is_some()
+                ==> is_well_formed_edwards_point(result@[i].unwrap()),
 {
     iter.collect()
 }

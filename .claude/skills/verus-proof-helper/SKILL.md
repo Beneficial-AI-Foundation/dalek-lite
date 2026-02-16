@@ -533,7 +533,11 @@ pub proof fn lemma_add_projective_niels_completed_valid(
         // spec_field_element relationships for intermediate values
     ensures
         is_valid_completed_point(result),
-        completed_point_as_affine_edwards(result) == spec_edwards_add_projective_niels(...)
+        completed_point_as_affine_edwards(result) == {
+            let self_affine = edwards_point_as_affine(self_point);
+            let other_affine = projective_niels_point_as_affine_edwards(other);
+            edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+        }
 ```
 
 **Proof pattern for bridge axioms:**

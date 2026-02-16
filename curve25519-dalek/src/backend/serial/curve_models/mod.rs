@@ -932,10 +932,11 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     // The result represents the Edwards addition of the affine forms of self and other
 
             is_valid_completed_point(result),
-            completed_point_as_affine_edwards(result) == spec_edwards_add_projective_niels(
-                *self,
-                *other,
-            ),
+            completed_point_as_affine_edwards(result) == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = projective_niels_point_as_affine_edwards(*other);
+                edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            },
             // Limb bounds for result (from mul's 52-bit output → sub/add produce ≤54-bit)
             fe51_limbs_bounded(&result.X, 54),
             fe51_limbs_bounded(&result.Y, 54),
@@ -1054,7 +1055,11 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
 
             // Apply the algebraic correctness lemma
             assert(is_valid_completed_point(result) && completed_point_as_affine_edwards(result)
-                == spec_edwards_add_projective_niels(*self, *other)) by {
+                == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = projective_niels_point_as_affine_edwards(*other);
+                edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            }) by {
                 lemma_add_projective_niels_completed_valid(
                     *self,
                     *other,
@@ -1129,10 +1134,11 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
     // The result represents the Edwards subtraction of the affine forms of self and other
 
             is_valid_completed_point(result),
-            completed_point_as_affine_edwards(result) == spec_edwards_sub_projective_niels(
-                *self,
-                *other,
-            ),
+            completed_point_as_affine_edwards(result) == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = projective_niels_point_as_affine_edwards(*other);
+                edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            },
             // Limb bounds for result (from mul's 52-bit output → sub/add produce ≤54-bit)
             fe51_limbs_bounded(&result.X, 54),
             fe51_limbs_bounded(&result.Y, 54),
@@ -1236,7 +1242,11 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             ));
 
             assert(is_valid_completed_point(result) && completed_point_as_affine_edwards(result)
-                == spec_edwards_sub_projective_niels(*self, *other)) by {
+                == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = projective_niels_point_as_affine_edwards(*other);
+                edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            }) by {
                 lemma_sub_projective_niels_completed_valid(
                     *self,
                     *other,
@@ -1311,10 +1321,11 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
     // The result represents the Edwards addition of the affine forms of self and other
 
             is_valid_completed_point(result),
-            completed_point_as_affine_edwards(result) == spec_edwards_add_affine_niels(
-                *self,
-                *other,
-            ),
+            completed_point_as_affine_edwards(result) == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = affine_niels_point_as_affine_edwards(*other);
+                edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            },
             // Limb bounds for result (from mul's 52-bit output → sub/add produce ≤54-bit)
             fe51_limbs_bounded(&result.X, 54),
             fe51_limbs_bounded(&result.Y, 54),
@@ -1403,7 +1414,11 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
             assert(fe51_as_canonical_nat(&result.T) == field_sub(z2_val, txy2d_val));
 
             assert(is_valid_completed_point(result) && completed_point_as_affine_edwards(result)
-                == spec_edwards_add_affine_niels(*self, *other)) by {
+                == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = affine_niels_point_as_affine_edwards(*other);
+                edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            }) by {
                 lemma_add_affine_niels_completed_valid(
                     *self,
                     *other,
@@ -1478,10 +1493,11 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
     // The result represents the Edwards subtraction of the affine forms of self and other
 
             is_valid_completed_point(result),
-            completed_point_as_affine_edwards(result) == spec_edwards_sub_affine_niels(
-                *self,
-                *other,
-            ),
+            completed_point_as_affine_edwards(result) == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = affine_niels_point_as_affine_edwards(*other);
+                edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            },
     {
         proof {
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
@@ -1564,7 +1580,11 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
             assert(fe51_as_canonical_nat(&result.T) == field_add(z2_val, txy2d_val));
 
             assert(is_valid_completed_point(result) && completed_point_as_affine_edwards(result)
-                == spec_edwards_sub_affine_niels(*self, *other)) by {
+                == {
+                let self_affine = edwards_point_as_affine(*self);
+                let other_affine = affine_niels_point_as_affine_edwards(*other);
+                edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+            }) by {
                 lemma_sub_affine_niels_completed_valid(
                     *self,
                     *other,

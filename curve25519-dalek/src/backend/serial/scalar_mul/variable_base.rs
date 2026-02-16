@@ -70,6 +70,10 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
         assert(radix_16_all_bounded(&scalar_digits));
         assert(radix_16_digit_bounded(scalar_digits[63]));  // instantiate for index 63
     }
+    /* ORIGINAL CODE:
+    let mut tmp1 = &tmp3 + &lookup_table.select(scalar_digits[63]);
+    */
+    // REFACTORED: Extract select to bind result for proof block
     let selected = lookup_table.select(scalar_digits[63]);
     proof {
         // Validity: select returns a point from a table built from valid Edwards points
@@ -107,6 +111,10 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
         tmp2 = tmp1.as_projective();  // tmp2 =  8*(prev) in P2 coords
         tmp1 = tmp2.double();  // tmp1 = 16*(prev) in P1xP1 coords
         tmp3 = tmp1.as_extended();  // tmp3 = 16*(prev) in P3 coords
+        /* ORIGINAL CODE:
+        tmp1 = &tmp3 + &lookup_table.select(scalar_digits[i]);
+        */
+        // REFACTORED: Extract select to bind result for proof block
         let selected = lookup_table.select(scalar_digits[i]);
         proof {
             // Validity: select returns a point from a table built from valid Edwards points

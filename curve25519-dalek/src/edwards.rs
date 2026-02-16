@@ -2026,36 +2026,15 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
             assert(is_well_formed_edwards_point(result));
             assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(sum));
 
-            // The inner add postcondition also gives us:
-            // - completed_point_as_affine_edwards(sum) == spec_edwards_add_projective_niels(self, other_niels)
-            assert(completed_point_as_affine_edwards(sum) == spec_edwards_add_projective_niels(
-                *self,
-                other_niels,
-            ));
-
-            // The as_projective_niels postcondition gives us correspondence between other and other_niels
-            assert(projective_niels_corresponds_to_edwards(other_niels, *other));
-
-            // Now we need to connect spec_edwards_add_projective_niels to edwards_add
+            // Connect niels_affine to other_affine via correspondence
             assert(projective_niels_point_as_affine_edwards(other_niels) == edwards_point_as_affine(
                 *other,
             )) by {
                 lemma_projective_niels_affine_equals_edwards_affine(other_niels, *other);
             }
 
-            // From spec_edwards_add_projective_niels definition:
-            // spec_edwards_add_projective_niels(self, other_niels) =
-            //   edwards_add(edwards_point_as_affine(self), projective_niels_point_as_affine_edwards(other_niels))
-            // Since projective_niels_point_as_affine_edwards(other_niels) == edwards_point_as_affine(other):
-            // spec_edwards_add_projective_niels(self, other_niels) = edwards_add(x1, y1, x2, y2)
             let (x1, y1) = edwards_point_as_affine(*self);
             let (x2, y2) = edwards_point_as_affine(*other);
-            assert(spec_edwards_add_projective_niels(*self, other_niels) == edwards_add(
-                x1,
-                y1,
-                x2,
-                y2,
-            ));
             assert(edwards_point_as_affine(result) == edwards_add(x1, y1, x2, y2));
         }
 
@@ -3217,11 +3196,7 @@ impl BasepointTable for EdwardsBasepointTable {
             }
 
             // Add: identity + B = B
-            assert(completed_point_as_affine_edwards(completed) == spec_edwards_add_affine_niels(
-                identity,
-                selected,
-            ));
-            assert(spec_edwards_add_affine_niels(identity, selected) == edwards_add(
+            assert(completed_point_as_affine_edwards(completed) == edwards_add(
                 0nat,
                 1nat,
                 B.0,
@@ -3383,14 +3358,8 @@ impl BasepointTable for EdwardsBasepointTable {
                 }
                 P = tmp.as_extended();
                 proof {
-                    // Chain of equalities to prove invariant maintenance:
-                    // 1. as_extended postcondition: edwards_point_as_affine(P) == completed_point_as_affine_edwards(tmp)
-                    // 2. Addition postcondition: completed_point_as_affine_edwards(tmp) == spec_edwards_add_affine_niels(old_P, selected)
-                    // 3. spec_edwards_add_affine_niels expands to edwards_add(old_P_affine, selected_affine)
-                    assert(edwards_point_as_affine(P) == spec_edwards_add_affine_niels(
-                        old_P,
-                        selected,
-                    ));
+                    // Chain: edwards_point_as_affine(P) == completed_point_as_affine_edwards(tmp)
+                    //        == edwards_add(old_P_affine, selected_affine)
                     let selected_affine = affine_niels_point_as_affine_edwards(selected);
                     assert(edwards_point_as_affine(P) == edwards_add(
                         old_P_affine.0,
@@ -3516,12 +3485,9 @@ impl BasepointTable for EdwardsBasepointTable {
                 }
                 P = tmp.as_extended();
                 proof {
-                    // Chain of equalities for invariant maintenance (similar to loop 1):
+                    // Chain: edwards_point_as_affine(P) == completed_point_as_affine_edwards(tmp)
+                    //        == edwards_add(old_P2_affine, selected_affine)
                     let selected_affine = affine_niels_point_as_affine_edwards(selected);
-                    assert(edwards_point_as_affine(P) == spec_edwards_add_affine_niels(
-                        old_P2,
-                        selected,
-                    ));
                     assert(edwards_point_as_affine(P) == edwards_add(
                         old_P2_affine.0,
                         old_P2_affine.1,

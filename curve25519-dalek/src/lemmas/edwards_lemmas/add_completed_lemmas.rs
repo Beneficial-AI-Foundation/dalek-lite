@@ -60,10 +60,11 @@ pub proof fn lemma_add_projective_niels_completed_valid(
         fe51_as_canonical_nat(&result.T) == field_sub(field_add(zz_val, zz_val), tt2d_val),
     ensures
         is_valid_completed_point(result),
-        completed_point_as_affine_edwards(result) == spec_edwards_add_projective_niels(
-            self_point,
-            other,
-        ),
+        completed_point_as_affine_edwards(result) == {
+            let self_affine = edwards_point_as_affine(self_point);
+            let other_affine = projective_niels_point_as_affine_edwards(other);
+            edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+        },
 {
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
@@ -366,7 +367,7 @@ pub proof fn lemma_add_projective_niels_completed_valid(
         lemma_nonzero_product(aff_rt, z1z2);
     };
 
-    // STEP 6: Connect to spec_edwards_add_projective_niels
+    // STEP 6: Connect to edwards_add via projective_niels correspondence
     lemma_projective_niels_affine_equals_edwards_affine(other, ep);
 }
 
@@ -405,10 +406,11 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
         fe51_as_canonical_nat(&result.T) == field_add(field_add(zz_val, zz_val), tt2d_val),
     ensures
         is_valid_completed_point(result),
-        completed_point_as_affine_edwards(result) == spec_edwards_sub_projective_niels(
-            self_point,
-            other,
-        ),
+        completed_point_as_affine_edwards(result) == {
+            let self_affine = edwards_point_as_affine(self_point);
+            let other_affine = projective_niels_point_as_affine_edwards(other);
+            edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+        },
 {
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
@@ -744,7 +746,7 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
         lemma_nonzero_product(aff_rt, z1z2);
     };
 
-    // STEP 7: Connect to spec_edwards_sub_projective_niels
+    // STEP 7: Connect to edwards_sub via projective_niels correspondence
     lemma_projective_niels_affine_equals_edwards_affine(other, ep);
 }
 
@@ -785,10 +787,11 @@ pub proof fn lemma_add_affine_niels_completed_valid(
         fe51_as_canonical_nat(&result.T) == field_sub(z2_val, txy2d_val),
     ensures
         is_valid_completed_point(result),
-        completed_point_as_affine_edwards(result) == spec_edwards_add_affine_niels(
-            self_point,
-            other,
-        ),
+        completed_point_as_affine_edwards(result) == {
+            let self_affine = edwards_point_as_affine(self_point);
+            let other_affine = affine_niels_point_as_affine_edwards(other);
+            edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+        },
 {
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
@@ -1051,7 +1054,7 @@ pub proof fn lemma_add_affine_niels_completed_valid(
         lemma_nonzero_product(aff_rt, sZ);
     };
 
-    // STEP 6: Connect to spec_edwards_add_affine_niels
+    // STEP 6: Connect to edwards_add via affine_niels correspondence
     lemma_affine_niels_affine_equals_edwards_affine(other, ep);
 }
 
@@ -1092,10 +1095,11 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
         fe51_as_canonical_nat(&result.T) == field_add(z2_val, txy2d_val),
     ensures
         is_valid_completed_point(result),
-        completed_point_as_affine_edwards(result) == spec_edwards_sub_affine_niels(
-            self_point,
-            other,
-        ),
+        completed_point_as_affine_edwards(result) == {
+            let self_affine = edwards_point_as_affine(self_point);
+            let other_affine = affine_niels_point_as_affine_edwards(other);
+            edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+        },
 {
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
@@ -1386,7 +1390,7 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
         lemma_nonzero_product(aff_rt, sZ);
     };
 
-    // STEP 7: Connect to spec_edwards_sub_affine_niels
+    // STEP 7: Connect to edwards_sub via affine_niels correspondence
     lemma_affine_niels_affine_equals_edwards_affine(other, ep);
 }
 

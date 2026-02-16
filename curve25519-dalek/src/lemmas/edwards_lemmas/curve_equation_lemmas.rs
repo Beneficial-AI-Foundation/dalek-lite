@@ -2199,4 +2199,180 @@ pub proof fn axiom_edwards_to_montgomery_correspondence(y: nat, z: nat)
     admit();
 }
 
+/// Lemma: When Z = 1 in a well-formed EdwardsPoint, the affine coordinates
+/// equal (X, Y) directly, the point lies on the Edwards curve, and both
+/// coordinates are in [0, p).
+pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPoint)
+    requires
+        is_well_formed_edwards_point(point),
+        fe51_as_canonical_nat(&point.Z) == 1,
+    ensures
+        edwards_point_as_affine(point) == (
+            fe51_as_canonical_nat(&point.X),
+            fe51_as_canonical_nat(&point.Y),
+        ),
+        math_on_edwards_curve(fe51_as_canonical_nat(&point.X), fe51_as_canonical_nat(&point.Y)),
+        fe51_as_canonical_nat(&point.X) < p(),
+        fe51_as_canonical_nat(&point.Y) < p(),
+{
+    let x = fe51_as_canonical_nat(&point.X);
+    let y = fe51_as_canonical_nat(&point.Y);
+
+    p_gt_2();
+    lemma_mod_bound(u64_5_as_nat(point.X.limbs) as int, p() as int);
+    lemma_mod_bound(u64_5_as_nat(point.Y.limbs) as int, p() as int);
+
+    lemma_field_inv_one();
+    lemma_field_mul_one_right(x);
+    lemma_field_mul_one_right(y);
+    lemma_small_mod(x, p());
+    lemma_small_mod(y, p());
+
+    let x2 = field_square(x);
+    let y2 = field_square(y);
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let sub = field_sub(y2, x2);
+    lemma_field_mul_one_right(sub);
+    lemma_mod_bound(sub as int, p() as int);
+    lemma_small_mod(sub, p());
+    assert(field_square(1nat) == 1) by {
+        lemma_field_mul_one_right(1nat);
+        lemma_small_mod(1nat, p());
+    }
+}
+
+/// Lemma: On Ed25519, y² = 1 on the curve implies x = 0.
+///
+/// From the curve equation −x² + y² = 1 + d·x²·y² with y² = 1:
+///   0 = (d+1)·x²
+/// Since d + 1 ≠ 0 (mod p) and p is prime, x² = 0, hence x = 0.
+pub proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        field_square(y) == 1,
+    ensures
+        x == 0,
+{
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let x2 = field_square(x);
+    let y2 = field_square(y);
+    p_gt_2();
+
+    lemma_field_mul_one_right(x2);
+    assert(field_mul(x2, 1) == x2 % p());
+    assert(x2 < p()) by {
+        lemma_mod_bound((x * x) as int, p() as int);
+    };
+    lemma_small_mod(x2, p());
+    assert(field_mul(x2, 1) == x2);
+
+    let neg_x2 = field_neg(x2);
+    assert(neg_x2 < p()) by {
+        lemma_mod_bound((p() - x2 % p()) as int, p() as int);
+    };
+    lemma_field_sub_eq_add_neg(1nat, x2);
+    assert(field_sub(1, x2) == field_add(1, neg_x2));
+    lemma_field_add_comm(1nat, neg_x2);
+    lemma_field_sub_add_cancel(neg_x2, 1nat);
+    assert(field_sub(field_add(neg_x2, 1), 1) == neg_x2);
+
+    let dx2 = field_mul(d, x2);
+    assert(dx2 < p()) by {
+        lemma_mod_bound((d * x2) as int, p() as int);
+    };
+    lemma_field_add_comm(1nat, dx2);
+    lemma_field_sub_add_cancel(dx2, 1nat);
+    assert(field_sub(field_add(dx2, 1), 1) == dx2);
+
+    assert(field_sub(1, x2) == field_add(1, dx2));
+    assert(field_add(neg_x2, 1) == field_add(dx2, 1));
+    assert(neg_x2 == dx2);
+
+    lemma_field_sub_self(x2);
+    assert(field_sub(x2, x2) == 0);
+    lemma_field_sub_eq_add_neg(x2, x2);
+    assert(field_sub(x2, x2) == field_add(x2, neg_x2));
+    lemma_field_add_comm(x2, neg_x2);
+    assert(field_add(neg_x2, x2) == field_add(x2, neg_x2));
+    assert(field_add(neg_x2, x2) == 0);
+
+    assert(field_add(dx2, x2) == 0);
+
+    lemma_field_mul_one_left(x2);
+    assert(field_mul(1, x2) == x2 % p());
+    assert(field_mul(1, x2) == x2);
+
+    lemma_field_mul_distributes_over_add(x2, d, 1);
+    assert(field_mul(x2, field_add(d, 1)) == field_add(field_mul(x2, d), field_mul(x2, 1)));
+
+    lemma_field_mul_comm(x2, d);
+    lemma_field_mul_comm(x2, 1nat);
+    assert(field_mul(x2, field_add(d, 1)) == field_add(dx2, x2));
+    assert(field_mul(x2, field_add(d, 1)) == 0);
+
+    lemma_field_mul_comm(field_add(d, 1), x2);
+    assert(field_mul(field_add(d, 1), x2) == 0);
+
+    axiom_d_plus_one_nonzero();
+    assert(x2 % p() == 0) by {
+        if x2 % p() != 0 {
+            lemma_nonzero_product(field_add(d, 1), x2);
+        }
+    };
+    assert(x2 == 0);
+
+    assert(x % p() == 0) by {
+        if x % p() != 0 {
+            lemma_nonzero_product(x, x);
+        }
+    };
+    lemma_small_mod(x, p());
+}
+
+/// Lemma: Decompression from y and sign recovers the original point.
+pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        y < p(),
+        (x % 2) == (sign_bit as nat),
+        sign_bit == 0 || sign_bit == 1,
+    ensures
+        spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
+{
+    axiom_curve_point_implies_valid_y(x, y);
+
+    if field_square(y) == 1 {
+        lemma_y_sq_one_implies_x_zero(x, y);
+    }
+    let x_chosen = choose|xc: nat|
+        math_on_edwards_curve(xc, y) && xc < p() && (xc % 2) == (sign_bit as nat);
+    assert(math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat));
+    axiom_unique_x_with_parity(x, x_chosen, y);
+}
+
+/// Helper lemma: exact functional correctness for Montgomery→Edwards conversion.
+pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8, u_nat: nat)
+    requires
+        math_on_edwards_curve(x_exec, y_nat),
+        x_exec < p(),
+        y_nat < p(),
+        sign_bit == 0 || sign_bit == 1,
+        field_square(y_nat) != 1 ==> ((x_exec % 2) as u8 == sign_bit),
+        y_nat == edwards_y_from_montgomery_u(u_nat),
+        u_nat < p(),
+        u_nat != field_sub(0, 1),
+    ensures
+        (x_exec, y_nat) == spec_montgomery_to_edwards_affine(u_nat, sign_bit),
+{
+    if field_square(y_nat) == 1 {
+        lemma_y_sq_one_implies_x_zero(x_exec, y_nat);
+        assert(x_exec == 0);
+        lemma_decompress_spec_matches_point(0nat, y_nat, 0u8);
+    } else {
+        lemma_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
+    }
+}
+
 } // verus!

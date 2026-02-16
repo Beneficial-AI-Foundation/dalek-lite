@@ -214,8 +214,8 @@ pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: n
 /// - fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7)
 pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, point: &EdwardsPoint)
     requires
-        compressed_y_has_valid_sign_bit(repr_bytes),
-        // step_1 postconditions
+// step_1 postconditions
+
         fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(repr_bytes),
         math_on_edwards_curve(x_orig, fe51_as_canonical_nat(&point.Y)),
         // X is non-negative root (LSB = 0)
@@ -237,7 +237,12 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
     ensures
         is_valid_edwards_point(*point),
         fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(repr_bytes),
-        fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7),
+        // Sign bit correctness when y² ≠ 1 (i.e., x ≠ 0).
+        // When y² == 1, x = 0 and negation is the identity, so the sign bit
+        // in the result is always 0 regardless of the compressed sign bit.
+        field_square(field_element_from_bytes(repr_bytes)) != 1 ==> fe51_as_canonical_nat_sign_bit(
+            &point.X,
+        ) == (repr_bytes[31] >> 7),
 {
     let x_final = fe51_as_canonical_nat(&point.X);
     let y_final = fe51_as_canonical_nat(&point.Y);
@@ -273,42 +278,42 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
     // =========================================================================
 
     // =========================================================================
-    // Goal 3: Sign bit correctness
+    // Goal 3: Sign bit correctness (conditional on y² ≠ 1)
     // =========================================================================
-    assert(fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7)) by {
-        let x_before = x_orig;
-        let x_after = x_final;
-        let repr_byte_31 = repr_bytes[31];
+    let y_sq = field_square(y_final);
+    if y_sq != 1 {
+        assert(fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7)) by {
+            let x_before = x_orig;
+            let x_after = x_final;
+            let repr_byte_31 = repr_bytes[31];
 
-        // ((x_after % p) % 2) as u8 == sign_bit
-        assert((x_after % 2) as u8 == (repr_byte_31 >> 7)) by {
-            let sign_bit = repr_byte_31 >> 7;
+            assert((x_after % 2) as u8 == (repr_byte_31 >> 7)) by {
+                let sign_bit = repr_byte_31 >> 7;
 
-            // sign_bit ∈ {0, 1}
-            assert(sign_bit == 0 || sign_bit == 1) by (bit_vector)
-                requires
-                    sign_bit == repr_byte_31 >> 7,
-            ;
+                assert(sign_bit == 0 || sign_bit == 1) by (bit_vector)
+                    requires
+                        sign_bit == repr_byte_31 >> 7,
+                ;
 
-            // Precondition 1: sqrt_ratio_i returns non-negative root (LSB = 0)
+                // When y² ≠ 1, x ≠ 0 (contrapositive of x=0 ⟹ y²=1)
+                assert(sign_bit == 1 ==> x_before != 0) by {
+                    if sign_bit == 1 && x_before == 0 {
+                        lemma_x_zero_implies_y_squared_one(x_before, y_final);
+                    }
+                };
 
-            // Precondition 2: sign_bit == 1 ==> x != 0
-            assert(sign_bit == 1 ==> x_before != 0) by {
-                lemma_sign_bit_one_implies_x_nonzero(repr_bytes, x_before, y_final);
+                assert(x_after == if sign_bit == 1 {
+                    field_neg(x_before)
+                } else {
+                    x_before
+                }) by {
+                    lemma_small_mod(x_before, p());
+                };
+
+                lemma_decompress_field_element_sign_bit(x_before, x_after, sign_bit);
             };
-
-            // Precondition 3: x_after matches conditional expression
-            assert(x_after == if sign_bit == 1 {
-                field_neg(x_before)
-            } else {
-                x_before
-            }) by {
-                lemma_small_mod(x_before, p());
-            };
-
-            lemma_decompress_field_element_sign_bit(x_before, x_after, sign_bit);
         };
-    };
+    }
 }
 
 } // verus!

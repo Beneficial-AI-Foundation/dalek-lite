@@ -1097,9 +1097,10 @@ pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
 /// 1. Birational map: y = (u-1)/(u+1)
 /// 2. Decompression: recover x from y with given sign_bit
 ///
-/// When x = 0 (i.e. y² = 1) the sign is forced to 0, matching the exec code
-/// which clears the sign bit in that edge case. This ensures correspondence
-/// between the executable function and the specification.
+/// **Sign normalisation when y² = 1:** In this case x = 0, so x is even and
+/// the only valid sign is 0. The exec code (`to_edwards` in montgomery.rs)
+/// naturally produces sign 0 because negating 0 is a no-op. We mirror that
+/// here by forcing `effective_sign = 0`.
 ///
 /// Returns identity (0, 1) on failure (u = -1 or invalid y).
 pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat) {
@@ -1108,7 +1109,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
         math_edwards_identity()
     } else {
         let y = edwards_y_from_montgomery_u(u);
-        // When y² = 1 we have x = 0, so sign must be 0 for a valid encoding.
+        // y² = 1 ⟹ x = 0 ⟹ sign must be 0 (see doc comment above).
         let effective_sign = if field_square(y) == 1 {
             0u8
         } else {
@@ -1125,7 +1126,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
 ///
 /// Mathematical definition:
 /// - Returns None if y is not a valid y-coordinate (no x exists on curve)
-/// - Returns None if x = 0 but sign_bit = 1 (invalid sign for zero)
+/// - Returns None if x = 0 but sign_bit = 1 (invalid sign for zero, since 0 % 2 == 0)
 /// - Otherwise returns the unique (x, y) on the curve with x % 2 == sign_bit
 pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<
     (nat, nat),

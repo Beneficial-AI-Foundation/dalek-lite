@@ -699,7 +699,7 @@ function renderSpecCard(spec) {
                title="View source on GitHub" onclick="event.stopPropagation()">
                 Source &nearr;
             </a>
-            <a class="spec-github spec-graph" href="${CALLGRAPH_BASE_URL}?source=${encodeURIComponent(spec.name)}&sink=${encodeURIComponent(spec.name)}" target="_blank" rel="noopener"
+            <a class="spec-github spec-graph" href="${CALLGRAPH_BASE_URL}?source=${encodeURIComponent(spec.name)}&sink=${encodeURIComponent(spec.name)}&spec=1" target="_blank" rel="noopener"
                title="View call graph" onclick="event.stopPropagation()">
                 Graph &nearr;
             </a>

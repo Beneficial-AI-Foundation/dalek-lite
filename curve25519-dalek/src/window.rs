@@ -115,6 +115,8 @@ impl LookupTable<AffineNielsPoint> {
             fe51_limbs_bounded(&result.y_plus_x, 54),
             fe51_limbs_bounded(&result.y_minus_x, 54),
             fe51_limbs_bounded(&result.xy2d, 54),
+            // The result is a valid AffineNielsPoint
+            is_valid_affine_niels_point(result),
     {
         // Debug assertions from original macro - ignored by Verus
         #[cfg(not(verus_keep_ghost))]
@@ -172,6 +174,8 @@ impl LookupTable<ProjectiveNielsPoint> {
             fe51_limbs_bounded(&result.Y_minus_X, 54),
             fe51_limbs_bounded(&result.Z, 54),
             fe51_limbs_bounded(&result.T2d, 54),
+            // The result is a valid ProjectiveNielsPoint
+            is_valid_projective_niels_point(result),
     {
         /* ORIGINAL CODE: for generic type T, $name, $size, $neg, $range, and $conv_range.
 

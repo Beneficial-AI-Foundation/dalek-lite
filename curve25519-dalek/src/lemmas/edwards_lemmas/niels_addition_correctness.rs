@@ -1,4 +1,4 @@
-//! Correctness of Niels-based addition formulas for Ed25519.
+//! Correctness of Niels-based addition formulas for twisted Edwards curves.
 //!
 //! Proves that the projective addition formulas used in
 //! `EdwardsPoint +/- ProjectiveNielsPoint` and `EdwardsPoint +/- AffineNielsPoint`
@@ -64,28 +64,42 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     zz_val: nat,
 )
     requires
+// P₁ is well-formed and valid
+
         is_well_formed_edwards_point(self_point),
         is_valid_edwards_point(self_point),
+        // P₂ (as ProjectiveNiels) is valid
         is_valid_projective_niels_point(other),
+        // PP = (Y₁+X₁)·(Y₂+X₂)
         pp_val == field_mul(
             field_add(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.Y_plus_X),
         ),
+        // MM = (Y₁−X₁)·(Y₂−X₂)
         mm_val == field_mul(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.Y_minus_X),
         ),
+        // TT2d = T₁·(2d·T₂)
         tt2d_val == field_mul(
             fe51_as_canonical_nat(&self_point.T),
             fe51_as_canonical_nat(&other.T2d),
         ),
+        // ZZ = Z₁·Z₂
         zz_val == field_mul(fe51_as_canonical_nat(&self_point.Z), fe51_as_canonical_nat(&other.Z)),
+        // result.X = PP − MM
         fe51_as_canonical_nat(&result.X) == field_sub(pp_val, mm_val),
+        // result.Y = PP + MM
         fe51_as_canonical_nat(&result.Y) == field_add(pp_val, mm_val),
+        // result.Z = 2·ZZ + TT2d
         fe51_as_canonical_nat(&result.Z) == field_add(field_add(zz_val, zz_val), tt2d_val),
+        // result.T = 2·ZZ − TT2d
         fe51_as_canonical_nat(&result.T) == field_sub(field_add(zz_val, zz_val), tt2d_val),
     ensures
+// The CompletedPoint is valid (Z ≠ 0, T ≠ 0)
+
         is_valid_completed_point(result),
+        // Its affine projection equals edwards_add(P₁, P₂)
         completed_point_as_affine_edwards(result) == {
             let self_affine = edwards_point_as_affine(self_point);
             let other_affine = projective_niels_point_as_affine_edwards(other);
@@ -424,28 +438,42 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     zz_val: nat,
 )
     requires
+// P₁ is well-formed and valid
+
         is_well_formed_edwards_point(self_point),
         is_valid_edwards_point(self_point),
+        // P₂ (as ProjectiveNiels) is valid
         is_valid_projective_niels_point(other),
+        // PM = (Y₁+X₁)·(Y₂−X₂)  [note: swapped vs add]
         pm_val == field_mul(
             field_add(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.Y_minus_X),
         ),
+        // MP = (Y₁−X₁)·(Y₂+X₂)  [note: swapped vs add]
         mp_val == field_mul(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.Y_plus_X),
         ),
+        // TT2d = T₁·(2d·T₂)
         tt2d_val == field_mul(
             fe51_as_canonical_nat(&self_point.T),
             fe51_as_canonical_nat(&other.T2d),
         ),
+        // ZZ = Z₁·Z₂
         zz_val == field_mul(fe51_as_canonical_nat(&self_point.Z), fe51_as_canonical_nat(&other.Z)),
+        // result.X = PM − MP
         fe51_as_canonical_nat(&result.X) == field_sub(pm_val, mp_val),
+        // result.Y = PM + MP
         fe51_as_canonical_nat(&result.Y) == field_add(pm_val, mp_val),
+        // result.Z = 2·ZZ − TT2d  [note: minus vs add]
         fe51_as_canonical_nat(&result.Z) == field_sub(field_add(zz_val, zz_val), tt2d_val),
+        // result.T = 2·ZZ + TT2d  [note: plus vs add]
         fe51_as_canonical_nat(&result.T) == field_add(field_add(zz_val, zz_val), tt2d_val),
     ensures
+// The CompletedPoint is valid (Z ≠ 0, T ≠ 0)
+
         is_valid_completed_point(result),
+        // Its affine projection equals edwards_sub(P₁, P₂)
         completed_point_as_affine_edwards(result) == {
             let self_affine = edwards_point_as_affine(self_point);
             let other_affine = projective_niels_point_as_affine_edwards(other);
@@ -813,31 +841,45 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     z2_val: nat,
 )
     requires
+// P₁ is well-formed and valid
+
         is_well_formed_edwards_point(self_point),
         is_valid_edwards_point(self_point),
+        // P₂ (as AffineNiels) is valid
         is_valid_affine_niels_point(other),
+        // PP = (Y₁+X₁)·(y₂+x₂)
         pp_val == field_mul(
             field_add(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.y_plus_x),
         ),
+        // MM = (Y₁−X₁)·(y₂−x₂)
         mm_val == field_mul(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.y_minus_x),
         ),
+        // Txy2d = T₁·(2d·x₂y₂)
         txy2d_val == field_mul(
             fe51_as_canonical_nat(&self_point.T),
             fe51_as_canonical_nat(&other.xy2d),
         ),
+        // 2Z₁ = Z₁ + Z₁
         z2_val == field_add(
             fe51_as_canonical_nat(&self_point.Z),
             fe51_as_canonical_nat(&self_point.Z),
         ),
+        // result.X = PP − MM
         fe51_as_canonical_nat(&result.X) == field_sub(pp_val, mm_val),
+        // result.Y = PP + MM
         fe51_as_canonical_nat(&result.Y) == field_add(pp_val, mm_val),
+        // result.Z = 2Z₁ + Txy2d
         fe51_as_canonical_nat(&result.Z) == field_add(z2_val, txy2d_val),
+        // result.T = 2Z₁ − Txy2d
         fe51_as_canonical_nat(&result.T) == field_sub(z2_val, txy2d_val),
     ensures
+// The CompletedPoint is valid (Z ≠ 0, T ≠ 0)
+
         is_valid_completed_point(result),
+        // Its affine projection equals edwards_add(P₁, P₂)
         completed_point_as_affine_edwards(result) == {
             let self_affine = edwards_point_as_affine(self_point);
             let other_affine = affine_niels_point_as_affine_edwards(other);
@@ -1128,31 +1170,45 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     z2_val: nat,
 )
     requires
+// P₁ is well-formed and valid
+
         is_well_formed_edwards_point(self_point),
         is_valid_edwards_point(self_point),
+        // P₂ (as AffineNiels) is valid
         is_valid_affine_niels_point(other),
+        // PM = (Y₁+X₁)·(y₂−x₂)  [note: swapped vs add]
         pm_val == field_mul(
             field_add(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.y_minus_x),
         ),
+        // MP = (Y₁−X₁)·(y₂+x₂)  [note: swapped vs add]
         mp_val == field_mul(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.y_plus_x),
         ),
+        // Txy2d = T₁·(2d·x₂y₂)
         txy2d_val == field_mul(
             fe51_as_canonical_nat(&self_point.T),
             fe51_as_canonical_nat(&other.xy2d),
         ),
+        // 2Z₁ = Z₁ + Z₁
         z2_val == field_add(
             fe51_as_canonical_nat(&self_point.Z),
             fe51_as_canonical_nat(&self_point.Z),
         ),
+        // result.X = PM − MP
         fe51_as_canonical_nat(&result.X) == field_sub(pm_val, mp_val),
+        // result.Y = PM + MP
         fe51_as_canonical_nat(&result.Y) == field_add(pm_val, mp_val),
+        // result.Z = 2Z₁ − Txy2d  [note: minus vs add]
         fe51_as_canonical_nat(&result.Z) == field_sub(z2_val, txy2d_val),
+        // result.T = 2Z₁ + Txy2d  [note: plus vs add]
         fe51_as_canonical_nat(&result.T) == field_add(z2_val, txy2d_val),
     ensures
+// The CompletedPoint is valid (Z ≠ 0, T ≠ 0)
+
         is_valid_completed_point(result),
+        // Its affine projection equals edwards_sub(P₁, P₂)
         completed_point_as_affine_edwards(result) == {
             let self_affine = edwards_point_as_affine(self_point);
             let other_affine = affine_niels_point_as_affine_edwards(other);

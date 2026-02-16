@@ -3180,8 +3180,8 @@ impl BasepointTable for EdwardsBasepointTable {
             assert(sum_of_limbs_bounded(&identity.Z, &identity.Z, u64::MAX)) by {
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&identity.Z, &identity.Z, 52);
             }
-            // Validity: select returns a point from a table built from valid basepoints
-            assume(is_valid_affine_niels_point(selected));
+            // Validity: select returns a valid AffineNielsPoint (from select postcondition)
+            assert(is_valid_affine_niels_point(selected));
         }
         let completed = &identity + &selected;
         proof {
@@ -3364,8 +3364,8 @@ impl BasepointTable for EdwardsBasepointTable {
                     assert(fe51_limbs_bounded(&selected.y_plus_x, 54));
                     assert(fe51_limbs_bounded(&selected.y_minus_x, 54));
                     assert(fe51_limbs_bounded(&selected.xy2d, 54));
-                    // Validity: select returns a point from a table built from valid basepoints
-                    assume(is_valid_affine_niels_point(selected));
+                    // Validity: select returns a valid AffineNielsPoint (from select postcondition)
+                    assert(is_valid_affine_niels_point(selected));
                 }
                 let ghost old_P = P;
                 let ghost old_P_affine = edwards_point_as_affine(P);
@@ -3491,8 +3491,8 @@ impl BasepointTable for EdwardsBasepointTable {
                     assert(fe51_limbs_bounded(&selected.y_plus_x, 54));
                     assert(fe51_limbs_bounded(&selected.y_minus_x, 54));
                     assert(fe51_limbs_bounded(&selected.xy2d, 54));
-                    // Validity: select returns a point from a table built from valid basepoints
-                    assume(is_valid_affine_niels_point(selected));
+                    // Validity: select returns a valid AffineNielsPoint (from select postcondition)
+                    assert(is_valid_affine_niels_point(selected));
                 }
                 let ghost old_P2 = P;
                 let ghost old_P2_affine = edwards_point_as_affine(P);

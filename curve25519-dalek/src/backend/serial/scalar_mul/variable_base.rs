@@ -76,8 +76,8 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
     // REFACTORED: Extract select to bind result for proof block
     let selected = lookup_table.select(scalar_digits[63]);
     proof {
-        // Validity: select returns a point from a table built from valid Edwards points
-        assume(is_valid_projective_niels_point(selected));
+        // Validity: select returns a valid ProjectiveNielsPoint (from select postcondition)
+        assert(is_valid_projective_niels_point(selected));
     }
     let mut tmp1 = &tmp3 + &selected;
 
@@ -117,8 +117,8 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
         // REFACTORED: Extract select to bind result for proof block
         let selected = lookup_table.select(scalar_digits[i]);
         proof {
-            // Validity: select returns a point from a table built from valid Edwards points
-            assume(is_valid_projective_niels_point(selected));
+            // Validity: select returns a valid ProjectiveNielsPoint (from select postcondition)
+            assert(is_valid_projective_niels_point(selected));
         }
         tmp1 = &tmp3 + &selected;
         // Now tmp1 = s_i*P + 16*(prev) in P1xP1 coords

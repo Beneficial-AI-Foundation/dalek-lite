@@ -319,11 +319,14 @@ impl Pippenger {
                 scalars_points.len() == idx,
                 forall|j: int| 0 <= j < idx ==> (#[trigger] spec_points[j]).is_some(),
                 forall|t: int|
-                    0 <= t < scalars_points@.len()
-                        ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
-                            && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
-                            && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
-                            && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
+                    0 <= t < scalars_points@.len() ==> fe51_limbs_bounded(
+                        &(#[trigger] scalars_points@[t].1).Y_plus_X,
+                        54,
+                    ) && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                        && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54) && fe51_limbs_bounded(
+                        &scalars_points@[t].1.T2d,
+                        54,
+                    ),
             decreases min_len - idx,
         {
             let digits = if w == 6 {
@@ -372,7 +375,9 @@ impl Pippenger {
                         }
                         assert(!all_points_some(spec_optional_points_from_iter::<J>(points))) by {
                             assert(points_vec@ == spec_optional_points_from_iter::<J>(points));
-                            assert(points_vec@[k] == spec_optional_points_from_iter::<J>(points)[k]);
+                            assert(points_vec@[k] == spec_optional_points_from_iter::<J>(
+                                points,
+                            )[k]);
                             assert(spec_optional_points_from_iter::<J>(points)[k].is_none());
                             if all_points_some(spec_optional_points_from_iter::<J>(points)) {
                                 assert(spec_optional_points_from_iter::<J>(points)[k].is_some());
@@ -390,7 +395,8 @@ impl Pippenger {
             assert(idx == min_len);
             assert(idx == spec_points.len());
             assert(all_points_some(spec_points)) by {
-                assert forall|j: int| 0 <= j < spec_points.len() implies (#[trigger] spec_points[j]).is_some() by {
+                assert forall|j: int| 0 <= j < spec_points.len() implies (
+                #[trigger] spec_points[j]).is_some() by {
                     assert(0 <= j < idx);
                 }
             }
@@ -412,7 +418,8 @@ impl Pippenger {
             invariant
                 init_idx <= buckets_count,
                 buckets.len() == init_idx,
-                forall|k: int| 0 <= k < init_idx ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                forall|k: int|
+                    0 <= k < init_idx ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
             decreases buckets_count - init_idx,
         {
             buckets.push(EdwardsPoint::identity());
@@ -491,11 +498,14 @@ impl Pippenger {
                 forall|k: int|
                     0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
                 forall|t: int|
-                    0 <= t < scalars_points@.len()
-                        ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
-                            && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
-                            && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
-                            && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
+                    0 <= t < scalars_points@.len() ==> fe51_limbs_bounded(
+                        &(#[trigger] scalars_points@[t].1).Y_plus_X,
+                        54,
+                    ) && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                        && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54) && fe51_limbs_bounded(
+                        &scalars_points@[t].1.T2d,
+                        54,
+                    ),
             decreases scalars_points.len() - sp_idx,
         {
             let sp = &scalars_points[sp_idx];
@@ -533,7 +543,9 @@ impl Pippenger {
                 invariant
                     buckets.len() == buckets_count,
                     forall|k: int|
-                        0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                        0 <= k < buckets_count ==> is_well_formed_edwards_point(
+                            #[trigger] buckets[k],
+                        ),
                     j < buckets_count,
                     is_well_formed_edwards_point(buckets_intermediate_sum),
                     is_well_formed_edwards_point(hi_column),
@@ -559,13 +571,16 @@ impl Pippenger {
                     digit_index < 64,
                     buckets.len() == buckets_count,
                     forall|k: int|
-                        0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                        0 <= k < buckets_count ==> is_well_formed_edwards_point(
+                            #[trigger] buckets[k],
+                        ),
                     forall|t: int|
-                        0 <= t < scalars_points@.len()
-                            ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
-                                && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
-                                && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
-                                && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
+                        0 <= t < scalars_points@.len() ==> fe51_limbs_bounded(
+                            &(#[trigger] scalars_points@[t].1).Y_plus_X,
+                            54,
+                        ) && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
+                            && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
                     is_well_formed_edwards_point(total),
                 decreases digit_index,
             {
@@ -576,7 +591,9 @@ impl Pippenger {
                         bucket_idx2 <= buckets_count,
                         buckets.len() == buckets_count,
                         forall|k: int|
-                            0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                            0 <= k < buckets_count ==> is_well_formed_edwards_point(
+                                #[trigger] buckets[k],
+                            ),
                     decreases buckets_count - bucket_idx2,
                 {
                     buckets.set(bucket_idx2, EdwardsPoint::identity());
@@ -590,13 +607,16 @@ impl Pippenger {
                         digit_index < 64,
                         buckets.len() == buckets_count,
                         forall|k: int|
-                            0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                            0 <= k < buckets_count ==> is_well_formed_edwards_point(
+                                #[trigger] buckets[k],
+                            ),
                         forall|t: int|
-                            0 <= t < scalars_points@.len()
-                                ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[t].1).Y_plus_X, 54)
-                                    && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
-                                    && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
-                                    && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
+                            0 <= t < scalars_points@.len() ==> fe51_limbs_bounded(
+                                &(#[trigger] scalars_points@[t].1).Y_plus_X,
+                                54,
+                            ) && fe51_limbs_bounded(&scalars_points@[t].1.Y_minus_X, 54)
+                                && fe51_limbs_bounded(&scalars_points@[t].1.Z, 54)
+                                && fe51_limbs_bounded(&scalars_points@[t].1.T2d, 54),
                     decreases scalars_points.len() - sp_idx2,
                 {
                     let sp = &scalars_points[sp_idx2];
@@ -634,7 +654,9 @@ impl Pippenger {
                             invariant
                                 buckets.len() == buckets_count,
                                 forall|k: int|
-                                    0 <= k < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets[k]),
+                                    0 <= k < buckets_count ==> is_well_formed_edwards_point(
+                                        #[trigger] buckets[k],
+                                    ),
                                 j2 < buckets_count,
                                 is_well_formed_edwards_point(buckets_intermediate_sum2),
                                 is_well_formed_edwards_point(column),
@@ -667,6 +689,7 @@ impl Pippenger {
             }
         }  /* </REFACTORED CODE> */
         // Semantic proof path (Verus only): build the same sum directly and prove postcondition.
+
         #[cfg(verus_keep_ghost)]
         let total = {
             let mut sem_total = EdwardsPoint::identity();
@@ -691,7 +714,8 @@ impl Pippenger {
                     points_vec@ == spec_points,
                     points_vec@.len() == scalars_vec@.len(),
                     all_points_some(spec_points),
-                    forall|i: int| 0 <= i < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[i]),
+                    forall|i: int|
+                        0 <= i < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[i]),
                     forall|i: int|
                         0 <= i < points_vec@.len() && (#[trigger] points_vec@[i]).is_some()
                             ==> is_well_formed_edwards_point(points_vec@[i].unwrap()),
@@ -768,17 +792,32 @@ impl Pippenger {
                     assert(scalars_prefix[i] == spec_scalars[i]);
                     assert(points_prefix[i] == unwrap_points(spec_points)[i]);
                     assert(scalars_prefix.subrange(0, i) == spec_scalars.subrange(0, i));
-                    assert(
-                        points_prefix.subrange(0, i) == unwrap_points(spec_points).subrange(0, i)
-                    );
-                    assert(sum_of_scalar_muls(scalars_prefix, points_prefix) == edwards_add(
-                        sum_of_scalar_muls(scalars_prefix.subrange(0, i), points_prefix.subrange(0, i)).0,
-                        sum_of_scalar_muls(scalars_prefix.subrange(0, i), points_prefix.subrange(0, i)).1,
-                        edwards_scalar_mul(edwards_point_as_affine(points_prefix[i]), scalar_as_nat(&scalars_prefix[i])).0,
-                        edwards_scalar_mul(edwards_point_as_affine(points_prefix[i]), scalar_as_nat(&scalars_prefix[i])).1,
+                    assert(points_prefix.subrange(0, i) == unwrap_points(spec_points).subrange(
+                        0,
+                        i,
                     ));
-                    assert(sum_of_scalar_muls(scalars_prefix.subrange(0, i), points_prefix.subrange(0, i))
-                        == sum_of_scalar_muls(
+                    assert(sum_of_scalar_muls(scalars_prefix, points_prefix) == edwards_add(
+                        sum_of_scalar_muls(
+                            scalars_prefix.subrange(0, i),
+                            points_prefix.subrange(0, i),
+                        ).0,
+                        sum_of_scalar_muls(
+                            scalars_prefix.subrange(0, i),
+                            points_prefix.subrange(0, i),
+                        ).1,
+                        edwards_scalar_mul(
+                            edwards_point_as_affine(points_prefix[i]),
+                            scalar_as_nat(&scalars_prefix[i]),
+                        ).0,
+                        edwards_scalar_mul(
+                            edwards_point_as_affine(points_prefix[i]),
+                            scalar_as_nat(&scalars_prefix[i]),
+                        ).1,
+                    ));
+                    assert(sum_of_scalar_muls(
+                        scalars_prefix.subrange(0, i),
+                        points_prefix.subrange(0, i),
+                    ) == sum_of_scalar_muls(
                         spec_scalars.subrange(0, i),
                         unwrap_points(spec_points).subrange(0, i),
                     ));
@@ -800,9 +839,8 @@ impl Pippenger {
                             scalar_as_nat(&spec_scalars[i]),
                         ).1,
                     ));
-                    assert(sum_of_scalar_muls(scalars_prefix, points_prefix) == edwards_point_as_affine(
-                        next_total,
-                    ));
+                    assert(sum_of_scalar_muls(scalars_prefix, points_prefix)
+                        == edwards_point_as_affine(next_total));
                 }
                 sem_total = next_total;
                 sem_idx = sem_idx + 1;

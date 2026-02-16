@@ -3,15 +3,14 @@
 //! These lemmas prove that the extended addition formulas used in
 //! `EdwardsPoint + ProjectiveNielsPoint` and `EdwardsPoint + AffineNielsPoint`
 //! correctly compute the Edwards addition in P¹ × P¹ representation.
-
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::EDWARDS_D;
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
-#[allow(unused_imports)]
-use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)]
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)]
@@ -26,516 +25,11 @@ use vstd::prelude::*;
 verus! {
 
 // =============================================================================
-// FOIL expansion lemmas
-// =============================================================================
-
-/// FOIL: (a+b)(c+d) = (ac + ad) + (bc + bd)
-pub proof fn lemma_foil_add(a: nat, b: nat, c: nat, d: nat)
-    ensures
-        field_mul(field_add(a, b), field_add(c, d))
-            == field_add(
-                field_add(field_mul(a, c), field_mul(a, d)),
-                field_add(field_mul(b, c), field_mul(b, d)),
-            ),
-{
-    let ab = field_add(a, b);
-    let cd = field_add(c, d);
-
-    // (a+b)(c+d) = (a+b)*c + (a+b)*d  by commutativity then distribution
-    assert(field_mul(ab, cd) == field_add(
-        field_mul(ab, c),
-        field_mul(ab, d),
-    )) by {
-        lemma_field_mul_comm(ab, cd);
-        lemma_field_mul_distributes_over_add(cd, a, b);
-        // cd * (a+b) = cd*a + cd*b, but we need (a+b)*c + (a+b)*d
-        // Use comm: (a+b)*(c+d) = (c+d)*(a+b) = (c+d)*a + (c+d)*b
-        // Then comm each: (c+d)*a = a*(c+d), etc. Not quite right.
-        // Let's use: ab * cd = ab*c + ab*d directly
-        lemma_field_mul_distributes_over_add(ab, c, d);
-    }
-
-    // (a+b)*c = a*c + b*c  by comm then distrib
-    assert(field_mul(ab, c) == field_add(
-        field_mul(a, c),
-        field_mul(b, c),
-    )) by {
-        lemma_field_mul_comm(ab, c);
-        lemma_field_mul_distributes_over_add(c, a, b);
-        lemma_field_mul_comm(c, a);
-        lemma_field_mul_comm(c, b);
-    }
-
-    // (a+b)*d = a*d + b*d  by comm then distrib
-    assert(field_mul(ab, d) == field_add(
-        field_mul(a, d),
-        field_mul(b, d),
-    )) by {
-        lemma_field_mul_comm(ab, d);
-        lemma_field_mul_distributes_over_add(d, a, b);
-        lemma_field_mul_comm(d, a);
-        lemma_field_mul_comm(d, b);
-    }
-
-    // Now: (a+b)(c+d) = (ac + bc) + (ad + bd)
-    // We need: (ac + ad) + (bc + bd)
-    // These are equal by associativity and commutativity of field addition
-    // (ac + bc) + (ad + bd) = ac + (bc + ad) + bd = ac + (ad + bc) + bd = (ac + ad) + (bc + bd)
-    let ac = field_mul(a, c);
-    let ad = field_mul(a, d);
-    let bc = field_mul(b, c);
-    let bd = field_mul(b, d);
-
-    // We have: result = (ac + bc) + (ad + bd)
-    // We want: result = (ac + ad) + (bc + bd)
-    // Both equal ac + ad + bc + bd in the field; prove via modular arithmetic
-    assert(field_add(field_add(ac, bc), field_add(ad, bd))
-        == field_add(field_add(ac, ad), field_add(bc, bd))) by {
-        let p = p();
-        p_gt_2();
-        lemma_add_mod_noop((ac + bc) as int, (ad + bd) as int, p as int);
-        lemma_add_mod_noop(ac as int, bc as int, p as int);
-        lemma_add_mod_noop(ad as int, bd as int, p as int);
-        lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
-        lemma_add_mod_noop(ac as int, ad as int, p as int);
-        lemma_add_mod_noop(bc as int, bd as int, p as int);
-        // Both reduce to (ac + bc + ad + bd) % p = (ac + ad + bc + bd) % p
-        // which holds since integer addition is commutative
-        assert((ac + bc + ad + bd) == (ac + ad + bc + bd));
-    }
-}
-
-/// FOIL for subtraction: (a-b)(c-d) = (ac + bd) - (ad + bc)
-/// More precisely: (a-b)(c-d) = ac - ad - bc + bd = (ac+bd) - (ad+bc)
-pub proof fn lemma_foil_sub(a: nat, b: nat, c: nat, d: nat)
-    ensures
-        field_mul(field_sub(a, b), field_sub(c, d))
-            == field_sub(
-                field_add(field_mul(a, c), field_mul(b, d)),
-                field_add(field_mul(a, d), field_mul(b, c)),
-            ),
-{
-    let a_minus_b = field_sub(a, b);
-    let c_minus_d = field_sub(c, d);
-    let ac = field_mul(a, c);
-    let ad = field_mul(a, d);
-    let bc = field_mul(b, c);
-    let bd = field_mul(b, d);
-
-    // (a-b)(c-d) = (a-b)*c - (a-b)*d
-    // Use comm: (a-b)*(c-d) = (c-d)*(a-b), then sub_right(c,d,a_minus_b)
-    assert(field_mul(a_minus_b, c_minus_d) == field_sub(
-        field_mul(a_minus_b, c),
-        field_mul(a_minus_b, d),
-    )) by {
-        lemma_field_mul_comm(a_minus_b, c_minus_d);
-        // (c-d)*(a-b) = c*(a-b) - d*(a-b)
-        lemma_field_mul_distributes_over_sub_right(c, d, a_minus_b);
-        // c*(a-b) = (a-b)*c and d*(a-b) = (a-b)*d
-        lemma_field_mul_comm(c, a_minus_b);
-        lemma_field_mul_comm(d, a_minus_b);
-    }
-
-    // (a-b)*c = a*c - b*c
-    assert(field_mul(a_minus_b, c) == field_sub(ac, bc)) by {
-        lemma_field_mul_distributes_over_sub_right(a, b, c);
-    }
-
-    // (a-b)*d = a*d - b*d
-    assert(field_mul(a_minus_b, d) == field_sub(ad, bd)) by {
-        lemma_field_mul_distributes_over_sub_right(a, b, d);
-    }
-
-    // (ac - bc) - (ad - bd) = (ac + bd) - (ad + bc)
-    // Both sides ≡ ac - bc - ad + bd (mod p).
-    // We prove this by showing both sides equal the same nat value.
-    let lhs = field_sub(field_sub(ac, bc), field_sub(ad, bd));
-    let rhs = field_sub(field_add(ac, bd), field_add(ad, bc));
-
-    // Show LHS = (ac - bc - ad + bd) mod p (as int then cast to nat)
-    assert(lhs as int == ((ac as int - bc as int) - (ad as int - bd as int)) % (p() as int)) by {
-        let p = p();
-        let p_int = p as int;
-        p_gt_2();
-        lemma_small_mod(ac, p);
-        lemma_small_mod(bc, p);
-        lemma_small_mod(ad, p);
-        lemma_small_mod(bd, p);
-        // field_sub(ac, bc) = (ac + p - bc) % p
-        // = (ac - bc + p) % p = (ac - bc) % p
-        lemma_mod_add_multiples_vanish(ac as int - bc as int, p_int);
-        lemma_mod_add_multiples_vanish(ad as int - bd as int, p_int);
-        // Now sub the results
-        let s1 = field_sub(ac, bc);
-        let s2 = field_sub(ad, bd);
-        // s1 = (ac - bc) % p as nat, s2 = (ad - bd) % p as nat
-        // field_sub(s1, s2) = (s1%p + p - s2%p) % p
-        // Since s1 < p and s2 < p, s1%p=s1 and s2%p=s2
-        lemma_small_mod(s1, p);
-        lemma_small_mod(s2, p);
-        // = (s1 + p - s2) % p = (s1 - s2 + p) % p = (s1 - s2) % p
-        lemma_mod_add_multiples_vanish(s1 as int - s2 as int, p_int);
-        // = ((ac-bc)%p - (ad-bd)%p) % p = (ac-bc-ad+bd) % p
-        lemma_sub_mod_noop(ac as int - bc as int, ad as int - bd as int, p_int);
-    }
-
-    // Show RHS = (ac + bd - ad - bc) mod p
-    assert(rhs as int == ((ac as int + bd as int) - (ad as int + bc as int)) % (p() as int)) by {
-        let p = p();
-        let p_int = p as int;
-        p_gt_2();
-        lemma_small_mod(ac, p);
-        lemma_small_mod(bc, p);
-        lemma_small_mod(ad, p);
-        lemma_small_mod(bd, p);
-        let a1 = field_add(ac, bd);
-        let a2 = field_add(ad, bc);
-        lemma_small_mod(a1, p);
-        lemma_small_mod(a2, p);
-        lemma_mod_add_multiples_vanish(a1 as int - a2 as int, p_int);
-        lemma_add_mod_noop(ac as int, bd as int, p_int);
-        lemma_add_mod_noop(ad as int, bc as int, p_int);
-        lemma_sub_mod_noop(ac as int + bd as int, ad as int + bc as int, p_int);
-    }
-
-    // The integer expressions are equal
-    assert((ac as int - bc as int) - (ad as int - bd as int) ==
-           (ac as int + bd as int) - (ad as int + bc as int));
-
-    // Therefore LHS == RHS
-    assert(lhs == rhs);
-}
-
-// =============================================================================
-// PP/MM decomposition lemmas
-// =============================================================================
-
-/// PP - MM = 2·(y1·x2 + x1·y2) when PP = (y1+x1)(y2+x2) and MM = (y1-x1)(y2-x2)
-/// More precisely, using field elements a = y1, b = x1, c = y2, d = x2:
-///   (a+b)(c+d) - (a-b)(c-d) = 2·(a·d + b·c)
-pub proof fn lemma_pp_minus_mm(a: nat, b: nat, c: nat, d: nat)
-    ensures
-        field_sub(
-            field_mul(field_add(a, b), field_add(c, d)),
-            field_mul(field_sub(a, b), field_sub(c, d)),
-        ) == field_mul(2, field_add(field_mul(a, d), field_mul(b, c))),
-{
-    let ad = field_mul(a, d);
-    let bc = field_mul(b, c);
-    let ac = field_mul(a, c);
-    let bd = field_mul(b, d);
-
-    // PP = (a+b)(c+d) = (ac + ad) + (bc + bd)  by FOIL
-    lemma_foil_add(a, b, c, d);
-    let pp = field_mul(field_add(a, b), field_add(c, d));
-    assert(pp == field_add(field_add(ac, ad), field_add(bc, bd)));
-
-    // MM = (a-b)(c-d) = (ac + bd) - (ad + bc)  by FOIL for sub
-    lemma_foil_sub(a, b, c, d);
-    let mm = field_mul(field_sub(a, b), field_sub(c, d));
-    assert(mm == field_sub(field_add(ac, bd), field_add(ad, bc)));
-
-    // PP - MM = [(ac+ad)+(bc+bd)] - [(ac+bd)-(ad+bc)]
-    // = (ac+ad+bc+bd) - (ac+bd-ad-bc)
-    // = 2·(ad+bc)
-    // Use lemma: (A+B) - (A-B) = 2B where A = ac+bd, B = ad+bc
-    let big_a = field_add(ac, bd);
-    let big_b = field_add(ad, bc);
-
-    // Show PP = big_a + big_b
-    // We already showed PP = (ac+ad) + (bc+bd)
-    // big_a + big_b = (ac+bd) + (ad+bc)
-    // Need: (ac+ad)+(bc+bd) == (ac+bd)+(ad+bc)  [by commutativity/associativity]
-    assert(pp == field_add(big_a, big_b)) by {
-        let p = p();
-        p_gt_2();
-        lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
-        lemma_add_mod_noop(ac as int, ad as int, p as int);
-        lemma_add_mod_noop(bc as int, bd as int, p as int);
-        lemma_add_mod_noop((ac + bd) as int, (ad + bc) as int, p as int);
-        lemma_add_mod_noop(ac as int, bd as int, p as int);
-        lemma_add_mod_noop(ad as int, bc as int, p as int);
-        assert((ac + ad + bc + bd) == (ac + bd + ad + bc));
-    }
-
-    // Show MM = big_a - big_b (already proven by foil_sub)
-    assert(mm == field_sub(big_a, big_b));
-
-    // Apply: (A+B) - (A-B) = 2B
-    lemma_field_add_sub_recover_double(big_a, big_b);
-}
-
-/// PP + MM = 2·(y1·y2 + x1·x2)
-pub proof fn lemma_pp_plus_mm(a: nat, b: nat, c: nat, d: nat)
-    ensures
-        field_add(
-            field_mul(field_add(a, b), field_add(c, d)),
-            field_mul(field_sub(a, b), field_sub(c, d)),
-        ) == field_mul(2, field_add(field_mul(a, c), field_mul(b, d))),
-{
-    let ad = field_mul(a, d);
-    let bc = field_mul(b, c);
-    let ac = field_mul(a, c);
-    let bd = field_mul(b, d);
-
-    lemma_foil_add(a, b, c, d);
-    let pp = field_mul(field_add(a, b), field_add(c, d));
-    assert(pp == field_add(field_add(ac, ad), field_add(bc, bd)));
-
-    lemma_foil_sub(a, b, c, d);
-    let mm = field_mul(field_sub(a, b), field_sub(c, d));
-    assert(mm == field_sub(field_add(ac, bd), field_add(ad, bc)));
-
-    let big_a = field_add(ac, bd);
-    let big_b = field_add(ad, bc);
-
-    assert(pp == field_add(big_a, big_b)) by {
-        let p = p();
-        p_gt_2();
-        lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
-        lemma_add_mod_noop(ac as int, ad as int, p as int);
-        lemma_add_mod_noop(bc as int, bd as int, p as int);
-        lemma_add_mod_noop((ac + bd) as int, (ad + bc) as int, p as int);
-        lemma_add_mod_noop(ac as int, bd as int, p as int);
-        lemma_add_mod_noop(ad as int, bc as int, p as int);
-        assert((ac + ad + bc + bd) == (ac + bd + ad + bc));
-    }
-
-    assert(mm == field_sub(big_a, big_b));
-
-    // Apply: (A+B) + (A-B) = 2A
-    lemma_field_add_add_recover_double(big_a, big_b);
-}
-
-// =============================================================================
-// Algebraic helper lemmas for projective ↔ affine factoring
-// =============================================================================
-
-/// Helper: (a/b) * b = a (mod p) when b is non-zero in the field.
-/// Formally: mul(mul(a, inv(b)), b) == a % p().
-pub proof fn lemma_div_mul_cancel(a: nat, b: nat)
-    requires
-        b % p() != 0,
-    ensures
-        field_mul(field_mul(a, field_inv(b)), b) == a % p(),
-{
-    let inv_b = field_inv(b);
-    lemma_field_mul_assoc(a, inv_b, b);
-    // mul(a, mul(inv(b), b)) = mul(a, 1) = a % p
-    lemma_inv_mul_cancel(b);
-    lemma_field_mul_one_right(a);
-}
-
-/// Helper: mul(a*b, c*d) = mul(a*c, b*d) — four-factor rearrangement.
-/// Rearranges (ab)(cd) to (ac)(bd) using associativity and commutativity.
-pub proof fn lemma_four_factor_rearrange(a: nat, b: nat, c: nat, d: nat)
-    ensures
-        field_mul(field_mul(a, b), field_mul(c, d))
-            == field_mul(field_mul(a, c), field_mul(b, d)),
-{
-    let ab = field_mul(a, b);
-    let cd = field_mul(c, d);
-    let ac = field_mul(a, c);
-    let bd = field_mul(b, d);
-
-    // (ab)(cd) = a(b(cd)) = a((bc)d) = a((cb)d) = a(c(bd)) = (ac)(bd)
-    lemma_field_mul_assoc(a, b, cd);
-    lemma_field_mul_assoc(b, c, d);
-    lemma_field_mul_comm(b, c);
-    lemma_field_mul_assoc(c, b, d);
-    lemma_field_mul_assoc(a, c, bd);
-}
-
-/// Helper: a*c + b*c = (a+b)*c — reverse distributivity for addition.
-pub proof fn lemma_reverse_distribute_add(a: nat, b: nat, c: nat)
-    ensures
-        field_add(field_mul(a, c), field_mul(b, c))
-            == field_mul(field_add(a, b), c),
-{
-    lemma_field_mul_comm(field_add(a, b), c);
-    lemma_field_mul_distributes_over_add(c, a, b);
-    lemma_field_mul_comm(c, a);
-    lemma_field_mul_comm(c, b);
-}
-
-/// Helper: a*c - b*c = (a-b)*c — reverse distributivity for subtraction.
-pub proof fn lemma_reverse_distribute_sub(a: nat, b: nat, c: nat)
-    ensures
-        field_sub(field_mul(a, c), field_mul(b, c))
-            == field_mul(field_sub(a, b), c),
-{
-    lemma_field_mul_comm(field_sub(a, b), c);
-    lemma_field_mul_distributes_over_sub_right(a, b, c);
-}
-
-/// Helper: Field left cancellation. If mul(a, b) == mul(a, c) and a ≠ 0, then b ≡ c (mod p).
-pub proof fn lemma_field_mul_left_cancel(a: nat, b: nat, c: nat)
-    requires
-        a % p() != 0,
-        field_mul(a, b) == field_mul(a, c),
-    ensures
-        b % p() == c % p(),
-{
-    // Multiply both sides by inv(a):
-    // mul(inv(a), mul(a, b)) = mul(inv(a), mul(a, c))
-    // mul(mul(inv(a), a), b) = mul(mul(inv(a), a), c)   [by assoc]
-    // mul(1, b) = mul(1, c)                              [by inv_mul_cancel]
-    // b % p = c % p                                      [by mul_one_left]
-    let inv_a = field_inv(a);
-    lemma_field_mul_assoc(inv_a, a, b);
-    lemma_field_mul_assoc(inv_a, a, c);
-    lemma_field_mul_comm(inv_a, a);
-    lemma_inv_mul_cancel(a);
-    lemma_field_mul_one_left(b);
-    lemma_field_mul_one_left(c);
-}
-
-/// Helper: a + a = mul(2, a) — addition with self equals doubling.
-pub proof fn lemma_add_self_eq_double(a: nat)
-    ensures
-        field_add(a, a) == field_mul(2, a),
-{
-    p_gt_2();
-    let pp = p();
-    // add(a, a) = (a + a) % p and mul(2, a) = (2 * a) % p
-    // Since a + a == 2 * a as integers, these are equal.
-    assert((a + a) as int == (2 * a) as int);
-}
-
-/// Double negation in field arithmetic: neg(neg(a)) = a % p.
-pub proof fn lemma_neg_neg(a: nat)
-    ensures
-        field_neg(field_neg(a)) == a % p(),
-{
-    let p = p();
-    p_gt_2();
-    let a_mod = a % p;
-    let neg_a = field_neg(a);
-
-    assert(a_mod < p) by { lemma_mod_bound(a as int, p as int); };
-
-    if a_mod == 0 {
-        // neg(a) = (p - 0) % p = 0
-        assert(neg_a == 0) by {
-            lemma_mod_self_0(p as int);
-        };
-        // neg(0) = (p - 0) % p = 0 = a % p
-        assert(field_neg(neg_a) == 0) by {
-            lemma_mod_self_0(p as int);
-        };
-    } else {
-        // neg(a) = (p - a_mod) % p = p - a_mod  (since 0 < p - a_mod < p)
-        assert(neg_a == (p - a_mod) as nat) by {
-            lemma_small_mod((p - a_mod) as nat, p);
-        };
-        // neg_a < p, so neg_a % p = neg_a
-        assert(neg_a % p == neg_a) by {
-            lemma_small_mod(neg_a, p);
-        };
-        // neg(neg_a) = (p - neg_a) % p = a_mod % p = a_mod
-        assert((p - neg_a) as nat == a_mod);
-        assert(field_neg(neg_a) == a_mod) by {
-            lemma_small_mod(a_mod, p);
-        };
-    }
-}
-
-/// PM - MP = 2*(bc - ad) where PM = (a+b)(c-d) and MP = (a-b)(c+d).
-/// This is the mixed-FOIL identity for the cross terms in subtraction.
-/// Proven by substituting neg(d) into lemma_pp_minus_mm.
-pub proof fn lemma_pm_minus_mp(a: nat, b: nat, c: nat, d: nat)
-    ensures
-        field_sub(
-            field_mul(field_add(a, b), field_sub(c, d)),
-            field_mul(field_sub(a, b), field_add(c, d)),
-        ) == field_mul(2, field_sub(field_mul(b, c), field_mul(a, d))),
-{
-    let neg_d = field_neg(d);
-    let ad = field_mul(a, d);
-    let bc = field_mul(b, c);
-
-    // sub(c, d) = add(c, neg(d))
-    lemma_field_sub_eq_add_neg(c, d);
-
-    // sub(c, neg(d)) = add(c, d):
-    // sub(c, neg(d)) = add(c, neg(neg(d))) [by sub_eq_add_neg]
-    // neg(neg(d)) = d % p [by neg_neg]
-    // add(c, d%p) = add(c, d) [by modular arithmetic]
-    lemma_field_sub_eq_add_neg(c, neg_d);
-    lemma_neg_neg(d);
-    assert(field_sub(c, neg_d) == field_add(c, d)) by {
-        let p = p();
-        p_gt_2();
-        // add(c, neg(neg(d))) = add(c, d%p)
-        // (c + d%p) % p = (c + d) % p
-        lemma_add_mod_noop(c as int, (d % p) as int, p as int);
-        lemma_add_mod_noop(c as int, d as int, p as int);
-        lemma_mod_twice(d as int, p as int);
-    };
-
-    // Apply pp_minus_mm(a, b, c, neg_d):
-    // sub(mul(add(a,b),add(c,neg_d)), mul(sub(a,b),sub(c,neg_d)))
-    //   == mul(2, add(mul(a,neg_d), mul(b,c)))
-    // Since add(c,neg_d) = sub(c,d) and sub(c,neg_d) = add(c,d):
-    // sub(PM, MP) == mul(2, add(mul(a,neg_d), bc))
-    lemma_pp_minus_mm(a, b, c, neg_d);
-
-    // mul(a, neg(d)) = neg(mul(a, d))
-    lemma_field_mul_neg(a, d);
-
-    // add(neg(ad), bc) = add(bc, neg(ad)) = sub(bc, ad)
-    lemma_field_sub_eq_add_neg(bc, ad);
-    assert(field_add(field_neg(ad), bc) == field_add(bc, field_neg(ad))) by {
-        let p = p();
-        assert((field_neg(ad) + bc) == (bc + field_neg(ad)));
-    };
-}
-
-/// PM + MP = 2*(ac - bd) where PM = (a+b)(c-d) and MP = (a-b)(c+d).
-/// This is the mixed-FOIL identity for the diagonal terms in subtraction.
-/// Proven by substituting neg(d) into lemma_pp_plus_mm.
-pub proof fn lemma_pm_plus_mp(a: nat, b: nat, c: nat, d: nat)
-    ensures
-        field_add(
-            field_mul(field_add(a, b), field_sub(c, d)),
-            field_mul(field_sub(a, b), field_add(c, d)),
-        ) == field_mul(2, field_sub(field_mul(a, c), field_mul(b, d))),
-{
-    let neg_d = field_neg(d);
-    let ac = field_mul(a, c);
-    let bd = field_mul(b, d);
-
-    // Same setup as pm_minus_mp
-    lemma_field_sub_eq_add_neg(c, d);
-    lemma_field_sub_eq_add_neg(c, neg_d);
-    lemma_neg_neg(d);
-    assert(field_sub(c, neg_d) == field_add(c, d)) by {
-        let p = p();
-        p_gt_2();
-        lemma_add_mod_noop(c as int, (d % p) as int, p as int);
-        lemma_add_mod_noop(c as int, d as int, p as int);
-        lemma_mod_twice(d as int, p as int);
-    };
-
-    // Apply pp_plus_mm(a, b, c, neg_d):
-    // add(mul(add(a,b),add(c,neg_d)), mul(sub(a,b),sub(c,neg_d)))
-    //   == mul(2, add(mul(a,c), mul(b,neg_d)))
-    lemma_pp_plus_mm(a, b, c, neg_d);
-
-    // mul(b, neg(d)) = neg(mul(b, d))
-    lemma_field_mul_neg(b, d);
-
-    // add(ac, neg(bd)) = sub(ac, bd)
-    lemma_field_sub_eq_add_neg(ac, bd);
-}
-
-// =============================================================================
 // Pure mathematical axiom
 // =============================================================================
 // This is the ONLY irreducible mathematical assumption in this module.
 // Everything else (FOIL, PP/MM, factor cancellation, exec bridges) is
 // algebraically derivable from this axiom plus existing field lemmas.
-
 /// Core mathematical axiom: Edwards curve addition is complete and closed.
 ///
 /// For the twisted Edwards curve -x² + y² = 1 + d·x²·y² where d is a non-square
@@ -565,14 +59,10 @@ pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
     ensures
         ({
             let d = fe51_as_canonical_nat(&EDWARDS_D);
-            let t = field_mul(d, field_mul(
-                field_mul(x1, x2), field_mul(y1, y2)));
+            let t = field_mul(d, field_mul(field_mul(x1, x2), field_mul(y1, y2)));
             field_add(1, t) != 0 && field_sub(1, t) != 0
         }),
-        math_on_edwards_curve(
-            edwards_add(x1, y1, x2, y2).0,
-            edwards_add(x1, y1, x2, y2).1,
-        ),
+        math_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
 {
     admit();
 }
@@ -580,7 +70,6 @@ pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
 // =============================================================================
 // Pure math helper lemmas (proven)
 // =============================================================================
-
 /// Negation preserves the Edwards curve equation: if (x, y) is on the curve,
 /// so is (-x, y). This follows from (-x)² = x² in the field.
 pub proof fn lemma_neg_preserves_curve(x: nat, y: nat)
@@ -615,8 +104,7 @@ pub proof fn lemma_neg_preserves_curve(x: nat, y: nat)
     assert(neg_x_sq == x_sq);
     assert(field_mul(neg_x_sq, y_sq) == field_mul(x_sq, y_sq));
     assert(field_sub(y_sq, neg_x_sq) == field_sub(y_sq, x_sq));
-    assert(field_mul(d, field_mul(neg_x_sq, y_sq))
-        == field_mul(d, field_mul(x_sq, y_sq)));
+    assert(field_mul(d, field_mul(neg_x_sq, y_sq)) == field_mul(d, field_mul(x_sq, y_sq)));
 }
 
 /// Given abstract CompletedPoint values that are 2x the edwards_add numerators
@@ -627,29 +115,45 @@ pub proof fn lemma_neg_preserves_curve(x: nat, y: nat)
 /// Proven from axiom_edwards_add_complete (denominator non-zero) and
 /// lemma_cancel_common_factor (to cancel the common factor of 2).
 pub proof fn lemma_completed_point_ratios(
-    x1: nat, y1: nat, x2: nat, y2: nat,
-    result_x: nat, result_y: nat, result_z: nat, result_t: nat,
+    x1: nat,
+    y1: nat,
+    x2: nat,
+    y2: nat,
+    result_x: nat,
+    result_y: nat,
+    result_z: nat,
+    result_t: nat,
 )
     requires
         math_on_edwards_curve(x1, y1),
         math_on_edwards_curve(x2, y2),
-        result_x == field_mul(2, field_add(
-            field_mul(x1, y2), field_mul(y1, x2))),
-        result_y == field_mul(2, field_add(
-            field_mul(y1, y2), field_mul(x1, x2))),
-        result_z == field_mul(2, field_add(1,
-            field_mul(fe51_as_canonical_nat(&EDWARDS_D),
-                field_mul(field_mul(x1, x2), field_mul(y1, y2))))),
-        result_t == field_mul(2, field_sub(1,
-            field_mul(fe51_as_canonical_nat(&EDWARDS_D),
-                field_mul(field_mul(x1, x2), field_mul(y1, y2))))),
+        result_x == field_mul(2, field_add(field_mul(x1, y2), field_mul(y1, x2))),
+        result_y == field_mul(2, field_add(field_mul(y1, y2), field_mul(x1, x2))),
+        result_z == field_mul(
+            2,
+            field_add(
+                1,
+                field_mul(
+                    fe51_as_canonical_nat(&EDWARDS_D),
+                    field_mul(field_mul(x1, x2), field_mul(y1, y2)),
+                ),
+            ),
+        ),
+        result_t == field_mul(
+            2,
+            field_sub(
+                1,
+                field_mul(
+                    fe51_as_canonical_nat(&EDWARDS_D),
+                    field_mul(field_mul(x1, x2), field_mul(y1, y2)),
+                ),
+            ),
+        ),
     ensures
         result_z != 0,
         result_t != 0,
-        field_mul(result_x, field_inv(result_z))
-            == edwards_add(x1, y1, x2, y2).0,
-        field_mul(result_y, field_inv(result_t))
-            == edwards_add(x1, y1, x2, y2).1,
+        field_mul(result_x, field_inv(result_z)) == edwards_add(x1, y1, x2, y2).0,
+        field_mul(result_y, field_inv(result_t)) == edwards_add(x1, y1, x2, y2).1,
         math_on_edwards_curve(
             field_mul(result_x, field_inv(result_z)),
             field_mul(result_y, field_inv(result_t)),
@@ -733,13 +237,15 @@ pub proof fn lemma_completed_point_ratios(
 //   - Swapping Y_plus_X/Y_minus_X in the Niels point corresponds to negating x2
 //   - Swapping Z/T in the result reflects the sign change in 1 ± d·x₁x₂y₁y₂
 //   - lemma_neg_preserves_curve ensures the negated point is still on curve
-
 /// Exec bridge: EdwardsPoint + ProjectiveNielsPoint -> valid CompletedPoint.
 pub proof fn lemma_add_projective_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::ProjectiveNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
-    pp_val: nat, mm_val: nat, tt2d_val: nat, zz_val: nat,
+    pp_val: nat,
+    mm_val: nat,
+    tt2d_val: nat,
+    zz_val: nat,
 )
     requires
         is_well_formed_edwards_point(self_point),
@@ -753,7 +259,10 @@ pub proof fn lemma_add_projective_niels_completed_valid(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.Y_minus_X),
         ),
-        tt2d_val == field_mul(fe51_as_canonical_nat(&self_point.T), fe51_as_canonical_nat(&other.T2d)),
+        tt2d_val == field_mul(
+            fe51_as_canonical_nat(&self_point.T),
+            fe51_as_canonical_nat(&other.T2d),
+        ),
         zz_val == field_mul(fe51_as_canonical_nat(&self_point.Z), fe51_as_canonical_nat(&other.Z)),
         fe51_as_canonical_nat(&result.X) == field_sub(pp_val, mm_val),
         fe51_as_canonical_nat(&result.Y) == field_add(pp_val, mm_val),
@@ -762,7 +271,8 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     ensures
         is_valid_completed_point(result),
         completed_point_as_affine_edwards(result) == spec_edwards_add_projective_niels(
-            self_point, other,
+            self_point,
+            other,
         ),
 {
     // === SETUP: Extract projective coordinates ===
@@ -775,7 +285,9 @@ pub proof fn lemma_add_projective_niels_completed_valid(
 
     // sZ, sX, sY, sT are < p (fe51_as_canonical_nat returns values mod p)
     assert(sZ != 0);  // from is_valid_edwards_point: Z != 0
-    assert(sZ % p() != 0) by { lemma_field_element_reduced(sZ); };
+    assert(sZ % p() != 0) by {
+        lemma_field_element_reduced(sZ);
+    };
 
     // === Extract witness from is_valid_projective_niels_point ===
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -786,7 +298,9 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     let T2 = fe51_as_canonical_nat(&ep.T);
 
     assert(Z2 != 0);  // from is_valid_edwards_point(ep)
-    assert(Z2 % p() != 0) by { lemma_field_element_reduced(Z2); };
+    assert(Z2 % p() != 0) by {
+        lemma_field_element_reduced(Z2);
+    };
 
     // Segre relations
     assert(field_mul(sX, sY) == field_mul(sZ, sT));
@@ -875,15 +389,19 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     let y1y2 = field_mul(y1, y2);
     let x1x2 = field_mul(x1, x2);
 
-    assert(field_add(field_mul(sY, X2), field_mul(sX, Y2))
-        == field_mul(z1z2, field_add(y1x2, x1y2))) by {
+    assert(field_add(field_mul(sY, X2), field_mul(sX, Y2)) == field_mul(
+        z1z2,
+        field_add(y1x2, x1y2),
+    )) by {
         // mul(y1x2, z1z2) + mul(x1y2, z1z2) = mul(y1x2 + x1y2, z1z2) = mul(z1z2, y1x2+x1y2)
         lemma_reverse_distribute_add(y1x2, x1y2, z1z2);
         lemma_field_mul_comm(field_add(y1x2, x1y2), z1z2);
     };
 
-    assert(field_add(field_mul(sY, Y2), field_mul(sX, X2))
-        == field_mul(z1z2, field_add(y1y2, x1x2))) by {
+    assert(field_add(field_mul(sY, Y2), field_mul(sX, X2)) == field_mul(
+        z1z2,
+        field_add(y1y2, x1x2),
+    )) by {
         lemma_reverse_distribute_add(y1y2, x1x2, z1z2);
         lemma_field_mul_comm(field_add(y1y2, x1x2), z1z2);
     };
@@ -961,7 +479,11 @@ pub proof fn lemma_add_projective_niels_completed_valid(
         lemma_mul_mod_noop_right(sT as int, T2 as int, p() as int);
         lemma_mul_mod_noop_left(sT as int, T2 as int, p() as int);
         lemma_mul_mod_noop_left((field_mul(x1y1, sZ)) as int, T2 as int, p() as int);
-        lemma_mul_mod_noop_right((field_mul(x1y1, sZ)) as int, (field_mul(x2y2, Z2)) as int, p() as int);
+        lemma_mul_mod_noop_right(
+            (field_mul(x1y1, sZ)) as int,
+            (field_mul(x2y2, Z2)) as int,
+            p() as int,
+        );
         lemma_four_factor_rearrange(x1y1, sZ, x2y2, Z2);
     };
 
@@ -986,8 +508,10 @@ pub proof fn lemma_add_projective_niels_completed_valid(
 
     // Step 3b: mul(x1x2y1y2, z1z2) * mul(2, d) = mul(z1z2, mul(x1x2y1y2, mul(2, d)))
     let x1x2y1y2 = field_mul(x1x2, y1y2);
-    assert(field_mul(field_mul(x1x2y1y2, z1z2), field_mul(2, d))
-        == field_mul(z1z2, field_mul(x1x2y1y2, field_mul(2, d)))) by {
+    assert(field_mul(field_mul(x1x2y1y2, z1z2), field_mul(2, d)) == field_mul(
+        z1z2,
+        field_mul(x1x2y1y2, field_mul(2, d)),
+    )) by {
         lemma_field_mul_comm(x1x2y1y2, z1z2);
         lemma_field_mul_assoc(z1z2, x1x2y1y2, field_mul(2, d));
     };
@@ -1110,21 +634,27 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     lemma_field_element_reduced(Z2);
     lemma_nonzero_product(sZ, Z2);
     // z1z2 % p() != 0 (since z1z2 < p and z1z2 != 0)
-    assert(z1z2 < p()) by { lemma_mod_bound((sZ * Z2) as int, p() as int); };
+    assert(z1z2 < p()) by {
+        lemma_mod_bound((sZ * Z2) as int, p() as int);
+    };
     lemma_field_element_reduced(z1z2);
     assert(z1z2 % p() != 0);
 
     // Cancel z1z2: result_x/result_z = aff_rx/aff_rz (= edwards_add.0)
     // result_x = mul(z1z2, aff_rx), result_z = mul(z1z2, aff_rz)
     // So mul(result_x, inv(result_z)) = mul(aff_rx, inv(aff_rz))
-    assert(aff_rz % p() != 0) by { lemma_field_element_reduced(aff_rz); };
+    assert(aff_rz % p() != 0) by {
+        lemma_field_element_reduced(aff_rz);
+    };
     lemma_cancel_common_factor(aff_rx, aff_rz, z1z2);
     // mul(mul(aff_rx, z1z2), inv(mul(aff_rz, z1z2))) == mul(aff_rx, inv(aff_rz))
     // We need: mul(z1z2, aff_rx) = mul(aff_rx, z1z2)
     lemma_field_mul_comm(z1z2, aff_rx);
     lemma_field_mul_comm(z1z2, aff_rz);
 
-    assert(aff_rt % p() != 0) by { lemma_field_element_reduced(aff_rt); };
+    assert(aff_rt % p() != 0) by {
+        lemma_field_element_reduced(aff_rt);
+    };
     lemma_cancel_common_factor(aff_ry, aff_rt, z1z2);
     lemma_field_mul_comm(z1z2, aff_ry);
     lemma_field_mul_comm(z1z2, aff_rt);
@@ -1154,7 +684,10 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::ProjectiveNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
-    pm_val: nat, mp_val: nat, tt2d_val: nat, zz_val: nat,
+    pm_val: nat,
+    mp_val: nat,
+    tt2d_val: nat,
+    zz_val: nat,
 )
     requires
         is_well_formed_edwards_point(self_point),
@@ -1168,7 +701,10 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.Y_plus_X),
         ),
-        tt2d_val == field_mul(fe51_as_canonical_nat(&self_point.T), fe51_as_canonical_nat(&other.T2d)),
+        tt2d_val == field_mul(
+            fe51_as_canonical_nat(&self_point.T),
+            fe51_as_canonical_nat(&other.T2d),
+        ),
         zz_val == field_mul(fe51_as_canonical_nat(&self_point.Z), fe51_as_canonical_nat(&other.Z)),
         fe51_as_canonical_nat(&result.X) == field_sub(pm_val, mp_val),
         fe51_as_canonical_nat(&result.Y) == field_add(pm_val, mp_val),
@@ -1176,11 +712,10 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
         fe51_as_canonical_nat(&result.T) == field_add(field_add(zz_val, zz_val), tt2d_val),
     ensures
         is_valid_completed_point(result),
-        completed_point_as_affine_edwards(result) == ({
-            let self_affine = edwards_point_as_affine(self_point);
-            let other_affine = projective_niels_point_as_affine_edwards(other);
-            edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
-        }),
+        completed_point_as_affine_edwards(result) == spec_edwards_sub_projective_niels(
+            self_point,
+            other,
+        ),
 {
     // === SETUP: Extract projective coordinates (same as add proof) ===
     let sX = fe51_as_canonical_nat(&self_point.X);
@@ -1191,7 +726,9 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     p_gt_2();
 
     assert(sZ != 0);
-    assert(sZ % p() != 0) by { lemma_field_element_reduced(sZ); };
+    assert(sZ % p() != 0) by {
+        lemma_field_element_reduced(sZ);
+    };
 
     // === Extract witness from is_valid_projective_niels_point ===
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -1202,7 +739,9 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     let T2 = fe51_as_canonical_nat(&ep.T);
 
     assert(Z2 != 0);
-    assert(Z2 % p() != 0) by { lemma_field_element_reduced(Z2); };
+    assert(Z2 % p() != 0) by {
+        lemma_field_element_reduced(Z2);
+    };
 
     // Segre relations
     assert(field_mul(sX, sY) == field_mul(sZ, sT));
@@ -1287,15 +826,19 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     let x1x2 = field_mul(x1, x2);
 
     // sX*Y2 - sY*X2 = x1y2*z1z2 - y1x2*z1z2 = (x1y2-y1x2)*z1z2 = z1z2*(x1y2-y1x2)
-    assert(field_sub(field_mul(sX, Y2), field_mul(sY, X2))
-        == field_mul(z1z2, field_sub(x1y2, y1x2))) by {
+    assert(field_sub(field_mul(sX, Y2), field_mul(sY, X2)) == field_mul(
+        z1z2,
+        field_sub(x1y2, y1x2),
+    )) by {
         lemma_reverse_distribute_sub(x1y2, y1x2, z1z2);
         lemma_field_mul_comm(field_sub(x1y2, y1x2), z1z2);
     };
 
     // sY*Y2 - sX*X2 = y1y2*z1z2 - x1x2*z1z2 = z1z2*(y1y2-x1x2)
-    assert(field_sub(field_mul(sY, Y2), field_mul(sX, X2))
-        == field_mul(z1z2, field_sub(y1y2, x1x2))) by {
+    assert(field_sub(field_mul(sY, Y2), field_mul(sX, X2)) == field_mul(
+        z1z2,
+        field_sub(y1y2, x1x2),
+    )) by {
         lemma_reverse_distribute_sub(y1y2, x1x2, z1z2);
         lemma_field_mul_comm(field_sub(y1y2, x1x2), z1z2);
     };
@@ -1343,7 +886,11 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
         lemma_mul_mod_noop_right(sT as int, T2 as int, p() as int);
         lemma_mul_mod_noop_left(sT as int, T2 as int, p() as int);
         lemma_mul_mod_noop_left((field_mul(x1y1, sZ)) as int, T2 as int, p() as int);
-        lemma_mul_mod_noop_right((field_mul(x1y1, sZ)) as int, (field_mul(x2y2, Z2)) as int, p() as int);
+        lemma_mul_mod_noop_right(
+            (field_mul(x1y1, sZ)) as int,
+            (field_mul(x2y2, Z2)) as int,
+            p() as int,
+        );
         lemma_four_factor_rearrange(x1y1, sZ, x2y2, Z2);
     };
 
@@ -1360,8 +907,10 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     };
 
     let x1x2y1y2 = field_mul(x1x2, y1y2);
-    assert(field_mul(field_mul(x1x2y1y2, z1z2), field_mul(2, d))
-        == field_mul(z1z2, field_mul(x1x2y1y2, field_mul(2, d)))) by {
+    assert(field_mul(field_mul(x1x2y1y2, z1z2), field_mul(2, d)) == field_mul(
+        z1z2,
+        field_mul(x1x2y1y2, field_mul(2, d)),
+    )) by {
         lemma_field_mul_comm(x1x2y1y2, z1z2);
         lemma_field_mul_assoc(z1z2, x1x2y1y2, field_mul(2, d));
     };
@@ -1455,8 +1004,7 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     // mul(d, neg(mul(x1x2, y1y2))) = neg(mul(d, mul(x1x2, y1y2))) = neg(t)
     lemma_field_mul_neg(d, field_mul(x1x2, y1y2));
 
-    let t_prime = field_mul(d, field_mul(
-        field_mul(x1, neg_x2), field_mul(y1, y2)));
+    let t_prime = field_mul(d, field_mul(field_mul(x1, neg_x2), field_mul(y1, y2)));
 
     // t' = neg(t)
     assert(t_prime == field_neg(t));
@@ -1476,10 +1024,8 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     };
 
     // Define affine-level values for lemma_completed_point_ratios with neg(x2)
-    let aff_rx = field_mul(2, field_add(
-        field_mul(x1, y2), field_mul(y1, neg_x2)));
-    let aff_ry = field_mul(2, field_add(
-        field_mul(y1, y2), field_mul(x1, neg_x2)));
+    let aff_rx = field_mul(2, field_add(field_mul(x1, y2), field_mul(y1, neg_x2)));
+    let aff_ry = field_mul(2, field_add(field_mul(y1, y2), field_mul(x1, neg_x2)));
     let aff_rz = field_mul(2, field_add(1, t_prime));
     let aff_rt = field_mul(2, field_sub(1, t_prime));
 
@@ -1504,16 +1050,22 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     lemma_field_element_reduced(sZ);
     lemma_field_element_reduced(Z2);
     lemma_nonzero_product(sZ, Z2);
-    assert(z1z2 < p()) by { lemma_mod_bound((sZ * Z2) as int, p() as int); };
+    assert(z1z2 < p()) by {
+        lemma_mod_bound((sZ * Z2) as int, p() as int);
+    };
     lemma_field_element_reduced(z1z2);
     assert(z1z2 % p() != 0);
 
-    assert(aff_rz % p() != 0) by { lemma_field_element_reduced(aff_rz); };
+    assert(aff_rz % p() != 0) by {
+        lemma_field_element_reduced(aff_rz);
+    };
     lemma_cancel_common_factor(aff_rx, aff_rz, z1z2);
     lemma_field_mul_comm(z1z2, aff_rx);
     lemma_field_mul_comm(z1z2, aff_rz);
 
-    assert(aff_rt % p() != 0) by { lemma_field_element_reduced(aff_rt); };
+    assert(aff_rt % p() != 0) by {
+        lemma_field_element_reduced(aff_rt);
+    };
     lemma_cancel_common_factor(aff_ry, aff_rt, z1z2);
     lemma_field_mul_comm(z1z2, aff_ry);
     lemma_field_mul_comm(z1z2, aff_rt);
@@ -1537,7 +1089,10 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::AffineNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
-    pp_val: nat, mm_val: nat, txy2d_val: nat, z2_val: nat,
+    pp_val: nat,
+    mm_val: nat,
+    txy2d_val: nat,
+    z2_val: nat,
 )
     requires
         is_well_formed_edwards_point(self_point),
@@ -1551,8 +1106,14 @@ pub proof fn lemma_add_affine_niels_completed_valid(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.y_minus_x),
         ),
-        txy2d_val == field_mul(fe51_as_canonical_nat(&self_point.T), fe51_as_canonical_nat(&other.xy2d)),
-        z2_val == field_add(fe51_as_canonical_nat(&self_point.Z), fe51_as_canonical_nat(&self_point.Z)),
+        txy2d_val == field_mul(
+            fe51_as_canonical_nat(&self_point.T),
+            fe51_as_canonical_nat(&other.xy2d),
+        ),
+        z2_val == field_add(
+            fe51_as_canonical_nat(&self_point.Z),
+            fe51_as_canonical_nat(&self_point.Z),
+        ),
         fe51_as_canonical_nat(&result.X) == field_sub(pp_val, mm_val),
         fe51_as_canonical_nat(&result.Y) == field_add(pp_val, mm_val),
         fe51_as_canonical_nat(&result.Z) == field_add(z2_val, txy2d_val),
@@ -1560,7 +1121,8 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     ensures
         is_valid_completed_point(result),
         completed_point_as_affine_edwards(result) == spec_edwards_add_affine_niels(
-            self_point, other,
+            self_point,
+            other,
         ),
 {
     // === SETUP: Extract projective coordinates of self ===
@@ -1572,7 +1134,9 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     p_gt_2();
 
     assert(sZ != 0);
-    assert(sZ % p() != 0) by { lemma_field_element_reduced(sZ); };
+    assert(sZ % p() != 0) by {
+        lemma_field_element_reduced(sZ);
+    };
 
     // === Extract witness from is_valid_affine_niels_point ===
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -1656,14 +1220,14 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     let x1x2 = field_mul(x1, x2);
 
     // Numerator factoring:
-    assert(field_add(field_mul(sY, x2), field_mul(sX, y2))
-        == field_mul(sZ, field_add(y1x2, x1y2))) by {
+    assert(field_add(field_mul(sY, x2), field_mul(sX, y2)) == field_mul(sZ, field_add(y1x2, x1y2)))
+        by {
         lemma_reverse_distribute_add(y1x2, x1y2, sZ);
         lemma_field_mul_comm(field_add(y1x2, x1y2), sZ);
     };
 
-    assert(field_add(field_mul(sY, y2), field_mul(sX, x2))
-        == field_mul(sZ, field_add(y1y2, x1x2))) by {
+    assert(field_add(field_mul(sY, y2), field_mul(sX, x2)) == field_mul(sZ, field_add(y1y2, x1x2)))
+        by {
         lemma_reverse_distribute_add(y1y2, x1x2, sZ);
         lemma_field_mul_comm(field_add(y1y2, x1x2), sZ);
     };
@@ -1736,8 +1300,10 @@ pub proof fn lemma_add_affine_niels_completed_valid(
 
     // mul(mul(x1y1, sZ), mul(x2y2, mul(2,d)))
     // = mul(mul(x1y1, x2y2), mul(sZ, mul(2,d))) [four_factor_rearrange]
-    assert(field_mul(field_mul(x1y1, sZ), field_mul(x2y2, field_mul(2, d)))
-        == field_mul(field_mul(x1y1, x2y2), field_mul(sZ, field_mul(2, d)))) by {
+    assert(field_mul(field_mul(x1y1, sZ), field_mul(x2y2, field_mul(2, d))) == field_mul(
+        field_mul(x1y1, x2y2),
+        field_mul(sZ, field_mul(2, d)),
+    )) by {
         lemma_four_factor_rearrange(x1y1, sZ, x2y2, field_mul(2, d));
     };
 
@@ -1749,8 +1315,10 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     let x1x2y1y2 = field_mul(x1x2, y1y2);
 
     // mul(x1x2y1y2, mul(sZ, mul(2,d))) = mul(sZ, mul(x1x2y1y2, mul(2,d)))
-    assert(field_mul(x1x2y1y2, field_mul(sZ, field_mul(2, d)))
-        == field_mul(sZ, field_mul(x1x2y1y2, field_mul(2, d)))) by {
+    assert(field_mul(x1x2y1y2, field_mul(sZ, field_mul(2, d))) == field_mul(
+        sZ,
+        field_mul(x1x2y1y2, field_mul(2, d)),
+    )) by {
         // x*(s*(2d)) = (x*s)*(2d) [assoc] = (s*x)*(2d) [comm] = s*(x*(2d)) [assoc]
         lemma_field_mul_assoc(x1x2y1y2, sZ, field_mul(2, d));
         lemma_field_mul_comm(x1x2y1y2, sZ);
@@ -1826,12 +1394,16 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     lemma_completed_point_ratios(x1, y1, x2, y2, aff_rx, aff_ry, aff_rz, aff_rt);
 
     // sZ != 0, sZ % p != 0 — already established
-    assert(aff_rz % p() != 0) by { lemma_field_element_reduced(aff_rz); };
+    assert(aff_rz % p() != 0) by {
+        lemma_field_element_reduced(aff_rz);
+    };
     lemma_cancel_common_factor(aff_rx, aff_rz, sZ);
     lemma_field_mul_comm(sZ, aff_rx);
     lemma_field_mul_comm(sZ, aff_rz);
 
-    assert(aff_rt % p() != 0) by { lemma_field_element_reduced(aff_rt); };
+    assert(aff_rt % p() != 0) by {
+        lemma_field_element_reduced(aff_rt);
+    };
     lemma_cancel_common_factor(aff_ry, aff_rt, sZ);
     lemma_field_mul_comm(sZ, aff_ry);
     lemma_field_mul_comm(sZ, aff_rt);
@@ -1849,7 +1421,10 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::AffineNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
-    pm_val: nat, mp_val: nat, txy2d_val: nat, z2_val: nat,
+    pm_val: nat,
+    mp_val: nat,
+    txy2d_val: nat,
+    z2_val: nat,
 )
     requires
         is_well_formed_edwards_point(self_point),
@@ -1863,19 +1438,24 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
             field_sub(fe51_as_canonical_nat(&self_point.Y), fe51_as_canonical_nat(&self_point.X)),
             fe51_as_canonical_nat(&other.y_plus_x),
         ),
-        txy2d_val == field_mul(fe51_as_canonical_nat(&self_point.T), fe51_as_canonical_nat(&other.xy2d)),
-        z2_val == field_add(fe51_as_canonical_nat(&self_point.Z), fe51_as_canonical_nat(&self_point.Z)),
+        txy2d_val == field_mul(
+            fe51_as_canonical_nat(&self_point.T),
+            fe51_as_canonical_nat(&other.xy2d),
+        ),
+        z2_val == field_add(
+            fe51_as_canonical_nat(&self_point.Z),
+            fe51_as_canonical_nat(&self_point.Z),
+        ),
         fe51_as_canonical_nat(&result.X) == field_sub(pm_val, mp_val),
         fe51_as_canonical_nat(&result.Y) == field_add(pm_val, mp_val),
         fe51_as_canonical_nat(&result.Z) == field_sub(z2_val, txy2d_val),
         fe51_as_canonical_nat(&result.T) == field_add(z2_val, txy2d_val),
     ensures
         is_valid_completed_point(result),
-        completed_point_as_affine_edwards(result) == ({
-            let self_affine = edwards_point_as_affine(self_point);
-            let other_affine = affine_niels_point_as_affine_edwards(other);
-            edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
-        }),
+        completed_point_as_affine_edwards(result) == spec_edwards_sub_affine_niels(
+            self_point,
+            other,
+        ),
 {
     // === SETUP: Same as add AffineNiels ===
     let sX = fe51_as_canonical_nat(&self_point.X);
@@ -1886,7 +1466,9 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     p_gt_2();
 
     assert(sZ != 0);
-    assert(sZ % p() != 0) by { lemma_field_element_reduced(sZ); };
+    assert(sZ % p() != 0) by {
+        lemma_field_element_reduced(sZ);
+    };
 
     let ep = choose|ep: crate::edwards::EdwardsPoint|
         is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
@@ -1964,14 +1546,14 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     let x1x2 = field_mul(x1, x2);
 
     // sX*y2 - sY*x2 = x1y2*sZ - y1x2*sZ = sZ*(x1y2 - y1x2)
-    assert(field_sub(field_mul(sX, y2), field_mul(sY, x2))
-        == field_mul(sZ, field_sub(x1y2, y1x2))) by {
+    assert(field_sub(field_mul(sX, y2), field_mul(sY, x2)) == field_mul(sZ, field_sub(x1y2, y1x2)))
+        by {
         lemma_reverse_distribute_sub(x1y2, y1x2, sZ);
         lemma_field_mul_comm(field_sub(x1y2, y1x2), sZ);
     };
 
-    assert(field_sub(field_mul(sY, y2), field_mul(sX, x2))
-        == field_mul(sZ, field_sub(y1y2, x1x2))) by {
+    assert(field_sub(field_mul(sY, y2), field_mul(sX, x2)) == field_mul(sZ, field_sub(y1y2, x1x2)))
+        by {
         lemma_reverse_distribute_sub(y1y2, x1x2, sZ);
         lemma_field_mul_comm(field_sub(y1y2, x1x2), sZ);
     };
@@ -2022,8 +1604,10 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
         lemma_field_mul_assoc(x2y2, 2, d);
     };
 
-    assert(field_mul(field_mul(x1y1, sZ), field_mul(x2y2, field_mul(2, d)))
-        == field_mul(field_mul(x1y1, x2y2), field_mul(sZ, field_mul(2, d)))) by {
+    assert(field_mul(field_mul(x1y1, sZ), field_mul(x2y2, field_mul(2, d))) == field_mul(
+        field_mul(x1y1, x2y2),
+        field_mul(sZ, field_mul(2, d)),
+    )) by {
         lemma_four_factor_rearrange(x1y1, sZ, x2y2, field_mul(2, d));
     };
 
@@ -2034,8 +1618,10 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     let t = field_mul(d, field_mul(x1x2, y1y2));
     let x1x2y1y2 = field_mul(x1x2, y1y2);
 
-    assert(field_mul(x1x2y1y2, field_mul(sZ, field_mul(2, d)))
-        == field_mul(sZ, field_mul(x1x2y1y2, field_mul(2, d)))) by {
+    assert(field_mul(x1x2y1y2, field_mul(sZ, field_mul(2, d))) == field_mul(
+        sZ,
+        field_mul(x1x2y1y2, field_mul(2, d)),
+    )) by {
         // x*(s*(2d)) = (x*s)*(2d) [assoc] = (s*x)*(2d) [comm] = s*(x*(2d)) [assoc]
         lemma_field_mul_assoc(x1x2y1y2, sZ, field_mul(2, d));
         lemma_field_mul_comm(x1x2y1y2, sZ);
@@ -2099,8 +1685,7 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     lemma_field_mul_comm(y1y2, x1x2);
     lemma_field_mul_neg(d, field_mul(x1x2, y1y2));
 
-    let t_prime = field_mul(d, field_mul(
-        field_mul(x1, neg_x2), field_mul(y1, y2)));
+    let t_prime = field_mul(d, field_mul(field_mul(x1, neg_x2), field_mul(y1, y2)));
     assert(t_prime == field_neg(t));
 
     lemma_field_sub_eq_add_neg(1nat, t);
@@ -2114,10 +1699,8 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
         lemma_mod_twice(t as int, p as int);
     };
 
-    let aff_rx = field_mul(2, field_add(
-        field_mul(x1, y2), field_mul(y1, neg_x2)));
-    let aff_ry = field_mul(2, field_add(
-        field_mul(y1, y2), field_mul(x1, neg_x2)));
+    let aff_rx = field_mul(2, field_add(field_mul(x1, y2), field_mul(y1, neg_x2)));
+    let aff_ry = field_mul(2, field_add(field_mul(y1, y2), field_mul(x1, neg_x2)));
     let aff_rz = field_mul(2, field_add(1, t_prime));
     let aff_rt = field_mul(2, field_sub(1, t_prime));
 
@@ -2134,12 +1717,16 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     lemma_completed_point_ratios(x1, y1, neg_x2, y2, aff_rx, aff_ry, aff_rz, aff_rt);
 
     // === STEP 6: Factor cancellation ===
-    assert(aff_rz % p() != 0) by { lemma_field_element_reduced(aff_rz); };
+    assert(aff_rz % p() != 0) by {
+        lemma_field_element_reduced(aff_rz);
+    };
     lemma_cancel_common_factor(aff_rx, aff_rz, sZ);
     lemma_field_mul_comm(sZ, aff_rx);
     lemma_field_mul_comm(sZ, aff_rz);
 
-    assert(aff_rt % p() != 0) by { lemma_field_element_reduced(aff_rt); };
+    assert(aff_rt % p() != 0) by {
+        lemma_field_element_reduced(aff_rt);
+    };
     lemma_cancel_common_factor(aff_ry, aff_rt, sZ);
     lemma_field_mul_comm(sZ, aff_ry);
     lemma_field_mul_comm(sZ, aff_rt);

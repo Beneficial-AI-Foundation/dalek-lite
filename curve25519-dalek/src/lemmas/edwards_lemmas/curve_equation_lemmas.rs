@@ -1850,10 +1850,7 @@ pub proof fn axiom_valid_extended_point_affine_on_curve(x: nat, y: nat, z: nat, 
     requires
         math_is_valid_extended_edwards_point(x, y, z, t),
     ensures
-        math_on_edwards_curve(
-            field_mul(x, field_inv(z)),
-            field_mul(y, field_inv(z)),
-        ),
+        math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
 {
     admit();
 }

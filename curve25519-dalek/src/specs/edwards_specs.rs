@@ -817,6 +817,28 @@ pub open spec fn spec_edwards_add_affine_niels(
     edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
 }
 
+/// Helper spec function: Edwards subtraction of EdwardsPoint and ProjectiveNielsPoint
+/// Combines the affine conversion and subtraction into a single convenient spec function.
+pub open spec fn spec_edwards_sub_projective_niels(p: EdwardsPoint, q: ProjectiveNielsPoint) -> (
+    nat,
+    nat,
+) {
+    let self_affine = edwards_point_as_affine(p);
+    let other_affine = projective_niels_point_as_affine_edwards(q);
+    edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+}
+
+/// Helper spec function: Edwards subtraction of EdwardsPoint and AffineNielsPoint
+/// Combines the affine conversion and subtraction into a single convenient spec function.
+pub open spec fn spec_edwards_sub_affine_niels(
+    p: crate::edwards::EdwardsPoint,
+    q: crate::backend::serial::curve_models::AffineNielsPoint,
+) -> (nat, nat) {
+    let self_affine = edwards_point_as_affine(p);
+    let other_affine = affine_niels_point_as_affine_edwards(q);
+    edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+}
+
 /// Affine Edwards negation for twisted Edwards curves with a=-1.
 /// The negation of point (x, y) is (-x, y).
 pub open spec fn edwards_neg(point: (nat, nat)) -> (nat, nat) {

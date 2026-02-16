@@ -99,10 +99,7 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     p_gt_2();
 
-    assert(sZ != 0);
-    assert(sZ % p() != 0) by {
-        lemma_field_element_reduced(sZ);
-    };
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
 
     // Extract witness from is_valid_projective_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -112,10 +109,7 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     let Z2 = fe51_as_canonical_nat(&ep.Z);
     let T2 = fe51_as_canonical_nat(&ep.T);
 
-    assert(Z2 != 0);  // from is_valid_edwards_point(ep)
-    assert(Z2 % p() != 0) by {
-        lemma_field_element_reduced(Z2);
-    };
+    assert(Z2 % p() != 0);  // from is_valid_edwards_point(ep)
 
     // Segre invariant: Xi·Yi = Zi·Ti
     assert(field_mul(sX, sY) == field_mul(sZ, sT));
@@ -142,10 +136,10 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     let y2 = field_mul(Y2, field_inv(Z2));
 
     assert(math_on_edwards_curve(x1, y1)) by {
-        axiom_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
+        lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
     assert(math_on_edwards_curve(x2, y2)) by {
-        axiom_valid_extended_point_affine_on_curve(X2, Y2, Z2, T2);
+        lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, T2);
     };
 
     // STEP 1: FOIL on PP and MM
@@ -465,10 +459,7 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     p_gt_2();
 
-    assert(sZ != 0);
-    assert(sZ % p() != 0) by {
-        lemma_field_element_reduced(sZ);
-    };
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
 
     // Extract witness from is_valid_projective_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -478,10 +469,7 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     let Z2 = fe51_as_canonical_nat(&ep.Z);
     let T2 = fe51_as_canonical_nat(&ep.T);
 
-    assert(Z2 != 0);
-    assert(Z2 % p() != 0) by {
-        lemma_field_element_reduced(Z2);
-    };
+    assert(Z2 % p() != 0);  // from is_valid_edwards_point(ep)
 
     // Segre invariant
     assert(field_mul(sX, sY) == field_mul(sZ, sT));
@@ -508,10 +496,10 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     let y2 = field_mul(Y2, field_inv(Z2));
 
     assert(math_on_edwards_curve(x1, y1)) by {
-        axiom_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
+        lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
     assert(math_on_edwards_curve(x2, y2)) by {
-        axiom_valid_extended_point_affine_on_curve(X2, Y2, Z2, T2);
+        lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, T2);
     };
 
     // STEP 1: Mixed FOIL on PM and MP (swapped from add)
@@ -863,10 +851,7 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     p_gt_2();
 
-    assert(sZ != 0);
-    assert(sZ % p() != 0) by {
-        lemma_field_element_reduced(sZ);
-    };
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
 
     // Extract witness from is_valid_affine_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -883,10 +868,10 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     let y1 = field_mul(sY, field_inv(sZ));
 
     assert(math_on_edwards_curve(x1, y1)) by {
-        axiom_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
+        lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
     assert(math_on_edwards_curve(x2, y2)) by {
-        axiom_valid_extended_point_affine_on_curve(X2, Y2, Z2, fe51_as_canonical_nat(&ep.T));
+        lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, fe51_as_canonical_nat(&ep.T));
     };
 
     // Affine Niels correspondence: (y+x, y-x, 2dxy)  (already affine, no Z)
@@ -1181,10 +1166,7 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     p_gt_2();
 
-    assert(sZ != 0);
-    assert(sZ % p() != 0) by {
-        lemma_field_element_reduced(sZ);
-    };
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
 
     let ep = choose|ep: crate::edwards::EdwardsPoint|
         is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
@@ -1200,10 +1182,10 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     let y1 = field_mul(sY, field_inv(sZ));
 
     assert(math_on_edwards_curve(x1, y1)) by {
-        axiom_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
+        lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
     assert(math_on_edwards_curve(x2, y2)) by {
-        axiom_valid_extended_point_affine_on_curve(X2, Y2, Z2, fe51_as_canonical_nat(&ep.T));
+        lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, fe51_as_canonical_nat(&ep.T));
     };
 
     // Niels correspondence

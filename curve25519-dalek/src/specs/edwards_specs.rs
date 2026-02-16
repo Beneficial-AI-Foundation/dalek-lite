@@ -411,11 +411,11 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// mathematical values `(x, y, z, t)` (all reduced mod p via `field_*`).
 ///
 /// An (X:Y:Z:T) tuple is valid iff:
-/// 1. Z ≠ 0
+/// 1. Z ≠ 0 (mod p)
 /// 2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²
 /// 3. The Segre relation holds: X·Y = Z·T
 pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
-    z != 0 && math_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(z, t)
+    z % p() != 0 && math_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(z, t)
 }
 
 /// Check if an EdwardsPoint in extended coordinates is valid

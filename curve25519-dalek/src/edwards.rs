@@ -1100,9 +1100,17 @@ impl ValidityCheck for EdwardsPoint {
 
             // Connect local z to precondition: z == fe51_as_canonical_nat(&self.Z) != 0
             assert(z != 0);  // Follows from precondition fe51_as_canonical_nat(&self.Z) != 0
+            // z = fe51_as_canonical_nat(...) = fe51_as_nat(...) % p(), so z < p()
+            p_gt_2();
+            assert(z < p()) by {
+                lemma_mod_bound(fe51_as_nat(&self.Z) as int, p() as int);
+            };
+            assert(z % p() != 0) by {
+                lemma_small_mod(z, p());
+            };
 
-            assert(is_valid_edwards_point(*self) == (z != 0 && curve_eq && segre_eq));
-            // Since z != 0 is known, simplify: (true && curve_eq && segre_eq) == (curve_eq && segre_eq)
+            assert(is_valid_edwards_point(*self) == (z % p() != 0 && curve_eq && segre_eq));
+            // Since z % p() != 0 is known, simplify
             assert(is_valid_edwards_point(*self) == (curve_eq && segre_eq));
             assert(result == is_valid_edwards_point(*self));
         }
@@ -1586,13 +1594,8 @@ impl EdwardsPoint {
             let (_x_affine, y_affine) = edwards_point_as_affine(*self);
             assert(y_affine == field_mul(y, field_inv(z)));
 
-            // Step 3: Establish the birational map precondition.
-            // Since `is_valid_edwards_point(*self)` implies `z != 0` and `z < p()`,
-            // we get `z % p() != 0`.
-            assert(z % p() != 0) by {
-                assert(z != 0);  // From is_valid_edwards_point -> math_is_valid_extended_edwards_point
-                lemma_small_mod(z, p());  // z < p() implies z % p() == z
-            }
+            // Step 3: z % p() != 0 directly from is_valid_edwards_point
+            assert(z % p() != 0);
             // Step 4: Connect the formulas
             // u_field = (z+y) * inv(z-y)  [from operations above]
             // By axiom: this equals (1+y_affine) * inv(1-y_affine)
@@ -1646,8 +1649,16 @@ impl EdwardsPoint {
         let ghost z_inv = field_inv(z_coord);
 
         proof {
-            // From is_well_formed_edwards_point, we have z != 0
-            assert(z_coord != 0);
+            // From is_well_formed_edwards_point → is_valid_edwards_point → z % p != 0
+            assert(z_coord % p() != 0);
+            // z_coord = fe51_as_canonical_nat(...) = fe51_as_nat(...) % p(), hence < p()
+            p_gt_2();
+            assert(z_coord < p()) by {
+                lemma_mod_bound(fe51_as_nat(&self.Z) as int, p() as int);
+            };
+            assert(z_coord != 0) by {
+                lemma_small_mod(z_coord, p());
+            };
             assert(fe51_as_canonical_nat(&recip) == z_inv);
         }
 
@@ -1914,6 +1925,17 @@ impl EdwardsPoint {
         */
         let proj = self.as_projective();
         proof {
+            // is_valid_edwards_point gives z % p() != 0; since z = fe51_as_canonical_nat < p,
+            // z % p = z, so z != 0 — which is what is_valid_projective_point needs
+            let z = fe51_as_canonical_nat(&self.Z);
+            assert(z % p() != 0);
+            p_gt_2();
+            assert(z < p()) by {
+                lemma_mod_bound(fe51_as_nat(&self.Z) as int, p() as int);
+            };
+            assert(z != 0) by {
+                lemma_small_mod(z, p());
+            };
             assert(is_valid_projective_point(proj));
             // ProjectivePoint invariant: 52-bounded (from as_projective postcondition)
             assert(fe51_limbs_bounded(&proj.X, 52) && fe51_limbs_bounded(&proj.Y, 52)
@@ -3682,6 +3704,11 @@ impl EdwardsPoint {
             }
             assert(is_valid_projective_point(s)) by {
                 assert(is_valid_edwards_point(*self));
+                // Bridge z % p() != 0 → z != 0 (z = fe51_as_canonical_nat < p)
+                let z = fe51_as_canonical_nat(&self.Z);
+                p_gt_2();
+                lemma_mod_bound(fe51_as_nat(&self.Z) as int, p() as int);
+                lemma_small_mod(z, p());
             }
 
             // Base case: pow2(0) == 1 and [1]P == P.

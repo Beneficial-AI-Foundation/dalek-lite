@@ -4,89 +4,86 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Public interface of dalek-curve25519</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 <style>
   :root {
-    --bg: #ffffff;
-    --surface: #f6f8fa;
-    --border: #d0d7de;
-    --text: #1f2328;
-    --muted: #656d76;
-    --accent: #0969da;
+    --bg: var(--light-bg);
+    --surface: var(--card-bg);
+    --border: var(--border-color);
+    --text: var(--text-primary);
+    --muted: var(--text-secondary);
+    --accent: var(--primary-color);
     --accent2: #bc4c00;
-    --accent3: #0550ae;
+    --accent3: #1e40af;
     --green: #1a7f37;
-    --purple: #8250df;
+    --purple: var(--accent-color);
     --pink: #bf3989;
     --yellow: #9a6700;
-    --code-bg: #f6f8fa;
-    --code-border: #d0d7de;
+    --code-bg: #f8fafc;
+    --code-border: var(--border-color);
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    background: var(--bg); color: var(--text);
-    line-height: 1.7; padding: 2rem; max-width: 1020px; margin: 0 auto;
+  .interface-section {
+    padding: 2.5rem 0 4rem;
+    background: linear-gradient(135deg, var(--dark-bg) 0%, #1e3a8a 100%);
   }
-  .top-nav {
-    background: #0f172a;
+  .interface-page {
+    max-width: 1200px;
+  }
+  .interface-hero {
+    padding: 0;
+    margin-bottom: 2rem;
+  }
+  .interface-page h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 0.7rem;
     color: #ffffff;
-    border-radius: 10px;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    line-height: 1.25;
   }
-  .top-nav .top-nav-inner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.8rem 1rem;
-    flex-wrap: wrap;
-  }
-  .top-nav .top-nav-brand {
+  .interface-page h1 code { color: var(--accent3); font-size: 1.9rem; }
+  .intro {
+    color: var(--text-primary);
     font-size: 1rem;
-    font-weight: 600;
-    color: #ffffff;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(191, 219, 254, 0.9);
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 12px;
+    padding: 1.2rem 1.35rem;
   }
-  .top-nav .top-nav-links {
-    display: flex;
-    list-style: none;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .top-nav .top-nav-links a {
-    color: #ffffff;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 0.92rem;
-  }
-  .top-nav .top-nav-links a:hover { color: #10b981; }
-  .top-nav .top-nav-links a.active {
-    color: #10b981;
-    border-bottom: 2px solid #10b981;
-    padding-bottom: 2px;
-  }
-  .top-nav .top-nav-sep {
-    width: 1px;
-    height: 16px;
-    background: rgba(255, 255, 255, 0.35);
-  }
-  @media (max-width: 750px) {
-    .top-nav .top-nav-inner { align-items: flex-start; }
-    .top-nav .top-nav-sep { display: none; }
-  }
-  h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--accent); }
-  h1 code { color: var(--accent3); font-size: 1.8rem; }
-  .intro { color: var(--muted); font-size: 1rem; margin-bottom: 2.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
   .intro p { margin-bottom: 0.7rem; }
   .intro ul { margin: 0 0 0.9rem 1.25rem; padding: 0; }
-  .intro li { color: var(--muted); margin-bottom: 0.35rem; }
-  h2 { font-size: 1.35rem; font-weight: 600; margin-top: 2.8rem; margin-bottom: 1rem; color: var(--accent2); display: flex; align-items: center; gap: 0.5rem; }
-  h2 .num { background: var(--accent2); color: var(--bg); width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 700; flex-shrink: 0; }
-  p { margin-bottom: 1rem; color: var(--text); }
+  .intro li { color: inherit; margin-bottom: 0.35rem; }
+  .interface-page h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-top: 2.8rem;
+    margin-bottom: 1rem;
+    color: var(--accent2);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .interface-page h2 .num {
+    background: var(--accent2);
+    color: #ffffff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .interface-page p { margin-bottom: 1rem; color: var(--text); }
   .math-block { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--purple); border-radius: 6px; padding: 1.2rem 1.5rem; margin: 1rem 0; overflow-x: auto; text-align: center; }
   .math-block .katex { font-size: 1.15em; }
   .code-block { background: var(--code-bg); border: 1px solid var(--code-border); border-left: 3px solid var(--green); border-radius: 6px; padding: 1rem 1.2rem; margin: 1rem 0; overflow-x: auto; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.88rem; line-height: 1.6; }
@@ -98,7 +95,7 @@
   .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
   .dual .math-block, .dual .code-block { margin: 0; }
   @media (max-width: 750px) { .dual { grid-template-columns: 1fr; } }
-  .diagram-container { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+  .diagram-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; text-align: center; overflow-x: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .diagram-container svg { max-width: 100%; height: auto; }
   .note { background: rgba(130,80,223,0.06); border: 1px solid rgba(130,80,223,0.2); border-radius: 6px; padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.9rem; color: var(--purple); }
   .signal-note { background: rgba(9,105,218,0.06); border: 1px solid rgba(9,105,218,0.2); border-radius: 6px; padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.9rem; color: var(--accent); }
@@ -120,7 +117,7 @@
   .file-row td { background: rgba(188,76,0,0.06); font-weight: 600; font-size: 0.82rem; color: var(--accent2); padding: 0.4rem 0.8rem; }
   /* Type overview cards */
   .type-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
-  .type-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; text-align: left; min-width: 0; }
+  .type-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.2rem; text-align: left; min-width: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .type-card .tc-name { font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; }
   .type-card p { font-size: 0.88rem; line-height: 1.5; margin-bottom: 0.2rem; font-weight: 500; }
   .type-card ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
@@ -134,7 +131,7 @@
   /* Spec cards (2-column grid) */
   .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin: 1.5rem 0; }
   @media (max-width: 750px) { .spec-grid { grid-template-columns: 1fr; } }
-  .spec-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; }
+  .spec-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .spec-card .sc-name { font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; }
   .spec-card .sc-sub { font-weight: 700; color: var(--muted); font-size: 0.88rem; }
   .spec-card p { font-size: 0.88rem; line-height: 1.5; margin-bottom: 0.2rem; font-weight: 500; }
@@ -149,7 +146,7 @@
   h3.section-sub { font-size: 0.85rem; font-weight: 600; color: var(--muted); margin-top: 2rem; margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.3px; }
   .protocol-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; margin: 0.8rem 0 1.5rem; }
   @media (max-width: 750px) { .protocol-grid { grid-template-columns: 1fr; } }
-  .protocol-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; }
+  .protocol-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.75rem 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .protocol-card .pc-name { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.3rem; }
   .protocol-card .pc-desc { font-size: 0.8rem; color: var(--text); line-height: 1.45; margin-bottom: 0; }
   .protocol-card .pc-impl { font-size: 0.78rem; color: var(--muted); line-height: 1.4; margin-top: 0.25rem; margin-bottom: 0; }
@@ -178,34 +175,40 @@
   .op-accordion summary::-webkit-details-marker { display: none; }
   .op-accordion summary::before { content: '\25B8'; font-size: 0.7rem; transition: transform 0.15s ease; display: inline-block; color: var(--muted); }
   .op-accordion[open] summary::before { transform: rotate(90deg); }
-  .op-accordion summary:hover { background: rgba(9,105,218,0.04); }
+  .op-accordion summary:hover { background: rgba(37,99,235,0.08); }
   .op-accordion .op-body { padding: 0.3rem 0.85rem 0.65rem; }
   .op-accordion .op-body .op-math { font-size: 0.84rem; color: var(--purple); margin-bottom: 0.25rem; }
   .op-accordion .op-body p { font-size: 0.82rem; color: var(--muted); margin-bottom: 0; line-height: 1.45; }
 
   /* Function accordion */
-  .fn-accordion { margin: 1rem 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .fn-accordion { margin: 1rem 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
   .fn-accordion summary { cursor: pointer; background: var(--surface); padding: 0.65rem 1rem; font-weight: 600; font-size: 0.88rem; color: var(--accent); list-style: none; display: flex; align-items: center; gap: 0.5rem; user-select: none; }
   .fn-accordion summary::-webkit-details-marker { display: none; }
   .fn-accordion summary::before { content: '\25B8'; font-size: 0.8rem; transition: transform 0.15s ease; display: inline-block; }
   .fn-accordion[open] summary::before { transform: rotate(90deg); }
-  .fn-accordion summary:hover { background: rgba(9,105,218,0.05); }
+  .fn-accordion summary:hover { background: rgba(37,99,235,0.08); }
   .fn-accordion .accordion-body { padding: 1rem 1.1rem; }
   .fn-accordion .accordion-body .map-table { margin-top: 0; }
   .fn-count { font-weight: 400; color: var(--muted); font-size: 0.82rem; margin-left: auto; }
+  @media (max-width: 750px) {
+    .interface-page h1 { font-size: 1.75rem; }
+  }
 </style>
 </head>
 <body>
-<nav class="top-nav">
-  <div class="top-nav-inner">
-    <div class="top-nav-brand">Dalek-Lite Verification</div>
-    <ul class="top-nav-links">
+<nav class="navbar">
+  <div class="container">
+    <div class="nav-brand">
+      <img src="https://cdn.jsdelivr.net/gh/dalek-cryptography/curve25519-dalek/docs/assets/dalek-logo-clear.png" alt="Dalek Logo" class="logo">
+      <span>Dalek-Lite Verification</span>
+    </div>
+    <ul class="nav-links">
       <li><a href="index.html">Home</a></li>
       <li><a href="index.html#progress">Progress</a></li>
       <li><a href="index.html#about">Project</a></li>
       <li><a href="index.html#trust">Trust Model</a></li>
       <li><a href="index.html#certifications">Certifications</a></li>
-      <li class="top-nav-sep"></li>
+      <li class="nav-sep"></li>
       <li><a href="specs.html">Specs</a></li>
       <li><a href="libsignal-functions.html" class="active">About</a></li>
       <li><a href="https://github.com/Beneficial-AI-Foundation/dalek-lite" target="_blank" rel="noopener noreferrer">GitHub</a></li>
@@ -213,18 +216,28 @@
   </div>
 </nav>
 
+<section class="section interface-section">
+<div class="container interface-page">
+
+<div class="interface-hero">
 <h1>Public interface of dalek-curve25519</h1>
 <div class="intro">
-<p><strong>Summary</strong></p>
-  This library provides implementations for a field of <strong>scalars</strong>, a group of <strong>curve points</strong>, and <strong>scalar multiplication</strong> operations over these structures. 
- The set of scalars and the group are <strong>large</strong> enough to offer <strong>cryptographic security</strong>, and therefore require specialized implementations. 
-In addition, the library allows <strong>bitstring conversions</strong> to and from the algebraic structures, as well as conversions between equivalent forms of the elliptic curve group. Each form (<strong>Edwards, Montgomery, Ristretto</strong>) offers specific computational advantages for operations.  
-
-<p><strong>Applications</strong></p>
-  <li>Scalars can be used in protocols to store private keys and cryptographically secure random numbers.</li>
-  <li>Curve points can be used to represent public keys or encode private data in a secure way.</li>
-  <li>Scalar multiplication is used for multiple cryptographic operations, such as encoding, decoding, shared key generation, zero-knowledge proofs, private-key signing and verification.</li>
+  <p><strong>Summary</strong></p>
+  <p>This library provides implementations for a field of <strong>scalars</strong>, a group of <strong>curve points</strong>, and <strong>scalar multiplication</strong> operations over these structures. The set of scalars and the group are <strong>large</strong> enough to offer <strong>cryptographic security</strong>, and therefore require specialized implementations.</p>
+  <p>In addition, the library allows <strong>bitstring conversions</strong> to and from the algebraic structures, as well as conversions between equivalent forms of the elliptic curve group. Each form (<strong>Edwards, Montgomery, Ristretto</strong>) offers specific computational advantages for operations.</p>
+  <p><strong>Applications</strong></p>
+  <ul>
+    <li>Scalars can be used in protocols to store private keys and cryptographically secure random numbers.</li>
+    <li>Curve points can be used to represent public keys or encode private data in a secure way.</li>
+    <li>Scalar multiplication is used for multiple cryptographic operations, such as encoding, decoding, shared key generation, zero-knowledge proofs, private-key signing and verification.</li>
+  </ul>
 </div>
+</div>
+</div>
+</section>
+
+<section class="section">
+<div class="container interface-page">
 
 
 <!-- ═══════════════════════════════════════════════════ -->
@@ -794,6 +807,8 @@ In addition, the library allows <strong>bitstring conversions</strong> to and fr
 </details>
 
 
+ </div>
+</section>
 <script>
   document.addEventListener("DOMContentLoaded", function() {
     renderMathInElement(document.body, {

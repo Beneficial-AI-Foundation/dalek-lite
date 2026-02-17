@@ -11,13 +11,30 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Full history for temporal charts
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache probe-verus binary
+        id: cache-probe-verus
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/probe-verus
+          key: probe-verus-${{ runner.os }}-v1
+
+      - name: Install probe-verus
+        if: steps.cache-probe-verus.outputs.cache-hit != 'true'
+        run: |
+          cargo install --git https://github.com/Beneficial-AI-Foundation/probe-verus.git
+
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-      - name: Generate CSV from seed file
+
+      - name: Generate tracked functions CSV
         run: |
-          scripts/analyze_verus_specs_proofs.py
+          probe-verus tracked-csv curve25519-dalek/src --output outputs/curve25519_functions.csv
           scripts/csv_to_markdown.py
       - name: Upload CSV as artifact
         uses: actions/upload-artifact@v4

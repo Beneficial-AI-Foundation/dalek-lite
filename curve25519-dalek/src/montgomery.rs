@@ -1123,7 +1123,6 @@ impl MontgomeryPoint {
     /// * `None` if `self` is the \\(u\\)-coordinate of a point on the
     /// twist of (the Montgomery form of) Curve25519;
     ///
-    #[verifier::rlimit(200)]
     pub fn to_edwards(&self, sign: u8) -> (result: Option<EdwardsPoint>)
         requires
             sign == 0 || sign == 1,

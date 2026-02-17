@@ -1857,7 +1857,9 @@ pub proof fn lemma_valid_extended_point_affine_on_curve(x: nat, y: nat, z: nat, 
         math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
 {
     let p = p();
-    p_gt_2();
+    assert(p > 2) by {
+        p_gt_2();
+    };
 
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     let inv_z = field_inv(z);
@@ -1888,19 +1890,21 @@ pub proof fn lemma_valid_extended_point_affine_on_curve(x: nat, y: nat, z: nat, 
     assert(proj_lhs == proj_rhs);  // from math_on_edwards_curve_projective
 
     // === Establish z², z⁴ are nonzero in the field ===
-    lemma_nonzero_product(z, z);
-    assert(z2 < p) by {
-        lemma_mod_bound((z * z) as int, p as int);
+    assert(z2 != 0 && z2 % p != 0) by {
+        lemma_nonzero_product(z, z);
+        assert(z2 < p) by {
+            lemma_mod_bound((z * z) as int, p as int);
+        };
+        lemma_field_element_reduced(z2);
     };
-    lemma_field_element_reduced(z2);
-    assert(z2 % p != 0);
 
-    lemma_nonzero_product(z2, z2);
-    assert(z4 < p) by {
-        lemma_mod_bound((z2 * z2) as int, p as int);
+    assert(z4 != 0 && z4 % p != 0) by {
+        lemma_nonzero_product(z2, z2);
+        assert(z4 < p) by {
+            lemma_mod_bound((z2 * z2) as int, p as int);
+        };
+        lemma_field_element_reduced(z4);
     };
-    lemma_field_element_reduced(z4);
-    assert(z4 % p != 0);
 
     // === STEP 1: Quotient of squares ===
     // (x/z)² = x²/z² = x²·inv(z²)
@@ -1941,27 +1945,30 @@ pub proof fn lemma_valid_extended_point_affine_on_curve(x: nat, y: nat, z: nat, 
 
     // --- LHS: proj_lhs · inv(z⁴) = (y²-x²)·z²·inv(z⁴) = (y²-x²)·inv(z²) = affine_lhs ---
     // z²·inv(z⁴) = z²·inv(z²)·inv(z²) = inv(z²)
-    // Step A: inv_z4 = inv_z2 · inv_z2
-    assert(inv_z4 == field_mul(inv_z2, inv_z2)) by {
-        lemma_inv_of_product(z2, z2);
+    // z2 · inv_z4 = inv_z2 (cancel one factor of z²)
+    assert(field_mul(z2, inv_z4) == inv_z2) by {
+        // inv_z4 = inv_z2 · inv_z2
+        assert(inv_z4 == field_mul(inv_z2, inv_z2)) by {
+            lemma_inv_of_product(z2, z2);
+        };
+        // z2 · (inv_z2 · inv_z2) = (z2 · inv_z2) · inv_z2
+        lemma_field_mul_assoc(z2, inv_z2, inv_z2);
+        // z2 · inv_z2 = 1
+        assert(field_mul(z2, inv_z2) == 1) by {
+            lemma_field_mul_comm(z2, inv_z2);
+            lemma_inv_mul_cancel(z2);
+        };
+        // 1 · inv_z2 = inv_z2
+        assert(field_mul(1, inv_z2) == inv_z2 % p) by {
+            lemma_field_mul_one_left(inv_z2);
+        };
+        assert(inv_z2 < p) by {
+            field_inv_property(z2);
+        };
+        assert(inv_z2 == inv_z2 % p) by {
+            lemma_field_element_reduced(inv_z2);
+        };
     };
-    // Step B: z2 · inv_z4 = z2 · (inv_z2 · inv_z2) = (z2 · inv_z2) · inv_z2  [assoc]
-    lemma_field_mul_assoc(z2, inv_z2, inv_z2);
-    assert(field_mul(z2, field_mul(inv_z2, inv_z2)) == field_mul(field_mul(z2, inv_z2), inv_z2));
-    // Step C: z2 · inv_z2 = 1  [comm + cancel]
-    lemma_field_mul_comm(z2, inv_z2);
-    lemma_inv_mul_cancel(z2);
-    assert(field_mul(z2, inv_z2) == 1);
-    // Step D: (z2·inv_z2)·inv_z2 = 1·inv_z2 = inv_z2
-    assert(field_mul(field_mul(z2, inv_z2), inv_z2) == field_mul(1, inv_z2));
-    // field_mul(1, inv_z2) == inv_z2 % p() by one_left; inv_z2 < p() by field_inv_property
-    field_inv_property(z2);
-    assert(inv_z2 < p);
-    lemma_field_element_reduced(inv_z2);
-    lemma_field_mul_one_left(inv_z2);
-    assert(field_mul(1, inv_z2) == inv_z2);
-    // Combine: z2 · inv_z4 = z2 · (inv_z2·inv_z2) [Step A] = (z2·inv_z2)·inv_z2 [Step B] = inv_z2 [Steps C+D]
-    assert(field_mul(z2, inv_z4) == inv_z2);
     assert(field_mul(proj_lhs, inv_z4) == affine_lhs) by {
         lemma_field_mul_assoc(y2_minus_x2, z2, inv_z4);
     };
@@ -2189,8 +2196,15 @@ pub proof fn lemma_completed_point_ratios(
     let two: nat = 2;
 
     // Denominators non-zero and result on curve
-    axiom_edwards_add_complete(x1, y1, x2, y2);
-    p_gt_2();
+    assert(denom_x != 0 && denom_y != 0 && math_on_edwards_curve(
+        field_mul(num_x, field_inv(denom_x)),
+        field_mul(num_y, field_inv(denom_y)),
+    )) by {
+        axiom_edwards_add_complete(x1, y1, x2, y2);
+    };
+    assert(p() > 2) by {
+        p_gt_2();
+    };
 
     assert(two % p() != 0) by {
         lemma_small_mod(two, p());

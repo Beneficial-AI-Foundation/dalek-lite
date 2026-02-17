@@ -2017,14 +2017,19 @@ proof fn lemma_foil_sum_reorder(ac: nat, ad: nat, bc: nat, bd: nat)
         ),
 {
     let p = p();
-    p_gt_2();
-    lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
-    lemma_add_mod_noop(ac as int, ad as int, p as int);
-    lemma_add_mod_noop(bc as int, bd as int, p as int);
-    lemma_add_mod_noop((ac + bd) as int, (ad + bc) as int, p as int);
-    lemma_add_mod_noop(ac as int, bd as int, p as int);
-    lemma_add_mod_noop(ad as int, bc as int, p as int);
-    assert((ac + ad + bc + bd) == (ac + bd + ad + bc));
+    assert(field_add(field_add(ac, ad), field_add(bc, bd)) == field_add(
+        field_add(ac, bd),
+        field_add(ad, bc),
+    )) by {
+        p_gt_2();
+        lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
+        lemma_add_mod_noop(ac as int, ad as int, p as int);
+        lemma_add_mod_noop(bc as int, bd as int, p as int);
+        lemma_add_mod_noop((ac + bd) as int, (ad + bc) as int, p as int);
+        lemma_add_mod_noop(ac as int, bd as int, p as int);
+        lemma_add_mod_noop(ad as int, bc as int, p as int);
+        assert((ac + ad + bc + bd) == (ac + bd + ad + bc));
+    };
 }
 
 /// PP - MM = 2·(y1·x2 + x1·y2) when PP = (y1+x1)(y2+x2) and MM = (y1-x1)(y2-x2)
@@ -2042,15 +2047,18 @@ pub proof fn lemma_pp_minus_mm(a: nat, b: nat, c: nat, d: nat)
     let ac = field_mul(a, c);
     let bd = field_mul(b, d);
 
-    // PP = (a+b)(c+d) = (ac + ad) + (bc + bd)  by FOIL
-    lemma_foil_add(a, b, c, d);
     let pp = field_mul(field_add(a, b), field_add(c, d));
-    assert(pp == field_add(field_add(ac, ad), field_add(bc, bd)));
+    let mm = field_mul(field_sub(a, b), field_sub(c, d));
+
+    // PP = (a+b)(c+d) = (ac + ad) + (bc + bd)  by FOIL
+    assert(pp == field_add(field_add(ac, ad), field_add(bc, bd))) by {
+        lemma_foil_add(a, b, c, d);
+    };
 
     // MM = (a-b)(c-d) = (ac + bd) - (ad + bc)  by FOIL for sub
-    lemma_foil_sub(a, b, c, d);
-    let mm = field_mul(field_sub(a, b), field_sub(c, d));
-    assert(mm == field_sub(field_add(ac, bd), field_add(ad, bc)));
+    assert(mm == field_sub(field_add(ac, bd), field_add(ad, bc))) by {
+        lemma_foil_sub(a, b, c, d);
+    };
 
     // PP - MM = [(ac+ad)+(bc+bd)] - [(ac+bd)-(ad+bc)]
     // = (ac+ad+bc+bd) - (ac+bd-ad-bc)
@@ -2061,11 +2069,13 @@ pub proof fn lemma_pp_minus_mm(a: nat, b: nat, c: nat, d: nat)
 
     assert(pp == field_add(big_a, big_b)) by {
         lemma_foil_sum_reorder(ac, ad, bc, bd);
-    }
+    };
     assert(mm == field_sub(big_a, big_b));
 
     // Apply: (A+B) - (A-B) = 2B
-    lemma_field_add_sub_recover_double(big_a, big_b);
+    assert(field_sub(pp, mm) == field_mul(2, big_b)) by {
+        lemma_field_add_sub_recover_double(big_a, big_b);
+    };
 }
 
 /// PP + MM = 2·(y1·y2 + x1·x2)
@@ -2081,24 +2091,29 @@ pub proof fn lemma_pp_plus_mm(a: nat, b: nat, c: nat, d: nat)
     let ac = field_mul(a, c);
     let bd = field_mul(b, d);
 
-    lemma_foil_add(a, b, c, d);
     let pp = field_mul(field_add(a, b), field_add(c, d));
-    assert(pp == field_add(field_add(ac, ad), field_add(bc, bd)));
-
-    lemma_foil_sub(a, b, c, d);
     let mm = field_mul(field_sub(a, b), field_sub(c, d));
-    assert(mm == field_sub(field_add(ac, bd), field_add(ad, bc)));
+
+    assert(pp == field_add(field_add(ac, ad), field_add(bc, bd))) by {
+        lemma_foil_add(a, b, c, d);
+    };
+
+    assert(mm == field_sub(field_add(ac, bd), field_add(ad, bc))) by {
+        lemma_foil_sub(a, b, c, d);
+    };
 
     let big_a = field_add(ac, bd);
     let big_b = field_add(ad, bc);
 
     assert(pp == field_add(big_a, big_b)) by {
         lemma_foil_sum_reorder(ac, ad, bc, bd);
-    }
+    };
     assert(mm == field_sub(big_a, big_b));
 
     // Apply: (A+B) + (A-B) = 2A
-    lemma_field_add_add_recover_double(big_a, big_b);
+    assert(field_add(pp, mm) == field_mul(2, big_a)) by {
+        lemma_field_add_add_recover_double(big_a, big_b);
+    };
 }
 
 // =============================================================================
@@ -2113,10 +2128,12 @@ pub proof fn lemma_div_mul_cancel(a: nat, b: nat)
         field_mul(field_mul(a, field_inv(b)), b) == a % p(),
 {
     let inv_b = field_inv(b);
-    lemma_field_mul_assoc(a, inv_b, b);
-    // mul(a, mul(inv(b), b)) = mul(a, 1) = a % p
-    lemma_inv_mul_cancel(b);
-    lemma_field_mul_one_right(a);
+    assert(field_mul(field_mul(a, inv_b), b) == a % p()) by {
+        lemma_field_mul_assoc(a, inv_b, b);
+        // mul(a, mul(inv(b), b)) = mul(a, 1) = a % p
+        lemma_inv_mul_cancel(b);
+        lemma_field_mul_one_right(a);
+    };
 }
 
 /// Helper: mul(a*b, c*d) = mul(a*c, b*d) — four-factor rearrangement.
@@ -2130,12 +2147,14 @@ pub proof fn lemma_four_factor_rearrange(a: nat, b: nat, c: nat, d: nat)
     let ac = field_mul(a, c);
     let bd = field_mul(b, d);
 
-    // (ab)(cd) = a(b(cd)) = a((bc)d) = a((cb)d) = a(c(bd)) = (ac)(bd)
-    lemma_field_mul_assoc(a, b, cd);
-    lemma_field_mul_assoc(b, c, d);
-    lemma_field_mul_comm(b, c);
-    lemma_field_mul_assoc(c, b, d);
-    lemma_field_mul_assoc(a, c, bd);
+    assert(field_mul(ab, cd) == field_mul(ac, bd)) by {
+        // (ab)(cd) = a(b(cd)) = a((bc)d) = a((cb)d) = a(c(bd)) = (ac)(bd)
+        lemma_field_mul_assoc(a, b, cd);
+        lemma_field_mul_assoc(b, c, d);
+        lemma_field_mul_comm(b, c);
+        lemma_field_mul_assoc(c, b, d);
+        lemma_field_mul_assoc(a, c, bd);
+    };
 }
 
 /// Helper: a*c + b*c = (a+b)*c — reverse distributivity for addition.
@@ -2143,10 +2162,12 @@ pub proof fn lemma_reverse_distribute_add(a: nat, b: nat, c: nat)
     ensures
         field_add(field_mul(a, c), field_mul(b, c)) == field_mul(field_add(a, b), c),
 {
-    lemma_field_mul_comm(field_add(a, b), c);
-    lemma_field_mul_distributes_over_add(c, a, b);
-    lemma_field_mul_comm(c, a);
-    lemma_field_mul_comm(c, b);
+    assert(field_add(field_mul(a, c), field_mul(b, c)) == field_mul(field_add(a, b), c)) by {
+        lemma_field_mul_comm(field_add(a, b), c);
+        lemma_field_mul_distributes_over_add(c, a, b);
+        lemma_field_mul_comm(c, a);
+        lemma_field_mul_comm(c, b);
+    };
 }
 
 /// Helper: a*c - b*c = (a-b)*c — reverse distributivity for subtraction.
@@ -2154,8 +2175,10 @@ pub proof fn lemma_reverse_distribute_sub(a: nat, b: nat, c: nat)
     ensures
         field_sub(field_mul(a, c), field_mul(b, c)) == field_mul(field_sub(a, b), c),
 {
-    lemma_field_mul_comm(field_sub(a, b), c);
-    lemma_field_mul_distributes_over_sub_right(a, b, c);
+    assert(field_sub(field_mul(a, c), field_mul(b, c)) == field_mul(field_sub(a, b), c)) by {
+        lemma_field_mul_comm(field_sub(a, b), c);
+        lemma_field_mul_distributes_over_sub_right(a, b, c);
+    };
 }
 
 /// Helper: Field left cancellation. If mul(a, b) == mul(a, c) and a ≠ 0, then b ≡ c (mod p).
@@ -2166,18 +2189,20 @@ pub proof fn lemma_field_mul_left_cancel(a: nat, b: nat, c: nat)
     ensures
         b % p() == c % p(),
 {
-    // Multiply both sides by inv(a):
-    // mul(inv(a), mul(a, b)) = mul(inv(a), mul(a, c))
-    // mul(mul(inv(a), a), b) = mul(mul(inv(a), a), c)   [by assoc]
-    // mul(1, b) = mul(1, c)                              [by inv_mul_cancel]
-    // b % p = c % p                                      [by mul_one_left]
     let inv_a = field_inv(a);
-    lemma_field_mul_assoc(inv_a, a, b);
-    lemma_field_mul_assoc(inv_a, a, c);
-    lemma_field_mul_comm(inv_a, a);
-    lemma_inv_mul_cancel(a);
-    lemma_field_mul_one_left(b);
-    lemma_field_mul_one_left(c);
+    assert(b % p() == c % p()) by {
+        // Multiply both sides by inv(a):
+        // mul(inv(a), mul(a, b)) = mul(inv(a), mul(a, c))
+        // mul(mul(inv(a), a), b) = mul(mul(inv(a), a), c)   [by assoc]
+        // mul(1, b) = mul(1, c)                              [by inv_mul_cancel]
+        // b % p = c % p                                      [by mul_one_left]
+        lemma_field_mul_assoc(inv_a, a, b);
+        lemma_field_mul_assoc(inv_a, a, c);
+        lemma_field_mul_comm(inv_a, a);
+        lemma_inv_mul_cancel(a);
+        lemma_field_mul_one_left(b);
+        lemma_field_mul_one_left(c);
+    };
 }
 
 /// Helper: a + a = mul(2, a) — addition with self equals doubling.
@@ -2240,13 +2265,15 @@ pub proof fn lemma_sub_neg_eq_add(c: nat, d: nat)
         field_sub(c, field_neg(d)) == field_add(c, d),
 {
     let neg_d = field_neg(d);
-    lemma_field_sub_eq_add_neg(c, neg_d);
-    lemma_neg_neg(d);
     let p = p();
-    p_gt_2();
-    lemma_add_mod_noop(c as int, (d % p) as int, p as int);
-    lemma_add_mod_noop(c as int, d as int, p as int);
-    lemma_mod_twice(d as int, p as int);
+    assert(field_sub(c, neg_d) == field_add(c, d)) by {
+        lemma_field_sub_eq_add_neg(c, neg_d);
+        lemma_neg_neg(d);
+        p_gt_2();
+        lemma_add_mod_noop(c as int, (d % p) as int, p as int);
+        lemma_add_mod_noop(c as int, d as int, p as int);
+        lemma_mod_twice(d as int, p as int);
+    };
 }
 
 /// PM - MP = 2*(bc - ad) where PM = (a+b)(c-d) and MP = (a-b)(c+d).
@@ -2263,17 +2290,30 @@ pub proof fn lemma_pm_minus_mp(a: nat, b: nat, c: nat, d: nat)
     let ad = field_mul(a, d);
     let bc = field_mul(b, c);
 
-    // sub(c, d) = add(c, neg(d)), sub(c, neg(d)) = add(c, d)
-    lemma_field_sub_eq_add_neg(c, d);
-    lemma_sub_neg_eq_add(c, d);
+    // sub(c, d) = add(c, neg(d))
+    assert(field_sub(c, d) == field_add(c, neg_d)) by {
+        lemma_field_sub_eq_add_neg(c, d);
+    };
+    // sub(c, neg(d)) = add(c, d)
+    assert(field_sub(c, neg_d) == field_add(c, d)) by {
+        lemma_sub_neg_eq_add(c, d);
+    };
 
     // Apply pp_minus_mm with neg(d): sub(PM, MP) == mul(2, add(mul(a,neg_d), bc))
-    lemma_pp_minus_mm(a, b, c, neg_d);
+    assert(field_sub(
+        field_mul(field_add(a, b), field_add(c, neg_d)),
+        field_mul(field_sub(a, b), field_sub(c, neg_d)),
+    ) == field_mul(2, field_add(field_mul(a, neg_d), bc))) by {
+        lemma_pp_minus_mm(a, b, c, neg_d);
+    };
 
-    // mul(a, neg(d)) = neg(ad), then add(neg(ad), bc) = sub(bc, ad)
-    lemma_field_mul_neg(a, d);
-    lemma_field_sub_eq_add_neg(bc, ad);
-    assert(field_add(field_neg(ad), bc) == field_add(bc, field_neg(ad))) by {
+    // mul(a, neg(d)) = neg(ad)
+    assert(field_mul(a, neg_d) == field_neg(ad)) by {
+        lemma_field_mul_neg(a, d);
+    };
+    // add(neg(ad), bc) = sub(bc, ad) by commutativity + sub definition
+    assert(field_add(field_neg(ad), bc) == field_sub(bc, ad)) by {
+        lemma_field_sub_eq_add_neg(bc, ad);
         assert((field_neg(ad) + bc) == (bc + field_neg(ad)));
     };
 }
@@ -2292,16 +2332,31 @@ pub proof fn lemma_pm_plus_mp(a: nat, b: nat, c: nat, d: nat)
     let ac = field_mul(a, c);
     let bd = field_mul(b, d);
 
-    // sub(c, d) = add(c, neg(d)), sub(c, neg(d)) = add(c, d)
-    lemma_field_sub_eq_add_neg(c, d);
-    lemma_sub_neg_eq_add(c, d);
+    // sub(c, d) = add(c, neg(d))
+    assert(field_sub(c, d) == field_add(c, neg_d)) by {
+        lemma_field_sub_eq_add_neg(c, d);
+    };
+    // sub(c, neg(d)) = add(c, d)
+    assert(field_sub(c, neg_d) == field_add(c, d)) by {
+        lemma_sub_neg_eq_add(c, d);
+    };
 
     // Apply pp_plus_mm with neg(d): add(PM, MP) == mul(2, add(ac, mul(b, neg_d)))
-    lemma_pp_plus_mm(a, b, c, neg_d);
+    assert(field_add(
+        field_mul(field_add(a, b), field_add(c, neg_d)),
+        field_mul(field_sub(a, b), field_sub(c, neg_d)),
+    ) == field_mul(2, field_add(ac, field_mul(b, neg_d)))) by {
+        lemma_pp_plus_mm(a, b, c, neg_d);
+    };
 
-    // mul(b, neg(d)) = neg(bd), then add(ac, neg(bd)) = sub(ac, bd)
-    lemma_field_mul_neg(b, d);
-    lemma_field_sub_eq_add_neg(ac, bd);
+    // mul(b, neg(d)) = neg(bd)
+    assert(field_mul(b, neg_d) == field_neg(bd)) by {
+        lemma_field_mul_neg(b, d);
+    };
+    // add(ac, neg(bd)) = sub(ac, bd)
+    assert(field_add(ac, field_neg(bd)) == field_sub(ac, bd)) by {
+        lemma_field_sub_eq_add_neg(ac, bd);
+    };
 }
 
 } // verus!

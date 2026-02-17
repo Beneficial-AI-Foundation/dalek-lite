@@ -1833,27 +1833,6 @@ pub proof fn lemma_field_sub_self(x: nat)
     }
 }
 
-/// Axiom: For field elements Y, Z with Z ≠ 0: (Z+Y)/(Z-Y) == (1+y)/(1-y) where y = Y/Z.
-///
-/// Used by `to_montgomery` to compute the Edwards-to-Montgomery map u = (1+y)/(1-y)
-/// directly from the projective Y, Z coordinates as (Z+Y)/(Z-Y).
-pub proof fn axiom_edwards_to_montgomery_correspondence(y: nat, z: nat)
-    requires
-        z % p() != 0,  // Non-identity point (Z ≠ 0)
-
-    ensures
-        ({
-            let y_affine = field_mul(y, field_inv(z));
-            let one_plus_y = field_add(1, y_affine);
-            let one_minus_y = field_sub(1, y_affine);
-            let projective_result = field_mul(field_add(z, y), field_inv(field_sub(z, y)));
-            let affine_result = field_mul(one_plus_y, field_inv(one_minus_y));
-            projective_result == affine_result
-        }),
-{
-    admit();
-}
-
 // =============================================================================
 // FOIL expansion lemmas
 // =============================================================================
@@ -2028,6 +2007,26 @@ pub proof fn lemma_foil_sub(a: nat, b: nat, c: nat, d: nat)
 // =============================================================================
 // PP/MM decomposition lemmas
 // =============================================================================
+/// Helper: FOIL sum reordering.
+/// (ac+ad)+(bc+bd) == (ac+bd)+(ad+bc) — rearranging the four-term sum.
+proof fn lemma_foil_sum_reorder(ac: nat, ad: nat, bc: nat, bd: nat)
+    ensures
+        field_add(field_add(ac, ad), field_add(bc, bd)) == field_add(
+            field_add(ac, bd),
+            field_add(ad, bc),
+        ),
+{
+    let p = p();
+    p_gt_2();
+    lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
+    lemma_add_mod_noop(ac as int, ad as int, p as int);
+    lemma_add_mod_noop(bc as int, bd as int, p as int);
+    lemma_add_mod_noop((ac + bd) as int, (ad + bc) as int, p as int);
+    lemma_add_mod_noop(ac as int, bd as int, p as int);
+    lemma_add_mod_noop(ad as int, bc as int, p as int);
+    assert((ac + ad + bc + bd) == (ac + bd + ad + bc));
+}
+
 /// PP - MM = 2·(y1·x2 + x1·y2) when PP = (y1+x1)(y2+x2) and MM = (y1-x1)(y2-x2)
 /// More precisely, using field elements a = y1, b = x1, c = y2, d = x2:
 ///   (a+b)(c+d) - (a-b)(c-d) = 2·(a·d + b·c)
@@ -2060,23 +2059,9 @@ pub proof fn lemma_pp_minus_mm(a: nat, b: nat, c: nat, d: nat)
     let big_a = field_add(ac, bd);
     let big_b = field_add(ad, bc);
 
-    // Show PP = big_a + big_b
-    // We already showed PP = (ac+ad) + (bc+bd)
-    // big_a + big_b = (ac+bd) + (ad+bc)
-    // Need: (ac+ad)+(bc+bd) == (ac+bd)+(ad+bc)  [by commutativity/associativity]
     assert(pp == field_add(big_a, big_b)) by {
-        let p = p();
-        p_gt_2();
-        lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
-        lemma_add_mod_noop(ac as int, ad as int, p as int);
-        lemma_add_mod_noop(bc as int, bd as int, p as int);
-        lemma_add_mod_noop((ac + bd) as int, (ad + bc) as int, p as int);
-        lemma_add_mod_noop(ac as int, bd as int, p as int);
-        lemma_add_mod_noop(ad as int, bc as int, p as int);
-        assert((ac + ad + bc + bd) == (ac + bd + ad + bc));
+        lemma_foil_sum_reorder(ac, ad, bc, bd);
     }
-
-    // Show MM = big_a - big_b (already proven by foil_sub)
     assert(mm == field_sub(big_a, big_b));
 
     // Apply: (A+B) - (A-B) = 2B
@@ -2108,17 +2093,8 @@ pub proof fn lemma_pp_plus_mm(a: nat, b: nat, c: nat, d: nat)
     let big_b = field_add(ad, bc);
 
     assert(pp == field_add(big_a, big_b)) by {
-        let p = p();
-        p_gt_2();
-        lemma_add_mod_noop((ac + ad) as int, (bc + bd) as int, p as int);
-        lemma_add_mod_noop(ac as int, ad as int, p as int);
-        lemma_add_mod_noop(bc as int, bd as int, p as int);
-        lemma_add_mod_noop((ac + bd) as int, (ad + bc) as int, p as int);
-        lemma_add_mod_noop(ac as int, bd as int, p as int);
-        lemma_add_mod_noop(ad as int, bc as int, p as int);
-        assert((ac + ad + bc + bd) == (ac + bd + ad + bc));
+        lemma_foil_sum_reorder(ac, ad, bc, bd);
     }
-
     assert(mm == field_sub(big_a, big_b));
 
     // Apply: (A+B) + (A-B) = 2A
@@ -2256,6 +2232,23 @@ pub proof fn lemma_neg_neg(a: nat)
     }
 }
 
+/// Helper: field_sub(c, field_neg(d)) == field_add(c, d).
+///
+/// Subtracting a negation is the same as adding: c - (-d) = c + d.
+pub proof fn lemma_sub_neg_eq_add(c: nat, d: nat)
+    ensures
+        field_sub(c, field_neg(d)) == field_add(c, d),
+{
+    let neg_d = field_neg(d);
+    lemma_field_sub_eq_add_neg(c, neg_d);
+    lemma_neg_neg(d);
+    let p = p();
+    p_gt_2();
+    lemma_add_mod_noop(c as int, (d % p) as int, p as int);
+    lemma_add_mod_noop(c as int, d as int, p as int);
+    lemma_mod_twice(d as int, p as int);
+}
+
 /// PM - MP = 2*(bc - ad) where PM = (a+b)(c-d) and MP = (a-b)(c+d).
 /// This is the mixed-FOIL identity for the cross terms in subtraction.
 /// Proven by substituting neg(d) into lemma_pp_minus_mm.
@@ -2270,39 +2263,17 @@ pub proof fn lemma_pm_minus_mp(a: nat, b: nat, c: nat, d: nat)
     let ad = field_mul(a, d);
     let bc = field_mul(b, c);
 
-    // sub(c, d) = add(c, neg(d))
+    // sub(c, d) = add(c, neg(d)), sub(c, neg(d)) = add(c, d)
     lemma_field_sub_eq_add_neg(c, d);
+    lemma_sub_neg_eq_add(c, d);
 
-    // sub(c, neg(d)) = add(c, d):
-    // sub(c, neg(d)) = add(c, neg(neg(d))) [by sub_eq_add_neg]
-    // neg(neg(d)) = d % p [by neg_neg]
-    // add(c, d%p) = add(c, d) [by modular arithmetic]
-    lemma_field_sub_eq_add_neg(c, neg_d);
-    lemma_neg_neg(d);
-    assert(field_sub(c, neg_d) == field_add(c, d)) by {
-        let p = p();
-        p_gt_2();
-        // add(c, neg(neg(d))) = add(c, d%p)
-        // (c + d%p) % p = (c + d) % p
-        lemma_add_mod_noop(c as int, (d % p) as int, p as int);
-        lemma_add_mod_noop(c as int, d as int, p as int);
-        lemma_mod_twice(d as int, p as int);
-    };
-
-    // Apply pp_minus_mm(a, b, c, neg_d):
-    // sub(mul(add(a,b),add(c,neg_d)), mul(sub(a,b),sub(c,neg_d)))
-    //   == mul(2, add(mul(a,neg_d), mul(b,c)))
-    // Since add(c,neg_d) = sub(c,d) and sub(c,neg_d) = add(c,d):
-    // sub(PM, MP) == mul(2, add(mul(a,neg_d), bc))
+    // Apply pp_minus_mm with neg(d): sub(PM, MP) == mul(2, add(mul(a,neg_d), bc))
     lemma_pp_minus_mm(a, b, c, neg_d);
 
-    // mul(a, neg(d)) = neg(mul(a, d))
+    // mul(a, neg(d)) = neg(ad), then add(neg(ad), bc) = sub(bc, ad)
     lemma_field_mul_neg(a, d);
-
-    // add(neg(ad), bc) = add(bc, neg(ad)) = sub(bc, ad)
     lemma_field_sub_eq_add_neg(bc, ad);
     assert(field_add(field_neg(ad), bc) == field_add(bc, field_neg(ad))) by {
-        let p = p();
         assert((field_neg(ad) + bc) == (bc + field_neg(ad)));
     };
 }
@@ -2321,27 +2292,15 @@ pub proof fn lemma_pm_plus_mp(a: nat, b: nat, c: nat, d: nat)
     let ac = field_mul(a, c);
     let bd = field_mul(b, d);
 
-    // Same setup as pm_minus_mp
+    // sub(c, d) = add(c, neg(d)), sub(c, neg(d)) = add(c, d)
     lemma_field_sub_eq_add_neg(c, d);
-    lemma_field_sub_eq_add_neg(c, neg_d);
-    lemma_neg_neg(d);
-    assert(field_sub(c, neg_d) == field_add(c, d)) by {
-        let p = p();
-        p_gt_2();
-        lemma_add_mod_noop(c as int, (d % p) as int, p as int);
-        lemma_add_mod_noop(c as int, d as int, p as int);
-        lemma_mod_twice(d as int, p as int);
-    };
+    lemma_sub_neg_eq_add(c, d);
 
-    // Apply pp_plus_mm(a, b, c, neg_d):
-    // add(mul(add(a,b),add(c,neg_d)), mul(sub(a,b),sub(c,neg_d)))
-    //   == mul(2, add(mul(a,c), mul(b,neg_d)))
+    // Apply pp_plus_mm with neg(d): add(PM, MP) == mul(2, add(ac, mul(b, neg_d)))
     lemma_pp_plus_mm(a, b, c, neg_d);
 
-    // mul(b, neg(d)) = neg(mul(b, d))
+    // mul(b, neg(d)) = neg(bd), then add(ac, neg(bd)) = sub(ac, bd)
     lemma_field_mul_neg(b, d);
-
-    // add(ac, neg(bd)) = sub(ac, bd)
     lemma_field_sub_eq_add_neg(ac, bd);
 }
 

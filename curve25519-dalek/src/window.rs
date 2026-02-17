@@ -100,6 +100,10 @@ impl LookupTable<AffineNielsPoint> {
     ///
     /// Where P is the base point that was used to create this lookup table.
     /// This table stores [P, 2P, 3P, ..., 8P] (for radix-16).
+    // VERIFICATION NOTE: proof bypass — select logic depends on constant-time
+    // conditional_assign and conditional_negate, which are not yet verified.
+    // TODO: prove select correctness once ct primitives are verified.
+    #[verifier::external_body]
     pub fn select(&self, x: i8) -> (result: AffineNielsPoint)
         requires
             -8 <= x,
@@ -124,8 +128,6 @@ impl LookupTable<AffineNielsPoint> {
             debug_assert!(x >= -8);
             debug_assert!(x <= 8);
         }
-
-        assume(false);
 
         // Compute xabs = |x|
         let xmask = x as i16 >> 7;
@@ -157,6 +159,10 @@ impl LookupTable<ProjectiveNielsPoint> {
     ///
     /// Where P is the base point that was used to create this lookup table.
     /// This table stores [P, 2P, 3P, ..., 8P] (for radix-16).
+    // VERIFICATION NOTE: proof bypass — select logic depends on constant-time
+    // conditional_assign and conditional_negate, which are not yet verified.
+    // TODO: prove select correctness once ct primitives are verified.
+    #[verifier::external_body]
     pub fn select(&self, x: i8) -> (result: ProjectiveNielsPoint)
         requires
             -8 <= x,
@@ -207,8 +213,6 @@ impl LookupTable<ProjectiveNielsPoint> {
             debug_assert!(x >= -8);
             debug_assert!(x <= 8);
         }
-
-        assume(false);
 
         // Compute xabs = |x|
         let xmask = x as i16 >> 7;

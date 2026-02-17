@@ -342,8 +342,9 @@ impl ValidityCheck for ProjectivePoint {
         let YY = self.Y.square();
         let ZZ = self.Z.square();
         proof {
+            // TODO(verify): prove from square() postcondition (output is 52-bounded ⊂ 54-bounded)
             assume(fe51_limbs_bounded(&ZZ, 54));  // for ZZZZ = ZZ.square()
-            assume(fe51_limbs_bounded(&YY, 54) && fe51_limbs_bounded(&XX, 54));  // for yy_minus_xx = &YY - &XX and
+            assume(fe51_limbs_bounded(&YY, 54) && fe51_limbs_bounded(&XX, 54));  // for yy_minus_xx = &YY - &XX
         }
         let ZZZZ = ZZ.square();
 
@@ -355,12 +356,14 @@ impl ValidityCheck for ProjectivePoint {
 
         let yy_minus_xx = &YY - &XX;
         proof {
+            // TODO(verify): prove from sub()/square() postconditions
             assume(fe51_limbs_bounded(&yy_minus_xx, 54) && fe51_limbs_bounded(&ZZ, 54));  // for lhs = &yy_minus_xx * &ZZ
         }
         let lhs = &yy_minus_xx * &ZZ;
 
         let xx_times_yy = &XX * &YY;
         proof {
+            // TODO(verify): prove EDWARDS_D is 54-bounded (it's a constant), and mul() output is 52-bounded ⊂ 54-bounded
             assume(fe51_limbs_bounded(&constants::EDWARDS_D, 54) && fe51_limbs_bounded(
                 &xx_times_yy,
                 54,
@@ -368,13 +371,14 @@ impl ValidityCheck for ProjectivePoint {
         }
         let d_times_xxyy = &constants::EDWARDS_D * &xx_times_yy;
         proof {
+            // TODO(verify): prove from limb bounds of ZZZZ and d_times_xxyy
             assume(sum_of_limbs_bounded(&ZZZZ, &d_times_xxyy, u64::MAX));  // for rhs = &ZZZZ + &d_times_xxyy
         }
         let rhs = &ZZZZ + &d_times_xxyy;
 
         let result = lhs == rhs;
         proof {
-            // postcondition
+            // TODO(verify): prove by connecting lhs == rhs to the spec definition
             assume(result == math_on_edwards_curve_projective(
                 fe51_as_canonical_nat(&self.X),
                 fe51_as_canonical_nat(&self.Y),
@@ -571,7 +575,7 @@ impl ProjectivePoint {
             T: &self.X * &self.Y,
         };
         proof {
-            // postconditions
+            // TODO(verify): prove validity and affine equivalence from X*Z, Y*Z, Z², X*Y formulas
             assume(is_valid_edwards_point(result));
             assume(spec_edwards_point(result) == spec_projective_to_extended(*self));
             assume(edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self));
@@ -753,7 +757,7 @@ impl CompletedPoint {
             };
 
             // Therefore is_well_formed_edwards_point holds (pending is_valid_edwards_point)
-            // Semantic postconditions still need assumes
+            // TODO(verify): prove validity and affine equivalence from X*T, Y*Z, Z*T, X*Y formulas
             assume(is_valid_edwards_point(result));
             assume(spec_edwards_point(result) == spec_completed_to_extended(*self));
             assume(edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self));
@@ -868,7 +872,7 @@ impl ProjectivePoint {
             // result.T: from subtraction → 54-bounded (directly from sub postcondition)
             assert(fe51_limbs_bounded(&result.T, 54));  // subtraction postcondition
 
-            // Semantic postconditions
+            // TODO(verify): prove doubling correctness from XX, YY, ZZ2 formulas
             assume(is_valid_completed_point(result));
             assume(completed_point_as_affine_edwards(result) == edwards_double(
                 projective_point_as_affine_edwards(*self).0,
@@ -1666,6 +1670,7 @@ impl<'a> Neg for &'a ProjectiveNielsPoint {
             T2d: negate_field(&self.T2d),
         };
         proof {
+            // TODO(verify): prove from Y+X ↔ Y-X swap and T2d negation
             let self_affine = projective_niels_point_as_affine_edwards(*self);
             assume(projective_niels_point_as_affine_edwards(result) == (
                 field_neg(self_affine.0),
@@ -1725,6 +1730,7 @@ impl<'a> Neg for &'a AffineNielsPoint {
             xy2d: negate_field(&self.xy2d),
         };
         proof {
+            // TODO(verify): prove from y+x ↔ y-x swap and xy2d negation
             let self_affine = affine_niels_point_as_affine_edwards(*self);
             assume(affine_niels_point_as_affine_edwards(result) == (
                 field_neg(self_affine.0),

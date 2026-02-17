@@ -2237,4 +2237,27 @@ pub proof fn lemma_completed_point_ratios(
     }
 }
 
+/// Axiom: For field elements Y, Z with Z ≠ 0: (Z+Y)/(Z-Y) == (1+y)/(1-y) where y = Y/Z.
+///
+/// Used by `to_montgomery` to compute the Edwards-to-Montgomery map u = (1+y)/(1-y)
+/// directly from the projective Y, Z coordinates as (Z+Y)/(Z-Y).
+///
+/// TODO: prove this from field algebra (cross-multiply and simplify).
+pub proof fn axiom_edwards_to_montgomery_correspondence(y: nat, z: nat)
+    requires
+        z % p() != 0,  // Non-identity point (Z ≠ 0)
+
+    ensures
+        ({
+            let y_affine = field_mul(y, field_inv(z));
+            let one_plus_y = field_add(1, y_affine);
+            let one_minus_y = field_sub(1, y_affine);
+            let projective_result = field_mul(field_add(z, y), field_inv(field_sub(z, y)));
+            let affine_result = field_mul(one_plus_y, field_inv(one_minus_y));
+            projective_result == affine_result
+        }),
+{
+    admit();
+}
+
 } // verus!

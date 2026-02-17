@@ -223,12 +223,12 @@
 <h1>Public interface of dalek-curve25519</h1>
 <div class="intro">
   <p><strong>Summary</strong></p>
-  <p>This library provides implementations for a field of <strong>scalars</strong>, a group of <strong>curve points</strong>, and <strong>scalar multiplication</strong> operations over these structures. The set of scalars and the group are <strong>large</strong> enough to offer <strong>cryptographic security</strong>, and therefore require specialized implementations.</p>
-  <p>In addition, the library allows <strong>bitstring conversions</strong> to and from the algebraic structures, as well as conversions between equivalent forms of the elliptic curve group. Each form (<strong>Edwards, Montgomery, Ristretto</strong>) offers specific computational advantages for cryptographic operations.</p>
+  <p>This library provides implementations for a field of <strong>scalars</strong>, a group of <strong>elliptic curve points</strong>, and <strong>scalar multiplication</strong> operations over these mathematical structures. The set of scalars and the group are <strong>large</strong> enough to offer <strong>cryptographic security</strong>, and therefore require specialized efficient implementations.</p>
+  <p>In addition, the library allows <strong>bitstring conversions</strong> to and from these mathematical structures, as well as conversions between equivalent forms of the elliptic curve group. Each form (<strong>Edwards, Montgomery, Ristretto</strong>) offers specific computational advantages for cryptographic operations.</p>
   <p><strong>Applications</strong></p>
   <ul>
     <li>Scalars can be used in protocols to store private keys and cryptographically secure random numbers.</li>
-    <li>Curve points can be used to represent public keys or encode private data in a secure way.</li>
+    <li>Eliptic curve points can be used to represent public keys or encode private data in a secure way.</li>
     <li>Scalar multiplication is used for multiple cryptographic operations, such as encoding, decoding, shared key generation, zero-knowledge proofs, private-key signing and verification.</li>
   </ul>
 </div>

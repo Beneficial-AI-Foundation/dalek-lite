@@ -174,6 +174,115 @@ pub proof fn lemma_field_add_comm(a: nat, b: nat)
     assert((a + b) as int == (b + a) as int);
 }
 
+/// Lemma: (x + y) − (z + y) = x − z (mod p) for reduced values.
+///
+/// Cancellation of a common right addend under subtraction.
+pub proof fn lemma_field_sub_add_common_right(x: nat, z: nat, y: nat)
+    requires
+        x < p(),
+        z < p(),
+        y < p(),
+    ensures
+        field_sub(field_add(x, y), field_add(z, y)) == field_sub(x, z),
+{
+    let p = p();
+    let p_i = p as int;
+    p_gt_2();
+
+    let x1 = field_add(x, y);
+    let z1 = field_add(z, y);
+
+    assert(x1 == (x + y) % p);
+    assert(z1 == (z + y) % p);
+    assert(x1 < p) by {
+        lemma_mod_bound((x + y) as int, p_i);
+    }
+    assert(z1 < p) by {
+        lemma_mod_bound((z + y) as int, p_i);
+    }
+
+    assert(field_sub(x1, z1) == (((x1 + p) - z1) as nat) % p) by {
+        lemma_small_mod(x1, p);
+        lemma_small_mod(z1, p);
+    }
+
+    assert((x1 as int) % p_i == ((x + y) as int) % p_i) by {
+        lemma_small_mod(x1, p);
+        lemma_int_nat_mod_equiv((x + y) as int, p);
+    }
+    assert((z1 as int) % p_i == ((z + y) as int) % p_i) by {
+        lemma_small_mod(z1, p);
+        lemma_int_nat_mod_equiv((z + y) as int, p);
+    }
+
+    assert(((x1 + p) as int) % p_i == ((x + y + p) as int) % p_i) by {
+        lemma_mod_add_multiples_vanish(x1 as int, p_i);
+        lemma_mod_add_multiples_vanish((x + y) as int, p_i);
+    }
+
+    assert((((x1 + p) as int - z1 as int) % p_i) == ((((x + y + p) as int) - (z + y) as int) % p_i))
+        by {
+        lemma_sub_mod_noop((x1 + p) as int, z1 as int, p_i);
+        lemma_sub_mod_noop((x + y + p) as int, (z + y) as int, p_i);
+    }
+
+    assert((((x + y + p) as int) - (z + y) as int) == ((x + p) as int - z as int));
+    assert((((x1 + p) as int - z1 as int) % p_i) == (((x + p) as int - z as int) % p_i));
+    assert((((x1 + p) - z1) as nat) % p == (((x + p) - z) as nat) % p);
+
+    assert(field_sub(x, z) == (((x + p) - z) as nat) % p) by {
+        lemma_small_mod(x, p);
+        lemma_small_mod(z, p);
+    }
+}
+
+/// Lemma: (a-b)(a+b) = a² - b² in field arithmetic.
+///
+/// The classic difference-of-squares factoring identity.
+pub proof fn lemma_field_diff_of_squares(a: nat, b: nat)
+    ensures
+        field_mul(field_sub(a, b), field_add(a, b)) == field_sub(field_square(a), field_square(b)),
+{
+    let p = p();
+    p_gt_2();
+
+    let sa = field_square(a);
+    let sb = field_square(b);
+    let ab = field_mul(a, b);
+
+    lemma_field_mul_distributes_over_sub_right(a, b, field_add(a, b));
+    assert(field_mul(field_sub(a, b), field_add(a, b)) == field_sub(
+        field_mul(a, field_add(a, b)),
+        field_mul(b, field_add(a, b)),
+    ));
+
+    lemma_field_mul_distributes_over_add(a, a, b);
+    lemma_field_mul_distributes_over_add(b, a, b);
+    assert(field_mul(a, field_add(a, b)) == field_add(sa, ab));
+    assert(field_mul(b, field_add(a, b)) == field_add(field_mul(b, a), sb));
+    lemma_field_mul_comm(b, a);
+    assert(field_mul(b, a) == ab);
+    assert(field_add(field_mul(b, a), sb) == field_add(ab, sb));
+    lemma_field_add_comm(ab, sb);
+    assert(field_add(ab, sb) == field_add(sb, ab));
+
+    assert(field_mul(field_sub(a, b), field_add(a, b)) == field_sub(
+        field_add(sa, ab),
+        field_add(sb, ab),
+    ));
+
+    assert(sa < p) by {
+        lemma_mod_bound((a * a) as int, p as int);
+    };
+    assert(sb < p) by {
+        lemma_mod_bound((b * b) as int, p as int);
+    };
+    assert(ab < p) by {
+        lemma_mod_bound((a * b) as int, p as int);
+    };
+    lemma_field_sub_add_common_right(sa, sb, ab);
+}
+
 /// Lemma: (x % p)² = x² (mod p)
 pub proof fn lemma_square_mod_noop(x: nat)
     ensures
@@ -2445,6 +2554,83 @@ pub proof fn lemma_field_mul_square_canonical(r: nat, v: nat)
     assert((r * r) * v == r * r * v) by {
         lemma_mul_is_associative(r as int, r as int, v as int);
     };
+}
+
+// =============================================================================
+// Factoring / distribution helpers with common factor on the right
+// =============================================================================
+/// Helper: a·z + b·z = z·(a + b) (reverse distribute addition over common factor).
+pub proof fn lemma_factor_result_component_add(a: nat, b: nat, z: nat)
+    ensures
+        field_add(field_mul(a, z), field_mul(b, z)) == field_mul(z, field_add(a, b)),
+{
+    lemma_reverse_distribute_add(a, b, z);
+    lemma_field_mul_comm(field_add(a, b), z);
+}
+
+/// Helper: a·z - b·z = z·(a - b) (reverse distribute subtraction over common factor).
+pub proof fn lemma_factor_result_component_sub(a: nat, b: nat, z: nat)
+    ensures
+        field_sub(field_mul(a, z), field_mul(b, z)) == field_mul(z, field_sub(a, b)),
+{
+    lemma_reverse_distribute_sub(a, b, z);
+    lemma_field_mul_comm(field_sub(a, b), z);
+}
+
+// =============================================================================
+// Scalar reassociation helpers
+// =============================================================================
+/// Helper: 2·(z·num) = z·(2·num), i.e. reassociate the scalar 2 past z.
+pub proof fn lemma_reassociate_2_z_num(z: nat, num: nat)
+    ensures
+        field_mul(2, field_mul(z, num)) == field_mul(z, field_mul(2, num)),
+{
+    lemma_field_mul_assoc(2, z, num);
+    lemma_field_mul_comm(2nat, z);
+    lemma_field_mul_assoc(z, 2, num);
+}
+
+/// Helper: 2 + 2t = 2·(1+t) in the field.
+pub proof fn lemma_two_times_one_plus_t(t: nat)
+    ensures
+        field_add(2nat, field_mul(2, t)) == field_mul(2, field_add(1, t)),
+{
+    p_gt_2();
+    lemma_field_mul_distributes_over_add(2, 1, t);
+    lemma_field_mul_one_right(2nat);
+    lemma_small_mod(2nat, p());
+}
+
+/// Helper: 2 - 2t = 2·(1-t) in the field.
+pub proof fn lemma_two_times_one_minus_t(t: nat)
+    ensures
+        field_sub(2nat, field_mul(2, t)) == field_mul(2, field_sub(1, t)),
+{
+    p_gt_2();
+    lemma_field_mul_comm(2nat, field_sub(1, t));
+    lemma_field_mul_distributes_over_sub_right(1, t, 2);
+    lemma_field_mul_one_left(2nat);
+    lemma_small_mod(2nat, p());
+    lemma_field_mul_comm(t, 2nat);
+}
+
+// =============================================================================
+// Nonzero helpers
+// =============================================================================
+/// Helper: If v % p() != 0 then v != 0.
+pub proof fn lemma_nonzero_from_mod(v: nat)
+    requires
+        v % p() != 0,
+    ensures
+        v != 0,
+{
+    if v == 0 {
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        assert((0nat % p()) == 0);
+        assert(v % p() == 0);
+        assert(false);
+    }
 }
 
 } // verus!

@@ -69,54 +69,23 @@ pub open spec fn mul_c4_val(a: [u64; 5], b: [u64; 5]) -> u128 {
     (mul_c4_0_val(a, b) + ((mul_c3_val(a, b) >> 51) as u64) as u128) as u128
 }
 
-// Carry and output limb values
-pub open spec fn mul_carry_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_c4_val(a, b) >> 51) as u64
-}
-
-pub open spec fn mul_out0_0_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_c0_val(a, b) as u64) & mask51
-}
-
-pub open spec fn mul_out1_0_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_c1_val(a, b) as u64) & mask51
-}
-
-pub open spec fn mul_out2_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_c2_val(a, b) as u64) & mask51
-}
-
-pub open spec fn mul_out3_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_c3_val(a, b) as u64) & mask51
-}
-
-pub open spec fn mul_out4_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_c4_val(a, b) as u64) & mask51
-}
-
-// After carry*19 wrap-around
-pub open spec fn mul_out0_1_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_out0_0_val(a, b) + mul_carry_val(a, b) * 19) as u64
-}
-
-// After final carry from out[0] to out[1]
-pub open spec fn mul_out1_1_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    (mul_out1_0_val(a, b) + (mul_out0_1_val(a, b) >> 51)) as u64
-}
-
-pub open spec fn mul_out0_2_val(a: [u64; 5], b: [u64; 5]) -> u64 {
-    mul_out0_1_val(a, b) & mask51
-}
-
-// The final 5-limb output
+// The final 5-limb output, mirroring the exec carry chain in mul
 pub open spec fn mul_return(a: [u64; 5], b: [u64; 5]) -> [u64; 5] {
-    [
-        mul_out0_2_val(a, b),
-        mul_out1_1_val(a, b),
-        mul_out2_val(a, b),
-        mul_out3_val(a, b),
-        mul_out4_val(a, b),
-    ]
+    let c0 = mul_c0_val(a, b);
+    let c1 = mul_c1_val(a, b);
+    let c2 = mul_c2_val(a, b);
+    let c3 = mul_c3_val(a, b);
+    let c4 = mul_c4_val(a, b);
+    let out0: u64 = (c0 as u64) & mask51;
+    let out1: u64 = (c1 as u64) & mask51;
+    let out2: u64 = (c2 as u64) & mask51;
+    let out3: u64 = (c3 as u64) & mask51;
+    let out4: u64 = (c4 as u64) & mask51;
+    let carry: u64 = (c4 >> 51) as u64;
+    let out0: u64 = (out0 + carry * 19) as u64;
+    let out1: u64 = (out1 + (out0 >> 51)) as u64;
+    let out0: u64 = out0 & mask51;
+    [out0, out1, out2, out3, out4]
 }
 
 // ============================================================================
@@ -205,15 +174,24 @@ pub proof fn lemma_mul_c_i_shift_bounded(a: [u64; 5], b: [u64; 5], bound: u64)
 // Output limb bound specs and lemmas
 // ============================================================================
 pub open spec fn mul_out_val_boundaries(a: [u64; 5], b: [u64; 5]) -> bool {
-    &&& mul_out0_0_val(a, b) < 1u64 << 51
-    &&& mul_out1_0_val(a, b) < 1u64 << 51
-    &&& mul_out2_val(a, b) < 1u64 << 51
-    &&& mul_out3_val(a, b) < 1u64 << 51
-    &&& mul_out4_val(a, b) < 1u64 << 51
-    &&& mul_carry_val(a, b) < 724618875532318195u64
-    &&& mul_out0_0_val(a, b) + mul_carry_val(a, b) * 19 < u64::MAX
-    &&& mul_out1_0_val(a, b) + (mul_out0_1_val(a, b) >> 51) < 1u64 << 52
-    &&& mul_out0_2_val(a, b) < 1u64 << 51
+    let c0 = mul_c0_val(a, b);
+    let c1 = mul_c1_val(a, b);
+    let c2 = mul_c2_val(a, b);
+    let c3 = mul_c3_val(a, b);
+    let c4 = mul_c4_val(a, b);
+    let out0: u64 = (c0 as u64) & mask51;
+    let out1: u64 = (c1 as u64) & mask51;
+    let carry: u64 = (c4 >> 51) as u64;
+    let out0_1: u64 = (out0 + carry * 19) as u64;
+    &&& out0 < 1u64 << 51
+    &&& out1 < 1u64 << 51
+    &&& ((c2 as u64) & mask51) < 1u64 << 51
+    &&& ((c3 as u64) & mask51) < 1u64 << 51
+    &&& ((c4 as u64) & mask51) < 1u64 << 51
+    &&& carry < 724618875532318195u64
+    &&& out0 + carry * 19 < u64::MAX
+    &&& out1 + (out0_1 >> 51) < 1u64 << 52
+    &&& (out0_1 & mask51) < 1u64 << 51
 }
 
 // ============================================================================
@@ -274,41 +252,48 @@ pub proof fn lemma_mul_boundary(a: [u64; 5], b: [u64; 5])
     }
 
     assert(mul_out_val_boundaries(a, b)) by {
-        assert(mul_out0_0_val(a, b) < 1u64 << 51 && mul_out1_0_val(a, b) < 1u64 << 51
-            && mul_out2_val(a, b) < 1u64 << 51 && mul_out3_val(a, b) < 1u64 << 51 && mul_out4_val(
-            a,
-            b,
-        ) < 1u64 << 51) by {
-            lemma_masked_lt_51(mul_c0_val(a, b) as u64);
-            lemma_masked_lt_51(mul_c1_val(a, b) as u64);
-            lemma_masked_lt_51(mul_c2_val(a, b) as u64);
-            lemma_masked_lt_51(mul_c3_val(a, b) as u64);
-            lemma_masked_lt_51(mul_c4_val(a, b) as u64);
+        let c0 = mul_c0_val(a, b);
+        let c1 = mul_c1_val(a, b);
+        let c2 = mul_c2_val(a, b);
+        let c3 = mul_c3_val(a, b);
+        let c4 = mul_c4_val(a, b);
+        let out0: u64 = (c0 as u64) & mask51;
+        let out1: u64 = (c1 as u64) & mask51;
+        let carry: u64 = (c4 >> 51) as u64;
+        let out0_1: u64 = (out0 + carry * 19) as u64;
+
+        assert(out0 < 1u64 << 51 && out1 < 1u64 << 51 && ((c2 as u64) & mask51) < 1u64 << 51 && ((
+        c3 as u64) & mask51) < 1u64 << 51 && ((c4 as u64) & mask51) < 1u64 << 51) by {
+            lemma_masked_lt_51(c0 as u64);
+            lemma_masked_lt_51(c1 as u64);
+            lemma_masked_lt_51(c2 as u64);
+            lemma_masked_lt_51(c3 as u64);
+            lemma_masked_lt_51(c4 as u64);
         }
 
         let pow2_5933 = 724618875532318195u64;
-        assert(mul_carry_val(a, b) < pow2_5933) by {
-            assert(mul_c4_val(a, b) >> 51 <= (5 * bound_sq + (u64::MAX as u128)) as u128 >> 51) by {
-                lemma_shr_51_le(mul_c4_val(a, b), (5 * bound_sq + (u64::MAX as u128)) as u128);
+        assert(carry < pow2_5933) by {
+            assert(c4 >> 51 <= (5 * bound_sq + (u64::MAX as u128)) as u128 >> 51) by {
+                lemma_shr_51_le(c4, (5 * bound_sq + (u64::MAX as u128)) as u128);
             }
             assert((5 * (1u128 << 108) + (u64::MAX as u128)) as u128 >> 51 < (
             724618875532318195u64 as u128)) by (compute);
         }
 
-        assert(mul_out0_0_val(a, b) + mul_carry_val(a, b) * 19 < u64::MAX) by {
+        assert(out0 + carry * 19 < u64::MAX) by {
             assert((1u64 << 51) + 19 * 724618875532318195u64 <= u64::MAX) by (compute);
         }
 
-        assert(mul_out1_0_val(a, b) + (mul_out0_1_val(a, b) >> 51) < 1u64 << 52) by {
-            assert(mul_out0_1_val(a, b) as u128 >> 51 <= u64::MAX as u128 >> 51) by {
-                lemma_shr_51_le(mul_out0_1_val(a, b) as u128, u64::MAX as u128);
+        assert(out1 + (out0_1 >> 51) < 1u64 << 52) by {
+            assert(out0_1 as u128 >> 51 <= u64::MAX as u128 >> 51) by {
+                lemma_shr_51_le(out0_1 as u128, u64::MAX as u128);
             }
             assert(((u64::MAX as u128) >> 51) < (1u64 << 13)) by (compute);
             assert((1u64 << 51) + (1u64 << 13) < (1u64 << 52)) by (compute);
         }
 
-        assert(mul_out0_2_val(a, b) < 1u64 << 51) by {
-            lemma_masked_lt_51(mul_out0_1_val(a, b) as u64);
+        assert((out0_1 & mask51) < 1u64 << 51) by {
+            lemma_masked_lt_51(out0_1 as u64);
         }
     }
 
@@ -334,13 +319,25 @@ pub proof fn lemma_mul_value(a: [u64; 5], b: [u64; 5])
     }
 
     let out_hat = mul_return(a, b);
-    let out0_1 = mul_out0_1_val(a, b);
-    let out0_2 = mul_out0_2_val(a, b);
-    let out1_0 = mul_out1_0_val(a, b);
-    let out1_1 = mul_out1_1_val(a, b);
-    let out2 = mul_out2_val(a, b);
-    let out3 = mul_out3_val(a, b);
-    let out4 = mul_out4_val(a, b);
+
+    let c0_0 = mul_c0_0_val(a, b);
+    let c1_0 = mul_c1_0_val(a, b);
+    let c2_0 = mul_c2_0_val(a, b);
+    let c3_0 = mul_c3_0_val(a, b);
+    let c4_0 = mul_c4_0_val(a, b);
+    let c1 = mul_c1_val(a, b);
+    let c2 = mul_c2_val(a, b);
+    let c3 = mul_c3_val(a, b);
+    let c4 = mul_c4_val(a, b);
+    let carry: u64 = (c4 >> 51) as u64;
+    let out0_0: u64 = (c0_0 as u64) & mask51;
+    let out1_0: u64 = (c1 as u64) & mask51;
+    let out2: u64 = (c2 as u64) & mask51;
+    let out3: u64 = (c3 as u64) & mask51;
+    let out4: u64 = (c4 as u64) & mask51;
+    let out0_1: u64 = (out0_0 + carry * 19) as u64;
+    let out1_1: u64 = (out1_0 + (out0_1 >> 51)) as u64;
+    let out0_2: u64 = out0_1 & mask51;
 
     assert(u64_5_as_nat(out_hat) == out0_1 + pow2(51) * out1_0 + pow2(102) * out2 + pow2(153) * out3
         + pow2(204) * out4) by {
@@ -354,17 +351,6 @@ pub proof fn lemma_mul_value(a: [u64; 5], b: [u64; 5])
             lemma_u64_div_and_mod_51((out0_1 >> 51), out0_2, out0_1);
         }
     }
-
-    let c0_0 = mul_c0_0_val(a, b);
-    let c1_0 = mul_c1_0_val(a, b);
-    let c2_0 = mul_c2_0_val(a, b);
-    let c3_0 = mul_c3_0_val(a, b);
-    let c4_0 = mul_c4_0_val(a, b);
-    let c1 = mul_c1_val(a, b);
-    let c2 = mul_c2_val(a, b);
-    let c3 = mul_c3_val(a, b);
-    let c4 = mul_c4_val(a, b);
-    let carry = mul_carry_val(a, b);
 
     assert(u64_5_as_nat(out_hat) == ((c0_0 as u64) % (pow2(51) as u64)) + 19 * carry + pow2(51) * ((
     c1 as u64) % (pow2(51) as u64)) + pow2(102) * ((c2 as u64) % (pow2(51) as u64)) + pow2(153) * ((

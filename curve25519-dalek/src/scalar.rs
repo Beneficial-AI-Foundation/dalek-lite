@@ -1981,7 +1981,6 @@ impl Scalar {
                 forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]),
                 original_inputs == old(inputs)@,
                 n == original_inputs.len(),
-                product_nonzero == (product_of_scalars(original_inputs) % group_order() != 0),
                 // Inversion invariants guarded by product_nonzero
                 product_nonzero ==> forall|j: int|
                     #![auto]

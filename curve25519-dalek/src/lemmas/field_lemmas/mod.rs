@@ -16,6 +16,8 @@ pub mod pow2_51_lemmas;
 
 pub mod pow2k_lemmas;
 
+pub mod mul_lemmas;
+
 pub mod reduce_lemmas;
 
 pub mod load8_lemmas;

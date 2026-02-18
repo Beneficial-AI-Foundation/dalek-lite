@@ -95,7 +95,8 @@ jobs:
       - name: Generate specs data
         run: |
           probe-verus specs-data curve25519-dalek/src --output docs/specs_data.json \
-            --github-base-url "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/"
+            --github-base-url "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/" \
+            --libsignal-entrypoints .github/data/focus_dalek_entrypoints.json
 
       - name: Copy charts and CSV to docs
         run: |

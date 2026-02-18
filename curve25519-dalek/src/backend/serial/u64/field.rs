@@ -332,7 +332,11 @@ impl vstd::std_specs::ops::SubSpecImpl<&FieldElement51> for &FieldElement51 {
 impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
 
-    fn sub(self, _rhs: &'a FieldElement51) -> (output: FieldElement51)
+    fn sub(self, _rhs: &'a FieldElement51) -> (output:
+        FieldElement51)/* Precondition specified in sub_req from SubSpecImpl:
+        requires fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(_rhs, 54)
+        */
+
         ensures
             output == spec_sub_limbs(self, _rhs),
             fe51_as_canonical_nat(&output) == field_sub(
@@ -476,7 +480,11 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
     type Output = FieldElement51;
 
     #[rustfmt::skip]  // keep alignment of c* calculations
-    fn mul(self, _rhs: &'a FieldElement51) -> (output: FieldElement51)
+    fn mul(self, _rhs: &'a FieldElement51) -> (output:
+        FieldElement51)/* Precondition specified in mul_req from MulSpecImpl:
+        requires fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
+        */
+
         ensures
             fe51_as_canonical_nat(&output) == field_mul(
                 fe51_as_canonical_nat(self),
@@ -526,6 +534,18 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
             b[4],
         );
 
+        // How big are the c[i]? We have
+        //
+        //    c[i] < 2^(102 + 2*b) * (1+i + (4-i)*19)
+        //         < 2^(102 + lg(1 + 4*19) + 2*b)
+        //         < 2^(108.27 + 2*b)
+        //
+        // The carry (c[i] >> 51) fits into a u64 when
+        //    108.27 + 2*b - 51 < 64
+        //    2*b < 6.73
+        //    b < 3.365.
+        //
+        // So we require b < 3 to ensure this fits.
         #[cfg(not(verus_keep_ghost))]
         {
             debug_assert!(a[0] < (1 << 54));
@@ -562,8 +582,24 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
         let carry: u64 = (c4 >> 51) as u64;
         out[4] = (c4 as u64) & LOW_51_BIT_MASK;
 
+        // To see that this does not overflow, we need out[0] + carry * 19 < 2^64.
+        //
+        // c4 < a0*b4 + a1*b3 + a2*b2 + a3*b1 + a4*b0 + (carry from c3)
+        //    < 5*(2^(51 + b) * 2^(51 + b)) + (carry from c3)
+        //    < 2^(102 + 2*b + lg(5)) + 2^64.
+        //
+        // When b < 3 we get
+        //
+        // c4 < 2^110.33  so that carry < 2^59.33
+        //
+        // so that
+        //
+        // out[0] + carry * 19 < 2^51 + 19 * 2^59.33 < 2^63.58
+        //
+        // and there is no overflow.
         out[0] += carry * 19;
 
+        // Now out[1] < 2^51 + 2^(64 -51) = 2^51 + 2^13 < 2^(51 + epsilon).
         out[1] += out[0] >> 51;
         out[0] &= LOW_51_BIT_MASK;
 
@@ -589,6 +625,7 @@ impl<'a> Mul<&'a FieldElement51> for &FieldElement51 {
             assert(fe51_limbs_bounded(&FieldElement51 { limbs: out }, 54));
         }
 
+        // Now out[i] < 2^(51 + epsilon) for all i.
         FieldElement51 { limbs: out }
     }
 }

@@ -11,7 +11,7 @@
 //! 3. **x=0 implies y²=1**: If x ≡ 0 and (x, y) is on curve, then y² = 1
 //! 4. **Scalar mul pow2 successor**: [2^(k+1)]P = double([2^k]P)
 #![allow(unused_imports)]
-use crate::backend::serial::curve_models::AffineNielsPoint;
+use crate::backend::serial::curve_models::{AffineNielsPoint, ProjectiveNielsPoint};
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;

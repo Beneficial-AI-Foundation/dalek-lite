@@ -22,6 +22,8 @@ use crate::specs::edwards_specs::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::field_specs::*;
 #[cfg(verus_keep_ghost)]
+use crate::specs::field_specs_u64::*;
+#[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::window_specs::*;
@@ -51,8 +53,7 @@ pub proof fn lemma_select_is_signed_scalar_mul_projective(
 )
     requires
         -8 <= x <= 8,
-        is_valid_lookup_table_projective(table, arbitrary::<EdwardsPoint>(), 8),
-        // We need the table to decode to multiples of basepoint
+        // Table entries decode to multiples of basepoint
         forall|j: int|
             0 <= j < 8 ==> projective_niels_point_as_affine_edwards(#[trigger] table[j])
                 == edwards_scalar_mul(basepoint, (j + 1) as nat),
@@ -273,10 +274,10 @@ pub proof fn axiom_straus_ct_correct(
                 points_ep[k],
             ),
         // digits[k] is the valid radix-16 decomposition of scalars[k]
+        // (caller ensures is_valid_radix_16 on the array form; here we use Seq<i8>)
         forall|k: int|
             0 <= k < digits.len() ==> {
-                &&& is_valid_radix_16(&#[trigger] digits[k])
-                &&& radix_16_all_bounded_seq(digits[k])
+                &&& radix_16_all_bounded_seq(#[trigger] digits[k])
                 &&& reconstruct_radix_16(digits[k]) == scalar_as_nat(&scalars[k]) as int
             },
     ensures
@@ -436,6 +437,97 @@ pub proof fn lemma_naf_digit_negative_select_preconditions(digit: i8)
             digit > -16i8,
             (digit as int) % 2 != 0,
     ;
+}
+
+// =============================================================================
+// Affine coordinates are always canonical (< p())
+// =============================================================================
+/// edwards_point_as_affine always returns coordinates < p() because field_mul
+/// returns (a * b) % p() which is always < p().
+pub proof fn lemma_edwards_point_as_affine_canonical(point: EdwardsPoint)
+    ensures
+        edwards_point_as_affine(point).0 < p(),
+        edwards_point_as_affine(point).1 < p(),
+{
+    p_gt_2();
+    // edwards_point_as_affine = (field_mul(X, inv(Z)), field_mul(Y, inv(Z)))
+    // field_mul(a, b) = field_canonical(a * b) = (a * b) % p()
+    // and x % p() < p() for p() > 0
+}
+
+// =============================================================================
+// Column sum produces canonical coordinates
+// =============================================================================
+/// The column sum always returns coordinates < p(), given canonical input points.
+pub proof fn lemma_column_sum_canonical(
+    points_affine: Seq<(nat, nat)>,
+    digits: Seq<Seq<i8>>,
+    j: int,
+    n: int,
+)
+    requires
+        n >= 0,
+        n <= points_affine.len(),
+        n <= digits.len(),
+        0 <= j,
+        forall|k: int| 0 <= k < n ==> j < (#[trigger] digits[k]).len(),
+        forall|k: int|
+            0 <= k < n ==> (#[trigger] points_affine[k]).0 < p() && points_affine[k].1 < p(),
+    ensures
+        straus_column_sum(points_affine, digits, j, n).0 < p(),
+        straus_column_sum(points_affine, digits, j, n).1 < p(),
+    decreases n,
+{
+    if n <= 0 {
+        // identity = (0, 1), both < p()
+        p_gt_2();
+    } else {
+        lemma_column_sum_canonical(points_affine, digits, j, n - 1);
+        let prev = straus_column_sum(points_affine, digits, j, n - 1);
+        // term is canonical because edwards_scalar_mul_signed returns canonical coords
+        lemma_edwards_scalar_mul_signed_canonical(points_affine[n - 1], digits[n - 1][j] as int);
+        // edwards_add of canonical inputs produces canonical output
+        let term = edwards_scalar_mul_signed(points_affine[n - 1], digits[n - 1][j] as int);
+        lemma_edwards_add_canonical(prev.0, prev.1, term.0, term.1);
+    }
+}
+
+// =============================================================================
+// Column sum step for zero digit (Equal case in VT inner loop)
+// =============================================================================
+/// When the digit is 0, the column sum doesn't change.
+/// This handles the Equal case in the variable-time inner loop.
+pub proof fn lemma_column_sum_step_zero_digit(
+    points_affine: Seq<(nat, nat)>,
+    digits: Seq<Seq<i8>>,
+    j: int,
+    k: int,
+)
+    requires
+        0 <= k < points_affine.len(),
+        0 <= k < digits.len(),
+        0 <= j,
+        j < digits[k].len(),
+        digits[k][j] == 0,
+        // column sum up to k is canonical
+        straus_column_sum(points_affine, digits, j, k).0 < p(),
+        straus_column_sum(points_affine, digits, j, k).1 < p(),
+    ensures
+        straus_column_sum(points_affine, digits, j, k + 1) == straus_column_sum(
+            points_affine,
+            digits,
+            j,
+            k,
+        ),
+{
+    let col_k = straus_column_sum(points_affine, digits, j, k);
+    let term = edwards_scalar_mul_signed(points_affine[k], 0int);
+    // edwards_scalar_mul_signed(_, 0) == edwards_scalar_mul(_, 0) == identity
+    reveal_with_fuel(edwards_scalar_mul, 1);
+    assert(term == math_edwards_identity());
+    assert(term == (0nat, 1nat));
+    // edwards_add(col_k, identity) == col_k (when col_k is canonical)
+    lemma_edwards_add_identity_right_canonical(col_k);
 }
 
 } // verus!

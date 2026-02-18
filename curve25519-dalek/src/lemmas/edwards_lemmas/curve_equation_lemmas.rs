@@ -2543,6 +2543,236 @@ pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
     assert(math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z)))) by {
         lemma_valid_extended_point_affine_on_curve(x, y, z, ghost_t);
     };
+// =============================================================================
+// ProjectiveNiels Point Conversion Lemmas
+// =============================================================================
+/// Lemma: identity_projective_niels decodes to the identity point (0, 1).
+///
+/// The identity in ProjectiveNiels has Y_plus_X = Y_minus_X = Z = 1, T2d = 0.
+/// Decoding: x_proj = (1-1)*inv(2) = 0, y_proj = (1+1)*inv(2) = 1,
+///           x = 0*inv(1) = 0, y = 1*inv(1) = 1.
+pub proof fn lemma_identity_projective_niels_is_identity()
+    ensures
+        projective_niels_point_as_affine_edwards(identity_projective_niels())
+            == math_edwards_identity(),
+{
+    let id = identity_projective_niels();
+    let y_plus_x = fe51_as_canonical_nat(&id.Y_plus_X);
+    let y_minus_x = fe51_as_canonical_nat(&id.Y_minus_X);
+    let z = fe51_as_canonical_nat(&id.Z);
+
+    // Show all three are 1 (same proof as AffineNiels identity)
+    assert(y_plus_x == 1) by {
+        assert(id.Y_plus_X.limbs[0] == 1);
+        assert(id.Y_plus_X.limbs[1] == 0);
+        assert(id.Y_plus_X.limbs[2] == 0);
+        assert(id.Y_plus_X.limbs[3] == 0);
+        assert(id.Y_plus_X.limbs[4] == 0);
+        assert(fe51_as_nat(&id.Y_plus_X) == 1nat) by {
+            reveal(pow2);
+            lemma_mul_by_zero_is_zero(pow2(51) as int);
+            lemma_mul_by_zero_is_zero(pow2(102) as int);
+            lemma_mul_by_zero_is_zero(pow2(153) as int);
+            lemma_mul_by_zero_is_zero(pow2(204) as int);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+    assert(y_minus_x == 1) by {
+        assert(id.Y_minus_X.limbs[0] == 1);
+        assert(id.Y_minus_X.limbs[1] == 0);
+        assert(id.Y_minus_X.limbs[2] == 0);
+        assert(id.Y_minus_X.limbs[3] == 0);
+        assert(id.Y_minus_X.limbs[4] == 0);
+        assert(fe51_as_nat(&id.Y_minus_X) == 1nat) by {
+            reveal(pow2);
+            lemma_mul_by_zero_is_zero(pow2(51) as int);
+            lemma_mul_by_zero_is_zero(pow2(102) as int);
+            lemma_mul_by_zero_is_zero(pow2(153) as int);
+            lemma_mul_by_zero_is_zero(pow2(204) as int);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+    assert(z == 1) by {
+        assert(id.Z.limbs[0] == 1);
+        assert(id.Z.limbs[1] == 0);
+        assert(id.Z.limbs[2] == 0);
+        assert(id.Z.limbs[3] == 0);
+        assert(id.Z.limbs[4] == 0);
+        assert(fe51_as_nat(&id.Z) == 1nat) by {
+            reveal(pow2);
+            lemma_mul_by_zero_is_zero(pow2(51) as int);
+            lemma_mul_by_zero_is_zero(pow2(102) as int);
+            lemma_mul_by_zero_is_zero(pow2(153) as int);
+            lemma_mul_by_zero_is_zero(pow2(204) as int);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+
+    let inv2 = field_inv(2);
+    let z_inv = field_inv(z);
+
+    // x_proj = (1 - 1) * inv(2) = 0
+    let diff = field_sub(y_plus_x, y_minus_x);
+    assert(diff == 0) by {
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+        lemma_mod_self_0(p() as int);
+    }
+    let x_proj = field_mul(diff, inv2);
+    assert(x_proj == 0) by {
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        lemma_field_mul_zero_left(diff, inv2);
+    }
+
+    // y_proj = (1 + 1) * inv(2) = 2 * inv(2) = 1
+    let sum = field_add(y_plus_x, y_minus_x);
+    assert(sum == 2) by {
+        p_gt_2();
+        lemma_small_mod(2nat, p());
+    }
+    let y_proj = field_mul(sum, inv2);
+    assert(y_proj == 1) by {
+        p_gt_2();
+        assert(2nat % p() != 0) by {
+            lemma_small_mod(2nat, p());
+        }
+        field_inv_property(2nat);
+        lemma_field_mul_comm(2nat, field_inv(2));
+    }
+
+    // z_inv = inv(1) = 1
+    assert(z_inv == 1) by {
+        p_gt_2();
+        assert(1nat % p() != 0) by {
+            lemma_small_mod(1nat, p());
+        }
+        field_inv_property(1nat);
+        // inv(1) * 1 = 1 mod p, and 1 * inv(1) = 1 mod p, so inv(1) = 1
+        lemma_field_mul_one_right(z_inv);
+    }
+
+    // x = x_proj * z_inv = 0 * 1 = 0
+    let x = field_mul(x_proj, z_inv);
+    assert(x == 0) by {
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        lemma_field_mul_zero_left(x_proj, z_inv);
+    }
+
+    // y = y_proj * z_inv = 1 * 1 = 1
+    let y = field_mul(y_proj, z_inv);
+    assert(y == 1) by {
+        lemma_field_mul_one_right(y_proj);
+    }
+}
+
+/// Lemma: negating a ProjectiveNielsPoint negates the x-coordinate.
+///
+/// ProjectiveNiels negation swaps Y_plus_X and Y_minus_X (and negates T2d),
+/// which results in negating the x-coordinate while preserving the y-coordinate.
+pub proof fn lemma_negate_projective_niels_is_edwards_neg(pt: ProjectiveNielsPoint)
+    ensures
+        projective_niels_point_as_affine_edwards(negate_projective_niels(pt)) == edwards_neg(
+            projective_niels_point_as_affine_edwards(pt),
+        ),
+{
+    let y_plus_x = fe51_as_canonical_nat(&pt.Y_plus_X);
+    let y_minus_x = fe51_as_canonical_nat(&pt.Y_minus_X);
+    let z = fe51_as_canonical_nat(&pt.Z);
+    let inv2 = field_inv(2);
+    let z_inv = field_inv(z);
+
+    // Original point coords (via projective_niels_point_as_affine_edwards):
+    let x_proj = field_mul(field_sub(y_plus_x, y_minus_x), inv2);
+    let y_proj = field_mul(field_add(y_plus_x, y_minus_x), inv2);
+    let x = field_mul(x_proj, z_inv);
+    let y = field_mul(y_proj, z_inv);
+
+    // Negated point: swaps Y_plus_X and Y_minus_X, Z unchanged
+    // (T2d is negated but doesn't affect affine conversion)
+    let neg = negate_projective_niels(pt);
+    assert(fe51_as_canonical_nat(&neg.Y_plus_X) == y_minus_x) by {
+        assert(neg.Y_plus_X == pt.Y_minus_X);
+    }
+    assert(fe51_as_canonical_nat(&neg.Y_minus_X) == y_plus_x) by {
+        assert(neg.Y_minus_X == pt.Y_plus_X);
+    }
+    assert(fe51_as_canonical_nat(&neg.Z) == z) by {
+        assert(neg.Z == pt.Z);
+    }
+
+    // Negated coords:
+    let x_proj_neg = field_mul(field_sub(y_minus_x, y_plus_x), inv2);
+    let y_proj_neg = field_mul(field_add(y_minus_x, y_plus_x), inv2);
+
+    // y' = y: addition is commutative
+    assert(y_proj_neg == y_proj) by {
+        assert((y_minus_x + y_plus_x) == (y_plus_x + y_minus_x));
+    }
+
+    // x_proj' = -x_proj: sub(b, a) = -sub(a, b)
+    let diff = field_sub(y_plus_x, y_minus_x);
+    let neg_diff = field_neg(diff);
+    assert(x_proj_neg == field_neg(x_proj)) by {
+        lemma_field_sub_antisymmetric(y_plus_x, y_minus_x);
+        assert(field_sub(y_minus_x, y_plus_x) == neg_diff);
+        lemma_field_mul_comm(neg_diff, inv2);
+        lemma_field_mul_neg(inv2, diff);
+        lemma_field_mul_comm(inv2, diff);
+    }
+
+    // x' = x_proj' * z_inv = -x_proj * z_inv = -(x_proj * z_inv) = -x
+    let x_neg = field_mul(x_proj_neg, z_inv);
+    assert(x_neg == field_neg(x)) by {
+        assert(x_proj_neg == field_neg(x_proj));
+        lemma_field_mul_comm(field_neg(x_proj), z_inv);
+        lemma_field_mul_neg(z_inv, x_proj);
+        lemma_field_mul_comm(z_inv, x_proj);
+    }
+
+    // y' = y_proj * z_inv = y (same as original)
+    let y_neg = field_mul(y_proj_neg, z_inv);
+    assert(y_neg == y) by {
+        assert(y_proj_neg == y_proj);
+    }
+}
+
+// =============================================================================
+// Scalar multiplication distributivity (group homomorphism)
+// =============================================================================
+/// Axiom: Scalar multiplication distributes over Edwards addition.
+///
+/// [n]*(A + B) = [n]*A + [n]*B
+///
+/// This is a fundamental property of abelian groups: the "multiplication by n"
+/// endomorphism is a group homomorphism.
+pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
+    ensures
+        edwards_scalar_mul(edwards_add(a.0, a.1, b.0, b.1), n) == ({
+            let na = edwards_scalar_mul(a, n);
+            let nb = edwards_scalar_mul(b, n);
+            edwards_add(na.0, na.1, nb.0, nb.1)
+        }),
+{
+    admit();
+}
+
+/// Axiom: Signed scalar multiplication distributes over Edwards addition.
+///
+/// [n]*(A + B) = [n]*A + [n]*B  for signed n
+pub proof fn axiom_edwards_scalar_mul_signed_distributive(a: (nat, nat), b: (nat, nat), n: int)
+    ensures
+        edwards_scalar_mul_signed(edwards_add(a.0, a.1, b.0, b.1), n) == ({
+            let na = edwards_scalar_mul_signed(a, n);
+            let nb = edwards_scalar_mul_signed(b, n);
+            edwards_add(na.0, na.1, nb.0, nb.1)
+        }),
+{
+    admit();
 }
 
 } // verus!

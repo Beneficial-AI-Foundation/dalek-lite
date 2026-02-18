@@ -759,11 +759,17 @@ impl Straus {
         let result = r.as_extended();
 
         proof {
+            // Each NAF has length 256 (from [i8; 256]@ mapping)
+            assert forall|k: int| 0 <= k < nafs_seqs.len() implies {
+                &&& (#[trigger] nafs_seqs[k]).len() == 256
+                &&& is_valid_naf(nafs_seqs[k], 5)
+                &&& reconstruct(nafs_seqs[k]) == scalar_as_nat(&spec_scalars[k]) as int
+            } by {
+                assert(nafs_seqs[k] == nafs@[k]@);
+            };
+
             // r affine == straus_vt_partial(0) == sum_of_scalar_muls
-            axiom_straus_vt_correct(spec_scalars, unwrapped_points, pts_affine, nafs_seqs);
-            // as_extended preserves affine: edwards_point_as_affine(result) == projective_point_as_affine_edwards(r)
-            // From outer loop at exit (i==0): projective_point_as_affine_edwards(r) == straus_vt_partial(0)
-            // From axiom_straus_vt_correct: straus_vt_partial(0) == sum_of_scalar_muls(...)
+            lemma_straus_vt_correct(spec_scalars, unwrapped_points, pts_affine, nafs_seqs);
             assert(edwards_point_as_affine(result) == projective_point_as_affine_edwards(r));
             // is_well_formed requires stronger postcondition from ProjectivePoint::as_extended
             assume(is_well_formed_edwards_point(result));
@@ -1123,10 +1129,12 @@ impl Straus {
             assert forall|k: int| 0 <= k < pts_affine.len() implies #[trigger] pts_affine[k]
                 == edwards_point_as_affine(spec_points[k]) by {};
 
-            // Bridge radix_16_all_bounded (array) to radix_16_all_bounded_seq (Seq)
-            assert forall|k: int| 0 <= k < digits_seqs.len() implies radix_16_all_bounded_seq(
-                #[trigger] digits_seqs[k],
-            ) && reconstruct_radix_16(digits_seqs[k]) == scalar_as_nat(&spec_scalars[k]) as int by {
+            // Bridge radix_16_all_bounded (array) to radix_16_all_bounded_seq (Seq) + len == 64
+            assert forall|k: int| 0 <= k < digits_seqs.len() implies {
+                &&& (#[trigger] digits_seqs[k]).len() == 64
+                &&& radix_16_all_bounded_seq(digits_seqs[k])
+                &&& reconstruct_radix_16(digits_seqs[k]) == scalar_as_nat(&spec_scalars[k]) as int
+            } by {
                 assert(digits_seqs[k] == scalar_digits@[k]@);
                 assert(radix_16_all_bounded(&scalar_digits@[k]));
                 assert(reconstruct_radix_16(scalar_digits@[k]@) == scalar_as_nat(
@@ -1134,7 +1142,7 @@ impl Straus {
                 ) as int);
             };
 
-            axiom_straus_ct_correct(spec_scalars, spec_points, pts_affine, digits_seqs);
+            lemma_straus_ct_correct(spec_scalars, spec_points, pts_affine, digits_seqs);
         }
 
         Q

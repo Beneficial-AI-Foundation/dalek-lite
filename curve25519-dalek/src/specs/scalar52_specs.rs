@@ -11,34 +11,38 @@ verus! {
 /// Convert a sequence of limbs to nat using 52-bit radix (Horner form).
 /// This is the base recursive function for Scalar52 limb interpretation.
 /// Computes: limbs[0] + limbs[1]*2^52 + limbs[2]*2^104 + ...
-pub open spec fn seq_to_nat_52(limbs: Seq<nat>) -> nat
+pub open spec fn seq_as_nat_52(limbs: Seq<nat>) -> nat
     decreases limbs.len(),
 {
     if limbs.len() == 0 {
         0
     } else {
-        limbs[0] + seq_to_nat_52(limbs.subrange(1, limbs.len() as int)) * pow2(52)
+        limbs[0] + seq_as_nat_52(limbs.subrange(1, limbs.len() as int)) * pow2(52)
     }
 }
 
-pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat {
-    seq_to_nat_52(limbs@.map(|i, x| x as nat))
+pub open spec fn slice128_as_nat(limbs: &[u128]) -> nat {
+    seq_as_nat_52(limbs@.map(|i, x| x as nat))
 }
 
-pub open spec fn seq_u64_to_nat(limbs: Seq<u64>) -> nat {
-    seq_to_nat_52(limbs.map(|i, x| x as nat))
+pub open spec fn seq_u64_as_nat(limbs: Seq<u64>) -> nat {
+    seq_as_nat_52(limbs.map(|i, x| x as nat))
 }
 
 /// Convert a slice of u64 limbs to nat using 52-bit radix.
 /// This is for low-level lemmas that work with raw arrays.
-pub open spec fn limbs52_to_nat(limbs: &[u64]) -> nat {
-    seq_to_nat_52(limbs@.map(|i, x| x as nat))
+pub open spec fn limbs52_as_nat(limbs: &[u64]) -> nat {
+    seq_as_nat_52(limbs@.map(|i, x| x as nat))
 }
 
 /// Convert a Scalar52 to its natural number representation.
 /// This is the primary spec function for Scalar52 interpretation.
-pub open spec fn scalar52_to_nat(s: &Scalar52) -> nat {
-    limbs52_to_nat(&s.limbs)
+pub open spec fn scalar52_as_nat(s: &Scalar52) -> nat {
+    limbs52_as_nat(&s.limbs)
+}
+
+pub open spec fn scalar52_as_canonical_nat(s: &Scalar52) -> nat {
+    group_canonical(scalar52_as_nat(s))
 }
 
 #[verusfmt::skip]
@@ -132,7 +136,7 @@ pub open spec fn limb_prod_bounded_u128(limbs1: [u64; 5], limbs2: [u64; 5], k: n
 ///
 /// This is the Scalar52 equivalent of is_canonical_scalar for Scalar.
 pub open spec fn is_canonical_scalar52(s: &Scalar52) -> bool {
-    limbs_bounded(s) && scalar52_to_nat(s) < group_order()
+    limbs_bounded(s) && scalar52_as_nat(s) < group_order()
 }
 
 pub open spec fn spec_mul_internal(a: &Scalar52, b: &Scalar52) -> [u128; 9]

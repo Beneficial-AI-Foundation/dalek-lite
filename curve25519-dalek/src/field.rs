@@ -253,7 +253,6 @@ impl FieldElement {
     /// If zero, return `Choice(1)`.  Otherwise, return `Choice(0)`.
     pub(crate) fn is_zero(&self) -> (result:
         Choice)/* VERIFICATION NOTE:
-    - PROOF BYPASS AND SPEC BYPASS
     - we cannot write this directly; need to find a spec function for FieldElement51::as_bytes
     ensures choice_is_true(result) == (self.as_bytes() == [0u8; 32])
     - (note: maybe an all_zeroes(as_bytes(...)) is sufficient as a spec)
@@ -357,12 +356,9 @@ impl FieldElement {
             pow255_gt_19();  // Prove p() > 0
 
             // Square operation postconditions (from .square() method ensures clause)
-            assert(u64_5_as_nat(t0.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, 2) as nat
-                % p());
-            assert(u64_5_as_nat(t0_sq.limbs) % p() == pow(u64_5_as_nat(t0.limbs) as int, 2) as nat
-                % p());
-            assert(u64_5_as_nat(t1.limbs) % p() == pow(u64_5_as_nat(t0_sq.limbs) as int, 2) as nat
-                % p());
+            assert(fe51_as_canonical_nat(&t0) == field_canonical(pow(fe51_as_nat(self) as int, 2) as nat));
+            assert(fe51_as_canonical_nat(&t0_sq) == field_canonical(pow(fe51_as_nat(&t0) as int, 2) as nat));
+            assert(fe51_as_canonical_nat(&t1) == field_canonical(pow(fe51_as_nat(&t0_sq) as int, 2) as nat));
 
             // For mul operations, use lemma to convert from field_mul to direct multiplication
             assert(u64_5_as_nat(t2.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(

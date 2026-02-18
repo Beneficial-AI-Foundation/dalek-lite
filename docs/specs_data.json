@@ -2834,16 +2834,16 @@
             "name": "add",
             "display_name": "Scalar52::add",
             "impl_type": "Scalar52",
-            "contract": "pub fn add(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)\n    requires\n        limbs_bounded(a),\n        limbs_bounded(b),\n        scalar52_to_nat(&a) < group_order(),\n        scalar52_to_nat(&b) < group_order(),\n    ensures\n        scalar52_to_nat(&s) == (scalar52_to_nat(&a) + scalar52_to_nat(&b)) % group_order(),\n        // VERIFICATION NOTE: Result is canonical\n        scalar52_to_nat(&s) < group_order(),\n        // VERIFICATION NOTE: Result has bounded limbs (from sub)\n        limbs_bounded(&s),",
+            "contract": "pub fn add(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)\n    requires\n        limbs_bounded(a),\n        limbs_bounded(b),\n        scalar52_as_nat(&a) < group_order(),\n        scalar52_as_nat(&b) < group_order(),\n    ensures\n        scalar52_as_nat(&s) == (scalar52_as_nat(&a) + scalar52_as_nat(&b)) % group_order(),\n        // VERIFICATION NOTE: Result is canonical\n        scalar52_as_nat(&s) < group_order(),\n        // VERIFICATION NOTE: Result has bounded limbs (from sub)\n        limbs_bounded(&s),",
             "requires": [
                 "limbs_bounded(a),",
                 "limbs_bounded(b),",
-                "scalar52_to_nat(&a) < group_order(),",
-                "scalar52_to_nat(&b) < group_order(),"
+                "scalar52_as_nat(&a) < group_order(),",
+                "scalar52_as_nat(&b) < group_order(),"
             ],
             "ensures": [
-                "scalar52_to_nat(&s) == (scalar52_to_nat(&a) + scalar52_to_nat(&b)) % group_order(),",
-                "scalar52_to_nat(&s) < group_order(),",
+                "scalar52_as_nat(&s) == (scalar52_as_nat(&a) + scalar52_as_nat(&b)) % group_order(),",
+                "scalar52_as_nat(&s) < group_order(),",
                 "limbs_bounded(&s),"
             ],
             "referenced_specs": [
@@ -2867,12 +2867,12 @@
             "name": "as_bytes",
             "display_name": "Scalar52::as_bytes",
             "impl_type": "Scalar52",
-            "contract": "pub fn as_bytes(self) -> (s: [u8; 32])\n    requires\n        limbs_bounded(&self),\n    ensures\n        u8_32_as_nat(&s) == scalar52_to_nat(&self) % pow2(256),",
+            "contract": "pub fn as_bytes(self) -> (s: [u8; 32])\n    requires\n        limbs_bounded(&self),\n    ensures\n        u8_32_as_nat(&s) == scalar52_as_nat(&self) % pow2(256),",
             "requires": [
                 "limbs_bounded(&self),"
             ],
             "ensures": [
-                "u8_32_as_nat(&s) == scalar52_to_nat(&self) % pow2(256),"
+                "u8_32_as_nat(&s) == scalar52_as_nat(&self) % pow2(256),"
             ],
             "referenced_specs": [
                 "u8_32_as_nat"
@@ -2895,14 +2895,14 @@
             "name": "as_montgomery",
             "display_name": "Scalar52::as_montgomery",
             "impl_type": "Scalar52",
-            "contract": "pub fn as_montgomery(&self) -> (result: Scalar52)\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        #[trigger] (scalar52_to_nat(&result) % group_order()) == #[trigger] ((scalar52_to_nat(\n            self,\n        ) * montgomery_radix()) % group_order()),\n        // Result is canonical because RR is canonical\n        scalar52_to_nat(&result) < group_order(),",
+            "contract": "pub fn as_montgomery(&self) -> (result: Scalar52)\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        #[trigger] (scalar52_as_nat(&result) % group_order()) == #[trigger] ((scalar52_as_nat(\n            self,\n        ) * montgomery_radix()) % group_order()),\n        // Result is canonical because RR is canonical\n        scalar52_as_nat(&result) < group_order(),",
             "requires": [],
             "ensures": [
                 "limbs_bounded(&result),",
                 "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-                "#[trigger] (scalar52_to_nat(&result) % group_order()) == #[trigger] ((scalar52_to_nat( self,",
+                "#[trigger] (scalar52_as_nat(&result) % group_order()) == #[trigger] ((scalar52_as_nat( self,",
                 ") * montgomery_radix()) % group_order()),",
-                "scalar52_to_nat(&result) < group_order(),"
+                "scalar52_as_nat(&result) < group_order(),"
             ],
             "referenced_specs": [
                 "group_order"
@@ -2925,10 +2925,10 @@
             "name": "from_bytes",
             "display_name": "Scalar52::from_bytes",
             "impl_type": "Scalar52",
-            "contract": "pub fn from_bytes(bytes: &[u8; 32]) -> (s: Scalar52)\n    ensures\n        u8_32_as_nat(bytes) == scalar52_to_nat(&s),\n        limbs_bounded(&s),\n        limb_prod_bounded_u128(s.limbs, s.limbs, 5),",
+            "contract": "pub fn from_bytes(bytes: &[u8; 32]) -> (s: Scalar52)\n    ensures\n        u8_32_as_nat(bytes) == scalar52_as_nat(&s),\n        limbs_bounded(&s),\n        limb_prod_bounded_u128(s.limbs, s.limbs, 5),",
             "requires": [],
             "ensures": [
-                "u8_32_as_nat(bytes) == scalar52_to_nat(&s),",
+                "u8_32_as_nat(bytes) == scalar52_as_nat(&s),",
                 "limbs_bounded(&s),",
                 "limb_prod_bounded_u128(s.limbs, s.limbs, 5),"
             ],
@@ -2953,11 +2953,11 @@
             "name": "from_bytes_wide",
             "display_name": "Scalar52::from_bytes_wide",
             "impl_type": "Scalar52",
-            "contract": "pub fn from_bytes_wide(bytes: &[u8; 64]) -> (s: Scalar52)\n    ensures\n// VERIFICATION NOTE: Result is canonical\n\n        is_canonical_scalar52(&s),\n        scalar52_to_nat(&s) == bytes_seq_as_nat(bytes@) % group_order(),",
+            "contract": "pub fn from_bytes_wide(bytes: &[u8; 64]) -> (s: Scalar52)\n    ensures\n// VERIFICATION NOTE: Result is canonical\n\n        is_canonical_scalar52(&s),\n        scalar52_as_nat(&s) == bytes_seq_as_nat(bytes@) % group_order(),",
             "requires": [],
             "ensures": [
                 "is_canonical_scalar52(&s),",
-                "scalar52_to_nat(&s) == bytes_seq_as_nat(bytes@) % group_order(),"
+                "scalar52_as_nat(&s) == bytes_seq_as_nat(bytes@) % group_order(),"
             ],
             "referenced_specs": [
                 "bytes_seq_as_nat",
@@ -2981,12 +2981,12 @@
             "name": "from_montgomery",
             "display_name": "Scalar52::from_montgomery",
             "impl_type": "Scalar52",
-            "contract": "pub fn from_montgomery(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == scalar52_to_nat(self)\n            % group_order(),\n        // Result is canonical (< group_order). This follows from montgomery_reduce's postcondition\n        is_canonical_scalar52(&result),",
+            "contract": "pub fn from_montgomery(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        (scalar52_as_nat(&result) * montgomery_radix()) % group_order() == scalar52_as_nat(self)\n            % group_order(),\n        // Result is canonical (< group_order). This follows from montgomery_reduce's postcondition\n        is_canonical_scalar52(&result),",
             "requires": [
                 "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
             ],
             "ensures": [
-                "(scalar52_to_nat(&result) * montgomery_radix()) % group_order() == scalar52_to_nat(self) % group_order(),",
+                "(scalar52_as_nat(&result) * montgomery_radix()) % group_order() == scalar52_as_nat(self) % group_order(),",
                 "is_canonical_scalar52(&result),"
             ],
             "referenced_specs": [
@@ -3036,15 +3036,15 @@
             "name": "montgomery_mul",
             "display_name": "Scalar52::montgomery_mul",
             "impl_type": "Scalar52",
-            "contract": "pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(&a)\n            * scalar52_to_nat(&b)) % group_order(),\n        // Canonicity: if either input is canonical, result is canonical\n        (scalar52_to_nat(a) < group_order() || scalar52_to_nat(b) < group_order())\n            ==> scalar52_to_nat(&result) < group_order(),",
+            "contract": "pub fn montgomery_mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_as_nat(&result) * montgomery_radix()) % group_order() == (scalar52_as_nat(&a)\n            * scalar52_as_nat(&b)) % group_order(),\n        // Canonicity: if either input is canonical, result is canonical\n        (scalar52_as_nat(a) < group_order() || scalar52_as_nat(b) < group_order())\n            ==> scalar52_as_nat(&result) < group_order(),",
             "requires": [
                 "limb_prod_bounded_u128(a.limbs, b.limbs, 5),"
             ],
             "ensures": [
                 "limbs_bounded(&result),",
                 "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-                "(scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b)) % group_order(),",
-                "(scalar52_to_nat(a) < group_order() || scalar52_to_nat(b) < group_order()) ==> scalar52_to_nat(&result) < group_order(),"
+                "(scalar52_as_nat(&result) * montgomery_radix()) % group_order() == (scalar52_as_nat(&a) * scalar52_as_nat(&b)) % group_order(),",
+                "(scalar52_as_nat(a) < group_order() || scalar52_as_nat(b) < group_order()) ==> scalar52_as_nat(&result) < group_order(),"
             ],
             "referenced_specs": [
                 "group_order"
@@ -3067,12 +3067,12 @@
             "name": "montgomery_reduce",
             "display_name": "Scalar52::montgomery_reduce",
             "impl_type": "Scalar52",
-            "contract": "pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result:\n    Scalar52)\n// If the input is the product of 2 bounded scalars, we get 2 postconditions.\n// If the 2nd scalar is also canonical, we unlock a 3rd postcondition.\n// Not all calling code needs the 3rd postcondition.\n// Note: This spec is not yet confirmed because the function is unproved.\n// The spec is checked by prop_montgomery_reduce_two_bounded and prop_montgomery_reduce_one_canonical.\n// If you edit this spec, please update the proptests.\n// Once this function and all deps are proved, you can remove those proptests,\n// and montgomery_reduce_non_canonical_product_fails_postcondition,\n// and test_canonical_scalar_generator (if it's then unused)\n\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        is_canonical_scalar52(&result),  // Sub returns a value equal to (a - b) % L, so it's always < L and canonical\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == slice128_to_nat(\n            limbs,\n        ) % group_order(),",
+            "contract": "pub(crate) fn montgomery_reduce(limbs: &[u128; 9]) -> (result:\n    Scalar52)\n// If the input is the product of 2 bounded scalars, we get 2 postconditions.\n// If the 2nd scalar is also canonical, we unlock a 3rd postcondition.\n// Not all calling code needs the 3rd postcondition.\n// Note: This spec is not yet confirmed because the function is unproved.\n// The spec is checked by prop_montgomery_reduce_two_bounded and prop_montgomery_reduce_one_canonical.\n// If you edit this spec, please update the proptests.\n// Once this function and all deps are proved, you can remove those proptests,\n// and montgomery_reduce_non_canonical_product_fails_postcondition,\n// and test_canonical_scalar_generator (if it's then unused)\n\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        is_canonical_scalar52(&result),  // Sub returns a value equal to (a - b) % L, so it's always < L and canonical\n        (scalar52_as_nat(&result) * montgomery_radix()) % group_order() == slice128_as_nat(\n            limbs,\n        ) % group_order(),",
             "requires": [],
             "ensures": [
                 "limbs_bounded(&result),",
                 "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-                "is_canonical_scalar52(&result),  // Sub returns a value equal to (a - b) % L, so it's always < L and canonical (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == slice128_to_nat( limbs,",
+                "is_canonical_scalar52(&result),  // Sub returns a value equal to (a - b) % L, so it's always < L and canonical (scalar52_as_nat(&result) * montgomery_radix()) % group_order() == slice128_as_nat( limbs,",
                 ") % group_order(),"
             ],
             "referenced_specs": [
@@ -3096,15 +3096,15 @@
             "name": "montgomery_square",
             "display_name": "Scalar52::montgomery_square",
             "impl_type": "Scalar52",
-            "contract": "pub fn montgomery_square(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat(\n            self,\n        ) * scalar52_to_nat(self)) % group_order(),",
+            "contract": "pub fn montgomery_square(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_as_nat(&result) * montgomery_radix()) % group_order() == (scalar52_as_nat(\n            self,\n        ) * scalar52_as_nat(self)) % group_order(),",
             "requires": [
                 "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
             ],
             "ensures": [
                 "limbs_bounded(&result),",
                 "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-                "(scalar52_to_nat(&result) * montgomery_radix()) % group_order() == (scalar52_to_nat( self,",
-                ") * scalar52_to_nat(self)) % group_order(),"
+                "(scalar52_as_nat(&result) * montgomery_radix()) % group_order() == (scalar52_as_nat( self,",
+                ") * scalar52_as_nat(self)) % group_order(),"
             ],
             "referenced_specs": [
                 "group_order"
@@ -3127,12 +3127,12 @@
             "name": "mul",
             "display_name": "Scalar52::mul",
             "impl_type": "Scalar52",
-            "contract": "pub fn mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        scalar52_to_nat(&result) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b))\n            % group_order(),\n        // VER NOTE: Result is canonical from montgomery_reduce\n        is_canonical_scalar52(&result),",
+            "contract": "pub fn mul(a: &Scalar52, b: &Scalar52) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        scalar52_as_nat(&result) % group_order() == (scalar52_as_nat(&a) * scalar52_as_nat(&b))\n            % group_order(),\n        // VER NOTE: Result is canonical from montgomery_reduce\n        is_canonical_scalar52(&result),",
             "requires": [
                 "limb_prod_bounded_u128(a.limbs, b.limbs, 5),"
             ],
             "ensures": [
-                "scalar52_to_nat(&result) % group_order() == (scalar52_to_nat(&a) * scalar52_to_nat(&b)) % group_order(),",
+                "scalar52_as_nat(&result) % group_order() == (scalar52_as_nat(&a) * scalar52_as_nat(&b)) % group_order(),",
                 "is_canonical_scalar52(&result),"
             ],
             "referenced_specs": [
@@ -3156,12 +3156,12 @@
             "name": "mul_internal",
             "display_name": "Scalar52::mul_internal",
             "impl_type": "Scalar52",
-            "contract": "pub(crate) fn mul_internal(a: &Scalar52, b: &Scalar52) -> (z: [u128; 9])\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        slice128_to_nat(&z) == scalar52_to_nat(&a) * scalar52_to_nat(&b),\n        spec_mul_internal(a, b) == z,",
+            "contract": "pub(crate) fn mul_internal(a: &Scalar52, b: &Scalar52) -> (z: [u128; 9])\n    requires\n        limb_prod_bounded_u128(a.limbs, b.limbs, 5),\n    ensures\n        slice128_as_nat(&z) == scalar52_as_nat(&a) * scalar52_as_nat(&b),\n        spec_mul_internal(a, b) == z,",
             "requires": [
                 "limb_prod_bounded_u128(a.limbs, b.limbs, 5),"
             ],
             "ensures": [
-                "slice128_to_nat(&z) == scalar52_to_nat(&a) * scalar52_to_nat(&b),",
+                "slice128_as_nat(&z) == scalar52_as_nat(&a) * scalar52_as_nat(&b),",
                 "spec_mul_internal(a, b) == z,"
             ],
             "referenced_specs": [],
@@ -3183,12 +3183,12 @@
             "name": "square",
             "display_name": "Scalar52::square",
             "impl_type": "Scalar52",
-            "contract": "pub fn square(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        scalar52_to_nat(&result) == (scalar52_to_nat(self) * scalar52_to_nat(self))\n            % group_order(),",
+            "contract": "pub fn square(&self) -> (result: Scalar52)\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        scalar52_as_nat(&result) == (scalar52_as_nat(self) * scalar52_as_nat(self))\n            % group_order(),",
             "requires": [
                 "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
             ],
             "ensures": [
-                "scalar52_to_nat(&result) == (scalar52_to_nat(self) * scalar52_to_nat(self)) % group_order(),"
+                "scalar52_as_nat(&result) == (scalar52_as_nat(self) * scalar52_as_nat(self)) % group_order(),"
             ],
             "referenced_specs": [
                 "group_order"
@@ -3211,12 +3211,12 @@
             "name": "square_internal",
             "display_name": "Scalar52::square_internal",
             "impl_type": "Scalar52",
-            "contract": "fn square_internal(a: &Scalar52) -> [u128; 9] {\n    let aa = [\n        a[0] * 2,\n        a[1] * 2,\n        a[2] * 2,\n        a[3] * 2,\n    ];\n\n    [\n        m( a[0], a[0]),\n        m(aa[0], a[1]),\n        m(aa[0], a[2]) + m( a[1], a[1]),\n        m(aa[0], a[3]) + m(aa[1], a[2]),\n        m(aa[0], a[4]) + m(aa[1], a[3]) + m( a[2], a[2]),\n                         m(aa[1], a[4]) + m(aa[2], a[3]),\n                                          m(aa[2], a[4]) + m( a[3], a[3]),\n                                                           m(aa[3], a[4]),\n                                                                            m(a[4], a[4])\n    ]\n}\n</ORIGINAL CODE> */\n/* <VERIFICATION NOTE>\n-  refactored verified version of square_internal\n- slightly slower ?\n</VERIFICATION NOTE> */\n/// Compute `a^2`\n#[inline(always)]\n#[rustfmt::skip]  // keep alignment of calculations\npub(crate) fn square_internal(a: &Scalar52) -> (z: [u128; 9])\n    requires\n        limb_prod_bounded_u128(a.limbs, a.limbs, 5),\n    ensures\n        slice128_to_nat(&z) == scalar52_to_nat(&a) * scalar52_to_nat(&a),\n        spec_mul_internal(a, a) == z,\n        limbs_bounded(&a) ==> forall|i: int| 0 <= i < 9 ==> z[i] < 5 * (1u128 << 104),",
+            "contract": "fn square_internal(a: &Scalar52) -> [u128; 9] {\n    let aa = [\n        a[0] * 2,\n        a[1] * 2,\n        a[2] * 2,\n        a[3] * 2,\n    ];\n\n    [\n        m( a[0], a[0]),\n        m(aa[0], a[1]),\n        m(aa[0], a[2]) + m( a[1], a[1]),\n        m(aa[0], a[3]) + m(aa[1], a[2]),\n        m(aa[0], a[4]) + m(aa[1], a[3]) + m( a[2], a[2]),\n                         m(aa[1], a[4]) + m(aa[2], a[3]),\n                                          m(aa[2], a[4]) + m( a[3], a[3]),\n                                                           m(aa[3], a[4]),\n                                                                            m(a[4], a[4])\n    ]\n}\n</ORIGINAL CODE> */\n/* <VERIFICATION NOTE>\n-  refactored verified version of square_internal\n- slightly slower ?\n</VERIFICATION NOTE> */\n/// Compute `a^2`\n#[inline(always)]\n#[rustfmt::skip]  // keep alignment of calculations\npub(crate) fn square_internal(a: &Scalar52) -> (z: [u128; 9])\n    requires\n        limb_prod_bounded_u128(a.limbs, a.limbs, 5),\n    ensures\n        slice128_as_nat(&z) == scalar52_as_nat(&a) * scalar52_as_nat(&a),\n        spec_mul_internal(a, a) == z,\n        limbs_bounded(&a) ==> forall|i: int| 0 <= i < 9 ==> z[i] < 5 * (1u128 << 104),",
             "requires": [
                 "limb_prod_bounded_u128(a.limbs, a.limbs, 5),"
             ],
             "ensures": [
-                "slice128_to_nat(&z) == scalar52_to_nat(&a) * scalar52_to_nat(&a),",
+                "slice128_as_nat(&z) == scalar52_as_nat(&a) * scalar52_as_nat(&a),",
                 "spec_mul_internal(a, a) == z,",
                 "limbs_bounded(&a) ==> forall|i: int| 0 <= i < 9 ==> z[i] < 5 * (1u128 << 104),"
             ],
@@ -3239,14 +3239,14 @@
             "name": "sub",
             "display_name": "Scalar52::sub",
             "impl_type": "Scalar52",
-            "contract": "pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)\n    requires\n        limbs_bounded(a),\n        limbs_bounded(b),\n        // Without the following condition, all we can prove is something like:\n        // scalar52_to_nat(&a) >= scalar52_to_nat(&b) ==> scalar52_to_nat(&s) == scalar52_to_nat(&a) - scalar52_to_nat(&b),\n        // scalar52_to_nat(&a) < scalar52_to_nat(&b) ==> scalar52_to_nat(&s) == (scalar52_to_nat(&a) - scalar52_to_nat(&b) + pow2(260) + group_order()) % (pow2(260) as int),\n        // In the 2nd case, `sub` doesn't always do subtraction mod group_order\n        -group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order(),\n    ensures\n        scalar52_to_nat(&s) == (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (\n        group_order() as int),\n        // VERIFICATION NOTE: Result is in canonical form\n        is_canonical_scalar52(&s),",
+            "contract": "pub fn sub(a: &Scalar52, b: &Scalar52) -> (s: Scalar52)\n    requires\n        limbs_bounded(a),\n        limbs_bounded(b),\n        // Without the following condition, all we can prove is something like:\n        // scalar52_as_nat(&a) >= scalar52_as_nat(&b) ==> scalar52_as_nat(&s) == scalar52_as_nat(&a) - scalar52_as_nat(&b),\n        // scalar52_as_nat(&a) < scalar52_as_nat(&b) ==> scalar52_as_nat(&s) == (scalar52_as_nat(&a) - scalar52_as_nat(&b) + pow2(260) + group_order()) % (pow2(260) as int),\n        // In the 2nd case, `sub` doesn't always do subtraction mod group_order\n        -group_order() <= scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order(),\n    ensures\n        scalar52_as_nat(&s) == (scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (\n        group_order() as int),\n        // VERIFICATION NOTE: Result is in canonical form\n        is_canonical_scalar52(&s),",
             "requires": [
                 "limbs_bounded(a),",
                 "limbs_bounded(b),",
-                "-group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order(),"
+                "-group_order() <= scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order(),"
             ],
             "ensures": [
-                "scalar52_to_nat(&s) == (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % ( group_order() as int),",
+                "scalar52_as_nat(&s) == (scalar52_as_nat(&a) - scalar52_as_nat(&b)) % ( group_order() as int),",
                 "is_canonical_scalar52(&s),"
             ],
             "referenced_specs": [
@@ -7792,12 +7792,12 @@
             "name": "unpack",
             "display_name": "Scalar::unpack",
             "impl_type": "Scalar",
-            "contract": "pub fn unpack(&self) -> (result:\n    UnpackedScalar)\n// VERIFICATION NOTE: VERIFIED (changed pub(crate) to pub)\n\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        scalar52_to_nat(&result) == u8_32_as_nat(&self.bytes),",
+            "contract": "pub fn unpack(&self) -> (result:\n    UnpackedScalar)\n// VERIFICATION NOTE: VERIFIED (changed pub(crate) to pub)\n\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        scalar52_as_nat(&result) == u8_32_as_nat(&self.bytes),",
             "requires": [],
             "ensures": [
                 "limbs_bounded(&result),",
                 "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-                "scalar52_to_nat(&result) == u8_32_as_nat(&self.bytes),"
+                "scalar52_as_nat(&result) == u8_32_as_nat(&self.bytes),"
             ],
             "referenced_specs": [
                 "u8_32_as_nat"
@@ -7844,12 +7844,12 @@
             "name": "invert",
             "display_name": "UnpackedScalar::invert",
             "impl_type": "UnpackedScalar",
-            "contract": "pub fn invert(&self) -> (result: UnpackedScalar)\n    requires\n        limbs_bounded(self),\n    ensures\n// Postcondition: result * self ≡ 1 (mod group_order)\n\n        scalar52_to_nat(&result) * scalar52_to_nat(self) % group_order() == 1,\n        // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar\n        is_canonical_scalar52(&result),",
+            "contract": "pub fn invert(&self) -> (result: UnpackedScalar)\n    requires\n        limbs_bounded(self),\n    ensures\n// Postcondition: result * self ≡ 1 (mod group_order)\n\n        scalar52_as_nat(&result) * scalar52_as_nat(self) % group_order() == 1,\n        // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar\n        is_canonical_scalar52(&result),",
             "requires": [
                 "limbs_bounded(self),"
             ],
             "ensures": [
-                "scalar52_to_nat(&result) * scalar52_to_nat(self) % group_order() == 1,",
+                "scalar52_as_nat(&result) * scalar52_as_nat(self) % group_order() == 1,",
                 "is_canonical_scalar52(&result),"
             ],
             "referenced_specs": [
@@ -7873,14 +7873,14 @@
             "name": "montgomery_invert",
             "display_name": "UnpackedScalar::montgomery_invert",
             "impl_type": "UnpackedScalar",
-            "contract": "pub fn montgomery_invert(&self) -> (result:\n    UnpackedScalar)/* VERIFICATION NOTE:\nPROOF BYPASS\n*/\n\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == (\n        montgomery_radix() * montgomery_radix())\n            % group_order(),\n// Equivalent to: from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)\n// Expressed in Montgomery form: (result/R) * (self/R) ≡ 1, i.e., result * self ≡ R² (mod L)",
+            "contract": "pub fn montgomery_invert(&self) -> (result:\n    UnpackedScalar)/* VERIFICATION NOTE:\nPROOF BYPASS\n*/\n\n    requires\n        limb_prod_bounded_u128(self.limbs, self.limbs, 5),\n    ensures\n        limbs_bounded(&result),\n        limb_prod_bounded_u128(result.limbs, result.limbs, 5),\n        (scalar52_as_nat(&result) * scalar52_as_nat(self)) % group_order() == (\n        montgomery_radix() * montgomery_radix())\n            % group_order(),\n// Equivalent to: from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)\n// Expressed in Montgomery form: (result/R) * (self/R) ≡ 1, i.e., result * self ≡ R² (mod L)",
             "requires": [
                 "limb_prod_bounded_u128(self.limbs, self.limbs, 5),"
             ],
             "ensures": [
                 "limbs_bounded(&result),",
                 "limb_prod_bounded_u128(result.limbs, result.limbs, 5),",
-                "(scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == ( montgomery_radix() * montgomery_radix()) % group_order(),"
+                "(scalar52_as_nat(&result) * scalar52_as_nat(self)) % group_order() == ( montgomery_radix() * montgomery_radix()) % group_order(),"
             ],
             "referenced_specs": [
                 "group_order"
@@ -7903,13 +7903,13 @@
             "name": "pack",
             "display_name": "UnpackedScalar::pack",
             "impl_type": "UnpackedScalar",
-            "contract": "fn pack(&self) -> (result: Scalar)\n    requires\n        limbs_bounded(self),\n    ensures\n        u8_32_as_nat(&result.bytes) == scalar52_to_nat(self) % pow2(256),\n        // VERIFICATION NOTE: If input is canonical (< group order), output satisfies Scalar invariants\n        scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result),",
+            "contract": "fn pack(&self) -> (result: Scalar)\n    requires\n        limbs_bounded(self),\n    ensures\n        u8_32_as_nat(&result.bytes) == scalar52_as_nat(self) % pow2(256),\n        // VERIFICATION NOTE: If input is canonical (< group order), output satisfies Scalar invariants\n        scalar52_as_nat(self) < group_order() ==> is_canonical_scalar(&result),",
             "requires": [
                 "limbs_bounded(self),"
             ],
             "ensures": [
-                "u8_32_as_nat(&result.bytes) == scalar52_to_nat(self) % pow2(256),",
-                "scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result),"
+                "u8_32_as_nat(&result.bytes) == scalar52_as_nat(self) % pow2(256),",
+                "scalar52_as_nat(self) < group_order() ==> is_canonical_scalar(&result),"
             ],
             "referenced_specs": [
                 "u8_32_as_nat",
@@ -8041,7 +8041,7 @@
             "name": "square_multiply",
             "display_name": "square_multiply",
             "impl_type": "",
-            "contract": "fn square_multiply(\n    y: &mut UnpackedScalar,\n    squarings: usize,\n    x: &UnpackedScalar,\n)/*  VERIFICATION NOTE:\n- This function was initially inside the body of montgomery_invert, but was moved outside for Verus\n*/\n\n    requires\n        limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),\n        limbs_bounded(x),\n    ensures\n        limbs_bounded(y),\n        limb_prod_bounded_u128(y.limbs, y.limbs, 5),\n        // VERIFICATION NOTE: Changed postcondition from the original incorrect version\n        // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`\n        (scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)\n            % group_order() == (pow(scalar52_to_nat(old(y)) as int, pow2(squarings as nat))\n            * scalar52_to_nat(x)) % (group_order() as int),",
+            "contract": "fn square_multiply(\n    y: &mut UnpackedScalar,\n    squarings: usize,\n    x: &UnpackedScalar,\n)/*  VERIFICATION NOTE:\n- This function was initially inside the body of montgomery_invert, but was moved outside for Verus\n*/\n\n    requires\n        limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),\n        limbs_bounded(x),\n    ensures\n        limbs_bounded(y),\n        limb_prod_bounded_u128(y.limbs, y.limbs, 5),\n        // VERIFICATION NOTE: Changed postcondition from the original incorrect version\n        // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`\n        (scalar52_as_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)\n            % group_order() == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat))\n            * scalar52_as_nat(x)) % (group_order() as int),",
             "requires": [
                 "limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),",
                 "limbs_bounded(x),"
@@ -8049,7 +8049,7 @@
             "ensures": [
                 "limbs_bounded(y),",
                 "limb_prod_bounded_u128(y.limbs, y.limbs, 5),",
-                "(scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == (pow(scalar52_to_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_to_nat(x)) % (group_order() as int),"
+                "(scalar52_as_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat) % group_order() == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_as_nat(x)) % (group_order() as int),"
             ],
             "referenced_specs": [
                 "group_order"

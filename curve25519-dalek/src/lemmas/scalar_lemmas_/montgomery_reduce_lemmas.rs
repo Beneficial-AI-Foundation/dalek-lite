@@ -600,14 +600,14 @@ pub(crate) proof fn lemma_canonical_product_satisfies_canonical_bound(
     requires
         limbs_bounded(a),
         limbs_bounded(b),
-        scalar52_to_nat(b) < group_order(),  // b is canonical
+        scalar52_as_nat(b) < group_order(),  // b is canonical
         spec_mul_internal(a, b) == *limbs,
-        slice128_to_nat(limbs) == scalar52_to_nat(a) * scalar52_to_nat(b),
+        slice128_as_nat(limbs) == scalar52_as_nat(a) * scalar52_as_nat(b),
     ensures
         montgomery_reduce_canonical_bound(limbs),
 {
-    let a_nat = scalar52_to_nat(a);
-    let b_nat = scalar52_to_nat(b);
+    let a_nat = scalar52_as_nat(a);
+    let b_nat = scalar52_as_nat(b);
     let R = montgomery_radix();
     let L = group_order();
 
@@ -651,7 +651,7 @@ pub(crate) proof fn lemma_canonical_product_satisfies_canonical_bound(
         // Transitivity: a * b < R * b < R * L
     }
 
-    assert(slice128_to_nat(limbs) < montgomery_radix() * group_order());
+    assert(slice128_as_nat(limbs) < montgomery_radix() * group_order());
 }
 
 // =============================================================================
@@ -697,7 +697,7 @@ pub(crate) proof fn lemma_identity_array_satisfies_input_bounds(a: &Scalar52, li
 /// Bridge lemma: identity array satisfies canonical_bound for bounded input
 ///
 /// For from_montgomery:
-///   - Input value = scalar52_to_nat(a) < 2^260 (from limbs_bounded)
+///   - Input value = scalar52_as_nat(a) < 2^260 (from limbs_bounded)
 ///   - R × L = 2^260 × (2^252 + ...) ≈ 2^513
 ///   - So input < 2^260 < R × L ✓
 ///
@@ -713,12 +713,12 @@ pub(crate) proof fn lemma_identity_array_satisfies_canonical_bound(a: &Scalar52,
     // First establish input_bounds
     lemma_identity_array_satisfies_input_bounds(a, limbs);
 
-    // Show slice128_to_nat(limbs) == scalar52_to_nat(a)
+    // Show slice128_as_nat(limbs) == scalar52_as_nat(a)
     super::super::scalar_lemmas::lemma_from_montgomery_limbs_conversion(limbs, &a.limbs);
 
-    // Show scalar52_to_nat(a) < pow2(260)
+    // Show scalar52_as_nat(a) < pow2(260)
     super::super::scalar_lemmas::lemma_bound_scalar(a);
-    assert(scalar52_to_nat(a) < pow2(260));
+    assert(scalar52_as_nat(a) < pow2(260));
 
     // Show pow2(260) < montgomery_radix() * group_order()
     // montgomery_radix() = pow2(260)
@@ -731,15 +731,15 @@ pub(crate) proof fn lemma_identity_array_satisfies_canonical_bound(a: &Scalar52,
         lemma_pow2_pos(252);
     }
 
-    // For slice128_to_nat(limbs) < R * L, we need to show:
-    // scalar52_to_nat(a) < pow2(260) < pow2(260) * group_order()
+    // For slice128_as_nat(limbs) < R * L, we need to show:
+    // scalar52_as_nat(a) < pow2(260) < pow2(260) * group_order()
     assert(pow2(260) * group_order() > pow2(260)) by {
         assert(group_order() > 1);
         lemma_mul_basics(pow2(260) as int);
         lemma_mul_strict_inequality(1, group_order() as int, pow2(260) as int);
     }
 
-    assert(slice128_to_nat(limbs) < montgomery_radix() * group_order());
+    assert(slice128_as_nat(limbs) < montgomery_radix() * group_order());
 }
 
 // =============================================================================
@@ -773,16 +773,16 @@ pub(crate) proof fn lemma_l_limb4_is_pow2_44()
 /// intermediate × R = T + N×L
 ///
 /// where:
-/// - intermediate = scalar52_to_nat(r0..r4)
+/// - intermediate = scalar52_as_nat(r0..r4)
 /// - R = 2^260 (Montgomery radix)
-/// - T = slice128_to_nat(limbs) (input value)
+/// - T = slice128_as_nat(limbs) (input value)
 /// - N = five_u64_limbs_to_nat(n0..n4) (Montgomery quotient from Part 1)
 /// - L = group_order()
 ///
 /// # Proof Strategy
 ///
 /// 1. Call Part 2 chain lemma to get: five_u64_limbs_to_nat(r0..r4) × R = T + N×L
-/// 2. Connect scalar52_to_nat(intermediate) to five_u64_limbs_to_nat(r0..r4)
+/// 2. Connect scalar52_as_nat(intermediate) to five_u64_limbs_to_nat(r0..r4)
 ///
 /// # Note
 ///
@@ -886,7 +886,7 @@ pub(crate) proof fn lemma_montgomery_reduce_pre_sub(
     ensures
 // Quotient relationship: intermediate × R = T + N×L
 
-        scalar52_to_nat(intermediate) * montgomery_radix() == slice128_to_nat(limbs) + n
+        scalar52_as_nat(intermediate) * montgomery_radix() == slice128_as_nat(limbs) + n
             * group_order(),
 {
     // Call Part 2 chain lemma to get: five_u64_limbs_to_nat(r0..r4) × 2^260 = T + N×L
@@ -914,12 +914,12 @@ pub(crate) proof fn lemma_montgomery_reduce_pre_sub(
 
     let inter_nat = five_u64_limbs_to_nat(r0, r1, r2, r3, r4);
 
-    // Connect scalar52_to_nat(intermediate) to five_u64_limbs_to_nat(r0..r4)
-    assert(scalar52_to_nat(intermediate) == inter_nat) by {
+    // Connect scalar52_as_nat(intermediate) to five_u64_limbs_to_nat(r0..r4)
+    assert(scalar52_as_nat(intermediate) == inter_nat) by {
         use crate::lemmas::scalar_lemmas::lemma_five_limbs_equals_to_nat;
         use crate::specs::scalar52_specs::five_limbs_to_nat_aux;
 
-        // five_limbs_to_nat_aux(intermediate.limbs) == scalar52_to_nat(intermediate)
+        // five_limbs_to_nat_aux(intermediate.limbs) == scalar52_as_nat(intermediate)
         lemma_five_limbs_equals_to_nat(&intermediate.limbs);
 
         // five_limbs_to_nat_aux uses pow2(k)*limbs[i], five_u64_limbs_to_nat uses limbs[i]*pow2(k)
@@ -931,8 +931,8 @@ pub(crate) proof fn lemma_montgomery_reduce_pre_sub(
     }
 
     // montgomery_radix() == pow2(260) by definition
-    // Part 2 ensures: inter_nat * pow2(260) == slice128_to_nat(limbs) + n * group_order()
-    // Combined: scalar52_to_nat(intermediate) * montgomery_radix() == T + N×L
+    // Part 2 ensures: inter_nat * pow2(260) == slice128_as_nat(limbs) + n * group_order()
+    // Combined: scalar52_as_nat(intermediate) * montgomery_radix() == T + N×L
 }
 
 /// Carry8 bound lemma: Proves the final carry fits in 53 bits
@@ -1030,19 +1030,19 @@ pub(crate) proof fn lemma_montgomery_reduce_post_sub(
     requires
 // Sub's postcondition: result = (intermediate - L) mod L
 
-        scalar52_to_nat(result) == (scalar52_to_nat(intermediate) as int - group_order() as int) % (
+        scalar52_as_nat(result) == (scalar52_as_nat(intermediate) as int - group_order() as int) % (
         group_order() as int),
         // Part 2 quotient result: intermediate × R = T + N×L
-        scalar52_to_nat(intermediate) * montgomery_radix() == slice128_to_nat(limbs) + n
+        scalar52_as_nat(intermediate) * montgomery_radix() == slice128_as_nat(limbs) + n
             * group_order(),
     ensures
         montgomery_congruent(result, limbs),
 {
-    let t = slice128_to_nat(limbs);
+    let t = slice128_as_nat(limbs);
     let l = group_order();
     let r = montgomery_radix();
-    let inter = scalar52_to_nat(intermediate);
-    let res = scalar52_to_nat(result);
+    let inter = scalar52_as_nat(intermediate);
+    let res = scalar52_as_nat(result);
 
     // Goal: montgomery_congruent(result, limbs)
     //       i.e., (res * r) % l == t % l
@@ -1116,7 +1116,7 @@ pub(crate) proof fn lemma_r4_bound_from_canonical(
         ({
             let inter = (r0 as nat) + (r1 as nat) * pow2(52) + (r2 as nat) * pow2(104) + (r3 as nat)
                 * pow2(156) + (r4 as nat) * pow2(208);
-            inter * montgomery_radix() == slice128_to_nat(limbs) + n * group_order()
+            inter * montgomery_radix() == slice128_as_nat(limbs) + n * group_order()
         }),
     ensures
         (r4 as nat) < pow2(52) + (constants::L.limbs[4] as nat),
@@ -1126,7 +1126,7 @@ pub(crate) proof fn lemma_r4_bound_from_canonical(
             inter < 2 * group_order()
         }),
 {
-    let t = slice128_to_nat(limbs);
+    let t = slice128_as_nat(limbs);
     let r = montgomery_radix();
     let l = group_order();
     let inter = (r0 as nat) + (r1 as nat) * pow2(52) + (r2 as nat) * pow2(104) + (r3 as nat) * pow2(

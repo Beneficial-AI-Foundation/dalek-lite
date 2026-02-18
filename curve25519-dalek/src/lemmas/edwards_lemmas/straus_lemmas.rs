@@ -303,32 +303,6 @@ pub proof fn lemma_column_sum_add_term(
 }
 
 // =============================================================================
-// Identity projective point properties
-// =============================================================================
-/// The identity projective point is valid, has bounded limbs, and its affine
-/// coordinates are the identity (0, 1).
-pub proof fn lemma_identity_projective_point_properties()
-    ensures
-        is_valid_projective_point(identity_projective_point_edwards()),
-        fe51_limbs_bounded(&identity_projective_point_edwards().X, 52),
-        fe51_limbs_bounded(&identity_projective_point_edwards().Y, 52),
-        fe51_limbs_bounded(&identity_projective_point_edwards().Z, 52),
-        sum_of_limbs_bounded(
-            &identity_projective_point_edwards().X,
-            &identity_projective_point_edwards().Y,
-            u64::MAX,
-        ),
-        projective_point_as_affine_edwards(identity_projective_point_edwards())
-            == math_edwards_identity(),
-{
-    // Identity: X=0, Y=1, Z=1
-    // All limbs are 0 or 1, so bounded by 2^52
-    // Z=1 != 0
-    // affine = (0*1^{-1}, 1*1^{-1}) = (0, 1) = identity
-    admit();
-}
-
-// =============================================================================
 // NAF digit select preconditions
 // =============================================================================
 /// For a NAF digit d > 0 from a valid NAF(5), d is odd and d < 16.

@@ -11,7 +11,9 @@
 //! 3. **x=0 implies y²=1**: If x ≡ 0 and (x, y) is on curve, then y² = 1
 //! 4. **Scalar mul pow2 successor**: [2^(k+1)]P = double([2^k]P)
 #![allow(unused_imports)]
-use crate::backend::serial::curve_models::{AffineNielsPoint, ProjectiveNielsPoint};
+use crate::backend::serial::curve_models::{
+    AffineNielsPoint, ProjectiveNielsPoint, ProjectivePoint,
+};
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -124,6 +126,112 @@ pub proof fn lemma_identity_is_valid_extended()
 
     // Use the affine-to-extended lemma
     lemma_affine_to_extended_valid(0nat, 1nat, 0nat);
+}
+
+/// The identity projective point (X=0, Y=1, Z=1) is valid, has bounded limbs,
+/// and its affine coordinates are the identity (0, 1).
+pub proof fn lemma_identity_projective_point_properties()
+    ensures
+        is_valid_projective_point(identity_projective_point_edwards()),
+        fe51_limbs_bounded(&identity_projective_point_edwards().X, 52),
+        fe51_limbs_bounded(&identity_projective_point_edwards().Y, 52),
+        fe51_limbs_bounded(&identity_projective_point_edwards().Z, 52),
+        sum_of_limbs_bounded(
+            &identity_projective_point_edwards().X,
+            &identity_projective_point_edwards().Y,
+            u64::MAX,
+        ),
+        projective_point_as_affine_edwards(identity_projective_point_edwards())
+            == math_edwards_identity(),
+{
+    let id = identity_projective_point_edwards();
+    p_gt_2();
+
+    // Explicit limb values
+    assert(id.X.limbs[0] == 0u64);
+    assert(id.X.limbs[1] == 0u64);
+    assert(id.X.limbs[2] == 0u64);
+    assert(id.X.limbs[3] == 0u64);
+    assert(id.X.limbs[4] == 0u64);
+    assert(id.Y.limbs[0] == 1u64);
+    assert(id.Y.limbs[1] == 0u64);
+    assert(id.Y.limbs[2] == 0u64);
+    assert(id.Y.limbs[3] == 0u64);
+    assert(id.Y.limbs[4] == 0u64);
+    assert(id.Z.limbs[0] == 1u64);
+    assert(id.Z.limbs[1] == 0u64);
+    assert(id.Z.limbs[2] == 0u64);
+    assert(id.Z.limbs[3] == 0u64);
+    assert(id.Z.limbs[4] == 0u64);
+
+    // Limb bounds: 0 and 1 are both < 2^52
+    assert(0u64 < (1u64 << 52u64) && 1u64 < (1u64 << 52u64)) by (bit_vector);
+
+    // fe51_as_nat evaluations (raw nat before mod p)
+    assert(fe51_as_nat(&id.X) == 0nat) by {
+        reveal(pow2);
+        lemma_mul_by_zero_is_zero(pow2(51) as int);
+        lemma_mul_by_zero_is_zero(pow2(102) as int);
+        lemma_mul_by_zero_is_zero(pow2(153) as int);
+        lemma_mul_by_zero_is_zero(pow2(204) as int);
+    };
+    assert(fe51_as_nat(&id.Y) == 1nat) by {
+        reveal(pow2);
+        lemma_mul_by_zero_is_zero(pow2(51) as int);
+        lemma_mul_by_zero_is_zero(pow2(102) as int);
+        lemma_mul_by_zero_is_zero(pow2(153) as int);
+        lemma_mul_by_zero_is_zero(pow2(204) as int);
+    };
+    assert(fe51_as_nat(&id.Z) == 1nat) by {
+        reveal(pow2);
+        lemma_mul_by_zero_is_zero(pow2(51) as int);
+        lemma_mul_by_zero_is_zero(pow2(102) as int);
+        lemma_mul_by_zero_is_zero(pow2(153) as int);
+        lemma_mul_by_zero_is_zero(pow2(204) as int);
+    };
+
+    // fe51_as_canonical_nat: X=0, Y=1, Z=1
+    assert(fe51_as_canonical_nat(&id.X) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(fe51_as_canonical_nat(&id.Y) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(fe51_as_canonical_nat(&id.Z) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+
+    // Projective curve equation: math_on_edwards_curve_projective(0, 1, 1)
+    assert(field_square(0nat) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_square(1nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(field_sub(1nat, 0nat) == 1) by {
+        lemma_small_mod(1nat, p());
+        lemma_small_mod(0nat, p());
+        lemma_mod_multiples_vanish(1, 1, p() as int);
+    };
+    assert(field_mul(1nat, 1nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(field_mul(0nat, 1nat) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    assert(field_mul(d, 0nat) == 0) by {
+        lemma_mul_by_zero_is_zero(d as int);
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_add(1nat, 0nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(math_on_edwards_curve_projective(0, 1, 1));
+
+    // Affine: (field_mul(0, inv(1)), field_mul(1, inv(1))) = (0, 1)
+    lemma_field_inv_one();
+    assert(projective_point_as_affine_edwards(id) == math_edwards_identity());
 }
 
 // =============================================================================

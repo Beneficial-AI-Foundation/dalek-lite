@@ -771,8 +771,8 @@ impl Straus {
             // r affine == straus_vt_partial(0) == sum_of_scalar_muls
             lemma_straus_vt_correct(spec_scalars, unwrapped_points, pts_affine, nafs_seqs);
             assert(edwards_point_as_affine(result) == projective_point_as_affine_edwards(r));
-            // is_well_formed requires stronger postcondition from ProjectivePoint::as_extended
-            assume(is_well_formed_edwards_point(result));
+            // is_well_formed follows from ProjectivePoint::as_extended postcondition
+            assert(is_well_formed_edwards_point(result));
         }
 
         Some(result)

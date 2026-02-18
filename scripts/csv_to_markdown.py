@@ -16,7 +16,7 @@ def main():
 
         # Validate expected columns (probe-verus tracked-csv output)
         expected_cols = {"function", "module", "link", "has_spec", "has_proof"}
-        if reader.fieldnames is None:
+        if not reader.fieldnames:
             raise SystemExit(f"Error: {csv_path} is empty or has no header row")
         actual_cols = set(reader.fieldnames)
         missing = expected_cols - actual_cols

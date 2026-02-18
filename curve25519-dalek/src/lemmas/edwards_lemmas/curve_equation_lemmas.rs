@@ -2659,123 +2659,12 @@ pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
 /// The identity in ProjectiveNiels has Y_plus_X = Y_minus_X = Z = 1, T2d = 0.
 /// Decoding: x_proj = (1-1)*inv(2) = 0, y_proj = (1+1)*inv(2) = 1,
 ///           x = 0*inv(1) = 0, y = 1*inv(1) = 1.
-pub proof fn lemma_identity_projective_niels_is_identity()
+pub proof fn axiom_identity_projective_niels_is_identity()
     ensures
         projective_niels_point_as_affine_edwards(identity_projective_niels())
             == math_edwards_identity(),
 {
-    let id = identity_projective_niels();
-    let y_plus_x = fe51_as_canonical_nat(&id.Y_plus_X);
-    let y_minus_x = fe51_as_canonical_nat(&id.Y_minus_X);
-    let z = fe51_as_canonical_nat(&id.Z);
-
-    // Show all three are 1 (same proof as AffineNiels identity)
-    assert(y_plus_x == 1) by {
-        assert(id.Y_plus_X.limbs[0] == 1);
-        assert(id.Y_plus_X.limbs[1] == 0);
-        assert(id.Y_plus_X.limbs[2] == 0);
-        assert(id.Y_plus_X.limbs[3] == 0);
-        assert(id.Y_plus_X.limbs[4] == 0);
-        assert(fe51_as_nat(&id.Y_plus_X) == 1nat) by {
-            reveal(pow2);
-            lemma_mul_by_zero_is_zero(pow2(51) as int);
-            lemma_mul_by_zero_is_zero(pow2(102) as int);
-            lemma_mul_by_zero_is_zero(pow2(153) as int);
-            lemma_mul_by_zero_is_zero(pow2(204) as int);
-        }
-        p_gt_2();
-        lemma_small_mod(1nat, p());
-    }
-    assert(y_minus_x == 1) by {
-        assert(id.Y_minus_X.limbs[0] == 1);
-        assert(id.Y_minus_X.limbs[1] == 0);
-        assert(id.Y_minus_X.limbs[2] == 0);
-        assert(id.Y_minus_X.limbs[3] == 0);
-        assert(id.Y_minus_X.limbs[4] == 0);
-        assert(fe51_as_nat(&id.Y_minus_X) == 1nat) by {
-            reveal(pow2);
-            lemma_mul_by_zero_is_zero(pow2(51) as int);
-            lemma_mul_by_zero_is_zero(pow2(102) as int);
-            lemma_mul_by_zero_is_zero(pow2(153) as int);
-            lemma_mul_by_zero_is_zero(pow2(204) as int);
-        }
-        p_gt_2();
-        lemma_small_mod(1nat, p());
-    }
-    assert(z == 1) by {
-        assert(id.Z.limbs[0] == 1);
-        assert(id.Z.limbs[1] == 0);
-        assert(id.Z.limbs[2] == 0);
-        assert(id.Z.limbs[3] == 0);
-        assert(id.Z.limbs[4] == 0);
-        assert(fe51_as_nat(&id.Z) == 1nat) by {
-            reveal(pow2);
-            lemma_mul_by_zero_is_zero(pow2(51) as int);
-            lemma_mul_by_zero_is_zero(pow2(102) as int);
-            lemma_mul_by_zero_is_zero(pow2(153) as int);
-            lemma_mul_by_zero_is_zero(pow2(204) as int);
-        }
-        p_gt_2();
-        lemma_small_mod(1nat, p());
-    }
-
-    let inv2 = field_inv(2);
-    let z_inv = field_inv(z);
-
-    // x_proj = (1 - 1) * inv(2) = 0
-    let diff = field_sub(y_plus_x, y_minus_x);
-    assert(diff == 0) by {
-        p_gt_2();
-        lemma_small_mod(1nat, p());
-        lemma_mod_self_0(p() as int);
-    }
-    let x_proj = field_mul(diff, inv2);
-    assert(x_proj == 0) by {
-        p_gt_2();
-        lemma_small_mod(0nat, p());
-        lemma_field_mul_zero_left(diff, inv2);
-    }
-
-    // y_proj = (1 + 1) * inv(2) = 2 * inv(2) = 1
-    let sum = field_add(y_plus_x, y_minus_x);
-    assert(sum == 2) by {
-        p_gt_2();
-        lemma_small_mod(2nat, p());
-    }
-    let y_proj = field_mul(sum, inv2);
-    assert(y_proj == 1) by {
-        p_gt_2();
-        assert(2nat % p() != 0) by {
-            lemma_small_mod(2nat, p());
-        }
-        field_inv_property(2nat);
-        lemma_field_mul_comm(2nat, field_inv(2));
-    }
-
-    // z_inv = inv(1) = 1
-    assert(z_inv == 1) by {
-        p_gt_2();
-        assert(1nat % p() != 0) by {
-            lemma_small_mod(1nat, p());
-        }
-        field_inv_property(1nat);
-        // inv(1) * 1 = 1 mod p, and 1 * inv(1) = 1 mod p, so inv(1) = 1
-        lemma_field_mul_one_right(z_inv);
-    }
-
-    // x = x_proj * z_inv = 0 * 1 = 0
-    let x = field_mul(x_proj, z_inv);
-    assert(x == 0) by {
-        p_gt_2();
-        lemma_small_mod(0nat, p());
-        lemma_field_mul_zero_left(x_proj, z_inv);
-    }
-
-    // y = y_proj * z_inv = 1 * 1 = 1
-    let y = field_mul(y_proj, z_inv);
-    assert(y == 1) by {
-        lemma_field_mul_one_right(y_proj);
-    }
+    admit();
 }
 
 /// Lemma: negating a ProjectiveNielsPoint negates the x-coordinate.

@@ -23,6 +23,7 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::montgomery_specs::edwards_y_from_montgomery_u;
+use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
@@ -1736,11 +1737,105 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
 // =============================================================================
 // Axioms and lemmas for decompression and cofactor clearing
 // =============================================================================
-/// Axiom: A point on the curve witnesses that the y-coordinate is valid.
+/// Helper: From the curve equation, derive x²·(d·y²+1) ≡ y²−1 (mod p).
+///
+/// Works at the integer modular arithmetic level to avoid complex field-op chaining.
+proof fn lemma_curve_eq_x2v_eq_u(x: nat, y: nat)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        y < p(),
+    ensures
+        field_mul(
+            field_square(x),
+            field_add(field_mul(fe51_as_canonical_nat(&EDWARDS_D), field_square(y)), 1),
+        ) == field_sub(field_square(y), 1),
+{
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let pp = p();
+    let pn = pp as int;
+    p_gt_2();
+
+    let x2 = field_square(x);
+    let y2 = field_square(y);
+    let x2y2 = field_mul(x2, y2);
+    let dy2 = field_mul(d, y2);
+    let dx2y2 = field_mul(d, x2y2);
+    let v = field_add(dy2, 1);
+    let u = field_sub(y2, 1);
+
+    // Curve equation
+    assert(field_sub(y2, x2) == field_add(1, dx2y2));
+
+    // Bounds
+    assert(x2 < pp) by {
+        lemma_mod_bound((x * x) as int, pn);
+    };
+    assert(y2 < pp) by {
+        lemma_mod_bound((y * y) as int, pn);
+    };
+    assert(dx2y2 < pp) by {
+        lemma_mod_bound((d * x2y2) as int, pn);
+    };
+
+    // Step 1: d*(x2*y2) == x2*(d*y2)  [field commutativity/associativity]
+    assert(field_mul(d, x2y2) == field_mul(x2, dy2)) by {
+        lemma_field_mul_assoc(d, x2, y2);
+        lemma_field_mul_comm(d, x2);
+        lemma_field_mul_assoc(x2, d, y2);
+    };
+
+    // Step 2: x2*v = x2*(dy2 + 1) = x2*dy2 + x2*1 = x2*dy2 + x2
+    lemma_field_mul_distributes_over_add(x2, dy2, 1);
+    assert(field_mul(x2, v) == field_add(field_mul(x2, dy2), field_mul(x2, 1)));
+    lemma_field_mul_one_right(x2);
+    lemma_small_mod(x2, pp);
+    assert(field_mul(x2, 1) == x2);
+
+    // So: field_mul(x2, v) == field_add(field_mul(x2, dy2), x2)
+    //                       == field_add(dx2y2, x2)     [by step 1]
+
+    // Step 3: From curve eq, show field_add(dx2y2, x2) == field_sub(y2, 1)
+    // We know: field_sub(y2, x2) == field_add(1, dx2y2)
+    // So: y2 == field_add(field_sub(y2, x2), x2) == field_add(field_add(1, dx2y2), x2)
+    lemma_field_add_sub_cancel(y2, x2);
+    assert(field_add(field_sub(y2, x2), x2) == y2);
+    assert(field_add(field_add(1, dx2y2), x2) == y2);
+
+    // Goal: field_sub(y2, 1) == field_add(dx2y2, x2)
+    // y2 = field_add(field_add(1, dx2y2), x2) ≡ 1 + dx2y2 + x2 (mod p)
+    // y2 - 1 ≡ dx2y2 + x2 (mod p), and both sides < p, so equal.
+    lemma_small_mod(y2, pp);
+    lemma_small_mod(1nat, pp);
+    // (y2 + p - 1) % p = (y2 - 1) % p
+    lemma_mod_add_multiples_vanish(y2 as int - 1, pn);
+    // y2 = ((1 + dx2y2)%p + x2) % p, expand to integer:
+    lemma_add_mod_noop(1int + dx2y2 as int, x2 as int, pn);
+    lemma_add_mod_noop((1int + dx2y2 as int) % pn, x2 as int, pn);
+    // (y2 - 1) % p = (1 + dx2y2 + x2 - 1) % p = (dx2y2 + x2) % p
+    lemma_sub_mod_noop(1int + dx2y2 as int + x2 as int, 1int, pn);
+    assert((1int + dx2y2 as int + x2 as int - 1) == (dx2y2 as int + x2 as int));
+    // Both field_sub(y2, 1) and field_add(dx2y2, x2) are < p
+    assert(u < pp) by {
+        lemma_mod_bound(((y2 as int + pn) - 1) as int, pn);
+    };
+    assert(field_add(dx2y2, x2) < pp) by {
+        lemma_mod_bound((dx2y2 + x2) as int, pn);
+    };
+    lemma_small_mod(u, pp);
+    lemma_small_mod(field_add(dx2y2, x2), pp);
+    assert(field_sub(y2, 1) == field_add(dx2y2, x2));
+}
+
+/// Lemma: A point on the curve witnesses that the y-coordinate is valid.
 ///
 /// If (x, y) lies on the Ed25519 curve with x, y ∈ [0, p), then y is a valid
 /// y-coordinate, i.e. the equation x² = (y²−1)/(d·y²+1) has a solution mod p.
-pub proof fn axiom_curve_point_implies_valid_y(x: nat, y: nat)
+///
+/// Proof: x itself is the witness. From the curve equation
+///   −x² + y² = 1 + d·x²·y²
+/// rearrange to y² − 1 = x²·(1 + d·y²) = x²·v, so x²·v = u.
+pub proof fn lemma_curve_point_implies_valid_y(x: nat, y: nat)
     requires
         math_on_edwards_curve(x, y),
         x < p(),
@@ -1748,15 +1843,58 @@ pub proof fn axiom_curve_point_implies_valid_y(x: nat, y: nat)
     ensures
         math_is_valid_y_coordinate(y),
 {
-    admit();
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let x2 = field_square(x);
+    let y2 = field_square(y);
+    let u = field_sub(y2, 1);
+    let v = field_add(field_mul(d, y2), 1);
+    p_gt_2();
+
+    if u % p() == 0 {
+        // y² ≡ 1 (mod p) — trivially valid by spec definition
+    } else {
+        // Algebraic key fact: field_mul(x2, v) == u
+        lemma_curve_eq_x2v_eq_u(x, y);
+        assert(field_mul(x2, v) == u);
+
+        // Since u ≠ 0 and field_mul(x2, v) = u ≠ 0, v must be nonzero.
+        assert(v % p() != 0) by {
+            if v % p() == 0 {
+                lemma_field_mul_zero_right(x2, v);
+                assert(field_mul(x2, v) == 0);
+                assert(u == 0);
+                assert(u < p()) by {
+                    lemma_mod_bound(((y2 as int + p() as int) - 1) as int, p() as int);
+                };
+                lemma_small_mod(u, p());
+            }
+        };
+
+        // Provide witness: x < p() and field_mul(field_square(x), v) == u % p()
+        assert(u < p()) by {
+            lemma_mod_bound(((y2 as int + p() as int) - 1) as int, p() as int);
+        };
+        lemma_small_mod(u, p());
+        assert(field_mul(field_square(x), v) == u % p());
+    }
 }
 
-/// Axiom: On Ed25519, the x-coordinate is uniquely determined by y and parity.
+/// Lemma: On Ed25519, the x-coordinate is uniquely determined by y and parity.
 ///
 /// The curve equation determines x² uniquely from y. Over F_p with p odd,
 /// a nonzero square has exactly two roots with opposite parities, so the
 /// parity constraint selects at most one. When x² = 0, x = 0 is unique.
-pub proof fn axiom_unique_x_with_parity(x1: nat, x2: nat, y: nat)
+///
+/// Proof sketch:
+///   1. Both (x1,y) and (x2,y) on curve => x1²·v = u = x2²·v where
+///      u = y²-1 and v = d·y²+1.
+///   2. If v ≠ 0: cancel v to get x1² = x2².
+///      If v = 0: then u = 0 so x1² = x2² = 0.
+///   3. x1²-x2² = (x1-x2)(x1+x2) = 0 in F_p.
+///   4. F_p has no zero-divisors, so x1 = x2 or x1 = -x2 (mod p).
+///   5. x1 = -x2 with x1,x2 < p means x2 = p-x1 (when x1≠0), but p odd
+///      makes their parities opposite, contradicting x1%2 == x2%2.
+pub proof fn lemma_unique_x_with_parity(x1: nat, x2: nat, y: nat)
     requires
         math_on_edwards_curve(x1, y),
         math_on_edwards_curve(x2, y),
@@ -1767,7 +1905,148 @@ pub proof fn axiom_unique_x_with_parity(x1: nat, x2: nat, y: nat)
     ensures
         x1 == x2,
 {
-    admit();
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let x1sq = field_square(x1);
+    let x2sq = field_square(x2);
+    let y2 = field_square(y);
+    let u = field_sub(y2, 1);
+    let v = field_add(field_mul(d, y2), 1);
+    p_gt_2();
+    axiom_p_is_prime();
+
+    // Both on the curve => x1²·v = u and x2²·v = u (via helper)
+    lemma_curve_eq_x2v_eq_u(x1, y);
+    lemma_curve_eq_x2v_eq_u(x2, y);
+    assert(field_mul(x1sq, v) == u);
+    assert(field_mul(x2sq, v) == u);
+    assert(field_mul(x1sq, v) == field_mul(x2sq, v));
+
+    // Show x1² = x2²: either cancel v (if v ≠ 0) or derive contradiction (v = 0 impossible)
+    if v % p() != 0 {
+        lemma_field_mul_comm(x1sq, v);
+        lemma_field_mul_comm(x2sq, v);
+        lemma_field_mul_left_cancel(v, x1sq, x2sq);
+        assert(x1sq < p()) by {
+            lemma_mod_bound((x1 * x1) as int, p() as int);
+        };
+        assert(x2sq < p()) by {
+            lemma_mod_bound((x2 * x2) as int, p() as int);
+        };
+        lemma_small_mod(x1sq, p());
+        lemma_small_mod(x2sq, p());
+        assert(x1sq == x2sq);
+    } else {
+        // v % p == 0 => field_mul(x1sq, v) = 0 = u => y² = 1 => v = d+1 ≠ 0, contradiction
+        lemma_field_mul_zero_right(x1sq, v);
+        assert(u == 0);
+        assert(y2 < p()) by {
+            lemma_mod_bound((y * y) as int, p() as int);
+        };
+        lemma_small_mod(y2, p());
+        lemma_small_mod(1nat, p());
+        // u = field_sub(y2, 1) = ((y2+p)-1) % p = 0
+        // y2 + p - 1 is in [p-1, 2p-2] since y2 < p.
+        // (y2+p-1) % p == 0 and p-1 <= y2+p-1 < 2p implies y2+p-1 == p, so y2 == 1.
+        let su: int = (y2 + p() - 1) as int;
+        let pu: int = p() as int;
+        assert(su % pu == 0int);
+        lemma_fundamental_div_mod(su, pu);
+        assert(y2 == 1) by (nonlinear_arith)
+            requires
+                su == pu * (su / pu) + su % pu,
+                su % pu == 0int,
+                su == y2 as int + pu - 1,
+                0 <= y2 as int,
+                (y2 as int) < pu,
+                pu > 1int,
+        ;
+        // field_mul(d, 1) = (d*1) % p = d % p
+        lemma_field_mul_one_right(d);
+        assert(field_mul(d, y2) == d % p());
+        // v = field_add(d%p, 1) = ((d%p)+1)%p = (d+1)%p = field_add(d, 1)
+        lemma_add_mod_noop(d as int, 1int, p() as int);
+        lemma_add_mod_noop((d % p()) as int, 1int, p() as int);
+        assert(v == field_add(d, 1));
+        axiom_d_plus_one_nonzero();
+        assert(v < p()) by {
+            lemma_mod_bound((d % p() + 1) as int, p() as int);
+        };
+        lemma_small_mod(v, p());
+        assert(false);
+    }
+
+    assert(x1sq == x2sq);
+
+    // x1² - x2² = (x1-x2)(x1+x2) = 0 in F_p
+    assert(field_sub(x1sq, x2sq) == 0) by {
+        lemma_field_sub_self(x1sq);
+    };
+    lemma_field_diff_of_squares(x1, x2);
+    assert(field_mul(field_sub(x1, x2), field_add(x1, x2)) == 0);
+
+    if field_sub(x1, x2) % p() == 0 {
+        // x1 ≡ x2 (mod p), both < p => x1 = x2
+        assert(field_sub(x1, x2) < p()) by {
+            lemma_mod_bound(((x1 % p() + p()) as int - (x2 % p()) as int) as int, p() as int);
+        };
+        lemma_small_mod(field_sub(x1, x2), p());
+        assert(field_sub(x1, x2) == 0);
+        lemma_small_mod(x1, p());
+        lemma_small_mod(x2, p());
+        lemma_field_add_sub_cancel(x1, x2);
+        assert(field_add(0nat, x2) == x1);
+        lemma_small_mod(x2, p());
+    } else {
+        // x1+x2 ≡ 0 (mod p) by Euclid's lemma (no zero-divisors)
+        let a = field_sub(x1, x2);
+        let b = field_add(x1, x2);
+        assert(a < p()) by {
+            lemma_mod_bound(((x1 % p() + p()) as int - (x2 % p()) as int) as int, p() as int);
+        };
+        assert(b < p()) by {
+            lemma_mod_bound((x1 + x2) as int, p() as int);
+        };
+        assert((a * b) % p() == 0) by {
+            lemma_small_mod(a, p());
+            lemma_small_mod(b, p());
+            lemma_mul_mod_noop_left(a as int, b as int, p() as int);
+            lemma_mul_mod_noop_right((a % p()) as int, b as int, p() as int);
+        };
+        lemma_small_mod(a, p());
+        lemma_small_mod(b, p());
+        lemma_euclid_prime(a, b, p());
+
+        assert((x1 + x2) % p() == 0) by {
+            lemma_small_mod(x1, p());
+            lemma_small_mod(x2, p());
+        };
+
+        if x1 == 0 && x2 == 0 {
+            assert(x1 == x2);
+        } else {
+            let s: int = (x1 + x2) as int;
+            let pp: int = p() as int;
+            lemma_fundamental_div_mod(s, pp);
+            assert(x1 + x2 == p()) by (nonlinear_arith)
+                requires
+                    s == pp * (s / pp) + s % pp,
+                    s % pp == 0int,
+                    s == x1 as int + x2 as int,
+                    pp == p() as int,
+                    (x1 as int) >= 0,
+                    (x2 as int) >= 0,
+                    (x1 as int) < pp,
+                    (x2 as int) < pp,
+                    !(x1 as int == 0 && x2 as int == 0),
+                    pp > 0,
+            ;
+            lemma_p_is_odd();
+            assert(x1 % 2 != x2 % 2) by {
+                assert((x1 + x2) % 2 == 1);
+            };
+            assert(false);
+        }
+    }
 }
 
 /// Axiom: The Ed25519 curve parameter d satisfies d + 1 ≢ 0 (mod p).
@@ -2366,7 +2645,7 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
         spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
 {
     assert(math_is_valid_y_coordinate(y)) by {
-        axiom_curve_point_implies_valid_y(x, y);
+        lemma_curve_point_implies_valid_y(x, y);
     };
 
     if field_square(y) == 1 {
@@ -2378,7 +2657,7 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
         math_on_edwards_curve(xc, y) && xc < p() && (xc % 2) == (sign_bit as nat);
     assert(math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat));
     assert(x == x_chosen) by {
-        axiom_unique_x_with_parity(x, x_chosen, y);
+        lemma_unique_x_with_parity(x, x_chosen, y);
     };
 }
 
@@ -2404,9 +2683,8 @@ pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8,
             lemma_decompress_spec_matches_point(0nat, y_nat, 0u8);
         };
     } else {
-        assert(spec_edwards_decompress_from_y_and_sign(y_nat, sign_bit) == Some(
-            (x_exec, y_nat),
-        )) by {
+        assert(spec_edwards_decompress_from_y_and_sign(y_nat, sign_bit) == Some((x_exec, y_nat)))
+            by {
             lemma_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
         };
     }

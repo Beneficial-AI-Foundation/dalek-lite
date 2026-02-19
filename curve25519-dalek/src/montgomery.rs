@@ -86,6 +86,7 @@ use crate::specs::scalar_specs::*;
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::decompress_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::add_lemmas::*;

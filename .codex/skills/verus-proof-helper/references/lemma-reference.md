@@ -1,5 +1,15 @@
 # Lemma reference and search guide
 
+## Where to search (priority order)
+
+1. Same file: helper lemmas nearby are often the right abstraction.
+2. Common lemmas: `lemmas/common_lemmas/`
+   - `to_nat_lemmas.rs`: byte/nat conversions, little-endian encoding
+   - `pow_lemmas.rs`: powers of 2, exponent arithmetic
+   - `div_mod_lemmas.rs`: modular arithmetic
+   - `bit_lemmas.rs`: bitwise operations
+3. Domain folders: `field_lemmas/`, `edwards_lemmas/`, `montgomery_lemmas/`, etc.
+
 ## Where to put new helper lemmas
 
 Place lemmas in the module that matches their scope so they stay reusable and avoid circular deps.
@@ -15,16 +25,6 @@ Place lemmas in the module that matches their scope so they stay reusable and av
 - Prefer calling generic field lemmas directly at call sites (e.g. `lemma_field_curve_eq_x2v_eq_u(d, x, y)` with `d = fe51_as_canonical_nat(&EDWARDS_D)`) rather than thin curve-only wrappers. If you keep a wrapper, make it a one-liner that just calls the field lemma.
 - Avoid “connection” lemmas whose precondition is exactly another lemma’s postcondition; inline that proof at the single call site instead.
 - Lemmas used from another module must be `pub proof fn` (e.g. `axiom_d_plus_one_nonzero` used from decompress_lemmas).
-
-## Where to search (priority order)
-
-1. Same file: helper lemmas nearby are often the right abstraction.
-2. Common lemmas: `lemmas/common_lemmas/`
-   - `to_nat_lemmas.rs`: byte/nat conversions, little-endian encoding
-   - `pow_lemmas.rs`: powers of 2, exponent arithmetic
-   - `div_mod_lemmas.rs`: modular arithmetic
-   - `bit_lemmas.rs`: bitwise operations
-3. Domain folders: `field_lemmas/`, `edwards_lemmas/`, `montgomery_lemmas/`, etc.
 
 ## Search patterns
 

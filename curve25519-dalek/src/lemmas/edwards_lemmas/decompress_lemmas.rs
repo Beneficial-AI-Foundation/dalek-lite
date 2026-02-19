@@ -33,6 +33,7 @@ use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
+#[cfg(verus_keep_ghost)]
 use crate::specs::montgomery_specs::edwards_y_from_montgomery_u;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;

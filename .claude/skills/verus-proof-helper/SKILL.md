@@ -21,21 +21,7 @@ Help complete Verus proofs for cryptographic functions by following proven patte
 3. Look for comments explaining the mathematical reasoning
 4. Check if there are related lemmas that might already exist
 
-### Phase 2: Where to Put New Helper Lemmas
-**Place lemmas in the right module so they stay reusable and avoid circular deps.**
-
-| Kind of lemma | Put in | Examples |
-|---------------|--------|----------|
-| **Generic field algebra** (holds for any d / any field elements) | `lemmas/field_lemmas/field_algebra_lemmas.rs` | From curve eq derive x²·v=u; on-curve (x,y) witnesses valid y; y²=1 ⇒ x=0 when d+1≠0. Take `d` as parameter; precondition = curve equation in field form. No EDWARDS_D or math_on_edwards_curve. |
-| **Ed25519 curve structure** (tied to EDWARDS_D or curve predicate) | `lemmas/edwards_lemmas/curve_equation_lemmas.rs` | lemma_unique_x_with_parity, axiom_d_plus_one_nonzero. Call field lemmas with d = EDWARDS_D; don’t duplicate their proofs. |
-| **Decompression / Montgomery→Edwards** (spec match, to_edwards correctness) | `lemmas/edwards_lemmas/decompress_lemmas.rs` | lemma_decompress_spec_matches_point, lemma_to_edwards_correctness. Not generic curve eq; about decompress API and birational map. |
-
-**Guidelines:**
-- Prefer calling generic field lemmas directly at call sites (e.g. `lemma_field_curve_eq_x2v_eq_u(d, x, y)` with `d = fe51_as_canonical_nat(&EDWARDS_D)`) rather than thin curve-only wrappers. If you keep a wrapper, make it a one-liner that just calls the field lemma.
-- Avoid “connection” lemmas whose precondition is exactly another lemma’s postcondition; inline that proof at the single call site instead.
-- Lemmas used from another module must be `pub proof fn` (e.g. `axiom_d_plus_one_nonzero` used from decompress_lemmas).
-
-### Phase 3: Search for Existing Lemmas
+### Phase 2: Search for Existing Lemmas
 **Key principle: Never reinvent - always reuse existing lemmas**
 
 Search locations (in priority order):
@@ -52,6 +38,20 @@ Common patterns to search for:
 - `lemma_pow2_*` - For power of 2 arithmetic
 - `lemma_mod_*` - For modular arithmetic
 - `lemma_*_bound` - For establishing bounds
+
+### Phase 3: Where to Put New Helper Lemmas
+**Place lemmas in the right module so they stay reusable and avoid circular deps.**
+
+| Kind of lemma | Put in | Examples |
+|---------------|--------|----------|
+| **Generic field algebra** (holds for any d / any field elements) | `lemmas/field_lemmas/field_algebra_lemmas.rs` | From curve eq derive x²·v=u; on-curve (x,y) witnesses valid y; y²=1 ⇒ x=0 when d+1≠0. Take `d` as parameter; precondition = curve equation in field form. No EDWARDS_D or math_on_edwards_curve. |
+| **Ed25519 curve structure** (tied to EDWARDS_D or curve predicate) | `lemmas/edwards_lemmas/curve_equation_lemmas.rs` | lemma_unique_x_with_parity, axiom_d_plus_one_nonzero. Call field lemmas with d = EDWARDS_D; don’t duplicate their proofs. |
+| **Decompression / Montgomery→Edwards** (spec match, to_edwards correctness) | `lemmas/edwards_lemmas/decompress_lemmas.rs` | lemma_decompress_spec_matches_point, lemma_to_edwards_correctness. Not generic curve eq; about decompress API and birational map. |
+
+**Guidelines:**
+- Prefer calling generic field lemmas directly at call sites (e.g. `lemma_field_curve_eq_x2v_eq_u(d, x, y)` with `d = fe51_as_canonical_nat(&EDWARDS_D)`) rather than thin curve-only wrappers. If you keep a wrapper, make it a one-liner that just calls the field lemma.
+- Avoid “connection” lemmas whose precondition is exactly another lemma’s postcondition; inline that proof at the single call site instead.
+- Lemmas used from another module must be `pub proof fn` (e.g. `axiom_d_plus_one_nonzero` used from decompress_lemmas).
 
 ### Phase 4: Incremental Proof Development
 **Use the "moving assume(false)" technique:**

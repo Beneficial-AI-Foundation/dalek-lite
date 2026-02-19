@@ -33,6 +33,7 @@ use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
+use crate::specs::montgomery_specs::edwards_y_from_montgomery_u;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power::*;
@@ -312,6 +313,82 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
 
                 lemma_decompress_field_element_sign_bit(x_before, x_after, sign_bit);
             };
+        };
+    }
+}
+
+// =============================================================================
+// Decompression spec match and Montgomery→Edwards correctness
+// =============================================================================
+/// Lemma: Decompression from y and sign recovers the original point.
+pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        y < p(),
+        (x % 2) == (sign_bit as nat),
+        sign_bit == 0 || sign_bit == 1,
+    ensures
+        spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
+{
+    assert(math_is_valid_y_coordinate(y)) by {
+        let d = fe51_as_canonical_nat(&EDWARDS_D);
+        lemma_field_curve_eq_x2v_eq_u(d, x, y);
+        lemma_field_curve_point_implies_valid_y(d, x, y);
+        reveal(math_is_valid_y_coordinate);
+        let u = field_sub(field_square(y), 1);
+        let v = field_add(field_mul(d, field_square(y)), 1);
+        if u % p() == 0 {
+        } else {
+            assert(v % p() != 0);
+            assert(field_mul(field_square(x), v) == u % p());
+            lemma_small_mod(u, p());
+            assert(x < p());
+        }
+    };
+
+    if field_square(y) == 1 {
+        assert(x == 0) by {
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            axiom_d_plus_one_nonzero();
+            lemma_field_y_sq_one_implies_x_zero(d, x, y);
+        };
+    }
+    let x_chosen = choose|xc: nat|
+        math_on_edwards_curve(xc, y) && xc < p() && (xc % 2) == (sign_bit as nat);
+    assert(math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat));
+    assert(x == x_chosen) by {
+        lemma_unique_x_with_parity(x, x_chosen, y);
+    };
+}
+
+/// Helper lemma: exact functional correctness for Montgomery→Edwards conversion.
+pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8, u_nat: nat)
+    requires
+        math_on_edwards_curve(x_exec, y_nat),
+        x_exec < p(),
+        y_nat < p(),
+        sign_bit == 0 || sign_bit == 1,
+        field_square(y_nat) != 1 ==> ((x_exec % 2) as u8 == sign_bit),
+        y_nat == edwards_y_from_montgomery_u(u_nat),
+        u_nat < p(),
+        u_nat != field_sub(0, 1),
+    ensures
+        (x_exec, y_nat) == spec_montgomery_to_edwards_affine(u_nat, sign_bit),
+{
+    if field_square(y_nat) == 1 {
+        assert(x_exec == 0) by {
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            axiom_d_plus_one_nonzero();
+            lemma_field_y_sq_one_implies_x_zero(d, x_exec, y_nat);
+        };
+        assert(spec_edwards_decompress_from_y_and_sign(y_nat, 0u8) == Some((0nat, y_nat))) by {
+            lemma_decompress_spec_matches_point(0nat, y_nat, 0u8);
+        };
+    } else {
+        assert(spec_edwards_decompress_from_y_and_sign(y_nat, sign_bit) == Some((x_exec, y_nat)))
+            by {
+            lemma_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
         };
     }
 }

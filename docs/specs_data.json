@@ -235,7 +235,7 @@
             "id": "specs__edwards_specs__edwards_scalar_mul",
             "name": "edwards_scalar_mul",
             "signature": "pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, nat) decreases n,",
-            "body": "pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, nat)\n    decreases n,\n{\n    if n == 0 {\n        math_edwards_identity()  // (0, 1)\n\n    } else if n == 1 {\n        point_affine\n    } else if n % 2 == 0 {\n        let half = edwards_scalar_mul(point_affine, (n / 2) as nat);\n        edwards_double(half.0, half.1)\n    } else {\n        let prev = edwards_scalar_mul(point_affine, (n - 1) as nat);\n        edwards_add(prev.0, prev.1, point_affine.0, point_affine.1)\n    }\n}",
+            "body": "pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, nat)\n    decreases n,\n{\n    if n == 0 {\n        edwards_identity()  // (0, 1)\n\n    } else if n == 1 {\n        point_affine\n    } else if n % 2 == 0 {\n        let half = edwards_scalar_mul(point_affine, (n / 2) as nat);\n        edwards_double(half.0, half.1)\n    } else {\n        let prev = edwards_scalar_mul(point_affine, (n - 1) as nat);\n        edwards_add(prev.0, prev.1, point_affine.0, point_affine.1)\n    }\n}",
             "file": "curve25519-dalek/src/specs/edwards_specs.rs",
             "line": 831,
             "module": "specs::edwards_specs",
@@ -249,7 +249,7 @@
             "referenced_specs": [
                 "edwards_add",
                 "edwards_double",
-                "math_edwards_identity"
+                "edwards_identity"
             ]
         },
         {
@@ -295,7 +295,7 @@
             "id": "specs__edwards_specs__is_valid_edwards_point",
             "name": "is_valid_edwards_point",
             "signature": "pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool",
-            "body": "pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {\n    let x = fe51_as_canonical_nat(&point.X);\n    let y = fe51_as_canonical_nat(&point.Y);\n    let z = fe51_as_canonical_nat(&point.Z);\n    let t = fe51_as_canonical_nat(&point.T);\n\n    math_is_valid_extended_edwards_point(x, y, z, t)\n}",
+            "body": "pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {\n    let x = fe51_as_canonical_nat(&point.X);\n    let y = fe51_as_canonical_nat(&point.Y);\n    let z = fe51_as_canonical_nat(&point.Z);\n    let t = fe51_as_canonical_nat(&point.T);\n\n    is_valid_extended_edwards_point(x, y, z, t)\n}",
             "file": "curve25519-dalek/src/specs/edwards_specs.rs",
             "line": 356,
             "module": "specs::edwards_specs",
@@ -307,7 +307,7 @@
             "github_link": "https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/edwards_specs.rs#L356",
             "category": "spec",
             "referenced_specs": [
-                "math_is_valid_extended_edwards_point",
+                "is_valid_extended_edwards_point",
                 "fe51_as_canonical_nat"
             ]
         },
@@ -333,10 +333,10 @@
             ]
         },
         {
-            "id": "specs__edwards_specs__math_edwards_identity",
-            "name": "math_edwards_identity",
-            "signature": "pub open spec fn math_edwards_identity() -> (nat, nat)",
-            "body": "pub open spec fn math_edwards_identity() -> (nat, nat) {\n    (0, 1)\n}",
+            "id": "specs__edwards_specs__edwards_identity",
+            "name": "edwards_identity",
+            "signature": "pub open spec fn edwards_identity() -> (nat, nat)",
+            "body": "pub open spec fn edwards_identity() -> (nat, nat) {\n    (0, 1)\n}",
             "file": "curve25519-dalek/src/specs/edwards_specs.rs",
             "line": 311,
             "module": "specs::edwards_specs",
@@ -350,10 +350,10 @@
             "referenced_specs": []
         },
         {
-            "id": "specs__edwards_specs__math_is_valid_extended_edwards_point",
-            "name": "math_is_valid_extended_edwards_point",
-            "signature": "pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool",
-            "body": "pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {\n    z != 0 && math_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(\n        z,\n        t,\n    )\n}",
+            "id": "specs__edwards_specs__is_valid_extended_edwards_point",
+            "name": "is_valid_extended_edwards_point",
+            "signature": "pub open spec fn is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool",
+            "body": "pub open spec fn is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {\n    z != 0 && is_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(\n        z,\n        t,\n    )\n}",
             "file": "curve25519-dalek/src/specs/edwards_specs.rs",
             "line": 341,
             "module": "specs::edwards_specs",
@@ -366,14 +366,14 @@
             "category": "spec",
             "referenced_specs": [
                 "field_mul",
-                "math_on_edwards_curve_projective"
+                "is_on_edwards_curve_projective"
             ]
         },
         {
-            "id": "specs__edwards_specs__math_is_valid_y_coordinate",
-            "name": "math_is_valid_y_coordinate",
-            "signature": "pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool",
-            "body": "pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool {\n    let d = fe51_as_canonical_nat(&EDWARDS_D);\n    let y2 = field_square(y);\n\n    // Compute u = y² - 1\n    let u = field_sub(y2, 1);\n\n    // Compute v = d·y² + 1\n    let v = field_add(field_mul(d, y2), 1);\n\n    if u % p() == 0 {\n        // If u = 0, then y² = 1, so y = ±1, which gives valid points (x=0, y=±1)\n        true\n    } else if v % p() == 0 {\n        // If v = 0 but u ≠ 0, division by zero case - invalid\n        false\n    } else {\n        // Check if there exists r such that r² * v ≡ ±u (mod p)\n        // This is what sqrt_ratio_i determines\n        exists|r: nat|\n            r < p() && (#[trigger] field_mul(field_square(r), v) == u % p()\n                || #[trigger] field_mul(field_square(r), v) == field_neg(u))\n    }\n}",
+            "id": "specs__edwards_specs__is_valid_edwards_y_coordinate",
+            "name": "is_valid_edwards_y_coordinate",
+            "signature": "pub open spec fn is_valid_edwards_y_coordinate(y: nat) -> bool",
+            "body": "pub open spec fn is_valid_edwards_y_coordinate(y: nat) -> bool {\n    let d = fe51_as_canonical_nat(&EDWARDS_D);\n    let y2 = field_square(y);\n\n    // Compute u = y² - 1\n    let u = field_sub(y2, 1);\n\n    // Compute v = d·y² + 1\n    let v = field_add(field_mul(d, y2), 1);\n\n    if u % p() == 0 {\n        // If u = 0, then y² = 1, so y = ±1, which gives valid points (x=0, y=±1)\n        true\n    } else if v % p() == 0 {\n        // If v = 0 but u ≠ 0, division by zero case - invalid\n        false\n    } else {\n        // Check if there exists r such that r² * v ≡ ±u (mod p)\n        // This is what sqrt_ratio_i determines\n        exists|r: nat|\n            r < p() && (#[trigger] field_mul(field_square(r), v) == u % p()\n                || #[trigger] field_mul(field_square(r), v) == field_neg(u))\n    }\n}",
             "file": "curve25519-dalek/src/specs/edwards_specs.rs",
             "line": 285,
             "module": "specs::edwards_specs",
@@ -395,10 +395,10 @@
             ]
         },
         {
-            "id": "specs__edwards_specs__math_on_edwards_curve_projective",
-            "name": "math_on_edwards_curve_projective",
-            "signature": "pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool",
-            "body": "pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {\n    let d = fe51_as_canonical_nat(&EDWARDS_D);\n\n    // Compute X², Y², Z²\n    let x2 = field_square(x);\n    let y2 = field_square(y);\n    let z2 = field_square(z);\n    let z4 = field_square(z2);\n\n    // LHS: (-X² + Y²)·Z² = (Y² - X²)·Z²\n    let lhs = field_mul(field_sub(y2, x2), z2);\n\n    // RHS: Z⁴ + d·X²·Y²\n    let rhs = field_add(z4, field_mul(d, field_mul(x2, y2)));\n\n    lhs == rhs\n}",
+            "id": "specs__edwards_specs__is_on_edwards_curve_projective",
+            "name": "is_on_edwards_curve_projective",
+            "signature": "pub open spec fn is_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool",
+            "body": "pub open spec fn is_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {\n    let d = fe51_as_canonical_nat(&EDWARDS_D);\n\n    // Compute X², Y², Z²\n    let x2 = field_square(x);\n    let y2 = field_square(y);\n    let z2 = field_square(z);\n    let z4 = field_square(z2);\n\n    // LHS: (-X² + Y²)·Z² = (Y² - X²)·Z²\n    let lhs = field_mul(field_sub(y2, x2), z2);\n\n    // RHS: Z⁴ + d·X²·Y²\n    let rhs = field_add(z4, field_mul(d, field_mul(x2, y2)));\n\n    lhs == rhs\n}",
             "file": "curve25519-dalek/src/specs/edwards_specs.rs",
             "line": 260,
             "module": "specs::edwards_specs",
@@ -1182,7 +1182,7 @@
             "id": "lemmas__edwards_lemmas__curve_equation_lemmas__axiom_add_neg_is_identity",
             "name": "axiom_add_neg_is_identity",
             "signature": "pub proof fn axiom_add_neg_is_identity(P: (nat, nat))",
-            "body": "pub proof fn axiom_add_neg_is_identity(P: (nat, nat))\n    ensures\n        edwards_add(P.0, P.1, edwards_neg(P).0, edwards_neg(P).1) == math_edwards_identity(),",
+            "body": "pub proof fn axiom_add_neg_is_identity(P: (nat, nat))\n    ensures\n        edwards_add(P.0, P.1, edwards_neg(P).0, edwards_neg(P).1) == edwards_identity(),",
             "file": "curve25519-dalek/src/lemmas/edwards_lemmas/curve_equation_lemmas.rs",
             "line": 1113,
             "module": "lemmas::edwards_lemmas::curve_equation_lemmas",
@@ -1196,7 +1196,7 @@
             "referenced_specs": [
                 "edwards_add",
                 "edwards_neg",
-                "math_edwards_identity"
+                "edwards_identity"
             ]
         },
         {
@@ -2799,21 +2799,21 @@
             "name": "is_valid",
             "display_name": "ProjectivePoint::is_valid",
             "impl_type": "ProjectivePoint",
-            "contract": "fn is_valid(&self) -> (result: bool)\n    requires\n        fe51_limbs_bounded(&self.X, 54),\n        fe51_limbs_bounded(&self.Y, 54),\n        fe51_limbs_bounded(&self.Z, 54),\n    ensures\n        result == math_on_edwards_curve_projective(\n            fe51_as_canonical_nat(&self.X),\n            fe51_as_canonical_nat(&self.Y),\n            fe51_as_canonical_nat(&self.Z),\n        ),",
+            "contract": "fn is_valid(&self) -> (result: bool)\n    requires\n        fe51_limbs_bounded(&self.X, 54),\n        fe51_limbs_bounded(&self.Y, 54),\n        fe51_limbs_bounded(&self.Z, 54),\n    ensures\n        result == is_on_edwards_curve_projective(\n            fe51_as_canonical_nat(&self.X),\n            fe51_as_canonical_nat(&self.Y),\n            fe51_as_canonical_nat(&self.Z),\n        ),",
             "requires": [
                 "fe51_limbs_bounded(&self.X, 54),",
                 "fe51_limbs_bounded(&self.Y, 54),",
                 "fe51_limbs_bounded(&self.Z, 54),"
             ],
             "ensures": [
-                "result == math_on_edwards_curve_projective( fe51_as_canonical_nat(&self.X),",
+                "result == is_on_edwards_curve_projective( fe51_as_canonical_nat(&self.X),",
                 "fe51_as_canonical_nat(&self.Y),",
                 "fe51_as_canonical_nat(&self.Z),",
                 "),"
             ],
             "referenced_specs": [
                 "fe51_limbs_bounded",
-                "math_on_edwards_curve_projective",
+                "is_on_edwards_curve_projective",
                 "fe51_as_canonical_nat"
             ],
             "file": "curve25519-dalek/src/backend/serial/curve_models/mod.rs",
@@ -3584,12 +3584,12 @@
             "name": "decompress",
             "display_name": "CompressedEdwardsY::decompress",
             "impl_type": "CompressedEdwardsY",
-            "contract": "pub fn decompress(&self) -> (result: Option<\n    EdwardsPoint,\n>)\n// The compressed point must have a valid sign bit. This is automatically\n// satisfied for points produced by `compress()`. For externally-sourced\n// bytes (e.g., from network input), callers must ensure this invariant.\n//\n// See `compressed_y_has_valid_sign_bit` in `edwards_specs.rs` for full justification.\n\n    requires\n        compressed_y_has_valid_sign_bit(&self.0),\n    ensures\n// Decompression succeeds iff the y-coordinate is valid\n\n        math_is_valid_y_coordinate(field_element_from_bytes(&self.0))\n            <==> result.is_some(),\n        // When successful, the result has these properties:\n        result.is_some() ==> (\n        // The Y coordinate matches the one from the compressed representation\n        fe51_as_canonical_nat(&result.unwrap().Y) == field_element_from_bytes(\n            &self.0,\n        )\n        // The point is valid on the Edwards curve\n         && is_valid_edwards_point(\n            result.unwrap(),\n        )\n        // The X coordinate sign bit matches the sign bit from the compressed representation\n         && fe51_as_canonical_nat_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),",
+            "contract": "pub fn decompress(&self) -> (result: Option<\n    EdwardsPoint,\n>)\n// The compressed point must have a valid sign bit. This is automatically\n// satisfied for points produced by `compress()`. For externally-sourced\n// bytes (e.g., from network input), callers must ensure this invariant.\n//\n// See `compressed_y_has_valid_sign_bit` in `edwards_specs.rs` for full justification.\n\n    requires\n        compressed_y_has_valid_sign_bit(&self.0),\n    ensures\n// Decompression succeeds iff the y-coordinate is valid\n\n        is_valid_edwards_y_coordinate(field_element_from_bytes(&self.0))\n            <==> result.is_some(),\n        // When successful, the result has these properties:\n        result.is_some() ==> (\n        // The Y coordinate matches the one from the compressed representation\n        fe51_as_canonical_nat(&result.unwrap().Y) == field_element_from_bytes(\n            &self.0,\n        )\n        // The point is valid on the Edwards curve\n         && is_valid_edwards_point(\n            result.unwrap(),\n        )\n        // The X coordinate sign bit matches the sign bit from the compressed representation\n         && fe51_as_canonical_nat_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),",
             "requires": [
                 "compressed_y_has_valid_sign_bit(&self.0),"
             ],
             "ensures": [
-                "math_is_valid_y_coordinate(field_element_from_bytes(&self.0)) <==> result.is_some(),",
+                "is_valid_edwards_y_coordinate(field_element_from_bytes(&self.0)) <==> result.is_some(),",
                 "result.is_some() ==> ( fe51_as_canonical_nat(&result.unwrap().Y) == field_element_from_bytes( &self.0,",
                 ") && is_valid_edwards_point( result.unwrap(),",
                 ") && fe51_as_canonical_nat_sign_bit(&result.unwrap().X) == (self.0[31] >> 7)),"
@@ -3597,7 +3597,7 @@
             "referenced_specs": [
                 "compressed_y_has_valid_sign_bit",
                 "is_valid_edwards_point",
-                "math_is_valid_y_coordinate",
+                "is_valid_edwards_y_coordinate",
                 "fe51_as_canonical_nat",
                 "field_element_from_bytes",
                 "fe51_as_canonical_nat_sign_bit"
@@ -4093,18 +4093,18 @@
             "name": "is_small_order",
             "display_name": "EdwardsPoint::is_small_order",
             "impl_type": "EdwardsPoint",
-            "contract": "pub fn is_small_order(&self) -> (result: bool)\n    requires\n        is_well_formed_edwards_point(*self),\n    ensures\n// A point has small order iff [8]P = O (identity)\n\n        result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)\n            == math_edwards_identity()),",
+            "contract": "pub fn is_small_order(&self) -> (result: bool)\n    requires\n        is_well_formed_edwards_point(*self),\n    ensures\n// A point has small order iff [8]P = O (identity)\n\n        result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)\n            == edwards_identity()),",
             "requires": [
                 "is_well_formed_edwards_point(*self),"
             ],
             "ensures": [
-                "result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == math_edwards_identity()),"
+                "result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == edwards_identity()),"
             ],
             "referenced_specs": [
                 "edwards_point_as_affine",
                 "edwards_scalar_mul",
                 "is_well_formed_edwards_point",
-                "math_edwards_identity"
+                "edwards_identity"
             ],
             "file": "curve25519-dalek/src/edwards.rs",
             "line": 3727,
@@ -4124,19 +4124,19 @@
             "name": "is_torsion_free",
             "display_name": "EdwardsPoint::is_torsion_free",
             "impl_type": "EdwardsPoint",
-            "contract": "pub fn is_torsion_free(&self) -> (result: bool)\n    requires\n        is_well_formed_edwards_point(*self),\n    ensures\n// A point is torsion-free iff [ℓ]P = O, where ℓ is the group order\n\n        result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order())\n            == math_edwards_identity()),",
+            "contract": "pub fn is_torsion_free(&self) -> (result: bool)\n    requires\n        is_well_formed_edwards_point(*self),\n    ensures\n// A point is torsion-free iff [ℓ]P = O, where ℓ is the group order\n\n        result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order())\n            == edwards_identity()),",
             "requires": [
                 "is_well_formed_edwards_point(*self),"
             ],
             "ensures": [
-                "result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order()) == math_edwards_identity()),"
+                "result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order()) == edwards_identity()),"
             ],
             "referenced_specs": [
                 "edwards_point_as_affine",
                 "edwards_scalar_mul",
                 "group_order",
                 "is_well_formed_edwards_point",
-                "math_edwards_identity"
+                "edwards_identity"
             ],
             "file": "curve25519-dalek/src/edwards.rs",
             "line": 3774,
@@ -4793,14 +4793,14 @@
             "name": "step_1",
             "display_name": "step_1",
             "impl_type": "",
-            "contract": "pub(super) fn step_1(repr: &CompressedEdwardsY) -> (result: (\n    Choice,\n    FieldElement,\n    FieldElement,\n    FieldElement,\n))  // Result components: (is_valid, X, Y, Z)\n    ensures\n// The returned Y field element matches the one extracted from the compressed representation\n\n        ({\n            let (is_valid, X, Y, Z) = result;\n            fe51_as_canonical_nat(&Y) == field_element_from_bytes(&repr.0)\n                &&\n            // The returned Z field element is 1\n            fe51_as_canonical_nat(&Z) == 1\n                &&\n            // The choice is true iff the Y is valid and (X, Y) is on the curve\n            (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(fe51_as_canonical_nat(&Y)))\n                && (choice_is_true(is_valid) ==> math_on_edwards_curve(\n                fe51_as_canonical_nat(&X),\n                fe51_as_canonical_nat(&Y),\n            )) &&\n            // Limb bounds for step_2\n            // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)\n            fe51_limbs_bounded(&X, 52) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded(\n                &Z,\n                51,\n            )\n                &&\n            // X is the non-negative root (LSB = 0) - from sqrt_ratio_i\n            // This is needed in the proof of decompress\n            fe51_as_canonical_nat(&X) % 2 == 0\n        }),",
+            "contract": "pub(super) fn step_1(repr: &CompressedEdwardsY) -> (result: (\n    Choice,\n    FieldElement,\n    FieldElement,\n    FieldElement,\n))  // Result components: (is_valid, X, Y, Z)\n    ensures\n// The returned Y field element matches the one extracted from the compressed representation\n\n        ({\n            let (is_valid, X, Y, Z) = result;\n            fe51_as_canonical_nat(&Y) == field_element_from_bytes(&repr.0)\n                &&\n            // The returned Z field element is 1\n            fe51_as_canonical_nat(&Z) == 1\n                &&\n            // The choice is true iff the Y is valid and (X, Y) is on the curve\n            (choice_is_true(is_valid) <==> is_valid_edwards_y_coordinate(fe51_as_canonical_nat(&Y)))\n                && (choice_is_true(is_valid) ==> is_on_edwards_curve(\n                fe51_as_canonical_nat(&X),\n                fe51_as_canonical_nat(&Y),\n            )) &&\n            // Limb bounds for step_2\n            // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)\n            fe51_limbs_bounded(&X, 52) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded(\n                &Z,\n                51,\n            )\n                &&\n            // X is the non-negative root (LSB = 0) - from sqrt_ratio_i\n            // This is needed in the proof of decompress\n            fe51_as_canonical_nat(&X) % 2 == 0\n        }),",
             "requires": [],
             "ensures": [
-                "({ let (is_valid, X, Y, Z) = result; fe51_as_canonical_nat(&Y) == field_element_from_bytes(&repr.0) && // The returned Z field element is 1 fe51_as_canonical_nat(&Z) == 1 && // The choice is true iff the Y is valid and (X, Y) is on the curve (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(fe51_as_canonical_nat(&Y))) && (choice_is_true(is_valid) ==> math_on_edwards_curve( fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y), )) && // Limb bounds for step_2 // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51) fe51_limbs_bounded(&X, 52) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded( &Z, 51, ) && // X is the non-negative root (LSB = 0) - from sqrt_ratio_i // This is needed in the proof of decompress fe51_as_canonical_nat(&X) % 2 == 0 }),"
+                "({ let (is_valid, X, Y, Z) = result; fe51_as_canonical_nat(&Y) == field_element_from_bytes(&repr.0) && // The returned Z field element is 1 fe51_as_canonical_nat(&Z) == 1 && // The choice is true iff the Y is valid and (X, Y) is on the curve (choice_is_true(is_valid) <==> is_valid_edwards_y_coordinate(fe51_as_canonical_nat(&Y))) && (choice_is_true(is_valid) ==> is_on_edwards_curve( fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y), )) && // Limb bounds for step_2 // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51) fe51_limbs_bounded(&X, 52) && fe51_limbs_bounded(&Y, 51) && fe51_limbs_bounded( &Z, 51, ) && // X is the non-negative root (LSB = 0) - from sqrt_ratio_i // This is needed in the proof of decompress fe51_as_canonical_nat(&X) % 2 == 0 }),"
             ],
             "referenced_specs": [
                 "fe51_limbs_bounded",
-                "math_is_valid_y_coordinate",
+                "is_valid_edwards_y_coordinate",
                 "fe51_as_canonical_nat",
                 "field_element_from_bytes"
             ],

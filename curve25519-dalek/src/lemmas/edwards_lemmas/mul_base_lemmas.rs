@@ -120,7 +120,7 @@ pub open spec fn odd_sum_up_to(digits: Seq<i8>, upper_i: int, B: (nat, nat)) -> 
     decreases upper_i,
 {
     if upper_i <= 0 {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let i = upper_i - 1;
         if i % 2 == 1 {
@@ -144,7 +144,7 @@ pub open spec fn even_sum_up_to(digits: Seq<i8>, upper_i: int, B: (nat, nat)) ->
     decreases upper_i,
 {
     if upper_i <= 0 {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let i = upper_i - 1;
         if i % 2 == 0 {
@@ -385,7 +385,7 @@ pub proof fn lemma_even_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat
         reveal(edwards_scalar_mul_signed);
         reveal_with_fuel(edwards_scalar_mul, 1);
         assert(radix16_even_scalar(digits, 0) == 0);
-        assert(even_sum_up_to(digits, 0, B) == math_edwards_identity());
+        assert(even_sum_up_to(digits, 0, B) == edwards_identity());
     } else {
         let nm1 = (n - 1) as nat;
         lemma_even_sum_up_to_correct(digits, B, nm1);
@@ -461,7 +461,7 @@ pub proof fn lemma_odd_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat)
         reveal(edwards_scalar_mul_signed);
         reveal_with_fuel(edwards_scalar_mul, 1);
         assert(radix16_odd_scalar(digits, 0) == 0);
-        assert(odd_sum_up_to(digits, 0, B) == math_edwards_identity());
+        assert(odd_sum_up_to(digits, 0, B) == edwards_identity());
     } else {
         let nm1 = (n - 1) as nat;
         lemma_odd_sum_up_to_correct(digits, B, nm1);
@@ -1051,7 +1051,7 @@ pub proof fn lemma_select_is_signed_scalar_mul(
         // edwards_scalar_mul_signed(basepoint, 0) == edwards_scalar_mul(basepoint, 0) == identity
         lemma_identity_affine_niels_is_identity();
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(edwards_scalar_mul(basepoint, 0) == math_edwards_identity());
+        assert(edwards_scalar_mul(basepoint, 0) == edwards_identity());
     } else {
         // x < 0: result == negate_affine_niels(table[((-x) - 1) as int])
         // table[(-x)-1] decodes to edwards_scalar_mul(basepoint, -x)

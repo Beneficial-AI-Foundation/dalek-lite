@@ -338,7 +338,7 @@ impl ValidityCheck for ProjectivePoint {
             fe51_limbs_bounded(&self.Y, 54),
             fe51_limbs_bounded(&self.Z, 54),
         ensures
-            result == math_on_edwards_curve_projective(
+            result == is_on_edwards_curve_projective(
                 fe51_as_canonical_nat(&self.X),
                 fe51_as_canonical_nat(&self.Y),
                 fe51_as_canonical_nat(&self.Z),
@@ -815,7 +815,7 @@ impl CompletedPoint {
                 lemma_small_mod(result_z_spec, p());
             };
 
-            assert(math_on_edwards_curve(
+            assert(is_on_edwards_curve(
                 field_mul(result_x, field_inv(result_z_spec)),
                 field_mul(result_y, field_inv(result_z_spec)),
             ));

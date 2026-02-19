@@ -1681,10 +1681,10 @@ impl Scalar {
             assert(u8_32_as_nat(&result.bytes) == scalar52_as_nat(&inv_unpacked));
 
             if scalar_as_nat(self) > 0 {
-                // scalar52_to_nat(&unpacked) == scalar_as_nat(self) (from unpack)
+                // scalar52_as_nat(&unpacked) == scalar_as_nat(self) (from unpack)
                 // canonical: scalar_as_nat(self) < group_order(), so % group_order() != 0
                 vstd::arithmetic::div_mod::lemma_small_mod(
-                    scalar52_to_nat(&unpacked),
+                    scalar52_as_nat(&unpacked),
                     group_order(),
                 );
                 // UnpackedScalar::invert's guarded postcondition now applies
@@ -1929,9 +1929,9 @@ impl Scalar {
             let L = group_order();
             let R = montgomery_radix();
             let P = product_of_scalars(original_inputs);
-            let acc_before_val = scalar52_to_nat(&acc_before_invert);
-            let acc_after_val = scalar52_to_nat(&acc_after_invert);
-            let final_acc_val = scalar52_to_nat(&acc);
+            let acc_before_val = scalar52_as_nat(&acc_before_invert);
+            let acc_after_val = scalar52_as_nat(&acc_after_invert);
+            let final_acc_val = scalar52_as_nat(&acc);
 
             if P % L != 0 {
                 // acc_before is canonical: acc_before_val < L
@@ -1998,7 +1998,7 @@ impl Scalar {
                         &original_inputs[j].bytes,
                     ) * montgomery_radix()) % group_order(),
                 // SEMANTIC INVARIANT: acc represents the inverse of partial_product(original_inputs, i)
-                product_nonzero ==> (scalar52_to_nat(&acc) * partial_product(
+                product_nonzero ==> (scalar52_as_nat(&acc) * partial_product(
                     original_inputs,
                     i as int,
                 )) % group_order() == 1nat,
@@ -2054,8 +2054,8 @@ impl Scalar {
                     };
 
                     // Prove acc invariant is maintained
-                    let input_val = scalar52_to_nat(&input_unpacked);
-                    let acc_after_val = scalar52_to_nat(&acc);
+                    let input_val = scalar52_as_nat(&input_unpacked);
+                    let acc_after_val = scalar52_as_nat(&acc);
                     lemma_backward_loop_acc_invariant(
                         acc_before_val,
                         input_val,
@@ -3961,7 +3961,7 @@ impl UnpackedScalar {
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
             is_canonical_scalar52(&result),
             // result * self ≡ R² (mod L), i.e. from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)
-            scalar52_to_nat(self) > 0 ==> (scalar52_to_nat(&result) * scalar52_to_nat(self))
+            scalar52_as_nat(self) > 0 ==> (scalar52_as_nat(&result) * scalar52_as_nat(self))
                 % group_order() == (montgomery_radix() * montgomery_radix()) % group_order(),
     {
         // Uses the addition chain from
@@ -4002,7 +4002,7 @@ impl UnpackedScalar {
         let mut y = UnpackedScalar::montgomery_mul(&_1111, &_1);
 
         // Ghost state for exponent tracking
-        let ghost sv: nat = scalar52_to_nat(self);
+        let ghost sv: nat = scalar52_as_nat(self);
         let ghost R: nat = montgomery_radix();
         let ghost L: nat = group_order();
 
@@ -4023,14 +4023,14 @@ impl UnpackedScalar {
             }
 
             // _10: exp = 2 — squaring _1 doubles exponent
-            assert((scalar52_to_nat(&_10) * pow(R as int, 1nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_10) * pow(R as int, 1nat) as nat) % L == (pow(
                 sv as int,
                 2nat,
             ) as nat) % L) by {
                 lemma_montgomery_square_exponent_double(
                     sv,
-                    scalar52_to_nat(&_1),
-                    scalar52_to_nat(&_10),
+                    scalar52_as_nat(&_1),
+                    scalar52_as_nat(&_10),
                     1,
                     R,
                     L,
@@ -4038,14 +4038,14 @@ impl UnpackedScalar {
             }
 
             // _100: exp = 4 — squaring _10 doubles exponent
-            assert((scalar52_to_nat(&_100) * pow(R as int, 3nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_100) * pow(R as int, 3nat) as nat) % L == (pow(
                 sv as int,
                 4nat,
             ) as nat) % L) by {
                 lemma_montgomery_square_exponent_double(
                     sv,
-                    scalar52_to_nat(&_10),
-                    scalar52_to_nat(&_100),
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_100),
                     2,
                     R,
                     L,
@@ -4053,15 +4053,15 @@ impl UnpackedScalar {
             }
 
             // _11: exp = 3 = 2 + 1
-            assert((scalar52_to_nat(&_11) * pow(R as int, 2nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_11) * pow(R as int, 2nat) as nat) % L == (pow(
                 sv as int,
                 3nat,
             ) as nat) % L) by {
                 lemma_montgomery_mul_exponent_add(
                     sv,
-                    scalar52_to_nat(&_10),
-                    scalar52_to_nat(&_1),
-                    scalar52_to_nat(&_11),
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_1),
+                    scalar52_as_nat(&_11),
                     2,
                     1,
                     R,
@@ -4070,15 +4070,15 @@ impl UnpackedScalar {
             }
 
             // _101: exp = 5 = 2 + 3
-            assert((scalar52_to_nat(&_101) * pow(R as int, 4nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_101) * pow(R as int, 4nat) as nat) % L == (pow(
                 sv as int,
                 5nat,
             ) as nat) % L) by {
                 lemma_montgomery_mul_exponent_add(
                     sv,
-                    scalar52_to_nat(&_10),
-                    scalar52_to_nat(&_11),
-                    scalar52_to_nat(&_101),
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_11),
+                    scalar52_as_nat(&_101),
                     2,
                     3,
                     R,
@@ -4087,15 +4087,15 @@ impl UnpackedScalar {
             }
 
             // _111: exp = 7 = 2 + 5
-            assert((scalar52_to_nat(&_111) * pow(R as int, 6nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_111) * pow(R as int, 6nat) as nat) % L == (pow(
                 sv as int,
                 7nat,
             ) as nat) % L) by {
                 lemma_montgomery_mul_exponent_add(
                     sv,
-                    scalar52_to_nat(&_10),
-                    scalar52_to_nat(&_101),
-                    scalar52_to_nat(&_111),
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_101),
+                    scalar52_as_nat(&_111),
                     2,
                     5,
                     R,
@@ -4104,15 +4104,15 @@ impl UnpackedScalar {
             }
 
             // _1001: exp = 9 = 2 + 7
-            assert((scalar52_to_nat(&_1001) * pow(R as int, 8nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_1001) * pow(R as int, 8nat) as nat) % L == (pow(
                 sv as int,
                 9nat,
             ) as nat) % L) by {
                 lemma_montgomery_mul_exponent_add(
                     sv,
-                    scalar52_to_nat(&_10),
-                    scalar52_to_nat(&_111),
-                    scalar52_to_nat(&_1001),
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_111),
+                    scalar52_as_nat(&_1001),
                     2,
                     7,
                     R,
@@ -4121,15 +4121,15 @@ impl UnpackedScalar {
             }
 
             // _1011: exp = 11 = 2 + 9
-            assert((scalar52_to_nat(&_1011) * pow(R as int, 10nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_1011) * pow(R as int, 10nat) as nat) % L == (pow(
                 sv as int,
                 11nat,
             ) as nat) % L) by {
                 lemma_montgomery_mul_exponent_add(
                     sv,
-                    scalar52_to_nat(&_10),
-                    scalar52_to_nat(&_1001),
-                    scalar52_to_nat(&_1011),
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_1001),
+                    scalar52_as_nat(&_1011),
                     2,
                     9,
                     R,
@@ -4138,15 +4138,15 @@ impl UnpackedScalar {
             }
 
             // _1111: exp = 15 = 4 + 11
-            assert((scalar52_to_nat(&_1111) * pow(R as int, 14nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&_1111) * pow(R as int, 14nat) as nat) % L == (pow(
                 sv as int,
                 15nat,
             ) as nat) % L) by {
                 lemma_montgomery_mul_exponent_add(
                     sv,
-                    scalar52_to_nat(&_100),
-                    scalar52_to_nat(&_1011),
-                    scalar52_to_nat(&_1111),
+                    scalar52_as_nat(&_100),
+                    scalar52_as_nat(&_1011),
+                    scalar52_as_nat(&_1111),
                     4,
                     11,
                     R,
@@ -4155,15 +4155,15 @@ impl UnpackedScalar {
             }
 
             // y (initial): exp = 16 = 15 + 1
-            assert((scalar52_to_nat(&y) * pow(R as int, 15nat) as nat) % L == (pow(
+            assert((scalar52_as_nat(&y) * pow(R as int, 15nat) as nat) % L == (pow(
                 sv as int,
                 16nat,
             ) as nat) % L) by {
                 lemma_montgomery_mul_exponent_add(
                     sv,
-                    scalar52_to_nat(&_1111),
-                    scalar52_to_nat(&_1),
-                    scalar52_to_nat(&y),
+                    scalar52_as_nat(&_1111),
+                    scalar52_as_nat(&_1),
+                    scalar52_as_nat(&y),
                     15,
                     1,
                     R,
@@ -4179,14 +4179,14 @@ impl UnpackedScalar {
         // The final exponent is verified against group_order() - 2 via the
         // spec function montgomery_invert_chain_exponent() and compute_only.
 
-        let ghost y_snap: nat = scalar52_to_nat(&y);
+        let ghost y_snap: nat = scalar52_as_nat(&y);
         square_multiply(&mut y, 123 + 3, &_101);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_101),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
                 e_y,
                 5,
                 126,
@@ -4196,14 +4196,14 @@ impl UnpackedScalar {
             e_y = (pow2(126nat) * e_y + 5) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 2, &_11);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_11),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
                 e_y,
                 3,
                 4,
@@ -4213,14 +4213,14 @@ impl UnpackedScalar {
             e_y = (pow2(4nat) * e_y + 3) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
                 e_y,
                 15,
                 5,
@@ -4230,14 +4230,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 15) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
                 e_y,
                 15,
                 5,
@@ -4247,14 +4247,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 15) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 4, &_1001);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1001),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1001),
+                scalar52_as_nat(&y),
                 e_y,
                 9,
                 4,
@@ -4264,14 +4264,14 @@ impl UnpackedScalar {
             e_y = (pow2(4nat) * e_y + 9) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2, &_11);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_11),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
                 e_y,
                 3,
                 2,
@@ -4281,14 +4281,14 @@ impl UnpackedScalar {
             e_y = (pow2(2nat) * e_y + 3) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
                 e_y,
                 15,
                 5,
@@ -4298,14 +4298,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 15) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 3, &_101);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_101),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
                 e_y,
                 5,
                 4,
@@ -4315,14 +4315,14 @@ impl UnpackedScalar {
             e_y = (pow2(4nat) * e_y + 5) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3 + 3, &_101);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_101),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
                 e_y,
                 5,
                 6,
@@ -4332,14 +4332,14 @@ impl UnpackedScalar {
             e_y = (pow2(6nat) * e_y + 5) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3, &_111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_111),
+                scalar52_as_nat(&y),
                 e_y,
                 7,
                 3,
@@ -4349,14 +4349,14 @@ impl UnpackedScalar {
             e_y = (pow2(3nat) * e_y + 7) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
                 e_y,
                 15,
                 5,
@@ -4366,14 +4366,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 15) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 3, &_111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_111),
+                scalar52_as_nat(&y),
                 e_y,
                 7,
                 5,
@@ -4383,14 +4383,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 7) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 2, &_11);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_11),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
                 e_y,
                 3,
                 4,
@@ -4400,14 +4400,14 @@ impl UnpackedScalar {
             e_y = (pow2(4nat) * e_y + 3) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1011);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1011),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1011),
+                scalar52_as_nat(&y),
                 e_y,
                 11,
                 5,
@@ -4417,14 +4417,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 11) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 4, &_1011);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1011),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1011),
+                scalar52_as_nat(&y),
                 e_y,
                 11,
                 6,
@@ -4434,14 +4434,14 @@ impl UnpackedScalar {
             e_y = (pow2(6nat) * e_y + 11) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 6 + 4, &_1001);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1001),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1001),
+                scalar52_as_nat(&y),
                 e_y,
                 9,
                 10,
@@ -4451,14 +4451,14 @@ impl UnpackedScalar {
             e_y = (pow2(10nat) * e_y + 9) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 2, &_11);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_11),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
                 e_y,
                 3,
                 4,
@@ -4468,14 +4468,14 @@ impl UnpackedScalar {
             e_y = (pow2(4nat) * e_y + 3) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3 + 2, &_11);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_11),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
                 e_y,
                 3,
                 5,
@@ -4485,14 +4485,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 3) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3 + 2, &_11);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_11),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
                 e_y,
                 3,
                 5,
@@ -4502,14 +4502,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 3) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1001);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1001),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1001),
+                scalar52_as_nat(&y),
                 e_y,
                 9,
                 5,
@@ -4519,14 +4519,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 9) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 3, &_111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_111),
+                scalar52_as_nat(&y),
                 e_y,
                 7,
                 4,
@@ -4536,14 +4536,14 @@ impl UnpackedScalar {
             e_y = (pow2(4nat) * e_y + 7) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 4, &_1111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
                 e_y,
                 15,
                 6,
@@ -4553,14 +4553,14 @@ impl UnpackedScalar {
             e_y = (pow2(6nat) * e_y + 15) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1011);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1011),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1011),
+                scalar52_as_nat(&y),
                 e_y,
                 11,
                 5,
@@ -4570,14 +4570,14 @@ impl UnpackedScalar {
             e_y = (pow2(5nat) * e_y + 11) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3, &_101);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_101),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
                 e_y,
                 5,
                 3,
@@ -4587,14 +4587,14 @@ impl UnpackedScalar {
             e_y = (pow2(3nat) * e_y + 5) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 4, &_1111);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_1111),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
                 e_y,
                 15,
                 6,
@@ -4604,14 +4604,14 @@ impl UnpackedScalar {
             e_y = (pow2(6nat) * e_y + 15) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3, &_101);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_101),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
                 e_y,
                 5,
                 3,
@@ -4621,14 +4621,14 @@ impl UnpackedScalar {
             e_y = (pow2(3nat) * e_y + 5) as nat;
         }
 
-        let ghost y_snap = scalar52_to_nat(&y);
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 2, &_11);
         proof {
             lemma_square_multiply_exponent_compose(
                 sv,
                 y_snap,
-                scalar52_to_nat(&_11),
-                scalar52_to_nat(&y),
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
                 e_y,
                 3,
                 3,
@@ -4654,8 +4654,8 @@ impl UnpackedScalar {
                 }
                 assert(group_order() > 3);
 
-                assert((scalar52_to_nat(&y) * sv) % L == (R * R) % L) by {
-                    lemma_exponent_chain_implies_montgomery_inverse(sv, scalar52_to_nat(&y), R, L);
+                assert((scalar52_as_nat(&y) * sv) % L == (R * R) % L) by {
+                    lemma_exponent_chain_implies_montgomery_inverse(sv, scalar52_as_nat(&y), R, L);
                 }
             }
         }
@@ -4670,8 +4670,8 @@ impl UnpackedScalar {
         ensures
     // Inversion only holds for inputs that are nonzero mod group_order
 
-            scalar52_to_nat(self) % group_order() != 0 ==> scalar52_to_nat(&result)
-                * scalar52_to_nat(self) % group_order() == 1,
+            scalar52_as_nat(self) % group_order() != 0 ==> scalar52_as_nat(&result)
+                * scalar52_as_nat(self) % group_order() == 1,
             // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar
             is_canonical_scalar52(&result),
     {
@@ -4690,9 +4690,9 @@ impl UnpackedScalar {
         let result = inv.from_montgomery();
 
         proof {
-            if scalar52_to_nat(self) % group_order() != 0 {
-                let self_val = scalar52_to_nat(self);
-                let mont_val = scalar52_to_nat(&mont);
+            if scalar52_as_nat(self) % group_order() != 0 {
+                let self_val = scalar52_as_nat(self);
+                let mont_val = scalar52_as_nat(&mont);
                 let L = group_order();
                 let R = montgomery_radix();
 
@@ -4715,12 +4715,12 @@ impl UnpackedScalar {
                 // With mont_val > 0, montgomery_invert's guarded postcondition
                 // gives inv * mont ≡ R² (mod L), which chains through from_montgomery
                 // and as_montgomery to yield result * self ≡ 1 (mod L)
-                assert((scalar52_to_nat(&result) * self_val) % L == 1) by {
+                assert((scalar52_as_nat(&result) * self_val) % L == 1) by {
                     lemma_invert_correctness(
                         self_val,
                         mont_val,
-                        scalar52_to_nat(&inv),
-                        scalar52_to_nat(&result),
+                        scalar52_as_nat(&inv),
+                        scalar52_as_nat(&result),
                     );
                 }
             }

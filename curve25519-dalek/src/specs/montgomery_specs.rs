@@ -44,7 +44,7 @@ pub enum MontgomeryAffine {
 }
 
 /// Check if `(u, v)` satisfies the Montgomery curve equation `v² = u·(u² + A·u + 1)`.
-pub open spec fn math_on_montgomery_curve(u: nat, v: nat) -> bool {
+pub open spec fn on_montgomery_curve(u: nat, v: nat) -> bool {
     let a = fe51_as_canonical_nat(&MONTGOMERY_A);
     let u2 = field_square(u);
     let u3 = field_mul(u, u2);
@@ -63,7 +63,7 @@ pub open spec fn math_on_montgomery_curve(u: nat, v: nat) -> bool {
 pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
     match point {
         MontgomeryAffine::Infinity => true,
-        MontgomeryAffine::Finite { u, v } => math_on_montgomery_curve(u, v),
+        MontgomeryAffine::Finite { u, v } => on_montgomery_curve(u, v),
     }
 }
 

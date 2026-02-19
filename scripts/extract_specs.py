@@ -250,7 +250,7 @@ _MATH_SUBSTITUTIONS = [
     (r"edwards_neg\(edwards_scalar_mul\((\w+),\s*(\w+)\)\)", r"-[\2]\1"),
     (r"edwards_scalar_mul\((\w+),\s*(\w+)\)", r"[\2]\1"),
     (r"edwards_neg\((\w+)\)", r"-\1"),
-    (r"math_edwards_identity\(\)", "O"),
+    (r"edwards_identity\(\)", "O"),
     # Montgomery operations
     (r"montgomery_add\(montgomery_add\((\w+),\s*(\w+)\),\s*(\w+)\)", r"(\1 + \2) + \3"),
     (r"montgomery_add\((\w+),\s*montgomery_add\((\w+),\s*(\w+)\)\)", r"\1 + (\2 + \3)"),

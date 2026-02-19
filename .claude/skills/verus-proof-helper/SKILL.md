@@ -460,7 +460,7 @@ When a curve equation reduces to `(c)·x² ≡ 0 (mod p)` with `c ≠ 0`:
 
 ```rust
 proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
-    requires x < p(), y < p(), math_on_edwards_curve(x, y), field_square(y) == 1,
+    requires x < p(), y < p(), is_on_edwards_curve(x, y), field_square(y) == 1,
     ensures x == 0,
 {
     // 1. Substitute y²=1 into curve equation: -x² + 1 = 1 + d·x²
@@ -494,7 +494,7 @@ To prove `[8]·P = identity` for low-order points:
 ```rust
 proof fn lemma_cofactor_clears_low_order_y_sq_1(y: nat)
     requires y < p(), field_square(y) == 1,
-    ensures edwards_scalar_mul((0nat, y), 8) == math_edwards_identity(),
+    ensures edwards_scalar_mul((0nat, y), 8) == edwards_identity(),
 {
     // Step 1: Show double(0,y) = (0,1) when y²=1
     //   (all cross-terms in Edwards addition vanish when x=0)
@@ -519,9 +519,9 @@ For proving algebraic correctness of point operations (connecting exec-level Fie
 **Layer 1: Pure math axiom** (curve_equation_lemmas.rs)
 ```rust
 pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
-    requires math_on_edwards_curve(x1, y1), math_on_edwards_curve(x2, y2),
+    requires is_on_edwards_curve(x1, y1), is_on_edwards_curve(x2, y2),
     ensures
-        math_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
+        is_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
         // denominators 1+d*x1*x2*y1*y2 ≠ 0 and 1-d*x1*x2*y1*y2 ≠ 0
 { admit(); }  // Standard result for complete Edwards curves (d non-square)
 ```

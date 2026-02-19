@@ -402,11 +402,11 @@ impl MontgomeryPoint {
                 edwards_scalar_mul(B, n).1,
             ));
 
-            assert(math_on_edwards_curve(B.0, B.1)) by {
+            assert(is_on_edwards_curve(B.0, B.1)) by {
                 let (x, y, z, _t) = spec_edwards_point(bp);
                 lemma_projective_implies_affine_on_curve(x, y, z);
             }
-            assert(math_on_edwards_curve(edwards_scalar_mul(B, n).0, edwards_scalar_mul(B, n).1))
+            assert(is_on_edwards_curve(edwards_scalar_mul(B, n).0, edwards_scalar_mul(B, n).1))
                 by {
                 axiom_edwards_to_montgomery_commutes_with_scalar_mul(B.0, B.1, n);
             }
@@ -1250,9 +1250,9 @@ impl MontgomeryPoint {
                         field_inv(field_add(u_nat, 1)),
                     ));
                 }
-                assert(math_is_valid_y_coordinate(y_nat));
+                assert(is_valid_edwards_y_coordinate(y_nat));
                 assert(field_element_from_bytes(&y_bytes) == y_nat);
-                assert(math_is_valid_y_coordinate(field_element_from_bytes(&y_bytes)));
+                assert(is_valid_edwards_y_coordinate(field_element_from_bytes(&y_bytes)));
                 assert(result.is_some());
 
                 if result.is_some() {

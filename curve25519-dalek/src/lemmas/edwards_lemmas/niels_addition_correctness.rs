@@ -221,7 +221,7 @@ proof fn lemma_sub_via_negation(
     t: nat,
 )
     requires
-        math_on_edwards_curve(x2, y2),
+        is_on_edwards_curve(x2, y2),
         x1y2 == field_mul(x1, y2),
         y1x2 == field_mul(y1, x2),
         y1y2 == field_mul(y1, y2),
@@ -232,7 +232,7 @@ proof fn lemma_sub_via_negation(
         ({
             let neg_x2 = field_neg(x2);
             let t_prime = field_mul(d, field_mul(field_mul(x1, neg_x2), field_mul(y1, y2)));
-            &&& math_on_edwards_curve(neg_x2, y2)
+            &&& is_on_edwards_curve(neg_x2, y2)
             &&& field_sub(x1y2, y1x2) == field_add(x1y2, field_mul(y1, neg_x2))
             &&& field_sub(y1y2, x1x2) == field_add(y1y2, field_mul(x1, neg_x2))
             &&& t_prime == field_neg(t)
@@ -244,7 +244,7 @@ proof fn lemma_sub_via_negation(
     let t_prime = field_mul(d, field_mul(field_mul(x1, neg_x2), field_mul(y1, y2)));
 
     // neg(x2) is on the curve
-    assert(math_on_edwards_curve(neg_x2, y2)) by {
+    assert(is_on_edwards_curve(neg_x2, y2)) by {
         lemma_negation_preserves_curve(x2, y2);
     };
 
@@ -354,7 +354,7 @@ pub(crate) proof fn lemma_add_projective_niels_completed_valid(
         p_gt_2();
     };
 
-    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → is_valid_extended_edwards_point
 
     // Extract witness from is_valid_projective_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -383,10 +383,10 @@ pub(crate) proof fn lemma_add_projective_niels_completed_valid(
     let x2 = field_mul(X2, field_inv(Z2));
     let y2 = field_mul(Y2, field_inv(Z2));
 
-    assert(math_on_edwards_curve(x1, y1)) by {
+    assert(is_on_edwards_curve(x1, y1)) by {
         lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
-    assert(math_on_edwards_curve(x2, y2)) by {
+    assert(is_on_edwards_curve(x2, y2)) by {
         lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, T2);
     };
 
@@ -555,7 +555,7 @@ pub(crate) proof fn lemma_add_projective_niels_completed_valid(
     assert(result_z == field_mul(z1z2, aff_rz));
     assert(result_t == field_mul(z1z2, aff_rt));
 
-    assert(aff_rz != 0 && aff_rt != 0 && math_on_edwards_curve(
+    assert(aff_rz != 0 && aff_rt != 0 && is_on_edwards_curve(
         field_mul(aff_rx, field_inv(aff_rz)),
         field_mul(aff_ry, field_inv(aff_rt)),
     ) && field_mul(aff_rx, field_inv(aff_rz)) == edwards_add(x1, y1, x2, y2).0 && field_mul(
@@ -670,7 +670,7 @@ pub(crate) proof fn lemma_sub_projective_niels_completed_valid(
         p_gt_2();
     };
 
-    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → is_valid_extended_edwards_point
 
     // Extract witness from is_valid_projective_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -699,10 +699,10 @@ pub(crate) proof fn lemma_sub_projective_niels_completed_valid(
     let x2 = field_mul(X2, field_inv(Z2));
     let y2 = field_mul(Y2, field_inv(Z2));
 
-    assert(math_on_edwards_curve(x1, y1)) by {
+    assert(is_on_edwards_curve(x1, y1)) by {
         lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
-    assert(math_on_edwards_curve(x2, y2)) by {
+    assert(is_on_edwards_curve(x2, y2)) by {
         lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, T2);
     };
 
@@ -853,7 +853,7 @@ pub(crate) proof fn lemma_sub_projective_niels_completed_valid(
     // STEP 5: Reduce sub to add via neg: edwards_sub(x1,y1,x2,y2) = edwards_add(x1,y1,-x2,y2)
     let neg_x2 = field_neg(x2);
     let t_prime = field_mul(d, field_mul(field_mul(x1, neg_x2), field_mul(y1, y2)));
-    assert(math_on_edwards_curve(neg_x2, y2) && field_sub(x1y2, y1x2) == field_add(
+    assert(is_on_edwards_curve(neg_x2, y2) && field_sub(x1y2, y1x2) == field_add(
         x1y2,
         field_mul(y1, neg_x2),
     ) && field_sub(y1y2, x1x2) == field_add(y1y2, field_mul(x1, neg_x2)) && t_prime == field_neg(t)
@@ -880,7 +880,7 @@ pub(crate) proof fn lemma_sub_projective_niels_completed_valid(
     assert(result_z == field_mul(z1z2, aff_rz));
     assert(result_t == field_mul(z1z2, aff_rt));
 
-    assert(aff_rz != 0 && aff_rt != 0 && math_on_edwards_curve(
+    assert(aff_rz != 0 && aff_rt != 0 && is_on_edwards_curve(
         field_mul(aff_rx, field_inv(aff_rz)),
         field_mul(aff_ry, field_inv(aff_rt)),
     ) && field_mul(aff_rx, field_inv(aff_rz)) == edwards_add(x1, y1, neg_x2, y2).0 && field_mul(
@@ -999,7 +999,7 @@ pub(crate) proof fn lemma_add_affine_niels_completed_valid(
         p_gt_2();
     };
 
-    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → is_valid_extended_edwards_point
 
     // Extract witness from is_valid_affine_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
@@ -1016,10 +1016,10 @@ pub(crate) proof fn lemma_add_affine_niels_completed_valid(
     let x1 = field_mul(sX, field_inv(sZ));
     let y1 = field_mul(sY, field_inv(sZ));
 
-    assert(math_on_edwards_curve(x1, y1)) by {
+    assert(is_on_edwards_curve(x1, y1)) by {
         lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
-    assert(math_on_edwards_curve(x2, y2)) by {
+    assert(is_on_edwards_curve(x2, y2)) by {
         lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, fe51_as_canonical_nat(&ep.T));
     };
 
@@ -1178,7 +1178,7 @@ pub(crate) proof fn lemma_add_affine_niels_completed_valid(
     assert(result_z == field_mul(sZ, aff_rz));
     assert(result_t == field_mul(sZ, aff_rt));
 
-    assert(aff_rz != 0 && aff_rt != 0 && math_on_edwards_curve(
+    assert(aff_rz != 0 && aff_rt != 0 && is_on_edwards_curve(
         field_mul(aff_rx, field_inv(aff_rz)),
         field_mul(aff_ry, field_inv(aff_rt)),
     ) && field_mul(aff_rx, field_inv(aff_rz)) == edwards_add(x1, y1, x2, y2).0 && field_mul(
@@ -1287,7 +1287,7 @@ pub(crate) proof fn lemma_sub_affine_niels_completed_valid(
         p_gt_2();
     };
 
-    assert(sZ % p() != 0);  // from is_valid_edwards_point → math_is_valid_extended_edwards_point
+    assert(sZ % p() != 0);  // from is_valid_edwards_point → is_valid_extended_edwards_point
 
     let ep = choose|ep: crate::edwards::EdwardsPoint|
         is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
@@ -1303,10 +1303,10 @@ pub(crate) proof fn lemma_sub_affine_niels_completed_valid(
     let x1 = field_mul(sX, field_inv(sZ));
     let y1 = field_mul(sY, field_inv(sZ));
 
-    assert(math_on_edwards_curve(x1, y1)) by {
+    assert(is_on_edwards_curve(x1, y1)) by {
         lemma_valid_extended_point_affine_on_curve(sX, sY, sZ, sT);
     };
-    assert(math_on_edwards_curve(x2, y2)) by {
+    assert(is_on_edwards_curve(x2, y2)) by {
         lemma_valid_extended_point_affine_on_curve(X2, Y2, Z2, fe51_as_canonical_nat(&ep.T));
     };
 
@@ -1453,7 +1453,7 @@ pub(crate) proof fn lemma_sub_affine_niels_completed_valid(
     // STEP 5: Reduce sub to add via neg: edwards_sub(x1,y1,x2,y2) = edwards_add(x1,y1,-x2,y2)
     let neg_x2 = field_neg(x2);
     let t_prime = field_mul(d, field_mul(field_mul(x1, neg_x2), field_mul(y1, y2)));
-    assert(math_on_edwards_curve(neg_x2, y2) && field_sub(x1y2, y1x2) == field_add(
+    assert(is_on_edwards_curve(neg_x2, y2) && field_sub(x1y2, y1x2) == field_add(
         x1y2,
         field_mul(y1, neg_x2),
     ) && field_sub(y1y2, x1x2) == field_add(y1y2, field_mul(x1, neg_x2)) && t_prime == field_neg(t)
@@ -1479,7 +1479,7 @@ pub(crate) proof fn lemma_sub_affine_niels_completed_valid(
     assert(result_z == field_mul(sZ, aff_rz));
     assert(result_t == field_mul(sZ, aff_rt));
 
-    assert(aff_rz != 0 && aff_rt != 0 && math_on_edwards_curve(
+    assert(aff_rz != 0 && aff_rt != 0 && is_on_edwards_curve(
         field_mul(aff_rx, field_inv(aff_rz)),
         field_mul(aff_ry, field_inv(aff_rt)),
     ) && field_mul(aff_rx, field_inv(aff_rz)) == edwards_add(x1, y1, neg_x2, y2).0 && field_mul(

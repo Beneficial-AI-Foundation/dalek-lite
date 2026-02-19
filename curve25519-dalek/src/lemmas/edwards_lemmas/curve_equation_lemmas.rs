@@ -1826,15 +1826,10 @@ pub proof fn lemma_unique_x_with_parity(x1: nat, x2: nat, y: nat)
         assert(field_mul(d, y2) == d % p()) by {
             lemma_field_mul_one_right(d);
         };
-        // v = field_add(d%p, 1) = ((d%p)+1)%p = (d+1)%p = field_add(d, 1)
         assert(v == field_add(d, 1)) by {
-            lemma_add_mod_noop(d as int, 1int, p() as int);
-            lemma_add_mod_noop((d % p()) as int, 1int, p() as int);
+            lemma_field_add_canonical_left(d, 1);
         };
         axiom_d_plus_one_nonzero();
-        assert(v < p()) by {
-            lemma_mod_bound((d % p() + 1) as int, p() as int);
-        };
         lemma_small_mod(v, p());
         assert(false);
     }
@@ -1920,7 +1915,7 @@ pub proof fn lemma_unique_x_with_parity(x1: nat, x2: nat, y: nat)
 /// For Ed25519, d = −121665/121666.
 pub proof fn axiom_d_plus_one_nonzero()
     ensures
-        field_add(fe51_as_canonical_nat(&EDWARDS_D), 1) % p() != 0,
+        field_add(fe51_as_canonical_nat(&EDWARDS_D), 1) != 0,
 {
     admit();
 }

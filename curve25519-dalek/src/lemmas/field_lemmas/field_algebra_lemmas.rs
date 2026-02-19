@@ -180,6 +180,19 @@ pub proof fn lemma_field_add_comm(a: nat, b: nat)
     assert((a + b) as int == (b + a) as int);
 }
 
+/// field_add normalizes its inputs mod p, so pre-reducing a is a no-op.
+pub proof fn lemma_field_add_canonical_left(a: nat, b: nat)
+    ensures
+        field_add(a % p(), b) == field_add(a, b),
+{
+    let m = p() as int;
+    p_gt_2();
+    lemma_mod_bound(a as int, m);
+    lemma_small_mod(a % p(), p());
+    lemma_add_mod_noop(a as int, b as int, m);
+    lemma_add_mod_noop((a % p()) as int, b as int, m);
+}
+
 /// Lemma: (x + y) − (z + y) = x − z (mod p) for reduced values.
 ///
 /// Cancellation of a common right addend under subtraction.
@@ -1384,8 +1397,6 @@ pub proof fn lemma_field_mul_comm(a: nat, b: nat)
 /// equation in field form; conclusion is x²·v = u with v = d·y²+1, u = y²−1.
 pub proof fn lemma_field_curve_eq_x2v_eq_u(d: nat, x: nat, y: nat)
     requires
-        x < p(),
-        y < p(),
         field_sub(field_square(y), field_square(x)) == field_add(
             1,
             field_mul(d, field_mul(field_square(x), field_square(y))),
@@ -1455,38 +1466,36 @@ pub proof fn lemma_field_curve_eq_x2v_eq_u(d: nat, x: nat, y: nat)
 
 /// Lemma: A point (x, y) on the curve with parameter d witnesses valid y.
 ///
-/// If y² − x² = 1 + d·x²·y² (mod p) and x, y < p, then either u = 0 (y² = 1)
+/// If y² − x² = 1 + d·x²·y² (mod p), then either u = 0 (y² = 1)
 /// or v ≠ 0 and x²·v = u, so y is "valid" in the sense that u/v is a square.
 pub proof fn lemma_field_curve_point_implies_valid_y(d: nat, x: nat, y: nat)
     requires
-        x < p(),
-        y < p(),
         field_sub(field_square(y), field_square(x)) == field_add(
             1,
             field_mul(d, field_mul(field_square(x), field_square(y))),
         ),
     ensures
-        (field_sub(field_square(y), 1) % p() == 0) || (field_add(field_mul(d, field_square(y)), 1)
-            % p() != 0 && field_mul(field_square(x), field_add(field_mul(d, field_square(y)), 1))
-            == field_sub(field_square(y), 1) % p()),
+        (field_sub(field_square(y), 1) == 0) || (field_add(field_mul(d, field_square(y)), 1) != 0
+            && field_mul(field_square(x), field_add(field_mul(d, field_square(y)), 1)) == field_sub(
+            field_square(y),
+            1,
+        )),
 {
     let u = field_sub(field_square(y), 1);
     let v = field_add(field_mul(d, field_square(y)), 1);
     lemma_field_curve_eq_x2v_eq_u(d, x, y);
     assert(field_mul(field_square(x), v) == u);
 
-    if u % p() == 0 {
+    if u == 0 {
     } else {
-        assert(v % p() != 0) by {
-            if v % p() == 0 {
+        assert(v != 0) by {
+            if v == 0 {
+                p_gt_2();
+                lemma_mod_bound((field_mul(d, field_square(y)) + 1) as int, p() as int);
+                lemma_small_mod(v, p());
                 lemma_field_mul_zero_right(field_square(x), v);
-                assert(field_mul(field_square(x), v) == 0);
-                assert(u == 0);
-                lemma_small_mod(u, p());
             }
         };
-        lemma_small_mod(u, p());
-        assert(field_mul(field_square(x), v) == u % p());
     }
 }
 
@@ -1501,7 +1510,7 @@ pub proof fn lemma_field_y_sq_one_implies_x_zero(d: nat, x: nat, y: nat)
             1,
             field_mul(d, field_mul(field_square(x), field_square(y))),
         ),
-        field_add(d, 1) % p() != 0,
+        field_add(d, 1) != 0,
     ensures
         x == 0,
 {
@@ -1568,6 +1577,7 @@ pub proof fn lemma_field_y_sq_one_implies_x_zero(d: nat, x: nat, y: nat)
 
     assert(x2 % p() == 0) by {
         if x2 % p() != 0 {
+            lemma_small_mod(field_add(d, 1), p());
             lemma_nonzero_product(field_add(d, 1), x2);
         }
     };

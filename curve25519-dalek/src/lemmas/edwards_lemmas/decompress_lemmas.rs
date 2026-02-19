@@ -287,16 +287,16 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
 {
     assert(math_is_valid_y_coordinate(y)) by {
         let d = fe51_as_canonical_nat(&EDWARDS_D);
-        lemma_field_curve_eq_x2v_eq_u(d, x, y);
         lemma_field_curve_point_implies_valid_y(d, x, y);
         reveal(math_is_valid_y_coordinate);
         let u = field_sub(field_square(y), 1);
         let v = field_add(field_mul(d, field_square(y)), 1);
-        if u % p() == 0 {
+        lemma_small_mod(u, p());
+        lemma_small_mod(v, p());
+        if u == 0 {
         } else {
-            assert(v % p() != 0);
-            assert(field_mul(field_square(x), v) == u % p());
-            lemma_small_mod(u, p());
+            assert(v != 0);
+            assert(field_mul(field_square(x), v) == u);
             assert(x < p());
         }
     };

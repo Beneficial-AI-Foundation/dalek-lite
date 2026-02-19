@@ -22,6 +22,7 @@
 //! ## Twisted Edwards curve equation identity
 //!
 //! - `lemma_field_curve_eq_x2v_eq_u`: from y² − x² = 1 + d·x²·y² derive x²·(d·y²+1) = y²−1 (any d)
+//! - `lemma_field_curve_point_implies_valid_y`: on-curve (x,y) with param d witnesses valid y (any d)
 #![allow(unused_imports)]
 use crate::lemmas::common_lemmas::div_mod_lemmas::*;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -1389,10 +1390,10 @@ pub proof fn lemma_field_curve_eq_x2v_eq_u(d: nat, x: nat, y: nat)
             field_mul(d, field_mul(field_square(x), field_square(y))),
         ),
     ensures
-        field_mul(
-            field_square(x),
-            field_add(field_mul(d, field_square(y)), 1),
-        ) == field_sub(field_square(y), 1),
+        field_mul(field_square(x), field_add(field_mul(d, field_square(y)), 1)) == field_sub(
+            field_square(y),
+            1,
+        ),
 {
     let pp = p();
     let pn = pp as int;
@@ -1450,6 +1451,43 @@ pub proof fn lemma_field_curve_eq_x2v_eq_u(d: nat, x: nat, y: nat)
     lemma_small_mod(u, pp);
     lemma_small_mod(field_add(dx2y2, x2), pp);
     assert(field_sub(y2, 1) == field_add(dx2y2, x2));
+}
+
+/// Lemma: A point (x, y) on the curve with parameter d witnesses valid y.
+///
+/// If y² − x² = 1 + d·x²·y² (mod p) and x, y < p, then either u = 0 (y² = 1)
+/// or v ≠ 0 and x²·v = u, so y is "valid" in the sense that u/v is a square.
+pub proof fn lemma_field_curve_point_implies_valid_y(d: nat, x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+        field_sub(field_square(y), field_square(x)) == field_add(
+            1,
+            field_mul(d, field_mul(field_square(x), field_square(y))),
+        ),
+    ensures
+        (field_sub(field_square(y), 1) % p() == 0) || (field_add(field_mul(d, field_square(y)), 1)
+            % p() != 0 && field_mul(field_square(x), field_add(field_mul(d, field_square(y)), 1))
+            == field_sub(field_square(y), 1) % p()),
+{
+    let u = field_sub(field_square(y), 1);
+    let v = field_add(field_mul(d, field_square(y)), 1);
+    lemma_field_curve_eq_x2v_eq_u(d, x, y);
+    assert(field_mul(field_square(x), v) == u);
+
+    if u % p() == 0 {
+    } else {
+        assert(v % p() != 0) by {
+            if v % p() == 0 {
+                lemma_field_mul_zero_right(field_square(x), v);
+                assert(field_mul(field_square(x), v) == 0);
+                assert(u == 0);
+                lemma_small_mod(u, p());
+            }
+        };
+        lemma_small_mod(u, p());
+        assert(field_mul(field_square(x), v) == u % p());
+    }
 }
 
 /// Lemma: a · inv(a·b) = inv(b)

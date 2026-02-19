@@ -1632,6 +1632,177 @@ pub proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
     // Therefore (x', y') = (-x, y) = edwards_neg((x, y))
 }
 
+/// Lemma: identity_projective_niels decodes to the identity point (0, 1).
+///
+/// The identity in ProjectiveNiels has Y_plus_X = Y_minus_X = Z = 1, T2d = 0,
+/// which decodes to x = (1-1)/2 / 1 = 0 and y = (1+1)/2 / 1 = 1.
+pub proof fn lemma_identity_projective_niels_is_identity()
+    ensures
+        projective_niels_point_as_affine_edwards(identity_projective_niels())
+            == math_edwards_identity(),
+{
+    let id = identity_projective_niels();
+    let y_plus_x = fe51_as_canonical_nat(&id.Y_plus_X);
+    let y_minus_x = fe51_as_canonical_nat(&id.Y_minus_X);
+    let z = fe51_as_canonical_nat(&id.Z);
+
+    assert(y_plus_x == 1) by {
+        assert(id.Y_plus_X.limbs[0] == 1);
+        assert(id.Y_plus_X.limbs[1] == 0);
+        assert(id.Y_plus_X.limbs[2] == 0);
+        assert(id.Y_plus_X.limbs[3] == 0);
+        assert(id.Y_plus_X.limbs[4] == 0);
+        assert(fe51_as_nat(&id.Y_plus_X) == 1nat) by {
+            reveal(pow2);
+            lemma_mul_by_zero_is_zero(pow2(51) as int);
+            lemma_mul_by_zero_is_zero(pow2(102) as int);
+            lemma_mul_by_zero_is_zero(pow2(153) as int);
+            lemma_mul_by_zero_is_zero(pow2(204) as int);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+    assert(y_minus_x == 1) by {
+        assert(id.Y_minus_X.limbs[0] == 1);
+        assert(id.Y_minus_X.limbs[1] == 0);
+        assert(id.Y_minus_X.limbs[2] == 0);
+        assert(id.Y_minus_X.limbs[3] == 0);
+        assert(id.Y_minus_X.limbs[4] == 0);
+        assert(fe51_as_nat(&id.Y_minus_X) == 1nat) by {
+            reveal(pow2);
+            lemma_mul_by_zero_is_zero(pow2(51) as int);
+            lemma_mul_by_zero_is_zero(pow2(102) as int);
+            lemma_mul_by_zero_is_zero(pow2(153) as int);
+            lemma_mul_by_zero_is_zero(pow2(204) as int);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+    assert(z == 1) by {
+        assert(id.Z.limbs[0] == 1);
+        assert(id.Z.limbs[1] == 0);
+        assert(id.Z.limbs[2] == 0);
+        assert(id.Z.limbs[3] == 0);
+        assert(id.Z.limbs[4] == 0);
+        assert(fe51_as_nat(&id.Z) == 1nat) by {
+            reveal(pow2);
+            lemma_mul_by_zero_is_zero(pow2(51) as int);
+            lemma_mul_by_zero_is_zero(pow2(102) as int);
+            lemma_mul_by_zero_is_zero(pow2(153) as int);
+            lemma_mul_by_zero_is_zero(pow2(204) as int);
+        }
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+
+    // x_proj = (1 - 1) / 2 = 0
+    let diff = field_sub(y_plus_x, y_minus_x);
+    assert(diff == 0) by {
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+        lemma_mod_self_0(p() as int);
+    }
+    let inv2 = field_inv(2);
+    let x_proj = field_mul(diff, inv2);
+    assert(x_proj == 0) by {
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        lemma_field_mul_zero_left(diff, inv2);
+    }
+
+    // y_proj = (1 + 1) / 2 = 1
+    let sum = field_add(y_plus_x, y_minus_x);
+    assert(sum == 2) by {
+        p_gt_2();
+        lemma_small_mod(2nat, p());
+    }
+    let y_proj = field_mul(sum, inv2);
+    assert(y_proj == 1) by {
+        p_gt_2();
+        assert(2nat % p() != 0) by {
+            lemma_small_mod(2nat, p());
+        }
+        field_inv_property(2nat);
+        lemma_field_mul_comm(2nat, field_inv(2));
+    }
+
+    // x = x_proj * z_inv = 0 * inv(1) = 0
+    let z_inv = field_inv(z);
+    assert(field_mul(x_proj, z_inv) == 0) by {
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        lemma_field_mul_zero_left(x_proj, z_inv);
+    }
+
+    // y = y_proj * z_inv = 1 * inv(1) = 1
+    // field_inv_property(1): field_mul(field_canonical(1), inv(1)) == 1
+    // field_canonical(1) = 1 % p = 1 (since p > 2)
+    p_gt_2();
+    assert(1nat % p() != 0) by {
+        lemma_small_mod(1nat, p());
+    }
+    field_inv_property(1nat);
+    assert(field_canonical(1nat) == 1nat) by {
+        lemma_small_mod(1nat, p());
+    }
+    // Now field_mul(1, field_inv(1)) == 1
+    // Since y_proj == 1 and z_inv == field_inv(1), field_mul(y_proj, z_inv) == 1
+}
+
+/// Lemma: negating a ProjectiveNielsPoint negates the x-coordinate.
+///
+/// ProjectiveNiels negation swaps Y_plus_X and Y_minus_X (and negates T2d, keeps Z).
+/// This swaps (Y+X) and (Y-X), negating the recovered x-coordinate while preserving y.
+pub proof fn lemma_negate_projective_niels_is_edwards_neg(
+    pt: crate::backend::serial::curve_models::ProjectiveNielsPoint,
+)
+    ensures
+        projective_niels_point_as_affine_edwards(negate_projective_niels(pt)) == edwards_neg(
+            projective_niels_point_as_affine_edwards(pt),
+        ),
+{
+    let y_plus_x = fe51_as_canonical_nat(&pt.Y_plus_X);
+    let y_minus_x = fe51_as_canonical_nat(&pt.Y_minus_X);
+    let z = fe51_as_canonical_nat(&pt.Z);
+    let inv2 = field_inv(2);
+    let z_inv = field_inv(z);
+
+    // Original point coords
+    let x_proj = field_mul(field_sub(y_plus_x, y_minus_x), inv2);
+    let y_proj = field_mul(field_add(y_plus_x, y_minus_x), inv2);
+    let x = field_mul(x_proj, z_inv);
+    let y = field_mul(y_proj, z_inv);
+
+    // Negated point: swaps Y_plus_X and Y_minus_X, Z unchanged
+    let x_proj_neg = field_mul(field_sub(y_minus_x, y_plus_x), inv2);
+    let y_proj_neg = field_mul(field_add(y_minus_x, y_plus_x), inv2);
+    let x_neg = field_mul(x_proj_neg, z_inv);
+    let y_neg = field_mul(y_proj_neg, z_inv);
+
+    // y' = y: field_add is commutative
+    assert(y_proj_neg == y_proj) by {
+        assert((y_minus_x + y_plus_x) == (y_plus_x + y_minus_x));
+    }
+    assert(y_neg == y);
+
+    // x' = -x: sub(b, a) = neg(sub(a, b)), then neg distributes through mul
+    assert(x_proj_neg == field_neg(x_proj)) by {
+        let diff = field_sub(y_plus_x, y_minus_x);
+        let neg_diff = field_neg(diff);
+        lemma_field_sub_antisymmetric(y_plus_x, y_minus_x);
+        assert(field_sub(y_minus_x, y_plus_x) == neg_diff);
+        lemma_field_mul_comm(neg_diff, inv2);
+        lemma_field_mul_neg(inv2, diff);
+        lemma_field_mul_comm(inv2, diff);
+    }
+    assert(x_neg == field_neg(x)) by {
+        // x_neg = neg(x_proj) * z_inv = neg(x_proj * z_inv) = neg(x)
+        lemma_field_mul_neg(z_inv, x_proj);
+        lemma_field_mul_comm(field_neg(x_proj), z_inv);
+        lemma_field_mul_comm(x_proj, z_inv);
+    }
+}
+
 /// Helper: Recover x and y from the Niels encoding (y+x, y-x) via halving.
 ///
 /// Given y_plus_x == field_add(y, x) and y_minus_x == field_sub(y, x):

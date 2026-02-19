@@ -1196,6 +1196,7 @@ impl MontgomeryPoint {
         /* ORIGINAL CODE: let y = &(&u - &one) * &(&u + &one).invert(); */
         let y = &u_minus_one * &u_plus_one_inv;
 
+        /* ORIGINAL CODE: let mut y_bytes = y.as_bytes(); */
         let y_bytes0 = y.as_bytes();
         let ghost y_bytes_pre = y_bytes0;
         let mut y_bytes = y_bytes0;
@@ -1216,7 +1217,6 @@ impl MontgomeryPoint {
 
         let result = CompressedEdwardsY(y_bytes).decompress();
 
-        // Floating lemma calls: assert-by blocks fragment the context and cause rlimit blowup here.
         proof {
             if result.is_some() {
                 assert(is_well_formed_edwards_point(result.unwrap()));

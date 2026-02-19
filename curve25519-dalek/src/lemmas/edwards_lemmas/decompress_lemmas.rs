@@ -153,53 +153,6 @@ pub proof fn lemma_decompress_field_element_sign_bit(
 }
 
 // =============================================================================
-// Sign Bit and Curve Interaction
-// =============================================================================
-/// Lemma: From compressed_y_has_valid_sign_bit, derive that sign_bit=1 implies x≠0
-///
-/// ## Mathematical Proof
-///
-/// The twisted Edwards curve equation is: -x² + y² = 1 + d·x²·y²
-/// Rearranging: y² - 1 = x²(1 + d·y²)
-///
-/// If x = 0, then y² - 1 = 0, so y² = 1.
-/// Contrapositive: If y² ≠ 1, then x ≠ 0.
-///
-/// From precondition: sign_bit = 1 ==> y² ≠ 1
-/// From curve: y² ≠ 1 ==> x ≠ 0
-/// Combined: sign_bit = 1 ==> x ≠ 0
-pub proof fn lemma_sign_bit_one_implies_x_nonzero(bytes: &[u8; 32], x: nat, y: nat)
-    requires
-        compressed_y_has_valid_sign_bit(bytes),  // decompress precondition
-        y == field_element_from_bytes(bytes),  // Y from bytes
-        math_on_edwards_curve(x, y),  // (x, y) on curve
-        x < p(),  // X bounded
-
-    ensures
-// If sign bit is 1, x must be non-zero (since -0 = 0)
-
-        (bytes[31] >> 7) == 1 ==> x != 0,
-{
-    let sign_bit = bytes[31] >> 7;
-    let y_sq = field_square(y);
-
-    if sign_bit == 1 {
-        // From compressed_y_has_valid_sign_bit: y² == 1 ==> sign_bit == 0
-        // Contrapositive: sign_bit == 1 ==> y² != 1
-        assert(y_sq != 1);
-
-        // From curve equation and y² != 1, x must be non-zero (contrapositive)
-        assert(x != 0) by {
-            // If x == 0, then by lemma_x_zero_implies_y_squared_one, y² == 1
-            // But we have y² != 1, contradiction
-            if x == 0 {
-                lemma_x_zero_implies_y_squared_one(x, y);
-            }
-        };
-    }
-}
-
-// =============================================================================
 // Main Decompress Lemma
 // =============================================================================
 /// Main lemma for decompress valid branch: proves all postconditions for Some(point).

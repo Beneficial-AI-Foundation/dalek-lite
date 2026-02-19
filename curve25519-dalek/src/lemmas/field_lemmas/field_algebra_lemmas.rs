@@ -1426,32 +1426,31 @@ pub proof fn lemma_field_curve_eq_x2v_eq_u(d: nat, x: nat, y: nat)
         lemma_field_mul_assoc(x2, d, y2);
     };
 
-    lemma_field_mul_distributes_over_add(x2, dy2, 1);
-    assert(field_mul(x2, v) == field_add(field_mul(x2, dy2), field_mul(x2, 1)));
-    lemma_field_mul_one_right(x2);
-    lemma_small_mod(x2, pp);
-    assert(field_mul(x2, 1) == x2);
+    assert(field_mul(x2, v) == field_add(field_mul(x2, dy2), field_mul(x2, 1))) by {
+        lemma_field_mul_distributes_over_add(x2, dy2, 1);
+    };
+    assert(field_mul(x2, 1) == x2) by {
+        lemma_field_mul_one_right(x2);
+        lemma_small_mod(x2, pp);
+    };
 
-    lemma_field_add_sub_cancel(y2, x2);
-    assert(field_add(field_sub(y2, x2), x2) == y2);
-    assert(field_add(field_add(1, dx2y2), x2) == y2);
+    assert(field_add(field_add(1, dx2y2), x2) == y2) by {
+        lemma_field_add_sub_cancel(y2, x2);
+    };
 
-    lemma_small_mod(y2, pp);
-    lemma_small_mod(1nat, pp);
-    lemma_mod_add_multiples_vanish(y2 as int - 1, pn);
-    lemma_add_mod_noop(1int + dx2y2 as int, x2 as int, pn);
-    lemma_add_mod_noop((1int + dx2y2 as int) % pn, x2 as int, pn);
-    lemma_sub_mod_noop(1int + dx2y2 as int + x2 as int, 1int, pn);
-    assert((1int + dx2y2 as int + x2 as int - 1) == (dx2y2 as int + x2 as int));
-    assert(u < pp) by {
+    assert(field_sub(y2, 1) == field_add(dx2y2, x2)) by {
+        lemma_small_mod(y2, pp);
+        lemma_small_mod(1nat, pp);
+        lemma_mod_add_multiples_vanish(y2 as int - 1, pn);
+        lemma_add_mod_noop(1int + dx2y2 as int, x2 as int, pn);
+        lemma_add_mod_noop((1int + dx2y2 as int) % pn, x2 as int, pn);
+        lemma_sub_mod_noop(1int + dx2y2 as int + x2 as int, 1int, pn);
+        assert((1int + dx2y2 as int + x2 as int - 1) == (dx2y2 as int + x2 as int));
         lemma_mod_bound(((y2 as int + pn) - 1) as int, pn);
-    };
-    assert(field_add(dx2y2, x2) < pp) by {
         lemma_mod_bound((dx2y2 + x2) as int, pn);
+        lemma_small_mod(u, pp);
+        lemma_small_mod(field_add(dx2y2, x2), pp);
     };
-    lemma_small_mod(u, pp);
-    lemma_small_mod(field_add(dx2y2, x2), pp);
-    assert(field_sub(y2, 1) == field_add(dx2y2, x2));
 }
 
 /// Lemma: A point (x, y) on the curve with parameter d witnesses valid y.

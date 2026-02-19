@@ -1216,6 +1216,7 @@ impl MontgomeryPoint {
 
         let result = CompressedEdwardsY(y_bytes).decompress();
 
+        // Floating lemma calls: assert-by blocks fragment the context and cause rlimit blowup here.
         proof {
             if result.is_some() {
                 assert(is_well_formed_edwards_point(result.unwrap()));
@@ -1256,7 +1257,6 @@ impl MontgomeryPoint {
                     assert(edwards_point_as_affine(point) == (x_exec, y_nat));
 
                     assert((y_bytes[31] >> 7) == sign);
-                    // decompress now guarantees sign-bit correctness only when y² ≠ 1
                     assert(field_square(y_nat) != 1 ==> ((x_exec % 2) as u8 == sign));
 
                     lemma_to_edwards_correctness(x_exec, y_nat, sign, u_nat);

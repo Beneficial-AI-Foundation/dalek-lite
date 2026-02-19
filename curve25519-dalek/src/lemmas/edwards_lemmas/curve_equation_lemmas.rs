@@ -1737,9 +1737,10 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
 // =============================================================================
 // Axioms and lemmas for decompression and cofactor clearing
 // =============================================================================
-/// Helper: From the curve equation, derive x²·(d·y²+1) ≡ y²−1 (mod p).
+/// Helper: from the Edwards curve equation, derive x²·(d·y²+1) ≡ y²−1 (mod p).
 ///
-/// Works at the integer modular arithmetic level to avoid complex field-op chaining.
+/// Calls the generic field lemma [lemma_field_curve_eq_x2v_eq_u] with d = EDWARDS_D.
+/// Callers can instead call that lemma directly with any d.
 proof fn lemma_curve_eq_x2v_eq_u(x: nat, y: nat)
     requires
         math_on_edwards_curve(x, y),
@@ -1752,79 +1753,7 @@ proof fn lemma_curve_eq_x2v_eq_u(x: nat, y: nat)
         ) == field_sub(field_square(y), 1),
 {
     let d = fe51_as_canonical_nat(&EDWARDS_D);
-    let pp = p();
-    let pn = pp as int;
-    p_gt_2();
-
-    let x2 = field_square(x);
-    let y2 = field_square(y);
-    let x2y2 = field_mul(x2, y2);
-    let dy2 = field_mul(d, y2);
-    let dx2y2 = field_mul(d, x2y2);
-    let v = field_add(dy2, 1);
-    let u = field_sub(y2, 1);
-
-    // Curve equation
-    assert(field_sub(y2, x2) == field_add(1, dx2y2));
-
-    // Bounds
-    assert(x2 < pp) by {
-        lemma_mod_bound((x * x) as int, pn);
-    };
-    assert(y2 < pp) by {
-        lemma_mod_bound((y * y) as int, pn);
-    };
-    assert(dx2y2 < pp) by {
-        lemma_mod_bound((d * x2y2) as int, pn);
-    };
-
-    // Step 1: d*(x2*y2) == x2*(d*y2)  [field commutativity/associativity]
-    assert(field_mul(d, x2y2) == field_mul(x2, dy2)) by {
-        lemma_field_mul_assoc(d, x2, y2);
-        lemma_field_mul_comm(d, x2);
-        lemma_field_mul_assoc(x2, d, y2);
-    };
-
-    // Step 2: x2*v = x2*(dy2 + 1) = x2*dy2 + x2*1 = x2*dy2 + x2
-    lemma_field_mul_distributes_over_add(x2, dy2, 1);
-    assert(field_mul(x2, v) == field_add(field_mul(x2, dy2), field_mul(x2, 1)));
-    lemma_field_mul_one_right(x2);
-    lemma_small_mod(x2, pp);
-    assert(field_mul(x2, 1) == x2);
-
-    // So: field_mul(x2, v) == field_add(field_mul(x2, dy2), x2)
-    //                       == field_add(dx2y2, x2)     [by step 1]
-
-    // Step 3: From curve eq, show field_add(dx2y2, x2) == field_sub(y2, 1)
-    // We know: field_sub(y2, x2) == field_add(1, dx2y2)
-    // So: y2 == field_add(field_sub(y2, x2), x2) == field_add(field_add(1, dx2y2), x2)
-    lemma_field_add_sub_cancel(y2, x2);
-    assert(field_add(field_sub(y2, x2), x2) == y2);
-    assert(field_add(field_add(1, dx2y2), x2) == y2);
-
-    // Goal: field_sub(y2, 1) == field_add(dx2y2, x2)
-    // y2 = field_add(field_add(1, dx2y2), x2) ≡ 1 + dx2y2 + x2 (mod p)
-    // y2 - 1 ≡ dx2y2 + x2 (mod p), and both sides < p, so equal.
-    lemma_small_mod(y2, pp);
-    lemma_small_mod(1nat, pp);
-    // (y2 + p - 1) % p = (y2 - 1) % p
-    lemma_mod_add_multiples_vanish(y2 as int - 1, pn);
-    // y2 = ((1 + dx2y2)%p + x2) % p, expand to integer:
-    lemma_add_mod_noop(1int + dx2y2 as int, x2 as int, pn);
-    lemma_add_mod_noop((1int + dx2y2 as int) % pn, x2 as int, pn);
-    // (y2 - 1) % p = (1 + dx2y2 + x2 - 1) % p = (dx2y2 + x2) % p
-    lemma_sub_mod_noop(1int + dx2y2 as int + x2 as int, 1int, pn);
-    assert((1int + dx2y2 as int + x2 as int - 1) == (dx2y2 as int + x2 as int));
-    // Both field_sub(y2, 1) and field_add(dx2y2, x2) are < p
-    assert(u < pp) by {
-        lemma_mod_bound(((y2 as int + pn) - 1) as int, pn);
-    };
-    assert(field_add(dx2y2, x2) < pp) by {
-        lemma_mod_bound((dx2y2 + x2) as int, pn);
-    };
-    lemma_small_mod(u, pp);
-    lemma_small_mod(field_add(dx2y2, x2), pp);
-    assert(field_sub(y2, 1) == field_add(dx2y2, x2));
+    lemma_field_curve_eq_x2v_eq_u(d, x, y);
 }
 
 /// Lemma: A point on the curve witnesses that the y-coordinate is valid.

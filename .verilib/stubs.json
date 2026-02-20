@@ -1,0 +1,206 @@
+{
+  "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs/lemma_mod_sub_eq().md": {
+    "code-module": "number_theory_lemmas/common_lemmas/lemmas",
+    "code-name": "probe:curve25519-dalek/4.1.3/number_theory_lemmas/common_lemmas/lemmas/lemma_mod_sub_eq()",
+    "code-path": "curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs",
+    "code-text": {
+      "lines-end": 1396,
+      "lines-start": 1336
+    },
+    "dependencies": [
+      "probe:vstd/0.0.0-2026-01-11-0057/mul/arithmetic/lemma_mul_strictly_positive()",
+      "probe:vstd/0.0.0-2026-01-11-0057/mul/arithmetic/lemma_mul_unary_negation()",
+      "probe:vstd/0.0.0-2026-01-11-0057/div_mod/arithmetic/lemma_fundamental_div_mod()",
+      "probe:vstd/0.0.0-2026-01-11-0057/div_mod/arithmetic/lemma_mod_multiples_basic()",
+      "probe:vstd/0.0.0-2026-01-11-0057/mul/arithmetic/lemma_mul_is_distributive_sub_other_way()"
+    ],
+    "display-name": "lemma_mod_sub_eq",
+    "spec-text": {
+      "lines-end": 1396,
+      "lines-start": 1335
+    },
+    "specified": true
+  },
+  "curve25519-dalek/src/edwards.rs/EdwardsPoint.fmt().md": {
+    "code-module": "edwards",
+    "code-name": "probe:curve25519-dalek/4.1.3/edwards/CompressedEdwardsY#Debug<&core::fmt::Formatter<'_>>#fmt()",
+    "code-path": "curve25519-dalek/src/edwards.rs",
+    "code-text": {
+      "lines-end": 250,
+      "lines-start": 250
+    },
+    "dependencies": [],
+    "display-name": "CompressedEdwardsY::fmt",
+    "specified": false
+  },
+  "curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs/axiom_xadd_projective_correct().md": {
+    "code-module": "montgomery_curve_lemmas/lemmas",
+    "code-name": "probe:curve25519-dalek/4.1.3/montgomery_curve_lemmas/lemmas/axiom_xadd_projective_correct()",
+    "code-path": "curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs",
+    "code-text": {
+      "lines-end": 271,
+      "lines-start": 244
+    },
+    "dependencies": [
+      "probe:curve25519-dalek/4.1.3/montgomery_specs/specs/projective_represents_montgomery_or_infinity_nat()",
+      "probe:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_add()",
+      "probe:curve25519-dalek/4.1.3/montgomery_specs/specs/spec_u_coordinate()",
+      "probe:curve25519-dalek/4.1.3/montgomery_curve_lemmas/lemmas/spec_xadd_projective()",
+      "probe:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_sub()"
+    ],
+    "display-name": "axiom_xadd_projective_correct",
+    "spec-text": {
+      "lines-end": 271,
+      "lines-start": 241
+    },
+    "specified": true
+  },
+  "curve25519-dalek/src/specs/ristretto_specs.rs/spec_elligator_ristretto_flavor().md": {
+    "code-module": "ristretto_specs/specs",
+    "code-name": "probe:curve25519-dalek/4.1.3/ristretto_specs/specs/spec_elligator_ristretto_flavor()",
+    "code-path": "curve25519-dalek/src/specs/ristretto_specs.rs",
+    "code-text": {
+      "lines-end": 294,
+      "lines-start": 238
+    },
+    "dependencies": [
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_inv()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_mul()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/is_negative()",
+      "probe:curve25519-dalek/4.1.3/ristretto_specs/specs/spec_sqrt_ad_minus_one()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_neg()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/is_sqrt_ratio()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/sqrt_m1()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_add()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/fe51_as_canonical_nat()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_sub()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/nat_invsqrt()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_square()"
+    ],
+    "display-name": "spec_elligator_ristretto_flavor",
+    "specified": false
+  },
+  "curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs/lemma_montgomery_add_zero_point_doubles_to_infinity().md": {
+    "code-module": "montgomery_curve_lemmas/lemmas",
+    "code-name": "probe:curve25519-dalek/4.1.3/montgomery_curve_lemmas/lemmas/lemma_montgomery_add_zero_point_doubles_to_infinity()",
+    "code-path": "curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs",
+    "code-text": {
+      "lines-end": 589,
+      "lines-start": 576
+    },
+    "dependencies": [
+      "probe:curve25519-dalek/4.1.3/montgomery_curve_lemmas/lemmas/lemma_canonical_montgomery_lift_zero()",
+      "probe:curve25519-dalek/4.1.3/montgomery_specs/specs/montgomery_add()",
+      "probe:curve25519-dalek/4.1.3/montgomery_specs/specs/canonical_montgomery_lift()"
+    ],
+    "display-name": "lemma_montgomery_add_zero_point_doubles_to_infinity",
+    "spec-text": {
+      "lines-end": 589,
+      "lines-start": 575
+    },
+    "specified": true
+  },
+  "curve25519-dalek/src/lemmas/field_lemmas/field_algebra_lemmas.rs/lemma_sub_neg_eq_add().md": {
+    "code-module": "field_algebra_lemmas/field_lemmas/lemmas",
+    "code-name": "probe:curve25519-dalek/4.1.3/field_algebra_lemmas/field_lemmas/lemmas/lemma_sub_neg_eq_add()",
+    "code-path": "curve25519-dalek/src/lemmas/field_lemmas/field_algebra_lemmas.rs",
+    "code-text": {
+      "lines-end": 2499,
+      "lines-start": 2485
+    },
+    "dependencies": [
+      "probe:curve25519-dalek/4.1.3/field_algebra_lemmas/field_lemmas/lemmas/lemma_field_sub_eq_add_neg()",
+      "probe:vstd/0.0.0-2026-01-11-0057/div_mod/arithmetic/lemma_add_mod_noop()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_neg()",
+      "probe:curve25519-dalek/4.1.3/field_specs_u64/specs/p()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_add()",
+      "probe:curve25519-dalek/4.1.3/field_specs/specs/field_sub()",
+      "probe:curve25519-dalek/4.1.3/field_specs_u64/specs/p_gt_2()",
+      "probe:curve25519-dalek/4.1.3/field_algebra_lemmas/field_lemmas/lemmas/lemma_neg_neg()",
+      "probe:vstd/0.0.0-2026-01-11-0057/div_mod/arithmetic/lemma_mod_twice()"
+    ],
+    "display-name": "lemma_sub_neg_eq_add",
+    "spec-text": {
+      "lines-end": 2499,
+      "lines-start": 2482
+    },
+    "specified": true
+  },
+  "curve25519-dalek/src/lemmas/scalar_byte_lemmas/scalar_to_bytes_lemmas.rs/lemma_sum_equals_byte_nat_52().md": {
+    "code-module": "scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas",
+    "code-name": "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/lemma_sum_equals_byte_nat_52()",
+    "code-path": "curve25519-dalek/src/lemmas/scalar_byte_lemmas/scalar_to_bytes_lemmas.rs",
+    "code-text": {
+      "lines-end": 383,
+      "lines-start": 275
+    },
+    "dependencies": [
+      "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/bytes_match_limbs_packing_52()",
+      "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/limb2_byte_contribution_52()",
+      "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/limb3_byte_contribution_52()",
+      "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/lemma_boundary_byte_combines_52()",
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/pow2()",
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/lemma2_to64()",
+      "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/limb4_byte_contribution_52()",
+      "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/limb1_byte_contribution_52()",
+      "probe:curve25519-dalek/4.1.3/core_specs/specs/u8_32_as_nat()",
+      "probe:vstd/0.0.0-2026-01-11-0057/mul/arithmetic/lemma_mul_is_distributive_add_other_way()",
+      "probe:curve25519-dalek/4.1.3/scalar_to_bytes_lemmas/scalar_byte_lemmas/lemmas/limb0_byte_contribution_52()"
+    ],
+    "display-name": "lemma_sum_equals_byte_nat_52",
+    "spec-text": {
+      "lines-end": 383,
+      "lines-start": 271
+    },
+    "specified": true
+  },
+  "curve25519-dalek/src/lemmas/field_lemmas/load8_lemmas.rs/lemma_load8_at_plus_version_rec_is_bounded().md": {
+    "code-module": "load8_lemmas/field_lemmas/lemmas",
+    "code-name": "probe:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/lemma_load8_at_plus_version_rec_is_bounded()",
+    "code-path": "curve25519-dalek/src/lemmas/field_lemmas/load8_lemmas.rs",
+    "code-text": {
+      "lines-end": 128,
+      "lines-start": 59
+    },
+    "dependencies": [
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/pow2()",
+      "probe:vstd/0.0.0-2026-01-11-0057/mul/arithmetic/lemma_mul_is_distributive_add()",
+      "probe:curve25519-dalek/4.1.3/load8_lemmas/field_lemmas/lemmas/load8_at_plus_version_rec()",
+      "probe:vstd/0.0.0-2026-01-11-0057/mul/arithmetic/lemma_mul_inequality()",
+      "probe:vstd/0.0.0-2026-01-11-0057/mul/arithmetic/lemma_mul_strict_inequality()",
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/lemma_pow2_adds()",
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/lemma2_to64_rest()",
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/lemma_pow2_strictly_increases()",
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/lemma2_to64()",
+      "probe:vstd/0.0.0-2026-01-11-0057/power2/arithmetic/lemma_pow2_pos()"
+    ],
+    "display-name": "lemma_load8_at_plus_version_rec_is_bounded",
+    "spec-text": {
+      "lines-end": 128,
+      "lines-start": 59
+    },
+    "specified": true
+  },
+  "curve25519-dalek/src/edwards.rs/EdwardsPoint.nonspec_map_to_curve().md": {
+    "code-module": "edwards",
+    "code-name": "probe:curve25519-dalek/4.1.3/edwards/EdwardsPoint<&[u8]>#nonspec_map_to_curve()",
+    "code-path": "curve25519-dalek/src/edwards.rs",
+    "code-text": {
+      "lines-end": 1763,
+      "lines-start": 1763
+    },
+    "dependencies": [
+      "probe:digest/0.10.7/digest/Digest#new()",
+      "probe:curve25519-dalek/4.1.3/field/u64/serial/backend/FieldElement51<&[u8;/32]>#from_bytes()",
+      "probe:digest/0.10.7/digest/Digest#finalize()",
+      "probe:curve25519-dalek/4.1.3/montgomery/elligator_encode()",
+      "probe:core/https://github.com/rust-lang/rust/library/core/option/Option#expect()",
+      "probe:digest/0.10.7/digest/Digest#update()",
+      "probe:curve25519-dalek/4.1.3/edwards/&EdwardsPoint#EdwardsPoint<EdwardsPoint>#mul_by_cofactor()",
+      "probe:curve25519-dalek/4.1.3/montgomery/&MontgomeryPoint#MontgomeryPoint<u8>#to_edwards()",
+      "probe:core/https://github.com/rust-lang/rust/library/core/slice/copy_from_slice()"
+    ],
+    "display-name": "EdwardsPoint::nonspec_map_to_curve",
+    "specified": false
+  }
+}

@@ -14,6 +14,7 @@
 pub mod constants_lemmas;
 pub mod curve_equation_lemmas;
 pub mod decompress_lemmas;
+pub mod double_correctness;
 pub mod mul_base_lemmas;
 pub mod niels_addition_correctness;
 pub mod step1_lemmas;

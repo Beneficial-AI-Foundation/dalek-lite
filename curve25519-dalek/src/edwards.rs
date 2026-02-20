@@ -753,9 +753,6 @@ verus! {
 #[allow(missing_docs)]
 pub struct EdwardsPoint {
     // VERIFICATION NOTE: changed from pub(crate) to pub
-    // Reason: Verus treats structs with pub(crate) fields as opaque outside the crate.
-    // Since ED25519_BASEPOINT_POINT is `pub const`, it must be well-formed everywhere,
-    // which requires pub fields. See verus-lang/verus#2115 for discussion.
     pub X: FieldElement,
     pub Y: FieldElement,
     pub Z: FieldElement,

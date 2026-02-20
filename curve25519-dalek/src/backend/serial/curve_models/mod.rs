@@ -134,12 +134,16 @@ use zeroize::Zeroize;
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 use crate::constants;
 use crate::core_assumes::negate_field;
+#[allow(unused_imports)] // Used in verus! blocks for EDWARDS_D bounds
+use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for affine↔projective curve equation
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for Niels addition correctness lemmas
 use crate::lemmas::edwards_lemmas::niels_addition_correctness::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::add_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for byte↔nat equality bridge
+use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for as_projective proof
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -336,54 +340,74 @@ impl ValidityCheck for ProjectivePoint {
                 fe51_as_canonical_nat(&self.Z),
             ),
     {
-        // Curve equation is    -x^2 + y^2 = 1 + d*x^2*y^2,
+        // Curve equation: -x^2 + y^2 = 1 + d*x^2*y^2,
         // homogenized as (-X^2 + Y^2)*Z^2 = Z^4 + d*X^2*Y^2
         let XX = self.X.square();
         let YY = self.Y.square();
         let ZZ = self.Z.square();
-        proof {
-            // TODO(verify): prove from square() postcondition (output is 52-bounded ⊂ 54-bounded)
-            assume(fe51_limbs_bounded(&ZZ, 54));  // for ZZZZ = ZZ.square()
-            assume(fe51_limbs_bounded(&YY, 54) && fe51_limbs_bounded(&XX, 54));  // for yy_minus_xx = &YY - &XX
-        }
+        // square() postcondition: output is 52-bounded (and 54-bounded)
         let ZZZZ = ZZ.square();
 
-        /* ORIGINAL CODE: refactor for assumptions on intermediate results
-        let lhs = &(&YY - &XX) * &ZZ;
-        let rhs = &ZZZZ + &(&constants::EDWARDS_D * &(&XX * &YY));
-        lhs == rhs
-        */
-
         let yy_minus_xx = &YY - &XX;
-        proof {
-            // TODO(verify): prove from sub()/square() postconditions
-            assume(fe51_limbs_bounded(&yy_minus_xx, 54) && fe51_limbs_bounded(&ZZ, 54));  // for lhs = &yy_minus_xx * &ZZ
-        }
+        // sub() postcondition: output is 54-bounded; ZZ is 54-bounded from square()
         let lhs = &yy_minus_xx * &ZZ;
 
         let xx_times_yy = &XX * &YY;
         proof {
-            // TODO(verify): prove EDWARDS_D is 54-bounded (it's a constant), and mul() output is 52-bounded ⊂ 54-bounded
-            assume(fe51_limbs_bounded(&constants::EDWARDS_D, 54) && fe51_limbs_bounded(
-                &xx_times_yy,
-                54,
-            ));  // for d_times_xxyy = &constants::EDWARDS_D * &xx_times_yy
+            lemma_edwards_d_limbs_bounded_54();
         }
         let d_times_xxyy = &constants::EDWARDS_D * &xx_times_yy;
         proof {
-            // TODO(verify): prove from limb bounds of ZZZZ and d_times_xxyy
-            assume(sum_of_limbs_bounded(&ZZZZ, &d_times_xxyy, u64::MAX));  // for rhs = &ZZZZ + &d_times_xxyy
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&ZZZZ, &d_times_xxyy, 52);
         }
         let rhs = &ZZZZ + &d_times_xxyy;
 
         let result = lhs == rhs;
         proof {
-            // TODO(verify): prove by connecting lhs == rhs to the spec definition
-            assume(result == math_on_edwards_curve_projective(
-                fe51_as_canonical_nat(&self.X),
-                fe51_as_canonical_nat(&self.Y),
-                fe51_as_canonical_nat(&self.Z),
+            let x_raw = u64_5_as_nat(self.X.limbs);
+            let y_raw = u64_5_as_nat(self.Y.limbs);
+            let z_raw = u64_5_as_nat(self.Z.limbs);
+            let xx_raw = u64_5_as_nat(XX.limbs);
+            let yy_raw = u64_5_as_nat(YY.limbs);
+            let zz_raw = u64_5_as_nat(ZZ.limbs);
+            let zzzz_raw = u64_5_as_nat(ZZZZ.limbs);
+
+            let x = fe51_as_canonical_nat(&self.X);
+            let y = fe51_as_canonical_nat(&self.Y);
+            let z = fe51_as_canonical_nat(&self.Z);
+
+            assert(fe51_as_canonical_nat(&XX) == field_square(x)) by {
+                lemma_square_matches_field_square(x_raw, xx_raw);
+            }
+            assert(fe51_as_canonical_nat(&YY) == field_square(y)) by {
+                lemma_square_matches_field_square(y_raw, yy_raw);
+            }
+            assert(fe51_as_canonical_nat(&ZZ) == field_square(z)) by {
+                lemma_square_matches_field_square(z_raw, zz_raw);
+            }
+            assert(fe51_as_canonical_nat(&ZZZZ) == field_square(field_square(z))) by {
+                lemma_square_matches_field_square(z_raw, zz_raw);
+                lemma_square_matches_field_square(zz_raw, zzzz_raw);
+            }
+
+            let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
+            assert(fe51_as_canonical_nat(&lhs) == field_mul(
+                field_sub(field_square(y), field_square(x)),
+                field_square(z),
             ));
+            assert(fe51_as_canonical_nat(&rhs) == field_add(
+                field_square(field_square(z)),
+                field_mul(d, field_mul(field_square(x), field_square(y))),
+            ));
+
+            assert((spec_fe51_as_bytes(&lhs) == spec_fe51_as_bytes(&rhs)) ==> (
+            fe51_as_canonical_nat(&lhs) == fe51_as_canonical_nat(&rhs))) by {
+                lemma_fe51_to_bytes_equal_implies_field_element_equal(&lhs, &rhs);
+            }
+            assert((fe51_as_canonical_nat(&lhs) == fe51_as_canonical_nat(&rhs)) ==> (
+            spec_fe51_as_bytes(&lhs) == spec_fe51_as_bytes(&rhs))) by {
+                lemma_field_element_equal_implies_fe51_to_bytes_equal(&lhs, &rhs);
+            }
         }
         result
     }

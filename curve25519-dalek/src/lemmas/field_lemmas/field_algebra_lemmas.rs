@@ -1388,6 +1388,27 @@ pub proof fn lemma_field_mul_comm(a: nat, b: nat)
     lemma_mul_is_commutative(a as int, b as int);
 }
 
+/// Lemma: Inner pair exchange for four-factor field products
+///
+/// (a·b)·(c·d) = (a·c)·(b·d)
+///
+/// This is useful for proving Segre relations in projective/extended point conversions.
+pub proof fn lemma_field_mul_exchange(a: nat, b: nat, c: nat, d: nat)
+    ensures
+        field_mul(field_mul(a, b), field_mul(c, d)) == field_mul(field_mul(a, c), field_mul(b, d)),
+{
+    // (a·b)·(c·d) = a·(b·(c·d))       by assoc
+    //             = a·((c·d)·b)         by comm on inner
+    //             = a·(c·(d·b))         by assoc on inner
+    //             = (a·c)·(d·b)         by assoc
+    //             = (a·c)·(b·d)         by comm on right
+    lemma_field_mul_assoc(a, b, field_mul(c, d));
+    lemma_field_mul_comm(b, field_mul(c, d));
+    lemma_field_mul_assoc(c, d, b);
+    lemma_field_mul_assoc(a, c, field_mul(d, b));
+    lemma_field_mul_comm(d, b);
+}
+
 // =============================================================================
 // Twisted Edwards curve equation identity
 // =============================================================================

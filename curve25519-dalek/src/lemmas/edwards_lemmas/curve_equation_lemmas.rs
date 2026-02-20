@@ -2493,4 +2493,56 @@ pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPo
     };
 }
 
+/// Lemma: projective curve equation implies affine curve equation
+///
+/// This is the natural inverse of `lemma_affine_curve_implies_projective`.
+/// Given that (X:Y:Z) satisfies the projective curve equation and Z != 0,
+/// the affine point (X/Z, Y/Z) lies on the Edwards curve.
+///
+/// Proof strategy: construct a ghost T satisfying the Segre relation X*Y = Z*T,
+/// then delegate to `lemma_valid_extended_point_affine_on_curve`.
+pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
+    requires
+        z % p() != 0,
+        math_on_edwards_curve_projective(x, y, z),
+    ensures
+        math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
+{
+    let p = p();
+    p_gt_2();
+
+    let z_inv = field_inv(z);
+    let xy = field_mul(x, y);
+    let ghost_t = field_mul(xy, z_inv);
+
+    // Prove Segre: field_mul(x, y) == field_mul(z, ghost_t)
+    // Step 1: ghost_t = field_mul(z_inv, xy) by commutativity
+    assert(ghost_t == field_mul(z_inv, xy)) by {
+        lemma_field_mul_comm(xy, z_inv);
+    };
+    // Step 2: field_mul(z, field_mul(z_inv, xy)) = field_mul(field_mul(z, z_inv), xy)
+    assert(field_mul(z, field_mul(z_inv, xy)) == field_mul(field_mul(z, z_inv), xy)) by {
+        lemma_field_mul_assoc(z, z_inv, xy);
+    };
+    // Step 3: field_mul(z, z_inv) == 1
+    assert(field_mul(z, z_inv) == 1) by {
+        field_inv_property(z);
+        // field_inv_property gives field_mul(field_canonical(z), z_inv) == 1
+        // field_mul(z, z_inv) == field_mul(field_canonical(z), z_inv) by mod absorption
+        lemma_mul_mod_noop_left(z as int, z_inv as int, p as int);
+    };
+    // Step 4: field_mul(1, xy) == xy
+    assert(field_mul(1nat, xy) == xy) by {
+        lemma_field_mul_one_left(xy);
+        lemma_mod_bound((x * y) as int, p as int);
+        lemma_small_mod(xy, p);
+    };
+    assert(field_mul(z, ghost_t) == xy);
+
+    assert(math_is_valid_extended_edwards_point(x, y, z, ghost_t));
+    assert(math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z)))) by {
+        lemma_valid_extended_point_affine_on_curve(x, y, z, ghost_t);
+    };
+}
+
 } // verus!

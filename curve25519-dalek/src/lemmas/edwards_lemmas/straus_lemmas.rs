@@ -81,7 +81,7 @@ pub proof fn lemma_select_is_signed_scalar_mul_projective(
         ));
         assert((j + 1) as nat == x as nat);
     } else if x == 0 {
-        axiom_identity_projective_niels_is_identity();
+        lemma_identity_projective_niels_is_identity();
         reveal_with_fuel(edwards_scalar_mul, 1);
         assert(edwards_scalar_mul(basepoint, 0) == math_edwards_identity());
     } else {

@@ -2857,4 +2857,22 @@ pub proof fn lemma_nonzero_from_mod(v: nat)
     }
 }
 
+// =============================================================================
+// Sub-swap negation
+// =============================================================================
+/// Swapping the arguments of field_sub inside field_mul negates the result:
+/// field_mul(field_sub(b, a), c) == field_neg(field_mul(field_sub(a, b), c))
+pub proof fn lemma_swap_sub_negates_mul(a: nat, b: nat, c: nat)
+    ensures
+        field_mul(field_sub(b, a), c) == field_neg(field_mul(field_sub(a, b), c)),
+{
+    let diff = field_sub(a, b);
+    let neg_diff = field_neg(diff);
+    lemma_field_sub_antisymmetric(a, b);
+    assert(field_sub(b, a) == neg_diff);
+    lemma_field_mul_comm(neg_diff, c);
+    lemma_field_mul_neg(c, diff);
+    lemma_field_mul_comm(c, diff);
+}
+
 } // verus!

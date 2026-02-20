@@ -213,27 +213,12 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
 
         proof {
             // -- Step 1: 4 doublings = multiplication by 16 --
-            // Each as_projective preserves affine; each double applies edwards_double.
             assert(a1 == edwards_double(old_affine.0, old_affine.1));
             assert(a2 == edwards_double(a1.0, a1.1));
             assert(a3 == edwards_double(a2.0, a2.1));
             assert(a4 == edwards_double(a3.0, a3.1));
-
+            lemma_four_doublings_is_mul_16(old_affine, a1, a2, a3, a4);
             lemma2_to64();
-
-            assert(edwards_scalar_mul(old_affine, 2) == a1) by {
-                reveal_with_fuel(edwards_scalar_mul, 1);
-                lemma_edwards_scalar_mul_pow2_succ(old_affine, 0);
-            }
-            assert(edwards_scalar_mul(old_affine, 4) == a2) by {
-                lemma_edwards_scalar_mul_pow2_succ(old_affine, 1);
-            }
-            assert(edwards_scalar_mul(old_affine, 8) == a3) by {
-                lemma_edwards_scalar_mul_pow2_succ(old_affine, 2);
-            }
-            assert(edwards_scalar_mul(old_affine, 16) == a4) by {
-                lemma_edwards_scalar_mul_pow2_succ(old_affine, 3);
-            }
 
             // as_extended preserves affine
             assert(edwards_point_as_affine(tmp3) == a4);

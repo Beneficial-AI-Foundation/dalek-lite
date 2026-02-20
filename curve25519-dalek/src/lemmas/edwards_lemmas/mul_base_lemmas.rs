@@ -30,6 +30,7 @@
 //! - `lemma_select_is_signed_scalar_mul`: Proves table lookup correctness for signed digits
 #![allow(unused_imports)]
 use crate::backend::serial::curve_models::AffineNielsPoint;
+use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -1119,6 +1120,58 @@ pub proof fn lemma_basepoint_table_select(
 
     // Apply lemma_select_is_signed_scalar_mul
     lemma_select_is_signed_scalar_mul(table.0[table_idx].0, a[i], selected, table_base);
+}
+
+// =============================================================================
+// Lemma: ProjectiveNiels table select gives signed scalar multiplication
+// =============================================================================
+/// Lemma: The result of select(x) on a valid ProjectiveNiels table equals [x]*P in affine coords.
+///
+/// Analogous to `lemma_select_is_signed_scalar_mul` but for ProjectiveNiels tables
+/// (used in variable-base scalar multiplication).
+pub proof fn lemma_select_projective_is_signed_scalar_mul(
+    table: [ProjectiveNielsPoint; 8],
+    x: i8,
+    result: ProjectiveNielsPoint,
+    P: crate::edwards::EdwardsPoint,
+)
+    requires
+        -8 <= x <= 8,
+        crate::specs::window_specs::is_valid_lookup_table_projective(table, P, 8),
+        (x > 0 ==> result == table[(x - 1) as int]),
+        (x == 0 ==> result == identity_projective_niels()),
+        (x < 0 ==> result == negate_projective_niels(table[((-x) - 1) as int])),
+    ensures
+        projective_niels_point_as_affine_edwards(result) == edwards_scalar_mul_signed(
+            edwards_point_as_affine(P),
+            x as int,
+        ),
+{
+    let P_affine = edwards_point_as_affine(P);
+    reveal(edwards_scalar_mul_signed);
+
+    if x > 0 {
+        let j = (x - 1) as int;
+        assert(0 <= j < 8);
+        assert(projective_niels_point_as_affine_edwards(table[j]) == edwards_scalar_mul(
+            P_affine,
+            (j + 1) as nat,
+        ));
+        assert((j + 1) as nat == x as nat);
+    } else if x == 0 {
+        lemma_identity_projective_niels_is_identity();
+        reveal_with_fuel(edwards_scalar_mul, 1);
+        assert(edwards_scalar_mul(P_affine, 0) == math_edwards_identity());
+    } else {
+        let j = ((-x) - 1) as int;
+        assert(0 <= j < 8);
+        assert(projective_niels_point_as_affine_edwards(table[j]) == edwards_scalar_mul(
+            P_affine,
+            (j + 1) as nat,
+        ));
+        assert((j + 1) as nat == (-x) as nat);
+        lemma_negate_projective_niels_is_edwards_neg(table[j]);
+    }
 }
 
 } // verus!

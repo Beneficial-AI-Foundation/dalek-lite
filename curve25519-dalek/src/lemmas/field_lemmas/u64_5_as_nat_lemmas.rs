@@ -1,4 +1,6 @@
 #![allow(unused)]
+#[cfg(verus_keep_ghost)]
+use vstd::arithmetic::div_mod::lemma_small_mod;
 use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power::*;
 use vstd::arithmetic::power2::*;
@@ -463,6 +465,28 @@ pub proof fn lemma_u64_5_as_nat_product(a: [u64; 5], b: [u64; 5])
     assert(((k as nat) * p() + (sum as nat)) % p() == (sum as nat) % p()) by {
         lemma_mod_sum_factor(k as int, sum as int, p() as int);
     }
+}
+
+/// A FieldElement51 with limbs [1, 0, 0, 0, 0] has canonical value 1.
+pub proof fn lemma_fe51_unit_is_one(fe: &FieldElement51)
+    requires
+        fe.limbs[0] == 1,
+        fe.limbs[1] == 0,
+        fe.limbs[2] == 0,
+        fe.limbs[3] == 0,
+        fe.limbs[4] == 0,
+    ensures
+        fe51_as_canonical_nat(fe) == 1,
+{
+    assert(fe51_as_nat(fe) == 1nat) by {
+        reveal(pow2);
+        lemma_mul_by_zero_is_zero(pow2(51) as int);
+        lemma_mul_by_zero_is_zero(pow2(102) as int);
+        lemma_mul_by_zero_is_zero(pow2(153) as int);
+        lemma_mul_by_zero_is_zero(pow2(204) as int);
+    }
+    p_gt_2();
+    lemma_small_mod(1nat, p());
 }
 
 fn main() {

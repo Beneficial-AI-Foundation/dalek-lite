@@ -1,19 +1,39 @@
 //! Lemmas for Straus (interleaved window) multiscalar multiplication.
 //!
-//! This module contains proofs connecting the Straus algorithm's column-wise Horner
-//! evaluation to the `sum_of_scalar_muls` specification.
+//! Proves correctness of both constant-time (CT) and variable-time (VT) Straus
+//! evaluation: Q = s\_1 P\_1 + ... + s\_n P\_n via column-wise Horner recurrences.
 //!
-//! ## Key lemmas:
-//! - `lemma_select_is_signed_scalar_mul_projective`: LookupTable<ProjectiveNielsPoint> select correctness
-//! - `lemma_naf_select_is_signed_scalar_mul_projective`: NafLookupTable5<ProjectiveNielsPoint> select+negate correctness
-//! - `lemma_column_sum_step`: Unfolds `straus_column_sum(j, k+1)` one step
-//! - `lemma_straus_ct_step` / `lemma_straus_vt_step`: Unfold opaque Horner specs
-//! - `lemma_straus_ct_correct` / `lemma_straus_vt_correct`: Main correctness theorems
+//! CT uses radix-16 signed digits d\_{k,j} with 64 positions (j = 0..63):
+//!   H(64) = O,   H(j) = \[16\] H(j+1) + col(j, n)
+//!
+//! VT uses NAF(5) digits n\_{k,i} with 256 positions (i = 0..255):
+//!   H(256) = O,  H(i) = \[2\] H(i+1) + col(i, n)
+//!
+//! where col(j, k) = sum\_{m=0}^{k-1} \[d\_{m,j}\] P\_m (column sum).
+//!
+//! ## Bundled validity predicates:
+//! - `straus_vt_input_valid`: groups ~8 quantified VT loop invariants
+//! - `straus_ct_input_valid`: groups ~8 quantified CT loop invariants
+//!
+//! ## Select lemmas:
+//! - `lemma_select_is_signed_scalar_mul_projective`: LookupTable select -> \[x\] P
+//! - `lemma_naf_select_is_signed_scalar_mul_projective`: NafLookupTable5 select -> \[d\] P
+//!
+//! ## Column sum / Horner lemmas:
+//! - `lemma_column_sum_step`: col(j, k+1) = col(j, k) + \[d\_{k,j}\] P\_k
+//! - `lemma_straus_ct_step`: H(j) = \[16\] H(j+1) + col(j, n)
+//! - `lemma_straus_vt_step`: H(i) = \[2\] H(i+1) + col(i, n)
+//!
+//! ## Correctness theorems:
+//! - `lemma_straus_ct_correct`: H\_ct(0) = sum\_of\_scalar\_muls(scalars, points)
+//! - `lemma_straus_vt_correct`: H\_vt(0) = sum\_of\_scalar\_muls(scalars, points)
 #![allow(non_snake_case)]
 
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::edwards::EdwardsPoint;
 use crate::scalar::Scalar;
+use crate::window::LookupTable;
+use crate::window::NafLookupTable5;
 
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
@@ -38,16 +58,12 @@ verus! {
 // =============================================================================
 // Select lemma for LookupTable<ProjectiveNielsPoint>
 // =============================================================================
-/// Lemma: The result of select(x) on a valid ProjectiveNiels lookup table
-/// equals [x]*basepoint in affine coords (signed scalar multiplication).
+/// LookupTable select correctness: select(x) decodes to [x]*P in affine.
 ///
-/// This mirrors `lemma_select_is_signed_scalar_mul` (for AffineNielsPoint)
-/// from mul_base_lemmas.rs, adapted for ProjectiveNielsPoint.
-///
-/// For a digit x in [-8, 8]:
-/// - x > 0: `table[x-1]` decodes to `[x]*P`
-/// - x == 0: identity decodes to `[0]*P = O`
-/// - x < 0: `negate(table[-x-1])` decodes to `[-x]*P` negated = `[x]*P`
+/// For digit x in [-8, 8]:
+///   x > 0:  table[x-1]            -> [x]*P
+///   x = 0:  identity              -> O
+///   x < 0:  negate(table[-x-1])   -> [x]*P
 pub proof fn lemma_select_is_signed_scalar_mul_projective(
     table: [ProjectiveNielsPoint; 8],
     x: i8,
@@ -103,13 +119,12 @@ pub proof fn lemma_select_is_signed_scalar_mul_projective(
 // =============================================================================
 // Select lemma for NafLookupTable5<ProjectiveNielsPoint>
 // =============================================================================
-/// Lemma: For NafLookupTable5, selecting/negating based on a NAF digit gives
-/// the correct signed scalar multiple of the basepoint.
+/// NafLookupTable5 select correctness: select/negate by NAF digit -> [d]*P.
 ///
-/// NAF digits can be:
-/// - digit > 0 (odd, 1..15): select(digit) gives table[digit/2] = [digit]*P
-/// - digit < 0 (odd, -15..-1): negate(select(-digit)) gives -[|-digit|]*P = [digit]*P
-/// - digit == 0: no operation (identity contribution)
+/// NAF digits are odd and in (-16, 16):
+///   d > 0:  table[d/2]           -> [d]*P
+///   d < 0:  negate(table[-d/2])  -> [d]*P
+///   d = 0:  not handled here (identity contribution in caller)
 pub proof fn lemma_naf_select_is_signed_scalar_mul_projective(
     table: [ProjectiveNielsPoint; 8],
     digit: i8,
@@ -170,7 +185,7 @@ pub proof fn lemma_naf_select_is_signed_scalar_mul_projective(
 // =============================================================================
 // Column sum step lemma
 // =============================================================================
-/// Unfolds `straus_column_sum(points, digits, j, k+1)` by one step.
+/// Unfold column sum: col(j, k+1) = col(j, k) + [d_{k,j}] * P_k.
 pub proof fn lemma_column_sum_step(
     points_affine: Seq<(nat, nat)>,
     digits: Seq<Seq<i8>>,
@@ -196,7 +211,7 @@ pub proof fn lemma_column_sum_step(
 // =============================================================================
 // Straus CT step lemma (unfold opaque spec)
 // =============================================================================
-/// Unfolds `straus_ct_partial(points, digits, j)` by one step when `j < 64`.
+/// Unfold CT Horner: H(j) = [16] * H(j+1) + col(j, n)  for j < 64.
 pub proof fn lemma_straus_ct_step(points_affine: Seq<(nat, nat)>, digits: Seq<Seq<i8>>, j: int)
     requires
         0 <= j < 64,
@@ -211,7 +226,7 @@ pub proof fn lemma_straus_ct_step(points_affine: Seq<(nat, nat)>, digits: Seq<Se
     reveal(straus_ct_partial);
 }
 
-/// Base case: `straus_ct_partial(points, digits, 64) == identity`.
+/// CT base case: H(64) = O.
 pub proof fn lemma_straus_ct_base(points_affine: Seq<(nat, nat)>, digits: Seq<Seq<i8>>)
     ensures
         straus_ct_partial(points_affine, digits, 64) == math_edwards_identity(),
@@ -222,7 +237,7 @@ pub proof fn lemma_straus_ct_base(points_affine: Seq<(nat, nat)>, digits: Seq<Se
 // =============================================================================
 // Straus VT step lemma (unfold opaque spec)
 // =============================================================================
-/// Unfolds `straus_vt_partial(points, nafs, i)` by one step when `i < 256`.
+/// Unfold VT Horner: H(i) = [2] * H(i+1) + col(i, n)  for i < 256.
 pub proof fn lemma_straus_vt_step(points_affine: Seq<(nat, nat)>, nafs: Seq<Seq<i8>>, i: int)
     requires
         0 <= i < 256,
@@ -237,7 +252,7 @@ pub proof fn lemma_straus_vt_step(points_affine: Seq<(nat, nat)>, nafs: Seq<Seq<
     reveal(straus_vt_partial);
 }
 
-/// Base case: `straus_vt_partial(points, nafs, 256) == identity`.
+/// VT base case: H(256) = O.
 pub proof fn lemma_straus_vt_base(points_affine: Seq<(nat, nat)>, nafs: Seq<Seq<i8>>)
     ensures
         straus_vt_partial(points_affine, nafs, 256) == math_edwards_identity(),
@@ -263,9 +278,120 @@ pub open spec fn radix_16_all_bounded_seq(digits: Seq<i8>) -> bool {
 }
 
 // =============================================================================
+// Bundled validity predicates for Straus loop invariants
+// =============================================================================
+/// Bundled validity predicate for the variable-time (VT) Straus loops.
+///
+/// Groups the quantified invariants shared by both the outer loop
+/// (i = 255..0) and the inner loop (j = 0..n):
+///   - Length consistency for all ghost/runtime sequences
+///   - NAF validity (width 5)
+///   - NafLookupTable5 validity and 54-bit limb bounds
+///   - Ghost-runtime consistency (pts\_affine, unwrapped\_points, nafs\_seqs)
+///   - Canonical affine coordinates (< p())
+///
+/// Note: scalar reconstruction (`reconstruct(nafs_seqs[k]) == scalar_as_nat(...)`)
+/// is kept as a separate outer-loop invariant to avoid rlimit pressure in the
+/// inner loop where it is not needed.
+pub open spec fn straus_vt_input_valid(
+    nafs_view: Seq<[i8; 256]>,
+    lookup_tables_view: Seq<NafLookupTable5<ProjectiveNielsPoint>>,
+    nafs_seqs: Seq<Seq<i8>>,
+    pts_affine: Seq<(nat, nat)>,
+    spec_scalars: Seq<Scalar>,
+    spec_points: Seq<Option<EdwardsPoint>>,
+    unwrapped_points: Seq<EdwardsPoint>,
+    n: nat,
+) -> bool {
+    let n_int = n as int;
+    // Length consistency
+    &&& nafs_view.len() as int == n_int
+    &&& lookup_tables_view.len() as int == n_int
+    &&& nafs_seqs.len() as int == n_int
+    &&& pts_affine.len() as int == n_int
+    &&& n_int == spec_scalars.len()
+    &&& n_int
+        == spec_points.len()
+    // NAF validity (reconstruction kept separate — see note above)
+    &&& forall|k: int|
+        0 <= k < n_int ==> is_valid_naf(
+            #[trigger] nafs_seqs[k],
+            5,
+        )
+    // Table validity + 54-bit limb bounds
+    &&& forall|k: int|
+        0 <= k < n_int ==> {
+            &&& is_valid_naf_lookup_table5_projective(
+                (#[trigger] lookup_tables_view[k]).0,
+                spec_points[k].unwrap(),
+            )
+            &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables_view[k].0)
+        }
+        // Ghost-runtime consistency
+    &&& forall|k: int|
+        0 <= k < n_int ==> #[trigger] pts_affine[k] == edwards_point_as_affine(unwrapped_points[k])
+    &&& forall|k: int| 0 <= k < n_int ==> #[trigger] unwrapped_points[k] == spec_points[k].unwrap()
+    &&& forall|k: int|
+        0 <= k < n_int ==> #[trigger] nafs_seqs[k]
+            == nafs_view[k]@
+    // Canonical affine coordinates (< p())
+    &&& forall|k: int|
+        0 <= k < n_int ==> (#[trigger] pts_affine[k]).0 < p() && pts_affine[k].1 < p()
+}
+
+/// Bundled validity predicate for the constant-time (CT) Straus loops.
+///
+/// Groups the quantified invariants shared by both the outer loop
+/// (j = 63..0) and the inner loop (k = 0..n):
+///   - Length consistency for all ghost/runtime sequences
+///   - LookupTable validity (8 multiples) and 54-bit limb bounds
+///   - Radix-16 digit bounds
+///   - Ghost-runtime consistency (pts\_affine, digits\_seqs)
+///
+/// Note: `is_valid_radix_16` and `reconstruct_radix_16` are kept as separate
+/// outer-loop invariants to avoid rlimit pressure in the inner loop.
+pub open spec fn straus_ct_input_valid(
+    scalar_digits_view: Seq<[i8; 64]>,
+    lookup_tables_view: Seq<LookupTable<ProjectiveNielsPoint>>,
+    digits_seqs: Seq<Seq<i8>>,
+    pts_affine: Seq<(nat, nat)>,
+    spec_scalars: Seq<Scalar>,
+    spec_points: Seq<EdwardsPoint>,
+    n: nat,
+) -> bool {
+    let n_int = n as int;
+    // Length consistency
+    &&& scalar_digits_view.len() as int == n_int
+    &&& lookup_tables_view.len() as int == n_int
+    &&& digits_seqs.len() as int == n_int
+    &&& pts_affine.len() as int == n_int
+    &&& n_int == spec_scalars.len()
+    &&& n_int == spec_points.len()
+    // Table validity + 54-bit limb bounds
+    &&& forall|k: int|
+        0 <= k < n_int ==> {
+            &&& is_valid_lookup_table_projective(
+                (#[trigger] lookup_tables_view[k]).0,
+                spec_points[k],
+                8,
+            )
+            &&& lookup_table_projective_limbs_bounded(lookup_tables_view[k].0)
+        }
+        // Radix-16 digit bounds (validity + reconstruction kept separate — see note above)
+    &&& forall|k: int|
+        0 <= k < n_int ==> radix_16_all_bounded(
+            &#[trigger] scalar_digits_view[k],
+        )
+    // Ghost-runtime consistency
+    &&& forall|k: int|
+        0 <= k < n_int ==> #[trigger] pts_affine[k] == edwards_point_as_affine(spec_points[k])
+    &&& forall|k: int| 0 <= k < n_int ==> #[trigger] digits_seqs[k] == scalar_digits_view[k]@
+}
+
+// =============================================================================
 // Column sum with zero digits is identity
 // =============================================================================
-/// When n <= 0, the column sum is the identity.
+/// col(j, 0) = O  (column sum with zero points is identity).
 pub proof fn lemma_column_sum_zero(points_affine: Seq<(nat, nat)>, digits: Seq<Seq<i8>>, j: int)
     ensures
         straus_column_sum(points_affine, digits, j, 0) == math_edwards_identity(),
@@ -276,10 +402,9 @@ pub proof fn lemma_column_sum_zero(points_affine: Seq<(nat, nat)>, digits: Seq<S
 // =============================================================================
 // Column sum add-one-term lemma (for inner loop invariant)
 // =============================================================================
-/// Adding one term to the column sum: connects the inner loop body to the spec.
+/// Inner loop connector: add(col(j,k), [d_{k,j}] * P_k) = col(j, k+1).
 ///
-/// If `prev == straus_column_sum(pts, digits, j, k)` and we add
-/// `[digits[k][j]] * pts[k]`, the result equals `straus_column_sum(pts, digits, j, k+1)`.
+/// Connects the inner loop body to the column sum specification.
 pub proof fn lemma_column_sum_add_term(
     points_affine: Seq<(nat, nat)>,
     digits: Seq<Seq<i8>>,
@@ -364,7 +489,7 @@ pub proof fn lemma_edwards_point_as_affine_canonical(point: EdwardsPoint)
 // =============================================================================
 // Column sum produces canonical coordinates
 // =============================================================================
-/// The column sum always returns coordinates < p(), given canonical input points.
+/// col(j, n) is canonical: col(j, n).0 < p() and col(j, n).1 < p().
 pub proof fn lemma_column_sum_canonical(
     points_affine: Seq<(nat, nat)>,
     digits: Seq<Seq<i8>>,
@@ -401,8 +526,8 @@ pub proof fn lemma_column_sum_canonical(
 // =============================================================================
 // Column sum step for zero digit (Equal case in VT inner loop)
 // =============================================================================
-/// When the digit is 0, the column sum doesn't change.
-/// This handles the Equal case in the variable-time inner loop.
+/// Zero digit: col(j, k+1) = col(j, k) when d_{k,j} = 0.
+/// Handles the Equal (no-op) case in the VT inner loop.
 pub proof fn lemma_column_sum_step_zero_digit(
     points_affine: Seq<(nat, nat)>,
     digits: Seq<Seq<i8>>,
@@ -439,9 +564,8 @@ pub proof fn lemma_column_sum_step_zero_digit(
 // =============================================================================
 // Column sum prefix independence
 // =============================================================================
-/// column_sum only accesses pts[k] and digs[k] for k < n, so
-/// column_sum(pts1, digs1, j, n) == column_sum(pts2, digs2, j, n)
-/// when pts1 and pts2 agree on [0..n) and digs1 and digs2 agree on [0..n).
+/// Prefix independence: col(j, n) depends only on pts[0..n) and digs[0..n).
+/// If two sequences agree on [0..n), their column sums are equal.
 pub proof fn lemma_column_sum_prefix_eq(
     pts1: Seq<(nat, nat)>,
     digs1: Seq<Seq<i8>>,
@@ -472,8 +596,7 @@ pub proof fn lemma_column_sum_prefix_eq(
 // =============================================================================
 // Column sum for single point equals signed scalar mul (when canonical)
 // =============================================================================
-/// For a single point with canonical coordinates, column_sum equals
-/// the signed scalar multiplication of the digit with the point.
+/// Single-point column sum: col(j, 1) = [d_j] * P when P is canonical.
 pub proof fn lemma_column_sum_single(P: (nat, nat), d: Seq<i8>, j: int)
     requires
         0 <= j < d.len(),
@@ -508,8 +631,8 @@ pub proof fn lemma_column_sum_single(P: (nat, nat), d: Seq<i8>, j: int)
 // =============================================================================
 // Single-point Horner CT: straus_ct_partial(seq![P], seq![d], j) == [reconstruct_from(d,j)]*P
 // =============================================================================
-/// For a single canonical point P and radix-16 digits d (len 64),
-/// the single-point Horner evaluation equals [reconstruct_radix_16_from(d, j)] * P.
+/// Single-point CT Horner: H_ct(seq![P], seq![d], j) = [R(d, j)] * P
+/// where R(d, j) = reconstruct_radix_16_from(d, j).
 pub proof fn lemma_straus_ct_single(P: (nat, nat), d: Seq<i8>, j: int)
     requires
         d.len() == 64,
@@ -558,14 +681,10 @@ pub proof fn lemma_straus_ct_single(P: (nat, nat), d: Seq<i8>, j: int)
 // =============================================================================
 // Straus CT partial peel-last: splitting off the last point
 // =============================================================================
-/// The Horner evaluation over n points equals the sum of:
-/// - the Horner evaluation over the first (n-1) points, plus
-/// - the Horner evaluation for the last point alone.
+/// CT peel-last: H(pts, digs, j) = H(pts[..n-1], digs[..n-1], j) + H(seq![P_n], seq![d_n], j).
 ///
-/// Proof by induction on (64 - j), using:
-/// - scalar_mul distributivity: [16]*(A+B) = [16]*A + [16]*B
-/// - group associativity
-/// - column_sum prefix independence
+/// Splits the n-point Horner into (n-1)-point prefix + single last point.
+/// Proof by induction on (64 - j), using [16]-distributivity and associativity.
 pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<Seq<i8>>, j: int)
     requires
         pts.len() >= 1,
@@ -691,12 +810,10 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
 // =============================================================================
 // Main CT correctness theorem
 // =============================================================================
-/// Proves: straus_ct_partial(points_affine, digits, 0) == sum_of_scalar_muls(scalars, points_ep)
+/// Main CT theorem: H_ct(0) = sum_of_scalar_muls(scalars, points).
 ///
-/// Proof by induction on n (number of points):
-/// - n=0: both sides are identity
-/// - n→n+1: peel off last point using lemma_straus_ct_partial_peel_last,
-///   apply IH for prefix, use lemma_straus_ct_single for the last point
+/// Proof by induction on n: peel off last point, apply IH for prefix,
+/// use single-point Horner for the last, combine via peel-last lemma.
 pub proof fn lemma_straus_ct_correct(
     scalars: Seq<Scalar>,
     points_ep: Seq<EdwardsPoint>,
@@ -905,7 +1022,7 @@ pub proof fn lemma_edwards_scalar_mul_identity(n: nat)
 // =============================================================================
 // VT proof helpers
 // =============================================================================
-/// edwards_double(P) == edwards_scalar_mul(P, 2) for any P.
+/// double(P) = [2]*P.
 pub proof fn lemma_double_is_scalar_mul_2(P: (nat, nat))
     ensures
         edwards_double(P.0, P.1) == edwards_scalar_mul(P, 2),
@@ -919,8 +1036,7 @@ pub proof fn lemma_double_is_scalar_mul_2(P: (nat, nat))
     reveal_with_fuel(edwards_scalar_mul, 3);
 }
 
-/// Doubling distributes over addition (from scalar_mul distributivity):
-/// edwards_double(A+B) = edwards_add(edwards_double(A), edwards_double(B))
+/// Doubling distributes: double(A + B) = double(A) + double(B).
 pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
     ensures
         ({
@@ -939,7 +1055,7 @@ pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
     axiom_edwards_scalar_mul_distributive(a, b, 2);
 }
 
-/// Doubling the identity is identity.
+/// double(O) = O.
 pub proof fn lemma_double_identity()
     ensures
         edwards_double(0nat, 1nat) == math_edwards_identity(),
@@ -948,7 +1064,8 @@ pub proof fn lemma_double_identity()
     lemma_edwards_scalar_mul_identity(2);
 }
 
-/// Single-point VT Horner: straus_vt_partial(seq![P], seq![naf], i) == [reconstruct_naf_from(naf, i)]*P
+/// Single-point VT Horner: H_vt(seq![P], seq![naf], i) = [R(naf, i)] * P
+/// where R(naf, i) = reconstruct_naf_from(naf, i).
 pub proof fn lemma_straus_vt_single(P: (nat, nat), naf: Seq<i8>, i: int)
     requires
         naf.len() == 256,
@@ -989,7 +1106,7 @@ pub proof fn lemma_straus_vt_single(P: (nat, nat), naf: Seq<i8>, i: int)
     }
 }
 
-/// VT partial peel-last: splitting off the last point
+/// VT peel-last: H(pts, nafs, i) = H(pts[..n-1], nafs[..n-1], i) + H(seq![P_n], seq![naf_n], i).
 pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<Seq<i8>>, i: int)
     requires
         pts.len() >= 1,
@@ -1065,7 +1182,7 @@ pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<S
     }
 }
 
-/// Helper: straus_vt_partial with 0 points is always identity
+/// When n = 0: H_vt(i) = O for all i.
 pub proof fn lemma_straus_vt_zero_points_from(pts: Seq<(nat, nat)>, nafs: Seq<Seq<i8>>, i: int)
     requires
         pts.len() == 0,
@@ -1088,7 +1205,7 @@ pub proof fn lemma_straus_vt_zero_points_from(pts: Seq<(nat, nat)>, nafs: Seq<Se
     }
 }
 
-/// reconstruct_naf_from(naf, 0) == reconstruct(naf) for len-256
+/// R(naf, 0) = reconstruct(naf) for len-256 NAFs.
 pub proof fn lemma_reconstruct_naf_from_equals_reconstruct(naf: Seq<i8>)
     requires
         naf.len() == 256,
@@ -1124,7 +1241,7 @@ proof fn lemma_reconstruct_naf_from_eq_helper(naf: Seq<i8>, k: int)
     }
 }
 
-/// Main VT correctness theorem
+/// Main VT theorem: H_vt(0) = sum_of_scalar_muls(scalars, points).
 pub proof fn lemma_straus_vt_correct(
     scalars: Seq<Scalar>,
     points_ep: Seq<EdwardsPoint>,

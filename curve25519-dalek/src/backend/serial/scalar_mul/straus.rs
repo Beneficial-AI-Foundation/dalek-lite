@@ -267,9 +267,9 @@ verus! {
  * VERIFICATION NOTE
  * =================
  * Verus limitations addressed in these _verus versions:
- * - IntoIterator with I::Item projections → use Iterator bounds instead
- * - Iterator adapters (map, zip) with closures → use explicit while loops
- * - Op-assignment (+=, -=) on EdwardsPoint → use explicit a = a + b
+ * - IntoIterator with I::Item projections -> use Iterator bounds instead
+ * - Iterator adapters (map, zip) with closures -> use explicit while loops
+ * - Op-assignment (+=, -=) on EdwardsPoint -> use explicit a = a + b
  *
  * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
  * run both original and _verus implementations, and assert equality of results.
@@ -277,6 +277,30 @@ verus! {
  *     forall scalars s, points p:
  *         optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
  *         multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
+ *
+ * ALGORITHM OVERVIEW
+ * ==================
+ * Both VT and CT compute Q = sum(s_k * P_k) via column-wise Horner evaluation.
+ *
+ * Variable-time (VT) -- NAF width 5, 256 bit positions:
+ *   Each scalar s_k is decomposed into NAF digits n_{k,i} (i = 0..255).
+ *   Define col(i, j) = sum_{k=0}^{j-1} [n_{k,i}] * P_k   (column sum for bit i)
+ *   The Horner recurrence is:
+ *     H(256) = O
+ *     H(i)   = [2] * H(i+1) + col(i, n)       for i = 255..0
+ *   Then Q = H(0) = straus_vt_partial(pts_affine, nafs_seqs, 0).
+ *
+ * Constant-time (CT) -- radix-16 signed digits, 64 digit positions:
+ *   Each scalar s_k is decomposed into radix-16 digits d_{k,j} (j = 0..63).
+ *   Define col(j, k) = sum_{m=0}^{k-1} [d_{m,j}] * P_m   (column sum for digit j)
+ *   The Horner recurrence is:
+ *     H(64) = O
+ *     H(j)  = [16] * H(j+1) + col(j, n)       for j = 63..0
+ *   Then Q = H(0) = straus_ct_partial(pts_affine, digits_seqs, 0).
+ *
+ * Both loops use `straus_vt_input_valid` / `straus_ct_input_valid` from
+ * straus_lemmas.rs to bundle ~8 quantified loop invariants into a single call.
+ * Correctness is proved by `lemma_straus_vt_correct` / `lemma_straus_ct_correct`.
  */
 impl Straus {
     /// Verus-compatible version of optional_multiscalar_mul.
@@ -490,36 +514,22 @@ impl Straus {
                     nafs_seqs,
                     i as int,
                 ),
-                // Preparation loop postconditions preserved
-                nafs@.len() == n,
-                lookup_tables@.len() == n,
-                n == spec_scalars.len(),
-                n == spec_points.len(),
-                pts_affine.len() == n,
-                nafs_seqs.len() == n,
+                // Preparation loop postconditions preserved (bundled)
+                straus_vt_input_valid(
+                    nafs@,
+                    lookup_tables@,
+                    nafs_seqs,
+                    pts_affine,
+                    spec_scalars,
+                    spec_points,
+                    unwrapped_points,
+                    n,
+                ),
+                // Scalar reconstruction (kept separate from predicate to avoid inner-loop rlimit)
                 forall|k: int|
-                    0 <= k < n ==> {
-                        &&& is_valid_naf(#[trigger] nafs_seqs[k], 5)
-                        &&& reconstruct(nafs_seqs[k]) == scalar_as_nat(&spec_scalars[k]) as int
-                    },
-                forall|k: int|
-                    0 <= k < n ==> {
-                        &&& is_valid_naf_lookup_table5_projective(
-                            (#[trigger] lookup_tables@[k]).0,
-                            spec_points[k].unwrap(),
-                        )
-                        &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables@[k].0)
-                    },
-                forall|k: int|
-                    0 <= k < n ==> #[trigger] pts_affine[k] == edwards_point_as_affine(
-                        unwrapped_points[k],
-                    ),
-                forall|k: int|
-                    0 <= k < n ==> #[trigger] unwrapped_points[k] == spec_points[k].unwrap(),
-                forall|k: int| 0 <= k < n ==> #[trigger] nafs_seqs[k] == nafs@[k]@,
-                // pts_affine coordinates are canonical (< p())
-                forall|k: int|
-                    0 <= k < n ==> (#[trigger] pts_affine[k]).0 < p() && pts_affine[k].1 < p(),
+                    0 <= k < n ==> reconstruct(#[trigger] nafs_seqs[k]) == scalar_as_nat(
+                        &spec_scalars[k],
+                    ) as int,
             decreases i,
         {
             i = i - 1;
@@ -922,34 +932,21 @@ impl Straus {
                 is_well_formed_edwards_point(Q),
                 // Functional correctness: Q = straus_ct_partial(pts, digits, j)
                 edwards_point_as_affine(Q) == straus_ct_partial(pts_affine, digits_seqs, j as int),
-                // Preparation loop postconditions preserved
-                lookup_tables@.len() == n,
-                scalar_digits@.len() == n,
-                n == spec_scalars.len(),
-                n == spec_points.len(),
-                pts_affine.len() == n,
-                digits_seqs.len() == n,
-                forall|k: int|
-                    0 <= k < n ==> {
-                        &&& is_valid_lookup_table_projective(
-                            (#[trigger] lookup_tables@[k]).0,
-                            spec_points[k],
-                            8,
-                        )
-                        &&& lookup_table_projective_limbs_bounded(lookup_tables@[k].0)
-                    },
-                // Scalar digits: split into separate quantifiers for solver tractability
+                // Preparation loop postconditions preserved (bundled)
+                straus_ct_input_valid(
+                    scalar_digits@,
+                    lookup_tables@,
+                    digits_seqs,
+                    pts_affine,
+                    spec_scalars,
+                    spec_points,
+                    n,
+                ),
+                // Scalar digit validity + reconstruction (kept separate from predicate to avoid inner-loop rlimit)
                 forall|k: int| 0 <= k < n ==> is_valid_radix_16(&#[trigger] scalar_digits@[k]),
-                forall|k: int| 0 <= k < n ==> radix_16_all_bounded(&#[trigger] scalar_digits@[k]),
                 forall|k: int|
                     0 <= k < n ==> reconstruct_radix_16((#[trigger] scalar_digits@[k])@)
                         == scalar_as_nat(&spec_scalars[k]) as int,
-                // Ghost sequence consistency
-                forall|k: int|
-                    0 <= k < n ==> #[trigger] pts_affine[k] == edwards_point_as_affine(
-                        spec_points[k],
-                    ),
-                forall|k: int| 0 <= k < n ==> #[trigger] digits_seqs[k] == scalar_digits@[k]@,
             decreases j,
         {
             j = j - 1;
@@ -987,29 +984,16 @@ impl Straus {
                         let col_k = straus_column_sum(pts_affine, digits_seqs, j as int, k as int);
                         edwards_add(scaled_affine.0, scaled_affine.1, col_k.0, col_k.1)
                     },
-                    // Vec and ghost seq lengths for bounds checks
-                    scalar_digits@.len() == n,
-                    lookup_tables@.len() == n,
-                    pts_affine.len() == n,
-                    digits_seqs.len() == n,
-                    // Preserved invariants
-                    n == spec_points.len(),
-                    forall|m: int|
-                        0 <= m < n ==> {
-                            &&& is_valid_lookup_table_projective(
-                                (#[trigger] lookup_tables@[m]).0,
-                                spec_points[m],
-                                8,
-                            )
-                            &&& lookup_table_projective_limbs_bounded(lookup_tables@[m].0)
-                        },
-                    forall|m: int|
-                        0 <= m < n ==> radix_16_all_bounded(&#[trigger] scalar_digits@[m]),
-                    forall|m: int|
-                        0 <= m < n ==> #[trigger] pts_affine[m] == edwards_point_as_affine(
-                            spec_points[m],
-                        ),
-                    forall|m: int| 0 <= m < n ==> #[trigger] digits_seqs[m] == scalar_digits@[m]@,
+                    // Preserved preparation invariants (bundled)
+                    straus_ct_input_valid(
+                        scalar_digits@,
+                        lookup_tables@,
+                        digits_seqs,
+                        pts_affine,
+                        spec_scalars,
+                        spec_points,
+                        n,
+                    ),
                 decreases min_len - k,
             {
                 let s_i = &scalar_digits[k];

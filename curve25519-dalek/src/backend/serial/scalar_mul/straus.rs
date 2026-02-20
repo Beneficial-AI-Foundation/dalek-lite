@@ -282,7 +282,7 @@ impl Straus {
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
-    #[verifier::rlimit(40)]
+    #[verifier::rlimit(15)]
     pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
         EdwardsPoint,
     >) where S: Borrow<Scalar>, I: Iterator<Item = S>, J: Iterator<Item = Option<EdwardsPoint>>

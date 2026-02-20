@@ -1,0 +1,10 @@
+function,module,impl_block
+axiom_xadd_projective_correct(),curve25519-dalek::lemmas::montgomery_curve_lemmas,
+spec_elligator_ristretto_flavor(),curve25519-dalek::specs::ristretto_specs,
+EdwardsPoint::nonspec_map_to_curve(),curve25519-dalek::edwards,
+EdwardsPoint::fmt(),curve25519-dalek::edwards,
+lemma_mod_sub_eq(),curve25519-dalek::lemmas::common_lemmas::number_theory_lemmas,
+lemma_load8_at_plus_version_rec_is_bounded(),curve25519-dalek::lemmas::field_lemmas::load8_lemmas,
+lemma_sub_neg_eq_add(),curve25519-dalek::lemmas::field_lemmas::field_algebra_lemmas,
+lemma_montgomery_add_zero_point_doubles_to_infinity(),curve25519-dalek::lemmas::montgomery_curve_lemmas,
+lemma_sum_equals_byte_nat_52(),curve25519-dalek::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas,

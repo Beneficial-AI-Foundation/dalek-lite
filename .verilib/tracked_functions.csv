@@ -1,0 +1,10 @@
+function,module,link,has_spec,has_proof
+axiom_xadd_projective_correct(),curve25519-dalek::lemmas::montgomery_curve_lemmas,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L244,yes,yes
+spec_elligator_ristretto_flavor(),curve25519-dalek::specs::ristretto_specs,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/specs/ristretto_specs.rs#L238,,
+EdwardsPoint::nonspec_map_to_curve(),curve25519-dalek::edwards,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L1763,ext,
+EdwardsPoint::fmt(),curve25519-dalek::edwards,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/edwards.rs#L250,ext,
+lemma_mod_sub_eq(),curve25519-dalek::lemmas::common_lemmas::number_theory_lemmas,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/common_lemmas/number_theory_lemmas.rs#L1336,yes,yes
+lemma_load8_at_plus_version_rec_is_bounded(),curve25519-dalek::lemmas::field_lemmas::load8_lemmas,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/field_lemmas/load8_lemmas.rs#L59,yes,yes
+lemma_sub_neg_eq_add(),curve25519-dalek::lemmas::field_lemmas::field_algebra_lemmas,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/field_lemmas/field_algebra_lemmas.rs#L2485,yes,yes
+lemma_montgomery_add_zero_point_doubles_to_infinity(),curve25519-dalek::lemmas::montgomery_curve_lemmas,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/montgomery_curve_lemmas.rs#L576,yes,yes
+lemma_sum_equals_byte_nat_52(),curve25519-dalek::lemmas::scalar_byte_lemmas::scalar_to_bytes_lemmas,https://github.com/Beneficial-AI-Foundation/dalek-lite/blob/main/curve25519-dalek/src/lemmas/scalar_byte_lemmas/scalar_to_bytes_lemmas.rs#L275,yes,yes

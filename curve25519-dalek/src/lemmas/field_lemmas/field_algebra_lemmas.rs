@@ -2896,4 +2896,82 @@ pub proof fn lemma_swap_sub_negates_mul(a: nat, b: nat, c: nat)
     lemma_field_mul_comm(c, diff);
 }
 
+/// (a+b)² − (b²+a²) = 2·a·b in GF(p).
+///
+/// This is the standard binomial identity used in the projective doubling formula
+/// to extract 2XY from (X+Y)² − (X²+Y²).
+pub proof fn lemma_square_sum_expansion(a: nat, b: nat)
+    ensures
+        field_sub(field_square(field_add(a, b)), field_add(field_square(b), field_square(a)))
+            == field_mul(2, field_mul(a, b)),
+{
+    let p = p();
+    let p_i = p as int;
+    p_gt_2();
+
+    let ab = field_mul(a, b);
+    let a2 = field_square(a);
+    let b2 = field_square(b);
+
+    assert(a2 < p) by {
+        lemma_mod_bound((a * a) as int, p_i);
+    }
+    assert(b2 < p) by {
+        lemma_mod_bound((b * b) as int, p_i);
+    }
+    assert(ab < p) by {
+        lemma_mod_bound((a * b) as int, p_i);
+    }
+
+    let s = field_square(field_add(a, b));
+    assert(s < p) by {
+        lemma_mod_bound((field_add(a, b) * field_add(a, b)) as int, p_i);
+    }
+    let ba2 = field_add(b2, a2);
+    assert(ba2 < p) by {
+        lemma_mod_bound((b2 + a2) as int, p_i);
+    }
+
+    // All three values (s, ba2, field_mul(2, ab)) reduce to expressions mod p.
+    // We show they satisfy: s ≡ (a+b)² (mod p), ba2 ≡ a²+b² (mod p),
+    // field_mul(2, ab) ≡ 2ab (mod p), and (a+b)² - (a²+b²) = 2ab as integers.
+
+    // s = field_square(field_add(a, b)) = ((a+b)%p * (a+b)%p) % p = ((a+b)*(a+b)) % p
+    assert(s == ((a + b) * (a + b)) % p) by {
+        let apb = (a + b) % p;
+        lemma_mul_mod_noop_general((a + b) as int, (a + b) as int, p_i);
+    }
+
+    // ba2 = field_add(b², a²) = (b²%p + a²%p) % p = (a²+b²) % p
+    assert(ba2 == (a * a + b * b) % p) by {
+        lemma_add_mod_noop((b * b) as int, (a * a) as int, p_i);
+    }
+
+    // field_sub(s, ba2) = (s + p - ba2) % p
+    assert(field_sub(s, ba2) == ((s + p - ba2) as nat) % p) by {
+        lemma_small_mod(s, p);
+        lemma_small_mod(ba2, p);
+    }
+
+    // (s + p - ba2) % p ≡ s - ba2 ≡ (a+b)² - (a²+b²) (mod p)
+    assert(((s + p - ba2) as int) % p_i == ((s as int - ba2 as int) % p_i)) by {
+        lemma_mod_add_multiples_vanish(s as int - ba2 as int, p_i);
+    }
+    assert(((s as int - ba2 as int) % p_i) == (((a + b) * (a + b) - (a * a + b * b)) as int % p_i))
+        by {
+        lemma_sub_mod_noop(((a + b) * (a + b)) as int, (a * a + b * b) as int, p_i);
+    }
+
+    // Integer identity: (a+b)² - (a²+b²) = 2ab
+    assert(((a + b) * (a + b)) as int - ((a * a + b * b)) as int == (2 * (a * b)) as int)
+        by (nonlinear_arith);
+
+    // field_mul(2, ab) = (2 * ab) % p, and ab = (a*b) % p
+    // By mul_mod_noop: (2 * ((a*b)%p)) % p = (2*(a*b)) % p
+    assert((2 * ab) % p == (2 * (a * b)) % p) by {
+        lemma_mul_mod_noop_general(2int, (a * b) as int, p_i);
+        lemma_small_mod(2nat, p);
+    }
+}
+
 } // verus!

@@ -53,7 +53,7 @@ verus! {
 /// A·B = (a·b)·(Z_A·Z_B).
 ///
 /// Used to factor Yi·Xj = (yi·xj)·(Zi·Zj) from projective coordinates.
-proof fn lemma_projective_product_factor(a_proj: nat, z_a: nat, b_proj: nat, z_b: nat)
+pub proof fn lemma_projective_product_factor(a_proj: nat, z_a: nat, b_proj: nat, z_b: nat)
     requires
         z_a % p() != 0,
         z_b % p() != 0,

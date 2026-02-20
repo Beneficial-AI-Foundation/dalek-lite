@@ -282,7 +282,6 @@ impl Straus {
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
-    #[verifier::rlimit(15)]
     pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
         EdwardsPoint,
     >) where S: Borrow<Scalar>, I: Iterator<Item = S>, J: Iterator<Item = Option<EdwardsPoint>>
@@ -597,10 +596,8 @@ impl Straus {
                 match naf[i].cmp(&0) {
                     Ordering::Greater => {
                         proof {
-                            // From is_valid_naf(w=5): nonzero digit is odd and in (-pow2(4), pow2(4))
                             assert(is_valid_naf(nafs_seqs[j as int], 5));
                             let digit = naf@[i as int];
-                            // pow2(4) = 16, so digit bounds become -16 < digit < 16
                             vstd::arithmetic::power2::lemma2_to64();
                             assert(pow2(4) == 16);
                             assert((digit as int) % 2 != 0 && digit < 16);
@@ -609,7 +606,6 @@ impl Straus {
                         let R_j = lookup_table.select(naf[i] as usize);
                         t = &t.as_extended() + &R_j;
                         proof {
-                            // Functional correctness via associativity + column_sum step
                             let base_j = pts_affine[j as int];
                             let digit_val = nafs_seqs[j as int][i as int];
                             let term_j = edwards_scalar_mul_signed(base_j, digit_val as int);
@@ -619,24 +615,22 @@ impl Straus {
                                 i as int,
                                 j as int,
                             );
-
-                            // Connect R_j to term via table validity
                             let ghost digit_i8 = naf@[i as int];
 
-                            // Bridge: connect base_j to table validity
-                            assert(unwrapped_points[j as int] == spec_points[j as int].unwrap());
-                            assert(base_j == edwards_point_as_affine(unwrapped_points[j as int]));
-                            assert(base_j == edwards_point_as_affine(
-                                spec_points[j as int].unwrap(),
-                            ));
-
-                            lemma_naf_select_is_signed_scalar_mul_projective(
-                                lookup_table.0,
-                                digit_i8,
-                                R_j,
-                                base_j,
-                                true,
-                            );
+                            // Scope the select lemma to limit Z3 quantifier pressure
+                            assert(projective_niels_point_as_affine_edwards(R_j)
+                                == edwards_scalar_mul_signed(base_j, digit_i8 as int)) by {
+                                assert(base_j == edwards_point_as_affine(
+                                    spec_points[j as int].unwrap(),
+                                ));
+                                lemma_naf_select_is_signed_scalar_mul_projective(
+                                    lookup_table.0,
+                                    digit_i8,
+                                    R_j,
+                                    base_j,
+                                    true,
+                                );
+                            }
 
                             axiom_edwards_add_associative(
                                 doubled_affine.0,
@@ -678,27 +672,21 @@ impl Straus {
                                 j as int,
                             );
 
-                            // Bridge: connect base_j to table validity
-                            // unwrapped_points[j] == spec_points[j].unwrap() (from Seq::map definition)
-                            assert(unwrapped_points[j as int] == spec_points[j as int].unwrap());
-                            assert(base_j == edwards_point_as_affine(unwrapped_points[j as int]));
-                            assert(base_j == edwards_point_as_affine(
-                                spec_points[j as int].unwrap(),
-                            ));
-
-                            // R_j = table.select(|digit|), so R_j_affine = [|digit|]*base
+                            // Scope the select lemma to limit Z3 quantifier pressure
                             let ghost neg_digit = (-(naf@[i as int])) as i8;
-                            lemma_naf_select_is_signed_scalar_mul_projective(
-                                lookup_table.0,
-                                neg_digit,
-                                R_j,
-                                base_j,
-                                true,
-                            );
-                            // Now: R_j_affine == edwards_scalar_mul_signed(base_j, |digit|)
-                            //                == edwards_scalar_mul(base_j, |digit|)  (|digit| > 0)
-                            // Sub postcondition gives us edwards_sub which unfolds to
-                            // edwards_add with field_neg, matching term_j for negative digit
+                            assert(projective_niels_point_as_affine_edwards(R_j)
+                                == edwards_scalar_mul_signed(base_j, neg_digit as int)) by {
+                                assert(base_j == edwards_point_as_affine(
+                                    spec_points[j as int].unwrap(),
+                                ));
+                                lemma_naf_select_is_signed_scalar_mul_projective(
+                                    lookup_table.0,
+                                    neg_digit,
+                                    R_j,
+                                    base_j,
+                                    true,
+                                );
+                            }
                             reveal(edwards_scalar_mul_signed);
 
                             axiom_edwards_add_associative(
@@ -1038,24 +1026,19 @@ impl Straus {
                 let R_i = lookup_table_i.select(s_i[j]);
 
                 proof {
-                    // Connect select result to signed scalar mul via our lemma
+                    // Scope the select lemma to limit Z3 quantifier pressure
                     let base_k = pts_affine[k as int];
                     let ghost digit_kj = s_i@[j as int];
-
-                    // Bridge: table validity → table entries = multiples of base_k
-                    assert(is_valid_lookup_table_projective(
-                        lookup_table_i.0,
-                        spec_points[k as int],
-                        8,
-                    ));
-                    assert(base_k == edwards_point_as_affine(spec_points[k as int]));
-
-                    lemma_select_is_signed_scalar_mul_projective(
-                        lookup_table_i.0,
-                        digit_kj,
-                        R_i,
-                        base_k,
-                    );
+                    assert(projective_niels_point_as_affine_edwards(R_i)
+                        == edwards_scalar_mul_signed(base_k, digit_kj as int)) by {
+                        assert(base_k == edwards_point_as_affine(spec_points[k as int]));
+                        lemma_select_is_signed_scalar_mul_projective(
+                            lookup_table_i.0,
+                            digit_kj,
+                            R_i,
+                            base_k,
+                        );
+                    }
                 }
 
                 Q = (&Q + &R_i).as_extended();

@@ -601,21 +601,12 @@ impl ProjectivePoint {
             spec_edwards_point(result) == spec_projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {
-        let xz = &self.X * &self.Z;
-        let yz = &self.Y * &self.Z;
-        let zz = self.Z.square();
-        let xy = &self.X * &self.Y;
-        proof {
-            crate::edwards::lemma_fe51_bounded_equiv(&xz);
-            crate::edwards::lemma_fe51_bounded_equiv(&yz);
-            crate::edwards::lemma_fe51_bounded_equiv(&zz);
-            crate::edwards::lemma_fe51_bounded_equiv(&xy);
-        }
+        proof { broadcast use crate::edwards::lemma_shift_52_broadcast; }
         let result = EdwardsPoint {
-            X: xz,
-            Y: yz,
-            Z: zz,
-            T: xy,
+            X: &self.X * &self.Z,
+            Y: &self.Y * &self.Z,
+            Z: self.Z.square(),
+            T: &self.X * &self.Y,
         };
         proof {
             lemma_unfold_edwards(result);
@@ -847,21 +838,12 @@ impl CompletedPoint {
             spec_edwards_point(result) == spec_completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
-        let xt = &self.X * &self.T;
-        let yz = &self.Y * &self.Z;
-        let zt = &self.Z * &self.T;
-        let xy = &self.X * &self.Y;
-        proof {
-            crate::edwards::lemma_fe51_bounded_equiv(&xt);
-            crate::edwards::lemma_fe51_bounded_equiv(&yz);
-            crate::edwards::lemma_fe51_bounded_equiv(&zt);
-            crate::edwards::lemma_fe51_bounded_equiv(&xy);
-        }
+        proof { broadcast use crate::edwards::lemma_shift_52_broadcast; }
         let result = EdwardsPoint {
-            X: xt,
-            Y: yz,
-            Z: zt,
-            T: xy,
+            X: &self.X * &self.T,
+            Y: &self.Y * &self.Z,
+            Z: &self.Z * &self.T,
+            T: &self.X * &self.Y,
         };
         proof {
             lemma_unfold_edwards(result);

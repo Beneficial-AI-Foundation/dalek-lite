@@ -385,6 +385,7 @@ impl MontgomeryPoint {
         // ORIGINAL CODE: EdwardsPoint::mul_base(scalar).to_montgomery()
         let temp = EdwardsPoint::mul_base(scalar);
         proof {
+            lemma_unfold_edwards(temp);
             assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
             assert(fe51_limbs_bounded(&temp.X, 54));
         }
@@ -1252,6 +1253,7 @@ impl MontgomeryPoint {
                 if result.is_some() {
                     let point = result.unwrap();
 
+                    lemma_unfold_edwards(point);
                     lemma_edwards_affine_when_z_is_one(point);
                     let x_exec = fe51_as_canonical_nat(&point.X);
                     assert(edwards_point_as_affine(point) == (x_exec, y_nat));

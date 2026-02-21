@@ -282,11 +282,11 @@ impl CompressedEdwardsY {
             // When successful, the result has these properties:
             result.is_some() ==> (
             // The Y coordinate matches the one from the compressed representation
-            fe51_as_canonical_nat(&result.unwrap().Y) == field_element_from_bytes(
+            edwards_y_nat(result.unwrap()) == field_element_from_bytes(
                 &self.0,
             )
             // Z is 1 in the decompressed representation
-             && fe51_as_canonical_nat(&result.unwrap().Z)
+             && edwards_z_nat(result.unwrap())
                 == 1
             // The point is valid on the Edwards curve
              && is_well_formed_edwards_point(
@@ -295,7 +295,7 @@ impl CompressedEdwardsY {
             // The X coordinate sign bit matches the compressed sign bit when y² ≠ 1.
             // When y² == 1, x = 0 so negation is the identity and sign bit is always 0.
              && (field_square(field_element_from_bytes(&self.0)) != 1
-                ==> fe51_as_canonical_nat_sign_bit(&result.unwrap().X) == (self.0[31] >> 7))),
+                ==> edwards_x_sign_bit(result.unwrap()) == (self.0[31] >> 7))),
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
@@ -312,6 +312,7 @@ impl CompressedEdwardsY {
             let point = decompress::step_2(self, X, Y, Z);
             let result = Some(point);
             proof {
+                lemma_unfold_edwards(point);
                 // Extract values for lemma
                 let x_orig = fe51_as_canonical_nat(&X);
 
@@ -752,11 +753,10 @@ verus! {
 #[derive(Copy, Clone)]
 #[allow(missing_docs)]
 pub struct EdwardsPoint {
-    // VERIFICATION NOTE: changed from pub(crate) to pub
-    pub X: FieldElement,
-    pub Y: FieldElement,
-    pub Z: FieldElement,
-    pub T: FieldElement,
+    pub(crate) X: FieldElement,
+    pub(crate) Y: FieldElement,
+    pub(crate) Z: FieldElement,
+    pub(crate) T: FieldElement,
 }
 
 // ------------------------------------------------------------------------
@@ -912,6 +912,7 @@ impl Identity for EdwardsPoint {
             T: FieldElement::ZERO,
         };
         proof {
+            lemma_unfold_edwards(result);
             // ZERO has limbs [0,0,0,0,0] → fe51_as_canonical_nat = 0
             // ONE has limbs [1,0,0,0,0] → fe51_as_canonical_nat = 1
             assert(fe51_as_canonical_nat(&FieldElement::ZERO) == 0) by {
@@ -994,15 +995,25 @@ impl Zeroize for EdwardsPoint {
     /// Reset this `CompressedEdwardsPoint` to the identity element.
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 5 ==> self.X.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.T.limbs[i] == 0,
-            self.Y == FieldElement::ONE,
-            self.Z == FieldElement::ONE,
+            is_identity_edwards_point(*self),
     {
         self.X.zeroize();
         self.Y = FieldElement::ONE;
         self.Z = FieldElement::ONE;
         self.T.zeroize();
+        proof {
+            lemma_unfold_edwards(*self);
+            assert(fe51_as_canonical_nat(&self.X) == 0) by {
+                lemma_zero_field_element_value();
+            }
+            assert(fe51_as_canonical_nat(&self.Y) == 1) by {
+                lemma_one_field_element_value();
+            }
+            assert(fe51_as_canonical_nat(&self.Z) == 1) by {
+                lemma_one_field_element_value();
+            }
+            assert(is_identity_edwards_point(*self));
+        }
     }
 }
 
@@ -1019,6 +1030,7 @@ impl ValidityCheck for EdwardsPoint {
     {
         let proj = self.as_projective();
         proof {
+            lemma_unfold_edwards(*self);
             // The limb bounds are preserved by as_projective() (proj.X == self.X, etc.)
             // EdwardsPoint invariant is 52-bounded
             assert(fe51_limbs_bounded(&proj.X, 52));
@@ -1134,6 +1146,8 @@ impl ConditionallySelectable for EdwardsPoint {
         let result = EdwardsPoint { X, Y, Z, T };
 
         proof {
+            lemma_unfold_edwards(*a);
+            lemma_unfold_edwards(*b);
             if choice_is_true(choice) {
                 // choice is true: result should be exactly `b`
                 assert(result == *b) by {
@@ -1190,6 +1204,8 @@ impl ConstantTimeEq for EdwardsPoint {
             )),
     {
         proof {
+            lemma_unfold_edwards(*self);
+            lemma_unfold_edwards(*other);
             /* VERUS LIMITATION: Must assume precondition
 
             ConstantTimeEq is an external trait (subtle crate). Approaches tried:
@@ -1294,6 +1310,7 @@ impl EdwardsPoint {
             fe51_limbs_bounded(&result.T2d, 54),
     {
         proof {
+            lemma_unfold_edwards(*self);
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (sub/mul precondition)
             lemma_edwards_point_weaken_to_54(self);
             // EDWARDS_D2 is 54-bounded (actually 51-bounded)
@@ -1397,6 +1414,9 @@ impl EdwardsPoint {
             fe51_limbs_bounded(&result.X, 52) && fe51_limbs_bounded(&result.Y, 52)
                 && fe51_limbs_bounded(&result.Z, 52),
     {
+        proof {
+            lemma_unfold_edwards(*self);
+        }
         let result = ProjectivePoint { X: self.X, Y: self.Y, Z: self.Z };
         result
     }
@@ -1412,6 +1432,7 @@ impl EdwardsPoint {
             is_valid_affine_niels_point(result),
     {
         proof {
+            lemma_unfold_edwards(*self);
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
             lemma_edwards_point_weaken_to_54(self);
             // EDWARDS_D2 is 54-bounded (actually 51-bounded)
@@ -1487,10 +1508,7 @@ impl EdwardsPoint {
     /// model does not retain sign information.
     pub fn to_montgomery(&self) -> (result: MontgomeryPoint)
         requires
-            is_valid_edwards_point(*self),  // Gives us z != 0 for birational map
-            fe51_limbs_bounded(&self.X, 54),
-            // Y and Z need 52-bit bounds so U = Z + Y is 53-bit bounded (< 54 for mul)
-            fe51_limbs_bounded(&self.Y, 52) && fe51_limbs_bounded(&self.Z, 52),
+            is_well_formed_edwards_point(*self),
         ensures
             montgomery_corresponds_to_edwards(result, *self),
     {
@@ -1500,6 +1518,7 @@ impl EdwardsPoint {
         // the Edwards curve.  Since 0.invert() = 0, in this case we
         // compute the 2-torsion point (0,0).
         proof {
+            lemma_unfold_edwards(*self);
             // 52-bit bounded implies 54-bit bounded (for sub precondition)
             assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
             assert(fe51_limbs_bounded(&self.Y, 54));
@@ -1628,6 +1647,7 @@ impl EdwardsPoint {
             compressed_edwards_y_corresponds_to_edwards(result, *self),
     {
         proof {
+            lemma_unfold_edwards(*self);
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
             lemma_edwards_point_weaken_to_54(self);
         }
@@ -1923,6 +1943,7 @@ impl EdwardsPoint {
         */
         let proj = self.as_projective();
         proof {
+            lemma_unfold_edwards(*self);
             // is_valid_edwards_point gives z % p() != 0; since z = fe51_as_canonical_nat < p,
             // z % p = z, so z != 0 — which is what is_valid_projective_point needs
             let z = fe51_as_canonical_nat(&self.Z);
@@ -2009,6 +2030,10 @@ impl<'a, 'b> Add<&'b EdwardsPoint> for &'a EdwardsPoint {
         // From is_well_formed_edwards_point preconditions:
         // - edwards_point_limbs_bounded(*self) and (*other)
         // - sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX) and for other
+        proof {
+            lemma_unfold_edwards(*self);
+            lemma_unfold_edwards(*other);
+        }
         assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
         assert(edwards_point_limbs_bounded(*other));
         assert(sum_of_limbs_bounded(&other.Y, &other.X, u64::MAX));
@@ -2132,6 +2157,10 @@ impl<'a, 'b> Sub<&'b EdwardsPoint> for &'a EdwardsPoint {
         // From is_well_formed_edwards_point preconditions:
         // - edwards_point_limbs_bounded(*self) and (*other)
         // - sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX) and for other
+        proof {
+            lemma_unfold_edwards(*self);
+            lemma_unfold_edwards(*other);
+        }
         assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
         assert(edwards_point_limbs_bounded(*other));
         assert(sum_of_limbs_bounded(&other.Y, &other.X, u64::MAX));
@@ -2382,6 +2411,9 @@ impl<'a> Neg for &'a EdwardsPoint {
         // to avoid Verus panic
         use core::ops::Neg;
 
+        proof {
+            lemma_unfold_edwards(*self);
+        }
         assert(1u64 << 52 < 1u64 << 54) by (bit_vector);
 
         // Store ghost values before negation
@@ -2393,6 +2425,7 @@ impl<'a> Neg for &'a EdwardsPoint {
         let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
 
         proof {
+            lemma_unfold_edwards(r);
             // Ghost values for r
             let new_x = fe51_as_canonical_nat(&r.X);
             let new_y = fe51_as_canonical_nat(&r.Y);
@@ -3173,6 +3206,7 @@ impl BasepointTable for EdwardsBasepointTable {
         }
         let selected = self.0[0].select(1);
         proof {
+            lemma_unfold_edwards(identity);
             assert(is_well_formed_edwards_point(identity));
             assert(fe51_limbs_bounded(&identity.Z, 52));
             assert(sum_of_limbs_bounded(&identity.Z, &identity.Z, u64::MAX)) by {
@@ -3354,6 +3388,7 @@ impl BasepointTable for EdwardsBasepointTable {
                     // Preconditions for `&EdwardsPoint + &AffineNielsPoint`.
                     // - `P` is well-formed from the loop invariant.
                     // - Need `sum_of_limbs_bounded(P.Z, P.Z, u64::MAX)`; follows from 52-boundedness.
+                    lemma_unfold_edwards(P);
                     assert(edwards_point_limbs_bounded(P));
                     assert(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX)) by {
                         lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Z, &P.Z, 52);
@@ -3482,6 +3517,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 let selected = tables[i / 2].select(a[i]);
                 proof {
                     // Preconditions for `&EdwardsPoint + &AffineNielsPoint`.
+                    lemma_unfold_edwards(P);
                     assert(edwards_point_limbs_bounded(P));
                     assert(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX)) by {
                         lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Z, &P.Z, 52);
@@ -3696,6 +3732,7 @@ impl EdwardsPoint {
         let mut s = self.as_projective();
 
         proof {
+            lemma_unfold_edwards(*self);
             // Establish ProjectivePoint::double preconditions for the initial s.
             assert(sum_of_limbs_bounded(&s.X, &s.Y, u64::MAX)) by {
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&s.X, &s.Y, 52);

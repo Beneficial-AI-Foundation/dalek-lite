@@ -818,11 +818,7 @@ impl CompletedPoint {
         ensures
             is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
-            // Explicit bounds: mul() produces 52-bounded output
-            fe51_limbs_bounded(&result.X, 52),
-            fe51_limbs_bounded(&result.Y, 52),
-            fe51_limbs_bounded(&result.Z, 52),
-            fe51_limbs_bounded(&result.T, 52),
+            edwards_point_limbs_bounded(result),
             spec_edwards_point(result) == spec_completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
@@ -833,6 +829,7 @@ impl CompletedPoint {
             T: &self.X * &self.Y,
         };
         proof {
+            lemma_unfold_edwards(result);
             // Limb bounds: mul() produces 52-bounded output (from its postcondition)
             assert(fe51_limbs_bounded(&result.X, 52));  // X = self.X * self.T
             assert(fe51_limbs_bounded(&result.Y, 52));  // Y = self.Y * self.Z
@@ -1102,12 +1099,14 @@ impl<'a, 'b> Add<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             fe51_limbs_bounded(&result.T, 54),
     {
         proof {
+            lemma_unfold_edwards(*self);
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
             lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
+            lemma_unfold_edwards(*self);
             // Y_plus_X = Y + X: 52+52 → 53-bounded
             assert(fe51_limbs_bounded(&Y_plus_X, 53)) by {
                 lemma_add_bounds_propagate(&self.Y, &self.X, 52);
@@ -1304,12 +1303,14 @@ impl<'a, 'b> Sub<&'b ProjectiveNielsPoint> for &'a EdwardsPoint {
             fe51_limbs_bounded(&result.T, 54),
     {
         proof {
+            lemma_unfold_edwards(*self);
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
             lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
+            lemma_unfold_edwards(*self);
             // Y_plus_X: 52+52 → 53-bounded, weaken to 54
             assert(fe51_limbs_bounded(&Y_plus_X, 54)) by {
                 lemma_add_bounds_propagate(&self.Y, &self.X, 52);
@@ -1441,11 +1442,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
 
     open spec fn add_req(self, rhs: &AffineNielsPoint) -> bool {
         // Preconditions needed for field operations
-        is_well_formed_edwards_point(*self) && sum_of_limbs_bounded(
-            &self.Z,
-            &self.Z,
-            u64::MAX,
-        )  // for Z2 = &self.Z + &self.Z
+        is_well_formed_edwards_point(*self) && edwards_z_sum_bounded(*self)
          && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
             && fe51_limbs_bounded(
             &rhs.xy2d,
@@ -1491,12 +1488,14 @@ impl<'a, 'b> Add<&'b AffineNielsPoint> for &'a EdwardsPoint {
             fe51_limbs_bounded(&result.T, 54),
     {
         proof {
+            lemma_unfold_edwards(*self);
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
             lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
+            lemma_unfold_edwards(*self);
             assert(fe51_limbs_bounded(&Y_plus_X, 54)) by {
                 lemma_add_bounds_propagate(&self.Y, &self.X, 52);
                 lemma_fe51_limbs_bounded_weaken(&Y_plus_X, 53, 54);
@@ -1613,11 +1612,7 @@ impl vstd::std_specs::ops::SubSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
 
     open spec fn sub_req(self, rhs: &AffineNielsPoint) -> bool {
         // Preconditions needed for field operations
-        is_well_formed_edwards_point(*self) && sum_of_limbs_bounded(
-            &self.Z,
-            &self.Z,
-            u64::MAX,
-        )  // for Z2 = &self.Z + &self.Z
+        is_well_formed_edwards_point(*self) && edwards_z_sum_bounded(*self)
          && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
             && fe51_limbs_bounded(
             &rhs.xy2d,
@@ -1658,12 +1653,14 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
             },
     {
         proof {
+            lemma_unfold_edwards(*self);
             // EdwardsPoint invariant is 52-bounded, weaken to 54-bounded for sub/mul preconditions
             lemma_edwards_point_weaken_to_54(self);
         }
         let Y_plus_X = &self.Y + &self.X;
         let Y_minus_X = &self.Y - &self.X;
         proof {
+            lemma_unfold_edwards(*self);
             assert(fe51_limbs_bounded(&Y_plus_X, 54)) by {
                 lemma_add_bounds_propagate(&self.Y, &self.X, 52);
                 lemma_fe51_limbs_bounded_weaken(&Y_plus_X, 53, 54);

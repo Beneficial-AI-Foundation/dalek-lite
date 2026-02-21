@@ -134,7 +134,11 @@ pub const RISTRETTO_BASEPOINT_COMPRESSED: CompressedRistretto = CompressedRistre
 ///
 /// This is called `_POINT` to distinguish it from `_TABLE`, which
 /// provides fast scalar multiplication.
-pub const RISTRETTO_BASEPOINT_POINT: RistrettoPoint = RistrettoPoint(ED25519_BASEPOINT_POINT);
+pub exec const RISTRETTO_BASEPOINT_POINT: RistrettoPoint
+    ensures true,
+{
+    RistrettoPoint(ED25519_BASEPOINT_POINT)
+}
 
 } // verus!
 /// `BASEPOINT_ORDER` is the order of the Ristretto group and of the Ed25519 basepoint, i.e.,

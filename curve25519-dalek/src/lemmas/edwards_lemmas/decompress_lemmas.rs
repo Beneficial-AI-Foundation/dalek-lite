@@ -167,7 +167,7 @@ pub proof fn lemma_decompress_field_element_sign_bit(
 /// - is_valid_edwards_point(point)
 /// - fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(repr_bytes)
 /// - fe51_as_canonical_nat_sign_bit(&point.X) == (repr_bytes[31] >> 7)
-pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, point: &EdwardsPoint)
+pub(crate) proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, point: &EdwardsPoint)
     requires
 // step_1 postconditions
 
@@ -199,6 +199,7 @@ pub proof fn lemma_decompress_valid_branch(repr_bytes: &[u8; 32], x_orig: nat, p
             &point.X,
         ) == (repr_bytes[31] >> 7),
 {
+    lemma_unfold_edwards(*point);
     let x_final = fe51_as_canonical_nat(&point.X);
     let y_final = fe51_as_canonical_nat(&point.Y);
     let z_final = fe51_as_canonical_nat(&point.Z);

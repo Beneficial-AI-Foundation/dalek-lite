@@ -145,36 +145,40 @@ pub(crate) const RR: Scalar52 = Scalar52 {
 /// This is called `_POINT` to distinguish it from
 /// `ED25519_BASEPOINT_TABLE`, which should be used for scalar
 /// multiplication (it's much faster).
-pub const ED25519_BASEPOINT_POINT: EdwardsPoint = EdwardsPoint {
-    X: FieldElement51 {
-        limbs: [
-            1738742601995546,
-            1146398526822698,
-            2070867633025821,
-            562264141797630,
-            587772402128613,
-        ],
-    },
-    Y: FieldElement51 {
-        limbs: [
-            1801439850948184,
-            1351079888211148,
-            450359962737049,
-            900719925474099,
-            1801439850948198,
-        ],
-    },
-    Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
-    T: FieldElement51 {
-        limbs: [
-            1841354044333475,
-            16398895984059,
-            755974180946558,
-            900171276175154,
-            1821297809914039,
-        ],
-    },
-};
+pub exec const ED25519_BASEPOINT_POINT: EdwardsPoint
+    ensures true,
+{
+    EdwardsPoint {
+        X: FieldElement51 {
+            limbs: [
+                1738742601995546,
+                1146398526822698,
+                2070867633025821,
+                562264141797630,
+                587772402128613,
+            ],
+        },
+        Y: FieldElement51 {
+            limbs: [
+                1801439850948184,
+                1351079888211148,
+                450359962737049,
+                900719925474099,
+                1801439850948198,
+            ],
+        },
+        Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] },
+        T: FieldElement51 {
+            limbs: [
+                1841354044333475,
+                16398895984059,
+                755974180946558,
+                900171276175154,
+                1821297809914039,
+            ],
+        },
+    }
+}
 
 /// The 8-torsion subgroup \\(\mathcal E \[8\]\\).
 ///
@@ -184,11 +188,31 @@ pub const ED25519_BASEPOINT_POINT: EdwardsPoint = EdwardsPoint {
 ///
 /// Thus \\(\mathcal E\[4\]\\) is the points indexed by `0,2,4,6`, and
 /// \\(\mathcal E\[2\]\\) is the points indexed by `0,4`.
-pub const EIGHT_TORSION: [EdwardsPoint; 8] = EIGHT_TORSION_INNER_DOC_HIDDEN;
+pub closed spec fn spec_eight_torsion() -> [EdwardsPoint; 8] {
+    [
+        EdwardsPoint { X: FieldElement51 { limbs: [0, 0, 0, 0, 0] }, Y: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [0, 0, 0, 0, 0] } },
+        EdwardsPoint { X: FieldElement51 { limbs: [358744748052810, 1691584618240980, 977650209285361, 1429865912637724, 560044844278676] }, Y: FieldElement51 { limbs: [84926274344903, 473620666599931, 365590438845504, 1028470286882429, 2146499180330972] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [1448326834587521, 1857896831960481, 1093722731865333, 1677408490711241, 1915505153018406] } },
+        EdwardsPoint { X: FieldElement51 { limbs: [533094393274173, 2016890930128738, 18285341111199, 134597186663265, 1486323764102114] }, Y: FieldElement51 { limbs: [0, 0, 0, 0, 0] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [0, 0, 0, 0, 0] } },
+        EdwardsPoint { X: FieldElement51 { limbs: [358744748052810, 1691584618240980, 977650209285361, 1429865912637724, 560044844278676] }, Y: FieldElement51 { limbs: [2166873539340326, 1778179147085316, 1886209374839743, 1223329526802818, 105300633354275] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [803472979097708, 393902981724766, 1158077081819914, 574391322974006, 336294660666841] } },
+        EdwardsPoint { X: FieldElement51 { limbs: [0, 0, 0, 0, 0] }, Y: FieldElement51 { limbs: [2251799813685228, 2251799813685247, 2251799813685247, 2251799813685247, 2251799813685247] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [0, 0, 0, 0, 0] } },
+        EdwardsPoint { X: FieldElement51 { limbs: [1893055065632419, 560215195444267, 1274149604399886, 821933901047523, 1691754969406571] }, Y: FieldElement51 { limbs: [2166873539340326, 1778179147085316, 1886209374839743, 1223329526802818, 105300633354275] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [1448326834587521, 1857896831960481, 1093722731865333, 1677408490711241, 1915505153018406] } },
+        EdwardsPoint { X: FieldElement51 { limbs: [1718705420411056, 234908883556509, 2233514472574048, 2117202627021982, 765476049583133] }, Y: FieldElement51 { limbs: [0, 0, 0, 0, 0] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [0, 0, 0, 0, 0] } },
+        EdwardsPoint { X: FieldElement51 { limbs: [1893055065632419, 560215195444267, 1274149604399886, 821933901047523, 1691754969406571] }, Y: FieldElement51 { limbs: [84926274344903, 473620666599931, 365590438845504, 1028470286882429, 2146499180330972] }, Z: FieldElement51 { limbs: [1, 0, 0, 0, 0] }, T: FieldElement51 { limbs: [803472979097708, 393902981724766, 1158077081819914, 574391322974006, 336294660666841] } },
+    ]
+}
+
+pub exec const EIGHT_TORSION: [EdwardsPoint; 8]
+    ensures true,
+{
+    EIGHT_TORSION_INNER_DOC_HIDDEN
+}
 
 /// Inner item used to hide limb constants from cargo doc output.
 #[doc(hidden)]
-pub const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8] = [
+pub exec const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8]
+    ensures true,
+{
+    [
 // T[0] = identity (0, 1)
 
     EdwardsPoint {
@@ -366,7 +390,8 @@ pub const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8] = [
             ],
         },
     },
-];
+    ]
+}
 
 /// Table containing precomputed multiples of the Ed25519 basepoint \\(B = (x, 4/5)\\).
 ///

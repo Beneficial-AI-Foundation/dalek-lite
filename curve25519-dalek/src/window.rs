@@ -402,6 +402,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
             // points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()
             // For Verus: unroll to assume preconditions for intermediate operations
             proof {
+                lemma_unfold_edwards(*P);
                 // Preconditions for P (left-hand side of addition)
                 assume(is_well_formed_edwards_point(*P));
                 assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // for Z2 = &P.Z + &P.Z in add
@@ -639,6 +640,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
 
         for i in 0..7 {
             proof {
+                lemma_unfold_edwards(A2);
                 // A2 is 2*A, need to be well-formed for addition
                 assume(is_well_formed_edwards_point(A2));
                 // Additional requirement for EdwardsPoint + AffineNielsPoint
@@ -868,6 +870,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
 
         for i in 0..63 {
             proof {
+                lemma_unfold_edwards(A2);
                 // A2 is 2*A, need to be well-formed for addition
                 assume(is_well_formed_edwards_point(A2));
                 // Additional requirement for EdwardsPoint + AffineNielsPoint

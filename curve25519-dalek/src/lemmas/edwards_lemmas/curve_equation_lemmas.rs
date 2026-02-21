@@ -1913,7 +1913,7 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     ensures
         projective_niels_point_as_affine_edwards(niels) == edwards_point_as_affine(point),
 {
-    // Extract field values from correspondence
+    lemma_unfold_edwards(point);
     let x = fe51_as_canonical_nat(&point.X);
     let y = fe51_as_canonical_nat(&point.Y);
     let z = fe51_as_canonical_nat(&point.Z);
@@ -1922,15 +1922,9 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
     let y_minus_x = fe51_as_canonical_nat(&niels.Y_minus_X);
     let niels_z = fe51_as_canonical_nat(&niels.Z);
 
-    assert(y_plus_x == field_add(y, x)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    }
-    assert(y_minus_x == field_sub(y, x)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    }
-    assert(niels_z == z) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    }
+    assert(y_plus_x == field_add(y, x));
+    assert(y_minus_x == field_sub(y, x));
+    assert(niels_z == z);
 
     let inv2 = field_inv(2);
     let x_proj = field_mul(field_sub(y_plus_x, y_minus_x), inv2);
@@ -2325,6 +2319,7 @@ pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
     ensures
         affine_niels_point_as_affine_edwards(niels) == edwards_point_as_affine(point),
 {
+    lemma_unfold_edwards(point);
     let x_proj = fe51_as_canonical_nat(&point.X);
     let y_proj = fe51_as_canonical_nat(&point.Y);
     let z_proj = fe51_as_canonical_nat(&point.Z);
@@ -2336,12 +2331,8 @@ pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
     let y_plus_x = fe51_as_canonical_nat(&niels.y_plus_x);
     let y_minus_x = fe51_as_canonical_nat(&niels.y_minus_x);
 
-    assert(y_plus_x == field_add(y, x)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
-    assert(y_minus_x == field_sub(y, x)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
+    assert(y_plus_x == field_add(y, x));
+    assert(y_minus_x == field_sub(y, x));
 
     let inv2 = field_inv(2);
     let x_niels = field_mul(field_sub(y_plus_x, y_minus_x), inv2);
@@ -2563,19 +2554,20 @@ pub proof fn axiom_edwards_to_montgomery_correspondence(y: nat, z: nat)
 /// Lemma: When Z = 1 in a well-formed EdwardsPoint, the affine coordinates
 /// equal (X, Y) directly, the point lies on the Edwards curve, and both
 /// coordinates are in [0, p).
-pub proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPoint)
+pub(crate) proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::EdwardsPoint)
     requires
         is_well_formed_edwards_point(point),
-        fe51_as_canonical_nat(&point.Z) == 1,
+        fe51_as_canonical_nat(&edwards_z(point)) == 1,
     ensures
         edwards_point_as_affine(point) == (
-            fe51_as_canonical_nat(&point.X),
-            fe51_as_canonical_nat(&point.Y),
+            fe51_as_canonical_nat(&edwards_x(point)),
+            fe51_as_canonical_nat(&edwards_y(point)),
         ),
-        math_on_edwards_curve(fe51_as_canonical_nat(&point.X), fe51_as_canonical_nat(&point.Y)),
-        fe51_as_canonical_nat(&point.X) < p(),
-        fe51_as_canonical_nat(&point.Y) < p(),
+        math_on_edwards_curve(fe51_as_canonical_nat(&edwards_x(point)), fe51_as_canonical_nat(&edwards_y(point))),
+        fe51_as_canonical_nat(&edwards_x(point)) < p(),
+        fe51_as_canonical_nat(&edwards_y(point)) < p(),
 {
+    lemma_unfold_edwards(point);
     let x = fe51_as_canonical_nat(&point.X);
     let y = fe51_as_canonical_nat(&point.Y);
 

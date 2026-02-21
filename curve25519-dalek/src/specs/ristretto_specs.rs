@@ -37,7 +37,7 @@ use crate::backend::serial::u64::constants as u64_constants;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::EDWARDS_D;
 #[allow(unused_imports)]
-use crate::backend::serial::u64::constants::EIGHT_TORSION;
+use crate::backend::serial::u64::constants::spec_eight_torsion;
 #[allow(unused_imports)]
 use crate::constants;
 #[allow(unused_imports)]
@@ -354,9 +354,9 @@ pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {
 /// Ristretto equivalence class - all 4 points map to the same Ristretto point.
 pub open spec fn is_ristretto_coset(points: [EdwardsPoint; 4], base: EdwardsPoint) -> bool {
     let base_affine = edwards_point_as_affine(base);
-    let t2 = edwards_point_as_affine(EIGHT_TORSION[2]);
-    let t4 = edwards_point_as_affine(EIGHT_TORSION[4]);
-    let t6 = edwards_point_as_affine(EIGHT_TORSION[6]);
+    let t2 = edwards_point_as_affine(spec_eight_torsion()[2]);
+    let t4 = edwards_point_as_affine(spec_eight_torsion()[4]);
+    let t6 = edwards_point_as_affine(spec_eight_torsion()[6]);
 
     // points[0] = base (T[0] is identity)
     edwards_point_as_affine(points[0])
@@ -390,10 +390,10 @@ pub open spec fn ristretto_equivalent(p1: EdwardsPoint, p2: EdwardsPoint) -> boo
     let diff = edwards_sub(p1_affine.0, p1_affine.1, p2_affine.0, p2_affine.1);
 
     // The difference must be a 4-torsion element (one of T[0], T[2], T[4], T[6])
-    let t0 = edwards_point_as_affine(EIGHT_TORSION[0]);
-    let t2 = edwards_point_as_affine(EIGHT_TORSION[2]);
-    let t4 = edwards_point_as_affine(EIGHT_TORSION[4]);
-    let t6 = edwards_point_as_affine(EIGHT_TORSION[6]);
+    let t0 = edwards_point_as_affine(spec_eight_torsion()[0]);
+    let t2 = edwards_point_as_affine(spec_eight_torsion()[2]);
+    let t4 = edwards_point_as_affine(spec_eight_torsion()[4]);
+    let t6 = edwards_point_as_affine(spec_eight_torsion()[6]);
 
     diff == t0 || diff == t2 || diff == t4 || diff == t6
 }

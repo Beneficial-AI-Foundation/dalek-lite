@@ -1225,26 +1225,8 @@ impl ConditionallySelectable for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
-/// Spec for ConstantTimeEq trait implementation
-#[cfg(verus_keep_ghost)]
-pub trait ConstantTimeEqSpecImpl {
-    spec fn ct_eq_req(&self, other: &Self) -> bool;
-}
-
-#[cfg(verus_keep_ghost)]
-impl ConstantTimeEqSpecImpl for EdwardsPoint {
-    open spec fn ct_eq_req(&self, other: &EdwardsPoint) -> bool {
-        edwards_point_limbs_bounded(*self) && edwards_point_limbs_bounded(*other)
-    }
-}
-
 impl ConstantTimeEq for EdwardsPoint {
-    fn ct_eq(&self, other: &EdwardsPoint) -> (result:
-        Choice)/* VERIFICATION NOTE: we cannot add a "requires" clause to ct_eq with ConstantTimeEqSpecImpl,
-            unlike for Add trait implementations through AddSpecImpl.
-        */
-    // requires self.ct_eq_req(other),
-
+    fn ct_eq(&self, other: &EdwardsPoint) -> (result: Choice)
         ensures
     // Two points are equal if they represent the same affine point:
     // (X/Z, Y/Z) == (X'/Z', Y'/Z')
@@ -1257,15 +1239,12 @@ impl ConstantTimeEq for EdwardsPoint {
         proof {
             lemma_unfold_edwards(*self);
             lemma_unfold_edwards(*other);
-            /* VERUS LIMITATION: Must assume precondition
+            broadcast use lemma_shift_52_broadcast;
 
-            ConstantTimeEq is an external trait (subtle crate). Approaches tried:
-            - External trait specs don't support precondition methods (unlike AddSpecImpl::add_req)
-            - Cannot use assume_specification (we implement the trait = duplicate spec error)
-            - Type invariants don't work (require private fields; pub(crate) treated as opaque)
-            */
-            assume(self.ct_eq_req(other));
-            // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (mul precondition)
+            use_type_invariant(*self);
+            use_type_invariant(*other);
+            assert(edwards_point_limbs_bounded(*self));
+            assert(edwards_point_limbs_bounded(*other));
             lemma_edwards_point_weaken_to_54(self);
             lemma_fe51_limbs_bounded_weaken(&other.X, 52, 54);
             lemma_fe51_limbs_bounded_weaken(&other.Y, 52, 54);
@@ -1302,13 +1281,6 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
         true
     }
 
-    /* VERIFICATION NOTE: we cannot add a "requires" clause to eq_spec with PartialEqSpecImpl,
-        unlike for Add trait implementations through AddSpecImpl.
-    THIS DOES NOT WORK:
-    open spec fn eq_req(&self, other: &Self) -> bool {
-        edwards_point_limbs_bounded(*self) && edwards_point_limbs_bounded(*other)
-    }
-    */
     open spec fn eq_spec(&self, other: &Self) -> bool {
         // Two EdwardsPoints are equal if they represent the same affine point
         edwards_point_as_affine(*self) == edwards_point_as_affine(*other)
@@ -1316,9 +1288,7 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for EdwardsPoint {
 }
 
 impl PartialEq for EdwardsPoint {
-    // VERIFICATION NOTE: PartialEqSpecImpl trait provides the external specification
-    fn eq(&self, other: &EdwardsPoint) -> (result:
-        bool)  /* VERIFICATION NOTE: we cannot add a "requires" clause to eq with PartialEqSpecImpl, */  // requires self.ct_eq_req(other),FORMATTER_NOT_INLINE_MARKER
+    fn eq(&self, other: &EdwardsPoint) -> (result: bool)
         ensures
             result == (edwards_point_as_affine(*self) == edwards_point_as_affine(*other)),
     {

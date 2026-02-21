@@ -145,6 +145,7 @@ pub(crate) const RR: Scalar52 = Scalar52 {
 /// This is called `_POINT` to distinguish it from
 /// `ED25519_BASEPOINT_TABLE`, which should be used for scalar
 /// multiplication (it's much faster).
+#[verifier::external_body]
 pub exec const ED25519_BASEPOINT_POINT: EdwardsPoint
     ensures
         true,
@@ -371,6 +372,7 @@ pub exec const EIGHT_TORSION: [EdwardsPoint; 8]
 
 /// Inner item used to hide limb constants from cargo doc output.
 #[doc(hidden)]
+#[verifier::external_body]
 pub exec const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8]
     ensures
         true,

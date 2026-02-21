@@ -586,20 +586,25 @@ mod decompress {
             assert(fe51_limbs_bounded(&Y, 54));
         }
 
+        let T = &X * &Y;
         proof {
             broadcast use lemma_shift_52_broadcast;
 
+            assume(math_is_valid_extended_edwards_point(
+                fe51_as_canonical_nat(&X),
+                fe51_as_canonical_nat(&Y),
+                fe51_as_canonical_nat(&Z),
+                fe51_as_canonical_nat(&T),
+            ));
+            assume(yx_limb_sum_bounded(&Y, &X));
         }
-        let result = EdwardsPoint { X, Y, Z, T: &X * &Y };
+        let result = EdwardsPoint { X, Y, Z, T };
 
         proof {
-            // multiplication produces correct field_mul result
             assert(fe51_as_canonical_nat(&result.T) == field_mul(
                 fe51_as_canonical_nat(&result.X),
                 fe51_as_canonical_nat(&result.Y),
             ));
-            // Limb bounds: X remains 52-bounded (from conditional_negate_field_element),
-            // and T is 52-bounded as a product.
             assert(fe51_limbs_bounded(&result.X, 52));
             assert(fe51_limbs_bounded(&result.T, 52));
         }
@@ -769,8 +774,8 @@ pub(crate) open spec fn fe51_each_limb_bounded_52(fe: &FieldElement) -> bool {
         < 4503599627370496 && fe.limbs[3] < 4503599627370496 && fe.limbs[4] < 4503599627370496
 }
 
-/// One-line bridge: call at any construction site to connect fe51_limbs_bounded
-/// postconditions to the type invariant's explicit limb comparisons.
+/// Bridge: 1u64 << 52 == 4503599627370496 (literal). Call `broadcast use` at construction
+/// sites to connect fe51_limbs_bounded postconditions to the explicit limb comparisons.
 pub(crate) broadcast proof fn lemma_shift_52_broadcast()
     ensures
         #[trigger] (1u64 << 52u64) == 4503599627370496u64,
@@ -778,11 +783,25 @@ pub(crate) broadcast proof fn lemma_shift_52_broadcast()
     assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
 }
 
+/// Explicit sum-of-limbs check for Y+X (avoids quantifier for solver).
+pub(crate) open spec fn yx_limb_sum_bounded(y: &FieldElement, x: &FieldElement) -> bool {
+    (y.limbs[0] as u128) + (x.limbs[0] as u128) < (u64::MAX as u128) && (y.limbs[1] as u128) + (
+    x.limbs[1] as u128) < (u64::MAX as u128) && (y.limbs[2] as u128) + (x.limbs[2] as u128) < (
+    u64::MAX as u128) && (y.limbs[3] as u128) + (x.limbs[3] as u128) < (u64::MAX as u128) && (
+    y.limbs[4] as u128) + (x.limbs[4] as u128) < (u64::MAX as u128)
+}
+
 impl EdwardsPoint {
     #[verifier::type_invariant]
     pub(crate) open spec fn well_formed(self) -> bool {
         fe51_each_limb_bounded_52(&self.X) && fe51_each_limb_bounded_52(&self.Y)
             && fe51_each_limb_bounded_52(&self.Z) && fe51_each_limb_bounded_52(&self.T)
+            && math_is_valid_extended_edwards_point(
+            fe51_as_canonical_nat(&self.X),
+            fe51_as_canonical_nat(&self.Y),
+            fe51_as_canonical_nat(&self.Z),
+            fe51_as_canonical_nat(&self.T),
+        ) && yx_limb_sum_bounded(&self.Y, &self.X)
     }
 }
 
@@ -935,6 +954,9 @@ impl Identity for EdwardsPoint {
         proof {
             broadcast use lemma_shift_52_broadcast;
 
+            lemma_zero_field_element_value();
+            lemma_one_field_element_value();
+            lemma_identity_is_valid_extended();
         }
         let result = EdwardsPoint {
             X: FieldElement::ZERO,
@@ -944,39 +966,6 @@ impl Identity for EdwardsPoint {
         };
         proof {
             lemma_unfold_edwards(result);
-            // ZERO has limbs [0,0,0,0,0] → fe51_as_canonical_nat = 0
-            // ONE has limbs [1,0,0,0,0] → fe51_as_canonical_nat = 1
-            assert(fe51_as_canonical_nat(&FieldElement::ZERO) == 0) by {
-                lemma_zero_field_element_value();
-            }
-            assert(fe51_as_canonical_nat(&FieldElement::ONE) == 1) by {
-                lemma_one_field_element_value();
-            }
-
-            // is_identity_edwards_point requires: z != 0, x == 0, y == z
-            // With X=ZERO, Y=ONE, Z=ONE: z=1≠0, x=0, y=z=1 ✓
-
-            // is_well_formed_edwards_point requires:
-            // 1. is_valid_edwards_point (identity is on curve)
-            assert(is_valid_edwards_point(result)) by {
-                lemma_identity_is_valid_extended();
-            }
-
-            // 2. edwards_point_limbs_bounded (all limbs < 2^52)
-            // ZERO/ONE have limbs [0/1, 0, 0, 0, 0] which are trivially < 2^52
-            assert(edwards_point_limbs_bounded(result)) by {
-                lemma_zero_limbs_bounded_51();
-                lemma_one_limbs_bounded_51();
-                assert(0u64 < (1u64 << 52) && 1u64 < (1u64 << 52)) by (bit_vector);
-            }
-
-            // 3. sum_of_limbs_bounded (Y + X doesn't overflow)
-            // Y=ONE=[1,0,0,0,0], X=ZERO=[0,0,0,0,0]
-            // 1+0 < u64::MAX, 0+0 < u64::MAX
-            assert(sum_of_limbs_bounded(&result.Y, &result.X, u64::MAX)) by {
-                assert(1u64 + 0u64 < u64::MAX) by (bit_vector);
-                assert(0u64 + 0u64 < u64::MAX) by (bit_vector);
-            }
         }
         result
     }
@@ -1031,6 +1020,9 @@ impl Zeroize for EdwardsPoint {
         proof {
             broadcast use lemma_shift_52_broadcast;
 
+            lemma_zero_field_element_value();
+            lemma_one_field_element_value();
+            lemma_identity_is_valid_extended();
         }
         *self =
         EdwardsPoint {
@@ -1041,16 +1033,6 @@ impl Zeroize for EdwardsPoint {
         };
         proof {
             lemma_unfold_edwards(*self);
-            assert(fe51_as_canonical_nat(&self.X) == 0) by {
-                lemma_zero_field_element_value();
-            }
-            assert(fe51_as_canonical_nat(&self.Y) == 1) by {
-                lemma_one_field_element_value();
-            }
-            assert(fe51_as_canonical_nat(&self.Z) == 1) by {
-                lemma_one_field_element_value();
-            }
-            assert(is_identity_edwards_point(*self));
         }
     }
 }
@@ -2464,43 +2446,36 @@ impl<'a> Neg for &'a EdwardsPoint {
         let ghost old_z = fe51_as_canonical_nat(&self.Z);
         let ghost old_t = fe51_as_canonical_nat(&self.T);
 
+        let neg_x = Neg::neg(&self.X);
+        let neg_t = Neg::neg(&self.T);
         proof {
             broadcast use lemma_shift_52_broadcast;
 
+            use_type_invariant(*self);
+            lemma_negation_preserves_extended_validity(old_x, old_y, old_z, old_t);
+            assert(fe51_as_canonical_nat(&neg_x) == field_neg(old_x));
+            assert(fe51_as_canonical_nat(&neg_t) == field_neg(old_t));
         }
-        let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
+        let r = EdwardsPoint { X: neg_x, Y: self.Y, Z: self.Z, T: neg_t };
 
         proof {
             lemma_unfold_edwards(r);
-            // Ghost values for r
             let new_x = fe51_as_canonical_nat(&r.X);
             let new_y = fe51_as_canonical_nat(&r.Y);
             let new_z = fe51_as_canonical_nat(&r.Z);
             let new_t = fe51_as_canonical_nat(&r.T);
 
-            // From FieldElement51::neg postconditions:
-            // - new_x = field_neg(old_x)
-            // - new_t = field_neg(old_t)
-            // - X and T limbs are 52-bounded
             assert(new_x == field_neg(old_x));
             assert(new_t == field_neg(old_t));
-            assert(new_y == old_y);  // Y unchanged
-            assert(new_z == old_z);  // Z unchanged
+            assert(new_y == old_y);
+            assert(new_z == old_z);
 
-            // 1. Prove edwards_point_limbs_bounded(r)
-            // X and T are 52-bounded from neg postcondition
             assert(fe51_limbs_bounded(&r.X, 52));
             assert(fe51_limbs_bounded(&r.T, 52));
-            // Y and Z bounds from precondition: is_well_formed_edwards_point implies edwards_point_limbs_bounded
-            assert(fe51_limbs_bounded(&r.Y, 52));  // Y unchanged, bounded from precondition
-            assert(fe51_limbs_bounded(&r.Z, 52));  // Z unchanged, bounded from precondition
+            assert(fe51_limbs_bounded(&r.Y, 52));
+            assert(fe51_limbs_bounded(&r.Z, 52));
 
-            // 2. Prove sum_of_limbs_bounded(&r.Y, &r.X, u64::MAX)
             lemma_sum_of_limbs_bounded_from_fe51_bounded(&r.Y, &r.X, 52);
-
-            // 3. Prove is_valid_edwards_point(r)
-            // Use lemma_negation_preserves_extended_validity: (-X, Y, Z, -T) is valid if (X, Y, Z, T) is
-            lemma_negation_preserves_extended_validity(old_x, old_y, old_z, old_t);
             assert(is_valid_edwards_point(r));
 
             // 4. Prove affine semantics: edwards_point_as_affine(r) == edwards_neg(edwards_point_as_affine(*self))

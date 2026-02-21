@@ -42,16 +42,13 @@ Common patterns to search for:
 ### Phase 3: Where to Put New Helper Lemmas
 **Place lemmas in the right module so they stay reusable and avoid circular deps.**
 
-| Kind of lemma | Put in | Examples |
-|---------------|--------|----------|
-| **Generic field algebra** (holds for any d / any field elements) | `lemmas/field_lemmas/field_algebra_lemmas.rs` | From curve eq derive x²·v=u; on-curve (x,y) witnesses valid y; y²=1 ⇒ x=0 when d+1≠0. Take `d` as parameter; precondition = curve equation in field form. No EDWARDS_D or math_on_edwards_curve. |
-| **Ed25519 curve structure** (tied to EDWARDS_D or curve predicate) | `lemmas/edwards_lemmas/curve_equation_lemmas.rs` | lemma_unique_x_with_parity, axiom_d_plus_one_nonzero. Call field lemmas with d = EDWARDS_D; don’t duplicate their proofs. |
-| **Decompression / Montgomery→Edwards** (spec match, to_edwards correctness) | `lemmas/edwards_lemmas/decompress_lemmas.rs` | lemma_decompress_spec_matches_point, lemma_to_edwards_correctness. Not generic curve eq; about decompress API and birational map. |
-
-**Guidelines:**
-- Prefer calling generic field lemmas directly at call sites (e.g. `lemma_field_curve_eq_x2v_eq_u(d, x, y)` with `d = fe51_as_canonical_nat(&EDWARDS_D)`) rather than thin curve-only wrappers. If you keep a wrapper, make it a one-liner that just calls the field lemma.
-- Avoid “connection” lemmas whose precondition is exactly another lemma’s postcondition; inline that proof at the single call site instead.
-- Lemmas used from another module must be `pub proof fn` (e.g. `axiom_d_plus_one_nonzero` used from decompress_lemmas).
+- **Generality determines placement.** Put a lemma in the most general module whose concepts it uses. A lemma about `edwards_add`/`edwards_scalar_mul`/`edwards_double` (abstract group ops) belongs in `curve_equation_lemmas.rs`. A lemma about `straus_column_sum` or `straus_ct_partial` belongs in `straus_lemmas.rs`.
+- **No upward imports.** Algorithm-specific modules (straus, pippenger) import from general modules (curve_equation, field_algebra), never the reverse. If you need a lemma from straus in curve_equation, it’s in the wrong place.
+- **Co-locate specs with their lemmas.** Spec functions specific to an algorithm (e.g. `straus_column_sum`, `straus_ct_partial`) belong in that algorithm’s lemma file, not in generic spec modules like `edwards_specs.rs` or `scalar_specs.rs`.
+- **Prefer inlining over thin wrappers.** If a lemma’s proof is a single call to another lemma, inline it at the call site instead. Only create a wrapper when it scopes Z3 facts (prevents rlimit issues) or is called from 3+ sites.
+- **Lemmas for non-opaque specs are often redundant.** If a spec is not `#[verifier::opaque]`, Z3 unfolds it automatically. Lemmas with empty proof bodies that just restate the definition can usually be removed. But lemmas for `#[verifier::opaque]` specs (step/base cases) are essential.
+- **Targeted postconditions matter for rlimit.** A lemma like `lemma_foo(x) ensures result < p()` is not the same as inlining `p_gt_2()` at the call site, even if mathematically equivalent. The lemma scopes what Z3 learns; the raw fact may leak and cause rlimit issues elsewhere.
+- **Lemmas used across modules must be `pub proof fn`.**
 
 ### Phase 4: Incremental Proof Development
 **Use the "moving assume(false)" technique:**
@@ -724,20 +721,42 @@ proof {
 
 1. **Verify incrementally:**
    ```bash
-   cargo verus verify -- --verify-only-module module_name --verify-function function_name
+   cargo verus verify -p curve25519-dalek -- --verify-only-module module_name --verify-function function_name
    ```
    Note: only one `--verify-function` flag is supported per invocation. To verify multiple functions, use `--verify-only-module` to verify the entire module.
 
-2. **Verify integration:**
+2. **Verify integration (single module):**
    ```bash
-   cargo verus verify -- --verify-module module_name
+   cargo verus verify -p curve25519-dalek -- --verify-module module_name
    ```
 
-3. **Check non-Verus builds:** After Verus verification passes, run `cargo test` and `cargo clippy` to catch import issues, cfg guards, etc.
+3. **Full codebase verification with efficient error extraction:**
+   Always use this single command to get both the summary AND all error details in one call:
+   ```bash
+   cargo verus verify -p curve25519-dalek 2>&1 | grep -E "^error|verification results:|^   --> " | head -30
+   ```
+   This extracts:
+   - `^error` — the error type (e.g., "error: postcondition not satisfied", "error: while loop: Resource limit (rlimit) exceeded", "error: this file contains an unclosed delimiter")
+   - `^   --> ` — the file path and line number (e.g., "--> curve25519-dalek/src/backend/serial/scalar_mul/straus.rs:560:13")
+   - `verification results:` — the summary line (e.g., "1715 verified, 0 errors")
 
-4. **Run verusfmt:** Run `verusfmt <file>` on all changed `.rs` files before committing.
+   **If you need the failed postcondition/precondition text**, use a wider grep:
+   ```bash
+   cargo verus verify -p curve25519-dalek 2>&1 | grep -E "^error|verification results:|^   --> |failed this" | head -30
+   ```
 
-5. **Clean up:**
+   **IMPORTANT:** Do NOT run a bare `cargo verus verify` piped to `tail -5` when there are errors — the summary line alone doesn't tell you the error location or type. Always use the grep pipeline above to extract actionable information in a single call.
+
+   **When verification succeeds**, a simple tail suffices:
+   ```bash
+   cargo verus verify -p curve25519-dalek 2>&1 | tail -5
+   ```
+
+4. **Check non-Verus builds:** After Verus verification passes, run `cargo test` and `cargo clippy` to catch import issues, cfg guards, etc.
+
+5. **Run verusfmt:** Run `verusfmt <file>` on all changed `.rs` files before committing.
+
+6. **Clean up:**
    - Remove redundant assertions (test by removing one at a time)
    - Add comments explaining non-obvious steps
    - Ensure proof follows codebase style

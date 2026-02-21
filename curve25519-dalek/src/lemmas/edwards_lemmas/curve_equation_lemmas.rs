@@ -11,7 +11,9 @@
 //! 3. **x=0 implies y²=1**: If x ≡ 0 and (x, y) is on curve, then y² = 1
 //! 4. **Scalar mul pow2 successor**: [2^(k+1)]P = double([2^k]P)
 #![allow(unused_imports)]
-use crate::backend::serial::curve_models::AffineNielsPoint;
+use crate::backend::serial::curve_models::{
+    AffineNielsPoint, ProjectiveNielsPoint, ProjectivePoint,
+};
 use crate::backend::serial::u64::constants::EDWARDS_D;
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -124,6 +126,112 @@ pub proof fn lemma_identity_is_valid_extended()
 
     // Use the affine-to-extended lemma
     lemma_affine_to_extended_valid(0nat, 1nat, 0nat);
+}
+
+/// The identity projective point (X=0, Y=1, Z=1) is valid, has bounded limbs,
+/// and its affine coordinates are the identity (0, 1).
+pub proof fn lemma_identity_projective_point_properties()
+    ensures
+        is_valid_projective_point(identity_projective_point_edwards()),
+        fe51_limbs_bounded(&identity_projective_point_edwards().X, 52),
+        fe51_limbs_bounded(&identity_projective_point_edwards().Y, 52),
+        fe51_limbs_bounded(&identity_projective_point_edwards().Z, 52),
+        sum_of_limbs_bounded(
+            &identity_projective_point_edwards().X,
+            &identity_projective_point_edwards().Y,
+            u64::MAX,
+        ),
+        projective_point_as_affine_edwards(identity_projective_point_edwards())
+            == math_edwards_identity(),
+{
+    let id = identity_projective_point_edwards();
+    p_gt_2();
+
+    // Explicit limb values
+    assert(id.X.limbs[0] == 0u64);
+    assert(id.X.limbs[1] == 0u64);
+    assert(id.X.limbs[2] == 0u64);
+    assert(id.X.limbs[3] == 0u64);
+    assert(id.X.limbs[4] == 0u64);
+    assert(id.Y.limbs[0] == 1u64);
+    assert(id.Y.limbs[1] == 0u64);
+    assert(id.Y.limbs[2] == 0u64);
+    assert(id.Y.limbs[3] == 0u64);
+    assert(id.Y.limbs[4] == 0u64);
+    assert(id.Z.limbs[0] == 1u64);
+    assert(id.Z.limbs[1] == 0u64);
+    assert(id.Z.limbs[2] == 0u64);
+    assert(id.Z.limbs[3] == 0u64);
+    assert(id.Z.limbs[4] == 0u64);
+
+    // Limb bounds: 0 and 1 are both < 2^52
+    assert(0u64 < (1u64 << 52u64) && 1u64 < (1u64 << 52u64)) by (bit_vector);
+
+    // fe51_as_nat evaluations (raw nat before mod p)
+    assert(fe51_as_nat(&id.X) == 0nat) by {
+        reveal(pow2);
+        lemma_mul_by_zero_is_zero(pow2(51) as int);
+        lemma_mul_by_zero_is_zero(pow2(102) as int);
+        lemma_mul_by_zero_is_zero(pow2(153) as int);
+        lemma_mul_by_zero_is_zero(pow2(204) as int);
+    };
+    assert(fe51_as_nat(&id.Y) == 1nat) by {
+        reveal(pow2);
+        lemma_mul_by_zero_is_zero(pow2(51) as int);
+        lemma_mul_by_zero_is_zero(pow2(102) as int);
+        lemma_mul_by_zero_is_zero(pow2(153) as int);
+        lemma_mul_by_zero_is_zero(pow2(204) as int);
+    };
+    assert(fe51_as_nat(&id.Z) == 1nat) by {
+        reveal(pow2);
+        lemma_mul_by_zero_is_zero(pow2(51) as int);
+        lemma_mul_by_zero_is_zero(pow2(102) as int);
+        lemma_mul_by_zero_is_zero(pow2(153) as int);
+        lemma_mul_by_zero_is_zero(pow2(204) as int);
+    };
+
+    // fe51_as_canonical_nat: X=0, Y=1, Z=1
+    assert(fe51_as_canonical_nat(&id.X) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(fe51_as_canonical_nat(&id.Y) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(fe51_as_canonical_nat(&id.Z) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+
+    // Projective curve equation: math_on_edwards_curve_projective(0, 1, 1)
+    assert(field_square(0nat) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_square(1nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(field_sub(1nat, 0nat) == 1) by {
+        lemma_small_mod(1nat, p());
+        lemma_small_mod(0nat, p());
+        lemma_mod_multiples_vanish(1, 1, p() as int);
+    };
+    assert(field_mul(1nat, 1nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(field_mul(0nat, 1nat) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    assert(field_mul(d, 0nat) == 0) by {
+        lemma_mul_by_zero_is_zero(d as int);
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_add(1nat, 0nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(math_on_edwards_curve_projective(0, 1, 1));
+
+    // Affine: (field_mul(0, inv(1)), field_mul(1, inv(1))) = (0, 1)
+    lemma_field_inv_one();
+    assert(projective_point_as_affine_edwards(id) == math_edwards_identity());
 }
 
 // =============================================================================
@@ -2543,6 +2651,89 @@ pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
     assert(math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z)))) by {
         lemma_valid_extended_point_affine_on_curve(x, y, z, ghost_t);
     };
+}
+
+// =============================================================================
+// ProjectiveNiels Point Conversion Lemmas
+// =============================================================================
+// =============================================================================
+// Scalar multiplication distributivity (group homomorphism)
+// =============================================================================
+/// Axiom: Scalar multiplication distributes over Edwards addition.
+///
+/// [n]*(A + B) = [n]*A + [n]*B
+///
+/// This is a fundamental property of abelian groups: the "multiplication by n"
+/// endomorphism is a group homomorphism.
+pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
+    ensures
+        edwards_scalar_mul(edwards_add(a.0, a.1, b.0, b.1), n) == ({
+            let na = edwards_scalar_mul(a, n);
+            let nb = edwards_scalar_mul(b, n);
+            edwards_add(na.0, na.1, nb.0, nb.1)
+        }),
+{
+    admit();
+}
+
+// =============================================================================
+// Scalar mul / double helpers
+// =============================================================================
+/// [n]*O = O for all n.
+pub proof fn lemma_edwards_scalar_mul_identity(n: nat)
+    ensures
+        edwards_scalar_mul(math_edwards_identity(), n) == math_edwards_identity(),
+    decreases n,
+{
+    let id = math_edwards_identity();
+    if n == 0 {
+        reveal_with_fuel(edwards_scalar_mul, 1);
+    } else if n == 1 {
+        reveal_with_fuel(edwards_scalar_mul, 2);
+        p_gt_2();
+        lemma_edwards_add_identity_right_canonical(id);
+    } else {
+        lemma_edwards_scalar_mul_identity((n - 1) as nat);
+        lemma_edwards_scalar_mul_succ(id, (n - 1) as nat);
+        p_gt_2();
+        lemma_edwards_add_identity_right_canonical(id);
+    }
+}
+
+/// double(P) = [2]*P.
+pub proof fn lemma_double_is_scalar_mul_2(P: (nat, nat))
+    ensures
+        edwards_double(P.0, P.1) == edwards_scalar_mul(P, 2),
+{
+    reveal_with_fuel(edwards_scalar_mul, 3);
+}
+
+/// double(A + B) = double(A) + double(B).
+pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
+    ensures
+        ({
+            let ab = edwards_add(a.0, a.1, b.0, b.1);
+            edwards_double(ab.0, ab.1)
+        }) == ({
+            let da = edwards_double(a.0, a.1);
+            let db = edwards_double(b.0, b.1);
+            edwards_add(da.0, da.1, db.0, db.1)
+        }),
+{
+    let ab = edwards_add(a.0, a.1, b.0, b.1);
+    lemma_double_is_scalar_mul_2(ab);
+    lemma_double_is_scalar_mul_2(a);
+    lemma_double_is_scalar_mul_2(b);
+    axiom_edwards_scalar_mul_distributive(a, b, 2);
+}
+
+/// double(O) = O.
+pub proof fn lemma_double_identity()
+    ensures
+        edwards_double(0nat, 1nat) == math_edwards_identity(),
+{
+    lemma_double_is_scalar_mul_2(math_edwards_identity());
+    lemma_edwards_scalar_mul_identity(2);
 }
 
 } // verus!

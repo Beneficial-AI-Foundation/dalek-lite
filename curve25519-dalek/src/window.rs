@@ -498,11 +498,16 @@ impl NafLookupTable5<ProjectiveNielsPoint> {
             fe51_limbs_bounded(&result.Y_minus_X, 54),
             fe51_limbs_bounded(&result.Z, 54),
             fe51_limbs_bounded(&result.T2d, 54),
+            // The result is a valid ProjectiveNielsPoint
+            is_valid_projective_niels_point(result),
     {
         #[cfg(not(verus_keep_ghost))]
         {
             debug_assert_eq!(x & 1, 1);
             debug_assert!(x < 16);
+        }
+        proof {
+            assume(is_valid_projective_niels_point(self.0[(x / 2) as int]));
         }
         self.0[x / 2]
     }

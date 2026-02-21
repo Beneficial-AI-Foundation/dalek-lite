@@ -196,7 +196,8 @@ use crate::field::FieldElement;
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
-#[allow(unused_imports)] // Used in verus! blocks
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
 use crate::backend::serial::u64::constants::spec_eight_torsion;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;

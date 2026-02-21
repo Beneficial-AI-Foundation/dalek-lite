@@ -34,11 +34,11 @@ use super::field_specs_u64::*;
 use super::scalar_specs::*;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants as u64_constants;
-#[allow(unused_imports)]
-use crate::backend::serial::u64::constants::EDWARDS_D;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::spec_eight_torsion;
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::EDWARDS_D;
 #[allow(unused_imports)]
 use crate::constants;
 #[allow(unused_imports)]

@@ -179,6 +179,9 @@ use digest::Digest;
 use crate::constants;
 
 #[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::spec_eight_torsion;
+#[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::{
@@ -196,9 +199,6 @@ use crate::field::FieldElement;
 use crate::lemmas::field_lemmas::add_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
-use crate::backend::serial::u64::constants::spec_eight_torsion;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -760,18 +760,33 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
                 let (x, y, z, t) = spec_edwards_point(P.0);
                 let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
                 // e = 2*X*Y
-                fe51_as_canonical_nat(&result.e) == field_mul(2, field_mul(x, y))
+                fe51_as_canonical_nat(&result.e) == field_mul(
+                    2,
+                    field_mul(x, y),
+                )
                 // f = Z^2 + d*T^2
-                && fe51_as_canonical_nat(&result.f) == field_add(field_square(z), field_mul(d, field_square(t)))
+                 && fe51_as_canonical_nat(&result.f) == field_add(
+                    field_square(z),
+                    field_mul(d, field_square(t)),
+                )
                 // g = Y^2 + X^2 (a = -1)
-                && fe51_as_canonical_nat(&result.g) == field_add(field_square(y), field_square(x))
+                 && fe51_as_canonical_nat(&result.g) == field_add(
+                    field_square(y),
+                    field_square(x),
+                )
                 // h = Z^2 - d*T^2
-                && fe51_as_canonical_nat(&result.h) == field_sub(field_square(z), field_mul(d, field_square(t)))
+                 && fe51_as_canonical_nat(&result.h) == field_sub(
+                    field_square(z),
+                    field_mul(d, field_square(t)),
+                )
                 // eg = e * g, fh = f * h
-                && fe51_as_canonical_nat(&result.eg) == field_mul(
-                    fe51_as_canonical_nat(&result.e), fe51_as_canonical_nat(&result.g))
-                && fe51_as_canonical_nat(&result.fh) == field_mul(
-                    fe51_as_canonical_nat(&result.f), fe51_as_canonical_nat(&result.h))
+                 && fe51_as_canonical_nat(&result.eg) == field_mul(
+                    fe51_as_canonical_nat(&result.e),
+                    fe51_as_canonical_nat(&result.g),
+                ) && fe51_as_canonical_nat(&result.fh) == field_mul(
+                    fe51_as_canonical_nat(&result.f),
+                    fe51_as_canonical_nat(&result.h),
+                )
             }),
     {
         proof {

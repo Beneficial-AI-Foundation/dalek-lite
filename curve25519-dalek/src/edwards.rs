@@ -511,12 +511,11 @@ mod decompress {
         Z: FieldElement,
     ) -> (result: EdwardsPoint)
         requires
-    // Limb bounds for inputs (X from sqrt_ratio_i, Y from from_bytes, Z = ONE)
-    // X is 52-bit bounded from sqrt_ratio_i (relaxed from 51)
-
             fe51_limbs_bounded(&X, 52),
             fe51_limbs_bounded(&Y, 51),
             fe51_limbs_bounded(&Z, 51),
+            math_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y)),
+            fe51_as_canonical_nat(&Z) == 1,
         ensures
             fe51_as_canonical_nat(&result.X)
                 ==
@@ -584,19 +583,44 @@ mod decompress {
             assert((1u64 << 51) < (1u64 << 54)) by (bit_vector);
             assert(fe51_limbs_bounded(&X, 54));
             assert(fe51_limbs_bounded(&Y, 54));
+
+            // (mutated_x, y) is on the curve: either unchanged or negated x
+            assert(math_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y))) by {
+                let orig_x = fe51_as_canonical_nat(&original_X);
+                let y_val = fe51_as_canonical_nat(&Y);
+                if choice_is_true(compressed_sign_bit) {
+                    lemma_negation_preserves_curve(orig_x, y_val);
+                }
+            };
         }
 
         let T = &X * &Y;
         proof {
             broadcast use lemma_shift_52_broadcast;
 
-            assume(math_is_valid_extended_edwards_point(
-                fe51_as_canonical_nat(&X),
-                fe51_as_canonical_nat(&Y),
-                fe51_as_canonical_nat(&Z),
-                fe51_as_canonical_nat(&T),
-            ));
-            assume(yx_limb_sum_bounded(&Y, &X));
+            p_gt_2();
+            let x = fe51_as_canonical_nat(&X);
+            let y = fe51_as_canonical_nat(&Y);
+            let z = fe51_as_canonical_nat(&Z);
+            let t = fe51_as_canonical_nat(&T);
+
+            assert(x < p() && y < p()) by {
+                lemma_mod_bound(fe51_as_nat(&X) as int, p() as int);
+                lemma_mod_bound(fe51_as_nat(&Y) as int, p() as int);
+            };
+
+            assert(z % p() != 0) by {
+                lemma_small_mod(1nat, p());
+            };
+
+            lemma_z_one_affine_implies_projective(x, y);
+
+            // Segre: field_mul(x, y) == field_mul(z, t) since z=1 and t = x*y
+            assert(field_mul(z, t) == t) by {
+                lemma_field_mul_one_left(t);
+                lemma_mod_bound((fe51_as_nat(&X) * fe51_as_nat(&Y)) as int, p() as int);
+                lemma_small_mod(t, p());
+            };
         }
         let result = EdwardsPoint { X, Y, Z, T };
 

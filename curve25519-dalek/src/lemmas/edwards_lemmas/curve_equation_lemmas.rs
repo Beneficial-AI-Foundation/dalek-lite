@@ -460,6 +460,29 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
 /// Multiplying both sides by Z⁴:
 ///   (Y² - X²)·Z² = Z⁴ + d·X²·Y²
 ///
+/// Special case of `lemma_affine_curve_implies_projective` when Z = 1.
+/// With Z = 1 the affine and projective equations coincide, so the proof
+/// only needs field_inv(1) = 1 and field_mul(a, 1) = a.
+pub proof fn lemma_z_one_affine_implies_projective(x: nat, y: nat)
+    requires
+        math_on_edwards_curve(x, y),
+        x < p(),
+        y < p(),
+    ensures
+        math_on_edwards_curve_projective(x, y, 1nat),
+{
+    p_gt_2();
+    assert(1nat % p() != 0) by {
+        lemma_small_mod(1nat, p());
+    };
+    lemma_field_inv_one();
+    lemma_field_mul_one_right(x);
+    lemma_field_mul_one_right(y);
+    lemma_small_mod(x, p());
+    lemma_small_mod(y, p());
+    lemma_affine_curve_implies_projective(x, y, 1nat);
+}
+
 /// This is exactly the projective curve equation.
 pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     requires

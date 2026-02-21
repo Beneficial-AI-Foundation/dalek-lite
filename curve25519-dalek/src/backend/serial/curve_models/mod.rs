@@ -601,34 +601,66 @@ impl ProjectivePoint {
             spec_edwards_point(result) == spec_projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {
+        let rX = &self.X * &self.Z;
+        let rY = &self.Y * &self.Z;
+        let rZ = self.Z.square();
+        let rT = &self.X * &self.Y;
         proof {
             broadcast use crate::edwards::lemma_shift_52_broadcast;
 
-        }
-        let result = EdwardsPoint {
-            X: &self.X * &self.Z,
-            Y: &self.Y * &self.Z,
-            Z: self.Z.square(),
-            T: &self.X * &self.Y,
-        };
-        proof {
-            lemma_unfold_edwards(result);
             let (x, y, z) = spec_projective_point_edwards(*self);
 
             // Bridge square() postcondition to field_square
             let z_raw = u64_5_as_nat(self.Z.limbs);
-            let zz_raw = u64_5_as_nat(result.Z.limbs);
-            assert(fe51_as_canonical_nat(&result.Z) == field_square(z)) by {
+            let zz_raw = u64_5_as_nat(rZ.limbs);
+            assert(fe51_as_canonical_nat(&rZ) == field_square(z)) by {
                 lemma_square_matches_field_square(z_raw, zz_raw);
             }
 
-            // Spec equivalence: each component matches spec_projective_to_extended
-            // mul() postconditions give the first, second, and fourth directly;
-            // square bridge gives the third
+            let rx = fe51_as_canonical_nat(&rX);
+            let ry = fe51_as_canonical_nat(&rY);
+            let rz = fe51_as_canonical_nat(&rZ);
+            let rt = fe51_as_canonical_nat(&rT);
+
+            // 1. Z² != 0 since z != 0
+            assert(z != 0 && z % p() != 0) by {
+                p_gt_2();
+                lemma_mod_bound(fe51_as_nat(&self.Z) as int, p() as int);
+                lemma_small_mod(z, p());
+            };
+            assert(rz != 0) by {
+                lemma_nonzero_product(z, z);
+            };
+            assert(rz % p() != 0) by {
+                p_gt_2();
+                lemma_mod_bound((z * z) as int, p() as int);
+                lemma_small_mod(rz, p());
+            };
+
+            // 2. Curve equation: (x*z)/(z²) = x/z and (y*z)/(z²) = y/z
+            assert(field_mul(rx, field_inv(rz)) == field_mul(x, field_inv(z))) by {
+                lemma_cancel_common_factor(x, z, z);
+            };
+            assert(field_mul(ry, field_inv(rz)) == field_mul(y, field_inv(z))) by {
+                lemma_cancel_common_factor(y, z, z);
+            };
+            lemma_projective_implies_affine_on_curve(x, y, z);
+            assert(math_on_edwards_curve_projective(rx, ry, rz)) by {
+                lemma_affine_curve_implies_projective(rx, ry, rz);
+            };
+
+            // 3. Segre relation: (X*Z)*(Y*Z) = Z²*(X*Y)
+            assert(field_mul(rx, ry) == field_mul(rz, rt)) by {
+                lemma_field_mul_exchange(x, z, y, z);
+            };
+        }
+        let result = EdwardsPoint { X: rX, Y: rY, Z: rZ, T: rT };
+        proof {
+            lemma_unfold_edwards(result);
+            let (x, y, z) = spec_projective_point_edwards(*self);
+
             assert(spec_edwards_point(result) == spec_projective_to_extended(*self));
 
-            // --- Affine equivalence ---
-            // From is_valid_projective_point: z != 0
             assert(z != 0 && z % p() != 0) by {
                 p_gt_2();
                 lemma_mod_bound(fe51_as_nat(&self.Z) as int, p() as int);
@@ -649,39 +681,6 @@ impl ProjectivePoint {
                 lemma_cancel_common_factor(y, z, z);
             };
             assert(edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self));
-
-            // --- Validity: is_valid_edwards_point(result) ---
-            let result_x = fe51_as_canonical_nat(&result.X);
-            let result_y = fe51_as_canonical_nat(&result.Y);
-            let result_z = fe51_as_canonical_nat(&result.Z);
-            let result_t = fe51_as_canonical_nat(&result.T);
-
-            // 1. Z² != 0 since z != 0
-            assert(result_z != 0) by {
-                lemma_nonzero_product(z, z);
-            };
-            assert(result_z % p() != 0) by {
-                p_gt_2();
-                lemma_mod_bound((z * z) as int, p() as int);
-                lemma_small_mod(result_z, p());
-            };
-
-            // 2. Curve equation: affine point is on curve, lift to projective
-            assert(math_on_edwards_curve(
-                field_mul(result_x, field_inv(result_z)),
-                field_mul(result_y, field_inv(result_z)),
-            )) by {
-                lemma_projective_implies_affine_on_curve(x, y, z);
-            };
-            assert(math_on_edwards_curve_projective(result_x, result_y, result_z)) by {
-                lemma_affine_curve_implies_projective(result_x, result_y, result_z);
-            };
-
-            // 3. Segre relation: (X*Z)*(Y*Z) = Z²*(X*Y)
-            //    follows from inner-pair exchange: (x·z)·(y·z) = (x·y)·(z·z)
-            assert(field_mul(result_x, result_y) == field_mul(result_z, result_t)) by {
-                lemma_field_mul_exchange(x, z, y, z);
-            };
 
             assert(is_valid_edwards_point(result));
 
@@ -841,39 +840,80 @@ impl CompletedPoint {
             spec_edwards_point(result) == spec_completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
+        let rX = &self.X * &self.T;
+        let rY = &self.Y * &self.Z;
+        let rZ = &self.Z * &self.T;
+        let rT = &self.X * &self.Y;
         proof {
             broadcast use crate::edwards::lemma_shift_52_broadcast;
 
+            let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
+
+            let rx = fe51_as_canonical_nat(&rX);
+            let ry = fe51_as_canonical_nat(&rY);
+            let rz = fe51_as_canonical_nat(&rZ);
+            let rt = fe51_as_canonical_nat(&rT);
+
+            // 1. Z = Z*T != 0
+            assert(z_abs != 0 && t_abs != 0);
+            assert(z_abs < p() && t_abs < p()) by {
+                p_gt_2();
+                lemma_mod_bound(fe51_as_nat(&self.Z) as int, p() as int);
+                lemma_mod_bound(fe51_as_nat(&self.T) as int, p() as int);
+            };
+            assert(z_abs % p() != 0) by {
+                lemma_small_mod(z_abs, p());
+            };
+            assert(t_abs % p() != 0) by {
+                lemma_small_mod(t_abs, p());
+            };
+            assert(rz != 0) by {
+                lemma_nonzero_product(z_abs, t_abs);
+            };
+            assert(rz % p() != 0) by {
+                p_gt_2();
+                lemma_mod_bound((z_abs * t_abs) as int, p() as int);
+                lemma_small_mod(rz, p());
+            };
+
+            // 2. Curve equation
+            assert(math_on_edwards_curve(
+                field_mul(rx, field_inv(rz)),
+                field_mul(ry, field_inv(rz)),
+            )) by {
+                // X cancellation: (X*T)/(Z*T) = X/Z
+                lemma_cancel_common_factor(x_abs, z_abs, t_abs);
+                // Y cancellation: (Y*Z)/(Z*T) = Y/T
+                lemma_field_mul_comm(z_abs, t_abs);
+                lemma_cancel_common_factor(y_abs, t_abs, z_abs);
+            };
+            assert(math_on_edwards_curve_projective(rx, ry, rz)) by {
+                lemma_affine_curve_implies_projective(rx, ry, rz);
+            };
+
+            // 3. Segre: (X*T)*(Y*Z) = (Z*T)*(X*Y)
+            assert(field_mul(rx, ry) == field_mul(rz, rt)) by {
+                lemma_field_mul_exchange(x_abs, t_abs, y_abs, z_abs);
+                lemma_field_mul_comm(t_abs, z_abs);
+            };
         }
-        let result = EdwardsPoint {
-            X: &self.X * &self.T,
-            Y: &self.Y * &self.Z,
-            Z: &self.Z * &self.T,
-            T: &self.X * &self.Y,
-        };
+        let result = EdwardsPoint { X: rX, Y: rY, Z: rZ, T: rT };
         proof {
             lemma_unfold_edwards(result);
-            // Limb bounds: mul() produces 52-bounded output (from its postcondition)
-            assert(fe51_limbs_bounded(&result.X, 52));  // X = self.X * self.T
-            assert(fe51_limbs_bounded(&result.Y, 52));  // Y = self.Y * self.Z
-            assert(fe51_limbs_bounded(&result.Z, 52));  // Z = self.Z * self.T
-            assert(fe51_limbs_bounded(&result.T, 52));  // T = self.X * self.Y
+            assert(fe51_limbs_bounded(&result.X, 52));
+            assert(fe51_limbs_bounded(&result.Y, 52));
+            assert(fe51_limbs_bounded(&result.Z, 52));
+            assert(fe51_limbs_bounded(&result.T, 52));
 
-            // edwards_point_limbs_bounded requires 52-bounded (the new invariant)
             assert(edwards_point_limbs_bounded(result));
 
-            // sum_of_limbs_bounded follows from 52-bounded via lemma
             assert(sum_of_limbs_bounded(&result.Y, &result.X, u64::MAX)) by {
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&result.Y, &result.X, 52);
             };
 
-            // --- Spec equivalence ---
-            // All four components match directly from mul() postconditions
             let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
             assert(spec_edwards_point(result) == spec_completed_to_extended(*self));
 
-            // --- Affine equivalence ---
-            // From is_valid_completed_point: z_abs != 0, t_abs != 0
             assert(z_abs != 0 && t_abs != 0);
             assert(z_abs < p() && t_abs < p()) by {
                 p_gt_2();
@@ -887,12 +927,10 @@ impl CompletedPoint {
                 lemma_small_mod(t_abs, p());
             };
 
-            // X cancellation: (X*T)/(Z*T) = X/Z
             assert(field_mul(field_mul(x_abs, t_abs), field_inv(field_mul(z_abs, t_abs)))
                 == field_mul(x_abs, field_inv(z_abs))) by {
                 lemma_cancel_common_factor(x_abs, z_abs, t_abs);
             };
-            // Y cancellation: (Y*Z)/(Z*T) = (Y*Z)/(T*Z) = Y/T
             assert(field_mul(z_abs, t_abs) == field_mul(t_abs, z_abs)) by {
                 lemma_field_mul_comm(z_abs, t_abs);
             };
@@ -901,38 +939,6 @@ impl CompletedPoint {
                 lemma_cancel_common_factor(y_abs, t_abs, z_abs);
             };
             assert(edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self));
-
-            // --- Validity: is_valid_edwards_point(result) ---
-            let result_x = fe51_as_canonical_nat(&result.X);
-            let result_y = fe51_as_canonical_nat(&result.Y);
-            let result_z = fe51_as_canonical_nat(&result.Z);
-            let result_t = fe51_as_canonical_nat(&result.T);
-
-            // 1. Z = Z*T != 0
-            assert(result_z != 0) by {
-                lemma_nonzero_product(z_abs, t_abs);
-            };
-            assert(result_z % p() != 0) by {
-                p_gt_2();
-                lemma_mod_bound((z_abs * t_abs) as int, p() as int);
-                lemma_small_mod(result_z, p());
-            };
-
-            // 2. Curve equation: affine point (X/Z, Y/T) is on curve, lift to projective
-            assert(math_on_edwards_curve(
-                field_mul(result_x, field_inv(result_z)),
-                field_mul(result_y, field_inv(result_z)),
-            ));
-            assert(math_on_edwards_curve_projective(result_x, result_y, result_z)) by {
-                lemma_affine_curve_implies_projective(result_x, result_y, result_z);
-            };
-
-            // 3. Segre: (X*T)*(Y*Z) = (Z*T)*(X*Y)
-            //    follows from inner-pair exchange: (x·t)·(y·z) = (x·y)·(t·z)
-            assert(field_mul(result_x, result_y) == field_mul(result_z, result_t)) by {
-                lemma_field_mul_exchange(x_abs, t_abs, y_abs, z_abs);
-                lemma_field_mul_comm(t_abs, z_abs);
-            };
 
             assert(is_valid_edwards_point(result));
         }

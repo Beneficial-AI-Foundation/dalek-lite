@@ -601,7 +601,10 @@ impl ProjectivePoint {
             spec_edwards_point(result) == spec_projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {
-        proof { broadcast use crate::edwards::lemma_shift_52_broadcast; }
+        proof {
+            broadcast use crate::edwards::lemma_shift_52_broadcast;
+
+        }
         let result = EdwardsPoint {
             X: &self.X * &self.Z,
             Y: &self.Y * &self.Z,
@@ -838,7 +841,10 @@ impl CompletedPoint {
             spec_edwards_point(result) == spec_completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
-        proof { broadcast use crate::edwards::lemma_shift_52_broadcast; }
+        proof {
+            broadcast use crate::edwards::lemma_shift_52_broadcast;
+
+        }
         let result = EdwardsPoint {
             X: &self.X * &self.T,
             Y: &self.Y * &self.Z,
@@ -1532,9 +1538,10 @@ impl vstd::std_specs::ops::AddSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
 
     open spec fn add_req(self, rhs: &AffineNielsPoint) -> bool {
         // Preconditions needed for field operations
-        is_well_formed_edwards_point(*self) && edwards_z_sum_bounded(*self)
-         && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
-            && fe51_limbs_bounded(
+        is_well_formed_edwards_point(*self) && edwards_z_sum_bounded(*self) && fe51_limbs_bounded(
+            &rhs.y_plus_x,
+            54,
+        ) && fe51_limbs_bounded(&rhs.y_minus_x, 54) && fe51_limbs_bounded(
             &rhs.xy2d,
             54,
         )
@@ -1702,9 +1709,10 @@ impl vstd::std_specs::ops::SubSpecImpl<&AffineNielsPoint> for &EdwardsPoint {
 
     open spec fn sub_req(self, rhs: &AffineNielsPoint) -> bool {
         // Preconditions needed for field operations
-        is_well_formed_edwards_point(*self) && edwards_z_sum_bounded(*self)
-         && fe51_limbs_bounded(&rhs.y_plus_x, 54) && fe51_limbs_bounded(&rhs.y_minus_x, 54)
-            && fe51_limbs_bounded(
+        is_well_formed_edwards_point(*self) && edwards_z_sum_bounded(*self) && fe51_limbs_bounded(
+            &rhs.y_plus_x,
+            54,
+        ) && fe51_limbs_bounded(&rhs.y_minus_x, 54) && fe51_limbs_bounded(
             &rhs.xy2d,
             54,
         )

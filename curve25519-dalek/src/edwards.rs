@@ -294,8 +294,9 @@ impl CompressedEdwardsY {
             )
             // The X coordinate sign bit matches the compressed sign bit when y² ≠ 1.
             // When y² == 1, x = 0 so negation is the identity and sign bit is always 0.
-             && (field_square(field_element_from_bytes(&self.0)) != 1
-                ==> edwards_x_sign_bit(result.unwrap()) == (self.0[31] >> 7))),
+             && (field_square(field_element_from_bytes(&self.0)) != 1 ==> edwards_x_sign_bit(
+                result.unwrap(),
+            ) == (self.0[31] >> 7))),
     {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
@@ -585,7 +586,10 @@ mod decompress {
             assert(fe51_limbs_bounded(&Y, 54));
         }
 
-        proof { broadcast use lemma_shift_52_broadcast; }
+        proof {
+            broadcast use lemma_shift_52_broadcast;
+
+        }
         let result = EdwardsPoint { X, Y, Z, T: &X * &Y };
 
         proof {
@@ -761,14 +765,12 @@ pub struct EdwardsPoint {
 }
 
 pub(crate) open spec fn fe51_each_limb_bounded_52(fe: &FieldElement) -> bool {
-    fe.limbs[0] < 4503599627370496 && fe.limbs[1] < 4503599627370496
-        && fe.limbs[2] < 4503599627370496 && fe.limbs[3] < 4503599627370496
-        && fe.limbs[4] < 4503599627370496
+    fe.limbs[0] < 4503599627370496 && fe.limbs[1] < 4503599627370496 && fe.limbs[2]
+        < 4503599627370496 && fe.limbs[3] < 4503599627370496 && fe.limbs[4] < 4503599627370496
 }
 
-/// One-line bridge: call `broadcast use lemma_shift_52_broadcast` at any construction
-/// site to connect fe51_limbs_bounded postconditions to the type invariant's
-/// explicit limb comparisons.
+/// One-line bridge: call at any construction site to connect fe51_limbs_bounded
+/// postconditions to the type invariant's explicit limb comparisons.
 pub(crate) broadcast proof fn lemma_shift_52_broadcast()
     ensures
         #[trigger] (1u64 << 52u64) == 4503599627370496u64,
@@ -930,7 +932,10 @@ impl Identity for EdwardsPoint {
             is_identity_edwards_point(result),
             is_well_formed_edwards_point(result),
     {
-        proof { broadcast use lemma_shift_52_broadcast; }
+        proof {
+            broadcast use lemma_shift_52_broadcast;
+
+        }
         let result = EdwardsPoint {
             X: FieldElement::ZERO,
             Y: FieldElement::ONE,
@@ -1023,8 +1028,12 @@ impl Zeroize for EdwardsPoint {
         ensures
             is_identity_edwards_point(*self),
     {
-        proof { broadcast use lemma_shift_52_broadcast; }
-        *self = EdwardsPoint {
+        proof {
+            broadcast use lemma_shift_52_broadcast;
+
+        }
+        *self =
+        EdwardsPoint {
             X: FieldElement::ZERO,
             Y: FieldElement::ONE,
             Z: FieldElement::ONE,
@@ -1175,7 +1184,6 @@ impl ConditionallySelectable for EdwardsPoint {
         proof {
             use_type_invariant(a);
             use_type_invariant(b);
-            broadcast use lemma_shift_52_broadcast;
         }
         let result = EdwardsPoint { X, Y, Z, T };
 
@@ -2456,7 +2464,10 @@ impl<'a> Neg for &'a EdwardsPoint {
         let ghost old_z = fe51_as_canonical_nat(&self.Z);
         let ghost old_t = fe51_as_canonical_nat(&self.T);
 
-        proof { broadcast use lemma_shift_52_broadcast; }
+        proof {
+            broadcast use lemma_shift_52_broadcast;
+
+        }
         let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
 
         proof {

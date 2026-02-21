@@ -135,7 +135,8 @@ pub const RISTRETTO_BASEPOINT_COMPRESSED: CompressedRistretto = CompressedRistre
 /// This is called `_POINT` to distinguish it from `_TABLE`, which
 /// provides fast scalar multiplication.
 pub exec const RISTRETTO_BASEPOINT_POINT: RistrettoPoint
-    ensures true,
+    ensures
+        true,
 {
     RistrettoPoint(ED25519_BASEPOINT_POINT)
 }

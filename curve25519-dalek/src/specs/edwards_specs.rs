@@ -28,17 +28,17 @@ use super::field_specs::*;
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
 };
-#[cfg(feature = "precomputed-tables")]
-#[allow(unused_imports)]
-use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
-#[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::spec_eight_torsion;
+#[cfg(feature = "precomputed-tables")]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
 #[cfg(test)]
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::EIGHT_TORSION;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::edwards::EdwardsBasepointTable;
@@ -80,20 +80,24 @@ use super::core_specs::{u8_32_as_nat, bytes_seq_as_nat};
 /// Reference: [RFC8032] Section 5.1
 pub closed spec fn spec_ed25519_basepoint() -> (nat, nat) {
     (
-        u64_5_as_nat([
-            1738742601995546u64,
-            1146398526822698u64,
-            2070867633025821u64,
-            562264141797630u64,
-            587772402128613u64,
-        ]),
-        u64_5_as_nat([
-            1801439850948184u64,
-            1351079888211148u64,
-            450359962737049u64,
-            900719925474099u64,
-            1801439850948198u64,
-        ]),
+        u64_5_as_nat(
+            [
+                1738742601995546u64,
+                1146398526822698u64,
+                2070867633025821u64,
+                562264141797630u64,
+                587772402128613u64,
+            ],
+        ),
+        u64_5_as_nat(
+            [
+                1801439850948184u64,
+                1351079888211148u64,
+                450359962737049u64,
+                900719925474099u64,
+                1801439850948198u64,
+            ],
+        ),
     )
 }
 
@@ -417,10 +421,29 @@ pub open spec fn math_is_edwards_identity(x: nat, y: nat) -> bool {
 // =============================================================================
 // EdwardsPoint Field Accessors (closed — the only functions accessing pub(crate) fields)
 // =============================================================================
-pub closed spec fn edwards_x(point: crate::edwards::EdwardsPoint) -> crate::backend::serial::u64::field::FieldElement51 { point.X }
-pub closed spec fn edwards_y(point: crate::edwards::EdwardsPoint) -> crate::backend::serial::u64::field::FieldElement51 { point.Y }
-pub closed spec fn edwards_z(point: crate::edwards::EdwardsPoint) -> crate::backend::serial::u64::field::FieldElement51 { point.Z }
-pub closed spec fn edwards_t(point: crate::edwards::EdwardsPoint) -> crate::backend::serial::u64::field::FieldElement51 { point.T }
+pub closed spec fn edwards_x(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.X
+}
+
+pub closed spec fn edwards_y(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.Y
+}
+
+pub closed spec fn edwards_z(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.Z
+}
+
+pub closed spec fn edwards_t(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.T
+}
 
 /// Unfold lemma: connects the closed accessors to actual struct fields.
 /// Must be called from proof blocks in other modules before reasoning about field access.
@@ -430,12 +453,12 @@ pub(crate) proof fn lemma_unfold_edwards(point: crate::edwards::EdwardsPoint)
         edwards_y(point) == point.Y,
         edwards_z(point) == point.Z,
         edwards_t(point) == point.T,
-{}
+{
+}
 
 // =============================================================================
 // EdwardsPoint Predicates (open — bodies visible everywhere, using closed accessors)
 // =============================================================================
-
 /// Check if an EdwardsPoint represents the identity point
 /// The identity point is (0, 1) in affine coordinates
 /// In projective coordinates (X:Y:Z:T), this means X/Z = 0 and Y/Z = 1
@@ -481,10 +504,7 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
 /// EdwardsPoint invariant: all coordinate limbs must be 52-bounded.
 pub open spec fn edwards_point_limbs_bounded(point: crate::edwards::EdwardsPoint) -> bool {
     fe51_limbs_bounded(&edwards_x(point), 52) && fe51_limbs_bounded(&edwards_y(point), 52)
-        && fe51_limbs_bounded(&edwards_z(point), 52) && fe51_limbs_bounded(
-        &edwards_t(point),
-        52,
-    )
+        && fe51_limbs_bounded(&edwards_z(point), 52) && fe51_limbs_bounded(&edwards_t(point), 52)
 }
 
 /// A well-formed EdwardsPoint: mathematically valid and properly bounded.

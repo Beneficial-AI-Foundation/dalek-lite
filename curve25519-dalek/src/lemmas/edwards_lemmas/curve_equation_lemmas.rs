@@ -2563,7 +2563,10 @@ pub(crate) proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::Ed
             fe51_as_canonical_nat(&edwards_x(point)),
             fe51_as_canonical_nat(&edwards_y(point)),
         ),
-        math_on_edwards_curve(fe51_as_canonical_nat(&edwards_x(point)), fe51_as_canonical_nat(&edwards_y(point))),
+        math_on_edwards_curve(
+            fe51_as_canonical_nat(&edwards_x(point)),
+            fe51_as_canonical_nat(&edwards_y(point)),
+        ),
         fe51_as_canonical_nat(&edwards_x(point)) < p(),
         fe51_as_canonical_nat(&edwards_y(point)) < p(),
 {

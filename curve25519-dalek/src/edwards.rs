@@ -594,6 +594,9 @@ mod decompress {
             };
         }
 
+        /* ORIGINAL CODE:
+        let result = EdwardsPoint { X, Y, Z, T: &X * &Y };
+        Variable assignment refactor to prove type invariant before constructor. */
         let T = &X * &Y;
         proof {
             broadcast use lemma_shift_52_broadcast;
@@ -2470,6 +2473,9 @@ impl<'a> Neg for &'a EdwardsPoint {
         let ghost old_z = fe51_as_canonical_nat(&self.Z);
         let ghost old_t = fe51_as_canonical_nat(&self.T);
 
+        /* ORIGINAL CODE:
+        let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
+        Variable assignment refactor to prove type invariant before constructor. */
         let neg_x = Neg::neg(&self.X);
         let neg_t = Neg::neg(&self.T);
         proof {

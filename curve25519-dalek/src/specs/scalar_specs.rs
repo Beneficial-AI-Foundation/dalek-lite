@@ -243,37 +243,4 @@ pub open spec fn radix_16_all_bounded(digits: &[i8; 64]) -> bool {
     forall|i: int| 0 <= i < 64 ==> radix_16_digit_bounded(#[trigger] digits[i])
 }
 
-// =============================================================================
-// Index-based Horner evaluation (for Straus correctness proofs)
-// =============================================================================
-/// Horner evaluation of radix-16 digits from position `from_j`:
-///   reconstruct_radix_16_from(d, j) = d[j] + 16*(d[j+1] + 16*(...+ 16*d[63]...))
-///                                   = sum_{i=j}^{63} d[i] * 16^{i-j}
-///
-/// At j=0 this equals reconstruct_radix_16(d) (for d.len() == 64).
-pub open spec fn reconstruct_radix_16_from(digits: Seq<i8>, from_j: int) -> int
-    decreases 64 - from_j,
-{
-    if from_j >= 64 || from_j < 0 {
-        0
-    } else {
-        (digits[from_j] as int) + 16 * reconstruct_radix_16_from(digits, from_j + 1)
-    }
-}
-
-/// Horner evaluation of NAF digits from position `from_i`:
-///   reconstruct_naf_from(naf, i) = naf[i] + 2*(naf[i+1] + 2*(...+ 2*naf[255]...))
-///                                = sum_{k=i}^{255} naf[k] * 2^{k-i}
-///
-/// At i=0 this equals reconstruct(naf) (for naf.len() == 256).
-pub open spec fn reconstruct_naf_from(naf: Seq<i8>, from_i: int) -> int
-    decreases 256 - from_i,
-{
-    if from_i >= 256 || from_i < 0 {
-        0
-    } else {
-        (naf[from_i] as int) + 2 * reconstruct_naf_from(naf, from_i + 1)
-    }
-}
-
 } // verus!

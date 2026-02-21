@@ -371,11 +371,10 @@ impl Straus {
                     },
             decreases scalars_vec.len() - idx,
         {
-            // From collect_scalars_from_iter: is_canonical_scalar → bytes[31] <= 127
-            // → lemma_u8_32_as_nat_lt_pow2_255 → scalar_as_nat < pow2(255)
             proof {
                 assert(is_canonical_scalar(&scalars_vec@[idx as int]));
                 assert(scalars_vec@[idx as int].bytes[31] <= 127);
+                // Establishes non_adjacent_form precondition: scalar_as_nat < pow2(255)
                 crate::lemmas::common_lemmas::to_nat_lemmas::lemma_u8_32_as_nat_lt_pow2_255(
                     &scalars_vec@[idx as int].bytes,
                 );
@@ -549,8 +548,6 @@ impl Straus {
             let ghost doubled_affine = completed_point_as_affine_edwards(t);
             proof {
                 assert(min_len == n);
-                // col_sum(i, 0) = identity = (0, 1)
-                lemma_column_sum_zero(pts_affine, nafs_seqs, i as int);
                 // doubled_affine coords < p() (field_mul returns (a*b)%p < p)
                 p_gt_2();
                 // edwards_add(doubled, identity) == doubled
@@ -613,6 +610,7 @@ impl Straus {
                             assert((digit as int) % 2 != 0 && digit < 16);
                             lemma_naf_digit_positive_select_preconditions(digit);
                         }
+                        /* ORIGINAL CODE: t = &t.as_extended() + &lookup_table.select(naf[i] as usize) */
                         let R_j = lookup_table.select(naf[i] as usize);
                         t = &t.as_extended() + &R_j;
                         proof {
@@ -650,14 +648,6 @@ impl Straus {
                                 term_j.0,
                                 term_j.1,
                             );
-                            lemma_column_sum_add_term(
-                                pts_affine,
-                                nafs_seqs,
-                                i as int,
-                                j as int,
-                                col_j,
-                                term_j,
-                            );
                         }
                     },
                     Ordering::Less => {
@@ -669,6 +659,7 @@ impl Straus {
                             assert((digit as int) % 2 != 0 && (digit as int) > -16);
                             lemma_naf_digit_negative_select_preconditions(digit);
                         }
+                        /* ORIGINAL CODE: t = &t.as_extended() - &lookup_table.select(-naf[i] as usize) */
                         let R_j = lookup_table.select((-naf[i]) as usize);
                         t = &t.as_extended() - &R_j;
                         proof {
@@ -706,14 +697,6 @@ impl Straus {
                                 col_j.1,
                                 term_j.0,
                                 term_j.1,
-                            );
-                            lemma_column_sum_add_term(
-                                pts_affine,
-                                nafs_seqs,
-                                i as int,
-                                j as int,
-                                col_j,
-                                term_j,
                             );
                         }
                     },
@@ -967,8 +950,7 @@ impl Straus {
             let ghost scaled_affine = edwards_point_as_affine(Q);
             proof {
                 assert(min_len == n);
-                // At k=0: col_0 = identity, so edwards_add(scaled, identity) == scaled
-                lemma_column_sum_zero(pts_affine, digits_seqs, j as int);
+                // At k=0: col(j,0) = O (identity), so edwards_add(scaled, O) == scaled
                 lemma_edwards_point_as_affine_canonical(Q);
                 lemma_edwards_add_identity_right_canonical(scaled_affine);
             }
@@ -1051,14 +1033,6 @@ impl Straus {
                     // digits_seqs[k] has length 64 (view of [i8; 64])
                     assert(digits_seqs[k as int] == scalar_digits@[k as int]@);
                     assert(digits_seqs[k as int].len() == 64);
-                    lemma_column_sum_add_term(
-                        pts_affine,
-                        digits_seqs,
-                        j as int,
-                        k as int,
-                        col_k,
-                        term_k,
-                    );
                 }
 
                 k = k + 1;

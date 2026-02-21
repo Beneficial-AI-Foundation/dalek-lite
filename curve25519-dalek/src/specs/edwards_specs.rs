@@ -1104,81 +1104,9 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
     }
 }
 
-// =============================================================================
-// Straus multiscalar multiplication specs
-// =============================================================================
 /// Convert a sequence of EdwardsPoints to their affine coordinates.
 pub open spec fn points_to_affine(points: Seq<EdwardsPoint>) -> Seq<(nat, nat)> {
     points.map(|_i, p: EdwardsPoint| edwards_point_as_affine(p))
-}
-
-/// Partial column sum for Straus: sum of [digits[k][j]] * points_affine[k] for k in 0..n.
-///
-/// Used by both constant-time and variable-time Straus variants.
-/// Each iteration adds one point's signed-scalar contribution at digit position j.
-pub open spec fn straus_column_sum(
-    points_affine: Seq<(nat, nat)>,
-    digits: Seq<Seq<i8>>,
-    j: int,
-    n: int,
-) -> (nat, nat)
-    decreases n,
-{
-    if n <= 0 {
-        math_edwards_identity()
-    } else {
-        let prev = straus_column_sum(points_affine, digits, j, n - 1);
-        let term = edwards_scalar_mul_signed(points_affine[n - 1], digits[n - 1][j] as int);
-        edwards_add(prev.0, prev.1, term.0, term.1)
-    }
-}
-
-/// Horner accumulator for constant-time Straus (radix-16, 64 digit positions).
-///
-/// Processes columns from `from_j` to 63 right-to-left:
-///   straus_ct_partial(from_j) = 16 * straus_ct_partial(from_j+1) + column_sum(from_j)
-///
-/// The full result at from_j=0 equals sum_of_scalar_muls(scalars, points).
-#[verifier::opaque]
-pub open spec fn straus_ct_partial(
-    points_affine: Seq<(nat, nat)>,
-    digits: Seq<Seq<i8>>,
-    from_j: int,
-) -> (nat, nat)
-    decreases 64 - from_j,
-{
-    if from_j >= 64 {
-        math_edwards_identity()
-    } else {
-        let prev = straus_ct_partial(points_affine, digits, from_j + 1);
-        let scaled = edwards_scalar_mul(prev, 16);
-        let col = straus_column_sum(points_affine, digits, from_j, points_affine.len() as int);
-        edwards_add(scaled.0, scaled.1, col.0, col.1)
-    }
-}
-
-/// Horner accumulator for variable-time Straus (NAF, 256 bit positions).
-///
-/// Processes positions from `from_i` to 255 right-to-left:
-///   straus_vt_partial(from_i) = 2 * straus_vt_partial(from_i+1) + column_sum(from_i)
-///
-/// The full result at from_i=0 equals sum_of_scalar_muls(scalars, points).
-#[verifier::opaque]
-pub open spec fn straus_vt_partial(
-    points_affine: Seq<(nat, nat)>,
-    nafs: Seq<Seq<i8>>,
-    from_i: int,
-) -> (nat, nat)
-    decreases 256 - from_i,
-{
-    if from_i >= 256 {
-        math_edwards_identity()
-    } else {
-        let prev = straus_vt_partial(points_affine, nafs, from_i + 1);
-        let doubled = edwards_double(prev.0, prev.1);
-        let col = straus_column_sum(points_affine, nafs, from_i, points_affine.len() as int);
-        edwards_add(doubled.0, doubled.1, col.0, col.1)
-    }
 }
 
 } // verus!

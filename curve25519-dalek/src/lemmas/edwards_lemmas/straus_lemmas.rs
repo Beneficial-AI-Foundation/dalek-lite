@@ -56,6 +56,113 @@ use vstd::prelude::*;
 verus! {
 
 // =============================================================================
+// Straus multiscalar multiplication spec functions
+// =============================================================================
+/// Column sum: col(j, n) = sum_{k=0}^{n-1} [d_{k,j}] * P_k
+///
+/// Recursive over k (number of points summed).
+/// Base case: col(j, 0) = O  (identity).
+/// Step:      col(j, k+1) = col(j, k) + [d_{k,j}] * P_k
+///
+/// Shared by both CT (radix-16 digits) and VT (NAF digits).
+pub open spec fn straus_column_sum(
+    points_affine: Seq<(nat, nat)>,
+    digits: Seq<Seq<i8>>,
+    j: int,
+    n: int,
+) -> (nat, nat)
+    decreases n,
+{
+    if n <= 0 {
+        math_edwards_identity()
+    } else {
+        let prev = straus_column_sum(points_affine, digits, j, n - 1);
+        let term = edwards_scalar_mul_signed(points_affine[n - 1], digits[n - 1][j] as int);
+        edwards_add(prev.0, prev.1, term.0, term.1)
+    }
+}
+
+/// CT Horner accumulator: H_ct(j) for j in [0, 64].
+///
+/// H_ct(64) = O
+/// H_ct(j)  = [16] * H_ct(j+1) + col(j, n)    for j = 63..0
+///
+/// Result: H_ct(0) = sum_k s_k * P_k  (proved by lemma_straus_ct_correct).
+#[verifier::opaque]
+pub open spec fn straus_ct_partial(
+    points_affine: Seq<(nat, nat)>,
+    digits: Seq<Seq<i8>>,
+    from_j: int,
+) -> (nat, nat)
+    decreases 64 - from_j,
+{
+    if from_j >= 64 {
+        math_edwards_identity()
+    } else {
+        let prev = straus_ct_partial(points_affine, digits, from_j + 1);
+        let scaled = edwards_scalar_mul(prev, 16);
+        let col = straus_column_sum(points_affine, digits, from_j, points_affine.len() as int);
+        edwards_add(scaled.0, scaled.1, col.0, col.1)
+    }
+}
+
+/// VT Horner accumulator: H_vt(i) for i in [0, 256].
+///
+/// H_vt(256) = O
+/// H_vt(i)   = [2] * H_vt(i+1) + col(i, n)    for i = 255..0
+///
+/// Result: H_vt(0) = sum_k s_k * P_k  (proved by lemma_straus_vt_correct).
+#[verifier::opaque]
+pub open spec fn straus_vt_partial(
+    points_affine: Seq<(nat, nat)>,
+    nafs: Seq<Seq<i8>>,
+    from_i: int,
+) -> (nat, nat)
+    decreases 256 - from_i,
+{
+    if from_i >= 256 {
+        math_edwards_identity()
+    } else {
+        let prev = straus_vt_partial(points_affine, nafs, from_i + 1);
+        let doubled = edwards_double(prev.0, prev.1);
+        let col = straus_column_sum(points_affine, nafs, from_i, points_affine.len() as int);
+        edwards_add(doubled.0, doubled.1, col.0, col.1)
+    }
+}
+
+/// Index-based Horner evaluation of radix-16 digits from position j:
+///
+///   R16(d, j) = sum_{i=j}^{63} d[i] * 16^{i-j}
+///             = d[j] + 16 * R16(d, j+1)
+///
+/// R16(d, 64) = 0.   R16(d, 0) = reconstruct_radix_16(d).
+pub open spec fn reconstruct_radix_16_from(digits: Seq<i8>, from_j: int) -> int
+    decreases 64 - from_j,
+{
+    if from_j >= 64 || from_j < 0 {
+        0
+    } else {
+        (digits[from_j] as int) + 16 * reconstruct_radix_16_from(digits, from_j + 1)
+    }
+}
+
+/// Index-based Horner evaluation of NAF digits from position i:
+///
+///   RNAF(n, i) = sum_{k=i}^{255} n[k] * 2^{k-i}
+///              = n[i] + 2 * RNAF(n, i+1)
+///
+/// RNAF(n, 256) = 0.   RNAF(n, 0) = reconstruct(n).
+pub open spec fn reconstruct_naf_from(naf: Seq<i8>, from_i: int) -> int
+    decreases 256 - from_i,
+{
+    if from_i >= 256 || from_i < 0 {
+        0
+    } else {
+        (naf[from_i] as int) + 2 * reconstruct_naf_from(naf, from_i + 1)
+    }
+}
+
+// =============================================================================
 // Select lemma for LookupTable<ProjectiveNielsPoint>
 // =============================================================================
 /// LookupTable select correctness: select(x) decodes to [x]*P in affine.
@@ -183,32 +290,6 @@ pub proof fn lemma_naf_select_is_signed_scalar_mul_projective(
 }
 
 // =============================================================================
-// Column sum step lemma
-// =============================================================================
-/// Unfold column sum: col(j, k+1) = col(j, k) + [d_{k,j}] * P_k.
-pub proof fn lemma_column_sum_step(
-    points_affine: Seq<(nat, nat)>,
-    digits: Seq<Seq<i8>>,
-    j: int,
-    k: int,
-)
-    requires
-        k >= 0,
-        k < points_affine.len(),
-        k < digits.len(),
-        0 <= j,
-        j < digits[k].len(),
-    ensures
-        straus_column_sum(points_affine, digits, j, k + 1) == {
-            let prev = straus_column_sum(points_affine, digits, j, k);
-            let term = edwards_scalar_mul_signed(points_affine[k], digits[k][j] as int);
-            edwards_add(prev.0, prev.1, term.0, term.1)
-        },
-{
-    // Direct from definition (k+1 > 0 so we enter the else branch)
-}
-
-// =============================================================================
 // Straus CT step lemma (unfold opaque spec)
 // =============================================================================
 /// Unfold CT Horner: H(j) = [16] * H(j+1) + col(j, n)  for j < 64.
@@ -260,17 +341,6 @@ pub proof fn lemma_straus_vt_base(points_affine: Seq<(nat, nat)>, nafs: Seq<Seq<
     reveal(straus_vt_partial);
 }
 
-// =============================================================================
-// Straus CT correctness theorem
-// =============================================================================
-// axiom_straus_ct_correct removed — replaced by lemma_straus_ct_correct (fully proved)
-// =============================================================================
-// Straus VT correctness theorem
-// =============================================================================
-// axiom_straus_vt_correct removed — replaced by lemma_straus_vt_correct (fully proved)
-// =============================================================================
-// Helper: radix_16_all_bounded for Seq<i8>
-// =============================================================================
 /// Spec predicate: all digits in a Seq<i8> are in [-8, 8].
 /// This is the Seq analog of `radix_16_all_bounded` which works on arrays.
 pub open spec fn radix_16_all_bounded_seq(digits: Seq<i8>) -> bool {
@@ -389,45 +459,6 @@ pub open spec fn straus_ct_input_valid(
 }
 
 // =============================================================================
-// Column sum with zero digits is identity
-// =============================================================================
-/// col(j, 0) = O  (column sum with zero points is identity).
-pub proof fn lemma_column_sum_zero(points_affine: Seq<(nat, nat)>, digits: Seq<Seq<i8>>, j: int)
-    ensures
-        straus_column_sum(points_affine, digits, j, 0) == math_edwards_identity(),
-{
-    // Direct from definition (n <= 0 case)
-}
-
-// =============================================================================
-// Column sum add-one-term lemma (for inner loop invariant)
-// =============================================================================
-/// Inner loop connector: add(col(j,k), [d_{k,j}] * P_k) = col(j, k+1).
-///
-/// Connects the inner loop body to the column sum specification.
-pub proof fn lemma_column_sum_add_term(
-    points_affine: Seq<(nat, nat)>,
-    digits: Seq<Seq<i8>>,
-    j: int,
-    k: int,
-    prev_affine: (nat, nat),
-    term_affine: (nat, nat),
-)
-    requires
-        0 <= k < points_affine.len(),
-        0 <= k < digits.len(),
-        0 <= j,
-        j < digits[k].len(),
-        prev_affine == straus_column_sum(points_affine, digits, j, k),
-        term_affine == edwards_scalar_mul_signed(points_affine[k], digits[k][j] as int),
-    ensures
-        edwards_add(prev_affine.0, prev_affine.1, term_affine.0, term_affine.1)
-            == straus_column_sum(points_affine, digits, j, k + 1),
-{
-    // Direct from straus_column_sum definition unfolding
-}
-
-// =============================================================================
 // NAF digit select preconditions
 // =============================================================================
 /// For a NAF digit d > 0 from a valid NAF(5), d is odd and d < 16.
@@ -473,17 +504,14 @@ pub proof fn lemma_naf_digit_negative_select_preconditions(digit: i8)
 // =============================================================================
 // Affine coordinates are always canonical (< p())
 // =============================================================================
-/// edwards_point_as_affine always returns coordinates < p() because field_mul
-/// returns (a * b) % p() which is always < p().
+/// edwards_point_as_affine returns coordinates < p() because field_mul
+/// returns (a * b) % p() which is < p() for p() > 0.
 pub proof fn lemma_edwards_point_as_affine_canonical(point: EdwardsPoint)
     ensures
         edwards_point_as_affine(point).0 < p(),
         edwards_point_as_affine(point).1 < p(),
 {
     p_gt_2();
-    // edwards_point_as_affine = (field_mul(X, inv(Z)), field_mul(Y, inv(Z)))
-    // field_mul(a, b) = field_canonical(a * b) = (a * b) % p()
-    // and x % p() < p() for p() > 0
 }
 
 // =============================================================================
@@ -751,27 +779,9 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         lemma_column_sum_single(pts.last(), digs.last(), j);
         // col_single == [digs.last()[j]] * pts.last()
 
-        // Now we need: col_full == edwards_add(col_prefix, col_single)
-        // From definition: col_full = edwards_add(column_sum(pts, digs, j, n-1), term)
-        // where term = edwards_scalar_mul_signed(pts[n-1], digs[n-1][j])
-        // And column_sum(pts, digs, j, n-1) == col_prefix (proved above)
-        // And term == col_single (since both equal [digs.last()[j]] * pts.last())
-
-        // We need to show: straus_ct_partial(pts, digs, j) combines correctly.
-        // straus_ct_partial(pts, digs, j) = edwards_add(scaled_full, col_full)
-        // where scaled_full = edwards_scalar_mul(prev_full, 16)
-        //                   = edwards_add(scaled_prefix, scaled_single)
-
-        // Want: edwards_add(edwards_add(A,B), edwards_add(C,D))
-        //     = edwards_add(edwards_add(A,C), edwards_add(B,D))
-        // where A = scaled_prefix, B = scaled_single, C = col_prefix, D = col_single
-
-        // This follows from associativity and commutativity:
-        // (A+B) + (C+D) = A + (B + (C + D))           [assoc]
-        //               = A + ((B + C) + D)             [assoc on inner]
-        //               = A + ((C + B) + D)             [comm on B,C]
-        //               = A + (C + (B + D))             [assoc on inner]
-        //               = (A + C) + (B + D)             [assoc]
+        // Rearrange: (A+B) + (C+D) = (A+C) + (B+D)
+        // where A=scaled_prefix, B=scaled_single, C=col_prefix, D=col_single
+        // by repeated associativity + commutativity
 
         let a = scaled_prefix;
         let b = scaled_single;
@@ -843,12 +853,7 @@ pub proof fn lemma_straus_ct_correct(
     if n == 0 {
         // Both sides are identity
         lemma_straus_ct_base(points_affine, digits);
-        // straus_ct_partial(..., 0) with 0 points: all column_sums are identity,
-        // so Horner evaluation is identity
-        // Actually, straus_ct_partial starts at j=0, and at each step
-        // column_sum(..., j, 0) = identity, and [16]*identity + identity = identity.
-        // Let's just unfold the base case directly.
-        // For n=0 points, straus_ct_partial degenerates to identity at every j.
+        // 0 points: all column sums are identity, so Horner evaluation is identity.
         lemma_straus_ct_zero_points(points_affine, digits);
     } else {
         // Inductive case: peel off last point
@@ -989,79 +994,6 @@ proof fn lemma_reconstruct_radix_16_from_eq_helper(d: Seq<i8>, k: int)
             vstd::arithmetic::power2::lemma2_to64();
         }
     }
-}
-
-// =============================================================================
-// Helper: edwards_scalar_mul of identity is identity
-// =============================================================================
-pub proof fn lemma_edwards_scalar_mul_identity(n: nat)
-    ensures
-        edwards_scalar_mul(math_edwards_identity(), n) == math_edwards_identity(),
-    decreases n,
-{
-    let id = math_edwards_identity();
-    if n == 0 {
-        reveal_with_fuel(edwards_scalar_mul, 1);
-    } else if n == 1 {
-        // [1]*id = edwards_add(id, [0]*id) = edwards_add(id, id) -- wait, no.
-        // edwards_scalar_mul(P, 1) by definition:
-        //   n != 0: edwards_add(P.0, P.1, edwards_scalar_mul(P, 0).0, edwards_scalar_mul(P, 0).1)
-        //         = edwards_add(id.0, id.1, id.0, id.1)  [since scalar_mul(id, 0) = id]
-        reveal_with_fuel(edwards_scalar_mul, 2);
-        p_gt_2();
-        lemma_edwards_add_identity_right_canonical(id);
-    } else {
-        // n >= 2
-        lemma_edwards_scalar_mul_identity((n - 1) as nat);
-        lemma_edwards_scalar_mul_succ(id, (n - 1) as nat);
-        p_gt_2();
-        lemma_edwards_add_identity_right_canonical(id);
-    }
-}
-
-// =============================================================================
-// VT proof helpers
-// =============================================================================
-/// double(P) = [2]*P.
-pub proof fn lemma_double_is_scalar_mul_2(P: (nat, nat))
-    ensures
-        edwards_double(P.0, P.1) == edwards_scalar_mul(P, 2),
-{
-    // edwards_double(P) = edwards_add(P, P)
-    // edwards_scalar_mul(P, 2) = edwards_add(P, edwards_scalar_mul(P, 1))
-    //                          = edwards_add(P, edwards_add(P, edwards_scalar_mul(P, 0)))
-    //                          = edwards_add(P, edwards_add(P, identity))
-    // Need: edwards_add(P, identity) = P (when canonical), but P might not be canonical.
-    // Instead, use reveal_with_fuel to unfold the definition.
-    reveal_with_fuel(edwards_scalar_mul, 3);
-}
-
-/// Doubling distributes: double(A + B) = double(A) + double(B).
-pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
-    ensures
-        ({
-            let ab = edwards_add(a.0, a.1, b.0, b.1);
-            edwards_double(ab.0, ab.1)
-        }) == ({
-            let da = edwards_double(a.0, a.1);
-            let db = edwards_double(b.0, b.1);
-            edwards_add(da.0, da.1, db.0, db.1)
-        }),
-{
-    let ab = edwards_add(a.0, a.1, b.0, b.1);
-    lemma_double_is_scalar_mul_2(ab);
-    lemma_double_is_scalar_mul_2(a);
-    lemma_double_is_scalar_mul_2(b);
-    axiom_edwards_scalar_mul_distributive(a, b, 2);
-}
-
-/// double(O) = O.
-pub proof fn lemma_double_identity()
-    ensures
-        edwards_double(0nat, 1nat) == math_edwards_identity(),
-{
-    lemma_double_is_scalar_mul_2(math_edwards_identity());
-    lemma_edwards_scalar_mul_identity(2);
 }
 
 /// Single-point VT Horner: H_vt(seq![P], seq![naf], i) = [R(naf, i)] * P
@@ -1298,7 +1230,7 @@ pub proof fn lemma_straus_vt_correct(
         // Points are canonical
         assert forall|k: int| 0 <= k < points_affine.len() implies (#[trigger] points_affine[k]).0
             < p() && points_affine[k].1 < p() by {
-            lemma_edwards_point_as_affine_canonical(points_ep[k]);
+            p_gt_2();
         }
 
         // Split

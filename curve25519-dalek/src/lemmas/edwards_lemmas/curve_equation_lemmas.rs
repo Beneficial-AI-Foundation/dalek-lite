@@ -2676,4 +2676,64 @@ pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat),
     admit();
 }
 
+// =============================================================================
+// Scalar mul / double helpers
+// =============================================================================
+/// [n]*O = O for all n.
+pub proof fn lemma_edwards_scalar_mul_identity(n: nat)
+    ensures
+        edwards_scalar_mul(math_edwards_identity(), n) == math_edwards_identity(),
+    decreases n,
+{
+    let id = math_edwards_identity();
+    if n == 0 {
+        reveal_with_fuel(edwards_scalar_mul, 1);
+    } else if n == 1 {
+        reveal_with_fuel(edwards_scalar_mul, 2);
+        p_gt_2();
+        lemma_edwards_add_identity_right_canonical(id);
+    } else {
+        lemma_edwards_scalar_mul_identity((n - 1) as nat);
+        lemma_edwards_scalar_mul_succ(id, (n - 1) as nat);
+        p_gt_2();
+        lemma_edwards_add_identity_right_canonical(id);
+    }
+}
+
+/// double(P) = [2]*P.
+pub proof fn lemma_double_is_scalar_mul_2(P: (nat, nat))
+    ensures
+        edwards_double(P.0, P.1) == edwards_scalar_mul(P, 2),
+{
+    reveal_with_fuel(edwards_scalar_mul, 3);
+}
+
+/// double(A + B) = double(A) + double(B).
+pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
+    ensures
+        ({
+            let ab = edwards_add(a.0, a.1, b.0, b.1);
+            edwards_double(ab.0, ab.1)
+        }) == ({
+            let da = edwards_double(a.0, a.1);
+            let db = edwards_double(b.0, b.1);
+            edwards_add(da.0, da.1, db.0, db.1)
+        }),
+{
+    let ab = edwards_add(a.0, a.1, b.0, b.1);
+    lemma_double_is_scalar_mul_2(ab);
+    lemma_double_is_scalar_mul_2(a);
+    lemma_double_is_scalar_mul_2(b);
+    axiom_edwards_scalar_mul_distributive(a, b, 2);
+}
+
+/// double(O) = O.
+pub proof fn lemma_double_identity()
+    ensures
+        edwards_double(0nat, 1nat) == math_edwards_identity(),
+{
+    lemma_double_is_scalar_mul_2(math_edwards_identity());
+    lemma_edwards_scalar_mul_identity(2);
+}
+
 } // verus!

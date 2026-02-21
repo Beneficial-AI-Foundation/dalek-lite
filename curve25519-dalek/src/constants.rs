@@ -17,6 +17,12 @@ use crate::edwards::CompressedEdwardsY;
 use crate::montgomery::MontgomeryPoint;
 use crate::ristretto::{CompressedRistretto, RistrettoPoint};
 use crate::scalar::Scalar;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::edwards_specs::edwards_point_as_affine;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::ristretto_specs::spec_ristretto_basepoint;
 
 use vstd::prelude::*;
 
@@ -136,7 +142,7 @@ pub const RISTRETTO_BASEPOINT_COMPRESSED: CompressedRistretto = CompressedRistre
 /// provides fast scalar multiplication.
 pub exec const RISTRETTO_BASEPOINT_POINT: RistrettoPoint
     ensures
-        true,
+        edwards_point_as_affine(RISTRETTO_BASEPOINT_POINT.0) == spec_ristretto_basepoint(),
 {
     RistrettoPoint(ED25519_BASEPOINT_POINT)
 }

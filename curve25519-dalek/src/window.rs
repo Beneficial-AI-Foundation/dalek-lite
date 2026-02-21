@@ -302,11 +302,7 @@ impl<T: Debug> Debug for LookupTable<T> {
 impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
     /// Create a lookup table from an EdwardsPoint
     /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            is_valid_edwards_point(*P),
-        */
-
+    fn from(P: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_lookup_table_projective(result.0, *P, 8 as nat),
             lookup_table_projective_limbs_bounded(result.0),
@@ -372,11 +368,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
 impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
     /// Create a lookup table from an EdwardsPoint (affine version)
     /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            is_valid_edwards_point(*P),
-        */
-
+    fn from(P: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_lookup_table_affine(result.0, *P, 8 as nat),
             lookup_table_affine_limbs_bounded(result.0),
@@ -557,11 +549,7 @@ verus! {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table5_projective(result.0, *A),
             naf_lookup_table5_projective_limbs_bounded(result.0),
@@ -619,11 +607,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table5_affine(result.0, *A),
             naf_lookup_table5_affine_limbs_bounded(result.0),
@@ -788,11 +772,7 @@ verus! {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, ..., 127A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table8_projective(result.0, *A),
             naf_lookup_table8_projective_limbs_bounded(result.0),
@@ -851,11 +831,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, ..., 127A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table8_affine(result.0, *A),
             naf_lookup_table8_affine_limbs_bounded(result.0),

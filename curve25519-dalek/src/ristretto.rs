@@ -1109,10 +1109,6 @@ impl RistrettoPoint {
             lemma_unfold_edwards(t2);
             lemma_unfold_edwards(t4);
             lemma_unfold_edwards(t6);
-            // Exec EIGHT_TORSION equals spec by construction (same limb constants)
-            assume(t2 == spec_eight_torsion()[2]);
-            assume(t4 == spec_eight_torsion()[4]);
-            assume(t6 == spec_eight_torsion()[6]);
         }
         // Break additions into separate let bindings to reduce Z3 reasoning burden.
         // Explicit assertions after each addition prevent rlimit blowup in larger

@@ -32,7 +32,13 @@ use crate::backend::serial::curve_models::{
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D, spec_eight_torsion};
+use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::spec_eight_torsion;
+#[cfg(test)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::EIGHT_TORSION;
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::edwards::EdwardsBasepointTable;

@@ -585,7 +585,14 @@ mod decompress {
             assert(fe51_limbs_bounded(&Y, 54));
         }
 
-        let result = EdwardsPoint { X, Y, Z, T: &X * &Y };
+        let T_val = &X * &Y;
+        proof {
+            lemma_fe51_bounded_equiv(&X);
+            lemma_fe51_bounded_equiv(&Y);
+            lemma_fe51_bounded_equiv(&Z);
+            lemma_fe51_bounded_equiv(&T_val);
+        }
+        let result = EdwardsPoint { X, Y, Z, T: T_val };
 
         proof {
             // multiplication produces correct field_mul result
@@ -759,6 +766,27 @@ pub struct EdwardsPoint {
     pub(crate) T: FieldElement,
 }
 
+pub(crate) open spec fn fe51_each_limb_bounded_52(fe: &FieldElement) -> bool {
+    fe.limbs[0] < 4503599627370496 && fe.limbs[1] < 4503599627370496
+        && fe.limbs[2] < 4503599627370496 && fe.limbs[3] < 4503599627370496
+        && fe.limbs[4] < 4503599627370496
+}
+
+pub(crate) proof fn lemma_fe51_bounded_equiv(fe: &FieldElement)
+    ensures
+        fe51_each_limb_bounded_52(fe) <==> fe51_limbs_bounded(fe, 52),
+{
+    assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
+}
+
+impl EdwardsPoint {
+    #[verifier::type_invariant]
+    pub(crate) open spec fn well_formed(self) -> bool {
+        fe51_each_limb_bounded_52(&self.X) && fe51_each_limb_bounded_52(&self.Y)
+            && fe51_each_limb_bounded_52(&self.Z) && fe51_each_limb_bounded_52(&self.T)
+    }
+}
+
 // ------------------------------------------------------------------------
 // Constructors
 // ------------------------------------------------------------------------
@@ -905,6 +933,12 @@ impl Identity for EdwardsPoint {
             is_identity_edwards_point(result),
             is_well_formed_edwards_point(result),
     {
+        proof {
+            assert(0u64 < (1u64 << 52u64)) by (bit_vector);
+            assert(1u64 < (1u64 << 52u64)) by (bit_vector);
+            assert(fe51_limbs_bounded(&FieldElement::ZERO, 52));
+            assert(fe51_limbs_bounded(&FieldElement::ONE, 52));
+        }
         let result = EdwardsPoint {
             X: FieldElement::ZERO,
             Y: FieldElement::ONE,
@@ -997,10 +1031,18 @@ impl Zeroize for EdwardsPoint {
         ensures
             is_identity_edwards_point(*self),
     {
-        self.X.zeroize();
-        self.Y = FieldElement::ONE;
-        self.Z = FieldElement::ONE;
-        self.T.zeroize();
+        proof {
+            assert(0u64 < (1u64 << 52u64)) by (bit_vector);
+            assert(1u64 < (1u64 << 52u64)) by (bit_vector);
+            assert(fe51_limbs_bounded(&FieldElement::ZERO, 52));
+            assert(fe51_limbs_bounded(&FieldElement::ONE, 52));
+        }
+        *self = EdwardsPoint {
+            X: FieldElement::ZERO,
+            Y: FieldElement::ONE,
+            Z: FieldElement::ONE,
+            T: FieldElement::ZERO,
+        };
         proof {
             lemma_unfold_edwards(*self);
             assert(fe51_as_canonical_nat(&self.X) == 0) by {
@@ -1143,6 +1185,10 @@ impl ConditionallySelectable for EdwardsPoint {
         let Z = FieldElement::conditional_select(&a.Z, &b.Z, choice);
         let T = FieldElement::conditional_select(&a.T, &b.T, choice);
 
+        proof {
+            use_type_invariant(a);
+            use_type_invariant(b);
+        }
         let result = EdwardsPoint { X, Y, Z, T };
 
         proof {
@@ -2422,7 +2468,15 @@ impl<'a> Neg for &'a EdwardsPoint {
         let ghost old_z = fe51_as_canonical_nat(&self.Z);
         let ghost old_t = fe51_as_canonical_nat(&self.T);
 
-        let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
+        let neg_x = Neg::neg(&self.X);
+        let neg_t = Neg::neg(&self.T);
+        proof {
+            lemma_fe51_bounded_equiv(&neg_x);
+            lemma_fe51_bounded_equiv(&self.Y);
+            lemma_fe51_bounded_equiv(&self.Z);
+            lemma_fe51_bounded_equiv(&neg_t);
+        }
+        let r = EdwardsPoint { X: neg_x, Y: self.Y, Z: self.Z, T: neg_t };
 
         proof {
             lemma_unfold_edwards(r);

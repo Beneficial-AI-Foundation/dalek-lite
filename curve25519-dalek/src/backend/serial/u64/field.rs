@@ -131,6 +131,7 @@ impl Zeroize for FieldElement51 {
     fn zeroize(&mut self)
         ensures
             forall|i: int| 0 <= i < 5 ==> self.limbs[i] == 0,
+        no_unwind
     {
         /* ORIGINAL CODE: self.limbs.zeroize(); */
         crate::core_assumes::zeroize_limbs5(&mut self.limbs);

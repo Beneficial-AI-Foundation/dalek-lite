@@ -585,14 +585,8 @@ mod decompress {
             assert(fe51_limbs_bounded(&Y, 54));
         }
 
-        let T_val = &X * &Y;
-        proof {
-            lemma_fe51_bounded_equiv(&X);
-            lemma_fe51_bounded_equiv(&Y);
-            lemma_fe51_bounded_equiv(&Z);
-            lemma_fe51_bounded_equiv(&T_val);
-        }
-        let result = EdwardsPoint { X, Y, Z, T: T_val };
+        proof { broadcast use lemma_shift_52_broadcast; }
+        let result = EdwardsPoint { X, Y, Z, T: &X * &Y };
 
         proof {
             // multiplication produces correct field_mul result
@@ -772,9 +766,12 @@ pub(crate) open spec fn fe51_each_limb_bounded_52(fe: &FieldElement) -> bool {
         && fe.limbs[4] < 4503599627370496
 }
 
-pub(crate) proof fn lemma_fe51_bounded_equiv(fe: &FieldElement)
+/// One-line bridge: call `broadcast use lemma_shift_52_broadcast` at any construction
+/// site to connect fe51_limbs_bounded postconditions to the type invariant's
+/// explicit limb comparisons.
+pub(crate) broadcast proof fn lemma_shift_52_broadcast()
     ensures
-        fe51_each_limb_bounded_52(fe) <==> fe51_limbs_bounded(fe, 52),
+        #[trigger] (1u64 << 52u64) == 4503599627370496u64,
 {
     assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
 }
@@ -933,12 +930,7 @@ impl Identity for EdwardsPoint {
             is_identity_edwards_point(result),
             is_well_formed_edwards_point(result),
     {
-        proof {
-            assert(0u64 < (1u64 << 52u64)) by (bit_vector);
-            assert(1u64 < (1u64 << 52u64)) by (bit_vector);
-            assert(fe51_limbs_bounded(&FieldElement::ZERO, 52));
-            assert(fe51_limbs_bounded(&FieldElement::ONE, 52));
-        }
+        proof { broadcast use lemma_shift_52_broadcast; }
         let result = EdwardsPoint {
             X: FieldElement::ZERO,
             Y: FieldElement::ONE,
@@ -1031,12 +1023,7 @@ impl Zeroize for EdwardsPoint {
         ensures
             is_identity_edwards_point(*self),
     {
-        proof {
-            assert(0u64 < (1u64 << 52u64)) by (bit_vector);
-            assert(1u64 < (1u64 << 52u64)) by (bit_vector);
-            assert(fe51_limbs_bounded(&FieldElement::ZERO, 52));
-            assert(fe51_limbs_bounded(&FieldElement::ONE, 52));
-        }
+        proof { broadcast use lemma_shift_52_broadcast; }
         *self = EdwardsPoint {
             X: FieldElement::ZERO,
             Y: FieldElement::ONE,
@@ -1188,6 +1175,7 @@ impl ConditionallySelectable for EdwardsPoint {
         proof {
             use_type_invariant(a);
             use_type_invariant(b);
+            broadcast use lemma_shift_52_broadcast;
         }
         let result = EdwardsPoint { X, Y, Z, T };
 
@@ -2468,15 +2456,8 @@ impl<'a> Neg for &'a EdwardsPoint {
         let ghost old_z = fe51_as_canonical_nat(&self.Z);
         let ghost old_t = fe51_as_canonical_nat(&self.T);
 
-        let neg_x = Neg::neg(&self.X);
-        let neg_t = Neg::neg(&self.T);
-        proof {
-            lemma_fe51_bounded_equiv(&neg_x);
-            lemma_fe51_bounded_equiv(&self.Y);
-            lemma_fe51_bounded_equiv(&self.Z);
-            lemma_fe51_bounded_equiv(&neg_t);
-        }
-        let r = EdwardsPoint { X: neg_x, Y: self.Y, Z: self.Z, T: neg_t };
+        proof { broadcast use lemma_shift_52_broadcast; }
+        let r = EdwardsPoint { X: Neg::neg(&self.X), Y: self.Y, Z: self.Z, T: Neg::neg(&self.T) };
 
         proof {
             lemma_unfold_edwards(r);

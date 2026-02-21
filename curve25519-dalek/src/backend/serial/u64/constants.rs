@@ -12,6 +12,9 @@
 use super::field::FieldElement51;
 use super::scalar::Scalar52;
 use crate::edwards::EdwardsPoint;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::edwards_specs::{edwards_point_as_affine, spec_ed25519_basepoint};
 
 #[cfg(feature = "precomputed-tables")]
 use crate::{
@@ -148,7 +151,7 @@ pub(crate) const RR: Scalar52 = Scalar52 {
 #[verifier::external_body]
 pub exec const ED25519_BASEPOINT_POINT: EdwardsPoint
     ensures
-        true,
+        edwards_point_as_affine(ED25519_BASEPOINT_POINT) == spec_ed25519_basepoint(),
 {
     EdwardsPoint {
         X: FieldElement51 {
@@ -365,7 +368,7 @@ pub closed spec fn spec_eight_torsion() -> [EdwardsPoint; 8] {
 
 pub exec const EIGHT_TORSION: [EdwardsPoint; 8]
     ensures
-        true,
+        EIGHT_TORSION == spec_eight_torsion(),
 {
     EIGHT_TORSION_INNER_DOC_HIDDEN
 }
@@ -375,7 +378,7 @@ pub exec const EIGHT_TORSION: [EdwardsPoint; 8]
 #[verifier::external_body]
 pub exec const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8]
     ensures
-        true,
+        EIGHT_TORSION_INNER_DOC_HIDDEN == spec_eight_torsion(),
 {
     [
     // T[0] = identity (0, 1)

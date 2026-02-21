@@ -321,6 +321,7 @@ pub fn zeroize_bytes32(bytes: &mut [u8; 32])
 pub fn zeroize_limbs5(limbs: &mut [u64; 5])
     ensures
         forall|i: int| 0 <= i < 5 ==> #[trigger] limbs[i] == 0u64,
+    no_unwind
 {
     use zeroize::Zeroize;
     limbs.zeroize();

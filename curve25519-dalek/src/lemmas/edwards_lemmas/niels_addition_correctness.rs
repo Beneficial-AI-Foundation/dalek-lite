@@ -292,7 +292,7 @@ proof fn lemma_sub_via_negation(
 ///
 /// Ensures: is_valid_completed_point(result) ∧
 ///   completed_point_as_affine_edwards(result) == edwards_add(self_affine, other_affine)
-pub proof fn lemma_add_projective_niels_completed_valid(
+pub(crate) proof fn lemma_add_projective_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::ProjectiveNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
@@ -344,6 +344,7 @@ pub proof fn lemma_add_projective_niels_completed_valid(
             edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
         },
 {
+    lemma_unfold_edwards(self_point);
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
     let sZ = fe51_as_canonical_nat(&self_point.Z);
@@ -358,6 +359,7 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     // Extract witness from is_valid_projective_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
         is_valid_edwards_point(ep) && #[trigger] projective_niels_corresponds_to_edwards(other, ep);
+    lemma_unfold_edwards(ep);
     let X2 = fe51_as_canonical_nat(&ep.X);
     let Y2 = fe51_as_canonical_nat(&ep.Y);
     let Z2 = fe51_as_canonical_nat(&ep.Z);
@@ -370,18 +372,10 @@ pub proof fn lemma_add_projective_niels_completed_valid(
     assert(field_mul(X2, Y2) == field_mul(Z2, T2));
 
     // Niels correspondence: (Y+X, Y-X, Z, 2dT)
-    assert(fe51_as_canonical_nat(&other.Y_plus_X) == field_add(Y2, X2)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.Y_minus_X) == field_sub(Y2, X2)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.Z) == Z2) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.T2d) == field_mul(field_mul(2, d), T2)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
+    assert(fe51_as_canonical_nat(&other.Y_plus_X) == field_add(Y2, X2));
+    assert(fe51_as_canonical_nat(&other.Y_minus_X) == field_sub(Y2, X2));
+    assert(fe51_as_canonical_nat(&other.Z) == Z2);
+    assert(fe51_as_canonical_nat(&other.T2d) == field_mul(field_mul(2, d), T2));
 
     // Affine coordinates: xi = Xi/Zi, yi = Yi/Zi
     let x1 = field_mul(sX, field_inv(sZ));
@@ -614,7 +608,7 @@ pub proof fn lemma_add_projective_niels_completed_valid(
 ///
 /// Ensures: is_valid_completed_point(result) ∧
 ///   completed_point_as_affine_edwards(result) == edwards_sub(self_affine, other_affine)
-pub proof fn lemma_sub_projective_niels_completed_valid(
+pub(crate) proof fn lemma_sub_projective_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::ProjectiveNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
@@ -666,6 +660,7 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
             edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
         },
 {
+    lemma_unfold_edwards(self_point);
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
     let sZ = fe51_as_canonical_nat(&self_point.Z);
@@ -680,6 +675,7 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     // Extract witness from is_valid_projective_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
         is_valid_edwards_point(ep) && #[trigger] projective_niels_corresponds_to_edwards(other, ep);
+    lemma_unfold_edwards(ep);
     let X2 = fe51_as_canonical_nat(&ep.X);
     let Y2 = fe51_as_canonical_nat(&ep.Y);
     let Z2 = fe51_as_canonical_nat(&ep.Z);
@@ -692,18 +688,10 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
     assert(field_mul(X2, Y2) == field_mul(Z2, T2));
 
     // Niels correspondence: (Y+X, Y-X, Z, 2dT)
-    assert(fe51_as_canonical_nat(&other.Y_plus_X) == field_add(Y2, X2)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.Y_minus_X) == field_sub(Y2, X2)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.Z) == Z2) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.T2d) == field_mul(field_mul(2, d), T2)) by {
-        reveal(projective_niels_corresponds_to_edwards);
-    };
+    assert(fe51_as_canonical_nat(&other.Y_plus_X) == field_add(Y2, X2));
+    assert(fe51_as_canonical_nat(&other.Y_minus_X) == field_sub(Y2, X2));
+    assert(fe51_as_canonical_nat(&other.Z) == Z2);
+    assert(fe51_as_canonical_nat(&other.T2d) == field_mul(field_mul(2, d), T2));
 
     // Affine coordinates: xi = Xi/Zi, yi = Yi/Zi
     let x1 = field_mul(sX, field_inv(sZ));
@@ -946,7 +934,7 @@ pub proof fn lemma_sub_projective_niels_completed_valid(
 /// Ensures: is_valid_completed_point(result) ∧
 ///   completed_point_as_affine_edwards(result) == edwards_add(self_affine, other_affine)
 /// Same as ProjectiveNiels but factors out Z1 instead of Z1·Z2 (affine Niels has Z₂ = 1).
-pub proof fn lemma_add_affine_niels_completed_valid(
+pub(crate) proof fn lemma_add_affine_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::AffineNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
@@ -1001,6 +989,7 @@ pub proof fn lemma_add_affine_niels_completed_valid(
             edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
         },
 {
+    lemma_unfold_edwards(self_point);
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
     let sZ = fe51_as_canonical_nat(&self_point.Z);
@@ -1015,6 +1004,7 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     // Extract witness from is_valid_affine_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
         is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
+    lemma_unfold_edwards(ep);
     let X2 = fe51_as_canonical_nat(&ep.X);
     let Y2 = fe51_as_canonical_nat(&ep.Y);
     let Z2 = fe51_as_canonical_nat(&ep.Z);
@@ -1034,15 +1024,9 @@ pub proof fn lemma_add_affine_niels_completed_valid(
     };
 
     // Affine Niels correspondence: (y+x, y-x, 2dxy)  (already affine, no Z)
-    assert(fe51_as_canonical_nat(&other.y_plus_x) == field_add(y2, x2)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.y_minus_x) == field_sub(y2, x2)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.xy2d) == field_mul(field_mul(field_mul(x2, y2), 2), d)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
+    assert(fe51_as_canonical_nat(&other.y_plus_x) == field_add(y2, x2));
+    assert(fe51_as_canonical_nat(&other.y_minus_x) == field_sub(y2, x2));
+    assert(fe51_as_canonical_nat(&other.xy2d) == field_mul(field_mul(field_mul(x2, y2), 2), d));
 
     // STEP 1: FOIL on PP and MM
     let result_x = field_sub(pp_val, mm_val);
@@ -1238,7 +1222,7 @@ pub proof fn lemma_add_affine_niels_completed_valid(
 ///
 /// Ensures: is_valid_completed_point(result) ∧
 ///   completed_point_as_affine_edwards(result) == edwards_sub(self_affine, other_affine)
-pub proof fn lemma_sub_affine_niels_completed_valid(
+pub(crate) proof fn lemma_sub_affine_niels_completed_valid(
     self_point: crate::edwards::EdwardsPoint,
     other: crate::backend::serial::curve_models::AffineNielsPoint,
     result: crate::backend::serial::curve_models::CompletedPoint,
@@ -1293,6 +1277,7 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
             edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
         },
 {
+    lemma_unfold_edwards(self_point);
     let sX = fe51_as_canonical_nat(&self_point.X);
     let sY = fe51_as_canonical_nat(&self_point.Y);
     let sZ = fe51_as_canonical_nat(&self_point.Z);
@@ -1306,6 +1291,7 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
 
     let ep = choose|ep: crate::edwards::EdwardsPoint|
         is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
+    lemma_unfold_edwards(ep);
     let X2 = fe51_as_canonical_nat(&ep.X);
     let Y2 = fe51_as_canonical_nat(&ep.Y);
     let Z2 = fe51_as_canonical_nat(&ep.Z);
@@ -1325,15 +1311,9 @@ pub proof fn lemma_sub_affine_niels_completed_valid(
     };
 
     // Niels correspondence
-    assert(fe51_as_canonical_nat(&other.y_plus_x) == field_add(y2, x2)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.y_minus_x) == field_sub(y2, x2)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
-    assert(fe51_as_canonical_nat(&other.xy2d) == field_mul(field_mul(field_mul(x2, y2), 2), d)) by {
-        reveal(affine_niels_corresponds_to_edwards);
-    };
+    assert(fe51_as_canonical_nat(&other.y_plus_x) == field_add(y2, x2));
+    assert(fe51_as_canonical_nat(&other.y_minus_x) == field_sub(y2, x2));
+    assert(fe51_as_canonical_nat(&other.xy2d) == field_mul(field_mul(field_mul(x2, y2), 2), d));
 
     // STEP 1: Mixed FOIL on PM and MP (swapped Y+X / Y-X)
     let result_x = field_sub(pm_val, mp_val);

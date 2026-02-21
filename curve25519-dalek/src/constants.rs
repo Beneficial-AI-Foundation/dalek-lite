@@ -17,6 +17,12 @@ use crate::edwards::CompressedEdwardsY;
 use crate::montgomery::MontgomeryPoint;
 use crate::ristretto::{CompressedRistretto, RistrettoPoint};
 use crate::scalar::Scalar;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::edwards_specs::edwards_point_as_affine;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::ristretto_specs::spec_ristretto_basepoint;
 
 use vstd::prelude::*;
 
@@ -134,7 +140,12 @@ pub const RISTRETTO_BASEPOINT_COMPRESSED: CompressedRistretto = CompressedRistre
 ///
 /// This is called `_POINT` to distinguish it from `_TABLE`, which
 /// provides fast scalar multiplication.
-pub const RISTRETTO_BASEPOINT_POINT: RistrettoPoint = RistrettoPoint(ED25519_BASEPOINT_POINT);
+pub exec const RISTRETTO_BASEPOINT_POINT: RistrettoPoint
+    ensures
+        edwards_point_as_affine(RISTRETTO_BASEPOINT_POINT.0) == spec_ristretto_basepoint(),
+{
+    RistrettoPoint(ED25519_BASEPOINT_POINT)
+}
 
 } // verus!
 /// `BASEPOINT_ORDER` is the order of the Ristretto group and of the Ed25519 basepoint, i.e.,

@@ -3439,15 +3439,15 @@ impl Scalar {
             let carry_shifted_u64: u64 = carry << w;
             let carry_shifted: i64 = carry_shifted_u64 as i64;
             proof {
-                // Re-establish the algebraic bridge from the original shift to `new_carry * radix`.
-                assert(new_carry * pow2(w as nat) <= u64::MAX) by {
-                    assert(new_carry <= 1);
-                    assert(pow2(w as nat) <= 256) by {
-                        assert(radix as nat == pow2(w as nat));
-                        assert(radix <= 256u64);
-                    }
-                    lemma_mul_upper_bound(new_carry as int, pow2(w as nat) as int, 1, 256);
+                assert(new_carry <= 1);
+                assert(pow2(w as nat) <= 256) by {
+                    assert(radix as nat == pow2(w as nat));
+                    assert(radix <= 256u64);
                 }
+                assert(new_carry * pow2(w as nat) <= 256) by {
+                    lemma_mul_upper_bound(new_carry as int, 1, pow2(w as nat) as int, 256);
+                }
+                assert(new_carry * pow2(w as nat) <= u64::MAX);
                 assert(carry_shifted_u64 == new_carry * pow2(w as nat)) by {
                     lemma_u64_shl_is_mul(new_carry, w as u64);
                 }

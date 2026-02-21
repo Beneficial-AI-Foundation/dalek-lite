@@ -139,7 +139,7 @@ pub proof fn lemma_fe51_limbs_bounded_weaken(fe: &FieldElement51, a: u64, b: u64
 }
 
 /// Weaken EdwardsPoint from 52-bounded (invariant) to 54-bounded (operation precondition)
-pub proof fn lemma_edwards_point_weaken_to_54(point: &EdwardsPoint)
+pub(crate) proof fn lemma_edwards_point_weaken_to_54(point: &EdwardsPoint)
     requires
         edwards_point_limbs_bounded(*point),
     ensures
@@ -148,6 +148,7 @@ pub proof fn lemma_edwards_point_weaken_to_54(point: &EdwardsPoint)
         fe51_limbs_bounded(&point.Z, 54),
         fe51_limbs_bounded(&point.T, 54),
 {
+    lemma_unfold_edwards(*point);
     lemma_fe51_limbs_bounded_weaken(&point.X, 52, 54);
     lemma_fe51_limbs_bounded_weaken(&point.Y, 52, 54);
     lemma_fe51_limbs_bounded_weaken(&point.Z, 52, 54);

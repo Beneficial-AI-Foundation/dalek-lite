@@ -601,6 +601,14 @@ impl ProjectivePoint {
             spec_edwards_point(result) == spec_projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {
+        /* ORIGINAL CODE:
+        let result = EdwardsPoint {
+            X: &self.X * &self.Z,
+            Y: &self.Y * &self.Z,
+            Z: self.Z.square(),
+            T: &self.X * &self.Y,
+        };
+        Variable assignment refactor to prove type invariant before constructor. */
         let rX = &self.X * &self.Z;
         let rY = &self.Y * &self.Z;
         let rZ = self.Z.square();
@@ -840,6 +848,14 @@ impl CompletedPoint {
             spec_edwards_point(result) == spec_completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
+        /* ORIGINAL CODE:
+        let result = EdwardsPoint {
+            X: &self.X * &self.T,
+            Y: &self.Y * &self.Z,
+            Z: &self.Z * &self.T,
+            T: &self.X * &self.Y,
+        };
+        Variable assignment refactor to prove type invariant before constructor. */
         let rX = &self.X * &self.T;
         let rY = &self.Y * &self.Z;
         let rZ = &self.Z * &self.T;

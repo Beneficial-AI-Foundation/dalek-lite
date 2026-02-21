@@ -3445,12 +3445,7 @@ impl Scalar {
                     assert(radix <= 256u64);
                 }
                 assert(new_carry * pow2(w as nat) <= 256) by {
-                    lemma_mul_upper_bound(
-                        new_carry as int,
-                        1,
-                        pow2(w as nat) as int,
-                        256,
-                    );
+                    lemma_mul_upper_bound(new_carry as int, 1, pow2(w as nat) as int, 256);
                 }
                 assert(new_carry * pow2(w as nat) <= u64::MAX);
                 assert(carry_shifted_u64 == new_carry * pow2(w as nat)) by {

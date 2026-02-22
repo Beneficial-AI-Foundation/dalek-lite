@@ -1120,13 +1120,15 @@ impl RistrettoPoint {
         // Break additions into separate let bindings to reduce Z3 reasoning burden.
         // Explicit assertions after each addition prevent rlimit blowup in larger
         // verification contexts (e.g. libsignal) where the solver has more axioms in scope.
-        let p0 = self.0;
+        // Variable assignment refactor: original inline expressions split into let bindings
+        // to prove type invariant properties for each intermediate point.
+        let p0 = self.0;  /* ORIGINAL CODE: self.0 */
         proof {
             lemma_unfold_edwards(p0);
             assert(is_well_formed_edwards_point(p0));
             assert(edwards_point_as_affine(p0) == edwards_point_as_affine(self.0));
         }
-        let p1 = &self.0 + &t2;
+        let p1 = &self.0 + &t2;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[2] */
         proof {
             lemma_unfold_edwards(p1);
             assert(is_well_formed_edwards_point(p1));
@@ -1139,7 +1141,7 @@ impl RistrettoPoint {
                 t2.1,
             ));
         }
-        let p2 = &self.0 + &t4;
+        let p2 = &self.0 + &t4;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[4] */
         proof {
             lemma_unfold_edwards(p2);
             assert(is_well_formed_edwards_point(p2));
@@ -1152,7 +1154,7 @@ impl RistrettoPoint {
                 t4.1,
             ));
         }
-        let p3 = &self.0 + &t6;
+        let p3 = &self.0 + &t6;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[6] */
         proof {
             lemma_unfold_edwards(p3);
             assert(is_well_formed_edwards_point(p3));
@@ -1165,7 +1167,8 @@ impl RistrettoPoint {
                 t6.1,
             ));
         }
-        [p0, p1, p2, p3]
+        [p0, p1, p2, p3]  /* ORIGINAL CODE: coset */
+
     }
 
     /// Computes the Ristretto Elligator map. This is the

@@ -1901,12 +1901,31 @@ impl<'a> Neg for &'a ProjectiveNielsPoint {
             T2d: negate_field(&self.T2d),
         };
         proof {
-            // TODO(verify): prove from Y+X ↔ Y-X swap and T2d negation
-            let self_affine = projective_niels_point_as_affine_edwards(*self);
-            assume(projective_niels_point_as_affine_edwards(result) == (
-                field_neg(self_affine.0),
-                self_affine.1,
-            ));
+            let ypx = fe51_as_canonical_nat(&self.Y_plus_X);
+            let ymx = fe51_as_canonical_nat(&self.Y_minus_X);
+            let z = fe51_as_canonical_nat(&self.Z);
+
+            // y unchanged: field_add(ymx, ypx) == field_add(ypx, ymx)
+            assert(field_add(ymx, ypx) == field_add(ypx, ymx)) by {
+                lemma_field_add_comm(ymx, ypx);
+            };
+
+            // x negated: sub(ymx, ypx) == neg(sub(ypx, ymx))
+            assert(field_sub(ymx, ypx) == field_neg(field_sub(ypx, ymx))) by {
+                lemma_field_sub_antisymmetric(ypx, ymx);
+            };
+
+            // neg distributes through the two multiplications
+            let x_proj = field_mul(field_sub(ypx, ymx), field_inv(2));
+            assert(field_mul(field_neg(field_sub(ypx, ymx)), field_inv(2)) == field_neg(x_proj))
+                by {
+                lemma_field_neg_mul_left(field_sub(ypx, ymx), field_inv(2));
+            };
+            assert(field_mul(field_neg(x_proj), field_inv(z)) == field_neg(
+                field_mul(x_proj, field_inv(z)),
+            )) by {
+                lemma_field_neg_mul_left(x_proj, field_inv(z));
+            };
         }
         result
     }
@@ -1961,12 +1980,25 @@ impl<'a> Neg for &'a AffineNielsPoint {
             xy2d: negate_field(&self.xy2d),
         };
         proof {
-            // TODO(verify): prove from y+x ↔ y-x swap and xy2d negation
-            let self_affine = affine_niels_point_as_affine_edwards(*self);
-            assume(affine_niels_point_as_affine_edwards(result) == (
-                field_neg(self_affine.0),
-                self_affine.1,
-            ));
+            let ypx = fe51_as_canonical_nat(&self.y_plus_x);
+            let ymx = fe51_as_canonical_nat(&self.y_minus_x);
+
+            // y unchanged: field_add(ymx, ypx) == field_add(ypx, ymx)
+            assert(field_add(ymx, ypx) == field_add(ypx, ymx)) by {
+                lemma_field_add_comm(ymx, ypx);
+            };
+
+            // x negated: sub(ymx, ypx) == neg(sub(ypx, ymx))
+            assert(field_sub(ymx, ypx) == field_neg(field_sub(ypx, ymx))) by {
+                lemma_field_sub_antisymmetric(ypx, ymx);
+            };
+
+            // neg distributes through the multiplication by field_inv(2)
+            assert(field_mul(field_neg(field_sub(ypx, ymx)), field_inv(2)) == field_neg(
+                field_mul(field_sub(ypx, ymx), field_inv(2)),
+            )) by {
+                lemma_field_neg_mul_left(field_sub(ypx, ymx), field_inv(2));
+            };
         }
         result
     }

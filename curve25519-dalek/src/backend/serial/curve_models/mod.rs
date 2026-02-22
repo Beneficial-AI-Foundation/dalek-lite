@@ -138,6 +138,8 @@ use crate::core_assumes::negate_field;
 use crate::lemmas::edwards_lemmas::constants_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks for affine↔projective curve equation
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks for doubling correctness
+use crate::lemmas::edwards_lemmas::double_correctness::*;
 #[allow(unused_imports)] // Used in verus! blocks for Niels addition correctness lemmas
 use crate::lemmas::edwards_lemmas::niels_addition_correctness::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -158,6 +160,8 @@ use crate::field::FieldElement;
 use crate::traits::ValidityCheck;
 
 use vstd::arithmetic::div_mod::*;
+#[cfg(verus_keep_ghost)]
+use vstd::arithmetic::power::pow;
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -1036,12 +1040,85 @@ impl ProjectivePoint {
             // result.T: from subtraction → 54-bounded (directly from sub postcondition)
             assert(fe51_limbs_bounded(&result.T, 54));  // subtraction postcondition
 
-            // TODO(verify): prove doubling correctness from XX, YY, ZZ2 formulas
-            assume(is_valid_completed_point(result));
-            assume(completed_point_as_affine_edwards(result) == edwards_double(
-                projective_point_as_affine_edwards(*self).0,
-                projective_point_as_affine_edwards(*self).1,
+            // Bridge square() postconditions to field_square(fe51_as_canonical_nat(...))
+            let x_raw = u64_5_as_nat(self.X.limbs);
+            let y_raw = u64_5_as_nat(self.Y.limbs);
+            let z_raw = u64_5_as_nat(self.Z.limbs);
+            let xx_raw = u64_5_as_nat(XX.limbs);
+            let yy_raw = u64_5_as_nat(YY.limbs);
+
+            let xx_val = fe51_as_canonical_nat(&XX);
+            let yy_val = fe51_as_canonical_nat(&YY);
+            let zz2_val = fe51_as_canonical_nat(&ZZ2);
+            let xpy_sq_val = fe51_as_canonical_nat(&X_plus_Y_sq);
+
+            assert(xx_val == field_square(fe51_as_canonical_nat(&self.X))) by {
+                lemma_square_matches_field_square(x_raw, xx_raw);
+            }
+            assert(yy_val == field_square(fe51_as_canonical_nat(&self.Y))) by {
+                lemma_square_matches_field_square(y_raw, yy_raw);
+            }
+
+            // Bridge square2() postcondition to field_mul(2, field_square(...))
+            p_gt_2();
+
+            // Unfold pow(z_raw, 2) = z_raw * z_raw as int
+            let zsq = pow(z_raw as int, 2) as nat;
+            assert(pow(z_raw as int, 2) == z_raw as int * z_raw as int) by {
+                reveal(pow);
+                assert(pow(z_raw as int, 1) == z_raw as int * pow(z_raw as int, 0));
+            };
+            assert(zsq == z_raw * z_raw);
+
+            // Connect postcondition to (2 * zsq) % p
+            assert(pow(z_raw as int, 2) >= 0);
+            assert(zsq as int == pow(z_raw as int, 2));
+            assert((2 * pow(z_raw as int, 2)) as nat == 2 * zsq);
+            assert(zz2_val == (2 * zsq) % p());
+
+            // field_square(z_raw % p) = zsq % p
+            assert(field_square(z_raw % p()) == zsq % p()) by {
+                lemma_square_matches_field_square(z_raw, zsq);
+            }
+
+            // field_mul(2, zsq%p) = (2 * zsq) % p
+            assert(field_mul(2, zsq % p()) == (2 * zsq) % p()) by {
+                lemma_mul_mod_noop_general(2int, zsq as int, p() as int);
+                lemma_small_mod(2nat, p());
+            }
+
+            assert(zz2_val == field_mul(2, field_square(fe51_as_canonical_nat(&self.Z))));
+
+            // Bridge X_plus_Y.square() postcondition
+            assert(xpy_sq_val == field_square(
+                field_add(fe51_as_canonical_nat(&self.X), fe51_as_canonical_nat(&self.Y)),
+            )) by {
+                let xpy_raw = u64_5_as_nat(X_plus_Y.limbs);
+                let xpy_sq_raw = u64_5_as_nat(X_plus_Y_sq.limbs);
+                lemma_square_matches_field_square(xpy_raw, xpy_sq_raw);
+            }
+
+            // Assert result component spec relationships (from add/sub postconditions)
+            assert(fe51_as_canonical_nat(&result.X) == field_sub(
+                xpy_sq_val,
+                field_add(yy_val, xx_val),
             ));
+            assert(fe51_as_canonical_nat(&result.Y) == field_add(yy_val, xx_val));
+            assert(fe51_as_canonical_nat(&result.Z) == field_sub(yy_val, xx_val));
+            assert(fe51_as_canonical_nat(&result.T) == field_sub(
+                zz2_val,
+                field_sub(yy_val, xx_val),
+            ));
+
+            // Apply the bridge lemma
+            lemma_double_projective_completed_valid(
+                *self,
+                result,
+                xx_val,
+                yy_val,
+                zz2_val,
+                xpy_sq_val,
+            );
         }
 
         result
@@ -1834,12 +1911,31 @@ impl<'a> Neg for &'a ProjectiveNielsPoint {
             T2d: negate_field(&self.T2d),
         };
         proof {
-            // TODO(verify): prove from Y+X ↔ Y-X swap and T2d negation
-            let self_affine = projective_niels_point_as_affine_edwards(*self);
-            assume(projective_niels_point_as_affine_edwards(result) == (
-                field_neg(self_affine.0),
-                self_affine.1,
-            ));
+            let ypx = fe51_as_canonical_nat(&self.Y_plus_X);
+            let ymx = fe51_as_canonical_nat(&self.Y_minus_X);
+            let z = fe51_as_canonical_nat(&self.Z);
+
+            // y unchanged: field_add(ymx, ypx) == field_add(ypx, ymx)
+            assert(field_add(ymx, ypx) == field_add(ypx, ymx)) by {
+                lemma_field_add_comm(ymx, ypx);
+            };
+
+            // x negated: sub(ymx, ypx) == neg(sub(ypx, ymx))
+            assert(field_sub(ymx, ypx) == field_neg(field_sub(ypx, ymx))) by {
+                lemma_field_sub_antisymmetric(ypx, ymx);
+            };
+
+            // neg distributes through the two multiplications
+            let x_proj = field_mul(field_sub(ypx, ymx), field_inv(2));
+            assert(field_mul(field_neg(field_sub(ypx, ymx)), field_inv(2)) == field_neg(x_proj))
+                by {
+                lemma_field_neg_mul_left(field_sub(ypx, ymx), field_inv(2));
+            };
+            assert(field_mul(field_neg(x_proj), field_inv(z)) == field_neg(
+                field_mul(x_proj, field_inv(z)),
+            )) by {
+                lemma_field_neg_mul_left(x_proj, field_inv(z));
+            };
         }
         result
     }
@@ -1894,12 +1990,25 @@ impl<'a> Neg for &'a AffineNielsPoint {
             xy2d: negate_field(&self.xy2d),
         };
         proof {
-            // TODO(verify): prove from y+x ↔ y-x swap and xy2d negation
-            let self_affine = affine_niels_point_as_affine_edwards(*self);
-            assume(affine_niels_point_as_affine_edwards(result) == (
-                field_neg(self_affine.0),
-                self_affine.1,
-            ));
+            let ypx = fe51_as_canonical_nat(&self.y_plus_x);
+            let ymx = fe51_as_canonical_nat(&self.y_minus_x);
+
+            // y unchanged: field_add(ymx, ypx) == field_add(ypx, ymx)
+            assert(field_add(ymx, ypx) == field_add(ypx, ymx)) by {
+                lemma_field_add_comm(ymx, ypx);
+            };
+
+            // x negated: sub(ymx, ypx) == neg(sub(ypx, ymx))
+            assert(field_sub(ymx, ypx) == field_neg(field_sub(ypx, ymx))) by {
+                lemma_field_sub_antisymmetric(ypx, ymx);
+            };
+
+            // neg distributes through the multiplication by field_inv(2)
+            assert(field_mul(field_neg(field_sub(ypx, ymx)), field_inv(2)) == field_neg(
+                field_mul(field_sub(ypx, ymx), field_inv(2)),
+            )) by {
+                lemma_field_neg_mul_left(field_sub(ypx, ymx), field_inv(2));
+            };
         }
         result
     }

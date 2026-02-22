@@ -673,8 +673,9 @@ impl Straus {
                                 j as int,
                             );
 
-                            // Scope the select lemma to limit Z3 quantifier pressure
                             let ghost neg_digit = (-(naf@[i as int])) as i8;
+
+                            // select(|d|) decodes to [|d|]*P
                             assert(projective_niels_point_as_affine_edwards(R_j)
                                 == edwards_scalar_mul_signed(base_j, neg_digit as int)) by {
                                 assert(base_j == edwards_point_as_affine(
@@ -688,7 +689,12 @@ impl Straus {
                                     true,
                                 );
                             }
-                            reveal(edwards_scalar_mul_signed);
+
+                            // sub(t, R_j) = add(t, neg(R_j))
+                            // neg([|d|]*P) = [-|d|]*P = [d]*P  (since d < 0, |d| = -d)
+                            assert(base_j.0 < p() && base_j.1 < p());
+                            lemma_neg_of_signed_scalar_mul(base_j, neg_digit as int);
+                            assert(digit_val as int == -(neg_digit as int));
 
                             axiom_edwards_add_associative(
                                 doubled_affine.0,

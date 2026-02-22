@@ -779,41 +779,8 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         lemma_column_sum_single(pts.last(), digs.last(), j);
         // col_single == [digs.last()[j]] * pts.last()
 
-        // Rearrange: (A+B) + (C+D) = (A+C) + (B+D)
-        // where A=scaled_prefix, B=scaled_single, C=col_prefix, D=col_single
-        // by repeated associativity + commutativity
-
-        let a = scaled_prefix;
-        let b = scaled_single;
-        let c = col_prefix;
-        let d_val = col_single;
-
-        // (A+B) + (C+D)
-        let ab = edwards_add(a.0, a.1, b.0, b.1);
-        let cd = edwards_add(c.0, c.1, d_val.0, d_val.1);
-        let bc = edwards_add(b.0, b.1, c.0, c.1);
-        let cb = edwards_add(c.0, c.1, b.0, b.1);
-        let bd = edwards_add(b.0, b.1, d_val.0, d_val.1);
-        let ac = edwards_add(a.0, a.1, c.0, c.1);
-
-        // Step 1: (A+B) + (C+D) = A + (B + (C+D))
-        axiom_edwards_add_associative(a.0, a.1, b.0, b.1, cd.0, cd.1);
-        let b_cd = edwards_add(b.0, b.1, cd.0, cd.1);
-
-        // Step 2: B + (C+D) = (B+C) + D
-        axiom_edwards_add_associative(b.0, b.1, c.0, c.1, d_val.0, d_val.1);
-
-        // Step 3: B+C = C+B
-        lemma_edwards_add_commutative(b.0, b.1, c.0, c.1);
-
-        // Step 4: (C+B) + D = C + (B+D)
-        axiom_edwards_add_associative(c.0, c.1, b.0, b.1, d_val.0, d_val.1);
-
-        // Step 5: A + (C + (B+D)) = (A+C) + (B+D)
-        axiom_edwards_add_associative(a.0, a.1, c.0, c.1, bd.0, bd.1);
-
-        // Chain: (A+B)+(C+D) = A+(B+(C+D)) = A+((B+C)+D) = A+((C+B)+D) = A+(C+(B+D)) = (A+C)+(B+D)
-        assert(edwards_add(ab.0, ab.1, cd.0, cd.1) == edwards_add(ac.0, ac.1, bd.0, bd.1));
+        // (A+B) + (C+D) = (A+C) + (B+D)
+        lemma_edwards_add_four_way_swap(scaled_prefix, scaled_single, col_prefix, col_single);
     }
 }
 
@@ -853,8 +820,7 @@ pub proof fn lemma_straus_ct_correct(
     if n == 0 {
         // Both sides are identity
         lemma_straus_ct_base(points_affine, digits);
-        // 0 points: all column sums are identity, so Horner evaluation is identity.
-        lemma_straus_ct_zero_points(points_affine, digits);
+        lemma_straus_ct_zero_points_from(points_affine, digits, 0);
     } else {
         // Inductive case: peel off last point
         let last = (n - 1) as int;
@@ -911,22 +877,7 @@ pub proof fn lemma_straus_ct_correct(
     }
 }
 
-// =============================================================================
-// Helper: straus_ct_partial with 0 points is always identity
-// =============================================================================
-pub proof fn lemma_straus_ct_zero_points(pts: Seq<(nat, nat)>, digs: Seq<Seq<i8>>)
-    requires
-        pts.len() == 0,
-        digs.len() == 0,
-    ensures
-        straus_ct_partial(pts, digs, 0) == math_edwards_identity(),
-    decreases 64int,
-{
-    // When there are 0 points, every column_sum is identity, and the Horner evaluation
-    // produces identity. Prove by induction on 64-j.
-    lemma_straus_ct_zero_points_from(pts, digs, 0);
-}
-
+/// When n = 0: H_ct(j) = O for all j.
 pub proof fn lemma_straus_ct_zero_points_from(pts: Seq<(nat, nat)>, digs: Seq<Seq<i8>>, j: int)
     requires
         pts.len() == 0,
@@ -1093,24 +1044,8 @@ pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<S
         lemma_column_sum_prefix_eq(pts, nafs, pts_prefix, nafs_prefix, i, n - 1);
         lemma_column_sum_single(pts.last(), nafs.last(), i);
 
-        // Four-way reassociation: (A+B) + (C+D) = (A+C) + (B+D)
-        let a = doubled_prefix;
-        let b = doubled_single;
-        let c = col_prefix;
-        let d_val = col_single;
-
-        let ab = edwards_add(a.0, a.1, b.0, b.1);
-        let cd = edwards_add(c.0, c.1, d_val.0, d_val.1);
-        let bd = edwards_add(b.0, b.1, d_val.0, d_val.1);
-        let ac = edwards_add(a.0, a.1, c.0, c.1);
-
-        axiom_edwards_add_associative(a.0, a.1, b.0, b.1, cd.0, cd.1);
-        axiom_edwards_add_associative(b.0, b.1, c.0, c.1, d_val.0, d_val.1);
-        lemma_edwards_add_commutative(b.0, b.1, c.0, c.1);
-        axiom_edwards_add_associative(c.0, c.1, b.0, b.1, d_val.0, d_val.1);
-        axiom_edwards_add_associative(a.0, a.1, c.0, c.1, bd.0, bd.1);
-
-        assert(edwards_add(ab.0, ab.1, cd.0, cd.1) == edwards_add(ac.0, ac.1, bd.0, bd.1));
+        // (A+B) + (C+D) = (A+C) + (B+D)
+        lemma_edwards_add_four_way_swap(doubled_prefix, doubled_single, col_prefix, col_single);
     }
 }
 

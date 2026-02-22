@@ -360,6 +360,7 @@ impl Straus {
                 scalars_vec@ == spec_scalars,
                 // All scalars are canonical (from collect_scalars_from_iter ensures)
                 forall|k: int|
+                    #![auto]
                     0 <= k < scalars_vec@.len() ==> is_canonical_scalar(
                         &#[trigger] scalars_vec@[k],
                     ),
@@ -848,11 +849,13 @@ impl Straus {
                 scalars_vec@ == spec_scalars,
                 // All scalars are canonical (from collect_scalars_from_iter ensures)
                 forall|k: int|
+                    #![auto]
                     0 <= k < scalars_vec@.len() ==> is_canonical_scalar(
                         &#[trigger] scalars_vec@[k],
                     ),
                 // Each digit array is valid radix-16
                 forall|k: int|
+                    #![auto]
                     0 <= k < idx ==> {
                         &&& is_valid_radix_16(&#[trigger] scalar_digits@[k])
                         &&& radix_16_all_bounded(&scalar_digits@[k])
@@ -919,7 +922,9 @@ impl Straus {
                     n,
                 ),
                 // Scalar digit validity + reconstruction (kept separate from predicate to avoid inner-loop rlimit)
-                forall|k: int| 0 <= k < n ==> is_valid_radix_16(&#[trigger] scalar_digits@[k]),
+                forall|k: int|
+                    #![auto]
+                    0 <= k < n ==> is_valid_radix_16(&#[trigger] scalar_digits@[k]),
                 forall|k: int|
                     0 <= k < n ==> reconstruct_radix_16((#[trigger] scalar_digits@[k])@)
                         == scalar_as_nat(&spec_scalars[k]) as int,

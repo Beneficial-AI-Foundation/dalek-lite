@@ -796,14 +796,6 @@ pub struct EdwardsPoint {
     pub(crate) T: FieldElement,
 }
 
-/// Explicit sum-of-limbs check for Y+X (avoids quantifier for solver).
-pub(crate) open spec fn yx_limb_sum_bounded(y: &FieldElement, x: &FieldElement) -> bool {
-    (y.limbs[0] as u128) + (x.limbs[0] as u128) < (u64::MAX as u128) && (y.limbs[1] as u128) + (
-    x.limbs[1] as u128) < (u64::MAX as u128) && (y.limbs[2] as u128) + (x.limbs[2] as u128) < (
-    u64::MAX as u128) && (y.limbs[3] as u128) + (x.limbs[3] as u128) < (u64::MAX as u128) && (
-    y.limbs[4] as u128) + (x.limbs[4] as u128) < (u64::MAX as u128)
-}
-
 impl EdwardsPoint {
     #[verifier::type_invariant]
     pub(crate) open spec fn well_formed(self) -> bool {
@@ -815,7 +807,7 @@ impl EdwardsPoint {
             fe51_as_canonical_nat(&self.Y),
             fe51_as_canonical_nat(&self.Z),
             fe51_as_canonical_nat(&self.T),
-        ) && yx_limb_sum_bounded(&self.Y, &self.X)
+        ) && sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX)
     }
 }
 

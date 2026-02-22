@@ -1107,65 +1107,15 @@ impl RistrettoPoint {
             use_type_invariant(t2);
             use_type_invariant(t4);
             use_type_invariant(t6);
-            lemma_unfold_edwards(self.0);
             lemma_unfold_edwards(t2);
             lemma_unfold_edwards(t4);
             lemma_unfold_edwards(t6);
-            assert(is_well_formed_edwards_point(t2));
-            assert(is_well_formed_edwards_point(t4));
-            assert(is_well_formed_edwards_point(t6));
         }
-        // Break additions into separate let bindings to reduce Z3 reasoning burden.
-        // Explicit assertions after each addition prevent rlimit blowup in larger
-        // verification contexts (e.g. libsignal) where the solver has more axioms in scope.
-        // Variable assignment refactor: original inline expressions split into let bindings
-        // to prove type invariant properties for each intermediate point.
         let p0 = self.0;  /* ORIGINAL CODE: self.0 */
-        proof {
-            lemma_unfold_edwards(p0);
-            assert(is_well_formed_edwards_point(p0));
-            assert(edwards_point_as_affine(p0) == edwards_point_as_affine(self.0));
-        }
         let p1 = &self.0 + &t2;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[2] */
-        proof {
-            lemma_unfold_edwards(p1);
-            assert(is_well_formed_edwards_point(p1));
-            let base_affine = edwards_point_as_affine(self.0);
-            let t2 = edwards_point_as_affine(spec_eight_torsion()[2]);
-            assert(edwards_point_as_affine(p1) == edwards_add(
-                base_affine.0,
-                base_affine.1,
-                t2.0,
-                t2.1,
-            ));
-        }
         let p2 = &self.0 + &t4;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[4] */
-        proof {
-            lemma_unfold_edwards(p2);
-            assert(is_well_formed_edwards_point(p2));
-            let base_affine = edwards_point_as_affine(self.0);
-            let t4 = edwards_point_as_affine(spec_eight_torsion()[4]);
-            assert(edwards_point_as_affine(p2) == edwards_add(
-                base_affine.0,
-                base_affine.1,
-                t4.0,
-                t4.1,
-            ));
-        }
         let p3 = &self.0 + &t6;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[6] */
-        proof {
-            lemma_unfold_edwards(p3);
-            assert(is_well_formed_edwards_point(p3));
-            let base_affine = edwards_point_as_affine(self.0);
-            let t6 = edwards_point_as_affine(spec_eight_torsion()[6]);
-            assert(edwards_point_as_affine(p3) == edwards_add(
-                base_affine.0,
-                base_affine.1,
-                t6.0,
-                t6.1,
-            ));
-        }
-        [p0, p1, p2, p3]  /* ORIGINAL CODE: coset */
+        [p0, p1, p2, p3]
 
     }
 

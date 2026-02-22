@@ -1116,7 +1116,6 @@ impl RistrettoPoint {
         let p2 = &self.0 + &t4;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[4] */
         let p3 = &self.0 + &t6;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[6] */
         [p0, p1, p2, p3]
-
     }
 
     /// Computes the Ristretto Elligator map. This is the
@@ -2423,6 +2422,10 @@ impl Zeroize for CompressedRistretto {
 impl Zeroize for RistrettoPoint {
     fn zeroize(&mut self)
         ensures
+            forall|i: int| 0 <= i < 5 ==> edwards_x(self.0).limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> edwards_t(self.0).limbs[i] == 0,
+            edwards_y(self.0) == FieldElement::ONE,
+            edwards_z(self.0) == FieldElement::ONE,
             is_identity_edwards_point(self.0),
     {
         self.0.zeroize();

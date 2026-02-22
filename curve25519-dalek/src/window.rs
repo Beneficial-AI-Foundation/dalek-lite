@@ -322,6 +322,9 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
 
         let mut points = [P.as_projective_niels();8];
         for j in 0..7 {
+            // ORIGINAL CODE: points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
+            // Variable assignment refactor: split into sum, extended to prove type invariant
+            // properties at each intermediate step.
             proof {
                 use_type_invariant(P);
                 lemma_unfold_edwards(*P);
@@ -382,6 +385,9 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
 
         let mut points = [P.as_affine_niels();8];
         for j in 0..7 {
+            // ORIGINAL CODE: points[j + 1] = (P + &points[j]).as_extended().as_affine_niels();
+            // Variable assignment refactor: split into sum, extended to prove type invariant
+            // properties at each intermediate step.
             proof {
                 use_type_invariant(P);
                 lemma_unfold_edwards(*P);
@@ -549,6 +555,9 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
         let A2 = A.double();
 
         for i in 0..7 {
+            // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
+            // Variable assignment refactor: split into sum, extended to prove type invariant
+            // properties at each intermediate step.
             proof {
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
@@ -574,6 +583,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
             }
             Ai[i + 1] = extended.as_projective_niels();
         }
+        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A]
         let result = NafLookupTable5(Ai);
         proof {
             assume(is_valid_naf_lookup_table5_projective(result.0, *A));
@@ -601,6 +611,9 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
         let A2 = A.double();
 
         for i in 0..7 {
+            // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
+            // Variable assignment refactor: split into sum, extended to prove type invariant
+            // properties at each intermediate step.
             proof {
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
@@ -626,6 +639,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
             }
             Ai[i + 1] = extended.as_affine_niels();
         }
+        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A]
         let result = NafLookupTable5(Ai);
         proof {
             assume(is_valid_naf_lookup_table5_affine(result.0, *A));
@@ -760,6 +774,9 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
         let A2 = A.double();
 
         for i in 0..63 {
+            // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
+            // Variable assignment refactor: split into sum, extended to prove type invariant
+            // properties at each intermediate step.
             proof {
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
@@ -785,6 +802,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
             }
             Ai[i + 1] = extended.as_projective_niels();
         }
+        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
         let result = NafLookupTable8(Ai);
         proof {
             assume(is_valid_naf_lookup_table8_projective(result.0, *A));
@@ -813,6 +831,9 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
         let A2 = A.double();
 
         for i in 0..63 {
+            // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
+            // Variable assignment refactor: split into sum, extended to prove type invariant
+            // properties at each intermediate step.
             proof {
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
@@ -838,6 +859,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
             }
             Ai[i + 1] = extended.as_affine_niels();
         }
+        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
         let result = NafLookupTable8(Ai);
         proof {
             assume(is_valid_naf_lookup_table8_affine(result.0, *A));

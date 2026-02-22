@@ -1021,6 +1021,10 @@ impl Zeroize for EdwardsPoint {
     /// Reset this `CompressedEdwardsPoint` to the identity element.
     fn zeroize(&mut self)
         ensures
+            forall|i: int| 0 <= i < 5 ==> edwards_x(*self).limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> edwards_t(*self).limbs[i] == 0,
+            edwards_y(*self) == FieldElement::ONE,
+            edwards_z(*self) == FieldElement::ONE,
             is_identity_edwards_point(*self),
     {
         proof {

@@ -28,9 +28,6 @@ use super::field_specs::*;
 use crate::backend::serial::curve_models::{
     AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
 };
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
-use crate::backend::serial::u64::constants::spec_eight_torsion;
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
@@ -50,6 +47,7 @@ use crate::scalar::Scalar;
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
+
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::scalar_as_nat;
@@ -101,40 +99,6 @@ pub closed spec fn spec_ed25519_basepoint() -> (nat, nat) {
     )
 }
 
-/// The Ed25519 basepoint has reduced coordinates (both < p)
-///
-/// This is a property of the specific basepoint constant definition from the Ed25519 spec.
-/// The basepoint X and Y coordinates are canonical field elements < p.
-///
-/// ## Values
-/// - X = 15112221349535400772501151409588531511454012693041857206046113283949847762202
-/// - Y = 46316835694926478169428394003475163141307993866256225615783033603165251855960
-/// - p = 57896044618658097711785492504343953926634992332820282019728792003956564819949
-///
-/// Both X < p and Y < p by direct comparison.
-///
-/// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
-pub proof fn axiom_ed25519_basepoint_canonical()
-    ensures
-        spec_ed25519_basepoint().0 < p(),
-        spec_ed25519_basepoint().1 < p(),
-{
-    admit();
-}
-
-/// Axiom: The Ed25519 basepoint is on the Edwards curve.
-///
-/// The basepoint (x, y) satisfies -x² + y² = 1 + d·x²·y² (mod p).
-/// This is verified by the `test_basepoint_on_curve` test below.
-///
-/// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
-pub proof fn axiom_basepoint_on_curve()
-    ensures
-        math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1),
-{
-    admit();
-}
-
 // =============================================================================
 // EdwardsBasepointTable Specification
 // =============================================================================
@@ -179,32 +143,9 @@ pub proof fn axiom_ed25519_basepoint_table_valid()
     // VERIFICATION NOTE: we probably have to prove this
 }
 
-/// Axiom: All 8-torsion points are well-formed.
-///
-/// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
-/// Each element satisfies `is_well_formed_edwards_point`, which requires:
-/// - `is_valid_edwards_point`: Z ≠ 0, projective curve equation, X·Y = Z·T
-/// - `edwards_point_limbs_bounded`: all limbs < 2^52
-/// - `sum_of_limbs_bounded(Y, X)`: Y + X doesn't overflow
-///
-/// This is verified by the `test_eight_torsion_well_formed` test below.
-pub proof fn axiom_eight_torsion_well_formed()
-    ensures
-        is_well_formed_edwards_point(spec_eight_torsion()[0]),
-        is_well_formed_edwards_point(spec_eight_torsion()[1]),
-        is_well_formed_edwards_point(spec_eight_torsion()[2]),
-        is_well_formed_edwards_point(spec_eight_torsion()[3]),
-        is_well_formed_edwards_point(spec_eight_torsion()[4]),
-        is_well_formed_edwards_point(spec_eight_torsion()[5]),
-        is_well_formed_edwards_point(spec_eight_torsion()[6]),
-        is_well_formed_edwards_point(spec_eight_torsion()[7]),
-{
-    admit();
-}
-
 } // verus!
 /// Test that all 8-torsion points satisfy the structural well-formedness conditions.
-/// This partially validates axiom_eight_torsion_well_formed() by checking:
+/// This validates the `EIGHT_TORSION` constant's type invariant by checking:
 /// - Z ≠ 0, limbs < 2^52, Y+X bounded
 /// Note: The curve equation and T=XY/Z are trusted from the constant definition.
 #[cfg(test)]
@@ -258,7 +199,7 @@ mod eight_torsion_tests {
 }
 
 /// Test that the Ed25519 basepoint satisfies the curve equation.
-/// Validates axiom_basepoint_on_curve() by computing:
+/// Validates the basepoint's type invariant by computing:
 ///   -x² + y² ≡ 1 + d·x²·y² (mod p)
 #[cfg(test)]
 mod basepoint_on_curve_tests {
@@ -445,8 +386,9 @@ pub closed spec fn edwards_t(
     point.T
 }
 
-/// Unfold lemma: connects the closed accessors to actual struct fields.
-/// Must be called from proof blocks in other modules before reasoning about field access.
+/// Equates closed spec accessors (`edwards_x`, …) with actual struct fields (`.X`, …).
+/// Needed because spec predicates use closed accessors (for encapsulation), while proof
+/// code after construction/mutation knows facts about the raw fields.
 pub(crate) proof fn lemma_unfold_edwards(point: crate::edwards::EdwardsPoint)
     ensures
         edwards_x(point) == point.X,

@@ -1104,11 +1104,18 @@ impl RistrettoPoint {
         let t4 = constants::EIGHT_TORSION[4];
         let t6 = constants::EIGHT_TORSION[6];
         proof {
-            axiom_eight_torsion_well_formed();
+            broadcast use crate::edwards::lemma_shift_52_broadcast;
+
+            use_type_invariant(t2);
+            use_type_invariant(t4);
+            use_type_invariant(t6);
             lemma_unfold_edwards(self.0);
             lemma_unfold_edwards(t2);
             lemma_unfold_edwards(t4);
             lemma_unfold_edwards(t6);
+            assert(is_well_formed_edwards_point(t2));
+            assert(is_well_formed_edwards_point(t4));
+            assert(is_well_formed_edwards_point(t6));
         }
         // Break additions into separate let bindings to reduce Z3 reasoning burden.
         // Explicit assertions after each addition prevent rlimit blowup in larger

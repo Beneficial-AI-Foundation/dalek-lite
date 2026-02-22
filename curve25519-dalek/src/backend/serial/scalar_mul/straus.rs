@@ -569,32 +569,17 @@ impl Straus {
                         let col_j = straus_column_sum(pts_affine, nafs_seqs, i as int, j as int);
                         edwards_add(doubled_affine.0, doubled_affine.1, col_j.0, col_j.1)
                     },
-                    // Vec and ghost seq lengths
-                    nafs@.len() == n,
-                    lookup_tables@.len() == n,
-                    nafs_seqs.len() == n,
-                    pts_affine.len() == n,
-                    n == spec_points.len(),
-                    // Preserved table/naf invariants
-                    forall|m: int|
-                        0 <= m < n ==> {
-                            &&& is_valid_naf_lookup_table5_projective(
-                                (#[trigger] lookup_tables@[m]).0,
-                                spec_points[m].unwrap(),
-                            )
-                            &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables@[m].0)
-                        },
-                    forall|m: int| 0 <= m < n ==> is_valid_naf(#[trigger] nafs_seqs[m], 5),
-                    forall|m: int|
-                        0 <= m < n ==> #[trigger] pts_affine[m] == edwards_point_as_affine(
-                            unwrapped_points[m],
-                        ),
-                    forall|m: int|
-                        0 <= m < n ==> #[trigger] unwrapped_points[m] == spec_points[m].unwrap(),
-                    forall|m: int| 0 <= m < n ==> #[trigger] nafs_seqs[m] == nafs@[m]@,
-                    // pts_affine coordinates are canonical (< p())
-                    forall|m: int|
-                        0 <= m < n ==> (#[trigger] pts_affine[m]).0 < p() && pts_affine[m].1 < p(),
+                    // Preserved preparation invariants (bundled to reduce rlimit)
+                    straus_vt_input_valid(
+                        nafs@,
+                        lookup_tables@,
+                        nafs_seqs,
+                        pts_affine,
+                        spec_scalars,
+                        spec_points,
+                        unwrapped_points,
+                        n,
+                    ),
                 decreases min_len - j,
             {
                 let naf = &nafs[j];
@@ -605,8 +590,9 @@ impl Straus {
                         proof {
                             assert(is_valid_naf(nafs_seqs[j as int], 5));
                             let digit = naf@[i as int];
-                            vstd::arithmetic::power2::lemma2_to64();
-                            assert(pow2(4) == 16);
+                            assert(pow2(4) == 16) by {
+                                vstd::arithmetic::power2::lemma2_to64();
+                            }
                             assert((digit as int) % 2 != 0 && digit < 16);
                             lemma_naf_digit_positive_select_preconditions(digit);
                         }
@@ -654,8 +640,9 @@ impl Straus {
                         proof {
                             assert(is_valid_naf(nafs_seqs[j as int], 5));
                             let digit = naf@[i as int];
-                            vstd::arithmetic::power2::lemma2_to64();
-                            assert(pow2(4) == 16);
+                            assert(pow2(4) == 16) by {
+                                vstd::arithmetic::power2::lemma2_to64();
+                            }
                             assert((digit as int) % 2 != 0 && (digit as int) > -16);
                             lemma_naf_digit_negative_select_preconditions(digit);
                         }

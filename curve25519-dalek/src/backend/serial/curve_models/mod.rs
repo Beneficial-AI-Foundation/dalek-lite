@@ -594,10 +594,7 @@ impl ProjectivePoint {
         ensures
             is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
-            fe51_limbs_bounded(&result.X, 52),
-            fe51_limbs_bounded(&result.Y, 52),
-            fe51_limbs_bounded(&result.Z, 52),
-            fe51_limbs_bounded(&result.T, 52),
+            edwards_point_limbs_bounded(result),
             spec_edwards_point(result) == spec_projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {

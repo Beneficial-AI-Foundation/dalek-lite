@@ -3281,9 +3281,15 @@ impl BasepointTable for EdwardsBasepointTable {
                 lemma_edwards_add_identity_left(B.0, B.1);
             }
 
-            // B is canonical, so B % p == B
+        }
+        let bp = crate::backend::serial::u64::constants::ED25519_BASEPOINT_POINT;
+        proof {
+            use_type_invariant(bp);
+            lemma_unfold_edwards(bp);
+            let B = spec_ed25519_basepoint();
+            // B is canonical (field_mul results are < p), so B % p == B
             assert(B.0 < p() && B.1 < p()) by {
-                axiom_ed25519_basepoint_canonical();
+                p_gt_2();
             }
             assert(B.0 % p() == B.0 && B.1 % p() == B.1) by {
                 vstd::arithmetic::div_mod::lemma_small_mod(B.0, p());
@@ -3474,7 +3480,10 @@ impl BasepointTable for EdwardsBasepointTable {
         // mul_by_pow_2(4) multiplies by 16: P = 16 * odd_sum
         P = P.mul_by_pow_2(4);
 
+        let bp = crate::backend::serial::u64::constants::ED25519_BASEPOINT_POINT;
         proof {
+            use_type_invariant(bp);
+            lemma_unfold_edwards(bp);
             // After mul_by_pow_2(4), P = edwards_scalar_mul(odd_sum, 16)
             // which equals pippenger_partial(a@, 0, B) since even_sum_up_to(_, 0, _) = identity
             assert(pow2(4) == 16) by {
@@ -3496,9 +3505,7 @@ impl BasepointTable for EdwardsBasepointTable {
             assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
             // scaled comes from edwards_scalar_mul, which produces canonical coordinates
             assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled) by {
-                // First establish that the basepoint B is canonical
-                axiom_ed25519_basepoint_canonical();
-                // Then odd_sum is canonical (from lemma_odd_sum_up_to_canonical)
+                p_gt_2();
                 lemma_odd_sum_up_to_canonical(a@, 64, B);
                 lemma_edwards_scalar_mul_canonical(odd_sum, 16);
                 lemma_edwards_add_identity_right_canonical(scaled);

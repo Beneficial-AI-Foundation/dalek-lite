@@ -28,7 +28,23 @@ use crate::window::NafLookupTable5;
 use vstd::prelude::*;
 
 #[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::straus_lemmas::*;
+#[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::field_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::field_specs_u64::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::scalar_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::window_specs::*;
+#[cfg(verus_keep_ghost)]
+use vstd::arithmetic::power2::pow2;
 
 // Import spec functions from iterator_specs (ghost only)
 #[cfg(verus_keep_ghost)]
@@ -251,9 +267,9 @@ verus! {
  * VERIFICATION NOTE
  * =================
  * Verus limitations addressed in these _verus versions:
- * - IntoIterator with I::Item projections → use Iterator bounds instead
- * - Iterator adapters (map, zip) with closures → use explicit while loops
- * - Op-assignment (+=, -=) on EdwardsPoint → use explicit a = a + b
+ * - IntoIterator with I::Item projections -> use Iterator bounds instead
+ * - Iterator adapters (map, zip) with closures -> use explicit while loops
+ * - Op-assignment (+=, -=) on EdwardsPoint -> use explicit a = a + b
  *
  * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
  * run both original and _verus implementations, and assert equality of results.
@@ -261,6 +277,30 @@ verus! {
  *     forall scalars s, points p:
  *         optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
  *         multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
+ *
+ * ALGORITHM OVERVIEW
+ * ==================
+ * Both VT and CT compute Q = sum(s_k * P_k) via column-wise Horner evaluation.
+ *
+ * Variable-time (VT) -- NAF width 5, 256 bit positions:
+ *   Each scalar s_k is decomposed into NAF digits n_{k,i} (i = 0..255).
+ *   Define col(i, j) = sum_{k=0}^{j-1} [n_{k,i}] * P_k   (column sum for bit i)
+ *   The Horner recurrence is:
+ *     H(256) = O
+ *     H(i)   = [2] * H(i+1) + col(i, n)       for i = 255..0
+ *   Then Q = H(0) = straus_vt_partial(pts_affine, nafs_seqs, 0).
+ *
+ * Constant-time (CT) -- radix-16 signed digits, 64 digit positions:
+ *   Each scalar s_k is decomposed into radix-16 digits d_{k,j} (j = 0..63).
+ *   Define col(j, k) = sum_{m=0}^{k-1} [d_{m,j}] * P_m   (column sum for digit j)
+ *   The Horner recurrence is:
+ *     H(64) = O
+ *     H(j)  = [16] * H(j+1) + col(j, n)       for j = 63..0
+ *   Then Q = H(0) = straus_ct_partial(pts_affine, digits_seqs, 0).
+ *
+ * Both loops use `straus_vt_input_valid` / `straus_ct_input_valid` from
+ * straus_lemmas.rs to bundle ~8 quantified loop invariants into a single call.
+ * Correctness is proved by `lemma_straus_vt_correct` / `lemma_straus_ct_correct`.
  */
 impl Straus {
     /// Verus-compatible version of optional_multiscalar_mul.
@@ -314,11 +354,31 @@ impl Straus {
         let mut nafs: Vec<[i8; 256]> = Vec::new();
         let mut idx: usize = 0;
         while idx < scalars_vec.len()
+            invariant
+                0 <= idx <= scalars_vec@.len(),
+                nafs@.len() == idx as int,
+                scalars_vec@ == spec_scalars,
+                // All scalars are canonical (from collect_scalars_from_iter ensures)
+                forall|k: int|
+                    0 <= k < scalars_vec@.len() ==> is_canonical_scalar(
+                        &#[trigger] scalars_vec@[k],
+                    ),
+                // Each NAF is valid
+                forall|k: int|
+                    0 <= k < idx ==> {
+                        &&& is_valid_naf(#[trigger] nafs@[k]@, 5)
+                        &&& reconstruct(nafs@[k]@) == scalar_as_nat(&scalars_vec@[k]) as int
+                    },
             decreases scalars_vec.len() - idx,
         {
             proof {
-                assume(false);
-            }  // PROOF BYPASS
+                assert(is_canonical_scalar(&scalars_vec@[idx as int]));
+                assert(scalars_vec@[idx as int].bytes[31] <= 127);
+                // Establishes non_adjacent_form precondition: scalar_as_nat < pow2(255)
+                crate::lemmas::common_lemmas::to_nat_lemmas::lemma_u8_32_as_nat_lt_pow2_255(
+                    &scalars_vec@[idx as int].bytes,
+                );
+            }
             nafs.push(scalars_vec[idx].non_adjacent_form(5));
             idx = idx + 1;
         }
@@ -337,19 +397,43 @@ impl Straus {
         let mut lookup_tables: Vec<NafLookupTable5<ProjectiveNielsPoint>> = Vec::new();
         idx = 0;
         while idx < points_vec.len()
+            invariant
+                0 <= idx <= points_vec@.len(),
+                lookup_tables@.len() == idx as int,
+                points_vec@ == spec_points,
+                // Explicit: ghost var == postcondition expression (needed for return None)
+                spec_points == spec_optional_points_from_iter::<J>(points),
+                // All input points (when Some) are well-formed (from function precondition)
+                forall|k: int|
+                    0 <= k < points_vec@.len() && (#[trigger] points_vec@[k]).is_some()
+                        ==> is_well_formed_edwards_point(points_vec@[k].unwrap()),
+                // All processed points were Some (no early return yet)
+                forall|k: int| 0 <= k < idx ==> (#[trigger] points_vec@[k]).is_some(),
+                // Each table is valid and has bounded limbs
+                forall|k: int|
+                    0 <= k < idx ==> {
+                        &&& is_valid_naf_lookup_table5_projective(
+                            (#[trigger] lookup_tables@[k]).0,
+                            points_vec@[k].unwrap(),
+                        )
+                        &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables@[k].0)
+                    },
             decreases points_vec.len() - idx,
         {
-            proof {
-                assume(false);
-            }  // PROOF BYPASS
             match points_vec[idx] {
                 Some(P) => {
+                    proof {
+                        assert(spec_points[idx as int].is_some());
+                        assert(is_well_formed_edwards_point(points_vec@[idx as int].unwrap()));
+                    }
                     lookup_tables.push(NafLookupTable5::<ProjectiveNielsPoint>::from(&P));
                 },
                 None => {
-                    // PROOF BYPASS: Found a None point, so not all_points_some
+                    // Found a None point — witness that !all_points_some
                     proof {
-                        assume(!all_points_some(spec_points));
+                        assert(0 <= idx < spec_points.len());
+                        assert(!spec_points[idx as int].is_some());
+                        assert(!all_points_some(spec_points));
                     }
                     return None;
                 },
@@ -358,8 +442,37 @@ impl Straus {
         }
         /* </REFACTORED CODE> */
 
+        // After loop 2: all points were Some (we never returned None)
+        proof {
+            // All points_vec entries are Some
+            assert(forall|k: int|
+                0 <= k < spec_points.len() ==> (#[trigger] spec_points[k]).is_some());
+            assert(all_points_some(spec_points));
+        }
+
+        // Ghost: build the affine points and naf sequences for the spec
+        let ghost n = nafs@.len();
+        let ghost unwrapped_points: Seq<EdwardsPoint> = unwrap_points(spec_points);
+        let ghost pts_affine: Seq<(nat, nat)> = points_to_affine(unwrapped_points);
+        let ghost nafs_seqs: Seq<Seq<i8>> = nafs@.map(|_i, d: [i8; 256]| d@);
+
         /* UNCHANGED FROM ORIGINAL */
         let mut r = ProjectivePoint::identity();
+
+        proof {
+            // r starts as identity projective point
+            lemma_identity_projective_point_properties();
+            lemma_straus_vt_base(pts_affine, nafs_seqs);
+            // Establish unwrapped_points[k] == spec_points[k].unwrap()
+            // (from Seq::map definition: unwrap_points(s) = s.map(|_, opt| opt.unwrap()))
+            assert forall|m: int| 0 <= m < n implies #[trigger] unwrapped_points[m]
+                == spec_points[m].unwrap() by {};
+            // pts_affine coordinates are always < p()
+            assert forall|m: int| 0 <= m < n implies (#[trigger] pts_affine[m]).0 < p()
+                && pts_affine[m].1 < p() by {
+                lemma_edwards_point_as_affine_canonical(unwrapped_points[m]);
+            }
+        }
 
         /* <ORIGINAL CODE>
     for i in (0..256).rev() {
@@ -386,18 +499,43 @@ impl Straus {
          *      based on the NAF digit at position i
          */
         let mut i: usize = 256;
-        loop
+        while i > 0
+            invariant
+                0 <= i <= 256,
+                is_valid_projective_point(r),
+                fe51_limbs_bounded(&r.X, 52),
+                fe51_limbs_bounded(&r.Y, 52),
+                fe51_limbs_bounded(&r.Z, 52),
+                sum_of_limbs_bounded(&r.X, &r.Y, u64::MAX),
+                // Functional correctness
+                projective_point_as_affine_edwards(r) == straus_vt_partial(
+                    pts_affine,
+                    nafs_seqs,
+                    i as int,
+                ),
+                // Preparation loop postconditions preserved (bundled)
+                straus_vt_input_valid(
+                    nafs@,
+                    lookup_tables@,
+                    nafs_seqs,
+                    pts_affine,
+                    spec_scalars,
+                    spec_points,
+                    unwrapped_points,
+                    n,
+                ),
+                // Scalar reconstruction (kept separate from predicate to avoid inner-loop rlimit)
+                forall|k: int|
+                    0 <= k < n ==> reconstruct(#[trigger] nafs_seqs[k]) == scalar_as_nat(
+                        &spec_scalars[k],
+                    ) as int,
             decreases i,
         {
-            proof {
-                assume(false);
-            }  // PROOF BYPASS
-            if i == 0 {
-                break ;
-            }
             i = i - 1;
 
             let mut t: CompletedPoint = r.double();
+            // t = 2*r in CompletedPoint form
+            // completed_point_as_affine_edwards(t) == edwards_double(projective_point_as_affine_edwards(r))
 
             // Inner loop: iterate over nafs and lookup_tables
             let mut j: usize = 0;
@@ -406,42 +544,222 @@ impl Straus {
             } else {
                 lookup_tables.len()
             };
+
+            let ghost doubled_affine = completed_point_as_affine_edwards(t);
+            proof {
+                assert(min_len == n);
+                // doubled_affine coords < p() (field_mul returns (a*b)%p < p)
+                p_gt_2();
+                // edwards_add(doubled, identity) == doubled
+                lemma_edwards_add_identity_right_canonical(doubled_affine);
+            }
+
             while j < min_len
+                invariant
+                    0 <= j <= min_len,
+                    min_len == n,
+                    0 <= i < 256,
+                    is_valid_completed_point(t),
+                    fe51_limbs_bounded(&t.X, 54),
+                    fe51_limbs_bounded(&t.Y, 54),
+                    fe51_limbs_bounded(&t.Z, 54),
+                    fe51_limbs_bounded(&t.T, 54),
+                    // t = edwards_add(doubled_prev, column_sum(i, j))
+                    completed_point_as_affine_edwards(t) == {
+                        let col_j = straus_column_sum(pts_affine, nafs_seqs, i as int, j as int);
+                        edwards_add(doubled_affine.0, doubled_affine.1, col_j.0, col_j.1)
+                    },
+                    // Vec and ghost seq lengths
+                    nafs@.len() == n,
+                    lookup_tables@.len() == n,
+                    nafs_seqs.len() == n,
+                    pts_affine.len() == n,
+                    n == spec_points.len(),
+                    // Preserved table/naf invariants
+                    forall|m: int|
+                        0 <= m < n ==> {
+                            &&& is_valid_naf_lookup_table5_projective(
+                                (#[trigger] lookup_tables@[m]).0,
+                                spec_points[m].unwrap(),
+                            )
+                            &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables@[m].0)
+                        },
+                    forall|m: int| 0 <= m < n ==> is_valid_naf(#[trigger] nafs_seqs[m], 5),
+                    forall|m: int|
+                        0 <= m < n ==> #[trigger] pts_affine[m] == edwards_point_as_affine(
+                            unwrapped_points[m],
+                        ),
+                    forall|m: int|
+                        0 <= m < n ==> #[trigger] unwrapped_points[m] == spec_points[m].unwrap(),
+                    forall|m: int| 0 <= m < n ==> #[trigger] nafs_seqs[m] == nafs@[m]@,
+                    // pts_affine coordinates are canonical (< p())
+                    forall|m: int|
+                        0 <= m < n ==> (#[trigger] pts_affine[m]).0 < p() && pts_affine[m].1 < p(),
                 decreases min_len - j,
             {
-                proof {
-                    assume(false);
-                }  // PROOF BYPASS
                 let naf = &nafs[j];
                 let lookup_table = &lookup_tables[j];
 
                 match naf[i].cmp(&0) {
                     Ordering::Greater => {
-                        t = &t.as_extended() + &lookup_table.select(naf[i] as usize);
+                        proof {
+                            assert(is_valid_naf(nafs_seqs[j as int], 5));
+                            let digit = naf@[i as int];
+                            vstd::arithmetic::power2::lemma2_to64();
+                            assert(pow2(4) == 16);
+                            assert((digit as int) % 2 != 0 && digit < 16);
+                            lemma_naf_digit_positive_select_preconditions(digit);
+                        }
+                        /* ORIGINAL CODE: t = &t.as_extended() + &lookup_table.select(naf[i] as usize) */
+                        let R_j = lookup_table.select(naf[i] as usize);
+                        t = &t.as_extended() + &R_j;
+                        proof {
+                            let base_j = pts_affine[j as int];
+                            let digit_val = nafs_seqs[j as int][i as int];
+                            let term_j = edwards_scalar_mul_signed(base_j, digit_val as int);
+                            let col_j = straus_column_sum(
+                                pts_affine,
+                                nafs_seqs,
+                                i as int,
+                                j as int,
+                            );
+                            let ghost digit_i8 = naf@[i as int];
+
+                            // Scope the select lemma to limit Z3 quantifier pressure
+                            assert(projective_niels_point_as_affine_edwards(R_j)
+                                == edwards_scalar_mul_signed(base_j, digit_i8 as int)) by {
+                                assert(base_j == edwards_point_as_affine(
+                                    spec_points[j as int].unwrap(),
+                                ));
+                                lemma_naf_select_is_signed_scalar_mul_projective(
+                                    lookup_table.0,
+                                    digit_i8,
+                                    R_j,
+                                    base_j,
+                                    true,
+                                );
+                            }
+
+                            axiom_edwards_add_associative(
+                                doubled_affine.0,
+                                doubled_affine.1,
+                                col_j.0,
+                                col_j.1,
+                                term_j.0,
+                                term_j.1,
+                            );
+                        }
                     },
                     Ordering::Less => {
-                        t = &t.as_extended() - &lookup_table.select((-naf[i]) as usize);
+                        proof {
+                            assert(is_valid_naf(nafs_seqs[j as int], 5));
+                            let digit = naf@[i as int];
+                            vstd::arithmetic::power2::lemma2_to64();
+                            assert(pow2(4) == 16);
+                            assert((digit as int) % 2 != 0 && (digit as int) > -16);
+                            lemma_naf_digit_negative_select_preconditions(digit);
+                        }
+                        /* ORIGINAL CODE: t = &t.as_extended() - &lookup_table.select(-naf[i] as usize) */
+                        let R_j = lookup_table.select((-naf[i]) as usize);
+                        t = &t.as_extended() - &R_j;
+                        proof {
+                            let base_j = pts_affine[j as int];
+                            let digit_val = nafs_seqs[j as int][i as int];
+                            let term_j = edwards_scalar_mul_signed(base_j, digit_val as int);
+                            let col_j = straus_column_sum(
+                                pts_affine,
+                                nafs_seqs,
+                                i as int,
+                                j as int,
+                            );
+
+                            let ghost neg_digit = (-(naf@[i as int])) as i8;
+
+                            // select(|d|) decodes to [|d|]*P
+                            assert(projective_niels_point_as_affine_edwards(R_j)
+                                == edwards_scalar_mul_signed(base_j, neg_digit as int)) by {
+                                assert(base_j == edwards_point_as_affine(
+                                    spec_points[j as int].unwrap(),
+                                ));
+                                lemma_naf_select_is_signed_scalar_mul_projective(
+                                    lookup_table.0,
+                                    neg_digit,
+                                    R_j,
+                                    base_j,
+                                    true,
+                                );
+                            }
+
+                            // sub(t, R_j) = add(t, neg(R_j))
+                            // neg([|d|]*P) = [-|d|]*P = [d]*P  (since d < 0, |d| = -d)
+                            assert(base_j.0 < p() && base_j.1 < p());
+                            lemma_neg_of_signed_scalar_mul(base_j, neg_digit as int);
+                            assert(digit_val as int == -(neg_digit as int));
+
+                            axiom_edwards_add_associative(
+                                doubled_affine.0,
+                                doubled_affine.1,
+                                col_j.0,
+                                col_j.1,
+                                term_j.0,
+                                term_j.1,
+                            );
+                        }
                     },
-                    Ordering::Equal => {},
+                    Ordering::Equal => {
+                        proof {
+                            // digit == 0: column sum doesn't change
+                            // Need column_sum canonical for identity_right
+                            lemma_column_sum_canonical(pts_affine, nafs_seqs, i as int, j as int);
+                            lemma_column_sum_step_zero_digit(
+                                pts_affine,
+                                nafs_seqs,
+                                i as int,
+                                j as int,
+                            );
+                        }
+                    },
                 }
                 j = j + 1;
             }
 
             r = t.as_projective();
+
+            proof {
+                // After inner loop: j == n, t = edwards_add(doubled, column_sum(i, n))
+                // r = t.as_projective(), affine preserved
+                // straus_vt_step(i): vt_partial(i) = edwards_add(doubled(vt_partial(i+1)), column_sum(i, n))
+                // doubled_affine = edwards_double(projective_point_as_affine_edwards(r_old))
+                //                = edwards_double(straus_vt_partial(i+1))  [from outer invariant]
+                // So r affine = t affine = edwards_add(doubled_affine, col(i,n)) = straus_vt_partial(i)
+                lemma_straus_vt_step(pts_affine, nafs_seqs, i as int);
+            }
         }
         /* </REFACTORED CODE> */
 
-        assume(false);  // PROOF BYPASS: as_extended precondition requires loop invariants
+        // r.as_extended() requires valid projective point + 54-bit limbs
+        proof {
+            crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken(&r.X, 52, 54);
+            crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken(&r.Y, 52, 54);
+            crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken(&r.Z, 52, 54);
+        }
         let result = r.as_extended();
 
-        // PROOF BYPASS: Assert postconditions for verification goal
         proof {
-            assume(all_points_some(spec_points));
-            assume(is_well_formed_edwards_point(result));
-            assume(edwards_point_as_affine(result) == sum_of_scalar_muls(
-                spec_scalars,
-                unwrap_points(spec_points),
-            ));
+            // Each NAF has length 256 (from [i8; 256]@ mapping)
+            assert forall|k: int| 0 <= k < nafs_seqs.len() implies {
+                &&& (#[trigger] nafs_seqs[k]).len() == 256
+                &&& is_valid_naf(nafs_seqs[k], 5)
+                &&& reconstruct(nafs_seqs[k]) == scalar_as_nat(&spec_scalars[k]) as int
+            } by {
+                assert(nafs_seqs[k] == nafs@[k]@);
+            };
+
+            // r affine == straus_vt_partial(0) == sum_of_scalar_muls
+            lemma_straus_vt_correct(spec_scalars, unwrapped_points, pts_affine, nafs_seqs);
+            assert(edwards_point_as_affine(result) == projective_point_as_affine_edwards(r));
+            // is_well_formed follows from ProjectivePoint::as_extended postcondition
+            assert(is_well_formed_edwards_point(result));
         }
 
         Some(result)
@@ -499,11 +817,27 @@ impl Straus {
         let mut lookup_tables: Vec<LookupTable<ProjectiveNielsPoint>> = Vec::new();
         let mut idx: usize = 0;
         while idx < points_vec.len()
+            invariant
+                0 <= idx <= points_vec@.len(),
+                lookup_tables@.len() == idx as int,
+                points_vec@ == spec_points,
+                // All input points are well-formed (from function precondition)
+                forall|k: int|
+                    0 <= k < points_vec@.len() ==> is_well_formed_edwards_point(
+                        #[trigger] points_vec@[k],
+                    ),
+                // Each table is valid and has bounded limbs
+                forall|k: int|
+                    0 <= k < idx ==> {
+                        &&& is_valid_lookup_table_projective(
+                            (#[trigger] lookup_tables@[k]).0,
+                            points_vec@[k],
+                            8,
+                        )
+                        &&& lookup_table_projective_limbs_bounded(lookup_tables@[k].0)
+                    },
             decreases points_vec.len() - idx,
         {
-            proof {
-                assume(false);
-            }  // PROOF BYPASS
             lookup_tables.push(LookupTable::<ProjectiveNielsPoint>::from(&points_vec[idx]));
             idx = idx + 1;
         }
@@ -521,18 +855,48 @@ impl Straus {
         let mut scalar_digits: Vec<[i8; 64]> = Vec::new();
         idx = 0;
         while idx < scalars_vec.len()
+            invariant
+                0 <= idx <= scalars_vec@.len(),
+                scalar_digits@.len() == idx as int,
+                scalars_vec@ == spec_scalars,
+                // All scalars are canonical (from collect_scalars_from_iter ensures)
+                forall|k: int|
+                    0 <= k < scalars_vec@.len() ==> is_canonical_scalar(
+                        &#[trigger] scalars_vec@[k],
+                    ),
+                // Each digit array is valid radix-16
+                forall|k: int|
+                    0 <= k < idx ==> {
+                        &&& is_valid_radix_16(&#[trigger] scalar_digits@[k])
+                        &&& radix_16_all_bounded(&scalar_digits@[k])
+                        &&& reconstruct_radix_16(scalar_digits@[k]@) == scalar_as_nat(
+                            &scalars_vec@[k],
+                        ) as int
+                    },
             decreases scalars_vec.len() - idx,
         {
-            proof {
-                assume(false);
-            }  // PROOF BYPASS
             scalar_digits.push(scalars_vec[idx].as_radix_16());
             idx = idx + 1;
         }
         /* </REFACTORED CODE> */
 
+        // Ghost: build the affine points and digit sequences for the spec
+        let ghost n = scalars_vec@.len();
+        let ghost pts_affine: Seq<(nat, nat)> = points_to_affine(spec_points);
+        let ghost digits_seqs: Seq<Seq<i8>> = scalar_digits@.map(|_i, d: [i8; 64]| d@);
+
         /* UNCHANGED FROM ORIGINAL */
         let mut Q = EdwardsPoint::identity();
+
+        proof {
+            // Q starts as identity = straus_ct_partial(64)
+            assert(is_well_formed_edwards_point(Q));
+            lemma_straus_ct_base(pts_affine, digits_seqs);
+            // Connect: identity point has affine (0, 1) = math_edwards_identity
+            lemma_identity_affine_coords(Q);
+            assert(edwards_point_as_affine(Q) == math_edwards_identity());
+            assert(edwards_point_as_affine(Q) == straus_ct_partial(pts_affine, digits_seqs, 64));
+        }
 
         /* <ORIGINAL CODE>
         for j in (0..64).rev() {
@@ -551,18 +915,34 @@ impl Straus {
          *   2. For each (scalar, point) pair, add s_j * P_i from lookup table
          */
         let mut j: usize = 64;
-        loop
+        while j > 0
+            invariant
+                0 <= j <= 64,
+                is_well_formed_edwards_point(Q),
+                // Functional correctness: Q = straus_ct_partial(pts, digits, j)
+                edwards_point_as_affine(Q) == straus_ct_partial(pts_affine, digits_seqs, j as int),
+                // Preparation loop postconditions preserved (bundled)
+                straus_ct_input_valid(
+                    scalar_digits@,
+                    lookup_tables@,
+                    digits_seqs,
+                    pts_affine,
+                    spec_scalars,
+                    spec_points,
+                    n,
+                ),
+                // Scalar digit validity + reconstruction (kept separate from predicate to avoid inner-loop rlimit)
+                forall|k: int| 0 <= k < n ==> is_valid_radix_16(&#[trigger] scalar_digits@[k]),
+                forall|k: int|
+                    0 <= k < n ==> reconstruct_radix_16((#[trigger] scalar_digits@[k])@)
+                        == scalar_as_nat(&spec_scalars[k]) as int,
             decreases j,
         {
-            proof {
-                assume(false);
-            }  // PROOF BYPASS
-            if j == 0 {
-                break ;
-            }
             j = j - 1;
 
+            // mul_by_pow_2(4) requires is_well_formed_edwards_point and k > 0
             Q = Q.mul_by_pow_2(4);
+            // Now Q affine == edwards_scalar_mul(old_Q_affine, pow2(4)) == edwards_scalar_mul(old_Q_affine, 16)
 
             // Inner loop: iterate over scalar_digits and lookup_tables
             let mut k: usize = 0;
@@ -571,25 +951,145 @@ impl Straus {
             } else {
                 lookup_tables.len()
             };
+
+            // Ghost: track what Q was after scaling (before inner loop adds column terms)
+            let ghost scaled_affine = edwards_point_as_affine(Q);
+            proof {
+                assert(min_len == n);
+                // At k=0: col(j,0) = O (identity), so edwards_add(scaled, O) == scaled
+                lemma_edwards_point_as_affine_canonical(Q);
+                lemma_edwards_add_identity_right_canonical(scaled_affine);
+            }
+
             while k < min_len
+                invariant
+                    0 <= k <= min_len,
+                    min_len == n,
+                    0 <= j < 64,
+                    is_well_formed_edwards_point(Q),
+                    // Q = edwards_add(scaled_prev, column_sum(j, k))
+                    edwards_point_as_affine(Q) == {
+                        let col_k = straus_column_sum(pts_affine, digits_seqs, j as int, k as int);
+                        edwards_add(scaled_affine.0, scaled_affine.1, col_k.0, col_k.1)
+                    },
+                    // Preserved preparation invariants (bundled)
+                    straus_ct_input_valid(
+                        scalar_digits@,
+                        lookup_tables@,
+                        digits_seqs,
+                        pts_affine,
+                        spec_scalars,
+                        spec_points,
+                        n,
+                    ),
                 decreases min_len - k,
             {
-                proof {
-                    assume(false);
-                }  // PROOF BYPASS
                 let s_i = &scalar_digits[k];
                 let lookup_table_i = &lookup_tables[k];
+
+                proof {
+                    // Establish digit bounds for select precondition
+                    assert(radix_16_all_bounded(s_i));
+                    assert(-8 <= s_i@[j as int] <= 8) by {
+                        assert(radix_16_digit_bounded(s_i@[j as int]));
+                    }
+                }
+
                 let R_i = lookup_table_i.select(s_i[j]);
+
+                proof {
+                    // Scope the select lemma to limit Z3 quantifier pressure
+                    let base_k = pts_affine[k as int];
+                    let ghost digit_kj = s_i@[j as int];
+                    assert(projective_niels_point_as_affine_edwards(R_i)
+                        == edwards_scalar_mul_signed(base_k, digit_kj as int)) by {
+                        assert(base_k == edwards_point_as_affine(spec_points[k as int]));
+                        lemma_select_is_signed_scalar_mul_projective(
+                            lookup_table_i.0,
+                            digit_kj,
+                            R_i,
+                            base_k,
+                        );
+                    }
+                }
+
                 Q = (&Q + &R_i).as_extended();
+
+                proof {
+                    // After add + as_extended:
+                    // Q_new_affine == spec_edwards_add_projective_niels(Q_old, R_i)
+                    //              == edwards_add(Q_old_affine, R_i_affine)
+                    // Q_old_affine == edwards_add(scaled, col_k) [from invariant]
+                    // R_i_affine == term_k [from select lemma]
+                    let col_k = straus_column_sum(pts_affine, digits_seqs, j as int, k as int);
+                    let base_k = pts_affine[k as int];
+                    let digit_kj = digits_seqs[k as int][j as int];
+                    let term_k = edwards_scalar_mul_signed(base_k, digit_kj as int);
+
+                    // By associativity: edwards_add(edwards_add(S, Ck), R) == edwards_add(S, edwards_add(Ck, R))
+                    axiom_edwards_add_associative(
+                        scaled_affine.0,
+                        scaled_affine.1,
+                        col_k.0,
+                        col_k.1,
+                        term_k.0,
+                        term_k.1,
+                    );
+                    // Column sum step: edwards_add(col_k, term_k) == col_{k+1}
+                    // digits_seqs[k] has length 64 (view of [i8; 64])
+                    assert(digits_seqs[k as int] == scalar_digits@[k as int]@);
+                    assert(digits_seqs[k as int].len() == 64);
+                }
+
                 k = k + 1;
+            }
+
+            proof {
+                // After inner loop: k == n, so Q = edwards_add(scaled, column_sum(j, n))
+                // This equals straus_ct_partial(j) by definition
+                lemma_straus_ct_step(pts_affine, digits_seqs, j as int);
+
+                // scaled_affine == edwards_scalar_mul(straus_ct_partial(j+1), pow2(4))
+                // pow2(4) == 16
+                vstd::arithmetic::power2::lemma2_to64();
+                assert(pow2(4) == 16nat);
+                // So scaled_affine == edwards_scalar_mul(straus_ct_partial(j+1), 16)
+                // And Q == edwards_add(scaled_affine, column_sum(j, n)) == straus_ct_partial(j)
             }
         }
         /* </REFACTORED CODE> */
 
-        // PROOF BYPASS: Assume postconditions (requires full loop invariant proofs)
+        // Final: Q = straus_ct_partial(0) == sum_of_scalar_muls(spec_scalars, spec_points)
         proof {
-            assume(is_well_formed_edwards_point(Q));
-            assume(edwards_point_as_affine(Q) == sum_of_scalar_muls(spec_scalars, spec_points));
+            // Axiom preconditions
+            assert(spec_scalars.len() == spec_points.len());
+            assert(pts_affine.len() == spec_scalars.len()) by {
+                assert(pts_affine.len() == n);
+                assert(n == spec_scalars.len());
+            };
+            assert(digits_seqs.len() == spec_scalars.len()) by {
+                assert(digits_seqs.len() == n);
+                assert(n == spec_scalars.len());
+            };
+
+            // Bridge: pts_affine == affine forms of spec_points
+            assert forall|k: int| 0 <= k < pts_affine.len() implies #[trigger] pts_affine[k]
+                == edwards_point_as_affine(spec_points[k]) by {};
+
+            // Bridge radix_16_all_bounded (array) to radix_16_all_bounded_seq (Seq) + len == 64
+            assert forall|k: int| 0 <= k < digits_seqs.len() implies {
+                &&& (#[trigger] digits_seqs[k]).len() == 64
+                &&& radix_16_all_bounded_seq(digits_seqs[k])
+                &&& reconstruct_radix_16(digits_seqs[k]) == scalar_as_nat(&spec_scalars[k]) as int
+            } by {
+                assert(digits_seqs[k] == scalar_digits@[k]@);
+                assert(radix_16_all_bounded(&scalar_digits@[k]));
+                assert(reconstruct_radix_16(scalar_digits@[k]@) == scalar_as_nat(
+                    &spec_scalars[k],
+                ) as int);
+            };
+
+            lemma_straus_ct_correct(spec_scalars, spec_points, pts_affine, digits_seqs);
         }
 
         Q

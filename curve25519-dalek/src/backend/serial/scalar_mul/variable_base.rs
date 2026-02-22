@@ -213,39 +213,39 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
 
         proof {
             // -- Step 1: 4 doublings = multiplication by 16 --
-            assert(a1 == edwards_double(old_affine.0, old_affine.1));
-            assert(a2 == edwards_double(a1.0, a1.1));
-            assert(a3 == edwards_double(a2.0, a2.1));
-            assert(a4 == edwards_double(a3.0, a3.1));
-            lemma_four_doublings_is_mul_16(old_affine, a1, a2, a3, a4);
+            assert(a4 == edwards_scalar_mul(old_affine, 16)) by {
+                assert(a1 == edwards_double(old_affine.0, old_affine.1));
+                assert(a2 == edwards_double(a1.0, a1.1));
+                assert(a3 == edwards_double(a2.0, a2.1));
+                assert(a4 == edwards_double(a3.0, a3.1));
+                lemma_four_doublings_is_mul_16(old_affine, a1, a2, a3, a4);
+            }
             lemma2_to64();
 
             // as_extended preserves affine
             assert(edwards_point_as_affine(tmp3) == a4);
 
             // -- Step 2: Composition: [16]([partial]*P) = [partial*16]*P --
-            assert(old_affine == edwards_scalar_mul_signed(P_affine, partial_j));
-            lemma_edwards_scalar_mul_signed_composition(P_affine, partial_j, 16);
-            assert(a4 == edwards_scalar_mul_signed(P_affine, partial_j * 16));
+            assert(a4 == edwards_scalar_mul_signed(P_affine, partial_j * 16)) by {
+                assert(old_affine == edwards_scalar_mul_signed(P_affine, partial_j));
+                lemma_edwards_scalar_mul_signed_composition(P_affine, partial_j, 16);
+            }
 
             // -- Step 3: Select gives signed scalar mul --
-            lemma_select_projective_is_signed_scalar_mul(
-                lookup_table.0,
-                scalar_digits[i as int],
-                selected,
-                *point,
-            );
             let selected_affine = projective_niels_point_as_affine_edwards(selected);
             assert(selected_affine == edwards_scalar_mul_signed(
                 P_affine,
                 scalar_digits[i as int] as int,
-            ));
+            )) by {
+                lemma_select_projective_is_signed_scalar_mul(
+                    lookup_table.0,
+                    scalar_digits[i as int],
+                    selected,
+                    *point,
+                );
+            }
 
             // -- Step 4: Add combines the two terms --
-            // completed_point_as_affine_edwards(tmp1) ==
-            //   edwards_add(a4, selected_affine) ==
-            //   edwards_add([partial*16]*P, [s_i]*P) ==
-            //   [partial*16 + s_i]*P
             axiom_edwards_scalar_mul_signed_additive(
                 P_affine,
                 partial_j * 16,
@@ -258,13 +258,8 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
             assert(s.len() > 0);
             assert(s[0] == scalar_digits@[i_int]);
             assert(s.skip(1) =~= scalar_digits@.subrange(i_int + 1, 64));
-            // Unfold reconstruct_radix_2w one step
-            assert(reconstruct_radix_2w(s, 4) == (scalar_digits@[i_int] as int) + pow2(4)
-                * reconstruct_radix_2w(scalar_digits@.subrange(i_int + 1, 64), 4));
             assert(pow2(4) == 16);
-            // i_int + 1 == 63 - j, so subrange(i_int+1, 64) == subrange(63-j, 64)
             assert(i_int + 1 == 63 - j as int);
-            // The new partial = s[i] + 16 * partial_j = partial_j * 16 + s[i]
             assert(reconstruct_radix_2w(s, 4) == partial_j * 16 + scalar_digits[i as int] as int)
                 by {
                 assert((scalar_digits@[i_int] as int) + 16 * partial_j == partial_j * 16 + (
@@ -272,7 +267,6 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
                     lemma_mul_is_commutative(16, partial_j as int);
                 }
             }
-            // s == scalar_digits@.subrange(63 - (j+1), 64)
             assert(63 - (j + 1) as int == i_int);
         }
     }

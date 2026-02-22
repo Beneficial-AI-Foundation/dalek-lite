@@ -593,6 +593,11 @@ impl ProjectivePoint {
             fe51_limbs_bounded(&self.Z, 54),
         ensures
             is_valid_edwards_point(result),
+            is_well_formed_edwards_point(result),
+            fe51_limbs_bounded(&result.X, 52),
+            fe51_limbs_bounded(&result.Y, 52),
+            fe51_limbs_bounded(&result.Z, 52),
+            fe51_limbs_bounded(&result.T, 52),
             spec_edwards_point(result) == spec_projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {
@@ -674,6 +679,11 @@ impl ProjectivePoint {
             };
 
             assert(is_valid_edwards_point(result));
+
+            // Well-formedness: sum_of_limbs_bounded follows from 52-bit bounds on Y and X
+            assert(sum_of_limbs_bounded(&result.Y, &result.X, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&result.Y, &result.X, 52);
+            };
         }
         result
     }

@@ -1104,4 +1104,9 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
     }
 }
 
+/// Convert a sequence of EdwardsPoints to their affine coordinates.
+pub open spec fn points_to_affine(points: Seq<EdwardsPoint>) -> Seq<(nat, nat)> {
+    points.map(|_i, p: EdwardsPoint| edwards_point_as_affine(p))
+}
+
 } // verus!

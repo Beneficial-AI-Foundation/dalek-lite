@@ -1104,8 +1104,6 @@ impl RistrettoPoint {
         let t4 = constants::EIGHT_TORSION[4];
         let t6 = constants::EIGHT_TORSION[6];
         proof {
-            broadcast use crate::edwards::lemma_shift_52_broadcast;
-
             use_type_invariant(t2);
             use_type_invariant(t4);
             use_type_invariant(t6);

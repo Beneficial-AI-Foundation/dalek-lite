@@ -34,9 +34,6 @@ use zeroize::Zeroize;
 
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::edwards::lemma_shift_52_broadcast;
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
@@ -318,8 +315,6 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
         */
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
             use_type_invariant(P);
             lemma_unfold_edwards(*P);
             lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Y, &P.X, 52);
@@ -328,8 +323,6 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         let mut points = [P.as_projective_niels();8];
         for j in 0..7 {
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(P);
                 lemma_unfold_edwards(*P);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Y, &P.X, 52);
@@ -348,8 +341,6 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
             }
             let extended = sum.as_extended();
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(extended);
                 lemma_unfold_edwards(extended);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
@@ -385,8 +376,6 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
         */
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
             use_type_invariant(P);
             lemma_unfold_edwards(*P);
         }
@@ -394,8 +383,6 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         let mut points = [P.as_affine_niels();8];
         for j in 0..7 {
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(P);
                 lemma_unfold_edwards(*P);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Z, &P.Z, 52);
@@ -413,8 +400,6 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
             }
             let extended = sum.as_extended();
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(extended);
                 lemma_unfold_edwards(extended);
             }
@@ -555,8 +540,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
             naf_lookup_table5_projective_limbs_bounded(result.0),
     {
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
             use_type_invariant(A);
             lemma_unfold_edwards(*A);
             lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
@@ -567,8 +550,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
 
         for i in 0..7 {
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
@@ -587,8 +568,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
             }
             let extended = sum.as_extended();
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(extended);
                 lemma_unfold_edwards(extended);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
@@ -613,8 +592,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
             naf_lookup_table5_affine_limbs_bounded(result.0),
     {
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
             use_type_invariant(A);
             lemma_unfold_edwards(*A);
             lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
@@ -625,8 +602,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
 
         for i in 0..7 {
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
@@ -645,8 +620,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
             }
             let extended = sum.as_extended();
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(extended);
                 lemma_unfold_edwards(extended);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
@@ -778,8 +751,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
             naf_lookup_table8_projective_limbs_bounded(result.0),
     {
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
             use_type_invariant(A);
             lemma_unfold_edwards(*A);
             lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
@@ -790,8 +761,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
 
         for i in 0..63 {
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
@@ -810,8 +779,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
             }
             let extended = sum.as_extended();
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(extended);
                 lemma_unfold_edwards(extended);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
@@ -837,8 +804,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
             naf_lookup_table8_affine_limbs_bounded(result.0),
     {
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
             use_type_invariant(A);
             lemma_unfold_edwards(*A);
             lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
@@ -849,8 +814,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
 
         for i in 0..63 {
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(A2);
                 lemma_unfold_edwards(A2);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
@@ -869,8 +832,6 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
             }
             let extended = sum.as_extended();
             proof {
-                broadcast use lemma_shift_52_broadcast;
-
                 use_type_invariant(extended);
                 lemma_unfold_edwards(extended);
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);

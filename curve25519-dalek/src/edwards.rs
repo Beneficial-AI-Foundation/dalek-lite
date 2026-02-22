@@ -599,8 +599,8 @@ mod decompress {
         Variable assignment refactor to prove type invariant before constructor. */
         let T = &X * &Y;
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
+            // Helps solver: maps opaque (1u64 << 52) to literal
+            assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
             p_gt_2();
             let x = fe51_as_canonical_nat(&X);
             let y = fe51_as_canonical_nat(&Y);
@@ -796,20 +796,6 @@ pub struct EdwardsPoint {
     pub(crate) T: FieldElement,
 }
 
-pub(crate) open spec fn fe51_each_limb_bounded_52(fe: &FieldElement) -> bool {
-    fe.limbs[0] < 4503599627370496 && fe.limbs[1] < 4503599627370496 && fe.limbs[2]
-        < 4503599627370496 && fe.limbs[3] < 4503599627370496 && fe.limbs[4] < 4503599627370496
-}
-
-/// Bridge: 1u64 << 52 == 4503599627370496 (literal). Call `broadcast use` at construction
-/// sites to connect fe51_limbs_bounded postconditions to the explicit limb comparisons.
-pub(crate) broadcast proof fn lemma_shift_52_broadcast()
-    ensures
-        #[trigger] (1u64 << 52u64) == 4503599627370496u64,
-{
-    assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
-}
-
 /// Explicit sum-of-limbs check for Y+X (avoids quantifier for solver).
 pub(crate) open spec fn yx_limb_sum_bounded(y: &FieldElement, x: &FieldElement) -> bool {
     (y.limbs[0] as u128) + (x.limbs[0] as u128) < (u64::MAX as u128) && (y.limbs[1] as u128) + (
@@ -821,9 +807,10 @@ pub(crate) open spec fn yx_limb_sum_bounded(y: &FieldElement, x: &FieldElement) 
 impl EdwardsPoint {
     #[verifier::type_invariant]
     pub(crate) open spec fn well_formed(self) -> bool {
-        fe51_each_limb_bounded_52(&self.X) && fe51_each_limb_bounded_52(&self.Y)
-            && fe51_each_limb_bounded_52(&self.Z) && fe51_each_limb_bounded_52(&self.T)
-            && math_is_valid_extended_edwards_point(
+        fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.Y, 52) && fe51_limbs_bounded(
+            &self.Z,
+            52,
+        ) && fe51_limbs_bounded(&self.T, 52) && math_is_valid_extended_edwards_point(
             fe51_as_canonical_nat(&self.X),
             fe51_as_canonical_nat(&self.Y),
             fe51_as_canonical_nat(&self.Z),
@@ -979,8 +966,8 @@ impl Identity for EdwardsPoint {
             is_well_formed_edwards_point(result),
     {
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
+            // ZERO/ONE limbs (0, 1) are within 52-bit bound
+            assert(0u64 < (1u64 << 52u64) && 1u64 < (1u64 << 52u64)) by (bit_vector);
             lemma_zero_field_element_value();
             lemma_one_field_element_value();
             lemma_identity_is_valid_extended();
@@ -1045,8 +1032,8 @@ impl Zeroize for EdwardsPoint {
             is_identity_edwards_point(*self),
     {
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
+            // ZERO/ONE limbs (0, 1) are within 52-bit bound
+            assert(0u64 < (1u64 << 52u64) && 1u64 < (1u64 << 52u64)) by (bit_vector);
             lemma_zero_field_element_value();
             lemma_one_field_element_value();
             lemma_identity_is_valid_extended();
@@ -1239,7 +1226,6 @@ impl ConstantTimeEq for EdwardsPoint {
         proof {
             lemma_unfold_edwards(*self);
             lemma_unfold_edwards(*other);
-            broadcast use lemma_shift_52_broadcast;
 
             use_type_invariant(*self);
             use_type_invariant(*other);
@@ -2449,8 +2435,8 @@ impl<'a> Neg for &'a EdwardsPoint {
         let neg_x = Neg::neg(&self.X);
         let neg_t = Neg::neg(&self.T);
         proof {
-            broadcast use lemma_shift_52_broadcast;
-
+            // Helps solver: maps opaque (1u64 << 52) to literal
+            assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
             use_type_invariant(*self);
             lemma_negation_preserves_extended_validity(old_x, old_y, old_z, old_t);
             assert(fe51_as_canonical_nat(&neg_x) == field_neg(old_x));

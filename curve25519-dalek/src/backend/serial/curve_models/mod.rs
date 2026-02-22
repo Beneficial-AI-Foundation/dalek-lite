@@ -611,8 +611,8 @@ impl ProjectivePoint {
         let rZ = self.Z.square();
         let rT = &self.X * &self.Y;
         proof {
-            broadcast use crate::edwards::lemma_shift_52_broadcast;
-
+            // Helps solver: maps opaque (1u64 << 52) to literal
+            assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
             let (x, y, z) = spec_projective_point_edwards(*self);
 
             // Bridge square() postcondition to field_square
@@ -858,8 +858,8 @@ impl CompletedPoint {
         let rZ = &self.Z * &self.T;
         let rT = &self.X * &self.Y;
         proof {
-            broadcast use crate::edwards::lemma_shift_52_broadcast;
-
+            // Helps solver: maps opaque (1u64 << 52) to literal
+            assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
             let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
 
             let rx = fe51_as_canonical_nat(&rX);

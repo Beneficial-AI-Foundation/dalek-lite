@@ -153,8 +153,6 @@ impl ConstantTimeEq for FieldElement {
     fn ct_eq(&self, other: &FieldElement) -> (result:
         Choice)/* <VERIFICATION NOTE>
      - Use wrapper functions for ConstantTimeEq and CtOption
-     - DRAFT SPEC: spec_fe51_as_bytes is a complex spec function that should correspond to as_bytes()
-     - Proof uses lemma_as_bytes_equals_spec_fe51_to_bytes
     </VERIFICATION NOTE> */
 
         ensures
@@ -226,11 +224,7 @@ impl FieldElement {
     ///
     /// If negative, return `Choice(1)`.  Otherwise, return `Choice(0)`.
     pub(crate) fn is_negative(&self) -> (result:
-        Choice)/* VERIFICATION NOTE:
-    - DRAFT SPEC: spec_fe51_as_bytes is a complex spec function that should correspond to as_bytes()
-    - Proof uses lemma_as_bytes_equals_spec_fe51_to_bytes to connect as_bytes() with spec_fe51_as_bytes()
-    </VERIFICATION NOTE> */
-
+        Choice)
         ensures
             choice_is_true(result) == (spec_fe51_as_bytes(self)[0] & 1 == 1),
     {
@@ -252,15 +246,8 @@ impl FieldElement {
     ///
     /// If zero, return `Choice(1)`.  Otherwise, return `Choice(0)`.
     pub(crate) fn is_zero(&self) -> (result:
-        Choice)/* VERIFICATION NOTE:
-    - we cannot write this directly; need to find a spec function for FieldElement51::as_bytes
-    ensures choice_is_true(result) == (self.as_bytes() == [0u8; 32])
-    - (note: maybe an all_zeroes(as_bytes(...)) is sufficient as a spec)
-    </VERIFICATION NOTE> */
-
+        Choice)
         ensures
-    // SPEC BYPASS through placeholder spec_fe51_as_bytes
-
             choice_is_true(result) == (spec_fe51_as_bytes(self) == seq![0u8; 32]),
     {
         let zero = [0u8;32];
@@ -822,8 +809,8 @@ impl FieldElement {
         ensures
     // If self is non-zero, result is the multiplicative inverse: result * self ≡ 1 (mod p)
 
-            fe51_as_canonical_nat(self) != 0 ==> field_canonical(
-                fe51_as_canonical_nat(&result) * fe51_as_canonical_nat(self),
+            fe51_as_canonical_nat(self) != 0 ==> field_mul(
+                fe51_as_canonical_nat(&result), fe51_as_canonical_nat(self),
             ) == 1,
             // If self is zero, result is zero
             fe51_as_canonical_nat(self) == 0 ==> fe51_as_canonical_nat(&result) == 0,

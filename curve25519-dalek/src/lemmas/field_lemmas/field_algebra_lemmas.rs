@@ -2988,72 +2988,51 @@ pub proof fn lemma_cross_mul_iff_div_eq(a: nat, b: nat, c: nat, d: nat)
     let inv_b = field_inv(b);
     let inv_d = field_inv(d);
     let bd = field_mul(b, d);
-    let db = field_mul(d, b);
 
     p_gt_2();
 
-    lemma_field_mul_comm(b, d);
-    assert(bd == db);
+    assert(bd == field_mul(d, b)) by {
+        lemma_field_mul_comm(b, d);
+    }
 
     // Forward: a*d == c*b → a*inv(b) == c*inv(d)
     if field_mul(a, d) == field_mul(c, b) {
-        lemma_cancel_common_factor(a, b, d);
-        assert(field_mul(field_mul(a, d), field_inv(bd)) == field_mul(a, inv_b));
-
-        lemma_cancel_common_factor(c, d, b);
-        assert(field_mul(field_mul(c, b), field_inv(db)) == field_mul(c, inv_d));
-
-        // a*d == c*b, so (a*d)*inv(bd) == (c*b)*inv(bd) == (c*b)*inv(db) == c*inv(d)
-        assert(field_mul(field_mul(a, d), field_inv(bd)) == field_mul(
-            field_mul(c, b),
-            field_inv(bd),
-        ));
+        assert(field_mul(field_mul(a, d), field_inv(bd)) == field_mul(a, inv_b)) by {
+            lemma_cancel_common_factor(a, b, d);
+        }
+        assert(field_mul(field_mul(c, b), field_inv(bd)) == field_mul(c, inv_d)) by {
+            lemma_cancel_common_factor(c, d, b);
+            lemma_field_mul_comm(b, d);
+        }
+        // a*d == c*b ⇒ (a*d)*inv(bd) == (c*b)*inv(bd), chain the two equalities above
         assert(field_mul(a, inv_b) == field_mul(c, inv_d));
     }
     // Backward: a*inv(b) == c*inv(d) → a*d == c*b
 
     if field_mul(a, inv_b) == field_mul(c, inv_d) {
-        // (a*d)*(inv_b*b) == (a*inv_b)*(d*b)
-        lemma_four_factor_rearrange(a, d, inv_b, b);
-        lemma_inv_mul_cancel(b);
-        assert(field_mul(inv_b, b) == 1nat);
-        lemma_field_mul_one_right(field_mul(a, d));
-        assert(field_mul(field_mul(a, d), 1nat) == field_mul(a, d) % p());
+        assert(field_mul(inv_b, b) == 1nat) by {
+            lemma_inv_mul_cancel(b);
+        }
+        assert(field_mul(inv_d, d) == 1nat) by {
+            lemma_inv_mul_cancel(d);
+        }
 
-        // field_mul(a, d) < p() so mod is identity
-        assert(field_mul(a, d) < p()) by {
+        // (a*d)*(inv_b*b) == (a*inv_b)*(d*b), substitute inv_b*b = 1
+        assert(field_mul(a, d) == field_mul(field_mul(a, inv_b), field_mul(d, b))) by {
+            lemma_four_factor_rearrange(a, d, inv_b, b);
+            lemma_field_mul_one_right(field_mul(a, d));
+            lemma_small_mod(field_mul(a, d), p());
             lemma_mod_bound((a * d) as int, p() as int);
         }
-        assert(field_mul(a, d) % p() == field_mul(a, d)) by {
-            lemma_small_mod(field_mul(a, d), p());
-        }
-
-        // So: field_mul(a, d) == field_mul(field_mul(a, inv_b), field_mul(d, b))
-        assert(field_mul(a, d) == field_mul(field_mul(a, inv_b), field_mul(d, b)));
-
-        // Similarly for c*b
-        lemma_four_factor_rearrange(c, b, inv_d, d);
-        lemma_inv_mul_cancel(d);
-        assert(field_mul(inv_d, d) == 1nat);
-        lemma_field_mul_one_right(field_mul(c, b));
-
-        assert(field_mul(c, b) < p()) by {
+        // (c*b)*(inv_d*d) == (c*inv_d)*(b*d), substitute inv_d*d = 1
+        assert(field_mul(c, b) == field_mul(field_mul(c, inv_d), field_mul(b, d))) by {
+            lemma_four_factor_rearrange(c, b, inv_d, d);
+            lemma_field_mul_one_right(field_mul(c, b));
+            lemma_small_mod(field_mul(c, b), p());
             lemma_mod_bound((c * b) as int, p() as int);
         }
-        assert(field_mul(c, b) % p() == field_mul(c, b)) by {
-            lemma_small_mod(field_mul(c, b), p());
-        }
-
-        // So: field_mul(c, b) == field_mul(field_mul(c, inv_d), field_mul(b, d))
-        assert(field_mul(c, b) == field_mul(field_mul(c, inv_d), field_mul(b, d)));
-
-        // Given a*inv_b == c*inv_d, and d*b == b*d:
-        // field_mul(a, d) = (a*inv_b)*(d*b) = (c*inv_d)*(d*b) = (c*inv_d)*(b*d) = c*b
+        // a*inv_b == c*inv_d and d*b == b*d ⇒ chain gives a*d == c*b
         assert(field_mul(d, b) == field_mul(b, d));
-        assert(field_mul(field_mul(a, inv_b), field_mul(d, b)) == field_mul(
-            field_mul(c, inv_d),
-            field_mul(d, b),
-        ));
         assert(field_mul(a, d) == field_mul(c, b));
     }
 }

@@ -852,10 +852,13 @@ proof {
    };
    ```
 
-5. **Move lemma calls into the assert..by blocks they justify:**
-   Each lemma should be placed in the `by` block of the assertion it proves. This makes the proof structure explicit about which lemma proves which fact:
+5. **Prefer `assert ... by { lemma_call; }` over floating lemma calls:**
+   By default, every lemma call should be wrapped in an `assert...by` block that states the
+   fact the lemma establishes. This is the **preferred style** for proof readability and
+   debuggability. Avoid "floating" lemma calls (bare `lemma_foo(args);` without a paired assertion).
+
    ```rust
-   // BEFORE (unclear which lemma proves what):
+   // BAD – floating lemma calls (unclear which lemma proves what):
    lemma_mul_is_associative(b, d, p);
    lemma_mul_is_commutative(b, d);
    lemma_mul_is_associative(d, b, p);
@@ -863,15 +866,34 @@ proof {
    assert(b * d == d * b);
    assert((d * b) * p == d * (b * p));
 
-   // AFTER (each lemma paired with its assertion):
+   // GOOD – each lemma paired with its assertion:
    assert(b * (d * p) == (b * d) * p) by { lemma_mul_is_associative(b, d, p); }
    assert(b * d == d * b) by { lemma_mul_is_commutative(b, d); }
    assert((d * b) * p == d * (b * p)) by { lemma_mul_is_associative(d, b, p); }
    ```
 
-   **Benefits:**
+   Multiple lemmas can share one `assert...by` block when they collectively prove a single fact:
+   ```rust
+   assert(field_mul(a, d) == field_mul(field_mul(a, inv_b), field_mul(d, b))) by {
+       lemma_four_factor_rearrange(a, d, inv_b, b);
+       lemma_field_mul_one_right(field_mul(a, d));
+       lemma_small_mod(field_mul(a, d), p());
+       lemma_mod_bound((a * d) as int, p() as int);
+   }
+   ```
+
+   **When floating lemma calls are acceptable:**
+   - The lemma provides a biconditional or background fact that Z3 uses across multiple
+     subsequent assertions (wrapping it would require repeating a complex postcondition).
+   - Wrapping the call causes an rlimit blowup or verification failure — solver performance
+     takes priority over style.
+   - The lemma's postcondition is trivially obvious from its name and arguments (e.g.,
+     `p_gt_2()` establishing `p() > 2`).
+
+   **Benefits of `assert...by` style:**
    - Clear logical structure: you see exactly what each lemma proves
    - Easier to debug: if an assertion fails, you know which lemma isn't working
+   - Scoped solver context: facts from the `by` block don't leak, reducing solver load
    - Self-documenting: the proof reads as a series of justified claims
 
 6. **Remove unused lemmas:**

@@ -75,6 +75,10 @@ Cleanup checklist:
 
 - Remove redundant assertions (delete one at a time; re-verify).
 - Prefer `assert(...)` over `assert(...) by { ... }` when the `by` block has no real lemma calls.
-- Move lemma calls into the `assert .. by { ... }` block they justify (one lemma per assertion when possible).
+- **Prefer `assert(fact) by { lemma_call; }` over floating `lemma_call;` + `assert(fact);`.**
+  Wrap every lemma call in the `assert...by` that states the fact it establishes. Multiple lemmas
+  may share one block when they collectively prove a single fact. Floating lemma calls are acceptable
+  when: (a) the lemma provides a biconditional/background fact used across many assertions,
+  (b) wrapping causes rlimit blowup, or (c) the postcondition is trivially obvious from the name.
 - Keep comments concise and explain *why*, not *what*.
 - Remove unused general lemmas after a specialized lemma fully replaces them (search usages before deleting).

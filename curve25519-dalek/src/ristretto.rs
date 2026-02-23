@@ -2291,10 +2291,7 @@ impl ConditionallySelectable for RistrettoPoint {
     fn conditional_select(a: &RistrettoPoint, b: &RistrettoPoint, choice: Choice) -> (result:
         RistrettoPoint)
         ensures
-    // If choice is false (0), return a
-
             !choice_is_true(choice) ==> result.0 == a.0,
-            // If choice is true (1), return b
             choice_is_true(choice) ==> result.0 == b.0,
     {
         RistrettoPoint(EdwardsPoint::conditional_select(&a.0, &b.0, choice))

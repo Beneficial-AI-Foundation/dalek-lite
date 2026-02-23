@@ -31,8 +31,11 @@ use crate::backend::serial::curve_models::{
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants::ED25519_BASEPOINT_TABLE;
+#[cfg(test)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::EIGHT_TORSION;
 #[allow(unused_imports)] // Used in verus! blocks
-use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D, EIGHT_TORSION};
+use crate::backend::serial::u64::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
 #[cfg(feature = "precomputed-tables")]
 #[allow(unused_imports)]
 use crate::edwards::EdwardsBasepointTable;
@@ -44,6 +47,7 @@ use crate::scalar::Scalar;
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::specs::montgomery_specs::*;
+
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::scalar_as_nat;
@@ -72,42 +76,27 @@ use super::core_specs::{u8_32_as_nat, bytes_seq_as_nat};
 /// The x-coordinate is the positive square root satisfying the curve equation.
 ///
 /// Reference: [RFC8032] Section 5.1
-pub open spec fn spec_ed25519_basepoint() -> (nat, nat) {
-    (u64_5_as_nat(ED25519_BASEPOINT_POINT.X.limbs), u64_5_as_nat(ED25519_BASEPOINT_POINT.Y.limbs))
-}
-
-/// The Ed25519 basepoint has reduced coordinates (both < p)
-///
-/// This is a property of the specific basepoint constant definition from the Ed25519 spec.
-/// The basepoint X and Y coordinates are canonical field elements < p.
-///
-/// ## Values
-/// - X = 15112221349535400772501151409588531511454012693041857206046113283949847762202
-/// - Y = 46316835694926478169428394003475163141307993866256225615783033603165251855960
-/// - p = 57896044618658097711785492504343953926634992332820282019728792003956564819949
-///
-/// Both X < p and Y < p by direct comparison.
-///
-/// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
-pub proof fn axiom_ed25519_basepoint_canonical()
-    ensures
-        spec_ed25519_basepoint().0 < p(),
-        spec_ed25519_basepoint().1 < p(),
-{
-    admit();
-}
-
-/// Axiom: The Ed25519 basepoint is on the Edwards curve.
-///
-/// The basepoint (x, y) satisfies -x² + y² = 1 + d·x²·y² (mod p).
-/// This is verified by the `test_basepoint_on_curve` test below.
-///
-/// Reference: <https://www.rfc-editor.org/rfc/rfc8032#section-5.1>
-pub proof fn axiom_basepoint_on_curve()
-    ensures
-        math_on_edwards_curve(spec_ed25519_basepoint().0, spec_ed25519_basepoint().1),
-{
-    admit();
+pub closed spec fn spec_ed25519_basepoint() -> (nat, nat) {
+    (
+        u64_5_as_nat(
+            [
+                1738742601995546u64,
+                1146398526822698u64,
+                2070867633025821u64,
+                562264141797630u64,
+                587772402128613u64,
+            ],
+        ),
+        u64_5_as_nat(
+            [
+                1801439850948184u64,
+                1351079888211148u64,
+                450359962737049u64,
+                900719925474099u64,
+                1801439850948198u64,
+            ],
+        ),
+    )
 }
 
 // =============================================================================
@@ -154,32 +143,9 @@ pub proof fn axiom_ed25519_basepoint_table_valid()
     // VERIFICATION NOTE: we probably have to prove this
 }
 
-/// Axiom: All 8-torsion points are well-formed.
-///
-/// The EIGHT_TORSION array contains the 8-torsion subgroup E[8] of the curve.
-/// Each element satisfies `is_well_formed_edwards_point`, which requires:
-/// - `is_valid_edwards_point`: Z ≠ 0, projective curve equation, X·Y = Z·T
-/// - `edwards_point_limbs_bounded`: all limbs < 2^52
-/// - `sum_of_limbs_bounded(Y, X)`: Y + X doesn't overflow
-///
-/// This is verified by the `test_eight_torsion_well_formed` test below.
-pub proof fn axiom_eight_torsion_well_formed()
-    ensures
-        is_well_formed_edwards_point(EIGHT_TORSION[0]),
-        is_well_formed_edwards_point(EIGHT_TORSION[1]),
-        is_well_formed_edwards_point(EIGHT_TORSION[2]),
-        is_well_formed_edwards_point(EIGHT_TORSION[3]),
-        is_well_formed_edwards_point(EIGHT_TORSION[4]),
-        is_well_formed_edwards_point(EIGHT_TORSION[5]),
-        is_well_formed_edwards_point(EIGHT_TORSION[6]),
-        is_well_formed_edwards_point(EIGHT_TORSION[7]),
-{
-    admit();
-}
-
 } // verus!
 /// Test that all 8-torsion points satisfy the structural well-formedness conditions.
-/// This partially validates axiom_eight_torsion_well_formed() by checking:
+/// This validates the `EIGHT_TORSION` constant's type invariant by checking:
 /// - Z ≠ 0, limbs < 2^52, Y+X bounded
 /// Note: The curve equation and T=XY/Z are trusted from the constant definition.
 #[cfg(test)]
@@ -233,7 +199,7 @@ mod eight_torsion_tests {
 }
 
 /// Test that the Ed25519 basepoint satisfies the curve equation.
-/// Validates axiom_basepoint_on_curve() by computing:
+/// Validates the basepoint's type invariant by computing:
 ///   -x² + y² ≡ 1 + d·x²·y² (mod p)
 #[cfg(test)]
 mod basepoint_on_curve_tests {
@@ -393,14 +359,56 @@ pub open spec fn math_is_edwards_identity(x: nat, y: nat) -> bool {
     x % p() == 0 && y % p() == 1
 }
 
+// =============================================================================
+// EdwardsPoint Field Accessors (closed — the only functions accessing pub(crate) fields)
+// =============================================================================
+pub closed spec fn edwards_x(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.X
+}
+
+pub closed spec fn edwards_y(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.Y
+}
+
+pub closed spec fn edwards_z(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.Z
+}
+
+pub closed spec fn edwards_t(
+    point: crate::edwards::EdwardsPoint,
+) -> crate::backend::serial::u64::field::FieldElement51 {
+    point.T
+}
+
+/// Equates closed spec accessors (`edwards_x`, …) with actual struct fields (`.X`, …).
+/// Needed because spec predicates use closed accessors (for encapsulation), while proof
+/// code after construction/mutation knows facts about the raw fields.
+pub(crate) proof fn lemma_unfold_edwards(point: crate::edwards::EdwardsPoint)
+    ensures
+        edwards_x(point) == point.X,
+        edwards_y(point) == point.Y,
+        edwards_z(point) == point.Z,
+        edwards_t(point) == point.T,
+{
+}
+
+// =============================================================================
+// EdwardsPoint Predicates (open — bodies visible everywhere, using closed accessors)
+// =============================================================================
 /// Check if an EdwardsPoint represents the identity point
 /// The identity point is (0, 1) in affine coordinates
 /// In projective coordinates (X:Y:Z:T), this means X/Z = 0 and Y/Z = 1
 /// Which is equivalent to X ≡ 0 (mod p) and Y ≡ Z (mod p) with Z ≠ 0
 pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
-    let x = fe51_as_canonical_nat(&point.X);
-    let y = fe51_as_canonical_nat(&point.Y);
-    let z = fe51_as_canonical_nat(&point.Z);
+    let x = fe51_as_canonical_nat(&edwards_x(point));
+    let y = fe51_as_canonical_nat(&edwards_y(point));
+    let z = fe51_as_canonical_nat(&edwards_z(point));
 
     z != 0 && x == 0 && y == z
 }
@@ -427,38 +435,56 @@ pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t:
 /// Extended coordinates (X:Y:Z:T) with X·Y = Z·T enable faster point arithmetic.
 /// Reference: [HWCD2008] Section 3 for extended twisted Edwards coordinates
 pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
-    let x = fe51_as_canonical_nat(&point.X);
-    let y = fe51_as_canonical_nat(&point.Y);
-    let z = fe51_as_canonical_nat(&point.Z);
-    let t = fe51_as_canonical_nat(&point.T);
+    let x = fe51_as_canonical_nat(&edwards_x(point));
+    let y = fe51_as_canonical_nat(&edwards_y(point));
+    let z = fe51_as_canonical_nat(&edwards_z(point));
+    let t = fe51_as_canonical_nat(&edwards_t(point));
 
     math_is_valid_extended_edwards_point(x, y, z, t)
 }
 
 /// EdwardsPoint invariant: all coordinate limbs must be 52-bounded.
 pub open spec fn edwards_point_limbs_bounded(point: crate::edwards::EdwardsPoint) -> bool {
-    fe51_limbs_bounded(&point.X, 52) && fe51_limbs_bounded(&point.Y, 52) && fe51_limbs_bounded(
-        &point.Z,
-        52,
-    ) && fe51_limbs_bounded(&point.T, 52)
+    fe51_limbs_bounded(&edwards_x(point), 52) && fe51_limbs_bounded(&edwards_y(point), 52)
+        && fe51_limbs_bounded(&edwards_z(point), 52) && fe51_limbs_bounded(&edwards_t(point), 52)
 }
 
 /// A well-formed EdwardsPoint: mathematically valid and properly bounded.
 pub open spec fn is_well_formed_edwards_point(point: crate::edwards::EdwardsPoint) -> bool {
     is_valid_edwards_point(point) && edwards_point_limbs_bounded(point) && sum_of_limbs_bounded(
-        &point.Y,
-        &point.X,
+        &edwards_y(point),
+        &edwards_x(point),
         u64::MAX,
     )
+}
+
+/// Check if the Z-coordinate sum of limbs is bounded (needed for affine niels addition).
+pub open spec fn edwards_z_sum_bounded(point: crate::edwards::EdwardsPoint) -> bool {
+    sum_of_limbs_bounded(&edwards_z(point), &edwards_z(point), u64::MAX)
+}
+
+/// Canonical nat value of the Y coordinate.
+pub open spec fn edwards_y_nat(point: crate::edwards::EdwardsPoint) -> nat {
+    fe51_as_canonical_nat(&edwards_y(point))
+}
+
+/// Canonical nat value of the Z coordinate.
+pub open spec fn edwards_z_nat(point: crate::edwards::EdwardsPoint) -> nat {
+    fe51_as_canonical_nat(&edwards_z(point))
+}
+
+/// Sign bit of the X coordinate (LSB of the canonical value).
+pub open spec fn edwards_x_sign_bit(point: crate::edwards::EdwardsPoint) -> u8 {
+    fe51_as_canonical_nat_sign_bit(&edwards_x(point))
 }
 
 /// Returns the field element values (X, Y, Z, T) from an EdwardsPoint.
 /// An EdwardsPoint (X:Y:Z:T) is in extended projective coordinates.
 pub open spec fn spec_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat, nat, nat, nat) {
-    let x = fe51_as_canonical_nat(&point.X);
-    let y = fe51_as_canonical_nat(&point.Y);
-    let z = fe51_as_canonical_nat(&point.Z);
-    let t = fe51_as_canonical_nat(&point.T);
+    let x = fe51_as_canonical_nat(&edwards_x(point));
+    let y = fe51_as_canonical_nat(&edwards_y(point));
+    let z = fe51_as_canonical_nat(&edwards_z(point));
+    let t = fe51_as_canonical_nat(&edwards_t(point));
     (x, y, z, t)
 }
 
@@ -572,10 +598,7 @@ pub open spec fn projective_niels_corresponds_to_edwards(
     niels: ProjectiveNielsPoint,
     point: EdwardsPoint,
 ) -> bool {
-    let x = fe51_as_canonical_nat(&point.X);
-    let y = fe51_as_canonical_nat(&point.Y);
-    let z = fe51_as_canonical_nat(&point.Z);
-    let t = fe51_as_canonical_nat(&point.T);
+    let (x, y, z, t) = spec_edwards_point(point);
     let d = fe51_as_canonical_nat(&EDWARDS_D);
 
     let y_plus_x = fe51_as_canonical_nat(&niels.Y_plus_X);
@@ -583,8 +606,6 @@ pub open spec fn projective_niels_corresponds_to_edwards(
     let niels_z = fe51_as_canonical_nat(&niels.Z);
     let t2d = fe51_as_canonical_nat(&niels.T2d);
 
-    // Check the relationships
-    // 2d is computed as field_mul(2, d) in field arithmetic
     &&& y_plus_x == field_add(y, x)
     &&& y_minus_x == field_sub(y, x)
     &&& niels_z == z
@@ -636,12 +657,9 @@ pub open spec fn affine_niels_corresponds_to_edwards(
     niels: AffineNielsPoint,
     point: EdwardsPoint,
 ) -> bool {
-    let x_proj = fe51_as_canonical_nat(&point.X);
-    let y_proj = fe51_as_canonical_nat(&point.Y);
-    let z_proj = fe51_as_canonical_nat(&point.Z);
+    let (x_proj, y_proj, z_proj, _t) = spec_edwards_point(point);
     let d = fe51_as_canonical_nat(&EDWARDS_D);
 
-    // Compute affine coordinates x = X/Z, y = Y/Z
     let z_inv = field_inv(z_proj);
     let x = field_mul(x_proj, z_inv);
     let y = field_mul(y_proj, z_inv);
@@ -650,7 +668,6 @@ pub open spec fn affine_niels_corresponds_to_edwards(
     let y_minus_x_niels = fe51_as_canonical_nat(&niels.y_minus_x);
     let xy2d_niels = fe51_as_canonical_nat(&niels.xy2d);
 
-    // Check the relationships
     &&& y_plus_x_niels == field_add(y, x)
     &&& y_minus_x_niels == field_sub(y, x)
     &&& xy2d_niels == field_mul(field_mul(field_mul(x, y), 2), d)

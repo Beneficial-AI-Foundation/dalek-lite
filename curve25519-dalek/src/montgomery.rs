@@ -385,11 +385,16 @@ impl MontgomeryPoint {
         // ORIGINAL CODE: EdwardsPoint::mul_base(scalar).to_montgomery()
         let temp = EdwardsPoint::mul_base(scalar);
         proof {
+            lemma_unfold_edwards(temp);
             assert((1u64 << 52) < (1u64 << 54)) by (bit_vector);
             assert(fe51_limbs_bounded(&temp.X, 54));
         }
         let result = temp.to_montgomery();
+        let bp = crate::backend::serial::u64::constants::ED25519_BASEPOINT_POINT;
         proof {
+            use_type_invariant(bp);
+            lemma_unfold_edwards(bp);
+
             let B = spec_ed25519_basepoint();
             let n = scalar_as_nat(scalar);
 
@@ -398,7 +403,8 @@ impl MontgomeryPoint {
             ));
 
             assert(math_on_edwards_curve(B.0, B.1)) by {
-                axiom_basepoint_on_curve();
+                let (x, y, z, _t) = spec_edwards_point(bp);
+                lemma_projective_implies_affine_on_curve(x, y, z);
             }
             assert(math_on_edwards_curve(edwards_scalar_mul(B, n).0, edwards_scalar_mul(B, n).1))
                 by {
@@ -1252,6 +1258,7 @@ impl MontgomeryPoint {
                 if result.is_some() {
                     let point = result.unwrap();
 
+                    lemma_unfold_edwards(point);
                     lemma_edwards_affine_when_z_is_one(point);
                     let x_exec = fe51_as_canonical_nat(&point.X);
                     assert(edwards_point_as_affine(point) == (x_exec, y_nat));

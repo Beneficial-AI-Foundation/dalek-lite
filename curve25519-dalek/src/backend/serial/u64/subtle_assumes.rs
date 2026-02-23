@@ -253,6 +253,8 @@ pub fn conditional_assign_u64(a: &mut u64, b: &u64, choice: Choice)
 #[verifier::external_body]
 pub fn conditional_negate_generic<T>(a: &mut T, choice: Choice) where
     T: subtle::ConditionallyNegatable,
+    ensures
+        !choice_is_true(choice) ==> *a == *old(a),
  {
     a.conditional_negate(choice);
 }
@@ -325,6 +327,9 @@ pub fn negate_field_element(a: &FieldElement51) -> (result: FieldElement51)
 #[verifier::external_body]
 pub fn conditional_assign_generic<T>(a: &mut T, b: &T, choice: Choice) where
     T: subtle::ConditionallySelectable,
+    ensures
+        !choice_is_true(choice) ==> *a == *old(a),
+        choice_is_true(choice) ==> *a == *b,
  {
     a.conditional_assign(b, choice)
 }

@@ -473,6 +473,17 @@ impl Straus {
                 && pts_affine[m].1 < p() by {
                 lemma_edwards_point_as_affine_canonical(unwrapped_points[m]);
             }
+            // Bundle individual facts into opaque predicate for the loop invariant
+            lemma_straus_vt_input_valid_establish(
+                nafs@,
+                lookup_tables@,
+                nafs_seqs,
+                pts_affine,
+                spec_scalars,
+                spec_points,
+                unwrapped_points,
+                n,
+            );
         }
 
         /* <ORIGINAL CODE>
@@ -548,7 +559,46 @@ impl Straus {
 
             let ghost doubled_affine = completed_point_as_affine_edwards(t);
             proof {
+                lemma_straus_vt_input_valid_lengths(
+                    nafs@,
+                    lookup_tables@,
+                    nafs_seqs,
+                    pts_affine,
+                    spec_scalars,
+                    spec_points,
+                    unwrapped_points,
+                    n,
+                );
                 assert(min_len == n);
+                // Establish forall invariants for the inner loop
+                assert forall|k: int| 0 <= k < n implies (#[trigger] nafs_seqs[k]).len() == 256 by {
+                    lemma_straus_vt_input_valid_extract(
+                        nafs@,
+                        lookup_tables@,
+                        nafs_seqs,
+                        pts_affine,
+                        spec_scalars,
+                        spec_points,
+                        unwrapped_points,
+                        n,
+                        k,
+                    );
+                    // nafs_seqs[k] == nafs@[k]@ and nafs@[k] is [i8; 256], so len == 256
+                }
+                assert forall|k: int| 0 <= k < n implies (#[trigger] pts_affine[k]).0 < p()
+                    && pts_affine[k].1 < p() by {
+                    lemma_straus_vt_input_valid_extract(
+                        nafs@,
+                        lookup_tables@,
+                        nafs_seqs,
+                        pts_affine,
+                        spec_scalars,
+                        spec_points,
+                        unwrapped_points,
+                        n,
+                        k,
+                    );
+                }
                 // doubled_affine coords < p() (field_mul returns (a*b)%p < p)
                 p_gt_2();
                 // edwards_add(doubled, identity) == doubled
@@ -581,15 +631,37 @@ impl Straus {
                         unwrapped_points,
                         n,
                     ),
+                    // Facts surfaced from opaque straus_vt_input_valid for indexing
+                    // and lemma preconditions (column_sum_canonical, etc.)
+                    nafs@.len() == n,
+                    lookup_tables@.len() == n,
+                    nafs_seqs.len() == n,
+                    pts_affine.len() == n,
+                    forall|k: int| 0 <= k < n ==> (#[trigger] nafs_seqs[k]).len() == 256,
+                    forall|k: int|
+                        0 <= k < n ==> (#[trigger] pts_affine[k]).0 < p() && pts_affine[k].1 < p(),
                 decreases min_len - j,
             {
                 let naf = &nafs[j];
                 let lookup_table = &lookup_tables[j];
 
+                proof {
+                    lemma_straus_vt_input_valid_extract(
+                        nafs@,
+                        lookup_tables@,
+                        nafs_seqs,
+                        pts_affine,
+                        spec_scalars,
+                        spec_points,
+                        unwrapped_points,
+                        n,
+                        j as int,
+                    );
+                }
+
                 match naf[i].cmp(&0) {
                     Ordering::Greater => {
                         proof {
-                            assert(is_valid_naf(nafs_seqs[j as int], 5));
                             let digit = naf@[i as int];
                             assert(pow2(4) == 16) by {
                                 vstd::arithmetic::power2::lemma2_to64();
@@ -639,7 +711,6 @@ impl Straus {
                     },
                     Ordering::Less => {
                         proof {
-                            assert(is_valid_naf(nafs_seqs[j as int], 5));
                             let digit = naf@[i as int];
                             assert(pow2(4) == 16) by {
                                 vstd::arithmetic::power2::lemma2_to64();
@@ -740,7 +811,17 @@ impl Straus {
                 &&& is_valid_naf(nafs_seqs[k], 5)
                 &&& reconstruct(nafs_seqs[k]) == scalar_as_nat(&spec_scalars[k]) as int
             } by {
-                assert(nafs_seqs[k] == nafs@[k]@);
+                lemma_straus_vt_input_valid_extract(
+                    nafs@,
+                    lookup_tables@,
+                    nafs_seqs,
+                    pts_affine,
+                    spec_scalars,
+                    spec_points,
+                    unwrapped_points,
+                    n,
+                    k,
+                );
             };
 
             // r affine == straus_vt_partial(0) == sum_of_scalar_muls

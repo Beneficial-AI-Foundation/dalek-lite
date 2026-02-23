@@ -119,7 +119,7 @@ pub open spec fn is_valid_edwards_basepoint_table(
     basepoint: (nat, nat),
 ) -> bool {
     // Each of the 32 LookupTables contains correct multiples of (16²)^i * B
-    // and has bounded limbs
+    // and has bounded limbs and valid entries
     forall|i: int|
         #![trigger table.0[i]]
         0 <= i < 32 ==> {
@@ -129,6 +129,8 @@ pub open spec fn is_valid_edwards_basepoint_table(
                 8,
             )
             &&& crate::specs::window_specs::lookup_table_affine_limbs_bounded(table.0[i].0)
+            &&& forall|j: int|
+                0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] table.0[i].0[j])
         }
 }
 

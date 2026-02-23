@@ -2029,26 +2029,18 @@ pub(crate) proof fn lemma_conditional_add_l_correct(
 pub(crate) proof fn lemma_sub_new_correct(
     result: Scalar52,
     carry: u64,
-    a: &Scalar52,
-    b: &Scalar52,
+    a: Scalar52,
+    b: Scalar52,
     borrow: u64,
 )
     requires
-        limbs_bounded(a),
-        limbs_bounded(b),
+        limbs_bounded(&a),
+        limbs_bounded(&b),
         -group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order(),
         forall|j: int| 0 <= j < 5 ==> result.limbs[j] < (1u64 << 52),
         (carry >> 52) <= 1,
         borrow >> 63 == 0 || borrow >> 63 == 1,
-        // From Choice::from: (borrow >> 63) as u8 == 1 iff borrow >> 63 == 1
-        // When borrow >> 63 == 0 (no underflow, condition false):
-        //   conditional_add_l is no-op, so result = difference_before
-        //   and from loop 1: a - b == result (since borrow >> 63 == 0)
         borrow >> 63 == 0 ==> scalar52_to_nat(&a) - scalar52_to_nat(&b) == scalar52_to_nat(&result),
-        // When borrow >> 63 == 1 (underflow, condition true):
-        //   loop 1 gives: a - b == difference_before - pow2(260)
-        //   conditional_add_l gives: result + carry_top * pow2(260) == difference_before + group_order()
-        //   Substituting: result + carry_top * pow2(260) == (a - b + pow2(260)) + group_order()
         borrow >> 63 == 1 ==> scalar52_to_nat(&a) < scalar52_to_nat(&b),
         borrow >> 63 == 1 ==> scalar52_to_nat(&result) + (carry >> 52) as nat * pow2(260)
             == scalar52_to_nat(&a) - scalar52_to_nat(&b) + pow2(260) + group_order(),
@@ -2057,22 +2049,17 @@ pub(crate) proof fn lemma_sub_new_correct(
         group_order() as int),
 {
     if borrow >> 63 == 0 {
-        // No underflow: result = a - b, and 0 <= a - b < group_order()
         assert(scalar52_to_nat(&result) == scalar52_to_nat(&a) - scalar52_to_nat(&b));
         assert(scalar52_to_nat(&a) - scalar52_to_nat(&b) >= 0);
         assert(scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order());
         lemma_small_mod((scalar52_to_nat(&a) - scalar52_to_nat(&b)) as nat, group_order());
     }
     if borrow >> 63 == 1 {
-        // Underflow: a < b (roughly), need to add L
-        // result + carry_top * pow2(260) == (a - b) + pow2(260) + group_order()
         let a_nat = scalar52_to_nat(&a);
         let b_nat = scalar52_to_nat(&b);
         let r_nat = scalar52_to_nat(&result);
         let carry_top = (carry >> 52) as nat;
 
-        // Show carry_top == 1 by contradiction
-        // r_nat < pow2(260) (from limbs_bounded of result)
         assert(limbs_bounded(&result)) by {
             assert((1u64 << 52) == pow2(52)) by {
                 lemma_u64_shift_is_pow2(52);
@@ -2081,33 +2068,21 @@ pub(crate) proof fn lemma_sub_new_correct(
         lemma_bound_scalar(&result);
         assert(r_nat < pow2(260));
 
-        // (a - b) + pow2(260) + group_order() >= pow2(260) (since a - b >= -group_order())
-        // So r_nat + carry_top * pow2(260) >= pow2(260)
-        // Since r_nat < pow2(260), we need carry_top >= 1 (and carry_top <= 1, so carry_top == 1)
         assert(carry_top == 1) by {
             if carry_top == 0 {
-                // Then r_nat == a - b + pow2(260) + group_order
-                // But r_nat < pow2(260) and a - b >= -group_order()
-                // So r_nat >= pow2(260) - group_order() + group_order() = pow2(260)
-                // Contradiction with r_nat < pow2(260)
                 assert(r_nat == a_nat - b_nat + pow2(260) + group_order());
                 assert(false);
             }
         };
 
-        // Now: r_nat + pow2(260) == a_nat - b_nat + pow2(260) + group_order()
-        // So: r_nat == a_nat - b_nat + group_order()
         assert(r_nat == a_nat - b_nat + group_order());
 
-        // Since -group_order() <= a - b < 0: 0 <= a - b + group_order() < group_order()
         assert(a_nat < b_nat);
         assert(0 <= a_nat - b_nat + group_order());
         assert(a_nat - b_nat + group_order() < group_order());
 
-        // So r_nat < group_order, and r_nat == (a - b + L) % L == (a - b) % L
         lemma_small_mod(r_nat, group_order());
 
-        // (a - b + group_order) % group_order == (a - b) % group_order
         lemma_mod_add_multiples_vanish((a_nat - b_nat) as int, group_order() as int);
         assert(r_nat as int == (a_nat - b_nat) % (group_order() as int));
     }

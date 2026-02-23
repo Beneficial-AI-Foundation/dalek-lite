@@ -689,13 +689,13 @@ impl Scalar52 {
             /* <ORIGINAL CODE> difference[i] = borrow & mask; <ORIGINAL CODE> */
             let ghost difference_loop1_start = difference;
             difference.limbs[i] = borrow & mask;
-            assert(difference_loop1_start.limbs@.subrange(0, i as int)
-                == difference.limbs@.subrange(0, i as int));
-            assert(seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
-                b.limbs@.subrange(0, i as int),
-            ) == seq_u64_to_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (old_borrow
-                >> 63) * pow2((52 * (i) as nat)));
             proof {
+                assert(difference_loop1_start.limbs@.subrange(0, i as int)
+                    == difference.limbs@.subrange(0, i as int));
+                assert(seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
+                    b.limbs@.subrange(0, i as int),
+                ) == seq_u64_to_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (
+                old_borrow >> 63) * pow2((52 * (i) as nat)));
                 lemma_sub_loop1_invariant(
                     difference,
                     borrow,
@@ -748,7 +748,7 @@ impl Scalar52 {
                 lemma_bound_scalar(&diff_before);
                 assert(scalar52_to_nat(&a) < scalar52_to_nat(&b));
             }
-            lemma_sub_new_correct(difference, carry, a, b, borrow);
+            lemma_sub_new_correct(difference, carry, *a, *b, borrow);
         }
         difference
     }

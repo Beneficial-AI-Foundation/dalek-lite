@@ -21,7 +21,7 @@ use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow2_even, pow2_MUL_div};
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[cfg(verus_keep_ghost)]
-use crate::lemmas::field_lemmas::negate_lemmas::{lemma_neg, proof_negate};
+use crate::lemmas::field_lemmas::negate_lemmas::{lemma_neg, lemma_neg_no_underflow, proof_negate};
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::lemma_fe51_unit_is_one;
 use crate::specs::edwards_specs::*;
@@ -1848,13 +1848,7 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
     let neg_t_limbs = spec_negate(ep.T.limbs);
 
     // ep's type invariant guarantees 52-bounded limbs for all EdwardsPoint values.
-    // use_type_invariant is unavailable for spec-mode values from choose, so we
-    // assume the type invariant here. This is sound: the invariant holds universally.
-    assume(fe51_limbs_bounded(&ep.X, 52));
-    assume(fe51_limbs_bounded(&ep.Y, 52));
-    assume(fe51_limbs_bounded(&ep.Z, 52));
-    assume(fe51_limbs_bounded(&ep.T, 52));
-    assume(sum_of_limbs_bounded(&ep.Y, &ep.X, u64::MAX));
+    lemma_edwards_point_invariant(ep);
 
     // 52-bounded implies 54-bounded for proof_negate precondition
     assert((1u64 << 52u64) <= (1u64 << 54u64)) by (bit_vector);
@@ -1869,8 +1863,8 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
         }
     }
 
-    crate::lemmas::field_lemmas::negate_lemmas::lemma_neg_no_underflow(ep.X.limbs);
-    crate::lemmas::field_lemmas::negate_lemmas::lemma_neg_no_underflow(ep.T.limbs);
+    lemma_neg_no_underflow(ep.X.limbs);
+    lemma_neg_no_underflow(ep.T.limbs);
     proof_negate(ep.X.limbs);
     proof_negate(ep.T.limbs);
 
@@ -1969,7 +1963,7 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
             assert(pt.xy2d.limbs[i] < (1u64 << 54u64));
         }
     }
-    crate::lemmas::field_lemmas::negate_lemmas::lemma_neg_no_underflow(pt.xy2d.limbs);
+    lemma_neg_no_underflow(pt.xy2d.limbs);
     proof_negate(pt.xy2d.limbs);
     lemma_neg(&pt_xy2d_fe);
     let pt_xy2d_val = fe51_as_canonical_nat(&pt.xy2d);

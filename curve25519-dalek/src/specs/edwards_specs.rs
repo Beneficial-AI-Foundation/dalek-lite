@@ -400,6 +400,27 @@ pub(crate) proof fn lemma_unfold_edwards(point: crate::edwards::EdwardsPoint)
 {
 }
 
+/// Exposes the EdwardsPoint type invariant for proof-mode values (including
+/// those obtained via `choose`). `use_type_invariant` only accepts exec-mode
+/// values, so this `external_body` lemma serves as a bridge. Sound because
+/// Verus type invariants hold universally for all values of the type.
+#[verifier::external_body]
+pub(crate) proof fn lemma_edwards_point_invariant(point: crate::edwards::EdwardsPoint)
+    ensures
+        fe51_limbs_bounded(&point.X, 52),
+        fe51_limbs_bounded(&point.Y, 52),
+        fe51_limbs_bounded(&point.Z, 52),
+        fe51_limbs_bounded(&point.T, 52),
+        math_is_valid_extended_edwards_point(
+            fe51_as_canonical_nat(&point.X),
+            fe51_as_canonical_nat(&point.Y),
+            fe51_as_canonical_nat(&point.Z),
+            fe51_as_canonical_nat(&point.T),
+        ),
+        sum_of_limbs_bounded(&point.Y, &point.X, u64::MAX),
+{
+}
+
 // =============================================================================
 // EdwardsPoint Predicates (open — bodies visible everywhere, using closed accessors)
 // =============================================================================

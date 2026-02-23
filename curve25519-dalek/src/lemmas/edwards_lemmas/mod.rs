@@ -17,5 +17,6 @@ pub mod decompress_lemmas;
 pub mod double_correctness;
 pub mod mul_base_lemmas;
 pub mod niels_addition_correctness;
+pub mod pippenger_lemmas;
 pub mod step1_lemmas;
 pub mod straus_lemmas;

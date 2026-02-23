@@ -400,27 +400,6 @@ pub(crate) proof fn lemma_unfold_edwards(point: crate::edwards::EdwardsPoint)
 {
 }
 
-/// Exposes the EdwardsPoint type invariant for proof-mode values (including
-/// those obtained via `choose`). `use_type_invariant` only accepts exec-mode
-/// values, so this `external_body` lemma serves as a bridge. Sound because
-/// Verus type invariants hold universally for all values of the type.
-#[verifier::external_body]
-pub(crate) proof fn lemma_edwards_point_invariant(point: crate::edwards::EdwardsPoint)
-    ensures
-        fe51_limbs_bounded(&point.X, 52),
-        fe51_limbs_bounded(&point.Y, 52),
-        fe51_limbs_bounded(&point.Z, 52),
-        fe51_limbs_bounded(&point.T, 52),
-        math_is_valid_extended_edwards_point(
-            fe51_as_canonical_nat(&point.X),
-            fe51_as_canonical_nat(&point.Y),
-            fe51_as_canonical_nat(&point.Z),
-            fe51_as_canonical_nat(&point.T),
-        ),
-        sum_of_limbs_bounded(&point.Y, &point.X, u64::MAX),
-{
-}
-
 // =============================================================================
 // EdwardsPoint Predicates (open — bodies visible everywhere, using closed accessors)
 // =============================================================================
@@ -697,13 +676,16 @@ pub open spec fn affine_niels_corresponds_to_edwards(
 }
 
 /// Check if an AffineNielsPoint is valid
-/// A valid AffineNielsPoint must correspond to some valid EdwardsPoint
+/// A valid AffineNielsPoint must correspond to some valid, well-formed EdwardsPoint.
+/// The existential includes limb bounds and sum_of_limbs so that `choose` witnesses
+/// carry the full type-invariant strength without needing an external_body bridge lemma.
 pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
     exists|point: EdwardsPoint|
-        is_valid_edwards_point(point) && #[trigger] affine_niels_corresponds_to_edwards(
-            niels,
-            point,
-        )
+        is_valid_edwards_point(point) && edwards_point_limbs_bounded(point) && sum_of_limbs_bounded(
+            &edwards_y(point),
+            &edwards_x(point),
+            u64::MAX,
+        ) && #[trigger] affine_niels_corresponds_to_edwards(niels, point)
 }
 
 /// Extract affine coordinates (x, y) from an AffineNielsPoint

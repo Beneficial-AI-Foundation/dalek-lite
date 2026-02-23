@@ -1813,6 +1813,10 @@ pub proof fn lemma_identity_affine_niels_valid()
         lemma_small_mod(0nat, p());
     }
 
+    assert(edwards_point_limbs_bounded(witness));
+    lemma_unfold_edwards(witness);
+    assert(sum_of_limbs_bounded(&witness.Y, &witness.X, u64::MAX));
+    assert(sum_of_limbs_bounded(&edwards_y(witness), &edwards_x(witness), u64::MAX));
     assert(affine_niels_corresponds_to_edwards(id, witness));
 }
 
@@ -1829,9 +1833,14 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
     let neg = negate_affine_niels(pt);
     p_gt_2();
 
-    // Extract witness from is_valid_affine_niels_point(pt)
+    // Extract witness from is_valid_affine_niels_point(pt).
+    // The strengthened existential gives us limb bounds and sum_of_limbs directly.
     let ep = choose|ep: crate::edwards::EdwardsPoint|
-        is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(pt, ep);
+        is_valid_edwards_point(ep) && edwards_point_limbs_bounded(ep) && sum_of_limbs_bounded(
+            &edwards_y(ep),
+            &edwards_x(ep),
+            u64::MAX,
+        ) && #[trigger] affine_niels_corresponds_to_edwards(pt, ep);
     lemma_unfold_edwards(ep);
 
     let xp = fe51_as_canonical_nat(&ep.X);
@@ -1846,9 +1855,6 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
     // Construct negated EdwardsPoint witness with negated X and T
     let neg_x_limbs = spec_negate(ep.X.limbs);
     let neg_t_limbs = spec_negate(ep.T.limbs);
-
-    // ep's type invariant guarantees 52-bounded limbs for all EdwardsPoint values.
-    lemma_edwards_point_invariant(ep);
 
     // 52-bounded implies 54-bounded for proof_negate precondition
     assert((1u64 << 52u64) <= (1u64 << 54u64)) by (bit_vector);
@@ -1981,6 +1987,10 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
     assert(field_neg(pt_xy2d_val) == field_mul(field_mul(field_mul(field_neg(x), y), 2), d));
     assert(neg_xy2d_val == field_mul(field_mul(field_mul(neg_x_affine, neg_y_affine), 2), d));
 
+    assert(edwards_point_limbs_bounded(neg_ep));
+    lemma_unfold_edwards(neg_ep);
+    assert(sum_of_limbs_bounded(&neg_ep.Y, &neg_ep.X, u64::MAX));
+    assert(sum_of_limbs_bounded(&edwards_y(neg_ep), &edwards_x(neg_ep), u64::MAX));
     assert(affine_niels_corresponds_to_edwards(neg, neg_ep));
 }
 

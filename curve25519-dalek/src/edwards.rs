@@ -1435,6 +1435,7 @@ impl EdwardsPoint {
             is_valid_affine_niels_point(result),
     {
         proof {
+            use_type_invariant(*self);
             lemma_unfold_edwards(*self);
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
             lemma_edwards_point_weaken_to_54(self);
@@ -1492,6 +1493,11 @@ impl EdwardsPoint {
             lemma_field_mul_assoc(xy_val, 2, d);
 
             assert(affine_niels_corresponds_to_edwards(result, *self));
+            assert(edwards_point_limbs_bounded(*self));
+            assert(edwards_y(*self) == self.Y);
+            assert(edwards_x(*self) == self.X);
+            assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+            assert(sum_of_limbs_bounded(&edwards_y(*self), &edwards_x(*self), u64::MAX));
 
             // Validity: the existential witness is *self
             assert(is_valid_affine_niels_point(result));

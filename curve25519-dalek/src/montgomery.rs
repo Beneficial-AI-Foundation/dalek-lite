@@ -1830,8 +1830,6 @@ impl crate::traits::IsIdentitySpecImpl for ProjectivePoint {
 impl Default for ProjectivePoint {
     fn default() -> (result: ProjectivePoint)
         ensures
-    // Default returns the identity point
-
             fe51_as_canonical_nat(&result.U) == 1,
             fe51_as_canonical_nat(&result.W) == 0,
     {
@@ -1843,13 +1841,10 @@ impl ConditionallySelectable for ProjectivePoint {
     fn conditional_select(a: &ProjectivePoint, b: &ProjectivePoint, choice: Choice) -> (result:
         ProjectivePoint)
         ensures
-    // If choice is false (0), return a
-
             !choice_is_true(choice) ==> {
                 &&& result.U == a.U
                 &&& result.W == a.W
             },
-            // If choice is true (1), return b
             choice_is_true(choice) ==> {
                 &&& result.U == b.U
                 &&& result.W == b.W
@@ -1900,8 +1895,6 @@ impl ProjectivePoint {
             fe51_limbs_bounded(&self.U, 54),
             fe51_limbs_bounded(&self.W, 54),
         ensures
-    // For projective point (U:W), the affine u-coordinate is u = U/W (or 0 if W=0)
-
             spec_montgomery(result) == {
                 let u_proj = fe51_as_canonical_nat(&self.U);
                 let w_proj = fe51_as_canonical_nat(&self.W);

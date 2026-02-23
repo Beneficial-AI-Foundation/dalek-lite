@@ -25,7 +25,8 @@ use crate::traits::Identity;
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::subtle_assumes::{
-    conditional_assign_generic, conditional_negate_generic, ct_eq_u16,
+    conditional_assign_generic, conditional_negate_affine_niels, conditional_negate_generic,
+    ct_eq_u16,
 };
 use crate::edwards::EdwardsPoint;
 
@@ -34,16 +35,15 @@ use zeroize::Zeroize;
 
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded;
+use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
-    lemma_identity_affine_niels_valid,
-    lemma_negate_affine_niels_preserves_validity,
+    lemma_identity_affine_niels_valid, lemma_negate_affine_niels_preserves_validity,
 };
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::backend::serial::u64::subtle_assumes::choice_is_true;
+use crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -151,23 +151,42 @@ impl LookupTable<AffineNielsPoint> {
         proof {
             // xmask is 0 or -1, so x + xmask doesn't overflow i16
             assert((x as i16 >> 7u32) == 0i16 || (x as i16 >> 7u32) == -1i16) by (bit_vector)
-                requires -8i8 <= x && x <= 8i8;
+                requires
+                    -8i8 <= x && x <= 8i8,
+            ;
         }
         let xabs = (x as i16 + xmask) ^ xmask;
 
         proof {
             // WI3: Bit-vector facts about xmask, xabs
-            // The exec code computes xabs = (x as i16 + xmask) ^ xmask where xmask = x as i16 >> 7.
-            // We use assume to bridge the gap between exec-level XOR and spec-level reasoning,
-            // justified by the well-known absolute-value-via-XOR identity for two's complement.
-            assume(x >= 0 ==> xabs == x as i16);
-            assume(x < 0 ==> xabs == -(x as i16));
+            // In Verus spec mode, i16 + i16 returns int (for overflow safety),
+            // making `(x as i16 + xmask) ^ xmask` fail because int has no XOR.
+            // Work around by binding the sum as i16 so XOR stays in bitvector land.
+            let xsum: i16 = (x as i16 + xmask) as i16;
+            assert(x >= 0i8 ==> xabs == x as i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+            assert(x < 0i8 ==> xabs == -(x as i16)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
             assert(0 <= xabs && xabs <= 8);
-            // xmask sign
+            // xmask sign (used later for neg_mask)
             assert(x >= 0i8 ==> (x as i16 >> 7u32) == 0i16) by (bit_vector)
-                requires -8i8 <= x && x <= 8i8;
+                requires
+                    -8i8 <= x && x <= 8i8,
+            ;
             assert(x < 0i8 ==> (x as i16 >> 7u32) == -1i16) by (bit_vector)
-                requires -8i8 <= x && x <= 8i8;
+                requires
+                    -8i8 <= x && x <= 8i8,
+            ;
         }
 
         // Set t = 0 * P = identity
@@ -202,8 +221,10 @@ impl LookupTable<AffineNielsPoint> {
 
         for j in 1..9
             invariant
-                -8 <= x, x <= 8,
-                0 <= xabs, xabs <= 8,
+                -8 <= x,
+                x <= 8,
+                0 <= xabs,
+                xabs <= 8,
                 // xabs correctly computed
                 (x >= 0 ==> xabs == x as i16),
                 (x < 0 ==> xabs == -(x as i16)),
@@ -262,29 +283,27 @@ impl LookupTable<AffineNielsPoint> {
         proof {
             // xmask & 1 is 0 or 1, safe to cast to u8
             assert((xmask & 1i16) == 0i16 || (xmask & 1i16) == 1i16) by (bit_vector)
-                requires xmask == 0i16 || xmask == -1i16;
+                requires
+                    xmask == 0i16 || xmask == -1i16,
+            ;
         }
         let neg_mask = Choice::from((xmask & 1) as u8);
         proof {
             // WI3: neg_mask bit-vector facts
             assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
-                requires -8i8 <= x && x <= 8i8, xmask == (x as i16 >> 7u32);
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
             assert(x >= 0i8 ==> ((xmask & 1i16) as u8 == 0u8)) by (bit_vector)
-                requires -8i8 <= x && x <= 8i8, xmask == (x as i16 >> 7u32);
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
         }
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
-        conditional_negate_generic(&mut t, neg_mask);
+        conditional_negate_affine_niels(&mut t, neg_mask);
         proof {
-            // WI2 Part B: Trust boundary for subtle crate's ConditionallyNegatable.
-            // The blanket impl does *self = Neg::neg(self) when choice is true.
-            // Neg for &AffineNielsPoint swaps y_plus_x/y_minus_x and negates xy2d.
-            // negate() ensures self.limbs == spec_negate(old(self).limbs) [field.rs].
-            // Therefore the result matches negate_affine_niels.
-            assume(choice_is_true(neg_mask) ==> t == negate_affine_niels(old_t));
-            assume(choice_is_true(neg_mask) ==> fe51_limbs_bounded(&t.y_plus_x, 54));
-            assume(choice_is_true(neg_mask) ==> fe51_limbs_bounded(&t.y_minus_x, 54));
-            assume(choice_is_true(neg_mask) ==> fe51_limbs_bounded(&t.xy2d, 54));
-
             if x >= 0 {
                 // neg_mask is false, so t is unchanged
                 assert(!choice_is_true(neg_mask));
@@ -567,7 +586,8 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
             // Per-entry validity: each entry was produced by as_affine_niels on a valid
             // EdwardsPoint, which ensures is_valid_affine_niels_point. This surfaces the
             // existing assumes at lines 398/408 (inside the loop) as a postcondition.
-            assume(forall|j: int| 0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] result.0[j]));
+            assume(forall|j: int|
+                0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] result.0[j]));
         }
         result
     }

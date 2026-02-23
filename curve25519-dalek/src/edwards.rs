@@ -3145,7 +3145,9 @@ impl BasepointTable for EdwardsBasepointTable {
                 forall|j: int|
                     #![trigger table.0[j as int]]
                     0 <= j < i ==> forall|k: int|
-                        0 <= k < 8 ==> is_valid_affine_niels_point(#[trigger] table.0[j as int].0[k]),
+                        0 <= k < 8 ==> is_valid_affine_niels_point(
+                            #[trigger] table.0[j as int].0[k],
+                        ),
         {
             // P = (16²)^i * basepoint
             table.0[i] = LookupTableRadix16::from(&P);

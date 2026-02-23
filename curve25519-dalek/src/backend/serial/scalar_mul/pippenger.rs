@@ -236,11 +236,10 @@ impl Pippenger {
             count >= 1,
         ensures
             buckets@.len() == count as int,
-            forall|k: int|
-                0 <= k < count ==> is_well_formed_edwards_point(#[trigger] buckets@[k]),
+            forall|k: int| 0 <= k < count ==> is_well_formed_edwards_point(#[trigger] buckets@[k]),
             forall|k: int|
                 0 <= k < count ==> edwards_point_as_affine(#[trigger] buckets@[k])
-                    == math_edwards_identity(),
+                    == edwards_identity(),
     {
         use crate::traits::Identity;
         let mut buckets: Vec<EdwardsPoint> = Vec::new();
@@ -249,11 +248,10 @@ impl Pippenger {
             invariant
                 0 <= i <= count,
                 buckets@.len() == i as int,
-                forall|k: int|
-                    0 <= k < i ==> is_well_formed_edwards_point(#[trigger] buckets@[k]),
+                forall|k: int| 0 <= k < i ==> is_well_formed_edwards_point(#[trigger] buckets@[k]),
                 forall|k: int|
                     0 <= k < i ==> edwards_point_as_affine(#[trigger] buckets@[k])
-                        == math_edwards_identity(),
+                        == edwards_identity(),
             decreases count - i,
         {
             let ep = EdwardsPoint::identity();
@@ -294,38 +292,21 @@ impl Pippenger {
                 &&& sp@.len() == scalars_vec@.len()
                 &&& forall|k: int|
                     0 <= k < sp@.len() ==> {
-                        &&& is_valid_radix_2w(
-                            &(#[trigger] sp@[k]).0,
-                            w as nat,
-                            dc as nat,
-                        )
-                        &&& reconstruct_radix_2w(sp@[k].0@.take(dc), w as nat)
-                            == scalar_as_nat(&scalars_vec@[k]) as int
+                        &&& is_valid_radix_2w(&(#[trigger] sp@[k]).0, w as nat, dc as nat)
+                        &&& reconstruct_radix_2w(sp@[k].0@.take(dc), w as nat) == scalar_as_nat(
+                            &scalars_vec@[k],
+                        ) as int
                     }
                 &&& forall|k: int|
-                    0 <= k < sp@.len() ==> is_valid_projective_niels_point(
-                        (#[trigger] sp@[k]).1,
-                    )
+                    0 <= k < sp@.len() ==> is_valid_projective_niels_point((#[trigger] sp@[k]).1)
                 &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(
-                        &(#[trigger] sp@[k]).1.Y_plus_X,
-                        54,
-                    )
+                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.Y_plus_X, 54)
                 &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(
-                        &(#[trigger] sp@[k]).1.Y_minus_X,
-                        54,
-                    )
+                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.Y_minus_X, 54)
                 &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(
-                        &(#[trigger] sp@[k]).1.Z,
-                        54,
-                    )
+                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.Z, 54)
                 &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(
-                        &(#[trigger] sp@[k]).1.T2d,
-                        54,
-                    )
+                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.T2d, 54)
                 &&& forall|k: int|
                     0 <= k < sp@.len() ==> projective_niels_corresponds_to_edwards(
                         (#[trigger] sp@[k]).1,
@@ -387,15 +368,9 @@ impl Pippenger {
                         54,
                     ),
                 forall|k: int|
-                    0 <= k < idx ==> fe51_limbs_bounded(
-                        &(#[trigger] scalars_points@[k]).1.Z,
-                        54,
-                    ),
+                    0 <= k < idx ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[k]).1.Z, 54),
                 forall|k: int|
-                    0 <= k < idx ==> fe51_limbs_bounded(
-                        &(#[trigger] scalars_points@[k]).1.T2d,
-                        54,
-                    ),
+                    0 <= k < idx ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[k]).1.T2d, 54),
                 forall|k: int|
                     0 <= k < idx ==> projective_niels_corresponds_to_edwards(
                         (#[trigger] scalars_points@[k]).1,
@@ -497,16 +472,20 @@ impl Pippenger {
             }
             return None;
         }
-
         // Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels)
+
         let scalars_points = match Pippenger::pair_scalars_points(&scalars_vec, &points_vec, w) {
             Some(sp) => sp,
             None => {
-                proof { assert(!all_points_some(spec_points)); }
+                proof {
+                    assert(!all_points_some(spec_points));
+                }
                 return None;
             },
         };
-        proof { assert(all_points_some(spec_points)); }
+        proof {
+            assert(all_points_some(spec_points));
+        }
 
         // Ghost state setup
         let ghost n = scalars_points@.len() as int;
@@ -651,7 +630,7 @@ impl Pippenger {
                         ),
                     forall|k: int|
                         0 <= k < bucket_idx ==> edwards_point_as_affine(#[trigger] buckets@[k])
-                            == math_edwards_identity(),
+                            == edwards_identity(),
                 decreases buckets_count - bucket_idx,
             {
                 let ep = EdwardsPoint::identity();
@@ -690,22 +669,15 @@ impl Pippenger {
                             #[trigger] buckets@[b],
                         ),
                     forall|b: int|
-                        0 <= b < buckets_count ==> edwards_point_as_affine(
-                            #[trigger] buckets@[b],
-                        ) == pippenger_bucket_contents(
+                        0 <= b < buckets_count ==> edwards_point_as_affine(#[trigger] buckets@[b])
+                            == pippenger_bucket_contents(
                             pts_affine,
                             digits_seqs,
                             digit_index as int,
                             sp_idx as int,
                             b,
                         ),
-                    pippenger_input_valid(
-                        scalars_points@,
-                        pts_affine,
-                        digits_seqs,
-                        w as nat,
-                        dc,
-                    ),
+                    pippenger_input_valid(scalars_points@, pts_affine, digits_seqs, w as nat, dc),
                 decreases scalars_points.len() - sp_idx,
             {
                 let sp = &scalars_points[sp_idx];
@@ -716,11 +688,7 @@ impl Pippenger {
                 proof {
                     let ghost d_spec = digits_seqs[sp_idx as int][digit_index as int];
                     assert(digit as int == d_spec as int);
-                    assert(is_valid_radix_2w(
-                        &scalars_points@[sp_idx as int].0,
-                        w as nat,
-                        dc,
-                    ));
+                    assert(is_valid_radix_2w(&scalars_points@[sp_idx as int].0, w as nat, dc));
                     assert(-(pow2((w - 1) as nat) as int) <= (d_spec as int) && (d_spec as int)
                         <= pow2((w - 1) as nat));
                     assert(-(buckets_count as int) <= (digit as int) && (digit as int) <= (
@@ -743,14 +711,14 @@ impl Pippenger {
 
                         assert forall|bb: int|
                             0 <= bb < buckets_count implies edwards_point_as_affine(
-                                #[trigger] buckets@[bb],
-                            ) == pippenger_bucket_contents(
-                                pts_affine,
-                                digits_seqs,
-                                col,
-                                sp_idx as int + 1,
-                                bb,
-                            ) by {
+                            #[trigger] buckets@[bb],
+                        ) == pippenger_bucket_contents(
+                            pts_affine,
+                            digits_seqs,
+                            col,
+                            sp_idx as int + 1,
+                            bb,
+                        ) by {
                             if bb == b as int {
                                 assert(d_val == bb + 1);
                             } else {
@@ -776,14 +744,14 @@ impl Pippenger {
 
                         assert forall|bb: int|
                             0 <= bb < buckets_count implies edwards_point_as_affine(
-                                #[trigger] buckets@[bb],
-                            ) == pippenger_bucket_contents(
-                                pts_affine,
-                                digits_seqs,
-                                col,
-                                sp_idx as int + 1,
-                                bb,
-                            ) by {
+                            #[trigger] buckets@[bb],
+                        ) == pippenger_bucket_contents(
+                            pts_affine,
+                            digits_seqs,
+                            col,
+                            sp_idx as int + 1,
+                            bb,
+                        ) by {
                             if bb == b as int {
                                 assert(d_val == -(bb + 1));
                             } else {
@@ -801,14 +769,14 @@ impl Pippenger {
 
                         assert forall|bb: int|
                             0 <= bb < buckets_count implies edwards_point_as_affine(
-                                #[trigger] buckets@[bb],
-                            ) == pippenger_bucket_contents(
-                                pts_affine,
-                                digits_seqs,
-                                col,
-                                sp_idx as int + 1,
-                                bb,
-                            ) by {
+                            #[trigger] buckets@[bb],
+                        ) == pippenger_bucket_contents(
+                            pts_affine,
+                            digits_seqs,
+                            col,
+                            sp_idx as int + 1,
+                            bb,
+                        ) by {
                             assert(d_val != bb + 1);
                             assert(d_val != -(bb + 1));
                         };
@@ -834,8 +802,11 @@ impl Pippenger {
                     buckets_count >= 1,
                     is_well_formed_edwards_point(buckets_intermediate_sum),
                     is_well_formed_edwards_point(column),
-                    edwards_point_as_affine(buckets_intermediate_sum)
-                        == pippenger_intermediate_sum(buckets_affine, j as int, B),
+                    edwards_point_as_affine(buckets_intermediate_sum) == pippenger_intermediate_sum(
+                        buckets_affine,
+                        j as int,
+                        B,
+                    ),
                     edwards_point_as_affine(column) == pippenger_running_sum(
                         buckets_affine,
                         j as int,
@@ -846,9 +817,8 @@ impl Pippenger {
                             #[trigger] buckets@[b],
                         ),
                     forall|b: int|
-                        0 <= b < buckets_count ==> edwards_point_as_affine(
-                            #[trigger] buckets@[b],
-                        ) == buckets_affine[b],
+                        0 <= b < buckets_count ==> edwards_point_as_affine(#[trigger] buckets@[b])
+                            == buckets_affine[b],
                 decreases j,
             {
                 j = j - 1;

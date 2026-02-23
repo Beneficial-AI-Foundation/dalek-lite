@@ -146,7 +146,7 @@ pub open spec fn pippenger_bucket_contents(
     decreases n,
 {
     if n <= 0 {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let prev = pippenger_bucket_contents(points_affine, all_digits, col, n - 1, b);
         let d = all_digits[n - 1][col] as int;
@@ -177,7 +177,7 @@ pub open spec fn pippenger_weighted_bucket_sum(
     decreases num_buckets,
 {
     if num_buckets <= 0 {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let prev = pippenger_weighted_bucket_sum(buckets_affine, num_buckets - 1);
         let bucket = buckets_affine[num_buckets - 1];
@@ -202,7 +202,7 @@ pub open spec fn pippenger_intermediate_sum(buckets_affine: Seq<(nat, nat)>, b: 
     decreases B - b,
 {
     if b >= B {
-        math_edwards_identity()
+        edwards_identity()
     } else if b == B - 1 {
         buckets_affine[b]
     } else {
@@ -229,7 +229,7 @@ pub open spec fn pippenger_running_sum(buckets_affine: Seq<(nat, nat)>, b: int, 
     decreases B - b,
 {
     if b >= B {
-        math_edwards_identity()
+        edwards_identity()
     } else if b == B - 1 {
         buckets_affine[b]
     } else {
@@ -260,7 +260,7 @@ pub open spec fn pippenger_horner(
     decreases digits_count as int - from_col,
 {
     if from_col >= digits_count as int {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let prev = pippenger_horner(points_affine, digits, from_col + 1, w, digits_count);
         let scaled = edwards_scalar_mul(prev, pow2(w));
@@ -305,7 +305,7 @@ pub proof fn lemma_pippenger_horner_base(
 )
     ensures
         pippenger_horner(points_affine, digits, digits_count as int, w, digits_count)
-            == math_edwards_identity(),
+            == edwards_identity(),
 {
     reveal(pippenger_horner);
 }
@@ -326,7 +326,7 @@ pub proof fn lemma_pippenger_zero_points_from(
         digs.len() == 0,
         0 <= j <= digits_count as int,
     ensures
-        pippenger_horner(pts, digs, j, w, digits_count) == math_edwards_identity(),
+        pippenger_horner(pts, digs, j, w, digits_count) == edwards_identity(),
     decreases digits_count as int - j,
 {
     if j >= digits_count as int {
@@ -336,7 +336,7 @@ pub proof fn lemma_pippenger_zero_points_from(
         lemma_pippenger_zero_points_from(pts, digs, j + 1, w, digits_count);
         // [pow2(w)]*identity = identity
         lemma_edwards_scalar_mul_identity(pow2(w));
-        let id = math_edwards_identity();
+        let id = edwards_identity();
         p_gt_2();
         lemma_edwards_add_identity_right_canonical(id);
     }
@@ -455,7 +455,7 @@ pub proof fn lemma_pippenger_peel_last(
         lemma_pippenger_horner_base(pts_prefix, digs_prefix, w, digits_count);
         lemma_pippenger_horner_base(pts_single, digs_single, w, digits_count);
         p_gt_2();
-        lemma_edwards_add_identity_right_canonical(math_edwards_identity());
+        lemma_edwards_add_identity_right_canonical(edwards_identity());
     } else {
         // Unfold pippenger_horner for all three
         lemma_pippenger_horner_step(pts, digs, j, w, digits_count);
@@ -677,7 +677,7 @@ pub open spec fn pippenger_weighted_from(buckets: Seq<(nat, nat)>, b: int, B: in
     decreases B - b,
 {
     if B <= b {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let rest = pippenger_weighted_from(buckets, b, B - 1);
         let weight = (B - b) as nat;
@@ -784,9 +784,9 @@ proof fn lemma_weighted_from_decompose(buckets: Seq<(nat, nat)>, b: int, B: int)
 {
     if b == B - 1 {
         // Help Z3 unfold the specs
-        assert(pippenger_weighted_from(buckets, b + 1, B) == math_edwards_identity());
+        assert(pippenger_weighted_from(buckets, b + 1, B) == edwards_identity());
         assert(pippenger_intermediate_sum(buckets, b, B) == buckets[b]);
-        assert(pippenger_weighted_from(buckets, b, B - 1) == math_edwards_identity());
+        assert(pippenger_weighted_from(buckets, b, B - 1) == edwards_identity());
         reveal_with_fuel(edwards_scalar_mul, 1);
     } else {
         // b < B - 1, so B >= b + 2
@@ -867,7 +867,7 @@ proof fn lemma_running_sum_eq_weighted_from(buckets: Seq<(nat, nat)>, b: int, B:
     } else if b == B - 1 {
         // Help Z3 unfold the specs at base case
         assert(pippenger_running_sum(buckets, b, B) == buckets[b]);
-        assert(pippenger_weighted_from(buckets, b, B - 1) == math_edwards_identity());
+        assert(pippenger_weighted_from(buckets, b, B - 1) == edwards_identity());
         // [1]*P = P
         reveal_with_fuel(edwards_scalar_mul, 1);
         assert(edwards_scalar_mul(buckets[b], 1nat) == buckets[b]);
@@ -947,9 +947,9 @@ proof fn lemma_weighted_bucket_sum_all_identity(buckets: Seq<(nat, nat)>, B: int
     requires
         B >= 0,
         buckets.len() >= B,
-        forall|j: int| 0 <= j < B ==> (#[trigger] buckets[j]) == math_edwards_identity(),
+        forall|j: int| 0 <= j < B ==> (#[trigger] buckets[j]) == edwards_identity(),
     ensures
-        pippenger_weighted_bucket_sum(buckets, B) == math_edwards_identity(),
+        pippenger_weighted_bucket_sum(buckets, B) == edwards_identity(),
     decreases B,
 {
     if B <= 0 {
@@ -959,7 +959,7 @@ proof fn lemma_weighted_bucket_sum_all_identity(buckets: Seq<(nat, nat)>, B: int
         lemma_edwards_scalar_mul_identity(B as nat);
         // identity + identity = identity
         p_gt_2();
-        lemma_edwards_add_identity_right_canonical(math_edwards_identity());
+        lemma_edwards_add_identity_right_canonical(edwards_identity());
     }
 }
 
@@ -1086,7 +1086,7 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
     if n <= 0 {
         // All buckets are identity; WBS = identity = column_sum(0)
         assert forall|b: int| 0 <= b < B implies (#[trigger] buckets_n[b])
-            == math_edwards_identity() by {};
+            == edwards_identity() by {};
         lemma_weighted_bucket_sum_all_identity(buckets_n, B);
     } else {
         // IH at n-1

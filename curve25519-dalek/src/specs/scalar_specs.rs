@@ -269,4 +269,5 @@ pub open spec fn reconstruct_radix_2w_from(
         )
     }
 }
+
 } // verus!

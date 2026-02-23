@@ -179,6 +179,9 @@ use digest::Digest;
 use crate::constants;
 
 #[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::spec_eight_torsion;
+#[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::{
@@ -753,41 +756,38 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
         ensures
             fe51_limbs_bounded(&result.eg, 54),
             fe51_limbs_bounded(&result.fh, 54),
-            // e = 2*X*Y
-            fe51_as_canonical_nat(&result.e) == field_mul(
-                2,
-                field_mul(fe51_as_canonical_nat(&P.0.X), fe51_as_canonical_nat(&P.0.Y)),
-            ),
-            // f = Z^2 + d*T^2
-            fe51_as_canonical_nat(&result.f) == field_add(
-                field_square(fe51_as_canonical_nat(&P.0.Z)),
-                field_mul(
-                    fe51_as_canonical_nat(&constants::EDWARDS_D),
-                    field_square(fe51_as_canonical_nat(&P.0.T)),
-                ),
-            ),
-            // g = Y^2 + X^2 (a = -1)
-            fe51_as_canonical_nat(&result.g) == field_add(
-                field_square(fe51_as_canonical_nat(&P.0.Y)),
-                field_square(fe51_as_canonical_nat(&P.0.X)),
-            ),
-            // h = Z^2 - d*T^2
-            fe51_as_canonical_nat(&result.h) == field_sub(
-                field_square(fe51_as_canonical_nat(&P.0.Z)),
-                field_mul(
-                    fe51_as_canonical_nat(&constants::EDWARDS_D),
-                    field_square(fe51_as_canonical_nat(&P.0.T)),
-                ),
-            ),
-            // eg = e * g, fh = f * h
-            fe51_as_canonical_nat(&result.eg) == field_mul(
-                fe51_as_canonical_nat(&result.e),
-                fe51_as_canonical_nat(&result.g),
-            ),
-            fe51_as_canonical_nat(&result.fh) == field_mul(
-                fe51_as_canonical_nat(&result.f),
-                fe51_as_canonical_nat(&result.h),
-            ),
+            ({
+                let (x, y, z, t) = spec_edwards_point(P.0);
+                let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
+                // e = 2*X*Y
+                fe51_as_canonical_nat(&result.e) == field_mul(
+                    2,
+                    field_mul(x, y),
+                )
+                // f = Z^2 + d*T^2
+                 && fe51_as_canonical_nat(&result.f) == field_add(
+                    field_square(z),
+                    field_mul(d, field_square(t)),
+                )
+                // g = Y^2 + X^2 (a = -1)
+                 && fe51_as_canonical_nat(&result.g) == field_add(
+                    field_square(y),
+                    field_square(x),
+                )
+                // h = Z^2 - d*T^2
+                 && fe51_as_canonical_nat(&result.h) == field_sub(
+                    field_square(z),
+                    field_mul(d, field_square(t)),
+                )
+                // eg = e * g, fh = f * h
+                 && fe51_as_canonical_nat(&result.eg) == field_mul(
+                    fe51_as_canonical_nat(&result.e),
+                    fe51_as_canonical_nat(&result.g),
+                ) && fe51_as_canonical_nat(&result.fh) == field_mul(
+                    fe51_as_canonical_nat(&result.f),
+                    fe51_as_canonical_nat(&result.h),
+                )
+            }),
     {
         proof {
             assume(false);
@@ -1100,53 +1100,21 @@ impl RistrettoPoint {
         ];
         coset
         </ORIGINAL CODE> */
+        let t2 = constants::EIGHT_TORSION[2];
+        let t4 = constants::EIGHT_TORSION[4];
+        let t6 = constants::EIGHT_TORSION[6];
         proof {
-            axiom_eight_torsion_well_formed();
+            use_type_invariant(t2);
+            use_type_invariant(t4);
+            use_type_invariant(t6);
+            lemma_unfold_edwards(t2);
+            lemma_unfold_edwards(t4);
+            lemma_unfold_edwards(t6);
         }
-        // Break additions into separate let bindings to reduce Z3 reasoning burden.
-        // Explicit assertions after each addition prevent rlimit blowup in larger
-        // verification contexts (e.g. libsignal) where the solver has more axioms in scope.
-        let p0 = self.0;
-        proof {
-            assert(is_well_formed_edwards_point(p0));
-            assert(edwards_point_as_affine(p0) == edwards_point_as_affine(self.0));
-        }
-        let p1 = &self.0 + &constants::EIGHT_TORSION[2];
-        proof {
-            assert(is_well_formed_edwards_point(p1));
-            let base_affine = edwards_point_as_affine(self.0);
-            let t2 = edwards_point_as_affine(constants::EIGHT_TORSION[2]);
-            assert(edwards_point_as_affine(p1) == edwards_add(
-                base_affine.0,
-                base_affine.1,
-                t2.0,
-                t2.1,
-            ));
-        }
-        let p2 = &self.0 + &constants::EIGHT_TORSION[4];
-        proof {
-            assert(is_well_formed_edwards_point(p2));
-            let base_affine = edwards_point_as_affine(self.0);
-            let t4 = edwards_point_as_affine(constants::EIGHT_TORSION[4]);
-            assert(edwards_point_as_affine(p2) == edwards_add(
-                base_affine.0,
-                base_affine.1,
-                t4.0,
-                t4.1,
-            ));
-        }
-        let p3 = &self.0 + &constants::EIGHT_TORSION[6];
-        proof {
-            assert(is_well_formed_edwards_point(p3));
-            let base_affine = edwards_point_as_affine(self.0);
-            let t6 = edwards_point_as_affine(constants::EIGHT_TORSION[6]);
-            assert(edwards_point_as_affine(p3) == edwards_add(
-                base_affine.0,
-                base_affine.1,
-                t6.0,
-                t6.1,
-            ));
-        }
+        let p0 = self.0;  /* ORIGINAL CODE: self.0 */
+        let p1 = &self.0 + &t2;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[2] */
+        let p2 = &self.0 + &t4;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[4] */
+        let p3 = &self.0 + &t6;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[6] */
         [p0, p1, p2, p3]
     }
 
@@ -2454,12 +2422,11 @@ impl Zeroize for CompressedRistretto {
 impl Zeroize for RistrettoPoint {
     fn zeroize(&mut self)
         ensures
-    // Inner EdwardsPoint is set to identity (0, 1, 1, 0)
-
-            forall|i: int| 0 <= i < 5 ==> self.0.X.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.0.T.limbs[i] == 0,
-            self.0.Y == FieldElement::ONE,
-            self.0.Z == FieldElement::ONE,
+            forall|i: int| 0 <= i < 5 ==> edwards_x(self.0).limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> edwards_t(self.0).limbs[i] == 0,
+            edwards_y(self.0) == FieldElement::ONE,
+            edwards_z(self.0) == FieldElement::ONE,
+            is_identity_edwards_point(self.0),
     {
         self.0.zeroize();
     }

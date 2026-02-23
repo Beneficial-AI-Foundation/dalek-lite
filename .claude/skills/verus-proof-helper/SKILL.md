@@ -627,6 +627,20 @@ proof {
 }
 ```
 
+#### Issue: "expression has mode spec, expected mode proof" with `use_type_invariant`
+**Cause:** `use_type_invariant` requires proof/tracked mode. It does NOT work in standalone `proof fn` (parameters default to spec mode), nor inside `assert(...) by { ... }` (captured variables become spec mode).
+**Solution:** Only call `use_type_invariant` inside a `proof { }` block in an `exec fn`, on exec-level variables:
+```rust
+let val = EXEC_CONST;  // bind at exec level
+proof {
+    use_type_invariant(val);  // OK: exec var promoted to proof mode
+}
+```
+
+#### Issue: "cannot read const with mode exec" in `spec fn`
+**Cause:** `exec const` values cannot be referenced in `spec fn` bodies.
+**Solution:** Create a separate `spec fn` with duplicated literal values. Bridge the two with an `ensures` clause on the exec const.
+
 #### Issue: "Nested proof blocks not supported"
 **Solution:** Flatten proof structure
 ```rust

@@ -9,24 +9,35 @@ description: Help complete and debug Verus proofs in verified-cryptography Rust 
 
 - Identify the exact goal (postcondition/lemma) and list remaining `admit()`/`assume(...)`.
 - Search for existing lemmas before writing new ones (`references/lemma-reference.md`).
-- Sketch the proof with the “moving `assume(false)`” technique; verify after each replacement (`references/workflow.md`).
+- Sketch the proof with the "moving `assume(false)`" technique; verify after each replacement (`references/workflow.md`).
 - Apply targeted tactics (`bit_vector`, `nonlinear_arith`, `calc!`, induction, decomposition) (`references/techniques.md`).
 - If Verus is stuck (`rlimit`, quantifier instantiation, mode errors), apply the fixes in `references/common-issues.md`.
 - Finish by simplifying assertions and writing a short wrap-up (`references/quality-bar.md`).
 
 ## Crypto codebases: common tips
 
-- Cache exec-only calls (e.g., `invert()`) into locals; don’t call exec fns inside `proof {}` blocks (`references/patterns.md`).
+- Cache exec-only calls (e.g., `invert()`) into locals; don't call exec fns inside `proof {}` blocks (`references/patterns.md`).
 - Preserve executable code as much as possible; when refactoring is needed for verification, keep it targeted and record the original snippet with `/* ORIGINAL CODE: ... */` (or `// ORIGINAL CODE:`) near the change.
-- When specs give only “representation-level” facts (e.g., limb equality), explicitly lift them to semantic equality (field value / struct equality) (`references/patterns.md`).
+- When specs give only "representation-level" facts (e.g., limb equality), explicitly lift them to semantic equality (field value / struct equality) (`references/patterns.md`).
 - If direct equality is awkward/unsupported, compare canonical encodings (bytes/limbs) using existing helper APIs and reason about their specs (`references/patterns.md`).
-- Don’t duplicate equality work: if `==` is already specified via canonical bytes or `ct_eq`, branch on `==` and then use its `ensures` to bridge to the spec fact you need (`references/patterns.md`, `references/common-issues.md`).
+- Don't duplicate equality work: if `==` is already specified via canonical bytes or `ct_eq`, branch on `==` and then use its `ensures` to bridge to the spec fact you need (`references/patterns.md`, `references/common-issues.md`).
 - If you hit rarer tool limitations (e.g., `by (compute)` stability), see `references/common-issues.md`.
 - If the repo uses `verusfmt`, run it on touched files before final verification/commit (`references/workflow.md`).
 
+## Type invariants and `use_type_invariant`
+
+**Mode rules for `use_type_invariant`:**
+- Works inside `proof { }` blocks on **exec-level variables** (exec -> proof mode promotion).
+- Does **NOT** work in standalone `proof fn` -- parameters default to spec mode, not proof/tracked.
+- Does **NOT** work inside `assert(...) by { ... }` -- captured variables become spec mode.
+- To use on an `exec const`, bind it to a local at exec level first, then reference it in `proof { }`.
+
+**`exec const` vs `spec fn`:**
+`exec const` values cannot be referenced in `spec fn` bodies (mode error). When you need the same value in spec mode, create a separate `spec fn` with duplicated literals and an `ensures` clause on the exec const to bridge the two worlds.
+
 ## Where to put helper lemmas
 
-Put new lemmas in the right module: **generic field algebra** (any d) → `field_lemmas/field_algebra_lemmas.rs`; **Ed25519 curve structure** → `edwards_lemmas/curve_equation_lemmas.rs`; **decompression / Montgomery→Edwards** → `edwards_lemmas/decompress_lemmas.rs`. Prefer calling field lemmas directly at call sites; avoid thin wrappers and redundant “connection” lemmas. See `references/lemma-reference.md` for the full table and guidelines.
+Put new lemmas in the right module: **generic field algebra** (any d) -> `field_lemmas/field_algebra_lemmas.rs`; **Ed25519 curve structure** -> `edwards_lemmas/curve_equation_lemmas.rs`; **decompression / Montgomery->Edwards** -> `edwards_lemmas/decompress_lemmas.rs`. Prefer calling field lemmas directly at call sites; avoid thin wrappers and redundant "connection" lemmas. See `references/lemma-reference.md` for the full table and guidelines.
 
 ## Reference map
 
@@ -34,5 +45,5 @@ Put new lemmas in the right module: **generic field algebra** (any d) → `field
 - `references/lemma-reference.md`: where to put new lemmas + where to look + common lemma names/patterns
 - `references/techniques.md`: proof tactics and patterns (including opaque + `reveal`)
 - `references/common-issues.md`: common Verus error messages and fixes
-- `references/patterns.md`: worked mini-patterns from “compress” proof work
+- `references/patterns.md`: worked mini-patterns from "compress" proof work
 - `references/quality-bar.md`: success criteria and end-of-session summary checklist

@@ -449,6 +449,7 @@ pub open spec fn straus_ct_input_valid(
         }
         // Radix-16 digit bounds (validity + reconstruction kept separate — see note above)
     &&& forall|k: int|
+        #![auto]
         0 <= k < n_int ==> radix_16_all_bounded(
             &#[trigger] scalar_digits_view[k],
         )
@@ -935,7 +936,8 @@ proof fn lemma_reconstruct_radix_16_from_eq_helper(d: Seq<i8>, k: int)
         assert(sub[0] == d[k]);
         assert(sub.len() == (64 - k));
         // Key: sub.skip(1) extensionally equals d.subrange(k+1, 64)
-        assert forall|i: int| 0 <= i < sub.skip(1).len() implies sub.skip(1)[i] == sub_next[i] by {
+        assert forall|i: int| #![auto] 0 <= i < sub.skip(1).len() implies sub.skip(1)[i]
+            == sub_next[i] by {
             assert(sub.skip(1)[i] == sub[i + 1]);
             assert(sub[i + 1] == d[k + 1 + i]);
             assert(sub_next[i] == d[k + 1 + i]);
@@ -1099,7 +1101,8 @@ proof fn lemma_reconstruct_naf_from_eq_helper(naf: Seq<i8>, k: int)
         let sub_next = naf.subrange(k + 1, 256int);
         assert(sub[0] == naf[k]);
         assert(sub.len() == (256 - k));
-        assert forall|j: int| 0 <= j < sub.skip(1).len() implies sub.skip(1)[j] == sub_next[j] by {
+        assert forall|j: int| #![auto] 0 <= j < sub.skip(1).len() implies sub.skip(1)[j]
+            == sub_next[j] by {
             assert(sub.skip(1)[j] == sub[j + 1]);
             assert(sub[j + 1] == naf[k + 1 + j]);
             assert(sub_next[j] == naf[k + 1 + j]);

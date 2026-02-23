@@ -1161,7 +1161,7 @@ pub proof fn lemma_select_projective_is_signed_scalar_mul(
     } else if x == 0 {
         lemma_identity_projective_niels_is_identity();
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(edwards_scalar_mul(P_affine, 0) == math_edwards_identity());
+        assert(edwards_scalar_mul(P_affine, 0) == edwards_identity());
     } else {
         let j = ((-x) - 1) as int;
         assert(0 <= j < 8);

@@ -223,8 +223,7 @@ impl FieldElement {
     /// # Return
     ///
     /// If negative, return `Choice(1)`.  Otherwise, return `Choice(0)`.
-    pub(crate) fn is_negative(&self) -> (result:
-        Choice)
+    pub(crate) fn is_negative(&self) -> (result: Choice)
         ensures
             choice_is_true(result) == (spec_fe51_as_bytes(self)[0] & 1 == 1),
     {
@@ -245,8 +244,7 @@ impl FieldElement {
     /// # Return
     ///
     /// If zero, return `Choice(1)`.  Otherwise, return `Choice(0)`.
-    pub(crate) fn is_zero(&self) -> (result:
-        Choice)
+    pub(crate) fn is_zero(&self) -> (result: Choice)
         ensures
             choice_is_true(result) == (spec_fe51_as_bytes(self) == seq![0u8; 32]),
     {
@@ -343,9 +341,15 @@ impl FieldElement {
             pow255_gt_19();  // Prove p() > 0
 
             // Square operation postconditions (from .square() method ensures clause)
-            assert(fe51_as_canonical_nat(&t0) == field_canonical(pow(fe51_as_nat(self) as int, 2) as nat));
-            assert(fe51_as_canonical_nat(&t0_sq) == field_canonical(pow(fe51_as_nat(&t0) as int, 2) as nat));
-            assert(fe51_as_canonical_nat(&t1) == field_canonical(pow(fe51_as_nat(&t0_sq) as int, 2) as nat));
+            assert(fe51_as_canonical_nat(&t0) == field_canonical(
+                pow(fe51_as_nat(self) as int, 2) as nat,
+            ));
+            assert(fe51_as_canonical_nat(&t0_sq) == field_canonical(
+                pow(fe51_as_nat(&t0) as int, 2) as nat,
+            ));
+            assert(fe51_as_canonical_nat(&t1) == field_canonical(
+                pow(fe51_as_nat(&t0_sq) as int, 2) as nat,
+            ));
 
             // For mul operations, use lemma to convert from field_mul to direct multiplication
             assert(u64_5_as_nat(t2.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(
@@ -810,7 +814,8 @@ impl FieldElement {
     // If self is non-zero, result is the multiplicative inverse: result * self ≡ 1 (mod p)
 
             fe51_as_canonical_nat(self) != 0 ==> field_mul(
-                fe51_as_canonical_nat(&result), fe51_as_canonical_nat(self),
+                fe51_as_canonical_nat(&result),
+                fe51_as_canonical_nat(self),
             ) == 1,
             // If self is zero, result is zero
             fe51_as_canonical_nat(self) == 0 ==> fe51_as_canonical_nat(&result) == 0,

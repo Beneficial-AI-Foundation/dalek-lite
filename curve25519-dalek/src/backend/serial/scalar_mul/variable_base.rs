@@ -44,6 +44,7 @@ verus! {
 /// Perform constant-time, variable-base scalar multiplication.
 /// Computes scalar * point on the Ed25519 curve.
 #[rustfmt::skip]  // keep alignment of explanatory comments
+#[verifier::rlimit(20)]
 pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoint)
     requires
         scalar.bytes[31] <= 127,

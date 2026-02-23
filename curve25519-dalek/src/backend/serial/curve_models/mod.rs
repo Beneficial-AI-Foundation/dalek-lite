@@ -650,7 +650,7 @@ impl ProjectivePoint {
                 lemma_cancel_common_factor(y, z, z);
             };
             lemma_projective_implies_affine_on_curve(x, y, z);
-            assert(math_on_edwards_curve_projective(rx, ry, rz)) by {
+            assert(is_on_edwards_curve_projective(rx, ry, rz)) by {
                 lemma_affine_curve_implies_projective(rx, ry, rz);
             };
 
@@ -890,17 +890,15 @@ impl CompletedPoint {
             };
 
             // 2. Curve equation
-            assert(math_on_edwards_curve(
-                field_mul(rx, field_inv(rz)),
-                field_mul(ry, field_inv(rz)),
-            )) by {
+            assert(is_on_edwards_curve(field_mul(rx, field_inv(rz)), field_mul(ry, field_inv(rz))))
+                by {
                 // X cancellation: (X*T)/(Z*T) = X/Z
                 lemma_cancel_common_factor(x_abs, z_abs, t_abs);
                 // Y cancellation: (Y*Z)/(Z*T) = Y/T
                 lemma_field_mul_comm(z_abs, t_abs);
                 lemma_cancel_common_factor(y_abs, t_abs, z_abs);
             };
-            assert(math_on_edwards_curve_projective(rx, ry, rz)) by {
+            assert(is_on_edwards_curve_projective(rx, ry, rz)) by {
                 lemma_affine_curve_implies_projective(rx, ry, rz);
             };
 

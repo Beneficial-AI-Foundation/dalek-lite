@@ -101,7 +101,7 @@ pub proof fn lemma_double_projective_completed_valid(
     let y = field_mul(pY, z_inv);
 
     // (x, y) is on the curve
-    assert(math_on_edwards_curve(x, y)) by {
+    assert(is_on_edwards_curve(x, y)) by {
         lemma_projective_implies_affine_on_curve(pX, pY, pZ);
     };
 
@@ -270,7 +270,7 @@ pub proof fn lemma_double_projective_completed_valid(
     //   completed_point_as_affine_edwards(result).1 = (y²+x²)/(1-t) = edwards_add(x,y,x,y).1
 
     // On-curve from axiom_edwards_add_complete
-    assert(math_on_edwards_curve(
+    assert(is_on_edwards_curve(
         field_mul(fe51_as_canonical_nat(&result.X), field_inv(fe51_as_canonical_nat(&result.Z))),
         field_mul(fe51_as_canonical_nat(&result.Y), field_inv(fe51_as_canonical_nat(&result.T))),
     )) by {

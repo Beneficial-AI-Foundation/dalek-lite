@@ -273,6 +273,7 @@ impl Scalar {
     pub fn from_bytes_mod_order(bytes: [u8; 32]) -> (result: Scalar)
         ensures
     // Result is equivalent to input modulo the group order
+
             scalar_as_canonical(&result) == u8_32_as_group_canonical(bytes),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
@@ -506,8 +507,11 @@ impl<'a> MulAssign<&'a Scalar> for Scalar {
             is_canonical_scalar(old(self)),
             is_canonical_scalar(_rhs),
         ensures
-            // can't use scalar_as_canonical due to mut
-            u8_32_as_group_canonical(self.bytes) == group_canonical(scalar_as_nat(&old(self)) * scalar_as_nat(&_rhs)),
+    // can't use scalar_as_canonical due to mut
+
+            u8_32_as_group_canonical(self.bytes) == group_canonical(
+                scalar_as_nat(&old(self)) * scalar_as_nat(&_rhs),
+            ),
             is_canonical_scalar(self),
     {
         /* <ORIGINAL CODE>
@@ -581,7 +585,9 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
     // NOTE: MulSpecImpl::mul_req requires is_canonical_scalar for both inputs
     fn mul(self, _rhs: &'b Scalar) -> (result: Scalar)
         ensures
-            scalar_as_canonical(&result) == group_canonical(scalar_as_nat(&self) * scalar_as_nat(&_rhs)),
+            scalar_as_canonical(&result) == group_canonical(
+                scalar_as_nat(&self) * scalar_as_nat(&_rhs),
+            ),
             is_canonical_scalar(&result),
     {
         /* <VERIFICATION NOTE>
@@ -655,6 +661,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&Scalar> for &Scalar {
 
 impl<'a> Add<&'a Scalar> for &Scalar {
     type Output = Scalar;
+
     // PRECONDITION is_canonical_scalar(self) && is_canonical_scalar(_rhs)
     #[allow(non_snake_case)]
     fn add(self, _rhs: &'a Scalar) -> (result: Scalar)
@@ -695,8 +702,11 @@ impl<'a> AddAssign<&'a Scalar> for Scalar {
             is_canonical_scalar(old(self)),
             is_canonical_scalar(_rhs),
         ensures
-            // can't use scalar_as_nat LHS, because of mut
-            u8_32_as_nat(&self.bytes) == group_canonical(scalar_as_nat(&old(self)) + scalar_as_nat(&_rhs)),
+    // can't use scalar_as_nat LHS, because of mut
+
+            u8_32_as_nat(&self.bytes) == group_canonical(
+                scalar_as_nat(&old(self)) + scalar_as_nat(&_rhs),
+            ),
     {
         *self = &*self + _rhs;
     }
@@ -726,11 +736,12 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
     // PRECONDITION is_canonical_scalar(self) && is_canonical_scalar(_rhs)
     #[allow(non_snake_case)]
-    fn sub(self, _rhs: &'b Scalar) -> (result:
-        Scalar)
+    fn sub(self, _rhs: &'b Scalar) -> (result: Scalar)
         ensures
-            // can't use group_canonical RHS due to int cast
-            scalar_as_canonical(&result) == (scalar_as_nat(&self) - scalar_as_nat(&_rhs)) % (group_order() as int),
+    // can't use group_canonical RHS due to int cast
+
+            scalar_as_canonical(&result) == (scalar_as_nat(&self) - scalar_as_nat(&_rhs)) % (
+            group_order() as int),
     {
         /* <ORIGINAL CODE>
          UnpackedScalar::sub(&self.unpack(), &_rhs.unpack()).pack()
@@ -810,8 +821,11 @@ impl<'a> SubAssign<&'a Scalar> for Scalar {
             is_canonical_scalar(old(self)),
             is_canonical_scalar(_rhs),
         ensures
-            // can't use scalar_as_canonical LHS due to mut or group_canonical LHS due to int cast
-            u8_32_as_group_canonical(self.bytes) == (scalar_as_nat(&old(self)) - scalar_as_nat(&_rhs)) % (group_order() as int),
+    // can't use scalar_as_canonical LHS due to mut or group_canonical LHS due to int cast
+
+            u8_32_as_group_canonical(self.bytes) == (scalar_as_nat(&old(self)) - scalar_as_nat(
+                &_rhs,
+            )) % (group_order() as int),
     {
         *self = &*self - _rhs;
     }
@@ -1643,7 +1657,9 @@ impl Scalar {
         ensures
     // Inversion only holds for nonzero scalars
 
-            scalar_as_nat(self) > 0 ==> group_canonical(scalar_as_nat(&result) * scalar_as_nat(self)) == 1,
+            scalar_as_nat(self) > 0 ==> group_canonical(
+                scalar_as_nat(&result) * scalar_as_nat(self),
+            ) == 1,
             is_canonical_scalar(&result),
     {
         let unpacked = self.unpack();
@@ -3606,6 +3622,7 @@ impl Scalar {
     pub fn unpack(&self) -> (result:
         UnpackedScalar)
     // VERIFICATION NOTE: changed pub(crate) to pub
+
         ensures
             limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
@@ -3736,9 +3753,10 @@ fn square_multiply(
         // Output is canonical
         is_canonical_scalar52(y),
         // can't use group_canonical RHS due to int cast
-        group_canonical(scalar52_as_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
-            == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat))
-            * scalar52_as_nat(x)) % (group_order() as int),
+        group_canonical(
+            scalar52_as_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat,
+        ) == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_as_nat(x)) % (
+        group_order() as int),
 {
     let ghost y0: nat = scalar52_as_nat(y);
     let ghost xv: nat = scalar52_as_nat(&x);
@@ -3933,8 +3951,9 @@ impl UnpackedScalar {
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
             is_canonical_scalar52(&result),
             // result * self ≡ R² (mod L), i.e. from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)
-            scalar52_as_nat(self) > 0 ==> group_canonical(scalar52_as_nat(&result) * scalar52_as_nat(self))
-                == group_canonical(montgomery_radix() * montgomery_radix()),
+            scalar52_as_nat(self) > 0 ==> group_canonical(
+                scalar52_as_nat(&result) * scalar52_as_nat(self),
+            ) == group_canonical(montgomery_radix() * montgomery_radix()),
     {
         // Uses the addition chain from
         // https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion
@@ -4642,8 +4661,9 @@ impl UnpackedScalar {
         ensures
     // Inversion only holds for inputs that are nonzero mod group_order
 
-            scalar52_as_canonical_nat(self) != 0 ==> group_canonical(scalar52_as_nat(&result)
-                * scalar52_as_nat(self)) == 1,
+            scalar52_as_canonical_nat(self) != 0 ==> group_canonical(
+                scalar52_as_nat(&result) * scalar52_as_nat(self),
+            ) == 1,
             // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar
             is_canonical_scalar52(&result),
     {

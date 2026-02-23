@@ -142,7 +142,7 @@ pub proof fn lemma_identity_projective_point_properties()
             u64::MAX,
         ),
         projective_point_as_affine_edwards(identity_projective_point_edwards())
-            == math_edwards_identity(),
+            == edwards_identity(),
 {
     let id = identity_projective_point_edwards();
     p_gt_2();
@@ -177,7 +177,7 @@ pub proof fn lemma_identity_projective_point_properties()
     assert(field_mul(fe51_as_canonical_nat(&EDWARDS_D), 0nat) == 0) by {
         lemma_mul_by_zero_is_zero(fe51_as_canonical_nat(&EDWARDS_D) as int);
     };
-    assert(math_on_edwards_curve_projective(0, 1, 1));
+    assert(is_on_edwards_curve_projective(0, 1, 1));
 
     lemma_field_inv_one();
 }
@@ -465,11 +465,11 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
 /// only needs field_inv(1) = 1 and field_mul(a, 1) = a.
 pub proof fn lemma_z_one_affine_implies_projective(x: nat, y: nat)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
         x < p(),
         y < p(),
     ensures
-        math_on_edwards_curve_projective(x, y, 1nat),
+        is_on_edwards_curve_projective(x, y, 1nat),
 {
     p_gt_2();
     assert(1nat % p() != 0) by {
@@ -1759,8 +1759,7 @@ pub proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
 /// which decodes to x = (1-1)/2 / 1 = 0 and y = (1+1)/2 / 1 = 1.
 pub proof fn lemma_identity_projective_niels_is_identity()
     ensures
-        projective_niels_point_as_affine_edwards(identity_projective_niels())
-            == math_edwards_identity(),
+        projective_niels_point_as_affine_edwards(identity_projective_niels()) == edwards_identity(),
 {
     let id = identity_projective_niels();
     let y_plus_x = fe51_as_canonical_nat(&id.Y_plus_X);
@@ -2643,9 +2642,9 @@ pub(crate) proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::Ed
 pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
     requires
         z % p() != 0,
-        math_on_edwards_curve_projective(x, y, z),
+        is_on_edwards_curve_projective(x, y, z),
     ensures
-        math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
+        is_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
 {
     let p = p();
     p_gt_2();
@@ -2678,8 +2677,8 @@ pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
     };
     assert(field_mul(z, ghost_t) == xy);
 
-    assert(math_is_valid_extended_edwards_point(x, y, z, ghost_t));
-    assert(math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z)))) by {
+    assert(is_valid_extended_edwards_point(x, y, z, ghost_t));
+    assert(is_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z)))) by {
         lemma_valid_extended_point_affine_on_curve(x, y, z, ghost_t);
     };
 }
@@ -2710,10 +2709,10 @@ pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat),
 /// [n]*O = O for all n.
 pub proof fn lemma_edwards_scalar_mul_identity(n: nat)
     ensures
-        edwards_scalar_mul(math_edwards_identity(), n) == math_edwards_identity(),
+        edwards_scalar_mul(edwards_identity(), n) == edwards_identity(),
     decreases n,
 {
-    let id = math_edwards_identity();
+    let id = edwards_identity();
     if n == 0 {
         reveal_with_fuel(edwards_scalar_mul, 1);
     } else if n == 1 {
@@ -2758,9 +2757,9 @@ pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
 /// double(O) = O.
 pub proof fn lemma_double_identity()
     ensures
-        edwards_double(0nat, 1nat) == math_edwards_identity(),
+        edwards_double(0nat, 1nat) == edwards_identity(),
 {
-    lemma_double_is_scalar_mul_2(math_edwards_identity());
+    lemma_double_is_scalar_mul_2(edwards_identity());
     lemma_edwards_scalar_mul_identity(2);
 }
 

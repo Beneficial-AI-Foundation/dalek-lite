@@ -514,7 +514,7 @@ mod decompress {
             fe51_limbs_bounded(&X, 52),
             fe51_limbs_bounded(&Y, 51),
             fe51_limbs_bounded(&Z, 51),
-            math_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y)),
+            is_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y)),
             fe51_as_canonical_nat(&Z) == 1,
         ensures
             fe51_as_canonical_nat(&result.X)
@@ -585,7 +585,7 @@ mod decompress {
             assert(fe51_limbs_bounded(&Y, 54));
 
             // (mutated_x, y) is on the curve: either unchanged or negated x
-            assert(math_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y))) by {
+            assert(is_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y))) by {
                 let orig_x = fe51_as_canonical_nat(&original_X);
                 let y_val = fe51_as_canonical_nat(&Y);
                 if choice_is_true(compressed_sign_bit) {
@@ -802,7 +802,7 @@ impl EdwardsPoint {
         fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.Y, 52) && fe51_limbs_bounded(
             &self.Z,
             52,
-        ) && fe51_limbs_bounded(&self.T, 52) && math_is_valid_extended_edwards_point(
+        ) && fe51_limbs_bounded(&self.T, 52) && is_valid_extended_edwards_point(
             fe51_as_canonical_nat(&self.X),
             fe51_as_canonical_nat(&self.Y),
             fe51_as_canonical_nat(&self.Z),
@@ -917,10 +917,7 @@ impl CompressedEdwardsY {
     ///
     /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
     /// a length of 32.
-    pub fn from_slice(bytes: &[u8]) -> (result: Result<
-        CompressedEdwardsY,
-        TryFromSliceError,
-    >)
+    pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedEdwardsY, TryFromSliceError>)
         ensures
             bytes@.len() == 32 ==> matches!(result, Ok(_)),
             bytes@.len() != 32 ==> matches!(result, Err(_)),
@@ -1915,7 +1912,7 @@ impl EdwardsPoint {
     /// Add this point to itself.
     pub(crate) fn double(&self) -> (result: EdwardsPoint)
         requires
-            is_valid_edwards_point(*self), 
+            is_valid_edwards_point(*self),
             edwards_point_limbs_bounded(*self),
         ensures
             is_valid_edwards_point(result),
@@ -3811,9 +3808,9 @@ impl EdwardsPoint {
         requires
             is_well_formed_edwards_point(*self),
         ensures
-            // A point has small order iff [8]P = O (identity)
-            result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)
-                == edwards_identity()),
+    // A point has small order iff [8]P = O (identity)
+
+            result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == edwards_identity()),
     {
         /* ORIGINAL CODE: self.mul_by_cofactor().is_identity() */
         let cofactor_mul = self.mul_by_cofactor();
@@ -3857,7 +3854,8 @@ impl EdwardsPoint {
         requires
             is_well_formed_edwards_point(*self),
         ensures
-        // A point is torsion-free iff [ℓ]P = O, where ℓ is the group order
+    // A point is torsion-free iff [ℓ]P = O, where ℓ is the group order
+
             result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order())
                 == edwards_identity()),
     {

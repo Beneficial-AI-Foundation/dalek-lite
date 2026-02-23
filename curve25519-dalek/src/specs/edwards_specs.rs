@@ -423,7 +423,8 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// 2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²
 /// 3. The Segre relation holds: X·Y = Z·T
 pub open spec fn is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
-    field_canonical(z) != 0 && is_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(z, t)
+    field_canonical(z) != 0 && is_on_edwards_curve_projective(x, y, z) && field_mul(x, y)
+        == field_mul(z, t)
 }
 
 /// Check if an EdwardsPoint in extended coordinates is valid
@@ -1115,8 +1116,7 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
     } else {
         // VERIFICATION NOTE: "choose" could be replaced with concrete value using sqrt_ratio_i upon need.
         // Choose x such that (x, y) is on the curve with the correct sign
-        let x = choose|x: nat|
-            is_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
+        let x = choose|x: nat| is_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
         Some((x, y))
     }
 }

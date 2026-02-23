@@ -645,7 +645,7 @@ impl Scalar52 {
             -group_order() <= scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order(),
         ensures
             scalar52_as_nat(&s) == (scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (
-            group_order() as int), // no group_canonical cast since a - b can be negative
+            group_order() as int),  // no group_canonical cast since a - b can be negative
     {
         let mut difference = Scalar52 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
         /* <ORIGINAL CODE> let mut difference = Scalar52::ZERO; <ORIGINAL CODE> */
@@ -657,9 +657,9 @@ impl Scalar52 {
         // a - b
         let mut borrow: u64 = 0;
         proof {
-            assert(seq_u64_to_nat(a.limbs@.subrange(0, 0 as int)) - seq_u64_to_nat(
+            assert(seq_u64_as_nat(a.limbs@.subrange(0, 0 as int)) - seq_u64_as_nat(
                 b.limbs@.subrange(0, 0 as int),
-            ) == seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)));
+            ) == seq_u64_as_nat(difference.limbs@.subrange(0, 0 as int)));
             assert((borrow >> 63) == 0) by (bit_vector)
                 requires
                     borrow == 0,
@@ -672,9 +672,9 @@ impl Scalar52 {
                 limbs_bounded(b),
                 forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
                 mask == (1u64 << 52) - 1,
-                seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
+                seq_u64_as_nat(a.limbs@.subrange(0, i as int)) - seq_u64_as_nat(
                     b.limbs@.subrange(0, i as int),
-                ) == seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) - (borrow >> 63)
+                ) == seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) - (borrow >> 63)
                     * pow2((52 * (i) as nat)),
         {
             proof {
@@ -688,9 +688,9 @@ impl Scalar52 {
             proof {
                 assert(difference_loop1_start.limbs@.subrange(0, i as int)
                     == difference.limbs@.subrange(0, i as int));
-                assert(seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
+                assert(seq_u64_as_nat(a.limbs@.subrange(0, i as int)) - seq_u64_as_nat(
                     b.limbs@.subrange(0, i as int),
-                ) == seq_u64_to_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (
+                ) == seq_u64_as_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (
                 old_borrow >> 63) * pow2((52 * (i) as nat)));
                 lemma_sub_loop1_invariant(
                     difference,
@@ -709,9 +709,9 @@ impl Scalar52 {
         proof {
             assert(borrow >> 63 == 1 || borrow >> 63 == 0) by (bit_vector);
             // After loop 1: a - b == difference - (borrow >> 63) * pow2(260)
-            assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+            assert(seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_as_nat(
                 b.limbs@.subrange(0, 5 as int),
-            ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
+            ) == seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
                 (52 * (5) as nat),
             ));
         }
@@ -722,26 +722,26 @@ impl Scalar52 {
         let carry = difference.conditional_add_l(Choice::from((borrow >> 63) as u8));
 
         proof {
-            lemma_subrange5_eq_scalar52_to_nat(&diff_before);
-            lemma_subrange5_eq_scalar52_to_nat(a);
-            lemma_subrange5_eq_scalar52_to_nat(b);
+            lemma_subrange5_eq_scalar52_as_nat(&diff_before);
+            lemma_subrange5_eq_scalar52_as_nat(a);
+            lemma_subrange5_eq_scalar52_as_nat(b);
 
             // From loop 1 at i=5:
             // a_nat - b_nat == diff_before_nat - (borrow >> 63) * pow2(260)
 
             if borrow >> 63 == 0 {
                 // conditional_add_l was called with Choice::from(0), so no-op
-                assert(scalar52_to_nat(&difference) == scalar52_to_nat(&diff_before));
-                assert(scalar52_to_nat(&a) - scalar52_to_nat(&b) == scalar52_to_nat(&difference));
+                assert(scalar52_as_nat(&difference) == scalar52_as_nat(&diff_before));
+                assert(scalar52_as_nat(&a) - scalar52_as_nat(&b) == scalar52_as_nat(&difference));
             }
             if borrow >> 63 == 1 {
                 // conditional_add_l was called with Choice::from(1)
                 // Loop 1 gives: diff_before == a - b + pow2(260)
-                assert(scalar52_to_nat(&diff_before) == scalar52_to_nat(&a) - scalar52_to_nat(&b)
+                assert(scalar52_as_nat(&diff_before) == scalar52_as_nat(&a) - scalar52_as_nat(&b)
                     + pow2(260));
                 // diff_before < pow2(260) (from limbs_bounded), so a - b < 0
                 lemma_bound_scalar(&diff_before);
-                assert(scalar52_to_nat(&a) < scalar52_to_nat(&b));
+                assert(scalar52_as_nat(&a) < scalar52_as_nat(&b));
             }
             lemma_sub_new_correct(difference, carry, *a, *b, borrow);
         }
@@ -757,9 +757,9 @@ impl Scalar52 {
             limbs_bounded(self),
             (carry >> 52) <= 1,
             // General form: accounts for possible overflow via carry
-            choice_is_true(condition) ==> scalar52_to_nat(self) + (carry >> 52) as nat * pow2(260)
-                == scalar52_to_nat(old(self)) + group_order(),
-            !choice_is_true(condition) ==> scalar52_to_nat(self) == scalar52_to_nat(old(self)),
+            choice_is_true(condition) ==> scalar52_as_nat(self) + (carry >> 52) as nat * pow2(260)
+                == scalar52_as_nat(old(self)) + group_order(),
+            !choice_is_true(condition) ==> scalar52_as_nat(self) == scalar52_as_nat(old(self)),
             !choice_is_true(condition) ==> carry >> 52 == 0,
     {
         let mut carry: u64 = 0;
@@ -771,9 +771,9 @@ impl Scalar52 {
 
         let ghost self_orig = *self;
         proof {
-            assert(seq_u64_to_nat(self_orig.limbs@.subrange(0, 0 as int)) == 0);
-            assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 0 as int)) == 0);
-            assert(seq_u64_to_nat(self.limbs@.subrange(0, 0 as int)) == 0);
+            assert(seq_u64_as_nat(self_orig.limbs@.subrange(0, 0 as int)) == 0);
+            assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 0 as int)) == 0);
+            assert(seq_u64_as_nat(self.limbs@.subrange(0, 0 as int)) == 0);
             assert(carry >> 52 == 0) by (bit_vector)
                 requires
                     carry == 0,
@@ -791,8 +791,8 @@ impl Scalar52 {
                 forall|j: int| i <= j < 5 ==> self.limbs[j] == self_orig.limbs[j],
                 !choice_is_true(condition) ==> self_orig == *self,
                 (i >= 1 && !choice_is_true(condition)) ==> carry == self.limbs[i - 1],
-                choice_is_true(condition) ==> seq_u64_to_nat(self_orig.limbs@.subrange(0, i as int))
-                    + seq_u64_to_nat(constants::L.limbs@.subrange(0, i as int)) == seq_u64_to_nat(
+                choice_is_true(condition) ==> seq_u64_as_nat(self_orig.limbs@.subrange(0, i as int))
+                    + seq_u64_as_nat(constants::L.limbs@.subrange(0, i as int)) == seq_u64_as_nat(
                     self.limbs@.subrange(0, i as int),
                 ) + (carry >> 52) * pow2(52 * i as nat),
         {
@@ -870,7 +870,7 @@ impl Scalar52 {
                 let l = group_order() as int;
                 -l <= diff && diff < l
             }) ==> (scalar52_as_nat(&s) == (scalar52_as_nat(&a) as int - scalar52_as_nat(&b) as int)
-                % (group_order() as int)), // no group_canonical, since a - b can be negative
+                % (group_order() as int)),  // no group_canonical, since a - b can be negative
             ({
                 let diff = scalar52_as_nat(&a) as int - scalar52_as_nat(&b) as int;
                 let l = group_order() as int;
@@ -1825,7 +1825,9 @@ impl Scalar52 {
             // At least one input must be canonical for montgomery_reduce's canonical_bound
             is_canonical_scalar52(a) || is_canonical_scalar52(b),
         ensures
-            scalar52_as_canonical_nat(&result) == group_canonical(scalar52_as_nat(&a) * scalar52_as_nat(&b)),
+            scalar52_as_canonical_nat(&result) == group_canonical(
+                scalar52_as_nat(&a) * scalar52_as_nat(&b),
+            ),
             is_canonical_scalar52(&result),
     {
         proof {
@@ -1908,7 +1910,9 @@ impl Scalar52 {
         requires
             is_canonical_scalar52(self),
         ensures
-            scalar52_as_nat(&result) == group_canonical(scalar52_as_nat(self) * scalar52_as_nat(self)),
+            scalar52_as_nat(&result) == group_canonical(
+                scalar52_as_nat(self) * scalar52_as_nat(self),
+            ),
     {
         proof {
             lemma_rr_limbs_bounded();
@@ -1990,8 +1994,9 @@ impl Scalar52 {
             is_canonical_scalar52(a) || is_canonical_scalar52(b),
         ensures
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
-            group_canonical(scalar52_as_nat(&result) * montgomery_radix()) == group_canonical(scalar52_as_nat(&a)
-                * scalar52_as_nat(&b)),
+            group_canonical(scalar52_as_nat(&result) * montgomery_radix()) == group_canonical(
+                scalar52_as_nat(&a) * scalar52_as_nat(&b),
+            ),
             is_canonical_scalar52(&result),
     {
         proof {
@@ -2035,9 +2040,9 @@ impl Scalar52 {
             is_canonical_scalar52(self),
         ensures
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
-            group_canonical(scalar52_as_nat(&result) * montgomery_radix()) == group_canonical(scalar52_as_nat(
-                self,
-            ) * scalar52_as_nat(self)),
+            group_canonical(scalar52_as_nat(&result) * montgomery_radix()) == group_canonical(
+                scalar52_as_nat(self) * scalar52_as_nat(self),
+            ),
             // Result is canonical from montgomery_reduce
             is_canonical_scalar52(&result),
     {
@@ -2075,9 +2080,9 @@ impl Scalar52 {
             limbs_bounded(self),
         ensures
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
-            scalar52_as_canonical_nat(&result) == group_canonical(scalar52_as_nat(
-                self,
-            ) * montgomery_radix()),
+            scalar52_as_canonical_nat(&result) == group_canonical(
+                scalar52_as_nat(self) * montgomery_radix(),
+            ),
             is_canonical_scalar52(&result),
     {
         proof {
@@ -2112,7 +2117,8 @@ impl Scalar52 {
         requires
             limbs_bounded(self),
         ensures
-            group_canonical(scalar52_as_nat(&result) * montgomery_radix()) == scalar52_as_canonical_nat(self),
+            group_canonical(scalar52_as_nat(&result) * montgomery_radix())
+                == scalar52_as_canonical_nat(self),
             is_canonical_scalar52(&result),
     {
         let mut limbs = [0u128;9];

@@ -21,7 +21,7 @@ use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow2_even, pow2_MUL_div};
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[cfg(verus_keep_ghost)]
-use crate::lemmas::field_lemmas::negate_lemmas::{proof_negate, lemma_neg};
+use crate::lemmas::field_lemmas::negate_lemmas::{lemma_neg, proof_negate};
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::lemma_fe51_unit_is_one;
 use crate::specs::edwards_specs::*;
@@ -1750,18 +1750,12 @@ pub proof fn lemma_identity_affine_niels_valid()
     }
     // sum_of_limbs_bounded(&Y, &X, u64::MAX) for Y=[1,0,0,0,0], X=[0,0,0,0,0]
     assert(sum_of_limbs_bounded(&one_fe, &zero_fe, u64::MAX)) by {
-        assert forall|i: int| 0 <= i < 5 implies one_fe.limbs[i] + zero_fe.limbs[i] < u64::MAX
-        by {}
+        assert forall|i: int| 0 <= i < 5 implies one_fe.limbs[i] + zero_fe.limbs[i] < u64::MAX by {}
     }
 
     // Construct EdwardsPoint witness: identity (X=0, Y=1, Z=1, T=0)
     lemma_identity_is_valid_extended();
-    let witness = crate::edwards::EdwardsPoint {
-        X: zero_fe,
-        Y: one_fe,
-        Z: one_fe,
-        T: zero_fe,
-    };
+    let witness = crate::edwards::EdwardsPoint { X: zero_fe, Y: one_fe, Z: one_fe, T: zero_fe };
 
     // Show is_valid_edwards_point(witness)
     lemma_unfold_edwards(witness);
@@ -1865,14 +1859,12 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
     // 52-bounded implies 54-bounded for proof_negate precondition
     assert((1u64 << 52u64) <= (1u64 << 54u64)) by (bit_vector);
     assert(forall|i: int| 0 <= i < 5 ==> ep.X.limbs[i] < (1u64 << 54)) by {
-        assert forall|i: int| 0 <= i < 5 implies ep.X.limbs[i] < (1u64 << 54)
-        by {
+        assert forall|i: int| 0 <= i < 5 implies ep.X.limbs[i] < (1u64 << 54) by {
             assert(ep.X.limbs[i] < (1u64 << 52u64));
         }
     }
     assert(forall|i: int| 0 <= i < 5 ==> ep.T.limbs[i] < (1u64 << 54)) by {
-        assert forall|i: int| 0 <= i < 5 implies ep.T.limbs[i] < (1u64 << 54)
-        by {
+        assert forall|i: int| 0 <= i < 5 implies ep.T.limbs[i] < (1u64 << 54) by {
             assert(ep.T.limbs[i] < (1u64 << 52u64));
         }
     }
@@ -1887,22 +1879,20 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
 
     // neg limbs are 52-bounded (from proof_negate)
     assert(fe51_limbs_bounded(&neg_x_fe, 52u64)) by {
-        assert forall|i: int| 0 <= i < 5 implies #[trigger] neg_x_fe.limbs[i] < (1u64 << 52u64)
-        by {
+        assert forall|i: int| 0 <= i < 5 implies #[trigger] neg_x_fe.limbs[i] < (1u64 << 52u64) by {
             assert(spec_negate(ep.X.limbs)[i] < (1u64 << 52u64));
         }
     }
     assert(fe51_limbs_bounded(&neg_t_fe, 52u64)) by {
-        assert forall|i: int| 0 <= i < 5 implies #[trigger] neg_t_fe.limbs[i] < (1u64 << 52u64)
-        by {
+        assert forall|i: int| 0 <= i < 5 implies #[trigger] neg_t_fe.limbs[i] < (1u64 << 52u64) by {
             assert(spec_negate(ep.T.limbs)[i] < (1u64 << 52u64));
         }
     }
 
     // sum_of_limbs_bounded(&Y, &neg_X, u64::MAX)
     assert(sum_of_limbs_bounded(&ep.Y, &neg_x_fe, u64::MAX)) by {
-        assert forall|i: int| 0 <= i < 5 implies ep.Y.limbs[i] + neg_x_fe.limbs[i] < u64::MAX
-        by {
+        assert forall|i: int| 0 <= i < 5 implies (#[trigger] ep.Y.limbs[i]) + neg_x_fe.limbs[i]
+            < u64::MAX by {
             assert(ep.Y.limbs[i] < (1u64 << 52u64));
             assert(neg_x_fe.limbs[i] < (1u64 << 52u64));
             assert((1u64 << 52u64) + (1u64 << 52u64) < u64::MAX) by (bit_vector);
@@ -1938,12 +1928,7 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
     assert(math_is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp));
 
     // Construct the negated EdwardsPoint witness
-    let neg_ep = crate::edwards::EdwardsPoint {
-        X: neg_x_fe,
-        Y: ep.Y,
-        Z: ep.Z,
-        T: neg_t_fe,
-    };
+    let neg_ep = crate::edwards::EdwardsPoint { X: neg_x_fe, Y: ep.Y, Z: ep.Z, T: neg_t_fe };
     lemma_unfold_edwards(neg_ep);
     assert(is_valid_edwards_point(neg_ep));
 
@@ -1999,8 +1984,7 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
     lemma_field_neg_mul_left(field_mul(field_mul(x, y), 2), d);
     lemma_field_neg_mul_left(field_mul(x, y), 2);
     lemma_field_neg_mul_left(x, y);
-    assert(field_neg(pt_xy2d_val)
-        == field_mul(field_mul(field_mul(field_neg(x), y), 2), d));
+    assert(field_neg(pt_xy2d_val) == field_mul(field_mul(field_mul(field_neg(x), y), 2), d));
     assert(neg_xy2d_val == field_mul(field_mul(field_mul(neg_x_affine, neg_y_affine), 2), d));
 
     assert(affine_niels_corresponds_to_edwards(neg, neg_ep));

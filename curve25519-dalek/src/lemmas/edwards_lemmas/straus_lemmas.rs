@@ -363,7 +363,6 @@ pub open spec fn radix_16_all_bounded_seq(digits: Seq<i8>) -> bool {
 /// Note: scalar reconstruction (`reconstruct(nafs_seqs[k]) == scalar_as_nat(...)`)
 /// is kept as a separate outer-loop invariant to avoid rlimit pressure in the
 /// inner loop where it is not needed.
-#[verifier::opaque]
 pub open spec fn straus_vt_input_valid(
     nafs_view: Seq<[i8; 256]>,
     lookup_tables_view: Seq<NafLookupTable5<ProjectiveNielsPoint>>,
@@ -408,129 +407,6 @@ pub open spec fn straus_vt_input_valid(
     // Canonical affine coordinates (< p())
     &&& forall|k: int|
         0 <= k < n_int ==> (#[trigger] pts_affine[k]).0 < p() && pts_affine[k].1 < p()
-}
-
-/// Extract ground facts from straus_vt_input_valid at a specific index k.
-/// Used inside inner loops to avoid quantifier explosion from the opaque predicate.
-pub proof fn lemma_straus_vt_input_valid_extract(
-    nafs_view: Seq<[i8; 256]>,
-    lookup_tables_view: Seq<NafLookupTable5<ProjectiveNielsPoint>>,
-    nafs_seqs: Seq<Seq<i8>>,
-    pts_affine: Seq<(nat, nat)>,
-    spec_scalars: Seq<Scalar>,
-    spec_points: Seq<Option<EdwardsPoint>>,
-    unwrapped_points: Seq<EdwardsPoint>,
-    n: nat,
-    k: int,
-)
-    requires
-        straus_vt_input_valid(
-            nafs_view,
-            lookup_tables_view,
-            nafs_seqs,
-            pts_affine,
-            spec_scalars,
-            spec_points,
-            unwrapped_points,
-            n,
-        ),
-        0 <= k < n as int,
-    ensures
-        nafs_seqs[k] == nafs_view[k]@,
-        is_valid_naf(nafs_seqs[k], 5),
-        is_valid_naf_lookup_table5_projective(lookup_tables_view[k].0, spec_points[k].unwrap()),
-        naf_lookup_table5_projective_limbs_bounded(lookup_tables_view[k].0),
-        pts_affine[k] == edwards_point_as_affine(unwrapped_points[k]),
-        unwrapped_points[k] == spec_points[k].unwrap(),
-        pts_affine[k].0 < p() && pts_affine[k].1 < p(),
-{
-    reveal(straus_vt_input_valid);
-}
-
-/// Extract length consistency facts from straus_vt_input_valid.
-/// Lighter than full extract — just lengths, no quantifier instantiation.
-pub proof fn lemma_straus_vt_input_valid_lengths(
-    nafs_view: Seq<[i8; 256]>,
-    lookup_tables_view: Seq<NafLookupTable5<ProjectiveNielsPoint>>,
-    nafs_seqs: Seq<Seq<i8>>,
-    pts_affine: Seq<(nat, nat)>,
-    spec_scalars: Seq<Scalar>,
-    spec_points: Seq<Option<EdwardsPoint>>,
-    unwrapped_points: Seq<EdwardsPoint>,
-    n: nat,
-)
-    requires
-        straus_vt_input_valid(
-            nafs_view,
-            lookup_tables_view,
-            nafs_seqs,
-            pts_affine,
-            spec_scalars,
-            spec_points,
-            unwrapped_points,
-            n,
-        ),
-    ensures
-        nafs_view.len() as int == n as int,
-        lookup_tables_view.len() as int == n as int,
-        nafs_seqs.len() as int == n as int,
-        pts_affine.len() as int == n as int,
-        n as int == spec_scalars.len(),
-        n as int == spec_points.len(),
-{
-    reveal(straus_vt_input_valid);
-}
-
-/// Establish straus_vt_input_valid from individually proven facts.
-/// Called once before the outer loop to bundle facts into the opaque predicate.
-pub proof fn lemma_straus_vt_input_valid_establish(
-    nafs_view: Seq<[i8; 256]>,
-    lookup_tables_view: Seq<NafLookupTable5<ProjectiveNielsPoint>>,
-    nafs_seqs: Seq<Seq<i8>>,
-    pts_affine: Seq<(nat, nat)>,
-    spec_scalars: Seq<Scalar>,
-    spec_points: Seq<Option<EdwardsPoint>>,
-    unwrapped_points: Seq<EdwardsPoint>,
-    n: nat,
-)
-    requires
-        nafs_view.len() as int == n as int,
-        lookup_tables_view.len() as int == n as int,
-        nafs_seqs.len() as int == n as int,
-        pts_affine.len() as int == n as int,
-        n as int == spec_scalars.len(),
-        n as int == spec_points.len(),
-        forall|k: int| 0 <= k < n as int ==> is_valid_naf(#[trigger] nafs_seqs[k], 5),
-        forall|k: int|
-            0 <= k < n as int ==> {
-                &&& is_valid_naf_lookup_table5_projective(
-                    (#[trigger] lookup_tables_view[k]).0,
-                    spec_points[k].unwrap(),
-                )
-                &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables_view[k].0)
-            },
-        forall|k: int|
-            0 <= k < n as int ==> #[trigger] pts_affine[k] == edwards_point_as_affine(
-                unwrapped_points[k],
-            ),
-        forall|k: int|
-            0 <= k < n as int ==> #[trigger] unwrapped_points[k] == spec_points[k].unwrap(),
-        forall|k: int| 0 <= k < n as int ==> #[trigger] nafs_seqs[k] == nafs_view[k]@,
-        forall|k: int|
-            0 <= k < n as int ==> (#[trigger] pts_affine[k]).0 < p() && pts_affine[k].1 < p(),
-    ensures
-        straus_vt_input_valid(
-            nafs_view,
-            lookup_tables_view,
-            nafs_seqs,
-            pts_affine,
-            spec_scalars,
-            spec_points,
-            unwrapped_points,
-            n,
-        ),
-{
-    reveal(straus_vt_input_valid);
 }
 
 /// Bundled validity predicate for the constant-time (CT) Straus loops.

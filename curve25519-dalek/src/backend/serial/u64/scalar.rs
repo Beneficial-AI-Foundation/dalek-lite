@@ -712,14 +712,13 @@ impl Scalar52 {
 
         proof {
             assert(borrow >> 63 == 1 || borrow >> 63 == 0) by (bit_vector);
+            // After loop 1: a - b == difference - (borrow >> 63) * pow2(260)
+            assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+                b.limbs@.subrange(0, 5 as int),
+            ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
+                (52 * (5) as nat),
+            ));
         }
-
-        // After loop 1: a - b == difference - (borrow >> 63) * pow2(260)
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
-            b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
-            (52 * (5) as nat),
-        ));
 
         let ghost diff_before = difference;
 
@@ -759,10 +758,7 @@ impl Scalar52 {
         requires
             limbs_bounded(&old(self)),
         ensures
-    // Limbs remain bounded (from masking)
-
-            forall|j: int| 0 <= j < 5 ==> self.limbs[j] < (1u64 << 52),
-            // Carry bound
+            limbs_bounded(self),
             (carry >> 52) <= 1,
             // General form: accounts for possible overflow via carry
             choice_is_true(condition) ==> scalar52_to_nat(self) + (carry >> 52) as nat * pow2(260)
@@ -778,13 +774,15 @@ impl Scalar52 {
         let mask = (1u64 << 52) - 1;
 
         let ghost self_orig = *self;
-        assert(seq_u64_to_nat(self_orig.limbs@.subrange(0, 0 as int)) == 0);
-        assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 0 as int)) == 0);
-        assert(seq_u64_to_nat(self.limbs@.subrange(0, 0 as int)) == 0);
-        assert(carry >> 52 == 0) by (bit_vector)
-            requires
-                carry == 0,
-        ;
+        proof {
+            assert(seq_u64_to_nat(self_orig.limbs@.subrange(0, 0 as int)) == 0);
+            assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 0 as int)) == 0);
+            assert(seq_u64_to_nat(self.limbs@.subrange(0, 0 as int)) == 0);
+            assert(carry >> 52 == 0) by (bit_vector)
+                requires
+                    carry == 0,
+            ;
+        }
 
         for i in 0..5
             invariant
@@ -845,6 +843,11 @@ impl Scalar52 {
         }
 
         proof {
+            assert(limbs_bounded(&*self)) by {
+                assert((1u64 << 52) == pow2(52)) by {
+                    lemma_u64_shift_is_pow2(52);
+                }
+            }
             lemma_conditional_add_l_correct(*self, carry, self_orig, choice_is_true(condition));
         }
 
@@ -888,18 +891,20 @@ impl Scalar52 {
 
         // a - b
         let mut borrow: u64 = 0;
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 0 as int)) - seq_u64_to_nat(
-            b.limbs@.subrange(0, 0 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)));
-        assert((borrow >> 63) == 0) by (bit_vector)
-            requires
-                borrow == 0,
-        ;
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 0 as int)) - seq_u64_to_nat(
-            b.limbs@.subrange(0, 0 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)) - (borrow >> 63) * pow2(
-            (52 * (0) as nat),
-        ));
+        proof {
+            assert(seq_u64_to_nat(a.limbs@.subrange(0, 0 as int)) - seq_u64_to_nat(
+                b.limbs@.subrange(0, 0 as int),
+            ) == seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)));
+            assert((borrow >> 63) == 0) by (bit_vector)
+                requires
+                    borrow == 0,
+            ;
+            assert(seq_u64_to_nat(a.limbs@.subrange(0, 0 as int)) - seq_u64_to_nat(
+                b.limbs@.subrange(0, 0 as int),
+            ) == seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)) - (borrow >> 63) * pow2(
+                (52 * (0) as nat),
+            ));
+        }
         for i in 0..5
             invariant
                 limbs_bounded(b),
@@ -918,13 +923,13 @@ impl Scalar52 {
             borrow = a.limbs[i].wrapping_sub(b.limbs[i] + (borrow >> 63));
             let ghost difference_loop1_start = difference;
             difference.limbs[i] = borrow & mask;
-            assert(difference_loop1_start.limbs@.subrange(0, i as int)
-                == difference.limbs@.subrange(0, i as int));
-            assert(seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
-                b.limbs@.subrange(0, i as int),
-            ) == seq_u64_to_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (old_borrow
-                >> 63) * pow2((52 * (i) as nat)));
             proof {
+                assert(difference_loop1_start.limbs@.subrange(0, i as int)
+                    == difference.limbs@.subrange(0, i as int));
+                assert(seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
+                    b.limbs@.subrange(0, i as int),
+                ) == seq_u64_to_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (
+                old_borrow >> 63) * pow2((52 * (i) as nat)));
                 lemma_sub_loop1_invariant(
                     difference,
                     borrow,
@@ -935,28 +940,28 @@ impl Scalar52 {
                     mask,
                     difference_loop1_start,
                 );
-            }
-            proof {
                 lemma_borrow_and_mask_bounded(borrow, mask);
             }
         }
 
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
-            b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
-            (52 * (5) as nat),
-        ));
         // conditionally add l if the difference is negative
-        assert(borrow >> 63 == 1 || borrow >> 63 == 0) by (bit_vector);
         let mut carry: u64 = 0;
         let ghost difference_after_loop1 = difference;
-        assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 0 as int)) == 0);
-        assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 0 as int)) == 0);
-        assert(seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)) == 0);
-        assert(carry >> 52 == 0) by (bit_vector)
-            requires
-                carry == 0,
-        ;
+        proof {
+            assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+                b.limbs@.subrange(0, 5 as int),
+            ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
+                (52 * (5) as nat),
+            ));
+            assert(borrow >> 63 == 1 || borrow >> 63 == 0) by (bit_vector);
+            assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 0 as int)) == 0);
+            assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 0 as int)) == 0);
+            assert(seq_u64_to_nat(difference.limbs@.subrange(0, 0 as int)) == 0);
+            assert(carry >> 52 == 0) by (bit_vector)
+                requires
+                    carry == 0,
+            ;
+        }
         for i in 0..5
             invariant
                 forall|j: int| 0 <= j < 5 ==> difference.limbs[j] < (1u64 << 52),  // from first loop
@@ -977,13 +982,13 @@ impl Scalar52 {
             let ghost old_carry = carry;
             let underflow = Choice::from((borrow >> 63) as u8);
             let addend = select(&0, &constants::L.limbs[i], underflow);
-            if borrow >> 63 == 0 {
-                assert(addend == 0);
-            }
-            if borrow >> 63 == 1 {
-                assert(addend == constants::L.limbs[i as int]);
-            }
             proof {
+                if borrow >> 63 == 0 {
+                    assert(addend == 0);
+                }
+                if borrow >> 63 == 1 {
+                    assert(addend == constants::L.limbs[i as int]);
+                }
                 lemma_scalar_subtract_no_overflow(
                     carry,
                     difference.limbs[i as int],

@@ -1981,7 +1981,7 @@ pub(crate) proof fn lemma_conditional_add_l_correct(
 )
     requires
         limbs_bounded(&self_orig),
-        forall|j: int| 0 <= j < 5 ==> self_now.limbs[j] < (1u64 << 52),
+        limbs_bounded(&self_now),
         (carry >> 52) < 2,
         !is_adding ==> self_orig == self_now,
         is_adding ==> seq_u64_to_nat(self_orig.limbs@.subrange(0, 5 as int)) + seq_u64_to_nat(
@@ -1991,7 +1991,7 @@ pub(crate) proof fn lemma_conditional_add_l_correct(
         ),
         (!is_adding && (5 >= 1)) ==> carry == self_now.limbs[4],
     ensures
-        forall|j: int| 0 <= j < 5 ==> self_now.limbs[j] < (1u64 << 52),
+        limbs_bounded(&self_now),
         (carry >> 52) <= 1,
         is_adding ==> scalar52_to_nat(&self_now) + (carry >> 52) as nat * pow2(260)
             == scalar52_to_nat(&self_orig) + group_order(),

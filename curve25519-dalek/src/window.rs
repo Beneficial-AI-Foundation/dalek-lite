@@ -177,58 +177,21 @@ impl LookupTable<AffineNielsPoint> {
                     xsum == (x as i16 + xmask) as i16,
                     xabs == (xsum ^ xmask),
             ;
-            assert(0 <= xabs && xabs <= 8);
-            // xmask sign (used later for neg_mask)
-            assert(x >= 0i8 ==> (x as i16 >> 7u32) == 0i16) by (bit_vector)
-                requires
-                    -8i8 <= x && x <= 8i8,
-            ;
-            assert(x < 0i8 ==> (x as i16 >> 7u32) == -1i16) by (bit_vector)
-                requires
-                    -8i8 <= x && x <= 8i8,
-            ;
         }
 
         // Set t = 0 * P = identity
         let mut t = AffineNielsPoint::identity();
         proof {
-            // Identity has trivially bounded limbs (all 0 or 1)
             assert(1u64 < (1u64 << 54u64)) by (bit_vector);
-            assert(0u64 < (1u64 << 54u64)) by (bit_vector);
-            assert(fe51_limbs_bounded(&t.y_plus_x, 54)) by {
-                assert(t.y_plus_x.limbs[0] < (1u64 << 54u64));
-                assert(t.y_plus_x.limbs[1] < (1u64 << 54u64));
-                assert(t.y_plus_x.limbs[2] < (1u64 << 54u64));
-                assert(t.y_plus_x.limbs[3] < (1u64 << 54u64));
-                assert(t.y_plus_x.limbs[4] < (1u64 << 54u64));
+            assert(is_valid_affine_niels_point(t)) by {
+                lemma_identity_affine_niels_valid();
             }
-            assert(fe51_limbs_bounded(&t.y_minus_x, 54)) by {
-                assert(t.y_minus_x.limbs[0] < (1u64 << 54u64));
-                assert(t.y_minus_x.limbs[1] < (1u64 << 54u64));
-                assert(t.y_minus_x.limbs[2] < (1u64 << 54u64));
-                assert(t.y_minus_x.limbs[3] < (1u64 << 54u64));
-                assert(t.y_minus_x.limbs[4] < (1u64 << 54u64));
-            }
-            assert(fe51_limbs_bounded(&t.xy2d, 54)) by {
-                assert(t.xy2d.limbs[0] < (1u64 << 54u64));
-                assert(t.xy2d.limbs[1] < (1u64 << 54u64));
-                assert(t.xy2d.limbs[2] < (1u64 << 54u64));
-                assert(t.xy2d.limbs[3] < (1u64 << 54u64));
-                assert(t.xy2d.limbs[4] < (1u64 << 54u64));
-            }
-            lemma_identity_affine_niels_valid();
         }
 
         for j in 1..9
             invariant
-                -8 <= x,
-                x <= 8,
-                0 <= xabs,
-                xabs <= 8,
-                // xabs correctly computed
-                (x >= 0 ==> xabs == x as i16),
-                (x < 0 ==> xabs == -(x as i16)),
-                // CT scan state: t holds the right value based on progress
+        // CT scan state: t holds the right value based on progress
+
                 (xabs > 0 && (xabs as int) < j) ==> t == self.0[(xabs - 1) as int],
                 (xabs == 0 || (xabs as int) >= j) ==> t == identity_affine_niels(),
                 // Limb bounds preserved
@@ -246,50 +209,12 @@ impl LookupTable<AffineNielsPoint> {
             let c = ct_eq_u16(&(xabs as u16), &(j as u16));
             /* ORIGINAL CODE: t.conditional_assign(&self.0[j - 1], c); */
             conditional_assign_generic(&mut t, &self.0[j - 1], c);
-            proof {
-                // After conditional_assign: if xabs == j, then t == self.0[j-1];
-                // otherwise t is unchanged.
-                if choice_is_true(c) {
-                    assert(xabs as u16 == j as u16);
-                    assert(t == self.0[(j - 1) as int]);
-                }
-            }
         }
         // Now t == |x| * P.
 
-        proof {
-            // Post-loop: at j == 9, the loop invariant gives us:
-            // If xabs > 0 && xabs < 9: t == self.0[(xabs-1)]
-            // If xabs == 0: t == identity_affine_niels()
-            // Since 0 <= xabs <= 8, the case xabs >= 9 is impossible.
-            if x > 0 {
-                assert(xabs == x as i16);
-                assert(xabs > 0 && (xabs as i32) < 9);
-                assert(t == self.0[(xabs - 1) as int]);
-                assert(t == self.0[(x - 1) as int]);
-            } else if x == 0i8 {
-                assert(xabs == 0);
-                assert(t == identity_affine_niels());
-            } else {
-                // x < 0
-                assert(xabs == -(x as i16));
-                assert(xabs > 0 && (xabs as i32) < 9);
-                assert(t == self.0[(xabs - 1) as int]);
-                assert(t == self.0[((-x) - 1) as int]);
-            }
-        }
-
         let ghost old_t = t;
-        proof {
-            // xmask & 1 is 0 or 1, safe to cast to u8
-            assert((xmask & 1i16) == 0i16 || (xmask & 1i16) == 1i16) by (bit_vector)
-                requires
-                    xmask == 0i16 || xmask == -1i16,
-            ;
-        }
         let neg_mask = Choice::from((xmask & 1) as u8);
         proof {
-            // WI3: neg_mask bit-vector facts
             assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
                 requires
                     -8i8 <= x && x <= 8i8,
@@ -304,17 +229,10 @@ impl LookupTable<AffineNielsPoint> {
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
         conditional_negate_affine_niels(&mut t, neg_mask);
         proof {
-            if x >= 0 {
-                // neg_mask is false, so t is unchanged
-                assert(!choice_is_true(neg_mask));
-                assert(t == old_t);
-            } else {
-                // x < 0: neg_mask is true
-                assert(choice_is_true(neg_mask));
-                assert(t == negate_affine_niels(old_t));
-                assert(old_t == self.0[((-x) - 1) as int]);
-                // Prove validity of negated point
-                lemma_negate_affine_niels_preserves_validity(old_t);
+            if x < 0 {
+                assert(is_valid_affine_niels_point(t)) by {
+                    lemma_negate_affine_niels_preserves_validity(old_t);
+                }
             }
         }
         // Now t == x * P.

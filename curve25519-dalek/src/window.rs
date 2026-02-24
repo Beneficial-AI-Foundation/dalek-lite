@@ -1130,15 +1130,23 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
             proof {
                 use_type_invariant(A2);
-                lemma_unfold_edwards(A2);
-                lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
+                assert(is_well_formed_edwards_point(A2)) by {
+                    lemma_unfold_edwards(A2);
+                }
+                assert(sum_of_limbs_bounded(&A2.X, &A2.Y, u64::MAX)) by {
+                    lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
+                }
             }
             let sum = &A2 + &Ai[i];
             let extended = sum.as_extended();
             proof {
                 use_type_invariant(extended);
-                lemma_unfold_edwards(extended);
-                lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
+                assert(is_well_formed_edwards_point(extended)) by {
+                    lemma_unfold_edwards(extended);
+                }
+                assert(sum_of_limbs_bounded(&extended.X, &extended.Y, u64::MAX)) by {
+                    lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
+                }
             }
             Ai[i + 1] = extended.as_projective_niels();
             proof {

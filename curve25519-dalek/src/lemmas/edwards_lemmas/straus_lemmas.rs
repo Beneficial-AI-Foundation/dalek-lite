@@ -436,8 +436,9 @@ pub open spec fn straus_ct_input_valid(
     &&& digits_seqs.len() as int == n_int
     &&& pts_affine.len() as int == n_int
     &&& n_int == spec_scalars.len()
-    &&& n_int == spec_points.len()
-    // Table validity + 54-bit limb bounds
+    &&& n_int
+        == spec_points.len()
+    // Table validity + 54-bit limb bounds + per-entry projective niels validity
     &&& forall|k: int|
         0 <= k < n_int ==> {
             &&& is_valid_lookup_table_projective(
@@ -446,6 +447,10 @@ pub open spec fn straus_ct_input_valid(
                 8,
             )
             &&& lookup_table_projective_limbs_bounded(lookup_tables_view[k].0)
+            &&& forall|j: int|
+                0 <= j < 8 ==> is_valid_projective_niels_point(
+                    #[trigger] lookup_tables_view[k].0[j],
+                )
         }
         // Radix-16 digit bounds (validity + reconstruction kept separate — see note above)
     &&& forall|k: int|

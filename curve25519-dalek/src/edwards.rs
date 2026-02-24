@@ -1430,6 +1430,7 @@ impl EdwardsPoint {
             assert(projective_niels_corresponds_to_edwards(result, *self));
 
             // Validity: the existential witness is *self
+            assert(edwards_point_limbs_bounded(*self));
             assert(is_valid_projective_niels_point(result));
         }
 

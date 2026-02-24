@@ -26,7 +26,7 @@ use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::subtle_assumes::{
     conditional_assign_generic, conditional_negate_affine_niels, conditional_negate_generic,
-    ct_eq_u16,
+    conditional_negate_projective_niels, ct_eq_u16,
 };
 use crate::edwards::EdwardsPoint;
 
@@ -39,7 +39,8 @@ use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
-    lemma_identity_affine_niels_valid, lemma_negate_affine_niels_preserves_validity,
+    lemma_identity_affine_niels_valid, lemma_identity_projective_niels_valid,
+    lemma_negate_affine_niels_preserves_validity, lemma_negate_projective_niels_preserves_validity,
 };
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
@@ -183,7 +184,7 @@ impl LookupTable<AffineNielsPoint> {
 
         for j in 1..9
             invariant
-        // CT scan state: t holds the right value based on progress
+        // Constant-time scan state: t holds the right value based on progress
 
                 (xabs > 0 && (xabs as int) < j) ==> t == self.0[(xabs - 1) as int],
                 (xabs == 0 || (xabs as int) >= j) ==> t == identity_affine_niels(),
@@ -240,13 +241,14 @@ impl LookupTable<ProjectiveNielsPoint> {
     ///
     /// Where P is the base point that was used to create this lookup table.
     /// This table stores [P, 2P, 3P, ..., 8P] (for radix-16).
-    // TODO: prove select correctness once ct primitives are verified.
     pub fn select(&self, x: i8) -> (result: ProjectiveNielsPoint)
         requires
             -8 <= x,
             x <= 8,
             // Table entries must have bounded limbs
             lookup_table_projective_limbs_bounded(self.0),
+            // Each table entry must be a valid ProjectiveNielsPoint
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] self.0[j]),
         ensures
     // Formal specification for all cases:
 
@@ -261,9 +263,6 @@ impl LookupTable<ProjectiveNielsPoint> {
             // The result is a valid ProjectiveNielsPoint
             is_valid_projective_niels_point(result),
     {
-        proof {
-            assume(false);
-        }
         /* ORIGINAL CODE: for generic type T, $name, $size, $neg, $range, and $conv_range.
 
             debug_assert!(x >= $neg);
@@ -297,11 +296,58 @@ impl LookupTable<ProjectiveNielsPoint> {
 
         // Compute xabs = |x|
         let xmask = x as i16 >> 7;
+        proof {
+            assert((x as i16 >> 7u32) == 0i16 || (x as i16 >> 7u32) == -1i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+            ;
+        }
         let xabs = (x as i16 + xmask) ^ xmask;
+
+        proof {
+            let xsum: i16 = (x as i16 + xmask) as i16;
+            assert(x >= 0i8 ==> xabs == x as i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+            assert(x < 0i8 ==> xabs == -(x as i16)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+        }
 
         // Set t = 0 * P = identity
         let mut t = ProjectiveNielsPoint::identity();
-        for j in 1..9 {
+        proof {
+            assert(1u64 < (1u64 << 54u64)) by (bit_vector);
+            assert(is_valid_projective_niels_point(t)) by {
+                lemma_identity_projective_niels_valid();
+            }
+        }
+
+        for j in 1..9
+            invariant
+        // Constant-time scan state: t holds the right value based on progress
+
+                (xabs > 0 && (xabs as int) < j) ==> t == self.0[(xabs - 1) as int],
+                (xabs == 0 || (xabs as int) >= j) ==> t == identity_projective_niels(),
+                // Limb bounds preserved
+                fe51_limbs_bounded(&t.Y_plus_X, 54),
+                fe51_limbs_bounded(&t.Y_minus_X, 54),
+                fe51_limbs_bounded(&t.Z, 54),
+                fe51_limbs_bounded(&t.T2d, 54),
+                // Validity preserved
+                is_valid_projective_niels_point(t),
+                // Table state (from preconditions, carry through loop)
+                lookup_table_projective_limbs_bounded(self.0),
+                forall|k: int| 0 <= k < 8 ==> is_valid_projective_niels_point(#[trigger] self.0[k]),
+        {
             // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
             /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
             let c = ct_eq_u16(&(xabs as u16), &(j as u16));
@@ -310,9 +356,29 @@ impl LookupTable<ProjectiveNielsPoint> {
         }
         // Now t == |x| * P.
 
+        let ghost old_t = t;
         let neg_mask = Choice::from((xmask & 1) as u8);
+        proof {
+            assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+            assert(x >= 0i8 ==> ((xmask & 1i16) as u8 == 0u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+        }
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
-        conditional_negate_generic(&mut t, neg_mask);
+        conditional_negate_projective_niels(&mut t, neg_mask);
+        proof {
+            if x < 0 {
+                assert(is_valid_projective_niels_point(t)) by {
+                    lemma_negate_projective_niels_preserves_validity(old_t);
+                }
+            }
+        }
         // Now t == x * P.
 
         t
@@ -381,6 +447,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         ensures
             is_valid_lookup_table_projective(result.0, *P, 8 as nat),
             lookup_table_projective_limbs_bounded(result.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] result.0[j]),
     {
         /* ORIGINAL CODE: for generic $name, $size, and conv_range.
 
@@ -432,6 +499,8 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         proof {
             assume(is_valid_lookup_table_projective(result.0, *P, 8 as nat));
             assume(lookup_table_projective_limbs_bounded(result.0));
+            assume(forall|j: int|
+                0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] result.0[j]));
         }
         result
     }

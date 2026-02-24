@@ -2,9 +2,12 @@
 use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTimeEq, CtOption};
 
 use crate::backend::serial::curve_models::AffineNielsPoint;
+use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::field::FieldElement51;
 #[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::negate_affine_niels;
+#[cfg(verus_keep_ghost)]
+use crate::specs::edwards_specs::negate_projective_niels;
 #[cfg(verus_keep_ghost)]
 use crate::specs::field_specs::{fe51_as_canonical_nat, fe51_limbs_bounded, field_neg};
 
@@ -327,6 +330,29 @@ pub fn conditional_negate_affine_niels(a: &mut AffineNielsPoint, choice: Choice)
         fe51_limbs_bounded(&a.y_plus_x, 54),
         fe51_limbs_bounded(&a.y_minus_x, 54),
         fe51_limbs_bounded(&a.xy2d, 54),
+{
+    a.conditional_negate(choice);
+}
+
+/// Specialized wrapper for conditional_negate on ProjectiveNielsPoint.
+///
+/// Mirrors conditional_negate_affine_niels but for projective Niels points.
+/// Negation swaps Y_plus_X ↔ Y_minus_X, keeps Z, and negates T2d.
+/// All four fields remain within 54 bits.
+#[verifier::external_body]
+pub fn conditional_negate_projective_niels(a: &mut ProjectiveNielsPoint, choice: Choice)
+    requires
+        fe51_limbs_bounded(&old(a).Y_plus_X, 54),
+        fe51_limbs_bounded(&old(a).Y_minus_X, 54),
+        fe51_limbs_bounded(&old(a).Z, 54),
+        fe51_limbs_bounded(&old(a).T2d, 54),
+    ensures
+        !choice_is_true(choice) ==> *a == *old(a),
+        choice_is_true(choice) ==> *a == negate_projective_niels(*old(a)),
+        fe51_limbs_bounded(&a.Y_plus_X, 54),
+        fe51_limbs_bounded(&a.Y_minus_X, 54),
+        fe51_limbs_bounded(&a.Z, 54),
+        fe51_limbs_bounded(&a.T2d, 54),
 {
     a.conditional_negate(choice);
 }

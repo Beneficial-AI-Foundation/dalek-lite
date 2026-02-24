@@ -861,7 +861,7 @@ impl Straus {
                     0 <= k < points_vec@.len() ==> is_well_formed_edwards_point(
                         #[trigger] points_vec@[k],
                     ),
-                // Each table is valid and has bounded limbs
+                // Each table is valid, has bounded limbs, and entries are valid
                 forall|k: int|
                     0 <= k < idx ==> {
                         &&& is_valid_lookup_table_projective(
@@ -870,6 +870,10 @@ impl Straus {
                             8,
                         )
                         &&& lookup_table_projective_limbs_bounded(lookup_tables@[k].0)
+                        &&& forall|j: int|
+                            0 <= j < 8 ==> is_valid_projective_niels_point(
+                                #[trigger] lookup_tables@[k].0[j],
+                            )
                     },
             decreases points_vec.len() - idx,
         {

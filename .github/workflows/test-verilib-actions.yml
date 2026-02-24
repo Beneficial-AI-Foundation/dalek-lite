@@ -1,0 +1,58 @@
+# Test workflow for verilib-cli GitHub Actions
+# This is a temporary workflow for testing the verilib-cli action
+
+name: Test verilib Actions
+
+on:
+  workflow_dispatch:  # Manual trigger for testing
+  push:
+    branches:
+      - la/test-verilib-actions
+
+jobs:
+  test-generate:
+    name: Test Generate Mode
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run verilib action (generate mode)
+        id: verilib
+        uses: beneficial-ai-foundation/verilib-cli/action@la/create_github_actions
+        with:
+          project-path: .
+          mode: generate
+
+      - name: Show results
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Verified: ${{ steps.verilib.outputs.verified-count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Total: ${{ steps.verilib.outputs.total-functions }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Results path: ${{ steps.verilib.outputs.results-path }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: verilib-results
+          # Use archive to avoid issues with special characters (<, >) in filenames
+          path: ${{ steps.verilib.outputs.results-archive }}
+          retention-days: 7
+
+  # Test check mode (would fail if .verilib doesn't exist, so depends on generate)
+  # Uncomment after generate mode works
+  # test-check:
+  #   name: Test Check Mode
+  #   needs: test-generate
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/download-artifact@v4
+  #       with:
+  #         name: verilib-results
+  #         path: .verilib/
+  #     - uses: beneficial-ai-foundation/verilib-cli/action@la/create_github_actions
+  #       with:
+  #         project-path: .
+  #         mode: check

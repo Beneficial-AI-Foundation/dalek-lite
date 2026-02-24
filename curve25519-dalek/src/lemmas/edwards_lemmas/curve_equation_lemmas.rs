@@ -2219,7 +2219,7 @@ pub proof fn lemma_negate_projective_niels_preserves_validity(pt: ProjectiveNiel
         lemma_square_mod_noop(xp);
     }
     // Segre relation: field_mul(neg_X, Y) == field_mul(Z, neg_T)
-    assert(math_is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp)) by {
+    assert(is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp)) by {
         lemma_field_neg_mul_left(xp, yp);
         lemma_field_mul_comm(zp, neg_tp);
         lemma_field_neg_mul_left(tp, zp);

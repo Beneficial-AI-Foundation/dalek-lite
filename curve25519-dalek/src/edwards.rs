@@ -1252,7 +1252,7 @@ impl ConstantTimeEq for EdwardsPoint {
                 lemma_ct_eq_iff_canonical_nat(&yz, &yz_prime);
             }
 
-            // Z-coordinates are nonzero (from math_is_valid_extended_edwards_point in type invariant)
+            // Z-coordinates are nonzero (from is_valid_extended_edwards_point in type invariant)
             assert(z1 % p() != 0);
             assert(z2 % p() != 0);
 

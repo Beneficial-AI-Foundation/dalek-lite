@@ -641,6 +641,43 @@ proof {
 **Cause:** `exec const` values cannot be referenced in `spec fn` bodies.
 **Solution:** Create a separate `spec fn` with duplicated literal values. Bridge the two with an `ensures` clause on the exec const.
 
+#### Issue: Type invariant properties unavailable on `choose` witnesses
+**Cause:** When `exists|point: EdwardsPoint| ...` is used in a spec predicate and you `choose` a witness, the witness is spec-mode. `use_type_invariant` only works on exec/proof-mode values.
+**Solution:** Strengthen the existential to include all needed type invariant properties directly:
+```rust
+pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
+    exists|point: EdwardsPoint|
+        is_valid_edwards_point(point)
+        && edwards_point_limbs_bounded(point)
+        && sum_of_limbs_bounded(&edwards_y(point), &edwards_x(point), u64::MAX)
+        && #[trigger] affine_niels_corresponds_to_edwards(niels, point)
+}
+```
+Now `choose` witnesses carry the properties directly. Use public accessors (`edwards_y`, `edwards_x`) instead of `pub(crate)` fields in `pub open spec fn` bodies (Verus error: "disallowed: field expression for an opaque datatype").
+
+#### Issue: Solver can't connect field access to accessor-based predicates
+**Cause:** Type invariant gives `sum_of_limbs_bounded(&self.Y, &self.X, ...)` but the existential uses `sum_of_limbs_bounded(&edwards_y(point), &edwards_x(point), ...)`. The solver may not equate these automatically through references.
+**Solution:** Add explicit bridge asserts:
+```rust
+proof {
+    use_type_invariant(*self);
+    assert(edwards_y(*self) == self.Y);
+    assert(edwards_x(*self) == self.X);
+    assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+    assert(sum_of_limbs_bounded(&edwards_y(*self), &edwards_x(*self), u64::MAX));
+}
+```
+
+#### Issue: rlimit exceeded in loop with bundled predicate
+**Cause:** Quantified invariant predicates (e.g., `straus_vt_input_valid` with 6 `forall` quantifiers) cause excessive quantifier instantiation when Z3 sees them throughout the loop body.
+**Solution:** Scope expensive lemma calls inside `assert(...) by { ... }` blocks:
+```rust
+assert(completed_point_as_affine_edwards(t) == ...) by {
+    axiom_edwards_add_associative(a0, a1, b0, b1, c0, c1);
+}
+```
+This limits what Z3 learns from each lemma to just the asserted fact, preventing quantifier explosion. Use `#[verifier::opaque]` only when assert-by scoping is insufficient (e.g., recursive specs, many `&&&` conjuncts).
+
 #### Issue: "Nested proof blocks not supported"
 **Solution:** Flatten proof structure
 ```rust
@@ -1055,13 +1092,12 @@ Algebraic expansion lemmas for Edwards point addition/subtraction:
 9. **Prefer by-value lemma parameters:** Use `lemma(x: T)` instead of `lemma(x: &T)` for proof lemmas - cleaner ergonomics in proof contexts without borrowing concerns
 10. **Remove trivial wrapper specs:** If a spec is just `wrapper(x) = underlying(x, constant)`, remove the wrapper and use the underlying function directly with renamed lemmas
 11. **Extract common loop proof logic:** When two loops have similar proof structure, create a helper lemma to reduce duplication
-12. **Avoid SMT blowups (`rlimit`):** Keep loop invariants small; avoid unfolding big recursive/`&&&`-heavy specs inside invariants.
-13. **Use `#[verifier::opaque]` + targeted `reveal`:**
-    - Mark expensive `spec fn` predicates as `#[verifier::opaque]` so Verus doesn't inline them everywhere.
-    - Only unfold locally where needed via `reveal(TypeOrModule::spec_fn_name);` inside a helper lemma/proof block.
-    - Pattern used in `mul_bits_be`: keep `MontgomeryPoint::ladder_invariant(...)` opaque in the loop invariant, and `reveal(MontgomeryPoint::ladder_invariant);` only inside a small helper lemma (e.g., `lemma_ladder_invariant_swap`) to extract conjuncts.
-    - **When to use opaque:** Recursive specs, specs with many `&&&` conjuncts, specs with quantifiers, or any spec causing rlimit timeouts.
-    - **When NOT to use opaque:** Simple predicates (e.g., `x < bound`, single field access, trivial arithmetic) where Z3 benefits from seeing the definition inline. Adding opaque to simple specs just creates unnecessary reveal boilerplate.
+12. **Avoid SMT blowups (`rlimit`):** Keep loop invariants small; avoid unfolding big recursive/`&&&`-heavy specs inside invariants. When a loop body hits rlimit, **first try** scoping expensive lemma calls in `assert(...) by { ... }` blocks -- this limits what Z3 learns from each call without hiding definitions.
+13. **Use `#[verifier::opaque]` + targeted `reveal` as last resort:**
+    - Only when assert-by scoping is insufficient (recursive specs, specs with many `&&&` conjuncts or quantifiers).
+    - Mark the `spec fn` as `#[verifier::opaque]` and unfold locally via `reveal(spec_fn_name);` inside a helper lemma/proof block.
+    - Pattern used in `mul_bits_be`: keep `MontgomeryPoint::ladder_invariant(...)` opaque, `reveal` only inside a small helper lemma (e.g., `lemma_ladder_invariant_swap`).
+    - **When NOT to use opaque:** Simple predicates, bundled loop invariant predicates where assert-by scoping of lemma calls inside the loop body suffices. Adding opaque to these creates unnecessary extract/establish boilerplate.
 14. **When quantifiers don't instantiate:** If a callee ensures `forall|k| ...`, add small, explicit `assert(...)` facts (often with the right trigger shape) right before the call to help Verus/Z3 pick the intended instantiation.
 15. **Naming convention — `axiom_` vs `lemma_`:** Functions with `admit()` bodies must use the `axiom_` prefix; fully proved functions use the `lemma_` prefix. This makes it easy to track the trusted computing base (`grep axiom_`). When you prove an axiom, rename it from `axiom_` to `lemma_` (and update all call sites with `replace_all`).
 16. **Reduce rlimit by extracting helper lemmas:** When a function hits CI rlimit failures, prefer extracting spec-level proof reasoning into a separate `proof fn` rather than bumping `#[verifier::rlimit(N)]`. The extracted lemma takes the key spec-level values as parameters and proves the postcondition. The original function then just bridges exec-level facts to spec-level preconditions and calls the helper. This keeps solver pressure low without raising limits.

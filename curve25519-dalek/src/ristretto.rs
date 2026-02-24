@@ -1107,9 +1107,15 @@ impl RistrettoPoint {
             use_type_invariant(t2);
             use_type_invariant(t4);
             use_type_invariant(t6);
-            lemma_unfold_edwards(t2);
-            lemma_unfold_edwards(t4);
-            lemma_unfold_edwards(t6);
+            assert(is_well_formed_edwards_point(t2)) by {
+                lemma_unfold_edwards(t2);
+            }
+            assert(is_well_formed_edwards_point(t4)) by {
+                lemma_unfold_edwards(t4);
+            }
+            assert(is_well_formed_edwards_point(t6)) by {
+                lemma_unfold_edwards(t6);
+            }
         }
         let p0 = self.0;  /* ORIGINAL CODE: self.0 */
         let p1 = &self.0 + &t2;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[2] */

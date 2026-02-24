@@ -2838,6 +2838,12 @@ impl Scalar {
                                 assert(pow2(1) == 2) by {
                                     lemma2_to64();
                                 };
+                                assert(pow2(gap) == 2 * pow2((gap - 1) as nat));
+                                vstd::arithmetic::div_mod::lemma_mod_multiples_vanish(
+                                    pow2((gap - 1) as nat) as int,
+                                    0int,
+                                    2int,
+                                );
                             };
                             assert(window % 2 == 1) by (bit_vector)
                                 requires

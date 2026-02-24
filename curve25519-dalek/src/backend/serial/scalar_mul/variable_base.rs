@@ -165,6 +165,8 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
             fe51_limbs_bounded(&tmp1.T, 54),
             // Table validity (from LookupTable::from postcondition)
             is_valid_lookup_table_projective(lookup_table.0, *point, 8),
+            forall|k: int|
+                0 <= k < 8 ==> is_valid_projective_niels_point(#[trigger] lookup_table.0[k]),
             // Radix-16 reconstruction equality (from as_radix_16 postcondition)
             reconstruct_radix_16(scalar_digits@) == scalar_as_nat(scalar) as int,
             // Functional correctness: Horner partial evaluation

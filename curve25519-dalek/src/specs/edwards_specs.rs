@@ -616,16 +616,13 @@ pub open spec fn projective_niels_corresponds_to_edwards(
 }
 
 /// Check if a ProjectiveNielsPoint is valid
-/// A valid ProjectiveNielsPoint must correspond to some valid EdwardsPoint
+/// A valid ProjectiveNielsPoint must correspond to some valid, limb-bounded EdwardsPoint.
+/// The limb-bounded condition is needed because `choose` witnesses are spec-mode
+/// (no type invariant access), so limb bounds must be carried explicitly.
 pub open spec fn is_valid_projective_niels_point(niels: ProjectiveNielsPoint) -> bool {
-    // A ProjectiveNielsPoint is valid if there exists an EdwardsPoint that:
-    // 1. Is valid itself
-    // 2. The niels point corresponds to it
     exists|point: EdwardsPoint|
-        is_valid_edwards_point(point) && #[trigger] projective_niels_corresponds_to_edwards(
-            niels,
-            point,
-        )
+        is_valid_edwards_point(point) && edwards_point_limbs_bounded(point)
+            && #[trigger] projective_niels_corresponds_to_edwards(niels, point)
 }
 
 /// Extract affine coordinates (x, y) from a ProjectiveNielsPoint

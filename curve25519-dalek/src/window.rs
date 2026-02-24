@@ -727,22 +727,19 @@ impl NafLookupTable5<ProjectiveNielsPoint> {
             x & 1 == 1,  // x is odd
             x < 16,  // x in {1, 3, 5, 7, 9, 11, 13, 15}
             naf_lookup_table5_projective_limbs_bounded(self.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] self.0[j]),
         ensures
             result == self.0[(x / 2) as int],
             fe51_limbs_bounded(&result.Y_plus_X, 54),
             fe51_limbs_bounded(&result.Y_minus_X, 54),
             fe51_limbs_bounded(&result.Z, 54),
             fe51_limbs_bounded(&result.T2d, 54),
-            // The result is a valid ProjectiveNielsPoint
             is_valid_projective_niels_point(result),
     {
         #[cfg(not(verus_keep_ghost))]
         {
             debug_assert_eq!(x & 1, 1);
             debug_assert!(x < 16);
-        }
-        proof {
-            assume(is_valid_projective_niels_point(self.0[(x / 2) as int]));
         }
         self.0[x / 2]
     }
@@ -795,6 +792,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
         ensures
             is_valid_naf_lookup_table5_projective(result.0, *A),
             naf_lookup_table5_projective_limbs_bounded(result.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] result.0[j]),
     {
         proof {
             use_type_invariant(A);
@@ -884,6 +882,9 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
                 fe51_limbs_bounded(&entry.Y_plus_X, 54) && fe51_limbs_bounded(&entry.Y_minus_X, 54)
                     && fe51_limbs_bounded(&entry.Z, 54) && fe51_limbs_bounded(&entry.T2d, 54)
             } by {}
+            assert forall|j: int| 0 <= j < 8 implies is_valid_projective_niels_point(
+                #[trigger] result.0[j],
+            ) by {}
         }
         result
     }

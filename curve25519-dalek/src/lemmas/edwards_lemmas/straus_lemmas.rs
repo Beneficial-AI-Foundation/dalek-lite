@@ -388,7 +388,7 @@ pub open spec fn straus_vt_input_valid(
             #[trigger] nafs_seqs[k],
             5,
         )
-    // Table validity + 54-bit limb bounds
+    // Table validity + 54-bit limb bounds + per-entry validity
     &&& forall|k: int|
         0 <= k < n_int ==> {
             &&& is_valid_naf_lookup_table5_projective(
@@ -396,6 +396,10 @@ pub open spec fn straus_vt_input_valid(
                 spec_points[k].unwrap(),
             )
             &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables_view[k].0)
+            &&& forall|j: int|
+                0 <= j < 8 ==> is_valid_projective_niels_point(
+                    #[trigger] lookup_tables_view[k].0[j],
+                )
         }
         // Ghost-runtime consistency
     &&& forall|k: int|

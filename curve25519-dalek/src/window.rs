@@ -25,13 +25,22 @@ use crate::traits::Identity;
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::subtle_assumes::{
-    conditional_assign_generic, conditional_negate_generic, ct_eq_u16,
+    conditional_assign_generic, conditional_negate_affine_niels, conditional_negate_generic,
+    ct_eq_u16,
 };
 use crate::edwards::EdwardsPoint;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::subtle_assumes::choice_is_true;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
+    lemma_identity_affine_niels_valid, lemma_negate_affine_niels_preserves_validity,
+};
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded;
@@ -103,12 +112,13 @@ impl LookupTable<AffineNielsPoint> {
     ///
     /// Where P is the base point that was used to create this lookup table.
     /// This table stores [P, 2P, 3P, ..., 8P] (for radix-16).
-    // TODO: prove select correctness once ct primitives are verified.
     pub fn select(&self, x: i8) -> (result: AffineNielsPoint)
         requires
             -8 <= x,
             x <= 8,
             lookup_table_affine_limbs_bounded(self.0),
+            // Not derivable from limb bounds alone; each entry must correspond to some EdwardsPoint.
+            forall|j: int| 0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] self.0[j]),
         ensures
     // Formal specification for all cases:
 
@@ -122,9 +132,6 @@ impl LookupTable<AffineNielsPoint> {
             // The result is a valid AffineNielsPoint
             is_valid_affine_niels_point(result),
     {
-        proof {
-            assume(false);
-        }
         // Debug assertions from original macro - ignored by Verus
         #[cfg(not(verus_keep_ghost))]
         {
@@ -134,11 +141,62 @@ impl LookupTable<AffineNielsPoint> {
 
         // Compute xabs = |x|
         let xmask = x as i16 >> 7;
+        proof {
+            // xmask is 0 or -1, so x + xmask doesn't overflow i16
+            assert((x as i16 >> 7u32) == 0i16 || (x as i16 >> 7u32) == -1i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+            ;
+        }
         let xabs = (x as i16 + xmask) ^ xmask;
+
+        proof {
+            // Bit-vector facts about xmask, xabs
+            // In Verus spec mode, i16 + i16 returns int (for overflow safety),
+            // making `(x as i16 + xmask) ^ xmask` fail because int has no XOR.
+            // Work around by binding the sum as i16 so XOR stays in bitvector land.
+            let xsum: i16 = (x as i16 + xmask) as i16;
+            assert(x >= 0i8 ==> xabs == x as i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+            assert(x < 0i8 ==> xabs == -(x as i16)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+        }
 
         // Set t = 0 * P = identity
         let mut t = AffineNielsPoint::identity();
-        for j in 1..9 {
+        proof {
+            assert(1u64 < (1u64 << 54u64)) by (bit_vector);
+            assert(is_valid_affine_niels_point(t)) by {
+                lemma_identity_affine_niels_valid();
+            }
+        }
+
+        for j in 1..9
+            invariant
+        // CT scan state: t holds the right value based on progress
+
+                (xabs > 0 && (xabs as int) < j) ==> t == self.0[(xabs - 1) as int],
+                (xabs == 0 || (xabs as int) >= j) ==> t == identity_affine_niels(),
+                // Limb bounds preserved
+                fe51_limbs_bounded(&t.y_plus_x, 54),
+                fe51_limbs_bounded(&t.y_minus_x, 54),
+                fe51_limbs_bounded(&t.xy2d, 54),
+                // Validity preserved
+                is_valid_affine_niels_point(t),
+                // Table state (from preconditions, carry through loop)
+                lookup_table_affine_limbs_bounded(self.0),
+                forall|k: int| 0 <= k < 8 ==> is_valid_affine_niels_point(#[trigger] self.0[k]),
+        {
             // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
             /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
             let c = ct_eq_u16(&(xabs as u16), &(j as u16));
@@ -147,9 +205,29 @@ impl LookupTable<AffineNielsPoint> {
         }
         // Now t == |x| * P.
 
+        let ghost old_t = t;
         let neg_mask = Choice::from((xmask & 1) as u8);
+        proof {
+            assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+            assert(x >= 0i8 ==> ((xmask & 1i16) as u8 == 0u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+        }
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
-        conditional_negate_generic(&mut t, neg_mask);
+        conditional_negate_affine_niels(&mut t, neg_mask);
+        proof {
+            if x < 0 {
+                assert(is_valid_affine_niels_point(t)) by {
+                    lemma_negate_affine_niels_preserves_validity(old_t);
+                }
+            }
+        }
         // Now t == x * P.
 
         t
@@ -366,6 +444,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         ensures
             is_valid_lookup_table_affine(result.0, *P, 8 as nat),
             lookup_table_affine_limbs_bounded(result.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] result.0[j]),
     {
         /* ORIGINAL CODE: for generic $name, $size, and conv_range.
 
@@ -415,6 +494,11 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         proof {
             assume(is_valid_lookup_table_affine(result.0, *P, 8 as nat));
             assume(lookup_table_affine_limbs_bounded(result.0));
+            // Per-entry validity: each entry was produced by as_affine_niels on a valid
+            // EdwardsPoint, which ensures is_valid_affine_niels_point. This surfaces the
+            // existing assumes at lines 398/408 (inside the loop) as a postcondition.
+            assume(forall|j: int|
+                0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] result.0[j]));
         }
         result
     }

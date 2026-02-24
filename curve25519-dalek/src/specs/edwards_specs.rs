@@ -119,7 +119,7 @@ pub open spec fn is_valid_edwards_basepoint_table(
     basepoint: (nat, nat),
 ) -> bool {
     // Each of the 32 LookupTables contains correct multiples of (16²)^i * B
-    // and has bounded limbs
+    // and has bounded limbs and valid entries
     forall|i: int|
         #![trigger table.0[i]]
         0 <= i < 32 ==> {
@@ -129,6 +129,8 @@ pub open spec fn is_valid_edwards_basepoint_table(
                 8,
             )
             &&& crate::specs::window_specs::lookup_table_affine_limbs_bounded(table.0[i].0)
+            &&& forall|j: int|
+                0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] table.0[i].0[j])
         }
 }
 
@@ -674,13 +676,16 @@ pub open spec fn affine_niels_corresponds_to_edwards(
 }
 
 /// Check if an AffineNielsPoint is valid
-/// A valid AffineNielsPoint must correspond to some valid EdwardsPoint
+/// A valid AffineNielsPoint must correspond to some valid, well-formed EdwardsPoint.
+/// The existential includes limb bounds and sum_of_limbs so that `choose` witnesses
+/// carry the full type-invariant strength without needing an external_body bridge lemma.
 pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
     exists|point: EdwardsPoint|
-        is_valid_edwards_point(point) && #[trigger] affine_niels_corresponds_to_edwards(
-            niels,
-            point,
-        )
+        is_valid_edwards_point(point) && edwards_point_limbs_bounded(point) && sum_of_limbs_bounded(
+            &edwards_y(point),
+            &edwards_x(point),
+            u64::MAX,
+        ) && #[trigger] affine_niels_corresponds_to_edwards(niels, point)
 }
 
 /// Extract affine coordinates (x, y) from an AffineNielsPoint

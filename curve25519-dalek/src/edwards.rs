@@ -1435,6 +1435,7 @@ impl EdwardsPoint {
             is_valid_affine_niels_point(result),
     {
         proof {
+            use_type_invariant(*self);
             lemma_unfold_edwards(*self);
             // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (invert/mul precondition)
             lemma_edwards_point_weaken_to_54(self);
@@ -1492,6 +1493,11 @@ impl EdwardsPoint {
             lemma_field_mul_assoc(xy_val, 2, d);
 
             assert(affine_niels_corresponds_to_edwards(result, *self));
+            assert(edwards_point_limbs_bounded(*self));
+            assert(edwards_y(*self) == self.Y);
+            assert(edwards_x(*self) == self.X);
+            assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+            assert(sum_of_limbs_bounded(&edwards_y(*self), &edwards_x(*self), u64::MAX));
 
             // Validity: the existential witness is *self
             assert(is_valid_affine_niels_point(result));
@@ -3141,6 +3147,13 @@ impl BasepointTable for EdwardsBasepointTable {
                 forall|j: int|
                     #![trigger table.0[j as int]]
                     0 <= j < i ==> lookup_table_affine_limbs_bounded(table.0[j as int].0),
+                // All table entries filled so far have valid AffineNielsPoint entries
+                forall|j: int|
+                    #![trigger table.0[j as int]]
+                    0 <= j < i ==> forall|k: int|
+                        0 <= k < 8 ==> is_valid_affine_niels_point(
+                            #[trigger] table.0[j as int].0[k],
+                        ),
         {
             // P = (16²)^i * basepoint
             table.0[i] = LookupTableRadix16::from(&P);
@@ -3149,6 +3162,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 // From LookupTableRadix16::from postcondition, we have:
                 // is_valid_lookup_table_affine_coords(table.0[i].0, edwards_point_as_affine(P), 8)
                 // lookup_table_affine_limbs_bounded(table.0[i].0)
+                // forall|j| 0 <= j < 8 ==> is_valid_affine_niels_point(table.0[i].0[j])
                 //
                 // From loop invariant, we know:
                 // edwards_point_as_affine(P) == edwards_scalar_mul(basepoint_affine, pow256(i))
@@ -3161,6 +3175,9 @@ impl BasepointTable for EdwardsBasepointTable {
                 ));
                 // Limb bounds from postcondition
                 assert(lookup_table_affine_limbs_bounded(table.0[i as int].0));
+                // Per-entry validity from From postcondition
+                assert(forall|k: int|
+                    0 <= k < 8 ==> is_valid_affine_niels_point(#[trigger] table.0[i as int].0[k]));
             }
 
             P = P.mul_by_pow_2(4 + 4);  // P = P * 2^8 = P * 256 = P * 16²
@@ -3206,6 +3223,8 @@ impl BasepointTable for EdwardsBasepointTable {
         proof {
             reveal(is_valid_edwards_basepoint_table);
             assert(lookup_table_affine_limbs_bounded((*self).0[0int].0));
+            assert(forall|j: int|
+                0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] (*self).0[0int].0[j]));
         }
         let selected = self.0[0].select(1);
         proof {
@@ -3384,11 +3403,14 @@ impl BasepointTable for EdwardsBasepointTable {
                     // Preconditions for `select`.
                     assert(-8 <= a[i as int] && a[i as int] <= 8);
 
-                    // Table limb bounds come from `is_valid_edwards_basepoint_table`.
+                    // Table limb bounds and per-entry validity come from `is_valid_edwards_basepoint_table`.
                     let ti: int = (i / 2) as int;
                     assert(0 <= ti < 32);
-                    // Establish select precondition via the table validity.
                     assert(lookup_table_affine_limbs_bounded(tables[ti].0)) by {
+                        reveal(is_valid_edwards_basepoint_table);
+                    }
+                    assert(forall|j: int|
+                        0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] tables[ti].0[j])) by {
                         reveal(is_valid_edwards_basepoint_table);
                     }
                 }
@@ -3516,11 +3538,14 @@ impl BasepointTable for EdwardsBasepointTable {
                     // Preconditions for `select`.
                     assert(-8 <= a[i as int] && a[i as int] <= 8);
 
-                    // Table limb bounds come from `is_valid_edwards_basepoint_table`.
+                    // Table limb bounds and per-entry validity come from `is_valid_edwards_basepoint_table`.
                     let ti: int = (i / 2) as int;
                     assert(0 <= ti < 32);
-                    // Establish select precondition via the table validity.
                     assert(lookup_table_affine_limbs_bounded(tables[ti].0)) by {
+                        reveal(is_valid_edwards_basepoint_table);
+                    }
+                    assert(forall|j: int|
+                        0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] tables[ti].0[j])) by {
                         reveal(is_valid_edwards_basepoint_table);
                     }
                 }

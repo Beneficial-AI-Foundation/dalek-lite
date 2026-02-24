@@ -1468,6 +1468,9 @@ impl EdwardsPoint {
         ensures
             affine_niels_corresponds_to_edwards(result, *self),
             is_valid_affine_niels_point(result),
+            fe51_limbs_bounded(&result.y_plus_x, 54),
+            fe51_limbs_bounded(&result.y_minus_x, 54),
+            fe51_limbs_bounded(&result.xy2d, 54),
     {
         proof {
             use_type_invariant(*self);
@@ -1501,6 +1504,9 @@ impl EdwardsPoint {
         let result = AffineNielsPoint { y_plus_x: &y + &x, y_minus_x: &y - &x, xy2d };
 
         proof {
+            // y_plus_x is 53-bounded from add(52,52); weaken to 54
+            lemma_fe51_limbs_bounded_weaken(&result.y_plus_x, 53, 54);
+
             // Prove affine_niels_corresponds_to_edwards(result, *self)
             let X = fe51_as_canonical_nat(&self.X);
             let Y = fe51_as_canonical_nat(&self.Y);

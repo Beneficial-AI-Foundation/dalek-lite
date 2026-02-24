@@ -2030,20 +2030,25 @@ impl Scalar {
                 let scalar_i = u8_32_as_nat(&original_inputs[i as int].bytes);
 
                 // Structural proofs for pack() canonicity (unconditional)
-                lemma_group_order_bound();
-                lemma_pow2_strictly_increases(255, 256);
-                lemma_small_mod(result_m, pow2(256));
+                assert(result_m < pow2(256)) by {
+                    lemma_group_order_bound();
+                    lemma_pow2_strictly_increases(255, 256);
+                }
+                assert(result_m % pow2(256) == result_m) by {
+                    lemma_small_mod(result_m, pow2(256));
+                }
 
                 if product_nonzero {
-                    // Prove inputs[i] is inverse of original_inputs[i]
-                    lemma_backward_loop_is_inverse(
-                        acc_before_val,
-                        scratch_val,
-                        result_m,
-                        result,
-                        original_inputs,
-                        i as int,
-                    );
+                    assert((result * scalar_i) % L == 1nat) by {
+                        lemma_backward_loop_is_inverse(
+                            acc_before_val,
+                            scratch_val,
+                            result_m,
+                            result,
+                            original_inputs,
+                            i as int,
+                        );
+                    }
                     assert((scalar_i * result) % L == (result * scalar_i) % L) by {
                         lemma_mul_is_commutative(scalar_i as int, result as int);
                     };
@@ -2051,13 +2056,16 @@ impl Scalar {
                     // Prove acc invariant is maintained
                     let input_val = scalar52_as_nat(&input_unpacked);
                     let acc_after_val = scalar52_as_nat(&acc);
-                    lemma_backward_loop_acc_invariant(
-                        acc_before_val,
-                        input_val,
-                        acc_after_val,
-                        original_inputs,
-                        i as int,
-                    );
+                    assert((acc_after_val * partial_product(original_inputs, i as int)) % L == 1nat)
+                        by {
+                        lemma_backward_loop_acc_invariant(
+                            acc_before_val,
+                            input_val,
+                            acc_after_val,
+                            original_inputs,
+                            i as int,
+                        );
+                    }
                 }
             }
             /* ORIGINAL CODE (inlined before proof block):

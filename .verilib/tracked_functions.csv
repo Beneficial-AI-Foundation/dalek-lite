@@ -1,0 +1,265 @@
+function,module,link,has_spec,has_proof
+& 'a AffineNielsPoint::neg,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L1993,yes,yes
+& 'a EdwardsBasepointTable::mul,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3675,yes,yes
+& 'a EdwardsPoint::add,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L1189,yes,yes
+& 'a EdwardsPoint::add,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L1579,yes,yes
+& 'a EdwardsPoint::add,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2044,yes,yes
+& 'a EdwardsPoint::mul,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2587,yes,yes
+& 'a EdwardsPoint::neg,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2424,yes,yes
+& 'a EdwardsPoint::sub,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L1393,yes,yes
+& 'a EdwardsPoint::sub,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L1750,yes,yes
+& 'a EdwardsPoint::sub,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2171,yes,yes
+& 'a ProjectiveNielsPoint::neg,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L1912,yes,yes
+& 'a RistrettoBasepointTable::mul,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2198,yes,yes
+& 'a RistrettoPoint::add,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1524,yes,yes
+& 'a RistrettoPoint::mul,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1845,yes,yes
+& 'a RistrettoPoint::neg,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1787,yes,yes
+& 'a RistrettoPoint::sub,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1578,yes,yes
+& 'a Scalar::mul,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2610,yes,yes
+& 'a Scalar::mul,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1866,yes,yes
+& 'b Scalar::mul,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3697,yes,yes
+& 'b Scalar::mul,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2222,yes,yes
+& FieldElement51::add,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L231,yes,yes
+& FieldElement51::mul,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L484,yes,yes
+& FieldElement51::neg,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L657,yes,yes
+& FieldElement51::sub,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L336,yes,yes
+& MontgomeryPoint::mul,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L2652,yes,yes
+& Scalar::add,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L667,yes,yes
+& Scalar::mul,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L2766,yes,yes
+& Scalar::mul,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L586,yes,yes
+& Scalar::neg,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L858,yes,yes
+& Scalar::sub,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L739,yes,yes
+AffineNielsPoint::conditional_assign,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L544,yes,yes
+AffineNielsPoint::conditional_select,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L507,yes,yes
+AffineNielsPoint::default,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L320,yes,yes
+AffineNielsPoint::identity,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L307,yes,yes
+AffineNielsPoint::zeroize,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L220,yes,yes
+BatchCompressState::efgh,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L733,yes,yes
+BatchCompressState::from,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L751,yes,
+CompletedPoint::as_extended,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L833,yes,yes
+CompletedPoint::as_projective,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L706,yes,yes
+CompressedEdwardsY::as_bytes,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L257,yes,yes
+CompressedEdwardsY::ct_eq,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L233,yes,yes
+CompressedEdwardsY::decompress,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L277,yes,yes
+CompressedEdwardsY::default,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L904,yes,yes
+CompressedEdwardsY::from_slice,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L920,yes,yes
+CompressedEdwardsY::identity,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L818,yes,yes
+CompressedEdwardsY::to_bytes,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L265,yes,yes
+CompressedEdwardsY::try_from,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L658,yes,yes
+CompressedEdwardsY::zeroize,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L993,yes,yes
+CompressedRistretto::as_bytes,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L278,yes,yes
+CompressedRistretto::ct_eq,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L258,yes,yes
+CompressedRistretto::decompress,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L336,yes,
+CompressedRistretto::default,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L504,yes,yes
+CompressedRistretto::from_slice,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L292,yes,
+CompressedRistretto::identity,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L320,yes,yes
+CompressedRistretto::to_bytes,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L270,yes,yes
+CompressedRistretto::zeroize,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2416,yes,yes
+EdwardsBasepointTable::basepoint,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3229,yes,yes
+EdwardsBasepointTable::create,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3110,yes,yes
+EdwardsBasepointTable::mul_base,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3365,yes,yes
+EdwardsPoint::add_assign,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2128,yes,yes
+EdwardsPoint::as_affine_niels,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1445,yes,yes
+EdwardsPoint::as_projective,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1425,yes,yes
+EdwardsPoint::as_projective_niels,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1317,yes,yes
+EdwardsPoint::compress,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1674,yes,yes
+EdwardsPoint::conditional_select,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1147,yes,yes
+EdwardsPoint::ct_eq,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1197,yes,yes
+EdwardsPoint::default,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L979,yes,yes
+EdwardsPoint::double,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1960,yes,yes
+EdwardsPoint::eq,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1288,yes,yes
+EdwardsPoint::identity,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L946,yes,yes
+EdwardsPoint::is_small_order,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3873,yes,yes
+EdwardsPoint::is_torsion_free,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3919,yes,yes
+EdwardsPoint::is_valid,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1042,yes,yes
+EdwardsPoint::mul_assign,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2554,yes,yes
+EdwardsPoint::mul_base,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2631,yes,yes
+EdwardsPoint::mul_base_clamped,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2690,yes,yes
+EdwardsPoint::mul_by_cofactor,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3744,yes,yes
+EdwardsPoint::mul_by_pow_2,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L3768,yes,yes
+EdwardsPoint::mul_clamped,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2655,yes,yes
+EdwardsPoint::multiscalar_mul_verus,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2978,yes,yes
+EdwardsPoint::neg,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2532,yes,yes
+EdwardsPoint::nonspec_map_to_curve_verus,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1837,yes,yes
+EdwardsPoint::optional_multiscalar_mul_verus,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2900,yes,yes
+EdwardsPoint::sub_assign,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2270,yes,yes
+EdwardsPoint::sum,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2382,yes,yes
+EdwardsPoint::sum_of_slice,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2302,yes,yes
+EdwardsPoint::to_montgomery,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1540,yes,yes
+EdwardsPoint::vartime_double_scalar_mul_basepoint,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L2852,yes,yes
+EdwardsPoint::zeroize,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L1010,yes,yes
+FieldElement51::add_assign,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L175,yes,yes
+FieldElement51::as_bytes,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L1022,yes,yes
+FieldElement51::conditional_assign,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L736,yes,yes
+FieldElement51::conditional_select,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L674,yes,yes
+FieldElement51::conditional_swap,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L693,yes,yes
+FieldElement51::from_bytes,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L926,yes,yes
+FieldElement51::from_limbs,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L777,yes,yes
+FieldElement51::mul_assign,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L443,yes,yes
+FieldElement51::negate,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L808,yes,yes
+FieldElement51::pow2k,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L1145,yes,yes
+FieldElement51::reduce,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L864,yes,yes
+FieldElement51::square,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L1302,yes,yes
+FieldElement51::square2,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L1325,yes,yes
+FieldElement51::sub_assign,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L291,yes,yes
+FieldElement51::zeroize,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L131,yes,yes
+FieldElement::batch_invert,curve25519_dalek::field,curve25519-dalek/src/field.rs#L520,yes,yes
+FieldElement::ct_eq,curve25519_dalek::field,curve25519-dalek/src/field.rs#L153,yes,yes
+FieldElement::eq,curve25519_dalek::field,curve25519-dalek/src/field.rs#L113,yes,yes
+FieldElement::invert,curve25519_dalek::field,curve25519-dalek/src/field.rs#L805,yes,yes
+FieldElement::invsqrt,curve25519_dalek::field,curve25519-dalek/src/field.rs#L1287,yes,yes
+FieldElement::is_negative,curve25519_dalek::field,curve25519-dalek/src/field.rs#L226,yes,yes
+FieldElement::is_zero,curve25519_dalek::field,curve25519-dalek/src/field.rs#L247,yes,yes
+FieldElement::pow22501,curve25519_dalek::field,curve25519-dalek/src/field.rs#L284,yes,yes
+FieldElement::pow_p58,curve25519_dalek::field,curve25519-dalek/src/field.rs#L842,yes,yes
+FieldElement::sqrt_ratio_i,curve25519_dalek::field,curve25519-dalek/src/field.rs#L924,yes,yes
+LookupTable <AffineNielsPoint>::default,curve25519_dalek::window,curve25519-dalek/src/window.rs#L401,yes,yes
+LookupTable <AffineNielsPoint>::from,curve25519_dalek::window,curve25519-dalek/src/window.rs#L571,yes,yes
+LookupTable <AffineNielsPoint>::select,curve25519_dalek::window,curve25519-dalek/src/window.rs#L119,yes,yes
+LookupTable <ProjectiveNielsPoint>::default,curve25519_dalek::window,curve25519-dalek/src/window.rs#L414,yes,yes
+LookupTable <ProjectiveNielsPoint>::from,curve25519_dalek::window,curve25519-dalek/src/window.rs#L449,yes,yes
+LookupTable <ProjectiveNielsPoint>::select,curve25519_dalek::window,curve25519-dalek/src/window.rs#L247,yes,yes
+MontgomeryPoint::as_bytes,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1098,yes,yes
+MontgomeryPoint::ct_eq,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L170,yes,yes
+MontgomeryPoint::default,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L152,yes,yes
+MontgomeryPoint::eq,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L230,yes,yes
+MontgomeryPoint::hash,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L260,yes,yes
+MontgomeryPoint::identity,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L323,yes,yes
+MontgomeryPoint::mul_assign,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L2739,yes,yes
+MontgomeryPoint::mul_base,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L369,yes,yes
+MontgomeryPoint::mul_base_clamped,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L473,yes,yes
+MontgomeryPoint::mul_bits_be,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L539,yes,yes
+MontgomeryPoint::mul_clamped,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L428,yes,yes
+MontgomeryPoint::to_bytes,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1106,yes,yes
+MontgomeryPoint::to_edwards,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1129,yes,yes
+MontgomeryPoint::zeroize,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L349,yes,yes
+NafLookupTable5 <AffineNielsPoint>::from,curve25519_dalek::window,curve25519-dalek/src/window.rs#L896,yes,yes
+NafLookupTable5 <AffineNielsPoint>::select,curve25519_dalek::window,curve25519-dalek/src/window.rs#L752,yes,yes
+NafLookupTable5 <ProjectiveNielsPoint>::from,curve25519_dalek::window,curve25519-dalek/src/window.rs#L791,yes,yes
+NafLookupTable5 <ProjectiveNielsPoint>::select,curve25519_dalek::window,curve25519-dalek/src/window.rs#L725,yes,yes
+NafLookupTable8 <AffineNielsPoint>::from,curve25519_dalek::window,curve25519-dalek/src/window.rs#L1181,yes,yes
+NafLookupTable8 <AffineNielsPoint>::select,curve25519_dalek::window,curve25519-dalek/src/window.rs#L1042,yes,yes
+NafLookupTable8 <ProjectiveNielsPoint>::from,curve25519_dalek::window,curve25519-dalek/src/window.rs#L1088,yes,yes
+NafLookupTable8 <ProjectiveNielsPoint>::select,curve25519_dalek::window,curve25519-dalek/src/window.rs#L1016,yes,yes
+Pippenger::optional_multiscalar_mul_verus,curve25519_dalek::backend::serial::scalar_mul::pippenger,curve25519-dalek/src/backend/serial/scalar_mul/pippenger.rs#L219,yes,
+ProjectiveNielsPoint::conditional_assign,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L466,yes,yes
+ProjectiveNielsPoint::conditional_select,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L424,yes,yes
+ProjectiveNielsPoint::default,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L298,yes,yes
+ProjectiveNielsPoint::identity,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L284,yes,yes
+ProjectiveNielsPoint::zeroize,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L250,yes,yes
+ProjectivePoint::as_affine,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1888,yes,yes
+ProjectivePoint::as_extended,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L587,yes,yes
+ProjectivePoint::conditional_select,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1836,yes,yes
+ProjectivePoint::default,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1826,yes,yes
+ProjectivePoint::double,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L965,yes,yes
+ProjectivePoint::identity,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L275,yes,yes
+ProjectivePoint::identity,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1776,yes,yes
+ProjectivePoint::is_valid,curve25519_dalek::backend::serial::curve_models,curve25519-dalek/src/backend/serial/curve_models/mod.rs#L335,yes,yes
+RistrettoBasepointTable::basepoint,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2255,yes,yes
+RistrettoBasepointTable::create,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2245,yes,yes
+RistrettoPoint::add_assign,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1549,yes,yes
+RistrettoPoint::compress,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L656,yes,
+RistrettoPoint::conditional_select,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2297,yes,yes
+RistrettoPoint::coset4,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1084,yes,yes
+RistrettoPoint::ct_eq,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1475,yes,
+RistrettoPoint::default,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1432,yes,yes
+RistrettoPoint::double_and_compress_batch_verus,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L924,yes,
+RistrettoPoint::elligator_ristretto_flavor,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1135,yes,
+RistrettoPoint::from_hash_verus,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1328,yes,yes
+RistrettoPoint::from_uniform_bytes,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1351,yes,
+RistrettoPoint::hash_from_bytes_verus,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1279,yes,yes
+RistrettoPoint::identity,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1418,yes,
+RistrettoPoint::mul_assign,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1821,yes,yes
+RistrettoPoint::mul_base,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1888,yes,
+RistrettoPoint::multiscalar_mul_verus,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1991,yes,yes
+RistrettoPoint::neg,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1805,yes,yes
+RistrettoPoint::optional_multiscalar_mul_verus,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2045,yes,yes
+RistrettoPoint::sub_assign,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1603,yes,yes
+RistrettoPoint::sum,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1706,yes,yes
+RistrettoPoint::sum_of_slice,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L1660,yes,yes
+RistrettoPoint::vartime_double_scalar_mul_basepoint,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2155,yes,yes
+RistrettoPoint::zeroize,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L2426,yes,yes
+Scalar52::add,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L554,yes,yes
+Scalar52::as_bytes,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L503,yes,yes
+Scalar52::as_montgomery,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L2078,yes,yes
+Scalar52::conditional_add_l,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L753,yes,yes
+Scalar52::from_bytes,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L164,yes,yes
+Scalar52::from_bytes_wide,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L235,yes,yes
+Scalar52::from_montgomery,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L2116,yes,yes
+Scalar52::index,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L126,yes,yes
+Scalar52::montgomery_mul,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1989,yes,yes
+Scalar52::montgomery_reduce,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1216,yes,yes
+Scalar52::montgomery_square,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L2038,yes,yes
+Scalar52::mul,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1821,yes,yes
+Scalar52::mul_internal,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1046,yes,yes
+Scalar52::part1,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1709,yes,yes
+Scalar52::part2,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1796,yes,yes
+Scalar52::square,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1909,yes,yes
+Scalar52::square_internal,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L1102,yes,yes
+Scalar52::sub,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L858,yes,yes
+Scalar52::sub_new,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L641,yes,yes
+Scalar52::zeroize,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L114,yes,yes
+Scalar::add_assign,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L700,yes,yes
+Scalar::as_bytes,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1606,yes,yes
+Scalar::as_radix_16,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L2913,yes,yes
+Scalar::as_radix_2w,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3174,yes,yes
+Scalar::batch_invert,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1736,yes,yes
+Scalar::bits_le,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L2226,yes,yes
+Scalar::ct_eq,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L468,yes,yes
+Scalar::default,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1058,yes,yes
+Scalar::eq,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L447,yes,yes
+Scalar::from,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1127,yes,yes
+Scalar::from,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1147,yes,yes
+Scalar::from,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1183,yes,yes
+Scalar::from,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1237,yes,yes
+Scalar::from,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1269,yes,yes
+Scalar::from_bytes_mod_order,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L273,yes,yes
+Scalar::from_bytes_mod_order_wide,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L300,yes,yes
+Scalar::from_canonical_bytes,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L361,yes,yes
+Scalar::from_hash_verus,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1566,yes,yes
+Scalar::hash_from_bytes_verus,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1491,yes,yes
+Scalar::index,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L486,yes,yes
+Scalar::invert,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1654,yes,yes
+Scalar::is_canonical,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3730,yes,yes
+Scalar::mul_assign,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L505,yes,yes
+Scalar::neg,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L962,yes,yes
+Scalar::non_adjacent_form,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L2352,yes,yes
+Scalar::product,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1015,yes,yes
+Scalar::product_of_slice,curve25519_dalek::scalar_helpers,curve25519-dalek/src/scalar_helpers.rs#L102,yes,yes
+Scalar::random,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1428,yes,yes
+Scalar::reduce,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3651,yes,yes
+Scalar::sub_assign,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L819,yes,yes
+Scalar::sum,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1046,yes,yes
+Scalar::sum_of_slice,curve25519_dalek::scalar_helpers,curve25519-dalek/src/scalar_helpers.rs#L178,yes,yes
+Scalar::to_bytes,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1587,yes,yes
+Scalar::to_radix_2w_size_hint,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3114,yes,yes
+Scalar::unpack,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3636,yes,yes
+Scalar::zeroize,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L1305,yes,yes
+Straus::multiscalar_mul_verus,curve25519_dalek::backend::serial::scalar_mul::straus,curve25519-dalek/src/backend/serial/scalar_mul/straus.rs#L811,yes,yes
+Straus::optional_multiscalar_mul_verus,curve25519_dalek::backend::serial::scalar_mul::straus,curve25519-dalek/src/backend/serial/scalar_mul/straus.rs#L310,yes,yes
+T::is_identity,curve25519_dalek::traits,curve25519-dalek/src/traits.rs#L51,yes,
+UnpackedScalar::invert,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L4672,yes,yes
+UnpackedScalar::montgomery_invert,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3961,yes,yes
+UnpackedScalar::pack,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3878,yes,yes
+bot_half,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L2165,yes,yes
+clamp_integer,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L4965,yes,yes
+differential_add_and_double,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1988,yes,yes
+elligator_encode,curve25519_dalek::montgomery,curve25519-dalek/src/montgomery.rs#L1281,yes,yes
+get_selected_backend,curve25519_dalek::backend,curve25519-dalek/src/backend/mod.rs#L71,yes,yes
+load8_at,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L143,yes,yes
+m,curve25519_dalek::backend::serial::u64::field,curve25519-dalek/src/backend/serial/u64/field.rs#L162,yes,yes
+m,curve25519_dalek::backend::serial::u64::scalar,curve25519-dalek/src/backend/serial/u64/scalar.rs#L148,yes,yes
+mul,curve25519_dalek::backend::serial::scalar_mul::variable_base,curve25519-dalek/src/backend/serial/scalar_mul/variable_base.rs#L48,yes,yes
+mul,curve25519_dalek::backend::serial::scalar_mul::vartime_double_base,curve25519-dalek/src/backend/serial/scalar_mul/vartime_double_base.rs#L43,yes,
+pippenger_optional_multiscalar_mul_verus,curve25519_dalek::backend,curve25519-dalek/src/backend/mod.rs#L382,yes,yes
+read_le_u64_into,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L4881,yes,yes
+square_multiply,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L3752,yes,yes
+step_1,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L359,yes,yes
+step_1,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L389,yes,
+step_2,curve25519_dalek::edwards,curve25519-dalek/src/edwards.rs#L507,yes,yes
+step_2,curve25519_dalek::ristretto,curve25519-dalek/src/ristretto.rs#L437,yes,
+straus_multiscalar_mul_verus,curve25519_dalek::backend,curve25519-dalek/src/backend/mod.rs#L313,yes,yes
+straus_optional_multiscalar_mul_verus,curve25519_dalek::backend,curve25519-dalek/src/backend/mod.rs#L346,yes,yes
+top_half,curve25519_dalek::scalar,curve25519-dalek/src/scalar.rs#L2185,yes,yes
+variable_base_mul,curve25519_dalek::backend,curve25519-dalek/src/backend/mod.rs#L254,yes,yes
+vartime_double_base_mul,curve25519_dalek::backend,curve25519-dalek/src/backend/mod.rs#L284,yes,yes

@@ -1243,14 +1243,48 @@ impl ConstantTimeEq for EdwardsPoint {
             & (&self.Y * &other.Z).ct_eq(&(&other.Y * &self.Z));
         */
 
-        let x_eq = (&self.X * &other.Z).ct_eq(&(&other.X * &self.Z));
-        let y_eq = (&self.Y * &other.Z).ct_eq(&(&other.Y * &self.Z));
+        let xz = &self.X * &other.Z;
+        let xz_prime = &other.X * &self.Z;
+        let x_eq = xz.ct_eq(&xz_prime);
+
+        let yz = &self.Y * &other.Z;
+        let yz_prime = &other.Y * &self.Z;
+        let y_eq = yz.ct_eq(&yz_prime);
+
         let result = choice_and(x_eq, y_eq);
 
         proof {
-            // The equality check via cross-multiplication is equivalent to affine coordinate equality
-            assume(choice_is_true(result) == (edwards_point_as_affine(*self)
-                == edwards_point_as_affine(*other)));
+            let x1 = fe51_as_canonical_nat(&self.X);
+            let y1 = fe51_as_canonical_nat(&self.Y);
+            let z1 = fe51_as_canonical_nat(&self.Z);
+            let x2 = fe51_as_canonical_nat(&other.X);
+            let y2 = fe51_as_canonical_nat(&other.Y);
+            let z2 = fe51_as_canonical_nat(&other.Z);
+
+            // Bridge byte comparison to canonical nat comparison
+            assert((fe51_as_canonical_nat(&xz) == fe51_as_canonical_nat(&xz_prime)) <==> (
+            spec_fe51_as_bytes(&xz) == spec_fe51_as_bytes(&xz_prime))) by {
+                lemma_ct_eq_iff_canonical_nat(&xz, &xz_prime);
+            }
+            assert((fe51_as_canonical_nat(&yz) == fe51_as_canonical_nat(&yz_prime)) <==> (
+            spec_fe51_as_bytes(&yz) == spec_fe51_as_bytes(&yz_prime))) by {
+                lemma_ct_eq_iff_canonical_nat(&yz, &yz_prime);
+            }
+
+            // Z-coordinates are nonzero (from math_is_valid_extended_edwards_point in type invariant)
+            assert(z1 % p() != 0);
+            assert(z2 % p() != 0);
+
+            // Cross-multiplication iff affine division equality:
+            // x1*z2 == x2*z1 ⟺ x1/z1 == x2/z2, similarly for y
+            assert((field_mul(x1, z2) == field_mul(x2, z1)) <==> (field_mul(x1, field_inv(z1))
+                == field_mul(x2, field_inv(z2)))) by {
+                lemma_cross_mul_iff_div_eq(x1, z1, x2, z2);
+            }
+            assert((field_mul(y1, z2) == field_mul(y2, z1)) <==> (field_mul(y1, field_inv(z1))
+                == field_mul(y2, field_inv(z2)))) by {
+                lemma_cross_mul_iff_div_eq(y1, z1, y2, z2);
+            }
         }
 
         result

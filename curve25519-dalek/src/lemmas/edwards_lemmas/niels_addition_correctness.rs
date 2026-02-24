@@ -1003,7 +1003,11 @@ pub(crate) proof fn lemma_add_affine_niels_completed_valid(
 
     // Extract witness from is_valid_affine_niels_point
     let ep = choose|ep: crate::edwards::EdwardsPoint|
-        is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
+        is_valid_edwards_point(ep) && edwards_point_limbs_bounded(ep) && sum_of_limbs_bounded(
+            &edwards_y(ep),
+            &edwards_x(ep),
+            u64::MAX,
+        ) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
     lemma_unfold_edwards(ep);
     let X2 = fe51_as_canonical_nat(&ep.X);
     let Y2 = fe51_as_canonical_nat(&ep.Y);
@@ -1290,7 +1294,11 @@ pub(crate) proof fn lemma_sub_affine_niels_completed_valid(
     assert(sZ % p() != 0);  // from is_valid_edwards_point → is_valid_extended_edwards_point
 
     let ep = choose|ep: crate::edwards::EdwardsPoint|
-        is_valid_edwards_point(ep) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
+        is_valid_edwards_point(ep) && edwards_point_limbs_bounded(ep) && sum_of_limbs_bounded(
+            &edwards_y(ep),
+            &edwards_x(ep),
+            u64::MAX,
+        ) && #[trigger] affine_niels_corresponds_to_edwards(other, ep);
     lemma_unfold_edwards(ep);
     let X2 = fe51_as_canonical_nat(&ep.X);
     let Y2 = fe51_as_canonical_nat(&ep.Y);

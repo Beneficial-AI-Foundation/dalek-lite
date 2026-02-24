@@ -293,31 +293,27 @@ impl Hash for MontgomeryPoint {
 
             // Step 2: `spec_fe51_from_bytes` has the same canonical value as `fe`.
             let fe_spec = spec_fe51_from_bytes(&self.0);
-            lemma_from_u8_32_as_nat(&self.0);
-            lemma_as_nat_32_mod_255(&self.0);
-            // Both fe and fe_spec have the same limb value from the same bytes,
-            // so unfolding open spec fns gives equal canonical nats.
-            assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec));
+            assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec)) by {
+                lemma_from_u8_32_as_nat(&self.0);
+                lemma_as_nat_32_mod_255(&self.0);
+            }
             assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec)) by {
                 lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
             }
 
-            // Step 3: Therefore, the canonical sequence equals the exec-view sequence.
-            assert(spec_fe51_as_bytes(&fe) == canonical_seq);
-            assert(seq_from32(&canonical_bytes) == canonical_seq);
-
-            // Step 4: Convert the spec canonical sequence back to an array and match arrays.
-            assert(canonical_seq.len() == 32);
-            assert(canonical_seq =~= seq_from32(&canonical_arr));
-            assert(seq_from32(&canonical_bytes) == seq_from32(&canonical_arr));
-            assert(canonical_bytes == canonical_arr) by {
-                lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+            // Steps 3-5: scope array conversion and hash model to limit Z3 pressure
+            assert(*state == spec_state_after_hash_montgomery(initial_state, self)) by {
+                assert(spec_fe51_as_bytes(&fe) == canonical_seq);
+                assert(seq_from32(&canonical_bytes) == canonical_seq);
+                assert(canonical_seq.len() == 32);
+                assert(canonical_seq =~= seq_from32(&canonical_arr));
+                assert(seq_from32(&canonical_bytes) == seq_from32(&canonical_arr));
+                assert(canonical_bytes == canonical_arr) by {
+                    lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+                }
+                assert(*state == spec_state_after_hash(initial_state, &canonical_bytes));
+                assert(*state == spec_state_after_hash(initial_state, &canonical_arr));
             }
-
-            // Step 5: Use the abstract hash model.
-            assert(*state == spec_state_after_hash(initial_state, &canonical_bytes));
-            assert(*state == spec_state_after_hash(initial_state, &canonical_arr));
-            assert(*state == spec_state_after_hash_montgomery(initial_state, self));
         }
     }
 }

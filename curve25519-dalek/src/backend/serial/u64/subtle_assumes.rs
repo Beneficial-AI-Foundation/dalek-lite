@@ -1,7 +1,10 @@
 //! Tell Verus what Choice and CtOption do
 use subtle::{Choice, ConditionallyNegatable, ConditionallySelectable, ConstantTimeEq, CtOption};
 
+use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::u64::field::FieldElement51;
+#[cfg(verus_keep_ghost)]
+use crate::specs::edwards_specs::negate_affine_niels;
 #[cfg(verus_keep_ghost)]
 use crate::specs::field_specs::{fe51_as_canonical_nat, fe51_limbs_bounded, field_neg};
 
@@ -253,7 +256,10 @@ pub fn conditional_assign_u64(a: &mut u64, b: &u64, choice: Choice)
 #[verifier::external_body]
 pub fn conditional_negate_generic<T>(a: &mut T, choice: Choice) where
     T: subtle::ConditionallyNegatable,
- {
+
+    ensures
+        !choice_is_true(choice) ==> *a == *old(a),
+{
     a.conditional_negate(choice);
 }
 
@@ -300,6 +306,31 @@ pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
     a.conditional_negate(choice);
 }
 
+/// Specialized wrapper for conditional_negate on AffineNielsPoint.
+///
+/// The blanket `ConditionallyNegatable` impl calls `Neg::neg` (which swaps
+/// y_plus_x ↔ y_minus_x and negates xy2d) then `conditional_assign` (which
+/// selects original or negated). The net effect matches `negate_affine_niels`.
+///
+/// Limb bounds: y_plus_x and y_minus_x are swapped (same bounds as before);
+/// xy2d goes through field negate → reduce, yielding a 52-bit result.
+/// All three remain within 54 bits.
+#[verifier::external_body]
+pub fn conditional_negate_affine_niels(a: &mut AffineNielsPoint, choice: Choice)
+    requires
+        fe51_limbs_bounded(&old(a).y_plus_x, 54),
+        fe51_limbs_bounded(&old(a).y_minus_x, 54),
+        fe51_limbs_bounded(&old(a).xy2d, 54),
+    ensures
+        !choice_is_true(choice) ==> *a == *old(a),
+        choice_is_true(choice) ==> *a == negate_affine_niels(*old(a)),
+        fe51_limbs_bounded(&a.y_plus_x, 54),
+        fe51_limbs_bounded(&a.y_minus_x, 54),
+        fe51_limbs_bounded(&a.xy2d, 54),
+{
+    a.conditional_negate(choice);
+}
+
 /// Specialized wrapper for FieldElement51 negation with proper specs.
 ///
 /// The generic `negate_field` in core_assumes.rs has no ensures clause because
@@ -325,7 +356,11 @@ pub fn negate_field_element(a: &FieldElement51) -> (result: FieldElement51)
 #[verifier::external_body]
 pub fn conditional_assign_generic<T>(a: &mut T, b: &T, choice: Choice) where
     T: subtle::ConditionallySelectable,
- {
+
+    ensures
+        !choice_is_true(choice) ==> *a == *old(a),
+        choice_is_true(choice) ==> *a == *b,
+{
     a.conditional_assign(b, choice)
 }
 

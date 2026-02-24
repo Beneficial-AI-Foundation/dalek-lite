@@ -19,7 +19,11 @@ use crate::backend::serial::u64::field::FieldElement51;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow2_even, pow2_MUL_div};
+#[cfg(verus_keep_ghost)]
+use crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+#[cfg(verus_keep_ghost)]
+use crate::lemmas::field_lemmas::negate_lemmas::{lemma_neg, lemma_neg_no_underflow, proof_negate};
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::lemma_fe51_unit_is_one;
 use crate::specs::edwards_specs::*;
@@ -1716,6 +1720,216 @@ pub proof fn lemma_identity_affine_niels_is_identity()
         field_inv_property(2nat);
         lemma_field_mul_comm(2nat, field_inv(2));
     }
+}
+
+/// Lemma: the identity AffineNielsPoint is valid (corresponds to a valid EdwardsPoint).
+pub proof fn lemma_identity_affine_niels_valid()
+    ensures
+        is_valid_affine_niels_point(identity_affine_niels()),
+{
+    let id = identity_affine_niels();
+    let zero_fe = FieldElement51 { limbs: [0u64, 0u64, 0u64, 0u64, 0u64] };
+    let one_fe = FieldElement51 { limbs: [1u64, 0u64, 0u64, 0u64, 0u64] };
+
+    // Witness: identity EdwardsPoint (X=0, Y=1, Z=1, T=0)
+    let witness = crate::edwards::EdwardsPoint { X: zero_fe, Y: one_fe, Z: one_fe, T: zero_fe };
+
+    assert(p() > 2) by {
+        p_gt_2();
+    }
+    assert(1u64 < (1u64 << 52u64)) by (bit_vector);
+    assert(fe51_limbs_bounded(&zero_fe, 52u64));
+    assert(fe51_limbs_bounded(&one_fe, 52u64));
+    assert(sum_of_limbs_bounded(&one_fe, &zero_fe, u64::MAX)) by {
+        assert forall|i: int| 0 <= i < 5 implies one_fe.limbs[i] + zero_fe.limbs[i] < u64::MAX by {}
+    }
+
+    // Witness is a valid EdwardsPoint
+    lemma_unfold_edwards(witness);
+    assert(fe51_as_canonical_nat(&zero_fe) == 0) by {
+        lemma_small_mod(0nat, p());
+    }
+    assert(fe51_as_canonical_nat(&one_fe) == 1) by {
+        lemma_small_mod(1nat, p());
+    }
+    assert(is_valid_edwards_point(witness)) by {
+        lemma_identity_is_valid_extended();
+    }
+
+    // Affine coordinates: z_inv = field_inv(1) = 1, x = 0, y = 1
+    assert(field_inv(1nat) == 1) by {
+        lemma_field_inv_one();
+    }
+    assert(field_mul(0nat, 1nat) == 0) by {
+        lemma_field_mul_zero_left(0nat, 1nat);
+    }
+    assert(field_mul(1nat, 1nat) == 1) by {
+        lemma_field_mul_one_right(1nat);
+        lemma_small_mod(1nat, p());
+    }
+
+    // Correspondence field by field
+    assert(fe51_as_canonical_nat(&id.y_plus_x) == 1) by {
+        lemma_fe51_unit_is_one(&id.y_plus_x);
+    }
+    assert(fe51_as_canonical_nat(&id.y_minus_x) == 1) by {
+        lemma_fe51_unit_is_one(&id.y_minus_x);
+    }
+    assert(fe51_as_canonical_nat(&id.xy2d) == 0) by {
+        lemma_small_mod(0nat, p());
+    }
+
+    assert(field_add(1nat, 0nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    }
+    assert(field_sub(1nat, 0nat) == 1) by {
+        p_gt_2();
+        vstd::arithmetic::div_mod::lemma_mod_multiples_vanish(1, 1, p() as int);
+    }
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    assert(field_mul(field_mul(field_mul(0nat, 1nat), 2nat), d) == 0) by {
+        lemma_field_mul_zero_left(0nat, 1nat);
+        lemma_field_mul_zero_left(0nat, 2nat);
+        lemma_field_mul_zero_left(0nat, d);
+    }
+
+    assert(affine_niels_corresponds_to_edwards(id, witness));
+}
+
+/// Lemma: negating a valid AffineNielsPoint preserves validity.
+pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
+    requires
+        is_valid_affine_niels_point(pt),
+        fe51_limbs_bounded(&pt.y_plus_x, 54),
+        fe51_limbs_bounded(&pt.y_minus_x, 54),
+        fe51_limbs_bounded(&pt.xy2d, 54),
+    ensures
+        is_valid_affine_niels_point(negate_affine_niels(pt)),
+{
+    let neg = negate_affine_niels(pt);
+    assert(p() > 2) by {
+        p_gt_2();
+    }
+
+    // Extract witness from is_valid_affine_niels_point(pt).
+    // The strengthened existential gives us limb bounds and sum_of_limbs directly.
+    let ep = choose|ep: crate::edwards::EdwardsPoint|
+        is_valid_edwards_point(ep) && edwards_point_limbs_bounded(ep) && sum_of_limbs_bounded(
+            &edwards_y(ep),
+            &edwards_x(ep),
+            u64::MAX,
+        ) && #[trigger] affine_niels_corresponds_to_edwards(pt, ep);
+    lemma_unfold_edwards(ep);
+
+    let xp = fe51_as_canonical_nat(&ep.X);
+    let yp = fe51_as_canonical_nat(&ep.Y);
+    let zp = fe51_as_canonical_nat(&ep.Z);
+    let tp = fe51_as_canonical_nat(&ep.T);
+    let z_inv = field_inv(zp);
+    let x = field_mul(xp, z_inv);
+    let y = field_mul(yp, z_inv);
+
+    // Negate X and T limbs; 52-bounded => 54-bounded for negate precondition
+    let neg_x_limbs = spec_negate(ep.X.limbs);
+    let neg_t_limbs = spec_negate(ep.T.limbs);
+    let ep_x_fe = FieldElement51 { limbs: ep.X.limbs };
+    let ep_t_fe = FieldElement51 { limbs: ep.T.limbs };
+    lemma_fe51_limbs_bounded_weaken(&ep_x_fe, 52, 54);
+    lemma_fe51_limbs_bounded_weaken(&ep_t_fe, 52, 54);
+    lemma_neg_no_underflow(ep.X.limbs);
+    lemma_neg_no_underflow(ep.T.limbs);
+    proof_negate(ep.X.limbs);
+    proof_negate(ep.T.limbs);
+
+    let neg_x_fe = FieldElement51 { limbs: neg_x_limbs };
+    let neg_t_fe = FieldElement51 { limbs: neg_t_limbs };
+    assert(fe51_limbs_bounded(&neg_x_fe, 52u64)) by {
+        assert forall|i: int| 0 <= i < 5 implies #[trigger] neg_x_fe.limbs[i] < (1u64 << 52u64) by {
+            assert(spec_negate(ep.X.limbs)[i] < (1u64 << 52u64));
+        }
+    }
+    assert(fe51_limbs_bounded(&neg_t_fe, 52u64)) by {
+        assert forall|i: int| 0 <= i < 5 implies #[trigger] neg_t_fe.limbs[i] < (1u64 << 52u64) by {
+            assert(spec_negate(ep.T.limbs)[i] < (1u64 << 52u64));
+        }
+    }
+    assert(sum_of_limbs_bounded(&ep.Y, &neg_x_fe, u64::MAX)) by {
+        assert forall|i: int| 0 <= i < 5 implies (#[trigger] ep.Y.limbs[i]) + neg_x_fe.limbs[i]
+            < u64::MAX by {
+            assert((1u64 << 52u64) + (1u64 << 52u64) < u64::MAX) by (bit_vector);
+        }
+    }
+
+    // Connect spec_negate to field_neg at nat level
+    lemma_neg(&ep_x_fe);
+    lemma_neg(&ep_t_fe);
+    let neg_xp = fe51_as_canonical_nat(&neg_x_fe);
+    let neg_tp = fe51_as_canonical_nat(&neg_t_fe);
+    assert(neg_xp == field_neg(xp));
+    assert(neg_tp == field_neg(tp));
+
+    // Negated point is on the curve: (-X)^2 = X^2
+    assert(field_square(neg_xp) == field_square(xp)) by {
+        lemma_neg_square_eq(xp);
+        lemma_square_mod_noop(xp);
+    }
+    // Segre relation: field_mul(neg_X, Y) == field_mul(Z, neg_T)
+    assert(is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp)) by {
+        lemma_field_neg_mul_left(xp, yp);
+        lemma_field_mul_comm(zp, neg_tp);
+        lemma_field_neg_mul_left(tp, zp);
+        lemma_field_mul_comm(tp, zp);
+    }
+
+    // Construct the negated EdwardsPoint witness
+    let neg_ep = crate::edwards::EdwardsPoint { X: neg_x_fe, Y: ep.Y, Z: ep.Z, T: neg_t_fe };
+    lemma_unfold_edwards(neg_ep);
+    assert(is_valid_edwards_point(neg_ep));
+
+    // Affine coordinates for negated witness
+    let neg_x_affine = field_mul(neg_xp, z_inv);
+    let neg_y_affine = field_mul(yp, z_inv);
+    assert(neg_x_affine == field_neg(x)) by {
+        lemma_field_neg_mul_left(xp, z_inv);
+    }
+    assert(neg_y_affine == y);
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+
+    // Condition 1: neg.y_plus_x = pt.y_minus_x encodes field_add(y, neg(x)) = field_sub(y, x)
+    assert(fe51_as_canonical_nat(&neg.y_plus_x) == field_add(neg_y_affine, neg_x_affine)) by {
+        lemma_field_sub_eq_add_neg(y, x);
+    }
+
+    // Condition 2: neg.y_minus_x = pt.y_plus_x encodes field_sub(y, neg(x)) = field_add(y, x)
+    assert(fe51_as_canonical_nat(&neg.y_minus_x) == field_sub(neg_y_affine, neg_x_affine)) by {
+        lemma_field_sub_eq_add_neg(y, field_neg(x));
+        lemma_field_neg_neg(x);
+        lemma_field_add_comm(y, x % p());
+        lemma_field_add_canonical_left(x, y);
+        lemma_field_add_comm(x, y);
+    }
+
+    // Condition 3: neg.xy2d = negate(pt.xy2d) encodes field_mul(field_mul(field_mul(neg_x, y), 2), d)
+    let pt_xy2d_fe = FieldElement51 { limbs: pt.xy2d.limbs };
+    lemma_neg_no_underflow(pt.xy2d.limbs);
+    proof_negate(pt.xy2d.limbs);
+    lemma_neg(&pt_xy2d_fe);
+    let pt_xy2d_val = fe51_as_canonical_nat(&pt.xy2d);
+    let neg_xy2d_fe = FieldElement51 { limbs: spec_negate(pt.xy2d.limbs) };
+    let neg_xy2d_val = fe51_as_canonical_nat(&neg_xy2d_fe);
+    assert(neg_xy2d_val == field_neg(pt_xy2d_val));
+    assert(pt_xy2d_val == field_mul(field_mul(field_mul(x, y), 2), d));
+    assert(neg_xy2d_val == field_mul(field_mul(field_mul(neg_x_affine, neg_y_affine), 2), d)) by {
+        lemma_field_neg_mul_left(field_mul(field_mul(x, y), 2), d);
+        lemma_field_neg_mul_left(field_mul(x, y), 2);
+        lemma_field_neg_mul_left(x, y);
+    }
+
+    assert(edwards_point_limbs_bounded(neg_ep));
+    lemma_unfold_edwards(neg_ep);
+    assert(sum_of_limbs_bounded(&neg_ep.Y, &neg_ep.X, u64::MAX));
+    assert(sum_of_limbs_bounded(&edwards_y(neg_ep), &edwards_x(neg_ep), u64::MAX));
+    assert(affine_niels_corresponds_to_edwards(neg, neg_ep));
 }
 
 /// Lemma: negating an AffineNielsPoint negates the x-coordinate.

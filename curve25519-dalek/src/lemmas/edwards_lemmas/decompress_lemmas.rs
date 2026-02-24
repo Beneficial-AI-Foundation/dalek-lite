@@ -176,7 +176,7 @@ pub(crate) proof fn lemma_decompress_valid_branch(
 // step_1 postconditions
 
         fe51_as_canonical_nat(&point.Y) == field_element_from_bytes(repr_bytes),
-        math_on_edwards_curve(x_orig, fe51_as_canonical_nat(&point.Y)),
+        is_on_edwards_curve(x_orig, fe51_as_canonical_nat(&point.Y)),
         // X is non-negative root (LSB = 0)
         x_orig % 2 == 0,
         // x_orig < p() is trivially true since x_orig = fe51_as_canonical_nat(&X)
@@ -215,7 +215,7 @@ pub(crate) proof fn lemma_decompress_valid_branch(
     // =========================================================================
     assert(is_valid_edwards_point(*point)) by {
         // Establish that (x_final, y_final) is on curve
-        assert(math_on_edwards_curve(x_final, y_final)) by {
+        assert(is_on_edwards_curve(x_final, y_final)) by {
             // X is conditionally negated; negation preserves curve membership
             if sign_bit == 1 {
                 assert(x_final == field_neg(x_orig));
@@ -282,7 +282,7 @@ pub(crate) proof fn lemma_decompress_valid_branch(
 /// Lemma: Decompression from y and sign recovers the original point.
 pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
         x < p(),
         y < p(),
         (x % 2) == (sign_bit as nat),
@@ -290,10 +290,10 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
     ensures
         spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
 {
-    assert(math_is_valid_y_coordinate(y)) by {
+    assert(is_valid_edwards_y_coordinate(y)) by {
         let d = fe51_as_canonical_nat(&EDWARDS_D);
         lemma_field_curve_point_implies_valid_y(d, x, y);
-        reveal(math_is_valid_y_coordinate);
+        reveal(is_valid_edwards_y_coordinate);
         let u = field_sub(field_square(y), 1);
         let v = field_add(field_mul(d, field_square(y)), 1);
         lemma_small_mod(u, p());
@@ -314,8 +314,8 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
         };
     }
     let x_chosen = choose|xc: nat|
-        math_on_edwards_curve(xc, y) && xc < p() && (xc % 2) == (sign_bit as nat);
-    assert(math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat));
+        is_on_edwards_curve(xc, y) && xc < p() && (xc % 2) == (sign_bit as nat);
+    assert(is_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat));
     assert(x == x_chosen) by {
         lemma_unique_x_with_parity(x, x_chosen, y);
     };
@@ -324,7 +324,7 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
 /// Helper lemma: exact functional correctness for Montgomery→Edwards conversion.
 pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8, u_nat: nat)
     requires
-        math_on_edwards_curve(x_exec, y_nat),
+        is_on_edwards_curve(x_exec, y_nat),
         x_exec < p(),
         y_nat < p(),
         sign_bit == 0 || sign_bit == 1,

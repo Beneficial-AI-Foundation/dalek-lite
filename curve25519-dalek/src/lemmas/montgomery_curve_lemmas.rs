@@ -969,7 +969,7 @@ proof fn axiom_nonsquare_branch_r_sq(A: nat, d: nat, d_denom: nat, r_sq: nat)
 /// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
 pub proof fn axiom_edwards_to_montgomery_preserves_validity(x: nat, y: nat)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
     ensures
         is_valid_u_coordinate(montgomery_u_from_edwards_y(y)),
 {
@@ -993,7 +993,7 @@ pub proof fn axiom_montgomery_valid_u_implies_edwards_y_valid(u: nat)
         is_valid_u_coordinate(u),
         u != field_sub(0, 1),
     ensures
-        math_is_valid_y_coordinate(edwards_y_from_montgomery_u(u)),
+        is_valid_edwards_y_coordinate(edwards_y_from_montgomery_u(u)),
 {
     admit();
 }
@@ -1102,11 +1102,11 @@ pub proof fn axiom_edwards_basepoint_maps_to_montgomery_basepoint()
 /// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
 pub proof fn axiom_edwards_to_montgomery_commutes_with_scalar_mul(x: nat, y: nat, n: nat)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
     ensures
 // Scalar multiplication preserves the Edwards curve
 
-        math_on_edwards_curve(edwards_scalar_mul((x, y), n).0, edwards_scalar_mul((x, y), n).1),
+        is_on_edwards_curve(edwards_scalar_mul((x, y), n).0, edwards_scalar_mul((x, y), n).1),
         // The Edwards-to-Montgomery map commutes with scalar multiplication
         montgomery_u_from_edwards_y(edwards_scalar_mul((x, y), n).1) == montgomery_scalar_mul_u(
             montgomery_u_from_edwards_y(y),

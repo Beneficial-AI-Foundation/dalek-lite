@@ -58,12 +58,12 @@ pub open spec fn montgomery_reduce_input_bounds(limbs: &[u128; 9]) -> bool {
 /// This is purely a VALUE constraint. The per-limb overflow bounds
 /// (montgomery_reduce_input_bounds) must be established separately.
 pub open spec fn montgomery_reduce_canonical_bound(limbs: &[u128; 9]) -> bool {
-    slice128_to_nat(limbs) < montgomery_radix() * group_order()
+    slice128_as_nat(limbs) < montgomery_radix() * group_order()
 }
 
 /// The Montgomery reduction property: result * R ≡ input (mod L)
 pub open spec fn montgomery_congruent(result: &Scalar52, limbs: &[u128; 9]) -> bool {
-    (scalar52_to_nat(result) * montgomery_radix()) % group_order() == slice128_to_nat(limbs)
+    (scalar52_as_nat(result) * montgomery_radix()) % group_order() == slice128_as_nat(limbs)
         % group_order()
 }
 

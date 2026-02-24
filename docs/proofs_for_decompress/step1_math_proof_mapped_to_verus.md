@@ -12,8 +12,8 @@ This document maps the mathematical proof for `step_1` of Edwards point decompre
 |---------------|---------------|
 | **A.** `fe51_as_canonical_nat(&Y) == field_element_from_bytes(&repr)` | Y is correctly extracted from bytes |
 | **B.** `fe51_as_canonical_nat(&Z) == 1` | Z coordinate is set to 1 |
-| **C.** `choice_is_true(is_valid) <==> math_is_valid_y_coordinate(y)` | Validity matches the mathematical definition |
-| **D.** `choice_is_true(is_valid) ==> math_on_edwards_curve(x, y)` | If valid, (X, Y) lies on the curve |
+| **C.** `choice_is_true(is_valid) <==> is_valid_edwards_y_coordinate(y)` | Validity matches the mathematical definition |
+| **D.** `choice_is_true(is_valid) ==> is_on_edwards_curve(x, y)` | If valid, (X, Y) lies on the curve |
 | **E.** `(fe51_as_canonical_nat(&X) % p()) % 2 == 0` | X is the non-negative square root (LSB = 0) |
 | **F.** `fe51_as_canonical_nat(&X) < p()` | X is bounded |
 
@@ -81,9 +81,9 @@ This breaks down into three sub-proofs:
 
 | Case | What to Prove |
 |------|---------------|
-| **C1** | When `sqrt_ratio_i` succeeds with `v ≠ 0`: `is_valid ⟺ math_is_valid_y_coordinate(y)` |
+| **C1** | When `sqrt_ratio_i` succeeds with `v ≠ 0`: `is_valid ⟺ is_valid_edwards_y_coordinate(y)` |
 | **C2** | When `u = 0`: `is_valid = true` and `x = 0` (identity point case) |
-| **C3** | When `sqrt_ratio_i` fails: `¬math_is_valid_y_coordinate(y)` |
+| **C3** | When `sqrt_ratio_i` fails: `¬is_valid_edwards_y_coordinate(y)` |
 
 ### Mathematical Proof for C1: Success Case
 
@@ -91,15 +91,15 @@ This breaks down into three sub-proofs:
 Given: sqrt_ratio_i returns (true, x) with x² · v ≡ u (mod p)
 Where: u = y² - 1, v = d·y² + 1
 
-Claim: math_is_valid_y_coordinate(y) is true
+Claim: is_valid_edwards_y_coordinate(y) is true
 
 Proof:
   1. x² · v ≡ u (mod p)                    [sqrt_ratio_i postcondition]
   2. We have a witness x < p              [sqrt_ratio_i bound]
-  3. math_is_valid_y_coordinate asks:
+  3. is_valid_edwards_y_coordinate asks:
      ∃r < p: r² · v ≡ u (mod p)
   4. x is exactly such a witness          [from (1), (2)]
-  ∴ math_is_valid_y_coordinate(y) = true   ∎
+  ∴ is_valid_edwards_y_coordinate(y) = true   ∎
 ```
 
 ### Verus Proof for C1
@@ -107,11 +107,11 @@ Proof:
 | Verus Lemma | Location | Statement |
 |-------------|----------|-----------|
 | `lemma_is_sqrt_ratio_to_field` | `sqrt_ratio_lemmas.rs` | `fe51_is_sqrt_ratio(u, v, x) ⟹ field_mul(field_square(x), v) == u` |
-| `lemma_sqrt_ratio_success_means_valid_y` | `step1_lemmas.rs` | `fe51_is_sqrt_ratio success ⟹ math_is_valid_y_coordinate(y)` |
+| `lemma_sqrt_ratio_success_means_valid_y` | `step1_lemmas.rs` | `fe51_is_sqrt_ratio success ⟹ is_valid_edwards_y_coordinate(y)` |
 
 **Verus code:**
 ```rust
-assert(math_is_valid_y_coordinate(y)) by {
+assert(is_valid_edwards_y_coordinate(y)) by {
     // From sqrt_ratio_i: fe51_is_sqrt_ratio holds
     assert((x * x * v) % p() == u);
     
@@ -145,7 +145,7 @@ Proof:
 
 | Verus Lemma | Location | Statement |
 |-------------|----------|-----------|
-| `lemma_u_zero_implies_identity_point` | `step1_lemmas.rs` | `u == 0 ⟹ y² == 1 ∧ math_on_edwards_curve(0, y) ∧ math_is_valid_y_coordinate(y)` |
+| `lemma_u_zero_implies_identity_point` | `step1_lemmas.rs` | `u == 0 ⟹ y² == 1 ∧ is_on_edwards_curve(0, y) ∧ is_valid_edwards_y_coordinate(y)` |
 
 **Verus code:**
 ```rust
@@ -162,7 +162,7 @@ assert(u_math == 0 ==> (is_valid && x == 0)) by {
 Given: sqrt_ratio_i returns (false, x) with x² · v ≡ i · u (mod p)
 Where: i = √(-1), u ≠ 0, v ≠ 0
 
-Claim: ¬math_is_valid_y_coordinate(y)
+Claim: ¬is_valid_edwards_y_coordinate(y)
 
 Proof by contradiction:
   Assume: ∃r < p: r² · v ≡ u (mod p)
@@ -175,20 +175,20 @@ Proof by contradiction:
   6. But i is NOT a quadratic residue     [axiom: Euler criterion]
   
   Contradiction! ∴ No such r exists.
-  ∴ ¬math_is_valid_y_coordinate(y)         ∎
+  ∴ ¬is_valid_edwards_y_coordinate(y)         ∎
 ```
 
 ### Verus Proof for C3
 
 | Verus Lemma | Location | Statement |
 |-------------|----------|-----------|
-| `lemma_sqrt_ratio_failure_means_invalid_y` | `step1_lemmas.rs` | `sqrt_ratio_i failure ⟹ ¬math_is_valid_y_coordinate(y)` |
+| `lemma_sqrt_ratio_failure_means_invalid_y` | `step1_lemmas.rs` | `sqrt_ratio_i failure ⟹ ¬is_valid_edwards_y_coordinate(y)` |
 | `lemma_no_square_root_when_times_i` | `sqrt_ratio_lemmas.rs` | `x²·v ≡ i·u ⟹ ¬∃r: r²·v ≡ u` |
 | `axiom_sqrt_m1_not_square` | `sqrt_ratio_lemmas.rs` | `i is not a quadratic residue` (axiom) |
 
 **Verus code:**
 ```rust
-assert(!math_is_valid_y_coordinate(y)) by {
+assert(!is_valid_edwards_y_coordinate(y)) by {
     assert((x * x * v_math) % p() == (sqrt_m1() * u_math) % p());
     lemma_sqrt_ratio_failure_means_invalid_y(y, u_math, v_math);
 };
@@ -200,7 +200,7 @@ assert(!math_is_valid_y_coordinate(y)) by {
 
 | Verus Lemma | Location | Statement |
 |-------------|----------|-----------|
-| `lemma_step1_case_analysis` | `step1_lemmas.rs` | Unifies C1, C2, C3: `is_valid ⟺ math_is_valid_y_coordinate(y)` |
+| `lemma_step1_case_analysis` | `step1_lemmas.rs` | Unifies C1, C2, C3: `is_valid ⟺ is_valid_edwards_y_coordinate(y)` |
 
 **This is the main lemma that proves postcondition C.** It performs case analysis on:
 - `is_valid && v ≠ 0` → calls `lemma_sqrt_ratio_success_means_valid_y`
@@ -238,13 +238,13 @@ Proof:
 
 | Verus Lemma | Location | Statement |
 |-------------|----------|-----------|
-| `lemma_sqrt_ratio_implies_on_curve` | `step1_lemmas.rs` | `x²·v == u ⟹ math_on_edwards_curve(x, y)` |
+| `lemma_sqrt_ratio_implies_on_curve` | `step1_lemmas.rs` | `x²·v == u ⟹ is_on_edwards_curve(x, y)` |
 | `lemma_field_mul_distributes_over_add` | `field_algebra_lemmas.rs` | `a·(b+c) == a·b + a·c` (Step 3) |
 | `lemma_field_add_sub_rearrange` | `field_algebra_lemmas.rs` | `a+b+1 == c ⟹ a+1 == c-b` (Step 5) |
 
 **Verus code:**
 ```rust
-assert(math_on_edwards_curve(x, y)) by {
+assert(is_on_edwards_curve(x, y)) by {
     // Step 2: From precondition
     assert(field_mul(x2, v) == u);
     

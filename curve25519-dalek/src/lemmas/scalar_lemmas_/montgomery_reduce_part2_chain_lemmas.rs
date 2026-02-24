@@ -417,7 +417,7 @@ pub(crate) proof fn lemma_part2_chain_quotient(
     ensures
         ({
             let n = five_u64_limbs_to_nat(n0, n1, n2, n3, n4);
-            let t = slice128_to_nat(limbs);
+            let t = slice128_as_nat(limbs);
             let l = group_order();
             let intermediate = five_u64_limbs_to_nat(r0, r1, r2, r3, r4);
             // The key result: intermediate is the exact quotient
@@ -441,7 +441,7 @@ pub(crate) proof fn lemma_part2_chain_quotient(
     // Setup: Define all key values
     let intermediate = five_u64_limbs_to_nat(r0, r1, r2, r3, r4);
     let n = five_u64_limbs_to_nat(n0, n1, n2, n3, n4);
-    let t = slice128_to_nat(limbs);
+    let t = slice128_as_nat(limbs);
     let l = group_order();
 
     // T decomposition components
@@ -469,8 +469,8 @@ pub(crate) proof fn lemma_part2_chain_quotient(
     // Subgoal A: T = t_low + t_high × 2^260
     // =======================================================================
     assert(t == t_low + t_high * pow2(260)) by {
-        // Expand slice128_to_nat to polynomial form
-        super::super::scalar_lemmas::lemma_nine_limbs_equals_slice128_to_nat(limbs);
+        // Expand slice128_as_nat to polynomial form
+        super::super::scalar_lemmas::lemma_nine_limbs_equals_slice128_as_nat(limbs);
 
         // Power relationships for factoring
         lemma_pow2_adds(52, 260);

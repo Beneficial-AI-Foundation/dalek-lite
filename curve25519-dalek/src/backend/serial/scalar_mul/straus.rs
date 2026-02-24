@@ -306,6 +306,7 @@ impl Straus {
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
     /// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
+    #[verifier::rlimit(30)]
     pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
         EdwardsPoint,
     >) where S: Borrow<Scalar>, I: Iterator<Item = S>, J: Iterator<Item = Option<EdwardsPoint>>
@@ -933,9 +934,9 @@ impl Straus {
             // Q starts as identity = straus_ct_partial(64)
             assert(is_well_formed_edwards_point(Q));
             lemma_straus_ct_base(pts_affine, digits_seqs);
-            // Connect: identity point has affine (0, 1) = math_edwards_identity
+            // Connect: identity point has affine (0, 1) = edwards_identity
             lemma_identity_affine_coords(Q);
-            assert(edwards_point_as_affine(Q) == math_edwards_identity());
+            assert(edwards_point_as_affine(Q) == edwards_identity());
             assert(edwards_point_as_affine(Q) == straus_ct_partial(pts_affine, digits_seqs, 64));
         }
 

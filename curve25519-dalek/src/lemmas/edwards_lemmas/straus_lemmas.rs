@@ -74,7 +74,7 @@ pub open spec fn straus_column_sum(
     decreases n,
 {
     if n <= 0 {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let prev = straus_column_sum(points_affine, digits, j, n - 1);
         let term = edwards_scalar_mul_signed(points_affine[n - 1], digits[n - 1][j] as int);
@@ -97,7 +97,7 @@ pub open spec fn straus_ct_partial(
     decreases 64 - from_j,
 {
     if from_j >= 64 {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let prev = straus_ct_partial(points_affine, digits, from_j + 1);
         let scaled = edwards_scalar_mul(prev, 16);
@@ -121,7 +121,7 @@ pub open spec fn straus_vt_partial(
     decreases 256 - from_i,
 {
     if from_i >= 256 {
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let prev = straus_vt_partial(points_affine, nafs, from_i + 1);
         let doubled = edwards_double(prev.0, prev.1);
@@ -206,7 +206,7 @@ pub proof fn lemma_select_is_signed_scalar_mul_projective(
     } else if x == 0 {
         lemma_identity_projective_niels_is_identity();
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(edwards_scalar_mul(basepoint, 0) == math_edwards_identity());
+        assert(edwards_scalar_mul(basepoint, 0) == edwards_identity());
     } else {
         // x < 0: result == negate_projective_niels(table[((-x) - 1) as int])
         let j = ((-x) - 1) as int;
@@ -310,7 +310,7 @@ pub proof fn lemma_straus_ct_step(points_affine: Seq<(nat, nat)>, digits: Seq<Se
 /// CT base case: H(64) = O.
 pub proof fn lemma_straus_ct_base(points_affine: Seq<(nat, nat)>, digits: Seq<Seq<i8>>)
     ensures
-        straus_ct_partial(points_affine, digits, 64) == math_edwards_identity(),
+        straus_ct_partial(points_affine, digits, 64) == edwards_identity(),
 {
     reveal(straus_ct_partial);
 }
@@ -336,7 +336,7 @@ pub proof fn lemma_straus_vt_step(points_affine: Seq<(nat, nat)>, nafs: Seq<Seq<
 /// VT base case: H(256) = O.
 pub proof fn lemma_straus_vt_base(points_affine: Seq<(nat, nat)>, nafs: Seq<Seq<i8>>)
     ensures
-        straus_vt_partial(points_affine, nafs, 256) == math_edwards_identity(),
+        straus_vt_partial(points_affine, nafs, 256) == edwards_identity(),
 {
     reveal(straus_vt_partial);
 }
@@ -589,7 +589,7 @@ pub proof fn lemma_column_sum_step_zero_digit(
     let term = edwards_scalar_mul_signed(points_affine[k], 0int);
     // edwards_scalar_mul_signed(_, 0) == edwards_scalar_mul(_, 0) == identity
     reveal_with_fuel(edwards_scalar_mul, 1);
-    assert(term == math_edwards_identity());
+    assert(term == edwards_identity());
     assert(term == (0nat, 1nat));
     // edwards_add(col_k, identity) == col_k (when col_k is canonical)
     lemma_edwards_add_identity_right_canonical(col_k);
@@ -651,13 +651,13 @@ pub proof fn lemma_column_sum_single(P: (nat, nat), d: Seq<i8>, j: int)
     //   term = edwards_scalar_mul_signed(pts[0], digs[0][j])
     //   result = edwards_add(prev, term) = edwards_add(identity, term)
     let prev = straus_column_sum(pts, digs, j, 0);
-    assert(prev == math_edwards_identity());
+    assert(prev == edwards_identity());
 
     let term = edwards_scalar_mul_signed(P, d[j] as int);
     lemma_edwards_scalar_mul_signed_canonical(P, d[j] as int);
 
     // edwards_add(identity, term) = edwards_add(term, identity) = term
-    let id = math_edwards_identity();
+    let id = edwards_identity();
     lemma_edwards_add_commutative(id.0, id.1, term.0, term.1);
     lemma_edwards_add_identity_right_canonical(term);
 }
@@ -749,7 +749,7 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         lemma_straus_ct_base(pts_single, digs_single);
         // edwards_add(identity, identity) == identity
         p_gt_2();
-        lemma_edwards_add_identity_right_canonical(math_edwards_identity());
+        lemma_edwards_add_identity_right_canonical(edwards_identity());
     } else {
         // Unfold straus_ct_partial for all three
         lemma_straus_ct_step(pts, digs, j);
@@ -890,7 +890,7 @@ pub proof fn lemma_straus_ct_zero_points_from(pts: Seq<(nat, nat)>, digs: Seq<Se
         digs.len() == 0,
         0 <= j <= 64,
     ensures
-        straus_ct_partial(pts, digs, j) == math_edwards_identity(),
+        straus_ct_partial(pts, digs, j) == edwards_identity(),
     decreases 64 - j,
 {
     if j >= 64 {
@@ -902,7 +902,7 @@ pub proof fn lemma_straus_ct_zero_points_from(pts: Seq<(nat, nat)>, digs: Seq<Se
         // column_sum(..., 0) = identity
         // [16]*identity = identity (scalar mul of identity)
         lemma_edwards_scalar_mul_identity(16);
-        let id = math_edwards_identity();
+        let id = edwards_identity();
         p_gt_2();
         lemma_edwards_add_identity_right_canonical(id);
     }
@@ -1023,7 +1023,7 @@ pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<S
         lemma_straus_vt_base(pts_prefix, nafs_prefix);
         lemma_straus_vt_base(pts_single, nafs_single);
         p_gt_2();
-        lemma_edwards_add_identity_right_canonical(math_edwards_identity());
+        lemma_edwards_add_identity_right_canonical(edwards_identity());
     } else {
         lemma_straus_vt_step(pts, nafs, i);
         lemma_straus_vt_step(pts_prefix, nafs_prefix, i);
@@ -1063,7 +1063,7 @@ pub proof fn lemma_straus_vt_zero_points_from(pts: Seq<(nat, nat)>, nafs: Seq<Se
         nafs.len() == 0,
         0 <= i <= 256,
     ensures
-        straus_vt_partial(pts, nafs, i) == math_edwards_identity(),
+        straus_vt_partial(pts, nafs, i) == edwards_identity(),
     decreases 256 - i,
 {
     if i >= 256 {
@@ -1073,7 +1073,7 @@ pub proof fn lemma_straus_vt_zero_points_from(pts: Seq<(nat, nat)>, nafs: Seq<Se
         lemma_straus_vt_zero_points_from(pts, nafs, i + 1);
         // double(identity) = identity
         lemma_double_identity();
-        let id = math_edwards_identity();
+        let id = edwards_identity();
         p_gt_2();
         lemma_edwards_add_identity_right_canonical(id);
     }

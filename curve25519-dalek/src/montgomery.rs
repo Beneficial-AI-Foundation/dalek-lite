@@ -293,31 +293,27 @@ impl Hash for MontgomeryPoint {
 
             // Step 2: `spec_fe51_from_bytes` has the same canonical value as `fe`.
             let fe_spec = spec_fe51_from_bytes(&self.0);
-            lemma_from_u8_32_as_nat(&self.0);
-            lemma_as_nat_32_mod_255(&self.0);
-            // Both fe and fe_spec have the same limb value from the same bytes,
-            // so unfolding open spec fns gives equal canonical nats.
-            assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec));
+            assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec)) by {
+                lemma_from_u8_32_as_nat(&self.0);
+                lemma_as_nat_32_mod_255(&self.0);
+            }
             assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec)) by {
                 lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
             }
 
-            // Step 3: Therefore, the canonical sequence equals the exec-view sequence.
-            assert(spec_fe51_as_bytes(&fe) == canonical_seq);
-            assert(seq_from32(&canonical_bytes) == canonical_seq);
-
-            // Step 4: Convert the spec canonical sequence back to an array and match arrays.
-            assert(canonical_seq.len() == 32);
-            assert(canonical_seq =~= seq_from32(&canonical_arr));
-            assert(seq_from32(&canonical_bytes) == seq_from32(&canonical_arr));
-            assert(canonical_bytes == canonical_arr) by {
-                lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+            // Steps 3-5: scope array conversion and hash model to limit Z3 pressure
+            assert(*state == spec_state_after_hash_montgomery(initial_state, self)) by {
+                assert(spec_fe51_as_bytes(&fe) == canonical_seq);
+                assert(seq_from32(&canonical_bytes) == canonical_seq);
+                assert(canonical_seq.len() == 32);
+                assert(canonical_seq =~= seq_from32(&canonical_arr));
+                assert(seq_from32(&canonical_bytes) == seq_from32(&canonical_arr));
+                assert(canonical_bytes == canonical_arr) by {
+                    lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+                }
+                assert(*state == spec_state_after_hash(initial_state, &canonical_bytes));
+                assert(*state == spec_state_after_hash(initial_state, &canonical_arr));
             }
-
-            // Step 5: Use the abstract hash model.
-            assert(*state == spec_state_after_hash(initial_state, &canonical_bytes));
-            assert(*state == spec_state_after_hash(initial_state, &canonical_arr));
-            assert(*state == spec_state_after_hash_montgomery(initial_state, self));
         }
     }
 }
@@ -402,12 +398,11 @@ impl MontgomeryPoint {
                 edwards_scalar_mul(B, n).1,
             ));
 
-            assert(math_on_edwards_curve(B.0, B.1)) by {
+            assert(is_on_edwards_curve(B.0, B.1)) by {
                 let (x, y, z, _t) = spec_edwards_point(bp);
                 lemma_projective_implies_affine_on_curve(x, y, z);
             }
-            assert(math_on_edwards_curve(edwards_scalar_mul(B, n).0, edwards_scalar_mul(B, n).1))
-                by {
+            assert(is_on_edwards_curve(edwards_scalar_mul(B, n).0, edwards_scalar_mul(B, n).1)) by {
                 axiom_edwards_to_montgomery_commutes_with_scalar_mul(B.0, B.1, n);
             }
             assert(montgomery_u_from_edwards_y(edwards_scalar_mul(B, n).1)
@@ -1250,9 +1245,9 @@ impl MontgomeryPoint {
                         field_inv(field_add(u_nat, 1)),
                     ));
                 }
-                assert(math_is_valid_y_coordinate(y_nat));
+                assert(is_valid_edwards_y_coordinate(y_nat));
                 assert(field_element_from_bytes(&y_bytes) == y_nat);
-                assert(math_is_valid_y_coordinate(field_element_from_bytes(&y_bytes)));
+                assert(is_valid_edwards_y_coordinate(field_element_from_bytes(&y_bytes)));
                 assert(result.is_some());
 
                 if result.is_some() {
@@ -1830,8 +1825,6 @@ impl crate::traits::IsIdentitySpecImpl for ProjectivePoint {
 impl Default for ProjectivePoint {
     fn default() -> (result: ProjectivePoint)
         ensures
-    // Default returns the identity point
-
             fe51_as_canonical_nat(&result.U) == 1,
             fe51_as_canonical_nat(&result.W) == 0,
     {
@@ -1843,13 +1836,10 @@ impl ConditionallySelectable for ProjectivePoint {
     fn conditional_select(a: &ProjectivePoint, b: &ProjectivePoint, choice: Choice) -> (result:
         ProjectivePoint)
         ensures
-    // If choice is false (0), return a
-
             !choice_is_true(choice) ==> {
                 &&& result.U == a.U
                 &&& result.W == a.W
             },
-            // If choice is true (1), return b
             choice_is_true(choice) ==> {
                 &&& result.U == b.U
                 &&& result.W == b.W
@@ -1900,8 +1890,6 @@ impl ProjectivePoint {
             fe51_limbs_bounded(&self.U, 54),
             fe51_limbs_bounded(&self.W, 54),
         ensures
-    // For projective point (U:W), the affine u-coordinate is u = U/W (or 0 if W=0)
-
             spec_montgomery(result) == {
                 let u_proj = fe51_as_canonical_nat(&self.U);
                 let w_proj = fe51_as_canonical_nat(&self.W);

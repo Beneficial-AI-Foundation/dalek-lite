@@ -279,7 +279,7 @@ verus! {
 ///
 /// This is the twisted Edwards curve equation with a = -1.
 /// Reference: [BBJLP2008] Section 3, [RFC8032] Section 5.1
-pub open spec fn math_on_edwards_curve(x: nat, y: nat) -> bool {
+pub open spec fn is_on_edwards_curve(x: nat, y: nat) -> bool {
     let p = p();
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     let x2 = field_square(x);
@@ -299,7 +299,7 @@ pub open spec fn math_on_edwards_curve(x: nat, y: nat) -> bool {
 /// This is equivalent to the affine equation when Z ≠ 0
 ///
 /// Reference: [BBJLP2008] Section 3
-pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {
+pub open spec fn is_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> bool {
     let d = fe51_as_canonical_nat(&EDWARDS_D);
 
     // Compute X², Y², Z²
@@ -324,7 +324,7 @@ pub open spec fn math_on_edwards_curve_projective(x: nat, y: nat, z: nat) -> boo
 ///   u = y² - 1
 ///   v = d·y² + 1
 /// Returns true if u/v is a square (i.e., x can be recovered)
-pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool {
+pub open spec fn is_valid_edwards_y_coordinate(y: nat) -> bool {
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     let y2 = field_square(y);
 
@@ -352,13 +352,13 @@ pub open spec fn math_is_valid_y_coordinate(y: nat) -> bool {
 }
 
 /// The identity point in affine coordinates (0, 1)
-pub open spec fn math_edwards_identity() -> (nat, nat) {
+pub open spec fn edwards_identity() -> (nat, nat) {
     (0, 1)
 }
 
 /// Check if affine coordinates represent the identity point
-pub open spec fn math_is_edwards_identity(x: nat, y: nat) -> bool {
-    x % p() == 0 && y % p() == 1
+pub open spec fn is_edwards_identity(x: nat, y: nat) -> bool {
+    field_canonical(x) == 0 && field_canonical(y) == 1
 }
 
 // =============================================================================
@@ -424,8 +424,9 @@ pub open spec fn is_identity_edwards_point(point: crate::edwards::EdwardsPoint) 
 /// 1. Z ≠ 0 (mod p)
 /// 2. The projective curve equation holds: (Y² - X²)·Z² = Z⁴ + d·X²·Y²
 /// 3. The Segre relation holds: X·Y = Z·T
-pub open spec fn math_is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
-    z % p() != 0 && math_on_edwards_curve_projective(x, y, z) && field_mul(x, y) == field_mul(z, t)
+pub open spec fn is_valid_extended_edwards_point(x: nat, y: nat, z: nat, t: nat) -> bool {
+    field_canonical(z) != 0 && is_on_edwards_curve_projective(x, y, z) && field_mul(x, y)
+        == field_mul(z, t)
 }
 
 /// Check if an EdwardsPoint in extended coordinates is valid
@@ -442,7 +443,7 @@ pub open spec fn is_valid_edwards_point(point: crate::edwards::EdwardsPoint) -> 
     let z = fe51_as_canonical_nat(&edwards_z(point));
     let t = fe51_as_canonical_nat(&edwards_t(point));
 
-    math_is_valid_extended_edwards_point(x, y, z, t)
+    is_valid_extended_edwards_point(x, y, z, t)
 }
 
 /// EdwardsPoint invariant: all coordinate limbs must be 52-bounded.
@@ -822,7 +823,7 @@ pub open spec fn is_valid_completed_point(
     z_abs != 0 && t_abs != 0
         &&
     // The affine coordinates (X/Z, Y/T) must be on the curve
-    math_on_edwards_curve(field_mul(x_abs, field_inv(z_abs)), field_mul(y_abs, field_inv(t_abs)))
+    is_on_edwards_curve(field_mul(x_abs, field_inv(z_abs)), field_mul(y_abs, field_inv(t_abs)))
 }
 
 /// Check if a ProjectivePoint is valid
@@ -835,7 +836,7 @@ pub open spec fn is_valid_projective_point(point: ProjectivePoint) -> bool {
     let (x, y, z) = spec_projective_point_edwards(point);
 
     // Z must be non-zero and projective curve equation must hold
-    z != 0 && math_on_edwards_curve_projective(x, y, z)
+    z != 0 && is_on_edwards_curve_projective(x, y, z)
 }
 
 /// Spec for CompletedPoint::as_projective conversion
@@ -880,7 +881,7 @@ pub open spec fn edwards_scalar_mul(point_affine: (nat, nat), n: nat) -> (nat, n
     decreases n,
 {
     if n == 0 {
-        math_edwards_identity()  // (0, 1)
+        edwards_identity()  // (0, 1)
 
     } else if n == 1 {
         point_affine
@@ -1084,7 +1085,7 @@ pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
 pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat) {
     if u == field_sub(0, 1) {
         // u = -1: birational map has zero denominator
-        math_edwards_identity()
+        edwards_identity()
     } else {
         let y = edwards_y_from_montgomery_u(u);
         // y² = 1 ⟹ x = 0 ⟹ sign must be 0 (see doc comment above).
@@ -1095,7 +1096,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
         };
         match spec_edwards_decompress_from_y_and_sign(y, effective_sign) {
             Some(P) => P,
-            None => math_edwards_identity(),
+            None => edwards_identity(),
         }
     }
 }
@@ -1109,7 +1110,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
 pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<
     (nat, nat),
 > {
-    if !math_is_valid_y_coordinate(y) {
+    if !is_valid_edwards_y_coordinate(y) {
         None
     } else if field_square(y) == 1 && sign_bit == 1u8 {
         // When y² = 1, we have x = 0, and sign_bit must be 0
@@ -1117,8 +1118,7 @@ pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -
     } else {
         // VERIFICATION NOTE: "choose" could be replaced with concrete value using sqrt_ratio_i upon need.
         // Choose x such that (x, y) is on the curve with the correct sign
-        let x = choose|x: nat|
-            math_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
+        let x = choose|x: nat| is_on_edwards_curve(x, y) && x < p() && (x % 2) == (sign_bit as nat);
         Some((x, y))
     }
 }

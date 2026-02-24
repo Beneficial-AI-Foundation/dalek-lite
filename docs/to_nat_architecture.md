@@ -41,7 +41,7 @@ All conversion functions follow the `*_to_nat` naming convention:
 | `fe51_as_nat` | FieldElement51 limbs → nat |
 | `u64_5_as_nat` | 5 limbs × 51-bit radix → nat |
 | `five_limbs_to_nat_aux` | 5 limbs × 52-bit radix → nat |
-| `seq_to_nat_52` | Seq<nat> × 52-bit radix → nat (Horner) |
+| `seq_as_nat_52` | Seq<nat> × 52-bit radix → nat (Horner) |
 
 ---
 
@@ -167,7 +167,7 @@ pub open spec fn u64_5_as_nat(limbs: [u64; 5]) -> nat {
 
 ```rust
 /// Base recursive (52-bit radix, Horner form)
-pub open spec fn seq_to_nat_52(limbs: Seq<nat>) -> nat
+pub open spec fn seq_as_nat_52(limbs: Seq<nat>) -> nat
 
 /// Explicit 5-limb for Scalar52
 pub open spec fn five_limbs_to_nat_aux(limbs: [u64; 5]) -> nat
@@ -177,7 +177,7 @@ pub open spec fn nine_limbs_to_nat_aux(limbs: &[u128; 9]) -> nat
 
 /// Derived wrappers
 pub open spec fn to_nat(limbs: &[u64]) -> nat
-pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
+pub open spec fn slice128_as_nat(limbs: &[u128]) -> nat
 ```
 
 ---
@@ -218,7 +218,7 @@ pub open spec fn slice128_to_nat(limbs: &[u128]) -> nat
 ┌─────────────────────────┐ ┌─────────────────────────────────────┐
 │ field_specs             │ │ scalar52_specs                      │
 │                         │ │                                     │
-│ fe51_as_canonical_nat_as_  │ │ seq_to_nat_52 (52-bit, Horner)      │
+│ fe51_as_canonical_nat_as_  │ │ seq_as_nat_52 (52-bit, Horner)      │
 │   nat (uses u64_5_as_   │ │ five_limbs_to_nat_aux               │
 │   nat from u64 specs)   │ │ nine_limbs_to_nat_aux               │
 └─────────────────────────┘ └─────────────────────────────────────┘
@@ -306,7 +306,7 @@ lemma_words_from_bytes_to_nat_wide(bytes)
 
 ```rust
 lemma_five_limbs_equals_to_nat(limbs)           // explicit ↔ recursive
-lemma_nine_limbs_equals_slice128_to_nat(limbs)  // explicit ↔ recursive
+lemma_nine_limbs_equals_slice128_as_nat(limbs)  // explicit ↔ recursive
 ```
 
 ### Field Element Limb Lemmas (`u64_5_as_nat_lemmas.rs`)

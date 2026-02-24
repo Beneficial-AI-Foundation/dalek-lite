@@ -221,7 +221,6 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
                 assert(a4 == edwards_double(a3.0, a3.1));
                 lemma_four_doublings_is_mul_16(old_affine, a1, a2, a3, a4);
             }
-            lemma2_to64();
 
             // as_extended preserves affine
             assert(edwards_point_as_affine(tmp3) == a4);
@@ -246,12 +245,17 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
                 );
             }
 
-            // -- Step 4: Add combines the two terms --
-            axiom_edwards_scalar_mul_signed_additive(
+            // -- Step 4: Add combines the two terms (scoped to limit Z3 pressure) --
+            assert(completed_point_as_affine_edwards(tmp1) == edwards_scalar_mul_signed(
                 P_affine,
-                partial_j * 16,
-                scalar_digits[i as int] as int,
-            );
+                partial_j * 16 + scalar_digits[i as int] as int,
+            )) by {
+                axiom_edwards_scalar_mul_signed_additive(
+                    P_affine,
+                    partial_j * 16,
+                    scalar_digits[i as int] as int,
+                );
+            }
 
             // -- Step 5: Connect to reconstruct_radix_2w recurrence --
             let i_int = i as int;
@@ -259,7 +263,9 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
             assert(s.len() > 0);
             assert(s[0] == scalar_digits@[i_int]);
             assert(s.skip(1) =~= scalar_digits@.subrange(i_int + 1, 64));
-            assert(pow2(4) == 16);
+            assert(pow2(4) == 16) by {
+                lemma2_to64();
+            }
             assert(i_int + 1 == 63 - j as int);
             assert(reconstruct_radix_2w(s, 4) == partial_j * 16 + scalar_digits[i as int] as int)
                 by {

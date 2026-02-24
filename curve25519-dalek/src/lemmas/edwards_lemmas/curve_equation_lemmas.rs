@@ -56,7 +56,7 @@ verus! {
 /// - LHS = RHS ✓
 pub proof fn lemma_identity_on_curve()
     ensures
-        math_on_edwards_curve(0, 1),
+        is_on_edwards_curve(0, 1),
 {
     let modulus = p();
     p_gt_2();
@@ -108,7 +108,7 @@ pub proof fn lemma_identity_on_curve()
         lemma_small_mod(1nat, modulus);
     }
 
-    // LHS = RHS = 1, so math_on_edwards_curve(0, 1) holds
+    // LHS = RHS = 1, so is_on_edwards_curve(0, 1) holds
     assert(lhs == rhs);
 }
 
@@ -117,7 +117,7 @@ pub proof fn lemma_identity_on_curve()
 /// This combines lemma_identity_on_curve with lemma_affine_to_extended_valid.
 pub proof fn lemma_identity_is_valid_extended()
     ensures
-        math_is_valid_extended_edwards_point(0, 1, 1, 0),
+        is_valid_extended_edwards_point(0, 1, 1, 0),
 {
     // First prove (0, 1) is on the curve
     lemma_identity_on_curve();
@@ -146,7 +146,7 @@ pub proof fn lemma_identity_projective_point_properties()
             u64::MAX,
         ),
         projective_point_as_affine_edwards(identity_projective_point_edwards())
-            == math_edwards_identity(),
+            == edwards_identity(),
 {
     let id = identity_projective_point_edwards();
     p_gt_2();
@@ -181,7 +181,7 @@ pub proof fn lemma_identity_projective_point_properties()
     assert(field_mul(fe51_as_canonical_nat(&EDWARDS_D), 0nat) == 0) by {
         lemma_mul_by_zero_is_zero(fe51_as_canonical_nat(&EDWARDS_D) as int);
     };
-    assert(math_on_edwards_curve_projective(0, 1, 1));
+    assert(is_on_edwards_curve_projective(0, 1, 1));
 
     lemma_field_inv_one();
 }
@@ -195,9 +195,9 @@ pub proof fn lemma_identity_projective_point_properties()
 /// This is because the curve equation involves x² which is the same for x and -x.
 pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
     ensures
-        math_on_edwards_curve(field_neg(x), y),
+        is_on_edwards_curve(field_neg(x), y),
 {
     // Goal: on_curve(-x, y)
     // Strategy: The curve equation uses x², and (-x)² = x², so the equation is identical
@@ -208,7 +208,7 @@ pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
     // The precondition says (x, y) satisfies this, so (-x, y) does too.
     let neg_x = field_neg(x);
 
-    assert(math_on_edwards_curve(neg_x, y)) by {
+    assert(is_on_edwards_curve(neg_x, y)) by {
         // Key insight: (-x)² = x²
         assert(field_square(neg_x) == field_square(x)) by {
             lemma_neg_square_eq(x);  // (-x)² = (x % p)²
@@ -227,9 +227,9 @@ pub proof fn lemma_negation_preserves_curve(x: nat, y: nat)
 /// 3. The Segre relation: (-X)·Y = -(X·Y) = -(Z·T) = Z·(-T)
 pub proof fn lemma_negation_preserves_extended_validity(x: nat, y: nat, z: nat, t: nat)
     requires
-        math_is_valid_extended_edwards_point(x, y, z, t),
+        is_valid_extended_edwards_point(x, y, z, t),
     ensures
-        math_is_valid_extended_edwards_point(field_neg(x), y, z, field_neg(t)),
+        is_valid_extended_edwards_point(field_neg(x), y, z, field_neg(t)),
 {
     let p = p();
     p_gt_2();
@@ -241,7 +241,7 @@ pub proof fn lemma_negation_preserves_extended_validity(x: nat, y: nat, z: nat, 
     // 1) Z ≠ 0 is unchanged (z remains the same)
 
     // 2) Projective curve equation: uses X², and (-X)² = X²
-    assert(math_on_edwards_curve_projective(neg_x, y, z)) by {
+    assert(is_on_edwards_curve_projective(neg_x, y, z)) by {
         // Key insight: (-x)² = x²
         assert(field_square(neg_x) == field_square(x)) by {
             lemma_neg_square_eq(x);
@@ -296,10 +296,10 @@ pub proof fn lemma_negation_preserves_extended_validity(x: nat, y: nat, z: nat, 
 /// - T = X·Y/1 = X·Y ✓
 pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
         t == field_mul(x, y),
     ensures
-        math_is_valid_extended_edwards_point(x, y, 1, t),
+        is_valid_extended_edwards_point(x, y, 1, t),
 {
     let p = p();
     p_gt_2();
@@ -315,7 +315,7 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
     }
 
     // 2) Projective curve equation holds for Z = 1
-    assert(math_on_edwards_curve_projective(x, y, 1)) by {
+    assert(is_on_edwards_curve_projective(x, y, 1)) by {
         let x2 = field_square(x);
         let y2 = field_square(y);
         let z2 = field_square(1);
@@ -376,7 +376,7 @@ pub proof fn lemma_affine_to_extended_valid(x: nat, y: nat, t: nat)
 /// - Therefore: y² = 1 (mod p)
 pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
         x == 0,
     ensures
         field_square(y) == 1,
@@ -469,11 +469,11 @@ pub proof fn lemma_x_zero_implies_y_squared_one(x: nat, y: nat)
 /// only needs field_inv(1) = 1 and field_mul(a, 1) = a.
 pub proof fn lemma_z_one_affine_implies_projective(x: nat, y: nat)
     requires
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
         x < p(),
         y < p(),
     ensures
-        math_on_edwards_curve_projective(x, y, 1nat),
+        is_on_edwards_curve_projective(x, y, 1nat),
 {
     p_gt_2();
     assert(1nat % p() != 0) by {
@@ -491,9 +491,9 @@ pub proof fn lemma_z_one_affine_implies_projective(x: nat, y: nat)
 pub proof fn lemma_affine_curve_implies_projective(x: nat, y: nat, z: nat)
     requires
         z % p() != 0,  // Z must be non-zero in the field (not just non-zero as nat)
-        math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
+        is_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
     ensures
-        math_on_edwards_curve_projective(x, y, z),
+        is_on_edwards_curve_projective(x, y, z),
 {
     let p = p();
     p_gt_2();
@@ -1193,7 +1193,7 @@ pub proof fn axiom_neg_distributes_over_add(P: (nat, nat), Q: (nat, nat))
 /// P + (-P) = O (identity)
 pub proof fn axiom_add_neg_is_identity(P: (nat, nat))
     ensures
-        edwards_add(P.0, P.1, edwards_neg(P).0, edwards_neg(P).1) == math_edwards_identity(),
+        edwards_add(P.0, P.1, edwards_neg(P).0, edwards_neg(P).1) == edwards_identity(),
 {
     admit();
 }
@@ -1391,14 +1391,14 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
     if a == 0 {
         // Special case: [b]([0]P) == [0]P for all b.
         reveal_with_fuel(edwards_scalar_mul, 1);
-        assert(edwards_scalar_mul(point_affine, 0) == math_edwards_identity());
+        assert(edwards_scalar_mul(point_affine, 0) == edwards_identity());
         assert(a * b == 0);
 
         if b == 0 {
             // Both sides are scalar_mul(_, 0) == identity.
         } else if b == 1 {
             // scalar_mul(identity, 1) == identity.
-            assert(edwards_scalar_mul(math_edwards_identity(), 1) == math_edwards_identity());
+            assert(edwards_scalar_mul(edwards_identity(), 1) == edwards_identity());
         } else if b % 2 == 0 {
             let hb = (b / 2) as nat;
             lemma_edwards_scalar_mul_composition(point_affine, 0, hb);
@@ -1411,10 +1411,10 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
 
             // IH gives [b/2]I == I.
             let half = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), hb);
-            assert(half == math_edwards_identity());
+            assert(half == edwards_identity());
 
             // double(I) == I
-            assert(edwards_double(half.0, half.1) == math_edwards_identity()) by {
+            assert(edwards_double(half.0, half.1) == edwards_identity()) by {
                 lemma_edwards_double_identity();
             }
         } else {
@@ -1423,10 +1423,10 @@ pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: n
             lemma_edwards_scalar_mul_composition(point_affine, 0, bm1);
 
             let prev = edwards_scalar_mul(edwards_scalar_mul(point_affine, 0), bm1);
-            assert(prev == math_edwards_identity());
+            assert(prev == edwards_identity());
 
             // I + I == I (identity added to itself is identity)
-            assert(edwards_add(0, 1, 0, 1) == math_edwards_identity()) by {
+            assert(edwards_add(0, 1, 0, 1) == edwards_identity()) by {
                 lemma_edwards_double_identity();
             }
         }
@@ -1673,7 +1673,7 @@ pub proof fn lemma_edwards_add_canonical(x1: nat, y1: nat, x2: nat, y2: nat)
 /// which decodes to x = (1-1)/2 = 0 and y = (1+1)/2 = 1.
 pub proof fn lemma_identity_affine_niels_is_identity()
     ensures
-        affine_niels_point_as_affine_edwards(identity_affine_niels()) == math_edwards_identity(),
+        affine_niels_point_as_affine_edwards(identity_affine_niels()) == edwards_identity(),
 {
     let id = identity_affine_niels();
     let y_plus_x = fe51_as_canonical_nat(&id.y_plus_x);
@@ -1874,7 +1874,7 @@ pub proof fn lemma_negate_affine_niels_preserves_validity(pt: AffineNielsPoint)
         lemma_square_mod_noop(xp);
     }
     // Segre relation: field_mul(neg_X, Y) == field_mul(Z, neg_T)
-    assert(math_is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp)) by {
+    assert(is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp)) by {
         lemma_field_neg_mul_left(xp, yp);
         lemma_field_mul_comm(zp, neg_tp);
         lemma_field_neg_mul_left(tp, zp);
@@ -1973,8 +1973,7 @@ pub proof fn lemma_negate_affine_niels_is_edwards_neg(pt: AffineNielsPoint)
 /// which decodes to x = (1-1)/2 / 1 = 0 and y = (1+1)/2 / 1 = 1.
 pub proof fn lemma_identity_projective_niels_is_identity()
     ensures
-        projective_niels_point_as_affine_edwards(identity_projective_niels())
-            == math_edwards_identity(),
+        projective_niels_point_as_affine_edwards(identity_projective_niels()) == edwards_identity(),
 {
     let id = identity_projective_niels();
     let y_plus_x = fe51_as_canonical_nat(&id.Y_plus_X);
@@ -2220,7 +2219,7 @@ pub proof fn lemma_negate_projective_niels_preserves_validity(pt: ProjectiveNiel
         lemma_square_mod_noop(xp);
     }
     // Segre relation: field_mul(neg_X, Y) == field_mul(Z, neg_T)
-    assert(math_is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp)) by {
+    assert(is_valid_extended_edwards_point(neg_xp, yp, zp, neg_tp)) by {
         lemma_field_neg_mul_left(xp, yp);
         lemma_field_mul_comm(zp, neg_tp);
         lemma_field_neg_mul_left(tp, zp);
@@ -2386,8 +2385,8 @@ pub proof fn lemma_projective_niels_affine_equals_edwards_affine(
 ///      makes their parities opposite, contradicting x1%2 == x2%2.
 pub proof fn lemma_unique_x_with_parity(x1: nat, x2: nat, y: nat)
     requires
-        math_on_edwards_curve(x1, y),
-        math_on_edwards_curve(x2, y),
+        is_on_edwards_curve(x1, y),
+        is_on_edwards_curve(x2, y),
         x1 < p(),
         x2 < p(),
         y < p(),
@@ -2564,9 +2563,9 @@ pub proof fn axiom_d_plus_one_nonzero()
 /// inv(z⁴) and simplify both sides to recover the affine equation.
 pub proof fn lemma_valid_extended_point_affine_on_curve(x: nat, y: nat, z: nat, t: nat)
     requires
-        math_is_valid_extended_edwards_point(x, y, z, t),
+        is_valid_extended_edwards_point(x, y, z, t),
     ensures
-        math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
+        is_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
 {
     let p = p();
     assert(p > 2) by {
@@ -2599,7 +2598,7 @@ pub proof fn lemma_valid_extended_point_affine_on_curve(x: nat, y: nat, z: nat, 
     let x2_y2 = field_mul(x2, y2);
     let proj_lhs = field_mul(y2_minus_x2, z2);
     let proj_rhs = field_add(z4, field_mul(d, x2_y2));
-    assert(proj_lhs == proj_rhs);  // from math_on_edwards_curve_projective
+    assert(proj_lhs == proj_rhs);  // from is_on_edwards_curve_projective
 
     // === Establish z², z⁴ are nonzero in the field ===
     assert(z2 != 0 && z2 % p != 0) by {
@@ -2793,15 +2792,15 @@ pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
 /// <https://eprint.iacr.org/2008/013>
 pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
     requires
-        math_on_edwards_curve(x1, y1),
-        math_on_edwards_curve(x2, y2),
+        is_on_edwards_curve(x1, y1),
+        is_on_edwards_curve(x2, y2),
     ensures
         ({
             let d = fe51_as_canonical_nat(&EDWARDS_D);
             let t = field_mul(d, field_mul(field_mul(x1, x2), field_mul(y1, y2)));
             field_add(1, t) != 0 && field_sub(1, t) != 0
         }),
-        math_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
+        is_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
 {
     admit();
 }
@@ -2831,9 +2830,9 @@ pub proof fn lemma_completed_point_ratios(
     requires
 // (x₁, y₁) on curve
 
-        math_on_edwards_curve(x1, y1),
+        is_on_edwards_curve(x1, y1),
         // (x₂, y₂) on curve
-        math_on_edwards_curve(x2, y2),
+        is_on_edwards_curve(x2, y2),
         // X = 2·(x₁y₂ + y₁x₂)
         result_x == field_mul(2, field_add(field_mul(x1, y2), field_mul(y1, x2))),
         // Y = 2·(y₁y₂ + x₁x₂)
@@ -2871,7 +2870,7 @@ pub proof fn lemma_completed_point_ratios(
         // Y/T = edwards_add(x₁, y₁, x₂, y₂).y
         field_mul(result_y, field_inv(result_t)) == edwards_add(x1, y1, x2, y2).1,
         // (X/Z, Y/T) on curve
-        math_on_edwards_curve(
+        is_on_edwards_curve(
             field_mul(result_x, field_inv(result_z)),
             field_mul(result_y, field_inv(result_t)),
         ),
@@ -2889,7 +2888,7 @@ pub proof fn lemma_completed_point_ratios(
     let two: nat = 2;
 
     // Denominators non-zero and result on curve
-    assert(denom_x != 0 && denom_y != 0 && math_on_edwards_curve(
+    assert(denom_x != 0 && denom_y != 0 && is_on_edwards_curve(
         field_mul(num_x, field_inv(denom_x)),
         field_mul(num_y, field_inv(denom_y)),
     )) by {
@@ -2979,7 +2978,7 @@ pub(crate) proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::Ed
             fe51_as_canonical_nat(&edwards_x(point)),
             fe51_as_canonical_nat(&edwards_y(point)),
         ),
-        math_on_edwards_curve(
+        is_on_edwards_curve(
             fe51_as_canonical_nat(&edwards_x(point)),
             fe51_as_canonical_nat(&edwards_y(point)),
         ),
@@ -3036,9 +3035,9 @@ pub(crate) proof fn lemma_edwards_affine_when_z_is_one(point: crate::edwards::Ed
 pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
     requires
         z % p() != 0,
-        math_on_edwards_curve_projective(x, y, z),
+        is_on_edwards_curve_projective(x, y, z),
     ensures
-        math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
+        is_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z))),
 {
     let p = p();
     p_gt_2();
@@ -3071,8 +3070,8 @@ pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
     };
     assert(field_mul(z, ghost_t) == xy);
 
-    assert(math_is_valid_extended_edwards_point(x, y, z, ghost_t));
-    assert(math_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z)))) by {
+    assert(is_valid_extended_edwards_point(x, y, z, ghost_t));
+    assert(is_on_edwards_curve(field_mul(x, field_inv(z)), field_mul(y, field_inv(z)))) by {
         lemma_valid_extended_point_affine_on_curve(x, y, z, ghost_t);
     };
 }
@@ -3103,10 +3102,10 @@ pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat),
 /// [n]*O = O for all n.
 pub proof fn lemma_edwards_scalar_mul_identity(n: nat)
     ensures
-        edwards_scalar_mul(math_edwards_identity(), n) == math_edwards_identity(),
+        edwards_scalar_mul(edwards_identity(), n) == edwards_identity(),
     decreases n,
 {
-    let id = math_edwards_identity();
+    let id = edwards_identity();
     if n == 0 {
         reveal_with_fuel(edwards_scalar_mul, 1);
     } else if n == 1 {
@@ -3151,9 +3150,9 @@ pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
 /// double(O) = O.
 pub proof fn lemma_double_identity()
     ensures
-        edwards_double(0nat, 1nat) == math_edwards_identity(),
+        edwards_double(0nat, 1nat) == edwards_identity(),
 {
-    lemma_double_is_scalar_mul_2(math_edwards_identity());
+    lemma_double_is_scalar_mul_2(edwards_identity());
     lemma_edwards_scalar_mul_identity(2);
 }
 

@@ -47,16 +47,16 @@ pub struct Scalar52 {
 | Function | Location | Definition | Purpose |
 |----------|----------|------------|---------|
 | `scalar_as_nat` | `scalar_specs.rs` | `u8_32_as_nat(&s.bytes)` | Scalar → nat |
-| `scalar52_to_nat` | `scalar52_specs.rs` | `limbs52_to_nat(&s.limbs)` | Scalar52 → nat |
+| `scalar52_as_nat` | `scalar52_specs.rs` | `limbs52_as_nat(&s.limbs)` | Scalar52 → nat |
 | `spec_scalar` | `scalar_specs.rs` | `u8_32_as_nat(&s.bytes) % group_order()` | Scalar → nat mod L |
-| `spec_scalar52` | `scalar52_specs.rs` | `scalar52_to_nat(s) % group_order()` | Scalar52 → nat mod L |
+| `spec_scalar52` | `scalar52_specs.rs` | `scalar52_as_nat(s) % group_order()` | Scalar52 → nat mod L |
 
 ### Validity Predicates
 
 | Predicate | Location | Definition | Purpose |
 |-----------|----------|------------|---------|
 | `is_canonical_scalar` | `scalar_specs.rs` | `u8_32_as_nat(&s.bytes) < group_order() && s.bytes[31] <= 127` | Canonical Scalar |
-| `is_canonical_scalar52` | `scalar52_specs.rs` | `limbs_bounded(s) && scalar52_to_nat(s) < group_order()` | Canonical Scalar52 |
+| `is_canonical_scalar52` | `scalar52_specs.rs` | `limbs_bounded(s) && scalar52_as_nat(s) < group_order()` | Canonical Scalar52 |
 | `limbs_bounded` | `scalar52_specs.rs` | `∀i. limbs[i] < 2^52` | Well-formed limbs |
 
 ### Constants
@@ -91,13 +91,13 @@ pub struct Scalar52 {
 │  └──────────┴──────────┴──────────┴──────────┴──────────┘      │
 │     52-bit     52-bit     52-bit     52-bit     52-bit          │
 │                                                                  │
-│  scalar52_to_nat = Σ limbs[i] × 2^(52i)  for i ∈ [0, 4]        │
+│  scalar52_as_nat = Σ limbs[i] × 2^(52i)  for i ∈ [0, 4]        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Key invariant:** After `Scalar52::from_bytes(&bytes)`:
 ```rust
-u8_32_as_nat(bytes) == scalar52_to_nat(&s)
+u8_32_as_nat(bytes) == scalar52_as_nat(&s)
 ```
 
 ---
@@ -111,14 +111,14 @@ impl Scalar52 {
     /// Unpack 32 bytes into 5 × 52-bit limbs
     pub fn from_bytes(bytes: &[u8; 32]) -> Scalar52
         ensures
-            u8_32_as_nat(bytes) == scalar52_to_nat(&s),
+            u8_32_as_nat(bytes) == scalar52_as_nat(&s),
             limbs_bounded(&s),
     
     /// Reduce 64 bytes mod L into canonical Scalar52
     pub fn from_bytes_wide(bytes: &[u8; 64]) -> Scalar52
         ensures
             is_canonical_scalar52(&s),
-            scalar52_to_nat(&s) == bytes_seq_as_nat(bytes@) % group_order(),
+            scalar52_as_nat(&s) == bytes_seq_as_nat(bytes@) % group_order(),
 }
 ```
 
@@ -131,7 +131,7 @@ impl Scalar52 {
         requires
             limbs_bounded(self),
         ensures
-            scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result),
+            scalar52_as_nat(self) < group_order() ==> is_canonical_scalar(&result),
 }
 ```
 
@@ -190,7 +190,7 @@ Montgomery multiplication avoids expensive division by L. Instead:
 │  struct Scalar52 { limbs: [u64; 5] }                                        │
 │                                                                              │
 │  Specs:                                                                      │
-│    scalar52_to_nat(&s) = limbs52_to_nat(&s.limbs)                           │
+│    scalar52_as_nat(&s) = limbs52_as_nat(&s.limbs)                           │
 │    is_canonical_scalar52(&s) = limbs_bounded(s) && value < L                │
 │                                                                              │
 │  ┌────────────────────────────────────────────────────────────────────────┐ │
@@ -218,11 +218,11 @@ Montgomery multiplication avoids expensive division by L. Instead:
 scalar_specs.rs                      scalar52_specs.rs
 ───────────────                      ───────────────────
 
-scalar_as_nat(&Scalar)               scalar52_to_nat(&Scalar52)
+scalar_as_nat(&Scalar)               scalar52_as_nat(&Scalar52)
        │                                    │
-       └──→ u8_32_as_nat                  └──→ limbs52_to_nat
+       └──→ u8_32_as_nat                  └──→ limbs52_as_nat
                   │                                    │
-                  │                                    └──→ seq_to_nat_52
+                  │                                    └──→ seq_as_nat_52
                   │
                   └──────────────────────────────────────────────┐
                                                                  │
@@ -243,7 +243,7 @@ scalar_as_nat(&Scalar)               scalar52_to_nat(&Scalar52)
 1. **Clear separation:** `Scalar` (bytes) vs `Scalar52` (limbs)
 2. **Canonical predicates:** `is_canonical_scalar` and `is_canonical_scalar52`
 3. **Montgomery encapsulation:** Internal representation hidden from public API
-4. **Bridge lemmas:** `from_bytes` proves `u8_32_as_nat(bytes) == scalar52_to_nat(&s)`
+4. **Bridge lemmas:** `from_bytes` proves `u8_32_as_nat(bytes) == scalar52_as_nat(&s)`
 
 ### 🔧 Potential Improvements
 
@@ -251,7 +251,7 @@ scalar_as_nat(&Scalar)               scalar52_to_nat(&Scalar52)
 
 Currently:
 - `scalar_as_nat` → `u8_32_as_nat` (8-bit radix)
-- `scalar52_to_nat` → `seq_to_nat_52` (52-bit radix)
+- `scalar52_as_nat` → `seq_as_nat_52` (52-bit radix)
 
 **Potential:** Define both in terms of `words_as_nat_gen`:
 ```rust
@@ -260,7 +260,7 @@ pub open spec fn u8_32_as_nat(bytes: &[u8; 32]) -> nat {
     words_as_nat_gen(bytes@.map(|i, x| x as nat), 32, 8)
 }
 
-pub open spec fn scalar52_to_nat(s: &Scalar52) -> nat {
+pub open spec fn scalar52_as_nat(s: &Scalar52) -> nat {
     words_as_nat_gen(s.limbs@.map(|i, x| x as nat), 5, 52)
 }
 ```
@@ -273,7 +273,7 @@ Already implemented:
 ```rust
 /// Returns the mathematical value of a Scalar52 modulo the group order.
 pub open spec fn spec_scalar52(s: &Scalar52) -> nat {
-    scalar52_to_nat(s) % group_order()
+    scalar52_as_nat(s) % group_order()
 }
 ```
 
@@ -282,7 +282,7 @@ pub open spec fn spec_scalar52(s: &Scalar52) -> nat {
 ```rust
 /// Value in Montgomery form: represents x where actual value is x × R⁻¹ mod L
 pub open spec fn montgomery_value(s: &Scalar52) -> nat {
-    (scalar52_to_nat(s) * inv_montgomery_radix()) % group_order()
+    (scalar52_as_nat(s) * inv_montgomery_radix()) % group_order()
 }
 ```
 

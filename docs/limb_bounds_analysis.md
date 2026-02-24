@@ -6,7 +6,7 @@ This document systematically analyzes which functions create and consume `Scalar
 
 | Type | `*_to_nat` function | Bounds predicate | Canonical predicate |
 |------|---------------------|------------------|---------------------|
-| `Scalar52` | `scalar52_to_nat` | `limbs_bounded` (< 2^52) | `is_canonical_scalar52` |
+| `Scalar52` | `scalar52_as_nat` | `limbs_bounded` (< 2^52) | `is_canonical_scalar52` |
 | `FieldElement51` | `u64_5_as_nat` / `fe51_as_nat` | `fe51_limbs_bounded(fe, bit_limit)` | - |
 
 **Key insight:** The `*_to_nat` functions are "raw" polynomial interpretations without built-in bounds guarantees. Bounds are established via preconditions and maintained via postconditions.
@@ -19,12 +19,12 @@ This document systematically analyzes which functions create and consume `Scalar
 
 | Function | Postcondition: bounds | Postcondition: value |
 |----------|----------------------|----------------------|
-| `from_bytes` | `limbs_bounded(&s)` | `u8_32_as_nat(bytes) == scalar52_to_nat(&s)` |
-| `from_bytes_wide` | `is_canonical_scalar52(&s)` | `scalar52_to_nat(&s) == bytes_seq_as_nat(bytes@) % group_order()` |
-| `add` | `is_canonical_scalar52(&s)` | `scalar52_to_nat(&s) == (a + b) % group_order()` |
-| `sub` | `is_canonical_scalar52(&s)` | `scalar52_to_nat(&s) == (a - b) % group_order()` |
-| `mul` | `is_canonical_scalar52(&result)` | `scalar52_to_nat(&result) % L == (a * b) % L` |
-| `square` | (implicit via mul) | `scalar52_to_nat(&result) == (self * self) % L` |
+| `from_bytes` | `limbs_bounded(&s)` | `u8_32_as_nat(bytes) == scalar52_as_nat(&s)` |
+| `from_bytes_wide` | `is_canonical_scalar52(&s)` | `scalar52_as_nat(&s) == bytes_seq_as_nat(bytes@) % group_order()` |
+| `add` | `is_canonical_scalar52(&s)` | `scalar52_as_nat(&s) == (a + b) % group_order()` |
+| `sub` | `is_canonical_scalar52(&s)` | `scalar52_as_nat(&s) == (a - b) % group_order()` |
+| `mul` | `is_canonical_scalar52(&result)` | `scalar52_as_nat(&result) % L == (a * b) % L` |
+| `square` | (implicit via mul) | `scalar52_as_nat(&result) == (self * self) % L` |
 | `montgomery_mul` | `limbs_bounded(&result)` | Montgomery property |
 | `montgomery_square` | `limbs_bounded(&result)` | Montgomery property |
 | `as_montgomery` | `limbs_bounded(&result)` | Montgomery property |
@@ -58,10 +58,10 @@ pub fn as_bytes(self) -> (s: [u8; 32])
     requires
         limbs_bounded(&self),
     ensures
-        u8_32_as_nat(&s) == scalar52_to_nat(&self) % pow2(256),
+        u8_32_as_nat(&s) == scalar52_as_nat(&self) % pow2(256),
 ```
 
-**Note:** The postcondition includes `% pow2(256)` because `scalar52_to_nat` can produce values up to 2^260 (5 limbs × 52 bits). When serializing to 32 bytes, only the low 256 bits are preserved. For canonical scalars (< group_order < 2^256), this modulus is a no-op.
+**Note:** The postcondition includes `% pow2(256)` because `scalar52_as_nat` can produce values up to 2^260 (5 limbs × 52 bits). When serializing to 32 bytes, only the low 256 bits are preserved. For canonical scalars (< group_order < 2^256), this modulus is a no-op.
 
 ### Analysis: Scalar52 bounds chain
 
@@ -191,7 +191,7 @@ from_bytes(bytes)     ──ensures──> fe51_limbs_bounded(&r, 51)
 | Total bits | 5 × 52 = 260 | 5 × 51 = 255 |
 | Bounds predicate | `limbs_bounded` (fixed at 52) | `fe51_limbs_bounded(fe, bit_limit)` (parameterized) |
 | Canonical predicate | `is_canonical_scalar52` (< L) | - |
-| Value preservation | `u8_32_as_nat == scalar52_to_nat` | `u8_32_as_nat % 2^255 == u64_5_as_nat` |
+| Value preservation | `u8_32_as_nat == scalar52_as_nat` | `u8_32_as_nat % 2^255 == u64_5_as_nat` |
 
 ### Canonicity Differences
 
@@ -219,7 +219,7 @@ from_bytes(bytes)     ──ensures──> fe51_limbs_bounded(&r, 51)
 
 | Lemma | What it proves |
 |-------|----------------|
-| `lemma_bound_scalar` | `limbs_bounded(a) ==> scalar52_to_nat(&a) < pow2(260)` |
+| `lemma_bound_scalar` | `limbs_bounded(a) ==> scalar52_as_nat(&a) < pow2(260)` |
 | `lemma_general_bound` | Generic version for any length |
 | `lemma_scalar52_lt_pow2_256_if_canonical` | `limbs_bounded(a) && < L ==> < pow2(256)` |
 

@@ -278,7 +278,7 @@ impl CompressedEdwardsY {
         ensures
     // Decompression succeeds iff the y-coordinate is valid
 
-            math_is_valid_y_coordinate(field_element_from_bytes(&self.0)) <==> result.is_some(),
+            is_valid_edwards_y_coordinate(field_element_from_bytes(&self.0)) <==> result.is_some(),
             // When successful, the result has these properties:
             result.is_some() ==> (
             // The Y coordinate matches the one from the compressed representation
@@ -301,10 +301,10 @@ impl CompressedEdwardsY {
         let (is_valid_y_coord, X, Y, Z) = decompress::step_1(self);
 
         proof {
-            assert(choice_is_true(is_valid_y_coord) ==> math_is_valid_y_coordinate(
+            assert(choice_is_true(is_valid_y_coord) ==> is_valid_edwards_y_coordinate(
                 field_element_from_bytes(&self.0),
             ));
-            assert(choice_is_true(is_valid_y_coord) ==> math_on_edwards_curve(
+            assert(choice_is_true(is_valid_y_coord) ==> is_on_edwards_curve(
                 fe51_as_canonical_nat(&X),
                 fe51_as_canonical_nat(&Y),
             ));
@@ -373,9 +373,9 @@ mod decompress {
                 fe51_as_canonical_nat(&Z) == 1
                     &&
                 // The choice is true iff the Y is valid and (X, Y) is on the curve
-                (choice_is_true(is_valid) <==> math_is_valid_y_coordinate(
+                (choice_is_true(is_valid) <==> is_valid_edwards_y_coordinate(
                     fe51_as_canonical_nat(&Y),
-                )) && (choice_is_true(is_valid) ==> math_on_edwards_curve(
+                )) && (choice_is_true(is_valid) ==> is_on_edwards_curve(
                     fe51_as_canonical_nat(&X),
                     fe51_as_canonical_nat(&Y),
                 )) &&
@@ -514,7 +514,7 @@ mod decompress {
             fe51_limbs_bounded(&X, 52),
             fe51_limbs_bounded(&Y, 51),
             fe51_limbs_bounded(&Z, 51),
-            math_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y)),
+            is_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y)),
             fe51_as_canonical_nat(&Z) == 1,
         ensures
             fe51_as_canonical_nat(&result.X)
@@ -585,7 +585,7 @@ mod decompress {
             assert(fe51_limbs_bounded(&Y, 54));
 
             // (mutated_x, y) is on the curve: either unchanged or negated x
-            assert(math_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y))) by {
+            assert(is_on_edwards_curve(fe51_as_canonical_nat(&X), fe51_as_canonical_nat(&Y))) by {
                 let orig_x = fe51_as_canonical_nat(&original_X);
                 let y_val = fe51_as_canonical_nat(&Y);
                 if choice_is_true(compressed_sign_bit) {
@@ -802,7 +802,7 @@ impl EdwardsPoint {
         fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.Y, 52) && fe51_limbs_bounded(
             &self.Z,
             52,
-        ) && fe51_limbs_bounded(&self.T, 52) && math_is_valid_extended_edwards_point(
+        ) && fe51_limbs_bounded(&self.T, 52) && is_valid_extended_edwards_point(
             fe51_as_canonical_nat(&self.X),
             fe51_as_canonical_nat(&self.Y),
             fe51_as_canonical_nat(&self.Z),
@@ -817,8 +817,6 @@ impl EdwardsPoint {
 impl Identity for CompressedEdwardsY {
     fn identity() -> (result: CompressedEdwardsY)
         ensures
-    // Identity point has y = 1 and sign bit = 0
-
             field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
     {
@@ -905,8 +903,6 @@ impl crate::traits::IsIdentitySpecImpl for CompressedEdwardsY {
 impl Default for CompressedEdwardsY {
     fn default() -> (result: CompressedEdwardsY)
         ensures
-    // Identity point has y = 1 and sign bit = 0
-
             field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
     {
@@ -921,12 +917,7 @@ impl CompressedEdwardsY {
     ///
     /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
     /// a length of 32.
-    pub fn from_slice(bytes: &[u8]) -> (result: Result<
-        CompressedEdwardsY,
-        TryFromSliceError,
-    >)
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedEdwardsY, TryFromSliceError>)
         ensures
             bytes@.len() == 32 ==> matches!(result, Ok(_)),
             bytes@.len() != 32 ==> matches!(result, Err(_)),
@@ -980,7 +971,7 @@ impl Identity for EdwardsPoint {
 impl crate::traits::IsIdentitySpecImpl for EdwardsPoint {
     /// For EdwardsPoint, is_identity returns true iff the affine point equals (0, 1)
     open spec fn is_identity_spec(&self) -> bool {
-        edwards_point_as_affine(*self) == math_edwards_identity()
+        edwards_point_as_affine(*self) == edwards_identity()
     }
 }
 
@@ -1002,10 +993,7 @@ impl Zeroize for CompressedEdwardsY {
     fn zeroize(&mut self)
         ensures
             forall|i: int| 1 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
-            self.0[0]
-                == 1u8,
-    // VERIFICATION NOTE: this "zeroize" leaves one bit equal to 1
-
+            self.0[0] == 1u8,
     {
         /* ORIGINAL CODE:
             self.0.zeroize();
@@ -1093,7 +1081,7 @@ impl ValidityCheck for EdwardsPoint {
 
             // proj.is_valid() checks ONLY the projective curve equation (not z != 0)
             assert(proj.X == self.X && proj.Y == self.Y && proj.Z == self.Z);
-            assert(point_on_curve == math_on_edwards_curve_projective(x, y, z));
+            assert(point_on_curve == is_on_edwards_curve_projective(x, y, z));
 
             // on_segre_image checks XY == ZT via PartialEq (compares canonical bytes)
             // PartialEq ensures: (a == b) <==> spec_fe51_as_bytes(a) == spec_fe51_as_bytes(b)
@@ -1123,7 +1111,7 @@ impl ValidityCheck for EdwardsPoint {
             };
 
             // With Z ≠ 0 as precondition, prove result equals the spec validity predicate.
-            let curve_eq = math_on_edwards_curve_projective(x, y, z);
+            let curve_eq = is_on_edwards_curve_projective(x, y, z);
             let segre_eq = field_mul(x, y) == field_mul(z, t);
 
             assert(result == (curve_eq && segre_eq)) by {
@@ -1159,10 +1147,7 @@ impl ConditionallySelectable for EdwardsPoint {
     fn conditional_select(a: &EdwardsPoint, b: &EdwardsPoint, choice: Choice) -> (result:
         EdwardsPoint)
         ensures
-    // If choice is false (0), return a
-
             !choice_is_true(choice) ==> result == *a,
-            // If choice is true (1), return b
             choice_is_true(choice) ==> result == *b,
             // Well-formedness is preserved by selection
             is_well_formed_edwards_point(*a) && is_well_formed_edwards_point(*b)
@@ -1211,10 +1196,6 @@ impl ConditionallySelectable for EdwardsPoint {
 impl ConstantTimeEq for EdwardsPoint {
     fn ct_eq(&self, other: &EdwardsPoint) -> (result: Choice)
         ensures
-    // Two points are equal if they represent the same affine point:
-    // (X/Z, Y/Z) == (X'/Z', Y'/Z')
-    // This is checked by verifying X*Z' == X'*Z and Y*Z' == Y'*Z
-
             choice_is_true(result) == (edwards_point_as_affine(*self) == edwards_point_as_affine(
                 *other,
             )),
@@ -1271,7 +1252,7 @@ impl ConstantTimeEq for EdwardsPoint {
                 lemma_ct_eq_iff_canonical_nat(&yz, &yz_prime);
             }
 
-            // Z-coordinates are nonzero (from math_is_valid_extended_edwards_point in type invariant)
+            // Z-coordinates are nonzero (from is_valid_extended_edwards_point in type invariant)
             assert(z1 % p() != 0);
             assert(z2 % p() != 0);
 
@@ -1978,10 +1959,10 @@ impl EdwardsPoint {
     /// Add this point to itself.
     pub(crate) fn double(&self) -> (result: EdwardsPoint)
         requires
-            is_valid_edwards_point(*self),  // self is a valid extended Edwards point
+            is_valid_edwards_point(*self),
             edwards_point_limbs_bounded(*self),
         ensures
-            is_valid_edwards_point(result),  // result is also a valid Edwards point
+            is_valid_edwards_point(result),
             // Result equals the affine doubling of the input.
             edwards_point_as_affine(result) == edwards_double(
                 edwards_point_as_affine(*self).0,
@@ -2937,10 +2918,7 @@ impl EdwardsPoint {
                     spec_optional_points_from_iter::<J>(points)[i].unwrap(),
                 ),
         ensures
-    // Result is Some if and only if all input points are Some
-
             result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
-            // If result is Some, it is a well-formed Edwards point
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
             // Semantic correctness: result = sum(scalars[i] * points[i])
             result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
@@ -3016,8 +2994,6 @@ impl EdwardsPoint {
                     #[trigger] spec_points_from_iter::<P, J>(points)[i],
                 ),
         ensures
-    // Result is a well-formed Edwards point
-
             is_well_formed_edwards_point(result),
             // Semantic correctness: result = sum(scalars[i] * points[i])
             edwards_point_as_affine(result) == sum_of_scalar_muls(
@@ -3414,12 +3390,12 @@ impl BasepointTable for EdwardsBasepointTable {
             }
 
             // Initial invariant: identity == odd_sum_up_to(digits, 0, B)
-            assert(edwards_point_as_affine(P) == math_edwards_identity()) by {
+            assert(edwards_point_as_affine(P) == edwards_identity()) by {
                 lemma_identity_affine_coords(P);
             }
-            // odd_sum_up_to(_, 0, _) = math_edwards_identity() = (0, 1) by definition
+            // odd_sum_up_to(_, 0, _) = edwards_identity() = (0, 1) by definition
             reveal(odd_sum_up_to);
-            assert(odd_sum_up_to(a@, 0, spec_ed25519_basepoint()) == math_edwards_identity());
+            assert(odd_sum_up_to(a@, 0, spec_ed25519_basepoint()) == edwards_identity());
         }
 
         // ORIGINAL CODE (doesn't work with Verus - .filter() not supported in ghost for loops):
@@ -3547,7 +3523,7 @@ impl BasepointTable for EdwardsBasepointTable {
             // pippenger_partial(a@, 0, B) = edwards_add(scaled, even_sum_up_to(a@, 0, B))
             //                            = edwards_add(scaled, identity)
             //                            = scaled (by identity law)
-            assert(even_sum_up_to(a@, 0, B) == math_edwards_identity());
+            assert(even_sum_up_to(a@, 0, B) == edwards_identity());
             // scaled comes from edwards_scalar_mul, which produces canonical coordinates
             assert(edwards_add(scaled.0, scaled.1, 0, 1) == scaled) by {
                 p_gt_2();
@@ -3900,8 +3876,7 @@ impl EdwardsPoint {
         ensures
     // A point has small order iff [8]P = O (identity)
 
-            result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8)
-                == math_edwards_identity()),
+            result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == edwards_identity()),
     {
         /* ORIGINAL CODE: self.mul_by_cofactor().is_identity() */
         let cofactor_mul = self.mul_by_cofactor();
@@ -3909,9 +3884,9 @@ impl EdwardsPoint {
         //   edwards_point_as_affine(cofactor_mul) == edwards_scalar_mul(edwards_point_as_affine(*self), 8)
         let result = cofactor_mul.is_identity();
         // is_identity ensures: result == cofactor_mul.is_identity_spec()
-        //   which equals: edwards_point_as_affine(cofactor_mul) == math_edwards_identity()
+        //   which equals: edwards_point_as_affine(cofactor_mul) == edwards_identity()
         // Combined with mul_by_cofactor's ensures:
-        //   result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == math_edwards_identity())
+        //   result == (edwards_scalar_mul(edwards_point_as_affine(*self), 8) == edwards_identity())
         result
     }
 
@@ -3948,7 +3923,7 @@ impl EdwardsPoint {
     // A point is torsion-free iff [ℓ]P = O, where ℓ is the group order
 
             result == (edwards_scalar_mul(edwards_point_as_affine(*self), group_order())
-                == math_edwards_identity()),
+                == edwards_identity()),
     {
         /* ORIGINAL CODE: (self * constants::BASEPOINT_ORDER_PRIVATE).is_identity() */
         let order_mul = self * constants::BASEPOINT_ORDER_PRIVATE;

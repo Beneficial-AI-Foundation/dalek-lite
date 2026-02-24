@@ -16,7 +16,7 @@ Place lemmas in the module that matches their scope so they stay reusable and av
 
 | Kind of lemma | Put in | Examples |
 |---------------|--------|----------|
-| **Generic field algebra** (holds for any d / any field elements) | `lemmas/field_lemmas/field_algebra_lemmas.rs` | From curve eq derive x²·v=u; on-curve (x,y) witnesses valid y; y²=1 ⇒ x=0 when d+1≠0. Take `d` as parameter; precondition = curve equation in field form. No EDWARDS_D or math_on_edwards_curve. |
+| **Generic field algebra** (holds for any d / any field elements) | `lemmas/field_lemmas/field_algebra_lemmas.rs` | From curve eq derive x²·v=u; on-curve (x,y) witnesses valid y; y²=1 ⇒ x=0 when d+1≠0. Take `d` as parameter; precondition = curve equation in field form. No EDWARDS_D or is_on_edwards_curve. |
 | **Ed25519 curve structure** (tied to EDWARDS_D or curve predicate) | `lemmas/edwards_lemmas/curve_equation_lemmas.rs` | lemma_unique_x_with_parity, axiom_d_plus_one_nonzero. Call field lemmas with d = EDWARDS_D; don’t duplicate their proofs. |
 | **Decompression / Montgomery→Edwards** (spec match, to_edwards correctness) | `lemmas/edwards_lemmas/decompress_lemmas.rs` | lemma_decompress_spec_matches_point, lemma_to_edwards_correctness. Not generic curve eq; about decompress API and birational map. |
 

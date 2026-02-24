@@ -117,14 +117,7 @@ impl LookupTable<AffineNielsPoint> {
             -8 <= x,
             x <= 8,
             lookup_table_affine_limbs_bounded(self.0),
-            // Per-entry validity is required because select returns table entries directly
-            // (when x > 0) and must guarantee is_valid_affine_niels_point(result).
-            // This cannot be derived from lookup_table_affine_limbs_bounded (which only
-            // constrains limb magnitudes) or is_valid_lookup_table_affine (which constrains
-            // (y+x, y-x) coordinates but not xy2d). Validity requires all three fields
-            // to be consistent with some EdwardsPoint.
-            // All callers construct tables via From<&EdwardsPoint>, whose as_affine_niels
-            // ensures per-entry validity.
+            // Not derivable from limb bounds alone; each entry must correspond to some EdwardsPoint.
             forall|j: int| 0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] self.0[j]),
         ensures
     // Formal specification for all cases:
@@ -158,7 +151,7 @@ impl LookupTable<AffineNielsPoint> {
         let xabs = (x as i16 + xmask) ^ xmask;
 
         proof {
-            // WI3: Bit-vector facts about xmask, xabs
+            // Bit-vector facts about xmask, xabs
             // In Verus spec mode, i16 + i16 returns int (for overflow safety),
             // making `(x as i16 + xmask) ^ xmask` fail because int has no XOR.
             // Work around by binding the sum as i16 so XOR stays in bitvector land.

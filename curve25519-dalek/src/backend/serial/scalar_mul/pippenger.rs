@@ -275,8 +275,8 @@ impl Pippenger {
     ///     for (digits, pt) in scalars_points.iter() {
     ///         let digit = digits[digit_index] as i16;
     ///         match digit.cmp(&0) {
-    ///             Ordering::Greater => { buckets[(digit-1) as usize] = (&buckets[..] + pt).as_extended(); }
-    ///             Ordering::Less   => { buckets[(-digit-1) as usize] = (&buckets[..] - pt).as_extended(); }
+    ///             Ordering::Greater => { let b = (digit-1) as usize;  buckets[b] = (&buckets[b] + pt).as_extended(); }
+    ///             Ordering::Less   => { let b = (-digit-1) as usize; buckets[b] = (&buckets[b] - pt).as_extended(); }
     ///             Ordering::Equal  => {}
     ///         }
     ///     }
@@ -332,6 +332,7 @@ impl Pippenger {
         let ghost B = buckets_count as int;
 
         // ---- Phase 1: Clear buckets to identity ----
+        // UPSTREAM: for bucket in &mut buckets { *bucket = EdwardsPoint::identity(); }
         let mut bucket_idx: usize = 0;
         while bucket_idx < buckets_count
             invariant
@@ -353,6 +354,15 @@ impl Pippenger {
         }
 
         // ---- Phase 2: Fill buckets by digit sign ----
+        // UPSTREAM:
+        //   for (digits, pt) in scalars_points.iter() {
+        //       let digit = digits[digit_index] as i16;
+        //       match digit.cmp(&0) {
+        //           Ordering::Greater => { let b = (digit - 1) as usize;  buckets[b] = (&buckets[b] + pt).as_extended(); }
+        //           Ordering::Less    => { let b = (-digit - 1) as usize; buckets[b] = (&buckets[b] - pt).as_extended(); }
+        //           Ordering::Equal   => {}
+        //       }
+        //   }
         proof {
             assert forall|b: int| 0 <= b < buckets_count implies edwards_point_as_affine(
                 #[trigger] buckets@[b],
@@ -487,6 +497,14 @@ impl Pippenger {
         }
 
         // ---- Phase 3: Sum buckets via intermediate-sum trick ----
+        // UPSTREAM:
+        //   let mut buckets_intermediate_sum = buckets[buckets_count - 1];
+        //   let mut buckets_sum = buckets[buckets_count - 1];
+        //   for i in (0..(buckets_count - 1)).rev() {
+        //       buckets_intermediate_sum += buckets[i];
+        //       buckets_sum += buckets_intermediate_sum;
+        //   }
+        //   buckets_sum
         let ghost buckets_affine: Seq<(nat, nat)> = Seq::new(
             buckets_count as nat,
             |b: int| edwards_point_as_affine(buckets@[b]),
@@ -953,8 +971,7 @@ impl Pippenger {
          * doesn't support closures with map/fold).
          */
 
-        // Take the high column as an initial value to avoid wasting time
-        // doubling the identity element in `fold()`.
+        // UPSTREAM: let hi_column = columns.next().expect("should have more than zero digits");
         let hi_column = Pippenger::process_column(
             &mut buckets,
             &scalars_points,
@@ -1000,6 +1017,7 @@ impl Pippenger {
             }
         }
 
+        // UPSTREAM: Some(columns.fold(hi_column, |total, p| total.mul_by_pow_2(w as u32) + p))
         let mut total = hi_column;
         let mut digit_index: usize = digits_count - 1;
         while digit_index > 0
@@ -1029,10 +1047,8 @@ impl Pippenger {
         {
             digit_index = digit_index - 1;
 
-            // Shift total by 2^w
+            // UPSTREAM (fold body): total.mul_by_pow_2(w as u32) + p
             let shifted = total.mul_by_pow_2(w as u32);
-
-            // Process column at digit_index
             let column = Pippenger::process_column(
                 &mut buckets,
                 &scalars_points,
@@ -1041,7 +1057,6 @@ impl Pippenger {
                 buckets_count,
             );
 
-            // Accumulate: total = [2^w]*total_old + column
             total = &shifted + &column;
 
             proof {

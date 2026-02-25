@@ -137,10 +137,15 @@ def _parse_function_name(raw: str) -> tuple[str, str, str]:
     Examples:
         MontgomeryPoint::ct_eq(&MontgomeryPoint) -> (ct_eq, MontgomeryPoint::ct_eq, MontgomeryPoint)
         elligator_encode(&FieldElement) -> (elligator_encode, elligator_encode, "")
+        & 'a EdwardsBasepointTable::mul(&Scalar) -> (mul, EdwardsBasepointTable::mul, EdwardsBasepointTable)
     """
     raw = raw.strip().strip('"')
     paren_idx = raw.find("(")
     before_paren = raw[:paren_idx].strip() if paren_idx != -1 else raw.strip()
+
+    # Strip Rust reference/lifetime prefixes from trait impls for reference types
+    # e.g. "& 'a EdwardsBasepointTable" -> "EdwardsBasepointTable"
+    before_paren = re.sub(r"^&\s*(?:'[a-z]\s+)?", "", before_paren)
 
     last_sep = before_paren.rfind("::")
     if last_sep != -1:

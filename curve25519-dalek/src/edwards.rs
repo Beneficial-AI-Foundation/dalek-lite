@@ -819,6 +819,8 @@ impl Identity for CompressedEdwardsY {
         ensures
             field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
+            result.0[0] == 1u8,
+            forall|i: int| 1 <= i < 32 ==> result.0[i] == 0u8,
     {
         let result = CompressedEdwardsY(
             [
@@ -893,13 +895,6 @@ impl Identity for CompressedEdwardsY {
     }
 }
 
-impl crate::traits::IsIdentitySpecImpl for CompressedEdwardsY {
-    /// For CompressedEdwardsY, is_identity returns true iff y-coordinate is 1 with sign bit 0
-    open spec fn is_identity_spec(&self) -> bool {
-        field_element_from_bytes(&self.0) == 1 && (self.0[31] >> 7) == 0
-    }
-}
-
 impl Default for CompressedEdwardsY {
     fn default() -> (result: CompressedEdwardsY)
         ensures
@@ -965,13 +960,6 @@ impl Identity for EdwardsPoint {
             lemma_unfold_edwards(result);
         }
         result
-    }
-}
-
-impl crate::traits::IsIdentitySpecImpl for EdwardsPoint {
-    /// For EdwardsPoint, is_identity returns true iff the affine point equals (0, 1)
-    open spec fn is_identity_spec(&self) -> bool {
-        edwards_point_as_affine(*self) == edwards_identity()
     }
 }
 

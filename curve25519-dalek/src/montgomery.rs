@@ -337,13 +337,6 @@ impl Identity for MontgomeryPoint {
     }
 }
 
-impl crate::traits::IsIdentitySpecImpl for MontgomeryPoint {
-    /// For MontgomeryPoint, is_identity returns true iff u-coordinate is 0
-    open spec fn is_identity_spec(&self) -> bool {
-        spec_montgomery(*self) == 0
-    }
-}
-
 #[cfg(feature = "zeroize")]
 impl Zeroize for MontgomeryPoint {
     fn zeroize(&mut self)
@@ -1812,13 +1805,6 @@ impl Identity for ProjectivePoint {
             }
         }
         result
-    }
-}
-
-impl crate::traits::IsIdentitySpecImpl for ProjectivePoint {
-    /// For ProjectivePoint, identity is (1:0) in projective coords, i.e., W == 0
-    open spec fn is_identity_spec(&self) -> bool {
-        fe51_as_canonical_nat(&self.W) == 0
     }
 }
 

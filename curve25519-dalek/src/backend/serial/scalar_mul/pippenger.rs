@@ -274,32 +274,39 @@ impl Pippenger {
         digit_index: usize,
         w: usize,
         buckets_count: usize,
-        Ghost(pts_affine): Ghost<Seq<(nat, nat)>>,
-        Ghost(digits_seqs): Ghost<Seq<Seq<i8>>>,
-        Ghost(dc): Ghost<nat>,
     ) -> (column: EdwardsPoint)
         requires
-            pippenger_input_valid(scalars_points@, pts_affine, digits_seqs, w as nat, dc),
+            pippenger_input_valid(
+                scalars_points@,
+                sp_points_affine(scalars_points@),
+                sp_digits_seqs(scalars_points@),
+                w as nat,
+                sp_digit_count(w as nat),
+            ),
             old(buckets)@.len() == buckets_count as int,
             buckets_count as int == pow2((w - 1) as nat),
             buckets_count >= 1,
             4 <= w <= 8,
-            digit_index < dc,
-            dc >= 1,
-            dc <= 64,
+            digit_index < sp_digit_count(w as nat),
+            sp_digit_count(w as nat) >= 1,
+            sp_digit_count(w as nat) <= 64,
         ensures
             is_well_formed_edwards_point(column),
             edwards_point_as_affine(column) == straus_column_sum(
-                pts_affine,
-                digits_seqs,
+                sp_points_affine(scalars_points@),
+                sp_digits_seqs(scalars_points@),
                 digit_index as int,
-                pts_affine.len() as int,
+                scalars_points@.len() as int,
             ),
             buckets@.len() == buckets_count as int,
     {
         use crate::traits::Identity;
 
-        let ghost n_ghost: int = pts_affine.len() as int;
+        // Derive ghost variables from runtime arguments (no Ghost params needed)
+        let ghost pts_affine = sp_points_affine(scalars_points@);
+        let ghost digits_seqs = sp_digits_seqs(scalars_points@);
+        let ghost dc = sp_digit_count(w as nat);
+        let ghost n_ghost: int = scalars_points@.len() as int;
         let ghost B = buckets_count as int;
 
         // ---- Phase 1: Clear buckets to identity ----
@@ -874,6 +881,11 @@ impl Pippenger {
                     points_vec@[k].unwrap(),
                 );
             };
+
+            // Bridge: spec functions equal caller's ghost vars
+            assert(sp_points_affine(scalars_points@) =~= pts_affine);
+            assert(sp_digits_seqs(scalars_points@) =~= digits_seqs);
+            assert(sp_digit_count(w as nat) == dc);
         }
 
         /* <ORIGINAL CODE>
@@ -927,9 +939,6 @@ impl Pippenger {
             digits_count - 1,
             w,
             buckets_count,
-            Ghost(pts_affine),
-            Ghost(digits_seqs),
-            Ghost(dc),
         );
 
         // Prove hi_column == H(dc-1)
@@ -990,6 +999,10 @@ impl Pippenger {
                     dc,
                 ),
                 pippenger_input_valid(scalars_points@, pts_affine, digits_seqs, w as nat, dc),
+                // Bridge: spec functions equal caller's ghost vars (for process_column pre/post)
+                sp_points_affine(scalars_points@) == pts_affine,
+                sp_digits_seqs(scalars_points@) == digits_seqs,
+                sp_digit_count(w as nat) == dc,
             decreases digit_index,
         {
             digit_index = digit_index - 1;
@@ -1004,9 +1017,6 @@ impl Pippenger {
                 digit_index,
                 w,
                 buckets_count,
-                Ghost(pts_affine),
-                Ghost(digits_seqs),
-                Ghost(dc),
             );
 
             // Accumulate: total = [2^w]*total_old + column

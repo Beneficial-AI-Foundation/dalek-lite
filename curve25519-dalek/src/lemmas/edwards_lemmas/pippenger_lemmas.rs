@@ -71,6 +71,32 @@ use vstd::prelude::*;
 verus! {
 
 // =============================================================================
+// Spec helpers: derive pts_affine, digits_seqs, dc from runtime arguments
+// =============================================================================
+// These spec functions extract the abstract mathematical views directly from
+// the concrete scalars_points vector, eliminating the need for Ghost parameters
+// in function signatures.  Each is the functional equivalent of what was
+// previously carried as a Ghost<…> argument.
+/// Affine (x, y) coordinates of each point, derived from the ProjectiveNielsPoint.
+pub open spec fn sp_points_affine(sp: Seq<([i8; 64], ProjectiveNielsPoint)>) -> Seq<(nat, nat)> {
+    Seq::new(sp.len(), |i: int| projective_niels_point_as_affine_edwards(sp[i].1))
+}
+
+/// Digit sequences for each scalar, derived from the [i8; 64] arrays.
+pub open spec fn sp_digits_seqs(sp: Seq<([i8; 64], ProjectiveNielsPoint)>) -> Seq<Seq<i8>> {
+    Seq::new(sp.len(), |i: int| sp[i].0@)
+}
+
+/// Number of digit columns, derived from the window width w.
+pub open spec fn sp_digit_count(w: nat) -> nat {
+    if w < 8 {
+        ((256 + w as int - 1) / w as int) as nat
+    } else {
+        ((256 + w as int - 1) / w as int + 1) as nat
+    }
+}
+
+// =============================================================================
 // Spec: validity of Pippenger input data (scalars_points, pts_affine, digits)
 // =============================================================================
 /// Bundled validity predicate for the n-tuple of (scalar_digits, NielsPoint)

@@ -296,47 +296,6 @@ pub open spec fn pippenger_horner(
 }
 
 // =============================================================================
-// Lemma: Unfold pippenger_horner one step
-// =============================================================================
-/// Unfold one step of Horner:  H(j) = 2^w · H(j+1) + C_j   (for j < dc).
-pub proof fn lemma_pippenger_horner_step(
-    points_affine: Seq<(nat, nat)>,
-    digits: Seq<Seq<i8>>,
-    j: int,
-    w: nat,
-    digits_count: nat,
-)
-    requires
-        0 <= j < digits_count as int,
-    ensures
-        pippenger_horner(points_affine, digits, j, w, digits_count) == {
-            let prev = pippenger_horner(points_affine, digits, j + 1, w, digits_count);
-            let scaled = edwards_scalar_mul(prev, pow2(w));
-            let col = straus_column_sum(points_affine, digits, j, points_affine.len() as int);
-            edwards_add(scaled.0, scaled.1, col.0, col.1)
-        },
-{
-    reveal(pippenger_horner);
-}
-
-// =============================================================================
-// Lemma: Base case — pippenger_horner at digits_count is identity
-// =============================================================================
-/// Base case:  H(dc) = O.
-pub proof fn lemma_pippenger_horner_base(
-    points_affine: Seq<(nat, nat)>,
-    digits: Seq<Seq<i8>>,
-    w: nat,
-    digits_count: nat,
-)
-    ensures
-        pippenger_horner(points_affine, digits, digits_count as int, w, digits_count)
-            == edwards_identity(),
-{
-    reveal(pippenger_horner);
-}
-
-// =============================================================================
 // Lemma: Zero-points Horner is identity
 // =============================================================================
 /// When n = 0 (no points):  H(j) = O for all j.
@@ -355,13 +314,9 @@ pub proof fn lemma_pippenger_zero_points_from(
         pippenger_horner(pts, digs, j, w, digits_count) == edwards_identity(),
     decreases digits_count as int - j,
 {
+    reveal(pippenger_horner);
     if j >= digits_count as int {
-        assert(pippenger_horner(pts, digs, digits_count as int, w, digits_count)
-            == edwards_identity()) by {
-            lemma_pippenger_horner_base(pts, digs, w, digits_count);
-        }
     } else {
-        lemma_pippenger_horner_step(pts, digs, j, w, digits_count);
         assert(pippenger_horner(pts, digs, j + 1, w, digits_count) == edwards_identity()) by {
             lemma_pippenger_zero_points_from(pts, digs, j + 1, w, digits_count);
         }
@@ -400,32 +355,41 @@ pub proof fn lemma_pippenger_single(P: (nat, nat), d: Seq<i8>, j: int, w: nat, d
         ),
     decreases digits_count as int - j,
 {
+    reveal(pippenger_horner);
     if j >= digits_count as int {
-        // Base: pippenger_horner(..., dc) == identity
-        lemma_pippenger_horner_base(seq![(P)], seq![(d)], w, digits_count);
         // reconstruct_radix_2w_from(d, w, dc, dc) == 0
         // edwards_scalar_mul_signed(P, 0) == identity
         reveal(edwards_scalar_mul_signed);
         reveal_with_fuel(edwards_scalar_mul, 1);
     } else {
-        // Unfold pippenger_horner one step
-        lemma_pippenger_horner_step(seq![(P)], seq![(d)], j, w, digits_count);
-
         // IH: pippenger_horner(seq![P], seq![d], j+1, w, dc) == [reconstruct_from(d, w, j+1, dc)]*P
         lemma_pippenger_single(P, d, j + 1, w, digits_count);
         let r_next = reconstruct_radix_2w_from(d, w, j + 1, digits_count);
 
         // [pow2(w)] * [r_next]*P == [pow2(w) * r_next]*P
-        lemma_edwards_scalar_mul_signed_composition(P, r_next, pow2(w));
+        assert(edwards_scalar_mul(edwards_scalar_mul_signed(P, r_next), pow2(w))
+            == edwards_scalar_mul_signed(P, r_next * (pow2(w) as int))) by {
+            lemma_edwards_scalar_mul_signed_composition(P, r_next, pow2(w));
+        }
 
         // column_sum(seq![P], seq![d], j, 1) == [d[j]]*P
-        lemma_column_sum_single(P, d, j);
+        assert(straus_column_sum(seq![(P)], seq![(d)], j, 1) == edwards_scalar_mul_signed(
+            P,
+            d[j] as int,
+        )) by {
+            lemma_column_sum_single(P, d, j);
+        }
 
         // [pow2(w)*r_next]*P + [d[j]]*P == [pow2(w)*r_next + d[j]]*P
-        axiom_edwards_scalar_mul_signed_additive(P, pow2(w) as int * r_next, d[j] as int);
+        assert({
+            let pa = edwards_scalar_mul_signed(P, pow2(w) as int * r_next);
+            let pb = edwards_scalar_mul_signed(P, d[j] as int);
+            edwards_add(pa.0, pa.1, pb.0, pb.1)
+        } == edwards_scalar_mul_signed(P, pow2(w) as int * r_next + d[j] as int)) by {
+            axiom_edwards_scalar_mul_signed_additive(P, pow2(w) as int * r_next, d[j] as int);
+        }
 
         // pow2(w)*r_next + d[j] == reconstruct_radix_2w_from(d, w, j, dc)
-        // (from definition: reconstruct(d, w, j, dc) = d[j] + pow2(w) * reconstruct(d, w, j+1, dc))
         assert(d[j] as int + pow2(w) as int * r_next == reconstruct_radix_2w_from(
             d,
             w,
@@ -483,20 +447,9 @@ pub proof fn lemma_pippenger_peel_last(
     let pts_single = seq![(pts.last())];
     let digs_single = seq![(digs.last())];
 
+    reveal(pippenger_horner);
     if j >= digits_count as int {
         // Base case: all three terms are identity
-        assert(pippenger_horner(pts, digs, digits_count as int, w, digits_count)
-            == edwards_identity()) by {
-            lemma_pippenger_horner_base(pts, digs, w, digits_count);
-        }
-        assert(pippenger_horner(pts_prefix, digs_prefix, digits_count as int, w, digits_count)
-            == edwards_identity()) by {
-            lemma_pippenger_horner_base(pts_prefix, digs_prefix, w, digits_count);
-        }
-        assert(pippenger_horner(pts_single, digs_single, digits_count as int, w, digits_count)
-            == edwards_identity()) by {
-            lemma_pippenger_horner_base(pts_single, digs_single, w, digits_count);
-        }
         assert(edwards_add(
             edwards_identity().0,
             edwards_identity().1,
@@ -507,11 +460,6 @@ pub proof fn lemma_pippenger_peel_last(
             lemma_edwards_add_identity_right_canonical(edwards_identity());
         }
     } else {
-        // Unfold pippenger_horner for all three
-        lemma_pippenger_horner_step(pts, digs, j, w, digits_count);
-        lemma_pippenger_horner_step(pts_prefix, digs_prefix, j, w, digits_count);
-        lemma_pippenger_horner_step(pts_single, digs_single, j, w, digits_count);
-
         let prev_full = pippenger_horner(pts, digs, j + 1, w, digits_count);
         let prev_prefix = pippenger_horner(pts_prefix, digs_prefix, j + 1, w, digits_count);
         let prev_single = pippenger_horner(pts_single, digs_single, j + 1, w, digits_count);

@@ -38,7 +38,7 @@ use crate::specs::scalar_specs::*;
 #[cfg(verus_keep_ghost)]
 use vstd::arithmetic::div_mod::lemma_small_mod;
 #[cfg(verus_keep_ghost)]
-use vstd::arithmetic::power2::{lemma2_to64, pow2};
+use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_pos, pow2};
 
 // Re-export spec functions from iterator_specs for use by other modules
 #[cfg(verus_keep_ghost)]
@@ -234,8 +234,6 @@ impl Pippenger {
     /// Initialize `count` buckets with the identity point.
     /// Replaces: `(0..count).map(|_| EdwardsPoint::identity()).collect()`
     fn init_buckets(count: usize) -> (buckets: Vec<EdwardsPoint>)
-        requires
-            count >= 1,
         ensures
             buckets@.len() == count as int,
             forall|k: int| 0 <= k < count ==> is_well_formed_edwards_point(#[trigger] buckets@[k]),
@@ -307,8 +305,7 @@ impl Pippenger {
             ),
             old(buckets)@.len() == buckets_count as int,
             buckets_count as int == pow2((w - 1) as nat),
-            buckets_count >= 1,
-            4 <= w <= 8,
+            6 <= w <= 8,
             digit_index < sp_digit_count(w as nat),
             sp_digit_count(w as nat) >= 1,
             sp_digit_count(w as nat) <= 64,
@@ -330,6 +327,11 @@ impl Pippenger {
         let ghost dc = sp_digit_count(w as nat);
         let ghost n_ghost: int = scalars_points@.len() as int;
         let ghost B = buckets_count as int;
+
+        // buckets_count == pow2(w-1) >= pow2(3) >= 1 since w >= 4
+        proof {
+            lemma_pow2_pos((w - 1) as nat);
+        }
 
         // ---- Phase 1: Clear buckets to identity ----
         // UPSTREAM: for bucket in &mut buckets { *bucket = EdwardsPoint::identity(); }
@@ -374,7 +376,7 @@ impl Pippenger {
             invariant
                 0 <= sp_idx <= scalars_points@.len(),
                 buckets@.len() == buckets_count as int,
-                4 <= w <= 8,
+                6 <= w <= 8,
                 buckets_count as int == pow2((w - 1) as nat),
                 digit_index < dc,
                 dc >= 1,
@@ -488,7 +490,6 @@ impl Pippenger {
                 0 <= j <= buckets_count - 1,
                 buckets@.len() == buckets_count as int,
                 B == buckets_count as int,
-                buckets_count >= 1,
                 is_well_formed_edwards_point(buckets_intermediate_sum),
                 is_well_formed_edwards_point(column),
                 edwards_point_as_affine(buckets_intermediate_sum) == pippenger_intermediate_sum(
@@ -559,7 +560,7 @@ impl Pippenger {
     ) -> (result: Option<Vec<([i8; 64], ProjectiveNielsPoint)>>)
         requires
             scalars_vec@.len() == points_vec@.len(),
-            4 <= w <= 8,
+            6 <= w <= 8,
             forall|k: int|
                 #![auto]
                 0 <= k < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[k]),
@@ -616,7 +617,7 @@ impl Pippenger {
                 min_len == scalars_vec@.len(),
                 scalars_vec@.len() == points_vec@.len(),
                 scalars_points@.len() == idx as int,
-                4 <= w <= 8,
+                6 <= w <= 8,
                 forall|k: int|
                     #![auto]
                     0 <= k < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[k]),
@@ -773,6 +774,8 @@ impl Pippenger {
          * Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels).
          * Returns None if any point is None.
          */
+        // pair_scalars_points returns Option<Vec<...>>; the match destructures it:
+        // Some(sp) extracts the Vec, None arm returns early from the function.
 
         let scalars_points = match Pippenger::pair_scalars_points(&scalars_vec, &points_vec, w) {
             Some(sp) => sp,
@@ -933,16 +936,8 @@ impl Pippenger {
                 (dc - 1) as int,
                 pts_affine.len() as int,
             );
-            // H(dc) = O
-            lemma_pippenger_horner_base(pts_affine, digits_seqs, w as nat, dc);
-            // H(dc-1) = edwards_add([2^w]*H(dc), C_{dc-1}) = edwards_add([2^w]*O, C)
-            lemma_pippenger_horner_step(pts_affine, digits_seqs, (dc - 1) as int, w as nat, dc);
-            // [2^w]*O = O
-            assert(edwards_scalar_mul(edwards_identity(), pow2(w as nat)) == edwards_identity())
-                by {
-                lemma_edwards_scalar_mul_identity(pow2(w as nat));
-            }
-            // O + C = (C.0 % p, C.1 % p) = C (since canonical)
+            // Unfold pippenger_horner and prove hi_column == H(dc-1)
+            // H(dc) = O, H(dc-1) = edwards_add([2^w]*O, C) = C
             assert(edwards_point_as_affine(hi_column) == pippenger_horner(
                 pts_affine,
                 digits_seqs,
@@ -950,6 +945,13 @@ impl Pippenger {
                 w as nat,
                 dc,
             )) by {
+                reveal_with_fuel(pippenger_horner, 2);
+                lemma_edwards_scalar_mul_identity(pow2(w as nat));
+                // Re-establish pts_affine canonical (needed by lemma_column_sum_canonical)
+                assert forall|k: int| 0 <= k < n implies (#[trigger] pts_affine[k]).0 < p()
+                    && pts_affine[k].1 < p() by {
+                    lemma_edwards_point_as_affine_canonical(unwrapped_points[k]);
+                };
                 lemma_column_sum_canonical(
                     pts_affine,
                     digits_seqs,
@@ -971,9 +973,8 @@ impl Pippenger {
                 digits_count as nat == dc,
                 dc >= 1,
                 dc <= 64,
-                4 <= w <= 8,
+                6 <= w <= 8,
                 buckets_count as int == pow2((w - 1) as nat),
-                buckets_count >= 1,
                 buckets@.len() == buckets_count as int,
                 is_well_formed_edwards_point(total),
                 edwards_point_as_affine(total) == pippenger_horner(
@@ -1005,13 +1006,7 @@ impl Pippenger {
             total = &shifted + &column;
 
             proof {
-                lemma_pippenger_horner_step(
-                    pts_affine,
-                    digits_seqs,
-                    digit_index as int,
-                    w as nat,
-                    dc,
-                );
+                reveal(pippenger_horner);
             }
         }
         /* </REFACTORED CODE> */

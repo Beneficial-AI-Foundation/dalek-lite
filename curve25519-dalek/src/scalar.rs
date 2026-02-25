@@ -1977,11 +1977,11 @@ impl Scalar {
                 n == original_inputs.len(),
                 // Inversion invariants guarded by product_nonzero
                 product_nonzero ==> forall|j: int|
-                    i <= j < n ==> is_inverse(&#[trigger] original_inputs[j], &inputs[j]),
+                    i <= j < n ==> #[trigger] is_inverse(&original_inputs[j], &inputs[j]),
                 product_nonzero ==> is_inverse_of_nat(&ret, product_of_scalars(original_inputs)),
                 // SEMANTIC INVARIANT: scratch[j] still contains R * partial_product(original_inputs, j)
                 forall|j: int|
-                    0 <= j < n ==> scalar52_as_nat(&#[trigger] scratch[j]) % group_order() == (
+                    0 <= j < n ==> #[trigger] scalar52_as_nat(&scratch[j]) % group_order() == (
                     montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
                 // SEMANTIC INVARIANT: inputs[j] for unprocessed j < i contains scalar[j] in Montgomery form
                 forall|j: int|

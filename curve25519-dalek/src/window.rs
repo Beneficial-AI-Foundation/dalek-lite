@@ -484,7 +484,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         // Limb bounds for all entries built so far
 
                 forall|k: int|
-                    0 <= k <= j ==> fe51_limbs_bounded(&#[trigger] points[k].Y_plus_X, 54)
+                    0 <= k <= j ==> fe51_limbs_bounded(&(#[trigger] points[k]).Y_plus_X, 54)
                         && fe51_limbs_bounded(&points[k].Y_minus_X, 54) && fe51_limbs_bounded(
                         &points[k].Z,
                         54,
@@ -603,7 +603,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
         for j in 0..7
             invariant
                 forall|k: int|
-                    0 <= k <= j ==> fe51_limbs_bounded(&#[trigger] points[k].y_plus_x, 54)
+                    0 <= k <= j ==> fe51_limbs_bounded(&(#[trigger] points[k]).y_plus_x, 54)
                         && fe51_limbs_bounded(&points[k].y_minus_x, 54) && fe51_limbs_bounded(
                         &points[k].xy2d,
                         54,
@@ -821,7 +821,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
         // Limb bounds for all entries built so far
 
                 forall|k: int|
-                    0 <= k <= i ==> fe51_limbs_bounded(&#[trigger] Ai[k].Y_plus_X, 54)
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).Y_plus_X, 54)
                         && fe51_limbs_bounded(&Ai[k].Y_minus_X, 54) && fe51_limbs_bounded(
                         &Ai[k].Z,
                         54,
@@ -921,7 +921,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
         for i in 0..7
             invariant
                 forall|k: int|
-                    0 <= k <= i ==> fe51_limbs_bounded(&#[trigger] Ai[k].y_plus_x, 54)
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).y_plus_x, 54)
                         && fe51_limbs_bounded(&Ai[k].y_minus_x, 54) && fe51_limbs_bounded(
                         &Ai[k].xy2d,
                         54,
@@ -1113,7 +1113,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
         for i in 0..63
             invariant
                 forall|k: int|
-                    0 <= k <= i ==> fe51_limbs_bounded(&#[trigger] Ai[k].Y_plus_X, 54)
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).Y_plus_X, 54)
                         && fe51_limbs_bounded(&Ai[k].Y_minus_X, 54) && fe51_limbs_bounded(
                         &Ai[k].Z,
                         54,
@@ -1214,7 +1214,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
         for i in 0..63
             invariant
                 forall|k: int|
-                    0 <= k <= i ==> fe51_limbs_bounded(&#[trigger] Ai[k].y_plus_x, 54)
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).y_plus_x, 54)
                         && fe51_limbs_bounded(&Ai[k].y_minus_x, 54) && fe51_limbs_bounded(
                         &Ai[k].xy2d,
                         54,

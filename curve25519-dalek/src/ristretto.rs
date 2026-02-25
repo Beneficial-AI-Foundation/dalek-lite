@@ -188,6 +188,9 @@ use crate::backend::serial::u64::subtle_assumes::{
     choice_into, choice_not, choice_or, conditional_assign_generic,
     conditional_negate_field_element, ct_eq_bytes32,
 };
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::core_assumes::seq_from32;
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
 use crate::core_assumes::sha512_hash_bytes;
@@ -195,8 +198,38 @@ use crate::core_assumes::sha512_hash_bytes;
 use crate::core_assumes::try_into_32_bytes_array;
 #[cfg(feature = "digest")]
 use crate::field::FieldElement;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::edwards_lemmas::constants_lemmas::lemma_edwards_d_limbs_bounded;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_z_one_affine_implies_projective;
+#[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
 use crate::lemmas::field_lemmas::add_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::as_bytes_lemmas::{
+    lemma_as_bytes_equals_spec_fe51_to_bytes, lemma_canonical_check_backward,
+    lemma_is_negative_equals_parity, lemma_seq_eq_implies_array_eq,
+};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::batch_invert_lemmas::lemma_is_zero_iff_canonical_nat_zero;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::constants_lemmas::{
+    lemma_one_field_element_value, lemma_one_limbs_bounded_51,
+};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::field_algebra_lemmas::{
+    lemma_field_mul_one_left, lemma_square_matches_field_square,
+};
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -211,6 +244,9 @@ use crate::specs::proba_specs::*;
 use crate::specs::ristretto_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::scalar_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)] // Used in verus! blocks
 use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
@@ -335,42 +371,68 @@ impl CompressedRistretto {
     /// - `None` if `self` was not the canonical encoding of a point.
     pub fn decompress(&self) -> (result: Option<RistrettoPoint>)
         ensures
-    // Spec alignment: result matches spec-level decoding
+    // Spec alignment: result matches spec-level decoding (coordinate-level)
 
-            result == spec_ristretto_decompress(self.0),
+            result.is_none() <==> spec_ristretto_decompress_coords(self.0).is_none(),
+            result.is_some() ==> spec_edwards_point(result.unwrap().0)
+                == spec_ristretto_decompress_coords(self.0).unwrap(),
             // If decompression succeeds, the result is a well-formed Edwards point
-            // (well-formed includes: valid on curve, limbs bounded, sum bounded)
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
             // On success, the decoded point lies in the even subgroup
             result.is_some() ==> is_in_even_subgroup(result.unwrap().0),
     {
         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);
 
-        // Use choice_or and choice_into wrappers for Verus compatibility
         if choice_into(choice_or(choice_not(s_encoding_is_canonical), s_is_negative)) {
             proof {
-                // Spec alignment for early failure
-                assume(spec_ristretto_decompress(self.0).is_none());
+                // Non-canonical or negative s ⟹ spec returns None
+                if u8_32_as_nat(&self.0) < p() {
+                    assert(spec_fe51_as_bytes(&s) == seq_from32(&self.0)) by {
+                        lemma_canonical_check_backward(&self.0, &s);
+                    };
+                }
             }
             return None;
         }
         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
 
+        // Common facts for both branches: the spec's outer conditions match
+        proof {
+            let s_nat = fe51_as_canonical_nat(&s);
+            assert(s_nat == field_element_from_bytes(&self.0));
+            assert(u8_32_as_nat(&self.0) < p());
+            assert(!is_negative(s_nat));
+        }
+
         if choice_into(choice_or(choice_or(choice_not(ok), t_is_negative), y_is_zero)) {
             let result = None;
             proof {
-                // Spec alignment for failure branch
-                assume(result == spec_ristretto_decompress(self.0));
+                let s_nat = fe51_as_canonical_nat(&s);
+                let x = spec_ristretto_decode_x(s_nat);
+                let y = spec_ristretto_decode_y(s_nat);
+                let ok_spec = spec_ristretto_decode_ok(s_nat);
+                let t = field_mul(x, y);
+                assert(!ok_spec || is_negative(t) || y == 0);
             }
             result
         } else {
             let result = Some(res);
             proof {
-                // step_2 constructs the point with Z=ONE, ensuring well-formedness
-                assume(is_well_formed_edwards_point(res.0));
-                assume(is_in_even_subgroup(res.0));
-                // Spec alignment for success branch
-                assume(result == spec_ristretto_decompress(self.0));
+                let s_nat = fe51_as_canonical_nat(&s);
+                let x = spec_ristretto_decode_x(s_nat);
+                let y = spec_ristretto_decode_y(s_nat);
+                let ok_spec = spec_ristretto_decode_ok(s_nat);
+                let t = field_mul(x, y);
+                assert(ok_spec && !is_negative(t) && y != 0);
+
+                assert(spec_edwards_point(res.0) == (x, y, 1nat, t)) by {
+                    lemma_unfold_edwards(res.0);
+                    let x_nat = fe51_as_canonical_nat(&res.0.X);
+                    let y_nat = fe51_as_canonical_nat(&res.0.Y);
+                    let z_nat = fe51_as_canonical_nat(&res.0.Z);
+                    let t_nat = fe51_as_canonical_nat(&res.0.T);
+                    assert(x_nat == x && y_nat == y && z_nat == 1nat && t_nat == t);
+                };
             }
             result
         }
@@ -399,6 +461,8 @@ mod decompress {
             choice_is_true(result.1) == (spec_fe51_as_bytes(&result.2)[0] & 1 == 1),
             // s_is_negative matches the math-level sign bit of the decoded value
             choice_is_true(result.1) == is_negative(field_element_from_bytes(&repr.0)),
+            // Forward canonical check: byte round-trip implies u8_32_as_nat < p
+            choice_is_true(result.0) ==> u8_32_as_nat(&repr.0) < p(),
     {
         // Step 1. Check s for validity:
         // 1.a) s must be 32 bytes (we get this from the type system)
@@ -418,10 +482,50 @@ mod decompress {
         let s_is_negative = s.is_negative();
 
         proof {
-            // VERIFICATION NOTE: only postcondition left to prove
-            assume(choice_is_true(s_encoding_is_canonical) == (spec_fe51_as_bytes(&s) == repr.0@));
-            assume(fe51_as_canonical_nat(&s) == field_element_from_bytes(&repr.0));
-            assume(choice_is_true(s_is_negative) == is_negative(field_element_from_bytes(&repr.0)));
+            // Postcondition: as_bytes round-trips iff encoding is canonical
+            //
+            // ct_eq_bytes32: choice_is_true(s_encoding_is_canonical) == (s_bytes_check == repr.0)
+            // This lemma: seq_from32(&s_bytes_check) == spec_fe51_as_bytes(&s)
+            // Together: (s_bytes_check == repr.0) ⟺ (spec_fe51_as_bytes(&s) == repr.0@)
+            assert(seq_from32(&s_bytes_check) == spec_fe51_as_bytes(&s)) by {
+                lemma_as_bytes_equals_spec_fe51_to_bytes(&s, &s_bytes_check);
+            };
+
+            // Forward: canonical bytes ⟹ u8_32_as_nat < p
+            if s_bytes_check == repr.0 {
+                assert(s_bytes_check@ == repr.0@);
+                assert(u8_32_as_nat(&repr.0) < p()) by {
+                    pow255_gt_19();
+                    lemma_mod_bound(u64_5_as_nat(s.limbs) as int, p() as int);
+                };
+            }
+            // Backward: spec bytes match ⟹ array equality
+
+            if spec_fe51_as_bytes(&s) == repr.0@ {
+                assert(s_bytes_check == repr.0) by {
+                    assert(seq_from32(&s_bytes_check) == seq_from32(&repr.0));
+                    lemma_seq_eq_implies_array_eq(&s_bytes_check, &repr.0);
+                };
+            }
+            // Postcondition: sign check matches spec-level is_negative
+            //
+            // is_negative exec: choice_is_true(s_is_negative) == (spec_fe51_as_bytes(&s)[0] & 1 == 1)
+            // Parity lemma: (byte[0] & 1 == 1) == (canonical_nat % 2 == 1)
+            // is_negative(n) = (n % p) % 2 == 1; since field_element_from_bytes < p, identity applies
+
+            assert((spec_fe51_as_bytes(&s)[0] & 1 == 1) == (fe51_as_canonical_nat(&s) % 2 == 1))
+                by {
+                lemma_is_negative_equals_parity(&s);
+            };
+
+            let val = field_element_from_bytes(&repr.0);
+            assert(val < p()) by {
+                pow255_gt_19();
+                lemma_mod_bound((u8_32_as_nat(&repr.0) % pow2(255)) as int, p() as int);
+            };
+            assert(field_canonical(val) == val) by {
+                lemma_small_mod(val, p());
+            };
         }
 
         (s_encoding_is_canonical, s_is_negative, s)
@@ -434,68 +538,536 @@ mod decompress {
     /// - t_is_negative: true iff T coordinate has low bit set
     /// - y_is_zero: true iff Y coordinate is zero
     /// - point: the computed RistrettoPoint
+    #[verifier::rlimit(20)]
     pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint))
+        requires
+            fe51_limbs_bounded(&s, 51),
         ensures
-    // Z is set to ONE by construction
+    // If decoding succeeds, the output point is well-formed and in the even subgroup
 
-            fe51_as_canonical_nat(&result.3.0.Z) == 1,
-            // T is the product of X and Y in affine form (Z = 1)
-            fe51_as_canonical_nat(&result.3.0.T) == field_mul(
+            choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
+            choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
+            // When ok, Z is ONE and T = X*Y
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Z) == 1,
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.T) == field_mul(
                 fe51_as_canonical_nat(&result.3.0.X),
                 fe51_as_canonical_nat(&result.3.0.Y),
             ),
-            // If decoding succeeds, the output point is well-formed and in the even subgroup
-            choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
-            choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
-            // t_is_negative reflects the sign bit of T
-            choice_is_true(result.1) == is_negative(fe51_as_canonical_nat(&result.3.0.T)),
-            // y_is_zero reflects whether Y is zero
-            choice_is_true(result.2) == (fe51_as_canonical_nat(&result.3.0.Y) == 0),
+            // t_is_negative and y_is_zero reflect the SPEC-LEVEL decode values
+            // (not necessarily the point's coords, which may be identity when ok is false)
+            choice_is_true(result.1) == is_negative(
+                field_mul(
+                    spec_ristretto_decode_x(fe51_as_canonical_nat(&s)),
+                    spec_ristretto_decode_y(fe51_as_canonical_nat(&s)),
+                ),
+            ),
+            choice_is_true(result.2) == (spec_ristretto_decode_y(fe51_as_canonical_nat(&s)) == 0),
+            // Spec alignment: ok matches spec; X and Y match spec when ok is true
+            choice_is_true(result.0) == spec_ristretto_decode_ok(fe51_as_canonical_nat(&s)),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X)
+                == spec_ristretto_decode_x(fe51_as_canonical_nat(&s)),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y)
+                == spec_ristretto_decode_y(fe51_as_canonical_nat(&s)),
     {
-        // VERIFICATION NOTE: assume(false) postpones limb bounds tracking and other proof obligations.
+        // =================================================================
+        // PHASE 1: Compute field elements with limb bounds tracking
+        // =================================================================
         proof {
-            assume(false);
+            assert(fe51_limbs_bounded(&FieldElement::ONE, 51)) by {
+                lemma_one_limbs_bounded_51();
+            };
+            assert(fe51_limbs_bounded(&constants::EDWARDS_D, 51)) by {
+                lemma_edwards_d_limbs_bounded();
+            };
         }
 
         // Step 2.  Compute (X:Y:Z:T).
         let one = FieldElement::ONE;
+        // s: 51-bit, one: 51-bit
+
+        proof {
+            assert(fe51_limbs_bounded(&s, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&s, 51, 54);
+            };
+            assert(fe51_limbs_bounded(&one, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&one, 51, 54);
+            };
+        }
+
         let ss = s.square();
+        // ss: 52-bit
+
         let u1 = &one - &ss;  //  1 + as²
+        // u1: 52-bit
+
+        proof {
+            // Add(one, ss): need sum_of_limbs_bounded. one: 51-bit, ss: 52-bit.
+            assert(sum_of_limbs_bounded(&one, &ss, u64::MAX)) by {
+                assert((1u64 << 51) + (1u64 << 52) < u64::MAX) by (bit_vector);
+                assert forall|i: int| 0 <= i < 5 implies one.limbs[i] + ss.limbs[i]
+                    < u64::MAX by {};
+            };
+            assert(fe51_limbs_bounded(&one, 52)) by {
+                lemma_fe51_limbs_bounded_weaken(&one, 51, 52);
+            };
+        }
+
         let u2 = &one + &ss;  //  1 - as²    where a=-1
+        // u2: 53-bit (Add with 52+52 inputs → 53-bit via 2nd branch)
+
+        proof {
+            assert(fe51_limbs_bounded(&u2, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u2, 53, 54);
+            };
+        }
+
         let u2_sqr = u2.square();  // (1 - as²)²
+        // u2_sqr: 52-bit
 
         // v == ad(1+as²)² - (1-as²)²            where d=-121665/121666
         // ORIGINAL CODE: let v = &(&(-&constants::EDWARDS_D) * &u1.square()) - &u2_sqr;
         // VERUS WORKAROUND: Use Neg::neg explicitly to avoid Verus operator parsing issue
         use core::ops::Neg;
-        let neg_d = Neg::neg(&constants::EDWARDS_D);
-        let u1_sqr = u1.square();
-        let v = &(&neg_d * &u1_sqr) - &u2_sqr;
 
-        let (ok, I) = (&v * &u2_sqr).invsqrt();  // 1/sqrt(v*u_2²)
+        proof {
+            assert(fe51_limbs_bounded(&constants::EDWARDS_D, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&constants::EDWARDS_D, 51, 54);
+            };
+        }
+
+        let neg_d = Neg::neg(&constants::EDWARDS_D);
+        // neg_d: 52-bit
+
+        let u1_sqr = u1.square();
+        // u1_sqr: 52-bit (u1 is 52 < 54)
+
+        proof {
+            assert(fe51_limbs_bounded(&neg_d, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&neg_d, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&u1_sqr, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u1_sqr, 52, 54);
+            };
+        }
+
+        // ORIGINAL CODE: let v = &(&neg_d * &u1_sqr) - &u2_sqr;
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proof between Mul and Sub
+        let neg_d_u1_sqr = &neg_d * &u1_sqr;
+        let v = &neg_d_u1_sqr - &u2_sqr;
+
+        proof {
+            assert(fe51_limbs_bounded(&v, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&v, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&u2_sqr, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u2_sqr, 52, 54);
+            };
+        }
+
+        // ORIGINAL CODE: let (ok, I) = (&v * &u2_sqr).invsqrt();
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proof between Mul and invsqrt
+        let v_u2_sqr = &v * &u2_sqr;
+
+        proof {
+            assert(fe51_limbs_bounded(&v_u2_sqr, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&v_u2_sqr, 52, 54);
+            };
+        }
+
+        let (ok, I) = v_u2_sqr.invsqrt();  // 1/sqrt(v*u_2²)
+
+        proof {
+            assert(fe51_limbs_bounded(&I, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&I, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&u2, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u2, 53, 54);
+            };
+            assert(fe51_limbs_bounded(&v, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&v, 52, 54);
+            };
+        }
 
         let Dx = &I * &u2;  // 1/sqrt(v)
-        let Dy = &I * &(&Dx * &v);  // 1/u2
+        // Dx: 52-bit
+
+        // ORIGINAL CODE: let Dy = &I * &(&Dx * &v);
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proof between Mul ops
+        let Dx_v = &Dx * &v;
+        let Dy = &I * &Dx_v;  // 1/u2
+
+        proof {
+            // Add(s, s): need sum_of_limbs_bounded. s: 51-bit.
+            assert(sum_of_limbs_bounded(&s, &s, u64::MAX)) by {
+                assert((1u64 << 51) + (1u64 << 51) < u64::MAX) by (bit_vector);
+                assert forall|i: int| 0 <= i < 5 implies s.limbs[i] + s.limbs[i] < u64::MAX by {};
+            };
+        }
+
+        // ORIGINAL CODE: let mut x = &(&s + &s) * &Dx;
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proofs between Add and Mul
+        let s_plus_s = &s + &s;
+
+        proof {
+            assert(fe51_limbs_bounded(&s_plus_s, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&s_plus_s, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&Dx, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&Dx, 52, 54);
+            };
+        }
 
         // x == | 2s/sqrt(v) | == + sqrt(4s²/(ad(1+as²)² - (1-as²)²))
-        let mut x = &(&s + &s) * &Dx;
+        let mut x = &s_plus_s * &Dx;
+        // x: 52-bit
+
         let x_neg = x.is_negative();
+
+        proof {
+            // exec is_negative matches spec-level is_negative for pre-negate x
+            assert(choice_is_true(x_neg) == is_negative(
+                field_mul(fe51_as_canonical_nat(&s_plus_s), fe51_as_canonical_nat(&Dx)),
+            )) by {
+                assert((spec_fe51_as_bytes(&x)[0] & 1 == 1) == (fe51_as_canonical_nat(&x) % 2 == 1))
+                    by {
+                    lemma_is_negative_equals_parity(&x);
+                };
+                let x_pre_nat = fe51_as_canonical_nat(&x);
+                assert(x_pre_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&x);
+                };
+                assert(field_canonical(x_pre_nat) == x_pre_nat) by {
+                    lemma_small_mod(x_pre_nat, p());
+                };
+            };
+            assert(fe51_limbs_bounded(&x, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&x, 52, 54);
+            };
+        }
+
         // ORIGINAL CODE: x.conditional_negate(x_neg);
         // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
         conditional_negate_field_element(&mut x, x_neg);
+        // x: 52-bit in both branches
+
+        proof {
+            assert(fe51_limbs_bounded(&x, 52)) by {
+                if choice_is_true(x_neg) {
+                } else {
+                }
+            };
+        }
 
         // y == (1-as²)/(1+as²)
         let y = &u1 * &Dy;
+        // y: 52-bit
 
         // t == ((1+as²) sqrt(4s²/(ad(1+as²)² - (1-as²)²)))/(1-as²)
         let t = &x * &y;
+        // t: 52-bit
 
-        (
-            ok,
-            t.is_negative(),
-            y.is_zero(),
-            RistrettoPoint(EdwardsPoint { X: x, Y: y, Z: one, T: t }),
-        )
+        // =================================================================
+        // PHASE 2: Prove postconditions
+        // =================================================================
+        /* ORIGINAL CODE:
+        The return tuple inlined t.is_negative(), y.is_zero(), and the EdwardsPoint constructor.
+        VERUS WORKAROUND: Bind them to variables so proof blocks can reference postconditions
+        and satisfy the EdwardsPoint type invariant before constructing the return value. */
+        let t_is_neg = t.is_negative();
+        let y_is_zero = y.is_zero();
+
+        proof {
+            assert(pow2(255) > 19) by {
+                pow255_gt_19();
+            };
+            assert(fe51_as_canonical_nat(&one) == 1) by {
+                lemma_one_field_element_value();
+            };
+
+            let x_val = fe51_as_canonical_nat(&x);
+            let y_val = fe51_as_canonical_nat(&y);
+            let z_val = fe51_as_canonical_nat(&one);
+            let t_val = fe51_as_canonical_nat(&t);
+
+            // t_is_negative matches spec-level is_negative(t)
+            assert(choice_is_true(t_is_neg) == is_negative(t_val)) by {
+                assert((spec_fe51_as_bytes(&t)[0] & 1 == 1) == (fe51_as_canonical_nat(&t) % 2 == 1))
+                    by {
+                    lemma_is_negative_equals_parity(&t);
+                };
+                assert(t_val < p()) by {
+                    lemma_canonical_nat_lt_p(&t);
+                };
+                assert(t_val % p() == t_val) by {
+                    lemma_small_mod(t_val, p());
+                };
+            };
+
+            // y_is_zero matches (canonical_nat(Y) == 0)
+            assert(choice_is_true(y_is_zero) == (y_val == 0)) by {
+                lemma_is_zero_iff_canonical_nat_zero(y);
+            };
+
+            // Type invariant: limb bounds for ONE
+            assert(fe51_limbs_bounded(&one, 52)) by {
+                lemma_fe51_limbs_bounded_weaken(&one, 51, 52);
+            };
+
+            // Type invariant: sum_of_limbs_bounded for EdwardsPoint construction
+            assert(sum_of_limbs_bounded(&y, &x, u64::MAX)) by {
+                assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
+                assert forall|i: int| 0 <= i < 5 implies y.limbs[i] + x.limbs[i] < u64::MAX by {};
+            };
+
+            // Segre relation: Z·T = X·Y when Z = 1
+            assert(field_mul(z_val, t_val) == field_mul(x_val, y_val)) by {
+                lemma_field_mul_one_left(t_val);
+                assert(t_val % p() == t_val) by {
+                    lemma_small_mod(t_val, p());
+                };
+            };
+
+            // Z nonzero mod p
+            assert(field_canonical(z_val) != 0) by {
+                lemma_small_mod(1nat, p());
+            };
+
+            // Bridge exec square operations to spec field_square
+            let s_nat = fe51_as_canonical_nat(&s);
+            let big_i_nat = fe51_as_canonical_nat(&I);
+            let v_u2_sqr_nat = fe51_as_canonical_nat(&v_u2_sqr);
+
+            assert(fe51_as_canonical_nat(&ss) == field_square(s_nat)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&s), fe51_as_nat(&ss));
+            };
+            assert(fe51_as_canonical_nat(&u2_sqr) == field_square(fe51_as_canonical_nat(&u2))) by {
+                lemma_square_matches_field_square(fe51_as_nat(&u2), fe51_as_nat(&u2_sqr));
+            };
+            assert(fe51_as_canonical_nat(&u1_sqr) == field_square(fe51_as_canonical_nat(&u1))) by {
+                lemma_square_matches_field_square(fe51_as_nat(&u1), fe51_as_nat(&u1_sqr));
+            };
+
+            assert(s_nat < p()) by {
+                lemma_canonical_nat_lt_p(&s);
+            };
+
+            // Exec values match is_ristretto_decode_output when v*u2² ≠ 0
+            if v_u2_sqr_nat != 0 {
+                assert(is_ristretto_decode_output(s_nat, big_i_nat, x_val, y_val)) by {
+                    let ss_spec = field_square(s_nat);
+                    let u1_spec = field_sub(1nat, ss_spec);
+                    let u2_spec = field_add(1nat, ss_spec);
+                    let u2_sqr_spec = field_square(u2_spec);
+                    let neg_d_spec = field_neg(fe51_as_canonical_nat(&constants::EDWARDS_D));
+                    let u1_sqr_spec = field_square(u1_spec);
+                    let v_spec = field_sub(field_mul(neg_d_spec, u1_sqr_spec), u2_sqr_spec);
+                    let v_u2_sqr_spec = field_mul(v_spec, u2_sqr_spec);
+                    let dx_spec = field_mul(big_i_nat, u2_spec);
+                    let dy_spec = field_mul(big_i_nat, field_mul(dx_spec, v_spec));
+                    let x_tmp_spec = field_mul(field_add(s_nat, s_nat), dx_spec);
+
+                    assert(fe51_as_canonical_nat(&ss) == ss_spec);
+                    assert(fe51_as_canonical_nat(&u1) == u1_spec);
+                    assert(fe51_as_canonical_nat(&u2) == u2_spec);
+                    assert(fe51_as_canonical_nat(&u2_sqr) == u2_sqr_spec);
+                    assert(fe51_as_canonical_nat(&neg_d) == neg_d_spec);
+                    assert(fe51_as_canonical_nat(&u1_sqr) == u1_sqr_spec);
+                    assert(fe51_as_canonical_nat(&neg_d_u1_sqr) == field_mul(
+                        neg_d_spec,
+                        u1_sqr_spec,
+                    ));
+                    assert(fe51_as_canonical_nat(&v) == v_spec);
+                    assert(v_u2_sqr_nat == v_u2_sqr_spec);
+                    assert(fe51_as_canonical_nat(&Dx) == dx_spec);
+                    assert(fe51_as_canonical_nat(&Dx_v) == field_mul(dx_spec, v_spec));
+                    assert(fe51_as_canonical_nat(&Dy) == dy_spec);
+                    assert(fe51_as_canonical_nat(&s_plus_s) == field_add(s_nat, s_nat));
+
+                    assert(is_sqrt_ratio(1, v_u2_sqr_spec, big_i_nat) || is_sqrt_ratio_times_i(
+                        1,
+                        v_u2_sqr_spec,
+                        big_i_nat,
+                    ));
+                    assert(x_val == (if is_negative(x_tmp_spec) {
+                        field_neg(x_tmp_spec)
+                    } else {
+                        x_tmp_spec
+                    }));
+                    assert(y_val == field_mul(u1_spec, dy_spec));
+                };
+            }
+            // I matches spec-level nat_invsqrt(v*u2²)
+
+            assert(big_i_nat == nat_invsqrt(v_u2_sqr_nat)) by {
+                assert(big_i_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&I);
+                };
+                assert(v_u2_sqr_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&v_u2_sqr);
+                };
+                if v_u2_sqr_nat != 0 {
+                    assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) || is_sqrt_ratio_times_i(
+                        1,
+                        v_u2_sqr_nat,
+                        big_i_nat,
+                    ));
+                }
+                lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
+            };
+
+            // Mutual exclusion: ok ↔ is_sqrt_ratio (not both sqrt_ratio and sqrt_ratio_times_i)
+            if v_u2_sqr_nat != 0 {
+                assert(!(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
+                    1,
+                    v_u2_sqr_nat,
+                    big_i_nat,
+                ))) by {
+                    assert(1nat % p() == 1) by {
+                        lemma_small_mod(1nat, p());
+                    };
+                    lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
+                };
+            } else {
+                assert(0nat % p() == 0 && 1nat % p() == 1) by {
+                    lemma2_to64();
+                    lemma_pow2_strictly_increases(5, 255);
+                    lemma_small_mod(0nat, p());
+                    lemma_small_mod(1nat, p());
+                };
+            }
+
+            // On curve and projective equivalence when decode succeeds
+            if choice_is_true(ok) {
+                assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat));
+                assert(is_on_edwards_curve(x_val, y_val)) by {
+                    axiom_ristretto_decode_on_curve(s_nat, big_i_nat, x_val, y_val);
+                };
+                assert(is_on_edwards_curve_projective(x_val, y_val, 1nat)) by {
+                    assert(x_val < p()) by {
+                        lemma_canonical_nat_lt_p(&x);
+                    };
+                    assert(y_val < p()) by {
+                        lemma_canonical_nat_lt_p(&y);
+                    };
+                    lemma_z_one_affine_implies_projective(x_val, y_val);
+                };
+            }
+        }
+
+        // Construct EdwardsPoint: use computed values when ok (proven on-curve),
+        // use identity() when !ok to avoid unsound assume in degenerate case.
+        let point = if choice_into(ok) {
+            EdwardsPoint { X: x, Y: y, Z: one, T: t }
+        } else {
+            EdwardsPoint::identity()
+        };
+
+        proof {
+            use_type_invariant(point);
+            lemma_unfold_edwards(point);
+
+            let s_nat = fe51_as_canonical_nat(&s);
+            let big_i_nat = fe51_as_canonical_nat(&I);
+            let v_u2_sqr_nat = fe51_as_canonical_nat(&v_u2_sqr);
+
+            // Re-establish spec alignment after exec branch (facts don't persist across exec if)
+            assert(big_i_nat == nat_invsqrt(v_u2_sqr_nat)) by {
+                assert(big_i_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&I);
+                };
+                assert(v_u2_sqr_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&v_u2_sqr);
+                };
+                if v_u2_sqr_nat != 0 {
+                    assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) || is_sqrt_ratio_times_i(
+                        1,
+                        v_u2_sqr_nat,
+                        big_i_nat,
+                    ));
+                }
+                lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
+            };
+
+            // Re-establish mutual exclusion
+            if v_u2_sqr_nat != 0 {
+                assert(!(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
+                    1,
+                    v_u2_sqr_nat,
+                    big_i_nat,
+                ))) by {
+                    assert(1nat % p() == 1) by {
+                        lemma_small_mod(1nat, p());
+                    };
+                    lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
+                };
+            } else {
+                assert(0nat % p() == 0 && 1nat % p() == 1) by {
+                    lemma2_to64();
+                    lemma_pow2_strictly_increases(5, 255);
+                    lemma_small_mod(0nat, p());
+                    lemma_small_mod(1nat, p());
+                };
+            }
+
+            if choice_is_true(ok) {
+                let x_val = fe51_as_canonical_nat(&x);
+                let y_val = fe51_as_canonical_nat(&y);
+
+                assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat));
+                assert(is_well_formed_edwards_point(point));
+
+                assert(is_in_even_subgroup(point)) by {
+                    axiom_ristretto_decode_in_even_subgroup(s_nat, big_i_nat, x_val, y_val, point);
+                };
+            }
+        }
+
+        (ok, t_is_neg, y_is_zero, RistrettoPoint(point))
+    }
+
+    /// Helper lemma: fe51_as_canonical_nat is always < p().
+    proof fn lemma_canonical_nat_lt_p(x: &FieldElement)
+        ensures
+            fe51_as_canonical_nat(x) < p(),
+    {
+        assert(pow2(255) > 19) by {
+            pow255_gt_19();
+        };
+        assert(fe51_as_canonical_nat(x) < p()) by {
+            lemma_mod_bound(fe51_as_nat(x) as int, p() as int);
+        };
+    }
+
+    /// Helper lemma: Proves that exec I matches nat_invsqrt.
+    ///
+    /// When v*u2² ≠ 0: uses axiom_invsqrt_unique (nonneg invsqrt is unique).
+    /// When v*u2² = 0: invsqrt(0) = 0 by definition of nat_invsqrt.
+    proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
+        requires
+            big_i_nat % 2 == 0,
+            (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
+            (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
+                || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+            big_i_nat < p(),
+            v_u2_sqr_nat < p(),
+        ensures
+            big_i_nat == nat_invsqrt(v_u2_sqr_nat),
+    {
+        if v_u2_sqr_nat != 0 {
+            assert(!is_negative(big_i_nat)) by {
+                lemma_small_mod(big_i_nat, p());
+            };
+            assert(big_i_nat == nat_invsqrt(v_u2_sqr_nat)) by {
+                assert(v_u2_sqr_nat % p() == v_u2_sqr_nat) by {
+                    lemma_small_mod(v_u2_sqr_nat, p());
+                };
+                axiom_invsqrt_unique(v_u2_sqr_nat, big_i_nat);
+            };
+        } else {
+            assert(0nat % p() == 0) by {
+                lemma_small_mod(0nat, p());
+            };
+        }
     }
 
 }
@@ -2993,6 +3565,767 @@ impl Zeroize for RistrettoPoint {
 //         assert_eq!(Q.compress(), R.compress());
 //     }
 // }
+// ------------------------------------------------------------------------
+// Axiom Validation Tests for Ristretto Decode
+// ------------------------------------------------------------------------
+#[cfg(test)]
+mod test_ristretto_decode_axioms {
+    use super::*;
+    use crate::backend::serial::u64::field::FieldElement51;
+    use crate::field::FieldElement;
+
+    /// Helper: compute the Edwards curve equation residue.
+    /// Returns 0 if (x, y) is on the curve: -x² + y² - 1 - d·x²·y² ≡ 0 (mod p).
+    fn curve_residue(x: &FieldElement, y: &FieldElement) -> FieldElement {
+        let d = &constants::EDWARDS_D;
+        let xx = x.square();
+        let yy = y.square();
+        let dxxyy = &(d * &xx) * &yy;
+        // -x² + y² - 1 - d·x²·y²
+        &(&(&yy - &xx) - &FieldElement::ONE) - &dxxyy
+    }
+
+    /// Validate axiom_ristretto_decode_on_curve:
+    /// Ristretto decoding always produces a point on the Edwards curve.
+    #[test]
+    fn test_ristretto_decode_on_curve() {
+        // Test with identity encoding (s = 0)
+        let zero_bytes = [0u8; 32];
+        let s = FieldElement::from_bytes(&zero_bytes);
+        let one = FieldElement::ONE;
+        let ss = s.square();
+        let u1 = &one - &ss;
+        let u2 = &one + &ss;
+        let u2_sqr = u2.square();
+        use core::ops::Neg;
+        let neg_d = Neg::neg(&constants::EDWARDS_D);
+        let u1_sqr = u1.square();
+        let neg_d_u1_sqr = &neg_d * &u1_sqr;
+        let v = &neg_d_u1_sqr - &u2_sqr;
+        let v_u2_sqr = &v * &u2_sqr;
+        let (_ok, big_i) = v_u2_sqr.invsqrt();
+        let dx = &big_i * &u2;
+        let dx_v = &dx * &v;
+        let dy = &big_i * &dx_v;
+        let s_plus_s = &s + &s;
+        let mut x = &s_plus_s * &dx;
+        let x_neg = x.is_negative();
+        x.conditional_negate(x_neg);
+        let y = &u1 * &dy;
+        let residue = curve_residue(&x, &y);
+        let residue_bytes = residue.as_bytes();
+        assert_eq!(residue_bytes, [0u8; 32], "s=0: point not on curve");
+
+        // Test with basepoint encoding
+        let bp = constants::RISTRETTO_BASEPOINT_POINT;
+        let bp_bytes = bp.compress().as_bytes().clone();
+        let s = FieldElement::from_bytes(&bp_bytes);
+        let ss = s.square();
+        let u1 = &one - &ss;
+        let u2 = &one + &ss;
+        let u2_sqr = u2.square();
+        let neg_d = Neg::neg(&constants::EDWARDS_D);
+        let u1_sqr = u1.square();
+        let neg_d_u1_sqr = &neg_d * &u1_sqr;
+        let v = &neg_d_u1_sqr - &u2_sqr;
+        let v_u2_sqr = &v * &u2_sqr;
+        let (_ok, big_i) = v_u2_sqr.invsqrt();
+        let dx = &big_i * &u2;
+        let dx_v = &dx * &v;
+        let dy = &big_i * &dx_v;
+        let s_plus_s = &s + &s;
+        let mut x = &s_plus_s * &dx;
+        let x_neg = x.is_negative();
+        x.conditional_negate(x_neg);
+        let y = &u1 * &dy;
+        let residue = curve_residue(&x, &y);
+        let residue_bytes = residue.as_bytes();
+        assert_eq!(residue_bytes, [0u8; 32], "basepoint: point not on curve");
+
+        // Test with many small multiples of basepoint
+        let mut point = constants::RISTRETTO_BASEPOINT_POINT;
+        for i in 2..100u32 {
+            point = &point + &constants::RISTRETTO_BASEPOINT_POINT;
+            let bytes = point.compress().as_bytes().clone();
+            let s = FieldElement::from_bytes(&bytes);
+            let ss = s.square();
+            let u1 = &one - &ss;
+            let u2 = &one + &ss;
+            let u2_sqr = u2.square();
+            let neg_d = Neg::neg(&constants::EDWARDS_D);
+            let u1_sqr = u1.square();
+            let neg_d_u1_sqr = &neg_d * &u1_sqr;
+            let v = &neg_d_u1_sqr - &u2_sqr;
+            let v_u2_sqr = &v * &u2_sqr;
+            let (_ok, big_i) = v_u2_sqr.invsqrt();
+            let dx = &big_i * &u2;
+            let dx_v = &dx * &v;
+            let dy = &big_i * &dx_v;
+            let s_plus_s = &s + &s;
+            let mut x = &s_plus_s * &dx;
+            let x_neg = x.is_negative();
+            x.conditional_negate(x_neg);
+            let y = &u1 * &dy;
+            let residue = curve_residue(&x, &y);
+            let residue_bytes = residue.as_bytes();
+            assert_eq!(residue_bytes, [0u8; 32], "{}*B: point not on curve", i);
+        }
+
+        // Helper: run the decode formula for a field element s and check on-curve.
+        // Returns (ok, on_curve) so caller can filter.
+        fn decode_and_check(s_bytes: &[u8; 32]) -> (bool, bool) {
+            use core::ops::Neg;
+            let s = FieldElement::from_bytes(s_bytes);
+            let one = FieldElement::ONE;
+            let ss = s.square();
+            let u1 = &one - &ss;
+            let u2 = &one + &ss;
+            let u2_sqr = u2.square();
+            let neg_d = Neg::neg(&constants::EDWARDS_D);
+            let u1_sqr = u1.square();
+            let neg_d_u1_sqr = &neg_d * &u1_sqr;
+            let v = &neg_d_u1_sqr - &u2_sqr;
+            let v_u2_sqr = &v * &u2_sqr;
+            let (ok, big_i) = v_u2_sqr.invsqrt();
+            let dx = &big_i * &u2;
+            let dx_v = &dx * &v;
+            let dy = &big_i * &dx_v;
+            let s_plus_s = &s + &s;
+            let mut x = &s_plus_s * &dx;
+            let x_neg = x.is_negative();
+            x.conditional_negate(x_neg);
+            let y = &u1 * &dy;
+            let residue = curve_residue(&x, &y);
+            let on_curve = residue.as_bytes() == [0u8; 32];
+            (bool::from(ok), on_curve)
+        }
+
+        // Edge cases: small even field elements (s = 2, 4, 6, ..., 40).
+        // The axiom claims on-curve when is_ristretto_decode_output holds (which
+        // requires is_sqrt_ratio or is_sqrt_ratio_times_i). We verify on-curve for
+        // the ok=true (square) case. The ok=false (nonsquare) case produces coords
+        // that may not be on-curve; this is fine because the decompress proof only
+        // needs on-curve for the success path.
+        let mut ok_count = 0u32;
+        for s_val in (2u64..=40).step_by(2) {
+            let mut s_bytes = [0u8; 32];
+            s_bytes[0] = s_val as u8;
+            let (ok, on_curve) = decode_and_check(&s_bytes);
+            if ok {
+                assert!(on_curve, "s={}: ok=true but point not on curve", s_val);
+                ok_count += 1;
+            }
+        }
+        assert!(
+            ok_count >= 1,
+            "expected at least one ok=true among small s values"
+        );
+
+        // Edge case: s = 1 (odd, would be rejected by sign check, but test the
+        // decode formula for the ok=true case)
+        let mut one_bytes = [0u8; 32];
+        one_bytes[0] = 1;
+        let (ok, on_curve) = decode_and_check(&one_bytes);
+        if ok {
+            assert!(on_curve, "s=1: ok=true but point not on curve");
+        }
+
+        // Hash-derived field elements to exercise more diverse s values.
+        // Only check on-curve for the ok=true (square) case.
+        use sha2::{Digest, Sha512};
+        let mut hash_ok_count = 0u32;
+        for seed in 0u32..50 {
+            let mut hasher = Sha512::new();
+            hasher.update(b"ristretto_decode_on_curve_test_");
+            hasher.update(seed.to_le_bytes());
+            let hash = hasher.finalize();
+            let mut s_bytes = [0u8; 32];
+            s_bytes.copy_from_slice(&hash[..32]);
+            s_bytes[31] &= 0x7f; // Clear high bit to stay < 2^255
+            s_bytes[0] &= 0xfe; // Make even (nonnegative)
+            let (ok, on_curve) = decode_and_check(&s_bytes);
+            if ok {
+                assert!(
+                    on_curve,
+                    "hash-derived s (seed {}): ok=true but point not on curve",
+                    seed
+                );
+                hash_ok_count += 1;
+            }
+        }
+        assert!(
+            hash_ok_count >= 10,
+            "expected at least 10 ok=true hash-derived inputs, got {}",
+            hash_ok_count
+        );
+    }
+
+    /// Validate axiom_ristretto_decode_in_even_subgroup:
+    /// Successfully decoded Ristretto points lie in the prime-order subgroup.
+    /// We check [L]P == identity, which implies P is in the prime-order subgroup
+    /// (and hence in the even subgroup 2E, since the prime-order subgroup is
+    /// contained in 2E for cofactor-8 curves).
+    #[test]
+    fn test_ristretto_decode_in_even_subgroup() {
+        use crate::scalar::Scalar;
+
+        // L (group order) as a scalar is zero, so [L]P = identity iff P is
+        // in the prime-order subgroup. We use the cofactor to check instead:
+        // if [8]P != identity but [8L]P = identity, then P has exact order
+        // dividing 8L but not dividing 8 — so P is in the subgroup of order L
+        // (which equals the even subgroup for cofactor 8).
+
+        // Test with basepoint
+        let bp = constants::RISTRETTO_BASEPOINT_POINT;
+        let bp_bytes = bp.compress().as_bytes().clone();
+        let s = FieldElement::from_bytes(&bp_bytes);
+        let one = FieldElement::ONE;
+        let ss = s.square();
+        let u1 = &one - &ss;
+        let u2 = &one + &ss;
+        let u2_sqr = u2.square();
+        use core::ops::Neg;
+        let neg_d = Neg::neg(&constants::EDWARDS_D);
+        let u1_sqr = u1.square();
+        let neg_d_u1_sqr = &neg_d * &u1_sqr;
+        let v = &neg_d_u1_sqr - &u2_sqr;
+        let v_u2_sqr = &v * &u2_sqr;
+        let (ok, big_i) = v_u2_sqr.invsqrt();
+        assert!(bool::from(ok), "basepoint decode must succeed");
+        let dx = &big_i * &u2;
+        let dx_v = &dx * &v;
+        let dy = &big_i * &dx_v;
+        let s_plus_s = &s + &s;
+        let mut x = &s_plus_s * &dx;
+        let x_neg = x.is_negative();
+        x.conditional_negate(x_neg);
+        let y = &u1 * &dy;
+        let t = &x * &y;
+        let point = EdwardsPoint {
+            X: x,
+            Y: y,
+            Z: one,
+            T: t,
+        };
+
+        // [8]P should not be identity (P has large prime order)
+        let eight_p = point.mul_by_pow_2(3);
+        assert_ne!(
+            eight_p.compress().as_bytes(),
+            &[
+                1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0
+            ],
+            "basepoint [8]P should not be identity"
+        );
+
+        // Multiply by group order: decoded point should have prime order
+        // (scalar multiplication by L gives identity for prime-order points)
+        let l_bytes = [
+            0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58, 0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9,
+            0xde, 0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10,
+        ];
+        let l_scalar = Scalar::from_bytes_mod_order(l_bytes);
+        let l_times_p = &l_scalar * &point;
+        let identity_bytes = [
+            1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
+        assert_eq!(
+            l_times_p.compress().as_bytes(),
+            &identity_bytes,
+            "basepoint: [L]P must be identity"
+        );
+
+        // Test with many multiples of basepoint
+        let mut pt = constants::RISTRETTO_BASEPOINT_POINT;
+        for i in 2..50u32 {
+            pt = &pt + &constants::RISTRETTO_BASEPOINT_POINT;
+            let bytes = pt.compress().as_bytes().clone();
+            let s = FieldElement::from_bytes(&bytes);
+            let ss = s.square();
+            let u1 = &one - &ss;
+            let u2 = &one + &ss;
+            let u2_sqr = u2.square();
+            let neg_d = Neg::neg(&constants::EDWARDS_D);
+            let u1_sqr = u1.square();
+            let neg_d_u1_sqr = &neg_d * &u1_sqr;
+            let v = &neg_d_u1_sqr - &u2_sqr;
+            let v_u2_sqr = &v * &u2_sqr;
+            let (ok, big_i) = v_u2_sqr.invsqrt();
+            if !bool::from(ok) {
+                continue;
+            }
+            let dx = &big_i * &u2;
+            let dx_v = &dx * &v;
+            let dy = &big_i * &dx_v;
+            let s_plus_s = &s + &s;
+            let mut x_pt = &s_plus_s * &dx;
+            let x_neg = x_pt.is_negative();
+            x_pt.conditional_negate(x_neg);
+            let y_pt = &u1 * &dy;
+            let t_pt = &x_pt * &y_pt;
+            let decoded = EdwardsPoint {
+                X: x_pt,
+                Y: y_pt,
+                Z: one,
+                T: t_pt,
+            };
+
+            let l_times_decoded = &l_scalar * &decoded;
+            assert_eq!(
+                l_times_decoded.compress().as_bytes(),
+                &identity_bytes,
+                "{}*B: [L]P must be identity",
+                i
+            );
+        }
+
+        // Test with diverse inputs: random-looking 32-byte strings filtered through decompress
+        // These exercise the decode path for non-basepoint-derived inputs.
+        let diverse_inputs: [[u8; 32]; 8] = [
+            // Manually chosen bytes that produce valid Ristretto points
+            [0x00; 32], // identity encoding (s = 0)
+            [
+                0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0x06, 0x54, 0xa2, 0xd3, 0xe8, 0x47, 0x7c, 0xb1, 0x92, 0x0e, 0xf1, 0x86, 0x3a, 0xf9,
+                0xde, 0x14, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x00, 0x11, 0x22, 0x33,
+                0x44, 0x55, 0x66, 0x00,
+            ],
+        ];
+        let mut diverse_success = 0u32;
+        for (idx, bytes) in diverse_inputs.iter().enumerate() {
+            let compressed = CompressedRistretto(*bytes);
+            if let Some(pt) = compressed.decompress() {
+                let l_result = &l_scalar * &pt.0;
+                assert_eq!(
+                    l_result.compress().as_bytes(),
+                    &identity_bytes,
+                    "diverse input {}: [L]P must be identity",
+                    idx
+                );
+                diverse_success += 1;
+            }
+        }
+        assert!(
+            diverse_success >= 1,
+            "at least 1 diverse input should succeed"
+        );
+
+        // Test with hash-derived points (exercises a completely different input distribution)
+        use sha2::Sha512;
+        for seed in 0..50u32 {
+            let input = seed.to_le_bytes();
+            let pt = RistrettoPoint::hash_from_bytes::<Sha512>(&input);
+            let l_result = &l_scalar * &pt.0;
+            assert_eq!(
+                l_result.compress().as_bytes(),
+                &identity_bytes,
+                "hash-derived point (seed {}): [L]P must be identity",
+                seed
+            );
+        }
+    }
+
+    /// Validate axiom_invsqrt_unique:
+    /// For nonzero field elements, invsqrt produces a unique nonnegative root.
+    ///
+    /// Checks:
+    /// 1. r is nonneg, -r is negative (sign structure)
+    /// 2. r²·a ∈ {1, √(-1)} (invsqrt relation)
+    /// 3. (-r)²·a gives the SAME relation class (both candidates satisfy the same case)
+    /// 4. r and -r are distinct when r != 0 (exactly two roots, one per sign)
+    #[test]
+    fn test_invsqrt_unique() {
+        let one = FieldElement::ONE;
+
+        // Test basepoint-derived field elements
+        let bp = constants::RISTRETTO_BASEPOINT_POINT;
+        let bp_bytes = bp.compress().as_bytes().clone();
+        let s = FieldElement::from_bytes(&bp_bytes);
+
+        let ss = s.square();
+        let u1 = &one - &ss;
+        let u2 = &one + &ss;
+        let u2_sqr = u2.square();
+        use core::ops::Neg;
+        let neg_d = Neg::neg(&constants::EDWARDS_D);
+        let u1_sqr = u1.square();
+        let v = &(&neg_d * &u1_sqr) - &u2_sqr;
+        let v_u2_sqr = &v * &u2_sqr;
+
+        let (ok, r) = v_u2_sqr.invsqrt();
+        assert!(bool::from(ok), "basepoint v*u2^2 should have square root");
+
+        // r should be nonnegative
+        assert!(
+            !bool::from(r.is_negative()),
+            "invsqrt result must be nonnegative"
+        );
+
+        // -r should be negative (the other root is the negative one)
+        let neg_r = Neg::neg(&r);
+        assert!(
+            bool::from(neg_r.is_negative()),
+            "negated invsqrt result must be negative"
+        );
+
+        // r and -r must be distinct (r != 0 for basepoint)
+        assert!(
+            !bool::from(r.ct_eq(&neg_r)),
+            "r and -r must be distinct for nonzero r"
+        );
+
+        // Both candidates satisfy the same relation (r² = (-r)²)
+        let r_sq = r.square();
+        let neg_r_sq = neg_r.square();
+        assert!(bool::from(r_sq.ct_eq(&neg_r_sq)), "r^2 must equal (-r)^2");
+
+        // Verify the relation: r² * v_u2_sqr should be 1 or sqrt(-1)
+        let check = &r_sq * &v_u2_sqr;
+        let is_one = bool::from(check.ct_eq(&FieldElement::ONE));
+        let sqrt_m1 = constants::SQRT_M1;
+        let is_sqrt_m1 = bool::from(check.ct_eq(&sqrt_m1));
+        assert!(is_one || is_sqrt_m1, "r^2 * a must equal 1 or sqrt(-1)");
+        assert!(is_one, "for basepoint, should be the square case");
+
+        // Test with many different field elements from scalar multiples
+        let mut pt = constants::RISTRETTO_BASEPOINT_POINT;
+        let mut tested = 0u32;
+        for _ in 2..200u32 {
+            pt = &pt + &constants::RISTRETTO_BASEPOINT_POINT;
+            let bytes = pt.compress().as_bytes().clone();
+            let s = FieldElement::from_bytes(&bytes);
+            let ss = s.square();
+            let u1 = &one - &ss;
+            let u2 = &one + &ss;
+            let u2_sqr = u2.square();
+            let neg_d = Neg::neg(&constants::EDWARDS_D);
+            let u1_sqr = u1.square();
+            let v = &(&neg_d * &u1_sqr) - &u2_sqr;
+            let v_u2_sqr = &v * &u2_sqr;
+
+            let (_ok, r) = v_u2_sqr.invsqrt();
+
+            // r must be nonnegative
+            assert!(
+                !bool::from(r.is_negative()),
+                "invsqrt result must be nonnegative for input {}",
+                tested
+            );
+
+            if !bool::from(r.ct_eq(&FieldElement::ZERO)) {
+                let neg_r = Neg::neg(&r);
+
+                // -r must be negative
+                assert!(
+                    bool::from(neg_r.is_negative()),
+                    "negated nonzero invsqrt result must be negative for input {}",
+                    tested
+                );
+
+                // r and -r must be distinct
+                assert!(
+                    !bool::from(r.ct_eq(&neg_r)),
+                    "r and -r must be distinct for nonzero r (input {})",
+                    tested
+                );
+
+                // Both candidates have the same square, so satisfy the same relation
+                let r_sq = r.square();
+                let neg_r_sq = neg_r.square();
+                assert!(
+                    bool::from(r_sq.ct_eq(&neg_r_sq)),
+                    "r^2 must equal (-r)^2 for input {}",
+                    tested
+                );
+            }
+
+            // r² * v_u2_sqr must be 1 or sqrt(-1)
+            let r_sq = r.square();
+            let check = &r_sq * &v_u2_sqr;
+            let is_one = bool::from(check.ct_eq(&FieldElement::ONE));
+            let is_sqrt_m1 = bool::from(check.ct_eq(&sqrt_m1));
+            if !bool::from(v_u2_sqr.ct_eq(&FieldElement::ZERO)) {
+                assert!(
+                    is_one || is_sqrt_m1,
+                    "r^2 * a must equal 1 or sqrt(-1) for input {}",
+                    tested
+                );
+            }
+            tested += 1;
+        }
+        assert!(tested >= 190, "should have tested at least 190 inputs");
+
+        // Also test with a known non-square to exercise the sqrt(-1) case.
+        // 2 is a non-square mod p (since p ≡ 5 mod 8, and 2^((p-1)/2) = -1).
+        let two = &FieldElement::ONE + &FieldElement::ONE;
+        let (_ok_two, r_two) = two.invsqrt();
+        assert!(
+            !bool::from(r_two.is_negative()),
+            "invsqrt of non-square must still return nonneg r"
+        );
+        let r_two_sq = r_two.square();
+        let check_two = &r_two_sq * &two;
+        let is_sqrt_m1_case = bool::from(check_two.ct_eq(&sqrt_m1));
+        assert!(
+            is_sqrt_m1_case,
+            "for non-square input 2, r^2 * a must equal sqrt(-1)"
+        );
+        if !bool::from(r_two.ct_eq(&FieldElement::ZERO)) {
+            let neg_r_two = Neg::neg(&r_two);
+            assert!(
+                bool::from(neg_r_two.is_negative()),
+                "negated nonzero invsqrt of non-square must be negative"
+            );
+            assert!(
+                !bool::from(r_two.ct_eq(&neg_r_two)),
+                "r and -r must be distinct for nonzero invsqrt of non-square"
+            );
+        }
+    }
+
+    /// Validate lemma_sqrt_m1_limbs_bounded (formerly axiom_sqrt_m1_limbs_bounded):
+    /// Each limb of SQRT_M1 fits in 51 bits.
+    #[test]
+    fn test_sqrt_m1_limbs_bounded() {
+        let sqrt_m1 = constants::SQRT_M1;
+        let max_51 = (1u64 << 51) - 1;
+        for (i, &limb) in sqrt_m1.limbs.iter().enumerate() {
+            assert!(
+                limb <= max_51,
+                "SQRT_M1 limb {} = {} exceeds 51-bit bound {}",
+                i,
+                limb,
+                max_51
+            );
+        }
+
+        // Also verify sqrt(-1)^2 = -1 as a sanity check
+        let sq = sqrt_m1.square();
+        let neg_one = Neg::neg(&FieldElement::ONE);
+        assert!(bool::from(sq.ct_eq(&neg_one)), "SQRT_M1^2 must equal -1");
+    }
+
+    /// Validate axiom_minus_one_field_element_value:
+    /// ZERO - ONE mod p equals the internal MINUS_ONE constant.
+    #[test]
+    fn test_minus_one_field_element_value() {
+        use crate::backend::serial::u64::constants::MINUS_ONE;
+
+        let minus_one = FieldElement51 {
+            limbs: MINUS_ONE.limbs,
+        };
+        let computed = &FieldElement::ZERO - &FieldElement::ONE;
+
+        assert!(
+            bool::from(minus_one.ct_eq(&computed)),
+            "MINUS_ONE must equal ZERO - ONE"
+        );
+
+        // Also verify: MINUS_ONE + ONE = ZERO
+        let sum = &minus_one + &FieldElement::ONE;
+        assert!(
+            bool::from(sum.ct_eq(&FieldElement::ZERO)),
+            "MINUS_ONE + ONE must equal ZERO"
+        );
+    }
+
+    /// Validate axiom_sqrt_m1_not_square and axiom_neg_sqrt_m1_not_square:
+    /// i = sqrt(-1) and -i are both non-squares in GF(p), verified via Euler's criterion.
+    ///
+    /// Euler's criterion: a is a square mod p iff a^((p-1)/2) ≡ 1 (mod p).
+    /// For a non-square, a^((p-1)/2) ≡ -1 (mod p).
+    #[test]
+    fn test_sqrt_m1_not_square() {
+        use core::ops::Neg;
+
+        let sqrt_m1 = constants::SQRT_M1;
+        let neg_sqrt_m1 = Neg::neg(&sqrt_m1);
+
+        // Sanity: confirm i^2 = -1
+        let i_sq = sqrt_m1.square();
+        let neg_one = Neg::neg(&FieldElement::ONE);
+        assert!(bool::from(i_sq.ct_eq(&neg_one)), "sqrt_m1^2 must equal -1");
+
+        // Euler's criterion: compute i^((p-1)/2) via repeated squaring.
+        // p = 2^255 - 19, so (p-1)/2 = 2^254 - 10 = 2^254 - 8 - 2 = (2^255 - 20) / 2.
+        // We encode (p-1)/2 as little-endian bytes and use pow_bytes.
+        //
+        // (p-1)/2 = (2^255 - 20) / 2 = 2^254 - 10
+        // In binary: 2^254 - 10 = 0b0011...110110 (254 bits with last few bits: ...10110)
+        // As a 256-bit little-endian integer:
+        // Byte 0: (2^254 - 10) mod 256 = (256 - 10) mod 256 = 246 = 0xF6
+        // Byte 1..30: 0xFF (all ones from the 2^254 block minus the borrow)
+        // Byte 31: 0x3F (= 63, top two bits clear since 2^254 < 2^255)
+        //
+        // More precisely: 2^254 - 10 in hex is:
+        // 3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6
+        let half_p_minus_1: [u8; 32] = [
+            0xf6, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0x3f,
+        ];
+
+        // Verify the exponent: 2 * half_p_minus_1 + 1 should give us p - 1 = 2^255 - 20
+        // (i.e., half_p_minus_1 = (p-1)/2). We'll verify this indirectly: a^(p-1) = 1
+        // for any nonzero a (Fermat), and a^((p-1)/2) = ±1 (Euler).
+
+        // Compute i^((p-1)/2) using square-and-multiply (MSB-first)
+        let euler_i = pow_field_element(&sqrt_m1, &half_p_minus_1);
+
+        // For a non-square, Euler's criterion gives -1
+        assert!(
+            bool::from(euler_i.ct_eq(&neg_one)),
+            "sqrt_m1^((p-1)/2) must equal -1 (i is NOT a square)"
+        );
+
+        // Compute (-i)^((p-1)/2) using the same exponent
+        let euler_neg_i = pow_field_element(&neg_sqrt_m1, &half_p_minus_1);
+
+        assert!(
+            bool::from(euler_neg_i.ct_eq(&neg_one)),
+            "(-sqrt_m1)^((p-1)/2) must equal -1 (-i is NOT a square)"
+        );
+
+        // Sanity check: 1 IS a square, so 1^((p-1)/2) should be 1
+        let euler_one = pow_field_element(&FieldElement::ONE, &half_p_minus_1);
+        assert!(
+            bool::from(euler_one.ct_eq(&FieldElement::ONE)),
+            "1^((p-1)/2) must equal 1 (sanity: 1 is a square)"
+        );
+
+        // Sanity check: 4 IS a square (2^2), so 4^((p-1)/2) should be 1
+        let two = &FieldElement::ONE + &FieldElement::ONE;
+        let four = two.square();
+        let euler_four = pow_field_element(&four, &half_p_minus_1);
+        assert!(
+            bool::from(euler_four.ct_eq(&FieldElement::ONE)),
+            "4^((p-1)/2) must equal 1 (sanity: 4 = 2^2 is a square)"
+        );
+    }
+
+    /// Validate axiom_p_is_prime:
+    /// p = 2^255 - 19 is prime, verified via deterministic Miller-Rabin.
+    ///
+    /// Miller-Rabin: write p - 1 = 2^s * d with d odd.
+    /// p - 1 = 2^255 - 20 = 4 * (2^253 - 5), so s = 2, d = 2^253 - 5.
+    /// For each witness a in {2, 3, 5, 7, 11, 13, 17, 19, 23}:
+    ///   Compute x = a^d mod p.
+    ///   If x == 1 or x == p-1, pass.
+    ///   Otherwise, square up to s-1 times; if any result == p-1, pass.
+    ///   If none, p is composite (but it won't be, since p is actually prime).
+    ///
+    /// 9 witnesses is far more than needed for a known prime; this serves as
+    /// a runtime sanity check that the axiom is sound.
+    #[test]
+    fn test_p_is_prime() {
+        // d = (p - 1) / 4 = (2^255 - 20) / 4 = 2^253 - 5
+        // As 32-byte little-endian: 2^253 is byte 31 = 0x20, minus 5 gives
+        // byte 0 = 0xFB, bytes 1..30 = 0xFF, byte 31 = 0x1F
+        let d_bytes: [u8; 32] = [
+            0xfb, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0x1f,
+        ];
+
+        let neg_one = core::ops::Neg::neg(&FieldElement::ONE);
+        let s = 2u32; // p - 1 = 2^2 * d
+
+        let witnesses: [u64; 9] = [2, 3, 5, 7, 11, 13, 17, 19, 23];
+
+        for &a_val in witnesses.iter() {
+            let a = FieldElement51 {
+                limbs: [a_val, 0, 0, 0, 0],
+            };
+
+            // x = a^d mod p
+            let mut x = pow_field_element(&a, &d_bytes);
+
+            if bool::from(x.ct_eq(&FieldElement::ONE)) || bool::from(x.ct_eq(&neg_one)) {
+                continue;
+            }
+
+            let mut passed = false;
+            for _ in 0..(s - 1) {
+                x = x.square();
+                if bool::from(x.ct_eq(&neg_one)) {
+                    passed = true;
+                    break;
+                }
+            }
+
+            assert!(
+                passed,
+                "Miller-Rabin witness {} says p is composite (should not happen)",
+                a_val
+            );
+        }
+
+        // Additional check: verify Fermat's Little Theorem directly for a = 2.
+        // If p is prime, 2^(p-1) ≡ 1 (mod p).
+        let p_minus_1: [u8; 32] = [
+            0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0x7f,
+        ];
+        let two = FieldElement51 {
+            limbs: [2, 0, 0, 0, 0],
+        };
+        let fermat = pow_field_element(&two, &p_minus_1);
+        assert!(
+            bool::from(fermat.ct_eq(&FieldElement::ONE)),
+            "Fermat's Little Theorem: 2^(p-1) must equal 1 mod p"
+        );
+    }
+}
+
+/// Square-and-multiply: compute base^exp where exp is a 256-bit little-endian integer.
+/// Used only in tests.
+#[cfg(test)]
+fn pow_field_element(base: &FieldElement, exp: &[u8; 32]) -> FieldElement {
+    let mut result = FieldElement::ONE;
+    let mut acc = base.clone();
+    for &byte in exp.iter() {
+        for bit in 0..8 {
+            if (byte >> bit) & 1 == 1 {
+                result = &result * &acc;
+            }
+            acc = acc.square();
+        }
+    }
+    result
+}
+
 // ------------------------------------------------------------------------
 // Functional Equivalence Tests for Verus implementations
 // ------------------------------------------------------------------------

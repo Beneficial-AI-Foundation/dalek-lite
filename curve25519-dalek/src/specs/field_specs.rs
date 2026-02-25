@@ -519,14 +519,17 @@ pub open spec fn is_negative(a: nat) -> bool {
 
 /// Spec-only model of inverse square root with a canonical sign choice.
 ///
-/// Returns a nonnegative r such that either r^2 * a = 1 (mod p) or r^2 * a = i (mod p).
+/// Returns the unique r < p that is nonnegative (even) and satisfies either
+/// r² · a ≡ 1 (mod p) or r² · a ≡ √(−1) (mod p).
+/// The `r < p()` constraint ensures the choose picks the canonical representative,
+/// making axiom_invsqrt_unique sound.
 pub open spec fn nat_invsqrt(a: nat) -> nat {
     if a % p() == 0 {
         0
     } else {
         choose|r: nat|
             #![auto]
-            !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r))
+            r < p() && !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r))
     }
 }
 

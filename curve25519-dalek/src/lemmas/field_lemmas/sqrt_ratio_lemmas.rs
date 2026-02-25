@@ -1157,4 +1157,110 @@ pub proof fn lemma_sqrt_ratio_correctness(
 // inlined into sqrt_ratio_i (field.rs) to eliminate 25 parameters of pass-through.
 // The remaining lemmas below (lemma_sqrt_ratio_correctness, lemma_sqrt_ratio_check_value,
 // etc.) are called from the inlined proof block.
+//=============================================================================
+// Axioms / lemmas moved here from ristretto_specs.rs and ristretto.rs
+// because they are sqrt_ratio properties, not Ristretto-specific.
+//=============================================================================
+/// Axiom: The nonnegative inverse square root is unique.
+///
+/// In GF(p) with p ≡ 5 (mod 8), a nonzero element has at most one nonnegative
+/// r satisfying either r²·a ≡ 1 (mod p) or r²·a ≡ √(-1) (mod p).
+/// These two cases are mutually exclusive, and in each case there are exactly
+/// two square roots (r and p-r); exactly one is nonneg (even canonical encoding).
+/// So the disjunction `is_sqrt_ratio(1,a,r) || is_sqrt_ratio_times_i(1,a,r)` with
+/// `!is_negative(r)` uniquely determines r, matching `nat_invsqrt(a)`.
+pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
+    requires
+        a % p() != 0,
+        r < p(),
+        !is_negative(r),
+        is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r),
+    ensures
+        r == nat_invsqrt(a),
+{
+    admit();
+}
+
+/// Axiom: For every nonzero element a in GF(p), a nonnegative inverse square
+/// root exists. That is, the `choose` predicate in `nat_invsqrt(a)` is
+/// satisfiable.
+///
+/// In GF(p) with p ≡ 5 (mod 8), every nonzero a has r² · a ∈ {1, √(−1)}
+/// for some r, and exactly one of {r, p−r} is nonneg (even). This guarantees
+/// `nat_invsqrt(a)` picks a well-defined value rather than arbitrary garbage.
+///
+/// Without this axiom, `nat_invsqrt` could return an unspecified value via
+/// `choose`, and `axiom_invsqrt_unique`'s postcondition `r == nat_invsqrt(a)`
+/// would be vacuously consistent (the `choose` could pick anything).
+///
+/// Runtime validation: `test_invsqrt_unique` (190+ elements)
+pub proof fn axiom_invsqrt_exists(a: nat)
+    requires
+        a % p() != 0,
+    ensures
+        ({
+            let r = nat_invsqrt(a);
+            r < p() && !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r))
+        }),
+{
+    admit();
+}
+
+/// is_sqrt_ratio and is_sqrt_ratio_times_i are mutually exclusive when u != 0.
+///
+/// Proof: Two cases on v % p.
+///   v ≡ 0: is_sqrt_ratio requires (r²v) % p = u % p, but r²·0 ≡ 0 ≢ u. Contradiction.
+///   v ≢ 0: is_sqrt_ratio_times_i gives a witness for lemma_no_square_root_when_times_i,
+///          whose conclusion includes r²·v ≢ u, i.e. ¬is_sqrt_ratio.
+pub proof fn lemma_sqrt_ratio_mutual_exclusion(u: nat, v: nat, r: nat)
+    requires
+        u % p() != 0,
+    ensures
+        !(is_sqrt_ratio(u, v, r) && is_sqrt_ratio_times_i(u, v, r)),
+{
+    let the_p = p();
+    assert(pow2(255) > 19) by {
+        pow255_gt_19();
+    };
+
+    if is_sqrt_ratio(u, v, r) && is_sqrt_ratio_times_i(u, v, r) {
+        // Bridge: field_mul(field_square(r), v) == field_canonical(r * r * v)
+        assert(field_mul(field_square(r), v) == field_canonical(r * r * v)) by {
+            lemma_field_mul_square_canonical(r, v);
+        };
+
+        if v % the_p == 0 {
+            // v ≡ 0 mod p ⟹ (r*r*v) % p == 0, contradicts u % p != 0.
+            assert(((r * r) * (v % the_p)) % the_p == ((r * r) * v) % the_p) by {
+                lemma_mul_mod_noop_right((r * r) as int, v as int, the_p as int);
+            };
+            assert((r * r) * 0 == 0) by {
+                lemma_mul_basics((r * r) as int);
+            };
+            assert(0nat % the_p == 0) by {
+                lemma_small_mod(0nat, the_p);
+            };
+            assert(false);
+        } else {
+            // v % p != 0. Use r_mod = r % p as existential witness.
+            let r_mod = (r % the_p) as nat;
+            assert(r_mod < the_p) by {
+                lemma_mod_bound(r as int, the_p as int);
+            };
+
+            assert(field_square(r_mod) == field_square(r)) by {
+                lemma_mul_mod_noop_general(r as int, r as int, the_p as int);
+            };
+
+            assert(field_mul(field_square(r_mod), v) == field_mul(sqrt_m1(), u));
+
+            // r²·v ≠ u (mod p) — contradicts is_sqrt_ratio via bridge
+            assert(field_mul(field_square(r_mod), v) != field_canonical(u)) by {
+                lemma_no_square_root_when_times_i(u, v, r_mod);
+            };
+            assert(false);
+        }
+    }
+}
+
 } // verus!

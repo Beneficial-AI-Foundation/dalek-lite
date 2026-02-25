@@ -41,12 +41,14 @@ verus! {
 // These are concrete numerical facts that are mathematically proven but
 // complex to formalize in Verus. Each axiom includes its justification.
 // =============================================================================
-/// AXIOM: SQRT_M1 has 51-bit bounded limbs (it is a canonical field element constant)
+/// SQRT_M1 has 51-bit bounded limbs (it is a canonical field element constant).
 ///
 /// Each limb of SQRT_M1 is less than 2^51 = 2251799813685248:
 ///   limbs = [1718705420411056, 234908883556509, 2233514472574048, 2117202627021982, 765476049583133]
 ///   max limb = 2233514472574048 < 2251799813685248
-pub proof fn axiom_sqrt_m1_limbs_bounded()
+///
+/// Formerly `axiom_sqrt_m1_limbs_bounded` — now fully proven via concrete limb checks.
+pub proof fn lemma_sqrt_m1_limbs_bounded()
     ensures
         fe51_limbs_bounded(&constants::SQRT_M1, 51),
         fe51_limbs_bounded(&constants::SQRT_M1, 54),
@@ -54,7 +56,21 @@ pub proof fn axiom_sqrt_m1_limbs_bounded()
     // SQRT_M1 limbs = [1718705420411056, 234908883556509, 2233514472574048, 2117202627021982, 765476049583133]
     // 2^51 = 2251799813685248, 2^54 = 18014398509481984
     // All limbs < 2^51 < 2^54, so both bounds hold.
-    admit();
+    assert(constants::SQRT_M1.limbs[0] == 1718705420411056u64);
+    assert(constants::SQRT_M1.limbs[1] == 234908883556509u64);
+    assert(constants::SQRT_M1.limbs[2] == 2233514472574048u64);
+    assert(constants::SQRT_M1.limbs[3] == 2117202627021982u64);
+    assert(constants::SQRT_M1.limbs[4] == 765476049583133u64);
+    assert(1718705420411056u64 < (1u64 << 51)) by (bit_vector);
+    assert(234908883556509u64 < (1u64 << 51)) by (bit_vector);
+    assert(2233514472574048u64 < (1u64 << 51)) by (bit_vector);
+    assert(2117202627021982u64 < (1u64 << 51)) by (bit_vector);
+    assert(765476049583133u64 < (1u64 << 51)) by (bit_vector);
+    assert(1718705420411056u64 < (1u64 << 54)) by (bit_vector);
+    assert(234908883556509u64 < (1u64 << 54)) by (bit_vector);
+    assert(2233514472574048u64 < (1u64 << 54)) by (bit_vector);
+    assert(2117202627021982u64 < (1u64 << 54)) by (bit_vector);
+    assert(765476049583133u64 < (1u64 << 54)) by (bit_vector);
 }
 
 /// AXIOM: i² = -1 (mod p) — Definition of SQRT_M1
@@ -70,6 +86,10 @@ pub proof fn axiom_sqrt_m1_squared()
     ensures
         (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),
 {
+    // sqrt_m1() = fe51_as_canonical_nat(&SQRT_M1) = fe51_as_nat(&SQRT_M1) % p()
+    // This is a 252-bit number; verifying i² = -1 (mod p) requires big-number
+    // multiplication far beyond SMT solver capacity.
+    // Validated at runtime by test_sqrt_m1_limbs_bounded (which checks SQRT_M1² = -1).
     admit();
 }
 

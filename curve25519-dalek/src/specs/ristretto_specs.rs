@@ -129,42 +129,29 @@ pub open spec fn spec_ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
 /// Spec-only model of Ristretto decompression.
 /// Reference: [RISTRETTO], §5.2 "Ristretto255 Decoding";
 ///            [DECAF], Section 6 (decoding formulas), and https://ristretto.group/formulas/decoding.html.
+///
+/// Delegates the core decode computation to `spec_ristretto_decode_inner` to avoid
+/// duplicating the formula with `spec_ristretto_decompress_coords`.
+///
+/// NOTE: This spec uses `choose|p: RistrettoPoint|` and can return `None` even when
+/// valid coordinates exist (if no `RistrettoPoint` with matching `spec_edwards_point`
+/// is available in the ghost universe). The `decompress` proof does NOT use this spec;
+/// it uses `spec_ristretto_decompress_coords` instead, which avoids the `choose` issue.
+/// This spec is only referenced by `axiom_spec_ristretto_roundtrip` (compress path).
+/// The equivalence `spec_ristretto_decompress_coords(b).is_some() ==>
+/// spec_ristretto_decompress(b).is_some()` is NOT proven; prefer `_coords` for new proofs.
 pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoPoint> {
-    let s_bytes_nat = u8_32_as_nat(&bytes);
     let s = field_element_from_bytes(&bytes);
-    let s_encoding_is_canonical = s_bytes_nat < p();
+    let s_encoding_is_canonical = u8_32_as_nat(&bytes) < p();
     let s_is_negative = is_negative(s);
 
     if !s_encoding_is_canonical || s_is_negative {
         None
     } else {
-        let ss = field_square(s);
-        let u1 = field_sub(1, ss);
-        let u2 = field_add(1, ss);
-        let u2_sqr = field_square(u2);
-        let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
-        let u1_sqr = field_square(u1);
-        let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
-
-        let invsqrt_input = field_mul(v, u2_sqr);
-        let invsqrt = nat_invsqrt(invsqrt_input);
-        let ok = is_sqrt_ratio(1, invsqrt_input, invsqrt);
-
-        let dx = field_mul(invsqrt, u2);
-        let dy = field_mul(invsqrt, field_mul(dx, v));
-        let x_tmp = field_mul(field_add(s, s), dx);
-        let x = if is_negative(x_tmp) {
-            field_neg(x_tmp)
-        } else {
-            x_tmp
-        };
-        let y = field_mul(u1, dy);
+        let (x, y, ok) = spec_ristretto_decode_inner(s);
         let t = field_mul(x, y);
 
-        let t_is_negative = is_negative(t);
-        let y_is_zero = y == 0;
-
-        if !ok || t_is_negative || y_is_zero {
+        if !ok || is_negative(t) || y == 0 {
             None
         } else if exists|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t) {
             Some(choose|p: RistrettoPoint| #![auto] spec_edwards_point(p.0) == (x, y, 1nat, t))
@@ -174,8 +161,35 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<RistrettoP
     }
 }
 
+/// Coordinate-level model of Ristretto decompression, returning (X, Y, Z, T) as nats.
+///
+/// Unlike `spec_ristretto_decompress`, this avoids the `choose|p: RistrettoPoint|`
+/// operator, making it amenable to direct proof of coordinate equality with exec code.
+/// The relationship is: when `spec_ristretto_decompress` returns `Some(p)`,
+/// `spec_edwards_point(p.0) == spec_ristretto_decompress_coords(bytes).unwrap()`.
+pub open spec fn spec_ristretto_decompress_coords(bytes: [u8; 32]) -> Option<(nat, nat, nat, nat)> {
+    let s = field_element_from_bytes(&bytes);
+    let s_encoding_is_canonical = u8_32_as_nat(&bytes) < p();
+    let s_is_negative = is_negative(s);
+
+    if !s_encoding_is_canonical || s_is_negative {
+        None
+    } else {
+        let (x, y, ok) = spec_ristretto_decode_inner(s);
+        let t = field_mul(x, y);
+        let t_is_negative = is_negative(t);
+        let y_is_zero = y == 0;
+
+        if !ok || t_is_negative || y_is_zero {
+            None
+        } else {
+            Some((x, y, 1nat, t))
+        }
+    }
+}
+
 /// Spec round-trip: decoding the encoding yields a point with the same encoding.
-pub proof fn lemma_spec_ristretto_roundtrip(point: RistrettoPoint)
+pub proof fn axiom_spec_ristretto_roundtrip(point: RistrettoPoint)
     ensures
         spec_ristretto_decompress(spec_ristretto_compress(point)).is_some(),
         spec_ristretto_compress(spec_ristretto_decompress(spec_ristretto_compress(point)).unwrap())
@@ -216,6 +230,118 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
         constants::RISTRETTO_BASEPOINT_TABLE.0,
         spec_ristretto_basepoint(),
     ));
+}
+
+// =============================================================================
+// Ristretto Decode Axioms
+// =============================================================================
+/// Predicate: (s, I, x, y) satisfy the Ristretto decode relationships.
+///
+/// Given field element s, intermediate inverse square root I, and output
+/// coordinates x, y, this checks that x and y are computed from s via:
+///   u1 = 1 - s², u2 = 1 + s², v = -d·u1² - u2²
+///   Dx = I·u2, Dy = I·Dx·v
+///   x = |2s·Dx|, y = u1·Dy
+///
+/// and that I satisfies the invsqrt relation: I²·v·u2² ∈ {1, √(-1)} (mod p).
+pub open spec fn is_ristretto_decode_output(s: nat, big_i: nat, x: nat, y: nat) -> bool {
+    let ss = field_square(s);
+    let u1 = field_sub(1, ss);
+    let u2 = field_add(1, ss);
+    let u2_sqr = field_square(u2);
+    let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
+    let u1_sqr = field_square(u1);
+    let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
+    let v_u2_sqr = field_mul(v, u2_sqr);
+    let dx = field_mul(big_i, u2);
+    let dy = field_mul(big_i, field_mul(dx, v));
+    let x_tmp = field_mul(field_add(s, s), dx);
+    &&& (is_sqrt_ratio(1, v_u2_sqr, big_i) || is_sqrt_ratio_times_i(1, v_u2_sqr, big_i))
+    &&& x == (if is_negative(x_tmp) {
+        field_neg(x_tmp)
+    } else {
+        x_tmp
+    })
+    &&& y == field_mul(u1, dy)
+}
+
+/// Ristretto decoding formula produces a point on the Edwards curve.
+///
+/// Given field element s and inverse square root I satisfying the Ristretto
+/// decode relationships AND the square case (I²·v·u2² = 1), the resulting
+/// (x, y) satisfies -x² + y² = 1 + d·x²·y² (mod p).
+///
+/// This is restricted to the `is_sqrt_ratio` (square) case because the
+/// algebraic identity only simplifies to the curve equation when I²·v·u2² = 1.
+/// Runtime testing confirms the nonsquare case (I²·v·u2² = √(-1)) does NOT
+/// produce on-curve points.
+///
+/// Reference: Hamburg (2015), "Decaf: Eliminating cofactors through point compression"
+/// <https://eprint.iacr.org/2015/673>
+/// See also: https://ristretto.group/formulas/decoding.html
+///
+/// Runtime validation: `test_ristretto_decode_on_curve`
+pub proof fn axiom_ristretto_decode_on_curve(s: nat, big_i: nat, x: nat, y: nat)
+    requires
+        s < p(),
+        is_ristretto_decode_output(s, big_i, x, y),
+        ({
+            let ss = field_square(s);
+            let u1 = field_sub(1, ss);
+            let u2 = field_add(1, ss);
+            let u2_sqr = field_square(u2);
+            let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
+            let u1_sqr = field_square(u1);
+            let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
+            is_sqrt_ratio(1, field_mul(v, u2_sqr), big_i)
+        }),
+    ensures
+        is_on_edwards_curve(x, y),
+{
+    admit();
+}
+
+/// Ristretto decoding produces a point in the even subgroup 2E = {2Q : Q ∈ E}.
+///
+/// When the decode succeeds (I²·v·u2² = 1, i.e., the square case), the
+/// resulting point (x, y) is always the double of some curve point Q. This
+/// is the key property that makes Ristretto a prime-order group: combined
+/// with the coset quotient by E[4], it eliminates the cofactor 8.
+///
+/// Reference: Hamburg (2015), "Decaf: Eliminating cofactors through point compression"
+/// <https://eprint.iacr.org/2015/673>
+/// Hamburg (2019), "Ristretto: prime-order elliptic curve groups with non-prime-order curves"
+/// <https://eprint.iacr.org/2020/1400>
+/// See also: https://ristretto.group/details/isogenies.html
+///
+/// Runtime validation: `test_ristretto_decode_in_even_subgroup`
+pub proof fn axiom_ristretto_decode_in_even_subgroup(
+    s: nat,
+    big_i: nat,
+    x: nat,
+    y: nat,
+    point: EdwardsPoint,
+)
+    requires
+        s < p(),
+        is_ristretto_decode_output(s, big_i, x, y),
+        // Decode succeeded: I is the actual inverse square root (not the nonsquare case)
+        ({
+            let ss = field_square(s);
+            let u1 = field_sub(1, ss);
+            let u2 = field_add(1, ss);
+            let u2_sqr = field_square(u2);
+            let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
+            let u1_sqr = field_square(u1);
+            let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
+            is_sqrt_ratio(1, field_mul(v, u2_sqr), big_i)
+        }),
+        // Point has the decoded coordinates with Z=1
+        spec_edwards_point(point) == (x, y, 1nat, field_mul(x, y)),
+    ensures
+        is_in_even_subgroup(point),
+{
+    admit();
 }
 
 // =============================================================================
@@ -335,6 +461,56 @@ pub open spec fn spec_sqrt_ad_minus_one() -> nat {
     // sqrt(-1 * d - 1) = sqrt(-d - 1)
     // This is a constant defined in the codebase
     fe51_as_canonical_nat(&u64_constants::SQRT_AD_MINUS_ONE)
+}
+
+// =============================================================================
+// Ristretto Decode Spec Helpers (for axiom statements)
+// =============================================================================
+// These functions factor out the inner decode computation from
+// spec_ristretto_decompress so that axioms can reference the decoded
+// (x, y) and "ok" flag without duplicating the formulas.
+/// Intermediate values of the Ristretto decode for a field element s.
+/// Returns (x, y, ok) where x, y are the affine coordinates and ok
+/// indicates whether the invsqrt succeeded.
+pub open spec fn spec_ristretto_decode_inner(s: nat) -> (nat, nat, bool) {
+    let ss = field_square(s);
+    let u1 = field_sub(1, ss);
+    let u2 = field_add(1, ss);
+    let u2_sqr = field_square(u2);
+    let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
+    let u1_sqr = field_square(u1);
+    let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
+
+    let invsqrt_input = field_mul(v, u2_sqr);
+    let invsqrt = nat_invsqrt(invsqrt_input);
+    let ok = is_sqrt_ratio(1, invsqrt_input, invsqrt);
+
+    let dx = field_mul(invsqrt, u2);
+    let dy = field_mul(invsqrt, field_mul(dx, v));
+    let x_tmp = field_mul(field_add(s, s), dx);
+    let x = if is_negative(x_tmp) {
+        field_neg(x_tmp)
+    } else {
+        x_tmp
+    };
+    let y = field_mul(u1, dy);
+
+    (x, y, ok)
+}
+
+/// The X coordinate produced by Ristretto decoding of field element s.
+pub open spec fn spec_ristretto_decode_x(s: nat) -> nat {
+    spec_ristretto_decode_inner(s).0
+}
+
+/// The Y coordinate produced by Ristretto decoding of field element s.
+pub open spec fn spec_ristretto_decode_y(s: nat) -> nat {
+    spec_ristretto_decode_inner(s).1
+}
+
+/// Whether the Ristretto decode invsqrt succeeded for field element s.
+pub open spec fn spec_ristretto_decode_ok(s: nat) -> bool {
+    spec_ristretto_decode_inner(s).2
 }
 
 // =============================================================================

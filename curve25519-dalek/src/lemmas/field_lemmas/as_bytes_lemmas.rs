@@ -1158,4 +1158,45 @@ pub proof fn lemma_ct_eq_iff_canonical_nat(a: &FieldElement51, b: &FieldElement5
     lemma_field_element_equal_implies_fe51_to_bytes_equal(a, b);
 }
 
+/// Lemma: If bytes are canonical (< p), re-encoding via spec_fe51_as_bytes matches original.
+///
+/// This is used to bridge the exec canonical check (byte round-trip) with the
+/// spec's mathematical check (u8_32_as_nat < p).
+pub proof fn lemma_canonical_check_backward(bytes: &[u8; 32], fe: &FieldElement51)
+    requires
+        fe51_as_canonical_nat(fe) == field_element_from_bytes(bytes),
+        u8_32_as_nat(bytes) < p(),
+    ensures
+        spec_fe51_as_bytes(fe) == seq_from32(bytes),
+{
+    assert(pow2(255) > 19) by {
+        pow255_gt_19();
+    };
+    assert(u8_32_as_nat(bytes) % pow2(255) == u8_32_as_nat(bytes)) by {
+        lemma_small_mod(u8_32_as_nat(bytes), pow2(255));
+    };
+    assert(u8_32_as_nat(bytes) % p() == u8_32_as_nat(bytes)) by {
+        lemma_small_mod(u8_32_as_nat(bytes), p());
+    };
+
+    let spec_arr = seq_to_array_32(spec_fe51_as_bytes(fe));
+    assert(u8_32_as_nat(&spec_arr) == fe51_as_canonical_nat(fe)) by {
+        lemma_u8_32_as_nat_of_spec_fe51_to_bytes(fe);
+    };
+    assert(forall|i: int| 0 <= i < 32 ==> spec_arr[i] == bytes[i]) by {
+        lemma_canonical_bytes_equal(&spec_arr, bytes);
+    };
+
+    assert(spec_fe51_as_bytes(fe) =~= seq_from32(bytes)) by {
+        assert(spec_fe51_as_bytes(fe).len() == 32);
+        assert forall|i: int| 0 <= i < 32 implies spec_fe51_as_bytes(fe)[i] == seq_from32(
+            bytes,
+        )[i] by {
+            assert(spec_fe51_as_bytes(fe)[i] == spec_arr[i]);
+            assert(seq_from32(bytes)[i] == bytes[i]);
+            assert(spec_arr[i] == bytes[i]);
+        };
+    };
+}
+
 } // verus!

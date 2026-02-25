@@ -1732,7 +1732,6 @@ impl Scalar {
     // solution is to use assume_specification to tell Verus what zeroize does.
     // In the short-term, I've just told verus to ignore the body.
     // (SB update: alternative is to exclude just the zeroize call, as below)
-    #[verifier::rlimit(50)]  // The backward loop has many invariants that need more solver time
     pub fn batch_invert(inputs: &mut [Scalar]) -> (result:
         Scalar)/* <VERIFICATION NOTE>
      Refactored for Verus: Index loops instead of iterators, manual Vec construction, ..
@@ -1978,20 +1977,16 @@ impl Scalar {
                 n == original_inputs.len(),
                 // Inversion invariants guarded by product_nonzero
                 product_nonzero ==> forall|j: int|
-                    #![auto]
-                    i <= j < n ==> is_inverse(&original_inputs[j], &inputs[j]),
+                    i <= j < n ==> #[trigger] is_inverse(&original_inputs[j], &inputs[j]),
                 product_nonzero ==> is_inverse_of_nat(&ret, product_of_scalars(original_inputs)),
                 // SEMANTIC INVARIANT: scratch[j] still contains R * partial_product(original_inputs, j)
                 forall|j: int|
-                    #![auto]
-                    0 <= j < n ==> scalar52_as_nat(&scratch[j]) % group_order() == (
+                    0 <= j < n ==> #[trigger] scalar52_as_nat(&scratch[j]) % group_order() == (
                     montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
                 // SEMANTIC INVARIANT: inputs[j] for unprocessed j < i contains scalar[j] in Montgomery form
                 forall|j: int|
-                    #![auto]
-                    0 <= j < i ==> u8_32_as_nat(&inputs[j].bytes) % group_order() == (u8_32_as_nat(
-                        &original_inputs[j].bytes,
-                    ) * montgomery_radix()) % group_order(),
+                    0 <= j < i ==> u8_32_as_nat(&(#[trigger] inputs[j]).bytes) % group_order() == (
+                    u8_32_as_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
                 // SEMANTIC INVARIANT: acc represents the inverse of partial_product(original_inputs, i)
                 product_nonzero ==> (scalar52_as_nat(&acc) * partial_product(
                     original_inputs,
@@ -2018,28 +2013,25 @@ impl Scalar {
             acc = tmp;
 
             proof {
-                use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
-                use vstd::arithmetic::div_mod::lemma_small_mod;
-
-                let L = group_order();
-                let R = montgomery_radix();
-                let acc_before_val = scalar52_as_nat(&acc_before);
-                let scratch_val = scalar52_as_nat(&scratch[i as int]);
                 let result_m = scalar52_as_nat(&new_input_unpacked);
-                let result = u8_32_as_nat(&inputs[i as int].bytes);
-                let scalar_i = u8_32_as_nat(&original_inputs[i as int].bytes);
 
                 // Structural proofs for pack() canonicity (unconditional)
-                assert(result_m < pow2(256)) by {
+                assert(result_m < pow2(256) && result_m % pow2(256) == result_m) by {
+                    use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
+                    use vstd::arithmetic::div_mod::lemma_small_mod;
                     lemma_group_order_bound();
                     lemma_pow2_strictly_increases(255, 256);
-                }
-                assert(result_m % pow2(256) == result_m) by {
                     lemma_small_mod(result_m, pow2(256));
                 }
 
                 if product_nonzero {
-                    assert((result * scalar_i) % L == 1nat) by {
+                    let L = group_order();
+                    let acc_before_val = scalar52_as_nat(&acc_before);
+                    let scratch_val = scalar52_as_nat(&scratch[i as int]);
+                    let result = u8_32_as_nat(&inputs[i as int].bytes);
+                    let scalar_i = u8_32_as_nat(&original_inputs[i as int].bytes);
+
+                    assert(is_inverse(&original_inputs[i as int], &inputs[i as int])) by {
                         lemma_backward_loop_is_inverse(
                             acc_before_val,
                             scratch_val,
@@ -2048,20 +2040,16 @@ impl Scalar {
                             original_inputs,
                             i as int,
                         );
-                    }
-                    assert((scalar_i * result) % L == (result * scalar_i) % L) by {
                         lemma_mul_is_commutative(scalar_i as int, result as int);
-                    };
+                    }
 
                     // Prove acc invariant is maintained
-                    let input_val = scalar52_as_nat(&input_unpacked);
-                    let acc_after_val = scalar52_as_nat(&acc);
-                    assert((acc_after_val * partial_product(original_inputs, i as int)) % L == 1nat)
-                        by {
+                    assert((scalar52_as_nat(&acc) * partial_product(original_inputs, i as int)) % L
+                        == 1nat) by {
                         lemma_backward_loop_acc_invariant(
                             acc_before_val,
-                            input_val,
-                            acc_after_val,
+                            scalar52_as_nat(&input_unpacked),
+                            scalar52_as_nat(&acc),
                             original_inputs,
                             i as int,
                         );

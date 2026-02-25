@@ -115,11 +115,29 @@ Add a small, explicit `assert(...)` with the right trigger shape right before th
 
 ## SMT `rlimit` / timeouts
 
-Common mitigations:
+Common mitigations (in order of preference):
 
-- Keep loop invariants small; avoid unfolding big `&&&`-heavy specs in invariants.
-- Mark expensive `spec fn` predicates `#[verifier::opaque]` and `reveal(...)` only locally in helper lemmas.
-- Prefer adding a targeted helper lemma that extracts the single conjunct/fact you need, rather than revealing a whole predicate at the call site.
+1. **Scope lemma calls in `assert(...) by {}` blocks** (technique #15). This is the single
+   most effective fix. Every lemma call should state its exact conclusion as the assert target.
+   Common offenders: `lemma_unfold_edwards`, `axiom_edwards_add_associative`,
+   `lemma_neg_of_signed_scalar_mul`, `lemma_column_sum_canonical`.
+
+2. **Replace `#![auto]` with explicit `#[trigger]`** (technique #16). Auto triggers can cause
+   Z3 to over-instantiate quantifiers, especially with many quantified loop invariants.
+
+3. **Bundle invariants into validity predicates** (technique #17). Reduces the number of facts
+   Z3 tracks per loop iteration.
+
+4. **Mark expensive `spec fn` as `#[verifier::opaque]`** and `reveal(...)` only locally.
+
+5. Keep loop invariants small; avoid unfolding big `&&&`-heavy specs in invariants.
+
+**Avoid** bumping `#[verifier::rlimit(N)]` as a first resort — it papers over the problem and
+may fail on different hardware (CI vs local). Only bump rlimit after exhausting scoping options.
+
+**Z3 non-determinism across modules:** Adding new verified modules can cause previously-passing
+functions to hit rlimit due to Z3's global resource allocation. The fix is the same: scope
+lemma calls more tightly in the affected function.
 
 ### `Option::expect` / `unwrap` requires `is_some()` (vstd spec friction)
 

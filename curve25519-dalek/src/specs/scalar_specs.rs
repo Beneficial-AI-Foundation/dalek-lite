@@ -243,4 +243,31 @@ pub open spec fn radix_16_all_bounded(digits: &[i8; 64]) -> bool {
     forall|i: int| 0 <= i < 64 ==> radix_16_digit_bounded(#[trigger] digits[i])
 }
 
+// =============================================================================
+// Generic index-based Horner evaluation (for Pippenger correctness proofs)
+// =============================================================================
+/// Horner evaluation of radix-2^w digits from position `from_j` to `digits_count - 1`:
+///   reconstruct_radix_2w_from(d, w, from_j, dc) = d[from_j] + 2^w * (d[from_j+1] + ... )
+///
+/// At from_j=0 this equals reconstruct_radix_2w(d.take(dc), w).
+pub open spec fn reconstruct_radix_2w_from(
+    digits: Seq<i8>,
+    w: nat,
+    from_j: int,
+    digits_count: nat,
+) -> int
+    decreases digits_count as int - from_j,
+{
+    if from_j >= digits_count as int || from_j < 0 {
+        0
+    } else {
+        (digits[from_j] as int) + pow2(w) * reconstruct_radix_2w_from(
+            digits,
+            w,
+            from_j + 1,
+            digits_count,
+        )
+    }
+}
+
 } // verus!

@@ -1,6 +1,6 @@
 ---
 name: verus-proof-helper
-description: Help complete Verus proofs for cryptographic functions by following proven patterns, leveraging existing lemmas, and avoiding solver rlimit (e.g., opaque specs + targeted reveal).
+description: Help complete Verus proofs for cryptographic functions by following proven patterns, leveraging existing lemmas, and avoiding solver rlimit (e.g., assert-by scoping, explicit triggers, bundled predicates, opaque specs + targeted reveal).
 ---
 
 # Verus Proof Helper Skill
@@ -1108,52 +1108,27 @@ Algebraic expansion lemmas for Edwards point addition/subtraction:
 3. **Trust existing lemmas:** If a lemma exists, use it - don't reprove
 4. **Use reveals sparingly:** Only reveal definitions when necessary
 5. **Follow codebase style:** Match existing proof patterns and comments
-6. **Ask for help:** Use `by (compute)` for concrete arithmetic, `by (bit_vector)` for bit ops
+6. **Use proof strategies:** `by (bit_vector)` for bit ops, `by (nonlinear_arith)` for multiplication inequalities. Reserve `by (compute)` for fully concrete evaluations (all literal constants) — for expressions with variables, Z3 handles simple arithmetic directly without `by (compute)`.
 7. **Document assumptions:** Explain why preconditions are needed
-8. **Test with concrete values:** Use specific numbers to validate reasoning
-9. **Prefer by-value lemma parameters:** Use `lemma(x: T)` instead of `lemma(x: &T)` for proof lemmas - cleaner ergonomics in proof contexts without borrowing concerns
-10. **Remove trivial wrapper specs:** If a spec is just `wrapper(x) = underlying(x, constant)`, remove the wrapper and use the underlying function directly with renamed lemmas
-11. **Extract common loop proof logic:** When two loops have similar proof structure, create a helper lemma to reduce duplication
-12. **Avoid SMT blowups (`rlimit`):** Keep loop invariants small; avoid unfolding big recursive/`&&&`-heavy specs inside invariants. When a loop body hits rlimit, **first try** scoping expensive lemma calls in `assert(...) by { ... }` blocks -- this limits what Z3 learns from each call without hiding definitions.
-13. **Use `#[verifier::opaque]` + targeted `reveal` as last resort:**
-    - Only when assert-by scoping is insufficient (recursive specs, specs with many `&&&` conjuncts or quantifiers).
-    - Mark the `spec fn` as `#[verifier::opaque]` and unfold locally via `reveal(spec_fn_name);` inside a helper lemma/proof block.
-    - Pattern used in `mul_bits_be`: keep `MontgomeryPoint::ladder_invariant(...)` opaque, `reveal` only inside a small helper lemma (e.g., `lemma_ladder_invariant_swap`).
-    - **When NOT to use opaque:** Simple predicates, bundled loop invariant predicates where assert-by scoping of lemma calls inside the loop body suffices. Adding opaque to these creates unnecessary extract/establish boilerplate.
-14. **When quantifiers don't instantiate:** If a callee ensures `forall|k| ...`, add small, explicit `assert(...)` facts (often with the right trigger shape) right before the call to help Verus/Z3 pick the intended instantiation.
-15. **Naming convention — `axiom_` vs `lemma_`:** Functions with `admit()` bodies must use the `axiom_` prefix; fully proved functions use the `lemma_` prefix. This makes it easy to track the trusted computing base (`grep axiom_`). When you prove an axiom, rename it from `axiom_` to `lemma_` (and update all call sites with `replace_all`).
-16. **Reduce rlimit by extracting helper lemmas:** When a function hits CI rlimit failures, prefer extracting spec-level proof reasoning into a separate `proof fn` rather than bumping `#[verifier::rlimit(N)]`. The extracted lemma takes the key spec-level values as parameters and proves the postcondition. The original function then just bridges exec-level facts to spec-level preconditions and calls the helper. This keeps solver pressure low without raising limits.
-17. **Always run `verusfmt`:** Run `verusfmt` on all changed `.rs` files before committing. Verus-specific formatting (e.g., `ensures`, `requires`, proof blocks) won't be handled by `rustfmt`.
-18. **Always check cargo test/clippy alongside Verus:** After Verus verification passes, also run `cargo test` and `cargo clippy` to catch non-Verus build issues (missing imports, cfg guards, etc.).
-19. **Replace `calc!` with assert chains when rlimit fails:** `calc!` blocks create heavier SMT encodings than plain assert chains. When a function hits rlimit, try replacing:
-    ```rust
-    // BEFORE (heavy for solver):
-    assert(a == e) by {
-        calc! { (==) a; {} b; {} c; {} d; {} e; }
-    }
-    // AFTER (lighter):
-    assert(a == b);
-    assert(b == c);
-    assert(c == d);
-    assert(d == e);
-    ```
-    Each assert gives Z3 a smaller fact to process. This is especially effective when the proof has multiple `calc!` blocks in the same function.
-20. **Replace `by (compute)` with plain assertions for simple arithmetic:** `by (compute)` asks Verus to evaluate the expression concretely, which can be expensive for expressions involving variables. For simple arithmetic like `u2 == (2 * nm1) as int` or `8 * nm1 == 8 * nm2 + 8`, Z3 can infer these directly — just drop the `by (compute)`:
-    ```rust
-    // BEFORE (can cause rlimit):
-    assert(u2 == (2 * nm1) as int) by (compute);
-    // AFTER (Z3 handles directly):
-    assert(u2 == (2 * nm1) as int);
-    ```
-    Reserve `by (compute)` for truly concrete evaluations where all operands are literal constants.
-21. **When proofs require new `assume(...)`, suggest spec revisions instead:** Distinguish between two kinds of assumes:
-    - **Original assumes** (pre-existing in the code): These represent known proof obligations. The goal is to replace them with actual proofs.
-    - **New assumes introduced during proof work:** When completing a proof requires assuming something about an input or intermediate value that the current specs don't guarantee, this signals a spec gap. **Do not silently add assumes — instead, propose spec revisions:**
-      - If the proof needs a property of a function's return value: propose adding it as a **postcondition** to that function.
-      - If the proof needs a property of an input: propose adding it as a **precondition** (in the `_req` spec).
-      - Propagate changes through the call chain: producer postcondition → consumer precondition → proof uses it.
-      - Example: A bridge axiom proof needed `is_valid_projective_niels_point(other)` → added to `add_req` as a precondition, and as a postcondition to `as_projective_niels()`.
-    - **When new assumes are acceptable (last resort):** In `From` impls where Verus doesn't support `from_req`, in code protected by `assume(false)` proof bypass, or for properties requiring deep spec work beyond current scope (e.g., lookup table `select()` validity propagation).
+8. **Prefer by-value lemma parameters:** Use `lemma(x: T)` instead of `lemma(x: &T)` for proof lemmas - cleaner ergonomics in proof contexts without borrowing concerns
+9. **Remove trivial wrapper specs:** If a spec is just `wrapper(x) = underlying(x, constant)`, remove the wrapper and use the underlying function directly with renamed lemmas
+10. **Extract common loop proof logic:** When two loops have similar proof structure, create a helper lemma to reduce duplication
+11. **Fixing rlimit — in order of preference:**
+    - **(a) Scope lemma calls in `assert(CONCLUSION) by { lemma_call(...); }` blocks.** This is the #1 fix. State the exact fact you need as the assert target; Z3 confines postcondition facts to the inner scope. Common offenders that should **always** be scoped: `lemma_unfold_edwards`, `axiom_edwards_add_associative`, `lemma_neg_of_signed_scalar_mul`, `lemma_column_sum_canonical`. Note: `use_type_invariant(x)` does **NOT** work inside assert-by (mode error) — keep it unscoped.
+    - **(b) Replace `#![auto]` with explicit `#[trigger]` on quantified invariants.** Auto triggers cause Z3 to over-instantiate quantifiers. Pick a trigger that uniquely identifies the quantified variable (usually `arr[j]`) on the least-common collection.
+    - **(c) Bundle many invariants into a single validity predicate.** Z3 treats the bundled predicate as one fact; individual conjuncts are only exposed when explicitly needed. See `pippenger_input_valid`, `straus_vt_input_valid` for examples.
+    - **(d) Replace `calc!` with assert chains.** `calc!` blocks create heavier SMT encodings. Sequential `assert(a == b); assert(b == c);` gives Z3 smaller facts to process.
+    - **(e) Extract proof into a separate `proof fn`.** The extracted lemma takes spec-level values as parameters and proves the postcondition. The original function bridges exec-level facts to spec-level preconditions and calls the helper.
+    - **(f) Use `#[verifier::opaque]` + targeted `reveal`.** Only when scoping is insufficient (recursive specs, specs with many conjuncts/quantifiers). Mark `spec fn` opaque, reveal locally via `reveal(fn_name)` inside a helper lemma. **When NOT to use opaque:** Simple predicates, bundled predicates where assert-by scoping suffices.
+    - **Avoid bumping `#[verifier::rlimit(N)]`** — it papers over the problem and may fail on different hardware (CI vs local). Adding new verified modules can cause previously-passing functions to hit rlimit due to Z3 non-determinism; the fix is always tighter scoping.
+12. **When quantifiers don't instantiate:** If a callee ensures `forall|k| ...`, add small, explicit `assert(...)` facts with the right trigger shape right before the statement that needs it.
+13. **Naming convention — `axiom_` vs `lemma_`:** Functions with `admit()` bodies must use the `axiom_` prefix; fully proved functions use the `lemma_` prefix. When you prove an axiom, rename it from `axiom_` to `lemma_` (and update all call sites).
+14. **Always run `verusfmt`:** Run `verusfmt` on all changed `.rs` files before committing. Verus-specific formatting won't be handled by `rustfmt`.
+15. **Always check cargo test alongside Verus:** After verification passes, also run `cargo test` to catch non-Verus build issues (missing imports, cfg guards, etc.).
+16. **When proofs require new `assume(...)`, suggest spec revisions instead:** Distinguish between two kinds:
+    - **Original assumes** (pre-existing): These are proof obligations to be replaced with actual proofs.
+    - **New assumes during proof work:** Signals a spec gap. Propose spec revisions: add as postcondition (if about return value) or precondition (if about input), then propagate through the call chain.
+    - **When new assumes are acceptable (last resort):** In `From` impls where Verus doesn't support `from_req`, in code protected by `assume(false)` proof bypass, or for properties requiring deep spec work beyond current scope.
 
 ## Example Invocation
 

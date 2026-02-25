@@ -267,7 +267,29 @@ impl Pippenger {
     }
 
     /// Process one digit column: clear buckets, fill by digit sign, compute weighted bucket sum.
-    /// This is the Verus equivalent of the upstream closure in `columns.rev().map(|digit_index| { ... })`.
+    ///
+    /// This is the Verus equivalent of the upstream closure body in:
+    /// ```text
+    /// let mut columns = (0..digits_count).rev().map(|digit_index| {
+    ///     for bucket in &mut buckets { *bucket = EdwardsPoint::identity(); }
+    ///     for (digits, pt) in scalars_points.iter() {
+    ///         let digit = digits[digit_index] as i16;
+    ///         match digit.cmp(&0) {
+    ///             Ordering::Greater => { buckets[(digit-1) as usize] = (&buckets[..] + pt).as_extended(); }
+    ///             Ordering::Less   => { buckets[(-digit-1) as usize] = (&buckets[..] - pt).as_extended(); }
+    ///             Ordering::Equal  => {}
+    ///         }
+    ///     }
+    ///     let mut buckets_intermediate_sum = buckets[buckets_count - 1];
+    ///     let mut buckets_sum = buckets[buckets_count - 1];
+    ///     for i in (0..(buckets_count - 1)).rev() {
+    ///         buckets_intermediate_sum += buckets[i];
+    ///         buckets_sum += buckets_intermediate_sum;
+    ///     }
+    ///     buckets_sum
+    /// });
+    /// ```
+    /// Extracted as a helper because Verus does not support closures with map/fold.
     fn process_column(
         buckets: &mut Vec<EdwardsPoint>,
         scalars_points: &Vec<([i8; 64], ProjectiveNielsPoint)>,

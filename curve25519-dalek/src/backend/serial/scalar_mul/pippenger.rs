@@ -757,9 +757,37 @@ impl Pippenger {
         let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
         let buckets_count: usize = max_digit / 2;  // digits are signed+centered hence 2^w/2, excluding 0-th bucket
 
+        proof {
+            assert(6 <= w <= 8);
+            if w == 6 {
+                assert(1usize << 6usize == 64usize) by (bit_vector);
+                assert(max_digit == 64usize);
+                assert(buckets_count == 32usize);
+                assert(digits_count == ((256 + 6 - 1) / (6int)) as usize);
+                assert(261int / 6 == 43);
+                assert(digits_count == 43usize);
+            } else if w == 7 {
+                assert(1usize << 7usize == 128usize) by (bit_vector);
+                assert(max_digit == 128usize);
+                assert(buckets_count == 64usize);
+                assert(digits_count == ((256 + 7 - 1) / (7int)) as usize);
+                assert(262int / 7 == 37);
+                assert(digits_count == 37usize);
+            } else {
+                assert(1usize << 8usize == 256usize) by (bit_vector);
+                assert(max_digit == 256usize);
+                assert(buckets_count == 128usize);
+                assert(digits_count == ((256 + 8 - 1) / (8int) + 1) as usize);
+                assert(263int / 8 + 1 == 33);
+                assert(digits_count == 33usize);
+            }
+            assert(digits_count > 0);
+            assert(buckets_count > 0);
+        }
+
         if digits_count == 0 || buckets_count == 0 {
             proof {
-                assume(!all_points_some(spec_points));
+                assert(false);
             }
             return None;
         }

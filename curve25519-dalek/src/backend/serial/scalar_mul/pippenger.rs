@@ -36,6 +36,8 @@ use crate::specs::field_specs_u64::*;
 #[cfg(verus_keep_ghost)]
 use crate::specs::scalar_specs::*;
 #[cfg(verus_keep_ghost)]
+use vstd::arithmetic::div_mod::lemma_small_mod;
+#[cfg(verus_keep_ghost)]
 use vstd::arithmetic::power2::{lemma2_to64, pow2};
 
 // Re-export spec functions from iterator_specs for use by other modules
@@ -264,6 +266,273 @@ impl Pippenger {
         buckets
     }
 
+    /// Process one digit column: clear buckets, fill by digit sign, compute weighted bucket sum.
+    /// This is the Verus equivalent of the upstream closure in `columns.rev().map(|digit_index| { ... })`.
+    fn process_column(
+        buckets: &mut Vec<EdwardsPoint>,
+        scalars_points: &Vec<([i8; 64], ProjectiveNielsPoint)>,
+        digit_index: usize,
+        w: usize,
+        buckets_count: usize,
+        Ghost(pts_affine): Ghost<Seq<(nat, nat)>>,
+        Ghost(digits_seqs): Ghost<Seq<Seq<i8>>>,
+        Ghost(dc): Ghost<nat>,
+    ) -> (column: EdwardsPoint)
+        requires
+            pippenger_input_valid(scalars_points@, pts_affine, digits_seqs, w as nat, dc),
+            old(buckets)@.len() == buckets_count as int,
+            buckets_count as int == pow2((w - 1) as nat),
+            buckets_count >= 1,
+            4 <= w <= 8,
+            digit_index < dc,
+            dc >= 1,
+            dc <= 64,
+        ensures
+            is_well_formed_edwards_point(column),
+            edwards_point_as_affine(column) == straus_column_sum(
+                pts_affine,
+                digits_seqs,
+                digit_index as int,
+                pts_affine.len() as int,
+            ),
+            buckets@.len() == buckets_count as int,
+    {
+        use crate::traits::Identity;
+
+        let ghost n_ghost: int = pts_affine.len() as int;
+        let ghost B = buckets_count as int;
+
+        // ---- Phase 1: Clear buckets to identity ----
+        let mut bucket_idx: usize = 0;
+        while bucket_idx < buckets_count
+            invariant
+                0 <= bucket_idx <= buckets_count,
+                buckets@.len() == buckets_count as int,
+                forall|k: int|
+                    0 <= k < bucket_idx ==> is_well_formed_edwards_point(#[trigger] buckets@[k]),
+                forall|k: int|
+                    0 <= k < bucket_idx ==> edwards_point_as_affine(#[trigger] buckets@[k])
+                        == edwards_identity(),
+            decreases buckets_count - bucket_idx,
+        {
+            let ep = EdwardsPoint::identity();
+            proof {
+                lemma_identity_affine_coords(ep);
+            }
+            buckets.set(bucket_idx, ep);
+            bucket_idx = bucket_idx + 1;
+        }
+
+        // ---- Phase 2: Fill buckets by digit sign ----
+        proof {
+            assert forall|b: int| 0 <= b < buckets_count implies edwards_point_as_affine(
+                #[trigger] buckets@[b],
+            ) == pippenger_bucket_contents(pts_affine, digits_seqs, digit_index as int, 0, b) by {};
+        }
+
+        let mut sp_idx: usize = 0;
+        while sp_idx < scalars_points.len()
+            invariant
+                0 <= sp_idx <= scalars_points@.len(),
+                buckets@.len() == buckets_count as int,
+                4 <= w <= 8,
+                buckets_count as int == pow2((w - 1) as nat),
+                digit_index < dc,
+                dc >= 1,
+                dc <= 64,
+                forall|b: int|
+                    0 <= b < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets@[b]),
+                forall|b: int|
+                    0 <= b < buckets_count ==> edwards_point_as_affine(#[trigger] buckets@[b])
+                        == pippenger_bucket_contents(
+                        pts_affine,
+                        digits_seqs,
+                        digit_index as int,
+                        sp_idx as int,
+                        b,
+                    ),
+                pippenger_input_valid(scalars_points@, pts_affine, digits_seqs, w as nat, dc),
+            decreases scalars_points.len() - sp_idx,
+        {
+            let sp = &scalars_points[sp_idx];
+            let digits_arr = &sp.0;
+            let pt = &sp.1;
+            let digit = digits_arr[digit_index] as i16;
+
+            proof {
+                let ghost d_spec = digits_seqs[sp_idx as int][digit_index as int];
+                assert(digit as int == d_spec as int);
+                assert(is_valid_radix_2w(&scalars_points@[sp_idx as int].0, w as nat, dc));
+                assert(-(pow2((w - 1) as nat) as int) <= (d_spec as int) && (d_spec as int) <= pow2(
+                    (w - 1) as nat,
+                ));
+                assert(-(buckets_count as int) <= (digit as int) && (digit as int) <= (
+                buckets_count as int));
+            }
+
+            if digit > 0 {
+                let b = (digit - 1) as usize;
+                proof {
+                    assert(0 <= b < buckets_count);
+                }
+                let completed = &buckets[b] + pt;
+                let new_bucket = completed.as_extended();
+                buckets.set(b, new_bucket);
+                proof {
+                    let ghost col = digit_index as int;
+                    let ghost d_val = digits_seqs[sp_idx as int][col] as int;
+                    assert(d_val == digit as int);
+                    assert(d_val == (b as int) + 1);
+
+                    assert forall|bb: int| 0 <= bb < buckets_count implies edwards_point_as_affine(
+                        #[trigger] buckets@[bb],
+                    ) == pippenger_bucket_contents(
+                        pts_affine,
+                        digits_seqs,
+                        col,
+                        sp_idx as int + 1,
+                        bb,
+                    ) by {
+                        if bb == b as int {
+                            assert(d_val == bb + 1);
+                        } else {
+                            assert(d_val != bb + 1);
+                            assert(d_val > 0);
+                            assert(d_val != -(bb + 1));
+                        }
+                    };
+                }
+            } else if digit < 0 {
+                let b = (-digit - 1) as usize;
+                proof {
+                    assert(0 <= b < buckets_count);
+                }
+                let completed = &buckets[b] - pt;
+                let new_bucket = completed.as_extended();
+                buckets.set(b, new_bucket);
+                proof {
+                    let ghost col = digit_index as int;
+                    let ghost d_val = digits_seqs[sp_idx as int][col] as int;
+                    assert(d_val == digit as int);
+                    assert(d_val == -((b as int) + 1));
+
+                    assert forall|bb: int| 0 <= bb < buckets_count implies edwards_point_as_affine(
+                        #[trigger] buckets@[bb],
+                    ) == pippenger_bucket_contents(
+                        pts_affine,
+                        digits_seqs,
+                        col,
+                        sp_idx as int + 1,
+                        bb,
+                    ) by {
+                        if bb == b as int {
+                            assert(d_val == -(bb + 1));
+                        } else {
+                            assert(d_val != bb + 1);
+                            assert(d_val != -(bb + 1));
+                        }
+                    };
+                }
+            } else {
+                // digit == 0: no bucket modified
+                proof {
+                    let ghost col = digit_index as int;
+                    let ghost d_val = digits_seqs[sp_idx as int][col] as int;
+                    assert(d_val == 0);
+
+                    assert forall|bb: int| 0 <= bb < buckets_count implies edwards_point_as_affine(
+                        #[trigger] buckets@[bb],
+                    ) == pippenger_bucket_contents(
+                        pts_affine,
+                        digits_seqs,
+                        col,
+                        sp_idx as int + 1,
+                        bb,
+                    ) by {
+                        assert(d_val != bb + 1);
+                        assert(d_val != -(bb + 1));
+                    };
+                }
+            }
+            sp_idx = sp_idx + 1;
+        }
+
+        // ---- Phase 3: Sum buckets via intermediate-sum trick ----
+        let ghost buckets_affine: Seq<(nat, nat)> = Seq::new(
+            buckets_count as nat,
+            |b: int| edwards_point_as_affine(buckets@[b]),
+        );
+
+        let mut buckets_intermediate_sum = buckets[buckets_count - 1];
+        let mut column = buckets[buckets_count - 1];
+        let mut j: usize = buckets_count - 1;
+        while j > 0
+            invariant
+                0 <= j <= buckets_count - 1,
+                buckets@.len() == buckets_count as int,
+                B == buckets_count as int,
+                buckets_count >= 1,
+                is_well_formed_edwards_point(buckets_intermediate_sum),
+                is_well_formed_edwards_point(column),
+                edwards_point_as_affine(buckets_intermediate_sum) == pippenger_intermediate_sum(
+                    buckets_affine,
+                    j as int,
+                    B,
+                ),
+                edwards_point_as_affine(column) == pippenger_running_sum(
+                    buckets_affine,
+                    j as int,
+                    B,
+                ),
+                forall|b: int|
+                    0 <= b < buckets_count ==> is_well_formed_edwards_point(#[trigger] buckets@[b]),
+                forall|b: int|
+                    0 <= b < buckets_count ==> edwards_point_as_affine(#[trigger] buckets@[b])
+                        == buckets_affine[b],
+            decreases j,
+        {
+            j = j - 1;
+            buckets_intermediate_sum = &buckets_intermediate_sum + &buckets[j];
+            column = &column + &buckets_intermediate_sum;
+        }
+
+        // Connect column to straus_column_sum via lemma chain
+        proof {
+            assert forall|b: int| 0 <= b < B implies (#[trigger] buckets_affine[b]).0 < p()
+                && buckets_affine[b].1 < p() by {
+                lemma_edwards_point_as_affine_canonical(buckets@[b]);
+            };
+
+            lemma_running_sum_equals_weighted(buckets_affine, B);
+
+            let ghost bucket_contents_seq = Seq::new(
+                buckets_count as nat,
+                |b: int|
+                    pippenger_bucket_contents(
+                        pts_affine,
+                        digits_seqs,
+                        digit_index as int,
+                        n_ghost,
+                        b,
+                    ),
+            );
+            assert(buckets_affine =~= bucket_contents_seq);
+
+            assert forall|k: int| 0 <= k < n_ghost implies (#[trigger] pts_affine[k]).0 < p()
+                && pts_affine[k].1 < p() by {};
+
+            lemma_bucket_weighted_sum_equals_column_sum(
+                pts_affine,
+                digits_seqs,
+                digit_index as int,
+                n_ghost,
+                B,
+            );
+        }
+
+        column
+    }
+
     /// Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels). Returns None if any point is None.
     /// Replaces: `scalars.zip(points).map(|(s, maybe_p)| maybe_p.map(|p| (s.as_radix_2w(w), p.as_projective_niels()))).collect::<Option<Vec<_>>>()`
     fn pair_scalars_points(
@@ -462,6 +731,9 @@ impl Pippenger {
         /* </REFACTORED CODE> */
 
         /* UNCHANGED FROM ORIGINAL: Digit width selection based on input size */
+        // Digit width in bits. As digit width grows,
+        // number of point additions goes down, but amount of
+        // buckets and bucket additions grows exponentially.
         let w = if size < 500 {
             6
         } else if size < 800 {
@@ -641,27 +913,67 @@ impl Pippenger {
     </ORIGINAL CODE> */
         /* <REFACTORED CODE>
          * Pippenger bucket method: process digit columns right-to-left.
-         * Unified Horner fold with inline column processing.
-         * Evaluates H(0) = sum_j 2^{w*j} * col(j) via Horner:
-         *   total starts at identity = H(dc),
-         *   for j = dc-1 down to 0: total = [2^w]*total + col(j) = H(j)
-         * For each column:
-         *   1. Clear buckets to identity
-         *   2. Sort points into buckets based on scalar digit value
-         *   3. Sum buckets: bucket[i] contributes (i+1) * bucket[i] to column sum
-         *   4. Accumulate: total = total * 2^w + column_sum
+         * Matches upstream structure: process hi_column separately (avoids
+         * wasted mul_by_pow_2 on identity), then fold remaining columns.
+         * The upstream closure is replaced by process_column helper (Verus
+         * doesn't support closures with map/fold).
          */
 
-        let mut total = EdwardsPoint::identity();
+        // Take the high column as an initial value to avoid wasting time
+        // doubling the identity element in `fold()`.
+        let hi_column = Pippenger::process_column(
+            &mut buckets,
+            &scalars_points,
+            digits_count - 1,
+            w,
+            buckets_count,
+            Ghost(pts_affine),
+            Ghost(digits_seqs),
+            Ghost(dc),
+        );
+
+        // Prove hi_column == H(dc-1)
         proof {
-            lemma_identity_affine_coords(total);
+            let ghost col = straus_column_sum(
+                pts_affine,
+                digits_seqs,
+                (dc - 1) as int,
+                pts_affine.len() as int,
+            );
+            // H(dc) = O
             lemma_pippenger_horner_base(pts_affine, digits_seqs, w as nat, dc);
+            // H(dc-1) = edwards_add([2^w]*H(dc), C_{dc-1}) = edwards_add([2^w]*O, C)
+            lemma_pippenger_horner_step(pts_affine, digits_seqs, (dc - 1) as int, w as nat, dc);
+            // [2^w]*O = O
+            assert(edwards_scalar_mul(edwards_identity(), pow2(w as nat)) == edwards_identity())
+                by {
+                lemma_edwards_scalar_mul_identity(pow2(w as nat));
+            }
+            // O + C = (C.0 % p, C.1 % p) = C (since canonical)
+            assert(edwards_point_as_affine(hi_column) == pippenger_horner(
+                pts_affine,
+                digits_seqs,
+                (dc - 1) as int,
+                w as nat,
+                dc,
+            )) by {
+                lemma_column_sum_canonical(
+                    pts_affine,
+                    digits_seqs,
+                    (dc - 1) as int,
+                    pts_affine.len() as int,
+                );
+                lemma_edwards_add_identity_left(col.0, col.1);
+                lemma_small_mod(col.0, p());
+                lemma_small_mod(col.1, p());
+            }
         }
 
-        let mut digit_index: usize = digits_count;
+        let mut total = hi_column;
+        let mut digit_index: usize = digits_count - 1;
         while digit_index > 0
             invariant
-                0 <= digit_index <= digits_count,
+                0 < digit_index <= digits_count - 1 || digit_index == 0,
                 digits_count as nat == dc,
                 dc >= 1,
                 dc <= 64,
@@ -685,252 +997,19 @@ impl Pippenger {
             // Shift total by 2^w
             let shifted = total.mul_by_pow_2(w as u32);
 
-            let ghost n_ghost: int = pts_affine.len() as int;
-            let ghost B = buckets_count as int;
-
-            // ---- Step 1: Clear buckets to identity ----
-            let mut bucket_idx: usize = 0;
-            while bucket_idx < buckets_count
-                invariant
-                    0 <= bucket_idx <= buckets_count,
-                    buckets@.len() == buckets_count as int,
-                    forall|k: int|
-                        0 <= k < bucket_idx ==> is_well_formed_edwards_point(
-                            #[trigger] buckets@[k],
-                        ),
-                    forall|k: int|
-                        0 <= k < bucket_idx ==> edwards_point_as_affine(#[trigger] buckets@[k])
-                            == edwards_identity(),
-                decreases buckets_count - bucket_idx,
-            {
-                let ep = EdwardsPoint::identity();
-                proof {
-                    lemma_identity_affine_coords(ep);
-                }
-                buckets.set(bucket_idx, ep);
-                bucket_idx = bucket_idx + 1;
-            }
-
-            // ---- Step 2: Fill buckets by digit sign ----
-            proof {
-                assert forall|b: int| 0 <= b < buckets_count implies edwards_point_as_affine(
-                    #[trigger] buckets@[b],
-                ) == pippenger_bucket_contents(
-                    pts_affine,
-                    digits_seqs,
-                    digit_index as int,
-                    0,
-                    b,
-                ) by {};
-            }
-
-            let mut sp_idx: usize = 0;
-            while sp_idx < scalars_points.len()
-                invariant
-                    0 <= sp_idx <= scalars_points@.len(),
-                    buckets@.len() == buckets_count as int,
-                    4 <= w <= 8,
-                    buckets_count as int == pow2((w - 1) as nat),
-                    digit_index < dc,
-                    dc >= 1,
-                    dc <= 64,
-                    forall|b: int|
-                        0 <= b < buckets_count ==> is_well_formed_edwards_point(
-                            #[trigger] buckets@[b],
-                        ),
-                    forall|b: int|
-                        0 <= b < buckets_count ==> edwards_point_as_affine(#[trigger] buckets@[b])
-                            == pippenger_bucket_contents(
-                            pts_affine,
-                            digits_seqs,
-                            digit_index as int,
-                            sp_idx as int,
-                            b,
-                        ),
-                    pippenger_input_valid(scalars_points@, pts_affine, digits_seqs, w as nat, dc),
-                decreases scalars_points.len() - sp_idx,
-            {
-                let sp = &scalars_points[sp_idx];
-                let digits_arr = &sp.0;
-                let pt = &sp.1;
-                let digit = digits_arr[digit_index] as i16;
-
-                proof {
-                    let ghost d_spec = digits_seqs[sp_idx as int][digit_index as int];
-                    assert(digit as int == d_spec as int);
-                    assert(is_valid_radix_2w(&scalars_points@[sp_idx as int].0, w as nat, dc));
-                    assert(-(pow2((w - 1) as nat) as int) <= (d_spec as int) && (d_spec as int)
-                        <= pow2((w - 1) as nat));
-                    assert(-(buckets_count as int) <= (digit as int) && (digit as int) <= (
-                    buckets_count as int));
-                }
-
-                if digit > 0 {
-                    let b = (digit - 1) as usize;
-                    proof {
-                        assert(0 <= b < buckets_count);
-                    }
-                    let completed = &buckets[b] + pt;
-                    let new_bucket = completed.as_extended();
-                    buckets.set(b, new_bucket);
-                    proof {
-                        let ghost col = digit_index as int;
-                        let ghost d_val = digits_seqs[sp_idx as int][col] as int;
-                        assert(d_val == digit as int);
-                        assert(d_val == (b as int) + 1);
-
-                        assert forall|bb: int|
-                            0 <= bb < buckets_count implies edwards_point_as_affine(
-                            #[trigger] buckets@[bb],
-                        ) == pippenger_bucket_contents(
-                            pts_affine,
-                            digits_seqs,
-                            col,
-                            sp_idx as int + 1,
-                            bb,
-                        ) by {
-                            if bb == b as int {
-                                assert(d_val == bb + 1);
-                            } else {
-                                assert(d_val != bb + 1);
-                                assert(d_val > 0);
-                                assert(d_val != -(bb + 1));
-                            }
-                        };
-                    }
-                } else if digit < 0 {
-                    let b = (-digit - 1) as usize;
-                    proof {
-                        assert(0 <= b < buckets_count);
-                    }
-                    let completed = &buckets[b] - pt;
-                    let new_bucket = completed.as_extended();
-                    buckets.set(b, new_bucket);
-                    proof {
-                        let ghost col = digit_index as int;
-                        let ghost d_val = digits_seqs[sp_idx as int][col] as int;
-                        assert(d_val == digit as int);
-                        assert(d_val == -((b as int) + 1));
-
-                        assert forall|bb: int|
-                            0 <= bb < buckets_count implies edwards_point_as_affine(
-                            #[trigger] buckets@[bb],
-                        ) == pippenger_bucket_contents(
-                            pts_affine,
-                            digits_seqs,
-                            col,
-                            sp_idx as int + 1,
-                            bb,
-                        ) by {
-                            if bb == b as int {
-                                assert(d_val == -(bb + 1));
-                            } else {
-                                assert(d_val != bb + 1);
-                                assert(d_val != -(bb + 1));
-                            }
-                        };
-                    }
-                } else {
-                    // digit == 0: no bucket modified
-                    proof {
-                        let ghost col = digit_index as int;
-                        let ghost d_val = digits_seqs[sp_idx as int][col] as int;
-                        assert(d_val == 0);
-
-                        assert forall|bb: int|
-                            0 <= bb < buckets_count implies edwards_point_as_affine(
-                            #[trigger] buckets@[bb],
-                        ) == pippenger_bucket_contents(
-                            pts_affine,
-                            digits_seqs,
-                            col,
-                            sp_idx as int + 1,
-                            bb,
-                        ) by {
-                            assert(d_val != bb + 1);
-                            assert(d_val != -(bb + 1));
-                        };
-                    }
-                }
-                sp_idx = sp_idx + 1;
-            }
-
-            // ---- Step 3: Sum buckets via intermediate-sum trick ----
-            let ghost buckets_affine: Seq<(nat, nat)> = Seq::new(
-                buckets_count as nat,
-                |b: int| edwards_point_as_affine(buckets@[b]),
+            // Process column at digit_index
+            let column = Pippenger::process_column(
+                &mut buckets,
+                &scalars_points,
+                digit_index,
+                w,
+                buckets_count,
+                Ghost(pts_affine),
+                Ghost(digits_seqs),
+                Ghost(dc),
             );
 
-            let mut buckets_intermediate_sum = buckets[buckets_count - 1];
-            let mut column = buckets[buckets_count - 1];
-            let mut j: usize = buckets_count - 1;
-            while j > 0
-                invariant
-                    0 <= j <= buckets_count - 1,
-                    buckets@.len() == buckets_count as int,
-                    B == buckets_count as int,
-                    buckets_count >= 1,
-                    is_well_formed_edwards_point(buckets_intermediate_sum),
-                    is_well_formed_edwards_point(column),
-                    edwards_point_as_affine(buckets_intermediate_sum) == pippenger_intermediate_sum(
-                        buckets_affine,
-                        j as int,
-                        B,
-                    ),
-                    edwards_point_as_affine(column) == pippenger_running_sum(
-                        buckets_affine,
-                        j as int,
-                        B,
-                    ),
-                    forall|b: int|
-                        0 <= b < buckets_count ==> is_well_formed_edwards_point(
-                            #[trigger] buckets@[b],
-                        ),
-                    forall|b: int|
-                        0 <= b < buckets_count ==> edwards_point_as_affine(#[trigger] buckets@[b])
-                            == buckets_affine[b],
-                decreases j,
-            {
-                j = j - 1;
-                buckets_intermediate_sum = &buckets_intermediate_sum + &buckets[j];
-                column = &column + &buckets_intermediate_sum;
-            }
-
-            // Connect column to straus_column_sum via lemma chain
-            proof {
-                assert forall|b: int| 0 <= b < B implies (#[trigger] buckets_affine[b]).0 < p()
-                    && buckets_affine[b].1 < p() by {
-                    lemma_edwards_point_as_affine_canonical(buckets@[b]);
-                };
-
-                lemma_running_sum_equals_weighted(buckets_affine, B);
-
-                let ghost bucket_contents_seq = Seq::new(
-                    buckets_count as nat,
-                    |b: int|
-                        pippenger_bucket_contents(
-                            pts_affine,
-                            digits_seqs,
-                            digit_index as int,
-                            n_ghost,
-                            b,
-                        ),
-                );
-                assert(buckets_affine =~= bucket_contents_seq);
-
-                assert forall|k: int| 0 <= k < n_ghost implies (#[trigger] pts_affine[k]).0 < p()
-                    && pts_affine[k].1 < p() by {};
-
-                lemma_bucket_weighted_sum_equals_column_sum(
-                    pts_affine,
-                    digits_seqs,
-                    digit_index as int,
-                    n_ghost,
-                    B,
-                );
-            }
-
-            // ---- Accumulate: total = [2^w]*total_old + column ----
+            // Accumulate: total = [2^w]*total_old + column
             total = &shifted + &column;
 
             proof {

@@ -448,12 +448,20 @@ impl Pippenger {
         let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
         let ghost spec_points = spec_optional_points_from_iter::<J>(points);
 
-        /* Collect iterators to Vec (Verus doesn't support size_hint on &mut) */
+        /* <ORIGINAL CODE>
+    let mut scalars = scalars.into_iter();
+    let size = scalars.by_ref().size_hint().0;
+    </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Collect iterators to Vec (Verus doesn't support size_hint on &mut).
+         * Get size from collected Vec.
+         */
         let scalars_vec = collect_scalars_from_iter(scalars);
         let size = scalars_vec.len();
         let points_vec = collect_optional_points_from_iter(points);
+        /* </REFACTORED CODE> */
 
-        /* Digit width selection based on input size */
+        /* UNCHANGED FROM ORIGINAL: Digit width selection based on input size */
         let w = if size < 500 {
             6
         } else if size < 800 {
@@ -462,9 +470,10 @@ impl Pippenger {
             8
         };
 
+        /* UNCHANGED FROM ORIGINAL: Bucket configuration */
         let max_digit: usize = 1 << w;
         let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
-        let buckets_count: usize = max_digit / 2;
+        let buckets_count: usize = max_digit / 2;  // digits are signed+centered hence 2^w/2, excluding 0-th bucket
 
         if digits_count == 0 || buckets_count == 0 {
             proof {
@@ -472,7 +481,17 @@ impl Pippenger {
             }
             return None;
         }
-        // Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels)
+        // Collect optimized scalars and points in buffers for repeated access
+        // (scanning the whole set per digit position).
+        /* <ORIGINAL CODE>
+    let scalars = scalars.map(|s| s.borrow().as_radix_2w(w));
+    let points = points.into_iter().map(|p| p.map(|P| P.as_projective_niels()));
+    let scalars_points = scalars.zip(points).map(|(s, maybe_p)| maybe_p.map(|p| (s, p))).collect::<Option<Vec<_>>>()?;
+    </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels).
+         * Returns None if any point is None.
+         */
 
         let scalars_points = match Pippenger::pair_scalars_points(&scalars_vec, &points_vec, w) {
             Some(sp) => sp,
@@ -486,6 +505,7 @@ impl Pippenger {
         proof {
             assert(all_points_some(spec_points));
         }
+        /* </REFACTORED CODE> */
 
         // Ghost state setup
         let ghost n = scalars_points@.len() as int;
@@ -538,8 +558,17 @@ impl Pippenger {
             };
         }
 
-        // Initialize buckets
+        // Prepare 2^w/2 buckets.
+        // buckets[i] corresponds to a multiplication factor (i+1).
+        /* <ORIGINAL CODE>
+    let mut buckets: Vec<_> = (0..buckets_count).map(|_| EdwardsPoint::identity()).collect();
+    </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Initialize 2^(w-1) buckets with identity points.
+         * Bucket i will accumulate points with digit value (i+1).
+         */
         let mut buckets = Pippenger::init_buckets(buckets_count);
+        /* </REFACTORED CODE> */
 
         // Establish buckets_count == pow2(w-1) and pippenger_input_valid
         proof {
@@ -575,12 +604,53 @@ impl Pippenger {
             };
         }
 
-        // ================================================================
-        // Unified Horner fold with inline column processing
-        // ================================================================
-        // Evaluates H(0) = sum_j 2^{w*j} * col(j) via Horner:
-        //   total starts at identity = H(dc),
-        //   for j = dc-1 down to 0: total = [2^w]*total + col(j) = H(j)
+        /* <ORIGINAL CODE>
+    let mut columns = (0..digits_count).rev().map(|digit_index| {
+        // Clear the buckets when processing another digit.
+        for bucket in &mut buckets {
+            *bucket = EdwardsPoint::identity();
+        }
+
+        for (digits, pt) in scalars_points.iter() {
+            let digit = digits[digit_index] as i16;
+            match digit.cmp(&0) {
+                Ordering::Greater => {
+                    let b = (digit - 1) as usize;
+                    buckets[b] = (&buckets[b] + pt).as_extended();
+                }
+                Ordering::Less => {
+                    let b = (-digit - 1) as usize;
+                    buckets[b] = (&buckets[b] - pt).as_extended();
+                }
+                Ordering::Equal => {}
+            }
+        }
+
+        let mut buckets_intermediate_sum = buckets[buckets_count - 1];
+        let mut buckets_sum = buckets[buckets_count - 1];
+        for i in (0..(buckets_count - 1)).rev() {
+            buckets_intermediate_sum += buckets[i];
+            buckets_sum += buckets_intermediate_sum;
+        }
+
+        buckets_sum
+    });
+
+    let hi_column = columns.next().expect("should have more than zero digits");
+    Some(columns.fold(hi_column, |total, p| total.mul_by_pow_2(w as u32) + p))
+    </ORIGINAL CODE> */
+        /* <REFACTORED CODE>
+         * Pippenger bucket method: process digit columns right-to-left.
+         * Unified Horner fold with inline column processing.
+         * Evaluates H(0) = sum_j 2^{w*j} * col(j) via Horner:
+         *   total starts at identity = H(dc),
+         *   for j = dc-1 down to 0: total = [2^w]*total + col(j) = H(j)
+         * For each column:
+         *   1. Clear buckets to identity
+         *   2. Sort points into buckets based on scalar digit value
+         *   3. Sum buckets: bucket[i] contributes (i+1) * bucket[i] to column sum
+         *   4. Accumulate: total = total * 2^w + column_sum
+         */
 
         let mut total = EdwardsPoint::identity();
         proof {
@@ -873,6 +943,7 @@ impl Pippenger {
                 );
             }
         }
+        /* </REFACTORED CODE> */
 
         // Final proof: pippenger_horner(pts, digs, 0, w, dc) == sum_of_scalar_muls(scalars, points)
         proof {

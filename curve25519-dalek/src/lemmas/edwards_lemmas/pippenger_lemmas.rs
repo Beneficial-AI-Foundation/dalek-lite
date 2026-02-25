@@ -356,15 +356,23 @@ pub proof fn lemma_pippenger_zero_points_from(
     decreases digits_count as int - j,
 {
     if j >= digits_count as int {
-        lemma_pippenger_horner_base(pts, digs, w, digits_count);
+        assert(pippenger_horner(pts, digs, digits_count as int, w, digits_count)
+            == edwards_identity()) by {
+            lemma_pippenger_horner_base(pts, digs, w, digits_count);
+        }
     } else {
         lemma_pippenger_horner_step(pts, digs, j, w, digits_count);
-        lemma_pippenger_zero_points_from(pts, digs, j + 1, w, digits_count);
-        // [pow2(w)]*identity = identity
-        lemma_edwards_scalar_mul_identity(pow2(w));
+        assert(pippenger_horner(pts, digs, j + 1, w, digits_count) == edwards_identity()) by {
+            lemma_pippenger_zero_points_from(pts, digs, j + 1, w, digits_count);
+        }
+        assert(edwards_scalar_mul(edwards_identity(), pow2(w)) == edwards_identity()) by {
+            lemma_edwards_scalar_mul_identity(pow2(w));
+        }
         let id = edwards_identity();
-        p_gt_2();
-        lemma_edwards_add_identity_right_canonical(id);
+        assert(edwards_add(id.0, id.1, 0, 1) == id) by {
+            p_gt_2();
+            lemma_edwards_add_identity_right_canonical(id);
+        }
     }
 }
 
@@ -477,58 +485,79 @@ pub proof fn lemma_pippenger_peel_last(
 
     if j >= digits_count as int {
         // Base case: all three terms are identity
-        lemma_pippenger_horner_base(pts, digs, w, digits_count);
-        lemma_pippenger_horner_base(pts_prefix, digs_prefix, w, digits_count);
-        lemma_pippenger_horner_base(pts_single, digs_single, w, digits_count);
-        p_gt_2();
-        lemma_edwards_add_identity_right_canonical(edwards_identity());
+        assert(pippenger_horner(pts, digs, digits_count as int, w, digits_count)
+            == edwards_identity()) by {
+            lemma_pippenger_horner_base(pts, digs, w, digits_count);
+        }
+        assert(pippenger_horner(pts_prefix, digs_prefix, digits_count as int, w, digits_count)
+            == edwards_identity()) by {
+            lemma_pippenger_horner_base(pts_prefix, digs_prefix, w, digits_count);
+        }
+        assert(pippenger_horner(pts_single, digs_single, digits_count as int, w, digits_count)
+            == edwards_identity()) by {
+            lemma_pippenger_horner_base(pts_single, digs_single, w, digits_count);
+        }
+        assert(edwards_add(
+            edwards_identity().0,
+            edwards_identity().1,
+            edwards_identity().0,
+            edwards_identity().1,
+        ) == edwards_identity()) by {
+            p_gt_2();
+            lemma_edwards_add_identity_right_canonical(edwards_identity());
+        }
     } else {
         // Unfold pippenger_horner for all three
         lemma_pippenger_horner_step(pts, digs, j, w, digits_count);
         lemma_pippenger_horner_step(pts_prefix, digs_prefix, j, w, digits_count);
         lemma_pippenger_horner_step(pts_single, digs_single, j, w, digits_count);
 
-        // IH at j+1
-        lemma_pippenger_peel_last(pts, digs, j + 1, w, digits_count);
-
         let prev_full = pippenger_horner(pts, digs, j + 1, w, digits_count);
         let prev_prefix = pippenger_horner(pts_prefix, digs_prefix, j + 1, w, digits_count);
         let prev_single = pippenger_horner(pts_single, digs_single, j + 1, w, digits_count);
-
-        // By IH: prev_full == edwards_add(prev_prefix, prev_single)
-        // [pow2(w)]*prev_full == [pow2(w)]*edwards_add(prev_prefix, prev_single)
-        //                     == edwards_add([pow2(w)]*prev_prefix, [pow2(w)]*prev_single)
-        axiom_edwards_scalar_mul_distributive(prev_prefix, prev_single, pow2(w));
-
         let scaled_prefix = edwards_scalar_mul(prev_prefix, pow2(w));
         let scaled_single = edwards_scalar_mul(prev_single, pow2(w));
-
-        // Column sum splitting
         let col_full = straus_column_sum(pts, digs, j, n);
         let col_prefix = straus_column_sum(pts_prefix, digs_prefix, j, (n - 1));
         let col_single = straus_column_sum(pts_single, digs_single, j, 1);
 
-        lemma_column_sum_prefix_eq(pts, digs, pts_prefix, digs_prefix, j, n - 1);
-        lemma_column_sum_single(pts.last(), digs.last(), j);
+        // IH at j+1
+        assert(prev_full == edwards_add(prev_prefix.0, prev_prefix.1, prev_single.0, prev_single.1))
+            by {
+            lemma_pippenger_peel_last(pts, digs, j + 1, w, digits_count);
+        }
+        // [pow2(w)] distributes over addition
+        assert(edwards_scalar_mul(
+            edwards_add(prev_prefix.0, prev_prefix.1, prev_single.0, prev_single.1),
+            pow2(w),
+        ) == edwards_add(scaled_prefix.0, scaled_prefix.1, scaled_single.0, scaled_single.1)) by {
+            axiom_edwards_scalar_mul_distributive(prev_prefix, prev_single, pow2(w));
+        }
+        // Column sum splitting
+        assert(straus_column_sum(pts, digs, j, n - 1) == col_prefix) by {
+            lemma_column_sum_prefix_eq(pts, digs, pts_prefix, digs_prefix, j, n - 1);
+        }
+        assert(col_single == edwards_scalar_mul_signed(pts.last(), digs.last()[j] as int)) by {
+            lemma_column_sum_single(pts.last(), digs.last(), j);
+        }
 
         // Four-way reassociation: (A+B) + (C+D) = (A+C) + (B+D)
         let a = scaled_prefix;
         let b = scaled_single;
         let c = col_prefix;
         let d_val = col_single;
-
         let ab = edwards_add(a.0, a.1, b.0, b.1);
         let cd = edwards_add(c.0, c.1, d_val.0, d_val.1);
         let bd = edwards_add(b.0, b.1, d_val.0, d_val.1);
         let ac = edwards_add(a.0, a.1, c.0, c.1);
 
-        axiom_edwards_add_associative(a.0, a.1, b.0, b.1, cd.0, cd.1);
-        axiom_edwards_add_associative(b.0, b.1, c.0, c.1, d_val.0, d_val.1);
-        lemma_edwards_add_commutative(b.0, b.1, c.0, c.1);
-        axiom_edwards_add_associative(c.0, c.1, b.0, b.1, d_val.0, d_val.1);
-        axiom_edwards_add_associative(a.0, a.1, c.0, c.1, bd.0, bd.1);
-
-        assert(edwards_add(ab.0, ab.1, cd.0, cd.1) == edwards_add(ac.0, ac.1, bd.0, bd.1));
+        assert(edwards_add(ab.0, ab.1, cd.0, cd.1) == edwards_add(ac.0, ac.1, bd.0, bd.1)) by {
+            axiom_edwards_add_associative(a.0, a.1, b.0, b.1, cd.0, cd.1);
+            axiom_edwards_add_associative(b.0, b.1, c.0, c.1, d_val.0, d_val.1);
+            lemma_edwards_add_commutative(b.0, b.1, c.0, c.1);
+            axiom_edwards_add_associative(c.0, c.1, b.0, b.1, d_val.0, d_val.1);
+            axiom_edwards_add_associative(a.0, a.1, c.0, c.1, bd.0, bd.1);
+        }
     }
 }
 
@@ -550,7 +579,12 @@ pub proof fn lemma_reconstruct_radix_2w_from_equals_reconstruct(
             w,
         ),
 {
-    lemma_reconstruct_radix_2w_from_eq_helper(d, w, 0, digits_count);
+    assert(reconstruct_radix_2w_from(d, w, 0, digits_count) == reconstruct_radix_2w(
+        d.subrange(0, digits_count as int),
+        w,
+    )) by {
+        lemma_reconstruct_radix_2w_from_eq_helper(d, w, 0, digits_count);
+    }
     assert(d.subrange(0, digits_count as int) =~= d.take(digits_count as int));
 }
 
@@ -619,7 +653,10 @@ pub proof fn lemma_pippenger_horner_correct(
     let n = scalars.len();
 
     if n == 0 {
-        lemma_pippenger_zero_points_from(points_affine, digits, 0, w, digits_count);
+        assert(pippenger_horner(points_affine, digits, 0, w, digits_count) == edwards_identity())
+            by {
+            lemma_pippenger_zero_points_from(points_affine, digits, 0, w, digits_count);
+        }
     } else {
         let last = (n - 1) as int;
         let pts_prefix = points_affine.drop_last();
@@ -644,14 +681,19 @@ pub proof fn lemma_pippenger_horner_correct(
         }
 
         // IH: prefix is correct
-        lemma_pippenger_horner_correct(
+        assert(pippenger_horner(pts_prefix, digs_prefix, 0, w, digits_count) == sum_of_scalar_muls(
             scalars_prefix,
             points_prefix,
-            pts_prefix,
-            digs_prefix,
-            w,
-            digits_count,
-        );
+        )) by {
+            lemma_pippenger_horner_correct(
+                scalars_prefix,
+                points_prefix,
+                pts_prefix,
+                digs_prefix,
+                w,
+                digits_count,
+            );
+        }
 
         // Points are canonical
         assert forall|k: int| 0 <= k < points_affine.len() implies (#[trigger] points_affine[k]).0
@@ -669,7 +711,13 @@ pub proof fn lemma_pippenger_horner_correct(
         // Single point Horner = [scalar_last] * P_last
         let P_last = points_affine.last();
         let d_last = digits.last();
-        lemma_pippenger_single(P_last, d_last, 0, w, digits_count);
+        assert(pippenger_horner(seq![(P_last)], seq![(d_last)], 0, w, digits_count)
+            == edwards_scalar_mul_signed(
+            P_last,
+            reconstruct_radix_2w_from(d_last, w, 0, digits_count),
+        )) by {
+            lemma_pippenger_single(P_last, d_last, 0, w, digits_count);
+        }
 
         // Connect signed to unsigned scalar_mul
         let scalar_nat = scalar_as_nat(&scalars[last]);
@@ -720,7 +768,12 @@ proof fn lemma_weighted_from_eq_weighted_bucket_sum(buckets: Seq<(nat, nat)>, B:
 {
     if B <= 0 {
     } else {
-        lemma_weighted_from_eq_weighted_bucket_sum(buckets, B - 1);
+        assert(pippenger_weighted_from(buckets, 0, B - 1) == pippenger_weighted_bucket_sum(
+            buckets,
+            B - 1,
+        )) by {
+            lemma_weighted_from_eq_weighted_bucket_sum(buckets, B - 1);
+        }
     }
 }
 
@@ -748,26 +801,43 @@ proof fn lemma_intermediate_sum_extend(buckets: Seq<(nat, nat)>, b: int, B: int)
         // Help Z3 unfold intermediate_sum at base cases
         assert(pippenger_intermediate_sum(buckets, B - 1, B) == buckets[B - 1]);
         assert(pippenger_intermediate_sum(buckets, B - 2, B - 1) == buckets[B - 2]);
-        lemma_edwards_add_commutative(
-            buckets[B - 1].0,
-            buckets[B - 1].1,
-            buckets[B - 2].0,
-            buckets[B - 2].1,
-        );
+        assert(edwards_add(buckets[B - 1].0, buckets[B - 1].1, buckets[B - 2].0, buckets[B - 2].1)
+            == edwards_add(buckets[B - 2].0, buckets[B - 2].1, buckets[B - 1].0, buckets[B - 1].1))
+            by {
+            lemma_edwards_add_commutative(
+                buckets[B - 1].0,
+                buckets[B - 1].1,
+                buckets[B - 2].0,
+                buckets[B - 2].1,
+            );
+        }
     } else {
-        // IS(b, B) = add(IS(b+1, B), bucket[b])
-        // By IH: IS(b+1, B) = add(IS(b+1, B-1), bucket[B-1])
-        lemma_intermediate_sum_extend(buckets, b + 1, B);
-
-        // Rearrange: add(add(A, C), D) = add(add(A, D), C)
-        // where A = IS(b+1, B-1), C = bucket[B-1], D = bucket[b]
         let A = pippenger_intermediate_sum(buckets, b + 1, B - 1);
         let C = buckets[B - 1];
         let D = buckets[b];
 
-        axiom_edwards_add_associative(A.0, A.1, C.0, C.1, D.0, D.1);
-        lemma_edwards_add_commutative(C.0, C.1, D.0, D.1);
-        axiom_edwards_add_associative(A.0, A.1, D.0, D.1, C.0, C.1);
+        // IH: IS(b+1, B) = add(IS(b+1, B-1), bucket[B-1])
+        assert(pippenger_intermediate_sum(buckets, b + 1, B) == edwards_add(A.0, A.1, C.0, C.1))
+            by {
+            lemma_intermediate_sum_extend(buckets, b + 1, B);
+        }
+
+        // Rearrange: add(add(A, C), D) = add(add(A, D), C)
+        assert(edwards_add(
+            edwards_add(A.0, A.1, C.0, C.1).0,
+            edwards_add(A.0, A.1, C.0, C.1).1,
+            D.0,
+            D.1,
+        ) == edwards_add(
+            edwards_add(A.0, A.1, D.0, D.1).0,
+            edwards_add(A.0, A.1, D.0, D.1).1,
+            C.0,
+            C.1,
+        )) by {
+            axiom_edwards_add_associative(A.0, A.1, C.0, C.1, D.0, D.1);
+            lemma_edwards_add_commutative(C.0, C.1, D.0, D.1);
+            axiom_edwards_add_associative(A.0, A.1, D.0, D.1, C.0, C.1);
+        }
     }
 }
 
@@ -784,7 +854,6 @@ proof fn lemma_intermediate_sum_extend(buckets: Seq<(nat, nat)>, b: int, B: int)
 ///     = ∑_{j=b+1}^{B-1} (j−b)·bucket[j]  +  ∑_{j=b}^{B-1} bucket[j]
 ///
 /// since for each j ≥ b+1: (j−b+1) = (j−b) + 1, and bucket[b] appears once.
-#[verifier::rlimit(20)]
 proof fn lemma_weighted_from_decompose(buckets: Seq<(nat, nat)>, b: int, B: int)
     requires
         0 <= b,
@@ -806,53 +875,55 @@ proof fn lemma_weighted_from_decompose(buckets: Seq<(nat, nat)>, b: int, B: int)
         assert(pippenger_weighted_from(buckets, b, B - 1) == edwards_identity());
         reveal_with_fuel(edwards_scalar_mul, 1);
     } else {
-        // b < B - 1, so B >= b + 2
-        lemma_weighted_from_decompose(buckets, b, B - 1);
-        lemma_intermediate_sum_extend(buckets, b, B);
-
         let W = pippenger_weighted_from(buckets, b + 1, B - 1);
         let IS_prev = pippenger_intermediate_sum(buckets, b, B - 1);
         let C = buckets[B - 1];
         let m = (B - b - 1) as nat;
         let mC = edwards_scalar_mul(C, m);
+        let mC_plus_C = edwards_add(mC.0, mC.1, C.0, C.1);
+        let W_plus_mC = edwards_add(W.0, W.1, mC.0, mC.1);
+        let IS_prev_plus_C = edwards_add(IS_prev.0, IS_prev.1, C.0, C.1);
 
-        // Connect IH results to named ghost values
+        // IH: weighted_from(b, B-1) = add(W, IS_prev)
         assert(pippenger_weighted_from(buckets, b, B - 1) == edwards_add(
             W.0,
             W.1,
             IS_prev.0,
             IS_prev.1,
-        ));
-        assert(pippenger_intermediate_sum(buckets, b, B) == edwards_add(
-            IS_prev.0,
-            IS_prev.1,
-            C.0,
-            C.1,
-        ));
-
+        )) by {
+            lemma_weighted_from_decompose(buckets, b, B - 1);
+        }
+        // IS(b, B) = add(IS_prev, C)
+        assert(pippenger_intermediate_sum(buckets, b, B) == IS_prev_plus_C) by {
+            lemma_intermediate_sum_extend(buckets, b, B);
+        }
         // [(m+1)]*C = add([m]*C, C)
-        lemma_edwards_scalar_mul_succ(C, m);
-        let mC_plus_C = edwards_add(mC.0, mC.1, C.0, C.1);
-        assert(edwards_scalar_mul(C, (m + 1) as nat) == mC_plus_C);
+        assert(edwards_scalar_mul(C, (m + 1) as nat) == mC_plus_C) by {
+            lemma_edwards_scalar_mul_succ(C, m);
+        }
 
+        // Unfold weighted_from(b, B) and weighted_from(b+1, B)
         assert(pippenger_weighted_from(buckets, b, B) == edwards_add(
             edwards_add(W.0, W.1, IS_prev.0, IS_prev.1).0,
             edwards_add(W.0, W.1, IS_prev.0, IS_prev.1).1,
             mC_plus_C.0,
             mC_plus_C.1,
         ));
-
-        let W_plus_mC = edwards_add(W.0, W.1, mC.0, mC.1);
         assert(pippenger_weighted_from(buckets, b + 1, B) == W_plus_mC);
 
-        let IS_prev_plus_C = edwards_add(IS_prev.0, IS_prev.1, C.0, C.1);
-
         // Four-way reassociation: (W+IS_prev)+(mC+C) = (W+mC)+(IS_prev+C)
-        axiom_edwards_add_associative(W.0, W.1, IS_prev.0, IS_prev.1, mC_plus_C.0, mC_plus_C.1);
-        axiom_edwards_add_associative(IS_prev.0, IS_prev.1, mC.0, mC.1, C.0, C.1);
-        lemma_edwards_add_commutative(IS_prev.0, IS_prev.1, mC.0, mC.1);
-        axiom_edwards_add_associative(mC.0, mC.1, IS_prev.0, IS_prev.1, C.0, C.1);
-        axiom_edwards_add_associative(W.0, W.1, mC.0, mC.1, IS_prev_plus_C.0, IS_prev_plus_C.1);
+        assert(edwards_add(
+            edwards_add(W.0, W.1, IS_prev.0, IS_prev.1).0,
+            edwards_add(W.0, W.1, IS_prev.0, IS_prev.1).1,
+            mC_plus_C.0,
+            mC_plus_C.1,
+        ) == edwards_add(W_plus_mC.0, W_plus_mC.1, IS_prev_plus_C.0, IS_prev_plus_C.1)) by {
+            axiom_edwards_add_associative(W.0, W.1, IS_prev.0, IS_prev.1, mC_plus_C.0, mC_plus_C.1);
+            axiom_edwards_add_associative(IS_prev.0, IS_prev.1, mC.0, mC.1, C.0, C.1);
+            lemma_edwards_add_commutative(IS_prev.0, IS_prev.1, mC.0, mC.1);
+            axiom_edwards_add_associative(mC.0, mC.1, IS_prev.0, IS_prev.1, C.0, C.1);
+            axiom_edwards_add_associative(W.0, W.1, mC.0, mC.1, IS_prev_plus_C.0, IS_prev_plus_C.1);
+        }
     }
 }
 
@@ -881,16 +952,36 @@ proof fn lemma_running_sum_eq_weighted_from(buckets: Seq<(nat, nat)>, b: int, B:
         assert(pippenger_running_sum(buckets, b, B) == buckets[b]);
         assert(pippenger_weighted_from(buckets, b, B - 1) == edwards_identity());
         reveal_with_fuel(edwards_scalar_mul, 1);
-        p_gt_2();
-        lemma_edwards_add_identity_left(buckets[b].0, buckets[b].1);
-        lemma_small_mod(buckets[b].0, p());
-        lemma_small_mod(buckets[b].1, p());
+        assert(edwards_add(0, 1, buckets[b].0, buckets[b].1) == (
+            buckets[b].0 % p(),
+            buckets[b].1 % p(),
+        )) by {
+            p_gt_2();
+            lemma_edwards_add_identity_left(buckets[b].0, buckets[b].1);
+        }
+        assert(buckets[b].0 % p() == buckets[b].0) by {
+            lemma_small_mod(buckets[b].0, p());
+        }
+        assert(buckets[b].1 % p() == buckets[b].1) by {
+            lemma_small_mod(buckets[b].1, p());
+        }
     } else {
-        // running_sum(b, B) = add(running_sum(b+1, B), IS(b, B))
-        // By IH: running_sum(b+1, B) = weighted_from(b+1, B)
-        lemma_running_sum_eq_weighted_from(buckets, b + 1, B);
-        // By decompose: weighted_from(b, B) = add(weighted_from(b+1, B), IS(b, B))
-        lemma_weighted_from_decompose(buckets, b, B);
+        // IH: running_sum(b+1, B) = weighted_from(b+1, B)
+        assert(pippenger_running_sum(buckets, b + 1, B) == pippenger_weighted_from(
+            buckets,
+            b + 1,
+            B,
+        )) by {
+            lemma_running_sum_eq_weighted_from(buckets, b + 1, B);
+        }
+        // Decompose: weighted_from(b, B) = add(weighted_from(b+1, B), IS(b, B))
+        assert(pippenger_weighted_from(buckets, b, B) == {
+            let w = pippenger_weighted_from(buckets, b + 1, B);
+            let is = pippenger_intermediate_sum(buckets, b, B);
+            edwards_add(w.0, w.1, is.0, is.1)
+        }) by {
+            lemma_weighted_from_decompose(buckets, b, B);
+        }
     }
 }
 
@@ -922,8 +1013,19 @@ pub proof fn lemma_running_sum_equals_weighted(buckets_affine: Seq<(nat, nat)>, 
             B,
         ),
 {
-    lemma_running_sum_eq_weighted_from(buckets_affine, 0, B);
-    lemma_weighted_from_eq_weighted_bucket_sum(buckets_affine, B);
+    assert(pippenger_running_sum(buckets_affine, 0, B) == pippenger_weighted_from(
+        buckets_affine,
+        0,
+        B,
+    )) by {
+        lemma_running_sum_eq_weighted_from(buckets_affine, 0, B);
+    }
+    assert(pippenger_weighted_from(buckets_affine, 0, B) == pippenger_weighted_bucket_sum(
+        buckets_affine,
+        B,
+    )) by {
+        lemma_weighted_from_eq_weighted_bucket_sum(buckets_affine, B);
+    }
 }
 
 // =============================================================================
@@ -942,7 +1044,10 @@ proof fn lemma_weighted_bucket_sum_agree(a: Seq<(nat, nat)>, b: Seq<(nat, nat)>,
 {
     if B <= 0 {
     } else {
-        lemma_weighted_bucket_sum_agree(a, b, B - 1);
+        assert(pippenger_weighted_bucket_sum(a, B - 1) == pippenger_weighted_bucket_sum(b, B - 1))
+            by {
+            lemma_weighted_bucket_sum_agree(a, b, B - 1);
+        }
     }
 }
 
@@ -962,12 +1067,21 @@ proof fn lemma_weighted_bucket_sum_all_identity(buckets: Seq<(nat, nat)>, B: int
 {
     if B <= 0 {
     } else {
-        lemma_weighted_bucket_sum_all_identity(buckets, B - 1);
-        // [B]*identity = identity
-        lemma_edwards_scalar_mul_identity(B as nat);
-        // identity + identity = identity
-        p_gt_2();
-        lemma_edwards_add_identity_right_canonical(edwards_identity());
+        assert(pippenger_weighted_bucket_sum(buckets, B - 1) == edwards_identity()) by {
+            lemma_weighted_bucket_sum_all_identity(buckets, B - 1);
+        }
+        assert(edwards_scalar_mul(edwards_identity(), B as nat) == edwards_identity()) by {
+            lemma_edwards_scalar_mul_identity(B as nat);
+        }
+        assert(edwards_add(
+            edwards_identity().0,
+            edwards_identity().1,
+            edwards_identity().0,
+            edwards_identity().1,
+        ) == edwards_identity()) by {
+            p_gt_2();
+            lemma_edwards_add_identity_right_canonical(edwards_identity());
+        }
     }
 }
 
@@ -1005,32 +1119,87 @@ proof fn lemma_weighted_bucket_sum_add_to_bucket(
     decreases B,
 {
     if idx == B - 1 {
-        // The last bucket changed.  First B-1 buckets agree:
-        lemma_weighted_bucket_sum_agree(buckets_old, buckets_new, B - 1);
-
-        // [B]*(old[B-1] + P) = [B]*old[B-1] + [B]*P  (distributivity)
-        axiom_edwards_scalar_mul_distributive(buckets_old[B - 1], P, B as nat);
-
-        // Reassociate: WBS_old(B-1) + ([B]*old + [B]*P) = (WBS_old(B-1) + [B]*old) + [B]*P
         let wbs_prev = pippenger_weighted_bucket_sum(buckets_old, B - 1);
         let old_w = edwards_scalar_mul(buckets_old[B - 1], B as nat);
         let delta = edwards_scalar_mul(P, B as nat);
-        axiom_edwards_add_associative(wbs_prev.0, wbs_prev.1, old_w.0, old_w.1, delta.0, delta.1);
-    } else {
-        // idx < B-1: last bucket unchanged.
-        // By IH on first B-1 buckets:
-        lemma_weighted_bucket_sum_add_to_bucket(buckets_old, buckets_new, idx, P, B - 1);
 
-        // Reassociate: (WBS_old(B-1) + delta) + [B]*old[B-1]
-        //            = (WBS_old(B-1) + [B]*old[B-1]) + delta
-        //            = WBS_old(B) + delta
+        // First B-1 buckets agree
+        assert(pippenger_weighted_bucket_sum(buckets_new, B - 1) == pippenger_weighted_bucket_sum(
+            buckets_old,
+            B - 1,
+        )) by {
+            lemma_weighted_bucket_sum_agree(buckets_old, buckets_new, B - 1);
+        }
+        // [B]*(old[B-1] + P) = [B]*old[B-1] + [B]*P  (distributivity)
+        assert(edwards_scalar_mul(
+            edwards_add(buckets_old[B - 1].0, buckets_old[B - 1].1, P.0, P.1),
+            B as nat,
+        ) == edwards_add(old_w.0, old_w.1, delta.0, delta.1)) by {
+            axiom_edwards_scalar_mul_distributive(buckets_old[B - 1], P, B as nat);
+        }
+        // Reassociate: WBS_old(B-1) + ([B]*old + [B]*P) = (WBS_old(B-1) + [B]*old) + [B]*P
+        assert(edwards_add(
+            wbs_prev.0,
+            wbs_prev.1,
+            edwards_add(old_w.0, old_w.1, delta.0, delta.1).0,
+            edwards_add(old_w.0, old_w.1, delta.0, delta.1).1,
+        ) == edwards_add(
+            edwards_add(wbs_prev.0, wbs_prev.1, old_w.0, old_w.1).0,
+            edwards_add(wbs_prev.0, wbs_prev.1, old_w.0, old_w.1).1,
+            delta.0,
+            delta.1,
+        )) by {
+            axiom_edwards_add_associative(
+                wbs_prev.0,
+                wbs_prev.1,
+                old_w.0,
+                old_w.1,
+                delta.0,
+                delta.1,
+            );
+        }
+    } else {
         let wbs_prev = pippenger_weighted_bucket_sum(buckets_old, B - 1);
         let old_w = edwards_scalar_mul(buckets_old[B - 1], B as nat);
         let delta = edwards_scalar_mul(P, (idx + 1) as nat);
 
-        axiom_edwards_add_associative(wbs_prev.0, wbs_prev.1, delta.0, delta.1, old_w.0, old_w.1);
-        lemma_edwards_add_commutative(delta.0, delta.1, old_w.0, old_w.1);
-        axiom_edwards_add_associative(wbs_prev.0, wbs_prev.1, old_w.0, old_w.1, delta.0, delta.1);
+        // IH on first B-1 buckets
+        assert(pippenger_weighted_bucket_sum(buckets_new, B - 1) == {
+            let prev = pippenger_weighted_bucket_sum(buckets_old, B - 1);
+            edwards_add(prev.0, prev.1, delta.0, delta.1)
+        }) by {
+            lemma_weighted_bucket_sum_add_to_bucket(buckets_old, buckets_new, idx, P, B - 1);
+        }
+        // Reassociate: (WBS_old(B-1) + delta) + [B]*old = (WBS_old(B-1) + [B]*old) + delta
+        assert(edwards_add(
+            edwards_add(wbs_prev.0, wbs_prev.1, delta.0, delta.1).0,
+            edwards_add(wbs_prev.0, wbs_prev.1, delta.0, delta.1).1,
+            old_w.0,
+            old_w.1,
+        ) == edwards_add(
+            edwards_add(wbs_prev.0, wbs_prev.1, old_w.0, old_w.1).0,
+            edwards_add(wbs_prev.0, wbs_prev.1, old_w.0, old_w.1).1,
+            delta.0,
+            delta.1,
+        )) by {
+            axiom_edwards_add_associative(
+                wbs_prev.0,
+                wbs_prev.1,
+                delta.0,
+                delta.1,
+                old_w.0,
+                old_w.1,
+            );
+            lemma_edwards_add_commutative(delta.0, delta.1, old_w.0, old_w.1);
+            axiom_edwards_add_associative(
+                wbs_prev.0,
+                wbs_prev.1,
+                old_w.0,
+                old_w.1,
+                delta.0,
+                delta.1,
+            );
+        }
     }
 }
 
@@ -1090,20 +1259,29 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
         // All buckets are identity; WBS = identity = column_sum(0)
         assert forall|b: int| 0 <= b < B implies (#[trigger] buckets_n[b])
             == edwards_identity() by {};
-        lemma_weighted_bucket_sum_all_identity(buckets_n, B);
+        assert(pippenger_weighted_bucket_sum(buckets_n, B) == edwards_identity()) by {
+            lemma_weighted_bucket_sum_all_identity(buckets_n, B);
+        }
     } else {
         // IH at n-1
         let buckets_prev = Seq::new(
             B as nat,
             |b: int| pippenger_bucket_contents(points_affine, all_digits, col, n - 1, b),
         );
-        lemma_bucket_weighted_sum_equals_column_sum(
+        assert(pippenger_weighted_bucket_sum(buckets_prev, num_buckets) == straus_column_sum(
             points_affine,
             all_digits,
             col,
             n - 1,
-            num_buckets,
-        );
+        )) by {
+            lemma_bucket_weighted_sum_equals_column_sum(
+                points_affine,
+                all_digits,
+                col,
+                n - 1,
+                num_buckets,
+            );
+        }
 
         let d = all_digits[n - 1][col] as int;
         let pt = points_affine[n - 1];
@@ -1111,7 +1289,6 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
         if d > 0 {
             let idx = (d - 1) as int;
 
-            // buckets_n differs from buckets_prev only at idx
             assert forall|bb: int| 0 <= bb < B && bb != idx implies (#[trigger] buckets_n[bb])
                 == buckets_prev[bb] by {};
             assert(buckets_n[idx] == edwards_add(
@@ -1121,7 +1298,13 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
                 pt.1,
             ));
 
-            lemma_weighted_bucket_sum_add_to_bucket(buckets_prev, buckets_n, idx, pt, B);
+            assert(pippenger_weighted_bucket_sum(buckets_n, B) == {
+                let prev = pippenger_weighted_bucket_sum(buckets_prev, B);
+                let delta = edwards_scalar_mul(pt, (idx + 1) as nat);
+                edwards_add(prev.0, prev.1, delta.0, delta.1)
+            }) by {
+                lemma_weighted_bucket_sum_add_to_bucket(buckets_prev, buckets_n, idx, pt, B);
+            }
             reveal(edwards_scalar_mul_signed);
         } else if d < 0 {
             let idx = (-d - 1) as int;
@@ -1129,7 +1312,6 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
             assert forall|bb: int| 0 <= bb < B && bb != idx implies (#[trigger] buckets_n[bb])
                 == buckets_prev[bb] by {};
 
-            // bucket_contents at idx: sub(prev, pt) = add(prev, neg(pt))
             let neg_pt = edwards_neg(pt);
             assert(buckets_n[idx] == edwards_sub(
                 buckets_prev[idx].0,
@@ -1137,7 +1319,6 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
                 pt.0,
                 pt.1,
             ));
-            // edwards_sub = edwards_add with negated x, i.e., add(prev, neg_pt)
             assert(buckets_n[idx] == edwards_add(
                 buckets_prev[idx].0,
                 buckets_prev[idx].1,
@@ -1145,26 +1326,41 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
                 neg_pt.1,
             ));
 
-            lemma_weighted_bucket_sum_add_to_bucket(buckets_prev, buckets_n, idx, neg_pt, B);
-            axiom_scalar_mul_distributes_over_neg(pt, (-d) as nat);
+            assert(pippenger_weighted_bucket_sum(buckets_n, B) == {
+                let prev = pippenger_weighted_bucket_sum(buckets_prev, B);
+                let delta = edwards_scalar_mul(neg_pt, (idx + 1) as nat);
+                edwards_add(prev.0, prev.1, delta.0, delta.1)
+            }) by {
+                lemma_weighted_bucket_sum_add_to_bucket(buckets_prev, buckets_n, idx, neg_pt, B);
+            }
+            assert(edwards_scalar_mul(edwards_neg(pt), (-d) as nat) == edwards_neg(
+                edwards_scalar_mul(pt, (-d) as nat),
+            )) by {
+                axiom_scalar_mul_distributes_over_neg(pt, (-d) as nat);
+            }
             reveal(edwards_scalar_mul_signed);
         } else {
             // d == 0: no buckets changed
             assert forall|bb: int| 0 <= bb < B implies (#[trigger] buckets_n[bb])
                 == buckets_prev[bb] by {};
-            lemma_weighted_bucket_sum_agree(buckets_prev, buckets_n, B);
+            assert(pippenger_weighted_bucket_sum(buckets_n, B) == pippenger_weighted_bucket_sum(
+                buckets_prev,
+                B,
+            )) by {
+                lemma_weighted_bucket_sum_agree(buckets_prev, buckets_n, B);
+            }
 
-            // column_sum(n) = add(column_sum(n-1), [0]*pt)
-            // [0]*pt = identity
             reveal(edwards_scalar_mul_signed);
             reveal_with_fuel(edwards_scalar_mul, 1);
 
-            // WBS unchanged = column_sum(n-1)
-            // column_sum(n) = column_sum(n-1) + identity = column_sum(n-1)
-            lemma_column_sum_canonical(points_affine, all_digits, col, n - 1);
             let cs = straus_column_sum(points_affine, all_digits, col, n - 1);
-            p_gt_2();
-            lemma_edwards_add_identity_right_canonical(cs);
+            assert(cs.0 < p() && cs.1 < p()) by {
+                lemma_column_sum_canonical(points_affine, all_digits, col, n - 1);
+            }
+            assert(edwards_add(cs.0, cs.1, 0, 1) == cs) by {
+                p_gt_2();
+                lemma_edwards_add_identity_right_canonical(cs);
+            }
         }
     }
 }

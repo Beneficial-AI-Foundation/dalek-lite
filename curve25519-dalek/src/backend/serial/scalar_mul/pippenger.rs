@@ -399,30 +399,20 @@ impl Pippenger {
             let digit = digits_arr[digit_index] as i16;
 
             proof {
-                let ghost d_spec = digits_seqs[sp_idx as int][digit_index as int];
-                assert(digit as int == d_spec as int);
                 assert(is_valid_radix_2w(&scalars_points@[sp_idx as int].0, w as nat, dc));
-                assert(-(pow2((w - 1) as nat) as int) <= (d_spec as int) && (d_spec as int) <= pow2(
-                    (w - 1) as nat,
-                ));
                 assert(-(buckets_count as int) <= (digit as int) && (digit as int) <= (
                 buckets_count as int));
             }
 
+            let ghost col = digit_index as int;
+            let ghost d_val = digits_seqs[sp_idx as int][col] as int;
+
             if digit > 0 {
                 let b = (digit - 1) as usize;
-                proof {
-                    assert(0 <= b < buckets_count);
-                }
                 let completed = &buckets[b] + pt;
                 let new_bucket = completed.as_extended();
                 buckets.set(b, new_bucket);
                 proof {
-                    let ghost col = digit_index as int;
-                    let ghost d_val = digits_seqs[sp_idx as int][col] as int;
-                    assert(d_val == digit as int);
-                    assert(d_val == (b as int) + 1);
-
                     assert forall|bb: int| 0 <= bb < buckets_count implies edwards_point_as_affine(
                         #[trigger] buckets@[bb],
                     ) == pippenger_bucket_contents(
@@ -433,9 +423,7 @@ impl Pippenger {
                         bb,
                     ) by {
                         if bb == b as int {
-                            assert(d_val == bb + 1);
                         } else {
-                            assert(d_val != bb + 1);
                             assert(d_val > 0);
                             assert(d_val != -(bb + 1));
                         }
@@ -443,18 +431,10 @@ impl Pippenger {
                 }
             } else if digit < 0 {
                 let b = (-digit - 1) as usize;
-                proof {
-                    assert(0 <= b < buckets_count);
-                }
                 let completed = &buckets[b] - pt;
                 let new_bucket = completed.as_extended();
                 buckets.set(b, new_bucket);
                 proof {
-                    let ghost col = digit_index as int;
-                    let ghost d_val = digits_seqs[sp_idx as int][col] as int;
-                    assert(d_val == digit as int);
-                    assert(d_val == -((b as int) + 1));
-
                     assert forall|bb: int| 0 <= bb < buckets_count implies edwards_point_as_affine(
                         #[trigger] buckets@[bb],
                     ) == pippenger_bucket_contents(
@@ -465,20 +445,13 @@ impl Pippenger {
                         bb,
                     ) by {
                         if bb == b as int {
-                            assert(d_val == -(bb + 1));
                         } else {
-                            assert(d_val != bb + 1);
-                            assert(d_val != -(bb + 1));
                         }
                     };
                 }
             } else {
                 // digit == 0: no bucket modified
                 proof {
-                    let ghost col = digit_index as int;
-                    let ghost d_val = digits_seqs[sp_idx as int][col] as int;
-                    assert(d_val == 0);
-
                     assert forall|bb: int| 0 <= bb < buckets_count implies edwards_point_as_affine(
                         #[trigger] buckets@[bb],
                     ) == pippenger_bucket_contents(
@@ -487,10 +460,7 @@ impl Pippenger {
                         col,
                         sp_idx as int + 1,
                         bb,
-                    ) by {
-                        assert(d_val != bb + 1);
-                        assert(d_val != -(bb + 1));
-                    };
+                    ) by {};
                 }
             }
             sp_idx = sp_idx + 1;
@@ -697,22 +667,14 @@ impl Pippenger {
             match points_vec[idx] {
                 Some(P) => {
                     proof {
-                        assert(points_vec@[idx as int].is_some());
-                        assert(is_well_formed_edwards_point(points_vec@[idx as int].unwrap()));
                         lemma_unfold_edwards(P);
                     }
                     let digits = scalars_vec[idx].as_radix_2w(w);
                     let niels = P.as_projective_niels();
                     scalars_points.push((digits, niels));
-                    proof {
-                        assert(scalars_points@[idx as int] == (digits, niels));
-                        assert(scalars_points@[idx as int].0 == digits);
-                        assert(scalars_points@[idx as int].1 == niels);
-                    }
                 },
                 None => {
                     proof {
-                        assert(!points_vec@[idx as int].is_some());
                         assert(!all_points_some(points_vec@));
                     }
                     return None;
@@ -844,19 +806,10 @@ impl Pippenger {
             } else if w == 7 {
                 assert(262int / 7 == 37);
             } else {
-                assert(w == 8);
                 assert(263int / 8 == 32);
             }
             assert(digits_count as nat == dc);
-            assert(n == scalars_vec@.len());
-            assert(n == spec_points.len());
-            assert(pts_affine.len() == n);
-            assert(digits_seqs.len() == n);
 
-            assert forall|k: int| 0 <= k < n implies #[trigger] unwrapped_points[k]
-                == spec_points[k].unwrap() by {};
-            assert forall|k: int| 0 <= k < n implies #[trigger] pts_affine[k]
-                == edwards_point_as_affine(unwrapped_points[k]) by {};
             assert forall|k: int| 0 <= k < n implies (#[trigger] pts_affine[k]).0 < p()
                 && pts_affine[k].1 < p() by {
                 lemma_edwards_point_as_affine_canonical(unwrapped_points[k]);
@@ -867,13 +820,7 @@ impl Pippenger {
                     &scalars_vec@[k],
                 ) as int
             } by {
-                assert(digits_seqs[k].len() == 64);
-                assert(dc <= 64);
                 lemma_reconstruct_radix_2w_from_equals_reconstruct(digits_seqs[k], w as nat, dc);
-            };
-            assert forall|k: int| 0 <= k < n implies (#[trigger] digits_seqs[k]).len()
-                >= dc as int by {
-                assert(digits_seqs[k].len() == 64);
             };
         }
 
@@ -914,8 +861,6 @@ impl Pippenger {
             assert forall|k: int| 0 <= k < n implies projective_niels_point_as_affine_edwards(
                 (#[trigger] scalars_points@[k]).1,
             ) == pts_affine[k] by {
-                assert(is_well_formed_edwards_point(points_vec@[k].unwrap()));
-                assert(is_valid_edwards_point(points_vec@[k].unwrap()));
                 lemma_projective_niels_affine_equals_edwards_affine(
                     scalars_points@[k].1,
                     points_vec@[k].unwrap(),
@@ -1073,14 +1018,8 @@ impl Pippenger {
 
         // Final proof: pippenger_horner(pts, digs, 0, w, dc) == sum_of_scalar_muls(scalars, points)
         proof {
-            assert(spec_scalars.len() == unwrapped_points.len());
-            assert(pts_affine.len() == spec_scalars.len());
-            assert(digits_seqs.len() == spec_scalars.len());
-
             assert forall|k: int| 0 <= k < pts_affine.len() implies #[trigger] pts_affine[k]
-                == edwards_point_as_affine(unwrapped_points[k]) by {
-                assert(unwrapped_points[k] == spec_points[k].unwrap());
-            };
+                == edwards_point_as_affine(unwrapped_points[k]) by {};
 
             assert forall|k: int| 0 <= k < digits_seqs.len() implies {
                 &&& (#[trigger] digits_seqs[k]).len() >= dc as int
@@ -1088,8 +1027,6 @@ impl Pippenger {
                     &spec_scalars[k],
                 ) as int
             } by {
-                assert(digits_seqs[k].len() == 64);
-                assert(dc <= 64);
                 lemma_reconstruct_radix_2w_from_equals_reconstruct(digits_seqs[k], w as nat, dc);
             };
 

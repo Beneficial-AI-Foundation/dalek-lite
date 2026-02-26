@@ -22,6 +22,8 @@
 //
 //   Result: a prime-order group of order ℓ with equivalence classes [P] = {P + T : T ∈ E[4]} for P ∈ 2E.
 //
+// TODO: Add subgroup-preservation lemmas (e.g., closure of 2*E under edwards_add)
+//       once group-law lemmas for Edwards points are available.
 #[allow(unused_imports)]
 use super::core_specs::*;
 #[allow(unused_imports)]
@@ -52,13 +54,15 @@ use vstd::prelude::*;
 verus! {
 
 // =============================================================================
-// Ristretto Group Mathematical Specifications
+// Ristretto Compression (Encoding)
 // =============================================================================
-// TODO: Add subgroup-preservation lemmas (e.g., closure of 2*E under edwards_add)
-//       once group-law lemmas for Edwards points are available.
-/// Core Ristretto compression from extended coordinates (X, Y, Z, T).
-/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding";
-///            [DECAF], Section 6 (encoding formulas), and https://ristretto.group/formulas/encoding.html.
+/// Ristretto encoding from extended coordinates (X : Y : Z : T).
+///
+/// Given projective coordinates with Z·T = X·Y, computes the canonical
+/// 32-byte Ristretto encoding. The algorithm selects the unique representative
+/// from the coset P + E[4] whose encoding s satisfies s ≥ 0.
+///
+/// Reference: [RISTRETTO] §5.3; [DECAF] §6; https://ristretto.group/formulas/encoding.html
 pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {
     let u1 = field_mul(field_add(z, y), field_sub(z, y));
     let u2 = field_mul(x, y);
@@ -107,38 +111,95 @@ pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat
     u8_32_from_nat(s_final)
 }
 
-/// Spec-only model of Ristretto compression from a RistrettoPoint.
+/// Ristretto encoding from a RistrettoPoint (delegates to extended coordinates).
 ///
-/// This captures the canonical encoding of a Ristretto point.
-/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding"
+/// Reference: [RISTRETTO] §5.3
 pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
     let (x, y, z, t) = spec_edwards_point(point.0);
     spec_ristretto_compress_extended(x, y, z, t)
 }
 
-/// Spec-only model of Ristretto compression from affine coordinates.
+/// Ristretto encoding from affine coordinates (x, y).
 ///
-/// For affine coords (x, y), we use z = 1 and t = x * y
-/// (since T = XY/Z = xy/1 = xy in extended coords).
+/// Sets Z = 1, T = x·y (the Segre invariant Z·T = X·Y).
 ///
-/// Reference: [RISTRETTO], §5.3 "Ristretto255 Encoding"
+/// Reference: [RISTRETTO] §5.3
 pub open spec fn spec_ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
     spec_ristretto_compress_extended(x, y, 1, field_mul(x, y))
 }
 
-/// Spec model of Ristretto decompression, returning affine extended coordinates (X, Y, Z, T).
+// =============================================================================
+// Ristretto Decompression (Decoding)
+// =============================================================================
+// Reference: [RISTRETTO] §5.2; [DECAF] §6; https://ristretto.group/formulas/decoding.html
+//
+// Decode formula (given canonical non-negative field element s):
+//
+//   s²  = s · s
+//   u1  = 1 - s²
+//   u2  = 1 + s²
+//   v   = -d·u1² - u2²
+//   (ok, I) = invsqrt(v · u2²)
+//   Dx  = I · u2
+//   Dy  = I · Dx · v
+//   x   = |2s · Dx|                   (conditional negate to non-negative)
+//   y   = u1 · Dy
+//   t   = x · y
+//
+/// Full Ristretto decode for field element s.
+/// Returns (x, y, ok) where ok indicates the invsqrt succeeded (square case).
+pub open spec fn spec_ristretto_decode_inner(s: nat) -> (nat, nat, bool) {
+    let ss = field_square(s);
+    let u1 = field_sub(1, ss);
+    let u2 = field_add(1, ss);
+    let u2_sqr = field_square(u2);
+    let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
+    let u1_sqr = field_square(u1);
+    let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
+
+    let v_u2_sqr = field_mul(v, u2_sqr);
+    let invsqrt = nat_invsqrt(v_u2_sqr);
+    let ok = is_sqrt_ratio(1, v_u2_sqr, invsqrt);
+
+    let dx = field_mul(invsqrt, u2);
+    let dy = field_mul(invsqrt, field_mul(dx, v));
+    let x_tmp = field_mul(field_add(s, s), dx);
+    let x = if is_negative(x_tmp) {
+        field_neg(x_tmp)
+    } else {
+        x_tmp
+    };
+    let y = field_mul(u1, dy);
+
+    (x, y, ok)
+}
+
+/// The x coordinate from decoding field element s.
+pub open spec fn spec_ristretto_decode_x(s: nat) -> nat {
+    spec_ristretto_decode_inner(s).0
+}
+
+/// The y coordinate from decoding field element s.
+pub open spec fn spec_ristretto_decode_y(s: nat) -> nat {
+    spec_ristretto_decode_inner(s).1
+}
+
+/// Whether decoding field element s succeeded (the invsqrt "square" case).
+pub open spec fn spec_ristretto_decode_ok(s: nat) -> bool {
+    spec_ristretto_decode_inner(s).2
+}
+
+/// Ristretto decompression: bytes -> Option<(x, y, 1, x·y)>.
 ///
-/// Implements the Ristretto255 decoding map from a 32-byte encoding to
-/// extended twisted Edwards coordinates (x, y, 1, x·y), or None on failure.
+/// Returns None when any of these checks fail:
+///   1. s < p  (canonical encoding)
+///   2. s mod 2 = 0  (non-negative)
+///   3. invsqrt succeeds, t = x·y ≥ 0, and y ≠ 0
 ///
-/// The decode checks three conditions:
-///   1. The encoding is canonical (s < p)
-///   2. The field element s is non-negative (lowest bit = 0)
-///   3. The invsqrt succeeds (square case), t = x·y is non-negative, and y ≠ 0
+/// On success, returns extended coordinates (x, y, 1, x·y) where (x, y)
+/// are computed by the decode formula (see `spec_ristretto_decode_inner`).
 ///
-/// Reference: [RISTRETTO], §5.2 "Ristretto255 Decoding";
-///            [DECAF], Section 6 (decoding formulas).
-///            https://ristretto.group/formulas/decoding.html
+/// Reference: [RISTRETTO] §5.2; [DECAF] §6; https://ristretto.group/formulas/decoding.html
 pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<(nat, nat, nat, nat)> {
     let s = field_element_from_bytes(&bytes);
 
@@ -156,19 +217,57 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<(nat, nat,
     }
 }
 
-/// The canonical representative of the Ristretto basepoint.
+// --- Decode axioms ---
+/// Axiom: when decode succeeds, the decoded (x, y) satisfy the Edwards curve equation.
 ///
-/// The Ristretto basepoint is the equivalence class [B] where B is the
-/// Ed25519 basepoint. We use B itself as the canonical representative.
+/// Reference: [DECAF] §3, Hamburg 2015; https://ristretto.group/formulas/decoding.html
+/// Runtime validation: `test_ristretto_decode_on_curve` (100 points)
+pub proof fn axiom_ristretto_decode_on_curve(s: nat)
+    requires
+        s < p(),
+        spec_ristretto_decode_ok(s),
+    ensures
+        is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
+{
+    admit();
+}
+
+/// Axiom: when decode succeeds, the resulting point is in the even subgroup (2E).
+///
+/// This is the core Ristretto property: decoded points are always doubles of
+/// some curve point. Combined with the E[4] coset quotient, this gives a
+/// prime-order group.
+///
+/// Reference: [DECAF] §3, Hamburg 2015; https://ristretto.group/details/isogenies.html
+/// Runtime validation: `test_ristretto_decode_in_even_subgroup` (50+ points)
+pub proof fn axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)
+    requires
+        s < p(),
+        spec_ristretto_decode_ok(s),
+        spec_edwards_point(point) == (
+            spec_ristretto_decode_x(s),
+            spec_ristretto_decode_y(s),
+            1nat,
+            field_mul(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
+        ),
+    ensures
+        is_in_even_subgroup(point),
+{
+    admit();
+}
+
+// =============================================================================
+// Ristretto Basepoint
+// =============================================================================
+/// Ristretto basepoint = [B] where B is the Ed25519 basepoint.
 pub open spec fn spec_ristretto_basepoint() -> (nat, nat) {
     spec_ed25519_basepoint()
 }
 
-/// Axiom: `RISTRETTO_BASEPOINT_TABLE` is a valid precomputed table for the Ristretto basepoint.
+/// Axiom: RISTRETTO_BASEPOINT_TABLE is valid for the Ristretto basepoint.
 ///
-/// Since `RistrettoBasepointTable` wraps `EdwardsBasepointTable` and
-/// `RISTRETTO_BASEPOINT_TABLE` is a pointer cast of `ED25519_BASEPOINT_TABLE`,
-/// this follows from `axiom_ed25519_basepoint_table_valid()`.
+/// Follows from `axiom_ed25519_basepoint_table_valid()` since the Ristretto
+/// table is a pointer cast of the Ed25519 table.
 #[cfg(feature = "precomputed-tables")]
 pub proof fn axiom_ristretto_basepoint_table_valid()
     ensures
@@ -187,95 +286,47 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 }
 
 // =============================================================================
-// Ristretto Decode Axioms
+// Ristretto Elligator Map (Hash-to-Group)
 // =============================================================================
-/// Ristretto decoding formula produces a point on the Edwards curve.
-///
-/// When decode succeeds (`spec_ristretto_decode_ok(s)` = true, i.e., the
-/// square case I²·v·u2² = 1), the decoded (x, y) satisfies the curve
-/// equation -x² + y² = 1 + d·x²·y² (mod p).
-///
-/// Reference: Hamburg (2015), "Decaf: Eliminating cofactors through point compression"
-/// <https://eprint.iacr.org/2015/673>
-/// See also: https://ristretto.group/formulas/decoding.html
-///
-/// Runtime validation: `test_ristretto_decode_on_curve`
-pub proof fn axiom_ristretto_decode_on_curve(s: nat)
-    requires
-        s < p(),
-        spec_ristretto_decode_ok(s),
-    ensures
-        is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
-{
-    admit();
+/// The constant sqrt(-d - 1), precomputed for Ristretto's Elligator map.
+pub open spec fn spec_sqrt_ad_minus_one() -> nat {
+    fe51_as_canonical_nat(&u64_constants::SQRT_AD_MINUS_ONE)
 }
 
-/// Ristretto decoding produces a point in the even subgroup 2E = {2Q : Q ∈ E}.
+/// Elligator map for Ristretto (MAP function): field element r_0 -> affine point (x, y).
 ///
-/// When decode succeeds, the resulting point is always the double of some
-/// curve point Q. This is the key property that makes Ristretto a prime-order
-/// group: combined with the coset quotient by E[4], it eliminates the cofactor 8.
+/// Maps a field element to a Ristretto point deterministically. Computes a
+/// completed point from r_0 via sqrt_ratio_i, then converts to affine.
 ///
-/// Reference: Hamburg (2015), "Decaf: Eliminating cofactors through point compression"
-/// <https://eprint.iacr.org/2015/673>
-/// Hamburg (2019), "Ristretto: prime-order elliptic curve groups with non-prime-order curves"
-/// <https://eprint.iacr.org/2020/1400>
-/// See also: https://ristretto.group/details/isogenies.html
+/// Given i = sqrt(-1), d = Edwards curve constant, c₀ = -1:
 ///
-/// Runtime validation: `test_ristretto_decode_in_even_subgroup`
-pub proof fn axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)
-    requires
-        s < p(),
-        spec_ristretto_decode_ok(s),
-        spec_edwards_point(point) == (
-            spec_ristretto_decode_x(s),
-            spec_ristretto_decode_y(s),
-            1nat,
-            field_mul(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
-        ),
-    ensures
-        is_in_even_subgroup(point),
-{
-    admit();
-}
-
-// =============================================================================
-// Ristretto Elligator Map
-// =============================================================================
-/// Spec-only model of the Ristretto Elligator map (MAP function).
+///   r   = i · r_0²
+///   N_s = (r + 1)(1 - d²)
+///   D   = (c₀ - d·r)(r + d)
+///   (was_square, s) = sqrt_ratio_i(N_s, D)
+///   s'  = -|s · r_0|                      (negate to ensure negative)
+///   if !was_square: s = s', c = r          else: s = s, c = c₀
+///   N_t = c·(r - 1)·(d - 1)² - D
 ///
-/// This maps a field element r_0 to a Ristretto point deterministically.
-/// Reference: [RISTRETTO], §4.3.4 "MAP" function;
-///            https://ristretto.group/formulas/elligator.html
+/// Completed point:  X = 2sD,  Y = 1 - s²,  Z = N_t · sqrt(-d - 1),  T = 1 + s²
+/// Affine output:    x = X/Z,  y = Y/T
 ///
-/// The algorithm:
-/// 1. r = i * r_0²  (where i = sqrt(-1))
-/// 2. N_s = (r + 1) * (1 - d²)
-/// 3. D = (c - d*r) * (r + d) where c = -1 initially
-/// 4. (was_square, s) = sqrt_ratio_i(N_s, D)
-/// 5. Conditionally adjust s and c based on was_square
-/// 6. Compute final point coordinates
-///
-/// Returns the affine (x, y) coordinates of the resulting Ristretto point.
+/// Reference: [RISTRETTO] §4.3.4; https://ristretto.group/formulas/elligator.html
 pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     let i = sqrt_m1();
     let d = fe51_as_canonical_nat(&EDWARDS_D);
-    let one_minus_d_sq = field_mul(field_sub(1, d), field_add(1, d));  // (1-d)(1+d) = 1 - d²
-    let d_minus_one_sq = field_square(field_sub(d, 1));  // (d-1)²
-    let c_init: nat = field_neg(1);  // -1
+    let one_minus_d_sq = field_mul(field_sub(1, d), field_add(1, d));
+    let d_minus_one_sq = field_square(field_sub(d, 1));
+    let c_init: nat = field_neg(1);
 
     let r = field_mul(i, field_square(r_0));
     let n_s = field_mul(field_add(r, 1), one_minus_d_sq);
     let d_val = field_mul(field_sub(c_init, field_mul(d, r)), field_add(r, d));
 
-    // sqrt_ratio_i(N_s, D) returns (was_square, s)
-    // invsqrt = 1/sqrt(N_s * D), so s = invsqrt * N_s = sqrt(N_s/D)
     let invsqrt = nat_invsqrt(field_mul(n_s, d_val));
     let s_if_square = field_mul(invsqrt, n_s);
-    // was_square checks if s² · D = N_s (i.e., N_s/D is a square)
     let was_square = is_sqrt_ratio(n_s, d_val, s_if_square);
 
-    // s' = s * r_0, then conditionally negate to make it negative
     let s_prime_raw = field_mul(s_if_square, r_0);
     let s_prime = if !is_negative(s_prime_raw) {
         field_neg(s_prime_raw)
@@ -283,7 +334,6 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
         s_prime_raw
     };
 
-    // If !was_square: s = s', c = r
     let s = if was_square {
         s_if_square
     } else {
@@ -295,20 +345,15 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
         r
     };
 
-    // N_t = c * (r - 1) * (d - 1)² - D
     let n_t = field_sub(field_mul(field_mul(c, field_sub(r, 1)), d_minus_one_sq), d_val);
     let s_sq = field_square(s);
 
-    // Final point in completed coordinates, then converted to affine:
-    // X = 2*s*D, Z = N_t * sqrt(a*d - 1), Y = 1 - s², T = 1 + s²
-    // Affine: x = X*T / (Z*T) = X/Z, y = Y*Z / (Z*T) = Y/T
     let sqrt_ad_minus_one = spec_sqrt_ad_minus_one();
     let x_completed = field_mul(field_mul(2, s), d_val);
     let z_completed = field_mul(n_t, sqrt_ad_minus_one);
     let y_completed = field_sub(1, s_sq);
     let t_completed = field_add(1, s_sq);
 
-    // Convert completed point ((X:Z), (Y:T)) to affine (X/Z, Y/T)
     let x_affine = field_mul(x_completed, field_inv(z_completed));
     let y_affine = field_mul(y_completed, field_inv(t_completed));
 
@@ -325,21 +370,13 @@ pub open spec fn spec_uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
     choose|b: [u8; 32]| b@ == bytes@.subrange(32, 64)
 }
 
-/// Spec-only model of RistrettoPoint::from_uniform_bytes.
+/// Hash-to-group: constructs a Ristretto point from 64 uniform random bytes.
 ///
-/// Constructs a Ristretto point from 64 uniform random bytes using the
-/// "hash-to-group" construction for Ristretto.
+///   b1, b2 = bytes[0..32], bytes[32..64]
+///   r1, r2 = from_bytes(b1), from_bytes(b2)
+///   result = elligator(r1) + elligator(r2)
 ///
-/// Reference: [RISTRETTO], §4.3.4 "Hash-to-group";
-///            https://ristretto.group/formulas/encoding.html
-///
-/// Algorithm:
-/// 1. Split 64 bytes into two 32-byte halves: b1 = bytes[0..32], b2 = bytes[32..64]
-/// 2. Convert each half to a field element: r1 = from_bytes(b1), r2 = from_bytes(b2)
-/// 3. Map each field element to a Ristretto point via Elligator: p1 = MAP(r1), p2 = MAP(r2)
-/// 4. Add the two points: result = p1 + p2
-///
-/// Returns the affine (x, y) coordinates of the resulting Ristretto point.
+/// Reference: [RISTRETTO] §4.3.4; https://ristretto.group/formulas/encoding.html
 pub open spec fn spec_ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
     let b1 = spec_uniform_bytes_first(bytes);
     let b2 = spec_uniform_bytes_second(bytes);
@@ -350,85 +387,10 @@ pub open spec fn spec_ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, na
     edwards_add(p1.0, p1.1, p2.0, p2.1)
 }
 
-/// Spec for sqrt(a*d - 1) where a = -1 for Ed25519.
-/// This equals sqrt(-d - 1).
-pub open spec fn spec_sqrt_ad_minus_one() -> nat {
-    // sqrt(-1 * d - 1) = sqrt(-d - 1)
-    // This is a constant defined in the codebase
-    fe51_as_canonical_nat(&u64_constants::SQRT_AD_MINUS_ONE)
-}
-
-// =============================================================================
-// Ristretto Decode Spec Helpers
-// =============================================================================
-// These functions factor out the decode computation so that specs, predicates,
-// and axioms can reference decoded values without duplicating the formulas.
-/// The invsqrt input v·u2² for field element s, where:
-///   u1 = 1 - s², u2 = 1 + s², v = -d·u1² - u2²
-pub open spec fn spec_ristretto_decode_v_u2_sqr(s: nat) -> nat {
-    let ss = field_square(s);
-    let u1 = field_sub(1, ss);
-    let u2 = field_add(1, ss);
-    let u2_sqr = field_square(u2);
-    let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
-    let u1_sqr = field_square(u1);
-    let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
-    field_mul(v, u2_sqr)
-}
-
-/// The (x, y) coordinates produced by Ristretto decoding of field element s
-/// using a caller-supplied inverse square root `big_i`.
-///
-/// Parameterized on `big_i` so that `spec_ristretto_decode_inner` can
-/// delegate the coordinate computation, separating it from the invsqrt choice.
-pub open spec fn spec_ristretto_decode_xy(s: nat, big_i: nat) -> (nat, nat) {
-    let ss = field_square(s);
-    let u1 = field_sub(1, ss);
-    let u2 = field_add(1, ss);
-    let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
-    let u1_sqr = field_square(u1);
-    let v = field_sub(field_mul(neg_d, u1_sqr), field_square(u2));
-    let dx = field_mul(big_i, u2);
-    let dy = field_mul(big_i, field_mul(dx, v));
-    let x_tmp = field_mul(field_add(s, s), dx);
-    let x = if is_negative(x_tmp) {
-        field_neg(x_tmp)
-    } else {
-        x_tmp
-    };
-    let y = field_mul(u1, dy);
-    (x, y)
-}
-
-/// Full Ristretto decode for field element s.
-/// Returns (x, y, ok) where ok indicates the invsqrt succeeded (square case).
-pub open spec fn spec_ristretto_decode_inner(s: nat) -> (nat, nat, bool) {
-    let v_u2_sqr = spec_ristretto_decode_v_u2_sqr(s);
-    let invsqrt = nat_invsqrt(v_u2_sqr);
-    let ok = is_sqrt_ratio(1, v_u2_sqr, invsqrt);
-    let (x, y) = spec_ristretto_decode_xy(s, invsqrt);
-    (x, y, ok)
-}
-
-/// The X coordinate produced by Ristretto decoding of field element s.
-pub open spec fn spec_ristretto_decode_x(s: nat) -> nat {
-    spec_ristretto_decode_inner(s).0
-}
-
-/// The Y coordinate produced by Ristretto decoding of field element s.
-pub open spec fn spec_ristretto_decode_y(s: nat) -> nat {
-    spec_ristretto_decode_inner(s).1
-}
-
-/// Whether the Ristretto decode invsqrt succeeded for field element s.
-pub open spec fn spec_ristretto_decode_ok(s: nat) -> bool {
-    spec_ristretto_decode_inner(s).2
-}
-
 // =============================================================================
 // Ristretto Equivalence Classes (Cosets)
 // =============================================================================
-/// Point is in the even subgroup 2E = {2Q : Q ∈ E}; valid Ristretto points must lie in 2E.
+/// True when the point is the double of some curve point (i.e., lies in 2E).
 pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {
     exists|q: EdwardsPoint|
         edwards_point_as_affine(point) == edwards_scalar_mul(
@@ -437,10 +399,9 @@ pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {
         )
 }
 
-/// Check if 4 Edwards points form a coset of the 4-torsion subgroup E[4].
+/// True when the 4 points form a coset base + E[4] (one Ristretto equivalence class).
 ///
-/// A coset P + E[4] = {P, P + T[2], P + T[4], P + T[6]} represents a single
-/// Ristretto equivalence class - all 4 points map to the same Ristretto point.
+/// E[4] has elements T[0] (identity), T[2], T[4], T[6] from the 8-torsion table.
 pub open spec fn is_ristretto_coset(points: [EdwardsPoint; 4], base: EdwardsPoint) -> bool {
     let base_affine = edwards_point_as_affine(base);
     let t2 = edwards_point_as_affine(spec_eight_torsion()[2]);
@@ -468,7 +429,7 @@ pub open spec fn is_ristretto_coset(points: [EdwardsPoint; 4], base: EdwardsPoin
      && edwards_point_as_affine(points[3]) == edwards_add(base_affine.0, base_affine.1, t6.0, t6.1)
 }
 
-/// Two Edwards points are Ristretto-equivalent if they differ by a 4-torsion element.
+/// Two points are Ristretto-equivalent when their difference is a 4-torsion element.
 pub open spec fn ristretto_equivalent(p1: EdwardsPoint, p2: EdwardsPoint) -> bool
     recommends
         is_well_formed_edwards_point(p1),

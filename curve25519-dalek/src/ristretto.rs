@@ -371,7 +371,7 @@ impl CompressedRistretto {
     /// - `None` if `self` was not the canonical encoding of a point.
     pub fn decompress(&self) -> (result: Option<RistrettoPoint>)
         ensures
-    // Spec alignment: result matches spec-level decoding (coordinate-level)
+    // Spec alignment: result matches spec-level decoding
 
             result.is_none() <==> spec_ristretto_decompress(self.0).is_none(),
             result.is_some() ==> spec_edwards_point(result.unwrap().0) == spec_ristretto_decompress(
@@ -537,30 +537,36 @@ mod decompress {
         (s_encoding_is_canonical, s_is_negative, s)
     }
 
-    /// Decompress step 2: Compute the Edwards point from the field element s.
+    /// Decompress step 2: apply Ristretto decode formula to field element s,
+    /// producing affine coordinates (x, y) and extended point (x, y, 1, x·y).
     ///
-    /// Returns (ok, t_is_negative, y_is_zero, point) where:
-    /// - ok: true iff the sqrt_ratio succeeded (s encodes a valid point)
-    /// - t_is_negative: true iff T coordinate has low bit set
-    /// - y_is_zero: true iff Y coordinate is zero
-    /// - point: the computed RistrettoPoint
-    #[verifier::rlimit(20)]
+    /// Returns (ok, t_is_negative, y_is_zero, point):
+    /// - ok: invsqrt succeeded, i.e. s encodes a valid Ristretto point
+    /// - t_is_negative: is_negative(x·y)
+    /// - y_is_zero: y == 0
+    /// - point: RistrettoPoint(EdwardsPoint { X: x, Y: y, Z: 1, T: x·y })
     pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint))
         requires
             fe51_limbs_bounded(&s, 51),
         ensures
-    // If decoding succeeds, the output point is well-formed and in the even subgroup
+    // ok <==> spec-level decode succeeds
 
+            choice_is_true(result.0) == spec_ristretto_decode_ok(fe51_as_canonical_nat(&s)),
+            // When ok: point is well-formed, in the even subgroup, with Z=1 and T=X*Y
             choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
             choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
-            // When ok, Z is ONE and T = X*Y
             choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Z) == 1,
             choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.T) == field_mul(
                 fe51_as_canonical_nat(&result.3.0.X),
                 fe51_as_canonical_nat(&result.3.0.Y),
             ),
-            // t_is_negative and y_is_zero reflect the SPEC-LEVEL decode values
-            // (not necessarily the point's coords, which may be identity when ok is false)
+            // When ok: X, Y match the spec decode values
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X)
+                == spec_ristretto_decode_x(fe51_as_canonical_nat(&s)),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y)
+                == spec_ristretto_decode_y(fe51_as_canonical_nat(&s)),
+            // t_is_negative and y_is_zero always reflect the spec-level decode values
+            // (computed from raw x, y — NOT from the returned point, which may be identity)
             choice_is_true(result.1) == is_negative(
                 field_mul(
                     spec_ristretto_decode_x(fe51_as_canonical_nat(&s)),
@@ -568,12 +574,6 @@ mod decompress {
                 ),
             ),
             choice_is_true(result.2) == (spec_ristretto_decode_y(fe51_as_canonical_nat(&s)) == 0),
-            // Spec alignment: ok matches spec; X and Y match spec when ok is true
-            choice_is_true(result.0) == spec_ristretto_decode_ok(fe51_as_canonical_nat(&s)),
-            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X)
-                == spec_ristretto_decode_x(fe51_as_canonical_nat(&s)),
-            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y)
-                == spec_ristretto_decode_y(fe51_as_canonical_nat(&s)),
     {
         // =================================================================
         // PHASE 1: Compute field elements with limb bounds tracking
@@ -775,10 +775,8 @@ mod decompress {
         // =================================================================
         // PHASE 2: Prove postconditions
         // =================================================================
-        /* ORIGINAL CODE:
-        The return tuple inlined t.is_negative(), y.is_zero(), and the EdwardsPoint constructor.
-        VERUS WORKAROUND: Bind them to variables so proof blocks can reference postconditions
-        and satisfy the EdwardsPoint type invariant before constructing the return value. */
+        // t_is_neg and y_is_zero are bound before the proof block so they can be
+        // referenced in postconditions (original code inlines them in the return tuple).
         let t_is_neg = t.is_negative();
         let y_is_zero = y.is_zero();
 
@@ -887,8 +885,16 @@ mod decompress {
             }
         }
 
-        // Construct EdwardsPoint: use computed values when ok (proven on-curve),
-        // use identity() when !ok to avoid unsound assume in degenerate case.
+        /*
+        VERIFICATION NOTE: we deviate from the original code in the case of !ok,
+        constructing the EdwardsPoint with the original code would break the type invariant.
+        The returned point may not be on the curve.
+        The caller (decompress) returns None when !ok without accessing the point, so we expect the behaviour
+        of original and refactored code to be the same in this exception case.
+        ORIGINAL CODE (curve25519-4.1.3):
+        (ok, t.is_negative(), y.is_zero(),
+         RistrettoPoint(EdwardsPoint { X: x, Y: y, Z: one, T: t }))
+        */
         let point = if choice_into(ok) {
             EdwardsPoint { X: x, Y: y, Z: one, T: t }
         } else {

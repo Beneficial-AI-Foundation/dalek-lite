@@ -382,8 +382,10 @@ impl CompressedRistretto {
             // On success, the decoded point lies in the even subgroup
             result.is_some() ==> is_in_even_subgroup(result.unwrap().0),
     {
+        // step_1: decode bytes to field element s = from_bytes(self.0)
         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);
 
+        // Return None if: s >= p (non-canonical) || is_negative(s)
         if choice_into(choice_or(choice_not(s_encoding_is_canonical), s_is_negative)) {
             proof {
                 // Non-canonical or negative s ⟹ spec returns None
@@ -395,9 +397,10 @@ impl CompressedRistretto {
             }
             return None;
         }
+        // step_2: compute (x, y) from s via decode formula; ok = invsqrt succeeded
         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
 
-        // Common facts for both branches: the spec's outer conditions match
+        // Establish s < p and !is_negative(s) for the None/Some branches below
         proof {
             let s_nat = fe51_as_canonical_nat(&s);
             assert(s_nat == field_element_from_bytes(&self.0));
@@ -405,6 +408,7 @@ impl CompressedRistretto {
             assert(!is_negative(s_nat));
         }
 
+        // Return None if: !ok || is_negative(x·y) || y == 0
         if choice_into(choice_or(choice_or(choice_not(ok), t_is_negative), y_is_zero)) {
             let result = None;
             proof {
@@ -918,82 +922,6 @@ mod decompress {
         }
 
         (ok, t_is_neg, y_is_zero, RistrettoPoint(point))
-    }
-
-    /// Helper lemma: fe51_as_canonical_nat is always < p().
-    proof fn lemma_canonical_nat_lt_p(x: &FieldElement)
-        ensures
-            fe51_as_canonical_nat(x) < p(),
-    {
-        assert(pow2(255) > 19) by {
-            pow255_gt_19();
-        };
-        assert(fe51_as_canonical_nat(x) < p()) by {
-            lemma_mod_bound(fe51_as_nat(x) as int, p() as int);
-        };
-    }
-
-    /// Helper lemma: Proves that exec I matches nat_invsqrt.
-    ///
-    /// When v*u2² ≠ 0: uses axiom_invsqrt_unique (nonneg invsqrt is unique).
-    /// When v*u2² = 0: invsqrt(0) = 0 by definition of nat_invsqrt.
-    proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
-        requires
-            big_i_nat % 2 == 0,
-            (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
-            (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
-                || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
-            big_i_nat < p(),
-            v_u2_sqr_nat < p(),
-        ensures
-            big_i_nat == nat_invsqrt(v_u2_sqr_nat),
-    {
-        if v_u2_sqr_nat != 0 {
-            assert(!is_negative(big_i_nat)) by {
-                lemma_small_mod(big_i_nat, p());
-            };
-            assert(big_i_nat == nat_invsqrt(v_u2_sqr_nat)) by {
-                assert(v_u2_sqr_nat % p() == v_u2_sqr_nat) by {
-                    lemma_small_mod(v_u2_sqr_nat, p());
-                };
-                axiom_invsqrt_unique(v_u2_sqr_nat, big_i_nat);
-            };
-        } else {
-            assert(0nat % p() == 0) by {
-                lemma_small_mod(0nat, p());
-            };
-        }
-    }
-
-    /// Helper lemma: Establishes invsqrt alignment and mutual exclusion for decode.
-    ///
-    /// Combines lemma_invsqrt_matches_spec with lemma_sqrt_ratio_mutual_exclusion.
-    proof fn lemma_decode_invsqrt_facts(big_i_nat: nat, v_u2_sqr_nat: nat)
-        requires
-            big_i_nat % 2 == 0,
-            (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
-            (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
-                || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
-            big_i_nat < p(),
-            v_u2_sqr_nat < p(),
-        ensures
-            big_i_nat == nat_invsqrt(v_u2_sqr_nat),
-            v_u2_sqr_nat != 0 ==> !(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
-                && is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
-    {
-        lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
-        if v_u2_sqr_nat != 0 {
-            assert(!(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
-                1,
-                v_u2_sqr_nat,
-                big_i_nat,
-            ))) by {
-                assert(1nat % p() == 1) by {
-                    lemma_small_mod(1nat, p());
-                };
-                lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
-            };
-        }
     }
 
 }

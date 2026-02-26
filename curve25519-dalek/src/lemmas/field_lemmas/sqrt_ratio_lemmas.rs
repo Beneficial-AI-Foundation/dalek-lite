@@ -33,6 +33,8 @@
 #![allow(unused_imports)]
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::backend::serial::u64::subtle_assumes::*;
+#[allow(unused_imports)]
+use crate::field::FieldElement;
 use crate::constants;
 use crate::lemmas::common_lemmas::div_mod_lemmas::*;
 use crate::lemmas::common_lemmas::mul_lemmas::*;
@@ -1157,10 +1159,6 @@ pub proof fn lemma_sqrt_ratio_correctness(
 // inlined into sqrt_ratio_i (field.rs) to eliminate 25 parameters of pass-through.
 // The remaining lemmas below (lemma_sqrt_ratio_correctness, lemma_sqrt_ratio_check_value,
 // etc.) are called from the inlined proof block.
-//=============================================================================
-// Axioms / lemmas moved here from ristretto_specs.rs and ristretto.rs
-// because they are sqrt_ratio properties, not Ristretto-specific.
-//=============================================================================
 /// Axiom: The nonnegative inverse square root is unique.
 ///
 /// In GF(p) with p ≡ 5 (mod 8), a nonzero element has at most one nonnegative
@@ -1260,6 +1258,82 @@ pub proof fn lemma_sqrt_ratio_mutual_exclusion(u: nat, v: nat, r: nat)
             };
             assert(false);
         }
+    }
+}
+
+/// fe51_as_canonical_nat is always < p() for any FieldElement.
+pub proof fn lemma_canonical_nat_lt_p(x: &FieldElement)
+    ensures
+        fe51_as_canonical_nat(x) < p(),
+{
+    assert(pow2(255) > 19) by {
+        pow255_gt_19();
+    };
+    assert(fe51_as_canonical_nat(x) < p()) by {
+        lemma_mod_bound(fe51_as_nat(x) as int, p() as int);
+    };
+}
+
+/// Exec I matches nat_invsqrt for the decode computation.
+///
+/// When v·u2² ≠ 0: uses axiom_invsqrt_unique (nonneg invsqrt is unique).
+/// When v·u2² = 0: invsqrt(0) = 0 by definition of nat_invsqrt.
+pub proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
+    requires
+        big_i_nat % 2 == 0,
+        (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
+        (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
+            || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+        big_i_nat < p(),
+        v_u2_sqr_nat < p(),
+    ensures
+        big_i_nat == nat_invsqrt(v_u2_sqr_nat),
+{
+    if v_u2_sqr_nat != 0 {
+        assert(!is_negative(big_i_nat)) by {
+            lemma_small_mod(big_i_nat, p());
+        };
+        assert(big_i_nat == nat_invsqrt(v_u2_sqr_nat)) by {
+            assert(v_u2_sqr_nat % p() == v_u2_sqr_nat) by {
+                lemma_small_mod(v_u2_sqr_nat, p());
+            };
+            axiom_invsqrt_unique(v_u2_sqr_nat, big_i_nat);
+        };
+    } else {
+        assert(0nat % p() == 0) by {
+            lemma_small_mod(0nat, p());
+        };
+    }
+}
+
+/// Invsqrt alignment and mutual exclusion for decode.
+///
+/// Combines lemma_invsqrt_matches_spec with lemma_sqrt_ratio_mutual_exclusion.
+pub proof fn lemma_decode_invsqrt_facts(big_i_nat: nat, v_u2_sqr_nat: nat)
+    requires
+        big_i_nat % 2 == 0,
+        (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
+        (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
+            || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+        big_i_nat < p(),
+        v_u2_sqr_nat < p(),
+    ensures
+        big_i_nat == nat_invsqrt(v_u2_sqr_nat),
+        v_u2_sqr_nat != 0 ==> !(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
+            && is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+{
+    lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
+    if v_u2_sqr_nat != 0 {
+        assert(!(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
+            1,
+            v_u2_sqr_nat,
+            big_i_nat,
+        ))) by {
+            assert(1nat % p() == 1) by {
+                lemma_small_mod(1nat, p());
+            };
+            lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
+        };
     }
 }
 

@@ -1,6 +1,6 @@
 ---
+code-line: 2255
 code-name: "probe:curve25519-dalek/4.1.3/ristretto/&RistrettoBasepointTable#RistrettoBasepointTable<RistrettoPoint>#basepoint()"
 code-path: curve25519-dalek/src/ristretto.rs
-code-line: 2255
 ---
 

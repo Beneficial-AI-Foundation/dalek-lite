@@ -235,78 +235,32 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 // =============================================================================
 // Ristretto Decode Axioms
 // =============================================================================
-/// Predicate: (s, I, x, y) satisfy the Ristretto decode relationships.
-///
-/// Given field element s, intermediate inverse square root I, and output
-/// coordinates x, y, this checks that x and y are computed from s via:
-///   u1 = 1 - s², u2 = 1 + s², v = -d·u1² - u2²
-///   Dx = I·u2, Dy = I·Dx·v
-///   x = |2s·Dx|, y = u1·Dy
-///
-/// and that I satisfies the invsqrt relation: I²·v·u2² ∈ {1, √(-1)} (mod p).
-pub open spec fn is_ristretto_decode_output(s: nat, big_i: nat, x: nat, y: nat) -> bool {
-    let ss = field_square(s);
-    let u1 = field_sub(1, ss);
-    let u2 = field_add(1, ss);
-    let u2_sqr = field_square(u2);
-    let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
-    let u1_sqr = field_square(u1);
-    let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
-    let v_u2_sqr = field_mul(v, u2_sqr);
-    let dx = field_mul(big_i, u2);
-    let dy = field_mul(big_i, field_mul(dx, v));
-    let x_tmp = field_mul(field_add(s, s), dx);
-    &&& (is_sqrt_ratio(1, v_u2_sqr, big_i) || is_sqrt_ratio_times_i(1, v_u2_sqr, big_i))
-    &&& x == (if is_negative(x_tmp) {
-        field_neg(x_tmp)
-    } else {
-        x_tmp
-    })
-    &&& y == field_mul(u1, dy)
-}
-
 /// Ristretto decoding formula produces a point on the Edwards curve.
 ///
-/// Given field element s and inverse square root I satisfying the Ristretto
-/// decode relationships AND the square case (I²·v·u2² = 1), the resulting
-/// (x, y) satisfies -x² + y² = 1 + d·x²·y² (mod p).
-///
-/// This is restricted to the `is_sqrt_ratio` (square) case because the
-/// algebraic identity only simplifies to the curve equation when I²·v·u2² = 1.
-/// Runtime testing confirms the nonsquare case (I²·v·u2² = √(-1)) does NOT
-/// produce on-curve points.
+/// When decode succeeds (`spec_ristretto_decode_ok(s)` = true, i.e., the
+/// square case I²·v·u2² = 1), the decoded (x, y) satisfies the curve
+/// equation -x² + y² = 1 + d·x²·y² (mod p).
 ///
 /// Reference: Hamburg (2015), "Decaf: Eliminating cofactors through point compression"
 /// <https://eprint.iacr.org/2015/673>
 /// See also: https://ristretto.group/formulas/decoding.html
 ///
 /// Runtime validation: `test_ristretto_decode_on_curve`
-pub proof fn axiom_ristretto_decode_on_curve(s: nat, big_i: nat, x: nat, y: nat)
+pub proof fn axiom_ristretto_decode_on_curve(s: nat)
     requires
         s < p(),
-        is_ristretto_decode_output(s, big_i, x, y),
-        ({
-            let ss = field_square(s);
-            let u1 = field_sub(1, ss);
-            let u2 = field_add(1, ss);
-            let u2_sqr = field_square(u2);
-            let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
-            let u1_sqr = field_square(u1);
-            let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
-            is_sqrt_ratio(1, field_mul(v, u2_sqr), big_i)
-        }),
+        spec_ristretto_decode_ok(s),
     ensures
-        is_on_edwards_curve(x, y),
+        is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
 {
     admit();
 }
 
 /// Ristretto decoding produces a point in the even subgroup 2E = {2Q : Q ∈ E}.
 ///
-/// When the decode succeeds (I²·v·u2² = 1, i.e., the square case), the
-/// resulting point (x, y) is always the double of some curve point Q. This
-/// is the key property that makes Ristretto a prime-order group: combined
-/// with the coset quotient by E[4], it eliminates the cofactor 8.
+/// When decode succeeds, the resulting point is always the double of some
+/// curve point Q. This is the key property that makes Ristretto a prime-order
+/// group: combined with the coset quotient by E[4], it eliminates the cofactor 8.
 ///
 /// Reference: Hamburg (2015), "Decaf: Eliminating cofactors through point compression"
 /// <https://eprint.iacr.org/2015/673>
@@ -315,29 +269,16 @@ pub proof fn axiom_ristretto_decode_on_curve(s: nat, big_i: nat, x: nat, y: nat)
 /// See also: https://ristretto.group/details/isogenies.html
 ///
 /// Runtime validation: `test_ristretto_decode_in_even_subgroup`
-pub proof fn axiom_ristretto_decode_in_even_subgroup(
-    s: nat,
-    big_i: nat,
-    x: nat,
-    y: nat,
-    point: EdwardsPoint,
-)
+pub proof fn axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)
     requires
         s < p(),
-        is_ristretto_decode_output(s, big_i, x, y),
-        // Decode succeeded: I is the actual inverse square root (not the nonsquare case)
-        ({
-            let ss = field_square(s);
-            let u1 = field_sub(1, ss);
-            let u2 = field_add(1, ss);
-            let u2_sqr = field_square(u2);
-            let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
-            let u1_sqr = field_square(u1);
-            let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
-            is_sqrt_ratio(1, field_mul(v, u2_sqr), big_i)
-        }),
-        // Point has the decoded coordinates with Z=1
-        spec_edwards_point(point) == (x, y, 1nat, field_mul(x, y)),
+        spec_ristretto_decode_ok(s),
+        spec_edwards_point(point) == (
+            spec_ristretto_decode_x(s),
+            spec_ristretto_decode_y(s),
+            1nat,
+            field_mul(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
+        ),
     ensures
         is_in_even_subgroup(point),
 {

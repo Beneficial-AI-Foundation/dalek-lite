@@ -851,96 +851,23 @@ mod decompress {
                 lemma_canonical_nat_lt_p(&s);
             };
 
-            // Exec values match is_ristretto_decode_output when v*u2² ≠ 0
-            if v_u2_sqr_nat != 0 {
-                assert(is_ristretto_decode_output(s_nat, big_i_nat, x_val, y_val)) by {
-                    let ss_spec = field_square(s_nat);
-                    let u1_spec = field_sub(1nat, ss_spec);
-                    let u2_spec = field_add(1nat, ss_spec);
-                    let u2_sqr_spec = field_square(u2_spec);
-                    let neg_d_spec = field_neg(fe51_as_canonical_nat(&constants::EDWARDS_D));
-                    let u1_sqr_spec = field_square(u1_spec);
-                    let v_spec = field_sub(field_mul(neg_d_spec, u1_sqr_spec), u2_sqr_spec);
-                    let v_u2_sqr_spec = field_mul(v_spec, u2_sqr_spec);
-                    let dx_spec = field_mul(big_i_nat, u2_spec);
-                    let dy_spec = field_mul(big_i_nat, field_mul(dx_spec, v_spec));
-                    let x_tmp_spec = field_mul(field_add(s_nat, s_nat), dx_spec);
-
-                    assert(fe51_as_canonical_nat(&ss) == ss_spec);
-                    assert(fe51_as_canonical_nat(&u1) == u1_spec);
-                    assert(fe51_as_canonical_nat(&u2) == u2_spec);
-                    assert(fe51_as_canonical_nat(&u2_sqr) == u2_sqr_spec);
-                    assert(fe51_as_canonical_nat(&neg_d) == neg_d_spec);
-                    assert(fe51_as_canonical_nat(&u1_sqr) == u1_sqr_spec);
-                    assert(fe51_as_canonical_nat(&neg_d_u1_sqr) == field_mul(
-                        neg_d_spec,
-                        u1_sqr_spec,
-                    ));
-                    assert(fe51_as_canonical_nat(&v) == v_spec);
-                    assert(v_u2_sqr_nat == v_u2_sqr_spec);
-                    assert(fe51_as_canonical_nat(&Dx) == dx_spec);
-                    assert(fe51_as_canonical_nat(&Dx_v) == field_mul(dx_spec, v_spec));
-                    assert(fe51_as_canonical_nat(&Dy) == dy_spec);
-                    assert(fe51_as_canonical_nat(&s_plus_s) == field_add(s_nat, s_nat));
-
-                    assert(is_sqrt_ratio(1, v_u2_sqr_spec, big_i_nat) || is_sqrt_ratio_times_i(
-                        1,
-                        v_u2_sqr_spec,
-                        big_i_nat,
-                    ));
-                    assert(x_val == (if is_negative(x_tmp_spec) {
-                        field_neg(x_tmp_spec)
-                    } else {
-                        x_tmp_spec
-                    }));
-                    assert(y_val == field_mul(u1_spec, dy_spec));
-                };
-            }
-            // I matches spec-level nat_invsqrt(v*u2²)
-
-            assert(big_i_nat == nat_invsqrt(v_u2_sqr_nat)) by {
-                assert(big_i_nat < p()) by {
-                    lemma_canonical_nat_lt_p(&I);
-                };
-                assert(v_u2_sqr_nat < p()) by {
-                    lemma_canonical_nat_lt_p(&v_u2_sqr);
-                };
-                if v_u2_sqr_nat != 0 {
-                    assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) || is_sqrt_ratio_times_i(
-                        1,
-                        v_u2_sqr_nat,
-                        big_i_nat,
-                    ));
-                }
-                lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
+            // Invsqrt alignment and mutual exclusion
+            assert(big_i_nat < p()) by {
+                lemma_canonical_nat_lt_p(&I);
             };
-
-            // Mutual exclusion: ok ↔ is_sqrt_ratio (not both sqrt_ratio and sqrt_ratio_times_i)
-            if v_u2_sqr_nat != 0 {
-                assert(!(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
-                    1,
-                    v_u2_sqr_nat,
-                    big_i_nat,
-                ))) by {
-                    assert(1nat % p() == 1) by {
-                        lemma_small_mod(1nat, p());
-                    };
-                    lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
-                };
-            } else {
-                assert(0nat % p() == 0 && 1nat % p() == 1) by {
-                    lemma2_to64();
-                    lemma_pow2_strictly_increases(5, 255);
-                    lemma_small_mod(0nat, p());
-                    lemma_small_mod(1nat, p());
-                };
-            }
+            assert(v_u2_sqr_nat < p()) by {
+                lemma_canonical_nat_lt_p(&v_u2_sqr);
+            };
+            lemma_decode_invsqrt_facts(big_i_nat, v_u2_sqr_nat);
 
             // On curve and projective equivalence when decode succeeds
             if choice_is_true(ok) {
-                assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat));
-                assert(is_on_edwards_curve(x_val, y_val)) by {
-                    axiom_ristretto_decode_on_curve(s_nat, big_i_nat, x_val, y_val);
+                assert(spec_ristretto_decode_ok(s_nat));
+                assert(is_on_edwards_curve(
+                    spec_ristretto_decode_x(s_nat),
+                    spec_ristretto_decode_y(s_nat),
+                )) by {
+                    axiom_ristretto_decode_on_curve(s_nat);
                 };
                 assert(is_on_edwards_curve_projective(x_val, y_val, 1nat)) by {
                     assert(x_val < p()) by {
@@ -970,54 +897,21 @@ mod decompress {
             let big_i_nat = fe51_as_canonical_nat(&I);
             let v_u2_sqr_nat = fe51_as_canonical_nat(&v_u2_sqr);
 
-            // Re-establish spec alignment after exec branch (facts don't persist across exec if)
-            assert(big_i_nat == nat_invsqrt(v_u2_sqr_nat)) by {
-                assert(big_i_nat < p()) by {
-                    lemma_canonical_nat_lt_p(&I);
-                };
-                assert(v_u2_sqr_nat < p()) by {
-                    lemma_canonical_nat_lt_p(&v_u2_sqr);
-                };
-                if v_u2_sqr_nat != 0 {
-                    assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) || is_sqrt_ratio_times_i(
-                        1,
-                        v_u2_sqr_nat,
-                        big_i_nat,
-                    ));
-                }
-                lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
+            // Re-establish spec alignment (facts don't persist across exec if)
+            assert(big_i_nat < p()) by {
+                lemma_canonical_nat_lt_p(&I);
             };
-
-            // Re-establish mutual exclusion
-            if v_u2_sqr_nat != 0 {
-                assert(!(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
-                    1,
-                    v_u2_sqr_nat,
-                    big_i_nat,
-                ))) by {
-                    assert(1nat % p() == 1) by {
-                        lemma_small_mod(1nat, p());
-                    };
-                    lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
-                };
-            } else {
-                assert(0nat % p() == 0 && 1nat % p() == 1) by {
-                    lemma2_to64();
-                    lemma_pow2_strictly_increases(5, 255);
-                    lemma_small_mod(0nat, p());
-                    lemma_small_mod(1nat, p());
-                };
-            }
+            assert(v_u2_sqr_nat < p()) by {
+                lemma_canonical_nat_lt_p(&v_u2_sqr);
+            };
+            lemma_decode_invsqrt_facts(big_i_nat, v_u2_sqr_nat);
 
             if choice_is_true(ok) {
-                let x_val = fe51_as_canonical_nat(&x);
-                let y_val = fe51_as_canonical_nat(&y);
-
-                assert(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat));
+                assert(spec_ristretto_decode_ok(s_nat));
                 assert(is_well_formed_edwards_point(point));
 
                 assert(is_in_even_subgroup(point)) by {
-                    axiom_ristretto_decode_in_even_subgroup(s_nat, big_i_nat, x_val, y_val, point);
+                    axiom_ristretto_decode_in_even_subgroup(s_nat, point);
                 };
             }
         }
@@ -1066,6 +960,37 @@ mod decompress {
         } else {
             assert(0nat % p() == 0) by {
                 lemma_small_mod(0nat, p());
+            };
+        }
+    }
+
+    /// Helper lemma: Establishes invsqrt alignment and mutual exclusion for decode.
+    ///
+    /// Combines lemma_invsqrt_matches_spec with lemma_sqrt_ratio_mutual_exclusion.
+    proof fn lemma_decode_invsqrt_facts(big_i_nat: nat, v_u2_sqr_nat: nat)
+        requires
+            big_i_nat % 2 == 0,
+            (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
+            (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
+                || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+            big_i_nat < p(),
+            v_u2_sqr_nat < p(),
+        ensures
+            big_i_nat == nat_invsqrt(v_u2_sqr_nat),
+            v_u2_sqr_nat != 0 ==> !(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
+                && is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+    {
+        lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
+        if v_u2_sqr_nat != 0 {
+            assert(!(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
+                1,
+                v_u2_sqr_nat,
+                big_i_nat,
+            ))) by {
+                assert(1nat % p() == 1) by {
+                    lemma_small_mod(1nat, p());
+                };
+                lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
             };
         }
     }
@@ -3701,11 +3626,10 @@ mod test_ristretto_decode_axioms {
         }
 
         // Edge cases: small even field elements (s = 2, 4, 6, ..., 40).
-        // The axiom claims on-curve when is_ristretto_decode_output holds (which
-        // requires is_sqrt_ratio or is_sqrt_ratio_times_i). We verify on-curve for
-        // the ok=true (square) case. The ok=false (nonsquare) case produces coords
-        // that may not be on-curve; this is fine because the decompress proof only
-        // needs on-curve for the success path.
+        // The axiom claims on-curve when spec_ristretto_decode_ok(s) holds (the
+        // square case). We verify on-curve for the ok=true case. The ok=false
+        // (nonsquare) case produces coords that may not be on-curve; this is fine
+        // because the decompress proof only needs on-curve for the success path.
         let mut ok_count = 0u32;
         for s_val in (2u64..=40).step_by(2) {
             let mut s_bytes = [0u8; 32];

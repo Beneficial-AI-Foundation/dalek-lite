@@ -398,6 +398,7 @@ impl CompressedRistretto {
             return None;
         }
         // step_2: compute (x, y) from s via decode formula; ok = invsqrt succeeded
+
         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
 
         // Establish s < p and !is_negative(s) for the None/Some branches below

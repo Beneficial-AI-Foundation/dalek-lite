@@ -33,9 +33,9 @@
 #![allow(unused_imports)]
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::backend::serial::u64::subtle_assumes::*;
+use crate::constants;
 #[allow(unused_imports)]
 use crate::field::FieldElement;
-use crate::constants;
 use crate::lemmas::common_lemmas::div_mod_lemmas::*;
 use crate::lemmas::common_lemmas::mul_lemmas::*;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -1155,18 +1155,17 @@ pub proof fn lemma_sqrt_ratio_correctness(
     }
 }
 
-// NOTE: lemma_sqrt_ratio_chain and lemma_sqrt_ratio_i_postconditions have been
-// inlined into sqrt_ratio_i (field.rs) to eliminate 25 parameters of pass-through.
-// The remaining lemmas below (lemma_sqrt_ratio_correctness, lemma_sqrt_ratio_check_value,
-// etc.) are called from the inlined proof block.
-/// Axiom: The nonnegative inverse square root is unique.
+/// Axiom: nonneg invsqrt is unique.
 ///
-/// In GF(p) with p ≡ 5 (mod 8), a nonzero element has at most one nonnegative
-/// r satisfying either r²·a ≡ 1 (mod p) or r²·a ≡ √(-1) (mod p).
-/// These two cases are mutually exclusive, and in each case there are exactly
-/// two square roots (r and p-r); exactly one is nonneg (even canonical encoding).
-/// So the disjunction `is_sqrt_ratio(1,a,r) || is_sqrt_ratio_times_i(1,a,r)` with
-/// `!is_negative(r)` uniquely determines r, matching `nat_invsqrt(a)`.
+/// If r is nonneg and satisfies r²·a ≡ 1 or r²·a ≡ √(-1) (mod p),
+/// then r equals nat_invsqrt(a).
+///
+/// Proof sketch (not yet mechanized):
+///   1. nat_invsqrt(a) satisfies the same property (from constructive definition)
+///   2. r² ≡ s² (mod p) implies r = s or r = p-s (since p is prime)
+///   3. Both nonneg (even) and r + s = p (odd) is impossible, so r = s
+///
+/// Runtime validation: `test_invsqrt_unique` (190+ elements)
 pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
     requires
         a % p() != 0,
@@ -1175,31 +1174,6 @@ pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
         is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r),
     ensures
         r == nat_invsqrt(a),
-{
-    admit();
-}
-
-/// Axiom: For every nonzero element a in GF(p), a nonnegative inverse square
-/// root exists. That is, the `choose` predicate in `nat_invsqrt(a)` is
-/// satisfiable.
-///
-/// In GF(p) with p ≡ 5 (mod 8), every nonzero a has r² · a ∈ {1, √(−1)}
-/// for some r, and exactly one of {r, p−r} is nonneg (even). This guarantees
-/// `nat_invsqrt(a)` picks a well-defined value rather than arbitrary garbage.
-///
-/// Without this axiom, `nat_invsqrt` could return an unspecified value via
-/// `choose`, and `axiom_invsqrt_unique`'s postcondition `r == nat_invsqrt(a)`
-/// would be vacuously consistent (the `choose` could pick anything).
-///
-/// Runtime validation: `test_invsqrt_unique` (190+ elements)
-pub proof fn axiom_invsqrt_exists(a: nat)
-    requires
-        a % p() != 0,
-    ensures
-        ({
-            let r = nat_invsqrt(a);
-            r < p() && !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r))
-        }),
 {
     admit();
 }
@@ -1282,8 +1256,11 @@ pub proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
     requires
         big_i_nat % 2 == 0,
         (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
-        (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
-            || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+        (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) || is_sqrt_ratio_times_i(
+            1,
+            v_u2_sqr_nat,
+            big_i_nat,
+        )),
         big_i_nat < p(),
         v_u2_sqr_nat < p(),
     ensures
@@ -1313,14 +1290,20 @@ pub proof fn lemma_decode_invsqrt_facts(big_i_nat: nat, v_u2_sqr_nat: nat)
     requires
         big_i_nat % 2 == 0,
         (v_u2_sqr_nat == 0) ==> (big_i_nat == 0),
-        (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
-            || is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+        (v_u2_sqr_nat != 0) ==> (is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) || is_sqrt_ratio_times_i(
+            1,
+            v_u2_sqr_nat,
+            big_i_nat,
+        )),
         big_i_nat < p(),
         v_u2_sqr_nat < p(),
     ensures
         big_i_nat == nat_invsqrt(v_u2_sqr_nat),
-        v_u2_sqr_nat != 0 ==> !(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat)
-            && is_sqrt_ratio_times_i(1, v_u2_sqr_nat, big_i_nat)),
+        v_u2_sqr_nat != 0 ==> !(is_sqrt_ratio(1, v_u2_sqr_nat, big_i_nat) && is_sqrt_ratio_times_i(
+            1,
+            v_u2_sqr_nat,
+            big_i_nat,
+        )),
 {
     lemma_invsqrt_matches_spec(big_i_nat, v_u2_sqr_nat);
     if v_u2_sqr_nat != 0 {

@@ -517,19 +517,37 @@ pub open spec fn is_negative(a: nat) -> bool {
     field_canonical(a) % 2 == 1
 }
 
-/// Spec-only model of inverse square root with a canonical sign choice.
+/// Inverse square root in GF(p): returns the canonical nonneg r such that
+/// r²·a ≡ 1 or r²·a ≡ √(-1) (mod p).
 ///
-/// Returns the unique r < p that is nonnegative (even) and satisfies either
-/// r² · a ≡ 1 (mod p) or r² · a ≡ √(−1) (mod p).
-/// The `r < p()` constraint ensures the choose picks the canonical representative,
-/// making axiom_invsqrt_unique sound.
+/// Mirrors the sqrt_ratio_i(1, a) computation:
+///   a3  = a² · a
+///   a7  = a3² · a
+///   r   = a3 · (a7)^((p-5)/8)          candidate
+///   check = a · r²                      verify: should be in {1, -1, i, -i}
+///   if check ∈ {-1, -i}: r = r · i      adjust for flipped cases
+///   if is_negative(r): r = -r            canonical sign (even parity)
 pub open spec fn nat_invsqrt(a: nat) -> nat {
     if a % p() == 0 {
         0
     } else {
-        choose|r: nat|
-            #![auto]
-            r < p() && !is_negative(r) && (is_sqrt_ratio(1, a, r) || is_sqrt_ratio_times_i(1, a, r))
+        let a3 = field_mul(field_square(a), a);
+        let a7 = field_mul(field_square(a3), a);
+        let k = ((p() - 5) / 8) as nat;
+        let r_raw = field_mul(a3, (pow(a7 as int, k) as nat) % p());
+        let check = field_mul(a, field_square(r_raw));
+        let neg_one = field_neg(1);
+        let neg_i = field_neg(sqrt_m1());
+        let r_adj = if check == neg_one || check == neg_i {
+            field_mul(sqrt_m1(), r_raw)
+        } else {
+            r_raw
+        };
+        if is_negative(r_adj) {
+            field_neg(r_adj)
+        } else {
+            r_adj
+        }
     }
 }
 

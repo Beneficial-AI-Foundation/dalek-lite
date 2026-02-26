@@ -33,9 +33,9 @@ either I²·a ≡ 1 (mod p) (the "square" case, ok = true) or I²·a ≡ √(−
 
 **`is_sqrt_ratio_times_i(u, v, r)`**: r²·v ≡ √(−1)·u (mod p).
 
-**`is_ristretto_decode_output(s, I, x, y)`**: The predicate asserting that
-(s, I, x, y) satisfy the relationships above and that I satisfies the invsqrt
-relation on v·u2².
+**`spec_ristretto_decode_ok(s)`**: Whether the invsqrt succeeded (square case).
+
+**`spec_ristretto_decode_x(s)`, `spec_ristretto_decode_y(s)`**: The decoded coordinates.
 
 **`is_on_edwards_curve(x, y)`**: −x² + y² ≡ 1 + d·x²·y² (mod p).
 
@@ -47,14 +47,14 @@ relation on v·u2².
 
 ## Theorem 1 (Curve Membership)
 
-**Statement.** If `is_ristretto_decode_output(s, I, x, y)` and `s < p`, then
-`is_on_edwards_curve(x, y)`.
+**Statement.** If `s < p` and `spec_ristretto_decode_ok(s)`, then
+`is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s))`.
 
 **Proof sketch.** Substitute the decode formulas into the curve equation.
 
-Since I²·v·u2² ∈ {1, √(−1)} (mod p), we can express Dx² and Dy² in terms of
-u1, u2, v. The conditional negate to compute x does not affect x², so the
-curve equation depends only on:
+Since the invsqrt satisfies I²·v·u2² ∈ {1, √(−1)} (mod p), we can express
+Dx² and Dy² in terms of u1, u2, v. The conditional negate to compute x does
+not affect x², so the curve equation depends only on:
 
     x² = (2s·Dx)² = 4s²·Dx²  = 4s²·I²·u2²
     y  = u1·Dy    = u1·I²·Dx·v = u1·I²·u2·v
@@ -233,14 +233,12 @@ corresponding spec-level field operation. The proof establishes a chain of equal
 For `square` operations, the bridge `lemma_square_matches_field_square` connects
 the exec `pow(raw, 2)` postcondition to the spec `field_square(canonical)`.
 
-For the `invsqrt` result, `lemma_invsqrt_matches_spec` (which calls
-`axiom_invsqrt_unique`) bridges the exec I to `nat_invsqrt(v_u2_sqr)`.
+For the `invsqrt` result, `lemma_decode_invsqrt_facts` (which calls
+`lemma_invsqrt_matches_spec` → `axiom_invsqrt_unique` and
+`lemma_sqrt_ratio_mutual_exclusion`) bridges the exec I to `nat_invsqrt(v_u2_sqr)`
+and establishes mutual exclusivity in a single helper call.
 
-The mutual exclusivity (Theorem 2) combined with the `invsqrt` postconditions
-establishes that `ok ⟺ is_sqrt_ratio` (the square case).
-
-**Status:** PROVEN (using `axiom_invsqrt_unique` and `lemma_sqrt_ratio_mutual_exclusion`
-for the ok ⟺ is_sqrt_ratio correspondence).
+**Status:** PROVEN (using `axiom_invsqrt_unique` via `lemma_decode_invsqrt_facts`).
 
 ∎
 
@@ -250,11 +248,11 @@ for the ok ⟺ is_sqrt_ratio correspondence).
 |---------------|------------|
 | Z = 1 | By construction (FieldElement::ONE) |
 | T = X·Y | By construction (mul postcondition) |
-| ok ⟹ is_well_formed_edwards_point | axiom_ristretto_decode_on_curve + type invariant |
-| ok ⟹ is_in_even_subgroup | axiom_ristretto_decode_in_even_subgroup |
+| ok ⟹ is_well_formed_edwards_point | axiom_ristretto_decode_on_curve(s) + type invariant |
+| ok ⟹ is_in_even_subgroup | axiom_ristretto_decode_in_even_subgroup(s, point) |
 | t_is_negative matches is_negative(T) | lemma_is_negative_equals_parity |
 | y_is_zero matches (Y == 0) | lemma_is_zero_iff_canonical_nat_zero |
-| ok matches spec_ristretto_decode_ok | axiom_invsqrt_unique + mutual exclusivity |
+| ok matches spec_ristretto_decode_ok | lemma_decode_invsqrt_facts (axiom_invsqrt_unique + mutual exclusivity) |
 | X matches spec_ristretto_decode_x | Field operation postconditions chain |
 | Y matches spec_ristretto_decode_y | Field operation postconditions chain |
 

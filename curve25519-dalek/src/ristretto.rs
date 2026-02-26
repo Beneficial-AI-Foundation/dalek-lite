@@ -373,9 +373,10 @@ impl CompressedRistretto {
         ensures
     // Spec alignment: result matches spec-level decoding (coordinate-level)
 
-            result.is_none() <==> spec_ristretto_decompress_coords(self.0).is_none(),
-            result.is_some() ==> spec_edwards_point(result.unwrap().0)
-                == spec_ristretto_decompress_coords(self.0).unwrap(),
+            result.is_none() <==> spec_ristretto_decompress(self.0).is_none(),
+            result.is_some() ==> spec_edwards_point(result.unwrap().0) == spec_ristretto_decompress(
+                self.0,
+            ).unwrap(),
             // If decompression succeeds, the result is a well-formed Edwards point
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
             // On success, the decoded point lies in the even subgroup

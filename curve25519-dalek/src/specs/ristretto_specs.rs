@@ -139,7 +139,7 @@ pub open spec fn spec_ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
 /// Reference: [RISTRETTO], §5.2 "Ristretto255 Decoding";
 ///            [DECAF], Section 6 (decoding formulas).
 ///            https://ristretto.group/formulas/decoding.html
-pub open spec fn spec_ristretto_decompress_coords(bytes: [u8; 32]) -> Option<(nat, nat, nat, nat)> {
+pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<(nat, nat, nat, nat)> {
     let s = field_element_from_bytes(&bytes);
 
     if !(u8_32_as_nat(&bytes) < p()) || is_negative(s) {

@@ -27,24 +27,18 @@ element s ∈ GF(p). The encoding is valid when:
 
 ## Spec Functions
 
-Two spec-level functions model decompression:
-
-- `spec_ristretto_decompress(bytes) → Option<RistrettoPoint>`: returns
-  a `RistrettoPoint` wrapper (uses a `choose` operator to select an
-  internal `EdwardsPoint` with matching canonical coordinates).
-
-- `spec_ristretto_decompress_coords(bytes) → Option<(nat,nat,nat,nat)>`:
-  returns raw (x, y, 1, t) coordinates. Avoids the `choose` operator,
-  making coordinate-level reasoning direct.
-
-Both specs share the same logic via `spec_ristretto_decode_inner(s)`.
+The spec function `spec_ristretto_decompress(bytes) → Option<(nat,nat,nat,nat)>`
+models decompression, returning raw (x, y, 1, t) coordinates or `None` on failure.
+It delegates coordinate computation to `spec_ristretto_decode_inner(s)`, which is
+factored into `spec_ristretto_decode_v_u2_sqr(s)` (the invsqrt input) and
+`spec_ristretto_decode_xy(s, big_i)` (coordinate computation given the invsqrt result).
 
 ## Theorem (Decompress Correctness)
 
 **Statement.** `decompress(self) → result` satisfies:
 
-1. `result.is_none() ⟺ spec_ristretto_decompress_coords(self.0).is_none()`
-2. `result.is_some() ⟹ spec_edwards_point(result.unwrap().0) == spec_ristretto_decompress_coords(self.0).unwrap()`
+1. `result.is_none() ⟺ spec_ristretto_decompress(self.0).is_none()`
+2. `result.is_some() ⟹ spec_edwards_point(result.unwrap().0) == spec_ristretto_decompress(self.0).unwrap()`
 3. `result.is_some() ⟹ is_well_formed_edwards_point(result.unwrap().0)`
 4. `result.is_some() ⟹ is_in_even_subgroup(result.unwrap().0)`
 
@@ -62,7 +56,7 @@ By [Theorem (Canonical Round-trip)](step_1.md) and [Theorem (Sign Check)](step_1
 - `fe51_as_canonical_nat(s) == field_element_from_bytes(self.0)`.
 
 **Early rejection.** If `!s_encoding_is_canonical || s_is_negative`, the spec says
-`spec_ristretto_decompress_coords(self.0) == None`.
+`spec_ristretto_decompress(self.0) == None`.
 The function returns `None`, satisfying all 4 postconditions trivially.
 
 ### Stage 2: Decode (step_2)
@@ -92,7 +86,7 @@ If `ok && !t_is_negative && !y_is_zero`:
 - The function returns `Some(res)`
 
 **Postconditions 1–2** (coordinate-level): The exec coordinates match the spec
-coordinates from `spec_ristretto_decompress_coords`, which returns
+coordinates from `spec_ristretto_decompress`, which returns
 `Some((x, y, 1, t))`. Since `res` has these coordinates by step_2's postconditions,
 postconditions 1–2 follow directly.
 
@@ -104,13 +98,11 @@ postconditions 1–2 follow directly.
 
 | Axiom | Used for | Justified by |
 |-------|----------|--------------|
-| `axiom_ristretto_decode_on_curve` | Postcondition 3 (via step_2) | Hamburg 2015; tested on 100 points; restricted to `is_sqrt_ratio` (square) case |
-| `axiom_ristretto_decode_in_even_subgroup` | Postcondition 4 (via step_2) | Hamburg 2015/2019; tested on 50 points |
+| `axiom_ristretto_decode_on_curve(s)` | Postcondition 3 (via step_2) | Hamburg 2015; tested on 100 points |
+| `axiom_ristretto_decode_in_even_subgroup(s, point)` | Postcondition 4 (via step_2) | Hamburg 2015/2019; tested on 50 points |
 | `axiom_invsqrt_unique` | Spec alignment (via step_2) | GF(p) sign structure; tested on 190+ elements |
 | `axiom_sqrt_m1_squared` | Mutual exclusivity (transitive) | p ≡ 5 (mod 8) |
 
-**Note:** The former `axiom_ristretto_point_from_coords` (which bridged exec structural
-equality to spec `choose` semantics) was removed because it was unsound: `spec_edwards_point`
-maps through `fe51_as_canonical_nat` which is not injective on limb representations, so
-multiple `RistrettoPoint`s can satisfy the `choose` predicate. The coordinate-level
-postconditions (1–2) provide all security-relevant guarantees without this axiom.
+Both decode axioms take only `s: nat` (and `point` for the subgroup axiom) as parameters,
+using `spec_ristretto_decode_ok(s)` as precondition and `spec_ristretto_decode_x/y(s)`
+in their ensures clauses.

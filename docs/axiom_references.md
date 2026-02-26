@@ -368,36 +368,35 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 
 ---
 
-### axiom_spec_ristretto_roundtrip() [ristretto_specs.rs]
-**Claim:** `spec_ristretto_decompress(spec_ristretto_compress(point)).is_some()` and the round-trip preserves the compressed encoding.
-
-**Reference:** Hamburg (2015, 2019) — Ristretto encoding/decoding  
-**URL:** https://ristretto.group/formulas/encoding.html
-
-**Justification:** The Ristretto encoding is injective and the decoding inverts it. Uses `assume(...)` x2 for the `choose`-operator semantics. Not used by `decompress` — relevant for `compress` correctness.
+### ~~axiom_spec_ristretto_roundtrip()~~ [REMOVED]
+**Removed.** Depended on `spec_ristretto_decompress` (choose-based spec) which was removed. Not used by `decompress`.
 
 ---
 
 ### ~~axiom_ristretto_point_from_coords()~~ [REMOVED]
 
-**Removed.** This axiom was unsound: `spec_edwards_point` maps through `fe51_as_canonical_nat` which is not injective on limb representations, so multiple `RistrettoPoint`s could satisfy the `choose` predicate while being structurally different. The axiom was only needed for the postcondition `result == spec_ristretto_decompress(self.0)` (structural equality). That postcondition was removed in favor of coordinate-level postconditions via `spec_ristretto_decompress_coords`, which provide all security-relevant guarantees. No downstream code depended on structural equality.
+**Removed.** Unsound: `spec_edwards_point` maps through `fe51_as_canonical_nat` which is not injective on limb representations. Coordinate-level postconditions via `spec_ristretto_decompress` provide all security-relevant guarantees.
 
 ---
 
-### axiom_ristretto_decode_on_curve()
-**Claim:** Given field element s < p and inverse square root I satisfying the Ristretto decode relationships (`is_ristretto_decode_output(s, I, x, y)`), the resulting (x, y) satisfies the Edwards curve equation −x² + y² = 1 + d·x²·y² (mod p).
+### axiom_ristretto_decode_on_curve(s)
+**Signature:** `axiom_ristretto_decode_on_curve(s: nat)` — requires `s < p()` and `spec_ristretto_decode_ok(s)`; ensures `is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s))`.
 
-**Reference:** Hamburg (2015) — "Decaf: Eliminating cofactors through point compression"  
+**Claim:** When the Ristretto decode succeeds for field element s, the decoded coordinates (x, y) satisfy the Edwards curve equation −x² + y² = 1 + d·x²·y² (mod p).
+
+**Reference:** Hamburg (2015) — "Decaf: Eliminating cofactors through point compression"
 **URL:** https://eprint.iacr.org/2015/673; https://ristretto.group/formulas/decoding.html
 
 **Justification:** The Ristretto decode formulas are designed so that when I²·v·u2² ∈ {1, √(−1)}, the resulting point lies on the Edwards curve. This follows from algebraic substitution of Dx = I·u2, Dy = I·Dx·v into the curve equation. The conditional negate (absolute value) does not affect x², so the equation holds regardless of sign choice. Validated by runtime test `test_ristretto_decode_on_curve` (100 points).
 
 ---
 
-### axiom_ristretto_decode_in_even_subgroup()
-**Claim:** When the Ristretto decode succeeds (I²·v·u2² = 1, the square case), the resulting point (x, y) lies in the even subgroup 2E = {2Q : Q ∈ E}, i.e., it is the double of some curve point.
+### axiom_ristretto_decode_in_even_subgroup(s, point)
+**Signature:** `axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)` — requires `s < p()`, `spec_ristretto_decode_ok(s)`, and that `point`'s projective coordinates match `(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s), 1, x*y)`; ensures `is_in_even_subgroup(point)`.
 
-**Reference:** Hamburg (2015) — "Decaf: Eliminating cofactors through point compression"; Hamburg (2019) — "Ristretto: prime-order elliptic curve groups with non-prime-order curves"  
+**Claim:** When the Ristretto decode succeeds (the square case), the resulting EdwardsPoint lies in the even subgroup 2E = {2Q : Q ∈ E}, i.e., it is the double of some curve point.
+
+**Reference:** Hamburg (2015) — "Decaf: Eliminating cofactors through point compression"; Hamburg (2019) — "Ristretto: prime-order elliptic curve groups with non-prime-order curves"
 **URL:** https://eprint.iacr.org/2015/673; https://eprint.iacr.org/2020/1400; https://ristretto.group/details/isogenies.html
 
 **Justification:** This is the core property of the Ristretto construction: decoded points lie in the prime-order subgroup (which equals the even subgroup 2E for cofactor-8 curves). The proof relies on the Jacobi quartic isogeny theory from the Decaf/Ristretto papers. Validated by runtime test `test_ristretto_decode_in_even_subgroup` which verifies [L]P = identity for: 50 basepoint multiples, diverse non-basepoint-derived byte inputs, and 50 hash-derived points (SHA-512).
@@ -519,7 +518,7 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 | axiom_invsqrt_unique | sqrt_ratio_lemmas.rs | Math + test | GF(p) quadratic residuosity; test_invsqrt_unique |
 | axiom_invsqrt_exists | sqrt_ratio_lemmas.rs | Math + test | Justifies `choose` in nat_invsqrt; test_invsqrt_unique |
 | lemma_sqrt_ratio_mutual_exclusion | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_no_square_root_when_times_i |
-| axiom_spec_ristretto_roundtrip | ristretto_specs.rs | Paper | Hamburg 2015/2019 (not used by decompress) |
+| ~~axiom_spec_ristretto_roundtrip~~ | ristretto_specs.rs | **REMOVED** | Removed along with `spec_ristretto_decompress` |
 | axiom_ristretto_decode_on_curve | ristretto_specs.rs | Paper + test | Hamburg 2015; test_ristretto_decode_on_curve |
 | axiom_ristretto_decode_in_even_subgroup | ristretto_specs.rs | Paper + test | Hamburg 2015/2019; test (100+ points) |
 | lemma_sqrt_m1_limbs_bounded | sqrt_m1_lemmas.rs | **PROVEN** | Concrete limb checks + bit_vector |
@@ -538,15 +537,19 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 | axiom_sha512_output_length | core_assumes.rs | Spec | FIPS 180-4; RFC 6234 |
 | axiom_two_l_div_pow2_208_le_pow2_45 | unused_montgomery_reduce_lemmas.rs | Computation | Concrete bounds |
 
-**Total: 55 axioms across 12 source files** (1 axiom fully proven → lemma: `lemma_sqrt_ratio_mutual_exclusion`; 1 unsound axiom removed: `axiom_ristretto_point_from_coords`)
+**Total: 54 axioms across 12 source files** (1 axiom fully proven → lemma: `lemma_sqrt_ratio_mutual_exclusion`; 2 axioms removed: `axiom_ristretto_point_from_coords` (unsound), `axiom_spec_ristretto_roundtrip` (unused))
 
 ### Recent Changes (decompress proof hardening)
 
 - `lemma_sqrt_ratio_mutual_exclusion`: Previously `axiom_sqrt_ratio_mutual_exclusion` with `admit()`. Now **fully proven** using `lemma_no_square_root_when_times_i`. Moved from `ristretto.rs` to `sqrt_ratio_lemmas.rs`.
 - `axiom_invsqrt_unique`: Moved from `ristretto_specs.rs` to `sqrt_ratio_lemmas.rs`. New test: `test_invsqrt_unique`.
-- `axiom_spec_ristretto_roundtrip`: Renamed from `lemma_spec_ristretto_roundtrip` (contains `assume`).
+- `axiom_spec_ristretto_roundtrip`: **Removed** along with `spec_ristretto_decompress` (choose-based spec that was fragile and unused by decompress proof).
+- `axiom_ristretto_decode_on_curve`: **Simplified** from 4 params `(s, big_i, x, y)` with `is_ristretto_decode_output` precondition to 1 param `(s)` using `spec_ristretto_decode_ok/x/y` helpers.
+- `axiom_ristretto_decode_in_even_subgroup`: **Simplified** from 5 params to 2 params `(s, point)`. Test strengthened with hash-derived and diverse inputs.
+- `is_ristretto_decode_output`: **Removed** (redundant predicate that duplicated `spec_ristretto_decode_inner`).
+- `lemma_decode_invsqrt_facts`: **New helper** deduplicating ~33 lines of invsqrt+mutual-exclusion proof that appeared twice in step_2.
 - `axiom_sqrt_m1_limbs_bounded`: Renamed to `lemma_sqrt_m1_limbs_bounded` — **fully proven** via concrete limb assertions + `by (bit_vector)`. Test: `test_sqrt_m1_limbs_bounded`.
 - `axiom_minus_one_field_element_value`: New test: `test_minus_one_field_element_value`.
-- `axiom_ristretto_decode_in_even_subgroup`: Test strengthened with hash-derived and diverse inputs.
-- Degenerate-case `assume(is_on_edwards_curve_projective(...))` in `ristretto.rs:906`: **Eliminated** by restructuring to use `EdwardsPoint::identity()` on the failure path.
-- `axiom_ristretto_point_from_coords`: **Removed** (unsound). Postcondition `result == spec_ristretto_decompress(self.0)` dropped in favor of coordinate-level postconditions via `spec_ristretto_decompress_coords`.
+- Degenerate-case `assume(is_on_edwards_curve_projective(...))` in `ristretto.rs`: **Eliminated** by restructuring to use `EdwardsPoint::identity()` on the failure path.
+- `axiom_ristretto_point_from_coords`: **Removed** (unsound). Postcondition `result == spec_ristretto_decompress(self.0)` dropped in favor of coordinate-level postconditions via `spec_ristretto_decompress`.
+- `spec_ristretto_decode_inner`: **Factored** into `spec_ristretto_decode_v_u2_sqr(s)` and `spec_ristretto_decode_xy(s, big_i)` for clearer spec structure.

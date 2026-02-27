@@ -331,13 +331,9 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
 
             // projective_u_coordinate = U / W = (u*W) / W = u
             assert(projective_u_coordinate(P_proj) == field_mul(U, field_inv(W)));
-            assert(projective_u_coordinate(P_proj) == field_mul(
-                field_mul(u, W),
-                field_inv(W),
-            ));
+            assert(projective_u_coordinate(P_proj) == field_mul(field_mul(u, W), field_inv(W)));
 
-            assert(projective_u_coordinate(P_proj) == field_mul(u, field_mul(W, field_inv(W))))
-                by {
+            assert(projective_u_coordinate(P_proj) == field_mul(u, field_mul(W, field_inv(W)))) by {
                 lemma_field_mul_assoc(u, W, field_inv(W));
             }
 

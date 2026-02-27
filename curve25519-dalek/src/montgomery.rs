@@ -590,10 +590,7 @@ impl MontgomeryPoint {
                     field_inv(1),
                 ));
                 assert(field_inv(1) == 1);
-                assert(projective_u_coordinate(x1) == field_mul(
-                    fe51_as_canonical_nat(&x1.U),
-                    1,
-                ));
+                assert(projective_u_coordinate(x1) == field_mul(fe51_as_canonical_nat(&x1.U), 1));
                 lemma_field_mul_one_right(fe51_as_canonical_nat(&x1.U));
                 assert(projective_u_coordinate(x1) == fe51_as_canonical_nat(&x1.U) % p());
                 assert(fe51_as_canonical_nat(&x1.U) % p() == fe51_as_canonical_nat(&x1.U)) by {
@@ -994,9 +991,7 @@ impl MontgomeryPoint {
                 assert(projective_u_coordinate(x0) == 0);
                 lemma_u_coordinate_scalar_mul_canonical_lift_zero(n);
                 assert(u_coordinate(montgomery_scalar_mul(P, n)) == 0);
-                assert(projective_u_coordinate(x0) == u_coordinate(
-                    montgomery_scalar_mul(P, n),
-                ));
+                assert(projective_u_coordinate(x0) == u_coordinate(montgomery_scalar_mul(P, n)));
             } else {
                 // The final swap ensures x0 holds [n]P regardless of saved_prev_bit.
                 // From loop invariant, we have projective_represents_montgomery_or_infinity
@@ -1048,9 +1043,7 @@ impl MontgomeryPoint {
                 assert(u_coord % p() == u_coord) by {
                     lemma_small_mod(u_coord, p());
                 }
-                assert(projective_u_coordinate(x0) == u_coordinate(
-                    montgomery_scalar_mul(P, n),
-                ));
+                assert(projective_u_coordinate(x0) == u_coordinate(montgomery_scalar_mul(P, n)));
             }
             // Bounds needed for as_affine
             assert(fe51_limbs_bounded(&x0.U, 52));
@@ -1069,9 +1062,7 @@ impl MontgomeryPoint {
             // as_affine returns the affine u-coordinate of x0
             assert(montgomery_point_as_nat(result) == projective_u_coordinate(x0));
             // From loop invariant at exit and final conditional swap, x0 encodes u([n]P)
-            assert(projective_u_coordinate(x0) == u_coordinate(
-                montgomery_scalar_mul(P, n),
-            ));
+            assert(projective_u_coordinate(x0) == u_coordinate(montgomery_scalar_mul(P, n)));
         }
         result
     }
@@ -1113,8 +1104,9 @@ impl MontgomeryPoint {
             sign == 0 || sign == 1,
         ensures
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-            is_valid_montgomery_point(*self) && !is_equal_to_minus_one(montgomery_point_as_nat(*self))
-                ==> result.is_some(),
+            is_valid_montgomery_point(*self) && !is_equal_to_minus_one(
+                montgomery_point_as_nat(*self),
+            ) ==> result.is_some(),
             result.is_some() && is_valid_montgomery_point(*self) && !is_equal_to_minus_one(
                 montgomery_point_as_nat(*self),
             ) ==> edwards_point_as_affine(result.unwrap()) == montgomery_to_edwards_affine(
@@ -1204,7 +1196,9 @@ impl MontgomeryPoint {
             if result.is_some() {
                 assert(is_well_formed_edwards_point(result.unwrap()));
             }
-            if is_valid_montgomery_point(*self) && !is_equal_to_minus_one(montgomery_point_as_nat(*self)) {
+            if is_valid_montgomery_point(*self) && !is_equal_to_minus_one(
+                montgomery_point_as_nat(*self),
+            ) {
                 let u_nat = montgomery_point_as_nat(*self);
                 assert(is_valid_u_coordinate(u_nat));
                 axiom_montgomery_valid_u_implies_edwards_y_valid(u_nat);
@@ -1237,13 +1231,13 @@ impl MontgomeryPoint {
 
                     lemma_unfold_edwards(point);
                     lemma_edwards_affine_when_z_is_one(point);
-                    let x_exec = fe51_as_canonical_nat(&point.X);
-                    assert(edwards_point_as_affine(point) == (x_exec, y_nat));
+                    let x_nat = fe51_as_canonical_nat(&point.X);
+                    assert(edwards_point_as_affine(point) == (x_nat, y_nat));
 
                     assert((y_bytes[31] >> 7) == sign);
-                    assert(field_square(y_nat) != 1 ==> ((x_exec % 2) as u8 == sign));
+                    assert(field_square(y_nat) != 1 ==> ((x_nat % 2) as u8 == sign));
 
-                    lemma_to_edwards_correctness(x_exec, y_nat, sign, u_nat);
+                    lemma_to_edwards_correctness(x_nat, y_nat, sign, u_nat);
                 }
             }
         }
@@ -1980,8 +1974,8 @@ fn differential_add_and_double(
         fe51_limbs_bounded(&Q.W, 52),
         // Degenerate case: if u(P-Q)=0 and both inputs have u=0, outputs preserve u=0.
         (fe51_as_canonical_nat(affine_PmQ) == 0 && projective_u_coordinate(*old(P)) == 0
-            && projective_u_coordinate(*old(Q)) == 0) ==> (projective_u_coordinate(*P)
-            == 0 && projective_u_coordinate(*Q) == 0),
+            && projective_u_coordinate(*old(Q)) == 0) ==> (projective_u_coordinate(*P) == 0
+            && projective_u_coordinate(*Q) == 0),
         // Montgomery ladder step: P' = [2]P (xDBL), Q' = P + Q (xADD).
         // Case 1: P = [k]B, Q = [k+1]B  ==>  P' = [2k]B, Q' = [2k+1]B
         ({
@@ -2339,8 +2333,8 @@ fn differential_add_and_double(
         };
 
         // Degenerate basepoint: u(P-Q)=0 and both inputs have u=0 => both outputs have u=0.
-        if u_diff == 0 && projective_u_coordinate(*old(P)) == 0
-            && projective_u_coordinate(*old(Q)) == 0 {
+        if u_diff == 0 && projective_u_coordinate(*old(P)) == 0 && projective_u_coordinate(*old(Q))
+            == 0 {
             // Q.W includes a factor of u_diff, so Q is ∞ and u(Q)=0.
             assert(fe51_as_canonical_nat(&Q.W) == 0) by {
                 assert(Q.W == t17);
@@ -2373,10 +2367,7 @@ fn differential_add_and_double(
                     assert(W_old % p() == W_old);
                 }
                 assert(field_mul(U_old, field_inv(W_old)) == 0) by {
-                    assert(projective_u_coordinate(*old(P)) == field_mul(
-                        U_old,
-                        field_inv(W_old),
-                    ));
+                    assert(projective_u_coordinate(*old(P)) == field_mul(U_old, field_inv(W_old)));
                 }
                 lemma_inv_mul_cancel(W_old);
                 lemma_field_mul_assoc(U_old, field_inv(W_old), W_old);

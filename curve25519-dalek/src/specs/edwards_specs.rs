@@ -558,7 +558,12 @@ pub open spec fn projective_point_as_affine_edwards(point: ProjectivePoint) -> (
 ///
 /// Niels coordinates are an optimized representation for point addition.
 /// Reference: [HWCD2008] Section 3.1 for extended coordinates and efficient formulas
-pub open spec fn projective_niels_point_as_nat(niels: ProjectiveNielsPoint) -> (nat, nat, nat, nat) {
+pub open spec fn projective_niels_point_as_nat(niels: ProjectiveNielsPoint) -> (
+    nat,
+    nat,
+    nat,
+    nat,
+) {
     let y_plus_x = fe51_as_canonical_nat(&niels.Y_plus_X);
     let y_minus_x = fe51_as_canonical_nat(&niels.Y_minus_X);
     let z = fe51_as_canonical_nat(&niels.Z);
@@ -1093,9 +1098,7 @@ pub open spec fn montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat
 /// - Returns None if y is not a valid y-coordinate (no x exists on curve)
 /// - Returns None if x = 0 but sign_bit = 1 (invalid sign for zero, since 0 % 2 == 0)
 /// - Otherwise returns the unique (x, y) on the curve with x % 2 == sign_bit
-pub open spec fn edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<
-    (nat, nat),
-> {
+pub open spec fn edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<(nat, nat)> {
     if !is_valid_edwards_y_coordinate(y) {
         None
     } else if field_square(y) == 1 && sign_bit == 1u8 {

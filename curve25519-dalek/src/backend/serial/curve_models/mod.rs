@@ -802,25 +802,25 @@ impl CompletedPoint {
             // Therefore result is a valid projective point (same affine point as completed,
             // which is on the curve by precondition)
             // Use the lemma to convert from affine curve equation to projective form
-            let (result_x, result_y, result_z_spec) = projective_point_edwards_as_nat(result);
+            let (result_x, result_y, result_z) = projective_point_edwards_as_nat(result);
 
-            // result_z_spec = fe51_as_canonical_nat(&result.Z) = field_mul(z_abs, t_abs) = result_z
+            // result_z = fe51_as_canonical_nat(&result.Z) = field_mul(z_abs, t_abs) = result_z
             // We showed result_z != 0 above, and result_z < p (since it's a field element)
-            // Therefore result_z_spec % p == result_z_spec != 0
-            assert(result_z_spec == result_z);  // They're the same value
-            assert(result_z_spec < p()) by {
+            // Therefore result_z % p == result_z != 0
+            assert(result_z == result_z);  // They're the same value
+            assert(result_z < p()) by {
                 lemma_mod_bound((z_abs * t_abs) as int, p() as int);
             };
-            assert(result_z_spec % p() != 0) by {
-                lemma_small_mod(result_z_spec, p());
+            assert(result_z % p() != 0) by {
+                lemma_small_mod(result_z, p());
             };
 
             assert(is_on_edwards_curve(
-                field_mul(result_x, field_inv(result_z_spec)),
-                field_mul(result_y, field_inv(result_z_spec)),
+                field_mul(result_x, field_inv(result_z)),
+                field_mul(result_y, field_inv(result_z)),
             ));
             assert(is_valid_projective_point(result)) by {
-                lemma_affine_curve_implies_projective(result_x, result_y, result_z_spec);
+                lemma_affine_curve_implies_projective(result_x, result_y, result_z);
             };
         }
         result

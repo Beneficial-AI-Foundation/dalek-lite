@@ -377,9 +377,8 @@ impl CompressedRistretto {
     // Spec alignment: result matches spec-level decoding
 
             result.is_none() <==> spec_ristretto_decompress(self.0).is_none(),
-            result.is_some() ==> edwards_point_as_nat(result.unwrap().0) == spec_ristretto_decompress(
-                self.0,
-            ).unwrap(),
+            result.is_some() ==> edwards_point_as_nat(result.unwrap().0)
+                == spec_ristretto_decompress(self.0).unwrap(),
             // If decompression succeeds, the result is a well-formed Edwards point
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
             // On success, the decoded point lies in the even subgroup
@@ -419,9 +418,9 @@ impl CompressedRistretto {
                 let s_nat = fe51_as_canonical_nat(&s);
                 let x = ristretto_decode_x(s_nat);
                 let y = ristretto_decode_y(s_nat);
-                let ok_spec = ristretto_decode_ok(s_nat);
+                let decode_ok = ristretto_decode_ok(s_nat);
                 let t = field_mul(x, y);
-                assert(!ok_spec || is_negative(t) || y == 0);
+                assert(!decode_ok || is_negative(t) || y == 0);
             }
             result
         } else {
@@ -430,9 +429,9 @@ impl CompressedRistretto {
                 let s_nat = fe51_as_canonical_nat(&s);
                 let x = ristretto_decode_x(s_nat);
                 let y = ristretto_decode_y(s_nat);
-                let ok_spec = ristretto_decode_ok(s_nat);
+                let decode_ok = ristretto_decode_ok(s_nat);
                 let t = field_mul(x, y);
-                assert(ok_spec && !is_negative(t) && y != 0);
+                assert(decode_ok && !is_negative(t) && y != 0);
 
                 assert(edwards_point_as_nat(res.0) == (x, y, 1nat, t)) by {
                     lemma_unfold_edwards(res.0);
@@ -564,10 +563,12 @@ mod decompress {
                 fe51_as_canonical_nat(&result.3.0.Y),
             ),
             // When ok: X, Y match the spec decode values
-            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X)
-                == ristretto_decode_x(fe51_as_canonical_nat(&s)),
-            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y)
-                == ristretto_decode_y(fe51_as_canonical_nat(&s)),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X) == ristretto_decode_x(
+                fe51_as_canonical_nat(&s),
+            ),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y) == ristretto_decode_y(
+                fe51_as_canonical_nat(&s),
+            ),
             // t_is_negative and y_is_zero always reflect the spec-level decode values
             // (computed from raw x, y — NOT from the returned point, which may be identity)
             choice_is_true(result.1) == is_negative(
@@ -870,10 +871,8 @@ mod decompress {
             // On curve and projective equivalence when decode succeeds
             if choice_is_true(ok) {
                 assert(ristretto_decode_ok(s_nat));
-                assert(is_on_edwards_curve(
-                    ristretto_decode_x(s_nat),
-                    ristretto_decode_y(s_nat),
-                )) by {
+                assert(is_on_edwards_curve(ristretto_decode_x(s_nat), ristretto_decode_y(s_nat)))
+                    by {
                     axiom_ristretto_decode_on_curve(s_nat);
                 };
                 assert(is_on_edwards_curve_projective(x_val, y_val, 1nat)) by {

@@ -595,7 +595,7 @@ impl ProjectivePoint {
             is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
             edwards_point_limbs_bounded(result),
-            spec_edwards_point(result) == spec_projective_to_extended(*self),
+            spec_edwards_point(result) == projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {
         /* ORIGINAL CODE:
@@ -664,7 +664,7 @@ impl ProjectivePoint {
             lemma_unfold_edwards(result);
             let (x, y, z) = spec_projective_point_edwards(*self);
 
-            assert(spec_edwards_point(result) == spec_projective_to_extended(*self));
+            assert(spec_edwards_point(result) == projective_to_extended(*self));
 
             assert(z != 0 && z % p() != 0) by {
                 p_gt_2();
@@ -713,7 +713,7 @@ impl CompletedPoint {
             fe51_limbs_bounded(&self.T, 54),
         ensures
             is_valid_projective_point(result),
-            spec_projective_point_edwards(result) == spec_completed_to_projective(*self),
+            spec_projective_point_edwards(result) == completed_to_projective(*self),
             projective_point_as_affine_edwards(result) == completed_point_as_affine_edwards(*self),
             // Limb bounds from mul() postconditions (mul produces 52-bounded output)
             fe51_limbs_bounded(&result.X, 52),
@@ -767,7 +767,7 @@ impl CompletedPoint {
             };
 
             // Spec equivalence: show concrete multiplication matches spec
-            assert(spec_projective_point_edwards(result) == spec_completed_to_projective(*self));
+            assert(spec_projective_point_edwards(result) == completed_to_projective(*self));
 
             // Now prove is_valid_projective_point(result)
             // Need to show:
@@ -842,7 +842,7 @@ impl CompletedPoint {
             is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
             edwards_point_limbs_bounded(result),
-            spec_edwards_point(result) == spec_completed_to_extended(*self),
+            spec_edwards_point(result) == completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
         /* ORIGINAL CODE:
@@ -923,7 +923,7 @@ impl CompletedPoint {
             };
 
             let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
-            assert(spec_edwards_point(result) == spec_completed_to_extended(*self));
+            assert(spec_edwards_point(result) == completed_to_extended(*self));
 
             assert(z_abs != 0 && t_abs != 0);
             assert(z_abs < p() && t_abs < p()) by {

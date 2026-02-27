@@ -186,7 +186,7 @@ pub proof fn axiom_from_bytes_independent(
 /// calls and add the results (see `axiom_uniform_elligator_sum`).
 pub proof fn axiom_uniform_elligator(fe: &FieldElement, point: &RistrettoPoint)
     requires
-        edwards_point_as_affine(point.0) == spec_elligator_ristretto_flavor(
+        edwards_point_as_affine(point.0) == elligator_ristretto_flavor(
             fe51_as_canonical_nat(fe),
         ),
         is_uniform_field_element(fe),
@@ -207,10 +207,10 @@ pub proof fn axiom_uniform_elligator_independent(
     p2: &RistrettoPoint,
 )
     requires
-        edwards_point_as_affine(p1.0) == spec_elligator_ristretto_flavor(
+        edwards_point_as_affine(p1.0) == elligator_ristretto_flavor(
             fe51_as_canonical_nat(fe1),
         ),
-        edwards_point_as_affine(p2.0) == spec_elligator_ristretto_flavor(
+        edwards_point_as_affine(p2.0) == elligator_ristretto_flavor(
             fe51_as_canonical_nat(fe2),
         ),
         is_independent_uniform_field_elements(fe1, fe2),

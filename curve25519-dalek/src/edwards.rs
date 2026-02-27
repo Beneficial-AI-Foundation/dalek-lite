@@ -1827,7 +1827,7 @@ impl EdwardsPoint {
         ensures
             is_well_formed_edwards_point(result),
             // Functional correctness: result = spec applied to first 32 bytes of SHA-512(input)
-            edwards_point_as_affine(result) == spec_nonspec_map_to_curve(
+            edwards_point_as_affine(result) == nonspec_map_to_curve(
                 spec_sha512(bytes@).subrange(0, 32),
             ),
     {
@@ -1868,11 +1868,11 @@ impl EdwardsPoint {
         }
         let E1_opt = M1.to_edwards(sign_bit);
 
-        // elligator_encode never produces u = -1 (lemma_elligator_never_minus_one),
+        // spec_elligator_encode never produces u = -1 (lemma_elligator_never_minus_one),
         // so to_edwards always returns Some. Unwrap and multiply by cofactor.
         proof {
             // to_edwards returns None only when is_equal_to_minus_one(u),
-            // but elligator_encode guarantees !is_equal_to_minus_one(u).
+            // but spec_elligator_encode guarantees !is_equal_to_minus_one(u).
             assert(!is_equal_to_minus_one(spec_montgomery(M1)));
             match E1_opt {
                 Some(_) => {},
@@ -1894,7 +1894,7 @@ impl EdwardsPoint {
                 requires
                     sign_bit == (byte31 & 0x80u8) >> 7u8,
             ;
-            assert(sign_bit == spec_normalize_sign(sign_bit)) by (bit_vector)
+            assert(sign_bit == normalize_sign(sign_bit)) by (bit_vector)
                 requires
                     sign_bit == 0u8 || sign_bit == 1u8,
             ;
@@ -1915,14 +1915,14 @@ impl EdwardsPoint {
             assert(spec_montgomery(M1) == u);
 
             // Step 6: to_edwards gives exact equality with spec
-            let P = spec_montgomery_to_edwards_affine(u, sign_bit);
+            let P = montgomery_to_edwards_affine(u, sign_bit);
             assert(edwards_point_as_affine(E1) == P) by {
                 assert(is_valid_montgomery_point(M1));
                 assert(!is_equal_to_minus_one(spec_montgomery(M1)));
                 // to_edwards postcondition with sign normalisation
-                assert(spec_montgomery_to_edwards_affine(
+                assert(montgomery_to_edwards_affine(
                     spec_montgomery(M1),
-                    spec_normalize_sign(sign_bit),
+                    normalize_sign(sign_bit),
                 ) == P);
             }
 
@@ -1934,7 +1934,7 @@ impl EdwardsPoint {
 
             // Step 8: combine — the result equals the spec
             assert(edwards_point_as_affine(result) == edwards_scalar_mul(P, 8));
-            assert(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(res@));
+            assert(edwards_point_as_affine(result) == nonspec_map_to_curve(res@));
         }
 
         result

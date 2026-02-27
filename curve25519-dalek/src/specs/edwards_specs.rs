@@ -732,13 +732,6 @@ pub open spec fn identity_projective_niels() -> ProjectiveNielsPoint {
     }
 }
 
-/// Spec function: Negation of an AffineNielsPoint as tuple
-/// Negation swaps y+x with y-x and negates xy2d
-pub open spec fn spec_negate_affine_niels(p: (nat, nat, nat)) -> (nat, nat, nat) {
-    let (y_plus_x, y_minus_x, xy2d) = p;
-    (y_minus_x, y_plus_x, field_neg(xy2d))
-}
-
 /// Negation of an AffineNielsPoint as structure
 pub open spec fn negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
     AffineNielsPoint {
@@ -748,13 +741,6 @@ pub open spec fn negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
             limbs: crate::specs::field_specs_u64::spec_negate(p.xy2d.limbs),
         },
     }
-}
-
-/// Spec function: Negation of a ProjectiveNielsPoint as tuple
-/// Negation swaps Y+X with Y-X and negates T2d (Z stays the same)
-pub open spec fn spec_negate_projective_niels(p: (nat, nat, nat, nat)) -> (nat, nat, nat, nat) {
-    let (y_plus_x, y_minus_x, z, t2d) = p;
-    (y_minus_x, y_plus_x, z, field_neg(t2d))
 }
 
 /// Negation of a ProjectiveNielsPoint as structure
@@ -844,7 +830,7 @@ pub open spec fn is_valid_projective_point(point: ProjectivePoint) -> bool {
 ///   (X:Z, Y:T) ↦ (X·T : Y·Z : Z·T)
 /// This preserves the affine point because:
 ///   X·T / Z·T = X/Z and Y·Z / Z·T = Y/T
-pub open spec fn spec_completed_to_projective(
+pub open spec fn completed_to_projective(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat) {
     let (x, y, z, t) = spec_completed_point(point);
@@ -855,7 +841,7 @@ pub open spec fn spec_completed_to_projective(
 /// Converts from P¹ × P¹ to P³ via the Segre embedding:
 ///   ((X:Z), (Y:T)) ↦ (X·T : Y·Z : Z·T : X·Y)
 /// This preserves the affine point and satisfies the extended coordinate invariant
-pub open spec fn spec_completed_to_extended(
+pub open spec fn completed_to_extended(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat, nat) {
     let (x, y, z, t) = spec_completed_point(point);
@@ -866,7 +852,7 @@ pub open spec fn spec_completed_to_extended(
 /// Converts from P² to P³ via:
 ///   (X:Y:Z) ↦ (X·Z : Y·Z : Z² : X·Y)
 /// This preserves the affine point and establishes the extended coordinate invariant
-pub open spec fn spec_projective_to_extended(point: ProjectivePoint) -> (nat, nat, nat, nat) {
+pub open spec fn projective_to_extended(point: ProjectivePoint) -> (nat, nat, nat, nat) {
     let (x, y, z) = spec_projective_point_edwards(point);
     (field_mul(x, z), field_mul(y, z), field_square(z), field_mul(x, y))
 }
@@ -1022,8 +1008,8 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 //                                                                    selects x sign
 //
 // Spec functions (in pipeline order):
-//   1. spec_nonspec_map_to_curve           -- top-level: bytes -> [8]P
-//   2. spec_montgomery_to_edwards_affine    -- Montgomery u + sign -> Edwards (x,y)
+//   1. nonspec_map_to_curve           -- top-level: bytes -> [8]P
+//   2. montgomery_to_edwards_affine    -- Montgomery u + sign -> Edwards (x,y)
 //   3. spec_edwards_decompress_from_y      -- Edwards y + sign -> (x,y)
 //
 // Helper functions (defined elsewhere):
@@ -1045,7 +1031,7 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 ///
 /// Note from Dalek code: This is NOT a proper hash-to-curve (non-uniform distribution).
 /// A proper hash-to-curve applies Elligator twice and adds the results.
-pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
+pub open spec fn nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     recommends
         hash_bytes.len() == 32,
 {
@@ -1056,13 +1042,13 @@ pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     // Elligator2 encoding: field element -> Montgomery u-coordinate
     let u = spec_elligator_encode(fe_nat);
     // Convert Montgomery to Edwards with sign bit selecting x
-    let P = spec_montgomery_to_edwards_affine(u, sign_bit);
+    let P = montgomery_to_edwards_affine(u, sign_bit);
     // Cofactor clearing: multiply by 8 to ensure prime-order subgroup
     edwards_scalar_mul(P, 8)
 }
 
 /// Normalize a sign byte to 0 or 1 (the low bit).
-pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
+pub open spec fn normalize_sign(sign: u8) -> u8 {
     if (sign & 1u8) == 0u8 {
         0u8
     } else {
@@ -1082,7 +1068,7 @@ pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
 /// here by forcing `effective_sign = 0`.
 ///
 /// Returns identity (0, 1) on failure (u = -1 or invalid y).
-pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat) {
+pub open spec fn montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat) {
     if u == field_sub(0, 1) {
         // u = -1: birational map has zero denominator
         edwards_identity()
@@ -1094,7 +1080,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
         } else {
             sign_bit
         };
-        match spec_edwards_decompress_from_y_and_sign(y, effective_sign) {
+        match edwards_decompress_from_y_and_sign(y, effective_sign) {
             Some(P) => P,
             None => edwards_identity(),
         }
@@ -1107,7 +1093,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
 /// - Returns None if y is not a valid y-coordinate (no x exists on curve)
 /// - Returns None if x = 0 but sign_bit = 1 (invalid sign for zero, since 0 % 2 == 0)
 /// - Otherwise returns the unique (x, y) on the curve with x % 2 == sign_bit
-pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<
+pub open spec fn edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<
     (nat, nat),
 > {
     if !is_valid_edwards_y_coordinate(y) {

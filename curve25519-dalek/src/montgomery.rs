@@ -1117,7 +1117,7 @@ impl MontgomeryPoint {
                 ==> result.is_some(),
             result.is_some() && is_valid_montgomery_point(*self) && !is_equal_to_minus_one(
                 spec_montgomery(*self),
-            ) ==> edwards_point_as_affine(result.unwrap()) == spec_montgomery_to_edwards_affine(
+            ) ==> edwards_point_as_affine(result.unwrap()) == montgomery_to_edwards_affine(
                 spec_montgomery(*self),
                 sign,
             ),

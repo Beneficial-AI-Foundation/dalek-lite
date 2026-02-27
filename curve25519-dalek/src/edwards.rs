@@ -819,8 +819,7 @@ impl Identity for CompressedEdwardsY {
         ensures
             field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
-            result.0[0] == 1u8,
-            forall|i: int| 1 <= i < 32 ==> result.0[i] == 0u8,
+            is_compressed_edwards_y_identity(result),
     {
         let result = CompressedEdwardsY(
             [
@@ -942,6 +941,7 @@ impl Identity for EdwardsPoint {
         ensures
             is_identity_edwards_point(result),
             is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == edwards_identity(),
     {
         proof {
             // ZERO/ONE limbs (0, 1) are within 52-bit bound
@@ -958,6 +958,7 @@ impl Identity for EdwardsPoint {
         };
         proof {
             lemma_unfold_edwards(result);
+            lemma_identity_affine_coords(result);
         }
         result
     }

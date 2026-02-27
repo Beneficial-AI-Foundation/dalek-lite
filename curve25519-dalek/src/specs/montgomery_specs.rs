@@ -203,6 +203,16 @@ pub open spec fn spec_montgomery(point: crate::montgomery::MontgomeryPoint) -> n
     field_element_from_bytes(&point.0)
 }
 
+/// Check if a MontgomeryPoint represents the identity (u-coordinate == 0)
+pub open spec fn is_montgomery_identity(pt: crate::montgomery::MontgomeryPoint) -> bool {
+    spec_montgomery(pt) == 0
+}
+
+/// Check if a Montgomery ProjectivePoint is the identity (W == 0)
+pub open spec fn is_montgomery_projective_identity(pt: crate::montgomery::ProjectivePoint) -> bool {
+    fe51_as_canonical_nat(&pt.W) == 0
+}
+
 /// Check if a MontgomeryPoint corresponds to an EdwardsPoint
 /// via the birational map u = (1+y)/(1-y)
 /// Special case: Edwards identity (y=1) maps to u=0

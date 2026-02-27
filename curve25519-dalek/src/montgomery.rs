@@ -322,9 +322,7 @@ impl Identity for MontgomeryPoint {
     /// Return the group identity element, which has order 4.
     fn identity() -> (result: MontgomeryPoint)
         ensures
-    // The identity point has u-coordinate = 0
-
-            spec_montgomery(result) == 0,
+            is_montgomery_identity(result),
     {
         let result = MontgomeryPoint([0u8;32]);
         proof {
@@ -1768,14 +1766,10 @@ pub struct ProjectivePoint {
 impl Identity for ProjectivePoint {
     fn identity() -> (result: ProjectivePoint)
         ensures
-    // The identity point is (1:0) in projective coordinates
-
+            is_montgomery_projective_identity(result),
             fe51_as_canonical_nat(&result.U) == 1,
-            fe51_as_canonical_nat(&result.W) == 0,
-            // Actual representation uses field constants ONE/ZERO
             fe51_limbs_bounded(&result.U, 51),
             fe51_limbs_bounded(&result.W, 51),
-            // Weakened bounds help SMT solver in callers
             fe51_limbs_bounded(&result.U, 54),
             fe51_limbs_bounded(&result.W, 54),
     {

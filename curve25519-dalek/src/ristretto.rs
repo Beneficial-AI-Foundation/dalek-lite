@@ -228,6 +228,9 @@ use crate::lemmas::field_lemmas::field_algebra_lemmas::{
 };
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::ristretto_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -1554,6 +1557,9 @@ impl RistrettoPoint {
         let p1 = &self.0 + &t2;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[2] */
         let p2 = &self.0 + &t4;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[4] */
         let p3 = &self.0 + &t6;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[6] */
+        proof {
+            lemma_coset4_correct(self.0, t2, t4, t6, p1, p2, p3);
+        }
         [p0, p1, p2, p3]
     }
 

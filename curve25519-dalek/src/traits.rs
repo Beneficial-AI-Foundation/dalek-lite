@@ -68,22 +68,20 @@ impl IsIdentitySpecImpl for EdwardsPoint {
 }
 
 impl IsIdentitySpecImpl for CompressedEdwardsY {
-    /// Byte equality with the identity encoding [1, 0, ..., 0]
     open spec fn is_identity_spec(&self) -> bool {
-        self.0[0] == 1u8 && (forall|i: int| 1 <= i < 32 ==> self.0[i] == 0u8)
+        is_compressed_edwards_y_identity(*self)
     }
 }
 
 impl IsIdentitySpecImpl for MontgomeryPoint {
     open spec fn is_identity_spec(&self) -> bool {
-        spec_montgomery(*self) == 0
+        is_montgomery_identity(*self)
     }
 }
 
 impl IsIdentitySpecImpl for ProjectivePoint {
-    /// Identity is (1:0) in projective coordinates, i.e., W == 0
     open spec fn is_identity_spec(&self) -> bool {
-        fe51_as_canonical_nat(&self.W) == 0
+        is_montgomery_projective_identity(*self)
     }
 }
 

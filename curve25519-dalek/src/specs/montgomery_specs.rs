@@ -208,9 +208,9 @@ pub open spec fn is_montgomery_identity(pt: crate::montgomery::MontgomeryPoint) 
     spec_montgomery(pt) == 0
 }
 
-/// Check if a Montgomery ProjectivePoint is the identity (W == 0)
+/// Check if a Montgomery ProjectivePoint is the identity (1:0)
 pub open spec fn is_montgomery_projective_identity(pt: crate::montgomery::ProjectivePoint) -> bool {
-    fe51_as_canonical_nat(&pt.W) == 0
+    fe51_as_canonical_nat(&pt.U) == 1 && fe51_as_canonical_nat(&pt.W) == 0
 }
 
 /// Check if a MontgomeryPoint corresponds to an EdwardsPoint

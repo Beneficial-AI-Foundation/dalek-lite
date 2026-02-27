@@ -1039,7 +1039,7 @@ impl FieldElement {
         let u_neg = negate_field_element(u);
         proof {
             assert(fe51_limbs_bounded(&u_neg, 52));
-            axiom_sqrt_m1_limbs_bounded();
+            lemma_sqrt_m1_limbs_bounded();
         }
         let flipped_sign_sqrt = check.ct_eq(&u_neg);
         let u_neg_i = &u_neg * i;
@@ -1297,6 +1297,10 @@ impl FieldElement {
             // When unsuccessful and self ≠ 0: r² * self ≡ i (mod p) [nonsquare case]
             (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0)
                 ==> fe51_is_sqrt_ratio_times_i(&FieldElement::ONE, self, &result.1),
+            // Limb bounds (forwarded from sqrt_ratio_i)
+            fe51_limbs_bounded(&result.1, 52),
+            // Nonneg: the result always has even canonical representation (LSB = 0)
+            fe51_as_canonical_nat(&result.1) % 2 == 0,
     {
         proof {
             // sqrt_ratio_i requires fe51_limbs_bounded(u, 54)

@@ -75,7 +75,7 @@ impl IsIdentitySpecImpl for CompressedEdwardsY {
 
 impl IsIdentitySpecImpl for MontgomeryPoint {
     open spec fn is_identity_spec(&self) -> bool {
-        spec_montgomery(*self) == 0
+        montgomery_point_as_nat(*self) == 0
     }
 }
 
@@ -157,7 +157,7 @@ impl IsIdentity for CompressedEdwardsY {
 
 /// MontgomeryPoint::ct_eq ensures field element equality:
 ///   choice_is_true(result) == (field_element_from_bytes(&self.0) == field_element_from_bytes(&other.0))
-/// spec_montgomery(pt) == field_element_from_bytes(&pt.0) by definition, so the proof is direct.
+/// montgomery_point_as_nat(pt) == field_element_from_bytes(&pt.0) by definition, so the proof is direct.
 impl IsIdentity for MontgomeryPoint {
     fn is_identity(&self) -> (result: bool)
         ensures

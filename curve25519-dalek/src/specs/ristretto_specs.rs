@@ -115,7 +115,7 @@ pub open spec fn ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> 
 ///
 /// Reference: [RISTRETTO] §5.3
 pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
-    let (x, y, z, t) = spec_edwards_point(point.0);
+    let (x, y, z, t) = edwards_point_as_nat(point.0);
     ristretto_compress_extended(x, y, z, t)
 }
 
@@ -244,7 +244,7 @@ pub proof fn axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint
     requires
         s < p(),
         ristretto_decode_ok(s),
-        spec_edwards_point(point) == (
+        edwards_point_as_nat(point) == (
             ristretto_decode_x(s),
             ristretto_decode_y(s),
             1nat,

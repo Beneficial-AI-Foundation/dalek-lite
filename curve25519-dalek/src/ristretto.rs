@@ -377,7 +377,7 @@ impl CompressedRistretto {
     // Spec alignment: result matches spec-level decoding
 
             result.is_none() <==> spec_ristretto_decompress(self.0).is_none(),
-            result.is_some() ==> spec_edwards_point(result.unwrap().0) == spec_ristretto_decompress(
+            result.is_some() ==> edwards_point_as_nat(result.unwrap().0) == spec_ristretto_decompress(
                 self.0,
             ).unwrap(),
             // If decompression succeeds, the result is a well-formed Edwards point
@@ -434,7 +434,7 @@ impl CompressedRistretto {
                 let t = field_mul(x, y);
                 assert(ok_spec && !is_negative(t) && y != 0);
 
-                assert(spec_edwards_point(res.0) == (x, y, 1nat, t)) by {
+                assert(edwards_point_as_nat(res.0) == (x, y, 1nat, t)) by {
                     lemma_unfold_edwards(res.0);
                     let x_nat = fe51_as_canonical_nat(&res.0.X);
                     let y_nat = fe51_as_canonical_nat(&res.0.Y);
@@ -1193,7 +1193,7 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
             fe51_limbs_bounded(&result.eg, 54),
             fe51_limbs_bounded(&result.fh, 54),
             ({
-                let (x, y, z, t) = spec_edwards_point(P.0);
+                let (x, y, z, t) = edwards_point_as_nat(P.0);
                 let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
                 // e = 2*X*Y
                 fe51_as_canonical_nat(&result.e) == field_mul(

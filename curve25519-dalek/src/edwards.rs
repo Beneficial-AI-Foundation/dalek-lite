@@ -1598,11 +1598,11 @@ impl EdwardsPoint {
         proof {
             // === Correspondence proof ===
             // Need: montgomery_corresponds_to_edwards(result, *self)
-            // Step 1: Connect spec_montgomery(result) to u_field
+            // Step 1: Connect montgomery_point_as_nat(result) to u_field
             // as_bytes postcondition: u8_32_as_nat(&u.as_bytes()) == fe51_as_canonical_nat(&u)
             assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
 
-            // spec_montgomery(result) = field_element_from_bytes(&result.0)
+            // montgomery_point_as_nat(result) = field_element_from_bytes(&result.0)
             //                         = (u8_32_as_nat(&result.0) % pow2(255)) % p()
             // Since fe51_as_canonical_nat(&u) < p() < pow2(255), double mod is identity
             assert(fe51_as_canonical_nat(&u) < p()) by {
@@ -1873,7 +1873,7 @@ impl EdwardsPoint {
         proof {
             // to_edwards returns None only when is_equal_to_minus_one(u),
             // but spec_elligator_encode guarantees !is_equal_to_minus_one(u).
-            assert(!is_equal_to_minus_one(spec_montgomery(M1)));
+            assert(!is_equal_to_minus_one(montgomery_point_as_nat(M1)));
             match E1_opt {
                 Some(_) => {},
                 None => {
@@ -1912,16 +1912,16 @@ impl EdwardsPoint {
 
             // Step 5: elligator result matches spec
             let u = spec_elligator_encode(fe_nat_spec);
-            assert(spec_montgomery(M1) == u);
+            assert(montgomery_point_as_nat(M1) == u);
 
             // Step 6: to_edwards gives exact equality with spec
             let P = montgomery_to_edwards_affine(u, sign_bit);
             assert(edwards_point_as_affine(E1) == P) by {
                 assert(is_valid_montgomery_point(M1));
-                assert(!is_equal_to_minus_one(spec_montgomery(M1)));
+                assert(!is_equal_to_minus_one(montgomery_point_as_nat(M1)));
                 // to_edwards postcondition with sign normalisation
                 assert(montgomery_to_edwards_affine(
-                    spec_montgomery(M1),
+                    montgomery_point_as_nat(M1),
                     normalize_sign(sign_bit),
                 ) == P);
             }

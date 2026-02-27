@@ -200,6 +200,9 @@ use crate::core_assumes::try_into_32_bytes_array;
 use crate::field::FieldElement;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::common_lemmas::to_nat_lemmas::lemma_canonical_bytes_equal;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::edwards_lemmas::constants_lemmas::lemma_edwards_d_limbs_bounded;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks
@@ -219,13 +222,17 @@ use crate::lemmas::field_lemmas::batch_invert_lemmas::lemma_is_zero_iff_canonica
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::constants_lemmas::{
-    lemma_one_field_element_value, lemma_one_limbs_bounded_51,
+    lemma_invsqrt_a_minus_d_limbs_bounded, lemma_one_field_element_value,
+    lemma_one_limbs_bounded_51,
 };
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::field_algebra_lemmas::{
     lemma_field_mul_one_left, lemma_square_matches_field_square,
 };
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::sqrt_m1_lemmas::lemma_sqrt_m1_limbs_bounded;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 #[cfg(verus_keep_ghost)]
@@ -1088,12 +1095,32 @@ pub struct RistrettoPoint(pub EdwardsPoint);
 impl RistrettoPoint {
     /// Compress this point using the Ristretto encoding.
     pub fn compress(&self) -> (result: CompressedRistretto)
+        requires
+            is_well_formed_edwards_point(self.0),
         ensures
             result.0 == spec_ristretto_compress(*self),
     {
-        // VERIFICATION NOTE: assume(false) postpones proof obligations for compress
+        // Background: link accessor-based predicates to actual fields.
+        // Needed throughout because spec_ristretto_compress uses edwards_x/y/z/t accessors.
         proof {
-            assume(false);
+            lemma_unfold_edwards(self.0);
+        }
+
+        let ghost x_nat = fe51_as_canonical_nat(&self.0.X);
+        let ghost y_nat = fe51_as_canonical_nat(&self.0.Y);
+        let ghost z_nat = fe51_as_canonical_nat(&self.0.Z);
+        let ghost t_nat = fe51_as_canonical_nat(&self.0.T);
+
+        proof {
+            assert(sum_of_limbs_bounded(&self.0.Z, &self.0.Y, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&self.0.Z, &self.0.Y, 52);
+            };
+            assert(fe51_limbs_bounded(&constants::SQRT_M1, 54)) by {
+                lemma_sqrt_m1_limbs_bounded();
+            };
+            assert(fe51_limbs_bounded(&constants::INVSQRT_A_MINUS_D, 54)) by {
+                lemma_invsqrt_a_minus_d_limbs_bounded();
+            };
         }
 
         let mut X = self.0.X;
@@ -1101,41 +1128,282 @@ impl RistrettoPoint {
         let Z = &self.0.Z;
         let T = &self.0.T;
 
-        let u1 = &(Z + &Y) * &(Z - &Y);
+        proof {
+            assert(fe51_limbs_bounded(Z, 54) && fe51_limbs_bounded(&Y, 54) && fe51_limbs_bounded(
+                &X,
+                54,
+            ) && fe51_limbs_bounded(T, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(Z, 52, 54);
+                lemma_fe51_limbs_bounded_weaken(&Y, 52, 54);
+                lemma_fe51_limbs_bounded_weaken(&X, 52, 54);
+                lemma_fe51_limbs_bounded_weaken(T, 52, 54);
+            };
+        }
+
+        /* ORIGINAL CODE: let u1 = &(Z + &Y) * &(Z - &Y); */
+        let z_plus_y = Z + &Y;
+        let z_minus_y = Z - &Y;
+        proof {
+            assert(fe51_limbs_bounded(&z_plus_y, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&z_plus_y, 53, 54);
+            };
+        }
+        let u1 = &z_plus_y * &z_minus_y;
         let u2 = &X * &Y;
+        proof {
+            assert(fe51_as_canonical_nat(&u1) == field_mul(
+                field_add(z_nat, y_nat),
+                field_sub(z_nat, y_nat),
+            ));
+        }
+
+        /* ORIGINAL CODE: let (_, invsqrt) = (&u1 * &u2.square()).invsqrt(); */
         // Ignore return value since this is always square
-        let (_, invsqrt) = (&u1 * &u2.square()).invsqrt();
+        let u2_sq = u2.square();
+        proof {
+            assert(fe51_as_canonical_nat(&u2_sq) == field_square(fe51_as_canonical_nat(&u2))) by {
+                lemma_square_matches_field_square(fe51_as_nat(&u2), fe51_as_nat(&u2_sq));
+            };
+        }
+        let u1_u2_sq = &u1 * &u2_sq;
+        let ghost u1_u2_sq_nat = fe51_as_canonical_nat(&u1_u2_sq);
+        proof {
+            assert(u1_u2_sq_nat == field_mul(
+                fe51_as_canonical_nat(&u1),
+                field_square(fe51_as_canonical_nat(&u2)),
+            ));
+        }
+
+        let (_, invsqrt) = u1_u2_sq.invsqrt();
+        let ghost invsqrt_nat = fe51_as_canonical_nat(&invsqrt);
+
+        proof {
+            assert(invsqrt_nat == nat_invsqrt(u1_u2_sq_nat)) by {
+                assert(invsqrt_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&invsqrt);
+                };
+                assert(u1_u2_sq_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&u1_u2_sq);
+                };
+                if u1_u2_sq_nat == 0 {
+                } else {
+                    assert(is_sqrt_ratio(1, u1_u2_sq_nat, invsqrt_nat) || is_sqrt_ratio_times_i(
+                        1,
+                        u1_u2_sq_nat,
+                        invsqrt_nat,
+                    )) by {
+                        lemma_one_field_element_value();
+                    };
+                }
+                lemma_invsqrt_matches_spec(invsqrt_nat, u1_u2_sq_nat);
+            };
+            assert(fe51_limbs_bounded(&invsqrt, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&invsqrt, 52, 54);
+            };
+        }
+
         let i1 = &invsqrt * &u1;
         let i2 = &invsqrt * &u2;
-        let z_inv = &i1 * &(&i2 * T);
+        /* ORIGINAL CODE: let z_inv = &i1 * &(&i2 * T); */
+        let i2_t = &i2 * T;
+        let z_inv = &i1 * &i2_t;
         let mut den_inv = i2;
+
+        let ghost i1_nat = fe51_as_canonical_nat(&i1);
+        let ghost i2_nat = fe51_as_canonical_nat(&i2);
+        let ghost z_inv_nat = fe51_as_canonical_nat(&z_inv);
+
+        proof {
+            assert(z_inv_nat == field_mul(i1_nat, field_mul(i2_nat, t_nat)));
+        }
 
         let iX = &X * &constants::SQRT_M1;
         let iY = &Y * &constants::SQRT_M1;
         let ristretto_magic = &constants::INVSQRT_A_MINUS_D;
         let enchanted_denominator = &i1 * ristretto_magic;
 
-        let rotate = (T * &z_inv).is_negative();
+        let ghost ed_nat = fe51_as_canonical_nat(&enchanted_denominator);
 
-        // ORIGINAL CODE: X.conditional_assign(&iY, rotate);
+        proof {
+            assert(ed_nat == field_mul(
+                i1_nat,
+                fe51_as_canonical_nat(&constants::INVSQRT_A_MINUS_D),
+            ));
+        }
+
+        /* ORIGINAL CODE: let rotate = (T * &z_inv).is_negative(); */
+        let t_z_inv = T * &z_inv;
+        let rotate = t_z_inv.is_negative();
+
+        let ghost rotate_bool = is_negative(field_mul(t_nat, z_inv_nat));
+        proof {
+            assert(choice_is_true(rotate) == rotate_bool) by {
+                lemma_is_negative_bridge(&t_z_inv, fe51_as_canonical_nat(&t_z_inv));
+            };
+        }
+
+        let ghost old_den_inv = den_inv;
+
+        /* <ORIGINAL CODE>
+        X.conditional_assign(&iY, rotate);
+        Y.conditional_assign(&iX, rotate);
+        den_inv.conditional_assign(&enchanted_denominator, rotate);
+        </ORIGINAL CODE> */
         // VERUS WORKAROUND: Use conditional_assign_generic wrapper for Verus compatibility
         conditional_assign_generic(&mut X, &iY, rotate);
-        // ORIGINAL CODE: Y.conditional_assign(&iX, rotate);
         conditional_assign_generic(&mut Y, &iX, rotate);
-        // ORIGINAL CODE: den_inv.conditional_assign(&enchanted_denominator, rotate);
         conditional_assign_generic(&mut den_inv, &enchanted_denominator, rotate);
 
-        // ORIGINAL CODE: Y.conditional_negate((&X * &z_inv).is_negative());
-        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
-        conditional_negate_field_element(&mut Y, (&X * &z_inv).is_negative());
+        let ghost x_rot = fe51_as_canonical_nat(&X);
+        let ghost y_rot = fe51_as_canonical_nat(&Y);
+        let ghost den_inv_rot = fe51_as_canonical_nat(&den_inv);
 
-        let mut s = &den_inv * &(Z - &Y);
+        proof {
+            assert(den_inv_rot == if rotate_bool {
+                ed_nat
+            } else {
+                i2_nat
+            }) by {
+                if choice_is_true(rotate) {
+                } else {
+                    assert(den_inv == old_den_inv);
+                }
+            };
+            assert(fe51_limbs_bounded(&X, 52));
+            assert(fe51_limbs_bounded(&Y, 52));
+            assert(fe51_limbs_bounded(&den_inv, 52));
+        }
+
+        /* ORIGINAL CODE: Y.conditional_negate((&X * &z_inv).is_negative()); */
+        let x_z_inv = &X * &z_inv;
+        let x_z_inv_neg = x_z_inv.is_negative();
+        proof {
+            assert(choice_is_true(x_z_inv_neg) == is_negative(field_mul(x_rot, z_inv_nat))) by {
+                lemma_is_negative_bridge(&x_z_inv, fe51_as_canonical_nat(&x_z_inv));
+            };
+        }
+
+        /* ORIGINAL CODE: Y.conditional_negate(x_z_inv_neg); */
+        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper
+        proof {
+            assert(fe51_limbs_bounded(&Y, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&Y, 52, 54);
+            };
+        }
+        conditional_negate_field_element(&mut Y, x_z_inv_neg);
+
+        let ghost y_final = fe51_as_canonical_nat(&Y);
+        proof {
+            assert(y_final == if is_negative(field_mul(x_rot, z_inv_nat)) {
+                field_neg(y_rot)
+            } else {
+                y_rot
+            });
+        }
+
+        proof {
+            assert(fe51_limbs_bounded(&den_inv, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&den_inv, 52, 54);
+            };
+        }
+        /* ORIGINAL CODE: let mut s = &den_inv * &(Z - &Y); */
+        let z_minus_y_final = Z - &Y;
+        let mut s = &den_inv * &z_minus_y_final;
+
+        let ghost s_pre_nat = fe51_as_canonical_nat(&s);
+        proof {
+            assert(fe51_as_canonical_nat(&z_minus_y_final) == field_sub(z_nat, y_final));
+            assert(s_pre_nat == field_mul(den_inv_rot, field_sub(z_nat, y_final)));
+        }
+
         let s_is_negative = s.is_negative();
-        // ORIGINAL CODE: s.conditional_negate(s_is_negative);
-        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
+        proof {
+            assert(choice_is_true(s_is_negative) == is_negative(s_pre_nat)) by {
+                lemma_is_negative_bridge(&s, s_pre_nat);
+            };
+        }
+
+        /* ORIGINAL CODE: s.conditional_negate(s_is_negative); */
+        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper
+        proof {
+            assert(fe51_limbs_bounded(&s, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&s, 52, 54);
+            };
+        }
         conditional_negate_field_element(&mut s, s_is_negative);
 
-        CompressedRistretto(s.as_bytes())
+        let ghost s_final_nat = fe51_as_canonical_nat(&s);
+        proof {
+            assert(s_final_nat == if is_negative(s_pre_nat) {
+                field_neg(s_pre_nat)
+            } else {
+                s_pre_nat
+            });
+        }
+
+        /* ORIGINAL CODE: CompressedRistretto(s.as_bytes()) */
+        let s_bytes = s.as_bytes();
+
+        proof {
+            assert(s_bytes == u8_32_from_nat(s_final_nat)) by {
+                assert(u8_32_as_nat(&s_bytes) == s_final_nat);
+                assert(s_final_nat < pow2(256)) by {
+                    lemma_canonical_nat_lt_p(&s);
+                    pow255_gt_19();
+                    lemma_pow2_strictly_increases(255, 256);
+                };
+                assert(s_final_nat % pow2(256) == s_final_nat) by {
+                    lemma_small_mod(s_final_nat, pow2(256));
+                };
+                let chosen = u8_32_from_nat(s_final_nat);
+                lemma_canonical_bytes_equal(&s_bytes, &chosen);
+            };
+
+            assert(s_bytes == spec_ristretto_compress_extended(x_nat, y_nat, z_nat, t_nat)) by {
+                let spec_u1 = field_mul(field_add(z_nat, y_nat), field_sub(z_nat, y_nat));
+                let spec_u2 = field_mul(x_nat, y_nat);
+                let spec_invsqrt = nat_invsqrt(field_mul(spec_u1, field_square(spec_u2)));
+                let spec_i1 = field_mul(spec_invsqrt, spec_u1);
+                let spec_i2 = field_mul(spec_invsqrt, spec_u2);
+                let spec_z_inv = field_mul(spec_i1, field_mul(spec_i2, t_nat));
+
+                assert(invsqrt_nat == spec_invsqrt);
+                assert(i1_nat == spec_i1);
+                assert(i2_nat == spec_i2);
+                assert(z_inv_nat == spec_z_inv);
+                assert(rotate_bool == is_negative(field_mul(t_nat, spec_z_inv)));
+
+                assert(x_rot == if rotate_bool {
+                    field_mul(y_nat, sqrt_m1())
+                } else {
+                    x_nat
+                });
+                assert(y_rot == if rotate_bool {
+                    field_mul(x_nat, sqrt_m1())
+                } else {
+                    y_nat
+                });
+                assert(den_inv_rot == if rotate_bool {
+                    field_mul(spec_i1, fe51_as_canonical_nat(&constants::INVSQRT_A_MINUS_D))
+                } else {
+                    spec_i2
+                });
+
+                assert(y_final == if is_negative(field_mul(x_rot, spec_z_inv)) {
+                    field_neg(y_rot)
+                } else {
+                    y_rot
+                });
+                assert(s_pre_nat == field_mul(den_inv_rot, field_sub(z_nat, y_final)));
+                assert(s_final_nat == if is_negative(s_pre_nat) {
+                    field_neg(s_pre_nat)
+                } else {
+                    s_pre_nat
+                });
+            };
+        }
+
+        CompressedRistretto(s_bytes)
     }
 }
 

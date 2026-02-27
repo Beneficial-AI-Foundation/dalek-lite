@@ -481,7 +481,7 @@ mod test_ristretto_decode_axioms {
     use crate::edwards::EdwardsPoint;
     use crate::field::FieldElement;
     use crate::ristretto::{CompressedRistretto, RistrettoPoint};
-    use subtle::{ConditionallyNegatable, ConstantTimeEq};
+    use subtle::{Choice, ConditionallyNegatable, ConstantTimeEq};
 
     /// Helper: compute the Edwards curve equation residue.
     /// Returns 0 if (x, y) is on the curve: -x² + y² - 1 - d·x²·y² ≡ 0 (mod p).
@@ -1215,5 +1215,83 @@ mod test_ristretto_decode_axioms {
             bool::from(fermat.ct_eq(&FieldElement::ONE)),
             "Fermat's Little Theorem: 2^(p-1) must equal 1 mod p"
         );
+    }
+
+    /// Validate conditional_negate_field_element ensures:
+    ///   1. negate(a) + a == 0 (mod p) for various field elements
+    ///   2. Limb bounds hold after negation (52-bit for negate, preserved for no-op)
+    ///   3. No-op when choice is false
+    #[test]
+    fn test_conditional_negate_field_element() {
+        use core::ops::Neg;
+        use subtle::ConditionallyNegatable;
+
+        let test_values: [FieldElement; 13] = [
+            FieldElement::ZERO,
+            FieldElement::ONE,
+            FieldElement::ONE.neg(),
+            constants::SQRT_M1,
+            constants::SQRT_M1.neg(),
+            constants::INVSQRT_A_MINUS_D,
+            constants::EDWARDS_D,
+            FieldElement51 {
+                limbs: [1, 0, 0, 0, 0],
+            },
+            FieldElement51 {
+                limbs: [0, 1, 0, 0, 0],
+            },
+            FieldElement51 {
+                limbs: [0, 0, 1, 0, 0],
+            },
+            FieldElement51 {
+                limbs: [0, 0, 0, 1, 0],
+            },
+            FieldElement51 {
+                limbs: [0, 0, 0, 0, 1],
+            },
+            FieldElement51 {
+                limbs: [
+                    2251799813685247,
+                    2251799813685247,
+                    2251799813685247,
+                    2251799813685247,
+                    2251799813685247,
+                ],
+            },
+        ];
+
+        let mask52: u64 = (1u64 << 52) - 1;
+
+        for a in &test_values {
+            // Test negate case (choice = true)
+            let mut neg_a = *a;
+            neg_a.conditional_negate(Choice::from(1u8));
+            let sum = &neg_a + a;
+            assert!(
+                bool::from(sum.ct_eq(&FieldElement::ZERO)),
+                "negate(a) + a must equal 0 for all field elements"
+            );
+            for i in 0..5 {
+                assert!(
+                    neg_a.limbs[i] <= mask52,
+                    "limb {} after negate exceeds 52-bit bound: {}",
+                    i,
+                    neg_a.limbs[i]
+                );
+            }
+
+            // Test no-op case (choice = false)
+            let mut noop_a = *a;
+            let original = *a;
+            noop_a.conditional_negate(Choice::from(0u8));
+            assert!(
+                bool::from(noop_a.ct_eq(&original)),
+                "conditional_negate with false choice must be a no-op"
+            );
+            assert_eq!(
+                noop_a.limbs, original.limbs,
+                "limbs must be identical after no-op"
+            );
+        }
     }
 }

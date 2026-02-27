@@ -361,11 +361,6 @@ pub open spec fn is_edwards_identity(x: nat, y: nat) -> bool {
     field_canonical(x) == 0 && field_canonical(y) == 1
 }
 
-/// Check if a CompressedEdwardsY is the identity encoding [1, 0, ..., 0]
-pub open spec fn is_compressed_edwards_y_identity(pt: CompressedEdwardsY) -> bool {
-    pt.0[0] == 1u8 && (forall|i: int| 1 <= i < 32 ==> pt.0[i] == 0u8)
-}
-
 // =============================================================================
 // EdwardsPoint Field Accessors (closed — the only functions accessing pub(crate) fields)
 // =============================================================================

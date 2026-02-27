@@ -819,7 +819,7 @@ impl Identity for CompressedEdwardsY {
         ensures
             field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
-            is_compressed_edwards_y_identity(result),
+            result.0[0] == 1u8 && (forall|i: int| 1 <= i < 32 ==> result.0[i] == 0u8),
     {
         let result = CompressedEdwardsY(
             [

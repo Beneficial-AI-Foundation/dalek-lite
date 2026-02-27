@@ -69,19 +69,19 @@ impl IsIdentitySpecImpl for EdwardsPoint {
 
 impl IsIdentitySpecImpl for CompressedEdwardsY {
     open spec fn is_identity_spec(&self) -> bool {
-        is_compressed_edwards_y_identity(*self)
+        self.0[0] == 1u8 && (forall|i: int| 1 <= i < 32 ==> self.0[i] == 0u8)
     }
 }
 
 impl IsIdentitySpecImpl for MontgomeryPoint {
     open spec fn is_identity_spec(&self) -> bool {
-        is_montgomery_identity(*self)
+        spec_montgomery(*self) == 0
     }
 }
 
 impl IsIdentitySpecImpl for ProjectivePoint {
     open spec fn is_identity_spec(&self) -> bool {
-        is_montgomery_projective_identity(*self)
+        fe51_as_canonical_nat(&self.U) == 1 && fe51_as_canonical_nat(&self.W) == 0
     }
 }
 

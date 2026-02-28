@@ -864,7 +864,7 @@ mod test_ristretto_decode_axioms {
         }
     }
 
-    /// Validate axiom_invsqrt_unique:
+    /// Validate lemma_invsqrt_unique:
     /// For nonzero field elements, invsqrt produces a unique nonnegative root.
     ///
     /// Checks:

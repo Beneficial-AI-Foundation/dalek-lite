@@ -1359,7 +1359,7 @@ impl RistrettoPoint {
                 lemma_canonical_bytes_equal(&s_bytes, &chosen);
             };
 
-            assert(s_bytes == spec_ristretto_compress_extended(x_nat, y_nat, z_nat, t_nat)) by {
+            assert(s_bytes == ristretto_compress_extended(x_nat, y_nat, z_nat, t_nat)) by {
                 let spec_u1 = field_mul(field_add(z_nat, y_nat), field_sub(z_nat, y_nat));
                 let spec_u2 = field_mul(x_nat, y_nat);
                 let spec_invsqrt = nat_invsqrt(field_mul(spec_u1, field_square(spec_u2)));

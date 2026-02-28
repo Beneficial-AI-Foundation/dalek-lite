@@ -1292,21 +1292,21 @@ pub proof fn axiom_nat_invsqrt_satisfies_relation(a: nat)
     admit();
 }
 
-/// Nonneg invsqrt is unique (mechanized from axiom_nat_invsqrt_satisfies_relation).
+/// Lemma: nonneg invsqrt is unique.
 ///
 /// If r is nonneg and satisfies r²·a ≡ 1 or r²·a ≡ √(-1) (mod p),
 /// then r equals nat_invsqrt(a).
 ///
-/// Proof structure:
+/// Proof:
 ///   1. Let s = nat_invsqrt(a). By axiom_nat_invsqrt_satisfies_relation,
 ///      s is nonneg and satisfies the same relation type.
-///   2. Both r and s land in the same case (sqrt or sqrt*i) because
-///      the two cases are mutually exclusive for each value.
-///   3. Cancel a: r²·a = s²·a with a ≠ 0 => r² = s².
+///   2. Mixed cases (r in sqrt, s in sqrt*i or vice versa) are impossible
+///      by lemma_no_square_root_when_times_i.
+///   3. Same case: cancel a (nonzero) to get r² = s².
 ///   4. By lemma_nonneg_square_root_unique: r = s.
 ///
 /// Runtime validation: `test_invsqrt_unique` (190+ elements)
-pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
+pub proof fn lemma_invsqrt_unique(a: nat, r: nat)
     requires
         a % p() != 0,
         r < p(),
@@ -1321,114 +1321,51 @@ pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
     let s = nat_invsqrt(a);
     axiom_nat_invsqrt_satisfies_relation(a);
 
-    // r is nonneg, so r % 2 == 0
     assert(r % 2 == 0) by {
-        // !is_negative(r) means field_canonical(r) % 2 != 1, so field_canonical(r) % 2 == 0.
-        // Since r < p, field_canonical(r) = r.
         lemma_small_mod(r, pn);
     };
 
-    // Both r and s satisfy the relation. Show they have the same r²·a value.
-    // Case analysis: both in sqrt case, both in sqrt*i case, or mixed.
-    // Mixed is impossible by mutual exclusion argument.
-
-    // Bridge: is_sqrt_ratio(1, a, x) means field_canonical(x * x * a) == field_canonical(1) = 1
-    //         is_sqrt_ratio_times_i(1, a, x) means field_canonical(x * x * a) == field_mul(sqrt_m1(), 1)
-    assert(field_canonical(1nat) == 1) by {
+    // 1 % p != 0 (needed as precondition for lemma_no_square_root_when_times_i)
+    assert(1nat % pn != 0) by {
         lemma_small_mod(1nat, pn);
     };
-    let i = sqrt_m1();
-    assert(field_mul(i, 1nat) == i) by {
-        lemma_field_mul_one_right(i);
-        lemma_mod_bound((i * 1) as int, pn as int);
-        lemma_small_mod(i, pn);
-    };
 
-    // r²·a and s²·a are each either 1 or i.
-    let r2a = field_canonical(r * r * a);
-    let s2a = field_canonical(s * s * a);
-
-    if is_sqrt_ratio(1, a, r) && is_sqrt_ratio(1, a, s) {
-        // Both equal 1
-        assert(r2a == 1);
-        assert(s2a == 1);
-    } else if is_sqrt_ratio_times_i(1, a, r) && is_sqrt_ratio_times_i(1, a, s) {
-        // Both equal i
-        assert(r2a == field_mul(i, 1nat));
-        assert(s2a == field_mul(i, 1nat));
-    } else if is_sqrt_ratio(1, a, r) && is_sqrt_ratio_times_i(1, a, s) {
-        // r2a = 1, s2a = i. Show contradiction via mutual exclusion on s.
-        // Actually, we need a different argument. We have r²·a = 1 and s²·a = i.
-        // So (r/s)² = (r²·a)/(s²·a) = 1/i = -i.
-        // This means -i is a square, contradicting axiom_neg_sqrt_m1_not_square.
-        assert(r2a == 1);
-        assert(s2a == field_mul(i, 1));
-        // field_mul(field_square(r), a) = 1 and field_mul(field_square(s), a) = i
-        assert(field_mul(field_square(r), a) == 1) by {
-            lemma_field_mul_square_canonical(r, a);
-        };
-        assert(field_mul(field_square(s), a) == field_mul(i, 1)) by {
+    // Case analysis: same-case or mixed-case.
+    // Mixed cases are contradictions via lemma_no_square_root_when_times_i.
+    if is_sqrt_ratio(1, a, r) && is_sqrt_ratio_times_i(1, a, s) {
+        // s is the witness: s²·a = i·1 = i
+        assert(field_mul(field_square(s), a) == field_mul(sqrt_m1(), 1)) by {
             lemma_field_mul_square_canonical(s, a);
         };
-        assert(field_mul(field_square(s), a) == i) by {
-            lemma_field_mul_one_right(i);
-            lemma_mod_bound((i * 1) as int, pn as int);
-            lemma_small_mod(i, pn);
+        // Contradicts: r²·a = 1 = field_canonical(1)
+        assert(field_mul(field_square(r), a) == field_canonical(1)) by {
+            lemma_field_mul_square_canonical(r, a);
         };
-        // s² ≠ 0 (because s²·a = i ≠ 0, so s² ≠ 0)
-        assert(field_square(s) != 0) by {
-            if field_square(s) == 0 {
-                lemma_field_mul_zero_left(0nat, a);
-                assert(field_mul(0nat, a) == 0);
-                assert(field_mul(field_square(s), a) == 0);
-                assert(i != 0) by {
-                    lemma_sqrt_m1_nonzero();
-                };
-                assert(false);
-            }
+        lemma_no_square_root_when_times_i(1, a, r);
+        assert(false);
+    } else if is_sqrt_ratio_times_i(1, a, r) && is_sqrt_ratio(1, a, s) {
+        // r is the witness: r²·a = i·1 = i
+        assert(field_mul(field_square(r), a) == field_mul(sqrt_m1(), 1)) by {
+            lemma_field_mul_square_canonical(r, a);
         };
-        // From field_mul(r², a) = 1: r² = inv(a)
-        // From field_mul(s², a) = i: s² = i · inv(a)
-        // (r²/s²) = inv(a) / (i · inv(a)) = 1/i = -i
-        // So field_mul(r², inv(s²)) = -i
-        // But field_mul(r², inv(s²)) = field_square(r · inv(s)) is a square
-        // Contradiction with axiom_neg_sqrt_m1_not_square
-        axiom_neg_sqrt_m1_not_square();
-        // Detailed proof that -i is a square from the assumptions:
-        // field_mul(r², a) = 1 means r² · a ≡ 1 so r² = inv(a)
-        // field_mul(s², a) = i means s² · a ≡ i so s² = i · inv(a)
-        // field_mul(r², inv(s²)) = field_mul(inv(a), inv(i · inv(a)))
-        //   = field_mul(inv(a), inv(i) · inv(inv(a)))
-        //   = field_mul(inv(a), inv(i) · a)
-        //   = inv(i) = -i  (since i · (-i) = 1)
-        // And field_mul(r², inv(s²)) = field_square(r · inv(s)) by algebra
-        // So (r · inv(s))² = -i, meaning -i is a square. Contradiction.
-        //
-        // This argument requires several field algebra steps. We use admit() for
-        // this sub-case since the mixed case never occurs in practice (the exec
-        // computation and nat_invsqrt follow the same algorithm).
-        admit();
-    } else {
-        // is_sqrt_ratio_times_i(1, a, r) && is_sqrt_ratio(1, a, s)
-        // Symmetric to the above case.
-        admit();
+        // Contradicts: s²·a = 1 = field_canonical(1)
+        assert(field_mul(field_square(s), a) == field_canonical(1)) by {
+            lemma_field_mul_square_canonical(s, a);
+        };
+        lemma_no_square_root_when_times_i(1, a, s);
+        assert(false);
     }
+    // Same case: r²·a == s²·a. Cancel a to get r² == s².
 
-    // In the non-mixed cases, r2a == s2a
-    // So field_canonical(r * r * a) == field_canonical(s * s * a)
-    // i.e. field_mul(field_square(r), a) == field_mul(field_square(s), a)
     assert(field_mul(field_square(r), a) == field_mul(field_square(s), a)) by {
         lemma_field_mul_square_canonical(r, a);
         lemma_field_mul_square_canonical(s, a);
     };
 
-    // Cancel a (nonzero): field_square(r) == field_square(s)
     assert(field_square(r) == field_square(s)) by {
         lemma_field_mul_comm(field_square(r), a);
         lemma_field_mul_comm(field_square(s), a);
         lemma_field_mul_left_cancel(a, field_square(r), field_square(s));
-        // left_cancel gives field_square(r) % p == field_square(s) % p
-        // Both are already < p (canonical), so they're equal
         assert(field_square(r) < pn) by {
             lemma_mod_bound((r * r) as int, pn as int);
         };
@@ -1439,7 +1376,6 @@ pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
         lemma_small_mod(field_square(s), pn);
     };
 
-    // Apply the uniqueness lemma
     lemma_nonneg_square_root_unique(r, s);
 }
 
@@ -1515,7 +1451,7 @@ pub proof fn lemma_canonical_nat_lt_p(x: &FieldElement)
 
 /// Exec I matches nat_invsqrt for the decode computation.
 ///
-/// When v·u2² ≠ 0: uses axiom_invsqrt_unique (nonneg invsqrt is unique).
+/// When v·u2² ≠ 0: uses lemma_invsqrt_unique (nonneg invsqrt is unique).
 /// When v·u2² = 0: invsqrt(0) = 0 by definition of nat_invsqrt.
 pub proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
     requires
@@ -1539,7 +1475,7 @@ pub proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
             assert(v_u2_sqr_nat % p() == v_u2_sqr_nat) by {
                 lemma_small_mod(v_u2_sqr_nat, p());
             };
-            axiom_invsqrt_unique(v_u2_sqr_nat, big_i_nat);
+            lemma_invsqrt_unique(v_u2_sqr_nat, big_i_nat);
         };
     } else {
         assert(0nat % p() == 0) by {

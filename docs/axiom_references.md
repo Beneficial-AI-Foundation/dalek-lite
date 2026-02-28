@@ -336,7 +336,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_invsqrt_unique() [sqrt_ratio_lemmas.rs] — PARTIALLY MECHANIZED
+### lemma_invsqrt_unique() [sqrt_ratio_lemmas.rs] — PROVEN
 **Claim:** The nonnegative inverse square root is unique: for nonzero `a` in GF(p), if `r < p`, `r` is nonneg (even canonical encoding), and either `r²·a ≡ 1 (mod p)` or `r²·a ≡ √(−1) (mod p)`, then `r == nat_invsqrt(a)`.
 
 **Reference:** p = 2²⁵⁵ − 19 ≡ 5 (mod 8); Bernstein, Duif, Lange, Schwabe, Yang (2012) — Ed25519 implementation; Hamburg (2015) — Decaf  
@@ -344,7 +344,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Justification:** In GF(p) with p ≡ 5 (mod 8), every nonzero element has either 0 or 2 square roots. For the two disjoint cases (square and non-square times √(−1)), the nonneg root (canonical encoding with even LSB) is unique. The `nat_invsqrt` spec function is defined to return this unique value. Uniqueness follows from: if two nonneg values satisfy the same quadratic relation, they differ by at most sign, but both being nonneg forces equality.
 
-**Mechanization status:** The algebraic core is fully proven via `lemma_nonneg_square_root_unique` (difference-of-squares + Euclid's lemma + parity-of-p argument). The proof delegates to `axiom_nat_invsqrt_satisfies_relation` for the property that `nat_invsqrt(a)` itself satisfies the relation, and uses `admit()` for the mixed-case impossibility argument (which never arises in practice since both values follow the same algorithm).
+**Mechanization status:** Fully proven. Uses `lemma_no_square_root_when_times_i` for mixed cases (when one value satisfies `is_sqrt_ratio` and the other `is_sqrt_ratio_times_i`) and `lemma_nonneg_square_root_unique` for same cases. The only remaining axiom in this chain is `axiom_nat_invsqrt_satisfies_relation` which still uses `admit()`.
 
 **Runtime validation:** `test_invsqrt_unique` — verifies nonneg/negative root structure and r²·a ∈ {1, i} for 190+ field elements.
 
@@ -353,7 +353,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ### axiom_nat_invsqrt_satisfies_relation() [sqrt_ratio_lemmas.rs]
 **Claim:** For nonzero `a` in GF(p), `nat_invsqrt(a)` is nonneg (even), less than p, and satisfies `is_sqrt_ratio(1, a, nat_invsqrt(a))` or `is_sqrt_ratio_times_i(1, a, nat_invsqrt(a))`.
 
-**Reference:** Same as `axiom_invsqrt_unique` — follows from the constructive definition of `nat_invsqrt`.
+**Reference:** Same as `lemma_invsqrt_unique` — follows from the constructive definition of `nat_invsqrt`.
 
 **Justification:** `nat_invsqrt(a)` is defined via a power chain: `r = a³·(a⁷)^((p−5)/8)`, adjusted by √(−1) if needed, then canonicalized to the nonneg representative. The power chain produces a valid fourth root of unity pattern (check ∈ {1, −1, i, −i}), ensuring the result satisfies one of the two disjoint cases. Mechanizing this would require proving the spec-level analogue of `lemma_check_fourth_root_pattern`.
 
@@ -364,11 +364,11 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ### axiom_invsqrt_exists() [sqrt_ratio_lemmas.rs]
 **Claim:** For every nonzero `a` in GF(p), there exists a nonnegative `r < p` satisfying `r²·a ≡ 1 (mod p)` or `r²·a ≡ √(−1) (mod p)`. This justifies the `choose` operator in `nat_invsqrt(a)`.
 
-**Reference:** Same as `axiom_invsqrt_unique` — follows from GF(p) with p ≡ 5 (mod 8).
+**Reference:** Same as `lemma_invsqrt_unique` — follows from GF(p) with p ≡ 5 (mod 8).
 
 **Justification:** In GF(p)*, every element `a` has a well-defined Legendre symbol. The algorithm `r = (v·u^7)·(v·u^7)^((p−5)/8)` always produces a valid `r` satisfying one of the two disjoint cases. The nonneg representative (even canonical encoding) exists since exactly one of `{r, p−r}` is even for odd p.
 
-Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecified value, and `axiom_invsqrt_unique`'s postcondition would be vacuously consistent.
+Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecified value, and `lemma_invsqrt_unique`'s postcondition would be vacuously consistent.
 
 **Runtime validation:** `test_invsqrt_unique` (190+ elements) — implicitly verifies existence by finding valid `r` for each tested input.
 
@@ -521,7 +521,7 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 | axiom_minus_one_field_element_value | field_lemmas/constants_lemmas.rs | Math | GF(p) arithmetic |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | Construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_specs.rs | Construction | Hamburg 2019 |
-| axiom_invsqrt_unique | sqrt_ratio_lemmas.rs | **PARTIAL** | Algebraic core proven; delegates to axiom_nat_invsqrt_satisfies_relation |
+| lemma_invsqrt_unique | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_no_square_root_when_times_i + lemma_nonneg_square_root_unique |
 | axiom_nat_invsqrt_satisfies_relation | sqrt_ratio_lemmas.rs | Math + test | nat_invsqrt(a) satisfies the relation; test_invsqrt_unique |
 | axiom_invsqrt_exists | sqrt_ratio_lemmas.rs | Math + test | Justifies `choose` in nat_invsqrt; test_invsqrt_unique |
 | lemma_sqrt_ratio_mutual_exclusion | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_no_square_root_when_times_i |

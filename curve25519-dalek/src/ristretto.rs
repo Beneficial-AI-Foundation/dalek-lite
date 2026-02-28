@@ -228,6 +228,7 @@ use crate::lemmas::field_lemmas::constants_lemmas::{
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::field_algebra_lemmas::{
+    lemma_add_self_eq_double, lemma_field_mul_assoc, lemma_field_mul_comm,
     lemma_field_mul_one_left, lemma_square_matches_field_square,
 };
 #[cfg(verus_keep_ghost)]
@@ -1445,6 +1446,19 @@ impl BatchCompressState {
     }
 }
 
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a RistrettoPoint> for BatchCompressState {
+    open spec fn obeys_from_spec() -> bool {
+        false  // Verus does not support from_req; use ensures on from() instead
+
+    }
+
+    open spec fn from_spec(P: &'a RistrettoPoint) -> Self {
+        arbitrary()  // postconditions specified in ensures clause of from()
+
+    }
+}
+
 #[cfg(feature = "alloc")]
 impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
     #[rustfmt::skip]  // keep alignment of explanatory comments
@@ -1490,21 +1504,107 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
             }),
     {
         proof {
-            assume(false);
-        }  // VERIFICATION NOTE: postpone limb bounds tracking and other proof obligations
+            // use_type_invariant cannot be scoped in assert-by (mode error)
+            use_type_invariant(P.0);
+
+            assert(fe51_limbs_bounded(&P.0.X, 54) && fe51_limbs_bounded(&P.0.Y, 54)
+                && fe51_limbs_bounded(&P.0.Z, 54) && fe51_limbs_bounded(&P.0.T, 54)) by {
+                lemma_unfold_edwards(P.0);
+                lemma_edwards_point_weaken_to_54(&P.0);
+            };
+            assert(fe51_limbs_bounded(&constants::EDWARDS_D, 54)) by {
+                lemma_edwards_d_limbs_bounded();
+                lemma_fe51_limbs_bounded_weaken(&constants::EDWARDS_D, 51, 54);
+            };
+            assert(sum_of_limbs_bounded(&P.0.Y, &P.0.Y, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.0.Y, &P.0.Y, 52);
+            };
+        }
 
         let XX = P.0.X.square();
         let YY = P.0.Y.square();
         let ZZ = P.0.Z.square();
-        let dTT = &P.0.T.square() * &constants::EDWARDS_D;
+        // ORIGINAL CODE: let dTT = &P.0.T.square() * &constants::EDWARDS_D;
+        // VERUS WORKAROUND: Split to name TT for square-to-field_square bridging proof
+        let TT = P.0.T.square();
+        let dTT = &TT * &constants::EDWARDS_D;
 
-        let e = &P.0.X * &(&P.0.Y + &P.0.Y);  // = 2*X*Y
+        // ORIGINAL CODE: let e = &P.0.X * &(&P.0.Y + &P.0.Y);
+        // VERUS WORKAROUND: Split to insert limb-bound proof between Add and Mul
+        let Y2 = &P.0.Y + &P.0.Y;  // = 2*Y
+
+        proof {
+            assert(fe51_limbs_bounded(&Y2, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&Y2, 53, 54);
+            };
+            assert(sum_of_limbs_bounded(&ZZ, &dTT, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&ZZ, &dTT, 52);
+            };
+            assert(sum_of_limbs_bounded(&YY, &XX, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&YY, &XX, 52);
+            };
+        }
+
+        let e = &P.0.X * &Y2;  // = 2*X*Y
         let f = &ZZ + &dTT;  // = Z^2 + d*T^2
         let g = &YY + &XX;  // = Y^2 - a*X^2
         let h = &ZZ - &dTT;  // = Z^2 - d*T^2
 
+        proof {
+            assert(fe51_limbs_bounded(&f, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&f, 53, 54);
+            };
+            assert(fe51_limbs_bounded(&g, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&g, 53, 54);
+            };
+        }
+
         let eg = &e * &g;
         let fh = &f * &h;
+
+        proof {
+            let x = fe51_as_canonical_nat(&P.0.X);
+            let y = fe51_as_canonical_nat(&P.0.Y);
+            let z = fe51_as_canonical_nat(&P.0.Z);
+            let t = fe51_as_canonical_nat(&P.0.T);
+            let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
+
+            assert(edwards_point_as_nat(P.0) == (x, y, z, t)) by {
+                lemma_unfold_edwards(P.0);
+            };
+
+            assert(fe51_as_canonical_nat(&XX) == field_square(x)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.X), fe51_as_nat(&XX));
+            };
+            assert(fe51_as_canonical_nat(&YY) == field_square(y)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.Y), fe51_as_nat(&YY));
+            };
+            assert(fe51_as_canonical_nat(&ZZ) == field_square(z)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.Z), fe51_as_nat(&ZZ));
+            };
+            assert(fe51_as_canonical_nat(&TT) == field_square(t)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.T), fe51_as_nat(&TT));
+            };
+
+            assert(fe51_as_canonical_nat(&dTT) == field_mul(d, field_square(t))) by {
+                lemma_field_mul_comm(fe51_as_canonical_nat(&TT), d);
+            };
+
+            assert(fe51_as_canonical_nat(&e) == field_mul(2, field_mul(x, y))) by {
+                assert(field_add(y, y) == field_mul(2, y)) by {
+                    lemma_add_self_eq_double(y);
+                };
+                assert(field_mul(x, field_mul(2, y)) == field_mul(field_mul(x, 2), y)) by {
+                    lemma_field_mul_assoc(x, 2, y);
+                };
+                assert(field_mul(x, 2) == field_mul(2, x)) by {
+                    lemma_field_mul_comm(x, 2);
+                };
+                assert(field_mul(field_mul(2, x), y) == field_mul(2, field_mul(x, y))) by {
+                    lemma_field_mul_assoc(2, x, y);
+                };
+            };
+        }
 
         BatchCompressState { e, f, g, h, eg, fh }
     }

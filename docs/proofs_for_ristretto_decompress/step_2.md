@@ -137,9 +137,8 @@ Therefore r₁ = r₂.
 
 **Status:** PROVEN (`lemma_invsqrt_unique`). Uniqueness is fully mechanized via
 `lemma_no_square_root_when_times_i` (mixed cases) and `lemma_nonneg_square_root_unique`
-(same cases). Existence remains axiomatized (`axiom_invsqrt_exists`).
-
-**Runtime validation:** `test_invsqrt_unique` (190+ elements).
+(same cases). The relation property is also fully proven (`lemma_nat_invsqrt_satisfies_relation`).
+Existence remains axiomatized (`axiom_invsqrt_exists`).
 
 ∎
 

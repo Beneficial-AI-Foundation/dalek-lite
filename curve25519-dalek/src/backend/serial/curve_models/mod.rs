@@ -595,7 +595,7 @@ impl ProjectivePoint {
             is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
             edwards_point_limbs_bounded(result),
-            spec_edwards_point(result) == spec_projective_to_extended(*self),
+            edwards_point_as_nat(result) == projective_to_extended(*self),
             edwards_point_as_affine(result) == projective_point_as_affine_edwards(*self),
     {
         /* ORIGINAL CODE:
@@ -613,7 +613,7 @@ impl ProjectivePoint {
         proof {
             // Helps solver: maps opaque (1u64 << 52) to literal
             assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
-            let (x, y, z) = spec_projective_point_edwards(*self);
+            let (x, y, z) = projective_point_edwards_as_nat(*self);
 
             // Bridge square() postcondition to field_square
             let z_raw = u64_5_as_nat(self.Z.limbs);
@@ -662,9 +662,9 @@ impl ProjectivePoint {
         let result = EdwardsPoint { X: rX, Y: rY, Z: rZ, T: rT };
         proof {
             lemma_unfold_edwards(result);
-            let (x, y, z) = spec_projective_point_edwards(*self);
+            let (x, y, z) = projective_point_edwards_as_nat(*self);
 
-            assert(spec_edwards_point(result) == spec_projective_to_extended(*self));
+            assert(edwards_point_as_nat(result) == projective_to_extended(*self));
 
             assert(z != 0 && z % p() != 0) by {
                 p_gt_2();
@@ -713,7 +713,7 @@ impl CompletedPoint {
             fe51_limbs_bounded(&self.T, 54),
         ensures
             is_valid_projective_point(result),
-            spec_projective_point_edwards(result) == spec_completed_to_projective(*self),
+            projective_point_edwards_as_nat(result) == completed_to_projective(*self),
             projective_point_as_affine_edwards(result) == completed_point_as_affine_edwards(*self),
             // Limb bounds from mul() postconditions (mul produces 52-bounded output)
             fe51_limbs_bounded(&result.X, 52),
@@ -739,7 +739,7 @@ impl CompletedPoint {
             };
 
             // Extract spec values from precondition
-            let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
+            let (x_abs, y_abs, z_abs, t_abs) = completed_point_as_nat(*self);
 
             // From is_valid_completed_point: z_abs != 0 and t_abs != 0
             assert(z_abs != 0 && t_abs != 0);
@@ -767,7 +767,7 @@ impl CompletedPoint {
             };
 
             // Spec equivalence: show concrete multiplication matches spec
-            assert(spec_projective_point_edwards(result) == spec_completed_to_projective(*self));
+            assert(projective_point_edwards_as_nat(result) == completed_to_projective(*self));
 
             // Now prove is_valid_projective_point(result)
             // Need to show:
@@ -802,25 +802,25 @@ impl CompletedPoint {
             // Therefore result is a valid projective point (same affine point as completed,
             // which is on the curve by precondition)
             // Use the lemma to convert from affine curve equation to projective form
-            let (result_x, result_y, result_z_spec) = spec_projective_point_edwards(result);
+            let (result_x, result_y, result_z) = projective_point_edwards_as_nat(result);
 
-            // result_z_spec = fe51_as_canonical_nat(&result.Z) = field_mul(z_abs, t_abs) = result_z
+            // result_z = fe51_as_canonical_nat(&result.Z) = field_mul(z_abs, t_abs) = result_z
             // We showed result_z != 0 above, and result_z < p (since it's a field element)
-            // Therefore result_z_spec % p == result_z_spec != 0
-            assert(result_z_spec == result_z);  // They're the same value
-            assert(result_z_spec < p()) by {
+            // Therefore result_z % p == result_z != 0
+            assert(result_z == result_z);  // They're the same value
+            assert(result_z < p()) by {
                 lemma_mod_bound((z_abs * t_abs) as int, p() as int);
             };
-            assert(result_z_spec % p() != 0) by {
-                lemma_small_mod(result_z_spec, p());
+            assert(result_z % p() != 0) by {
+                lemma_small_mod(result_z, p());
             };
 
             assert(is_on_edwards_curve(
-                field_mul(result_x, field_inv(result_z_spec)),
-                field_mul(result_y, field_inv(result_z_spec)),
+                field_mul(result_x, field_inv(result_z)),
+                field_mul(result_y, field_inv(result_z)),
             ));
             assert(is_valid_projective_point(result)) by {
-                lemma_affine_curve_implies_projective(result_x, result_y, result_z_spec);
+                lemma_affine_curve_implies_projective(result_x, result_y, result_z);
             };
         }
         result
@@ -842,7 +842,7 @@ impl CompletedPoint {
             is_valid_edwards_point(result),
             is_well_formed_edwards_point(result),
             edwards_point_limbs_bounded(result),
-            spec_edwards_point(result) == spec_completed_to_extended(*self),
+            edwards_point_as_nat(result) == completed_to_extended(*self),
             edwards_point_as_affine(result) == completed_point_as_affine_edwards(*self),
     {
         /* ORIGINAL CODE:
@@ -860,7 +860,7 @@ impl CompletedPoint {
         proof {
             // Helps solver: maps opaque (1u64 << 52) to literal
             assert((1u64 << 52u64) == 4503599627370496u64) by (bit_vector);
-            let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
+            let (x_abs, y_abs, z_abs, t_abs) = completed_point_as_nat(*self);
 
             let rx = fe51_as_canonical_nat(&rX);
             let ry = fe51_as_canonical_nat(&rY);
@@ -922,8 +922,8 @@ impl CompletedPoint {
                 lemma_sum_of_limbs_bounded_from_fe51_bounded(&result.Y, &result.X, 52);
             };
 
-            let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(*self);
-            assert(spec_edwards_point(result) == spec_completed_to_extended(*self));
+            let (x_abs, y_abs, z_abs, t_abs) = completed_point_as_nat(*self);
+            assert(edwards_point_as_nat(result) == completed_to_extended(*self));
 
             assert(z_abs != 0 && t_abs != 0);
             assert(z_abs < p() && t_abs < p()) by {

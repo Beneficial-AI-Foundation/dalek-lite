@@ -819,6 +819,7 @@ impl Identity for CompressedEdwardsY {
         ensures
             field_element_from_bytes(&result.0) == 1,
             (result.0[31] >> 7) == 0,
+            result.0[0] == 1u8 && (forall|i: int| 1 <= i < 32 ==> result.0[i] == 0u8),
     {
         let result = CompressedEdwardsY(
             [
@@ -893,13 +894,6 @@ impl Identity for CompressedEdwardsY {
     }
 }
 
-impl crate::traits::IsIdentitySpecImpl for CompressedEdwardsY {
-    /// For CompressedEdwardsY, is_identity returns true iff y-coordinate is 1 with sign bit 0
-    open spec fn is_identity_spec(&self) -> bool {
-        field_element_from_bytes(&self.0) == 1 && (self.0[31] >> 7) == 0
-    }
-}
-
 impl Default for CompressedEdwardsY {
     fn default() -> (result: CompressedEdwardsY)
         ensures
@@ -947,6 +941,7 @@ impl Identity for EdwardsPoint {
         ensures
             is_identity_edwards_point(result),
             is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == edwards_identity(),
     {
         proof {
             // ZERO/ONE limbs (0, 1) are within 52-bit bound
@@ -963,15 +958,9 @@ impl Identity for EdwardsPoint {
         };
         proof {
             lemma_unfold_edwards(result);
+            lemma_identity_affine_coords(result);
         }
         result
-    }
-}
-
-impl crate::traits::IsIdentitySpecImpl for EdwardsPoint {
-    /// For EdwardsPoint, is_identity returns true iff the affine point equals (0, 1)
-    open spec fn is_identity_spec(&self) -> bool {
-        edwards_point_as_affine(*self) == edwards_identity()
     }
 }
 
@@ -1609,11 +1598,11 @@ impl EdwardsPoint {
         proof {
             // === Correspondence proof ===
             // Need: montgomery_corresponds_to_edwards(result, *self)
-            // Step 1: Connect spec_montgomery(result) to u_field
+            // Step 1: Connect montgomery_point_as_nat(result) to u_field
             // as_bytes postcondition: u8_32_as_nat(&u.as_bytes()) == fe51_as_canonical_nat(&u)
             assert(u8_32_as_nat(&u_bytes) == fe51_as_canonical_nat(&u));
 
-            // spec_montgomery(result) = field_element_from_bytes(&result.0)
+            // montgomery_point_as_nat(result) = field_element_from_bytes(&result.0)
             //                         = (u8_32_as_nat(&result.0) % pow2(255)) % p()
             // Since fe51_as_canonical_nat(&u) < p() < pow2(255), double mod is identity
             assert(fe51_as_canonical_nat(&u) < p()) by {
@@ -1838,7 +1827,7 @@ impl EdwardsPoint {
         ensures
             is_well_formed_edwards_point(result),
             // Functional correctness: result = spec applied to first 32 bytes of SHA-512(input)
-            edwards_point_as_affine(result) == spec_nonspec_map_to_curve(
+            edwards_point_as_affine(result) == nonspec_map_to_curve(
                 spec_sha512(bytes@).subrange(0, 32),
             ),
     {
@@ -1879,12 +1868,12 @@ impl EdwardsPoint {
         }
         let E1_opt = M1.to_edwards(sign_bit);
 
-        // elligator_encode never produces u = -1 (lemma_elligator_never_minus_one),
+        // spec_elligator_encode never produces u = -1 (lemma_elligator_never_minus_one),
         // so to_edwards always returns Some. Unwrap and multiply by cofactor.
         proof {
             // to_edwards returns None only when is_equal_to_minus_one(u),
-            // but elligator_encode guarantees !is_equal_to_minus_one(u).
-            assert(!is_equal_to_minus_one(spec_montgomery(M1)));
+            // but spec_elligator_encode guarantees !is_equal_to_minus_one(u).
+            assert(!is_equal_to_minus_one(montgomery_point_as_nat(M1)));
             match E1_opt {
                 Some(_) => {},
                 None => {
@@ -1905,7 +1894,7 @@ impl EdwardsPoint {
                 requires
                     sign_bit == (byte31 & 0x80u8) >> 7u8,
             ;
-            assert(sign_bit == spec_normalize_sign(sign_bit)) by (bit_vector)
+            assert(sign_bit == normalize_sign(sign_bit)) by (bit_vector)
                 requires
                     sign_bit == 0u8 || sign_bit == 1u8,
             ;
@@ -1923,17 +1912,17 @@ impl EdwardsPoint {
 
             // Step 5: elligator result matches spec
             let u = spec_elligator_encode(fe_nat_spec);
-            assert(spec_montgomery(M1) == u);
+            assert(montgomery_point_as_nat(M1) == u);
 
             // Step 6: to_edwards gives exact equality with spec
-            let P = spec_montgomery_to_edwards_affine(u, sign_bit);
+            let P = montgomery_to_edwards_affine(u, sign_bit);
             assert(edwards_point_as_affine(E1) == P) by {
                 assert(is_valid_montgomery_point(M1));
-                assert(!is_equal_to_minus_one(spec_montgomery(M1)));
+                assert(!is_equal_to_minus_one(montgomery_point_as_nat(M1)));
                 // to_edwards postcondition with sign normalisation
-                assert(spec_montgomery_to_edwards_affine(
-                    spec_montgomery(M1),
-                    spec_normalize_sign(sign_bit),
+                assert(montgomery_to_edwards_affine(
+                    montgomery_point_as_nat(M1),
+                    normalize_sign(sign_bit),
                 ) == P);
             }
 
@@ -1945,7 +1934,7 @@ impl EdwardsPoint {
 
             // Step 8: combine — the result equals the spec
             assert(edwards_point_as_affine(result) == edwards_scalar_mul(P, 8));
-            assert(edwards_point_as_affine(result) == spec_nonspec_map_to_curve(res@));
+            assert(edwards_point_as_affine(result) == nonspec_map_to_curve(res@));
         }
 
         result

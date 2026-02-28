@@ -63,7 +63,7 @@ verus! {
 /// from the coset P + E[4] whose encoding s satisfies s ≥ 0.
 ///
 /// Reference: [RISTRETTO] §5.3; [DECAF] §6; https://ristretto.group/formulas/encoding.html
-pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {
+pub open spec fn ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {
     let u1 = field_mul(field_add(z, y), field_sub(z, y));
     let u2 = field_mul(x, y);
     let invsqrt = nat_invsqrt(field_mul(u1, field_square(u2)));
@@ -115,8 +115,8 @@ pub open spec fn spec_ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat
 ///
 /// Reference: [RISTRETTO] §5.3
 pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
-    let (x, y, z, t) = spec_edwards_point(point.0);
-    spec_ristretto_compress_extended(x, y, z, t)
+    let (x, y, z, t) = edwards_point_as_nat(point.0);
+    ristretto_compress_extended(x, y, z, t)
 }
 
 /// Ristretto encoding from affine coordinates (x, y).
@@ -124,8 +124,8 @@ pub open spec fn spec_ristretto_compress(point: RistrettoPoint) -> [u8; 32] {
 /// Sets Z = 1, T = x·y (the Segre invariant Z·T = X·Y).
 ///
 /// Reference: [RISTRETTO] §5.3
-pub open spec fn spec_ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
-    spec_ristretto_compress_extended(x, y, 1, field_mul(x, y))
+pub open spec fn ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
+    ristretto_compress_extended(x, y, 1, field_mul(x, y))
 }
 
 // =============================================================================
@@ -148,7 +148,7 @@ pub open spec fn spec_ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
 //
 /// Full Ristretto decode for field element s.
 /// Returns (x, y, ok) where ok indicates the invsqrt succeeded (square case).
-pub open spec fn spec_ristretto_decode_inner(s: nat) -> (nat, nat, bool) {
+pub open spec fn ristretto_decode_inner(s: nat) -> (nat, nat, bool) {
     let ss = field_square(s);
     let u1 = field_sub(1, ss);
     let u2 = field_add(1, ss);
@@ -175,18 +175,18 @@ pub open spec fn spec_ristretto_decode_inner(s: nat) -> (nat, nat, bool) {
 }
 
 /// The x coordinate from decoding field element s.
-pub open spec fn spec_ristretto_decode_x(s: nat) -> nat {
-    spec_ristretto_decode_inner(s).0
+pub open spec fn ristretto_decode_x(s: nat) -> nat {
+    ristretto_decode_inner(s).0
 }
 
 /// The y coordinate from decoding field element s.
-pub open spec fn spec_ristretto_decode_y(s: nat) -> nat {
-    spec_ristretto_decode_inner(s).1
+pub open spec fn ristretto_decode_y(s: nat) -> nat {
+    ristretto_decode_inner(s).1
 }
 
 /// Whether decoding field element s succeeded (the invsqrt "square" case).
-pub open spec fn spec_ristretto_decode_ok(s: nat) -> bool {
-    spec_ristretto_decode_inner(s).2
+pub open spec fn ristretto_decode_ok(s: nat) -> bool {
+    ristretto_decode_inner(s).2
 }
 
 /// Ristretto decompression: bytes -> Option<(x, y, 1, x·y)>.
@@ -197,7 +197,7 @@ pub open spec fn spec_ristretto_decode_ok(s: nat) -> bool {
 ///   3. invsqrt succeeds, t = x·y ≥ 0, and y ≠ 0
 ///
 /// On success, returns extended coordinates (x, y, 1, x·y) where (x, y)
-/// are computed by the decode formula (see `spec_ristretto_decode_inner`).
+/// are computed by the decode formula (see `ristretto_decode_inner`).
 ///
 /// Reference: [RISTRETTO] §5.2; [DECAF] §6; https://ristretto.group/formulas/decoding.html
 pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<(nat, nat, nat, nat)> {
@@ -206,7 +206,7 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<(nat, nat,
     if !(u8_32_as_nat(&bytes) < p()) || is_negative(s) {
         None
     } else {
-        let (x, y, ok) = spec_ristretto_decode_inner(s);
+        let (x, y, ok) = ristretto_decode_inner(s);
         let t = field_mul(x, y);
 
         if !ok || is_negative(t) || y == 0 {
@@ -225,9 +225,9 @@ pub open spec fn spec_ristretto_decompress(bytes: [u8; 32]) -> Option<(nat, nat,
 pub proof fn axiom_ristretto_decode_on_curve(s: nat)
     requires
         s < p(),
-        spec_ristretto_decode_ok(s),
+        ristretto_decode_ok(s),
     ensures
-        is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
+        is_on_edwards_curve(ristretto_decode_x(s), ristretto_decode_y(s)),
 {
     admit();
 }
@@ -243,12 +243,12 @@ pub proof fn axiom_ristretto_decode_on_curve(s: nat)
 pub proof fn axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)
     requires
         s < p(),
-        spec_ristretto_decode_ok(s),
-        spec_edwards_point(point) == (
-            spec_ristretto_decode_x(s),
-            spec_ristretto_decode_y(s),
+        ristretto_decode_ok(s),
+        edwards_point_as_nat(point) == (
+            ristretto_decode_x(s),
+            ristretto_decode_y(s),
             1nat,
-            field_mul(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s)),
+            field_mul(ristretto_decode_x(s), ristretto_decode_y(s)),
         ),
     ensures
         is_in_even_subgroup(point),
@@ -312,7 +312,7 @@ pub open spec fn spec_sqrt_ad_minus_one() -> nat {
 /// Affine output:    x = X/Z,  y = Y/T
 ///
 /// Reference: [RISTRETTO] §4.3.4; https://ristretto.group/formulas/elligator.html
-pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
+pub open spec fn elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     let i = sqrt_m1();
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     let one_minus_d_sq = field_mul(field_sub(1, d), field_add(1, d));
@@ -361,12 +361,12 @@ pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
 }
 
 /// Spec helper: first 32 bytes of a 64-byte input.
-pub open spec fn spec_uniform_bytes_first(bytes: &[u8; 64]) -> [u8; 32] {
+pub open spec fn uniform_bytes_first(bytes: &[u8; 64]) -> [u8; 32] {
     choose|b: [u8; 32]| b@ == bytes@.subrange(0, 32)
 }
 
 /// Spec helper: second 32 bytes of a 64-byte input.
-pub open spec fn spec_uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
+pub open spec fn uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
     choose|b: [u8; 32]| b@ == bytes@.subrange(32, 64)
 }
 
@@ -377,13 +377,13 @@ pub open spec fn spec_uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
 ///   result = elligator(r1) + elligator(r2)
 ///
 /// Reference: [RISTRETTO] §4.3.4; https://ristretto.group/formulas/encoding.html
-pub open spec fn spec_ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
-    let b1 = spec_uniform_bytes_first(bytes);
-    let b2 = spec_uniform_bytes_second(bytes);
+pub open spec fn ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
+    let b1 = uniform_bytes_first(bytes);
+    let b2 = uniform_bytes_second(bytes);
     let r1 = field_element_from_bytes(&b1);
     let r2 = field_element_from_bytes(&b2);
-    let p1 = spec_elligator_ristretto_flavor(r1);
-    let p2 = spec_elligator_ristretto_flavor(r2);
+    let p1 = elligator_ristretto_flavor(r1);
+    let p2 = elligator_ristretto_flavor(r2);
     edwards_add(p1.0, p1.1, p2.0, p2.1)
 }
 
@@ -610,7 +610,7 @@ mod test_ristretto_decode_axioms {
         }
 
         // Edge cases: small even field elements (s = 2, 4, 6, ..., 40).
-        // The axiom claims on-curve when spec_ristretto_decode_ok(s) holds (the
+        // The axiom claims on-curve when ristretto_decode_ok(s) holds (the
         // square case). We verify on-curve for the ok=true case. The ok=false
         // (nonsquare) case produces coords that may not be on-curve; this is fine
         // because the decompress proof only needs on-curve for the success path.

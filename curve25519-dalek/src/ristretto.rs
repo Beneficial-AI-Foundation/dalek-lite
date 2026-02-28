@@ -228,6 +228,8 @@ use crate::lemmas::field_lemmas::field_algebra_lemmas::{
 };
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -374,9 +376,8 @@ impl CompressedRistretto {
     // Spec alignment: result matches spec-level decoding
 
             result.is_none() <==> spec_ristretto_decompress(self.0).is_none(),
-            result.is_some() ==> spec_edwards_point(result.unwrap().0) == spec_ristretto_decompress(
-                self.0,
-            ).unwrap(),
+            result.is_some() ==> edwards_point_as_nat(result.unwrap().0)
+                == spec_ristretto_decompress(self.0).unwrap(),
             // If decompression succeeds, the result is a well-formed Edwards point
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
             // On success, the decoded point lies in the even subgroup
@@ -414,24 +415,24 @@ impl CompressedRistretto {
             let result = None;
             proof {
                 let s_nat = fe51_as_canonical_nat(&s);
-                let x = spec_ristretto_decode_x(s_nat);
-                let y = spec_ristretto_decode_y(s_nat);
-                let ok_spec = spec_ristretto_decode_ok(s_nat);
+                let x = ristretto_decode_x(s_nat);
+                let y = ristretto_decode_y(s_nat);
+                let decode_ok = ristretto_decode_ok(s_nat);
                 let t = field_mul(x, y);
-                assert(!ok_spec || is_negative(t) || y == 0);
+                assert(!decode_ok || is_negative(t) || y == 0);
             }
             result
         } else {
             let result = Some(res);
             proof {
                 let s_nat = fe51_as_canonical_nat(&s);
-                let x = spec_ristretto_decode_x(s_nat);
-                let y = spec_ristretto_decode_y(s_nat);
-                let ok_spec = spec_ristretto_decode_ok(s_nat);
+                let x = ristretto_decode_x(s_nat);
+                let y = ristretto_decode_y(s_nat);
+                let decode_ok = ristretto_decode_ok(s_nat);
                 let t = field_mul(x, y);
-                assert(ok_spec && !is_negative(t) && y != 0);
+                assert(decode_ok && !is_negative(t) && y != 0);
 
-                assert(spec_edwards_point(res.0) == (x, y, 1nat, t)) by {
+                assert(edwards_point_as_nat(res.0) == (x, y, 1nat, t)) by {
                     lemma_unfold_edwards(res.0);
                     let x_nat = fe51_as_canonical_nat(&res.0.X);
                     let y_nat = fe51_as_canonical_nat(&res.0.Y);
@@ -551,7 +552,7 @@ mod decompress {
         ensures
     // ok <==> spec-level decode succeeds
 
-            choice_is_true(result.0) == spec_ristretto_decode_ok(fe51_as_canonical_nat(&s)),
+            choice_is_true(result.0) == ristretto_decode_ok(fe51_as_canonical_nat(&s)),
             // When ok: point is well-formed, in the even subgroup, with Z=1 and T=X*Y
             choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
             choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
@@ -561,19 +562,21 @@ mod decompress {
                 fe51_as_canonical_nat(&result.3.0.Y),
             ),
             // When ok: X, Y match the spec decode values
-            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X)
-                == spec_ristretto_decode_x(fe51_as_canonical_nat(&s)),
-            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y)
-                == spec_ristretto_decode_y(fe51_as_canonical_nat(&s)),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X) == ristretto_decode_x(
+                fe51_as_canonical_nat(&s),
+            ),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y) == ristretto_decode_y(
+                fe51_as_canonical_nat(&s),
+            ),
             // t_is_negative and y_is_zero always reflect the spec-level decode values
             // (computed from raw x, y — NOT from the returned point, which may be identity)
             choice_is_true(result.1) == is_negative(
                 field_mul(
-                    spec_ristretto_decode_x(fe51_as_canonical_nat(&s)),
-                    spec_ristretto_decode_y(fe51_as_canonical_nat(&s)),
+                    ristretto_decode_x(fe51_as_canonical_nat(&s)),
+                    ristretto_decode_y(fe51_as_canonical_nat(&s)),
                 ),
             ),
-            choice_is_true(result.2) == (spec_ristretto_decode_y(fe51_as_canonical_nat(&s)) == 0),
+            choice_is_true(result.2) == (ristretto_decode_y(fe51_as_canonical_nat(&s)) == 0),
     {
         // =================================================================
         // PHASE 1: Compute field elements with limb bounds tracking
@@ -866,11 +869,9 @@ mod decompress {
 
             // On curve and projective equivalence when decode succeeds
             if choice_is_true(ok) {
-                assert(spec_ristretto_decode_ok(s_nat));
-                assert(is_on_edwards_curve(
-                    spec_ristretto_decode_x(s_nat),
-                    spec_ristretto_decode_y(s_nat),
-                )) by {
+                assert(ristretto_decode_ok(s_nat));
+                assert(is_on_edwards_curve(ristretto_decode_x(s_nat), ristretto_decode_y(s_nat)))
+                    by {
                     axiom_ristretto_decode_on_curve(s_nat);
                 };
                 assert(is_on_edwards_curve_projective(x_val, y_val, 1nat)) by {
@@ -919,7 +920,7 @@ mod decompress {
             lemma_decode_invsqrt_facts(big_i_nat, v_u2_sqr_nat);
 
             if choice_is_true(ok) {
-                assert(spec_ristretto_decode_ok(s_nat));
+                assert(ristretto_decode_ok(s_nat));
                 assert(is_well_formed_edwards_point(point));
 
                 assert(is_in_even_subgroup(point)) by {
@@ -1190,7 +1191,7 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
             fe51_limbs_bounded(&result.eg, 54),
             fe51_limbs_bounded(&result.fh, 54),
             ({
-                let (x, y, z, t) = spec_edwards_point(P.0);
+                let (x, y, z, t) = edwards_point_as_nat(P.0);
                 let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
                 // e = 2*X*Y
                 fe51_as_canonical_nat(&result.e) == field_mul(
@@ -1367,7 +1368,7 @@ impl RistrettoPoint {
                 0 <= i < result@.len() ==> {
                     let point_affine = edwards_point_as_affine(#[trigger] points@[i].0);
                     let doubled_affine = edwards_double(point_affine.0, point_affine.1);
-                    #[trigger] result@[i].0@ == spec_ristretto_compress_affine(
+                    #[trigger] result@[i].0@ == ristretto_compress_affine(
                         doubled_affine.0,
                         doubled_affine.1,
                     )@
@@ -1550,11 +1551,12 @@ impl RistrettoPoint {
                 lemma_unfold_edwards(t6);
             }
         }
-        let p0 = self.0;  /* ORIGINAL CODE: self.0 */
-        let p1 = &self.0 + &t2;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[2] */
-        let p2 = &self.0 + &t4;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[4] */
-        let p3 = &self.0 + &t6;  /* ORIGINAL CODE: &self.0 + &constants::EIGHT_TORSION[6] */
-        [p0, p1, p2, p3]
+        let p0 = self.0;
+        let p1 = &self.0 + &t2;
+        let p2 = &self.0 + &t4;
+        let p3 = &self.0 + &t6;
+        let result = [p0, p1, p2, p3];
+        result
     }
 
     /// Computes the Ristretto Elligator map. This is the
@@ -1569,7 +1571,7 @@ impl RistrettoPoint {
         ensures
     // The result is the Elligator map applied to r_0
 
-            edwards_point_as_affine(result.0) == spec_elligator_ristretto_flavor(
+            edwards_point_as_affine(result.0) == elligator_ristretto_flavor(
                 fe51_as_canonical_nat(r_0),
             ),
             // The result is a valid Ristretto point: well-formed and in the even subgroup
@@ -1762,7 +1764,7 @@ impl RistrettoPoint {
         ensures
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
-            edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(&hash_bytes),
+            edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(&hash_bytes),
             // Uniform hash output produces uniformly distributed point
             is_uniform_bytes(&hash_bytes) ==> is_uniform_ristretto_point(&result),
     {
@@ -1785,7 +1787,7 @@ impl RistrettoPoint {
         ensures
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
-            edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes),
+            edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(bytes),
             // Uniform input bytes produce uniformly distributed point
             is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result),
     {
@@ -1809,7 +1811,7 @@ impl RistrettoPoint {
         proof {
             // Add postcondition proves is_well_formed_edwards_point(result.0)
             assume(is_in_even_subgroup(result.0));
-            assume(edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes));
+            assume(edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(bytes));
             assert(is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result)) by {
                 // To prove A ==> B, assume A and derive B.
                 assume(is_uniform_bytes(bytes));

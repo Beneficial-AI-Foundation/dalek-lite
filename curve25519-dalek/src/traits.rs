@@ -16,6 +16,20 @@ use core::borrow::Borrow;
 use crate::scalar::{clamp_integer, Scalar};
 use subtle::ConstantTimeEq;
 
+use crate::backend::serial::u64::subtle_assumes::choice_into;
+use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
+use crate::montgomery::{MontgomeryPoint, ProjectivePoint};
+
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::edwards_specs::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::field_specs::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::specs::montgomery_specs::*;
+
 use vstd::prelude::*;
 
 // ------------------------------------------------------------------------
@@ -44,21 +58,94 @@ pub trait IsIdentitySpecImpl {
     spec fn is_identity_spec(&self) -> bool;
 }
 
-/// Implement generic identity equality testing for a point representations
-/// which have constant-time equality testing and a defined identity
-/// constructor.
-impl<T> IsIdentity for T where T: ConstantTimeEq + Identity + IsIdentitySpecImpl {
+// ------------------------------------------------------------------------
+// IsIdentitySpecImpl — what "identity" means for each type
+// ------------------------------------------------------------------------
+impl IsIdentitySpecImpl for EdwardsPoint {
+    open spec fn is_identity_spec(&self) -> bool {
+        edwards_point_as_affine(*self) == edwards_identity()
+    }
+}
+
+impl IsIdentitySpecImpl for CompressedEdwardsY {
+    open spec fn is_identity_spec(&self) -> bool {
+        self.0[0] == 1u8 && (forall|i: int| 1 <= i < 32 ==> self.0[i] == 0u8)
+    }
+}
+
+impl IsIdentitySpecImpl for MontgomeryPoint {
+    open spec fn is_identity_spec(&self) -> bool {
+        montgomery_point_as_nat(*self) == 0
+    }
+}
+
+impl IsIdentitySpecImpl for ProjectivePoint {
+    open spec fn is_identity_spec(&self) -> bool {
+        fe51_as_canonical_nat(&self.U) == 1 && fe51_as_canonical_nat(&self.W) == 0
+    }
+}
+
+// ------------------------------------------------------------------------
+// IsIdentity — type-specific implementations
+// ------------------------------------------------------------------------
+//
+// Original blanket impl: self.ct_eq(&T::identity()).into()
+// Split per-type because ConstantTimeEq::ct_eq has no ensures in generic context.
+impl IsIdentity for EdwardsPoint {
+    // self.ct_eq(&EdwardsPoint::identity()).into()
     fn is_identity(&self) -> (result: bool)
         ensures
             result == self.is_identity_spec(),
     {
-        /* ORIGINAL CODE: self.ct_eq(&T::identity()).into() */
-        let choice = self.ct_eq(&T::identity());
-        let result: bool = choice.into();
+        let id = EdwardsPoint::identity();
+        let result = choice_into(self.ct_eq(&id));
         proof {
-            assume(result == self.is_identity_spec());
+            lemma_identity_affine_coords(id);
         }
         result
+    }
+}
+
+impl IsIdentity for CompressedEdwardsY {
+    // self.ct_eq(&CompressedEdwardsY::identity()).into()
+    fn is_identity(&self) -> (result: bool)
+        ensures
+            result == self.is_identity_spec(),
+    {
+        let id = CompressedEdwardsY::identity();
+        let result = choice_into(self.ct_eq(&id));
+        proof {
+            assert(id.0[0] == 1u8);
+            assert forall|i: int| 1 <= i < 32 implies id.0[i] == 0u8 by {}
+            assert(self.0 == id.0 <==> (self.0[0] == 1u8 && (forall|i: int|
+                1 <= i < 32 ==> self.0[i] == 0u8))) by {
+                if self.0 == id.0 {
+                    assert(self.0[0] == id.0[0]);
+                    assert forall|i: int| 1 <= i < 32 implies self.0[i] == 0u8 by {
+                        assert(self.0[i] == id.0[i]);
+                    }
+                }
+                if self.0[0] == 1u8 && (forall|i: int| 1 <= i < 32 ==> self.0[i] == 0u8) {
+                    assert forall|i: int| 0 <= i < 32 implies self.0[i] == id.0[i] by {
+                        if i == 0 {
+                            assert(self.0[0] == 1u8 && id.0[0] == 1u8);
+                        }
+                    }
+                    assert(self.0 =~= id.0);
+                }
+            }
+        }
+        result
+    }
+}
+
+impl IsIdentity for MontgomeryPoint {
+    // self.ct_eq(&MontgomeryPoint::identity()).into()
+    fn is_identity(&self) -> (result: bool)
+        ensures
+            result == self.is_identity_spec(),
+    {
+        choice_into(self.ct_eq(&MontgomeryPoint::identity()))
     }
 }
 

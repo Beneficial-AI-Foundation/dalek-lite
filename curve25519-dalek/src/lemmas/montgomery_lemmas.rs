@@ -53,9 +53,9 @@ pub proof fn lemma_zero_limbs_is_zero(point: MontgomeryPoint)
     requires
         forall|i: int| 0 <= i < 32 ==> #[trigger] point.0[i] == 0u8,
     ensures
-        spec_montgomery(point) == 0,
+        montgomery_point_as_nat(point) == 0,
 {
-    // spec_montgomery(point) ==
+    // montgomery_point_as_nat(point) ==
     // field_element_from_bytes(point.0) ==
     // (u8_32_as_nat(point.0) % pow2(255)) % p() ==
     // \sum_{i = 0} ^ 31 (bytes[i] as nat) * pow2(i * 8)

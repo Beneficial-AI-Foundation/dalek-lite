@@ -258,7 +258,7 @@ pub(crate) proof fn axiom_xadd_projective_correct(
         P != Q,
         affine_PmQ != 0,
         // u-coordinate is symmetric: u(P-Q) = u(Q-P) since u is invariant under negation
-        affine_PmQ == spec_u_coordinate(montgomery_sub(P, Q)) || affine_PmQ == spec_u_coordinate(
+        affine_PmQ == u_coordinate(montgomery_sub(P, Q)) || affine_PmQ == u_coordinate(
             montgomery_sub(Q, P),
         ),
     ensures
@@ -291,7 +291,7 @@ pub(crate) open spec fn spec_xdbladd_projective(
 // SCALAR MULTIPLICATION LEMMAS
 // =============================================================================
 /// Lemma: If an affine point has reduced u-coordinate (< p), then any projective representation
-/// of its u-coordinate yields the same value via `spec_projective_u_coordinate`.
+/// of its u-coordinate yields the same value via `projective_u_coordinate`.
 pub proof fn lemma_projective_represents_implies_u_coordinate(
     P_proj: crate::montgomery::ProjectivePoint,
     P_aff: MontgomeryAffine,
@@ -299,15 +299,15 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
     requires
         projective_represents_montgomery_or_infinity(P_proj, P_aff),
     ensures
-        spec_projective_u_coordinate(P_proj) == (spec_u_coordinate(P_aff) % p()),
+        projective_u_coordinate(P_proj) == (u_coordinate(P_aff) % p()),
 {
     match P_aff {
         MontgomeryAffine::Infinity => {
             // Representation gives W == 0, and both u-coordinate conventions map ∞ to 0.
             assert(fe51_as_canonical_nat(&P_proj.W) == 0);
-            assert(spec_projective_u_coordinate(P_proj) == 0);
-            assert(spec_u_coordinate(P_aff) == 0);
-            assert(spec_u_coordinate(P_aff) % p() == 0) by {
+            assert(projective_u_coordinate(P_proj) == 0);
+            assert(u_coordinate(P_aff) == 0);
+            assert(u_coordinate(P_aff) % p() == 0) by {
                 p_gt_2();
                 lemma_small_mod(0, p());
             }
@@ -329,15 +329,11 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
                 }
             }
 
-            // spec_projective_u_coordinate = U / W = (u*W) / W = u
-            assert(spec_projective_u_coordinate(P_proj) == field_mul(U, field_inv(W)));
-            assert(spec_projective_u_coordinate(P_proj) == field_mul(
-                field_mul(u, W),
-                field_inv(W),
-            ));
+            // projective_u_coordinate = U / W = (u*W) / W = u
+            assert(projective_u_coordinate(P_proj) == field_mul(U, field_inv(W)));
+            assert(projective_u_coordinate(P_proj) == field_mul(field_mul(u, W), field_inv(W)));
 
-            assert(spec_projective_u_coordinate(P_proj) == field_mul(u, field_mul(W, field_inv(W))))
-                by {
+            assert(projective_u_coordinate(P_proj) == field_mul(u, field_mul(W, field_inv(W)))) by {
                 lemma_field_mul_assoc(u, W, field_inv(W));
             }
 
@@ -349,7 +345,7 @@ pub proof fn lemma_projective_represents_implies_u_coordinate(
             assert(field_mul(u, 1) == u % p()) by {
                 lemma_field_mul_one_right(u);
             }
-            assert(spec_projective_u_coordinate(P_proj) == u % p());
+            assert(projective_u_coordinate(P_proj) == u % p());
         },
     }
 }
@@ -625,7 +621,7 @@ pub proof fn lemma_u_coordinate_scalar_mul_canonical_lift_zero(n: nat)
     ensures
         ({
             let P = canonical_montgomery_lift(0);
-            spec_u_coordinate(montgomery_scalar_mul(P, n)) == 0
+            u_coordinate(montgomery_scalar_mul(P, n)) == 0
         }),
 {
     lemma_montgomery_scalar_mul_zero_point_closed(n);
@@ -633,11 +629,11 @@ pub proof fn lemma_u_coordinate_scalar_mul_canonical_lift_zero(n: nat)
     let P = canonical_montgomery_lift(0);
     let R = montgomery_scalar_mul(P, n);
     if R == MontgomeryAffine::Infinity {
-        assert(spec_u_coordinate(MontgomeryAffine::Infinity) == 0);
+        assert(u_coordinate(MontgomeryAffine::Infinity) == 0);
     } else {
         assert(R == P);
         assert(P == MontgomeryAffine::Finite { u: 0, v: 0 });
-        assert(spec_u_coordinate(MontgomeryAffine::Finite { u: 0, v: 0 }) == 0);
+        assert(u_coordinate(MontgomeryAffine::Finite { u: 0, v: 0 }) == 0);
     }
 }
 
@@ -648,7 +644,7 @@ pub proof fn lemma_u_coordinate_scalar_mul_canonical_lift_zero(n: nat)
 /// 2. montgomery_add uses field operations which preserve u < p
 /// 3. By induction, all scalar multiples have u < p
 ///
-/// This lemma is used to show that `(spec_u_coordinate(...) % p()) == spec_u_coordinate(...)`,
+/// This lemma is used to show that `(u_coordinate(...) % p()) == u_coordinate(...)`,
 /// which allows us to drop the redundant `% p()` when converting from projective representation
 /// to u-coordinate equality.
 pub proof fn lemma_canonical_scalar_mul_u_coord_reduced(u0: nat, n: nat)
@@ -658,7 +654,7 @@ pub proof fn lemma_canonical_scalar_mul_u_coord_reduced(u0: nat, n: nat)
         ({
             let P = canonical_montgomery_lift(u0);
             let R = montgomery_scalar_mul(P, n);
-            spec_u_coordinate(R) < p()
+            u_coordinate(R) < p()
         }),
     decreases n,
 {
@@ -668,14 +664,14 @@ pub proof fn lemma_canonical_scalar_mul_u_coord_reduced(u0: nat, n: nat)
 
     if n == 0 {
         // montgomery_scalar_mul(P, 0) = Infinity
-        // spec_u_coordinate(Infinity) = 0 < p()
+        // u_coordinate(Infinity) = 0 < p()
         assert(R == MontgomeryAffine::Infinity);
-        assert(spec_u_coordinate(R) == 0);
+        assert(u_coordinate(R) == 0);
     } else {
         // montgomery_scalar_mul(P, n) = montgomery_add(P, montgomery_scalar_mul(P, n-1))
         let R_prev = montgomery_scalar_mul(P, (n - 1) as nat);
         lemma_canonical_scalar_mul_u_coord_reduced(u0, (n - 1) as nat);
-        assert(spec_u_coordinate(R_prev) < p());
+        assert(u_coordinate(R_prev) < p());
 
         // Now R = montgomery_add(P, R_prev)
         // montgomery_add returns either Infinity (u-coord 0) or Finite with u computed
@@ -689,23 +685,23 @@ proof fn lemma_montgomery_add_u_coord_reduced(P: MontgomeryAffine, Q: Montgomery
     requires
         u0 != 0,
         P == canonical_montgomery_lift(u0),
-        spec_u_coordinate(Q) < p(),
+        u_coordinate(Q) < p(),
     ensures
-        spec_u_coordinate(montgomery_add(P, Q)) < p(),
+        u_coordinate(montgomery_add(P, Q)) < p(),
 {
     p_gt_2();
     let R = montgomery_add(P, Q);
 
     // P = canonical_montgomery_lift(u0) means P = Finite{u: u0 % p(), v: ...}
-    // So spec_u_coordinate(P) = u0 % p() < p()
-    assert(spec_u_coordinate(P) < p()) by {
+    // So u_coordinate(P) = u0 % p() < p()
+    assert(u_coordinate(P) < p()) by {
         // canonical_montgomery_lift creates Finite{u: u % p(), v: ...}
         lemma_mod_division_less_than_divisor(u0 as int, p() as int);
     }
 
     match R {
         MontgomeryAffine::Infinity => {
-            assert(spec_u_coordinate(R) == 0);
+            assert(u_coordinate(R) == 0);
         },
         MontgomeryAffine::Finite { u, v } => {
             // u is computed via field_sub which returns a value < p()

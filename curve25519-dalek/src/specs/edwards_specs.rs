@@ -483,7 +483,7 @@ pub open spec fn edwards_x_sign_bit(point: crate::edwards::EdwardsPoint) -> u8 {
 
 /// Returns the field element values (X, Y, Z, T) from an EdwardsPoint.
 /// An EdwardsPoint (X:Y:Z:T) is in extended projective coordinates.
-pub open spec fn spec_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat, nat, nat, nat) {
+pub open spec fn edwards_point_as_nat(point: crate::edwards::EdwardsPoint) -> (nat, nat, nat, nat) {
     let x = fe51_as_canonical_nat(&edwards_x(point));
     let y = fe51_as_canonical_nat(&edwards_y(point));
     let z = fe51_as_canonical_nat(&edwards_z(point));
@@ -494,14 +494,14 @@ pub open spec fn spec_edwards_point(point: crate::edwards::EdwardsPoint) -> (nat
 /// Returns the abstract affine coordinates (x, y) from an EdwardsPoint.
 /// An EdwardsPoint (X:Y:Z:T) represents affine point (X/Z, Y/Z).
 pub open spec fn edwards_point_as_affine(point: crate::edwards::EdwardsPoint) -> (nat, nat) {
-    let (x, y, z, _t) = spec_edwards_point(point);
+    let (x, y, z, _t) = edwards_point_as_nat(point);
     let z_inv = field_inv(z);
     (field_mul(x, z_inv), field_mul(y, z_inv))
 }
 
 /// Returns the field element values (X, Y, Z, T) from a CompletedPoint.
 /// A CompletedPoint is ((X:Z), (Y:T)) in P¹ × P¹.
-pub open spec fn spec_completed_point(
+pub open spec fn completed_point_as_nat(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat, nat) {
     let x_abs = fe51_as_canonical_nat(&point.X);
@@ -516,7 +516,7 @@ pub open spec fn spec_completed_point(
 pub open spec fn completed_point_as_affine_edwards(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat) {
-    let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(point);
+    let (x_abs, y_abs, z_abs, t_abs) = completed_point_as_nat(point);
     let z_inv = field_inv(z_abs);
     let t_inv = field_inv(t_abs);
     (field_mul(x_abs, z_inv), field_mul(y_abs, t_inv))
@@ -524,7 +524,7 @@ pub open spec fn completed_point_as_affine_edwards(
 
 /// Returns the field element values (X, Y, Z) from an Edwards ProjectivePoint.
 /// An Edwards ProjectivePoint (X:Y:Z) is in projective coordinates.
-pub open spec fn spec_projective_point_edwards(point: ProjectivePoint) -> (nat, nat, nat) {
+pub open spec fn projective_point_edwards_as_nat(point: ProjectivePoint) -> (nat, nat, nat) {
     let x = fe51_as_canonical_nat(&point.X);
     let y = fe51_as_canonical_nat(&point.Y);
     let z = fe51_as_canonical_nat(&point.Z);
@@ -549,7 +549,7 @@ pub open spec fn identity_projective_point_edwards() -> ProjectivePoint {
 /// Returns the abstract affine coordinates (x, y) from an Edwards ProjectivePoint.
 /// An Edwards ProjectivePoint (X:Y:Z) represents affine point (X/Z, Y/Z).
 pub open spec fn projective_point_as_affine_edwards(point: ProjectivePoint) -> (nat, nat) {
-    let (x, y, z) = spec_projective_point_edwards(point);
+    let (x, y, z) = projective_point_edwards_as_nat(point);
     let z_inv = field_inv(z);
     (field_mul(x, z_inv), field_mul(y, z_inv))
 }
@@ -558,7 +558,12 @@ pub open spec fn projective_point_as_affine_edwards(point: ProjectivePoint) -> (
 ///
 /// Niels coordinates are an optimized representation for point addition.
 /// Reference: [HWCD2008] Section 3.1 for extended coordinates and efficient formulas
-pub open spec fn spec_projective_niels_point(niels: ProjectiveNielsPoint) -> (nat, nat, nat, nat) {
+pub open spec fn projective_niels_point_as_nat(niels: ProjectiveNielsPoint) -> (
+    nat,
+    nat,
+    nat,
+    nat,
+) {
     let y_plus_x = fe51_as_canonical_nat(&niels.Y_plus_X);
     let y_minus_x = fe51_as_canonical_nat(&niels.Y_minus_X);
     let z = fe51_as_canonical_nat(&niels.Z);
@@ -570,7 +575,7 @@ pub open spec fn spec_projective_niels_point(niels: ProjectiveNielsPoint) -> (na
 ///
 /// Affine Niels coordinates store (y+x, y-x, xy2d) for efficient mixed addition.
 /// Reference: [HWCD2008] Section 3.1
-pub open spec fn spec_affine_niels_point(niels: AffineNielsPoint) -> (nat, nat, nat) {
+pub open spec fn affine_niels_point_as_nat(niels: AffineNielsPoint) -> (nat, nat, nat) {
     let y_plus_x = fe51_as_canonical_nat(&niels.y_plus_x);
     let y_minus_x = fe51_as_canonical_nat(&niels.y_minus_x);
     let xy2d = fe51_as_canonical_nat(&niels.xy2d);
@@ -601,7 +606,7 @@ pub open spec fn projective_niels_corresponds_to_edwards(
     niels: ProjectiveNielsPoint,
     point: EdwardsPoint,
 ) -> bool {
-    let (x, y, z, t) = spec_edwards_point(point);
+    let (x, y, z, t) = edwards_point_as_nat(point);
     let d = fe51_as_canonical_nat(&EDWARDS_D);
 
     let y_plus_x = fe51_as_canonical_nat(&niels.Y_plus_X);
@@ -657,7 +662,7 @@ pub open spec fn affine_niels_corresponds_to_edwards(
     niels: AffineNielsPoint,
     point: EdwardsPoint,
 ) -> bool {
-    let (x_proj, y_proj, z_proj, _t) = spec_edwards_point(point);
+    let (x_proj, y_proj, z_proj, _t) = edwards_point_as_nat(point);
     let d = fe51_as_canonical_nat(&EDWARDS_D);
 
     let z_inv = field_inv(z_proj);
@@ -732,13 +737,6 @@ pub open spec fn identity_projective_niels() -> ProjectiveNielsPoint {
     }
 }
 
-/// Spec function: Negation of an AffineNielsPoint as tuple
-/// Negation swaps y+x with y-x and negates xy2d
-pub open spec fn spec_negate_affine_niels(p: (nat, nat, nat)) -> (nat, nat, nat) {
-    let (y_plus_x, y_minus_x, xy2d) = p;
-    (y_minus_x, y_plus_x, field_neg(xy2d))
-}
-
 /// Negation of an AffineNielsPoint as structure
 pub open spec fn negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
     AffineNielsPoint {
@@ -748,13 +746,6 @@ pub open spec fn negate_affine_niels(p: AffineNielsPoint) -> AffineNielsPoint {
             limbs: crate::specs::field_specs_u64::spec_negate(p.xy2d.limbs),
         },
     }
-}
-
-/// Spec function: Negation of a ProjectiveNielsPoint as tuple
-/// Negation swaps Y+X with Y-X and negates T2d (Z stays the same)
-pub open spec fn spec_negate_projective_niels(p: (nat, nat, nat, nat)) -> (nat, nat, nat, nat) {
-    let (y_plus_x, y_minus_x, z, t2d) = p;
-    (y_minus_x, y_plus_x, z, field_neg(t2d))
 }
 
 /// Negation of a ProjectiveNielsPoint as structure
@@ -817,7 +808,7 @@ pub open spec fn edwards_sub(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
 pub open spec fn is_valid_completed_point(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> bool {
-    let (x_abs, y_abs, z_abs, t_abs) = spec_completed_point(point);
+    let (x_abs, y_abs, z_abs, t_abs) = completed_point_as_nat(point);
 
     // Z and T must be non-zero
     z_abs != 0 && t_abs != 0
@@ -833,7 +824,7 @@ pub open spec fn is_valid_completed_point(
 ///
 /// This is equivalent to the affine point (X/Z, Y/Z) lying on the Edwards curve.
 pub open spec fn is_valid_projective_point(point: ProjectivePoint) -> bool {
-    let (x, y, z) = spec_projective_point_edwards(point);
+    let (x, y, z) = projective_point_edwards_as_nat(point);
 
     // Z must be non-zero and projective curve equation must hold
     z != 0 && is_on_edwards_curve_projective(x, y, z)
@@ -844,10 +835,10 @@ pub open spec fn is_valid_projective_point(point: ProjectivePoint) -> bool {
 ///   (X:Z, Y:T) ↦ (X·T : Y·Z : Z·T)
 /// This preserves the affine point because:
 ///   X·T / Z·T = X/Z and Y·Z / Z·T = Y/T
-pub open spec fn spec_completed_to_projective(
+pub open spec fn completed_to_projective(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat) {
-    let (x, y, z, t) = spec_completed_point(point);
+    let (x, y, z, t) = completed_point_as_nat(point);
     (field_mul(x, t), field_mul(y, z), field_mul(z, t))
 }
 
@@ -855,10 +846,10 @@ pub open spec fn spec_completed_to_projective(
 /// Converts from P¹ × P¹ to P³ via the Segre embedding:
 ///   ((X:Z), (Y:T)) ↦ (X·T : Y·Z : Z·T : X·Y)
 /// This preserves the affine point and satisfies the extended coordinate invariant
-pub open spec fn spec_completed_to_extended(
+pub open spec fn completed_to_extended(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat, nat) {
-    let (x, y, z, t) = spec_completed_point(point);
+    let (x, y, z, t) = completed_point_as_nat(point);
     (field_mul(x, t), field_mul(y, z), field_mul(z, t), field_mul(x, y))
 }
 
@@ -866,8 +857,8 @@ pub open spec fn spec_completed_to_extended(
 /// Converts from P² to P³ via:
 ///   (X:Y:Z) ↦ (X·Z : Y·Z : Z² : X·Y)
 /// This preserves the affine point and establishes the extended coordinate invariant
-pub open spec fn spec_projective_to_extended(point: ProjectivePoint) -> (nat, nat, nat, nat) {
-    let (x, y, z) = spec_projective_point_edwards(point);
+pub open spec fn projective_to_extended(point: ProjectivePoint) -> (nat, nat, nat, nat) {
+    let (x, y, z) = projective_point_edwards_as_nat(point);
     (field_mul(x, z), field_mul(y, z), field_square(z), field_mul(x, y))
 }
 
@@ -1022,8 +1013,8 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 //                                                                    selects x sign
 //
 // Spec functions (in pipeline order):
-//   1. spec_nonspec_map_to_curve           -- top-level: bytes -> [8]P
-//   2. spec_montgomery_to_edwards_affine    -- Montgomery u + sign -> Edwards (x,y)
+//   1. nonspec_map_to_curve           -- top-level: bytes -> [8]P
+//   2. montgomery_to_edwards_affine    -- Montgomery u + sign -> Edwards (x,y)
 //   3. spec_edwards_decompress_from_y      -- Edwards y + sign -> (x,y)
 //
 // Helper functions (defined elsewhere):
@@ -1045,7 +1036,7 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 ///
 /// Note from Dalek code: This is NOT a proper hash-to-curve (non-uniform distribution).
 /// A proper hash-to-curve applies Elligator twice and adds the results.
-pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
+pub open spec fn nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     recommends
         hash_bytes.len() == 32,
 {
@@ -1056,13 +1047,13 @@ pub open spec fn spec_nonspec_map_to_curve(hash_bytes: Seq<u8>) -> (nat, nat)
     // Elligator2 encoding: field element -> Montgomery u-coordinate
     let u = spec_elligator_encode(fe_nat);
     // Convert Montgomery to Edwards with sign bit selecting x
-    let P = spec_montgomery_to_edwards_affine(u, sign_bit);
+    let P = montgomery_to_edwards_affine(u, sign_bit);
     // Cofactor clearing: multiply by 8 to ensure prime-order subgroup
     edwards_scalar_mul(P, 8)
 }
 
 /// Normalize a sign byte to 0 or 1 (the low bit).
-pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
+pub open spec fn normalize_sign(sign: u8) -> u8 {
     if (sign & 1u8) == 0u8 {
         0u8
     } else {
@@ -1082,7 +1073,7 @@ pub open spec fn spec_normalize_sign(sign: u8) -> u8 {
 /// here by forcing `effective_sign = 0`.
 ///
 /// Returns identity (0, 1) on failure (u = -1 or invalid y).
-pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat) {
+pub open spec fn montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat, nat) {
     if u == field_sub(0, 1) {
         // u = -1: birational map has zero denominator
         edwards_identity()
@@ -1094,7 +1085,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
         } else {
             sign_bit
         };
-        match spec_edwards_decompress_from_y_and_sign(y, effective_sign) {
+        match edwards_decompress_from_y_and_sign(y, effective_sign) {
             Some(P) => P,
             None => edwards_identity(),
         }
@@ -1107,9 +1098,7 @@ pub open spec fn spec_montgomery_to_edwards_affine(u: nat, sign_bit: u8) -> (nat
 /// - Returns None if y is not a valid y-coordinate (no x exists on curve)
 /// - Returns None if x = 0 but sign_bit = 1 (invalid sign for zero, since 0 % 2 == 0)
 /// - Otherwise returns the unique (x, y) on the curve with x % 2 == sign_bit
-pub open spec fn spec_edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<
-    (nat, nat),
-> {
+pub open spec fn edwards_decompress_from_y_and_sign(y: nat, sign_bit: u8) -> Option<(nat, nat)> {
     if !is_valid_edwards_y_coordinate(y) {
         None
     } else if field_square(y) == 1 && sign_bit == 1u8 {

@@ -288,7 +288,7 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
         (x % 2) == (sign_bit as nat),
         sign_bit == 0 || sign_bit == 1,
     ensures
-        spec_edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
+        edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y)),
 {
     assert(is_valid_edwards_y_coordinate(y)) by {
         let d = fe51_as_canonical_nat(&EDWARDS_D);
@@ -322,32 +322,31 @@ pub proof fn lemma_decompress_spec_matches_point(x: nat, y: nat, sign_bit: u8)
 }
 
 /// Helper lemma: exact functional correctness for Montgomery→Edwards conversion.
-pub proof fn lemma_to_edwards_correctness(x_exec: nat, y_nat: nat, sign_bit: u8, u_nat: nat)
+pub proof fn lemma_to_edwards_correctness(x: nat, y: nat, sign_bit: u8, u: nat)
     requires
-        is_on_edwards_curve(x_exec, y_nat),
-        x_exec < p(),
-        y_nat < p(),
+        is_on_edwards_curve(x, y),
+        x < p(),
+        y < p(),
         sign_bit == 0 || sign_bit == 1,
-        field_square(y_nat) != 1 ==> ((x_exec % 2) as u8 == sign_bit),
-        y_nat == edwards_y_from_montgomery_u(u_nat),
-        u_nat < p(),
-        u_nat != field_sub(0, 1),
+        field_square(y) != 1 ==> ((x % 2) as u8 == sign_bit),
+        y == edwards_y_from_montgomery_u(u),
+        u < p(),
+        u != field_sub(0, 1),
     ensures
-        (x_exec, y_nat) == spec_montgomery_to_edwards_affine(u_nat, sign_bit),
+        (x, y) == montgomery_to_edwards_affine(u, sign_bit),
 {
-    if field_square(y_nat) == 1 {
-        assert(x_exec == 0) by {
+    if field_square(y) == 1 {
+        assert(x == 0) by {
             let d = fe51_as_canonical_nat(&EDWARDS_D);
             axiom_d_plus_one_nonzero();
-            lemma_field_y_sq_one_implies_x_zero(d, x_exec, y_nat);
+            lemma_field_y_sq_one_implies_x_zero(d, x, y);
         };
-        assert(spec_edwards_decompress_from_y_and_sign(y_nat, 0u8) == Some((0nat, y_nat))) by {
-            lemma_decompress_spec_matches_point(0nat, y_nat, 0u8);
+        assert(edwards_decompress_from_y_and_sign(y, 0u8) == Some((0nat, y))) by {
+            lemma_decompress_spec_matches_point(0nat, y, 0u8);
         };
     } else {
-        assert(spec_edwards_decompress_from_y_and_sign(y_nat, sign_bit) == Some((x_exec, y_nat)))
-            by {
-            lemma_decompress_spec_matches_point(x_exec, y_nat, sign_bit);
+        assert(edwards_decompress_from_y_and_sign(y, sign_bit) == Some((x, y))) by {
+            lemma_decompress_spec_matches_point(x, y, sign_bit);
         };
     }
 }

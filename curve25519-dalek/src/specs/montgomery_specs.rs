@@ -115,7 +115,7 @@ pub open spec fn canonical_montgomery_lift(u: nat) -> MontgomeryAffine
 /// which requires that montgomery_rhs(u) = u³ + A·u² + u is a quadratic residue (square) mod p.
 /// This ensures there exists a v such that v² = montgomery_rhs(u), making (u,v) a point on the curve.
 pub open spec fn is_valid_montgomery_point(point: crate::montgomery::MontgomeryPoint) -> bool {
-    let u = spec_montgomery(point);
+    let u = montgomery_point_as_nat(point);
     is_valid_u_coordinate(u)
 }
 
@@ -190,7 +190,7 @@ pub open spec fn montgomery_sub(P: MontgomeryAffine, Q: MontgomeryAffine) -> Mon
 
 /// Extract the u-coordinate from a MontgomeryAffine point.
 /// Maps Infinity to 0, and Finite{u, v} to u.
-pub open spec fn spec_u_coordinate(point: MontgomeryAffine) -> nat {
+pub open spec fn u_coordinate(point: MontgomeryAffine) -> nat {
     match point {
         MontgomeryAffine::Infinity => 0,
         MontgomeryAffine::Finite { u, v: _ } => u,
@@ -199,7 +199,7 @@ pub open spec fn spec_u_coordinate(point: MontgomeryAffine) -> nat {
 
 /// Returns the u-coordinate of a Montgomery point as a field element
 /// Montgomery points only store the u-coordinate; sign information is lost
-pub open spec fn spec_montgomery(point: crate::montgomery::MontgomeryPoint) -> nat {
+pub open spec fn montgomery_point_as_nat(point: crate::montgomery::MontgomeryPoint) -> nat {
     field_element_from_bytes(&point.0)
 }
 
@@ -210,7 +210,7 @@ pub open spec fn montgomery_corresponds_to_edwards(
     montgomery: crate::montgomery::MontgomeryPoint,
     edwards: crate::edwards::EdwardsPoint,
 ) -> bool {
-    let u = spec_montgomery(montgomery);
+    let u = montgomery_point_as_nat(montgomery);
     let (x, y) = crate::specs::edwards_specs::edwards_point_as_affine(edwards);
     let denominator = field_sub(1, y);
 
@@ -229,7 +229,7 @@ pub open spec fn montgomery_corresponds_to_edwards(
 pub open spec fn affine_projective_point_montgomery(
     point: crate::montgomery::ProjectivePoint,
 ) -> nat {
-    let (u, w) = spec_projective_point_montgomery(point);
+    let (u, w) = projective_point_montgomery_as_nat(point);
     if w == 0 {
         0  // Identity case
 
@@ -240,7 +240,7 @@ pub open spec fn affine_projective_point_montgomery(
 
 /// Returns the field element values (U, W) from a Montgomery ProjectivePoint.
 /// A Montgomery ProjectivePoint (U:W) is in projective coordinates on the Montgomery curve.
-pub open spec fn spec_projective_point_montgomery(point: crate::montgomery::ProjectivePoint) -> (
+pub open spec fn projective_point_montgomery_as_nat(point: crate::montgomery::ProjectivePoint) -> (
     nat,
     nat,
 ) {
@@ -280,7 +280,7 @@ pub open spec fn edwards_y_from_montgomery_u(u: nat) -> nat
 
 /// Extract the u-coordinate from a ProjectivePoint (U:W) as u = U/W.
 /// Returns 0 if W = 0 (which represents the point at infinity).
-pub open spec fn spec_projective_u_coordinate(P: ProjectivePoint) -> nat {
+pub open spec fn projective_u_coordinate(P: ProjectivePoint) -> nat {
     let U = fe51_as_canonical_nat(&P.U);
     let W = fe51_as_canonical_nat(&P.W);
     if W == 0 {

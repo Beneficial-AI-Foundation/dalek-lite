@@ -1058,5 +1058,4 @@ mod test_ristretto_decode_axioms {
             "Fermat's Little Theorem: 2^(p-1) must equal 1 mod p"
         );
     }
-
 }

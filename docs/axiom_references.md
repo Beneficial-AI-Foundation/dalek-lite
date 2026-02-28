@@ -357,15 +357,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_invsqrt_exists() [sqrt_ratio_lemmas.rs]
-**Claim:** For every nonzero `a` in GF(p), there exists a nonnegative `r < p` satisfying `r²·a ≡ 1 (mod p)` or `r²·a ≡ √(−1) (mod p)`. This justifies the `choose` operator in `nat_invsqrt(a)`.
-
-**Reference:** Same as `lemma_invsqrt_unique` — follows from GF(p) with p ≡ 5 (mod 8).
-
-**Justification:** In GF(p)*, every element `a` has a well-defined Legendre symbol. The algorithm `r = (v·u^7)·(v·u^7)^((p−5)/8)` always produces a valid `r` satisfying one of the two disjoint cases. The nonneg representative (even canonical encoding) exists since exactly one of `{r, p−r}` is even for odd p.
-
-Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecified value, and `lemma_invsqrt_unique`'s postcondition would be vacuously consistent.
-
 ---
 
 ### lemma_sqrt_ratio_mutual_exclusion() [sqrt_ratio_lemmas.rs — FULLY PROVEN]
@@ -517,7 +508,6 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 | axiom_ristretto_basepoint_table_valid | ristretto_specs.rs | Construction | Hamburg 2019 |
 | lemma_invsqrt_unique | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_no_square_root_when_times_i + lemma_nonneg_square_root_unique |
 | lemma_nat_invsqrt_satisfies_relation | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_sqrt_ratio_check_value + lemma_fourth_root_of_unity + lemma_multiply_by_i_flips_sign |
-| axiom_invsqrt_exists | sqrt_ratio_lemmas.rs | Math | Justifies `choose` in nat_invsqrt |
 | lemma_sqrt_ratio_mutual_exclusion | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_no_square_root_when_times_i |
 | axiom_ristretto_decode_on_curve | ristretto_specs.rs | Paper + test | Hamburg 2015; test_ristretto_decode_on_curve |
 | axiom_ristretto_decode_in_even_subgroup | ristretto_specs.rs | Paper + test | Hamburg 2015/2019; test (100+ points) |

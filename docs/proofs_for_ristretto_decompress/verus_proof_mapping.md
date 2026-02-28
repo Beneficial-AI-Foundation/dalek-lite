@@ -78,7 +78,6 @@ to the corresponding Verus code, identifying all gaps.
 | `axiom_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | AXIOM (admit) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
 | `axiom_neg_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | AXIOM (admit) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
 | `axiom_minus_one_field_element_value` | `constants_lemmas.rs` | AXIOM (admit) | `test_minus_one_field_element_value` | field algebra |
-| `axiom_invsqrt_exists` | `sqrt_ratio_lemmas.rs` | AXIOM (admit) | — | justifies `choose` in `nat_invsqrt` spec |
 | `axiom_p_is_prime` | `primality_specs.rs` | AXIOM (admit) | `test_p_is_prime` (Miller-Rabin, 9 witnesses + Fermat) | field algebra, sqrt_ratio proofs |
 
 ---

@@ -135,10 +135,9 @@ to be even (nonnegative), contradiction.
 
 Therefore r₁ = r₂.
 
-**Status:** AXIOM (`axiom_invsqrt_unique` + `axiom_invsqrt_exists`). The argument
-is mathematically sound but not yet mechanized in Verus.
-
-**Runtime validation:** `test_invsqrt_unique` (190+ elements).
+Uniqueness is fully mechanized (`lemma_invsqrt_unique`) via
+`lemma_no_square_root_when_times_i` (mixed cases) and `lemma_nonneg_square_root_unique`
+(same cases). The relation property is also fully proven (`lemma_nat_invsqrt_satisfies_relation`).
 
 ∎
 
@@ -234,11 +233,11 @@ For `square` operations, the bridge `lemma_square_matches_field_square` connects
 the exec `pow(raw, 2)` postcondition to the spec `field_square(canonical)`.
 
 For the `invsqrt` result, `lemma_decode_invsqrt_facts` (which calls
-`lemma_invsqrt_matches_spec` → `axiom_invsqrt_unique` and
+`lemma_invsqrt_matches_spec` → `lemma_invsqrt_unique` and
 `lemma_sqrt_ratio_mutual_exclusion`) bridges the exec I to `nat_invsqrt(v_u2_sqr)`
 and establishes mutual exclusivity in a single helper call.
 
-**Status:** PROVEN (using `axiom_invsqrt_unique` via `lemma_decode_invsqrt_facts`).
+**Status:** PROVEN (using `lemma_invsqrt_unique` via `lemma_decode_invsqrt_facts`).
 
 ∎
 
@@ -252,7 +251,7 @@ and establishes mutual exclusivity in a single helper call.
 | ok ⟹ is_in_even_subgroup | axiom_ristretto_decode_in_even_subgroup(s, point) |
 | t_is_negative matches is_negative(T) | lemma_is_negative_equals_parity |
 | y_is_zero matches (Y == 0) | lemma_is_zero_iff_canonical_nat_zero |
-| ok matches spec_ristretto_decode_ok | lemma_decode_invsqrt_facts (axiom_invsqrt_unique + mutual exclusivity) |
+| ok matches spec_ristretto_decode_ok | lemma_decode_invsqrt_facts (lemma_invsqrt_unique + mutual exclusivity) |
 | X matches spec_ristretto_decode_x | Field operation postconditions chain |
 | Y matches spec_ristretto_decode_y | Field operation postconditions chain |
 

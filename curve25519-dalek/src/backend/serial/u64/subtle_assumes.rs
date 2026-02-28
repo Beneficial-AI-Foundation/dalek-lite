@@ -267,27 +267,19 @@ pub fn conditional_negate_generic<T>(a: &mut T, choice: Choice) where
 }
 
 /// Specialized wrapper for conditional_negate on FieldElement51 with proper specs.
-/// Use this when you need verified limb bounds and functional correctness guarantees.
-///
-/// # How reduction happens
 ///
 /// The `subtle` crate provides a blanket impl of `ConditionallyNegatable` for any type
-/// implementing `ConditionallySelectable` + `Neg`. When called, it invokes our local impls:
+/// implementing `ConditionallySelectable` + `Neg`. When called, it invokes our verified impls:
 ///
 /// ```text
-/// subtle::conditional_negate()  // blanket impl
-///     ├─► Neg::neg()            // field.rs - calls negate()
-///     │       └─► reduce()      // field.rs - performs modular reduction
-///     └─► conditional_assign()  // field.rs - selects original or negated
+/// subtle::conditional_negate()  // blanket impl (3 lines in subtle crate)
+///     ├─► Neg::neg()            // field.rs - verified, ensures field_neg + 52-bit bound
+///     └─► conditional_assign()  // field.rs - verified, ensures correct selection + bounds
 /// ```
 ///
-/// Verus note: we keep this as an `external_body` wrapper because the underlying
-/// `subtle::ConditionallyNegatable::conditional_negate` is defined in an external crate.
-/// We attach a precise functional contract here without verifying the external implementation.
-///
-/// Bounds note:
-/// - If `choice` is true, this performs a field negation, which calls `reduce()` and yields a 52-bit bound.
-/// - If `choice` is false, this is a no-op, so we can only preserve whatever limb bounds `old(a)` had.
+/// All ensures clauses below follow from the composition of these two verified functions.
+/// The `external_body` is needed only because Verus cannot look inside the external `subtle`
+/// crate to verify the (trivial) blanket impl that composes them.
 #[verifier::external_body]
 pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
     requires

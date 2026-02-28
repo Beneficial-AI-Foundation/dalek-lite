@@ -336,7 +336,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_invsqrt_unique() [sqrt_ratio_lemmas.rs]
+### lemma_invsqrt_unique() [sqrt_ratio_lemmas.rs] — PROVEN
 **Claim:** The nonnegative inverse square root is unique: for nonzero `a` in GF(p), if `r < p`, `r` is nonneg (even canonical encoding), and either `r²·a ≡ 1 (mod p)` or `r²·a ≡ √(−1) (mod p)`, then `r == nat_invsqrt(a)`.
 
 **Reference:** p = 2²⁵⁵ − 19 ≡ 5 (mod 8); Bernstein, Duif, Lange, Schwabe, Yang (2012) — Ed25519 implementation; Hamburg (2015) — Decaf  
@@ -344,20 +344,18 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Justification:** In GF(p) with p ≡ 5 (mod 8), every nonzero element has either 0 or 2 square roots. For the two disjoint cases (square and non-square times √(−1)), the nonneg root (canonical encoding with even LSB) is unique. The `nat_invsqrt` spec function is defined to return this unique value. Uniqueness follows from: if two nonneg values satisfy the same quadratic relation, they differ by at most sign, but both being nonneg forces equality.
 
-**Runtime validation:** `test_invsqrt_unique` — verifies nonneg/negative root structure and r²·a ∈ {1, i} for 190+ field elements.
+**Mechanization status:** Fully proven. Uses `lemma_no_square_root_when_times_i` for mixed cases (when one value satisfies `is_sqrt_ratio` and the other `is_sqrt_ratio_times_i`) and `lemma_nonneg_square_root_unique` for same cases. Its dependency `lemma_nat_invsqrt_satisfies_relation` is also fully proven.
 
 ---
 
-### axiom_invsqrt_exists() [sqrt_ratio_lemmas.rs]
-**Claim:** For every nonzero `a` in GF(p), there exists a nonnegative `r < p` satisfying `r²·a ≡ 1 (mod p)` or `r²·a ≡ √(−1) (mod p)`. This justifies the `choose` operator in `nat_invsqrt(a)`.
+### lemma_nat_invsqrt_satisfies_relation() [sqrt_ratio_lemmas.rs — FULLY PROVEN]
+**Claim:** For nonzero `a` in GF(p), `nat_invsqrt(a)` is nonneg (even), less than p, and satisfies `is_sqrt_ratio(1, a, nat_invsqrt(a))` or `is_sqrt_ratio_times_i(1, a, nat_invsqrt(a))`.
 
-**Reference:** Same as `axiom_invsqrt_unique` — follows from GF(p) with p ≡ 5 (mod 8).
+**Reference:** Same as `lemma_invsqrt_unique` — follows from the constructive definition of `nat_invsqrt`.
 
-**Justification:** In GF(p)*, every element `a` has a well-defined Legendre symbol. The algorithm `r = (v·u^7)·(v·u^7)^((p−5)/8)` always produces a valid `r` satisfying one of the two disjoint cases. The nonneg representative (even canonical encoding) exists since exactly one of `{r, p−r}` is even for odd p.
+**Mechanization status:** Fully proven. Uses `lemma_sqrt_ratio_check_value` to connect check to a fourth root of unity, `lemma_fourth_root_of_unity` to show check ∈ {1, -1, i, -i}, `lemma_multiply_by_i_flips_sign` for the adjustment step, and `lemma_conditional_negate_makes_even` for sign correction.
 
-Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecified value, and `axiom_invsqrt_unique`'s postcondition would be vacuously consistent.
-
-**Runtime validation:** `test_invsqrt_unique` (190+ elements) — implicitly verifies existence by finding valid `r` for each tested input.
+---
 
 ---
 
@@ -365,17 +363,6 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 **Claim:** `is_sqrt_ratio(u, v, r)` and `is_sqrt_ratio_times_i(u, v, r)` are mutually exclusive when `u % p ≠ 0`.
 
 **Status:** Fully proven (no admits). Proof uses `lemma_no_square_root_when_times_i` (also fully proven). Previously contained `admit()` and was named `axiom_sqrt_ratio_mutual_exclusion`.
-
----
-
-### ~~axiom_spec_ristretto_roundtrip()~~ [REMOVED]
-**Removed.** Depended on `spec_ristretto_decompress` (choose-based spec) which was removed. Not used by `decompress`.
-
----
-
-### ~~axiom_ristretto_point_from_coords()~~ [REMOVED]
-
-**Removed.** Unsound: `spec_edwards_point` maps through `fe51_as_canonical_nat` which is not injective on limb representations. Coordinate-level postconditions via `spec_ristretto_decompress` provide all security-relevant guarantees.
 
 ---
 
@@ -420,6 +407,10 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 
 **Reference:** p = 2²⁵⁵ − 19 ≡ 5 (mod 8), so −1 is a quadratic residue; its square roots are not squares  
 **Justification:** For p ≡ 5 (mod 8), −1 is a QR. The square roots of −1 are ±i; neither i nor −i is a square (otherwise −1 would be a fourth power).
+
+**Mechanization note (axiom_sqrt_m1_squared):** The product sqrt_m1()² is ~504 bits, far beyond SMT capacity. Assessed as not cost-effective to mechanize (schoolbook limb multiplication ~50-100 proof lines; witness-based approach limited by ~249-bit quotient; CRT approach requires Verus CRT infrastructure). Keep as axiom.
+
+**Runtime validation:** `test_sqrt_m1_limbs_bounded` — verifies SQRT_M1² = −1. `test_sqrt_m1_not_square` — verifies i and −i are non-squares via Euler's criterion.
 
 ---
 
@@ -515,10 +506,9 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 | axiom_minus_one_field_element_value | field_lemmas/constants_lemmas.rs | Math | GF(p) arithmetic |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | Construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_specs.rs | Construction | Hamburg 2019 |
-| axiom_invsqrt_unique | sqrt_ratio_lemmas.rs | Math + test | GF(p) quadratic residuosity; test_invsqrt_unique |
-| axiom_invsqrt_exists | sqrt_ratio_lemmas.rs | Math + test | Justifies `choose` in nat_invsqrt; test_invsqrt_unique |
+| lemma_invsqrt_unique | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_no_square_root_when_times_i + lemma_nonneg_square_root_unique |
+| lemma_nat_invsqrt_satisfies_relation | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_sqrt_ratio_check_value + lemma_fourth_root_of_unity + lemma_multiply_by_i_flips_sign |
 | lemma_sqrt_ratio_mutual_exclusion | sqrt_ratio_lemmas.rs | **PROVEN** | Uses lemma_no_square_root_when_times_i |
-| ~~axiom_spec_ristretto_roundtrip~~ | ristretto_specs.rs | **REMOVED** | Removed along with `spec_ristretto_decompress` |
 | axiom_ristretto_decode_on_curve | ristretto_specs.rs | Paper + test | Hamburg 2015; test_ristretto_decode_on_curve |
 | axiom_ristretto_decode_in_even_subgroup | ristretto_specs.rs | Paper + test | Hamburg 2015/2019; test (100+ points) |
 | lemma_sqrt_m1_limbs_bounded | sqrt_m1_lemmas.rs | **PROVEN** | Concrete limb checks + bit_vector |
@@ -537,19 +527,3 @@ Without this axiom, `nat_invsqrt` (which uses `choose`) could return an unspecif
 | axiom_sha512_output_length | core_assumes.rs | Spec | FIPS 180-4; RFC 6234 |
 | axiom_two_l_div_pow2_208_le_pow2_45 | unused_montgomery_reduce_lemmas.rs | Computation | Concrete bounds |
 
-**Total: 54 axioms across 12 source files** (1 axiom fully proven → lemma: `lemma_sqrt_ratio_mutual_exclusion`; 2 axioms removed: `axiom_ristretto_point_from_coords` (unsound), `axiom_spec_ristretto_roundtrip` (unused))
-
-### Recent Changes (decompress proof hardening)
-
-- `lemma_sqrt_ratio_mutual_exclusion`: Previously `axiom_sqrt_ratio_mutual_exclusion` with `admit()`. Now **fully proven** using `lemma_no_square_root_when_times_i`. Moved from `ristretto.rs` to `sqrt_ratio_lemmas.rs`.
-- `axiom_invsqrt_unique`: Moved from `ristretto_specs.rs` to `sqrt_ratio_lemmas.rs`. New test: `test_invsqrt_unique`.
-- `axiom_spec_ristretto_roundtrip`: **Removed** along with `spec_ristretto_decompress` (choose-based spec that was fragile and unused by decompress proof).
-- `axiom_ristretto_decode_on_curve`: **Simplified** from 4 params `(s, big_i, x, y)` with `is_ristretto_decode_output` precondition to 1 param `(s)` using `spec_ristretto_decode_ok/x/y` helpers.
-- `axiom_ristretto_decode_in_even_subgroup`: **Simplified** from 5 params to 2 params `(s, point)`. Test strengthened with hash-derived and diverse inputs.
-- `is_ristretto_decode_output`: **Removed** (redundant predicate that duplicated `spec_ristretto_decode_inner`).
-- `lemma_decode_invsqrt_facts`: **New helper** deduplicating ~33 lines of invsqrt+mutual-exclusion proof that appeared twice in step_2.
-- `axiom_sqrt_m1_limbs_bounded`: Renamed to `lemma_sqrt_m1_limbs_bounded` — **fully proven** via concrete limb assertions + `by (bit_vector)`. Test: `test_sqrt_m1_limbs_bounded`.
-- `axiom_minus_one_field_element_value`: New test: `test_minus_one_field_element_value`.
-- Degenerate-case `assume(is_on_edwards_curve_projective(...))` in `ristretto.rs`: **Eliminated** by restructuring to use `EdwardsPoint::identity()` on the failure path.
-- `axiom_ristretto_point_from_coords`: **Removed** (unsound). Postcondition `result == spec_ristretto_decompress(self.0)` dropped in favor of coordinate-level postconditions via `spec_ristretto_decompress`.
-- `spec_ristretto_decode_inner`: **Factored** into `spec_ristretto_decode_v_u2_sqr(s)` and `spec_ristretto_decode_xy(s, big_i)` for clearer spec structure.

@@ -48,17 +48,17 @@ to the corresponding Verus code, identifying all gaps.
 |---|---|---|---|---|
 | Theorem 1 (Curve Membership) | `ristretto_specs.rs` `axiom_ristretto_decode_on_curve(s)` | AXIOM (admit) | `test_ristretto_decode_on_curve` (100 points) | Hamburg 2015; requires `spec_ristretto_decode_ok(s)` |
 | Theorem 2 (Mutual Exclusivity) | `sqrt_ratio_lemmas.rs` `lemma_sqrt_ratio_mutual_exclusion` | PROVEN | — | Uses `lemma_no_square_root_when_times_i` (also fully proven) |
-| Theorem 3 (Invsqrt Uniqueness) | `sqrt_ratio_lemmas.rs` `axiom_invsqrt_unique` | AXIOM (admit) | `test_invsqrt_unique` (190+ elements) | Math sound; GF(p) quadratic residuosity |
+| Theorem 3 (Invsqrt Uniqueness) | `sqrt_ratio_lemmas.rs` `lemma_invsqrt_unique` | PROVEN | — | Uses lemma_no_square_root_when_times_i + lemma_nonneg_square_root_unique + lemma_nat_invsqrt_satisfies_relation |
 | Theorem 4 (Even Subgroup) | `ristretto_specs.rs` `axiom_ristretto_decode_in_even_subgroup(s, point)` | AXIOM (admit) | `test_ristretto_decode_in_even_subgroup` (50+ points, diverse inputs) | Hamburg 2015/2019; Jacobi quartic isogeny |
 | Theorem 5 (Failure Correctness) | `ristretto.rs` step_2 proof blocks | PROVEN | — | Direct from step_2 postconditions |
-| Theorem 6 (Spec Alignment) | `ristretto.rs` step_2 proof blocks | PROVEN (via axioms) | — | Uses axiom_invsqrt_unique, mutual exclusion |
+| Theorem 6 (Spec Alignment) | `ristretto.rs` step_2 proof blocks | PROVEN | — | Uses lemma_invsqrt_unique, mutual exclusion |
 
 ### step_2 Lemma Chain
 
 | Lemma | File | Status | Used by |
 |---|---|---|---|
 | `lemma_decode_invsqrt_facts` | `ristretto.rs` | PROVEN (calls lemma_invsqrt_matches_spec + mutual exclusion) | step_2 spec alignment |
-| `lemma_invsqrt_matches_spec` | `ristretto.rs` | PROVEN (calls axiom_invsqrt_unique) | invsqrt bridging |
+| `lemma_invsqrt_matches_spec` | `ristretto.rs` | PROVEN (calls lemma_invsqrt_unique) | invsqrt bridging |
 | `lemma_sqrt_ratio_mutual_exclusion` | `sqrt_ratio_lemmas.rs` | PROVEN | step_2 ok↔is_sqrt_ratio |
 | `lemma_is_negative_equals_parity` | `as_bytes_lemmas.rs` | PROVEN | step_2 t_is_negative |
 | `lemma_is_zero_iff_canonical_nat_zero` | `batch_invert_lemmas.rs` | PROVEN | step_2 y_is_zero |
@@ -78,7 +78,6 @@ to the corresponding Verus code, identifying all gaps.
 | `axiom_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | AXIOM (admit) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
 | `axiom_neg_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | AXIOM (admit) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
 | `axiom_minus_one_field_element_value` | `constants_lemmas.rs` | AXIOM (admit) | `test_minus_one_field_element_value` | field algebra |
-| `axiom_invsqrt_exists` | `sqrt_ratio_lemmas.rs` | AXIOM (admit) | `test_invsqrt_unique` (190+ elements) | justifies `choose` in `nat_invsqrt` spec |
 | `axiom_p_is_prime` | `primality_specs.rs` | AXIOM (admit) | `test_p_is_prime` (Miller-Rabin, 9 witnesses + Fermat) | field algebra, sqrt_ratio proofs |
 
 ---

@@ -1155,18 +1155,343 @@ pub proof fn lemma_sqrt_ratio_correctness(
     }
 }
 
-/// Axiom: nonneg invsqrt is unique.
+/// Lemma: Two nonneg elements with the same square in F_p must be equal.
+///
+/// If r, s < p, both even (nonneg), and r² = s² (mod p), then r = s.
+///
+/// Proof:
+///   1. r² - s² = (r-s)(r+s) = 0 in F_p (difference of squares).
+///   2. By Euclid's lemma (p prime): r ≡ s or r ≡ -s (mod p).
+///   3. If r = p-s (i.e. r ≡ -s), then r+s = p which is odd,
+///      but r even + s even = even. Contradiction.
+///   4. Therefore r = s.
+pub proof fn lemma_nonneg_square_root_unique(r: nat, s: nat)
+    requires
+        r < p(),
+        s < p(),
+        r % 2 == 0,
+        s % 2 == 0,
+        field_square(r) == field_square(s),
+    ensures
+        r == s,
+{
+    let pn = p();
+    p_gt_2();
+    axiom_p_is_prime();
+
+    // r² - s² = 0 in F_p
+    assert(field_sub(field_square(r), field_square(s)) == 0) by {
+        lemma_field_sub_self(field_square(r));
+    };
+    // (r-s)(r+s) = r² - s²
+    assert(field_mul(field_sub(r, s), field_add(r, s)) == 0) by {
+        lemma_field_diff_of_squares(r, s);
+    };
+
+    let a = field_sub(r, s);
+    let b = field_add(r, s);
+    assert(a < pn) by {
+        lemma_mod_bound(((r % pn + pn) as int - (s % pn) as int) as int, pn as int);
+    };
+    assert(b < pn) by {
+        lemma_mod_bound((r + s) as int, pn as int);
+    };
+
+    // field_mul(a, b) = 0, so (a * b) % p = 0
+    assert((a * b) % pn == 0) by {
+        lemma_small_mod(a, pn);
+        lemma_small_mod(b, pn);
+        lemma_mul_mod_noop_left(a as int, b as int, pn as int);
+        lemma_mul_mod_noop_right((a % pn) as int, b as int, pn as int);
+    };
+
+    // By Euclid: a % p = 0 or b % p = 0
+    lemma_euclid_prime(a, b, pn);
+
+    if a % pn == 0 {
+        // field_sub(r, s) ≡ 0 (mod p), both < p => r = s
+        lemma_small_mod(a, pn);
+        assert(a == 0);
+        lemma_small_mod(r, pn);
+        lemma_small_mod(s, pn);
+        lemma_field_add_sub_cancel(r, s);
+        assert(field_add(0nat, s) == r);
+        // field_add(0, s) = (0 + s) % p = s
+        assert(field_add(0nat, s) == s) by {
+            lemma_small_mod(s, pn);
+        };
+    } else {
+        // field_add(r, s) ≡ 0 (mod p), so r + s ≡ 0 (mod p)
+        lemma_small_mod(b, pn);
+        assert(b == 0);
+        // b = field_add(r, s) = (r + s) % p
+        // field_add(r, s) is defined as (r + s) % p when both < p
+        lemma_small_mod(r, pn);
+        lemma_small_mod(s, pn);
+        assert(b == (r + s) % pn) by {
+            // field_add(r, s) = ((r % p) + (s % p)) % p = (r + s) % p
+            lemma_add_mod_noop(r as int, s as int, pn as int);
+        };
+        assert((r + s) % pn == 0);
+        if r == 0 && s == 0 {
+            // Both zero, trivially equal
+        } else {
+            // r + s = p (the only nonzero multiple of p in range [1, 2p-1])
+            let sum: int = (r + s) as int;
+            let pp: int = pn as int;
+            lemma_fundamental_div_mod(sum, pp);
+            assert(r + s == pn) by (nonlinear_arith)
+                requires
+                    sum == pp * (sum / pp) + sum % pp,
+                    sum % pp == 0int,
+                    sum == r as int + s as int,
+                    pp == pn as int,
+                    (r as int) >= 0,
+                    (s as int) >= 0,
+                    (r as int) < pp,
+                    (s as int) < pp,
+                    !(r as int == 0 && s as int == 0),
+                    pp > 0,
+            ;
+            // r + s = p, but r even + s even = even, and p is odd => contradiction
+            lemma_p_is_odd();
+            assert((r + s) % 2 == 0) by (nonlinear_arith)
+                requires
+                    r % 2 == 0,
+                    s % 2 == 0,
+            ;
+            assert(false);
+        }
+    }
+}
+
+/// Lemma: nat_invsqrt(a) satisfies the invsqrt relation and is nonneg.
+///
+/// For nonzero a (mod p), nat_invsqrt(a) is a nonneg value s < p such that
+/// s²·a ≡ 1 or s²·a ≡ √(-1) (mod p).
+///
+/// Proof:
+///   1. check = a·r_raw² where r_raw = a³·(a⁷)^k, k = (p-5)/8.
+///      By lemma_sqrt_ratio_check_value, check = (a⁷)^((p-1)/4) mod p.
+///   2. By lemma_fourth_root_of_unity, check ∈ {1, -1, i, -i}.
+///   3. Adjustment: if check ∈ {-1, -i}, multiply r by i.
+///      Since (i·r)² = -r², we get a·r_adj² = -check ∈ {1, i}.
+///   4. Sign correction (negate if odd) preserves the square,
+///      so a·s² = a·r_adj² ∈ {1, i}, giving is_sqrt_ratio or is_sqrt_ratio_times_i.
+pub proof fn lemma_nat_invsqrt_satisfies_relation(a: nat)
+    requires
+        a % p() != 0,
+    ensures
+        ({
+            let s = nat_invsqrt(a);
+            &&& s < p()
+            &&& s % 2 == 0
+            &&& (is_sqrt_ratio(1, a, s) || is_sqrt_ratio_times_i(1, a, s))
+        }),
+{
+    let pn = p();
+    p_gt_2();
+    let i = sqrt_m1();
+
+    // Mirror nat_invsqrt(a) definition (else branch, since a % p != 0)
+    let a3 = field_mul(field_square(a), a);
+    let a7 = field_mul(field_square(a3), a);
+    let k = ((pn - 5) / 8) as nat;
+    lemma_pow_nonnegative(a7 as int, k);
+    let pow_a7_k = (pow(a7 as int, k) as nat) % pn;
+    let r_raw = field_mul(a3, pow_a7_k);
+    let check = field_mul(a, field_square(r_raw));
+    let neg_one = field_neg(1nat);
+    let neg_i = field_neg(i);
+    let r_adj = if check == neg_one || check == neg_i {
+        field_mul(sqrt_m1(), r_raw)
+    } else {
+        r_raw
+    };
+    let s = if is_negative(r_adj) {
+        field_neg(r_adj)
+    } else {
+        r_adj
+    };
+
+    // Bounds: field operation results are < p
+    assert(a3 < pn) by {
+        lemma_mod_bound((field_square(a) as int * a as int), pn as int);
+    };
+    assert(a7 < pn) by {
+        lemma_mod_bound((field_square(a3) as int * a as int), pn as int);
+    };
+    assert(r_raw < pn) by {
+        lemma_mod_bound((a3 as int * pow_a7_k as int), pn as int);
+    };
+
+    // a7 % p != 0 (chain through nonzero products in prime field)
+    assert(field_square(a) % pn != 0) by {
+        lemma_nonzero_product(a, a);
+        lemma_mod_bound((a * a) as int, pn as int);
+        lemma_small_mod(field_square(a), pn);
+    };
+    assert(a3 % pn != 0) by {
+        lemma_nonzero_product(field_square(a), a);
+        lemma_small_mod(a3, pn);
+    };
+    assert(field_square(a3) % pn != 0) by {
+        lemma_nonzero_product(a3, a3);
+        lemma_mod_bound((a3 * a3) as int, pn as int);
+        lemma_small_mod(field_square(a3), pn);
+    };
+    assert(a7 % pn != 0) by {
+        lemma_nonzero_product(field_square(a3), a);
+        lemma_small_mod(a7, pn);
+    };
+
+    // === Step 1: check ∈ {1, neg_one, i, neg_i} ===
+
+    // lemma_sqrt_ratio_check_value(1, a) proves:
+    //   check_lemma = field_mul(1, fourth_root) where fourth_root = (pow(w, quarter))%p
+    lemma_sqrt_ratio_check_value(1nat, a);
+
+    // Define the same locals as the postcondition block
+    let w = field_mul(1nat, a7);
+    let quarter = ((pn - 1) / 4) as nat;
+    lemma_pow_nonnegative(w as int, quarter);
+    let fourth_root = (pow(w as int, quarter) as nat) % pn;
+
+    // Bridge: field_mul(1, x) = x when x < p
+    assert(w == a7) by {
+        lemma_field_mul_one_left(a7);
+        lemma_small_mod(a7, pn);
+    };
+    assert(field_mul(1nat, a3) == a3) by {
+        lemma_field_mul_one_left(a3);
+        lemma_small_mod(a3, pn);
+    };
+
+    // From postcondition: check == field_mul(1, fourth_root) = fourth_root
+    assert(fourth_root < pn) by {
+        lemma_mod_bound(pow(w as int, quarter) as int, pn as int);
+    };
+    assert(check == fourth_root) by {
+        lemma_field_mul_one_left(fourth_root);
+        lemma_small_mod(fourth_root, pn);
+    };
+
+    // fourth_root_of_unity: (pow(a7, quarter))%p ∈ {1, p-1, i, p-i}
+    lemma_fourth_root_of_unity(a7);
+
+    // Connect neg_one and neg_i to canonical forms
+    assert(neg_one == (pn - 1) as nat) by {
+        lemma_small_mod(1nat, pn);
+        lemma_small_mod((pn - 1) as nat, pn);
+    };
+    lemma_sqrt_m1_nonzero();
+    assert(i < pn) by {
+        lemma_mod_bound(fe51_as_nat(&constants::SQRT_M1) as int, pn as int);
+    };
+    assert(neg_i == (pn - i) as nat) by {
+        lemma_small_mod(i, pn);
+        lemma_small_mod((pn - i) as nat, pn);
+    };
+
+    assert(check == 1 || check == neg_one || check == i || check == neg_i);
+
+    // === Step 2: After adjustment, field_mul(a, field_square(r_adj)) ∈ {1, i} ===
+
+    if check == neg_one || check == neg_i {
+        // r_adj = field_mul(i, r_raw), (i·r)² = -r²
+        assert(field_square(r_adj) == field_neg(field_square(r_raw))) by {
+            lemma_multiply_by_i_flips_sign(r_raw);
+            lemma_field_mul_comm(i, r_raw);
+        };
+
+        // a·r_adj² = a·(-r²) = -(a·r²) = -check
+        assert(field_mul(a, field_square(r_adj)) == field_neg(check)) by {
+            lemma_field_mul_neg(a, field_square(r_raw));
+        };
+
+        if check == neg_one {
+            assert(field_mul(a, field_square(r_adj)) == 1) by {
+                lemma_field_neg_neg(1nat);
+                lemma_small_mod(1nat, pn);
+            };
+        } else {
+            assert(field_mul(a, field_square(r_adj)) == i) by {
+                lemma_field_neg_neg(i);
+                lemma_small_mod(i, pn);
+            };
+        }
+    } else {
+        // No adjustment: r_adj = r_raw, check ∈ {1, i}
+        assert(check == 1 || check == i);
+    }
+
+    // === Step 3: r_adj < p ===
+    assert(r_adj < pn) by {
+        if check == neg_one || check == neg_i {
+            lemma_mod_bound((i as int * r_raw as int), pn as int);
+        }
+    };
+
+    // === Step 4: Sign correction preserves the square ===
+
+    assert(s < pn) by {
+        if is_negative(r_adj) {
+            lemma_small_mod(r_adj, pn);
+            lemma_mod_bound((pn as int - r_adj as int), pn as int);
+        }
+    };
+
+    assert(s % 2 == 0) by {
+        lemma_small_mod(r_adj, pn);
+        lemma_conditional_negate_makes_even(r_adj, is_negative(r_adj));
+    };
+
+    // (-x)² = x² in the field
+    assert(field_square(s) == field_square(r_adj)) by {
+        if is_negative(r_adj) {
+            lemma_neg_square_eq(r_adj);
+            lemma_small_mod(r_adj, pn);
+        }
+    };
+
+    // === Step 5: Connect to is_sqrt_ratio / is_sqrt_ratio_times_i ===
+
+    assert(field_mul(a, field_square(s)) == field_canonical(s * s * a)) by {
+        lemma_field_mul_square_canonical(s, a);
+    };
+
+    assert(field_canonical(1nat) == 1) by {
+        lemma_small_mod(1nat, pn);
+    };
+
+    assert(field_mul(i, 1nat) == i) by {
+        lemma_field_mul_one_right(i);
+        lemma_small_mod(i, pn);
+    };
+
+    if field_mul(a, field_square(r_adj)) == 1 {
+        assert(field_canonical(s * s * a) == field_canonical(1nat));
+        assert(is_sqrt_ratio(1, a, s));
+    } else {
+        assert(field_mul(a, field_square(r_adj)) == i);
+        assert(field_canonical(s * s * a) == field_mul(i, 1nat));
+        assert(is_sqrt_ratio_times_i(1, a, s));
+    }
+}
+
+/// Lemma: nonneg invsqrt is unique.
 ///
 /// If r is nonneg and satisfies r²·a ≡ 1 or r²·a ≡ √(-1) (mod p),
 /// then r equals nat_invsqrt(a).
 ///
-/// Proof sketch (not yet mechanized):
-///   1. nat_invsqrt(a) satisfies the same property (from constructive definition)
-///   2. r² ≡ s² (mod p) implies r = s or r = p-s (since p is prime)
-///   3. Both nonneg (even) and r + s = p (odd) is impossible, so r = s
-///
-/// Runtime validation: `test_invsqrt_unique` (190+ elements)
-pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
+/// Proof:
+///   1. Let s = nat_invsqrt(a). By lemma_nat_invsqrt_satisfies_relation,
+///      s is nonneg and satisfies the same relation type.
+///   2. Mixed cases (r in sqrt, s in sqrt*i or vice versa) are impossible
+///      by lemma_no_square_root_when_times_i.
+///   3. Same case: cancel a (nonzero) to get r² = s².
+///   4. By lemma_nonneg_square_root_unique: r = s.
+pub proof fn lemma_invsqrt_unique(a: nat, r: nat)
     requires
         a % p() != 0,
         r < p(),
@@ -1175,7 +1500,68 @@ pub proof fn axiom_invsqrt_unique(a: nat, r: nat)
     ensures
         r == nat_invsqrt(a),
 {
-    admit();
+    let pn = p();
+    p_gt_2();
+
+    let s = nat_invsqrt(a);
+    lemma_nat_invsqrt_satisfies_relation(a);
+
+    assert(r % 2 == 0) by {
+        lemma_small_mod(r, pn);
+    };
+
+    // 1 % p != 0 (needed as precondition for lemma_no_square_root_when_times_i)
+    assert(1nat % pn != 0) by {
+        lemma_small_mod(1nat, pn);
+    };
+
+    // Case analysis: same-case or mixed-case.
+    // Mixed cases are contradictions via lemma_no_square_root_when_times_i.
+    if is_sqrt_ratio(1, a, r) && is_sqrt_ratio_times_i(1, a, s) {
+        // s is the witness: s²·a = i·1 = i
+        assert(field_mul(field_square(s), a) == field_mul(sqrt_m1(), 1)) by {
+            lemma_field_mul_square_canonical(s, a);
+        };
+        // Contradicts: r²·a = 1 = field_canonical(1)
+        assert(field_mul(field_square(r), a) == field_canonical(1)) by {
+            lemma_field_mul_square_canonical(r, a);
+        };
+        lemma_no_square_root_when_times_i(1, a, r);
+        assert(false);
+    } else if is_sqrt_ratio_times_i(1, a, r) && is_sqrt_ratio(1, a, s) {
+        // r is the witness: r²·a = i·1 = i
+        assert(field_mul(field_square(r), a) == field_mul(sqrt_m1(), 1)) by {
+            lemma_field_mul_square_canonical(r, a);
+        };
+        // Contradicts: s²·a = 1 = field_canonical(1)
+        assert(field_mul(field_square(s), a) == field_canonical(1)) by {
+            lemma_field_mul_square_canonical(s, a);
+        };
+        lemma_no_square_root_when_times_i(1, a, s);
+        assert(false);
+    }
+    // Same case: r²·a == s²·a. Cancel a to get r² == s².
+
+    assert(field_mul(field_square(r), a) == field_mul(field_square(s), a)) by {
+        lemma_field_mul_square_canonical(r, a);
+        lemma_field_mul_square_canonical(s, a);
+    };
+
+    assert(field_square(r) == field_square(s)) by {
+        lemma_field_mul_comm(field_square(r), a);
+        lemma_field_mul_comm(field_square(s), a);
+        lemma_field_mul_left_cancel(a, field_square(r), field_square(s));
+        assert(field_square(r) < pn) by {
+            lemma_mod_bound((r * r) as int, pn as int);
+        };
+        assert(field_square(s) < pn) by {
+            lemma_mod_bound((s * s) as int, pn as int);
+        };
+        lemma_small_mod(field_square(r), pn);
+        lemma_small_mod(field_square(s), pn);
+    };
+
+    lemma_nonneg_square_root_unique(r, s);
 }
 
 /// is_sqrt_ratio and is_sqrt_ratio_times_i are mutually exclusive when u != 0.
@@ -1250,7 +1636,7 @@ pub proof fn lemma_canonical_nat_lt_p(x: &FieldElement)
 
 /// Exec I matches nat_invsqrt for the decode computation.
 ///
-/// When v·u2² ≠ 0: uses axiom_invsqrt_unique (nonneg invsqrt is unique).
+/// When v·u2² ≠ 0: uses lemma_invsqrt_unique (nonneg invsqrt is unique).
 /// When v·u2² = 0: invsqrt(0) = 0 by definition of nat_invsqrt.
 pub proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
     requires
@@ -1274,7 +1660,7 @@ pub proof fn lemma_invsqrt_matches_spec(big_i_nat: nat, v_u2_sqr_nat: nat)
             assert(v_u2_sqr_nat % p() == v_u2_sqr_nat) by {
                 lemma_small_mod(v_u2_sqr_nat, p());
             };
-            axiom_invsqrt_unique(v_u2_sqr_nat, big_i_nat);
+            lemma_invsqrt_unique(v_u2_sqr_nat, big_i_nat);
         };
     } else {
         assert(0nat % p() == 0) by {
@@ -1318,6 +1704,26 @@ pub proof fn lemma_decode_invsqrt_facts(big_i_nat: nat, v_u2_sqr_nat: nat)
             lemma_sqrt_ratio_mutual_exclusion(1, v_u2_sqr_nat, big_i_nat);
         };
     }
+}
+
+/// Bridge: `fe.is_negative()` matches the spec-level `is_negative(n)` when
+/// `fe51_as_canonical_nat(fe) == n`.
+///
+/// Combines `lemma_is_negative_equals_parity`, `lemma_canonical_nat_lt_p`,
+/// and `lemma_small_mod` into a single call.
+pub proof fn lemma_is_negative_bridge(fe: &FieldElement, n: nat)
+    requires
+        fe51_as_canonical_nat(fe) == n,
+    ensures
+        (spec_fe51_as_bytes(fe)[0] & 1 == 1) == is_negative(n),
+{
+    lemma_is_negative_equals_parity(fe);
+    assert(n < p()) by {
+        lemma_canonical_nat_lt_p(fe);
+    };
+    assert(field_canonical(n) == n) by {
+        lemma_small_mod(n, p());
+    };
 }
 
 } // verus!

@@ -21,7 +21,7 @@
 //!
 //! - Edwards curve-specific constants (EDWARDS_D, EDWARDS_D2) are in `edwards_lemmas::constants_lemmas`.
 #![allow(unused_imports)]
-use crate::backend::serial::u64::constants::{MONTGOMERY_A, MONTGOMERY_A_NEG};
+use crate::backend::serial::u64::constants::{INVSQRT_A_MINUS_D, MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
@@ -182,6 +182,34 @@ pub proof fn lemma_montgomery_a_neg_limbs_bounded_51()
     assert(fe51_limbs_bounded(&MONTGOMERY_A_NEG, 51)) by {
         assert(2251799813198567u64 < (1u64 << 51) && 2251799813685247u64 < (1u64 << 51))
             by (bit_vector);
+    };
+}
+
+// =============================================================================
+// INVSQRT_A_MINUS_D Lemmas
+// =============================================================================
+/// INVSQRT_A_MINUS_D = 1/sqrt(a-d) has 51-bit bounded limbs.
+///
+/// limbs = [278908739862762, 821645201101625, 8113234426968, 1777959178193151, 2118520810568447]
+/// max limb = 2118520810568447 < 2^51 = 2251799813685248
+pub proof fn lemma_invsqrt_a_minus_d_limbs_bounded()
+    ensures
+        fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 51),
+        fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 54),
+{
+    assert(fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 51)) by {
+        assert(278908739862762u64 < (1u64 << 51)) by (bit_vector);
+        assert(821645201101625u64 < (1u64 << 51)) by (bit_vector);
+        assert(8113234426968u64 < (1u64 << 51)) by (bit_vector);
+        assert(1777959178193151u64 < (1u64 << 51)) by (bit_vector);
+        assert(2118520810568447u64 < (1u64 << 51)) by (bit_vector);
+    };
+    assert(fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 54)) by {
+        assert(278908739862762u64 < (1u64 << 54)) by (bit_vector);
+        assert(821645201101625u64 < (1u64 << 54)) by (bit_vector);
+        assert(8113234426968u64 < (1u64 << 54)) by (bit_vector);
+        assert(1777959178193151u64 < (1u64 << 54)) by (bit_vector);
+        assert(2118520810568447u64 < (1u64 << 54)) by (bit_vector);
     };
 }
 

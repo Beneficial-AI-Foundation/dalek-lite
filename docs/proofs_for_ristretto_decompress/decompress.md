@@ -100,7 +100,7 @@ postconditions 1–2 follow directly.
 |-------|----------|--------------|
 | `axiom_ristretto_decode_on_curve(s)` | Postcondition 3 (via step_2) | Hamburg 2015; tested on 100 points |
 | `axiom_ristretto_decode_in_even_subgroup(s, point)` | Postcondition 4 (via step_2) | Hamburg 2015/2019; tested on 50 points |
-| `axiom_invsqrt_unique` | Spec alignment (via step_2) | GF(p) sign structure; tested on 190+ elements |
+| `lemma_invsqrt_unique` | Spec alignment (via step_2) | Fully proven; GF(p) sign structure; tested on 190+ elements |
 | `axiom_sqrt_m1_squared` | Mutual exclusivity (transitive) | p ≡ 5 (mod 8) |
 
 Both decode axioms take only `s: nat` (and `point` for the subgroup axiom) as parameters,

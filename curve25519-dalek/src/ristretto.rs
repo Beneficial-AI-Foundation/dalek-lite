@@ -1283,7 +1283,6 @@ impl RistrettoPoint {
             };
         }
 
-        /* ORIGINAL CODE: Y.conditional_negate(x_z_inv_neg); */
         // VERUS WORKAROUND: Use conditional_negate_field_element wrapper
         proof {
             assert(fe51_limbs_bounded(&Y, 54)) by {
@@ -1323,7 +1322,6 @@ impl RistrettoPoint {
             };
         }
 
-        /* ORIGINAL CODE: s.conditional_negate(s_is_negative); */
         // VERUS WORKAROUND: Use conditional_negate_field_element wrapper
         proof {
             assert(fe51_limbs_bounded(&s, 54)) by {

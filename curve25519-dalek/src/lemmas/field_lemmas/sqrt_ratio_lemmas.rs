@@ -1726,4 +1726,383 @@ pub proof fn lemma_is_negative_bridge(fe: &FieldElement, n: nat)
     };
 }
 
+/// Lifting: is_sqrt_ratio(1, u*v, s) implies is_sqrt_ratio(u, v, s*u)
+/// and is_sqrt_ratio_times_i(1, u*v, s) implies is_sqrt_ratio_times_i(u, v, s*u).
+///
+/// Core algebra: s²·(uv) ≡ 1 ⟹ (su)²·v = s²·u²·v = u·(s²·uv) = u·1 = u.
+pub proof fn lemma_sqrt_ratio_lift_to_uv(u: nat, v: nat, s: nat)
+    requires
+        u < p(),
+        v < p(),
+        s < p(),
+    ensures
+        is_sqrt_ratio(1, field_mul(u, v), s) ==> is_sqrt_ratio(u, v, field_mul(s, u)),
+        is_sqrt_ratio_times_i(1, field_mul(u, v), s) ==> is_sqrt_ratio_times_i(
+            u,
+            v,
+            field_mul(s, u),
+        ),
+{
+    let pn = p();
+    p_gt_2();
+    let uv = field_mul(u, v);
+    let su = field_mul(s, u);
+
+    // (su)²·v in canonical form
+    assert(field_canonical(su * su * v) == field_mul(field_mul(su, su), v)) by {
+        lemma_field_mul_square_canonical(su, v);
+    };
+
+    // Key identity: (su)²·v == (s²·uv)·u (mod p)
+    // Work at the field_mul level using algebra lemmas.
+
+    // LHS: field_canonical(su * su * v) == field_mul(field_square(su), v)
+    assert(field_canonical(su * su * v) == field_mul(field_square(su), v)) by {
+        lemma_field_mul_square_canonical(su, v);
+    };
+
+    // field_square(su) = field_mul(su, su) = field_mul(field_mul(s,u), field_mul(s,u))
+    // Expand using assoc/comm: su·su = s·u·s·u = s·s·u·u = s²·u²
+    assert(field_mul(su, su) == field_mul(field_square(s), field_square(u))) by {
+        // su·su = (s·u)·(s·u) = s·(u·(s·u))  [assoc]
+        lemma_field_mul_assoc(s, u, su);
+        // = s·(u·s·u) = s·(s·u·u)  [comm u,s in inner]
+        lemma_field_mul_comm(u, su);
+        // field_mul(u, su) = field_mul(su, u) = field_mul(field_mul(s,u), u) = s·(u·u) [assoc]
+        lemma_field_mul_assoc(s, u, u);
+        // So su·su = field_mul(s, field_mul(su, u)) = field_mul(s, field_mul(s, field_mul(u, u)))
+        // = field_mul(s, field_mul(s, u²))
+        // = s²·u²  [assoc]
+        lemma_field_mul_assoc(s, s, field_square(u));
+    };
+
+    // RHS chain: s²·u²·v = s²·(u·uv)  [since u²·v = u·(uv)]
+    assert(field_mul(field_mul(field_square(s), field_square(u)), v) == field_mul(
+        field_square(s),
+        field_mul(u, uv),
+    )) by {
+        lemma_field_mul_assoc(field_square(s), field_square(u), v);
+        lemma_field_mul_assoc(u, u, v);
+    };
+
+    // s²·(u·uv) = s²·(uv·u) = (s²·uv)·u  [comm + assoc]
+    assert(field_mul(field_square(s), field_mul(u, uv)) == field_mul(
+        field_mul(field_square(s), uv),
+        u,
+    )) by {
+        lemma_field_mul_comm(u, uv);
+        lemma_field_mul_assoc(field_square(s), uv, u);
+    };
+
+    // Now use the key identity in both cases.
+
+    if is_sqrt_ratio(1, uv, s) {
+        // s²·uv ≡ 1 ⟹ (su)²·v ≡ u
+        assert(field_canonical(s * s * uv) == 1) by {
+            lemma_small_mod(1nat, pn);
+        };
+        assert(field_mul(field_square(s), uv) == 1) by {
+            lemma_field_mul_square_canonical(s, uv);
+            lemma_small_mod(1nat, pn);
+        };
+        assert(field_mul(1nat, u) == u % pn) by {
+            lemma_field_mul_one_left(u);
+        };
+        assert(field_canonical(su * su * v) == field_canonical(u));
+    }
+    if is_sqrt_ratio_times_i(1, uv, s) {
+        // s²·uv ≡ i ⟹ (su)²·v ≡ i·u
+        let i = sqrt_m1();
+        assert(field_canonical(s * s * uv) == field_mul(i, 1nat));
+        assert(field_mul(i, 1nat) == i % pn) by {
+            lemma_field_mul_one_right(i);
+        };
+        assert(field_mul(field_square(s), uv) == i % pn) by {
+            lemma_field_mul_square_canonical(s, uv);
+        };
+        assert(field_mul(i % pn, u) == field_mul(i, u)) by {
+            lemma_mul_mod_noop_left(i as int, u as int, pn as int);
+        };
+        assert(field_canonical(su * su * v) == field_mul(sqrt_m1(), u));
+    }
+}
+
+/// nonneg_field preserves is_sqrt_ratio / is_sqrt_ratio_times_i.
+/// Since (-x)² = x² in any field, flipping sign doesn't change x²·v.
+pub proof fn lemma_nonneg_preserves_sqrt_ratio(u: nat, v: nat, r: nat)
+    requires
+        r < p(),
+    ensures
+        is_sqrt_ratio(u, v, r) ==> is_sqrt_ratio(u, v, nonneg_field(r)),
+        is_sqrt_ratio_times_i(u, v, r) ==> is_sqrt_ratio_times_i(u, v, nonneg_field(r)),
+{
+    let pn = p();
+    p_gt_2();
+    let nr = nonneg_field(r);
+
+    if is_negative(r) {
+        // nr = field_neg(r), need: nr²·v = r²·v
+        assert(nr == field_neg(r));
+        assert(field_square(nr) == field_square(r % pn)) by {
+            lemma_neg_square_eq(r);
+        };
+        assert(field_square(r % pn) == field_square(r)) by {
+            lemma_small_mod(r, pn);
+        };
+        // field_canonical(nr * nr * v) == field_canonical(r * r * v) via field_mul_square_canonical
+        assert(field_canonical(nr * nr * v) == field_canonical(r * r * v)) by {
+            lemma_field_mul_square_canonical(nr, v);
+            lemma_field_mul_square_canonical(r, v);
+        };
+    }
+    // If !is_negative(r): nr == r, trivial.
+
+}
+
+/// Combine invsqrt relation with lift: nonneg_field(nat_invsqrt(u*v)*u) satisfies
+/// is_sqrt_ratio(u, v, _) or is_sqrt_ratio_times_i(u, v, _).
+pub proof fn lemma_nonneg_invsqrt_mul_satisfies_sqrt_ratio(u: nat, v: nat)
+    requires
+        u < p(),
+        v < p(),
+        field_mul(u, v) % p() != 0,
+    ensures
+        ({
+            let r = nonneg_field(field_mul(nat_invsqrt(field_mul(u, v)), u));
+            is_sqrt_ratio(u, v, r) || is_sqrt_ratio_times_i(u, v, r)
+        }),
+{
+    let pn = p();
+    p_gt_2();
+    let uv = field_mul(u, v);
+    let s = nat_invsqrt(uv);
+    let su = field_mul(s, u);
+    let r = nonneg_field(su);
+
+    // Step 1: s satisfies is_sqrt_ratio(1, uv, s) or is_sqrt_ratio_times_i(1, uv, s)
+    lemma_nat_invsqrt_satisfies_relation(uv);
+    assert(s < pn);
+
+    // Step 2: Lift from (1, uv) to (u, v)
+    lemma_sqrt_ratio_lift_to_uv(u, v, s);
+
+    // su < p (field_mul result)
+    assert(su < pn) by {
+        lemma_mod_bound((s as int * u as int), pn as int);
+    };
+
+    // Step 3: nonneg_field preserves the relation
+    lemma_nonneg_preserves_sqrt_ratio(u, v, su);
+}
+
+/// Uniqueness of nonneg square root ratios for general (u, v).
+///
+/// If r and t are both nonneg, both < p, and both satisfy the sqrt_ratio
+/// disjunction for the same (u, v) with u ≢ 0 and v ≢ 0, then r = t.
+///
+/// Generalizes lemma_invsqrt_unique from (1, a) to arbitrary (u, v).
+///
+/// Proof:
+///   1. Mixed cases (one sqrt_ratio, one times_i) are contradictions
+///      via lemma_no_square_root_when_times_i.
+///   2. Same case: cancel v from r²v = t²v, then r² = t²,
+///      then nonneg uniqueness.
+pub proof fn lemma_nonneg_sqrt_ratio_unique(u: nat, v: nat, r: nat, t: nat)
+    requires
+        v % p() != 0,
+        u % p() != 0,
+        r < p(),
+        t < p(),
+        !is_negative(r),
+        !is_negative(t),
+        is_sqrt_ratio(u, v, r) || is_sqrt_ratio_times_i(u, v, r),
+        is_sqrt_ratio(u, v, t) || is_sqrt_ratio_times_i(u, v, t),
+    ensures
+        r == t,
+{
+    let pn = p();
+    p_gt_2();
+    axiom_p_is_prime();
+
+    assert(field_mul(field_square(r), v) == field_canonical(r * r * v)) by {
+        lemma_field_mul_square_canonical(r, v);
+    };
+    assert(field_mul(field_square(t), v) == field_canonical(t * t * v)) by {
+        lemma_field_mul_square_canonical(t, v);
+    };
+
+    assert(r % 2 == 0) by {
+        lemma_small_mod(r, pn);
+    };
+    assert(t % 2 == 0) by {
+        lemma_small_mod(t, pn);
+    };
+
+    if is_sqrt_ratio(u, v, r) && is_sqrt_ratio_times_i(u, v, t) {
+        assert(field_mul(field_square(t), v) == field_mul(sqrt_m1(), u));
+        lemma_no_square_root_when_times_i(u, v, r);
+        assert(false);
+    }
+    if is_sqrt_ratio_times_i(u, v, r) && is_sqrt_ratio(u, v, t) {
+        assert(field_mul(field_square(r), v) == field_mul(sqrt_m1(), u));
+        lemma_no_square_root_when_times_i(u, v, t);
+        assert(false);
+    }
+    // Both satisfy the same predicate; equate field_mul(field_square(_), v).
+
+    if is_sqrt_ratio(u, v, r) {
+        assert(field_mul(field_square(r), v) == field_canonical(u));
+        assert(field_mul(field_square(t), v) == field_canonical(u));
+    } else {
+        assert(field_mul(field_square(r), v) == field_mul(sqrt_m1(), u));
+        assert(field_mul(field_square(t), v) == field_mul(sqrt_m1(), u));
+    }
+
+    assert(field_square(r) == field_square(t)) by {
+        lemma_field_mul_comm(field_square(r), v);
+        lemma_field_mul_comm(field_square(t), v);
+        lemma_field_mul_left_cancel(v, field_square(r), field_square(t));
+        assert(field_square(r) < pn) by {
+            lemma_mod_bound((r * r) as int, pn as int);
+        };
+        assert(field_square(t) < pn) by {
+            lemma_mod_bound((t * t) as int, pn as int);
+        };
+        lemma_small_mod(field_square(r), pn);
+        lemma_small_mod(field_square(t), pn);
+    };
+
+    lemma_nonneg_square_root_unique(r, t);
+}
+
+/// Proof that sqrt_ratio_i matches the nat_invsqrt spec formulation.
+///
+/// Given r (from sqrt_ratio_i) that is nonneg and satisfies the is_sqrt_ratio /
+/// is_sqrt_ratio_times_i predicates, show that it equals the spec value
+/// nonneg_field(nat_invsqrt(u*v) * u), and that is_sq matches is_sqrt_ratio.
+///
+/// Proof by cases:
+///   1. u = 0: both r and spec_r are 0. is_sqrt_ratio(0,v,0) = true = is_sq.
+///   2. v = 0, u ≠ 0: both r and spec_r are 0. is_sqrt_ratio(u,0,0) = false = is_sq.
+///   3. v ≠ 0, u ≠ 0: sub2 gives spec_r satisfies disjunction, sub3 gives uniqueness,
+///      mutual exclusion gives postcondition 2.
+pub proof fn lemma_sqrt_ratio_matches_invsqrt_mul(u: nat, v: nat, r: nat, is_sq: bool)
+    requires
+        r < p(),
+        r % 2 == 0,
+        u < p(),
+        v < p(),
+        (v != 0 && is_sq) ==> is_sqrt_ratio(u, v, r),
+        (v != 0 && !is_sq && u != 0) ==> is_sqrt_ratio_times_i(u, v, r),
+        (u == 0) ==> (r == 0 && is_sq),
+        (v == 0 && u != 0) ==> (r == 0 && !is_sq),
+    ensures
+        r == nonneg_field(field_mul(nat_invsqrt(field_mul(u, v)), u)),
+        is_sq == is_sqrt_ratio(u, v, nonneg_field(field_mul(nat_invsqrt(field_mul(u, v)), u))),
+{
+    let pn = p();
+    p_gt_2();
+
+    let uv = field_mul(u, v);
+    let s = nat_invsqrt(uv);
+    let su = field_mul(s, u);
+    let spec_r = nonneg_field(su);
+
+    if u == 0 {
+        assert(uv == 0) by {
+            assert(0nat * v == 0);
+            lemma_small_mod(0nat, pn);
+        };
+        assert(s == 0) by {
+            lemma_small_mod(0nat, pn);
+        };
+        assert(su == 0) by {
+            assert(0nat * 0nat == 0);
+            lemma_small_mod(0nat, pn);
+        };
+        assert(spec_r == 0) by {
+            lemma_small_mod(0nat, pn);
+        };
+        assert(is_sqrt_ratio(u, v, spec_r)) by {
+            lemma_small_mod(0nat, pn);
+        };
+    } else if v == 0 {
+        assert(uv == 0) by {
+            assert(u * 0nat == 0);
+            lemma_small_mod(0nat, pn);
+        };
+        assert(s == 0) by {
+            lemma_small_mod(0nat, pn);
+        };
+        assert(su == 0) by {
+            assert(0nat * u == 0);
+            lemma_small_mod(0nat, pn);
+        };
+        assert(spec_r == 0) by {
+            lemma_small_mod(0nat, pn);
+        };
+        assert(!is_sqrt_ratio(u, v, spec_r)) by {
+            lemma_small_mod(0nat, pn);
+            lemma_small_mod(u, pn);
+        };
+    } else {
+        // v != 0 && u != 0.
+        axiom_p_is_prime();
+
+        assert(uv % pn != 0) by {
+            lemma_small_mod(u, pn);
+            lemma_small_mod(v, pn);
+            lemma_mod_bound((u * v) as int, pn as int);
+            lemma_small_mod(uv, pn);
+            if (u * v) % pn == 0 {
+                lemma_euclid_prime(u, v, pn);
+                assert(false);
+            }
+        };
+
+        lemma_nonneg_invsqrt_mul_satisfies_sqrt_ratio(u, v);
+
+        assert(su < pn) by {
+            lemma_mod_bound((s as int * u as int), pn as int);
+        };
+
+        lemma_small_mod(su, pn);
+        lemma_conditional_negate_makes_even(su, su % 2 == 1);
+        assert(spec_r % 2 == 0) by {
+            lemma_small_mod(su, pn);
+        };
+
+        assert(spec_r < pn) by {
+            if is_negative(su) {
+                lemma_small_mod(su, pn);
+                lemma_mod_bound((pn as int - su as int), pn as int);
+            }
+        };
+
+        assert(!is_negative(spec_r)) by {
+            lemma_small_mod(spec_r, pn);
+        };
+
+        assert(!is_negative(r)) by {
+            lemma_small_mod(r, pn);
+        };
+
+        assert(u % pn != 0) by {
+            lemma_small_mod(u, pn);
+        };
+        assert(v % pn != 0) by {
+            lemma_small_mod(v, pn);
+        };
+
+        lemma_nonneg_sqrt_ratio_unique(u, v, r, spec_r);
+
+        if is_sq {
+            // is_sqrt_ratio(u,v,r) holds; r == spec_r, so is_sqrt_ratio(u,v,spec_r) holds.
+        } else {
+            // is_sqrt_ratio_times_i(u,v,r) holds; by mutual exclusion, !is_sqrt_ratio(u,v,r).
+            lemma_sqrt_ratio_mutual_exclusion(u, v, r);
+        }
+    }
+}
+
 } // verus!

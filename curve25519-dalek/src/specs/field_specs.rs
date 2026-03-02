@@ -517,6 +517,15 @@ pub open spec fn is_negative(a: nat) -> bool {
     field_canonical(a) % 2 == 1
 }
 
+/// Canonical non-negative representative: negate if negative, else identity.
+pub open spec fn nonneg_field(a: nat) -> nat {
+    if is_negative(a) {
+        field_neg(a)
+    } else {
+        a
+    }
+}
+
 /// Inverse square root in GF(p): returns the canonical nonneg r such that
 /// r²·a ≡ 1 or r²·a ≡ √(-1) (mod p).
 ///

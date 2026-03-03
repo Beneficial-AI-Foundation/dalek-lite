@@ -14,8 +14,18 @@ use super::scalar52_specs::*;
 
 verus! {
 
-pub open spec fn scalar_to_nat(s: &Scalar) -> nat {
-    bytes32_to_nat(&s.bytes)
+pub open spec fn scalar_as_nat(s: &Scalar) -> nat {
+    u8_32_as_nat(&s.bytes)
+}
+
+pub open spec fn u8_32_as_group_canonical(bytes: [u8; 32]) -> nat {
+    group_canonical(u8_32_as_nat(&bytes))
+}
+
+/// Returns the scalar value reduced modulo group order.
+/// This is the value used in scalar multiplication: [n]P where n = scalar_as_canonical(s).
+pub open spec fn scalar_as_canonical(s: &Scalar) -> nat {
+    u8_32_as_group_canonical(s.bytes)
 }
 
 /// Checks if a Scalar satisfies the canonical representation invariants:
@@ -23,7 +33,7 @@ pub open spec fn scalar_to_nat(s: &Scalar) -> nat {
 /// - Invariant #2: Scalar is reduced modulo group order, i.e., s < ℓ
 pub open spec fn is_canonical_scalar(s: &Scalar) -> bool {
     // Invariant #2: Scalar is reduced (< group order)
-    bytes32_to_nat(&s.bytes)
+    u8_32_as_nat(&s.bytes)
         < group_order()
     // Invariant #1: High bit is clear (< 2^255)
      && s.bytes[31] <= 127
@@ -32,7 +42,7 @@ pub open spec fn is_canonical_scalar(s: &Scalar) -> bool {
 /// Returns true iff a and b are multiplicative inverses modulo group_order
 /// i.e., a * b ≡ 1 (mod group_order)
 pub open spec fn is_inverse(a: &Scalar, b: &Scalar) -> bool {
-    (bytes32_to_nat(&a.bytes) * bytes32_to_nat(&b.bytes)) % group_order() == 1
+    group_canonical(scalar_as_nat(a) * scalar_as_nat(b)) == 1
 }
 
 /// Spec function to compute product of all scalars in a sequence (mod group_order)
@@ -45,8 +55,9 @@ pub open spec fn product_of_scalars(scalars: Seq<Scalar>) -> nat
         1
     } else {
         let last = (scalars.len() - 1) as int;
-        (product_of_scalars(scalars.subrange(0, last)) * bytes32_to_nat(&scalars[last].bytes))
-            % group_order()
+        group_canonical(
+            (product_of_scalars(scalars.subrange(0, last)) * scalar_as_nat(&scalars[last])),
+        )
     }
 }
 
@@ -60,19 +71,18 @@ pub open spec fn sum_of_scalars(scalars: Seq<Scalar>) -> nat
         0
     } else {
         let last = (scalars.len() - 1) as int;
-        (sum_of_scalars(scalars.subrange(0, last)) + bytes32_to_nat(&scalars[last].bytes))
-            % group_order()
+        group_canonical((sum_of_scalars(scalars.subrange(0, last)) + scalar_as_nat(&scalars[last])))
     }
 }
 
 /// Returns true iff a scalar's byte representation equals the given natural number (mod group_order)
 pub open spec fn scalar_congruent_nat(s: &Scalar, n: nat) -> bool {
-    bytes32_to_nat(&s.bytes) % group_order() == n % group_order()
+    scalar_as_canonical(s) == group_canonical(n)
 }
 
 /// Returns true iff a scalar is the inverse of a natural number (mod group_order)
 pub open spec fn is_inverse_of_nat(s: &Scalar, n: nat) -> bool {
-    (bytes32_to_nat(&s.bytes) * n) % group_order() == 1
+    group_canonical(scalar_as_nat(s) * n) == 1
 }
 
 /// Returns true iff a byte array represents a clamped integer for X25519.
@@ -169,6 +179,13 @@ pub open spec fn is_valid_naf(naf: Seq<i8>, w: nat) -> bool {
         }
 }
 
+/// Interprets four u64 words as a 256-bit little-endian number:
+///   words[0] + words[1]*2^64 + words[2]*2^128 + words[3]*2^192
+pub open spec fn u64_4_as_nat(words: &[u64; 4]) -> nat {
+    words[0] as nat + words[1] as nat * pow2(64) + words[2] as nat * pow2(128) + words[3] as nat
+        * pow2(192)
+}
+
 // Spec functions for radix-2^w representation (generic)
 /// Reconstructs an integer from a radix-2^w digit representation
 /// The scalar is represented as: a_0 + a_1*2^w + a_2*2^(2w) + ...
@@ -182,9 +199,14 @@ pub open spec fn reconstruct_radix_2w(digits: Seq<i8>, w: nat) -> int
     }
 }
 
-/// Predicate describing a valid radix-2^w representation with signed digits
-/// For window size w, coefficients are in [-2^(w-1), 2^(w-1)) for most indices,
-/// and [-2^(w-1), 2^(w-1)] for the last non-zero index
+/// Predicate describing a valid radix-2^w representation with signed digits.
+/// For window size w, coefficients are in [-2^(w-1), 2^(w-1)) for all indices except the last,
+/// and [-2^(w-1), 2^(w-1)] for the last index.
+///
+/// The inclusive bound `<=` for the last digit comes from `as_radix_16` (w=4): its nibble-based
+/// algorithm can produce a last digit equal to 8 (= 2^(w-1)). For `as_radix_2w` with w >= 5, the
+/// last digit is strictly less than the bound, but the spec stays general so both representations
+/// are valid.
 pub open spec fn is_valid_radix_2w(digits: &[i8; 64], w: nat, digits_count: nat) -> bool {
     4 <= w <= 8 && digits_count <= 64 && forall|i: int|
         0 <= i < digits_count ==> {
@@ -221,23 +243,30 @@ pub open spec fn radix_16_all_bounded(digits: &[i8; 64]) -> bool {
     forall|i: int| 0 <= i < 64 ==> radix_16_digit_bounded(#[trigger] digits[i])
 }
 
-/// Convert a boolean slice (bits in big-endian order) to a natural number
-/// This interprets bits[0] as the most significant bit
-/// Used for scalar multiplication where bits are processed MSB first
-pub open spec fn bits_be_to_nat(bits: &[bool], len: int) -> nat
-    recommends
-        0 <= len <= bits.len(),
-    decreases len,
+// =============================================================================
+// Generic index-based Horner evaluation (for Pippenger correctness proofs)
+// =============================================================================
+/// Horner evaluation of radix-2^w digits from position `from_j` to `digits_count - 1`:
+///   reconstruct_radix_2w_from(d, w, from_j, dc) = d[from_j] + 2^w * (d[from_j+1] + ... )
+///
+/// At from_j=0 this equals reconstruct_radix_2w(d.take(dc), w).
+pub open spec fn reconstruct_radix_2w_from(
+    digits: Seq<i8>,
+    w: nat,
+    from_j: int,
+    digits_count: nat,
+) -> int
+    decreases digits_count as int - from_j,
 {
-    if len <= 0 {
+    if from_j >= digits_count as int || from_j < 0 {
         0
     } else {
-        let bit_value = if bits[len - 1] {
-            1nat
-        } else {
-            0nat
-        };
-        bit_value + 2 * bits_be_to_nat(bits, len - 1)
+        (digits[from_j] as int) + pow2(w) * reconstruct_radix_2w_from(
+            digits,
+            w,
+            from_j + 1,
+            digits_count,
+        )
     }
 }
 

@@ -1,6 +1,8 @@
 #[allow(unused_imports)]
 use super::super::specs::core_specs::*;
 #[allow(unused_imports)]
+use super::common_lemmas::div_mod_lemmas::*;
+#[allow(unused_imports)]
 use super::common_lemmas::*;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants;
@@ -27,6 +29,8 @@ use vstd::prelude::*;
 use super::common_lemmas::bit_lemmas::*;
 #[allow(unused_imports)]
 use super::common_lemmas::mul_lemmas::*;
+#[allow(unused_imports)]
+use super::common_lemmas::number_theory_lemmas::*;
 #[allow(unused_imports)]
 use super::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
@@ -77,7 +81,7 @@ pub proof fn lemma_square_internal_correct(a: &[u64; 5], z: &[u128; 9])
         z[7] == (a[3] * a[4]) * 2,
         z[8] == (a[4] * a[4]),
     ensures
-        slice128_to_nat(z) == limbs52_to_nat(a) * limbs52_to_nat(a),
+        slice128_as_nat(z) == limbs52_as_nat(a) * limbs52_as_nat(a),
 {
     assert(five_limbs_to_nat_aux(*a) * five_limbs_to_nat_aux(*a) == nine_limbs_to_nat_aux(&z)) by {
         broadcast use group_mul_is_commutative_and_distributive;
@@ -94,7 +98,7 @@ pub proof fn lemma_square_internal_correct(a: &[u64; 5], z: &[u128; 9])
         lemma_pow2_adds(156, 208);
         lemma_pow2_adds(208, 208);
     };
-    lemma_nine_limbs_equals_slice128_to_nat(&z);
+    lemma_nine_limbs_equals_slice128_as_nat(&z);
     lemma_five_limbs_equals_to_nat(&a);
 }
 
@@ -128,7 +132,7 @@ pub proof fn lemma_mul_internal_correct(a: &[u64; 5], b: &[u64; 5], z: &[u128; 9
         z[7] == (a[3] * b[4]) + (a[4] * b[3]),
         z[8] == (a[4] * b[4]),
     ensures
-        slice128_to_nat(z) == limbs52_to_nat(a) * limbs52_to_nat(b),
+        slice128_as_nat(z) == limbs52_as_nat(a) * limbs52_as_nat(b),
 {
     assert(five_limbs_to_nat_aux(*a) * five_limbs_to_nat_aux(*b) == nine_limbs_to_nat_aux(&z)) by {
         broadcast use group_mul_is_commutative_and_distributive;
@@ -145,14 +149,14 @@ pub proof fn lemma_mul_internal_correct(a: &[u64; 5], b: &[u64; 5], z: &[u128; 9
         lemma_pow2_adds(156, 208);
         lemma_pow2_adds(208, 208);
     };
-    lemma_nine_limbs_equals_slice128_to_nat(&z);
+    lemma_nine_limbs_equals_slice128_as_nat(&z);
     lemma_five_limbs_equals_to_nat(&a);
     lemma_five_limbs_equals_to_nat(&b);
 }
 
-pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
+pub proof fn lemma_nine_limbs_equals_slice128_as_nat(limbs: &[u128; 9])
     ensures
-        nine_limbs_to_nat_aux(limbs) == slice128_to_nat(limbs),
+        nine_limbs_to_nat_aux(limbs) == slice128_as_nat(limbs),
 {
     let seq = limbs@.map(|i, x| x as nat);
     let p = pow2(52);
@@ -171,9 +175,9 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
     let nested = a0 + (a1 + (a2 + (a3 + (a4 + (a5 + (a6 + (a7 + a8 * p) * p) * p) * p) * p) * p)
         * p) * p;
 
-    // Step 1: Show slice128_to_nat equals the nested polynomial form
-    assert(slice128_to_nat(limbs) == nested) by {
-        reveal_with_fuel(seq_to_nat_52, 10);
+    // Step 1: Show slice128_as_nat equals the nested polynomial form
+    assert(slice128_as_nat(limbs) == nested) by {
+        reveal_with_fuel(seq_as_nat_52, 10);
     };
 
     // Define intermediate sums for step-by-step expansion
@@ -488,7 +492,7 @@ pub proof fn lemma_nine_limbs_equals_slice128_to_nat(limbs: &[u128; 9])
 
 pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     ensures
-        five_limbs_to_nat_aux(*limbs) == limbs52_to_nat(limbs),
+        five_limbs_to_nat_aux(*limbs) == limbs52_as_nat(limbs),
 {
     let seq = limbs@.map(|i, x| x as nat);
     let p = pow2(52);
@@ -500,7 +504,7 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     let a4 = limbs[4] as nat;
 
     // Define the nested form from recursive expansion
-    // seq_to_nat_52 = a0 + (a1 + (a2 + (a3 + a4 * p) * p) * p) * p
+    // seq_as_nat_52 = a0 + (a1 + (a2 + (a3 + a4 * p) * p) * p) * p
     let nested = a0 + (a1 + (a2 + (a3 + a4 * p) * p) * p) * p;
 
     // Define intermediate sums for step-by-step expansion
@@ -511,9 +515,9 @@ pub proof fn lemma_five_limbs_equals_to_nat(limbs: &[u64; 5])
     // inner3 = a1*p + a2*p² + a3*p³ + a4*p⁴
     let inner3 = a1 * p + a2 * pow2(104) + a3 * pow2(156) + a4 * pow2(208);
 
-    // Step 1: Show limbs52_to_nat equals the nested polynomial form
-    assert(limbs52_to_nat(limbs) == nested) by {
-        reveal_with_fuel(seq_to_nat_52, 6);
+    // Step 1: Show limbs52_as_nat equals the nested polynomial form
+    assert(limbs52_as_nat(limbs) == nested) by {
+        reveal_with_fuel(seq_as_nat_52, 6);
     };
 
     // Step 2: Expand innermost: (a3 + a4*p) * p = a3*p + a4*p²
@@ -717,9 +721,9 @@ pub proof fn lemma_from_montgomery_limbs_conversion(limbs: &[u128; 9], self_limb
         forall|j: int| #![auto] 0 <= j < 5 ==> limbs[j] == self_limbs[j] as u128,
         forall|j: int| 5 <= j < 9 ==> limbs[j] == 0,
     ensures
-        slice128_to_nat(limbs) == limbs52_to_nat(self_limbs),
+        slice128_as_nat(limbs) == limbs52_as_nat(self_limbs),
 {
-    lemma_nine_limbs_equals_slice128_to_nat(limbs);
+    lemma_nine_limbs_equals_slice128_as_nat(limbs);
     lemma_five_limbs_equals_to_nat(self_limbs);
     assert(limbs[0] == self_limbs[0] as u128);
     assert(nine_limbs_to_nat_aux(limbs) == (self_limbs[0] as nat) + (self_limbs[1] as nat) * pow2(
@@ -782,6 +786,43 @@ pub proof fn lemma_rr_limbs_bounded()
     assert(0x000d63c715bea69fu64 < (1u64 << 52)) by (bit_vector);
 }
 
+/// Proves that constants::L has limbs_bounded
+pub(crate) proof fn lemma_l_limbs_bounded()
+    ensures
+        limbs_bounded(&crate::backend::serial::u64::constants::L),
+{
+    // L = [0x0002631a5cf5d3ed, 0x000dea2f79cd6581, 0x000000000014def9, 0x0000000000000000, 0x0000100000000000]
+    // All limbs are clearly < 2^52
+    assert(0x0002631a5cf5d3edu64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000dea2f79cd6581u64 < (1u64 << 52)) by (bit_vector);
+    assert(0x000000000014def9u64 < (1u64 << 52)) by (bit_vector);
+    assert(0x0000000000000000u64 < (1u64 << 52)) by (bit_vector);
+    assert(0x0000100000000000u64 < (1u64 << 52)) by (bit_vector);
+}
+
+/// Backwards compatibility lemma: limbs_bounded implies limbs_bounded_for_sub
+///
+/// This ensures that existing callers of sub that provide bounded inputs
+/// still satisfy the relaxed precondition.
+pub proof fn lemma_limbs_bounded_implies_limbs_bounded_for_sub(a: &Scalar52, b: &Scalar52)
+    requires
+        limbs_bounded(a),
+        limbs_bounded(b),
+    ensures
+        limbs_bounded_for_sub(a, b),
+{
+    // limbs_bounded(a) means forall|i| 0 <= i < 5 ==> a.limbs[i] < 2^52
+    // limbs_bounded_for_sub requires:
+    //   - forall|i| 0 <= i < 4 ==> a.limbs[i] < 2^52  (satisfied by limbs_bounded)
+    //   - a.limbs[4] < 2^52 + b.limbs[4]
+    //
+    // Since a.limbs[4] < 2^52 and b.limbs[4] >= 0, we have:
+    // a.limbs[4] < 2^52 <= 2^52 + b.limbs[4]
+    assert(a.limbs[4] < (1u64 << 52));
+    assert(b.limbs[4] >= 0);
+    assert(a.limbs[4] < (1u64 << 52) + b.limbs[4]);
+}
+
 pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     requires
         ((x * montgomery_radix()) % group_order()) == ((a * rr) % group_order()),
@@ -812,6 +853,17 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
     // 2. use the inverse to remove r from both sides
 
     // Step 1: Multiply both sides by inv_montgomery_radix() using modular properties
+    // We know: (x * R) % L == (a * R * R) % L
+    // We want: (x * R * R^-1) % L == (a * R * R * R^-1) % L
+
+    // Use associativity to rewrite as (R^-1 * (x * R)) and (R^-1 * (a * R * R))
+    lemma_mul_is_commutative((x * montgomery_radix()) as int, inv_montgomery_radix() as int);
+    lemma_mul_is_commutative(
+        (a * montgomery_radix() * montgomery_radix()) as int,
+        inv_montgomery_radix() as int,
+    );
+
+    // Now apply: if (A % n) == (B % n), then (c * A) % n == (c * B) % n
     lemma_mul_mod_noop_right(
         inv_montgomery_radix() as int,
         (x * montgomery_radix()) as int,
@@ -822,6 +874,41 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
         (a * montgomery_radix() * montgomery_radix()) as int,
         group_order() as int,
     );
+
+    let L = group_order();
+    let R = montgomery_radix();
+    let R_inv = inv_montgomery_radix();
+
+    assert(((x * R) as int) % (L as int) == ((a * R * R) as int) % (L as int)) by {
+        lemma_int_nat_mod_equiv((x * R) as int, L);
+        lemma_int_nat_mod_equiv((a * R * R) as int, L);
+    }
+
+    assert(((R_inv * (x * R)) as int) % (L as int) == ((R_inv * (a * R * R)) as int) % (L as int))
+        by {
+        lemma_mul_factors_congruent_implies_products_congruent(
+            R_inv as int,
+            (x * R) as int,
+            (a * R * R) as int,
+            L as int,
+        );
+    }
+
+    assert((R_inv * (x * R)) % L == (R_inv * (a * R * R)) % L) by {
+        lemma_int_nat_mod_equiv((R_inv * (x * R)) as int, L);
+        lemma_int_nat_mod_equiv((R_inv * (a * R * R)) as int, L);
+    }
+
+    assert((x * R * R_inv) % L == (R_inv * (x * R)) % L) by {
+        lemma_mul_is_commutative(R_inv as int, (x * R) as int);
+    }
+    assert((a * R * R * R_inv) % L == (R_inv * (a * R * R)) % L) by {
+        lemma_mul_is_commutative(R_inv as int, (a * R * R) as int);
+    }
+    assert((x * R * R_inv) % L == (a * R * R * R_inv) % L);
+    // Both sides equal when multiplied by R^-1
+    assert((inv_montgomery_radix() * (x * montgomery_radix())) % group_order() == (
+    inv_montgomery_radix() * (a * montgomery_radix() * montgomery_radix())) % group_order());
 
     assert((x * montgomery_radix() * inv_montgomery_radix()) % group_order() == (a
         * montgomery_radix() * montgomery_radix() * inv_montgomery_radix()) % group_order());
@@ -880,6 +967,24 @@ pub proof fn lemma_montgomery_inverse()
 
 }
 
+/// Montgomery radix is nonzero modulo group_order.
+/// Follows from R * R^{-1} ≡ 1 (mod L) by contradiction.
+pub proof fn lemma_montgomery_radix_nonzero_mod_group_order()
+    ensures
+        montgomery_radix() % group_order() != 0,
+{
+    lemma_montgomery_inverse();
+    if montgomery_radix() % group_order() == 0 {
+        assert((montgomery_radix() * inv_montgomery_radix()) % group_order() == 0) by {
+            lemma_mul_mod_noop(
+                montgomery_radix() as int,
+                inv_montgomery_radix() as int,
+                group_order() as int,
+            );
+        }
+    }
+}
+
 pub(crate) proof fn lemma_r_equals_spec(r: Scalar52)
     requires
         r == (Scalar52 {
@@ -892,8 +997,8 @@ pub(crate) proof fn lemma_r_equals_spec(r: Scalar52)
             ],
         }),
     ensures
-        scalar52_to_nat(&r) % group_order() == montgomery_radix() % group_order(),
-        scalar52_to_nat(&r) < group_order(),
+        scalar52_as_nat(&r) % group_order() == montgomery_radix() % group_order(),
+        scalar52_as_nat(&r) < group_order(),
 {
     lemma_five_limbs_equals_to_nat(&r.limbs);
 
@@ -918,22 +1023,13 @@ pub(crate) proof fn lemma_r_equals_spec(r: Scalar52)
     }
 }
 
-pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
-    requires
-        rr == (Scalar52 {
-            limbs: [
-                0x0009d265e952d13b,
-                0x000d63c715bea69f,
-                0x0005be65cb687604,
-                0x0003dceec73d217f,
-                0x000009411b7c309a,
-            ],
-        }),
+pub(crate) proof fn lemma_rr_equals_spec()
     ensures
-        scalar52_to_nat(&rr) % group_order() == (montgomery_radix() * montgomery_radix())
+        scalar52_as_nat(&constants::RR) % group_order() == (montgomery_radix() * montgomery_radix())
             % group_order(),
-        scalar52_to_nat(&rr) < group_order(),
+        scalar52_as_nat(&constants::RR) < group_order(),
 {
+    let rr = constants::RR;
     lemma_five_limbs_equals_to_nat(&rr.limbs);
 
     lemma2_to64_rest();
@@ -944,7 +1040,7 @@ pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
     lemma_pow2_adds(208, 52);  // prove pow2(260)
 
     let rr_calc: nat = five_limbs_to_nat_aux(rr.limbs);
-    lemma_small_mod(rr_calc, group_order());  // necessary for scalar52_to_nat(&constants::RR) == scalar52_to_nat(&constants::RR) % group_order()
+    lemma_small_mod(rr_calc, group_order());  // necessary for scalar52_as_nat(&constants::RR) == scalar52_as_nat(&constants::RR) % group_order()
 
     calc! {
         (==)
@@ -959,43 +1055,43 @@ pub(crate) proof fn lemma_rr_equals_spec(rr: Scalar52)
 
 /// Proves that extending a subrange by one element adds `seq[i] * pow2(52 * i)`.
 ///
-/// This uses induction because the postcondition expands seq_u64_to_nat
-/// in the opposite direction from how it's defined (seq_to_nat_52 peels
+/// This uses induction because the postcondition expands seq_u64_as_nat
+/// in the opposite direction from how it's defined (seq_as_nat_52 peels
 /// from the front, but we want to add to the back).
 ///
 /// Proof strategy:
 /// - Base case (i=0): seq[0..1] = seq[0] = seq[0] * pow2(0) = 0 + seq[0] * pow2(0)
 /// - Inductive case: Unfold definition, apply IH to tail, then use algebra
-pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
+pub proof fn lemma_seq_u64_as_nat_subrange_extend(seq: Seq<u64>, i: int)
     requires
         0 <= i < seq.len(),
     ensures
-        seq_u64_to_nat(seq.subrange(0, i + 1)) == seq_u64_to_nat(seq.subrange(0, i)) + seq[i]
+        seq_u64_as_nat(seq.subrange(0, i + 1)) == seq_u64_as_nat(seq.subrange(0, i)) + seq[i]
             * pow2(52 * i as nat),
     decreases i,
 {
     if i == 0 {
         assert(seq.len() != 0);
 
-        // Base case: seq_u64_to_nat(seq[0..1]) == 0 + seq[0] * pow2(0)
-        reveal_with_fuel(seq_to_nat_52, 3);
+        // Base case: seq_u64_as_nat(seq[0..1]) == 0 + seq[0] * pow2(0)
+        reveal_with_fuel(seq_as_nat_52, 3);
 
-        // Show seq_u64_to_nat of a singleton is just that element
-        assert(seq_u64_to_nat(seq.subrange(0, 1)) == seq[0] as nat) by {
+        // Show seq_u64_as_nat of a singleton is just that element
+        assert(seq_u64_as_nat(seq.subrange(0, 1)) == seq[0] as nat) by {
             // definition
-            assert(seq_u64_to_nat(seq.subrange(0, 1)) == seq_to_nat_52(
+            assert(seq_u64_as_nat(seq.subrange(0, 1)) == seq_as_nat_52(
                 seq.subrange(0, 1).map(|i, x| x as nat),
             ));
             // subrange(0,1)
             assert(seq.subrange(0, 1).map(|i, x| x as nat) == seq![seq[0] as nat]);
             // definition, else branch
-            assert(seq_to_nat_52(seq![seq[0] as nat]) == seq[0] as nat + seq_to_nat_52(
+            assert(seq_as_nat_52(seq![seq[0] as nat]) == seq[0] as nat + seq_as_nat_52(
                 seq![seq[0] as nat].subrange(1, 1),
             ) * pow2(52));
             // subrange(1,1)
             assert(seq![seq[0] as nat].subrange(1, 1).len() == 0);
             // definition, if branch
-            assert(seq_to_nat_52(seq![seq[0] as nat].subrange(1, 1)) == 0);
+            assert(seq_as_nat_52(seq![seq[0] as nat].subrange(1, 1)) == 0);
             // solver hint since pow2(52) is not evaluated!
             assert(0 * pow2(52) == 0) by {
                 lemma_mul_basics_1(pow2(52) as int);
@@ -1012,8 +1108,8 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
             }
         }
 
-        // And seq_u64_to_nat(seq[0..0]) == 0
-        assert(seq_u64_to_nat(seq.subrange(0, 0)) == 0) by {
+        // And seq_u64_as_nat(seq[0..0]) == 0
+        assert(seq_u64_as_nat(seq.subrange(0, 0)) == 0) by {
             assert(seq.subrange(0, 0).len() == 0);
         }
     } else {
@@ -1024,48 +1120,48 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
 
         calc! {
             (==)
-            // Start: seq_u64_to_nat(seq[0..i+1])
-            seq_u64_to_nat(
+            // Start: seq_u64_as_nat(seq[0..i+1])
+            seq_u64_as_nat(
                 seq.subrange(0, i + 1),
             );
-            // Step 1: Unfold definition: s[0] + seq_to_nat_52(s[1..]) * pow2(52)
+            // Step 1: Unfold definition: s[0] + seq_as_nat_52(s[1..]) * pow2(52)
             {
-                assert(seq_u64_to_nat(seq.subrange(0, i + 1)) == seq_to_nat_52(limbs1));
+                assert(seq_u64_as_nat(seq.subrange(0, i + 1)) == seq_as_nat_52(limbs1));
             }
-            limbs1[0] + seq_to_nat_52(limbs1.subrange(1, limbs1.len() as int)) * pow2(
+            limbs1[0] + seq_as_nat_52(limbs1.subrange(1, limbs1.len() as int)) * pow2(
                 52,
             );
-            // Step 2: Convert back to seq_u64_to_nat on the tail
+            // Step 2: Convert back to seq_u64_as_nat on the tail
             {
                 assert(seq.subrange(1, i + 1).map(|j, x| x as nat) == limbs1.subrange(
                     1,
                     limbs1.len() as int,
                 ));
             }
-            limbs1[0] + seq_u64_to_nat(seq.subrange(1, i + 1)) * pow2(
+            limbs1[0] + seq_u64_as_nat(seq.subrange(1, i + 1)) * pow2(
                 52,
             );
             // Step 3: Apply induction hypothesis to the tail
-            // IH gives: seq_u64_to_nat(tail[0..i]) = seq_u64_to_nat(tail[0..i-1]) + tail[i-1] * pow2(52*(i-1))
+            // IH gives: seq_u64_as_nat(tail[0..i]) = seq_u64_as_nat(tail[0..i-1]) + tail[i-1] * pow2(52*(i-1))
             {
                 let tail = seq.subrange(1, i + 1);
-                assert(seq_u64_to_nat(seq.subrange(1, i + 1)) == seq_u64_to_nat(seq.subrange(1, i))
+                assert(seq_u64_as_nat(seq.subrange(1, i + 1)) == seq_u64_as_nat(seq.subrange(1, i))
                     + seq[i] * pow2(52 * (i - 1) as nat)) by {
                     assert(0 <= i - 1 < tail.len());
-                    lemma_seq_u64_to_nat_subrange_extend(tail, i - 1);
+                    lemma_seq_u64_as_nat_subrange_extend(tail, i - 1);
                     assert(tail.subrange(0, i) == seq.subrange(1, i + 1));
                     assert(tail.subrange(0, i - 1) == seq.subrange(1, i));
                     assert(tail[i - 1] == seq[i]);
                 }
             }
-            limbs1[0] + ((seq_u64_to_nat(seq.subrange(1, i)) + seq[i] * pow2(52 * (i - 1) as nat))
+            limbs1[0] + ((seq_u64_as_nat(seq.subrange(1, i)) + seq[i] * pow2(52 * (i - 1) as nat))
                 * pow2(
                 52,
             )) as nat;
             // Step 4: Distribute and simplify powers
             // (a + b) * c = a * c + b * c, and b * c = seq[i] * pow2(52*i)
             {
-                let a = seq_u64_to_nat(seq.subrange(1, i)) as int;
+                let a = seq_u64_as_nat(seq.subrange(1, i)) as int;
                 let b = (seq[i] * pow2(52 * (i - 1) as nat)) as int;
                 let c = pow2(52) as int;
 
@@ -1091,10 +1187,10 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
                     }
                 }
             }
-            (limbs1[0] + seq_u64_to_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
+            (limbs1[0] + seq_u64_as_nat(seq.subrange(1, i)) * pow2(52) + seq[i] * pow2(
                 52 * i as nat,
             )) as nat;
-            // Step 5: Recognize limbs1[0] + seq_u64_to_nat(tail) * pow2(52) as seq_u64_to_nat(seq[0..i])
+            // Step 5: Recognize limbs1[0] + seq_u64_as_nat(tail) * pow2(52) as seq_u64_as_nat(seq[0..i])
             {
                 assert(limbs1[0] == limbs2[0]);
                 assert(seq.subrange(1, i).map(|j, x| x as nat) == limbs2.subrange(
@@ -1102,22 +1198,22 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
                     limbs2.len() as int,
                 ));
             }
-            (limbs2[0] + seq_to_nat_52(limbs2.subrange(1, limbs2.len() as int)) * pow2(52) + seq[i]
+            (limbs2[0] + seq_as_nat_52(limbs2.subrange(1, limbs2.len() as int)) * pow2(52) + seq[i]
                 * pow2(
                 52 * i as nat,
             )) as nat;
-            // Step 6: Fold back to seq_to_nat_52(limbs2)
+            // Step 6: Fold back to seq_as_nat_52(limbs2)
             {
-                assert(seq_to_nat_52(limbs2) == limbs2[0] + seq_to_nat_52(
+                assert(seq_as_nat_52(limbs2) == limbs2[0] + seq_as_nat_52(
                     limbs2.subrange(1, limbs2.len() as int),
                 ) * pow2(52));
             }
-            (seq_to_nat_52(limbs2) + seq[i] * pow2(
+            (seq_as_nat_52(limbs2) + seq[i] * pow2(
                 52 * i as nat,
             )) as nat;
             // Step 7: Final form
             {}
-            (seq_u64_to_nat(seq.subrange(0, i)) + seq[i] * pow2(52 * i as nat)) as nat;
+            (seq_u64_as_nat(seq.subrange(0, i)) + seq[i] * pow2(52 * i as nat)) as nat;
         }
     }
 }
@@ -1125,11 +1221,11 @@ pub proof fn lemma_seq_u64_to_nat_subrange_extend(seq: Seq<u64>, i: int)
 /// Using lemma_mod_add_multiples_vanish in a big proof made the proof hang
 pub proof fn lemma_mod_cancel(a: &Scalar52, b: &Scalar52)
     ensures
-        (group_order() + scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (group_order() as int) == (
-        scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (group_order() as int),
+        (group_order() + scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (group_order() as int) == (
+        scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (group_order() as int),
 {
     lemma_mod_add_multiples_vanish(
-        (scalar52_to_nat(&a) - scalar52_to_nat(&b)) as int,
+        (scalar52_as_nat(&a) - scalar52_as_nat(&b)) as int,
         group_order() as int,
     );
 }
@@ -1139,7 +1235,7 @@ pub proof fn lemma_bound_scalar(a: &Scalar52)
     requires
         limbs_bounded(a),
     ensures
-        scalar52_to_nat(&a) < pow2((52 * (5) as nat)),
+        scalar52_as_nat(&a) < pow2((52 * (5) as nat)),
 {
     lemma_general_bound(a.limbs@);
 }
@@ -1150,11 +1246,11 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
     requires
         forall|i: int| 0 <= i < a.len() ==> a[i] < (1u64 << 52),
     ensures
-        seq_u64_to_nat(a) < pow2((52 * a.len() as nat)),
+        seq_u64_as_nat(a) < pow2((52 * a.len() as nat)),
     decreases a.len(),
 {
     if a.len() == 0 {
-        assert(seq_u64_to_nat(a) == 0);
+        assert(seq_u64_as_nat(a) == 0);
         lemma2_to64();  // Gives us pow2(0) == 1 among other facts
         assert(pow2(0) == 1);
     } else {
@@ -1170,10 +1266,10 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
 
         // Apply induction hypothesis
         lemma_general_bound(tail);
-        assert(seq_u64_to_nat(tail) < pow2((52 * tail.len() as nat)));
+        assert(seq_u64_as_nat(tail) < pow2((52 * tail.len() as nat)));
 
         // Now prove for the full sequence
-        assert(seq_u64_to_nat(a) == seq_to_nat_52(a.map(|i, x| x as nat)));
+        assert(seq_u64_as_nat(a) == seq_as_nat_52(a.map(|i, x| x as nat)));
         assert(a.map(|i, x| x as nat).len() == a.len());
         assert(a.map(|i, x| x as nat)[0] == a[0] as nat);
         assert(a.map(|i, x| x as nat).subrange(1, a.len() as int) == a.subrange(
@@ -1181,7 +1277,7 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
             a.len() as int,
         ).map(|i, x| x as nat));
         // Therefore:
-        assert(seq_u64_to_nat(a) == a[0] as nat + seq_u64_to_nat(a.subrange(1, a.len() as int))
+        assert(seq_u64_as_nat(a) == a[0] as nat + seq_u64_as_nat(a.subrange(1, a.len() as int))
             * pow2(52));
 
         assert(a.subrange(1, a.len() as int) == tail);
@@ -1193,13 +1289,13 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
         assert(0x10000000000000 == pow2(52));
         assert((1u64 << 52) == pow2(52));
 
-        // We have seq_u64_to_nat(a) == a[0] + seq_u64_to_nat(tail) * pow2(52)
-        // We know a[0] < pow2(52) and seq_u64_to_nat(tail) < pow2(52 * (a.len() - 1))
+        // We have seq_u64_as_nat(a) == a[0] + seq_u64_as_nat(tail) * pow2(52)
+        // We know a[0] < pow2(52) and seq_u64_as_nat(tail) < pow2(52 * (a.len() - 1))
 
         assert(a[0] as nat <= pow2(52) - 1);
-        assert(seq_u64_to_nat(tail) <= pow2(52 * (a.len() - 1) as nat) - 1);
+        assert(seq_u64_as_nat(tail) <= pow2(52 * (a.len() - 1) as nat) - 1);
 
-        assert(seq_u64_to_nat(a) <= (pow2(52) - 1) + (pow2(52 * (a.len() - 1) as nat) - 1) * pow2(
+        assert(seq_u64_as_nat(a) <= (pow2(52) - 1) + (pow2(52 * (a.len() - 1) as nat) - 1) * pow2(
             52,
         )) by {
             lemma_mul_inequality(
@@ -1224,8 +1320,8 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
         assert(pow2(52 * (a.len() - 1) as nat) * pow2(52) == pow2(52 * (a.len() - 1) as nat + 52));
         assert(52 * (a.len() - 1) as nat + 52 == 52 * a.len() as nat);
 
-        assert(seq_u64_to_nat(a) <= pow2(52 * a.len() as nat) - 1);
-        assert(seq_u64_to_nat(a) < pow2(52 * a.len() as nat));
+        assert(seq_u64_as_nat(a) <= pow2(52 * a.len() as nat) - 1);
+        assert(seq_u64_as_nat(a) < pow2(52 * a.len() as nat));
     }
 }
 
@@ -1270,6 +1366,9 @@ pub proof fn lemma_decompose(a: u64, mask: u64)
 /// the maximum amount.
 /// Either way, we then use the preconditions about what was mutated,
 /// and shuffle around the powers of 52.
+///
+/// PRECONDITION RELAXATION: Uses `limbs_bounded_for_sub(a, b)` instead of `limbs_bounded(a)`.
+/// This allows a.limbs[4] to exceed 2^52 (up to 2^52 + b.limbs[4]).
 pub proof fn lemma_sub_loop1_invariant(
     difference: Scalar52,
     borrow: u64,
@@ -1281,14 +1380,14 @@ pub proof fn lemma_sub_loop1_invariant(
     difference_loop1_start: Scalar52,
 )
     requires
-        limbs_bounded(a),
+        limbs_bounded_for_sub(a, b),
         limbs_bounded(b),
         0 <= i < 5,
         forall|j: int| 0 <= j < i ==> difference.limbs[j] < (1u64 << 52),
         mask == (1u64 << 52) - 1,
-        seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
+        seq_u64_as_nat(a.limbs@.subrange(0, i as int)) - seq_u64_as_nat(
             b.limbs@.subrange(0, i as int),
-        ) == seq_u64_to_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (old_borrow
+        ) == seq_u64_as_nat(difference_loop1_start.limbs@.subrange(0, i as int)) - (old_borrow
             >> 63) * pow2((52 * (i) as nat)),
         difference_loop1_start.limbs@.subrange(0, i as int) == difference.limbs@.subrange(
             0,
@@ -1297,37 +1396,37 @@ pub proof fn lemma_sub_loop1_invariant(
         difference.limbs[i as int] == borrow & mask,
         borrow == a.limbs[i as int].wrapping_sub((b.limbs[i as int] + (old_borrow >> 63)) as u64),
     ensures
-        seq_u64_to_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
+        seq_u64_as_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
             (52 * (i + 1) as nat),
-        ) == seq_u64_to_nat(a.limbs@.subrange(0, i + 1)) - seq_u64_to_nat(
+        ) == seq_u64_as_nat(a.limbs@.subrange(0, i + 1)) - seq_u64_as_nat(
             b.limbs@.subrange(0, i + 1),
         ),
 {
     calc! {
         (==)
-        seq_u64_to_nat(a.limbs@.subrange(0, i + 1)) - seq_u64_to_nat(b.limbs@.subrange(0, i + 1)); {
-            lemma_seq_u64_to_nat_subrange_extend(a.limbs@, i as int);
-            lemma_seq_u64_to_nat_subrange_extend(b.limbs@, i as int);
+        seq_u64_as_nat(a.limbs@.subrange(0, i + 1)) - seq_u64_as_nat(b.limbs@.subrange(0, i + 1)); {
+            lemma_seq_u64_as_nat_subrange_extend(a.limbs@, i as int);
+            lemma_seq_u64_as_nat_subrange_extend(b.limbs@, i as int);
         }
-        seq_u64_to_nat(a.limbs@.subrange(0, i as int)) + a.limbs[i as int] * pow2(52 * i as nat) - (
-        seq_u64_to_nat(b.limbs@.subrange(0, i as int)) + b.limbs[i as int] * pow2(52 * i as nat)); {
+        seq_u64_as_nat(a.limbs@.subrange(0, i as int)) + a.limbs[i as int] * pow2(52 * i as nat) - (
+        seq_u64_as_nat(b.limbs@.subrange(0, i as int)) + b.limbs[i as int] * pow2(52 * i as nat)); {
             broadcast use lemma_mul_is_distributive_sub_other_way;
 
         }
-        seq_u64_to_nat(a.limbs@.subrange(0, i as int)) - seq_u64_to_nat(
+        seq_u64_as_nat(a.limbs@.subrange(0, i as int)) - seq_u64_as_nat(
             b.limbs@.subrange(0, i as int),
         ) + (a.limbs[i as int] - b.limbs[i as int]) * pow2(52 * i as nat); {
             assert(difference_loop1_start.limbs@.subrange(0, i as int)
                 == difference.limbs@.subrange(0, i as int));
             // Use loop invariant
         }
-        seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) - (old_borrow >> 63) * pow2(
+        seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) - (old_borrow >> 63) * pow2(
             52 * i as nat,
         ) + (a.limbs[i as int] - b.limbs[i as int]) * pow2(52 * i as nat); {
             broadcast use lemma_mul_is_distributive_sub_other_way;
 
         }
-        seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (a.limbs[i as int]
+        seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + (a.limbs[i as int]
             - b.limbs[i as int] - (old_borrow >> 63)) * pow2(52 * i as nat); {
             assert(borrow == a.limbs[i as int].wrapping_sub(
                 (b.limbs[i as int] + (old_borrow >> 63)) as u64,
@@ -1346,19 +1445,19 @@ pub proof fn lemma_sub_loop1_invariant(
                 };
                 calc! {
                     (==)
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (a.limbs[i as int]
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + (a.limbs[i as int]
                         - b.limbs[i as int] - (old_borrow >> 63)) * pow2(52 * i as nat); {
                         assert(borrow == (a.limbs[i as int] - ((b.limbs[i as int] + (old_borrow
                             >> 63)) as u64) + 0x1_0000_0000_0000_0000) as u64);
                         assert(b.limbs[i as int] < 1u64 << 52);
                         assert(old_borrow >> 63 <= 1) by (bit_vector);
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (borrow
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + (borrow
                         - 0x1_0000_0000_0000_0000) * pow2(52 * i as nat); {
                         lemma_decompose(borrow, mask);
                         assert(borrow == (borrow >> 52) * pow2(52) + difference.limbs[i as int]);
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + ((borrow >> 52)
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + ((borrow >> 52)
                         * pow2(52) + difference.limbs[i as int] - 0x1_0000_0000_0000_0000) * pow2(
                         52 * i as nat,
                     ); {
@@ -1380,13 +1479,13 @@ pub proof fn lemma_sub_loop1_invariant(
                             );
                         };
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (borrow >> 52) * pow2(
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + (borrow >> 52) * pow2(
                         52 * (i + 1) as nat,
                     ) + difference.limbs[i as int] * pow2(52 * i as nat) - 0x1_0000_0000_0000_0000
                         * pow2(52 * i as nat); {
-                        lemma_seq_u64_to_nat_subrange_extend(difference.limbs@, i as int);
+                        lemma_seq_u64_as_nat_subrange_extend(difference.limbs@, i as int);
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i + 1)) + (borrow >> 52) * pow2(
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i + 1)) + (borrow >> 52) * pow2(
                         52 * (i + 1) as nat,
                     ) - 0x1_0000_0000_0000_0000 * pow2(52 * i as nat); {
                         assert(borrow >> 52 == (1u64 << 12) - 1) by (bit_vector)
@@ -1409,7 +1508,7 @@ pub proof fn lemma_sub_loop1_invariant(
                             (1u64 << 12) as int,
                         );
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i + 1)) + (-1) * pow2(
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i + 1)) + (-1) * pow2(
                         52 * (i + 1) as nat,
                     ); {
                         assert(borrow >> 63 == 1) by (bit_vector)
@@ -1417,27 +1516,27 @@ pub proof fn lemma_sub_loop1_invariant(
                                 borrow >= 0x1_0000_0000_0000_0000 - (1u64 << 52),
                         ;
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
                         (52 * (i + 1) as nat),
                     );
                 }
             } else {
                 calc! {
                     (==)
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (a.limbs[i as int]
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + (a.limbs[i as int]
                         - b.limbs[i as int] - (old_borrow >> 63)) * pow2(52 * i as nat); {
                         assert(borrow == (a.limbs[i as int] - ((b.limbs[i as int] + (old_borrow
                             >> 63)) as u64)) as u64);
                         assert(b.limbs[i as int] < 1u64 << 52);
                         assert(old_borrow >> 63 <= 1) by (bit_vector);
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (borrow) * pow2(
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + (borrow) * pow2(
                         52 * i as nat,
                     ); {
                         lemma_decompose(borrow, mask);
                         assert(borrow == (borrow >> 52) * pow2(52) + difference.limbs[i as int]);
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + ((borrow >> 52)
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + ((borrow >> 52)
                         * pow2(52) + difference.limbs[i as int]) * pow2(52 * i as nat); {
                         assert(pow2(52) * pow2(52 * i as nat) == pow2(52 + 52 * i as nat)) by {
                             broadcast use lemma_pow2_adds;
@@ -1456,15 +1555,28 @@ pub proof fn lemma_sub_loop1_invariant(
                             );
                         };
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (borrow >> 52) * pow2(
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i as int)) + (borrow >> 52) * pow2(
                         52 * (i + 1) as nat,
                     ) + difference.limbs[i as int] * pow2(52 * i as nat); {
-                        lemma_seq_u64_to_nat_subrange_extend(difference.limbs@, i as int);
+                        lemma_seq_u64_as_nat_subrange_extend(difference.limbs@, i as int);
+                        // borrow < 2^52 in the no-underflow case
+                        // Uses relaxed bound: limbs_bounded_for_sub(a, b)
+                        // For i < 4: a.limbs[i] < 2^52, so borrow <= a.limbs[i] < 2^52
+                        // For i == 4: a.limbs[4] < 2^52 + b.limbs[4], so
+                        //   borrow = a.limbs[4] - b.limbs[4] - old_borrow < 2^52
                         assert(borrow < 1u64 << 52) by {
                             assert(borrow == (a.limbs[i as int] - ((b.limbs[i as int] + (old_borrow
                                 >> 63)) as u64)) as u64);
-                            assert(a.limbs[i as int] < (1u64 << 52));
-                            assert((b.limbs[i as int] + (old_borrow >> 63)) as u64 >= 0);
+                            assert(old_borrow >> 63 <= 1) by (bit_vector);
+                            if i < 4 {
+                                // For i < 4: a.limbs[i] < 2^52 from limbs_bounded_for_sub
+                                assert(a.limbs[i as int] < (1u64 << 52));
+                            } else {
+                                // For i == 4: a.limbs[4] < 2^52 + b.limbs[4] from limbs_bounded_for_sub
+                                // So a.limbs[4] - b.limbs[4] < 2^52
+                                assert(a.limbs[4] < (1u64 << 52) + b.limbs[4]);
+                                assert(b.limbs[4] < (1u64 << 52));  // from limbs_bounded(b)
+                            }
                         }
                         assert(borrow >> 52 == 0) by (bit_vector)
                             requires
@@ -1475,13 +1587,13 @@ pub proof fn lemma_sub_loop1_invariant(
                                 borrow < 1u64 << 52,
                         ;
                     }
-                    seq_u64_to_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
+                    seq_u64_as_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
                         (52 * (i + 1) as nat),
                     );
                 }
             }
         }
-        seq_u64_to_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
+        seq_u64_as_nat(difference.limbs@.subrange(0, i + 1)) - (borrow >> 63) * pow2(
             (52 * (i + 1) as nat),
         );
     }
@@ -1490,15 +1602,15 @@ pub proof fn lemma_sub_loop1_invariant(
 /// Just a proof by computation
 pub(crate) proof fn lemma_l_equals_group_order()
     ensures
-        scalar52_to_nat(&constants::L) == group_order(),
-        seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) == group_order(),
+        scalar52_as_nat(&constants::L) == group_order(),
+        seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) == group_order(),
 {
     // First show that the subrange equals the full array
     assert(constants::L.limbs@ == constants::L.limbs@.subrange(0, 5 as int));
-    assert(seq_u64_to_nat(constants::L.limbs@) == seq_u64_to_nat(
+    assert(seq_u64_as_nat(constants::L.limbs@) == seq_u64_as_nat(
         constants::L.limbs@.subrange(0, 5 as int),
     ));
-    assert(scalar52_to_nat(&constants::L) == seq_u64_to_nat(constants::L.limbs@));
+    assert(scalar52_as_nat(&constants::L) == seq_u64_as_nat(constants::L.limbs@));
 
     assert(pow2(52) == 0x10000000000000) by {
         lemma2_to64_rest();
@@ -1541,11 +1653,13 @@ pub proof fn lemma_pow2_260_greater_than_2_group_order()
 }
 
 /// If borrow >> 63 == 0, we apply
-/// (1) `-group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order()`,
-/// and that's enough to show that scalar52_to_nat(&difference) is between
+/// (1) `-group_order() <= scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order()`,
+/// and that's enough to show that scalar52_as_nat(&difference) is between
 /// 0 and group order.
 /// If borrow >> 63 == 1, we apply (1) to show that carry >> 52 can't be 0.
 /// This makes the excess terms in the borrow >> 63 == 1 precondition disappear
+///
+/// PRECONDITION RELAXATION: Uses `limbs_bounded_for_sub(a, b)` instead of `limbs_bounded(a)`.
 pub(crate) proof fn lemma_sub_correct_after_loops(
     difference: Scalar52,
     carry: u64,
@@ -1555,96 +1669,86 @@ pub(crate) proof fn lemma_sub_correct_after_loops(
     borrow: u64,
 )
     requires
-        limbs_bounded(a),
+        limbs_bounded_for_sub(a, b),
         limbs_bounded(b),
         limbs_bounded(&difference),
         limbs_bounded(&difference_after_loop1),
         (carry >> 52) < 2,
-        -group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order(),
+        -group_order() <= scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order(),
         borrow >> 63 == 0 ==> difference_after_loop1 == difference,
-        borrow >> 63 == 1 ==> seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int))
-            + seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) == seq_u64_to_nat(
+        borrow >> 63 == 1 ==> seq_u64_as_nat(difference_after_loop1.limbs@.subrange(0, 5 as int))
+            + seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) == seq_u64_as_nat(
             difference.limbs@.subrange(0, 5 as int),
         ) + (carry >> 52) * pow2(52 * 5 as nat),
-        seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+        seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_as_nat(
             b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) - (borrow >> 63)
+        ) == seq_u64_as_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) - (borrow >> 63)
             * pow2((52 * (5) as nat)),
     ensures
-        scalar52_to_nat(&difference) == (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (
+        scalar52_as_nat(&difference) == (scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (
         group_order() as int),
 {
     assert(borrow >> 63 == 1 || borrow >> 63 == 0) by (bit_vector);
-    assert(seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&difference))
-        by {
-        assert(seq_u64_to_nat(difference.limbs@) == scalar52_to_nat(&difference));
-        assert(difference.limbs@ == difference.limbs@.subrange(0, 5 as int));
-    }
-    assert(seq_u64_to_nat(b.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&b)) by {
-        assert(seq_u64_to_nat(b.limbs@) == scalar52_to_nat(&b));
-        assert(b.limbs@ == b.limbs@.subrange(0, 5 as int));
-    }
-    assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&a)) by {
-        assert(seq_u64_to_nat(a.limbs@) == scalar52_to_nat(&a));
-        assert(a.limbs@ == a.limbs@.subrange(0, 5 as int));
-    }
+    lemma_subrange5_eq_scalar52_as_nat(&difference);
+    lemma_subrange5_eq_scalar52_as_nat(b);
+    lemma_subrange5_eq_scalar52_as_nat(a);
     if borrow >> 63 == 0 {
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+        assert(seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_as_nat(
             b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
+        ) == seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)) - (borrow >> 63) * pow2(
             (52 * (5) as nat),
         ));
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+        assert(seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_as_nat(
             b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)));
-        assert(scalar52_to_nat(&a) - scalar52_to_nat(&b) == scalar52_to_nat(&difference));
-        assert(scalar52_to_nat(&a) - scalar52_to_nat(&b) >= 0);
-        assert(scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order());
-        lemma_small_mod((scalar52_to_nat(&a) - scalar52_to_nat(&b)) as nat, group_order());
-        assert(scalar52_to_nat(&difference) == (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (
+        ) == seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)));
+        assert(scalar52_as_nat(&a) - scalar52_as_nat(&b) == scalar52_as_nat(&difference));
+        assert(scalar52_as_nat(&a) - scalar52_as_nat(&b) >= 0);
+        assert(scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order());
+        lemma_small_mod((scalar52_as_nat(&a) - scalar52_as_nat(&b)) as nat, group_order());
+        assert(scalar52_as_nat(&difference) == (scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (
         group_order() as int));
     }
     if borrow >> 63 == 1 {
-        assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) + seq_u64_to_nat(
+        assert(seq_u64_as_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) + seq_u64_as_nat(
             constants::L.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) + (carry >> 52) * pow2(
+        ) == seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)) + (carry >> 52) * pow2(
             52 * 5 as nat,
         ));
-        assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int))
-            == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) + (carry >> 52) * pow2(
+        assert(seq_u64_as_nat(difference_after_loop1.limbs@.subrange(0, 5 as int))
+            == seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)) + (carry >> 52) * pow2(
             52 * 5 as nat,
-        ) - seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)));
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+        ) - seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)));
+        assert(seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_as_nat(
             b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) - pow2(
+        ) == seq_u64_as_nat(difference_after_loop1.limbs@.subrange(0, 5 as int)) - pow2(
             (52 * (5) as nat),
         ));
-        assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_to_nat(
+        assert(seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) - seq_u64_as_nat(
             b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) + (carry >> 52) * pow2(
+        ) == seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)) + (carry >> 52) * pow2(
             52 * 5 as nat,
-        ) - seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) - pow2((52 * (5) as nat)));
-        assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) + seq_u64_to_nat(
+        ) - seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) - pow2((52 * (5) as nat)));
+        assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) + seq_u64_as_nat(
             a.limbs@.subrange(0, 5 as int),
-        ) - seq_u64_to_nat(b.limbs@.subrange(0, 5 as int)) == seq_u64_to_nat(
+        ) - seq_u64_as_nat(b.limbs@.subrange(0, 5 as int)) == seq_u64_as_nat(
             difference.limbs@.subrange(0, 5 as int),
         ) + (carry >> 52) * pow2(52 * 5 as nat) - pow2((52 * (5) as nat)));
         if carry >> 52 == 0 {
             // Get a contradiction because the sides in the above equation have different signs
-            assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) + seq_u64_to_nat(
+            assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) + seq_u64_as_nat(
                 a.limbs@.subrange(0, 5 as int),
-            ) - seq_u64_to_nat(b.limbs@.subrange(0, 5 as int)) >= 0) by {
-                assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) >= group_order())
+            ) - seq_u64_as_nat(b.limbs@.subrange(0, 5 as int)) >= 0) by {
+                assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) >= group_order())
                     by {
                     lemma_l_equals_group_order();
                 };
-                assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&a));
-                assert(seq_u64_to_nat(b.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&b));
+                assert(seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) == scalar52_as_nat(&a));
+                assert(seq_u64_as_nat(b.limbs@.subrange(0, 5 as int)) == scalar52_as_nat(&b));
             };
-            assert(seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) < pow2(
+            assert(seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)) < pow2(
                 (52 * (5) as nat),
             )) by {
-                assert(seq_u64_to_nat(difference.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(
+                assert(seq_u64_as_nat(difference.limbs@.subrange(0, 5 as int)) == scalar52_as_nat(
                     &difference,
                 ));
                 lemma_bound_scalar(&difference);
@@ -1653,189 +1757,181 @@ pub(crate) proof fn lemma_sub_correct_after_loops(
             assert(false);
         }
         assert(carry >> 52 == 1);
-        assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) + seq_u64_to_nat(
+        assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) + seq_u64_as_nat(
             a.limbs@.subrange(0, 5 as int),
-        ) - seq_u64_to_nat(b.limbs@.subrange(0, 5 as int)) == seq_u64_to_nat(
+        ) - seq_u64_as_nat(b.limbs@.subrange(0, 5 as int)) == seq_u64_as_nat(
             difference.limbs@.subrange(0, 5 as int),
         ));
-        assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) + scalar52_to_nat(&a)
-            - scalar52_to_nat(&b) == scalar52_to_nat(&difference));
-        assert(scalar52_to_nat(&constants::L) == group_order()) by {
+        assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) + scalar52_as_nat(&a)
+            - scalar52_as_nat(&b) == scalar52_as_nat(&difference));
+        assert(scalar52_as_nat(&constants::L) == group_order()) by {
             lemma_l_equals_group_order();
         };
-        assert(seq_u64_to_nat(constants::L.limbs@.subrange(0, 5 as int)) == group_order()) by {
+        assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) == group_order()) by {
             lemma_l_equals_group_order();
         };
         assert(group_order() > 0);
         calc! {
             (==)
-            scalar52_to_nat(&difference) as int; {}
-            group_order() as int + scalar52_to_nat(&a) - scalar52_to_nat(&b); {
-                assert(group_order() as int + scalar52_to_nat(&a) - scalar52_to_nat(&b)
+            scalar52_as_nat(&difference) as int; {}
+            group_order() as int + scalar52_as_nat(&a) - scalar52_as_nat(&b); {
+                assert(group_order() as int + scalar52_as_nat(&a) - scalar52_as_nat(&b)
                     < group_order()) by {
-                    assert(seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, 5 as int))
-                        == scalar52_to_nat(&difference_after_loop1)) by {
-                        assert(seq_u64_to_nat(difference_after_loop1.limbs@) == scalar52_to_nat(
+                    assert(seq_u64_as_nat(difference_after_loop1.limbs@.subrange(0, 5 as int))
+                        == scalar52_as_nat(&difference_after_loop1)) by {
+                        assert(seq_u64_as_nat(difference_after_loop1.limbs@) == scalar52_as_nat(
                             &difference_after_loop1,
                         ));
                         assert(difference_after_loop1.limbs@
                             == difference_after_loop1.limbs@.subrange(0, 5 as int));
                     }
-                    assert(scalar52_to_nat(&a) - scalar52_to_nat(&b) == scalar52_to_nat(
+                    assert(scalar52_as_nat(&a) - scalar52_as_nat(&b) == scalar52_as_nat(
                         &difference_after_loop1,
                     ) - pow2((52 * (5) as nat)));
                     lemma_bound_scalar(&difference_after_loop1);
                 };
                 lemma_small_mod(
-                    (group_order() as int + scalar52_to_nat(&a) - scalar52_to_nat(&b)) as nat,
+                    (group_order() as int + scalar52_as_nat(&a) - scalar52_as_nat(&b)) as nat,
                     group_order(),
                 );
             }
-            (group_order() as int + scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (
+            (group_order() as int + scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (
             group_order() as int); {
                 lemma_mod_cancel(a, b);
             }
-            (scalar52_to_nat(&a) - scalar52_to_nat(&b)) % (group_order() as int);
+            (scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (group_order() as int);
         }
     }
 }
 
-/// If borrow >> 63 == 0, we just prove that the loop step has no effect.
-/// If borrow >> 63 == 1, we substitute in the loop's updates
-/// like `difference.limbs[i as int] == carry & mask`.
-/// In that case we're proving that subtraction is correct if we only
-/// consider the first i items of each array, except there's also a
-/// `(carry >> 52) * pow2(52 * (i+1) as nat)` term that doesn't go away.
-pub(crate) proof fn lemma_sub_loop2_invariant(
-    difference: Scalar52,
+/// Proves the loop invariant for conditionally adding L to a scalar.
+/// If !is_adding: the loop step is a no-op (orig == result).
+/// If is_adding: orig[0..i+1] + L[0..i+1] == result[0..i+1] + (carry >> 52) * 2^(52*(i+1))
+///
+/// Used by both `sub` (loop 2) and `conditional_add_l`.
+pub(crate) proof fn lemma_add_l_loop_invariant(
+    result: Scalar52,
     i: usize,
-    a: &Scalar52,
-    b: &Scalar52,
     mask: u64,
-    difference_after_loop1: Scalar52,
-    difference_loop2_start: Scalar52,
+    orig: Scalar52,
+    before: Scalar52,
     carry: u64,
     old_carry: u64,
     addend: u64,
-    borrow: u64,
+    is_adding: bool,
 )
     requires
         0 <= i < 5,
         mask == (1u64 << 52) - 1,
-        forall|j: int| 0 <= j < 5 ==> difference_loop2_start.limbs[j] < (1u64 << 52),
-        forall|j: int|
-            i <= j < 5 ==> difference_loop2_start.limbs[j] == difference_after_loop1.limbs[j],
-        forall|j: int|
-            (0 <= j < 5 && j != i) ==> difference_loop2_start.limbs[j] == difference.limbs[j],
-        mask == (1u64 << 52) - 1,
+        forall|j: int| 0 <= j < 5 ==> before.limbs[j] < (1u64 << 52),
+        forall|j: int| i <= j < 5 ==> before.limbs[j] == orig.limbs[j],
+        forall|j: int| (0 <= j < 5 && j != i) ==> before.limbs[j] == result.limbs[j],
         i == 0 ==> old_carry == 0,
         i >= 1 ==> (old_carry >> 52) < 2,
-        (i >= 1 && borrow >> 63 == 0) ==> old_carry == difference_loop2_start.limbs[i - 1],
-        borrow >> 63 == 0 ==> difference_after_loop1 == difference_loop2_start,
-        borrow >> 63 == 1 ==> seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, i as int))
-            + seq_u64_to_nat(constants::L.limbs@.subrange(0, i as int)) == seq_u64_to_nat(
-            difference_loop2_start.limbs@.subrange(0, i as int),
-        ) + (old_carry >> 52) * pow2(52 * i as nat),
-        difference.limbs[i as int] == carry & mask,
-        difference_loop2_start.limbs@.subrange(0, i as int) == difference.limbs@.subrange(
-            0,
-            i as int,
+        (i >= 1 && !is_adding) ==> old_carry == before.limbs[i - 1],
+        !is_adding ==> orig == before,
+        is_adding ==> seq_u64_as_nat(orig.limbs@.subrange(0, i as int)) + seq_u64_as_nat(
+            constants::L.limbs@.subrange(0, i as int),
+        ) == seq_u64_as_nat(before.limbs@.subrange(0, i as int)) + (old_carry >> 52) * pow2(
+            52 * i as nat,
         ),
-        borrow >> 63 == 0 ==> addend == 0,
-        borrow >> 63 == 1 ==> addend == constants::L.limbs[i as int],
-        carry == (old_carry >> 52) + difference_loop2_start.limbs[i as int] + addend,
+        result.limbs[i as int] == carry & mask,
+        before.limbs@.subrange(0, i as int) == result.limbs@.subrange(0, i as int),
+        !is_adding ==> addend == 0,
+        is_adding ==> addend == constants::L.limbs[i as int],
+        carry == (old_carry >> 52) + before.limbs[i as int] + addend,
     ensures
-        (i + 1 >= 1 && borrow >> 63 == 0) ==> carry == difference.limbs[i as int],
-        borrow >> 63 == 0 ==> difference_after_loop1 == difference,
-        borrow >> 63 == 1 ==> seq_u64_to_nat(
-            difference_after_loop1.limbs@.subrange(0, i + 1 as int),
-        ) + seq_u64_to_nat(constants::L.limbs@.subrange(0, i + 1 as int)) == seq_u64_to_nat(
-            difference.limbs@.subrange(0, i + 1 as int),
-        ) + (carry >> 52) * pow2(52 * (i + 1) as nat),
+        (i + 1 >= 1 && !is_adding) ==> carry == result.limbs[i as int],
+        !is_adding ==> orig == result,
+        is_adding ==> seq_u64_as_nat(orig.limbs@.subrange(0, i + 1 as int)) + seq_u64_as_nat(
+            constants::L.limbs@.subrange(0, i + 1 as int),
+        ) == seq_u64_as_nat(result.limbs@.subrange(0, i + 1 as int)) + (carry >> 52) * pow2(
+            52 * (i + 1) as nat,
+        ),
 {
-    if borrow >> 63 == 0 {
+    if !is_adding {
         assert(old_carry >> 52 == 0) by (bit_vector)
             requires
                 old_carry < 1u64 << 52,
         ;
         assert(addend == 0);
-        assert(carry == difference_loop2_start.limbs[i as int]);
+        assert(carry == before.limbs[i as int]);
         assert(carry & mask == carry) by (bit_vector)
             requires
                 carry < 1u64 << 52,
                 mask == (1u64 << 52) - 1,
         ;
-        assert(difference_after_loop1.limbs[i as int] == difference.limbs[i as int]);
-        assert(forall|j: int|
-            0 <= j < 5 ==> difference_after_loop1.limbs[j] == difference.limbs[j]);
-        assert(difference_after_loop1.limbs == difference.limbs);
+        assert(orig.limbs[i as int] == result.limbs[i as int]);
+        assert(forall|j: int| 0 <= j < 5 ==> orig.limbs[j] == result.limbs[j]);
+        assert(orig.limbs == result.limbs);
     }
-    if borrow >> 63 == 1 {
-        // When underflow, addend = L.limbs[i]
+    if is_adding {
         assert(addend == constants::L.limbs[i as int]);
-        // carry = (old_carry >> 52) + difference_after_loop1.limbs[i] + L.limbs[i]
-        // difference.limbs[i] = carry & mask
         calc! {
             (==)
-            seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, i + 1)) + seq_u64_to_nat(
+            seq_u64_as_nat(orig.limbs@.subrange(0, i + 1)) + seq_u64_as_nat(
                 constants::L.limbs@.subrange(0, i + 1),
             ); {
-                lemma_seq_u64_to_nat_subrange_extend(difference_after_loop1.limbs@, i as int);
-                lemma_seq_u64_to_nat_subrange_extend(constants::L.limbs@, i as int);
+                lemma_seq_u64_as_nat_subrange_extend(orig.limbs@, i as int);
+                lemma_seq_u64_as_nat_subrange_extend(constants::L.limbs@, i as int);
             }
-            seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, i as int))
-                + difference_after_loop1.limbs[i as int] as nat * pow2(52 * i as nat)
-                + seq_u64_to_nat(constants::L.limbs@.subrange(0, i as int))
+            seq_u64_as_nat(orig.limbs@.subrange(0, i as int)) + orig.limbs[i as int] as nat * pow2(
+                52 * i as nat,
+            ) + seq_u64_as_nat(constants::L.limbs@.subrange(0, i as int))
                 + constants::L.limbs[i as int] as nat * pow2(52 * i as nat); {
                 broadcast use lemma_mul_is_distributive_add_other_way;
 
             }
-            seq_u64_to_nat(difference_after_loop1.limbs@.subrange(0, i as int)) + seq_u64_to_nat(
+            seq_u64_as_nat(orig.limbs@.subrange(0, i as int)) + seq_u64_as_nat(
                 constants::L.limbs@.subrange(0, i as int),
-            ) + (difference_after_loop1.limbs[i as int] as nat
-                + constants::L.limbs[i as int] as nat) * pow2(52 * i as nat); {
+            ) + (orig.limbs[i as int] as nat + constants::L.limbs[i as int] as nat) * pow2(
+                52 * i as nat,
+            ); {
                 // Use invariant
             }
-            seq_u64_to_nat(difference_loop2_start.limbs@.subrange(0, i as int)) + (old_carry
-                >> 52) as nat * pow2(52 * i as nat) + (difference_after_loop1.limbs[i as int] as nat
-                + constants::L.limbs[i as int] as nat) * pow2(52 * i as nat); {
-                assert(difference_loop2_start.limbs@.subrange(0, i as int)
-                    == difference.limbs@.subrange(0, i as int));
+            seq_u64_as_nat(before.limbs@.subrange(0, i as int)) + (old_carry >> 52) as nat * pow2(
+                52 * i as nat,
+            ) + (orig.limbs[i as int] as nat + constants::L.limbs[i as int] as nat) * pow2(
+                52 * i as nat,
+            ); {
+                assert(before.limbs@.subrange(0, i as int) == result.limbs@.subrange(0, i as int));
             }
-            seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (old_carry >> 52) as nat
-                * pow2(52 * i as nat) + (difference_after_loop1.limbs[i as int] as nat
-                + constants::L.limbs[i as int] as nat) * pow2(52 * i as nat); {
+            seq_u64_as_nat(result.limbs@.subrange(0, i as int)) + (old_carry >> 52) as nat * pow2(
+                52 * i as nat,
+            ) + (orig.limbs[i as int] as nat + constants::L.limbs[i as int] as nat) * pow2(
+                52 * i as nat,
+            ); {
                 broadcast use lemma_mul_is_distributive_add_other_way;
 
             }
-            seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + ((old_carry >> 52) as nat
-                + difference_after_loop1.limbs[i as int] as nat
-                + constants::L.limbs[i as int] as nat) * pow2(52 * i as nat); {
-                assert(carry == (old_carry >> 52) + difference_after_loop1.limbs[i as int]
+            seq_u64_as_nat(result.limbs@.subrange(0, i as int)) + ((old_carry >> 52) as nat
+                + orig.limbs[i as int] as nat + constants::L.limbs[i as int] as nat) * pow2(
+                52 * i as nat,
+            ); {
+                assert(before.limbs[i as int] == orig.limbs[i as int]);
+                assert(carry == (old_carry >> 52) + orig.limbs[i as int]
                     + constants::L.limbs[i as int]);
             }
-            seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + carry as nat * pow2(
+            seq_u64_as_nat(result.limbs@.subrange(0, i as int)) + carry as nat * pow2(
                 52 * i as nat,
             ); {
                 assert(carry == (carry >> 52) * (1u64 << 52) + (carry & mask)) by (bit_vector)
                     requires
                         mask == (1u64 << 52) - 1,
                 ;
-                assert(carry == (carry >> 52) * pow2(52) + difference.limbs[i as int]) by {
+                assert(carry == (carry >> 52) * pow2(52) + result.limbs[i as int]) by {
                     lemma2_to64_rest();
                     assert(0x10000000000000 == 1u64 << 52) by (compute_only);
                 };
-                assert(difference.limbs[i as int] == carry & mask);
+                assert(result.limbs[i as int] == carry & mask);
             }
-            seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + ((carry >> 52) as nat * pow2(
-                52,
-            ) + difference.limbs[i as int] as nat) * pow2(52 * i as nat); {
+            seq_u64_as_nat(result.limbs@.subrange(0, i as int)) + ((carry >> 52) as nat * pow2(52)
+                + result.limbs[i as int] as nat) * pow2(52 * i as nat); {
                 broadcast use lemma_mul_is_distributive_add_other_way;
 
             }
-            seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (carry >> 52) as nat * pow2(
-                52,
-            ) * pow2(52 * i as nat) + difference.limbs[i as int] as nat * pow2(52 * i as nat); {
+            seq_u64_as_nat(result.limbs@.subrange(0, i as int)) + (carry >> 52) as nat * pow2(52)
+                * pow2(52 * i as nat) + result.limbs[i as int] as nat * pow2(52 * i as nat); {
                 assert(pow2(52) * pow2(52 * i as nat) == pow2(52 + 52 * i as nat)) by {
                     broadcast use lemma_pow2_adds;
 
@@ -1851,15 +1947,144 @@ pub(crate) proof fn lemma_sub_loop2_invariant(
                     );
                 };
             }
-            seq_u64_to_nat(difference.limbs@.subrange(0, i as int)) + (carry >> 52) as nat * pow2(
+            seq_u64_as_nat(result.limbs@.subrange(0, i as int)) + (carry >> 52) as nat * pow2(
                 52 * (i + 1) as nat,
-            ) + difference.limbs[i as int] as nat * pow2(52 * i as nat); {
-                lemma_seq_u64_to_nat_subrange_extend(difference.limbs@, i as int);
+            ) + result.limbs[i as int] as nat * pow2(52 * i as nat); {
+                lemma_seq_u64_as_nat_subrange_extend(result.limbs@, i as int);
             }
-            seq_u64_to_nat(difference.limbs@.subrange(0, i + 1)) + (carry >> 52) as nat * pow2(
+            seq_u64_as_nat(result.limbs@.subrange(0, i + 1)) + (carry >> 52) as nat * pow2(
                 52 * (i + 1) as nat,
             );
         }
+    }
+}
+
+/// Bridges from seq_u64_as_nat(x.limbs@.subrange(0, 5)) to scalar52_as_nat(x).
+/// Scalar52 has exactly 5 limbs, so the full view equals the subrange(0,5).
+pub(crate) proof fn lemma_subrange5_eq_scalar52_as_nat(x: &Scalar52)
+    ensures
+        x.limbs@ == x.limbs@.subrange(0, 5 as int),
+        seq_u64_as_nat(x.limbs@.subrange(0, 5 as int)) == scalar52_as_nat(x),
+{
+    assert(x.limbs@.len() == 5);
+    assert(x.limbs@ =~= x.limbs@.subrange(0, 5 as int));
+}
+
+/// Post-loop proof for conditional_add_l: derives postconditions from the loop invariant at i=5.
+/// General version: does not require scalar52_as_nat + group_order < pow2(260).
+/// The carry return value captures any overflow.
+pub(crate) proof fn lemma_conditional_add_l_correct(
+    self_now: Scalar52,
+    carry: u64,
+    self_orig: Scalar52,
+    is_adding: bool,
+)
+    requires
+        limbs_bounded(&self_orig),
+        limbs_bounded(&self_now),
+        (carry >> 52) < 2,
+        !is_adding ==> self_orig == self_now,
+        is_adding ==> seq_u64_as_nat(self_orig.limbs@.subrange(0, 5 as int)) + seq_u64_as_nat(
+            constants::L.limbs@.subrange(0, 5 as int),
+        ) == seq_u64_as_nat(self_now.limbs@.subrange(0, 5 as int)) + (carry >> 52) * pow2(
+            52 * 5 as nat,
+        ),
+        (!is_adding && (5 >= 1)) ==> carry == self_now.limbs[4],
+    ensures
+        limbs_bounded(&self_now),
+        (carry >> 52) <= 1,
+        is_adding ==> scalar52_as_nat(&self_now) + (carry >> 52) as nat * pow2(260)
+            == scalar52_as_nat(&self_orig) + group_order(),
+        !is_adding ==> scalar52_as_nat(&self_now) == scalar52_as_nat(&self_orig),
+        !is_adding ==> carry >> 52 == 0,
+{
+    lemma_subrange5_eq_scalar52_as_nat(&self_now);
+    lemma_subrange5_eq_scalar52_as_nat(&self_orig);
+
+    if !is_adding {
+        assert(scalar52_as_nat(&self_now) == scalar52_as_nat(&self_orig));
+        assert(carry >> 52 == 0) by (bit_vector)
+            requires
+                carry < 1u64 << 52,
+        ;
+    }
+    if is_adding {
+        lemma_l_equals_group_order();
+        assert(seq_u64_as_nat(constants::L.limbs@.subrange(0, 5 as int)) == group_order());
+        assert(52 * 5 as nat == 260nat);
+        assert(scalar52_as_nat(&self_now) + (carry >> 52) as nat * pow2(260) == scalar52_as_nat(
+            &self_orig,
+        ) + group_order());
+    }
+}
+
+/// Proves the correctness of sub_new after loop 1 + conditional_add_l.
+///
+/// After loop 1: a - b == difference_before - (borrow >> 63) * pow2(260)
+/// After conditional_add_l with carry:
+///   if borrow >> 63 == 0: difference unchanged
+///   if borrow >> 63 == 1: difference + carry_top * pow2(260) == difference_before + group_order()
+///
+/// Combines these to show: scalar52_as_nat(&result) == (a - b) % group_order()
+pub(crate) proof fn lemma_sub_new_correct(
+    result: Scalar52,
+    carry: u64,
+    a: Scalar52,
+    b: Scalar52,
+    borrow: u64,
+)
+    requires
+        limbs_bounded(&a),
+        limbs_bounded(&b),
+        -group_order() <= scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order(),
+        forall|j: int| 0 <= j < 5 ==> result.limbs[j] < (1u64 << 52),
+        (carry >> 52) <= 1,
+        borrow >> 63 == 0 || borrow >> 63 == 1,
+        borrow >> 63 == 0 ==> scalar52_as_nat(&a) - scalar52_as_nat(&b) == scalar52_as_nat(&result),
+        borrow >> 63 == 1 ==> scalar52_as_nat(&a) < scalar52_as_nat(&b),
+        borrow >> 63 == 1 ==> scalar52_as_nat(&result) + (carry >> 52) as nat * pow2(260)
+            == scalar52_as_nat(&a) - scalar52_as_nat(&b) + pow2(260) + group_order(),
+    ensures
+        scalar52_as_nat(&result) == (scalar52_as_nat(&a) - scalar52_as_nat(&b)) % (
+        group_order() as int),
+{
+    if borrow >> 63 == 0 {
+        assert(scalar52_as_nat(&result) == scalar52_as_nat(&a) - scalar52_as_nat(&b));
+        assert(scalar52_as_nat(&a) - scalar52_as_nat(&b) >= 0);
+        assert(scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order());
+        lemma_small_mod((scalar52_as_nat(&a) - scalar52_as_nat(&b)) as nat, group_order());
+    }
+    if borrow >> 63 == 1 {
+        let a_nat = scalar52_as_nat(&a);
+        let b_nat = scalar52_as_nat(&b);
+        let r_nat = scalar52_as_nat(&result);
+        let carry_top = (carry >> 52) as nat;
+
+        assert(limbs_bounded(&result)) by {
+            assert((1u64 << 52) == pow2(52)) by {
+                lemma_u64_shift_is_pow2(52);
+            }
+        }
+        lemma_bound_scalar(&result);
+        assert(r_nat < pow2(260));
+
+        assert(carry_top == 1) by {
+            if carry_top == 0 {
+                assert(r_nat == a_nat - b_nat + pow2(260) + group_order());
+                assert(false);
+            }
+        };
+
+        assert(r_nat == a_nat - b_nat + group_order());
+
+        assert(a_nat < b_nat);
+        assert(0 <= a_nat - b_nat + group_order());
+        assert(a_nat - b_nat + group_order() < group_order());
+
+        lemma_small_mod(r_nat, group_order());
+
+        lemma_mod_add_multiples_vanish((a_nat - b_nat) as int, group_order() as int);
+        assert(r_nat as int == (a_nat - b_nat) % (group_order() as int));
     }
 }
 
@@ -1882,29 +2107,29 @@ pub proof fn lemma_add_loop_invariant(
         0 <= i < 5,
         forall|j: int| 0 <= j < i ==> sum.limbs[j] < (1u64 << 52),
         mask == (1u64 << 52) - 1,
-        seq_u64_to_nat(a.limbs@.subrange(0, i as int)) + seq_u64_to_nat(
+        seq_u64_as_nat(a.limbs@.subrange(0, i as int)) + seq_u64_as_nat(
             b.limbs@.subrange(0, i as int),
-        ) == seq_u64_to_nat(sum_loop_start.limbs@.subrange(0, i as int)) + (old_carry >> 52) * pow2(
+        ) == seq_u64_as_nat(sum_loop_start.limbs@.subrange(0, i as int)) + (old_carry >> 52) * pow2(
             (52 * (i) as nat),
         ),
         sum_loop_start.limbs@.subrange(0, i as int) == sum.limbs@.subrange(0, i as int),
         sum.limbs[i as int] == carry & mask,
         carry == a.limbs[i as int] + b.limbs[i as int] + (old_carry >> 52),
     ensures
-        seq_u64_to_nat(sum.limbs@.subrange(0, i + 1)) + (carry >> 52) * pow2((52 * (i + 1) as nat))
-            == seq_u64_to_nat(a.limbs@.subrange(0, i + 1)) + seq_u64_to_nat(
+        seq_u64_as_nat(sum.limbs@.subrange(0, i + 1)) + (carry >> 52) * pow2((52 * (i + 1) as nat))
+            == seq_u64_as_nat(a.limbs@.subrange(0, i + 1)) + seq_u64_as_nat(
             b.limbs@.subrange(0, i + 1),
         ),
 {
     calc! {
         (==)
-        seq_u64_to_nat(a.limbs@.subrange(0, i + 1)) + seq_u64_to_nat(b.limbs@.subrange(0, i + 1)); {
-            lemma_seq_u64_to_nat_subrange_extend(a.limbs@, i as int);
-            lemma_seq_u64_to_nat_subrange_extend(b.limbs@, i as int);
+        seq_u64_as_nat(a.limbs@.subrange(0, i + 1)) + seq_u64_as_nat(b.limbs@.subrange(0, i + 1)); {
+            lemma_seq_u64_as_nat_subrange_extend(a.limbs@, i as int);
+            lemma_seq_u64_as_nat_subrange_extend(b.limbs@, i as int);
         }
-        seq_u64_to_nat(a.limbs@.subrange(0, i as int)) + a.limbs[i as int] as nat * pow2(
+        seq_u64_as_nat(a.limbs@.subrange(0, i as int)) + a.limbs[i as int] as nat * pow2(
             52 * i as nat,
-        ) + seq_u64_to_nat(b.limbs@.subrange(0, i as int)) + b.limbs[i as int] as nat * pow2(
+        ) + seq_u64_as_nat(b.limbs@.subrange(0, i as int)) + b.limbs[i as int] as nat * pow2(
             52 * i as nat,
         ); {
             lemma_mul_is_distributive_add_other_way(
@@ -1913,13 +2138,13 @@ pub proof fn lemma_add_loop_invariant(
                 b.limbs[i as int] as int,
             );
         }
-        seq_u64_to_nat(a.limbs@.subrange(0, i as int)) + seq_u64_to_nat(
+        seq_u64_as_nat(a.limbs@.subrange(0, i as int)) + seq_u64_as_nat(
             b.limbs@.subrange(0, i as int),
         ) + (a.limbs[i as int] as nat + b.limbs[i as int] as nat) * pow2(52 * i as nat); {
             assert(sum_loop_start.limbs@.subrange(0, i as int) == sum.limbs@.subrange(0, i as int));
             // Use loop invariant
         }
-        seq_u64_to_nat(sum.limbs@.subrange(0, i as int)) + (old_carry >> 52) as nat * pow2(
+        seq_u64_as_nat(sum.limbs@.subrange(0, i as int)) + (old_carry >> 52) as nat * pow2(
             52 * i as nat,
         ) + (a.limbs[i as int] as nat + b.limbs[i as int] as nat) * pow2(52 * i as nat); {
             lemma_mul_is_distributive_add_other_way(
@@ -1928,7 +2153,7 @@ pub proof fn lemma_add_loop_invariant(
                 (a.limbs[i as int] as nat + b.limbs[i as int] as nat) as int,
             );
         }
-        seq_u64_to_nat(sum.limbs@.subrange(0, i as int)) + ((old_carry >> 52) as nat
+        seq_u64_as_nat(sum.limbs@.subrange(0, i as int)) + ((old_carry >> 52) as nat
             + a.limbs[i as int] as nat + b.limbs[i as int] as nat) * pow2(52 * i as nat); {
             assert(carry == a.limbs[i as int] + b.limbs[i as int] + (old_carry >> 52));
             assert(sum.limbs[i as int] == carry & mask);
@@ -1936,7 +2161,7 @@ pub proof fn lemma_add_loop_invariant(
             lemma_decompose(carry, mask);
             assert(carry == (carry >> 52) * pow2(52) + sum.limbs[i as int]);
         }
-        seq_u64_to_nat(sum.limbs@.subrange(0, i as int)) + ((carry >> 52) as nat * pow2(52)
+        seq_u64_as_nat(sum.limbs@.subrange(0, i as int)) + ((carry >> 52) as nat * pow2(52)
             + sum.limbs[i as int] as nat) * pow2(52 * i as nat); {
             assert(pow2(52) * pow2(52 * i as nat) == pow2(52 + 52 * i as nat)) by {
                 lemma_pow2_adds(52, 52 * i as nat);
@@ -1957,12 +2182,12 @@ pub proof fn lemma_add_loop_invariant(
                 );
             };
         }
-        seq_u64_to_nat(sum.limbs@.subrange(0, i as int)) + (carry >> 52) as nat * pow2(
+        seq_u64_as_nat(sum.limbs@.subrange(0, i as int)) + (carry >> 52) as nat * pow2(
             52 * (i + 1) as nat,
         ) + sum.limbs[i as int] as nat * pow2(52 * i as nat); {
-            lemma_seq_u64_to_nat_subrange_extend(sum.limbs@, i as int);
+            lemma_seq_u64_as_nat_subrange_extend(sum.limbs@, i as int);
         }
-        seq_u64_to_nat(sum.limbs@.subrange(0, i + 1)) + (carry >> 52) as nat * pow2(
+        seq_u64_as_nat(sum.limbs@.subrange(0, i + 1)) + (carry >> 52) as nat * pow2(
             (52 * (i + 1) as nat),
         );
     }
@@ -1975,49 +2200,49 @@ pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, 
     requires
         limbs_bounded(a),
         limbs_bounded(b),
-        scalar52_to_nat(&a) < group_order(),
-        scalar52_to_nat(&b) < group_order(),
+        scalar52_as_nat(&a) < group_order(),
+        scalar52_as_nat(&b) < group_order(),
         forall|j: int| 0 <= j < 5 ==> sum.limbs[j] < (1u64 << 52),
         (carry >> 52) < 2,
-        seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) + seq_u64_to_nat(
+        seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) + seq_u64_as_nat(
             b.limbs@.subrange(0, 5 as int),
-        ) == seq_u64_to_nat(sum.limbs@.subrange(0, 5 as int)) + (carry >> 52) as nat * pow2(
+        ) == seq_u64_as_nat(sum.limbs@.subrange(0, 5 as int)) + (carry >> 52) as nat * pow2(
             (52 * (5) as nat),
         ),
     ensures
-        scalar52_to_nat(&a) + scalar52_to_nat(&b) == scalar52_to_nat(&sum),
+        scalar52_as_nat(&a) + scalar52_as_nat(&b) == scalar52_as_nat(&sum),
 {
     // First establish the relationship between the different representations
-    assert(seq_u64_to_nat(a.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&a)) by {
+    assert(seq_u64_as_nat(a.limbs@.subrange(0, 5 as int)) == scalar52_as_nat(&a)) by {
         assert(a.limbs@ == a.limbs@.subrange(0, 5 as int));
-        assert(seq_u64_to_nat(a.limbs@) == scalar52_to_nat(&a));
+        assert(seq_u64_as_nat(a.limbs@) == scalar52_as_nat(&a));
     }
-    assert(seq_u64_to_nat(b.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&b)) by {
+    assert(seq_u64_as_nat(b.limbs@.subrange(0, 5 as int)) == scalar52_as_nat(&b)) by {
         assert(b.limbs@ == b.limbs@.subrange(0, 5 as int));
-        assert(seq_u64_to_nat(b.limbs@) == scalar52_to_nat(&b));
+        assert(seq_u64_as_nat(b.limbs@) == scalar52_as_nat(&b));
     }
-    assert(seq_u64_to_nat(sum.limbs@.subrange(0, 5 as int)) == scalar52_to_nat(&sum)) by {
+    assert(seq_u64_as_nat(sum.limbs@.subrange(0, 5 as int)) == scalar52_as_nat(&sum)) by {
         assert(sum.limbs@ == sum.limbs@.subrange(0, 5 as int));
-        assert(seq_u64_to_nat(sum.limbs@) == scalar52_to_nat(&sum));
+        assert(seq_u64_as_nat(sum.limbs@) == scalar52_as_nat(&sum));
     }
 
-    assert(scalar52_to_nat(&a) + scalar52_to_nat(&b) == scalar52_to_nat(&sum) + (carry >> 52)
+    assert(scalar52_as_nat(&a) + scalar52_as_nat(&b) == scalar52_as_nat(&sum) + (carry >> 52)
         * pow2((52 * (5) as nat)));
 
     // From the loop invariant, we have: a + b == sum + (carry >> 52) * 2^260
     assert(52 * 5 == 260) by (compute);
     assert(pow2((52 * 5) as nat) == pow2(260));
-    assert(scalar52_to_nat(&a) + scalar52_to_nat(&b) == scalar52_to_nat(&sum) + (carry >> 52) as nat
+    assert(scalar52_as_nat(&a) + scalar52_as_nat(&b) == scalar52_as_nat(&sum) + (carry >> 52) as nat
         * pow2(260));
 
     // Since a < group_order() and b < group_order(), we have a + b < 2 * group_order()
     // This is just basic arithmetic: if x < A and y < A, then x + y < A + A = 2*A
-    assert(scalar52_to_nat(&a) + scalar52_to_nat(&b) < group_order() + group_order());
+    assert(scalar52_as_nat(&a) + scalar52_as_nat(&b) < group_order() + group_order());
     assert(group_order() + group_order() == 2 * group_order());
-    assert(scalar52_to_nat(&a) + scalar52_to_nat(&b) < 2 * group_order());
+    assert(scalar52_as_nat(&a) + scalar52_as_nat(&b) < 2 * group_order());
 
     // Therefore: sum + (carry >> 52) * 2^260 < 2 * group_order()
-    assert(scalar52_to_nat(&sum) + (carry >> 52) as nat * pow2(260) < 2 * group_order());
+    assert(scalar52_as_nat(&sum) + (carry >> 52) as nat * pow2(260) < 2 * group_order());
 
     // Prove a contradiction if carry is nonzero
     assert((carry >> 52) as nat * pow2(260) < 2 * group_order());
@@ -2033,11 +2258,11 @@ pub proof fn lemma_add_sum_simplify(a: &Scalar52, b: &Scalar52, sum: &Scalar52, 
     lemma_pow2_pos(260);
     assert(pow2(260) > 0);
     assert((carry >> 52) as nat * pow2(260) >= 0);
-    assert(scalar52_to_nat(&sum) <= scalar52_to_nat(&sum) + (carry >> 52) as nat * pow2(260));
-    assert(scalar52_to_nat(&sum) < 2 * group_order());
+    assert(scalar52_as_nat(&sum) <= scalar52_as_nat(&sum) + (carry >> 52) as nat * pow2(260));
+    assert(scalar52_as_nat(&sum) < 2 * group_order());
 }
 
-// NOTE: lemma_bytes32_to_nat_lower_bound has been moved to common_lemmas/to_nat_lemmas.rs
+// NOTE: lemma_u8_32_as_nat_lower_bound has been moved to common_lemmas/to_nat_lemmas.rs
 /// Proof that the group order is less than 2^255
 pub proof fn lemma_group_order_bound()
     ensures
@@ -2082,17 +2307,17 @@ pub proof fn lemma_group_order_bound()
 pub proof fn lemma_scalar52_lt_pow2_256_if_canonical(a: &Scalar52)
     requires
         limbs_bounded(a),
-        scalar52_to_nat(&a) < group_order(),
+        scalar52_as_nat(&a) < group_order(),
     ensures
-        scalar52_to_nat(&a) < pow2(256),
+        scalar52_as_nat(&a) < pow2(256),
 {
     // group_order() < 2^255
     lemma_group_order_bound();
 
-    // Chain: scalar52_to_nat(a) < group_order() < 2^255 < 2^256
+    // Chain: scalar52_as_nat(a) < group_order() < 2^255 < 2^256
     calc! {
         (<)
-        scalar52_to_nat(&a); {  /* from precondition */
+        scalar52_as_nat(&a); {  /* from precondition */
         }
         group_order(); {  /* from lemma_group_order_bound */
         }
@@ -2124,124 +2349,156 @@ pub proof fn lemma_group_order_is_odd()
     assert(group_order() % 2 == 1);
 }
 
-// Proof that (a * R) % group_order() == (b * R) % group_order ==> a % group_order() == b % group_order()
+// =============================================================================
+// Coprime Factor Cancellation Lemmas
+// =============================================================================
+// These lemmas allow canceling a factor from modular congruences when the factor
+// and modulus are coprime (gcd = 1). They are fundamental to Montgomery reduction.
+//
+// General lemma: lemma_cancel_coprime_factor
+// Symmetric specializations:
+//   - lemma_cancel_mul_R_mod_L: cancels R (2^260) from congruences mod L (group_order)
+//   - lemma_cancel_mul_L_mod_R: cancels L (group_order) from congruences mod R (2^260)
+// =============================================================================
+/// General coprime factor cancellation lemma.
+///
+/// If gcd(factor, modulus) = 1 and (a * factor) ≡ (b * factor) (mod modulus),
+/// then a ≡ b (mod modulus).
+///
+/// Proof: Since gcd(factor, modulus) = 1, factor has a multiplicative inverse mod modulus.
+/// Multiply both sides by this inverse to cancel the factor.
+pub proof fn lemma_cancel_coprime_factor(a: nat, b: nat, factor: nat, modulus: nat)
+    requires
+        modulus > 1,
+        spec_gcd(factor % modulus, modulus) == 1,
+        (a * factor) % modulus == (b * factor) % modulus,
+    ensures
+        a % modulus == b % modulus,
+{
+    // Get the modular inverse of factor
+    let inv = spec_mod_inverse(factor, modulus);
+    lemma_mod_inverse_correct(factor, modulus);
+    // Now: (factor * inv) % modulus == 1 and inv < modulus
+
+    // Step 1: Multiply both sides by inv
+    // (inv * a * factor) % modulus == (inv * b * factor) % modulus
+    lemma_mul_factors_congruent_implies_products_congruent(
+        inv as int,
+        (a * factor) as int,
+        (b * factor) as int,
+        modulus as int,
+    );
+    // Now: (inv * (a * factor)) % modulus == (inv * (b * factor)) % modulus
+
+    // Step 2: Regroup using associativity: (a * (inv * factor)) % modulus == (b * (inv * factor)) % modulus
+    assert(inv * (a * factor) == a * (inv * factor)) by {
+        lemma_mul_is_associative(inv as int, a as int, factor as int);
+        lemma_mul_is_commutative(inv as int, a as int);
+        lemma_mul_is_associative(a as int, inv as int, factor as int);
+    }
+
+    assert(inv * (b * factor) == b * (inv * factor)) by {
+        lemma_mul_is_associative(inv as int, b as int, factor as int);
+        lemma_mul_is_commutative(inv as int, b as int);
+        lemma_mul_is_associative(b as int, inv as int, factor as int);
+    }
+
+    // Step 3: Since (inv * factor) % modulus == 1, we have:
+    // (a * (inv * factor)) % modulus == a % modulus
+    lemma_mul_mod_noop_right(a as int, (inv * factor) as int, modulus as int);
+    assert((a * (inv * factor)) % modulus == (a * ((inv * factor) % modulus)) % modulus);
+    assert((inv * factor) % modulus == 1) by {
+        lemma_mul_is_commutative(inv as int, factor as int);
+    };
+    assert((a * 1) == a) by { lemma_mul_basics(a as int) };
+
+    lemma_mul_mod_noop_right(b as int, (inv * factor) as int, modulus as int);
+    assert((b * 1) == b) by { lemma_mul_basics(b as int) };
+
+    // Step 4: Chain: a % modulus == b % modulus
+    assert((a * (inv * factor)) % modulus == (b * (inv * factor)) % modulus);
+    assert(a % modulus == b % modulus);
+}
+
+/// Cancels R (montgomery_radix = 2^260) from congruences mod L (group_order).
+///
+/// If (a * R) % L == (b * R) % L, then a % L == b % L.
+/// This works because gcd(R, L) = 1 (R is a power of 2, L is odd).
+///
+/// Symmetric to `lemma_cancel_mul_L_mod_R`.
+pub proof fn lemma_cancel_mul_R_mod_L(a: nat, b: nat)
+    requires
+        (a * montgomery_radix()) % group_order() == (b * montgomery_radix()) % group_order(),
+    ensures
+        a % group_order() == b % group_order(),
+{
+    let r = montgomery_radix();
+    let l = group_order();
+
+    // Establish L > 1
+    lemma_group_order_bound();
+    assert(l > 1);
+
+    // Establish gcd(R % L, L) == 1
+    // R = 2^260, L is odd, so gcd(R, L) = 1
+    // This requires showing gcd(2^260 % L, L) = 1
+    assert(spec_gcd(r % l, l) == 1) by {
+        // L is odd (has no factor of 2)
+        lemma_group_order_is_odd();
+        // R = 2^260 (only factor is 2)
+        // Therefore gcd(R, L) = 1, and gcd(R % L, L) = gcd(R, L) = 1
+        axiom_gcd_mod_noop(r, l);
+        axiom_gcd_pow2_odd(260, l);
+    };
+
+    lemma_cancel_coprime_factor(a, b, r, l);
+}
+
+/// Cancels L (group_order) from congruences mod R (montgomery_radix = 2^260).
+///
+/// If (a * L) % R == (b * L) % R, then a % R == b % R.
+/// This works because gcd(L, R) = 1 (L is odd, R is a power of 2).
+///
+/// Symmetric to `lemma_cancel_mul_R_mod_L`.
+pub proof fn lemma_cancel_mul_L_mod_R(a: nat, b: nat)
+    requires
+        (a * group_order()) % montgomery_radix() == (b * group_order()) % montgomery_radix(),
+    ensures
+        a % montgomery_radix() == b % montgomery_radix(),
+{
+    let r = montgomery_radix();
+    let l = group_order();
+
+    // Establish R > 1
+    // pow2(260) = 2^260 > 2^1 = 2 > 1
+    lemma_pow2_strictly_increases(1, 260);
+    lemma2_to64();  // proves pow2(1) == 2
+    assert(r > 1);
+
+    // Establish gcd(L % R, R) == 1
+    assert(spec_gcd(l % r, r) == 1) by {
+        lemma_group_order_is_odd();
+        axiom_gcd_mod_noop(l, r);
+        // gcd(L, R) = gcd(L, 2^260) = 1 since L is odd
+        axiom_gcd_symmetric(l, r);
+        axiom_gcd_pow2_odd(260, l);
+        axiom_gcd_symmetric(pow2(260), l);
+    };
+
+    lemma_cancel_coprime_factor(a, b, l, r);
+}
+
+/// Backward-compatible alias for lemma_cancel_mul_R_mod_L.
+///
+/// DEPRECATED: Use lemma_cancel_mul_R_mod_L instead for clarity.
 pub proof fn lemma_cancel_mul_pow2_mod(a: nat, b: nat, r_pow: nat)
     requires
-// r_pow is a power of two, and r_pow and group_order are coprime
-// (montgomery_radix() is 2^260; group_order() is odd)
-
         r_pow == pow2(260),
         (a * r_pow) % group_order() == (b * r_pow) % group_order(),
     ensures
         a % group_order() == b % group_order(),
 {
-    // Constructive proof using inverse-of-2 modulo L.
-    let L = group_order();
-
-    lemma_group_order_is_odd();
-
-    // Define inv2 = (L + 1) / 2
-    let inv2 = (L + 1) / 2;
-
-    // From division: (L + 1) == 2 * ((L + 1) / 2) + (L + 1) % 2
-    lemma_fundamental_div_mod((L + 1) as int, 2);
-    // Since L is odd, (L + 1) % 2 == 0, so 2 * inv2 == L + 1
-    assert(2 * inv2 == L + 1);
-
-    // inv_pow = inv2^260
-    let inv_pow = pow(inv2 as int, 260);
-
-    // Multiply given congruence (a * r_pow) ≡ (b * r_pow) (mod L) by inv_pow
-    lemma_mul_factors_congruent_implies_products_congruent(
-        inv_pow as int,
-        (a * r_pow) as int,
-        (b * r_pow) as int,
-        L as int,
-    );
-
-    // So (inv_pow * a * r_pow) % L == (inv_pow * b * r_pow) % L.
-    // Show that (inv_pow * r_pow) % L == 1.
-
-    // First, (inv2 * 2) % L == 1
-    assert((inv2 * 2) % L == 1) by {
-        // we already have 2 * inv2 == L + 1
-        assert(2 * inv2 == L + 1);
-
-        // rewrite to (L + 1) % L
-        assert((2 * inv2) % L == (L + 1) % L);
-
-        // show group_order() > 1
-        // pow2(252) == 2 * pow2(251)
-        lemma_pow2_adds(1, 251);
-        assert(pow2(1) == 2) by { lemma2_to64() };
-        assert(pow2(252) == 2 * pow2(251));
-
-        // pow2(251) > 0  ==> pow2(252) >= 2
-        lemma_pow2_pos(251);
-        assert(pow2(251) > 0);
-        // since pow2(252) == 2 * pow2(251) and pow2(251) >= 1, pow2(252) >= 2
-        assert(pow2(252) >= 2);
-
-        // group_order() = pow2(252) + C, so group_order() >= pow2(252) >= 2
-        // (use compute / definition unfolding if needed)
-        assert(group_order() >= pow2(252));
-        assert(group_order() >= 2);
-        assert(group_order() > 1);
-
-        // Now L + 1 == L * 1 + 1 and 0 <= 1 < L, so remainder of (L+1) mod L is 1.
-        assert(L + 1 == L * 1 + 1);
-        assert(0 <= 1 && 1 < L);
-
-        // Use the converse lemma: if x == q * d + r and 0 <= r < d then r == x % d
-        lemma_fundamental_div_mod_converse((L + 1) as int, L as int, 1, 1);
-
-        assert((L + 1) % L == 1);
-    }
-
-    // pow((inv2 * 2), 260) % L == 1
-    lemma_pow_mod_one((inv2 * 2) as int, 260, L as int);
-
-    // pow(inv2 * 2, 260) == pow(inv2,260) * pow(2,260)
-    lemma_pow_distributes(inv2 as int, 2int, 260);
-
-    // Using the above, (pow(inv2,260) * pow(2,260)) % L == 1
-    // Note r_pow == pow2(260) == pow(2,260)
-
-    // Let c = inv_pow * r_pow
-    let c = (inv_pow * r_pow) as int;
-
-    // c % L == 1
-    assert(c % (L as int) == 1) by {
-        // pow(inv2,260) * pow(2,260) is congruent to 1
-        assert(pow(inv2 as int, 260) * pow(2 as int, 260) == pow((inv2 * 2) as int, 260));
-        assert((pow(inv2 as int, 260) * pow(2 as int, 260)) % (L as int) == 1);
-        assert(pow(2int, 260) == (pow2(260) as int)) by { lemma_pow2(260) };
-    }
-
-    assert(1int < L);
-    assert(1int % (L as int) == 1) by { lemma_small_mod(1nat, L) };
-
-    // (a * r_pow) % L = (b * r_pow) % L
-    lemma_mul_factors_congruent_implies_products_congruent(
-        inv_pow,
-        (a * r_pow) as int,
-        (b * r_pow) as int,
-        L as int,
-    );
-
-    assert(((a * r_pow) * inv_pow) % (L as int) == ((b * r_pow) * inv_pow) % (L as int));
-    assert(((a * r_pow) * inv_pow) % (L as int) == (a * (r_pow * inv_pow)) % (L as int)) by {
-        lemma_mul_is_associative(a as int, r_pow as int, inv_pow as int)
-    };
-
-    assert(((b * r_pow) * inv_pow) % (L as int) == (b * (r_pow * inv_pow)) % (L as int)) by {
-        lemma_mul_is_associative(b as int, r_pow as int, inv_pow as int)
-    };
-    // assert((a * (r_pow * inv_pow)) % (L as int) == (b * (r_pow * inv_pow)) % (L as int));
-
-    lemma_mul_factors_congruent_implies_products_congruent(a as int, c, 1, L as int);
-    lemma_mul_factors_congruent_implies_products_congruent(b as int, c, 1, L as int);
-
+    lemma_cancel_mul_R_mod_L(a, b);
 }
 
 // Proof that a % m == b % m ==> (c * a) % m == (c * b) % m
@@ -2306,36 +2563,36 @@ pub proof fn lemma_is_canonical_correctness(self_bytes: &[u8; 32], reduced_bytes
     requires
 // reduced is canonical
 
-        bytes32_to_nat(reduced_bytes) < group_order(),
+        u8_32_as_nat(reduced_bytes) < group_order(),
         // reduced has the same value mod group_order as self
-        bytes32_to_nat(reduced_bytes) % group_order() == bytes32_to_nat(self_bytes) % group_order(),
+        u8_32_as_nat(reduced_bytes) % group_order() == u8_32_as_nat(self_bytes) % group_order(),
     ensures
 // Bytes are equal iff self is canonical
 
-        (self_bytes == reduced_bytes) == (bytes32_to_nat(self_bytes) < group_order()),
+        (self_bytes == reduced_bytes) == (u8_32_as_nat(self_bytes) < group_order()),
 {
     if self_bytes == reduced_bytes {
         // Case 1: Bytes are equal
         // Then nat values are equal and self is canonical
-        assert(bytes32_to_nat(self_bytes) == bytes32_to_nat(reduced_bytes));
-        assert(bytes32_to_nat(self_bytes) < group_order());
+        assert(u8_32_as_nat(self_bytes) == u8_32_as_nat(reduced_bytes));
+        assert(u8_32_as_nat(self_bytes) < group_order());
     } else {
         // Case 2: Bytes differ
         // Step 1: Different bytes imply different nat values (by injectivity)
-        assert(bytes32_to_nat(reduced_bytes) != bytes32_to_nat(self_bytes)) by {
-            if bytes32_to_nat(reduced_bytes) == bytes32_to_nat(self_bytes) {
+        assert(u8_32_as_nat(reduced_bytes) != u8_32_as_nat(self_bytes)) by {
+            if u8_32_as_nat(reduced_bytes) == u8_32_as_nat(self_bytes) {
                 lemma_canonical_bytes_equal(reduced_bytes, self_bytes);
                 assert(reduced_bytes =~= self_bytes);  // contradiction
             }
         }
 
         // Step 2: Canonical value equals itself mod group_order
-        assert(bytes32_to_nat(reduced_bytes) == bytes32_to_nat(reduced_bytes) % group_order()) by {
+        assert(u8_32_as_nat(reduced_bytes) == u8_32_as_nat(reduced_bytes) % group_order()) by {
             lemma_fundamental_div_mod_converse_mod(
-                bytes32_to_nat(reduced_bytes) as int,
+                u8_32_as_nat(reduced_bytes) as int,
                 group_order() as int,
                 0int,
-                bytes32_to_nat(reduced_bytes) as int,
+                u8_32_as_nat(reduced_bytes) as int,
             );
         }
 
@@ -2343,14 +2600,13 @@ pub proof fn lemma_is_canonical_correctness(self_bytes: &[u8; 32], reduced_bytes
         // reduced == reduced % L (Step 2) and reduced % L == self % L (requires)
         // implies reduced == self % L, but reduced != self (Step 1)
         // therefore self % L != self
-        assert(bytes32_to_nat(self_bytes) % group_order() != bytes32_to_nat(self_bytes));
+        assert(u8_32_as_nat(self_bytes) % group_order() != u8_32_as_nat(self_bytes));
 
         // Step 4: By contradiction - if self_bytes < group_order, it would equal itself mod group_order
-        assert(!(bytes32_to_nat(self_bytes) < group_order())) by {
-            if bytes32_to_nat(self_bytes) < group_order() {
-                assert(bytes32_to_nat(self_bytes) % group_order() == bytes32_to_nat(self_bytes))
-                    by {
-                    lemma_small_mod(bytes32_to_nat(self_bytes), group_order());
+        assert(!(u8_32_as_nat(self_bytes) < group_order())) by {
+            if u8_32_as_nat(self_bytes) < group_order() {
+                assert(u8_32_as_nat(self_bytes) % group_order() == u8_32_as_nat(self_bytes)) by {
+                    lemma_small_mod(u8_32_as_nat(self_bytes), group_order());
                 }
             }
         }
@@ -2436,22 +2692,22 @@ pub proof fn lemma_square_multiply_step(new_y: nat, y_before: nat, y0: nat, R: n
     }
 }
 
-/// If bytes32_to_nat(bytes) < group_order(), then bytes[31] <= 127 (high bit is clear)
+/// If u8_32_as_nat(bytes) < group_order(), then bytes[31] <= 127 (high bit is clear)
 pub proof fn lemma_canonical_bytes_high_bit_clear(bytes: &[u8; 32])
     requires
-        bytes32_to_nat(bytes) < group_order(),
+        u8_32_as_nat(bytes) < group_order(),
     ensures
         bytes[31] <= 127,
 {
     lemma_group_order_bound();
-    // bytes32_to_nat < group_order < 2^255
+    // u8_32_as_nat < group_order < 2^255
     if bytes[31] >= 128 {
-        // bytes32_to_nat >= bytes[31] * 2^248 >= 128 * 2^248 = 2^255
-        lemma_bytes32_to_nat_lower_bound(bytes, 31);
+        // u8_32_as_nat >= bytes[31] * 2^248 >= 128 * 2^248 = 2^255
+        lemma_u8_32_as_nat_lower_bound(bytes, 31);
         lemma_pow2_adds(7, 248);
         lemma2_to64();
         lemma_mul_inequality(128, bytes[31] as int, pow2(248) as int);
-        // contradiction: bytes32_to_nat >= 2^255 > group_order
+        // contradiction: u8_32_as_nat >= 2^255 > group_order
     }
 }
 
@@ -2462,17 +2718,17 @@ pub proof fn lemma_zero_bounded(z: Scalar52)
         z == (Scalar52 { limbs: [0, 0, 0, 0, 0] }),
     ensures
         limbs_bounded(&z),
-        scalar52_to_nat(&z) == 0,
+        scalar52_as_nat(&z) == 0,
 {
     assert(0u64 < (1u64 << 52)) by (bit_vector);
 
-    // Prove scalar52_to_nat is 0 for all-zero limbs
+    // Prove scalar52_as_nat is 0 for all-zero limbs
     let seq = z.limbs@.map(|i, x| x as nat);
     assert(seq =~= seq![0nat, 0nat, 0nat, 0nat, 0nat]);
 
-    reveal_with_fuel(seq_to_nat_52, 6);
-    assert(seq_to_nat_52(seq) == 0);
-    assert(scalar52_to_nat(&z) == 0);
+    reveal_with_fuel(seq_as_nat_52, 6);
+    assert(seq_as_nat_52(seq) == 0);
+    assert(scalar52_as_nat(&z) == 0);
 }
 
 /// Helper lemma: -(L*q + r) % L == (-r) % L

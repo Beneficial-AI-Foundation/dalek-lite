@@ -32,6 +32,7 @@ use crate::specs::scalar_specs::*;
 #[allow(unused_imports)]
 use crate::specs::window_specs::*;
 
+use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 verus! {
@@ -44,14 +45,17 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
 // Input point must be well-formed
 
         is_well_formed_edwards_point(*A),
+        // Scalars must be canonical (< 2^255) for NAF computation
+        scalar_as_nat(a) < pow2(255),
+        scalar_as_nat(b) < pow2(255),
     ensures
 // Result is a well-formed Edwards point
 
         is_well_formed_edwards_point(out),
         // Functional correctness: out = a*A + b*B where B is the Ed25519 basepoint
         edwards_point_as_affine(out) == {
-            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_to_nat(a));
-            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_to_nat(b));
+            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_as_nat(a));
+            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_as_nat(b));
             edwards_add(aA.0, aA.1, bB.0, bB.1)
         },
 {
@@ -133,8 +137,8 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         // PROOF BYPASS: postconditions
         assume(is_well_formed_edwards_point(result));
         assume(edwards_point_as_affine(result) == {
-            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_to_nat(a));
-            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_to_nat(b));
+            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_as_nat(a));
+            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_as_nat(b));
             edwards_add(aA.0, aA.1, bB.0, bB.1)
         });
     }

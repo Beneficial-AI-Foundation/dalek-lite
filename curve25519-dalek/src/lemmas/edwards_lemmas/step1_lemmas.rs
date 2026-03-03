@@ -16,7 +16,7 @@
 //! ## Key Properties Proven
 //!
 //! 1. **Curve equation correctness**: If x² = (y² - 1)/(d·y² + 1), then (x, y) is on the curve
-//! 2. **Validity correspondence**: sqrt_ratio_i success ↔ math_is_valid_y_coordinate
+//! 2. **Validity correspondence**: sqrt_ratio_i success ↔ is_valid_edwards_y_coordinate
 //! 3. **Edge cases**: u = 0 implies identity point, failure implies invalid Y
 #![allow(unused_imports)]
 use crate::backend::serial::u64::constants;
@@ -46,17 +46,17 @@ verus! {
 pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
     requires
         ({
-            let d = spec_field_element(&EDWARDS_D);
-            let y2 = math_field_square(y);
-            let u = math_field_sub(y2, 1);
-            let v = math_field_add(math_field_mul(d, y2), 1);
-            v != 0 && math_field_mul(math_field_square(x), v) == u
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            let y2 = field_square(y);
+            let u = field_sub(y2, 1);
+            let v = field_add(field_mul(d, y2), 1);
+            v != 0 && field_mul(field_square(x), v) == u
         }),
     ensures
-        math_on_edwards_curve(x, y),
+        is_on_edwards_curve(x, y),
 {
     // =======================================================================
-    // Goal: math_on_edwards_curve(x, y), i.e., y² - x² = 1 + d·x²·y²
+    // Goal: is_on_edwards_curve(x, y), i.e., y² - x² = 1 + d·x²·y²
     //
     // Mathematical Proof:
     //   Given: x² · v = u, where u = y² - 1, v = d·y² + 1
@@ -68,24 +68,24 @@ pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
     //   This is the curve equation: -x² + y² = 1 + d·x²·y²  ✓
     // =======================================================================
     let p = p();
-    let d = spec_field_element(&EDWARDS_D);
-    let x2 = math_field_square(x);
-    let y2 = math_field_square(y);
-    let dy2 = math_field_mul(d, y2);
-    let u = math_field_sub(y2, 1);
-    let v = math_field_add(dy2, 1);
-    let x2y2 = math_field_mul(x2, y2);
-    let d_x2y2 = math_field_mul(d, x2y2);
-    let x2_dy2 = math_field_mul(x2, dy2);
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let x2 = field_square(x);
+    let y2 = field_square(y);
+    let dy2 = field_mul(d, y2);
+    let u = field_sub(y2, 1);
+    let v = field_add(dy2, 1);
+    let x2y2 = field_mul(x2, y2);
+    let d_x2y2 = field_mul(d, x2y2);
+    let x2_dy2 = field_mul(x2, dy2);
 
     p_gt_2();
 
-    assert(math_on_edwards_curve(x, y)) by {
+    assert(is_on_edwards_curve(x, y)) by {
         // Step 1: From precondition x² · v = u
-        assert(math_field_mul(x2, v) == u);
+        assert(field_mul(x2, v) == u);
 
         // Step 2: Distributivity - x² · (d·y² + 1) = x²·d·y² + x²
-        assert(math_field_add(x2_dy2, x2) == u) by {
+        assert(field_add(x2_dy2, x2) == u) by {
             lemma_field_mul_distributes_over_add(x2, dy2, 1);
             lemma_small_mod(x2, p);
         };
@@ -102,8 +102,8 @@ pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
         };
 
         // Step 4: Rearrange d·x²·y² + x² = y² - 1 to d·x²·y² + 1 = y² - x²
-        assert(math_field_add(d_x2y2, 1) == math_field_sub(y2, x2)) by {
-            assert(math_field_add(d_x2y2, x2) == u);
+        assert(field_add(d_x2y2, 1) == field_sub(y2, x2)) by {
+            assert(field_add(d_x2y2, x2) == u);
             assert(d_x2y2 < p && x2 < p && y2 < p) by {
                 lemma_mod_bound((d * x2y2) as int, p as int);
                 lemma_mod_bound((x * x) as int, p as int);
@@ -113,7 +113,7 @@ pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
         };
 
         // Step 5: Commutativity of addition - 1 + d·x²·y² = d·x²·y² + 1
-        assert(math_field_add(1, d_x2y2) == math_field_sub(y2, x2)) by {
+        assert(field_add(1, d_x2y2) == field_sub(y2, x2)) by {
             lemma_add_mod_noop(1, d_x2y2 as int, p as int);
             lemma_add_mod_noop(d_x2y2 as int, 1, p as int);
         };
@@ -123,23 +123,23 @@ pub proof fn lemma_sqrt_ratio_implies_on_curve(x: nat, y: nat)
 // =============================================================================
 // Y-Coordinate Validity Lemmas
 // =============================================================================
-/// Lemma: Connects sqrt_ratio_i success to math_is_valid_y_coordinate
+/// Lemma: Connects sqrt_ratio_i success to is_valid_edwards_y_coordinate
 ///
 /// When sqrt_ratio_i returns (true, r), it means u/v is a square,
-/// which is exactly what math_is_valid_y_coordinate checks.
+/// which is exactly what is_valid_edwards_y_coordinate checks.
 pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, r: nat)
     requires
         ({
-            let d = spec_field_element(&EDWARDS_D);
-            let y2 = math_field_square(y);
-            let v = math_field_add(math_field_mul(d, y2), 1);
-            let u = math_field_sub(y2, 1);
-            v != 0 && math_field_mul(math_field_square(r), v) == u % p()
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            let y2 = field_square(y);
+            let v = field_add(field_mul(d, y2), 1);
+            let u = field_sub(y2, 1);
+            v != 0 && field_mul(field_square(r), v) == u % p()
         }),
     ensures
-        math_is_valid_y_coordinate(y),
+        is_valid_edwards_y_coordinate(y),
 {
-    // Goal: math_is_valid_y_coordinate(y)
+    // Goal: is_valid_edwards_y_coordinate(y)
     //
     // The spec has three cases:
     //   1. u % p == 0 → true
@@ -147,10 +147,10 @@ pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, r: nat)
     //   3. ∃ r < p: r² · v = u → true (we have witness r)
     p_gt_2();
     let p = p();
-    let d = spec_field_element(&EDWARDS_D);
-    let y2 = math_field_square(y);
-    let u = math_field_sub(y2, 1);
-    let v = math_field_add(math_field_mul(d, y2), 1);
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let y2 = field_square(y);
+    let u = field_sub(y2, 1);
+    let v = field_add(field_mul(d, y2), 1);
 
     // Show u < p and v < p (field operations return reduced values)
     assert(u < p) by {
@@ -176,17 +176,17 @@ pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, r: nat)
 
     // r'² = r² (squaring absorbs mod p)
     lemma_square_mod_noop(r);
-    assert(math_field_square(r_prime) == math_field_square(r));
+    assert(field_square(r_prime) == field_square(r));
 
     // r'² · v = u (connecting to the existential)
-    assert(math_field_mul(math_field_square(r_prime), v) == u % p);
+    assert(field_mul(field_square(r_prime), v) == u % p);
 
     // Now trigger the spec's existential
-    assert(math_is_valid_y_coordinate(y)) by {
+    assert(is_valid_edwards_y_coordinate(y)) by {
         if u % p != 0 {
             // In the else branch - need existential witness
             assert(r_prime < p);
-            assert(math_field_mul(math_field_square(r_prime), v) == u % p);
+            assert(field_mul(field_square(r_prime), v) == u % p);
         }
     };
 }
@@ -194,46 +194,46 @@ pub proof fn lemma_sqrt_ratio_success_means_valid_y(y: nat, r: nat)
 /// Connect sqrt_ratio_i result to curve semantics
 ///
 /// When sqrt_ratio_i succeeds with v ≠ 0, we can prove:
-/// - math_is_valid_y_coordinate(y)
-/// - math_on_edwards_curve(x, y)
+/// - is_valid_edwards_y_coordinate(y)
+/// - is_on_edwards_curve(x, y)
 pub proof fn lemma_step1_curve_semantics(
-    y: nat,  // spec_field_element(&Y)
-    x: nat,  // spec_field_element(&X) from sqrt_ratio_i
+    y: nat,  // fe51_as_canonical_nat(&Y)
+    x: nat,  // fe51_as_canonical_nat(&X) from sqrt_ratio_i
 )
     requires
         ({
-            let d = spec_field_element(&EDWARDS_D);
-            let y2 = math_field_square(y);
-            let u = math_field_sub(y2, 1);
-            let v = math_field_add(math_field_mul(d, y2), 1);
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            let y2 = field_square(y);
+            let u = field_sub(y2, 1);
+            let v = field_add(field_mul(d, y2), 1);
             // sqrt_ratio_i succeeded: x² · v = u (mod p)
-            v != 0 && math_field_mul(math_field_square(x), v) == u % p()
+            v != 0 && field_mul(field_square(x), v) == u % p()
         }),
     ensures
-        math_is_valid_y_coordinate(y),
-        math_on_edwards_curve(x, y),
+        is_valid_edwards_y_coordinate(y),
+        is_on_edwards_curve(x, y),
 {
     p_gt_2();
-    let d = spec_field_element(&EDWARDS_D);
-    let y2 = math_field_square(y);
-    let u_math = math_field_sub(y2, 1);
-    let v_math = math_field_add(math_field_mul(d, y2), 1);
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let y2 = field_square(y);
+    let u_math = field_sub(y2, 1);
+    let v_math = field_add(field_mul(d, y2), 1);
 
-    // Goal 1: math_is_valid_y_coordinate(y)
+    // Goal 1: is_valid_edwards_y_coordinate(y)
     // From precondition: x²·v = u (mod p), so x is witness for valid Y
-    assert(math_is_valid_y_coordinate(y)) by {
+    assert(is_valid_edwards_y_coordinate(y)) by {
         lemma_sqrt_ratio_success_means_valid_y(y, x);
     };
 
-    // Goal 2: math_on_edwards_curve(x, y)
+    // Goal 2: is_on_edwards_curve(x, y)
     //
     // Mathematical reasoning:
     //   Precondition gives: x²·v == u % p
     //   lemma_sqrt_ratio_implies_on_curve requires: x²·v == u (not u % p)
-    //   Bridge: Since u_math = math_field_sub(...) < p, we have u % p = u
+    //   Bridge: Since u_math = field_sub(...) < p, we have u % p = u
 
-    assert(math_on_edwards_curve(x, y)) by {
-        // Step 1: u_math < p (math_field_sub returns reduced result)
+    assert(is_on_edwards_curve(x, y)) by {
+        // Step 1: u_math < p (field_sub returns reduced result)
         assert(u_math < p()) by {
             lemma_mod_bound((((y2 % p()) + p()) - (1nat % p())) as int, p() as int);
         };
@@ -244,7 +244,7 @@ pub proof fn lemma_step1_curve_semantics(
         };
 
         // Step 3: Transform precondition x²·v == u % p to x²·v == u
-        assert(math_field_mul(math_field_square(x), v_math) == u_math);
+        assert(field_mul(field_square(x), v_math) == u_math);
 
         // Step 4: Apply curve equation derivation
         lemma_sqrt_ratio_implies_on_curve(x, y);
@@ -254,33 +254,33 @@ pub proof fn lemma_step1_curve_semantics(
 // =============================================================================
 // Edge Case Lemmas for step_1
 // =============================================================================
-// Note: lemma_square_matches_math_field_square is in field_lemmas/field_algebra_lemmas.rs.
+// Note: lemma_square_matches_field_square is in field_lemmas/field_algebra_lemmas.rs.
 /// When y² = 1 in decompress, (0, y) is on the Edwards curve.
 /// This is the edge case where y = ±1 (identity-related points).
 pub proof fn lemma_u_zero_implies_identity_point(y: nat)
     requires
-        math_field_sub(math_field_square(y), 1) == 0,
+        field_sub(field_square(y), 1) == 0,
     ensures
-        math_field_square(y) == 1,
-        math_on_edwards_curve(0, y),
-        math_is_valid_y_coordinate(y),
+        field_square(y) == 1,
+        is_on_edwards_curve(0, y),
+        is_valid_edwards_y_coordinate(y),
 {
     let p = p();
     p_gt_2();
 
-    let y2 = math_field_square(y);
+    let y2 = field_square(y);
 
     // Step 1: Prove y² = 1
     //
-    // Given: math_field_sub(y², 1) = 0
-    // Expanding: math_field_sub(y2, 1) = (y2 + p - 1) % p  [since y2, 1 < p]
+    // Given: field_sub(y², 1) = 0
+    // Expanding: field_sub(y2, 1) = (y2 + p - 1) % p  [since y2, 1 < p]
     //
-    // Since math_field_sub(y2, 1) = 0, we have (y2 + p - 1) % p = 0, so y2 + p - 1 is a multiple of p.
+    // Since field_sub(y2, 1) = 0, we have (y2 + p - 1) % p = 0, so y2 + p - 1 is a multiple of p.
     // Range: y2 ∈ [0, p) implies y2 + p - 1 ∈ [p-1, 2p-1)
     // The only multiple of p in [p-1, 2p-1) is p itself.
     // Therefore y2 + p - 1 = p, giving y2 = 1.
     //
-    // Case analysis below rules out y2 = 0 and y2 >= 2 by showing they give math_field_sub(y2, 1) ≠ 0.
+    // Case analysis below rules out y2 = 0 and y2 >= 2 by showing they give field_sub(y2, 1) ≠ 0.
     assert(y2 == 1) by {
         // Establish bounds
         assert(y2 < p) by {
@@ -305,7 +305,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
             assert(sum % p as int == (p - 1) as int) by {
                 lemma_small_mod((p - 1) as nat, p);
             };
-            // This contradicts math_field_sub(y2, 1) = 0
+            // This contradicts field_sub(y2, 1) = 0
         } else if y2 >= 2 {
             // sum = y2 + p - 1 >= p + 1
             assert(sum >= p as int + 1);
@@ -314,7 +314,7 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
                 lemma_small_mod((y2 - 1) as nat, p);
                 lemma_mod_multiples_vanish(-1, sum, p as int);
             };
-            // y2 - 1 >= 1 ≠ 0, contradicts math_field_sub(y2, 1) = 0
+            // y2 - 1 >= 1 ≠ 0, contradicts field_sub(y2, 1) = 0
         }
         // The only remaining case is y2 == 1
 
@@ -323,14 +323,14 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
     // Step 2: Prove (0, y) is on the curve
     // Curve equation: -x² + y² = 1 + d·x²·y²
     // With x = 0 and y² = 1: both sides equal 1
-    assert(math_on_edwards_curve(0, y)) by {
+    assert(is_on_edwards_curve(0, y)) by {
         lemma_small_mod(0, p);
         lemma_small_mod(1, p);
 
-        let d = spec_field_element(&EDWARDS_D);
-        let x2 = math_field_square(0);
-        let x2y2 = math_field_mul(x2, y2);
-        let d_x2y2 = math_field_mul(d, x2y2);
+        let d = fe51_as_canonical_nat(&EDWARDS_D);
+        let x2 = field_square(0);
+        let x2y2 = field_mul(x2, y2);
+        let d_x2y2 = field_mul(d, x2y2);
 
         // x2 = (0 * 0) % p = 0
         assert(x2 == 0) by {
@@ -356,19 +356,19 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
             lemma_small_mod(0nat, p);
         }
 
-        // RHS: math_field_add(1, 0) = (1 + 0) % p = 1
-        assert(math_field_add(1, d_x2y2) == 1) by {
+        // RHS: field_add(1, 0) = (1 + 0) % p = 1
+        assert(field_add(1, d_x2y2) == 1) by {
             assert(d_x2y2 == 0);
             lemma_small_mod(1nat, p);
         }
 
         // LHS: y² - 0 = y² = 1
-        // math_field_sub(y2, x2) = (((y2 % p) + p) - (x2 % p)) % p
+        // field_sub(y2, x2) = (((y2 % p) + p) - (x2 % p)) % p
         // = ((1 + p) - 0) % p = (p + 1) % p = 1
-        assert(math_field_sub(y2, x2) == 1) by {
+        assert(field_sub(y2, x2) == 1) by {
             assert(x2 == 0);
             assert(y2 == 1);
-            // math_field_sub(1, 0) = (((1 % p) + p) - (0 % p)) % p
+            // field_sub(1, 0) = (((1 % p) + p) - (0 % p)) % p
             //                      = ((1 + p) - 0) % p
             //                      = (p + 1) % p = 1
             assert(1nat % p == 1) by {
@@ -388,11 +388,11 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
         // LHS == RHS == 1, so curve equation holds
     };
 
-    // Step 3: Prove math_is_valid_y_coordinate(y)
+    // Step 3: Prove is_valid_edwards_y_coordinate(y)
     // From the spec: when u % p == 0, it returns true directly
-    assert(math_is_valid_y_coordinate(y)) by {
+    assert(is_valid_edwards_y_coordinate(y)) by {
         lemma_small_mod(0, p);
-        // By definition of math_is_valid_y_coordinate, when u % p == 0, it's true
+        // By definition of is_valid_edwards_y_coordinate, when u % p == 0, it's true
     };
 }
 
@@ -401,49 +401,49 @@ pub proof fn lemma_u_zero_implies_identity_point(y: nat)
 /// This follows from lemma_no_square_root_when_times_i:
 /// - sqrt_ratio_i failing means it found x with x²·v = i·u (from precondition)
 /// - By lemma_no_square_root_when_times_i, no r exists with r²·v = u or -u
-/// - Therefore math_is_valid_y_coordinate (which asks if such r exists) is false
+/// - Therefore is_valid_edwards_y_coordinate (which asks if such r exists) is false
 ///
 /// ## Precondition about exists|x|
 /// The caller must establish that there exists x with x²·v = i·u.
-/// This comes from sqrt_ratio_i's postcondition `is_sqrt_ratio_times_i` when it fails.
+/// This comes from sqrt_ratio_i's postcondition `fe51_is_sqrt_ratio_times_i` when it fails.
 pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
     requires
         ({
-            let d = spec_field_element(&EDWARDS_D);
-            let y2 = math_field_square(y);
-            u == math_field_sub(y2, 1) && v == math_field_add(math_field_mul(d, y2), 1)
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            let y2 = field_square(y);
+            u == field_sub(y2, 1) && v == field_add(field_mul(d, y2), 1)
         }),
         v % p() != 0,
         u % p() != 0,
         // There exists x such that x²·v = i·u (comes from sqrt_ratio_i failure)
-        exists|x: nat|
-            x < p() && #[trigger] math_field_mul(math_field_square(x), v) == (spec_sqrt_m1() * u)
-                % p(),
+        exists|x: nat| x < p() && #[trigger] field_mul(field_square(x), v) == (sqrt_m1() * u) % p(),
     ensures
-        !math_is_valid_y_coordinate(y),
+        !is_valid_edwards_y_coordinate(y),
 {
-    // Goal: !math_is_valid_y_coordinate(y)
+    // Goal: !is_valid_edwards_y_coordinate(y)
     //
-    // math_is_valid_y_coordinate(y) is true iff:
+    // is_valid_edwards_y_coordinate(y) is true iff:
     //   u % p == 0  OR  exists|r| r < p && r²·v == ±u
     //
     // We have from preconditions: u % p != 0 and v % p != 0
     // We'll show: forall r < p. r²·v ≠ ±u (negates the existential)
-    // Therefore math_is_valid_y_coordinate(y) is false.
+    // Therefore is_valid_edwards_y_coordinate(y) is false.
     // Step 1: Get the forall from lemma_no_square_root_when_times_i
     // The lemma now takes r as parameter
     // Note: Must use `assert forall|r|` (not `assert(forall|r|)`) to bind r in the by block
-    // Explicit trigger matches math_is_valid_y_coordinate's trigger
-    assert forall|r: nat| r < p() implies #[trigger] math_field_mul(math_field_square(r), v) != u
-        % p() && math_field_mul(math_field_square(r), v) != math_field_neg(u) by {
+    // Explicit trigger matches is_valid_edwards_y_coordinate's trigger
+    assert forall|r: nat| r < p() implies #[trigger] field_mul(field_square(r), v) != u % p()
+        && field_mul(field_square(r), v) != field_neg(u) by {
         lemma_no_square_root_when_times_i(u, v, r);
     };
 
     // Step 2: Restate as negation of the existential
-    // Explicit trigger matches math_is_valid_y_coordinate's trigger
+    // Explicit trigger matches is_valid_edwards_y_coordinate's trigger
     assert(forall|r: nat|
-        r < p() ==> !(#[trigger] math_field_mul(math_field_square(r), v) == u % p()
-            || math_field_mul(math_field_square(r), v) == math_field_neg(u)));
+        r < p() ==> !(#[trigger] field_mul(field_square(r), v) == u % p() || field_mul(
+            field_square(r),
+            v,
+        ) == field_neg(u)));
 }
 
 /// Main lemma for step_1: proves curve semantics from sqrt_ratio_i result.
@@ -457,8 +457,8 @@ pub proof fn lemma_sqrt_ratio_failure_means_invalid_y(y: nat, u: nat, v: nat)
 /// - `sqrt_ratio_succeeded`: The choice result from sqrt_ratio_i (as bool)
 ///
 /// ## Proves
-/// - sqrt_ratio_succeeded <==> math_is_valid_y_coordinate(y)
-/// - sqrt_ratio_succeeded ==> math_on_edwards_curve(x, y)
+/// - sqrt_ratio_succeeded <==> is_valid_edwards_y_coordinate(y)
+/// - sqrt_ratio_succeeded ==> is_on_edwards_curve(x, y)
 pub proof fn lemma_step1_case_analysis(
     y: nat,
     x: nat,
@@ -470,37 +470,41 @@ pub proof fn lemma_step1_case_analysis(
 // u = Y² - 1, v = d·Y² + 1
 
         ({
-            let d = spec_field_element(&EDWARDS_D);
-            let y2 = math_field_square(y);
-            u_math == math_field_sub(y2, 1) && v_math == math_field_add(math_field_mul(d, y2), 1)
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            let y2 = field_square(y);
+            u_math == field_sub(y2, 1) && v_math == field_add(field_mul(d, y2), 1)
         }),
         // sqrt_ratio_i postconditions (encapsulated in spec function)
         // Includes both math correctness and boundedness (x < p, x % 2 == 0)
-        spec_sqrt_ratio_i_post(u_math, v_math, sqrt_ratio_succeeded, x),
+        sqrt_ratio_i_post(u_math, v_math, sqrt_ratio_succeeded, x),
     ensures
-        sqrt_ratio_succeeded <==> math_is_valid_y_coordinate(y),
-        sqrt_ratio_succeeded ==> math_on_edwards_curve(x, y),
+        sqrt_ratio_succeeded <==> is_valid_edwards_y_coordinate(y),
+        sqrt_ratio_succeeded ==> is_on_edwards_curve(x, y),
 {
     // Case analysis on sqrt_ratio_succeeded (sqrt_ratio_i success/failure)
     if sqrt_ratio_succeeded {
         // Case: sqrt_ratio_i returned true
-        // Goal: math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)
+        // Goal: is_valid_edwards_y_coordinate(y) && is_on_edwards_curve(x, y)
         if v_math != 0 {
             // Subcase: v ≠ 0 (main case)
-            assert(math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)) by {
-                // From precondition: math_is_sqrt_ratio holds
-                assert(math_is_sqrt_ratio(u_math, v_math, x));
-                assert((x * x * v_math) % p() == u_math);
+            assert(is_valid_edwards_y_coordinate(y) && is_on_edwards_curve(x, y)) by {
+                // From precondition: is_sqrt_ratio holds
+                assert(is_sqrt_ratio(u_math, v_math, x));
+                assert((x * x * v_math) % p() == u_math) by {
+                    assert(u_math == field_canonical(u_math)) by {
+                        lemma_small_mod(u_math, p());
+                    }
+                }
 
-                // Convert to math_field_mul form for curve semantics
-                lemma_is_sqrt_ratio_to_math_field(x, u_math, v_math);
+                // Convert to field_mul form for curve semantics
+                lemma_is_sqrt_ratio_to_field(x, u_math, v_math);
 
                 // Apply curve semantics lemma
                 lemma_step1_curve_semantics(y, x);
             };
         } else {
             // Subcase: v = 0 (identity points y = ±1)
-            assert(math_is_valid_y_coordinate(y) && math_on_edwards_curve(x, y)) by {
+            assert(is_valid_edwards_y_coordinate(y) && is_on_edwards_curve(x, y)) by {
                 // By contrapositive: sqrt_ratio_succeeded && v = 0 ==> u = 0
                 assert(u_math == 0);
                 // From precondition: u = 0 ==> x = 0
@@ -511,8 +515,8 @@ pub proof fn lemma_step1_case_analysis(
         }
     } else {
         // Case: sqrt_ratio_i returned false
-        // Goal: !math_is_valid_y_coordinate(y)
-        assert(!math_is_valid_y_coordinate(y)) by {
+        // Goal: !is_valid_edwards_y_coordinate(y)
+        assert(!is_valid_edwards_y_coordinate(y)) by {
             // By contrapositive of (u = 0 ==> sqrt_ratio_succeeded): !sqrt_ratio_succeeded ==> u ≠ 0
             assert(u_math != 0);
             lemma_small_mod(u_math, p());
@@ -520,7 +524,7 @@ pub proof fn lemma_step1_case_analysis(
 
             if v_math % p() == 0 {
                 // Subcase: v = 0 (degenerate)
-                // From math_is_valid_y_coordinate spec: v % p == 0 && u % p != 0 → false
+                // From is_valid_edwards_y_coordinate spec: v % p == 0 && u % p != 0 → false
                 // (inlined from lemma_v_zero_u_nonzero_means_invalid_y)
             } else {
                 // Subcase: v % p ≠ 0, sqrt_ratio_i failed means no square root exists
@@ -534,20 +538,20 @@ pub proof fn lemma_step1_case_analysis(
                 assert(!sqrt_ratio_succeeded);
                 assert(u_math != 0);
 
-                // From precondition: math_is_sqrt_ratio_times_i(u_math, v_math, x)
-                assert(math_is_sqrt_ratio_times_i(u_math, v_math, x));
-                assert((x * x * v_math) % p() == (spec_sqrt_m1() * u_math) % p());
+                // From precondition: is_sqrt_ratio_times_i(u_math, v_math, x)
+                assert(is_sqrt_ratio_times_i(u_math, v_math, x));
+                assert((x * x * v_math) % p() == (sqrt_m1() * u_math) % p());
 
                 // Establish the existential for lemma_sqrt_ratio_failure_means_invalid_y
-                // We need to prove: exists|r: nat| r < p() && math_field_mul(math_field_square(r), v_math) == (spec_sqrt_m1() * u_math) % p()
+                // We need to prove: exists|r: nat| r < p() && field_mul(field_square(r), v_math) == (sqrt_m1() * u_math) % p()
                 // The witness is x, and we know:
                 //   - x < p() (from precondition)
-                //   - (x * x * v_math) % p() == (spec_sqrt_m1() * u_math) % p() (just established)
+                //   - (x * x * v_math) % p() == (sqrt_m1() * u_math) % p() (just established)
 
                 // First show x satisfies the math_field form
-                let x_sq = math_field_square(x);  // = (x * x) % p
-                let lhs = math_field_mul(x_sq, v_math);  // = (x_sq * v_math) % p = ((x*x) % p * v_math) % p
-                let rhs = (spec_sqrt_m1() * u_math) % p();
+                let x_sq = field_square(x);  // = (x * x) % p
+                let lhs = field_mul(x_sq, v_math);  // = (x_sq * v_math) % p = ((x*x) % p * v_math) % p
+                let rhs = (sqrt_m1() * u_math) % p();
 
                 assert(lhs == rhs) by {
                     // lhs = ((x*x) % p * v_math) % p
@@ -557,8 +561,7 @@ pub proof fn lemma_step1_case_analysis(
                 };
 
                 // Now we can assert the existential with x as witness
-                assert(x < p() && math_field_mul(math_field_square(x), v_math) == (spec_sqrt_m1()
-                    * u_math) % p());
+                assert(x < p() && field_mul(field_square(x), v_math) == (sqrt_m1() * u_math) % p());
 
                 lemma_sqrt_ratio_failure_means_invalid_y(y, u_math, v_math);
             }

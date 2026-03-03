@@ -1,0 +1,1168 @@
+---
+name: verus-proof-helper
+description: Help complete Verus proofs for cryptographic functions by following proven patterns, leveraging existing lemmas, and avoiding solver rlimit (e.g., assert-by scoping, explicit triggers, bundled predicates, opaque specs + targeted reveal).
+---
+
+# Verus Proof Helper Skill
+
+## Purpose
+Help complete Verus proofs for cryptographic functions by following proven patterns and leveraging existing lemmas from the codebase.
+
+## When to Use
+- Completing proofs with `admit()` or `assume(...)` statements that need to be replaced with actual proofs
+- Proving properties about byte encodings, field operations, or cryptographic primitives
+- Working on curve25519-dalek or similar verified cryptography codebases
+
+## Workflow
+
+### Phase 1: Understand the Proof Goal
+1. Read the function signature and postconditions to understand what needs to be proven
+2. Identify any `admit()` or `assume(...)` statements that need to be replaced
+3. Look for comments explaining the mathematical reasoning
+4. Check if there are related lemmas that might already exist
+
+### Phase 2: Search for Existing Lemmas
+**Key principle: Never reinvent - always reuse existing lemmas**
+
+Search locations (in priority order):
+1. **Same file** - Look for helper lemmas nearby
+2. **Common lemmas** - Check `lemmas/common_lemmas/`:
+   - `to_nat_lemmas.rs` - Byte/nat conversions, little-endian encoding
+   - `pow_lemmas.rs` - Power of 2 properties, exponent arithmetic
+   - `div_mod_lemmas.rs` - Modular arithmetic
+   - `bit_lemmas.rs` - Bitwise operations
+3. **Domain-specific lemmas** - Check relevant domain folder (field_lemmas, edwards_lemmas, etc.)
+
+Common patterns to search for:
+- `lemma_u8_32_as_nat_*` - For byte array reasoning
+- `lemma_pow2_*` - For power of 2 arithmetic
+- `lemma_mod_*` - For modular arithmetic
+- `lemma_*_bound` - For establishing bounds
+
+### Phase 3: Where to Put New Helper Lemmas
+**Place lemmas in the right module so they stay reusable and avoid circular deps.**
+
+- **Generality determines placement.** Put a lemma in the most general module whose concepts it uses. A lemma about `edwards_add`/`edwards_scalar_mul`/`edwards_double` (abstract group ops) belongs in `curve_equation_lemmas.rs`. A lemma about `straus_column_sum` or `straus_ct_partial` belongs in `straus_lemmas.rs`.
+- **No upward imports.** Algorithm-specific modules (straus, pippenger) import from general modules (curve_equation, field_algebra), never the reverse. If you need a lemma from straus in curve_equation, it’s in the wrong place.
+- **Co-locate specs with their lemmas.** Spec functions specific to an algorithm (e.g. `straus_column_sum`, `straus_ct_partial`) belong in that algorithm’s lemma file, not in generic spec modules like `edwards_specs.rs` or `scalar_specs.rs`.
+- **Prefer inlining over thin wrappers.** If a lemma’s proof is a single call to another lemma, inline it at the call site instead. Only create a wrapper when it scopes Z3 facts (prevents rlimit issues) or is called from 3+ sites.
+- **Lemmas for non-opaque specs are often redundant.** If a spec is not `#[verifier::opaque]`, Z3 unfolds it automatically. Lemmas with empty proof bodies that just restate the definition can usually be removed. But lemmas for `#[verifier::opaque]` specs (step/base cases) are essential.
+- **Targeted postconditions matter for rlimit.** A lemma like `lemma_foo(x) ensures result < p()` is not the same as inlining `p_gt_2()` at the call site, even if mathematically equivalent. The lemma scopes what Z3 learns; the raw fact may leak and cause rlimit issues elsewhere.
+- **Lemmas used across modules must be `pub proof fn`.**
+
+### Phase 4: Incremental Proof Development
+**Use the "moving assume(false)" technique:**
+
+1. Start with structure, add `assume(false)` at key points:
+   ```rust
+   proof fn my_lemma() {
+       // Step 1: Establish context
+       lemma_setup();
+       assume(false);
+
+       // Step 2: Main proof
+       assert(intermediate_fact);
+       assume(false);
+
+       // Step 3: Conclusion
+       assert(final_result);
+   }
+   ```
+
+2. Verify after each step to ensure structure is sound
+3. Replace `assume(false)` one at a time, verifying after each replacement
+4. Keep intermediate assertions that help the prover
+
+### Phase 5: Apply Proof Techniques
+
+#### Technique 1: Bit Vector Reasoning
+Use `by (bit_vector)` for:
+- Bitwise operations (XOR, AND, OR, shifts)
+- Converting between bit operations and arithmetic
+- Proving inequalities involving bit masks
+
+```rust
+assert(byte < 128 ==> (byte >> 7) == 0) by (bit_vector);
+assert((byte & 1 == 1) == (byte % 2 == 1)) by (bit_vector);
+assert(byte_after == byte_before + (sign_bit << 7)) by (bit_vector)
+    requires (byte_before >> 7) == 0, sign_bit == 0 || sign_bit == 1;
+```
+
+#### Technique 2: Nonlinear Arithmetic
+Use `by (nonlinear_arith)` for:
+- Multiplication/division inequalities
+- Combining multiple arithmetic facts
+- Transitivity chains
+
+```rust
+assert((byte_after as nat) * pow2(248) >= 128 * pow2(248)) by (nonlinear_arith)
+    requires byte_after >= 128;
+```
+
+#### Technique 3: Decomposition
+For complex structures, decompose into parts:
+- Use `lemma_decomposition_prefix_rec` to split byte arrays
+- Use `lemma_u8_32_as_nat_equals_rec` to connect definitions
+- Prove properties about parts, then combine
+
+#### Technique 4: Proof by Contradiction
+When proving `x < bound`:
+```rust
+assert(x < bound) by {
+    if x >= bound {
+        // Derive contradiction using lemmas
+        assert(false);
+    }
+};
+```
+
+#### Technique 5: Case Analysis
+For conditional properties:
+```rust
+assert(property) by {
+    if condition {
+        // Prove for true case
+    } else {
+        // Prove for false case
+    }
+};
+```
+
+#### Technique 6: calc! Blocks for Equality Chains
+
+Use `calc!` blocks to prove equalities through step-by-step transformations:
+```rust
+calc! {
+    (==)
+    edwards_scalar_mul(edwards_scalar_mul(point, a), pow2(k));
+    (==) { /* Apply lemma_edwards_scalar_mul_pow2_succ */ }
+    { let half = edwards_scalar_mul(edwards_scalar_mul(point, a), pow2(k-1));
+      edwards_double(half.0, half.1) };
+    (==) { /* Apply inductive hypothesis */ }
+    { let half = edwards_scalar_mul(point, a * pow2(k-1));
+      edwards_double(half.0, half.1) };
+    (==) { /* Use pow2(k) = 2 * pow2(k-1) and distributivity */ }
+    edwards_scalar_mul(point, a * pow2(k));
+}
+```
+
+**When to use:**
+- Proving equality through multiple transformations
+- Each step applies a different lemma or definition
+- Makes the proof structure explicit and easier to verify
+
+**Benefits:**
+- Clear logical flow
+- Each step can reference specific lemmas in comments
+- Easier to debug than nested assertions
+
+#### Technique 7: Inductive Proofs with decreases
+For recursive properties, use induction with `decreases` clause:
+```rust
+pub proof fn lemma_edwards_scalar_mul_mul_pow2(point: (nat, nat), a: nat, k: nat)
+    ensures
+        edwards_scalar_mul(edwards_scalar_mul(point, a), pow2(k))
+            == edwards_scalar_mul(point, a * pow2(k)),
+    decreases k,
+{
+    if k == 0 {
+        // Base case: prove for k=0
+        assert(pow2(0) == 1) by { lemma2_to64(); }
+        reveal_with_fuel(edwards_scalar_mul, 1);
+    } else {
+        // Inductive step
+        let km1 = (k - 1) as nat;
+        lemma_edwards_scalar_mul_mul_pow2(point, a, km1);  // Apply IH
+
+        // Use calc! block or assertions to connect IH to goal
+        calc! {
+            (==)
+            edwards_scalar_mul(edwards_scalar_mul(point, a), pow2(k));
+            // ... steps using IH ...
+            (==)
+            edwards_scalar_mul(point, a * pow2(k));
+        }
+    }
+}
+```
+
+**Key elements:**
+- `decreases k` - Tells Verus the recursion terminates
+- Base case (k=0 or similar) - Often needs reveals
+- Inductive hypothesis - Call the lemma recursively with smaller parameter
+- Connecting step - Show how IH implies the goal for k
+
+**Common base cases:**
+- For natural numbers: `n == 0`
+- For sequences: `s.len() == 0`
+- May need `reveal_with_fuel` to unfold recursive definitions
+
+#### Technique 8: Compositional Reasoning
+Build proofs by composing proven postconditions of functions:
+
+```rust
+// Function with proven postcondition
+fn mul_by_pow_2(self, k: u64) -> EdwardsPoint
+    ensures
+        edwards_point_as_affine(result) == edwards_scalar_mul(
+            edwards_point_as_affine(self),
+            pow2(k)
+        )
+
+// In proof, use the postcondition
+for i in 0..32
+    invariant
+        edwards_point_as_affine(P) == edwards_scalar_mul(basepoint, pow256(i)),
+{
+    P = P.mul_by_pow_2(8);  // Postcondition gives: new_P = edwards_scalar_mul(old_P, pow2(8))
+
+    proof {
+        // Connect: old_P = scalar_mul(base, pow256(i))
+        //          new_P = scalar_mul(old_P, pow2(8))
+        // Prove:   new_P = scalar_mul(base, pow256(i) * pow2(8))
+        //                = scalar_mul(base, pow256(i+1))
+
+        lemma_edwards_scalar_mul_mul_pow2(basepoint, pow256(i), 8);
+        assert(pow256(i+1) == pow256(i) * pow2(8)) by {
+            vstd::arithmetic::power2::lemma_pow2_adds(8 * i, 8);
+        }
+    }
+}
+```
+
+**Strategy:**
+1. Identify what each function guarantees in its postcondition
+2. Track these properties through loop invariants or assertions
+3. Use composition lemmas to connect nested operations
+4. Trust the proven postconditions - don't reprove them
+
+**Benefits:**
+- Leverages existing verification work
+- Cleaner proofs focused on high-level reasoning
+- Reduces proof complexity
+
+#### Technique 9: Specialized Lemmas
+When a general lemma is hard to prove, create specialized versions for common cases:
+
+**Example: General composition (hard)**
+```rust
+// This may require complex group law reasoning
+proof fn lemma_scalar_mul_composition(point: (nat, nat), a: nat, b: nat)
+    ensures scalar_mul(scalar_mul(point, a), b) == scalar_mul(point, a * b)
+    // General case: may need associativity, distributivity of group operations
+```
+
+**Specialized power-of-2 version (easier)**
+```rust
+// Power-of-2 case uses doubling, which is simpler
+proof fn lemma_scalar_mul_mul_pow2(point: (nat, nat), a: nat, k: nat)
+    ensures scalar_mul(scalar_mul(point, a), pow2(k)) == scalar_mul(point, a * pow2(k))
+    decreases k,
+{
+    // Base case and induction over k
+    // Uses doubling lemmas which are already proven
+}
+```
+
+**When to use:**
+- General proof requires axioms or complex reasoning
+- Specialized case is sufficient for your use case
+- Specialized proof uses simpler, already-proven lemmas
+
+**Example from create proof:**
+- Needed: composition of scalar multiplications
+- General case: requires group law associativity (complex)
+- Specialized: only need power-of-2 multipliers
+- Result: Clean proof using doubling lemmas
+
+**Cleanup guidance:**
+Once you have a working specialized lemma, check if the general lemma is actually used:
+```bash
+grep -r "lemma_edwards_scalar_mul_composition" --include="*.rs" | grep -v "_pow2"
+```
+If the general lemma is only called recursively within itself (and by helper lemmas like
+`lemma_edwards_scalar_mul_additive`), it can be removed along with its dependencies.
+This reduces code size and removes lemmas that rely on admitted axioms.
+
+#### Technique 10: Loop Invariants for Correctness
+Beyond bounds, track correctness properties in loop invariants:
+
+```rust
+for i in 0..32
+    invariant
+        // Bounds invariant (traditional)
+        0 <= i <= 32,
+
+        // Iterator state invariant
+        edwards_point_as_affine(P) == edwards_scalar_mul(basepoint, pow256(i)),
+
+        // Accumulated correctness invariant
+        forall|j: int|
+            #![trigger table.0[j as int]]
+            0 <= j < i ==> is_valid_lookup_table_affine_coords(
+                table.0[j as int].0,
+                edwards_scalar_mul(basepoint, pow256(j as nat)),
+                8,
+            ),
+{
+    // Iteration i creates table[i]
+    table.0[i] = create_lookup_table(&P);
+
+    proof {
+        // Prove: table[i] is correct for current P
+        // Invariant: P equals expected value
+        // Therefore: table[i] satisfies spec
+    }
+
+    // Update P for next iteration
+    P = next_value(P);
+}
+```
+
+**Key patterns:**
+- **Iterator state**: Track what the loop variable represents mathematically
+- **Accumulated work**: Use `forall|j| 0 <= j < i ==> property(j)` to track completed iterations
+- **Trigger annotations**: `#![trigger array[j]]` helps Verus apply the invariant
+
+**Benefits:**
+- Proves functional correctness, not just memory safety
+- Final postcondition follows directly from invariant when loop exits
+- Makes proof obligations explicit at each iteration
+
+#### Technique 11: Strengthening Specifications
+When a proof cannot be completed with current specifications, strengthen them:
+
+**When to use:**
+- Proof requires properties not guaranteed by current preconditions
+- Individual bounds are insufficient; need composite predicates (e.g., `is_well_formed_edwards_point`)
+- Inner function postconditions don't provide enough information for the caller's proof
+
+**Types of strengthening:**
+1. **Preconditions:** Require more from callers to enable the proof
+2. **Postconditions of used functions:** Strengthen what helper functions guarantee (less common, but sometimes necessary when their postconditions don't expose enough information)
+
+**Example: Strengthening a precondition**
+```rust
+// BEFORE: Individual bounds insufficient for proof
+open spec fn neg_req(self) -> bool {
+    fe51_limbs_bounded(&self.X, 52) && fe51_limbs_bounded(&self.T, 52)
+}
+
+// AFTER: Composite predicate provides validity + bounds + sum bounded
+open spec fn neg_req(self) -> bool {
+    // Strengthened: require well-formed point (validity + bounds + sum bounded)
+    // This enables proving all postconditions without assumes
+    is_well_formed_edwards_point(*self)
+}
+```
+
+**Implementation checklist:**
+1. Identify what additional properties the proof needs
+2. Find or create a predicate that provides those properties
+3. Update the spec function (e.g., `neg_req`, or the postcondition of a helper)
+4. Update ALL implementations that use this spec:
+   - Reference implementations (`&self`)
+   - Owned implementations (`self`)
+   - Trait implementations (e.g., `NegSpecImpl for EdwardsPoint`)
+5. Fix any broken proofs caused by the specification change
+6. Document why strengthening was necessary
+
+**Handling broken proofs:** Strengthening specifications (preconditions or postconditions) may cause verification failures in callers or downstream proofs. When this happens:
+- Fix the broken proofs to satisfy the new specification
+- This may require strengthening their specifications as well (propagating changes)
+- If a caller cannot reasonably satisfy the stronger precondition, reconsider whether strengthening is the right approach
+
+**Key insight:** It's acceptable to strengthen specifications when:
+- The stronger precondition is reasonable for callers
+- It enables completing the proof without admits/assumes
+- The change is documented for future maintainers
+
+#### Technique 12: By-Value Lemma Parameters
+Prefer by-value parameters over references for proof lemmas:
+
+```rust
+// BEFORE (by-reference):
+pub proof fn lemma_foo(x: &[i8; 64])
+    requires is_valid(&x),
+    ensures property(&x),
+
+// AFTER (by-value):
+pub proof fn lemma_foo(x: [i8; 64])
+    requires is_valid(&x),
+    ensures property(&x),
+```
+
+**Benefits:**
+- Cleaner call sites: `lemma_foo(arr)` instead of `lemma_foo(&arr)`
+- No borrowing concerns in proof contexts
+- Spec functions that take references still work: just add `&` in requires/ensures
+
+**Note:** The requires/ensures may still use `&x` if the underlying spec functions expect references.
+
+#### Technique 13: Extract Common Loop Proof Logic
+When two loops have similar proof structure, create a helper lemma:
+
+```rust
+// BEFORE: Duplicated in loop1 and loop2
+let table_idx = (i / 2) as int;
+let table_base = edwards_scalar_mul(B, pow256(table_idx as nat));
+assert(0 <= table_idx < 32);
+assert(is_valid_lookup_table_affine_coords(tables[table_idx].0, table_base, 8))
+    by { reveal(is_valid_edwards_basepoint_table); }
+lemma_select_is_signed_scalar_mul(tables[table_idx].0, a[i], selected, table_base);
+
+// AFTER: Single helper lemma
+pub proof fn lemma_basepoint_table_select(table: EdwardsBasepointTable, a: Seq<i8>, i: int, selected: AffineNielsPoint, B: (nat, nat))
+    requires
+        is_valid_edwards_basepoint_table(table, B),
+        0 <= i < 64,
+        -8 <= a[i] <= 8,
+        // select postconditions...
+    ensures
+        affine_niels_point_as_affine_edwards(selected) == edwards_scalar_mul_signed(
+            edwards_scalar_mul(B, pow256((i / 2) as nat)),
+            a[i] as int,
+        ),
+
+// In loops: single call replaces ~15 lines
+lemma_basepoint_table_select(*self, a@, i as int, selected, B);
+```
+
+#### Technique 14: Remove Trivial Wrapper Specs
+If a spec function is just a wrapper around another with fixed arguments, consider removing it:
+
+```rust
+// BEFORE: Trivial wrapper
+pub open spec fn radix16_sum(digits: Seq<i8>, B: (nat, nat)) -> (nat, nat) {
+    pippenger_partial(digits, 64, B)
+}
+pub proof fn lemma_radix16_sum_correct(...) { ... }
+
+// AFTER: Use underlying function directly
+// - Remove radix16_sum spec
+// - Rename lemma_radix16_sum_correct -> lemma_pippenger_sum_correct
+// - Update ensures to use pippenger_partial(digits, 64, B)
+// - Update all call sites
+```
+
+**When to remove:**
+- Wrapper adds no semantic value (just fixes a parameter)
+- Wrapper name doesn't add clarity over the underlying function
+- Simplifies the API without losing expressiveness
+
+**When to keep:**
+- Wrapper provides meaningful abstraction (e.g., named algorithm step)
+- Multiple lemmas are named around the wrapper concept
+- Wrapper is part of the public API
+
+#### Technique 15: Field Algebra — Proving x = 0 from a Product Equation
+When a curve equation reduces to `(c)·x² ≡ 0 (mod p)` with `c ≠ 0`:
+
+```rust
+proof fn lemma_y_sq_one_implies_x_zero(x: nat, y: nat)
+    requires x < p(), y < p(), is_on_edwards_curve(x, y), field_square(y) == 1,
+    ensures x == 0,
+{
+    // 1. Substitute y²=1 into curve equation: -x² + 1 = 1 + d·x²
+    //    Rearranges to: (d+1)·x² = 0
+    lemma_field_mul_one_right(d);  // d·1 = d
+    lemma_field_mul_distributes_over_add(d, 1, x_sq);  // expand
+    // ...field algebra chain...
+
+    // 2. Since d+1 ≠ 0 (mod p) and p is prime, x² must be 0
+    axiom_d_plus_one_nonzero();
+    lemma_nonzero_product(d_plus_1, x_sq);  // contrapositive: product=0 ∧ a≠0 → b=0
+
+    // 3. x² = 0 implies x = 0 (since x < p and p is prime)
+    lemma_small_mod(x_sq, p());
+}
+```
+
+**Key field lemmas for algebraic manipulation:**
+- `lemma_field_mul_distributes_over_add(a, b, c)` — a·(b+c) = a·b + a·c
+- `lemma_field_mul_comm(a, b)` — a·b = b·a
+- `lemma_field_mul_one_right(a)` — a·1 = a
+- `lemma_field_sub_eq_add_neg(a, b)` — a-b = a+(-b)
+- `lemma_field_add_comm(a, b)` — a+b = b+a
+- `lemma_field_sub_add_cancel(a, b)` — (a-b)+b = a
+- `lemma_field_sub_self(a)` — a-a = 0
+- `lemma_nonzero_product(a, b)` — if a·b=0 and a≠0, then b=0
+
+#### Technique 16: Cofactor Clearing via Doubling Chain
+To prove `[8]·P = identity` for low-order points:
+
+```rust
+proof fn lemma_cofactor_clears_low_order_y_sq_1(y: nat)
+    requires y < p(), field_square(y) == 1,
+    ensures edwards_scalar_mul((0nat, y), 8) == edwards_identity(),
+{
+    // Step 1: Show double(0,y) = (0,1) when y²=1
+    //   (all cross-terms in Edwards addition vanish when x=0)
+    lemma_edwards_double_x_zero_y_sq_one(y);
+
+    // Step 2: Chain doublings: [2]→[4]→[8] using pow2 lemmas
+    //   [2]·P = (0,1) = identity
+    //   [4]·P = [2]·(identity) = identity  (via scalar_mul_pow2_succ + double_identity)
+    //   [8]·P = [2]·(identity) = identity
+    lemma_edwards_scalar_mul_pow2_succ((0nat, y), 1);  // [4]
+    lemma_edwards_double_identity();
+    lemma_edwards_scalar_mul_pow2_succ((0nat, y), 2);  // [8]
+    lemma_edwards_double_identity();
+}
+```
+
+**Key insight:** `pow2(1)=2, pow2(2)=4, pow2(3)=8`. Use `lemma_edwards_scalar_mul_pow2_succ` to express `[2^(k+1)]·P = double([2^k]·P)`, then apply `lemma_edwards_double_identity` when the intermediate result is the identity.
+
+#### Technique 17: Three-Layer Bridge Axiom Architecture
+For proving algebraic correctness of point operations (connecting exec-level FieldElement51 operations to spec-level Edwards curve formulas):
+
+**Layer 1: Pure math axiom** (curve_equation_lemmas.rs)
+```rust
+pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
+    requires is_on_edwards_curve(x1, y1), is_on_edwards_curve(x2, y2),
+    ensures
+        is_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
+        // denominators 1+d*x1*x2*y1*y2 ≠ 0 and 1-d*x1*x2*y1*y2 ≠ 0
+{ admit(); }  // Standard result for complete Edwards curves (d non-square)
+```
+
+**Layer 2: Proven algebraic helper lemmas** (add_completed_lemmas.rs)
+- FOIL expansions (lemma_pp_minus_mm, lemma_pm_minus_mp, etc.)
+- Factor cancellation (lemma_cancel_common_factor)
+- Completed point ratio lemma connecting X/Z, Y/T to edwards_add
+- Negation distribution lemmas for subtraction proofs
+
+**Layer 3: Exec bridge axioms** (add_completed_lemmas.rs)
+```rust
+pub proof fn lemma_add_projective_niels_completed_valid(
+    self_point: EdwardsPoint, other: ProjectiveNielsPoint,
+    result: CompletedPoint, pp_val: nat, mm_val: nat, ...
+)
+    requires
+        is_well_formed_edwards_point(self_point),
+        is_valid_projective_niels_point(other),
+        // spec_field_element relationships for intermediate values
+    ensures
+        is_valid_completed_point(result),
+        completed_point_as_affine_edwards(result) == {
+            let self_affine = edwards_point_as_affine(self_point);
+            let other_affine = projective_niels_point_as_affine_edwards(other);
+            edwards_add(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
+        }
+```
+
+**Proof pattern for bridge axioms:**
+1. Extract existential witness from `is_valid_projective_niels_point` using `choose`
+2. Expand Niels point correspondence to get affine coordinates
+3. Factor projective coordinates: Y1·X2 = (y1·Z1)·(x2·Z2) = y1·x2·Z1·Z2
+4. Apply FOIL to get PP-MM = 2·(y1·x2 + x1·y2)·Z1·Z2, etc.
+5. Apply `lemma_cancel_common_factor` to cancel 2·Z1·Z2 from numerator/denominator
+6. Call `axiom_edwards_add_complete` for on-curve guarantee
+7. Call `lemma_completed_point_ratios` to connect ratios to edwards_add
+
+**For subtraction:** Use negation substitution: sub(x1,y1,x2,y2) = add(x1,y1,neg(x2),y2).
+Substitute neg(d) into FOIL lemmas, then apply `lemma_field_mul_neg` and `lemma_field_sub_eq_add_neg`.
+
+**For AffineNiels (vs ProjectiveNiels):** Single Z factor instead of Z1·Z2.
+Factor sZ = y·Z (from Segre invariant T·Z = X·Y) instead of Z1·Z2.
+
+#### Technique 18: Existential Witness Pattern for Validity Propagation
+When proving `is_valid_X(result)` which is defined as `exists |ep| is_valid(ep) && corresponds(result, ep)`:
+
+```rust
+// Producer function
+fn as_projective_niels(&self) -> (result: ProjectiveNielsPoint)
+    requires is_valid_edwards_point(*self),
+    ensures
+        projective_niels_corresponds_to_edwards(result, *self),
+        is_valid_projective_niels_point(result),  // NEW postcondition
+{
+    // ... computation ...
+    proof {
+        assert(projective_niels_corresponds_to_edwards(result, *self));
+        // Validity: the existential witness is *self
+        assert(is_valid_projective_niels_point(result));
+    }
+    result
+}
+```
+
+Verus resolves the existential automatically when both parts (witness validity + correspondence) are in scope.
+
+**Propagation chain:** Producer (as_*_niels) → Precondition (add_req/sub_req) → Consumer (add/sub bridge axiom)
+- Add `is_valid_*_point(result)` as postcondition to producer functions
+- Add `is_valid_*_point(*rhs)` as requirement in add_req/sub_req specs
+- Remove assumes from consumer function bodies — derived from preconditions
+
+#### Technique 19: Four-Factor Rearrangement in Projective Coordinates
+When rearranging products like `x1x2y1y2 · (sZ · (2·d))` to `sZ · (x1x2y1y2 · (2·d))`:
+
+```rust
+// Use assoc → comm → assoc chain (NOT comm → assoc)
+// x*(s*(2d)) = (x*s)*(2d) [assoc] = (s*x)*(2d) [comm] = s*(x*(2d)) [assoc]
+lemma_field_mul_assoc(x1x2y1y2, sZ, math_field_mul(2, d));
+lemma_field_mul_comm(x1x2y1y2, sZ);
+lemma_field_mul_assoc(sZ, x1x2y1y2, math_field_mul(2, d));
+```
+
+**Why this order matters:** `comm(a, b*c)` produces `b*c*a` which doesn't simplify further. You need `assoc` first to separate the factors, then `comm` on the pair, then `assoc` to regroup.
+
+### Phase 6: Handle Common Issues
+
+#### Issue: "Expected Interp(Array), got Interp(FreeVar)"
+**Solution:** Extract array elements to local variables before proof blocks
+```rust
+let byte31 = bytes[31];  // Extract before proof block
+proof {
+    assert(byte31 < 128);  // Use local variable
+}
+```
+
+#### Issue: "Cannot call function with mode exec"
+**Solution:** Call exec functions outside proof blocks, save results
+```rust
+let result = exec_function();  // Outside proof block
+proof {
+    // Use result here
+}
+```
+
+#### Issue: "expression has mode spec, expected mode proof" with `use_type_invariant`
+**Cause:** `use_type_invariant` requires proof/tracked mode. It does NOT work in standalone `proof fn` (parameters default to spec mode), nor inside `assert(...) by { ... }` (captured variables become spec mode).
+**Solution:** Only call `use_type_invariant` inside a `proof { }` block in an `exec fn`, on exec-level variables:
+```rust
+let val = EXEC_CONST;  // bind at exec level
+proof {
+    use_type_invariant(val);  // OK: exec var promoted to proof mode
+}
+```
+
+#### Issue: "cannot read const with mode exec" in `spec fn`
+**Cause:** `exec const` values cannot be referenced in `spec fn` bodies.
+**Solution:** Create a separate `spec fn` with duplicated literal values. Bridge the two with an `ensures` clause on the exec const.
+
+#### Issue: Type invariant properties unavailable on `choose` witnesses
+**Cause:** When `exists|point: EdwardsPoint| ...` is used in a spec predicate and you `choose` a witness, the witness is spec-mode. `use_type_invariant` only works on exec/proof-mode values.
+**Solution:** Strengthen the existential to include all needed type invariant properties directly:
+```rust
+pub open spec fn is_valid_affine_niels_point(niels: AffineNielsPoint) -> bool {
+    exists|point: EdwardsPoint|
+        is_valid_edwards_point(point)
+        && edwards_point_limbs_bounded(point)
+        && sum_of_limbs_bounded(&edwards_y(point), &edwards_x(point), u64::MAX)
+        && #[trigger] affine_niels_corresponds_to_edwards(niels, point)
+}
+```
+Now `choose` witnesses carry the properties directly. Use public accessors (`edwards_y`, `edwards_x`) instead of `pub(crate)` fields in `pub open spec fn` bodies (Verus error: "disallowed: field expression for an opaque datatype").
+
+#### Issue: Solver can't connect field access to accessor-based predicates
+**Cause:** Type invariant gives `sum_of_limbs_bounded(&self.Y, &self.X, ...)` but the existential uses `sum_of_limbs_bounded(&edwards_y(point), &edwards_x(point), ...)`. The solver may not equate these automatically through references.
+**Solution:** Add explicit bridge asserts:
+```rust
+proof {
+    use_type_invariant(*self);
+    assert(edwards_y(*self) == self.Y);
+    assert(edwards_x(*self) == self.X);
+    assert(sum_of_limbs_bounded(&self.Y, &self.X, u64::MAX));
+    assert(sum_of_limbs_bounded(&edwards_y(*self), &edwards_x(*self), u64::MAX));
+}
+```
+
+#### Issue: rlimit exceeded in loop with bundled predicate
+**Cause:** Quantified invariant predicates (e.g., `straus_vt_input_valid` with 6 `forall` quantifiers) cause excessive quantifier instantiation when Z3 sees them throughout the loop body.
+**Solution:** Scope expensive lemma calls inside `assert(...) by { ... }` blocks:
+```rust
+assert(completed_point_as_affine_edwards(t) == ...) by {
+    axiom_edwards_add_associative(a0, a1, b0, b1, c0, c1);
+}
+```
+This limits what Z3 learns from each lemma to just the asserted fact, preventing quantifier explosion. Use `#[verifier::opaque]` only when assert-by scoping is insufficient (e.g., recursive specs, many `&&&` conjuncts).
+
+#### Issue: "Nested proof blocks not supported"
+**Solution:** Flatten proof structure
+```rust
+// Bad:
+proof {
+    proof { ... }  // Nested!
+}
+
+// Good:
+let value = exec_call();
+proof {
+    // Use value
+}
+```
+
+#### Issue: "Assertion failed" without details
+**Solution:** Add intermediate assertions to narrow down the problem
+```rust
+// Instead of:
+assert(complex_property);
+
+// Do:
+assert(intermediate_step_1);
+assert(intermediate_step_2);
+assert(intermediate_step_3);
+assert(complex_property);
+```
+
+#### Issue: "unresolved import" for vstd items in regular cargo build
+**Solution:** Guard ghost-only imports with `#[cfg(verus_keep_ghost)]`
+```rust
+// Bad: fails clippy/cargo test because vstd isn't available in regular builds
+use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_adds, pow2};
+
+// Good: only included when running Verus verification
+#[cfg(verus_keep_ghost)]
+use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_adds, pow2};
+```
+This applies to any imports from `vstd::` or ghost-only modules that aren't available during regular Rust compilation.
+
+**Also applies to internal modules whose content lives inside `verus!` blocks:**
+```rust
+// Bad: montgomery_specs content is inside verus! macro, empty in non-Verus builds
+use crate::specs::montgomery_specs::edwards_y_from_montgomery_u;
+
+// Good: guarded for Verus-only builds
+#[cfg(verus_keep_ghost)]
+use crate::specs::montgomery_specs::edwards_y_from_montgomery_u;
+```
+Check whether the target module wraps its items in `verus! { ... }` — if so, named imports will fail in `cargo test`/`cargo clippy` builds and need `#[cfg(verus_keep_ghost)]`.
+
+#### Issue: "unresolved import" for specific common_lemmas items (cargo test/clippy)
+**Cause:** Many `common_lemmas::*` items live inside `verus!` blocks and are not present in non-Verus builds.
+**Solution:** Prefer wildcard imports from the module, which compile even when the module is empty.
+```rust
+// Bad: fails in non-Verus builds if the item isn't generated
+use crate::lemmas::common_lemmas::div_mod_lemmas::lemma_int_nat_mod_equiv;
+
+// Good: wildcard import is accepted even if the module has no items
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::div_mod_lemmas::*;
+```
+Use `#[allow(unused_imports)]` to keep clippy clean when the item is only used in proof blocks.
+
+#### Issue: Redundant imports inside proof blocks
+**Solution:** Use top-level wildcard imports and short names in proof blocks
+
+When the file has top-level wildcard imports like:
+```rust
+use crate::lemmas::field_lemmas::add_lemmas::*;
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::*;
+use crate::specs::edwards_specs::*;
+```
+
+Do NOT add redundant specific imports inside proof blocks:
+```rust
+// Bad: redundant import already covered by wildcard
+proof {
+    use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_add_identity_left;
+    lemma_edwards_add_identity_left(x, y);
+}
+
+// Good: just use the short name directly
+proof {
+    lemma_edwards_add_identity_left(x, y);
+}
+```
+
+**When cleaning up:** Check top-level imports for wildcards (`*`) and remove any specific imports inside proof blocks that are already covered.
+
+### Phase 7: Verification and Cleanup
+
+1. **Verify incrementally:**
+   ```bash
+   cargo verus verify -p curve25519-dalek -- --verify-only-module module_name --verify-function function_name
+   ```
+   Note: only one `--verify-function` flag is supported per invocation. To verify multiple functions, use `--verify-only-module` to verify the entire module.
+
+2. **Verify integration (single module):**
+   ```bash
+   cargo verus verify -p curve25519-dalek -- --verify-module module_name
+   ```
+
+3. **Full codebase verification with efficient error extraction:**
+   Always use this single command to get both the summary AND all error details in one call:
+   ```bash
+   cargo verus verify -p curve25519-dalek 2>&1 | grep -E "^error|verification results:|^   --> " | head -30
+   ```
+   This extracts:
+   - `^error` — the error type (e.g., "error: postcondition not satisfied", "error: while loop: Resource limit (rlimit) exceeded", "error: this file contains an unclosed delimiter")
+   - `^   --> ` — the file path and line number (e.g., "--> curve25519-dalek/src/backend/serial/scalar_mul/straus.rs:560:13")
+   - `verification results:` — the summary line (e.g., "1715 verified, 0 errors")
+
+   **If you need the failed postcondition/precondition text**, use a wider grep:
+   ```bash
+   cargo verus verify -p curve25519-dalek 2>&1 | grep -E "^error|verification results:|^   --> |failed this" | head -30
+   ```
+
+   **IMPORTANT:** Do NOT run a bare `cargo verus verify` piped to `tail -5` when there are errors — the summary line alone doesn't tell you the error location or type. Always use the grep pipeline above to extract actionable information in a single call.
+
+   **When verification succeeds**, a simple tail suffices:
+   ```bash
+   cargo verus verify -p curve25519-dalek 2>&1 | tail -5
+   ```
+
+4. **Check non-Verus builds:** After Verus verification passes, run `cargo test` and `cargo clippy` to catch import issues, cfg guards, etc.
+
+5. **Run verusfmt:** Run `verusfmt <file>` on all changed `.rs` files before committing.
+
+6. **Clean up:**
+   - Remove redundant assertions (test by removing one at a time)
+   - Add comments explaining non-obvious steps
+   - Ensure proof follows codebase style
+
+6. **Preserve `/* ORIGINAL CODE ... */` comments:** When refactoring code for Verus verification, keep the original (pre-Verus) implementation as a comment so reviewers can see what changed. Use the convention:
+   ```rust
+   /* ORIGINAL CODE:
+   self.as_bytes().ct_eq(other.as_bytes())
+   */
+   ct_eq_bytes32(self.as_bytes(), other.as_bytes())
+   ```
+   or the XML-style variant for multi-line blocks:
+   ```rust
+   /* <ORIGINAL CODE>
+   let u = &U * &W.invert();
+   ...
+   </ORIGINAL CODE> */
+   ```
+   Never delete these comments — they document what the code looked like before verification changes.
+
+4. **Simplify assert..by blocks:**
+   `assert .. by` blocks should only be used when the `by` part contains **actual lemma calls**.
+   If the `by` block only contains simple arithmetic that Z3 can infer directly, remove the `by` part:
+   ```rust
+   // BEFORE (redundant):
+   assert(np1 >= 3) by { assert(n >= 2); };
+   assert(mm1 >= 1) by { assert(m >= 2); };
+   assert(suf_idx + 2 < digits.len()) by { assert(digits.len() >= 2 * n); };
+
+   // AFTER (simplified):
+   assert(np1 >= 3);
+   assert(mm1 >= 1);
+   assert(suf_idx + 2 < digits.len());
+   ```
+
+   Keep `assert .. by` when it contains lemma calls:
+   ```rust
+   // KEEP: contains actual lemma call
+   assert(pow2(k + 1) != 0) by {
+       lemma_pow2_pos(k + 1);
+       lemma2_to64();
+   };
+   ```
+
+5. **Prefer `assert ... by { lemma_call; }` over floating lemma calls:**
+   By default, every lemma call should be wrapped in an `assert...by` block that states the
+   fact the lemma establishes. This is the **preferred style** for proof readability and
+   debuggability. Avoid "floating" lemma calls (bare `lemma_foo(args);` without a paired assertion).
+
+   ```rust
+   // BAD – floating lemma calls (unclear which lemma proves what):
+   lemma_mul_is_associative(b, d, p);
+   lemma_mul_is_commutative(b, d);
+   lemma_mul_is_associative(d, b, p);
+   assert(b * (d * p) == (b * d) * p);
+   assert(b * d == d * b);
+   assert((d * b) * p == d * (b * p));
+
+   // GOOD – each lemma paired with its assertion:
+   assert(b * (d * p) == (b * d) * p) by { lemma_mul_is_associative(b, d, p); }
+   assert(b * d == d * b) by { lemma_mul_is_commutative(b, d); }
+   assert((d * b) * p == d * (b * p)) by { lemma_mul_is_associative(d, b, p); }
+   ```
+
+   Multiple lemmas can share one `assert...by` block when they collectively prove a single fact:
+   ```rust
+   assert(field_mul(a, d) == field_mul(field_mul(a, inv_b), field_mul(d, b))) by {
+       lemma_four_factor_rearrange(a, d, inv_b, b);
+       lemma_field_mul_one_right(field_mul(a, d));
+       lemma_small_mod(field_mul(a, d), p());
+       lemma_mod_bound((a * d) as int, p() as int);
+   }
+   ```
+
+   **When floating lemma calls are acceptable:**
+   - The lemma provides a biconditional or background fact that Z3 uses across multiple
+     subsequent assertions (wrapping it would require repeating a complex postcondition).
+   - Wrapping the call causes an rlimit blowup or verification failure — solver performance
+     takes priority over style.
+   - The lemma's postcondition is trivially obvious from its name and arguments (e.g.,
+     `p_gt_2()` establishing `p() > 2`).
+
+   **Benefits of `assert...by` style:**
+   - Clear logical structure: you see exactly what each lemma proves
+   - Easier to debug: if an assertion fails, you know which lemma isn't working
+   - Scoped solver context: facts from the `by` block don't leak, reducing solver load
+   - Self-documenting: the proof reads as a series of justified claims
+
+6. **Remove unused lemmas:**
+   - Check if general lemmas are actually used outside their own recursive calls
+   - If a specialized lemma (e.g., `_pow2` variant) exists with a complete proof, the general
+     version may be removable
+   - Use grep to check usage: `grep -r "lemma_name" --include="*.rs"`
+   - Remove lemmas that are only used by other unused lemmas (transitive cleanup)
+
+7. **Keep comments informative but concise:**
+   Proof comments should explain *why*, not restate *what* the code does. Avoid verbose step-by-step explanations that mirror the assertions.
+
+   ```rust
+   // BAD: verbose, restates the code
+   proof {
+       // Step 1: pow256(0) == 1, so the table base for index 0 is just B
+       assert(pow256(0) == 1) by { ... }
+       // Step 2: edwards_scalar_mul(B, 1) == B
+       assert(edwards_scalar_mul(B, 1) == B) by { ... }
+       // Step 3: From table validity, table[0] is valid for edwards_scalar_mul(B, pow256(0)) = B
+       // The spec says: for j in 0..8, affine_niels_point_as_affine_edwards(table[j]) == edwards_scalar_mul(base, j+1)
+       // Since select(1) with x=1 > 0 returns self.0[0].0[(1-1)] = self.0[0].0[0]
+       assert(is_valid_lookup_table_affine_coords(...));
+   }
+
+   // GOOD: concise, explains key insights
+   proof {
+       assert(pow256(0) == 1) by { ... }
+       assert(edwards_scalar_mul(B, 1) == B) by { ... }
+
+       // Table validity: table[0] contains multiples of B
+       assert(is_valid_lookup_table_affine_coords((*self).0[0int].0, B, 8));
+   }
+   ```
+
+   **Guidelines:**
+   - One comment per logical block, not per assertion
+   - Comment on non-obvious reasoning (e.g., "B is canonical, so B % p == B")
+   - Skip comments when the assertion is self-explanatory
+   - Don't duplicate information from spec function names or postcondition comments
+   - Remove "from X postcondition" comments - the `assert...by` structure makes this clear
+
+## Key Patterns from compress Proof
+
+### Pattern 1: Proving Bit Properties from Value Bounds
+```rust
+// Goal: Prove (bytes[31] >> 7) == 0
+// Given: val < p() where p() < pow2(255)
+
+// Step 1: Establish val < pow2(255)
+assert(p() < pow2(255)) by { pow255_gt_19(); };
+
+// Step 2: Get lower bound on u8_32_as_nat
+lemma_u8_32_as_nat_lower_bound(bytes, 31);
+
+// Step 3: Contradiction if high bit set
+assert(bytes[31] < 128) by {
+    if bytes[31] >= 128 {
+        assert(pow2(7) == 128) by { lemma2_to64(); };
+        assert(pow2(7) * pow2(248) == pow2(255)) by { lemma_pow2_adds(7, 248); };
+        assert(val >= pow2(255));  // Contradiction
+        assert(false);
+    }
+};
+
+// Step 4: Bit property follows
+assert((bytes[31] >> 7) == 0) by (bit_vector)
+    requires bytes[31] < 128;
+```
+
+### Pattern 2: Connecting Byte Operations to Field Values
+```rust
+// Goal: Prove (bytes[0] & 1) relates to field_value % 2
+
+
+// Step 1: Connect bytes to field value
+lemma_u8_32_as_nat_of_spec_fe51_to_bytes(fe);
+let bytes = seq_to_array_32(spec_fe51_to_bytes(fe));
+assert(u8_32_as_nat(&bytes) == field_value);
+
+// Step 2: Extract first byte using modulo
+lemma_u8_32_as_nat_mod_truncates(&bytes, 1);
+assert(u8_32_as_nat(&bytes) % pow2(8) == bytes[0]);
+
+// Step 3: Show even modulus preserves parity
+assert(pow2(8) % 2 == 0) by { lemma_pow2_even(8); };
+assert((u8_32_as_nat(&bytes) % pow2(8)) % 2 == u8_32_as_nat(&bytes) % 2) by {
+    lemma_mod_mod(u8_32_as_nat(&bytes) as int, pow2(8) as int, 2);
+};
+
+// Step 4: Connect to bit operation
+assert((bytes[0] & 1 == 1) == (field_value % 2 == 1)) by (bit_vector);
+```
+
+### Pattern 3: Proving XOR Preserves Values Through Modulo
+```rust
+// Goal: Prove XOR-ing bit 255 doesn't change value mod pow2(255)
+
+// Step 1: Show XOR acts as addition when target bit is 0
+assert(byte_after == byte_before + sign_bit * 128) by (bit_vector)
+    requires (byte_before >> 7) == 0, sign_bit == 0 || sign_bit == 1;
+
+// Step 2: Establish power relationships
+assert(pow2(7) == 128) by { lemma2_to64(); };
+assert(pow2(7) * pow2(248) == pow2(255)) by { lemma_pow2_adds(7, 248); };
+
+// Step 3: Decompose u8_32_as_nat to isolate changed byte
+lemma_u8_32_as_nat_equals_rec(s_before);
+lemma_u8_32_as_nat_equals_rec(s_after);
+lemma_decomposition_prefix_rec(s_before, 31);
+lemma_decomposition_prefix_rec(s_after, 31);
+
+// Step 4: Compute the difference
+assert(u8_32_as_nat(s_after) == u8_32_as_nat(s_before) + sign_bit * pow2(255));
+
+// Step 5: Show modulo removes the added term
+assert(u8_32_as_nat(s_after) % pow2(255) == u8_32_as_nat(s_before) % pow2(255)) by {
+    if sign_bit == 1 {
+        lemma_mod_add_multiples_vanish(u8_32_as_nat(s_before) as int, pow2(255) as int);
+    }
+};
+```
+
+## Common Lemma Reference
+
+### Byte-to-Nat Lemmas (to_nat_lemmas.rs)
+- `lemma_u8_32_as_nat_lower_bound(bytes, index)` - Get lower bound from specific byte
+- `lemma_u8_32_as_nat_mod_truncates(bytes, n)` - Modulo truncates to first n bytes
+- `lemma_u8_32_as_nat_equals_rec(bytes)` - Connect to recursive definition
+- `lemma_decomposition_prefix_rec(bytes, n)` - Split into prefix + suffix
+- `lemma_prefix_equal_when_bytes_match` - Equal prefixes from equal bytes
+
+### Power-of-2 Lemmas (pow_lemmas.rs)
+- `lemma_pow2_adds(a, b)` - pow2(a) * pow2(b) == pow2(a+b)
+- `lemma_pow2_even(n)` - pow2(n) is even for n >= 1
+- `lemma_pow2_pos(n)` - pow2(n) > 0
+- `lemma2_to64()` - Establishes small powers (2^0 through 2^64)
+
+### Modular Arithmetic Lemmas (div_mod_lemmas.rs)
+- `lemma_mod_mod(x, a, b)` - (x % a) % b relates to x % b
+- `lemma_mod_add_multiples_vanish(a, m)` - (a + m) % m == a % m
+- `lemma_small_mod(x, m)` - If x < m, then x % m == x
+- `lemma_mod_bound(x, m)` - x % m < m
+
+### Field-Specific Lemmas (field_specs_u64.rs)
+- `pow255_gt_19()` - Proves pow2(255) > 19, thus p() < pow2(255)
+- `p_gt_2()` - Proves p() > 2
+
+### Field Algebra Lemmas (field_lemmas/field_algebra_lemmas.rs)
+Core algebraic identities over GF(p) used in Edwards curve proofs:
+
+**Distributivity & FOIL:**
+- `lemma_field_mul_distributes_over_add(a, b, c)` - a*(b+c) = a*b + a*c (line ~144)
+- `lemma_field_mul_distributes_over_sub_right(a, b, c)` - (a-b)*c = a*c - b*c (line ~721)
+
+**Recover/cancel patterns:**
+- `lemma_field_add_sub_recover_double(a, b)` - (a+b) - (a-b) = 2*b (line ~228)
+- `lemma_field_add_add_recover_double(a, b)` - (a+b) + (a-b) = 2*a (line ~329)
+- `lemma_cancel_common_factor(a, b, c)` - (a*c)/(b*c) = a/b when c≠0 (line ~1612)
+- `lemma_field_halve_double(a)` - field_halve(2*a) = a%p (line ~?)
+- `lemma_field_div_mul_cancel(a, b)` - (a/b)*b = a when b≠0 (line ~?)
+
+**Commutativity & Associativity:**
+- `lemma_field_mul_comm(a, b)` - a*b = b*a (line ~1218)
+- `lemma_field_mul_assoc(a, b, c)` - a*(b*c) = (a*b)*c (line ~1194)
+- `lemma_field_add_comm(a, b)` - a+b = b+a (line ~?)
+
+**Negation:**
+- `lemma_field_mul_neg(a, b)` - mul(a, neg(b)) = neg(mul(a, b))
+- `lemma_field_sub_eq_add_neg(a, b)` - sub(a, b) = add(a, neg(b))
+- `lemma_field_add_neg_eq_sub(a, b)` - add(a, neg(b)) = sub(a, b)
+
+**Non-zero:**
+- `lemma_nonzero_product(a, b)` - a≠0 ∧ b≠0 ⇒ a*b ≠ 0 (line ~1723)
+
+### Field Limb Bound Lemmas (field_lemmas/add_lemmas.rs)
+Lemmas for tracking FieldElement51 limb bounds through operations:
+
+- `lemma_edwards_point_weaken_to_54(point)` - Weaken 52-bounded EdwardsPoint fields to 54-bounded (line ~142)
+- `lemma_add_bounds_propagate(a, b, n)` - n-bounded + n-bounded → (n+1)-bounded (line ~159)
+- `lemma_fe51_limbs_bounded_weaken(fe, a, b)` - a-bounded → b-bounded when a ≤ b (line ~122)
+- `lemma_sum_of_limbs_bounded_from_fe51_bounded(a, b, n)` - n-bounded implies sum fits u64 (line ~183)
+- `lemma_edwards_d2_limbs_bounded_54()` - EDWARDS_D2 constant is 54-bounded
+
+### Edwards Curve FOIL Lemmas (edwards_lemmas/add_completed_lemmas.rs)
+Algebraic expansion lemmas for Edwards point addition/subtraction:
+
+**Standard FOIL (for addition):**
+- `lemma_pp_minus_mm(a, b, c, d)` - (a+b)(c+d) - (a-b)(c-d) = 2*(a*d + b*c)
+- `lemma_pp_plus_mm(a, b, c, d)` - (a+b)(c+d) + (a-b)(c-d) = 2*(a*c + b*d)
+
+**Mixed FOIL (for subtraction via neg substitution):**
+- `lemma_pm_minus_mp(a, b, c, d)` - (a+b)(c-d) - (a-b)(c+d) = 2*(b*c - a*d)
+- `lemma_pm_plus_mp(a, b, c, d)` - (a+b)(c-d) + (a-b)(c+d) = 2*(a*c - b*d)
+
+**Negation helpers:**
+- `lemma_neg_neg(a)` - neg(neg(a)) = a % p
+- `lemma_neg_preserves_curve(x, y)` - on_curve(x,y) ⇒ on_curve(neg(x), y)
+
+**Completed point ratios:**
+- `lemma_completed_point_ratios(x1, y1, x2, y2, ...)` - Connects CompletedPoint X/Z and Y/T to edwards_add result
+
+### Edwards Curve Equation Lemmas (edwards_lemmas/curve_equation_lemmas.rs)
+- `axiom_edwards_add_complete(x1, y1, x2, y2)` - Pure math: add on curve stays on curve + denominators non-zero
+- `axiom_edwards_d2_is_2d()` - EDWARDS_D2 field element equals 2*d
+- `lemma_affine_niels_affine_equals_edwards_affine(niels, point)` - AffineNiels affine == EdwardsPoint affine when they correspond
+
+## Tips
+
+1. **Start simple:** Prove the easiest lemma first to build momentum
+2. **Verify often:** Run verification after each small change
+3. **Trust existing lemmas:** If a lemma exists, use it - don't reprove
+4. **Use reveals sparingly:** Only reveal definitions when necessary
+5. **Follow codebase style:** Match existing proof patterns and comments
+6. **Use proof strategies:** `by (bit_vector)` for bit ops, `by (nonlinear_arith)` for multiplication inequalities. Reserve `by (compute)` for fully concrete evaluations (all literal constants) — for expressions with variables, Z3 handles simple arithmetic directly without `by (compute)`.
+7. **Document assumptions:** Explain why preconditions are needed
+8. **Prefer by-value lemma parameters:** Use `lemma(x: T)` instead of `lemma(x: &T)` for proof lemmas - cleaner ergonomics in proof contexts without borrowing concerns
+9. **Remove trivial wrapper specs:** If a spec is just `wrapper(x) = underlying(x, constant)`, remove the wrapper and use the underlying function directly with renamed lemmas
+10. **Extract common loop proof logic:** When two loops have similar proof structure, create a helper lemma to reduce duplication
+11. **Fixing rlimit — in order of preference:**
+    - **(a) Scope lemma calls in `assert(CONCLUSION) by { lemma_call(...); }` blocks.** This is the #1 fix. State the exact fact you need as the assert target; Z3 confines postcondition facts to the inner scope. Common offenders that should **always** be scoped: `lemma_unfold_edwards`, `axiom_edwards_add_associative`, `lemma_neg_of_signed_scalar_mul`, `lemma_column_sum_canonical`. Note: `use_type_invariant(x)` does **NOT** work inside assert-by (mode error) — keep it unscoped.
+    - **(b) Replace `#![auto]` with explicit `#[trigger]` on quantified invariants.** Auto triggers cause Z3 to over-instantiate quantifiers. Pick a trigger that uniquely identifies the quantified variable (usually `arr[j]`) on the least-common collection.
+    - **(c) Bundle many invariants into a single validity predicate.** Z3 treats the bundled predicate as one fact; individual conjuncts are only exposed when explicitly needed. See `pippenger_input_valid`, `straus_vt_input_valid` for examples.
+    - **(d) Replace `calc!` with assert chains.** `calc!` blocks create heavier SMT encodings. Sequential `assert(a == b); assert(b == c);` gives Z3 smaller facts to process.
+    - **(e) Extract proof into a separate `proof fn`.** The extracted lemma takes spec-level values as parameters and proves the postcondition. The original function bridges exec-level facts to spec-level preconditions and calls the helper.
+    - **(f) Use `#[verifier::opaque]` + targeted `reveal`.** Only when scoping is insufficient (recursive specs, specs with many conjuncts/quantifiers). Mark `spec fn` opaque, reveal locally via `reveal(fn_name)` inside a helper lemma. **When NOT to use opaque:** Simple predicates, bundled predicates where assert-by scoping suffices.
+    - **Avoid bumping `#[verifier::rlimit(N)]`** — it papers over the problem and may fail on different hardware (CI vs local). Adding new verified modules can cause previously-passing functions to hit rlimit due to Z3 non-determinism; the fix is always tighter scoping.
+12. **When quantifiers don't instantiate:** If a callee ensures `forall|k| ...`, add small, explicit `assert(...)` facts with the right trigger shape right before the statement that needs it.
+13. **Naming convention — `axiom_` vs `lemma_`:** Functions with `admit()` bodies must use the `axiom_` prefix; fully proved functions use the `lemma_` prefix. When you prove an axiom, rename it from `axiom_` to `lemma_` (and update all call sites).
+14. **Always run `verusfmt`:** Run `verusfmt` on all changed `.rs` files before committing. Verus-specific formatting won't be handled by `rustfmt`.
+15. **Always check cargo test alongside Verus:** After verification passes, also run `cargo test` to catch non-Verus build issues (missing imports, cfg guards, etc.).
+16. **When proofs require new `assume(...)`, suggest spec revisions instead:** Distinguish between two kinds:
+    - **Original assumes** (pre-existing): These are proof obligations to be replaced with actual proofs.
+    - **New assumes during proof work:** Signals a spec gap. Propose spec revisions: add as postcondition (if about return value) or precondition (if about input), then propagate through the call chain.
+    - **When new assumes are acceptable (last resort):** In `From` impls where Verus doesn't support `from_req`, in code protected by `assume(false)` proof bypass, or for properties requiring deep spec work beyond current scope.
+
+## Example Invocation
+
+When you encounter a proof with `admit()` or `assume(...)`:
+
+1. **Understand:** What property needs to be proven?
+2. **Search:** Are there existing lemmas that help?
+3. **Structure:** Add `assume(false)` at key steps
+4. **Prove:** Replace assumes incrementally using patterns above
+5. **Verify:** Test each step and the full integration
+6. **Clean:** Remove redundant assertions, add comments
+
+## Success Criteria
+
+- All `admit()` and `assume(...)` replaced with actual proofs (or documented as `axiom_` with justification)
+- Naming convention: `axiom_` prefix for admitted functions, `lemma_` for fully proved
+- Verification passes: `cargo verus verify`
+- Non-Verus builds pass: `cargo test` and `cargo clippy`
+- `verusfmt` run on all changed files
+- Proofs follow codebase style (comments, structure)
+- Existing lemmas reused wherever possible
+- No exec/ghost mode errors
+- Minimal, clean assertions (tested by removal)
+
+## Final Summary Requirements
+
+At the end of a proof session, provide a summary that includes:
+
+1. **Functions proven:** List each function and its status (fully proven, partially proven with remaining assumes)
+2. **Lemmas added:** List new lemmas created and their purpose
+3. **Axioms remaining:** List all `axiom_` functions still using `admit()`, with a brief note on why they remain axioms
+4. **Specification changes:** Report any preconditions or postconditions that were strengthened, including:
+   - Which function's spec was changed
+   - What the old spec was (briefly)
+   - What the new spec is
+   - Why the change was necessary
+5. **Remaining work:** If assumes remain, explain what would be needed to complete the proofs

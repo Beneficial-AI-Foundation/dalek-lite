@@ -9,7 +9,7 @@ use crate::field::FieldElement;
 #[allow(unused_imports)]
 use crate::montgomery::MontgomeryPoint;
 #[allow(unused_imports)]
-use crate::ristretto::RistrettoPoint;
+use crate::ristretto::{CompressedRistretto, RistrettoPoint};
 #[allow(unused_imports)]
 use crate::specs::core_specs::*;
 #[allow(unused_imports)]
@@ -82,6 +82,22 @@ pub fn compressed_edwards_y_from_array_result(
     arr_result.map(|arr| crate::edwards::CompressedEdwardsY(arr))
 }
 
+/// Construct a CompressedRistretto from an array result.
+///
+/// Analogous to compressed_edwards_y_from_array_result but for CompressedRistretto.
+/// Verus cannot automatically verify properties through Result::map,
+/// so we provide this wrapper with explicit postconditions.
+#[verifier::external_body]
+pub fn compressed_ristretto_from_array_result(
+    arr_result: Result<[u8; 32], TryFromSliceError>,
+) -> (result: Result<CompressedRistretto, TryFromSliceError>)
+    ensures
+        arr_result.is_ok() <==> result.is_ok(),
+        arr_result.is_ok() ==> result.unwrap().0@ == arr_result.unwrap()@,
+{
+    arr_result.map(|arr| CompressedRistretto(arr))
+}
+
 /// Extract the first 32 bytes from a 64-byte array.
 #[verifier::external_body]
 pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
@@ -147,7 +163,7 @@ pub open spec fn seq_from32(b: &[u8; 32]) -> Seq<u8> {
 #[verifier::external_body]
 pub fn u16_to_le_bytes(x: u16) -> (bytes: [u8; 2])
     ensures
-        bytes_to_nat_prefix(bytes@, 2) == x as nat,
+        bytes_as_nat_prefix(bytes@, 2) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -155,7 +171,7 @@ pub fn u16_to_le_bytes(x: u16) -> (bytes: [u8; 2])
 #[verifier::external_body]
 pub fn u32_to_le_bytes(x: u32) -> (bytes: [u8; 4])
     ensures
-        bytes_to_nat_prefix(bytes@, 4) == x as nat,
+        bytes_as_nat_prefix(bytes@, 4) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -163,7 +179,7 @@ pub fn u32_to_le_bytes(x: u32) -> (bytes: [u8; 4])
 #[verifier::external_body]
 pub fn u64_to_le_bytes(x: u64) -> (bytes: [u8; 8])
     ensures
-        bytes_to_nat_prefix(bytes@, 8) == x as nat,
+        bytes_as_nat_prefix(bytes@, 8) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -171,7 +187,7 @@ pub fn u64_to_le_bytes(x: u64) -> (bytes: [u8; 8])
 #[verifier::external_body]
 pub fn u128_to_le_bytes(x: u128) -> (bytes: [u8; 16])
     ensures
-        bytes_to_nat_prefix(bytes@, 16) == x as nat,
+        bytes_as_nat_prefix(bytes@, 16) == x as nat,
 {
     x.to_le_bytes()
 }
@@ -179,7 +195,7 @@ pub fn u128_to_le_bytes(x: u128) -> (bytes: [u8; 16])
 #[verifier::external_body]
 pub fn u16_from_le_bytes(bytes: [u8; 2]) -> (x: u16)
     ensures
-        x as nat == bytes_to_nat_prefix(bytes@, 2),
+        x as nat == bytes_as_nat_prefix(bytes@, 2),
 {
     u16::from_le_bytes(bytes)
 }
@@ -187,7 +203,7 @@ pub fn u16_from_le_bytes(bytes: [u8; 2]) -> (x: u16)
 #[verifier::external_body]
 pub fn u32_from_le_bytes(bytes: [u8; 4]) -> (x: u32)
     ensures
-        x as nat == bytes_to_nat_prefix(bytes@, 4),
+        x as nat == bytes_as_nat_prefix(bytes@, 4),
 {
     u32::from_le_bytes(bytes)
 }
@@ -195,7 +211,7 @@ pub fn u32_from_le_bytes(bytes: [u8; 4]) -> (x: u32)
 #[verifier::external_body]
 pub fn u64_from_le_bytes(bytes: [u8; 8]) -> (x: u64)
     ensures
-        x as nat == bytes_to_nat_prefix(bytes@, 8),
+        x as nat == bytes_as_nat_prefix(bytes@, 8),
 {
     u64::from_le_bytes(bytes)
 }
@@ -203,7 +219,7 @@ pub fn u64_from_le_bytes(bytes: [u8; 8]) -> (x: u64)
 #[verifier::external_body]
 pub fn u128_from_le_bytes(bytes: [u8; 16]) -> (x: u128)
     ensures
-        x as nat == bytes_to_nat_prefix(bytes@, 16),
+        x as nat == bytes_as_nat_prefix(bytes@, 16),
 {
     u128::from_le_bytes(bytes)
 }
@@ -214,16 +230,19 @@ pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg
     -a
 }
 
-// Assume specification for array hash implementation
-// This is used when hashing fixed-size arrays like [u8; 32] in Hash implementations
-pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
-    _0: &[T; N],
-    _1: &mut H,
-) where H: core::hash::Hasher, T: core::hash::Hash
-;
-
 // Spec function: models the state of a hasher after hashing bytes
 pub spec fn spec_state_after_hash<H, T, const N: usize>(initial_state: H, bytes: &[T; N]) -> H;
+
+// Assume specification for array hash implementation
+// This is used when hashing fixed-size arrays like [u8; 32] in Hash implementations.
+// The specification models hashing as a pure state transition on the hasher state.
+pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
+    bytes: &[T; N],
+    state: &mut H,
+) where H: core::hash::Hasher, T: core::hash::Hash
+    ensures
+        *state == spec_state_after_hash(*old(state), bytes),
+;
 
 /// Spec function: the hash state after hashing a MontgomeryPoint
 /// This is defined as the hash state of its canonical byte representation
@@ -232,8 +251,8 @@ pub open spec fn spec_state_after_hash_montgomery<H>(
     point: &MontgomeryPoint,
 ) -> H {
     // The hash state of a MontgomeryPoint is determined by its canonical bytes
-    // Canonical bytes are: spec_fe51_to_bytes(spec_fe51_from_bytes(point.0))
-    let canonical_seq = spec_fe51_to_bytes(&spec_fe51_from_bytes(&point.0));
+    // Canonical bytes are: spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))
+    let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&point.0));
     let canonical_bytes = seq_to_array_32(canonical_seq);
     spec_state_after_hash(initial_state, &canonical_bytes)
 }
@@ -246,7 +265,7 @@ pub proof fn axiom_hash_is_canonical<H>(
     requires
 // The two points represent the same field element (same canonical value)
 
-        spec_field_element_from_bytes(&point1.0) == spec_field_element_from_bytes(&point2.0),
+        field_element_from_bytes(&point1.0) == field_element_from_bytes(&point2.0),
     ensures
 // Points with equal field element values hash to the same state
 
@@ -318,6 +337,7 @@ pub fn zeroize_bytes32(bytes: &mut [u8; 32])
 pub fn zeroize_limbs5(limbs: &mut [u64; 5])
     ensures
         forall|i: int| 0 <= i < 5 ==> #[trigger] limbs[i] == 0u64,
+    no_unwind
 {
     use zeroize::Zeroize;
     limbs.zeroize();

@@ -18,12 +18,40 @@ Feel free to click on many links to look for the best lemma.
 
 ## Verus Verification
 
-Run Verus verification from the `curve25519-dalek` directory:
+Run Verus verification from the workspace root:
 ```bash
-cd curve25519-dalek && cargo verus verify -- --multiple-errors 20
+cargo verus verify -p curve25519-dalek
 ```
 
-This ensures proper compilation and avoids dependency issues with other crates in the workspace.
+### Efficient error extraction
+
+When verifying and expecting possible errors, always use a single grep pipeline to get the error type, location, and summary in one call:
+```bash
+cargo verus verify -p curve25519-dalek 2>&1 | grep -E "^error|verification results:|^   --> |failed this" | head -30
+```
+
+This gives you:
+- Error type: `error: postcondition not satisfied`, `error: while loop: Resource limit (rlimit) exceeded`, `error: this file contains an unclosed delimiter`
+- Location: `--> curve25519-dalek/src/.../file.rs:123:13`
+- Failed clause: `failed this postcondition` / `failed this precondition`
+- Summary: `verification results:: 1715 verified, 0 errors`
+
+**Do NOT** run bare `cargo verus verify ... | tail -5` when there may be errors — the summary alone doesn't tell you what failed or where.
+
+When verification is expected to succeed, a simple tail is fine:
+```bash
+cargo verus verify -p curve25519-dalek 2>&1 | tail -5
+```
+
+### Targeted verification (faster feedback)
+
+```bash
+# Single module:
+cargo verus verify -p curve25519-dalek -- --verify-module backend::serial::scalar_mul::straus
+
+# Single function in a module:
+cargo verus verify -p curve25519-dalek -- --verify-only-module module_name --verify-function function_name
+```
 
 ## Strategies for Debugging Verus Proofs
 

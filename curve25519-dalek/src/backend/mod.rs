@@ -50,6 +50,7 @@ use crate::specs::scalar_specs::*;
 
 pub mod serial;
 
+use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 // #[cfg(curve25519_dalek_backend = "simd")]
@@ -264,7 +265,7 @@ pub fn variable_base_mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: Edwa
         // Functional correctness: result represents scalar * point
         edwards_point_as_affine(result) == edwards_scalar_mul(
             edwards_point_as_affine(*point),
-            scalar_to_nat(scalar),
+            scalar_as_nat(scalar),
         ),
 {
     match get_selected_backend() {
@@ -283,12 +284,14 @@ pub fn variable_base_mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: Edwa
 pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (result: EdwardsPoint)
     requires
         is_well_formed_edwards_point(*A),
+        scalar_as_nat(a) < pow2(255),
+        scalar_as_nat(b) < pow2(255),
     ensures
         is_well_formed_edwards_point(result),
         // Functional correctness: result = a*A + b*B where B is the Ed25519 basepoint
         edwards_point_as_affine(result) == {
-            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_to_nat(a));
-            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_to_nat(b));
+            let aA = edwards_scalar_mul(edwards_point_as_affine(*A), scalar_as_nat(a));
+            let bB = edwards_scalar_mul(spec_ed25519_basepoint(), scalar_as_nat(b));
             edwards_add(aA.0, aA.1, bB.0, bB.1)
         },
 {

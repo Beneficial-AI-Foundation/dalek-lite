@@ -110,11 +110,16 @@
 //! reduces a \\(512\\)-bit integer, if the optional `digest` feature
 //! has been enabled.
 
+use crate::lemmas::common_lemmas::bits_as_nat_lemmas::*;
+use crate::lemmas::common_lemmas::div_mod_lemmas::*;
 use crate::lemmas::common_lemmas::mask_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::lemmas::common_lemmas::shift_lemmas::*;
 use crate::lemmas::common_lemmas::sum_lemmas::*;
 use crate::lemmas::common_lemmas::to_nat_lemmas::*;
+use crate::lemmas::montgomery_pow_chain_lemmas::*;
 use crate::scalar_helpers::*;
 #[cfg(feature = "alloc")]
 use crate::specs::iterator_specs::collect_scalars_from_iter;
@@ -168,6 +173,8 @@ use crate::specs::field_specs_u64::spec_as_bytes;
 #[allow(unused_imports)]
 use crate::specs::core_specs::*;
 #[allow(unused_imports)]
+use crate::specs::primality_specs::*;
+#[allow(unused_imports)]
 use crate::specs::scalar52_specs::*;
 
 #[allow(unused_imports)]
@@ -175,6 +182,15 @@ use crate::lemmas::scalar_lemmas::*;
 
 #[allow(unused_imports)]
 use crate::lemmas::scalar_batch_invert_lemmas::*;
+
+#[allow(unused_imports)]
+use crate::lemmas::scalar_lemmas_::montgomery_reduce_lemmas::*;
+
+#[allow(unused_imports)]
+use crate::lemmas::scalar_lemmas_::naf_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::scalar_lemmas_::radix16_lemmas::*;
+use crate::lemmas::scalar_lemmas_::radix_2w_lemmas::*;
 
 #[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::*;
@@ -254,12 +270,11 @@ pub open spec fn is_a_scalar(s: Scalar) -> bool {
 impl Scalar {
     /// Construct a `Scalar` by reducing a 256-bit little-endian integer
     /// modulo the group order \\( \ell \\).
-    // VERIFICATION NOTE: VERIFIED
     pub fn from_bytes_mod_order(bytes: [u8; 32]) -> (result: Scalar)
         ensures
     // Result is equivalent to input modulo the group order
 
-            bytes32_to_nat(&result.bytes) % group_order() == bytes32_to_nat(&bytes) % group_order(),
+            scalar_as_canonical(&result) == u8_32_as_group_canonical(bytes),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
     {
@@ -279,15 +294,12 @@ impl Scalar {
     /// modulo the group order \\( \ell \\).
     /*
     <VERIFICATION NOTE>
-      VERIFIED
       - Split single expression into two statements to allow proof block
-      - Added proof block to connect postconditions from from_bytes_wide and pack()
     </VERIFICATION NOTE>
     */
     pub fn from_bytes_mod_order_wide(input: &[u8; 64]) -> (result: Scalar)
         ensures
-            bytes32_to_nat(&result.bytes) % group_order() == bytes_seq_to_nat(input@)
-                % group_order(),
+            scalar_as_canonical(&result) == group_canonical(bytes_seq_as_nat(input@)),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
             // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.
@@ -299,8 +311,8 @@ impl Scalar {
         </ORIGINAL CODE> */
         /* <MODIFIED CODE> */
         // The proof chain:
-        // 1. from_bytes_wide ensures: scalar52_to_nat(&s) < group_order() AND limbs_bounded(&s)
-        // 2. pack() requires limbs_bounded, ensures: scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result)
+        // 1. from_bytes_wide ensures: scalar52_as_nat(&s) < group_order() AND limbs_bounded(&s)
+        // 2. pack() requires limbs_bounded, ensures: scalar52_as_nat(self) < group_order() ==> is_canonical_scalar(&result)
         // 3. is_canonical_scalar includes bytes[31] <= 127
         let unpacked = UnpackedScalar::from_bytes_wide(input);
         let result = unpacked.pack();
@@ -308,23 +320,23 @@ impl Scalar {
         proof {
             // from_bytes_wide postconditions:
             // - limbs_bounded(&unpacked)
-            // - scalar52_to_nat(&unpacked) == bytes_seq_to_nat(input@) % group_order()
-            // - scalar52_to_nat(&unpacked) < group_order()
+            // - scalar52_as_nat(&unpacked) == bytes_seq_as_nat(input@) % group_order()
+            // - scalar52_as_nat(&unpacked) < group_order()
             // pack() postconditions:
-            // - bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked) % pow2(256)
-            // - scalar52_to_nat(&unpacked) < group_order() ==> is_canonical_scalar(&result)
-            // Since scalar52_to_nat(&unpacked) < group_order() < pow2(256),
-            // we have scalar52_to_nat(&unpacked) % pow2(256) == scalar52_to_nat(&unpacked)
+            // - u8_32_as_nat(&result.bytes) == scalar52_as_nat(&unpacked) % pow2(256)
+            // - scalar52_as_nat(&unpacked) < group_order() ==> is_canonical_scalar(&result)
+            // Since scalar52_as_nat(&unpacked) < group_order() < pow2(256),
+            // we have scalar52_as_nat(&unpacked) % pow2(256) == scalar52_as_nat(&unpacked)
             lemma_group_order_smaller_than_pow256();
-            lemma_small_mod(scalar52_to_nat(&unpacked), pow2(256));
+            lemma_small_mod(scalar52_as_nat(&unpacked), pow2(256));
 
-            // Therefore bytes32_to_nat(&result.bytes) == scalar52_to_nat(&unpacked)
-            //                                        == bytes_seq_to_nat(input@) % group_order()
-            // Since bytes_seq_to_nat(input@) % group_order() < group_order(),
-            // bytes32_to_nat(&result.bytes) % group_order() == bytes32_to_nat(&result.bytes)
-            //                                              == bytes_seq_to_nat(input@) % group_order()
-            lemma_mod_bound(bytes_seq_to_nat(input@) as int, group_order() as int);
-            lemma_small_mod(bytes32_to_nat(&result.bytes), group_order());
+            // Therefore u8_32_as_nat(&result.bytes) == scalar52_as_nat(&unpacked)
+            //                                        == bytes_seq_as_nat(input@) % group_order()
+            // Since bytes_seq_as_nat(input@) % group_order() < group_order(),
+            // u8_32_as_nat(&result.bytes) % group_order() == u8_32_as_nat(&result.bytes)
+            //                                              == bytes_seq_as_nat(input@) % group_order()
+            lemma_mod_bound(bytes_seq_as_nat(input@) as int, group_order() as int);
+            lemma_small_mod(u8_32_as_nat(&result.bytes), group_order());
 
             // Uniformity: reducing 512 uniform bits mod L (≈2^253) produces nearly uniform scalar.
             // Bias: at most L/2^512 ≈ 2^-259 statistical distance (cryptographically negligible).
@@ -345,14 +357,13 @@ impl Scalar {
     /*
     <VERIFICATION NOTE>
       - Refactored to use wrapper functions instead of trait functions for ct_eq and ct_option_new
-      - Has proof bypass
     </VERIFICATION NOTE> */
     pub fn from_canonical_bytes(bytes: [u8; 32]) -> (result: CtOption<Scalar>)
         ensures
-            bytes32_to_nat(&bytes) < group_order() ==> ct_option_has_value(result),
-            bytes32_to_nat(&bytes) >= group_order() ==> !ct_option_has_value(result),
-            ct_option_has_value(result) ==> bytes32_to_nat(&ct_option_value(result).bytes)
-                % group_order() == bytes32_to_nat(&bytes) % group_order(),
+            u8_32_as_nat(&bytes) < group_order() ==> ct_option_has_value(result),
+            u8_32_as_nat(&bytes) >= group_order() ==> !ct_option_has_value(result),
+            ct_option_has_value(result) ==> u8_32_as_nat(&ct_option_value(result).bytes)
+                % group_order() == u8_32_as_nat(&bytes) % group_order(),
     {
         /* <ORIGINAL CODE>
           let high_bit_unset = (bytes[31] >> 7).ct_eq(&0);
@@ -377,7 +388,7 @@ impl Scalar {
         let ghost high_byte: u8 = bytes[31];
 
         proof {
-            if bytes32_to_nat(&bytes) < group_order() {
+            if u8_32_as_nat(&bytes) < group_order() {
                 lemma_canonical_bytes_high_bit_clear(&candidate.bytes);
                 assert(high_byte >> 7 == 0) by (bit_vector)
                     requires
@@ -491,14 +502,16 @@ impl Debug for Scalar {
 }
 
 impl<'a> MulAssign<&'a Scalar> for Scalar {
-    // VERIFICATION NOTE: VERIFIED
     fn mul_assign(&mut self, _rhs: &'a Scalar)
         requires
             is_canonical_scalar(old(self)),
             is_canonical_scalar(_rhs),
         ensures
-            bytes32_to_nat(&self.bytes) % group_order() == (bytes32_to_nat(&old(self).bytes)
-                * bytes32_to_nat(&_rhs.bytes)) % group_order(),
+    // can't use scalar_as_canonical due to mut
+
+            u8_32_as_group_canonical(self.bytes) == group_canonical(
+                scalar_as_nat(&old(self)) * scalar_as_nat(&_rhs),
+            ),
             is_canonical_scalar(self),
     {
         /* <ORIGINAL CODE>
@@ -511,8 +524,8 @@ impl<'a> MulAssign<&'a Scalar> for Scalar {
         let self_unpacked = self.unpack();
         let rhs_unpacked = _rhs.unpack();
         proof {
-            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&old(self).bytes));
-            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
+            assert(scalar52_as_nat(&self_unpacked) == u8_32_as_nat(&old(self).bytes));
+            assert(scalar52_as_nat(&rhs_unpacked) == u8_32_as_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
             lemma_limbs_bounded_implies_prod_bounded(&self_unpacked, &rhs_unpacked);
@@ -520,31 +533,27 @@ impl<'a> MulAssign<&'a Scalar> for Scalar {
 
         let result_unpacked = UnpackedScalar::mul(&self_unpacked, &rhs_unpacked);
         proof {
-            assert(scalar52_to_nat(&result_unpacked) % group_order() == (scalar52_to_nat(
+            assert(scalar52_as_nat(&result_unpacked) % group_order() == (scalar52_as_nat(
                 &self_unpacked,
-            ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
-            assert(limbs_bounded(&result_unpacked));
-            assert(scalar52_to_nat(&result_unpacked) % group_order() == (scalar52_to_nat(
-                &self_unpacked,
-            ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
+            ) * scalar52_as_nat(&rhs_unpacked)) % group_order());
             assert(limbs_bounded(&result_unpacked));
         }
 
         *self = result_unpacked.pack();
         proof {
-            assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
+            assert(scalar52_as_nat(&result_unpacked) == scalar52_as_nat(&result_unpacked) % pow2(
                 256,
             )) by {
                 assert(group_order() < pow2(256)) by {
                     lemma_group_order_bound();
                     lemma_pow2_strictly_increases(255, 256);
                 }
-                lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
+                lemma_small_mod(scalar52_as_nat(&result_unpacked), pow2(256));
             }
-            assert(bytes32_to_nat(&self.bytes) % group_order() == scalar52_to_nat(&result_unpacked)
+            assert(u8_32_as_nat(&self.bytes) % group_order() == scalar52_as_nat(&result_unpacked)
                 % group_order());
-            assert(bytes32_to_nat(&self.bytes) % group_order() == (bytes32_to_nat(&old(self).bytes)
-                * bytes32_to_nat(&_rhs.bytes)) % group_order());
+            assert(u8_32_as_nat(&self.bytes) % group_order() == (u8_32_as_nat(&old(self).bytes)
+                * u8_32_as_nat(&_rhs.bytes)) % group_order());
         }
         /* </MODIFIED CODE> */
 
@@ -561,8 +570,7 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &Scalar {
     }
 
     open spec fn mul_req(self, rhs: &Scalar) -> bool {
-        true  // No preconditions
-
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
     }
 
     open spec fn mul_spec(self, rhs: &Scalar) -> Scalar {
@@ -574,11 +582,12 @@ impl vstd::std_specs::ops::MulSpecImpl<&Scalar> for &Scalar {
 impl<'b> Mul<&'b Scalar> for &Scalar {
     type Output = Scalar;
 
-    // VERIFICATION NOTE: VERIFIED
+    // NOTE: MulSpecImpl::mul_req requires is_canonical_scalar for both inputs
     fn mul(self, _rhs: &'b Scalar) -> (result: Scalar)
         ensures
-            bytes32_to_nat(&result.bytes) % group_order() == (bytes32_to_nat(&self.bytes)
-                * bytes32_to_nat(&_rhs.bytes)) % group_order(),
+            scalar_as_canonical(&result) == group_canonical(
+                scalar_as_nat(&self) * scalar_as_nat(&_rhs),
+            ),
             is_canonical_scalar(&result),
     {
         /* <VERIFICATION NOTE>
@@ -588,39 +597,38 @@ impl<'b> Mul<&'b Scalar> for &Scalar {
         let self_unpacked = self.unpack();
         let rhs_unpacked = _rhs.unpack();
         proof {
-            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&self.bytes));
-            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
+            assert(scalar52_as_nat(&self_unpacked) == u8_32_as_nat(&self.bytes));
+            assert(scalar52_as_nat(&rhs_unpacked) == u8_32_as_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
             lemma_limbs_bounded_implies_prod_bounded(&self_unpacked, &rhs_unpacked);
         }
         let result_unpacked = UnpackedScalar::mul(&self_unpacked, &rhs_unpacked);
         proof {
-            assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
+            assert(scalar52_as_nat(&result_unpacked) == scalar52_as_nat(&result_unpacked) % pow2(
                 256,
             )) by {
                 assert(group_order() < pow2(256)) by {
                     lemma_group_order_bound();
                     lemma_pow2_strictly_increases(255, 256);
                 }
-                lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
+                lemma_small_mod(scalar52_as_nat(&result_unpacked), pow2(256));
             }
-            assert(scalar52_to_nat(&result_unpacked) % group_order() == (scalar52_to_nat(
+            assert(scalar52_as_nat(&result_unpacked) % group_order() == (scalar52_as_nat(
                 &self_unpacked,
-            ) * scalar52_to_nat(&rhs_unpacked)) % group_order());
+            ) * scalar52_as_nat(&rhs_unpacked)) % group_order());
             assert(limbs_bounded(&result_unpacked));
         }
-        // UnpackedScalar::mul ensures scalar52_to_nat(&result_unpacked) < group_order()
-        // pack() ensures: scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result)
+        // UnpackedScalar::mul ensures scalar52_as_nat(&result_unpacked) < group_order()
+        // pack() ensures: scalar52_as_nat(self) < group_order() ==> is_canonical_scalar(&result)
         let result = result_unpacked.pack();
         proof {
-            assert(bytes32_to_nat(&result.bytes) % group_order() == scalar52_to_nat(
-                &result_unpacked,
-            ) % group_order());
-            assert(bytes32_to_nat(&result.bytes) % group_order() == (bytes32_to_nat(&self.bytes)
-                * bytes32_to_nat(&_rhs.bytes)) % group_order());
+            assert(u8_32_as_nat(&result.bytes) % group_order() == scalar52_as_nat(&result_unpacked)
+                % group_order());
+            assert(u8_32_as_nat(&result.bytes) % group_order() == (u8_32_as_nat(&self.bytes)
+                * u8_32_as_nat(&_rhs.bytes)) % group_order());
             // Trigger pack()'s conditional postcondition for is_canonical_scalar
-            assert(scalar52_to_nat(&result_unpacked) < group_order());
+            assert(scalar52_as_nat(&result_unpacked) < group_order());
             assert(is_canonical_scalar(&result));
         }
         /* </MODIFIED CODE> */
@@ -642,8 +650,7 @@ impl vstd::std_specs::ops::AddSpecImpl<&Scalar> for &Scalar {
     }
 
     open spec fn add_req(self, rhs: &Scalar) -> bool {
-        true  // No preconditions yet
-
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
     }
 
     open spec fn add_spec(self, rhs: &Scalar) -> Scalar {
@@ -655,15 +662,12 @@ impl vstd::std_specs::ops::AddSpecImpl<&Scalar> for &Scalar {
 impl<'a> Add<&'a Scalar> for &Scalar {
     type Output = Scalar;
 
-    /* <VERIFICATION NOTE>
-    PROOF BYPASS; may need to add preconditions to spec
-    </VERIFICATION NOTE> */
+    // PRECONDITION is_canonical_scalar(self) && is_canonical_scalar(_rhs)
     #[allow(non_snake_case)]
     fn add(self, _rhs: &'a Scalar) -> (result: Scalar)
         ensures
-            bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(
-                &_rhs.bytes,
-            )) % group_order(),
+            scalar_as_nat(&result) == group_canonical(scalar_as_nat(&self) + scalar_as_nat(&_rhs)),
+            is_canonical_scalar(&result),
     {
         // The UnpackedScalar::add function produces reduced outputs if the inputs are reduced. By
         // Scalar invariant #1, this is always the case.
@@ -676,43 +680,12 @@ impl<'a> Add<&'a Scalar> for &Scalar {
         /* <MODIFIED CODE> */
         let self_unpacked = self.unpack();
         let rhs_unpacked = _rhs.unpack();
-        proof {
-            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&self.bytes));
-            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
-            assert(limbs_bounded(&self_unpacked));
-            assert(limbs_bounded(&rhs_unpacked));
-        }
-
-        // UnpackedScalar::add requires inputs < group_order()
-        // By Scalar invariant #2, scalars should be canonical
-        // However, we cannot add requires clauses to trait implementations,
-        // so we assume this property holds
-        proof {
-            assume(scalar52_to_nat(&self_unpacked) < group_order());
-            assume(scalar52_to_nat(&rhs_unpacked) < group_order());
-        }
-
         let result_unpacked = UnpackedScalar::add(&self_unpacked, &rhs_unpacked);
-        proof {
-            assert(scalar52_to_nat(&result_unpacked) == (scalar52_to_nat(&self_unpacked)
-                + scalar52_to_nat(&rhs_unpacked)) % group_order());
-            assert(limbs_bounded(&result_unpacked));
-        }
 
         let result = result_unpacked.pack();
         proof {
-            assert(scalar52_to_nat(&result_unpacked) == scalar52_to_nat(&result_unpacked) % pow2(
-                256,
-            )) by {
-                assert(group_order() < pow2(256)) by {
-                    assume(false);
-                }
-                lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
-            }
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked));
-            assert(bytes32_to_nat(&result.bytes) == (bytes32_to_nat(&self.bytes) + bytes32_to_nat(
-                &_rhs.bytes,
-            )) % group_order());
+            lemma_group_order_smaller_than_pow256();
+            lemma_small_mod(scalar52_as_nat(&result_unpacked), pow2(256));
         }
         /* </MODIFIED CODE> */
 
@@ -723,13 +696,17 @@ impl<'a> Add<&'a Scalar> for &Scalar {
 define_add_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
 impl<'a> AddAssign<&'a Scalar> for Scalar {
-    // VERIFICATION NOTE: VERIFIED
     #[allow(clippy::op_ref)]
     fn add_assign(&mut self, _rhs: &'a Scalar)
+        requires
+            is_canonical_scalar(old(self)),
+            is_canonical_scalar(_rhs),
         ensures
-            bytes32_to_nat(&self.bytes) == (bytes32_to_nat(&old(self).bytes) + bytes32_to_nat(
-                &_rhs.bytes,
-            )) % group_order(),
+    // can't use scalar_as_nat LHS, because of mut
+
+            u8_32_as_nat(&self.bytes) == group_canonical(
+                scalar_as_nat(&old(self)) + scalar_as_nat(&_rhs),
+            ),
     {
         *self = &*self + _rhs;
     }
@@ -757,19 +734,14 @@ impl vstd::std_specs::ops::SubSpecImpl<&Scalar> for &Scalar {
 impl<'b> Sub<&'b Scalar> for &Scalar {
     type Output = Scalar;
 
-    // VERIFICATION NOTE: VERIFIED
     // PRECONDITION is_canonical_scalar(self) && is_canonical_scalar(_rhs)
     #[allow(non_snake_case)]
-    fn sub(self, _rhs: &'b Scalar) -> (result:
-        Scalar)/* VERIFICATION NOTE: preconditions are added to the SpecImpl above
-        requires
-            is_canonical_scalar(self),
-            is_canonical_scalar(rhs)
-        */
-
+    fn sub(self, _rhs: &'b Scalar) -> (result: Scalar)
         ensures
-            bytes32_to_nat(&result.bytes) % group_order() == (bytes32_to_nat(&self.bytes)
-                - bytes32_to_nat(&_rhs.bytes)) % (group_order() as int),
+    // can't use group_canonical RHS due to int cast
+
+            scalar_as_canonical(&result) == (scalar_as_nat(&self) - scalar_as_nat(&_rhs)) % (
+            group_order() as int),
     {
         /* <ORIGINAL CODE>
          UnpackedScalar::sub(&self.unpack(), &_rhs.unpack()).pack()
@@ -780,18 +752,18 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
         proof {
             // unpack() ensures these properties:
-            assert(scalar52_to_nat(&self_unpacked) == bytes32_to_nat(&self.bytes));
-            assert(scalar52_to_nat(&rhs_unpacked) == bytes32_to_nat(&_rhs.bytes));
+            assert(scalar52_as_nat(&self_unpacked) == u8_32_as_nat(&self.bytes));
+            assert(scalar52_as_nat(&rhs_unpacked) == u8_32_as_nat(&_rhs.bytes));
             assert(limbs_bounded(&self_unpacked));
             assert(limbs_bounded(&rhs_unpacked));
         }
 
-        // UnpackedScalar::sub requires: -group_order() <= scalar52_to_nat(&a) - scalar52_to_nat(&b) < group_order()
+        // UnpackedScalar::sub requires: -group_order() <= scalar52_as_nat(&a) - scalar52_as_nat(&b) < group_order()
         proof {
-            // -group_order() < scalar52_to_nat(&self_unpacked) - scalar52_to_nat(&rhs_unpacked) < grour_order()
+            // -group_order() < scalar52_as_nat(&self_unpacked) - scalar52_as_nat(&rhs_unpacked) < grour_order()
             lemma_sub_symmetric_bound(
-                scalar52_to_nat(&self_unpacked),
-                scalar52_to_nat(&rhs_unpacked),
+                scalar52_as_nat(&self_unpacked),
+                scalar52_as_nat(&rhs_unpacked),
                 group_order(),
             );
         }
@@ -800,14 +772,14 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
         proof {
             // Postconditions from sub - need to strengthen, review connections
-            assert(scalar52_to_nat(&result_unpacked) == (scalar52_to_nat(&self_unpacked)
-                - scalar52_to_nat(&rhs_unpacked)) % (group_order() as int));
+            assert(scalar52_as_nat(&result_unpacked) == (scalar52_as_nat(&self_unpacked)
+                - scalar52_as_nat(&rhs_unpacked)) % (group_order() as int));
             assert(limbs_bounded(&result_unpacked));
-            assert(scalar52_to_nat(&result_unpacked) < group_order());
+            assert(scalar52_as_nat(&result_unpacked) < group_order());
 
             // Since result < group_order(), taking mod again gives the same value
-            lemma_small_mod(scalar52_to_nat(&result_unpacked), group_order());
-            assert(scalar52_to_nat(&result_unpacked) % group_order() == scalar52_to_nat(
+            lemma_small_mod(scalar52_as_nat(&result_unpacked), group_order());
+            assert(scalar52_as_nat(&result_unpacked) % group_order() == scalar52_as_nat(
                 &result_unpacked,
             ));
         }
@@ -815,24 +787,24 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
         let result = result_unpacked.pack();
 
         proof {
-            // Goal: bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked)
-            // pack postcondition gives: bytes32_to_nat(...) == scalar52_to_nat(...) % pow2(256)
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&result_unpacked)) by {
-                assert(scalar52_to_nat(&result_unpacked) % pow2(256) == scalar52_to_nat(
+            // Goal: u8_32_as_nat(&result.bytes) == scalar52_as_nat(&result_unpacked)
+            // pack postcondition gives: u8_32_as_nat(...) == scalar52_as_nat(...) % pow2(256)
+            assert(u8_32_as_nat(&result.bytes) == scalar52_as_nat(&result_unpacked)) by {
+                assert(scalar52_as_nat(&result_unpacked) % pow2(256) == scalar52_as_nat(
                     &result_unpacked,
                 )) by {
-                    assert(scalar52_to_nat(&result_unpacked) < pow2(256)) by {
-                        // sub postcondition: scalar52_to_nat(...) < group_order()
+                    assert(scalar52_as_nat(&result_unpacked) < pow2(256)) by {
+                        // sub postcondition: scalar52_as_nat(...) < group_order()
                         // and group_order() < pow2(256)
                         lemma_group_order_smaller_than_pow256();
                         lemma_scalar52_lt_pow2_256_if_canonical(&result_unpacked);
                     }
-                    lemma_small_mod(scalar52_to_nat(&result_unpacked), pow2(256));
+                    lemma_small_mod(scalar52_as_nat(&result_unpacked), pow2(256));
                 }
             }
 
-            assert(bytes32_to_nat(&result.bytes) % group_order() == (bytes32_to_nat(&self.bytes)
-                - bytes32_to_nat(&_rhs.bytes)) % (group_order() as int));
+            assert(u8_32_as_nat(&result.bytes) % group_order() == (u8_32_as_nat(&self.bytes)
+                - u8_32_as_nat(&_rhs.bytes)) % (group_order() as int));
         }
         /* </MODIFIED CODE> */
 
@@ -843,15 +815,17 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 define_sub_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
 impl<'a> SubAssign<&'a Scalar> for Scalar {
-    // VERIFICATION NOTE: VERIFIED
     #[allow(clippy::op_ref)]
     fn sub_assign(&mut self, _rhs: &'a Scalar)
         requires
             is_canonical_scalar(old(self)),
             is_canonical_scalar(_rhs),
         ensures
-            bytes32_to_nat(&self.bytes) % group_order() == (bytes32_to_nat(&old(self).bytes)
-                - bytes32_to_nat(&_rhs.bytes)) % (group_order() as int),
+    // can't use scalar_as_canonical LHS due to mut or group_canonical LHS due to int cast
+
+            u8_32_as_group_canonical(self.bytes) == (scalar_as_nat(&old(self)) - scalar_as_nat(
+                &_rhs,
+            )) % (group_order() as int),
     {
         *self = &*self - _rhs;
     }
@@ -883,7 +857,7 @@ impl Neg for &Scalar {
     #[allow(non_snake_case)]
     fn neg(self) -> (result: Scalar)
         ensures
-            (scalar_to_nat(self) + scalar_to_nat(&result)) % group_order() == 0,
+            group_canonical(scalar_as_nat(self) + scalar_as_nat(&result)) == 0,
     {
         /* <ORIGINAL CODE>
         let self_R = UnpackedScalar::mul_internal(&self.unpack(), &constants::R);
@@ -908,8 +882,21 @@ impl Neg for &Scalar {
         }
 
         let self_R = UnpackedScalar::mul_internal(&self_unpacked, &constants::R);
+
+        proof {
+            // Establish montgomery_reduce's preconditions
+            lemma_bounded_product_satisfies_input_bounds(&self_unpacked, &constants::R, &self_R);
+            // R is canonical (< L), so product satisfies canonical_bound
+            lemma_r_equals_spec(constants::R);
+            lemma_canonical_product_satisfies_canonical_bound(
+                &self_unpacked,
+                &constants::R,
+                &self_R,
+            );
+        }
         /* </MODIFIED CODE> */
         let self_mod_l = UnpackedScalar::montgomery_reduce(&self_R);
+        // is_canonical_scalar52(&self_mod_l) follows from montgomery_reduce postcondition
 
         /* <ORIGINAL CODE>
         let result = UnpackedScalar::sub(&UnpackedScalar::ZERO, &self_mod_l).pack();
@@ -921,28 +908,28 @@ impl Neg for &Scalar {
         /* </MODIFIED CODE> */
 
         proof {
-            // Prove congruence: scalar52_to_nat(&self_mod_l) % L == scalar_to_nat(self) % L
+            // Prove congruence: scalar52_as_nat(&self_mod_l) % L == scalar_as_nat(self) % L
             lemma_mul_factors_congruent_implies_products_congruent(
-                scalar52_to_nat(&self_unpacked) as int,
+                scalar52_as_nat(&self_unpacked) as int,
                 montgomery_radix() as int,
-                scalar52_to_nat(&constants::R) as int,
+                scalar52_as_nat(&constants::R) as int,
                 group_order() as int,
             );
             lemma_cancel_mul_pow2_mod(
-                scalar52_to_nat(&self_mod_l),
-                scalar52_to_nat(&self_unpacked),
+                scalar52_as_nat(&self_mod_l),
+                scalar52_as_nat(&self_unpacked),
                 montgomery_radix(),
             );
 
             // Prove result is in canonical form
             lemma_group_order_smaller_than_pow256();
-            lemma_small_mod(scalar52_to_nat(&sub_result), pow2(256));
+            lemma_small_mod(scalar52_as_nat(&sub_result), pow2(256));
 
             // Prove the negation property
             lemma_negation_sums_to_zero(
-                scalar_to_nat(self),
-                scalar52_to_nat(&self_mod_l),
-                scalar_to_nat(&result),
+                scalar_as_nat(self),
+                scalar52_as_nat(&self_mod_l),
+                scalar_as_nat(&result),
                 group_order(),
             );
         }
@@ -974,7 +961,7 @@ impl Neg for Scalar {
 
     fn neg(self) -> (result: Scalar)
         ensures
-            (scalar_to_nat(&self) + scalar_to_nat(&result)) % group_order() == 0,
+            group_canonical(scalar_as_nat(&self) + scalar_as_nat(&result)) == 0,
     {
         let result = (&self).neg();
         result
@@ -1027,7 +1014,7 @@ impl<T> Product<T> for Scalar where T: Borrow<Scalar> {
     </VERIFICATION NOTE> */
     fn product<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
         ensures
-            scalar_to_nat(&result) < group_order(),
+            scalar_as_nat(&result) < group_order(),
             scalar_congruent_nat(&result, product_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
     {
         let scalars = collect_scalars_from_iter(iter);
@@ -1058,7 +1045,7 @@ then call the verified sum_of_slice function for the actual computation.
 impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
     fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
         ensures
-            scalar_to_nat(&result) < group_order(),
+            scalar_as_nat(&result) < group_order(),
             scalar_congruent_nat(&result, sum_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
     {
         let scalars = collect_scalars_from_iter(iter);
@@ -1068,13 +1055,14 @@ impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
 }
 
 impl Default for Scalar {
-    // VERIFICATION NOTE: PROOF BYPASS
     fn default() -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == 0 as nat,
+            scalar_as_nat(&result) == 0 as nat,
     {
         let result = Scalar::ZERO;
-        assume(scalar_to_nat(&result) == 0 as nat);
+        proof {
+            lemma_scalar_zero_properties();
+        }
         result
     }
 }
@@ -1138,16 +1126,16 @@ impl vstd::std_specs::convert::FromSpecImpl<u128> for Scalar {
 impl From<u8> for Scalar {
     fn from(x: u8) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         let mut s_bytes = [0u8;32];
         s_bytes[0] = x;
 
         let result = Scalar { bytes: s_bytes };
         proof {
-            assert(scalar_to_nat(&result) == x as nat) by {
+            assert(scalar_as_nat(&result) == x as nat) by {
                 assert forall|i: int| 1 <= i < 32 implies result.bytes[i] == 0 by {}
-                lemma_bytes32_to_nat_first_byte_only(&result.bytes);
+                lemma_u8_32_as_nat_first_byte_only(&result.bytes);
             }
         }
         result
@@ -1158,7 +1146,7 @@ impl From<u16> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u16) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1194,7 +1182,7 @@ impl From<u32> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u32) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1248,7 +1236,7 @@ impl From<u64> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u64) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1280,7 +1268,7 @@ impl From<u128> for Scalar {
     #[allow(clippy::manual_memcpy)]
     fn from(x: u128) -> (result: Scalar)
         ensures
-            scalar_to_nat(&result) == x as nat,
+            scalar_as_nat(&result) == x as nat,
     {
         /* <ORIGINAL CODE>
         let x_bytes = x.to_le_bytes();
@@ -1582,7 +1570,6 @@ impl Scalar {
             is_canonical_scalar(&result),
     {
         let result = Scalar::from_bytes_mod_order_wide(&hash_bytes);
-        assume(false);
         result
     }
 
@@ -1600,7 +1587,7 @@ impl Scalar {
     pub const fn to_bytes(&self) -> (result: [u8; 32])
         ensures
             result == self.bytes,
-            scalar_to_nat(self) == bytes32_to_nat(&result),
+            scalar_as_nat(self) == u8_32_as_nat(&result),
     {
         self.bytes
     }
@@ -1619,7 +1606,7 @@ impl Scalar {
     pub const fn as_bytes(&self) -> (result: &[u8; 32])
         ensures
             result == &self.bytes,
-            scalar_to_nat(self) == bytes32_to_nat(&result),
+            scalar_as_nat(self) == u8_32_as_nat(&result),
     {
         &self.bytes
     }
@@ -1668,9 +1655,11 @@ impl Scalar {
         requires
             is_canonical_scalar(self),
         ensures
-    // Result is the multiplicative inverse: result * self ≡ 1 (mod group_order)
+    // Inversion only holds for nonzero scalars
 
-            (scalar_to_nat(&result) * scalar_to_nat(self)) % group_order() == 1,
+            scalar_as_nat(self) > 0 ==> group_canonical(
+                scalar_as_nat(&result) * scalar_as_nat(self),
+            ) == 1,
             is_canonical_scalar(&result),
     {
         let unpacked = self.unpack();
@@ -1678,17 +1667,25 @@ impl Scalar {
         let result = inv_unpacked.pack();
 
         proof {
-            // Step 1: invert ensures scalar52_to_nat(inv_unpacked) < group_order < pow2(256)
+            // Step 1: invert ensures scalar52_as_nat(inv_unpacked) < group_order < pow2(256)
             lemma_group_order_smaller_than_pow256();
-            assert(scalar52_to_nat(&inv_unpacked) < pow2(256));
+            assert(scalar52_as_nat(&inv_unpacked) < pow2(256));
 
             // Step 2: Since inv_unpacked < pow2(256), pack preserves the value (no modular reduction)
-            lemma_small_mod(scalar52_to_nat(&inv_unpacked), pow2(256));
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&inv_unpacked));
+            lemma_small_mod(scalar52_as_nat(&inv_unpacked), pow2(256));
+            assert(u8_32_as_nat(&result.bytes) == scalar52_as_nat(&inv_unpacked));
 
-            // Step 3: The inverse property follows from invert's postcondition
-            assert((bytes32_to_nat(&result.bytes) * bytes32_to_nat(&self.bytes)) % group_order()
-                == 1);
+            if scalar_as_nat(self) > 0 {
+                // scalar52_as_nat(&unpacked) == scalar_as_nat(self) (from unpack)
+                // canonical: scalar_as_nat(self) < group_order(), so % group_order() != 0
+                vstd::arithmetic::div_mod::lemma_small_mod(
+                    scalar52_as_nat(&unpacked),
+                    group_order(),
+                );
+                // UnpackedScalar::invert's guarded postcondition now applies
+                assert((u8_32_as_nat(&result.bytes) * u8_32_as_nat(&self.bytes)) % group_order()
+                    == 1);
+            }
         }
 
         result
@@ -1735,18 +1732,20 @@ impl Scalar {
     // solution is to use assume_specification to tell Verus what zeroize does.
     // In the short-term, I've just told verus to ignore the body.
     // (SB update: alternative is to exclude just the zeroize call, as below)
-    #[verifier::rlimit(50)]  // The backward loop has many invariants that need more solver time
     pub fn batch_invert(inputs: &mut [Scalar]) -> (result:
         Scalar)/* <VERIFICATION NOTE>
      Refactored for Verus: Index loops instead of iterators, manual Vec construction, ..
     </VERIFICATION NOTE> */
 
         ensures
-    // Result is the modular inverse of the product of all original inputs
+    // Inversion only holds when product of all inputs is nonzero mod group_order
 
-            is_inverse_of_nat(&result, product_of_scalars(old(inputs)@)),
-            // Each input is replaced with its inverse
-            forall|i: int|
+            group_canonical(product_of_scalars(old(inputs)@)) != 0 ==> is_inverse_of_nat(
+                &result,
+                product_of_scalars(old(inputs)@),
+            ),
+            // Each input is replaced with its inverse (when product is nonzero)
+            group_canonical(product_of_scalars(old(inputs)@)) != 0 ==> forall|i: int|
                 0 <= i < inputs.len() ==> #[trigger] is_inverse(
                     &(#[trigger] old(inputs)[i]),
                     &(#[trigger] inputs[i]),
@@ -1787,8 +1786,8 @@ impl Scalar {
 
         proof {
             lemma_scalar_one_properties();
-            assert(scalar52_to_nat(&acc_unpacked) == 1);
-            assert(scalar52_to_nat(&acc) % group_order() == (1 * montgomery_radix())
+            assert(scalar52_as_nat(&acc_unpacked) == 1);
+            assert(scalar52_as_nat(&acc) % group_order() == (1 * montgomery_radix())
                 % group_order());
             assert((montgomery_radix() * 1) % group_order() == montgomery_radix() % group_order());
             assert(partial_product(original_inputs, 0) == 1nat);
@@ -1812,10 +1811,11 @@ impl Scalar {
             invariant
                 scratch.len() == n,
                 n == inputs.len(),
-                limbs_bounded(&acc),
+                // acc is canonical (needed for montgomery_mul and montgomery_invert)
+                is_canonical_scalar52(&acc),
                 forall|j: int| 0 <= j < i ==> #[trigger] limbs_bounded(&scratch[j]),
                 // SEMANTIC INVARIANT: acc represents R * partial_product(original_inputs, i) in Montgomery form
-                scalar52_to_nat(&acc) % group_order() == (montgomery_radix() * partial_product(
+                scalar52_as_nat(&acc) % group_order() == (montgomery_radix() * partial_product(
                     original_inputs,
                     i as int,
                 )) % group_order(),
@@ -1827,14 +1827,15 @@ impl Scalar {
                 // SEMANTIC INVARIANT: scratch[j] contains R * partial_product(original_inputs, j)
                 forall|j: int|
                     #![auto]
-                    0 <= j < i ==> scalar52_to_nat(&scratch[j]) % group_order() == (
+                    0 <= j < i ==> scalar52_as_nat(&scratch[j]) % group_order() == (
                     montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
                 // SEMANTIC INVARIANT: inputs[j] for j < i contains scalar[j] in Montgomery form
-                // i.e., bytes32_to_nat(&inputs[j].bytes) % L == (bytes32_to_nat(&original_inputs[j].bytes) * R) % L
+                // i.e., u8_32_as_nat(&inputs[j].bytes) % L == (u8_32_as_nat(&original_inputs[j].bytes) * R) % L
                 forall|j: int|
                     #![auto]
-                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (
-                    bytes32_to_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
+                    0 <= j < i ==> u8_32_as_nat(&inputs[j].bytes) % group_order() == (u8_32_as_nat(
+                        &original_inputs[j].bytes,
+                    ) * montgomery_radix()) % group_order(),
         {
             scratch[i] = acc;
 
@@ -1851,15 +1852,15 @@ impl Scalar {
 
                 let L = group_order();
                 let R = montgomery_radix();
-                let scalar_i = bytes32_to_nat(&original_inputs[i as int].bytes);
+                let scalar_i = u8_32_as_nat(&original_inputs[i as int].bytes);
 
-                assert(scalar52_to_nat(&input_unpacked) == scalar_i);
-                assert(scalar52_to_nat(&tmp) % L == (scalar_i * R) % L);
+                assert(scalar52_as_nat(&input_unpacked) == scalar_i);
+                assert(scalar52_as_nat(&tmp) % L == (scalar_i * R) % L);
                 // tmp is canonical (< L) from as_montgomery's postcondition
 
                 lemma_group_order_bound();
                 lemma_pow2_strictly_increases(255, 256);
-                lemma_small_mod(scalar52_to_nat(&tmp), pow2(256));
+                lemma_small_mod(scalar52_as_nat(&tmp), pow2(256));
             }
 
             inputs[i] = tmp.pack();
@@ -1873,9 +1874,9 @@ impl Scalar {
             acc = UnpackedScalar::montgomery_mul(&acc, &tmp);
 
             proof {
-                let acc_val = scalar52_to_nat(&acc);
-                let acc_before_val = scalar52_to_nat(&acc_before);
-                let tmp_val = scalar52_to_nat(&tmp);
+                let acc_val = scalar52_as_nat(&acc);
+                let acc_before_val = scalar52_as_nat(&acc_before);
+                let tmp_val = scalar52_as_nat(&tmp);
 
                 lemma_montgomery_mul_partial_product(
                     acc_before_val,
@@ -1922,13 +1923,25 @@ impl Scalar {
             let L = group_order();
             let R = montgomery_radix();
             let P = product_of_scalars(original_inputs);
-            let acc_before_val = scalar52_to_nat(&acc_before_invert);
-            let acc_after_val = scalar52_to_nat(&acc_after_invert);
-            let final_acc_val = scalar52_to_nat(&acc);
+            let acc_before_val = scalar52_as_nat(&acc_before_invert);
+            let acc_after_val = scalar52_as_nat(&acc_after_invert);
+            let final_acc_val = scalar52_as_nat(&acc);
 
-            lemma_invert_chain(acc_before_val, acc_after_val, final_acc_val, P);
-            lemma_small_mod(1nat, L);
+            if P % L != 0 {
+                // acc_before is canonical: acc_before_val < L
+                lemma_small_mod(acc_before_val, L);
+                assert(R % L != 0) by {
+                    lemma_montgomery_radix_nonzero_mod_group_order();
+                }
+                // L is prime, R % L != 0, P % L != 0 => (R * P) % L != 0
+                axiom_group_order_is_prime();
+                lemma_product_nonzero_mod_prime(R, P, L);
+                // acc_before_val == (R * P) % L (from forward loop + canonicity)
+                assert(acc_before_val > 0);
 
+                lemma_invert_chain(acc_before_val, acc_after_val, final_acc_val, P);
+                lemma_small_mod(1nat, L);
+            }
             lemma_group_order_bound();
             lemma_pow2_strictly_increases(255, 256);
             lemma_small_mod(final_acc_val, pow2(256));
@@ -1937,7 +1950,7 @@ impl Scalar {
         // We need to return the product of all inverses later
         let ret = acc.pack();
         // Second loop: compute inverses in place
-        let ghost ret_val = scalar52_to_nat(&acc);
+        let ghost ret_val = scalar52_as_nat(&acc);
 
         // Pass through the vector backwards to compute the inverses in place
         /* <VERIFICATION NOTE>
@@ -1950,34 +1963,35 @@ impl Scalar {
              acc = tmp;
          }
         </ORIGINAL CODE> */
+        let ghost product_nonzero: bool = product_of_scalars(original_inputs) % group_order() != 0;
         let mut i: usize = n;
         while i > 0
             invariant
                 scratch.len() == n,
                 n == inputs.len(),
                 i <= n,
-                limbs_bounded(&acc),
-                scalar52_to_nat(&acc) < group_order(),
+                // acc is canonical (needed for montgomery_mul)
+                is_canonical_scalar52(&acc),
                 forall|j: int| 0 <= j < scratch.len() ==> #[trigger] limbs_bounded(&scratch[j]),
                 original_inputs == old(inputs)@,
                 n == original_inputs.len(),
-                forall|j: int| #![auto] i <= j < n ==> is_inverse(&original_inputs[j], &inputs[j]),
-                // Track that ret is still inverse of product_of_all
-                is_inverse_of_nat(&ret, product_of_scalars(original_inputs)),
+                // Inversion invariants guarded by product_nonzero
+                product_nonzero ==> forall|j: int|
+                    i <= j < n ==> #[trigger] is_inverse(&original_inputs[j], &inputs[j]),
+                product_nonzero ==> is_inverse_of_nat(&ret, product_of_scalars(original_inputs)),
                 // SEMANTIC INVARIANT: scratch[j] still contains R * partial_product(original_inputs, j)
                 forall|j: int|
-                    #![auto]
-                    0 <= j < n ==> scalar52_to_nat(&scratch[j]) % group_order() == (
+                    0 <= j < n ==> #[trigger] scalar52_as_nat(&scratch[j]) % group_order() == (
                     montgomery_radix() * partial_product(original_inputs, j)) % group_order(),
                 // SEMANTIC INVARIANT: inputs[j] for unprocessed j < i contains scalar[j] in Montgomery form
                 forall|j: int|
-                    #![auto]
-                    0 <= j < i ==> bytes32_to_nat(&inputs[j].bytes) % group_order() == (
-                    bytes32_to_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
+                    0 <= j < i ==> u8_32_as_nat(&(#[trigger] inputs[j]).bytes) % group_order() == (
+                    u8_32_as_nat(&original_inputs[j].bytes) * montgomery_radix()) % group_order(),
                 // SEMANTIC INVARIANT: acc represents the inverse of partial_product(original_inputs, i)
-                // i.e., (scalar52_to_nat(&acc) * partial_product(original_inputs, i)) % L == 1
-                (scalar52_to_nat(&acc) * partial_product(original_inputs, i as int)) % group_order()
-                    == 1nat,
+                product_nonzero ==> (scalar52_as_nat(&acc) * partial_product(
+                    original_inputs,
+                    i as int,
+                )) % group_order() == 1nat,
             decreases i,
         {
             i -= 1;
@@ -1999,46 +2013,48 @@ impl Scalar {
             acc = tmp;
 
             proof {
-                use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
-                use vstd::arithmetic::div_mod::lemma_small_mod;
+                let result_m = scalar52_as_nat(&new_input_unpacked);
 
-                let L = group_order();
-                let R = montgomery_radix();
-                let acc_before_val = scalar52_to_nat(&acc_before);
-                let scratch_val = scalar52_to_nat(&scratch[i as int]);
-                let result_m = scalar52_to_nat(&new_input_unpacked);
-                let result = bytes32_to_nat(&inputs[i as int].bytes);
-                let scalar_i = bytes32_to_nat(&original_inputs[i as int].bytes);
+                // Structural proofs for pack() canonicity (unconditional)
+                assert(result_m < pow2(256) && result_m % pow2(256) == result_m) by {
+                    use vstd::arithmetic::power2::lemma_pow2_strictly_increases;
+                    use vstd::arithmetic::div_mod::lemma_small_mod;
+                    lemma_group_order_bound();
+                    lemma_pow2_strictly_increases(255, 256);
+                    lemma_small_mod(result_m, pow2(256));
+                }
 
-                // acc and new_input_unpacked are canonical from montgomery_mul's postcondition
-                // because acc_before is canonical (loop invariant)
+                if product_nonzero {
+                    let L = group_order();
+                    let acc_before_val = scalar52_as_nat(&acc_before);
+                    let scratch_val = scalar52_as_nat(&scratch[i as int]);
+                    let result = u8_32_as_nat(&inputs[i as int].bytes);
+                    let scalar_i = u8_32_as_nat(&original_inputs[i as int].bytes);
 
-                // Prove result == result_m via canonicity
-                lemma_group_order_bound();
-                lemma_pow2_strictly_increases(255, 256);
-                lemma_small_mod(result_m, pow2(256));
+                    assert(is_inverse(&original_inputs[i as int], &inputs[i as int])) by {
+                        lemma_backward_loop_is_inverse(
+                            acc_before_val,
+                            scratch_val,
+                            result_m,
+                            result,
+                            original_inputs,
+                            i as int,
+                        );
+                        lemma_mul_is_commutative(scalar_i as int, result as int);
+                    }
 
-                // Prove inputs[i] is inverse of original_inputs[i]
-                lemma_backward_loop_is_inverse(
-                    acc_before_val,
-                    scratch_val,
-                    result_m,
-                    result,
-                    original_inputs,
-                    i as int,
-                );
-                assert((scalar_i * result) % L == (result * scalar_i) % L) by (nonlinear_arith);
-
-                // Prove acc invariant is maintained
-                let input_val = scalar52_to_nat(&input_unpacked);
-                let acc_after_val = scalar52_to_nat(&acc);
-                lemma_backward_loop_acc_invariant(
-                    acc_before_val,
-                    input_val,
-                    acc_after_val,
-                    original_inputs,
-                    i as int,
-                );
+                    // Prove acc invariant is maintained
+                    assert((scalar52_as_nat(&acc) * partial_product(original_inputs, i as int)) % L
+                        == 1nat) by {
+                        lemma_backward_loop_acc_invariant(
+                            acc_before_val,
+                            scalar52_as_nat(&input_unpacked),
+                            scalar52_as_nat(&acc),
+                            original_inputs,
+                            i as int,
+                        );
+                    }
+                }
             }
             /* ORIGINAL CODE (inlined before proof block):
                inputs[i] = UnpackedScalar::montgomery_mul(&acc, &scratch[i]).pack();
@@ -2197,7 +2213,7 @@ impl Scalar {
     #[allow(dead_code)]
     pub(crate) fn bits_le(&self) -> (result: [bool; 256])
         ensures
-            bits_to_nat(&result) == bytes32_to_nat(&self.bytes),
+            bits_as_nat(result) == u8_32_as_nat(&self.bytes),
     {
         let mut bits = [false;256];
         let mut i: usize = 0;
@@ -2207,6 +2223,9 @@ impl Scalar {
                 i <= 256,
                 bits.len() == 256,
                 self.bytes.len() == 32,
+                forall|j: int|
+                    0 <= j < i as int ==> bits[j] == (((self.bytes[(j / 8) as int] >> ((j
+                        % 8) as u8)) & 1u8) == 1u8),
             decreases 256 - i,
         {
             // As i runs from 0..256, the bottom 3 bits index the bit, while the upper bits index
@@ -2215,7 +2234,7 @@ impl Scalar {
             let byte_idx = i >> 3;  // Divide by 8 to get byte index
             let bit_idx = (i & 7) as u8;  // Modulo 8 to get bit position within byte
 
-            // Prove bounds using shift and mask lemmas
+            // Prove bounds and index equalities using shift and mask lemmas
             proof {
                 assert(i < 256);
 
@@ -2224,12 +2243,14 @@ impl Scalar {
                 // pow2(3) = 8
                 lemma2_to64();
                 assert(byte_idx < 32);
+                assert(byte_idx == i / 8);
 
                 // Prove i & 7 = i % 8 using mask lemma
                 lemma_u64_low_bits_mask_is_mod(i as u64, 3);
                 // low_bits_mask(3) = 7 and pow2(3) = 8
                 lemma2_to64();
                 assert(bit_idx < 8);
+                assert(bit_idx == (i % 8) as u8);
             }
 
             bits[i] = ((self.bytes[byte_idx] >> bit_idx) & 1u8) == 1;
@@ -2237,7 +2258,7 @@ impl Scalar {
         }
 
         proof {
-            assume(bits_to_nat(&bits) == bytes32_to_nat(&self.bytes));
+            lemma_bits_from_bytes_eq_u8_32_as_nat(bits, self.bytes);
         }
 
         bits
@@ -2315,16 +2336,18 @@ impl Scalar {
     /// If \\( k \mod 2^w\\) is even, we emit \\(0\\), advance 1 bit
     /// and reindex.  In fact, by setting all digits to \\(0\\)
     /// initially, we don't need to emit anything.
-    pub(crate) fn non_adjacent_form(&self, w: usize) -> (result:
-        [i8; 256])
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    #[verifier::loop_isolation(false)]
+    pub(crate) fn non_adjacent_form(&self, w: usize) -> (result: [i8; 256])
         requires
             2 <= w <= 8,
+            // Scalar must fit in 255 bits (satisfied by canonical scalars since l < 2^253).
+            // Note: we use this weaker bound rather than is_canonical_scalar(self) because
+            // the proof only needs the 255-bit bound, not full reduction mod l.
+            scalar_as_nat(self) < pow2(255),
         ensures
     // result encodes the same integer
 
-            reconstruct(result@) == scalar_to_nat(self) as int,
+            reconstruct(result@) == scalar_as_nat(self) as int,
             // result digits follow NAF rules
             is_valid_naf(result@, w as nat),
     {
@@ -2338,77 +2361,172 @@ impl Scalar {
 
         let mut naf = [0i8;256];
 
-        // VERIFICATION NOTE: Inline the read_le_u64_into logic to avoid Verus unsupported features - IN PROGRESS
+        // VERIFICATION NOTE: Inline the read_le_u64_into logic to avoid Verus unsupported features
         /* <ORIGINAL CODE>
             let mut x_u64 = [0u64; 5];
             read_le_u64_into(&self.bytes, &mut x_u64[0..4]);
              <ORIGINAL CODE> */
         // Read 4 u64s from the 32-byte array (self.bytes)
-        assume(false);
+        let ghost scalar_val: nat = scalar_as_nat(self);
         let mut x_u64 = [0u64;5];
-        x_u64[0] = u64_from_le_bytes(
-            [
-                self.bytes[0],
-                self.bytes[1],
-                self.bytes[2],
-                self.bytes[3],
-                self.bytes[4],
-                self.bytes[5],
-                self.bytes[6],
-                self.bytes[7],
-            ],
-        );
-        x_u64[1] = u64_from_le_bytes(
-            [
-                self.bytes[8],
-                self.bytes[9],
-                self.bytes[10],
-                self.bytes[11],
-                self.bytes[12],
-                self.bytes[13],
-                self.bytes[14],
-                self.bytes[15],
-            ],
-        );
-        x_u64[2] = u64_from_le_bytes(
-            [
-                self.bytes[16],
-                self.bytes[17],
-                self.bytes[18],
-                self.bytes[19],
-                self.bytes[20],
-                self.bytes[21],
-                self.bytes[22],
-                self.bytes[23],
-            ],
-        );
-        x_u64[3] = u64_from_le_bytes(
-            [
-                self.bytes[24],
-                self.bytes[25],
-                self.bytes[26],
-                self.bytes[27],
-                self.bytes[28],
-                self.bytes[29],
-                self.bytes[30],
-                self.bytes[31],
-            ],
-        );
+        // Named byte chunks for lemma_u64x4_from_le_bytes (same pattern as as_radix_2w)
+        let chunk0: [u8; 8] = [
+            self.bytes[0],
+            self.bytes[1],
+            self.bytes[2],
+            self.bytes[3],
+            self.bytes[4],
+            self.bytes[5],
+            self.bytes[6],
+            self.bytes[7],
+        ];
+        let chunk1: [u8; 8] = [
+            self.bytes[8],
+            self.bytes[9],
+            self.bytes[10],
+            self.bytes[11],
+            self.bytes[12],
+            self.bytes[13],
+            self.bytes[14],
+            self.bytes[15],
+        ];
+        let chunk2: [u8; 8] = [
+            self.bytes[16],
+            self.bytes[17],
+            self.bytes[18],
+            self.bytes[19],
+            self.bytes[20],
+            self.bytes[21],
+            self.bytes[22],
+            self.bytes[23],
+        ];
+        let chunk3: [u8; 8] = [
+            self.bytes[24],
+            self.bytes[25],
+            self.bytes[26],
+            self.bytes[27],
+            self.bytes[28],
+            self.bytes[29],
+            self.bytes[30],
+            self.bytes[31],
+        ];
+        x_u64[0] = u64_from_le_bytes(chunk0);
+        x_u64[1] = u64_from_le_bytes(chunk1);
+        x_u64[2] = u64_from_le_bytes(chunk2);
+        x_u64[3] = u64_from_le_bytes(chunk3);
         // x_u64[4] remains 0
 
+        // Setup proof: bridge scalar_as_nat(self) to u64_4_as_nat
+        proof {
+            assert(bytes_as_nat_prefix(chunk0@, 8) + bytes_as_nat_prefix(chunk1@, 8) * pow2(64)
+                + bytes_as_nat_prefix(chunk2@, 8) * pow2(128) + bytes_as_nat_prefix(chunk3@, 8)
+                * pow2(192) == u8_32_as_nat(&self.bytes)) by {
+                lemma_u64x4_from_le_bytes(self.bytes, chunk0, chunk1, chunk2, chunk3);
+            }
+            let words4: [u64; 4] = [x_u64[0], x_u64[1], x_u64[2], x_u64[3]];
+            assert(u64_4_as_nat(&words4) == scalar_val);
+        }
+
+        /* ORIGINAL CODE
         let width = 1 << w;
         let window_mask = width - 1;
+         */
+        let width: u64 = 1u64 << (w as u64);
+        proof {
+            assert(width as nat == pow2(w as nat) && width >= 4u64) by {
+                lemma_naf_width_properties(w);
+            };
+        }
+        let window_mask: u64 = width - 1;
 
-        let mut pos = 0;
-        let mut carry = 0;
+        // Establish base case for loop invariant:
+        // reconstruct(naf.take(0)) + 0 * pow2(0) == scalar_val % pow2(0)
+        proof {
+            assert(reconstruct(naf@.take(0)) == 0) by {
+                assert(naf@.take(0).len() == 0);
+            };
+            assert(pow2(0nat) == 1nat) by {
+                lemma2_to64();
+            };
+            assert((scalar_val as int) % pow2(0nat) as int == 0int) by {
+                lemma_small_mod(0nat, 1nat);
+            };
+        }
+
+        let mut pos: usize = 0;
+        let mut carry: u64 = 0;
         while pos < 256
-            decreases 256 - pos,
-        {
-            assume(false);
+            invariant
+        // --- Mutable state bounds ---
 
+                carry <= 1,
+                pos <= 256 + w - 1,
+                // --- Core invariant: reconstruction matches scalar mod pow2(pos) ---
+                // (cap take length at 256 since naf has 256 elements)
+                ({
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    reconstruct(naf@.take(p)) + (carry as int) * pow2(pos as nat) as int == (
+                    scalar_val as int) % pow2(pos as nat) as int
+                }),
+                // Unassigned digits are zero
+                forall|j: int| pos <= j < 256 ==> naf@[j] == 0i8,
+                // Terminal carry: once pos >= 256, carry must be 0
+                pos >= 256 ==> carry == 0,
+                // NAF digit validity: finalized digits satisfy bounds
+                ({
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    forall|i: int|
+                        #![trigger naf@[i]]
+                        0 <= i < p ==> {
+                            let d = naf@[i] as int;
+                            d == 0 || (d % 2 != 0 && -pow2((w - 1) as nat) < d && d < pow2(
+                                (w - 1) as nat,
+                            ))
+                        }
+                }),
+                // NAF spacing: nonzero digits at least w behind pos
+                ({
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    forall|i: int|
+                        #![trigger naf@[i]]
+                        0 <= i < p && naf@[i] as int != 0 ==> i + (w as int) <= pos as int
+                }),
+                // NAF non-adjacency: nonzero digit implies next w-1 are zero
+                ({
+                    let p: int = if pos <= 256 {
+                        pos as int
+                    } else {
+                        256int
+                    };
+                    forall|i: int|
+                        #![trigger naf@[i]]
+                        0 <= i < p && naf@[i] as int != 0 ==> (forall|j: int|
+                            1 <= j < (w as int) && i + j < 256 ==> (#[trigger] naf@[i + j]) == 0i8)
+                }),
+            decreases 264 - pos,
+        {
             // Construct a buffer of bits of the scalar, starting at bit `pos`
             let u64_idx = pos / 64;
             let bit_idx = pos % 64;
+
+            proof {
+                assert(u64_idx <= 3 && bit_idx < 64) by {
+                    lemma_fundamental_div_mod(pos as int, 64);
+                };
+            }
+
             let bit_buf: u64 = if bit_idx < 64 - w {
                 // This window's bits are contained in a single u64
                 x_u64[u64_idx] >> bit_idx
@@ -2417,27 +2535,354 @@ impl Scalar {
                 (x_u64[u64_idx] >> bit_idx) | (x_u64[1 + u64_idx] << (64 - bit_idx))
             };
 
-            // Add the carry into the current window
-            assume(false);
-            let window = carry + (bit_buf & window_mask);
+            // Prove bit extraction correctness: (bit_buf & window_mask) extracts
+            // the w-bit window of scalar_val starting at bit position pos
+            proof {
+                let words4: [u64; 4] = [x_u64[0], x_u64[1], x_u64[2], x_u64[3]];
+                // Fold OR with x_u64[4]=0 for the u64_idx==3 cross-word case
+                if u64_idx == 3 && !(bit_idx < 64 - w) {
+                    let w3 = words4[3];
+                    assert(bit_buf == w3 >> (bit_idx as u64)) by {
+                        assert((w3 >> (bit_idx as u64)) | (0u64 << ((64 - bit_idx) as u64)) == w3
+                            >> (bit_idx as u64)) by (bit_vector)
+                            requires
+                                (bit_idx as u64) < 64u64,
+                        ;
+                    };
+                }
+                assert((bit_buf & window_mask) as nat == (u64_4_as_nat(&words4) / pow2(pos as nat))
+                    % pow2(w as nat)) by {
+                    lemma_u64x4_bit_extraction(
+                        words4,
+                        bit_buf,
+                        window_mask,
+                        w,
+                        pos,
+                        u64_idx,
+                        bit_idx,
+                    );
+                };
+            }
+
+            // carry + (bit_buf & window_mask) won't overflow u64
+            proof {
+                assert(carry + (bit_buf & window_mask) <= (1u64 << (w as u64))) by {
+                    lemma_naf_window_no_overflow(carry, bit_buf, window_mask, w);
+                };
+            }
+
+            // Ghost: extracted value and connection to window
+            let ghost extracted: nat = (scalar_val / pow2(pos as nat)) % pow2(w as nat);
+            proof {
+                // bit_buf & window_mask == extracted (via u64_4_as_nat == scalar_val)
+                assert((bit_buf & window_mask) as nat == extracted) by {
+                    let words4: [u64; 4] = [x_u64[0], x_u64[1], x_u64[2], x_u64[3]];
+                    assert(u64_4_as_nat(&words4) == scalar_val);
+                };
+                // Since pos < 256 (loop guard), the capped invariant simplifies
+                assert(reconstruct(naf@.take(pos as int)) + (carry as int) * pow2(pos as nat) as int
+                    == (scalar_val as int) % pow2(pos as nat) as int);
+            }
+
+            // Save old carry before potential modification
+            let ghost old_carry: u64 = carry;
+            let window: u64 = carry + (bit_buf & window_mask);
+
+            // Ghost: save the prefix before naf is modified (for odd branch proof)
+            let ghost old_naf_prefix = naf@.take(pos as int);
 
             if window & 1 == 0 {
-                // If the window value is even, preserve the carry and continue.
-                // Why is the carry preserved?
-                // If carry == 0 and window & 1 == 0, then the next carry should be 0
-                // If carry == 1 and window & 1 == 0, then bit_buf & 1 == 1 so the next carry should be 1
+                // Even window: emit 0, advance by 1
+                proof {
+                    assert(window % 2 == 0) by (bit_vector)
+                        requires
+                            window & 1u64 == 0u64,
+                    ;
+                    assert((carry as nat + extracted) % 2 == 0) by {
+                        assert(window as nat == carry as nat + extracted);
+                    };
+                    // Reconstruction invariant advances from pos to pos+1
+                    assert(reconstruct(naf@.take((pos + 1) as int)) + (carry as int) * pow2(
+                        (pos + 1) as nat,
+                    ) as int == (scalar_val as int) % pow2((pos + 1) as nat) as int) by {
+                        lemma_naf_even_step(
+                            naf@,
+                            pos as nat,
+                            carry as nat,
+                            scalar_val,
+                            w as nat,
+                            extracted,
+                        );
+                    };
+                    // Terminal carry: pos=255, carry=1 leads to contradiction
+                    // (extracted=0, window=1, but window&1==0)
+                    if pos >= 255 && carry == 1 {
+                        assert(extracted == 0nat) by {
+                            assert(scalar_val / pow2(pos as nat) == 0nat) by {
+                                lemma_naf_high_bits_zero(scalar_val, pos as nat);
+                            };
+                            assert(0nat % pow2(w as nat) == 0nat) by {
+                                lemma_pow2_pos(w as nat);
+                                lemma_small_mod(0nat, pow2(w as nat));
+                            };
+                        };
+                        assert(false) by {
+                            assert(window == 1u64);
+                            assert(window & 1u64 == 1u64) by (bit_vector)
+                                requires
+                                    window == 1u64,
+                            ;
+                        };
+                    }
+                    assert(naf@[pos as int] == 0i8);
+                }
                 pos += 1;
                 continue ;
             }
+            // Truncate casts are safe: window < width = 2^w with w <= 8, so both fit in i8.
+
             if window < width / 2 {
                 carry = 0;
+                /* ORIGINAL CODE:
                 naf[pos] = window as i8;
+                 */
+                #[cfg(verus_keep_ghost)]
+                {
+                    naf[pos] = #[verifier::truncate]
+                    (window as i8);
+                }
+                #[cfg(not(verus_keep_ghost))]
+                {
+                    naf[pos] = window as i8;
+                }
             } else {
                 carry = 1;
+                /* ORIGINAL CODE:
                 naf[pos] = (window as i8).wrapping_sub(width as i8);
+                 */
+                #[cfg(verus_keep_ghost)]
+                {
+                    naf[pos] = (#[verifier::truncate]
+                    (window as i8)).wrapping_sub(
+                        #[verifier::truncate]
+                        (width as i8),
+                    );
+                }
+                #[cfg(not(verus_keep_ghost))]
+                {
+                    naf[pos] = (window as i8).wrapping_sub(width as i8);
+                }
             }
-            assume(false);
+
+            // Odd window: prove invariant preservation at pos + w
+            proof {
+                let new_pos_int: int = pos + w;
+
+                // The prefix naf@.take(pos) is unchanged after writing to naf[pos]
+                // (take(pos) only includes indices 0..pos-1)
+                assert(naf@.take(pos as int) =~= old_naf_prefix);
+
+                // Recover the old invariant with old_carry (before carry was modified)
+                assert(reconstruct(naf@.take(pos as int)) + (old_carry as int) * pow2(
+                    pos as nat,
+                ) as int == (scalar_val as int) % pow2(pos as nat) as int);
+
+                assert(extracted < pow2(w as nat)) by {
+                    lemma_pow2_pos(w as nat);
+                };
+                assert(window as nat == old_carry as nat + extracted);
+
+                // Digit relationship: naf[pos] = window - carry * 2^w
+                if window < width / 2 {
+                    // Positive case: naf[pos] = window, carry = 0
+                    assert((window as i8) as int == window as int) by {
+                        assert(width / 2 <= 128u64) by (bit_vector)
+                            requires
+                                width == 1u64 << (w as u64),
+                                2u64 <= (w as u64) && (w as u64) <= 8u64,
+                        ;
+                        assert(window <= 127u64);
+                    };
+                    assert(carry == 0u64);
+                } else {
+                    // Negative case: naf[pos] = window - width, carry = 1
+                    assert(carry == 1u64);
+                    assert(window % 2 == 1) by (bit_vector)
+                        requires
+                            window & 1u64 != 0u64,
+                    ;
+                    assert(window <= width) by {
+                        assert((bit_buf & window_mask) <= window_mask) by (bit_vector);
+                    };
+                    assert(naf@[pos as int] as int == window as int - width as int) by {
+                        lemma_naf_wrapping_sub_correct(window, width, w);
+                    };
+                    assert(width as nat == pow2(w as nat)) by {
+                        lemma_u64_shift_is_pow2(w as nat);
+                    };
+                }
+                assert(naf@[pos as int] as int == (old_carry as int + extracted as int) - (
+                carry as int) * pow2(w as nat) as int);
+
+                // NAF digit validity: digit is odd and in (-2^(w-1), 2^(w-1))
+                assert({
+                    let d = naf@[pos as int] as int;
+                    d % 2 != 0 && -pow2((w - 1) as nat) < d && d < pow2((w - 1) as nat)
+                }) by {
+                    assert(window % 2 == 1) by (bit_vector)
+                        requires
+                            window & 1u64 != 0u64,
+                    ;
+                    assert(window >= 1u64) by (bit_vector)
+                        requires
+                            window & 1u64 != 0u64,
+                    ;
+                    assert(window <= width) by {
+                        assert((bit_buf & window_mask) <= window_mask) by (bit_vector);
+                    };
+                    lemma_naf_digit_bounds(window, w, width);
+                };
+
+                assert(forall|j: int| pos < j < pos + w && j < 256 ==> naf@[j] == 0i8);
+
+                // Reconstruction invariant advances from pos to pos+w
+                assert({
+                    let end_pos = if pos + w <= 256 {
+                        (pos + w) as nat
+                    } else {
+                        256nat
+                    };
+                    reconstruct(naf@.take(end_pos as int)) + (carry as int) * pow2(
+                        (pos + w) as nat,
+                    ) as int == (scalar_val as int) % pow2((pos + w) as nat) as int
+                }) by {
+                    lemma_naf_odd_step(
+                        naf@,
+                        pos as nat,
+                        w as nat,
+                        scalar_val,
+                        old_carry as nat,
+                        carry as nat,
+                        extracted,
+                    );
+                };
+
+                // The zeros invariant: positions >= pos+w are still 0
+                // (we only wrote to position pos, and positions pos+1.. were 0 from invariant)
+                assert(forall|j: int| new_pos_int <= j < 256 ==> naf@[j] == 0i8);
+
+                // Terminal carry: if pos + w >= 256, carry == 0
+                // (extracted is small enough that the positive branch was taken)
+                if pos + w >= 256 {
+                    if pos >= 255 {
+                        assert(window < width / 2) by {
+                            assert(extracted == 0nat) by {
+                                assert(scalar_val / pow2(pos as nat) == 0nat) by {
+                                    lemma_naf_high_bits_zero(scalar_val, pos as nat);
+                                };
+                                assert(0nat % pow2(w as nat) == 0nat) by {
+                                    lemma_pow2_pos(w as nat);
+                                    lemma_small_mod(0nat, pow2(w as nat));
+                                };
+                            };
+                            assert(window <= 1u64);
+                            assert(width >= 4u64) by (bit_vector)
+                                requires
+                                    width == 1u64 << (w as u64),
+                                    2u64 <= (w as u64) && (w as u64) <= 8u64,
+                            ;
+                        };
+                    } else {
+                        // pos < 255, pos + w >= 256, so gap = 255 - pos < w
+                        let gap = (255 - pos) as nat;
+                        assert(window < width / 2) by {
+                            assert(scalar_val / pow2(pos as nat) < pow2(gap)) by {
+                                lemma_pow2_pos(pos as nat);
+                                lemma_pow2_strictly_increases(pos as nat, 255);
+                                lemma_pow2_adds(pos as nat, gap);
+                                lemma_div_strictly_bounded(
+                                    scalar_val as int,
+                                    pow2(pos as nat) as int,
+                                    pow2(gap) as int,
+                                );
+                            };
+                            // gap < w, so small_mod gives extracted == scalar_val / pow2(pos)
+                            assert(extracted == scalar_val / pow2(pos as nat) && extracted < pow2(
+                                gap,
+                            )) by {
+                                lemma_pow2_strictly_increases(gap, w as nat);
+                                lemma_small_mod(scalar_val / pow2(pos as nat), pow2(w as nat));
+                            };
+                            assert(pow2(gap) <= pow2((w - 1) as nat)) by {
+                                if gap < (w - 1) as nat {
+                                    lemma_pow2_strictly_increases(gap, (w - 1) as nat);
+                                }
+                            };
+                            assert(pow2((w - 1) as nat) == width / 2) by {
+                                lemma_pow2_adds((w - 1) as nat, 1);
+                                assert(pow2(1) == 2) by {
+                                    lemma2_to64();
+                                };
+                                lemma_u64_shift_is_pow2(w as nat);
+                            };
+                            // window <= pow2(gap) but window is odd and pow2(gap) is even,
+                            // so window < pow2(gap) <= width/2
+                            assert(window as nat <= pow2(gap));
+                            assert(pow2(gap) % 2 == 0) by {
+                                assert(gap >= 1nat);
+                                lemma_pow2_adds(1, (gap - 1) as nat);
+                                assert(pow2(1) == 2) by {
+                                    lemma2_to64();
+                                };
+                                assert(pow2(gap) == 2 * pow2((gap - 1) as nat));
+                                vstd::arithmetic::div_mod::lemma_mod_multiples_vanish(
+                                    pow2((gap - 1) as nat) as int,
+                                    0int,
+                                    2int,
+                                );
+                            };
+                            assert(window % 2 == 1) by (bit_vector)
+                                requires
+                                    window & 1u64 != 0u64,
+                            ;
+                            assert(window as nat != pow2(gap));
+                            assert(!(window as nat >= pow2(gap)));
+                            assert(!((window as nat) >= (width / 2) as nat));
+                        };
+                    }
+                    assert(carry == 0u64);
+                }
+            }
             pos += w;
+        }
+
+        // Post-loop: carry = 0 and reconstruction equals scalar_val
+        proof {
+            assert(carry == 0);
+            let p: int = if pos <= 256 {
+                pos as int
+            } else {
+                256int
+            };
+
+            // scalar_val % pow2(pos) == scalar_val (since scalar < 2^255 < 2^pos)
+            assert((scalar_val as int) % pow2(pos as nat) as int == scalar_val as int) by {
+                lemma_pow2_strictly_increases(255, pos as nat);
+                lemma_small_mod(scalar_val, pow2(pos as nat));
+            };
+
+            assert(reconstruct(naf@) == scalar_val as int) by {
+                // From invariant with carry == 0:
+                assert(reconstruct(naf@.take(p)) == (scalar_val as int) % pow2(pos as nat) as int);
+                // naf@.take(p) =~= naf@ since p >= 256 and naf has 256 elements
+                assert(naf@.take(p) =~= naf@) by {
+                    assert(p >= 256);
+                    assert(naf@.take(p) =~= naf@.take(256));
+                    assert(naf@.take(256) =~= naf@);
+                };
+            };
+
+            assert(is_valid_naf(naf@, w as nat));
         }
 
         naf
@@ -2453,10 +2898,7 @@ impl Scalar {
     /// The largest value that can be decomposed like this is just over \\(2^{255}\\). Thus, in
     /// order to not error, the top bit MUST NOT be set, i.e., `Self` MUST be less than
     /// \\(2^{255}\\).
-    pub(crate) fn as_radix_16(&self) -> (result:
-        [i8; 64])
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    pub(crate) fn as_radix_16(&self) -> (result: [i8; 64])
         requires
     // Top bit must be clear (scalar < 2^255)
 
@@ -2468,7 +2910,7 @@ impl Scalar {
             // Simple bounds: all digits in [-8, 8] for easy access
             radix_16_all_bounded(&result),
             // Reconstruction property: digits reconstruct the scalar value
-            reconstruct_radix_16(result@) == scalar_to_nat(self) as int,
+            reconstruct_radix_16(result@) == scalar_as_nat(self) as int,
     {
         // VERIFICATION NOTE: we tell verus not to verify debug assertions
         #[cfg(not(verus_keep_ghost))]
@@ -2494,17 +2936,103 @@ impl Scalar {
                 output[2 * i + 1] = top_half(self[i]) as i8;
             }
             </ORIGINAL CODE> */
-        for i in 0..32 {
+        for i in 0..32
+            invariant
+        // Assigned entries: nibbles of processed bytes (pair relationship)
+
+                forall|j: int|
+                    #![trigger output[2 * j], output[2 * j + 1]]
+                    0 <= j < i ==> output[2 * j] as int + 16 * (output[2 * j + 1] as int)
+                        == self.bytes[j] as int,
+                // All assigned entries are non-negative (in [0, 15])
+                forall|j: int| 0 <= j < 2 * i ==> 0 <= #[trigger] output[j] && output[j] <= 15,
+                // Unassigned entries are still zero
+                forall|j: int| 2 * i <= j < 64 ==> #[trigger] output[j] == 0,
+        {
             output[2 * i] = bot_half(self.bytes[i]) as i8;
             output[2 * i + 1] = top_half(self.bytes[i]) as i8;
+            proof {
+                // Nibble identity: byte == (byte % 16) + 16 * (byte / 16)
+                let b = self.bytes[i as int];
+                assert((b as u8) == (b as u8) % 16 + 16 * ((b as u8) / 16)) by (bit_vector);
+            }
         }
-        // Precondition note: since self[31] <= 127, output[63] <= 7
+        proof {
+            // output[63] <= 7: from nibble identity at j=31 and precondition bytes[31] <= 127
+            // Trigger the quantifier for j=31: output[2*31] and output[2*31+1]
+            let j: int = 31;
+            assert(output[2 * j] as int + 16 * (output[2 * j + 1] as int) == self.bytes[j] as int);
+            assert(output[2 * j] >= 0);
+            assert(self.bytes[31] <= 127);
+            assert(output[63] <= 7) by {
+                if output[63] >= 8i8 {
+                    lemma_mul_left_inequality(8, output[63] as int, 16);
+                    // 128 <= 16 * output[63], plus output[62] >= 0, contradicts sum <= 127
+                    assert(false);
+                }
+            };
+
+            // Establish the reconstruction property
+            lemma_bytes32_to_radix16_nibbles(output, self.bytes);
+        }
 
         // Step 2: recenter coefficients from [0,16) to [-8,8)
-        for i in 0..63 {
-            assume(false);
+        for i in 0..63
+            invariant
+        // Reconstruction is preserved through carry operations
+
+                reconstruct_radix_16(output@) == scalar_as_nat(self) as int,
+                // Recentered prefix: digits 0..i are in [-8, 8)
+                forall|j: int| 0 <= j < i ==> -8 <= #[trigger] output[j] && output[j] < 8,
+                // Current entry: could have received carry from previous iteration
+                0 <= output[i as int] && output[i as int] <= 16,
+                // Untouched suffix: digits (i+1)..62 are in [0, 15]
+                forall|j: int| i < j < 63 ==> 0 <= #[trigger] output[j] && output[j] <= 15,
+                // Last digit: output[63] <= 7 before carry from i=62, <= 8 after
+                0 <= output[63],
+                i <= 62 ==> output[63] <= 7,
+                i > 62 ==> output[63] <= 8,
+        {
+            // Save old value for proofs
+            let old_oi = output[i];
+            let ghost old_output = output;
+
+            // Exec intermediate for bit_vector proofs (needs i8 type)
+            let oi_plus_8: i8 = old_oi + 8;
+
             let carry = (output[i] + 8) >> 4;
+            // carry is 0 or 1
+            assert(oi_plus_8 >> 4u32 == 0i8 || oi_plus_8 >> 4u32 == 1i8) by (bit_vector)
+                requires
+                    8i8 <= oi_plus_8 && oi_plus_8 <= 24i8,
+            ;
+            proof {
+                assert(carry == 0 || carry == 1);
+            }
+            // carry << 4 is 0 or 16 (no overflow)
+            assert(carry << 4u32 == 0i8 || carry << 4u32 == 16i8) by (bit_vector)
+                requires
+                    carry == 0i8 || carry == 1i8,
+            ;
+
             output[i] -= carry << 4;
+            // output[i] is now in [-8, 7]
+            assert(old_oi - ((oi_plus_8 >> 4u32) << 4u32) >= -8i8) by (bit_vector)
+                requires
+                    8i8 <= oi_plus_8 && oi_plus_8 <= 24i8,
+                    old_oi == oi_plus_8 - 8i8,
+            ;
+            assert(old_oi - ((oi_plus_8 >> 4u32) << 4u32) < 8i8) by (bit_vector)
+                requires
+                    8i8 <= oi_plus_8 && oi_plus_8 <= 24i8,
+                    old_oi == oi_plus_8 - 8i8,
+            ;
+            // carry * 16 == carry << 4 (connects bit shift to arithmetic)
+            assert((oi_plus_8 >> 4u32) * 16i8 == (oi_plus_8 >> 4u32) << 4u32) by (bit_vector)
+                requires
+                    8i8 <= oi_plus_8 && oi_plus_8 <= 24i8,
+            ;
+
             /* <ORIGINAL CODE> :
                 output[i + 1] += carry;
                 </ORIGINAL CODE> */
@@ -2512,15 +3040,58 @@ impl Scalar {
             // Verus doesn't support += on indexed arrays with computed indices
             let next_idx = i + 1;
             output[next_idx] += carry;
-        }
-        // Precondition note: output[63] is not recentered.  It
-        // increases by carry <= 1.  Thus output[63] <= 8.
+            proof {
+                // output[i+1] is still bounded after carry
+                if i + 1 < 63 {
+                    assert(0 <= output[(i + 1) as int] && output[(i + 1) as int] <= 16);
+                } else {
+                    assert(0 <= output[63] && output[63] <= 8);
+                }
 
+                // Reconstruction is preserved: prove preconditions then apply lemma
+                let new_output = output;
+                assert(pow2(4) == 16) by {
+                    lemma2_to64();
+                }
+                assert(new_output@[i as int] == old_output@[i as int] - (carry as int) * 16);
+                assert(new_output@[(i + 1) as int] == old_output@[(i + 1) as int] + carry as int);
+                assert forall|j: int| 0 <= j < 64 && j != i && j != i + 1 implies old_output@[j]
+                    == new_output@[j] by {}
+                lemma_carry_preserves_reconstruction(
+                    old_output@,
+                    new_output@,
+                    i as nat,
+                    carry as int,
+                    4,
+                );
+            }
+        }
         proof {
-            // postconditions
-            assume(is_valid_radix_16(&output));
-            assume(radix_16_all_bounded(&output));
-            assume(reconstruct_radix_16(output@) == scalar_to_nat(self) as int);
+            // Postcondition 1: is_valid_radix_16
+            assert(pow2(3) == 8) by {
+                lemma2_to64();
+            }
+            assert forall|idx: int| 0 <= idx < 64 implies {
+                let bound = pow2(3) as int;
+                if idx < 63 {
+                    -bound <= (#[trigger] output[idx]) && output[idx] < bound
+                } else {
+                    -bound <= (#[trigger] output[idx]) && output[idx] <= bound
+                }
+            } by {
+                if idx < 63 {
+                    assert(-8 <= output[idx] && output[idx] < 8);
+                } else {
+                    assert(0 <= output[63] && output[63] <= 8);
+                }
+            }
+            assert(is_valid_radix_16(&output));
+
+            // Postcondition 2: radix_16_all_bounded (follows from is_valid_radix_16)
+            lemma_valid_radix_16_implies_all_bounded(output);
+
+            // Postcondition 3: reconstruction property (maintained by loop 2 invariant)
+            assert(reconstruct_radix_16(output@) == scalar_as_nat(self) as int);
         }
 
         output
@@ -2587,10 +3158,8 @@ impl Scalar {
     /// with \\(-2\^w/2 \leq a_i < 2\^w/2\\) for \\(0 \leq i < (n-1)\\) and \\(-2\^w/2 \leq a_{n-1} \leq 2\^w/2\\).
     ///
     #[cfg(any(feature = "alloc", feature = "precomputed-tables"))]
-    pub(crate) fn as_radix_2w(&self, w: usize) -> (result:
-        [i8; 64])
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    #[verifier::loop_isolation(false)]
+    pub(crate) fn as_radix_2w(&self, w: usize) -> (result: [i8; 64])
         requires
             4 <= w <= 8,
             // For w=4 (radix 16), top bit must be clear
@@ -2606,7 +3175,7 @@ impl Scalar {
                 is_valid_radix_2w(&result, w as nat, digits_count as nat)
                     &&
                 // Reconstruction property: digits reconstruct the scalar value
-                reconstruct_radix_2w(result@.take(digits_count), w as nat) == scalar_to_nat(
+                reconstruct_radix_2w(result@.take(digits_count), w as nat) == scalar_as_nat(
                     self,
                 ) as int
             }),
@@ -2618,10 +3187,12 @@ impl Scalar {
 
         if w == 4 {
             let result = self.as_radix_16();
-            // VERIFICATION NOTE: Prove that as_radix_16 postcondition implies as_radix_2w postcondition for w=4
             proof {
+                assert(w == 4);
+                assert(w as int == 4);
                 // For w=4: digits_count = (256 + 4 - 1) / 4 = 259 / 4 = 64
-                assert(((256 + (w as int) - 1) / (w as int)) == 64);
+                assert(((256 + (w as int) - 1) / (w as int)) == ((256 + 4 - 1) / 4));
+                assert(((256 + 4 - 1) / 4) == 64) by (compute);
                 // is_valid_radix_16 is defined as is_valid_radix_2w(digits, 4, 64)
                 assert(is_valid_radix_16(&result) == is_valid_radix_2w(&result, 4, 64));
                 // reconstruct_radix_16 is defined as reconstruct_radix_2w(digits, 4)
@@ -2637,88 +3208,162 @@ impl Scalar {
         let mut scalar64x4 = [0u64; 4];
         read_le_u64_into(&self.bytes, &mut scalar64x4[0..4]);
         </ORIGINAL CODE> */
-        // Read 4 u64s from the 32-byte array (self.bytes)
+        // Read 4 u64s from the 32-byte array (self.bytes).
+        // Named arrays serve double duty: exec (u64_from_le_bytes) and proof (lemma_u64x4_from_le_bytes).
+
+        let chunk0: [u8; 8] = [
+            self.bytes[0],
+            self.bytes[1],
+            self.bytes[2],
+            self.bytes[3],
+            self.bytes[4],
+            self.bytes[5],
+            self.bytes[6],
+            self.bytes[7],
+        ];
+        let chunk1: [u8; 8] = [
+            self.bytes[8],
+            self.bytes[9],
+            self.bytes[10],
+            self.bytes[11],
+            self.bytes[12],
+            self.bytes[13],
+            self.bytes[14],
+            self.bytes[15],
+        ];
+        let chunk2: [u8; 8] = [
+            self.bytes[16],
+            self.bytes[17],
+            self.bytes[18],
+            self.bytes[19],
+            self.bytes[20],
+            self.bytes[21],
+            self.bytes[22],
+            self.bytes[23],
+        ];
+        let chunk3: [u8; 8] = [
+            self.bytes[24],
+            self.bytes[25],
+            self.bytes[26],
+            self.bytes[27],
+            self.bytes[28],
+            self.bytes[29],
+            self.bytes[30],
+            self.bytes[31],
+        ];
 
         let mut scalar64x4 = [0u64;4];
-        scalar64x4[0] = u64_from_le_bytes(
-            [
-                self.bytes[0],
-                self.bytes[1],
-                self.bytes[2],
-                self.bytes[3],
-                self.bytes[4],
-                self.bytes[5],
-                self.bytes[6],
-                self.bytes[7],
-            ],
-        );
-        scalar64x4[1] = u64_from_le_bytes(
-            [
-                self.bytes[8],
-                self.bytes[9],
-                self.bytes[10],
-                self.bytes[11],
-                self.bytes[12],
-                self.bytes[13],
-                self.bytes[14],
-                self.bytes[15],
-            ],
-        );
-        scalar64x4[2] = u64_from_le_bytes(
-            [
-                self.bytes[16],
-                self.bytes[17],
-                self.bytes[18],
-                self.bytes[19],
-                self.bytes[20],
-                self.bytes[21],
-                self.bytes[22],
-                self.bytes[23],
-            ],
-        );
-        scalar64x4[3] = u64_from_le_bytes(
-            [
-                self.bytes[24],
-                self.bytes[25],
-                self.bytes[26],
-                self.bytes[27],
-                self.bytes[28],
-                self.bytes[29],
-                self.bytes[30],
-                self.bytes[31],
-            ],
-        );
+        scalar64x4[0] = u64_from_le_bytes(chunk0);
+        scalar64x4[1] = u64_from_le_bytes(chunk1);
+        scalar64x4[2] = u64_from_le_bytes(chunk2);
+        scalar64x4[3] = u64_from_le_bytes(chunk3);
 
-        let radix: u64 = 1 << w;
-        // VERIFICATION NOTE: Assert that radix > 0 to prove radix - 1 won't underflow
+        // Subgoal: u64x4 words reconstruct scalar_val (paper Section 3)
+        let ghost scalar_val: nat = scalar_as_nat(self);
         proof {
-            assume(false);
+            assert(bytes_as_nat_prefix(chunk0@, 8) + bytes_as_nat_prefix(chunk1@, 8) * pow2(64)
+                + bytes_as_nat_prefix(chunk2@, 8) * pow2(128) + bytes_as_nat_prefix(chunk3@, 8)
+                * pow2(192) == u8_32_as_nat(&self.bytes)) by {
+                lemma_u64x4_from_le_bytes(self.bytes, chunk0, chunk1, chunk2, chunk3);
+            }
+            // Bridge: u64_4_as_nat matches scalar_val (used by bit extraction lemmas)
+            assert(u64_4_as_nat(&scalar64x4) == scalar_val);
+        }
+
+        // Subgoal: Radix and window mask properties
+        let radix: u64 = 1 << w;
+        proof {
+            assert(radix >= 1u64) by (bit_vector)
+                requires
+                    radix == 1u64 << (w as u64),
+                    4u64 <= (w as u64) <= 8u64,
+            ;
         }
         let window_mask: u64 = radix - 1;
 
         let mut carry = 0u64;
         let mut digits = [0i8;64];
         let digits_count = (256 + w - 1) / w;
+        proof {
+            assert(digits_count <= 52 && digits_count > 0 && digits_count * w >= 256 && digits_count
+                * w <= 256 + w - 1 && radix <= 256u64 && radix as nat == pow2(w as nat)) by {
+                lemma_digits_count_radix_bounds(w, digits_count);
+            }
+            assert(pow2(w as nat) >= 1) by {
+                lemma_pow2_pos(w as nat);
+            }
+            assert(radix as nat == pow2(w as nat));
+            // Subgoal: scalar_val < pow2(256)
+            assert(scalar_val < pow2(256)) by {
+                lemma_u8_32_as_nat_with_trailing_zeros(&self.bytes, 32);
+                lemma_bytes_as_nat_prefix_bounded(self.bytes@, 32);
+            }
+            // Subgoal: Loop invariant base case (i=0)
+            lemma2_to64();
+            assert(reconstruct_radix_2w(digits@.take(0int), w as nat) == 0int) by {
+                assert(digits@.take(0int).len() == 0);
+            }
+            assert((scalar_val as int) % (pow2(0nat) as int) == 0) by {
+                lemma_small_mod(0 as nat, 1 as nat);
+            }
+            assert(w * 0 == 0) by {
+                lemma_mul_basics(w as int);
+            }
+        }
         #[allow(clippy::needless_range_loop)]
         for i in 0..digits_count
             invariant
-                w >= 4,
-                w <= 8,
-                digits_count <= 64,
-                radix == (1u64 << w),
+        // Core invariant: reconstruction + carry == scalar mod pow2(w*i)
+
+                carry <= 1,
+                reconstruct_radix_2w(digits@.take(i as int), w as nat) + (carry as int) * (pow2(
+                    (w * i) as nat,
+                ) as int) == (scalar_val as int) % (pow2((w * i) as nat) as int),
+                // Digit bounds: processed digits are in [-2^(w-1), 2^(w-1))
+                forall|j: int|
+                    0 <= j < i ==> {
+                        let bound = pow2((w - 1) as nat) as int;
+                        -bound <= (#[trigger] digits[j]) && digits[j] < bound
+                    },
+                // Unassigned digits are zero
+                forall|j: int| #![auto] i <= j < 64 ==> digits[j] == 0i8,
+                // Final carry is 0 for w < 8 (needed for postcondition)
+                (w < 8 && i == digits_count) ==> carry == 0,
         {
-            // Construct a buffer of bits of the scalar, starting at `bit_offset`.
-            assume(false);
+            proof {
+                assert(w != 4);
+                assert(5 <= w);
+                // i*w < digits_count*w (overflow check on the exec multiplication i * w)
+                assert(i * w < digits_count * w) by {
+                    lemma_mul_strict_inequality(i as int, digits_count as int, w as int);
+                }
+                // Strengthen bound explicitly so `bit_offset <= 255` is available later.
+                // (i+1)*w <= digits_count*w <= 256+w-1, so i*w+w <= 256+w-1, hence i*w <= 255
+                assert((i * w) as int <= 255) by {
+                    lemma_mul_inequality(i as int + 1, digits_count as int, w as int);
+                    lemma_mul_is_distributive_add_other_way(w as int, i as int, 1int);
+                };
+            }
             let bit_offset = i * w;
             let u64_idx = bit_offset / 64;
             let bit_idx = bit_offset % 64;
 
-            // Read the bits from the scalar
-            // VERIFICATION NOTE: Assert 64 - w won't underflow
             proof {
-                assert(w <= 8);
-                assert(64 - w >= 56);
+                // bit_offset + w == (i+1)*w <= digits_count*w <= 256+w-1 <= 263
+                // so bit_offset <= 255, hence u64_idx = bit_offset/64 <= 255/64 = 3
+                assert(bit_offset <= 255) by {
+                    assert(bit_offset == i * w);
+                    assert((i * w) as int <= 255);
+                }
+                assert(bit_offset <= 255 && u64_idx <= 3) by {
+                    lemma_mul_is_distributive_add(w as int, i as int, 1);
+                    lemma_mul_basics(w as int);
+                    lemma_mul_inequality((i + 1) as int, digits_count as int, w as int);
+                    lemma_div_is_ordered(bit_offset as int, 255, 64);
+                }
             }
+
+            // Read the bits from the scalar
             let bit_buf: u64 = if bit_idx < 64 - w || u64_idx == 3 {
                 // This window's bits are contained in a single u64,
                 // or it's the last u64 anyway.
@@ -2728,14 +3373,182 @@ impl Scalar {
                 (scalar64x4[u64_idx] >> bit_idx) | (scalar64x4[1 + u64_idx] << (64 - bit_idx))
             };
 
-            // Read the actual coefficient value from the window
-            let coef = carry + (bit_buf & window_mask);  // coef = [0, 2^r)
+            // Prove extracted < radix BEFORE the coef computation (needed for overflow check)
+            assert((bit_buf & window_mask) < radix) by (bit_vector)
+                requires
+                    window_mask == radix - 1u64,
+                    radix > 0u64,
+            ;
 
-            // Recenter coefficients from [0,2^w) to [-2^w/2, 2^w/2)
+            // Read the actual coefficient value from the window
+            // carry <= 1 (invariant), extracted < radix <= 256, so coef <= radix. No overflow.
+            let coef = carry + (bit_buf & window_mask);
+
+            proof {
+                assert(coef <= radix);
+                // Bit extraction: (bit_buf & window_mask) == (scalar_val / pow2(w*i)) % pow2(w)
+                assert((bit_buf & window_mask) as nat == (u64_4_as_nat(&scalar64x4) / pow2(
+                    bit_offset as nat,
+                )) % pow2(w as nat)) by {
+                    lemma_u64x4_bit_extraction(
+                        scalar64x4,
+                        bit_buf,
+                        window_mask,
+                        w,
+                        bit_offset,
+                        u64_idx,
+                        bit_idx,
+                    );
+                }
+                // bit_offset == i*w == w*i (commutativity for pow2 argument)
+                assert(bit_offset == w * i) by {
+                    lemma_mul_is_commutative(i as int, w as int);
+                }
+            }
+
+            let ghost extracted: nat = (bit_buf & window_mask) as nat;
+            let ghost old_carry = carry;
+            let ghost old_digits = digits;
+
+            // Recenter coefficients from [0,2^w) to [-2^w/2, 2^w/2).
+            /* <ORIGINAL CODE>
             carry = (coef + (radix / 2)) >> w;
             let coef_i64 = coef as i64;
             let carry_shifted = (carry << w) as i64;
             digits[i] = (coef_i64 - carry_shifted) as i8;
+            </ORIGINAL CODE> */
+            let half_radix: u64 = radix / 2;
+            carry = (coef + half_radix) >> w;
+            let new_carry: u64 = carry;
+
+            // Prove carry bound BEFORE carry_times_radix computation
+            assert(new_carry <= 1u64) by (bit_vector)
+                requires
+                    new_carry == ((coef + half_radix) as u64) >> w,
+                    coef <= radix,
+                    half_radix == radix / 2u64,
+                    radix == 1u64 << (w as u64),
+                    5u64 <= (w as u64) <= 8u64,
+            ;
+
+            let coef_i64: i64 = coef as i64;
+            let carry_shifted_u64: u64 = carry << w;
+            let carry_shifted: i64 = carry_shifted_u64 as i64;
+            proof {
+                assert(new_carry <= 1);
+                assert(pow2(w as nat) <= 256) by {
+                    assert(radix as nat == pow2(w as nat));
+                    assert(radix <= 256u64);
+                }
+                assert(new_carry * pow2(w as nat) <= 256) by {
+                    lemma_mul_upper_bound(new_carry as int, 1, pow2(w as nat) as int, 256);
+                }
+                assert(new_carry * pow2(w as nat) <= u64::MAX);
+                assert(carry_shifted_u64 == new_carry * pow2(w as nat)) by {
+                    lemma_u64_shl_is_mul(new_carry, w as u64);
+                }
+                assert(pow2(w as nat) == radix as nat);
+                assert(carry_shifted_u64 == new_carry * radix);
+                assert(carry_shifted_u64 <= 256u64);
+                assert(carry_shifted_u64 <= i64::MAX as u64);
+            }
+
+            // Prove i8 cast bounds BEFORE the cast
+            assert(coef_i64 - carry_shifted >= -128i64 && coef_i64 - carry_shifted <= 127i64)
+                by (bit_vector)
+                requires
+                    coef_i64 == coef as i64,
+                    carry_shifted == carry_shifted_u64 as i64,
+                    carry_shifted_u64 == new_carry * radix,
+                    new_carry == ((coef + half_radix) as u64) >> w,
+                    coef <= radix,
+                    half_radix == radix / 2u64,
+                    radix == 1u64 << (w as u64),
+                    5u64 <= (w as u64) <= 8u64,
+            ;
+
+            /* <ORIGINAL CODE>
+            digits[i] = (coef_i64 - carry_shifted) as i8;
+            </ORIGINAL CODE> */
+            let digit_i8: i8 = (coef_i64 - carry_shifted) as i8;
+
+            // Cast preservation: i8 roundtrip preserves value when in [-128, 127]
+            assert(digit_i8 as i64 == coef_i64 - carry_shifted) by (bit_vector)
+                requires
+                    digit_i8 == (coef_i64 - carry_shifted) as i8,
+                    coef_i64 - carry_shifted >= -128i64,
+                    coef_i64 - carry_shifted <= 127i64,
+            ;
+
+            digits[i] = digit_i8;
+
+            // Cast bridges: u64->i64 preserves value for small non-negative values
+            assert(coef_i64 as int == coef as int);
+            assert(carry_shifted as int == carry_shifted_u64 as int);
+
+            proof {
+                // ---- Loop invariant preservation (paper Section 6) ----
+                // Ghost bindings for pow2 values used across subgoals
+                // (also required for solver context stability)
+                let digit_val = digits[i as int] as int;
+                let pw = pow2(w as nat) as int;
+
+                // Subgoal 1: digit = coef - new_carry * 2^w
+                assert(digit_val == coef as int - new_carry as int * pw) by {
+                    // digit_i8 as int == coef as int - carry_times_radix as int
+                    // (from bit_vector via i64 bridge)
+                }
+
+                // Subgoal 2: coef = old_carry + extracted
+                assert(coef as int == old_carry as int + extracted as int);
+
+                // Subgoal 3: Digit bounds via recentering (paper Section 7)
+                assert(-pow2((w - 1) as nat) as int <= digit_val && digit_val < pow2(
+                    (w - 1) as nat,
+                ) as int) by {
+                    lemma_radix_2w_digit_bounds(coef, w, new_carry);
+                }
+
+                // Subgoal 4: Invariant preservation (paper Section 6)
+                // recon(i+1) + carry * 2^(w*(i+1)) == scalar_val mod 2^(w*(i+1))
+                assert(digits@.take((i + 1) as int) =~= old_digits@.take(i as int).push(
+                    digits[i as int],
+                ));
+                assert(digits@.take((i + 1) as int).take(i as int) =~= digits@.take(i as int));
+                assert(digits@.take(i as int) =~= old_digits@.take(i as int));
+
+                assert(reconstruct_radix_2w(digits@.take((i + 1) as int), w as nat) + (carry as int)
+                    * pow2((w * (i + 1)) as nat) as int == (scalar_val as int) % pow2(
+                    (w * (i + 1)) as nat,
+                ) as int) by {
+                    lemma_radix_2w_loop_reconstruction_step(
+                        digits@.take((i + 1) as int),
+                        i,
+                        w,
+                        scalar_val,
+                        old_carry,
+                        new_carry,
+                        extracted,
+                    );
+                }
+
+                // Subgoal 5: Final carry = 0 at last iteration for w < 8 (paper Section 8)
+                if w < 8 && i + 1 == digits_count {
+                    let extracted_u64: u64 = (bit_buf & window_mask) as u64;
+                    assert(coef < half_radix) by {
+                        lemma_last_iter_carry_zero(scalar_val, old_carry, extracted_u64, w, i);
+                    }
+
+                    assert(carry == 0u64) by (bit_vector)
+                        requires
+                            carry == (((coef + half_radix) as u64) >> (w as u64)),
+                            (coef as u64) < (half_radix as u64),
+                            half_radix == radix / 2u64,
+                            radix == 1u64 << (w as u64),
+                            5u64 <= (w as u64) <= 8u64,
+                    ;
+                }
+            }
         }
 
         // When 4 < w < 8, we can fold the final carry onto the last digit d,
@@ -2753,35 +3566,55 @@ impl Scalar {
             _ => digits[digits_count - 1] += (carry << w) as i8,
         }
         </ORIGINAL CODE> */
+        let ghost digits_after_loop = digits;
+
         match w {
             8 => {
                 let idx = digits_count;
                 let carry_i8 = carry as i8;
-                assume(false);
                 digits[idx] += carry_i8;
             },
             _ => {
                 let idx = digits_count - 1;
-                proof {
-                    assert(w >= 4 && w < 8);
-                    assume(carry << w < 256);  // This is a simplification; actual bounds are tighter
-                }
-                let carry_shifted_i8 = (carry << w) as i8;
-                assume(false);
-                digits[idx] += carry_shifted_i8;
+                assert(0u64 << (w as u64) == 0u64) by (bit_vector);
+                let carry_shifted: u64 = carry << w;
+                let carry_shifted_i8 = carry_shifted as i8;
+                digits[idx] = digits[idx] + carry_shifted_i8;
             },
         }
 
-        // VERIFICATION NOTE: PROOF BYPASS - assume postconditions
         proof {
-            let final_digits_count = if w < 8 {
-                (256 + (w as int) - 1) / (w as int)
+            // Prove the reconstruction invariant still holds after carry adjustment
+            if w == 8 {
+                // w=8: only index digits_count (=32) was modified
+                // take(32) is unchanged, so the loop invariant for the first 32 digits holds
+                assert(digits@.take(digits_count as int) =~= digits_after_loop@.take(
+                    digits_count as int,
+                ));
+                assert(digits[digits_count as int] as int == carry as int);
             } else {
-                (256 + (w as int) - 1) / (w as int) + 1
-            };
-            assume(is_valid_radix_2w(&digits, w as nat, final_digits_count as nat));
-            assume(reconstruct_radix_2w(digits@.take(final_digits_count), w as nat)
-                == scalar_to_nat(self) as int);
+                // w<8: carry=0, carry_shifted_i8=0, so digits[idx] + 0 = digits[idx]
+                // The array take(digits_count) is effectively unchanged
+                assert(carry == 0);
+                assert(digits@.take(digits_count as int) =~= digits_after_loop@.take(
+                    digits_count as int,
+                ));
+            }
+
+            // Subgoal: Final postconditions — valid radix-2^w representation
+            // that reconstructs to scalar_val
+            assert({
+                let final_digits_count = if w < 8 {
+                    (256 + (w as int) - 1) / (w as int)
+                } else {
+                    (256 + (w as int) - 1) / (w as int) + 1
+                };
+                is_valid_radix_2w(&digits, w as nat, final_digits_count as nat)
+                    && reconstruct_radix_2w(digits@.take(final_digits_count), w as nat)
+                    == scalar_val as int
+            }) by {
+                lemma_as_radix_2w_postconditions(digits, w, digits_count, carry, scalar_val);
+            }
         }
 
         digits
@@ -2790,12 +3623,13 @@ impl Scalar {
     /// Unpack this `Scalar` to an `UnpackedScalar` for faster arithmetic.
     pub fn unpack(&self) -> (result:
         UnpackedScalar)
-    // VERIFICATION NOTE: VERIFIED (changed pub(crate) to pub)
+    // VERIFICATION NOTE: changed pub(crate) to pub
 
         ensures
             limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
-            scalar52_to_nat(&result) == bytes32_to_nat(&self.bytes),
+            scalar52_as_nat(&result) == scalar_as_nat(&self),
+            is_canonical_scalar(self) ==> is_canonical_scalar52(&result),
     {
         UnpackedScalar::from_bytes(&self.bytes)
     }
@@ -2804,10 +3638,7 @@ impl Scalar {
     #[allow(non_snake_case)]
     fn reduce(&self) -> (result: Scalar)
         ensures
-    // Result is equivalent to input modulo the group order
-
-            bytes32_to_nat(&result.bytes) % group_order() == bytes32_to_nat(&self.bytes)
-                % group_order(),
+            scalar_as_canonical(&result) == scalar_as_canonical(&self),
             // Result satisfies Scalar invariants #1 and #2
             is_canonical_scalar(&result),
     {
@@ -2818,55 +3649,65 @@ impl Scalar {
 
         }
 
-        assert(scalar52_to_nat(&constants::R) < group_order()) by {
+        assert(scalar52_as_nat(&constants::R) < group_order()) by {
             lemma_r_equals_spec(constants::R);
         };
 
         proof { lemma_limbs_bounded_implies_prod_bounded(&x, &constants::R) }
 
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);
+
+        proof {
+            // Establish montgomery_reduce's preconditions
+            lemma_bounded_product_satisfies_input_bounds(&x, &constants::R, &xR);
+            // R is canonical (< L), so product satisfies canonical_bound
+            lemma_r_equals_spec(constants::R);
+            lemma_canonical_product_satisfies_canonical_bound(&x, &constants::R, &xR);
+        }
+
         let x_mod_l = UnpackedScalar::montgomery_reduce(&xR);
+        // is_canonical_scalar52(&x_mod_l) follows from montgomery_reduce postcondition
         let result = x_mod_l.pack();
 
         proof {
-            assert(slice128_to_nat(&xR) == scalar52_to_nat(&x) * scalar52_to_nat(&constants::R));
+            assert(slice128_as_nat(&xR) == scalar52_as_nat(&x) * scalar52_as_nat(&constants::R));
 
             // montgomery_reduce ensures:
-            assert((scalar52_to_nat(&x_mod_l) * montgomery_radix()) % group_order()
-                == slice128_to_nat(&xR) % group_order());
+            assert((scalar52_as_nat(&x_mod_l) * montgomery_radix()) % group_order()
+                == slice128_as_nat(&xR) % group_order());
 
-            assert((scalar52_to_nat(&x_mod_l) * montgomery_radix()) % group_order() == (
-            scalar52_to_nat(&x) * scalar52_to_nat(&constants::R)) % group_order());
+            assert((scalar52_as_nat(&x_mod_l) * montgomery_radix()) % group_order() == (
+            scalar52_as_nat(&x) * scalar52_as_nat(&constants::R)) % group_order());
 
             lemma_r_equals_spec(constants::R);
 
             lemma_mul_factors_congruent_implies_products_congruent(
-                scalar52_to_nat(&x) as int,
+                scalar52_as_nat(&x) as int,
                 montgomery_radix() as int,
-                scalar52_to_nat(&constants::R) as int,
+                scalar52_as_nat(&constants::R) as int,
                 group_order() as int,
             );
 
-            assert((scalar52_to_nat(&x_mod_l) * montgomery_radix()) % group_order() == (
-            scalar52_to_nat(&x) * montgomery_radix()) % group_order());
+            assert((scalar52_as_nat(&x_mod_l) * montgomery_radix()) % group_order() == (
+            scalar52_as_nat(&x) * montgomery_radix()) % group_order());
 
             lemma_cancel_mul_pow2_mod(
-                scalar52_to_nat(&x_mod_l),
-                scalar52_to_nat(&x),
+                scalar52_as_nat(&x_mod_l),
+                scalar52_as_nat(&x),
                 montgomery_radix(),
             );
 
-            assert(scalar52_to_nat(&x_mod_l) % group_order() == scalar52_to_nat(&x)
+            assert(scalar52_as_nat(&x_mod_l) % group_order() == scalar52_as_nat(&x)
                 % group_order());
 
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&x_mod_l) % pow2(256));
-            assert(scalar52_to_nat(&x_mod_l) < group_order());
+            assert(u8_32_as_nat(&result.bytes) == scalar52_as_nat(&x_mod_l) % pow2(256));
+            assert(scalar52_as_nat(&x_mod_l) < group_order());
 
             assert(group_order() < pow2(256)) by { lemma_group_order_smaller_than_pow256() };
 
-            assert(scalar52_to_nat(&x_mod_l) < pow2(256));
-            lemma_small_mod(scalar52_to_nat(&x_mod_l), pow2(256));
-            assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(&x_mod_l));
+            assert(scalar52_as_nat(&x_mod_l) < pow2(256));
+            lemma_small_mod(scalar52_as_nat(&x_mod_l), pow2(256));
+            assert(u8_32_as_nat(&result.bytes) == scalar52_as_nat(&x_mod_l));
         }
 
         result
@@ -2905,58 +3746,71 @@ fn square_multiply(
 */
 
     requires
-        limb_prod_bounded_u128(old(y).limbs, old(y).limbs, 5),
-        limbs_bounded(x),
+// Both inputs must be canonical for montgomery_square/montgomery_mul
+
+        is_canonical_scalar52(old(y)),
+        is_canonical_scalar52(x),
     ensures
-        limbs_bounded(y),
         limb_prod_bounded_u128(y.limbs, y.limbs, 5),
-        // VERIFICATION NOTE: Changed postcondition from the original incorrect version
-        // which used `montgomery_radix()` instead of `pow(montgomery_radix(), pow2(squarings))`
-        (scalar52_to_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat)
-            % group_order() == (pow(scalar52_to_nat(old(y)) as int, pow2(squarings as nat))
-            * scalar52_to_nat(x)) % (group_order() as int),
+        // Output is canonical
+        is_canonical_scalar52(y),
+        // can't use group_canonical RHS due to int cast
+        group_canonical(
+            scalar52_as_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat,
+        ) == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_as_nat(x)) % (
+        group_order() as int),
 {
-    let ghost y0: nat = scalar52_to_nat(y);
-    let ghost xv: nat = scalar52_to_nat(&x);
+    let ghost y0: nat = scalar52_as_nat(y);
+    let ghost xv: nat = scalar52_as_nat(&x);
     let ghost R: nat = montgomery_radix();
     let ghost L: nat = group_order();
 
     proof {
-        lemma_pow2_pos(260);
+        assert(R > 0) by {
+            lemma_pow2_pos(260);
+        }
         lemma2_to64();
-        lemma_pow0(R as int);
-        lemma_pow1(y0 as int);
-        assert(pow(R as int, 0nat) == 1);
-        assert((y0 * 1) as nat == y0);
-
+        assert((y0 * pow(R as int, (pow2(0nat) - 1) as nat) as nat) % L == (pow(
+            y0 as int,
+            pow2(0nat),
+        ) as nat) % L) by {
+            lemma_pow0(R as int);
+            lemma_pow1(y0 as int);
+            assert(pow(R as int, 0nat) == 1);
+            assert((y0 * 1) as nat == y0);
+        }
     }
 
     // VERIFICATION NOTE: Named loop variable allows tracking iteration count
     for idx in 0..squarings
         invariant
-            limb_prod_bounded_u128(y.limbs, y.limbs, 5),
+    // Maintain canonicity for montgomery_square
+
+            is_canonical_scalar52(y),
             L == group_order(),
             R == montgomery_radix(),
             L > 0,
             R > 0,
-            (scalar52_to_nat(y) * pow(R as int, (pow2(idx as nat) - 1) as nat) as nat) % L == (pow(
+            (scalar52_as_nat(y) * pow(R as int, (pow2(idx as nat) - 1) as nat) as nat) % L == (pow(
                 y0 as int,
                 pow2(idx as nat),
             ) as nat) % L,
     {
-        let ghost y_before: nat = scalar52_to_nat(y);
+        let ghost y_before: nat = scalar52_as_nat(y);
         *y = y.montgomery_square();
         proof {
-            lemma_square_multiply_step(scalar52_to_nat(y), y_before, y0, R, L, idx as nat);
-            lemma_limbs_bounded_implies_prod_bounded(y, y);
+            lemma_square_multiply_step(scalar52_as_nat(y), y_before, y0, R, L, idx as nat);
+            // limbs_bounded is maintained by montgomery_square's ensures clause
         }
     }
 
-    let ghost y_after: nat = scalar52_to_nat(y);
+    let ghost y_after: nat = scalar52_as_nat(y);
     let ghost exp_final: nat = (pow2(squarings as nat) - 1) as nat;
 
     proof {
-        lemma_limbs_bounded_implies_prod_bounded(y, x);
+        assert(limb_prod_bounded_u128(y.limbs, x.limbs, 5)) by {
+            lemma_limbs_bounded_implies_prod_bounded(y, x);
+        }
     }
 
     *y = UnpackedScalar::montgomery_mul(y, x);
@@ -2968,23 +3822,25 @@ fn square_multiply(
             pow2(squarings as nat),
         ) as nat) % L);
 
-        let final_y: nat = scalar52_to_nat(y);
+        let final_y: nat = scalar52_as_nat(y);
         let n: nat = squarings as nat;
         let R_exp: int = pow(R as int, exp_final);
         let R_pow2n: int = pow(R as int, pow2(n));
         let y0_pow: int = pow(y0 as int, pow2(n));
 
-        lemma_pow2_pos(n);
-        lemma_pow_adds(R as int, 1nat, exp_final);
-        lemma_pow1(R as int);
-        lemma_pow_nonnegative(R as int, exp_final);
-        lemma_pow_nonnegative(y0 as int, pow2(n));
+        assert(R_pow2n == R as int * R_exp && R_exp >= 0 && y0_pow >= 0) by {
+            lemma_pow2_pos(n);
+            lemma_pow_adds(R as int, 1nat, exp_final);
+            lemma_pow1(R as int);
+            lemma_pow_nonnegative(R as int, exp_final);
+            lemma_pow_nonnegative(y0 as int, pow2(n));
+        }
 
-        assert((y_after as int * xv as int) * R_exp == (y_after as int * R_exp) * xv as int)
-            by (nonlinear_arith)
-            requires
-                R_exp >= 0,
-        ;
+        assert((y_after as int * xv as int) * R_exp == (y_after as int * R_exp) * xv as int) by {
+            lemma_mul_is_associative(y_after as int, xv as int, R_exp);
+            lemma_mul_is_commutative(xv as int, R_exp);
+            lemma_mul_is_associative(y_after as int, R_exp, xv as int);
+        };
 
         calc! {
             (==)
@@ -3011,9 +3867,8 @@ impl UnpackedScalar {
         requires
             limbs_bounded(self),
         ensures
-            bytes32_to_nat(&result.bytes) == scalar52_to_nat(self) % pow2(256),
-            // VERIFICATION NOTE: If input is canonical (< group order), output satisfies Scalar invariants
-            scalar52_to_nat(self) < group_order() ==> is_canonical_scalar(&result),
+            u8_32_as_nat(&result.bytes) == scalar52_as_nat(self) % pow2(256),
+            scalar52_as_nat(self) < group_order() ==> is_canonical_scalar(&result),
     {
         let bytes = self.as_bytes();
         proof {
@@ -3023,28 +3878,28 @@ impl UnpackedScalar {
         // VERIFICATION NOTE: TODO: Prove these follow from as_bytes() spec
         // result.bytes is [u8; 32]
         // group order is pow2(252) + 27742317777372353535851937790883648493nat
-        // if result.bytes[31] > 127, then when we apply bytes32_to_nat, we'll end up with
+        // if result.bytes[31] > 127, then when we apply u8_32_as_nat, we'll end up with
         // something large than group_order, contradiction
         // bytes[31] * 2^(31*8) + ...
         // 127 * 2^(31*8) == 57443731770074831323412168344153766786583156455220123566449660816425654157312
         // group order is     7237005577332262213973186563042994240857116359379907606001950938285454250989
         // which is smaller
         // unfold with fuel 32
-        // Another approach is like lemma_nine_limbs_equals_slice128_to_nat,
+        // Another approach is like lemma_nine_limbs_equals_slice128_as_nat,
         // which shows that a recursive defn equals a large polynomial
 
         proof {
-            if scalar52_to_nat(self) < group_order() {
+            if scalar52_as_nat(self) < group_order() {
                 lemma_scalar52_lt_pow2_256_if_canonical(self);
-                lemma_small_mod(scalar52_to_nat(self), pow2(256));
-                assert(scalar52_to_nat(self) % pow2(256) == scalar52_to_nat(self));
-                assert(bytes32_to_nat(&result.bytes) == scalar52_to_nat(self));
+                lemma_small_mod(scalar52_as_nat(self), pow2(256));
+                assert(scalar52_as_nat(self) % pow2(256) == scalar52_as_nat(self));
+                assert(u8_32_as_nat(&result.bytes) == scalar52_as_nat(self));
 
-                let v = bytes32_to_nat(&result.bytes);
+                let v = u8_32_as_nat(&result.bytes);
 
-                assert(bytes32_to_nat(&result.bytes) == bytes32_to_nat(&result.bytes));
+                assert(u8_32_as_nat(&result.bytes) == u8_32_as_nat(&result.bytes));
 
-                assert(v == bytes32_to_nat(&result.bytes));
+                assert(v == u8_32_as_nat(&result.bytes));
                 assert(v < group_order());
                 {
                     lemma_group_order_bound();
@@ -3059,8 +3914,8 @@ impl UnpackedScalar {
                         use vstd::arithmetic::mul::lemma_mul_inequality;
 
                         // Use the lemma
-                        use crate::lemmas::common_lemmas::to_nat_lemmas::lemma_bytes32_to_nat_lower_bound;
-                        lemma_bytes32_to_nat_lower_bound(&result.bytes, 31);
+                        use crate::lemmas::common_lemmas::to_nat_lemmas::lemma_u8_32_as_nat_lower_bound;
+                        lemma_u8_32_as_nat_lower_bound(&result.bytes, 31);
 
                         lemma_pow2_adds(7, 248);
 
@@ -3085,28 +3940,27 @@ impl UnpackedScalar {
     }
 
     /// Inverts an UnpackedScalar in Montgomery form.
+    ///
+    /// # Preconditions
+    /// - Input must be canonical for `montgomery_square`/`montgomery_mul`
+    ///
     #[rustfmt::skip]  // keep alignment of addition chain and squarings
     #[allow(clippy::just_underscores_and_digits)]
-    pub fn montgomery_invert(&self) -> (result:
-        UnpackedScalar)/* VERIFICATION NOTE:
-    PROOF BYPASS
-    */
-
+    pub fn montgomery_invert(&self) -> (result: UnpackedScalar)
         requires
-            limb_prod_bounded_u128(self.limbs, self.limbs, 5),
+            is_canonical_scalar52(self),
         ensures
-            limbs_bounded(&result),
             limb_prod_bounded_u128(result.limbs, result.limbs, 5),
-            (scalar52_to_nat(&result) * scalar52_to_nat(self)) % group_order() == (
-            montgomery_radix() * montgomery_radix())
-                % group_order(),
-    // Equivalent to: from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)
-    // Expressed in Montgomery form: (result/R) * (self/R) ≡ 1, i.e., result * self ≡ R² (mod L)
-
+            is_canonical_scalar52(&result),
+            // result * self ≡ R² (mod L), i.e. from_montgomery(result) * from_montgomery(self) ≡ 1 (mod L)
+            scalar52_as_nat(self) > 0 ==> group_canonical(
+                scalar52_as_nat(&result) * scalar52_as_nat(self),
+            ) == group_canonical(montgomery_radix() * montgomery_radix()),
     {
         // Uses the addition chain from
         // https://briansmith.org/ecc-inversion-addition-chains-01#curve25519_scalar_inversion
         let _1 = *self;
+        // _1 has limbs_bounded from self's precondition
         let _10 = _1.montgomery_square();
         let _100 = _10.montgomery_square();
         assert(limb_prod_bounded_u128(_10.limbs, _1.limbs, 5)) by {
@@ -3140,37 +3994,663 @@ impl UnpackedScalar {
         // _10000
         let mut y = UnpackedScalar::montgomery_mul(&_1111, &_1);
 
+        // Ghost state for exponent tracking
+        let ghost sv: nat = scalar52_as_nat(self);
+        let ghost R: nat = montgomery_radix();
+        let ghost L: nat = group_order();
+
+        // Establish exponent invariants for all initial intermediates.
+        // Invariant form: (val * pow(R, exp - 1)) % L == pow(sv, exp) % L
+        proof {
+            assert(R > 0 && L > 0) by {
+                lemma_pow2_pos(260);
+                lemma2_to64();
+            }
+
+            // _1: exp = 1 — trivial since _1 == self
+            assert((sv * pow(R as int, 0nat) as nat) % L == (pow(sv as int, 1nat) as nat) % L) by {
+                lemma_pow0(R as int);
+                lemma_pow1(sv as int);
+                assert(pow(R as int, 0nat) == 1int);
+                assert(pow(sv as int, 1nat) == sv as int);
+            }
+
+            // _10: exp = 2 — squaring _1 doubles exponent
+            assert((scalar52_as_nat(&_10) * pow(R as int, 1nat) as nat) % L == (pow(
+                sv as int,
+                2nat,
+            ) as nat) % L) by {
+                lemma_montgomery_square_exponent_double(
+                    sv,
+                    scalar52_as_nat(&_1),
+                    scalar52_as_nat(&_10),
+                    1,
+                    R,
+                    L,
+                );
+            }
+
+            // _100: exp = 4 — squaring _10 doubles exponent
+            assert((scalar52_as_nat(&_100) * pow(R as int, 3nat) as nat) % L == (pow(
+                sv as int,
+                4nat,
+            ) as nat) % L) by {
+                lemma_montgomery_square_exponent_double(
+                    sv,
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_100),
+                    2,
+                    R,
+                    L,
+                );
+            }
+
+            // _11: exp = 3 = 2 + 1
+            assert((scalar52_as_nat(&_11) * pow(R as int, 2nat) as nat) % L == (pow(
+                sv as int,
+                3nat,
+            ) as nat) % L) by {
+                lemma_montgomery_mul_exponent_add(
+                    sv,
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_1),
+                    scalar52_as_nat(&_11),
+                    2,
+                    1,
+                    R,
+                    L,
+                );
+            }
+
+            // _101: exp = 5 = 2 + 3
+            assert((scalar52_as_nat(&_101) * pow(R as int, 4nat) as nat) % L == (pow(
+                sv as int,
+                5nat,
+            ) as nat) % L) by {
+                lemma_montgomery_mul_exponent_add(
+                    sv,
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_11),
+                    scalar52_as_nat(&_101),
+                    2,
+                    3,
+                    R,
+                    L,
+                );
+            }
+
+            // _111: exp = 7 = 2 + 5
+            assert((scalar52_as_nat(&_111) * pow(R as int, 6nat) as nat) % L == (pow(
+                sv as int,
+                7nat,
+            ) as nat) % L) by {
+                lemma_montgomery_mul_exponent_add(
+                    sv,
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_101),
+                    scalar52_as_nat(&_111),
+                    2,
+                    5,
+                    R,
+                    L,
+                );
+            }
+
+            // _1001: exp = 9 = 2 + 7
+            assert((scalar52_as_nat(&_1001) * pow(R as int, 8nat) as nat) % L == (pow(
+                sv as int,
+                9nat,
+            ) as nat) % L) by {
+                lemma_montgomery_mul_exponent_add(
+                    sv,
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_111),
+                    scalar52_as_nat(&_1001),
+                    2,
+                    7,
+                    R,
+                    L,
+                );
+            }
+
+            // _1011: exp = 11 = 2 + 9
+            assert((scalar52_as_nat(&_1011) * pow(R as int, 10nat) as nat) % L == (pow(
+                sv as int,
+                11nat,
+            ) as nat) % L) by {
+                lemma_montgomery_mul_exponent_add(
+                    sv,
+                    scalar52_as_nat(&_10),
+                    scalar52_as_nat(&_1001),
+                    scalar52_as_nat(&_1011),
+                    2,
+                    9,
+                    R,
+                    L,
+                );
+            }
+
+            // _1111: exp = 15 = 4 + 11
+            assert((scalar52_as_nat(&_1111) * pow(R as int, 14nat) as nat) % L == (pow(
+                sv as int,
+                15nat,
+            ) as nat) % L) by {
+                lemma_montgomery_mul_exponent_add(
+                    sv,
+                    scalar52_as_nat(&_100),
+                    scalar52_as_nat(&_1011),
+                    scalar52_as_nat(&_1111),
+                    4,
+                    11,
+                    R,
+                    L,
+                );
+            }
+
+            // y (initial): exp = 16 = 15 + 1
+            assert((scalar52_as_nat(&y) * pow(R as int, 15nat) as nat) % L == (pow(
+                sv as int,
+                16nat,
+            ) as nat) % L) by {
+                lemma_montgomery_mul_exponent_add(
+                    sv,
+                    scalar52_as_nat(&_1111),
+                    scalar52_as_nat(&_1),
+                    scalar52_as_nat(&y),
+                    15,
+                    1,
+                    R,
+                    L,
+                );
+            }
+        }
+
+        let ghost mut e_y: nat = 16;
+
+        // 27 square_multiply steps with purely symbolic exponent tracking.
+        // Each step: new_exp = pow2(n) * old_exp + x_exp
+        // The final exponent is verified against group_order() - 2 via the
+        // spec function montgomery_invert_chain_exponent() and compute_only.
+
+        let ghost y_snap: nat = scalar52_as_nat(&y);
         square_multiply(&mut y, 123 + 3, &_101);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
+                e_y,
+                5,
+                126,
+                R,
+                L,
+            );
+            e_y = (pow2(126nat) * e_y + 5) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 2, &_11);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
+                e_y,
+                3,
+                4,
+                R,
+                L,
+            );
+            e_y = (pow2(4nat) * e_y + 3) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
+                e_y,
+                15,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 15) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
+                e_y,
+                15,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 15) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 4, &_1001);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1001),
+                scalar52_as_nat(&y),
+                e_y,
+                9,
+                4,
+                R,
+                L,
+            );
+            e_y = (pow2(4nat) * e_y + 9) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2, &_11);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
+                e_y,
+                3,
+                2,
+                R,
+                L,
+            );
+            e_y = (pow2(2nat) * e_y + 3) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
+                e_y,
+                15,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 15) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 3, &_101);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
+                e_y,
+                5,
+                4,
+                R,
+                L,
+            );
+            e_y = (pow2(4nat) * e_y + 5) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3 + 3, &_101);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
+                e_y,
+                5,
+                6,
+                R,
+                L,
+            );
+            e_y = (pow2(6nat) * e_y + 5) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3, &_111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_111),
+                scalar52_as_nat(&y),
+                e_y,
+                7,
+                3,
+                R,
+                L,
+            );
+            e_y = (pow2(3nat) * e_y + 7) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
+                e_y,
+                15,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 15) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 3, &_111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_111),
+                scalar52_as_nat(&y),
+                e_y,
+                7,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 7) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 2, &_11);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
+                e_y,
+                3,
+                4,
+                R,
+                L,
+            );
+            e_y = (pow2(4nat) * e_y + 3) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1011);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1011),
+                scalar52_as_nat(&y),
+                e_y,
+                11,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 11) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 4, &_1011);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1011),
+                scalar52_as_nat(&y),
+                e_y,
+                11,
+                6,
+                R,
+                L,
+            );
+            e_y = (pow2(6nat) * e_y + 11) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 6 + 4, &_1001);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1001),
+                scalar52_as_nat(&y),
+                e_y,
+                9,
+                10,
+                R,
+                L,
+            );
+            e_y = (pow2(10nat) * e_y + 9) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 2, &_11);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
+                e_y,
+                3,
+                4,
+                R,
+                L,
+            );
+            e_y = (pow2(4nat) * e_y + 3) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3 + 2, &_11);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
+                e_y,
+                3,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 3) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3 + 2, &_11);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
+                e_y,
+                3,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 3) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1001);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1001),
+                scalar52_as_nat(&y),
+                e_y,
+                9,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 9) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 3, &_111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_111),
+                scalar52_as_nat(&y),
+                e_y,
+                7,
+                4,
+                R,
+                L,
+            );
+            e_y = (pow2(4nat) * e_y + 7) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 4, &_1111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
+                e_y,
+                15,
+                6,
+                R,
+                L,
+            );
+            e_y = (pow2(6nat) * e_y + 15) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 4, &_1011);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1011),
+                scalar52_as_nat(&y),
+                e_y,
+                11,
+                5,
+                R,
+                L,
+            );
+            e_y = (pow2(5nat) * e_y + 11) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3, &_101);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
+                e_y,
+                5,
+                3,
+                R,
+                L,
+            );
+            e_y = (pow2(3nat) * e_y + 5) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 2 + 4, &_1111);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_1111),
+                scalar52_as_nat(&y),
+                e_y,
+                15,
+                6,
+                R,
+                L,
+            );
+            e_y = (pow2(6nat) * e_y + 15) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 3, &_101);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_101),
+                scalar52_as_nat(&y),
+                e_y,
+                5,
+                3,
+                R,
+                L,
+            );
+            e_y = (pow2(3nat) * e_y + 5) as nat;
+        }
+
+        let ghost y_snap = scalar52_as_nat(&y);
         square_multiply(&mut y, 1 + 2, &_11);
+        proof {
+            lemma_square_multiply_exponent_compose(
+                sv,
+                y_snap,
+                scalar52_as_nat(&_11),
+                scalar52_as_nat(&y),
+                e_y,
+                3,
+                3,
+                R,
+                L,
+            );
+            e_y = (pow2(3nat) * e_y + 3) as nat;
+        }
 
         proof {
-            assume((scalar52_to_nat(&y) * scalar52_to_nat(self)) % group_order() == (
-            montgomery_radix() * montgomery_radix()) % group_order());
+            assert(e_y == group_order() - 2) by {
+                lemma_pow2_chain_multipliers();
+                lemma_chain_exp_is_l_minus_2();
+            }
+
+            if sv > 0 {
+                assert(montgomery_radix() % group_order() != 0) by {
+                    lemma_montgomery_radix_nonzero_mod_group_order();
+                }
+
+                assert(is_prime(group_order())) by {
+                    axiom_group_order_is_prime();
+                }
+                assert(group_order() > 3);
+
+                assert((scalar52_as_nat(&y) * sv) % L == (R * R) % L) by {
+                    lemma_exponent_chain_implies_montgomery_inverse(sv, scalar52_as_nat(&y), R, L);
+                }
+            }
         }
 
         y
@@ -3181,9 +4661,11 @@ impl UnpackedScalar {
         requires
             limbs_bounded(self),
         ensures
-    // Postcondition: result * self ≡ 1 (mod group_order)
+    // Inversion only holds for inputs that are nonzero mod group_order
 
-            scalar52_to_nat(&result) * scalar52_to_nat(self) % group_order() == 1,
+            scalar52_as_canonical_nat(self) != 0 ==> group_canonical(
+                scalar52_as_nat(&result) * scalar52_as_nat(self),
+            ) == 1,
             // Result is canonical (< group_order) - needed for pack() to produce canonical Scalar
             is_canonical_scalar52(&result),
     {
@@ -3195,19 +4677,47 @@ impl UnpackedScalar {
         let inv = mont.montgomery_invert();
         // montgomery_invert ensures limbs_bounded(&inv)
         proof {
-            lemma_limbs_bounded_implies_prod_bounded(&inv, &inv);
+            assert(limb_prod_bounded_u128(inv.limbs, inv.limbs, 5)) by {
+                lemma_limbs_bounded_implies_prod_bounded(&inv, &inv);
+            }
         }
         let result = inv.from_montgomery();
-        // from_montgomery ensures limbs_bounded(&result) and scalar52_to_nat(&result) < group_order()
 
         proof {
-            // Apply the invert correctness lemma
-            lemma_invert_correctness(
-                scalar52_to_nat(self),
-                scalar52_to_nat(&mont),
-                scalar52_to_nat(&inv),
-                scalar52_to_nat(&result),
-            );
+            if scalar52_as_nat(self) % group_order() != 0 {
+                let self_val = scalar52_as_nat(self);
+                let mont_val = scalar52_as_nat(&mont);
+                let L = group_order();
+                let R = montgomery_radix();
+
+                // mont is canonical: mont_val < L, so mont_val % L == mont_val
+                assert(mont_val % L == mont_val) by {
+                    lemma_small_mod(mont_val, L);
+                }
+
+                assert(R % L != 0) by {
+                    lemma_montgomery_radix_nonzero_mod_group_order();
+                }
+
+                // mont_val > 0: since L is prime, self % L != 0 and R % L != 0
+                // imply (self * R) % L != 0, and mont_val == (self * R) % L
+                assert(mont_val > 0) by {
+                    axiom_group_order_is_prime();
+                    lemma_product_nonzero_mod_prime(self_val, R, L);
+                }
+
+                // With mont_val > 0, montgomery_invert's guarded postcondition
+                // gives inv * mont ≡ R² (mod L), which chains through from_montgomery
+                // and as_montgomery to yield result * self ≡ 1 (mod L)
+                assert((scalar52_as_nat(&result) * self_val) % L == 1) by {
+                    lemma_invert_correctness(
+                        self_val,
+                        mont_val,
+                        scalar52_as_nat(&inv),
+                        scalar52_as_nat(&result),
+                    );
+                }
+            }
         }
 
         result
@@ -3356,10 +4866,7 @@ verus! {
 ///
 /// ## Panics
 /// Panics if `src.len() != 8 * dst.len()`.
-fn read_le_u64_into(src: &[u8], dst: &mut [u64])/* VERIFICATION NOTE:
-PROOF BYPASS
-*/
-
+fn read_le_u64_into(src: &[u8], dst: &mut [u64])
     requires
         src.len() == 8 * old(dst).len(),
     ensures
@@ -3367,7 +4874,7 @@ PROOF BYPASS
         forall|i: int|
             0 <= i < dst.len() ==> {
                 let byte_seq = Seq::new(8, |j: int| src[i * 8 + j] as u8);
-                #[trigger] dst[i] as nat == bytes_seq_to_nat(byte_seq)
+                #[trigger] dst[i] as nat == bytes_seq_as_nat(byte_seq)
             },
 {
     #[cfg(not(verus_keep_ghost))]
@@ -3394,25 +4901,33 @@ PROOF BYPASS
         invariant
             src.len() == 8 * dst_len,
             dst.len() == dst_len,
+            forall|k: int|
+                0 <= k < i ==> {
+                    let byte_seq = Seq::new(8, |j: int| src[k * 8 + j] as u8);
+                    #[trigger] dst[k] as nat == bytes_seq_as_nat(byte_seq)
+                },
     {
         let byte_start = (i * 8);
         let mut byte_array = [0u8;8];
-        for j in 0..8
+        for j in 0..8usize
             invariant
-                src.len() == 8 * dst_len,
-                dst.len() == dst_len,
                 i < dst_len,
                 byte_start == i * 8,
                 byte_start + 8 <= src.len(),
+                forall|k: int| 0 <= k < j ==> byte_array@[k] == src[(i * 8 + k) as int],
         {
             byte_array[j] = src[byte_start + j];
         }
         dst[i] = u64_from_le_bytes(byte_array);
+        proof {
+            let byte_seq = Seq::new(8, |j: int| src[i as int * 8 + j] as u8);
+            assert(byte_array@ =~= byte_seq);
+            assert(bytes_seq_as_nat(byte_array@) == bytes_as_nat_prefix(byte_array@, 8)) by {
+                lemma_bytes_seq_as_nat_equals_prefix(byte_array@);
+            }
+        }
     }
     /* </MODIFIED CODE> */
-    proof {
-        assume(false);
-    }
 }
 
 /// _Clamps_ the given little-endian representation of a 32-byte integer. Clamping the value puts
@@ -3435,7 +4950,6 @@ PROOF BYPASS
 /// See [here](https://neilmadden.blog/2020/05/28/whats-the-curve25519-clamping-all-about/) for
 /// more details.
 #[must_use]
-// VERIFICATION NOTE: PROOF BYPASS
 pub const fn clamp_integer(bytes: [u8; 32]) -> (result: [u8; 32])
     ensures
 // Result is a valid clamped integer for X25519
@@ -3462,15 +4976,42 @@ pub const fn clamp_integer(bytes: [u8; 32]) -> (result: [u8; 32])
     result[31] |= 0b0100_0000;
 
     proof {
-        // The bitwise operations above produce a clamped integer
-        // (includes result[31] <= 127 since MSB is cleared)
-        assume(is_clamped_integer(&result));
-        // The result matches the spec function
-        assume(result == spec_clamp_integer(bytes));
-        // Bits 3-7 of byte 0 are preserved
-        assume(result[0] & 0b1111_1000 == bytes[0] & 0b1111_1000);
-        // Bits 0-5 of byte 31 are preserved
-        assume(result[31] & 0b0011_1111 == bytes[31] & 0b0011_1111);
+        let r0: u8 = result[0];
+        let r31: u8 = result[31];
+        let b0: u8 = bytes[0];
+        let b31: u8 = bytes[31];
+
+        // is_clamped_integer: low 3 bits of byte 0 are cleared
+        assert(r0 & 0b0000_0111u8 == 0u8) by (bit_vector)
+            requires
+                r0 == b0 & 0b1111_1000u8,
+        ;
+        // is_clamped_integer: bit 7 of byte 31 is cleared
+        assert(r31 & 0b1000_0000u8 == 0u8) by (bit_vector)
+            requires
+                r31 == (b31 & 0b0111_1111u8) | 0b0100_0000u8,
+        ;
+        // is_clamped_integer: bit 6 of byte 31 is set
+        assert(r31 & 0b0100_0000u8 == 0b0100_0000u8) by (bit_vector)
+            requires
+                r31 == (b31 & 0b0111_1111u8) | 0b0100_0000u8,
+        ;
+        // is_clamped_integer: byte 31 <= 127
+        assert(r31 <= 127u8) by (bit_vector)
+            requires
+                r31 == (b31 & 0b0111_1111u8) | 0b0100_0000u8,
+        ;
+
+        // Bit preservation: bits 3-7 of byte 0
+        assert(r0 & 0b1111_1000u8 == b0 & 0b1111_1000u8) by (bit_vector)
+            requires
+                r0 == b0 & 0b1111_1000u8,
+        ;
+        // Bit preservation: bits 0-5 of byte 31
+        assert(r31 & 0b0011_1111u8 == b31 & 0b0011_1111u8) by (bit_vector)
+            requires
+                r31 == (b31 & 0b0111_1111u8) | 0b0100_0000u8,
+        ;
     }
 
     result

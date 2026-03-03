@@ -58,9 +58,19 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 
 #[allow(unused_imports)]
+use crate::lemmas::common_lemmas::number_theory_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 #[allow(unused_imports)]
+use crate::lemmas::field_lemmas::add_lemmas::*;
+#[allow(unused_imports)]
 use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::batch_invert_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::constants_lemmas::*;
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::invert_lemmas::*;
 #[allow(unused_imports)]
@@ -69,7 +79,8 @@ use crate::lemmas::field_lemmas::pow22501_t19_lemma::*;
 use crate::lemmas::field_lemmas::pow22501_t3_lemma::*;
 #[allow(unused_imports)]
 use crate::lemmas::field_lemmas::pow_p58_lemma::*;
-#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
+use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::*;
 
 verus! {
@@ -94,20 +105,20 @@ impl vstd::std_specs::cmp::PartialEqSpecImpl for FieldElement {
     }
 
     open spec fn eq_spec(&self, other: &Self) -> bool {
-        spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other)
+        spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other)
     }
 }
 
 impl PartialEq for FieldElement {
     fn eq(&self, other: &FieldElement) -> (result:
         bool)/* VERIFICATION NOTE:
-     - DRAFT SPEC: spec_fe51_to_bytes is a complex spec function that should correspond to as_bytes()
+     - DRAFT SPEC: spec_fe51_as_bytes is a complex spec function that should correspond to as_bytes()
      - PartialEqSpecImpl trait provides the external specification
      - Proof follows from ct_eq and choice_into postconditions
      */
 
         ensures
-            result == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other)),
+            result == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other)),
     {
         /* <VERIFICATION NOTE>
          Use wrapper function for Choice::into
@@ -120,15 +131,15 @@ impl PartialEq for FieldElement {
 
         proof {
             // Proof chain:
-            // 1. ct_eq ensures: choice_is_true(choice) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
+            // 1. ct_eq ensures: choice_is_true(choice) == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other))
             // 2. choice_into ensures: result == choice_is_true(choice)
-            // 3. Therefore: result == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
+            // 3. Therefore: result == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other))
             // This is a direct consequence of the two postconditions
             assert(result == choice_is_true(choice));  // from choice_into
-            assert(choice_is_true(choice) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(
+            assert(choice_is_true(choice) == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(
                 other,
             )));  // from ct_eq
-            assert(result == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other)));
+            assert(result == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other)));
         }
 
         result
@@ -142,12 +153,10 @@ impl ConstantTimeEq for FieldElement {
     fn ct_eq(&self, other: &FieldElement) -> (result:
         Choice)/* <VERIFICATION NOTE>
      - Use wrapper functions for ConstantTimeEq and CtOption
-     - DRAFT SPEC: spec_fe51_to_bytes is a complex spec function that should correspond to as_bytes()
-     - Proof uses lemma_as_bytes_equals_spec_fe51_to_bytes
     </VERIFICATION NOTE> */
 
         ensures
-            choice_is_true(result) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other)),
+            choice_is_true(result) == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other)),
     {
         /* <VERIFICATION NOTE>
          Use wrapper function for Verus compatibility instead of direct subtle call
@@ -164,41 +173,41 @@ impl ConstantTimeEq for FieldElement {
             // Proof chain:
             // 1. ct_eq_bytes32 ensures: choice_is_true(result) == (self_bytes == other_bytes)
             // 2. Array equality <==> sequence equality
-            // 3. as_bytes postcondition: bytes32_to_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
-            // 4. lemma_as_bytes_equals_spec_fe51_to_bytes: seq_from32(&bytes) == spec_fe51_to_bytes(fe)
-            //    when bytes32_to_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
-            // 5. Therefore: choice_is_true(result) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
+            // 3. as_bytes postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
+            // 4. lemma_as_bytes_equals_spec_fe51_to_bytes: seq_from32(&bytes) == spec_fe51_as_bytes(fe)
+            //    when u8_32_as_nat(&bytes) == u64_5_as_nat(fe.limbs) % p()
+            // 5. Therefore: choice_is_true(result) == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other))
             // From as_bytes() postcondition, we know:
-            // - bytes32_to_nat(&self_bytes) == u64_5_as_nat(self.limbs) % p()
-            // - bytes32_to_nat(&other_bytes) == u64_5_as_nat(other.limbs) % p()
+            // - u8_32_as_nat(&self_bytes) == u64_5_as_nat(self.limbs) % p()
+            // - u8_32_as_nat(&other_bytes) == u64_5_as_nat(other.limbs) % p()
             // Apply lemmas with the bytes and the postcondition requirement
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &self_bytes);
             lemma_as_bytes_equals_spec_fe51_to_bytes(other, &other_bytes);
 
             // Now we have:
-            // - seq_from32(&self_bytes) == spec_fe51_to_bytes(self)
-            // - seq_from32(&other_bytes) == spec_fe51_to_bytes(other)
+            // - seq_from32(&self_bytes) == spec_fe51_as_bytes(self)
+            // - seq_from32(&other_bytes) == spec_fe51_as_bytes(other)
 
             // Prove the bidirectional implication:
-            // (self_bytes == other_bytes) <==> (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
+            // (self_bytes == other_bytes) <==> (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other))
 
             // Forward direction: array equality implies spec equality
             if self_bytes == other_bytes {
                 // Arrays equal => all elements equal => sequences equal
                 assert forall|i: int| 0 <= i < 32 implies self_bytes[i] == other_bytes[i] by {}
                 assert(seq_from32(&self_bytes) == seq_from32(&other_bytes));
-                assert(spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other));
+                assert(spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other));
             }
             // Backward direction: spec equality implies array equality
 
-            if spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other) {
+            if spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other) {
                 assert(seq_from32(&self_bytes) == seq_from32(&other_bytes));
                 lemma_seq_eq_implies_array_eq(&self_bytes, &other_bytes);
                 assert(self_bytes == other_bytes);
             }
-            // Therefore: (self_bytes == other_bytes) <==> (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
+            // Therefore: (self_bytes == other_bytes) <==> (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other))
             // And since ct_eq_bytes32 ensures: choice_is_true(result) == (self_bytes == other_bytes)
-            // We conclude: choice_is_true(result) == (spec_fe51_to_bytes(self) == spec_fe51_to_bytes(other))
+            // We conclude: choice_is_true(result) == (spec_fe51_as_bytes(self) == spec_fe51_as_bytes(other))
 
         }
 
@@ -214,21 +223,16 @@ impl FieldElement {
     /// # Return
     ///
     /// If negative, return `Choice(1)`.  Otherwise, return `Choice(0)`.
-    pub(crate) fn is_negative(&self) -> (result:
-        Choice)/* VERIFICATION NOTE:
-    - DRAFT SPEC: spec_fe51_to_bytes is a complex spec function that should correspond to as_bytes()
-    - Proof uses lemma_as_bytes_equals_spec_fe51_to_bytes to connect as_bytes() with spec_fe51_to_bytes()
-    </VERIFICATION NOTE> */
-
+    pub(crate) fn is_negative(&self) -> (result: Choice)
         ensures
-            choice_is_true(result) == (spec_fe51_to_bytes(self)[0] & 1 == 1),
+            choice_is_true(result) == (spec_fe51_as_bytes(self)[0] & 1 == 1),
     {
         let bytes = self.as_bytes();
         let result = Choice::from(bytes[0] & 1);
 
         proof {
-            // From as_bytes() postcondition: bytes32_to_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
-            // Apply lemma to establish that bytes matches spec_fe51_to_bytes
+            // From as_bytes() postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
+            // Apply lemma to establish that bytes matches spec_fe51_as_bytes
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &bytes);
         }
 
@@ -240,18 +244,9 @@ impl FieldElement {
     /// # Return
     ///
     /// If zero, return `Choice(1)`.  Otherwise, return `Choice(0)`.
-    pub(crate) fn is_zero(&self) -> (result:
-        Choice)/* VERIFICATION NOTE:
-    - PROOF BYPASS AND SPEC BYPASS
-    - we cannot write this directly; need to find a spec function for FieldElement51::as_bytes
-    ensures choice_is_true(result) == (self.as_bytes() == [0u8; 32])
-    - (note: maybe an all_zeroes(as_bytes(...)) is sufficient as a spec)
-    </VERIFICATION NOTE> */
-
+    pub(crate) fn is_zero(&self) -> (result: Choice)
         ensures
-    // SPEC BYPASS through placeholder spec_fe51_to_bytes
-
-            choice_is_true(result) == (spec_fe51_to_bytes(self) == seq![0u8; 32]),
+            choice_is_true(result) == (spec_fe51_as_bytes(self) == seq![0u8; 32]),
     {
         let zero = [0u8;32];
         let bytes = self.as_bytes();
@@ -259,21 +254,21 @@ impl FieldElement {
         let result = ct_eq_bytes32(&bytes, &zero);
 
         proof {
-            // Proof: choice_is_true(result) == (spec_fe51_to_bytes(self) == seq![0u8; 32])
+            // Proof: choice_is_true(result) == (spec_fe51_as_bytes(self) == seq![0u8; 32])
             //
             // From ct_eq_bytes32 postcondition: choice_is_true(result) == (bytes == zero)
-            // From as_bytes() postcondition: bytes32_to_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
+            // From as_bytes() postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(self.limbs) % p()
             //
-            // Apply lemma to establish: seq_from32(&bytes) == spec_fe51_to_bytes(self)
+            // Apply lemma to establish: seq_from32(&bytes) == spec_fe51_as_bytes(self)
             lemma_as_bytes_equals_spec_fe51_to_bytes(self, &bytes);
 
-            // Prove bidirectional implication: (bytes == zero) <==> (spec_fe51_to_bytes(self) == seq![0u8; 32])
+            // Prove bidirectional implication: (bytes == zero) <==> (spec_fe51_as_bytes(self) == seq![0u8; 32])
 
             if bytes == zero {
                 // Forward: byte array equality implies spec equality
-                assert(spec_fe51_to_bytes(self) == seq![0u8; 32]);
+                assert(spec_fe51_as_bytes(self) == seq![0u8; 32]);
             }
-            if spec_fe51_to_bytes(self) == seq![0u8; 32] {
+            if spec_fe51_as_bytes(self) == seq![0u8; 32] {
                 // Backward: spec equality implies byte array equality
                 assert(seq_from32(&bytes) == seq_from32(&zero));
                 assert(bytes == zero);
@@ -295,12 +290,12 @@ impl FieldElement {
             fe51_limbs_bounded(&result.0, 54),
             fe51_limbs_bounded(&result.1, 54),
             // Mathematical values
-            spec_field_element(&result.0) == (pow(
-                spec_field_element(self) as int,
-                (pow2(250) - 1) as nat,
-            ) as nat) % p(),
-            spec_field_element(&result.1) == (pow(spec_field_element(self) as int, 11) as nat)
-                % p(),
+            fe51_as_canonical_nat(&result.0) == field_canonical(
+                pow(fe51_as_canonical_nat(self) as int, (pow2(250) - 1) as nat) as nat,
+            ),
+            fe51_as_canonical_nat(&result.1) == field_canonical(
+                pow(fe51_as_canonical_nat(self) as int, 11) as nat,
+            ),
     {
         // Instead of managing which temporary variables are used
         // for what, we define as many as we need and leave stack
@@ -346,12 +341,15 @@ impl FieldElement {
             pow255_gt_19();  // Prove p() > 0
 
             // Square operation postconditions (from .square() method ensures clause)
-            assert(u64_5_as_nat(t0.limbs) % p() == pow(u64_5_as_nat(self.limbs) as int, 2) as nat
-                % p());
-            assert(u64_5_as_nat(t0_sq.limbs) % p() == pow(u64_5_as_nat(t0.limbs) as int, 2) as nat
-                % p());
-            assert(u64_5_as_nat(t1.limbs) % p() == pow(u64_5_as_nat(t0_sq.limbs) as int, 2) as nat
-                % p());
+            assert(fe51_as_canonical_nat(&t0) == field_canonical(
+                pow(fe51_as_nat(self) as int, 2) as nat,
+            ));
+            assert(fe51_as_canonical_nat(&t0_sq) == field_canonical(
+                pow(fe51_as_nat(&t0) as int, 2) as nat,
+            ));
+            assert(fe51_as_canonical_nat(&t1) == field_canonical(
+                pow(fe51_as_nat(&t0_sq) as int, 2) as nat,
+            ));
 
             // For mul operations, use lemma to convert from field_mul to direct multiplication
             assert(u64_5_as_nat(t2.limbs) % p() == (u64_5_as_nat(self.limbs) * u64_5_as_nat(
@@ -496,12 +494,12 @@ impl FieldElement {
                 t19.limbs,
             );
 
-            // Bridge from u64_5_as_nat postconditions to spec_field_element postconditions
+            // Bridge from u64_5_as_nat postconditions to fe51_as_canonical_nat postconditions
             // The previous proof established:
             //assert(u64_5_as_nat(t19.limbs) % p() == (pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) as nat) % p());
             //assert(u64_5_as_nat(t3.limbs) % p() == (pow(u64_5_as_nat(self.limbs) as int, 11) as nat) % p());
 
-            // Use bridge lemma to prove the spec_field_element postconditions
+            // Use bridge lemma to prove the fe51_as_canonical_nat postconditions
             lemma_bridge_pow_as_nat_to_spec(&t19, self, (pow2(250) - 1) as nat);
             lemma_bridge_pow_as_nat_to_spec(&t3, self, 11);
 
@@ -524,7 +522,6 @@ impl FieldElement {
     )/* <VERIFICATION NOTE>
      - Refactored for Verus: Index loops instead of iterators, manual Vec construction
      - Choice type operations handled by wrappers in subtle_assumes.rs
-     - PROOF BYPASSES because of trait issues and proof obligations.
     </VERIFICATION NOTE> */
 
         requires
@@ -538,12 +535,12 @@ impl FieldElement {
                 #![auto]
                 0 <= i < inputs.len() ==> (
                 // If input was non-zero, it's replaced with its inverse
-                ((spec_field_element(&old(inputs)[i]) != 0) ==> is_inverse_field(
+                ((fe51_as_canonical_nat(&old(inputs)[i]) != 0) ==> is_inverse_field(
                     &old(inputs)[i],
                     &inputs[i],
                 )) &&
                 // If input was zero, it remains zero
-                ((spec_field_element(&old(inputs)[i]) == 0) ==> spec_field_element(&inputs[i])
+                ((fe51_as_canonical_nat(&old(inputs)[i]) == 0) ==> fe51_as_canonical_nat(&inputs[i])
                     == 0)),
     {
         // Montgomery's Trick and Fast Implementation of Masked AES
@@ -564,6 +561,18 @@ impl FieldElement {
                 assert(one.limbs[4] == 0);
                 assert(1u64 < (1u64 << 54)) by (compute);
                 assert(0u64 < (1u64 << 54)) by (compute);
+            };
+            // ONE has canonical nat value 1
+            assert(fe51_as_canonical_nat(&one) == 1) by {
+                assert(u64_5_as_nat(one.limbs) == 1) by {
+                    assert(one.limbs[0] == 1);
+                    assert(one.limbs[1] == 0);
+                    assert(one.limbs[2] == 0);
+                    assert(one.limbs[3] == 0);
+                    assert(one.limbs[4] == 0);
+                };
+                p_gt_2();
+                lemma_small_mod(1nat, p());
             };
         }
 
@@ -606,28 +615,53 @@ impl FieldElement {
             invariant
                 n == inputs.len(),
                 n == scratch.len(),
+                original_inputs.len() == n,
                 fe51_limbs_bounded(&acc, 54),
                 forall|j: int| #![auto] 0 <= j < i ==> fe51_limbs_bounded(&scratch[j], 54),
                 forall|j: int|
                     #![auto]
                     0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
+                // Inputs are NOT modified by forward loop
+                inputs@ === original_inputs,
+                // scratch[j] holds the partial product of nonzeros for 0..j
+                forall|j: int|
+                    #![auto]
+                    0 <= j < i ==> fe51_as_canonical_nat(&scratch[j]) == partial_product_nonzeros(
+                        original_inputs,
+                        j,
+                    ),
+                // acc holds the partial product of nonzeros for 0..i
+                fe51_as_canonical_nat(&acc) == partial_product_nonzeros(original_inputs, i as int),
         {
             scratch[i] = acc;
 
-            proof {
-                // After assignment, scratch[i] is bounded because acc is bounded
-                assert(fe51_limbs_bounded(&scratch[i as int], 54));
-            }
-
             // acc <- acc * input, but skipping zeros (constant-time)
+            /* <ORIGINAL CODE>
+             acc.conditional_assign(&new_acc, choice_not(inputs[i].is_zero()));
+            </ORIGINAL CODE> */
             let new_acc = &acc * &inputs[i];
-            acc.conditional_assign(&new_acc, choice_not(inputs[i].is_zero()));
+
+            // Ghost: snapshot acc value before conditional_assign
+            let ghost old_acc_val = fe51_as_canonical_nat(&acc);
+            let ghost a_i = fe51_as_canonical_nat(&inputs[i as int]);
+
+            let is_zero_choice = inputs[i].is_zero();
+            let nz_choice = choice_not(is_zero_choice);
+            acc.conditional_assign(&new_acc, nz_choice);
 
             proof {
-                // After conditional_assign, acc remains bounded:
-                // - If choice is false, acc unchanged (still bounded by invariant)
-                // - If choice is true, acc = new_acc which is bounded by mul postcondition
-                assert(fe51_limbs_bounded(&acc, 54));
+                // acc == PP(i+1): by bridge lemma + step relation + case split on a_i
+                assert(fe51_as_canonical_nat(&acc) == partial_product_nonzeros(
+                    original_inputs,
+                    (i + 1) as int,
+                )) by {
+                    lemma_is_zero_iff_canonical_nat_zero(inputs[i as int]);
+                    if a_i != 0 {
+                        assert(choice_is_true(nz_choice));
+                    } else {
+                        assert(!choice_is_true(nz_choice));
+                    }
+                };
             }
         }
 
@@ -638,6 +672,20 @@ impl FieldElement {
 
         // Compute the inverse of all products
         acc = acc.invert();
+
+        proof {
+            // After inversion: field_mul(acc, PP(n)) == 1
+            assert(field_mul(
+                fe51_as_canonical_nat(&acc),
+                partial_product_nonzeros(original_inputs, n as int),
+            ) == 1) by {
+                let pp_n = partial_product_nonzeros(original_inputs, n as int);
+                assert(pp_n % p() != 0) by {
+                    lemma_partial_product_nonzeros_is_nonzero(original_inputs, n as int);
+                };
+                lemma_inv_mul_cancel(pp_n);
+            };
+        }
 
         // Pass through the vector backwards to compute the inverses
         // in place
@@ -662,6 +710,7 @@ impl FieldElement {
             invariant
                 n == inputs.len(),
                 n == scratch.len(),
+                original_inputs.len() == n,
                 i <= n,
                 fe51_limbs_bounded(&acc, 54),
                 forall|j: int|
@@ -672,54 +721,77 @@ impl FieldElement {
                     0 <= j < inputs.len() ==> fe51_limbs_bounded(&inputs[j], 54),
                 // Elements below i haven't been modified yet in backward loop
                 forall|j: int| #![auto] 0 <= j < i ==> inputs[j] === original_inputs[j],
-                // Postcondition for already processed elements (i..n)
-                // Each element at index j >= i has been replaced with its inverse (or remains 0)
+                // scratch holds the partial products (unchanged from forward loop)
                 forall|j: int|
                     #![auto]
-                    i <= j < n ==> (((spec_field_element(&original_inputs[j]) != 0)
+                    0 <= j < n ==> fe51_as_canonical_nat(&scratch[j]) == partial_product_nonzeros(
+                        original_inputs,
+                        j,
+                    ),
+                // KEY INVARIANT: acc is the "remaining inverse"
+                // field_mul(acc, PP(i)) == 1
+                field_mul(
+                    fe51_as_canonical_nat(&acc),
+                    partial_product_nonzeros(original_inputs, i as int),
+                ) == 1,
+                // Postcondition for already processed elements (i..n)
+                forall|j: int|
+                    #![auto]
+                    i <= j < n ==> (((fe51_as_canonical_nat(&original_inputs[j]) != 0)
                         ==> is_inverse_field(&original_inputs[j], &inputs[j])) && ((
-                    spec_field_element(&original_inputs[j]) == 0) ==> spec_field_element(&inputs[j])
-                        == 0)),
+                    fe51_as_canonical_nat(&original_inputs[j]) == 0) ==> fe51_as_canonical_nat(
+                        &inputs[j],
+                    ) == 0)),
             decreases i,
         {
             i -= 1;
+
+            // Ghost: snapshot values before the loop body modifies them
+            let ghost old_acc_val = fe51_as_canonical_nat(&acc);
+            let ghost a_i = fe51_as_canonical_nat(&inputs[i as int]);
+
             let tmp = &acc * &inputs[i];
             // input <- acc * scratch, then acc <- tmp
             // Again, we skip zeros in a constant-time way
             let nz = choice_not(inputs[i].is_zero());
             // Verus doesn't support index for &mut, so we extract-modify-reassign
+            /* <ORIGINAL CODE>
+             input_i.conditional_assign(&(&acc * &scratch[i]), nz);
+            </ORIGINAL CODE> */
             let mut input_i = inputs[i];
-            input_i.conditional_assign(&(&acc * &scratch[i]), nz);
+            let acc_times_scratch = &acc * &scratch[i];
+            input_i.conditional_assign(&acc_times_scratch, nz);
             inputs[i] = input_i;
             acc.conditional_assign(&tmp, nz);
 
             proof {
-                // PROOF BYPASS: Both zero and non-zero cases require complex reasoning:
-                // - Zero case: With strengthened conditional_assign spec, could prove that
-                //   when original_inputs[i] == 0, the element remains 0 through the operation
-                // - Non-zero case: Requires extensive lemmas about Montgomery's batch inversion:
-                //   * scratch[i] contains product of original_inputs[0..i] (skipping zeros)
-                //   * acc contains inverse of original_inputs[i..n] product
-                //   * Therefore acc * scratch[i] = 1 / original_inputs[i]
-                assume(((spec_field_element(&original_inputs[i as int]) != 0) ==> is_inverse_field(
-                    &original_inputs[i as int],
-                    &inputs[i as int],
-                )) && ((spec_field_element(&original_inputs[i as int]) == 0) ==> spec_field_element(
-                    &inputs[i as int],
-                ) == 0));
+                // Bridge: a_i == 0 iff is_zero bytes are all zero
+                assert((spec_fe51_as_bytes(&original_inputs[i as int]) == seq![0u8; 32]) <==> (
+                fe51_as_canonical_nat(&original_inputs[i as int]) == 0)) by {
+                    lemma_is_zero_iff_canonical_nat_zero(original_inputs[i as int]);
+                };
+
+                if a_i != 0 {
+                    assert(choice_is_true(nz));
+                    // inputs[i] is the inverse of original_inputs[i],
+                    // and the acc invariant field_mul(acc, PP(i)) == 1 is maintained
+                    assert(is_inverse_field(&original_inputs[i as int], &inputs[i as int])
+                        && field_mul(
+                        fe51_as_canonical_nat(&acc),
+                        partial_product_nonzeros(original_inputs, i as int),
+                    ) == 1) by {
+                        lemma_backward_step(old_acc_val, a_i, original_inputs, i as int);
+                        lemma_field_mul_comm(fe51_as_canonical_nat(&inputs[i as int]), a_i);
+                    };
+                } else {
+                    assert(!choice_is_true(nz));
+                    // PP(i) == PP(i+1) since a_i == 0, so acc invariant holds
+                    assert(partial_product_nonzeros(original_inputs, (i + 1) as int)
+                        == partial_product_nonzeros(original_inputs, i as int));
+                }
             }
         }
 
-        proof {
-            // After the loop completes (i == 0), all elements have been processed
-            // The loop invariant already establishes the postcondition for all indices
-            assert(forall|j: int|
-                #![auto]
-                0 <= j < n ==> (((spec_field_element(&original_inputs[j]) != 0)
-                    ==> is_inverse_field(&original_inputs[j], &inputs[j])) && ((spec_field_element(
-                    &original_inputs[j],
-                ) == 0) ==> spec_field_element(&inputs[j]) == 0)));
-        }
     }
 
     /// Given a nonzero field element, compute its inverse.
@@ -741,12 +813,13 @@ impl FieldElement {
         ensures
     // If self is non-zero, result is the multiplicative inverse: result * self ≡ 1 (mod p)
 
-            spec_field_element(self) != 0 ==> (spec_field_element(&result) * spec_field_element(
-                self,
-            )) % p() == 1,
+            fe51_as_canonical_nat(self) != 0 ==> field_mul(
+                fe51_as_canonical_nat(&result),
+                fe51_as_canonical_nat(self),
+            ) == 1,
             // If self is zero, result is zero
-            spec_field_element(self) == 0 ==> spec_field_element(&result) == 0,
-            spec_field_element(&result) == math_field_inv(spec_field_element(self)),
+            fe51_as_canonical_nat(self) == 0 ==> fe51_as_canonical_nat(&result) == 0,
+            fe51_as_canonical_nat(&result) == field_inv(fe51_as_canonical_nat(self)),
             fe51_limbs_bounded(&result, 54),
     {
         // The bits of p-2 = 2^255 -19 -2 are 11010111111...11.
@@ -774,10 +847,9 @@ impl FieldElement {
 
             fe51_limbs_bounded(&result, 54),
             // Mathematical value
-            spec_field_element(&result) == (pow(
-                spec_field_element(self) as int,
-                (pow2(252) - 3) as nat,
-            ) as nat) % p(),
+            fe51_as_canonical_nat(&result) == field_canonical(
+                pow(fe51_as_canonical_nat(self) as int, (pow2(252) - 3) as nat) as nat,
+            ),
     {
         // The bits of (p-5)/8 are 101111.....11.
         //
@@ -789,11 +861,11 @@ impl FieldElement {
         proof {
             pow255_gt_19();
 
-            // Bridge from spec_field_element to u64_5_as_nat
-            assert(u64_5_as_nat(t19.limbs) % p() == spec_field_element(&t19));
-            assert(u64_5_as_nat(self.limbs) % p() == spec_field_element(self));
+            // Bridge from fe51_as_canonical_nat to u64_5_as_nat
+            assert(u64_5_as_nat(t19.limbs) % p() == fe51_as_canonical_nat(&t19));
+            assert(u64_5_as_nat(self.limbs) % p() == fe51_as_canonical_nat(self));
 
-            // Use lemma_pow_mod_noop to bridge from spec_field_element to u64_5_as_nat
+            // Use lemma_pow_mod_noop to bridge from fe51_as_canonical_nat to u64_5_as_nat
             lemma_pow_mod_noop(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat, p() as int);
             assert(pow(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat) >= 0) by {
                 lemma_pow_nonnegative(u64_5_as_nat(self.limbs) as int, (pow2(250) - 1) as nat);
@@ -827,7 +899,7 @@ impl FieldElement {
             // Use lemma to prove t21 = x^(2^252-3)
             lemma_pow_p58_prove(self.limbs, t19.limbs, t20.limbs, t21.limbs);
 
-            // Bridge back from u64_5_as_nat to spec_field_element
+            // Bridge back from u64_5_as_nat to fe51_as_canonical_nat
             lemma_bridge_pow_as_nat_to_spec(&t21, self, (pow2(252) - 3) as nat);
 
             // Bounded limbs: t21 is the result of mul (self * &t20), which maintains the bound
@@ -862,33 +934,28 @@ impl FieldElement {
         ensures
     // When u = 0: always return (true, 0)
 
-            (spec_field_element(u) == 0) ==> (choice_is_true(result.0) && spec_field_element(
+            (fe51_as_canonical_nat(u) == 0) ==> (choice_is_true(result.0) && fe51_as_canonical_nat(
                 &result.1,
             ) == 0),
             // When v = 0 but u ≠ 0: return (false, 0) [division by zero case]
-            (spec_field_element(v) == 0 && spec_field_element(u) != 0) ==> (!choice_is_true(
+            (fe51_as_canonical_nat(v) == 0 && fe51_as_canonical_nat(u) != 0) ==> (!choice_is_true(
                 result.0,
-            ) && spec_field_element(&result.1) == 0),
+            ) && fe51_as_canonical_nat(&result.1) == 0),
             // When successful and v ≠ 0: r² * v ≡ u (mod p)
-            (choice_is_true(result.0) && spec_field_element(v) != 0) ==> is_sqrt_ratio(
+            (choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0) ==> fe51_is_sqrt_ratio(
                 u,
                 v,
                 &result.1,
             ),
             // When unsuccessful and v ≠ 0: r² * v ≡ i*u (mod p) [nonsquare case]
-            (!choice_is_true(result.0) && spec_field_element(v) != 0 && spec_field_element(u) != 0)
-                ==> is_sqrt_ratio_times_i(u, v, &result.1),
-            // NEW: The result is always the "non-negative" square root (LSB = 0)
+            (!choice_is_true(result.0) && fe51_as_canonical_nat(v) != 0 && fe51_as_canonical_nat(u)
+                != 0) ==> fe51_is_sqrt_ratio_times_i(u, v, &result.1),
+            // The result is always the "non-negative" square root (LSB = 0)
             // This is a fundamental property of sqrt_ratio_i that the original code
             // relies on for decompression sign bit handling
-            spec_field_element(&result.1) % 2 == 0,
+            fe51_as_canonical_nat(&result.1) % 2 == 0,
             // Limb bounds: result is 52-bit bounded (from conditional_negate)
-            fe51_limbs_bounded(
-                &result.1,
-                52,
-            ),
-    // VERIFICATION NOTE: PROOF BYPASS
-
+            fe51_limbs_bounded(&result.1, 52),
     {
         // Using the same trick as in ed25519 decoding, we merge the
         // inversion, the square root, and the square test as follows.
@@ -913,13 +980,53 @@ impl FieldElement {
         // If vr^2 = -u, then sqrt(u/v) = r*sqrt(-1).
         //
         // If v is zero, r is also zero.
-        proof {
-            assume(false);  // PROOF BYPASS
-        }
+        /* ORIGINAL_CODE
         let v3 = &v.square() * v;
         let v7 = &v3.square() * v;
         let mut r = &(u * &v3) * &(u * &v7).pow_p58();
         let check = v * &r.square();
+        */
+        // MODIFIED: Split expressions for bounds proof assertions
+        let v_sq = v.square();
+        proof {
+            assert(fe51_limbs_bounded(&v_sq, 52));
+        }
+        let v3 = &v_sq * v;
+        proof {
+            assert(fe51_limbs_bounded(&v3, 52));
+        }
+        let v3_sq = v3.square();
+        proof {
+            assert(fe51_limbs_bounded(&v3_sq, 52));
+        }
+        let v7 = &v3_sq * v;
+        proof {
+            assert(fe51_limbs_bounded(&v7, 52));
+        }
+        let uv3 = u * &v3;
+        proof {
+            assert(fe51_limbs_bounded(&uv3, 52));
+        }
+        let uv7 = u * &v7;
+        proof {
+            assert(fe51_limbs_bounded(&uv7, 52));
+        }
+        let pow_result = uv7.pow_p58();
+        proof {
+            assert(fe51_limbs_bounded(&pow_result, 54));
+        }
+        let mut r = &uv3 * &pow_result;
+        proof {
+            assert(fe51_limbs_bounded(&r, 52));
+        }
+        let r_sq = r.square();
+        proof {
+            assert(fe51_limbs_bounded(&r_sq, 52));
+        }
+        let check = v * &r_sq;
+        proof {
+            assert(fe51_limbs_bounded(&check, 52));
+        }
 
         let i = &constants::SQRT_M1;
 
@@ -929,32 +1036,238 @@ impl FieldElement {
         // let flipped_sign_sqrt = check.ct_eq(&(-u));
         // let flipped_sign_sqrt_i = check.ct_eq(&(&(-u) * i));
         // REFACTORED: Use wrapper to avoid Verus internal error with negation
-        let u_neg = negate_field(u);
+        let u_neg = negate_field_element(u);
+        proof {
+            assert(fe51_limbs_bounded(&u_neg, 52));
+            lemma_sqrt_m1_limbs_bounded();
+        }
         let flipped_sign_sqrt = check.ct_eq(&u_neg);
-        let flipped_sign_sqrt_i = check.ct_eq(&(&u_neg * i));
+        let u_neg_i = &u_neg * i;
+        proof {
+            assert(fe51_limbs_bounded(&u_neg_i, 52));
+        }
+        let flipped_sign_sqrt_i = check.ct_eq(&u_neg_i);
 
         let r_prime = &constants::SQRT_M1 * &r;
+        proof {
+            assert(fe51_limbs_bounded(&r_prime, 52));
+            assert(fe51_limbs_bounded(&r, 52));
+        }
         // ORIGINAL CODE:
         // r.conditional_assign(&r_prime, flipped_sign_sqrt | flipped_sign_sqrt_i);
         // REFACTORED: Use wrapper for Choice bitwise OR
+        let ghost r_before_assign = r;
         r.conditional_assign(&r_prime, choice_or(flipped_sign_sqrt, flipped_sign_sqrt_i));
+
+        proof {
+            // After conditional_assign: r.limbs are either r_before_assign.limbs or r_prime.limbs
+            // Both are 52-bit bounded, so r is 52-bit bounded
+            assert(fe51_limbs_bounded(&r_before_assign, 52));
+            assert(fe51_limbs_bounded(&r_prime, 52));
+            // The ensures says r.limbs == r_prime.limbs OR r.limbs == old(r).limbs
+            assert(r.limbs == r_prime.limbs || r.limbs == r_before_assign.limbs);
+            assert(fe51_limbs_bounded(&r, 52));
+        }
 
         // Choose the nonnegative square root.
         let r_is_negative = r.is_negative();
+        let ghost r_before_negate = r;
         // ORIGINAL CODE:
         // r.conditional_negate(r_is_negative);
         // REFACTORED: Use specialized wrapper with specs
-        proof {
-            // r is bounded after conditional_assign (result of multiplications and pow_p58)
-            // This will need to be proven when we remove the assume(false) bypass
-            assume(fe51_limbs_bounded(&r, 51));
-        }
         conditional_negate_field_element(&mut r, r_is_negative);
+
+        proof {
+            // Parity (even) and 52-bit bound after conditional_negate
+            lemma_negate_makes_nonnegative(&r_before_negate, &r, r_is_negative);
+        }
 
         // ORIGINAL CODE:
         // let was_nonzero_square = correct_sign_sqrt | flipped_sign_sqrt;
         // REFACTORED: Use wrapper for Choice bitwise OR
         let was_nonzero_square = choice_or(correct_sign_sqrt, flipped_sign_sqrt);
+
+        proof {
+            // =================================================================
+            // Block 1: Bridging — connect FE51 intermediates to nat-level spec
+            // =================================================================
+            let pn = p();
+            p_gt_2();
+            let u_nat = fe51_as_canonical_nat(u);
+            let v_nat = fe51_as_canonical_nat(v);
+            let r_orig_nat = fe51_as_canonical_nat(&r_before_assign);
+
+            // Connect square outputs to field_square at nat level
+            assert(fe51_as_canonical_nat(&r_sq) == field_square(r_orig_nat)) by {
+                let limbs_nat = u64_5_as_nat(r_before_assign.limbs);
+                lemma_pow_2_is_mul(limbs_nat as int);
+                lemma_mul_mod_noop_general(limbs_nat as int, limbs_nat as int, pn as int);
+            };
+            assert(fe51_as_canonical_nat(&check) == field_mul(v_nat, field_square(r_orig_nat)));
+
+            assert(fe51_as_canonical_nat(&v_sq) == field_square(v_nat)) by {
+                let v_limbs = u64_5_as_nat(v.limbs);
+                lemma_pow_2_is_mul(v_limbs as int);
+                lemma_mul_mod_noop_general(v_limbs as int, v_limbs as int, pn as int);
+            };
+
+            let v3_nat = field_mul(field_square(v_nat), v_nat);
+            assert(fe51_as_canonical_nat(&v3) == v3_nat);
+
+            assert(fe51_as_canonical_nat(&v3_sq) == field_square(v3_nat)) by {
+                let v3_limbs = u64_5_as_nat(v3.limbs);
+                lemma_pow_2_is_mul(v3_limbs as int);
+                lemma_mul_mod_noop_general(v3_limbs as int, v3_limbs as int, pn as int);
+            };
+
+            let v7_nat = field_mul(field_square(v3_nat), v_nat);
+            assert(fe51_as_canonical_nat(&v7) == v7_nat);
+
+            let w_nat = field_mul(u_nat, v7_nat);
+            assert(fe51_as_canonical_nat(&uv7) == w_nat);
+
+            let uv3_nat = field_mul(u_nat, v3_nat);
+            assert(fe51_as_canonical_nat(&uv3) == uv3_nat);
+
+            let k_nat = ((pn - 5) / 8) as nat;
+            lemma_p_divisibility_facts();
+            assert(k_nat == (pow2(252) - 3) as nat);
+
+            let pow_result_nat = fe51_as_canonical_nat(&pow_result);
+            assert(pow_result_nat == (pow(w_nat as int, k_nat) as nat) % pn);
+
+            assert(pow(w_nat as int, k_nat) >= 0) by {
+                lemma_pow_nonnegative(w_nat as int, k_nat);
+            };
+
+            assert(r_orig_nat == field_mul(uv3_nat, pow_result_nat));
+
+            // =================================================================
+            // Block 2: Setup — canonical nats, ct_eq conversion, conditional_assign
+            // =================================================================
+            let check_nat = fe51_as_canonical_nat(&check);
+            let r_assigned_nat = fe51_as_canonical_nat(&r_before_negate);
+            let r_final_nat = fe51_as_canonical_nat(&r);
+
+            assert(u_nat < pn && v_nat < pn && check_nat < pn && r_orig_nat < pn && r_assigned_nat
+                < pn && r_final_nat < pn) by {
+                lemma_mod_bound(u_nat as int, pn as int);
+                lemma_mod_bound(v_nat as int, pn as int);
+                lemma_mod_bound(check_nat as int, pn as int);
+                lemma_mod_bound(r_orig_nat as int, pn as int);
+                lemma_mod_bound(r_assigned_nat as int, pn as int);
+                lemma_mod_bound(r_final_nat as int, pn as int);
+            };
+
+            // Convert ct_eq byte-level results to canonical nat equality
+            assert(choice_is_true(correct_sign_sqrt) == (check_nat == u_nat)) by {
+                lemma_ct_eq_iff_canonical_nat(&check, u);
+            };
+            assert(choice_is_true(flipped_sign_sqrt) == (check_nat == fe51_as_canonical_nat(
+                &u_neg,
+            ))) by {
+                lemma_ct_eq_iff_canonical_nat(&check, &u_neg);
+            };
+            assert(choice_is_true(flipped_sign_sqrt_i) == (check_nat == fe51_as_canonical_nat(
+                &u_neg_i,
+            ))) by {
+                lemma_ct_eq_iff_canonical_nat(&check, &u_neg_i);
+            };
+
+            let correct_sign = choice_is_true(correct_sign_sqrt);
+            let flipped_sign = choice_is_true(flipped_sign_sqrt);
+            let flipped_sign_i = choice_is_true(flipped_sign_sqrt_i);
+            let was_sq = choice_is_true(was_nonzero_square);
+
+            assert(correct_sign == (check_nat == u_nat));
+            assert(flipped_sign == (check_nat == fe51_as_canonical_nat(&u_neg)));
+            assert(flipped_sign == (check_nat == field_neg(u_nat)));
+            assert(flipped_sign_i == (check_nat == fe51_as_canonical_nat(&u_neg_i)));
+            assert(flipped_sign_i == (check_nat == field_mul(field_neg(u_nat), sqrt_m1())));
+
+            // Establish r_assigned_nat from conditional_assign
+            assert((flipped_sign || flipped_sign_i) ==> r_assigned_nat == field_mul(
+                sqrt_m1(),
+                r_orig_nat,
+            ));
+            assert(!(flipped_sign || flipped_sign_i) ==> r_assigned_nat == r_orig_nat);
+
+            // =================================================================
+            // Block 3: Fourth root of unity pattern (when u != 0 && v != 0)
+            // =================================================================
+            if v_nat != 0 && u_nat != 0 {
+                lemma_check_fourth_root_pattern(u_nat, v_nat, check_nat, r_orig_nat);
+            }
+            // =================================================================
+            // Block 4: Zero propagation
+            // =================================================================
+
+            lemma_sqrt_ratio_zero_propagation(u_nat, v_nat, r_orig_nat, check_nat);
+
+            // =================================================================
+            // Block 5: Correctness + negation transfer
+            // =================================================================
+            lemma_sqrt_ratio_correctness(
+                u_nat,
+                v_nat,
+                check_nat,
+                r_orig_nat,
+                r_assigned_nat,
+                correct_sign,
+                flipped_sign,
+                flipped_sign_i,
+                was_sq,
+            );
+
+            // Transfer postcondition 1: u == 0 ==> was_sq && r_final == 0
+            if u_nat == 0 {
+                assert(was_sq);
+                assert(r_assigned_nat == 0);
+                assert(r_final_nat == 0) by {
+                    lemma_small_mod(0nat, pn);
+                    lemma_mod_self_0(pn as int);
+                };
+            }
+            // Transfer postcondition 2: v == 0 && u != 0 ==> !was_sq && r_final == 0
+
+            if v_nat == 0 && u_nat != 0 {
+                assert(!was_sq);
+                assert(r_assigned_nat == 0);
+                assert(r_final_nat == 0) by {
+                    lemma_small_mod(0nat, pn);
+                    lemma_mod_self_0(pn as int);
+                };
+            }
+            // Transfer through negation: field_square(field_neg(r)) == field_square(r)
+
+            if r_final_nat != r_assigned_nat {
+                assert(r_final_nat == field_neg(r_assigned_nat));
+                assert(field_canonical(r_final_nat * r_final_nat * v_nat) == field_canonical(
+                    r_assigned_nat * r_assigned_nat * v_nat,
+                )) by {
+                    lemma_small_mod(r_assigned_nat, pn);
+                    lemma_neg_square_eq(r_assigned_nat);
+                    lemma_field_mul_square_canonical(r_final_nat, v_nat);
+                    lemma_field_mul_square_canonical(r_assigned_nat, v_nat);
+                };
+                if r_assigned_nat == 0 {
+                    assert(r_final_nat == 0) by {
+                        lemma_small_mod(0nat, pn);
+                        lemma_mod_self_0(pn as int);
+                    };
+                }
+            }
+            // Transfer postcondition 3: was_sq && v != 0 ==> is_sqrt_ratio(u, v, r_final)
+
+            if was_sq && v_nat != 0 {
+                assert(is_sqrt_ratio(u_nat, v_nat, r_assigned_nat));
+            }
+            // Transfer postcondition 4: !was_sq && v != 0 && u != 0 ==> is_sqrt_ratio_times_i
+
+            if !was_sq && v_nat != 0 && u_nat != 0 {
+                assert(is_sqrt_ratio_times_i(u_nat, v_nat, r_assigned_nat));
+            }
+        }
 
         (was_nonzero_square, r)
     }
@@ -971,28 +1284,35 @@ impl FieldElement {
     /// - `(Choice(0), zero)           ` if `self` is zero;
     /// - `(Choice(0), +sqrt(i/self))  ` if `self` is a nonzero nonsquare;
     ///
-    pub(crate) fn invsqrt(&self) -> (result: (
-        Choice,
-        FieldElement,
-    ))
-    // VERIFICATION NOTE: PROOF BYPASS
-
+    pub(crate) fn invsqrt(&self) -> (result: (Choice, FieldElement))
+        requires
+            fe51_limbs_bounded(self, 54),
         ensures
     // When self = 0: return (false, 0)
 
-            (spec_field_element(self) == 0) ==> (!choice_is_true(result.0) && spec_field_element(
-                &result.1,
-            ) == 0),
+            (fe51_as_canonical_nat(self) == 0) ==> (!choice_is_true(result.0)
+                && fe51_as_canonical_nat(&result.1) == 0),
             // When successful and self ≠ 0: r² * self ≡ 1 (mod p)
-            (choice_is_true(result.0)) ==> is_sqrt_ratio(&FieldElement::ONE, self, &result.1),
+            (choice_is_true(result.0)) ==> fe51_is_sqrt_ratio(&FieldElement::ONE, self, &result.1),
             // When unsuccessful and self ≠ 0: r² * self ≡ i (mod p) [nonsquare case]
-            (!choice_is_true(result.0) && spec_field_element(self) != 0) ==> is_sqrt_ratio_times_i(
-                &FieldElement::ONE,
-                self,
-                &result.1,
-            ),
+            (!choice_is_true(result.0) && fe51_as_canonical_nat(self) != 0)
+                ==> fe51_is_sqrt_ratio_times_i(&FieldElement::ONE, self, &result.1),
+            // Limb bounds (forwarded from sqrt_ratio_i)
+            fe51_limbs_bounded(&result.1, 52),
+            // Nonneg: the result always has even canonical representation (LSB = 0)
+            fe51_as_canonical_nat(&result.1) % 2 == 0,
     {
-        assume(false);
+        proof {
+            // sqrt_ratio_i requires fe51_limbs_bounded(u, 54)
+            assert(fe51_limbs_bounded(&FieldElement::ONE, 54)) by {
+                lemma_one_limbs_bounded_51();
+                lemma_fe51_limbs_bounded_weaken(&FieldElement::ONE, 51, 54);
+            };
+            // ONE != 0 lets Z3 transfer all sqrt_ratio_i postconditions to invsqrt
+            assert(fe51_as_canonical_nat(&FieldElement::ONE) == 1) by {
+                lemma_one_field_element_value();
+            };
+        }
         FieldElement::sqrt_ratio_i(&FieldElement::ONE, self)
     }
 }

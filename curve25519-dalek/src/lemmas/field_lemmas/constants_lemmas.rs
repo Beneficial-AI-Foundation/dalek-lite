@@ -1,4 +1,4 @@
-//! Lemmas about field element constants (ZERO and ONE)
+//! Lemmas about field element constants (ZERO, ONE, and selected curve constants)
 //!
 //! This module contains fully proved lemmas about FieldElement::ZERO and FieldElement::ONE constants.
 //!
@@ -11,16 +11,17 @@
 //!
 //! ZERO = [0, 0, 0, 0, 0] represents 0:
 //! - `u64_5_as_nat([0, 0, 0, 0, 0]) = 0` (all terms are 0)
-//! - `spec_field_element(ZERO) = 0 % p = 0`
+//! - `fe51_as_canonical_nat(ZERO) = 0 % p = 0`
 //!
 //! ONE = [1, 0, 0, 0, 0] represents 1:
 //! - `u64_5_as_nat([1, 0, 0, 0, 0]) = 1 + 0 + 0 + 0 + 0 = 1` (since n·0 = 0)
-//! - `spec_field_element(ONE) = 1 % p = 1` (since p > 2 > 1)
+//! - `fe51_as_canonical_nat(ONE) = 1 % p = 1` (since p > 2 > 1)
 //!
 //! ## Note
 //!
 //! - Edwards curve-specific constants (EDWARDS_D, EDWARDS_D2) are in `edwards_lemmas::constants_lemmas`.
 #![allow(unused_imports)]
+use crate::backend::serial::u64::constants::{INVSQRT_A_MINUS_D, MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::backend::serial::u64::field::FieldElement51;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
@@ -43,7 +44,7 @@ pub proof fn lemma_zero_limbs_bounded_51()
     };
 }
 
-/// spec_field_element(ZERO) = 0  ✅ FULLY PROVED
+/// fe51_as_canonical_nat(ZERO) = 0  ✅ FULLY PROVED
 ///
 /// ## Mathematical Proof
 /// ```text
@@ -51,13 +52,13 @@ pub proof fn lemma_zero_limbs_bounded_51()
 ///   = 0 + 2^51·0 + 2^102·0 + 2^153·0 + 2^204·0
 ///   = 0
 ///
-/// spec_field_element(ZERO) = 0 % p = 0  (since 0 < p)
+/// fe51_as_canonical_nat(ZERO) = 0 % p = 0  (since 0 < p)
 /// ```
 pub proof fn lemma_zero_field_element_value()
     ensures
-        spec_field_element(&FieldElement51::ZERO) == 0,
+        fe51_as_canonical_nat(&FieldElement51::ZERO) == 0,
 {
-    assert(spec_field_element(&FieldElement51::ZERO) == 0) by {
+    assert(fe51_as_canonical_nat(&FieldElement51::ZERO) == 0) by {
         // Subgoal 1: ZERO.limbs = [0, 0, 0, 0, 0]
         assert(FieldElement51::ZERO.limbs[0] == 0);
         assert(FieldElement51::ZERO.limbs[1] == 0);
@@ -92,7 +93,7 @@ pub proof fn lemma_one_limbs_bounded_51()
     };
 }
 
-/// spec_field_element(ONE) = 1  ✅ FULLY PROVED
+/// fe51_as_canonical_nat(ONE) = 1  ✅ FULLY PROVED
 ///
 /// ## Mathematical Proof
 /// ```text
@@ -101,13 +102,13 @@ pub proof fn lemma_one_limbs_bounded_51()
 ///   = 1 + 0 + 0 + 0 + 0        (since n·0 = 0 for all n)
 ///   = 1
 ///
-/// spec_field_element(ONE) = 1 % p = 1  (since p > 2 > 1, by lemma_small_mod)
+/// fe51_as_canonical_nat(ONE) = 1 % p = 1  (since p > 2 > 1, by lemma_small_mod)
 /// ```
 pub proof fn lemma_one_field_element_value()
     ensures
-        spec_field_element(&FieldElement51::ONE) == 1,
+        fe51_as_canonical_nat(&FieldElement51::ONE) == 1,
 {
-    // Goal: spec_field_element(ONE) = u64_5_as_nat(ONE.limbs) % p = 1
+    // Goal: fe51_as_canonical_nat(ONE) = u64_5_as_nat(ONE.limbs) % p = 1
     //
     // Mathematical reasoning:
     //   ONE.limbs = [1, 0, 0, 0, 0]
@@ -115,7 +116,7 @@ pub proof fn lemma_one_field_element_value()
     //     = 1 + 2^51·0 + 2^102·0 + 2^153·0 + 2^204·0
     //     = 1    (since n·0 = 0 for all n)
     //   1 % p = 1    (since p > 2 > 1, by lemma_small_mod)
-    assert(spec_field_element(&FieldElement51::ONE) == 1) by {
+    assert(fe51_as_canonical_nat(&FieldElement51::ONE) == 1) by {
         // Subgoal 1: ONE.limbs = [1, 0, 0, 0, 0]
         assert(FieldElement51::ONE.limbs[0] == 1);
         assert(FieldElement51::ONE.limbs[1] == 0);
@@ -130,6 +131,85 @@ pub proof fn lemma_one_field_element_value()
         // Subgoal 3: 1 % p = 1
         p_gt_2();  // proves p > 2, hence p > 1
         lemma_small_mod(1, p());  // x < m ==> x % m = x
+    };
+}
+
+// =============================================================================
+// FieldElement::MINUS_ONE Lemmas
+// =============================================================================
+/// MINUS_ONE has 51-bit bounded limbs
+pub proof fn lemma_minus_one_limbs_bounded_51()
+    ensures
+        fe51_limbs_bounded(&FieldElement51::MINUS_ONE, 51),
+{
+    assert(fe51_limbs_bounded(&FieldElement51::MINUS_ONE, 51)) by {
+        // MINUS_ONE = [2^51-20, 2^51-1, 2^51-1, 2^51-1, 2^51-1]
+        assert(2251799813685228u64 < (1u64 << 51)) by (bit_vector);
+        assert(2251799813685247u64 < (1u64 << 51)) by (bit_vector);
+    };
+}
+
+/// Axiom: fe51_as_canonical_nat(MINUS_ONE) = -1 (mod p)
+pub proof fn axiom_minus_one_field_element_value()
+    ensures
+        fe51_as_canonical_nat(&FieldElement51::MINUS_ONE) == field_sub(0, 1),
+{
+    // This constant corresponds to p-1 in GF(p).
+    // Kept as an axiom for now.
+    admit();
+}
+
+// =============================================================================
+// Curve constants (backend::serial::u64::constants)
+// =============================================================================
+/// `MONTGOMERY_A` has 51-bit bounded limbs.
+///
+/// (Moved here from `montgomery_constants_lemmas.rs` to keep small constant facts centralized.)
+pub proof fn lemma_montgomery_a_limbs_bounded_51()
+    ensures
+        fe51_limbs_bounded(&MONTGOMERY_A, 51),
+{
+    assert(fe51_limbs_bounded(&MONTGOMERY_A, 51)) by {
+        assert(0u64 < (1u64 << 51) && 486662u64 < (1u64 << 51)) by (bit_vector);
+    };
+}
+
+/// `MONTGOMERY_A_NEG` has 51-bit bounded limbs.
+pub proof fn lemma_montgomery_a_neg_limbs_bounded_51()
+    ensures
+        fe51_limbs_bounded(&MONTGOMERY_A_NEG, 51),
+{
+    assert(fe51_limbs_bounded(&MONTGOMERY_A_NEG, 51)) by {
+        assert(2251799813198567u64 < (1u64 << 51) && 2251799813685247u64 < (1u64 << 51))
+            by (bit_vector);
+    };
+}
+
+// =============================================================================
+// INVSQRT_A_MINUS_D Lemmas
+// =============================================================================
+/// INVSQRT_A_MINUS_D = 1/sqrt(a-d) has 51-bit bounded limbs.
+///
+/// limbs = [278908739862762, 821645201101625, 8113234426968, 1777959178193151, 2118520810568447]
+/// max limb = 2118520810568447 < 2^51 = 2251799813685248
+pub proof fn lemma_invsqrt_a_minus_d_limbs_bounded()
+    ensures
+        fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 51),
+        fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 54),
+{
+    assert(fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 51)) by {
+        assert(278908739862762u64 < (1u64 << 51)) by (bit_vector);
+        assert(821645201101625u64 < (1u64 << 51)) by (bit_vector);
+        assert(8113234426968u64 < (1u64 << 51)) by (bit_vector);
+        assert(1777959178193151u64 < (1u64 << 51)) by (bit_vector);
+        assert(2118520810568447u64 < (1u64 << 51)) by (bit_vector);
+    };
+    assert(fe51_limbs_bounded(&INVSQRT_A_MINUS_D, 54)) by {
+        assert(278908739862762u64 < (1u64 << 54)) by (bit_vector);
+        assert(821645201101625u64 < (1u64 << 54)) by (bit_vector);
+        assert(8113234426968u64 < (1u64 << 54)) by (bit_vector);
+        assert(1777959178193151u64 < (1u64 << 54)) by (bit_vector);
+        assert(2118520810568447u64 < (1u64 << 54)) by (bit_vector);
     };
 }
 

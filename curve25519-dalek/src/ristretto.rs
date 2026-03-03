@@ -179,12 +179,20 @@ use digest::Digest;
 use crate::constants;
 
 #[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::spec_eight_torsion;
+#[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::{
     choice_into, choice_not, choice_or, conditional_assign_generic,
     conditional_negate_field_element, ct_eq_bytes32,
 };
+#[allow(unused_imports)]
+use crate::core_assumes::compressed_ristretto_from_array_result;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::core_assumes::seq_from32;
 #[cfg(feature = "digest")]
 #[allow(unused_imports)]
 use crate::core_assumes::sha512_hash_bytes;
@@ -192,8 +200,51 @@ use crate::core_assumes::sha512_hash_bytes;
 use crate::core_assumes::try_into_32_bytes_array;
 #[cfg(feature = "digest")]
 use crate::field::FieldElement;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::common_lemmas::to_nat_lemmas::lemma_canonical_bytes_equal;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::edwards_lemmas::constants_lemmas::lemma_edwards_d_limbs_bounded;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_identity;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_z_one_affine_implies_projective;
+#[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks for bound weakening
 use crate::lemmas::field_lemmas::add_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::as_bytes_lemmas::{
+    lemma_as_bytes_equals_spec_fe51_to_bytes, lemma_canonical_check_backward,
+    lemma_ct_eq_iff_canonical_nat, lemma_is_negative_equals_parity, lemma_seq_eq_implies_array_eq,
+};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::batch_invert_lemmas::lemma_is_zero_iff_canonical_nat_zero;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::constants_lemmas::{
+    lemma_invsqrt_a_minus_d_limbs_bounded, lemma_one_field_element_value,
+    lemma_one_limbs_bounded_51,
+};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::field_algebra_lemmas::{
+    lemma_add_self_eq_double, lemma_field_mul_assoc, lemma_field_mul_comm,
+    lemma_field_mul_one_left, lemma_square_matches_field_square,
+};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::sqrt_m1_lemmas::lemma_sqrt_m1_limbs_bounded;
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+#[allow(unused_imports)] // Used in verus! blocks
+use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -208,6 +259,10 @@ use crate::specs::proba_specs::*;
 use crate::specs::ristretto_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::scalar_specs::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use vstd::arithmetic::div_mod::*;
+#[allow(unused_imports)] // Used in verus! blocks
+use vstd::arithmetic::power2::*;
 use vstd::prelude::*;
 
 #[cfg(feature = "group")]
@@ -284,7 +339,6 @@ impl CompressedRistretto {
     ///
     /// Returns [`TryFromSliceError`] if the input `bytes` slice does not have
     /// a length of 32.
-    #[verifier::external]  // TODO: fix for Verus 88f7396
     pub fn from_slice(bytes: &[u8]) -> (result: Result<CompressedRistretto, TryFromSliceError>)
         ensures
             bytes@.len() == 32 ==> matches!(result, Ok(_)),
@@ -295,20 +349,8 @@ impl CompressedRistretto {
             },
     {
         // ORIGINAL CODE: bytes.try_into().map(CompressedRistretto)
-        // VERUS WORKAROUND: Verus doesn't allow datatype constructors like CompressedRistretto as function values,
-        // so we use a closure |arr| CompressedRistretto(arr) instead of CompressedRistretto directly.
-        // Also, try_into is wrapped in an external function for Verus compatibility.
         let arr_result = try_into_32_bytes_array(bytes);
-        let result = arr_result.map(|arr| CompressedRistretto(arr));
-
-        proof {
-            // Verus can't track bytes through the .map closure
-            assume(match result {
-                Ok(point) => point.0@ == bytes@,
-                Err(_) => true,
-            });
-        }
-        result
+        compressed_ristretto_from_array_result(arr_result)
     }
 }
 
@@ -333,40 +375,71 @@ impl CompressedRistretto {
         ensures
     // Spec alignment: result matches spec-level decoding
 
-            result == spec_ristretto_decompress(self.0),
+            result.is_none() <==> spec_ristretto_decompress(self.0).is_none(),
+            result.is_some() ==> edwards_point_as_nat(result.unwrap().0)
+                == spec_ristretto_decompress(self.0).unwrap(),
             // If decompression succeeds, the result is a well-formed Edwards point
-            // (well-formed includes: valid on curve, limbs bounded, sum bounded)
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
             // On success, the decoded point lies in the even subgroup
             result.is_some() ==> is_in_even_subgroup(result.unwrap().0),
     {
+        // step_1: decode bytes to field element s = from_bytes(self.0)
         let (s_encoding_is_canonical, s_is_negative, s) = decompress::step_1(self);
 
-        // Use choice_or and choice_into wrappers for Verus compatibility
+        // Return None if: s >= p (non-canonical) || is_negative(s)
         if choice_into(choice_or(choice_not(s_encoding_is_canonical), s_is_negative)) {
             proof {
-                // Spec alignment for early failure
-                assume(spec_ristretto_decompress(self.0).is_none());
+                // Non-canonical or negative s ⟹ spec returns None
+                if u8_32_as_nat(&self.0) < p() {
+                    assert(spec_fe51_as_bytes(&s) == seq_from32(&self.0)) by {
+                        lemma_canonical_check_backward(&self.0, &s);
+                    };
+                }
             }
             return None;
         }
+        // step_2: compute (x, y) from s via decode formula; ok = invsqrt succeeded
+
         let (ok, t_is_negative, y_is_zero, res) = decompress::step_2(s);
 
+        // Establish s < p and !is_negative(s) for the None/Some branches below
+        proof {
+            let s_nat = fe51_as_canonical_nat(&s);
+            assert(s_nat == field_element_from_bytes(&self.0));
+            assert(u8_32_as_nat(&self.0) < p());
+            assert(!is_negative(s_nat));
+        }
+
+        // Return None if: !ok || is_negative(x·y) || y == 0
         if choice_into(choice_or(choice_or(choice_not(ok), t_is_negative), y_is_zero)) {
             let result = None;
             proof {
-                // Spec alignment for failure branch
-                assume(result == spec_ristretto_decompress(self.0));
+                let s_nat = fe51_as_canonical_nat(&s);
+                let x = ristretto_decode_x(s_nat);
+                let y = ristretto_decode_y(s_nat);
+                let decode_ok = ristretto_decode_ok(s_nat);
+                let t = field_mul(x, y);
+                assert(!decode_ok || is_negative(t) || y == 0);
             }
             result
         } else {
             let result = Some(res);
             proof {
-                // step_2 constructs the point with Z=ONE, ensuring well-formedness
-                assume(is_well_formed_edwards_point(res.0));
-                assume(is_in_even_subgroup(res.0));
-                // Spec alignment for success branch
-                assume(result == spec_ristretto_decompress(self.0));
+                let s_nat = fe51_as_canonical_nat(&s);
+                let x = ristretto_decode_x(s_nat);
+                let y = ristretto_decode_y(s_nat);
+                let decode_ok = ristretto_decode_ok(s_nat);
+                let t = field_mul(x, y);
+                assert(decode_ok && !is_negative(t) && y != 0);
+
+                assert(edwards_point_as_nat(res.0) == (x, y, 1nat, t)) by {
+                    lemma_unfold_edwards(res.0);
+                    let x_nat = fe51_as_canonical_nat(&res.0.X);
+                    let y_nat = fe51_as_canonical_nat(&res.0.Y);
+                    let z_nat = fe51_as_canonical_nat(&res.0.Z);
+                    let t_nat = fe51_as_canonical_nat(&res.0.T);
+                    assert(x_nat == x && y_nat == y && z_nat == 1nat && t_nat == t);
+                };
             }
             result
         }
@@ -388,13 +461,15 @@ mod decompress {
 
             fe51_limbs_bounded(&result.2, 51),
             // Parsed value matches the bytes-to-field-element spec
-            spec_field_element(&result.2) == spec_field_element_from_bytes(&repr.0),
+            fe51_as_canonical_nat(&result.2) == field_element_from_bytes(&repr.0),
             // s_encoding_is_canonical: true iff re-encoding s gives the original bytes
-            choice_is_true(result.0) == (spec_fe51_to_bytes(&result.2) == repr.0@),
+            choice_is_true(result.0) == (spec_fe51_as_bytes(&result.2) == repr.0@),
             // s_is_negative: true iff low bit of canonical encoding is 1
-            choice_is_true(result.1) == (spec_fe51_to_bytes(&result.2)[0] & 1 == 1),
+            choice_is_true(result.1) == (spec_fe51_as_bytes(&result.2)[0] & 1 == 1),
             // s_is_negative matches the math-level sign bit of the decoded value
-            choice_is_true(result.1) == math_is_negative(spec_field_element_from_bytes(&repr.0)),
+            choice_is_true(result.1) == is_negative(field_element_from_bytes(&repr.0)),
+            // Forward canonical check: byte round-trip implies u8_32_as_nat < p
+            choice_is_true(result.0) ==> u8_32_as_nat(&repr.0) < p(),
     {
         // Step 1. Check s for validity:
         // 1.a) s must be 32 bytes (we get this from the type system)
@@ -414,86 +489,447 @@ mod decompress {
         let s_is_negative = s.is_negative();
 
         proof {
-            // VERIFICATION NOTE: only postcondition left to prove
-            assume(choice_is_true(s_encoding_is_canonical) == (spec_fe51_to_bytes(&s) == repr.0@));
-            assume(spec_field_element(&s) == spec_field_element_from_bytes(&repr.0));
-            assume(choice_is_true(s_is_negative) == math_is_negative(
-                spec_field_element_from_bytes(&repr.0),
-            ));
+            // Postcondition: as_bytes round-trips iff encoding is canonical
+            //
+            // ct_eq_bytes32: choice_is_true(s_encoding_is_canonical) == (s_bytes_check == repr.0)
+            // This lemma: seq_from32(&s_bytes_check) == spec_fe51_as_bytes(&s)
+            // Together: (s_bytes_check == repr.0) ⟺ (spec_fe51_as_bytes(&s) == repr.0@)
+            assert(seq_from32(&s_bytes_check) == spec_fe51_as_bytes(&s)) by {
+                lemma_as_bytes_equals_spec_fe51_to_bytes(&s, &s_bytes_check);
+            };
+
+            // Forward: canonical bytes ⟹ u8_32_as_nat < p
+            if s_bytes_check == repr.0 {
+                assert(s_bytes_check@ == repr.0@);
+                assert(u8_32_as_nat(&repr.0) < p()) by {
+                    pow255_gt_19();
+                    lemma_mod_bound(u64_5_as_nat(s.limbs) as int, p() as int);
+                };
+            }
+            // Backward: spec bytes match ⟹ array equality
+
+            if spec_fe51_as_bytes(&s) == repr.0@ {
+                assert(s_bytes_check == repr.0) by {
+                    assert(seq_from32(&s_bytes_check) == seq_from32(&repr.0));
+                    lemma_seq_eq_implies_array_eq(&s_bytes_check, &repr.0);
+                };
+            }
+            // Postcondition: sign check matches spec-level is_negative
+            //
+            // is_negative exec: choice_is_true(s_is_negative) == (spec_fe51_as_bytes(&s)[0] & 1 == 1)
+            // Parity lemma: (byte[0] & 1 == 1) == (canonical_nat % 2 == 1)
+            // is_negative(n) = (n % p) % 2 == 1; since field_element_from_bytes < p, identity applies
+
+            assert((spec_fe51_as_bytes(&s)[0] & 1 == 1) == (fe51_as_canonical_nat(&s) % 2 == 1))
+                by {
+                lemma_is_negative_equals_parity(&s);
+            };
+
+            let val = field_element_from_bytes(&repr.0);
+            assert(val < p()) by {
+                pow255_gt_19();
+                lemma_mod_bound((u8_32_as_nat(&repr.0) % pow2(255)) as int, p() as int);
+            };
+            assert(field_canonical(val) == val) by {
+                lemma_small_mod(val, p());
+            };
         }
 
         (s_encoding_is_canonical, s_is_negative, s)
     }
 
-    /// Decompress step 2: Compute the Edwards point from the field element s.
+    /// Decompress step 2: apply Ristretto decode formula to field element s,
+    /// producing affine coordinates (x, y) and extended point (x, y, 1, x·y).
     ///
-    /// Returns (ok, t_is_negative, y_is_zero, point) where:
-    /// - ok: true iff the sqrt_ratio succeeded (s encodes a valid point)
-    /// - t_is_negative: true iff T coordinate has low bit set
-    /// - y_is_zero: true iff Y coordinate is zero
-    /// - point: the computed RistrettoPoint
+    /// Returns (ok, t_is_negative, y_is_zero, point):
+    /// - ok: invsqrt succeeded, i.e. s encodes a valid Ristretto point
+    /// - t_is_negative: is_negative(x·y)
+    /// - y_is_zero: y == 0
+    /// - point: RistrettoPoint(EdwardsPoint { X: x, Y: y, Z: 1, T: x·y })
     pub(super) fn step_2(s: FieldElement) -> (result: (Choice, Choice, Choice, RistrettoPoint))
+        requires
+            fe51_limbs_bounded(&s, 51),
         ensures
-    // Z is set to ONE by construction
+    // ok <==> spec-level decode succeeds
 
-            spec_field_element(&result.3.0.Z) == 1,
-            // T is the product of X and Y in affine form (Z = 1)
-            spec_field_element(&result.3.0.T) == math_field_mul(
-                spec_field_element(&result.3.0.X),
-                spec_field_element(&result.3.0.Y),
-            ),
-            // If decoding succeeds, the output point is well-formed and in the even subgroup
+            choice_is_true(result.0) == ristretto_decode_ok(fe51_as_canonical_nat(&s)),
+            // When ok: point is well-formed, in the even subgroup, with Z=1 and T=X*Y
             choice_is_true(result.0) ==> is_well_formed_edwards_point(result.3.0),
             choice_is_true(result.0) ==> is_in_even_subgroup(result.3.0),
-            // t_is_negative reflects the sign bit of T
-            choice_is_true(result.1) == math_is_negative(spec_field_element(&result.3.0.T)),
-            // y_is_zero reflects whether Y is zero
-            choice_is_true(result.2) == (spec_field_element(&result.3.0.Y) == 0),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Z) == 1,
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.T) == field_mul(
+                fe51_as_canonical_nat(&result.3.0.X),
+                fe51_as_canonical_nat(&result.3.0.Y),
+            ),
+            // When ok: X, Y match the spec decode values
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.X) == ristretto_decode_x(
+                fe51_as_canonical_nat(&s),
+            ),
+            choice_is_true(result.0) ==> fe51_as_canonical_nat(&result.3.0.Y) == ristretto_decode_y(
+                fe51_as_canonical_nat(&s),
+            ),
+            // t_is_negative and y_is_zero always reflect the spec-level decode values
+            // (computed from raw x, y — NOT from the returned point, which may be identity)
+            choice_is_true(result.1) == is_negative(
+                field_mul(
+                    ristretto_decode_x(fe51_as_canonical_nat(&s)),
+                    ristretto_decode_y(fe51_as_canonical_nat(&s)),
+                ),
+            ),
+            choice_is_true(result.2) == (ristretto_decode_y(fe51_as_canonical_nat(&s)) == 0),
     {
-        // VERIFICATION NOTE: assume(false) postpones limb bounds tracking and other proof obligations.
+        // =================================================================
+        // PHASE 1: Compute field elements with limb bounds tracking
+        // =================================================================
         proof {
-            assume(false);
+            assert(fe51_limbs_bounded(&FieldElement::ONE, 51)) by {
+                lemma_one_limbs_bounded_51();
+            };
+            assert(fe51_limbs_bounded(&constants::EDWARDS_D, 51)) by {
+                lemma_edwards_d_limbs_bounded();
+            };
         }
 
         // Step 2.  Compute (X:Y:Z:T).
         let one = FieldElement::ONE;
+        // s: 51-bit, one: 51-bit
+
+        proof {
+            assert(fe51_limbs_bounded(&s, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&s, 51, 54);
+            };
+            assert(fe51_limbs_bounded(&one, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&one, 51, 54);
+            };
+        }
+
         let ss = s.square();
+        // ss: 52-bit
+
         let u1 = &one - &ss;  //  1 + as²
+        // u1: 52-bit
+
+        proof {
+            // Add(one, ss): need sum_of_limbs_bounded. one: 51-bit, ss: 52-bit.
+            assert(sum_of_limbs_bounded(&one, &ss, u64::MAX)) by {
+                assert((1u64 << 51) + (1u64 << 52) < u64::MAX) by (bit_vector);
+                assert forall|i: int| 0 <= i < 5 implies one.limbs[i] + ss.limbs[i]
+                    < u64::MAX by {};
+            };
+            assert(fe51_limbs_bounded(&one, 52)) by {
+                lemma_fe51_limbs_bounded_weaken(&one, 51, 52);
+            };
+        }
+
         let u2 = &one + &ss;  //  1 - as²    where a=-1
+        // u2: 53-bit (Add with 52+52 inputs → 53-bit via 2nd branch)
+
+        proof {
+            assert(fe51_limbs_bounded(&u2, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u2, 53, 54);
+            };
+        }
+
         let u2_sqr = u2.square();  // (1 - as²)²
+        // u2_sqr: 52-bit
 
         // v == ad(1+as²)² - (1-as²)²            where d=-121665/121666
         // ORIGINAL CODE: let v = &(&(-&constants::EDWARDS_D) * &u1.square()) - &u2_sqr;
         // VERUS WORKAROUND: Use Neg::neg explicitly to avoid Verus operator parsing issue
         use core::ops::Neg;
-        let neg_d = Neg::neg(&constants::EDWARDS_D);
-        let u1_sqr = u1.square();
-        let v = &(&neg_d * &u1_sqr) - &u2_sqr;
 
-        let (ok, I) = (&v * &u2_sqr).invsqrt();  // 1/sqrt(v*u_2²)
+        proof {
+            assert(fe51_limbs_bounded(&constants::EDWARDS_D, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&constants::EDWARDS_D, 51, 54);
+            };
+        }
+
+        let neg_d = Neg::neg(&constants::EDWARDS_D);
+        // neg_d: 52-bit
+
+        let u1_sqr = u1.square();
+        // u1_sqr: 52-bit (u1 is 52 < 54)
+
+        proof {
+            assert(fe51_limbs_bounded(&neg_d, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&neg_d, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&u1_sqr, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u1_sqr, 52, 54);
+            };
+        }
+
+        // ORIGINAL CODE: let v = &(&neg_d * &u1_sqr) - &u2_sqr;
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proof between Mul and Sub
+        let neg_d_u1_sqr = &neg_d * &u1_sqr;
+        let v = &neg_d_u1_sqr - &u2_sqr;
+
+        proof {
+            assert(fe51_limbs_bounded(&v, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&v, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&u2_sqr, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u2_sqr, 52, 54);
+            };
+        }
+
+        // ORIGINAL CODE: let (ok, I) = (&v * &u2_sqr).invsqrt();
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proof between Mul and invsqrt
+        let v_u2_sqr = &v * &u2_sqr;
+
+        proof {
+            assert(fe51_limbs_bounded(&v_u2_sqr, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&v_u2_sqr, 52, 54);
+            };
+        }
+
+        let (ok, I) = v_u2_sqr.invsqrt();  // 1/sqrt(v*u_2²)
+
+        proof {
+            assert(fe51_limbs_bounded(&I, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&I, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&u2, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&u2, 53, 54);
+            };
+            assert(fe51_limbs_bounded(&v, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&v, 52, 54);
+            };
+        }
 
         let Dx = &I * &u2;  // 1/sqrt(v)
-        let Dy = &I * &(&Dx * &v);  // 1/u2
+        // Dx: 52-bit
+
+        // ORIGINAL CODE: let Dy = &I * &(&Dx * &v);
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proof between Mul ops
+        let Dx_v = &Dx * &v;
+        let Dy = &I * &Dx_v;  // 1/u2
+
+        proof {
+            // Add(s, s): need sum_of_limbs_bounded. s: 51-bit.
+            assert(sum_of_limbs_bounded(&s, &s, u64::MAX)) by {
+                assert((1u64 << 51) + (1u64 << 51) < u64::MAX) by (bit_vector);
+                assert forall|i: int| 0 <= i < 5 implies s.limbs[i] + s.limbs[i] < u64::MAX by {};
+            };
+        }
+
+        // ORIGINAL CODE: let mut x = &(&s + &s) * &Dx;
+        // VERUS WORKAROUND: Split chained expression to insert limb-bound proofs between Add and Mul
+        let s_plus_s = &s + &s;
+
+        proof {
+            assert(fe51_limbs_bounded(&s_plus_s, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&s_plus_s, 52, 54);
+            };
+            assert(fe51_limbs_bounded(&Dx, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&Dx, 52, 54);
+            };
+        }
 
         // x == | 2s/sqrt(v) | == + sqrt(4s²/(ad(1+as²)² - (1-as²)²))
-        let mut x = &(&s + &s) * &Dx;
+        let mut x = &s_plus_s * &Dx;
+        // x: 52-bit
+
         let x_neg = x.is_negative();
+
+        proof {
+            // exec is_negative matches spec-level is_negative for pre-negate x
+            assert(choice_is_true(x_neg) == is_negative(
+                field_mul(fe51_as_canonical_nat(&s_plus_s), fe51_as_canonical_nat(&Dx)),
+            )) by {
+                assert((spec_fe51_as_bytes(&x)[0] & 1 == 1) == (fe51_as_canonical_nat(&x) % 2 == 1))
+                    by {
+                    lemma_is_negative_equals_parity(&x);
+                };
+                let x_pre_nat = fe51_as_canonical_nat(&x);
+                assert(x_pre_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&x);
+                };
+                assert(field_canonical(x_pre_nat) == x_pre_nat) by {
+                    lemma_small_mod(x_pre_nat, p());
+                };
+            };
+            assert(fe51_limbs_bounded(&x, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&x, 52, 54);
+            };
+        }
+
         // ORIGINAL CODE: x.conditional_negate(x_neg);
         // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
         conditional_negate_field_element(&mut x, x_neg);
+        // x: 52-bit in both branches
+
+        proof {
+            assert(fe51_limbs_bounded(&x, 52)) by {
+                if choice_is_true(x_neg) {
+                } else {
+                }
+            };
+        }
 
         // y == (1-as²)/(1+as²)
         let y = &u1 * &Dy;
+        // y: 52-bit
 
         // t == ((1+as²) sqrt(4s²/(ad(1+as²)² - (1-as²)²)))/(1-as²)
         let t = &x * &y;
+        // t: 52-bit
 
-        (
-            ok,
-            t.is_negative(),
-            y.is_zero(),
-            RistrettoPoint(EdwardsPoint { X: x, Y: y, Z: one, T: t }),
-        )
+        // =================================================================
+        // PHASE 2: Prove postconditions
+        // =================================================================
+        // t_is_neg and y_is_zero are bound before the proof block so they can be
+        // referenced in postconditions (original code inlines them in the return tuple).
+        let t_is_neg = t.is_negative();
+        let y_is_zero = y.is_zero();
+
+        proof {
+            assert(pow2(255) > 19) by {
+                pow255_gt_19();
+            };
+            assert(fe51_as_canonical_nat(&one) == 1) by {
+                lemma_one_field_element_value();
+            };
+
+            let x_val = fe51_as_canonical_nat(&x);
+            let y_val = fe51_as_canonical_nat(&y);
+            let z_val = fe51_as_canonical_nat(&one);
+            let t_val = fe51_as_canonical_nat(&t);
+
+            // t_is_negative matches spec-level is_negative(t)
+            assert(choice_is_true(t_is_neg) == is_negative(t_val)) by {
+                assert((spec_fe51_as_bytes(&t)[0] & 1 == 1) == (fe51_as_canonical_nat(&t) % 2 == 1))
+                    by {
+                    lemma_is_negative_equals_parity(&t);
+                };
+                assert(t_val < p()) by {
+                    lemma_canonical_nat_lt_p(&t);
+                };
+                assert(t_val % p() == t_val) by {
+                    lemma_small_mod(t_val, p());
+                };
+            };
+
+            // y_is_zero matches (canonical_nat(Y) == 0)
+            assert(choice_is_true(y_is_zero) == (y_val == 0)) by {
+                lemma_is_zero_iff_canonical_nat_zero(y);
+            };
+
+            // Type invariant: limb bounds for ONE
+            assert(fe51_limbs_bounded(&one, 52)) by {
+                lemma_fe51_limbs_bounded_weaken(&one, 51, 52);
+            };
+
+            // Type invariant: sum_of_limbs_bounded for EdwardsPoint construction
+            assert(sum_of_limbs_bounded(&y, &x, u64::MAX)) by {
+                assert((1u64 << 52) + (1u64 << 52) < u64::MAX) by (bit_vector);
+                assert forall|i: int| 0 <= i < 5 implies y.limbs[i] + x.limbs[i] < u64::MAX by {};
+            };
+
+            // Segre relation: Z·T = X·Y when Z = 1
+            assert(field_mul(z_val, t_val) == field_mul(x_val, y_val)) by {
+                lemma_field_mul_one_left(t_val);
+                assert(t_val % p() == t_val) by {
+                    lemma_small_mod(t_val, p());
+                };
+            };
+
+            // Z nonzero mod p
+            assert(field_canonical(z_val) != 0) by {
+                lemma_small_mod(1nat, p());
+            };
+
+            // Bridge exec square operations to spec field_square
+            let s_nat = fe51_as_canonical_nat(&s);
+            let big_i_nat = fe51_as_canonical_nat(&I);
+            let v_u2_sqr_nat = fe51_as_canonical_nat(&v_u2_sqr);
+
+            assert(fe51_as_canonical_nat(&ss) == field_square(s_nat)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&s), fe51_as_nat(&ss));
+            };
+            assert(fe51_as_canonical_nat(&u2_sqr) == field_square(fe51_as_canonical_nat(&u2))) by {
+                lemma_square_matches_field_square(fe51_as_nat(&u2), fe51_as_nat(&u2_sqr));
+            };
+            assert(fe51_as_canonical_nat(&u1_sqr) == field_square(fe51_as_canonical_nat(&u1))) by {
+                lemma_square_matches_field_square(fe51_as_nat(&u1), fe51_as_nat(&u1_sqr));
+            };
+
+            assert(s_nat < p()) by {
+                lemma_canonical_nat_lt_p(&s);
+            };
+
+            // Invsqrt alignment and mutual exclusion
+            assert(big_i_nat < p()) by {
+                lemma_canonical_nat_lt_p(&I);
+            };
+            assert(v_u2_sqr_nat < p()) by {
+                lemma_canonical_nat_lt_p(&v_u2_sqr);
+            };
+            lemma_decode_invsqrt_facts(big_i_nat, v_u2_sqr_nat);
+
+            // On curve and projective equivalence when decode succeeds
+            if choice_is_true(ok) {
+                assert(ristretto_decode_ok(s_nat));
+                assert(is_on_edwards_curve(ristretto_decode_x(s_nat), ristretto_decode_y(s_nat)))
+                    by {
+                    axiom_ristretto_decode_on_curve(s_nat);
+                };
+                assert(is_on_edwards_curve_projective(x_val, y_val, 1nat)) by {
+                    assert(x_val < p()) by {
+                        lemma_canonical_nat_lt_p(&x);
+                    };
+                    assert(y_val < p()) by {
+                        lemma_canonical_nat_lt_p(&y);
+                    };
+                    lemma_z_one_affine_implies_projective(x_val, y_val);
+                };
+            }
+        }
+
+        /*
+        VERIFICATION NOTE: we deviate from the original code in the case of !ok,
+        constructing the EdwardsPoint with the original code would break the type invariant.
+        The returned point may not be on the curve.
+        The caller (decompress) returns None when !ok without accessing the point, so we expect the behaviour
+        of original and refactored code to be the same in this exception case.
+        ORIGINAL CODE (curve25519-4.1.3):
+        (ok, t.is_negative(), y.is_zero(),
+         RistrettoPoint(EdwardsPoint { X: x, Y: y, Z: one, T: t }))
+        */
+        let point = if choice_into(ok) {
+            EdwardsPoint { X: x, Y: y, Z: one, T: t }
+        } else {
+            EdwardsPoint::identity()
+        };
+
+        proof {
+            use_type_invariant(point);
+            lemma_unfold_edwards(point);
+
+            let s_nat = fe51_as_canonical_nat(&s);
+            let big_i_nat = fe51_as_canonical_nat(&I);
+            let v_u2_sqr_nat = fe51_as_canonical_nat(&v_u2_sqr);
+
+            // Re-establish spec alignment (facts don't persist across exec if)
+            assert(big_i_nat < p()) by {
+                lemma_canonical_nat_lt_p(&I);
+            };
+            assert(v_u2_sqr_nat < p()) by {
+                lemma_canonical_nat_lt_p(&v_u2_sqr);
+            };
+            lemma_decode_invsqrt_facts(big_i_nat, v_u2_sqr_nat);
+
+            if choice_is_true(ok) {
+                assert(ristretto_decode_ok(s_nat));
+                assert(is_well_formed_edwards_point(point));
+
+                assert(is_in_even_subgroup(point)) by {
+                    axiom_ristretto_decode_in_even_subgroup(s_nat, point);
+                };
+            }
+        }
+
+        (ok, t_is_neg, y_is_zero, RistrettoPoint(point))
     }
 
 }
@@ -652,12 +1088,32 @@ pub struct RistrettoPoint(pub EdwardsPoint);
 impl RistrettoPoint {
     /// Compress this point using the Ristretto encoding.
     pub fn compress(&self) -> (result: CompressedRistretto)
+        requires
+            is_well_formed_edwards_point(self.0),
         ensures
             result.0 == spec_ristretto_compress(*self),
     {
-        // VERIFICATION NOTE: assume(false) postpones proof obligations for compress
+        // Background: link accessor-based predicates to actual fields.
+        // Needed throughout because spec_ristretto_compress uses edwards_x/y/z/t accessors.
         proof {
-            assume(false);
+            lemma_unfold_edwards(self.0);
+        }
+
+        let ghost x_nat = fe51_as_canonical_nat(&self.0.X);
+        let ghost y_nat = fe51_as_canonical_nat(&self.0.Y);
+        let ghost z_nat = fe51_as_canonical_nat(&self.0.Z);
+        let ghost t_nat = fe51_as_canonical_nat(&self.0.T);
+
+        proof {
+            assert(sum_of_limbs_bounded(&self.0.Z, &self.0.Y, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&self.0.Z, &self.0.Y, 52);
+            };
+            assert(fe51_limbs_bounded(&constants::SQRT_M1, 54)) by {
+                lemma_sqrt_m1_limbs_bounded();
+            };
+            assert(fe51_limbs_bounded(&constants::INVSQRT_A_MINUS_D, 54)) by {
+                lemma_invsqrt_a_minus_d_limbs_bounded();
+            };
         }
 
         let mut X = self.0.X;
@@ -665,41 +1121,280 @@ impl RistrettoPoint {
         let Z = &self.0.Z;
         let T = &self.0.T;
 
-        let u1 = &(Z + &Y) * &(Z - &Y);
+        proof {
+            assert(fe51_limbs_bounded(Z, 54) && fe51_limbs_bounded(&Y, 54) && fe51_limbs_bounded(
+                &X,
+                54,
+            ) && fe51_limbs_bounded(T, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(Z, 52, 54);
+                lemma_fe51_limbs_bounded_weaken(&Y, 52, 54);
+                lemma_fe51_limbs_bounded_weaken(&X, 52, 54);
+                lemma_fe51_limbs_bounded_weaken(T, 52, 54);
+            };
+        }
+
+        /* ORIGINAL CODE: let u1 = &(Z + &Y) * &(Z - &Y); */
+        let z_plus_y = Z + &Y;
+        let z_minus_y = Z - &Y;
+        proof {
+            assert(fe51_limbs_bounded(&z_plus_y, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&z_plus_y, 53, 54);
+            };
+        }
+        let u1 = &z_plus_y * &z_minus_y;
         let u2 = &X * &Y;
+        proof {
+            assert(fe51_as_canonical_nat(&u1) == field_mul(
+                field_add(z_nat, y_nat),
+                field_sub(z_nat, y_nat),
+            ));
+        }
+
+        /* ORIGINAL CODE: let (_, invsqrt) = (&u1 * &u2.square()).invsqrt(); */
         // Ignore return value since this is always square
-        let (_, invsqrt) = (&u1 * &u2.square()).invsqrt();
+        let u2_sq = u2.square();
+        proof {
+            assert(fe51_as_canonical_nat(&u2_sq) == field_square(fe51_as_canonical_nat(&u2))) by {
+                lemma_square_matches_field_square(fe51_as_nat(&u2), fe51_as_nat(&u2_sq));
+            };
+        }
+        let u1_u2_sq = &u1 * &u2_sq;
+        let ghost u1_u2_sq_nat = fe51_as_canonical_nat(&u1_u2_sq);
+        proof {
+            assert(u1_u2_sq_nat == field_mul(
+                fe51_as_canonical_nat(&u1),
+                field_square(fe51_as_canonical_nat(&u2)),
+            ));
+        }
+
+        let (_, invsqrt) = u1_u2_sq.invsqrt();
+        let ghost invsqrt_nat = fe51_as_canonical_nat(&invsqrt);
+
+        proof {
+            assert(invsqrt_nat == nat_invsqrt(u1_u2_sq_nat)) by {
+                assert(invsqrt_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&invsqrt);
+                };
+                assert(u1_u2_sq_nat < p()) by {
+                    lemma_canonical_nat_lt_p(&u1_u2_sq);
+                };
+                if u1_u2_sq_nat == 0 {
+                } else {
+                    assert(is_sqrt_ratio(1, u1_u2_sq_nat, invsqrt_nat) || is_sqrt_ratio_times_i(
+                        1,
+                        u1_u2_sq_nat,
+                        invsqrt_nat,
+                    )) by {
+                        lemma_one_field_element_value();
+                    };
+                }
+                lemma_invsqrt_matches_spec(invsqrt_nat, u1_u2_sq_nat);
+            };
+            assert(fe51_limbs_bounded(&invsqrt, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&invsqrt, 52, 54);
+            };
+        }
+
         let i1 = &invsqrt * &u1;
         let i2 = &invsqrt * &u2;
-        let z_inv = &i1 * &(&i2 * T);
+        /* ORIGINAL CODE: let z_inv = &i1 * &(&i2 * T); */
+        let i2_t = &i2 * T;
+        let z_inv = &i1 * &i2_t;
         let mut den_inv = i2;
+
+        let ghost i1_nat = fe51_as_canonical_nat(&i1);
+        let ghost i2_nat = fe51_as_canonical_nat(&i2);
+        let ghost z_inv_nat = fe51_as_canonical_nat(&z_inv);
+
+        proof {
+            assert(z_inv_nat == field_mul(i1_nat, field_mul(i2_nat, t_nat)));
+        }
 
         let iX = &X * &constants::SQRT_M1;
         let iY = &Y * &constants::SQRT_M1;
         let ristretto_magic = &constants::INVSQRT_A_MINUS_D;
         let enchanted_denominator = &i1 * ristretto_magic;
 
-        let rotate = (T * &z_inv).is_negative();
+        let ghost ed_nat = fe51_as_canonical_nat(&enchanted_denominator);
 
-        // ORIGINAL CODE: X.conditional_assign(&iY, rotate);
+        proof {
+            assert(ed_nat == field_mul(
+                i1_nat,
+                fe51_as_canonical_nat(&constants::INVSQRT_A_MINUS_D),
+            ));
+        }
+
+        /* ORIGINAL CODE: let rotate = (T * &z_inv).is_negative(); */
+        let t_z_inv = T * &z_inv;
+        let rotate = t_z_inv.is_negative();
+
+        let ghost rotate_bool = is_negative(field_mul(t_nat, z_inv_nat));
+        proof {
+            assert(choice_is_true(rotate) == rotate_bool) by {
+                lemma_is_negative_bridge(&t_z_inv, fe51_as_canonical_nat(&t_z_inv));
+            };
+        }
+
+        let ghost old_den_inv = den_inv;
+
+        /* <ORIGINAL CODE>
+        X.conditional_assign(&iY, rotate);
+        Y.conditional_assign(&iX, rotate);
+        den_inv.conditional_assign(&enchanted_denominator, rotate);
+        </ORIGINAL CODE> */
         // VERUS WORKAROUND: Use conditional_assign_generic wrapper for Verus compatibility
         conditional_assign_generic(&mut X, &iY, rotate);
-        // ORIGINAL CODE: Y.conditional_assign(&iX, rotate);
         conditional_assign_generic(&mut Y, &iX, rotate);
-        // ORIGINAL CODE: den_inv.conditional_assign(&enchanted_denominator, rotate);
         conditional_assign_generic(&mut den_inv, &enchanted_denominator, rotate);
 
-        // ORIGINAL CODE: Y.conditional_negate((&X * &z_inv).is_negative());
-        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
-        conditional_negate_field_element(&mut Y, (&X * &z_inv).is_negative());
+        let ghost x_rot = fe51_as_canonical_nat(&X);
+        let ghost y_rot = fe51_as_canonical_nat(&Y);
+        let ghost den_inv_rot = fe51_as_canonical_nat(&den_inv);
 
-        let mut s = &den_inv * &(Z - &Y);
+        proof {
+            assert(den_inv_rot == if rotate_bool {
+                ed_nat
+            } else {
+                i2_nat
+            }) by {
+                if choice_is_true(rotate) {
+                } else {
+                    assert(den_inv == old_den_inv);
+                }
+            };
+            assert(fe51_limbs_bounded(&X, 52));
+            assert(fe51_limbs_bounded(&Y, 52));
+            assert(fe51_limbs_bounded(&den_inv, 52));
+        }
+
+        /* ORIGINAL CODE: Y.conditional_negate((&X * &z_inv).is_negative()); */
+        let x_z_inv = &X * &z_inv;
+        let x_z_inv_neg = x_z_inv.is_negative();
+        proof {
+            assert(choice_is_true(x_z_inv_neg) == is_negative(field_mul(x_rot, z_inv_nat))) by {
+                lemma_is_negative_bridge(&x_z_inv, fe51_as_canonical_nat(&x_z_inv));
+            };
+        }
+
+        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper
+        proof {
+            assert(fe51_limbs_bounded(&Y, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&Y, 52, 54);
+            };
+        }
+        conditional_negate_field_element(&mut Y, x_z_inv_neg);
+
+        let ghost y_final = fe51_as_canonical_nat(&Y);
+        proof {
+            assert(y_final == if is_negative(field_mul(x_rot, z_inv_nat)) {
+                field_neg(y_rot)
+            } else {
+                y_rot
+            });
+        }
+
+        proof {
+            assert(fe51_limbs_bounded(&den_inv, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&den_inv, 52, 54);
+            };
+        }
+        /* ORIGINAL CODE: let mut s = &den_inv * &(Z - &Y); */
+        let z_minus_y_final = Z - &Y;
+        let mut s = &den_inv * &z_minus_y_final;
+
+        let ghost s_pre_nat = fe51_as_canonical_nat(&s);
+        proof {
+            assert(fe51_as_canonical_nat(&z_minus_y_final) == field_sub(z_nat, y_final));
+            assert(s_pre_nat == field_mul(den_inv_rot, field_sub(z_nat, y_final)));
+        }
+
         let s_is_negative = s.is_negative();
-        // ORIGINAL CODE: s.conditional_negate(s_is_negative);
-        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper for Verus compatibility
+        proof {
+            assert(choice_is_true(s_is_negative) == is_negative(s_pre_nat)) by {
+                lemma_is_negative_bridge(&s, s_pre_nat);
+            };
+        }
+
+        // VERUS WORKAROUND: Use conditional_negate_field_element wrapper
+        proof {
+            assert(fe51_limbs_bounded(&s, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&s, 52, 54);
+            };
+        }
         conditional_negate_field_element(&mut s, s_is_negative);
 
-        CompressedRistretto(s.as_bytes())
+        let ghost s_final_nat = fe51_as_canonical_nat(&s);
+        proof {
+            assert(s_final_nat == if is_negative(s_pre_nat) {
+                field_neg(s_pre_nat)
+            } else {
+                s_pre_nat
+            });
+        }
+
+        /* ORIGINAL CODE: CompressedRistretto(s.as_bytes()) */
+        let s_bytes = s.as_bytes();
+
+        proof {
+            assert(s_bytes == u8_32_from_nat(s_final_nat)) by {
+                assert(u8_32_as_nat(&s_bytes) == s_final_nat);
+                assert(s_final_nat < pow2(256)) by {
+                    lemma_canonical_nat_lt_p(&s);
+                    pow255_gt_19();
+                    lemma_pow2_strictly_increases(255, 256);
+                };
+                assert(s_final_nat % pow2(256) == s_final_nat) by {
+                    lemma_small_mod(s_final_nat, pow2(256));
+                };
+                let chosen = u8_32_from_nat(s_final_nat);
+                lemma_canonical_bytes_equal(&s_bytes, &chosen);
+            };
+
+            assert(s_bytes == ristretto_compress_extended(x_nat, y_nat, z_nat, t_nat)) by {
+                let spec_u1 = field_mul(field_add(z_nat, y_nat), field_sub(z_nat, y_nat));
+                let spec_u2 = field_mul(x_nat, y_nat);
+                let spec_invsqrt = nat_invsqrt(field_mul(spec_u1, field_square(spec_u2)));
+                let spec_i1 = field_mul(spec_invsqrt, spec_u1);
+                let spec_i2 = field_mul(spec_invsqrt, spec_u2);
+                let spec_z_inv = field_mul(spec_i1, field_mul(spec_i2, t_nat));
+
+                assert(invsqrt_nat == spec_invsqrt);
+                assert(i1_nat == spec_i1);
+                assert(i2_nat == spec_i2);
+                assert(z_inv_nat == spec_z_inv);
+                assert(rotate_bool == is_negative(field_mul(t_nat, spec_z_inv)));
+
+                assert(x_rot == if rotate_bool {
+                    field_mul(y_nat, sqrt_m1())
+                } else {
+                    x_nat
+                });
+                assert(y_rot == if rotate_bool {
+                    field_mul(x_nat, sqrt_m1())
+                } else {
+                    y_nat
+                });
+                assert(den_inv_rot == if rotate_bool {
+                    field_mul(spec_i1, fe51_as_canonical_nat(&constants::INVSQRT_A_MINUS_D))
+                } else {
+                    spec_i2
+                });
+
+                assert(y_final == if is_negative(field_mul(x_rot, spec_z_inv)) {
+                    field_neg(y_rot)
+                } else {
+                    y_rot
+                });
+                assert(s_pre_nat == field_mul(den_inv_rot, field_sub(z_nat, y_final)));
+                assert(s_final_nat == if is_negative(s_pre_nat) {
+                    field_neg(s_pre_nat)
+                } else {
+                    s_pre_nat
+                });
+            };
+        }
+
+        CompressedRistretto(s_bytes)
     }
 }
 
@@ -734,12 +1429,25 @@ impl BatchCompressState {
             fe51_limbs_bounded(&self.fh, 54),
         ensures
             fe51_limbs_bounded(&result, 54),
-            spec_field_element(&result) == math_field_mul(
-                spec_field_element(&self.eg),
-                spec_field_element(&self.fh),
+            fe51_as_canonical_nat(&result) == field_mul(
+                fe51_as_canonical_nat(&self.eg),
+                fe51_as_canonical_nat(&self.fh),
             ),
     {
         &self.eg * &self.fh
+    }
+}
+
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+impl<'a> vstd::std_specs::convert::FromSpecImpl<&'a RistrettoPoint> for BatchCompressState {
+    open spec fn obeys_from_spec() -> bool {
+        false  // Verus does not support from_req; use ensures on from() instead
+
+    }
+
+    open spec fn from_spec(P: &'a RistrettoPoint) -> Self {
+        arbitrary()  // postconditions specified in ensures clause of from()
+
     }
 }
 
@@ -754,58 +1462,141 @@ impl<'a> From<&'a RistrettoPoint> for BatchCompressState {
         ensures
             fe51_limbs_bounded(&result.eg, 54),
             fe51_limbs_bounded(&result.fh, 54),
-            // e = 2*X*Y
-            spec_field_element(&result.e) == math_field_mul(
-                2,
-                math_field_mul(spec_field_element(&P.0.X), spec_field_element(&P.0.Y)),
-            ),
-            // f = Z^2 + d*T^2
-            spec_field_element(&result.f) == math_field_add(
-                math_field_square(spec_field_element(&P.0.Z)),
-                math_field_mul(
-                    spec_field_element(&constants::EDWARDS_D),
-                    math_field_square(spec_field_element(&P.0.T)),
-                ),
-            ),
-            // g = Y^2 + X^2 (a = -1)
-            spec_field_element(&result.g) == math_field_add(
-                math_field_square(spec_field_element(&P.0.Y)),
-                math_field_square(spec_field_element(&P.0.X)),
-            ),
-            // h = Z^2 - d*T^2
-            spec_field_element(&result.h) == math_field_sub(
-                math_field_square(spec_field_element(&P.0.Z)),
-                math_field_mul(
-                    spec_field_element(&constants::EDWARDS_D),
-                    math_field_square(spec_field_element(&P.0.T)),
-                ),
-            ),
-            // eg = e * g, fh = f * h
-            spec_field_element(&result.eg) == math_field_mul(
-                spec_field_element(&result.e),
-                spec_field_element(&result.g),
-            ),
-            spec_field_element(&result.fh) == math_field_mul(
-                spec_field_element(&result.f),
-                spec_field_element(&result.h),
-            ),
+            ({
+                let (x, y, z, t) = edwards_point_as_nat(P.0);
+                let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
+                // e = 2*X*Y
+                fe51_as_canonical_nat(&result.e) == field_mul(
+                    2,
+                    field_mul(x, y),
+                )
+                // f = Z^2 + d*T^2
+                 && fe51_as_canonical_nat(&result.f) == field_add(
+                    field_square(z),
+                    field_mul(d, field_square(t)),
+                )
+                // g = Y^2 + X^2 (a = -1)
+                 && fe51_as_canonical_nat(&result.g) == field_add(
+                    field_square(y),
+                    field_square(x),
+                )
+                // h = Z^2 - d*T^2
+                 && fe51_as_canonical_nat(&result.h) == field_sub(
+                    field_square(z),
+                    field_mul(d, field_square(t)),
+                )
+                // eg = e * g, fh = f * h
+                 && fe51_as_canonical_nat(&result.eg) == field_mul(
+                    fe51_as_canonical_nat(&result.e),
+                    fe51_as_canonical_nat(&result.g),
+                ) && fe51_as_canonical_nat(&result.fh) == field_mul(
+                    fe51_as_canonical_nat(&result.f),
+                    fe51_as_canonical_nat(&result.h),
+                )
+            }),
     {
         proof {
-            assume(false);
-        }  // VERIFICATION NOTE: postpone limb bounds tracking and other proof obligations
+            // use_type_invariant cannot be scoped in assert-by (mode error)
+            use_type_invariant(P.0);
+
+            assert(fe51_limbs_bounded(&P.0.X, 54) && fe51_limbs_bounded(&P.0.Y, 54)
+                && fe51_limbs_bounded(&P.0.Z, 54) && fe51_limbs_bounded(&P.0.T, 54)) by {
+                lemma_unfold_edwards(P.0);
+                lemma_edwards_point_weaken_to_54(&P.0);
+            };
+            assert(fe51_limbs_bounded(&constants::EDWARDS_D, 54)) by {
+                lemma_edwards_d_limbs_bounded();
+                lemma_fe51_limbs_bounded_weaken(&constants::EDWARDS_D, 51, 54);
+            };
+            assert(sum_of_limbs_bounded(&P.0.Y, &P.0.Y, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.0.Y, &P.0.Y, 52);
+            };
+        }
 
         let XX = P.0.X.square();
         let YY = P.0.Y.square();
         let ZZ = P.0.Z.square();
-        let dTT = &P.0.T.square() * &constants::EDWARDS_D;
+        // ORIGINAL CODE: let dTT = &P.0.T.square() * &constants::EDWARDS_D;
+        // VERUS WORKAROUND: Split to name TT for square-to-field_square bridging proof
+        let TT = P.0.T.square();
+        let dTT = &TT * &constants::EDWARDS_D;
 
-        let e = &P.0.X * &(&P.0.Y + &P.0.Y);  // = 2*X*Y
+        // ORIGINAL CODE: let e = &P.0.X * &(&P.0.Y + &P.0.Y);
+        // VERUS WORKAROUND: Split to insert limb-bound proof between Add and Mul
+        let Y2 = &P.0.Y + &P.0.Y;  // = 2*Y
+
+        proof {
+            assert(fe51_limbs_bounded(&Y2, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&Y2, 53, 54);
+            };
+            assert(sum_of_limbs_bounded(&ZZ, &dTT, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&ZZ, &dTT, 52);
+            };
+            assert(sum_of_limbs_bounded(&YY, &XX, u64::MAX)) by {
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&YY, &XX, 52);
+            };
+        }
+
+        let e = &P.0.X * &Y2;  // = 2*X*Y
         let f = &ZZ + &dTT;  // = Z^2 + d*T^2
         let g = &YY + &XX;  // = Y^2 - a*X^2
         let h = &ZZ - &dTT;  // = Z^2 - d*T^2
 
+        proof {
+            assert(fe51_limbs_bounded(&f, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&f, 53, 54);
+            };
+            assert(fe51_limbs_bounded(&g, 54)) by {
+                lemma_fe51_limbs_bounded_weaken(&g, 53, 54);
+            };
+        }
+
         let eg = &e * &g;
         let fh = &f * &h;
+
+        proof {
+            let x = fe51_as_canonical_nat(&P.0.X);
+            let y = fe51_as_canonical_nat(&P.0.Y);
+            let z = fe51_as_canonical_nat(&P.0.Z);
+            let t = fe51_as_canonical_nat(&P.0.T);
+            let d = fe51_as_canonical_nat(&constants::EDWARDS_D);
+
+            assert(edwards_point_as_nat(P.0) == (x, y, z, t)) by {
+                lemma_unfold_edwards(P.0);
+            };
+
+            assert(fe51_as_canonical_nat(&XX) == field_square(x)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.X), fe51_as_nat(&XX));
+            };
+            assert(fe51_as_canonical_nat(&YY) == field_square(y)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.Y), fe51_as_nat(&YY));
+            };
+            assert(fe51_as_canonical_nat(&ZZ) == field_square(z)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.Z), fe51_as_nat(&ZZ));
+            };
+            assert(fe51_as_canonical_nat(&TT) == field_square(t)) by {
+                lemma_square_matches_field_square(fe51_as_nat(&P.0.T), fe51_as_nat(&TT));
+            };
+
+            assert(fe51_as_canonical_nat(&dTT) == field_mul(d, field_square(t))) by {
+                lemma_field_mul_comm(fe51_as_canonical_nat(&TT), d);
+            };
+
+            assert(fe51_as_canonical_nat(&e) == field_mul(2, field_mul(x, y))) by {
+                assert(field_add(y, y) == field_mul(2, y)) by {
+                    lemma_add_self_eq_double(y);
+                };
+                assert(field_mul(x, field_mul(2, y)) == field_mul(field_mul(x, 2), y)) by {
+                    lemma_field_mul_assoc(x, 2, y);
+                };
+                assert(field_mul(x, 2) == field_mul(2, x)) by {
+                    lemma_field_mul_comm(x, 2);
+                };
+                assert(field_mul(field_mul(2, x), y) == field_mul(2, field_mul(x, y))) by {
+                    lemma_field_mul_assoc(2, x, y);
+                };
+            };
+        }
 
         BatchCompressState { e, f, g, h, eg, fh }
     }
@@ -935,7 +1726,7 @@ impl RistrettoPoint {
                 0 <= i < result@.len() ==> {
                     let point_affine = edwards_point_as_affine(#[trigger] points@[i].0);
                     let doubled_affine = edwards_double(point_affine.0, point_affine.1);
-                    #[trigger] result@[i].0@ == spec_ristretto_compress_affine(
+                    #[trigger] result@[i].0@ == ristretto_compress_affine(
                         doubled_affine.0,
                         doubled_affine.1,
                     )@
@@ -1069,10 +1860,10 @@ impl RistrettoPoint {
             // Each non-zero element is replaced by its multiplicative inverse
             forall|i: int|
                 #![auto]
-                0 <= i < invs.len() ==> ((spec_field_element(&old(invs)[i]) != 0)
-                    ==> is_inverse_field(&old(invs)[i], &invs[i])) && ((spec_field_element(
+                0 <= i < invs.len() ==> ((fe51_as_canonical_nat(&old(invs)[i]) != 0)
+                    ==> is_inverse_field(&old(invs)[i], &invs[i])) && ((fe51_as_canonical_nat(
                     &old(invs)[i],
-                ) == 0) ==> spec_field_element(&invs[i]) == 0),
+                ) == 0) ==> fe51_as_canonical_nat(&invs[i]) == 0),
     {
         // Delegates to Verus-verified FieldElement::batch_invert
         FieldElement::batch_invert(invs.as_mut_slice());
@@ -1092,9 +1883,7 @@ impl RistrettoPoint {
             is_well_formed_edwards_point(result[3]),
             is_ristretto_coset(result, self.0),
     {
-        proof {
-            axiom_eight_torsion_well_formed();
-        }
+        /* <ORIGINAL CODE>
         let coset = [
             self.0,
             &self.0 + &constants::EIGHT_TORSION[2],
@@ -1102,6 +1891,30 @@ impl RistrettoPoint {
             &self.0 + &constants::EIGHT_TORSION[6],
         ];
         coset
+        </ORIGINAL CODE> */
+        let t2 = constants::EIGHT_TORSION[2];
+        let t4 = constants::EIGHT_TORSION[4];
+        let t6 = constants::EIGHT_TORSION[6];
+        proof {
+            use_type_invariant(t2);
+            use_type_invariant(t4);
+            use_type_invariant(t6);
+            assert(is_well_formed_edwards_point(t2)) by {
+                lemma_unfold_edwards(t2);
+            }
+            assert(is_well_formed_edwards_point(t4)) by {
+                lemma_unfold_edwards(t4);
+            }
+            assert(is_well_formed_edwards_point(t6)) by {
+                lemma_unfold_edwards(t6);
+            }
+        }
+        let p0 = self.0;
+        let p1 = &self.0 + &t2;
+        let p2 = &self.0 + &t4;
+        let p3 = &self.0 + &t6;
+        let result = [p0, p1, p2, p3];
+        result
     }
 
     /// Computes the Ristretto Elligator map. This is the
@@ -1117,7 +1930,7 @@ impl RistrettoPoint {
     // The result is the Elligator map applied to r_0
 
             edwards_point_as_affine(result.0) == spec_elligator_ristretto_flavor(
-                spec_field_element(r_0),
+                fe51_as_canonical_nat(r_0),
             ),
             // The result is a valid Ristretto point: well-formed and in the even subgroup
             is_well_formed_edwards_point(result.0),
@@ -1309,7 +2122,7 @@ impl RistrettoPoint {
         ensures
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
-            edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(&hash_bytes),
+            edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(&hash_bytes),
             // Uniform hash output produces uniformly distributed point
             is_uniform_bytes(&hash_bytes) ==> is_uniform_ristretto_point(&result),
     {
@@ -1332,7 +2145,7 @@ impl RistrettoPoint {
         ensures
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
-            edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes),
+            edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(bytes),
             // Uniform input bytes produce uniformly distributed point
             is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result),
     {
@@ -1356,7 +2169,7 @@ impl RistrettoPoint {
         proof {
             // Add postcondition proves is_well_formed_edwards_point(result.0)
             assume(is_in_even_subgroup(result.0));
-            assume(edwards_point_as_affine(result.0) == spec_ristretto_from_uniform_bytes(bytes));
+            assume(edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(bytes));
             assert(is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result)) by {
                 // To prove A ==> B, assume A and derive B.
                 assume(is_uniform_bytes(bytes));
@@ -1401,10 +2214,16 @@ impl Identity for RistrettoPoint {
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
     {
+        let ep = EdwardsPoint::identity();
+
         proof {
-            assume(false);
+            assert(is_in_even_subgroup(ep)) by {
+                assert(edwards_scalar_mul(edwards_identity(), 2) == edwards_identity()) by {
+                    lemma_edwards_scalar_mul_identity(2);
+                }
+            }
         }
-        RistrettoPoint(EdwardsPoint::identity())
+        RistrettoPoint(ep)
     }
 }
 
@@ -1422,14 +2241,34 @@ impl Default for RistrettoPoint {
 // ------------------------------------------------------------------------
 // Equality
 // ------------------------------------------------------------------------
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::cmp::PartialEqSpecImpl for RistrettoPoint {
+    open spec fn obeys_eq_spec() -> bool {
+        true
+    }
+
+    open spec fn eq_spec(&self, other: &Self) -> bool {
+        ristretto_equivalent(self.0, other.0)
+    }
+}
+
 impl PartialEq for RistrettoPoint {
-    fn eq(&self, other: &RistrettoPoint) -> bool {
-        // VERIFICATION NOTE: assume(false) postpones proof obligations
-        proof {
-            assume(false);
-        }
+    fn eq(&self, other: &RistrettoPoint) -> (result: bool)
+        ensures
+            result == ristretto_equivalent(self.0, other.0),
+    {
         // ORIGINAL CODE: self.ct_eq(other).into()
-        choice_into(self.ct_eq(other))
+        let choice = self.ct_eq(other);
+        let result = choice_into(choice);
+
+        proof {
+            assert(result == ristretto_equivalent(self.0, other.0)) by {
+                // ct_eq ensures: choice_is_true(choice) ⟺ ristretto_equivalent
+                // choice_into ensures: result == choice_is_true(choice)
+            }
+        }
+
+        result
     }
 }
 
@@ -1452,25 +2291,26 @@ impl ConstantTimeEq for RistrettoPoint {
     ///
     /// * `Choice(1)` if the two `RistrettoPoint`s are equal;
     /// * `Choice(0)` otherwise.
-    fn ct_eq(&self, other: &RistrettoPoint) -> (result:
-        Choice)/* requires clause in ConstantTimeEqSpecImplRistretto:
-           is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(other.0) */
-
+    fn ct_eq(&self, other: &RistrettoPoint) -> (result: Choice)
         ensures
     // Two Ristretto points are equal iff they are in the same equivalence class
 
             choice_is_true(result) == ristretto_equivalent(self.0, other.0),
     {
         proof {
-            // Precondition from ConstantTimeEqSpecImplRistretto::ct_eq_req needed for multiplications below
-            /* VERIFICATION NOTE:
-            - Verus does not support adding a "requires" clause to ct_eq with ConstantTimeEqSpecImplRistretto,
-            - For standard types like Add, a "requires" clause for "add" was supported through the AddSpecImpl
-            */
-            assume(self.ct_eq_req(other));
-            // Weaken from 52-bounded (EdwardsPoint invariant) to 54-bounded (mul precondition)
-            lemma_edwards_point_weaken_to_54(&self.0);
-            lemma_edwards_point_weaken_to_54(&other.0);
+            // use_type_invariant cannot be inside assert-by (Verus mode restriction)
+            use_type_invariant(self.0);
+            use_type_invariant(other.0);
+
+            // Weaken 52-bounded (type invariant) → 54-bounded (Mul precondition)
+            assert(fe51_limbs_bounded(&self.0.X, 54) && fe51_limbs_bounded(&self.0.Y, 54)) by {
+                lemma_unfold_edwards(self.0);
+                lemma_edwards_point_weaken_to_54(&self.0);
+            }
+            assert(fe51_limbs_bounded(&other.0.X, 54) && fe51_limbs_bounded(&other.0.Y, 54)) by {
+                lemma_unfold_edwards(other.0);
+                lemma_edwards_point_weaken_to_54(&other.0);
+            }
         }
 
         let X1Y2 = &self.0.X * &other.0.Y;
@@ -1478,12 +2318,42 @@ impl ConstantTimeEq for RistrettoPoint {
         let X1X2 = &self.0.X * &other.0.X;
         let Y1Y2 = &self.0.Y * &other.0.Y;
 
-        proof {
-            assume(false);
-        }  // VERIFICATION NOTE: postpone remainder of proof
-
         // ORIGINAL CODE: X1Y2.ct_eq(&Y1X2) | X1X2.ct_eq(&Y1Y2)
-        choice_or(X1Y2.ct_eq(&Y1X2), X1X2.ct_eq(&Y1Y2))
+        let eq1 = X1Y2.ct_eq(&Y1X2);
+        let eq2 = X1X2.ct_eq(&Y1Y2);
+        let result = choice_or(eq1, eq2);
+
+        proof {
+            let x1 = fe51_as_canonical_nat(&self.0.X);
+            let y1 = fe51_as_canonical_nat(&self.0.Y);
+            let x2 = fe51_as_canonical_nat(&other.0.X);
+            let y2 = fe51_as_canonical_nat(&other.0.Y);
+
+            // Bridge byte-level comparison to canonical nat comparison
+            assert((fe51_as_canonical_nat(&X1Y2) == fe51_as_canonical_nat(&Y1X2)) <==> (
+            spec_fe51_as_bytes(&X1Y2) == spec_fe51_as_bytes(&Y1X2))) by {
+                lemma_ct_eq_iff_canonical_nat(&X1Y2, &Y1X2);
+            }
+            assert((fe51_as_canonical_nat(&X1X2) == fe51_as_canonical_nat(&Y1Y2)) <==> (
+            spec_fe51_as_bytes(&X1X2) == spec_fe51_as_bytes(&Y1Y2))) by {
+                lemma_ct_eq_iff_canonical_nat(&X1X2, &Y1Y2);
+            }
+
+            // Products equal field_mul (from Mul postconditions)
+            assert(fe51_as_canonical_nat(&X1Y2) == field_mul(x1, y2));
+            assert(fe51_as_canonical_nat(&Y1X2) == field_mul(y1, x2));
+            assert(fe51_as_canonical_nat(&X1X2) == field_mul(x1, x2));
+            assert(fe51_as_canonical_nat(&Y1Y2) == field_mul(y1, y2));
+
+            // Cross-multiplication test ⟺ ristretto_equivalent
+            assert(choice_is_true(result) == ristretto_equivalent(self.0, other.0)) by {
+                lemma_unfold_edwards(self.0);
+                lemma_unfold_edwards(other.0);
+                axiom_ristretto_cross_mul_iff_equivalent(self.0, other.0);
+            }
+        }
+
+        result
     }
 }
 
@@ -1731,8 +2601,8 @@ impl vstd::std_specs::ops::NegSpecImpl for &RistrettoPoint {
     }
 
     open spec fn neg_req(self) -> bool {
-        // Requires limb bounds on X and T for field element negation
-        fe51_limbs_bounded(&self.0.X, 52) && fe51_limbs_bounded(&self.0.T, 52)
+        // Strengthened to match EdwardsPoint::neg_req
+        is_well_formed_edwards_point(self.0)
     }
 
     open spec fn neg_spec(self) -> RistrettoPoint {
@@ -1748,8 +2618,8 @@ impl vstd::std_specs::ops::NegSpecImpl for RistrettoPoint {
     }
 
     open spec fn neg_req(self) -> bool {
-        // Requires limb bounds on X and T for field element negation
-        fe51_limbs_bounded(&self.0.X, 52) && fe51_limbs_bounded(&self.0.T, 52)
+        // Strengthened to match EdwardsPoint::neg_req
+        is_well_formed_edwards_point(self.0)
     }
 
     open spec fn neg_spec(self) -> RistrettoPoint {
@@ -1807,7 +2677,7 @@ impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
             // Functional correctness: self = [scalar] * old(self)
             edwards_point_as_affine(self.0) == edwards_scalar_mul(
                 edwards_point_as_affine(old(self).0),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         // ORIGINAL CODE: let result = (self as &RistrettoPoint) * scalar;
@@ -1831,7 +2701,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoPoint {
             is_well_formed_edwards_point(result.0),
             edwards_point_as_affine(result.0) == edwards_scalar_mul(
                 edwards_point_as_affine(self.0),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         // Edwards mul ensures: is_well_formed_edwards_point(result) and scalar_mul correctness
@@ -1852,7 +2722,7 @@ impl<'a, 'b> Mul<&'b RistrettoPoint> for &'a Scalar {
             is_well_formed_edwards_point(result.0),
             edwards_point_as_affine(result.0) == edwards_scalar_mul(
                 edwards_point_as_affine(point.0),
-                scalar_to_nat(self),
+                scalar_as_nat(self),
             ),
     {
         // Edwards mul ensures: is_well_formed_edwards_point(result) and scalar_mul correctness
@@ -1873,7 +2743,7 @@ impl RistrettoPoint {
             // Functional correctness: result = [scalar] * B where B is the Ristretto basepoint
             edwards_point_as_affine(result.0) == edwards_scalar_mul(
                 spec_ristretto_basepoint(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
         let r = {
@@ -1881,7 +2751,12 @@ impl RistrettoPoint {
             { scalar * constants::RISTRETTO_BASEPOINT_POINT }
 
             #[cfg(feature = "precomputed-tables")]
-            { scalar * constants::RISTRETTO_BASEPOINT_TABLE }
+            {
+                proof {
+                    axiom_ristretto_basepoint_table_valid();
+                }
+                scalar * constants::RISTRETTO_BASEPOINT_TABLE
+            }
         };
         proof {
             // The underlying Edwards mul_base ensures the functional correctness.
@@ -1890,7 +2765,7 @@ impl RistrettoPoint {
             assume(is_well_formed_edwards_point(r.0));
             assume(edwards_point_as_affine(r.0) == edwards_scalar_mul(
                 spec_ristretto_basepoint(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ));
         }
         r
@@ -2134,12 +3009,14 @@ impl RistrettoPoint {
     ) -> (result: RistrettoPoint)
         requires
             is_well_formed_edwards_point(A.0),
+            scalar_as_nat(a) < pow2(255),
+            scalar_as_nat(b) < pow2(255),
         ensures
             is_well_formed_edwards_point(result.0),
             // Functional correctness: result = a*A + b*B where B is the Ristretto basepoint
             edwards_point_as_affine(result.0) == {
-                let aA = edwards_scalar_mul(edwards_point_as_affine(A.0), scalar_to_nat(a));
-                let bB = edwards_scalar_mul(spec_ristretto_basepoint(), scalar_to_nat(b));
+                let aA = edwards_scalar_mul(edwards_point_as_affine(A.0), scalar_as_nat(a));
+                let bB = edwards_scalar_mul(spec_ristretto_basepoint(), scalar_as_nat(b));
                 edwards_add(aA.0, aA.1, bB.0, bB.1)
             },
     {
@@ -2178,9 +3055,12 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a RistrettoBasepointTable {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result.0) == edwards_scalar_mul(
                 spec_ristretto_basepoint(),
-                scalar_to_nat(scalar),
+                scalar_as_nat(scalar),
             ),
     {
+        proof {
+            axiom_ristretto_basepoint_table_valid();
+        }
         RistrettoPoint(&self.0 * scalar)
     }
 }
@@ -2199,9 +3079,12 @@ impl<'a, 'b> Mul<&'a RistrettoBasepointTable> for &'b Scalar {
             // Functional correctness: result = [scalar] * B
             edwards_point_as_affine(result.0) == edwards_scalar_mul(
                 spec_ristretto_basepoint(),
-                scalar_to_nat(self),
+                scalar_as_nat(self),
             ),
     {
+        proof {
+            axiom_ristretto_basepoint_table_valid();
+        }
         RistrettoPoint(self * &basepoint_table.0)
     }
 }
@@ -2220,11 +3103,15 @@ impl RistrettoBasepointTable {
 
     /// Get the basepoint for this table as a `RistrettoPoint`.
     pub fn basepoint(&self) -> (result: RistrettoPoint)
+        requires
+            is_valid_edwards_basepoint_table(self.0, spec_ristretto_basepoint()),
         ensures
             is_well_formed_edwards_point(result.0),
             // The result is the Ristretto basepoint B
             edwards_point_as_affine(result.0) == spec_ristretto_basepoint(),
     {
+        // Since spec_ristretto_basepoint() == spec_ed25519_basepoint(),
+        // the EdwardsBasepointTable::basepoint precondition is satisfied
         RistrettoPoint(self.0.basepoint())
     }
 }
@@ -2260,10 +3147,7 @@ impl ConditionallySelectable for RistrettoPoint {
     fn conditional_select(a: &RistrettoPoint, b: &RistrettoPoint, choice: Choice) -> (result:
         RistrettoPoint)
         ensures
-    // If choice is false (0), return a
-
             !choice_is_true(choice) ==> result.0 == a.0,
-            // If choice is true (1), return b
             choice_is_true(choice) ==> result.0 == b.0,
     {
         RistrettoPoint(EdwardsPoint::conditional_select(&a.0, &b.0, choice))
@@ -2391,12 +3275,11 @@ impl Zeroize for CompressedRistretto {
 impl Zeroize for RistrettoPoint {
     fn zeroize(&mut self)
         ensures
-    // Inner EdwardsPoint is set to identity (0, 1, 1, 0)
-
-            forall|i: int| 0 <= i < 5 ==> self.0.X.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.0.T.limbs[i] == 0,
-            self.0.Y == FieldElement::ONE,
-            self.0.Z == FieldElement::ONE,
+            forall|i: int| 0 <= i < 5 ==> edwards_x(self.0).limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> edwards_t(self.0).limbs[i] == 0,
+            edwards_y(self.0) == FieldElement::ONE,
+            edwards_z(self.0) == FieldElement::ONE,
+            is_identity_edwards_point(self.0),
     {
         self.0.zeroize();
     }
@@ -2960,6 +3843,7 @@ impl Zeroize for RistrettoPoint {
 //         assert_eq!(Q.compress(), R.compress());
 //     }
 // }
+// Axiom Validation Tests moved to specs/ristretto_specs.rs
 // ------------------------------------------------------------------------
 // Functional Equivalence Tests for Verus implementations
 // ------------------------------------------------------------------------

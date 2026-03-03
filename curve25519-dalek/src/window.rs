@@ -25,13 +25,29 @@ use crate::traits::Identity;
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::subtle_assumes::{
-    conditional_assign_generic, conditional_negate_generic, ct_eq_u16,
+    conditional_assign_generic, conditional_negate_affine_niels, conditional_negate_generic,
+    conditional_negate_projective_niels, ct_eq_u16,
 };
 use crate::edwards::EdwardsPoint;
 
 #[cfg(feature = "zeroize")]
 use zeroize::Zeroize;
 
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::backend::serial::u64::subtle_assumes::choice_is_true;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
+    lemma_affine_niels_affine_equals_edwards_affine, lemma_edwards_add_commutative,
+    lemma_edwards_scalar_mul_additive, lemma_edwards_scalar_mul_succ,
+    lemma_identity_affine_niels_valid, lemma_identity_projective_niels_valid,
+    lemma_negate_affine_niels_preserves_validity, lemma_negate_projective_niels_preserves_validity,
+    lemma_projective_niels_affine_equals_edwards_affine,
+};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -104,12 +120,21 @@ impl LookupTable<AffineNielsPoint> {
         requires
             -8 <= x,
             x <= 8,
+            lookup_table_affine_limbs_bounded(self.0),
+            // Not derivable from limb bounds alone; each entry must correspond to some EdwardsPoint.
+            forall|j: int| 0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] self.0[j]),
         ensures
     // Formal specification for all cases:
 
             (x > 0 ==> result == self.0[(x - 1) as int]),
             (x == 0 ==> result == identity_affine_niels()),
             (x < 0 ==> result == negate_affine_niels(self.0[((-x) - 1) as int])),
+            // Limb bounds on result
+            fe51_limbs_bounded(&result.y_plus_x, 54),
+            fe51_limbs_bounded(&result.y_minus_x, 54),
+            fe51_limbs_bounded(&result.xy2d, 54),
+            // The result is a valid AffineNielsPoint
+            is_valid_affine_niels_point(result),
     {
         // Debug assertions from original macro - ignored by Verus
         #[cfg(not(verus_keep_ghost))]
@@ -118,15 +143,64 @@ impl LookupTable<AffineNielsPoint> {
             debug_assert!(x <= 8);
         }
 
-        assume(false);
-
         // Compute xabs = |x|
         let xmask = x as i16 >> 7;
+        proof {
+            // xmask is 0 or -1, so x + xmask doesn't overflow i16
+            assert((x as i16 >> 7u32) == 0i16 || (x as i16 >> 7u32) == -1i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+            ;
+        }
         let xabs = (x as i16 + xmask) ^ xmask;
+
+        proof {
+            // Bit-vector facts about xmask, xabs
+            // In Verus spec mode, i16 + i16 returns int (for overflow safety),
+            // making `(x as i16 + xmask) ^ xmask` fail because int has no XOR.
+            // Work around by binding the sum as i16 so XOR stays in bitvector land.
+            let xsum: i16 = (x as i16 + xmask) as i16;
+            assert(x >= 0i8 ==> xabs == x as i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+            assert(x < 0i8 ==> xabs == -(x as i16)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+        }
 
         // Set t = 0 * P = identity
         let mut t = AffineNielsPoint::identity();
-        for j in 1..9 {
+        proof {
+            assert(1u64 < (1u64 << 54u64)) by (bit_vector);
+            assert(is_valid_affine_niels_point(t)) by {
+                lemma_identity_affine_niels_valid();
+            }
+        }
+
+        for j in 1..9
+            invariant
+        // Constant-time scan state: t holds the right value based on progress
+
+                (xabs > 0 && (xabs as int) < j) ==> t == self.0[(xabs - 1) as int],
+                (xabs == 0 || (xabs as int) >= j) ==> t == identity_affine_niels(),
+                // Limb bounds preserved
+                fe51_limbs_bounded(&t.y_plus_x, 54),
+                fe51_limbs_bounded(&t.y_minus_x, 54),
+                fe51_limbs_bounded(&t.xy2d, 54),
+                // Validity preserved
+                is_valid_affine_niels_point(t),
+                // Table state (from preconditions, carry through loop)
+                lookup_table_affine_limbs_bounded(self.0),
+                forall|k: int| 0 <= k < 8 ==> is_valid_affine_niels_point(#[trigger] self.0[k]),
+        {
             // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
             /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
             let c = ct_eq_u16(&(xabs as u16), &(j as u16));
@@ -135,9 +209,29 @@ impl LookupTable<AffineNielsPoint> {
         }
         // Now t == |x| * P.
 
+        let ghost old_t = t;
         let neg_mask = Choice::from((xmask & 1) as u8);
+        proof {
+            assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+            assert(x >= 0i8 ==> ((xmask & 1i16) as u8 == 0u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+        }
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
-        conditional_negate_generic(&mut t, neg_mask);
+        conditional_negate_affine_niels(&mut t, neg_mask);
+        proof {
+            if x < 0 {
+                assert(is_valid_affine_niels_point(t)) by {
+                    lemma_negate_affine_niels_preserves_validity(old_t);
+                }
+            }
+        }
         // Now t == x * P.
 
         t
@@ -156,6 +250,8 @@ impl LookupTable<ProjectiveNielsPoint> {
             x <= 8,
             // Table entries must have bounded limbs
             lookup_table_projective_limbs_bounded(self.0),
+            // Each table entry must be a valid ProjectiveNielsPoint
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] self.0[j]),
         ensures
     // Formal specification for all cases:
 
@@ -167,6 +263,8 @@ impl LookupTable<ProjectiveNielsPoint> {
             fe51_limbs_bounded(&result.Y_minus_X, 54),
             fe51_limbs_bounded(&result.Z, 54),
             fe51_limbs_bounded(&result.T2d, 54),
+            // The result is a valid ProjectiveNielsPoint
+            is_valid_projective_niels_point(result),
     {
         /* ORIGINAL CODE: for generic type T, $name, $size, $neg, $range, and $conv_range.
 
@@ -199,15 +297,60 @@ impl LookupTable<ProjectiveNielsPoint> {
             debug_assert!(x <= 8);
         }
 
-        assume(false);
-
         // Compute xabs = |x|
         let xmask = x as i16 >> 7;
+        proof {
+            assert((x as i16 >> 7u32) == 0i16 || (x as i16 >> 7u32) == -1i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+            ;
+        }
         let xabs = (x as i16 + xmask) ^ xmask;
+
+        proof {
+            let xsum: i16 = (x as i16 + xmask) as i16;
+            assert(x >= 0i8 ==> xabs == x as i16) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+            assert(x < 0i8 ==> xabs == -(x as i16)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+                    xsum == (x as i16 + xmask) as i16,
+                    xabs == (xsum ^ xmask),
+            ;
+        }
 
         // Set t = 0 * P = identity
         let mut t = ProjectiveNielsPoint::identity();
-        for j in 1..9 {
+        proof {
+            assert(1u64 < (1u64 << 54u64)) by (bit_vector);
+            assert(is_valid_projective_niels_point(t)) by {
+                lemma_identity_projective_niels_valid();
+            }
+        }
+
+        for j in 1..9
+            invariant
+        // Constant-time scan state: t holds the right value based on progress
+
+                (xabs > 0 && (xabs as int) < j) ==> t == self.0[(xabs - 1) as int],
+                (xabs == 0 || (xabs as int) >= j) ==> t == identity_projective_niels(),
+                // Limb bounds preserved
+                fe51_limbs_bounded(&t.Y_plus_X, 54),
+                fe51_limbs_bounded(&t.Y_minus_X, 54),
+                fe51_limbs_bounded(&t.Z, 54),
+                fe51_limbs_bounded(&t.T2d, 54),
+                // Validity preserved
+                is_valid_projective_niels_point(t),
+                // Table state (from preconditions, carry through loop)
+                lookup_table_projective_limbs_bounded(self.0),
+                forall|k: int| 0 <= k < 8 ==> is_valid_projective_niels_point(#[trigger] self.0[k]),
+        {
             // Copy `points[j-1] == j*P` onto `t` in constant time if `|x| == j`.
             /* ORIGINAL CODE: let c = (xabs as u16).ct_eq(&(j as u16)); */
             let c = ct_eq_u16(&(xabs as u16), &(j as u16));
@@ -216,9 +359,29 @@ impl LookupTable<ProjectiveNielsPoint> {
         }
         // Now t == |x| * P.
 
+        let ghost old_t = t;
         let neg_mask = Choice::from((xmask & 1) as u8);
+        proof {
+            assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+            assert(x >= 0i8 ==> ((xmask & 1i16) as u8 == 0u8)) by (bit_vector)
+                requires
+                    -8i8 <= x && x <= 8i8,
+                    xmask == (x as i16 >> 7u32),
+            ;
+        }
         /* ORIGINAL CODE: t.conditional_negate(neg_mask); */
-        conditional_negate_generic(&mut t, neg_mask);
+        conditional_negate_projective_niels(&mut t, neg_mask);
+        proof {
+            if x < 0 {
+                assert(is_valid_projective_niels_point(t)) by {
+                    lemma_negate_projective_niels_preserves_validity(old_t);
+                }
+            }
+        }
         // Now t == x * P.
 
         t
@@ -283,16 +446,11 @@ impl<T: Debug> Debug for LookupTable<T> {
 impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
     /// Create a lookup table from an EdwardsPoint
     /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            edwards_point_limbs_bounded(*P),
-            sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX),
-        */
-
+    fn from(P: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_lookup_table_projective(result.0, *P, 8 as nat),
-            // All table entries have bounded limbs for subsequent arithmetic
             lookup_table_projective_limbs_bounded(result.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] result.0[j]),
     {
         /* ORIGINAL CODE: for generic $name, $size, and conv_range.
 
@@ -304,46 +462,104 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
 
         In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
         */
-        // Preconditions assumed here since Verus does not support from_req
         proof {
-            assume(edwards_point_limbs_bounded(*P));
-            assume(sum_of_limbs_bounded(&P.Y, &P.X, u64::MAX));
+            use_type_invariant(P);
+            lemma_unfold_edwards(*P);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Y, &P.X, 52);
         }
 
+        let ghost P_affine = edwards_point_as_affine(*P);
         let mut points = [P.as_projective_niels();8];
-        for j in 0..7 {
+        proof {
+            // Base case: points[0] corresponds to 1*P
+            assert(projective_niels_point_as_affine_edwards(points[0]) == P_affine) by {
+                lemma_projective_niels_affine_equals_edwards_affine(points[0], *P);
+            }
+            assert(edwards_scalar_mul(P_affine, 1) == P_affine) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+        }
+        for j in 0..7
+            invariant
+        // Limb bounds for all entries built so far
+
+                forall|k: int|
+                    0 <= k <= j ==> fe51_limbs_bounded(&(#[trigger] points[k]).Y_plus_X, 54)
+                        && fe51_limbs_bounded(&points[k].Y_minus_X, 54) && fe51_limbs_bounded(
+                        &points[k].Z,
+                        54,
+                    ) && fe51_limbs_bounded(&points[k].T2d, 54),
+                // Validity for all entries built so far
+                forall|k: int|
+                    0 <= k <= j ==> is_valid_projective_niels_point(#[trigger] points[k]),
+                // Mathematical correspondence: entry[k] represents (k+1)*P
+                forall|k: int|
+                    0 <= k <= j ==> projective_niels_point_as_affine_edwards(#[trigger] points[k])
+                        == edwards_scalar_mul(P_affine, (k + 1) as nat),
+                // P is well-formed (needed for add preconditions)
+                is_well_formed_edwards_point(*P),
+                edwards_point_limbs_bounded(*P),
+                is_valid_edwards_point(*P),
+                P_affine == edwards_point_as_affine(*P),
+        {
             // ORIGINAL CODE: points[j + 1] = (P + &points[j]).as_extended().as_projective_niels();
-            // NOTE: We must unroll this into intermediate variables (sum, extended) to add
-            // assumes about their limb bounds.
-            // We cannot directly put them in proof blocks because they are exec variables.
             proof {
-                // Preconditions for P + &points[j]
-                assume(is_well_formed_edwards_point(*P));
-                assume(fe51_limbs_bounded(&&points[j as int].Y_plus_X, 54));
-                assume(fe51_limbs_bounded(&&points[j as int].Y_minus_X, 54));
-                assume(fe51_limbs_bounded(&&points[j as int].Z, 54));
-                assume(fe51_limbs_bounded(&&points[j as int].T2d, 54));
+                use_type_invariant(P);
+                lemma_unfold_edwards(*P);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Y, &P.X, 52);
             }
             let sum = P + &points[j];
-            proof {
-                // Preconditions for sum.as_extended()
-                assume(fe51_limbs_bounded(&sum.X, 54));
-                assume(fe51_limbs_bounded(&sum.Y, 54));
-                assume(fe51_limbs_bounded(&sum.Z, 54));
-                assume(fe51_limbs_bounded(&sum.T, 54));
-            }
             let extended = sum.as_extended();
             proof {
-                // Preconditions for extended.as_projective_niels()
-                assume(edwards_point_limbs_bounded(extended));
-                assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                use_type_invariant(extended);
+                lemma_unfold_edwards(extended);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
             }
             points[j + 1] = extended.as_projective_niels();
+            proof {
+                // Prove mathematical correspondence for points[j+1]
+                // Chain: niels_affine(points[j+1]) == ep_affine(extended) == completed_affine(sum) == add(P, points[j])
+                assert(projective_niels_point_as_affine_edwards(points[(j + 1) as int])
+                    == edwards_point_as_affine(extended)) by {
+                    lemma_projective_niels_affine_equals_edwards_affine(
+                        points[(j + 1) as int],
+                        extended,
+                    );
+                }
+                // add(P, scalar_mul(P, j+1)) == scalar_mul(P, j+2) via commutativity + succ lemma
+                let prev = edwards_scalar_mul(P_affine, (j + 1) as nat);
+                assert(edwards_scalar_mul(P_affine, (j + 2) as nat) == edwards_add(
+                    prev.0,
+                    prev.1,
+                    P_affine.0,
+                    P_affine.1,
+                )) by {
+                    lemma_edwards_scalar_mul_succ(P_affine, (j + 1) as nat);
+                }
+                assert(edwards_add(P_affine.0, P_affine.1, prev.0, prev.1) == edwards_add(
+                    prev.0,
+                    prev.1,
+                    P_affine.0,
+                    P_affine.1,
+                )) by {
+                    lemma_edwards_add_commutative(P_affine.0, P_affine.1, prev.0, prev.1);
+                }
+            }
         }
         let result = LookupTable(points);
         proof {
-            assume(is_valid_lookup_table_projective(result.0, *P, 8 as nat));
-            assume(lookup_table_projective_limbs_bounded(result.0));
+            // All 8 entries are valid, bounded, and correspond to scalar multiples
+            assert forall|j: int| 0 <= j < 8 implies is_valid_projective_niels_point(
+                #[trigger] result.0[j],
+            ) by {}
+            assert forall|j: int| 0 <= j < 8 implies {
+                let entry = #[trigger] result.0[j];
+                fe51_limbs_bounded(&entry.Y_plus_X, 54) && fe51_limbs_bounded(&entry.Y_minus_X, 54)
+                    && fe51_limbs_bounded(&entry.Z, 54) && fe51_limbs_bounded(&entry.T2d, 54)
+            } by {}
+            assert forall|j: int| 0 <= j < 8 implies projective_niels_point_as_affine_edwards(
+                #[trigger] result.0[j],
+            ) == edwards_scalar_mul(P_affine, (j + 1) as nat) by {}
         }
         result
     }
@@ -352,13 +568,11 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
 impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
     /// Create a lookup table from an EdwardsPoint (affine version)
     /// Constructs [P, 2P, 3P, ..., Size*P]
-    fn from(P: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            edwards_point_limbs_bounded(*P),
-        */
-
+    fn from(P: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_lookup_table_affine(result.0, *P, 8 as nat),
+            lookup_table_affine_limbs_bounded(result.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_affine_niels_point(#[trigger] result.0[j]),
     {
         /* ORIGINAL CODE: for generic $name, $size, and conv_range.
 
@@ -371,44 +585,87 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
 
         In our instantiation we have $name = LookupTable, $size = 8, and conv_range = 0..7.
         */
-        // Preconditions assumed here since Verus does not support from_req
         proof {
-            assume(edwards_point_limbs_bounded(*P));
+            use_type_invariant(P);
+            lemma_unfold_edwards(*P);
         }
 
+        let ghost P_affine = edwards_point_as_affine(*P);
         let mut points = [P.as_affine_niels();8];
-        // XXX batch inversion would be good if perf mattered here
-        for j in 0..7 {
-            // ORIGINAL CODE:
-            // points[j + 1] = (P + &points[j]).as_extended().as_affine_niels()
-            // For Verus: unroll to assume preconditions for intermediate operations
+        proof {
+            assert(affine_niels_point_as_affine_edwards(points[0]) == P_affine) by {
+                lemma_affine_niels_affine_equals_edwards_affine(points[0], *P);
+            }
+            assert(edwards_scalar_mul(P_affine, 1) == P_affine) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+        }
+        for j in 0..7
+            invariant
+                forall|k: int|
+                    0 <= k <= j ==> fe51_limbs_bounded(&(#[trigger] points[k]).y_plus_x, 54)
+                        && fe51_limbs_bounded(&points[k].y_minus_x, 54) && fe51_limbs_bounded(
+                        &points[k].xy2d,
+                        54,
+                    ),
+                forall|k: int| 0 <= k <= j ==> is_valid_affine_niels_point(#[trigger] points[k]),
+                forall|k: int|
+                    0 <= k <= j ==> affine_niels_point_as_affine_edwards(#[trigger] points[k])
+                        == edwards_scalar_mul(P_affine, (k + 1) as nat),
+                is_well_formed_edwards_point(*P),
+                edwards_point_limbs_bounded(*P),
+                is_valid_edwards_point(*P),
+                P_affine == edwards_point_as_affine(*P),
+        {
+            // ORIGINAL CODE: points[j + 1] = (P + &points[j]).as_extended().as_affine_niels();
             proof {
-                // Preconditions for P (left-hand side of addition)
-                assume(is_well_formed_edwards_point(*P));
-                assume(sum_of_limbs_bounded(&P.Z, &P.Z, u64::MAX));  // for Z2 = &P.Z + &P.Z in add
-                // Preconditions for &points[j] (right-hand side - AffineNielsPoint)
-                assume(fe51_limbs_bounded(&&points[j as int].y_plus_x, 54));
-                assume(fe51_limbs_bounded(&&points[j as int].y_minus_x, 54));
-                assume(fe51_limbs_bounded(&&points[j as int].xy2d, 54));
+                use_type_invariant(P);
+                lemma_unfold_edwards(*P);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&P.Z, &P.Z, 52);
             }
             let sum = P + &points[j];
-            proof {
-                // Preconditions for sum.as_extended()
-                assume(fe51_limbs_bounded(&sum.X, 54));
-                assume(fe51_limbs_bounded(&sum.Y, 54));
-                assume(fe51_limbs_bounded(&sum.Z, 54));
-                assume(fe51_limbs_bounded(&sum.T, 54));
-            }
             let extended = sum.as_extended();
+            points[j + 1] = extended.as_affine_niels();
             proof {
-                // Preconditions for extended.as_affine_niels()
-                assume(edwards_point_limbs_bounded(extended));
+                assert(affine_niels_point_as_affine_edwards(points[(j + 1) as int])
+                    == edwards_point_as_affine(extended)) by {
+                    lemma_affine_niels_affine_equals_edwards_affine(
+                        points[(j + 1) as int],
+                        extended,
+                    );
+                }
+                let prev = edwards_scalar_mul(P_affine, (j + 1) as nat);
+                assert(edwards_scalar_mul(P_affine, (j + 2) as nat) == edwards_add(
+                    prev.0,
+                    prev.1,
+                    P_affine.0,
+                    P_affine.1,
+                )) by {
+                    lemma_edwards_scalar_mul_succ(P_affine, (j + 1) as nat);
+                }
+                assert(edwards_add(P_affine.0, P_affine.1, prev.0, prev.1) == edwards_add(
+                    prev.0,
+                    prev.1,
+                    P_affine.0,
+                    P_affine.1,
+                )) by {
+                    lemma_edwards_add_commutative(P_affine.0, P_affine.1, prev.0, prev.1);
+                }
             }
-            points[j + 1] = extended.as_affine_niels()
         }
         let result = LookupTable(points);
         proof {
-            assume(is_valid_lookup_table_affine(result.0, *P, 8 as nat));
+            assert forall|j: int| 0 <= j < 8 implies is_valid_affine_niels_point(
+                #[trigger] result.0[j],
+            ) by {}
+            assert forall|j: int| 0 <= j < 8 implies {
+                let entry = #[trigger] result.0[j];
+                fe51_limbs_bounded(&entry.y_plus_x, 54) && fe51_limbs_bounded(&entry.y_minus_x, 54)
+                    && fe51_limbs_bounded(&entry.xy2d, 54)
+            } by {}
+            assert forall|j: int| 0 <= j < 8 implies affine_niels_point_as_affine_edwards(
+                #[trigger] result.0[j],
+            ) == edwards_scalar_mul(P_affine, (j + 1) as nat) by {}
         }
         result
     }
@@ -470,12 +727,14 @@ impl NafLookupTable5<ProjectiveNielsPoint> {
             x & 1 == 1,  // x is odd
             x < 16,  // x in {1, 3, 5, 7, 9, 11, 13, 15}
             naf_lookup_table5_projective_limbs_bounded(self.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] self.0[j]),
         ensures
             result == self.0[(x / 2) as int],
             fe51_limbs_bounded(&result.Y_plus_X, 54),
             fe51_limbs_bounded(&result.Y_minus_X, 54),
             fe51_limbs_bounded(&result.Z, 54),
             fe51_limbs_bounded(&result.T2d, 54),
+            is_valid_projective_niels_point(result),
     {
         #[cfg(not(verus_keep_ghost))]
         {
@@ -529,56 +788,103 @@ verus! {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            edwards_point_limbs_bounded(*A),
-            sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX),
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table5_projective(result.0, *A),
             naf_lookup_table5_projective_limbs_bounded(result.0),
+            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] result.0[j]),
     {
-        // Preconditions assumed here since Verus does not support from_req
         proof {
-            assume(edwards_point_limbs_bounded(*A));
-            assume(sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX));
-            assume(is_valid_edwards_point(*A));
+            use_type_invariant(A);
+            lemma_unfold_edwards(*A);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
         }
 
+        let ghost A_affine = edwards_point_as_affine(*A);
         let mut Ai = [A.as_projective_niels();8];
         let A2 = A.double();
+        proof {
+            // Base case: Ai[0] = A corresponds to 1*A = (2*0+1)*A
+            assert(projective_niels_point_as_affine_edwards(Ai[0]) == A_affine) by {
+                lemma_projective_niels_affine_equals_edwards_affine(Ai[0], *A);
+            }
+            assert(edwards_scalar_mul(A_affine, 1) == A_affine) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+            // A2 affine = scalar_mul(A, 2)
+            assert(edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1)) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+        }
+        for i in 0..7
+            invariant
+        // Limb bounds for all entries built so far
 
-        for i in 0..7 {
-            proof {
-                // A2 is 2*A, need to be well-formed for addition
-                assume(is_well_formed_edwards_point(A2));
-                assume(fe51_limbs_bounded(&&Ai[i as int].Y_plus_X, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].Y_minus_X, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].Z, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].T2d, 54));
-            }
+                forall|k: int|
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).Y_plus_X, 54)
+                        && fe51_limbs_bounded(&Ai[k].Y_minus_X, 54) && fe51_limbs_bounded(
+                        &Ai[k].Z,
+                        54,
+                    ) && fe51_limbs_bounded(&Ai[k].T2d, 54),
+                // Validity for all entries built so far
+                forall|k: int| 0 <= k <= i ==> is_valid_projective_niels_point(#[trigger] Ai[k]),
+                // Mathematical correspondence: entry[k] represents (2*k+1)*A
+                forall|k: int|
+                    0 <= k <= i ==> projective_niels_point_as_affine_edwards(#[trigger] Ai[k])
+                        == edwards_scalar_mul(A_affine, (2 * k + 1) as nat),
+                // A2 = double(A) and its affine
+                is_valid_edwards_point(A2),
+                edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
+                edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
+                A_affine == edwards_point_as_affine(*A),
+        {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
-            let sum = &A2 + &Ai[i];
             proof {
-                assume(fe51_limbs_bounded(&sum.X, 54));
-                assume(fe51_limbs_bounded(&sum.Y, 54));
-                assume(fe51_limbs_bounded(&sum.Z, 54));
-                assume(fe51_limbs_bounded(&sum.T, 54));
+                use_type_invariant(A2);
+                lemma_unfold_edwards(A2);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
             }
+            let sum = &A2 + &Ai[i];
             let extended = sum.as_extended();
             proof {
-                assume(edwards_point_limbs_bounded(extended));
-                assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                use_type_invariant(extended);
+                lemma_unfold_edwards(extended);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
             }
             Ai[i + 1] = extended.as_projective_niels();
+            proof {
+                // Prove correspondence for Ai[i+1]: represents (2*(i+1)+1)*A = (2*i+3)*A
+                assert(projective_niels_point_as_affine_edwards(Ai[(i + 1) as int])
+                    == edwards_point_as_affine(extended)) by {
+                    lemma_projective_niels_affine_equals_edwards_affine(
+                        Ai[(i + 1) as int],
+                        extended,
+                    );
+                }
+                // add(scalar_mul(A, 2), scalar_mul(A, 2*i+1)) == scalar_mul(A, 2*i+3)
+                assert(edwards_scalar_mul(A_affine, (2 * i + 3) as nat) == {
+                    let p2 = edwards_scalar_mul(A_affine, 2);
+                    let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
+                    edwards_add(p2.0, p2.1, pk.0, pk.1)
+                }) by {
+                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                }
+            }
         }
         // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A]
         let result = NafLookupTable5(Ai);
         proof {
-            assume(is_valid_naf_lookup_table5_projective(result.0, *A));
-            assume(naf_lookup_table5_projective_limbs_bounded(result.0));
+            assert forall|j: int| 0 <= j < 8 implies projective_niels_point_as_affine_edwards(
+                #[trigger] result.0[j],
+            ) == edwards_scalar_mul(A_affine, (2 * j + 1) as nat) by {}
+            assert forall|j: int| 0 <= j < 8 implies {
+                let entry = #[trigger] result.0[j];
+                fe51_limbs_bounded(&entry.Y_plus_X, 54) && fe51_limbs_bounded(&entry.Y_minus_X, 54)
+                    && fe51_limbs_bounded(&entry.Z, 54) && fe51_limbs_bounded(&entry.T2d, 54)
+            } by {}
+            assert forall|j: int| 0 <= j < 8 implies is_valid_projective_niels_point(
+                #[trigger] result.0[j],
+            ) by {}
         }
         result
     }
@@ -587,57 +893,83 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            edwards_point_limbs_bounded(*A),
-            sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX),
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table5_affine(result.0, *A),
             naf_lookup_table5_affine_limbs_bounded(result.0),
     {
-        // Preconditions assumed here since Verus does not support from_req
         proof {
-            assume(edwards_point_limbs_bounded(*A));
-            assume(sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX));
-            assume(is_valid_edwards_point(*A));
+            use_type_invariant(A);
+            lemma_unfold_edwards(*A);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
         }
 
+        let ghost A_affine = edwards_point_as_affine(*A);
         let mut Ai = [A.as_affine_niels();8];
         let A2 = A.double();
-
-        for i in 0..7 {
-            proof {
-                // A2 is 2*A, need to be well-formed for addition
-                assume(is_well_formed_edwards_point(A2));
-                // Additional requirement for EdwardsPoint + AffineNielsPoint
-                assume(sum_of_limbs_bounded(&A2.Z, &A2.Z, u64::MAX));
-                assume(fe51_limbs_bounded(&&Ai[i as int].y_plus_x, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].y_minus_x, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].xy2d, 54));
+        proof {
+            assert(affine_niels_point_as_affine_edwards(Ai[0]) == A_affine) by {
+                lemma_affine_niels_affine_equals_edwards_affine(Ai[0], *A);
             }
+            assert(edwards_scalar_mul(A_affine, 1) == A_affine) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+            assert(edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1)) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+        }
+        for i in 0..7
+            invariant
+                forall|k: int|
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).y_plus_x, 54)
+                        && fe51_limbs_bounded(&Ai[k].y_minus_x, 54) && fe51_limbs_bounded(
+                        &Ai[k].xy2d,
+                        54,
+                    ),
+                forall|k: int| 0 <= k <= i ==> is_valid_affine_niels_point(#[trigger] Ai[k]),
+                forall|k: int|
+                    0 <= k <= i ==> affine_niels_point_as_affine_edwards(#[trigger] Ai[k])
+                        == edwards_scalar_mul(A_affine, (2 * k + 1) as nat),
+                is_valid_edwards_point(A2),
+                edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
+                edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
+                A_affine == edwards_point_as_affine(*A),
+        {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
+            proof {
+                use_type_invariant(A2);
+                lemma_unfold_edwards(A2);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Z, &A2.Z, 52);
+            }
             let sum = &A2 + &Ai[i];
-            proof {
-                assume(fe51_limbs_bounded(&sum.X, 54));
-                assume(fe51_limbs_bounded(&sum.Y, 54));
-                assume(fe51_limbs_bounded(&sum.Z, 54));
-                assume(fe51_limbs_bounded(&sum.T, 54));
-            }
             let extended = sum.as_extended();
-            proof {
-                assume(edwards_point_limbs_bounded(extended));
-                assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
-            }
             Ai[i + 1] = extended.as_affine_niels();
+            proof {
+                assert(affine_niels_point_as_affine_edwards(Ai[(i + 1) as int])
+                    == edwards_point_as_affine(extended)) by {
+                    lemma_affine_niels_affine_equals_edwards_affine(Ai[(i + 1) as int], extended);
+                }
+                assert(edwards_scalar_mul(A_affine, (2 * i + 3) as nat) == {
+                    let p2 = edwards_scalar_mul(A_affine, 2);
+                    let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
+                    edwards_add(p2.0, p2.1, pk.0, pk.1)
+                }) by {
+                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                }
+            }
         }
         // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A]
         let result = NafLookupTable5(Ai);
         proof {
-            assume(is_valid_naf_lookup_table5_affine(result.0, *A));
-            assume(naf_lookup_table5_affine_limbs_bounded(result.0));
+            assert forall|j: int| 0 <= j < 8 implies affine_niels_point_as_affine_edwards(
+                #[trigger] result.0[j],
+            ) == edwards_scalar_mul(A_affine, (2 * j + 1) as nat) by {}
+            assert forall|j: int| 0 <= j < 8 implies {
+                let entry = #[trigger] result.0[j];
+                fe51_limbs_bounded(&entry.y_plus_x, 54) && fe51_limbs_bounded(&entry.y_minus_x, 54)
+                    && fe51_limbs_bounded(&entry.xy2d, 54)
+            } by {}
         }
         result
     }
@@ -753,56 +1085,98 @@ verus! {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, ..., 127A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            edwards_point_limbs_bounded(*A),
-            sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX),
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table8_projective(result.0, *A),
             naf_lookup_table8_projective_limbs_bounded(result.0),
     {
-        // Preconditions assumed here since Verus does not support from_req
         proof {
-            assume(edwards_point_limbs_bounded(*A));
-            assume(sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX));
-            assume(is_valid_edwards_point(*A));
+            use_type_invariant(A);
+            lemma_unfold_edwards(*A);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
         }
 
+        let ghost A_affine = edwards_point_as_affine(*A);
         let mut Ai = [A.as_projective_niels();64];
         let A2 = A.double();
-
-        for i in 0..63 {
-            proof {
-                // A2 is 2*A, need to be well-formed for addition
-                assume(is_well_formed_edwards_point(A2));
-                assume(fe51_limbs_bounded(&&Ai[i as int].Y_plus_X, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].Y_minus_X, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].Z, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].T2d, 54));
+        proof {
+            assert(projective_niels_point_as_affine_edwards(Ai[0]) == A_affine) by {
+                lemma_projective_niels_affine_equals_edwards_affine(Ai[0], *A);
             }
+            assert(edwards_scalar_mul(A_affine, 1) == A_affine) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+            assert(edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1)) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+        }
+        for i in 0..63
+            invariant
+                forall|k: int|
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).Y_plus_X, 54)
+                        && fe51_limbs_bounded(&Ai[k].Y_minus_X, 54) && fe51_limbs_bounded(
+                        &Ai[k].Z,
+                        54,
+                    ) && fe51_limbs_bounded(&Ai[k].T2d, 54),
+                forall|k: int| 0 <= k <= i ==> is_valid_projective_niels_point(#[trigger] Ai[k]),
+                forall|k: int|
+                    0 <= k <= i ==> projective_niels_point_as_affine_edwards(#[trigger] Ai[k])
+                        == edwards_scalar_mul(A_affine, (2 * k + 1) as nat),
+                is_valid_edwards_point(A2),
+                edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
+                edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
+                A_affine == edwards_point_as_affine(*A),
+        {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
-            let sum = &A2 + &Ai[i];
             proof {
-                assume(fe51_limbs_bounded(&sum.X, 54));
-                assume(fe51_limbs_bounded(&sum.Y, 54));
-                assume(fe51_limbs_bounded(&sum.Z, 54));
-                assume(fe51_limbs_bounded(&sum.T, 54));
+                use_type_invariant(A2);
+                assert(is_well_formed_edwards_point(A2)) by {
+                    lemma_unfold_edwards(A2);
+                }
+                assert(sum_of_limbs_bounded(&A2.X, &A2.Y, u64::MAX)) by {
+                    lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
+                }
             }
+            let sum = &A2 + &Ai[i];
             let extended = sum.as_extended();
             proof {
-                assume(edwards_point_limbs_bounded(extended));
-                assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
+                use_type_invariant(extended);
+                assert(is_well_formed_edwards_point(extended)) by {
+                    lemma_unfold_edwards(extended);
+                }
+                assert(sum_of_limbs_bounded(&extended.X, &extended.Y, u64::MAX)) by {
+                    lemma_sum_of_limbs_bounded_from_fe51_bounded(&extended.Y, &extended.X, 52);
+                }
             }
             Ai[i + 1] = extended.as_projective_niels();
+            proof {
+                assert(projective_niels_point_as_affine_edwards(Ai[(i + 1) as int])
+                    == edwards_point_as_affine(extended)) by {
+                    lemma_projective_niels_affine_equals_edwards_affine(
+                        Ai[(i + 1) as int],
+                        extended,
+                    );
+                }
+                assert(edwards_scalar_mul(A_affine, (2 * i + 3) as nat) == {
+                    let p2 = edwards_scalar_mul(A_affine, 2);
+                    let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
+                    edwards_add(p2.0, p2.1, pk.0, pk.1)
+                }) by {
+                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                }
+            }
         }
         // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
         let result = NafLookupTable8(Ai);
         proof {
-            assume(is_valid_naf_lookup_table8_projective(result.0, *A));
-            assume(naf_lookup_table8_projective_limbs_bounded(result.0));
+            assert forall|j: int| 0 <= j < 64 implies projective_niels_point_as_affine_edwards(
+                #[trigger] result.0[j],
+            ) == edwards_scalar_mul(A_affine, (2 * j + 1) as nat) by {}
+            assert forall|j: int| 0 <= j < 64 implies {
+                let entry = #[trigger] result.0[j];
+                fe51_limbs_bounded(&entry.Y_plus_X, 54) && fe51_limbs_bounded(&entry.Y_minus_X, 54)
+                    && fe51_limbs_bounded(&entry.Z, 54) && fe51_limbs_bounded(&entry.T2d, 54)
+            } by {}
         }
         result
     }
@@ -812,57 +1186,83 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
 impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
     /// Create a NAF lookup table from an EdwardsPoint
     /// Constructs [A, 3A, 5A, 7A, ..., 127A] (odd multiples)
-    fn from(A: &'a EdwardsPoint) -> (result:
-        Self)/* Expected requires (if Verus supported from_req):
-            edwards_point_limbs_bounded(*A),
-            sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX),
-            is_valid_edwards_point(*A),
-        */
-
+    fn from(A: &'a EdwardsPoint) -> (result: Self)
         ensures
             is_valid_naf_lookup_table8_affine(result.0, *A),
             naf_lookup_table8_affine_limbs_bounded(result.0),
     {
-        // Preconditions assumed here since Verus does not support from_req
         proof {
-            assume(edwards_point_limbs_bounded(*A));
-            assume(sum_of_limbs_bounded(&A.Y, &A.X, u64::MAX));
-            assume(is_valid_edwards_point(*A));
+            use_type_invariant(A);
+            lemma_unfold_edwards(*A);
+            lemma_sum_of_limbs_bounded_from_fe51_bounded(&A.Y, &A.X, 52);
         }
 
+        let ghost A_affine = edwards_point_as_affine(*A);
         let mut Ai = [A.as_affine_niels();64];
         let A2 = A.double();
-
-        for i in 0..63 {
-            proof {
-                // A2 is 2*A, need to be well-formed for addition
-                assume(is_well_formed_edwards_point(A2));
-                // Additional requirement for EdwardsPoint + AffineNielsPoint
-                assume(sum_of_limbs_bounded(&A2.Z, &A2.Z, u64::MAX));
-                assume(fe51_limbs_bounded(&&Ai[i as int].y_plus_x, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].y_minus_x, 54));
-                assume(fe51_limbs_bounded(&&Ai[i as int].xy2d, 54));
+        proof {
+            assert(affine_niels_point_as_affine_edwards(Ai[0]) == A_affine) by {
+                lemma_affine_niels_affine_equals_edwards_affine(Ai[0], *A);
             }
+            assert(edwards_scalar_mul(A_affine, 1) == A_affine) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+            assert(edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1)) by {
+                reveal_with_fuel(edwards_scalar_mul, 2);
+            }
+        }
+        for i in 0..63
+            invariant
+                forall|k: int|
+                    0 <= k <= i ==> fe51_limbs_bounded(&(#[trigger] Ai[k]).y_plus_x, 54)
+                        && fe51_limbs_bounded(&Ai[k].y_minus_x, 54) && fe51_limbs_bounded(
+                        &Ai[k].xy2d,
+                        54,
+                    ),
+                forall|k: int| 0 <= k <= i ==> is_valid_affine_niels_point(#[trigger] Ai[k]),
+                forall|k: int|
+                    0 <= k <= i ==> affine_niels_point_as_affine_edwards(#[trigger] Ai[k])
+                        == edwards_scalar_mul(A_affine, (2 * k + 1) as nat),
+                is_valid_edwards_point(A2),
+                edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
+                edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
+                A_affine == edwards_point_as_affine(*A),
+        {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
+            proof {
+                use_type_invariant(A2);
+                lemma_unfold_edwards(A2);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Y, &A2.X, 52);
+                lemma_sum_of_limbs_bounded_from_fe51_bounded(&A2.Z, &A2.Z, 52);
+            }
             let sum = &A2 + &Ai[i];
-            proof {
-                assume(fe51_limbs_bounded(&sum.X, 54));
-                assume(fe51_limbs_bounded(&sum.Y, 54));
-                assume(fe51_limbs_bounded(&sum.Z, 54));
-                assume(fe51_limbs_bounded(&sum.T, 54));
-            }
             let extended = sum.as_extended();
-            proof {
-                assume(edwards_point_limbs_bounded(extended));
-                assume(sum_of_limbs_bounded(&extended.Y, &extended.X, u64::MAX));
-            }
             Ai[i + 1] = extended.as_affine_niels();
+            proof {
+                assert(affine_niels_point_as_affine_edwards(Ai[(i + 1) as int])
+                    == edwards_point_as_affine(extended)) by {
+                    lemma_affine_niels_affine_equals_edwards_affine(Ai[(i + 1) as int], extended);
+                }
+                assert(edwards_scalar_mul(A_affine, (2 * i + 3) as nat) == {
+                    let p2 = edwards_scalar_mul(A_affine, 2);
+                    let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
+                    edwards_add(p2.0, p2.1, pk.0, pk.1)
+                }) by {
+                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                }
+            }
         }
         // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A, ..., 127A]
         let result = NafLookupTable8(Ai);
         proof {
-            assume(is_valid_naf_lookup_table8_affine(result.0, *A));
-            assume(naf_lookup_table8_affine_limbs_bounded(result.0));
+            assert forall|j: int| 0 <= j < 64 implies affine_niels_point_as_affine_edwards(
+                #[trigger] result.0[j],
+            ) == edwards_scalar_mul(A_affine, (2 * j + 1) as nat) by {}
+            assert forall|j: int| 0 <= j < 64 implies {
+                let entry = #[trigger] result.0[j];
+                fe51_limbs_bounded(&entry.y_plus_x, 54) && fe51_limbs_bounded(&entry.y_minus_x, 54)
+                    && fe51_limbs_bounded(&entry.xy2d, 54)
+            } by {}
         }
         result
     }

@@ -15,6 +15,7 @@ jobs:
     uses: beneficial-ai-foundation/verilib-cli/.github/workflows/verilib-verify.yml@la/create_github_actions
     with:
       project-path: .
+      mode: generate
       deploy-enabled: true
       repo-id: '5054'
     secrets:

@@ -511,7 +511,10 @@ pub open spec fn elligator_intermediates(r_0: nat) -> (nat, nat, nat) {
 /// Runtime validation: `test_elligator_on_curve` (200+ inputs)
 pub proof fn axiom_elligator_on_curve(r_0: nat)
     ensures
-        is_on_edwards_curve(spec_elligator_ristretto_flavor(r_0).0, spec_elligator_ristretto_flavor(r_0).1),
+        is_on_edwards_curve(
+            spec_elligator_ristretto_flavor(r_0).0,
+            spec_elligator_ristretto_flavor(r_0).1,
+        ),
 {
     admit();
 }

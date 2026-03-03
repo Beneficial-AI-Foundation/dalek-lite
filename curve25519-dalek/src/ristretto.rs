@@ -2305,7 +2305,9 @@ impl RistrettoPoint {
                 }
             });
 
-            assert(completed_point_as_affine_edwards(cp) == spec_elligator_ristretto_flavor(r_0_nat));
+            assert(completed_point_as_affine_edwards(cp) == spec_elligator_ristretto_flavor(
+                r_0_nat,
+            ));
         }
 
         // ------- Nonzero denominators + validity -------

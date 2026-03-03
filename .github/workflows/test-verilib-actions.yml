@@ -16,7 +16,6 @@ jobs:
     with:
       project-path: .
       mode: generate
-      functions-to-track: .verilib/tracked_functions.csv
       deploy-enabled: true
       repo-id: '5054'
     secrets:

@@ -240,8 +240,10 @@ pub proof fn lemma_minus_one_field_element_value()
     };
 }
 
-/// Crate-local pow2 evaluatable by the Verus compute interpreter.
-/// vstd::pow2 is cross-crate and cannot be evaluated by `by (compute)`.
+/// Crate-local pow2/u5_nat/p() that the Verus `by (compute_only)` interpreter
+/// can evaluate.  vstd's `pow2` is cross-crate, so the interpreter refuses it.
+/// After the compute phase, `lemma_bridge_local_pow2` equates each local_pow2(k)
+/// with pow2(k), letting Z3 unify local_u5_nat/local_p with u64_5_as_nat/p().
 #[verifier::memoize]
 spec fn local_pow2(n: nat) -> nat
     decreases n,
@@ -262,10 +264,48 @@ spec fn local_p() -> nat {
     (local_pow2(255) - 19) as nat
 }
 
-/// ONE_MINUS_EDWARDS_D_SQUARED = (1-d)(1+d) mod p
+/// Bridge: local_pow2(k) == pow2(k) for k ∈ {51, 102, 153, 204, 255}.
+///
+/// After this, Z3 can derive local_u5_nat(l) == u64_5_as_nat(l) and
+/// local_p() == p() automatically.
+proof fn lemma_bridge_local_pow2()
+    ensures
+        local_pow2(51) == pow2(51),
+        local_pow2(102) == pow2(102),
+        local_pow2(153) == pow2(153),
+        local_pow2(204) == pow2(204),
+        local_pow2(255) == pow2(255),
+{
+    assert(local_pow2(51) == 2251799813685248nat) by (compute_only);
+    assert(pow2(51) == 2251799813685248nat) by {
+        lemma2_to64_rest();
+    };
+
+    assert(local_pow2(102) == local_pow2(51) * local_pow2(51)) by (compute_only);
+    assert(pow2(102) == pow2(51) * pow2(51)) by {
+        lemma_pow2_adds(51, 51);
+    };
+
+    assert(local_pow2(153) == local_pow2(51) * local_pow2(102)) by (compute_only);
+    assert(pow2(153) == pow2(51) * pow2(102)) by {
+        lemma_pow2_adds(51, 102);
+    };
+
+    assert(local_pow2(204) == local_pow2(51) * local_pow2(153)) by (compute_only);
+    assert(pow2(204) == pow2(51) * pow2(153)) by {
+        lemma_pow2_adds(51, 153);
+    };
+
+    assert(local_pow2(255) == local_pow2(51) * local_pow2(204)) by (compute_only);
+    assert(pow2(255) == pow2(51) * pow2(204)) by {
+        lemma_pow2_adds(51, 204);
+    };
+}
+
+/// ONE_MINUS_EDWARDS_D_SQUARED = (1−d)(1+d) mod p
 ///
 /// Proved by computation (local_pow2 evaluated by interpreter) then bridged to
-/// spec-level functions via pow2 equalities established by existing lemmas.
+/// spec-level functions via `lemma_bridge_local_pow2`.
 pub proof fn lemma_one_minus_d_squared_value()
     ensures
         fe51_as_canonical_nat(&ONE_MINUS_EDWARDS_D_SQUARED) == field_mul(
@@ -273,7 +313,6 @@ pub proof fn lemma_one_minus_d_squared_value()
             field_add(1, fe51_as_canonical_nat(&crate::backend::serial::u64::constants::EDWARDS_D)),
         ),
 {
-    // Phase 1: Verify the numeric equality via the compute interpreter.
     assert({
         let lp = local_p();
         let omd_val = local_u5_nat(ONE_MINUS_EDWARDS_D_SQUARED.limbs) % lp;
@@ -283,49 +322,19 @@ pub proof fn lemma_one_minus_d_squared_value()
         omd_val == (one_minus_d * one_plus_d) % lp
     }) by (compute_only);
 
-    // Phase 2: Bridge local_pow2(k) == pow2(k) for each k.
-    // Strategy: both sides evaluate to the same concrete number via independent paths.
-    assert(local_pow2(51) == 2251799813685248nat) by (compute_only);
-    assert(pow2(51) == 2251799813685248nat) by {
-        lemma2_to64_rest();
-    };
-
-    assert(local_pow2(102) == local_pow2(51) * local_pow2(51)) by (compute_only);
-    assert(pow2(102) == pow2(51) * pow2(51)) by {
-        lemma_pow2_adds(51, 51);
-    };
-
-    assert(local_pow2(153) == local_pow2(51) * local_pow2(102)) by (compute_only);
-    assert(pow2(153) == pow2(51) * pow2(102)) by {
-        lemma_pow2_adds(51, 102);
-    };
-
-    assert(local_pow2(204) == local_pow2(51) * local_pow2(153)) by (compute_only);
-    assert(pow2(204) == pow2(51) * pow2(153)) by {
-        lemma_pow2_adds(51, 153);
-    };
-
-    assert(local_pow2(255) == local_pow2(51) * local_pow2(204)) by (compute_only);
-    assert(pow2(255) == pow2(51) * pow2(204)) by {
-        lemma_pow2_adds(51, 204);
-    };
-
-    // Phase 3: Z3 derives local_p() == p() and local_u5_nat == u64_5_as_nat
-    // from the equalities above, completing the proof.
+    lemma_bridge_local_pow2();
 }
 
-/// EDWARDS_D_MINUS_ONE_SQUARED = (d-1)^2 mod p
+/// EDWARDS_D_MINUS_ONE_SQUARED = (d−1)² mod p
 ///
 /// Proved by computation (local_pow2 evaluated by interpreter) then bridged to
-/// spec-level functions via pow2 equalities.
+/// spec-level functions via `lemma_bridge_local_pow2`.
 pub proof fn lemma_d_minus_one_squared_value()
     ensures
         fe51_as_canonical_nat(&EDWARDS_D_MINUS_ONE_SQUARED) == field_square(
             field_sub(fe51_as_canonical_nat(&crate::backend::serial::u64::constants::EDWARDS_D), 1),
         ),
 {
-    // Phase 1: Verify the numeric equality via the compute interpreter.
-    // field_square(field_sub(d, 1)) = ((d - 1 + p) % p)^2 % p
     assert({
         let lp = local_p();
         let dmo_val = local_u5_nat(EDWARDS_D_MINUS_ONE_SQUARED.limbs) % lp;
@@ -334,31 +343,7 @@ pub proof fn lemma_d_minus_one_squared_value()
         dmo_val == (d_minus_one * d_minus_one) % lp
     }) by (compute_only);
 
-    // Phase 2: Bridge local_pow2(k) == pow2(k).
-    assert(local_pow2(51) == 2251799813685248nat) by (compute_only);
-    assert(pow2(51) == 2251799813685248nat) by {
-        lemma2_to64_rest();
-    };
-
-    assert(local_pow2(102) == local_pow2(51) * local_pow2(51)) by (compute_only);
-    assert(pow2(102) == pow2(51) * pow2(51)) by {
-        lemma_pow2_adds(51, 51);
-    };
-
-    assert(local_pow2(153) == local_pow2(51) * local_pow2(102)) by (compute_only);
-    assert(pow2(153) == pow2(51) * pow2(102)) by {
-        lemma_pow2_adds(51, 102);
-    };
-
-    assert(local_pow2(204) == local_pow2(51) * local_pow2(153)) by (compute_only);
-    assert(pow2(204) == pow2(51) * pow2(153)) by {
-        lemma_pow2_adds(51, 153);
-    };
-
-    assert(local_pow2(255) == local_pow2(51) * local_pow2(204)) by (compute_only);
-    assert(pow2(255) == pow2(51) * pow2(204)) by {
-        lemma_pow2_adds(51, 204);
-    };
+    lemma_bridge_local_pow2();
 }
 
 // =============================================================================
@@ -443,7 +428,7 @@ pub proof fn lemma_sqrt_ad_minus_one_limbs_bounded()
     };
 }
 
-/// ONE_MINUS_EDWARDS_D_SQUARED = (1 - d)^2 * (1 + d)^(-2) ... actually (1-d^2) has 51-bit bounded limbs.
+/// ONE_MINUS_EDWARDS_D_SQUARED = 1 - d² has 51-bit bounded limbs.
 ///
 /// limbs = [1136626929484150, 1998550399581263, 496427632559748, 118527312129759, 45110755273534]
 /// max limb = 1998550399581263 < 2^51 = 2251799813685248

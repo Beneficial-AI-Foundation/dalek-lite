@@ -476,7 +476,7 @@ pub open spec fn elligator_intermediates(r_0: nat) -> (nat, nat, nat) {
     let d_val = field_mul(field_sub(c_init, field_mul(d, r)), field_add(r, d));
 
     let invsqrt_val = nat_invsqrt(field_mul(n_s, d_val));
-    let s_if_square = nonneg_field(field_mul(invsqrt_val, n_s));
+    let s_if_square = field_abs(field_mul(invsqrt_val, n_s));
     let was_square = is_sqrt_ratio(n_s, d_val, s_if_square);
 
     let s_prime_raw = field_mul(s_if_square, r_0);
@@ -519,34 +519,26 @@ pub proof fn axiom_elligator_on_curve(r_0: nat)
     admit();
 }
 
-/// Axiom: The Elligator map's intermediate N_t is always nonzero.
+/// Axiom: The Elligator intermediates have nonzero denominators.
 ///
-/// N_t = c·(r − 1)·(d − 1)² − D is nonzero for all r_0 because the
-/// algebraic structure of the Elligator map avoids degenerate cases.
-///
-/// Reference: [RISTRETTO] section 4.3.4; Hamburg, "Decaf" section 4
-/// Runtime validation: `test_elligator_nonzero_denominators` (200+ inputs)
-pub proof fn axiom_elligator_n_t_nonzero(r_0: nat, s_nat: nat, n_t_nat: nat, d_val_nat: nat)
-    requires
-        (s_nat, n_t_nat, d_val_nat) == elligator_intermediates(r_0),
-    ensures
-        n_t_nat % p() != 0,
-{
-    admit();
-}
-
-/// Axiom: The Elligator map never produces s = ±sqrt(−1), so T = 1 + s² ≠ 0.
-///
-/// Even though −1 IS a square in GF(p) (with sqrt(−1) = i), the specific s
-/// values produced by the Elligator construction never equal ±i.
+/// (1) N_t ≠ 0 (mod p): N_t = c·(r − 1)·(d − 1)² − D avoids zero because the
+///     algebraic structure of the map avoids degenerate cases.
+/// (2) 1 + s² ≠ 0 (mod p): s never equals ±√(−1), even though −1 is a square
+///     in GF(p), because the Elligator construction never produces those values.
 ///
 /// Reference: [RISTRETTO] section 4.3.4; Hamburg, "Decaf" section 4
 /// Runtime validation: `test_elligator_nonzero_denominators` (200+ inputs)
-pub proof fn axiom_elligator_t_completed_nonzero(r_0: nat, s_nat: nat, n_t_nat: nat, d_val_nat: nat)
+pub proof fn axiom_elligator_nonzero_intermediates(
+    r_0: nat,
+    s_nat: nat,
+    n_t_nat: nat,
+    d_val_nat: nat,
+)
     requires
         s_nat < p(),
         (s_nat, n_t_nat, d_val_nat) == elligator_intermediates(r_0),
     ensures
+        n_t_nat % p() != 0,
         field_add(1, field_square(s_nat)) != 0,
 {
     admit();
@@ -554,9 +546,9 @@ pub proof fn axiom_elligator_t_completed_nonzero(r_0: nat, s_nat: nat, n_t_nat: 
 
 /// The Elligator completed point has nonzero Z and T denominators.
 ///
-/// Z != 0 is PROVEN from axiom_elligator_n_t_nonzero + lemma_sqrt_ad_minus_one_nonzero
-/// + lemma_nonzero_product (no zero divisors in GF(p)).
-/// T != 0 follows from axiom_elligator_t_completed_nonzero.
+/// Z = N_t · √(ad−1) ≠ 0: N_t ≠ 0 (axiom) ∧ √(ad−1) ≠ 0 (proven)
+///   ⟹ product ≠ 0 (no zero divisors in GF(p)).
+/// T = 1 + s² ≠ 0: from axiom_elligator_nonzero_intermediates.
 ///
 /// Reference: [RISTRETTO] section 4.3.4; Hamburg, "Decaf" section 4
 /// Runtime validation: `test_elligator_nonzero_denominators` (200+ inputs)
@@ -578,12 +570,7 @@ pub proof fn lemma_elligator_nonzero_denominators(
         z_completed != 0,
         t_completed != 0,
 {
-    // T != 0: algebraic property of the Elligator map
-    axiom_elligator_t_completed_nonzero(r_0, s_nat, n_t_nat, d_val_nat);
-
-    // Z != 0: N_t != 0 (axiom) and sqrt(ad-1) != 0 (proven constant fact),
-    // and GF(p) has no zero divisors.
-    axiom_elligator_n_t_nonzero(r_0, s_nat, n_t_nat, d_val_nat);
+    axiom_elligator_nonzero_intermediates(r_0, s_nat, n_t_nat, d_val_nat);
     lemma_sqrt_ad_minus_one_nonzero();
     lemma_nonzero_product(n_t_nat, spec_sqrt_ad_minus_one());
 }
@@ -596,12 +583,11 @@ pub proof fn lemma_elligator_nonzero_denominators(
 ///
 /// Reference: [RISTRETTO] §4.3.4; Hamburg, "Decaf" §3
 /// Runtime validation: `test_elligator_in_even_subgroup` (200+ inputs)
-pub proof fn axiom_elligator_in_even_subgroup(r_0: nat, point: EdwardsPoint)
-    requires
-        edwards_point_as_affine(point) == spec_elligator_ristretto_flavor(r_0),
-        is_well_formed_edwards_point(point),
+pub proof fn axiom_elligator_in_even_subgroup(r_0: nat)
     ensures
-        is_in_even_subgroup(point),
+        forall|point: EdwardsPoint|
+            edwards_point_as_affine(point) == spec_elligator_ristretto_flavor(r_0)
+                && is_well_formed_edwards_point(point) ==> #[trigger] is_in_even_subgroup(point),
 {
     admit();
 }
@@ -1500,7 +1486,7 @@ mod test_ristretto_decode_axioms {
     /// sqrt_ratio_i(u, v) == |nat_invsqrt(u*v) * u| (nonneg correction applied).
     ///
     /// The raw product invsqrt(u*v)*u can be negative (~half the time),
-    /// so we apply conditional_negate (the runtime equivalent of nonneg_field)
+    /// so we apply conditional_negate (the runtime equivalent of field_abs)
     /// before comparing to the exec result r which is always non-negative.
     #[test]
     fn test_sqrt_ratio_matches_invsqrt_mul() {
@@ -1530,7 +1516,7 @@ mod test_ristretto_decode_axioms {
             let inv = invsqrt_field(&uv);
             let mut s_spec = &inv * &u;
 
-            // Apply nonneg_field: conditional_negate if negative
+            // Apply field_abs: conditional_negate if negative
             let neg = s_spec.is_negative();
             s_spec.conditional_negate(neg);
 

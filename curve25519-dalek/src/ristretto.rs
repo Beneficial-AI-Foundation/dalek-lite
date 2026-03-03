@@ -1920,6 +1920,11 @@ impl RistrettoPoint {
         let p2 = &self.0 + &t4;
         let p3 = &self.0 + &t6;
         let result = [p0, p1, p2, p3];
+        proof {
+            assert(t2 == spec_eight_torsion()[2]);
+            assert(t4 == spec_eight_torsion()[4]);
+            assert(t6 == spec_eight_torsion()[6]);
+        }
         result
     }
 
@@ -2096,18 +2101,6 @@ impl RistrettoPoint {
         }
         let N_t = &c_rm1_dsq - &D;
 
-        /* ORIGINAL_CODE:
-        let s_sq = s.square();
-        // The conversion from W_i is exactly the conversion from P1xP1.
-        RistrettoPoint(
-            CompletedPoint {
-                X: &(&s + &s) * &D,
-                Z: &N_t * &constants::SQRT_AD_MINUS_ONE,
-                Y: &FieldElement::ONE - &s_sq,
-                T: &FieldElement::ONE + &s_sq,
-            }.as_extended(),
-        )
-        */
         let s_sq = s.square();
 
         proof {
@@ -2150,7 +2143,7 @@ impl RistrettoPoint {
         let ghost n_t_nat = fe51_as_canonical_nat(&N_t);
         let ghost s_sq_nat = fe51_as_canonical_nat(&s_sq);
 
-        let ghost spec_s_if_square = nonneg_field(
+        let ghost spec_s_if_square = field_abs(
             field_mul(nat_invsqrt(field_mul(n_s_nat, d_val_nat)), n_s_nat),
         );
         let ghost spec_was_square = is_sqrt_ratio(n_s_nat, d_val_nat, spec_s_if_square);
@@ -2289,7 +2282,7 @@ impl RistrettoPoint {
             assert(fe51_as_canonical_nat(&cp.Y) == spec_y_completed);
             assert(fe51_as_canonical_nat(&cp.T) == spec_t_completed);
 
-            // Guide Z3 through the spec's nonneg_field by matching
+            // Guide Z3 through the spec's field_abs by matching
             // the spec's intermediate `s` to the exec's `s_nat`.
             // These hints must remain floating (not scoped in assert-by)
             // to avoid rlimit issues in full verification.
@@ -2357,7 +2350,7 @@ impl RistrettoPoint {
             assert(is_well_formed_edwards_point(extended));
             assert(edwards_point_as_affine(extended) == completed_point_as_affine_edwards(cp));
             assert(is_in_even_subgroup(extended)) by {
-                axiom_elligator_in_even_subgroup(r_0_nat, extended);
+                axiom_elligator_in_even_subgroup(r_0_nat);
             };
         }
 

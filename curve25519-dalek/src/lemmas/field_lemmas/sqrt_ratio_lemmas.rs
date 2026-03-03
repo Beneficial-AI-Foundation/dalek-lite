@@ -1827,18 +1827,20 @@ pub proof fn lemma_sqrt_ratio_lift_to_uv(u: nat, v: nat, s: nat)
     }
 }
 
-/// nonneg_field preserves is_sqrt_ratio / is_sqrt_ratio_times_i.
-/// Since (-x)² = x² in any field, flipping sign doesn't change x²·v.
+/// field_abs preserves is_sqrt_ratio / is_sqrt_ratio_times_i.
+///
+/// Algebra: (−r)² = r² in GF(p), so (−r)²·v = r²·v, preserving both
+///   r²·v ≡ u  and  r²·v ≡ √(−1)·u.
 pub proof fn lemma_nonneg_preserves_sqrt_ratio(u: nat, v: nat, r: nat)
     requires
         r < p(),
     ensures
-        is_sqrt_ratio(u, v, r) ==> is_sqrt_ratio(u, v, nonneg_field(r)),
-        is_sqrt_ratio_times_i(u, v, r) ==> is_sqrt_ratio_times_i(u, v, nonneg_field(r)),
+        is_sqrt_ratio(u, v, r) ==> is_sqrt_ratio(u, v, field_abs(r)),
+        is_sqrt_ratio_times_i(u, v, r) ==> is_sqrt_ratio_times_i(u, v, field_abs(r)),
 {
     let pn = p();
     p_gt_2();
-    let nr = nonneg_field(r);
+    let nr = field_abs(r);
 
     if is_negative(r) {
         // nr = field_neg(r), need: nr²·v = r²·v
@@ -1859,8 +1861,12 @@ pub proof fn lemma_nonneg_preserves_sqrt_ratio(u: nat, v: nat, r: nat)
 
 }
 
-/// Combine invsqrt relation with lift: nonneg_field(nat_invsqrt(u*v)*u) satisfies
+/// Combine invsqrt relation with lift: field_abs(nat_invsqrt(u·v)·u) satisfies
 /// is_sqrt_ratio(u, v, _) or is_sqrt_ratio_times_i(u, v, _).
+///
+/// Chain: nat_invsqrt(uv) gives s with s²·(uv) ∈ {1, i}
+///   ⟹ (s·u)²·v ∈ {u, i·u}    [lemma_sqrt_ratio_lift_to_uv]
+///   ⟹ |s·u|²·v ∈ {u, i·u}    [lemma_nonneg_preserves_sqrt_ratio]
 pub proof fn lemma_nonneg_invsqrt_mul_satisfies_sqrt_ratio(u: nat, v: nat)
     requires
         u < p(),
@@ -1868,7 +1874,7 @@ pub proof fn lemma_nonneg_invsqrt_mul_satisfies_sqrt_ratio(u: nat, v: nat)
         field_mul(u, v) % p() != 0,
     ensures
         ({
-            let r = nonneg_field(field_mul(nat_invsqrt(field_mul(u, v)), u));
+            let r = field_abs(field_mul(nat_invsqrt(field_mul(u, v)), u));
             is_sqrt_ratio(u, v, r) || is_sqrt_ratio_times_i(u, v, r)
         }),
 {
@@ -1877,7 +1883,7 @@ pub proof fn lemma_nonneg_invsqrt_mul_satisfies_sqrt_ratio(u: nat, v: nat)
     let uv = field_mul(u, v);
     let s = nat_invsqrt(uv);
     let su = field_mul(s, u);
-    let r = nonneg_field(su);
+    let r = field_abs(su);
 
     // Step 1: s satisfies is_sqrt_ratio(1, uv, s) or is_sqrt_ratio_times_i(1, uv, s)
     lemma_nat_invsqrt_satisfies_relation(uv);
@@ -1891,22 +1897,20 @@ pub proof fn lemma_nonneg_invsqrt_mul_satisfies_sqrt_ratio(u: nat, v: nat)
         lemma_mod_bound((s as int * u as int), pn as int);
     };
 
-    // Step 3: nonneg_field preserves the relation
+    // Step 3: field_abs preserves the relation
     lemma_nonneg_preserves_sqrt_ratio(u, v, su);
 }
 
 /// Uniqueness of nonneg square root ratios for general (u, v).
 ///
-/// If r and t are both nonneg, both < p, and both satisfy the sqrt_ratio
-/// disjunction for the same (u, v) with u ≢ 0 and v ≢ 0, then r = t.
+/// If r, t are both nonneg, < p, and satisfy is_sqrt_ratio ∨ is_sqrt_ratio_times_i
+/// for the same (u, v) with u ≢ 0, v ≢ 0, then r = t.
 ///
-/// Generalizes lemma_invsqrt_unique from (1, a) to arbitrary (u, v).
-///
-/// Proof:
-///   1. Mixed cases (one sqrt_ratio, one times_i) are contradictions
-///      via lemma_no_square_root_when_times_i.
-///   2. Same case: cancel v from r²v = t²v, then r² = t²,
-///      then nonneg uniqueness.
+/// Algebra:
+///   1. Mixed cases (r²v = u, t²v = iu) give a contradiction because
+///      u/v would be both a QR and a QNR.
+///   2. Same case: r²v = t²v ⟹ r² = t² (cancel v ≠ 0)
+///      ⟹ r = t (nonneg square-root uniqueness in GF(p)).
 pub proof fn lemma_nonneg_sqrt_ratio_unique(u: nat, v: nat, r: nat, t: nat)
     requires
         v % p() != 0,
@@ -1975,17 +1979,15 @@ pub proof fn lemma_nonneg_sqrt_ratio_unique(u: nat, v: nat, r: nat, t: nat)
     lemma_nonneg_square_root_unique(r, t);
 }
 
-/// Proof that sqrt_ratio_i matches the nat_invsqrt spec formulation.
+/// sqrt_ratio_i matches the spec: r = |invsqrt(u·v) · u|, is_sq ⟺ is_sqrt_ratio.
 ///
-/// Given r (from sqrt_ratio_i) that is nonneg and satisfies the is_sqrt_ratio /
-/// is_sqrt_ratio_times_i predicates, show that it equals the spec value
-/// nonneg_field(nat_invsqrt(u*v) * u), and that is_sq matches is_sqrt_ratio.
-///
-/// Proof by cases:
-///   1. u = 0: both r and spec_r are 0. is_sqrt_ratio(0,v,0) = true = is_sq.
-///   2. v = 0, u ≠ 0: both r and spec_r are 0. is_sqrt_ratio(u,0,0) = false = is_sq.
-///   3. v ≠ 0, u ≠ 0: sub2 gives spec_r satisfies disjunction, sub3 gives uniqueness,
-///      mutual exclusion gives postcondition 2.
+/// Cases:
+///   u = 0 ⟹ r = 0 = spec_r, is_sq = true.
+///   v = 0, u ≠ 0 ⟹ r = 0 = spec_r, is_sq = false.
+///   u ≠ 0, v ≠ 0 ⟹ spec_r satisfies the sqrt_ratio disjunction
+///     [lemma_nonneg_invsqrt_mul_satisfies_sqrt_ratio], so r = spec_r by
+///     uniqueness [lemma_nonneg_sqrt_ratio_unique], and is_sq matches by
+///     mutual exclusion of is_sqrt_ratio / is_sqrt_ratio_times_i.
 pub proof fn lemma_sqrt_ratio_matches_invsqrt_mul(u: nat, v: nat, r: nat, is_sq: bool)
     requires
         r < p(),
@@ -1997,8 +1999,8 @@ pub proof fn lemma_sqrt_ratio_matches_invsqrt_mul(u: nat, v: nat, r: nat, is_sq:
         (u == 0) ==> (r == 0 && is_sq),
         (v == 0 && u != 0) ==> (r == 0 && !is_sq),
     ensures
-        r == nonneg_field(field_mul(nat_invsqrt(field_mul(u, v)), u)),
-        is_sq == is_sqrt_ratio(u, v, nonneg_field(field_mul(nat_invsqrt(field_mul(u, v)), u))),
+        r == field_abs(field_mul(nat_invsqrt(field_mul(u, v)), u)),
+        is_sq == is_sqrt_ratio(u, v, field_abs(field_mul(nat_invsqrt(field_mul(u, v)), u))),
 {
     let pn = p();
     p_gt_2();
@@ -2006,7 +2008,7 @@ pub proof fn lemma_sqrt_ratio_matches_invsqrt_mul(u: nat, v: nat, r: nat, is_sq:
     let uv = field_mul(u, v);
     let s = nat_invsqrt(uv);
     let su = field_mul(s, u);
-    let spec_r = nonneg_field(su);
+    let spec_r = field_abs(su);
 
     if u == 0 {
         assert(uv == 0) by {

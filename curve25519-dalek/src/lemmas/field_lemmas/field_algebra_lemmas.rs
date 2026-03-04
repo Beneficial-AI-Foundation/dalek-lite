@@ -180,6 +180,39 @@ pub proof fn lemma_field_add_comm(a: nat, b: nat)
     assert((a + b) as int == (b + a) as int);
 }
 
+/// field_add is associative: (a+b)+c = a+(b+c) in GF(p).
+pub proof fn lemma_field_add_assoc(a: nat, b: nat, c: nat)
+    ensures
+        field_add(field_add(a, b), c) == field_add(a, field_add(b, c)),
+{
+    let m = p() as int;
+    let pn = p();
+    assert(pn > 2) by {
+        p_gt_2();
+    };
+
+    let ab = field_add(a, b);
+    let bc = field_add(b, c);
+
+    // Both sides reduce to (a+b+c) % p
+    assert(field_add(ab, c) == ((a + b + c) as int % m) as nat) by {
+        assert(ab < pn) by {
+            lemma_mod_bound((a + b) as int, m);
+        };
+        lemma_small_mod(ab, pn);
+        lemma_add_mod_noop(ab as int, c as int, m);
+        lemma_add_mod_noop((a + b) as int, c as int, m);
+    };
+    assert(field_add(a, bc) == ((a + b + c) as int % m) as nat) by {
+        assert(bc < pn) by {
+            lemma_mod_bound((b + c) as int, m);
+        };
+        lemma_small_mod(bc, pn);
+        lemma_add_mod_noop(a as int, bc as int, m);
+        lemma_add_mod_noop(a as int, (b + c) as int, m);
+    };
+}
+
 /// field_add normalizes its inputs mod p, so pre-reducing a is a no-op.
 pub proof fn lemma_field_add_canonical_left(a: nat, b: nat)
     ensures

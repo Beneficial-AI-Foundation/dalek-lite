@@ -250,6 +250,13 @@ use crate::lemmas::field_lemmas::sqrt_m1_lemmas::lemma_sqrt_m1_limbs_bounded;
 use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
+use crate::lemmas::ristretto_lemmas::axioms::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::ristretto_lemmas::batch_compress_lemmas::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::ristretto_lemmas::elligator_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::core_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks

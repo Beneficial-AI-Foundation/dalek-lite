@@ -37,23 +37,26 @@ use crate::lemmas::field_lemmas::field_algebra_lemmas::lemma_nonzero_product;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::{
     lemma_a_times_inv_ab_is_inv_b, lemma_add_self_eq_double, lemma_cancel_common_factor,
     lemma_div_mul_cancel, lemma_factor_result_component_add, lemma_factor_result_component_sub,
-    lemma_field_add_add_recover_double, lemma_field_add_assoc, lemma_field_add_comm,
-    lemma_field_add_sub_cancel, lemma_field_add_sub_recover_double, lemma_field_diff_of_squares,
-    lemma_field_element_reduced, lemma_field_mul_assoc, lemma_field_mul_comm,
-    lemma_field_mul_distributes_over_add, lemma_field_mul_distributes_over_sub_right,
-    lemma_field_mul_exchange, lemma_field_mul_left_cancel, lemma_field_mul_neg,
-    lemma_field_mul_one_left, lemma_field_mul_one_right, lemma_field_neg_mul_left,
-    lemma_field_neg_neg, lemma_field_neg_nonzero, lemma_field_sub_add_cancel,
+    lemma_field_abs_mul_sign, lemma_field_abs_neg, lemma_field_add_add_recover_double,
+    lemma_field_add_assoc, lemma_field_add_comm, lemma_field_add_sub_cancel,
+    lemma_field_add_sub_recover_double, lemma_field_diff_of_squares, lemma_field_element_reduced,
+    lemma_field_mul_assoc, lemma_field_mul_comm, lemma_field_mul_distributes_over_add,
+    lemma_field_mul_distributes_over_sub_right, lemma_field_mul_exchange,
+    lemma_field_mul_left_cancel, lemma_field_mul_neg, lemma_field_mul_one_left,
+    lemma_field_mul_one_right, lemma_field_neg_mul_left, lemma_field_neg_neg,
+    lemma_field_neg_nonzero, lemma_field_square_nonzero, lemma_field_sub_add_cancel,
     lemma_field_sub_antisymmetric, lemma_field_sub_eq_add_neg, lemma_field_sub_self,
     lemma_four_factor_rearrange, lemma_inv_mul_cancel, lemma_inv_of_product,
-    lemma_neg_a_times_inv_ab, lemma_neg_one_times_is_neg, lemma_neg_square_eq,
-    lemma_product_of_squares_eq_square_of_product, lemma_quotient_of_squares,
+    lemma_mul_one_identity, lemma_neg_a_times_inv_ab, lemma_neg_one_times_is_neg,
+    lemma_neg_square_eq, lemma_product_of_squares_eq_square_of_product, lemma_quotient_of_squares,
     lemma_reassociate_2_z_num, lemma_reverse_distribute_sub, lemma_sub_neg_eq_add,
-    lemma_swap_sub_negates_mul,
+    lemma_sum_sq_minus_diff_sq, lemma_swap_sub_negates_mul,
 };
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::lemmas::field_lemmas::sqrt_m1_lemmas::axiom_sqrt_m1_squared;
+use crate::lemmas::field_lemmas::sqrt_m1_lemmas::{
+    lemma_mul_i_squared_is_neg, lemma_one_minus_x_times_i, lemma_one_plus_x_times_i,
+};
 #[allow(unused_imports)]
 use crate::specs::core_specs::*;
 #[allow(unused_imports)]
@@ -75,28 +78,11 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Helper: z % p() != 0 implies field_square(z) % p() != 0.
-pub proof fn lemma_field_square_nonzero(z: nat)
-    requires
-        z < p(),
-        z % p() != 0,
-    ensures
-        field_square(z) % p() != 0,
-{
-    assert(z != 0) by {
-        lemma_field_element_reduced(z);
-    };
-    assert(field_square(z) != 0) by {
-        p_gt_2();
-        lemma_nonzero_product(z, z);
-    };
-    assert(field_square(z) % p() == field_square(z)) by {
-        lemma_field_element_reduced(field_square(z));
-    };
-}
-
-/// Helper: from the Segre relation Z·T = X·Y and Z ≠ 0,
-/// derive T = ab·Z where a = X/Z, b = Y/Z, ab = a·b.
+/// From the projective Segre relation Z·T = X·Y with Z ≠ 0, derive
+/// T = (X/Z)·(Y/Z)·Z.
+///
+/// Let a = X·Z⁻¹, b = Y·Z⁻¹. Then X·Y = a·b·Z², so Z·T = a·b·Z²
+/// and cancellation gives T = a·b·Z.
 pub proof fn lemma_segre_derives_t(x: nat, y: nat, z: nat, t: nat)
     requires
         x < p(),
@@ -136,7 +122,9 @@ pub proof fn lemma_segre_derives_t(x: nat, y: nat, z: nat, t: nat)
     };
 }
 
-/// Helper: given T = ab·Z, factor d·T² through Z² as d·(a²·b²)·Z².
+/// Factor d·T² through Z²: if T = (a·b)·Z, then d·T² = d·(a²·b²)·Z².
+///
+/// Proof: T² = (a·b)²·Z² = a²·b²·Z², so d·T² = d·a²·b²·Z².
 pub proof fn lemma_dt_squared_factor(d: nat, a: nat, b: nat, z: nat, t: nat)
     requires
         t == field_mul(field_mul(a, b), z),
@@ -162,17 +150,22 @@ pub proof fn lemma_dt_squared_factor(d: nat, a: nat, b: nat, z: nat, t: nat)
     };
 }
 
-/// Lemma: the doubled affine point equals the batch state quotients (e/f, g/h).
+/// The doubled affine point equals the batch state quotients (e/f, g/h).
 ///
-/// Given an extended Edwards point (X:Y:Z:T) with Segre relation Z·T = X·Y and Z ≠ 0,
-/// and batch state fields e = 2XY, f = Z²+dT², g = Y²+X², h = Z²−dT²,
-/// the doubled affine point equals (e/f, g/h).
+/// Given an extended Edwards point (X:Y:Z:T) with Z·T = X·Y, Z ≠ 0,
+/// define a = X/Z, b = Y/Z, and let d be the Edwards curve parameter. Then:
+///   - e = 2·X·Y
+///   - f = Z² + d·T²
+///   - g = Y² + X²
+///   - h = Z² − d·T²
 ///
-/// Proof outline (mirrors lemma_double_projective_completed_valid):
-///   1. Factor e, g through Z² using lemma_projective_product_factor
-///   2. Derive T = ab·Z from Segre, factor f, h through Z²
-///   3. Cancel Z² from e/f and g/h using lemma_cancel_common_factor
-///   4. Match to edwards_add(a, b, a, b) where a = X/Z, b = Y/Z
+/// Conclusion: edwards_double(a, b) = (e/f, g/h).
+///
+/// Proof outline:
+///   1. Factor e, g through Z² using (X/Z)·(Y/Z)·Z² = X·Y
+///   2. Derive T = a·b·Z from Segre, factor f, h through Z²
+///   3. Cancel Z² from e/f and g/h
+///   4. Match to edwards_double(a, b)
 pub proof fn lemma_doubled_affine_from_batch_state(
     x: nat,
     y: nat,
@@ -608,18 +601,17 @@ pub proof fn lemma_ristretto_compress_affine_zero_xy(x: nat, y: nat)
     // is_negative(0) = false ⟹ s_final = 0 ⟹ result = u8_32_from_nat(0)
 }
 
-/// Lemma: when eg·fh = 0 for a valid on-curve point, the doubled affine
-/// point's Ristretto encoding is the zero encoding.
+/// When e·g·f·h ≡ 0 (mod p) for a valid on-curve point, the doubled affine
+/// point's Ristretto encoding is the identity (all-zero bytes).
 ///
-/// Proof: Use lemma_doubled_affine_from_batch_state to get doubled = (e/f, g/h).
-/// Since eg·fh = 0, by Euclid's lemma at least one of {e, g, f, h} is zero.
-/// In each case, one coordinate of the doubled point is zero (either the
-/// numerator is zero, or field_inv(0) = 0 makes the denominator kill it).
-/// Therefore field_mul(doubled.0, doubled.1) = 0, and by
-/// lemma_ristretto_compress_affine_zero_xy the encoding is all zeros.
+/// Given (X:Y:Z:T) on the curve with batch intermediates e, f, g, h and
+/// (e·g)·(f·h) ≡ 0 (mod p):
+///   1. By Euclid's lemma, at least one of {e, g, f, h} ≡ 0.
+///   2. The doubled point (e/f, g/h) has at least one zero coordinate:
+///      either the numerator is zero, or inv(0) = 0 kills the quotient.
+///   3. x·y = 0  ⟹  ristretto_compress_affine(x, y) = [0; 32].
 ///
 /// Reference: Curve25519 torsion structure; [RISTRETTO] §5.3
-/// Runtime validation: `test_degenerate_double_compresses_to_zero`
 pub proof fn lemma_degenerate_double_compresses_to_zero(
     x: nat,
     y: nat,
@@ -784,73 +776,32 @@ pub proof fn lemma_degenerate_double_compresses_to_zero(
     };
 }
 
-/// Helper: field_mul(a, 1) == a for any field element a < p().
-///
-/// Combines `lemma_field_mul_one_right` and `lemma_field_element_reduced`
-/// into a single call, eliminating a common two-line proof pattern.
-proof fn lemma_mul_one_identity(a: nat)
-    requires
-        a < p(),
-    ensures
-        field_mul(a, 1nat) == a,
-{
-    assert(field_mul(a, 1nat) == a) by {
-        lemma_field_mul_one_right(a);
-        lemma_field_element_reduced(a);
-    };
-}
-
 // =============================================================================
-// Axiom: curve equation batch identity  h² − g² = −e² · (1 + d)
+// Curve equation identity:  h² − g² = −e² · (1 + d)
 // =============================================================================
-/// Helper: (x+y)² − (x−y)² = 4xy in GF(p).
+/// Edwards curve identity:  h² − g² = −e² · (1 + d).
 ///
-/// Derived from diff-of-squares + the recover-double identities:
-///   (s−d)(s+d) = s²−d²,  (x+y)−(x−y) = 2y,  (x+y)+(x−y) = 2x.
-proof fn lemma_sum_sq_minus_diff_sq(x: nat, y: nat)
-    ensures
-        field_sub(field_square(field_add(x, y)), field_square(field_sub(x, y))) == field_mul(
-            field_mul(2nat, 2nat),
-            field_mul(x, y),
-        ),
-{
-    assert(p() > 2) by {
-        p_gt_2();
-    };
-    let s = field_add(x, y);
-    let d = field_sub(x, y);
-
-    // (s+d)(s-d) = s²-d², and (x+y)-(x-y)=2y, (x+y)+(x-y)=2x
-    assert(field_sub(field_square(s), field_square(d)) == field_mul(
-        field_mul(2nat, 2nat),
-        field_mul(x, y),
-    )) by {
-        lemma_field_diff_of_squares(s, d);
-        lemma_field_add_sub_recover_double(x, y);
-        lemma_field_add_add_recover_double(x, y);
-        lemma_field_mul_exchange(2nat, y, 2nat, x);
-        lemma_field_mul_comm(y, x);
-    };
-}
-
-/// Lemma: for a point (a, b) on the Edwards curve −a² + b² = 1 + d·a²·b²
-/// with batch intermediates e = 2ab, g = a² + b², h = 1 − d·a²·b²:
+/// For a point (a, b) satisfying the twisted Edwards equation −a² + b² = 1 + d·a²·b²,
+/// define the completed-point intermediates:
+///   - e = 2·a·b
+///   - g = a² + b²
+///   - h = 1 − d·a²·b²
 ///
-///     h² − g² = −e² · (1 + d)
+/// Then h² − g² = −e²·(d + 1).
 ///
-/// ## Proof outline
+/// ## Proof
 ///
-/// Use the identity (x+y)² − (x−y)² = 4xy twice:
-///   1. With (b², a²): g² − (b²−a²)² = 4·a²b²
-///   2. With (1, da²b²): (1+da²b²)² − h² = 4·da²b²
+/// Apply the algebraic identity (x+y)² − (x−y)² = 4·x·y twice:
+///   1. x = b², y = a²:  g² − (b² − a²)² = 4·a²·b²
+///   2. x = 1,  y = d·a²·b²:  (1 + d·a²·b²)² − h² = 4·d·a²·b²
 ///
-/// The curve equation gives b²−a² = 1+da²b², so steps 1 and 2 telescope:
-///   g² − h² = 4·a²b² + 4·da²b² = 4·a²b²·(d+1) = e²·(d+1)
+/// The curve equation gives b² − a² = 1 + d·a²·b², so the two
+/// equations telescope:
+///   g² − h² = 4·a²·b² + 4·d·a²·b² = 4·a²·b²·(d + 1) = e²·(d + 1)
 ///
-/// Therefore h² − g² = −e²·(d+1).
+/// Therefore h² − g² = −e²·(d + 1).
 ///
-/// Reference: Consequence of the twisted Edwards curve equation; Hamburg (2015) Decaf §6
-/// Runtime validation: `test_curve_eq_batch_identity`
+/// Reference: Hamburg (2015) "Decaf" §6; consequence of the twisted Edwards curve equation
 pub proof fn lemma_curve_eq_batch_identity(a: nat, b: nat)
     requires
         a < p(),
@@ -967,11 +918,16 @@ pub proof fn lemma_curve_eq_batch_identity(a: nat, b: nat)
     };
 }
 
-/// Helper: u1·u2² = (−1−d)·B² where u1 = (1+y)(1−y), u2 = eg/(fh), B = e·eg/(h·fh).
+/// Factoring identity:  u₁ · u₂² = (−1 − d) · B².
 ///
-/// Proof: u1 = 1−y² = (h²−g²)/h² (using y=g/h and diff of squares).
-/// Then u1·u2² = (h²−g²)·(eg)² / (h·fh)². By the batch identity h²−g² = −e²(1+d),
-/// this becomes (−1−d)·e²·(eg)² / (h·fh)² = (−1−d)·(e·eg / (h·fh))² = (−1−d)·B².
+/// With y = g/h, define:
+///   - u₁ = (1 + y)·(1 − y) = 1 − y² = (h² − g²) / h²
+///   - u₂ = e·g / (f·h)
+///   - B  = e·(e·g) / (h·(f·h))
+///
+/// Then u₁·u₂² = (h² − g²)·(e·g)² / (h·(f·h))².
+/// By the curve identity h² − g² = −e²·(1 + d), this simplifies to
+/// (−1 − d)·(e·(e·g) / (h·(f·h)))² = (−1 − d)·B².
 proof fn lemma_u1_u2_sq_factoring(e: nat, f: nat, g: nat, h: nat, eg: nat, fh: nat, d: nat)
     requires
         eg == field_mul(e, g),
@@ -1196,100 +1152,25 @@ proof fn lemma_batch_std_final_matching(e: nat, f: nat, g: nat, h: nat, eg: nat,
     };
 }
 
-/// field_abs(field_neg(a)) == field_abs(a) for field elements < p().
-proof fn lemma_field_abs_neg(a: nat)
-    requires
-        a < p(),
-    ensures
-        field_abs(field_neg(a)) == field_abs(a),
-{
-    assert(p() > 2 && p() % 2 == 1) by {
-        p_gt_2();
-        lemma_p_is_odd();
-    };
-    if a == 0 {
-        // field_neg(0) = field_canonical((p() - field_canonical(0))) = p() % p() = 0
-        assert(field_canonical(0nat) == 0nat) by {
-            lemma_small_mod(0nat, p());
-        };
-        assert(field_canonical(p()) == 0nat) by {
-            assert(p() % p() == 0nat) by (nonlinear_arith)
-                requires
-                    p() > 0,
-            ;
-        };
-    } else {
-        let neg_a = field_neg(a);
-        assert(field_canonical(a) == a) by {
-            lemma_small_mod(a, p());
-        };
-        assert(neg_a == (p() - a) as nat) by {
-            lemma_small_mod((p() - a) as nat, p());
-        };
-        assert(field_canonical(neg_a) == neg_a) by {
-            lemma_small_mod(neg_a, p());
-        };
-        assert(a % 2 != neg_a % 2) by (nonlinear_arith)
-            requires
-                a as int + neg_a as int == p() as int,
-                p() % 2 == 1,
-        ;
-        assert(field_neg(neg_a) == a) by {
-            lemma_field_neg_neg(a);
-            lemma_small_mod(a, p());
-        };
-        if is_negative(a) {
-            assert(field_abs(a) == neg_a);
-            assert(!is_negative(neg_a));
-            assert(field_abs(neg_a) == neg_a);
-        } else {
-            assert(field_abs(a) == a);
-            assert(is_negative(neg_a));
-            assert(field_abs(neg_a) == field_neg(neg_a));
-        }
-    }
-}
-
-/// field_abs(a*x) == field_abs(b*x) when a == b or a == field_neg(b).
-proof fn lemma_field_abs_mul_sign(a: nat, b: nat, x: nat)
-    requires
-        a == b || a == field_neg(b),
-    ensures
-        field_abs(field_mul(a, x)) == field_abs(field_mul(b, x)),
-{
-    assert(p() > 2) by {
-        p_gt_2();
-    };
-    if a == b {
-    } else {
-        assert(field_mul(a, x) == field_neg(field_mul(b, x))) by {
-            lemma_field_neg_mul_left(b, x);
-        };
-        assert(field_abs(field_mul(a, x)) == field_abs(field_mul(b, x))) by {
-            lemma_mod_bound((b * x) as int, p() as int);
-            lemma_field_abs_neg(field_mul(b, x));
-        };
-    }
-}
-
-/// Phase C helper: proves z_inv_std = 1.
+/// z_inv_std = 1: if invsqrt = |c · B⁻¹| and u₁·t² = c_coeff·B², then
+/// (invsqrt · u₁) · (invsqrt · t) · t = 1.
 ///
-/// Given invsqrt_std = field_abs(c_iad · inv(B)) and the algebraic identity
-/// u1·t² = (-1-d)·B², proves that i1·(i2·t) = 1 where i1 = invsqrt·u1, i2 = invsqrt·t.
+/// Here c_coeff is a nonzero field element satisfying c²·c_coeff = 1.
+/// The proof uses |x|² = x² to eliminate the absolute value.
 proof fn lemma_z_inv_std_is_one(
     invsqrt_std: nat,
     u1: nat,
     t_aff: nat,
     c_iad: nat,
     B: nat,
-    neg_one_minus_d: nat,
+    c_coeff: nat,
 )
     requires
         invsqrt_std == field_abs(field_mul(c_iad, field_inv(B))),
-        field_mul(u1, field_square(t_aff)) == field_mul(neg_one_minus_d, field_square(B)),
+        field_mul(u1, field_square(t_aff)) == field_mul(c_coeff, field_square(B)),
         B % p() != 0,
-        neg_one_minus_d % p() != 0,
-        field_mul(field_square(c_iad), neg_one_minus_d) == 1,
+        c_coeff % p() != 0,
+        field_mul(field_square(c_iad), c_coeff) == 1,
     ensures
         ({
             let i1 = field_mul(invsqrt_std, u1);
@@ -1305,7 +1186,6 @@ proof fn lemma_z_inv_std_is_one(
         p_gt_2();
     };
 
-    // z_inv_std = invsqrt² · u1 · t²
     let i1_i2 = field_mul(i1_std, i2_std);
     let sq_inv = field_square(invsqrt_std);
     assert(i1_i2 == field_mul(sq_inv, field_mul(u1, t_aff))) by {
@@ -1325,10 +1205,8 @@ proof fn lemma_z_inv_std_is_one(
         };
     };
 
-    // Substitute u1·t² = (−1−d)·B²
-    assert(z_inv_std == field_mul(sq_inv, field_mul(neg_one_minus_d, field_square(B))));
+    assert(z_inv_std == field_mul(sq_inv, field_mul(c_coeff, field_square(B))));
 
-    // sq_inv = sq(R): squaring absorbs field_abs sign
     assert(sq_inv == field_square(R)) by {
         if is_negative(R) {
             lemma_neg_square_eq(R);
@@ -1337,22 +1215,17 @@ proof fn lemma_z_inv_std_is_one(
         }
     };
 
-    // sq(R) = sq(c_iad) · sq(inv(B))
     let sq_c = field_square(c_iad);
     let sq_inv_B = field_square(field_inv(B));
     assert(sq_inv == field_mul(sq_c, sq_inv_B)) by {
         lemma_product_of_squares_eq_square_of_product(c_iad, field_inv(B));
     };
 
-    // z_inv_std = (c_iad²·(−1−d)) · (inv(B)²·B²)
-    assert(z_inv_std == field_mul(
-        field_mul(sq_c, neg_one_minus_d),
-        field_mul(sq_inv_B, field_square(B)),
-    )) by {
-        lemma_four_factor_rearrange(sq_c, sq_inv_B, neg_one_minus_d, field_square(B));
+    assert(z_inv_std == field_mul(field_mul(sq_c, c_coeff), field_mul(sq_inv_B, field_square(B))))
+        by {
+        lemma_four_factor_rearrange(sq_c, sq_inv_B, c_coeff, field_square(B));
     };
 
-    // inv(B)²·B² = sq(inv(B)·B) = sq(1) = 1
     assert(field_square(1nat) == 1nat) by {
         p_gt_2();
         lemma_small_mod(1nat, p());
@@ -1363,15 +1236,16 @@ proof fn lemma_z_inv_std_is_one(
         lemma_inv_mul_cancel(B);
     };
 
-    // z_inv_std = c_iad²·(−1−d) · 1 = c_iad²·(−1−d) = 1
     assert(z_inv_std == 1) by {
-        lemma_field_mul_one_right(field_mul(sq_c, neg_one_minus_d));
-        lemma_field_element_reduced(field_mul(sq_c, neg_one_minus_d));
+        lemma_field_mul_one_right(field_mul(sq_c, c_coeff));
+        lemma_field_element_reduced(field_mul(sq_c, c_coeff));
     };
 }
 
-/// Algebraic setup for no-rotation case: proves the key identities
-/// connecting batch and standard negcheck arguments and invsqrt relationship.
+/// No-rotation case setup: derives the key identities connecting batch and
+/// standard negcheck arguments.
+///
+/// Proves: h·e·zinv = x_aff, g·tinv = e⁻¹, and invsqrt·(t_aff/h) = ±c_iad/e.
 proof fn lemma_no_rotation_algebraic_setup(
     e: nat,
     f: nat,
@@ -1480,7 +1354,11 @@ proof fn lemma_no_rotation_algebraic_setup(
     };
 }
 
-/// Proves field_abs(s_batch) == field_abs(s_std) for both negcheck2 subcases.
+/// |s_batch| = |s_std| for both negcheck2 sub-cases (no-rotation path).
+///
+/// Shows that the batch-computed encoding parameter s matches the standard
+/// affine encoding up to sign, in both the negcheck2-positive and negcheck2-negative
+/// branches.
 proof fn lemma_no_rotation_s_matching(
     e: nat,
     g: nat,
@@ -1939,107 +1817,9 @@ proof fn lemma_rotation_algebraic_setup(
     };
 }
 
-/// Helper: (a*i)*i = -a in the field, since i²=-1.
-proof fn lemma_mul_i_squared_is_neg(a: nat)
-    ensures
-        field_mul(field_mul(a, sqrt_m1()), sqrt_m1()) == field_neg(a),
-{
-    let pn = p();
-    assert(pn > 2) by {
-        p_gt_2();
-    };
-    let i = sqrt_m1();
-    assert(field_mul(field_mul(a, i), i) == field_mul(a, field_mul(i, i))) by {
-        lemma_field_mul_assoc(a, i, i);
-    };
-    assert(field_mul(i, i) == field_neg(1nat)) by {
-        axiom_sqrt_m1_squared();
-        lemma_small_mod(1nat, pn);
-        lemma_small_mod((pn - 1) as nat, pn);
-    };
-    assert(field_mul(a, field_neg(1nat)) == field_neg(a)) by {
-        lemma_field_mul_comm(a, field_neg(1nat));
-        lemma_neg_one_times_is_neg(a);
-    };
-}
-
-/// Helper: 1 - (e/f)*i = (f - e*i)/f, i.e.,
-/// field_sub(1, field_mul(field_mul(e, inv(f)), i)) = field_mul(field_sub(f, e*i), inv(f)).
-proof fn lemma_one_minus_x_times_i(e: nat, f: nat)
-    requires
-        f % p() != 0,
-    ensures
-        field_sub(1nat, field_mul(field_mul(e, field_inv(f)), sqrt_m1())) == field_mul(
-            field_sub(f, field_mul(e, sqrt_m1())),
-            field_inv(f),
-        ),
-{
-    assert(p() > 2) by {
-        p_gt_2();
-    };
-    let i = sqrt_m1();
-    let inv_f = field_inv(f);
-    // 1 = f·inv(f)
-    assert(1nat == field_mul(f, inv_f)) by {
-        lemma_inv_mul_cancel(f);
-        lemma_field_mul_comm(inv_f, f);
-    };
-    // (e·inv(f))·i = (e·i)·inv(f)
-    assert(field_mul(field_mul(e, inv_f), i) == field_mul(field_mul(e, i), inv_f)) by {
-        lemma_field_mul_assoc(e, inv_f, i);
-        lemma_field_mul_comm(inv_f, i);
-        lemma_field_mul_assoc(e, i, inv_f);
-    };
-    // f·inv(f) − (e·i)·inv(f) = (f − e·i)·inv(f)
-    assert(field_sub(field_mul(f, inv_f), field_mul(field_mul(e, i), inv_f)) == field_mul(
-        field_sub(f, field_mul(e, i)),
-        inv_f,
-    )) by {
-        lemma_reverse_distribute_sub(f, field_mul(e, i), inv_f);
-    };
-}
-
-/// Helper: 1 + (e/f)*i = (f + e*i)/f, i.e.,
-/// field_add(1, field_mul(field_mul(e, inv(f)), i)) = field_mul(field_add(f, e*i), inv(f)).
-proof fn lemma_one_plus_x_times_i(e: nat, f: nat)
-    requires
-        f % p() != 0,
-    ensures
-        field_add(1nat, field_mul(field_mul(e, field_inv(f)), sqrt_m1())) == field_mul(
-            field_add(f, field_mul(e, sqrt_m1())),
-            field_inv(f),
-        ),
-{
-    assert(p() > 2) by {
-        p_gt_2();
-    };
-    let i = sqrt_m1();
-    let inv_f = field_inv(f);
-    // 1 = f·inv(f)
-    assert(1nat == field_mul(f, inv_f)) by {
-        lemma_inv_mul_cancel(f);
-        lemma_field_mul_comm(inv_f, f);
-    };
-    // (e·inv(f))·i = (e·i)·inv(f)
-    assert(field_mul(field_mul(e, inv_f), i) == field_mul(field_mul(e, i), inv_f)) by {
-        lemma_field_mul_assoc(e, inv_f, i);
-        lemma_field_mul_comm(inv_f, i);
-        lemma_field_mul_assoc(e, i, inv_f);
-    };
-    // f·inv(f) + (e·i)·inv(f) = inv(f)·(f + e·i) = (f + e·i)·inv(f)
-    assert(field_add(field_mul(f, inv_f), field_mul(field_mul(e, i), inv_f)) == field_mul(
-        field_add(f, field_mul(e, i)),
-        inv_f,
-    )) by {
-        lemma_field_mul_comm(field_add(f, field_mul(e, i)), inv_f);
-        lemma_field_mul_distributes_over_add(inv_f, f, field_mul(e, i));
-        lemma_field_mul_comm(inv_f, f);
-        lemma_field_mul_comm(inv_f, field_mul(e, i));
-    };
-}
-
-/// Proves field_abs(s_batch) == field_abs(s_std) for both negcheck2 subcases
-/// in the rotation case.
+/// |s_batch| = |s_std| for both negcheck2 sub-cases (rotation path).
+///
+/// Analogous to `lemma_no_rotation_s_matching` but for the i·x_aff rotation branch.
 proof fn lemma_rotation_s_matching(
     e: nat,
     f: nat,
@@ -2901,15 +2681,15 @@ proof fn lemma_batch_std_case_dispatch(e: nat, f: nat, g: nat, h: nat, eg: nat, 
 /// the Ristretto encoding using batch inverse 1/(eg·fh) equals the standard
 /// affine encoding of the point (e/f, g/h).
 ///
-/// The proof composes two axioms and one precondition:
+/// The proof relies on two external axioms (both runtime-validated) and one precondition:
 ///   1. `axiom_invsqrt_factors_over_square` — nat_invsqrt factors over perfect squares
+///      (validated by `test_invsqrt_factors_over_square`)
 ///   2. `axiom_invsqrt_a_minus_d` — nat_invsqrt(−1−d) = C_IAD and C_IAD²·(−1−d) = 1
+///      (validated by `test_invsqrt_a_minus_d_squared`, `test_nat_invsqrt_neg_one_minus_d`)
 ///   3. Batch identity h² − g² = −e²(1+d) (precondition, from `lemma_curve_eq_batch_identity`)
 ///
 /// Reference: Hamburg (2015) "Decaf" Section 6, Equation (6)
 /// URL: https://eprint.iacr.org/2015/673.pdf
-/// Runtime validation: `test_batch_compress_equals_single_compress_of_double`,
-///   `test_batch_axiom_intermediate_values`
 pub proof fn lemma_batch_encoding_equals_standard_encoding(
     e: nat,
     f: nat,
@@ -2990,7 +2770,6 @@ pub proof fn lemma_batch_encoding_equals_standard_encoding(
 ///   4. `lemma_batch_encoding_equals_standard_encoding` -- generic batch == standard encoding
 ///
 /// Reference: Hamburg (2015) "Decaf" §6; https://eprint.iacr.org/2015/673.pdf
-/// Runtime validation: `test_batch_compress_equals_single_compress_of_double`
 pub proof fn lemma_batch_compress_equals_compress_of_double(
     x: nat,
     y: nat,
@@ -3071,357 +2850,10 @@ pub proof fn lemma_batch_compress_equals_compress_of_double(
 } // verus!
 #[cfg(test)]
 mod test_batch_compress_axiom {
-    use crate::backend::serial::u64::field::FieldElement51;
     use crate::constants;
-    use crate::edwards::EdwardsPoint;
     use crate::field::FieldElement;
     use crate::ristretto::RistrettoPoint;
-    use subtle::{ConditionallyNegatable, ConditionallySelectable, ConstantTimeEq};
-
-    /// Validate lemma_batch_compress_equals_compress_of_double:
-    /// For each point P, the batch double-and-compress algorithm produces the
-    /// same bytes as single-point compress(2*P).
-    #[test]
-    fn test_batch_compress_equals_single_compress_of_double() {
-        use crate::scalar::Scalar;
-
-        // Helper: compute compress(2*P) via single-point path
-        fn compress_doubled(p: &RistrettoPoint) -> [u8; 32] {
-            let doubled = &p.0 + &p.0;
-            let rp = RistrettoPoint(doubled);
-            *rp.compress().as_bytes()
-        }
-
-        // Helper: compute batch double-and-compress for a single point
-        fn batch_compress_one(p: &RistrettoPoint) -> [u8; 32] {
-            let results = RistrettoPoint::double_and_compress_batch(&[*p]);
-            *results[0].as_bytes()
-        }
-
-        // Test with identity
-        let identity = RistrettoPoint(EdwardsPoint::default());
-        assert_eq!(
-            compress_doubled(&identity),
-            batch_compress_one(&identity),
-            "identity: batch != single"
-        );
-
-        // Test with basepoint
-        let bp = constants::RISTRETTO_BASEPOINT_POINT;
-        assert_eq!(
-            compress_doubled(&bp),
-            batch_compress_one(&bp),
-            "basepoint: batch != single"
-        );
-
-        // Test with many small multiples of basepoint
-        let mut point = bp;
-        for i in 2..100u32 {
-            point = &point + &bp;
-            assert_eq!(
-                compress_doubled(&point),
-                batch_compress_one(&point),
-                "{}*B: batch != single",
-                i
-            );
-        }
-
-        // Test with hash-derived points
-        use sha2::{Digest, Sha512};
-        for seed in 0u32..100 {
-            let mut hasher = Sha512::new();
-            hasher.update(b"batch_compress_axiom_test_");
-            hasher.update(seed.to_le_bytes());
-            let hash = hasher.finalize();
-            let mut bytes = [0u8; 64];
-            bytes.copy_from_slice(&hash);
-            let pt = RistrettoPoint::hash_from_bytes::<Sha512>(&seed.to_le_bytes());
-            assert_eq!(
-                compress_doubled(&pt),
-                batch_compress_one(&pt),
-                "hash-derived seed {}: batch != single",
-                seed
-            );
-        }
-
-        // Test batch with multiple points at once
-        let points: alloc::vec::Vec<RistrettoPoint> = (1u64..=20)
-            .map(|i| &Scalar::from(i) * &bp.0)
-            .map(RistrettoPoint)
-            .collect();
-        let batch_results = RistrettoPoint::double_and_compress_batch(&points);
-        for (idx, (p, batch_r)) in points.iter().zip(batch_results.iter()).enumerate() {
-            let single = compress_doubled(p);
-            assert_eq!(
-                &single,
-                batch_r.as_bytes(),
-                "multi-batch point {}: batch != single",
-                idx
-            );
-        }
-
-        // --- Degenerate points: eg*fh = 0 (identity, torsion) ---
-        // These validate the axiom's zero-case branch: when eg*fh = 0,
-        // batch_invert returns inv = 0 and the result is the identity encoding.
-
-        let identity_encoding = [0u8; 32];
-        let torsion = crate::backend::serial::u64::constants::EIGHT_TORSION;
-
-        // Verify identity produces identity encoding via batch
-        let identity_batch = batch_compress_one(&RistrettoPoint(torsion[0]));
-        assert_eq!(
-            identity_batch, identity_encoding,
-            "torsion[0] (identity): batch should produce identity encoding"
-        );
-
-        // 2-torsion: T[4] = (0, -1, 1, 0) — doubling gives identity
-        let t4_batch = batch_compress_one(&RistrettoPoint(torsion[4]));
-        let t4_single = compress_doubled(&RistrettoPoint(torsion[4]));
-        assert_eq!(
-            t4_batch, t4_single,
-            "torsion[4] (2-torsion): batch != single"
-        );
-
-        // 4-torsion: T[2] and T[6] — doubling gives 2-torsion
-        for &ti in &[2usize, 6] {
-            let batch = batch_compress_one(&RistrettoPoint(torsion[ti]));
-            let single = compress_doubled(&RistrettoPoint(torsion[ti]));
-            assert_eq!(
-                batch, single,
-                "torsion[{}] (4-torsion): batch != single",
-                ti
-            );
-        }
-
-        // All 8-torsion elements
-        for (ti, t_pt) in torsion.iter().enumerate() {
-            let batch = batch_compress_one(&RistrettoPoint(*t_pt));
-            let single = compress_doubled(&RistrettoPoint(*t_pt));
-            assert_eq!(batch, single, "torsion[{}]: batch != single", ti);
-        }
-
-        // Mixed batch: identity + torsion + generic points
-        let mixed: alloc::vec::Vec<RistrettoPoint> = alloc::vec![
-            RistrettoPoint(torsion[0]),                   // identity
-            bp,                                           // basepoint (generic)
-            RistrettoPoint(torsion[4]),                   // 2-torsion
-            RistrettoPoint(&Scalar::from(7u64) * &bp.0),  // 7*B (generic)
-            RistrettoPoint(torsion[2]),                   // 4-torsion
-            RistrettoPoint(torsion[6]),                   // 4-torsion
-            RistrettoPoint(&Scalar::from(42u64) * &bp.0), // 42*B (generic)
-        ];
-        let mixed_batch = RistrettoPoint::double_and_compress_batch(&mixed);
-        for (idx, (p, batch_r)) in mixed.iter().zip(mixed_batch.iter()).enumerate() {
-            let single = compress_doubled(p);
-            assert_eq!(
-                &single,
-                batch_r.as_bytes(),
-                "mixed batch point {}: batch != single",
-                idx
-            );
-        }
-
-        // Verify BatchCompressState fields for identity: eg*fh == 0
-        // Identity is (0:1:1:0), so e = 2*0*1 = 0, g = 1+0 = 1, eg = 0*1 = 0
-        // This confirms the degenerate case is exercised.
-        let id_point = torsion[0];
-        let id_x = &id_point.X;
-        let id_y = &id_point.Y;
-        let id_z = &id_point.Z;
-        let id_t = &id_point.T;
-        let e = &(id_x * id_y) + &(id_x * id_y);
-        let e_bytes = e.as_bytes();
-        assert_eq!(e_bytes, [0u8; 32], "identity: e = 2XY should be 0");
-        let eg = &e * &(&id_y.square() + &id_x.square());
-        let eg_bytes = eg.as_bytes();
-        assert_eq!(eg_bytes, [0u8; 32], "identity: eg should be 0");
-    }
-
-    /// Validate lemma_batch_encoding_equals_standard_encoding:
-    /// For generic (non-degenerate) points, batch_compress_body(e,f,g,h,eg,fh,inv)
-    /// equals ristretto_compress_affine(e/f, g/h).
-    ///
-    /// This test independently computes both sides and compares, also tracking
-    /// which code path (square vs non-square / rotated vs non-rotated) each point takes.
-    #[test]
-    fn test_batch_axiom_intermediate_values() {
-        use crate::scalar::Scalar;
-
-        let d = &constants::EDWARDS_D;
-        let bp = constants::RISTRETTO_BASEPOINT_POINT;
-        let sqrt_m1 = FieldElement::from_bytes(&[
-            0xb0, 0xa0, 0x0e, 0x4a, 0x27, 0x1b, 0xee, 0xc4, 0x78, 0xe4, 0x2f, 0xad, 0x06, 0x18,
-            0x43, 0x2f, 0xa7, 0xd7, 0xfb, 0x3d, 0x99, 0x00, 0x4d, 0x2b, 0x0b, 0xdf, 0xc1, 0x4f,
-            0x80, 0x24, 0x83, 0x2b,
-        ]);
-        let invsqrt_a_minus_d = FieldElement::from_bytes(&[
-            0x78, 0xc4, 0xee, 0x18, 0x46, 0xbe, 0x91, 0xa0, 0x35, 0xc3, 0xa3, 0x5c, 0x32, 0x08,
-            0x53, 0x52, 0xc3, 0xb2, 0xd3, 0x76, 0xf1, 0xee, 0x2e, 0x07, 0xc3, 0x3a, 0x01, 0x65,
-            0x12, 0xa6, 0xf8, 0x24,
-        ]);
-
-        let mut square_count = 0u32;
-        let mut nonsquare_count = 0u32;
-
-        let test_points: alloc::vec::Vec<RistrettoPoint> = (1u64..=200)
-            .map(|i| RistrettoPoint(&Scalar::from(i) * &bp.0))
-            .collect();
-
-        for (idx, p) in test_points.iter().enumerate() {
-            let ep = &p.0;
-            let x = &ep.X;
-            let y = &ep.Y;
-            let z = &ep.Z;
-            let t = &ep.T;
-
-            let e = &(x * y) + &(x * y);
-            let f = &z.square() + &(d * &t.square());
-            let g = &y.square() + &x.square();
-            let h = &z.square() - &(d * &t.square());
-            let eg = &e * &g;
-            let fh = &f * &h;
-            let egfh = &eg * &fh;
-
-            if egfh == FieldElement::ZERO {
-                continue;
-            }
-
-            let inv = egfh.invert();
-            let zinv = &eg * &inv;
-            let tinv = &fh * &inv;
-
-            // Check: zinv * fh == 1 (since zinv = eg/(eg*fh) = 1/fh)
-            let zinv_fh = &zinv * &fh;
-            assert!(
-                bool::from(zinv_fh.ct_eq(&FieldElement::ONE)),
-                "point {}: zinv * fh should be 1",
-                idx
-            );
-
-            // Check: tinv * eg == 1
-            let tinv_eg = &tinv * &eg;
-            assert!(
-                bool::from(tinv_eg.ct_eq(&FieldElement::ONE)),
-                "point {}: tinv * eg should be 1",
-                idx
-            );
-
-            // Determine square/non-square case via negcheck1
-            let negcheck1_val = &eg * &zinv;
-            let negcheck1 = negcheck1_val.is_negative();
-
-            if bool::from(negcheck1) {
-                nonsquare_count += 1;
-            } else {
-                square_count += 1;
-            }
-
-            // Compute batch side
-            let batch_result = RistrettoPoint::double_and_compress_batch(&[*p]);
-
-            // Compute single side: compress(2*P)
-            let doubled = ep + ep;
-            let single_result = *RistrettoPoint(doubled).compress().as_bytes();
-
-            assert_eq!(
-                batch_result[0].as_bytes(),
-                &single_result,
-                "point {}: batch != single (negcheck1={})",
-                idx,
-                bool::from(negcheck1)
-            );
-
-            // Verify affine doubling matches e/f, g/h
-            let z_inv_fe = z.invert();
-            let ax = x * &z_inv_fe;
-            let ay = y * &z_inv_fe;
-
-            let f_inv = f.invert();
-            let h_inv = h.invert();
-            let ef = &e * &f_inv;
-            let gh = &g * &h_inv;
-
-            // Compute affine doubled point
-            let two_ab = &(&ax * &ay) + &(&ax * &ay);
-            let aa = ax.square();
-            let bb = ay.square();
-            let aabb = &aa * &bb;
-            let d_aabb = d * &aabb;
-            let denom_x = &FieldElement::ONE + &d_aabb;
-            let denom_y = &FieldElement::ONE - &d_aabb;
-            let doubled_x = &two_ab * &denom_x.invert();
-            let doubled_y = &(&bb + &aa) * &denom_y.invert();
-
-            assert!(
-                bool::from(doubled_x.ct_eq(&ef)),
-                "point {}: doubled_x != e/f",
-                idx
-            );
-            assert!(
-                bool::from(doubled_y.ct_eq(&gh)),
-                "point {}: doubled_y != g/h",
-                idx
-            );
-        }
-
-        assert!(
-            square_count > 0,
-            "no square (non-rotated) cases encountered"
-        );
-        assert!(
-            nonsquare_count > 0,
-            "no non-square (rotated) cases encountered"
-        );
-        eprintln!(
-            "batch axiom intermediate test: {} square, {} non-square cases",
-            square_count, nonsquare_count
-        );
-    }
-
-    /// Stress test: 1000 random hash-derived points
-    #[test]
-    fn test_batch_compress_stress_random() {
-        use sha2::{Digest, Sha512};
-
-        fn compress_doubled(p: &RistrettoPoint) -> [u8; 32] {
-            let doubled = &p.0 + &p.0;
-            *RistrettoPoint(doubled).compress().as_bytes()
-        }
-
-        fn batch_compress_one(p: &RistrettoPoint) -> [u8; 32] {
-            let results = RistrettoPoint::double_and_compress_batch(&[*p]);
-            *results[0].as_bytes()
-        }
-
-        for seed in 0u32..1000 {
-            let pt = RistrettoPoint::hash_from_bytes::<Sha512>(&seed.to_le_bytes());
-            assert_eq!(
-                compress_doubled(&pt),
-                batch_compress_one(&pt),
-                "stress seed {}: batch != single",
-                seed
-            );
-        }
-
-        // Also test large batches
-        for batch_start in (0u32..1000).step_by(50) {
-            let points: alloc::vec::Vec<RistrettoPoint> = (batch_start..batch_start + 50)
-                .map(|seed| RistrettoPoint::hash_from_bytes::<Sha512>(&seed.to_le_bytes()))
-                .collect();
-            let batch_results = RistrettoPoint::double_and_compress_batch(&points);
-            for (i, (p, batch_r)) in points.iter().zip(batch_results.iter()).enumerate() {
-                let single = compress_doubled(p);
-                assert_eq!(
-                    &single,
-                    batch_r.as_bytes(),
-                    "batch[{}..{}] point {}: batch != single",
-                    batch_start,
-                    batch_start + 50,
-                    i
-                );
-            }
-        }
-    }
+    use subtle::ConstantTimeEq;
 
     /// Validate axiom_invsqrt_a_minus_d_squared:
     /// C_IAD² · (a − d) ≡ 1 (mod p), where a = −1 for Ed25519.
@@ -3460,40 +2892,6 @@ mod test_batch_compress_axiom {
             bool::from(invsqrt.ct_eq(&c_iad)),
             "nat_invsqrt(−1 − d) should equal INVSQRT_A_MINUS_D"
         );
-    }
-
-    /// Validate axiom_curve_eq_batch_identity:
-    /// For 200 points on the curve: h² − g² = −e²·(1 + d).
-    #[test]
-    fn test_curve_eq_batch_identity() {
-        use crate::scalar::Scalar;
-
-        let d = &constants::EDWARDS_D;
-        let bp = constants::RISTRETTO_BASEPOINT_POINT;
-
-        for i in 1u64..=200 {
-            let p = RistrettoPoint(&Scalar::from(i) * &bp.0);
-            let ep = &p.0;
-
-            let z_inv = ep.Z.invert();
-            let a = &ep.X * &z_inv;
-            let b = &ep.Y * &z_inv;
-
-            let e = &(&a * &b) + &(&a * &b);
-            let g = &a.square() + &b.square();
-            let dab2 = &(d * &a.square()) * &b.square();
-            let h = &FieldElement::ONE - &dab2;
-
-            let h_sq = h.square();
-            let g_sq = g.square();
-            let lhs = &h_sq - &g_sq;
-            let e_sq = e.square();
-            let d_plus_1 = &FieldElement::ONE + d;
-            let rhs_neg = &e_sq * &d_plus_1;
-            let rhs = &FieldElement::ZERO - &rhs_neg;
-
-            assert!(bool::from(lhs.ct_eq(&rhs)), "point {}: h²−g² ≠ −e²(1+d)", i);
-        }
     }
 
     /// Validate axiom_invsqrt_factors_over_square:
@@ -3543,43 +2941,6 @@ mod test_batch_compress_axiom {
                 bool::from(lhs.ct_eq(&rhs)),
                 "point {}: invsqrt(a·b²) ≠ field_abs(invsqrt(a)·inv(b))",
                 i
-            );
-        }
-    }
-
-    /// Test the degenerate axiom: for all 8-torsion points, verify that
-    /// 2*P compresses to the identity encoding [0u8; 32].
-    #[test]
-    fn test_degenerate_double_compresses_to_zero() {
-        let torsion = crate::backend::serial::u64::constants::EIGHT_TORSION;
-        let identity_encoding = [0u8; 32];
-
-        for (ti, t_pt) in torsion.iter().enumerate() {
-            let doubled = t_pt + t_pt;
-            let rp = RistrettoPoint(doubled);
-            let encoding = *rp.compress().as_bytes();
-            assert_eq!(
-                encoding, identity_encoding,
-                "2*torsion[{}] should encode to zero",
-                ti
-            );
-        }
-
-        // Also test torsion + basepoint equivalences:
-        // For any torsion T, P+T is in the same Ristretto equivalence class as P.
-        // So compress(2*(P+T)) == compress(2*P) for any generic P.
-        let bp = constants::RISTRETTO_BASEPOINT_POINT;
-        let bp_doubled = *RistrettoPoint(&bp.0 + &bp.0).compress().as_bytes();
-
-        for (ti, t_pt) in torsion.iter().enumerate() {
-            let shifted = RistrettoPoint(&bp.0 + t_pt);
-            let shifted_doubled = *RistrettoPoint(&shifted.0 + &shifted.0)
-                .compress()
-                .as_bytes();
-            assert_eq!(
-                shifted_doubled, bp_doubled,
-                "compress(2*(B+T[{}])) should equal compress(2*B)",
-                ti
             );
         }
     }

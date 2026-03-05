@@ -1462,9 +1462,17 @@ pub open spec fn batch_state_limbs_bounded(state: &BatchCompressState) -> bool {
         && fe51_limbs_bounded(&state.fh, 54)
 }
 
-/// The algebraic relationship between a BatchCompressState and the source Edwards point.
-/// Given point (X:Y:Z:T), state fields satisfy:
-///   e = 2·X·Y,  f = Z²+d·T²,  g = Y²+X²,  h = Z²−d·T²,  eg = e·g,  fh = f·h
+/// The algebraic relationship between a `BatchCompressState` and the source Edwards point.
+///
+/// Given point (X:Y:Z:T) with curve parameter d, the state fields satisfy:
+///   - e  = 2·X·Y
+///   - f  = Z² + d·T²
+///   - g  = Y² + X²
+///   - h  = Z² − d·T²
+///   - eg = e·g
+///   - fh = f·h
+///
+/// Note: kept co-located with `BatchCompressState` to avoid circular imports.
 #[cfg(feature = "alloc")]
 pub open spec fn batch_state_matches_point(
     state: &BatchCompressState,

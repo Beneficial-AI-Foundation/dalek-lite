@@ -1792,18 +1792,35 @@ impl RistrettoPoint {
                     )@
                 },
     {
-        // ORIGINAL CODE:
-        //   let states: Vec<BatchCompressState> = points.into_iter().map(BatchCompressState::from).collect();
-        //   let mut invs: Vec<FieldElement> = states.iter().map(|state| state.efgh()).collect();
-        // Fused into a single loop for Verus compatibility and conciseness.
+        // ORIGINAL CODE: let states: Vec<BatchCompressState> = points.into_iter().map(BatchCompressState::from).collect();
         let mut states: Vec<BatchCompressState> = Vec::with_capacity(points.len());
-        let mut invs: Vec<FieldElement> = Vec::with_capacity(points.len());
         let mut k: usize = 0;
         while k < points.len()
             invariant
                 k <= points.len(),
                 states.len() == k,
-                invs.len() == k,
+                forall|idx: int|
+                    #![auto]
+                    0 <= idx < states.len() ==> batch_state_limbs_bounded(&states[idx]),
+                forall|idx: int|
+                    0 <= idx < states.len() ==> batch_state_matches_point(
+                        &states[idx],
+                        #[trigger] points@[idx].0,
+                    ),
+            decreases points.len() - k,
+        {
+            states.push(BatchCompressState::from(&points[k]));
+            k = k + 1;
+        }
+
+        // ORIGINAL CODE: let mut invs: Vec<FieldElement> = states.iter().map(|state| state.efgh()).collect();
+        let mut invs: Vec<FieldElement> = Vec::with_capacity(states.len());
+        let mut j: usize = 0;
+        while j < states.len()
+            invariant
+                j <= states.len(),
+                invs.len() == j,
+                states.len() == points.len(),
                 forall|idx: int|
                     #![auto]
                     0 <= idx < states.len() ==> batch_state_limbs_bounded(&states[idx]),
@@ -1821,12 +1838,10 @@ impl RistrettoPoint {
                 forall|idx: int|
                     #![auto]
                     0 <= idx < invs.len() ==> fe51_limbs_bounded(&invs[idx], 54),
-            decreases points.len() - k,
+            decreases states.len() - j,
         {
-            let state = BatchCompressState::from(&points[k]);
-            invs.push(state.efgh());
-            states.push(state);
-            k = k + 1;
+            invs.push(states[j].efgh());
+            j = j + 1;
         }
 
         // ORIGINAL CODE: FieldElement::batch_invert(&mut invs[..]);

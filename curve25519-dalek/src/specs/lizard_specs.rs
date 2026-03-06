@@ -43,13 +43,13 @@
 //!   16 B            32 B             ∈ F_p               ∈ E(F_p)
 //! ```
 //!
-//!   - `b(m) = mask(splice(SHA256(m), m))` — see `lizard_fe_bytes`
-//!     - `SHA256(m)`: pseudorandom padding (32 bytes)
+//!   - `b(m) = mask(splice(SHA256(m), m))` — spec: `lizard_fe_bytes` below
+//!     - `SHA256(m)`: 32-byte pseudorandom envelope
 //!     - `splice`: overwrite bytes 8..24 with `m` (recoverable payload)
 //!     - `mask`: `b[0] &= 254` (positive — Elligator maps ±r identically),
 //!       `b[31] &= 63` (below 2²⁵⁴ < p — `from_bytes` injective)
-//!   - `r(m) = from_bytes(b(m)) mod p` — see `lizard_r`
-//!   - `P(m) = Elligator(r(m))` — see `spec_lizard_encode`
+//!   - `r(m) = from_bytes(b(m)) mod p` — spec: `lizard_r` below
+//!   - `P(m) = Elligator(r(m))` — spec: `spec_lizard_encode` below
 //!
 //! ## Decoding pipeline (`lizard_decode_verus` / `spec_lizard_decode`)
 //!
@@ -66,43 +66,16 @@
 //!   - `b(mⱼ)==bⱼ?`: verify `b(mⱼ) == bⱼ` (SHA-256 consistency)
 //!   - exactly one match → `Some(m)`; zero or ≥2 → `None`
 //!
-//! Decode returns `None` (`n_found ≠ 1`) in exactly two cases:
+//! Decode returns `None` when `n_found ≠ 1`:
 //!
-//!   - **No preimage** (`n_found == 0`): `P` was not produced by Lizard.
-//!   - **Elligator collision** (`n_found ≥ 2`, negligible probability — analysis in go-ristretto ref):
-//!
-//!     ```text
-//!     m₁ ──► b(m₁) ──► r(m₁) ──╮
-//!                                ├──► Elligator ──► same P   ⟹  n_found ≥ 2
-//!     m₂ ──► b(m₂) ──► r(m₂) ──╯
-//!     ```
-//!
-//!     `m₁ ≠ m₂` ⟹ `b(m₁) ≠ b(m₂)` (bytes 8..24 differ)
-//!              ⟹ `r(m₁) ≠ r(m₂)` (from_bytes injective on masked range < 2²⁵⁴ < p)
-//!              but `Elligator(r(m₁)) == Elligator(r(m₂))` (same Ristretto coset)
-//!
-//!     The Elligator fiber for a Ristretto point `[P]`:
-//!
-//!     ```text
-//!     F_p                    E(F_p)                         Ristretto
-//!     (field elements)       (Edwards points)               (cosets [P] = P + E[4])
-//!
-//!     r₁ ──Elligator──►  Q₁ = P          ──╮
-//!     r₂ ──Elligator──►  Q₂ = P + T[2]     │
-//!     r₃ ──Elligator──►  Q₃ = P + T[4]     ├──────►  [P]
-//!     r₄ ──Elligator──►  Q₄ = P + T[6]     │
-//!           ...  (up to 2 per Qⱼ)         ──╯
-//!     ```
-//!
-//!     Each Ristretto point [P] is a coset of 4 Edwards points (4-torsion:
-//!     T[0], T[2], T[4], T[6]).  Each Edwards point has up to 2 Elligator
-//!     preimages (±r; Lizard restricts to positive).  Total: up to 8 field
-//!     elements per Ristretto point.  Collision = `r(m₁)` and `r(m₂)` land
-//!     in the same 8-element fiber.
-//!
-//! `n_found ≥ 2` with a single message is impossible: the check is on the full
-//! 32-byte `b(mⱼ) == bⱼ`, not just `mⱼ`.  Since `rⱼ ≠ rₖ ⟹ bⱼ ≠ bₖ` and
-//! `b(m)` is unique per `m`, at most one candidate passes per message.
+//!   - `n_found == 0` — point was not produced by Lizard (no candidate passes
+//!     the SHA-256 consistency check).
+//!   - `n_found ≥ 2` — two distinct messages `m₁ ≠ m₂` encode to the same
+//!     point. Their `r` values are distinct (bytes 8..24 differ ⟹ `from_bytes`
+//!     injective) but land in the same Elligator fiber (≤ 8 field elements per
+//!     Ristretto point). Negligible probability — see go-ristretto reference.
+//!     This is modeled by `lizard_has_unique_preimage`; `lemma_lizard_roundtrip`
+//!     proves correctness conditionally on the absence of such collisions.
 //!
 //! ## References
 //!
@@ -226,8 +199,10 @@ pub open spec fn spec_lizard_encode(data: Seq<u8>) -> (nat, nat)
 /// - `to_jacobi_quartic_ristretto` ensures (coset correctness)
 /// - `elligator_inv` ensures (round-trip with `spec_elligator_ristretto_flavor`)
 pub open spec fn jacobi_to_edwards_affine(s: nat, t: nat) -> (nat, nat) {
+    // y = (1 − S²) / (1 + S²)
     let s_sq = field_square(s);
     let y = field_mul(field_sub(1, s_sq), field_inv(field_add(1, s_sq)));
+    // x = −2S / (T · √(ad−1))
     let sqrt_ad_m1 = spec_sqrt_ad_minus_one();
     let x = field_mul(field_neg(field_mul(2, s)), field_inv(field_mul(t, sqrt_ad_m1)));
     (x, y)
@@ -241,7 +216,7 @@ pub open spec fn jacobi_to_edwards_affine(s: nat, t: nat) -> (nat, nat) {
 //   check:        extract mⱼ = bⱼ[8..24], verify b(mⱼ) == bⱼ  (SHA-256 consistency)
 //   result:       exactly one match → Some(m); zero or ≥2 → None
 // =============================================================================
-/// `data` encodes to `point` under the full Lizard pipeline.
+/// True iff `encode(data) == point`.
 pub open spec fn is_lizard_preimage(data: Seq<u8>, point: (nat, nat)) -> bool
     recommends
         data.len() == 16,
@@ -249,26 +224,16 @@ pub open spec fn is_lizard_preimage(data: Seq<u8>, point: (nat, nat)) -> bool
     spec_lizard_encode(data) == point
 }
 
-/// True iff `point` has exactly one 16-byte Lizard preimage.
+/// ∃! m ∈ {0,1}¹²⁸ such that `encode(m) == point`.
 ///
-/// Determines decode outcome: `spec_lizard_decode(point)` returns
-/// `Some(m)` iff this holds, `None` otherwise.
-/// `None` means either no preimage or an Elligator collision (two distinct
-/// messages map to the same Ristretto coset — see module-level docs).
-/// No collision-resistance axiom exists for `spec_sha256`; the hash is
-/// purely uninterpreted (only output length is axiomatized).
-///
-/// Formally: ∃! m ∈ {0,1}¹²⁸. `spec_lizard_encode(m) == point`.
+/// Guards `spec_lizard_decode`: `Some(m)` iff this holds, `None` otherwise.
 pub open spec fn lizard_has_unique_preimage(point: (nat, nat)) -> bool {
     exists|data: Seq<u8>|
         data.len() == 16 && #[trigger] is_lizard_preimage(data, point) && forall|data2: Seq<u8>|
             data2.len() == 16 && #[trigger] is_lizard_preimage(data2, point) ==> data2 == data
 }
 
-/// Decode: return the unique preimage, or `None` on collision / no preimage.
-///
-/// `Some(m)` iff `lizard_has_unique_preimage(point)`;
-/// `None`    iff collision or point was not produced by Lizard encoding.
+/// Return the unique preimage, or `None` (collision / no preimage).
 pub closed spec fn spec_lizard_decode(point: (nat, nat)) -> Option<Seq<u8>> {
     if lizard_has_unique_preimage(point) {
         Some(
@@ -287,10 +252,7 @@ pub closed spec fn spec_lizard_decode(point: (nat, nat)) -> Option<Seq<u8>> {
 // =============================================================================
 // Proved properties
 // =============================================================================
-/// **Soundness**: `decode(P) == Some(m)` implies `encode(m) == P`.
-///
-/// Follows from the `choose` in `spec_lizard_decode` satisfying
-/// `is_lizard_preimage`, which unfolds to `encode(m) == P`.
+/// Soundness: `decode(P) == Some(m)` ⟹ `encode(m) == P`.
 pub proof fn lemma_lizard_decode_sound(point: (nat, nat), data: Seq<u8>)
     ensures
         spec_lizard_decode(point) == Some(data) ==> spec_lizard_encode(data) == point,
@@ -298,12 +260,7 @@ pub proof fn lemma_lizard_decode_sound(point: (nat, nat), data: Seq<u8>)
     reveal(spec_lizard_decode);
 }
 
-/// **Conditional roundtrip**: `decode(encode(m)) == Some(m)` when no collision.
-///
-/// Conditional because Elligator collisions are structurally possible (with negligible probability):
-/// two distinct messages may map to the same Ristretto point.
-/// The `None` case (`!lizard_has_unique_preimage`) is definitional —
-/// see `spec_lizard_decode`.
+/// Roundtrip: `decode(encode(m)) == Some(m)`, conditional on no collision.
 pub proof fn lemma_lizard_roundtrip(data: Seq<u8>)
     requires
         data.len() == 16,

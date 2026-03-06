@@ -1170,13 +1170,35 @@ pub proof fn lemma_edwards_add_identity_left(x: nat, y: nat)
 // =============================================================================
 // Axioms: Signed scalar multiplication linearity (group law)
 // =============================================================================
-/// Axiom: Scalar multiplication distributes over point negation.
+/// Lemma: Scalar multiplication distributes over point negation.
 /// [n](-P) = -([n]P)
-pub proof fn axiom_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
+///
+/// Proof by structural induction mirroring edwards_scalar_mul's recursion.
+/// Even case uses double = add(x,x) + neg_distributes_over_add.
+/// Odd case uses add(prev, P) + neg_distributes_over_add.
+pub proof fn lemma_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
     ensures
         edwards_scalar_mul(edwards_neg(P), n) == edwards_neg(edwards_scalar_mul(P, n)),
+    decreases n,
 {
-    admit();
+    if n == 0 {
+        // neg(identity) = neg((0,1)) = (field_neg(0), 1) = (0, 1) = identity
+        // field_neg(0) = ((p - (0 % p)) as nat) % p = p % p = 0
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        lemma_mod_self_0(p() as int);
+    } else if n == 1 {
+    } else if n % 2 == 0 {
+        let half_n = (n / 2) as nat;
+        lemma_scalar_mul_distributes_over_neg(P, half_n);
+        let H = edwards_scalar_mul(P, half_n);
+        lemma_neg_distributes_over_add(H, H);
+    } else {
+        let prev_n = (n - 1) as nat;
+        lemma_scalar_mul_distributes_over_neg(P, prev_n);
+        let prev = edwards_scalar_mul(P, prev_n);
+        lemma_neg_distributes_over_add(prev, P);
+    }
 }
 
 /// Lemma: Negation distributes over addition (group homomorphism property).
@@ -1324,7 +1346,7 @@ pub proof fn lemma_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, 
 
         // LHS: [b]((neg_x, y)) where (x, y) = [|a|]P
         // By axiom: [b](-Q) = -([b]Q)
-        axiom_scalar_mul_distributes_over_neg(edwards_scalar_mul(P, abs_a), b);
+        lemma_scalar_mul_distributes_over_neg(edwards_scalar_mul(P, abs_a), b);
 
         // [b]([|a|]P) = [|a|*b]P by unsigned composition
         lemma_edwards_scalar_mul_composition(P, abs_a, b);

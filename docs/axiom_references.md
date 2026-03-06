@@ -233,14 +233,15 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_scalar_mul_distributes_over_neg(), ~~axiom_neg_distributes_over_add()~~ PROVED, axiom_add_neg_is_identity()
+### ~~axiom_scalar_mul_distributes_over_neg()~~ PROVED, ~~axiom_neg_distributes_over_add()~~ PROVED, axiom_add_neg_is_identity()
 **Claim:** Standard group properties: [n](−P) = −[n]P; −(P+Q) = (−P)+(−Q); P + (−P) = identity
 
 **Reference:** Group theory; Bernstein et al. (2008)  
 **URL:** https://eprint.iacr.org/2008/013.pdf
 
 **Justification:** Standard group properties.  
-**axiom_neg_distributes_over_add status:** Fully proved as `lemma_neg_distributes_over_add` via field algebra: neg*neg=id makes denominators match, neg*pos=neg(pos*pos) flips the x-numerator sign.
+**axiom_neg_distributes_over_add status:** Fully proved as `lemma_neg_distributes_over_add` via field algebra: neg*neg=id makes denominators match, neg*pos=neg(pos*pos) flips the x-numerator sign.  
+**axiom_scalar_mul_distributes_over_neg status:** Fully proved as `lemma_scalar_mul_distributes_over_neg` by structural induction on n, using `lemma_neg_distributes_over_add` at each recursive step.
 
 ---
 
@@ -533,7 +534,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_binomial_theorem | number_theory_lemmas.rs | Math | Standard mathematics |
 | axiom_edwards_add_associative | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 |
 | axiom_edwards_add_complete | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 Thm. 3.3 |
-| axiom_scalar_mul_distributes_over_neg | curve_equation_lemmas.rs | Math | Group theory |
+| ~~axiom_scalar_mul_distributes_over_neg~~ PROVED | curve_equation_lemmas.rs | Math | Group theory |
 | ~~axiom_neg_distributes_over_add~~ PROVED | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_add_neg_is_identity | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | Math | Group theory |

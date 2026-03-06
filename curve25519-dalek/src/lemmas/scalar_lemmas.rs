@@ -2447,7 +2447,7 @@ pub proof fn lemma_cancel_mul_R_mod_L(a: nat, b: nat)
         lemma_group_order_is_odd();
         // R = 2^260 (only factor is 2)
         // Therefore gcd(R, L) = 1, and gcd(R % L, L) = gcd(R, L) = 1
-        axiom_gcd_mod_noop(r, l);
+        lemma_gcd_mod_noop(r, l);
         axiom_gcd_pow2_odd(260, l);
     };
 
@@ -2478,7 +2478,7 @@ pub proof fn lemma_cancel_mul_L_mod_R(a: nat, b: nat)
     // Establish gcd(L % R, R) == 1
     assert(spec_gcd(l % r, r) == 1) by {
         lemma_group_order_is_odd();
-        axiom_gcd_mod_noop(l, r);
+        lemma_gcd_mod_noop(l, r);
         // gcd(L, R) = gcd(L, 2^260) = 1 since L is odd
         lemma_gcd_symmetric(l, r);
         axiom_gcd_pow2_odd(260, l);

@@ -191,11 +191,10 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_gcd_mod_noop()
+### ~~axiom_gcd_mod_noop()~~ PROVED as `lemma_gcd_mod_noop`
 **Claim:** gcd(a mod m, m) = gcd(a, m) when m > 0
 
-**Reference:** Euclidean algorithm; standard number theory  
-**Justification:** Standard property: gcd(a, m) = gcd(a mod m, m).
+**Status:** Fully proved: spec_gcd(a, m) unfolds to spec_gcd(m, a % m) by definition, then `lemma_gcd_symmetric` gives the result.
 
 ---
 

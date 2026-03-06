@@ -237,18 +237,17 @@ pub proof fn lemma_gcd_symmetric(a: nat, b: nat)
     }
 }
 
-/// Axiom: gcd(a % m, m) = gcd(a, m) for m > 0
+/// Lemma: gcd(a % m, m) = gcd(a, m) for m > 0
 ///
-/// Mathematical proof: By the Euclidean algorithm property,
-/// gcd(a, m) = gcd(m, a % m) = gcd(a % m, m) (using commutativity).
-/// This reflects that reducing a modulo m doesn't change the GCD with m.
-pub proof fn axiom_gcd_mod_noop(a: nat, m: nat)
+/// Proof: spec_gcd(a, m) unfolds to spec_gcd(m, a % m) since m > 0,
+/// and lemma_gcd_symmetric gives spec_gcd(a % m, m) = spec_gcd(m, a % m).
+pub proof fn lemma_gcd_mod_noop(a: nat, m: nat)
     requires
         m > 0,
     ensures
         spec_gcd(a % m, m) == spec_gcd(a, m),
 {
-    admit();
+    lemma_gcd_symmetric(a % m, m);
 }
 
 /// Axiom: gcd(2^k, n) = 1 when n is odd

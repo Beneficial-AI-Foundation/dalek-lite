@@ -2480,9 +2480,9 @@ pub proof fn lemma_cancel_mul_L_mod_R(a: nat, b: nat)
         lemma_group_order_is_odd();
         axiom_gcd_mod_noop(l, r);
         // gcd(L, R) = gcd(L, 2^260) = 1 since L is odd
-        axiom_gcd_symmetric(l, r);
+        lemma_gcd_symmetric(l, r);
         axiom_gcd_pow2_odd(260, l);
-        axiom_gcd_symmetric(pow2(260), l);
+        lemma_gcd_symmetric(pow2(260), l);
     };
 
     lemma_cancel_coprime_factor(a, b, l, r);

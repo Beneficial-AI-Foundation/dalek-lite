@@ -184,11 +184,10 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ## 4. Number Theory (number_theory_lemmas.rs)
 
-### axiom_gcd_symmetric()
+### ~~axiom_gcd_symmetric()~~ PROVED as `lemma_gcd_symmetric`
 **Claim:** gcd(a, b) = gcd(b, a)
 
-**Reference:** Standard mathematics (GCD definition)  
-**Justification:** GCD is symmetric by definition. Found in any number theory textbook.
+**Status:** Fully proved via mutual divisibility argument using `lemma_gcd_divides_both` + `lemma_common_divisor_divides_gcd`.
 
 ---
 

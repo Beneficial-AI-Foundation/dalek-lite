@@ -210,16 +210,31 @@ pub proof fn lemma_gcd_with_prime(a: nat, prime: nat)
 // require significant proof infrastructure to formally verify with our current
 // GCD definition. They are accepted as axioms.
 // =============================================================================
-/// Axiom: gcd(a, b) = gcd(b, a) (commutativity of GCD)
+/// Lemma: gcd(a, b) = gcd(b, a) (commutativity of GCD)
 ///
-/// Mathematical proof: The GCD is defined as the largest common divisor of a and b.
-/// Since "common divisor of a and b" is the same as "common divisor of b and a",
-/// the GCD is symmetric.
-pub proof fn axiom_gcd_symmetric(a: nat, b: nat)
+/// Proof: Each gcd divides both a and b, hence divides the other gcd.
+/// Mutual divisibility of positive naturals implies equality.
+pub proof fn lemma_gcd_symmetric(a: nat, b: nat)
     ensures
         spec_gcd(a, b) == spec_gcd(b, a),
 {
-    admit();
+    let g_ab = spec_gcd(a, b);
+    let g_ba = spec_gcd(b, a);
+
+    if a == 0 && b == 0 {
+    } else {
+        lemma_gcd_positive(a, b);
+        lemma_gcd_positive(b, a);
+
+        lemma_gcd_divides_both(a, b);
+        lemma_gcd_divides_both(b, a);
+
+        lemma_common_divisor_divides_gcd(b, a, g_ab);
+        lemma_common_divisor_divides_gcd(a, b, g_ba);
+
+        lemma_mod_is_zero_when_divisible(g_ab, g_ba);
+        lemma_mod_is_zero_when_divisible(g_ba, g_ab);
+    }
 }
 
 /// Axiom: gcd(a % m, m) = gcd(a, m) for m > 0
@@ -430,8 +445,8 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
     ensures
         k * binomial(n, k) == n * binomial((n - 1) as nat, (k - 1) as nat),
 {
-    lemma_binomial_factorial_relation(n, k);
-    lemma_binomial_factorial_relation((n - 1) as nat, (k - 1) as nat);
+    axiom_binomial_factorial_relation(n, k);
+    axiom_binomial_factorial_relation((n - 1) as nat, (k - 1) as nat);
 
     let binom_n_k = binomial(n, k);
     let binom_nm1_km1 = binomial((n - 1) as nat, (k - 1) as nat);
@@ -486,7 +501,7 @@ proof fn lemma_binomial_absorption_factorial(n: nat, k: nat)
 }
 
 /// C(n,k) * k! * (n-k)! = n! (well-known combinatorial identity)
-proof fn lemma_binomial_factorial_relation(n: nat, k: nat)
+proof fn axiom_binomial_factorial_relation(n: nat, k: nat)
     requires
         k <= n,
     ensures

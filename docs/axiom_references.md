@@ -88,16 +88,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_nonsquare_branch_r_sq()
-**Claim:** When d = −A/(1+2r²) and d+A = 1 (mod p), then r² = inv(2·486661)
-
-**Reference:** Elligator2 specification; RFC 9380 (Hashing to Elliptic Curves) Section 6.7.1  
-**URL:** https://www.rfc-editor.org/rfc/rfc9380.html#section-6.7.1
-
-**Justification:** Algebraic identity from the Elligator2 map. Verified by runtime test `test_nonsquare_branch_identity`.
-
----
-
 ### axiom_edwards_to_montgomery_preserves_validity()
 **Claim:** If (x,y) is on the Edwards curve, then u = (1+y)/(1−y) is a valid Montgomery u-coordinate (i.e., u³ + Au² + u is a quadratic residue)
 
@@ -172,25 +162,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 4. Number Theory (number_theory_lemmas.rs)
-
-### axiom_gcd_pow2_odd()
-**Claim:** gcd(2^k, n) = 1 when n is odd
-
-**Reference:** Standard number theory  
-**Justification:** 2^k and an odd n have no common prime factor.
-
----
-
-### axiom_binomial_theorem()
-**Claim:** (a+1)^n = Σ C(n,k)·a^k (binomial theorem)
-
-**Reference:** Standard mathematics  
-**Justification:** Binomial theorem. Found in any algebra or combinatorics textbook.
-
----
-
-## 5. Edwards Curve Algebra (curve_equation_lemmas.rs)
+## 4. Edwards Curve Algebra (curve_equation_lemmas.rs)
 
 ### axiom_edwards_add_associative()
 **Claim:** Edwards curve addition is associative
@@ -209,16 +181,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **URL:** https://eprint.iacr.org/2008/013.pdf
 
 **Justification:** For Ed25519, d is non-square in GF(p). By Theorem 3.3 of the Twisted Edwards Curves paper, the addition law is complete: for any two curve points (x₁,y₁), (x₂,y₂), the denominators 1 + d·x₁·x₂·y₁·y₂ and 1 − d·x₁·x₂·y₁·y₂ are both nonzero, and the result lies on the curve.
-
----
-
-### axiom_add_neg_is_identity()
-**Claim:** P + (−P) = identity
-
-**Reference:** Group theory; Bernstein et al. (2008)  
-**URL:** https://eprint.iacr.org/2008/013.pdf
-
-**Justification:** Standard group property: every element has an inverse.
 
 ---
 
@@ -242,7 +204,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 6. Window/Table Specs (window_specs.rs)
+## 5. Window/Table Specs (window_specs.rs)
 
 ### axiom_affine_odd_multiples_of_basepoint_valid()
 **Claim:** `AFFINE_ODD_MULTIPLES_OF_BASEPOINT` contains correct entries (2i+1)·B with bounded limbs
@@ -254,7 +216,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 7. Ristretto (ristretto_specs.rs, sqrt_ratio_lemmas.rs)
+## 6. Ristretto (ristretto_specs.rs, sqrt_ratio_lemmas.rs)
 
 ### axiom_ristretto_basepoint_table_valid()
 **Claim:** Ristretto basepoint table is valid for the Ristretto basepoint
@@ -370,7 +332,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 8. Inverse Square Root (field_specs.rs)
+## 7. Inverse Square Root (field_specs.rs)
 
 ### axiom_invsqrt_factors_over_square(a, b)
 **Signature:** `axiom_invsqrt_factors_over_square(a: nat, b: nat)` — requires `a % p() != 0`, `b % p() != 0`; ensures `nat_invsqrt(field_mul(a, field_square(b))) == field_abs(field_mul(nat_invsqrt(a), field_inv(b)))`.
@@ -397,7 +359,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 9. Square Root of −1 (sqrt_m1_lemmas.rs)
+## 8. Square Root of −1 (sqrt_m1_lemmas.rs)
 
 
 ### axiom_sqrt_m1_squared(), axiom_sqrt_m1_not_square(), axiom_neg_sqrt_m1_not_square()
@@ -412,7 +374,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 10. Probability (proba_specs.rs)
+## 9. Probability (proba_specs.rs)
 
 ### axiom_uniform_bytes_split(), axiom_from_bytes_uniform(), axiom_from_bytes_independent()
 **Claim:** Uniformity properties for byte-to-field conversion and splitting
@@ -440,7 +402,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 11. Core Assumes (core_assumes.rs)
+## 10. Core Assumes (core_assumes.rs)
 
 ### axiom_hash_is_canonical()
 **Claim:** Equal field elements hash identically
@@ -460,7 +422,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 12. Unused Montgomery Reduce (unused_montgomery_reduce_lemmas.rs)
+## 11. Unused Montgomery Reduce (unused_montgomery_reduce_lemmas.rs)
 
 ### axiom_two_l_div_pow2_208_le_pow2_45()
 **Claim:** `(2·L) / 2²⁰⁸ ≤ 2⁴⁵` where L is the group order
@@ -480,7 +442,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 Eq. 9 |
 | axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | Test | test_486660_not_qr |
 | axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | Test | test_2_times_486661_not_qr |
-| axiom_nonsquare_branch_r_sq | montgomery_curve_lemmas.rs | Test | test_nonsquare_branch_identity |
 | axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | RFC | RFC 9380 §6.7.1 |
 | axiom_montgomery_valid_u_implies_edwards_y_valid | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
@@ -488,11 +449,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_edwards_to_montgomery_commutes_with_scalar_mul | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_p_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |
 | axiom_group_order_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |
-| axiom_gcd_pow2_odd | number_theory_lemmas.rs | Math | Standard number theory |
-| axiom_binomial_theorem | number_theory_lemmas.rs | Math | Standard mathematics |
 | axiom_edwards_add_associative | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 |
 | axiom_edwards_add_complete | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 Thm. 3.3 |
-| axiom_add_neg_is_identity | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | Construction | RFC 8032; implementation |

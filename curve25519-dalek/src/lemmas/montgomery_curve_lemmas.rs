@@ -28,7 +28,9 @@ use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
-use vstd::arithmetic::power2::{lemma2_to64, lemma2_to64_rest, lemma_pow2_adds, lemma_pow2_strictly_increases, pow2};
+use vstd::arithmetic::power2::{
+    lemma2_to64, lemma2_to64_rest, lemma_pow2_adds, lemma_pow2_strictly_increases, pow2,
+};
 use vstd::prelude::*;
 
 verus! {
@@ -825,7 +827,11 @@ proof fn lemma_montgomery_a_value()
 spec fn local_pow2_m(n: nat) -> nat
     decreases n,
 {
-    if n == 0 { 1 } else { 2 * local_pow2_m((n - 1) as nat) }
+    if n == 0 {
+        1
+    } else {
+        2 * local_pow2_m((n - 1) as nat)
+    }
 }
 
 spec fn local_u5_nat_m(limbs: [u64; 5]) -> nat {
@@ -846,15 +852,25 @@ proof fn lemma_bridge_local_pow2_m()
         local_pow2_m(255) == pow2(255),
 {
     assert(local_pow2_m(51) == 2251799813685248nat) by (compute_only);
-    assert(pow2(51) == 2251799813685248nat) by { lemma2_to64_rest(); };
+    assert(pow2(51) == 2251799813685248nat) by {
+        lemma2_to64_rest();
+    };
     assert(local_pow2_m(102) == local_pow2_m(51) * local_pow2_m(51)) by (compute_only);
-    assert(pow2(102) == pow2(51) * pow2(51)) by { lemma_pow2_adds(51, 51); };
+    assert(pow2(102) == pow2(51) * pow2(51)) by {
+        lemma_pow2_adds(51, 51);
+    };
     assert(local_pow2_m(153) == local_pow2_m(51) * local_pow2_m(102)) by (compute_only);
-    assert(pow2(153) == pow2(51) * pow2(102)) by { lemma_pow2_adds(51, 102); };
+    assert(pow2(153) == pow2(51) * pow2(102)) by {
+        lemma_pow2_adds(51, 102);
+    };
     assert(local_pow2_m(204) == local_pow2_m(51) * local_pow2_m(153)) by (compute_only);
-    assert(pow2(204) == pow2(51) * pow2(153)) by { lemma_pow2_adds(51, 153); };
+    assert(pow2(204) == pow2(51) * pow2(153)) by {
+        lemma_pow2_adds(51, 153);
+    };
     assert(local_pow2_m(255) == local_pow2_m(51) * local_pow2_m(204)) by (compute_only);
-    assert(pow2(255) == pow2(51) * pow2(204)) by { lemma_pow2_adds(51, 204); };
+    assert(pow2(255) == pow2(51) * pow2(204)) by {
+        lemma_pow2_adds(51, 204);
+    };
 }
 
 /// MONTGOMERY_A_NEG encodes field_neg(MONTGOMERY_A) = p - 486662 in 51-bit limb form.
@@ -864,7 +880,9 @@ pub proof fn lemma_montgomery_a_neg_is_neg_a()
     ensures
         fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(fe51_as_canonical_nat(&MONTGOMERY_A)),
 {
-    assert(fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(fe51_as_canonical_nat(&MONTGOMERY_A))) by {
+    assert(fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(
+        fe51_as_canonical_nat(&MONTGOMERY_A),
+    )) by {
         assert({
             let lp = local_p_m();
             let neg_a_val = local_u5_nat_m(MONTGOMERY_A_NEG.limbs) % lp;
@@ -980,18 +998,161 @@ proof fn lemma_eps_when_d_is_minus_one(d: nat, A: nat)
     }
 }
 
-/// Axiom: if d = -A/(1+2r²) and d+A = 1 (mod p), then r² = inv(2·(A-1)).
-/// Verified by runtime test `test_nonsquare_branch_identity`.
-proof fn axiom_nonsquare_branch_r_sq(A: nat, d: nat, d_denom: nat, r_sq: nat)
+/// If d = -A/(1+2r²) and d+A = 1 (mod p), then r² = inv(2·(A-1)).
+proof fn lemma_nonsquare_branch_r_sq(A: nat, d: nat, d_denom: nat, r_sq: nat)
     requires
         A == 486662nat,
+        r_sq < p(),
         d_denom == field_add(1, field_mul(2, r_sq)),
         d == field_mul(field_neg(A), field_inv(d_denom)),
         field_neg(field_add(d, A)) == field_sub(0, 1),
     ensures
         r_sq == field_inv((2nat * 486661nat) % p()),
 {
-    admit();
+    let pp = p();
+    p_gt_2();
+
+    // Step 1: field_add(d, A) == 1
+    let dpa = field_add(d, A);
+    assert(field_sub(0, 1) == (pp - 1) as nat) by {
+        lemma_small_mod(0, pp);
+        lemma_small_mod(1, pp);
+        lemma_small_mod((pp - 1) as nat, pp);
+    };
+    assert(dpa < pp) by {
+        lemma_mod_bound((d + A) as int, pp as int);
+    };
+    if dpa == 0 {
+        assert(field_neg(0) == 0nat) by {
+            lemma_mod_self_0(pp as int);
+        };
+        assert(false);
+    }
+    assert(field_neg(dpa) == (pp - dpa) as nat) by {
+        lemma_small_mod(dpa, pp);
+        lemma_small_mod((pp - dpa) as nat, pp);
+    };
+    assert(dpa == 1);
+
+    // Step 2: d_denom % p != 0 (otherwise d=0, d+A=A=486662≠1)
+    assert(d_denom % pp != 0) by {
+        if d_denom % pp == 0 {
+            assert(field_inv(d_denom) == 0);
+            lemma_field_mul_zero_right(field_neg(A), field_inv(d_denom));
+            assert(d == 0);
+            lemma_p_gt_small(A);
+            assert(field_add(0, A) == A) by {
+                lemma_small_mod(A, pp);
+            };
+            assert(false);
+        }
+    };
+
+    // Step 3: d * d_denom = -A (by associativity + inverse cancellation)
+    let neg_a = field_neg(A);
+    let inv_dd = field_inv(d_denom);
+    lemma_field_mul_assoc(neg_a, inv_dd, d_denom);
+    assert(field_mul(field_mul(neg_a, inv_dd), d_denom) == field_mul(
+        neg_a,
+        field_mul(inv_dd, d_denom),
+    ));
+    assert(d == field_mul(neg_a, inv_dd));
+    lemma_inv_mul_cancel(d_denom);
+    assert(field_mul(inv_dd, d_denom) == 1);
+    lemma_field_mul_one_right(neg_a);
+    assert(neg_a < pp) by {
+        lemma_mod_bound((pp - A % pp) as int, pp as int);
+    };
+    lemma_small_mod(neg_a, pp);
+    assert(field_mul(neg_a, 1) == neg_a);
+    assert(field_mul(d, d_denom) == neg_a);
+
+    // Step 4: (d+A) * d_denom = d*d_denom + A*d_denom (distributivity)
+    lemma_field_mul_distributes_over_add(d_denom, d, A);
+    lemma_field_mul_comm(d_denom, d);
+    lemma_field_mul_comm(d_denom, A);
+    lemma_field_mul_comm(d_denom, dpa);
+    assert(field_mul(dpa, d_denom) == field_add(field_mul(d, d_denom), field_mul(A, d_denom)));
+
+    // Step 5: Since dpa=1, 1*d_denom = d_denom
+    lemma_field_mul_one_left(d_denom);
+    assert(d_denom < pp) by {
+        lemma_mod_bound((1 + (2 * r_sq) % pp) as int, pp as int);
+    };
+    lemma_small_mod(d_denom, pp);
+    assert(field_mul(dpa, d_denom) == d_denom);
+
+    // Step 6: d_denom = -A + A*d_denom
+    assert(d_denom == field_add(field_neg(A), field_mul(A, d_denom)));
+
+    // Step 7: A*(1 + 2*r_sq) = A + A*2*r_sq (expand via distributivity)
+    let two_rsq = field_mul(2, r_sq);
+    lemma_field_mul_distributes_over_add(A, 1, two_rsq);
+    lemma_field_mul_one_right(A);
+    lemma_p_gt_small(A);
+    lemma_small_mod(A, pp);
+    let a_two_rsq = field_mul(A, two_rsq);
+
+    // Step 8: -A + (A + A*2*r_sq) = (-A + A) + A*2*r_sq = 0 + A*2*r_sq = A*2*r_sq
+    lemma_field_add_assoc(field_neg(A), A, a_two_rsq);
+    assert(field_neg(A) == (pp - A) as nat) by {
+        lemma_small_mod(A, pp);
+        lemma_small_mod((pp - A) as nat, pp);
+    };
+    assert(field_add(field_neg(A), A) == 0) by {
+        lemma_mod_self_0(pp as int);
+    };
+    assert(a_two_rsq < pp) by {
+        lemma_mod_bound((A * two_rsq) as int, pp as int);
+    };
+    assert(field_add(0, a_two_rsq) == a_two_rsq) by {
+        lemma_small_mod(a_two_rsq, pp);
+    };
+    assert(d_denom == a_two_rsq);
+
+    // Step 9: A*2*r_sq = (A*2)*r_sq by associativity
+    lemma_field_mul_assoc(A, 2, r_sq);
+    assert(a_two_rsq == field_mul(field_mul(A, 2), r_sq));
+    assert(field_mul(A, 2) == 973324nat) by {
+        assert(486662nat * 2 == 973324nat) by (compute);
+        lemma_p_gt_small(973324nat);
+        lemma_small_mod(973324nat, pp);
+    };
+
+    // Step 10: Subtract 2*r_sq from both sides: 1 = (973324 - 2)*r_sq = 973322*r_sq
+    assert(two_rsq < pp) by {
+        lemma_mod_bound((2 * r_sq) as int, pp as int);
+    };
+    assert(1nat < pp);
+    lemma_field_sub_add_cancel(1, two_rsq);
+    assert(field_sub(d_denom, two_rsq) == 1);
+    assert(field_sub(field_mul(973324nat, r_sq), two_rsq) == 1);
+    lemma_field_mul_distributes_over_sub_right(973324nat, 2nat, r_sq);
+    assert(field_sub(973324nat, 2nat) == 973322nat) by {
+        lemma_small_mod(973324nat, pp);
+        lemma_small_mod(2nat, pp);
+        lemma_mod_add_multiples_vanish(973322int, pp as int);
+        lemma_small_mod(973322nat, pp);
+    };
+    assert(field_mul(973322nat, r_sq) == 1);
+
+    // Step 11: 973322 = 2*486661, so r_sq = inv(2*486661)
+    assert(973322nat == 2nat * 486661nat) by (compute);
+    let two_a1 = (2nat * 486661nat) % pp;
+    assert(two_a1 == 973322nat) by {
+        lemma_small_mod(973322nat, pp);
+    };
+    assert(field_mul(two_a1, r_sq) == 1);
+
+    lemma_field_mul_comm(two_a1, r_sq);
+    assert(1nat % pp == 1nat) by {
+        lemma_small_mod(1nat, pp);
+    };
+    lemma_solve_for_left_factor(r_sq, two_a1, 1);
+    lemma_field_mul_one_left(field_inv(two_a1));
+    field_inv_property(two_a1);
+    lemma_small_mod(field_inv(two_a1), pp);
+    lemma_small_mod(r_sq, pp);
 }
 
 // =============================================================================
@@ -1083,9 +1244,13 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
             let two_a1 = (2nat * 486661nat) % p();
 
             // r² = inv(2*486661) by axiom
+            assert(r_sq < p()) by {
+                p_gt_2();
+                lemma_mod_bound((r * r) as int, p() as int);
+            };
             assert(r_sq == field_inv(two_a1)) by {
                 lemma_montgomery_a_value();
-                axiom_nonsquare_branch_r_sq(A, d, d_denom, r_sq);
+                lemma_nonsquare_branch_r_sq(A, d, d_denom, r_sq);
             }
 
             // inv(2*486661) is not a QR
@@ -1192,31 +1357,8 @@ mod test_qr_axioms {
         a.modpow(&(p - BigUint::from(2u32)), p)
     }
 
-    #[test]
-    fn test_nonsquare_branch_identity() {
-        // Verify: for any r, if -(d+A) = -1 with d = -A/(1+2r²),
-        // then r² = inv(2*486661) mod p.
-        // We check: inv(2*486661) is not a QR, confirming no such r exists.
-        let p = p();
-        let a = BigUint::from(486662u32);
-        let two_a1 = (BigUint::from(2u32) * BigUint::from(486661u32)) % &p;
-        let inv_two_a1 = mod_inv(&two_a1, &p);
-
-        // inv(2*486661) should not be a QR (same as 2*486661 not being QR)
-        assert!(
-            !is_qr(&inv_two_a1, &p),
-            "inv(2*486661) should NOT be a QR mod p"
-        );
-
-        // Also verify the algebra: if d = 1-A and d = -A/(1+2r²),
-        // then 1+2r² = A/(A-1) and r² = 1/(2*(A-1)) = inv(2*486661)
-        let one_minus_a = (&p + BigUint::one() - &a) % &p;
-        let a_minus_1 = BigUint::from(486661u32);
-        let denom = (&a * mod_inv(&a_minus_1, &p)) % &p; // A/(A-1)
-        let two_r_sq = (&denom + &p - BigUint::one()) % &p; // denom - 1
-        let r_sq = (&two_r_sq * mod_inv(&BigUint::from(2u32), &p)) % &p;
-        assert_eq!(r_sq, inv_two_a1, "r² should equal inv(2*486661)");
-    }
+    // test_nonsquare_branch_identity removed: now formally proved as
+    // lemma_nonsquare_branch_r_sq.
 
     // test_montgomery_a_neg_value removed: now formally proved as
     // lemma_montgomery_a_neg_is_neg_a.

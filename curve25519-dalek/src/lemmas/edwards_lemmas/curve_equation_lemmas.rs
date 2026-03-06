@@ -119,17 +119,16 @@ pub proof fn lemma_identity_is_valid_extended()
     ensures
         is_valid_extended_edwards_point(0, 1, 1, 0),
 {
-    // First prove (0, 1) is on the curve
-    lemma_identity_on_curve();
-
-    // t = x * y = 0 * 1 = 0
-    assert(field_mul(0nat, 1nat) == 0) by {
-        p_gt_2();
-        lemma_small_mod(0nat, p());
-    }
-
-    // Use the affine-to-extended lemma
-    lemma_affine_to_extended_valid(0nat, 1nat, 0nat);
+    assert(is_valid_extended_edwards_point(0, 1, 1, 0)) by {
+        assert(is_on_edwards_curve(0, 1)) by {
+            lemma_identity_on_curve();
+        };
+        assert(field_mul(0nat, 1nat) == 0) by {
+            p_gt_2();
+            lemma_small_mod(0nat, p());
+        };
+        lemma_affine_to_extended_valid(0nat, 1nat, 0nat);
+    };
 }
 
 /// The identity projective point (X=0, Y=1, Z=1) is valid, has bounded limbs,
@@ -1204,8 +1203,12 @@ pub proof fn lemma_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
         assert(edwards_scalar_mul(edwards_neg(P), prev_n) == edwards_neg(prev)) by {
             lemma_scalar_mul_distributes_over_neg(P, prev_n);
         };
-        assert(edwards_add(edwards_neg(prev).0, edwards_neg(prev).1, edwards_neg(P).0, edwards_neg(P).1)
-            == edwards_neg(edwards_add(prev.0, prev.1, P.0, P.1))) by {
+        assert(edwards_add(
+            edwards_neg(prev).0,
+            edwards_neg(prev).1,
+            edwards_neg(P).0,
+            edwards_neg(P).1,
+        ) == edwards_neg(edwards_add(prev.0, prev.1, P.0, P.1))) by {
             lemma_neg_distributes_over_add(prev, P);
         };
     }
@@ -1269,15 +1272,6 @@ pub proof fn lemma_neg_distributes_over_add(P: (nat, nat), Q: (nat, nat))
     assert(field_mul(field_neg(x_num), field_inv(denom_x)) == field_neg(x3)) by {
         lemma_field_neg_mul_left(x_num, field_inv(denom_x));
     };
-}
-
-/// Axiom: Adding a point and its negation gives identity.
-/// P + (-P) = O (identity)
-pub proof fn axiom_add_neg_is_identity(P: (nat, nat))
-    ensures
-        edwards_add(P.0, P.1, edwards_neg(P).0, edwards_neg(P).1) == edwards_identity(),
-{
-    admit();
 }
 
 /// Negation flips the sign of signed scalar multiplication:
@@ -3021,7 +3015,6 @@ pub proof fn lemma_completed_point_ratios(
 pub proof fn lemma_edwards_to_montgomery_correspondence(y: nat, z: nat)
     requires
         z % p() != 0,
-
     ensures
         ({
             let y_affine = field_mul(y, field_inv(z));
@@ -3035,7 +3028,9 @@ pub proof fn lemma_edwards_to_montgomery_correspondence(y: nat, z: nat)
     let inv_z = field_inv(z);
     let y_aff = field_mul(y, inv_z);
 
-    assert(p() > 2) by { p_gt_2(); };
+    assert(p() > 2) by {
+        p_gt_2();
+    };
 
     assert(inv_z % p() != 0) by {
         lemma_inv_mul_cancel(z);

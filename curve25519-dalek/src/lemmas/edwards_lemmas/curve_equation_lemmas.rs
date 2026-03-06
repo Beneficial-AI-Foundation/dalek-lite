@@ -1179,14 +1179,64 @@ pub proof fn axiom_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
     admit();
 }
 
-/// Axiom: Negation distributes over addition (group homomorphism property).
+/// Lemma: Negation distributes over addition (group homomorphism property).
 /// (-P) + (-Q) = -(P + Q)
-pub proof fn axiom_neg_distributes_over_add(P: (nat, nat), Q: (nat, nat))
+///
+/// Proof outline: edwards_neg flips the x-coordinate only.
+/// neg(x)*neg(y) = x*y so the denominator parameter t is unchanged,
+/// while neg(x)*y = neg(x*y), so the x-numerator picks up a sign flip.
+pub proof fn lemma_neg_distributes_over_add(P: (nat, nat), Q: (nat, nat))
     ensures
         edwards_add(edwards_neg(P).0, edwards_neg(P).1, edwards_neg(Q).0, edwards_neg(Q).1)
             == edwards_neg(edwards_add(P.0, P.1, Q.0, Q.1)),
 {
-    admit();
+    let (px, py) = (P.0, P.1);
+    let (qx, qy) = (Q.0, Q.1);
+    let neg_px = field_neg(px);
+    let neg_qx = field_neg(qx);
+
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let x1x2 = field_mul(px, qx);
+    let y1y2 = field_mul(py, qy);
+    let x1y2 = field_mul(px, qy);
+    let y1x2 = field_mul(py, qx);
+    let t = field_mul(d, field_mul(x1x2, y1y2));
+    let denom_x = field_add(1, t);
+    let denom_y = field_sub(1, t);
+    let x3 = field_mul(field_add(x1y2, y1x2), field_inv(denom_x));
+    let y3 = field_mul(field_add(y1y2, x1x2), field_inv(denom_y));
+
+    // Key fact: neg*neg = id in GF(p)
+    assert(field_mul(neg_px, neg_qx) == x1x2) by {
+        lemma_field_neg_mul_left(px, neg_qx);
+        lemma_field_mul_neg(px, qx);
+        lemma_neg_neg(field_mul(px, qx));
+        p_gt_2();
+        lemma_mod_bound((px * qx) as int, p() as int);
+        lemma_field_element_reduced(field_mul(px, qx));
+    };
+
+    // neg*pos = neg(pos*pos)
+    assert(field_mul(neg_px, qy) == field_neg(x1y2)) by {
+        lemma_field_neg_mul_left(px, qy);
+    };
+    assert(field_mul(py, neg_qx) == field_neg(y1x2)) by {
+        lemma_field_mul_neg(py, qx);
+    };
+
+    // neg(a)+neg(b) = neg(a+b) in GF(p)
+    assert(field_add(field_neg(x1y2), field_neg(y1x2)) == field_neg(field_add(x1y2, y1x2))) by {
+        lemma_field_sub_eq_add_neg(field_neg(x1y2), y1x2);
+        lemma_field_sub_antisymmetric(y1x2, field_neg(x1y2));
+        lemma_sub_neg_eq_add(y1x2, x1y2);
+        lemma_field_add_comm(y1x2, x1y2);
+    };
+
+    // neg(num)*inv = neg(num*inv)
+    let x_num = field_add(x1y2, y1x2);
+    assert(field_mul(field_neg(x_num), field_inv(denom_x)) == field_neg(x3)) by {
+        lemma_field_neg_mul_left(x_num, field_inv(denom_x));
+    };
 }
 
 /// Axiom: Adding a point and its negation gives identity.

@@ -1374,10 +1374,7 @@ pub proof fn lemma_edwards_basepoint_maps_to_montgomery_basepoint()
     // numer + p = 1 + y + p
     // Check: 9(p+1-y) = (1+y) + p  ⟺  9p+9-9y = p+1+y  ⟺  8p+8 = 10y  ⟺  4p+4 = 5y ✓
     assert(9 * denom == numer + pp) by {
-        assert(9 * ((pp + 1 - y) as nat) == (1 + y) + pp) by {
-            // 9(p+1-y) = 9p+9-9y,  (1+y)+p = p+1+y
-            // Difference: 9p+9-9y - p-1-y = 8p+8-10y = 2(4p+4-5y) = 0
-        };
+        assert(9 * ((pp + 1 - y) as nat) == (1 + y) + pp);
     };
 
     // field_mul(9, denom) = (9*denom) % p = (numer + p) % p = numer
@@ -1475,12 +1472,6 @@ mod test_qr_axioms {
     fn mod_inv(a: &BigUint, p: &BigUint) -> BigUint {
         a.modpow(&(p - BigUint::from(2u32)), p)
     }
-
-    // test_nonsquare_branch_identity removed: now formally proved as
-    // lemma_nonsquare_branch_r_sq.
-
-    // test_montgomery_a_neg_value removed: now formally proved as
-    // lemma_montgomery_a_neg_is_neg_a.
 
     // test_edwards_basepoint_maps_to_montgomery_9 removed: now formally proved as
     // lemma_edwards_basepoint_maps_to_montgomery_basepoint.

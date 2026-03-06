@@ -89,14 +89,10 @@ impl RistrettoPoint {
     /// VERIFICATION NOTE: the implementation uses Digest, unsupported by Verus.
     /// We verify below a refactored implementation that uses SHA256 provided via
     /// an external_body specification.
-    #[cfg_attr(verus_keep_ghost, verifier::external_body)]
-    pub fn lizard_encode<D: Digest>(data: &[u8; 16]) -> (result: RistrettoPoint) where
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
+    pub fn lizard_encode<D: Digest>(data: &[u8; 16]) -> RistrettoPoint where
         D: Digest<OutputSize = U32>,
-
-        ensures
-            is_well_formed_edwards_point(result.0),
-            is_in_even_subgroup(result.0),
-    {
+     {
         let mut fe_bytes: [u8; 32] = Default::default();
 
         let digest = D::digest(data);
@@ -146,7 +142,7 @@ impl RistrettoPoint {
     /// VERIFICATION NOTE: the implementation uses Digest, unsupported by Verus.
     /// We verify below a refactored implementation that uses SHA256 provided via
     /// an external_body specification.
-    #[cfg_attr(verus_keep_ghost, verifier::external_body)]
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     pub fn lizard_decode<D: Digest>(&self) -> Option<[u8; 16]> where D: Digest<OutputSize = U32> {
         let mut result: [u8; 16] = Default::default();
         let mut h: [u8; 32] = Default::default();

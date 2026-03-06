@@ -311,6 +311,27 @@
     margin: 0;
     white-space: nowrap;
 }
+.panel-title-link {
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    background: rgba(52, 152, 219, 0.1);
+    border: 1px solid rgba(52, 152, 219, 0.25);
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.15s, border-color 0.15s;
+}
+.panel-title-link:hover {
+    background: rgba(52, 152, 219, 0.2);
+    border-color: var(--accent);
+}
+.panel-title-sep {
+    color: var(--text-secondary);
+    font-weight: 400;
+    margin: 0 0.1rem;
+}
 
 .panel-toolbar {
     display: flex;

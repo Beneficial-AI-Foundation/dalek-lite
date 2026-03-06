@@ -86,6 +86,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
+    // Normalize module names (merge submodules into parents)
+    const MODULE_ALIASES = { "scalar_helpers": "scalar" };
+    for (const fn of verifiedFunctions) {
+        fn.module = MODULE_ALIASES[fn.module] || fn.module;
+    }
+    for (const s of specFunctions) {
+        s.module = MODULE_ALIASES[s.module] || s.module;
+    }
+
     // Build lookup
     for (const s of specFunctions) {
         specLookup[s.name] = s;
@@ -533,10 +542,11 @@ function getFilteredSpecs() {
 
     // Auto-filter: when a left-panel filter is active, show only specs
     // reachable (transitively) from the visible verified functions.
+    // Axioms are always kept so the "Axioms" jump link works.
     // Skip when autoFilterBypassed (user navigated to an out-of-scope spec).
     if (!specFilterRefs && !autoFilterBypassed && hasLeftFilter()) {
         const reachable = getReachableSpecs(getFilteredVerified());
-        list = list.filter(s => reachable.has(s.name));
+        list = list.filter(s => s.category === "axiom" || reachable.has(s.name));
     }
 
     if (searchRight) {
@@ -611,18 +621,21 @@ function renderRightPanel() {
     let html = "";
     let currentMod = null;
     let axiomHeaderShown = false;
+    let firstSpecHeaderShown = false;
     for (const spec of filtered) {
         if (spec.category === "axiom") {
             // Single header for all axioms
             if (!axiomHeaderShown) {
                 axiomHeaderShown = true;
                 const axiomCount = filtered.filter(s => s.category === "axiom").length;
-                html += `<div class="module-group-header axiom-group-header">Axioms <span class="axiom-group-count">${axiomCount}</span></div>`;
+                html += `<div id="axioms-top" class="module-group-header axiom-group-header">Axioms <span class="axiom-group-count">${axiomCount}</span></div>`;
             }
         } else {
             if (spec.module !== currentMod) {
                 currentMod = spec.module;
-                html += `<div class="module-group-header">${escapeHtml(currentMod)}</div>`;
+                const anchorId = !firstSpecHeaderShown ? ' id="specs-top"' : '';
+                firstSpecHeaderShown = true;
+                html += `<div${anchorId} class="module-group-header">${escapeHtml(currentMod)}</div>`;
             }
         }
         html += renderSpecCard(spec);
@@ -637,6 +650,23 @@ function renderRightPanel() {
             inflateSpecBody(card);
             card.classList.toggle("open");
         });
+    });
+
+    // Wire up title jump links to scroll within the panel
+    const scrollParent = container.closest(".panel-scroll");
+    document.getElementById("jumpSpecs")?.addEventListener("click", e => {
+        e.preventDefault();
+        const target = document.getElementById("specs-top");
+        if (target && scrollParent) {
+            scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
+        }
+    });
+    document.getElementById("jumpAxioms")?.addEventListener("click", e => {
+        e.preventDefault();
+        const target = document.getElementById("axioms-top");
+        if (target && scrollParent) {
+            scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
+        }
     });
 }
 

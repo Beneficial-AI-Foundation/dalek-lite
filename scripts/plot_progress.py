@@ -340,32 +340,36 @@ def plot_file_breakdown(df: pd.DataFrame, output_dir: Path):
         # e.g., "curve25519_dalek::backend::serial::u64::field" -> "u64::field"
         # e.g., "curve25519_dalek::scalar" -> "scalar"
         parts = module.replace("curve25519_dalek::", "").split("::")
+        # Group lizard submodules (lizard_ristretto, jacobi_quartic, ...) under one label
+        if parts and parts[0] == "lizard":
+            return "lizard"
+        # Merge scalar_helpers into scalar
+        if parts and parts[-1] == "scalar_helpers":
+            return "scalar"
         # Always show last 2 levels (or fewer if not available)
         if len(parts) >= 2:
             return "::".join(parts[-2:])
         return parts[-1] if parts else "unknown"
 
-    # Count by module
-    module_stats = []
-    for module in df["module"].unique():
-        module_df = df[df["module"] == module]
-        total = len(module_df)
-        verus_specs = (
-            module_df["has_spec"].notna() & (module_df["has_spec"] != "")
-        ).sum()
-        verus_proofs = (module_df["has_proof"] == "yes").sum()
-
-        module_stats.append(
-            {
-                "module": module,
-                "display_module": simplify_module(module),
-                "total": total,
-                "verus_specs": verus_specs,
-                "verus_proofs": verus_proofs,
-                "spec_pct": round(verus_specs * 100 / total, 1) if total > 0 else 0,
-                "proof_pct": round(verus_proofs * 100 / total, 1) if total > 0 else 0,
-            }
-        )
+    # Count by display module (merges submodules like lizard::* into one)
+    df["_display_module"] = df["module"].apply(simplify_module)
+    merged = {}
+    for display_mod in df["_display_module"].unique():
+        mod_df = df[df["_display_module"] == display_mod]
+        total = len(mod_df)
+        verus_specs = (mod_df["has_spec"].notna() & (mod_df["has_spec"] != "")).sum()
+        verus_proofs = (mod_df["has_proof"] == "yes").sum()
+        merged[display_mod] = {
+            "module": display_mod,
+            "display_module": display_mod,
+            "total": total,
+            "verus_specs": verus_specs,
+            "verus_proofs": verus_proofs,
+            "spec_pct": round(verus_specs * 100 / total, 1) if total > 0 else 0,
+            "proof_pct": round(verus_proofs * 100 / total, 1) if total > 0 else 0,
+        }
+    module_stats = list(merged.values())
+    df.drop(columns=["_display_module"], inplace=True)
 
     # Sort by total functions
     module_stats.sort(key=lambda x: x["total"], reverse=True)

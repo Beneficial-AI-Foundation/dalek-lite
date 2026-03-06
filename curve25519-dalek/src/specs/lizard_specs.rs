@@ -10,26 +10,20 @@
 //!
 //! ## Example application: Signal's anonymous credentials
 //!
-//! In Signal's zkgroup library, Lizard is used to embed a 16-byte UUID
-//! (user/service identifier) into a Ristretto point so that it can participate
-//! in zero-knowledge credential operations (encryption, proofs of knowledge)
-//! while remaining recoverable on decryption:
+//! Signal's zkgroup library uses Lizard to embed a 16-byte UUID into a
+//! Ristretto point. The point can then be encrypted and used in zero-knowledge
+//! proofs, while remaining decodable back to the UUID on decryption.
 //!
 //! ```text
 //! // Encoding (uid_struct.rs):
-//! let M2 = RistrettoPoint::lizard_encode::<Sha256>(&raw_uuid_bytes);
+//! let point = RistrettoPoint::lizard_encode::<Sha256>(&uuid_bytes);
 //!
 //! // Decoding (uid_encryption.rs):
-//! match M2.lizard_decode::<Sha256>() {
-//!     Some(bytes) => { /* recover UUID from bytes */ }
-//!     None => { /* decryption failure */ }
+//! match point.lizard_decode::<Sha256>() {
+//!     Some(bytes) => { /* recovered UUID */ }
+//!     None        => { /* not a Lizard-encoded point */ }
 //! }
 //! ```
-//!
-//! The point `M2` is then used as an attribute in a Pedersen-style commitment
-//! (`M1` is a hash-to-curve point for the same identity; `M2` carries the
-//! recoverable payload). This lets the server verify credential presentations
-//! without learning the UUID, while the client can decrypt to recover it.
 //!
 //! ## Mathematical objects and notation
 //!

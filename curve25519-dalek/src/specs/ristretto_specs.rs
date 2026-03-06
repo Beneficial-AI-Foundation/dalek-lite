@@ -997,7 +997,7 @@ mod test_ristretto_decode_axioms {
         // (i.e., half_p_minus_1 = (p-1)/2). We'll verify this indirectly: a^(p-1) = 1
         // for any nonzero a (Fermat), and a^((p-1)/2) = ±1 (Euler).
 
-        // Compute i^((p-1)/2) using square-and-multiply (MSB-first)
+        // Compute i^((p-1)/2) using square-and-multiply (LSB-first, little-endian)
         let euler_i = pow_field_element(&sqrt_m1, &half_p_minus_1);
 
         // For a non-square, Euler's criterion gives -1

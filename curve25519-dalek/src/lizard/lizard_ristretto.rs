@@ -54,7 +54,6 @@ verus! {
 
 impl RistrettoPoint {
     /// Directly encode 253 bits as a RistrettoPoint, using Elligator
-    #[verifier::rlimit(20)]
     pub fn from_uniform_bytes_single_elligator(bytes: &[u8; 32]) -> (result: RistrettoPoint)
         ensures
     // Well-formedness: result is a valid Edwards point in the even subgroup
@@ -148,7 +147,8 @@ impl RistrettoPoint {
         let mut h: [u8; 32] = Default::default();
         let (mask, fes) = self.elligator_ristretto_flavor_inverse();
         let mut n_found = 0;
-        /* ORIGINAL CODE: for (j, fe_j) in fes.iter().enumerate() { ... } */
+        /* ORIGINAL CODE: for (j, fe_j) in fes.iter().enumerate() {
+           Verus cannot compile .enumerate() even with verifier::external. */
         for j in 0..8 {
             let fe_j = &fes[j];
             let mut ok = Choice::from((mask >> j) & 1);

@@ -652,22 +652,28 @@ function renderRightPanel() {
         });
     });
 
-    // Wire up title jump links to scroll within the panel
+    // Wire up title jump links (use onclick to avoid accumulating listeners on re-render)
     const scrollParent = container.closest(".panel-scroll");
-    document.getElementById("jumpSpecs")?.addEventListener("click", e => {
-        e.preventDefault();
-        const target = document.getElementById("specs-top");
-        if (target && scrollParent) {
-            scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
-        }
-    });
-    document.getElementById("jumpAxioms")?.addEventListener("click", e => {
-        e.preventDefault();
-        const target = document.getElementById("axioms-top");
-        if (target && scrollParent) {
-            scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
-        }
-    });
+    const jumpSpecs = document.getElementById("jumpSpecs");
+    if (jumpSpecs) {
+        jumpSpecs.onclick = e => {
+            e.preventDefault();
+            const target = document.getElementById("specs-top");
+            if (target && scrollParent) {
+                scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
+            }
+        };
+    }
+    const jumpAxioms = document.getElementById("jumpAxioms");
+    if (jumpAxioms) {
+        jumpAxioms.onclick = e => {
+            e.preventDefault();
+            const target = document.getElementById("axioms-top");
+            if (target && scrollParent) {
+                scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
+            }
+        };
+    }
 }
 
 function renderInlineRefCard(spec, visited) {

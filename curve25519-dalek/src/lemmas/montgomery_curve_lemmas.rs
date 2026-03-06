@@ -864,14 +864,16 @@ pub proof fn lemma_montgomery_a_neg_is_neg_a()
     ensures
         fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(fe51_as_canonical_nat(&MONTGOMERY_A)),
 {
-    assert({
-        let lp = local_p_m();
-        let neg_a_val = local_u5_nat_m(MONTGOMERY_A_NEG.limbs) % lp;
-        let a_val = local_u5_nat_m(MONTGOMERY_A.limbs) % lp;
-        neg_a_val == ((lp - (a_val % lp)) as nat) % lp
-    }) by (compute_only);
+    assert(fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(fe51_as_canonical_nat(&MONTGOMERY_A))) by {
+        assert({
+            let lp = local_p_m();
+            let neg_a_val = local_u5_nat_m(MONTGOMERY_A_NEG.limbs) % lp;
+            let a_val = local_u5_nat_m(MONTGOMERY_A.limbs) % lp;
+            neg_a_val == ((lp - (a_val % lp)) as nat) % lp
+        }) by (compute_only);
 
-    lemma_bridge_local_pow2_m();
+        lemma_bridge_local_pow2_m();
+    };
 }
 
 /// Helper: show that small constants (< 1048576) are less than p.

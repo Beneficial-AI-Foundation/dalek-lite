@@ -1182,22 +1182,32 @@ pub proof fn lemma_scalar_mul_distributes_over_neg(P: (nat, nat), n: nat)
     decreases n,
 {
     if n == 0 {
-        // neg(identity) = neg((0,1)) = (field_neg(0), 1) = (0, 1) = identity
-        // field_neg(0) = ((p - (0 % p)) as nat) % p = p % p = 0
-        p_gt_2();
-        lemma_small_mod(0nat, p());
-        lemma_mod_self_0(p() as int);
+        assert(field_neg(0nat) == 0nat) by {
+            p_gt_2();
+            lemma_small_mod(0nat, p());
+            lemma_mod_self_0(p() as int);
+        };
     } else if n == 1 {
     } else if n % 2 == 0 {
         let half_n = (n / 2) as nat;
-        lemma_scalar_mul_distributes_over_neg(P, half_n);
         let H = edwards_scalar_mul(P, half_n);
-        lemma_neg_distributes_over_add(H, H);
+        assert(edwards_scalar_mul(edwards_neg(P), half_n) == edwards_neg(H)) by {
+            lemma_scalar_mul_distributes_over_neg(P, half_n);
+        };
+        assert(edwards_add(edwards_neg(H).0, edwards_neg(H).1, edwards_neg(H).0, edwards_neg(H).1)
+            == edwards_neg(edwards_add(H.0, H.1, H.0, H.1))) by {
+            lemma_neg_distributes_over_add(H, H);
+        };
     } else {
         let prev_n = (n - 1) as nat;
-        lemma_scalar_mul_distributes_over_neg(P, prev_n);
         let prev = edwards_scalar_mul(P, prev_n);
-        lemma_neg_distributes_over_add(prev, P);
+        assert(edwards_scalar_mul(edwards_neg(P), prev_n) == edwards_neg(prev)) by {
+            lemma_scalar_mul_distributes_over_neg(P, prev_n);
+        };
+        assert(edwards_add(edwards_neg(prev).0, edwards_neg(prev).1, edwards_neg(P).0, edwards_neg(P).1)
+            == edwards_neg(edwards_add(prev.0, prev.1, P.0, P.1))) by {
+            lemma_neg_distributes_over_add(prev, P);
+        };
     }
 }
 
@@ -3025,9 +3035,8 @@ pub proof fn lemma_edwards_to_montgomery_correspondence(y: nat, z: nat)
     let inv_z = field_inv(z);
     let y_aff = field_mul(y, inv_z);
 
-    p_gt_2();
+    assert(p() > 2) by { p_gt_2(); };
 
-    // inv(z) is nonzero when z is nonzero (by contradiction from inv*z=1)
     assert(inv_z % p() != 0) by {
         lemma_inv_mul_cancel(z);
         p_gt_2();
@@ -3073,24 +3082,19 @@ pub proof fn lemma_edwards_to_montgomery_correspondence(y: nat, z: nat)
             lemma_cancel_common_factor(zpy, zmy, inv_z);
         };
     } else {
-        // Degenerate: z-y = 0 mod p => both sides are 0
-        assert(zmy < p()) by {
-            let z_mod = z % p();
-            let y_mod = y % p();
+        assert(zmy == 0nat) by {
             lemma_mod_bound(z as int, p() as int);
             lemma_mod_bound(y as int, p() as int);
-            lemma_mod_bound((z_mod + p() - y_mod) as int, p() as int);
+            lemma_mod_bound((z % p() + p() - y % p()) as int, p() as int);
+            lemma_small_mod(zmy, p());
         };
-        lemma_small_mod(zmy, p());
-        assert(zmy == 0nat);
-        assert(field_inv(0nat) == 0nat);
 
-        assert(field_mul(0nat, inv_z) == 0nat) by {
-            lemma_field_mul_comm(0nat, inv_z);
-            lemma_field_mul_one_left(0nat);
+        assert(one_minus_y == 0nat) by {
+            assert(field_mul(0nat, inv_z) == 0nat) by {
+                lemma_field_mul_comm(0nat, inv_z);
+                lemma_field_mul_one_left(0nat);
+            };
         };
-        assert(one_minus_y == field_mul(zmy, inv_z));
-        assert(one_minus_y == 0nat);
 
         assert(proj == 0nat) by {
             lemma_field_mul_comm(zpy, 0nat);

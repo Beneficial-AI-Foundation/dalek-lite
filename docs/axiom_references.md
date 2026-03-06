@@ -88,13 +88,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### ~~axiom_montgomery_a_neg_is_neg_a()~~ PROVED as `lemma_montgomery_a_neg_is_neg_a`
-**Claim:** `MONTGOMERY_A_NEG` encodes −486662 mod p
-
-**Status:** Fully proved via concrete computation with `by(compute_only)`. Runtime test `test_montgomery_a_neg_value` deleted.
-
----
-
 ### axiom_nonsquare_branch_r_sq()
 **Claim:** When d = −A/(1+2r²) and d+A = 1 (mod p), then r² = inv(2·486661)
 
@@ -181,20 +174,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ## 4. Number Theory (number_theory_lemmas.rs)
 
-### ~~axiom_gcd_symmetric()~~ PROVED as `lemma_gcd_symmetric`
-**Claim:** gcd(a, b) = gcd(b, a)
-
-**Status:** Fully proved via mutual divisibility argument using `lemma_gcd_divides_both` + `lemma_common_divisor_divides_gcd`.
-
----
-
-### ~~axiom_gcd_mod_noop()~~ PROVED as `lemma_gcd_mod_noop`
-**Claim:** gcd(a mod m, m) = gcd(a, m) when m > 0
-
-**Status:** Fully proved: spec_gcd(a, m) unfolds to spec_gcd(m, a % m) by definition, then `lemma_gcd_symmetric` gives the result.
-
----
-
 ### axiom_gcd_pow2_odd()
 **Claim:** gcd(2^k, n) = 1 when n is odd
 
@@ -233,15 +212,13 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### ~~axiom_scalar_mul_distributes_over_neg()~~ PROVED, ~~axiom_neg_distributes_over_add()~~ PROVED, axiom_add_neg_is_identity()
-**Claim:** Standard group properties: [n](−P) = −[n]P; −(P+Q) = (−P)+(−Q); P + (−P) = identity
+### axiom_add_neg_is_identity()
+**Claim:** P + (−P) = identity
 
 **Reference:** Group theory; Bernstein et al. (2008)  
 **URL:** https://eprint.iacr.org/2008/013.pdf
 
-**Justification:** Standard group properties.  
-**axiom_neg_distributes_over_add status:** Fully proved as `lemma_neg_distributes_over_add` via field algebra: neg*neg=id makes denominators match, neg*pos=neg(pos*pos) flips the x-numerator sign.  
-**axiom_scalar_mul_distributes_over_neg status:** Fully proved as `lemma_scalar_mul_distributes_over_neg` by structural induction on n, using `lemma_neg_distributes_over_add` at each recursive step.
+**Justification:** Standard group property: every element has an inverse.
 
 ---
 
@@ -265,25 +242,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### ~~axiom_edwards_to_montgomery_correspondence()~~ PROVED as `lemma_edwards_to_montgomery_correspondence`
-**Claim:** For Z ≠ 0: (Z+Y)/(Z−Y) = (1+y)/(1−y) where y = Y/Z
-
-**Status:** Fully proved via field algebra: factor out inv(Z) from numerator and denominator via `lemma_field_mul_distributes_over_add/sub_right`, then cancel using `lemma_cancel_common_factor`. Degenerate case (Z-Y = 0) handled separately (both sides become 0).
-
----
-
-## 6. Constants
-
-### ~~axiom_edwards_d2_is_2d()~~ PROVED as `lemma_edwards_d2_is_2d` (edwards_lemmas/constants_lemmas.rs)
-**Claim:** `EDWARDS_D2` = 2·`EDWARDS_D` in the field
-
-**Status:** Fully proved via concrete computation with `by(compute_only)` using local helper specs, bridged to spec-level via `lemma_bridge_local_pow2_d2`.
-
----
-
----
-
-## 7. Window/Table Specs (window_specs.rs)
+## 6. Window/Table Specs (window_specs.rs)
 
 ### axiom_affine_odd_multiples_of_basepoint_valid()
 **Claim:** `AFFINE_ODD_MULTIPLES_OF_BASEPOINT` contains correct entries (2i+1)·B with bounded limbs
@@ -295,7 +254,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 8. Ristretto (ristretto_specs.rs, sqrt_ratio_lemmas.rs)
+## 7. Ristretto (ristretto_specs.rs, sqrt_ratio_lemmas.rs)
 
 ### axiom_ristretto_basepoint_table_valid()
 **Claim:** Ristretto basepoint table is valid for the Ristretto basepoint
@@ -411,7 +370,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 9. Inverse Square Root (field_specs.rs)
+## 8. Inverse Square Root (field_specs.rs)
 
 ### axiom_invsqrt_factors_over_square(a, b)
 **Signature:** `axiom_invsqrt_factors_over_square(a: nat, b: nat)` — requires `a % p() != 0`, `b % p() != 0`; ensures `nat_invsqrt(field_mul(a, field_square(b))) == field_abs(field_mul(nat_invsqrt(a), field_inv(b)))`.
@@ -438,7 +397,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 10. Square Root of −1 (sqrt_m1_lemmas.rs)
+## 9. Square Root of −1 (sqrt_m1_lemmas.rs)
 
 
 ### axiom_sqrt_m1_squared(), axiom_sqrt_m1_not_square(), axiom_neg_sqrt_m1_not_square()
@@ -453,7 +412,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 11. Probability (proba_specs.rs)
+## 10. Probability (proba_specs.rs)
 
 ### axiom_uniform_bytes_split(), axiom_from_bytes_uniform(), axiom_from_bytes_independent()
 **Claim:** Uniformity properties for byte-to-field conversion and splitting
@@ -481,7 +440,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 12. Core Assumes (core_assumes.rs)
+## 11. Core Assumes (core_assumes.rs)
 
 ### axiom_hash_is_canonical()
 **Claim:** Equal field elements hash identically
@@ -501,7 +460,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-## 13. Unused Montgomery Reduce (unused_montgomery_reduce_lemmas.rs)
+## 12. Unused Montgomery Reduce (unused_montgomery_reduce_lemmas.rs)
 
 ### axiom_two_l_div_pow2_208_le_pow2_45()
 **Claim:** `(2·L) / 2²⁰⁸ ≤ 2⁴⁵` where L is the group order
@@ -521,7 +480,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 Eq. 9 |
 | axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | Test | test_486660_not_qr |
 | axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | Test | test_2_times_486661_not_qr |
-| ~~axiom_montgomery_a_neg_is_neg_a~~ PROVED | montgomery_curve_lemmas.rs | Test | test_montgomery_a_neg_value |
 | axiom_nonsquare_branch_r_sq | montgomery_curve_lemmas.rs | Test | test_nonsquare_branch_identity |
 | axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | RFC | RFC 9380 §6.7.1 |
@@ -530,17 +488,13 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_edwards_to_montgomery_commutes_with_scalar_mul | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_p_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |
 | axiom_group_order_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |
-| axiom_gcd_* | number_theory_lemmas.rs | Math | Standard number theory |
+| axiom_gcd_pow2_odd | number_theory_lemmas.rs | Math | Standard number theory |
 | axiom_binomial_theorem | number_theory_lemmas.rs | Math | Standard mathematics |
 | axiom_edwards_add_associative | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 |
 | axiom_edwards_add_complete | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 Thm. 3.3 |
-| ~~axiom_scalar_mul_distributes_over_neg~~ PROVED | curve_equation_lemmas.rs | Math | Group theory |
-| ~~axiom_neg_distributes_over_add~~ PROVED | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_add_neg_is_identity | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | Math | Group theory |
-| ~~axiom_edwards_to_montgomery_correspondence~~ PROVED | curve_equation_lemmas.rs | Algebra | Bernstein et al. 2008 |
-| ~~axiom_edwards_d2_is_2d~~ PROVED | edwards_lemmas/constants_lemmas.rs | RFC | RFC 7748 |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | Construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_specs.rs | Construction | Hamburg 2019 |
 | axiom_elligator_on_curve | ristretto_specs.rs | Paper + test | Hamburg 2015 §4; test (250+ inputs) |

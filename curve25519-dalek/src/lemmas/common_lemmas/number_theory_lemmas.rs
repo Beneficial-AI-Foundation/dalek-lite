@@ -223,17 +223,28 @@ pub proof fn lemma_gcd_symmetric(a: nat, b: nat)
 
     if a == 0 && b == 0 {
     } else {
-        lemma_gcd_positive(a, b);
-        lemma_gcd_positive(b, a);
-
-        lemma_gcd_divides_both(a, b);
-        lemma_gcd_divides_both(b, a);
-
-        lemma_common_divisor_divides_gcd(b, a, g_ab);
-        lemma_common_divisor_divides_gcd(a, b, g_ba);
-
-        lemma_mod_is_zero_when_divisible(g_ab, g_ba);
-        lemma_mod_is_zero_when_divisible(g_ba, g_ab);
+        assert(g_ab > 0 && g_ba > 0) by {
+            lemma_gcd_positive(a, b);
+            lemma_gcd_positive(b, a);
+        };
+        assert(a % g_ab == 0 && b % g_ab == 0) by {
+            lemma_gcd_divides_both(a, b);
+        };
+        assert(b % g_ba == 0 && a % g_ba == 0) by {
+            lemma_gcd_divides_both(b, a);
+        };
+        assert(g_ba % g_ab == 0) by {
+            lemma_common_divisor_divides_gcd(b, a, g_ab);
+        };
+        assert(g_ab % g_ba == 0) by {
+            lemma_common_divisor_divides_gcd(a, b, g_ba);
+        };
+        assert(g_ab <= g_ba) by {
+            lemma_mod_is_zero_when_divisible(g_ba, g_ab);
+        };
+        assert(g_ba <= g_ab) by {
+            lemma_mod_is_zero_when_divisible(g_ab, g_ba);
+        };
     }
 }
 
@@ -247,7 +258,9 @@ pub proof fn lemma_gcd_mod_noop(a: nat, m: nat)
     ensures
         spec_gcd(a % m, m) == spec_gcd(a, m),
 {
-    lemma_gcd_symmetric(a % m, m);
+    assert(spec_gcd(a % m, m) == spec_gcd(m, a % m)) by {
+        lemma_gcd_symmetric(a % m, m);
+    };
 }
 
 /// Axiom: gcd(2^k, n) = 1 when n is odd

@@ -167,14 +167,19 @@ pub(crate) proof fn lemma_edwards_d2_is_2d()
             fe51_as_canonical_nat(&EDWARDS_D),
         ),
 {
-    assert({
-        let lp = local_p();
-        let d2_val = local_u5_nat(constants::EDWARDS_D2.limbs) % lp;
-        let d_val = local_u5_nat(EDWARDS_D.limbs) % lp;
-        d2_val == (2 * d_val) % lp
-    }) by (compute_only);
+    assert(fe51_as_canonical_nat(&constants::EDWARDS_D2) == field_mul(
+        2,
+        fe51_as_canonical_nat(&EDWARDS_D),
+    )) by {
+        assert({
+            let lp = local_p();
+            let d2_val = local_u5_nat(constants::EDWARDS_D2.limbs) % lp;
+            let d_val = local_u5_nat(EDWARDS_D.limbs) % lp;
+            d2_val == (2 * d_val) % lp
+        }) by (compute_only);
 
-    lemma_bridge_local_pow2_d2();
+        lemma_bridge_local_pow2_d2();
+    };
 }
 
 // =============================================================================

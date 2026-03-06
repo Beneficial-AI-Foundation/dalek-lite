@@ -1457,7 +1457,7 @@ pub(crate) fn elligator_encode(r_0: &FieldElement) -> (result: MontgomeryPoint)
             ));
             // MONTGOMERY_A_NEG encodes -A:
             assert(fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(A)) by {
-                axiom_montgomery_a_neg_is_neg_a();
+                lemma_montgomery_a_neg_is_neg_a();
             }
             // Replace d_1 with denom (asserted above).
             assert(fe51_as_canonical_nat(&d_1) == field_add(1, field_mul(2, field_square(r))));

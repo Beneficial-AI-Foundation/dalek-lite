@@ -28,7 +28,7 @@ use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
-use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_strictly_increases, pow2};
+use vstd::arithmetic::power2::{lemma2_to64, lemma2_to64_rest, lemma_pow2_adds, lemma_pow2_strictly_increases, pow2};
 use vstd::prelude::*;
 
 verus! {
@@ -821,17 +821,57 @@ proof fn lemma_montgomery_a_value()
     }
 }
 
-/// MONTGOMERY_A_NEG represents field_neg(A) where A = 486662.
-/// Its limbs encode p - 486662 in the 51-bit representation.
-/// Verified by runtime test `test_montgomery_a_neg_value`.
-pub proof fn axiom_montgomery_a_neg_is_neg_a()
+// Local helper specs for by(compute_only) evaluation.
+spec fn local_pow2_m(n: nat) -> nat
+    decreases n,
+{
+    if n == 0 { 1 } else { 2 * local_pow2_m((n - 1) as nat) }
+}
+
+spec fn local_u5_nat_m(limbs: [u64; 5]) -> nat {
+    (limbs[0] as nat) + local_pow2_m(51) * (limbs[1] as nat) + local_pow2_m(102) * (limbs[2] as nat)
+        + local_pow2_m(153) * (limbs[3] as nat) + local_pow2_m(204) * (limbs[4] as nat)
+}
+
+spec fn local_p_m() -> nat {
+    (local_pow2_m(255) - 19) as nat
+}
+
+proof fn lemma_bridge_local_pow2_m()
+    ensures
+        local_pow2_m(51) == pow2(51),
+        local_pow2_m(102) == pow2(102),
+        local_pow2_m(153) == pow2(153),
+        local_pow2_m(204) == pow2(204),
+        local_pow2_m(255) == pow2(255),
+{
+    assert(local_pow2_m(51) == 2251799813685248nat) by (compute_only);
+    assert(pow2(51) == 2251799813685248nat) by { lemma2_to64_rest(); };
+    assert(local_pow2_m(102) == local_pow2_m(51) * local_pow2_m(51)) by (compute_only);
+    assert(pow2(102) == pow2(51) * pow2(51)) by { lemma_pow2_adds(51, 51); };
+    assert(local_pow2_m(153) == local_pow2_m(51) * local_pow2_m(102)) by (compute_only);
+    assert(pow2(153) == pow2(51) * pow2(102)) by { lemma_pow2_adds(51, 102); };
+    assert(local_pow2_m(204) == local_pow2_m(51) * local_pow2_m(153)) by (compute_only);
+    assert(pow2(204) == pow2(51) * pow2(153)) by { lemma_pow2_adds(51, 153); };
+    assert(local_pow2_m(255) == local_pow2_m(51) * local_pow2_m(204)) by (compute_only);
+    assert(pow2(255) == pow2(51) * pow2(204)) by { lemma_pow2_adds(51, 204); };
+}
+
+/// MONTGOMERY_A_NEG encodes field_neg(MONTGOMERY_A) = p - 486662 in 51-bit limb form.
+///
+/// Proved by concrete computation with by(compute_only).
+pub proof fn lemma_montgomery_a_neg_is_neg_a()
     ensures
         fe51_as_canonical_nat(&MONTGOMERY_A_NEG) == field_neg(fe51_as_canonical_nat(&MONTGOMERY_A)),
 {
-    // The limbs of MONTGOMERY_A_NEG are [2^51-19-486662, 2^51-1, 2^51-1, 2^51-1, 2^51-1],
-    // which is exactly p - 486662 in the 51-bit limb representation.
-    // The concrete large-number arithmetic is verified by the runtime test.
-    admit();
+    assert({
+        let lp = local_p_m();
+        let neg_a_val = local_u5_nat_m(MONTGOMERY_A_NEG.limbs) % lp;
+        let a_val = local_u5_nat_m(MONTGOMERY_A.limbs) % lp;
+        neg_a_val == ((lp - (a_val % lp)) as nat) % lp
+    }) by (compute_only);
+
+    lemma_bridge_local_pow2_m();
 }
 
 /// Helper: show that small constants (< 1048576) are less than p.
@@ -1176,25 +1216,8 @@ mod test_qr_axioms {
         assert_eq!(r_sq, inv_two_a1, "r² should equal inv(2*486661)");
     }
 
-    #[test]
-    fn test_montgomery_a_neg_value() {
-        // Verify MONTGOMERY_A_NEG encodes -486662 mod p.
-        // Its limbs are [2^51-19-486662, 2^51-1, 2^51-1, 2^51-1, 2^51-1],
-        // which sums to p - 486662.
-        let p = p();
-        let a = BigUint::from(486662u32);
-        let neg_a = (&p - &a) % &p;
-
-        // Compute u64_5_as_nat from the constant's limbs
-        let l0 = BigUint::from(2251799813198567u64);
-        let l1 = BigUint::from(2251799813685247u64);
-        let pow2_51 = BigUint::one() << 51;
-        let pow2_102 = BigUint::one() << 102;
-        let pow2_153 = BigUint::one() << 153;
-        let pow2_204 = BigUint::one() << 204;
-        let nat = &l0 + &l1 * &pow2_51 + &l1 * &pow2_102 + &l1 * &pow2_153 + &l1 * &pow2_204;
-        assert_eq!(&nat % &p, neg_a, "MONTGOMERY_A_NEG should encode -A mod p");
-    }
+    // test_montgomery_a_neg_value removed: now formally proved as
+    // lemma_montgomery_a_neg_is_neg_a.
 
     /// Test that the Edwards-to-Montgomery map sends the Ed25519 basepoint to u = 9.
     ///

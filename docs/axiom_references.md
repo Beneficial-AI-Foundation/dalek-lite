@@ -88,13 +88,10 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_montgomery_a_neg_is_neg_a()
+### ~~axiom_montgomery_a_neg_is_neg_a()~~ PROVED as `lemma_montgomery_a_neg_is_neg_a`
 **Claim:** `MONTGOMERY_A_NEG` encodes −486662 mod p
 
-**Reference:** RFC 7748 Section 4.1 (Curve25519 parameters)  
-**URL:** https://www.rfc-editor.org/rfc/rfc7748#section-4.1
-
-**Justification:** Verified by runtime test `test_montgomery_a_neg_value`. The constant is a concrete encoding of −A in the 51-bit limb representation.
+**Status:** Fully proved via concrete computation with `by(compute_only)`. Runtime test `test_montgomery_a_neg_value` deleted.
 
 ---
 
@@ -523,7 +520,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 Eq. 9 |
 | axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | Test | test_486660_not_qr |
 | axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | Test | test_2_times_486661_not_qr |
-| axiom_montgomery_a_neg_is_neg_a | montgomery_curve_lemmas.rs | Test | test_montgomery_a_neg_value |
+| ~~axiom_montgomery_a_neg_is_neg_a~~ PROVED | montgomery_curve_lemmas.rs | Test | test_montgomery_a_neg_value |
 | axiom_nonsquare_branch_r_sq | montgomery_curve_lemmas.rs | Test | test_nonsquare_branch_identity |
 | axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | RFC | RFC 9380 §6.7.1 |

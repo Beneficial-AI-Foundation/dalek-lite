@@ -28,26 +28,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_montgomery_add_identity_left(), axiom_montgomery_add_identity()
-**Claim:** ∞ + P = P and P + ∞ = P (infinity is the identity element)
-
-**Reference:** Montgomery (1987); Costello & Smith (2017)  
-**URL:** https://eprint.iacr.org/2017/212.pdf
-
-**Justification:** The point at infinity is the identity element of the elliptic curve group. Standard algebraic fact.
-
----
-
-### axiom_montgomery_add_inverse()
-**Claim:** `P + (−P) = ∞` for every point P
-
-**Reference:** Montgomery (1987); Costello & Smith (2017)  
-**URL:** https://eprint.iacr.org/2017/212.pdf
-
-**Justification:** Every group element has a unique inverse. Standard algebraic fact.
-
----
-
 ### axiom_xdbl_projective_correct()
 **Claim:** `spec_xdbl_projective(U, W)` correctly computes [2]P when (U:W) represents P
 
@@ -115,16 +95,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **URL:** https://www.rfc-editor.org/rfc/rfc7748#section-4.1
 
 **Justification:** One direction of the Montgomery↔Edwards birational equivalence. When u is a valid Montgomery point and u ≠ −1 (so the denominator is nonzero), the Edwards y-coordinate y = (u−1)/(u+1) satisfies the Edwards curve equation.
-
----
-
-### axiom_edwards_basepoint_maps_to_montgomery_basepoint()
-**Claim:** The Ed25519 basepoint maps to the X25519 basepoint under the Edwards→Montgomery map (u = 9)
-
-**Reference:** RFC 7748 Section 4.1  
-**URL:** https://www.rfc-editor.org/rfc/rfc7748#section-4.1
-
-**Justification:** RFC 7748 defines both curves and states they are birationally equivalent. The Montgomery base point has u = 9 (U(P) = 9). The Ed25519 basepoint maps to this under the birational map. This is the standard Curve25519/Ed25519 design.
 
 ---
 
@@ -437,7 +407,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | Axiom | File | Reference Type | Primary Reference |
 |-------|------|----------------|-------------------|
 | axiom_ed25519_basepoint_table_valid | edwards_specs.rs | Construction | RFC 8032; implementation |
-| axiom_montgomery_add_* | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 |
+| axiom_montgomery_add_associative | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 |
 | axiom_xdbl_projective_correct | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 Eq. 10 |
 | axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 Eq. 9 |
 | axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | Test | test_486660_not_qr |
@@ -445,7 +415,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | RFC | RFC 9380 §6.7.1 |
 | axiom_montgomery_valid_u_implies_edwards_y_valid | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
-| axiom_edwards_basepoint_maps_to_montgomery_basepoint | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_edwards_to_montgomery_commutes_with_scalar_mul | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
 | axiom_p_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |
 | axiom_group_order_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |

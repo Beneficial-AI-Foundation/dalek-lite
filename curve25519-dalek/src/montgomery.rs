@@ -392,7 +392,7 @@ impl MontgomeryPoint {
                 axiom_edwards_to_montgomery_commutes_with_scalar_mul(B.0, B.1, n);
             }
             assert(montgomery_u_from_edwards_y(B.1) == spec_x25519_basepoint_u()) by {
-                axiom_edwards_basepoint_maps_to_montgomery_basepoint();
+                lemma_edwards_basepoint_maps_to_montgomery_basepoint();
             }
             assert(is_valid_u_coordinate(montgomery_u_from_edwards_y(edwards_scalar_mul(B, n).1)))
                 by {

@@ -1288,17 +1288,130 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
     }
 }
 
-/// Axiom: The Ed25519 basepoint maps to the X25519 basepoint under the Edwards-to-Montgomery map.
+/// Lemma: The Ed25519 basepoint maps to the X25519 basepoint under the Edwards→Montgomery map.
 ///
-/// The map φ: Edwards → Montgomery sends (x, y) to u = (1+y)/(1-y).
-/// For the Ed25519 basepoint B with affine y-coordinate y_B, we have φ(B).u = u_B.
+/// The map φ sends (x, y) to u = (1+y)/(1-y). For the Ed25519 basepoint, φ(B).u = 9.
+/// Proved by concrete modular arithmetic: 9·(1-y) ≡ (1+y) (mod p).
 ///
 /// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
-pub proof fn axiom_edwards_basepoint_maps_to_montgomery_basepoint()
+pub proof fn lemma_edwards_basepoint_maps_to_montgomery_basepoint()
     ensures
         montgomery_u_from_edwards_y(spec_ed25519_basepoint().1) == spec_x25519_basepoint_u(),
 {
-    admit();
+    let y_limbs: [u64; 5] = [
+        1801439850948184u64,
+        1351079888211148,
+        450359962737049,
+        900719925474099,
+        1801439850948198,
+    ];
+    lemma_ed25519_basepoint_y();
+    let y = spec_ed25519_basepoint().1;
+    assert(y == u64_5_as_nat(y_limbs));
+
+    let pp = p();
+
+    // Key fact: the basepoint y-coordinate satisfies 5y = 4p + 4 (i.e. y = 4/5 mod p)
+    assert(5 * y == 4 * pp + 4) by {
+        assert({
+            let y_local = local_u5_nat_m(
+                [
+                    1801439850948184u64,
+                    1351079888211148u64,
+                    450359962737049u64,
+                    900719925474099u64,
+                    1801439850948198u64,
+                ],
+            );
+            let lp = local_p_m();
+            5 * y_local == 4 * lp + 4
+        }) by (compute_only);
+        lemma_bridge_local_pow2_m();
+    };
+
+    // From 5y = 4p+4: y < p (since y = (4p+4)/5 < p for p > 1)
+    assert(y < pp) by {
+        p_gt_2();
+    };
+
+    let denom = field_sub(1nat, y);
+    let numer = field_add(1nat, y);
+
+    // Since 5y = 4p+4 and p > 9: y > 1 and y < p-1
+    assert(y > 1) by {
+        p_gt_2();
+    };
+    assert(y < pp - 1) by {
+        lemma_p_gt_small(9);
+    };
+    assert(1 + y < pp);
+
+    // field_sub(1, y) = ((1%p + p - y%p) as nat) % p
+    // Since 1 < p and y < p: this simplifies to (1 + p - y) % p = p + 1 - y (since y > 1)
+    assert(field_canonical(1nat) == 1nat) by {
+        lemma_p_gt_small(1);
+        lemma_small_mod(1nat, pp);
+    };
+    assert(field_canonical(y) == y) by {
+        lemma_small_mod(y, pp);
+    };
+    assert(denom == ((1 + pp - y) as nat) % pp);
+    let sub_val: nat = (pp + 1 - y) as nat;
+    assert(sub_val < pp);
+    assert(denom == sub_val) by {
+        lemma_small_mod(sub_val, pp);
+    };
+
+    // field_add(1, y) = (1 + y) % p = 1 + y (since 1 + y < p)
+    assert(numer == 1 + y) by {
+        lemma_small_mod(1 + y, pp);
+    };
+
+    // denom != 0 follows from y < p (so p+1-y >= 2)
+    assert(denom != 0);
+
+    // 9*denom = 9(p+1-y) = 9p + 9 - 9y = 9p + 9 - 9y
+    // numer + p = 1 + y + p
+    // Check: 9(p+1-y) = (1+y) + p  ⟺  9p+9-9y = p+1+y  ⟺  8p+8 = 10y  ⟺  4p+4 = 5y ✓
+    assert(9 * denom == numer + pp) by {
+        assert(9 * ((pp + 1 - y) as nat) == (1 + y) + pp) by {
+            // 9(p+1-y) = 9p+9-9y,  (1+y)+p = p+1+y
+            // Difference: 9p+9-9y - p-1-y = 8p+8-10y = 2(4p+4-5y) = 0
+        };
+    };
+
+    // field_mul(9, denom) = (9*denom) % p = (numer + p) % p = numer
+    assert(field_mul(9nat, denom) == numer) by {
+        p_gt_2();
+        assert(numer < pp);
+        assert(9 * denom == numer + pp);
+        // (numer + 1*pp) % pp == numer % pp == numer
+        lemma_mod_multiples_vanish(1, numer as int, pp as int);
+        lemma_small_mod(numer, pp);
+    };
+
+    // Algebraic: numer = 9*denom implies (1+y)*inv(1-y) = 9
+    assert(montgomery_u_from_edwards_y(y) == 9nat) by {
+        assert(numer == field_mul(9nat, denom));
+        assert(field_mul(field_mul(9nat, denom), field_inv(denom)) == field_mul(
+            9nat,
+            field_mul(denom, field_inv(denom)),
+        )) by {
+            lemma_field_mul_assoc(9nat, denom, field_inv(denom));
+        };
+        assert(field_mul(denom, field_inv(denom)) == 1) by {
+            lemma_inv_mul_cancel(denom);
+            lemma_field_mul_comm(field_inv(denom), denom);
+        };
+        assert(field_mul(9nat, 1) == 9nat) by {
+            lemma_field_mul_one_right(9nat);
+            lemma_p_gt_small(9);
+            lemma_small_mod(9, p());
+        };
+    };
+
+    // spec_x25519_basepoint_u() == 9
+    lemma_x25519_basepoint_u_is_9();
 }
 
 /// Axiom: The Edwards-to-Montgomery map commutes with scalar multiplication.
@@ -1369,30 +1482,6 @@ mod test_qr_axioms {
     // test_montgomery_a_neg_value removed: now formally proved as
     // lemma_montgomery_a_neg_is_neg_a.
 
-    /// Test that the Edwards-to-Montgomery map sends the Ed25519 basepoint to u = 9.
-    ///
-    /// Verifies axiom_edwards_basepoint_maps_to_montgomery_basepoint:
-    ///   u = (1 + y) / (1 - y) mod p = 9
-    ///
-    /// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
-    #[test]
-    fn test_edwards_basepoint_maps_to_montgomery_9() {
-        let p = p();
-        // Ed25519 basepoint Y-coordinate (RFC 8032 Section 5.1)
-        let y: BigUint =
-            "46316835694926478169428394003475163141307993866256225615783033603165251855960"
-                .parse()
-                .unwrap();
-
-        // u = (1 + y) / (1 - y) mod p
-        let one_plus_y = (BigUint::one() + &y) % &p;
-        let one_minus_y = (&p + BigUint::one() - &y) % &p;
-        let u = (&one_plus_y * mod_inv(&one_minus_y, &p)) % &p;
-
-        assert_eq!(
-            u,
-            BigUint::from(9u32),
-            "Edwards basepoint should map to u = 9"
-        );
-    }
+    // test_edwards_basepoint_maps_to_montgomery_9 removed: now formally proved as
+    // lemma_edwards_basepoint_maps_to_montgomery_basepoint.
 }

@@ -120,7 +120,11 @@ pub(crate) proof fn lemma_edwards_d2_limbs_bounded_54()
 spec fn local_pow2(n: nat) -> nat
     decreases n,
 {
-    if n == 0 { 1 } else { 2 * local_pow2((n - 1) as nat) }
+    if n == 0 {
+        1
+    } else {
+        2 * local_pow2((n - 1) as nat)
+    }
 }
 
 spec fn local_u5_nat(limbs: [u64; 5]) -> nat {
@@ -141,19 +145,29 @@ proof fn lemma_bridge_local_pow2_d2()
         local_pow2(255) == pow2(255),
 {
     assert(local_pow2(51) == 2251799813685248nat) by (compute_only);
-    assert(pow2(51) == 2251799813685248nat) by { lemma2_to64_rest(); };
+    assert(pow2(51) == 2251799813685248nat) by {
+        lemma2_to64_rest();
+    };
 
     assert(local_pow2(102) == local_pow2(51) * local_pow2(51)) by (compute_only);
-    assert(pow2(102) == pow2(51) * pow2(51)) by { lemma_pow2_adds(51, 51); };
+    assert(pow2(102) == pow2(51) * pow2(51)) by {
+        lemma_pow2_adds(51, 51);
+    };
 
     assert(local_pow2(153) == local_pow2(51) * local_pow2(102)) by (compute_only);
-    assert(pow2(153) == pow2(51) * pow2(102)) by { lemma_pow2_adds(51, 102); };
+    assert(pow2(153) == pow2(51) * pow2(102)) by {
+        lemma_pow2_adds(51, 102);
+    };
 
     assert(local_pow2(204) == local_pow2(51) * local_pow2(153)) by (compute_only);
-    assert(pow2(204) == pow2(51) * pow2(153)) by { lemma_pow2_adds(51, 153); };
+    assert(pow2(204) == pow2(51) * pow2(153)) by {
+        lemma_pow2_adds(51, 153);
+    };
 
     assert(local_pow2(255) == local_pow2(51) * local_pow2(204)) by (compute_only);
-    assert(pow2(255) == pow2(51) * pow2(204)) by { lemma_pow2_adds(51, 204); };
+    assert(pow2(255) == pow2(51) * pow2(204)) by {
+        lemma_pow2_adds(51, 204);
+    };
 }
 
 /// EDWARDS_D2 equals 2 * EDWARDS_D in the field.

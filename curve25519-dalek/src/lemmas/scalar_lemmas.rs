@@ -672,8 +672,8 @@ pub proof fn lemma_carry_bounded_after_mask(carry: u64, mask: u64)
         lemma_u64_shift_is_pow2(52);
     };
     assert(carry >> 52 == carry / (1u64 << 52));
-    assert(carry as int == (carry / (1u64 << 52)) as int * (1u64 << 52) as int + (carry
-        % (1u64 << 52)) as int) by {
+    assert(carry as int == (carry / (1u64 << 52)) as int * (1u64 << 52) as int + (carry % (1u64
+        << 52)) as int) by {
         lemma_fundamental_div_mod(carry as int, (1u64 << 52) as int);
     };
     let q = carry / (1u64 << 52);
@@ -719,8 +719,8 @@ pub proof fn lemma_add_carry_and_sum_bounds(carry: u64, mask: u64)
         lemma_u64_shift_is_pow2(52);
     };
     assert(carry >> 52 == carry / (1u64 << 52));
-    assert(carry as int == (carry / (1u64 << 52)) as int * (1u64 << 52) as int + (carry
-        % (1u64 << 52)) as int) by {
+    assert(carry as int == (carry / (1u64 << 52)) as int * (1u64 << 52) as int + (carry % (1u64
+        << 52)) as int) by {
         lemma_fundamental_div_mod(carry as int, (1u64 << 52) as int);
     };
     let q = carry / (1u64 << 52);
@@ -791,8 +791,8 @@ pub proof fn lemma_limbs_bounded_implies_prod_bounded(s: &Scalar52, t: &Scalar52
                 u64::MAX as nat,
             );
         }
-        assert((s.limbs[i] as int) * (t.limbs[j] as int) == (t.limbs[j] as int) * (s.limbs[i] as int))
-            by {
+        assert((s.limbs[i] as int) * (t.limbs[j] as int) == (t.limbs[j] as int) * (
+        s.limbs[i] as int)) by {
             lemma_mul_is_commutative(s.limbs[i] as int, t.limbs[j] as int);
         };
         assert(((1u64 << 52) * u64::MAX) * 5 <= u128::MAX) by (compute);
@@ -869,13 +869,13 @@ pub proof fn lemma_cancel_mul_montgomery_mod(x: nat, a: nat, rr: nat)
         (x % group_order()) == ((a * montgomery_radix()) % group_order()),
 {
     // 1. Substitute rr with r*r
-    assert((a as int * rr as int) % (group_order() as int) == (a as int * (rr as int % group_order()
-        as int)) % (group_order() as int)) by {
+    assert((a as int * rr as int) % (group_order() as int) == (a as int * (rr as int
+        % group_order() as int)) % (group_order() as int)) by {
         lemma_mul_mod_noop_right(a as int, rr as int, group_order() as int);
     };
     assert((a as int * (montgomery_radix() * montgomery_radix()) as int) % (group_order() as int)
         == (a as int * ((montgomery_radix() * montgomery_radix()) as int % group_order() as int))
-            % (group_order() as int)) by {
+        % (group_order() as int)) by {
         lemma_mul_mod_noop_right(
             a as int,
             (montgomery_radix() * montgomery_radix()) as int,

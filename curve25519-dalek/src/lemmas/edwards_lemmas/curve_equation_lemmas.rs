@@ -2982,15 +2982,13 @@ pub proof fn lemma_completed_point_ratios(
     }
 }
 
-/// Axiom: For field elements Y, Z with Z ≠ 0: (Z+Y)/(Z-Y) == (1+y)/(1-y) where y = Y/Z.
+/// Lemma: For field elements Y, Z with Z != 0: (Z+Y)/(Z-Y) == (1+y)/(1-y) where y = Y/Z.
 ///
 /// Used by `to_montgomery` to compute the Edwards-to-Montgomery map u = (1+y)/(1-y)
 /// directly from the projective Y, Z coordinates as (Z+Y)/(Z-Y).
-///
-/// TODO: prove this from field algebra (cross-multiply and simplify).
-pub proof fn axiom_edwards_to_montgomery_correspondence(y: nat, z: nat)
+pub proof fn lemma_edwards_to_montgomery_correspondence(y: nat, z: nat)
     requires
-        z % p() != 0,  // Non-identity point (Z ≠ 0)
+        z % p() != 0,
 
     ensures
         ({
@@ -3002,7 +3000,86 @@ pub proof fn axiom_edwards_to_montgomery_correspondence(y: nat, z: nat)
             projective_result == affine_result
         }),
 {
-    admit();
+    let inv_z = field_inv(z);
+    let y_aff = field_mul(y, inv_z);
+
+    p_gt_2();
+
+    // inv(z) is nonzero when z is nonzero (by contradiction from inv*z=1)
+    assert(inv_z % p() != 0) by {
+        lemma_inv_mul_cancel(z);
+        p_gt_2();
+        if inv_z % p() == 0 {
+            lemma_mul_mod_noop_left(inv_z as int, z as int, p() as int);
+            assert(field_mul(inv_z, z) == 0nat) by {
+                lemma_mod_self_0(p() as int);
+            };
+        }
+    };
+
+    // z * inv(z) = 1
+    assert(field_mul(z, inv_z) == 1nat) by {
+        lemma_inv_mul_cancel(z);
+        lemma_field_mul_comm(inv_z, z);
+    };
+
+    // Step 1: add(1, y*inv_z) = mul(add(z, y), inv_z)
+    assert(field_add(1nat, y_aff) == field_mul(field_add(z, y), inv_z)) by {
+        lemma_field_mul_distributes_over_add(inv_z, z, y);
+        lemma_field_mul_comm(inv_z, field_add(z, y));
+        lemma_field_mul_comm(inv_z, y);
+    };
+
+    // Step 2: sub(1, y*inv_z) = mul(sub(z, y), inv_z)
+    assert(field_sub(1nat, y_aff) == field_mul(field_sub(z, y), inv_z)) by {
+        lemma_field_mul_distributes_over_sub_right(z, y, inv_z);
+        lemma_field_mul_comm(z, inv_z);
+        lemma_field_mul_comm(y, inv_z);
+    };
+
+    let zpy = field_add(z, y);
+    let zmy = field_sub(z, y);
+    let one_plus_y = field_add(1nat, y_aff);
+    let one_minus_y = field_sub(1nat, y_aff);
+
+    let proj = field_mul(zpy, field_inv(zmy));
+    let affi = field_mul(one_plus_y, field_inv(one_minus_y));
+
+    // Step 3: cancel inv_z from numerator and denominator
+    if zmy % p() != 0 {
+        assert(affi == proj) by {
+            lemma_cancel_common_factor(zpy, zmy, inv_z);
+        };
+    } else {
+        // Degenerate: z-y = 0 mod p => both sides are 0
+        assert(zmy < p()) by {
+            let z_mod = z % p();
+            let y_mod = y % p();
+            lemma_mod_bound(z as int, p() as int);
+            lemma_mod_bound(y as int, p() as int);
+            lemma_mod_bound((z_mod + p() - y_mod) as int, p() as int);
+        };
+        lemma_small_mod(zmy, p());
+        assert(zmy == 0nat);
+        assert(field_inv(0nat) == 0nat);
+
+        assert(field_mul(0nat, inv_z) == 0nat) by {
+            lemma_field_mul_comm(0nat, inv_z);
+            lemma_field_mul_one_left(0nat);
+        };
+        assert(one_minus_y == field_mul(zmy, inv_z));
+        assert(one_minus_y == 0nat);
+
+        assert(proj == 0nat) by {
+            lemma_field_mul_comm(zpy, 0nat);
+            lemma_field_mul_one_left(0nat);
+        };
+        assert(affi == 0nat) by {
+            lemma_field_mul_comm(one_plus_y, 0nat);
+            lemma_field_mul_one_left(0nat);
+        };
+    }
+    assert(proj == affi);
 }
 
 /// Lemma: When Z = 1 in a well-formed EdwardsPoint, the affine coordinates

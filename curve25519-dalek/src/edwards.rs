@@ -1634,7 +1634,7 @@ impl EdwardsPoint {
             let one_minus_y = field_sub(1, y_affine);
             let affine_result = field_mul(one_plus_y, field_inv(one_minus_y));
             assert(u_field == affine_result) by {
-                axiom_edwards_to_montgomery_correspondence(y, z);
+                lemma_edwards_to_montgomery_correspondence(y, z);
             }
 
             // Step 5: Match the spec

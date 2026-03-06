@@ -267,13 +267,10 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_edwards_to_montgomery_correspondence()
+### ~~axiom_edwards_to_montgomery_correspondence()~~ PROVED as `lemma_edwards_to_montgomery_correspondence`
 **Claim:** For Z ≠ 0: (Z+Y)/(Z−Y) = (1+y)/(1−y) where y = Y/Z
 
-**Reference:** Bernstein & Lange (2008) — birational map identity; RFC 7748  
-**URL:** https://www.rfc-editor.org/rfc/rfc7748#section-4.1
-
-**Justification:** Standard algebraic identity in projective coordinates. With y = Y/Z, we have (1+y)/(1−y) = ((Z+Y)/Z)/((Z−Y)/Z) = (Z+Y)/(Z−Y) when Z ≠ 0.
+**Status:** Fully proved via field algebra: factor out inv(Z) from numerator and denominator via `lemma_field_mul_distributes_over_add/sub_right`, then cancel using `lemma_cancel_common_factor`. Degenerate case (Z-Y = 0) handled separately (both sides become 0).
 
 ---
 
@@ -547,7 +544,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_add_neg_is_identity | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | Math | Group theory |
-| axiom_edwards_to_montgomery_correspondence | curve_equation_lemmas.rs | Algebra | Bernstein et al. 2008 |
+| ~~axiom_edwards_to_montgomery_correspondence~~ PROVED | curve_equation_lemmas.rs | Algebra | Bernstein et al. 2008 |
 | axiom_edwards_d2_is_2d | edwards_lemmas/constants_lemmas.rs | RFC | RFC 7748 |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | Construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_specs.rs | Construction | Hamburg 2019 |

@@ -16,11 +16,13 @@ use subtle::ConstantTimeEq;
 
 #[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::{
-    choice_and, choice_or, conditional_assign_generic, ct_eq_bytes32, select_u8,
+    choice_and, choice_or, conditional_assign_generic, ct_eq_bytes32, negate_field_element,
+    select_u8,
 };
-use crate::core_assumes::{
-    bytes32_8_to_24, negate_field, sha256_hash_bytes, write_bytes32_8_to_24,
-};
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::core_assumes::axiom_sha256_output_length;
+use crate::core_assumes::{bytes32_8_to_24, sha256_hash_bytes, write_bytes32_8_to_24};
 
 use crate::edwards::EdwardsPoint;
 
@@ -129,9 +131,22 @@ impl RistrettoPoint {
         }
         let result = RistrettoPoint::elligator_ristretto_flavor(&fe);
         proof {
-            assert(edwards_point_as_affine(result.0) == spec_lizard_encode(data@)) by {
-                admit();  // PROOF BYPASS
+            // elligator postcondition gives:
+            //   edwards_point_as_affine(result.0)
+            //     == spec_elligator_ristretto_flavor(fe51_as_canonical_nat(&fe))
+            // We need: fe51_as_canonical_nat(&fe) == lizard_r(&lizard_fe_bytes(data@))
+            // Step 1: Connect exec from_bytes to spec from_bytes on fe_bytes
+            assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(
+                &spec_fe51_from_bytes(&fe_bytes),
+            )) by {
+                lemma_from_u8_32_as_nat(&fe_bytes);
+                lemma_as_nat_32_mod_255(&fe_bytes);
             };
+
+            // Step 2: Show fe_bytes matches lizard_fe_bytes(data@) pointwise
+            axiom_sha256_output_length(data@);
+            let spec_bytes = lizard_fe_bytes(data@);
+            assert(fe_bytes@ =~= spec_bytes@);
         }
         result
     }
@@ -177,16 +192,19 @@ impl RistrettoPoint {
             is_well_formed_edwards_point(self.0),
         ensures
             match result {
-                Some(
-                    bytes,
-                ) =>
-                // Correctness: exec result matches spec decode
-                spec_lizard_decode(edwards_point_as_affine(self.0)) == Some(
-                    bytes@,
-                )
-                // Soundness: successful decode re-encodes to the original point
-                 && edwards_point_as_affine(self.0) == spec_lizard_encode(bytes@),
-                None => spec_lizard_decode(edwards_point_as_affine(self.0)).is_None(),
+                Some(bytes) => ({
+                    let (x, y) = edwards_point_as_affine(self.0);
+                    // Correctness: exec result matches Ristretto-level spec decode
+                    spec_lizard_decode_ristretto(x, y) == Some(
+                        bytes@,
+                    )
+                    // Soundness: encode(bytes) lands in the coset of self
+                     && is_lizard_preimage_coset(bytes@, ristretto_coset_affine(x, y))
+                }),
+                None => ({
+                    let (x, y) = edwards_point_as_affine(self.0);
+                    spec_lizard_decode_ristretto(x, y).is_None()
+                }),
             },
     {
         /* ORIGINAL CODE: let mut result: [u8; 16] = Default::default(); */
@@ -195,9 +213,12 @@ impl RistrettoPoint {
         let mut h: [u8; 32] = [0u8;32];
         let (mask, fes) = self.elligator_ristretto_flavor_inverse();
 
-        let mut n_found = 0;
+        let mut n_found: u32 = 0;
         /* ORIGINAL CODE: for (j, fe_j) in fes.iter().enumerate() { */
-        for j in 0..8 {
+        for j in 0..8
+            invariant
+                n_found <= j as u32,
+        {
             let mut ok = Choice::from((mask >> j) & 1);
             /* ORIGINAL CODE:
             let buf2 = fe_j.as_bytes(); */
@@ -219,9 +240,6 @@ impl RistrettoPoint {
             }
             /* ORIGINAL CODE: n_found += ok.unwrap_u8() as u32; */
             let add: u32 = ok.unwrap_u8() as u32;
-            proof {
-                admit();  // PROOF BYPASS
-            }
             n_found = n_found + add;
         }
 
@@ -231,12 +249,28 @@ impl RistrettoPoint {
             None
         };
         proof {
+            // PROOF BYPASS: Full decode correctness requires:
+            // 1. Exhaustiveness: elligator_ristretto_flavor_inverse returns ALL
+            //    field elements mapping to the coset (depends on to_jacobi_quartic_ristretto)
+            // 2. Uniqueness: the SHA-256 consistency check matches exactly one
+            //    candidate when spec_lizard_decode_ristretto returns Some (depends on
+            //    spec_sha256 being collision-resistant for the Lizard byte layout)
+            // 3. Soundness: successful decode implies re-encoding maps to a coset
+            //    member (follows from the above once Elligator roundtrip is proved)
             assert(match result {
-                Some(bytes) => spec_lizard_decode(edwards_point_as_affine(self.0)) == Some(bytes@)
-                    && edwards_point_as_affine(self.0) == spec_lizard_encode(bytes@),
-                None => spec_lizard_decode(edwards_point_as_affine(self.0)).is_None(),
+                Some(bytes) => ({
+                    let (x, y) = edwards_point_as_affine(self.0);
+                    spec_lizard_decode_ristretto(x, y) == Some(bytes@) && is_lizard_preimage_coset(
+                        bytes@,
+                        ristretto_coset_affine(x, y),
+                    )
+                }),
+                None => ({
+                    let (x, y) = edwards_point_as_affine(self.0);
+                    spec_lizard_decode_ristretto(x, y).is_None()
+                }),
             }) by {
-                admit();  // PROOF BYPASS
+                admit();
             };
         }
         result
@@ -292,24 +326,33 @@ impl RistrettoPoint {
         requires
             is_well_formed_edwards_point(self.0),
         ensures
-    // Elligator inversion: each valid candidate (bit j set in mask) maps forward to self
+    // Elligator inversion: each valid candidate maps forward to a coset member of self
 
-            forall|j: int|
-                #![auto]
-                0 <= j < 8 && (result.0 & (1u8 << j as u8)) != 0
-                    ==> #[trigger] edwards_point_as_affine(self.0)
-                    == spec_elligator_ristretto_flavor(
-                    fe51_as_canonical_nat(&spec_fe51_from_bytes(&result.1[j])),
-                ),
+            ({
+                let (x, y) = edwards_point_as_affine(self.0);
+                let coset = ristretto_coset_affine(x, y);
+                forall|j: int|
+                    #![trigger result.1[j]]
+                    0 <= j < 8 && (result.0 & (1u8 << j as u8)) != 0 ==> ({
+                        let ej = spec_elligator_ristretto_flavor(
+                            fe51_as_canonical_nat(&spec_fe51_from_bytes(&result.1[j])),
+                        );
+                        ej == coset[0] || ej == coset[1] || ej == coset[2] || ej == coset[3]
+                    })
+            }),
     {
-        proof {
-            admit();  // PROOF BYPASS
-        }
         let mut ret = [[0u8;32];8];
         let (mask, fes) = self.elligator_ristretto_flavor_inverse();
 
         for j in 0..8 {
             ret[j] = fes[j].as_bytes();
+        }
+        proof {
+            // PROOF BYPASS: connecting as_bytes + spec_fe51_from_bytes roundtrip
+            // to the Elligator inversion property from
+            // elligator_ristretto_flavor_inverse. Requires proving that
+            // as_bytes/from_bytes is a roundtrip for canonical field elements.
+            admit();
         }
         (mask, ret)
     }
@@ -369,16 +412,22 @@ impl RistrettoPoint {
     // Representation: all 8 field elements have bounded limbs
 
             forall|j: int| 0 <= j < 8 ==> #[trigger] fe51_limbs_bounded(&result.1[j], 54),
-            // Elligator inversion: each valid candidate maps forward to self
-            forall|j: int|
-                #![auto]
-                0 <= j < 8 && (result.0 & (1u8 << j as u8)) != 0
-                    ==> #[trigger] edwards_point_as_affine(self.0)
-                    == spec_elligator_ristretto_flavor(fe51_as_canonical_nat(&result.1[j])),
+            // Elligator inversion: each valid candidate maps forward to a coset
+            // member of self (not necessarily self.0 itself, since candidates come
+            // from all 4 coset representatives via to_jacobi_quartic_ristretto)
+            ({
+                let (x, y) = edwards_point_as_affine(self.0);
+                let coset = ristretto_coset_affine(x, y);
+                forall|j: int|
+                    #![trigger result.1[j]]
+                    0 <= j < 8 && (result.0 & (1u8 << j as u8)) != 0 ==> ({
+                        let ej = spec_elligator_ristretto_flavor(
+                            fe51_as_canonical_nat(&result.1[j]),
+                        );
+                        ej == coset[0] || ej == coset[1] || ej == coset[2] || ej == coset[3]
+                    })
+            }),
     {
-        proof {
-            admit();  // PROOF BYPASS
-        }
         // Elligator2 computes a Point from a FieldElement in two steps: first
         // it computes a (s,t) on the Jacobi quartic and then computes the
         // corresponding even point on the Edwards curve.
@@ -402,6 +451,7 @@ impl RistrettoPoint {
         let mut ret = [FieldElement::ONE;8];
 
         for i in 0..4 {
+            // Limb bounds from to_jacobi_quartic_ristretto (admitted there)
             assert(fe51_limbs_bounded(&jcs[i as int].S, 54)) by { admit() }
             assert(fe51_limbs_bounded(&jcs[i as int].T, 54)) by { admit() }
             let (ok, fe) = jcs[i].elligator_inv();
@@ -426,13 +476,26 @@ impl RistrettoPoint {
 
         let result = (mask, ret);
         proof {
-            assert(forall|j: int|
-                #![auto]
-                0 <= j < 8 && (result.0 & (1u8 << j as u8)) != 0
-                    ==> #[trigger] edwards_point_as_affine(self.0)
-                    == spec_elligator_ristretto_flavor(fe51_as_canonical_nat(&result.1[j]))) by {
-                admit()
-            };
+            // PROOF BYPASS: limb bounds for all 8 elements (follows from
+            // elligator_inv postcondition once the loop admits above are resolved)
+            assert(forall|j: int| 0 <= j < 8 ==> #[trigger] fe51_limbs_bounded(&result.1[j], 54))
+                by { admit() };
+
+            // PROOF BYPASS: Elligator inversion correctness (requires proving
+            // that to_jacobi_quartic_ristretto produces correct Jacobi points AND
+            // that elligator_inv roundtrips through jacobi_to_edwards_affine)
+            assert({
+                let (x, y) = edwards_point_as_affine(self.0);
+                let coset = ristretto_coset_affine(x, y);
+                forall|j: int|
+                    #![trigger result.1[j]]
+                    0 <= j < 8 && (result.0 & (1u8 << j as u8)) != 0 ==> ({
+                        let ej = spec_elligator_ristretto_flavor(
+                            fe51_as_canonical_nat(&result.1[j]),
+                        );
+                        ej == coset[0] || ej == coset[1] || ej == coset[2] || ej == coset[3]
+                    })
+            }) by { admit() };
         }
         result
     }
@@ -451,26 +514,42 @@ impl RistrettoPoint {
             forall|i: int|
                 0 <= i < 4 ==> #[trigger] fe51_limbs_bounded(&result[i].S, 54)
                     && fe51_limbs_bounded(&result[i].T, 54),
-            // Correctness: result[i] is the Jacobi quartic point for coset member i.
-            // Conditional on affine coordinates x ≠ 0 ∧ y ≠ 0
-            // (see `x_or_y_is_zero` test below and docstring for edge cases).
+            // Generic case (x ≠ 0 ∧ y ≠ 0): exact coset member correspondence.
+            // Jacobi quartic point i maps back to Edwards coset member i.
             ({
                 let (x, y) = edwards_point_as_affine(self.0);
-                // coset = [self, self+T₂, self+T₄, self+T₆]
                 let coset = ristretto_coset_affine(x, y);
-                x != 0 && y != 0
-                    ==>
-                // Jacobi quartic point i maps back to Edwards coset member i
-                forall|i: int|
+                x != 0 && y != 0 ==> forall|i: int|
                     #![trigger coset[i]]
                     0 <= i < 4 ==> jacobi_to_edwards_affine(
                         fe51_as_canonical_nat(&result[i].S),
                         fe51_as_canonical_nat(&result[i].T),
                     ) == coset[i]
             }),
+            // Edge case (x = 0 ∨ y = 0): each Jacobi point still maps to
+            // *some* coset member (possibly repeated). For (0, −1) there is
+            // no quartic point, so the impl substitutes one equivalent to (0, 1).
+            ({
+                let (x, y) = edwards_point_as_affine(self.0);
+                let coset = ristretto_coset_affine(x, y);
+                (x == 0 || y == 0) ==> forall|i: int|
+                    #![trigger coset[i]]
+                    0 <= i < 4 ==> ({
+                        let ji = jacobi_to_edwards_affine(
+                            fe51_as_canonical_nat(&result[i].S),
+                            fe51_as_canonical_nat(&result[i].T),
+                        );
+                        ji == coset[0] || ji == coset[1] || ji == coset[2] || ji == coset[3]
+                    })
+            }),
     {
         proof {
-            admit();  // PROOF BYPASS
+            // PROOF BYPASS: requires proving (1) limb bounds through ~30 field
+            // operations and (2) algebraic correctness that the computed (S,T)
+            // values satisfy jacobi_to_edwards_affine(S,T) == coset[i].
+            // The algebraic part involves projective-to-affine Jacobi quartic
+            // correspondence and is a deep multi-week proof effort.
+            admit();
         }
         let x2 = self.0.X.square();  // X^2
         let y2 = self.0.Y.square();  // Y^2
@@ -490,7 +569,7 @@ impl RistrettoPoint {
 
         let s0 = &s_over_x * &self.0.X;
         /* ORIGINAL CODE: let s1 = &(-(&sp_over_xp)) * &self.0.X; */
-        let neg_sp_over_xp = negate_field(&sp_over_xp);
+        let neg_sp_over_xp = negate_field_element(&sp_over_xp);
         let s1 = &neg_sp_over_xp * &self.0.X;
 
         // t_0 := -2/sqrt(-d-1) * Z * sOverX
@@ -501,7 +580,7 @@ impl RistrettoPoint {
 
         // den := -1/sqrt(1+d) (Y^2 - Z^2) gamma
         /* ORIGINAL CODE: let den = &(&(-(&z2_min_y2)) * &lizard_constants::MINVSQRT_ONE_PLUS_D) * &gamma; */
-        let neg_z2_min_y2 = negate_field(&z2_min_y2);
+        let neg_z2_min_y2 = negate_field_element(&z2_min_y2);
         let den = &(&neg_z2_min_y2 * &lizard_constants::MINVSQRT_ONE_PLUS_D) * &gamma;
 
         // Same as before but with the substitution (X, Y, Z) = (Y, X, i*Z)
@@ -514,7 +593,7 @@ impl RistrettoPoint {
 
         let mut s2 = &s_over_y * &self.0.Y;
         /* ORIGINAL CODE: let mut s3 = &(-(&sp_over_yp)) * &self.0.Y; */
-        let neg_sp_over_yp = negate_field(&sp_over_yp);
+        let neg_sp_over_yp = negate_field_element(&sp_over_yp);
         let mut s3 = &neg_sp_over_yp * &self.0.Y;
 
         // t_2 := -2/sqrt(-d-1) * i*Z * sOverY
@@ -536,7 +615,7 @@ impl RistrettoPoint {
         t3.conditional_assign(&lizard_constants::MIDOUBLE_INVSQRT_A_MINUS_D, x_or_y_is_zero);
         s2.conditional_assign(&FieldElement::ONE, x_or_y_is_zero);
         /* ORIGINAL CODE: s3.conditional_assign(&(-(&FieldElement::ONE)), x_or_y_is_zero); */
-        let minus_one = negate_field(&FieldElement::ONE);
+        let minus_one = negate_field_element(&FieldElement::ONE);
         s3.conditional_assign(&minus_one, x_or_y_is_zero);
 
         [

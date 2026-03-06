@@ -135,11 +135,12 @@ pub fn bytes32_8_to_24(bytes: &[u8; 32]) -> (result: [u8; 16])
     result
 }
 
-/// Overwrite dst[8..24] with src[0..16].
+/// Overwrite dst[8..24] with src[0..16], preserving all other bytes.
 #[verifier::external_body]
 pub fn write_bytes32_8_to_24(dst: &mut [u8; 32], src: &[u8; 16])
     ensures
         forall|i: int| 0 <= i < 16 ==> dst[(8 + i) as int] == src[i],
+        forall|i: int| (0 <= i < 8 || 24 <= i < 32) ==> dst[i] == old(dst)[i],
 {
     dst[8..24].copy_from_slice(src);
 }

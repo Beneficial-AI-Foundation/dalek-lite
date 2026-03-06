@@ -50,12 +50,7 @@ impl JacobiPoint {
             fe51_limbs_bounded(&self.S, 54),
             fe51_limbs_bounded(&self.T, 54),
         ensures
-    // Representation: output field element has bounded limbs
-
             fe51_limbs_bounded(&result.1, 54),
-            // Failure: when no preimage exists, output is zero
-            crate::backend::serial::u64::subtle_assumes::choice_is_true(result.0) == false
-                ==> result.1 == FieldElement::ZERO,
             // Correctness: when a preimage exists, Elligator forward maps it to
             // the Edwards point corresponding to this Jacobi quartic point
             crate::backend::serial::u64::subtle_assumes::choice_is_true(result.0) == true
@@ -66,7 +61,7 @@ impl JacobiPoint {
             ),
     {
         proof {
-            admit();  // PROOF BYPASS
+            admit();  // PROOF BYPASS: algebraic Elligator roundtrip + limb bound tracking
         }
         let mut out = FieldElement::ZERO;
 

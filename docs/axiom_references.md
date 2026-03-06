@@ -276,13 +276,10 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ## 6. Constants
 
-### axiom_edwards_d2_is_2d() (edwards_lemmas/constants_lemmas.rs)
+### ~~axiom_edwards_d2_is_2d()~~ PROVED as `lemma_edwards_d2_is_2d` (edwards_lemmas/constants_lemmas.rs)
 **Claim:** `EDWARDS_D2` = 2·`EDWARDS_D` in the field
 
-**Reference:** RFC 7748; curve25519-dalek implementation  
-**URL:** https://www.rfc-editor.org/rfc/rfc7748#section-4.1
-
-**Justification:** EDWARDS_D2 is a precomputed constant. Verified by runtime test (if present) or by construction.
+**Status:** Fully proved via concrete computation with `by(compute_only)` using local helper specs, bridged to spec-level via `lemma_bridge_local_pow2_d2`.
 
 ---
 
@@ -545,7 +542,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | Math | Group theory |
 | axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | Math | Group theory |
 | ~~axiom_edwards_to_montgomery_correspondence~~ PROVED | curve_equation_lemmas.rs | Algebra | Bernstein et al. 2008 |
-| axiom_edwards_d2_is_2d | edwards_lemmas/constants_lemmas.rs | RFC | RFC 7748 |
+| ~~axiom_edwards_d2_is_2d~~ PROVED | edwards_lemmas/constants_lemmas.rs | RFC | RFC 7748 |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | Construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_specs.rs | Construction | Hamburg 2019 |
 | axiom_elligator_on_curve | ristretto_specs.rs | Paper + test | Hamburg 2015 §4; test (250+ inputs) |

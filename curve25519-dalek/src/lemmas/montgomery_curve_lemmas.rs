@@ -51,31 +51,37 @@ pub proof fn axiom_montgomery_add_associative(
     admit();
 }
 
-/// Axiom: Left identity element
+/// Lemma: Left identity element
 /// ∞ + P = P
-pub proof fn axiom_montgomery_add_identity_left(P: MontgomeryAffine)
+pub proof fn lemma_montgomery_add_identity_left(P: MontgomeryAffine)
     ensures
         montgomery_add(MontgomeryAffine::Infinity, P) == P,
 {
-    admit();
 }
 
-/// Axiom: Infinity is the identity element (right identity)
+/// Lemma: Infinity is the identity element (right identity)
 /// P + ∞ = P
-pub proof fn axiom_montgomery_add_identity(P: MontgomeryAffine)
+pub proof fn lemma_montgomery_add_identity(P: MontgomeryAffine)
     ensures
         montgomery_add(P, MontgomeryAffine::Infinity) == P,
 {
-    admit();
 }
 
-/// Axiom: every point has an inverse
+/// Lemma: every point has an inverse
 /// P + (-P) = ∞
-pub proof fn axiom_montgomery_add_inverse(P: MontgomeryAffine)
+pub proof fn lemma_montgomery_add_inverse(P: MontgomeryAffine)
     ensures
         montgomery_add(P, montgomery_neg(P)) == MontgomeryAffine::Infinity,
 {
-    admit();
+    match P {
+        MontgomeryAffine::Infinity => {},
+        MontgomeryAffine::Finite { u, v } => {
+            assert(field_add(v, field_neg(v)) == 0) by {
+                lemma_field_sub_self(v);
+                lemma_field_sub_eq_add_neg(v, v);
+            }
+        },
+    }
 }
 
 // =============================================================================
@@ -396,7 +402,7 @@ pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat
     if m == 0 {
         // Base case: [0 + n]P = [n]P = ∞ + [n]P = [0]P + [n]P
         assert(montgomery_scalar_mul(P, 0) == MontgomeryAffine::Infinity);
-        axiom_montgomery_add_identity_left(montgomery_scalar_mul(P, n));
+        lemma_montgomery_add_identity_left(montgomery_scalar_mul(P, n));
     } else {
         let m_minus_1 = (m - 1) as nat;
 

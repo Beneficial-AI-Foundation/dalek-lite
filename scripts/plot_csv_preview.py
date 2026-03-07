@@ -102,7 +102,9 @@ def create_csv_preview() -> None:
     vf = data.get("verified_functions", [])
     sf = data.get("spec_functions", [])
     specified = len([f for f in vf if f["category"] == "tracked"])
-    verified_count = len([f for f in vf if f["category"] == "tracked" and f.get("has_proof")])
+    verified_count = len(
+        [f for f in vf if f["category"] == "tracked" and f.get("has_proof")]
+    )
     external_count = len([f for f in vf if f["category"] == "external"])
     axiom_count = len([f for f in sf if f["category"] == "axiom"])
 

@@ -195,6 +195,8 @@ pub open spec fn spec_lizard_encode(data: Seq<u8>) -> (nat, nat)
 /// `T = (−2/√(a−d))·Z·γ·Y²·(Z−Y)`, so `S/T = −√(a−d)·x/2`, giving
 /// `x = −2·S/(T·√(ad−1))`.  The `y` formula follows from `S² = (Z−Y)/(Z+Y)`.
 ///
+/// Requires `1 + S² ≠ 0` and `T · √(ad−1) ≠ 0` (division denominators).
+///
 /// Used in:
 /// - `to_jacobi_quartic_ristretto` ensures (coset correctness)
 /// - `elligator_inv` ensures (round-trip with `spec_elligator_ristretto_flavor`)
@@ -254,15 +256,15 @@ pub closed spec fn spec_lizard_decode(point: (nat, nat)) -> Option<Seq<u8>> {
 }
 
 // =============================================================================
-// Ristretto-level decoding (searches the entire 4-element coset)
+// Ristretto-level decoding (over the 4-element coset P + E[4])
 // =============================================================================
 //
-// The exec decode (`lizard_decode_verus`) operates on a `RistrettoPoint`,
-// whose internal Edwards representative may differ from the one produced
-// by Elligator (e.g., after compress/decompress).  The implementation
-// searches all 4 coset members via `to_jacobi_quartic_ristretto`, so
-// the spec must reason about uniqueness across the entire coset.
-/// True iff `encode(data)` equals some member of the 4-element coset.
+// A Ristretto point is an equivalence class {P, P+T₂, P+T₄, P+T₆}.
+// Decoding searches all 4 representatives, so predicates quantify over
+// the entire coset:  encode(m) ∈ coset(P).
+/// True iff `encode(data)` equals some element of `coset`.
+///
+/// `data`: 16-byte message.  `coset`: the 4 affine points `{P, P+T₂, P+T₄, P+T₆}`.
 pub open spec fn is_lizard_preimage_coset(data: Seq<u8>, coset: [(nat, nat); 4]) -> bool
     recommends
         data.len() == 16,
@@ -271,11 +273,10 @@ pub open spec fn is_lizard_preimage_coset(data: Seq<u8>, coset: [(nat, nat); 4])
     enc == coset[0] || enc == coset[1] || enc == coset[2] || enc == coset[3]
 }
 
-/// Exactly one `m` encodes to some member of the coset of `(x, y)`.
+/// ∃! m ∈ {0,1}¹²⁸ such that `encode(m) ∈ coset(x, y)`.
 ///
-/// Ristretto-level analogue of `lizard_has_unique_preimage`: the exec
-/// decode searches all 4 coset members, so uniqueness must hold across
-/// the entire coset, not just one affine point.
+/// `(x, y)`: affine Edwards coordinates of any coset representative.
+/// Returns `true` iff exactly one such `m` exists.
 pub open spec fn lizard_ristretto_has_unique_preimage(x: nat, y: nat) -> bool {
     let coset = ristretto_coset_affine(x, y);
     exists|data: Seq<u8>|
@@ -285,12 +286,10 @@ pub open spec fn lizard_ristretto_has_unique_preimage(x: nat, y: nat) -> bool {
             data2.len() == 16 && #[trigger] is_lizard_preimage_coset(data2, coset) ==> data2 == data
 }
 
-/// Lizard decode at the Ristretto equivalence-class level.
+/// Return the unique preimage over `coset(x, y)`, or `None`.
 ///
-/// Returns `Some(data)` iff exactly one 16-byte message encodes (via Lizard)
-/// to a point Ristretto-equivalent to `(x, y)`.  This is the correct spec
-/// for `lizard_decode_verus`, which searches all 4 coset members via
-/// Elligator inversion on each representative.
+/// `(x, y)`: affine Edwards coordinates.  Returns `Some(m)` with `|m| == 16`.
+/// Top-level spec for `lizard_decode_verus`.
 pub closed spec fn spec_lizard_decode_ristretto(x: nat, y: nat) -> Option<Seq<u8>> {
     let coset = ristretto_coset_affine(x, y);
     if lizard_ristretto_has_unique_preimage(x, y) {
@@ -330,8 +329,7 @@ pub proof fn lemma_lizard_roundtrip(data: Seq<u8>)
 // =============================================================================
 // Proved properties (Ristretto-level)
 // =============================================================================
-/// Soundness: `decode_ristretto(x, y) == Some(data)` implies
-/// `encode(data)` lands in the coset of `(x, y)`.
+/// Soundness: `decode_ristretto(x, y) == Some(m)` ⟹ `encode(m) ∈ coset(x, y)`.
 pub proof fn lemma_lizard_decode_ristretto_sound(x: nat, y: nat, data: Seq<u8>)
     ensures
         spec_lizard_decode_ristretto(x, y) == Some(data) ==> is_lizard_preimage_coset(
@@ -342,8 +340,7 @@ pub proof fn lemma_lizard_decode_ristretto_sound(x: nat, y: nat, data: Seq<u8>)
     reveal(spec_lizard_decode_ristretto);
 }
 
-/// Roundtrip at the Ristretto level: `decode_ristretto(encode(m)) == Some(m)`,
-/// conditional on no coset-level collision.
+/// Roundtrip: `decode_ristretto(encode(m)) == Some(m)`, conditional on unique coset preimage.
 pub proof fn lemma_lizard_roundtrip_ristretto(data: Seq<u8>)
     requires
         data.len() == 16,

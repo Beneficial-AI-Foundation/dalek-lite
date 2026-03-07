@@ -37,12 +37,24 @@
             <div class="hero-stats">
                 <div class="stat-card highlight-card">
                     <div class="stat-number" id="withSpecs">84</div>
-                    <div class="stat-label">Tracked Functions</div>
+                    <div class="stat-label">Specified Functions</div>
                 </div>
                 <div class="stat-card success-card">
                     <div class="stat-number" id="fullyVerified">43</div>
                     <div class="stat-label">Fully Verified</div>
                     <div class="stat-percent" id="fullyVerifiedPct">16.7%</div>
+                </div>
+                <div class="stat-card amber-card">
+                    <div class="stat-stacked">
+                        <div class="stat-stacked-row">
+                            <div class="stat-number-sm" id="externalCount">0</div>
+                            <div class="stat-label-sm">External Functions</div>
+                        </div>
+                        <div class="stat-stacked-row">
+                            <div class="stat-number-sm" id="axiomCount">0</div>
+                            <div class="stat-label-sm">Axioms</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -57,11 +69,6 @@
                         <img src="outputs/verification_funnel.png" alt="Verification Funnel" class="zoomable" data-title="Verus Verification Funnel">
                         
                         <div class="metrics-inline">
-                            <div class="metric-item">
-                                <span class="metric-label">Spec Completion Rate</span>
-                                <span class="metric-value" id="specCompletionRate">32.7%</span>
-                                <span class="metric-description" id="specCompletionDesc">84 of 257 functions have specs</span>
-                            </div>
                             <div class="metric-item">
                                 <span class="metric-label">Proof Completion Rate</span>
                                 <span class="metric-value" id="proofCompletionRate">51.2%</span>

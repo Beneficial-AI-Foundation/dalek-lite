@@ -265,10 +265,8 @@ def plot_funnel(stats: Dict[str, int], output_dir: Path):
     total = stats["total"]
 
     # Funnel stages for Verus
-    # Note: "With Verus Spec" only counts functions with full specs (not external)
     stages = [
-        ("Total Functions", total),
-        ("With Verus Spec", stats["verus_specs_full"]),
+        ("Specified Functions", stats["verus_specs_full"]),
         ("Fully Verified", stats["verus_proofs"]),
     ]
 
@@ -277,7 +275,7 @@ def plot_funnel(stats: Dict[str, int], output_dir: Path):
     widths = [stage[1] for stage in stages]
     labels = [stage[0] for stage in stages]
 
-    colors = ["#95a5a6", "#3498db", "#2ecc71"]
+    colors = ["#3498db", "#2ecc71"]
 
     for i, (width, label, color) in enumerate(zip(widths, labels, colors)):
         # Draw bar

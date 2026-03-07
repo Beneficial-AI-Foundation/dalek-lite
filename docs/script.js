@@ -337,9 +337,6 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('fullyVerifiedPct').textContent = `${stats.proof_completion_rate}%`;
             
             // Update metrics section
-            document.getElementById('specCompletionRate').textContent = `${stats.with_specs_pct}%`;
-            document.getElementById('specCompletionDesc').textContent = 
-                `${stats.with_specs} of ${stats.total_functions} functions have specs`;
             document.getElementById('proofCompletionRate').textContent = `${stats.proof_completion_rate}%`;
             document.getElementById('proofCompletionDesc').textContent = 
                 `${stats.fully_verified} of ${stats.with_specs} specs are fully proven`;
@@ -353,6 +350,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    async function loadSpecsCounts() {
+        try {
+            const response = await fetch('specs_data.json');
+            const raw = await response.json();
+            const data = raw.data || raw;
+            const vf = data.verified_functions || [];
+            const sf = data.spec_functions || [];
+            const extCount = vf.filter(f => f.category === 'external').length;
+            const axiomCount = sf.filter(f => f.category === 'axiom').length;
+            const el = document.getElementById('externalCount');
+            if (el) el.textContent = extCount;
+            const al = document.getElementById('axiomCount');
+            if (al) al.textContent = axiomCount;
+        } catch (error) {
+            console.error('Error loading specs counts:', error);
+        }
+    }
+
     // Load certifications history
     async function loadCertifications() {
         try {
@@ -528,6 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load time period on page load
     loadTimePeriod();
     loadStats();
+    loadSpecsCounts();
     loadCertifications();
 });
 

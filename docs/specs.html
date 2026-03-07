@@ -71,10 +71,14 @@
                 <nav class="attr-pills" id="attrFilters">
                     <!-- Populated by JS -->
                 </nav>
-                <div class="download-bar">
-                    <span class="download-label">Download:</span>
-                    <span class="download-btn" onclick="downloadMarkdown()">MD</span>
-                    <span class="download-btn" onclick="downloadCSV()">CSV</span>
+                <div class="download-dropdown" id="downloadDropdown">
+                    <button class="download-toggle" title="Download" onclick="document.getElementById('downloadDropdown').classList.toggle('open')">&#x2B07;</button>
+                    <div class="download-menu">
+                        <div class="download-menu-inner">
+                            <span class="download-item" onclick="downloadMarkdown()">Markdown</span>
+                            <span class="download-item" onclick="downloadCSV()">CSV</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

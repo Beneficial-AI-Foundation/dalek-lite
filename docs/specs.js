@@ -1159,7 +1159,13 @@ function downloadFilenameSuffix() {
     return parts.join("-");
 }
 
+document.addEventListener("click", (e) => {
+    const dd = document.getElementById("downloadDropdown");
+    if (dd && !dd.contains(e.target)) dd.classList.remove("open");
+});
+
 window.downloadMarkdown = function() {
+    document.getElementById("downloadDropdown")?.classList.remove("open");
     try {
         const filteredLeft = getFilteredVerified();
         const filteredRight = getFilteredSpecs();
@@ -1209,6 +1215,7 @@ window.downloadMarkdown = function() {
 };
 
 window.downloadCSV = function() {
+    document.getElementById("downloadDropdown")?.classList.remove("open");
     try {
         const filteredLeft = getFilteredVerified();
         const filteredRight = getFilteredSpecs();

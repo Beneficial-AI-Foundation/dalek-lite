@@ -330,23 +330,21 @@ def plot_funnel(stats: Dict[str, int], output_dir: Path):
 def plot_file_breakdown(df: pd.DataFrame, output_dir: Path):
     """Create a breakdown by file/module."""
 
-    # Simplify module names for display
+    # Simplify module names to match specs browser grouping (probe-verus derive_short_module)
     def simplify_module(module: str) -> str:
         if pd.isna(module) or not module:
             return "unknown"
-        # Remove crate prefix for cleaner display
-        # e.g., "curve25519_dalek::backend::serial::u64::field" -> "u64::field"
-        # e.g., "curve25519_dalek::scalar" -> "scalar"
         parts = module.replace("curve25519_dalek::", "").split("::")
-        # Group lizard submodules (lizard_ristretto, jacobi_quartic, ...) under one label
         if parts and parts[0] == "lizard":
             return "lizard"
-        # Merge scalar_helpers into scalar
         if parts and parts[-1] == "scalar_helpers":
             return "scalar"
-        # Always show last 2 levels (or fewer if not available)
-        if len(parts) >= 2:
-            return "::".join(parts[-2:])
+        # backend::serial::* all merge into "backend"
+        if parts and parts[0] == "backend":
+            for p in parts:
+                if p.startswith("u") and p[1:].isdigit():
+                    return p
+            return "backend"
         return parts[-1] if parts else "unknown"
 
     # Count by display module (merges submodules like lizard::* into one)

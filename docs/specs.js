@@ -86,13 +86,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
     }
 
-    // Normalize module names (merge submodules into parents)
+    // Normalize module names (merge submodules into parents, split u64 from backend)
     const MODULE_ALIASES = { "scalar_helpers": "scalar" };
     for (const fn of verifiedFunctions) {
         fn.module = MODULE_ALIASES[fn.module] || fn.module;
+        if (fn.module === "backend" && fn.sub_module === "u64") fn.module = "u64";
     }
     for (const s of specFunctions) {
         s.module = MODULE_ALIASES[s.module] || s.module;
+        if (s.module === "backend" && s.sub_module === "u64") s.module = "u64";
     }
 
     // Build lookup

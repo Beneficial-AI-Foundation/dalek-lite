@@ -104,13 +104,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     buildContentHashes();
 
     // Stats
-    const modules = [...new Set(verifiedFunctions.map(v => v.module))];
+    const trackedFunctions = verifiedFunctions.filter(v => v.category !== "external");
+    const externalFunctions = verifiedFunctions.filter(v => v.category === "external");
+    const modules = [...new Set(trackedFunctions.map(v => v.module))];
     const axiomCount = specFunctions.filter(s => s.category === "axiom").length;
     const specOnlyCount = specFunctions.filter(s => s.category !== "axiom").length;
-    const withSpecsCount = verifiedFunctions.filter(v => v.has_spec).length;
-    const publicCount = verifiedFunctions.filter(v => v.is_public).length;
-    const libsignalCount = verifiedFunctions.filter(v => v.is_libsignal).length;
-    document.getElementById("totalFunctions").textContent = verifiedFunctions.length;
+    const publicCount = trackedFunctions.filter(v => v.is_public).length;
+    const libsignalCount = trackedFunctions.filter(v => v.is_libsignal).length;
+    document.getElementById("totalFunctions").textContent = trackedFunctions.length;
+    document.getElementById("totalExternal").textContent = externalFunctions.length;
     document.getElementById("totalSpecs").textContent = specOnlyCount;
     document.getElementById("totalAxioms").textContent = axiomCount;
 
@@ -256,20 +258,22 @@ function buildAttributeFilters(publicCount, libsignalCount) {
  * This way, every count shows "how many would I see if I clicked this pill?".
  */
 function updateFilterCounts() {
+    // Exclude external functions from pill counts (they always appear at bottom)
+    let tracked = verifiedFunctions.filter(v => v.category !== "external");
+
     // Base list filtered by attribute toggles (for module pills)
-    let attrFiltered = verifiedFunctions;
+    let attrFiltered = tracked;
     if (filterPublic) attrFiltered = attrFiltered.filter(v => v.is_public);
     if (filterLibsignal) attrFiltered = attrFiltered.filter(v => v.is_libsignal);
 
     for (const pill of modulePills) {
         const cnt = attrFiltered.filter(v => v.module === pill.moduleId).length;
         pill.countEl.textContent = cnt;
-        // Hide module pills with 0 matches
         pill.el.style.display = cnt === 0 ? "none" : "";
     }
 
     // Base list filtered by active modules (for attribute pills)
-    let modFiltered = verifiedFunctions;
+    let modFiltered = tracked;
     if (activeModules.size > 0) modFiltered = modFiltered.filter(v => activeModules.has(v.module));
 
     if (attrPillPublic) {
@@ -284,23 +288,20 @@ function updateFilterCounts() {
     }
 }
 
-// ── Left panel: tracked functions ────────────────────────────
+// ── Left panel: verified + external functions ────────────────
 function getFilteredVerified() {
     let list = verifiedFunctions;
     if (activeModules.size > 0) {
-        list = list.filter(v => activeModules.has(v.module));
+        list = list.filter(v => v.category === "external" || activeModules.has(v.module));
     }
     if (filterPublic) {
-        list = list.filter(v => v.is_public);
+        list = list.filter(v => v.category === "external" || v.is_public);
     }
     if (filterLibsignal) {
-        list = list.filter(v => v.is_libsignal);
+        list = list.filter(v => v.category === "external" || v.is_libsignal);
     }
     if (searchLeft) {
         list = list.filter(v => {
-            // Search top-level fields only (name, module, docs,
-            // interpretations) — exclude contract body and referenced
-            // spec names to avoid false matches.
             const h = (
                 v.name + " " + v.display_name + " " + v.module + " " +
                 (v.doc_comment || "") + " " +
@@ -309,8 +310,12 @@ function getFilteredVerified() {
             return h.includes(searchLeft);
         });
     }
-    // Sort by module (backend last), then by sub_module, then by display name
+    // Sort: tracked first (module backend last, then sub_module, then name),
+    // external at the end (by module then name)
     list.sort((a, b) => {
+        const aExt = a.category === "external" ? 1 : 0;
+        const bExt = b.category === "external" ? 1 : 0;
+        if (aExt !== bExt) return aExt - bExt;
         const ma = a.module === "backend" ? 1 : 0;
         const mb = b.module === "backend" ? 1 : 0;
         if (ma !== mb) return ma - mb;
@@ -336,11 +341,25 @@ function renderLeftPanel() {
         return;
     }
 
-    countEl.textContent = filtered.length;
+    // Count excludes external (shown separately)
+    countEl.textContent = filtered.filter(v => v.category !== "external").length;
 
     let html = "";
     let currentGroup = null;
+    let externalHeaderShown = false;
+    let firstVerifiedShown = false;
     for (const fn of filtered) {
+        if (fn.category === "external") {
+            if (!externalHeaderShown) {
+                externalHeaderShown = true;
+                const extCount = filtered.filter(v => v.category === "external").length;
+                html += `<div id="external-top" class="module-group-header external-group-header">External Functions <span class="external-group-count">${extCount}</span></div>`;
+                currentGroup = null;
+            }
+        } else if (!firstVerifiedShown) {
+            firstVerifiedShown = true;
+            html += `<div id="verified-top"></div>`;
+        }
         const group = fn.sub_module || fn.module;
         if (group !== currentGroup) {
             currentGroup = group;
@@ -359,23 +378,50 @@ function renderLeftPanel() {
             card.classList.toggle("open");
         });
     });
+
+    // Wire up left panel title jump links
+    const scrollParent = container.closest(".panel-scroll");
+    const jumpVerified = document.getElementById("jumpVerified");
+    if (jumpVerified) {
+        jumpVerified.onclick = e => {
+            e.preventDefault();
+            const target = document.getElementById("verified-top");
+            if (target && scrollParent) {
+                scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
+            }
+        };
+    }
+    const jumpExternal = document.getElementById("jumpExternal");
+    if (jumpExternal) {
+        jumpExternal.onclick = e => {
+            e.preventDefault();
+            const target = document.getElementById("external-top");
+            if (target && scrollParent) {
+                scrollParent.scrollTo({ top: target.offsetTop - scrollParent.offsetTop, behavior: "smooth" });
+            }
+        };
+    }
 }
 
 function renderVerifiedCard(fn) {
     const hasProof = fn.has_proof;
     const hasSpec = fn.has_spec;
+    const isExternal = fn.category === "external";
     const hasMath = fn.math_interpretation && fn.math_interpretation.trim();
 
     // Status badges
     const badges = [];
-    if (hasProof) badges.push(`<span class="fn-badge fn-badge-proof">proved</span>`);
+    if (isExternal) badges.push(`<span class="fn-badge fn-badge-external">external</span>`);
+    else if (hasProof) badges.push(`<span class="fn-badge fn-badge-proof">proved</span>`);
     else if (hasSpec) badges.push(`<span class="fn-badge fn-badge-spec">spec</span>`);
     else badges.push(`<span class="fn-badge fn-badge-nospec">no spec</span>`);
     if (fn.is_libsignal) badges.push(`<span class="fn-badge fn-badge-libsignal">libsignal</span>`);
 
+    const cardClass = isExternal ? " card-external" : hasProof ? " card-proved" : hasSpec ? " card-spec" : " card-nospec";
+
     // Render only the header; body is injected lazily on first open
     return `
-    <div class="spec-card${hasProof ? " card-proved" : hasSpec ? " card-spec" : " card-nospec"}" data-id="${escapeAttr(fn.id)}" data-module="${escapeAttr(fn.module)}">
+    <div class="spec-card${cardClass}" data-id="${escapeAttr(fn.id)}" data-module="${escapeAttr(fn.module)}">
         <div class="spec-header">
             <div class="spec-toggle">&#9654;</div>
             <div class="spec-info">

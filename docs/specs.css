@@ -77,6 +77,10 @@
     color: var(--secondary-color);
 }
 
+.spec-stat-number.stat-amber {
+    color: #b45309;
+}
+
 .spec-stat-label {
     font-size: 0.85rem;
     opacity: 0.85;
@@ -590,6 +594,33 @@
 /* Axiom card — subtle amber left border */
 .spec-card.axiom-card {
     border-left: 3px solid #f59e0b;
+}
+
+/* External function card — amber left border (matches axiom style) */
+.spec-card.card-external {
+    border-left: 3px solid #f59e0b;
+}
+
+.fn-badge-external {
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+}
+
+/* External group header at bottom of left panel */
+.external-group-header {
+    color: #92400e;
+    border-bottom-color: #f59e0b;
+    margin-top: 1rem;
+}
+
+.external-group-count {
+    font-size: 0.65rem;
+    font-weight: 600;
+    background: #fef3c7;
+    padding: 0.08rem 0.35rem;
+    border-radius: 8px;
+    margin-left: 0.3rem;
 }
 
 .spec-github {

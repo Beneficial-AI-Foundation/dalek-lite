@@ -1,6 +1,6 @@
 ---
 name: verus-spec-helper
-description: Write, review, and tighten Verus specifications in verified-cryptography Rust codebases (e.g., curve25519-dalek). Use when drafting `spec fn`/`proof fn` specs, strengthening `requires`/`ensures`, connecting exec code to reference mathematical specs, minimizing refactors while preserving clear original-to-refactored correspondence, or managing ghost imports/cfg so `cargo build` and `cargo verus verify` both work.
+description: Write, review, and tighten Verus specifications in verified Rust codebases. Use when drafting `spec fn`/`proof fn` specs, strengthening `requires`/`ensures`, connecting exec code to reference mathematical specs, minimizing refactors while preserving clear original-to-refactored correspondence, or managing ghost imports/cfg so `cargo build` and `cargo verus verify` both work.
 ---
 
 # Verus Spec Helper
@@ -17,22 +17,22 @@ A specification is formed of:
 
 ## Quick start
 
-1. **Intent first**: what mathematical object/function is this (field arithmetic, group law, encoding/decoding, hash model)?
-2. **Reuse existing vocab**: search `curve25519-dalek/src/specs/` and `curve25519-dalek/src/core_assumes.rs` before inventing new spec functions.
-3. **Reference spec first**: add math definitions + key properties in `src/specs/*_specs.rs`, then attach exec code to it with `ensures`.
+1. **Intent first**: what mathematical object/function does this code implement (arithmetic, group law, encoding/decoding, hash, data structure invariant)?
+2. **Reuse existing vocab**: search the project's spec modules and external-modeling files before inventing new spec functions.
+3. **Reference spec first**: add math definitions + key properties in a spec module, then attach exec code to it with `ensures`.
 4. **Preserve correspondence**: small refactor blocks, `/* ORIGINAL CODE: ... */` nearby, function order preserved.
 5. **Build hygiene**: isolate ghost code inside `verus! { ... }` blocks; avoid import/cfg churn.
 
 ## Spec writing goals (what "good" looks like)
 
 - **Declarative** specs: relate inputs/outputs to reference spec functions (don't re-implement the algorithm in `ensures`).
-- **Precise domain**: well-formedness, bounds, subgroup/torsion membership, invertibility/nonzero denominators, length constraints.
+- **Precise domain**: well-formedness, representation bounds, algebraic structure membership, invertibility/nonzero denominators, length constraints.
 - **Explicit intended property**: soundness, roundtrip, uniqueness, invariants preserved.
-- **Readable doc comments** matching the style of existing `src/specs/*_specs.rs` files.
+- **Readable doc comments** matching the style of existing spec modules.
 
 ## Reference spec module structure
 
-Co-locate math definitions in `src/specs/<topic>_specs.rs`. Structure:
+Co-locate math definitions in dedicated spec modules (e.g., `src/specs/<topic>_specs.rs`). Structure:
 
 ```rust
 //! Specifications for <topic>.
@@ -54,7 +54,7 @@ Co-locate math definitions in `src/specs/<topic>_specs.rs`. Structure:
 //! - citations to papers, RFCs, executable code modules
 
 #[allow(unused_imports)]
-use super::field_specs::*;
+use super::<domain>_specs::*;
 use vstd::prelude::*;
 
 verus! {
@@ -63,22 +63,14 @@ verus! {
 // Section Title
 // =============================================================================
 
-/// Affine Edwards point `P(m) = Elligator(r(m))` — the encoding output.
-///
-/// ```text
-/// m ──► b(m) ──► r(m) ──► [P(m)]
-///                          ^^^^^
-/// ```
-///
-/// Returns `(x, y) ∈ F_p × F_p`.
-/// This is the top-level spec for `encode_verus`.
+/// Top-level spec for `exec_encode`.
 pub open spec fn spec_encode(data: Seq<u8>) -> (nat, nat) { /* math */ }
 
 /// Pure math helper — no `spec_` prefix (not an exec-correspondence).
-pub open spec fn encode_r(data: Seq<u8>) -> nat { /* math */ }
+pub open spec fn intermediate_step(data: Seq<u8>) -> nat { /* math */ }
 
 /// Validity predicate for domain object.
-pub open spec fn is_valid_x(x: nat) -> bool { /* invariants */ }
+pub open spec fn is_valid(x: AbstractType) -> bool { /* invariants */ }
 
 } // verus!
 ```
@@ -87,27 +79,27 @@ pub open spec fn is_valid_x(x: nat) -> bool { /* invariants */ }
 
 | Category | Prefix | When to use | Examples |
 |----------|--------|-------------|---------|
-| **Exec-correspondence** | `spec_` | Function whose primary role is the `ensures` target of an exec function | `spec_lizard_encode`, `spec_elligator_ristretto_flavor`, `spec_fe51_from_bytes` |
-| **Pure math** | (none) | Mathematical definitions, pipeline intermediates, predicates — no direct exec counterpart | `lizard_fe_bytes`, `lizard_r`, `lizard_preimage`, `edwards_add`, `field_mul` |
-| **Validity predicates** | `is_` | Boolean well-formedness / membership tests | `is_well_formed_edwards_point`, `is_on_edwards_curve`, `is_square` |
-| **Axioms (admitted)** | `axiom_` | Proof functions with `admit()` body | `axiom_elligator_injective` |
-| **Lemmas (proved)** | `lemma_` | Fully proved proof functions | `lemma_lizard_decode_sound`, `lemma_lizard_roundtrip`, `lemma_from_u8_32_as_nat` |
+| **Exec-correspondence** | `spec_` | Function whose primary role is the `ensures` target of an exec function | `spec_encrypt`, `spec_from_bytes`, `spec_compress` |
+| **Pure math** | (none) | Mathematical definitions, pipeline intermediates, predicates — no direct exec counterpart | `group_add`, `field_mul`, `hash_digest`, `pipeline_step_a` |
+| **Validity predicates** | `is_` | Boolean well-formedness / membership tests | `is_valid_state`, `is_in_range`, `is_on_curve`, `is_canonical` |
+| **Axioms (admitted)** | `axiom_` | Proof functions with `admit()` body | `axiom_hash_injective`, `axiom_add_complete` |
+| **Lemmas (proved)** | `lemma_` | Fully proved proof functions | `lemma_decode_sound`, `lemma_roundtrip`, `lemma_from_bytes_as_nat` |
 
 ## Spec function visibility rules
 
 | Kind | When to use | Examples |
 |------|-------------|---------|
-| `open spec fn` | Default. Body visible everywhere. | `edwards_add`, `field_mul`, `lizard_r`, `spec_lizard_encode` |
-| `closed spec fn` | Encapsulation needed: accesses `pub(crate)` fields, or uses `choose` that shouldn't expand | `edwards_x/y/z/t` (struct accessors), `spec_lizard_decode` |
-| `uninterp spec fn` | External/opaque behavior with no formal definition | `spec_sha256`, `spec_sha512`, `choice_is_true`, `is_uniform_bytes` |
+| `open spec fn` | Default. Body visible everywhere. | `group_add`, `field_mul`, `spec_encrypt` |
+| `closed spec fn` | Encapsulation needed: accesses `pub(crate)` fields, or uses `choose` that shouldn't expand | struct accessors, `spec_decode` |
+| `uninterp spec fn` | External/opaque behavior with no formal definition | `spec_sha256`, `spec_aes_encrypt` |
 
 When using `uninterp`, always pair with admitted axioms that state essential properties:
 
 ```rust
-pub uninterp spec fn spec_sha256(input: Seq<u8>) -> Seq<u8>;
+pub uninterp spec fn spec_hash(input: Seq<u8>) -> Seq<u8>;
 
-pub proof fn axiom_sha256_output_length(input: Seq<u8>)
-    ensures spec_sha256(input).len() == 32,
+pub proof fn axiom_hash_output_length(input: Seq<u8>)
+    ensures spec_hash(input).len() == 32,
 { admit(); }
 ```
 
@@ -116,13 +108,13 @@ pub proof fn axiom_sha256_output_length(input: Seq<u8>)
 | Clause | Meaning | Where used |
 |--------|---------|------------|
 | `requires` | Strict: violation = verification error | `proof fn`, `#[verifier::external_body]` exec fns |
-| `recommends` | Soft: spec may return arbitrary value outside precondition | `spec fn` with optional well-definedness (e.g. `data.len() == 16`) |
+| `recommends` | Soft: spec may return arbitrary value outside precondition | `spec fn` with optional well-definedness |
 
 Use `recommends` on spec functions when the precondition is always true in practice but not structurally enforced:
 
 ```rust
-pub open spec fn lizard_r(data: Seq<u8>) -> nat
-    recommends data.len() == 16,
+pub open spec fn decode_step(data: Seq<u8>) -> nat
+    recommends data.len() == 32,
 ```
 
 ## Exec-to-spec bridging
@@ -132,7 +124,7 @@ Put exec correctness in one or two "load-bearing" postconditions. Keep algorithm
 ```rust
 pub fn foo(x: Foo) -> (out: Bar)
     requires
-        is_well_formed_foo(x),
+        is_valid(x),
     ensures
         out@ == spec_foo(x@),
 {
@@ -163,16 +155,16 @@ the same discriminant (mirrors the `ensures` structure).
 | Pattern | When to use |
 |---------|-------------|
 | `#[verifier::external_body]` | Trusted functions: constants, iterators, external crates |
-| `#[cfg_attr(verus_keep_ghost, verifier::external_body)]` | Generic/trait APIs (e.g. `Digest`); provide verified variant alongside |
+| `#[cfg_attr(verus_keep_ghost, verifier::external_body)]` | Generic/trait APIs; provide verified variant alongside |
 
 ```rust
-// Generic version: trusted
+// Generic version: trusted (Verus can't handle the trait bound)
 #[cfg_attr(verus_keep_ghost, verifier::external_body)]
-pub fn lizard_encode<D: Digest>(data: &[u8; 16]) -> RistrettoPoint { ... }
+pub fn transform<D: SomeTrait>(data: &[u8; 16]) -> Output { ... }
 
-// Sha256-specific version: verified
-pub fn lizard_encode_verus(data: &[u8; 16]) -> (result: RistrettoPoint)
-    ensures edwards_point_as_affine(result.0) == spec_lizard_encode(data@),
+// Concrete version: verified
+pub fn transform_verus(data: &[u8; 16]) -> (result: Output)
+    ensures result@ == spec_transform(data@),
 { ... }
 ```
 
@@ -188,38 +180,35 @@ Lines that are identical to the original get no comment — the absence of a
 comment signals "unchanged".
 
 ```rust
-// Changed: iterator → index loop, fe_j → fes[j]
-/* ORIGINAL CODE: for (j, fe_j) in fes.iter().enumerate() { */
+// Changed: iterator → index loop
+/* ORIGINAL CODE: for (j, item) in items.iter().enumerate() { */
 for j in 0..8 {
     // Unchanged — no comment needed
-    let mut ok = Choice::from((mask >> j) & 1);
-    // Changed: fe_j binding replaced by direct indexing
-    /* ORIGINAL CODE: let buf2 = fe_j.as_bytes(); */
-    let buf2 = fes[j].as_bytes();
+    let mut ok = check(j);
+    // Changed: iterator binding replaced by direct indexing
+    /* ORIGINAL CODE: let val = item.process(); */
+    let val = items[j].process();
 ```
 
-Keep comments to ~1 line showing the original expression.  Avoid pasting
+Keep comments to ~1 line showing the original expression. Avoid pasting
 multi-line blocks — just show the changed expression.
 
 ### Common refactors that need tracking
 
 | Original | Verus-friendly | Why |
 |----------|---------------|-----|
-| `Default::default()` | `[0u8; N]` | Verus doesn't support `Default` trait |
+| `Default::default()` | `[0u8; N]` or literal | Verus doesn't support `Default` trait |
 | `for (i, x) in v.iter().enumerate()` | `for i in 0..v.len()` | Verus doesn't support iterators |
-| `fe_j` (iterator binding) | `fes[j]` (direct indexing) | Consequence of iterator removal |
-| `-x` (field element) | `negate_field(&x)` | Operator overloading unsupported |
-| `a \| b` (Choice) | `choice_or(a, b)` | Operator overloading unsupported |
-| `ok &= h.ct_eq(&buf2)` | `ok = choice_and(ok, ct_eq_bytes32(&h, &buf2))` | Compound assign + method unsupported |
-| `u8::conditional_select(...)` | `select_u8(...)` | Trait method → wrapper |
-| `dst[8..24].copy_from_slice(src)` | `write_bytes32_8_to_24(&mut dst, src)` | Slice range unsupported by Verus |
-| `D::digest(...)` (generic) | `sha256_hash_bytes(...)` (concrete) | Generic `Digest` trait unsupported |
-| `n_found += ok.unwrap_u8()` | `let add: u32 = ok.unwrap_u8() as u32; n_found = n_found + add;` | Split for overflow proof |
+| Iterator binding (`item`) | Direct indexing (`items[j]`) | Consequence of iterator removal |
+| `-x` (operator overload) | `negate_wrapper(&x)` | Operator overloading unsupported in `verus!` |
+| `a \| b` (trait-based ops) | `or_wrapper(a, b)` | Operator overloading unsupported |
+| `x.trait_method(args)` | `wrapper_fn(&mut x, args)` | Trait method calls unsupported |
+| `dst[a..b].copy_from_slice(src)` | `write_range_wrapper(&mut dst, src)` | Slice range ops unsupported |
+| `T::generic_call(args)` | `concrete_call(args)` | Generic trait calls unsupported |
+| `x += expr` (compound assign) | `let tmp = expr; x = x + tmp;` | Needed to insert proof blocks or type coercions |
 | Compound expression | Split with intermediate `let` | Needed to insert proof blocks |
 
 ## Doc comment conventions
-
-Based on analysis of `edwards_specs.rs`, `montgomery_specs.rs`, `ristretto_specs.rs`, `lizard_specs.rs`:
 
 ### Module-level docs
 
@@ -229,7 +218,7 @@ Use `//!` (inner doc comments) with structured sections:
 //! Specifications for <topic>.
 //!
 //! ## Mathematical objects and notation
-//! - describe objects, fields, representations
+//! - describe objects, domains, representations
 //!
 //! ## <Algorithm / Pipeline summary>
 //! brief composition chain or key formulas
@@ -250,16 +239,16 @@ Use `//!` (inner doc comments) with structured sections:
 - Don't describe exec algorithm strategy in spec docs — keep it mathematical.
 
 ```rust
-/// The 32-byte digest `b(m)` — first stage of the Lizard pipeline.
+/// The intermediate digest `b(m)` — first stage of the pipeline.
 ///
 /// ```text
 /// m ──► [b(m)] ──► r(m) ──► P(m)
 ///        ^^^^
 /// ```
 ///
-/// 1. `digest = SHA256(m)` (32 bytes)
-/// 2. Overwrite `digest[8..24]` with `m`  — embeds the recoverable payload
-/// 3. `b[0] &= 254` (clear low bit), `b[31] &= 63` (clear two high bits)
+/// 1. `digest = H(m)` (32 bytes)
+/// 2. Overwrite `digest[8..24]` with `m` — embeds the recoverable payload
+/// 3. Mask high/low bits for canonical range
 ```
 
 ### Inline body comments
@@ -267,8 +256,8 @@ Use `//!` (inner doc comments) with structured sections:
 Terse mathematical annotations, not narration:
 
 ```rust
-let digest = spec_sha256(data);                         // SHA-256(m), 32 bytes
-let s = s.update(0, s[0] & 254u8);                     // clear sign bit
+let digest = spec_hash(data);                           // H(m), 32 bytes
+let s = s.update(0, s[0] & 254u8);                     // clear low bit
 ```
 
 ### Section separators
@@ -283,10 +272,10 @@ let s = s.update(0, s[0] & 254u8);                     // clear sign bit
 
 ```rust
 /// **Soundness**: `decode(P) == Some(m)  ==>  encode(m) == P`.
-pub proof fn lemma_lizard_decode_sound(...)
+pub proof fn lemma_decode_sound(...)
 
 /// **Roundtrip**: `decode(encode(m)) == Some(m)` when no collision.
-pub proof fn lemma_lizard_roundtrip(...)
+pub proof fn lemma_roundtrip(...)
 ```
 
 Naming: `axiom_` prefix for `admit()` bodies; `lemma_` for fully proved.
@@ -304,7 +293,7 @@ can conclude `choose == known_value` when you assert the known value satisfies t
 
 **Pattern — soundness** (choose satisfies its predicate):
 ```rust
-pub proof fn lemma_decode_sound(point: (nat, nat), data: Seq<u8>)
+pub proof fn lemma_decode_sound(point: AbstractPoint, data: Seq<u8>)
     ensures
         spec_decode(point) == Some(data) ==> spec_encode(data) == point,
 {
@@ -328,17 +317,15 @@ pub proof fn lemma_roundtrip(data: Seq<u8>)
 }
 ```
 
-**Promoting axiom → lemma**: when an `axiom_` (with `admit()`) turns out to be provable
+**Promoting axiom -> lemma**: when an `axiom_` (with `admit()`) turns out to be provable
 via `reveal` or other techniques, rename to `lemma_` and replace `admit()` with the proof.
 
 **Proof reuse across duplicate functions**: when a wrapper/variant does the same exec steps
 as an already-proved function, copy the proof block rather than using `admit()`.
-Example: `encode_253_bits` wraps the same logic as `from_uniform_bytes_single_elligator`,
-so the same `lemma_from_u8_32_as_nat` + `lemma_as_nat_32_mod_255` proof applies directly.
 
 ### Conditional `ensures` with `==>`
 
-When a property depends on a structural possibility (e.g., collision-freedom),
+When a property depends on a structural possibility (e.g., collision-freedom, unique preimage),
 make the `ensures` conditional rather than assuming it always holds:
 
 ```rust
@@ -356,10 +343,10 @@ Make function signatures compose directly — the output type of step N should b
 input type of step N+1:
 
 ```rust
-pub open spec fn fe_bytes(data: Seq<u8>) -> [u8; 32] { ... }
-pub open spec fn r(fe_bytes: &[u8; 32]) -> nat { ... }
-pub open spec fn encode(data: Seq<u8>) -> (nat, nat) {
-    elligator(r(&fe_bytes(data)))   // direct composition, no conversion
+pub open spec fn step_bytes(data: Seq<u8>) -> [u8; 32] { ... }
+pub open spec fn step_nat(bytes: &[u8; 32]) -> nat { ... }
+pub open spec fn spec_encode(data: Seq<u8>) -> (nat, nat) {
+    final_map(step_nat(&step_bytes(data)))   // direct composition
 }
 ```
 
@@ -367,13 +354,13 @@ pub open spec fn encode(data: Seq<u8>) -> (nat, nat) {
 
 - `use vstd::prelude::*;` goes **outside** `verus!` blocks at file top.
 - Spec-only imports from `vstd::` or internal spec modules: guard with `#[cfg(verus_keep_ghost)]`.
-- Prefer wildcard imports (`use crate::specs::field_specs::*;`) over specific named imports for spec modules — wildcards compile even when the module is empty in non-Verus builds.
+- Prefer wildcard imports (`use crate::specs::<module>::*;`) over specific named imports for spec modules — wildcards compile even when the module is empty in non-Verus builds.
 - Always `#[allow(unused_imports)]` on spec imports.
-- Imports used only inside `verus! { ... }` can go inside the block (for imports from spec modules that are themselves inside `verus!`).
+- Imports used only inside `verus! { ... }` can go inside the block.
 
 ```rust
 #[allow(unused_imports)]
-use crate::specs::field_specs::*;
+use crate::specs::domain_specs::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use vstd::arithmetic::power2::pow2;
@@ -382,7 +369,7 @@ use vstd::prelude::*;
 verus! {
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use super::core_specs::{u8_32_as_nat, bytes_seq_as_nat};
+use super::core_specs::{bytes_as_nat, seq_as_nat};
 
 // ... specs ...
 } // verus!
@@ -392,18 +379,17 @@ use super::core_specs::{u8_32_as_nat, bytes_seq_as_nat};
 
 ### Preconditions
 
-- Representation bounds + type invariants (limb bounds, canonicality)
-- Curve membership / curve equation
-- Subgroup/torsion assumptions
+- Representation bounds + type invariants (e.g., limb bounds, canonicality)
+- Algebraic structure membership (e.g., on-curve, in-subgroup)
 - Nonzero/invertible elements for divisions
-- Valid encodings, permitted top bits
+- Valid encodings, permitted bit ranges
 - Array lengths, indices in range
 - Feature guards (`cfg(feature = "...")`)
 
 ### Postconditions
 
 - Result matches reference spec operation
-- Invariants preserved (well-formed, bounded, on-curve, in subgroup)
+- Invariants preserved (well-formed, bounded, in valid domain)
 - Encoding/decoding: **soundness** (`decode(bytes) == Some(m)` implies preimage), **roundtrip** (`decode(encode(m)) == Some(m)`), uniqueness
 - Length/shape constraints on outputs
 - Avoid procedural ensures that restate the implementation
@@ -413,27 +399,88 @@ use super::core_specs::{u8_32_as_nat, bytes_seq_as_nat};
       match result {
           Some(p) =>
               // Well-formedness
-              is_well_formed_edwards_point(p.0)
-              && is_in_even_subgroup(p.0)
+              is_valid(p)
               // Correctness
-              && edwards_point_as_affine(p.0) == spec_fn(...),
+              && to_abstract(p) == spec_fn(...),
           None => ...,
       },
   ```
 
+## Spec correctness pitfalls
+
+### Quotient-level specs (equivalence classes)
+
+When a map has a non-trivial kernel (e.g., group quotients, cosets, equivalence classes),
+inversion returns representatives from the *equivalence class*, not the original element.
+Postconditions must allow any class member, not assert equality with the input:
+
+```rust
+// WRONG: claims inverse maps back to the original
+ensures inverse(result) == self,
+
+// CORRECT: claims inverse maps to some member of the equivalence class
+ensures exists_in_class(inverse(result), equivalence_class(self)),
+```
+
+### Edge case separation in ensures
+
+When a function has degenerate inputs (e.g., zero coordinates, identity element),
+split the postcondition: exact guarantees for the generic case, weaker (but still
+correct) guarantees for edge cases:
+
+```rust
+ensures
+    // Generic: exact bijection
+    generic_condition ==> exact_correspondence(input, result),
+    // Degenerate: weaker membership guarantee
+    !generic_condition ==> result_in_valid_set(result),
+```
+
+### Don't spec unverified failure behaviour
+
+Only add a postcondition you are confident is correct. "Obvious" failure clauses
+(e.g., `failed ==> output == default_value`) can be wrong when the implementation
+has early-exit branches that set the output before the failure flag.
+
+### `recommends` for partial functions
+
+Spec functions with partial domains (division, square root, inversion) must guard
+undefined inputs with `recommends`:
+
+```rust
+pub open spec fn affine_from_projective(x: nat, z: nat) -> nat
+    recommends z != 0,
+```
+
+### Frame conditions on `external_body`
+
+`external_body` specs must state what is *preserved*, not just what changes.
+Missing frame conditions silently allow the verifier to assume arbitrary
+modifications to unmentioned state:
+
+```rust
+// INCOMPLETE: only says what's written — verifier can assume other bytes are anything
+ensures forall|i: int| 0 <= i < n ==> dst[(off+i) as int] == src[i],
+
+// COMPLETE: also constrains unchanged bytes
+ensures
+    forall|i: int| 0 <= i < n ==> dst[(off+i) as int] == src[i],
+    forall|i: int| (0 <= i < off || off+n <= i < len) ==> dst[i] == old(dst)[i],
+```
+
 ## Validation
 
-1. **Rust build**: `cargo build -p curve25519-dalek`
-2. **Verus verify**: `cargo verus verify -p curve25519-dalek`
-3. **Targeted verify** (faster): `cargo verus verify -p curve25519-dalek -- --verify-module <module>`
-4. **Error extraction**: `cargo verus verify -p curve25519-dalek 2>&1 | grep -E "^error|verification results:|^   --> |failed this" | head -30`
+1. **Rust build**: `cargo build -p <crate>`
+2. **Verus verify**: `cargo verus verify -p <crate>`
+3. **Targeted verify** (faster): `cargo verus verify -p <crate> -- --verify-module <module>`
+4. **Error extraction**: `cargo verus verify -p <crate> 2>&1 | grep -E "^error|verification results:|^   --> |failed this" | head -30`
 
 Run both build and verify after spec changes. When verification succeeds, `cargo verus verify ... 2>&1 | tail -5` suffices.
 
-## Repo anchors (curve25519-dalek)
+## Discovering project layout
 
-- Spec modules: `curve25519-dalek/src/specs/` (see `mod.rs` for full list)
-- External modeling/axioms: `curve25519-dalek/src/core_assumes.rs`
-- Reference spec style: `curve25519-dalek/src/specs/edwards_specs.rs`, `montgomery_specs.rs`
-- New module example: `curve25519-dalek/src/specs/lizard_specs.rs`
-- Exec-spec bridging examples: `curve25519-dalek/src/lizard/lizard_ristretto.rs`, `curve25519-dalek/src/ristretto.rs`
+When working on a new crate, search for these common directories and files:
+- **Spec modules**: `specs/`, `*_specs.rs` — math-level definitions
+- **External modeling**: `*_assumes.rs`, `core_assumes.rs` — uninterpreted functions and axioms
+- **Lemma libraries**: `lemmas/` — proved and admitted proof functions
+- **Constants**: `constants.rs`, `*_constants.rs` — domain-specific constants with type invariants

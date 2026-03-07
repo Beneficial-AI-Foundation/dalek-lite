@@ -457,6 +457,18 @@ body {
     color: #92400e;
 }
 
+.status-axiom {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.csv-summary {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.75rem;
+}
+
 .status-none {
     background: #f3f4f6;
     color: #6b7280;

@@ -81,6 +81,7 @@ _SPEC_MODULE_MAP = {
     "field_specs": "field",
     "field_specs_u64": "field",
     "core_specs": "core",
+    "lizard_specs": "lizard",
 }
 
 
@@ -120,6 +121,12 @@ def _short_module_name(full_module: str) -> str:
         return "backend"
     if short.startswith("scalar_mul::") or short == "scalar_mul":
         return "backend"
+    # Group lizard submodules (lizard_ristretto, jacobi_quartic, ...) under "lizard"
+    if short.startswith("lizard::") or short == "lizard":
+        return "lizard"
+    # Merge scalar_helpers into scalar
+    if short == "scalar_helpers":
+        return "scalar"
     return short
 
 
@@ -327,10 +334,18 @@ _AXIOM_MATH_OVERRIDES = {
 
 
 # ── Libsignal-used functions ─────────────────────────────────────────
-# (base_name, source_file_stem) pairs.  Derived from SCIP call-graph
+# (base_name, short_module) pairs.  Derived from SCIP call-graph
 # analysis of libsignal → curve25519-dalek.  Excludes trait functions
-# (is_identity, vartime_multiscalar_mul) and the lizard module.
+# (is_identity, vartime_multiscalar_mul).
 _LIBSIGNAL_FUNCTIONS: set[tuple[str, str]] = {
+    # lizard — called by zkgroup (uid_struct, uid_encryption,
+    # profile_key_struct, profile_key_encryption, sho).
+    # We list the _verus names directly so the generic wrappers
+    # (lizard_encode<D>, lizard_decode<D>) are not marked.
+    ("lizard_encode_verus", "lizard"),
+    ("lizard_decode_verus", "lizard"),
+    ("from_uniform_bytes_single_elligator", "lizard"),
+    ("decode_253_bits", "lizard"),
     # edwards.rs (8)
     ("as_bytes", "edwards"),
     ("compress", "edwards"),
@@ -1545,7 +1560,7 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump(output, f, ensure_ascii=False, indent=2)
 
     # Summary
     spec_mods = sorted(set(s["module"] for s in spec_functions))

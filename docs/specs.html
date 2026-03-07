@@ -40,14 +40,18 @@
             <div class="specs-stats">
                 <div class="spec-stat">
                     <span class="spec-stat-number" id="totalFunctions">0</span>
-                    <span class="spec-stat-label">Tracked Functions</span>
+                    <span class="spec-stat-label">Verified Functions</span>
                 </div>
                 <div class="spec-stat">
                     <span class="spec-stat-number" id="totalSpecs">0</span>
                     <span class="spec-stat-label">Spec Functions</span>
                 </div>
                 <div class="spec-stat">
-                    <span class="spec-stat-number" id="totalAxioms">0</span>
+                    <span class="spec-stat-number stat-amber" id="totalExternal">0</span>
+                    <span class="spec-stat-label">External Functions</span>
+                </div>
+                <div class="spec-stat">
+                    <span class="spec-stat-number stat-amber" id="totalAxioms">0</span>
                     <span class="spec-stat-label">Axioms</span>
                 </div>
             </div>
@@ -67,10 +71,14 @@
                 <nav class="attr-pills" id="attrFilters">
                     <!-- Populated by JS -->
                 </nav>
-                <div class="download-bar">
-                    <span class="download-label">Download:</span>
-                    <span class="download-btn" onclick="downloadMarkdown()">MD</span>
-                    <span class="download-btn" onclick="downloadCSV()">CSV</span>
+                <div class="download-dropdown" id="downloadDropdown">
+                    <button class="download-toggle" title="Download" onclick="document.getElementById('downloadDropdown').classList.toggle('open')">&#x2B07;</button>
+                    <div class="download-menu">
+                        <div class="download-menu-inner">
+                            <span class="download-item" onclick="downloadMarkdown()">Markdown</span>
+                            <span class="download-item" onclick="downloadCSV()">CSV</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -82,7 +90,7 @@
                 <!-- Left panel: verified function contracts -->
                 <div class="panel panel-left">
                     <div class="panel-header">
-                        <h2 class="panel-title">Tracked Functions</h2>
+                        <h2 class="panel-title"><a href="#verified-top" class="panel-title-link" id="jumpVerified">Verified Functions</a> <span class="panel-title-sep">&amp;</span> <a href="#external-top" class="panel-title-link" id="jumpExternal">External Functions</a></h2>
                         <div class="panel-toolbar">
                             <input type="text" id="searchLeft" placeholder="Search contracts..." class="search-input search-sm">
                             <span class="panel-count" id="countLeft">0</span>
@@ -98,7 +106,7 @@
                 <!-- Right panel: spec function definitions -->
                 <div class="panel panel-right">
                     <div class="panel-header">
-                        <h2 class="panel-title">Spec Functions and Axioms</h2>
+                        <h2 class="panel-title"><a href="#specs-top" class="panel-title-link" id="jumpSpecs">Spec Functions</a> <span class="panel-title-sep">&amp;</span> <a href="#axioms-top" class="panel-title-link" id="jumpAxioms">Axioms</a></h2>
                         <div class="panel-toolbar">
                             <input type="text" id="searchRight" placeholder="Search specs..." class="search-input search-sm">
                             <span class="panel-count" id="countRight">0</span>

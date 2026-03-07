@@ -195,7 +195,10 @@ function createModulePill(displayName, count, moduleId) {
     `;
     const countEl = el.querySelector(".pill-count");
     el.addEventListener("click", () => {
-        if (activeModules.has(moduleId)) {
+        if (specFilterRefs) {
+            specFilterRefs = null;
+            specFilterSource = "";
+        } else if (activeModules.has(moduleId)) {
             activeModules.delete(moduleId);
             el.classList.remove("active");
         } else {
@@ -220,6 +223,8 @@ function buildAttributeFilters(publicCount, libsignalCount) {
     publicEl.addEventListener("click", () => {
         filterPublic = !filterPublic;
         publicEl.classList.toggle("active", filterPublic);
+        specFilterRefs = null;
+        specFilterSource = "";
         autoFilterBypassed = false;
         renderLeftPanel();
         renderRightPanel();
@@ -233,6 +238,8 @@ function buildAttributeFilters(publicCount, libsignalCount) {
     libsignalEl.addEventListener("click", () => {
         filterLibsignal = !filterLibsignal;
         libsignalEl.classList.toggle("active", filterLibsignal);
+        specFilterRefs = null;
+        specFilterSource = "";
         autoFilterBypassed = false;
         renderLeftPanel();
         renderRightPanel();
@@ -535,9 +542,10 @@ function hasLeftFilter() {
 function getFilteredSpecs() {
     let list = specFunctions;
 
-    // Filter by referenced specs (from "Show referenced specs" button)
+    // Filter by referenced specs (from "Show referenced specs" button).
+    // Always keep axioms visible so the "Axioms" jump link works.
     if (specFilterRefs) {
-        list = list.filter(s => specFilterRefs.has(s.name));
+        list = list.filter(s => s.category === "axiom" || specFilterRefs.has(s.name));
     }
 
     // Auto-filter: when a left-panel filter is active, show only specs

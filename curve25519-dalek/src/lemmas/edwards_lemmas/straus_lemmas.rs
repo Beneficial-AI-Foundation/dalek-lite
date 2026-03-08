@@ -698,11 +698,7 @@ pub proof fn lemma_column_sum_all_zero(
 }
 
 /// If all digits strictly above `i` are zero, then `straus_vt_partial(i + 1)` is the identity.
-pub proof fn lemma_straus_vt_zero_suffix(
-    points_affine: Seq<(nat, nat)>,
-    nafs: Seq<Seq<i8>>,
-    i: int,
-)
+pub proof fn lemma_straus_vt_zero_suffix(points_affine: Seq<(nat, nat)>, nafs: Seq<Seq<i8>>, i: int)
     requires
         0 <= i < 256,
         nafs.len() == points_affine.len(),
@@ -710,8 +706,7 @@ pub proof fn lemma_straus_vt_zero_suffix(
         forall|k: int|
             0 <= k < points_affine.len() ==> (#[trigger] points_affine[k]).0 < p()
                 && points_affine[k].1 < p(),
-        forall|k: int, j: int|
-            0 <= k < nafs.len() && i < j < 256 ==> #[trigger] nafs[k][j] == 0,
+        forall|k: int, j: int| 0 <= k < nafs.len() && i < j < 256 ==> #[trigger] nafs[k][j] == 0,
     ensures
         straus_vt_partial(points_affine, nafs, i + 1) == edwards_identity(),
     decreases 255 - i,

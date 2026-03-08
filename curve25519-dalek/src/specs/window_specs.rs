@@ -206,7 +206,9 @@ pub proof fn axiom_affine_odd_multiples_of_basepoint_valid()
     ensures
         naf_lookup_table8_affine_limbs_bounded(AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0),
         forall|j: int|
-            0 <= j < 64 ==> is_valid_affine_niels_point(#[trigger] AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0[j]),
+            0 <= j < 64 ==> is_valid_affine_niels_point(
+                #[trigger] AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0[j],
+            ),
         is_valid_naf_lookup_table8_affine_coords(
             AFFINE_ODD_MULTIPLES_OF_BASEPOINT.0,
             spec_ed25519_basepoint(),

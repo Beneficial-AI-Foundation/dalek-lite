@@ -102,8 +102,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
             i <= 255,
             a_naf@.len() == 256,
             b_naf@.len() == 256,
-            forall|j: int|
-                0 <= j < 256 ==> (j <= i as int || (a_naf@[j] == 0 && b_naf@[j] == 0)),
+            forall|j: int| 0 <= j < 256 ==> (j <= i as int || (a_naf@[j] == 0 && b_naf@[j] == 0)),
         decreases i + 1,  // +1 accounts for the final iteration at i == 0
 
     {
@@ -121,8 +120,8 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         i -= 1;
         proof {
             assert(i as int + 1 == old_i as int);
-            assert forall|j: int|
-                0 <= j < 256 implies (j <= (i as int) || (a_naf@[j] == 0 && b_naf@[j] == 0)) by {
+            assert forall|j: int| 0 <= j < 256 implies (j <= (i as int) || (a_naf@[j] == 0
+                && b_naf@[j] == 0)) by {
                 if j <= (i as int) {
                 } else if j == old_i as int {
                     assert(a_naf@[j] == 0);
@@ -161,6 +160,17 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         assert(nafs.len() == 2);
         assert(nafs[0] == a_naf@);
         assert(nafs[1] == b_naf@);
+        assert(vartime_double_base_shared_input_valid(
+            A_affine,
+            B_affine,
+            pts_affine,
+            a_naf@,
+            b_naf@,
+            nafs,
+            table_A.0,
+            *A,
+            bp_for_proof,
+        ));
         assert forall|k: int, j: int|
             0 <= k < nafs.len() && (i as int) < j && j < 256 implies #[trigger] nafs[k][j] == 0 by {
             assert(0 <= j < 256);
@@ -191,46 +201,31 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
             fe51_limbs_bounded(&r.Y, 52),
             fe51_limbs_bounded(&r.Z, 52),
             sum_of_limbs_bounded(&r.X, &r.Y, u64::MAX),
-            A_affine.0 < p(),
-            A_affine.1 < p(),
-            B_affine.0 < p(),
-            B_affine.1 < p(),
-            A_affine == edwards_point_as_affine(*A),
-            B_affine == edwards_point_as_affine(bp_for_proof),
-            a_naf@.len() == 256,
-            b_naf@.len() == 256,
-            pts_affine.len() == 2,
-            pts_affine[0] == A_affine,
-            pts_affine[1] == B_affine,
-            nafs.len() == 2,
-            nafs[0] == a_naf@,
-            nafs[1] == b_naf@,
-            is_valid_naf(a_naf@, 5),
-            #[cfg(feature = "precomputed-tables")]
-            is_valid_naf(b_naf@, 8),
-            #[cfg(not(feature = "precomputed-tables"))]
-            is_valid_naf(b_naf@, 5),
-            naf_lookup_table5_projective_limbs_bounded(table_A.0),
-            is_valid_naf_lookup_table5_projective(table_A.0, *A),
-            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(
-                #[trigger] table_A.0[j],
+            vartime_double_base_shared_input_valid(
+                A_affine,
+                B_affine,
+                pts_affine,
+                a_naf@,
+                b_naf@,
+                nafs,
+                table_A.0,
+                *A,
+                bp_for_proof,
             ),
             #[cfg(feature = "precomputed-tables")]
             naf_lookup_table8_affine_limbs_bounded(table_B.0),
             #[cfg(feature = "precomputed-tables")]
             is_valid_naf_lookup_table8_affine_coords(table_B.0, B_affine),
             #[cfg(feature = "precomputed-tables")]
-            forall|j: int| 0 <= j < 64 ==> is_valid_affine_niels_point(
-                #[trigger] table_B.0[j],
-            ),
+            forall|j: int|
+                0 <= j < 64 ==> is_valid_affine_niels_point(#[trigger] table_B.0[j]),
             #[cfg(not(feature = "precomputed-tables"))]
             naf_lookup_table5_projective_limbs_bounded(table_B.0),
             #[cfg(not(feature = "precomputed-tables"))]
             is_valid_naf_lookup_table5_projective(table_B.0, bp_for_proof),
             #[cfg(not(feature = "precomputed-tables"))]
-            forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(
-                #[trigger] table_B.0[j],
-            ),
+            forall|j: int|
+                0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] table_B.0[j]),
             projective_point_as_affine_edwards(r) == straus_vt_partial(
                 pts_affine,
                 nafs,
@@ -270,10 +265,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                 }
                 let selected_A = table_A.select(a_naf[i] as usize);
                 let t_ext = t.as_extended();
-                proof {
-                    assert(is_well_formed_edwards_point(t_ext));
-                    assert(is_valid_projective_niels_point(selected_A));
-                }
                 t = &t_ext + &selected_A;
                 proof {
                     let digit = a_naf@[old_i];
@@ -290,13 +281,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                     assert(pts_affine.len() >= 1);
                     assert(nafs.len() >= 1);
-                    lemma_vartime_double_base_col_a(
-                        pts_affine,
-                        nafs,
-                        A_affine,
-                        a_naf@,
-                        old_i,
-                    );
+                    lemma_vartime_double_base_col_a(pts_affine, nafs, A_affine, a_naf@, old_i);
                     assert(col_a == term_a);
                     assert(completed_point_as_affine_edwards(t) == edwards_add(
                         doubled_affine.0,
@@ -318,10 +303,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                 }
                 let selected_A = table_A.select((-a_naf[i]) as usize);
                 let t_ext = t.as_extended();
-                proof {
-                    assert(is_well_formed_edwards_point(t_ext));
-                    assert(is_valid_projective_niels_point(selected_A));
-                }
                 t = &t_ext - &selected_A;
                 proof {
                     let digit = a_naf@[old_i];
@@ -338,21 +319,15 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                             true,
                         );
                     }
-                    assert(term_a == edwards_neg(projective_niels_point_as_affine_edwards(
-                        selected_A,
-                    ))) by {
+                    assert(term_a == edwards_neg(
+                        projective_niels_point_as_affine_edwards(selected_A),
+                    )) by {
                         lemma_neg_of_signed_scalar_mul(A_affine, abs_digit as int);
                         assert(digit as int == -(abs_digit as int));
                     }
                     assert(pts_affine.len() >= 1);
                     assert(nafs.len() >= 1);
-                    lemma_vartime_double_base_col_a(
-                        pts_affine,
-                        nafs,
-                        A_affine,
-                        a_naf@,
-                        old_i,
-                    );
+                    lemma_vartime_double_base_col_a(pts_affine, nafs, A_affine, a_naf@, old_i);
                     assert(col_a == term_a);
                     assert(completed_point_as_affine_edwards(t) == edwards_add(
                         doubled_affine.0,
@@ -379,11 +354,17 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         }
 
         proof {
-            assert(is_valid_completed_point(t));
-            assert(fe51_limbs_bounded(&t.X, 54));
-            assert(fe51_limbs_bounded(&t.Y, 54));
-            assert(fe51_limbs_bounded(&t.Z, 54));
-            assert(fe51_limbs_bounded(&t.T, 54));
+            assert(vartime_double_base_shared_input_valid(
+                A_affine,
+                B_affine,
+                pts_affine,
+                a_naf@,
+                b_naf@,
+                nafs,
+                table_A.0,
+                *A,
+                bp_for_proof,
+            ));
         }
 
         let ghost col_ab = straus_column_sum(pts_affine, nafs, old_i, 2);
@@ -406,10 +387,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     lemma_unfold_edwards(t_ext);
                     assert(sum_of_limbs_bounded(&t_ext.Z, &t_ext.Z, u64::MAX)) by {
                         crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded(
-                            &t_ext.Z,
-                            &t_ext.Z,
-                            52,
-                        );
+                        &t_ext.Z, &t_ext.Z, 52);
                     }
                     assert(edwards_z_sum_bounded(t_ext));
                     assert(is_valid_affine_niels_point(selected_B));
@@ -443,11 +421,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                             term_b.1,
                         );
                     }
-                    assert(is_valid_completed_point(t));
-                    assert(fe51_limbs_bounded(&t.X, 54));
-                    assert(fe51_limbs_bounded(&t.Y, 54));
-                    assert(fe51_limbs_bounded(&t.Z, 54));
-                    assert(fe51_limbs_bounded(&t.T, 54));
                 }
             },
             #[cfg(feature = "precomputed-tables")]
@@ -467,10 +440,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     lemma_unfold_edwards(t_ext);
                     assert(sum_of_limbs_bounded(&t_ext.Z, &t_ext.Z, u64::MAX)) by {
                         crate::lemmas::field_lemmas::add_lemmas::lemma_sum_of_limbs_bounded_from_fe51_bounded(
-                            &t_ext.Z,
-                            &t_ext.Z,
-                            52,
-                        );
+                        &t_ext.Z, &t_ext.Z, 52);
                     }
                     assert(edwards_z_sum_bounded(t_ext));
                     assert(is_valid_affine_niels_point(selected_B));
@@ -489,9 +459,8 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                             B_affine,
                         );
                     }
-                    assert(term_b == edwards_neg(affine_niels_point_as_affine_edwards(
-                        selected_B,
-                    ))) by {
+                    assert(term_b == edwards_neg(affine_niels_point_as_affine_edwards(selected_B)))
+                        by {
                         lemma_neg_of_signed_scalar_mul(B_affine, abs_digit as int);
                         assert(digit as int == -(abs_digit as int));
                     }
@@ -512,11 +481,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                             term_b.1,
                         );
                     }
-                    assert(is_valid_completed_point(t));
-                    assert(fe51_limbs_bounded(&t.X, 54));
-                    assert(fe51_limbs_bounded(&t.Y, 54));
-                    assert(fe51_limbs_bounded(&t.Z, 54));
-                    assert(fe51_limbs_bounded(&t.T, 54));
                 }
             },
             #[cfg(not(feature = "precomputed-tables"))]
@@ -569,11 +533,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                             term_b.1,
                         );
                     }
-                    assert(is_valid_completed_point(t));
-                    assert(fe51_limbs_bounded(&t.X, 54));
-                    assert(fe51_limbs_bounded(&t.Y, 54));
-                    assert(fe51_limbs_bounded(&t.Z, 54));
-                    assert(fe51_limbs_bounded(&t.T, 54));
                 }
             },
             #[cfg(not(feature = "precomputed-tables"))]
@@ -609,9 +568,9 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                             true,
                         );
                     }
-                    assert(term_b == edwards_neg(projective_niels_point_as_affine_edwards(
-                        selected_B,
-                    ))) by {
+                    assert(term_b == edwards_neg(
+                        projective_niels_point_as_affine_edwards(selected_B),
+                    )) by {
                         lemma_neg_of_signed_scalar_mul(B_affine, abs_digit as int);
                         assert(digit as int == -(abs_digit as int));
                     }
@@ -634,11 +593,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                             term_b.1,
                         );
                     }
-                    assert(is_valid_completed_point(t));
-                    assert(fe51_limbs_bounded(&t.X, 54));
-                    assert(fe51_limbs_bounded(&t.Y, 54));
-                    assert(fe51_limbs_bounded(&t.Z, 54));
-                    assert(fe51_limbs_bounded(&t.T, 54));
                 }
             },
             Ordering::Equal => {
@@ -653,21 +607,8 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     )) by {
                         assert(col_ab == col_a);
                     }
-                    assert(is_valid_completed_point(t));
-                    assert(fe51_limbs_bounded(&t.X, 54));
-                    assert(fe51_limbs_bounded(&t.Y, 54));
-                    assert(fe51_limbs_bounded(&t.Z, 54));
-                    assert(fe51_limbs_bounded(&t.T, 54));
                 }
             },
-        }
-
-        proof {
-            assert(is_valid_completed_point(t));
-            assert(fe51_limbs_bounded(&t.X, 54));
-            assert(fe51_limbs_bounded(&t.Y, 54));
-            assert(fe51_limbs_bounded(&t.Z, 54));
-            assert(fe51_limbs_bounded(&t.T, 54));
         }
         r = t.as_projective();
         proof {
@@ -714,20 +655,28 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         lemma_reconstruct_naf_from_equals_reconstruct(a_naf@);
         lemma_straus_vt_single(B_affine, b_naf@, 0);
         lemma_reconstruct_naf_from_equals_reconstruct(b_naf@);
-        assert(edwards_scalar_mul_signed(A_affine, scalar_as_nat(a) as int)
-            == edwards_scalar_mul(A_affine, scalar_as_nat(a))) by {
+        assert(edwards_scalar_mul_signed(A_affine, scalar_as_nat(a) as int) == edwards_scalar_mul(
+            A_affine,
+            scalar_as_nat(a),
+        )) by {
             reveal(edwards_scalar_mul_signed);
         }
-        assert(edwards_scalar_mul_signed(B_affine, scalar_as_nat(b) as int)
-            == edwards_scalar_mul(B_affine, scalar_as_nat(b))) by {
+        assert(edwards_scalar_mul_signed(B_affine, scalar_as_nat(b) as int) == edwards_scalar_mul(
+            B_affine,
+            scalar_as_nat(b),
+        )) by {
             reveal(edwards_scalar_mul_signed);
         }
         assert(edwards_point_as_affine(result) == projective_point_as_affine_edwards(r));
         assert(projective_point_as_affine_edwards(r) == straus_vt_partial(pts_affine, nafs, 0));
-        assert(straus_vt_partial(seq![A_affine], seq![a_naf@], 0)
-            == edwards_scalar_mul_signed(A_affine, scalar_as_nat(a) as int));
-        assert(straus_vt_partial(seq![B_affine], seq![b_naf@], 0)
-            == edwards_scalar_mul_signed(B_affine, scalar_as_nat(b) as int));
+        assert(straus_vt_partial(seq![A_affine], seq![a_naf@], 0) == edwards_scalar_mul_signed(
+            A_affine,
+            scalar_as_nat(a) as int,
+        ));
+        assert(straus_vt_partial(seq![B_affine], seq![b_naf@], 0) == edwards_scalar_mul_signed(
+            B_affine,
+            scalar_as_nat(b) as int,
+        ));
         assert(straus_vt_partial(pts_affine, nafs, 0) == edwards_add(
             edwards_scalar_mul(A_affine, scalar_as_nat(a)).0,
             edwards_scalar_mul(A_affine, scalar_as_nat(a)).1,

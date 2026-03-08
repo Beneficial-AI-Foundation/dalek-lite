@@ -52,6 +52,7 @@ let searchLeft = "";              // search in left panel
 let searchRight = "";             // search in right panel
 let specFilterRefs = null;        // null = show all, or Set of spec names to filter right panel
 let specFilterSource = "";        // display name of the function that set the filter
+let targetFilter = "all";         // "all" | "proved" | "spec" — filters left panel target fns
 
 let db = null;
 let commentsCache = {};
@@ -262,6 +263,8 @@ function buildAttributeFilters(publicCount, libsignalCount) {
 function updateFilterCounts() {
     // Exclude external functions from pill counts (they always appear at bottom)
     let tracked = verifiedFunctions.filter(v => v.category !== "external");
+    if (targetFilter === "proved") tracked = tracked.filter(v => v.has_proof);
+    else if (targetFilter === "spec") tracked = tracked.filter(v => v.has_spec && !v.has_proof);
 
     // Base list filtered by attribute toggles (for module pills)
     let attrFiltered = tracked;
@@ -293,6 +296,11 @@ function updateFilterCounts() {
 // ── Left panel: verified + external functions ────────────────
 function getFilteredVerified() {
     let list = verifiedFunctions;
+    if (targetFilter === "proved") {
+        list = list.filter(v => v.category === "external" || v.has_proof);
+    } else if (targetFilter === "spec") {
+        list = list.filter(v => v.category === "external" || (v.has_spec && !v.has_proof));
+    }
     if (activeModules.size > 0) {
         list = list.filter(v => v.category === "external" || activeModules.has(v.module));
     }
@@ -415,7 +423,7 @@ function renderVerifiedCard(fn) {
     const badges = [];
     if (isExternal) badges.push(`<span class="fn-badge fn-badge-external">external</span>`);
     else if (hasProof) badges.push(`<span class="fn-badge fn-badge-proof">proved</span>`);
-    else if (hasSpec) badges.push(`<span class="fn-badge fn-badge-spec">spec</span>`);
+    else if (hasSpec) badges.push(`<span class="fn-badge fn-badge-spec">unproved</span>`);
     else badges.push(`<span class="fn-badge fn-badge-nospec">no spec</span>`);
     if (fn.is_libsignal) badges.push(`<span class="fn-badge fn-badge-libsignal">libsignal</span>`);
 
@@ -929,6 +937,21 @@ function clearSpecFilter() {
     renderRightPanel();
 }
 
+window.setTargetFilter = function(value) {
+    targetFilter = value;
+    const labels = { all: "All", proved: "Proved", spec: "Unproved" };
+    const dd = document.getElementById("targetDropdown");
+    if (dd) {
+        dd.classList.remove("open");
+        dd.querySelector(".target-toggle").innerHTML = `${labels[value] || value} <span class="target-caret">&#9662;</span>`;
+        dd.querySelectorAll(".target-item").forEach(item => {
+            item.classList.toggle("active", item.dataset.value === value);
+        });
+    }
+    renderLeftPanel();
+    renderRightPanel();
+};
+
 // ── Scroll to and highlight a spec card on the right ─────────
 let autoFilterBypassed = false;  // true when we showed all specs to reach a target
 
@@ -1162,6 +1185,8 @@ function downloadFilenameSuffix() {
 document.addEventListener("click", (e) => {
     const dd = document.getElementById("downloadDropdown");
     if (dd && !dd.contains(e.target)) dd.classList.remove("open");
+    const td = document.getElementById("targetDropdown");
+    if (td && !td.contains(e.target)) td.classList.remove("open");
 });
 
 window.downloadMarkdown = function() {
@@ -1170,7 +1195,7 @@ window.downloadMarkdown = function() {
         const filteredLeft = getFilteredVerified();
         const filteredRight = getFilteredSpecs();
 
-        let md = "# Verified Function Specifications\n\n";
+        let md = "# Function Specifications\n\n";
 
         md += `## Function Contracts (${filteredLeft.length})\n\n`;
         for (const fn of filteredLeft) {

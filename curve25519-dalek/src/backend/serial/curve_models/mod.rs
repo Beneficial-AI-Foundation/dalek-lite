@@ -1766,6 +1766,11 @@ impl<'a, 'b> Sub<&'b AffineNielsPoint> for &'a EdwardsPoint {
                 let other_affine = affine_niels_point_as_affine_edwards(*other);
                 edwards_sub(self_affine.0, self_affine.1, other_affine.0, other_affine.1)
             },
+            // Limb bounds for result (from mul's 52-bit output → sub/add produce ≤54-bit)
+            fe51_limbs_bounded(&result.X, 54),
+            fe51_limbs_bounded(&result.Y, 54),
+            fe51_limbs_bounded(&result.Z, 54),
+            fe51_limbs_bounded(&result.T, 54),
     {
         proof {
             lemma_unfold_edwards(*self);

@@ -375,8 +375,8 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
 
         let ghost col_ab = straus_column_sum(pts_affine, nafs, old_i, 2);
 
+        #[cfg(feature = "precomputed-tables")]
         match b_naf[i].cmp(&0) {
-            #[cfg(feature = "precomputed-tables")]
             Ordering::Greater => {
                 proof {
                     let digit = b_naf@[old_i];
@@ -432,7 +432,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                 }
             },
-            #[cfg(feature = "precomputed-tables")]
             Ordering::Less => {
                 proof {
                     let digit = b_naf@[old_i];
@@ -495,7 +494,24 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                 }
             },
-            #[cfg(not(feature = "precomputed-tables"))]
+            Ordering::Equal => {
+                proof {
+                    lemma_column_sum_canonical(pts_affine, nafs, old_i, 1);
+                    lemma_column_sum_step_zero_digit(pts_affine, nafs, old_i, 1);
+                    assert(completed_point_as_affine_edwards(t) == edwards_add(
+                        doubled_affine.0,
+                        doubled_affine.1,
+                        col_ab.0,
+                        col_ab.1,
+                    )) by {
+                        assert(col_ab == col_a);
+                    }
+                }
+            },
+        }
+
+        #[cfg(not(feature = "precomputed-tables"))]
+        match b_naf[i].cmp(&0) {
             Ordering::Greater => {
                 proof {
                     let digit = b_naf@[old_i];
@@ -548,7 +564,6 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                 }
             },
-            #[cfg(not(feature = "precomputed-tables"))]
             Ordering::Less => {
                 proof {
                     let digit = b_naf@[old_i];

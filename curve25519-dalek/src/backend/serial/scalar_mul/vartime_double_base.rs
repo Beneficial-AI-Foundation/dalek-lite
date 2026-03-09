@@ -263,6 +263,9 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                     lemma_naf_digit_positive_select_preconditions(digit);
                 }
+                /* ORIGINAL CODE:
+                t = &t.as_extended() + &table_A.select(a_naf[i] as usize)
+                */
                 let selected_A = table_A.select(a_naf[i] as usize);
                 let t_ext = t.as_extended();
                 t = &t_ext + &selected_A;
@@ -301,6 +304,9 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                     lemma_naf_digit_negative_select_preconditions(digit);
                 }
+                /* ORIGINAL CODE:
+                t = &t.as_extended() - &table_A.select((-a_naf[i]) as usize)
+                */
                 let selected_A = table_A.select((-a_naf[i]) as usize);
                 let t_ext = t.as_extended();
                 t = &t_ext - &selected_A;
@@ -381,6 +387,9 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                     lemma_naf_digit_positive_select_preconditions_width8(digit);
                 }
+                /* ORIGINAL CODE:
+                t = &t.as_extended() + &table_B.select(b_naf[i] as usize)
+                */
                 let selected_B = table_B.select(b_naf[i] as usize);
                 let t_ext = t.as_extended();
                 proof {
@@ -434,6 +443,9 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                     lemma_naf_digit_negative_select_preconditions_width8(digit);
                 }
+                /* ORIGINAL CODE:
+                t = &t.as_extended() - &table_B.select((-b_naf[i]) as usize)
+                */
                 let selected_B = table_B.select((-b_naf[i]) as usize);
                 let t_ext = t.as_extended();
                 proof {
@@ -494,6 +506,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                     lemma_naf_digit_positive_select_preconditions(digit);
                 }
+                /* ORIGINAL CODE: t = &t.as_extended() + &table_B.select(b_naf[i] as usize) */
                 let selected_B = table_B.select(b_naf[i] as usize);
                 let t_ext = t.as_extended();
                 proof {
@@ -546,6 +559,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     }
                     lemma_naf_digit_negative_select_preconditions(digit);
                 }
+                /* ORIGINAL CODE: t = &t.as_extended() - &table_B.select((-b_naf[i]) as usize) */
                 let selected_B = table_B.select((-b_naf[i]) as usize);
                 let t_ext = t.as_extended();
                 proof {

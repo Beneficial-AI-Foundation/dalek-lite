@@ -375,6 +375,18 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
 
         let ghost col_ab = straus_column_sum(pts_affine, nafs, old_i, 2);
 
+        // VERIFICATION NOTE: the control flow below is duplicated across cfg branches.
+        // The executable step matches the original code:
+        //
+        //     match b_naf[i].cmp(&0) {
+        //         Ordering::Greater => t = &t.as_extended() + &table_B.select(b_naf[i] as usize),
+        //         Ordering::Less => t = &t.as_extended() - &table_B.select((-b_naf[i]) as usize),
+        //         Ordering::Equal => {}
+        //     }
+        //
+        // We verify separate copies because the proof obligations differ substantially
+        // between the `precomputed-tables` and non-precomputed cases, even though the
+        // runtime behavior is intended to be the same.
         #[cfg(feature = "precomputed-tables")]
         match b_naf[i].cmp(&0) {
             Ordering::Greater => {

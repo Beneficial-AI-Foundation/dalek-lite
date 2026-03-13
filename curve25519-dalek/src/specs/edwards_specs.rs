@@ -305,9 +305,10 @@ pub open spec fn is_on_edwards_curve(x: nat, y: nat) -> bool {
     let y2 = field_square(y);
     let x2y2 = field_mul(x2, y2);
 
-    // -x² + y² = 1 + d·x²·y²
-    let lhs = field_sub(y2, x2);  // y² - x²
-    let rhs = field_add(1, field_mul(d, x2y2));  // 1 + d·x²·y²
+    // lhs = y² - x²
+    let lhs = field_sub(y2, x2);
+    // rhs = 1 + d·x²·y²
+    let rhs = field_add(1, field_mul(d, x2y2));
 
     lhs == rhs
 }
@@ -788,7 +789,7 @@ pub open spec fn negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveN
 /// These are the unified addition formulas for twisted Edwards curves with a = -1.
 /// Reference: [BBJLP2008] Section 3.1, [RFC8032] Section 5.1.4
 pub open spec fn edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
-    // d = Edwards curve constant
+    // d = EDWARDS_D
     let d = fe51_as_canonical_nat(&EDWARDS_D);
     // x1·x2
     let x1x2 = field_mul(x1, x2);
@@ -868,7 +869,7 @@ pub open spec fn completed_to_projective(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat) {
     let (x, y, z, t) = completed_point_as_nat(point);
-    // (X:Y:Z) = (X·T : Y·Z : Z·T)  from completed ((X:Z),(Y:T))
+    // (X:Y:Z) = (X·T : Y·Z : Z·T)
     (field_mul(x, t), field_mul(y, z), field_mul(z, t))
 }
 
@@ -880,7 +881,7 @@ pub open spec fn completed_to_extended(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat, nat) {
     let (x, y, z, t) = completed_point_as_nat(point);
-    // (X:Y:Z:T) = (X·T : Y·Z : Z·T : X·Y)  Segre embedding
+    // (X:Y:Z:T) = (X·T : Y·Z : Z·T : X·Y)
     (field_mul(x, t), field_mul(y, z), field_mul(z, t), field_mul(x, y))
 }
 

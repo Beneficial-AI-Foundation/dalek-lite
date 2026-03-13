@@ -82,11 +82,14 @@ pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
 /// Compute f(u) = u^3 + A*u^2 + u over the field.
 pub open spec fn montgomery_rhs(u: nat) -> nat {
     let A = fe51_as_canonical_nat(&MONTGOMERY_A);
-    let u2 = field_mul(u, u);  // u^2
-    let u3 = field_mul(u2, u);  // u^3
-    let Au2 = field_mul(A, u2);  // A*u^2
-    field_add(field_add(u3, Au2), u)  // u^3 + A*u^2 + u
-
+    // u² = u·u
+    let u2 = field_mul(u, u);
+    // u³ = u²·u
+    let u3 = field_mul(u2, u);
+    // A·u²
+    let Au2 = field_mul(A, u2);
+    // u³ + A·u² + u
+    field_add(field_add(u3, Au2), u)
 }
 
 /// Choose a canonical square root.
@@ -96,8 +99,10 @@ pub open spec fn canonical_sqrt(r: nat) -> nat
     recommends
         is_square(r),
 {
-    let s1 = field_sqrt(r);  // some square root
-    let s2 = field_neg(s1);  // the other root
+    // s1 = sqrt(r)
+    let s1 = field_sqrt(r);
+    // s2 = -s1
+    let s2 = field_neg(s1);
 
     if (s1 % 2 == 0) {
         s1
@@ -159,11 +164,11 @@ pub open spec fn montgomery_add(P: MontgomeryAffine, Q: MontgomeryAffine) -> Mon
         (MontgomeryAffine::Finite { u: u1, v: v1 }, MontgomeryAffine::Finite { u: u2, v: v2 }) => {
             let A = fe51_as_canonical_nat(&MONTGOMERY_A);
 
-            // P = -Q (same u, opposite v)
+            // P = -Q
             if u1 == u2 && field_add(v1, v2) == 0 {
                 MontgomeryAffine::Infinity
             }
-            // P = Q (doubling)
+            // P = Q
              else if u1 == u2 && v1 == v2 {
                 // u1²
                 let u1_sq = field_square(u1);
@@ -186,7 +191,7 @@ pub open spec fn montgomery_add(P: MontgomeryAffine, Q: MontgomeryAffine) -> Mon
 
                 MontgomeryAffine::Finite { u: u3, v: v3 }
             }
-            // Add for distinct points P != Q
+            // P ≠ Q
              else {
                 // numerator = v2 - v1
                 let numerator = field_sub(v2, v1);
@@ -474,7 +479,8 @@ pub open spec fn spec_elligator_encode(r: nat) -> nat {
     let A = fe51_as_canonical_nat(&MONTGOMERY_A);
     let r_sq = field_square(r);
     let two_r_sq = field_mul(2, r_sq);
-    let d_denom = field_add(1, two_r_sq);  // 1 + 2r²
+    // d_denom = 1 + 2r²
+    let d_denom = field_add(1, two_r_sq);
 
     // d = -A / (1 + 2r²)
     let d = field_mul(field_neg(A), field_inv(d_denom));

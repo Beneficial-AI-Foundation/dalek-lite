@@ -85,7 +85,7 @@ pub open spec fn ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> 
     // den_inv = i2
     let den_inv = i2;
 
-    // iX = i·X  (i = sqrt(-1))
+    // iX = i·X
     let iX = field_mul(x, sqrt_m1());
     // iY = i·Y
     let iY = field_mul(y, sqrt_m1());
@@ -288,6 +288,7 @@ pub open spec fn spec_sqrt_ad_minus_one() -> nat {
 ///
 /// Reference: [RISTRETTO] §4.3.4; https://ristretto.group/formulas/elligator.html
 pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
+    // s = sqrt_ratio(N_s, D),  N_t = c·(r−1)·(d−1)² − D,  D = (c₀ − d·r)(r + d)
     let (s, n_t, d_val) = elligator_intermediates(r_0);
     // s² = s·s
     let s_sq = field_square(s);
@@ -359,7 +360,7 @@ pub open spec fn is_ristretto_coset(points: [EdwardsPoint; 4], base: EdwardsPoin
     let t4 = edwards_point_as_affine(spec_eight_torsion()[4]);
     let t6 = edwards_point_as_affine(spec_eight_torsion()[6]);
 
-    // points[0] = base (T[0] is identity)
+    // points[0] = base
     edwards_point_as_affine(points[0])
         == base_affine
     // points[1] = base + T[2]
@@ -405,7 +406,7 @@ pub open spec fn ristretto_equivalent(p1: EdwardsPoint, p2: EdwardsPoint) -> boo
     let p2_affine = edwards_point_as_affine(p2);
     let diff = edwards_sub(p1_affine.0, p1_affine.1, p2_affine.0, p2_affine.1);
 
-    // The difference must be a 4-torsion element (one of T[0], T[2], T[4], T[6])
+    // diff ∈ {T[0], T[2], T[4], T[6]}
     let t0 = edwards_point_as_affine(spec_eight_torsion()[0]);
     let t2 = edwards_point_as_affine(spec_eight_torsion()[2]);
     let t4 = edwards_point_as_affine(spec_eight_torsion()[4]);
@@ -511,7 +512,7 @@ pub open spec fn batch_compress_body(
     // f_times_sqrta = F·sqrt(-1)
     let f_times_sqrta = field_mul(f, sqrt_m1());
 
-    // e_rot, g_rot, h_rot: if negcheck1 rotate (E,G,H) → (G, -E, F·sqrt(-1))
+    // e_rot, g_rot, h_rot = negcheck1 ? (G, -E, F·sqrt(-1)) : (E, G, H)
     let e_rot = if negcheck1 {
         g
     } else {

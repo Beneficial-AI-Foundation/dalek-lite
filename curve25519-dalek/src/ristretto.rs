@@ -2856,8 +2856,7 @@ impl RistrettoPoint {
         ensures
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
-            // result = elligator(r1) + elligator(r2)
-            //   where r1 = from_bytes(bytes[0..32]), r2 = from_bytes(bytes[32..64])
+            // result = elligator(bytes[0..32] mod p) + elligator(bytes[32..64] mod p)
             edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(bytes),
             // Uniform input bytes produce uniformly distributed point
             is_uniform_bytes(bytes) ==> is_uniform_ristretto_point(&result),

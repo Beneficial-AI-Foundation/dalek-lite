@@ -330,12 +330,16 @@ pub open spec fn uniform_bytes_second(bytes: &[u8; 64]) -> [u8; 32] {
 ///
 /// Reference: [RISTRETTO] §4.3.4; https://ristretto.group/formulas/encoding.html
 pub open spec fn ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
+    // b1 = bytes[0..32], b2 = bytes[32..64]
     let b1 = uniform_bytes_first(bytes);
     let b2 = uniform_bytes_second(bytes);
+    // r1 = b1 mod p, r2 = b2 mod p
     let r1 = field_element_from_bytes(&b1);
     let r2 = field_element_from_bytes(&b2);
+    // p1 = elligator(r1), p2 = elligator(r2)
     let p1 = spec_elligator_ristretto_flavor(r1);
     let p2 = spec_elligator_ristretto_flavor(r2);
+    // result = p1 + p2
     edwards_add(p1.0, p1.1, p2.0, p2.1)
 }
 
@@ -344,6 +348,7 @@ pub open spec fn ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
 // =============================================================================
 /// True when the point is the double of some curve point (i.e., lies in 2E).
 pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {
+    // ∃ Q : point = [2]·Q
     exists|q: EdwardsPoint|
         edwards_point_as_affine(point) == edwards_scalar_mul(
             #[trigger] edwards_point_as_affine(q),

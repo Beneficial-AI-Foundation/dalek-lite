@@ -17,7 +17,7 @@ This repo contains pure-Rust crates for elliptic curve cryptography:
 
 There is also the [`curve25519-dalek-derive`](./curve25519-dalek-derive) crate, which is just a helper crate with some macros that make curve25519-dalek easier to write.
 
-# Beneficial AI foundation note
+# Beneficial AI Foundation note
 
 This repo is based on the `signal-curve25519-4.1.3` tag of https://github.com/signalapp/curve25519-dalek, with these changes:
 - removed all crates besides `curve25519-dalek`

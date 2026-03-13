@@ -58,11 +58,9 @@ impl RistrettoPoint {
     /// Directly encode 253 bits as a RistrettoPoint, using Elligator
     pub fn from_uniform_bytes_single_elligator(bytes: &[u8; 32]) -> (result: RistrettoPoint)
         ensures
-    // Well-formedness: result is a valid Edwards point in the even subgroup
-
             is_well_formed_edwards_point(result.0),
             is_in_even_subgroup(result.0),
-            // Correctness: affine coordinates match spec-level Elligator on the input bytes
+            // result = elligator(r_0)  where r_0 = from_bytes(bytes)
             edwards_point_as_affine(result.0) == spec_elligator_ristretto_flavor(
                 fe51_as_canonical_nat(&spec_fe51_from_bytes(bytes)),
             ),
@@ -280,18 +278,13 @@ impl RistrettoPoint {
     pub fn encode_253_bits(data: &[u8; 32]) -> (result: Option<RistrettoPoint>)
         ensures
             match result {
-                Some(
-                    p,
-                ) =>
-                // Well-formedness: result is a valid Edwards point in the even subgroup
-                is_well_formed_edwards_point(p.0) && is_in_even_subgroup(
+                Some(p) => is_well_formed_edwards_point(p.0) && is_in_even_subgroup(
                     p.0,
                 )
-                // Correctness: affine coordinates match spec-level Elligator on the input bytes
+                // result = elligator(from_bytes(data))
                  && edwards_point_as_affine(p.0) == spec_elligator_ristretto_flavor(
                     fe51_as_canonical_nat(&spec_fe51_from_bytes(data)),
                 ),
-                // Always succeeds for valid 32-byte input
                 None => false,
             },
     {
@@ -362,15 +355,12 @@ impl RistrettoPoint {
         requires
             is_well_formed_edwards_point(self.0),
         ensures
-    // Well-formedness: all four coset elements are valid Edwards points
-
             is_well_formed_edwards_point(result[0]),
             is_well_formed_edwards_point(result[1]),
             is_well_formed_edwards_point(result[2]),
             is_well_formed_edwards_point(result[3]),
-            // Identity: first element is self
             result[0] == self.0,
-            // Correctness: remaining elements are self + T_{2,4,6} (order-4 torsion points)
+            // result = {P, P+T₂, P+T₄, P+T₆}  (self + E[4] coset)
             ({
                 let (x, y) = edwards_point_as_affine(self.0);
                 let coset = ristretto_coset_affine(x, y);
@@ -409,12 +399,8 @@ impl RistrettoPoint {
         requires
             is_well_formed_edwards_point(self.0),
         ensures
-    // Representation: all 8 field elements have bounded limbs
-
             forall|j: int| 0 <= j < 8 ==> #[trigger] fe51_limbs_bounded(&result.1[j], 54),
-            // Elligator inversion: each valid candidate maps forward to a coset
-            // member of self (not necessarily self.0 itself, since candidates come
-            // from all 4 coset representatives via to_jacobi_quartic_ristretto)
+            // ∀j with bit j set: elligator(result.1[j]) ∈ coset(self)
             ({
                 let (x, y) = edwards_point_as_affine(self.0);
                 let coset = ristretto_coset_affine(x, y);

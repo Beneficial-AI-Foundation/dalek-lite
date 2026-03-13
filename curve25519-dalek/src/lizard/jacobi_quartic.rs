@@ -111,6 +111,7 @@ impl JacobiPoint {
         ensures
             fe51_limbs_bounded(&result.S, 52),
             fe51_limbs_bounded(&result.T, 52),
+            // result = (-S, -T)
             fe51_as_canonical_nat(&result.S) == field_neg(fe51_as_canonical_nat(&self.S)),
             fe51_as_canonical_nat(&result.T) == field_neg(fe51_as_canonical_nat(&self.T)),
     {

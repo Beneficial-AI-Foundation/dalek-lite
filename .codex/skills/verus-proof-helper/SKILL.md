@@ -24,6 +24,7 @@ description: Help complete and debug Verus proofs in verified-cryptography Rust 
 - **rlimit fix priority:** scope lemma calls in `assert(...) by {}` > explicit triggers > bundled predicates > opaque+reveal > bump rlimit (last resort). See techniques #15-17.
 - If you hit rarer tool limitations (e.g., `by (compute)` stability), see `references/common-issues.md`.
 - If the repo uses `verusfmt`, run it on touched files before final verification/commit (`references/workflow.md`).
+- **Spec inline comments** follow a strict `// var = formula` style — see `verus-spec-helper` SKILL.md "Inline math comments" section. Key rules: comment on the line *above* each `let` binding (never trailing), purely operational (no prose/parentheticals), use standard notation (`·`, `/`, `²`, `∃`, `∈`), and show the math meaning when calling helper functions (not just rename variables).
 
 ## Type invariants and `use_type_invariant`
 

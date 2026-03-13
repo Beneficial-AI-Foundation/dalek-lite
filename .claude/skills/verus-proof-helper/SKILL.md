@@ -936,6 +936,14 @@ proof {
    - Don't duplicate information from spec function names or postcondition comments
    - Remove "from X postcondition" comments - the `assert...by` structure makes this clear
 
+   **Spec function inline comments** follow a strict `// var = formula` style — see the
+   verus-spec-helper skill for full rules. Key points:
+   - Comment on the line *above* each `let` binding, never trailing
+   - Purely operational: `// u1 = (Z + Y)(Z - Y)`, not `// u1 = ... (Ristretto §5.3)`
+   - No parenthetical explanations, no prose, no secondary `= alternative_form`
+   - Helper function calls: show the math meaning, not just rename variables
+   - Use standard notation: `·`, `/`, `²`, `∃`, `∈`, `|x|`
+
 ## Key Patterns from compress Proof
 
 ### Pattern 1: Proving Bit Properties from Value Bounds

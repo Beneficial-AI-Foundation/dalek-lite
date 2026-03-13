@@ -305,9 +305,10 @@ pub open spec fn is_on_edwards_curve(x: nat, y: nat) -> bool {
     let y2 = field_square(y);
     let x2y2 = field_mul(x2, y2);
 
-    // -x² + y² = 1 + d·x²·y²
-    let lhs = field_sub(y2, x2);  // y² - x²
-    let rhs = field_add(1, field_mul(d, x2y2));  // 1 + d·x²·y²
+    // lhs = y² - x²
+    let lhs = field_sub(y2, x2);
+    // rhs = 1 + d·x²·y²
+    let rhs = field_add(1, field_mul(d, x2y2));
 
     lhs == rhs
 }
@@ -788,15 +789,25 @@ pub open spec fn negate_projective_niels(p: ProjectiveNielsPoint) -> ProjectiveN
 /// These are the unified addition formulas for twisted Edwards curves with a = -1.
 /// Reference: [BBJLP2008] Section 3.1, [RFC8032] Section 5.1.4
 pub open spec fn edwards_add(x1: nat, y1: nat, x2: nat, y2: nat) -> (nat, nat) {
+    // d = EDWARDS_D
     let d = fe51_as_canonical_nat(&EDWARDS_D);
+    // x1·x2
     let x1x2 = field_mul(x1, x2);
+    // y1·y2
     let y1y2 = field_mul(y1, y2);
+    // x1·y2
     let x1y2 = field_mul(x1, y2);
+    // y1·x2
     let y1x2 = field_mul(y1, x2);
+    // t = d·x1·x2·y1·y2
     let t = field_mul(d, field_mul(x1x2, y1y2));
+    // denom_x = 1 + t
     let denom_x = field_add(1, t);
+    // denom_y = 1 - t
     let denom_y = field_sub(1, t);
+    // x3 = (x1·y2 + y1·x2) / (1 + d·x1·x2·y1·y2)
     let x3 = field_mul(field_add(x1y2, y1x2), field_inv(denom_x));
+    // y3 = (y1·y2 + x1·x2) / (1 - d·x1·x2·y1·y2)
     let y3 = field_mul(field_add(y1y2, x1x2), field_inv(denom_y));
     (x3, y3)
 }
@@ -858,6 +869,7 @@ pub open spec fn completed_to_projective(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat) {
     let (x, y, z, t) = completed_point_as_nat(point);
+    // (X:Y:Z) = (X·T : Y·Z : Z·T)
     (field_mul(x, t), field_mul(y, z), field_mul(z, t))
 }
 
@@ -869,6 +881,7 @@ pub open spec fn completed_to_extended(
     point: crate::backend::serial::curve_models::CompletedPoint,
 ) -> (nat, nat, nat, nat) {
     let (x, y, z, t) = completed_point_as_nat(point);
+    // (X:Y:Z:T) = (X·T : Y·Z : Z·T : X·Y)
     (field_mul(x, t), field_mul(y, z), field_mul(z, t), field_mul(x, y))
 }
 
@@ -878,6 +891,7 @@ pub open spec fn completed_to_extended(
 /// This preserves the affine point and establishes the extended coordinate invariant
 pub open spec fn projective_to_extended(point: ProjectivePoint) -> (nat, nat, nat, nat) {
     let (x, y, z) = projective_point_edwards_as_nat(point);
+    // (X:Y:Z:T) = (X·Z : Y·Z : Z² : X·Y)
     (field_mul(x, z), field_mul(y, z), field_square(z), field_mul(x, y))
 }
 

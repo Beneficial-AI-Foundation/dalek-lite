@@ -126,6 +126,55 @@ Mathematical objects, algorithm summary, what we specify, references.
 - Don't cross-reference exec function names in spec docs.
 - Don't describe exec algorithm strategy — keep it mathematical.
 
+### Inline math comments
+
+Every `let` binding in a spec function that applies a math operation should have a
+`// var = formula` comment on the line **above** it (never trailing on the same line).
+
+**Style rules:**
+- **Operational only**: `// u1 = (Z + Y)(Z - Y)` — no prose, no parenthetical explanations
+- **Line above**: comment goes on the line before the `let`, never after the `;`
+- **Standard math notation**: `·` for multiplication, `/` for division, `²` for squaring,
+  `³` for cubing, `|x|` for absolute value / conditional negate
+- **No explanations**: strip `(i = sqrt(-1))`, `(always square)`, `(from batch inversion)`,
+  `[= 1/Z]`, `Segre embedding`, etc. — keep only the formula
+- **Conditional assignments**: use ternary style `// var = cond ? val_true : val_false`
+- **Existential quantifiers**: `// ∃ Q : point = [2]·Q`
+- **Set membership**: `// diff ∈ {T[0], T[2], T[4], T[6]}`
+- **Branch labels**: `// P = -Q`, `// P = Q`, `// P ≠ Q` (no parenthetical conditions)
+
+**Helper function calls — show the math, not the code:**
+When a spec calls another spec function and destructures, the comment should show the
+mathematical meaning of what's returned, not just rename variables:
+
+```rust
+// BAD — restates the code:
+// (s, N_t, D) = elligator_intermediates(r_0)
+
+// GOOD — shows actual math:
+// s = sqrt_ratio(N_s, D),  N_t = c·(r−1)·(d−1)² − D,  D = (c₀ − d·r)(r + d)
+let (s, n_t, d_val) = elligator_intermediates(r_0);
+```
+
+Simple extractions like `let d = fe51_as_canonical_nat(&EDWARDS_D)` need only
+`// d = EDWARDS_D` (the constant name is the math meaning).
+
+**Exec `ensures`/`requires` comments:**
+Add a short formula comment above the ensures clause that shows what the spec function
+computes, so the reader doesn't need to jump to the spec definition:
+
+```rust
+ensures
+    is_well_formed_edwards_point(result.0),
+    // result = elligator(bytes[0..32] mod p) + elligator(bytes[32..64] mod p)
+    edwards_point_as_affine(result.0) == ristretto_from_uniform_bytes(bytes),
+```
+
+**What NOT to comment:**
+- Atomic field operations (`field_add`, `field_mul`) in their own definitions
+- Single-wrapper functions where the doc comment is sufficient
+- Lines where the variable name already matches the formula exactly
+
 ### Proof function naming
 
 `axiom_` prefix for `admit()` bodies; `lemma_` for fully proved.

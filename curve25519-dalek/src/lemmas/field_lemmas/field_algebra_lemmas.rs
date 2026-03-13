@@ -136,6 +136,22 @@ pub proof fn lemma_neg_square_eq(x: nat)
     }
 }
 
+/// 1² = 1 and (−1)² = 1 in GF(p).
+pub proof fn lemma_one_and_neg_one_square_to_one()
+    ensures
+        field_square(1nat) == 1,
+        field_square(field_neg(1)) == 1,
+{
+    p_gt_2();
+    assert(field_square(1nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(field_square(field_neg(1)) == field_square(1nat % p())) by {
+        lemma_neg_square_eq(1nat);
+    };
+    lemma_small_mod(1nat, p());
+}
+
 // =============================================================================
 // Field Distributivity Lemmas
 // =============================================================================
@@ -687,6 +703,34 @@ pub proof fn lemma_inv_mul_cancel(a: nat)
     // By mod absorption: (inv(a) * a) % p = ((inv(a) % p) * a) % p = (inv(a) * (a % p)) % p
     lemma_mul_mod_noop_left(a as int, inv_a as int, p as int);
     lemma_mul_mod_noop_right(inv_a as int, a as int, p as int);
+}
+
+/// If a·z⁻¹ = 0 and z ≠ 0 (mod p), then a = 0.
+pub proof fn lemma_affine_zero_implies_proj_zero(a: nat, z: nat)
+    requires
+        z % p() != 0,
+        a < p(),
+        field_mul(a, field_inv(z)) == 0,
+    ensures
+        a == 0,
+{
+    p_gt_2();
+    let inv_z = field_inv(z);
+    // (a·z⁻¹)·z = a·(z⁻¹·z) = a·1 = a, but a·z⁻¹ = 0 so a = 0
+    assert(field_mul(field_mul(a, inv_z), z) == field_mul(a, field_mul(inv_z, z))) by {
+        lemma_field_mul_assoc(a, inv_z, z);
+    };
+    assert(field_mul(inv_z, z) == 1) by {
+        lemma_inv_mul_cancel(z);
+    };
+    assert(field_mul(a, 1) == a) by {
+        lemma_field_mul_one_right(a);
+        lemma_small_mod(a, p());
+    };
+    assert(field_mul(0nat, z) == 0) by {
+        lemma_small_mod(0nat, p());
+        lemma_field_mul_zero_left(0nat, z);
+    };
 }
 
 // =============================================================================
@@ -2493,46 +2537,6 @@ pub proof fn lemma_add_self_eq_double(a: nat)
     assert((a + a) as int == (2 * a) as int);
 }
 
-/// Double negation in field arithmetic: neg(neg(a)) = a % p.
-pub proof fn lemma_neg_neg(a: nat)
-    ensures
-        field_neg(field_neg(a)) == a % p(),
-{
-    let p = p();
-    p_gt_2();
-    let a_mod = a % p;
-    let neg_a = field_neg(a);
-
-    assert(a_mod < p) by {
-        lemma_mod_bound(a as int, p as int);
-    };
-
-    if a_mod == 0 {
-        // neg(a) = (p - 0) % p = 0
-        assert(neg_a == 0) by {
-            lemma_mod_self_0(p as int);
-        };
-        // neg(0) = (p - 0) % p = 0 = a % p
-        assert(field_neg(neg_a) == 0) by {
-            lemma_mod_self_0(p as int);
-        };
-    } else {
-        // neg(a) = (p - a_mod) % p = p - a_mod  (since 0 < p - a_mod < p)
-        assert(neg_a == (p - a_mod) as nat) by {
-            lemma_small_mod((p - a_mod) as nat, p);
-        };
-        // neg_a < p, so neg_a % p = neg_a
-        assert(neg_a % p == neg_a) by {
-            lemma_small_mod(neg_a, p);
-        };
-        // neg(neg_a) = (p - neg_a) % p = a_mod % p = a_mod
-        assert((p - neg_a) as nat == a_mod);
-        assert(field_neg(neg_a) == a_mod) by {
-            lemma_small_mod(a_mod, p);
-        };
-    }
-}
-
 /// Helper: field_sub(c, field_neg(d)) == field_add(c, d).
 ///
 /// Subtracting a negation is the same as adding: c - (-d) = c + d.
@@ -2544,7 +2548,7 @@ pub proof fn lemma_sub_neg_eq_add(c: nat, d: nat)
     let p = p();
     assert(field_sub(c, neg_d) == field_add(c, d)) by {
         lemma_field_sub_eq_add_neg(c, neg_d);
-        lemma_neg_neg(d);
+        lemma_field_neg_neg(d);
         p_gt_2();
         lemma_add_mod_noop(c as int, (d % p) as int, p as int);
         lemma_add_mod_noop(c as int, d as int, p as int);
@@ -2715,6 +2719,89 @@ pub proof fn lemma_field_neg_mul_left(a: nat, b: nat)
     lemma_field_mul_comm(field_neg(a), b);
     lemma_field_mul_neg(b, a);
     lemma_field_mul_comm(b, a);
+}
+
+/// inv(−a) = −inv(a).
+///
+/// a ≡ 0: both sides are 0 by convention.
+/// a ≢ 0: (−a)·(−inv(a)) = −(−(a·inv(a))) = 1, then by uniqueness.
+pub proof fn lemma_field_inv_neg(a: nat)
+    ensures
+        field_inv(field_neg(a)) == field_neg(field_inv(a)),
+{
+    let pn = p();
+    p_gt_2();
+    let a_mod = a % pn;
+    lemma_mod_bound(a as int, pn as int);
+
+    if a_mod == 0 {
+        assert(pn % pn == 0) by (nonlinear_arith)
+            requires
+                pn > 0,
+        ;
+        assert(field_neg(a) == 0nat);
+        field_inv_zero();
+        assert(field_inv(0nat) == 0nat);
+        assert(field_inv(a) == 0nat);
+    } else {
+        let neg_a = field_neg(a);
+        let inv_a = field_inv(a);
+        let neg_inv_a = field_neg(inv_a);
+
+        assert(neg_a != 0) by {
+            lemma_field_neg_nonzero(a);
+        };
+        assert(neg_a < pn) by {
+            lemma_mod_bound((pn - a_mod) as int, pn as int);
+        };
+
+        assert(inv_a < pn) by {
+            field_inv_property(a);
+        };
+        assert(inv_a != 0) by {
+            field_inv_property(a);
+            if inv_a == 0 {
+                assert(field_mul(a_mod, 0nat) == (a_mod * 0) % pn);
+                assert(a_mod * 0 == 0) by (nonlinear_arith);
+                assert(field_mul(a_mod, 0nat) == 0) by {
+                    lemma_small_mod(0nat, pn);
+                };
+            }
+        };
+
+        assert(neg_inv_a < pn) by {
+            lemma_mod_bound((pn - inv_a % pn) as int, pn as int);
+        };
+
+        // (−a)·(−inv(a)) = −(a·(−inv(a))) = −(−(a·inv(a))) = a·inv(a) = 1
+        assert(field_mul(neg_a, neg_inv_a) == field_neg(field_mul(a, neg_inv_a))) by {
+            lemma_field_neg_mul_left(a, neg_inv_a);
+        };
+        assert(field_mul(a, neg_inv_a) == field_neg(field_mul(a, inv_a))) by {
+            lemma_field_mul_neg(a, inv_a);
+        };
+        assert(field_neg(field_neg(field_mul(a, inv_a))) == field_mul(a, inv_a) % pn) by {
+            lemma_field_neg_neg(field_mul(a, inv_a));
+        };
+        assert(field_mul(a, inv_a) == field_mul(a_mod, inv_a)) by {
+            lemma_mul_mod_noop_left(a as int, inv_a as int, pn as int);
+        };
+        field_inv_property(a);
+        assert(field_mul(a, inv_a) == 1);
+        assert(field_mul(neg_a, neg_inv_a) == 1) by {
+            assert(1 < pn) by {
+                p_gt_2();
+            };
+            lemma_small_mod(1nat, pn);
+        };
+
+        // Conclude by uniqueness
+        assert(field_canonical(neg_a) == neg_a) by {
+            lemma_small_mod(neg_a, pn);
+        };
+        assert(field_canonical(neg_a) != 0);
+        field_inv_unique(neg_a, neg_inv_a);
+    }
 }
 
 /// field_square(pow(x, k) % p) == pow(x, 2*k) % p

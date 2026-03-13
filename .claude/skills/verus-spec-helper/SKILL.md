@@ -173,6 +173,15 @@ pub fn transform_verus(data: &[u8; 16]) -> (result: Output)
 - Put the refactored/Verus-friendly version immediately after the original, one function at a time.
 - If repetition appears in `ensures`, extract a small helper `spec fn`.
 
+### Preserve original upstream code and comments
+
+Original upstream comments (algorithm descriptions, inline math, edge-case notes)
+must never be removed, shortened, or have their notation changed. Verification-only
+comments (`// PROOF BYPASS:`, `// Step 1:`, etc.) may be freely modified.
+
+Original code must never be deleted — only replaced with semantically equivalent
+code when Verus cannot handle the original construct.
+
 ### When to add `/* ORIGINAL CODE: ... */` comments
 
 Add an ORIGINAL CODE comment **only when the line was actually changed**.
@@ -207,6 +216,10 @@ multi-line blocks — just show the changed expression.
 | `T::generic_call(args)` | `concrete_call(args)` | Generic trait calls unsupported |
 | `x += expr` (compound assign) | `let tmp = expr; x = x + tmp;` | Needed to insert proof blocks or type coercions |
 | Compound expression | Split with intermediate `let` | Needed to insert proof blocks |
+| Variable shadowing (`let x = ...; let x = ...;`) | Rename to `x1`, `x2` | Verus does not support variable shadowing inside `verus!` |
+| Discarded return value (`let (_, y) = ...`) | Name it (`let (x_flag, y) = ...`) | Proof needs to reference the value |
+| Inline subexpression | Extract to `let` binding | Proof needs to reference the intermediate |
+| Statement position | Move relative to proof block | Proof ordering constraint |
 
 ## Doc comment conventions
 
@@ -507,6 +520,47 @@ ensures forall|i: int| 0 <= i < n ==> dst[(off+i) as int] == src[i],
 ensures
     forall|i: int| 0 <= i < n ==> dst[(off+i) as int] == src[i],
     forall|i: int| (0 <= i < off || off+n <= i < len) ==> dst[i] == old(dst)[i],
+```
+
+### Axiom docstring pattern
+
+Every `axiom_` function must have a structured doc comment:
+1. **One-line math statement** — the identity or property in mathematical notation
+2. **Spec-to-math name mapping** — map each spec function name to its math symbol
+   (e.g., `midouble_invsqrt_a_minus_d() = mc = −2i/√(−d−1)`)
+3. **Reference pin** — one line citing the published source (paper, section, URL)
+4. **Gap note** — what remains unproved and why (if applicable)
+5. **Runtime validation** — `Runtime validation: \`test_name\` in file.rs`
+
+Example:
+```rust
+/// Constant identity: mc · √(ad−1) = 2i  in F_p  (p = 2²⁵⁵ − 19).
+///
+/// where:
+///   mc   = −2i / √(−d−1)   (`midouble_invsqrt_a_minus_d()`)
+///   √(ad−1) = √(−d−1)      (`spec_sqrt_ad_minus_one()`,  a = −1 for Ed25519)
+///   i    = √(−1)            (`sqrt_m1()`)
+///
+/// Reference: ristretto.group/details/isogenies.html.
+///
+/// Runtime validation: `test_axiom_mc_times_sqrt_ad_m1` in lizard_ristretto.rs.
+```
+
+### Spec independence
+
+Doc comments on spec functions should be readable without knowledge of exec function
+names. Lead with the mathematical definition, then cross-reference code names as
+secondary information:
+
+```rust
+// BAD: "Mathematical output of `JacobiPoint::elligator_inv`"
+// GOOD: "Elligator inverse on the Jacobi quartic: (s, t) → (success, r₀)"
+```
+
+Use explicit formulas in the doc comment body:
+```rust
+/// y = (1 − S²) / (1 + S²)
+/// x = 2·S / (T · √(ad − 1))
 ```
 
 ## Validation

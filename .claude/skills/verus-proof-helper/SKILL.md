@@ -812,7 +812,13 @@ proof {
    - Add comments explaining non-obvious steps
    - Ensure proof follows codebase style
 
-6. **Preserve `/* ORIGINAL CODE ... */` comments:** When refactoring code for Verus verification, keep the original (pre-Verus) implementation as a comment so reviewers can see what changed. Use the convention:
+6. **Preserve original upstream code and comments verbatim:**
+
+   **Original comments** (algorithm descriptions, inline math, edge-case notes) must never be removed, shortened, or have their notation changed. Keep `:=`, `*`, `^2`, etc. exactly as the upstream authors wrote them. Verification-only comments (`// PROOF BYPASS:`, `// Step 1:`, etc.) may be freely modified.
+
+   **Original code** must never be deleted outright — only replaced with semantically equivalent code when Verus cannot handle the original construct. Every such replacement needs a `/* ORIGINAL CODE: ... */` comment.
+
+   **`/* ORIGINAL CODE ... */` comments:** When refactoring code for Verus verification, keep the original (pre-Verus) implementation as a comment so reviewers can see what changed. Use the convention:
    ```rust
    /* ORIGINAL CODE:
    self.as_bytes().ct_eq(other.as_bytes())
@@ -827,6 +833,13 @@ proof {
    </ORIGINAL CODE> */
    ```
    Never delete these comments — they document what the code looked like before verification changes.
+
+   This applies to **all** refactoring categories, including:
+   - Variable renames (e.g., `den` → `den1`/`den2` to avoid shadowing)
+   - Expression extraction (e.g., inline subexpression → `let` binding)
+   - Naming discarded values (e.g., `(_, gamma)` → `(gamma_sq, gamma)`)
+   - Statement reordering (e.g., moving an exec statement after a proof block)
+   - Function body delegation (e.g., replacing body with a call to another function)
 
 4. **Simplify assert..by blocks:**
    `assert .. by` blocks should only be used when the `by` part contains **actual lemma calls**.
@@ -1098,7 +1111,7 @@ Algebraic expansion lemmas for Edwards point addition/subtraction:
 - `lemma_pm_plus_mp(a, b, c, d)` - (a+b)(c-d) + (a-b)(c+d) = 2*(a*c - b*d)
 
 **Negation helpers:**
-- `lemma_neg_neg(a)` - neg(neg(a)) = a % p
+- `lemma_field_neg_neg(a)` - neg(neg(a)) = a % p
 - `lemma_neg_preserves_curve(x, y)` - on_curve(x,y) ⇒ on_curve(neg(x), y)
 
 **Completed point ratios:**
@@ -1137,6 +1150,60 @@ Algebraic expansion lemmas for Edwards point addition/subtraction:
     - **Original assumes** (pre-existing): These are proof obligations to be replaced with actual proofs.
     - **New assumes during proof work:** Signals a spec gap. Propose spec revisions: add as postcondition (if about return value) or precondition (if about input), then propagate through the call chain.
     - **When new assumes are acceptable (last resort):** In `From` impls where Verus doesn't support `from_req`, in code protected by `assume(false)` proof bypass, or for properties requiring deep spec work beyond current scope.
+
+#### Technique 20: Axiom-to-Lemma Promotion via Structural Decomposition
+When a monolith `axiom_` function is too complex to prove directly, decompose it:
+
+1. **Rename** `axiom_foo` → `lemma_foo`
+2. **Reveal** opaque spec definitions needed for branch analysis
+3. **Case-split** on the spec's branches (e.g., `if field_canonical(s) == 0 { ... } else { ... }`)
+4. **Prove** each branch independently, delegating to focused sub-axioms for parts Z3 can't handle
+5. **Sub-axioms** should be smaller, more focused, and clearly documented
+
+```rust
+pub proof fn lemma_foo(s: nat, t: nat)
+    ensures spec_foo(s, t).0 ==> spec_bar(spec_foo(s, t).1) == spec_baz(s, t),
+{
+    reveal(spec_foo);
+    if condition_branch_1 {
+        assert(result) by { axiom_foo_branch_1(...); };
+    } else if condition_branch_2 {
+        // Vacuously true — spec_foo reports failure
+    } else {
+        assert(result) by { axiom_foo_branch_3(...); };
+    }
+}
+```
+
+**Benefits:**
+- Verified branch dispatch (the structure itself is proved)
+- Smaller trust atoms (sub-axioms are independently verifiable)
+- Progress: even partial proofs reduce the trust surface
+- Clear documentation of what remains unproved
+
+**When to use:**
+- The axiom has multiple branches with different complexity
+- Some branches are provable (e.g., s=0 edge cases) while others aren't (general algebraic identities)
+- The axiom connects algorithmic specs (opaque) to mathematical specs (open)
+
+#### Technique 21: Generalized Edge-Case Lemmas
+When a lemma is proved for literal values (e.g., `s = 0`), generalize to canonical equivalence:
+
+```rust
+// Existing: lemma_foo_s_zero(t) ensures foo(0, t) == bar
+// New: lemma_foo_s_canonical_zero(s, t)
+//   requires field_canonical(s) == 0
+//   ensures foo(s, t) == bar
+proof fn lemma_foo_s_canonical_zero(s: nat, t: nat)
+    requires field_canonical(s) == 0,
+    ensures foo(s, t) == bar,
+{
+    // Show field_square(s) == 0 when s % p == 0
+    assert(field_square(s) == 0) by { lemma_field_mul_zero_left(s, s); };
+    // Now all field operations on s produce the same results as for s=0
+    lemma_foo_s_zero(t);
+}
+```
 
 ## Example Invocation
 

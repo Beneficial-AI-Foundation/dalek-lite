@@ -21,7 +21,8 @@ verus! {
 // --- Decode axioms ---
 /// Axiom: when decode succeeds, the decoded (x, y) satisfy the Edwards curve equation.
 ///
-/// Reference: [DECAF] §3, Hamburg 2015; https://ristretto.group/formulas/decoding.html
+/// Reference: RFC 9496 §4.3.1 (Decode); Hamburg, "Decaf" §4;
+///   https://ristretto.group/formulas/decoding.html
 /// Runtime validation: `test_ristretto_decode_on_curve` (100 points)
 pub proof fn axiom_ristretto_decode_on_curve(s: nat)
     requires
@@ -39,7 +40,8 @@ pub proof fn axiom_ristretto_decode_on_curve(s: nat)
 /// some curve point. Combined with the E[4] coset quotient, this gives a
 /// prime-order group.
 ///
-/// Reference: [DECAF] §3, Hamburg 2015; https://ristretto.group/details/isogenies.html
+/// Reference: RFC 9496 §4.3.1 (Decode); Hamburg, "Decaf" §4 + §4.1
+///   (isogeny image φ_a[J] = 2E); https://ristretto.group/details/isogenies.html
 /// Runtime validation: `test_ristretto_decode_in_even_subgroup` (50+ points)
 pub proof fn axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)
     requires
@@ -88,7 +90,7 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
 /// the 4-torsion coset condition P1 - P2 ∈ E[4] is equivalent to
 /// the projective cross-multiplication check.
 ///
-/// Reference: [RISTRETTO] §3.2; Hamburg, "Decaf" §4.
+/// Reference: RFC 9496 §4.3.3 (Equals); Hamburg, "Decaf" §4.5 (Equality).
 pub proof fn axiom_ristretto_cross_mul_iff_equivalent(p1: EdwardsPoint, p2: EdwardsPoint)
     requires
         is_well_formed_edwards_point(p1),
@@ -115,7 +117,8 @@ pub proof fn axiom_ristretto_cross_mul_iff_equivalent(p1: EdwardsPoint, p2: Edwa
 /// Elligator map parametrizes points via the Jacobi quartic, and the
 /// resulting coordinates always satisfy the Edwards curve equation.
 ///
-/// Reference: [RISTRETTO] §4.3.4; Hamburg, "Decaf" §4
+/// Reference: RFC 9496 §4.3.4; Hamburg, "Decaf" §6 (Elligator on J) + §4.1
+///   (isogeny from J to E proves output is on-curve).
 /// Runtime validation: `test_elligator_on_curve` (200+ inputs)
 pub proof fn axiom_elligator_on_curve(r_0: nat)
     ensures
@@ -134,7 +137,8 @@ pub proof fn axiom_elligator_on_curve(r_0: nat)
 /// (2) 1 + s² ≠ 0 (mod p): s never equals ±√(−1), even though −1 is a square
 ///     in GF(p), because the Elligator construction never produces those values.
 ///
-/// Reference: [RISTRETTO] section 4.3.4; Hamburg, "Decaf" section 4
+/// Reference: RFC 9496 §4.3.4; Hamburg, "Decaf" §6 + Appendix C
+///   (explicit Elligator 2 formulas and nonzero analysis).
 /// Runtime validation: `test_elligator_nonzero_denominators` (200+ inputs)
 pub proof fn axiom_elligator_nonzero_intermediates(
     r_0: nat,
@@ -158,7 +162,8 @@ pub proof fn axiom_elligator_nonzero_intermediates(
 /// some curve point (arising from the Jacobi quartic parametrization).
 /// Combined with the E[4] coset quotient, this gives the prime-order Ristretto group.
 ///
-/// Reference: [RISTRETTO] §4.3.4; Hamburg, "Decaf" §3
+/// Reference: RFC 9496 §4.3.4; Hamburg, "Decaf" §6 (Elligator on J) +
+///   §4.1 (isogeny image φ_a[J] = 2E).
 /// Runtime validation: `test_elligator_in_even_subgroup` (200+ inputs)
 pub proof fn axiom_elligator_in_even_subgroup(r_0: nat)
     ensures
@@ -208,7 +213,8 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
 /// (−1 − d) is a QR mod p, but that QR status is itself a concrete numerical
 /// fact that Verus cannot evaluate (it requires 252-bit modular exponentiation).
 ///
-/// Reference: ristretto.group/formulas/encoding.html; Hamburg (2015) Decaf §6
+/// Reference: Hamburg (2015) "Decaf" §4.1 (isogeny θ uses 1/√(a₂d₂−1));
+///   also ristretto.group/details/isogenies.html.
 /// Runtime validation: `test_nat_invsqrt_neg_one_minus_d`, `test_invsqrt_a_minus_d_squared`
 pub proof fn axiom_invsqrt_a_minus_d()
     ensures

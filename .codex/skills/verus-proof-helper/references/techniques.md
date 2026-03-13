@@ -297,3 +297,21 @@ while digit_index > 0
 
 The identity-based approach needs one base-case lemma (`H(dc) = O`) but avoids duplicating
 the column processing code and its proof obligations.
+
+## Axiom-to-lemma promotion via structural decomposition
+
+When a monolith `axiom_` is too complex for Z3, decompose:
+
+1. Rename `axiom_foo` → `lemma_foo`
+2. `reveal()` opaque specs for branch analysis
+3. Case-split on the spec's branches
+4. Prove each branch, delegating hard parts to focused sub-axioms
+5. Sub-axioms are smaller, independently verifiable
+
+Benefits: verified branch dispatch, smaller trust atoms, documented gaps.
+
+## Generalized edge-case lemmas
+
+When a lemma is proved for literal values (e.g., `s = 0`), generalize to canonical
+equivalence (`field_canonical(s) == 0`). All field ops are mod p, so `field_square(s) == 0`
+when `s % p == 0`, making the proof transfer via `lemma_field_mul_zero_left/right`.

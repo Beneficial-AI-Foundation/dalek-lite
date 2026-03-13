@@ -1,5 +1,21 @@
 # Spec patterns (templates to reuse)
 
+## Axiom docstring pattern
+
+Every `axiom_` function doc comment must include:
+1. **One-line math statement** — the identity/property in math notation
+2. **Spec-to-math name mapping** — `spec_fn_name() = symbol = formula`
+3. **Reference pin** — paper/section/URL
+4. **Gap note** — what remains unproved (if applicable)
+5. **Runtime validation** — `Runtime validation: \`test_name\` in file.rs`
+
+## Spec independence
+
+Doc comments should be readable without exec function names:
+- BAD: "Mathematical output of `Foo::bar_method`"
+- GOOD: "Elligator inverse on the Jacobi quartic: (s, t) → (success, r₀)"
+- Include explicit formulas: `y = (1 − S²) / (1 + S²)`
+
 ## Reference spec module skeleton
 
 - Co-locate math definitions in `src/specs/<topic>_specs.rs`.

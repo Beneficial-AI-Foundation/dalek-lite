@@ -112,3 +112,108 @@ lemma_distribute_over_bit_or!(
     lemma_u64_low_bits_masks_fit,
     u64
 );
+
+// =============================================================================
+// Single-bit mask helpers for u8
+// =============================================================================
+#[cfg(verus_keep_ghost)]
+verus! {
+
+/// Spec function wrapping single-bit test; usable as a quantifier trigger.
+pub open spec fn mask_bit(mask: u8, j: int) -> bool {
+    (mask & (1u8 << (j as u8))) != 0
+}
+
+/// OR-ing `val << pos` into `mask` preserves existing bits at other positions
+/// and sets bit `pos` iff `val == 1`.
+pub proof fn lemma_or_bit(mask: u8, val: u8, pos: u8, j: u8)
+    requires
+        pos < 8,
+        j < 8,
+        val == 0 || val == 1,
+    ensures
+        j != pos ==> ((mask | (val << pos)) & (1u8 << j)) == (mask & (1u8 << j)),
+        j == pos ==> (((mask | (val << pos)) & (1u8 << j)) != 0) == ((mask & (1u8 << j)) != 0 || val
+            == 1u8),
+{
+    if j != pos {
+        assert(((mask | (val << pos)) & (1u8 << j)) == (mask & (1u8 << j))) by (bit_vector)
+            requires
+                pos < 8u8,
+                j < 8u8,
+                val == 0u8 || val == 1u8,
+                j != pos,
+        ;
+    }
+    if j == pos {
+        assert((((mask | (val << pos)) & (1u8 << j)) != 0) == ((mask & (1u8 << j)) != 0 || val
+            == 1u8)) by (bit_vector)
+            requires
+                pos < 8u8,
+                j < 8u8,
+                val == 0u8 || val == 1u8,
+                j == pos,
+        ;
+    }
+}
+
+/// If `mask < 2^bound_shift`, then bit `j` (where j >= bound_shift) is clear.
+pub proof fn lemma_mask_bound_implies_bit_clean(mask: u8, bound_shift: u8, j: u8)
+    requires
+        bound_shift <= 8,
+        j < 8,
+        j >= bound_shift,
+        (mask as u16) < (1u16 << (bound_shift as u16)),
+    ensures
+        (mask & (1u8 << j)) == 0,
+{
+    assert((mask & (1u8 << j)) == 0u8) by (bit_vector)
+        requires
+            bound_shift <= 8u8,
+            j < 8u8,
+            j >= bound_shift,
+            (mask as u16) < (1u16 << (bound_shift as u16)),
+    ;
+}
+
+/// After OR-ing `val << pos` into a mask bounded by `2^pos`, the result
+/// is bounded by `2^(pos+1)`.
+pub proof fn lemma_mask_or_bound(mask: u8, val: u8, pos: u8)
+    requires
+        pos < 8,
+        val == 0 || val == 1,
+        (mask as u16) < (1u16 << (pos as u16)),
+    ensures
+        ((mask | (val << pos)) as u16) < (1u16 << ((pos + 1) as u16)),
+{
+    assert(((mask | (val << pos)) as u16) < (1u16 << ((pos + 1) as u16))) by (bit_vector)
+        requires
+            pos < 8u8,
+            val == 0u8 || val == 1u8,
+            (mask as u16) < (1u16 << (pos as u16)),
+    ;
+}
+
+/// Prove `lemma_or_bit` for every bit position 0..8 in one call.
+pub proof fn lemma_or_bit_all(mask: u8, val: u8, pos: u8)
+    requires
+        pos < 8,
+        val == 0 || val == 1,
+    ensures
+        forall|j: u8|
+            #![auto]
+            j < 8 ==> (j != pos ==> ((mask | (val << pos)) & (1u8 << j)) == (mask & (1u8 << j)))
+                && (j == pos ==> (((mask | (val << pos)) & (1u8 << j)) != 0) == ((mask & (1u8 << j))
+                != 0 || val == 1u8)),
+{
+    lemma_or_bit(mask, val, pos, 0);
+    lemma_or_bit(mask, val, pos, 1);
+    lemma_or_bit(mask, val, pos, 2);
+    lemma_or_bit(mask, val, pos, 3);
+    lemma_or_bit(mask, val, pos, 4);
+    lemma_or_bit(mask, val, pos, 5);
+    lemma_or_bit(mask, val, pos, 6);
+    lemma_or_bit(mask, val, pos, 7);
+}
+
+} // verus!

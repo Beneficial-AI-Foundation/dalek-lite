@@ -466,7 +466,7 @@ pub proof fn lemma_neg_u_times_inv_iu_is_i(u: nat, i: nat)
     assert(field_mul(neg_one, neg_i) == i) by {
         // (-1)·(-i) = -(-(i)) = i % p = i
         lemma_neg_one_times_is_neg(field_neg(i));
-        lemma_neg_neg(i);
+        lemma_field_neg_neg(i);
         lemma_small_mod(i, p);
     };
 

@@ -11,9 +11,25 @@ When you encounter a proof with `admit()` or `assume(...)`:
 5. Verify: verify each step, then verify the module/integration.
 6. Clean: remove redundant asserts, keep comments concise.
 
+## assert...by wrapping for axiom calls
+
+Always wrap axiom/lemma invocations in `assert(CONCLUSION) by { call(); }` so the reader sees
+what the axiom achieves. Avoid floating `axiom_foo(args);` calls without a paired assertion:
+
+```rust
+// GOOD:
+assert(spec_elligator_ristretto_flavor(fe_val) == jacobi_to_edwards_affine(s, t)) by {
+    lemma_elligator_inv_algebraic(s, t);
+};
+
+// BAD:
+lemma_elligator_inv_algebraic(s, t);
+```
+
 ## Success criteria
 
 - All `admit()` and `assume(...)` replaced with actual proofs (or explicitly listed as remaining work).
+- Naming convention: `axiom_` for admitted functions, `lemma_` for fully proved.
 - Verification passes (e.g., `cargo verus verify`).
 - Proofs follow codebase style (structure, comments, placement of lemma calls).
 - Existing lemmas are reused wherever possible.

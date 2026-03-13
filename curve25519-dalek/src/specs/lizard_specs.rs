@@ -43,12 +43,12 @@
 //!   16 B            32 B             ∈ F_p               ∈ E(F_p)
 //! ```
 //!
-//!   - `b(m) = mask(splice(SHA256(m), m))` — spec: `lizard_fe_bytes` below
+//!   - `b(m) = mask(splice(SHA256(m), m))` — spec: `spec_lizard_fe_bytes` below
 //!     - `SHA256(m)`: 32-byte pseudorandom envelope
 //!     - `splice`: overwrite bytes 8..24 with `m` (recoverable payload)
 //!     - `mask`: `b[0] &= 254` (positive — Elligator maps ±r identically),
 //!       `b[31] &= 63` (below 2²⁵⁴ < p — `from_bytes` injective)
-//!   - `r(m) = from_bytes(b(m)) mod p` — spec: `lizard_r` below
+//!   - `r(m) = from_bytes(b(m)) mod p` — spec: `spec_lizard_r` below
 //!   - `P(m) = Elligator(r(m))` — spec: `spec_lizard_encode` below
 //!
 //! ## Decoding pipeline (`lizard_decode_verus` / `spec_lizard_decode`)
@@ -88,6 +88,9 @@
 //! - Signal usage: `libsignal/rust/zkgroup/src/crypto/uid_struct.rs` (encode),
 //!   `libsignal/rust/zkgroup/src/crypto/uid_encryption.rs` (decode).
 //! - Executable code: `crate::lizard::lizard_ristretto`
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use super::edwards_specs::*;
 #[allow(unused_imports)]
 use super::field_specs::*;
 #[allow(unused_imports)]
@@ -96,6 +99,9 @@ use super::field_specs_u64::*;
 use super::ristretto_specs::*;
 #[allow(unused_imports)]
 use crate::core_assumes::*;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lizard::lizard_constants;
 use vstd::prelude::*;
 
 verus! {
@@ -115,7 +121,7 @@ verus! {
 /// 2. Overwrite bytes 8..24 with `m` — recoverable payload
 /// 3. `b[0] &= 254` — ensure positive (Elligator maps ±r identically)
 /// 4. `b[31] &= 63` — canonical range (< 2²⁵⁴)
-pub open spec fn lizard_fe_bytes(data: Seq<u8>) -> [u8; 32]
+pub open spec fn spec_lizard_fe_bytes(data: Seq<u8>) -> [u8; 32]
     recommends
         data.len() == 16,
 {
@@ -140,7 +146,7 @@ pub open spec fn lizard_fe_bytes(data: Seq<u8>) -> [u8; 32]
 /// m ──► b(m) ──► [r(m)] ──► P(m)
 ///                 ^^^^
 /// ```
-pub open spec fn lizard_r(fe_bytes: &[u8; 32]) -> nat {
+pub open spec fn spec_lizard_r(fe_bytes: &[u8; 32]) -> nat {
     fe51_as_canonical_nat(&spec_fe51_from_bytes(fe_bytes))
 }
 
@@ -157,7 +163,7 @@ pub open spec fn spec_lizard_encode(data: Seq<u8>) -> (nat, nat)
     recommends
         data.len() == 16,
 {
-    spec_elligator_ristretto_flavor(lizard_r(&lizard_fe_bytes(data)))
+    spec_elligator_ristretto_flavor(spec_lizard_r(&spec_lizard_fe_bytes(data)))
 }
 
 // =============================================================================
@@ -177,8 +183,9 @@ pub open spec fn spec_lizard_encode(data: Seq<u8>) -> (nat, nat)
 // preimage (`elligator_inv` in `jacobi_quartic.rs`), giving up to 8
 // candidate field elements for Lizard decoding.
 //
-// Reference: Ristretto group §4.3 (https://ristretto.group/formulas/elligator.html),
-// go-ristretto `lizard.go` (https://github.com/bwesterb/go-ristretto/blob/v1.2.3/edwards25519/elligator.go)
+// Reference: https://ristretto.group/formulas/elligator.html (forward map),
+// https://ristretto.group/details/isogenies.html (Jacobi ↔ Edwards isogeny),
+// go-ristretto elligator.go (https://github.com/bwesterb/go-ristretto/blob/v1.2.3/edwards25519/elligator.go)
 /// Map from Jacobi quartic point `(S, T)` to affine Edwards coordinates `(x, y)`.
 ///
 /// The Jacobi quartic associated to `−x² + y² = 1 + d·x²·y²` (with `a = −1`) is
@@ -186,14 +193,17 @@ pub open spec fn spec_lizard_encode(data: Seq<u8>) -> (nat, nat)
 ///
 /// ```text
 ///   y = (1 − S²) / (1 + S²)
-///   x = −2·S / (T · √(ad − 1))
+///   x = 2·S / (T · √(ad − 1))
 /// ```
 ///
 /// where `√(ad − 1) = √(−d − 1)` is `spec_sqrt_ad_minus_one()`.
 ///
-/// Derivation: from `to_jacobi_quartic_ristretto`, `S = γ·Y²·(Z−Y)·X` and
-/// `T = (−2/√(a−d))·Z·γ·Y²·(Z−Y)`, so `S/T = −√(a−d)·x/2`, giving
-/// `x = −2·S/(T·√(ad−1))`.  The `y` formula follows from `S² = (Z−Y)/(Z+Y)`.
+/// Reference: This is the 2-isogeny θ_{a₂,d₂} from Jacobi quartic to
+/// twisted Edwards, given as the composition θ = η∘ψ at
+/// https://ristretto.group/details/isogenies.html.
+/// Hamburg (2015) "Decaf: Eliminating cofactors through point compression"
+/// (https://eprint.iacr.org/2015/673), §3 derives the isogeny in the
+/// context of the cofactor-elimination construction.
 ///
 /// Requires `1 + S² ≠ 0` and `T · √(ad−1) ≠ 0` (division denominators).
 ///
@@ -208,10 +218,366 @@ pub open spec fn jacobi_to_edwards_affine(s: nat, t: nat) -> (nat, nat)
     // y = (1 − S²) / (1 + S²)
     let s_sq = field_square(s);
     let y = field_mul(field_sub(1, s_sq), field_inv(field_add(1, s_sq)));
-    // x = −2S / (T · √(ad−1))
+    // x = 2S / (T · √(ad−1))
     let sqrt_ad_m1 = spec_sqrt_ad_minus_one();
-    let x = field_mul(field_neg(field_mul(2, s)), field_inv(field_mul(t, sqrt_ad_m1)));
+    let x = field_mul(field_mul(2, s), field_inv(field_mul(t, sqrt_ad_m1)));
     (x, y)
+}
+
+// =============================================================================
+// Algorithmic spec anchors (opaque until exec-to-spec proofs are done)
+// =============================================================================
+//
+// These opaque spec functions model the mathematical output of algorithms that
+// are currently connected to their exec implementations via `assume`.  They
+// serve as abstract anchors: axioms about Jacobi quartic / Elligator inversion
+// correctness are stated purely in terms of these functions, preventing misuse
+// with arbitrary values.  Use `reveal(fn_name)` in proof blocks that need to
+// inspect the definition.
+/// √(id) ∈ F_p — square root of the product i·d, where i = √(−1) and d
+/// is the Edwards curve parameter. Used in the s = 0, t = 1 branch of
+/// the Elligator inverse: Elligator(√(id)) maps to the identity (0, 1).
+pub open spec fn sqrt_id() -> nat {
+    fe51_as_canonical_nat(&lizard_constants::SQRT_ID)
+}
+
+/// (d + 1)/(d − 1) ∈ F_p — the ratio used in the Elligator inverse to
+/// compute a = (t + 1) · (d+1)/(d−1) in the s ≢ 0 branch.
+pub open spec fn dp1_over_dm1() -> nat {
+    fe51_as_canonical_nat(&lizard_constants::DP1_OVER_DM1)
+}
+
+/// Elligator inverse on the Jacobi quartic: (s, t) → (success, r₀).
+///
+/// Given a Jacobi quartic point (s, t) ∈ J(F_p), attempts to find r₀ ∈ F_p
+/// such that Elligator(r₀) maps to the Edwards point θ(s, t).
+///
+/// Three branches:
+///   1. s ≡ 0, t ≡ 1: (true, √(id))  — identity preimage
+///   2. s ≡ 0, t ≢ 1: (true, 0)       — coset partner preimage
+///   3. s ≢ 0: compute a = (t+1)·(d+1)/(d−1), inv_sq_y = (s⁴ − a²)·i.
+///      If inv_sq_y has a nonzero invsqrt y: (true, |(a ± s²)·y|),
+///      where ± is the sign of s. Otherwise: (false, 0).
+///
+/// Reference: Westerbaan (2019) / go-ristretto, based on Hamburg (2015)
+///   "Decaf" Appendix C (Elligator inverse on J), reparameterized for
+///   Ristretto (ristretto.group/formulas/elligator.html).
+///
+/// Opaque to prevent solver explosion; use `reveal(spec_elligator_inv)`.
+#[verifier::opaque]
+pub open spec fn spec_elligator_inv(s: nat, t: nat) -> (bool, nat)
+    recommends
+        s < p(),
+        t < p(),
+{
+    if field_canonical(s) == 0 {
+        if field_canonical(t) == 1 {
+            (true, sqrt_id())
+        } else {
+            (true, 0)
+        }
+    } else {
+        // a = (t + 1) · (d+1)/(d−1)
+        let a = field_mul(field_add(t, 1), dp1_over_dm1());
+        // s2 = s²
+        let s2 = field_square(s);
+        // s4 = s⁴
+        let s4 = field_square(s2);
+        // inv_sq_y = (s⁴ − a²) · i
+        let inv_sq_y = field_mul(field_sub(s4, field_square(a)), sqrt_m1());
+        // y = 1/√(inv_sq_y)
+        let y = nat_invsqrt(inv_sq_y);
+        let sq = field_canonical(inv_sq_y) != 0 && is_sqrt_ratio(1, inv_sq_y, y);
+        if !sq {
+            (false, 0)
+        } else {
+            // pms2 = is_negative(s) ? −s² : s²
+            let pms2 = if is_negative(s) {
+                field_neg(s2)
+            } else {
+                s2
+            };
+            // x = (a + pms2) · y
+            let x = field_mul(field_add(a, pms2), y);
+            (true, field_abs(x))
+        }
+    }
+}
+
+/// ma = −2/√(−d−1) ∈ F_p — the x-coordinate scaling factor in the dual
+/// isogeny θ̂: E → J for pair 0-1 (Z−Y, Z+Y basis).
+pub open spec fn mdouble_invsqrt_a_minus_d() -> nat {
+    fe51_as_canonical_nat(&lizard_constants::MDOUBLE_INVSQRT_A_MINUS_D)
+}
+
+/// mb = −1/√(1+d) ∈ F_p — the scaling factor for the torsion-rotated
+/// pair 2-3 (iZ−X, iZ+X basis) in the dual isogeny θ̂.
+pub open spec fn minvsqrt_one_plus_d() -> nat {
+    fe51_as_canonical_nat(&lizard_constants::MINVSQRT_ONE_PLUS_D)
+}
+
+/// mc ∈ F_p — the t-coordinate value for pair 2-3 in the edge case
+/// (X = 0 ∨ Y = 0). Defined by mc · √(ad−1) = 2√(−1).
+pub open spec fn midouble_invsqrt_a_minus_d() -> nat {
+    fe51_as_canonical_nat(&lizard_constants::MIDOUBLE_INVSQRT_A_MINUS_D)
+}
+
+/// Dual isogeny θ̂: E → J applied to the 4-element Ristretto coset.
+///
+/// Given P = (X:Y:Z:T) on the twisted Edwards curve E_{a,d}, compute
+/// 4 Jacobi quartic points [(s₀,t₀), (s₁,t₁), (s₂,t₂), (s₃,t₃)]
+/// such that the forward isogeny θ maps each back to a coset member:
+///   θ(sᵢ, tᵢ) ∈ { P, P+T₂, P+T₄, P+T₆ }
+///
+/// Computation:
+///   γ     = 1/√(Y⁴ · X² · (Z² − Y²))
+///   den₁  = γ · Y²
+///   den₂  = −(Z² − Y²) · mb · γ     (mb = −1/√(1+d))
+///
+///   Pair 0-1 (Z−Y, Z+Y basis):  s₀ = den₁·(Z−Y)·X,  s₁ = −den₁·(Z+Y)·X
+///   Pair 2-3 (iZ−X, iZ+X basis): s₂ = den₂·(iZ−X)·Y, s₃ = −den₂·(iZ+X)·Y
+///   t-coordinates via  tⱼ = ma · Z · (s_over_x or s_over_y)
+///     where ma = −2/√(−d−1).
+///
+/// Edge case (X = 0 ∨ Y = 0): formulas evaluate to s₀=s₁=0, t₀=t₁=1, s₂=1, s₃=−1, t₂=t₃=mc.
+///
+/// Reference: Hamburg (2015) "Decaf" §3 (coset), §4.1 (θ̂);
+///   ristretto.group/formulas/encoding.html.
+///
+/// Opaque; use `reveal(spec_to_jacobi_quartic_ristretto)` in proof blocks.
+#[verifier::opaque]
+pub open spec fn spec_to_jacobi_quartic_ristretto(point: crate::edwards::EdwardsPoint) -> [(
+    nat,
+    nat,
+); 4]
+    recommends
+        is_well_formed_edwards_point(point),
+{
+    let (xn, yn, zn, _tn) = edwards_point_as_nat(point);
+
+    // x2 = X²
+    let x2 = field_square(xn);
+    // y2 = Y²
+    let y2 = field_square(yn);
+    // y4 = Y⁴
+    let y4 = field_square(y2);
+    // z2 = Z²
+    let z2 = field_square(zn);
+    // z_min_y = Z − Y
+    let z_min_y = field_sub(zn, yn);
+    // z_pl_y = Z + Y
+    let z_pl_y = field_add(zn, yn);
+    // z2_min_y2 = Z² − Y²
+    let z2_min_y2 = field_sub(z2, y2);
+
+    // gamma = 1/√(Y⁴ · X² · (Z² − Y²))
+    let gamma = nat_invsqrt(field_mul(field_mul(y4, x2), z2_min_y2));
+
+    // den1 = gamma · Y²
+    let den1 = field_mul(gamma, y2);
+    // s_over_x = den1 · (Z − Y)
+    let s_over_x = field_mul(den1, z_min_y);
+    // sp_over_xp = den1 · (Z + Y)
+    let sp_over_xp = field_mul(den1, z_pl_y);
+
+    // s0 = (s_over_x) · X
+    let s0 = field_mul(s_over_x, xn);
+    // s1 = −(sp_over_xp) · X
+    let s1 = field_mul(field_neg(sp_over_xp), xn);
+
+    // ma = −2/√(−d − 1)
+    let ma = mdouble_invsqrt_a_minus_d();
+    // tmp1 = ma · Z
+    let tmp1 = field_mul(ma, zn);
+    // t0_gen = ma · Z · s_over_x
+    let t0_gen = field_mul(tmp1, s_over_x);
+    // t1_gen = ma · Z · sp_over_xp
+    let t1_gen = field_mul(tmp1, sp_over_xp);
+
+    // neg_z2_min_y2 = −(Z² − Y²)
+    let neg_z2_min_y2 = field_neg(z2_min_y2);
+    // mb = −1/√(1 + d)
+    let mb = minvsqrt_one_plus_d();
+    // den2 = −(Z² − Y²) · mb · gamma
+    let den2 = field_mul(field_mul(neg_z2_min_y2, mb), gamma);
+
+    // iz = i · Z
+    let iz = field_mul(sqrt_m1(), zn);
+    // iz_min_x = iZ − X
+    let iz_min_x = field_sub(iz, xn);
+    // iz_pl_x = iZ + X
+    let iz_pl_x = field_add(iz, xn);
+
+    // s_over_y = den2 · (iZ − X)
+    let s_over_y = field_mul(den2, iz_min_x);
+    // sp_over_yp = den2 · (iZ + X)
+    let sp_over_yp = field_mul(den2, iz_pl_x);
+
+    // s2_gen = s_over_y · Y
+    let s2_gen = field_mul(s_over_y, yn);
+    // s3_gen = −(sp_over_yp) · Y
+    let s3_gen = field_mul(field_neg(sp_over_yp), yn);
+
+    // tmp2 = ma · iZ
+    let tmp2 = field_mul(ma, iz);
+    // t2_gen = ma · iZ · s_over_y
+    let t2_gen = field_mul(tmp2, s_over_y);
+    // t3_gen = ma · iZ · sp_over_yp
+    let t3_gen = field_mul(tmp2, sp_over_yp);
+
+    let x_or_y_zero = xn == 0 || yn == 0;
+    let mc = midouble_invsqrt_a_minus_d();
+
+    let t0 = if x_or_y_zero {
+        1nat
+    } else {
+        t0_gen
+    };
+    let t1 = if x_or_y_zero {
+        1nat
+    } else {
+        t1_gen
+    };
+    let t2 = if x_or_y_zero {
+        mc
+    } else {
+        t2_gen
+    };
+    let t3 = if x_or_y_zero {
+        mc
+    } else {
+        t3_gen
+    };
+    let s2 = if x_or_y_zero {
+        1nat
+    } else {
+        s2_gen
+    };
+    let s3 = if x_or_y_zero {
+        field_neg(1)
+    } else {
+        s3_gen
+    };
+
+    [(s0, t0), (s1, t1), (s2, t2), (s3, t3)]
+}
+
+// =============================================================================
+// Decoding candidates: P ──JQ──► 4 × (S,T) ──inv + dual──► 8 × (ok, r)
+// =============================================================================
+/// The 8 candidate `(ok, r)` pairs produced by Elligator inversion over the
+/// 4 Jacobi quartic points and their duals.
+///
+/// For each Jacobi quartic pair `(s_i, t_i)` from
+/// `spec_to_jacobi_quartic_ristretto(point)`:
+/// - slot `2i`:   `spec_elligator_inv(s_i, t_i)`
+/// - slot `2i+1`: `spec_elligator_inv(−s_i, −t_i)`  (the dual)
+///
+/// When `result[j].0` is true, `result[j].1` is a field element whose forward
+/// Elligator image lies in the Ristretto coset of `point`.
+pub open spec fn spec_lizard_decode_candidates(point: crate::edwards::EdwardsPoint) -> [(
+    bool,
+    nat,
+); 8]
+    recommends
+        is_well_formed_edwards_point(point),
+{
+    let jcs = spec_to_jacobi_quartic_ristretto(point);
+    [
+        spec_elligator_inv(jcs[0].0, jcs[0].1),
+        spec_elligator_inv(field_neg(jcs[0].0), field_neg(jcs[0].1)),
+        spec_elligator_inv(jcs[1].0, jcs[1].1),
+        spec_elligator_inv(field_neg(jcs[1].0), field_neg(jcs[1].1)),
+        spec_elligator_inv(jcs[2].0, jcs[2].1),
+        spec_elligator_inv(field_neg(jcs[2].0), field_neg(jcs[2].1)),
+        spec_elligator_inv(jcs[3].0, jcs[3].1),
+        spec_elligator_inv(field_neg(jcs[3].0), field_neg(jcs[3].1)),
+    ]
+}
+
+// =============================================================================
+// SHA consistency check for decode candidates
+// =============================================================================
+/// SHA round-trip consistency for a single decode candidate.
+///
+/// Given a candidate field element value `r ∈ [0, p)`, checks whether the
+/// canonical 32-byte encoding of `r` equals `spec_lizard_fe_bytes(m)` where
+/// `m` is the 16-byte payload at bytes 8..24. Mirrors the exec-level
+/// `buf2 == h` check in `lizard_decode_verus`.
+pub open spec fn spec_candidate_sha_consistent(r: nat) -> bool
+    recommends
+        r < p(),
+{
+    let b = u8_32_from_nat(r);
+    let msg = Seq::new(16, |i: int| b[(8 + i) as int]);
+    b == spec_lizard_fe_bytes(msg)
+}
+
+/// Count of SHA-consistent candidates for a given point.
+///
+/// The spec-level equivalent of the exec-level `n_found` loop counter.
+/// Each slot contributes 1 if the candidate is valid (`ok == true`) AND
+/// its canonical bytes pass the SHA round-trip check.
+///
+/// Deterministic function of the point — no free parameters.
+pub open spec fn spec_sha_consistent_count(point: crate::edwards::EdwardsPoint) -> nat
+    recommends
+        is_well_formed_edwards_point(point),
+{
+    let c = spec_lizard_decode_candidates(point);
+    (if c[0].0 && spec_candidate_sha_consistent(c[0].1) {
+        1nat
+    } else {
+        0nat
+    }) + (if c[1].0 && spec_candidate_sha_consistent(c[1].1) {
+        1nat
+    } else {
+        0nat
+    }) + (if c[2].0 && spec_candidate_sha_consistent(c[2].1) {
+        1nat
+    } else {
+        0nat
+    }) + (if c[3].0 && spec_candidate_sha_consistent(c[3].1) {
+        1nat
+    } else {
+        0nat
+    }) + (if c[4].0 && spec_candidate_sha_consistent(c[4].1) {
+        1nat
+    } else {
+        0nat
+    }) + (if c[5].0 && spec_candidate_sha_consistent(c[5].1) {
+        1nat
+    } else {
+        0nat
+    }) + (if c[6].0 && spec_candidate_sha_consistent(c[6].1) {
+        1nat
+    } else {
+        0nat
+    }) + (if c[7].0 && spec_candidate_sha_consistent(c[7].1) {
+        1nat
+    } else {
+        0nat
+    })
+}
+
+/// Partial SHA-consistent count for slots `0..j` of a candidate array.
+///
+/// Recursive accumulator used as the loop invariant in `lizard_decode_verus`
+/// to tie the exec-level `n_found` counter to the spec-level count.
+/// At `j == 8`, equals `spec_sha_consistent_count(point)`.
+pub open spec fn partial_sha_consistent_count(candidates: [(bool, nat); 8], j: int) -> nat
+    decreases j,
+{
+    if j <= 0 {
+        0
+    } else {
+        partial_sha_consistent_count(candidates, j - 1) + if candidates[(j - 1) as int].0
+            && spec_candidate_sha_consistent(candidates[(j - 1) as int].1) {
+            1nat
+        } else {
+            0nat
+        }
+    }
 }
 
 // =============================================================================
@@ -242,14 +608,7 @@ pub open spec fn lizard_has_unique_preimage(point: (nat, nat)) -> bool {
 /// Return the unique preimage, or `None` (collision / no preimage).
 pub closed spec fn spec_lizard_decode(point: (nat, nat)) -> Option<Seq<u8>> {
     if lizard_has_unique_preimage(point) {
-        Some(
-            choose|data: Seq<u8>|
-                data.len() == 16 && #[trigger] is_lizard_preimage(data, point) && forall|
-                    data2: Seq<u8>,
-                |
-                    data2.len() == 16 && #[trigger] is_lizard_preimage(data2, point) ==> data2
-                        == data,
-        )
+        Some(choose|data: Seq<u8>| data.len() == 16 && #[trigger] is_lizard_preimage(data, point))
     } else {
         None
     }
@@ -353,6 +712,28 @@ pub proof fn lemma_lizard_roundtrip_ristretto(data: Seq<u8>)
     let enc = spec_lizard_encode(data);
     let coset = ristretto_coset_affine(enc.0, enc.1);
     assert(is_lizard_preimage_coset(data, coset));
+}
+
+/// Witness lemma: if `data` is the unique coset preimage, the spec decode returns it.
+pub proof fn lemma_lizard_decode_ristretto_witness(x: nat, y: nat, data: Seq<u8>)
+    requires
+        data.len() == 16,
+        is_lizard_preimage_coset(data, ristretto_coset_affine(x, y)),
+        lizard_ristretto_has_unique_preimage(x, y),
+    ensures
+        spec_lizard_decode_ristretto(x, y) == Some(data),
+{
+    reveal(spec_lizard_decode_ristretto);
+}
+
+/// None lemma: if no unique coset preimage exists, the spec decode returns None.
+pub proof fn lemma_lizard_decode_ristretto_none(x: nat, y: nat)
+    requires
+        !lizard_ristretto_has_unique_preimage(x, y),
+    ensures
+        spec_lizard_decode_ristretto(x, y).is_None(),
+{
+    reveal(spec_lizard_decode_ristretto);
 }
 
 } // verus!

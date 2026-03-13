@@ -23,3 +23,5 @@ pub mod edwards_lemmas;
 pub mod scalar_lemmas_;
 
 pub mod ristretto_lemmas;
+
+pub mod lizard_lemmas;

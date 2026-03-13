@@ -165,28 +165,41 @@ pub open spec fn montgomery_add(P: MontgomeryAffine, Q: MontgomeryAffine) -> Mon
             }
             // P = Q (doubling)
              else if u1 == u2 && v1 == v2 {
+                // u1²
                 let u1_sq = field_square(u1);
+                // numerator = 3·u1² + 2·A·u1 + 1
                 let numerator = field_add(
                     field_add(field_mul(3, u1_sq), field_mul(field_mul(2, A), u1)),
                     1,
                 );
+                // denominator = 2·v1
                 let denominator = field_mul(2, v1);
+                // λ = numerator / denominator
                 let lambda = field_mul(numerator, field_inv(denominator));
 
+                // λ²
                 let lambda_sq = field_square(lambda);
+                // u3 = λ² - A - 2·u1
                 let u3 = field_sub(field_sub(lambda_sq, A), field_mul(2, u1));
+                // v3 = λ·(u1 - u3) - v1
                 let v3 = field_sub(field_mul(lambda, field_sub(u1, u3)), v1);
 
                 MontgomeryAffine::Finite { u: u3, v: v3 }
             }
             // Add for distinct points P != Q
              else {
+                // numerator = v2 - v1
                 let numerator = field_sub(v2, v1);
+                // denominator = u2 - u1
                 let denominator = field_sub(u2, u1);
+                // λ = (v2 - v1) / (u2 - u1)
                 let lambda = field_mul(numerator, field_inv(denominator));
 
+                // λ²
                 let lambda_sq = field_square(lambda);
+                // u3 = λ² - A - u1 - u2
                 let u3 = field_sub(field_sub(field_sub(lambda_sq, A), u1), u2);
+                // v3 = λ·(u1 - u3) - v1
                 let v3 = field_sub(field_mul(lambda, field_sub(u1, u3)), v1);
 
                 MontgomeryAffine::Finite { u: u3, v: v3 }

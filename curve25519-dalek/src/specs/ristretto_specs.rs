@@ -70,21 +70,32 @@ verus! {
 ///
 /// Reference: [RISTRETTO] §5.3; [DECAF] §6; https://ristretto.group/formulas/encoding.html
 pub open spec fn ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> [u8; 32] {
+    // u1 = (Z + Y)(Z - Y)
     let u1 = field_mul(field_add(z, y), field_sub(z, y));
+    // u2 = X·Y
     let u2 = field_mul(x, y);
+    // invsqrt = 1/sqrt(u1·u2²)
     let invsqrt = nat_invsqrt(field_mul(u1, field_square(u2)));
+    // i1 = invsqrt·u1
     let i1 = field_mul(invsqrt, u1);
+    // i2 = invsqrt·u2
     let i2 = field_mul(invsqrt, u2);
+    // z_inv = i1·i2·T
     let z_inv = field_mul(i1, field_mul(i2, t));
+    // den_inv = i2
     let den_inv = i2;
 
+    // iX = i·X  (i = sqrt(-1))
     let iX = field_mul(x, sqrt_m1());
+    // iY = i·Y
     let iY = field_mul(y, sqrt_m1());
+    // enchanted_denominator = i1·INVSQRT_A_MINUS_D
     let enchanted_denominator = field_mul(
         i1,
         fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D),
     );
 
+    // rotate = is_negative(T·z_inv)
     let rotate = is_negative(field_mul(t, z_inv));
     let x_rot = if rotate {
         iY
@@ -102,12 +113,15 @@ pub open spec fn ristretto_compress_extended(x: nat, y: nat, z: nat, t: nat) -> 
         den_inv
     };
 
+    // y_final = -y_rot if x_rot·z_inv is negative, else y_rot
     let y_final = if is_negative(field_mul(x_rot, z_inv)) {
         field_neg(y_rot)
     } else {
         y_rot
     };
+    // s = den_inv_rot · (Z - y_final)
     let s = field_mul(den_inv_rot, field_sub(z, y_final));
+    // s_final = |s|
     let s_final = if is_negative(s) {
         field_neg(s)
     } else {
@@ -155,26 +169,41 @@ pub open spec fn ristretto_compress_affine(x: nat, y: nat) -> [u8; 32] {
 /// Full Ristretto decode for field element s.
 /// Returns (x, y, ok) where ok indicates the invsqrt succeeded (square case).
 pub open spec fn ristretto_decode_inner(s: nat) -> (nat, nat, bool) {
+    // s² = s·s
     let ss = field_square(s);
+    // u1 = 1 - s²
     let u1 = field_sub(1, ss);
+    // u2 = 1 + s²
     let u2 = field_add(1, ss);
+    // u2² = u2·u2
     let u2_sqr = field_square(u2);
+    // neg_d = -d
     let neg_d = field_neg(fe51_as_canonical_nat(&EDWARDS_D));
+    // u1² = u1·u1
     let u1_sqr = field_square(u1);
+    // v = -d·u1² - u2²
     let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
 
+    // v_u2_sqr = v·u2²
     let v_u2_sqr = field_mul(v, u2_sqr);
+    // invsqrt = 1/sqrt(v·u2²)
     let invsqrt = nat_invsqrt(v_u2_sqr);
+    // ok = is_sqrt_ratio(1, v·u2², invsqrt)
     let ok = is_sqrt_ratio(1, v_u2_sqr, invsqrt);
 
+    // Dx = invsqrt·u2
     let dx = field_mul(invsqrt, u2);
+    // Dy = invsqrt·Dx·v
     let dy = field_mul(invsqrt, field_mul(dx, v));
+    // x_tmp = 2s·Dx
     let x_tmp = field_mul(field_add(s, s), dx);
+    // x = |x_tmp|
     let x = if is_negative(x_tmp) {
         field_neg(x_tmp)
     } else {
         x_tmp
     };
+    // y = u1·Dy
     let y = field_mul(u1, dy);
 
     (x, y, ok)
@@ -260,15 +289,23 @@ pub open spec fn spec_sqrt_ad_minus_one() -> nat {
 /// Reference: [RISTRETTO] §4.3.4; https://ristretto.group/formulas/elligator.html
 pub open spec fn spec_elligator_ristretto_flavor(r_0: nat) -> (nat, nat) {
     let (s, n_t, d_val) = elligator_intermediates(r_0);
+    // s² = s·s
     let s_sq = field_square(s);
 
+    // sqrt_ad_minus_one = sqrt(-d - 1)
     let sqrt_ad_minus_one = spec_sqrt_ad_minus_one();
+    // X = 2·s·D
     let x_completed = field_mul(field_mul(2, s), d_val);
+    // Z = N_t · sqrt(-d - 1)
     let z_completed = field_mul(n_t, sqrt_ad_minus_one);
+    // Y = 1 - s²
     let y_completed = field_sub(1, s_sq);
+    // T = 1 + s²
     let t_completed = field_add(1, s_sq);
 
+    // x = X/Z
     let x_affine = field_mul(x_completed, field_inv(z_completed));
+    // y = Y/T
     let y_affine = field_mul(y_completed, field_inv(t_completed));
 
     (x_affine, y_affine)
@@ -389,20 +426,31 @@ pub open spec fn ristretto_equivalent(p1: EdwardsPoint, p2: EdwardsPoint) -> boo
 ///   n_t   = N_t = c·(r−1)·(d−1)² − D
 ///   d_val = D = (c₀ − d·r)(r + d)
 pub open spec fn elligator_intermediates(r_0: nat) -> (nat, nat, nat) {
+    // i = sqrt(-1)
     let i = sqrt_m1();
     let d = fe51_as_canonical_nat(&EDWARDS_D);
+    // one_minus_d_sq = (1 - d)(1 + d)
     let one_minus_d_sq = field_mul(field_sub(1, d), field_add(1, d));
+    // d_minus_one_sq = (d - 1)²
     let d_minus_one_sq = field_square(field_sub(d, 1));
+    // c₀ = -1
     let c_init: nat = field_neg(1);
 
+    // r = i·r_0²
     let r = field_mul(i, field_square(r_0));
+    // N_s = (r + 1)(1 - d²)
     let n_s = field_mul(field_add(r, 1), one_minus_d_sq);
+    // D = (c₀ - d·r)(r + d)
     let d_val = field_mul(field_sub(c_init, field_mul(d, r)), field_add(r, d));
 
+    // invsqrt = 1/sqrt(N_s · D)
     let invsqrt_val = nat_invsqrt(field_mul(n_s, d_val));
+    // s_if_square = |invsqrt · N_s|
     let s_if_square = field_abs(field_mul(invsqrt_val, n_s));
+    // was_square = is_sqrt_ratio(N_s, D, s_if_square)
     let was_square = is_sqrt_ratio(n_s, d_val, s_if_square);
 
+    // s_prime_raw = s_if_square · r_0
     let s_prime_raw = field_mul(s_if_square, r_0);
     let s_prime = if !is_negative(s_prime_raw) {
         field_neg(s_prime_raw)
@@ -410,16 +458,19 @@ pub open spec fn elligator_intermediates(r_0: nat) -> (nat, nat, nat) {
         s_prime_raw
     };
 
+    // s = s_if_square if was_square, else s'
     let s = if was_square {
         s_if_square
     } else {
         s_prime
     };
+    // c = c₀ if was_square, else r
     let c = if was_square {
         c_init
     } else {
         r
     };
+    // N_t = c·(r - 1)·(d - 1)² - D
     let n_t = field_sub(field_mul(field_mul(c, field_sub(r, 1)), d_minus_one_sq), d_val);
 
     (s, n_t, d_val)
@@ -445,16 +496,22 @@ pub open spec fn batch_compress_body(
     fh: nat,
     inv: nat,
 ) -> [u8; 32] {
+    // zinv = E·G·inv
     let zinv = field_mul(eg, inv);
+    // tinv = F·H·inv
     let tinv = field_mul(fh, inv);
 
     let invsqrt_a_minus_d = fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D);
 
+    // negcheck1 = is_negative(E·G·zinv)
     let negcheck1 = is_negative(field_mul(eg, zinv));
 
+    // minus_e = -E
     let minus_e = field_neg(e);
+    // f_times_sqrta = F·sqrt(-1)
     let f_times_sqrta = field_mul(f, sqrt_m1());
 
+    // e_rot, g_rot, h_rot: if negcheck1 rotate (E,G,H) → (G, -E, F·sqrt(-1))
     let e_rot = if negcheck1 {
         g
     } else {
@@ -470,21 +527,26 @@ pub open spec fn batch_compress_body(
     } else {
         h
     };
+    // magic = sqrt(-1) if negcheck1 else INVSQRT_A_MINUS_D
     let magic = if negcheck1 {
         sqrt_m1()
     } else {
         invsqrt_a_minus_d
     };
 
+    // negcheck2 = is_negative(H_rot·E_rot·zinv)
     let negcheck2 = is_negative(field_mul(field_mul(h_rot, e_rot), zinv));
 
+    // g_final = -g_rot if negcheck2 else g_rot
     let g_final = if negcheck2 {
         field_neg(g_rot)
     } else {
         g_rot
     };
 
+    // s = (H_rot - g_final) · magic · g_final · tinv
     let s = field_mul(field_sub(h_rot, g_final), field_mul(magic, field_mul(g_final, tinv)));
+    // s_final = |s|
     let s_final = if is_negative(s) {
         field_neg(s)
     } else {

@@ -14,6 +14,15 @@ use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 #[allow(unused_imports)]
 use crate::specs::ristretto_specs::*;
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
+    axiom_edwards_add_closed,
+    lemma_affine_point_representable,
+    lemma_double_distributes,
+    lemma_double_is_scalar_mul_2,
+    lemma_edwards_add_canonical,
+    lemma_valid_extended_point_affine_on_curve,
+};
 use vstd::prelude::*;
 
 verus! {
@@ -191,7 +200,77 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
                 edwards_point_as_affine(p2).1,
             ) && is_well_formed_edwards_point(result) ==> is_in_even_subgroup(result),
 {
-    admit();
+    // Step 1: Extract witnesses q1, q2 from is_in_even_subgroup
+    let q1 = choose|q: EdwardsPoint|
+        edwards_point_as_affine(p1) == edwards_scalar_mul(
+            #[trigger] edwards_point_as_affine(q), 2);
+    let q2 = choose|q: EdwardsPoint|
+        edwards_point_as_affine(p2) == edwards_scalar_mul(
+            #[trigger] edwards_point_as_affine(q), 2);
+
+    // Step 2: Get affine coordinates of q1, q2
+    let q1_affine = edwards_point_as_affine(q1);
+    let q2_affine = edwards_point_as_affine(q2);
+
+    // Step 3: scalar_mul(P, 2) == double(P)
+    lemma_double_is_scalar_mul_2(q1_affine);
+    lemma_double_is_scalar_mul_2(q2_affine);
+    // Now: affine(p1) == double(q1_affine), affine(p2) == double(q2_affine)
+
+    // Step 4: Every EdwardsPoint satisfies the type invariant (well_formed).
+    // This gives is_valid_edwards_point, from which we derive is_on_edwards_curve for affine coords.
+    // Note: uses lemma_edwards_type_invariant which admits the type invariant for ghost-mode values.
+    // This is sound because `#[verifier::type_invariant]` guarantees well_formed() for all instances.
+    lemma_edwards_type_invariant(q1);
+    lemma_edwards_type_invariant(q2);
+    let q1_nat = edwards_point_as_nat(q1);
+    let q2_nat = edwards_point_as_nat(q2);
+    lemma_valid_extended_point_affine_on_curve(q1_nat.0, q1_nat.1, q1_nat.2, q1_nat.3);
+    lemma_valid_extended_point_affine_on_curve(q2_nat.0, q2_nat.1, q2_nat.2, q2_nat.3);
+
+    // Step 5: Edwards add is closed on the curve
+    axiom_edwards_add_closed(q1_affine.0, q1_affine.1, q2_affine.0, q2_affine.1);
+
+    // Step 6: Add result coordinates are < p()
+    lemma_edwards_add_canonical(q1_affine.0, q1_affine.1, q2_affine.0, q2_affine.1);
+
+    // Step 7: Construct witness w with affine(w) == add(q1, q2)
+    let q_sum = edwards_add(q1_affine.0, q1_affine.1, q2_affine.0, q2_affine.1);
+    lemma_affine_point_representable(q_sum.0, q_sum.1);
+    let w = choose|w: EdwardsPoint|
+        edwards_point_as_affine(w) == (q_sum.0, q_sum.1)
+        && is_well_formed_edwards_point(w);
+
+    // Step 8: double distributes over add: double(q1+q2) == double(q1) + double(q2)
+    lemma_double_distributes(q1_affine, q2_affine);
+    // double(q_sum) == add(double(q1_affine), double(q2_affine))
+    //              == add(affine(p1), affine(p2))
+
+    // Step 9: double(q_sum) == scalar_mul(affine(w), 2)
+    lemma_double_is_scalar_mul_2(q_sum);
+    // edwards_double(q_sum.0, q_sum.1) == edwards_scalar_mul(q_sum, 2)
+    // Since affine(w) == q_sum:
+    // edwards_scalar_mul(affine(w), 2) == edwards_double(q_sum.0, q_sum.1)
+    //                                  == add(affine(p1), affine(p2))
+    //                                  == affine(result)
+
+    // Step 10: For any result matching the ensures pattern, w witnesses is_in_even_subgroup
+    assert forall|result: EdwardsPoint|
+        edwards_point_as_affine(result) == edwards_add(
+            edwards_point_as_affine(p1).0,
+            edwards_point_as_affine(p1).1,
+            edwards_point_as_affine(p2).0,
+            edwards_point_as_affine(p2).1,
+        ) && is_well_formed_edwards_point(result) implies is_in_even_subgroup(result) by {
+        // affine(result) == add(affine(p1), affine(p2))
+        //               == add(double(q1), double(q2))   [from step 3]
+        //               == double(add(q1, q2))            [from step 8]
+        //               == scalar_mul(q_sum, 2)           [from step 9]
+        //               == scalar_mul(affine(w), 2)       [since affine(w) == q_sum]
+        // So w witnesses is_in_even_subgroup(result)
+        assert(edwards_point_as_affine(result) == edwards_scalar_mul(
+            edwards_point_as_affine(w), 2));
+    }
 }
 
 // =============================================================================

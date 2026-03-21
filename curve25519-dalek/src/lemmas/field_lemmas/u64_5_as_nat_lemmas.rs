@@ -489,6 +489,151 @@ pub proof fn lemma_fe51_unit_is_one(fe: &FieldElement51)
     lemma_small_mod(1nat, p());
 }
 
+// =============================================================================
+// nat_to_fe51 lemmas
+// =============================================================================
+
+/// Each limb of nat_to_fe51(n) is less than pow2(51).
+pub proof fn lemma_nat_to_fe51_bounded(n: nat)
+    ensures
+        forall|i: int| 0 <= i < 5 ==> (nat_to_fe51(n).limbs[i] as nat) < pow2(51),
+{
+    let b = pow2(51) as int;
+    lemma_pow2_pos(51);
+
+    // Each limb is (something) % pow2(51), which is < pow2(51)
+    vstd::arithmetic::div_mod::lemma_mod_bound(n as int, b);
+    vstd::arithmetic::div_mod::lemma_mod_bound((n / pow2(51)) as int, b);
+    vstd::arithmetic::div_mod::lemma_mod_bound((n / pow2(102)) as int, b);
+    vstd::arithmetic::div_mod::lemma_mod_bound((n / pow2(153)) as int, b);
+    vstd::arithmetic::div_mod::lemma_mod_bound((n / pow2(204)) as int, b);
+}
+
+/// The base-2^51 decomposition reconstructs the original value for n < pow2(255).
+pub proof fn lemma_nat_to_fe51_roundtrip(n: nat)
+    requires
+        n < pow2(255),
+    ensures
+        u64_5_as_nat(nat_to_fe51(n).limbs) == n,
+{
+    let b = pow2(51) as int;
+    lemma_pow2_pos(51);
+    lemma_pow2_pos(102);
+    lemma_pow2_pos(153);
+    lemma_pow2_pos(204);
+
+    // Decompose n into base-2^51 digits using fundamental_div_mod.
+    let n0 = (n % pow2(51)) as nat;
+    let q0 = (n / pow2(51)) as nat;
+    vstd::arithmetic::div_mod::lemma_fundamental_div_mod(n as int, b);
+    vstd::arithmetic::div_mod::lemma_div_pos_is_pos(n as int, b);
+
+    let n1 = (q0 % pow2(51)) as nat;
+    let q1 = (q0 / pow2(51)) as nat;
+    vstd::arithmetic::div_mod::lemma_fundamental_div_mod(q0 as int, b);
+    vstd::arithmetic::div_mod::lemma_div_pos_is_pos(q0 as int, b);
+
+    let n2 = (q1 % pow2(51)) as nat;
+    let q2 = (q1 / pow2(51)) as nat;
+    vstd::arithmetic::div_mod::lemma_fundamental_div_mod(q1 as int, b);
+    vstd::arithmetic::div_mod::lemma_div_pos_is_pos(q1 as int, b);
+
+    let n3 = (q2 % pow2(51)) as nat;
+    let q3 = (q2 / pow2(51)) as nat;
+    vstd::arithmetic::div_mod::lemma_fundamental_div_mod(q2 as int, b);
+    vstd::arithmetic::div_mod::lemma_div_pos_is_pos(q2 as int, b);
+
+    let n4 = (q3 % pow2(51)) as nat;
+    let q4 = (q3 / pow2(51)) as nat;
+    vstd::arithmetic::div_mod::lemma_fundamental_div_mod(q3 as int, b);
+    vstd::arithmetic::div_mod::lemma_div_pos_is_pos(q3 as int, b);
+
+    // Show q3 < pow2(51), hence q4 == 0 and n4 == q3.
+    // n < pow2(255) = pow2(51) * pow2(204), so n/pow2(204) < pow2(51).
+    // Use chained division to establish q3 = n / pow2(204).
+    assert(pow2(51) * pow2(51) == pow2(102)) by { lemma_pow2_adds(51, 51); }
+    assert(pow2(102) * pow2(51) == pow2(153)) by { lemma_pow2_adds(102, 51); }
+    assert(pow2(153) * pow2(51) == pow2(204)) by { lemma_pow2_adds(153, 51); }
+    assert(pow2(51) * pow2(204) == pow2(255)) by { lemma_pow2_adds(51, 204); }
+
+    // Chain: q0 = n/b, q1 = q0/b = n/b^2, q2 = q1/b = n/b^3, q3 = q2/b = n/b^4
+    vstd::arithmetic::div_mod::lemma_div_denominator(n as int, b, b);
+    assert(q1 == (n / pow2(102)) as nat);
+
+    vstd::arithmetic::div_mod::lemma_div_denominator(n as int, pow2(102) as int, b);
+    assert(q2 == (n / pow2(153)) as nat);
+
+    vstd::arithmetic::div_mod::lemma_div_denominator(n as int, pow2(153) as int, b);
+    assert(q3 == (n / pow2(204)) as nat);
+
+    // q3 < pow2(51) because n < pow2(51) * pow2(204)
+    assert(q3 < pow2(51)) by {
+        if q3 >= pow2(51) {
+            vstd::arithmetic::div_mod::lemma_fundamental_div_mod(n as int, pow2(204) as int);
+            lemma_mul_inequality(pow2(51) as int, q3 as int, pow2(204) as int);
+            lemma_mul_is_commutative(pow2(51) as int, pow2(204) as int);
+            lemma_mul_is_commutative(q3 as int, pow2(204) as int);
+        }
+    }
+
+    assert(q4 == 0) by {
+        vstd::arithmetic::div_mod::lemma_basic_div(q3 as int, b);
+    }
+
+    assert(n4 == q3) by {
+        vstd::arithmetic::div_mod::lemma_small_mod(q3 as nat, pow2(51));
+    }
+
+    // Now prove the reconstruction identity:
+    // n = n0 + pow2(51)*n1 + pow2(102)*n2 + pow2(153)*n3 + pow2(204)*q3
+    assert(pow2(51) * pow2(102) == pow2(153)) by { lemma_pow2_adds(51, 102); }
+    assert(pow2(51) * pow2(153) == pow2(204)) by { lemma_pow2_adds(51, 153); }
+
+    // n = b*q0 + n0
+    //   = b*(b*q1 + n1) + n0 = b*b*q1 + b*n1 + n0 = pow2(102)*q1 + pow2(51)*n1 + n0
+    lemma_mul_is_distributive_add(pow2(51) as int, (pow2(51) * q1) as int, n1 as int);
+    lemma_mul_is_associative(pow2(51) as int, pow2(51) as int, q1 as int);
+
+    // ... = pow2(102)*(b*q2 + n2) + pow2(51)*n1 + n0
+    //     = pow2(153)*q2 + pow2(102)*n2 + pow2(51)*n1 + n0
+    lemma_mul_is_distributive_add(pow2(102) as int, (pow2(51) * q2) as int, n2 as int);
+    lemma_mul_is_associative(pow2(102) as int, pow2(51) as int, q2 as int);
+    lemma_mul_is_commutative(pow2(102) as int, pow2(51) as int);
+
+    // ... = pow2(153)*(b*q3 + n3) + pow2(102)*n2 + pow2(51)*n1 + n0
+    //     = pow2(204)*q3 + pow2(153)*n3 + pow2(102)*n2 + pow2(51)*n1 + n0
+    lemma_mul_is_distributive_add(pow2(153) as int, (pow2(51) * q3) as int, n3 as int);
+    lemma_mul_is_associative(pow2(153) as int, pow2(51) as int, q3 as int);
+    lemma_mul_is_commutative(pow2(153) as int, pow2(51) as int);
+
+    // Prove the limb values fit in u64 so the as-u64 casts are identity.
+    lemma_nat_to_fe51_bounded(n);
+    assert(pow2(51) <= u64::MAX as nat) by {
+        lemma2_to64();
+        lemma_pow2_strictly_increases(51, 64);
+    }
+
+    // Connect nat_to_fe51 limbs to decomposition variables.
+    let limbs = nat_to_fe51(n).limbs;
+
+    // n == n0 + pow2(51)*n1 + pow2(102)*n2 + pow2(153)*n3 + pow2(204)*q3
+    // which is u64_5_as_nat(limbs) since limbs encode exactly these values.
+    assert(n == n0 + pow2(51) * n1 + pow2(102) * n2 + pow2(153) * n3 + pow2(204) * q3);
+}
+
+/// Corollary: fe51_as_canonical_nat(&nat_to_fe51(n)) == n for n < p().
+pub proof fn lemma_nat_to_fe51_canonical(n: nat)
+    requires
+        n < p(),
+    ensures
+        fe51_as_canonical_nat(&nat_to_fe51(n)) == n,
+{
+    pow255_gt_19();
+    // n < p() < pow2(255)
+    lemma_nat_to_fe51_roundtrip(n);
+    vstd::arithmetic::div_mod::lemma_small_mod(n as nat, p());
+}
+
 fn main() {
 }
 

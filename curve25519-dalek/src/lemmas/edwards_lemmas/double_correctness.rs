@@ -15,7 +15,7 @@
 //! Proof strategy:
 //!   1. Factor: all result components share the projective factor Z²
 //!   2. Curve eq: use y²-x² = 1+d·x²y² to identify result.Z, result.T as Z²·(1±t)
-//!   3. Nonzero: axiom_edwards_add_complete(x,y,x,y) gives 1+t ≠ 0, 1-t ≠ 0
+//!   3. Nonzero: axiom_edwards_add_denominators_nonzero(x,y,x,y) gives 1+t ≠ 0, 1-t ≠ 0
 //!   4. Cancel: divide out Z² to get affine ratios matching edwards_add(x,y,x,y)
 #[allow(unused_imports)]
 use crate::backend::serial::curve_models::*;
@@ -207,9 +207,9 @@ pub proof fn lemma_double_projective_completed_valid(
     assert(fe51_as_canonical_nat(&result.T) == field_mul(z2, field_sub(1, t)));
 
     // -----------------------------------------------------------------------
-    // STEP 6: Nonzero denominators via axiom_edwards_add_complete
+    // STEP 6: Nonzero denominators via axiom_edwards_add_denominators_nonzero
     // -----------------------------------------------------------------------
-    axiom_edwards_add_complete(x, y, x, y);
+    axiom_edwards_add_denominators_nonzero(x, y, x, y);
     // Gives: field_add(1, t) != 0 && field_sub(1, t) != 0
 
     // Z² != 0
@@ -269,12 +269,12 @@ pub proof fn lemma_double_projective_completed_valid(
     //   completed_point_as_affine_edwards(result).0 = 2xy/(1+t) = edwards_add(x,y,x,y).0
     //   completed_point_as_affine_edwards(result).1 = (y²+x²)/(1-t) = edwards_add(x,y,x,y).1
 
-    // On-curve from axiom_edwards_add_complete
+    // On-curve from axiom_edwards_add_closed
     assert(is_on_edwards_curve(
         field_mul(fe51_as_canonical_nat(&result.X), field_inv(fe51_as_canonical_nat(&result.Z))),
         field_mul(fe51_as_canonical_nat(&result.Y), field_inv(fe51_as_canonical_nat(&result.T))),
     )) by {
-        axiom_edwards_add_complete(x, y, x, y);
+        axiom_edwards_add_closed(x, y, x, y);
     };
 
     // -----------------------------------------------------------------------

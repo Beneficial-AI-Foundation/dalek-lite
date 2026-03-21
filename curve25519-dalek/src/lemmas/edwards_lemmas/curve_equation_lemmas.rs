@@ -1245,7 +1245,7 @@ pub proof fn lemma_neg_distributes_over_add(P: (nat, nat), Q: (nat, nat))
     assert(field_mul(neg_px, neg_qx) == x1x2) by {
         lemma_field_neg_mul_left(px, neg_qx);
         lemma_field_mul_neg(px, qx);
-        lemma_neg_neg(field_mul(px, qx));
+        lemma_field_neg_neg(field_mul(px, qx));
         p_gt_2();
         lemma_mod_bound((px * qx) as int, p() as int);
         lemma_field_element_reduced(field_mul(px, qx));

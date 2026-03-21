@@ -272,7 +272,7 @@ proof fn lemma_sub_via_negation(
     // Denominators swap under negation
     assert(field_sub(1nat, t_prime) == field_add(1nat, t)) by {
         lemma_field_sub_eq_add_neg(1nat, t_prime);
-        lemma_neg_neg(t);
+        lemma_field_neg_neg(t);
         let p = p();
         p_gt_2();
         lemma_add_mod_noop(1nat as int, (t % p) as int, p as int);

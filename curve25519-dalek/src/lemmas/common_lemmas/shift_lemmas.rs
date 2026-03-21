@@ -3,6 +3,7 @@ use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power2::*;
 use vstd::bits::*;
+use vstd::calc;
 use vstd::prelude::*;
 
 use super::mul_lemmas::*;
@@ -51,8 +52,43 @@ pub broadcast proof fn lemma_u128_shl_is_mul(x: u128, shift: u128)
         x * pow2(shift as nat) <= u128::MAX,
     ensures
         #[trigger] (x << shift) == x * pow2(shift as nat),
+    decreases shift,
 {
-    assume(false);  // TODO: prove properly when vstd adds this
+    lemma_u128_pow2_le_max(shift as nat);
+    if shift == 0 {
+        assert(x << 0 == x) by (bit_vector);
+        lemma2_to64();  // provides pow2(0) == 1
+    } else {
+        assert(x << shift == mul(x << ((sub(shift, 1)) as u128), 2)) by (bit_vector)
+            requires
+                0 < shift < 128,
+        ;
+        assert((x << (sub(shift, 1) as u128)) == x * pow2(sub(shift, 1) as nat)) by {
+            lemma_pow2_strictly_increases((shift - 1) as nat, shift as nat);
+            lemma_mul_inequality(
+                pow2((shift - 1) as nat) as int,
+                pow2(shift as nat) as int,
+                x as int,
+            );
+            lemma_mul_is_commutative(x as int, pow2((shift - 1) as nat) as int);
+            lemma_mul_is_commutative(x as int, pow2(shift as nat) as int);
+            lemma_u128_shl_is_mul(x, (shift - 1) as u128);
+        }
+        calc!{ (==)
+            ((x << (sub(shift, 1) as u128)) * 2);
+                {}
+            ((x * pow2(sub(shift, 1) as nat)) * 2);
+                {
+                    lemma_mul_is_associative(x as int, pow2(sub(shift, 1) as nat) as int, 2);
+                }
+            x * ((pow2(sub(shift, 1) as nat)) * 2);
+                {
+                    lemma_pow2_adds((shift - 1) as nat, 1);
+                    lemma2_to64();
+                }
+            x * pow2(shift as nat);
+        }
+    }
 }
 
 // NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)

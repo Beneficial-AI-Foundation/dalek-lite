@@ -1,0 +1,389 @@
+# Spec Taxonomy Configuration for curve25519-dalek (Verus verification)
+#
+# Project: https://github.com/Beneficial-AI-Foundation/dalek-lite
+# Domain: elliptic-curve cryptography (Curve25519, Ed25519, Ristretto, X25519)
+#
+# Classification rules for: probe-verus extract --taxonomy-config <this-file>
+#
+# Design principle: domain-only classification.
+#   - Taxonomy answers: "what domain is this function about?"
+#   - Specs JSON answers: "is this claim proved or assumed?" (kind, has_trusted_assumption)
+#   - axiom_references.md answers: "why do we trust each assumption?" (RFC, paper, test)
+#
+# Trust levels:
+#   "highest" — core mathematical correctness (modular arithmetic, limb bounds,
+#               curve membership, group law, scalar multiplication)
+#   "high"    — derived protocols and encodings (Ristretto, X25519, Elligator,
+#               Lizard, precomputed tables, radix/NAF representations)
+#   "moderate" — helper lemmas and cryptographic assumptions
+#   "n/a"     — pure spec definitions (no correctness claim)
+#
+# Rule semantics:
+#   - All rules are evaluated independently; every matching rule contributes its label
+#   - Within a rule, all criteria must match (AND)
+#   - Within a list criterion, any match suffices (OR)
+#
+# How classification works:
+#   ensures_calls / requires_calls are function names extracted by walking the
+#   verus_syn AST (ExprCall and ExprMethodCall nodes) in each clause.
+#   Specs using only operators/literals/quantifiers have EMPTY ensures_calls.
+#   Use ensures_calls_empty = true to match those.
+
+[taxonomy]
+version = "1"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# DOMAIN RULES (14 rules) — classify functions by what their ensures reference
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ── 1. Field arithmetic ──
+# GF(p) operations: add, sub, mul, neg, square, inv, canonical reduction.
+# p = 2^255 - 19. Every operation must preserve: result ≡ expected (mod p).
+[[taxonomy.rules]]
+label = "field-arithmetic"
+description = "GF(p) modular arithmetic operations and algebraic properties"
+trust = "highest"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "field_add",
+    "field_sub",
+    "field_mul",
+    "field_neg",
+    "field_square",
+    "field_inv",
+    "field_canonical",
+    "fe51_as_canonical_nat",
+    "is_sqrt_ratio",
+    "is_sqrt_ratio_times_i",
+    "nat_invsqrt",
+    "sqrt_m1",
+    "is_square",
+    "is_negative",
+]
+
+# ── 2. Limb representation ──
+# FieldElement51 uses 5×51-bit limbs in u64; Scalar52 uses 5×52-bit limbs.
+# After reduce(): each limb < 2^51. Bounds prevent u64/u128 overflow.
+[[taxonomy.rules]]
+label = "limb-representation"
+description = "Limb bounds and nat-representation invariants for FieldElement51 and Scalar52"
+trust = "highest"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "fe51_limbs_bounded",
+    "sum_of_limbs_bounded",
+    "limbs_bounded",
+    "u64_5_as_nat",
+    "fe51_as_nat",
+    "scalar52_as_nat",
+    "spec_reduce",
+    "u64_4_as_nat",
+    "five_u64_limbs_to_nat",
+    "naf_lookup_table8_affine_limbs_bounded",
+]
+
+# ── 3. Curve equation ──
+# Every output point must lie on the correct curve.
+# Edwards: -x² + y² = 1 + d·x²·y²
+# Montgomery: v² = u³ + A·u² + u
+[[taxonomy.rules]]
+label = "curve-equation"
+description = "Points satisfy the Edwards or Montgomery curve equation"
+trust = "highest"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "is_on_edwards_curve",
+    "is_valid_edwards_point",
+    "is_well_formed_edwards_point",
+    "is_valid_completed_point",
+    "is_on_edwards_curve_projective",
+    "on_montgomery_curve",
+    "is_valid_extended_edwards_point",
+    "is_valid_affine_niels_point",
+    "is_valid_montgomery_point",
+]
+
+# ── 4. Group law ──
+# Edwards and Montgomery point addition, subtraction, doubling,
+# and conversions between projective/extended/completed/Niels forms.
+[[taxonomy.rules]]
+label = "group-law"
+description = "Point addition, subtraction, doubling, and projective conversions"
+trust = "highest"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "edwards_add",
+    "edwards_sub",
+    "edwards_double",
+    "montgomery_add",
+    "montgomery_sub",
+    "edwards_point_as_affine",
+    "completed_point_as_affine_edwards",
+    "projective_to_extended",
+    "identity_affine_niels",
+    "identity_projective_niels",
+    "identity_projective_point_edwards",
+    "is_identity_edwards_point",
+    "negate_projective_niels",
+    "negate_affine_niels",
+    "projective_niels_point_as_affine_edwards",
+    "affine_niels_point_as_affine_edwards",
+    "edwards_scalar_mul_signed",
+]
+
+# ── 5. Scalar arithmetic ──
+# Scalar operations modulo L = 2^252 + 27742317777372353535851937790883648493.
+# Every operation must preserve: result ≡ expected (mod L).
+[[taxonomy.rules]]
+label = "scalar-arithmetic"
+description = "Scalar operations modulo the group order L"
+trust = "highest"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "scalar_as_nat",
+    "scalar_as_canonical",
+    "group_canonical",
+    "is_canonical_scalar",
+    "is_canonical_scalar52",
+    "u8_32_as_group_canonical",
+    "group_order",
+    "partial_product",
+    "is_clamped_integer",
+    "spec_clamp_integer",
+]
+
+# ── 6. Scalar multiplication ──
+# The key security property: [n]P is computed correctly.
+# Covers variable-base, fixed-base (Straus), and multi-scalar (Pippenger).
+[[taxonomy.rules]]
+label = "scalar-multiplication"
+description = "Correctness of scalar multiplication algorithms"
+trust = "highest"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "edwards_scalar_mul",
+    "montgomery_scalar_mul",
+    "montgomery_scalar_mul_u",
+    "pippenger_weighted_bucket_sum",
+    "pippenger_horner",
+    "pow256",
+]
+
+# ── 7. Encoding / decoding ──
+# Bytes ↔ field element, scalar, or point serialization.
+# Roundtrip correctness and canonical form.
+[[taxonomy.rules]]
+label = "encoding-decoding"
+description = "Byte serialization of field elements, scalars, and points"
+trust = "high"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "spec_fe51_from_bytes",
+    "spec_fe51_as_bytes",
+    "u8_32_as_nat",
+    "spec_as_bytes",
+    "field_element_from_bytes",
+    "bytes_seq_as_nat",
+    "edwards_decompress_from_y_and_sign",
+    "compressed_edwards_y_corresponds_to_edwards",
+    "spec_load8_at",
+    "bits_from_index_to_nat",
+    "bytes_as_nat_prefix",
+    "bytes_as_nat_suffix",
+    "byte_bits_value",
+    "bits_as_nat",
+    "slice128_as_nat",
+]
+
+# ── 8. Ristretto protocol ──
+# Ristretto quotient group: compress, decompress, equivalence (E[4] coset),
+# even subgroup membership.
+# Reference: Hamburg (2015) "Decaf"; Hamburg (2019) "Ristretto"
+[[taxonomy.rules]]
+label = "ristretto-protocol"
+description = "Ristretto quotient group compress/decompress and equivalence"
+trust = "high"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "spec_ristretto_compress",
+    "spec_ristretto_decompress",
+    "ristretto_equivalent",
+    "is_in_even_subgroup",
+    "ristretto_decode_x",
+    "ristretto_decode_y",
+    "ristretto_decode_ok",
+    "sum_of_ristretto_points",
+    "spec_edwards_from_ristretto_iter",
+    "spec_optional_edwards_from_ristretto_iter",
+]
+
+# ── 9. Montgomery / X25519 ──
+# Montgomery ladder for X25519, differential addition/doubling,
+# scalar Montgomery reduction pipeline.
+# Reference: RFC 7748; Costello & Smith (2017)
+[[taxonomy.rules]]
+label = "montgomery-x25519"
+description = "Montgomery ladder, X25519, and scalar Montgomery reduction"
+trust = "high"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "spec_x25519_basepoint_u",
+    "spec_elligator_encode",
+    "montgomery_point_as_nat",
+    "montgomery_reduce_input_bounds",
+    "montgomery_congruent",
+    "montgomery_radix",
+    "montgomery_reduce_canonical_bound",
+    "montgomery_corresponds_to_edwards",
+    "spec_state_after_hash_montgomery",
+]
+
+# ── 10. Elligator mapping ──
+# Elligator hash-to-curve: maps field elements to curve points.
+# Used by Ristretto's from_uniform_bytes and by Lizard encoding.
+# Reference: RFC 9380; Bernstein et al. (2013) "Elligator"
+[[taxonomy.rules]]
+label = "elligator-mapping"
+description = "Elligator hash-to-curve map and intermediates"
+trust = "high"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "elligator_intermediates",
+    "spec_nonspec_map_to_curve",
+    "spec_elligator_ristretto_flavor",
+]
+
+# ── 11. Lizard encoding ──
+# Lizard masking/unmasking via Jacobi quartic cosets.
+# Encode: point → masked bytes; Decode: masked bytes → point.
+[[taxonomy.rules]]
+label = "lizard-encoding"
+description = "Lizard encode/decode via Jacobi quartic cosets"
+trust = "high"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "spec_lizard_encode",
+    "spec_lizard_decode",
+    "spec_lizard_decode_ristretto",
+    "is_lizard_preimage_coset",
+    "spec_elligator_inv",
+]
+
+# ── 12. Precomputed tables ──
+# Basepoint multiplication tables (EdwardsBasepointTable, NAF tables).
+# Validated by construction from the basepoint.
+[[taxonomy.rules]]
+label = "precomputed-table"
+description = "Basepoint table structure for windowed scalar multiplication"
+trust = "high"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "is_valid_lookup_table_5",
+    "is_valid_lookup_table_8",
+    "is_valid_naf_lookup_table_5",
+    "is_valid_naf_lookup_table_8",
+]
+
+# Basepoint table functions matched by name (their ensures may not
+# reference the lookup table predicates directly).
+[[taxonomy.rules]]
+label = "precomputed-table"
+description = "Basepoint table structure for windowed scalar multiplication"
+trust = "high"
+
+[taxonomy.rules.match]
+name_contains = ["basepoint_table"]
+
+# ── 13. Radix / NAF representation ──
+# Scalar decomposition into radix-16 digits or non-adjacent form (NAF),
+# and reconstruction back to the scalar value.
+[[taxonomy.rules]]
+label = "radix-naf-representation"
+description = "Scalar radix-16 and NAF decomposition and reconstruction"
+trust = "high"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "reconstruct_radix_16",
+    "is_valid_radix_16",
+    "reconstruct_naf",
+    "is_valid_naf",
+    "reconstruct_radix_2w",
+    "reconstruct",
+    "is_valid_naf_lookup_table8_affine_coords",
+]
+
+# ── 14. Probabilistic property ──
+# Distribution uniformity and independence for hash-to-curve paths
+# and random scalar generation. These are standard cryptographic
+# assumptions, not provable within Verus.
+[[taxonomy.rules]]
+label = "probabilistic-property"
+description = "Distribution uniformity and independence for hash-to-curve"
+trust = "moderate"
+
+[taxonomy.rules.match]
+ensures_calls_contain = [
+    "is_uniform",
+    "is_uniform_field_element",
+    "is_uniform_ristretto_point",
+    "is_uniform_over_elligator_image",
+    "is_independent_uniform_ristretto_points",
+    "is_uniform_bytes",
+    "is_independent_uniform_bytes32",
+    "is_uniform_scalar",
+    "is_independent_uniform_field_elements",
+]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# CATCH-ALL MODE RULES (3 rules) — classify remaining functions by Verus mode
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ── 15. Arithmetic lemma ──
+# Proof functions with ensures that use only operators/literals
+# (div, mod, bit-shift properties). No spec function calls.
+[[taxonomy.rules]]
+label = "arithmetic-lemma"
+description = "Pure arithmetic proof lemma (division, modular, bit-level)"
+trust = "moderate"
+
+[taxonomy.rules.match]
+mode = ["proof"]
+has_ensures = true
+ensures_calls_empty = true
+
+# ── 16. Algebraic property ──
+# Proof functions with ensures that call spec functions.
+# General algebraic lemmas connecting spec definitions.
+[[taxonomy.rules]]
+label = "algebraic-property"
+description = "Algebraic proof lemma referencing spec functions"
+trust = "moderate"
+
+[taxonomy.rules.match]
+mode = ["proof"]
+has_ensures = true
+ensures_calls_empty = false
+
+# ── 17. Specification definition ──
+# Spec-mode functions: pure mathematical definitions.
+# Not proofs, not implementations.
+[[taxonomy.rules]]
+label = "specification-definition"
+description = "Pure specification function (not a proof or implementation)"
+trust = "n/a"
+
+[taxonomy.rules.match]
+mode = ["spec"]

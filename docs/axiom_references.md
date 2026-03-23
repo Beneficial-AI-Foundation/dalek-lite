@@ -519,55 +519,63 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 
 ## Summary Table
 
-| Axiom | File | Reference Type | Primary Reference |
-|-------|------|----------------|-------------------|
-| axiom_ed25519_basepoint_table_valid | edwards_specs.rs | Construction | RFC 8032; implementation |
-| axiom_montgomery_add_associative | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 |
-| axiom_xdbl_projective_correct | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 Eq. 10 |
-| axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | Paper | Costello & Smith 2017 Eq. 9 |
-| axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | Test | test_486660_not_qr |
-| axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | Test | test_2_times_486661_not_qr |
-| axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
-| axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | RFC | RFC 9380 §6.7.1 |
-| axiom_montgomery_valid_u_implies_edwards_y_valid | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
-| axiom_edwards_to_montgomery_commutes_with_scalar_mul | montgomery_curve_lemmas.rs | RFC | RFC 7748 §4.1 |
-| axiom_p_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |
-| axiom_group_order_is_prime | primality_specs.rs | RFC | RFC 7748 §4.1 |
-| axiom_edwards_add_associative | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 |
-| axiom_edwards_add_complete | curve_equation_lemmas.rs | Paper | Bernstein et al. 2008 Thm. 3.3 |
-| axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | Math | Group theory |
-| axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | Math | Group theory |
-| axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | Construction | RFC 8032; implementation |
-| axiom_ristretto_basepoint_table_valid | ristretto_lemmas/axioms.rs | Construction | Hamburg 2019 |
-| axiom_elligator_on_curve | ristretto_lemmas/axioms.rs | Paper + test | Hamburg 2015 §4; test (250+ inputs) |
-| axiom_elligator_nonzero_intermediates | ristretto_lemmas/axioms.rs | Paper + test | RFC 9496 §4.3.4; Hamburg 2015 §6; test (200+ inputs) |
-| axiom_elligator_in_even_subgroup | ristretto_lemmas/axioms.rs | Paper + test | Hamburg 2015/2019; test (200+ inputs) |
-| axiom_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | Math (proven algebraically) | Group theory; lemma_edwards_double_of_add |
-| axiom_invsqrt_factors_over_square | field_specs.rs | Math + test | Standard finite field algebra; test (200 inputs) |
-| axiom_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | Computation + test | Hamburg 2015 §4.1; ristretto.group; test_nat_invsqrt_neg_one_minus_d, test_invsqrt_a_minus_d_squared |
-| axiom_ristretto_cross_mul_iff_equivalent | ristretto_lemmas/axioms.rs | Paper + test | Hamburg 2015 §4; Ristretto §3.2 |
-| axiom_ristretto_decode_on_curve | ristretto_lemmas/axioms.rs | Paper + test | Hamburg 2015; test_ristretto_decode_on_curve |
-| axiom_ristretto_decode_in_even_subgroup | ristretto_lemmas/axioms.rs | Paper + test | Hamburg 2015/2019; test (100+ points) |
-| axiom_sqrt_m1_squared | sqrt_m1_lemmas.rs | Math | p ≡ 5 (mod 8) |
-| axiom_sqrt_m1_not_square | sqrt_m1_lemmas.rs | Math | p ≡ 5 (mod 8) |
-| axiom_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | Math | p ≡ 5 (mod 8) |
-| axiom_uniform_bytes_split | proba_specs.rs | Crypto | Probability theory |
-| axiom_from_bytes_uniform | proba_specs.rs | Crypto | Probability theory |
-| axiom_from_bytes_independent | proba_specs.rs | Crypto | Probability theory |
-| axiom_uniform_elligator | proba_specs.rs | Crypto | RFC 9380; Tibouchi 2015 |
-| axiom_uniform_elligator_independent | proba_specs.rs | Crypto | RFC 9380; Tibouchi 2015 |
-| axiom_uniform_elligator_sum | proba_specs.rs | Crypto | RFC 9380; Tibouchi 2015 |
-| axiom_uniform_point_add | proba_specs.rs | Math | Group-theoretic uniformity |
-| axiom_uniform_mod_reduction | proba_specs.rs | Crypto | Probability theory |
-| axiom_hash_is_canonical | core_assumes.rs | Spec | RFC 8032 |
-| axiom_sha512_output_length | core_assumes.rs | Spec | FIPS 180-4; RFC 6234 |
-| axiom_four_torsion_affine | torsion_lemmas.rs | Computation | Limb expansion; runtime test |
-| axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | Computation | Constant identity; runtime test |
-| axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | Derived (gap) | Decaf §4/§4.1 + algebraic derivation |
-| axiom_jacobi_quartic_torsion_pair23 | lizard_lemmas.rs | Derived (gap) | Decaf §4/§7 + algebraic derivation |
-| axiom_elligator_forward_zero | lizard_lemmas.rs | Constant identity | Direct evaluation; test_axiom_elligator_inv_roundtrip |
-| axiom_elligator_forward_sqrt_id | lizard_lemmas.rs | Constant identity | Direct evaluation; test_axiom_elligator_inv_roundtrip |
-| axiom_elligator_inv_square_case | lizard_lemmas.rs | Paper (gap) | Decaf Appendix C + reparameterization |
-| axiom_elligator_fiber_complete | lizard_lemmas.rs | Derived (gap) | Decaf §4/§6/App.C; 4×2 composition |
-| axiom_decode_from_point | lizard_lemmas.rs | Logical composition | Sub-properties (a)–(e); test (200+ round-trips) |
+Justification types (6 canonical values):
+- **rfc** — Backed by IETF standard (RFC 7748, 8032, 9380, 9496)
+- **paper** — Backed by peer-reviewed paper (Bernstein, Costello-Smith, Hamburg, etc.)
+- **tested** — Primary justification is runtime validation test (Euler criterion, limb expansion)
+- **construction** — Precomputed table validated by construction from the basepoint
+- **crypto-assumption** — Standard cryptographic assumption (uniformity, hash, independence)
+- **algebraic-gap** — Algebraic identity not yet formalized; derivable by symbolic algebra (Sage/Magma)
+
+| Axiom | File | Justification Type | Primary Reference |
+|-------|------|--------------------|-------------------|
+| axiom_ed25519_basepoint_table_valid | edwards_specs.rs | construction | RFC 8032; implementation |
+| axiom_montgomery_add_associative | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 |
+| axiom_xdbl_projective_correct | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 Eq. 10 |
+| axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 Eq. 9 |
+| axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | tested | test_486660_not_qr |
+| axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | tested | test_2_times_486661_not_qr |
+| axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | rfc | RFC 7748 §4.1 |
+| axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | rfc | RFC 9380 §6.7.1 |
+| axiom_montgomery_valid_u_implies_edwards_y_valid | montgomery_curve_lemmas.rs | rfc | RFC 7748 §4.1 |
+| axiom_edwards_to_montgomery_commutes_with_scalar_mul | montgomery_curve_lemmas.rs | rfc | RFC 7748 §4.1 |
+| axiom_p_is_prime | primality_specs.rs | rfc | RFC 7748 §4.1 |
+| axiom_group_order_is_prime | primality_specs.rs | rfc | RFC 7748 §4.1 |
+| axiom_edwards_add_associative | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 |
+| axiom_edwards_add_complete | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 Thm. 3.3 |
+| axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
+| axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
+| axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | construction | RFC 8032; implementation |
+| axiom_ristretto_basepoint_table_valid | ristretto_lemmas/axioms.rs | construction | Hamburg 2019 |
+| axiom_elligator_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; test (250+ inputs) |
+| axiom_elligator_nonzero_intermediates | ristretto_lemmas/axioms.rs | paper | RFC 9496 §4.3.4; Hamburg 2015 §6; test (200+ inputs) |
+| axiom_elligator_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (200+ inputs) |
+| axiom_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | paper | Group theory; lemma_edwards_double_of_add |
+| axiom_invsqrt_factors_over_square | field_specs.rs | paper | Standard finite field algebra; test (200 inputs) |
+| axiom_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | tested | Hamburg 2015 §4.1; test_nat_invsqrt_neg_one_minus_d, test_invsqrt_a_minus_d_squared |
+| axiom_ristretto_cross_mul_iff_equivalent | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; Ristretto §3.2; test |
+| axiom_ristretto_decode_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015; test_ristretto_decode_on_curve |
+| axiom_ristretto_decode_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (100+ points) |
+| axiom_sqrt_m1_squared | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_limbs_bounded |
+| axiom_sqrt_m1_not_square | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_not_square |
+| axiom_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_not_square |
+| axiom_uniform_bytes_split | proba_specs.rs | crypto-assumption | Probability theory |
+| axiom_from_bytes_uniform | proba_specs.rs | crypto-assumption | Probability theory |
+| axiom_from_bytes_independent | proba_specs.rs | crypto-assumption | Probability theory |
+| axiom_uniform_elligator | proba_specs.rs | crypto-assumption | RFC 9380; Tibouchi 2015 |
+| axiom_uniform_elligator_independent | proba_specs.rs | crypto-assumption | RFC 9380; Tibouchi 2015 |
+| axiom_uniform_elligator_sum | proba_specs.rs | crypto-assumption | RFC 9380; Tibouchi 2015 |
+| axiom_uniform_point_add | proba_specs.rs | crypto-assumption | Group-theoretic uniformity |
+| axiom_uniform_mod_reduction | proba_specs.rs | crypto-assumption | Probability theory |
+| axiom_hash_is_canonical | core_assumes.rs | rfc | RFC 8032 |
+| axiom_sha512_output_length | core_assumes.rs | rfc | FIPS 180-4; RFC 6234 |
+| axiom_four_torsion_affine | torsion_lemmas.rs | tested | Limb expansion; runtime test |
+| axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | tested | Constant identity; runtime test |
+| axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§4.1 + algebraic derivation |
+| axiom_jacobi_quartic_torsion_pair23 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§7 + algebraic derivation |
+| axiom_elligator_forward_zero | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
+| axiom_elligator_forward_sqrt_id | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
+| axiom_elligator_inv_square_case | lizard_lemmas.rs | algebraic-gap | Decaf Appendix C + reparameterization |
+| axiom_elligator_fiber_complete | lizard_lemmas.rs | algebraic-gap | Decaf §4/§6/App.C; 4×2 composition |
+| axiom_decode_from_point | lizard_lemmas.rs | algebraic-gap | Sub-properties (a)–(e); test (200+ round-trips) |
 

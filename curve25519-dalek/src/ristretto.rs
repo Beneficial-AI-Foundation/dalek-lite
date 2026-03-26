@@ -2753,7 +2753,7 @@ impl RistrettoPoint {
     #[verifier::external]
     pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint where
         D: Digest<OutputSize = U64> + Default,
-    {
+     {
         let mut hash = D::default();
         hash.update(input);
         RistrettoPoint::from_hash(hash)
@@ -2794,9 +2794,7 @@ impl RistrettoPoint {
     </VERIFICATION NOTE> */
     #[cfg(feature = "digest")]
     #[verifier::external]
-    pub fn from_hash<D>(hash: D) -> RistrettoPoint where
-        D: Digest<OutputSize = U64> + Default,
-    {
+    pub fn from_hash<D>(hash: D) -> RistrettoPoint where D: Digest<OutputSize = U64> + Default {
         let output = hash.finalize();
         let mut output_bytes = [0u8;64];
         output_bytes.copy_from_slice(output.as_slice());

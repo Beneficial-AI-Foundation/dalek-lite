@@ -1466,7 +1466,7 @@ impl Scalar {
     #[verifier::external]
     pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar where
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64> + Default,
-    {
+     {
         let mut hash = D::default();
         hash.update(input);
         Scalar::from_hash(hash)
@@ -1536,7 +1536,7 @@ impl Scalar {
     #[verifier::external]
     pub fn from_hash<D>(hash: D) -> Scalar where
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64>,
-    {
+     {
         let mut output = [0u8;64];
         output.copy_from_slice(hash.finalize().as_slice());
         Scalar::from_bytes_mod_order_wide(&output)

@@ -1799,7 +1799,7 @@ impl EdwardsPoint {
         since = "4.0.0",
         note = "previously named `hash_from_bytes`, this is not a secure hash function"
     )]
-    #[verifier::external_body]
+    #[verifier::external]
     pub fn nonspec_map_to_curve<D>(bytes: &[u8]) -> EdwardsPoint where
         D: Digest<OutputSize = U64> + Default,
      {
@@ -2868,6 +2868,7 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
+    /// Assumed specification for: core::iter::Iterator::count
     // Helper to count iterator elements without consuming (clones internally).
     // Verus doesn't support Iterator::clone() or Iterator::count().
     #[verifier::external_body]

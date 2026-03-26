@@ -1701,20 +1701,16 @@ impl RistrettoPoint {
     ///
     /// [`double_and_compress_batch_verus`]: RistrettoPoint::double_and_compress_batch_verus
     #[cfg(feature = "alloc")]
-    #[verifier::external_body]
-    pub fn double_and_compress_batch<'a, I>(points: I) -> (result: Vec<CompressedRistretto>) where
+    #[verifier::external]
+    pub fn double_and_compress_batch<'a, I>(points: I) -> Vec<CompressedRistretto> where
         I: IntoIterator<Item = &'a RistrettoPoint>,
      {
-        // ORIGINAL CODE: BatchCompressState was defined inline here
-        // Moved outside function for Verus compatibility (doesn't support internal item statements)
         let states: Vec<BatchCompressState> = points.into_iter().map(
             BatchCompressState::from,
         ).collect();
 
         let mut invs: Vec<FieldElement> = states.iter().map(|state| state.efgh()).collect();
 
-        // ORIGINAL CODE: FieldElement::batch_invert(&mut invs[..]);
-        // VERUSFMT WORKAROUND: Use as_mut_slice() instead of [..] which verusfmt can't parse
         FieldElement::batch_invert(invs.as_mut_slice());
 
         states.iter().zip(invs.iter()).map(
@@ -2191,6 +2187,7 @@ impl RistrettoPoint {
         results
     }
 
+    /// Assumed specification for: alloc::vec::Vec::as_mut_slice (bridge to verified FieldElement::batch_invert)
     /// Wrapper for FieldElement::batch_invert that bridges Vec<T> to &mut [T].
     ///
     /// VERUS LIMITATION: Verus doesn't support Vec to mutable slice conversion:
@@ -2691,6 +2688,7 @@ impl RistrettoPoint {
     }
 
     #[cfg(any(test, feature = "rand_core"))]
+    /// Assumed specification for: rand_core::CryptoRngCore::fill_bytes
     /// Return a `RistrettoPoint` chosen uniformly at random using a user-provided RNG.
     ///
     /// # Inputs
@@ -2747,20 +2745,12 @@ impl RistrettoPoint {
     /// ```
     ///
     /* <VERIFICATION NOTE>
-     Marked as external_body due to complexity of Digest trait.
+     Original dalek function using generic Digest trait.
      For Verus verification, use hash_from_bytes_verus instead.
     </VERIFICATION NOTE> */
-    #[verifier::external_body]
-    pub fn hash_from_bytes<D>(input: &[u8]) -> (result: RistrettoPoint) where
+    #[verifier::external]
+    pub fn hash_from_bytes<D>(input: &[u8]) -> RistrettoPoint where
         D: Digest<OutputSize = U64> + Default,
-
-        ensures
-    // Result is a well-formed Ristretto point (valid Edwards point in even subgroup)
-
-            is_well_formed_edwards_point(result.0),
-            is_in_even_subgroup(result.0),
-            // Uniform input bytes produce uniformly distributed point
-            is_uniform_bytes(input) ==> is_uniform_ristretto_point(&result),
     {
         let mut hash = D::default();
         hash.update(input);
@@ -2791,25 +2781,20 @@ impl RistrettoPoint {
         RistrettoPoint::from_uniform_bytes(&hash_bytes)
     }
 
-    #[cfg(feature = "digest")]
     /// Construct a `RistrettoPoint` from an existing `Digest` instance.
     ///
     /// Use this instead of `hash_from_bytes` if it is more convenient
     /// to stream data into the `Digest` than to pass a single byte
     /// slice.
     /* <VERIFICATION NOTE>
-     Marked as external_body due to GenericArray having private fields.
+     Original dalek function using generic Digest/GenericArray.
      For Verus verification, use from_hash_verus instead.
     </VERIFICATION NOTE> */
-    #[verifier::external_body]
-    pub fn from_hash<D>(hash: D) -> (result: RistrettoPoint) where
+    #[cfg(feature = "digest")]
+    #[verifier::external]
+    pub fn from_hash<D>(hash: D) -> RistrettoPoint where
         D: Digest<OutputSize = U64> + Default,
-
-        ensures
-            is_well_formed_edwards_point(result.0),
-            is_in_even_subgroup(result.0),
     {
-        // dealing with generic arrays is clumsy, until const generics land
         let output = hash.finalize();
         let mut output_bytes = [0u8;64];
         output_bytes.copy_from_slice(output.as_slice());

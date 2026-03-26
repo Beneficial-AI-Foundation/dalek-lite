@@ -1458,17 +1458,12 @@ impl Scalar {
     /// # }
     /// ```
     /* <VERIFICATION NOTE>
-     Marked as external_body due to complexity of Digest trait.
+     Original dalek function using generic Digest trait.
      For Verus verification, use hash_from_bytes_verus instead.
     </VERIFICATION NOTE> */
-    #[verifier::external_body]
-    pub fn hash_from_bytes<D>(input: &[u8]) -> (result: Scalar) where
+    #[verifier::external]
+    pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar where
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64> + Default,
-
-        ensures
-    // Result satisfies Scalar invariants #1 and #2
-
-            is_canonical_scalar(&result),
     {
         let mut hash = D::default();
         hash.update(input);
@@ -1532,19 +1527,13 @@ impl Scalar {
     /// # }
     /// ```
     /* <VERIFICATION NOTE>
-     Marked as external_body due to GenericArray having private fields.
+     Original dalek function using generic Digest/GenericArray.
      For Verus verification, see from_hash_verus below.
     </VERIFICATION NOTE> */
     #[cfg(feature = "digest")]
-    #[verifier::external_body]
-    pub fn from_hash<D>(hash: D) -> (result: Scalar) where
+    #[verifier::external]
+    pub fn from_hash<D>(hash: D) -> Scalar where
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64>,
-
-        ensures
-    // is_uniform_digest(&hash) ==> is_uniform_scalar(&result),
-    // Result satisfies Scalar invariants #1 and #2
-
-            is_canonical_scalar(&result),
     {
         let mut output = [0u8;64];
         output.copy_from_slice(hash.finalize().as_slice());

@@ -69,6 +69,8 @@ pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<Edwards
 // Helper functions to collect iterators into Vecs (external_body)
 // These bridge the gap between generic iterators and concrete Vec types
 // ============================================================================
+/// Assumed specification for: Iterator::map + Iterator::collect (into Vec<Scalar>)
+///
 /// Collect an iterator of scalars into Vec<Scalar>.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
@@ -83,6 +85,8 @@ pub fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>) where
     iter.map(|s| *s.borrow()).collect()
 }
 
+/// Assumed specification for: Iterator::collect (into Vec<Option<EdwardsPoint>>)
+///
 /// Collect an iterator of optional points into Vec<Option<EdwardsPoint>>.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
@@ -95,6 +99,8 @@ pub fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<Edwa
     iter.collect()
 }
 
+/// Assumed specification for: Iterator::map + Iterator::collect (into Vec<EdwardsPoint>)
+///
 /// Collect an iterator of points into Vec<EdwardsPoint>.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
@@ -108,6 +114,8 @@ pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>) wh
     iter.map(|p| *p.borrow()).collect()
 }
 
+/// Assumed specification for: Vec<EdwardsPoint>::into_iter
+///
 /// Convert a Vec<EdwardsPoint> to an iterator.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
@@ -120,6 +128,8 @@ pub fn vec_to_edwards_iter(vec: Vec<EdwardsPoint>) -> (result: alloc::vec::IntoI
     vec.into_iter()
 }
 
+/// Assumed specification for: Vec<Option<EdwardsPoint>>::into_iter
+///
 /// Convert a Vec<Option<EdwardsPoint>> to an iterator.
 #[cfg(feature = "alloc")]
 #[verifier::external_body]
@@ -137,6 +147,8 @@ pub fn vec_to_optional_edwards_iter(vec: Vec<Option<EdwardsPoint>>) -> (result:
     vec.into_iter()
 }
 
+/// Assumed specification for: Iterator::map + Iterator::collect (RistrettoPoint to EdwardsPoint)
+///
 /// Collect an iterator of RistrettoPoints into Vec<EdwardsPoint>.
 /// Directly maps RistrettoPoint to EdwardsPoint via .0.
 #[cfg(feature = "alloc")]
@@ -151,6 +163,8 @@ pub fn collect_edwards_from_ristretto_iter<P, J>(iter: J) -> (result: Vec<Edward
     iter.map(|p| p.borrow().0).collect()
 }
 
+/// Assumed specification for: Iterator::clone
+///
 /// Clone a RistrettoPoint iterator with spec guarantee.
 /// Returns (original, clone) with the guarantee that both yield the same Edwards sequence.
 #[verifier::external_body]
@@ -172,6 +186,8 @@ pub fn clone_ristretto_iter_with_spec<P, J>(iter: J) -> (result: (J, J)) where
     (iter, cloned)
 }
 
+/// Assumed specification for: Iterator::map + Iterator::collect (into Vec<RistrettoPoint>)
+///
 /// Collect an iterator of RistrettoPoints into Vec<RistrettoPoint>.
 /// Used by Sum<T> impl which needs to pass slice to sum_of_slice.
 #[cfg(feature = "alloc")]
@@ -189,6 +205,8 @@ pub fn collect_ristretto_points<P, J>(iter: J) -> (result: Vec<RistrettoPoint>) 
     iter.map(|p| *p.borrow()).collect()
 }
 
+/// Assumed specification for: Iterator::map + Iterator::collect (Option<RistrettoPoint> to Option<EdwardsPoint>)
+///
 /// Collect an iterator of Option<RistrettoPoint> into Vec<Option<EdwardsPoint>>.
 /// Directly maps RistrettoPoint to EdwardsPoint via .0.
 #[cfg(feature = "alloc")]
@@ -202,6 +220,8 @@ pub fn collect_optional_edwards_from_ristretto_iter<J>(iter: J) -> (result: Vec<
     iter.map(|opt| opt.map(|p| p.0)).collect()
 }
 
+/// Assumed specification for: Iterator::clone
+///
 /// Clone an optional RistrettoPoint iterator with spec guarantee.
 /// Returns (original, clone) with the guarantee that both yield the same Edwards sequence.
 #[verifier::external_body]

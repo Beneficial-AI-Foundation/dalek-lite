@@ -241,6 +241,7 @@ impl RistrettoPoint {
 
     /// Verus-friendly variant of `lizard_decode::<Sha256>`.
     ///
+    #[verifier::rlimit(20)]
     pub fn lizard_decode_verus(&self) -> (result: Option<[u8; 16]>)
         requires
             is_well_formed_edwards_point(self.0),
@@ -337,27 +338,26 @@ impl RistrettoPoint {
             ok = choice_and(ok, ct_eq_bytes32(&h, &buf2));
 
             proof {
-                // Unconditional: h_snap == spec_lizard_fe_bytes(msg@)
-                lemma_h_equals_spec_lizard_fe_bytes(h_snap, msg@);
+                // Scope each lemma to prevent intermediate facts from leaking
+                assert(h_snap == spec_lizard_fe_bytes(msg@)) by {
+                    lemma_h_equals_spec_lizard_fe_bytes(h_snap, msg@);
+                };
 
-                // Per-slot SHA bridge via helper lemma (spinoff prover)
                 let cj = candidates[j as int];
-                let sha_match = h_snap == buf2;
-                lemma_exec_ok_matches_spec_slot(
-                    mask_bit_set,
-                    sha_match,
-                    &buf2,
-                    msg@,
-                    h_snap,
-                    &fes[j as int],
-                    cj,
-                );
-                assert(choice_is_true(ok) == (cj.0 && spec_candidate_sha_consistent(cj.1)));
+                assert(choice_is_true(ok) == (cj.0 && spec_candidate_sha_consistent(cj.1))) by {
+                    let sha_match = h_snap == buf2;
+                    lemma_exec_ok_matches_spec_slot(
+                        mask_bit_set,
+                        sha_match,
+                        &buf2,
+                        msg@,
+                        h_snap,
+                        &fes[j as int],
+                        cj,
+                    );
+                };
 
                 if choice_is_true(ok) {
-                    assert((mask & (1u8 << (j as u8))) != 0u8);
-                    assert(buf2 == spec_lizard_fe_bytes(msg@));
-
                     assert(is_lizard_preimage_coset(msg@, coset_spec)) by {
                         lemma_decode_candidate_preimage(&fes[j as int], &buf2, msg@, coset_spec);
                     };
@@ -410,9 +410,9 @@ impl RistrettoPoint {
         proof {
             let x = epa.0;
             let y = epa.1;
-            // n_found == spec_sha_consistent_count (proved, no axiom)
-            lemma_partial_count_full(self.0);
-            assert(n_found as nat == spec_sha_consistent_count(self.0));
+            assert(n_found as nat == spec_sha_consistent_count(self.0)) by {
+                lemma_partial_count_full(self.0);
+            };
             axiom_decode_from_point(self.0, passed_data);
             assert(match result {
                 Some(bytes) => ({

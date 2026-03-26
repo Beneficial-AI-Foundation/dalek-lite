@@ -57,7 +57,8 @@ pub assume_specification[ Choice::unwrap_u8 ](c: &Choice) -> (u: u8)
 // VERIFICATION NOTE: For other external functions, we use wrapper functions because:
 // - Generic functions don't work well with assume_specification
 // - Trait implementations on arrays have issues with assume_specification
-/// Wrapper for conditional_select on u64
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_select (for u64)`
 #[verifier::external_body]
 pub fn select(a: &u64, b: &u64, c: Choice) -> (res: u64)
     ensures
@@ -67,7 +68,8 @@ pub fn select(a: &u64, b: &u64, c: Choice) -> (res: u64)
     u64::conditional_select(a, b, c)
 }
 
-/// Wrapper for conditional_select on u8
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_select (for u8)`
 #[verifier::external_body]
 pub fn select_u8(a: &u8, b: &u8, c: Choice) -> (res: u8)
     ensures
@@ -77,7 +79,8 @@ pub fn select_u8(a: &u8, b: &u8, c: Choice) -> (res: u8)
     u8::conditional_select(a, b, c)
 }
 
-/// Wrapper for ct_eq on byte arrays
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConstantTimeEq::ct_eq (for [u8; 32])`
 #[verifier::external_body]
 pub fn ct_eq_bytes32(a: &[u8; 32], b: &[u8; 32]) -> (c: Choice)
     ensures
@@ -86,7 +89,8 @@ pub fn ct_eq_bytes32(a: &[u8; 32], b: &[u8; 32]) -> (c: Choice)
     a.ct_eq(b)
 }
 
-/// Wrapper for ct_eq on limb arrays (5 u64s for FieldElement51)
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConstantTimeEq::ct_eq (for [u64; 5])`
 #[verifier::external_body]
 pub fn ct_eq_limbs5(a: &[u64; 5], b: &[u64; 5]) -> (c: Choice)
     ensures
@@ -95,7 +99,8 @@ pub fn ct_eq_limbs5(a: &[u64; 5], b: &[u64; 5]) -> (c: Choice)
     a.ct_eq(b)
 }
 
-/// Wrapper for ct_eq on u8
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConstantTimeEq::ct_eq (for u8)`
 #[verifier::external_body]
 pub fn ct_eq_u8(a: &u8, b: &u8) -> (c: Choice)
     ensures
@@ -104,7 +109,8 @@ pub fn ct_eq_u8(a: &u8, b: &u8) -> (c: Choice)
     a.ct_eq(b)
 }
 
-/// Wrapper for ct_eq on u16
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConstantTimeEq::ct_eq (for u16)`
 #[verifier::external_body]
 pub fn ct_eq_u16(a: &u16, b: &u16) -> (c: Choice)
     ensures
@@ -113,7 +119,8 @@ pub fn ct_eq_u16(a: &u16, b: &u16) -> (c: Choice)
     a.ct_eq(b)
 }
 
-/// Wrapper for Choice::into (converts Choice to bool)
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::Choice::into::<bool>`
 #[verifier::external_body]
 pub fn choice_into(c: Choice) -> (b: bool)
     ensures
@@ -122,7 +129,8 @@ pub fn choice_into(c: Choice) -> (b: bool)
     c.into()
 }
 
-/// Wrapper for bitwise AND on Choice
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::ops::BitAnd for subtle::Choice`
 #[verifier::external_body]
 pub fn choice_and(a: Choice, b: Choice) -> (c: Choice)
     ensures
@@ -132,7 +140,8 @@ pub fn choice_and(a: Choice, b: Choice) -> (c: Choice)
     a.bitand(b)
 }
 
-/// Wrapper for bitwise NOT on Choice
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::ops::Not for subtle::Choice`
 #[verifier::external_body]
 pub fn choice_not(a: Choice) -> (c: Choice)
     ensures
@@ -142,7 +151,8 @@ pub fn choice_not(a: Choice) -> (c: Choice)
     a.not()
 }
 
-/// Wrapper for bitwise OR on Choice
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::ops::BitOr for subtle::Choice`
 #[verifier::external_body]
 pub fn choice_or(a: Choice, b: Choice) -> (c: Choice)
     ensures
@@ -160,7 +170,8 @@ pub uninterp spec fn ct_option_has_value<T>(opt: CtOption<T>) -> bool;
 /// Spec-level view of CtOption::unwrap - what value it contains
 pub uninterp spec fn ct_option_value<T>(opt: CtOption<T>) -> T;
 
-/// Wrapper function for CtOption::new
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::CtOption::new`
 #[verifier::external_body]
 pub fn ct_option_new<T>(value: T, choice: Choice) -> (result: CtOption<T>)
     ensures
@@ -170,7 +181,8 @@ pub fn ct_option_new<T>(value: T, choice: Choice) -> (result: CtOption<T>)
     CtOption::new(value, choice)
 }
 
-/// Wrapper function for CtOption::is_some
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::CtOption::is_some`
 #[verifier::external_body]
 pub fn ct_option_is_some<T>(opt: &CtOption<T>) -> (c: Choice)
     ensures
@@ -179,7 +191,8 @@ pub fn ct_option_is_some<T>(opt: &CtOption<T>) -> (c: Choice)
     opt.is_some()
 }
 
-/// Wrapper function for CtOption::is_none
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::CtOption::is_none`
 #[verifier::external_body]
 pub fn ct_option_is_none<T>(opt: &CtOption<T>) -> (c: Choice)
     ensures
@@ -188,7 +201,8 @@ pub fn ct_option_is_none<T>(opt: &CtOption<T>) -> (c: Choice)
     opt.is_none()
 }
 
-/// Wrapper function for CtOption::unwrap
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::CtOption::unwrap`
 #[verifier::external_body]
 pub fn ct_option_unwrap<T>(opt: CtOption<T>) -> (val: T)
     requires
@@ -223,7 +237,8 @@ pub assume_specification[ <u64 as ConditionallySelectable>::conditional_assign ]
         choice_is_true(choice) ==> *a == *b,
 ;
 
-/// Wrapper for conditional_select on u64
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_select (for u64)`
 #[verifier::external_body]
 pub fn conditional_select_u64(a: &u64, b: &u64, choice: Choice) -> (res: u64)
     ensures
@@ -233,7 +248,8 @@ pub fn conditional_select_u64(a: &u64, b: &u64, choice: Choice) -> (res: u64)
     select(a, b, choice)
 }
 
-/// Wrapper for conditional_swap on u64
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_swap (for u64)`
 #[verifier::external_body]
 pub fn conditional_swap_u64(a: &mut u64, b: &mut u64, choice: Choice)
     ensures
@@ -243,7 +259,8 @@ pub fn conditional_swap_u64(a: &mut u64, b: &mut u64, choice: Choice)
     u64::conditional_swap(a, b, choice)
 }
 
-/// Wrapper for conditional_assign on u64
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_assign (for u64)`
 #[verifier::external_body]
 pub fn conditional_assign_u64(a: &mut u64, b: &u64, choice: Choice)
     ensures
@@ -253,7 +270,8 @@ pub fn conditional_assign_u64(a: &mut u64, b: &u64, choice: Choice)
     a.conditional_assign(b, choice)
 }
 
-/// Generic wrapper for conditional_negate on types implementing ConditionallyNegatable
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallyNegatable::conditional_negate`
 /// Used for: ProjectiveNielsPoint, AffineNielsPoint in window.rs
 /// For FieldElement51 with proper specs, we use conditional_negate_field_element instead.
 #[verifier::external_body]
@@ -266,7 +284,8 @@ pub fn conditional_negate_generic<T>(a: &mut T, choice: Choice) where
     a.conditional_negate(choice);
 }
 
-/// Specialized wrapper for conditional_negate on FieldElement51 with proper specs.
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallyNegatable::conditional_negate (for FieldElement51)`
 ///
 /// The `subtle` crate provides a blanket impl of `ConditionallyNegatable` for any type
 /// implementing `ConditionallySelectable` + `Neg`. When called, it invokes our verified impls:
@@ -301,7 +320,8 @@ pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
     a.conditional_negate(choice);
 }
 
-/// Specialized wrapper for conditional_negate on AffineNielsPoint.
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallyNegatable::conditional_negate (for AffineNielsPoint)`
 ///
 /// The blanket `ConditionallyNegatable` impl calls `Neg::neg` (which swaps
 /// y_plus_x ↔ y_minus_x and negates xy2d) then `conditional_assign` (which
@@ -326,7 +346,8 @@ pub fn conditional_negate_affine_niels(a: &mut AffineNielsPoint, choice: Choice)
     a.conditional_negate(choice);
 }
 
-/// Specialized wrapper for conditional_negate on ProjectiveNielsPoint.
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallyNegatable::conditional_negate (for ProjectiveNielsPoint)`
 ///
 /// Mirrors conditional_negate_affine_niels but for projective Niels points.
 /// Negation swaps Y_plus_X ↔ Y_minus_X, keeps Z, and negates T2d.
@@ -349,7 +370,8 @@ pub fn conditional_negate_projective_niels(a: &mut ProjectiveNielsPoint, choice:
     a.conditional_negate(choice);
 }
 
-/// Specialized wrapper for FieldElement51 negation with proper specs.
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::ops::Neg::neg (for &FieldElement51)`
 ///
 /// The generic `negate_field` in core_assumes.rs has no ensures clause because
 /// it's generic over all Neg types. This wrapper attaches the precise contract
@@ -370,7 +392,8 @@ pub fn negate_field_element(a: &FieldElement51) -> (result: FieldElement51)
     a.neg()
 }
 
-/// Generic wrapper for ConditionallySelectable::conditional_assign()
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_assign`
 #[verifier::external_body]
 pub fn conditional_assign_generic<T>(a: &mut T, b: &T, choice: Choice) where
     T: subtle::ConditionallySelectable,
@@ -382,7 +405,8 @@ pub fn conditional_assign_generic<T>(a: &mut T, b: &T, choice: Choice) where
     a.conditional_assign(b, choice)
 }
 
-/// FieldElement-specific conditional_assign with limb-bound propagation.
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_assign (for FieldElement51)`
 ///
 /// Wraps `ConditionallySelectable::conditional_assign` for `FieldElement51`,
 /// propagating `fe51_limbs_bounded` through the branch. The generic wrapper
@@ -403,7 +427,8 @@ pub fn conditional_assign_field_element(a: &mut FieldElement51, b: &FieldElement
 
 /*** ConditionallySelectable specification for FieldElement51 ***/
 
-/// Wrapper for conditional_select on FieldElement51
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_select (for FieldElement51)`
 #[verifier::external_body]
 pub fn conditional_select_field_element(
     a: &FieldElement51,
@@ -419,7 +444,8 @@ pub fn conditional_select_field_element(
 
 /*** ConditionallySelectable specification for ProjectivePoint ***/
 
-/// Wrapper for conditional_swap on Montgomery ProjectivePoint
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::ConditionallySelectable::conditional_swap (for montgomery::ProjectivePoint)`
 /// This is needed because assume_specification doesn't work on provided trait methods
 #[verifier::external_body]
 pub fn conditional_swap_montgomery_projective(

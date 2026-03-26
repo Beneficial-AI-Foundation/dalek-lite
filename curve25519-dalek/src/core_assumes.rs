@@ -41,7 +41,8 @@ verus! {
 #[allow(dead_code)]
 pub struct ExTryFromSliceError(TryFromSliceError);
 
-/// Wrapper for slice to array conversion (try_into)
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::convert::TryInto::try_into`
 /// Converts a slice &[u8] to a fixed-size array [u8; 32]
 /// Succeeds if and only if the slice has exactly 32 bytes.
 #[verifier::external_body]
@@ -61,6 +62,8 @@ pub fn try_into_32_bytes_array(bytes: &[u8]) -> (result: Result<[u8; 32], TryFro
     bytes.try_into()
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::result::Result::map`
 /// Construct a CompressedEdwardsY from an array result.
 ///
 /// CompressedEdwardsY is a wrapper around [u8; 32]. This function maps
@@ -84,6 +87,8 @@ pub fn compressed_edwards_y_from_array_result(
     arr_result.map(|arr| crate::edwards::CompressedEdwardsY(arr))
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::result::Result::map`
 /// Construct a CompressedRistretto from an array result.
 ///
 /// Analogous to compressed_edwards_y_from_array_result but for CompressedRistretto.
@@ -100,6 +105,8 @@ pub fn compressed_ristretto_from_array_result(
     arr_result.map(|arr| CompressedRistretto(arr))
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::slice::copy_from_slice`
 /// Extract the first 32 bytes from a 64-byte array.
 #[verifier::external_body]
 pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
@@ -112,6 +119,8 @@ pub fn first_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
     result
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::slice::copy_from_slice`
 /// Extract the last 32 bytes from a 64-byte array.
 #[verifier::external_body]
 pub fn last_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
@@ -124,6 +133,8 @@ pub fn last_32_bytes(bytes: &[u8; 64]) -> (result: [u8; 32])
     result
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::slice::copy_from_slice`
 /// Extract bytes[8..24] into a `[u8; 16]`.
 #[verifier::external_body]
 pub fn bytes32_8_to_24(bytes: &[u8; 32]) -> (result: [u8; 16])
@@ -135,6 +146,8 @@ pub fn bytes32_8_to_24(bytes: &[u8; 32]) -> (result: [u8; 16])
     result
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::slice::copy_from_slice`
 /// Overwrite dst[8..24] with src[0..16], preserving all other bytes.
 #[verifier::external_body]
 pub fn write_bytes32_8_to_24(dst: &mut [u8; 32], src: &[u8; 16])
@@ -183,6 +196,8 @@ pub open spec fn seq_from32(b: &[u8; 32]) -> Seq<u8> {
     b@
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u16::to_le_bytes`
 #[verifier::external_body]
 pub fn u16_to_le_bytes(x: u16) -> (bytes: [u8; 2])
     ensures
@@ -191,6 +206,8 @@ pub fn u16_to_le_bytes(x: u16) -> (bytes: [u8; 2])
     x.to_le_bytes()
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u32::to_le_bytes`
 #[verifier::external_body]
 pub fn u32_to_le_bytes(x: u32) -> (bytes: [u8; 4])
     ensures
@@ -199,6 +216,8 @@ pub fn u32_to_le_bytes(x: u32) -> (bytes: [u8; 4])
     x.to_le_bytes()
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u64::to_le_bytes`
 #[verifier::external_body]
 pub fn u64_to_le_bytes(x: u64) -> (bytes: [u8; 8])
     ensures
@@ -207,6 +226,8 @@ pub fn u64_to_le_bytes(x: u64) -> (bytes: [u8; 8])
     x.to_le_bytes()
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u128::to_le_bytes`
 #[verifier::external_body]
 pub fn u128_to_le_bytes(x: u128) -> (bytes: [u8; 16])
     ensures
@@ -215,6 +236,8 @@ pub fn u128_to_le_bytes(x: u128) -> (bytes: [u8; 16])
     x.to_le_bytes()
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u16::from_le_bytes`
 #[verifier::external_body]
 pub fn u16_from_le_bytes(bytes: [u8; 2]) -> (x: u16)
     ensures
@@ -223,6 +246,8 @@ pub fn u16_from_le_bytes(bytes: [u8; 2]) -> (x: u16)
     u16::from_le_bytes(bytes)
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u32::from_le_bytes`
 #[verifier::external_body]
 pub fn u32_from_le_bytes(bytes: [u8; 4]) -> (x: u32)
     ensures
@@ -231,6 +256,8 @@ pub fn u32_from_le_bytes(bytes: [u8; 4]) -> (x: u32)
     u32::from_le_bytes(bytes)
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u64::from_le_bytes`
 #[verifier::external_body]
 pub fn u64_from_le_bytes(bytes: [u8; 8]) -> (x: u64)
     ensures
@@ -239,6 +266,8 @@ pub fn u64_from_le_bytes(bytes: [u8; 8]) -> (x: u64)
     u64::from_le_bytes(bytes)
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `u128::from_le_bytes`
 #[verifier::external_body]
 pub fn u128_from_le_bytes(bytes: [u8; 16]) -> (x: u128)
     ensures
@@ -247,7 +276,8 @@ pub fn u128_from_le_bytes(bytes: [u8; 16]) -> (x: u128)
     u128::from_le_bytes(bytes)
 }
 
-/// Wrapper for FieldElement negation to avoid Verus internal error
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `core::ops::Neg::neg`
 #[verifier::external_body]
 pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg<Output = T> {
     -a
@@ -344,9 +374,10 @@ pub open spec fn seq_to_array_32(s: Seq<u8>) -> [u8; 32] {
 
 /*** Zeroize specifications ***/
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `zeroize::Zeroize::zeroize` (for [u8; 32])
+/// After zeroizing, all bytes should be zero
 #[cfg(feature = "zeroize")]
-// Wrapper for zeroize on [u8; 32] arrays
-// After zeroizing, all bytes should be zero
 #[verifier::external_body]
 pub fn zeroize_bytes32(bytes: &mut [u8; 32])
     ensures
@@ -356,9 +387,10 @@ pub fn zeroize_bytes32(bytes: &mut [u8; 32])
     bytes.zeroize();
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `zeroize::Zeroize::zeroize` (for [u64; 5])
+/// After zeroizing, all limbs should be zero
 #[cfg(feature = "zeroize")]
-// Wrapper for zeroize on [u64; 5] arrays (used by FieldElement51)
-// After zeroizing, all limbs should be zero
 #[verifier::external_body]
 pub fn zeroize_limbs5(limbs: &mut [u64; 5])
     ensures
@@ -369,9 +401,10 @@ pub fn zeroize_limbs5(limbs: &mut [u64; 5])
     limbs.zeroize();
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `zeroize::Zeroize::zeroize` (for bool)
+/// After zeroizing, the bool should be false
 #[cfg(feature = "zeroize")]
-// Wrapper for zeroize on bool values
-// After zeroizing, the bool should be false
 #[verifier::external_body]
 pub fn zeroize_bool(b: &mut bool)
     ensures
@@ -386,15 +419,19 @@ pub fn zeroize_bool(b: &mut bool)
 // =============================================================================
 // In normal Rust builds we provide exec wrappers without probabilistic specs.
 // In `cargo verus verify`, we use `verus_keep_ghost` variants with `ensures`.
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `rand_core::RngCore::fill_bytes`
 #[cfg(all(feature = "rand_core", not(verus_keep_ghost)))]
 #[verifier::external_body]
 pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64]) {
     rng.fill_bytes(bytes)
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `rand_core::RngCore::fill_bytes`
+/// Fill bytes from a cryptographic RNG, producing uniform random bytes.
 #[cfg(all(feature = "rand_core", verus_keep_ghost))]
 #[verifier::external_body]
-/// Fill bytes from a cryptographic RNG, producing uniform random bytes.
 pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
     ensures
         is_uniform_bytes(bytes),
@@ -402,6 +439,8 @@ pub fn fill_bytes<R: RngCore>(rng: &mut R, bytes: &mut [u8; 64])
     rng.fill_bytes(bytes)
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `sha2::Sha512 via digest::Digest`
 #[cfg(all(feature = "digest", not(verus_keep_ghost)))]
 #[verifier::external_body]
 pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64]) {
@@ -424,10 +463,12 @@ pub proof fn axiom_sha512_output_length(input: Seq<u8>)
     admit();
 }
 
-#[cfg(all(feature = "digest", verus_keep_ghost))]
-#[verifier::external_body]
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `sha2::Sha512 via digest::Digest`
 /// Compute SHA-512 hash of input bytes.
 /// If input is uniform, output is computationally indistinguishable from uniform.
+#[cfg(all(feature = "digest", verus_keep_ghost))]
+#[verifier::external_body]
 pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64])
     ensures
         result@ == spec_sha512(input@),
@@ -438,6 +479,8 @@ pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64])
     hasher.finalize().into()
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `sha2::Sha256 via digest::Digest`
 #[cfg(all(feature = "digest", not(verus_keep_ghost)))]
 #[verifier::external_body]
 pub fn sha256_hash_bytes(input: &[u8]) -> (result: [u8; 32]) {
@@ -460,9 +503,11 @@ pub proof fn axiom_sha256_output_length(input: Seq<u8>)
     admit();
 }
 
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `sha2::Sha256 via digest::Digest`
+/// Compute SHA-256 hash of input bytes.
 #[cfg(all(feature = "digest", verus_keep_ghost))]
 #[verifier::external_body]
-/// Compute SHA-256 hash of input bytes.
 pub fn sha256_hash_bytes(input: &[u8]) -> (result: [u8; 32])
     ensures
         result@ == spec_sha256(input@),

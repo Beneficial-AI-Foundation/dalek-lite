@@ -390,6 +390,8 @@ impl LookupTable<ProjectiveNielsPoint> {
 
 // Manual Clone implementation to avoid array clone issues in Verus
 impl<T: Copy> Clone for LookupTable<T> {
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::clone::Clone::clone` (for LookupTable)
     #[verifier::external_body]
     fn clone(&self) -> Self {
         *self
@@ -431,6 +433,8 @@ impl<T: Copy + Default> Default for $name<T> {
 */
 
 impl<T: Debug> Debug for LookupTable<T> {
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::fmt::Debug::fmt` (for LookupTable)
     #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}(", stringify!(LookupTable))?;

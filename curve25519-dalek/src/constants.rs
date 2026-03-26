@@ -204,6 +204,8 @@ use crate::ristretto::RistrettoBasepointTable;
 /// Changed from `static` to `const` inside verus! block to make it accessible from verus code.
 /// Validity is specified via `axiom_ristretto_basepoint_table_valid()` in `specs/ristretto_specs.rs`.
 #[cfg(feature = "precomputed-tables")]
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `RistrettoBasepointTable` (precomputed table, correctness via axiom)
 #[verifier::external_body]
 pub const RISTRETTO_BASEPOINT_TABLE: &'static RistrettoBasepointTable = unsafe {
     // SAFETY: `RistrettoBasepointTable` is a `#[repr(transparent)]` newtype of

@@ -246,6 +246,8 @@ impl ConstantTimeEq for CompressedEdwardsY {
 
 impl Debug for CompressedEdwardsY {
     /* VERIFICATION NOTE: we don't cover debugging */
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::fmt::Debug::fmt` (for CompressedEdwardsY)
     #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "CompressedEdwardsY: {:?}", self.as_bytes())
@@ -1799,7 +1801,7 @@ impl EdwardsPoint {
         since = "4.0.0",
         note = "previously named `hash_from_bytes`, this is not a secure hash function"
     )]
-    #[verifier::external_body]
+    #[verifier::external]
     pub fn nonspec_map_to_curve<D>(bytes: &[u8]) -> EdwardsPoint where
         D: Digest<OutputSize = U64> + Default,
      {
@@ -2358,6 +2360,8 @@ impl EdwardsPoint {
     /// This is used for exec correctness/performance, but is not verified directly.
     /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
     /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::iter::Iterator::fold` (original Sum impl for EdwardsPoint)
     #[verifier::external_body]
     pub fn sum_original<T, I>(iter: I) -> (result: EdwardsPoint) where
         T: Borrow<EdwardsPoint>,
@@ -2714,6 +2718,8 @@ impl EdwardsPoint {
 impl MultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `MultiscalarMul::multiscalar_mul` (for EdwardsPoint, see verified `multiscalar_mul_verus`)
     #[verifier::external_body]
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint where
         I: IntoIterator,
@@ -2756,6 +2762,8 @@ impl MultiscalarMul for EdwardsPoint {
 impl VartimeMultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `VartimeMultiscalarMul::optional_multiscalar_mul` (for EdwardsPoint, see verified `optional_multiscalar_mul_verus`)
     #[verifier::external_body]
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint> where
         I: IntoIterator,
@@ -2868,6 +2876,8 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::iter::Iterator::count`
     // Helper to count iterator elements without consuming (clones internally).
     // Verus doesn't support Iterator::clone() or Iterator::count().
     #[verifier::external_body]
@@ -3096,6 +3106,8 @@ pub struct EdwardsBasepointTable(pub [LookupTableRadix16<AffineNielsPoint>; 32])
 
 // Manual Clone implementation to avoid array clone issues in Verus
 impl Clone for EdwardsBasepointTable {
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::clone::Clone::clone` (for EdwardsBasepointTable)
     #[verifier::external_body]
     fn clone(&self) -> Self {
         EdwardsBasepointTable(self.0)

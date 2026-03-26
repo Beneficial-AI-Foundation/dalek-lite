@@ -495,6 +495,8 @@ impl Index<usize> for Scalar {
 
 impl Debug for Scalar {
     /* VERIFICATION NOTE: we don't cover debugging */
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::fmt::Debug::fmt` (for Scalar)
     #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Scalar{{\n\tbytes: {:?},\n}}", &self.bytes)
@@ -1458,18 +1460,13 @@ impl Scalar {
     /// # }
     /// ```
     /* <VERIFICATION NOTE>
-     Marked as external_body due to complexity of Digest trait.
+     Original dalek function using generic Digest trait.
      For Verus verification, use hash_from_bytes_verus instead.
     </VERIFICATION NOTE> */
-    #[verifier::external_body]
-    pub fn hash_from_bytes<D>(input: &[u8]) -> (result: Scalar) where
+    #[verifier::external]
+    pub fn hash_from_bytes<D>(input: &[u8]) -> Scalar where
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64> + Default,
-
-        ensures
-    // Result satisfies Scalar invariants #1 and #2
-
-            is_canonical_scalar(&result),
-    {
+     {
         let mut hash = D::default();
         hash.update(input);
         Scalar::from_hash(hash)
@@ -1532,20 +1529,14 @@ impl Scalar {
     /// # }
     /// ```
     /* <VERIFICATION NOTE>
-     Marked as external_body due to GenericArray having private fields.
+     Original dalek function using generic Digest/GenericArray.
      For Verus verification, see from_hash_verus below.
     </VERIFICATION NOTE> */
     #[cfg(feature = "digest")]
-    #[verifier::external_body]
-    pub fn from_hash<D>(hash: D) -> (result: Scalar) where
+    #[verifier::external]
+    pub fn from_hash<D>(hash: D) -> Scalar where
         D: digest::Digest<OutputSize = digest::generic_array::typenum::U64>,
-
-        ensures
-    // is_uniform_digest(&hash) ==> is_uniform_scalar(&result),
-    // Result satisfies Scalar invariants #1 and #2
-
-            is_canonical_scalar(&result),
-    {
+     {
         let mut output = [0u8;64];
         output.copy_from_slice(hash.finalize().as_slice());
         Scalar::from_bytes_mod_order_wide(&output)
@@ -2089,6 +2080,8 @@ struct ScalarVisitor;
 impl<'de> Visitor<'de> for ScalarVisitor {
     type Value = Scalar;
 
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `serde::de::Visitor::expecting` (for ScalarVisitor)
     #[verifier::external_body]
     fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         {
@@ -2099,6 +2092,8 @@ impl<'de> Visitor<'de> for ScalarVisitor {
         }
     }
 
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `serde::de::Visitor::visit_seq` (for ScalarVisitor)
     #[verifier::external_body]
     fn visit_seq<A>(self, mut seq: A) -> Result<Scalar, A::Error> where
         A: serde::de::SeqAccess<'de>,
@@ -2119,6 +2114,8 @@ impl<'de> Visitor<'de> for ScalarVisitor {
 #[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl Serialize for Scalar {
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `serde::Serialize::serialize` (for Scalar)
     #[verifier::external_body]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         use serde::ser::SerializeTuple;
@@ -2133,6 +2130,8 @@ impl Serialize for Scalar {
 #[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 impl<'de> Deserialize<'de> for Scalar {
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `serde::Deserialize::deserialize` (for Scalar)
     #[verifier::external_body]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
         /* VERIFICATION NOTE:

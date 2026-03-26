@@ -288,7 +288,7 @@ function updateFilterCounts() {
     }
     if (attrPillLibsignal) {
         let base = modFiltered;
-        if (filterPublic) base = base.filter(v => v.is_public);
+        if (filterPublic) base = base.filter(v => v.is_public || v.is_libsignal);
         attrPillLibsignal.countEl.textContent = base.filter(v => v.is_libsignal).length;
     }
 }

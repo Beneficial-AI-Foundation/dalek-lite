@@ -148,6 +148,8 @@ pub(crate) const RR: Scalar52 = Scalar52 {
 /// This is called `_POINT` to distinguish it from
 /// `ED25519_BASEPOINT_TABLE`, which should be used for scalar
 /// multiplication (it's much faster).
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `ED25519_BASEPOINT_POINT` (precomputed constant, correctness via spec)
 #[verifier::external_body]
 pub exec const ED25519_BASEPOINT_POINT: EdwardsPoint
     ensures
@@ -375,6 +377,8 @@ pub exec const EIGHT_TORSION: [EdwardsPoint; 8]
 
 /// Inner item used to hide limb constants from cargo doc output.
 #[doc(hidden)]
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `EIGHT_TORSION_INNER_DOC_HIDDEN` (precomputed constant, correctness via spec)
 #[verifier::external_body]
 pub exec const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8]
     ensures
@@ -581,6 +585,8 @@ pub exec const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8]
 /// - `table.0[i]` contains `[1·(16²)^i·B, 2·(16²)^i·B, ..., 8·(16²)^i·B]`
 /// - This enables verified scalar multiplication via radix-16 representation.
 #[cfg(feature = "precomputed-tables")]
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `ED25519_BASEPOINT_TABLE` (precomputed table, correctness via axiom)
 #[verifier::external_body]
 pub const ED25519_BASEPOINT_TABLE: &'static EdwardsBasepointTable =
     &ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN;
@@ -8040,6 +8046,8 @@ verus! {
 /// Its correctness is specified via `axiom_affine_odd_multiples_of_basepoint_valid()` in
 /// `specs/window_specs.rs`.
 #[cfg(feature = "precomputed-tables")]
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `AFFINE_ODD_MULTIPLES_OF_BASEPOINT` (precomputed table, correctness via axiom)
 #[verifier::external_body]
 pub const AFFINE_ODD_MULTIPLES_OF_BASEPOINT: NafLookupTable8<AffineNielsPoint> =
     AFFINE_ODD_MULTIPLES_OF_BASEPOINT_INNER;

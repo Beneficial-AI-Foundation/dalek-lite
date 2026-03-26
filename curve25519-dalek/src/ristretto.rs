@@ -2187,7 +2187,8 @@ impl RistrettoPoint {
         results
     }
 
-    /// Assumed specification for: alloc::vec::Vec::as_mut_slice (bridge to verified FieldElement::batch_invert)
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `alloc::vec::Vec::as_mut_slice (bridge to verified FieldElement::batch_invert)`
     /// Wrapper for FieldElement::batch_invert that bridges Vec<T> to &mut [T].
     ///
     /// VERUS LIMITATION: Verus doesn't support Vec to mutable slice conversion:
@@ -2688,7 +2689,8 @@ impl RistrettoPoint {
     }
 
     #[cfg(any(test, feature = "rand_core"))]
-    /// Assumed specification for: rand_core::CryptoRngCore::fill_bytes
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `rand_core::CryptoRngCore::fill_bytes`
     /// Return a `RistrettoPoint` chosen uniformly at random using a user-provided RNG.
     ///
     /// # Inputs
@@ -3211,6 +3213,8 @@ impl RistrettoPoint {
     /// This is used for exec correctness/performance, but is not verified directly.
     /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
     /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `core::iter::Iterator::fold` (original Sum impl for RistrettoPoint)
     #[verifier::external_body]
     pub fn sum_original<T, I>(iter: I) -> (result: RistrettoPoint) where
         T: Borrow<RistrettoPoint>,
@@ -3511,6 +3515,8 @@ verus! {
 impl MultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `MultiscalarMul::multiscalar_mul` (for RistrettoPoint, delegates to EdwardsPoint)
     #[verifier::external_body]
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> RistrettoPoint where
         I: IntoIterator,
@@ -3527,6 +3533,8 @@ impl MultiscalarMul for RistrettoPoint {
 impl VartimeMultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
+    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+    /// `VartimeMultiscalarMul::optional_multiscalar_mul` (for RistrettoPoint, delegates to EdwardsPoint)
     #[verifier::external_body]
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<RistrettoPoint> where
         I: IntoIterator,

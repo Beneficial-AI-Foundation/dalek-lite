@@ -112,7 +112,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const modules = [...new Set(trackedFunctions.map(v => v.module))];
     const axiomCount = specFunctions.filter(s => s.category === "axiom").length;
     const specOnlyCount = specFunctions.filter(s => s.category !== "axiom").length;
-    const publicCount = trackedFunctions.filter(v => v.is_public || v.is_libsignal).length;
+    const publicCount = trackedFunctions.filter(v => v.is_public).length;
     const libsignalCount = trackedFunctions.filter(v => v.is_libsignal).length;
     document.getElementById("totalFunctions").textContent = trackedFunctions.length;
     document.getElementById("totalExternal").textContent = externalFunctions.length;
@@ -268,7 +268,7 @@ function updateFilterCounts() {
 
     // Base list filtered by attribute toggles (for module pills)
     let attrFiltered = tracked;
-    if (filterPublic) attrFiltered = attrFiltered.filter(v => v.is_public || v.is_libsignal);
+    if (filterPublic) attrFiltered = attrFiltered.filter(v => v.is_public);
     if (filterLibsignal) attrFiltered = attrFiltered.filter(v => v.is_libsignal);
 
     for (const pill of modulePills) {
@@ -284,11 +284,11 @@ function updateFilterCounts() {
     if (attrPillPublic) {
         let base = modFiltered;
         if (filterLibsignal) base = base.filter(v => v.is_libsignal);
-        attrPillPublic.countEl.textContent = base.filter(v => v.is_public || v.is_libsignal).length;
+        attrPillPublic.countEl.textContent = base.filter(v => v.is_public).length;
     }
     if (attrPillLibsignal) {
         let base = modFiltered;
-        if (filterPublic) base = base.filter(v => v.is_public || v.is_libsignal);
+        if (filterPublic) base = base.filter(v => v.is_public);
         attrPillLibsignal.countEl.textContent = base.filter(v => v.is_libsignal).length;
     }
 }
@@ -305,7 +305,7 @@ function getFilteredVerified() {
         list = list.filter(v => v.category === "external" || activeModules.has(v.module));
     }
     if (filterPublic) {
-        list = list.filter(v => v.category === "external" || v.is_public || v.is_libsignal);
+        list = list.filter(v => v.category === "external" || v.is_public);
     }
     if (filterLibsignal) {
         list = list.filter(v => v.category === "external" || v.is_libsignal);

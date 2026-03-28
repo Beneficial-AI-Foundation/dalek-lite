@@ -1,0 +1,22 @@
+# Test workflow for verilib-cli GitHub Actions
+# Uses the reusable workflow from verilib-cli which runs the full pipeline:
+#   create -> atomize -> specify -> verify -> reclone (deploy)
+
+name: Test verilib Actions
+
+on:
+  workflow_dispatch:  # Manual trigger for testing
+  push:
+    branches:
+      - la/test-verilib-actions
+
+jobs:
+  verify:
+    uses: beneficial-ai-foundation/verilib-cli/.github/workflows/verilib-verify.yml@la/create_github_actions
+    with:
+      project-path: .
+      mode: generate
+      deploy-enabled: true
+      repo-id: '5054'
+    secrets:
+      VERILIB_API_KEY: ${{ secrets.VERRILIB_CLI_AUTH_KEY }}

@@ -4,6 +4,7 @@ use vstd::bits::*;
 use vstd::prelude::*;
 
 use super::core_specs::*;
+use crate::backend::serial::u64::field::FieldElement51;
 
 verus! {
 
@@ -185,6 +186,21 @@ pub open spec fn spec_as_bytes(limbs: [u64; 5]) -> [u8; 32] {
     let reduced_limbs = spec_reduce(limbs);
     let q = compute_q_spec(reduced_limbs);
     bit_arrange(reduce_with_q_spec(reduced_limbs, q))
+}
+
+/// Construct a FieldElement51 from a natural number by splitting into 51-bit limbs.
+/// For n < pow2(255), the roundtrip identity u64_5_as_nat(nat_to_fe51(n).limbs) == n holds.
+#[verusfmt::skip]
+pub open spec fn nat_to_fe51(n: nat) -> FieldElement51 {
+    FieldElement51 {
+        limbs: [
+            (n % pow2(51)) as u64,
+            ((n / pow2(51)) % pow2(51)) as u64,
+            ((n / pow2(102)) % pow2(51)) as u64,
+            ((n / pow2(153)) % pow2(51)) as u64,
+            ((n / pow2(204)) % pow2(51)) as u64,
+        ],
+    }
 }
 
 } // verus!

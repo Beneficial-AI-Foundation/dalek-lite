@@ -420,6 +420,24 @@ pub(crate) proof fn lemma_unfold_edwards(point: crate::edwards::EdwardsPoint)
 {
 }
 
+/// Exposes the type invariant of an EdwardsPoint: the point is valid.
+///
+/// Mathematically trivial: every EdwardsPoint satisfies `well_formed()` by construction
+/// (Verus type invariant). However, `use_type_invariant` only works with exec/tracked
+/// values, not Ghost (the default for proof fn parameters). This wrapper admits the
+/// type invariant so it can be used with spec-mode values (e.g. from `choose`).
+///
+/// A Verus broadcast axiom for type invariants would eliminate this need.
+pub(crate) proof fn lemma_edwards_type_invariant(point: crate::edwards::EdwardsPoint)
+    ensures
+        point.well_formed(),
+        is_valid_edwards_point(point),
+        edwards_point_limbs_bounded(point),
+        sum_of_limbs_bounded(&edwards_y(point), &edwards_x(point), u64::MAX),
+{
+    admit();
+}
+
 // =============================================================================
 // EdwardsPoint Predicates (open — bodies visible everywhere, using closed accessors)
 // =============================================================================

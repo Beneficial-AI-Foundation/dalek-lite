@@ -7,5 +7,12 @@
     "is_admin": true,
     "url": "https://verilib.org"
   },
+  "color_rules": [
+    { "expr": "language == \"lean\" && validated == 1", "color": "#f97316" },
+    { "expr": "statement_type == \"method\" && validated == 1", "color": "#a855f7" },
+    { "expr": "disabled == 1", "color": "#3F9FBC" },
+    { "expr": "specified == 0", "color": "#fafafc" },
+    { "expr": "validated == 1 && specified==1", "color": "#BFFCFF" }
+  ],
   "structure-root": ".verilib/structure"
 }

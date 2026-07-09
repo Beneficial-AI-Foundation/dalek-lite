@@ -683,7 +683,6 @@ use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "serde")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Serialize for EdwardsPoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -714,7 +713,6 @@ impl Serialize for CompressedEdwardsY {
 }
 
 #[cfg(feature = "serde")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<'de> Deserialize<'de> for EdwardsPoint {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -722,7 +720,6 @@ impl<'de> Deserialize<'de> for EdwardsPoint {
     {
         struct EdwardsPointVisitor;
 
-        #[cfg_attr(verus_keep_ghost, verifier::external)]
         impl<'de> Visitor<'de> for EdwardsPointVisitor {
             type Value = EdwardsPoint;
 
@@ -3981,7 +3978,6 @@ impl Debug for EdwardsPoint {
 // Use the full trait path to avoid Group::identity overlapping Identity::identity in the
 // rest of the module (e.g. tests).
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl group::Group for EdwardsPoint {
     type Scalar = Scalar;
 
@@ -4015,7 +4011,6 @@ impl group::Group for EdwardsPoint {
 }
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl GroupEncoding for EdwardsPoint {
     type Repr = [u8; 32];
 
@@ -4042,7 +4037,6 @@ impl GroupEncoding for EdwardsPoint {
 pub struct SubgroupPoint(EdwardsPoint);
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl From<SubgroupPoint> for EdwardsPoint {
     fn from(p: SubgroupPoint) -> Self {
         p.0
@@ -4050,7 +4044,6 @@ impl From<SubgroupPoint> for EdwardsPoint {
 }
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Neg for SubgroupPoint {
     type Output = Self;
 
@@ -4060,7 +4053,6 @@ impl Neg for SubgroupPoint {
 }
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Add<&SubgroupPoint> for &SubgroupPoint {
     type Output = SubgroupPoint;
     fn add(self, other: &SubgroupPoint) -> SubgroupPoint {
@@ -4091,7 +4083,6 @@ define_add_variants!(
 );
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl AddAssign<&SubgroupPoint> for SubgroupPoint {
     fn add_assign(&mut self, rhs: &SubgroupPoint) {
         self.0 += rhs.0
@@ -4112,7 +4103,6 @@ impl AddAssign<&SubgroupPoint> for EdwardsPoint {
 define_add_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Sub<&SubgroupPoint> for &SubgroupPoint {
     type Output = SubgroupPoint;
     fn sub(self, other: &SubgroupPoint) -> SubgroupPoint {
@@ -4143,7 +4133,6 @@ define_sub_variants!(
 );
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl SubAssign<&SubgroupPoint> for SubgroupPoint {
     fn sub_assign(&mut self, rhs: &SubgroupPoint) {
         self.0 -= rhs.0;
@@ -4164,7 +4153,6 @@ impl SubAssign<&SubgroupPoint> for EdwardsPoint {
 define_sub_assign_variants!(LHS = EdwardsPoint, RHS = SubgroupPoint);
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T> Sum<T> for SubgroupPoint
 where
     T: Borrow<SubgroupPoint>,
@@ -4179,7 +4167,6 @@ where
 }
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Mul<&Scalar> for &SubgroupPoint {
     type Output = SubgroupPoint;
 
@@ -4212,7 +4199,6 @@ impl Mul<&SubgroupPoint> for &Scalar {
 define_mul_variants!(LHS = SubgroupPoint, RHS = Scalar, Output = SubgroupPoint);
 
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl MulAssign<&Scalar> for SubgroupPoint {
     fn mul_assign(&mut self, scalar: &Scalar) {
         self.0 *= scalar;
@@ -4281,7 +4267,6 @@ impl PrimeGroup for SubgroupPoint {}
 
 /// Ristretto has a cofactor of 1.
 #[cfg(feature = "group")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl CofactorGroup for EdwardsPoint {
     type Subgroup = SubgroupPoint;
 

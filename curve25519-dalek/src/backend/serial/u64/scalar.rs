@@ -98,6 +98,7 @@ pub struct Scalar52 {
 }
 
 } // verus!
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for Scalar52 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Scalar52: {:?}", self.limbs)
@@ -135,6 +136,7 @@ impl Index<usize> for Scalar52 {
 
 } // verus!
 // VERIFICATION EXCLUDED: mutable returns unsupported by Verus
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl IndexMut<usize> for Scalar52 {
     fn index_mut(&mut self, _index: usize) -> &mut u64 {
         &mut (self.limbs[_index])

@@ -677,6 +677,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
 
 } // verus!
 #[cfg(feature = "zeroize")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T> Zeroize for LookupTable<T>
 where
     T: Copy + Default + Zeroize,
@@ -775,12 +776,14 @@ impl NafLookupTable5<AffineNielsPoint> {
 
 } // verus!
 // Manual Clone impl since derive(Clone) is not supported inside verus macro for arrays
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Copy> Clone for NafLookupTable5<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Debug> Debug for NafLookupTable5<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "NafLookupTable5({:?})", self.0)
@@ -1068,6 +1071,7 @@ impl NafLookupTable8<AffineNielsPoint> {
 } // verus!
 // Manual Clone impl since derive(Clone) is not supported inside verus macro for arrays
 #[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Copy> Clone for NafLookupTable8<T> {
     fn clone(&self) -> Self {
         *self
@@ -1075,6 +1079,7 @@ impl<T: Copy> Clone for NafLookupTable8<T> {
 }
 
 #[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Debug> Debug for NafLookupTable8<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "NafLookupTable8([")?;

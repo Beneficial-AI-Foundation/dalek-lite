@@ -94,6 +94,7 @@ pub use crate::specs::iterator_specs::{
 /// This algorithm is adapted from section 4 of <https://eprint.iacr.org/2012/549.pdf>.
 pub struct Pippenger;
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimeMultiscalarMul for Pippenger {
     type Point = EdwardsPoint;
 

@@ -958,6 +958,7 @@ impl Default for CompressedRistretto {
 }
 
 } // verus!
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl TryFrom<&[u8]> for CompressedRistretto {
     type Error = TryFromSliceError;
 
@@ -980,6 +981,7 @@ use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[cfg(feature = "serde")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Serialize for RistrettoPoint {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -1010,6 +1012,7 @@ impl Serialize for CompressedRistretto {
 }
 
 #[cfg(feature = "serde")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<'de> Deserialize<'de> for RistrettoPoint {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -1017,6 +1020,7 @@ impl<'de> Deserialize<'de> for RistrettoPoint {
     {
         struct RistrettoPointVisitor;
 
+        #[cfg_attr(verus_keep_ghost, verifier::external)]
         impl<'de> Visitor<'de> for RistrettoPointVisitor {
             type Value = RistrettoPoint;
 
@@ -3687,6 +3691,7 @@ impl RistrettoPoint {
 pub struct VartimeRistrettoPrecomputation(crate::backend::VartimePrecomputedStraus);
 
 #[cfg(feature = "alloc")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimePrecomputedMultiscalarMul for VartimeRistrettoPrecomputation {
     type Point = RistrettoPoint;
 
@@ -3884,12 +3889,14 @@ impl ConditionallySelectable for RistrettoPoint {
 // ------------------------------------------------------------------------
 // Debug traits
 // ------------------------------------------------------------------------
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for CompressedRistretto {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "CompressedRistretto: {:?}", self.as_bytes())
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for RistrettoPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let coset = self.coset4();
@@ -3908,6 +3915,7 @@ impl Debug for RistrettoPoint {
 // Use the full trait path to avoid Group::identity overlapping Identity::identity in the
 // rest of the module (e.g. tests).
 #[cfg(feature = "group")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl group::Group for RistrettoPoint {
     type Scalar = Scalar;
 
@@ -3936,6 +3944,7 @@ impl group::Group for RistrettoPoint {
 }
 
 #[cfg(feature = "group")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl GroupEncoding for RistrettoPoint {
     type Repr = [u8; 32];
 
@@ -3965,6 +3974,7 @@ impl PrimeGroup for RistrettoPoint {}
 
 /// Ristretto has a cofactor of 1.
 #[cfg(feature = "group")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl CofactorGroup for RistrettoPoint {
     type Subgroup = Self;
 

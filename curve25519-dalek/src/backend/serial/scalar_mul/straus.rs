@@ -81,6 +81,7 @@ use crate::specs::iterator_specs::{
 /// [problem]: https://www.jstor.org/stable/2312273
 pub struct Straus {}
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl MultiscalarMul for Straus {
     type Point = EdwardsPoint;
 
@@ -190,6 +191,7 @@ impl MultiscalarMul for Straus {
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimeMultiscalarMul for Straus {
     type Point = EdwardsPoint;
 

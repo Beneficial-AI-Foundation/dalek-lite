@@ -28,6 +28,7 @@ pub struct VartimePrecomputedStraus {
     static_lookup_tables: Vec<NafLookupTable8<AffineNielsPoint>>,
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimePrecomputedMultiscalarMul for VartimePrecomputedStraus {
     type Point = EdwardsPoint;
 

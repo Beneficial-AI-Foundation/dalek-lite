@@ -417,6 +417,7 @@ impl Scalar {
         since = "4.0.0",
         note = "This constructor outputs scalars with undefined scalar-scalar arithmetic. See docs."
     )]
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     pub const fn from_bits(bytes: [u8; 32]) -> Scalar {
         let mut s = Scalar { bytes };
         // Ensure invariant #1 holds. That is, make s < 2^255 by masking the high bit.
@@ -975,6 +976,7 @@ impl Neg for Scalar {
 
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl ConditionallySelectable for Scalar {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> (Self) {
         let mut bytes = [0u8;32];
@@ -4725,6 +4727,7 @@ impl UnpackedScalar {
 
 } // verus!
 #[cfg(feature = "group")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Field for Scalar {
     const ZERO: Self = Self::ZERO;
     const ONE: Self = Self::ONE;
@@ -4768,6 +4771,7 @@ impl Field for Scalar {
 }
 
 #[cfg(feature = "group")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl PrimeField for Scalar {
     type Repr = [u8; 32];
 
@@ -4840,6 +4844,7 @@ impl PrimeField for Scalar {
 }
 
 #[cfg(feature = "group-bits")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl PrimeFieldBits for Scalar {
     type ReprBits = [u8; 32];
 
@@ -4853,6 +4858,7 @@ impl PrimeFieldBits for Scalar {
 }
 
 #[cfg(feature = "group")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl FromUniformBytes<64> for Scalar {
     fn from_uniform_bytes(bytes: &[u8; 64]) -> Self {
         Scalar::from_bytes_mod_order_wide(bytes)

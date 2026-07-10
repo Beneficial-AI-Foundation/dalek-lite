@@ -389,10 +389,10 @@ impl LookupTable<ProjectiveNielsPoint> {
 }
 
 // Manual Clone implementation to avoid array clone issues in Verus
+#[verifier::external]
 impl<T: Copy> Clone for LookupTable<T> {
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `core::clone::Clone::clone` (for LookupTable)
-    #[verifier::external_body]
     fn clone(&self) -> Self {
         *self
     }
@@ -432,10 +432,10 @@ impl<T: Copy + Default> Default for $name<T> {
     }
 */
 
+#[verifier::external]
 impl<T: Debug> Debug for LookupTable<T> {
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `core::fmt::Debug::fmt` (for LookupTable)
-    #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}(", stringify!(LookupTable))?;
 
@@ -677,6 +677,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
 
 } // verus!
 #[cfg(feature = "zeroize")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T> Zeroize for LookupTable<T>
 where
     T: Copy + Default + Zeroize,
@@ -775,12 +776,14 @@ impl NafLookupTable5<AffineNielsPoint> {
 
 } // verus!
 // Manual Clone impl since derive(Clone) is not supported inside verus macro for arrays
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Copy> Clone for NafLookupTable5<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Debug> Debug for NafLookupTable5<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "NafLookupTable5({:?})", self.0)
@@ -1068,6 +1071,7 @@ impl NafLookupTable8<AffineNielsPoint> {
 } // verus!
 // Manual Clone impl since derive(Clone) is not supported inside verus macro for arrays
 #[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Copy> Clone for NafLookupTable8<T> {
     fn clone(&self) -> Self {
         *self
@@ -1075,6 +1079,7 @@ impl<T: Copy> Clone for NafLookupTable8<T> {
 }
 
 #[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl<T: Debug> Debug for NafLookupTable8<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f, "NafLookupTable8([")?;

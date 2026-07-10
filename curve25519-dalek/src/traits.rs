@@ -166,6 +166,7 @@ pub trait BasepointTable {
 
     /// Multiply `clamp_integer(bytes)` by this precomputed basepoint table, in constant time. For
     /// a description of clamping, see [`clamp_integer`].
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     fn mul_base_clamped(&self, bytes: [u8; 32]) -> Self::Point {
         // Basepoint multiplication is defined for all values of `bytes` up to and including
         // 2^255 - 1. The limit comes from the fact that scalar.as_radix_16() doesn't work for
@@ -349,6 +350,7 @@ pub trait VartimeMultiscalarMul {
     /// assert_eq!(A1.compress(), (-A2).compress());
     /// # }
     /// ```
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point
     where
         I: IntoIterator,
@@ -416,6 +418,7 @@ pub trait VartimePrecomputedMultiscalarMul: Sized {
     /// be convertible to iterators (`I: IntoIter`), and the
     /// iterator's items must be `Borrow<Scalar>`, to allow iterators
     /// returning either `Scalar`s or `&Scalar`s.
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     fn vartime_multiscalar_mul<I>(&self, static_scalars: I) -> Self::Point
     where
         I: IntoIterator,
@@ -447,6 +450,7 @@ pub trait VartimePrecomputedMultiscalarMul: Sized {
     /// convertible to iterators (`I: IntoIter`), and the iterator's items
     /// must be `Borrow<Scalar>` (or `Borrow<Point>`), to allow
     /// iterators returning either `Scalar`s or `&Scalar`s.
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     fn vartime_mixed_multiscalar_mul<I, J, K>(
         &self,
         static_scalars: I,

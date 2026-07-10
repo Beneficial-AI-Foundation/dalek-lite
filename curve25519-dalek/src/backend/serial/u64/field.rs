@@ -115,11 +115,11 @@ pub struct FieldElement51 {
     pub limbs: [u64; 5],
 }
 
+#[verifier::external]
 impl Debug for FieldElement51 {
     /* VERIFICATION NOTE: we don't cover debugging */
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `core::fmt::Debug::fmt` (for FieldElement51)
-    #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "FieldElement51({:?})", &self.limbs[..])
     }

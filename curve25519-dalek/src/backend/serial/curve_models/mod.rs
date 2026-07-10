@@ -2047,6 +2047,7 @@ impl<'a> Neg for &'a AffineNielsPoint {
 // ------------------------------------------------------------------------
 // Debug traits
 // ------------------------------------------------------------------------
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for ProjectivePoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
@@ -2057,6 +2058,7 @@ impl Debug for ProjectivePoint {
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for CompletedPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
@@ -2067,6 +2069,7 @@ impl Debug for CompletedPoint {
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for AffineNielsPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
@@ -2077,6 +2080,7 @@ impl Debug for AffineNielsPoint {
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for ProjectiveNielsPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "ProjectiveNielsPoint{{\n\tY_plus_X: {:?},\n\tY_minus_X: {:?},\n\tZ: {:?},\n\tT2d: {:?}\n}}",

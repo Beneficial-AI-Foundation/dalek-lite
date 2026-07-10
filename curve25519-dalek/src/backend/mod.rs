@@ -94,6 +94,7 @@ fn get_selected_backend() -> (result: BackendKind)
 } // verus!
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub fn pippenger_optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
 where
     I: IntoIterator,
@@ -130,6 +131,7 @@ pub(crate) enum VartimePrecomputedStraus {
 
 #[cfg(feature = "alloc")]
 impl VartimePrecomputedStraus {
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     pub fn new<I>(static_points: I) -> Self
     where
         I: IntoIterator,
@@ -152,6 +154,7 @@ impl VartimePrecomputedStraus {
         }
     }
 
+    #[cfg_attr(verus_keep_ghost, verifier::external)]
     pub fn optional_mixed_multiscalar_mul<I, J, K>(
         &self,
         static_scalars: I,
@@ -191,6 +194,7 @@ impl VartimePrecomputedStraus {
 
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub fn straus_multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint
 where
     I: IntoIterator,
@@ -219,6 +223,7 @@ where
 
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 pub fn straus_optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
 where
     I: IntoIterator,

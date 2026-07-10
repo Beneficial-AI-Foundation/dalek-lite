@@ -244,11 +244,11 @@ impl ConstantTimeEq for CompressedEdwardsY {
     }
 }
 
+#[verifier::external]
 impl Debug for CompressedEdwardsY {
     /* VERIFICATION NOTE: we don't cover debugging */
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `core::fmt::Debug::fmt` (for CompressedEdwardsY)
-    #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "CompressedEdwardsY: {:?}", self.as_bytes())
     }
@@ -2360,9 +2360,8 @@ impl EdwardsPoint {
     /// This is used for exec correctness/performance, but is not verified directly.
     /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
     /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `core::iter::Iterator::fold` (original Sum impl for EdwardsPoint)
-    #[verifier::external_body]
+    /// Out of verification scope: no verified caller (only `mod test_sum` uses it).
+    #[verifier::external]
     pub fn sum_original<T, I>(iter: I) -> (result: EdwardsPoint) where
         T: Borrow<EdwardsPoint>,
         I: Iterator<Item = T>,
@@ -2715,12 +2714,12 @@ impl EdwardsPoint {
 // These use the iterator's size hint and the target settings to
 // forward to a specific backend implementation.
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl MultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `MultiscalarMul::multiscalar_mul` (for EdwardsPoint, see verified `multiscalar_mul_verus`)
-    #[verifier::external_body]
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
@@ -2759,12 +2758,12 @@ impl MultiscalarMul for EdwardsPoint {
 }
 
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl VartimeMultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `VartimeMultiscalarMul::optional_multiscalar_mul` (for EdwardsPoint, see verified `optional_multiscalar_mul_verus`)
-    #[verifier::external_body]
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint> where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
@@ -2815,6 +2814,7 @@ impl VartimeMultiscalarMul for EdwardsPoint {
 pub struct VartimeEdwardsPrecomputation(crate::backend::VartimePrecomputedStraus);
 
 #[cfg(feature = "alloc")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
     type Point = EdwardsPoint;
 
@@ -3725,6 +3725,7 @@ impl<'a, 'b> Mul<&'a EdwardsBasepointTable> for &'b Scalar {
 }
 
 } // verus!
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for EdwardsBasepointTable {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:?}([\n", stringify!(EdwardsBasepointTable))?;
@@ -3958,6 +3959,7 @@ impl EdwardsPoint {
 // ------------------------------------------------------------------------
 // Debug traits
 // ------------------------------------------------------------------------
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for EdwardsPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(

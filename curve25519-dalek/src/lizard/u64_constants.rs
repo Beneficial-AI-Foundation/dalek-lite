@@ -3,6 +3,7 @@ pub use crate::backend::serial::u64::field::FieldElement51;
 // Verus cannot use const fn: not supported inside verus!, and calls to
 // functions outside verus! are rejected as "external".
 #[allow(dead_code)]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 const fn field_element(element: [u64; 5]) -> FieldElement51 {
     FieldElement51 { limbs: element }
 }

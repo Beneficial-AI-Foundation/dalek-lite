@@ -958,6 +958,7 @@ impl Default for CompressedRistretto {
 }
 
 } // verus!
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl TryFrom<&[u8]> for CompressedRistretto {
     type Error = TryFromSliceError;
 
@@ -2708,7 +2709,7 @@ impl RistrettoPoint {
     /// discrete log of the output point with respect to any other
     /// point should be unknown.  The map is applied twice and the
     /// results are added, to ensure a uniform distribution.
-    #[verifier::external_body]
+    #[verifier::external]
     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {
         let mut uniform_bytes = [0u8;64];
         rng.fill_bytes(&mut uniform_bytes);
@@ -3211,9 +3212,8 @@ impl RistrettoPoint {
     /// This is used for exec correctness/performance, but is not verified directly.
     /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
     /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `core::iter::Iterator::fold` (original Sum impl for RistrettoPoint)
-    #[verifier::external_body]
+    /// Out of verification scope: no verified caller (only `mod test_sum` uses it).
+    #[verifier::external]
     pub fn sum_original<T, I>(iter: I) -> (result: RistrettoPoint) where
         T: Borrow<RistrettoPoint>,
         I: Iterator<Item = T>,
@@ -3510,12 +3510,12 @@ define_ristretto_scalar_mul_variants_verus!();
 verus! {
 
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl MultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `MultiscalarMul::multiscalar_mul` (for RistrettoPoint, delegates to EdwardsPoint)
-    #[verifier::external_body]
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> RistrettoPoint where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
@@ -3528,12 +3528,12 @@ impl MultiscalarMul for RistrettoPoint {
 }
 
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl VartimeMultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `VartimeMultiscalarMul::optional_multiscalar_mul` (for RistrettoPoint, delegates to EdwardsPoint)
-    #[verifier::external_body]
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<RistrettoPoint> where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
@@ -3687,6 +3687,7 @@ impl RistrettoPoint {
 pub struct VartimeRistrettoPrecomputation(crate::backend::VartimePrecomputedStraus);
 
 #[cfg(feature = "alloc")]
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimePrecomputedMultiscalarMul for VartimeRistrettoPrecomputation {
     type Point = RistrettoPoint;
 
@@ -3884,12 +3885,14 @@ impl ConditionallySelectable for RistrettoPoint {
 // ------------------------------------------------------------------------
 // Debug traits
 // ------------------------------------------------------------------------
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for CompressedRistretto {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "CompressedRistretto: {:?}", self.as_bytes())
     }
 }
 
+#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl Debug for RistrettoPoint {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let coset = self.coset4();

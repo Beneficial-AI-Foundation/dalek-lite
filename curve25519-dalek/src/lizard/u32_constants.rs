@@ -4,7 +4,6 @@ cfg_if! {
     if #[cfg(curve25519_dalek_backend = "fiat")] {
         pub use crate::backend::serial::fiat_u32::field::FieldElement2625;
 
-        #[cfg_attr(verus_keep_ghost, verifier::external)]
         const fn field_element(element: [u32; 10]) -> FieldElement2625 {
             FieldElement2625(fiat_crypto::curve25519_32::fiat_25519_tight_field_element(element))
         }

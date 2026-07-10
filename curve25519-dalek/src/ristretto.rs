@@ -3212,9 +3212,8 @@ impl RistrettoPoint {
     /// This is used for exec correctness/performance, but is not verified directly.
     /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
     /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `core::iter::Iterator::fold` (original Sum impl for RistrettoPoint)
-    #[verifier::external_body]
+    /// Out of verification scope: no verified caller (only `mod test_sum` uses it).
+    #[verifier::external]
     pub fn sum_original<T, I>(iter: I) -> (result: RistrettoPoint) where
         T: Borrow<RistrettoPoint>,
         I: Iterator<Item = T>,

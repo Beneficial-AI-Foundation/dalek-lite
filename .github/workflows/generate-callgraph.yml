@@ -10,9 +10,6 @@ on:
       - 'curve25519-dalek/Cargo.toml'
       - '.github/workflows/generate-callgraph.yml'
       - '.github/data/focus_dalek_entrypoints.json'
-  schedule:
-    # Run daily at 6:00 UTC to keep cache fresh (caches expire after 7 days of no access)
-    - cron: '0 6 * * *'
   workflow_dispatch:
 
 # Only allow one callgraph generation at a time

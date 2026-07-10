@@ -196,6 +196,20 @@ pub(crate) proof fn lemma_edwards_d2_is_2d()
     };
 }
 
+/// Axiom: the Edwards curve parameter `d` is not a square in `GF(p)`.
+///
+/// This is the key arithmetic precondition behind completeness of the Edwards
+/// addition law on Ed25519 (BBJLP 2008, Theorem 3.3).
+///
+/// For now we keep this as a trusted fact and validate it at runtime below via
+/// Euler's criterion.
+pub proof fn axiom_edwards_d_not_square()
+    ensures
+        !is_square(fe51_as_canonical_nat(&EDWARDS_D)),
+{
+    admit();
+}
+
 // =============================================================================
 // BASEPOINT_ORDER_PRIVATE Lemmas
 // =============================================================================
@@ -330,3 +344,39 @@ pub(crate) proof fn lemma_scalar_as_nat_basepoint_order_private_equals_group_ord
 }
 
 } // verus!
+
+#[cfg(test)]
+mod test_edwards_d_axiom {
+    use num_bigint::BigUint;
+    use num_traits::One;
+
+    use crate::constants::EDWARDS_D;
+
+    /// p = 2^255 - 19
+    fn p() -> BigUint {
+        (BigUint::one() << 255) - BigUint::from(19u32)
+    }
+
+    /// Reconstruct a natural number from fe51 limbs.
+    fn fe51_to_biguint(limbs: &[u64; 5]) -> BigUint {
+        let mut result = BigUint::from(0u32);
+        for i in (0..5).rev() {
+            result <<= 51;
+            result += BigUint::from(limbs[i]);
+        }
+        result
+    }
+
+    /// Euler's criterion: a is a QR mod p iff a^((p-1)/2) ≡ 1 (mod p).
+    fn is_qr(a: &BigUint, p: &BigUint) -> bool {
+        let exp = (p - BigUint::one()) / BigUint::from(2u32);
+        a.modpow(&exp, p) == BigUint::one()
+    }
+
+    #[test]
+    fn test_edwards_d_not_qr() {
+        let p = p();
+        let d = fe51_to_biguint(&EDWARDS_D.limbs) % &p;
+        assert!(!is_qr(&d, &p), "EDWARDS_D should NOT be a QR mod p");
+    }
+}

@@ -26,6 +26,12 @@ use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 use crate::lemmas::field_lemmas::negate_lemmas::{lemma_neg, lemma_neg_no_underflow, proof_negate};
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::lemma_fe51_unit_is_one;
+#[cfg(verus_keep_ghost)]
+use crate::lemmas::field_lemmas::u64_5_as_nat_lemmas::{
+    lemma_nat_to_fe51_bounded,
+    lemma_nat_to_fe51_canonical,
+    lemma_nat_to_fe51_roundtrip,
+};
 use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
@@ -35,7 +41,7 @@ use crate::specs::primality_specs::*;
 use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 #[cfg(verus_keep_ghost)]
-use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_pos, pow2};
+use vstd::arithmetic::power2::{lemma2_to64, lemma2_to64_rest, lemma_pow2_pos, lemma_pow2_strictly_increases, pow2};
 use vstd::calc;
 use vstd::prelude::*;
 
@@ -2840,21 +2846,53 @@ pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
     };
 }
 
-/// Axiom: addition on the twisted Edwards curve is complete (always defined) and closed
-/// (the result stays on the curve).
+/// Axiom: the affine Edwards-addition denominators never vanish on Ed25519.
 ///
 /// Given two affine points (x₁, y₁) and (x₂, y₂) on -x² + y² = 1 + d·x²y²,
 /// let t = d·x₁x₂·y₁y₂. Then:
 /// 1. **Completeness**: 1 + t ≠ 0 and 1 − t ≠ 0, so the addition denominators
 ///    in `edwards_add` are invertible.
-/// 2. **Closure**: the resulting point `edwards_add(x₁, y₁, x₂, y₂)` satisfies the
-///    curve equation.
 ///
 /// This holds because d is non-square in GF(p) for Ed25519.
 ///
 /// Reference: Bernstein, Birkner, Joye, Lange, Peters,
 /// "Twisted Edwards Curves", AFRICACRYPT 2008, Theorem 3.3.
 /// <https://eprint.iacr.org/2008/013>
+pub proof fn axiom_edwards_add_denominators_nonzero(x1: nat, y1: nat, x2: nat, y2: nat)
+    requires
+        is_on_edwards_curve(x1, y1),
+        is_on_edwards_curve(x2, y2),
+    ensures
+        ({
+            let d = fe51_as_canonical_nat(&EDWARDS_D);
+            let t = field_mul(d, field_mul(field_mul(x1, x2), field_mul(y1, y2)));
+            field_add(1, t) != 0 && field_sub(1, t) != 0
+        }),
+{
+    admit();
+}
+
+/// Axiom: affine Edwards addition is closed on the curve.
+///
+/// This isolates the closure half of `axiom_edwards_add_complete` from the
+/// denominator-nonvanishing half. Long-term, this part may be discharged via
+/// the completed/projective addition formulas, while denominator non-vanishing
+/// remains the deeper number-theoretic obligation.
+pub proof fn axiom_edwards_add_closed(x1: nat, y1: nat, x2: nat, y2: nat)
+    requires
+        is_on_edwards_curve(x1, y1),
+        is_on_edwards_curve(x2, y2),
+    ensures
+        is_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
+{
+    admit();
+}
+
+/// Axiom: addition on the twisted Edwards curve is complete (always defined)
+/// and closed (the result stays on the curve).
+///
+/// This is now a thin compatibility wrapper around the two smaller trusted
+/// obligations above.
 pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
     requires
         is_on_edwards_curve(x1, y1),
@@ -2867,7 +2905,8 @@ pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
         }),
         is_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
 {
-    admit();
+    axiom_edwards_add_denominators_nonzero(x1, y1, x2, y2);
+    axiom_edwards_add_closed(x1, y1, x2, y2);
 }
 
 /// The concrete addition formulas and `edwards_add` compute the same point.
@@ -2880,8 +2919,8 @@ pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
 ///
 /// This lemma shows the two agree: the common factor of 2 cancels in the
 /// projective ratios X/Z and Y/T, recovering exactly `edwards_add`. It also
-/// ensures Z ≠ 0, T ≠ 0, and the result lies on the curve (via
-/// `axiom_edwards_add_complete`).
+/// ensures Z ≠ 0, T ≠ 0, and the result lies on the curve via the split
+/// denominator/closure axioms.
 pub proof fn lemma_completed_point_ratios(
     x1: nat,
     y1: nat,
@@ -2957,7 +2996,8 @@ pub proof fn lemma_completed_point_ratios(
         field_mul(num_x, field_inv(denom_x)),
         field_mul(num_y, field_inv(denom_y)),
     )) by {
-        axiom_edwards_add_complete(x1, y1, x2, y2);
+        axiom_edwards_add_denominators_nonzero(x1, y1, x2, y2);
+        axiom_edwards_add_closed(x1, y1, x2, y2);
     };
     assert(p() > 2) by {
         p_gt_2();
@@ -3293,4 +3333,244 @@ pub proof fn lemma_double_identity()
     lemma_edwards_scalar_mul_identity(2);
 }
 
+// =============================================================================
+// Affine point representability: any affine curve point has a well-formed
+// EdwardsPoint representation using nat_to_fe51 with Z = 1.
+// =============================================================================
+
+/// For any affine point (x, y) on the Edwards curve with x, y < p(),
+/// there exists a well-formed EdwardsPoint whose affine projection is (x, y).
+pub proof fn lemma_affine_point_representable(x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+        is_on_edwards_curve(x, y),
+    ensures
+        exists|point: crate::edwards::EdwardsPoint|
+            edwards_point_as_affine(point) == (x, y)
+            && is_well_formed_edwards_point(point),
+{
+    // Construct the witness: (X, Y, Z, T) = (x, y, 1, x·y) in fe51 representation.
+    let x_fe = nat_to_fe51(x);
+    let y_fe = nat_to_fe51(y);
+    let z_fe = nat_to_fe51(1);
+    let t_val = field_mul(x, y);
+
+    // t_val < p() since field_mul returns result mod p()
+    assert(t_val < p()) by {
+        p_gt_2();
+        lemma_mod_bound(t_val as int, p() as int);
+    }
+
+    let t_fe = nat_to_fe51(t_val);
+
+    // --- Limb bounds: all coordinates are 51-bounded (hence 52-bounded) ---
+    lemma_nat_to_fe51_bounded(x);
+    lemma_nat_to_fe51_bounded(y);
+    lemma_nat_to_fe51_bounded(1);
+    lemma_nat_to_fe51_bounded(t_val);
+
+    // Each limb < pow2(51) < (1u64 << 52), so fe51_limbs_bounded(_, 52) holds
+    assert(fe51_limbs_bounded(&x_fe, 51)) by {
+        assert forall|i: int| 0 <= i < 5 implies x_fe.limbs[i] < (1u64 << 51) by {
+            assert((x_fe.limbs[i] as nat) < pow2(51));
+            lemma2_to64_rest();
+            assert(0x8000000000000u64 == (1u64 << 51)) by (bit_vector);
+        }
+    }
+    lemma_fe51_limbs_bounded_weaken(&x_fe, 51, 52);
+    assert(fe51_limbs_bounded(&y_fe, 51)) by {
+        assert forall|i: int| 0 <= i < 5 implies y_fe.limbs[i] < (1u64 << 51) by {
+            assert((y_fe.limbs[i] as nat) < pow2(51));
+            lemma2_to64_rest();
+            assert(0x8000000000000u64 == (1u64 << 51)) by (bit_vector);
+        }
+    }
+    lemma_fe51_limbs_bounded_weaken(&y_fe, 51, 52);
+    assert(fe51_limbs_bounded(&z_fe, 51)) by {
+        assert forall|i: int| 0 <= i < 5 implies z_fe.limbs[i] < (1u64 << 51) by {
+            assert((z_fe.limbs[i] as nat) < pow2(51));
+            lemma2_to64_rest();
+            assert(0x8000000000000u64 == (1u64 << 51)) by (bit_vector);
+        }
+    }
+    lemma_fe51_limbs_bounded_weaken(&z_fe, 51, 52);
+    assert(fe51_limbs_bounded(&t_fe, 51)) by {
+        assert forall|i: int| 0 <= i < 5 implies t_fe.limbs[i] < (1u64 << 51) by {
+            assert((t_fe.limbs[i] as nat) < pow2(51));
+            lemma2_to64_rest();
+            assert(0x8000000000000u64 == (1u64 << 51)) by (bit_vector);
+        }
+    }
+    lemma_fe51_limbs_bounded_weaken(&t_fe, 51, 52);
+
+    // --- sum_of_limbs_bounded(Y, X, u64::MAX) ---
+    assert(sum_of_limbs_bounded(&y_fe, &x_fe, u64::MAX)) by {
+        assert forall|i: int| 0 <= i < 5 implies y_fe.limbs[i] + x_fe.limbs[i] < u64::MAX by {
+            // Each limb < (1u64 << 51), so sum < 2*(1u64 << 51) < u64::MAX
+            assert(y_fe.limbs[i] < (1u64 << 51));
+            assert(x_fe.limbs[i] < (1u64 << 51));
+            let a: u64 = y_fe.limbs[i];
+            let b: u64 = x_fe.limbs[i];
+            assert(a < (1u64 << 51) && b < (1u64 << 51) ==> a + b < u64::MAX)
+                by (bit_vector);
+        }
+    }
+
+    // --- Canonical nat roundtrips ---
+    lemma_nat_to_fe51_canonical(x);
+    lemma_nat_to_fe51_canonical(y);
+    p_gt_2();
+    lemma_nat_to_fe51_canonical(1);
+    lemma_nat_to_fe51_canonical(t_val);
+    assert(fe51_as_canonical_nat(&x_fe) == x);
+    assert(fe51_as_canonical_nat(&y_fe) == y);
+    assert(fe51_as_canonical_nat(&z_fe) == 1) by {
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+    assert(fe51_as_canonical_nat(&t_fe) == t_val);
+
+    // --- Validity: is_valid_extended_edwards_point(x, y, 1, t_val) ---
+    // 1. Z != 0: field_canonical(1) = 1 != 0
+    assert(field_canonical(1nat) != 0) by {
+        p_gt_2();
+        lemma_small_mod(1nat, p());
+    }
+
+    // 2. On curve projective
+    lemma_z_one_affine_implies_projective(x, y);
+    assert(is_on_edwards_curve_projective(x, y, 1nat));
+
+    // 3. Segre relation: field_mul(x, y) == field_mul(1, t_val)
+    assert(field_mul(x, y) == field_mul(1, t_val)) by {
+        lemma_field_mul_one_left(t_val);
+        lemma_small_mod(t_val, p());
+    }
+
+    assert(is_valid_extended_edwards_point(x, y, 1, t_val));
+
+    // --- Construct the witness ---
+    let witness = crate::edwards::EdwardsPoint { X: x_fe, Y: y_fe, Z: z_fe, T: t_fe };
+
+    // Unfold closed spec accessors for the witness
+    lemma_unfold_edwards(witness);
+
+    // --- Limbs bounded for witness ---
+    assert(edwards_point_limbs_bounded(witness));
+
+    // --- sum_of_limbs_bounded for witness ---
+    assert(sum_of_limbs_bounded(&edwards_y(witness), &edwards_x(witness), u64::MAX));
+
+    // --- Validity ---
+    assert(is_valid_edwards_point(witness));
+
+    // --- Affine projection: edwards_point_as_affine(witness) == (x, y) ---
+    assert(edwards_point_as_affine(witness) == (x, y)) by {
+        lemma_field_inv_one();
+        lemma_field_mul_one_right(x);
+        lemma_field_mul_one_right(y);
+        lemma_small_mod(x, p());
+        lemma_small_mod(y, p());
+    }
+
+    // --- Well-formedness ---
+    assert(is_well_formed_edwards_point(witness));
+}
+
 } // verus!
+
+#[cfg(test)]
+mod test_edwards_add_complete_runtime {
+    use std::vec::Vec;
+
+    use crate::constants::{ED25519_BASEPOINT_POINT, EDWARDS_D};
+    use crate::edwards::EdwardsPoint;
+    use crate::field::FieldElement;
+    use crate::scalar::Scalar;
+    use subtle::ConstantTimeEq;
+
+    fn affine_coords(point: &EdwardsPoint) -> (FieldElement, FieldElement) {
+        let z_inv = point.Z.invert();
+        (&point.X * &z_inv, &point.Y * &z_inv)
+    }
+
+    fn denominators_nonzero(p: &EdwardsPoint, q: &EdwardsPoint) -> bool {
+        let (x1, y1) = affine_coords(p);
+        let (x2, y2) = affine_coords(q);
+
+        let x1x2 = &x1 * &x2;
+        let y1y2 = &y1 * &y2;
+        let t = &EDWARDS_D * &(&x1x2 * &y1y2);
+
+        let denom_x = &FieldElement::ONE + &t;
+        let denom_y = &FieldElement::ONE - &t;
+
+        !bool::from(denom_x.ct_eq(&FieldElement::ZERO))
+            && !bool::from(denom_y.ct_eq(&FieldElement::ZERO))
+    }
+
+    fn affine_add_formula(p: &EdwardsPoint, q: &EdwardsPoint) -> (FieldElement, FieldElement) {
+        let (x1, y1) = affine_coords(p);
+        let (x2, y2) = affine_coords(q);
+
+        let x1x2 = &x1 * &x2;
+        let y1y2 = &y1 * &y2;
+        let x1y2 = &x1 * &y2;
+        let y1x2 = &y1 * &x2;
+        let t = &EDWARDS_D * &(&x1x2 * &y1y2);
+
+        let x3 = &(&x1y2 + &y1x2) * &(&FieldElement::ONE + &t).invert();
+        let y3 = &(&y1y2 + &x1x2) * &(&FieldElement::ONE - &t).invert();
+        (x3, y3)
+    }
+
+    fn is_on_curve(x: &FieldElement, y: &FieldElement) -> bool {
+        let x2 = x.square();
+        let y2 = y.square();
+        let lhs = &y2 - &x2;
+        let rhs = &FieldElement::ONE + &(&EDWARDS_D * &(&x2 * &y2));
+        bool::from(lhs.ct_eq(&rhs))
+    }
+
+    #[test]
+    fn test_edwards_add_denominators_nonzero_for_small_basepoint_multiples() {
+        let mut points = Vec::new();
+        points.push(Scalar::from(0u64) * &ED25519_BASEPOINT_POINT);
+        for i in 1u64..16 {
+            points.push(EdwardsPoint::mul_base(&Scalar::from(i)));
+        }
+
+        for i in 0..points.len() {
+            for j in 0..points.len() {
+                assert!(
+                    denominators_nonzero(&points[i], &points[j]),
+                    "Edwards add denominator vanished for multiples {}B and {}B",
+                    i,
+                    j
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_edwards_add_formula_stays_on_curve_for_small_basepoint_multiples() {
+        let mut points = Vec::new();
+        points.push(Scalar::from(0u64) * &ED25519_BASEPOINT_POINT);
+        for i in 1u64..16 {
+            points.push(EdwardsPoint::mul_base(&Scalar::from(i)));
+        }
+
+        for i in 0..points.len() {
+            for j in 0..points.len() {
+                let (x3, y3) = affine_add_formula(&points[i], &points[j]);
+                assert!(
+                    is_on_curve(&x3, &y3),
+                    "Edwards add formula left the curve for multiples {}B and {}B",
+                    i,
+                    j
+                );
+            }
+        }
+    }
+}

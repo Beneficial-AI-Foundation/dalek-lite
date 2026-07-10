@@ -3,6 +3,7 @@ use vstd::arithmetic::div_mod::*;
 use vstd::arithmetic::mul::*;
 use vstd::arithmetic::power2::*;
 use vstd::bits::*;
+use vstd::calc;
 use vstd::prelude::*;
 
 use super::mul_lemmas::*;
@@ -51,11 +52,46 @@ pub broadcast proof fn lemma_u128_shl_is_mul(x: u128, shift: u128)
         x * pow2(shift as nat) <= u128::MAX,
     ensures
         #[trigger] (x << shift) == x * pow2(shift as nat),
+    decreases shift,
 {
-    assume(false);  // TODO: prove properly when vstd adds this
+    lemma_u128_pow2_le_max(shift as nat);
+    if shift == 0 {
+        assert(x << 0 == x) by (bit_vector);
+        lemma2_to64();  // provides pow2(0) == 1
+    } else {
+        assert(x << shift == mul(x << ((sub(shift, 1)) as u128), 2)) by (bit_vector)
+            requires
+                0 < shift < 128,
+        ;
+        assert((x << (sub(shift, 1) as u128)) == x * pow2(sub(shift, 1) as nat)) by {
+            lemma_pow2_strictly_increases((shift - 1) as nat, shift as nat);
+            lemma_mul_inequality(
+                pow2((shift - 1) as nat) as int,
+                pow2(shift as nat) as int,
+                x as int,
+            );
+            lemma_mul_is_commutative(x as int, pow2((shift - 1) as nat) as int);
+            lemma_mul_is_commutative(x as int, pow2(shift as nat) as int);
+            lemma_u128_shl_is_mul(x, (shift - 1) as u128);
+        }
+        calc!{ (==)
+            ((x << (sub(shift, 1) as u128)) * 2);
+                {}
+            ((x * pow2(sub(shift, 1) as nat)) * 2);
+                {
+                    lemma_mul_is_associative(x as int, pow2(sub(shift, 1) as nat) as int, 2);
+                }
+            x * ((pow2(sub(shift, 1) as nat)) * 2);
+                {
+                    lemma_pow2_adds((shift - 1) as nat, 1);
+                    lemma2_to64();
+                }
+            x * pow2(shift as nat);
+        }
+    }
 }
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
+// NOTE: depends on lemma_u128_shl_is_mul (fully proven)
 lemma_shift_is_pow2!(lemma_u128_shift_is_pow2, lemma_u128_pow2_le_max, lemma_u128_shl_is_mul, u128);
 
 // Proofs that left-shift by 0 is a no-op
@@ -137,7 +173,7 @@ lemma_shl_by_sum!(lemma_u32_shl_by_sum, lemma_u32_shl_is_mul, u32);
 
 lemma_shl_by_sum!(lemma_u64_shl_by_sum, lemma_u64_shl_is_mul, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
+// NOTE: depends on lemma_u128_shl_is_mul (fully proven)
 lemma_shl_by_sum!(lemma_u128_shl_by_sum, lemma_u128_shl_is_mul, u128);
 
 // Proofs that [<<] preserves [<=]
@@ -172,7 +208,7 @@ lemma_shl_le!(lemma_u32_shl_le, lemma_u32_shl_is_mul, u32);
 
 lemma_shl_le!(lemma_u64_shl_le, lemma_u64_shl_is_mul, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
+// NOTE: depends on lemma_u128_shl_is_mul (fully proven)
 lemma_shl_le!(lemma_u128_shl_le, lemma_u128_shl_is_mul, u128);
 
 // Proofs that if a <= b then v << a <= v << b (up to overflow)
@@ -650,7 +686,7 @@ lemma_left_right_shift!(lemma_u32_left_right_shift, lemma_u32_shl_is_mul, lemma_
 
 lemma_left_right_shift!(lemma_u64_left_right_shift, lemma_u64_shl_is_mul, lemma_u64_shr_is_div, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
+// NOTE: depends on lemma_u128_shl_is_mul (fully proven)
 lemma_left_right_shift!(lemma_u128_left_right_shift, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, u128);
 
 // =============================================================================
@@ -724,7 +760,7 @@ lemma_right_left_shift!(lemma_u32_right_left_shift, lemma_u32_shl_is_mul, lemma_
 
 lemma_right_left_shift!(lemma_u64_right_left_shift, lemma_u64_shl_is_mul, lemma_u64_shr_is_div, lemma_u64_pow2_le_max, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
+// NOTE: depends on lemma_u128_shl_is_mul (fully proven)
 lemma_right_left_shift!(lemma_u128_right_left_shift, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, lemma_u128_pow2_le_max, u128);
 
 // =============================================================================
@@ -763,7 +799,7 @@ lemma_right_left_shift_divisible!(lemma_u32_right_left_shift_divisible, lemma_u3
 
 lemma_right_left_shift_divisible!(lemma_u64_right_left_shift_divisible, lemma_u64_right_left_shift, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
+// NOTE: depends on lemma_u128_shl_is_mul (fully proven)
 lemma_right_left_shift_divisible!(lemma_u128_right_left_shift_divisible, lemma_u128_right_left_shift, u128);
 
 } // verus!

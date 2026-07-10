@@ -244,11 +244,11 @@ impl ConstantTimeEq for CompressedEdwardsY {
     }
 }
 
+#[verifier::external]
 impl Debug for CompressedEdwardsY {
     /* VERIFICATION NOTE: we don't cover debugging */
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `core::fmt::Debug::fmt` (for CompressedEdwardsY)
-    #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "CompressedEdwardsY: {:?}", self.as_bytes())
     }
@@ -2715,12 +2715,12 @@ impl EdwardsPoint {
 // These use the iterator's size hint and the target settings to
 // forward to a specific backend implementation.
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl MultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `MultiscalarMul::multiscalar_mul` (for EdwardsPoint, see verified `multiscalar_mul_verus`)
-    #[verifier::external_body]
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
@@ -2759,12 +2759,12 @@ impl MultiscalarMul for EdwardsPoint {
 }
 
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl VartimeMultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `VartimeMultiscalarMul::optional_multiscalar_mul` (for EdwardsPoint, see verified `optional_multiscalar_mul_verus`)
-    #[verifier::external_body]
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint> where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,

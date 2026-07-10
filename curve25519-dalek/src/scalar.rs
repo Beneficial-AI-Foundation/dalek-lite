@@ -493,11 +493,11 @@ impl Index<usize> for Scalar {
     }
 }
 
+#[verifier::external]
 impl Debug for Scalar {
     /* VERIFICATION NOTE: we don't cover debugging */
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `core::fmt::Debug::fmt` (for Scalar)
-    #[verifier::external_body]
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Scalar{{\n\tbytes: {:?},\n}}", &self.bytes)
     }
@@ -2078,12 +2078,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 struct ScalarVisitor;
 
 #[cfg(feature = "serde")]
+#[verifier::external]
 impl<'de> Visitor<'de> for ScalarVisitor {
     type Value = Scalar;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `serde::de::Visitor::expecting` (for ScalarVisitor)
-    #[verifier::external_body]
     fn expecting(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         {
             formatter.write_str(
@@ -2095,7 +2095,6 @@ impl<'de> Visitor<'de> for ScalarVisitor {
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `serde::de::Visitor::visit_seq` (for ScalarVisitor)
-    #[verifier::external_body]
     fn visit_seq<A>(self, mut seq: A) -> Result<Scalar, A::Error> where
         A: serde::de::SeqAccess<'de>,
      {
@@ -2114,10 +2113,10 @@ impl<'de> Visitor<'de> for ScalarVisitor {
 
 #[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
+#[verifier::external]
 impl Serialize for Scalar {
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `serde::Serialize::serialize` (for Scalar)
-    #[verifier::external_body]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         use serde::ser::SerializeTuple;
         let mut tup = serializer.serialize_tuple(32)?;
@@ -2130,10 +2129,10 @@ impl Serialize for Scalar {
 
 #[cfg(feature = "serde")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
+#[verifier::external]
 impl<'de> Deserialize<'de> for Scalar {
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `serde::Deserialize::deserialize` (for Scalar)
-    #[verifier::external_body]
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
         /* VERIFICATION NOTE:
         Originally struct ScalarVisitor defined here, but moved up to the top of the file

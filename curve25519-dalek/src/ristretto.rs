@@ -2709,7 +2709,7 @@ impl RistrettoPoint {
     /// discrete log of the output point with respect to any other
     /// point should be unknown.  The map is applied twice and the
     /// results are added, to ensure a uniform distribution.
-    #[verifier::external_body]
+    #[verifier::external]
     pub fn random<R: CryptoRngCore + ?Sized>(rng: &mut R) -> Self {
         let mut uniform_bytes = [0u8;64];
         rng.fill_bytes(&mut uniform_bytes);
@@ -3511,12 +3511,12 @@ define_ristretto_scalar_mul_variants_verus!();
 verus! {
 
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl MultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `MultiscalarMul::multiscalar_mul` (for RistrettoPoint, delegates to EdwardsPoint)
-    #[verifier::external_body]
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> RistrettoPoint where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
@@ -3529,12 +3529,12 @@ impl MultiscalarMul for RistrettoPoint {
 }
 
 #[cfg(feature = "alloc")]
+#[verifier::external]
 impl VartimeMultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
     /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
     /// `VartimeMultiscalarMul::optional_multiscalar_mul` (for RistrettoPoint, delegates to EdwardsPoint)
-    #[verifier::external_body]
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<RistrettoPoint> where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,

@@ -308,8 +308,9 @@ pub proof fn field_inv_zero()
 /// 1. Invoking axiom_p_is_prime() to establish that p() is prime
 /// 2. Applying the general lemma_fermat_little_theorem with p()
 ///
-/// The general Fermat's Little Theorem is still admitted (requires group theory),
-/// but this specific application to p() is now a proven lemma rather than an axiom.
+/// The general Fermat's Little Theorem is fully proven in Verus (see
+/// lemma_fermat_little_theorem in number_theory_lemmas.rs). The only
+/// assumption is the primality of p(), which is axiomatized.
 pub proof fn lemma_fermat_for_p(x: nat)
     requires
         field_canonical(x) != 0,

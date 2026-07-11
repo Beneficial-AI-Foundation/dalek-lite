@@ -71,13 +71,12 @@ pub proof fn axiom_ristretto_basepoint_table_valid()
             spec_ristretto_basepoint(),
         ),
 {
-    axiom_ed25519_basepoint_table_valid();
-    // The assume is needed because RISTRETTO_BASEPOINT_TABLE is external_body
-    // so Verus cannot see that .0 is the same as ED25519_BASEPOINT_TABLE to conclude the proof
-    assume(is_valid_edwards_basepoint_table(
-        constants::RISTRETTO_BASEPOINT_TABLE.0,
-        spec_ristretto_basepoint(),
-    ));
+    // axiom_ed25519_basepoint_table_valid();
+    // assume(is_valid_edwards_basepoint_table(
+    //     constants::RISTRETTO_BASEPOINT_TABLE.0,
+    //     spec_ristretto_basepoint(),
+    // ));
+    admit();
 }
 
 // --- Equality axiom ---

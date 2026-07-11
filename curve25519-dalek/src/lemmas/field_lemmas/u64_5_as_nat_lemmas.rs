@@ -489,7 +489,4 @@ pub proof fn lemma_fe51_unit_is_one(fe: &FieldElement51)
     lemma_small_mod(1nat, p());
 }
 
-fn main() {
-}
-
 } // verus!

@@ -147,7 +147,8 @@ pub proof fn axiom_from_bytes_uniform(bytes: &[u8; 32], fe: &FieldElement)
     ensures
         is_uniform_bytes(bytes) ==> is_uniform_field_element(fe),
 {
-    assume(is_uniform_bytes(bytes) ==> is_uniform_field_element(fe));
+    // assume(is_uniform_bytes(bytes) ==> is_uniform_field_element(fe));
+    admit();
 }
 
 /// Axiom: `from_bytes` preserves independence.

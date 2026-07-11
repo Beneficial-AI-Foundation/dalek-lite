@@ -311,7 +311,7 @@ pub proof fn field_inv_zero()
 /// The general Fermat's Little Theorem is fully proven in Verus (see
 /// lemma_fermat_little_theorem in number_theory_lemmas.rs). The only
 /// assumption is the primality of p(), which is axiomatized.
-pub proof fn lemma_fermat_for_p(x: nat)
+pub proof fn lemma_apply_fermat_for_p(x: nat)
     requires
         field_canonical(x) != 0,
     ensures

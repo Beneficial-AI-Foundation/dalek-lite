@@ -117,8 +117,10 @@ mod tests {
                     .collect();
 
                 // Original implementation
-                let original =
-                    Straus::optional_multiscalar_mul(scalars.iter(), points.iter().map(|p| Some(*p)));
+                let original = Straus::optional_multiscalar_mul(
+                    scalars.iter(),
+                    points.iter().map(|p| Some(*p)),
+                );
 
                 // Verus implementation
                 let verus = Straus::optional_multiscalar_mul_verus(

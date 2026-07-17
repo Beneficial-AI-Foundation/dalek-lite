@@ -2180,23 +2180,6 @@ pub mod test {
         base + offset
     }
 
-    /// Check if all limbs are bounded by 2^52
-    /// Matches the spec: limbs_bounded(&Scalar52)
-    pub fn limbs_bounded_exec(s: &Scalar52) -> bool {
-        s.limbs.iter().all(|&limb| limb < (1u64 << 52))
-    }
-
-    /// Convert a 32-byte array to a BigUint
-    /// Matches the spec: u8_32_as_nat(&[u8; 32])
-    pub fn u8_32_as_nat_exec(bytes: &[u8; 32]) -> BigUint {
-        let mut result = BigUint::zero();
-        let radix = BigUint::from(256u32);
-        for i in (0..32).rev() {
-            result = result * &radix + BigUint::from(bytes[i]);
-        }
-        result
-    }
-
     /// Test case demonstrating that from_bytes does NOT ensure canonicality.
     /// i.e. the postcondition `scalar52_as_nat(&s) < group_order()` may not hold
     ///
@@ -2222,36 +2205,6 @@ pub mod test {
             l
         );
     }
-
-    // The proptest below confirmed the `from_bytes` spec across a million random
-    // inputs (u8_32_as_nat(bytes) == scalar52_as_nat(&s), and limbs bounded by 2^52).
-    // Having served its purpose, it's kept here commented out for reference.
-    /*
-    proptest! {
-        #![proptest_config(proptest::test_runner::Config::with_cases(1000000))]
-
-        /// Test from_bytes spec: for any 32-byte array, verify both postconditions
-        /// 1. u8_32_as_nat(bytes) == scalar52_as_nat(&s)
-        /// 2. limbs_bounded(&s)
-        #[test]
-        fn prop_from_bytes(bytes in prop::array::uniform32(any::<u8>())) {
-            // Call from_bytes
-            let s = Scalar52::from_bytes(&bytes);
-
-            // Convert to BigUint using executable spec functions
-            let bytes_nat = u8_32_as_nat_exec(&bytes);
-            let result_nat = to_nat_exec(&s.limbs);
-
-            // Postcondition 1: u8_32_as_nat(bytes) == scalar52_as_nat(&s)
-            prop_assert_eq!(bytes_nat, result_nat,
-                "from_bytes spec violated: u8_32_as_nat(bytes) != scalar52_as_nat(&s)");
-
-            // Postcondition 2: limbs_bounded(&s)
-            prop_assert!(limbs_bounded_exec(&s),
-                "from_bytes spec violated: result limbs not bounded by 2^52");
-        }
-    }
-    */
 
     /// Test that our refactoring of part1 is equivalent to the original wrapping_mul version.
     ///

@@ -20,7 +20,7 @@
 //! - `lemma_naf_select_is_signed_scalar_mul_projective`: NafLookupTable5 select -> \[d\] P
 //!
 //! ## Column sum / Horner lemmas:
-//! - `lemma_column_sum_step`: col(j, k+1) = col(j, k) + \[d\_{k,j}\] P\_k
+//! - `lemma_column_sum_step_zero_digit`: col(j, k+1) = col(j, k) when d\_{k,j} = 0
 //! - `lemma_straus_ct_step`: H(j) = \[16\] H(j+1) + col(j, n)
 //! - `lemma_straus_vt_step`: H(i) = \[2\] H(i+1) + col(i, n)
 //!

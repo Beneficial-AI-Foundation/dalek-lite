@@ -6,7 +6,7 @@
 //! - `lemma_naf_even_step`: Invariant preservation for even window (pos += 1)
 //! - `lemma_naf_odd_step`: Invariant preservation for odd window (pos += w)
 //! - `lemma_naf_digit_bounds`: NAF digit bounds from recentering
-//! - `lemma_naf_terminal_carry`: carry = 0 at loop exit when scalar_val < 2^255
+//! - `lemma_naf_high_bits_zero`: carry = 0 at loop exit when scalar_val < 2^255
 //!
 #![allow(unused_imports)]
 

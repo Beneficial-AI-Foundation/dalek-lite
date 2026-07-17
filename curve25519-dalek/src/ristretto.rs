@@ -1674,7 +1674,7 @@ impl RistrettoPoint {
     ///
     /// ## VERIFICATION NOTE
     ///
-    /// This function is marked `external_body` for Verus. The Verus-compatible
+    /// This function is marked `external` for Verus. The Verus-compatible
     /// version [`double_and_compress_batch_verus`] provides formal specs with
     /// functional correctness guarantees. The `verus_equivalence_random` test
     /// verifies functional equivalence between the two implementations.
@@ -1759,7 +1759,7 @@ impl RistrettoPoint {
     // `mod test_double_and_compress_batch` at the bottom of this file.
     // ========================================================================
     /// Verus-compatible version that takes a slice instead of IntoIterator.
-    /// Use this for verification; the original double_and_compress_batch API is external_body.
+    /// Use this for verification; the original double_and_compress_batch API is external.
     ///
     /// REFACTORING FOR VERUS:
     /// - Iterator patterns (.map().collect()) replaced with explicit while loops
@@ -3556,7 +3556,7 @@ impl VartimeMultiscalarMul for RistrettoPoint {
   * the Edwards versions. Specs are expressed directly in terms of Edwards
   * operations since we just extract the inner EdwardsPoint and delegate.
   *
-  * Functional equivalence against the original (external_body) implementations is covered by
+  * Functional equivalence against the original (external) implementations is covered by
   * `mod test_multiscalar_mul` at the bottom of this file.
   */
 

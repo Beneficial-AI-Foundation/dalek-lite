@@ -1048,7 +1048,7 @@ pub proof fn lemma_identity_affine_coords(point: EdwardsPoint)
 // Spec functions (in pipeline order):
 //   1. spec_nonspec_map_to_curve       -- top-level: bytes -> [8]P
 //   2. montgomery_to_edwards_affine    -- Montgomery u + sign -> Edwards (x,y)
-//   3. spec_edwards_decompress_from_y      -- Edwards y + sign -> (x,y)
+//   3. edwards_decompress_from_y_and_sign  -- Edwards y + sign -> (x,y)
 //
 // Helper functions (defined elsewhere):
 //   - bytes_seq_as_nat                     -- bytes -> nat (core_specs)

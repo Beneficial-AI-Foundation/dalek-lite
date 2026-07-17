@@ -1066,7 +1066,7 @@ proof fn lemma_u1_u2_sq_factoring(e: nat, f: nat, g: nat, h: nat, eg: nat, fh: n
 /// The proof proceeds in phases:
 ///   Phase A: Establish inv correspondences (zinv = inv(fh), tinv = inv(eg))
 ///   Phase B: Invsqrt factoring via axiom_invsqrt_factors_over_square
-///   Phase C: Show z_inv_std = 1 using axiom_c_iad_sq_identity
+///   Phase C: Show z_inv_std = 1 using lemma_z_inv_std_is_one
 ///   Phase D: Show both algorithms take the same branches and produce s values
 ///            that are equal up to sign, so field_abs equalizes them
 proof fn lemma_batch_std_final_matching(e: nat, f: nat, g: nat, h: nat, eg: nat, fh: nat, inv: nat)

@@ -9,7 +9,7 @@ on:
         default: '.'
         type: string
       scip_callgraph_version:
-        description: 'Version of scip-callgraph to use (e.g., v3.0.4 or latest)'
+        description: 'Version of probegraph to use (e.g., v3.0.4 or latest)'
         required: false
         default: 'latest'
         type: string
@@ -21,7 +21,7 @@ on:
         default: '.'
         type: string
       scip_callgraph_version:
-        description: 'Version of scip-callgraph to use (e.g., v3.0.4 or latest)'
+        description: 'Version of probegraph to use (e.g., v3.0.4 or latest)'
         required: false
         default: 'latest'
         type: string
@@ -34,7 +34,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download scip-callgraph release
+      - name: Download probegraph release
         run: |
           # Install jq for JSON parsing
           sudo apt-get update && sudo apt-get install -y jq
@@ -42,20 +42,20 @@ jobs:
           VERSION="${{ inputs.scip_callgraph_version || 'latest' }}"
           if [ "$VERSION" = "latest" ]; then
             # Get latest release
-            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/Beneficial-AI-Foundation/scip-callgraph/releases/latest | jq -r '.assets[] | select(.name | contains("linux")) | .browser_download_url')
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/Beneficial-AI-Foundation/probegraph/releases/latest | jq -r '.assets[] | select(.name | contains("linux")) | .browser_download_url')
           else
             # Get specific version
-            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/Beneficial-AI-Foundation/scip-callgraph/releases/tags/$VERSION | jq -r '.assets[] | select(.name | contains("linux")) | .browser_download_url')
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/Beneficial-AI-Foundation/probegraph/releases/tags/$VERSION | jq -r '.assets[] | select(.name | contains("linux")) | .browser_download_url')
           fi
           
           # Validate URL was retrieved
           if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" = "null" ]; then
-            echo "Error: Could not find download URL for scip-callgraph"
+            echo "Error: Could not find download URL for probegraph"
             exit 1
           fi
           
-          wget "$DOWNLOAD_URL" -O scip-callgraph.tar.gz
-          tar -xzf scip-callgraph.tar.gz
+          wget "$DOWNLOAD_URL" -O probegraph.tar.gz
+          tar -xzf probegraph.tar.gz
           # Find and move the binary from extracted directory
           find . -name "detect_unused_specs" -type f -executable -exec chmod +x {} \;
           find . -name "detect_unused_specs" -type f -executable -exec sudo mv {} /usr/local/bin/ \;

@@ -60,7 +60,7 @@ jobs:
   generate:
     name: Generate Call Graph
     needs: get-versions
-    uses: Beneficial-AI-Foundation/scip-callgraph/.github/workflows/generate-callgraph.yml@main
+    uses: Beneficial-AI-Foundation/probegraph/.github/workflows/generate-callgraph.yml@main
     with:
       github_url: https://github.com/Beneficial-AI-Foundation/dalek-lite
       github_path_prefix: curve25519-dalek

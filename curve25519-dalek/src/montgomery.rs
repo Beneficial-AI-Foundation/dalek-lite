@@ -264,7 +264,7 @@ impl Hash for MontgomeryPoint {
             (2) `spec_state_after_hash_montgomery` hashes the canonical encoding
                  `spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))`. */
 
-            *state == spec_state_after_hash_montgomery(*old(state), self),
+            *final(state) == spec_state_after_hash_montgomery(*old(state), self),
     {
         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical
         // 32-byte encoding
@@ -280,28 +280,32 @@ impl Hash for MontgomeryPoint {
         canonical_bytes.hash(state);
 
         proof {
-            let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0));
-            let canonical_arr = seq_to_array_32(canonical_seq);
-            let fe_spec = spec_fe51_from_bytes(&self.0);
+            assert(canonical_bytes == seq_to_array_32(
+                spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0)),
+            )) by {
+                let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0));
+                let canonical_arr = seq_to_array_32(canonical_seq);
+                let fe_spec = spec_fe51_from_bytes(&self.0);
 
-            assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe)) by {
-                lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
-            }
-            assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec)) by {
-                lemma_from_u8_32_as_nat(&self.0);
-                lemma_as_nat_32_mod_255(&self.0);
-            }
-            assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec)) by {
-                lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
-            }
-            assert(seq_from32(&canonical_bytes) == canonical_seq) by {
-                assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe));
-                assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec));
-            }
-            assert(canonical_bytes == canonical_arr) by {
-                assert(canonical_seq.len() == 32);
-                assert(canonical_seq =~= seq_from32(&canonical_arr));
-                lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+                assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe)) by {
+                    lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
+                }
+                assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec)) by {
+                    lemma_from_u8_32_as_nat(&self.0);
+                    lemma_as_nat_32_mod_255(&self.0);
+                }
+                assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec)) by {
+                    lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
+                }
+                assert(seq_from32(&canonical_bytes) == canonical_seq) by {
+                    assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe));
+                    assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec));
+                }
+                assert(canonical_bytes == canonical_arr) by {
+                    assert(canonical_seq.len() == 32);
+                    assert(canonical_seq =~= seq_from32(&canonical_arr));
+                    lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
+                }
             }
         }
     }
@@ -330,9 +334,9 @@ impl Zeroize for MontgomeryPoint {
         ensures
     // All bytes are zero
 
-            forall|i: int| 0 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
+            forall|i: int| 0 <= i < 32 ==> #[trigger] final(self).0[i] == 0u8,
             // The u-coordinate is 0 (identity point)
-            montgomery_point_as_nat(*self) == 0,
+            montgomery_point_as_nat(*final(self)) == 0,
     {
         /* ORIGINAL CODE: self.0.zeroize(); */
         crate::core_assumes::zeroize_bytes32(&mut self.0);
@@ -1966,14 +1970,14 @@ fn differential_add_and_double(
     ensures
 // === Bounds preserved for callers ===
 
-        fe51_limbs_bounded(&P.U, 52),
-        fe51_limbs_bounded(&P.W, 52),
-        fe51_limbs_bounded(&Q.U, 52),
-        fe51_limbs_bounded(&Q.W, 52),
+        fe51_limbs_bounded(&final(P).U, 52),
+        fe51_limbs_bounded(&final(P).W, 52),
+        fe51_limbs_bounded(&final(Q).U, 52),
+        fe51_limbs_bounded(&final(Q).W, 52),
         // Degenerate case: if u(P-Q)=0 and both inputs have u=0, outputs preserve u=0.
         (fe51_as_canonical_nat(affine_PmQ) == 0 && projective_u_coordinate(*old(P)) == 0
-            && projective_u_coordinate(*old(Q)) == 0) ==> (projective_u_coordinate(*P) == 0
-            && projective_u_coordinate(*Q) == 0),
+            && projective_u_coordinate(*old(Q)) == 0) ==> (projective_u_coordinate(*final(P)) == 0
+            && projective_u_coordinate(*final(Q)) == 0),
         // Montgomery ladder step: P' = [2]P (xDBL), Q' = P + Q (xADD).
         // Case 1: P = [k]B, Q = [k+1]B  ==>  P' = [2k]B, Q' = [2k+1]B
         ({
@@ -1988,11 +1992,11 @@ fn differential_add_and_double(
                     montgomery_scalar_mul(B, k + 1),
                 ) ==> {
                     &&& projective_represents_montgomery_or_infinity(
-                        *P,
+                        *final(P),
                         montgomery_scalar_mul(B, 2 * k),
                     )
                     &&& projective_represents_montgomery_or_infinity(
-                        *Q,
+                        *final(Q),
                         montgomery_scalar_mul(B, 2 * k + 1),
                     )
                 }
@@ -2010,11 +2014,11 @@ fn differential_add_and_double(
                     montgomery_scalar_mul(B, k),
                 ) ==> {
                     &&& projective_represents_montgomery_or_infinity(
-                        *P,
+                        *final(P),
                         montgomery_scalar_mul(B, 2 * k + 2),
                     )
                     &&& projective_represents_montgomery_or_infinity(
-                        *Q,
+                        *final(Q),
                         montgomery_scalar_mul(B, 2 * k + 1),
                     )
                 }
@@ -2721,7 +2725,7 @@ impl MulAssign<&Scalar> for MontgomeryPoint {
                 let P = canonical_montgomery_lift(montgomery_point_as_nat(*old(self)));
                 let n_unreduced = scalar_as_nat(scalar);
                 let R = montgomery_scalar_mul(P, n_unreduced);
-                montgomery_point_as_nat(*self) == u_coordinate(R)
+                montgomery_point_as_nat(*final(self)) == u_coordinate(R)
             }),
     {
         *self = &*self * scalar;

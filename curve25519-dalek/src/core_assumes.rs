@@ -152,8 +152,8 @@ pub fn bytes32_8_to_24(bytes: &[u8; 32]) -> (result: [u8; 16])
 #[verifier::external_body]
 pub fn write_bytes32_8_to_24(dst: &mut [u8; 32], src: &[u8; 16])
     ensures
-        forall|i: int| 0 <= i < 16 ==> dst[(8 + i) as int] == src[i],
-        forall|i: int| (0 <= i < 8 || 24 <= i < 32) ==> dst[i] == old(dst)[i],
+        forall|i: int| 0 <= i < 16 ==> final(dst)[(8 + i) as int] == src[i],
+        forall|i: int| (0 <= i < 8 || 24 <= i < 32) ==> final(dst)[i] == old(dst)[i],
 {
     dst[8..24].copy_from_slice(src);
 }
@@ -288,7 +288,7 @@ pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::ha
     state: &mut H,
 ) where H: core::hash::Hasher, T: core::hash::Hash
     ensures
-        *state == spec_state_after_hash(*old(state), bytes),
+        *final(state) == spec_state_after_hash(*old(state), bytes),
 ;
 
 /// Spec function: the hash state after hashing a MontgomeryPoint
@@ -372,7 +372,7 @@ pub open spec fn seq_to_array_32(s: Seq<u8>) -> [u8; 32] {
 #[verifier::external_body]
 pub fn zeroize_bytes32(bytes: &mut [u8; 32])
     ensures
-        forall|i: int| 0 <= i < 32 ==> #[trigger] bytes[i] == 0u8,
+        forall|i: int| 0 <= i < 32 ==> #[trigger] final(bytes)[i] == 0u8,
 {
     use zeroize::Zeroize;
     bytes.zeroize();
@@ -385,7 +385,7 @@ pub fn zeroize_bytes32(bytes: &mut [u8; 32])
 #[verifier::external_body]
 pub fn zeroize_limbs5(limbs: &mut [u64; 5])
     ensures
-        forall|i: int| 0 <= i < 5 ==> #[trigger] limbs[i] == 0u64,
+        forall|i: int| 0 <= i < 5 ==> #[trigger] final(limbs)[i] == 0u64,
     no_unwind
 {
     use zeroize::Zeroize;
@@ -399,7 +399,7 @@ pub fn zeroize_limbs5(limbs: &mut [u64; 5])
 #[verifier::external_body]
 pub fn zeroize_bool(b: &mut bool)
     ensures
-        *b == false,
+        *final(b) == false,
 {
     use zeroize::Zeroize;
     b.zeroize();

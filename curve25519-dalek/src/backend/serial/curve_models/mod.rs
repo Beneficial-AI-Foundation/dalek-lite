@@ -221,9 +221,9 @@ impl Zeroize for AffineNielsPoint {
         ensures
     // All fields are zeroed (each limb is 0)
 
-            forall|i: int| 0 <= i < 5 ==> self.y_plus_x.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.y_minus_x.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.xy2d.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).y_plus_x.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).y_minus_x.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).xy2d.limbs[i] == 0,
     {
         self.y_plus_x.zeroize();
         self.y_minus_x.zeroize();
@@ -251,10 +251,10 @@ impl Zeroize for ProjectiveNielsPoint {
         ensures
     // All fields are zeroed (each limb is 0)
 
-            forall|i: int| 0 <= i < 5 ==> self.Y_plus_X.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.Y_minus_X.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.Z.limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> self.T2d.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).Y_plus_X.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).Y_minus_X.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).Z.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).T2d.limbs[i] == 0,
     {
         self.Y_plus_X.zeroize();
         self.Y_minus_X.zeroize();
@@ -467,9 +467,9 @@ impl ConditionallySelectable for ProjectiveNielsPoint {
         ensures
     // If choice is false, self remains unchanged
 
-            !choice_is_true(choice) ==> *self == *old(self),
+            !choice_is_true(choice) ==> *final(self) == *old(self),
             // If choice is true, self is assigned from other
-            choice_is_true(choice) ==> *self == *other,
+            choice_is_true(choice) ==> *final(self) == *other,
     {
         self.Y_plus_X.conditional_assign(&other.Y_plus_X, choice);
         self.Y_minus_X.conditional_assign(&other.Y_minus_X, choice);
@@ -545,9 +545,9 @@ impl ConditionallySelectable for AffineNielsPoint {
         ensures
     // If choice is false, self remains unchanged
 
-            !choice_is_true(choice) ==> *self == *old(self),
+            !choice_is_true(choice) ==> *final(self) == *old(self),
             // If choice is true, self is assigned from other
-            choice_is_true(choice) ==> *self == *other,
+            choice_is_true(choice) ==> *final(self) == *other,
     {
         self.y_plus_x.conditional_assign(&other.y_plus_x, choice);
         self.y_minus_x.conditional_assign(&other.y_minus_x, choice);

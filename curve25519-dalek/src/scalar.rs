@@ -529,10 +529,10 @@ impl<'a> MulAssign<&'a Scalar> for Scalar {
         ensures
     // can't use scalar_as_canonical due to mut
 
-            u8_32_as_group_canonical(self.bytes) == group_canonical(
+            u8_32_as_group_canonical(final(self).bytes) == group_canonical(
                 scalar_as_nat(&old(self)) * scalar_as_nat(&_rhs),
             ),
-            is_canonical_scalar(self),
+            is_canonical_scalar(final(self)),
     {
         /* <ORIGINAL CODE>
          *self = UnpackedScalar::mul(&self.unpack(), &_rhs.unpack()).pack();
@@ -737,7 +737,7 @@ impl<'a> AddAssign<&'a Scalar> for Scalar {
         ensures
     // can't use scalar_as_nat LHS, because of mut
 
-            u8_32_as_nat(&self.bytes) == group_canonical(
+            u8_32_as_nat(&final(self).bytes) == group_canonical(
                 scalar_as_nat(&old(self)) + scalar_as_nat(&_rhs),
             ),
     {
@@ -869,7 +869,7 @@ impl<'a> SubAssign<&'a Scalar> for Scalar {
         ensures
     // can't use scalar_as_canonical LHS due to mut or group_canonical LHS due to int cast
 
-            u8_32_as_group_canonical(self.bytes) == (scalar_as_nat(&old(self)) - scalar_as_nat(
+            u8_32_as_group_canonical(final(self).bytes) == (scalar_as_nat(&old(self)) - scalar_as_nat(
                 &_rhs,
             )) % (group_order() as int),
     {
@@ -1351,7 +1351,7 @@ impl Zeroize for Scalar {
     </VERIFICATION NOTE> */
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 32 ==> #[trigger] self.bytes[i] == 0u8,
+            forall|i: int| 0 <= i < 32 ==> #[trigger] final(self).bytes[i] == 0u8,
     {
         /* ORIGINAL CODE: self.bytes.zeroize(); */
         crate::core_assumes::zeroize_bytes32(&mut self.bytes);
@@ -1782,9 +1782,9 @@ impl Scalar {
             ),
             // Each input is replaced with its inverse (when product is nonzero)
             group_canonical(product_of_scalars(old(inputs)@)) != 0 ==> forall|i: int|
-                0 <= i < inputs.len() ==> #[trigger] is_inverse(
+                0 <= i < final(inputs).len() ==> #[trigger] is_inverse(
                     &(#[trigger] old(inputs)[i]),
-                    &(#[trigger] inputs[i]),
+                    &(#[trigger] final(inputs)[i]),
                 ),
     {
         // This code is essentially identical to the FieldElement
@@ -3794,12 +3794,12 @@ fn square_multiply(
         is_canonical_scalar52(old(y)),
         is_canonical_scalar52(x),
     ensures
-        limb_prod_bounded_u128(y.limbs, y.limbs, 5),
+        limb_prod_bounded_u128(final(y).limbs, final(y).limbs, 5),
         // Output is canonical
-        is_canonical_scalar52(y),
+        is_canonical_scalar52(final(y)),
         // can't use group_canonical RHS due to int cast
         group_canonical(
-            scalar52_as_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat,
+            scalar52_as_nat(final(y)) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat,
         ) == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_as_nat(x)) % (
         group_order() as int),
 {
@@ -4913,11 +4913,11 @@ fn read_le_u64_into(src: &[u8], dst: &mut [u64])
     requires
         src.len() == 8 * old(dst).len(),
     ensures
-        dst.len() == old(dst).len(),
+        final(dst).len() == old(dst).len(),
         forall|i: int|
-            0 <= i < dst.len() ==> {
+            0 <= i < final(dst).len() ==> {
                 let byte_seq = Seq::new(8, |j: int| src[i * 8 + j] as u8);
-                #[trigger] dst[i] as nat == bytes_seq_as_nat(byte_seq)
+                #[trigger] final(dst)[i] as nat == bytes_seq_as_nat(byte_seq)
             },
 {
     #[cfg(not(verus_keep_ghost))]

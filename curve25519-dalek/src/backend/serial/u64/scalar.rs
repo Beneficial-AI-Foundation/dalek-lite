@@ -114,7 +114,7 @@ impl Zeroize for Scalar52 {
     </VERIFICATION NOTE> */
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 5 ==> self.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).limbs[i] == 0,
     {
         /* ORIGINAL CODE: self.limbs.zeroize(); */
         crate::core_assumes::zeroize_limbs5(&mut self.limbs);
@@ -769,12 +769,12 @@ impl Scalar52 {
         requires
             limbs_bounded(&old(self)),
         ensures
-            limbs_bounded(self),
+            limbs_bounded(final(self)),
             (carry >> 52) <= 1,
             // General form: accounts for possible overflow via carry
-            choice_is_true(condition) ==> scalar52_as_nat(self) + (carry >> 52) as nat * pow2(260)
+            choice_is_true(condition) ==> scalar52_as_nat(final(self)) + (carry >> 52) as nat * pow2(260)
                 == scalar52_as_nat(old(self)) + group_order(),
-            !choice_is_true(condition) ==> scalar52_as_nat(self) == scalar52_as_nat(old(self)),
+            !choice_is_true(condition) ==> scalar52_as_nat(final(self)) == scalar52_as_nat(old(self)),
             !choice_is_true(condition) ==> carry >> 52 == 0,
     {
         let mut carry: u64 = 0;

@@ -479,13 +479,18 @@ impl ConstantTimeEq for Scalar {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::core::IndexSpecImpl<usize> for Scalar {
+    open spec fn index_req(&self, index: &usize) -> bool {
+        *index < 32
+    }
+}
+
 impl Index<usize> for Scalar {
     type Output = u8;
 
     /// Index the bytes of the representative for this `Scalar`.  Mutation is not permitted.
     fn index(&self, _index: usize) -> (result: &u8)
-        requires
-            _index < 32,
         ensures
             result == &self.bytes[_index as int],
     {
@@ -503,11 +508,24 @@ impl Debug for Scalar {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&Scalar> for Scalar {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &Scalar) -> bool {
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'a> MulAssign<&'a Scalar> for Scalar {
     fn mul_assign(&mut self, _rhs: &'a Scalar)
-        requires
-            is_canonical_scalar(old(self)),
-            is_canonical_scalar(_rhs),
         ensures
     // can't use scalar_as_canonical due to mut
 
@@ -697,12 +715,25 @@ impl<'a> Add<&'a Scalar> for &Scalar {
 
 define_add_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddAssignSpecImpl<&Scalar> for Scalar {
+    // The postcondition is stated on the add_assign implementation below.
+    open spec fn obeys_add_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn add_assign_req(&self, rhs: &Scalar) -> bool {
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
+    }
+
+    open spec fn add_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'a> AddAssign<&'a Scalar> for Scalar {
     #[allow(clippy::op_ref)]
     fn add_assign(&mut self, _rhs: &'a Scalar)
-        requires
-            is_canonical_scalar(old(self)),
-            is_canonical_scalar(_rhs),
         ensures
     // can't use scalar_as_nat LHS, because of mut
 
@@ -816,12 +847,25 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
 define_sub_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubAssignSpecImpl<&Scalar> for Scalar {
+    // The postcondition is stated on the sub_assign implementation below.
+    open spec fn obeys_sub_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_assign_req(&self, rhs: &Scalar) -> bool {
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
+    }
+
+    open spec fn sub_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'a> SubAssign<&'a Scalar> for Scalar {
     #[allow(clippy::op_ref)]
     fn sub_assign(&mut self, _rhs: &'a Scalar)
-        requires
-            is_canonical_scalar(old(self)),
-            is_canonical_scalar(_rhs),
         ensures
     // can't use scalar_as_canonical LHS due to mut or group_canonical LHS due to int cast
 

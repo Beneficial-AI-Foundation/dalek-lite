@@ -173,10 +173,24 @@ fn m(x: u64, y: u64) -> (r: u128)
     (x as u128) * (y as u128)
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddAssignSpecImpl<&FieldElement51> for FieldElement51 {
+    // The postcondition is stated on the add_assign implementation below.
+    open spec fn obeys_add_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn add_assign_req(&self, rhs: &FieldElement51) -> bool {
+        sum_of_limbs_bounded(self, rhs, u64::MAX)
+    }
+
+    open spec fn add_assign_spec(&self, rhs: &FieldElement51) -> &Self {
+        self
+    }
+}
+
 impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
     fn add_assign(&mut self, _rhs: &'a FieldElement51)
-        requires
-            sum_of_limbs_bounded(old(self), _rhs, u64::MAX),
         ensures
             *self == spec_add_fe51_limbs(old(self), _rhs),
             fe51_as_nat(self) == fe51_as_nat(old(self)) + fe51_as_nat(_rhs),
@@ -289,10 +303,24 @@ impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubAssignSpecImpl<&FieldElement51> for FieldElement51 {
+    // The postcondition is stated on the sub_assign implementation below.
+    open spec fn obeys_sub_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_assign_req(&self, rhs: &FieldElement51) -> bool {
+        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
+    }
+
+    open spec fn sub_assign_spec(&self, rhs: &FieldElement51) -> &Self {
+        self
+    }
+}
+
 impl<'a> SubAssign<&'a FieldElement51> for FieldElement51 {
     fn sub_assign(&mut self, _rhs: &'a FieldElement51)
-        requires
-            fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(_rhs, 54),
         ensures
             fe51_limbs_bounded(self, 52),
             *self == spec_sub_limbs(old(self), _rhs),
@@ -441,11 +469,24 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&FieldElement51> for FieldElement51 {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &FieldElement51) -> bool {
+        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &FieldElement51) -> &Self {
+        self
+    }
+}
+
 impl<'a> MulAssign<&'a FieldElement51> for FieldElement51 {
     fn mul_assign(&mut self, _rhs: &'a FieldElement51)
-        requires
-            fe51_limbs_bounded(old(self), 54),
-            fe51_limbs_bounded(_rhs, 54),
         ensures
             fe51_as_canonical_nat(self) == field_mul(
                 fe51_as_canonical_nat(old(self)),

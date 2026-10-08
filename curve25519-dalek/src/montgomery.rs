@@ -2695,11 +2695,24 @@ impl Mul<&Scalar> for &MontgomeryPoint {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&Scalar> for MontgomeryPoint {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &Scalar) -> bool {
+        is_valid_montgomery_point(*self) && rhs.bytes[31] <= 127
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl MulAssign<&Scalar> for MontgomeryPoint {
     fn mul_assign(&mut self, scalar: &Scalar)
-        requires
-            is_valid_montgomery_point(*old(self)),
-            scalar.bytes[31] <= 127,
         ensures
     // Result represents [n]old(self) where n is the UNREDUCED scalar value
     // Uses canonical Montgomery lift

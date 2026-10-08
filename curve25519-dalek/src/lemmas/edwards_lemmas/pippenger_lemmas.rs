@@ -355,6 +355,7 @@ pub proof fn lemma_pippenger_single(P: (nat, nat), d: Seq<i8>, j: int, w: nat, d
         ),
     decreases digits_count as int - j,
 {
+    hide(pow2);
     reveal(pippenger_horner);
     if j >= digits_count as int {
         // reconstruct_radix_2w_from(d, w, dc, dc) == 0

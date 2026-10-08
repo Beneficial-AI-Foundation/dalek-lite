@@ -1285,6 +1285,7 @@ pub proof fn lemma_general_bound(a: Seq<u64>)
         seq_u64_as_nat(a) < pow2((52 * a.len() as nat)),
     decreases a.len(),
 {
+    hide(pow2);
     if a.len() == 0 {
         assert(seq_u64_as_nat(a) == 0);
         lemma2_to64();  // Gives us pow2(0) == 1 among other facts

@@ -65,7 +65,7 @@ jobs:
     - name: Checkout dalek-lite
       uses: actions/checkout@v4
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@1.92.0
+      uses: dtolnay/rust-toolchain@1.98.1
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y protobuf-compiler cmake pkg-config clang
     - name: Get libsignal
@@ -73,7 +73,7 @@ jobs:
         cd ..
         git clone https://github.com/Beneficial-AI-Foundation/libsignal
         cd libsignal
-        git checkout frozen_for_ci_verus_88f7396
+        git checkout frozen_for_ci_verus_956d529
     - name: Patch libsignal's Cargo.toml with current dalek-lite commit
       run: |
         DALEK_COMMIT=$(git rev-parse HEAD)
@@ -96,11 +96,11 @@ jobs:
     - name: Checkout dalek-lite
       uses: actions/checkout@v4
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@1.92.0
+      uses: dtolnay/rust-toolchain@1.98.1
     - name: Install Verus
       run: |
-        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2026.01.14.88f7396/verus-0.2026.01.14.88f7396-x86-linux.zip
-        unzip verus-0.2026.01.14.88f7396-x86-linux.zip
+        wget https://github.com/verus-lang/verus/releases/download/release%2Frolling%2F0.2026.10.08.956d529/verus-0.2026.10.08.956d529-x86-linux.zip
+        unzip verus-0.2026.10.08.956d529-x86-linux.zip
         mv verus-x86-linux ~/.cargo/bin
         cd ~/.cargo/bin
         ln -s verus-x86-linux/cargo-verus
@@ -111,7 +111,7 @@ jobs:
         cd ..
         git clone https://github.com/Beneficial-AI-Foundation/libsignal
         cd libsignal
-        git checkout frozen_for_ci_v0.84.0_verus_88f7396
+        git checkout frozen_for_ci_v0.84.0_verus_956d529
     - name: Patch libsignal's Cargo.toml with current dalek-lite commit
       run: |
         DALEK_COMMIT=$(git rev-parse HEAD)

@@ -3037,6 +3037,7 @@ pub proof fn lemma_edwards_to_montgomery_correspondence(y: nat, z: nat)
         p_gt_2();
         if inv_z % p() == 0 {
             lemma_mul_mod_noop_left(inv_z as int, z as int, p() as int);
+            assert((inv_z % p()) * z == 0);
             assert(field_mul(inv_z, z) == 0nat) by {
                 lemma_mod_self_0(p() as int);
             };

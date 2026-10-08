@@ -2208,16 +2208,19 @@ impl RistrettoPoint {
                 #![auto]
                 0 <= i < old(invs).len() ==> fe51_limbs_bounded(&old(invs)[i], 54),
         ensures
-            invs.len() == old(invs).len(),
+            final(invs).len() == old(invs).len(),
             // From FieldElement::batch_invert ensures (field.rs:535-549):
             // Each non-zero element is replaced by its multiplicative inverse
             forall|i: int|
                 #![auto]
-                0 <= i < invs.len() ==> ((fe51_as_canonical_nat(&old(invs)[i]) != 0)
-                    ==> is_inverse_field(&old(invs)[i], &invs[i])) && ((fe51_as_canonical_nat(
-                    &old(invs)[i],
-                ) == 0) ==> fe51_as_canonical_nat(&invs[i]) == 0),
-            forall|i: int| #![auto] 0 <= i < invs.len() ==> fe51_limbs_bounded(&invs[i], 54),
+                0 <= i < final(invs).len() ==> ((fe51_as_canonical_nat(&old(invs)[i]) != 0)
+                    ==> is_inverse_field(&old(invs)[i], &final(invs)[i])) && ((
+                fe51_as_canonical_nat(&old(invs)[i]) == 0) ==> fe51_as_canonical_nat(
+                    &final(invs)[i],
+                ) == 0),
+            forall|i: int|
+                #![auto]
+                0 <= i < final(invs).len() ==> fe51_limbs_bounded(&final(invs)[i], 54),
     {
         // Delegates to Verus-verified FieldElement::batch_invert
         FieldElement::batch_invert(invs.as_mut_slice());
@@ -3114,15 +3117,28 @@ define_ristretto_add_variants!();
 
 verus! {
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddAssignSpecImpl<&RistrettoPoint> for RistrettoPoint {
+    // The postcondition is stated on the add_assign implementation below.
+    open spec fn obeys_add_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn add_assign_req(&self, rhs: &RistrettoPoint) -> bool {
+        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
+    }
+
+    open spec fn add_assign_spec(&self, rhs: &RistrettoPoint) -> &Self {
+        self
+    }
+}
+
 impl<'b> AddAssign<&'b RistrettoPoint> for RistrettoPoint {
     fn add_assign(&mut self, _rhs: &RistrettoPoint)
-        requires
-            is_well_formed_edwards_point(old(self).0),
-            is_well_formed_edwards_point(_rhs.0),
         ensures
-            is_well_formed_edwards_point(self.0),
+            is_well_formed_edwards_point(final(self).0),
             // Functional correctness: self = old(self) + rhs
-            edwards_point_as_affine(self.0) == edwards_add(
+            edwards_point_as_affine(final(self).0) == edwards_add(
                 edwards_point_as_affine(old(self).0).0,
                 edwards_point_as_affine(old(self).0).1,
                 edwards_point_as_affine(_rhs.0).0,
@@ -3168,15 +3184,28 @@ define_ristretto_sub_variants!();
 
 verus! {
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubAssignSpecImpl<&RistrettoPoint> for RistrettoPoint {
+    // The postcondition is stated on the sub_assign implementation below.
+    open spec fn obeys_sub_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_assign_req(&self, rhs: &RistrettoPoint) -> bool {
+        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
+    }
+
+    open spec fn sub_assign_spec(&self, rhs: &RistrettoPoint) -> &Self {
+        self
+    }
+}
+
 impl<'b> SubAssign<&'b RistrettoPoint> for RistrettoPoint {
     fn sub_assign(&mut self, _rhs: &RistrettoPoint)
-        requires
-            is_well_formed_edwards_point(old(self).0),
-            is_well_formed_edwards_point(_rhs.0),
         ensures
-            is_well_formed_edwards_point(self.0),
+            is_well_formed_edwards_point(final(self).0),
             // Functional correctness: self = old(self) - rhs
-            edwards_point_as_affine(self.0) == edwards_sub(
+            edwards_point_as_affine(final(self).0) == edwards_sub(
                 edwards_point_as_affine(old(self).0).0,
                 edwards_point_as_affine(old(self).0).1,
                 edwards_point_as_affine(_rhs.0).0,
@@ -3387,15 +3416,28 @@ impl Neg for RistrettoPoint {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&Scalar> for RistrettoPoint {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &Scalar) -> bool {
+        rhs.bytes[31] <= 127 && is_well_formed_edwards_point(self.0)
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
     fn mul_assign(&mut self, scalar: &'b Scalar)
-        requires
-            scalar.bytes[31] <= 127,
-            is_well_formed_edwards_point(old(self).0),
         ensures
-            is_well_formed_edwards_point(self.0),
+            is_well_formed_edwards_point(final(self).0),
             // Functional correctness: self = [scalar] * old(self)
-            edwards_point_as_affine(self.0) == edwards_scalar_mul(
+            edwards_point_as_affine(final(self).0) == edwards_scalar_mul(
                 edwards_point_as_affine(old(self).0),
                 scalar_as_nat(scalar),
             ),
@@ -3994,7 +4036,7 @@ verus! {
 impl Zeroize for CompressedRistretto {
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
+            forall|i: int| 0 <= i < 32 ==> #[trigger] final(self).0[i] == 0u8,
     {
         crate::core_assumes::zeroize_bytes32(&mut self.0);
     }
@@ -4004,11 +4046,11 @@ impl Zeroize for CompressedRistretto {
 impl Zeroize for RistrettoPoint {
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 5 ==> edwards_x(self.0).limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> edwards_t(self.0).limbs[i] == 0,
-            edwards_y(self.0) == FieldElement::ONE,
-            edwards_z(self.0) == FieldElement::ONE,
-            is_identity_edwards_point(self.0),
+            forall|i: int| 0 <= i < 5 ==> edwards_x(final(self).0).limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> edwards_t(final(self).0).limbs[i] == 0,
+            edwards_y(final(self).0) == FieldElement::ONE,
+            edwards_z(final(self).0) == FieldElement::ONE,
+            is_identity_edwards_point(final(self).0),
     {
         self.0.zeroize();
     }

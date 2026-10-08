@@ -112,6 +112,7 @@ proof fn lemma_part2_carry_cancellation(
         five_u64_limbs_to_nat(r0, r1, r2, r3, r4) == (carry4 as nat) + t_high(limbs)
             + nl_high_contribution(n0, n1, n2, n3, n4),
 {
+    hide(pow2);
     // =======================================================================
     // PROOF STRUCTURE
     // =======================================================================

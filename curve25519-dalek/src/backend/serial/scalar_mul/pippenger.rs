@@ -318,7 +318,7 @@ impl Pippenger {
                 digit_index as int,
                 scalars_points@.len() as int,
             ),
-            buckets@.len() == buckets_count as int,
+            final(buckets)@.len() == buckets_count as int,
     {
         use crate::traits::Identity;
 

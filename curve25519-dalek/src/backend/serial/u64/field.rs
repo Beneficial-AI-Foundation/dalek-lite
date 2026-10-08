@@ -737,9 +737,13 @@ impl ConditionallySelectable for FieldElement51 {
         ensures
     // If choice is false, a and b remain unchanged
 
-            !choice_is_true(choice) ==> final(a).limbs == old(a).limbs && final(b).limbs == old(b).limbs,
+            !choice_is_true(choice) ==> final(a).limbs == old(a).limbs && final(b).limbs == old(
+                b,
+            ).limbs,
             // If choice is true, a and b are swapped
-            choice_is_true(choice) ==> final(a).limbs == old(b).limbs && final(b).limbs == old(a).limbs,
+            choice_is_true(choice) ==> final(a).limbs == old(b).limbs && final(b).limbs == old(
+                a,
+            ).limbs,
     {
         // Originally this was
         // u64::conditional_swap(&mut a.limbs[0], &mut b.limbs[0], choice);
@@ -786,7 +790,9 @@ impl ConditionallySelectable for FieldElement51 {
             !choice_is_true(choice) ==> fe51_as_canonical_nat(final(self)) == fe51_as_canonical_nat(
                 old(self),
             ),
-            choice_is_true(choice) ==> fe51_as_canonical_nat(final(self)) == fe51_as_canonical_nat(other),
+            choice_is_true(choice) ==> fe51_as_canonical_nat(final(self)) == fe51_as_canonical_nat(
+                other,
+            ),
             // Boundedness preservation
             (fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(other, 54))
                 ==> fe51_limbs_bounded(final(self), 54),
@@ -1334,7 +1340,7 @@ impl FieldElement51 {
 
             k -= 1;
             if k == 0 {
-                break ;
+                break;
             }
         }
 

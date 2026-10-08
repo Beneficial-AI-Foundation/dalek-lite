@@ -869,9 +869,8 @@ impl<'a> SubAssign<&'a Scalar> for Scalar {
         ensures
     // can't use scalar_as_canonical LHS due to mut or group_canonical LHS due to int cast
 
-            u8_32_as_group_canonical(final(self).bytes) == (scalar_as_nat(&old(self)) - scalar_as_nat(
-                &_rhs,
-            )) % (group_order() as int),
+            u8_32_as_group_canonical(final(self).bytes) == (scalar_as_nat(&old(self))
+                - scalar_as_nat(&_rhs)) % (group_order() as int),
     {
         *self = &*self - _rhs;
     }
@@ -2680,7 +2679,7 @@ impl Scalar {
                     assert(naf@[pos as int] == 0i8);
                 }
                 pos += 1;
-                continue ;
+                continue;
             }
             // Truncate casts are safe: window < width = 2^w with w <= 8, so both fit in i8.
 
@@ -3799,7 +3798,10 @@ fn square_multiply(
         is_canonical_scalar52(final(y)),
         // can't use group_canonical RHS due to int cast
         group_canonical(
-            scalar52_as_nat(final(y)) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat,
+            scalar52_as_nat(final(y)) * pow(
+                montgomery_radix() as int,
+                pow2(squarings as nat),
+            ) as nat,
         ) == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_as_nat(x)) % (
         group_order() as int),
 {

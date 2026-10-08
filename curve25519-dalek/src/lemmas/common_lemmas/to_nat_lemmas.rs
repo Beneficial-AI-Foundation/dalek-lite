@@ -768,7 +768,10 @@ proof fn lemma_prefix_equals_suffix_partial<const N: usize>(bytes: &[u8; N], k: 
         let b = bytes[j1 as int] as nat;
         let w = pow2((j1 * 8) as nat);
         assert(bytes_as_nat_prefix(bytes@, k) == bytes_as_nat_prefix(bytes@, j1) + w * b);
-        assert(bytes_as_nat_suffix(bytes, j1 as int) == b * w + bytes_as_nat_suffix(bytes, k as int));
+        assert(bytes_as_nat_suffix(bytes, j1 as int) == b * w + bytes_as_nat_suffix(
+            bytes,
+            k as int,
+        ));
         lemma_mul_is_commutative(w as int, b as int);
 
         // prefix(k) = prefix(k-1) + bytes[k-1] * pow2((k-1)*8)

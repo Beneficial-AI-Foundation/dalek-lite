@@ -234,6 +234,7 @@ pub proof fn lemma_low_limbs_encode_low_expr(lo: &[u64; 5], words: &[u64; 8], ma
             * (words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * ((words[4]
             & 0xf) as nat),
 {
+    hide(pow2);
     // Common mask equality used throughout
     assert((1u64 << 52) - 1u64 == u64::MAX >> 12) by (bit_vector);
 
@@ -588,6 +589,7 @@ pub proof fn lemma_montgomery_reduced_sum_congruent(
         (result_nat * montgomery_radix()) % group_order() == (wide_input * montgomery_radix())
             % group_order(),
 {
+    hide(pow2);
     let r_nat = montgomery_radix();
     let group_int = group_order() as int;
 

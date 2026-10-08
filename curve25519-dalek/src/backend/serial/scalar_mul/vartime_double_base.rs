@@ -72,6 +72,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
             edwards_add(aA.0, aA.1, bB.0, bB.1)
         },
 {
+    hide(pow2);
     let a_naf = a.non_adjacent_form(5);
 
     #[cfg(feature = "precomputed-tables")]

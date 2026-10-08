@@ -764,6 +764,12 @@ proof fn lemma_prefix_equals_suffix_partial<const N: usize>(bytes: &[u8; N], k: 
     } else {
         // IH: prefix(k-1) == suffix(0) - suffix(k-1)
         lemma_prefix_equals_suffix_partial(bytes, (k - 1) as nat);
+        let j1 = (k - 1) as nat;
+        let b = bytes[j1 as int] as nat;
+        let w = pow2((j1 * 8) as nat);
+        assert(bytes_as_nat_prefix(bytes@, k) == bytes_as_nat_prefix(bytes@, j1) + w * b);
+        assert(bytes_as_nat_suffix(bytes, j1 as int) == b * w + bytes_as_nat_suffix(bytes, k as int));
+        lemma_mul_is_commutative(w as int, b as int);
 
         // prefix(k) = prefix(k-1) + bytes[k-1] * pow2((k-1)*8)
         // suffix(k-1) = bytes[k-1] * pow2((k-1)*8) + suffix(k)
@@ -979,9 +985,7 @@ pub proof fn lemma_bytes_as_nat_prefix_chunk(bytes: Seq<u8>, chunk: Seq<u8>, k: 
         let pw_rm1 = pow2((rm1 * 8) as nat) as int;
         let pw_k = pow2((k * 64) as nat) as int;
 
-        assert((p + pw_rm1 * bv) * pw_k == p * pw_k + pw_rm1 * bv * pw_k) by {
-            lemma_mul_is_distributive_add(pw_k, p, pw_rm1 * bv);
-        }
+        assert((p + pw_rm1 * bv) * pw_k == p * pw_k + pw_rm1 * bv * pw_k) by (nonlinear_arith);
         assert(pw_rm1 * bv * pw_k == pw_rm1 * pw_k * bv) by {
             lemma_mul_is_associative(pw_rm1, bv, pw_k);
             lemma_mul_is_commutative(bv, pw_k);

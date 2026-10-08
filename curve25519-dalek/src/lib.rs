@@ -9,6 +9,7 @@
 // - isis agora lovecruft <isis@patternsinthevoid.net>
 // - Henry de Valence <hdevalence@hdevalence.ca>
 #![no_std]
+#![cfg_attr(verus_keep_ghost, verifier::deprecated_postcondition_mut_ref_style(true))]
 #![cfg_attr(
     all(
         curve25519_dalek_backend = "simd",

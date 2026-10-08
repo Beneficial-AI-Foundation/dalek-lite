@@ -70,6 +70,7 @@ proof fn lemma_byte_sum_equals_limb_sum(limbs: [u64; 5], bytes: [u8; 32])
     ensures
         u8_32_as_nat(&bytes) == u64_5_as_nat(limbs),
 {
+    hide(pow2);
     // This lemma performs the complete algebraic expansion:
     //
     // LHS: u8_32_as_nat(bytes)
@@ -397,6 +398,7 @@ proof fn lemma_limb0_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     lemma_pow2_pos(48);  // Establishes pow2(48) > 0
     assert(pow2(48) > 0);
     lemma_fundamental_div_mod(limbs[0] as int, pow2(48) as int);
+    lemma_mul_is_commutative(pow2(48) as int, (limbs[0] as nat / pow2(48)) as int);
     assert(limbs[0] as nat == (limbs[0] as nat % pow2(48)) + (limbs[0] as nat / pow2(48)) * pow2(
         48,
     ));
@@ -967,6 +969,44 @@ proof fn lemma_limb1_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
 
 }
 
+/// p * (b * q) == b * (p * q)
+proof fn lemma_mul_left_commute(p: nat, b: nat, q: nat)
+    ensures
+        p * (b * q) == b * (p * q),
+{
+    assert(p * (b * q) == b * (p * q)) by (nonlinear_arith);
+}
+
+/// Multiplying a six-term sum by p is the same as scaling each term by p.
+proof fn lemma_mul_distributes_over_sum6(
+    p: nat,
+    b0: nat,
+    b1: nat,
+    b2: nat,
+    b3: nat,
+    b4: nat,
+    b5: nat,
+    q0: nat,
+    q1: nat,
+    q2: nat,
+    q3: nat,
+    q4: nat,
+    q5: nat,
+)
+    ensures
+        b0 * (p * q0) + b1 * (p * q1) + b2 * (p * q2) + b3 * (p * q3) + b4 * (p * q4) + b5 * (p
+            * q5) == (b0 * q0 + b1 * q1 + b2 * q2 + b3 * q3 + b4 * q4 + b5 * q5) * p,
+{
+    assert forall|b: nat, q: nat| #[trigger] (b * (p * q)) == (b * q) * p by {
+        lemma_mul_is_associative(b as int, p as int, q as int);
+        lemma_mul_is_commutative(p as int, q as int);
+        lemma_mul_is_associative(b as int, q as int, p as int);
+    }
+    let (t0, t1, t2, t3, t4, t5) = (b0 * q0, b1 * q1, b2 * q2, b3 * q3, b4 * q4, b5 * q5);
+    assert((t0 + t1 + t2 + t3 + t4 + t5) * p == t0 * p + t1 * p + t2 * p + t3 * p + t4 * p + t5 * p)
+        by (nonlinear_arith);
+}
+
 /// Proves that limb 2's byte contribution equals limbs[2] * pow2(102)
 proof fn lemma_limb2_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     requires
@@ -1107,77 +1147,32 @@ proof fn lemma_limb2_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
         + bytes[16] as nat * pow2(24) + bytes[17] as nat * pow2(32) + bytes[18] as nat * pow2(40)
         == middle_value);
 
-    // Now multiply both sides by 2^104 to get the bytes at their actual positions
-    lemma_mul_is_distributive_add(
-        pow2(104) as int,
-        (bytes[13] as nat * pow2(0)) as int,
-        (bytes[14] as nat * pow2(8)) as int,
-    );
-    lemma_mul_is_distributive_add(
-        pow2(104) as int,
-        (bytes[13] as nat * pow2(0) + bytes[14] as nat * pow2(8)) as int,
-        (bytes[15] as nat * pow2(16)) as int,
-    );
-    lemma_mul_is_distributive_add(
-        pow2(104) as int,
-        (bytes[13] as nat * pow2(0) + bytes[14] as nat * pow2(8) + bytes[15] as nat * pow2(
-            16,
-        )) as int,
-        (bytes[16] as nat * pow2(24)) as int,
-    );
-    lemma_mul_is_distributive_add(
-        pow2(104) as int,
-        (bytes[13] as nat * pow2(0) + bytes[14] as nat * pow2(8) + bytes[15] as nat * pow2(16)
-            + bytes[16] as nat * pow2(24)) as int,
-        (bytes[17] as nat * pow2(32)) as int,
-    );
-    lemma_mul_is_distributive_add(
-        pow2(104) as int,
-        (bytes[13] as nat * pow2(0) + bytes[14] as nat * pow2(8) + bytes[15] as nat * pow2(16)
-            + bytes[16] as nat * pow2(24) + bytes[17] as nat * pow2(32)) as int,
-        (bytes[18] as nat * pow2(40)) as int,
-    );
-
-    // Distribute the multiplication into each term
-    lemma_mul_is_associative(bytes[13] as int, pow2(0) as int, pow2(104) as int);
-    lemma_mul_is_associative(bytes[14] as int, pow2(8) as int, pow2(104) as int);
-    lemma_mul_is_associative(bytes[15] as int, pow2(16) as int, pow2(104) as int);
-    lemma_mul_is_associative(bytes[16] as int, pow2(24) as int, pow2(104) as int);
-    lemma_mul_is_associative(bytes[17] as int, pow2(32) as int, pow2(104) as int);
-    lemma_mul_is_associative(bytes[18] as int, pow2(40) as int, pow2(104) as int);
-
-    // Simplify using pow2 addition: 2^104 * 2^k = 2^(104+k)
+    // Multiply both sides by 2^104: each byte moves to its position 2^(104 + 8i)
     lemma_pow2_adds(104, 0);
-
     lemma_pow2_adds(104, 8);
-
     lemma_pow2_adds(104, 16);
-
     lemma_pow2_adds(104, 24);
-
     lemma_pow2_adds(104, 32);
-
     lemma_pow2_adds(104, 40);
-
-    // Now we need to show that the distributed sum equals middle_value * pow2(104)
-    // We have: bytes[13] * 2^0 + ... + bytes[18] * 2^40 = middle_value
-    // We distributed 2^104 into each term
-    // Now we need to show the result
-
-    // Build up the sum step by step
-    let sum_0 = bytes[13] as nat * pow2(13 * 8);
-    let sum_1 = sum_0 + bytes[14] as nat * pow2(14 * 8);
-    let sum_2 = sum_1 + bytes[15] as nat * pow2(15 * 8);
-    let sum_3 = sum_2 + bytes[16] as nat * pow2(16 * 8);
-    let sum_4 = sum_3 + bytes[17] as nat * pow2(17 * 8);
-    let sum_5 = sum_4 + bytes[18] as nat * pow2(18 * 8);
-
-    // This should equal middle_value * pow2(104) by the distributivity we applied
-
-    // Final result
-    assert(bytes[13] as nat * pow2(13 * 8) + bytes[14] as nat * pow2(14 * 8) + bytes[15] as nat
-        * pow2(15 * 8) + bytes[16] as nat * pow2(16 * 8) + bytes[17] as nat * pow2(17 * 8)
-        + bytes[18] as nat * pow2(18 * 8) == middle_value * pow2(104));
+    let (b0, b1, b2, b3, b4, b5) = (
+        bytes[13] as nat,
+        bytes[14] as nat,
+        bytes[15] as nat,
+        bytes[16] as nat,
+        bytes[17] as nat,
+        bytes[18] as nat,
+    );
+    let (p, q0, q1, q2, q3, q4, q5) = (pow2(104), pow2(0), pow2(8), pow2(16), pow2(24), pow2(32), pow2(40));
+    let (r0, r1, r2, r3, r4, r5) = (
+        pow2(13 * 8),
+        pow2(14 * 8),
+        pow2(15 * 8),
+        pow2(16 * 8),
+        pow2(17 * 8),
+        pow2(18 * 8),
+    );
+    lemma_mul_distributes_over_sum6(p, b0, b1, b2, b3, b4, b5, q0, q1, q2, q3, q4, q5);
+    assert(b0 * r0 + b1 * r1 + b2 * r2 + b3 * r3 + b4 * r4 + b5 * r5 == middle_value * p);
 
     // Step 3: Handle boundary bytes
     // Low 2 bits (byte 12 high part): (limbs[2] % 2^2) * 64 * 2^96 = (limbs[2] % 2^2) * 2^102
@@ -1493,20 +1488,17 @@ proof fn lemma_limb3_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
             (bytes[23] as nat * pow2(24)) as int,
             (bytes[24] as nat * pow2(32)) as int,
         );
-
-        // Distribute the multiplication into each term
-        lemma_mul_is_associative(bytes[20] as int, pow2(0) as int, pow2(160) as int);
-        lemma_mul_is_associative(bytes[21] as int, pow2(8) as int, pow2(160) as int);
-        lemma_mul_is_associative(bytes[22] as int, pow2(16) as int, pow2(160) as int);
-        lemma_mul_is_associative(bytes[23] as int, pow2(24) as int, pow2(160) as int);
-        lemma_mul_is_associative(bytes[24] as int, pow2(32) as int, pow2(160) as int);
-
-        // Simplify using pow2 addition: 2^160 * 2^k = 2^(160+k)
+        // Move 2^160 into each term: 2^160 * (b * 2^k) == b * 2^(160 + k)
         lemma_pow2_adds(160, 0);
         lemma_pow2_adds(160, 8);
         lemma_pow2_adds(160, 16);
         lemma_pow2_adds(160, 24);
         lemma_pow2_adds(160, 32);
+        lemma_mul_left_commute(pow2(160), bytes[20] as nat, pow2(0));
+        lemma_mul_left_commute(pow2(160), bytes[21] as nat, pow2(8));
+        lemma_mul_left_commute(pow2(160), bytes[22] as nat, pow2(16));
+        lemma_mul_left_commute(pow2(160), bytes[23] as nat, pow2(24));
+        lemma_mul_left_commute(pow2(160), bytes[24] as nat, pow2(32));
 
     }
 
@@ -1680,6 +1672,7 @@ proof fn lemma_limb4_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
     ensures
         limb4_byte_contribution(limbs, bytes) == limbs[4] as nat * pow2(204),
 {
+    hide(pow2);
     // Limb 4 stored in bytes 25-31, positioned at 2^204
     // - Byte 25 (high 4 bits): limbs[4]'s bits 0-3
     // - Bytes 26-31: limbs[4]'s bits 4-51 (48 bits, but only 47 used)

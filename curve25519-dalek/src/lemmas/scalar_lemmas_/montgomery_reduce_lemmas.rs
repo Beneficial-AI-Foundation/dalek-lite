@@ -710,6 +710,7 @@ pub(crate) proof fn lemma_identity_array_satisfies_canonical_bound(a: &Scalar52,
     ensures
         montgomery_reduce_canonical_bound(limbs),
 {
+    hide(pow2);
     // First establish input_bounds
     lemma_identity_array_satisfies_input_bounds(a, limbs);
 
@@ -1038,6 +1039,7 @@ pub(crate) proof fn lemma_montgomery_reduce_post_sub(
     ensures
         montgomery_congruent(result, limbs),
 {
+    hide(pow2);
     let t = slice128_as_nat(limbs);
     let l = group_order();
     let r = montgomery_radix();

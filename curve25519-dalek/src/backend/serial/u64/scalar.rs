@@ -121,12 +121,17 @@ impl Zeroize for Scalar52 {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::core::IndexSpecImpl<usize> for Scalar52 {
+    open spec fn index_req(&self, index: &usize) -> bool {
+        *index < 5
+    }
+}
+
 impl Index<usize> for Scalar52 {
     type Output = u64;
 
     fn index(&self, _index: usize) -> (result: &u64)
-        requires
-            _index < 5,
         ensures
             result == &(self.limbs[_index as int]),
     {

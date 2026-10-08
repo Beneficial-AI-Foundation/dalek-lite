@@ -159,15 +159,6 @@ pub fn write_bytes32_8_to_24(dst: &mut [u8; 32], src: &[u8; 16])
 }
 
 // NOTE: Probabilistic specs (is_uniform_*, axiom_uniform_*) are in proba_specs.rs.
-// External type specifications for formatters
-#[verifier::external_type_specification]
-#[verifier::external_body]
-pub struct ExFormatter<'a>(core::fmt::Formatter<'a>);
-
-#[verifier::external_type_specification]
-#[verifier::external_body]
-pub struct ExFmtError(core::fmt::Error);
-
 // Assume specification for core::fmt::Formatter::write_str used e.g. by serde Visitors
 pub assume_specification<'a>[ core::fmt::Formatter::<'a>::write_str ](
     _0: &mut core::fmt::Formatter<'a>,

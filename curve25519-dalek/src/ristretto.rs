@@ -3114,11 +3114,24 @@ define_ristretto_add_variants!();
 
 verus! {
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddAssignSpecImpl<&RistrettoPoint> for RistrettoPoint {
+    // The postcondition is stated on the add_assign implementation below.
+    open spec fn obeys_add_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn add_assign_req(&self, rhs: &RistrettoPoint) -> bool {
+        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
+    }
+
+    open spec fn add_assign_spec(&self, rhs: &RistrettoPoint) -> &Self {
+        self
+    }
+}
+
 impl<'b> AddAssign<&'b RistrettoPoint> for RistrettoPoint {
     fn add_assign(&mut self, _rhs: &RistrettoPoint)
-        requires
-            is_well_formed_edwards_point(old(self).0),
-            is_well_formed_edwards_point(_rhs.0),
         ensures
             is_well_formed_edwards_point(self.0),
             // Functional correctness: self = old(self) + rhs
@@ -3168,11 +3181,24 @@ define_ristretto_sub_variants!();
 
 verus! {
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubAssignSpecImpl<&RistrettoPoint> for RistrettoPoint {
+    // The postcondition is stated on the sub_assign implementation below.
+    open spec fn obeys_sub_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_assign_req(&self, rhs: &RistrettoPoint) -> bool {
+        is_well_formed_edwards_point(self.0) && is_well_formed_edwards_point(rhs.0)
+    }
+
+    open spec fn sub_assign_spec(&self, rhs: &RistrettoPoint) -> &Self {
+        self
+    }
+}
+
 impl<'b> SubAssign<&'b RistrettoPoint> for RistrettoPoint {
     fn sub_assign(&mut self, _rhs: &RistrettoPoint)
-        requires
-            is_well_formed_edwards_point(old(self).0),
-            is_well_formed_edwards_point(_rhs.0),
         ensures
             is_well_formed_edwards_point(self.0),
             // Functional correctness: self = old(self) - rhs
@@ -3387,11 +3413,24 @@ impl Neg for RistrettoPoint {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&Scalar> for RistrettoPoint {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &Scalar) -> bool {
+        rhs.bytes[31] <= 127 && is_well_formed_edwards_point(self.0)
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'b> MulAssign<&'b Scalar> for RistrettoPoint {
     fn mul_assign(&mut self, scalar: &'b Scalar)
-        requires
-            scalar.bytes[31] <= 127,
-            is_well_formed_edwards_point(old(self).0),
         ensures
             is_well_formed_edwards_point(self.0),
             // Functional correctness: self = [scalar] * old(self)

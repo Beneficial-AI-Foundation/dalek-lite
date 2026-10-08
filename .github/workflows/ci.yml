@@ -53,12 +53,7 @@ jobs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
     - name: Install verusfmt
-      run: |
-        cd /tmp
-        git clone https://github.com/Beneficial-AI-Foundation/verusfmt
-        cd verusfmt
-        git checkout 025d10eeb5a98052dcb7f262e5d0102d23996809
-        cargo install --path .
+      run: cargo install verusfmt --version 0.7.4 --locked
     - name: Run verusfmt check
       run: |
         find . -name "*.rs" -type f | xargs verusfmt --check

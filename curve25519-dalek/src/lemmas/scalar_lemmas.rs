@@ -1017,6 +1017,8 @@ pub proof fn lemma_montgomery_radix_nonzero_mod_group_order()
                 inv_montgomery_radix() as int,
                 group_order() as int,
             );
+            assert((montgomery_radix() % group_order()) * (inv_montgomery_radix() % group_order())
+                == 0);
         }
     }
 }

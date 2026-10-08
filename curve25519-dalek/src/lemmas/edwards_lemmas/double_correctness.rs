@@ -244,10 +244,14 @@ pub proof fn lemma_double_projective_completed_valid(
     // -----------------------------------------------------------------------
     assert(field_mul(fe51_as_canonical_nat(&result.X), field_inv(fe51_as_canonical_nat(&result.Z)))
         == field_mul(field_mul(2, xy), field_inv(field_add(1, t)))) by {
+        lemma_field_mul_comm(z2, field_mul(2, xy));
+        lemma_field_mul_comm(z2, field_add(1, t));
         lemma_cancel_common_factor(field_mul(2, xy), field_add(1, t), z2);
     };
     assert(field_mul(fe51_as_canonical_nat(&result.Y), field_inv(fe51_as_canonical_nat(&result.T)))
         == field_mul(field_add(y2, x2), field_inv(field_sub(1, t)))) by {
+        lemma_field_mul_comm(z2, field_add(y2, x2));
+        lemma_field_mul_comm(z2, field_sub(1, t));
         lemma_cancel_common_factor(field_add(y2, x2), field_sub(1, t), z2);
     };
 

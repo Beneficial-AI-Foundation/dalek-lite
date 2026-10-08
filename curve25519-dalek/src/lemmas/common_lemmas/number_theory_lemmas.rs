@@ -341,7 +341,7 @@ proof fn lemma_coprime_div_cancel(d: nat, a: nat, b: nat)
 
         assert((ai * bi * y) % di == 0) by {
             lemma_mul_mod_noop_left(ai * bi, y, di);
-            lemma_mul_basics(y);
+            assert(((ai * bi) % di) * y == 0);
         };
 
         assert(bi % di == 0) by {
@@ -939,6 +939,11 @@ proof fn lemma_binomial_theorem(a: nat, n: nat)
             reveal(pow);
         };
         assert(binomial(0, 0) == 1);
+        assert(binomial(0, 0) * (pow(a as int, 0) as nat) == 1) by (nonlinear_arith)
+            requires
+                binomial(0, 0) == 1,
+                pow(a as int, 0) == 1,
+        ;
     } else {
         let nm1 = (n - 1) as nat;
         let a1 = (a + 1) as int;
@@ -962,6 +967,15 @@ proof fn lemma_binomial_theorem(a: nat, n: nat)
         };
         lemma_pow_nonnegative(a1, n);
         lemma_pow_nonnegative(a1, nm1);
+        assert(binomial_sum(a, n, n) == shifted_binomial_sum(a, nm1, nm1) + binomial_sum(
+            a,
+            nm1,
+            n,
+        ));
+        assert(binomial_sum(a, nm1, n) == bs);
+        assert(shifted_binomial_sum(a, nm1, nm1) == ai * bs);
+        assert(bs == pow(a1, nm1));
+        assert(binomial_sum(a, n, n) == a1 * pow(a1, nm1));
     }
 }
 

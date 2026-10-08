@@ -473,7 +473,10 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
         }
 
         let ghost P_affine = edwards_point_as_affine(*P);
-        let mut points = [P.as_projective_niels();8];
+        let niels = P.as_projective_niels();
+        // Same as [niels; 8]. The array repeat needs the `Copy` axiom of ProjectiveNielsPoint,
+        // which Verus emits after this function's query.
+        let mut points = [niels, niels, niels, niels, niels, niels, niels, niels];
         proof {
             // Base case: points[0] corresponds to 1*P
             assert(projective_niels_point_as_affine_edwards(points[0]) == P_affine) by {

@@ -1162,7 +1162,15 @@ proof fn lemma_limb2_contribution_correctness(limbs: [u64; 5], bytes: [u8; 32])
         bytes[17] as nat,
         bytes[18] as nat,
     );
-    let (p, q0, q1, q2, q3, q4, q5) = (pow2(104), pow2(0), pow2(8), pow2(16), pow2(24), pow2(32), pow2(40));
+    let (p, q0, q1, q2, q3, q4, q5) = (
+        pow2(104),
+        pow2(0),
+        pow2(8),
+        pow2(16),
+        pow2(24),
+        pow2(32),
+        pow2(40),
+    );
     let (r0, r1, r2, r3, r4, r5) = (
         pow2(13 * 8),
         pow2(14 * 8),

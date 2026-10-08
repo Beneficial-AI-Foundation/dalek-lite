@@ -108,14 +108,14 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
 
     {
         if a_naf[i] != 0 || b_naf[i] != 0 {
-            break ;
+            break;
         }
         proof {
             assert(a_naf@[i as int] == 0);
             assert(b_naf@[i as int] == 0);
         }
         if i == 0 {
-            break ;  // Checked index 0, now exit
+            break;  // Checked index 0, now exit
         }
         let old_i = i;
         i -= 1;
@@ -671,7 +671,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                     0,
                 ));
             }
-            break ;
+            break;
         }
         i -= 1;
         proof {

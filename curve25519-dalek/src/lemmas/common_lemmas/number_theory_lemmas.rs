@@ -1838,7 +1838,7 @@ pub proof fn lemma_product_of_multiples_mod_eq_factorial(a: nat, p: nat)
         // a % 2 != 0 and a % 2 < 2, so a % 2 == 1
         lemma_mod_bound(a as int, 2);
         lemma_small_mod(1nat, 2nat);
-        return ;
+        return;
     }
     // For p > 2, we use the bijection argument combined with Fermat's Little Theorem
     // product_of_multiples(a, n) = a^n * n! by lemma_product_of_multiples_eq

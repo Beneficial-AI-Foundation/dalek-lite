@@ -341,92 +341,94 @@ impl Scalar52 {
 
         // Split the wide input at 2^260. Only the three facts below are kept in scope.
         proof {
-            assert(scalar52_as_nat(&lo_raw) == wide_input % pow2(260)
-                && scalar52_as_nat(&hi_raw) == wide_input / pow2(260)
-                && scalar52_as_nat(&hi_raw) < pow2(252)) by {
-            let pow2_260 = pow2(260);
-            let low_expr = (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (
-            words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * ((words[4] & 0xf) as nat);
+            assert(scalar52_as_nat(&lo_raw) == wide_input % pow2(260) && scalar52_as_nat(&hi_raw)
+                == wide_input / pow2(260) && scalar52_as_nat(&hi_raw) < pow2(252)) by {
+                let pow2_260 = pow2(260);
+                let low_expr = (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (
+                words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * ((words[4]
+                    & 0xf) as nat);
 
-            let high_expr = (words[4] >> 4) as nat + pow2(60) * (words[5] as nat) + pow2(124) * (
-            words[6] as nat) + pow2(188) * (words[7] as nat);
+                let high_expr = (words[4] >> 4) as nat + pow2(60) * (words[5] as nat) + pow2(124)
+                    * (words[6] as nat) + pow2(188) * (words[7] as nat);
 
-            let wide_sum = (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (
-            words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * (words[4] as nat) + pow2(320)
-                * (words[5] as nat) + pow2(384) * (words[6] as nat) + pow2(448) * (words[7] as nat);
+                let wide_sum = (words[0] as nat) + pow2(64) * (words[1] as nat) + pow2(128) * (
+                words[2] as nat) + pow2(192) * (words[3] as nat) + pow2(256) * (words[4] as nat)
+                    + pow2(320) * (words[5] as nat) + pow2(384) * (words[6] as nat) + pow2(448) * (
+                words[7] as nat);
 
-            {
-                // Reading the five 52-bit limbs in radix 2^52 reproduces the low chunk reconstructed from the 64-bit words.
-                lemma_low_limbs_encode_low_expr(&lo_raw.limbs, &words, mask);
-                lemma_five_limbs_equals_to_nat(&lo_raw.limbs);
-                // Reading the five 52-bit limbs in radix 2^52 reproduces the high chunk reconstructed from the 64-bit words.
-                lemma_high_limbs_encode_high_expr(&hi_raw.limbs, &words, mask);
-                lemma_five_limbs_equals_to_nat(&hi_raw.limbs);
-            }
-            assert(scalar52_as_nat(&hi_raw) == high_expr);
+                {
+                    // Reading the five 52-bit limbs in radix 2^52 reproduces the low chunk reconstructed from the 64-bit words.
+                    lemma_low_limbs_encode_low_expr(&lo_raw.limbs, &words, mask);
+                    lemma_five_limbs_equals_to_nat(&lo_raw.limbs);
+                    // Reading the five 52-bit limbs in radix 2^52 reproduces the high chunk reconstructed from the 64-bit words.
+                    lemma_high_limbs_encode_high_expr(&hi_raw.limbs, &words, mask);
+                    lemma_five_limbs_equals_to_nat(&hi_raw.limbs);
+                }
+                assert(scalar52_as_nat(&hi_raw) == high_expr);
 
-            // Assumption [L2]: The 512-bit input splits as `pow2(260) * high_expr + low_expr`.
-            // WideSum-Expansion: converting the eight 64-bit words back into a natural number matches the explicit little-endian sum of their weighted contributions.
-            {
-                lemma_words64_from_bytes_to_nat_wide(bytes);
-            }
+                // Assumption [L2]: The 512-bit input splits as `pow2(260) * high_expr + low_expr`.
+                // WideSum-Expansion: converting the eight 64-bit words back into a natural number matches the explicit little-endian sum of their weighted contributions.
+                {
+                    lemma_words64_from_bytes_to_nat_wide(bytes);
+                }
 
-            // HighLow-Recombine: Combining the high and low chunks at the 2^260 boundary reproduces the weighted word sum.
-            // Bridge bit operations to arithmetic operations for word4
-            let word4 = words[4];
-            let word4_high_nat = (word4 >> 4) as nat;
-            let word4_low_nat = (word4 & 0xf) as nat;
-            // word4 >> 4 == word4 / 16 and word4 & 0xf == word4 % 16 (for u64)
-            assert(word4_high_nat == (word4 as nat) / 16 && word4_low_nat == (word4 as nat) % 16) by {
-                assert(word4 >> 4 == word4 / 16 && word4 & 0xf == word4 % 16) by (bit_vector)
-                    requires
-                        word4 == word4,
-                ;
-            };
-            {
-                lemma_high_low_recombine(
-                    words[0] as nat,
-                    words[1] as nat,
-                    words[2] as nat,
-                    words[3] as nat,
-                    word4 as nat,
-                    words[5] as nat,
-                    words[6] as nat,
-                    words[7] as nat,
-                    word4_low_nat,
-                    word4_high_nat,
-                );
-            }
+                // HighLow-Recombine: Combining the high and low chunks at the 2^260 boundary reproduces the weighted word sum.
+                // Bridge bit operations to arithmetic operations for word4
+                let word4 = words[4];
+                let word4_high_nat = (word4 >> 4) as nat;
+                let word4_low_nat = (word4 & 0xf) as nat;
+                // word4 >> 4 == word4 / 16 and word4 & 0xf == word4 % 16 (for u64)
+                assert(word4_high_nat == (word4 as nat) / 16 && word4_low_nat == (word4 as nat)
+                    % 16) by {
+                    assert(word4 >> 4 == word4 / 16 && word4 & 0xf == word4 % 16) by (bit_vector)
+                        requires
+                            word4 == word4,
+                    ;
+                };
+                {
+                    lemma_high_low_recombine(
+                        words[0] as nat,
+                        words[1] as nat,
+                        words[2] as nat,
+                        words[3] as nat,
+                        word4 as nat,
+                        words[5] as nat,
+                        words[6] as nat,
+                        words[7] as nat,
+                        word4_low_nat,
+                        word4_high_nat,
+                    );
+                }
 
-            assert(wide_input == pow2_260 * high_expr + low_expr);
-            // L3: The lower chunk has value strictly below 2^260.
-            {
-                lemma_bound_scalar(&lo_raw);
-            }
-            assert(low_expr < pow2_260);
+                assert(wide_input == pow2_260 * high_expr + low_expr);
+                // L3: The lower chunk has value strictly below 2^260.
+                {
+                    lemma_bound_scalar(&lo_raw);
+                }
+                assert(low_expr < pow2_260);
 
-            // Assumption: The lower bits of the wide input, modulo 2^260, match the natural value encoded by `lo_raw`.
-            assert(scalar52_as_nat(&lo_raw) == wide_input % pow2(260)) by {
-                lemma_mod_multiples_vanish(high_expr as int, low_expr as int, pow2_260 as int);
-                lemma_small_mod(low_expr, pow2_260);
-            };
-            // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
-            assert(scalar52_as_nat(&hi_raw) == wide_input / pow2(260)) by {
-                lemma_mul_is_commutative(pow2_260 as int, high_expr as int);
-                lemma_fundamental_div_mod_converse(
-                    wide_input as int,
-                    pow2_260 as int,
-                    high_expr as int,
-                    low_expr as int,
-                );
-            };
-            // Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
-            assert(high_expr < pow2(252)) by {
-                lemma_words_as_nat_upper_bound(&words, 8);
-                lemma_pow2_adds(260, 252);
-                assert(pow2_260 * pow2(252) == pow2(512));
-                lemma_multiply_divide_lt(wide_input as int, pow2_260 as int, pow2(252) as int);
-            };
+                // Assumption: The lower bits of the wide input, modulo 2^260, match the natural value encoded by `lo_raw`.
+                assert(scalar52_as_nat(&lo_raw) == wide_input % pow2(260)) by {
+                    lemma_mod_multiples_vanish(high_expr as int, low_expr as int, pow2_260 as int);
+                    lemma_small_mod(low_expr, pow2_260);
+                };
+                // Assumption: The upper bits of the wide input, divided by 2^260, match the natural value encoded by `hi_raw`.
+                assert(scalar52_as_nat(&hi_raw) == wide_input / pow2(260)) by {
+                    lemma_mul_is_commutative(pow2_260 as int, high_expr as int);
+                    lemma_fundamental_div_mod_converse(
+                        wide_input as int,
+                        pow2_260 as int,
+                        high_expr as int,
+                        low_expr as int,
+                    );
+                };
+                // Recombining quotient and remainder at the 2^260 radix recreates the original wide input.
+                assert(high_expr < pow2(252)) by {
+                    lemma_words_as_nat_upper_bound(&words, 8);
+                    lemma_pow2_adds(260, 252);
+                    assert(pow2_260 * pow2(252) == pow2(512));
+                    lemma_multiply_divide_lt(wide_input as int, pow2_260 as int, pow2(252) as int);
+                };
                 assert(scalar52_as_nat(&hi_raw) == high_expr);
             }
         }
@@ -772,9 +774,11 @@ impl Scalar52 {
             limbs_bounded(final(self)),
             (carry >> 52) <= 1,
             // General form: accounts for possible overflow via carry
-            choice_is_true(condition) ==> scalar52_as_nat(final(self)) + (carry >> 52) as nat * pow2(260)
-                == scalar52_as_nat(old(self)) + group_order(),
-            !choice_is_true(condition) ==> scalar52_as_nat(final(self)) == scalar52_as_nat(old(self)),
+            choice_is_true(condition) ==> scalar52_as_nat(final(self)) + (carry >> 52) as nat
+                * pow2(260) == scalar52_as_nat(old(self)) + group_order(),
+            !choice_is_true(condition) ==> scalar52_as_nat(final(self)) == scalar52_as_nat(
+                old(self),
+            ),
             !choice_is_true(condition) ==> carry >> 52 == 0,
     {
         let mut carry: u64 = 0;

@@ -603,7 +603,7 @@ pub proof fn lemma_jq_edge_case_values(point: crate::edwards::EdwardsPoint)
 {
     let (xn, yn, zn, _tn) = edwards_point_as_nat(point);
     if !(xn == 0 || yn == 0) {
-        return ;
+        return;
     }
     reveal(spec_to_jacobi_quartic_ristretto);
     let jcs = spec_to_jacobi_quartic_ristretto(point);
@@ -787,7 +787,7 @@ pub proof fn lemma_jacobi_quartic_edge_values(point: crate::edwards::EdwardsPoin
 {
     let (x, y) = edwards_point_as_affine(point);
     if !(x == 0 || y == 0) {
-        return ;
+        return;
     }
     p_gt_2();
     let (xn, yn, zn, _tn) = edwards_point_as_nat(point);

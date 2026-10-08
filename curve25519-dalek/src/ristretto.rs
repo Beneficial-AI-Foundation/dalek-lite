@@ -2214,10 +2214,13 @@ impl RistrettoPoint {
             forall|i: int|
                 #![auto]
                 0 <= i < final(invs).len() ==> ((fe51_as_canonical_nat(&old(invs)[i]) != 0)
-                    ==> is_inverse_field(&old(invs)[i], &final(invs)[i])) && ((fe51_as_canonical_nat(
-                    &old(invs)[i],
-                ) == 0) ==> fe51_as_canonical_nat(&final(invs)[i]) == 0),
-            forall|i: int| #![auto] 0 <= i < final(invs).len() ==> fe51_limbs_bounded(&final(invs)[i], 54),
+                    ==> is_inverse_field(&old(invs)[i], &final(invs)[i])) && ((
+                fe51_as_canonical_nat(&old(invs)[i]) == 0) ==> fe51_as_canonical_nat(
+                    &final(invs)[i],
+                ) == 0),
+            forall|i: int|
+                #![auto]
+                0 <= i < final(invs).len() ==> fe51_limbs_bounded(&final(invs)[i], 54),
     {
         // Delegates to Verus-verified FieldElement::batch_invert
         FieldElement::batch_invert(invs.as_mut_slice());

@@ -16,11 +16,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@1.92.0
+      uses: dtolnay/rust-toolchain@1.98.1
     - name: Install Verus
       run: |
-        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2026.01.14.88f7396/verus-0.2026.01.14.88f7396-x86-linux.zip
-        unzip verus-0.2026.01.14.88f7396-x86-linux.zip
+        wget https://github.com/verus-lang/verus/releases/download/release%2Frolling%2F0.2026.10.08.956d529/verus-0.2026.10.08.956d529-x86-linux.zip
+        unzip verus-0.2026.10.08.956d529-x86-linux.zip
         mv verus-x86-linux ~/.cargo/bin
         cd ~/.cargo/bin
         ln -s verus-x86-linux/cargo-verus

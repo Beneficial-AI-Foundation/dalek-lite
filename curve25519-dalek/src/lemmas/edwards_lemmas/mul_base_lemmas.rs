@@ -1147,14 +1147,6 @@ pub proof fn lemma_select_is_signed_scalar_mul(
     }
 }
 
-// =============================================================================
-// Lemma: Basepoint table select gives signed scalar multiplication
-// =============================================================================
-/// Lemma: For a valid basepoint table, selecting digit a[i] gives [a[i]] * (256^(i/2) * B).
-///
-/// This lemma combines table validity with `lemma_select_is_signed_scalar_mul` to prove
-/// that the selected point corresponds to signed scalar multiplication by the digit.
-/// Used in both loop 1 and loop 2 of mul_base.
 /// Lemma: the basepoint of a valid basepoint table is reduced and on the curve.
 ///
 /// Entry 0 of the first lookup table decodes to [1]([256^0]B) = B, and each entry
@@ -1192,6 +1184,14 @@ pub proof fn lemma_basepoint_table_basepoint_on_curve(
     lemma_edwards_point_as_affine_on_curve(point);
 }
 
+// =============================================================================
+// Lemma: Basepoint table select gives signed scalar multiplication
+// =============================================================================
+/// Lemma: For a valid basepoint table, selecting digit a[i] gives [a[i]] * (256^(i/2) * B).
+///
+/// This lemma combines table validity with `lemma_select_is_signed_scalar_mul` to prove
+/// that the selected point corresponds to signed scalar multiplication by the digit.
+/// Used in both loop 1 and loop 2 of mul_base.
 #[cfg(feature = "precomputed-tables")]
 pub proof fn lemma_basepoint_table_select(
     table: crate::edwards::EdwardsBasepointTable,

@@ -72,6 +72,32 @@ pub open spec fn vartime_double_base_shared_input_valid(
     &&& forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] table_A[j])
 }
 
+/// Both input points are on the curve, as a sequence.
+pub proof fn lemma_vartime_double_base_pts_on_curve(
+    pts_affine: Seq<(nat, nat)>,
+    A_affine: (nat, nat),
+    B_affine: (nat, nat),
+)
+    requires
+        pts_affine.len() == 2,
+        pts_affine[0] == A_affine,
+        pts_affine[1] == B_affine,
+        vartime_double_base_points_on_curve(A_affine, B_affine),
+    ensures
+        all_on_edwards_curve(pts_affine),
+{
+    reveal(vartime_double_base_points_on_curve);
+    assert forall|k: int| 0 <= k < pts_affine.len() implies is_on_edwards_curve(
+        (#[trigger] pts_affine[k]).0,
+        pts_affine[k].1,
+    ) by {
+        if k == 0 {
+        } else {
+            assert(k == 1);
+        }
+    }
+}
+
 /// The points and the terms of one column step are on the curve.
 pub proof fn lemma_vartime_double_base_terms_on_curve(
     pts_affine: Seq<(nat, nat)>,
@@ -103,16 +129,8 @@ pub proof fn lemma_vartime_double_base_terms_on_curve(
             edwards_scalar_mul_signed(B_affine, digit).1,
         ),
 {
+    lemma_vartime_double_base_pts_on_curve(pts_affine, A_affine, B_affine);
     reveal(vartime_double_base_points_on_curve);
-    assert forall|k: int| 0 <= k < pts_affine.len() implies is_on_edwards_curve(
-        (#[trigger] pts_affine[k]).0,
-        pts_affine[k].1,
-    ) by {
-        if k == 0 {
-        } else {
-            assert(k == 1);
-        }
-    }
     lemma_straus_vt_partial_on_curve(pts_affine, nafs, i + 1);
     let prev = straus_vt_partial(pts_affine, nafs, i + 1);
     axiom_edwards_add_complete(prev.0, prev.1, prev.0, prev.1);

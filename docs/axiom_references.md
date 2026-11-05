@@ -99,7 +99,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ---
 
 ### axiom_edwards_to_montgomery_commutes_with_scalar_mul()
-**Claim:** φ([n]P) = [n]φ(P) where φ is the Edwards→Montgomery map; scalar multiplication preserves the curve
+**Claim:** φ([n]P) = [n]φ(P) where φ is the Edwards→Montgomery map, for P on the Edwards curve. Closure under scalar multiplication is proved separately (`lemma_edwards_scalar_mul_on_curve`)
 
 **Reference:** Group homomorphism; Bernstein & Lange (2008); RFC 7748  
 **URL:** https://www.rfc-editor.org/rfc/rfc7748#section-4.1
@@ -135,7 +135,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ## 4. Edwards Curve Algebra (curve_equation_lemmas.rs)
 
 ### axiom_edwards_add_associative()
-**Claim:** Edwards curve addition is associative
+**Claim:** Edwards curve addition is associative, for three points on the curve
 
 **Reference:** Bernstein, Birkner, Joye, Lange, Peters (2008) — Twisted Edwards Curves; RFC 8032  
 **URL:** https://eprint.iacr.org/2008/013.pdf
@@ -155,7 +155,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ---
 
 ### axiom_edwards_scalar_mul_signed_additive()
-**Claim:** [a]P + [b]P = [a+b]P for signed scalar multiplication
+**Claim:** [a]P + [b]P = [a+b]P for signed scalar multiplication, for P on the curve with reduced coordinates (< p). The bound is necessary because `edwards_scalar_mul(P, 1)` returns P as given, while `edwards_add` reduces its result
 
 **Reference:** Group theory; Bernstein et al. (2008)  
 **URL:** https://eprint.iacr.org/2008/013.pdf
@@ -165,7 +165,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ---
 
 ### axiom_edwards_scalar_mul_distributive()
-**Claim:** [n]·(A + B) = [n]·A + [n]·B — scalar multiplication distributes over Edwards addition
+**Claim:** [n]·(A + B) = [n]·A + [n]·B for A and B on the curve. Scalar multiplication distributes over Edwards addition
 
 **Reference:** Group theory; Bernstein et al. (2008)  
 **URL:** https://eprint.iacr.org/2008/013.pdf

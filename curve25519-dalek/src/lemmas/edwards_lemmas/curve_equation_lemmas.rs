@@ -1350,7 +1350,7 @@ pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: 
 }
 
 /// Lemma: [b]([a]P) = [a*b]P for signed a, unsigned b.
-/// Proved using the unsigned composition lemma and axiom_scalar_mul_distributes_over_neg.
+/// Proved using the unsigned composition lemma and `lemma_scalar_mul_distributes_over_neg`.
 pub proof fn lemma_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, b: nat)
     requires
         is_on_edwards_curve(P.0, P.1),
@@ -1377,7 +1377,7 @@ pub proof fn lemma_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, 
         let (x, y) = edwards_scalar_mul(P, abs_a);
 
         // LHS: [b]((neg_x, y)) where (x, y) = [|a|]P
-        // By axiom: [b](-Q) = -([b]Q)
+        // [b](-Q) = -([b]Q)
         lemma_scalar_mul_distributes_over_neg(edwards_scalar_mul(P, abs_a), b);
 
         // [b]([|a|]P) = [|a|*b]P by unsigned composition

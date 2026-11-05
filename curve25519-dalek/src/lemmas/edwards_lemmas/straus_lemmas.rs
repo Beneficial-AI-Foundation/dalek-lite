@@ -390,6 +390,7 @@ pub open spec fn radix_16_all_bounded_seq(digits: Seq<i8>) -> bool {
 ///   - NafLookupTable5 validity and 54-bit limb bounds
 ///   - Ghost-runtime consistency (pts\_affine, unwrapped\_points, nafs\_seqs)
 ///   - Canonical affine coordinates (< p())
+///   - Affine points on the curve
 ///
 /// Note: scalar reconstruction (`reconstruct(nafs_seqs[k]) == scalar_as_nat(...)`)
 /// is kept as a separate outer-loop invariant to avoid rlimit pressure in the
@@ -453,6 +454,7 @@ pub open spec fn straus_vt_input_valid(
 ///   - LookupTable validity (8 multiples) and 54-bit limb bounds
 ///   - Radix-16 digit bounds
 ///   - Ghost-runtime consistency (pts\_affine, digits\_seqs)
+///   - Affine points on the curve
 ///
 /// Note: `is_valid_radix_16` and `reconstruct_radix_16` are kept as separate
 /// outer-loop invariants to avoid rlimit pressure in the inner loop.
@@ -1032,9 +1034,6 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         // col_single == [digs.last()[j]] * pts.last()
 
         // All four terms are on the curve
-        lemma_all_on_edwards_curve_peel_last(pts);
-        lemma_straus_ct_partial_on_curve(pts_prefix, digs_prefix, j + 1);
-        lemma_straus_ct_partial_on_curve(pts_single, digs_single, j + 1);
         lemma_edwards_scalar_mul_on_curve(prev_prefix, 16);
         lemma_edwards_scalar_mul_on_curve(prev_single, 16);
         lemma_column_sum_on_curve(pts_prefix, digs_prefix, j, n - 1);

@@ -692,7 +692,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     proof {
         assert(reconstruct(a_naf@) == scalar_as_nat(a) as int);
         assert(reconstruct(b_naf@) == scalar_as_nat(b) as int);
-        lemma_vartime_double_base_terms_on_curve(pts_affine, nafs, A_affine, B_affine, 0, 0);
+        lemma_vartime_double_base_pts_on_curve(pts_affine, A_affine, B_affine);
         lemma_straus_vt_partial_peel_last(pts_affine, nafs, 0);
         assert(pts_affine.drop_last() == seq![A_affine]);
         assert(nafs.drop_last() == seq![a_naf@]);

@@ -153,6 +153,11 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         assert(pts_affine[0] == A_affine);
         assert(pts_affine[1] == B_affine);
         assert(edwards_point_as_affine(bp_for_proof) == B_affine);
+        use_type_invariant(bp_for_proof);
+        lemma_unfold_edwards(bp_for_proof);
+        lemma_edwards_point_as_affine_on_curve(*A);
+        lemma_edwards_point_as_affine_on_curve(bp_for_proof);
+        reveal(vartime_double_base_points_on_curve);
         #[cfg(feature = "precomputed-tables")]
         {
             axiom_affine_odd_multiples_of_basepoint_valid();
@@ -433,13 +438,13 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                         col_ab.0,
                         col_ab.1,
                     )) by {
-                        axiom_edwards_add_associative(
-                            doubled_affine.0,
-                            doubled_affine.1,
-                            col_a.0,
-                            col_a.1,
-                            term_b.0,
-                            term_b.1,
+                        lemma_vartime_double_base_assoc(
+                            pts_affine,
+                            nafs,
+                            A_affine,
+                            B_affine,
+                            old_i,
+                            digit as int,
                         );
                     }
                 }
@@ -495,13 +500,13 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                         col_ab.0,
                         col_ab.1,
                     )) by {
-                        axiom_edwards_add_associative(
-                            doubled_affine.0,
-                            doubled_affine.1,
-                            col_a.0,
-                            col_a.1,
-                            term_b.0,
-                            term_b.1,
+                        lemma_vartime_double_base_assoc(
+                            pts_affine,
+                            nafs,
+                            A_affine,
+                            B_affine,
+                            old_i,
+                            digit as int,
                         );
                     }
                 }
@@ -565,13 +570,13 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                         col_ab.0,
                         col_ab.1,
                     )) by {
-                        axiom_edwards_add_associative(
-                            doubled_affine.0,
-                            doubled_affine.1,
-                            col_a.0,
-                            col_a.1,
-                            term_b.0,
-                            term_b.1,
+                        lemma_vartime_double_base_assoc(
+                            pts_affine,
+                            nafs,
+                            A_affine,
+                            B_affine,
+                            old_i,
+                            digit as int,
                         );
                     }
                 }
@@ -625,13 +630,13 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
                         col_ab.0,
                         col_ab.1,
                     )) by {
-                        axiom_edwards_add_associative(
-                            doubled_affine.0,
-                            doubled_affine.1,
-                            col_a.0,
-                            col_a.1,
-                            term_b.0,
-                            term_b.1,
+                        lemma_vartime_double_base_assoc(
+                            pts_affine,
+                            nafs,
+                            A_affine,
+                            B_affine,
+                            old_i,
+                            digit as int,
                         );
                     }
                 }
@@ -687,6 +692,7 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     proof {
         assert(reconstruct(a_naf@) == scalar_as_nat(a) as int);
         assert(reconstruct(b_naf@) == scalar_as_nat(b) as int);
+        lemma_vartime_double_base_pts_on_curve(pts_affine, A_affine, B_affine);
         lemma_straus_vt_partial_peel_last(pts_affine, nafs, 0);
         assert(pts_affine.drop_last() == seq![A_affine]);
         assert(nafs.drop_last() == seq![a_naf@]);

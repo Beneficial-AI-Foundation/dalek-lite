@@ -313,6 +313,12 @@ pub open spec fn is_on_edwards_curve(x: nat, y: nat) -> bool {
     lhs == rhs
 }
 
+/// Every point in the sequence satisfies the Edwards curve equation.
+pub open spec fn all_on_edwards_curve(points: Seq<(nat, nat)>) -> bool {
+    forall|k: int|
+        0 <= k < points.len() ==> is_on_edwards_curve((#[trigger] points[k]).0, points[k].1)
+}
+
 /// Homogenized Edwards curve equation for projective coordinates
 /// A projective point (X:Y:Z) represents the affine point (X/Z, Y/Z)
 /// The homogenized curve equation is: (-X² + Y²)·Z² = Z⁴ + d·X²·Y²

@@ -480,6 +480,12 @@ impl Straus {
                 && pts_affine[m].1 < p() by {
                 lemma_edwards_point_as_affine_canonical(unwrapped_points[m]);
             }
+            assert forall|m: int| 0 <= m < n implies is_on_edwards_curve(
+                (#[trigger] pts_affine[m]).0,
+                pts_affine[m].1,
+            ) by {
+                lemma_edwards_point_as_affine_on_curve(unwrapped_points[m]);
+            }
         }
 
         /* <ORIGINAL CODE>
@@ -560,6 +566,7 @@ impl Straus {
                 p_gt_2();
                 // edwards_add(doubled, identity) == doubled
                 lemma_edwards_add_identity_right_canonical(doubled_affine);
+                assert(is_on_edwards_curve(doubled_affine.0, doubled_affine.1));
             }
 
             while j < min_len
@@ -572,6 +579,7 @@ impl Straus {
                     fe51_limbs_bounded(&t.Y, 54),
                     fe51_limbs_bounded(&t.Z, 54),
                     fe51_limbs_bounded(&t.T, 54),
+                    is_on_edwards_curve(doubled_affine.0, doubled_affine.1),
                     // t = edwards_add(doubled_prev, column_sum(i, j))
                     completed_point_as_affine_edwards(t) == {
                         let col_j = straus_column_sum(pts_affine, nafs_seqs, i as int, j as int);
@@ -649,6 +657,13 @@ impl Straus {
                                     col_next.1,
                                 )
                             }) by {
+                                lemma_column_sum_on_curve(
+                                    pts_affine,
+                                    nafs_seqs,
+                                    i as int,
+                                    j as int,
+                                );
+                                lemma_edwards_scalar_mul_signed_on_curve(base_j, digit_val as int);
                                 axiom_edwards_add_associative(
                                     doubled_affine.0,
                                     doubled_affine.1,
@@ -726,6 +741,13 @@ impl Straus {
                                     col_next.1,
                                 )
                             }) by {
+                                lemma_column_sum_on_curve(
+                                    pts_affine,
+                                    nafs_seqs,
+                                    i as int,
+                                    j as int,
+                                );
+                                lemma_edwards_scalar_mul_signed_on_curve(base_j, digit_val as int);
                                 axiom_edwards_add_associative(
                                     doubled_affine.0,
                                     doubled_affine.1,
@@ -944,6 +966,12 @@ impl Straus {
             lemma_identity_affine_coords(Q);
             assert(edwards_point_as_affine(Q) == edwards_identity());
             assert(edwards_point_as_affine(Q) == straus_ct_partial(pts_affine, digits_seqs, 64));
+            assert forall|m: int| 0 <= m < n implies is_on_edwards_curve(
+                (#[trigger] pts_affine[m]).0,
+                pts_affine[m].1,
+            ) by {
+                lemma_edwards_point_as_affine_on_curve(spec_points[m]);
+            }
         }
 
         /* <ORIGINAL CODE>
@@ -1009,6 +1037,7 @@ impl Straus {
                 // At k=0: col(j,0) = O (identity), so edwards_add(scaled, O) == scaled
                 lemma_edwards_point_as_affine_canonical(Q);
                 lemma_edwards_add_identity_right_canonical(scaled_affine);
+                lemma_edwards_point_as_affine_on_curve(Q);
             }
 
             while k < min_len
@@ -1017,6 +1046,7 @@ impl Straus {
                     min_len == n,
                     0 <= j < 64,
                     is_well_formed_edwards_point(Q),
+                    is_on_edwards_curve(scaled_affine.0, scaled_affine.1),
                     // Q = edwards_add(scaled_prev, column_sum(j, k))
                     edwards_point_as_affine(Q) == {
                         let col_k = straus_column_sum(pts_affine, digits_seqs, j as int, k as int);
@@ -1077,6 +1107,8 @@ impl Straus {
                     let term_k = edwards_scalar_mul_signed(base_k, digit_kj as int);
 
                     // By associativity: edwards_add(edwards_add(S, Ck), R) == edwards_add(S, edwards_add(Ck, R))
+                    lemma_column_sum_on_curve(pts_affine, digits_seqs, j as int, k as int);
+                    lemma_edwards_scalar_mul_signed_on_curve(base_k, digit_kj as int);
                     axiom_edwards_add_associative(
                         scaled_affine.0,
                         scaled_affine.1,

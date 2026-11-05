@@ -383,7 +383,7 @@ impl MontgomeryPoint {
                 lemma_projective_implies_affine_on_curve(x, y, z);
             }
             assert(is_on_edwards_curve(edwards_scalar_mul(B, n).0, edwards_scalar_mul(B, n).1)) by {
-                axiom_edwards_to_montgomery_commutes_with_scalar_mul(B.0, B.1, n);
+                lemma_edwards_scalar_mul_on_curve(B, n);
             }
             assert(montgomery_u_from_edwards_y(edwards_scalar_mul(B, n).1)
                 == montgomery_scalar_mul_u(montgomery_u_from_edwards_y(B.1), n)) by {

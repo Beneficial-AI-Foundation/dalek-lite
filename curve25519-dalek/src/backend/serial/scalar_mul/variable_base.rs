@@ -163,6 +163,7 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
             fe51_limbs_bounded(&tmp1.Y, 54),
             fe51_limbs_bounded(&tmp1.Z, 54),
             fe51_limbs_bounded(&tmp1.T, 54),
+            is_valid_edwards_point(*point),
             // Table validity (from LookupTable::from postcondition)
             is_valid_lookup_table_projective(lookup_table.0, *point, 8),
             forall|k: int|
@@ -230,7 +231,7 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
             // -- Step 2: Composition: [16]([partial]*P) = [partial*16]*P --
             assert(a4 == edwards_scalar_mul_signed(P_affine, partial_j * 16)) by {
                 assert(old_affine == edwards_scalar_mul_signed(P_affine, partial_j));
-                lemma_edwards_scalar_mul_signed_composition(P_affine, partial_j, 16);
+                lemma_edwards_point_signed_composition(*point, partial_j, 16);
             }
 
             // -- Step 3: Select gives signed scalar mul --
@@ -252,8 +253,8 @@ pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> (result: EdwardsPoin
                 P_affine,
                 partial_j * 16 + scalar_digits[i as int] as int,
             )) by {
-                axiom_edwards_scalar_mul_signed_additive(
-                    P_affine,
+                lemma_edwards_point_signed_additive(
+                    *point,
                     partial_j * 16,
                     scalar_digits[i as int] as int,
                 );

@@ -79,6 +79,19 @@ pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
     }
 }
 
+/// Check if a MontgomeryAffine point is valid and has reduced coordinates (`u, v < p`).
+///
+/// `v` can be either square root. The predicate does not require the sign that
+/// `canonical_montgomery_lift` picks.
+///
+/// `montgomery_add` compares raw coordinates, so the group axioms need reduced coordinates.
+pub open spec fn is_canonical_montgomery_affine(point: MontgomeryAffine) -> bool {
+    match point {
+        MontgomeryAffine::Infinity => true,
+        MontgomeryAffine::Finite { u, v } => u < p() && v < p() && on_montgomery_curve(u, v),
+    }
+}
+
 /// Compute f(u) = u^3 + A*u^2 + u over the field.
 pub open spec fn montgomery_rhs(u: nat) -> nat {
     let A = fe51_as_canonical_nat(&MONTGOMERY_A);
@@ -115,8 +128,8 @@ pub open spec fn is_valid_u_coordinate(u: nat) -> bool {
     is_square(montgomery_rhs(u))
 }
 
-/// Given u-coordinate of a Montgomery point (non-torsion),
-/// return the unique affine Montgomery point (u, v)
+/// Given a valid u-coordinate (`is_valid_u_coordinate(u)`), including u = 0 and u = 1 (small-order
+/// points), return the affine Montgomery point (u mod p, v)
 /// where v is the canonical square root of u*(u^2 + A*u + 1).
 pub open spec fn canonical_montgomery_lift(u: nat) -> MontgomeryAffine
     recommends
@@ -377,12 +390,15 @@ pub open spec fn projective_represents_montgomery_or_infinity(
 ///
 /// This is convenient for stating algebraic properties of x-only algorithms without needing
 /// to construct concrete `FieldElement`s in specs.
+///
+/// `U` and `W` must be reduced (`< p`). Otherwise `W = p` would pass `W != 0` while being 0
+/// in the field.
 pub open spec fn projective_represents_montgomery_or_infinity_nat(
     U: nat,
     W: nat,
     P_aff: MontgomeryAffine,
 ) -> bool {
-    match P_aff {
+    U < p() && W < p() && match P_aff {
         MontgomeryAffine::Infinity => { W == 0 && U != 0 },
         MontgomeryAffine::Finite { u, v: _ } => { W != 0 && U == field_mul(u, W) },
     }

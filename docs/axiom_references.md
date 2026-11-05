@@ -19,7 +19,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ## 2. Montgomery Curve (montgomery_curve_lemmas.rs)
 
 ### axiom_montgomery_add_associative()
-**Claim:** `(P + Q) + R = P + (Q + R)` for Montgomery curve addition
+**Claim:** `(P + Q) + R = P + (Q + R)` for Montgomery curve addition, for points on the curve with reduced coordinates (`is_canonical_montgomery_affine`)
 
 **Reference:** Montgomery (1987) — elliptic curves form a group; Costello & Smith (2017) Section 2  
 **URL:** https://eprint.iacr.org/2017/212.pdf
@@ -29,7 +29,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ---
 
 ### axiom_xdbl_projective_correct()
-**Claim:** `spec_xdbl_projective(U, W)` correctly computes [2]P when (U:W) represents P
+**Claim:** `spec_xdbl_projective(U, W)` correctly computes [2]P when P is on the curve with reduced coordinates and (U:W) represents P
 
 **Reference:** Costello & Smith (2017) Equation 10  
 **URL:** https://eprint.iacr.org/2017/212.pdf
@@ -39,7 +39,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ---
 
 ### axiom_xadd_projective_correct()
-**Claim:** `spec_xadd_projective` correctly computes P + Q given (U_P:W_P), (U_Q:W_Q), and u(P−Q)
+**Claim:** `spec_xadd_projective` correctly computes P + Q given (U_P:W_P), (U_Q:W_Q), and u(P−Q), when P and Q are on the curve with reduced coordinates, P ≠ Q, and u(P−Q) ≠ 0
 
 **Reference:** Costello & Smith (2017) Equation 9  
 **URL:** https://eprint.iacr.org/2017/212.pdf

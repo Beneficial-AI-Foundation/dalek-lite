@@ -16,6 +16,8 @@
 //! - **xADD Axiom** (Equation 9): differential addition `P + Q` given `P - Q`
 //! - **Scalar Multiplication Lemmas**: distribution `[m+n]P = [m]P + [n]P`, doubling `[2n]P = [n]P + [n]P`
 //! - **Projective Representation Lemmas**: connecting projective `(U:W)` to affine `u = U/W`
+//! - **Curve Membership Lemmas**: `montgomery_add`, negation, scalar multiples and the canonical lift
+//!   keep points on the curve with reduced coordinates (`is_canonical_montgomery_affine`)
 #![allow(unused)]
 use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -40,11 +42,17 @@ verus! {
 // =============================================================================
 /// Axiom: Montgomery addition is associative
 /// (P + Q) + R = P + (Q + R)
+///
+/// Holds only for points on the curve with reduced coordinates.
 pub proof fn axiom_montgomery_add_associative(
     P: MontgomeryAffine,
     Q: MontgomeryAffine,
     R: MontgomeryAffine,
 )
+    requires
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+        is_canonical_montgomery_affine(R),
     ensures
         montgomery_add(montgomery_add(P, Q), R) == montgomery_add(P, montgomery_add(Q, R)),
 {
@@ -108,7 +116,8 @@ pub proof fn lemma_montgomery_add_inverse(P: MontgomeryAffine)
 // Input:  (U : W) representing point P
 // Output: (U' : W') representing [2]P
 //
-// Precondition: (U:W) validly represents P (for ∞, requires W = 0 and U ≠ 0).
+// Preconditions: P is on the curve with reduced coordinates, and (U:W) validly represents P
+// (for ∞, requires W = 0 and U ≠ 0).
 //
 // Formulas:
 //   U' = (U + W)² · (U - W)²
@@ -130,11 +139,12 @@ pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
 
 /// **xDBL Axiom**: `spec_xdbl_projective` correctly computes [2]P.
 ///
-/// If `(U:W)` represents affine point `P`, then `xDBL(U,W)` represents `[2]P`.
+/// If `P` is on the curve with reduced coordinates and `(U:W)` represents `P`, then `xDBL(U,W)`
+/// represents `[2]P`.
 pub(crate) proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
     requires
-// (U:W) represents P: for finite points u = U/W; for ∞ we have W = 0, U ≠ 0
-
+        is_canonical_montgomery_affine(P),
+        // (U:W) represents P: for finite points u = U/W; for ∞ we have W = 0, U ≠ 0
         projective_represents_montgomery_or_infinity_nat(U, W, P),
     ensures
         ({
@@ -220,7 +230,7 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
 //         u(P-Q)      affine x-coordinate of P - Q
 // Output: (U' : W') representing P + Q
 //
-// Preconditions: P ≠ Q and u(P-Q) ≠ 0.
+// Preconditions: P and Q are on the curve with reduced coordinates, P ≠ Q and u(P-Q) ≠ 0.
 //
 // Formulas (with P - Q in affine form, i.e., W(P-Q) = 1):
 //   U' = [(U_P + W_P)(U_Q - W_Q) + (U_P - W_P)(U_Q + W_Q)]²
@@ -248,7 +258,7 @@ pub(crate) open spec fn spec_xadd_projective(
 
 /// **xADD Axiom**: `spec_xadd_projective` correctly computes P + Q.
 ///
-/// Requires P ≠ Q and u(P - Q) ≠ 0.
+/// Requires P and Q on the curve with reduced coordinates, P ≠ Q and u(P - Q) ≠ 0.
 pub(crate) proof fn axiom_xadd_projective_correct(
     P: MontgomeryAffine,
     Q: MontgomeryAffine,
@@ -259,8 +269,9 @@ pub(crate) proof fn axiom_xadd_projective_correct(
     affine_PmQ: nat,
 )
     requires
-// (U_P:W_P) represents P; (U_Q:W_Q) represents Q
-
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+        // (U_P:W_P) represents P; (U_Q:W_Q) represents Q
         projective_represents_montgomery_or_infinity_nat(U_P, W_P, P),
         projective_represents_montgomery_or_infinity_nat(U_Q, W_Q, Q),
         P != Q,
@@ -392,6 +403,8 @@ pub proof fn lemma_montgomery_scalar_mul_succ(P: MontgomeryAffine, n: nat)
 ///
 /// Used by: `differential_add_and_double` proof (to connect [k]P + [k+1]P = [2k+1]P)
 pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat)
+    requires
+        is_canonical_montgomery_affine(P),
     ensures
         montgomery_scalar_mul(P, m + n) == montgomery_add(
             montgomery_scalar_mul(P, m),
@@ -425,6 +438,8 @@ pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat
             montgomery_scalar_mul(P, n),
         ));
 
+        lemma_montgomery_scalar_mul_canonical(P, m_minus_1);
+        lemma_montgomery_scalar_mul_canonical(P, n);
         axiom_montgomery_add_associative(
             P,
             montgomery_scalar_mul(P, m_minus_1),
@@ -455,6 +470,8 @@ pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat
 ///
 /// Used by: `differential_add_and_double` proof (to show xDBL output is [2k]B)
 pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
+    requires
+        is_canonical_montgomery_affine(P),
     ensures
         montgomery_scalar_mul(P, 2 * n) == montgomery_add(
             montgomery_scalar_mul(P, n),
@@ -463,6 +480,746 @@ pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
 {
     // [2n]P = [n + n]P = [n]P + [n]P (by lemma_montgomery_scalar_mul_add)
     lemma_montgomery_scalar_mul_add(P, n, n);
+}
+
+// =============================================================================
+// CURVE MEMBERSHIP
+// =============================================================================
+//
+// The group axioms above hold only for points on the curve with reduced
+// coordinates (`is_canonical_montgomery_affine`). These lemmas show that the
+// points used by the Montgomery ladder have this property.
+/// Lemma: the canonical lift of a valid u-coordinate is a canonical curve point.
+pub proof fn lemma_canonical_montgomery_lift_is_canonical(u0: nat)
+    requires
+        is_valid_u_coordinate(u0),
+    ensures
+        is_canonical_montgomery_affine(canonical_montgomery_lift(u0)),
+{
+    p_gt_2();
+    let pp = p();
+    let a = fe51_as_canonical_nat(&MONTGOMERY_A);
+    let r = montgomery_rhs(u0);
+    let u = u0 % pp;
+    let v = canonical_sqrt(r);
+    assert(canonical_montgomery_lift(u0) == MontgomeryAffine::Finite { u, v });
+
+    // r is reduced, so field_canonical(r) == r.
+    assert(r % pp == r) by {
+        lemma_mod_twice(
+            (field_add(field_mul(field_mul(u0, u0), u0), field_mul(a, field_mul(u0, u0)))
+                + u0) as int,
+            pp as int,
+        );
+    }
+
+    // field_sqrt(r) is a reduced square root of r.
+    let y = choose|y: nat| #[trigger] field_mul(y, y) == field_canonical(r);
+    let y0 = y % pp;
+    assert(y0 < pp && field_mul(y0, y0) == field_canonical(r)) by {
+        lemma_mod_bound(y as int, pp as int);
+        lemma_mul_mod_noop(y as int, y as int, pp as int);
+    }
+    let s1 = field_sqrt(r);
+    assert(s1 < pp && field_mul(s1, s1) == r);
+
+    // v is s1 or -s1; both are reduced and square to r.
+    assert(v < pp && field_square(v) == r) by {
+        if s1 % 2 != 0 {
+            lemma_mod_bound((pp - field_canonical(s1)) as int, pp as int);
+            lemma_neg_square_eq(s1);
+            lemma_small_mod(s1, pp);
+        }
+    }
+
+    // The curve right-hand side at u = u0 % p equals montgomery_rhs(u0).
+    let sq = field_mul(u0, u0);
+    assert(field_square(u) == sq) by {
+        lemma_mul_mod_noop(u0 as int, u0 as int, pp as int);
+    }
+    assert(field_mul(u, sq) == field_mul(sq, u0)) by {
+        lemma_mul_mod_noop_left(u0 as int, sq as int, pp as int);
+        lemma_mul_is_commutative(u0 as int, sq as int);
+    }
+    let x = field_add(field_mul(sq, u0), field_mul(a, sq));
+    assert(field_add(x, u) == field_add(x, u0)) by {
+        lemma_add_mod_noop_right(x as int, u0 as int, pp as int);
+    }
+    assert(u < pp) by {
+        lemma_mod_bound(u0 as int, pp as int);
+    }
+}
+
+/// Lemma: negation keeps a point canonical.
+pub proof fn lemma_montgomery_neg_canonical(P: MontgomeryAffine)
+    requires
+        is_canonical_montgomery_affine(P),
+    ensures
+        is_canonical_montgomery_affine(montgomery_neg(P)),
+{
+    if let MontgomeryAffine::Finite { u, v } = P {
+        p_gt_2();
+        lemma_mod_bound((p() - field_canonical(v)) as int, p() as int);
+        lemma_neg_square_eq(v);
+        lemma_small_mod(v, p());
+    }
+}
+
+/// Lemma: scalar multiples of a canonical point are canonical.
+pub proof fn lemma_montgomery_scalar_mul_canonical(P: MontgomeryAffine, n: nat)
+    requires
+        is_canonical_montgomery_affine(P),
+    ensures
+        is_canonical_montgomery_affine(montgomery_scalar_mul(P, n)),
+    decreases n,
+{
+    if n > 0 {
+        lemma_montgomery_scalar_mul_canonical(P, (n - 1) as nat);
+        lemma_montgomery_add_canonical(P, montgomery_scalar_mul(P, (n - 1) as nat));
+    }
+}
+
+/// Lemma: the points used in one Montgomery ladder step are canonical.
+///
+/// For `B = canonical_montgomery_lift(u0)`: `B`, `[k]B`, `[k+1]B` and the
+/// negations of `[k]B` and `[k+1]B`.
+pub proof fn lemma_montgomery_ladder_points_canonical(u0: nat, k: nat)
+    requires
+        is_valid_u_coordinate(u0),
+    ensures
+        ({
+            let B = canonical_montgomery_lift(u0);
+            &&& is_canonical_montgomery_affine(B)
+            &&& is_canonical_montgomery_affine(montgomery_scalar_mul(B, k))
+            &&& is_canonical_montgomery_affine(montgomery_scalar_mul(B, k + 1))
+            &&& is_canonical_montgomery_affine(montgomery_neg(montgomery_scalar_mul(B, k)))
+            &&& is_canonical_montgomery_affine(montgomery_neg(montgomery_scalar_mul(B, k + 1)))
+        }),
+{
+    let B = canonical_montgomery_lift(u0);
+    lemma_canonical_montgomery_lift_is_canonical(u0);
+    lemma_montgomery_scalar_mul_canonical(B, k);
+    lemma_montgomery_scalar_mul_canonical(B, k + 1);
+    lemma_montgomery_neg_canonical(montgomery_scalar_mul(B, k));
+    lemma_montgomery_neg_canonical(montgomery_scalar_mul(B, k + 1));
+}
+
+// -----------------------------------------------------------------------------
+// Closure of montgomery_add
+// -----------------------------------------------------------------------------
+//
+// Proof sketch. Write the curve equation as v² = f(u), so f(x) = x³ + A·x² + x is its
+// right-hand side (`montgomery_rhs` in the field, `montgomery_rhs_int` below over the
+// integers). Let L(x) = λ·(x - u1) + v1 be the chord (or tangent) line. Then
+// f(x) - L(x)² equals (x - u1)(x - u2)(x - c) + α·x + β for c = λ² - A - u1 - u2 and
+// some α, β. The line meets the curve at u1 and u2 (or touches it at u1), so
+// α ≡ β ≡ 0 (mod p). The third point u3 ≡ c then also satisfies f(u3) ≡ L(u3)² = v3².
+//
+// All steps below are integer congruences mod p (`field_congruent`).
+/// Congruence mod p on integers.
+spec fn field_congruent(a: int, b: int) -> bool {
+    a % (p() as int) == b % (p() as int)
+}
+
+/// f(x) = x·x² + A·x² + x, the right-hand side of the curve equation, over the integers.
+spec fn montgomery_rhs_int(a: int, x: int) -> int {
+    x * (x * x) + a * (x * x) + x
+}
+
+/// f(x) - L(x)², where f is `montgomery_rhs_int` and L(x) is the line l·(x - u1) + v1.
+spec fn montgomery_line_gap(a: int, u1: int, v1: int, l: int, x: int) -> int {
+    montgomery_rhs_int(a, x) - (l * (x - u1) + v1) * (l * (x - u1) + v1)
+}
+
+/// The x-coefficient of `montgomery_line_gap - (x - u1)(x - u2)(x - c)`.
+spec fn montgomery_line_alpha(a: int, u1: int, u2: int, v1: int, l: int) -> int {
+    1 + 2 * l * l * u1 - 2 * l * v1 - u1 * u2 - (l * l - a - u1 - u2) * (u1 + u2)
+}
+
+/// The constant term of `montgomery_line_gap - (x - u1)(x - u2)(x - c)`.
+spec fn montgomery_line_beta(a: int, u1: int, u2: int, v1: int, l: int) -> int {
+    -(l * l * u1 * u1) + 2 * l * v1 * u1 - v1 * v1 + u1 * u2 * (l * l - a - u1 - u2)
+}
+
+proof fn lemma_field_congruent_add(a: int, b: int, c: int, d: int)
+    requires
+        field_congruent(a, b),
+        field_congruent(c, d),
+    ensures
+        field_congruent(a + c, b + d),
+{
+    p_gt_2();
+    lemma_add_mod_noop(a, c, p() as int);
+    lemma_add_mod_noop(b, d, p() as int);
+}
+
+proof fn lemma_field_congruent_sub(a: int, b: int, c: int, d: int)
+    requires
+        field_congruent(a, b),
+        field_congruent(c, d),
+    ensures
+        field_congruent(a - c, b - d),
+{
+    p_gt_2();
+    lemma_sub_mod_noop(a, c, p() as int);
+    lemma_sub_mod_noop(b, d, p() as int);
+}
+
+proof fn lemma_field_congruent_mul(a: int, b: int, c: int, d: int)
+    requires
+        field_congruent(a, b),
+        field_congruent(c, d),
+    ensures
+        field_congruent(a * c, b * d),
+{
+    p_gt_2();
+    lemma_mul_mod_noop(a, c, p() as int);
+    lemma_mul_mod_noop(b, d, p() as int);
+}
+
+proof fn lemma_field_congruent_mod(a: int)
+    ensures
+        field_congruent(a % (p() as int), a),
+{
+    p_gt_2();
+    lemma_mod_twice(a, p() as int);
+}
+
+/// Two reduced values that are congruent are equal.
+proof fn lemma_field_congruent_reduced_eq(x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+        field_congruent(x as int, y as int),
+    ensures
+        x == y,
+{
+    lemma_small_mod(x, p());
+    lemma_small_mod(y, p());
+}
+
+/// Euclid's lemma for congruences: if p | a·b and p ∤ b, then p | a.
+proof fn lemma_field_congruent_mul_zero(a: int, b: int)
+    requires
+        field_congruent(a * b, 0),
+        !field_congruent(b, 0),
+    ensures
+        field_congruent(a, 0),
+{
+    let pp = p() as int;
+    p_gt_2();
+    lemma_mod_bound(a, pp);
+    lemma_mod_bound(b, pp);
+    let am = (a % pp) as nat;
+    let bm = (b % pp) as nat;
+    assert((am * bm) % p() == 0) by {
+        lemma_mul_mod_noop(a, b, pp);
+        lemma_small_mod(0, p());
+    }
+    axiom_p_is_prime();
+    lemma_euclid_prime(am, bm, p());
+    lemma_small_mod(0, p());
+    lemma_small_mod(am, p());
+    lemma_small_mod(bm, p());
+}
+
+proof fn lemma_field_congruent_field_add(a: nat, b: nat)
+    ensures
+        field_congruent(field_add(a, b) as int, a as int + b as int),
+{
+    lemma_field_congruent_mod(a as int + b as int);
+}
+
+proof fn lemma_field_congruent_field_mul(a: nat, b: nat)
+    ensures
+        field_congruent(field_mul(a, b) as int, (a as int) * (b as int)),
+        field_congruent(field_square(a) as int, (a as int) * (a as int)),
+{
+    lemma_field_congruent_mod((a as int) * (b as int));
+    lemma_field_congruent_mod((a as int) * (a as int));
+}
+
+proof fn lemma_field_congruent_field_sub(a: nat, b: nat)
+    ensures
+        field_congruent(field_sub(a, b) as int, a - b),
+{
+    let pp = p() as int;
+    p_gt_2();
+    lemma_mod_bound(b as int, pp);
+    let x: int = (a % p()) as int + pp - (b % p()) as int;
+    assert(field_sub(a, b) as int == x % pp);
+    lemma_field_congruent_mod(x);
+    lemma_field_congruent_mod(a as int);
+    lemma_field_congruent_mod(b as int);
+    assert(field_congruent(pp, 0)) by {
+        lemma_mod_self_0(pp);
+        lemma_small_mod(0, p());
+    }
+    lemma_field_congruent_add((a % p()) as int, a as int, pp, 0);
+    lemma_field_congruent_sub((a % p()) as int + pp, a as int + 0, (b % p()) as int, b as int);
+}
+
+/// `on_montgomery_curve(u, v)` holds exactly when v² ≡ f(u) (mod p), where f is
+/// `montgomery_rhs_int`.
+proof fn lemma_on_montgomery_curve_iff_fcong(u: nat, v: nat)
+    ensures
+        on_montgomery_curve(u, v) == field_congruent(
+            (v as int) * (v as int),
+            montgomery_rhs_int(fe51_as_canonical_nat(&MONTGOMERY_A) as int, u as int),
+        ),
+{
+    let a = fe51_as_canonical_nat(&MONTGOMERY_A);
+    let u2 = field_square(u);
+    let t1 = field_mul(u, u2);
+    let t2 = field_mul(a, u2);
+    let s = field_add(t1, t2);
+    let r = field_add(s, u);
+    p_gt_2();
+
+    lemma_field_congruent_field_mul(u, u);
+    lemma_field_congruent_field_mul(u, u2);
+    lemma_field_congruent_field_mul(a, u2);
+    let ui = u as int;
+    let ai = a as int;
+    lemma_field_congruent_mul(ui, ui, u2 as int, ui * ui);
+    lemma_field_congruent_mul(ai, ai, u2 as int, ui * ui);
+    lemma_field_congruent_field_add(t1, t2);
+    lemma_field_congruent_add(t1 as int, ui * (ui * ui), t2 as int, ai * (ui * ui));
+    lemma_field_congruent_field_add(s, u);
+    lemma_field_congruent_add(s as int, ui * (ui * ui) + ai * (ui * ui), ui, ui);
+    assert(field_congruent(r as int, montgomery_rhs_int(a as int, u as int)));
+
+    lemma_field_congruent_field_mul(v, v);
+    lemma_mod_bound((s + u) as int, p() as int);
+    lemma_mod_bound((v * v) as int, p() as int);
+    lemma_small_mod(r, p());
+    lemma_small_mod(field_square(v), p());
+}
+
+/// (x² - (u1 + u2)·x + u1·u2)·(x - c) expanded by powers of x.
+proof fn lemma_monic_cubic_expand(x: int, u1: int, u2: int, c: int)
+    ensures
+        (x * x - (u1 + u2) * x + u1 * u2) * (x - c) == x * (x * x) - (u1 + u2 + c) * (x * x) + (u1
+            * u2 + (u1 + u2) * c) * x - u1 * u2 * c,
+{
+    let q = x * x - (u1 + u2) * x + u1 * u2;
+    assert(q * (x - c) == q * x - q * c) by (nonlinear_arith);
+    assert(q * x == x * (x * x) - (u1 + u2) * (x * x) + u1 * u2 * x) by (nonlinear_arith)
+        requires
+            q == x * x - (u1 + u2) * x + u1 * u2,
+    ;
+    assert(q * c == c * (x * x) - (u1 + u2) * c * x + u1 * u2 * c) by (nonlinear_arith)
+        requires
+            q == x * x - (u1 + u2) * x + u1 * u2,
+    ;
+    assert((u1 + u2 + c) * (x * x) == (u1 + u2) * (x * x) + c * (x * x)) by (nonlinear_arith);
+    assert((u1 * u2 + (u1 + u2) * c) * x == u1 * u2 * x + (u1 + u2) * c * x) by (nonlinear_arith);
+}
+
+/// The polynomial identity f(x) - L(x)² = (x - u1)(x - u2)(x - c) + α·x + β,
+/// where f is `montgomery_rhs_int`, L(x) is the line l·(x - u1) + v1 (so the left side is
+/// `montgomery_line_gap`), c is l² - a - u1 - u2, α is `montgomery_line_alpha` and
+/// β is `montgomery_line_beta`.
+proof fn lemma_montgomery_line_gap_identity(a: int, u1: int, u2: int, v1: int, l: int, x: int)
+    ensures
+        montgomery_line_gap(a, u1, v1, l, x) == (x - u1) * (x - u2) * (x - (l * l - a - u1 - u2))
+            + montgomery_line_alpha(a, u1, u2, v1, l) * x + montgomery_line_beta(a, u1, u2, v1, l),
+{
+    let c = l * l - a - u1 - u2;
+    let ll = l * l;
+    let y = x - u1;
+    let alpha = montgomery_line_alpha(a, u1, u2, v1, l);
+    let beta = montgomery_line_beta(a, u1, u2, v1, l);
+
+    // L(x)² = l²·x² - 2l²u1·x + l²u1² + 2l·v1·x - 2l·v1·u1 + v1².
+    assert((l * y + v1) * (l * y + v1) == ll * (y * y) + 2 * l * v1 * y + v1 * v1)
+        by (nonlinear_arith)
+        requires
+            ll == l * l,
+    ;
+    assert(y * y == x * x - 2 * u1 * x + u1 * u1) by (nonlinear_arith)
+        requires
+            y == x - u1,
+    ;
+    assert(ll * (y * y) == ll * (x * x) - 2 * ll * u1 * x + ll * u1 * u1) by (nonlinear_arith)
+        requires
+            y * y == x * x - 2 * u1 * x + u1 * u1,
+    ;
+    assert(2 * l * v1 * y == 2 * l * v1 * x - 2 * l * v1 * u1) by (nonlinear_arith)
+        requires
+            y == x - u1,
+    ;
+    let sq_l = ll * (x * x) - 2 * ll * u1 * x + ll * u1 * u1 + 2 * l * v1 * x - 2 * l * v1 * u1 + v1
+        * v1;
+    assert((l * (x - u1) + v1) * (l * (x - u1) + v1) == sq_l);
+
+    // (x - u1)(x - u2)(x - c) = x³ - (l² - A)·x² + (u1·u2 + (u1 + u2)·c)·x - u1·u2·c.
+    assert((x - u1) * (x - u2) == x * x - (u1 + u2) * x + u1 * u2) by (nonlinear_arith);
+    lemma_monic_cubic_expand(x, u1, u2, c);
+    assert((u1 + u2 + c) * (x * x) == ll * (x * x) - a * (x * x)) by (nonlinear_arith)
+        requires
+            u1 + u2 + c == ll - a,
+    ;
+    let cubic = x * (x * x) - ll * (x * x) + a * (x * x) + (u1 * u2 + (u1 + u2) * c) * x - u1 * u2
+        * c;
+    assert((x - u1) * (x - u2) * (x - c) == cubic);
+
+    // α·x + β collects the remaining terms.
+    assert(alpha * x == x + 2 * ll * u1 * x - 2 * l * v1 * x - (u1 * u2 + (u1 + u2) * c) * x)
+        by (nonlinear_arith)
+        requires
+            alpha == 1 + 2 * l * l * u1 - 2 * l * v1 - u1 * u2 - c * (u1 + u2),
+            ll == l * l,
+    ;
+    assert(beta == -(ll * u1 * u1) + 2 * l * v1 * u1 - v1 * v1 + u1 * u2 * c) by (nonlinear_arith)
+        requires
+            beta == -(l * l * u1 * u1) + 2 * l * v1 * u1 - v1 * v1 + u1 * u2 * c,
+            ll == l * l,
+    ;
+}
+
+/// If the line meets the curve at u1 with α ≡ 0, then the third point (u3, v3) is on the curve.
+proof fn lemma_montgomery_line_third_point(
+    a: int,
+    u1: int,
+    u2: int,
+    u3: int,
+    v1: int,
+    v3: int,
+    l: int,
+)
+    requires
+        field_congruent(montgomery_line_alpha(a, u1, u2, v1, l), 0),
+        field_congruent(montgomery_line_gap(a, u1, v1, l, u1), 0),
+        field_congruent(u3, l * l - a - u1 - u2),
+        field_congruent(v3, l * (u1 - u3) - v1),
+    ensures
+        field_congruent(v3 * v3, montgomery_rhs_int(a, u3)),
+{
+    let c = l * l - a - u1 - u2;
+    let alpha = montgomery_line_alpha(a, u1, u2, v1, l);
+    let beta = montgomery_line_beta(a, u1, u2, v1, l);
+
+    // At x = u1 the cubic term vanishes, so β ≡ gap(u1) - α·u1 ≡ 0.
+    lemma_montgomery_line_gap_identity(a, u1, u2, v1, l, u1);
+    assert((u1 - u1) * (u1 - u2) * (u1 - c) == 0) by (nonlinear_arith);
+    lemma_field_congruent_mul(alpha, 0, u1, u1);
+    lemma_field_congruent_sub(montgomery_line_gap(a, u1, v1, l, u1), 0, alpha * u1, 0 * u1);
+    assert(field_congruent(beta, 0));
+
+    // At x = u3 the factor (u3 - c) is ≡ 0, so gap(u3) ≡ 0.
+    lemma_montgomery_line_gap_identity(a, u1, u2, v1, l, u3);
+    let k = (u3 - u1) * (u3 - u2);
+    lemma_field_congruent_sub(u3, c, c, c);
+    lemma_field_congruent_mul(k, k, u3 - c, 0);
+    lemma_field_congruent_mul(alpha, 0, u3, u3);
+    lemma_field_congruent_add(k * (u3 - c), k * 0, alpha * u3, 0 * u3);
+    lemma_field_congruent_add(k * (u3 - c) + alpha * u3, k * 0 + 0 * u3, beta, 0);
+    assert(k * 0 + 0 * u3 + 0 == 0) by (nonlinear_arith);
+    let gap3 = montgomery_line_gap(a, u1, v1, l, u3);
+    assert(field_congruent(gap3, 0));
+
+    // v3 ≡ -L(u3), so v3² ≡ L(u3)² ≡ f(u3).
+    let lu3 = l * (u3 - u1) + v1;
+    assert(l * (u1 - u3) - v1 == -(l * (u3 - u1) + v1)) by (nonlinear_arith);
+    lemma_field_congruent_mul(v3, -lu3, v3, -lu3);
+    assert((-lu3) * (-lu3) == lu3 * lu3) by (nonlinear_arith);
+    lemma_field_congruent_add(gap3, 0, lu3 * lu3, v3 * v3);
+}
+
+/// gap(u1) ≡ 0 when (u1, v1) is on the curve.
+proof fn lemma_montgomery_line_gap_at_u1(a: int, u1: int, v1: int, l: int)
+    requires
+        field_congruent(v1 * v1, montgomery_rhs_int(a, u1)),
+    ensures
+        field_congruent(montgomery_line_gap(a, u1, v1, l, u1), 0),
+{
+    assert(l * (u1 - u1) + v1 == v1) by (nonlinear_arith);
+    lemma_field_congruent_sub(montgomery_rhs_int(a, u1), v1 * v1, v1 * v1, v1 * v1);
+}
+
+/// λ·d ≡ n when λ = n / d and d ≠ 0.
+proof fn lemma_field_div_mul_fcong(n: nat, d: nat)
+    requires
+        n < p(),
+        d < p(),
+        d != 0,
+    ensures
+        field_congruent((field_mul(n, field_inv(d)) as int) * (d as int), n as int),
+{
+    let l = field_mul(n, field_inv(d));
+    lemma_small_mod(d, p());
+    lemma_inv_mul_cancel(d);
+    lemma_field_mul_assoc(n, field_inv(d), d);
+    lemma_field_mul_one_right(n);
+    lemma_small_mod(n, p());
+    assert(field_mul(l, d) == n);
+    lemma_field_congruent_field_mul(l, d);
+}
+
+/// Chord branch: P ≠ ±Q with u1 ≠ u2.
+proof fn lemma_montgomery_add_chord_on_curve(u1: nat, v1: nat, u2: nat, v2: nat)
+    requires
+        u1 < p(),
+        v1 < p(),
+        u2 < p(),
+        v2 < p(),
+        on_montgomery_curve(u1, v1),
+        on_montgomery_curve(u2, v2),
+        u1 != u2,
+    ensures
+        ({
+            let a = fe51_as_canonical_nat(&MONTGOMERY_A);
+            let lambda = field_mul(field_sub(v2, v1), field_inv(field_sub(u2, u1)));
+            let u3 = field_sub(field_sub(field_sub(field_square(lambda), a), u1), u2);
+            let v3 = field_sub(field_mul(lambda, field_sub(u1, u3)), v1);
+            on_montgomery_curve(u3, v3)
+        }),
+{
+    let a = fe51_as_canonical_nat(&MONTGOMERY_A);
+    let d = field_sub(u2, u1);
+    let n = field_sub(v2, v1);
+    let l = field_mul(n, field_inv(d));
+    let t1 = field_sub(field_square(l), a);
+    let t2 = field_sub(t1, u1);
+    let u3 = field_sub(t2, u2);
+    let w = field_sub(u1, u3);
+    let lw = field_mul(l, w);
+    let v3 = field_sub(lw, v1);
+    let (ai, li, x1, y1, x2, y2, x3, y3) = (
+        a as int,
+        l as int,
+        u1 as int,
+        v1 as int,
+        u2 as int,
+        v2 as int,
+        u3 as int,
+        v3 as int,
+    );
+    p_gt_2();
+
+    // d ≡ u2 - u1 is non-zero, and λ·(u2 - u1) ≡ v2 - v1.
+    lemma_field_congruent_field_sub(u2, u1);
+    lemma_field_congruent_field_sub(v2, v1);
+    lemma_mod_bound(u2 % p() + p() - u1 % p(), p() as int);
+    lemma_mod_bound(v2 % p() + p() - v1 % p(), p() as int);
+    assert(d != 0) by {
+        if d == 0 {
+            lemma_field_congruent_add(d as int, x2 - x1, x1, x1);
+            lemma_field_congruent_reduced_eq(u1, u2);
+        }
+    }
+    lemma_field_div_mul_fcong(n, d);
+    lemma_field_congruent_mul(li, li, d as int, x2 - x1);
+    assert(field_congruent(li * (x2 - x1), y2 - y1));
+
+    // u3 ≡ λ² - A - u1 - u2 and v3 ≡ λ·(u1 - u3) - v1.
+    lemma_field_congruent_field_mul(l, l);
+    lemma_field_congruent_field_sub(field_square(l), a);
+    lemma_field_congruent_sub(field_square(l) as int, li * li, ai, ai);
+    lemma_field_congruent_field_sub(t1, u1);
+    lemma_field_congruent_sub(t1 as int, li * li - ai, x1, x1);
+    lemma_field_congruent_field_sub(t2, u2);
+    lemma_field_congruent_sub(t2 as int, li * li - ai - x1, x2, x2);
+    assert(field_congruent(x3, li * li - ai - x1 - x2));
+    lemma_field_congruent_field_sub(u1, u3);
+    lemma_field_congruent_field_mul(l, w);
+    lemma_field_congruent_mul(li, li, w as int, x1 - x3);
+    lemma_field_congruent_field_sub(lw, v1);
+    lemma_field_congruent_sub(lw as int, li * (x1 - x3), y1, y1);
+    assert(field_congruent(y3, li * (x1 - x3) - y1));
+
+    // gap(u1) ≡ 0 and gap(u2) ≡ 0, so α·(u1 - u2) ≡ 0 and α ≡ 0.
+    lemma_on_montgomery_curve_iff_fcong(u1, v1);
+    lemma_on_montgomery_curve_iff_fcong(u2, v2);
+    lemma_montgomery_line_gap_at_u1(ai, x1, y1, li);
+    let lu2 = li * (x2 - x1) + y1;
+    lemma_field_congruent_add(li * (x2 - x1), y2 - y1, y1, y1);
+    lemma_field_congruent_mul(lu2, y2, lu2, y2);
+    lemma_field_congruent_sub(montgomery_rhs_int(ai, x2), y2 * y2, lu2 * lu2, y2 * y2);
+    let g1 = montgomery_line_gap(ai, x1, y1, li, x1);
+    let g2 = montgomery_line_gap(ai, x1, y1, li, x2);
+    assert(field_congruent(g2, 0));
+    let alpha = montgomery_line_alpha(ai, x1, x2, y1, li);
+    let beta = montgomery_line_beta(ai, x1, x2, y1, li);
+    let c = li * li - ai - x1 - x2;
+    lemma_montgomery_line_gap_identity(ai, x1, x2, y1, li, x1);
+    lemma_montgomery_line_gap_identity(ai, x1, x2, y1, li, x2);
+    assert((x1 - x1) * (x1 - x2) * (x1 - c) == 0) by (nonlinear_arith);
+    assert((x2 - x1) * (x2 - x2) * (x2 - c) == 0) by (nonlinear_arith);
+    assert(g1 - g2 == alpha * (x1 - x2)) by (nonlinear_arith)
+        requires
+            g1 == alpha * x1 + beta,
+            g2 == alpha * x2 + beta,
+    ;
+    lemma_field_congruent_sub(g1, 0, g2, 0);
+    assert(!field_congruent(x1 - x2, 0)) by {
+        if field_congruent(x1 - x2, 0) {
+            lemma_field_congruent_add(x1 - x2, 0, x2, x2);
+            lemma_field_congruent_reduced_eq(u1, u2);
+        }
+    }
+    lemma_field_congruent_mul_zero(alpha, x1 - x2);
+
+    lemma_montgomery_line_third_point(ai, x1, x2, x3, y1, y3, li);
+    lemma_on_montgomery_curve_iff_fcong(u3, v3);
+}
+
+/// Doubling branch: P = Q with v1 ≠ 0.
+proof fn lemma_montgomery_add_double_on_curve(u1: nat, v1: nat)
+    requires
+        u1 < p(),
+        v1 < p(),
+        on_montgomery_curve(u1, v1),
+        v1 != 0,
+    ensures
+        ({
+            let a = fe51_as_canonical_nat(&MONTGOMERY_A);
+            let num = field_add(
+                field_add(field_mul(3, field_square(u1)), field_mul(field_mul(2, a), u1)),
+                1,
+            );
+            let lambda = field_mul(num, field_inv(field_mul(2, v1)));
+            let u3 = field_sub(field_sub(field_square(lambda), a), field_mul(2, u1));
+            let v3 = field_sub(field_mul(lambda, field_sub(u1, u3)), v1);
+            on_montgomery_curve(u3, v3)
+        }),
+{
+    let a = fe51_as_canonical_nat(&MONTGOMERY_A);
+    let sq = field_square(u1);
+    let m3 = field_mul(3, sq);
+    let a2 = field_mul(2, a);
+    let m2 = field_mul(a2, u1);
+    let s = field_add(m3, m2);
+    let num = field_add(s, 1);
+    let d = field_mul(2, v1);
+    let l = field_mul(num, field_inv(d));
+    let t1 = field_sub(field_square(l), a);
+    let tu = field_mul(2, u1);
+    let u3 = field_sub(t1, tu);
+    let w = field_sub(u1, u3);
+    let lw = field_mul(l, w);
+    let v3 = field_sub(lw, v1);
+    let (ai, li, x1, y1, x3, y3) = (a as int, l as int, u1 as int, v1 as int, u3 as int, v3 as int);
+    p_gt_2();
+
+    // num ≡ 3·u1² + 2A·u1 + 1.
+    lemma_field_congruent_field_mul(u1, u1);
+    lemma_field_congruent_field_mul(3, sq);
+    lemma_field_congruent_mul(3, 3, sq as int, x1 * x1);
+    lemma_field_congruent_field_mul(2, a);
+    lemma_field_congruent_field_mul(a2, u1);
+    lemma_field_congruent_mul(a2 as int, 2 * ai, x1, x1);
+    lemma_field_congruent_field_add(m3, m2);
+    lemma_field_congruent_add(m3 as int, 3 * (x1 * x1), m2 as int, (2 * ai) * x1);
+    lemma_field_congruent_field_add(s, 1);
+    lemma_field_congruent_add(s as int, 3 * (x1 * x1) + (2 * ai) * x1, 1, 1);
+    let num_int = 3 * (x1 * x1) + (2 * ai) * x1 + 1;
+    assert(field_congruent(num as int, num_int));
+
+    // d = 2·v1 is non-zero, and λ·(2·v1) ≡ num.
+    lemma_small_mod(2, p());
+    lemma_small_mod(v1, p());
+    lemma_nonzero_product(2, v1);
+    lemma_mod_bound(s as int + 1, p() as int);
+    lemma_mod_bound(2 * y1, p() as int);
+    lemma_field_div_mul_fcong(num, d);
+    lemma_field_congruent_field_mul(2, v1);
+    lemma_field_congruent_mul(li, li, d as int, 2 * y1);
+    assert(field_congruent(li * (2 * y1), num_int));
+
+    // α ≡ 0 because α = num_int - λ·(2·v1) exactly when u2 = u1.
+    let alpha = montgomery_line_alpha(ai, x1, x1, y1, li);
+    assert(1 + 2 * li * li * x1 - 2 * li * y1 - x1 * x1 - (li * li - ai - x1 - x1) * (x1 + x1) == 3
+        * (x1 * x1) + (2 * ai) * x1 + 1 - li * (2 * y1)) by (nonlinear_arith);
+    assert(alpha == num_int - li * (2 * y1));
+    lemma_field_congruent_sub(num_int, num_int, li * (2 * y1), num_int);
+    assert(field_congruent(alpha, 0));
+
+    // u3 ≡ λ² - A - u1 - u1 and v3 ≡ λ·(u1 - u3) - v1.
+    lemma_field_congruent_field_mul(l, l);
+    lemma_field_congruent_field_sub(field_square(l), a);
+    lemma_field_congruent_sub(field_square(l) as int, li * li, ai, ai);
+    lemma_field_congruent_field_mul(2, u1);
+    lemma_field_congruent_field_sub(t1, tu);
+    lemma_field_congruent_sub(t1 as int, li * li - ai, tu as int, 2 * x1);
+    assert(field_congruent(x3, li * li - ai - x1 - x1));
+    lemma_field_congruent_field_sub(u1, u3);
+    lemma_field_congruent_field_mul(l, w);
+    lemma_field_congruent_mul(li, li, w as int, x1 - x3);
+    lemma_field_congruent_field_sub(lw, v1);
+    lemma_field_congruent_sub(lw as int, li * (x1 - x3), y1, y1);
+    assert(field_congruent(y3, li * (x1 - x3) - y1));
+
+    lemma_on_montgomery_curve_iff_fcong(u1, v1);
+    lemma_montgomery_line_gap_at_u1(ai, x1, y1, li);
+    lemma_montgomery_line_third_point(ai, x1, x1, x3, y1, y3, li);
+    lemma_on_montgomery_curve_iff_fcong(u3, v3);
+}
+
+/// Two curve points with the same u-coordinate have v2 = v1 or v2 = -v1.
+proof fn lemma_same_u_on_curve_implies_v_or_neg_v(u: nat, v1: nat, v2: nat)
+    requires
+        u < p(),
+        v1 < p(),
+        v2 < p(),
+        on_montgomery_curve(u, v1),
+        on_montgomery_curve(u, v2),
+    ensures
+        v1 == v2 || field_add(v1, v2) == 0,
+{
+    let (y1, y2) = (v1 as int, v2 as int);
+    lemma_on_montgomery_curve_iff_fcong(u, v1);
+    lemma_on_montgomery_curve_iff_fcong(u, v2);
+    assert((y1 - y2) * (y1 + y2) == y1 * y1 - y2 * y2) by (nonlinear_arith);
+    let r = montgomery_rhs_int(fe51_as_canonical_nat(&MONTGOMERY_A) as int, u as int);
+    lemma_field_congruent_sub(y1 * y1, r, y2 * y2, r);
+    assert(field_congruent((y1 - y2) * (y1 + y2), 0));
+    if !field_congruent(y1 + y2, 0) {
+        lemma_field_congruent_mul_zero(y1 - y2, y1 + y2);
+        lemma_field_congruent_add(y1 - y2, 0, y2, y2);
+        lemma_field_congruent_reduced_eq(v1, v2);
+    } else {
+        p_gt_2();
+        lemma_small_mod(0, p());
+    }
+}
+
+/// Lemma: Montgomery addition keeps points on the curve, with reduced coordinates.
+pub proof fn lemma_montgomery_add_canonical(P: MontgomeryAffine, Q: MontgomeryAffine)
+    requires
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+    ensures
+        is_canonical_montgomery_affine(montgomery_add(P, Q)),
+{
+    if let (MontgomeryAffine::Finite { u: u1, v: v1 }, MontgomeryAffine::Finite { u: u2, v: v2 }) =
+        (P, Q) {
+        p_gt_2();
+        if u1 == u2 && field_add(v1, v2) == 0 {
+        } else {
+            // The result coordinates are outputs of field_sub, so they are reduced.
+            if let MontgomeryAffine::Finite { u: u3, v: v3 } = montgomery_add(P, Q) {
+                lemma_mod_bound(u3 as int, p() as int);
+                lemma_mod_bound(v3 as int, p() as int);
+            }
+            if u1 == u2 && v1 == v2 {
+                assert(v1 != 0) by {
+                    if v1 == 0 {
+                        lemma_small_mod(0, p());
+                    }
+                }
+                lemma_montgomery_add_double_on_curve(u1, v1);
+            } else {
+                assert(u1 != u2) by {
+                    if u1 == u2 {
+                        lemma_same_u_on_curve_implies_v_or_neg_v(u1, v1, v2);
+                    }
+                }
+                lemma_montgomery_add_chord_on_curve(u1, v1, u2, v2);
+            }
+        }
+    }
 }
 
 // =============================================================================

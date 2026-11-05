@@ -1416,17 +1416,14 @@ pub proof fn lemma_edwards_basepoint_maps_to_montgomery_basepoint()
 /// The map φ: Edwards → Montgomery is a group homomorphism:
 ///   φ([n]P_ed).u = [n](φ(P_ed).u)
 ///
-/// Additionally ensures scalar multiplication preserves the curve (closure).
+/// Closure (scalar multiplication stays on the curve) is proved separately by
+/// `lemma_edwards_scalar_mul_on_curve`.
 ///
 /// Reference: <https://www.rfc-editor.org/rfc/rfc7748#section-4.1>
 pub proof fn axiom_edwards_to_montgomery_commutes_with_scalar_mul(x: nat, y: nat, n: nat)
     requires
         is_on_edwards_curve(x, y),
     ensures
-// Scalar multiplication preserves the Edwards curve
-
-        is_on_edwards_curve(edwards_scalar_mul((x, y), n).0, edwards_scalar_mul((x, y), n).1),
-        // The Edwards-to-Montgomery map commutes with scalar multiplication
         montgomery_u_from_edwards_y(edwards_scalar_mul((x, y), n).1) == montgomery_scalar_mul_u(
             montgomery_u_from_edwards_y(y),
             n,

@@ -65,7 +65,8 @@ jobs:
 
   check-libsignal:
     name: "`cargo check` on libsignal with this dalek-lite commit"
-    runs-on: ubuntu-latest
+    # ubuntu-26.04 ships clang 21, which breaks bindgen 0.70 in boring-sys.
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout dalek-lite
       uses: actions/checkout@v4
@@ -96,7 +97,8 @@ jobs:
 
   verify-libsignal-usernames:
     name: "Verus on libsignal/rust/usernames with this dalek-lite commit"
-    runs-on: ubuntu-latest
+    # ubuntu-26.04 ships clang 21, which breaks bindgen 0.70 in boring-sys.
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout dalek-lite
       uses: actions/checkout@v4

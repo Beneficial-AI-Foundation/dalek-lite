@@ -522,6 +522,12 @@ impl Pippenger {
                 lemma_edwards_point_as_affine_canonical(buckets@[b]);
             };
 
+            assert forall|b: int| 0 <= b < B implies is_on_edwards_curve(
+                (#[trigger] buckets_affine[b]).0,
+                buckets_affine[b].1,
+            ) by {
+                lemma_edwards_point_as_affine_on_curve(buckets@[b]);
+            };
             lemma_running_sum_equals_weighted(buckets_affine, B);
 
             let ghost bucket_contents_seq = Seq::new(
@@ -539,6 +545,11 @@ impl Pippenger {
 
             assert forall|k: int| 0 <= k < n_ghost implies (#[trigger] pts_affine[k]).0 < p()
                 && pts_affine[k].1 < p() by {};
+            lemma_pippenger_input_on_curve(scalars_points@, pts_affine, digits_seqs, w as nat, dc);
+            assert forall|k: int| 0 <= k < n_ghost implies is_on_edwards_curve(
+                (#[trigger] pts_affine[k]).0,
+                pts_affine[k].1,
+            ) by {};
 
             lemma_bucket_weighted_sum_equals_column_sum(
                 pts_affine,

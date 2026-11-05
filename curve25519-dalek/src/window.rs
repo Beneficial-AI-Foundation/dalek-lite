@@ -40,9 +40,10 @@ use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
     lemma_affine_niels_affine_equals_edwards_affine, lemma_edwards_add_commutative,
-    lemma_edwards_scalar_mul_additive, lemma_edwards_scalar_mul_succ,
-    lemma_identity_affine_niels_valid, lemma_identity_projective_niels_valid,
-    lemma_negate_affine_niels_preserves_validity, lemma_negate_projective_niels_preserves_validity,
+    lemma_edwards_point_as_affine_on_curve, lemma_edwards_point_scalar_mul_additive,
+    lemma_edwards_scalar_mul_succ, lemma_identity_affine_niels_valid,
+    lemma_identity_projective_niels_valid, lemma_negate_affine_niels_preserves_validity,
+    lemma_negate_projective_niels_preserves_validity,
     lemma_projective_niels_affine_equals_edwards_affine,
 };
 #[cfg(verus_keep_ghost)]
@@ -538,6 +539,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<ProjectiveNielsPoint> {
                     P_affine.0,
                     P_affine.1,
                 )) by {
+                    lemma_edwards_point_as_affine_on_curve(*P);
                     lemma_edwards_scalar_mul_succ(P_affine, (j + 1) as nat);
                 }
                 assert(edwards_add(P_affine.0, P_affine.1, prev.0, prev.1) == edwards_add(
@@ -645,6 +647,7 @@ impl<'a> From<&'a EdwardsPoint> for LookupTable<AffineNielsPoint> {
                     P_affine.0,
                     P_affine.1,
                 )) by {
+                    lemma_edwards_point_as_affine_on_curve(*P);
                     lemma_edwards_scalar_mul_succ(P_affine, (j + 1) as nat);
                 }
                 assert(edwards_add(P_affine.0, P_affine.1, prev.0, prev.1) == edwards_add(
@@ -844,6 +847,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
                 edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
                 edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
                 A_affine == edwards_point_as_affine(*A),
+                is_valid_edwards_point(*A),
         {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
             proof {
@@ -874,7 +878,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
                     let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
                     edwards_add(p2.0, p2.1, pk.0, pk.1)
                 }) by {
-                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                    lemma_edwards_point_scalar_mul_additive(*A, 2, (2 * i + 1) as nat);
                 }
             }
         }
@@ -941,6 +945,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
                 edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
                 edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
                 A_affine == edwards_point_as_affine(*A),
+                is_valid_edwards_point(*A),
         {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
             proof {
@@ -962,7 +967,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<AffineNielsPoint> {
                     let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
                     edwards_add(p2.0, p2.1, pk.0, pk.1)
                 }) by {
-                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                    lemma_edwards_point_scalar_mul_additive(*A, 2, (2 * i + 1) as nat);
                 }
             }
         }
@@ -1137,6 +1142,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
                 edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
                 edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
                 A_affine == edwards_point_as_affine(*A),
+                is_valid_edwards_point(*A),
         {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_projective_niels();
             proof {
@@ -1173,7 +1179,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<ProjectiveNielsPoint> {
                     let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
                     edwards_add(p2.0, p2.1, pk.0, pk.1)
                 }) by {
-                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                    lemma_edwards_point_scalar_mul_additive(*A, 2, (2 * i + 1) as nat);
                 }
             }
         }
@@ -1238,6 +1244,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
                 edwards_point_as_affine(A2) == edwards_double(A_affine.0, A_affine.1),
                 edwards_scalar_mul(A_affine, 2) == edwards_double(A_affine.0, A_affine.1),
                 A_affine == edwards_point_as_affine(*A),
+                is_valid_edwards_point(*A),
         {
             // ORIGINAL CODE: Ai[i + 1] = (&A2 + &Ai[i]).as_extended().as_affine_niels();
             proof {
@@ -1259,7 +1266,7 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable8<AffineNielsPoint> {
                     let pk = edwards_scalar_mul(A_affine, (2 * i + 1) as nat);
                     edwards_add(p2.0, p2.1, pk.0, pk.1)
                 }) by {
-                    lemma_edwards_scalar_mul_additive(A_affine, 2, (2 * i + 1) as nat);
+                    lemma_edwards_point_scalar_mul_additive(*A, 2, (2 * i + 1) as nat);
                 }
             }
         }

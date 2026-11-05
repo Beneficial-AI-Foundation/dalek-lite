@@ -608,11 +608,12 @@ pub proof fn lemma_montgomery_ladder_points_canonical(u0: nat, k: nat)
 // Closure of montgomery_add
 // -----------------------------------------------------------------------------
 //
-// Proof sketch. Let f(x) = x³ + A·x² + x and let L(x) = λ·(x - u1) + v1 be the
-// chord (or tangent) line. Then f(x) - L(x)² equals (x - u1)(x - u2)(x - c) + α·x + β
-// for c = λ² - A - u1 - u2 and some α, β. The line meets the curve at u1 and u2
-// (or touches it at u1), so α ≡ β ≡ 0 (mod p). The third point u3 ≡ c then also
-// satisfies f(u3) ≡ L(u3)² = v3².
+// Proof sketch. Write the curve equation as v² = f(u), so f(x) = x³ + A·x² + x is its
+// right-hand side (`montgomery_rhs` in the field, `montgomery_rhs_int` below over the
+// integers). Let L(x) = λ·(x - u1) + v1 be the chord (or tangent) line. Then
+// f(x) - L(x)² equals (x - u1)(x - u2)(x - c) + α·x + β for c = λ² - A - u1 - u2 and
+// some α, β. The line meets the curve at u1 and u2 (or touches it at u1), so
+// α ≡ β ≡ 0 (mod p). The third point u3 ≡ c then also satisfies f(u3) ≡ L(u3)² = v3².
 //
 // All steps below are integer congruences mod p (`field_congruent`).
 /// Congruence mod p on integers.
@@ -625,7 +626,7 @@ spec fn montgomery_rhs_int(a: int, x: int) -> int {
     x * (x * x) + a * (x * x) + x
 }
 
-/// f(x) - L(x)² where L(x) = l·(x - u1) + v1.
+/// f(x) - L(x)², where f is `montgomery_rhs_int` and L(x) is the line l·(x - u1) + v1.
 spec fn montgomery_line_gap(a: int, u1: int, v1: int, l: int, x: int) -> int {
     montgomery_rhs_int(a, x) - (l * (x - u1) + v1) * (l * (x - u1) + v1)
 }
@@ -758,7 +759,8 @@ proof fn lemma_field_congruent_field_sub(a: nat, b: nat)
     lemma_field_congruent_sub((a % p()) as int + pp, a as int + 0, (b % p()) as int, b as int);
 }
 
-/// `on_montgomery_curve(u, v)` holds exactly when v² ≡ f(u) (mod p).
+/// `on_montgomery_curve(u, v)` holds exactly when v² ≡ f(u) (mod p), where f is
+/// `montgomery_rhs_int`.
 proof fn lemma_on_montgomery_curve_iff_fcong(u: nat, v: nat)
     ensures
         on_montgomery_curve(u, v) == field_congruent(
@@ -814,7 +816,10 @@ proof fn lemma_monic_cubic_expand(x: int, u1: int, u2: int, c: int)
     assert((u1 * u2 + (u1 + u2) * c) * x == u1 * u2 * x + (u1 + u2) * c * x) by (nonlinear_arith);
 }
 
-/// The polynomial identity f(x) - L(x)² = (x - u1)(x - u2)(x - c) + α·x + β.
+/// The polynomial identity f(x) - L(x)² = (x - u1)(x - u2)(x - c) + α·x + β,
+/// where f is `montgomery_rhs_int`, L(x) is the line l·(x - u1) + v1 (so the left side is
+/// `montgomery_line_gap`), c is l² - a - u1 - u2, α is `montgomery_line_alpha` and
+/// β is `montgomery_line_beta`.
 proof fn lemma_montgomery_line_gap_identity(a: int, u1: int, u2: int, v1: int, l: int, x: int)
     ensures
         montgomery_line_gap(a, u1, v1, l, x) == (x - u1) * (x - u2) * (x - (l * l - a - u1 - u2))

@@ -147,6 +147,7 @@ pub proof fn lemma_as_bytes_52(limbs: [u64; 5], bytes: [u8; 32])
     ensures
         u8_32_as_nat(&bytes) == five_limbs_to_nat_aux(limbs) % pow2(256),
 {
+    hide(pow2);
     // Connect the bit shift in the requires clause to pow2 for clarity
     assert((1u64 << 52) == pow2(52)) by {
         lemma_u64_shift_is_pow2(52);

@@ -410,6 +410,7 @@ proof fn lemma_load8_shift_mod_aux(
             t,
         ) as u64) + (a_jplus1 / (pow2(s) as u64)) % (pow2(t) as u64),
 {
+    hide(pow2);
     let ps64 = (pow2(s) as u64);
     let pt64 = (pow2(t) as u64);
 
@@ -697,6 +698,7 @@ pub proof fn lemma_load8_at_limb_base(input: &[u8], i: usize, k: u64)
             / (pow2(k as nat) as u64)) % (pow2(51) as u64) + (((input[i + 7] * pow2(7 * 8)) as u64)
             / (pow2(k as nat) as u64)) % (pow2(51) as u64),
 {
+    hide(pow2);
     assert(0 < pow2(51) <= u64::MAX) by {
         lemma_pow2_pos(51);
         lemma_u64_pow2_le_max(51);
@@ -753,6 +755,24 @@ pub open spec fn pow2_mul_div_mod_small_mod_u8_t51_cond(k: nat, j: nat) -> bool 
 //   or larger, so in general, the best we can assert is that they reduce to coefficient masking
 // - the last few summands have large enough exponents that masking zeroes them
 // The particular indices where these happen depend on the limb (i.e. the shift value k)
+/// A byte times 2^e fits in a u64 when e <= 56, so the cast to u64 is the identity.
+proof fn lemma_u8_mul_pow2_fits_u64(x: u8, e: nat)
+    requires
+        e <= 56,
+    ensures
+        x * pow2(e) <= u64::MAX,
+        (x * pow2(e)) as u64 == x * pow2(e),
+{
+    lemma_u8_pow2_bound(x as nat);
+    lemma_pow2_pos(e);
+    lemma_mul_strict_inequality(x as int, pow2(8) as int, pow2(e) as int);
+    lemma_pow2_adds(8, e);
+    if 8 + e < 64 {
+        lemma_pow2_strictly_increases(8 + e, 64);
+    }
+    lemma2_to64_rest();
+}
+
 pub proof fn lemma_load8_at_limb_X(
     input: &[u8],
     i: usize,
@@ -814,6 +834,7 @@ pub proof fn lemma_load8_at_limb_X(
         j * 8,
     )) as u64 / pk) % p51 == (input[(i + j) as int]) as nat / pow2((k - j * 8) as nat) by {
         assert(pow2_mul_div_mod_small_mul_u8_t51_cond(k, j));  // trigger forall
+        lemma_u8_mul_pow2_fits_u64(input[(i + j) as int], j * 8);
         lemma_u8_pow2_mul_div_mod_small_mul(input[(i + j) as int], j * 8, k, 51);
     }
 
@@ -822,6 +843,7 @@ pub proof fn lemma_load8_at_limb_X(
         j * 8,
     )) as u64 / pk) % p51 == (input[(i + j) as int]) * pow2((j * 8 - k) as nat) by {
         assert(pow2_mul_div_mod_small_div_u8_t51_cond(k, j));  // trigger forall
+        lemma_u8_mul_pow2_fits_u64(input[(i + j) as int], j * 8);
         lemma_u8_pow2_mul_div_mod_small_div(input[(i + j) as int], j * 8, k, 51);
     }
 
@@ -831,6 +853,7 @@ pub proof fn lemma_load8_at_limb_X(
     )) as u64 / pk) % p51 == (input[(i + j) as int] as nat % pow2((51 - (j * 8 - k)) as nat))
         * pow2((j * 8 - k) as nat) by {
         assert(pow2_mul_div_mod_close_mod_u8_t51_cond(k, j));  // trigger forall
+        lemma_u8_mul_pow2_fits_u64(input[(i + j) as int], j * 8);
         lemma_pow2_mul_div_mod_close_mod(input[(i + j) as int] as nat, j * 8, k, 51);
     }
 
@@ -839,6 +862,7 @@ pub proof fn lemma_load8_at_limb_X(
         j * 8,
     )) as u64 / pk) % p51 == 0 by {
         assert(pow2_mul_div_mod_small_mod_u8_t51_cond(k, j));  // trigger forall
+        lemma_u8_mul_pow2_fits_u64(input[(i + j) as int], j * 8);
         lemma_pow2_mul_div_mod_small_mod(input[(i + j) as int] as nat, j * 8, k, 51);
     }
 }

@@ -497,8 +497,14 @@ macro_rules! lemma_max_shifting {
 
                 lemma2_to64();  // pow2(1) = 2
 
-                assert((one << ((N - k) as $uN)) / 2 == (one << ((N_min1 - k) as $uN))) by {
-                    lemma_div_multiples_vanish((one << (N_min1 - k) as $uN) as int, 2);
+                // y << 1 == y * pow2(1) == 2 * y, so (y << 1) / 2 == y
+                let y = one << (N_min1 - k) as nat;
+                assert(y * pow2(1) == 2 * y) by (nonlinear_arith)
+                    requires
+                        pow2(1) == 2,
+                ;
+                assert((one << ((N - k) as nat)) / 2 == y) by {
+                    lemma_div_multiples_vanish(y as int, 2);
                 }
             }
         }

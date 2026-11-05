@@ -983,8 +983,8 @@ impl Zeroize for CompressedEdwardsY {
     /// Reset this `CompressedEdwardsY` to the compressed form of the identity element.
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 1 <= i < 32 ==> #[trigger] self.0[i] == 0u8,
-            self.0[0] == 1u8,
+            forall|i: int| 1 <= i < 32 ==> #[trigger] final(self).0[i] == 0u8,
+            final(self).0[0] == 1u8,
     {
         /* ORIGINAL CODE:
             self.0.zeroize();
@@ -1000,11 +1000,11 @@ impl Zeroize for EdwardsPoint {
     /// Reset this `CompressedEdwardsPoint` to the identity element.
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 5 ==> edwards_x(*self).limbs[i] == 0,
-            forall|i: int| 0 <= i < 5 ==> edwards_t(*self).limbs[i] == 0,
-            edwards_y(*self) == FieldElement::ONE,
-            edwards_z(*self) == FieldElement::ONE,
-            is_identity_edwards_point(*self),
+            forall|i: int| 0 <= i < 5 ==> edwards_x(*final(self)).limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> edwards_t(*final(self)).limbs[i] == 0,
+            edwards_y(*final(self)) == FieldElement::ONE,
+            edwards_z(*final(self)) == FieldElement::ONE,
+            is_identity_edwards_point(*final(self)),
     {
         proof {
             // ZERO/ONE limbs (0, 1) are within 52-bit bound
@@ -2115,18 +2115,31 @@ define_add_variants!(
     Output = EdwardsPoint
 );
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddAssignSpecImpl<&EdwardsPoint> for EdwardsPoint {
+    // The postcondition is stated on the add_assign implementation below.
+    open spec fn obeys_add_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn add_assign_req(&self, rhs: &EdwardsPoint) -> bool {
+        is_well_formed_edwards_point(*self) && is_well_formed_edwards_point(*rhs)
+    }
+
+    open spec fn add_assign_spec(&self, rhs: &EdwardsPoint) -> &Self {
+        self
+    }
+}
+
 impl<'b> AddAssign<&'b EdwardsPoint> for EdwardsPoint {
     fn add_assign(&mut self, _rhs: &'b EdwardsPoint)
-        requires
-            is_well_formed_edwards_point(*old(self)),
-            is_well_formed_edwards_point(*_rhs),
         ensures
-            is_well_formed_edwards_point(*self),
+            is_well_formed_edwards_point(*final(self)),
             // Semantic correctness: result is the addition of old(self) + rhs
             ({
                 let (x1, y1) = edwards_point_as_affine(*old(self));
                 let (x2, y2) = edwards_point_as_affine(*_rhs);
-                edwards_point_as_affine(*self) == edwards_add(x1, y1, x2, y2)
+                edwards_point_as_affine(*final(self)) == edwards_add(x1, y1, x2, y2)
             }),
     {
         /* ORIGINAL CODE
@@ -2257,18 +2270,31 @@ define_sub_variants!(
     Output = EdwardsPoint
 );
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubAssignSpecImpl<&EdwardsPoint> for EdwardsPoint {
+    // The postcondition is stated on the sub_assign implementation below.
+    open spec fn obeys_sub_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_assign_req(&self, rhs: &EdwardsPoint) -> bool {
+        is_well_formed_edwards_point(*self) && is_well_formed_edwards_point(*rhs)
+    }
+
+    open spec fn sub_assign_spec(&self, rhs: &EdwardsPoint) -> &Self {
+        self
+    }
+}
+
 impl<'b> SubAssign<&'b EdwardsPoint> for EdwardsPoint {
     fn sub_assign(&mut self, _rhs: &'b EdwardsPoint)
-        requires
-            is_well_formed_edwards_point(*old(self)),
-            is_well_formed_edwards_point(*_rhs),
         ensures
-            is_well_formed_edwards_point(*self),
+            is_well_formed_edwards_point(*final(self)),
             // Semantic correctness: result is the subtraction of old(self) - rhs
             ({
                 let (x1, y1) = edwards_point_as_affine(*old(self));
                 let (x2, y2) = edwards_point_as_affine(*_rhs);
-                edwards_point_as_affine(*self) == edwards_sub(x1, y1, x2, y2)
+                edwards_point_as_affine(*final(self)) == edwards_sub(x1, y1, x2, y2)
             }),
     {
         /* ORIGINAL CODE
@@ -2542,14 +2568,27 @@ impl Neg for EdwardsPoint {
 // ------------------------------------------------------------------------
 // Scalar multiplication
 // ------------------------------------------------------------------------
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&Scalar> for EdwardsPoint {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &Scalar) -> bool {
+        rhs.bytes[31] <= 127 && is_well_formed_edwards_point(*self)
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'b> MulAssign<&'b Scalar> for EdwardsPoint {
     fn mul_assign(&mut self, scalar: &'b Scalar)
-        requires
-            scalar.bytes[31] <= 127,
-            is_well_formed_edwards_point(*old(self)),
         ensures
-            is_well_formed_edwards_point(*self),
-            edwards_point_as_affine(*self) == edwards_scalar_mul(
+            is_well_formed_edwards_point(*final(self)),
+            edwards_point_as_affine(*final(self)) == edwards_scalar_mul(
                 edwards_point_as_affine(*old(self)),
                 scalar_as_nat(scalar),
             ),

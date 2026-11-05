@@ -603,7 +603,7 @@ pub proof fn lemma_jq_edge_case_values(point: crate::edwards::EdwardsPoint)
 {
     let (xn, yn, zn, _tn) = edwards_point_as_nat(point);
     if !(xn == 0 || yn == 0) {
-        return ;
+        return;
     }
     reveal(spec_to_jacobi_quartic_ristretto);
     let jcs = spec_to_jacobi_quartic_ristretto(point);
@@ -787,7 +787,7 @@ pub proof fn lemma_jacobi_quartic_edge_values(point: crate::edwards::EdwardsPoin
 {
     let (x, y) = edwards_point_as_affine(point);
     if !(x == 0 || y == 0) {
-        return ;
+        return;
     }
     p_gt_2();
     let (xn, yn, zn, _tn) = edwards_point_as_nat(point);
@@ -962,6 +962,9 @@ proof fn lemma_jacobi_to_edwards_affine_s_canonical_zero(s: nat, t: nat)
     };
     let denom = field_inv(field_mul(t, spec_sqrt_ad_minus_one()));
     assert(field_mul(field_mul(2, s), denom) == 0) by {
+        p_gt_2();
+        lemma_small_mod(0nat, p());
+        assert(field_mul(2, s) % p() == 0);
         lemma_field_mul_zero_left(field_mul(2, s), denom);
         lemma_small_mod(0nat, p());
     };

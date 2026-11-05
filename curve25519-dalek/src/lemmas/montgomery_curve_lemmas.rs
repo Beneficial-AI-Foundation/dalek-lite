@@ -16,6 +16,8 @@
 //! - **xADD Axiom** (Equation 9): differential addition `P + Q` given `P - Q`
 //! - **Scalar Multiplication Lemmas**: distribution `[m+n]P = [m]P + [n]P`, doubling `[2n]P = [n]P + [n]P`
 //! - **Projective Representation Lemmas**: connecting projective `(U:W)` to affine `u = U/W`
+//! - **Curve Membership Lemmas**: `montgomery_add`, negation, scalar multiples and the canonical lift
+//!   keep points on the curve with reduced coordinates (`is_canonical_montgomery_affine`)
 #![allow(unused)]
 use crate::constants::{APLUS2_OVER_FOUR, MONTGOMERY_A, MONTGOMERY_A_NEG};
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
@@ -114,7 +116,8 @@ pub proof fn lemma_montgomery_add_inverse(P: MontgomeryAffine)
 // Input:  (U : W) representing point P
 // Output: (U' : W') representing [2]P
 //
-// Precondition: (U:W) validly represents P (for ∞, requires W = 0 and U ≠ 0).
+// Preconditions: P is on the curve with reduced coordinates, and (U:W) validly represents P
+// (for ∞, requires W = 0 and U ≠ 0).
 //
 // Formulas:
 //   U' = (U + W)² · (U - W)²
@@ -136,7 +139,8 @@ pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
 
 /// **xDBL Axiom**: `spec_xdbl_projective` correctly computes [2]P.
 ///
-/// If `P` is on the curve and `(U:W)` represents `P`, then `xDBL(U,W)` represents `[2]P`.
+/// If `P` is on the curve with reduced coordinates and `(U:W)` represents `P`, then `xDBL(U,W)`
+/// represents `[2]P`.
 pub(crate) proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
     requires
         is_canonical_montgomery_affine(P),
@@ -226,7 +230,7 @@ pub(crate) proof fn lemma_xdbl_degenerate_gives_w_zero(U: nat, W: nat)
 //         u(P-Q)      affine x-coordinate of P - Q
 // Output: (U' : W') representing P + Q
 //
-// Preconditions: P ≠ Q and u(P-Q) ≠ 0.
+// Preconditions: P and Q are on the curve with reduced coordinates, P ≠ Q and u(P-Q) ≠ 0.
 //
 // Formulas (with P - Q in affine form, i.e., W(P-Q) = 1):
 //   U' = [(U_P + W_P)(U_Q - W_Q) + (U_P - W_P)(U_Q + W_Q)]²
@@ -254,7 +258,7 @@ pub(crate) open spec fn spec_xadd_projective(
 
 /// **xADD Axiom**: `spec_xadd_projective` correctly computes P + Q.
 ///
-/// Requires P and Q on the curve, P ≠ Q and u(P - Q) ≠ 0.
+/// Requires P and Q on the curve with reduced coordinates, P ≠ Q and u(P - Q) ≠ 0.
 pub(crate) proof fn axiom_xadd_projective_correct(
     P: MontgomeryAffine,
     Q: MontgomeryAffine,

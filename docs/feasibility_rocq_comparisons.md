@@ -56,7 +56,9 @@ pub proof fn axiom_group_order_is_prime()
 **Verus:**
 ```rust
 pub proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
-    requires projective_represents_montgomery_or_infinity_nat(U, W, P),
+    requires
+        is_canonical_montgomery_affine(P),
+        projective_represents_montgomery_or_infinity_nat(U, W, P),
     ensures projective_represents_montgomery_or_infinity_nat(
         spec_xdbl_projective(U, W).0, spec_xdbl_projective(U, W).1,
         montgomery_add(P, P)),
@@ -87,7 +89,8 @@ Source: [`mit-plv/fiat-crypto`](https://github.com/mit-plv/fiat-crypto/blob/mast
 pub proof fn axiom_xadd_projective_correct(
     P: MontgomeryAffine, Q: MontgomeryAffine,
     U_P: nat, W_P: nat, U_Q: nat, W_Q: nat, affine_PmQ: nat)
-    requires /* projective representations, P != Q, affine_PmQ != 0 */
+    requires /* P, Q canonical; projective representations; P != Q; affine_PmQ != 0;
+                affine_PmQ is the u-coordinate of P - Q or Q - P */
     ensures projective_represents_montgomery_or_infinity_nat(
         spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ).0,
         spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ).1,

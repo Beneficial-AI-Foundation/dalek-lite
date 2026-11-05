@@ -81,7 +81,8 @@ pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
 
 /// Check if a MontgomeryAffine point is valid and has reduced coordinates (`u, v < p`).
 ///
-/// Either sign of `v` is allowed. This is not the sign choice of `canonical_montgomery_lift`.
+/// `v` can be either square root. The predicate does not require the sign that
+/// `canonical_montgomery_lift` picks.
 ///
 /// `montgomery_add` compares raw coordinates, so the group axioms need reduced coordinates.
 pub open spec fn is_canonical_montgomery_affine(point: MontgomeryAffine) -> bool {
@@ -127,8 +128,8 @@ pub open spec fn is_valid_u_coordinate(u: nat) -> bool {
     is_square(montgomery_rhs(u))
 }
 
-/// Given u-coordinate of a Montgomery point (non-torsion),
-/// return the unique affine Montgomery point (u, v)
+/// Given a valid u-coordinate (`is_valid_u_coordinate(u)`), including u = 0 and u = 1 (small-order
+/// points), return the affine Montgomery point (u mod p, v)
 /// where v is the canonical square root of u*(u^2 + A*u + 1).
 pub open spec fn canonical_montgomery_lift(u: nat) -> MontgomeryAffine
     recommends

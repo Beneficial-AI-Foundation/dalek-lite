@@ -286,6 +286,10 @@ $$
 ```rust
 pub proof fn axiom_montgomery_add_associative(
     P: MontgomeryAffine, Q: MontgomeryAffine, R: MontgomeryAffine)
+    requires
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+        is_canonical_montgomery_affine(R),
     ensures montgomery_add(montgomery_add(P, Q), R) == montgomery_add(P, montgomery_add(Q, R)),
 { admit(); }
 ```
@@ -312,12 +316,14 @@ $$
 \text{xDBL}(U : W) = (U' : W') \quad\text{representing}\quad [2]P
 $$
 
-If (U : W) represents the affine Montgomery point P, then `xDBL(U, W)` represents 2P.
+If P is on the curve with reduced coordinates and (U : W) represents P, then `xDBL(U, W)` represents 2P.
 
 **Verus:**
 ```rust
 pub proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
-    requires projective_represents_montgomery_or_infinity_nat(U, W, P),
+    requires
+        is_canonical_montgomery_affine(P),
+        projective_represents_montgomery_or_infinity_nat(U, W, P),
     ensures projective_represents_montgomery_or_infinity_nat(
         spec_xdbl_projective(U, W).0, spec_xdbl_projective(U, W).1,
         montgomery_add(P, P)),
@@ -361,9 +367,13 @@ pub proof fn axiom_xadd_projective_correct(
     P: MontgomeryAffine, Q: MontgomeryAffine,
     U_P: nat, W_P: nat, U_Q: nat, W_Q: nat, affine_PmQ: nat)
     requires
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
         projective_represents_montgomery_or_infinity_nat(U_P, W_P, P),
         projective_represents_montgomery_or_infinity_nat(U_Q, W_Q, Q),
         P != Q,  affine_PmQ != 0,
+        affine_PmQ == u_coordinate(montgomery_sub(P, Q))
+            || affine_PmQ == u_coordinate(montgomery_sub(Q, P)),
     ensures projective_represents_montgomery_or_infinity_nat(
         spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ).0,
         spec_xadd_projective(U_P, W_P, U_Q, W_Q, affine_PmQ).1,

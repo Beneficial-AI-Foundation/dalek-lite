@@ -159,6 +159,10 @@ theorem lehmer:
 **Verus:**
 ```rust
 pub proof fn axiom_montgomery_add_associative(P: MontgomeryAffine, Q: MontgomeryAffine, R: MontgomeryAffine)
+    requires
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+        is_canonical_montgomery_affine(R),
     ensures montgomery_add(montgomery_add(P, Q), R) == montgomery_add(P, montgomery_add(Q, R)),
 { admit(); }
 ```
@@ -189,7 +193,9 @@ Montgomery associativity follows via birational equivalence with Weierstrass (th
 **Verus (xDBL):**
 ```rust
 pub proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
-    requires projective_represents_montgomery_or_infinity_nat(U, W, P),
+    requires
+        is_canonical_montgomery_affine(P),
+        projective_represents_montgomery_or_infinity_nat(U, W, P),
     ensures projective_represents_montgomery_or_infinity_nat(
         spec_xdbl_projective(U, W).0, spec_xdbl_projective(U, W).1,
         montgomery_add(P, P)),

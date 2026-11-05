@@ -1923,6 +1923,8 @@ impl ProjectivePoint {
                 assert(field_mul(u_proj, field_inv(w_proj)) == 0) by {
                     reveal(field_mul);
                     lemma_mul_by_zero_is_zero(u_proj as int);
+                    p_gt_2();
+                    lemma_small_mod(0, p());
                 }
                 assert(montgomery_point_as_nat(result) == 0);
             } else {
@@ -2201,6 +2203,10 @@ fn differential_add_and_double(
         let W_P0 = fe51_as_canonical_nat(&P_in.W);
         let U_Q0 = fe51_as_canonical_nat(&Q_in.U);
         let W_Q0 = fe51_as_canonical_nat(&Q_in.W);
+        lemma_canonical_nat_lt_p(&P_in.U);
+        lemma_canonical_nat_lt_p(&P_in.W);
+        lemma_canonical_nat_lt_p(&Q_in.U);
+        lemma_canonical_nat_lt_p(&Q_in.W);
 
         // Square() produces a pow-based spec; connect it to `field_square`.
         let t0_raw = fe51_as_nat(&t0);

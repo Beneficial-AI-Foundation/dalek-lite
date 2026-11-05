@@ -81,6 +81,8 @@ pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
 
 /// Check if a MontgomeryAffine point is valid and has reduced coordinates (`u, v < p`).
 ///
+/// Either sign of `v` is allowed. This is not the sign choice of `canonical_montgomery_lift`.
+///
 /// `montgomery_add` compares raw coordinates, so the group axioms need reduced coordinates.
 pub open spec fn is_canonical_montgomery_affine(point: MontgomeryAffine) -> bool {
     match point {
@@ -387,12 +389,15 @@ pub open spec fn projective_represents_montgomery_or_infinity(
 ///
 /// This is convenient for stating algebraic properties of x-only algorithms without needing
 /// to construct concrete `FieldElement`s in specs.
+///
+/// `U` and `W` must be reduced (`< p`). Otherwise `W = p` would pass `W != 0` while being 0
+/// in the field.
 pub open spec fn projective_represents_montgomery_or_infinity_nat(
     U: nat,
     W: nat,
     P_aff: MontgomeryAffine,
 ) -> bool {
-    match P_aff {
+    U < p() && W < p() && match P_aff {
         MontgomeryAffine::Infinity => { W == 0 && U != 0 },
         MontgomeryAffine::Finite { u, v: _ } => { W != 0 && U == field_mul(u, W) },
     }

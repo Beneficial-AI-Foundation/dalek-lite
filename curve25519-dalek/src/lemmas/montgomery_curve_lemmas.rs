@@ -612,27 +612,27 @@ pub proof fn lemma_montgomery_ladder_points_canonical(u0: nat, k: nat)
 //
 // All steps below are integer congruences mod p (`field_congruent`).
 /// Congruence mod p on integers.
-pub open spec fn field_congruent(a: int, b: int) -> bool {
+spec fn field_congruent(a: int, b: int) -> bool {
     a % (p() as int) == b % (p() as int)
 }
 
 /// f(x) = x·x² + A·x² + x, the right-hand side of the curve equation, over the integers.
-pub open spec fn montgomery_rhs_int(a: int, x: int) -> int {
+spec fn montgomery_rhs_int(a: int, x: int) -> int {
     x * (x * x) + a * (x * x) + x
 }
 
 /// f(x) - L(x)² where L(x) = l·(x - u1) + v1.
-pub open spec fn montgomery_line_gap(a: int, u1: int, v1: int, l: int, x: int) -> int {
+spec fn montgomery_line_gap(a: int, u1: int, v1: int, l: int, x: int) -> int {
     montgomery_rhs_int(a, x) - (l * (x - u1) + v1) * (l * (x - u1) + v1)
 }
 
 /// The x-coefficient of `montgomery_line_gap - (x - u1)(x - u2)(x - c)`.
-pub open spec fn montgomery_line_alpha(a: int, u1: int, u2: int, v1: int, l: int) -> int {
+spec fn montgomery_line_alpha(a: int, u1: int, u2: int, v1: int, l: int) -> int {
     1 + 2 * l * l * u1 - 2 * l * v1 - u1 * u2 - (l * l - a - u1 - u2) * (u1 + u2)
 }
 
 /// The constant term of `montgomery_line_gap - (x - u1)(x - u2)(x - c)`.
-pub open spec fn montgomery_line_beta(a: int, u1: int, u2: int, v1: int, l: int) -> int {
+spec fn montgomery_line_beta(a: int, u1: int, u2: int, v1: int, l: int) -> int {
     -(l * l * u1 * u1) + 2 * l * v1 * u1 - v1 * v1 + u1 * u2 * (l * l - a - u1 - u2)
 }
 

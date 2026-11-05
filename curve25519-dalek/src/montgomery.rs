@@ -2423,6 +2423,7 @@ fn differential_add_and_double(
             ) {
                 let P_aff = montgomery_scalar_mul(B, k);
                 let Q_aff = montgomery_scalar_mul(B, k + 1);
+                lemma_montgomery_ladder_points_canonical(u_diff, k);
 
                 // Lift projective representation facts to nat form for the xDBL/xADD axioms.
                 assert(projective_represents_montgomery_or_infinity_nat(U_P0, W_P0, P_aff)) by {
@@ -2536,6 +2537,7 @@ fn differential_add_and_double(
             ) {
                 let P_aff = montgomery_scalar_mul(B, k + 1);
                 let Q_aff = montgomery_scalar_mul(B, k);
+                lemma_montgomery_ladder_points_canonical(u_diff, k);
 
                 // xDBL: output P represents [2]P_aff = [2k+2]B
                 assert(projective_represents_montgomery_or_infinity_nat(U_P0, W_P0, P_aff)) by {

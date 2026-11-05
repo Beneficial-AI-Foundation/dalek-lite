@@ -40,11 +40,17 @@ verus! {
 // =============================================================================
 /// Axiom: Montgomery addition is associative
 /// (P + Q) + R = P + (Q + R)
+///
+/// Holds only for points on the curve with reduced coordinates.
 pub proof fn axiom_montgomery_add_associative(
     P: MontgomeryAffine,
     Q: MontgomeryAffine,
     R: MontgomeryAffine,
 )
+    requires
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+        is_canonical_montgomery_affine(R),
     ensures
         montgomery_add(montgomery_add(P, Q), R) == montgomery_add(P, montgomery_add(Q, R)),
 {
@@ -130,11 +136,11 @@ pub(crate) open spec fn spec_xdbl_projective(U: nat, W: nat) -> (nat, nat) {
 
 /// **xDBL Axiom**: `spec_xdbl_projective` correctly computes [2]P.
 ///
-/// If `(U:W)` represents affine point `P`, then `xDBL(U,W)` represents `[2]P`.
+/// If `P` is on the curve and `(U:W)` represents `P`, then `xDBL(U,W)` represents `[2]P`.
 pub(crate) proof fn axiom_xdbl_projective_correct(P: MontgomeryAffine, U: nat, W: nat)
     requires
-// (U:W) represents P: for finite points u = U/W; for ∞ we have W = 0, U ≠ 0
-
+        is_canonical_montgomery_affine(P),
+        // (U:W) represents P: for finite points u = U/W; for ∞ we have W = 0, U ≠ 0
         projective_represents_montgomery_or_infinity_nat(U, W, P),
     ensures
         ({
@@ -248,7 +254,7 @@ pub(crate) open spec fn spec_xadd_projective(
 
 /// **xADD Axiom**: `spec_xadd_projective` correctly computes P + Q.
 ///
-/// Requires P ≠ Q and u(P - Q) ≠ 0.
+/// Requires P and Q on the curve, P ≠ Q and u(P - Q) ≠ 0.
 pub(crate) proof fn axiom_xadd_projective_correct(
     P: MontgomeryAffine,
     Q: MontgomeryAffine,
@@ -259,8 +265,9 @@ pub(crate) proof fn axiom_xadd_projective_correct(
     affine_PmQ: nat,
 )
     requires
-// (U_P:W_P) represents P; (U_Q:W_Q) represents Q
-
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+        // (U_P:W_P) represents P; (U_Q:W_Q) represents Q
         projective_represents_montgomery_or_infinity_nat(U_P, W_P, P),
         projective_represents_montgomery_or_infinity_nat(U_Q, W_Q, Q),
         P != Q,
@@ -392,6 +399,8 @@ pub proof fn lemma_montgomery_scalar_mul_succ(P: MontgomeryAffine, n: nat)
 ///
 /// Used by: `differential_add_and_double` proof (to connect [k]P + [k+1]P = [2k+1]P)
 pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat)
+    requires
+        is_canonical_montgomery_affine(P),
     ensures
         montgomery_scalar_mul(P, m + n) == montgomery_add(
             montgomery_scalar_mul(P, m),
@@ -425,6 +434,8 @@ pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat
             montgomery_scalar_mul(P, n),
         ));
 
+        lemma_montgomery_scalar_mul_canonical(P, m_minus_1);
+        lemma_montgomery_scalar_mul_canonical(P, n);
         axiom_montgomery_add_associative(
             P,
             montgomery_scalar_mul(P, m_minus_1),
@@ -455,6 +466,8 @@ pub proof fn lemma_montgomery_scalar_mul_add(P: MontgomeryAffine, m: nat, n: nat
 ///
 /// Used by: `differential_add_and_double` proof (to show xDBL output is [2k]B)
 pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
+    requires
+        is_canonical_montgomery_affine(P),
     ensures
         montgomery_scalar_mul(P, 2 * n) == montgomery_add(
             montgomery_scalar_mul(P, n),
@@ -463,6 +476,139 @@ pub proof fn lemma_montgomery_scalar_mul_double(P: MontgomeryAffine, n: nat)
 {
     // [2n]P = [n + n]P = [n]P + [n]P (by lemma_montgomery_scalar_mul_add)
     lemma_montgomery_scalar_mul_add(P, n, n);
+}
+
+// =============================================================================
+// CURVE MEMBERSHIP
+// =============================================================================
+//
+// The group axioms above hold only for points on the curve with reduced
+// coordinates (`is_canonical_montgomery_affine`). These lemmas show that the
+// points used by the Montgomery ladder have this property.
+/// Lemma: the canonical lift of a valid u-coordinate is a canonical curve point.
+pub proof fn lemma_canonical_montgomery_lift_is_canonical(u0: nat)
+    requires
+        is_valid_u_coordinate(u0),
+    ensures
+        is_canonical_montgomery_affine(canonical_montgomery_lift(u0)),
+{
+    p_gt_2();
+    let pp = p();
+    let a = fe51_as_canonical_nat(&MONTGOMERY_A);
+    let r = montgomery_rhs(u0);
+    let u = u0 % pp;
+    let v = canonical_sqrt(r);
+    assert(canonical_montgomery_lift(u0) == MontgomeryAffine::Finite { u, v });
+
+    // r is reduced, so field_canonical(r) == r.
+    assert(r % pp == r) by {
+        lemma_mod_twice(
+            (field_add(field_mul(field_mul(u0, u0), u0), field_mul(a, field_mul(u0, u0)))
+                + u0) as int,
+            pp as int,
+        );
+    }
+
+    // field_sqrt(r) is a reduced square root of r.
+    let y = choose|y: nat| #[trigger] field_mul(y, y) == field_canonical(r);
+    let y0 = y % pp;
+    assert(y0 < pp && field_mul(y0, y0) == field_canonical(r)) by {
+        lemma_mod_bound(y as int, pp as int);
+        lemma_mul_mod_noop(y as int, y as int, pp as int);
+    }
+    let s1 = field_sqrt(r);
+    assert(s1 < pp && field_mul(s1, s1) == r);
+
+    // v is s1 or -s1; both are reduced and square to r.
+    assert(v < pp && field_square(v) == r) by {
+        if s1 % 2 != 0 {
+            lemma_mod_bound((pp - field_canonical(s1)) as int, pp as int);
+            lemma_neg_square_eq(s1);
+            lemma_small_mod(s1, pp);
+        }
+    }
+
+    // The curve right-hand side at u = u0 % p equals montgomery_rhs(u0).
+    let sq = field_mul(u0, u0);
+    assert(field_square(u) == sq) by {
+        lemma_mul_mod_noop(u0 as int, u0 as int, pp as int);
+    }
+    assert(field_mul(u, sq) == field_mul(sq, u0)) by {
+        lemma_mul_mod_noop_left(u0 as int, sq as int, pp as int);
+        lemma_mul_is_commutative(u0 as int, sq as int);
+    }
+    let x = field_add(field_mul(sq, u0), field_mul(a, sq));
+    assert(field_add(x, u) == field_add(x, u0)) by {
+        lemma_add_mod_noop_right(x as int, u0 as int, pp as int);
+    }
+    assert(u < pp) by {
+        lemma_mod_bound(u0 as int, pp as int);
+    }
+}
+
+/// Lemma: negation keeps a point canonical.
+pub proof fn lemma_montgomery_neg_canonical(P: MontgomeryAffine)
+    requires
+        is_canonical_montgomery_affine(P),
+    ensures
+        is_canonical_montgomery_affine(montgomery_neg(P)),
+{
+    if let MontgomeryAffine::Finite { u, v } = P {
+        p_gt_2();
+        lemma_mod_bound((p() - field_canonical(v)) as int, p() as int);
+        lemma_neg_square_eq(v);
+        lemma_small_mod(v, p());
+    }
+}
+
+/// Axiom: Montgomery addition keeps points on the curve, with reduced coordinates.
+pub proof fn axiom_montgomery_add_closed(P: MontgomeryAffine, Q: MontgomeryAffine)
+    requires
+        is_canonical_montgomery_affine(P),
+        is_canonical_montgomery_affine(Q),
+    ensures
+        is_canonical_montgomery_affine(montgomery_add(P, Q)),
+{
+    admit();
+}
+
+/// Lemma: scalar multiples of a canonical point are canonical.
+pub proof fn lemma_montgomery_scalar_mul_canonical(P: MontgomeryAffine, n: nat)
+    requires
+        is_canonical_montgomery_affine(P),
+    ensures
+        is_canonical_montgomery_affine(montgomery_scalar_mul(P, n)),
+    decreases n,
+{
+    if n > 0 {
+        lemma_montgomery_scalar_mul_canonical(P, (n - 1) as nat);
+        axiom_montgomery_add_closed(P, montgomery_scalar_mul(P, (n - 1) as nat));
+    }
+}
+
+/// Lemma: the points used in one Montgomery ladder step are canonical.
+///
+/// For `B = canonical_montgomery_lift(u0)`: `B`, `[k]B`, `[k+1]B` and the
+/// negations of `[k]B` and `[k+1]B`.
+pub proof fn lemma_montgomery_ladder_points_canonical(u0: nat, k: nat)
+    requires
+        is_valid_u_coordinate(u0),
+    ensures
+        ({
+            let B = canonical_montgomery_lift(u0);
+            &&& is_canonical_montgomery_affine(B)
+            &&& is_canonical_montgomery_affine(montgomery_scalar_mul(B, k))
+            &&& is_canonical_montgomery_affine(montgomery_scalar_mul(B, k + 1))
+            &&& is_canonical_montgomery_affine(montgomery_neg(montgomery_scalar_mul(B, k)))
+            &&& is_canonical_montgomery_affine(montgomery_neg(montgomery_scalar_mul(B, k + 1)))
+        }),
+{
+    let B = canonical_montgomery_lift(u0);
+    lemma_canonical_montgomery_lift_is_canonical(u0);
+    lemma_montgomery_scalar_mul_canonical(B, k);
+    lemma_montgomery_scalar_mul_canonical(B, k + 1);
+    lemma_montgomery_neg_canonical(montgomery_scalar_mul(B, k));
+    lemma_montgomery_neg_canonical(montgomery_scalar_mul(B, k + 1));
 }
 
 // =============================================================================

@@ -79,6 +79,16 @@ pub open spec fn is_valid_montgomery_affine(point: MontgomeryAffine) -> bool {
     }
 }
 
+/// Check if a MontgomeryAffine point is valid and has reduced coordinates (`u, v < p`).
+///
+/// `montgomery_add` compares raw coordinates, so the group axioms need reduced coordinates.
+pub open spec fn is_canonical_montgomery_affine(point: MontgomeryAffine) -> bool {
+    match point {
+        MontgomeryAffine::Infinity => true,
+        MontgomeryAffine::Finite { u, v } => u < p() && v < p() && on_montgomery_curve(u, v),
+    }
+}
+
 /// Compute f(u) = u^3 + A*u^2 + u over the field.
 pub open spec fn montgomery_rhs(u: nat) -> nat {
     let A = fe51_as_canonical_nat(&MONTGOMERY_A);

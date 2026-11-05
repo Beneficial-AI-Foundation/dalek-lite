@@ -296,6 +296,168 @@ pub open spec fn pippenger_horner(
 }
 
 // =============================================================================
+// Closure lemmas: the Pippenger spec functions stay on the curve
+// =============================================================================
+/// The affine points of valid Pippenger input are on the curve.
+///
+/// Each ProjectiveNielsPoint is valid, so it corresponds to a valid EdwardsPoint
+/// with the same affine coordinates.
+pub proof fn lemma_pippenger_input_on_curve(
+    scalars_points: Seq<([i8; 64], ProjectiveNielsPoint)>,
+    pts_affine: Seq<(nat, nat)>,
+    digits_seqs: Seq<Seq<i8>>,
+    w: nat,
+    dc: nat,
+)
+    requires
+        pippenger_input_valid(scalars_points, pts_affine, digits_seqs, w, dc),
+    ensures
+        all_on_edwards_curve(pts_affine),
+{
+    assert forall|k: int| 0 <= k < pts_affine.len() implies is_on_edwards_curve(
+        (#[trigger] pts_affine[k]).0,
+        pts_affine[k].1,
+    ) by {
+        let niels = scalars_points[k].1;
+        assert(is_valid_projective_niels_point(niels));
+        let point = choose|point: EdwardsPoint|
+            is_valid_edwards_point(point) && edwards_point_limbs_bounded(point)
+                && #[trigger] projective_niels_corresponds_to_edwards(niels, point);
+        lemma_projective_niels_affine_equals_edwards_affine(niels, point);
+        lemma_edwards_point_as_affine_on_curve(point);
+    }
+}
+
+/// H(j) is on the curve when the points are on the curve.
+pub proof fn lemma_pippenger_horner_on_curve(
+    pts: Seq<(nat, nat)>,
+    digs: Seq<Seq<i8>>,
+    j: int,
+    w: nat,
+    digits_count: nat,
+)
+    requires
+        0 <= j <= digits_count as int,
+        all_on_edwards_curve(pts),
+    ensures
+        is_on_edwards_curve(
+            pippenger_horner(pts, digs, j, w, digits_count).0,
+            pippenger_horner(pts, digs, j, w, digits_count).1,
+        ),
+    decreases digits_count as int - j,
+{
+    reveal(pippenger_horner);
+    if j >= digits_count as int {
+        lemma_identity_on_curve();
+    } else {
+        lemma_pippenger_horner_on_curve(pts, digs, j + 1, w, digits_count);
+        let prev = pippenger_horner(pts, digs, j + 1, w, digits_count);
+        lemma_edwards_scalar_mul_on_curve(prev, pow2(w));
+        let scaled = edwards_scalar_mul(prev, pow2(w));
+        lemma_column_sum_on_curve(pts, digs, j, pts.len() as int);
+        let col = straus_column_sum(pts, digs, j, pts.len() as int);
+        axiom_edwards_add_complete(scaled.0, scaled.1, col.0, col.1);
+    }
+}
+
+/// bucket(b, n) is on the curve when the first n points are on the curve.
+pub proof fn lemma_bucket_contents_on_curve(
+    points_affine: Seq<(nat, nat)>,
+    all_digits: Seq<Seq<i8>>,
+    col: int,
+    n: int,
+    b: int,
+)
+    requires
+        forall|k: int|
+            0 <= k < n ==> is_on_edwards_curve((#[trigger] points_affine[k]).0, points_affine[k].1),
+    ensures
+        is_on_edwards_curve(
+            pippenger_bucket_contents(points_affine, all_digits, col, n, b).0,
+            pippenger_bucket_contents(points_affine, all_digits, col, n, b).1,
+        ),
+    decreases n,
+{
+    if n <= 0 {
+        lemma_identity_on_curve();
+    } else {
+        lemma_bucket_contents_on_curve(points_affine, all_digits, col, n - 1, b);
+        let prev = pippenger_bucket_contents(points_affine, all_digits, col, n - 1, b);
+        let pt = points_affine[n - 1];
+        axiom_edwards_add_complete(prev.0, prev.1, pt.0, pt.1);
+        lemma_negation_preserves_curve(pt.0, pt.1);
+        axiom_edwards_add_complete(prev.0, prev.1, field_neg(pt.0), pt.1);
+    }
+}
+
+/// WBS(B) is on the curve when buckets [0, B) are on the curve.
+pub proof fn lemma_weighted_bucket_sum_on_curve(buckets: Seq<(nat, nat)>, B: int)
+    requires
+        forall|j: int| 0 <= j < B ==> is_on_edwards_curve((#[trigger] buckets[j]).0, buckets[j].1),
+    ensures
+        is_on_edwards_curve(
+            pippenger_weighted_bucket_sum(buckets, B).0,
+            pippenger_weighted_bucket_sum(buckets, B).1,
+        ),
+    decreases B,
+{
+    if B <= 0 {
+        lemma_identity_on_curve();
+    } else {
+        lemma_weighted_bucket_sum_on_curve(buckets, B - 1);
+        let prev = pippenger_weighted_bucket_sum(buckets, B - 1);
+        lemma_edwards_scalar_mul_on_curve(buckets[B - 1], B as nat);
+        let weighted = edwards_scalar_mul(buckets[B - 1], B as nat);
+        axiom_edwards_add_complete(prev.0, prev.1, weighted.0, weighted.1);
+    }
+}
+
+/// IS(b, B) is on the curve when buckets [0, B) are on the curve.
+pub proof fn lemma_intermediate_sum_on_curve(buckets: Seq<(nat, nat)>, b: int, B: int)
+    requires
+        0 <= b,
+        forall|j: int| 0 <= j < B ==> is_on_edwards_curve((#[trigger] buckets[j]).0, buckets[j].1),
+    ensures
+        is_on_edwards_curve(
+            pippenger_intermediate_sum(buckets, b, B).0,
+            pippenger_intermediate_sum(buckets, b, B).1,
+        ),
+    decreases B - b,
+{
+    if b >= B {
+        lemma_identity_on_curve();
+    } else if b == B - 1 {
+    } else {
+        lemma_intermediate_sum_on_curve(buckets, b + 1, B);
+        let next = pippenger_intermediate_sum(buckets, b + 1, B);
+        axiom_edwards_add_complete(next.0, next.1, buckets[b].0, buckets[b].1);
+    }
+}
+
+/// weighted_from(b, B) is on the curve when buckets [0, B) are on the curve.
+pub proof fn lemma_weighted_from_on_curve(buckets: Seq<(nat, nat)>, b: int, B: int)
+    requires
+        0 <= b,
+        forall|j: int| 0 <= j < B ==> is_on_edwards_curve((#[trigger] buckets[j]).0, buckets[j].1),
+    ensures
+        is_on_edwards_curve(
+            pippenger_weighted_from(buckets, b, B).0,
+            pippenger_weighted_from(buckets, b, B).1,
+        ),
+    decreases B - b,
+{
+    if B <= b {
+        lemma_identity_on_curve();
+    } else {
+        lemma_weighted_from_on_curve(buckets, b, B - 1);
+        let rest = pippenger_weighted_from(buckets, b, B - 1);
+        lemma_edwards_scalar_mul_on_curve(buckets[B - 1], (B - b) as nat);
+        let weighted = edwards_scalar_mul(buckets[B - 1], (B - b) as nat);
+        axiom_edwards_add_complete(rest.0, rest.1, weighted.0, weighted.1);
+    }
+}
+
+// =============================================================================
 // Lemma: Zero-points Horner is identity
 // =============================================================================
 /// When n = 0 (no points):  H(j) = O for all j.
@@ -346,6 +508,7 @@ pub proof fn lemma_pippenger_single(P: (nat, nat), d: Seq<i8>, j: int, w: nat, d
         d.len() >= digits_count as int,
         P.0 < p(),
         P.1 < p(),
+        is_on_edwards_curve(P.0, P.1),
         0 <= j <= digits_count as int,
         w >= 1,
     ensures
@@ -421,6 +584,7 @@ pub proof fn lemma_pippenger_peel_last(
         0 <= j <= digits_count as int,
         forall|k: int| 0 <= k < digs.len() ==> (#[trigger] digs[k]).len() >= digits_count as int,
         forall|k: int| 0 <= k < pts.len() ==> (#[trigger] pts[k]).0 < p() && pts[k].1 < p(),
+        all_on_edwards_curve(pts),
     ensures
         pippenger_horner(pts, digs, j, w, digits_count) == ({
             let prefix_result = pippenger_horner(
@@ -479,6 +643,9 @@ pub proof fn lemma_pippenger_peel_last(
             edwards_add(prev_prefix.0, prev_prefix.1, prev_single.0, prev_single.1),
             pow2(w),
         ) == edwards_add(scaled_prefix.0, scaled_prefix.1, scaled_single.0, scaled_single.1)) by {
+            lemma_all_on_edwards_curve_peel_last(pts);
+            lemma_pippenger_horner_on_curve(pts_prefix, digs_prefix, j + 1, w, digits_count);
+            lemma_pippenger_horner_on_curve(pts_single, digs_single, j + 1, w, digits_count);
             axiom_edwards_scalar_mul_distributive(prev_prefix, prev_single, pow2(w));
         }
         // Column sum splitting
@@ -500,11 +667,14 @@ pub proof fn lemma_pippenger_peel_last(
         let ac = edwards_add(a.0, a.1, c.0, c.1);
 
         assert(edwards_add(ab.0, ab.1, cd.0, cd.1) == edwards_add(ac.0, ac.1, bd.0, bd.1)) by {
-            axiom_edwards_add_associative(a.0, a.1, b.0, b.1, cd.0, cd.1);
-            axiom_edwards_add_associative(b.0, b.1, c.0, c.1, d_val.0, d_val.1);
-            lemma_edwards_add_commutative(b.0, b.1, c.0, c.1);
-            axiom_edwards_add_associative(c.0, c.1, b.0, b.1, d_val.0, d_val.1);
-            axiom_edwards_add_associative(a.0, a.1, c.0, c.1, bd.0, bd.1);
+            lemma_all_on_edwards_curve_peel_last(pts);
+            lemma_pippenger_horner_on_curve(pts_prefix, digs_prefix, j + 1, w, digits_count);
+            lemma_pippenger_horner_on_curve(pts_single, digs_single, j + 1, w, digits_count);
+            lemma_edwards_scalar_mul_on_curve(prev_prefix, pow2(w));
+            lemma_edwards_scalar_mul_on_curve(prev_single, pow2(w));
+            lemma_column_sum_on_curve(pts_prefix, digs_prefix, j, n - 1);
+            lemma_column_sum_on_curve(pts_single, digs_single, j, 1);
+            lemma_edwards_add_four_way_swap(a, b, c, d_val);
         }
     }
 }
@@ -580,6 +750,7 @@ pub proof fn lemma_pippenger_horner_correct(
         points_affine.len() == scalars.len(),
         digits.len() == scalars.len(),
         w >= 1,
+        forall|k: int| 0 <= k < points_ep.len() ==> is_valid_edwards_point(#[trigger] points_ep[k]),
         forall|k: int|
             0 <= k < points_affine.len() ==> #[trigger] points_affine[k] == edwards_point_as_affine(
                 points_ep[k],
@@ -628,6 +799,12 @@ pub proof fn lemma_pippenger_horner_correct(
             assert(scalars_prefix[k] == scalars[k]);
         }
 
+        assert forall|k: int| 0 <= k < points_prefix.len() implies is_valid_edwards_point(
+            #[trigger] points_prefix[k],
+        ) by {
+            assert(points_prefix[k] == points_ep[k]);
+        }
+
         // IH: prefix is correct
         assert(pippenger_horner(pts_prefix, digs_prefix, 0, w, digits_count) == sum_of_scalar_muls(
             scalars_prefix,
@@ -648,6 +825,13 @@ pub proof fn lemma_pippenger_horner_correct(
             < p() && points_affine[k].1 < p() by {
             lemma_edwards_point_as_affine_canonical(points_ep[k]);
         }
+        assert forall|k: int| 0 <= k < points_affine.len() implies is_on_edwards_curve(
+            (#[trigger] points_affine[k]).0,
+            points_affine[k].1,
+        ) by {
+            lemma_edwards_point_as_affine_on_curve(points_ep[k]);
+        }
+        lemma_all_on_edwards_curve_peel_last(points_affine);
 
         // Digits lengths for peel_last
         assert forall|k: int| 0 <= k < digits.len() implies (#[trigger] digits[k]).len()
@@ -737,6 +921,7 @@ proof fn lemma_intermediate_sum_extend(buckets: Seq<(nat, nat)>, b: int, B: int)
         0 <= b,
         b < B - 1,
         B <= buckets.len() as int,
+        forall|j: int| 0 <= j < B ==> is_on_edwards_curve((#[trigger] buckets[j]).0, buckets[j].1),
     ensures
         pippenger_intermediate_sum(buckets, b, B) == {
             let prev = pippenger_intermediate_sum(buckets, b, B - 1);
@@ -771,6 +956,7 @@ proof fn lemma_intermediate_sum_extend(buckets: Seq<(nat, nat)>, b: int, B: int)
         }
 
         // Rearrange: add(add(A, C), D) = add(add(A, D), C)
+        lemma_intermediate_sum_on_curve(buckets, b + 1, B - 1);
         assert(edwards_add(
             edwards_add(A.0, A.1, C.0, C.1).0,
             edwards_add(A.0, A.1, C.0, C.1).1,
@@ -808,6 +994,7 @@ proof fn lemma_weighted_from_decompose(buckets: Seq<(nat, nat)>, b: int, B: int)
         b < B,
         B <= buckets.len() as int,
         forall|j: int| 0 <= j < B ==> (#[trigger] buckets[j]).0 < p() && buckets[j].1 < p(),
+        forall|j: int| 0 <= j < B ==> is_on_edwards_curve((#[trigger] buckets[j]).0, buckets[j].1),
     ensures
         pippenger_weighted_from(buckets, b, B) == {
             let w = pippenger_weighted_from(buckets, b + 1, B);
@@ -859,6 +1046,13 @@ proof fn lemma_weighted_from_decompose(buckets: Seq<(nat, nat)>, b: int, B: int)
         ));
         assert(pippenger_weighted_from(buckets, b + 1, B) == W_plus_mC);
 
+        // All terms are on the curve
+        lemma_weighted_from_on_curve(buckets, b + 1, B - 1);
+        lemma_intermediate_sum_on_curve(buckets, b, B - 1);
+        lemma_edwards_scalar_mul_on_curve(C, m);
+        axiom_edwards_add_complete(mC.0, mC.1, C.0, C.1);
+        axiom_edwards_add_complete(IS_prev.0, IS_prev.1, C.0, C.1);
+
         // Four-way reassociation: (W+IS_prev)+(mC+C) = (W+mC)+(IS_prev+C)
         assert(edwards_add(
             edwards_add(W.0, W.1, IS_prev.0, IS_prev.1).0,
@@ -889,6 +1083,7 @@ proof fn lemma_running_sum_eq_weighted_from(buckets: Seq<(nat, nat)>, b: int, B:
         b <= B,
         B <= buckets.len() as int,
         forall|j: int| 0 <= j < B ==> (#[trigger] buckets[j]).0 < p() && buckets[j].1 < p(),
+        forall|j: int| 0 <= j < B ==> is_on_edwards_curve((#[trigger] buckets[j]).0, buckets[j].1),
     ensures
         pippenger_running_sum(buckets, b, B) == pippenger_weighted_from(buckets, b, B),
     decreases B - b,
@@ -955,6 +1150,11 @@ pub proof fn lemma_running_sum_equals_weighted(buckets_affine: Seq<(nat, nat)>, 
         buckets_affine.len() == B,
         forall|j: int|
             0 <= j < B ==> (#[trigger] buckets_affine[j]).0 < p() && buckets_affine[j].1 < p(),
+        forall|j: int|
+            0 <= j < B ==> is_on_edwards_curve(
+                (#[trigger] buckets_affine[j]).0,
+                buckets_affine[j].1,
+            ),
     ensures
         pippenger_running_sum(buckets_affine, 0, B) == pippenger_weighted_bucket_sum(
             buckets_affine,
@@ -1058,6 +1258,9 @@ proof fn lemma_weighted_bucket_sum_add_to_bucket(
         B <= buckets_new.len() as int,
         buckets_new[idx] == edwards_add(buckets_old[idx].0, buckets_old[idx].1, P.0, P.1),
         forall|j: int| 0 <= j < B && j != idx ==> (#[trigger] buckets_new[j]) == buckets_old[j],
+        forall|j: int|
+            0 <= j < B ==> is_on_edwards_curve((#[trigger] buckets_old[j]).0, buckets_old[j].1),
+        is_on_edwards_curve(P.0, P.1),
     ensures
         pippenger_weighted_bucket_sum(buckets_new, B) == {
             let prev = pippenger_weighted_bucket_sum(buckets_old, B);
@@ -1070,6 +1273,9 @@ proof fn lemma_weighted_bucket_sum_add_to_bucket(
         let wbs_prev = pippenger_weighted_bucket_sum(buckets_old, B - 1);
         let old_w = edwards_scalar_mul(buckets_old[B - 1], B as nat);
         let delta = edwards_scalar_mul(P, B as nat);
+        lemma_weighted_bucket_sum_on_curve(buckets_old, B - 1);
+        lemma_edwards_scalar_mul_on_curve(buckets_old[B - 1], B as nat);
+        lemma_edwards_scalar_mul_on_curve(P, B as nat);
 
         // First B-1 buckets agree
         assert(pippenger_weighted_bucket_sum(buckets_new, B - 1) == pippenger_weighted_bucket_sum(
@@ -1110,6 +1316,9 @@ proof fn lemma_weighted_bucket_sum_add_to_bucket(
         let wbs_prev = pippenger_weighted_bucket_sum(buckets_old, B - 1);
         let old_w = edwards_scalar_mul(buckets_old[B - 1], B as nat);
         let delta = edwards_scalar_mul(P, (idx + 1) as nat);
+        lemma_weighted_bucket_sum_on_curve(buckets_old, B - 1);
+        lemma_edwards_scalar_mul_on_curve(buckets_old[B - 1], B as nat);
+        lemma_edwards_scalar_mul_on_curve(P, (idx + 1) as nat);
 
         // IH on first B-1 buckets
         assert(pippenger_weighted_bucket_sum(buckets_new, B - 1) == {
@@ -1187,6 +1396,8 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
             num_buckets as int),
         forall|k: int|
             0 <= k < n ==> (#[trigger] points_affine[k]).0 < p() && points_affine[k].1 < p(),
+        forall|k: int|
+            0 <= k < n ==> is_on_edwards_curve((#[trigger] points_affine[k]).0, points_affine[k].1),
     ensures
         ({
             let buckets = Seq::new(
@@ -1233,6 +1444,13 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
 
         let d = all_digits[n - 1][col] as int;
         let pt = points_affine[n - 1];
+        assert forall|bb: int| 0 <= bb < B implies is_on_edwards_curve(
+            (#[trigger] buckets_prev[bb]).0,
+            buckets_prev[bb].1,
+        ) by {
+            lemma_bucket_contents_on_curve(points_affine, all_digits, col, n - 1, bb);
+        }
+        assert(is_on_edwards_curve(pt.0, pt.1));
 
         if d > 0 {
             let idx = (d - 1) as int;
@@ -1261,6 +1479,7 @@ pub proof fn lemma_bucket_weighted_sum_equals_column_sum(
                 == buckets_prev[bb] by {};
 
             let neg_pt = edwards_neg(pt);
+            lemma_negation_preserves_curve(pt.0, pt.1);
             assert(buckets_n[idx] == edwards_sub(
                 buckets_prev[idx].0,
                 buckets_prev[idx].1,

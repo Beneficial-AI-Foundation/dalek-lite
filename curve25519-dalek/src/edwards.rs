@@ -3223,6 +3223,7 @@ impl BasepointTable for EdwardsBasepointTable {
                 )) by {
                     assert(8 * ((i + 1) as nat) == 8 * (i as nat) + 8);
                     vstd::arithmetic::power2::lemma_pow2_adds(8 * (i as nat), 8);
+                    lemma_edwards_point_as_affine_on_curve(*basepoint);
                     lemma_edwards_scalar_mul_composition(
                         edwards_point_as_affine(*basepoint),
                         pow256(i as nat),
@@ -3632,6 +3633,8 @@ impl BasepointTable for EdwardsBasepointTable {
                     assert(old_P2_affine == p_i);
 
                     // Update step for the spec-side loop state, isolated in a small lemma to avoid rlimit.
+                    crate::lemmas::edwards_lemmas::mul_base_lemmas::lemma_basepoint_table_basepoint_on_curve(
+                    *self, B);
                     crate::lemmas::edwards_lemmas::mul_base_lemmas::lemma_pippenger_partial_step_even(
                     a@, i as int, B);
                     assert(edwards_add(p_i.0, p_i.1, term_i.0, term_i.1) == pippenger_partial(
@@ -3670,6 +3673,8 @@ impl BasepointTable for EdwardsBasepointTable {
             reveal(reconstruct_radix_16);
             assert(reconstruct_radix_16(a@) == scalar_as_nat(scalar) as int);
 
+            crate::lemmas::edwards_lemmas::mul_base_lemmas::lemma_basepoint_table_basepoint_on_curve(
+            *self, B);
             lemma_pippenger_sum_correct(a@, B, scalar_as_nat(scalar));
             assert(pippenger_partial(a@, 64, B) == edwards_scalar_mul(B, scalar_as_nat(scalar)));
 

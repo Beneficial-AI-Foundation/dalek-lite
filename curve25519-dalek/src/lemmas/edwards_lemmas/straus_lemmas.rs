@@ -439,9 +439,10 @@ pub open spec fn straus_vt_input_valid(
     &&& forall|k: int|
         0 <= k < n_int ==> #[trigger] nafs_seqs[k]
             == nafs_view[k]@
-    // Canonical affine coordinates (< p())
+    // Canonical affine coordinates (< p()) on the curve
     &&& forall|k: int|
         0 <= k < n_int ==> (#[trigger] pts_affine[k]).0 < p() && pts_affine[k].1 < p()
+    &&& all_on_edwards_curve(pts_affine)
 }
 
 /// Bundled validity predicate for the constant-time (CT) Straus loops.
@@ -497,6 +498,7 @@ pub open spec fn straus_ct_input_valid(
     &&& forall|k: int|
         0 <= k < n_int ==> #[trigger] pts_affine[k] == edwards_point_as_affine(spec_points[k])
     &&& forall|k: int| 0 <= k < n_int ==> #[trigger] digits_seqs[k] == scalar_digits_view[k]@
+    &&& all_on_edwards_curve(pts_affine)
 }
 
 // =============================================================================
@@ -628,6 +630,117 @@ pub proof fn lemma_column_sum_canonical(
         // edwards_add of canonical inputs produces canonical output
         let term = edwards_scalar_mul_signed(points_affine[n - 1], digits[n - 1][j] as int);
         lemma_edwards_add_canonical(prev.0, prev.1, term.0, term.1);
+    }
+}
+
+/// col(j, n) is on the curve when the points are on the curve.
+pub proof fn lemma_column_sum_on_curve(
+    points_affine: Seq<(nat, nat)>,
+    digits: Seq<Seq<i8>>,
+    j: int,
+    n: int,
+)
+    requires
+        n <= points_affine.len(),
+        all_on_edwards_curve(points_affine),
+    ensures
+        is_on_edwards_curve(
+            straus_column_sum(points_affine, digits, j, n).0,
+            straus_column_sum(points_affine, digits, j, n).1,
+        ),
+    decreases n,
+{
+    if n <= 0 {
+        lemma_identity_on_curve();
+    } else {
+        lemma_column_sum_on_curve(points_affine, digits, j, n - 1);
+        let prev = straus_column_sum(points_affine, digits, j, n - 1);
+        let P = points_affine[n - 1];
+        lemma_edwards_scalar_mul_signed_on_curve(P, digits[n - 1][j] as int);
+        let term = edwards_scalar_mul_signed(P, digits[n - 1][j] as int);
+        axiom_edwards_add_complete(prev.0, prev.1, term.0, term.1);
+    }
+}
+
+/// The prefix and the last point of a sequence on the curve are on the curve.
+pub proof fn lemma_all_on_edwards_curve_peel_last(pts: Seq<(nat, nat)>)
+    requires
+        pts.len() >= 1,
+        all_on_edwards_curve(pts),
+    ensures
+        all_on_edwards_curve(pts.drop_last()),
+        all_on_edwards_curve(seq![(pts.last())]),
+        is_on_edwards_curve(pts.last().0, pts.last().1),
+{
+    assert forall|k: int| 0 <= k < pts.drop_last().len() implies is_on_edwards_curve(
+        (#[trigger] pts.drop_last()[k]).0,
+        pts.drop_last()[k].1,
+    ) by {
+        assert(pts.drop_last()[k] == pts[k]);
+    }
+    assert(pts.last() == pts[pts.len() - 1]);
+    assert(seq![(pts.last())][0] == pts.last());
+}
+
+/// H_ct(j) is on the curve when the points are on the curve.
+pub proof fn lemma_straus_ct_partial_on_curve(
+    points_affine: Seq<(nat, nat)>,
+    digits: Seq<Seq<i8>>,
+    j: int,
+)
+    requires
+        0 <= j <= 64,
+        all_on_edwards_curve(points_affine),
+    ensures
+        is_on_edwards_curve(
+            straus_ct_partial(points_affine, digits, j).0,
+            straus_ct_partial(points_affine, digits, j).1,
+        ),
+    decreases 64 - j,
+{
+    if j >= 64 {
+        lemma_straus_ct_base(points_affine, digits);
+        lemma_identity_on_curve();
+    } else {
+        lemma_straus_ct_step(points_affine, digits, j);
+        lemma_straus_ct_partial_on_curve(points_affine, digits, j + 1);
+        let prev = straus_ct_partial(points_affine, digits, j + 1);
+        lemma_edwards_scalar_mul_on_curve(prev, 16);
+        let scaled = edwards_scalar_mul(prev, 16);
+        lemma_column_sum_on_curve(points_affine, digits, j, points_affine.len() as int);
+        let col = straus_column_sum(points_affine, digits, j, points_affine.len() as int);
+        axiom_edwards_add_complete(scaled.0, scaled.1, col.0, col.1);
+    }
+}
+
+/// H_vt(i) is on the curve when the points are on the curve.
+pub proof fn lemma_straus_vt_partial_on_curve(
+    points_affine: Seq<(nat, nat)>,
+    nafs: Seq<Seq<i8>>,
+    i: int,
+)
+    requires
+        0 <= i <= 256,
+        all_on_edwards_curve(points_affine),
+    ensures
+        is_on_edwards_curve(
+            straus_vt_partial(points_affine, nafs, i).0,
+            straus_vt_partial(points_affine, nafs, i).1,
+        ),
+    decreases 256 - i,
+{
+    if i >= 256 {
+        lemma_straus_vt_base(points_affine, nafs);
+        lemma_identity_on_curve();
+    } else {
+        lemma_straus_vt_step(points_affine, nafs, i);
+        lemma_straus_vt_partial_on_curve(points_affine, nafs, i + 1);
+        let prev = straus_vt_partial(points_affine, nafs, i + 1);
+        axiom_edwards_add_complete(prev.0, prev.1, prev.0, prev.1);
+        let doubled = edwards_double(prev.0, prev.1);
+        lemma_column_sum_on_curve(points_affine, nafs, i, points_affine.len() as int);
+        let col = straus_column_sum(points_affine, nafs, i, points_affine.len() as int);
+        axiom_edwards_add_complete(doubled.0, doubled.1, col.0, col.1);
     }
 }
 
@@ -800,6 +913,7 @@ pub proof fn lemma_straus_ct_single(P: (nat, nat), d: Seq<i8>, j: int)
         d.len() == 64,
         P.0 < p(),
         P.1 < p(),
+        is_on_edwards_curve(P.0, P.1),
         0 <= j <= 64,
     ensures
         straus_ct_partial(seq![(P)], seq![(d)], j) == edwards_scalar_mul_signed(
@@ -854,8 +968,9 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         0 <= j <= 64,
         // All digits have length 64
         forall|k: int| 0 <= k < digs.len() ==> (#[trigger] digs[k]).len() == 64,
-        // All points are canonical
+        // All points are canonical and on the curve
         forall|k: int| 0 <= k < pts.len() ==> (#[trigger] pts[k]).0 < p() && pts[k].1 < p(),
+        all_on_edwards_curve(pts),
     ensures
         straus_ct_partial(pts, digs, j) == ({
             let prefix_result = straus_ct_partial(pts.drop_last(), digs.drop_last(), j);
@@ -894,6 +1009,9 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         // By IH: prev_full == edwards_add(prev_prefix, prev_single)
         // [16]*prev_full == [16]*edwards_add(prev_prefix, prev_single)
         //               == edwards_add([16]*prev_prefix, [16]*prev_single)  (distributivity)
+        lemma_all_on_edwards_curve_peel_last(pts);
+        lemma_straus_ct_partial_on_curve(pts_prefix, digs_prefix, j + 1);
+        lemma_straus_ct_partial_on_curve(pts_single, digs_single, j + 1);
         axiom_edwards_scalar_mul_distributive(prev_prefix, prev_single, 16);
 
         let scaled_prefix = edwards_scalar_mul(prev_prefix, 16);
@@ -912,6 +1030,15 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         // column_sum for the single point
         lemma_column_sum_single(pts.last(), digs.last(), j);
         // col_single == [digs.last()[j]] * pts.last()
+
+        // All four terms are on the curve
+        lemma_all_on_edwards_curve_peel_last(pts);
+        lemma_straus_ct_partial_on_curve(pts_prefix, digs_prefix, j + 1);
+        lemma_straus_ct_partial_on_curve(pts_single, digs_single, j + 1);
+        lemma_edwards_scalar_mul_on_curve(prev_prefix, 16);
+        lemma_edwards_scalar_mul_on_curve(prev_single, 16);
+        lemma_column_sum_on_curve(pts_prefix, digs_prefix, j, n - 1);
+        lemma_column_sum_on_curve(pts_single, digs_single, j, 1);
 
         // (A+B) + (C+D) = (A+C) + (B+D)
         lemma_edwards_add_four_way_swap(scaled_prefix, scaled_single, col_prefix, col_single);
@@ -935,6 +1062,7 @@ pub proof fn lemma_straus_ct_correct(
         scalars.len() == points_ep.len(),
         points_affine.len() == scalars.len(),
         digits.len() == scalars.len(),
+        forall|k: int| 0 <= k < points_ep.len() ==> is_valid_edwards_point(#[trigger] points_ep[k]),
         forall|k: int|
             0 <= k < points_affine.len() ==> #[trigger] points_affine[k] == edwards_point_as_affine(
                 points_ep[k],
@@ -978,6 +1106,12 @@ pub proof fn lemma_straus_ct_correct(
             assert(scalars_prefix[k] == scalars[k]);
         }
 
+        assert forall|k: int| 0 <= k < points_prefix.len() implies is_valid_edwards_point(
+            #[trigger] points_prefix[k],
+        ) by {
+            assert(points_prefix[k] == points_ep[k]);
+        }
+
         // IH: prefix is correct
         lemma_straus_ct_correct(scalars_prefix, points_prefix, pts_prefix, digs_prefix);
 
@@ -986,6 +1120,13 @@ pub proof fn lemma_straus_ct_correct(
             < p() && points_affine[k].1 < p() by {
             lemma_edwards_point_as_affine_canonical(points_ep[k]);
         }
+        assert forall|k: int| 0 <= k < points_affine.len() implies is_on_edwards_curve(
+            (#[trigger] points_affine[k]).0,
+            points_affine[k].1,
+        ) by {
+            lemma_edwards_point_as_affine_on_curve(points_ep[k]);
+        }
+        lemma_all_on_edwards_curve_peel_last(points_affine);
 
         // Split: straus_ct_partial(pts, digs, 0) = prefix_result + single_result
         lemma_straus_ct_partial_peel_last(points_affine, digits, 0);
@@ -1089,6 +1230,7 @@ pub proof fn lemma_straus_vt_single(P: (nat, nat), naf: Seq<i8>, i: int)
         naf.len() == 256,
         P.0 < p(),
         P.1 < p(),
+        is_on_edwards_curve(P.0, P.1),
         0 <= i <= 256,
     ensures
         straus_vt_partial(seq![(P)], seq![(naf)], i) == edwards_scalar_mul_signed(
@@ -1132,6 +1274,7 @@ pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<S
         0 <= i <= 256,
         forall|k: int| 0 <= k < nafs.len() ==> (#[trigger] nafs[k]).len() == 256,
         forall|k: int| 0 <= k < pts.len() ==> (#[trigger] pts[k]).0 < p() && pts[k].1 < p(),
+        all_on_edwards_curve(pts),
     ensures
         straus_vt_partial(pts, nafs, i) == ({
             let prefix_result = straus_vt_partial(pts.drop_last(), nafs.drop_last(), i);
@@ -1167,6 +1310,9 @@ pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<S
         // By IH: prev_full == edwards_add(prev_prefix, prev_single)
         // double(prev_full) == double(edwards_add(prev_prefix, prev_single))
         //                   == edwards_add(double(prev_prefix), double(prev_single))
+        lemma_all_on_edwards_curve_peel_last(pts);
+        lemma_straus_vt_partial_on_curve(pts_prefix, nafs_prefix, i + 1);
+        lemma_straus_vt_partial_on_curve(pts_single, nafs_single, i + 1);
         lemma_double_distributes(prev_prefix, prev_single);
 
         let doubled_prefix = edwards_double(prev_prefix.0, prev_prefix.1);
@@ -1178,6 +1324,12 @@ pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<S
 
         lemma_column_sum_prefix_eq(pts, nafs, pts_prefix, nafs_prefix, i, n - 1);
         lemma_column_sum_single(pts.last(), nafs.last(), i);
+
+        // All four terms are on the curve
+        axiom_edwards_add_complete(prev_prefix.0, prev_prefix.1, prev_prefix.0, prev_prefix.1);
+        axiom_edwards_add_complete(prev_single.0, prev_single.1, prev_single.0, prev_single.1);
+        lemma_column_sum_on_curve(pts_prefix, nafs_prefix, i, n - 1);
+        lemma_column_sum_on_curve(pts_single, nafs_single, i, 1);
 
         // (A+B) + (C+D) = (A+C) + (B+D)
         lemma_edwards_add_four_way_swap(doubled_prefix, doubled_single, col_prefix, col_single);
@@ -1255,6 +1407,7 @@ pub proof fn lemma_straus_vt_correct(
         scalars.len() == points_ep.len(),
         points_affine.len() == scalars.len(),
         nafs.len() == scalars.len(),
+        forall|k: int| 0 <= k < points_ep.len() ==> is_valid_edwards_point(#[trigger] points_ep[k]),
         forall|k: int|
             0 <= k < points_affine.len() ==> #[trigger] points_affine[k] == edwards_point_as_affine(
                 points_ep[k],
@@ -1295,6 +1448,12 @@ pub proof fn lemma_straus_vt_correct(
             assert(scalars_prefix[k] == scalars[k]);
         }
 
+        assert forall|k: int| 0 <= k < points_prefix.len() implies is_valid_edwards_point(
+            #[trigger] points_prefix[k],
+        ) by {
+            assert(points_prefix[k] == points_ep[k]);
+        }
+
         // IH
         lemma_straus_vt_correct(scalars_prefix, points_prefix, pts_prefix, nafs_prefix);
 
@@ -1303,6 +1462,13 @@ pub proof fn lemma_straus_vt_correct(
             < p() && points_affine[k].1 < p() by {
             p_gt_2();
         }
+        assert forall|k: int| 0 <= k < points_affine.len() implies is_on_edwards_curve(
+            (#[trigger] points_affine[k]).0,
+            points_affine[k].1,
+        ) by {
+            lemma_edwards_point_as_affine_on_curve(points_ep[k]);
+        }
+        lemma_all_on_edwards_curve_peel_last(points_affine);
 
         // Split
         lemma_straus_vt_partial_peel_last(points_affine, nafs, 0);

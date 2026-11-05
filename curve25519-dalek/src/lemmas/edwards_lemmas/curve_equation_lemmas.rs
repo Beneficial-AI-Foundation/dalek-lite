@@ -766,8 +766,12 @@ pub proof fn lemma_edwards_add_commutative(x1: nat, y1: nat, x2: nat, y2: nat)
 
 /// Axiom: Edwards addition is associative.
 ///
-/// This is a standard group-law property.
+/// This is a standard group-law property. It holds only for points on the curve.
 pub proof fn axiom_edwards_add_associative(x1: nat, y1: nat, x2: nat, y2: nat, x3: nat, y3: nat)
+    requires
+        is_on_edwards_curve(x1, y1),
+        is_on_edwards_curve(x2, y2),
+        is_on_edwards_curve(x3, y3),
     ensures
         ({
             let ab = edwards_add(x1, y1, x2, y2);
@@ -784,6 +788,9 @@ pub proof fn axiom_edwards_add_associative(x1: nat, y1: nat, x2: nat, y2: nat, x
 ///
 ///   2*(A + B) = 2*A + 2*B
 pub proof fn lemma_edwards_double_of_add(x1: nat, y1: nat, x2: nat, y2: nat)
+    requires
+        is_on_edwards_curve(x1, y1),
+        is_on_edwards_curve(x2, y2),
     ensures
         ({
             let ab = edwards_add(x1, y1, x2, y2);
@@ -801,6 +808,8 @@ pub proof fn lemma_edwards_double_of_add(x1: nat, y1: nat, x2: nat, y2: nat)
 
     lemma_edwards_add_commutative(x2, y2, x1, y1);
     assert(ba == ab);
+    axiom_edwards_add_complete(x1, y1, x2, y2);
+    axiom_edwards_add_complete(x1, y1, x1, y1);
 
     calc! {
         (==)
@@ -870,6 +879,11 @@ pub proof fn lemma_edwards_add_four_way_swap(
     c: (nat, nat),
     d: (nat, nat),
 )
+    requires
+        is_on_edwards_curve(a.0, a.1),
+        is_on_edwards_curve(b.0, b.1),
+        is_on_edwards_curve(c.0, c.1),
+        is_on_edwards_curve(d.0, d.1),
     ensures
         ({
             let ab = edwards_add(a.0, a.1, b.0, b.1);
@@ -883,6 +897,9 @@ pub proof fn lemma_edwards_add_four_way_swap(
 {
     let cd = edwards_add(c.0, c.1, d.0, d.1);
     let bd = edwards_add(b.0, b.1, d.0, d.1);
+    axiom_edwards_add_complete(c.0, c.1, d.0, d.1);
+    axiom_edwards_add_complete(b.0, b.1, d.0, d.1);
+    axiom_edwards_add_complete(b.0, b.1, c.0, c.1);
     axiom_edwards_add_associative(a.0, a.1, b.0, b.1, cd.0, cd.1);
     axiom_edwards_add_associative(b.0, b.1, c.0, c.1, d.0, d.1);
     lemma_edwards_add_commutative(b.0, b.1, c.0, c.1);
@@ -896,6 +913,7 @@ pub proof fn lemma_edwards_add_four_way_swap(
 pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
     requires
         n >= 1,
+        is_on_edwards_curve(point_affine.0, point_affine.1),
     ensures
         edwards_scalar_mul(point_affine, n + 1) == {
             let prev = edwards_scalar_mul(point_affine, n);
@@ -998,6 +1016,7 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
             }
 
             // LHS: (n+1)P = 2*(mP) = 2*((m-1)P + P) = 2*(m-1)P + 2P.
+            lemma_edwards_scalar_mul_on_curve(point_affine, mm1);
             lemma_edwards_double_of_add(p_mm1.0, p_mm1.1, point_affine.0, point_affine.1);
             let lhs_as_sum = {
                 let d_mm1 = edwards_double(p_mm1.0, p_mm1.1);
@@ -1058,6 +1077,7 @@ pub proof fn lemma_edwards_scalar_mul_succ(point_affine: (nat, nat), n: nat)
                     // (nP)+P = (n-1)P + 2P
                     let p_n = edwards_scalar_mul(point_affine, n);
                     let d_p = edwards_double(point_affine.0, point_affine.1);
+                    lemma_edwards_scalar_mul_on_curve(point_affine, nm1);
                     axiom_edwards_add_associative(
                         p_nm1.0,
                         p_nm1.1,
@@ -1312,7 +1332,13 @@ pub proof fn lemma_neg_of_signed_scalar_mul(P: (nat, nat), n: int)
 /// Axiom: [a]P + [b]P = [a+b]P for signed scalars a, b.
 ///
 /// This is the group law for scalar multiplication linearity (group homomorphism property).
+/// P must be on the curve and reduced: `edwards_scalar_mul(P, 1)` returns P as given,
+/// while `edwards_add` reduces its result.
 pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: int)
+    requires
+        P.0 < p(),
+        P.1 < p(),
+        is_on_edwards_curve(P.0, P.1),
     ensures
         ({
             let pa = edwards_scalar_mul_signed(P, a);
@@ -1326,6 +1352,8 @@ pub proof fn axiom_edwards_scalar_mul_signed_additive(P: (nat, nat), a: int, b: 
 /// Lemma: [b]([a]P) = [a*b]P for signed a, unsigned b.
 /// Proved using the unsigned composition lemma and axiom_scalar_mul_distributes_over_neg.
 pub proof fn lemma_edwards_scalar_mul_signed_composition(P: (nat, nat), a: int, b: nat)
+    requires
+        is_on_edwards_curve(P.0, P.1),
     ensures
         edwards_scalar_mul(edwards_scalar_mul_signed(P, a), b) == edwards_scalar_mul_signed(
             P,
@@ -1383,6 +1411,7 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
     requires
         m >= 1,
         n >= 1,
+        is_on_edwards_curve(point_affine.0, point_affine.1),
     ensures
         ({
             let pm = edwards_scalar_mul(point_affine, m);
@@ -1424,6 +1453,8 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
             let left = edwards_add(pm.0, pm.1, pnm1.0, pnm1.1);
             edwards_add(left.0, left.1, point_affine.0, point_affine.1)
         }) by {
+            lemma_edwards_scalar_mul_on_curve(point_affine, m);
+            lemma_edwards_scalar_mul_on_curve(point_affine, nm1);
             axiom_edwards_add_associative(
                 pm.0,
                 pm.1,
@@ -1453,6 +1484,8 @@ pub proof fn lemma_edwards_scalar_mul_additive(point_affine: (nat, nat), m: nat,
 /// composes multiplicatively. The proof uses `lemma_edwards_scalar_mul_additive` for the odd-b
 /// case, which in turn relies on `axiom_edwards_add_associative`.
 pub proof fn lemma_edwards_scalar_mul_composition(point_affine: (nat, nat), a: nat, b: nat)
+    requires
+        is_on_edwards_curve(point_affine.0, point_affine.1),
     ensures
         edwards_scalar_mul(edwards_scalar_mul(point_affine, a), b) == edwards_scalar_mul(
             point_affine,
@@ -2870,6 +2903,116 @@ pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
     admit();
 }
 
+/// Lemma: scalar multiplication keeps a point on the curve.
+pub proof fn lemma_edwards_scalar_mul_on_curve(P: (nat, nat), n: nat)
+    requires
+        is_on_edwards_curve(P.0, P.1),
+    ensures
+        is_on_edwards_curve(edwards_scalar_mul(P, n).0, edwards_scalar_mul(P, n).1),
+    decreases n,
+{
+    reveal_with_fuel(edwards_scalar_mul, 1);
+    if n == 0 {
+        lemma_identity_on_curve();
+    } else if n == 1 {
+    } else if n % 2 == 0 {
+        let h = edwards_scalar_mul(P, (n / 2) as nat);
+        lemma_edwards_scalar_mul_on_curve(P, (n / 2) as nat);
+        axiom_edwards_add_complete(h.0, h.1, h.0, h.1);
+    } else {
+        let q = edwards_scalar_mul(P, (n - 1) as nat);
+        lemma_edwards_scalar_mul_on_curve(P, (n - 1) as nat);
+        axiom_edwards_add_complete(q.0, q.1, P.0, P.1);
+    }
+}
+
+/// Lemma: the affine coordinates of a valid EdwardsPoint are reduced and on the curve.
+pub proof fn lemma_edwards_point_as_affine_on_curve(point: crate::edwards::EdwardsPoint)
+    requires
+        is_valid_edwards_point(point),
+    ensures
+        edwards_point_as_affine(point).0 < p(),
+        edwards_point_as_affine(point).1 < p(),
+        is_on_edwards_curve(edwards_point_as_affine(point).0, edwards_point_as_affine(point).1),
+{
+    let (x, y, z, t) = edwards_point_as_nat(point);
+    lemma_valid_extended_point_affine_on_curve(x, y, z, t);
+    p_gt_2();
+}
+
+/// Lemma: [m]P + [n]P = [m+n]P for the affine form P of a valid EdwardsPoint.
+pub proof fn lemma_edwards_point_scalar_mul_additive(
+    point: crate::edwards::EdwardsPoint,
+    m: nat,
+    n: nat,
+)
+    requires
+        is_valid_edwards_point(point),
+        m >= 1,
+        n >= 1,
+    ensures
+        ({
+            let pm = edwards_scalar_mul(edwards_point_as_affine(point), m);
+            let pn = edwards_scalar_mul(edwards_point_as_affine(point), n);
+            edwards_add(pm.0, pm.1, pn.0, pn.1)
+        }) == edwards_scalar_mul(edwards_point_as_affine(point), m + n),
+{
+    lemma_edwards_point_as_affine_on_curve(point);
+    lemma_edwards_scalar_mul_additive(edwards_point_as_affine(point), m, n);
+}
+
+/// Lemma: [b]([a]P) = [a*b]P for the affine form P of a valid EdwardsPoint.
+pub proof fn lemma_edwards_point_signed_composition(
+    point: crate::edwards::EdwardsPoint,
+    a: int,
+    b: nat,
+)
+    requires
+        is_valid_edwards_point(point),
+    ensures
+        edwards_scalar_mul(edwards_scalar_mul_signed(edwards_point_as_affine(point), a), b)
+            == edwards_scalar_mul_signed(edwards_point_as_affine(point), a * (b as int)),
+{
+    lemma_edwards_point_as_affine_on_curve(point);
+    lemma_edwards_scalar_mul_signed_composition(edwards_point_as_affine(point), a, b);
+}
+
+/// Lemma: [a]P + [b]P = [a+b]P for the affine form P of a valid EdwardsPoint.
+pub proof fn lemma_edwards_point_signed_additive(
+    point: crate::edwards::EdwardsPoint,
+    a: int,
+    b: int,
+)
+    requires
+        is_valid_edwards_point(point),
+    ensures
+        ({
+            let pa = edwards_scalar_mul_signed(edwards_point_as_affine(point), a);
+            let pb = edwards_scalar_mul_signed(edwards_point_as_affine(point), b);
+            edwards_add(pa.0, pa.1, pb.0, pb.1)
+        }) == edwards_scalar_mul_signed(edwards_point_as_affine(point), a + b),
+{
+    lemma_edwards_point_as_affine_on_curve(point);
+    axiom_edwards_scalar_mul_signed_additive(edwards_point_as_affine(point), a, b);
+}
+
+/// Lemma: signed scalar multiplication keeps a point on the curve.
+pub proof fn lemma_edwards_scalar_mul_signed_on_curve(P: (nat, nat), n: int)
+    requires
+        is_on_edwards_curve(P.0, P.1),
+    ensures
+        is_on_edwards_curve(edwards_scalar_mul_signed(P, n).0, edwards_scalar_mul_signed(P, n).1),
+{
+    reveal(edwards_scalar_mul_signed);
+    if n >= 0 {
+        lemma_edwards_scalar_mul_on_curve(P, n as nat);
+    } else {
+        let q = edwards_scalar_mul(P, (-n) as nat);
+        lemma_edwards_scalar_mul_on_curve(P, (-n) as nat);
+        lemma_negation_preserves_curve(q.0, q.1);
+    }
+}
+
 /// The concrete addition formulas and `edwards_add` compute the same point.
 ///
 /// There are two representations of Edwards addition:
@@ -3221,8 +3364,11 @@ pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
 /// [n]*(A + B) = [n]*A + [n]*B
 ///
 /// This is a fundamental property of abelian groups: the "multiplication by n"
-/// endomorphism is a group homomorphism.
+/// endomorphism is a group homomorphism. It holds only for points on the curve.
 pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
+    requires
+        is_on_edwards_curve(a.0, a.1),
+        is_on_edwards_curve(b.0, b.1),
     ensures
         edwards_scalar_mul(edwards_add(a.0, a.1, b.0, b.1), n) == ({
             let na = edwards_scalar_mul(a, n);
@@ -3251,6 +3397,7 @@ pub proof fn lemma_edwards_scalar_mul_identity(n: nat)
         lemma_edwards_add_identity_right_canonical(id);
     } else {
         lemma_edwards_scalar_mul_identity((n - 1) as nat);
+        lemma_identity_on_curve();
         lemma_edwards_scalar_mul_succ(id, (n - 1) as nat);
         p_gt_2();
         lemma_edwards_add_identity_right_canonical(id);
@@ -3267,6 +3414,9 @@ pub proof fn lemma_double_is_scalar_mul_2(P: (nat, nat))
 
 /// double(A + B) = double(A) + double(B).
 pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
+    requires
+        is_on_edwards_curve(a.0, a.1),
+        is_on_edwards_curve(b.0, b.1),
     ensures
         ({
             let ab = edwards_add(a.0, a.1, b.0, b.1);

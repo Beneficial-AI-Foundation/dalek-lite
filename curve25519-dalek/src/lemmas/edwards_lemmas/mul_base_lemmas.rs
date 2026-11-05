@@ -207,6 +207,7 @@ pub proof fn lemma_pippenger_partial_step_even(digits: Seq<i8>, i: int, B: (nat,
     requires
         0 <= i,
         i % 2 == 0,
+        is_on_edwards_curve(B.0, B.1),
     ensures
         ({
             let pi = pippenger_partial(digits, i, B);
@@ -238,6 +239,11 @@ pub proof fn lemma_pippenger_partial_step_even(digits: Seq<i8>, i: int, B: (nat,
     assert(even_ip1 == edwards_add(even_i.0, even_i.1, term.0, term.1));
 
     // (scaled + even_i) + term == scaled + (even_i + term)
+    lemma_odd_sum_up_to_on_curve(digits, 64, B);
+    lemma_edwards_scalar_mul_on_curve(odd_sum, 16);
+    lemma_even_sum_up_to_on_curve(digits, i, B);
+    lemma_edwards_scalar_mul_on_curve(B, pow256((i / 2) as nat));
+    lemma_edwards_scalar_mul_signed_on_curve(base, digits[i] as int);
     axiom_edwards_add_associative(scaled.0, scaled.1, even_i.0, even_i.1, term.0, term.1);
     assert(edwards_add(pi.0, pi.1, term.0, term.1) == edwards_add(
         scaled.0,
@@ -285,6 +291,7 @@ pub proof fn lemma_pippenger_partial_step_odd(digits: Seq<i8>, i: int, B: (nat, 
 pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat, a: int)
     requires
         k > 0,
+        is_on_edwards_curve(P.0, P.1),
     ensures
         edwards_scalar_mul_signed(edwards_scalar_mul(P, k), a) == edwards_scalar_mul_signed(
             P,
@@ -373,6 +380,9 @@ pub proof fn lemma_edwards_scalar_mul_signed_of_scalar_mul(P: (nat, nat), k: nat
 pub proof fn lemma_even_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat)
     requires
         digits.len() >= 2 * n,
+        B.0 < p(),
+        B.1 < p(),
+        is_on_edwards_curve(B.0, B.1),
     ensures
         even_sum_up_to(digits, (2 * n) as int, B) == edwards_scalar_mul_signed(
             B,
@@ -449,6 +459,9 @@ pub proof fn lemma_even_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat
 pub proof fn lemma_odd_sum_up_to_correct(digits: Seq<i8>, B: (nat, nat), n: nat)
     requires
         digits.len() >= 2 * n,
+        B.0 < p(),
+        B.1 < p(),
+        is_on_edwards_curve(B.0, B.1),
     ensures
         odd_sum_up_to(digits, (2 * n) as int, B) == edwards_scalar_mul_signed(
             B,
@@ -875,6 +888,9 @@ pub proof fn lemma_reconstruct_radix16_even_odd(digits: Seq<i8>, n: nat)
 pub proof fn lemma_pippenger_sum_correct_signed(digits: Seq<i8>, basepoint: (nat, nat))
     requires
         digits.len() == 64,
+        basepoint.0 < p(),
+        basepoint.1 < p(),
+        is_on_edwards_curve(basepoint.0, basepoint.1),
     ensures
         pippenger_partial(digits, 64, basepoint) == edwards_scalar_mul_signed(
             basepoint,
@@ -951,6 +967,9 @@ pub proof fn lemma_pippenger_sum_correct_signed(digits: Seq<i8>, basepoint: (nat
 pub proof fn lemma_pippenger_sum_correct(digits: Seq<i8>, basepoint: (nat, nat), scalar_nat: nat)
     requires
         digits.len() == 64,
+        basepoint.0 < p(),
+        basepoint.1 < p(),
+        is_on_edwards_curve(basepoint.0, basepoint.1),
         reconstruct_radix_16(digits) == scalar_nat as int,
     ensures
         pippenger_partial(digits, 64, basepoint) == edwards_scalar_mul(basepoint, scalar_nat),
@@ -999,6 +1018,62 @@ pub proof fn lemma_odd_sum_up_to_canonical(digits: Seq<i8>, upper_i: int, B: (na
         } else {
             // Even index - skip, just recurse
             lemma_odd_sum_up_to_canonical(digits, i, B);
+        }
+    }
+}
+
+/// Helper lemma: odd_sum_up_to stays on the curve when B is on the curve.
+pub proof fn lemma_odd_sum_up_to_on_curve(digits: Seq<i8>, upper_i: int, B: (nat, nat))
+    requires
+        is_on_edwards_curve(B.0, B.1),
+    ensures
+        is_on_edwards_curve(
+            odd_sum_up_to(digits, upper_i, B).0,
+            odd_sum_up_to(digits, upper_i, B).1,
+        ),
+    decreases upper_i,
+{
+    reveal(odd_sum_up_to);
+    if upper_i <= 0 {
+        lemma_identity_on_curve();
+    } else {
+        let i = upper_i - 1;
+        lemma_odd_sum_up_to_on_curve(digits, i, B);
+        if i % 2 == 1 {
+            let prev = odd_sum_up_to(digits, i, B);
+            let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
+            lemma_edwards_scalar_mul_on_curve(B, pow256((i / 2) as nat));
+            let term = edwards_scalar_mul_signed(base, digits[i] as int);
+            lemma_edwards_scalar_mul_signed_on_curve(base, digits[i] as int);
+            axiom_edwards_add_complete(prev.0, prev.1, term.0, term.1);
+        }
+    }
+}
+
+/// Helper lemma: even_sum_up_to stays on the curve when B is on the curve.
+pub proof fn lemma_even_sum_up_to_on_curve(digits: Seq<i8>, upper_i: int, B: (nat, nat))
+    requires
+        is_on_edwards_curve(B.0, B.1),
+    ensures
+        is_on_edwards_curve(
+            even_sum_up_to(digits, upper_i, B).0,
+            even_sum_up_to(digits, upper_i, B).1,
+        ),
+    decreases upper_i,
+{
+    reveal(even_sum_up_to);
+    if upper_i <= 0 {
+        lemma_identity_on_curve();
+    } else {
+        let i = upper_i - 1;
+        lemma_even_sum_up_to_on_curve(digits, i, B);
+        if i % 2 == 0 {
+            let prev = even_sum_up_to(digits, i, B);
+            let base = edwards_scalar_mul(B, pow256((i / 2) as nat));
+            lemma_edwards_scalar_mul_on_curve(B, pow256((i / 2) as nat));
+            let term = edwards_scalar_mul_signed(base, digits[i] as int);
+            lemma_edwards_scalar_mul_signed_on_curve(base, digits[i] as int);
+            axiom_edwards_add_complete(prev.0, prev.1, term.0, term.1);
         }
     }
 }
@@ -1080,6 +1155,43 @@ pub proof fn lemma_select_is_signed_scalar_mul(
 /// This lemma combines table validity with `lemma_select_is_signed_scalar_mul` to prove
 /// that the selected point corresponds to signed scalar multiplication by the digit.
 /// Used in both loop 1 and loop 2 of mul_base.
+/// Lemma: the basepoint of a valid basepoint table is reduced and on the curve.
+///
+/// Entry 0 of the first lookup table decodes to [1]([256^0]B) = B, and each entry
+/// is a valid AffineNielsPoint, so B is the affine form of a valid EdwardsPoint.
+#[cfg(feature = "precomputed-tables")]
+pub proof fn lemma_basepoint_table_basepoint_on_curve(
+    table: crate::edwards::EdwardsBasepointTable,
+    B: (nat, nat),
+)
+    requires
+        is_valid_edwards_basepoint_table(table, B),
+    ensures
+        B.0 < p(),
+        B.1 < p(),
+        is_on_edwards_curve(B.0, B.1),
+{
+    let entry = table.0[0].0[0];
+    assert(pow256(0) == 1) by {
+        lemma2_to64();
+    }
+    reveal_with_fuel(edwards_scalar_mul, 1);
+    assert(affine_niels_point_as_affine_edwards(entry) == edwards_scalar_mul(
+        edwards_scalar_mul(B, pow256(0)),
+        1,
+    ));
+    assert(affine_niels_point_as_affine_edwards(entry) == B);
+    assert(is_valid_affine_niels_point(entry));
+    let point = choose|point: crate::edwards::EdwardsPoint|
+        is_valid_edwards_point(point) && edwards_point_limbs_bounded(point) && sum_of_limbs_bounded(
+            &edwards_y(point),
+            &edwards_x(point),
+            u64::MAX,
+        ) && #[trigger] affine_niels_corresponds_to_edwards(entry, point);
+    lemma_affine_niels_affine_equals_edwards_affine(entry, point);
+    lemma_edwards_point_as_affine_on_curve(point);
+}
+
 #[cfg(feature = "precomputed-tables")]
 pub proof fn lemma_basepoint_table_select(
     table: crate::edwards::EdwardsBasepointTable,

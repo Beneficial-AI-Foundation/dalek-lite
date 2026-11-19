@@ -873,7 +873,10 @@ pub proof fn lemma_words_as_nat_upper_bound(words: &[u64; 8], count: int)
             let word_i = word_val as int;
             let prefix_i = words_as_nat_u64(words, idx, 64) as int;
 
+            assert(words_as_nat_u64(words, count, 64) == word_i * pow_prefix + prefix_i);
+            assert((count * 64) as nat == (idx * 64) as nat + 64);
             lemma_pow2_adds((idx * 64) as nat, 64);
+            assert(pow2((count * 64) as nat) == pow_prefix * pow64);
             lemma_mul_is_distributive_sub(pow_prefix, pow64, word_i);
             lemma_mul_is_distributive_add(pow_prefix, pow64 - 1 - word_i, 1 as int);
         };

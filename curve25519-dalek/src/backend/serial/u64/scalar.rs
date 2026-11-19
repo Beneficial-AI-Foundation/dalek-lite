@@ -239,6 +239,8 @@ impl Scalar52 {
 
     /// Reduce a 64 byte / 512 bit scalar mod l
     #[rustfmt::skip]  // keep alignment of lo[*] and hi[*] calculations
+    #[verifier::spinoff_prover]
+    #[verifier::rlimit(20)]
     pub fn from_bytes_wide(bytes: &[u8; 64]) -> (s: Scalar52)
         ensures
             is_canonical_scalar52(&s),

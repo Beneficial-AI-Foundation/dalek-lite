@@ -53,6 +53,7 @@ use vstd::prelude::*;
 verus! {
 
 /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
+#[verifier::rlimit(20)]
 pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     requires
 // Input point must be well-formed

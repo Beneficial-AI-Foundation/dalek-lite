@@ -311,6 +311,7 @@ pub proof fn lemma_pow2k_loop_boundary(a: [u64; 5])
     assert((1u64 << 51) < (1u64 << 52) < (1u64 << 54)) by (bit_vector);
 }
 
+#[verifier::spinoff_prover]
 pub proof fn lemma_pow2k_loop_value(a: [u64; 5], limbs: [u64; 5], i: nat)
     requires
         pow2k_loop_boundary_spec(a),

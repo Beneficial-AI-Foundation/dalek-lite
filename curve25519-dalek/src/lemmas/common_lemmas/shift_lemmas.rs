@@ -42,20 +42,7 @@ lemma_shift_is_pow2!(lemma_u32_shift_is_pow2, lemma_u32_pow2_le_max, lemma_u32_s
 
 lemma_shift_is_pow2!(lemma_u64_shift_is_pow2, lemma_u64_pow2_le_max, lemma_u64_shl_is_mul, u64);
 
-// =============================================================================
-// u128 left-shift is multiplication (NOT IN VSTD YET)
-// =============================================================================
-pub broadcast proof fn lemma_u128_shl_is_mul(x: u128, shift: u128)
-    requires
-        0 <= shift < 128,
-        x * pow2(shift as nat) <= u128::MAX,
-    ensures
-        #[trigger] (x << shift) == x * pow2(shift as nat),
-{
-    assume(false);  // TODO: prove properly when vstd adds this
-}
-
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
+// lemma_u128_shl_is_mul comes from vstd::bits (Verus PR #3129).
 lemma_shift_is_pow2!(lemma_u128_shift_is_pow2, lemma_u128_pow2_le_max, lemma_u128_shl_is_mul, u128);
 
 // Proofs that left-shift by 0 is a no-op
@@ -137,7 +124,6 @@ lemma_shl_by_sum!(lemma_u32_shl_by_sum, lemma_u32_shl_is_mul, u32);
 
 lemma_shl_by_sum!(lemma_u64_shl_by_sum, lemma_u64_shl_is_mul, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
 lemma_shl_by_sum!(lemma_u128_shl_by_sum, lemma_u128_shl_is_mul, u128);
 
 // Proofs that [<<] preserves [<=]
@@ -172,7 +158,6 @@ lemma_shl_le!(lemma_u32_shl_le, lemma_u32_shl_is_mul, u32);
 
 lemma_shl_le!(lemma_u64_shl_le, lemma_u64_shl_is_mul, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
 lemma_shl_le!(lemma_u128_shl_le, lemma_u128_shl_is_mul, u128);
 
 // Proofs that if a <= b then v << a <= v << b (up to overflow)
@@ -656,7 +641,6 @@ lemma_left_right_shift!(lemma_u32_left_right_shift, lemma_u32_shl_is_mul, lemma_
 
 lemma_left_right_shift!(lemma_u64_left_right_shift, lemma_u64_shl_is_mul, lemma_u64_shr_is_div, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
 lemma_left_right_shift!(lemma_u128_left_right_shift, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, u128);
 
 // =============================================================================
@@ -730,7 +714,6 @@ lemma_right_left_shift!(lemma_u32_right_left_shift, lemma_u32_shl_is_mul, lemma_
 
 lemma_right_left_shift!(lemma_u64_right_left_shift, lemma_u64_shl_is_mul, lemma_u64_shr_is_div, lemma_u64_pow2_le_max, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
 lemma_right_left_shift!(lemma_u128_right_left_shift, lemma_u128_shl_is_mul, lemma_u128_shr_is_div, lemma_u128_pow2_le_max, u128);
 
 // =============================================================================
@@ -769,7 +752,6 @@ lemma_right_left_shift_divisible!(lemma_u32_right_left_shift_divisible, lemma_u3
 
 lemma_right_left_shift_divisible!(lemma_u64_right_left_shift_divisible, lemma_u64_right_left_shift, u64);
 
-// NOTE: depends on lemma_u128_shl_is_mul which uses assume(false)
 lemma_right_left_shift_divisible!(lemma_u128_right_left_shift_divisible, lemma_u128_right_left_shift, u128);
 
 } // verus!

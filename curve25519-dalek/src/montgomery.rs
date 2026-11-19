@@ -127,8 +127,9 @@ use crate::traits::Identity;
 #[cfg(verus_keep_ghost)]
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 use crate::backend::serial::u64::subtle_assumes::{
-    choice_into, choice_not, conditional_negate_field_element, conditional_select_field_element,
-    conditional_swap_montgomery_projective, ct_eq_bytes32, select_u8,
+    choice_from_u8, choice_into, choice_not, conditional_negate_field_element,
+    conditional_select_field_element, conditional_swap_montgomery_projective, ct_eq_bytes32,
+    select_u8,
 };
 
 use subtle::Choice;
@@ -710,7 +711,8 @@ impl MontgomeryPoint {
             let cur_bit = bits[i];
             let choice: u8 = (prev_bit ^ cur_bit) as u8;
             // VERIFICATION: extracted from inline `choice.into()` to name the Choice for proof
-            let swap_choice = Choice::from(choice);
+            /* ORIGINAL CODE: let swap_choice = Choice::from(choice); */
+            let swap_choice = choice_from_u8(choice);
 
             #[cfg(not(verus_keep_ghost))]
             debug_assert!(choice == 0 || choice == 1);
@@ -971,7 +973,8 @@ impl MontgomeryPoint {
         } else {
             0u8
         };
-        let final_swap_choice = Choice::from(final_choice_u8);
+        // VERIFICATION: `choice_from_u8` replaces `Choice::from` (see subtle_assumes.rs)
+        let final_swap_choice = choice_from_u8(final_choice_u8);
         conditional_swap_montgomery_projective(&mut x0, &mut x1, final_swap_choice);
         // Don't leave the bit in the stack
         #[cfg(feature = "zeroize")]
@@ -984,7 +987,7 @@ impl MontgomeryPoint {
             let n = bits_be_as_nat(bits, bits.len() as int);
 
             // Connect saved_prev_bit to final_swap_choice.
-            // From Choice::from spec: (u == 1) == choice_is_true(Choice::from(u))
+            // From the ensures of choice_from_u8: (u == 1) == choice_is_true(choice_from_u8(u))
             // Note: use saved_prev_bit since prev_bit may have been zeroized
             assert(choice_is_true(final_swap_choice) == saved_prev_bit);
 

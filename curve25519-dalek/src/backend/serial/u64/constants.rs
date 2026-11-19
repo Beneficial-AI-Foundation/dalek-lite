@@ -591,6 +591,172 @@ pub exec const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8]
 pub const ED25519_BASEPOINT_TABLE: &'static EdwardsBasepointTable =
     &ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN;
 
+// ---- Proof of axiom_four_torsion_affine by computation ----
+#[cfg(verus_keep_ghost)]
+spec fn pow2_for_compute(n: nat) -> nat
+    decreases n,
+{
+    if n == 0 {
+        1
+    } else {
+        2 * pow2_for_compute((n - 1) as nat)
+    }
+}
+
+#[cfg(verus_keep_ghost)]
+spec fn limbs_as_nat_for_compute(l: [u64; 5]) -> nat {
+    (l[0] as nat) + pow2_for_compute(51) * (l[1] as nat) + pow2_for_compute(102) * (l[2] as nat)
+        + pow2_for_compute(153) * (l[3] as nat) + pow2_for_compute(204) * (l[4] as nat)
+}
+
+#[cfg(verus_keep_ghost)]
+proof fn lemma_pow2_for_compute_matches_pow2()
+    ensures
+        pow2_for_compute(51) == vstd::arithmetic::power2::pow2(51),
+        pow2_for_compute(102) == vstd::arithmetic::power2::pow2(102),
+        pow2_for_compute(153) == vstd::arithmetic::power2::pow2(153),
+        pow2_for_compute(204) == vstd::arithmetic::power2::pow2(204),
+        pow2_for_compute(255) == vstd::arithmetic::power2::pow2(255),
+{
+    use vstd::arithmetic::power2::*;
+    assert(pow2_for_compute(51) == 2251799813685248nat) by (compute_only);
+    assert(pow2(51) == 2251799813685248nat) by {
+        lemma2_to64_rest();
+    };
+    assert(pow2_for_compute(102) == pow2_for_compute(51) * pow2_for_compute(51)) by (compute_only);
+    lemma_pow2_adds(51, 51);
+    assert(pow2_for_compute(153) == pow2_for_compute(51) * pow2_for_compute(102)) by (compute_only);
+    lemma_pow2_adds(51, 102);
+    assert(pow2_for_compute(204) == pow2_for_compute(51) * pow2_for_compute(153)) by (compute_only);
+    lemma_pow2_adds(51, 153);
+    assert(pow2_for_compute(255) == pow2_for_compute(51) * pow2_for_compute(204)) by (compute_only);
+    lemma_pow2_adds(51, 204);
+}
+
+/// The statement of axiom_four_torsion_affine, proved by computation.
+#[cfg(verus_keep_ghost)]
+pub proof fn lemma_four_torsion_affine_by_computation()
+    ensures
+        crate::specs::edwards_specs::edwards_point_as_affine(spec_eight_torsion()[2]) == (
+            crate::specs::field_specs::field_neg(crate::specs::field_specs::sqrt_m1()),
+            0nat,
+        ),
+        crate::specs::edwards_specs::edwards_point_as_affine(spec_eight_torsion()[4]) == (
+            0nat,
+            crate::specs::field_specs::field_neg(1),
+        ),
+        crate::specs::edwards_specs::edwards_point_as_affine(spec_eight_torsion()[6]) == (
+            crate::specs::field_specs::sqrt_m1(),
+            0nat,
+        ),
+{
+    use crate::specs::field_specs::*;
+    use crate::specs::field_specs_u64::*;
+    crate::lemmas::field_lemmas::field_algebra_lemmas::lemma_field_inv_one();
+    lemma_pow2_for_compute_matches_pow2();
+    let t2 = spec_eight_torsion()[2];
+    let t4 = spec_eight_torsion()[4];
+    let t6 = spec_eight_torsion()[6];
+    crate::specs::edwards_specs::lemma_unfold_edwards(t2);
+    crate::specs::edwards_specs::lemma_unfold_edwards(t4);
+    crate::specs::edwards_specs::lemma_unfold_edwards(t6);
+    assert(t2.X.limbs == [
+        533094393274173u64,
+        2016890930128738u64,
+        18285341111199u64,
+        134597186663265u64,
+        1486323764102114u64,
+    ] && t2.Y.limbs == [0u64, 0u64, 0u64, 0u64, 0u64] && t2.Z.limbs == [
+        1u64,
+        0u64,
+        0u64,
+        0u64,
+        0u64,
+    ]);
+    assert(t4.X.limbs == [0u64, 0u64, 0u64, 0u64, 0u64] && t4.Y.limbs == [
+        2251799813685228u64,
+        2251799813685247u64,
+        2251799813685247u64,
+        2251799813685247u64,
+        2251799813685247u64,
+    ] && t4.Z.limbs == [1u64, 0u64, 0u64, 0u64, 0u64]);
+    assert(t6.X.limbs == [
+        1718705420411056u64,
+        234908883556509u64,
+        2233514472574048u64,
+        2117202627021982u64,
+        765476049583133u64,
+    ] && t6.Y.limbs == [0u64, 0u64, 0u64, 0u64, 0u64] && t6.Z.limbs == [
+        1u64,
+        0u64,
+        0u64,
+        0u64,
+        0u64,
+    ]);
+    assert({
+        let lp = (pow2_for_compute(255) - 19) as nat;
+        let sv = limbs_as_nat_for_compute(SQRT_M1.limbs) % lp;
+        let one = limbs_as_nat_for_compute([1u64, 0u64, 0u64, 0u64, 0u64]) % lp;
+        let zero = limbs_as_nat_for_compute([0u64, 0u64, 0u64, 0u64, 0u64]) % lp;
+        &&& one == 1 && zero == 0
+        &&& limbs_as_nat_for_compute(
+            [
+                533094393274173u64,
+                2016890930128738u64,
+                18285341111199u64,
+                134597186663265u64,
+                1486323764102114u64,
+            ],
+        ) % lp == ((lp - (sv % lp)) as nat) % lp
+        &&& limbs_as_nat_for_compute([0u64, 0u64, 0u64, 0u64, 0u64]) % lp == 0
+            && limbs_as_nat_for_compute([1u64, 0u64, 0u64, 0u64, 0u64]) % lp == 1
+        &&& limbs_as_nat_for_compute([0u64, 0u64, 0u64, 0u64, 0u64]) % lp == 0
+            && limbs_as_nat_for_compute([1u64, 0u64, 0u64, 0u64, 0u64]) % lp == 1
+        &&& limbs_as_nat_for_compute(
+            [
+                2251799813685228u64,
+                2251799813685247u64,
+                2251799813685247u64,
+                2251799813685247u64,
+                2251799813685247u64,
+            ],
+        ) % lp == ((lp - (1nat % lp)) as nat) % lp
+        &&& limbs_as_nat_for_compute(
+            [
+                1718705420411056u64,
+                234908883556509u64,
+                2233514472574048u64,
+                2117202627021982u64,
+                765476049583133u64,
+            ],
+        ) % lp == sv && limbs_as_nat_for_compute([0u64, 0u64, 0u64, 0u64, 0u64]) % lp == 0
+            && limbs_as_nat_for_compute([1u64, 0u64, 0u64, 0u64, 0u64]) % lp == 1
+        &&& sv < lp
+    }) by (compute_only);
+    let p = p();
+    assert(p == (pow2_for_compute(255) - 19) as nat);
+    let x2 = fe51_as_canonical_nat(&t2.X);
+    let x6 = fe51_as_canonical_nat(&t6.X);
+    let y4 = fe51_as_canonical_nat(&t4.Y);
+    assert(fe51_as_canonical_nat(&t2.Z) == 1 && fe51_as_canonical_nat(&t4.Z) == 1
+        && fe51_as_canonical_nat(&t6.Z) == 1);
+    assert(fe51_as_canonical_nat(&t2.Y) == 0 && fe51_as_canonical_nat(&t4.X) == 0
+        && fe51_as_canonical_nat(&t6.Y) == 0);
+    assert(x2 < p && x6 < p && y4 < p);
+    vstd::arithmetic::div_mod::lemma_small_mod(x2, p);
+    vstd::arithmetic::div_mod::lemma_small_mod(x6, p);
+    vstd::arithmetic::div_mod::lemma_small_mod(y4, p);
+    vstd::arithmetic::div_mod::lemma_small_mod(0, p);
+    assert(x2 * 1 == x2 && x6 * 1 == x6 && y4 * 1 == y4 && 0nat * 1 == 0);
+    assert(field_mul(x2, 1) == x2 && field_mul(x6, 1) == x6 && field_mul(y4, 1) == y4 && field_mul(
+        0,
+        1,
+    ) == 0);
+    assert(x2 == field_neg(sqrt_m1()));
+    assert(x6 == sqrt_m1());
+    assert(y4 == field_neg(1));
+}
+
 } // verus!
 /// Inner constant, used to avoid filling the docs with precomputed points.
 #[doc(hidden)]

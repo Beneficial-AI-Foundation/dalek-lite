@@ -25,8 +25,8 @@ use crate::traits::Identity;
 use crate::backend::serial::curve_models::AffineNielsPoint;
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::backend::serial::u64::subtle_assumes::{
-    conditional_assign_generic, conditional_negate_affine_niels, conditional_negate_generic,
-    conditional_negate_projective_niels, ct_eq_u16,
+    choice_from_u8, conditional_assign_generic, conditional_negate_affine_niels,
+    conditional_negate_generic, conditional_negate_projective_niels, ct_eq_u16,
 };
 use crate::edwards::EdwardsPoint;
 
@@ -211,7 +211,11 @@ impl LookupTable<AffineNielsPoint> {
         // Now t == |x| * P.
 
         let ghost old_t = t;
-        let neg_mask = Choice::from((xmask & 1) as u8);
+        proof {
+            assert((xmask & 1i16) == 0i16 || (xmask & 1i16) == 1i16) by (bit_vector);
+        }
+        /* ORIGINAL CODE: let neg_mask = Choice::from((xmask & 1) as u8); */
+        let neg_mask = choice_from_u8((xmask & 1) as u8);
         proof {
             assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
                 requires
@@ -361,7 +365,11 @@ impl LookupTable<ProjectiveNielsPoint> {
         // Now t == |x| * P.
 
         let ghost old_t = t;
-        let neg_mask = Choice::from((xmask & 1) as u8);
+        proof {
+            assert((xmask & 1i16) == 0i16 || (xmask & 1i16) == 1i16) by (bit_vector);
+        }
+        /* ORIGINAL CODE: let neg_mask = Choice::from((xmask & 1) as u8); */
+        let neg_mask = choice_from_u8((xmask & 1) as u8);
         proof {
             assert(x < 0i8 ==> ((xmask & 1i16) as u8 == 1u8)) by (bit_vector)
                 requires

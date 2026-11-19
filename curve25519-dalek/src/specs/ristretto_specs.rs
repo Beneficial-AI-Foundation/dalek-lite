@@ -347,13 +347,15 @@ pub open spec fn ristretto_from_uniform_bytes(bytes: &[u8; 64]) -> (nat, nat) {
 // Ristretto Equivalence Classes (Cosets)
 // =============================================================================
 /// True when the point is the double of some curve point (i.e., lies in 2E).
+///
+/// The witness `q` must be on the curve. The doubling formula also maps some
+/// pairs that are not on the curve to curve points, so without this condition
+/// the predicate would not mean "is a double".
 pub open spec fn is_in_even_subgroup(point: EdwardsPoint) -> bool {
-    // ∃ Q : point = [2]·Q
-    exists|q: EdwardsPoint|
-        edwards_point_as_affine(point) == edwards_scalar_mul(
-            #[trigger] edwards_point_as_affine(q),
-            2,
-        )
+    // ∃ Q on the curve : point = [2]·Q
+    exists|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(point)
+            == #[trigger] edwards_scalar_mul(q, 2)
 }
 
 /// True when the 4 points form a coset base + E[4] (one Ristretto equivalence class).

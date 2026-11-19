@@ -87,10 +87,10 @@ pub proof fn lemma_edge_coset_contains_e4(x: nat, y: nat)
     if x == 0 && y == 1 {
         // Identity: coset = [(0,1), (i,0), ..., (neg_i,0)]
         assert(coset[0] == (0nat, 1nat));
-        assert(coset[1] == (i_val % p(), 0nat % p())) by {
+        assert(coset[3] == (i_val % p(), 0nat % p())) by {
             lemma_edwards_add_identity_left(i_val, 0);
         };
-        assert(coset[3] == (neg_i % p(), 0nat % p())) by {
+        assert(coset[1] == (neg_i % p(), 0nat % p())) by {
             lemma_edwards_add_identity_left(neg_i, 0);
         };
         lemma_small_mod(i_val, p());
@@ -102,10 +102,10 @@ pub proof fn lemma_edge_coset_contains_e4(x: nat, y: nat)
         assert(coset[2] == (0nat, 1nat)) by {
             lemma_edwards_add_two_torsion_self();
         };
-        assert(coset[1] == (neg_i, 0nat)) by {
+        assert(coset[3] == (neg_i, 0nat)) by {
             lemma_edwards_add_two_torsion_four_torsion(i_val);
         };
-        assert(coset[3] == (i_val % p(), 0nat)) by {
+        assert(coset[1] == (i_val % p(), 0nat)) by {
             lemma_edwards_add_two_torsion_four_torsion_neg(i_val);
         };
         lemma_small_mod(i_val, p());
@@ -130,7 +130,7 @@ pub proof fn lemma_edge_coset_contains_e4(x: nat, y: nat)
         };
 
         if x == i_val {
-            assert(coset[3] == (0nat, 1nat)) by {
+            assert(coset[1] == (0nat, 1nat)) by {
                 lemma_edwards_add_four_torsion_with_neg(x);
             };
         } else {
@@ -143,7 +143,7 @@ pub proof fn lemma_edge_coset_contains_e4(x: nat, y: nat)
                 lemma_neg_square_eq(i_val);
                 lemma_small_mod(i_val, p());
             };
-            assert(coset[1] == (0nat, 1nat)) by {
+            assert(coset[3] == (0nat, 1nat)) by {
                 lemma_edwards_add_four_torsion_with_neg(neg_i);
             };
         }

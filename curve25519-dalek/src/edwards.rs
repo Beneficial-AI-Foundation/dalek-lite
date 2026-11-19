@@ -542,7 +542,11 @@ mod decompress {
     {
         // FieldElement::sqrt_ratio_i always returns the nonnegative square root,
         // so we negate according to the supplied sign bit.
-        let compressed_sign_bit = Choice::from(repr.as_bytes()[31] >> 7);
+        proof {
+            assert(forall|b: u8| #[trigger] (b >> 7u8) == 0u8 || (b >> 7u8) == 1u8) by (bit_vector);
+        }
+        /* ORIGINAL CODE: let compressed_sign_bit = Choice::from(repr.as_bytes()[31] >> 7); */
+        let compressed_sign_bit = choice_from_u8(repr.as_bytes()[31] >> 7);
 
         /* <VERIFICATION NOTE>
          Using conditional_negate_field_element wrapper with proper specs.

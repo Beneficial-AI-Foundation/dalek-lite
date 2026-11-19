@@ -4841,7 +4841,8 @@ impl PrimeField for Scalar {
     }
 
     fn is_odd(&self) -> Choice {
-        Choice::from(self.as_bytes()[0] & 1)
+        /* ORIGINAL CODE: Choice::from(self.as_bytes()[0] & 1) */
+        choice_from_u8(self.as_bytes()[0] & 1)
     }
 
     const MODULUS: &'static str =

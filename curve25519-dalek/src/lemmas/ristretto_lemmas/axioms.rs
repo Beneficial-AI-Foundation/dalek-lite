@@ -6,6 +6,11 @@ use crate::constants;
 use crate::edwards::EdwardsPoint;
 #[allow(unused_imports)]
 use crate::field::FieldElement;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
+    axiom_edwards_add_complete, axiom_edwards_scalar_mul_distributive,
+};
 #[allow(unused_imports)]
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)]
@@ -173,11 +178,12 @@ pub proof fn axiom_elligator_in_even_subgroup(r_0: nat)
     admit();
 }
 
-/// Axiom: The even subgroup (image of [2]) is closed under Edwards addition.
+/// The even subgroup (image of [2]) is closed under Edwards addition.
 ///
 /// If P = 2·Q₁ and Q = 2·Q₂, then P + Q = 2·Q₁ + 2·Q₂ = 2·(Q₁ + Q₂).
-/// The algebraic identity follows from lemma_edwards_double_of_add (fully proven).
-/// Admitted because the existential witness requires lifting affine → EdwardsPoint.
+/// The witness for P + Q is Q₁ + Q₂, which is on the curve by
+/// `axiom_edwards_add_complete`. The name keeps the `axiom_` prefix, but the
+/// statement is proved.
 ///
 /// Reference: standard group theory (sum of doubles is a double)
 pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
@@ -195,7 +201,25 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
                 edwards_point_as_affine(p2).1,
             ) && is_well_formed_edwards_point(result) ==> is_in_even_subgroup(result),
 {
-    admit();
+    let q1 = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p1)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    let q2 = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p2)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    let q = edwards_add(q1.0, q1.1, q2.0, q2.1);
+    axiom_edwards_add_complete(q1.0, q1.1, q2.0, q2.1);
+    axiom_edwards_scalar_mul_distributive(q1, q2, 2);
+    assert forall|result: EdwardsPoint|
+        edwards_point_as_affine(result) == edwards_add(
+            edwards_point_as_affine(p1).0,
+            edwards_point_as_affine(p1).1,
+            edwards_point_as_affine(p2).0,
+            edwards_point_as_affine(p2).1,
+        ) && is_well_formed_edwards_point(result) implies is_in_even_subgroup(result) by {
+        assert(is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(result)
+            == edwards_scalar_mul(q, 2));
+    };
 }
 
 // =============================================================================

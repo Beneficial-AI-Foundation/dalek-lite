@@ -1014,7 +1014,7 @@ pub proof fn lemma_straus_ct_partial_peel_last(pts: Seq<(nat, nat)>, digs: Seq<S
         lemma_all_on_edwards_curve_peel_last(pts);
         lemma_straus_ct_partial_on_curve(pts_prefix, digs_prefix, j + 1);
         lemma_straus_ct_partial_on_curve(pts_single, digs_single, j + 1);
-        axiom_edwards_scalar_mul_distributive(prev_prefix, prev_single, 16);
+        lemma_edwards_scalar_mul_distributive(prev_prefix, prev_single, 16);
 
         let scaled_prefix = edwards_scalar_mul(prev_prefix, 16);
         let scaled_single = edwards_scalar_mul(prev_single, 16);

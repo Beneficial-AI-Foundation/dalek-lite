@@ -3360,13 +3360,13 @@ pub proof fn lemma_projective_implies_affine_on_curve(x: nat, y: nat, z: nat)
 // =============================================================================
 // Scalar multiplication distributivity (group homomorphism)
 // =============================================================================
-/// Axiom: Scalar multiplication distributes over Edwards addition.
+/// Scalar multiplication distributes over Edwards addition.
 ///
 /// [n]*(A + B) = [n]*A + [n]*B
 ///
 /// This is a fundamental property of abelian groups: the "multiplication by n"
 /// endomorphism is a group homomorphism. It holds only for points on the curve.
-pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
+pub proof fn lemma_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
     requires
         is_on_edwards_curve(a.0, a.1),
         is_on_edwards_curve(b.0, b.1),
@@ -3392,7 +3392,7 @@ pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat),
         let h = (n / 2) as nat;
         let ha = edwards_scalar_mul(a, h);
         let hb = edwards_scalar_mul(b, h);
-        axiom_edwards_scalar_mul_distributive(a, b, h);
+        lemma_edwards_scalar_mul_distributive(a, b, h);
         lemma_edwards_scalar_mul_on_curve(a, h);
         lemma_edwards_scalar_mul_on_curve(b, h);
         lemma_edwards_double_of_add(ha.0, ha.1, hb.0, hb.1);
@@ -3400,7 +3400,7 @@ pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat),
         let m = (n - 1) as nat;
         let ma = edwards_scalar_mul(a, m);
         let mb = edwards_scalar_mul(b, m);
-        axiom_edwards_scalar_mul_distributive(a, b, m);
+        lemma_edwards_scalar_mul_distributive(a, b, m);
         lemma_edwards_scalar_mul_on_curve(a, m);
         lemma_edwards_scalar_mul_on_curve(b, m);
         lemma_edwards_add_four_way_swap(ma, mb, a, b);

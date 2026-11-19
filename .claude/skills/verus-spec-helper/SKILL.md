@@ -543,7 +543,7 @@ Example:
 ///
 /// Reference: ristretto.group/details/isogenies.html.
 ///
-/// Runtime validation: `test_axiom_mc_times_sqrt_ad_m1` in lizard_ristretto.rs.
+/// Runtime validation: `test_mc_times_sqrt_ad_m1` in lizard_ristretto.rs.
 ```
 
 ### Spec independence

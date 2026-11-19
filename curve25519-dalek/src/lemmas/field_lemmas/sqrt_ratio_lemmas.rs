@@ -267,13 +267,13 @@ proof fn lemma_algebraic_chain_base(u: nat, v: nat, x: nat, r: nat, i: nat)
 ///   - Then (r'/x)² = (r'²·v)/(x²·v) = u/(i·u) = 1/i
 ///   - Now 1/i = i⁻¹ = i³ (since i⁴ = 1) = i²·i = (-1)·i = -i
 ///   - So (r'/x)² = -i
-///   - But -i is not a square (axiom_neg_sqrt_m1_not_square)
+///   - But -i is not a square (lemma_neg_sqrt_m1_not_square)
 ///   - Contradiction! ∎
 ///
 /// Case 2: Suppose r'²·v = -u for some r'
 ///   - We have x²·v = i·u (precondition)
 ///   - Then (r'/x)² = (r'²·v)/(x²·v) = -u/(i·u) = -1/i = -i⁻¹ = -(-i) = i
-///   - But i is not a square (axiom_sqrt_m1_not_square)
+///   - But i is not a square (lemma_sqrt_m1_not_square)
 ///   - Contradiction! ∎
 pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
     requires
@@ -388,9 +388,9 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
             lemma_small_mod((the_p - i) as nat, the_p);
         };
 
-        // Step 7: -i is not a square (axiom) — CONTRADICTION
+        // Step 7: -i is not a square (lemma_neg_sqrt_m1_not_square) — CONTRADICTION
         assert(!is_square(neg_i)) by {
-            axiom_neg_sqrt_m1_not_square();
+            lemma_neg_sqrt_m1_not_square();
         };
 
         // But q² = -i means -i IS a square (q is the witness)
@@ -432,9 +432,9 @@ pub proof fn lemma_no_square_root_when_times_i(u: nat, v: nat, r: nat)
         // Step 4: Therefore q² = i % p
         assert(q2 == i % the_p);
 
-        // Step 5: i is not a square (axiom) — CONTRADICTION
+        // Step 5: i is not a square (lemma_sqrt_m1_not_square) — CONTRADICTION
         assert(!is_square(i)) by {
-            axiom_sqrt_m1_not_square();
+            lemma_sqrt_m1_not_square();
         };
 
         // But q² = i means i IS a square (q is the witness)
@@ -665,8 +665,8 @@ pub proof fn lemma_eq_neg_times_i_implies_zero(u: nat)
         //       = field_mul(field_neg(u), field_neg(1))     [i^2 = -1]
         //       = u                                          [double negation distributes]
         // i^2 = field_neg(1) (from sqrt_m1 squared)
-        // axiom gives (i*i)%p == p-1. field_square(i) = (i*i)%p. field_neg(1) = (p - 1%p)%p = p-1.
-        axiom_sqrt_m1_squared();
+        // lemma_sqrt_m1_squared gives (i*i)%p == p-1. field_square(i) = (i*i)%p. field_neg(1) = (p - 1%p)%p = p-1.
+        lemma_sqrt_m1_squared();
         lemma_small_mod(1nat, pn);
         lemma_small_mod((pn - 1) as nat, pn);
         let i_sq = field_square(i);
@@ -842,7 +842,7 @@ pub proof fn lemma_check_fourth_root_pattern(
         lemma_field_mul_comm(u_nat, (pn - 1) as nat);
         lemma_field_mul_neg(u_nat, i);
         lemma_field_neg_mul_left(u_nat, i);
-        axiom_sqrt_m1_squared();
+        lemma_sqrt_m1_squared();
         lemma_sqrt_m1_nonzero();
         lemma_small_mod(i, pn);
         lemma_small_mod((pn - i) as nat, pn);

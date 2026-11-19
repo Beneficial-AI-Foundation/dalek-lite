@@ -647,7 +647,7 @@ pub proof fn lemma_pippenger_peel_last(
             lemma_all_on_edwards_curve_peel_last(pts);
             lemma_pippenger_horner_on_curve(pts_prefix, digs_prefix, j + 1, w, digits_count);
             lemma_pippenger_horner_on_curve(pts_single, digs_single, j + 1, w, digits_count);
-            axiom_edwards_scalar_mul_distributive(prev_prefix, prev_single, pow2(w));
+            lemma_edwards_scalar_mul_distributive(prev_prefix, prev_single, pow2(w));
         }
         // Column sum splitting
         assert(straus_column_sum(pts, digs, j, n - 1) == col_prefix) by {
@@ -1290,7 +1290,7 @@ proof fn lemma_weighted_bucket_sum_add_to_bucket(
             edwards_add(buckets_old[B - 1].0, buckets_old[B - 1].1, P.0, P.1),
             B as nat,
         ) == edwards_add(old_w.0, old_w.1, delta.0, delta.1)) by {
-            axiom_edwards_scalar_mul_distributive(buckets_old[B - 1], P, B as nat);
+            lemma_edwards_scalar_mul_distributive(buckets_old[B - 1], P, B as nat);
         }
         // Reassociate: WBS_old(B-1) + ([B]*old + [B]*P) = (WBS_old(B-1) + [B]*old) + [B]*P
         assert(edwards_add(

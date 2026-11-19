@@ -42,7 +42,7 @@ verus! {
 /// When x = 0 or y = 0, the Ristretto coset contains
 /// the identity (0, 1), the 2-torsion (0, −1), and both 4-torsion points.
 ///
-/// This follows from the bridge axiom `axiom_four_torsion_affine` plus
+/// This follows from the bridge lemma `lemma_four_torsion_affine` plus
 /// algebraic properties of edwards_add with E[4] elements.
 pub proof fn lemma_edge_coset_contains_e4(x: nat, y: nat)
     requires
@@ -64,7 +64,7 @@ pub proof fn lemma_edge_coset_contains_e4(x: nat, y: nat)
                 == coset[3])
         }),
 {
-    axiom_four_torsion_affine();
+    lemma_four_torsion_affine();
     p_gt_2();
     let i_val = sqrt_m1();
     let neg_i = field_neg(sqrt_m1());
@@ -75,7 +75,7 @@ pub proof fn lemma_edge_coset_contains_e4(x: nat, y: nat)
     lemma_small_mod(1nat, p());
     lemma_small_mod((p() - 1) as nat, p());
     assert(field_square(i_val) == field_neg(1)) by {
-        axiom_sqrt_m1_squared();
+        lemma_sqrt_m1_squared();
     };
     assert(i_val < p()) by {
         lemma_mod_bound(i_val as int, p() as int);

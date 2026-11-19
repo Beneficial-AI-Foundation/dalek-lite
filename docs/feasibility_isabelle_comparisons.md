@@ -92,11 +92,11 @@ lemma (in comm_group) add_pow_add:
 
 ---
 
-### axiom_edwards_scalar_mul_distributive
+### lemma_edwards_scalar_mul_distributive
 
 **Verus:**
 ```rust
-pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
+pub proof fn lemma_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
     ensures edwards_scalar_mul(edwards_add(a, b), n) == edwards_add(smul(a,n), smul(b,n)),
 { admit(); }
 ```
@@ -219,11 +219,11 @@ Montgomery xDBL/xADD would follow the same pattern using Isabelle's `algebra` me
 
 ## 4. Quadratic Residuosity
 
-### axiom_486660_not_quadratic_residue
+### lemma_486660_not_quadratic_residue
 
 **Verus:**
 ```rust
-pub proof fn axiom_486660_not_quadratic_residue()
+pub proof fn lemma_486660_not_quadratic_residue()
     ensures !is_square(486660nat),
 { admit(); }
 ```
@@ -251,11 +251,11 @@ Verify `486660^((p-1)/2) mod p = p - 1` via code generation to SML/OCaml.
 
 ---
 
-### axiom_sqrt_m1_squared
+### lemma_sqrt_m1_squared
 
 **Verus:**
 ```rust
-pub proof fn axiom_sqrt_m1_squared()
+pub proof fn lemma_sqrt_m1_squared()
     ensures (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),
 { admit(); }
 ```
@@ -271,11 +271,11 @@ Isabelle uses `int` (binary representation) + `Code_Target_Nat` for efficient ar
 
 ---
 
-### axiom_sqrt_m1_not_square / axiom_neg_sqrt_m1_not_square
+### lemma_sqrt_m1_not_square / lemma_neg_sqrt_m1_not_square
 
 **Verus:**
 ```rust
-pub proof fn axiom_sqrt_m1_not_square()
+pub proof fn lemma_sqrt_m1_not_square()
     ensures !is_square(sqrt_m1()),
 { admit(); }
 ```
@@ -341,11 +341,11 @@ lemma (in group_hom) hom_pow:
 
 ## 6. Subgroup Closure
 
-### axiom_even_subgroup_closed_under_add
+### lemma_even_subgroup_closed_under_add
 
 **Verus:**
 ```rust
-pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
+pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
     requires is_in_even_subgroup(p1), is_in_even_subgroup(p2),
     ensures /* p1 + p2 is in even subgroup */
 { admit(); }
@@ -393,11 +393,11 @@ Source: [AFP `Crypto_Standards`](https://devel.isa-afp.org/entries/Crypto_Standa
 
 ## 8. Inverse Square Root
 
-### axiom_invsqrt_factors_over_square
+### lemma_invsqrt_factors_over_square
 
 **Verus:**
 ```rust
-pub proof fn axiom_invsqrt_factors_over_square(a: nat, b: nat)
+pub proof fn lemma_invsqrt_factors_over_square(a: nat, b: nat)
     requires a % p() != 0, b % p() != 0,
     ensures nat_invsqrt(field_mul(a, field_square(b)))
          == field_abs(field_mul(nat_invsqrt(a), field_inv(b))),
@@ -487,7 +487,7 @@ definition elligator_sum_game :: "'a spmf" where
 
 **Verus:**
 ```rust
-pub proof fn axiom_invsqrt_a_minus_d()
+pub proof fn lemma_invsqrt_a_minus_d()
     ensures nat_invsqrt(field_sub(field_neg(1), d)) == c_iad
          && field_mul(field_square(c_iad), neg_one_minus_d) == 1,
 { admit(); }

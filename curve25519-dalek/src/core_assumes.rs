@@ -304,7 +304,7 @@ pub open spec fn spec_state_after_hash_montgomery<H>(
     spec_state_after_hash(initial_state, &canonical_bytes)
 }
 
-pub proof fn axiom_hash_is_canonical<H>(
+pub proof fn lemma_hash_is_canonical<H>(
     point1: &MontgomeryPoint,
     point2: &MontgomeryPoint,
     state: H,

@@ -2885,7 +2885,7 @@ impl RistrettoPoint {
             // Even subgroup: R_1 and R_2 are in the even subgroup (from elligator),
             // and the even subgroup is closed under addition.
             assert(is_in_even_subgroup(result.0)) by {
-                axiom_even_subgroup_closed_under_add(R_1.0, R_2.0);
+                lemma_even_subgroup_closed_under_add(R_1.0, R_2.0);
             };
 
             // Functional correctness: connect exec operations to spec.

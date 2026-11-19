@@ -156,7 +156,7 @@ Combined with the curve equation to show denominators are nonzero.
 
 ---
 
-### axiom_edwards_scalar_mul_signed_additive / axiom_edwards_scalar_mul_distributive
+### axiom_edwards_scalar_mul_signed_additive / lemma_edwards_scalar_mul_distributive
 
 **Verus:**
 ```rust
@@ -180,11 +180,11 @@ Lemma mulrzDl (R : zmodType) (x : R) (m n : int) :
 
 ## 4. Quadratic Residuosity
 
-### axiom_486660_not_quadratic_residue
+### lemma_486660_not_quadratic_residue
 
 **Verus:**
 ```rust
-pub proof fn axiom_486660_not_quadratic_residue()
+pub proof fn lemma_486660_not_quadratic_residue()
     ensures !is_square(486660nat),
 { admit(); }
 ```
@@ -199,11 +199,11 @@ Eval vm_compute in (486660 ^ ((p - 1) / 2) mod p).
 
 ---
 
-### axiom_sqrt_m1_squared
+### lemma_sqrt_m1_squared
 
 **Verus:**
 ```rust
-pub proof fn axiom_sqrt_m1_squared()
+pub proof fn lemma_sqrt_m1_squared()
     ensures (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),
 { admit(); }
 ```
@@ -260,11 +260,11 @@ Lemma morphim_expg (aT rT : finGroupType) (f : {morphism aT >-> rT})
 
 ## 6. Subgroup Closure
 
-### axiom_even_subgroup_closed_under_add
+### lemma_even_subgroup_closed_under_add
 
 **Verus:**
 ```rust
-pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
+pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
     requires is_in_even_subgroup(p1), is_in_even_subgroup(p2), /* well-formed */
     ensures /* p1 + p2 is in even subgroup */
 { admit(); }
@@ -307,11 +307,11 @@ Source: [VST SHA-256 verification](https://www.cs.princeton.edu/~appel/papers/ve
 
 ## 8. Inverse Square Root
 
-### axiom_invsqrt_factors_over_square
+### lemma_invsqrt_factors_over_square
 
 **Verus:**
 ```rust
-pub proof fn axiom_invsqrt_factors_over_square(a: nat, b: nat)
+pub proof fn lemma_invsqrt_factors_over_square(a: nat, b: nat)
     requires a % p() != 0, b % p() != 0,
     ensures nat_invsqrt(field_mul(a, field_square(b)))
          == field_abs(field_mul(nat_invsqrt(a), field_inv(b))),

@@ -16,11 +16,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@1.98.1
+      uses: dtolnay/rust-toolchain@1.99.1
     - name: Install Verus
       run: |
-        wget https://github.com/verus-lang/verus/releases/download/release%2Frolling%2F0.2026.10.08.956d529/verus-0.2026.10.08.956d529-x86-linux.zip
-        unzip verus-0.2026.10.08.956d529-x86-linux.zip
+        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2026.11.02.8bf68ee/verus-0.2026.11.02.8bf68ee-x86-linux.zip
+        unzip verus-0.2026.11.02.8bf68ee-x86-linux.zip
         mv verus-x86-linux ~/.cargo/bin
         cd ~/.cargo/bin
         ln -s verus-x86-linux/cargo-verus
@@ -66,7 +66,7 @@ jobs:
     - name: Checkout dalek-lite
       uses: actions/checkout@v4
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@1.98.1
+      uses: dtolnay/rust-toolchain@1.99.1
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y protobuf-compiler cmake pkg-config clang
     - name: Get libsignal
@@ -98,11 +98,11 @@ jobs:
     - name: Checkout dalek-lite
       uses: actions/checkout@v4
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@1.98.1
+      uses: dtolnay/rust-toolchain@1.99.1
     - name: Install Verus
       run: |
-        wget https://github.com/verus-lang/verus/releases/download/release%2Frolling%2F0.2026.10.08.956d529/verus-0.2026.10.08.956d529-x86-linux.zip
-        unzip verus-0.2026.10.08.956d529-x86-linux.zip
+        wget https://github.com/verus-lang/verus/releases/download/release%2F0.2026.11.02.8bf68ee/verus-0.2026.11.02.8bf68ee-x86-linux.zip
+        unzip verus-0.2026.11.02.8bf68ee-x86-linux.zip
         mv verus-x86-linux ~/.cargo/bin
         cd ~/.cargo/bin
         ln -s verus-x86-linux/cargo-verus

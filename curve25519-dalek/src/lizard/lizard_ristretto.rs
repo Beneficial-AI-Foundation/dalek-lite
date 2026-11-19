@@ -164,6 +164,7 @@ impl RistrettoPoint {
 
     /// Verus-friendly variant of `lizard_encode::<Sha256>`.
     ///
+    #[verifier::rlimit(20)]
     pub fn lizard_encode_verus(data: &[u8; 16]) -> (result: RistrettoPoint)
         ensures
             is_well_formed_edwards_point(result.0),

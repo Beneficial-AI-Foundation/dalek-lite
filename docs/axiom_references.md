@@ -380,6 +380,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Claim:** Equal field elements hash identically
 
 **Reference:** Hash function specification; RFC 8032  
+**Status:** Proved. Equal field elements have equal canonical bytes (`lemma_field_element_equal_implies_fe51_to_bytes_equal`), so the hash inputs are equal.
+
 **Justification:** Standard property of hash functions: equal inputs produce equal outputs.
 
 ---
@@ -390,7 +392,21 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Reference:** FIPS 180-4; RFC 6234  
 **URL:** https://www.rfc-editor.org/rfc/rfc6234
 
+**Status:** Proved. `spec_sha512` is the sequence view of the uninterpreted `spec_sha512_array`, which returns `[u8; 64]`, so the length follows from the type.
+
 **Justification:** SHA-512 specification.
+
+---
+
+### axiom_sha256_output_length()
+**Claim:** SHA-256 output is 32 bytes
+
+**Reference:** FIPS 180-4; RFC 6234  
+**URL:** https://www.rfc-editor.org/rfc/rfc6234
+
+**Status:** Proved. `spec_sha256` is the sequence view of the uninterpreted `spec_sha256_array`, which returns `[u8; 32]`, so the length follows from the type.
+
+**Justification:** SHA-256 specification.
 
 ---
 
@@ -578,8 +594,9 @@ Justification types (7 canonical values):
 | axiom_uniform_elligator_sum | proba_specs.rs | crypto-assumption | RFC 9380; Tibouchi 2015 |
 | axiom_uniform_point_add | proba_specs.rs | crypto-assumption | Group-theoretic uniformity |
 | axiom_uniform_mod_reduction | proba_specs.rs | crypto-assumption | Probability theory |
-| axiom_hash_is_canonical | core_assumes.rs | rfc | RFC 8032 |
-| axiom_sha512_output_length | core_assumes.rs | rfc | FIPS 180-4; RFC 6234 |
+| axiom_hash_is_canonical | core_assumes.rs | proved | Canonical bytes of equal field elements |
+| axiom_sha512_output_length | core_assumes.rs | proved | Array type of spec_sha512_array |
+| axiom_sha256_output_length | core_assumes.rs | proved | Array type of spec_sha256_array |
 | axiom_four_torsion_affine | torsion_lemmas.rs | tested | Limb expansion; runtime test |
 | axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | proved | compute_only |
 | axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§4.1 + algebraic derivation |

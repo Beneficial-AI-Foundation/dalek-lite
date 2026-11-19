@@ -842,7 +842,7 @@ impl RistrettoPoint {
     /// `elligator_ristretto_flavor_inverse` to prove spec candidate correspondence).
     /// Since `spec_to_jacobi_quartic_ristretto` is opaque, the equality term is
     /// inert for callers that do not reveal or index into it.
-    #[verifier::rlimit(20)]
+    #[verifier::spinoff_prover]
     fn to_jacobi_quartic_ristretto(self) -> (result: [JacobiPoint; 4])
         requires
             is_well_formed_edwards_point(self.0),

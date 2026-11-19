@@ -53,7 +53,6 @@ use vstd::prelude::*;
 verus! {
 
 /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
-#[verifier::rlimit(20)]
 pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
     requires
 // Input point must be well-formed
@@ -74,6 +73,8 @@ pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (out: EdwardsPoint)
         },
 {
     hide(pow2);
+    hide(fe51_limbs_bounded);
+    hide(sum_of_limbs_bounded);
     let a_naf = a.non_adjacent_form(5);
 
     #[cfg(feature = "precomputed-tables")]

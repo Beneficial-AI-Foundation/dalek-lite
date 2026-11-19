@@ -594,7 +594,7 @@ pub proof fn axiom_jacobi_quartic_birational_pair01(point: crate::edwards::Edwar
 ///   θ(JQ[3]) = P + T₆         (= coset[3])
 ///
 /// where T₂ = (−i, 0) and T₆ = T₂ + T₄ = (i, 0) (see `axiom_four_torsion_affine`).
-/// The torque maps (x, y) to (−iy, −ix) = (x, y) + T₂, so it adds the
+/// The torque maps (x, y) to (−i·y, −i·x) = (x, y) + T₂, so it adds the
 /// 4-torsion point T₂ to bridge E/E[4] to E/E[2].
 ///
 /// Reference: Hamburg (2015) "Decaf" §4, §7 (cofactor-8 coset

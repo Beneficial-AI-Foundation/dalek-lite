@@ -74,7 +74,7 @@ jobs:
         cd ..
         git clone https://github.com/Beneficial-AI-Foundation/libsignal
         cd libsignal
-        git checkout frozen_for_ci_verus_956d529
+        git checkout frozen_for_ci_verus_8bf68ee
     - name: Patch libsignal's Cargo.toml with current dalek-lite commit
       run: |
         DALEK_COMMIT=$(git rev-parse HEAD)
@@ -113,7 +113,7 @@ jobs:
         cd ..
         git clone https://github.com/Beneficial-AI-Foundation/libsignal
         cd libsignal
-        git checkout frozen_for_ci_v0.84.0_verus_956d529
+        git checkout frozen_for_ci_v0.84.0_verus_8bf68ee
     - name: Patch libsignal's Cargo.toml with current dalek-lite commit
       run: |
         DALEK_COMMIT=$(git rev-parse HEAD)

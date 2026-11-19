@@ -208,9 +208,8 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
 /// deterministically, and for (−1 − d) — which is a quadratic residue mod p —
 /// the result satisfies r²·a = 1 rather than r²·a = √(−1).
 ///
-/// In principle the second clause follows from the first plus a proof that
-/// (−1 − d) is a QR mod p, but that QR status is itself a concrete numerical
-/// fact that Verus cannot evaluate (it requires 252-bit modular exponentiation).
+/// Proved by `compute_only`. `lemma_nat_invsqrt_fast` replaces the
+/// exponentiation in `nat_invsqrt` with square and multiply.
 ///
 /// Reference: Hamburg (2015) "Decaf" §4.1 (isogeny θ uses 1/√(a₂d₂−1));
 ///   also ristretto.group/details/isogenies.html.
@@ -225,7 +224,74 @@ pub proof fn axiom_invsqrt_a_minus_d()
                 == 1
         }),
 {
-    admit();
+    use vstd::arithmetic::power::*;
+    use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
+    reveal(pow);
+    assert(field_mul(
+        field_square(
+            field_mul(
+                field_square(
+                    field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+                ),
+                field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+            ),
+        ),
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    ) > 0) by (compute_only);
+    lemma_nat_invsqrt_fast(
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    );
+    assert(nat_invsqrt_fast(
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    ) == fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D)) by (compute_only);
+    assert(field_mul(
+        field_square(fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D)),
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    ) == 1) by (compute_only);
+}
+
+/// nat_invsqrt with the exponentiation replaced by square and multiply.
+pub open spec fn nat_invsqrt_fast(a: nat) -> nat {
+    if a % p() == 0 {
+        0
+    } else {
+        let a3 = field_mul(field_square(a), a);
+        let a7 = field_mul(field_square(a3), a);
+        let k = ((p() - 5) / 8) as nat;
+        let r_raw = field_mul(a3, crate::lemmas::field_lemmas::sqrt_m1_lemmas::pow_mod(a7, k, p()));
+        let check = field_mul(a, field_square(r_raw));
+        let neg_one = field_neg(1);
+        let neg_i = field_neg(sqrt_m1());
+        let r_adj = if check == neg_one || check == neg_i {
+            field_mul(sqrt_m1(), r_raw)
+        } else {
+            r_raw
+        };
+        if is_negative(r_adj) {
+            field_neg(r_adj)
+        } else {
+            r_adj
+        }
+    }
+}
+
+pub proof fn lemma_nat_invsqrt_fast(a: nat)
+    requires
+        field_mul(field_square(field_mul(field_square(a), a)), a) > 0,
+    ensures
+        nat_invsqrt(a) == nat_invsqrt_fast(a),
+{
+    use vstd::arithmetic::power::*;
+    use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
+    reveal(pow);
+    assert(p() == 57896044618658097711785492504343953926634992332820282019728792003956564819949nat)
+        by (compute_only);
+    let a3 = field_mul(field_square(a), a);
+    let a7 = field_mul(field_square(a3), a);
+    let k = ((p() - 5) / 8) as nat;
+    lemma_pow_positive(a7 as int, k);
+    lemma_pow_mod_correct(a7, k, p());
+    assert((pow(a7 as int, k) as nat) % p() == pow_mod(a7, k, p()));
 }
 
 } // verus!

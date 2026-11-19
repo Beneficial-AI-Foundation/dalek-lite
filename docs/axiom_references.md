@@ -54,6 +54,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Reference:** RFC 7748; Elligator2 specification  
 **URL:** https://www.rfc-editor.org/rfc/rfc7748
 
+**Status:** Proved by Euler's criterion. `pow_mod` (sqrt_m1_lemmas.rs) computes x^((p−1)/2) mod p by `compute_only`, and `lemma_not_square_by_euler` turns a result other than 1 into the non-square fact.
+
 **Justification:** Verified by runtime test `test_486660_not_qr` in the crate. The test uses Euler's criterion for quadratic residuosity.
 
 ---
@@ -63,6 +65,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Reference:** RFC 7748; Elligator2 specification  
 **URL:** https://www.rfc-editor.org/rfc/rfc7748
+
+**Status:** Proved by Euler's criterion. `pow_mod` (sqrt_m1_lemmas.rs) computes x^((p−1)/2) mod p by `compute_only`, and `lemma_not_square_by_euler` turns a result other than 1 into the non-square fact.
 
 **Justification:** Verified by runtime test `test_2_times_486661_not_qr`. Since p ≡ 5 (mod 8), 2 is a non-QR; 486661 = A−1 is a QR; product is non-QR.
 
@@ -302,6 +306,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Reference:** Standard property of (inverse) square roots in finite fields.  
 **URL:** N/A (standard algebra)
 
+**Status:** Proved from the field lemmas, by the argument below and the uniqueness of the inverse square root (`lemma_invsqrt_unique`).
+
 **Justification:** If r = nat_invsqrt(a) then r²·a ∈ {1, √(−1)}. Let s = r·inv(b). Then s²·(a·b²) = r²·inv(b²)·a·b² = r²·a ∈ {1, √(−1)}, so s is a valid inverse square root of a·b². After canonical sign normalisation (field_abs), s and nat_invsqrt(a·b²) agree because nat_invsqrt returns the unique non-negative representative.
 
 **Runtime validation:** `test_invsqrt_factors_over_square` — validates for 200 points using diverse field elements derived from basepoint multiples.
@@ -313,7 +319,9 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Reference:** Hamburg (2015) "Decaf" §4.1 (isogeny θ uses 1/√(a₂d₂−1)); ristretto.group/details/isogenies.html
 
-**Justification:** Concrete numerical fact: nat_invsqrt computes the unique non-negative inverse square root; INVSQRT_A_MINUS_D is this value for the argument (−1 − d). The second clause (C_IAD²·(−1−d) = 1) is a corollary but stated explicitly because (−1−d) being a QR is itself a concrete numerical fact that Verus cannot evaluate (252-bit modular exponentiation).
+**Justification:** Concrete numerical fact: nat_invsqrt computes the unique non-negative inverse square root; INVSQRT_A_MINUS_D is this value for the argument (−1 − d). The second clause (C_IAD²·(−1−d) = 1) is a corollary but stated explicitly.
+
+**Status:** Proved by `compute_only`. `lemma_nat_invsqrt_fast` replaces the exponentiation in `nat_invsqrt` with square and multiply (`pow_mod`).
 
 **Runtime validation:** `test_nat_invsqrt_neg_one_minus_d`, `test_invsqrt_a_minus_d_squared`
 
@@ -328,6 +336,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Claim:** `spec_sqrt_m1()`² = −1 (mod p); sqrt(−1) and −sqrt(−1) are not squares
 
 **Reference:** p = 2²⁵⁵ − 19 ≡ 5 (mod 8), so −1 is a quadratic residue; its square roots are not squares  
+**Status:** Proved. `axiom_sqrt_m1_squared` by `compute_only`. The two non-square facts by Euler's criterion (`pow_mod` and `lemma_not_square_by_euler`).
+
 **Justification:** For p ≡ 5 (mod 8), −1 is a QR. The square roots of −1 are ±i; neither i nor −i is a square (otherwise −1 would be a fourth power).
 
 **Mechanization note (axiom_sqrt_m1_squared):** The product sqrt_m1()² is ~504 bits, far beyond SMT capacity. Assessed as not cost-effective to mechanize (schoolbook limb multiplication ~50-100 proof lines; witness-based approach limited by ~249-bit quotient; CRT approach requires Verus CRT infrastructure). Keep as axiom.
@@ -519,13 +529,14 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 
 ## Summary Table
 
-Justification types (6 canonical values):
+Justification types (7 canonical values):
 - **rfc** — Backed by IETF standard (RFC 7748, 8032, 9380, 9496)
 - **paper** — Backed by peer-reviewed paper (Bernstein, Costello-Smith, Hamburg, etc.)
 - **tested** — Primary justification is runtime validation test (Euler criterion, limb expansion)
 - **construction** — Precomputed table validated by construction from the basepoint
 - **crypto-assumption** — Standard cryptographic assumption (uniformity, hash, independence)
 - **algebraic-gap** — Algebraic identity not yet formalized; derivable by symbolic algebra (Sage/Magma)
+- **proved** — Proved in Verus; the axiom keeps its `axiom_` name
 
 | Axiom | File | Justification Type | Primary Reference |
 |-------|------|--------------------|-------------------|
@@ -533,8 +544,8 @@ Justification types (6 canonical values):
 | axiom_montgomery_add_associative | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 |
 | axiom_xdbl_projective_correct | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 Eq. 10 |
 | axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 Eq. 9 |
-| axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | tested | test_486660_not_qr |
-| axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | tested | test_2_times_486661_not_qr |
+| axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | proved | Euler's criterion; compute_only |
+| axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | proved | Euler's criterion; compute_only |
 | axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | rfc | RFC 7748 §4.1 |
 | axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | rfc | RFC 9380 §6.7.1 |
 | axiom_montgomery_valid_u_implies_edwards_y_valid | montgomery_curve_lemmas.rs | rfc | RFC 7748 §4.1 |
@@ -551,14 +562,14 @@ Justification types (6 canonical values):
 | axiom_elligator_nonzero_intermediates | ristretto_lemmas/axioms.rs | paper | RFC 9496 §4.3.4; Hamburg 2015 §6; test (200+ inputs) |
 | axiom_elligator_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (200+ inputs) |
 | axiom_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | paper | Group theory; lemma_edwards_double_of_add |
-| axiom_invsqrt_factors_over_square | field_specs.rs | paper | Standard finite field algebra; test (200 inputs) |
-| axiom_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | tested | Hamburg 2015 §4.1; test_nat_invsqrt_neg_one_minus_d, test_invsqrt_a_minus_d_squared |
+| axiom_invsqrt_factors_over_square | field_specs.rs | proved | Uniqueness of the inverse square root |
+| axiom_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | proved | compute_only; square and multiply |
 | axiom_ristretto_cross_mul_iff_equivalent | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; Ristretto §3.2; test |
 | axiom_ristretto_decode_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015; test_ristretto_decode_on_curve |
 | axiom_ristretto_decode_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (100+ points) |
-| axiom_sqrt_m1_squared | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_limbs_bounded |
-| axiom_sqrt_m1_not_square | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_not_square |
-| axiom_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_not_square |
+| axiom_sqrt_m1_squared | sqrt_m1_lemmas.rs | proved | compute_only |
+| axiom_sqrt_m1_not_square | sqrt_m1_lemmas.rs | proved | Euler's criterion; compute_only |
+| axiom_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | proved | Euler's criterion; compute_only |
 | axiom_uniform_bytes_split | proba_specs.rs | crypto-assumption | Probability theory |
 | axiom_from_bytes_uniform | proba_specs.rs | crypto-assumption | Probability theory |
 | axiom_from_bytes_independent | proba_specs.rs | crypto-assumption | Probability theory |
@@ -570,7 +581,7 @@ Justification types (6 canonical values):
 | axiom_hash_is_canonical | core_assumes.rs | rfc | RFC 8032 |
 | axiom_sha512_output_length | core_assumes.rs | rfc | FIPS 180-4; RFC 6234 |
 | axiom_four_torsion_affine | torsion_lemmas.rs | tested | Limb expansion; runtime test |
-| axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | tested | Constant identity; runtime test |
+| axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | proved | compute_only |
 | axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§4.1 + algebraic derivation |
 | axiom_jacobi_quartic_torsion_pair23 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§7 + algebraic derivation |
 | axiom_elligator_forward_zero | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |

@@ -443,7 +443,7 @@ pub proof fn lemma_jacobi_dual_same_edwards(s: nat, t: nat)
 ///   √(ad−1)  = √(−d−1)      (`spec_sqrt_ad_minus_one()`,  a = −1 for Ed25519)
 ///   √(−1)   = `sqrt_m1()`
 ///
-/// Left as axiom because the 510-bit limb arithmetic exceeds Z3's capacity.
+/// Proved by `compute_only`.
 ///
 /// Runtime validation: `test_axiom_mc_times_sqrt_ad_m1` in lizard_ristretto.rs.
 pub proof fn axiom_mc_times_sqrt_ad_m1()
@@ -453,7 +453,12 @@ pub proof fn axiom_mc_times_sqrt_ad_m1()
             sqrt_m1(),
         ),
 {
-    admit();
+    use vstd::arithmetic::power::pow;
+    reveal(pow);
+    assert(field_mul(midouble_invsqrt_a_minus_d(), spec_sqrt_ad_minus_one()) == field_mul(
+        2,
+        sqrt_m1(),
+    )) by (compute_only);
 }
 
 // =============================================================================

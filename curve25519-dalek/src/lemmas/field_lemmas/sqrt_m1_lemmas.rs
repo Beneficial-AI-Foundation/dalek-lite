@@ -35,6 +35,85 @@ use vstd::prelude::*;
 
 verus! {
 
+// ---- Square and multiply, and Euler's criterion for non-squares ----
+pub open spec fn pow_mod(b: nat, e: nat, m: nat) -> nat
+    decreases e,
+{
+    if e == 0 {
+        1nat % m
+    } else {
+        let h = pow_mod(b, e / 2, m);
+        if e % 2 == 0 {
+            (h * h) % m
+        } else {
+            (h * h * b) % m
+        }
+    }
+}
+
+pub proof fn lemma_pow_mod_correct(b: nat, e: nat, m: nat)
+    requires
+        m > 0,
+    ensures
+        pow_mod(b, e, m) as int == pow(b as int, e) % (m as int),
+    decreases e,
+{
+    if e == 0 {
+        lemma_pow0(b as int);
+    } else {
+        let h2 = e / 2;
+        lemma_pow_mod_correct(b, h2, m);
+        let ph = pow(b as int, h2);
+        lemma_pow_adds(b as int, h2, h2);
+        let h = pow_mod(b, h2, m) as int;
+        lemma_mul_mod_noop_general(ph, ph, m as int);
+        if e % 2 == 0 {
+            assert(e == h2 + h2);
+        } else {
+            assert(e == (h2 + h2) + 1);
+            lemma_pow_adds(b as int, h2 + h2, 1);
+            lemma_pow1(b as int);
+            lemma_mul_mod_noop_general(ph * ph, b as int, m as int);
+            lemma_mul_mod_noop_general(h * h, b as int, m as int);
+        }
+    }
+}
+
+pub proof fn lemma_not_square_by_euler(a: nat)
+    requires
+        a % p() != 0,
+        pow_mod(a, ((p() - 1) / 2) as nat, p()) != 1,
+    ensures
+        !is_square(a),
+{
+    reveal(pow);
+    assert(p() == 57896044618658097711785492504343953926634992332820282019728792003956564819949nat)
+        by (compute_only);
+    let pn = p();
+    let h: nat = ((pn - 1) / 2) as nat;
+    assert(2 * h == pn - 1);
+    if is_square(a) {
+        let y = choose|y: nat| (#[trigger] field_mul(y, y)) == field_canonical(a);
+        assert((y * y) % pn == a % pn);
+        if y % pn == 0 {
+            lemma_mul_mod_noop_general(y as int, y as int, pn as int);
+            assert(false);
+        }
+        axiom_p_is_prime();
+        lemma_fermat_little_theorem(y, pn);
+        lemma_pow_mod_correct(a, h, pn);
+        lemma_pow_mod_noop(a as int, h, pn as int);
+        lemma_pow_mod_noop((y * y) as int, h, pn as int);
+        lemma_pow_adds(y as int, 1, 1);
+        lemma_pow1(y as int);
+        assert(pow(y as int, 2) == (y * y) as int);
+        lemma_pow_multiplies(y as int, 2, h);
+        assert(pow(a as int, h) % (pn as int) == pow(y as int, (pn - 1) as nat) % (pn as int));
+        lemma_pow_positive(y as int, (pn - 1) as nat);
+        assert(false);
+    }
+}
+
 // =============================================================================
 // AXIOMS: Number-Theoretic Facts about i = sqrt(-1) in F_p where p = 2^255 - 19
 //
@@ -86,11 +165,9 @@ pub proof fn axiom_sqrt_m1_squared()
     ensures
         (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),
 {
-    // sqrt_m1() = fe51_as_canonical_nat(&SQRT_M1) = fe51_as_nat(&SQRT_M1) % p()
-    // This is a 252-bit number; verifying i² = -1 (mod p) requires big-number
-    // multiplication far beyond SMT solver capacity.
-    // Validated at runtime by test_sqrt_m1_limbs_bounded (which checks SQRT_M1² = -1).
-    admit();
+    // Proved by computation. The runtime test test_sqrt_m1_limbs_bounded checks the same fact.
+    reveal(pow);
+    assert((sqrt_m1() * sqrt_m1()) % p() == (p() - 1)) by (compute_only);
 }
 
 /// AXIOM: i = sqrt(-1) is not a square in F_p
@@ -108,7 +185,10 @@ pub proof fn axiom_sqrt_m1_not_square()
     ensures
         !is_square(sqrt_m1()),
 {
-    admit();
+    reveal(pow);
+    assert(sqrt_m1() % p() != 0) by (compute_only);
+    assert(pow_mod(sqrt_m1(), ((p() - 1) / 2) as nat, p()) != 1) by (compute_only);
+    lemma_not_square_by_euler(sqrt_m1());
 }
 
 /// AXIOM: -i = -(sqrt(-1)) is not a square in F_p
@@ -125,7 +205,10 @@ pub proof fn axiom_neg_sqrt_m1_not_square()
     ensures
         !is_square((p() - sqrt_m1()) as nat),
 {
-    admit();
+    reveal(pow);
+    assert(((p() - sqrt_m1()) as nat) % p() != 0) by (compute_only);
+    assert(pow_mod((p() - sqrt_m1()) as nat, ((p() - 1) / 2) as nat, p()) != 1) by (compute_only);
+    lemma_not_square_by_euler((p() - sqrt_m1()) as nat);
 }
 
 // =============================================================================

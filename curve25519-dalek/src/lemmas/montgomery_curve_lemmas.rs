@@ -1490,7 +1490,12 @@ pub proof fn axiom_486660_not_quadratic_residue()
     ensures
         !is_square(486660nat),
 {
-    admit();
+    use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
+    use vstd::arithmetic::power::pow;
+    reveal(pow);
+    assert(486660nat % p() != 0) by (compute_only);
+    assert(pow_mod(486660, ((p() - 1) / 2) as nat, p()) != 1) by (compute_only);
+    lemma_not_square_by_euler(486660);
 }
 
 /// Axiom: 2 * 486661 (= 2*(A-1)) is not a quadratic residue mod p.
@@ -1500,7 +1505,12 @@ pub proof fn axiom_2_times_486661_not_qr()
     ensures
         !is_square((2nat * 486661nat) % p()),
 {
-    admit();
+    use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
+    use vstd::arithmetic::power::pow;
+    reveal(pow);
+    assert(((2nat * 486661nat) % p()) % p() != 0) by (compute_only);
+    assert(pow_mod((2nat * 486661nat) % p(), ((p() - 1) / 2) as nat, p()) != 1) by (compute_only);
+    lemma_not_square_by_euler((2nat * 486661nat) % p());
 }
 
 /// Lemma: the modular inverse of a non-zero non-QR is also a non-QR.

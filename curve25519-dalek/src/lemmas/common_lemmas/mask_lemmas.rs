@@ -65,8 +65,13 @@ lemma_masked_lt!(
     lemma_u64_shl_is_mul,
     u64
 );
-// TODO: missing VSTD lemmas for u128
-// lemma_masked_lt!(lemma_u128_masked_lt, lemma_u128_low_bits_mask_is_mod, lemma_u128_pow2_le_max, lemma_u128_shl_is_mul, u128);
+lemma_masked_lt!(
+    lemma_u128_masked_lt,
+    lemma_u128_low_bits_mask_is_mod,
+    lemma_u128_pow2_le_max,
+    lemma_u128_shl_is_mul,
+    u128
+);
 
 // Proofs of when k <= N => 2^k - 1 <= uN::MAX = 2^N - 1
 macro_rules! lemma_low_bits_masks_fit {

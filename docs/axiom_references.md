@@ -174,6 +174,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Reference:** Group theory; Bernstein et al. (2008)  
 **URL:** https://eprint.iacr.org/2008/013.pdf
 
+**Status:** Proved by induction on n with `lemma_edwards_double_of_add` and `lemma_edwards_add_four_way_swap`.
+
 **Justification:** The "multiply by n" endomorphism is a group homomorphism in any abelian group. Standard algebraic fact.
 
 ---
@@ -571,7 +573,7 @@ Justification types (7 canonical values):
 | axiom_edwards_add_associative | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 |
 | axiom_edwards_add_complete | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 Thm. 3.3 |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
-| axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
+| axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | proved | Induction on n |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_lemmas/axioms.rs | construction | Hamburg 2019 |
 | axiom_elligator_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; test (250+ inputs) |

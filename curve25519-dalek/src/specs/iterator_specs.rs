@@ -170,30 +170,6 @@ pub fn collect_edwards_from_ristretto_iter<P, J>(iter: J) -> (result: Vec<Edward
 }
 
 /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::clone`
-///
-/// Clone a RistrettoPoint iterator with spec guarantee.
-/// Returns (original, clone) with the guarantee that both yield the same Edwards sequence.
-#[verifier::external_body]
-pub fn clone_ristretto_iter_with_spec<P, J>(iter: J) -> (result: (J, J)) where
-    P: Borrow<RistrettoPoint>,
-    J: Iterator<Item = P> + Clone,
-
-    ensures
-        spec_edwards_from_ristretto_iter::<P, J>(result.0) == spec_edwards_from_ristretto_iter::<
-            P,
-            J,
-        >(iter),
-        spec_edwards_from_ristretto_iter::<P, J>(result.1) == spec_edwards_from_ristretto_iter::<
-            P,
-            J,
-        >(iter),
-{
-    let cloned = iter.clone();
-    (iter, cloned)
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
 /// `Iterator::map + Iterator::collect (into Vec<RistrettoPoint>)`
 ///
 /// Collect an iterator of RistrettoPoints into Vec<RistrettoPoint>.
@@ -227,25 +203,6 @@ pub fn collect_optional_edwards_from_ristretto_iter<J>(iter: J) -> (result: Vec<
         result@ == spec_optional_edwards_from_ristretto_iter::<J>(iter),
 {
     iter.map(|opt| opt.map(|p| p.0)).collect()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::clone`
-///
-/// Clone an optional RistrettoPoint iterator with spec guarantee.
-/// Returns (original, clone) with the guarantee that both yield the same Edwards sequence.
-#[verifier::external_body]
-pub fn clone_optional_ristretto_iter_with_spec<J>(iter: J) -> (result: (J, J)) where
-    J: Iterator<Item = Option<RistrettoPoint>> + Clone,
-
-    ensures
-        spec_optional_edwards_from_ristretto_iter::<J>(result.0)
-            == spec_optional_edwards_from_ristretto_iter::<J>(iter),
-        spec_optional_edwards_from_ristretto_iter::<J>(result.1)
-            == spec_optional_edwards_from_ristretto_iter::<J>(iter),
-{
-    let cloned = iter.clone();
-    (iter, cloned)
 }
 
 // ============================================================================

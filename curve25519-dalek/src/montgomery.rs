@@ -263,9 +263,12 @@ impl Hash for MontgomeryPoint {
              (1) The postcondition is expressed using the abstract `spec_state_after_hash*` model for
                  `core::hash::Hash::hash` on fixed-size arrays (see `core_assumes.rs`).
             (2) `spec_state_after_hash_montgomery` hashes the canonical encoding
-                 `spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))`. */
+                 `spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))`.
+            (3) The postcondition holds only if hashing `[u8; 32]` into `H` is deterministic
+                 (`spec_hash_is_deterministic::<H, u8>()`), because `Hasher` does not require it. */
 
-            *final(state) == spec_state_after_hash_montgomery(*old(state), self),
+            spec_hash_is_deterministic::<H, u8>() ==> *final(state)
+                == spec_state_after_hash_montgomery(*old(state), self),
     {
         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical
         // 32-byte encoding

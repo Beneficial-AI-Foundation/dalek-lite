@@ -102,6 +102,11 @@ pub(crate) mod specs;
 // External type specifications for core Rust types
 pub(crate) mod core_assumes;
 
+/// Trusted obligation that clients assume to use the conditional `Hash` postconditions
+/// (see `<MontgomeryPoint as core::hash::Hash>::hash`).
+#[cfg(verus_keep_ghost)]
+pub use crate::core_assumes::spec_hash_is_deterministic;
+
 // Arithmetic backends (using u32, u64, etc) live here
 #[cfg(docsrs)]
 pub mod backend;

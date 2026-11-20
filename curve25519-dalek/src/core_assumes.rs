@@ -274,7 +274,23 @@ pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg
     -a
 }
 
-// Spec function: models the state of a hasher after hashing bytes
+/// Holds if hashing an array `[T; N]` into a hasher of type `H` is deterministic in the
+/// Verus model: for every `N`, every array, and every value of `H`, the state of `H` after
+/// `<[T; N] as Hash>::hash` depends only on its prior Verus value and the array.
+///
+/// This is a trusted obligation on the pair `(H, T)`. It covers every `Hasher` method that
+/// array hashing calls, for example `write`, `write_usize`, `write_length_prefix`, and the
+/// `Hash::hash` and `Hash::hash_slice` methods of `T`. It fails if any of them reads state
+/// that the Verus value of `H` does not contain, for example a global counter, a clock,
+/// or memory behind an `Rc<Cell<_>>` or an atomic. It says nothing about `Hasher::finish`.
+///
+/// This predicate is uninterpreted, and this crate never proves it. A client that needs the
+/// conditional postconditions below must assume it for its own `(H, T)` after it checks
+/// the conditions above.
+pub uninterp spec fn spec_hash_is_deterministic<H, T>() -> bool;
+
+/// Models the state of a hasher after hashing `bytes`. It describes the real state only
+/// when `spec_hash_is_deterministic::<H, T>()` holds.
 pub uninterp spec fn spec_state_after_hash<H, T, const N: usize>(
     initial_state: H,
     bytes: &[T; N],
@@ -282,16 +298,22 @@ pub uninterp spec fn spec_state_after_hash<H, T, const N: usize>(
 
 // Assume specification for array hash implementation
 // This is used when hashing fixed-size arrays like [u8; 32] in Hash implementations.
-// The specification models hashing as a pure state transition on the hasher state.
+// When `spec_hash_is_deterministic::<H, T>()` holds, the specification models hashing as a
+// pure state transition on the hasher state. Neither `Hasher` nor `Hash` requires this, so
+// the postcondition is conditional. A trait impl cannot add `requires`, so the hypothesis
+// is in the `ensures`.
 pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
     bytes: &[T; N],
     state: &mut H,
 ) where H: core::hash::Hasher, T: core::hash::Hash
     ensures
-        *final(state) == spec_state_after_hash(*old(state), bytes),
+        spec_hash_is_deterministic::<H, T>() ==> *final(state) == spec_state_after_hash(
+            *old(state),
+            bytes,
+        ),
 ;
 
-/// Spec function: the hash state after hashing a MontgomeryPoint
+/// Spec function: the model hash state after hashing a MontgomeryPoint
 /// This is defined as the hash state of its canonical byte representation
 pub open spec fn spec_state_after_hash_montgomery<H>(
     initial_state: H,
@@ -304,6 +326,9 @@ pub open spec fn spec_state_after_hash_montgomery<H>(
     spec_state_after_hash(initial_state, &canonical_bytes)
 }
 
+/// Points with the same field element have the same model hash state.
+/// This relates only model expressions. Runtime hash states are equal only when
+/// `spec_hash_is_deterministic::<H, u8>()` holds (see `<MontgomeryPoint as Hash>::hash`).
 pub proof fn lemma_hash_is_canonical<H>(
     point1: &MontgomeryPoint,
     point2: &MontgomeryPoint,

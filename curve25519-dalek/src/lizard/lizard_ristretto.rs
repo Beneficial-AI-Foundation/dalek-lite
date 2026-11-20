@@ -906,6 +906,9 @@ impl RistrettoPoint {
                 )
             }),
     {
+        // Keep the existential in `is_in_even_subgroup` out of the context. It is
+        // only passed on to `lemma_coset_bridge`.
+        hide(is_in_even_subgroup);
         proof {
             assert(edwards_x(self.0) == self.0.X && edwards_y(self.0) == self.0.Y && edwards_z(
                 self.0,

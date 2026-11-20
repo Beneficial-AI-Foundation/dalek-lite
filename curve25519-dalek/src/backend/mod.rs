@@ -40,10 +40,7 @@ use crate::Scalar;
 use crate::specs::edwards_specs::*;
 #[cfg(all(feature = "alloc", verus_keep_ghost))]
 #[allow(unused_imports)]
-use crate::specs::iterator_specs::{
-    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
-    unwrap_points,
-};
+use crate::specs::iterator_specs::{all_points_some, unwrap_points};
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::specs::scalar_specs::*;
@@ -311,31 +308,19 @@ pub fn vartime_double_base_mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> (res
     }
 }
 
-/// Verus-compatible Straus multiscalar multiplication dispatcher.
-/// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
+/// Straus multiscalar multiplication dispatcher (constant-time), over slices.
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
-pub fn straus_multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> (result:
-    EdwardsPoint) where
-    S: core::borrow::Borrow<Scalar>,
-    P: core::borrow::Borrow<EdwardsPoint>,
-    I: Iterator<Item = S> + Clone,
-    J: Iterator<Item = P> + Clone,
-
+pub fn straus_multiscalar_mul_verus(scalars: &[Scalar], points: &[EdwardsPoint]) -> (result:
+    EdwardsPoint)
     requires
-        spec_scalars_from_iter::<S, I>(scalars).len() == spec_points_from_iter::<P, J>(
-            points,
-        ).len(),
+        scalars@.len() == points@.len(),
+        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
         forall|i: int|
-            0 <= i < spec_points_from_iter::<P, J>(points).len() ==> is_well_formed_edwards_point(
-                #[trigger] spec_points_from_iter::<P, J>(points)[i],
-            ),
+            0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i]),
     ensures
         is_well_formed_edwards_point(result),
-        edwards_point_as_affine(result) == sum_of_scalar_muls(
-            spec_scalars_from_iter::<S, I>(scalars),
-            spec_points_from_iter::<P, J>(points),
-        ),
+        edwards_point_as_affine(result) == sum_of_scalar_muls(scalars@, points@),
 {
     match get_selected_backend() {
         BackendKind::Serial => {
@@ -344,33 +329,25 @@ pub fn straus_multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> (resul
     }
 }
 
-/// Verus-compatible Straus optional multiscalar multiplication dispatcher.
-/// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
+/// Straus optional multiscalar multiplication dispatcher (variable-time), over slices.
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
-pub fn straus_optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
-    EdwardsPoint,
->) where
-    S: core::borrow::Borrow<Scalar>,
-    I: Iterator<Item = S> + Clone,
-    J: Iterator<Item = Option<EdwardsPoint>> + Clone,
-
+pub fn straus_optional_multiscalar_mul_verus(
+    scalars: &[Scalar],
+    points: &[Option<EdwardsPoint>],
+) -> (result: Option<EdwardsPoint>)
     requires
-        spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(
-            points,
-        ).len(),
+        scalars@.len() == points@.len(),
+        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
         forall|i: int|
-            0 <= i < spec_optional_points_from_iter::<J>(points).len() && (
-            #[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
-                ==> is_well_formed_edwards_point(
-                spec_optional_points_from_iter::<J>(points)[i].unwrap(),
-            ),
+            0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
+                ==> is_well_formed_edwards_point(points@[i].unwrap()),
     ensures
-        result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
+        result.is_some() <==> all_points_some(points@),
         result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
         result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
-            spec_scalars_from_iter::<S, I>(scalars),
-            unwrap_points(spec_optional_points_from_iter::<J>(points)),
+            scalars@,
+            unwrap_points(points@),
         ),
 {
     match get_selected_backend() {
@@ -380,33 +357,25 @@ pub fn straus_optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> 
     }
 }
 
-/// Verus-compatible Pippenger optional multiscalar multiplication dispatcher.
-/// Uses Iterator instead of IntoIterator (Verus doesn't support I::Item projections).
+/// Pippenger optional multiscalar multiplication dispatcher (variable-time), over slices.
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
-pub fn pippenger_optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
-    EdwardsPoint,
->) where
-    S: core::borrow::Borrow<Scalar>,
-    I: Iterator<Item = S> + Clone,
-    J: Iterator<Item = Option<EdwardsPoint>> + Clone,
-
+pub fn pippenger_optional_multiscalar_mul_verus(
+    scalars: &[Scalar],
+    points: &[Option<EdwardsPoint>],
+) -> (result: Option<EdwardsPoint>)
     requires
-        spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(
-            points,
-        ).len(),
+        scalars@.len() == points@.len(),
+        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
         forall|i: int|
-            0 <= i < spec_optional_points_from_iter::<J>(points).len() && (
-            #[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
-                ==> is_well_formed_edwards_point(
-                spec_optional_points_from_iter::<J>(points)[i].unwrap(),
-            ),
+            0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
+                ==> is_well_formed_edwards_point(points@[i].unwrap()),
     ensures
-        result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
+        result.is_some() <==> all_points_some(points@),
         result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
         result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
-            spec_scalars_from_iter::<S, I>(scalars),
-            unwrap_points(spec_optional_points_from_iter::<J>(points)),
+            scalars@,
+            unwrap_points(points@),
         ),
 {
     match get_selected_backend() {

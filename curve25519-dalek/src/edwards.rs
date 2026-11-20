@@ -2895,7 +2895,9 @@ use crate::specs::iterator_specs::{
 };
 // Import runtime helper for Sum<T> trait
 #[cfg(feature = "alloc")]
-use crate::specs::iterator_specs::collect_points_from_iter;
+use crate::specs::iterator_specs::{
+    collect_optional_points_from_iter, collect_points_from_iter, collect_scalars_from_iter,
+};
 
 verus! {
 
@@ -3007,10 +3009,12 @@ impl EdwardsPoint {
         // Straus and Pippenger have the same specification, so the proof does not need `size`.
         let size = scalars.size_hint().0;
 
+        let scalars_vec = collect_scalars_from_iter(scalars);
+        let points_vec = collect_optional_points_from_iter(points);
         if size < 190 {
-            crate::backend::straus_optional_multiscalar_mul_verus(scalars, points)
+            crate::backend::straus_optional_multiscalar_mul_verus(&scalars_vec, &points_vec)
         } else {
-            crate::backend::pippenger_optional_multiscalar_mul_verus(scalars, points)
+            crate::backend::pippenger_optional_multiscalar_mul_verus(&scalars_vec, &points_vec)
         }
     }
 
@@ -3077,7 +3081,9 @@ impl EdwardsPoint {
         }
 
         // Dispatch to Straus (constant-time)
-        crate::backend::straus_multiscalar_mul_verus(scalars, points)
+        let scalars_vec = collect_scalars_from_iter(scalars);
+        let points_vec = collect_points_from_iter(points);
+        crate::backend::straus_multiscalar_mul_verus(&scalars_vec, &points_vec)
     }
 }
 

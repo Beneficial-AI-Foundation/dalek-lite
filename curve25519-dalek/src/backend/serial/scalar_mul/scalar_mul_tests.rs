@@ -52,10 +52,8 @@ mod tests {
                 );
 
                 // Verus implementation
-                let verus = Pippenger::optional_multiscalar_mul_verus(
-                    scalars.iter(),
-                    points.iter().map(|p| Some(*p)),
-                );
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let verus = Pippenger::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
                     original.is_some(),
@@ -123,10 +121,8 @@ mod tests {
                 );
 
                 // Verus implementation
-                let verus = Straus::optional_multiscalar_mul_verus(
-                    scalars.iter(),
-                    points.iter().map(|p| Some(*p)),
-                );
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let verus = Straus::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
                     original.is_some(),
@@ -191,7 +187,7 @@ mod tests {
                 let original = Straus::multiscalar_mul(scalars.iter(), points.iter());
 
                 // Verus implementation
-                let verus = Straus::multiscalar_mul_verus(scalars.iter(), points.iter());
+                let verus = Straus::multiscalar_mul_verus(&scalars, &points);
 
                 assert_eq!(
                     original.compress(),

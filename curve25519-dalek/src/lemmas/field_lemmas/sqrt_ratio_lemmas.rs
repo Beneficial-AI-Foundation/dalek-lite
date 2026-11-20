@@ -2177,4 +2177,27 @@ pub proof fn lemma_invsqrt_of_square(a: nat, num: int, den: int)
     assert(cong(R * R * A, 1));
 }
 
+// =============================================================================
+// Products of sqrt ratios
+// =============================================================================
+/// If r² · v ≡ u, then u · v ≡ (r · v)² is a square.
+pub proof fn lemma_sqrt_ratio_product_is_square(u: nat, v: nat, r: nat)
+    requires
+        is_sqrt_ratio(u, v, r),
+    ensures
+        is_square(field_mul(u, v)),
+{
+    p_gt_2();
+    let pn = p() as int;
+    let y = field_mul(r, v);
+    let (a, b) = (r as int, v as int);
+    assert(field_mul(y, y) == field_canonical(field_mul(u, v))) by {
+        lemma_mul_mod_noop_general(a * b, a * b, pn);
+        assert((a * b) * (a * b) == (a * a * b) * b) by (nonlinear_arith);
+        lemma_mul_mod_noop_general(a * a * b, b, pn);
+        lemma_mul_mod_noop_general(u as int, b, pn);
+        lemma_mod_twice((u * v) as int, pn);
+    };
+}
+
 } // verus!

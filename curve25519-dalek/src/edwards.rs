@@ -2919,25 +2919,12 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `core::iter::Iterator::count`
-    // Helper to count iterator elements without consuming (clones internally).
-    // Verus doesn't support Iterator::clone() or Iterator::count().
-    #[verifier::external_body]
-    #[cfg(feature = "alloc")]
-    fn iter_count<T, I: Iterator<Item = T> + Clone>(iter: &I) -> (size: usize)
-        ensures
-            size == spec_scalars_from_iter::<T, I>(*iter).len(),
-    {
-        iter.clone().count()
-    }
-
     /*
      * VERIFICATION NOTE
      * =================
      * Verus limitations addressed in these _verus versions:
      * - IntoIterator with I::Item projections → use Iterator bounds instead
-     * - size_hint() on &mut iterator → use Clone + iter_count helper
+     * - size_hint() on &mut iterator → call size_hint() on the iterator itself (it takes &self)
      *
      * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
      * run both original and _verus implementations, and assert equality of results.
@@ -2948,7 +2935,6 @@ impl EdwardsPoint {
      */
     /// Verus-compatible version of optional_multiscalar_mul.
     /// Uses Iterator + Clone instead of IntoIterator (Verus doesn't support I::Item projections).
-    /// Clone allows peeking at size without consuming the iterator (similar to original's size_hint).
     /// Dispatches to Straus (size < 190) or Pippenger (size >= 190) algorithm.
     #[cfg(feature = "alloc")]
     pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
@@ -3004,19 +2990,22 @@ impl EdwardsPoint {
             crate::backend::pippenger_optional_multiscalar_mul(scalars, points)
         }
         </ORIGINAL CODE> */
-        /* Uses Clone instead of by_ref() since Verus doesn't support &mut on iterators. */
+        /* Calls size_hint on the iterator itself (it takes &self). A clone would add Clone and Drop
+         * calls, which can change state that the clone shares with the original (issue #793). */
         // Sanity-check lengths of input iterators (skipped by Verus, checked via requires clause)
         #[cfg(not(verus_keep_ghost))]
         {
-            let (s_lo, s_hi) = scalars.clone().size_hint();
-            let (p_lo, p_hi) = points.clone().size_hint();
+            let (s_lo, s_hi) = scalars.size_hint();
+            let (p_lo, p_hi) = points.size_hint();
             assert_eq!(s_lo, p_lo);
             assert_eq!(s_hi, Some(s_lo));
             assert_eq!(p_hi, Some(p_lo));
         }
 
-        // Get size for algorithm dispatch
-        let size = Self::iter_count(&scalars);
+        // Get size for algorithm dispatch, as the original code does. Do not consume `scalars`
+        // or a clone of it here: a clone can share state with the original (see issue #793).
+        // Straus and Pippenger have the same specification, so the proof does not need `size`.
+        let size = scalars.size_hint().0;
 
         if size < 190 {
             crate::backend::straus_optional_multiscalar_mul_verus(scalars, points)
@@ -3075,12 +3064,13 @@ impl EdwardsPoint {
 
         crate::backend::straus_multiscalar_mul(scalars, points)
         </ORIGINAL CODE> */
-        /* Uses Clone instead of by_ref() since Verus doesn't support &mut on iterators. */
+        /* Calls size_hint on the iterator itself (it takes &self). A clone would add Clone and Drop
+         * calls, which can change state that the clone shares with the original (issue #793). */
         // Sanity-check lengths of input iterators (skipped by Verus, checked via requires clause)
         #[cfg(not(verus_keep_ghost))]
         {
-            let (s_lo, s_hi) = scalars.clone().size_hint();
-            let (p_lo, p_hi) = points.clone().size_hint();
+            let (s_lo, s_hi) = scalars.size_hint();
+            let (p_lo, p_hi) = points.size_hint();
             assert_eq!(s_lo, p_lo);
             assert_eq!(s_hi, Some(s_lo));
             assert_eq!(p_hi, Some(p_lo));

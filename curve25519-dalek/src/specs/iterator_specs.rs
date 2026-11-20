@@ -1,53 +1,18 @@
-//! Verus specifications for scalar multiplication operations.
+//! Verus specifications for multiscalar multiplication and point sums.
 //!
-//! Contains spec functions for reasoning about iterators and sequences
-//! used in multiscalar multiplication algorithms.
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-
-use core::borrow::Borrow;
-
+//! Contains spec functions over sequences of optional and Ristretto points. The verified
+//! multiscalar functions take slices, so their contracts use `scalars@` and `points@`
+//! directly.
 use vstd::prelude::*;
 
 #[allow(unused_imports)]
 use crate::edwards::EdwardsPoint;
 #[allow(unused_imports)]
 use crate::ristretto::RistrettoPoint;
-#[allow(unused_imports)]
-use crate::scalar::Scalar;
 #[cfg(verus_keep_ghost)]
-use crate::specs::edwards_specs::{
-    edwards_add, edwards_point_as_affine, is_well_formed_edwards_point, sum_of_points,
-};
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
-use crate::specs::scalar_specs::is_canonical_scalar;
+use crate::specs::edwards_specs::{edwards_add, edwards_point_as_affine, sum_of_points};
 
 verus! {
-
-/*
- * Iterator-to-sequence abstraction for Verus
- * ==========================================
- *
- * Verus cannot reason about Rust iterators directly. We introduce uninterpreted
- * spec functions that map iterators to Seq types representing their contents:
- *
- *   spec_scalars_from_iter         -> Seq<Scalar>
- *   spec_optional_points_from_iter -> Seq<Option<EdwardsPoint>>
- *   spec_points_from_iter          -> Seq<EdwardsPoint>
- *
- * Verus can reason about Seq (indexing, length, etc.), so requires/ensures
- * clauses use these sequences to express properties about scalars and points contained in the iterator.
- */
-// ============================================================================
-/// Spec function to convert an iterator of scalars to a sequence.
-pub uninterp spec fn spec_scalars_from_iter<S, I>(iter: I) -> Seq<Scalar>;
-
-/// Spec function to convert an iterator of optional points to a sequence.
-pub uninterp spec fn spec_optional_points_from_iter<J>(iter: J) -> Seq<Option<EdwardsPoint>>;
-
-/// Spec function to convert an iterator of points to a sequence.
-pub uninterp spec fn spec_points_from_iter<P, J>(iter: J) -> Seq<EdwardsPoint>;
 
 // ============================================================================
 // Spec functions for optional point sequences
@@ -66,159 +31,9 @@ pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<Edwards
 }
 
 // ============================================================================
-// Helper functions to collect iterators into Vecs (external_body)
-// These bridge the gap between generic iterators and concrete Vec types
+// RistrettoPoint sequence specs
+// RistrettoPoint wraps EdwardsPoint, so these extract the inner Edwards points.
 // ============================================================================
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::map + Iterator::collect (into Vec<Scalar>)`
-///
-/// Collect an iterator of scalars into Vec<Scalar>.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn collect_scalars_from_iter<S, I>(iter: I) -> (result: Vec<Scalar>) where
-    S: Borrow<Scalar>,
-    I: Iterator<Item = S>,
-
-    ensures
-        result@ == spec_scalars_from_iter::<S, I>(iter),
-        forall|i: int| #![auto] 0 <= i < result@.len() ==> is_canonical_scalar(&result@[i]),
-{
-    iter.map(|s| *s.borrow()).collect()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::collect (into Vec<Option<EdwardsPoint>>)`
-///
-/// Collect an iterator of optional points into Vec<Option<EdwardsPoint>>.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn collect_optional_points_from_iter<J>(iter: J) -> (result: Vec<Option<EdwardsPoint>>) where
-    J: Iterator<Item = Option<EdwardsPoint>>,
-
-    ensures
-        result@ == spec_optional_points_from_iter::<J>(iter),
-{
-    iter.collect()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::map + Iterator::collect (into Vec<EdwardsPoint>)`
-///
-/// Collect an iterator of points into Vec<EdwardsPoint>.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn collect_points_from_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>) where
-    P: Borrow<EdwardsPoint>,
-    J: Iterator<Item = P>,
-
-    ensures
-        result@ == spec_points_from_iter::<P, J>(iter),
-{
-    iter.map(|p| *p.borrow()).collect()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Vec<EdwardsPoint>::into_iter`
-///
-/// Convert a Vec<EdwardsPoint> to an iterator.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn vec_to_edwards_iter(vec: Vec<EdwardsPoint>) -> (result: alloc::vec::IntoIter<EdwardsPoint>)
-    requires
-        forall|i: int| 0 <= i < vec@.len() ==> is_well_formed_edwards_point(#[trigger] vec@[i]),
-    ensures
-        spec_points_from_iter::<EdwardsPoint, alloc::vec::IntoIter<EdwardsPoint>>(result) == vec@,
-{
-    vec.into_iter()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Vec<Option<EdwardsPoint>>::into_iter`
-///
-/// Convert a Vec<Option<EdwardsPoint>> to an iterator.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn vec_to_optional_edwards_iter(vec: Vec<Option<EdwardsPoint>>) -> (result:
-    alloc::vec::IntoIter<Option<EdwardsPoint>>)
-    requires
-        forall|i: int|
-            0 <= i < vec@.len() && (#[trigger] vec@[i]).is_some() ==> is_well_formed_edwards_point(
-                vec@[i].unwrap(),
-            ),
-    ensures
-        spec_optional_points_from_iter::<alloc::vec::IntoIter<Option<EdwardsPoint>>>(result)
-            == vec@,
-{
-    vec.into_iter()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::map + Iterator::collect (RistrettoPoint to EdwardsPoint)`
-///
-/// Collect an iterator of RistrettoPoints into Vec<EdwardsPoint>.
-/// Directly maps RistrettoPoint to EdwardsPoint via .0.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn collect_edwards_from_ristretto_iter<P, J>(iter: J) -> (result: Vec<EdwardsPoint>) where
-    P: Borrow<RistrettoPoint>,
-    J: Iterator<Item = P>,
-
-    ensures
-        result@ == spec_edwards_from_ristretto_iter::<P, J>(iter),
-{
-    iter.map(|p| p.borrow().0).collect()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::map + Iterator::collect (into Vec<RistrettoPoint>)`
-///
-/// Collect an iterator of RistrettoPoints into Vec<RistrettoPoint>.
-/// Used by Sum<T> impl which needs to pass slice to sum_of_slice.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn collect_ristretto_points<P, J>(iter: J) -> (result: Vec<RistrettoPoint>) where
-    P: Borrow<RistrettoPoint>,
-    J: Iterator<Item = P>,
-
-    ensures
-        result@.len() == spec_edwards_from_ristretto_iter::<P, J>(iter).len(),
-        forall|i: int|
-            0 <= i < result@.len() ==> (#[trigger] result@[i]).0
-                == spec_edwards_from_ristretto_iter::<P, J>(iter)[i],
-{
-    iter.map(|p| *p.borrow()).collect()
-}
-
-/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-/// `Iterator::map + Iterator::collect (Option<RistrettoPoint> to Option<EdwardsPoint>)`
-///
-/// Collect an iterator of Option<RistrettoPoint> into Vec<Option<EdwardsPoint>>.
-/// Directly maps RistrettoPoint to EdwardsPoint via .0.
-#[cfg(feature = "alloc")]
-#[verifier::external_body]
-pub fn collect_optional_edwards_from_ristretto_iter<J>(iter: J) -> (result: Vec<
-    Option<EdwardsPoint>,
->) where J: Iterator<Item = Option<RistrettoPoint>>
-    ensures
-        result@ == spec_optional_edwards_from_ristretto_iter::<J>(iter),
-{
-    iter.map(|opt| opt.map(|p| p.0)).collect()
-}
-
-// ============================================================================
-// RistrettoPoint iterator specs
-// Specs extract Edwards points directly since RistrettoPoint just wraps EdwardsPoint.
-// ============================================================================
-/// Spec function to convert an iterator of RistrettoPoints directly to
-/// a sequence of EdwardsPoints (extracting .0 from each).
-pub uninterp spec fn spec_edwards_from_ristretto_iter<P, J>(iter: J) -> Seq<EdwardsPoint>;
-
-/// Spec function to convert an iterator of Option<RistrettoPoint> directly to
-/// a sequence of Option<EdwardsPoint> (extracting .0 from each Some).
-pub uninterp spec fn spec_optional_edwards_from_ristretto_iter<J>(iter: J) -> Seq<
-    Option<EdwardsPoint>,
->;
-
 /// The Edwards points inside a sequence of RistrettoPoints.
 pub open spec fn ristretto_points_to_edwards(points: Seq<RistrettoPoint>) -> Seq<EdwardsPoint> {
     points.map(|_i, p: RistrettoPoint| p.0)

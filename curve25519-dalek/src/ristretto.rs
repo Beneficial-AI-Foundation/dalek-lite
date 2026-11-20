@@ -268,8 +268,11 @@ use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs_u64::*;
-#[allow(unused_imports)] // Used in verus! blocks for Sum trait and multiscalar_mul
-use crate::specs::iterator_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::iterator_specs::{
+    all_points_some, optional_ristretto_points_to_edwards, optional_ristretto_to_edwards,
+    ristretto_points_to_edwards, sum_of_ristretto_points, unwrap_points,
+};
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::proba_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks

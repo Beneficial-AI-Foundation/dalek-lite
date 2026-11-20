@@ -121,10 +121,6 @@ use crate::lemmas::common_lemmas::sum_lemmas::*;
 use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 use crate::lemmas::montgomery_pow_chain_lemmas::*;
 use crate::scalar_helpers::*;
-#[cfg(feature = "alloc")]
-use crate::specs::iterator_specs::collect_scalars_from_iter;
-#[cfg(all(feature = "alloc", verus_keep_ghost))]
-use crate::specs::iterator_specs::spec_scalars_from_iter;
 use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::iter::{Product, Sum};

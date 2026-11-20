@@ -274,23 +274,18 @@ pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg
     -a
 }
 
-/// Holds if hashing an array `[T; N]` into a hasher of type `H` is deterministic in the
-/// Verus model: for every `N`, every array, and every value of `H`, the state of `H` after
-/// `<[T; N] as Hash>::hash` depends only on its prior Verus value and the array.
+/// Intended meaning: for all `N`, `a: [T; N]` and `s1 == s2: H`, running
+/// `<[T; N] as Hash>::hash(&a, _)` on `s1` and on `s2` gives equal final states.
+/// It fails if a `Hasher` method of `H` or a `Hash` method of `T` reads state outside `H`,
+/// for example a global counter.
 ///
-/// This is a trusted obligation on the pair `(H, T)`. It covers every `Hasher` method that
-/// array hashing calls, for example `write`, `write_usize`, `write_length_prefix`, and the
-/// `Hash::hash` and `Hash::hash_slice` methods of `T`. It fails if any of them reads state
-/// that the Verus value of `H` does not contain, for example a global counter, a clock,
-/// or memory behind an `Rc<Cell<_>>` or an atomic. It says nothing about `Hasher::finish`.
-///
-/// This predicate is uninterpreted, and this crate never proves it. A client that needs the
-/// conditional postconditions below must assume it for its own `(H, T)` after it checks
-/// the conditions above.
+/// Uninterpreted and never proved here. It holds for `(DefaultHasher, u8)` by
+/// `axiom_default_hasher_u8_is_deterministic`; clients assume it for other types.
 pub uninterp spec fn spec_hash_is_deterministic<H, T>() -> bool;
 
-/// Models the state of a hasher after hashing `bytes`. It describes the real state only
-/// when `spec_hash_is_deterministic::<H, T>()` holds.
+/// Model of `<[T; N] as Hash>::hash`: the final hasher state from `initial_state`.
+/// Equals the actual final state only under `spec_hash_is_deterministic::<H, T>()`
+/// (see the `assume_specification` below).
 pub uninterp spec fn spec_state_after_hash<H, T, const N: usize>(
     initial_state: H,
     bytes: &[T; N],

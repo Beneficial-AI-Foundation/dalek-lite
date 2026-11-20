@@ -308,6 +308,49 @@ pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::ha
         ),
 ;
 
+/// The view of a `DefaultHasher` after hashing `bytes`, given its view before.
+#[cfg(verus_keep_ghost)]
+pub uninterp spec fn spec_default_hasher_view_after_hash(view: Seq<Seq<u8>>, bytes: Seq<u8>) -> Seq<
+    Seq<u8>,
+>;
+
+/// Axiom: `spec_hash_is_deterministic::<DefaultHasher, u8>()`.
+///
+/// Reference: Rust 1.99 `std::hash::DefaultHasher` wraps `SipHasher13` and overrides only
+///   `write`, `write_str` and `finish`.
+#[cfg(verus_keep_ghost)]
+pub broadcast proof fn axiom_default_hasher_u8_is_deterministic()
+    ensures
+        #[trigger] spec_hash_is_deterministic::<std::hash::DefaultHasher, u8>(),
+{
+    admit();
+}
+
+/// Axiom: the view of a `DefaultHasher` after hashing `[u8; N]` depends only on its view
+/// before and the bytes.
+///
+/// Reference: Rust 1.99 `<[u8; N] as Hash>::hash` calls `write_usize(N)`, then `write(bytes)`.
+///   vstd specifies `DefaultHasher::write` as appending to the view.
+#[cfg(verus_keep_ghost)]
+pub broadcast proof fn axiom_default_hasher_view_after_hash<const N: usize>(
+    state: std::hash::DefaultHasher,
+    bytes: &[u8; N],
+)
+    ensures
+        #[trigger] spec_state_after_hash(state, bytes)@ == spec_default_hasher_view_after_hash(
+            state@,
+            bytes@,
+        ),
+{
+    admit();
+}
+
+#[cfg(verus_keep_ghost)]
+pub broadcast group group_default_hasher_axioms {
+    axiom_default_hasher_u8_is_deterministic,
+    axiom_default_hasher_view_after_hash,
+}
+
 /// Spec function: the model hash state after hashing a MontgomeryPoint
 /// This is defined as the hash state of its canonical byte representation
 pub open spec fn spec_state_after_hash_montgomery<H>(

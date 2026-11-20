@@ -50,6 +50,10 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
+// vstd's `DefaultHasher` model is used by the hash axioms in `core_assumes`.
+#[cfg(all(verus_keep_ghost, not(test)))]
+extern crate std;
+
 #[cfg(feature = "digest")]
 pub use digest;
 
@@ -105,7 +109,10 @@ pub(crate) mod core_assumes;
 /// Trusted obligation that clients assume to use the conditional `Hash` postconditions
 /// (see `<MontgomeryPoint as core::hash::Hash>::hash`).
 #[cfg(verus_keep_ghost)]
-pub use crate::core_assumes::spec_hash_is_deterministic;
+pub use crate::core_assumes::{
+    axiom_default_hasher_u8_is_deterministic, axiom_default_hasher_view_after_hash,
+    group_default_hasher_axioms, spec_default_hasher_view_after_hash, spec_hash_is_deterministic,
+};
 
 // Arithmetic backends (using u32, u64, etc) live here
 #[cfg(docsrs)]

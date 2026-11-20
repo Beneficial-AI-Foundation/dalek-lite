@@ -9,7 +9,7 @@ use crate::field::FieldElement;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
-    axiom_edwards_add_complete, lemma_edwards_scalar_mul_distributive,
+    lemma_edwards_add_complete, lemma_edwards_scalar_mul_distributive,
 };
 #[allow(unused_imports)]
 use crate::specs::edwards_specs::*;
@@ -167,7 +167,7 @@ pub proof fn axiom_elligator_in_even_subgroup(r_0: nat)
 ///
 /// If P = 2·Q₁ and Q = 2·Q₂, then P + Q = 2·Q₁ + 2·Q₂ = 2·(Q₁ + Q₂).
 /// The witness for P + Q is Q₁ + Q₂, which is on the curve by
-/// `axiom_edwards_add_complete`.
+/// `lemma_edwards_add_complete`.
 ///
 /// Reference: standard group theory (sum of doubles is a double)
 pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
@@ -192,7 +192,7 @@ pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
         is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p2)
             == #[trigger] edwards_scalar_mul(q, 2);
     let q = edwards_add(q1.0, q1.1, q2.0, q2.1);
-    axiom_edwards_add_complete(q1.0, q1.1, q2.0, q2.1);
+    lemma_edwards_add_complete(q1.0, q1.1, q2.0, q2.1);
     lemma_edwards_scalar_mul_distributive(q1, q2, 2);
     assert forall|result: EdwardsPoint|
         edwards_point_as_affine(result) == edwards_add(

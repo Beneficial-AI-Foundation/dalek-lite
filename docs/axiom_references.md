@@ -124,16 +124,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_edwards_add_complete()
-**Claim:** Edwards curve addition is complete (denominators are nonzero) and closed (the result is on the curve)
-
-**Reference:** Bernstein, Birkner, Joye, Lange, Peters (2008) — Twisted Edwards Curves, Theorem 3.3  
-**URL:** https://eprint.iacr.org/2008/013.pdf
-
-**Justification:** For Ed25519, d is non-square in GF(p). By Theorem 3.3 of the Twisted Edwards Curves paper, the addition law is complete: for any two curve points (x₁,y₁), (x₂,y₂), the denominators 1 + d·x₁·x₂·y₁·y₂ and 1 − d·x₁·x₂·y₁·y₂ are both nonzero, and the result lies on the curve.
-
----
-
 ### axiom_edwards_scalar_mul_signed_additive()
 **Claim:** [a]P + [b]P = [a+b]P for signed scalar multiplication, for P on the curve with reduced coordinates (< p). The bound is necessary because `edwards_scalar_mul(P, 1)` returns P as given, while `edwards_add` reduces its result
 
@@ -365,16 +355,20 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 
 ## Proved former axioms
 
-These statements were axioms and are now proved in Verus, so they use the `lemma_` prefix. Some of the proofs use other axioms, for example `axiom_edwards_add_complete`.
+These statements were axioms and are now proved in Verus, so they use the `lemma_` prefix. Some of the proofs use other axioms, for example `axiom_edwards_add_associative`.
 
 | Old name | New name | File | Proof method |
 |----------|----------|------|--------------|
 | axiom_486660_not_quadratic_residue | lemma_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | Euler's criterion (`pow_mod`, `lemma_not_square_by_euler`); compute_only |
 | axiom_2_times_486661_not_qr | lemma_2_times_486661_not_qr | montgomery_curve_lemmas.rs | Euler's criterion (`pow_mod`, `lemma_not_square_by_euler`); compute_only |
 | axiom_edwards_scalar_mul_distributive | lemma_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | Induction on n (`lemma_edwards_double_of_add`, `lemma_edwards_add_four_way_swap`) |
-| axiom_even_subgroup_closed_under_add | lemma_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | Witness Q₁ + Q₂, on the curve by `axiom_edwards_add_complete`; `lemma_edwards_scalar_mul_distributive` |
+| axiom_even_subgroup_closed_under_add | lemma_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | Witness Q₁ + Q₂, on the curve by `lemma_edwards_add_complete`; `lemma_edwards_scalar_mul_distributive` |
 | axiom_invsqrt_factors_over_square | lemma_invsqrt_factors_over_square | field_specs.rs | Uniqueness of the inverse square root (`lemma_invsqrt_unique`) |
 | axiom_invsqrt_a_minus_d | lemma_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | compute_only; `lemma_nat_invsqrt_fast` replaces the exponentiation with square and multiply |
+| axiom_edwards_add_complete | lemma_edwards_add_complete | curve_equation_lemmas.rs, add_complete_lemmas.rs | Denominators: Bernstein and Lange 2007, Thm. 3.3, with the rotation u = i·x and `lemma_edwards_d_not_square`. Closure: explicit polynomial certificate, with the ring identities expanded step by step |
+| axiom_ristretto_decode_on_curve | lemma_ristretto_decode_on_curve | compress_roundtrip_lemmas.rs | Field algebra: the curve polynomial of the decoded point is (I²·v·u2² − 1) times a polynomial |
+| axiom_elligator_forward_zero | lemma_elligator_forward_zero | lizard_lemmas.rs | compute_only: N_s·D is not a square for r = 0, so s = 0 |
+| axiom_elligator_forward_sqrt_id | lemma_elligator_forward_sqrt_id | lizard_lemmas.rs | compute_only: r + d = 0, so D = 0 and s = 0 |
 | axiom_sqrt_m1_squared | lemma_sqrt_m1_squared | sqrt_m1_lemmas.rs | compute_only |
 | axiom_sqrt_m1_not_square | lemma_sqrt_m1_not_square | sqrt_m1_lemmas.rs | Euler's criterion; compute_only |
 | axiom_neg_sqrt_m1_not_square | lemma_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | Euler's criterion; compute_only |
@@ -409,7 +403,6 @@ Justification types (6 canonical values):
 | axiom_p_is_prime | primality_specs.rs | rfc | RFC 7748 §4.1 |
 | axiom_group_order_is_prime | primality_specs.rs | rfc | RFC 7748 §4.1 |
 | axiom_edwards_add_associative | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 |
-| axiom_edwards_add_complete | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 Thm. 3.3 |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_lemmas/axioms.rs | construction | Hamburg 2019 |

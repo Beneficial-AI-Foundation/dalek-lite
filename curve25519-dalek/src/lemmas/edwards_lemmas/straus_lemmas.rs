@@ -660,7 +660,7 @@ pub proof fn lemma_column_sum_on_curve(
         let P = points_affine[n - 1];
         lemma_edwards_scalar_mul_signed_on_curve(P, digits[n - 1][j] as int);
         let term = edwards_scalar_mul_signed(P, digits[n - 1][j] as int);
-        axiom_edwards_add_complete(prev.0, prev.1, term.0, term.1);
+        lemma_edwards_add_complete(prev.0, prev.1, term.0, term.1);
     }
 }
 
@@ -711,7 +711,7 @@ pub proof fn lemma_straus_ct_partial_on_curve(
         let scaled = edwards_scalar_mul(prev, 16);
         lemma_column_sum_on_curve(points_affine, digits, j, points_affine.len() as int);
         let col = straus_column_sum(points_affine, digits, j, points_affine.len() as int);
-        axiom_edwards_add_complete(scaled.0, scaled.1, col.0, col.1);
+        lemma_edwards_add_complete(scaled.0, scaled.1, col.0, col.1);
     }
 }
 
@@ -738,11 +738,11 @@ pub proof fn lemma_straus_vt_partial_on_curve(
         lemma_straus_vt_step(points_affine, nafs, i);
         lemma_straus_vt_partial_on_curve(points_affine, nafs, i + 1);
         let prev = straus_vt_partial(points_affine, nafs, i + 1);
-        axiom_edwards_add_complete(prev.0, prev.1, prev.0, prev.1);
+        lemma_edwards_add_complete(prev.0, prev.1, prev.0, prev.1);
         let doubled = edwards_double(prev.0, prev.1);
         lemma_column_sum_on_curve(points_affine, nafs, i, points_affine.len() as int);
         let col = straus_column_sum(points_affine, nafs, i, points_affine.len() as int);
-        axiom_edwards_add_complete(doubled.0, doubled.1, col.0, col.1);
+        lemma_edwards_add_complete(doubled.0, doubled.1, col.0, col.1);
     }
 }
 
@@ -1325,8 +1325,8 @@ pub proof fn lemma_straus_vt_partial_peel_last(pts: Seq<(nat, nat)>, nafs: Seq<S
         lemma_column_sum_single(pts.last(), nafs.last(), i);
 
         // All four terms are on the curve
-        axiom_edwards_add_complete(prev_prefix.0, prev_prefix.1, prev_prefix.0, prev_prefix.1);
-        axiom_edwards_add_complete(prev_single.0, prev_single.1, prev_single.0, prev_single.1);
+        lemma_edwards_add_complete(prev_prefix.0, prev_prefix.1, prev_prefix.0, prev_prefix.1);
+        lemma_edwards_add_complete(prev_single.0, prev_single.1, prev_single.0, prev_single.1);
         lemma_column_sum_on_curve(pts_prefix, nafs_prefix, i, n - 1);
         lemma_column_sum_on_curve(pts_single, nafs_single, i, 1);
 

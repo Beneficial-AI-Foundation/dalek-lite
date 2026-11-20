@@ -20,6 +20,8 @@ use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 #[cfg(verus_keep_ghost)]
 use crate::lemmas::common_lemmas::pow_lemmas::{lemma_pow2_even, pow2_MUL_div};
 #[cfg(verus_keep_ghost)]
+use crate::lemmas::edwards_lemmas::add_complete_lemmas::lemma_edwards_add_complete_cong;
+#[cfg(verus_keep_ghost)]
 use crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 #[cfg(verus_keep_ghost)]
@@ -808,8 +810,8 @@ pub proof fn lemma_edwards_double_of_add(x1: nat, y1: nat, x2: nat, y2: nat)
 
     lemma_edwards_add_commutative(x2, y2, x1, y1);
     assert(ba == ab);
-    axiom_edwards_add_complete(x1, y1, x2, y2);
-    axiom_edwards_add_complete(x1, y1, x1, y1);
+    lemma_edwards_add_complete(x1, y1, x2, y2);
+    lemma_edwards_add_complete(x1, y1, x1, y1);
 
     calc! {
         (==)
@@ -897,9 +899,9 @@ pub proof fn lemma_edwards_add_four_way_swap(
 {
     let cd = edwards_add(c.0, c.1, d.0, d.1);
     let bd = edwards_add(b.0, b.1, d.0, d.1);
-    axiom_edwards_add_complete(c.0, c.1, d.0, d.1);
-    axiom_edwards_add_complete(b.0, b.1, d.0, d.1);
-    axiom_edwards_add_complete(b.0, b.1, c.0, c.1);
+    lemma_edwards_add_complete(c.0, c.1, d.0, d.1);
+    lemma_edwards_add_complete(b.0, b.1, d.0, d.1);
+    lemma_edwards_add_complete(b.0, b.1, c.0, c.1);
     axiom_edwards_add_associative(a.0, a.1, b.0, b.1, cd.0, cd.1);
     axiom_edwards_add_associative(b.0, b.1, c.0, c.1, d.0, d.1);
     lemma_edwards_add_commutative(b.0, b.1, c.0, c.1);
@@ -2873,7 +2875,7 @@ pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
     };
 }
 
-/// Axiom: addition on the twisted Edwards curve is complete (always defined) and closed
+/// Lemma: addition on the twisted Edwards curve is complete (always defined) and closed
 /// (the result stays on the curve).
 ///
 /// Given two affine points (x₁, y₁) and (x₂, y₂) on -x² + y² = 1 + d·x²y²,
@@ -2883,12 +2885,11 @@ pub proof fn lemma_affine_niels_affine_equals_edwards_affine(
 /// 2. **Closure**: the resulting point `edwards_add(x₁, y₁, x₂, y₂)` satisfies the
 ///    curve equation.
 ///
-/// This holds because d is non-square in GF(p) for Ed25519.
-///
-/// Reference: Bernstein, Birkner, Joye, Lange, Peters,
-/// "Twisted Edwards Curves", AFRICACRYPT 2008, Theorem 3.3.
-/// <https://eprint.iacr.org/2008/013>
-pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
+/// This holds because d is not a square in GF(p) for Ed25519.
+/// The proof is in `add_complete_lemmas`: completeness follows Bernstein and
+/// Lange, "Faster addition and doubling on elliptic curves" (2007),
+/// Theorem 3.3. Closure uses an explicit polynomial certificate.
+pub proof fn lemma_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
     requires
         is_on_edwards_curve(x1, y1),
         is_on_edwards_curve(x2, y2),
@@ -2900,7 +2901,7 @@ pub proof fn axiom_edwards_add_complete(x1: nat, y1: nat, x2: nat, y2: nat)
         }),
         is_on_edwards_curve(edwards_add(x1, y1, x2, y2).0, edwards_add(x1, y1, x2, y2).1),
 {
-    admit();
+    lemma_edwards_add_complete_cong(x1, y1, x2, y2);
 }
 
 /// Lemma: scalar multiplication keeps a point on the curve.
@@ -2918,11 +2919,11 @@ pub proof fn lemma_edwards_scalar_mul_on_curve(P: (nat, nat), n: nat)
     } else if n % 2 == 0 {
         let h = edwards_scalar_mul(P, (n / 2) as nat);
         lemma_edwards_scalar_mul_on_curve(P, (n / 2) as nat);
-        axiom_edwards_add_complete(h.0, h.1, h.0, h.1);
+        lemma_edwards_add_complete(h.0, h.1, h.0, h.1);
     } else {
         let q = edwards_scalar_mul(P, (n - 1) as nat);
         lemma_edwards_scalar_mul_on_curve(P, (n - 1) as nat);
-        axiom_edwards_add_complete(q.0, q.1, P.0, P.1);
+        lemma_edwards_add_complete(q.0, q.1, P.0, P.1);
     }
 }
 
@@ -3024,7 +3025,7 @@ pub proof fn lemma_edwards_scalar_mul_signed_on_curve(P: (nat, nat), n: int)
 /// This lemma shows the two agree: the common factor of 2 cancels in the
 /// projective ratios X/Z and Y/T, recovering exactly `edwards_add`. It also
 /// ensures Z ≠ 0, T ≠ 0, and the result lies on the curve (via
-/// `axiom_edwards_add_complete`).
+/// `lemma_edwards_add_complete`).
 pub proof fn lemma_completed_point_ratios(
     x1: nat,
     y1: nat,
@@ -3100,7 +3101,7 @@ pub proof fn lemma_completed_point_ratios(
         field_mul(num_x, field_inv(denom_x)),
         field_mul(num_y, field_inv(denom_y)),
     )) by {
-        axiom_edwards_add_complete(x1, y1, x2, y2);
+        lemma_edwards_add_complete(x1, y1, x2, y2);
     };
     assert(p() > 2) by {
         p_gt_2();
@@ -3380,7 +3381,7 @@ pub proof fn lemma_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat),
 {
     // Proof from associativity, commutativity and completeness.
     let ab = edwards_add(a.0, a.1, b.0, b.1);
-    axiom_edwards_add_complete(a.0, a.1, b.0, b.1);
+    lemma_edwards_add_complete(a.0, a.1, b.0, b.1);
     reveal_with_fuel(edwards_scalar_mul, 1);
     if n == 0 {
         // [0]X = O, and O + O = O

@@ -98,6 +98,8 @@ use super::field_specs_u64::*;
 #[allow(unused_imports)]
 use super::ristretto_specs::*;
 #[allow(unused_imports)]
+use crate::backend::serial::u64::constants::EDWARDS_D;
+#[allow(unused_imports)]
 use crate::core_assumes::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
@@ -186,10 +188,22 @@ pub open spec fn spec_lizard_encode(data: Seq<u8>) -> (nat, nat)
 // Reference: https://ristretto.group/formulas/elligator.html (forward map),
 // https://ristretto.group/details/isogenies.html (Jacobi ↔ Edwards isogeny),
 // go-ristretto elligator.go (https://github.com/bwesterb/go-ristretto/blob/v1.2.3/edwards25519/elligator.go)
+/// The Jacobi quartic `T² = S⁴ + 2·((1 − d)/(1 + d))·S² + 1`.
+///
+/// `jacobi_to_edwards_affine` maps the points of this curve to points of the
+/// Edwards curve. The Jacobi quartic points of an Edwards point in the even
+/// subgroup 2E lie on this curve (`axiom_jacobi_quartic_points_on_quartic`).
+pub open spec fn is_on_jacobi_quartic(s: nat, t: nat) -> bool {
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let k = field_mul(field_sub(1, d), field_inv(field_add(1, d)));
+    let s2 = field_square(s);
+    field_square(t) == field_add(field_add(field_square(s2), field_mul(field_mul(2, k), s2)), 1)
+}
+
 /// Map from Jacobi quartic point `(S, T)` to affine Edwards coordinates `(x, y)`.
 ///
 /// The Jacobi quartic associated to `−x² + y² = 1 + d·x²·y²` (with `a = −1`) is
-/// `T² = S⁴ + 2(a − 2d)·S² + 1`.
+/// `T² = S⁴ + 2·((1 − d)/(1 + d))·S² + 1` (see `is_on_jacobi_quartic`).
 ///
 /// ```text
 ///   y = (1 − S²) / (1 + S²)

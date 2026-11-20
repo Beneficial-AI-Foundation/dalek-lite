@@ -737,7 +737,8 @@ impl Scalar52 {
         let ghost diff_before = difference;
 
         // conditionally add l if the difference is negative
-        let carry = difference.conditional_add_l(Choice::from((borrow >> 63) as u8));
+        /* ORIGINAL CODE: let carry = difference.conditional_add_l(Choice::from((borrow >> 63) as u8)); */
+        let carry = difference.conditional_add_l(choice_from_u8((borrow >> 63) as u8));
 
         proof {
             lemma_subrange5_eq_scalar52_as_nat(&diff_before);
@@ -999,7 +1000,8 @@ impl Scalar52 {
                 ) + (carry >> 52) * pow2(52 * i as nat),
         {
             let ghost old_carry = carry;
-            let underflow = Choice::from((borrow >> 63) as u8);
+            /* ORIGINAL CODE: let underflow = Choice::from((borrow >> 63) as u8); */
+            let underflow = choice_from_u8((borrow >> 63) as u8);
             let addend = select(&0, &constants::L.limbs[i], underflow);
             proof {
                 if borrow >> 63 == 0 {

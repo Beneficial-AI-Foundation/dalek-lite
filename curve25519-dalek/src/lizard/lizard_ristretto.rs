@@ -19,12 +19,9 @@ use subtle::ConstantTimeEq;
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::subtle_assumes::{
-    choice_and, choice_or, conditional_assign_generic, ct_eq_bytes32, negate_field_element,
-    select_u8,
+    choice_and, choice_from_u8, choice_or, conditional_assign_generic, ct_eq_bytes32,
+    negate_field_element, select_u8,
 };
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
-use crate::core_assumes::axiom_sha256_output_length;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::core_assumes::spec_sha256;
@@ -179,8 +176,15 @@ impl RistrettoPoint {
         /* ORIGINAL CODE: fe_bytes[8..24].copy_from_slice(data); */
         write_bytes32_8_to_24(&mut fe_bytes, data);
 
+        let ghost written = fe_bytes;
         fe_bytes[0] &= 254;  // make positive since Elligator on r and -r is the same
         fe_bytes[31] &= 63;
+        proof {
+            assert forall|i: int| 0 <= i < 16 implies fe_bytes[8 + i] == data[i] by {
+                assert(fe_bytes[8 + i] == written[8 + i]);
+            };
+            lemma_lizard_fe_bytes_from_parts(data@, digest, fe_bytes);
+        }
 
         let fe = FieldElement::from_bytes(&fe_bytes);
         proof {
@@ -195,9 +199,7 @@ impl RistrettoPoint {
                 lemma_from_u8_32_as_nat(&fe_bytes);
                 lemma_as_nat_32_mod_255(&fe_bytes);
             };
-            axiom_sha256_output_length(data@);
-            let spec_bytes = spec_lizard_fe_bytes(data@);
-            assert(fe_bytes@ =~= spec_bytes@);
+            assert(fe_bytes@ =~= spec_lizard_fe_bytes(data@)@);
         }
         result
     }
@@ -245,6 +247,7 @@ impl RistrettoPoint {
     pub fn lizard_decode_verus(&self) -> (result: Option<[u8; 16]>)
         requires
             is_well_formed_edwards_point(self.0),
+            is_in_even_subgroup(self.0),
         ensures
             match result {
                 Some(bytes) => ({
@@ -320,7 +323,12 @@ impl RistrettoPoint {
                 }),
         {
             /* ORIGINAL CODE: let fe_j = &fes[j]; -- inlined below */
-            let mut ok = Choice::from((mask >> j) & 1);
+            proof {
+                assert(forall|b: u8| #[trigger] (b & 1u8) == 0u8 || (b & 1u8) == 1u8)
+                    by (bit_vector);
+            }
+            /* ORIGINAL CODE: let mut ok = Choice::from((mask >> j) & 1); */
+            let mut ok = choice_from_u8((mask >> j) & 1);
             let ghost mask_bit_set = choice_is_true(ok);
             let buf2 = fes[j].as_bytes();
             /* ORIGINAL CODE: h.copy_from_slice(&D::digest(&buf2[8..24]));
@@ -479,6 +487,7 @@ impl RistrettoPoint {
     pub fn decode_253_bits(&self) -> (result: (u8, [[u8; 32]; 8]))
         requires
             is_well_formed_edwards_point(self.0),
+            is_in_even_subgroup(self.0),
         ensures
     // Elligator inversion: each valid candidate maps forward to a coset member of self
 
@@ -572,6 +581,7 @@ impl RistrettoPoint {
     pub fn elligator_ristretto_flavor_inverse(&self) -> (result: (u8, [FieldElement; 8]))
         requires
             is_well_formed_edwards_point(self.0),
+            is_in_even_subgroup(self.0),
         ensures
             forall|j: int| 0 <= j < 8 ==> #[trigger] fe51_limbs_bounded(&result.1[j], 52),
             // ∀j with bit j set: elligator(result.1[j]) ∈ coset(self)
@@ -693,6 +703,8 @@ impl RistrettoPoint {
                     ),
                 // Candidates binding (frame)
                 candidates == spec_lizard_decode_candidates(self.0),
+                is_well_formed_edwards_point(self.0),
+                is_in_even_subgroup(self.0),
                 // Spec candidate correspondence for processed slots
                 forall|k: int|
                     #![trigger candidates[k]]
@@ -728,6 +740,10 @@ impl RistrettoPoint {
                     let s_i = fe51_as_canonical_nat(&jcs[i as int].S);
                     let t_i = fe51_as_canonical_nat(&jcs[i as int].T);
                     assert(jcs[i as int] == jcs[i as int]);  // trigger
+                    axiom_jacobi_quartic_points_on_quartic(self.0);
+                    assert(is_on_jacobi_quartic(s_i, t_i)) by {
+                        assert(spec_to_jacobi_quartic_ristretto(self.0)[i as int] == (s_i, t_i));
+                    };
                     lemma_even_is_slot_in_coset(
                         fe51_as_canonical_nat(&ret[2 * i as int]),
                         s_i,
@@ -776,6 +792,10 @@ impl RistrettoPoint {
                     let s_i = fe51_as_canonical_nat(&jcs[i as int].S);
                     let t_i = fe51_as_canonical_nat(&jcs[i as int].T);
                     assert(jcs[i as int] == jcs[i as int]);  // trigger
+                    axiom_jacobi_quartic_points_on_quartic(self.0);
+                    assert(is_on_jacobi_quartic(s_i, t_i)) by {
+                        assert(spec_to_jacobi_quartic_ristretto(self.0)[i as int] == (s_i, t_i));
+                    };
                     lemma_odd_is_slot_in_coset(
                         fe51_as_canonical_nat(&ret[(2 * i + 1) as int]),
                         fe51_as_canonical_nat(&jc.S),
@@ -846,6 +866,7 @@ impl RistrettoPoint {
     fn to_jacobi_quartic_ristretto(self) -> (result: [JacobiPoint; 4])
         requires
             is_well_formed_edwards_point(self.0),
+            is_in_even_subgroup(self.0),
         ensures
             forall|i: int|
                 0 <= i < 4 ==> #[trigger] fe51_limbs_bounded(&result[i].S, 52)
@@ -885,6 +906,9 @@ impl RistrettoPoint {
                 )
             }),
     {
+        // Keep the existential in `is_in_even_subgroup` out of the context. It is
+        // only passed on to `lemma_coset_bridge`.
+        hide(is_in_even_subgroup);
         proof {
             assert(edwards_x(self.0) == self.0.X && edwards_y(self.0) == self.0.Y && edwards_z(
                 self.0,

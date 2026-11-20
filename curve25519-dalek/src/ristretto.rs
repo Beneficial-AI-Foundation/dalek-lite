@@ -185,7 +185,7 @@ use crate::backend::serial::u64::constants::spec_eight_torsion;
 use crate::backend::serial::u64::subtle_assumes::choice_is_true;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::backend::serial::u64::subtle_assumes::{
-    choice_into, choice_not, choice_or, conditional_assign_field_element,
+    choice_from_u8, choice_into, choice_not, choice_or, conditional_assign_field_element,
     conditional_assign_generic, conditional_negate_field_element, ct_eq_bytes32,
     negate_field_element,
 };
@@ -212,6 +212,9 @@ use crate::lemmas::edwards_lemmas::constants_lemmas::{
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_scalar_mul_identity;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_identity_on_curve;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_z_one_affine_implies_projective;
@@ -2943,6 +2946,7 @@ impl Identity for RistrettoPoint {
                 assert(edwards_scalar_mul(edwards_identity(), 2) == edwards_identity()) by {
                     lemma_edwards_scalar_mul_identity(2);
                 }
+                lemma_identity_on_curve();
             }
         }
         RistrettoPoint(ep)
@@ -4018,11 +4022,13 @@ impl CofactorGroup for RistrettoPoint {
     }
 
     fn into_subgroup(self) -> CtOption<Self::Subgroup> {
-        CtOption::new(self, Choice::from(1))
+        /* ORIGINAL CODE: CtOption::new(self, Choice::from(1)) */
+        CtOption::new(self, choice_from_u8(1))
     }
 
     fn is_torsion_free(&self) -> Choice {
-        Choice::from(1)
+        /* ORIGINAL CODE: Choice::from(1) */
+        choice_from_u8(1)
     }
 }
 

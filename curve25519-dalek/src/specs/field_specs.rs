@@ -646,7 +646,57 @@ pub proof fn axiom_invsqrt_factors_over_square(a: nat, b: nat)
             field_mul(nat_invsqrt(a), field_inv(b)),
         ),
 {
-    admit();
+    use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+    use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
+    let pn = p();
+    p_gt_2();
+    lemma_p_is_odd();
+    let r = nat_invsqrt(a);
+    let bi = field_inv(b);
+    let t = field_mul(r, bi);
+    let s = field_abs(t);
+    let b2 = field_square(b);
+    let c = field_mul(a, b2);
+    lemma_nat_invsqrt_satisfies_relation(a);
+    // c is nonzero
+    lemma_nonzero_product(b, b);
+    lemma_small_mod(b2, pn);
+    lemma_nonzero_product(a, b2);
+    lemma_small_mod(c, pn);
+    assert(c % pn != 0);
+    // s is canonical and even
+    assert(s < pn && s % 2 == 0) by {
+        if is_negative(t) {
+            lemma_small_mod(t, pn);
+            assert(t != 0);
+            lemma_small_mod((pn - t) as nat, pn);
+        } else {
+            lemma_small_mod(t, pn);
+        }
+    }
+    // field_square(s) == field_square(t)
+    assert(field_square(s) == field_square(t)) by {
+        if is_negative(t) {
+            lemma_neg_square_eq(t);
+            lemma_small_mod(t, pn);
+        }
+    }
+    // s^2 * c == r^2 * a
+    lemma_product_of_squares_eq_square_of_product(r, bi);
+    lemma_field_mul_exchange(field_square(r), field_square(bi), a, b2);
+    lemma_product_of_squares_eq_square_of_product(bi, b);
+    lemma_inv_mul_cancel(b);
+    assert(field_square(1nat) == 1nat) by {
+        lemma_small_mod(1nat, pn);
+    }
+    lemma_field_mul_one_right(field_mul(field_square(r), a));
+    lemma_small_mod(field_mul(field_square(r), a), pn);
+    lemma_field_mul_square_canonical(s, c);
+    lemma_field_mul_square_canonical(r, a);
+    assert(field_canonical(s * s * c) == field_canonical(r * r * a));
+    assert(is_sqrt_ratio(1, c, s) || is_sqrt_ratio_times_i(1, c, s));
+    lemma_small_mod(s, pn);
+    lemma_invsqrt_unique(c, s);
 }
 
 } // verus!

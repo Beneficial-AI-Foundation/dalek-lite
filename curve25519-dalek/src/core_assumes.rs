@@ -321,8 +321,16 @@ pub proof fn axiom_hash_is_canonical<H>(
             point2,
         ),
 {
-    // Axiom: hashing depends only on the canonical field-element value.
-    admit();
+    let fe1 = spec_fe51_from_bytes(&point1.0);
+    let fe2 = spec_fe51_from_bytes(&point2.0);
+    crate::lemmas::field_lemmas::from_bytes_lemmas::lemma_from_u8_32_as_nat(&point1.0);
+    crate::lemmas::field_lemmas::from_bytes_lemmas::lemma_as_nat_32_mod_255(&point1.0);
+    crate::lemmas::field_lemmas::from_bytes_lemmas::lemma_from_u8_32_as_nat(&point2.0);
+    crate::lemmas::field_lemmas::from_bytes_lemmas::lemma_as_nat_32_mod_255(&point2.0);
+    assert(fe51_as_canonical_nat(&fe1) == field_element_from_bytes(&point1.0));
+    assert(fe51_as_canonical_nat(&fe2) == field_element_from_bytes(&point2.0));
+    crate::lemmas::field_lemmas::as_bytes_lemmas::lemma_field_element_equal_implies_fe51_to_bytes_equal(
+    &fe1, &fe2);
 }
 
 // Convert a Seq<u8> to a [u8; 32] array (requires seq.len() >= 32)
@@ -443,15 +451,11 @@ pub fn sha512_hash_bytes(input: &[u8]) -> (result: [u8; 64]) {
 #[cfg(all(feature = "digest", verus_keep_ghost))]
 /// Uninterpreted spec function for SHA-512 hash.
 /// Models the SHA-512 hash as a function from input bytes to 64 output bytes.
-pub uninterp spec fn spec_sha512(input: Seq<u8>) -> Seq<u8>;
+pub uninterp spec fn spec_sha512_array(input: Seq<u8>) -> [u8; 64];
 
 #[cfg(all(feature = "digest", verus_keep_ghost))]
-/// Axiom: SHA-512 always produces exactly 64 bytes of output.
-pub proof fn axiom_sha512_output_length(input: Seq<u8>)
-    ensures
-        spec_sha512(input).len() == 64,
-{
-    admit();
+pub open spec fn spec_sha512(input: Seq<u8>) -> Seq<u8> {
+    spec_sha512_array(input)@
 }
 
 /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
@@ -483,15 +487,11 @@ pub fn sha256_hash_bytes(input: &[u8]) -> (result: [u8; 32]) {
 #[cfg(all(feature = "digest", verus_keep_ghost))]
 /// Uninterpreted spec function for SHA-256 hash.
 /// Models the SHA-256 hash as a function from input bytes to 32 output bytes.
-pub uninterp spec fn spec_sha256(input: Seq<u8>) -> Seq<u8>;
+pub uninterp spec fn spec_sha256_array(input: Seq<u8>) -> [u8; 32];
 
 #[cfg(all(feature = "digest", verus_keep_ghost))]
-/// Axiom: SHA-256 always produces exactly 32 bytes of output.
-pub proof fn axiom_sha256_output_length(input: Seq<u8>)
-    ensures
-        spec_sha256(input).len() == 32,
-{
-    admit();
+pub open spec fn spec_sha256(input: Seq<u8>) -> Seq<u8> {
+    spec_sha256_array(input)@
 }
 
 /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:

@@ -68,11 +68,11 @@ verus! {
 /// Runtime validation: `test_axiom_four_torsion_affine` in lizard_ristretto.rs.
 pub proof fn axiom_four_torsion_affine()
     ensures
-        edwards_point_as_affine(spec_eight_torsion()[2]) == (sqrt_m1(), 0nat),
+        edwards_point_as_affine(spec_eight_torsion()[2]) == (field_neg(sqrt_m1()), 0nat),
         edwards_point_as_affine(spec_eight_torsion()[4]) == (0nat, field_neg(1)),
-        edwards_point_as_affine(spec_eight_torsion()[6]) == (field_neg(sqrt_m1()), 0nat),
+        edwards_point_as_affine(spec_eight_torsion()[6]) == (sqrt_m1(), 0nat),
 {
-    admit();
+    crate::backend::serial::u64::constants::lemma_four_torsion_affine_by_computation();
 }
 
 // =============================================================================

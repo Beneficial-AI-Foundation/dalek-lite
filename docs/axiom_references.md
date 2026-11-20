@@ -54,6 +54,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Reference:** RFC 7748; Elligator2 specification  
 **URL:** https://www.rfc-editor.org/rfc/rfc7748
 
+**Status:** Proved by Euler's criterion. `pow_mod` (sqrt_m1_lemmas.rs) computes x^((p−1)/2) mod p by `compute_only`, and `lemma_not_square_by_euler` turns a result other than 1 into the non-square fact.
+
 **Justification:** Verified by runtime test `test_486660_not_qr` in the crate. The test uses Euler's criterion for quadratic residuosity.
 
 ---
@@ -63,6 +65,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Reference:** RFC 7748; Elligator2 specification  
 **URL:** https://www.rfc-editor.org/rfc/rfc7748
+
+**Status:** Proved by Euler's criterion. `pow_mod` (sqrt_m1_lemmas.rs) computes x^((p−1)/2) mod p by `compute_only`, and `lemma_not_square_by_euler` turns a result other than 1 into the non-square fact.
 
 **Justification:** Verified by runtime test `test_2_times_486661_not_qr`. Since p ≡ 5 (mod 8), 2 is a non-QR; 486661 = A−1 is a QR; product is non-QR.
 
@@ -170,6 +174,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Reference:** Group theory; Bernstein et al. (2008)  
 **URL:** https://eprint.iacr.org/2008/013.pdf
 
+**Status:** Proved by induction on n with `lemma_edwards_double_of_add` and `lemma_edwards_add_four_way_swap`.
+
 **Justification:** The "multiply by n" endomorphism is a group homomorphism in any abelian group. Standard algebraic fact.
 
 ---
@@ -261,10 +267,10 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Claim:** The even subgroup 2E is closed under Edwards addition: if P = 2·Q₁ and Q = 2·Q₂, then P + Q = 2·(Q₁ + Q₂) ∈ 2E.
 
-**Reference:** Standard group theory; algebraic identity proven by `lemma_edwards_double_of_add` (fully verified)
+**Reference:** Standard group theory
 **URL:** N/A (standard algebra)
 
-**Justification:** The algebraic identity 2·A + 2·B = 2·(A + B) is proven by the fully-verified `lemma_edwards_double_of_add` in `curve_equation_lemmas.rs`. The `admit()` is needed only because the existential witness in `is_in_even_subgroup` requires an `EdwardsPoint` (projective representation), and lifting from affine coordinates to `EdwardsPoint` is not currently formalized.
+**Status:** Proved. `is_in_even_subgroup` now takes an affine witness `q: (nat, nat)` that must be on the curve. The witness for P + Q is Q₁ + Q₂. `axiom_edwards_add_complete` shows that it is on the curve, and `axiom_edwards_scalar_mul_distributive` (proved) gives 2·(Q₁ + Q₂) = 2·Q₁ + 2·Q₂. The name keeps the `axiom_` prefix.
 
 ---
 
@@ -302,6 +308,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Reference:** Standard property of (inverse) square roots in finite fields.  
 **URL:** N/A (standard algebra)
 
+**Status:** Proved from the field lemmas, by the argument below and the uniqueness of the inverse square root (`lemma_invsqrt_unique`).
+
 **Justification:** If r = nat_invsqrt(a) then r²·a ∈ {1, √(−1)}. Let s = r·inv(b). Then s²·(a·b²) = r²·inv(b²)·a·b² = r²·a ∈ {1, √(−1)}, so s is a valid inverse square root of a·b². After canonical sign normalisation (field_abs), s and nat_invsqrt(a·b²) agree because nat_invsqrt returns the unique non-negative representative.
 
 **Runtime validation:** `test_invsqrt_factors_over_square` — validates for 200 points using diverse field elements derived from basepoint multiples.
@@ -313,7 +321,9 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Reference:** Hamburg (2015) "Decaf" §4.1 (isogeny θ uses 1/√(a₂d₂−1)); ristretto.group/details/isogenies.html
 
-**Justification:** Concrete numerical fact: nat_invsqrt computes the unique non-negative inverse square root; INVSQRT_A_MINUS_D is this value for the argument (−1 − d). The second clause (C_IAD²·(−1−d) = 1) is a corollary but stated explicitly because (−1−d) being a QR is itself a concrete numerical fact that Verus cannot evaluate (252-bit modular exponentiation).
+**Justification:** Concrete numerical fact: nat_invsqrt computes the unique non-negative inverse square root; INVSQRT_A_MINUS_D is this value for the argument (−1 − d). The second clause (C_IAD²·(−1−d) = 1) is a corollary but stated explicitly.
+
+**Status:** Proved by `compute_only`. `lemma_nat_invsqrt_fast` replaces the exponentiation in `nat_invsqrt` with square and multiply (`pow_mod`).
 
 **Runtime validation:** `test_nat_invsqrt_neg_one_minus_d`, `test_invsqrt_a_minus_d_squared`
 
@@ -328,6 +338,8 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Claim:** `spec_sqrt_m1()`² = −1 (mod p); sqrt(−1) and −sqrt(−1) are not squares
 
 **Reference:** p = 2²⁵⁵ − 19 ≡ 5 (mod 8), so −1 is a quadratic residue; its square roots are not squares  
+**Status:** Proved. `axiom_sqrt_m1_squared` by `compute_only`. The two non-square facts by Euler's criterion (`pow_mod` and `lemma_not_square_by_euler`).
+
 **Justification:** For p ≡ 5 (mod 8), −1 is a QR. The square roots of −1 are ±i; neither i nor −i is a square (otherwise −1 would be a fourth power).
 
 **Mechanization note (axiom_sqrt_m1_squared):** The product sqrt_m1()² is ~504 bits, far beyond SMT capacity. Assessed as not cost-effective to mechanize (schoolbook limb multiplication ~50-100 proof lines; witness-based approach limited by ~249-bit quotient; CRT approach requires Verus CRT infrastructure). Keep as axiom.
@@ -370,28 +382,18 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 **Claim:** Equal field elements hash identically
 
 **Reference:** Hash function specification; RFC 8032  
+**Status:** Proved. Equal field elements have equal canonical bytes (`lemma_field_element_equal_implies_fe51_to_bytes_equal`), so the hash inputs are equal.
+
 **Justification:** Standard property of hash functions: equal inputs produce equal outputs.
-
----
-
-### axiom_sha512_output_length()
-**Claim:** SHA-512 output is 64 bytes
-
-**Reference:** FIPS 180-4; RFC 6234  
-**URL:** https://www.rfc-editor.org/rfc/rfc6234
-
-**Justification:** SHA-512 specification.
 
 ---
 
 ## 11. Lizard / Jacobi Quartic (lizard_lemmas.rs, torsion_lemmas.rs)
 
 ### axiom_four_torsion_affine()
-**Claim:** The even-indexed 8-torsion elements have affine coordinates T[2] = (√(−1), 0), T[4] = (0, −1), T[6] = (−√(−1), 0).
+**Claim:** The even-indexed 8-torsion elements have affine coordinates T[2] = (−√(−1), 0), T[4] = (0, −1), T[6] = (√(−1), 0).
 
-**Reference:** N/A (computational bridge axiom)
-
-**Justification:** Concrete numerical fact about the hardcoded `spec_eight_torsion()` limb constants. The function is `closed spec` so Verus cannot reveal it; the axiom bridges the gap. Follows from expanding the limb representation mod p.
+**Status:** Proved. `lemma_four_torsion_affine_by_computation` in `constants.rs` proves it by computation, where the closed `spec_eight_torsion` is visible. This fixes an earlier version, which had the x-coordinates of T[2] and T[6] swapped.
 
 **Runtime validation:** `test_axiom_four_torsion_affine` in lizard_ristretto.rs.
 
@@ -409,7 +411,7 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ---
 
 ### axiom_jacobi_quartic_birational_pair01(point)
-**Claim:** For non-degenerate Edwards points (x ≠ 0, y ≠ 0), the first two Jacobi quartic points from `spec_to_jacobi_quartic_ristretto` (computed from the (X,Y,Z) basis) map to coset members 0 and 2 via `jacobi_to_edwards_affine`.
+**Claim:** For non-degenerate Edwards points (x ≠ 0, y ≠ 0) in the even subgroup 2E, the first two Jacobi quartic points from `spec_to_jacobi_quartic_ristretto` (computed from the (X,Y,Z) basis) map to coset members 0 and 2 via `jacobi_to_edwards_affine`.
 
 **Background references:**
 - Hamburg (2015) "Decaf" (eprint 2015/673) §4 (J[2] coset structure) + §4.1 (isogeny φ_a: J → E)
@@ -418,12 +420,14 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Gap:** The specific coset-index correspondence (JQ[0] → coset[0], JQ[1] → coset[2]) requires algebraic derivation by composing the dual isogeny, `spec_to_jacobi_quartic_ristretto`, and the forward isogeny. No paper states this indexed mapping directly. Provable by symbolic algebra (Sage/Magma).
 
+**Hypothesis 2E:** The axiom requires `is_in_even_subgroup(point)`. Without it, the axiom does not hold, for example for `B + T[1]`. The Lizard decode functions now require `is_in_even_subgroup(self.0)`.
+
 **Runtime validation:** `test_axiom_birational_pair01` in lizard_ristretto.rs.
 
 ---
 
 ### axiom_jacobi_quartic_torsion_pair23(point)
-**Claim:** For non-degenerate Edwards points (x ≠ 0, y ≠ 0), the second pair of Jacobi quartic points (from the (Y,X,iZ) basis via the 4-torsion action) map to coset members 1 and 3.
+**Claim:** For non-degenerate Edwards points (x ≠ 0, y ≠ 0) in the even subgroup 2E, the second pair of Jacobi quartic points (from the (Y,X,iZ) basis via the 4-torsion action) map to coset members 1 and 3.
 
 **Background references:**
 - Hamburg (2015) "Decaf" (eprint 2015/673) §4 (J[2] coset structure) + §7 (cofactor-8 torsion: Z₂×Z₄ subgroup of J, kernel of isogeny vs 4-torsion image on E)
@@ -431,7 +435,20 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 **Gap:** §7 discusses the cofactor-8 torsion splitting conceptually but does not prove that the (Y,X,iZ) basis swap yields coset members at indices 1 and 3. The specific indexed mapping requires algebraic derivation. Provable by symbolic algebra (Sage/Magma).
 
+**Hypothesis 2E:** The axiom requires `is_in_even_subgroup(point)`. Without it, the axiom does not hold, for example for `B + T[1]`. The Lizard decode functions now require `is_in_even_subgroup(self.0)`.
+
 **Runtime validation:** `test_axiom_torsion_pair23` in lizard_ristretto.rs.
+
+---
+
+### axiom_jacobi_quartic_points_on_quartic(point)
+**Claim:** For an Edwards point in the even subgroup 2E, the four points of `spec_to_jacobi_quartic_ristretto(point)` lie on the Jacobi quartic `T² = S⁴ + 2·((1 − d)/(1 + d))·S² + 1` (`is_on_jacobi_quartic`).
+
+**Reference:** Hamburg (2015) "Decaf" (eprint 2015/673) §4.1 (the dual isogeny θ̂ maps 2E to J).
+
+**Justification:** In a Python model of the spec functions, this holds on 332 of 332 Jacobi quartic points of random points in 2E, and on the torsion points in 2E. Outside 2E, none of the four points is on the quartic. `axiom_elligator_inv_square_case` needs this fact.
+
+**Runtime validation:** None yet.
 
 ---
 
@@ -458,7 +475,9 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 ---
 
 ### axiom_elligator_inv_square_case(s, t, a, s2, s4, inv_sq_y, y, pms2, x, r0)
-**Claim:** When s ≢ 0 and the inverse square root exists (square case), `spec_elligator_ristretto_flavor(|x|) == jacobi_to_edwards_affine(s, t)`.
+**Claim:** When (s, t) is on the Jacobi quartic (`is_on_jacobi_quartic(s, t)`), s ≢ 0, and the inverse square root exists (square case), `spec_elligator_ristretto_flavor(|x|) == jacobi_to_edwards_affine(s, t)`.
+
+**Hypothesis on the quartic:** Without it, the axiom does not hold. With s = 1 and t = 0, the forward map gives (0, 1), but `jacobi_to_edwards_affine(1, 0)` is (0, 0).
 
 **Reference:** Hamburg (2015) "Decaf" (eprint 2015/673) Appendix C (Elligator 2 inverse);
 Westerbaan (2019) / go-ristretto (Ristretto reparameterization).
@@ -472,23 +491,9 @@ See [docs/axiom_elligator_inv_algebraic.md](axiom_elligator_inv_algebraic.md) fo
 
 ---
 
-### axiom_elligator_fiber_complete(point, r)
-**Claim:** Every field element `r` whose forward Elligator image is in the Ristretto coset of `point` appears among the 8 spec-level candidates from `spec_lizard_decode_candidates(point)`.
-
-**Background references:**
-- Hamburg (2015) "Decaf" (eprint 2015/673) §4 (J[2] coset covers all representatives), §6 (Elligator is at most 4:1 after J[2] quotient), Appendix C (inverse sign analysis)
-
-**Construction:** 8 candidates = 4 coset members (J[2]) × 2 dual signs ((s,t) ↔ (−s,−t)).
-
-**Gap:** §6 establishes 4:1 for cofactor-4 Decaf, not the 8-candidate completeness for cofactor-8 Ristretto. The full composition (coset coverage + dual sign coverage) is a derived property not directly stated in any paper.
-
-**Runtime validation:** `test_elligator_inv` in lizard_ristretto.rs (100 random points × 4 coset members × forward/inverse round-trip).
-
----
-
 ### axiom_decode_from_point(point, passed_data)
 
-**Claim:** `spec_sha_consistent_count(point) == 1` implies
+**Claim:** For `point` in the even subgroup 2E, `spec_sha_consistent_count(point) == 1` implies
 `lizard_ristretto_has_unique_preimage(x, y)`;
 `spec_sha_consistent_count(point) != 1` implies
 `!lizard_ristretto_has_unique_preimage(x, y)`.
@@ -499,6 +504,8 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 
 **Reference:** Westerbaan (2019) / go-ristretto (design provenance)
 
+**Fiber completeness (b):** For P in 2E, every even r (`!is_negative(r)`) with Elligator(r) in the coset of P is one of the 8 candidates. Lizard field elements are even, because the encoder clears bit 0 of byte 0. Exception: the even r₀ with i·r₀² = −1/d maps to the identity but is not a candidate. The axiom assumes that no message reaches r₀, which needs 16 bytes of a SHA-256 hash to match fixed values.
+
 **Justification:**
 - count == 1: `passed_data` provides an existence witness. Any other preimage m₂ would
   have r(m₂) among the 8 candidates (by fiber completeness (b) + exec–spec candidate correspondence (c) in the verified decode path),
@@ -507,7 +514,10 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 - count == 0: if a preimage existed, (b) + (c) would place it among candidates,
   and SHA consistency would give count ≥ 1 — contradiction.
 - count ≥ 2: two SHA-consistent candidates yield two coset preimages.
-  By injectivity (a), these messages differ, so uniqueness fails.
+  By injectivity (a), these messages differ, so uniqueness fails. In the identity coset,
+  candidate slots repeat (slots 0 and 2 both hold `sqrt_id()`, slots 1 and 3 both hold 0),
+  so two slots can give one message. The axiom assumes that these values are not
+  SHA-consistent, which needs 16 bytes of a SHA-256 hash to match fixed values.
 
 **Runtime validation:** `test_lizard_decode_roundtrip_exhaustive` in lizard_ristretto.rs (200+ random round-trips).
 
@@ -519,13 +529,14 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 
 ## Summary Table
 
-Justification types (6 canonical values):
+Justification types (7 canonical values):
 - **rfc** — Backed by IETF standard (RFC 7748, 8032, 9380, 9496)
 - **paper** — Backed by peer-reviewed paper (Bernstein, Costello-Smith, Hamburg, etc.)
 - **tested** — Primary justification is runtime validation test (Euler criterion, limb expansion)
 - **construction** — Precomputed table validated by construction from the basepoint
 - **crypto-assumption** — Standard cryptographic assumption (uniformity, hash, independence)
 - **algebraic-gap** — Algebraic identity not yet formalized; derivable by symbolic algebra (Sage/Magma)
+- **proved** — Proved in Verus; the axiom keeps its `axiom_` name
 
 | Axiom | File | Justification Type | Primary Reference |
 |-------|------|--------------------|-------------------|
@@ -533,8 +544,8 @@ Justification types (6 canonical values):
 | axiom_montgomery_add_associative | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 |
 | axiom_xdbl_projective_correct | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 Eq. 10 |
 | axiom_xadd_projective_correct | montgomery_curve_lemmas.rs | paper | Costello & Smith 2017 Eq. 9 |
-| axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | tested | test_486660_not_qr |
-| axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | tested | test_2_times_486661_not_qr |
+| axiom_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | proved | Euler's criterion; compute_only |
+| axiom_2_times_486661_not_qr | montgomery_curve_lemmas.rs | proved | Euler's criterion; compute_only |
 | axiom_edwards_to_montgomery_preserves_validity | montgomery_curve_lemmas.rs | rfc | RFC 7748 §4.1 |
 | axiom_elligator_encode_outputs_valid_u | montgomery_curve_lemmas.rs | rfc | RFC 9380 §6.7.1 |
 | axiom_montgomery_valid_u_implies_edwards_y_valid | montgomery_curve_lemmas.rs | rfc | RFC 7748 §4.1 |
@@ -544,21 +555,21 @@ Justification types (6 canonical values):
 | axiom_edwards_add_associative | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 |
 | axiom_edwards_add_complete | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 Thm. 3.3 |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
-| axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
+| axiom_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | proved | Induction on n |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_lemmas/axioms.rs | construction | Hamburg 2019 |
 | axiom_elligator_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; test (250+ inputs) |
 | axiom_elligator_nonzero_intermediates | ristretto_lemmas/axioms.rs | paper | RFC 9496 §4.3.4; Hamburg 2015 §6; test (200+ inputs) |
 | axiom_elligator_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (200+ inputs) |
-| axiom_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | paper | Group theory; lemma_edwards_double_of_add |
-| axiom_invsqrt_factors_over_square | field_specs.rs | paper | Standard finite field algebra; test (200 inputs) |
-| axiom_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | tested | Hamburg 2015 §4.1; test_nat_invsqrt_neg_one_minus_d, test_invsqrt_a_minus_d_squared |
+| axiom_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | proved | Witness Q₁ + Q₂; axiom_edwards_add_complete |
+| axiom_invsqrt_factors_over_square | field_specs.rs | proved | Uniqueness of the inverse square root |
+| axiom_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | proved | compute_only; square and multiply |
 | axiom_ristretto_cross_mul_iff_equivalent | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; Ristretto §3.2; test |
 | axiom_ristretto_decode_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015; test_ristretto_decode_on_curve |
 | axiom_ristretto_decode_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (100+ points) |
-| axiom_sqrt_m1_squared | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_limbs_bounded |
-| axiom_sqrt_m1_not_square | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_not_square |
-| axiom_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | tested | p ≡ 5 (mod 8); test_sqrt_m1_not_square |
+| axiom_sqrt_m1_squared | sqrt_m1_lemmas.rs | proved | compute_only |
+| axiom_sqrt_m1_not_square | sqrt_m1_lemmas.rs | proved | Euler's criterion; compute_only |
+| axiom_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | proved | Euler's criterion; compute_only |
 | axiom_uniform_bytes_split | proba_specs.rs | crypto-assumption | Probability theory |
 | axiom_from_bytes_uniform | proba_specs.rs | crypto-assumption | Probability theory |
 | axiom_from_bytes_independent | proba_specs.rs | crypto-assumption | Probability theory |
@@ -567,15 +578,14 @@ Justification types (6 canonical values):
 | axiom_uniform_elligator_sum | proba_specs.rs | crypto-assumption | RFC 9380; Tibouchi 2015 |
 | axiom_uniform_point_add | proba_specs.rs | crypto-assumption | Group-theoretic uniformity |
 | axiom_uniform_mod_reduction | proba_specs.rs | crypto-assumption | Probability theory |
-| axiom_hash_is_canonical | core_assumes.rs | rfc | RFC 8032 |
-| axiom_sha512_output_length | core_assumes.rs | rfc | FIPS 180-4; RFC 6234 |
-| axiom_four_torsion_affine | torsion_lemmas.rs | tested | Limb expansion; runtime test |
-| axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | tested | Constant identity; runtime test |
+| axiom_hash_is_canonical | core_assumes.rs | proved | Canonical bytes of equal field elements |
+| axiom_four_torsion_affine | torsion_lemmas.rs | proved | By computation in constants.rs |
+| axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | proved | compute_only |
 | axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§4.1 + algebraic derivation |
 | axiom_jacobi_quartic_torsion_pair23 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§7 + algebraic derivation |
+| axiom_jacobi_quartic_points_on_quartic | lizard_lemmas.rs | algebraic-gap | Decaf §4.1; Python model |
 | axiom_elligator_forward_zero | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
 | axiom_elligator_forward_sqrt_id | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
 | axiom_elligator_inv_square_case | lizard_lemmas.rs | algebraic-gap | Decaf Appendix C + reparameterization |
-| axiom_elligator_fiber_complete | lizard_lemmas.rs | algebraic-gap | Decaf §4/§6/App.C; 4×2 composition |
 | axiom_decode_from_point | lizard_lemmas.rs | algebraic-gap | Sub-properties (a)–(e); test (200+ round-trips) |
 

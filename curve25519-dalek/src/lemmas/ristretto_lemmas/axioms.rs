@@ -6,6 +6,11 @@ use crate::constants;
 use crate::edwards::EdwardsPoint;
 #[allow(unused_imports)]
 use crate::field::FieldElement;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
+use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
+    axiom_edwards_add_complete, axiom_edwards_scalar_mul_distributive,
+};
 #[allow(unused_imports)]
 use crate::specs::edwards_specs::*;
 #[allow(unused_imports)]
@@ -173,11 +178,12 @@ pub proof fn axiom_elligator_in_even_subgroup(r_0: nat)
     admit();
 }
 
-/// Axiom: The even subgroup (image of [2]) is closed under Edwards addition.
+/// The even subgroup (image of [2]) is closed under Edwards addition.
 ///
 /// If P = 2·Q₁ and Q = 2·Q₂, then P + Q = 2·Q₁ + 2·Q₂ = 2·(Q₁ + Q₂).
-/// The algebraic identity follows from lemma_edwards_double_of_add (fully proven).
-/// Admitted because the existential witness requires lifting affine → EdwardsPoint.
+/// The witness for P + Q is Q₁ + Q₂, which is on the curve by
+/// `axiom_edwards_add_complete`. The name keeps the `axiom_` prefix, but the
+/// statement is proved.
 ///
 /// Reference: standard group theory (sum of doubles is a double)
 pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
@@ -195,7 +201,25 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
                 edwards_point_as_affine(p2).1,
             ) && is_well_formed_edwards_point(result) ==> is_in_even_subgroup(result),
 {
-    admit();
+    let q1 = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p1)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    let q2 = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p2)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    let q = edwards_add(q1.0, q1.1, q2.0, q2.1);
+    axiom_edwards_add_complete(q1.0, q1.1, q2.0, q2.1);
+    axiom_edwards_scalar_mul_distributive(q1, q2, 2);
+    assert forall|result: EdwardsPoint|
+        edwards_point_as_affine(result) == edwards_add(
+            edwards_point_as_affine(p1).0,
+            edwards_point_as_affine(p1).1,
+            edwards_point_as_affine(p2).0,
+            edwards_point_as_affine(p2).1,
+        ) && is_well_formed_edwards_point(result) implies is_in_even_subgroup(result) by {
+        assert(is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(result)
+            == edwards_scalar_mul(q, 2));
+    };
 }
 
 // =============================================================================
@@ -208,9 +232,8 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
 /// deterministically, and for (−1 − d) — which is a quadratic residue mod p —
 /// the result satisfies r²·a = 1 rather than r²·a = √(−1).
 ///
-/// In principle the second clause follows from the first plus a proof that
-/// (−1 − d) is a QR mod p, but that QR status is itself a concrete numerical
-/// fact that Verus cannot evaluate (it requires 252-bit modular exponentiation).
+/// Proved by `compute_only`. `lemma_nat_invsqrt_fast` replaces the
+/// exponentiation in `nat_invsqrt` with square and multiply.
 ///
 /// Reference: Hamburg (2015) "Decaf" §4.1 (isogeny θ uses 1/√(a₂d₂−1));
 ///   also ristretto.group/details/isogenies.html.
@@ -225,7 +248,74 @@ pub proof fn axiom_invsqrt_a_minus_d()
                 == 1
         }),
 {
-    admit();
+    use vstd::arithmetic::power::*;
+    use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
+    reveal(pow);
+    assert(field_mul(
+        field_square(
+            field_mul(
+                field_square(
+                    field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+                ),
+                field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+            ),
+        ),
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    ) > 0) by (compute_only);
+    lemma_nat_invsqrt_fast(
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    );
+    assert(nat_invsqrt_fast(
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    ) == fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D)) by (compute_only);
+    assert(field_mul(
+        field_square(fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D)),
+        field_sub(field_neg(1nat), fe51_as_canonical_nat(&u64_constants::EDWARDS_D)),
+    ) == 1) by (compute_only);
+}
+
+/// nat_invsqrt with the exponentiation replaced by square and multiply.
+pub open spec fn nat_invsqrt_fast(a: nat) -> nat {
+    if a % p() == 0 {
+        0
+    } else {
+        let a3 = field_mul(field_square(a), a);
+        let a7 = field_mul(field_square(a3), a);
+        let k = ((p() - 5) / 8) as nat;
+        let r_raw = field_mul(a3, crate::lemmas::field_lemmas::sqrt_m1_lemmas::pow_mod(a7, k, p()));
+        let check = field_mul(a, field_square(r_raw));
+        let neg_one = field_neg(1);
+        let neg_i = field_neg(sqrt_m1());
+        let r_adj = if check == neg_one || check == neg_i {
+            field_mul(sqrt_m1(), r_raw)
+        } else {
+            r_raw
+        };
+        if is_negative(r_adj) {
+            field_neg(r_adj)
+        } else {
+            r_adj
+        }
+    }
+}
+
+pub proof fn lemma_nat_invsqrt_fast(a: nat)
+    requires
+        field_mul(field_square(field_mul(field_square(a), a)), a) > 0,
+    ensures
+        nat_invsqrt(a) == nat_invsqrt_fast(a),
+{
+    use vstd::arithmetic::power::*;
+    use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
+    reveal(pow);
+    assert(p() == 57896044618658097711785492504343953926634992332820282019728792003956564819949nat)
+        by (compute_only);
+    let a3 = field_mul(field_square(a), a);
+    let a7 = field_mul(field_square(a3), a);
+    let k = ((p() - 5) / 8) as nat;
+    lemma_pow_positive(a7 as int, k);
+    lemma_pow_mod_correct(a7, k, p());
+    assert((pow(a7 as int, k) as nat) % p() == pow_mod(a7, k, p()));
 }
 
 } // verus!

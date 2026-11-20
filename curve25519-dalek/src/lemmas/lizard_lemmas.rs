@@ -67,10 +67,6 @@ use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
 
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::core_assumes::axiom_sha256_output_length;
-
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
 use crate::core_assumes::{seq_to_array_32, spec_sha256};
 
 #[cfg(verus_keep_ghost)]
@@ -175,7 +171,6 @@ pub proof fn lemma_h_equals_spec_lizard_fe_bytes(h: [u8; 32], msg: Seq<u8>)
     ensures
         h == spec_lizard_fe_bytes(msg),
 {
-    axiom_sha256_output_length(msg);
 }
 
 /// buf2 = spec_lizard_fe_bytes(msg) ⟹ msg is a valid Lizard coset preimage.
@@ -224,6 +219,7 @@ pub proof fn lemma_coset_bridge(
 )
     requires
         is_well_formed_edwards_point(point),
+        is_in_even_subgroup(point),
         spec_to_jacobi_quartic_ristretto(point) == [(s0, t0), (s1, t1), (s2, t2), (s3, t3)],
     ensures
         ({
@@ -303,9 +299,7 @@ pub proof fn lemma_invsqrt_bridge(
 /// This removes the "SHA-256 structural consistency" trust assumption
 /// from the old monolithic decode exhaustive axiom: injectivity
 /// follows from the definition of `spec_lizard_fe_bytes`, not from any
-/// hash collision-resistance property.  (The proof does use
-/// `axiom_sha256_output_length` to establish that the SHA-256 output
-/// is 32 bytes, which is needed for the index arithmetic.)
+/// hash collision-resistance property.
 #[verifier::spinoff_prover]
 pub proof fn lemma_spec_lizard_fe_bytes_injective(m1: Seq<u8>, m2: Seq<u8>)
     requires
@@ -315,8 +309,24 @@ pub proof fn lemma_spec_lizard_fe_bytes_injective(m1: Seq<u8>, m2: Seq<u8>)
     ensures
         m1 =~= m2,
 {
-    axiom_sha256_output_length(m1);
-    axiom_sha256_output_length(m2);
+}
+
+/// The bytes that `lizard_encode_verus` builds equal `spec_lizard_fe_bytes`.
+///
+/// This lemma keeps the `Seq::new` reasoning of `spec_lizard_fe_bytes` out of
+/// the context of `lizard_encode_verus`.
+pub proof fn lemma_lizard_fe_bytes_from_parts(data: Seq<u8>, digest: [u8; 32], fe_bytes: [u8; 32])
+    requires
+        data.len() == 16,
+        digest@ == spec_sha256(data),
+        forall|i: int| 0 <= i < 16 ==> fe_bytes[8 + i] == data[i],
+        forall|i: int| (1 <= i < 8 || 24 <= i < 31) ==> fe_bytes[i] == digest[i],
+        fe_bytes[0] == digest[0] & 254u8,
+        fe_bytes[31] == digest[31] & 63u8,
+    ensures
+        fe_bytes@ =~= spec_lizard_fe_bytes(data)@,
+{
+    assert(fe_bytes@ =~= spec_lizard_fe_bytes(data)@);
 }
 
 // =============================================================================
@@ -334,6 +344,7 @@ pub open spec fn is_slot_in_coset(fe_val: nat, coset: [(nat, nat); 4]) -> bool {
 /// Prove that an even slot maps to the coset (scoped reveal + axiom).
 pub proof fn lemma_even_is_slot_in_coset(fe_val: nat, s: nat, t: nat, coset: [(nat, nat); 4])
     requires
+        is_on_jacobi_quartic(s, t),
         spec_elligator_inv(s, t).0,
         spec_elligator_inv(s, t).1 == fe_val,
         ({
@@ -361,6 +372,7 @@ pub proof fn lemma_odd_is_slot_in_coset(
     requires
         spec_elligator_inv(ns, nt).0,
         spec_elligator_inv(ns, nt).1 == fe_val,
+        is_on_jacobi_quartic(s, t),
         ns == field_neg(s),
         nt == field_neg(t),
         ({
@@ -372,6 +384,7 @@ pub proof fn lemma_odd_is_slot_in_coset(
 {
     reveal(is_slot_in_coset);
     assert(spec_elligator_ristretto_flavor(fe_val) == jacobi_to_edwards_affine(ns, nt)) by {
+        lemma_jacobi_quartic_dual(s, t);
         lemma_elligator_inv_algebraic(ns, nt);
     };
     lemma_jacobi_dual_same_edwards(s, t);
@@ -443,7 +456,7 @@ pub proof fn lemma_jacobi_dual_same_edwards(s: nat, t: nat)
 ///   √(ad−1)  = √(−d−1)      (`spec_sqrt_ad_minus_one()`,  a = −1 for Ed25519)
 ///   √(−1)   = `sqrt_m1()`
 ///
-/// Left as axiom because the 510-bit limb arithmetic exceeds Z3's capacity.
+/// Proved by `compute_only`.
 ///
 /// Runtime validation: `test_axiom_mc_times_sqrt_ad_m1` in lizard_ristretto.rs.
 pub proof fn axiom_mc_times_sqrt_ad_m1()
@@ -453,7 +466,12 @@ pub proof fn axiom_mc_times_sqrt_ad_m1()
             sqrt_m1(),
         ),
 {
-    admit();
+    use vstd::arithmetic::power::pow;
+    reveal(pow);
+    assert(field_mul(midouble_invsqrt_a_minus_d(), spec_sqrt_ad_minus_one()) == field_mul(
+        2,
+        sqrt_m1(),
+    )) by (compute_only);
 }
 
 // =============================================================================
@@ -537,10 +555,15 @@ pub proof fn lemma_jacobi_to_edwards_affine_y_zero_when_s_sq_one(s: nat, t: nat)
 /// **Gap:** the indexed mapping JQ[0]→coset[0], JQ[1]→coset[2] follows
 ///   from composing θ̂ with θ but is not stated directly in any reference.
 ///
+/// The axiom needs the hypothesis `is_in_even_subgroup(point)`. For
+/// `B + T[1]`, with `B` the base point and `T[1]` a point of order 8, the
+/// conclusion does not hold.
+///
 /// Runtime validation: `test_axiom_birational_pair01` in lizard_ristretto.rs.
 pub proof fn axiom_jacobi_quartic_birational_pair01(point: crate::edwards::EdwardsPoint)
     requires
         is_well_formed_edwards_point(point),
+        is_in_even_subgroup(point),
     ensures
         ({
             let (x, y) = edwards_point_as_affine(point);
@@ -560,8 +583,9 @@ pub proof fn axiom_jacobi_quartic_birational_pair01(point: crate::edwards::Edwar
 ///   θ(JQ[2]) = P + T₂         (= coset[1])
 ///   θ(JQ[3]) = P + T₆         (= coset[3])
 ///
-/// where T₂ = (0, 1) (identity for Edwards addition), T₆ = T₂ + T₄,
-/// and the torque effectively adds Q₄ = (i, 0) to bridge E/E[4] to E/E[2].
+/// where T₂ = (−i, 0) and T₆ = T₂ + T₄ = (i, 0) (see `axiom_four_torsion_affine`).
+/// The torque maps (x, y) to (−i·y, −i·x) = (x, y) + T₂, so it adds the
+/// 4-torsion point T₂ to bridge E/E[4] to E/E[2].
 ///
 /// Reference: Hamburg (2015) "Decaf" §4, §7 (cofactor-8 coset
 ///   representatives); ristretto.group/details/isogeny_encoding.html
@@ -570,10 +594,15 @@ pub proof fn axiom_jacobi_quartic_birational_pair01(point: crate::edwards::Edwar
 /// **Gap:** the indexed mapping JQ[2]→coset[1], JQ[3]→coset[3] follows
 ///   from the torque + isogeny composition but is not stated directly.
 ///
+/// The axiom needs the hypothesis `is_in_even_subgroup(point)`. For
+/// `B + T[1]`, with `B` the base point and `T[1]` a point of order 8, the
+/// conclusion does not hold.
+///
 /// Runtime validation: `test_axiom_torsion_pair23` in lizard_ristretto.rs.
 pub proof fn axiom_jacobi_quartic_torsion_pair23(point: crate::edwards::EdwardsPoint)
     requires
         is_well_formed_edwards_point(point),
+        is_in_even_subgroup(point),
     ensures
         ({
             let (x, y) = edwards_point_as_affine(point);
@@ -584,6 +613,47 @@ pub proof fn axiom_jacobi_quartic_torsion_pair23(point: crate::edwards::EdwardsP
         }),
 {
     admit();
+}
+
+/// The four Jacobi quartic points of an Edwards point in the even subgroup 2E
+/// lie on the Jacobi quartic `T² = S⁴ + 2·((1 − d)/(1 + d))·S² + 1`.
+///
+/// This holds for every point in 2E, including the edge cases with x = 0 or
+/// y = 0. Outside 2E, none of the four points is on the
+/// quartic. In a Python model of the spec functions, this holds on 332 of 332
+/// Jacobi quartic points of random points in 2E, fails on 232 of 232 outside
+/// 2E, and agrees on the 8 torsion points.
+///
+/// Reference: Hamburg (2015) "Decaf" §4.1 (the dual isogeny θ̂ maps 2E to J).
+pub proof fn axiom_jacobi_quartic_points_on_quartic(point: crate::edwards::EdwardsPoint)
+    requires
+        is_well_formed_edwards_point(point),
+        is_in_even_subgroup(point),
+    ensures
+        forall|i: int|
+            0 <= i < 4 ==> is_on_jacobi_quartic(
+                #[trigger] spec_to_jacobi_quartic_ristretto(point)[i].0,
+                spec_to_jacobi_quartic_ristretto(point)[i].1,
+            ),
+{
+    admit();
+}
+
+/// The dual (−s, −t) of a Jacobi quartic point is on the quartic.
+pub proof fn lemma_jacobi_quartic_dual(s: nat, t: nat)
+    requires
+        is_on_jacobi_quartic(s, t),
+    ensures
+        is_on_jacobi_quartic(field_neg(s), field_neg(t)),
+{
+    assert(field_square(field_neg(s)) == field_square(s)) by {
+        lemma_neg_square_eq(s);
+        lemma_square_mod_noop(s);
+    };
+    assert(field_square(field_neg(t)) == field_square(t)) by {
+        lemma_neg_square_eq(t);
+        lemma_square_mod_noop(t);
+    };
 }
 
 /// In the edge case (xn == 0 || yn == 0), spec_to_jacobi_quartic_ristretto
@@ -888,6 +958,8 @@ pub proof fn lemma_jacobi_quartic_edge_values(point: crate::edwards::EdwardsPoin
 /// Runtime validation: `test_axiom_elligator_inv_roundtrip` (100+ random
 ///   Jacobi quartic points + corner cases)
 pub proof fn lemma_elligator_inv_algebraic(s: nat, t: nat)
+    requires
+        is_on_jacobi_quartic(s, t),
     ensures
         spec_elligator_inv(s, t).0 ==> spec_elligator_ristretto_flavor(spec_elligator_inv(s, t).1)
             == jacobi_to_edwards_affine(s, t),
@@ -1030,6 +1102,10 @@ proof fn axiom_elligator_forward_sqrt_id()
 ///   (spec_elligator_inv) to the forward map (spec_elligator_ristretto_flavor)
 ///   through the birational map θ (jacobi_to_edwards_affine).
 ///
+/// The axiom needs `(s, t)` on the Jacobi quartic. For example, s = 1, t = 0
+/// is not on the quartic: the forward map gives (0, 1), but
+/// `jacobi_to_edwards_affine(1, 0)` is (0, 0).
+///
 /// Runtime validation: `test_axiom_elligator_inv_roundtrip` in lizard_ristretto.rs.
 proof fn axiom_elligator_inv_square_case(
     s: nat,
@@ -1044,6 +1120,7 @@ proof fn axiom_elligator_inv_square_case(
     r0: nat,
 )
     requires
+        is_on_jacobi_quartic(s, t),
         field_canonical(s) != 0,
         a == field_mul(field_add(t, 1), dp1_over_dm1()),
         s2 == field_square(s),
@@ -1061,62 +1138,6 @@ proof fn axiom_elligator_inv_square_case(
         r0 == field_abs(x),
     ensures
         spec_elligator_ristretto_flavor(r0) == jacobi_to_edwards_affine(s, t),
-{
-    admit();
-}
-
-/// Axiom (Elligator fiber completeness): Every field element `r` whose
-/// forward Elligator image lies in the Ristretto coset of `point`
-/// appears among the 8 spec-level candidates produced by Jacobi quartic
-/// inversion + dual (see `spec_lizard_decode_candidates`).
-///
-/// The 8 candidates arise from: 4 coset members (J[2] coset) × 2 signs
-/// (dual negation (s,t) ↔ (−s,−t) on the Jacobi quartic).
-///
-/// This is a derived property composing:
-/// - `spec_to_jacobi_quartic_ristretto` covering all 4 coset members
-///   (axiom_jacobi_quartic_birational_pair01, axiom_jacobi_quartic_torsion_pair23,
-///   lemma_jacobi_quartic_edge_values)
-/// - `spec_elligator_inv` + dual covering both Elligator preimage signs
-///   per Jacobi quartic point (Decaf Appendix C sign analysis)
-/// - The Ristretto Elligator map factoring through exactly one Jacobi
-///   quartic point per coset member
-///
-/// Background references:
-/// - Hamburg (2015) "Decaf" (https://eprint.iacr.org/2015/673),
-///   §4 (J[2] coset covers all representatives), §6 (Elligator is at
-///   most 4:1 after J[2] quotient in the cofactor-4 setting),
-///   Appendix C (inverse formula + sign analysis).
-/// - https://ristretto.group/details/isogeny_encoding.html
-///   (cofactor-8 extension: torquing doubles the coset from E[2] to
-///   E[4], yielding 4 coset members instead of Decaf's 2).
-///
-/// **Gap:** §6 establishes 4:1 for cofactor-4 Decaf; the 8-candidate
-///   completeness for cofactor-8 Ristretto (4 coset × 2 dual signs)
-///   is not directly stated in any paper. It follows from combining
-///   the coset coverage axioms above with the Elligator inverse sign
-///   ambiguity, but the full composition has not been published.
-///   Provable by formal proof (e.g., Lean 4 / Mathlib) given the
-///   component proofs for axioms 3–5.
-///
-/// Runtime validation: `test_elligator_inv` in lizard_ristretto.rs
-///   (100 random points × 4 coset members × forward/inverse round-trip).
-pub proof fn axiom_elligator_fiber_complete(point: crate::edwards::EdwardsPoint, r: nat)
-    requires
-        is_well_formed_edwards_point(point),
-        r < p(),
-    ensures
-        ({
-            let (x, y) = edwards_point_as_affine(point);
-            let coset = ristretto_coset_affine(x, y);
-            let ej = spec_elligator_ristretto_flavor(r);
-            let candidates = spec_lizard_decode_candidates(point);
-            (ej == coset[0] || ej == coset[1] || ej == coset[2] || ej == coset[3]) ==> exists|
-                j: int,
-            |
-                #![trigger candidates[j]]
-                0 <= j < 8 && candidates[j].0 && candidates[j].1 == r
-        }),
 {
     admit();
 }
@@ -1185,7 +1206,6 @@ pub proof fn lemma_spec_lizard_fe_bytes_canonical(m: Seq<u8>)
     let bytes = spec_lizard_fe_bytes(m);
 
     // Step 1: bytes[31] <= 63 (from the & 63 mask in spec_lizard_fe_bytes)
-    axiom_sha256_output_length(m);
     let digest = spec_sha256(m);
     let s0 = Seq::new(
         32,
@@ -1271,8 +1291,12 @@ pub proof fn lemma_spec_lizard_fe_bytes_canonical(m: Seq<u8>)
 /// **(a) `lemma_spec_lizard_fe_bytes_injective`** (proved):
 ///   `spec_lizard_fe_bytes(m₁) == spec_lizard_fe_bytes(m₂) ⟹ m₁ == m₂`.
 ///
-/// **(b) `axiom_elligator_fiber_complete`** (admitted): every r with
-///   Elligator(r) ∈ coset(P) appears among the 8 candidates.
+/// **(b) Elligator fiber completeness** (assumed): for P in 2E, every even r
+///   with Elligator(r) ∈ coset(P) is one of the 8 candidates. Lizard field
+///   elements are even, because the encoder clears bit 0 of byte 0. Exception:
+///   the even r₀ with i·r₀² = −1/d maps to the identity but is not a candidate.
+///   The axiom assumes that no message reaches r₀, which needs 16 bytes of a
+///   SHA-256 hash to match fixed values.
 ///
 /// **(c) exec-spec candidate correspondence** (proved): exec `(mask, fes)`
 ///   matches `spec_lizard_decode_candidates(point)`. Now a direct postcondition
@@ -1291,7 +1315,11 @@ pub proof fn lemma_spec_lizard_fe_bytes_canonical(m: Seq<u8>)
 ///   candidates, and SHA consistency would give count ≥ 1 — contradiction.
 ///
 /// count ≥ 2: two SHA-consistent candidates yield two coset preimages.
-///   By (a), these messages differ, so uniqueness fails.
+///   By (a), these messages differ, so uniqueness fails. In the identity
+///   coset, candidate slots repeat (slots 0 and 2 both hold `sqrt_id()`,
+///   slots 1 and 3 both hold 0), so two slots can give one message. The
+///   axiom assumes that these values are not SHA-consistent: that needs 16
+///   bytes of a SHA-256 hash to match fixed values.
 ///
 /// Runtime validation: `test_lizard_decode_roundtrip_exhaustive` in
 ///   lizard_ristretto.rs (200+ random round-trips).
@@ -1301,6 +1329,7 @@ pub proof fn axiom_decode_from_point(
 )
     requires
         is_well_formed_edwards_point(point),
+        is_in_even_subgroup(point),
         spec_sha_consistent_count(point) >= 1 <==> passed_data.is_Some(),
         passed_data.is_Some() ==> ({
             let (x, y) = edwards_point_as_affine(point);

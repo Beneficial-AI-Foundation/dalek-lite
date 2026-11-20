@@ -43,11 +43,6 @@ pub struct ExCtOption<T>(CtOption<T>);
 /// true = Choice(1), false = Choice(0)
 pub uninterp spec fn choice_is_true(c: Choice) -> bool;
 
-pub assume_specification[ Choice::from ](u: u8) -> (c: Choice)
-    ensures
-        (u == 1) == choice_is_true(c),
-;
-
 pub assume_specification[ Choice::unwrap_u8 ](c: &Choice) -> (u: u8)
     ensures
         choice_is_true(*c) ==> u == 1u8,
@@ -117,6 +112,24 @@ pub fn ct_eq_u16(a: &u16, b: &u16) -> (c: Choice)
         choice_is_true(c) == (*a == *b),
 {
     a.ct_eq(b)
+}
+
+/// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
+/// `subtle::Choice::from` (`From<u8>`)
+///
+/// `subtle` checks `u <= 1` only with `debug_assert!`. In a release build,
+/// `Choice::from(2)` holds 2, and `unwrap_u8` then returns 2, which breaks the
+/// `unwrap_u8` specification above. So the caller must pass 0 or 1.
+/// `Choice::from` has no `assume_specification`, because it is a trait method
+/// and cannot have a `requires` clause. Call this function instead.
+#[verifier::external_body]
+pub fn choice_from_u8(u: u8) -> (c: Choice)
+    requires
+        u == 0 || u == 1,
+    ensures
+        (u == 1) == choice_is_true(c),
+{
+    Choice::from(u)
 }
 
 /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:

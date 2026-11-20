@@ -3376,8 +3376,35 @@ pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat),
             let nb = edwards_scalar_mul(b, n);
             edwards_add(na.0, na.1, nb.0, nb.1)
         }),
+    decreases n,
 {
-    admit();
+    // Proof from associativity, commutativity and completeness.
+    let ab = edwards_add(a.0, a.1, b.0, b.1);
+    axiom_edwards_add_complete(a.0, a.1, b.0, b.1);
+    reveal_with_fuel(edwards_scalar_mul, 1);
+    if n == 0 {
+        // [0]X = O, and O + O = O
+        lemma_identity_on_curve();
+        p_gt_2();
+        lemma_edwards_add_identity_right_canonical(edwards_identity());
+    } else if n == 1 {
+    } else if n % 2 == 0 {
+        let h = (n / 2) as nat;
+        let ha = edwards_scalar_mul(a, h);
+        let hb = edwards_scalar_mul(b, h);
+        axiom_edwards_scalar_mul_distributive(a, b, h);
+        lemma_edwards_scalar_mul_on_curve(a, h);
+        lemma_edwards_scalar_mul_on_curve(b, h);
+        lemma_edwards_double_of_add(ha.0, ha.1, hb.0, hb.1);
+    } else {
+        let m = (n - 1) as nat;
+        let ma = edwards_scalar_mul(a, m);
+        let mb = edwards_scalar_mul(b, m);
+        axiom_edwards_scalar_mul_distributive(a, b, m);
+        lemma_edwards_scalar_mul_on_curve(a, m);
+        lemma_edwards_scalar_mul_on_curve(b, m);
+        lemma_edwards_add_four_way_swap(ma, mb, a, b);
+    }
 }
 
 // =============================================================================
@@ -3432,7 +3459,7 @@ pub proof fn lemma_double_distributes(a: (nat, nat), b: (nat, nat))
     lemma_double_is_scalar_mul_2(ab);
     lemma_double_is_scalar_mul_2(a);
     lemma_double_is_scalar_mul_2(b);
-    axiom_edwards_scalar_mul_distributive(a, b, 2);
+    lemma_edwards_double_of_add(a.0, a.1, b.0, b.1);
 }
 
 /// double(O) = O.

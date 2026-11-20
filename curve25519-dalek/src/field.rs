@@ -228,7 +228,12 @@ impl FieldElement {
             choice_is_true(result) == (spec_fe51_as_bytes(self)[0] & 1 == 1),
     {
         let bytes = self.as_bytes();
-        let result = Choice::from(bytes[0] & 1);
+        proof {
+            let b = bytes[0];
+            assert((b & 1u8) == 0u8 || (b & 1u8) == 1u8) by (bit_vector);
+        }
+        /* ORIGINAL CODE: let result = Choice::from(bytes[0] & 1); */
+        let result = choice_from_u8(bytes[0] & 1);
 
         proof {
             // From as_bytes() postcondition: u8_32_as_nat(&bytes) == u64_5_as_nat(self.limbs) % p()

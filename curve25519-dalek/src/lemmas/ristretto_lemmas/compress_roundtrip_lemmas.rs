@@ -1150,4 +1150,375 @@ pub proof fn lemma_double_u1_square(x: nat, y: nat, q: (nat, nat)) -> (w: (int, 
     (xv * DX, C * DY)
 }
 
+// =============================================================================
+// Bytes of a nat
+// =============================================================================
+/// Byte k of n in little-endian order.
+pub open spec fn nat_byte(n: nat, k: nat) -> u8 {
+    ((n / pow2(k * 8)) % 256) as u8
+}
+
+/// The 32 little-endian bytes of n.
+pub open spec fn nat_to_bytes32(n: nat) -> [u8; 32] {
+    [
+        nat_byte(n, 0),
+        nat_byte(n, 1),
+        nat_byte(n, 2),
+        nat_byte(n, 3),
+        nat_byte(n, 4),
+        nat_byte(n, 5),
+        nat_byte(n, 6),
+        nat_byte(n, 7),
+        nat_byte(n, 8),
+        nat_byte(n, 9),
+        nat_byte(n, 10),
+        nat_byte(n, 11),
+        nat_byte(n, 12),
+        nat_byte(n, 13),
+        nat_byte(n, 14),
+        nat_byte(n, 15),
+        nat_byte(n, 16),
+        nat_byte(n, 17),
+        nat_byte(n, 18),
+        nat_byte(n, 19),
+        nat_byte(n, 20),
+        nat_byte(n, 21),
+        nat_byte(n, 22),
+        nat_byte(n, 23),
+        nat_byte(n, 24),
+        nat_byte(n, 25),
+        nat_byte(n, 26),
+        nat_byte(n, 27),
+        nat_byte(n, 28),
+        nat_byte(n, 29),
+        nat_byte(n, 30),
+        nat_byte(n, 31),
+    ]
+}
+
+proof fn lemma_nat_to_bytes32_index(n: nat, k: int)
+    requires
+        0 <= k < 32,
+    ensures
+        nat_to_bytes32(n)[k] == nat_byte(n, k as nat),
+{
+    if k == 0 {
+    } else if k == 1 {
+    } else if k == 2 {
+    } else if k == 3 {
+    } else if k == 4 {
+    } else if k == 5 {
+    } else if k == 6 {
+    } else if k == 7 {
+    } else if k == 8 {
+    } else if k == 9 {
+    } else if k == 10 {
+    } else if k == 11 {
+    } else if k == 12 {
+    } else if k == 13 {
+    } else if k == 14 {
+    } else if k == 15 {
+    } else if k == 16 {
+    } else if k == 17 {
+    } else if k == 18 {
+    } else if k == 19 {
+    } else if k == 20 {
+    } else if k == 21 {
+    } else if k == 22 {
+    } else if k == 23 {
+    } else if k == 24 {
+    } else if k == 25 {
+    } else if k == 26 {
+    } else if k == 27 {
+    } else if k == 28 {
+    } else if k == 29 {
+    } else if k == 30 {
+    } else {
+        assert(k == 31);
+    }
+}
+
+proof fn lemma_nat_to_bytes32_rec(n: nat, idx: nat)
+    requires
+        n < pow2(256),
+        idx <= 32,
+    ensures
+        u8_32_as_nat_rec(&nat_to_bytes32(n), idx) == (n / pow2(idx * 8)) * pow2(idx * 8),
+    decreases 32 - idx,
+{
+    use vstd::arithmetic::power2::*;
+    use vstd::arithmetic::mul::*;
+    let b = nat_to_bytes32(n);
+    lemma_pow2_pos(idx * 8);
+    if idx == 32 {
+        lemma_small_mod(n, pow2(256));
+        assert(idx * 8 == 256);
+        lemma_div_basics(n as int);
+        vstd::arithmetic::div_mod::lemma_basic_div(n as int, pow2(256) as int);
+        assert(n / pow2(256) == 0);
+        assert(u8_32_as_nat_rec(&b, idx) == 0);
+    } else {
+        lemma_nat_to_bytes32_rec(n, idx + 1);
+        lemma_nat_to_bytes32_index(n, idx as int);
+        let e = idx * 8;
+        let w = pow2(e);
+        let q = n / w;
+        lemma_pow2_adds(e, 8);
+        lemma2_to64();
+        assert((idx + 1) * 8 == e + 8);
+        assert(pow2((idx + 1) * 8) == w * 256);
+        lemma_div_denominator(n as int, w as int, 256);
+        assert(n / pow2((idx + 1) * 8) == q / 256);
+        lemma_mod_bound(q as int, 256);
+        assert(b[idx as int] as nat == q % 256);
+        lemma_fundamental_div_mod(q as int, 256);
+        let lo = q % 256;
+        let hi = q / 256;
+        assert(q == 256 * hi + lo);
+        assert(u8_32_as_nat_rec(&b, idx) == (b[idx as int] as nat) * pow2(idx * 8)
+            + u8_32_as_nat_rec(&b, idx + 1));
+        assert(u8_32_as_nat_rec(&b, idx + 1) == hi * (w * 256));
+        assert(u8_32_as_nat_rec(&b, idx) == lo * w + hi * (w * 256));
+        assert(lo * w + hi * (w * 256) == (256 * hi + lo) * w) by (nonlinear_arith);
+        assert(u8_32_as_nat_rec(&b, idx) == q * w);
+    }
+}
+
+/// For n < 2^256, u8_32_from_nat(n) holds the value n.
+pub proof fn lemma_u8_32_from_nat_value(n: nat)
+    requires
+        n < pow2(256),
+    ensures
+        u8_32_as_nat(&u8_32_from_nat(n)) == n,
+{
+    let b = nat_to_bytes32(n);
+    lemma_nat_to_bytes32_rec(n, 0);
+    lemma_u8_32_as_nat_equals_rec(&b);
+    assert(pow2(0) == 1) by {
+        vstd::arithmetic::power2::lemma2_to64();
+    }
+    assert(0nat * 8 == 0);
+    assert((n / 1nat) * 1nat == n) by (nonlinear_arith);
+    lemma_small_mod(n, pow2(256));
+    assert(u8_32_as_nat(&b) == n % pow2(256));
+}
+
+// =============================================================================
+// Decompress of an encoding
+// =============================================================================
+/// For s < p, the bytes of s decode to the field element s, canonically.
+pub proof fn lemma_bytes_of_canonical(s: nat)
+    requires
+        s < p(),
+    ensures
+        u8_32_as_nat(&u8_32_from_nat(s)) == s,
+        field_element_from_bytes(&u8_32_from_nat(s)) == s,
+{
+    pow255_gt_19();
+    lemma_pow2_strictly_increases(255, 256);
+    lemma_u8_32_from_nat_value(s);
+    lemma_small_mod(s, pow2(255));
+    lemma_small_mod(s, p());
+}
+
+/// Decoding s = 0 gives the identity (0, 1).
+pub proof fn lemma_decode_zero()
+    ensures
+        ristretto_decode_inner(0) == (0nat, 1nat, true),
+{
+    lemma_cong_p_facts();
+    lemma_invsqrt_a_minus_d_cong();
+    crate::lemmas::ristretto_lemmas::axioms::lemma_invsqrt_a_minus_d();
+    lemma_small_mod(0, p());
+    lemma_small_mod(1, p());
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let D = d_int();
+    let c = fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D);
+    let C = c as int;
+    let ss = field_square(0);
+    assert(ss == 0);
+    let u1 = field_sub(1, ss);
+    lemma_cong_fsub(1, ss, 1, 0);
+    lemma_mod_bound((1 + p()) as int, p() as int);
+    lemma_cong_canonical_eq(u1, 1);
+    let u2 = field_add(1, ss);
+    assert(u2 == 1);
+    let u2_sqr = field_square(u2);
+    assert(u2_sqr == 1);
+    let neg_d = field_neg(d);
+    let u1_sqr = field_square(u1);
+    assert(u1_sqr == 1);
+    let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
+    lemma_cong_fneg(d, D);
+    lemma_cong_fmul(neg_d, u1_sqr, -D, 1);
+    lemma_cong_fsub(field_mul(neg_d, u1_sqr), u2_sqr, -D * 1, 1);
+    let vu = field_mul(v, u2_sqr);
+    lemma_cong_fmul(v, u2_sqr, -D * 1 - 1, 1);
+    // vu == field_sub(field_neg(1), d)
+    let target = field_sub(field_neg(1nat), d);
+    lemma_cong_fneg(1, 1);
+    lemma_cong_fsub(field_neg(1nat), d, -1, D);
+    lemma_mod_bound((v * u2_sqr) as int, p() as int);
+    lemma_mod_bound(
+        (field_canonical(field_neg(1nat)) + p() - field_canonical(d)) as int,
+        p() as int,
+    );
+    assert((-D * 1 - 1) * 1 == -1 - D) by (nonlinear_arith);
+    lemma_cong_canonical_eq(vu, target);
+    assert(nat_invsqrt(vu) == c);
+    // ok: c²·vu ≡ 1.
+    lemma_cong_mul(C * C, vu as int, C * C, -1 - D);
+    lemma_mod_bound((c * c * vu) as int, p() as int);
+    assert(is_sqrt_ratio(1, vu, c));
+    // Dx = c, Dy = c·(c·v) ≡ 1.
+    let dx = field_mul(c, u2);
+    lemma_cong_fmul(c, u2, C, 1);
+    lemma_mod_bound((c * u2) as int, p() as int);
+    lemma_cong_canonical_eq(dx, c);
+    let dxv = field_mul(dx, v);
+    lemma_cong_fmul(dx, v, C, -1 - D);
+    let dy = field_mul(c, dxv);
+    lemma_cong_fmul(c, dxv, C, C * (-1 - D));
+    assert(C * (C * (-1 - D)) == C * C * (-1 - D)) by (nonlinear_arith);
+    lemma_mod_bound((c * dxv) as int, p() as int);
+    lemma_cong_canonical_eq(dy, 1);
+    let x_tmp = field_mul(field_add(0, 0), dx);
+    assert(field_add(0, 0) == 0);
+    assert(0 * dx == 0);
+    assert(x_tmp == 0);
+    let y = field_mul(u1, dy);
+    assert(y == 1);
+}
+
+/// The decompress result for the bytes of s, when s is a valid encoding of a
+/// representative (x, y) with x·y ≥ 0 and y ≠ 0.
+pub proof fn lemma_decompress_of_representative(s: nat, x: nat, y: nat)
+    requires
+        s < p(),
+        s % 2 == 0,
+        ristretto_decode_inner(s) == (x, y, true),
+        !is_negative(field_mul(x, y)),
+        y != 0,
+    ensures
+        spec_ristretto_decompress(u8_32_from_nat(s)) == Some((x, y, 1nat, field_mul(x, y))),
+{
+    lemma_bytes_of_canonical(s);
+    lemma_small_mod(s, p());
+}
+
+// =============================================================================
+// Main theorem: round trip
+// =============================================================================
+/// On the curve with x·y = 0, the point is in E[4], and its coset contains (0, 1).
+pub proof fn lemma_zero_xy_coset_contains_identity(x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+        is_on_edwards_curve(x, y),
+        x == 0 || y == 0,
+    ensures
+        is_in_explicit_coset((0nat, 1nat), x, y),
+{
+    use crate::lemmas::edwards_lemmas::torsion_lemmas::*;
+    lemma_cong_p_facts();
+    lemma_sqrt_m1_cong();
+    lemma_small_mod(0, p());
+    lemma_small_mod(1, p());
+    let i = sqrt_m1();
+    let Ii = i as int;
+    if x == 0 {
+        lemma_on_curve_x_zero_implies_y_pm_one(x, y);
+        if y != 1 {
+            lemma_cong_fneg(0, 0);
+            lemma_mod_bound(p() as int, p() as int);
+            lemma_cong_canonical_eq(field_neg(0), 0);
+            lemma_cong_fneg(1, 1);
+            lemma_cong_fneg(field_neg(1), -1);
+            lemma_mod_bound((p() - field_canonical(field_neg(1))) as int, p() as int);
+            lemma_cong_canonical_eq(field_neg(field_neg(1)), 1);
+        }
+    } else {
+        lemma_on_curve_y_zero_implies_x_sq_neg_one(x, y);
+        lemma_sqrt_m1_nonzero();
+        assert((x * x) % p() == (p() - 1) as nat) by {
+            lemma_small_mod((p() - 1) as nat, p());
+        }
+        lemma_square_root_of_neg_one(x, i);
+        lemma_small_mod(x, p());
+        let r = ristretto_rot(x, y);
+        assert(r.0 == 0) by {
+            assert(y * i == 0);
+        }
+        lemma_cong_fmul(x, i, x as int, Ii);
+        lemma_mod_bound((x * i) as int, p() as int);
+        if x == i {
+            // r.1 = i² = −1, so −r = (0, 1).
+            lemma_cong_fneg(r.1, -1);
+            lemma_mod_bound((p() - field_canonical(r.1)) as int, p() as int);
+            lemma_cong_canonical_eq(field_neg(r.1), 1);
+            lemma_cong_fneg(0, 0);
+            lemma_mod_bound(p() as int, p() as int);
+            lemma_cong_canonical_eq(field_neg(0), 0);
+        } else {
+            // x = −i, r.1 = −i² = 1.
+            assert(x == (p() - i) as nat);
+            lemma_cong_fneg(i, Ii);
+            assert(field_neg(i) == x) by {
+                lemma_small_mod(i, p());
+                lemma_small_mod((p() - i) as nat, p());
+            }
+            lemma_cong_mul(x as int, Ii, -Ii, Ii);
+            assert(-Ii * Ii == -(Ii * Ii)) by (nonlinear_arith);
+            lemma_cong_neg(Ii * Ii, -1);
+            lemma_cong_canonical_eq(r.1, 1);
+        }
+    }
+}
+
+/// Round trip: for (x, y) on the curve and in 2E (x, y) = 2·Q, decompressing
+/// the encoding of (x, y) succeeds, and the decoded point (X, Y, 1, X·Y) has
+/// (X, Y) in the coset (x, y) + E[4].
+///
+/// Reference: RFC 9496 §4.3.1, §4.3.2; Hamburg, "Decaf" §4.
+pub proof fn lemma_ristretto_compress_roundtrip(x: nat, y: nat, q: (nat, nat))
+    requires
+        x < p(),
+        y < p(),
+        is_on_edwards_curve(x, y),
+        is_on_edwards_curve(q.0, q.1),
+        (x, y) == edwards_scalar_mul(q, 2),
+    ensures
+        spec_ristretto_decompress(ristretto_compress_affine(x, y)) is Some,
+        ({
+            let (dx, dy, dz, dt) = spec_ristretto_decompress(
+                ristretto_compress_affine(x, y),
+            ).unwrap();
+            &&& dz == 1
+            &&& dt == field_mul(dx, dy)
+            &&& is_in_explicit_coset((dx, dy), x, y)
+            &&& is_on_edwards_curve(dx, dy)
+        }),
+{
+    lemma_cong_p_facts();
+    if x == 0 || y == 0 {
+        assert(field_mul(x, y) % p() == 0) by {
+            assert(x * y == 0);
+            lemma_small_mod(0, p());
+        }
+        crate::lemmas::ristretto_lemmas::batch_compress_lemmas::lemma_ristretto_compress_affine_zero_xy(
+        x, y);
+        lemma_decode_zero();
+        lemma_small_mod(0, p());
+        assert(field_mul(0, 1) == 0);
+        lemma_decompress_of_representative(0, 0, 1);
+        lemma_zero_xy_coset_contains_identity(x, y);
+        crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_identity_on_curve();
+    } else {
+        let w = lemma_double_u1_square(x, y, q);
+        let r = lemma_compress_representative(x, y, w.0, w.1);
+        lemma_decode_of_representative(r.0, r.1, r.2);
+        lemma_decompress_of_representative(r.0, r.1, r.2);
+    }
+}
+
 } // verus!

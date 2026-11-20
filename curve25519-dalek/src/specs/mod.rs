@@ -21,6 +21,9 @@ pub mod lizard_specs;
 
 pub mod iterator_specs;
 
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+pub mod multiscalar_usage_checks;
+
 pub mod scalar_specs;
 
 pub mod scalar52_specs;

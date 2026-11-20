@@ -248,6 +248,17 @@ mod tests {
                     points.iter().map(|p| Some(*p)),
                 );
 
+                // Verified slice version
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let slices = EdwardsPoint::optional_multiscalar_mul_slices(&scalars, &opt_points);
+                assert_eq!(
+                    original.map(|p| p.compress()),
+                    slices.map(|p| p.compress()),
+                    "Slice mismatch at size={}, round={}",
+                    size,
+                    round
+                );
+
                 assert!(
                     original.is_some(),
                     "Original returned None at size={}, round={}",
@@ -311,6 +322,16 @@ mod tests {
 
                 // Verus EdwardsPoint dispatcher
                 let verus = EdwardsPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
+
+                // Verified slice version
+                let slices = EdwardsPoint::multiscalar_mul_slices(&scalars, &points);
+                assert_eq!(
+                    original.compress(),
+                    slices.compress(),
+                    "Slice mismatch at size={}, round={}",
+                    size,
+                    round
+                );
 
                 assert_eq!(
                     original.compress(),

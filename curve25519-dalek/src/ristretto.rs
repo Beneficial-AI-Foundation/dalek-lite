@@ -4727,8 +4727,10 @@ mod test_multiscalar_mul {
             let original =
                 <RistrettoPoint as MultiscalarMul>::multiscalar_mul(scalars.iter(), points.iter());
             let verus = RistrettoPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
+            let slices = RistrettoPoint::multiscalar_mul_slices(&scalars, &points);
 
             assert_eq!(original.compress().as_bytes(), verus.compress().as_bytes());
+            assert_eq!(original.compress().as_bytes(), slices.compress().as_bytes());
         }
     }
 
@@ -4763,7 +4765,17 @@ mod test_multiscalar_mul {
                 scalars.iter(),
                 points.iter().cloned(),
             );
+            let slices = RistrettoPoint::optional_multiscalar_mul_slices(&scalars, &points);
 
+            match (original, slices) {
+                (None, None) => {}
+                (Some(o), Some(v)) => assert_eq!(o.compress().as_bytes(), v.compress().as_bytes()),
+                (a, b) => panic!(
+                    "Mismatch: original={:?} slices={:?}",
+                    a.is_some(),
+                    b.is_some()
+                ),
+            }
             match (original, verus) {
                 (None, None) => {}
                 (Some(o), Some(v)) => assert_eq!(o.compress().as_bytes(), v.compress().as_bytes()),

@@ -3638,11 +3638,9 @@ impl RistrettoPoint {
         let extended_points = points.into_iter().map(|P| P.borrow().0);
         RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
         </ORIGINAL CODE> */
-        // Clone iterator with spec guarantee, then collect directly to Edwards points
-        let cloned = clone_ristretto_iter_with_spec(points);
-        let ghost points_for_spec = cloned.0;
-        let points_to_collect = cloned.1;
-        let edwards_vec = collect_edwards_from_ristretto_iter(points_to_collect);
+        // Collect directly to Edwards points. Do not clone `points`: a clone can share state
+        // with the original (see issue #793).
+        let edwards_vec = collect_edwards_from_ristretto_iter(points);
 
         // Create the iterator for EdwardsPoint::multiscalar_mul_verus
         let edwards_iter = vec_to_edwards_iter(edwards_vec);
@@ -3652,10 +3650,9 @@ impl RistrettoPoint {
 
         proof {
             // Chain: spec_points_from_iter(edwards_iter) == edwards_vec@
-            //        == spec_edwards_from_ristretto_iter(points_for_spec)
-            //        == spec_edwards_from_ristretto_iter(points) (from clone)
+            //        == spec_edwards_from_ristretto_iter(points)
             assert(spec_points_from_iter::<EdwardsPoint, _>(edwards_iter)
-                =~= spec_edwards_from_ristretto_iter::<P, J>(points_for_spec));
+                =~= spec_edwards_from_ristretto_iter::<P, J>(points));
         }
 
         RistrettoPoint(edwards_result)
@@ -3694,11 +3691,9 @@ impl RistrettoPoint {
         let extended_points = points.into_iter().map(|opt_P| opt_P.map(|P| P.0));
         EdwardsPoint::optional_multiscalar_mul(scalars, extended_points).map(RistrettoPoint)
         </ORIGINAL CODE> */
-        // Clone iterator with spec guarantee, then collect directly to Edwards points
-        let cloned = clone_optional_ristretto_iter_with_spec(points);
-        let ghost points_for_spec = cloned.0;
-        let points_to_collect = cloned.1;
-        let edwards_vec = collect_optional_edwards_from_ristretto_iter(points_to_collect);
+        // Collect directly to Edwards points. Do not clone `points`: a clone can share state
+        // with the original (see issue #793).
+        let edwards_vec = collect_optional_edwards_from_ristretto_iter(points);
 
         // Create the iterator for EdwardsPoint::optional_multiscalar_mul_verus
         let edwards_iter = vec_to_optional_edwards_iter(edwards_vec);
@@ -3714,10 +3709,9 @@ impl RistrettoPoint {
 
         proof {
             // Chain: spec_optional_points_from_iter(edwards_iter) == edwards_vec@
-            //        == spec_optional_edwards_from_ristretto_iter(points_for_spec)
-            //        == spec_optional_edwards_from_ristretto_iter(points) (from clone)
+            //        == spec_optional_edwards_from_ristretto_iter(points)
             assert(spec_optional_points_from_iter(edwards_iter)
-                =~= spec_optional_edwards_from_ristretto_iter::<J>(points_for_spec));
+                =~= spec_optional_edwards_from_ristretto_iter::<J>(points));
         }
 
         result

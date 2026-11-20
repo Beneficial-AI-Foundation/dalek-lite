@@ -227,7 +227,7 @@ lemma (in group) int_pow_mult:
 
 ---
 
-### 2.4 axiom_edwards_scalar_mul_distributive
+### 2.4 lemma_edwards_scalar_mul_distributive
 
 $$
 [n](P +_E Q) = [n]P +_E [n]Q
@@ -237,7 +237,7 @@ Scalar multiplication distributes over addition (the "multiply by n" endomorphis
 
 **Verus:**
 ```rust
-pub proof fn axiom_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
+pub proof fn lemma_edwards_scalar_mul_distributive(a: (nat, nat), b: (nat, nat), n: nat)
     ensures
         edwards_scalar_mul(edwards_add(a.0, a.1, b.0, b.1), n)
         == edwards_add(edwards_scalar_mul(a, n).0, edwards_scalar_mul(a, n).1,
@@ -389,7 +389,7 @@ pub proof fn axiom_xadd_projective_correct(
 
 ## 4. Quadratic Residuosity & Square Roots
 
-### 4.1 axiom_486660_not_quadratic_residue
+### 4.1 lemma_486660_not_quadratic_residue
 
 $$
 \left(\frac{486660}{p}\right) = -1
@@ -399,7 +399,7 @@ $$
 
 **Verus:**
 ```rust
-pub proof fn axiom_486660_not_quadratic_residue()
+pub proof fn lemma_486660_not_quadratic_residue()
     ensures !is_square(486660nat),
 { admit(); }
 ```
@@ -428,7 +428,7 @@ Verify via code generation to SML/OCaml.
 
 ---
 
-### 4.2 axiom_2_times_486661_not_qr
+### 4.2 lemma_2_times_486661_not_qr
 
 $$
 \left(\frac{2 \cdot 486661}{p}\right) = -1
@@ -438,7 +438,7 @@ Since p ≡ 5 (mod 8), 2 is a non-QR; 486661 is a QR; their product is a non-QR.
 
 **Verus:**
 ```rust
-pub proof fn axiom_2_times_486661_not_qr()
+pub proof fn lemma_2_times_486661_not_qr()
     ensures !is_square((2nat * 486661nat) % p()),
 { admit(); }
 ```
@@ -447,7 +447,7 @@ pub proof fn axiom_2_times_486661_not_qr()
 
 ---
 
-### 4.3 axiom_sqrt_m1_squared
+### 4.3 lemma_sqrt_m1_squared
 
 $$
 i^2 \equiv -1 \pmod{p}
@@ -457,7 +457,7 @@ where i = SQRT_M1 is a specific ~252-bit constant.
 
 **Verus:**
 ```rust
-pub proof fn axiom_sqrt_m1_squared()
+pub proof fn lemma_sqrt_m1_squared()
     ensures (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),
 { admit(); }
 ```
@@ -482,7 +482,7 @@ lemma sqrt_m1_squared: "(SQRT_M1 * SQRT_M1) mod p = p - 1"
 
 ---
 
-### 4.4 axiom_sqrt_m1_not_square / axiom_neg_sqrt_m1_not_square
+### 4.4 lemma_sqrt_m1_not_square / lemma_neg_sqrt_m1_not_square
 
 $$
 \left(\frac{i}{p}\right) = -1 \qquad\text{and}\qquad \left(\frac{-i}{p}\right) = -1
@@ -492,11 +492,11 @@ Neither i = sqrt(−1) nor −i is a square in GF(p). Follows from p ≡ 5 (mod 
 
 **Verus:**
 ```rust
-pub proof fn axiom_sqrt_m1_not_square()
+pub proof fn lemma_sqrt_m1_not_square()
     ensures !is_square(sqrt_m1()),
 { admit(); }
 
-pub proof fn axiom_neg_sqrt_m1_not_square()
+pub proof fn lemma_neg_sqrt_m1_not_square()
     ensures !is_square((p() - sqrt_m1()) as nat),
 { admit(); }
 ```
@@ -614,7 +614,7 @@ lemma (in group_hom) hom_pow:
 
 ## 6. Subgroup Closure
 
-### 6.1 axiom_even_subgroup_closed_under_add
+### 6.1 lemma_even_subgroup_closed_under_add
 
 $$
 P, Q \in 2E \;\implies\; P +_E Q \in 2E
@@ -624,7 +624,7 @@ The even subgroup (image of the "doubling" endomorphism) is closed under additio
 
 **Verus:**
 ```rust
-pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
+pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
     requires
         is_in_even_subgroup(p1), is_in_even_subgroup(p2),
         is_well_formed_edwards_point(p1), is_well_formed_edwards_point(p2),
@@ -657,7 +657,7 @@ lemma (in group) subgroup_mult_closed:
 
 ## 7. Inverse Square Root
 
-### 7.1 axiom_invsqrt_factors_over_square
+### 7.1 lemma_invsqrt_factors_over_square
 
 $$
 \text{invsqrt}(a \cdot b^2) = \left|\,\text{invsqrt}(a) \cdot b^{-1}\right|
@@ -667,7 +667,7 @@ For nonzero a, b ∈ GF(p), the inverse square root factors over perfect squares
 
 **Verus:**
 ```rust
-pub proof fn axiom_invsqrt_factors_over_square(a: nat, b: nat)
+pub proof fn lemma_invsqrt_factors_over_square(a: nat, b: nat)
     requires a % p() != 0, b % p() != 0,
     ensures nat_invsqrt(field_mul(a, field_square(b)))
          == field_abs(field_mul(nat_invsqrt(a), field_inv(b))),
@@ -694,7 +694,7 @@ lemma (in field) inv_mult: "inv (a ⊗ b) = inv a ⊗ inv b"
 
 ---
 
-### 7.2 axiom_invsqrt_a_minus_d
+### 7.2 lemma_invsqrt_a_minus_d
 
 $$
 \text{invsqrt}(-1 - d)^2 \cdot (-1 - d) = 1
@@ -704,7 +704,7 @@ The constant INVSQRT_A_MINUS_D is the canonical inverse square root of (−1 −
 
 **Verus:**
 ```rust
-pub proof fn axiom_invsqrt_a_minus_d()
+pub proof fn lemma_invsqrt_a_minus_d()
     ensures
         nat_invsqrt(neg_one_minus_d) == c_iad
         && field_mul(field_square(c_iad), neg_one_minus_d) == 1,
@@ -756,7 +756,7 @@ SHA-512 follows the same structure (Merkle-Damgard with 80 rounds of 64-bit word
 
 ---
 
-### 8.2 axiom_hash_is_canonical
+### 8.2 lemma_hash_is_canonical
 
 $$
 \text{fe}(P_1) = \text{fe}(P_2) \;\implies\; H(\ldots \| P_1) = H(\ldots \| P_2)
@@ -766,7 +766,7 @@ Hashing depends only on the canonical field-element value, not the byte represen
 
 **Verus:**
 ```rust
-pub proof fn axiom_hash_is_canonical<H>(point1: &MontgomeryPoint, point2: &MontgomeryPoint, state: H)
+pub proof fn lemma_hash_is_canonical<H>(point1: &MontgomeryPoint, point2: &MontgomeryPoint, state: H)
     requires field_element_from_bytes(&point1.0) == field_element_from_bytes(&point2.0),
     ensures spec_state_after_hash_montgomery(state, point1)
          == spec_state_after_hash_montgomery(state, point2),

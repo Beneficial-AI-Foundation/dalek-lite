@@ -184,7 +184,7 @@ Proof by contradiction:
 |-------------|----------|-----------|
 | `lemma_sqrt_ratio_failure_means_invalid_y` | `step1_lemmas.rs` | `sqrt_ratio_i failure ⟹ ¬is_valid_edwards_y_coordinate(y)` |
 | `lemma_no_square_root_when_times_i` | `sqrt_ratio_lemmas.rs` | `x²·v ≡ i·u ⟹ ¬∃r: r²·v ≡ u` |
-| `axiom_sqrt_m1_not_square` | `sqrt_ratio_lemmas.rs` | `i is not a quadratic residue` (axiom) |
+| `lemma_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | `i is not a quadratic residue` (proved) |
 
 **Verus code:**
 ```rust
@@ -357,9 +357,9 @@ step_1 ensures
 │       └── [C3: Failure case]
 │           └── lemma_sqrt_ratio_failure_means_invalid_y ✅
 │               └── lemma_no_square_root_when_times_i ✅
-│                   ├── axiom_sqrt_m1_squared 🔶
-│                   ├── axiom_sqrt_m1_not_square 🔶
-│                   ├── axiom_neg_sqrt_m1_not_square 🔶
+│                   ├── lemma_sqrt_m1_squared ✅
+│                   ├── lemma_sqrt_m1_not_square ✅
+│                   ├── lemma_neg_sqrt_m1_not_square ✅
 │                   ├── lemma_i_inverse_is_neg_i ✅
 │                   ├── lemma_algebraic_chain_base ✅
 │                   ├── lemma_u_times_inv_iu_is_neg_i ✅
@@ -389,7 +389,7 @@ step_1 ensures
 | **B: Z = 1** | Constant value | `lemma_one_field_element_value` |
 | **C1: Valid ⟹ valid_y** | Witness r = x exists | `lemma_sqrt_ratio_success_means_valid_y` |
 | **C2: u = 0 ⟹ identity** | y² = 1, x = 0 | `lemma_u_zero_implies_identity_point` |
-| **C3: ¬valid ⟹ ¬valid_y** | i is not QR | `lemma_sqrt_ratio_failure_means_invalid_y`, `axiom_sqrt_m1_not_square` |
+| **C3: ¬valid ⟹ ¬valid_y** | i is not QR | `lemma_sqrt_ratio_failure_means_invalid_y`, `lemma_sqrt_m1_not_square` |
 | **D: Valid ⟹ on curve** | x²·v = u ⟹ curve eq | `lemma_sqrt_ratio_implies_on_curve`, `lemma_field_mul_distributes_over_add`, `lemma_field_add_sub_rearrange` |
 | **E: X non-negative** | LSB = 0 | `sqrt_ratio_i` ensures |
 | **F: X bounded** | x < p | `sqrt_ratio_i` ensures |

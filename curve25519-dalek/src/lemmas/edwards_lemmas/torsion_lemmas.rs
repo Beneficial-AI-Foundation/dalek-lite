@@ -44,9 +44,9 @@ use vstd::prelude::*;
 verus! {
 
 // =============================================================================
-// E[4] torsion bridge axiom
+// E[4] torsion bridge lemma
 // =============================================================================
-/// Bridge axiom: affine coordinates of the even-indexed 8-torsion elements.
+/// Bridge lemma: affine coordinates of the even-indexed 8-torsion elements.
 ///
 /// T[2] and T[6] are the two 4-torsion points (y = 0, x = ±√(−1));
 /// T[4] is the 2-torsion point (0, −1).
@@ -62,11 +62,12 @@ verus! {
 ///   ("The points of exact order 4 are (±1/√a, 0)").
 ///
 /// These are concrete numerical facts following from the limb values
-/// in `spec_eight_torsion`.  The function is `closed spec`, so its body
-/// cannot be revealed; this axiom bridges the gap.
+/// in `spec_eight_torsion`.  The function is `closed spec`, so callers
+/// outside `constants.rs` cannot see its body; this lemma exports the facts.
+/// The proof is `lemma_four_torsion_affine_by_computation` in `constants.rs`.
 ///
-/// Runtime validation: `test_axiom_four_torsion_affine` in lizard_ristretto.rs.
-pub proof fn axiom_four_torsion_affine()
+/// Runtime validation: `test_four_torsion_affine` in lizard_ristretto.rs.
+pub proof fn lemma_four_torsion_affine()
     ensures
         edwards_point_as_affine(spec_eight_torsion()[2]) == (field_neg(sqrt_m1()), 0nat),
         edwards_point_as_affine(spec_eight_torsion()[4]) == (0nat, field_neg(1)),

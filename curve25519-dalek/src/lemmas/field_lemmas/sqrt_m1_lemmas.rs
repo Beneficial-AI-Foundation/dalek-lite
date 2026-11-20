@@ -7,9 +7,9 @@
 //!
 //! These are concrete numerical facts about i that are mathematically proven
 //! but complex to formalize in Verus:
-//! - `axiom_sqrt_m1_squared` — i² = -1 (mod p)
-//! - `axiom_sqrt_m1_not_square` — i is not a square (Euler's criterion)
-//! - `axiom_neg_sqrt_m1_not_square` — -i is not a square
+//! - `lemma_sqrt_m1_squared` — i² = -1 (mod p)
+//! - `lemma_sqrt_m1_not_square` — i is not a square (Euler's criterion)
+//! - `lemma_neg_sqrt_m1_not_square` — -i is not a square
 //!
 //! ## Derived Lemmas
 //!
@@ -152,7 +152,7 @@ pub proof fn lemma_sqrt_m1_limbs_bounded()
     assert(765476049583133u64 < (1u64 << 54)) by (bit_vector);
 }
 
-/// AXIOM: i² = -1 (mod p) — Definition of SQRT_M1
+/// i² = -1 (mod p) — Definition of SQRT_M1
 ///
 /// Mathematical justification:
 /// - SQRT_M1 is a specific constant computed to satisfy i² ≡ -1 (mod p)
@@ -161,7 +161,7 @@ pub proof fn lemma_sqrt_m1_limbs_bounded()
 ///
 /// Used in: lemma_sqrt_m1_neq_one, lemma_sqrt_m1_neq_neg_one,
 ///          lemma_multiply_by_i_flips_sign, lemma_no_square_root_when_times_i
-pub proof fn axiom_sqrt_m1_squared()
+pub proof fn lemma_sqrt_m1_squared()
     ensures
         (sqrt_m1() * sqrt_m1()) % p() == (p() - 1),
 {
@@ -170,7 +170,7 @@ pub proof fn axiom_sqrt_m1_squared()
     assert((sqrt_m1() * sqrt_m1()) % p() == (p() - 1)) by (compute_only);
 }
 
-/// AXIOM: i = sqrt(-1) is not a square in F_p
+/// i = sqrt(-1) is not a square in F_p
 ///
 /// Mathematical justification:
 /// - p = 2^255 - 19 ≡ 5 (mod 8)
@@ -181,7 +181,7 @@ pub proof fn axiom_sqrt_m1_squared()
 /// - By Euler's criterion, i is NOT a square
 ///
 /// Used in: lemma_no_square_root_when_times_i
-pub proof fn axiom_sqrt_m1_not_square()
+pub proof fn lemma_sqrt_m1_not_square()
     ensures
         !is_square(sqrt_m1()),
 {
@@ -191,17 +191,17 @@ pub proof fn axiom_sqrt_m1_not_square()
     lemma_not_square_by_euler(sqrt_m1());
 }
 
-/// AXIOM: -i = -(sqrt(-1)) is not a square in F_p
+/// -i = -(sqrt(-1)) is not a square in F_p
 ///
 /// Mathematical justification:
 /// - (-i)^((p-1)/2) = (-1)^((p-1)/2) · i^((p-1)/2)
 /// - (p-1)/2 = 2^254 - 10, which is even, so (-1)^((p-1)/2) = 1
-/// - From axiom_sqrt_m1_not_square: i^((p-1)/2) = -1
+/// - From lemma_sqrt_m1_not_square: i^((p-1)/2) = -1
 /// - Therefore (-i)^((p-1)/2) = 1 · (-1) = -1 ≠ 1
 /// - By Euler's criterion, -i is NOT a square
 ///
 /// Used in: lemma_no_square_root_when_times_i
-pub proof fn axiom_neg_sqrt_m1_not_square()
+pub proof fn lemma_neg_sqrt_m1_not_square()
     ensures
         !is_square((p() - sqrt_m1()) as nat),
 {
@@ -230,7 +230,7 @@ pub proof fn lemma_sqrt_m1_nonzero()
         lemma_mod_bound(fe51_as_nat(&constants::SQRT_M1) as int, pn as int);
     };
     if i == 0 {
-        axiom_sqrt_m1_squared();
+        lemma_sqrt_m1_squared();
         assert((0nat * 0nat) % pn == 0) by {
             lemma_small_mod(0nat, pn);
         };
@@ -278,9 +278,9 @@ pub proof fn lemma_multiply_by_i_flips_sign(r: nat)
             lemma_product_square_factorize(r as int, i as int);
         };
 
-        // i² % p = p - 1 (from axiom)
+        // i² % p = p - 1 (from lemma_sqrt_m1_squared)
         assert(i2 % pn == pn_minus_1) by {
-            axiom_sqrt_m1_squared();
+            lemma_sqrt_m1_squared();
         };
 
         // (r²·i²) % p = (r²·(p-1)) % p
@@ -324,7 +324,7 @@ pub proof fn lemma_multiply_by_i_flips_sign(r: nat)
 ///
 /// ## Mathematical Proof
 /// ```text
-/// i² = -1           (by axiom_sqrt_m1_squared)
+/// i² = -1           (by lemma_sqrt_m1_squared)
 /// i · (-i) = -i²    (factor out)
 ///         = -(-1)   (substitute i² = -1)
 ///         = 1       (negation of -1)
@@ -379,10 +379,10 @@ pub proof fn lemma_i_inverse_is_neg_i()
             lemma_mod_multiples_basic(i as int, p as int);
         };
 
-        // Step 4b: i² % p = p - 1 (from axiom)
+        // Step 4b: i² % p = p - 1 (from lemma_sqrt_m1_squared)
         let i2_mod: nat = (p - 1) as nat;
         assert((i * i) % p == i2_mod) by {
-            axiom_sqrt_m1_squared();
+            lemma_sqrt_m1_squared();
         };
 
         // Step 4c: i * (p - i) = i*p - i² by distributivity
@@ -613,7 +613,7 @@ pub proof fn lemma_square_root_of_neg_one(y: nat, i: nat)
     axiom_p_is_prime();
 
     // i^2 ≡ -1 (mod p)
-    axiom_sqrt_m1_squared();
+    lemma_sqrt_m1_squared();
     let neg_one = (pn - 1) as nat;
 
     // y^2 ≡ i^2 (mod p) [both are -1]
@@ -842,7 +842,7 @@ pub proof fn lemma_mul_i_squared_is_neg(a: nat)
         lemma_field_mul_assoc(a, i, i);
     };
     assert(field_mul(i, i) == field_neg(1nat)) by {
-        axiom_sqrt_m1_squared();
+        lemma_sqrt_m1_squared();
         lemma_small_mod(1nat, pn);
         lemma_small_mod((pn - 1) as nat, pn);
     };

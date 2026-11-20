@@ -458,8 +458,8 @@ pub proof fn lemma_jacobi_dual_same_edwards(s: nat, t: nat)
 ///
 /// Proved by `compute_only`.
 ///
-/// Runtime validation: `test_axiom_mc_times_sqrt_ad_m1` in lizard_ristretto.rs.
-pub proof fn axiom_mc_times_sqrt_ad_m1()
+/// Runtime validation: `test_mc_times_sqrt_ad_m1` in lizard_ristretto.rs.
+pub proof fn lemma_mc_times_sqrt_ad_m1()
     ensures
         field_mul(midouble_invsqrt_a_minus_d(), spec_sqrt_ad_minus_one()) == field_mul(
             2,
@@ -583,7 +583,7 @@ pub proof fn axiom_jacobi_quartic_birational_pair01(point: crate::edwards::Edwar
 ///   θ(JQ[2]) = P + T₂         (= coset[1])
 ///   θ(JQ[3]) = P + T₆         (= coset[3])
 ///
-/// where T₂ = (−i, 0) and T₆ = T₂ + T₄ = (i, 0) (see `axiom_four_torsion_affine`).
+/// where T₂ = (−i, 0) and T₆ = T₂ + T₄ = (i, 0) (see `lemma_four_torsion_affine`).
 /// The torque maps (x, y) to (−i·y, −i·x) = (x, y) + T₂, so it adds the
 /// 4-torsion point T₂ to bridge E/E[4] to E/E[2].
 ///
@@ -782,7 +782,7 @@ pub proof fn lemma_jq_four_torsion_images()
     lemma_sqrt_m1_nonzero();
     lemma_field_mul_neg(i, i);
     assert(field_mul(i, field_neg(i)) == field_neg(field_mul(i, i)));
-    axiom_sqrt_m1_squared();
+    lemma_sqrt_m1_squared();
     lemma_small_mod((p() - 1) as nat, p());
     assert(field_neg(1nat) == (p() - 1) as nat);
     assert(field_square(i) == (i * i) % p());
@@ -806,7 +806,7 @@ pub proof fn lemma_jq_four_torsion_images()
         lemma_field_mul_one_right(2nat);
         lemma_small_mod(2nat, p());
     };
-    axiom_mc_times_sqrt_ad_m1();
+    lemma_mc_times_sqrt_ad_m1();
     let two_i = field_mul(2, i);
     lemma_small_mod(2nat, p());
     lemma_a_times_inv_ab_is_inv_b(2, i);
@@ -830,9 +830,9 @@ pub proof fn lemma_jq_four_torsion_images()
 /// 2-torsion point (0,−1,1,0). The formulas degenerate (gamma
 /// becomes 0), so constant replacement values are used.
 ///
-/// Proved modulo two narrow bridge axioms about concrete constant values:
-/// - `axiom_four_torsion_affine`: affine coordinates of E[4] elements
-/// - `axiom_mc_times_sqrt_ad_m1`: mc · √(ad−1) = 2·√(−1)
+/// Uses two lemmas about concrete constant values:
+/// - `lemma_four_torsion_affine`: affine coordinates of E[4] elements
+/// - `lemma_mc_times_sqrt_ad_m1`: mc · √(ad−1) = 2·√(−1)
 ///
 /// Reference: Hamburg (2015) "Decaf", §4 — handling of
 ///   exceptional/degenerate points in the encoding.

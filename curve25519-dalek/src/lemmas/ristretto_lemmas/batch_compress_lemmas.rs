@@ -1,6 +1,6 @@
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use super::axioms::axiom_invsqrt_a_minus_d;
+use super::axioms::lemma_invsqrt_a_minus_d;
 #[allow(unused_imports)]
 use crate::backend::serial::u64::constants as u64_constants;
 #[allow(unused_imports)]
@@ -1065,7 +1065,7 @@ proof fn lemma_u1_u2_sq_factoring(e: nat, f: nat, g: nat, h: nat, eg: nat, fh: n
 ///
 /// The proof proceeds in phases:
 ///   Phase A: Establish inv correspondences (zinv = inv(fh), tinv = inv(eg))
-///   Phase B: Invsqrt factoring via axiom_invsqrt_factors_over_square
+///   Phase B: Invsqrt factoring via lemma_invsqrt_factors_over_square
 ///   Phase C: Show z_inv_std = 1 using lemma_z_inv_std_is_one
 ///   Phase D: Show both algorithms take the same branches and produce s values
 ///            that are equal up to sign, so field_abs equalizes them
@@ -2619,7 +2619,7 @@ proof fn lemma_batch_std_case_dispatch(e: nat, f: nat, g: nat, h: nat, eg: nat, 
     lemma_u1_u2_sq_factoring(e, f, g, h, eg, fh, d);
     assert(field_mul(u1, field_square(t_aff)) == field_mul(neg_one_minus_d, field_square(B)));
 
-    // (−1−d) and B nonzero (needed for axiom_invsqrt_factors_over_square)
+    // (−1−d) and B nonzero (needed for lemma_invsqrt_factors_over_square)
     assert(neg_one_minus_d % p() != 0) by {
         lemma_d_plus_one_nonzero();
         lemma_field_add_comm(d, 1);
@@ -2664,9 +2664,9 @@ proof fn lemma_batch_std_case_dispatch(e: nat, f: nat, g: nat, h: nat, eg: nat, 
     };
 
     // invsqrt((−1−d)·B²) = abs(invsqrt(−1−d) · inv(B)) = abs(c_iad · inv(B))
-    // (Axiom postconditions needed unscoped for downstream inference.)
-    axiom_invsqrt_factors_over_square(neg_one_minus_d, B);
-    axiom_invsqrt_a_minus_d();
+    // (Lemma postconditions needed unscoped for downstream inference.)
+    lemma_invsqrt_factors_over_square(neg_one_minus_d, B);
+    lemma_invsqrt_a_minus_d();
     let invsqrt_std = nat_invsqrt(field_mul(u1, field_square(t_aff)));
     assert(invsqrt_std == field_abs(field_mul(c_iad, field_inv(B))));
 
@@ -2682,10 +2682,10 @@ proof fn lemma_batch_std_case_dispatch(e: nat, f: nat, g: nat, h: nat, eg: nat, 
 /// the Ristretto encoding using batch inverse 1/(eg·fh) equals the standard
 /// affine encoding of the point (e/f, g/h).
 ///
-/// The proof relies on two external axioms (both runtime-validated) and one precondition:
-///   1. `axiom_invsqrt_factors_over_square` — nat_invsqrt factors over perfect squares
+/// The proof relies on two lemmas (both also runtime-validated) and one precondition:
+///   1. `lemma_invsqrt_factors_over_square` — nat_invsqrt factors over perfect squares
 ///      (validated by `test_invsqrt_factors_over_square`)
-///   2. `axiom_invsqrt_a_minus_d` — nat_invsqrt(−1−d) = C_IAD and C_IAD²·(−1−d) = 1
+///   2. `lemma_invsqrt_a_minus_d` — nat_invsqrt(−1−d) = C_IAD and C_IAD²·(−1−d) = 1
 ///      (validated by `test_invsqrt_a_minus_d_squared`, `test_nat_invsqrt_neg_one_minus_d`)
 ///   3. Batch identity h² − g² = −e²(1+d) (precondition, from `lemma_curve_eq_batch_identity`)
 ///
@@ -2894,7 +2894,7 @@ mod test_batch_compress_axiom {
         );
     }
 
-    /// Validate axiom_invsqrt_factors_over_square:
+    /// Validate lemma_invsqrt_factors_over_square:
     /// invsqrt(a · b²) = field_abs(invsqrt(a) · inv(b)) for nonzero a, b.
     #[test]
     fn test_invsqrt_factors_over_square() {

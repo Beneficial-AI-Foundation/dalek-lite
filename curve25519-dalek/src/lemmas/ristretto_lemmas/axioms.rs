@@ -9,7 +9,7 @@ use crate::field::FieldElement;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
-    axiom_edwards_add_complete, axiom_edwards_scalar_mul_distributive,
+    axiom_edwards_add_complete, lemma_edwards_scalar_mul_distributive,
 };
 #[allow(unused_imports)]
 use crate::specs::edwards_specs::*;
@@ -182,11 +182,10 @@ pub proof fn axiom_elligator_in_even_subgroup(r_0: nat)
 ///
 /// If P = 2·Q₁ and Q = 2·Q₂, then P + Q = 2·Q₁ + 2·Q₂ = 2·(Q₁ + Q₂).
 /// The witness for P + Q is Q₁ + Q₂, which is on the curve by
-/// `axiom_edwards_add_complete`. The name keeps the `axiom_` prefix, but the
-/// statement is proved.
+/// `axiom_edwards_add_complete`.
 ///
 /// Reference: standard group theory (sum of doubles is a double)
-pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
+pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
     requires
         is_in_even_subgroup(p1),
         is_in_even_subgroup(p2),
@@ -209,7 +208,7 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
             == #[trigger] edwards_scalar_mul(q, 2);
     let q = edwards_add(q1.0, q1.1, q2.0, q2.1);
     axiom_edwards_add_complete(q1.0, q1.1, q2.0, q2.1);
-    axiom_edwards_scalar_mul_distributive(q1, q2, 2);
+    lemma_edwards_scalar_mul_distributive(q1, q2, 2);
     assert forall|result: EdwardsPoint|
         edwards_point_as_affine(result) == edwards_add(
             edwards_point_as_affine(p1).0,
@@ -223,9 +222,9 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
 }
 
 // =============================================================================
-// Axiom: nat_invsqrt(−1 − d) = C_IAD  and  C_IAD² · (−1 − d) = 1
+// Lemma: nat_invsqrt(−1 − d) = C_IAD  and  C_IAD² · (−1 − d) = 1
 // =============================================================================
-/// Axiom: the canonical inverse square root of (−1 − d) is INVSQRT_A_MINUS_D,
+/// The canonical inverse square root of (−1 − d) is INVSQRT_A_MINUS_D,
 /// and squaring it times (−1 − d) yields 1 (not √(−1)).
 ///
 /// These two facts are a single numerical assertion: nat_invsqrt evaluates
@@ -238,7 +237,7 @@ pub proof fn axiom_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
 /// Reference: Hamburg (2015) "Decaf" §4.1 (isogeny θ uses 1/√(a₂d₂−1));
 ///   also ristretto.group/details/isogenies.html.
 /// Runtime validation: `test_nat_invsqrt_neg_one_minus_d`, `test_invsqrt_a_minus_d_squared`
-pub proof fn axiom_invsqrt_a_minus_d()
+pub proof fn lemma_invsqrt_a_minus_d()
     ensures
         ({
             let c_iad = fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D);
@@ -781,7 +780,7 @@ mod test_ristretto_decode_axioms {
         );
     }
 
-    /// Validate axiom_sqrt_m1_not_square and axiom_neg_sqrt_m1_not_square:
+    /// Validate lemma_sqrt_m1_not_square and lemma_neg_sqrt_m1_not_square:
     /// i = sqrt(-1) and -i are both non-squares in GF(p), verified via Euler's criterion.
     ///
     /// Euler's criterion: a is a square mod p iff a^((p-1)/2) ≡ 1 (mod p).

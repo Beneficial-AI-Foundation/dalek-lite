@@ -1580,13 +1580,13 @@ mod test {
         }
     }
 
-    /// Runtime validation for `axiom_four_torsion_affine`.
+    /// Runtime validation for `lemma_four_torsion_affine`.
     ///
     /// Computes the affine coordinates X/Z and Y/Z of the even-indexed
     /// 8-torsion elements T[2], T[4], T[6] and checks:
     ///   T[2] = (sqrt(-1), 0), T[4] = (0, -1), T[6] = (-sqrt(-1), 0).
     #[test]
-    fn test_axiom_four_torsion_affine() {
+    fn test_four_torsion_affine() {
         let torsion = constants::EIGHT_TORSION;
         let sqrt_m1 = constants::SQRT_M1;
         let neg_sqrt_m1 = -&sqrt_m1;
@@ -1636,14 +1636,14 @@ mod test {
         );
     }
 
-    /// Runtime validation for `axiom_mc_times_sqrt_ad_m1`.
+    /// Runtime validation for `lemma_mc_times_sqrt_ad_m1`.
     ///
     /// Checks that mc · √(ad−1) = 2·√(−1) where
     /// mc = MIDOUBLE_INVSQRT_A_MINUS_D.
     ///
     /// Equivalently: mc · √(ad−1) − 2·i = 0.
     #[test]
-    fn test_axiom_mc_times_sqrt_ad_m1() {
+    fn test_mc_times_sqrt_ad_m1() {
         let mc = lizard_constants::MIDOUBLE_INVSQRT_A_MINUS_D;
         let sqrt_ad_m1 = constants::SQRT_AD_MINUS_ONE;
         let product = &mc * &sqrt_ad_m1;

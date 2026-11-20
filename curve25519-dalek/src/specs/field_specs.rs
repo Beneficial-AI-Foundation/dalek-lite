@@ -622,9 +622,9 @@ pub open spec fn sqrt_m1() -> nat {
 }
 
 // =============================================================================
-// Axiom: nat_invsqrt factoring over perfect squares
+// Lemma: nat_invsqrt factoring over perfect squares
 // =============================================================================
-/// Axiom: nat_invsqrt factors over perfect squares in GF(p).
+/// nat_invsqrt factors over perfect squares in GF(p).
 ///
 /// For nonzero a, b:  nat_invsqrt(a · b²) = field_abs(nat_invsqrt(a) · field_inv(b))
 ///
@@ -637,7 +637,7 @@ pub open spec fn sqrt_m1() -> nat {
 ///
 /// Reference: standard property of (inverse) square roots in finite fields.
 /// Runtime validation: `test_invsqrt_factors_over_square`
-pub proof fn axiom_invsqrt_factors_over_square(a: nat, b: nat)
+pub proof fn lemma_invsqrt_factors_over_square(a: nat, b: nat)
     requires
         a % p() != 0,
         b % p() != 0,

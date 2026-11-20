@@ -74,9 +74,9 @@ to the corresponding Verus code, identifying all gaps.
 | Axiom | File | Status | Test | Used by (in decompress chain) |
 |---|---|---|---|---|
 | `lemma_sqrt_m1_limbs_bounded` | `sqrt_m1_lemmas.rs` | **PROVEN** (concrete limb checks) | `test_sqrt_m1_limbs_bounded` | sqrt_ratio_i |
-| `axiom_sqrt_m1_squared` | `sqrt_m1_lemmas.rs` | AXIOM (admit) | `test_sqrt_m1_limbs_bounded` (sanity) | mutual exclusion, sqrt_ratio_correctness |
-| `axiom_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | AXIOM (admit) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
-| `axiom_neg_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | AXIOM (admit) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
+| `lemma_sqrt_m1_squared` | `sqrt_m1_lemmas.rs` | **PROVEN** (compute_only) | `test_sqrt_m1_limbs_bounded` (sanity) | mutual exclusion, sqrt_ratio_correctness |
+| `lemma_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | **PROVEN** (Euler's criterion) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
+| `lemma_neg_sqrt_m1_not_square` | `sqrt_m1_lemmas.rs` | **PROVEN** (Euler's criterion) | `test_sqrt_m1_not_square` (Euler's criterion) | lemma_no_square_root_when_times_i |
 | `axiom_minus_one_field_element_value` | `constants_lemmas.rs` | AXIOM (admit) | `test_minus_one_field_element_value` | field algebra |
 | `axiom_p_is_prime` | `primality_specs.rs` | AXIOM (admit) | `test_p_is_prime` (Miller-Rabin, 9 witnesses + Fermat) | field algebra, sqrt_ratio proofs |
 
@@ -104,10 +104,10 @@ to the corresponding Verus code, identifying all gaps.
 
 ## Remaining Action Items
 
-1. ~~**ADD TEST** for `axiom_sqrt_m1_not_square` and `axiom_neg_sqrt_m1_not_square`~~ DONE: `test_sqrt_m1_not_square` (Euler's criterion)
+1. ~~**ADD TEST** for `lemma_sqrt_m1_not_square` and `lemma_neg_sqrt_m1_not_square`~~ DONE: `test_sqrt_m1_not_square` (Euler's criterion)
 2. ~~**ADD TEST** for `axiom_minus_one_field_element_value`~~ Already existed: `test_minus_one_field_element_value`
 3. ~~**TRY PROVING** `axiom_sqrt_m1_limbs_bounded` via concrete computation~~ DONE: Renamed to `lemma_sqrt_m1_limbs_bounded`, proven via concrete limb value assertions + bit_vector
-4. **TRY PROVING** `axiom_sqrt_m1_squared` via concrete computation — NOT FEASIBLE: requires 252-bit multiplication beyond SMT solver capacity. Runtime test validates.
+4. ~~**TRY PROVING** `axiom_sqrt_m1_squared` via concrete computation~~ DONE: Renamed to `lemma_sqrt_m1_squared`, proven by `compute_only`
 5. ~~**EXPAND** `test_ristretto_decode_on_curve` with edge cases~~ DONE: small even s values, s=1, 50 hash-derived inputs
 6. **STRENGTHEN** `test_ristretto_decode_in_even_subgroup` with more diverse inputs
 7. ~~**NARROW** `axiom_ristretto_decode_on_curve` precondition~~ DONE: Axiom simplified to `axiom_ristretto_decode_on_curve(s)` with `spec_ristretto_decode_ok(s)` precondition.

@@ -591,7 +591,7 @@ pub exec const EIGHT_TORSION_INNER_DOC_HIDDEN: [EdwardsPoint; 8]
 pub const ED25519_BASEPOINT_TABLE: &'static EdwardsBasepointTable =
     &ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN;
 
-// ---- Proof of axiom_four_torsion_affine by computation ----
+// ---- Proof of lemma_four_torsion_affine by computation ----
 #[cfg(verus_keep_ghost)]
 spec fn pow2_for_compute(n: nat) -> nat
     decreases n,
@@ -633,7 +633,7 @@ proof fn lemma_pow2_for_compute_matches_pow2()
     lemma_pow2_adds(51, 204);
 }
 
-/// The statement of axiom_four_torsion_affine, proved by computation.
+/// The statement of lemma_four_torsion_affine, proved by computation.
 #[cfg(verus_keep_ghost)]
 pub proof fn lemma_four_torsion_affine_by_computation()
     ensures

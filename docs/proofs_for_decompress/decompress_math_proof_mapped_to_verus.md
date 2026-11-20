@@ -124,11 +124,11 @@ decompress() ✅                                          [edwards.rs]
 │           └── lemma_no_square_root_when_times_i ✅    [sqrt_ratio_lemmas.rs]
 │               │   Statement: v·r² == i·u && v ≠ 0 ==> ¬∃x: v·x² == u
 │               │
-│               ├── axiom_sqrt_m1_squared 🔶            [sqrt_ratio_lemmas.rs]
+│               ├── lemma_sqrt_m1_squared ✅            [sqrt_m1_lemmas.rs]
 │               │   └── Axiom: i² == -1 mod p
-│               ├── axiom_sqrt_m1_not_square 🔶         [sqrt_ratio_lemmas.rs]
+│               ├── lemma_sqrt_m1_not_square ✅         [sqrt_m1_lemmas.rs]
 │               │   └── Axiom: i is not a quadratic residue
-│               ├── axiom_neg_sqrt_m1_not_square 🔶     [sqrt_ratio_lemmas.rs]
+│               ├── lemma_neg_sqrt_m1_not_square ✅     [sqrt_m1_lemmas.rs]
 │               │   └── Axiom: -i is not a quadratic residue
 │               ├── lemma_i_inverse_is_neg_i ✅         [sqrt_ratio_lemmas.rs]
 │               │   └── Statement: i⁻¹ == -i mod p
@@ -544,13 +544,13 @@ pub proof fn lemma_decompress_valid_branch(
 
 ## Axioms (Trust Assumptions)
 
-The proof relies on 4 axioms about number-theoretic properties that are expensive to verify computationally:
+The proof relies on one axiom, `axiom_p_is_prime`. The three facts about i = √(−1) were axioms and are now proved, by `compute_only` and Euler's criterion:
 
-| Axiom | Statement | Mathematical Justification | Location |
+| Name | Statement | Mathematical Justification | Location |
 |-------|-----------|---------------------------|----------|
-| `axiom_sqrt_m1_squared` | $i^2 \equiv -1 \pmod{p}$ | Definition: SQRT_M1 is computed to satisfy this | `sqrt_ratio_lemmas.rs` |
-| `axiom_sqrt_m1_not_square` | $i$ is not a quadratic residue | Euler criterion: $i^{(p-1)/2} = -1$ | `sqrt_ratio_lemmas.rs` |
-| `axiom_neg_sqrt_m1_not_square` | $-i$ is not a quadratic residue | Euler criterion: $(-i)^{(p-1)/2} = -1$ | `sqrt_ratio_lemmas.rs` |
+| `lemma_sqrt_m1_squared` | $i^2 \equiv -1 \pmod{p}$ | Definition: SQRT_M1 is computed to satisfy this | `sqrt_m1_lemmas.rs` |
+| `lemma_sqrt_m1_not_square` | $i$ is not a quadratic residue | Euler criterion: $i^{(p-1)/2} = -1$ | `sqrt_m1_lemmas.rs` |
+| `lemma_neg_sqrt_m1_not_square` | $-i$ is not a quadratic residue | Euler criterion: $(-i)^{(p-1)/2} = -1$ | `sqrt_m1_lemmas.rs` |
 | `axiom_p_is_prime` | $p = 2^{255} - 19$ is prime | Well-known mathematical fact | `primality_specs.rs` |
 
 **Note:** All lemmas in the decompress proof chain are **fully proved** — only axioms use `admit()`.

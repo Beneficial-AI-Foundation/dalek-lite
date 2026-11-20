@@ -1483,10 +1483,10 @@ proof fn lemma_montgomery_add_u_coord_reduced(P: MontgomeryAffine, Q: Montgomery
 // =============================================================================
 // ELLIGATOR2: u = -1 is unreachable
 // =============================================================================
-/// Axiom: 486660 (= A - 2) is not a quadratic residue mod p.
+/// 486660 (= A - 2) is not a quadratic residue mod p.
 /// Equivalently, Legendre symbol (486660 / p) = -1.
 /// Verified by runtime test `test_486660_not_qr`.
-pub proof fn axiom_486660_not_quadratic_residue()
+pub proof fn lemma_486660_not_quadratic_residue()
     ensures
         !is_square(486660nat),
 {
@@ -1498,10 +1498,10 @@ pub proof fn axiom_486660_not_quadratic_residue()
     lemma_not_square_by_euler(486660);
 }
 
-/// Axiom: 2 * 486661 (= 2*(A-1)) is not a quadratic residue mod p.
+/// 2 * 486661 (= 2*(A-1)) is not a quadratic residue mod p.
 /// Since p ≡ 5 (mod 8), 2 is a non-QR; 486661 = A-1 is a QR; product is non-QR.
 /// Verified by runtime test `test_2_times_486661_not_qr`.
-pub proof fn axiom_2_times_486661_not_qr()
+pub proof fn lemma_2_times_486661_not_qr()
     ensures
         !is_square((2nat * 486661nat) % p()),
 {
@@ -1979,7 +1979,7 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
     ensures
         !is_equal_to_minus_one(spec_elligator_encode(r)),
 {
-    axiom_486660_not_quadratic_residue();
+    lemma_486660_not_quadratic_residue();
 
     let A = fe51_as_canonical_nat(&MONTGOMERY_A);
     let r_sq = field_square(r);
@@ -2028,7 +2028,7 @@ pub proof fn lemma_elligator_never_minus_one(r: nat)
 
             // inv(2*486661) is not a QR
             assert(!is_square(field_inv(two_a1))) by {
-                axiom_2_times_486661_not_qr();
+                lemma_2_times_486661_not_qr();
                 assert(two_a1 != 0nat) by {
                     p_gt_2();
                     lemma_p_gt_small(973322nat);

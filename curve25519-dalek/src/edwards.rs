@@ -2921,6 +2921,77 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
+    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and points \\(P_i\\), in
+    /// constant time (Straus).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scalars` and `points` have different lengths.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes
+    /// non-canonical scalars or points that are not well-formed gets no guarantee about the
+    /// result.
+    #[cfg(feature = "alloc")]
+    pub fn multiscalar_mul_slices(scalars: &[Scalar], points: &[EdwardsPoint]) -> (result:
+        EdwardsPoint)
+        requires
+            scalars@.len() == points@.len(),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            forall|i: int|
+                0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i]),
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == sum_of_scalar_muls(scalars@, points@),
+    {
+        // Verus proves this from the requires clause; unverified callers get a run-time check.
+        #[cfg(not(verus_keep_ghost))]
+        assert_eq!(scalars.len(), points.len());
+
+        crate::backend::straus_multiscalar_mul_verus(scalars, points)
+    }
+
+    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and optional points
+    /// \\(P_i\\), in variable time. Returns `None` if any point is `None`.
+    ///
+    /// Uses Straus for fewer than 190 points and Pippenger otherwise.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scalars` and `points` have different lengths.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes
+    /// non-canonical scalars or points that are not well-formed gets no guarantee about the
+    /// result.
+    #[cfg(feature = "alloc")]
+    pub fn optional_multiscalar_mul_slices(
+        scalars: &[Scalar],
+        points: &[Option<EdwardsPoint>],
+    ) -> (result: Option<EdwardsPoint>)
+        requires
+            scalars@.len() == points@.len(),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            forall|i: int|
+                0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
+                    ==> is_well_formed_edwards_point(points@[i].unwrap()),
+        ensures
+            result.is_some() <==> all_points_some(points@),
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
+            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
+                scalars@,
+                unwrap_points(points@),
+            ),
+    {
+        // Verus proves this from the requires clause; unverified callers get a run-time check.
+        #[cfg(not(verus_keep_ghost))]
+        assert_eq!(scalars.len(), points.len());
+
+        if scalars.len() < 190 {
+            crate::backend::straus_optional_multiscalar_mul_verus(scalars, points)
+        } else {
+            crate::backend::pippenger_optional_multiscalar_mul_verus(scalars, points)
+        }
+    }
+
     /*
      * VERIFICATION NOTE
      * =================

@@ -3607,6 +3607,116 @@ impl VartimeMultiscalarMul for RistrettoPoint {
   */
 
 impl RistrettoPoint {
+    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and points \\(P_i\\), in
+    /// constant time. Delegates to `EdwardsPoint::multiscalar_mul_slices`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scalars` and `points` have different lengths.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes
+    /// non-canonical scalars or points that are not well-formed gets no guarantee about the
+    /// result.
+    #[cfg(feature = "alloc")]
+    pub fn multiscalar_mul_slices(scalars: &[Scalar], points: &[RistrettoPoint]) -> (result:
+        RistrettoPoint)
+        requires
+            scalars@.len() == points@.len(),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            forall|i: int|
+                0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i].0),
+        ensures
+            is_well_formed_edwards_point(result.0),
+            edwards_point_as_affine(result.0) == sum_of_scalar_muls(
+                scalars@,
+                ristretto_points_to_edwards(points@),
+            ),
+    {
+        /* <ORIGINAL CODE>
+        let extended_points = points.into_iter().map(|P| P.borrow().0);
+        RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
+        </ORIGINAL CODE> */
+        let mut edwards_points: Vec<EdwardsPoint> = Vec::with_capacity(points.len());
+        let mut i: usize = 0;
+        while i < points.len()
+            invariant
+                0 <= i <= points@.len(),
+                edwards_points@.len() == i,
+                forall|k: int| 0 <= k < i ==> edwards_points@[k] == (#[trigger] points@[k]).0,
+            decreases points.len() - i,
+        {
+            edwards_points.push(points[i].0);
+            i += 1;
+        }
+        proof {
+            assert(edwards_points@ =~= ristretto_points_to_edwards(points@));
+        }
+        RistrettoPoint(EdwardsPoint::multiscalar_mul_slices(scalars, &edwards_points))
+    }
+
+    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and optional points
+    /// \\(P_i\\), in variable time. Returns `None` if any point is `None`. Delegates to
+    /// `EdwardsPoint::optional_multiscalar_mul_slices`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scalars` and `points` have different lengths.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes
+    /// non-canonical scalars or points that are not well-formed gets no guarantee about the
+    /// result.
+    #[cfg(feature = "alloc")]
+    pub fn optional_multiscalar_mul_slices(
+        scalars: &[Scalar],
+        points: &[Option<RistrettoPoint>],
+    ) -> (result: Option<RistrettoPoint>)
+        requires
+            scalars@.len() == points@.len(),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            forall|i: int|
+                0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
+                    ==> is_well_formed_edwards_point(points@[i].unwrap().0),
+        ensures
+            result.is_some() <==> all_points_some(optional_ristretto_points_to_edwards(points@)),
+            result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
+            result.is_some() ==> edwards_point_as_affine(result.unwrap().0) == sum_of_scalar_muls(
+                scalars@,
+                unwrap_points(optional_ristretto_points_to_edwards(points@)),
+            ),
+    {
+        /* <ORIGINAL CODE>
+        let extended_points = points.into_iter().map(|opt_P| opt_P.map(|P| P.0));
+        EdwardsPoint::optional_multiscalar_mul(scalars, extended_points).map(RistrettoPoint)
+        </ORIGINAL CODE> */
+        let mut edwards_points: Vec<Option<EdwardsPoint>> = Vec::with_capacity(points.len());
+        let mut i: usize = 0;
+        while i < points.len()
+            invariant
+                0 <= i <= points@.len(),
+                edwards_points@.len() == i,
+                forall|k: int|
+                    0 <= k < i ==> edwards_points@[k] == optional_ristretto_to_edwards(
+                        #[trigger] points@[k],
+                    ),
+            decreases points.len() - i,
+        {
+            let e = match points[i] {
+                Some(p) => Some(p.0),
+                None => None,
+            };
+            edwards_points.push(e);
+            i += 1;
+        }
+        proof {
+            assert(edwards_points@ =~= optional_ristretto_points_to_edwards(points@));
+        }
+        // Use match instead of map so Verus can track the relationship
+        match EdwardsPoint::optional_multiscalar_mul_slices(scalars, &edwards_points) {
+            Some(r) => Some(RistrettoPoint(r)),
+            None => None,
+        }
+    }
+
     /// Verus-compatible version of multiscalar_mul (constant-time).
     /// Delegates to EdwardsPoint::multiscalar_mul_verus.
     #[cfg(feature = "alloc")]

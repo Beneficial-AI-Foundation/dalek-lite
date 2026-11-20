@@ -219,6 +219,28 @@ pub uninterp spec fn spec_optional_edwards_from_ristretto_iter<J>(iter: J) -> Se
     Option<EdwardsPoint>,
 >;
 
+/// The Edwards points inside a sequence of RistrettoPoints.
+pub open spec fn ristretto_points_to_edwards(points: Seq<RistrettoPoint>) -> Seq<EdwardsPoint> {
+    points.map(|_i, p: RistrettoPoint| p.0)
+}
+
+/// The Edwards point inside an optional RistrettoPoint.
+pub open spec fn optional_ristretto_to_edwards(point: Option<RistrettoPoint>) -> Option<
+    EdwardsPoint,
+> {
+    match point {
+        Some(p) => Some(p.0),
+        None => None,
+    }
+}
+
+/// The Edwards points inside a sequence of optional RistrettoPoints. `None` stays `None`.
+pub open spec fn optional_ristretto_points_to_edwards(points: Seq<Option<RistrettoPoint>>) -> Seq<
+    Option<EdwardsPoint>,
+> {
+    points.map(|_i, p: Option<RistrettoPoint>| optional_ristretto_to_edwards(p))
+}
+
 /// Spec function to compute sum of all RistrettoPoints in a sequence.
 /// Returns the affine coordinates of the result.
 pub open spec fn sum_of_ristretto_points(points: Seq<RistrettoPoint>) -> (nat, nat)

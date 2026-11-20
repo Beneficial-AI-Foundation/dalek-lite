@@ -24,6 +24,7 @@ use crate::lemmas::common_lemmas::mul_lemmas::*;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+use crate::lemmas::field_lemmas::field_cong_lemmas::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 use crate::specs::primality_specs::*;

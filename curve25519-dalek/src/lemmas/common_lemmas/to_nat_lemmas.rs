@@ -15,6 +15,7 @@ use crate::lemmas::common_lemmas::div_mod_lemmas::*;
 use crate::lemmas::common_lemmas::mul_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::specs::core_specs::*;
+use crate::specs::field_specs::*;
 
 verus! {
 

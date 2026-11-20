@@ -243,7 +243,6 @@ impl RistrettoPoint {
 
     /// Verus-friendly variant of `lizard_decode::<Sha256>`.
     ///
-    #[verifier::rlimit(20)]
     pub fn lizard_decode_verus(&self) -> (result: Option<[u8; 16]>)
         requires
             is_well_formed_edwards_point(self.0),
@@ -263,6 +262,9 @@ impl RistrettoPoint {
                 }),
             },
     {
+        // Keep `spec_lizard_encode` out of the context: the body only passes
+        // `is_lizard_preimage_coset` facts between lemmas, never unfolds them.
+        hide(is_lizard_preimage_coset);
         /* ORIGINAL CODE: let mut result: [u8; 16] = Default::default(); */
         let mut result: [u8; 16] = [0u8;16];
         /* ORIGINAL CODE: let mut h: [u8; 32] = Default::default(); */
@@ -410,6 +412,13 @@ impl RistrettoPoint {
             }
         }
 
+        proof {
+            // State the byte equality while the array is still in scope, so the
+            // final proof does not have to find extensionality on its own.
+            if n_found == 1 {
+                assert(result@ =~= passed_data.unwrap());
+            }
+        }
         let result = if n_found == 1 {
             Some(result)
         } else {

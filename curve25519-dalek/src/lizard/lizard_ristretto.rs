@@ -24,9 +24,6 @@ use crate::backend::serial::u64::subtle_assumes::{
 };
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::core_assumes::axiom_sha256_output_length;
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
 use crate::core_assumes::spec_sha256;
 use crate::core_assumes::{bytes32_8_to_24, sha256_hash_bytes, write_bytes32_8_to_24};
 

@@ -67,10 +67,6 @@ use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
 
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
-use crate::core_assumes::axiom_sha256_output_length;
-
-#[cfg(verus_keep_ghost)]
-#[allow(unused_imports)]
 use crate::core_assumes::{seq_to_array_32, spec_sha256};
 
 #[cfg(verus_keep_ghost)]
@@ -175,7 +171,6 @@ pub proof fn lemma_h_equals_spec_lizard_fe_bytes(h: [u8; 32], msg: Seq<u8>)
     ensures
         h == spec_lizard_fe_bytes(msg),
 {
-    axiom_sha256_output_length(msg);
 }
 
 /// buf2 = spec_lizard_fe_bytes(msg) ⟹ msg is a valid Lizard coset preimage.
@@ -304,9 +299,7 @@ pub proof fn lemma_invsqrt_bridge(
 /// This removes the "SHA-256 structural consistency" trust assumption
 /// from the old monolithic decode exhaustive axiom: injectivity
 /// follows from the definition of `spec_lizard_fe_bytes`, not from any
-/// hash collision-resistance property.  (The proof does use
-/// `axiom_sha256_output_length` to establish that the SHA-256 output
-/// is 32 bytes, which is needed for the index arithmetic.)
+/// hash collision-resistance property.
 #[verifier::spinoff_prover]
 pub proof fn lemma_spec_lizard_fe_bytes_injective(m1: Seq<u8>, m2: Seq<u8>)
     requires
@@ -316,8 +309,6 @@ pub proof fn lemma_spec_lizard_fe_bytes_injective(m1: Seq<u8>, m2: Seq<u8>)
     ensures
         m1 =~= m2,
 {
-    axiom_sha256_output_length(m1);
-    axiom_sha256_output_length(m2);
 }
 
 /// The bytes that `lizard_encode_verus` builds equal `spec_lizard_fe_bytes`.
@@ -335,7 +326,6 @@ pub proof fn lemma_lizard_fe_bytes_from_parts(data: Seq<u8>, digest: [u8; 32], f
     ensures
         fe_bytes@ =~= spec_lizard_fe_bytes(data)@,
 {
-    axiom_sha256_output_length(data);
     assert(fe_bytes@ =~= spec_lizard_fe_bytes(data)@);
 }
 
@@ -1216,7 +1206,6 @@ pub proof fn lemma_spec_lizard_fe_bytes_canonical(m: Seq<u8>)
     let bytes = spec_lizard_fe_bytes(m);
 
     // Step 1: bytes[31] <= 63 (from the & 63 mask in spec_lizard_fe_bytes)
-    axiom_sha256_output_length(m);
     let digest = spec_sha256(m);
     let s0 = Seq::new(
         32,
@@ -1302,18 +1291,12 @@ pub proof fn lemma_spec_lizard_fe_bytes_canonical(m: Seq<u8>)
 /// **(a) `lemma_spec_lizard_fe_bytes_injective`** (proved):
 ///   `spec_lizard_fe_bytes(m₁) == spec_lizard_fe_bytes(m₂) ⟹ m₁ == m₂`.
 ///
-/// **(b) Elligator fiber completeness** (part of this axiom): for P in 2E,
-///   every even r (`!is_negative(r)`) with Elligator(r) ∈ coset(P) appears
-///   among the 8 candidates, with one exception. For P in the identity coset,
-///   the even r₀ with i·r₀² = −1/d makes the Elligator denominator D zero, so
-///   Elligator(r₀) is the identity, but r₀ is not a candidate. A Lizard
-///   message maps to r₀ only if 16 bytes of its SHA-256 hash match fixed
-///   values. The axiom assumes that this does not happen.
-///   The restriction to even r is necessary, because
-///   every valid candidate is even. Lizard field elements are even, because
-///   the encoder clears bit 0 of byte 0. An earlier separate axiom
-///   `axiom_elligator_fiber_complete` stated this for every r. It had no
-///   callers and was deleted.
+/// **(b) Elligator fiber completeness** (assumed): for P in 2E, every even r
+///   with Elligator(r) ∈ coset(P) is one of the 8 candidates. Lizard field
+///   elements are even, because the encoder clears bit 0 of byte 0. Exception:
+///   the even r₀ with i·r₀² = −1/d maps to the identity but is not a candidate.
+///   The axiom assumes that no message reaches r₀, which needs 16 bytes of a
+///   SHA-256 hash to match fixed values.
 ///
 /// **(c) exec-spec candidate correspondence** (proved): exec `(mask, fes)`
 ///   matches `spec_lizard_decode_candidates(point)`. Now a direct postcondition

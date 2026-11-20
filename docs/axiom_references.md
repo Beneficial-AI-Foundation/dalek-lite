@@ -388,30 +388,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_sha512_output_length()
-**Claim:** SHA-512 output is 64 bytes
-
-**Reference:** FIPS 180-4; RFC 6234  
-**URL:** https://www.rfc-editor.org/rfc/rfc6234
-
-**Status:** Proved. `spec_sha512` is the sequence view of the uninterpreted `spec_sha512_array`, which returns `[u8; 64]`, so the length follows from the type.
-
-**Justification:** SHA-512 specification.
-
----
-
-### axiom_sha256_output_length()
-**Claim:** SHA-256 output is 32 bytes
-
-**Reference:** FIPS 180-4; RFC 6234  
-**URL:** https://www.rfc-editor.org/rfc/rfc6234
-
-**Status:** Proved. `spec_sha256` is the sequence view of the uninterpreted `spec_sha256_array`, which returns `[u8; 32]`, so the length follows from the type.
-
-**Justification:** SHA-256 specification.
-
----
-
 ## 11. Lizard / Jacobi Quartic (lizard_lemmas.rs, torsion_lemmas.rs)
 
 ### axiom_four_torsion_affine()
@@ -528,7 +504,7 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 
 **Reference:** Westerbaan (2019) / go-ristretto (design provenance)
 
-**Fiber completeness (b):** For P in 2E, every even r (`!is_negative(r)`) with Elligator(r) in the coset of P is one of the 8 candidates, with one exception. For P in the identity coset, the even r₀ with i·r₀² = −1/d makes the Elligator denominator zero, so Elligator(r₀) is the identity, but r₀ is not a candidate. A Lizard message maps to r₀ only if 16 bytes of its SHA-256 hash match fixed values. The axiom assumes that this does not happen. Lizard field elements are even, because the encoder clears bit 0 of byte 0. An earlier separate axiom, `axiom_elligator_fiber_complete`, stated this for every r. It did not hold for odd r, and it had no callers, so it was deleted.
+**Fiber completeness (b):** For P in 2E, every even r (`!is_negative(r)`) with Elligator(r) in the coset of P is one of the 8 candidates. Lizard field elements are even, because the encoder clears bit 0 of byte 0. Exception: the even r₀ with i·r₀² = −1/d maps to the identity but is not a candidate. The axiom assumes that no message reaches r₀, which needs 16 bytes of a SHA-256 hash to match fixed values.
 
 **Justification:**
 - count == 1: `passed_data` provides an existence witness. Any other preimage m₂ would
@@ -603,8 +579,6 @@ Justification types (7 canonical values):
 | axiom_uniform_point_add | proba_specs.rs | crypto-assumption | Group-theoretic uniformity |
 | axiom_uniform_mod_reduction | proba_specs.rs | crypto-assumption | Probability theory |
 | axiom_hash_is_canonical | core_assumes.rs | proved | Canonical bytes of equal field elements |
-| axiom_sha512_output_length | core_assumes.rs | proved | Array type of spec_sha512_array |
-| axiom_sha256_output_length | core_assumes.rs | proved | Array type of spec_sha256_array |
 | axiom_four_torsion_affine | torsion_lemmas.rs | proved | By computation in constants.rs |
 | axiom_mc_times_sqrt_ad_m1 | lizard_lemmas.rs | proved | compute_only |
 | axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§4.1 + algebraic derivation |

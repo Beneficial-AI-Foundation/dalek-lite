@@ -458,15 +458,6 @@ pub open spec fn spec_sha512(input: Seq<u8>) -> Seq<u8> {
     spec_sha512_array(input)@
 }
 
-#[cfg(all(feature = "digest", verus_keep_ghost))]
-/// Axiom: SHA-512 always produces exactly 64 bytes of output.
-pub proof fn axiom_sha512_output_length(input: Seq<u8>)
-    ensures
-        spec_sha512(input).len() == 64,
-{
-    // The length follows from the array type.
-}
-
 /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
 /// `sha2::Sha512 via digest::Digest`
 /// Compute SHA-512 hash of input bytes.
@@ -501,15 +492,6 @@ pub uninterp spec fn spec_sha256_array(input: Seq<u8>) -> [u8; 32];
 #[cfg(all(feature = "digest", verus_keep_ghost))]
 pub open spec fn spec_sha256(input: Seq<u8>) -> Seq<u8> {
     spec_sha256_array(input)@
-}
-
-#[cfg(all(feature = "digest", verus_keep_ghost))]
-/// Axiom: SHA-256 always produces exactly 32 bytes of output.
-pub proof fn axiom_sha256_output_length(input: Seq<u8>)
-    ensures
-        spec_sha256(input).len() == 32,
-{
-    // The length follows from the array type.
 }
 
 /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:

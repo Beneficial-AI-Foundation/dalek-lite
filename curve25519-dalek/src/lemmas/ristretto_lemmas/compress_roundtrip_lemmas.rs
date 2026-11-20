@@ -2668,4 +2668,180 @@ pub proof fn lemma_spec_ristretto_compress_injective(rp1: RistrettoPoint, rp2: R
     lemma_ristretto_compress_injective_point(rp1.0, rp2.0);
 }
 
+// =============================================================================
+// Decode output is on the curve
+// =============================================================================
+/// The curve polynomial of the decoded point is a multiple of J − 1.
+///
+/// With W = M + 4·T, V = −D·M − W and J = P·V·W, the values x² = 4·T·P·W and
+/// y² = J·P·M·V satisfy y² − x² − 1 − D·x²·y² = (J − 1)·(1 + P·M·V − 4·D·T·M·P·(J + 1)).
+/// In the decoder, T = s², M = (1 − T)², W = (1 + T)², P = I² and D = d.
+proof fn lemma_id_decode_curve(T: int, M: int, W: int, V: int, P: int, J: int, D: int)
+    requires
+        W == M + 4 * T,
+        V == -D * M - W,
+        J == P * (V * W),
+    ensures
+        J * (P * M * V) - 4 * T * P * W - 1 - D * ((4 * T * P * W) * (J * (P * M * V))) == (J - 1)
+            * (1 + P * M * V - 4 * D * T * M * P * (J + 1)),
+{
+    // x²·y² = 4·T·M·P·J²
+    let K = 4 * T * P * W;
+    let Z = P * M * V;
+    let N = 4 * T * M * P;
+    assert(K * Z == N * (P * (V * W))) by (nonlinear_arith)
+        requires
+            K == 4 * T * P * W,
+            Z == P * M * V,
+            N == 4 * T * M * P,
+    ;
+    assert(K * (J * Z) == N * (J * J)) by (nonlinear_arith)
+        requires
+            K * Z == N * J,
+    ;
+    // M·V − 4·T·W − 4·d·T·M = W·V, so A − B − C = J.
+    let inner = M * V - 4 * T * W - 4 * D * T * M;
+    assert(M * (-D * M - (M + 4 * T)) - 4 * T * (M + 4 * T) - 4 * D * T * M == (-D * M - (M + 4
+        * T)) * (M + 4 * T)) by (nonlinear_arith);
+    assert(inner == V * W);
+    let A = P * M * V;
+    let B = 4 * T * P * W;
+    let C = 4 * D * T * M * P;
+    assert(A - B - C == P * inner) by (nonlinear_arith)
+        requires
+            inner == M * V - 4 * T * W - 4 * D * T * M,
+            A == P * M * V,
+            B == 4 * T * P * W,
+            C == 4 * D * T * M * P,
+    ;
+    assert(D * (4 * T * M * P * (J * J)) == C * (J * J)) by (nonlinear_arith)
+        requires
+            C == 4 * D * T * M * P,
+    ;
+    assert(J * A - B - 1 - C * (J * J) == (J - 1) * (1 + A - C * (J + 1))) by (nonlinear_arith)
+        requires
+            A - B - C == J,
+    ;
+}
+
+/// When decoding s succeeds, the decoded (x, y) is on the curve.
+///
+/// Proof, with u1, u2, v and I = invsqrt as in `ristretto_decode_inner`: I²·v·u2² ≡ 1.
+/// Then x² ≡ 4·s²·I²·u2² and y² ≡ (I²·v·u2²)·I²·u1²·v. The curve polynomial of (x, y)
+/// is a multiple of I²·v·u2² − 1 (see `lemma_id_decode_curve`), so it is ≡ 0.
+pub proof fn lemma_ristretto_decode_on_curve(s: nat)
+    requires
+        ristretto_decode_ok(s),
+    ensures
+        is_on_edwards_curve(ristretto_decode_x(s), ristretto_decode_y(s)),
+{
+    lemma_cong_p_facts();
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let D = d_int();
+    let S = s as int;
+    let T = S * S;
+    let U1 = 1 - T;
+    let U2 = 1 + T;
+    let M = U1 * U1;
+    let W = U2 * U2;
+    let V = (-D) * M - W;
+    // Lift the decode intermediates (same order as `ristretto_decode_inner`).
+    let ss = field_square(s);
+    lemma_cong_fsquare(s, S);
+    let u1 = field_sub(1, ss);
+    lemma_cong_fsub(1, ss, 1, T);
+    let u2 = field_add(1, ss);
+    lemma_cong_fadd(1, ss, 1, T);
+    let u2_sqr = field_square(u2);
+    lemma_cong_fsquare(u2, U2);
+    let neg_d = field_neg(d);
+    lemma_cong_fneg(d, D);
+    let u1_sqr = field_square(u1);
+    lemma_cong_fsquare(u1, U1);
+    let ndu = field_mul(neg_d, u1_sqr);
+    lemma_cong_fmul(neg_d, u1_sqr, -D, M);
+    let v = field_sub(ndu, u2_sqr);
+    lemma_cong_fsub(ndu, u2_sqr, (-D) * M, W);
+    let vu = field_mul(v, u2_sqr);
+    lemma_cong_fmul(v, u2_sqr, V, W);
+    let r = nat_invsqrt(vu);
+    let R = r as int;
+    let P = R * R;
+    let J = P * (V * W);
+
+    // ok: r²·vu ≡ 1, so J ≡ 1.
+    assert(is_sqrt_ratio(1, vu, r));
+    assert(cong((r * r * vu) as int, 1)) by {
+        lemma_small_mod(1, p());
+    }
+    lemma_cong_mul(P, vu as int, P, V * W);
+    assert((r * r * vu) as int == P * (vu as int));
+    assert(cong(J, 1));
+    lemma_cong_diff_zero(J, 1);
+
+    // x and y.
+    let dx = field_mul(r, u2);
+    lemma_cong_fmul(r, u2, R, U2);
+    let dxv = field_mul(dx, v);
+    lemma_cong_fmul(dx, v, R * U2, V);
+    let dy = field_mul(r, dxv);
+    lemma_cong_fmul(r, dxv, R, R * U2 * V);
+    let s2 = field_add(s, s);
+    lemma_cong_fadd(s, s, S, S);
+    let x_tmp = field_mul(s2, dx);
+    let X0 = (S + S) * (R * U2);
+    lemma_cong_fmul(s2, dx, S + S, R * U2);
+    let x = ristretto_decode_x(s);
+    let y = ristretto_decode_y(s);
+    let Y0 = U1 * (R * (R * U2 * V));
+    lemma_cong_fmul(u1, dy, U1, R * (R * U2 * V));
+    assert(y == field_mul(u1, dy));
+
+    // x² ≡ 4·T·P·W.
+    let a2 = 4 * T * P * W;
+    lemma_product_square_factorize(S + S, R * U2);
+    lemma_product_square_factorize(R, U2);
+    assert((S + S) * (S + S) == 4 * T) by (nonlinear_arith)
+        requires
+            T == S * S,
+    ;
+    lemma_mul_is_associative(4 * T, P, W);
+    assert(X0 * X0 == a2);
+    assert(cong((x as int) * (x as int), a2)) by {
+        if is_negative(x_tmp) {
+            lemma_cong_fneg(x_tmp, X0);
+            lemma_cong_mul(x as int, x as int, -X0, -X0);
+            assert((-X0) * (-X0) == X0 * X0) by (nonlinear_arith);
+        } else {
+            lemma_cong_mul(x as int, x as int, X0, X0);
+        }
+    }
+    // y² ≡ J·P·M·V.
+    let b2 = J * (P * M * V);
+    let RU = R * U2;
+    lemma_product_square_factorize(U1, R * (RU * V));
+    lemma_product_square_factorize(R, RU * V);
+    lemma_product_square_factorize(RU, V);
+    // Y0² = M·(P·((P·W)·(V·V))) and b2 = (P·(V·W))·(P·M·V): both are M·P·P·W·V·V.
+    assert(M * (P * ((P * W) * (V * V))) == b2) by (nonlinear_arith)
+        requires
+            b2 == J * (P * M * V),
+            J == P * (V * W),
+    ;
+    assert(Y0 * Y0 == b2);
+    lemma_cong_mul(y as int, y as int, Y0, Y0);
+
+    lemma_curve_poly_cong(x as int, y as int, a2, b2);
+    assert(W == M + 4 * T) by (nonlinear_arith)
+        requires
+            M == (1 - T) * (1 - T),
+            W == (1 + T) * (1 + T),
+    ;
+    lemma_id_decode_curve(T, M, W, V, P, J, D);
+    let Q = 1 + P * M * V - 4 * D * T * M * P * (J + 1);
+    lemma_cong_mul(J - 1, Q, 0, Q);
+    assert(0 * Q == 0);
+    lemma_curve_cong(x, y);
+}
+
 } // verus!

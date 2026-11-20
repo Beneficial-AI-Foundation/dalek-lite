@@ -216,18 +216,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_ristretto_decode_on_curve(s)
-**Signature:** `axiom_ristretto_decode_on_curve(s: nat)` — requires `s < p()` and `spec_ristretto_decode_ok(s)`; ensures `is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s))`.
-
-**Claim:** When the Ristretto decode succeeds for field element s, the decoded coordinates (x, y) satisfy the Edwards curve equation −x² + y² = 1 + d·x²·y² (mod p).
-
-**Reference:** Hamburg (2015) — "Decaf: Eliminating cofactors through point compression"
-**URL:** https://eprint.iacr.org/2015/673; https://ristretto.group/formulas/decoding.html
-
-**Justification:** The Ristretto decode formulas are designed so that when I²·v·u2² ∈ {1, √(−1)}, the resulting point lies on the Edwards curve. This follows from algebraic substitution of Dx = I·u2, Dy = I·Dx·v into the curve equation. The conditional negate (absolute value) does not affect x², so the equation holds regardless of sign choice. Validated by runtime test `test_ristretto_decode_on_curve` (100 points).
-
----
-
 ### axiom_ristretto_decode_in_even_subgroup(s, point)
 **Signature:** `axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)` — requires `s < p()`, `spec_ristretto_decode_ok(s)`, and that `point`'s projective coordinates match `(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s), 1, x*y)`; ensures `is_in_even_subgroup(point)`.
 
@@ -444,7 +432,6 @@ Justification types (6 canonical values):
 | axiom_elligator_nonzero_intermediates | ristretto_lemmas/axioms.rs | paper | RFC 9496 §4.3.4; Hamburg 2015 §6; test (200+ inputs) |
 | axiom_elligator_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (200+ inputs) |
 | axiom_ristretto_cross_mul_iff_equivalent | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; Ristretto §3.2; test |
-| axiom_ristretto_decode_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015; test_ristretto_decode_on_curve |
 | axiom_ristretto_decode_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (100+ points) |
 | axiom_uniform_bytes_split | proba_specs.rs | crypto-assumption | Probability theory |
 | axiom_from_bytes_uniform | proba_specs.rs | crypto-assumption | Probability theory |

@@ -24,21 +24,6 @@ use vstd::prelude::*;
 verus! {
 
 // --- Decode axioms ---
-/// Axiom: when decode succeeds, the decoded (x, y) satisfy the Edwards curve equation.
-///
-/// Reference: RFC 9496 §4.3.1 (Decode); Hamburg, "Decaf" §4;
-///   https://ristretto.group/formulas/decoding.html
-/// Runtime validation: `test_ristretto_decode_on_curve` (100 points)
-pub proof fn axiom_ristretto_decode_on_curve(s: nat)
-    requires
-        s < p(),
-        ristretto_decode_ok(s),
-    ensures
-        is_on_edwards_curve(ristretto_decode_x(s), ristretto_decode_y(s)),
-{
-    admit();
-}
-
 /// Axiom: when decode succeeds, the resulting point is in the even subgroup (2E).
 ///
 /// This is the core Ristretto property: decoded points are always doubles of
@@ -363,7 +348,7 @@ mod test_ristretto_decode_axioms {
         &(&(&yy - &xx) - &FieldElement::ONE) - &dxxyy
     }
 
-    /// Validate axiom_ristretto_decode_on_curve:
+    /// Runtime check of lemma_ristretto_decode_on_curve (proved in compress_roundtrip_lemmas):
     /// Ristretto decoding always produces a point on the Edwards curve.
     #[test]
     fn test_ristretto_decode_on_curve() {

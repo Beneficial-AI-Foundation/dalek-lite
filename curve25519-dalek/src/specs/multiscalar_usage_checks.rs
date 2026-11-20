@@ -182,4 +182,60 @@ fn check_backend_multiscalar_functions() {
     assert(t.is_none());
 }
 
+/// The Pippenger backend accepts any scalar, also one with bit 255 set.
+fn check_pippenger_any_scalar() {
+    // 2^256 - 1: bit 255 set.
+    let t = Scalar {
+        bytes: [
+            255u8,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+        ],
+    };
+    let p = EdwardsPoint::identity();
+    let mut scalars: Vec<Scalar> = Vec::new();
+    scalars.push(t);
+    let mut opt_points: Vec<Option<EdwardsPoint>> = Vec::new();
+    opt_points.push(Some(p));
+
+    let q = crate::backend::pippenger_optional_multiscalar_mul_verus(
+        scalars.as_slice(),
+        opt_points.as_slice(),
+    );
+    assert(q.is_some());
+    assert(edwards_point_as_affine(q.unwrap()) == sum_of_scalar_muls(
+        scalars@,
+        unwrap_points(opt_points@),
+    ));
+}
+
 } // verus!

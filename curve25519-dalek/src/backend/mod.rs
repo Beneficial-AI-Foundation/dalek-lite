@@ -358,6 +358,7 @@ pub fn straus_optional_multiscalar_mul_verus(
 }
 
 /// Pippenger optional multiscalar multiplication dispatcher (variable-time), over slices.
+/// It needs no condition on the scalars.
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
 pub fn pippenger_optional_multiscalar_mul_verus(
@@ -366,7 +367,6 @@ pub fn pippenger_optional_multiscalar_mul_verus(
 ) -> (result: Option<EdwardsPoint>)
     requires
         scalars@.len() == points@.len(),
-        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
         forall|i: int|
             0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
                 ==> is_well_formed_edwards_point(points@[i].unwrap()),

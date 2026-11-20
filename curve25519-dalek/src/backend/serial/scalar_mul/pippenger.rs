@@ -563,9 +563,6 @@ impl Pippenger {
             scalars_vec@.len() == points_vec@.len(),
             6 <= w <= 8,
             forall|k: int|
-                #![auto]
-                0 <= k < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[k]),
-            forall|k: int|
                 0 <= k < points_vec@.len() && (#[trigger] points_vec@[k]).is_some()
                     ==> is_well_formed_edwards_point(points_vec@[k].unwrap()),
         ensures
@@ -619,9 +616,6 @@ impl Pippenger {
                 scalars_vec@.len() == points_vec@.len(),
                 scalars_points@.len() == idx as int,
                 6 <= w <= 8,
-                forall|k: int|
-                    #![auto]
-                    0 <= k < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[k]),
                 forall|k: int|
                     0 <= k < points_vec@.len() && (#[trigger] points_vec@[k]).is_some()
                         ==> is_well_formed_edwards_point(points_vec@[k].unwrap()),
@@ -694,6 +688,7 @@ impl Pippenger {
 
     /// Verified version of optional_multiscalar_mul over slices.
     /// Computes sum(scalars[i] * points[i]) if every points[i] is Some.
+    /// The scalars can be any 256-bit values: the radix-2^w digits for w >= 6 need no bound.
     pub fn optional_multiscalar_mul_verus(
         scalars: &[Scalar],
         points: &[Option<EdwardsPoint>],
@@ -702,8 +697,6 @@ impl Pippenger {
     // Same number of scalars and points
 
             scalars@.len() == points@.len(),
-            // All scalars are canonical
-            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
             // All input points (when Some) must be well-formed
             forall|i: int|
                 0 <= i < points@.len() && (#[trigger] points@[i]).is_some()

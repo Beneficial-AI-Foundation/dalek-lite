@@ -2919,23 +2919,12 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `core::iter::Iterator::size_hint`
-    // Returns the lower bound of `size_hint`, as the original code does. It does not consume
-    // the iterator or a clone of it. It has no `ensures`: the caller uses the value only to
-    // choose between Straus and Pippenger, which have the same specification.
-    #[verifier::external_body]
-    #[cfg(feature = "alloc")]
-    fn iter_size_hint<T, I: Iterator<Item = T>>(iter: &I) -> (size: usize) {
-        iter.size_hint().0
-    }
-
     /*
      * VERIFICATION NOTE
      * =================
      * Verus limitations addressed in these _verus versions:
      * - IntoIterator with I::Item projections → use Iterator bounds instead
-     * - size_hint() on &mut iterator → use the iter_size_hint helper on &I
+     * - size_hint() on &mut iterator → call size_hint() on the iterator itself (it takes &self)
      *
      * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
      * run both original and _verus implementations, and assert equality of results.
@@ -3013,9 +3002,10 @@ impl EdwardsPoint {
             assert_eq!(p_hi, Some(p_lo));
         }
 
-        // Get size for algorithm dispatch. Do not consume `scalars` or a clone of it here: a
-        // clone can share state with the original (see issue #793).
-        let size = Self::iter_size_hint(&scalars);
+        // Get size for algorithm dispatch, as the original code does. Do not consume `scalars`
+        // or a clone of it here: a clone can share state with the original (see issue #793).
+        // Straus and Pippenger have the same specification, so the proof does not need `size`.
+        let size = scalars.size_hint().0;
 
         if size < 190 {
             crate::backend::straus_optional_multiscalar_mul_verus(scalars, points)

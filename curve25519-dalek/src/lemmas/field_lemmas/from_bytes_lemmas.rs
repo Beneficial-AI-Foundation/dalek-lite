@@ -759,4 +759,22 @@ pub proof fn lemma_as_nat_32_mod_255(bytes: &[u8; 32])
     }
 }
 
+// =============================================================================
+// Canonical bytes
+// =============================================================================
+/// For s < p, the bytes of s decode to the field element s, canonically.
+pub proof fn lemma_bytes_of_canonical(s: nat)
+    requires
+        s < p(),
+    ensures
+        u8_32_as_nat(&u8_32_from_nat(s)) == s,
+        field_element_from_bytes(&u8_32_from_nat(s)) == s,
+{
+    pow255_gt_19();
+    lemma_pow2_strictly_increases(255, 256);
+    lemma_u8_32_from_nat_value(s);
+    lemma_small_mod(s, pow2(255));
+    lemma_small_mod(s, p());
+}
+
 } // verus!

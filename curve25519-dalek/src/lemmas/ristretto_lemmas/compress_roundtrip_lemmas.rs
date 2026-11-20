@@ -29,6 +29,7 @@ use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 use crate::lemmas::edwards_lemmas::add_complete_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
 use crate::lemmas::field_lemmas::field_cong_lemmas::*;
+use crate::lemmas::field_lemmas::from_bytes_lemmas::*;
 use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
 use crate::lemmas::field_lemmas::sqrt_ratio_lemmas::*;
 use crate::ristretto::RistrettoPoint;
@@ -886,6 +887,344 @@ pub proof fn lemma_double_u1_square(x: nat, y: nat, q: (nat, nat)) -> (w: (int, 
     }
     lemma_cong_mul_nonzero(C, DY);
     (xv * DX, C * DY)
+}
+
+// =============================================================================
+// Decompress of an encoding
+// =============================================================================
+/// Decoding s = 0 gives the identity (0, 1).
+pub proof fn lemma_decode_zero()
+    ensures
+        ristretto_decode_inner(0) == (0nat, 1nat, true),
+{
+    lemma_cong_p_facts();
+    lemma_invsqrt_a_minus_d_cong();
+    crate::lemmas::ristretto_lemmas::axioms::lemma_invsqrt_a_minus_d();
+    lemma_small_mod(0, p());
+    lemma_small_mod(1, p());
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let D = d_int();
+    let c = fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D);
+    let C = c as int;
+    let ss = field_square(0);
+    assert(ss == 0);
+    let u1 = field_sub(1, ss);
+    lemma_cong_fsub(1, ss, 1, 0);
+    lemma_mod_bound((1 + p()) as int, p() as int);
+    lemma_cong_canonical_eq(u1, 1);
+    let u2 = field_add(1, ss);
+    assert(u2 == 1);
+    let u2_sqr = field_square(u2);
+    assert(u2_sqr == 1);
+    let neg_d = field_neg(d);
+    let u1_sqr = field_square(u1);
+    assert(u1_sqr == 1);
+    let v = field_sub(field_mul(neg_d, u1_sqr), u2_sqr);
+    lemma_cong_fneg(d, D);
+    lemma_cong_fmul(neg_d, u1_sqr, -D, 1);
+    lemma_cong_fsub(field_mul(neg_d, u1_sqr), u2_sqr, -D * 1, 1);
+    let vu = field_mul(v, u2_sqr);
+    lemma_cong_fmul(v, u2_sqr, -D * 1 - 1, 1);
+    // vu == field_sub(field_neg(1), d)
+    let target = field_sub(field_neg(1nat), d);
+    lemma_cong_fneg(1, 1);
+    lemma_cong_fsub(field_neg(1nat), d, -1, D);
+    lemma_mod_bound((v * u2_sqr) as int, p() as int);
+    lemma_mod_bound(
+        (field_canonical(field_neg(1nat)) + p() - field_canonical(d)) as int,
+        p() as int,
+    );
+    assert((-D * 1 - 1) * 1 == -1 - D);
+    lemma_cong_canonical_eq(vu, target);
+    assert(nat_invsqrt(vu) == c);
+    // ok: c²·vu ≡ 1.
+    lemma_cong_mul(C * C, vu as int, C * C, -1 - D);
+    lemma_mod_bound((c * c * vu) as int, p() as int);
+    assert(is_sqrt_ratio(1, vu, c));
+    // Dx = c, Dy = c·(c·v) ≡ 1.
+    let dx = field_mul(c, u2);
+    lemma_cong_fmul(c, u2, C, 1);
+    lemma_mod_bound((c * u2) as int, p() as int);
+    lemma_cong_canonical_eq(dx, c);
+    let dxv = field_mul(dx, v);
+    lemma_cong_fmul(dx, v, C, -1 - D);
+    let dy = field_mul(c, dxv);
+    lemma_cong_fmul(c, dxv, C, C * (-1 - D));
+    assert(C * (C * (-1 - D)) == C * C * (-1 - D)) by (nonlinear_arith);
+    lemma_mod_bound((c * dxv) as int, p() as int);
+    lemma_cong_canonical_eq(dy, 1);
+    let x_tmp = field_mul(field_add(0, 0), dx);
+    assert(field_add(0, 0) == 0);
+    assert(0 * dx == 0);
+    assert(x_tmp == 0);
+    let y = field_mul(u1, dy);
+    assert(y == 1);
+}
+
+/// The decompress result for the bytes of s, when s is a valid encoding of a
+/// representative (x, y) with x·y ≥ 0 and y ≠ 0.
+pub proof fn lemma_decompress_of_representative(s: nat, x: nat, y: nat)
+    requires
+        s < p(),
+        s % 2 == 0,
+        ristretto_decode_inner(s) == (x, y, true),
+        !is_negative(field_mul(x, y)),
+        y != 0,
+    ensures
+        spec_ristretto_decompress(u8_32_from_nat(s)) == Some((x, y, 1nat, field_mul(x, y))),
+{
+    lemma_bytes_of_canonical(s);
+    lemma_small_mod(s, p());
+}
+
+// =============================================================================
+// Main theorem: round trip
+// =============================================================================
+/// On the curve with x·y = 0, the point is in E[4], and its coset contains (0, 1).
+pub proof fn lemma_zero_xy_coset_contains_identity(x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+        is_on_edwards_curve(x, y),
+        x == 0 || y == 0,
+    ensures
+        is_in_explicit_coset((0nat, 1nat), x, y),
+{
+    use crate::lemmas::edwards_lemmas::torsion_lemmas::*;
+    if x == 0 {
+        lemma_on_curve_x_zero_implies_y_pm_one(x, y);
+    }
+    if y == 0 {
+        lemma_on_curve_y_zero_implies_x_sq_neg_one(x, y);
+    }
+    crate::lemmas::ristretto_lemmas::coset_lemmas::lemma_edge_coset_contains_e4(x, y);
+    lemma_explicit_coset_iff_coset_affine((0nat, 1nat), x, y);
+}
+
+/// Round trip: for (x, y) on the curve with (x, y) = 2·q, decompressing
+/// the encoding of (x, y) succeeds, and the decoded point (X, Y, 1, X·Y) has
+/// (X, Y) in the coset (x, y) + E[4].
+///
+/// Reference: RFC 9496 §4.3.1, §4.3.2; Hamburg, "Decaf" §4.
+pub proof fn lemma_ristretto_compress_roundtrip(x: nat, y: nat, q: (nat, nat))
+    requires
+        x < p(),
+        y < p(),
+        is_on_edwards_curve(x, y),
+        is_on_edwards_curve(q.0, q.1),
+        (x, y) == edwards_scalar_mul(q, 2),
+    ensures
+        spec_ristretto_decompress(ristretto_compress_affine(x, y)) is Some,
+        ({
+            let (dx, dy, dz, dt) = spec_ristretto_decompress(
+                ristretto_compress_affine(x, y),
+            ).unwrap();
+            &&& dz == 1
+            &&& dt == field_mul(dx, dy)
+            &&& is_in_explicit_coset((dx, dy), x, y)
+            &&& is_on_edwards_curve(dx, dy)
+        }),
+{
+    lemma_cong_p_facts();
+    if x == 0 || y == 0 {
+        assert(field_mul(x, y) % p() == 0) by {
+            assert(x * y == 0);
+            lemma_small_mod(0, p());
+        }
+        crate::lemmas::ristretto_lemmas::batch_compress_lemmas::lemma_ristretto_compress_affine_zero_xy(
+        x, y);
+        lemma_decode_zero();
+        lemma_small_mod(0, p());
+        assert(field_mul(0, 1) == 0);
+        lemma_decompress_of_representative(0, 0, 1);
+        lemma_zero_xy_coset_contains_identity(x, y);
+        crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_identity_on_curve();
+    } else {
+        let w = lemma_double_u1_square(x, y, q);
+        let r = lemma_compress_representative(x, y, w.0, w.1);
+        lemma_decode_of_representative(r.0, r.1, r.2);
+        lemma_decompress_of_representative(r.0, r.1, r.2);
+    }
+}
+
+// =============================================================================
+// The coset maps form the cyclic group generated by the rotation
+// =============================================================================
+/// The four maps P ↦ P + T for T in E[4], as ristretto_rot^k: k = 0 identity,
+/// 1 rotation (+T₆), 2 negation (+T₄), 3 negated rotation (+T₂), with
+/// T_j = spec_eight_torsion()[j].
+pub open spec fn coset_map(k: nat, pt: (nat, nat)) -> (nat, nat) {
+    let r = ristretto_rot(pt.0, pt.1);
+    if k == 0 {
+        pt
+    } else if k == 1 {
+        r
+    } else if k == 2 {
+        (field_neg(pt.0), field_neg(pt.1))
+    } else {
+        (field_neg(r.0), field_neg(r.1))
+    }
+}
+
+/// Coordinate rules: −(−a) = a, (−a)·i = −(a·i), (a·i)·i = −a.
+proof fn lemma_coset_rules(a: nat)
+    requires
+        a < p(),
+    ensures
+        field_neg(field_neg(a)) == a,
+        field_mul(field_neg(a), sqrt_m1()) == field_neg(field_mul(a, sqrt_m1())),
+        field_mul(field_mul(a, sqrt_m1()), sqrt_m1()) == field_neg(a),
+        field_neg(a) < p(),
+        field_mul(a, sqrt_m1()) < p(),
+{
+    p_gt_2();
+    lemma_small_mod(a, p());
+    lemma_field_neg_neg(a);
+    lemma_field_neg_mul_left(a, sqrt_m1());
+    lemma_mul_i_squared_is_neg(a);
+    lemma_mod_bound((p() - field_canonical(a)) as int, p() as int);
+    lemma_mod_bound((a * sqrt_m1()) as int, p() as int);
+}
+
+// =============================================================================
+// Link to ristretto_coset_affine
+// =============================================================================
+/// Adding a point (a, b) with a·b = 0: the denominators are 1, so
+/// (x, y) + (a, b) = (x·b + y·a, y·b + x·a).
+proof fn lemma_edwards_add_e4(x: nat, y: nat, a: nat, b: nat)
+    requires
+        cong((a as int) * (b as int), 0),
+    ensures
+        cong(edwards_add(x, y, a, b).0 as int, (x as int) * (b as int) + (y as int) * (a as int)),
+        cong(edwards_add(x, y, a, b).1 as int, (y as int) * (b as int) + (x as int) * (a as int)),
+        edwards_add(x, y, a, b).0 < p(),
+        edwards_add(x, y, a, b).1 < p(),
+{
+    lemma_cong_p_facts();
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    let (X, Y, A, B) = (x as int, y as int, a as int, b as int);
+    let x1x2 = field_mul(x, a);
+    let y1y2 = field_mul(y, b);
+    let x1y2 = field_mul(x, b);
+    let y1x2 = field_mul(y, a);
+    lemma_cong_fmul(x, a, X, A);
+    lemma_cong_fmul(y, b, Y, B);
+    lemma_cong_fmul(x, b, X, B);
+    lemma_cong_fmul(y, a, Y, A);
+    let m = field_mul(x1x2, y1y2);
+    lemma_cong_fmul(x1x2, y1y2, X * A, Y * B);
+    let t = field_mul(d, m);
+    lemma_cong_fmul(d, m, d_int(), X * A * (Y * B));
+    assert(d_int() * (X * A * (Y * B)) == (d_int() * X * Y) * (A * B)) by (nonlinear_arith);
+    lemma_cong_mul(d_int() * X * Y, A * B, d_int() * X * Y, 0);
+    assert(d_int() * X * Y * 0 == 0);
+    lemma_mod_bound((d * m) as int, p() as int);
+    lemma_small_mod(0, p());
+    lemma_cong_canonical_eq(t, 0);
+    lemma_small_mod(1, p());
+    let dx = field_add(1, t);
+    let dy = field_sub(1, t);
+    assert(dx == 1);
+    lemma_cong_fsub(1, t, 1, 0);
+    lemma_mod_bound((1 + p()) as int, p() as int);
+    lemma_cong_canonical_eq(dy, 1);
+    lemma_field_inv_one();
+    let nx = field_add(x1y2, y1x2);
+    lemma_cong_fadd(x1y2, y1x2, X * B, Y * A);
+    let ny = field_add(y1y2, x1x2);
+    lemma_cong_fadd(y1y2, x1x2, Y * B, X * A);
+    lemma_cong_fmul(nx, 1, X * B + Y * A, 1);
+    lemma_cong_fmul(ny, 1, Y * B + X * A, 1);
+    lemma_mod_bound((nx * 1) as int, p() as int);
+    lemma_mod_bound((ny * 1) as int, p() as int);
+}
+
+/// With P = (x, y), ristretto_coset_affine(x, y) = [P, P + T₂, P + T₄, P + T₆] is
+/// [P, coset_map(3, P), coset_map(2, P), coset_map(1, P)].
+pub proof fn lemma_coset_affine_explicit(x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+    ensures
+        ristretto_coset_affine(x, y) == [
+            (x, y),
+            coset_map(3, (x, y)),
+            coset_map(2, (x, y)),
+            coset_map(1, (x, y)),
+        ],
+{
+    use crate::lemmas::edwards_lemmas::torsion_lemmas::lemma_four_torsion_affine;
+    lemma_cong_p_facts();
+    lemma_sqrt_m1_cong();
+    lemma_four_torsion_affine();
+    let i = sqrt_m1();
+    let Ii = i as int;
+    let (X, Y) = (x as int, y as int);
+    let ni = field_neg(i);
+    let n1 = field_neg(1nat);
+    lemma_cong_fneg(i, Ii);
+    lemma_cong_fneg(1, 1);
+    lemma_small_mod(0, p());
+    assert(-Ii * 0 == 0);
+    assert(0 * -1 == 0);
+    assert(Ii * 0 == 0);
+    lemma_cong_mul(ni as int, 0, -Ii, 0);
+    lemma_cong_mul(0, n1 as int, 0, -1);
+    lemma_edwards_add_e4(x, y, ni, 0);
+    lemma_edwards_add_e4(x, y, 0, n1);
+    lemma_edwards_add_e4(x, y, i, 0);
+    let c = ristretto_coset_affine(x, y);
+    let r = ristretto_rot(x, y);
+    lemma_coset_rules(x);
+    lemma_coset_rules(y);
+    // P + T₂ = (−y·i, −x·i).
+    lemma_cong_fmul(y, i, Y, Ii);
+    lemma_cong_fmul(x, i, X, Ii);
+    lemma_cong_fneg(r.0, Y * Ii);
+    lemma_cong_fneg(r.1, X * Ii);
+    assert(X * 0 + Y * (-Ii) == -(Y * Ii)) by (nonlinear_arith);
+    assert(Y * 0 + X * (-Ii) == -(X * Ii)) by (nonlinear_arith);
+    lemma_cong_mul(Y, ni as int, Y, -Ii);
+    lemma_cong_mul(X, ni as int, X, -Ii);
+    lemma_cong_add(X * 0, Y * (ni as int), X * 0, Y * (-Ii));
+    lemma_cong_add(Y * 0, X * (ni as int), Y * 0, X * (-Ii));
+    lemma_mod_bound((p() - field_canonical(r.0)) as int, p() as int);
+    lemma_mod_bound((p() - field_canonical(r.1)) as int, p() as int);
+    lemma_cong_canonical_eq(c[1].0, field_neg(r.0));
+    lemma_cong_canonical_eq(c[1].1, field_neg(r.1));
+    // P + T₄ = (−x, −y).
+    lemma_cong_fneg(x, X);
+    lemma_cong_fneg(y, Y);
+    lemma_cong_mul(X, n1 as int, X, -1);
+    lemma_cong_mul(Y, n1 as int, Y, -1);
+    lemma_cong_add(X * (n1 as int), Y * 0, X * -1, Y * 0);
+    lemma_cong_add(Y * (n1 as int), X * 0, Y * -1, X * 0);
+    assert(X * -1 + Y * 0 == -X);
+    assert(Y * -1 + X * 0 == -Y);
+    lemma_mod_bound((p() - field_canonical(x)) as int, p() as int);
+    lemma_mod_bound((p() - field_canonical(y)) as int, p() as int);
+    lemma_cong_canonical_eq(c[2].0, field_neg(x));
+    lemma_cong_canonical_eq(c[2].1, field_neg(y));
+    // P + T₆ = (y·i, x·i).
+    assert(X * 0 + Y * Ii == Y * Ii);
+    assert(Y * 0 + X * Ii == X * Ii);
+    lemma_mod_bound((y * i) as int, p() as int);
+    lemma_mod_bound((x * i) as int, p() as int);
+    lemma_cong_canonical_eq(c[3].0, r.0);
+    lemma_cong_canonical_eq(c[3].1, r.1);
+}
+
+/// is_in_explicit_coset is membership in ristretto_coset_affine.
+pub proof fn lemma_explicit_coset_iff_coset_affine(a: (nat, nat), x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+    ensures
+        is_in_explicit_coset(a, x, y) <==> (a == ristretto_coset_affine(x, y)[0] || a
+            == ristretto_coset_affine(x, y)[1] || a == ristretto_coset_affine(x, y)[2] || a
+            == ristretto_coset_affine(x, y)[3]),
+{
+    lemma_coset_affine_explicit(x, y);
 }
 
 /// On the curve, (1 + y)(1 − y)·(1 + x²) ≡ x²y²·(−1 − d).

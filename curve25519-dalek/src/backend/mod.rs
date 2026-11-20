@@ -315,7 +315,7 @@ pub fn straus_multiscalar_mul_verus(scalars: &[Scalar], points: &[EdwardsPoint])
     EdwardsPoint)
     requires
         scalars@.len() == points@.len(),
-        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
         forall|i: int|
             0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i]),
     ensures
@@ -338,7 +338,7 @@ pub fn straus_optional_multiscalar_mul_verus(
 ) -> (result: Option<EdwardsPoint>)
     requires
         scalars@.len() == points@.len(),
-        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+        forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
         forall|i: int|
             0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
                 ==> is_well_formed_edwards_point(points@[i].unwrap()),

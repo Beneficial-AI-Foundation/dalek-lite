@@ -3589,15 +3589,19 @@ impl RistrettoPoint {
     ///
     /// Panics if `scalars` and `points` have different lengths.
     ///
-    /// The `requires` clauses bind only verified callers. An unverified caller that passes
-    /// non-canonical scalars or points that are not well-formed gets no guarantee about the
+    /// The scalars need not be reduced modulo \\(\ell\\), but bit 255 of each scalar must be
+    /// clear. The result uses the integer value of each scalar, so for points outside the
+    /// prime-order subgroup an unreduced scalar can give a different result than its reduction.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes a
+    /// scalar with bit 255 set, or points that are not well-formed, gets no guarantee about the
     /// result.
     #[cfg(feature = "alloc")]
     pub fn multiscalar_mul_slices(scalars: &[Scalar], points: &[RistrettoPoint]) -> (result:
         RistrettoPoint)
         requires
             scalars@.len() == points@.len(),
-            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
             forall|i: int|
                 0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i].0),
         ensures
@@ -3637,8 +3641,12 @@ impl RistrettoPoint {
     ///
     /// Panics if `scalars` and `points` have different lengths.
     ///
-    /// The `requires` clauses bind only verified callers. An unverified caller that passes
-    /// non-canonical scalars or points that are not well-formed gets no guarantee about the
+    /// The scalars need not be reduced modulo \\(\ell\\), but bit 255 of each scalar must be
+    /// clear. The result uses the integer value of each scalar, so for points outside the
+    /// prime-order subgroup an unreduced scalar can give a different result than its reduction.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes a
+    /// scalar with bit 255 set, or points that are not well-formed, gets no guarantee about the
     /// result.
     #[cfg(feature = "alloc")]
     pub fn optional_multiscalar_mul_slices(
@@ -3647,7 +3655,7 @@ impl RistrettoPoint {
     ) -> (result: Option<RistrettoPoint>)
         requires
             scalars@.len() == points@.len(),
-            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
             forall|i: int|
                 0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
                     ==> is_well_formed_edwards_point(points@[i].unwrap().0),

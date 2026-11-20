@@ -238,4 +238,63 @@ fn check_pippenger_any_scalar() {
     ));
 }
 
+/// The public dispatchers accept a scalar above the group order when bit 255 is clear.
+fn check_unreduced_scalars() {
+    // 2^255 - 1: above the group order, bit 255 clear.
+    let s = Scalar {
+        bytes: [
+            255u8,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            255,
+            127,
+        ],
+    };
+    let p = EdwardsPoint::identity();
+
+    let mut scalars: Vec<Scalar> = Vec::new();
+    scalars.push(s);
+    let mut points: Vec<EdwardsPoint> = Vec::new();
+    points.push(p);
+    let mut opt_points: Vec<Option<EdwardsPoint>> = Vec::new();
+    opt_points.push(Some(p));
+
+    let r = EdwardsPoint::multiscalar_mul_slices(scalars.as_slice(), points.as_slice());
+    assert(edwards_point_as_affine(r) == sum_of_scalar_muls(scalars@, points@));
+
+    let o = EdwardsPoint::optional_multiscalar_mul_slices(
+        scalars.as_slice(),
+        opt_points.as_slice(),
+    );
+    assert(opt_points@[0].is_some());
+    assert(o.is_some());
+}
+
 } // verus!

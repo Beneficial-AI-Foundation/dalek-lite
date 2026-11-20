@@ -305,8 +305,8 @@ impl Straus {
     // Same number of scalars and points
 
             scalars@.len() == points@.len(),
-            // All scalars are canonical
-            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            // Bit 255 of every scalar is clear (Scalar invariant #1)
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
             // All input points (when Some) must be well-formed
             forall|i: int|
                 0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
@@ -344,10 +344,8 @@ impl Straus {
                 0 <= idx <= scalars@.len(),
                 nafs@.len() == idx as int,
                 scalars@ == spec_scalars,
-                // All scalars are canonical (from the precondition)
-                forall|k: int|
-                    #![auto]
-                    0 <= k < scalars@.len() ==> is_canonical_scalar(&#[trigger] scalars@[k]),
+                // Bit 255 of every scalar is clear (from the precondition)
+                forall|k: int| #![auto] 0 <= k < scalars@.len() ==> scalars@[k].bytes[31] <= 127,
                 // Each NAF is valid
                 forall|k: int|
                     0 <= k < idx ==> {
@@ -357,7 +355,6 @@ impl Straus {
             decreases scalars.len() - idx,
         {
             proof {
-                assert(is_canonical_scalar(&scalars@[idx as int]));
                 assert(scalars@[idx as int].bytes[31] <= 127);
                 // Establishes non_adjacent_form precondition: scalar_as_nat < pow2(255)
                 crate::lemmas::common_lemmas::to_nat_lemmas::lemma_u8_32_as_nat_lt_pow2_255(
@@ -816,8 +813,8 @@ impl Straus {
     // Same number of scalars and points
 
             scalars@.len() == points@.len(),
-            // All scalars are canonical
-            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> is_canonical_scalar(&scalars@[i]),
+            // Bit 255 of every scalar is clear (Scalar invariant #1)
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
             // All input points must be well-formed
             forall|i: int|
                 0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i]),
@@ -890,10 +887,8 @@ impl Straus {
                 0 <= idx <= scalars@.len(),
                 scalar_digits@.len() == idx as int,
                 scalars@ == spec_scalars,
-                // All scalars are canonical (from the precondition)
-                forall|k: int|
-                    #![auto]
-                    0 <= k < scalars@.len() ==> is_canonical_scalar(&#[trigger] scalars@[k]),
+                // Bit 255 of every scalar is clear (from the precondition)
+                forall|k: int| #![auto] 0 <= k < scalars@.len() ==> scalars@[k].bytes[31] <= 127,
                 // Each digit array is valid radix-16
                 forall|k: int|
                     #![auto]

@@ -1700,6 +1700,251 @@ pub proof fn lemma_ristretto_coset_same_encoding(x: nat, y: nat, q: (nat, nat), 
     }
 }
 
+// =============================================================================
+// Differences inside a coset are E[4] points
+// =============================================================================
+/// For a in the coset of P = (x, y) on the curve, a − P is one of the four
+/// E[4] points (0, 1), (−i, 0), (0, −1), (i, 0).
+pub proof fn lemma_coset_diff_in_e4(a: (nat, nat), x: nat, y: nat)
+    requires
+        x < p(),
+        y < p(),
+        is_on_edwards_curve(x, y),
+        is_in_explicit_coset(a, x, y),
+    ensures
+        ({
+            let diff = edwards_sub(a.0, a.1, x, y);
+            diff == (0nat, 1nat) || diff == (field_neg(sqrt_m1()), 0nat) || diff == (
+                0nat,
+                field_neg(1nat),
+            ) || diff == (sqrt_m1(), 0nat)
+        }),
+{
+    lemma_cong_p_facts();
+    lemma_sqrt_m1_cong();
+    let k = lemma_explicit_coset_index(a, x, y);
+    lemma_coset_map_compose(0, k, (x, y));
+    let i = sqrt_m1();
+    let Ii = i as int;
+    let D = d_int();
+    let (X, Y) = (x as int, y as int);
+    let (A0, A1) = (a.0 as int, a.1 as int);
+    let nx = field_neg(x);
+    let NXv = nx as int;
+    lemma_cong_fneg(x, X);
+    lemma_edwards_add_cong(a.0, a.1, nx, y);
+    let diff = edwards_sub(a.0, a.1, x, y);
+    let T = D * ((A0 * NXv) * (A1 * Y));
+    let xnum = A0 * Y + A1 * NXv;
+    let ynum = A1 * Y + A0 * NXv;
+    // Polynomial forms of a.
+    let (a0p, a1p) = if k == 0 {
+        (X, Y)
+    } else if k == 1 {
+        (Y * Ii, X * Ii)
+    } else if k == 2 {
+        (-X, -Y)
+    } else {
+        (-(Y * Ii), -(X * Ii))
+    };
+    lemma_cong_fmul(x, i, X, Ii);
+    lemma_cong_fmul(y, i, Y, Ii);
+    lemma_cong_fneg(y, Y);
+    lemma_cong_fneg(field_mul(y, i), Y * Ii);
+    lemma_cong_fneg(field_mul(x, i), X * Ii);
+    assert(cong(A0, a0p) && cong(A1, a1p));
+    lemma_cong_mul(A0, NXv, a0p, -X);
+    lemma_cong_mul(A1, Y, a1p, Y);
+    lemma_cong_mul(A0 * NXv, A1 * Y, a0p * (-X), a1p * Y);
+    lemma_cong_mul(D, (A0 * NXv) * (A1 * Y), D, (a0p * (-X)) * (a1p * Y));
+    lemma_cong_mul(A0, Y, a0p, Y);
+    lemma_cong_mul(A1, NXv, a1p, -X);
+    lemma_cong_add(A0 * Y, A1 * NXv, a0p * Y, a1p * (-X));
+    lemma_cong_add(A1 * Y, A0 * NXv, a1p * Y, a0p * (-X));
+    let tp = D * ((a0p * (-X)) * (a1p * Y));
+    let xp = a0p * Y + a1p * (-X);
+    let yp = a1p * Y + a0p * (-X);
+    // den = 1 + d·x²y² ≢ 0 and y² − x² ≡ den.
+    let den = 1 + D * (X * X * (Y * Y));
+    lemma_edwards_add_denominators_cong(x, y, x, y);
+    let hc = curve_poly(X, Y);
+    lemma_curve_cong(x, y);
+    assert(Y * Y - X * X == den + 1 * hc);
+    lemma_cong_add_multiple(den, 1, hc);
+    lemma_small_mod(0, p());
+    lemma_small_mod(1, p());
+    if k == 0 || k == 2 {
+        // t ≡ −d·x²y², so 1 − t ≡ den; x-numerator ≡ 0.
+        assert(tp == -(D * (X * X * (Y * Y)))) by (nonlinear_arith)
+            requires
+                tp == D * ((a0p * (-X)) * (a1p * Y)),
+                (a0p == X && a1p == Y) || (a0p == -X && a1p == -Y),
+        ;
+        assert(xp == 0) by (nonlinear_arith)
+            requires
+                xp == a0p * Y + a1p * (-X),
+                (a0p == X && a1p == Y) || (a0p == -X && a1p == -Y),
+        ;
+        assert(1 - tp == den);
+        assert(diff.0 == 0);
+        let sgn: int = if k == 0 {
+            1
+        } else {
+            -1
+        };
+        assert(yp == sgn * (Y * Y - X * X)) by (nonlinear_arith)
+            requires
+                yp == a1p * Y + a0p * (-X),
+                (a0p == X && a1p == Y && sgn == 1) || (a0p == -X && a1p == -Y && sgn == -1),
+        ;
+        lemma_cong_mul(sgn, Y * Y - X * X, sgn, den);
+        lemma_cong_sub(1, T, 1, tp);
+        lemma_cong_mul(diff.1 as int, 1 - T, diff.1 as int, den);
+        // y3·den ≡ sgn·den, so y3 ≡ sgn.
+        assert((diff.1 as int) * den == den * (diff.1 as int)) by (nonlinear_arith);
+        assert(sgn * den == den * sgn) by (nonlinear_arith);
+        lemma_cong_cancel(den, diff.1 as int, sgn);
+        if k == 0 {
+            lemma_cong_canonical_eq(diff.1, 1);
+        } else {
+            lemma_cong_fneg(1, 1);
+            lemma_mod_bound((p() - field_canonical(1)) as int, p() as int);
+            lemma_cong_canonical_eq(diff.1, field_neg(1));
+        }
+    } else {
+        // t ≡ d·x²y², so 1 + t ≡ den; y-numerator ≡ 0.
+        assert(tp == -(Ii * Ii) * (D * (X * X * (Y * Y)))) by (nonlinear_arith)
+            requires
+                tp == D * ((a0p * (-X)) * (a1p * Y)),
+                (a0p == Y * Ii && a1p == X * Ii) || (a0p == -(Y * Ii) && a1p == -(X * Ii)),
+        ;
+        lemma_cong_neg(Ii * Ii, -1);
+        lemma_cong_mul(-(Ii * Ii), D * (X * X * (Y * Y)), --1, D * (X * X * (Y * Y)));
+        assert(--1 * (D * (X * X * (Y * Y))) == D * (X * X * (Y * Y)));
+        lemma_cong_add(1, tp, 1, D * (X * X * (Y * Y)));
+        assert(yp == 0) by (nonlinear_arith)
+            requires
+                yp == a1p * Y + a0p * (-X),
+                (a0p == Y * Ii && a1p == X * Ii) || (a0p == -(Y * Ii) && a1p == -(X * Ii)),
+        ;
+        assert(diff.1 == 0);
+        let sgn: int = if k == 1 {
+            Ii
+        } else {
+            -Ii
+        };
+        assert(xp == sgn * (Y * Y - X * X)) by (nonlinear_arith)
+            requires
+                xp == a0p * Y + a1p * (-X),
+                (a0p == Y * Ii && a1p == X * Ii && sgn == Ii) || (a0p == -(Y * Ii) && a1p == -(X
+                    * Ii) && sgn == -Ii),
+        ;
+        lemma_cong_mul(sgn, Y * Y - X * X, sgn, den);
+        lemma_cong_add(1, T, 1, tp);
+        lemma_cong_mul(diff.0 as int, 1 + T, diff.0 as int, den);
+        assert((diff.0 as int) * den == den * (diff.0 as int)) by (nonlinear_arith);
+        assert(sgn * den == den * sgn) by (nonlinear_arith);
+        lemma_cong_cancel(den, diff.0 as int, sgn);
+        if k == 1 {
+            lemma_cong_canonical_eq(diff.0, i);
+        } else {
+            lemma_cong_fneg(i, Ii);
+            lemma_mod_bound((p() - field_canonical(i)) as int, p() as int);
+            lemma_cong_canonical_eq(diff.0, field_neg(i));
+        }
+    }
+}
+
+// =============================================================================
+// EdwardsPoint forms: ristretto_equivalent and is_in_even_subgroup
+// =============================================================================
+/// Two well-formed points whose affine forms are in one coset are
+/// ristretto_equivalent.
+pub proof fn lemma_explicit_coset_implies_ristretto_equivalent(p1: EdwardsPoint, p2: EdwardsPoint)
+    requires
+        is_well_formed_edwards_point(p1),
+        is_well_formed_edwards_point(p2),
+        is_in_explicit_coset(
+            edwards_point_as_affine(p1),
+            edwards_point_as_affine(p2).0,
+            edwards_point_as_affine(p2).1,
+        ),
+    ensures
+        ristretto_equivalent(p1, p2),
+{
+    use crate::lemmas::edwards_lemmas::torsion_lemmas::lemma_four_torsion_affine;
+    let a2 = edwards_point_as_affine(p2);
+    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_point_as_affine_on_curve(
+        p2,
+    );
+    lemma_coset_diff_in_e4(edwards_point_as_affine(p1), a2.0, a2.1);
+    lemma_four_torsion_affine();
+    crate::backend::serial::u64::constants::lemma_eight_torsion_zero_affine();
+}
+
+/// Round trip for an EdwardsPoint in the even subgroup.
+pub proof fn lemma_ristretto_compress_roundtrip_point(point: EdwardsPoint)
+    requires
+        is_well_formed_edwards_point(point),
+        is_in_even_subgroup(point),
+    ensures
+        ({
+            let (x, y) = edwards_point_as_affine(point);
+            let dec = spec_ristretto_decompress(ristretto_compress_affine(x, y));
+            &&& dec is Some
+            &&& dec.unwrap().2 == 1
+            &&& dec.unwrap().3 == field_mul(dec.unwrap().0, dec.unwrap().1)
+            &&& is_on_edwards_curve(dec.unwrap().0, dec.unwrap().1)
+            &&& is_in_explicit_coset((dec.unwrap().0, dec.unwrap().1), x, y)
+            &&& is_in_explicit_coset((x, y), dec.unwrap().0, dec.unwrap().1)
+        }),
+{
+    let (x, y) = edwards_point_as_affine(point);
+    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_point_as_affine_on_curve(
+        point,
+    );
+    let q = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(point)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    lemma_ristretto_compress_roundtrip(x, y, q);
+    let dec = spec_ristretto_decompress(ristretto_compress_affine(x, y)).unwrap();
+    lemma_explicit_coset_symmetric((dec.0, dec.1), (x, y));
+}
+
+/// Injectivity for EdwardsPoints in the even subgroup: equal encodings of
+/// the affine forms imply ristretto_equivalent.
+pub proof fn lemma_ristretto_compress_injective_point(p1: EdwardsPoint, p2: EdwardsPoint)
+    requires
+        is_well_formed_edwards_point(p1),
+        is_well_formed_edwards_point(p2),
+        is_in_even_subgroup(p1),
+        is_in_even_subgroup(p2),
+        ristretto_compress_affine(edwards_point_as_affine(p1).0, edwards_point_as_affine(p1).1)
+            == ristretto_compress_affine(
+            edwards_point_as_affine(p2).0,
+            edwards_point_as_affine(p2).1,
+        ),
+    ensures
+        ristretto_equivalent(p1, p2),
+{
+    let (x1, y1) = edwards_point_as_affine(p1);
+    let (x2, y2) = edwards_point_as_affine(p2);
+    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_point_as_affine_on_curve(
+        p1,
+    );
+    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_point_as_affine_on_curve(
+        p2,
+    );
+    let q1 = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p1)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    let q2 = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p2)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    lemma_ristretto_compress_injective(x1, y1, q1, x2, y2, q2);
+    lemma_explicit_coset_implies_ristretto_equivalent(p1, p2);
+}
+
 /// On the curve, (1 + y)(1 − y)·(1 + x²) ≡ x²y²·(−1 − d).
 proof fn lemma_u1_rot_cong(x: nat, y: nat)
     requires

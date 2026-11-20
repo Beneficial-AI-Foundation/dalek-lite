@@ -352,4 +352,20 @@ pub proof fn lemma_cong_zero_pm_one(e: int)
     }
 }
 
+// =============================================================================
+// Division
+// =============================================================================
+/// If v ≡ a·z and zi·z ≡ 1, then field_mul(v, zi) ≡ a.
+pub proof fn lemma_cong_div_z(v: nat, a: int, zi: nat, z: int)
+    requires
+        cong(v as int, a * z),
+        cong((zi as int) * z, 1),
+    ensures
+        cong(field_mul(v, zi) as int, a),
+{
+    lemma_cong_fmul(v, zi, a * z, zi as int);
+    assert(a * z * (zi as int) == a * ((zi as int) * z)) by (nonlinear_arith);
+    lemma_cong_mul(a, (zi as int) * z, a, 1);
+}
+
 } // verus!

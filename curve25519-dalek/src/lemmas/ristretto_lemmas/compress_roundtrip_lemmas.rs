@@ -1945,6 +1945,49 @@ pub proof fn lemma_ristretto_compress_injective_point(p1: EdwardsPoint, p2: Edwa
     lemma_explicit_coset_implies_ristretto_equivalent(p1, p2);
 }
 
+// =============================================================================
+// Projective bridge: extended coordinates (X : Y : Z : T)
+// =============================================================================
+/// The encoder on extended coordinates (x : y : z : t) with x·y = 0 gives the zero encoding.
+pub proof fn lemma_ristretto_compress_extended_zero_xy(x: nat, y: nat, z: nat, t: nat)
+    requires
+        field_mul(x, y) == 0,
+    ensures
+        ristretto_compress_extended(x, y, z, t) == u8_32_from_nat(0),
+{
+    lemma_cong_p_facts();
+    lemma_small_mod(0, p());
+    let u1 = field_mul(field_add(z, y), field_sub(z, y));
+    let u2 = field_mul(x, y);
+    assert(field_square(u2) == 0);
+    let vu = field_mul(u1, field_square(u2));
+    assert(u1 * 0 == 0);
+    assert(vu == 0);
+    let big_i = nat_invsqrt(vu);
+    assert(big_i == 0);
+    let c = fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D);
+    assert(0 * u1 == 0 && 0 * u2 == 0 && 0 * c == 0);
+    let i1 = field_mul(big_i, u1);
+    let i2 = field_mul(big_i, u2);
+    assert(i1 == 0 && i2 == 0);
+    let i2t = field_mul(i2, t);
+    assert(0 * t == 0);
+    assert(i2t == 0);
+    let z_inv = field_mul(i1, i2t);
+    assert(z_inv == 0);
+    assert(field_mul(i1, c) == 0);
+    assert(forall|a: nat| #[trigger] field_mul(a, 0) == 0) by {
+        assert forall|a: nat| #[trigger] field_mul(a, 0) == 0 by {
+            assert(a * 0 == 0);
+        }
+    }
+    assert(forall|a: nat| #[trigger] field_mul(0, a) == 0) by {
+        assert forall|a: nat| #[trigger] field_mul(0, a) == 0 by {
+            assert(0 * a == 0);
+        }
+    }
+}
+
 /// On the curve, (1 + y)(1 − y)·(1 + x²) ≡ x²y²·(−1 − d).
 proof fn lemma_u1_rot_cong(x: nat, y: nat)
     requires
@@ -2061,6 +2104,568 @@ proof fn lemma_den_cond_rot(dn: nat, J: int, x: nat, y: nat)
         by (nonlinear_arith);
     assert(J * J * VU == P1 * (u1p * Q));
     lemma_cong_mul(P1 * (u1p * Q), P2 * (-1 - D), 1, 1);
+}
+
+proof fn lemma_id_zinv(I: int, ZZ: int, u: int, w: int)
+    ensures
+        (I * (ZZ * u)) * (I * (ZZ * w)) * (ZZ * w) == (I * I) * (ZZ * ZZ * ZZ) * (u * (w * w)),
+{
+    let a = I * I;
+    let b = ZZ * ZZ;
+    assert((I * (ZZ * u)) * (I * (ZZ * w)) == a * b * (u * w)) by (nonlinear_arith)
+        requires
+            a == I * I,
+            b == ZZ * ZZ,
+    ;
+    assert(a * b * (u * w) * (ZZ * w) == a * (b * ZZ) * (u * (w * w))) by (nonlinear_arith);
+}
+
+/// Setup for the encoder on extended coordinates (xx : yy : zz : tt) with affine
+/// form (xa, ya) = (xx/zz, yy/zz): xx ≡ xa·zz, yy ≡ ya·zz, zz·tt ≡ xx·yy.
+/// With u1 = (zz + yy)(zz − yy), u2 = xx·yy and I the invsqrt of u1·u2², the result
+/// J = I·zz³ satisfies J²·u1a·(xa·ya)² ≡ 1, where u1a = (1 + ya)(1 − ya).
+/// The encoder's z_inv = (I·u1)·(I·u2·tt) satisfies z_inv·zz ≡ 1 and tt·z_inv = xa·ya.
+proof fn lemma_compress_extended_setup(
+    xx: nat,
+    yy: nat,
+    zz: nat,
+    tt: nat,
+    num: int,
+    den: int,
+) -> (J: int)
+    requires
+        xx < p(),
+        yy < p(),
+        zz < p(),
+        tt < p(),
+        zz != 0,
+        field_mul(xx, yy) == field_mul(zz, tt),
+        field_mul(xx, field_inv(zz)) != 0,
+        field_mul(yy, field_inv(zz)) != 0,
+        is_on_edwards_curve(field_mul(xx, field_inv(zz)), field_mul(yy, field_inv(zz))),
+        !cong(den, 0),
+        cong(
+            (1 + (field_mul(yy, field_inv(zz)) as int)) * (1 - (field_mul(
+                yy,
+                field_inv(zz),
+            ) as int)) * (den * den),
+            num * num,
+        ),
+    ensures
+        ({
+            let xa = field_mul(xx, field_inv(zz));
+            let ya = field_mul(yy, field_inv(zz));
+            let (XA, YA, Z) = (xa as int, ya as int, zz as int);
+            let xy = XA * YA;
+            let u1a = (1 + YA) * (1 - YA);
+            let u1 = field_mul(field_add(zz, yy), field_sub(zz, yy));
+            let u2 = field_mul(xx, yy);
+            let big_i = nat_invsqrt(field_mul(u1, field_square(u2)));
+            let I = big_i as int;
+            let i1 = field_mul(big_i, u1);
+            let i2 = field_mul(big_i, u2);
+            let z_inv = field_mul(i1, field_mul(i2, tt));
+            &&& cong(xx as int, XA * Z)
+            &&& cong(yy as int, YA * Z)
+            &&& big_i < p()
+            &&& J == I * (Z * Z * Z)
+            &&& cong(J * J * (u1a * (xy * xy)), 1)
+            &&& cong(i1 as int, I * (Z * Z * u1a))
+            &&& cong(i2 as int, I * (Z * Z * xy))
+            &&& cong((z_inv as int) * Z, 1)
+            &&& field_mul(tt, z_inv) == field_mul(xa, ya)
+            &&& z_inv < p()
+            &&& i1 < p()
+            &&& i2 < p()
+        }),
+{
+    lemma_cong_p_facts();
+    let zi = field_inv(zz);
+    let ZI = zi as int;
+    let (Xi, Yi, Z, Ti) = (xx as int, yy as int, zz as int, tt as int);
+    lemma_cong_canonical_zero(zz);
+    lemma_cong_inv(zz);
+    let xa = field_mul(xx, zi);
+    let ya = field_mul(yy, zi);
+    let (XA, YA) = (xa as int, ya as int);
+    // X ≡ xa·Z and Y ≡ ya·Z.
+    lemma_cong_fmul(xx, zi, Xi, ZI);
+    lemma_cong_fmul(yy, zi, Yi, ZI);
+    lemma_cong_mul(XA, Z, Xi * ZI, Z);
+    lemma_cong_mul(YA, Z, Yi * ZI, Z);
+    assert(Xi * ZI * Z == Xi * (ZI * Z)) by (nonlinear_arith);
+    assert(Yi * ZI * Z == Yi * (ZI * Z)) by (nonlinear_arith);
+    lemma_cong_mul(Xi, ZI * Z, Xi, 1);
+    lemma_cong_mul(Yi, ZI * Z, Yi, 1);
+    let xy = XA * YA;
+    let u1a = (1 + YA) * (1 - YA);
+    let VUa = u1a * (xy * xy);
+    let ZZ = Z * Z;
+    let Z3 = Z * Z * Z;
+    // Z·T ≡ X·Y ≡ Z²·xa·ya.
+    lemma_cong_fmul(xx, yy, Xi, Yi);
+    lemma_cong_fmul(zz, tt, Z, Ti);
+    lemma_cong_mul(Xi, Yi, XA * Z, YA * Z);
+    assert(XA * Z * (YA * Z) == ZZ * xy) by (nonlinear_arith)
+        requires
+            ZZ == Z * Z,
+            xy == XA * YA,
+    ;
+    assert(cong(Z * Ti, ZZ * xy));
+    // u1 ≡ Z²·u1a, u2 ≡ Z²·xy.
+    let u1 = field_mul(field_add(zz, yy), field_sub(zz, yy));
+    lemma_cong_fadd(zz, yy, Z, YA * Z);
+    lemma_cong_fsub(zz, yy, Z, YA * Z);
+    lemma_cong_fmul(field_add(zz, yy), field_sub(zz, yy), Z + YA * Z, Z - YA * Z);
+    assert((Z + YA * Z) * (Z - YA * Z) == ZZ * u1a) by (nonlinear_arith)
+        requires
+            ZZ == Z * Z,
+            u1a == (1 + YA) * (1 - YA),
+    ;
+    let u2 = field_mul(xx, yy);
+    let u2sq = field_square(u2);
+    lemma_cong_fsquare(u2, ZZ * xy);
+    let vu = field_mul(u1, u2sq);
+    lemma_cong_fmul(u1, u2sq, ZZ * u1a, ZZ * xy * (ZZ * xy));
+    assert(ZZ * u1a * (ZZ * xy * (ZZ * xy)) == (Z3 * Z3) * VUa) by (nonlinear_arith)
+        requires
+            ZZ == Z * Z,
+            Z3 == Z * Z * Z,
+            VUa == u1a * (xy * xy),
+    ;
+    lemma_mod_bound((u1 * u2sq) as int, p() as int);
+    // vu is a nonzero square: vu·den² ≡ (Z³·xy·num)².
+    lemma_cong_canonical_zero(xa);
+    lemma_cong_canonical_zero(ya);
+    lemma_on_curve_y_not_pm1(xa, ya);
+    lemma_cong_mul_nonzero(XA, YA);
+    lemma_cong_mul_nonzero(xy, xy);
+    lemma_cong_mul_nonzero(u1a, xy * xy);
+    lemma_cong_mul_nonzero(Z, Z);
+    lemma_cong_mul_nonzero(ZZ, Z);
+    lemma_cong_mul_nonzero(Z3, Z3);
+    lemma_cong_mul_nonzero(Z3 * Z3, VUa);
+    assert((Z3 * Z3) * VUa * (den * den) == (Z3 * Z3) * (xy * xy) * (u1a * (den * den)))
+        by (nonlinear_arith)
+        requires
+            VUa == u1a * (xy * xy),
+    ;
+    lemma_cong_mul((Z3 * Z3) * (xy * xy), u1a * (den * den), (Z3 * Z3) * (xy * xy), num * num);
+    assert((Z3 * Z3) * (xy * xy) * (num * num) == (Z3 * xy * num) * (Z3 * xy * num))
+        by (nonlinear_arith);
+    lemma_cong_mul(vu as int, den * den, (Z3 * Z3) * VUa, den * den);
+    lemma_invsqrt_of_square(vu, Z3 * xy * num, den);
+    let big_i = nat_invsqrt(vu);
+    let I = big_i as int;
+    let J = I * Z3;
+    lemma_cong_mul(I * I, vu as int, I * I, (Z3 * Z3) * VUa);
+    assert(I * I * ((Z3 * Z3) * VUa) == J * J * VUa) by (nonlinear_arith)
+        requires
+            J == I * Z3,
+    ;
+    // i1, i2, z_inv.
+    let i1 = field_mul(big_i, u1);
+    lemma_cong_fmul(big_i, u1, I, ZZ * u1a);
+    let i2 = field_mul(big_i, u2);
+    lemma_cong_fmul(big_i, u2, I, ZZ * xy);
+    let i2t = field_mul(i2, tt);
+    lemma_cong_fmul(i2, tt, I * (ZZ * xy), Ti);
+    let z_inv = field_mul(i1, i2t);
+    let A1 = I * (ZZ * u1a);
+    let A2 = I * (ZZ * xy);
+    lemma_cong_fmul(i1, i2t, A1, A2 * Ti);
+    lemma_cong_mul(z_inv as int, Z, A1 * (A2 * Ti), Z);
+    assert(A1 * (A2 * Ti) * Z == (A1 * A2) * (Z * Ti)) by (nonlinear_arith);
+    lemma_cong_mul(A1 * A2, Z * Ti, A1 * A2, ZZ * xy);
+    lemma_id_zinv(I, ZZ, u1a, xy);
+    assert(Z3 * Z3 == ZZ * ZZ * ZZ) by (nonlinear_arith)
+        requires
+            ZZ == Z * Z,
+            Z3 == Z * Z * Z,
+    ;
+    assert(J * J == (I * I) * (Z3 * Z3)) by (nonlinear_arith)
+        requires
+            J == I * Z3,
+    ;
+    assert((A1 * A2) * (ZZ * xy) == J * J * VUa);
+    // T·z_inv ≡ xy.
+    let zv = z_inv as int;
+    assert((Ti * zv) * ZZ == (Z * Ti) * (zv * Z)) by (nonlinear_arith)
+        requires
+            ZZ == Z * Z,
+    ;
+    lemma_cong_mul(Z * Ti, zv * Z, ZZ * xy, 1);
+    assert(ZZ * xy * 1 == ZZ * xy);
+    assert((Ti * zv) * ZZ == ZZ * (Ti * zv)) by (nonlinear_arith);
+    lemma_cong_cancel(ZZ, Ti * zv, xy);
+    lemma_cong_fmul(tt, z_inv, Ti, zv);
+    lemma_cong_fmul(xa, ya, XA, YA);
+    lemma_mod_bound((tt * z_inv) as int, p() as int);
+    lemma_mod_bound((xa * ya) as int, p() as int);
+    lemma_cong_canonical_eq(field_mul(tt, z_inv), field_mul(xa, ya));
+    lemma_mod_bound((i1 * i2t) as int, p() as int);
+    lemma_mod_bound((big_i * u1) as int, p() as int);
+    lemma_mod_bound((big_i * u2) as int, p() as int);
+    J
+}
+
+/// The encoder on extended coordinates selects the same kind of representative
+/// as the affine encoder: lemma_compress_representative for (xx : yy : zz : tt).
+///
+/// Returns (s, Xr, Yr): the encoding of (xx : yy : zz : tt) is the bytes of s, and
+/// (Xr, Yr) is a representative of the coset of (xa, ya) = (xx/zz, yy/zz) with
+/// Xr ≥ 0, Xr·Yr ≥ 0 and s²·(1 + Yr) ≡ 1 − Yr.
+pub proof fn lemma_compress_extended_representative(
+    xx: nat,
+    yy: nat,
+    zz: nat,
+    tt: nat,
+    num: int,
+    den: int,
+) -> (r: (nat, nat, nat))
+    requires
+        xx < p(),
+        yy < p(),
+        zz < p(),
+        tt < p(),
+        zz != 0,
+        field_mul(xx, yy) == field_mul(zz, tt),
+        field_mul(xx, field_inv(zz)) != 0,
+        field_mul(yy, field_inv(zz)) != 0,
+        is_on_edwards_curve(field_mul(xx, field_inv(zz)), field_mul(yy, field_inv(zz))),
+        !cong(den, 0),
+        cong(
+            (1 + (field_mul(yy, field_inv(zz)) as int)) * (1 - (field_mul(
+                yy,
+                field_inv(zz),
+            ) as int)) * (den * den),
+            num * num,
+        ),
+    ensures
+        ristretto_compress_extended(xx, yy, zz, tt) == u8_32_from_nat(r.0),
+        r.0 < p(),
+        r.0 % 2 == 0,
+        r.1 < p(),
+        r.2 < p(),
+        r.1 % 2 == 0,
+        r.1 != 0,
+        r.2 != 0,
+        !is_negative(field_mul(r.1, r.2)),
+        is_on_edwards_curve(r.1, r.2),
+        is_in_explicit_coset(
+            (r.1, r.2),
+            field_mul(xx, field_inv(zz)),
+            field_mul(yy, field_inv(zz)),
+        ),
+        cong((r.0 as int) * (r.0 as int) * (1 + (r.2 as int)), 1 - (r.2 as int)),
+        !cong(1 + (r.2 as int), 0),
+        !cong(1 - (r.2 as int), 0),
+{
+    lemma_cong_p_facts();
+    lemma_sqrt_m1_cong();
+    let J = lemma_compress_extended_setup(xx, yy, zz, tt, num, den);
+    let xa = field_mul(xx, field_inv(zz));
+    let ya = field_mul(yy, field_inv(zz));
+    let (XA, YA, Z) = (xa as int, ya as int, zz as int);
+    let xy = XA * YA;
+    let u1a = (1 + YA) * (1 - YA);
+    let i = sqrt_m1();
+    let Ii = i as int;
+    let c = fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D);
+    let C = c as int;
+    let u1 = field_mul(field_add(zz, yy), field_sub(zz, yy));
+    let u2 = field_mul(xx, yy);
+    let big_i = nat_invsqrt(field_mul(u1, field_square(u2)));
+    let I = big_i as int;
+    let i1 = field_mul(big_i, u1);
+    let i2 = field_mul(big_i, u2);
+    let z_inv = field_mul(i1, field_mul(i2, tt));
+    let zv = z_inv as int;
+    let ta = field_mul(xa, ya);
+    let rotate = is_negative(field_mul(tt, z_inv));
+    assert(rotate == is_negative(ta));
+    let iX = field_mul(xx, i);
+    let iY = field_mul(yy, i);
+    let ench = field_mul(i1, c);
+    let x_rot = if rotate {
+        iY
+    } else {
+        xx
+    };
+    let y_rot = if rotate {
+        iX
+    } else {
+        yy
+    };
+    let den_rot = if rotate {
+        ench
+    } else {
+        i2
+    };
+    // Affine inputs of the tail.
+    let xr = if rotate {
+        field_mul(ya, i)
+    } else {
+        xa
+    };
+    let yr = if rotate {
+        field_mul(xa, i)
+    } else {
+        ya
+    };
+    let dn = field_mul(den_rot, zz);
+    lemma_mod_bound((den_rot * zz) as int, p() as int);
+    lemma_mod_bound((ya * i) as int, p() as int);
+    lemma_mod_bound((xa * i) as int, p() as int);
+    lemma_cong_fmul(xa, i, XA, Ii);
+    lemma_cong_fmul(ya, i, YA, Ii);
+    // x_rot·z_inv = xr, y_rot ≡ yr·Z, and dn²·(1 − yr²) ≡ 1.
+    if rotate {
+        lemma_cong_fmul(yy, i, yy as int, Ii);
+        lemma_cong_mul(yy as int, Ii, YA * Z, Ii);
+        assert(YA * Z * Ii == (YA * Ii) * Z) by (nonlinear_arith);
+        lemma_cong_mul(YA * Ii, Z, field_mul(ya, i) as int, Z);
+        lemma_cong_div_z(iY, field_mul(ya, i) as int, z_inv, Z);
+        lemma_cong_fmul(xx, i, xx as int, Ii);
+        lemma_cong_mul(xx as int, Ii, XA * Z, Ii);
+        assert(XA * Z * Ii == (XA * Ii) * Z) by (nonlinear_arith);
+        lemma_cong_mul(XA * Ii, Z, field_mul(xa, i) as int, Z);
+        lemma_cong_fmul(i1, c, I * (Z * Z * u1a), C);
+        lemma_cong_fmul(ench, zz, I * (Z * Z * u1a) * C, Z);
+        assert(I * (Z * Z * u1a) * C * Z == J * u1a * C) by (nonlinear_arith)
+            requires
+                J == I * (Z * Z * Z),
+        ;
+        lemma_den_cond_rot(dn, J, xa, ya);
+        lemma_rot_on_curve(xa, ya);
+        lemma_cong_canonical_zero(xa);
+        lemma_cong_canonical_zero(ya);
+        lemma_cong_mul_nonzero(YA, Ii);
+        lemma_cong_mul_nonzero(XA, Ii);
+        lemma_cong_canonical_zero(field_mul(ya, i));
+        lemma_cong_canonical_zero(field_mul(xa, i));
+    } else {
+        lemma_cong_div_z(xx, XA, z_inv, Z);
+        lemma_cong_fmul(i2, zz, I * (Z * Z * xy), Z);
+        assert(I * (Z * Z * xy) * Z == J * xy) by (nonlinear_arith)
+            requires
+                J == I * (Z * Z * Z),
+        ;
+        lemma_den_cond_nonrot(dn, J, xa, ya);
+    }
+    lemma_mod_bound((x_rot * z_inv) as int, p() as int);
+    lemma_cong_canonical_eq(field_mul(x_rot, z_inv), xr);
+    assert(cong(y_rot as int, (yr as int) * Z));
+    let rt = lemma_encode_tail(xr, yr, dn);
+    // The extended s equals the tail's s.
+    let neg2 = is_negative(field_mul(x_rot, z_inv));
+    assert(neg2 == is_negative(xr));
+    let y_final = if neg2 {
+        field_neg(y_rot)
+    } else {
+        y_rot
+    };
+    let yf = rt.2;
+    let YF = yf as int;
+    assert(cong(y_final as int, YF * Z)) by {
+        if neg2 {
+            lemma_cong_fneg(y_rot, (yr as int) * Z);
+            lemma_cong_fneg(yr, yr as int);
+            lemma_cong_mul(YF, Z, -(yr as int), Z);
+            assert(-(yr as int) * Z == -((yr as int) * Z)) by (nonlinear_arith);
+        }
+    }
+    let sx = field_mul(den_rot, field_sub(zz, y_final));
+    lemma_cong_fsub(zz, y_final, Z, YF * Z);
+    lemma_cong_fmul(den_rot, field_sub(zz, y_final), den_rot as int, Z - YF * Z);
+    assert((den_rot as int) * (Z - YF * Z) == ((den_rot as int) * Z) * (1 - YF))
+        by (nonlinear_arith);
+    lemma_cong_fmul(den_rot, zz, den_rot as int, Z);
+    lemma_cong_mul((den_rot as int) * Z, 1 - YF, dn as int, 1 - YF);
+    let st = field_mul(dn, field_sub(1, yf));
+    lemma_cong_fsub(1, yf, 1, YF);
+    lemma_cong_fmul(dn, field_sub(1, yf), dn as int, 1 - YF);
+    lemma_mod_bound((den_rot * field_sub(zz, y_final)) as int, p() as int);
+    lemma_mod_bound((dn * field_sub(1, yf)) as int, p() as int);
+    lemma_cong_canonical_eq(sx, st);
+    // X·Y ≥ 0.
+    lemma_mod_bound((xa * ya) as int, p() as int);
+    lemma_cong_canonical_zero(ta);
+    lemma_cong_fmul(xa, ya, XA, YA);
+    if rotate {
+        let ri = field_mul(ya, i);
+        let rx = field_mul(xa, i);
+        lemma_cong_fmul(ri, rx, YA * Ii, XA * Ii);
+        assert(YA * Ii * (XA * Ii) == (Ii * Ii) * xy) by (nonlinear_arith)
+            requires
+                xy == XA * YA,
+        ;
+        lemma_cong_mul(Ii * Ii, xy, -1, xy);
+        lemma_cong_fneg(ta, xy);
+        lemma_mod_bound((ri * rx) as int, p() as int);
+        lemma_mod_bound((p() - ta) as int, p() as int);
+        lemma_cong_canonical_eq(field_mul(ri, rx), field_neg(ta));
+        lemma_cong_mul_nonzero(XA, YA);
+        lemma_neg_parity(ta);
+    }
+    lemma_neg_parity(xa);
+    lemma_neg_parity(ya);
+    rt
+}
+
+/// Projective bridge: for (xx : yy : zz : tt) with zz ≠ 0 and zz·tt = xx·yy whose
+/// affine form (xa, ya) = (xx/zz, yy/zz) is on the curve and equals 2·q,
+/// the extended encoder equals the affine encoder of (xa, ya).
+///
+/// The proof uses 2E: both encoders select a representative of the coset,
+/// and the proof needs 1 − ya² to be a square. This lemma does not show that
+/// the equality fails outside 2E.
+pub proof fn lemma_compress_extended_eq_affine(xx: nat, yy: nat, zz: nat, tt: nat, q: (nat, nat))
+    requires
+        xx < p(),
+        yy < p(),
+        zz < p(),
+        tt < p(),
+        zz != 0,
+        field_mul(xx, yy) == field_mul(zz, tt),
+        is_on_edwards_curve(field_mul(xx, field_inv(zz)), field_mul(yy, field_inv(zz))),
+        is_on_edwards_curve(q.0, q.1),
+        (field_mul(xx, field_inv(zz)), field_mul(yy, field_inv(zz))) == edwards_scalar_mul(q, 2),
+    ensures
+        ristretto_compress_extended(xx, yy, zz, tt) == ristretto_compress_affine(
+            field_mul(xx, field_inv(zz)),
+            field_mul(yy, field_inv(zz)),
+        ),
+{
+    lemma_cong_p_facts();
+    let xa = field_mul(xx, field_inv(zz));
+    let ya = field_mul(yy, field_inv(zz));
+    lemma_mod_bound((xx * field_inv(zz)) as int, p() as int);
+    lemma_mod_bound((yy * field_inv(zz)) as int, p() as int);
+    if xa == 0 || ya == 0 {
+        // X·Y ≡ Z²·xa·ya ≡ 0.
+        let zi = field_inv(zz);
+        let (Xi, Yi, Z, ZI) = (xx as int, yy as int, zz as int, zi as int);
+        lemma_cong_canonical_zero(zz);
+        lemma_cong_inv(zz);
+        lemma_cong_fmul(xx, zi, Xi, ZI);
+        lemma_cong_fmul(yy, zi, Yi, ZI);
+        lemma_cong_mul(xa as int, ya as int, Xi * ZI, Yi * ZI);
+        lemma_mul_by_zero_is_zero(xa as int);
+        lemma_mul_by_zero_is_zero(ya as int);
+        assert((xa as int) * (ya as int) == 0);
+        assert(Xi * ZI * (Yi * ZI) == (Xi * Yi) * (ZI * ZI)) by (nonlinear_arith);
+        lemma_cong_mul_zero(Xi * Yi, ZI * ZI);
+        if cong(ZI * ZI, 0) {
+            lemma_cong_mul_zero(ZI, ZI);
+            lemma_cong_mul(ZI, Z, 0, Z);
+            assert(0 * Z == 0);
+            lemma_small_mod(1, p());
+            lemma_small_mod(0, p());
+        }
+        lemma_cong_fmul(xx, yy, Xi, Yi);
+        lemma_mod_bound((xx * yy) as int, p() as int);
+        lemma_small_mod(0, p());
+        lemma_cong_canonical_eq(field_mul(xx, yy), 0);
+        lemma_ristretto_compress_extended_zero_xy(xx, yy, zz, tt);
+        assert(field_mul(xa, ya) % p() == 0) by {
+            assert(xa * ya == 0);
+        }
+        crate::lemmas::ristretto_lemmas::batch_compress_lemmas::lemma_ristretto_compress_affine_zero_xy(
+        xa, ya);
+    } else {
+        let w = lemma_double_u1_square(xa, ya, q);
+        let re = lemma_compress_extended_representative(xx, yy, zz, tt, w.0, w.1);
+        let ra = lemma_compress_representative(xa, ya, w.0, w.1);
+        lemma_representative_unique((ra.1, ra.2), (re.1, re.2), (xa, ya));
+        let (sa, se) = (ra.0 as int, re.0 as int);
+        let yy2 = ra.2 as int;
+        lemma_cong_diff_zero(sa * sa * (1 + yy2), se * se * (1 + yy2));
+        assert(sa * sa * (1 + yy2) == (1 + yy2) * (sa * sa)) by (nonlinear_arith);
+        assert(se * se * (1 + yy2) == (1 + yy2) * (se * se)) by (nonlinear_arith);
+        lemma_cong_cancel(1 + yy2, sa * sa, se * se);
+        lemma_cong_fsquare(ra.0, sa);
+        lemma_cong_fsquare(re.0, se);
+        lemma_mod_bound((ra.0 * ra.0) as int, p() as int);
+        lemma_mod_bound((re.0 * re.0) as int, p() as int);
+        lemma_cong_canonical_eq(field_square(ra.0), field_square(re.0));
+        lemma_nonneg_square_root_unique(ra.0, re.0);
+    }
+}
+
+/// spec_ristretto_compress (what exec `compress` returns) equals the affine
+/// encoder on the affine form, for a well-formed point in the even subgroup.
+///
+/// The proof uses 2E (see `lemma_compress_extended_eq_affine`). It does not
+/// show that the equality fails outside 2E.
+pub proof fn lemma_spec_ristretto_compress_eq_affine(rp: RistrettoPoint)
+    requires
+        is_well_formed_edwards_point(rp.0),
+        is_in_even_subgroup(rp.0),
+    ensures
+        spec_ristretto_compress(rp) == ristretto_compress_affine(
+            edwards_point_as_affine(rp.0).0,
+            edwards_point_as_affine(rp.0).1,
+        ),
+{
+    let point = rp.0;
+    let (x, y, z, t) = edwards_point_as_nat(point);
+    crate::lemmas::edwards_lemmas::curve_equation_lemmas::lemma_edwards_point_as_affine_on_curve(
+        point,
+    );
+    p_gt_2();
+    lemma_mod_bound(u64_5_as_nat(edwards_x(point).limbs) as int, p() as int);
+    lemma_mod_bound(u64_5_as_nat(edwards_y(point).limbs) as int, p() as int);
+    lemma_mod_bound(u64_5_as_nat(edwards_z(point).limbs) as int, p() as int);
+    lemma_mod_bound(u64_5_as_nat(edwards_t(point).limbs) as int, p() as int);
+    lemma_small_mod(z, p());
+    let q = choose|q: (nat, nat)|
+        is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(point)
+            == #[trigger] edwards_scalar_mul(q, 2);
+    lemma_compress_extended_eq_affine(x, y, z, t, q);
+}
+
+/// Round trip over spec_ristretto_compress, for a well-formed point in 2E:
+/// decompressing the encoding gives a point in the coset of the input.
+///
+/// 2E is needed. A numeric evaluation of the formulas (not a Verus proof) on
+/// P = B + T₁, with B the Ed25519 basepoint and T₁ = spec_eight_torsion()[1], gave
+/// bytes that decode, but the decoded point is not in P + E[4].
+pub proof fn lemma_spec_ristretto_compress_roundtrip(rp: RistrettoPoint)
+    requires
+        is_well_formed_edwards_point(rp.0),
+        is_in_even_subgroup(rp.0),
+    ensures
+        ({
+            let (x, y) = edwards_point_as_affine(rp.0);
+            let dec = spec_ristretto_decompress(spec_ristretto_compress(rp));
+            &&& dec is Some
+            &&& dec.unwrap().2 == 1
+            &&& dec.unwrap().3 == field_mul(dec.unwrap().0, dec.unwrap().1)
+            &&& is_on_edwards_curve(dec.unwrap().0, dec.unwrap().1)
+            &&& is_in_explicit_coset((dec.unwrap().0, dec.unwrap().1), x, y)
+            &&& is_in_explicit_coset((x, y), dec.unwrap().0, dec.unwrap().1)
+        }),
+{
+    lemma_spec_ristretto_compress_eq_affine(rp);
+    lemma_ristretto_compress_roundtrip_point(rp.0);
+}
+
+/// Injectivity over spec_ristretto_compress: two well-formed points in 2E
+/// with the same encoding are ristretto_equivalent.
+pub proof fn lemma_spec_ristretto_compress_injective(rp1: RistrettoPoint, rp2: RistrettoPoint)
+    requires
+        is_well_formed_edwards_point(rp1.0),
+        is_well_formed_edwards_point(rp2.0),
+        is_in_even_subgroup(rp1.0),
+        is_in_even_subgroup(rp2.0),
+        spec_ristretto_compress(rp1) == spec_ristretto_compress(rp2),
+    ensures
+        ristretto_equivalent(rp1.0, rp2.0),
+{
+    lemma_spec_ristretto_compress_eq_affine(rp1);
+    lemma_spec_ristretto_compress_eq_affine(rp2);
+    lemma_ristretto_compress_injective_point(rp1.0, rp2.0);
 }
 
 } // verus!

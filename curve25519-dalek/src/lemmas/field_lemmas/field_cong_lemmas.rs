@@ -334,4 +334,22 @@ pub proof fn lemma_neg_parity(v: nat)
     lemma_small_mod((p() - v) as nat, p());
 }
 
+// =============================================================================
+// Congruence helpers
+// =============================================================================
+/// cong(0, e) is false for e = ±1.
+pub proof fn lemma_cong_zero_pm_one(e: int)
+    requires
+        e == 1 || e == -1,
+    ensures
+        !cong(0, e),
+{
+    lemma_cong_p_facts();
+    lemma_small_mod(0, p());
+    lemma_small_mod(1, p());
+    if cong(0, e) && e == -1 {
+        lemma_cong_neg(0, -1);
+    }
+}
+
 } // verus!

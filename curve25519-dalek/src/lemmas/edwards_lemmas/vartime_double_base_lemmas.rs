@@ -133,7 +133,7 @@ pub proof fn lemma_vartime_double_base_terms_on_curve(
     reveal(vartime_double_base_points_on_curve);
     lemma_straus_vt_partial_on_curve(pts_affine, nafs, i + 1);
     let prev = straus_vt_partial(pts_affine, nafs, i + 1);
-    axiom_edwards_add_complete(prev.0, prev.1, prev.0, prev.1);
+    lemma_edwards_add_complete(prev.0, prev.1, prev.0, prev.1);
     lemma_column_sum_on_curve(pts_affine, nafs, i, 1);
     lemma_edwards_scalar_mul_signed_on_curve(B_affine, digit);
 }

@@ -1045,7 +1045,7 @@ pub proof fn lemma_odd_sum_up_to_on_curve(digits: Seq<i8>, upper_i: int, B: (nat
             lemma_edwards_scalar_mul_on_curve(B, pow256((i / 2) as nat));
             let term = edwards_scalar_mul_signed(base, digits[i] as int);
             lemma_edwards_scalar_mul_signed_on_curve(base, digits[i] as int);
-            axiom_edwards_add_complete(prev.0, prev.1, term.0, term.1);
+            lemma_edwards_add_complete(prev.0, prev.1, term.0, term.1);
         }
     }
 }
@@ -1073,7 +1073,7 @@ pub proof fn lemma_even_sum_up_to_on_curve(digits: Seq<i8>, upper_i: int, B: (na
             lemma_edwards_scalar_mul_on_curve(B, pow256((i / 2) as nat));
             let term = edwards_scalar_mul_signed(base, digits[i] as int);
             lemma_edwards_scalar_mul_signed_on_curve(base, digits[i] as int);
-            axiom_edwards_add_complete(prev.0, prev.1, term.0, term.1);
+            lemma_edwards_add_complete(prev.0, prev.1, term.0, term.1);
         }
     }
 }

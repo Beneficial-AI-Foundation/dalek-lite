@@ -924,4 +924,23 @@ pub proof fn lemma_one_plus_x_times_i(e: nat, f: nat)
     };
 }
 
+// =============================================================================
+// sqrt(-1) in congruence form
+// =============================================================================
+/// i = sqrt(−1): i² ≡ −1, i ≢ 0, i < p.
+pub proof fn lemma_sqrt_m1_cong()
+    ensures
+        sqrt_m1() < p(),
+        cong((sqrt_m1() as int) * (sqrt_m1() as int), -1),
+        !cong(sqrt_m1() as int, 0),
+{
+    lemma_cong_p_facts();
+    lemma_sqrt_m1_nonzero();
+    lemma_sqrt_m1_squared();
+    lemma_cong_fneg(1, 1);
+    lemma_small_mod(1, p());
+    lemma_small_mod((p() - 1) as nat, p());
+    lemma_small_mod(0, p());
+}
+
 } // verus!

@@ -150,6 +150,148 @@ pub proof fn lemma_dt_squared_factor(d: nat, a: nat, b: nat, z: nat, t: nat)
     };
 }
 
+/// Cancel a nonzero common factor c from a quotient: (c·n)/(c·m) = n/m.
+/// When m = 0 both sides are 0, because inv(0) = 0.
+pub proof fn lemma_cancel_left_factor_or_zero(n: nat, m: nat, c: nat)
+    requires
+        c % p() != 0,
+    ensures
+        field_mul(field_mul(c, n), field_inv(field_mul(c, m))) == field_mul(n, field_inv(m)),
+{
+    lemma_field_mul_comm(c, n);
+    lemma_field_mul_comm(c, m);
+    if m % p() != 0 {
+        lemma_cancel_common_factor(n, m, c);
+    } else {
+        // m ≡ 0, so m·c = 0 and both inverses are 0
+        p_gt_2();
+        lemma_field_mul_zero_left(m, c);
+        field_inv_zero();
+        assert(field_inv(m) == 0);
+        lemma_field_mul_zero_right(field_mul(n, c), 0);
+        lemma_field_mul_zero_right(n, 0);
+    }
+}
+
+/// The batch state e, f, g, h factors through Z², with a = X/Z, b = Y/Z:
+///   e = Z²·(2·a·b), f = Z²·(1 + d·a²·b²), g = Z²·(b² + a²), h = Z²·(1 − d·a²·b²).
+pub proof fn lemma_batch_state_factors_through_z2(
+    x: nat,
+    y: nat,
+    z: nat,
+    t: nat,
+    e: nat,
+    f: nat,
+    g: nat,
+    h: nat,
+)
+    requires
+        x < p(),
+        y < p(),
+        z < p(),
+        t < p(),
+        z % p() != 0,
+        field_mul(z, t) == field_mul(x, y),
+        ({
+            let d = fe51_as_canonical_nat(&u64_constants::EDWARDS_D);
+            e == field_mul(2, field_mul(x, y)) && f == field_add(
+                field_square(z),
+                field_mul(d, field_square(t)),
+            ) && g == field_add(field_square(y), field_square(x)) && h == field_sub(
+                field_square(z),
+                field_mul(d, field_square(t)),
+            )
+        }),
+    ensures
+        ({
+            let a = field_mul(x, field_inv(z));
+            let b = field_mul(y, field_inv(z));
+            let ab = field_mul(a, b);
+            let a2 = field_square(a);
+            let b2 = field_square(b);
+            let z2 = field_square(z);
+            let d = fe51_as_canonical_nat(&u64_constants::EDWARDS_D);
+            let t_dab2 = field_mul(d, field_mul(a2, b2));
+            &&& z2 % p() != 0
+            &&& e == field_mul(z2, field_mul(2, ab))
+            &&& f == field_mul(z2, field_add(1nat, t_dab2))
+            &&& g == field_mul(z2, field_add(b2, a2))
+            &&& h == field_mul(z2, field_sub(1nat, t_dab2))
+        }),
+{
+    let inv_z = field_inv(z);
+    let a = field_mul(x, inv_z);
+    let b = field_mul(y, inv_z);
+    let ab = field_mul(a, b);
+    let a2 = field_square(a);
+    let b2 = field_square(b);
+    let z2 = field_square(z);
+    let d = fe51_as_canonical_nat(&u64_constants::EDWARDS_D);
+    let t_dab2 = field_mul(d, field_mul(a2, b2));
+
+    assert(z2 % p() != 0) by {
+        lemma_field_square_nonzero(z);
+    };
+
+    // e = 2·(ab·Z²) = Z²·(2·ab)
+    assert(e == field_mul(z2, field_mul(2, ab))) by {
+        lemma_projective_product_factor(x, z, y, z);
+        lemma_reassociate_2_z_num(z2, ab);
+    };
+
+    // g = b²·Z² + a²·Z² = Z²·(b²+a²)
+    assert(g == field_mul(z2, field_add(b2, a2))) by {
+        lemma_projective_product_factor(x, z, x, z);
+        lemma_projective_product_factor(y, z, y, z);
+        lemma_factor_result_component_add(b2, a2, z2);
+    };
+
+    // d·T² = t_dab2·Z², using T = ab·Z from the Segre relation
+    assert(field_mul(d, field_square(t)) == field_mul(t_dab2, z2)) by {
+        lemma_segre_derives_t(x, y, z, t);
+        lemma_dt_squared_factor(d, a, b, z, t);
+    };
+    assert(field_mul(1nat, z2) == z2) by {
+        lemma_field_mul_one_left(z2);
+        lemma_field_element_reduced(z2);
+    };
+
+    // f = 1·Z² + t_dab2·Z² = Z²·(1 + t_dab2)
+    assert(f == field_mul(z2, field_add(1nat, t_dab2))) by {
+        lemma_factor_result_component_add(1nat, t_dab2, z2);
+    };
+
+    // h = 1·Z² − t_dab2·Z² = Z²·(1 − t_dab2)
+    assert(h == field_mul(z2, field_sub(1nat, t_dab2))) by {
+        lemma_factor_result_component_sub(1nat, t_dab2, z2);
+    };
+}
+
+/// edwards_double(a, b) written with the factored numerators and denominators:
+/// (2·ab / (1 + d·a²b²), (b² + a²) / (1 − d·a²b²)).
+pub proof fn lemma_edwards_double_factored(a: nat, b: nat)
+    ensures
+        ({
+            let ab = field_mul(a, b);
+            let a2 = field_square(a);
+            let b2 = field_square(b);
+            let d = fe51_as_canonical_nat(&u64_constants::EDWARDS_D);
+            let t_dab2 = field_mul(d, field_mul(a2, b2));
+            edwards_double(a, b) == (
+                field_mul(field_mul(2, ab), field_inv(field_add(1nat, t_dab2))),
+                field_mul(field_add(b2, a2), field_inv(field_sub(1nat, t_dab2))),
+            )
+        }),
+{
+    let ab = field_mul(a, b);
+    assert(field_mul(b, a) == ab) by {
+        lemma_field_mul_comm(b, a);
+    };
+    assert(field_add(ab, ab) == field_mul(2, ab)) by {
+        lemma_add_self_eq_double(ab);
+    };
+}
+
 /// The doubled affine point equals the batch state quotients (e/f, g/h).
 ///
 /// Given an extended Edwards point (X:Y:Z:T) with Z·T = X·Y, Z ≠ 0,
@@ -162,10 +304,9 @@ pub proof fn lemma_dt_squared_factor(d: nat, a: nat, b: nat, z: nat, t: nat)
 /// Conclusion: edwards_double(a, b) = (e/f, g/h).
 ///
 /// Proof outline:
-///   1. Factor e, g through Z² using (X/Z)·(Y/Z)·Z² = X·Y
-///   2. Derive T = a·b·Z from Segre, factor f, h through Z²
-///   3. Cancel Z² from e/f and g/h
-///   4. Match to edwards_double(a, b)
+///   1. Factor e, f, g, h through Z² (`lemma_batch_state_factors_through_z2`)
+///   2. Cancel Z² from e/f and g/h
+///   3. Match to edwards_double(a, b) (`lemma_edwards_double_factored`)
 pub proof fn lemma_doubled_affine_from_batch_state(
     x: nat,
     y: nat,
@@ -199,14 +340,16 @@ pub proof fn lemma_doubled_affine_from_batch_state(
             field_mul(g, field_inv(h)),
         ),
 {
-    let p = p();
-    assert(p > 2) by {
-        p_gt_2();
-    };
+    // The helper lemmas give all needed equalities: keep the field ops opaque.
+    hide(field_mul);
+    hide(field_add);
+    hide(field_sub);
+    hide(field_square);
+    hide(field_inv);
+    hide(edwards_double);
 
-    let inv_z = field_inv(z);
-    let a = field_mul(x, inv_z);
-    let b = field_mul(y, inv_z);
+    let a = field_mul(x, field_inv(z));
+    let b = field_mul(y, field_inv(z));
     let ab = field_mul(a, b);
     let a2 = field_square(a);
     let b2 = field_square(b);
@@ -214,124 +357,11 @@ pub proof fn lemma_doubled_affine_from_batch_state(
     let d = fe51_as_canonical_nat(&u64_constants::EDWARDS_D);
     let t_dab2 = field_mul(d, field_mul(a2, b2));
 
-    assert(z2 % p != 0) by {
-        lemma_field_square_nonzero(z);
-    };
+    lemma_batch_state_factors_through_z2(x, y, z, t, e, f, g, h);
+    lemma_edwards_double_factored(a, b);
 
-    assert(field_mul(x, y) == field_mul(ab, z2)) by {
-        lemma_projective_product_factor(x, z, y, z);
-    };
-    assert(field_mul(1nat, z2) == z2) by {
-        lemma_field_mul_one_left(z2);
-        lemma_field_element_reduced(z2);
-    };
-
-    // Factor e through Z²: e = Z²·(2·ab)
-    assert(e == field_mul(z2, field_mul(2, ab))) by {
-        lemma_reassociate_2_z_num(z2, ab);
-    };
-
-    // Factor g through Z²: g = Z²·(b²+a²)
-    assert(g == field_mul(z2, field_add(b2, a2))) by {
-        assert(field_square(x) == field_mul(a2, z2)) by {
-            lemma_projective_product_factor(x, z, x, z);
-        };
-        assert(field_square(y) == field_mul(b2, z2)) by {
-            lemma_projective_product_factor(y, z, y, z);
-        };
-        lemma_factor_result_component_add(b2, a2, z2);
-    };
-
-    // Derive T = ab·Z from Segre relation
-    assert(t == field_mul(ab, z)) by {
-        lemma_segre_derives_t(x, y, z, t);
-    };
-
-    // Factor d·T² through Z²: d·T² = t_dab2·Z²
-    assert(field_mul(d, field_square(t)) == field_mul(t_dab2, z2)) by {
-        lemma_dt_squared_factor(d, a, b, z, t);
-    };
-
-    // f = Z² + d·T² = Z²·(1 + d·a²b²)
-    assert(f == field_mul(z2, field_add(1nat, t_dab2))) by {
-        lemma_factor_result_component_add(1nat, t_dab2, z2);
-    };
-
-    // h = Z² − d·T² = Z²·(1 − d·a²b²)
-    assert(h == field_mul(z2, field_sub(1nat, t_dab2))) by {
-        lemma_factor_result_component_sub(1nat, t_dab2, z2);
-    };
-
-    // Cancel Z² from e/f and g/h
-    if field_add(1nat, t_dab2) % p != 0 {
-        assert(field_mul(e, field_inv(f)) == field_mul(
-            field_mul(2, ab),
-            field_inv(field_add(1nat, t_dab2)),
-        )) by {
-            lemma_cancel_common_factor(field_mul(2, ab), field_add(1nat, t_dab2), z2);
-        };
-    } else {
-        assert(field_mul(e, field_inv(f)) == 0) by {
-            assert(f == 0) by {
-                assert(field_add(1nat, t_dab2) == 0) by {
-                    lemma_field_element_reduced(field_add(1nat, t_dab2));
-                };
-                lemma_field_mul_zero_right(z2, field_add(1nat, t_dab2));
-            };
-            assert(field_inv(f) == 0) by {
-                field_inv_zero();
-            };
-            lemma_field_mul_zero_right(e, field_inv(f));
-        };
-        assert(field_mul(field_mul(2, ab), field_inv(field_add(1nat, t_dab2))) == 0) by {
-            assert(field_inv(field_add(1nat, t_dab2)) == 0) by {
-                field_inv_zero();
-            };
-            lemma_field_mul_zero_right(field_mul(2, ab), field_inv(field_add(1nat, t_dab2)));
-        };
-    }
-    // g/h = Z²·(b²+a²) / Z²·(1−t_dab2) = (b²+a²)/(1−t_dab2)   [or both 0]
-    assert(g == field_mul(field_add(b2, a2), z2)) by {
-        lemma_field_mul_comm(z2, field_add(b2, a2));
-    };
-    assert(h == field_mul(field_sub(1nat, t_dab2), z2)) by {
-        lemma_field_mul_comm(z2, field_sub(1nat, t_dab2));
-    };
-    if field_sub(1nat, t_dab2) % p != 0 {
-        assert(field_mul(g, field_inv(h)) == field_mul(
-            field_add(b2, a2),
-            field_inv(field_sub(1nat, t_dab2)),
-        )) by {
-            lemma_cancel_common_factor(field_add(b2, a2), field_sub(1nat, t_dab2), z2);
-        };
-    } else {
-        assert(field_mul(g, field_inv(h)) == 0) by {
-            assert(h == 0) by {
-                assert(field_sub(1nat, t_dab2) == 0) by {
-                    lemma_field_element_reduced(field_sub(1nat, t_dab2));
-                };
-                lemma_field_mul_zero_right(z2, field_sub(1nat, t_dab2));
-            };
-            assert(field_inv(h) == 0) by {
-                field_inv_zero();
-            };
-            lemma_field_mul_zero_right(g, field_inv(h));
-        };
-        assert(field_mul(field_add(b2, a2), field_inv(field_sub(1nat, t_dab2))) == 0) by {
-            assert(field_inv(field_sub(1nat, t_dab2)) == 0) by {
-                field_inv_zero();
-            };
-            lemma_field_mul_zero_right(field_add(b2, a2), field_inv(field_sub(1nat, t_dab2)));
-        };
-    }
-
-    // STEP 5: Match (e/f, g/h) to edwards_add(a, b, a, b) = edwards_double(a, b)
-    assert(field_mul(b, a) == ab) by {
-        lemma_field_mul_comm(b, a);
-    };
-    assert(field_add(ab, ab) == field_mul(2, ab)) by {
-        lemma_add_self_eq_double(ab);
-    };
+    lemma_cancel_left_factor_or_zero(field_mul(2, ab), field_add(1nat, t_dab2), z2);
+    lemma_cancel_left_factor_or_zero(field_add(b2, a2), field_sub(1nat, t_dab2), z2);
 }
 
 /// Lemma: the batch identity h² − g² = −e²(1+d) holds for projective intermediates.

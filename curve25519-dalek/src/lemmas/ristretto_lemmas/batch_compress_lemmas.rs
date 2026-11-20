@@ -2590,6 +2590,7 @@ proof fn lemma_batch_std_case_dispatch(e: nat, f: nat, g: nat, h: nat, eg: nat, 
             field_mul(g, field_inv(h)),
         ),
 {
+    p_gt_2();  // p() > 0, needed for the % p() facts below
     let d = fe51_as_canonical_nat(&u64_constants::EDWARDS_D);
     let c_iad = fe51_as_canonical_nat(&u64_constants::INVSQRT_A_MINUS_D);
     let x_aff = field_mul(e, field_inv(f));
@@ -2716,9 +2717,7 @@ pub proof fn lemma_batch_encoding_equals_standard_encoding(
             field_mul(g, field_inv(h)),
         ),
 {
-    assert(p() > 2) by {
-        p_gt_2();
-    };
+    p_gt_2();
     let egfh = field_mul(eg, fh);
     assert(egfh != 0) by {
         lemma_field_element_reduced(egfh);
@@ -2726,6 +2725,7 @@ pub proof fn lemma_batch_encoding_equals_standard_encoding(
     assert(eg % p() != 0) by {
         if eg % p() == 0 {
             lemma_mul_mod_noop_left(eg as int, fh as int, p() as int);
+            assert((eg % p()) * fh == 0);
         }
     };
     assert(fh % p() != 0) by {

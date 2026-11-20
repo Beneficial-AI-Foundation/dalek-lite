@@ -132,7 +132,7 @@ impl Zeroize for FieldElement51 {
     </VERIFICATION NOTE> */
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 5 ==> self.limbs[i] == 0,
+            forall|i: int| 0 <= i < 5 ==> final(self).limbs[i] == 0,
         no_unwind
     {
         /* ORIGINAL CODE: self.limbs.zeroize(); */
@@ -173,14 +173,28 @@ fn m(x: u64, y: u64) -> (r: u128)
     (x as u128) * (y as u128)
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddAssignSpecImpl<&FieldElement51> for FieldElement51 {
+    // The postcondition is stated on the add_assign implementation below.
+    open spec fn obeys_add_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn add_assign_req(&self, rhs: &FieldElement51) -> bool {
+        sum_of_limbs_bounded(self, rhs, u64::MAX)
+    }
+
+    open spec fn add_assign_spec(&self, rhs: &FieldElement51) -> &Self {
+        self
+    }
+}
+
 impl<'a> AddAssign<&'a FieldElement51> for FieldElement51 {
     fn add_assign(&mut self, _rhs: &'a FieldElement51)
-        requires
-            sum_of_limbs_bounded(old(self), _rhs, u64::MAX),
         ensures
-            *self == spec_add_fe51_limbs(old(self), _rhs),
-            fe51_as_nat(self) == fe51_as_nat(old(self)) + fe51_as_nat(_rhs),
-            fe51_as_canonical_nat(self) == field_add(
+            *final(self) == spec_add_fe51_limbs(old(self), _rhs),
+            fe51_as_nat(final(self)) == fe51_as_nat(old(self)) + fe51_as_nat(_rhs),
+            fe51_as_canonical_nat(final(self)) == field_add(
                 fe51_as_canonical_nat(old(self)),
                 fe51_as_canonical_nat(_rhs),
             ),
@@ -289,14 +303,28 @@ impl<'a> Add<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubAssignSpecImpl<&FieldElement51> for FieldElement51 {
+    // The postcondition is stated on the sub_assign implementation below.
+    open spec fn obeys_sub_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_assign_req(&self, rhs: &FieldElement51) -> bool {
+        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
+    }
+
+    open spec fn sub_assign_spec(&self, rhs: &FieldElement51) -> &Self {
+        self
+    }
+}
+
 impl<'a> SubAssign<&'a FieldElement51> for FieldElement51 {
     fn sub_assign(&mut self, _rhs: &'a FieldElement51)
-        requires
-            fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(_rhs, 54),
         ensures
-            fe51_limbs_bounded(self, 52),
-            *self == spec_sub_limbs(old(self), _rhs),
-            fe51_as_canonical_nat(self) == field_sub(
+            fe51_limbs_bounded(final(self), 52),
+            *final(self) == spec_sub_limbs(old(self), _rhs),
+            fe51_as_canonical_nat(final(self)) == field_sub(
                 fe51_as_canonical_nat(old(self)),
                 fe51_as_canonical_nat(_rhs),
             ),
@@ -441,17 +469,30 @@ impl<'a> Sub<&'a FieldElement51> for &FieldElement51 {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&FieldElement51> for FieldElement51 {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &FieldElement51) -> bool {
+        fe51_limbs_bounded(self, 54) && fe51_limbs_bounded(rhs, 54)
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &FieldElement51) -> &Self {
+        self
+    }
+}
+
 impl<'a> MulAssign<&'a FieldElement51> for FieldElement51 {
     fn mul_assign(&mut self, _rhs: &'a FieldElement51)
-        requires
-            fe51_limbs_bounded(old(self), 54),
-            fe51_limbs_bounded(_rhs, 54),
         ensures
-            fe51_as_canonical_nat(self) == field_mul(
+            fe51_as_canonical_nat(final(self)) == field_mul(
                 fe51_as_canonical_nat(old(self)),
                 fe51_as_canonical_nat(_rhs),
             ),
-            fe51_limbs_bounded(self, 54),
+            fe51_limbs_bounded(final(self), 54),
     {
         let result = &*self * _rhs;
         self.limbs = result.limbs;
@@ -696,9 +737,13 @@ impl ConditionallySelectable for FieldElement51 {
         ensures
     // If choice is false, a and b remain unchanged
 
-            !choice_is_true(choice) ==> a.limbs == old(a).limbs && b.limbs == old(b).limbs,
+            !choice_is_true(choice) ==> final(a).limbs == old(a).limbs && final(b).limbs == old(
+                b,
+            ).limbs,
             // If choice is true, a and b are swapped
-            choice_is_true(choice) ==> a.limbs == old(b).limbs && b.limbs == old(a).limbs,
+            choice_is_true(choice) ==> final(a).limbs == old(b).limbs && final(b).limbs == old(
+                a,
+            ).limbs,
     {
         // Originally this was
         // u64::conditional_swap(&mut a.limbs[0], &mut b.limbs[0], choice);
@@ -739,16 +784,18 @@ impl ConditionallySelectable for FieldElement51 {
         ensures
     // If choice is false, self remains unchanged
 
-            !choice_is_true(choice) ==> self.limbs == old(self).limbs,
-            choice_is_true(choice) ==> self.limbs == other.limbs,
+            !choice_is_true(choice) ==> final(self).limbs == old(self).limbs,
+            choice_is_true(choice) ==> final(self).limbs == other.limbs,
             // Field element value preservation
-            !choice_is_true(choice) ==> fe51_as_canonical_nat(self) == fe51_as_canonical_nat(
+            !choice_is_true(choice) ==> fe51_as_canonical_nat(final(self)) == fe51_as_canonical_nat(
                 old(self),
             ),
-            choice_is_true(choice) ==> fe51_as_canonical_nat(self) == fe51_as_canonical_nat(other),
+            choice_is_true(choice) ==> fe51_as_canonical_nat(final(self)) == fe51_as_canonical_nat(
+                other,
+            ),
             // Boundedness preservation
             (fe51_limbs_bounded(old(self), 54) && fe51_limbs_bounded(other, 54))
-                ==> fe51_limbs_bounded(self, 54),
+                ==> fe51_limbs_bounded(final(self), 54),
     {
         let mut self0 = self.limbs[0];
         conditional_assign_u64(&mut self0, &other.limbs[0], choice);
@@ -811,7 +858,7 @@ impl FieldElement51 {
         requires
             fe51_limbs_bounded(&old(self), 54),
         ensures
-            fe51_limbs_bounded(self, 52),
+            fe51_limbs_bounded(final(self), 52),
             // Assume we start with l = (l0, l1, l2, l3, l4).
             // Using c0 = 2^51 - 19 and c = 2^51 - 1, we can see that
             // ( 36028797018963664u64 - l0,
@@ -827,10 +874,10 @@ impl FieldElement51 {
             // u64_5_as_nat(negate(l)) = u64_5_as_nat(reduce(16 * (c0, c, c, c, c) - l))
             //                   = 16p - u64_5_as_nat(l) - p * ((16c - l4) >> 51)
             // Note that (16c - l4) >> 51 is either 14 or 15, in either case < 16.
-            u64_5_as_nat(self.limbs) == 16 * p() - u64_5_as_nat(old(self).limbs) - p() * ((
+            u64_5_as_nat(final(self).limbs) == 16 * p() - u64_5_as_nat(old(self).limbs) - p() * ((
             36028797018963952u64 - old(self).limbs[4]) as u64 >> 51),
-            field_canonical(u64_5_as_nat(self.limbs) + u64_5_as_nat(old(self).limbs)) == 0,
-            self.limbs == spec_negate(old(self).limbs),
+            field_canonical(u64_5_as_nat(final(self).limbs) + u64_5_as_nat(old(self).limbs)) == 0,
+            final(self).limbs == spec_negate(old(self).limbs),
     {
         proof {
             lemma_neg_no_underflow(self.limbs);
@@ -1293,7 +1340,7 @@ impl FieldElement51 {
 
             k -= 1;
             if k == 0 {
-                break ;
+                break;
             }
         }
 

@@ -479,13 +479,18 @@ impl ConstantTimeEq for Scalar {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::core::IndexSpecImpl<usize> for Scalar {
+    open spec fn index_req(&self, index: &usize) -> bool {
+        *index < 32
+    }
+}
+
 impl Index<usize> for Scalar {
     type Output = u8;
 
     /// Index the bytes of the representative for this `Scalar`.  Mutation is not permitted.
     fn index(&self, _index: usize) -> (result: &u8)
-        requires
-            _index < 32,
         ensures
             result == &self.bytes[_index as int],
     {
@@ -503,18 +508,31 @@ impl Debug for Scalar {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::MulAssignSpecImpl<&Scalar> for Scalar {
+    // The postcondition is stated on the mul_assign implementation below.
+    open spec fn obeys_mul_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn mul_assign_req(&self, rhs: &Scalar) -> bool {
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
+    }
+
+    open spec fn mul_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'a> MulAssign<&'a Scalar> for Scalar {
     fn mul_assign(&mut self, _rhs: &'a Scalar)
-        requires
-            is_canonical_scalar(old(self)),
-            is_canonical_scalar(_rhs),
         ensures
     // can't use scalar_as_canonical due to mut
 
-            u8_32_as_group_canonical(self.bytes) == group_canonical(
+            u8_32_as_group_canonical(final(self).bytes) == group_canonical(
                 scalar_as_nat(&old(self)) * scalar_as_nat(&_rhs),
             ),
-            is_canonical_scalar(self),
+            is_canonical_scalar(final(self)),
     {
         /* <ORIGINAL CODE>
          *self = UnpackedScalar::mul(&self.unpack(), &_rhs.unpack()).pack();
@@ -697,16 +715,29 @@ impl<'a> Add<&'a Scalar> for &Scalar {
 
 define_add_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::AddAssignSpecImpl<&Scalar> for Scalar {
+    // The postcondition is stated on the add_assign implementation below.
+    open spec fn obeys_add_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn add_assign_req(&self, rhs: &Scalar) -> bool {
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
+    }
+
+    open spec fn add_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'a> AddAssign<&'a Scalar> for Scalar {
     #[allow(clippy::op_ref)]
     fn add_assign(&mut self, _rhs: &'a Scalar)
-        requires
-            is_canonical_scalar(old(self)),
-            is_canonical_scalar(_rhs),
         ensures
     // can't use scalar_as_nat LHS, because of mut
 
-            u8_32_as_nat(&self.bytes) == group_canonical(
+            u8_32_as_nat(&final(self).bytes) == group_canonical(
                 scalar_as_nat(&old(self)) + scalar_as_nat(&_rhs),
             ),
     {
@@ -816,18 +847,30 @@ impl<'b> Sub<&'b Scalar> for &Scalar {
 
 define_sub_variants!(LHS = Scalar, RHS = Scalar, Output = Scalar);
 
+#[cfg(verus_keep_ghost)]
+impl vstd::std_specs::ops::SubAssignSpecImpl<&Scalar> for Scalar {
+    // The postcondition is stated on the sub_assign implementation below.
+    open spec fn obeys_sub_assign_spec() -> bool {
+        false
+    }
+
+    open spec fn sub_assign_req(&self, rhs: &Scalar) -> bool {
+        is_canonical_scalar(self) && is_canonical_scalar(rhs)
+    }
+
+    open spec fn sub_assign_spec(&self, rhs: &Scalar) -> &Self {
+        self
+    }
+}
+
 impl<'a> SubAssign<&'a Scalar> for Scalar {
     #[allow(clippy::op_ref)]
     fn sub_assign(&mut self, _rhs: &'a Scalar)
-        requires
-            is_canonical_scalar(old(self)),
-            is_canonical_scalar(_rhs),
         ensures
     // can't use scalar_as_canonical LHS due to mut or group_canonical LHS due to int cast
 
-            u8_32_as_group_canonical(self.bytes) == (scalar_as_nat(&old(self)) - scalar_as_nat(
-                &_rhs,
-            )) % (group_order() as int),
+            u8_32_as_group_canonical(final(self).bytes) == (scalar_as_nat(&old(self))
+                - scalar_as_nat(&_rhs)) % (group_order() as int),
     {
         *self = &*self - _rhs;
     }
@@ -1307,7 +1350,7 @@ impl Zeroize for Scalar {
     </VERIFICATION NOTE> */
     fn zeroize(&mut self)
         ensures
-            forall|i: int| 0 <= i < 32 ==> #[trigger] self.bytes[i] == 0u8,
+            forall|i: int| 0 <= i < 32 ==> #[trigger] final(self).bytes[i] == 0u8,
     {
         /* ORIGINAL CODE: self.bytes.zeroize(); */
         crate::core_assumes::zeroize_bytes32(&mut self.bytes);
@@ -1738,9 +1781,9 @@ impl Scalar {
             ),
             // Each input is replaced with its inverse (when product is nonzero)
             group_canonical(product_of_scalars(old(inputs)@)) != 0 ==> forall|i: int|
-                0 <= i < inputs.len() ==> #[trigger] is_inverse(
+                0 <= i < final(inputs).len() ==> #[trigger] is_inverse(
                     &(#[trigger] old(inputs)[i]),
-                    &(#[trigger] inputs[i]),
+                    &(#[trigger] final(inputs)[i]),
                 ),
     {
         // This code is essentially identical to the FieldElement
@@ -2636,7 +2679,7 @@ impl Scalar {
                     assert(naf@[pos as int] == 0i8);
                 }
                 pos += 1;
-                continue ;
+                continue;
             }
             // Truncate casts are safe: window < width = 2^w with w <= 8, so both fit in i8.
 
@@ -3750,12 +3793,15 @@ fn square_multiply(
         is_canonical_scalar52(old(y)),
         is_canonical_scalar52(x),
     ensures
-        limb_prod_bounded_u128(y.limbs, y.limbs, 5),
+        limb_prod_bounded_u128(final(y).limbs, final(y).limbs, 5),
         // Output is canonical
-        is_canonical_scalar52(y),
+        is_canonical_scalar52(final(y)),
         // can't use group_canonical RHS due to int cast
         group_canonical(
-            scalar52_as_nat(y) * pow(montgomery_radix() as int, pow2(squarings as nat)) as nat,
+            scalar52_as_nat(final(y)) * pow(
+                montgomery_radix() as int,
+                pow2(squarings as nat),
+            ) as nat,
         ) == (pow(scalar52_as_nat(old(y)) as int, pow2(squarings as nat)) * scalar52_as_nat(x)) % (
         group_order() as int),
 {
@@ -4869,11 +4915,11 @@ fn read_le_u64_into(src: &[u8], dst: &mut [u64])
     requires
         src.len() == 8 * old(dst).len(),
     ensures
-        dst.len() == old(dst).len(),
+        final(dst).len() == old(dst).len(),
         forall|i: int|
-            0 <= i < dst.len() ==> {
+            0 <= i < final(dst).len() ==> {
                 let byte_seq = Seq::new(8, |j: int| src[i * 8 + j] as u8);
-                #[trigger] dst[i] as nat == bytes_seq_as_nat(byte_seq)
+                #[trigger] final(dst)[i] as nat == bytes_seq_as_nat(byte_seq)
             },
 {
     #[cfg(not(verus_keep_ghost))]

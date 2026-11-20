@@ -57,8 +57,8 @@ lemma_div_and_mod!(lemma_u32_div_and_mod, lemma_u32_pow2_le_max, lemma_u32_shr_i
 
 lemma_div_and_mod!(lemma_u64_div_and_mod, lemma_u64_pow2_le_max, lemma_u64_shr_is_div, lemma_u64_low_bits_mask_is_mod, u64);
 
-// TODO: missing VSTD lemmas for u128
-// lemma_div_and_mod!(lemma_u128_div_and_mod, lemma_u128_pow2_le_max, lemma_u128_shr_is_div, lemma_u128_low_bits_mask_is_mod, u128);
+lemma_div_and_mod!(lemma_u128_div_and_mod, lemma_u128_pow2_le_max, lemma_u128_shr_is_div, lemma_u128_low_bits_mask_is_mod, u128);
+
 // Combination of mod lemmas, (b +- a * m) % m = b % m
 pub proof fn lemma_mod_sum_factor(a: int, b: int, m: int)
     requires

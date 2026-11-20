@@ -1094,7 +1094,7 @@ pub proof fn lemma_inv_of_product(a: nat, b: nat)
                 };
             }
         };
-        return ;
+        return;
     }
     // Non-zero case: proceed with the original proof
     // Step 1: Get inverse properties: inv_a < p, inv_b < p, and they satisfy inverse equations
@@ -1317,7 +1317,7 @@ pub proof fn lemma_inv_of_inv(x: nat)
                 };
             };
         };
-        return ;
+        return;
     }
     // Non-zero case: proceed with original proof
     // Step 1: Get properties of inv(x): inv_x < p and (x % p) * inv_x % p == 1
@@ -1731,7 +1731,7 @@ pub proof fn lemma_a_times_inv_ab_is_inv_b(a: nat, b: nat)
         };
         // RHS = inv(b) = 0
         assert(inv_b == 0);
-        return ;
+        return;
     }
     // Non-zero case: b % p != 0
     // ab % p != 0 (since a ≠ 0 and b ≠ 0 and p is prime)
@@ -1969,7 +1969,7 @@ pub proof fn lemma_neg_a_times_inv_ab(a: nat, b: nat)
                 lemma_small_mod(0, p);
             };
         };
-        return ;
+        return;
     }
     // Non-zero case: proceed with original proof
     // Step 1: (-a) = (-1) · a

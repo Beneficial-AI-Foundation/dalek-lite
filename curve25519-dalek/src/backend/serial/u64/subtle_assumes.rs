@@ -222,8 +222,8 @@ pub assume_specification[ <u64 as ConditionallySelectable>::conditional_swap ](
     choice: Choice,
 )
     ensures
-        !choice_is_true(choice) ==> (*a == *old(a) && *b == *old(b)),
-        choice_is_true(choice) ==> (*a == *old(b) && *b == *old(a)),
+        !choice_is_true(choice) ==> (*final(a) == *old(a) && *final(b) == *old(b)),
+        choice_is_true(choice) ==> (*final(a) == *old(b) && *final(b) == *old(a)),
 ;
 
 // Specification for u64::conditional_assign
@@ -233,8 +233,8 @@ pub assume_specification[ <u64 as ConditionallySelectable>::conditional_assign ]
     choice: Choice,
 )
     ensures
-        !choice_is_true(choice) ==> *a == *old(a),
-        choice_is_true(choice) ==> *a == *b,
+        !choice_is_true(choice) ==> *final(a) == *old(a),
+        choice_is_true(choice) ==> *final(a) == *b,
 ;
 
 /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
@@ -253,8 +253,8 @@ pub fn conditional_select_u64(a: &u64, b: &u64, choice: Choice) -> (res: u64)
 #[verifier::external_body]
 pub fn conditional_swap_u64(a: &mut u64, b: &mut u64, choice: Choice)
     ensures
-        !choice_is_true(choice) ==> (*a == *old(a) && *b == *old(b)),
-        choice_is_true(choice) ==> (*a == *old(b) && *b == *old(a)),
+        !choice_is_true(choice) ==> (*final(a) == *old(a) && *final(b) == *old(b)),
+        choice_is_true(choice) ==> (*final(a) == *old(b) && *final(b) == *old(a)),
 {
     u64::conditional_swap(a, b, choice)
 }
@@ -264,8 +264,8 @@ pub fn conditional_swap_u64(a: &mut u64, b: &mut u64, choice: Choice)
 #[verifier::external_body]
 pub fn conditional_assign_u64(a: &mut u64, b: &u64, choice: Choice)
     ensures
-        !choice_is_true(choice) ==> *a == *old(a),
-        choice_is_true(choice) ==> *a == *b,
+        !choice_is_true(choice) ==> *final(a) == *old(a),
+        choice_is_true(choice) ==> *final(a) == *b,
 {
     a.conditional_assign(b, choice)
 }
@@ -279,7 +279,7 @@ pub fn conditional_negate_generic<T>(a: &mut T, choice: Choice) where
     T: subtle::ConditionallyNegatable,
 
     ensures
-        !choice_is_true(choice) ==> *a == *old(a),
+        !choice_is_true(choice) ==> *final(a) == *old(a),
 {
     a.conditional_negate(choice);
 }
@@ -308,10 +308,10 @@ pub fn conditional_negate_field_element(a: &mut FieldElement51, choice: Choice)
         ),  // Allow the standard 54-bit bound used by most field ops
 
     ensures
-        fe51_limbs_bounded(a, 54),
-        choice_is_true(choice) ==> fe51_limbs_bounded(a, 52),
-        !choice_is_true(choice) ==> *a == *old(a),
-        fe51_as_canonical_nat(a) == if choice_is_true(choice) {
+        fe51_limbs_bounded(final(a), 54),
+        choice_is_true(choice) ==> fe51_limbs_bounded(final(a), 52),
+        !choice_is_true(choice) ==> *final(a) == *old(a),
+        fe51_as_canonical_nat(final(a)) == if choice_is_true(choice) {
             field_neg(fe51_as_canonical_nat(old(a)))
         } else {
             fe51_as_canonical_nat(old(a))
@@ -337,11 +337,11 @@ pub fn conditional_negate_affine_niels(a: &mut AffineNielsPoint, choice: Choice)
         fe51_limbs_bounded(&old(a).y_minus_x, 54),
         fe51_limbs_bounded(&old(a).xy2d, 54),
     ensures
-        !choice_is_true(choice) ==> *a == *old(a),
-        choice_is_true(choice) ==> *a == negate_affine_niels(*old(a)),
-        fe51_limbs_bounded(&a.y_plus_x, 54),
-        fe51_limbs_bounded(&a.y_minus_x, 54),
-        fe51_limbs_bounded(&a.xy2d, 54),
+        !choice_is_true(choice) ==> *final(a) == *old(a),
+        choice_is_true(choice) ==> *final(a) == negate_affine_niels(*old(a)),
+        fe51_limbs_bounded(&final(a).y_plus_x, 54),
+        fe51_limbs_bounded(&final(a).y_minus_x, 54),
+        fe51_limbs_bounded(&final(a).xy2d, 54),
 {
     a.conditional_negate(choice);
 }
@@ -360,12 +360,12 @@ pub fn conditional_negate_projective_niels(a: &mut ProjectiveNielsPoint, choice:
         fe51_limbs_bounded(&old(a).Z, 54),
         fe51_limbs_bounded(&old(a).T2d, 54),
     ensures
-        !choice_is_true(choice) ==> *a == *old(a),
-        choice_is_true(choice) ==> *a == negate_projective_niels(*old(a)),
-        fe51_limbs_bounded(&a.Y_plus_X, 54),
-        fe51_limbs_bounded(&a.Y_minus_X, 54),
-        fe51_limbs_bounded(&a.Z, 54),
-        fe51_limbs_bounded(&a.T2d, 54),
+        !choice_is_true(choice) ==> *final(a) == *old(a),
+        choice_is_true(choice) ==> *final(a) == negate_projective_niels(*old(a)),
+        fe51_limbs_bounded(&final(a).Y_plus_X, 54),
+        fe51_limbs_bounded(&final(a).Y_minus_X, 54),
+        fe51_limbs_bounded(&final(a).Z, 54),
+        fe51_limbs_bounded(&final(a).T2d, 54),
 {
     a.conditional_negate(choice);
 }
@@ -399,8 +399,8 @@ pub fn conditional_assign_generic<T>(a: &mut T, b: &T, choice: Choice) where
     T: subtle::ConditionallySelectable,
 
     ensures
-        !choice_is_true(choice) ==> *a == *old(a),
-        choice_is_true(choice) ==> *a == *b,
+        !choice_is_true(choice) ==> *final(a) == *old(a),
+        choice_is_true(choice) ==> *final(a) == *b,
 {
     a.conditional_assign(b, choice)
 }
@@ -418,9 +418,9 @@ pub fn conditional_assign_field_element(a: &mut FieldElement51, b: &FieldElement
         fe51_limbs_bounded(old(a), 54),
         fe51_limbs_bounded(b, 54),
     ensures
-        !choice_is_true(choice) ==> *a == *old(a),
-        choice_is_true(choice) ==> *a == *b,
-        fe51_limbs_bounded(a, 54),
+        !choice_is_true(choice) ==> *final(a) == *old(a),
+        choice_is_true(choice) ==> *final(a) == *b,
+        fe51_limbs_bounded(final(a), 54),
 {
     a.conditional_assign(b, choice)
 }
@@ -457,17 +457,17 @@ pub fn conditional_swap_montgomery_projective(
 // If choice is false, points remain unchanged
 
         !choice_is_true(choice) ==> {
-            &&& a.U == old(a).U
-            &&& a.W == old(a).W
-            &&& b.U == old(b).U
-            &&& b.W == old(b).W
+            &&& final(a).U == old(a).U
+            &&& final(a).W == old(a).W
+            &&& final(b).U == old(b).U
+            &&& final(b).W == old(b).W
         },
         // If choice is true, points are swapped
         choice_is_true(choice) ==> {
-            &&& a.U == old(b).U
-            &&& a.W == old(b).W
-            &&& b.U == old(a).U
-            &&& b.W == old(a).W
+            &&& final(a).U == old(b).U
+            &&& final(a).W == old(b).W
+            &&& final(b).U == old(a).U
+            &&& final(b).W == old(a).W
         },
 {
     crate::montgomery::ProjectivePoint::conditional_swap(a, b, choice)

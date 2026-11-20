@@ -1104,11 +1104,16 @@ pub proof fn lemma_xor_sign_bit_preserves_y(
         // This is because b * pow2(255) is divisible by pow2(255)
         lemma_pow2_pos(255);
         if sign_bit == 0 {
+            assert((sign_bit as nat) * pow2(255) == 0);
             assert(u8_32_as_nat(s_after) == u8_32_as_nat(s_before));
         } else {
             // sign_bit == 1
             let a = u8_32_as_nat(s_before);
             let m = pow2(255);
+            assert((sign_bit as nat) * m == m) by (nonlinear_arith)
+                requires
+                    sign_bit == 1,
+            ;
             // We have: u8_32_as_nat(s_after) = a + m
             // We want: (a + m) % m == a % m
             lemma_mod_add_multiples_vanish(a as int, m as int);

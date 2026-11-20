@@ -78,6 +78,9 @@ use crate::field::FieldElement;
 #[allow(unused_imports)]
 use crate::lizard::lizard_constants;
 
+#[allow(unused_imports)]
+use crate::backend::serial::u64::constants::EDWARDS_D;
+
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use vstd::arithmetic::div_mod::*;
@@ -973,12 +976,12 @@ pub proof fn lemma_elligator_inv_algebraic(s: nat, t: nat)
         if field_canonical(t) == 1 {
             // Branch 1: returns (true, √(id))
             assert(spec_elligator_ristretto_flavor(sqrt_id()) == (0nat, 1nat)) by {
-                axiom_elligator_forward_sqrt_id();
+                lemma_elligator_forward_sqrt_id();
             };
         } else {
             // Branch 2: returns (true, 0)
             assert(spec_elligator_ristretto_flavor(0) == (0nat, 1nat)) by {
-                axiom_elligator_forward_zero();
+                lemma_elligator_forward_zero();
             };
         }
     } else {
@@ -1056,38 +1059,170 @@ proof fn lemma_jacobi_to_edwards_affine_s_canonical_zero(s: nat, t: nat)
     };
 }
 
+/// N_s in the forward Elligator map, as a function of r = i·r₀².
+spec fn elligator_n_s_of_r(r: nat) -> nat {
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    field_mul(field_add(r, 1), field_mul(field_sub(1, d), field_add(1, d)))
+}
+
+/// D in the forward Elligator map, as a function of r = i·r₀².
+spec fn elligator_d_of_r(r: nat) -> nat {
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    field_mul(field_sub(field_neg(1), field_mul(d, r)), field_add(r, d))
+}
+
+/// If the s value of the forward Elligator map is 0, the map gives (0, 1).
+proof fn lemma_elligator_forward_s_zero(r_0: nat)
+    requires
+        elligator_intermediates(r_0).0 == 0,
+    ensures
+        spec_elligator_ristretto_flavor(r_0) == (0nat, 1nat),
+{
+    p_gt_2();
+    let (s, n_t, d_val) = elligator_intermediates(r_0);
+    assert(field_square(0) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_mul(2, 0) == 0) by {
+        lemma_field_mul_zero_right(2, 0);
+    };
+    assert(field_mul(0, d_val) == 0) by {
+        lemma_field_mul_zero_left(0, d_val);
+    };
+    let z_inv = field_inv(field_mul(n_t, spec_sqrt_ad_minus_one()));
+    assert(field_mul(0, z_inv) == 0) by {
+        lemma_field_mul_zero_left(0, z_inv);
+    };
+    assert(field_sub(1nat, 0nat) == 1) by {
+        lemma_small_mod(1nat, p());
+        lemma_small_mod(0nat, p());
+        lemma_mod_add_multiples_vanish(1int, p() as int);
+    };
+    assert(field_add(1nat, 0nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+    assert(field_inv(1nat) == 1) by {
+        lemma_field_inv_one();
+    };
+    assert(field_mul(1nat, 1nat) == 1) by {
+        lemma_small_mod(1nat, p());
+    };
+}
+
+/// If r² · v ≡ u, then u · v ≡ (r · v)² is a square.
+proof fn lemma_sqrt_ratio_product_is_square(u: nat, v: nat, r: nat)
+    requires
+        is_sqrt_ratio(u, v, r),
+    ensures
+        is_square(field_mul(u, v)),
+{
+    p_gt_2();
+    let pn = p() as int;
+    let y = field_mul(r, v);
+    let (a, b) = (r as int, v as int);
+    assert(field_mul(y, y) == field_canonical(field_mul(u, v))) by {
+        lemma_mul_mod_noop_general(a * b, a * b, pn);
+        assert((a * b) * (a * b) == (a * a * b) * b) by (nonlinear_arith);
+        lemma_mul_mod_noop_general(a * a * b, b, pn);
+        lemma_mul_mod_noop_general(u as int, b, pn);
+        lemma_mod_twice((u * v) as int, pn);
+    };
+}
+
+/// N_s · D for r₀ = 0 (so r = 0) is not a square (Euler's criterion, by computation).
+proof fn lemma_elligator_zero_product_not_square()
+    ensures
+        !is_square(field_mul(elligator_n_s_of_r(0), elligator_d_of_r(0))),
+{
+    let prod = field_mul(elligator_n_s_of_r(0), elligator_d_of_r(0));
+    assert(prod % p() != 0 && pow_mod(prod, ((p() - 1) / 2) as nat, p()) != 1) by {
+        reveal(vstd::arithmetic::power::pow);
+        assert(field_mul(elligator_n_s_of_r(0), elligator_d_of_r(0)) % p() != 0 && pow_mod(
+            field_mul(elligator_n_s_of_r(0), elligator_d_of_r(0)),
+            ((p() - 1) / 2) as nat,
+            p(),
+        ) != 1) by (compute_only);
+    };
+    lemma_not_square_by_euler(prod);
+}
+
 /// Forward Elligator map on r₀ = 0 produces the identity point (0, 1).
 ///
-/// When r₀ = 0: r = i·0² = 0, s_prime_raw = s_if_square·0 = 0,
-/// s_prime = 0. In either branch (was_square or not), the s value
-/// that enters the completed point computation produces s² = 0,
-/// giving Y = 1, T = 1, and X = 2·s·D (which involves s=0 in
-/// the !was_square branch).
-///
-/// The key observation: regardless of was_square, the completed point's
-/// affine x-coordinate is 0 and y-coordinate is 1, because in both
-/// branches the final s value satisfies s² = 0 or the X numerator is 0.
-///
-/// This is a constant-level identity about the Elligator map on a specific
-/// input. Runtime validated by `test_axiom_elligator_inv_roundtrip`.
-proof fn axiom_elligator_forward_zero()
+/// With r₀ = 0: r = 0, N_s = 1 − d², D = −d. The product N_s·D is not a
+/// square (Euler's criterion, by computation), so N_s/D has no square root
+/// and was_square is false. Then s = ±(s_if_square·0) = 0.
+proof fn lemma_elligator_forward_zero()
     ensures
         spec_elligator_ristretto_flavor(0) == (0nat, 1nat),
 {
-    admit();
+    p_gt_2();
+    let r = field_mul(sqrt_m1(), field_square(0));
+    assert(field_square(0) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(r == 0) by {
+        lemma_field_mul_zero_right(sqrt_m1(), 0);
+    };
+    let n_s = elligator_n_s_of_r(0);
+    let d_val = elligator_d_of_r(0);
+    let sis = field_abs(field_mul(nat_invsqrt(field_mul(n_s, d_val)), n_s));
+    assert(!is_sqrt_ratio(n_s, d_val, sis)) by {
+        lemma_elligator_zero_product_not_square();
+        if is_sqrt_ratio(n_s, d_val, sis) {
+            lemma_sqrt_ratio_product_is_square(n_s, d_val, sis);
+        }
+    };
+    assert(field_mul(sis, 0) == 0) by {
+        lemma_field_mul_zero_right(sis, 0);
+    };
+    assert(field_neg(0) == 0) by {
+        lemma_small_mod(0nat, p());
+        lemma_mod_self_0(p() as int);
+    };
+    assert(elligator_intermediates(0).0 == 0);
+    lemma_elligator_forward_s_zero(0);
 }
 
-/// Constant identity: the forward Elligator map on √(id) produces (0, 1).
+/// The forward Elligator map on √(id) produces (0, 1).
 ///
-/// √(id)² = id, so r = i·(id) = -d, giving D = (-1+d²)(0) = 0 ⟹ X = 0.
-///
-/// Not provable by Z3 because √(id) is a 255-bit constant whose square
-/// must equal i·d mod p. Verified at runtime by `test_axiom_elligator_inv_roundtrip`.
-proof fn axiom_elligator_forward_sqrt_id()
+/// √(id)² = i·d, so r = i·(i·d) = −d and D = (−1 + d²)·(r + d) = 0. Then
+/// N_s·D = 0, invsqrt gives 0, and s = 0 in both branches.
+proof fn lemma_elligator_forward_sqrt_id()
     ensures
         spec_elligator_ristretto_flavor(sqrt_id()) == (0nat, 1nat),
 {
-    admit();
+    p_gt_2();
+    let r = field_mul(sqrt_m1(), field_square(sqrt_id()));
+    let d = fe51_as_canonical_nat(&EDWARDS_D);
+    assert(field_add(r, d) == 0) by {
+        assert(field_add(
+            field_mul(sqrt_m1(), field_square(sqrt_id())),
+            fe51_as_canonical_nat(&EDWARDS_D),
+        ) == 0) by (compute_only);
+    };
+    let n_s = elligator_n_s_of_r(r);
+    let d_val = elligator_d_of_r(r);
+    assert(d_val == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_mul(n_s, d_val) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    let invsqrt_val = nat_invsqrt(field_mul(n_s, d_val));
+    assert(invsqrt_val == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_mul(invsqrt_val, n_s) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    assert(field_neg(0) == 0) by {
+        lemma_small_mod(0nat, p());
+        lemma_mod_self_0(p() as int);
+    };
+    assert(field_mul(0, sqrt_id()) == 0) by {
+        lemma_small_mod(0nat, p());
+    };
+    lemma_elligator_forward_s_zero(sqrt_id());
 }
 
 /// Axiom (square-case round-trip): When s ≢ 0 and the inverse square root

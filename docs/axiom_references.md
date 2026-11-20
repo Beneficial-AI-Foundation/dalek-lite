@@ -310,28 +310,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_elligator_forward_zero()
-**Claim:** `spec_elligator_ristretto_flavor(0) == (0, 1)` — the forward Elligator map on r₀ = 0 produces the identity point.
-
-**Reference:** N/A (constant identity)
-
-**Justification:** When r₀ = 0: r = i·0² = 0, and the Elligator map degenerates to s = 0, giving affine (0, 1). This is a constant-level identity about the Elligator map on a specific input. Exceeds Z3 capacity because the forward map involves multiple field operations whose intermediate values must be tracked.
-
-**Runtime validation:** `test_axiom_elligator_inv_roundtrip` in lizard_ristretto.rs (branch 2: s = 0, t ≢ 1 case).
-
----
-
-### axiom_elligator_forward_sqrt_id()
-**Claim:** `spec_elligator_ristretto_flavor(sqrt_id()) == (0, 1)` — the forward Elligator map on √(id) produces the identity point.
-
-**Reference:** N/A (constant identity)
-
-**Justification:** √(id)² = id, so r = i·(id) = −d, giving D = (−1 + d²)·0 = 0, hence X = 0 and the affine point is (0, 1). Not provable by Z3 because √(id) is a 255-bit constant whose square must equal i·d mod p.
-
-**Runtime validation:** `test_axiom_elligator_inv_roundtrip` in lizard_ristretto.rs (branch 1: s = 0, t ≡ 1 case).
-
----
-
 ### axiom_elligator_inv_square_case(s, t, a, s2, s4, inv_sq_y, y, pms2, x, r0)
 **Claim:** When (s, t) is on the Jacobi quartic (`is_on_jacobi_quartic(s, t)`), s ≢ 0, and the inverse square root exists (square case), `spec_elligator_ristretto_flavor(|x|) == jacobi_to_edwards_affine(s, t)`.
 
@@ -451,8 +429,6 @@ Justification types (6 canonical values):
 | axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§4.1 + algebraic derivation |
 | axiom_jacobi_quartic_torsion_pair23 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§7 + algebraic derivation |
 | axiom_jacobi_quartic_points_on_quartic | lizard_lemmas.rs | algebraic-gap | Decaf §4.1; Python model |
-| axiom_elligator_forward_zero | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
-| axiom_elligator_forward_sqrt_id | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
 | axiom_elligator_inv_square_case | lizard_lemmas.rs | algebraic-gap | Decaf Appendix C + reparameterization |
 | axiom_decode_from_point | lizard_lemmas.rs | algebraic-gap | Sub-properties (a)–(e); test (200+ round-trips) |
 

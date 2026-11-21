@@ -244,7 +244,7 @@ ensures_calls_contain = [
     "montgomery_radix",
     "montgomery_reduce_canonical_bound",
     "montgomery_corresponds_to_edwards",
-    "spec_state_after_hash_montgomery",
+    "canonical_hash_bytes",
 ]
 
 # ── 10. Elligator mapping ──

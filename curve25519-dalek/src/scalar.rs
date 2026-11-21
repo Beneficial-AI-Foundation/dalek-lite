@@ -121,10 +121,6 @@ use crate::lemmas::common_lemmas::sum_lemmas::*;
 use crate::lemmas::common_lemmas::to_nat_lemmas::*;
 use crate::lemmas::montgomery_pow_chain_lemmas::*;
 use crate::scalar_helpers::*;
-#[cfg(feature = "alloc")]
-use crate::specs::iterator_specs::collect_scalars_from_iter;
-#[cfg(all(feature = "alloc", verus_keep_ghost))]
-use crate::specs::iterator_specs::spec_scalars_from_iter;
 use core::borrow::Borrow;
 use core::fmt::Debug;
 use core::iter::{Product, Sum};
@@ -1040,10 +1036,11 @@ impl ConditionallySelectable for Scalar {
 
 /* <VERIFICATION NOTE>
  Trait implementations for Product and Sum use iterators which are not directly supported by Verus.
- Both use external_body helpers (collect_scalars_from_iter from iterator_specs) to collect
- the iterator into Vec<Scalar>, then call verified product_of_slice/sum_of_slice functions.
+ Both impls are external (not verified): they collect the iterator into Vec<Scalar> and call
+ the verified product_of_slice/sum_of_slice functions. Verified callers use those functions.
 </VERIFICATION NOTE> */
 
+#[verifier::external]
 impl<T> Product<T> for Scalar where T: Borrow<Scalar> {
     /* <ORIGINAL CODE>
     fn product<I>(iter: I) -> Self
@@ -1055,15 +1052,11 @@ impl<T> Product<T> for Scalar where T: Borrow<Scalar> {
     </ORIGINAL CODE> */
     /* <VERIFICATION NOTE>
     Iterator operations and Borrow trait are not supported by Verus.
-    We use an external_body helper to collect the iterator into Vec<Scalar>,
-    then call the verified product_of_slice function for the actual computation.
+    The impl is external: it collects the iterator into Vec<Scalar>,
+    then calls the verified product_of_slice function for the actual computation.
     </VERIFICATION NOTE> */
-    fn product<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
-        ensures
-            scalar_as_nat(&result) < group_order(),
-            scalar_congruent_nat(&result, product_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
-    {
-        let scalars = collect_scalars_from_iter(iter);
+    fn product<I>(iter: I) -> Self where I: Iterator<Item = T> {
+        let scalars: Vec<Scalar> = iter.map(|s| *s.borrow()).collect();
         // Use verified product_of_slice for the actual computation
         Scalar::product_of_slice(&scalars)
     }
@@ -1084,17 +1077,14 @@ where
 
 /* <VERIFICATION NOTE>
 Iterator operations and Borrow trait are not supported by Verus.
-We use an external_body helper to collect the iterator into Vec<Scalar>,
-then call the verified sum_of_slice function for the actual computation.
+The impl is external: it collects the iterator into Vec<Scalar>,
+then calls the verified sum_of_slice function for the actual computation.
 </VERIFICATION NOTE> */
 
+#[verifier::external]
 impl<T> Sum<T> for Scalar where T: Borrow<Scalar> {
-    fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
-        ensures
-            scalar_as_nat(&result) < group_order(),
-            scalar_congruent_nat(&result, sum_of_scalars(spec_scalars_from_iter::<T, I>(iter))),
-    {
-        let scalars = collect_scalars_from_iter(iter);
+    fn sum<I>(iter: I) -> Self where I: Iterator<Item = T> {
+        let scalars: Vec<Scalar> = iter.map(|s| *s.borrow()).collect();
         // Use verified sum_of_slice for the actual computation
         Scalar::sum_of_slice(&scalars)
     }

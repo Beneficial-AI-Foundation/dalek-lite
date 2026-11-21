@@ -8,10 +8,34 @@ mod tests {
     use crate::edwards::EdwardsPoint;
     use crate::scalar::Scalar;
     use crate::traits::{MultiscalarMul, VartimeMultiscalarMul};
+    use alloc::vec;
     use alloc::vec::Vec;
 
     use super::super::pippenger::Pippenger;
     use super::super::straus::Straus;
+
+    /// Pippenger needs no bound on the scalars: with bit 255 set it still multiplies by the
+    /// integer value. 2^256 - 1 is odd, so it fixes the order-2 point (0, -1); against the
+    /// basepoint it acts as its reduction. Sizes 200, 600 and 900 select windows 6, 7 and 8.
+    #[test]
+    fn test_pippenger_scalar_with_bit_255_set() {
+        let s = Scalar { bytes: [0xff; 32] };
+        let t = constants::EIGHT_TORSION[4];
+        let b = constants::ED25519_BASEPOINT_POINT;
+        let b_expected = b * Scalar::from_bytes_mod_order(s.bytes);
+        for size in [200usize, 600, 900] {
+            let mut scalars = vec![Scalar::ZERO; size];
+            scalars[0] = s;
+            for (p, expected) in [(t, t), (b, b_expected)] {
+                let points = vec![Some(p); size];
+                let verus = Pippenger::optional_multiscalar_mul_verus(&scalars, &points);
+                let original =
+                    Pippenger::optional_multiscalar_mul(scalars.iter(), points.iter().copied());
+                assert_eq!(verus, Some(expected), "size={}", size);
+                assert_eq!(original, Some(expected), "size={}", size);
+            }
+        }
+    }
 
     #[test]
     fn test_pippenger_original_vs_verus() {
@@ -52,10 +76,8 @@ mod tests {
                 );
 
                 // Verus implementation
-                let verus = Pippenger::optional_multiscalar_mul_verus(
-                    scalars.iter(),
-                    points.iter().map(|p| Some(*p)),
-                );
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let verus = Pippenger::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
                     original.is_some(),
@@ -123,10 +145,8 @@ mod tests {
                 );
 
                 // Verus implementation
-                let verus = Straus::optional_multiscalar_mul_verus(
-                    scalars.iter(),
-                    points.iter().map(|p| Some(*p)),
-                );
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let verus = Straus::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
                     original.is_some(),
@@ -191,7 +211,7 @@ mod tests {
                 let original = Straus::multiscalar_mul(scalars.iter(), points.iter());
 
                 // Verus implementation
-                let verus = Straus::multiscalar_mul_verus(scalars.iter(), points.iter());
+                let verus = Straus::multiscalar_mul_verus(&scalars, &points);
 
                 assert_eq!(
                     original.compress(),
@@ -250,6 +270,17 @@ mod tests {
                 let verus = EdwardsPoint::optional_multiscalar_mul_verus(
                     scalars.iter().cloned(),
                     points.iter().map(|p| Some(*p)),
+                );
+
+                // Verified slice version
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let slices = EdwardsPoint::optional_multiscalar_mul_slices(&scalars, &opt_points);
+                assert_eq!(
+                    original.map(|p| p.compress()),
+                    slices.map(|p| p.compress()),
+                    "Slice mismatch at size={}, round={}",
+                    size,
+                    round
                 );
 
                 assert!(
@@ -315,6 +346,16 @@ mod tests {
 
                 // Verus EdwardsPoint dispatcher
                 let verus = EdwardsPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
+
+                // Verified slice version
+                let slices = EdwardsPoint::multiscalar_mul_slices(&scalars, &points);
+                assert_eq!(
+                    original.compress(),
+                    slices.compress(),
+                    "Slice mismatch at size={}, round={}",
+                    size,
+                    round
+                );
 
                 assert_eq!(
                     original.compress(),

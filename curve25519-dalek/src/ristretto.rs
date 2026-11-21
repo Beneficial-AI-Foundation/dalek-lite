@@ -268,8 +268,11 @@ use crate::specs::edwards_specs::*;
 use crate::specs::field_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::field_specs_u64::*;
-#[allow(unused_imports)] // Used in verus! blocks for Sum trait and multiscalar_mul
-use crate::specs::iterator_specs::*;
+#[cfg(verus_keep_ghost)]
+use crate::specs::iterator_specs::{
+    all_points_some, optional_ristretto_points_to_edwards, optional_ristretto_to_edwards,
+    ristretto_points_to_edwards, sum_of_ristretto_points, unwrap_points,
+};
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::proba_specs::*;
 #[allow(unused_imports)] // Used in verus! blocks
@@ -3233,8 +3236,8 @@ impl<T> Sum<T> for RistrettoPoint where T: Borrow<RistrettoPoint> {
 
 /* <VERIFICATION NOTE>
 Iterator operations and Borrow trait are not directly supported by Verus.
-We use an external_body helper to collect the iterator into Vec<RistrettoPoint>,
-then call the verified sum_of_slice function for the actual computation.
+The impl is external (not verified): it collects the iterator into Vec<RistrettoPoint>
+and calls the verified sum_of_slice function. Verified callers use sum_of_slice.
 TESTING: `mod test_sum` (at the bottom of this file) checks functional equivalence between
 `sum_original` and the refactored `Sum::sum` implementation on random inputs.
 </VERIFICATION NOTE> */
@@ -3243,7 +3246,7 @@ impl RistrettoPoint {
     /// Original `Sum` implementation using `Iterator::fold`.
     ///
     /// This is used for exec correctness/performance, but is not verified directly.
-    /// The verified implementation is `Sum::sum` below, which reduces to `sum_of_slice`.
+    /// `Sum::sum` below collects the iterator and calls the verified `sum_of_slice`.
     /// Functional equivalence is tested in `mod test_sum` (at the bottom of this file).
     /// Out of verification scope: no verified caller (only `mod test_sum` uses it).
     #[verifier::external]
@@ -3305,39 +3308,11 @@ impl RistrettoPoint {
     }
 }
 
+#[verifier::external]
 impl<T> Sum<T> for RistrettoPoint where T: Borrow<RistrettoPoint> {
-    fn sum<I>(iter: I) -> (result: Self) where I: Iterator<Item = T>
-        requires
-            forall|i: int|
-                0 <= i < spec_edwards_from_ristretto_iter::<T, I>(iter).len()
-                    ==> is_well_formed_edwards_point(
-                    #[trigger] spec_edwards_from_ristretto_iter::<T, I>(iter)[i],
-                ),
-        ensures
-            is_well_formed_edwards_point(result.0),
-            edwards_point_as_affine(result.0) == sum_of_points(
-                spec_edwards_from_ristretto_iter::<T, I>(iter),
-            ),
-    {
-        // Capture the spec view of the iterator before consuming it
-        let ghost iter_spec: Seq<EdwardsPoint> = spec_edwards_from_ristretto_iter::<T, I>(iter);
-
-        let points = collect_ristretto_points(iter);
-        let result = RistrettoPoint::sum_of_slice(&points);
-
-        proof {
-            // sum_of_slice ensures: edwards_point_as_affine(result.0) == sum_of_ristretto_points(points@)
-            // We need: edwards_point_as_affine(result.0) == sum_of_points(iter_spec)
-            // The lemma proves: sum_of_ristretto_points(r) == sum_of_points(Seq::new(r.len(), |i| r[i].0))
-            lemma_sum_ristretto_edwards_equiv(points@);
-            // From collect_ristretto_points ensures:
-            //   points@.len() == iter_spec.len()
-            //   forall i: points@[i].0 == iter_spec[i]
-            // Therefore: Seq::new(points@.len(), |i| points@[i].0) == iter_spec
-            assert(Seq::new(points@.len(), |i: int| points@[i].0) =~= iter_spec);
-        }
-
-        result
+    fn sum<I>(iter: I) -> Self where I: Iterator<Item = T> {
+        let points: Vec<RistrettoPoint> = iter.map(|p| *p.borrow()).collect();
+        RistrettoPoint::sum_of_slice(&points)
     }
 }
 
@@ -3607,114 +3582,187 @@ impl VartimeMultiscalarMul for RistrettoPoint {
   */
 
 impl RistrettoPoint {
-    /// Verus-compatible version of multiscalar_mul (constant-time).
-    /// Delegates to EdwardsPoint::multiscalar_mul_verus.
+    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and points \\(P_i\\), in
+    /// constant time. Delegates to `EdwardsPoint::multiscalar_mul_slices`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scalars` and `points` have different lengths.
+    ///
+    /// The scalars need not be reduced modulo \\(\ell\\), but bit 255 of each scalar must be
+    /// clear. The result uses the integer value of each scalar, so for points outside the
+    /// prime-order subgroup an unreduced scalar can give a different result than its reduction.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes a
+    /// scalar with bit 255 set, or points that are not well-formed, gets no guarantee about the
+    /// result.
     #[cfg(feature = "alloc")]
-    pub fn multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> (result:
-        RistrettoPoint) where
-        S: Borrow<Scalar>,
-        P: Borrow<RistrettoPoint>,
-        I: Iterator<Item = S> + Clone,
-        J: Iterator<Item = P> + Clone,
-
+    pub fn multiscalar_mul_slices(scalars: &[Scalar], points: &[RistrettoPoint]) -> (result:
+        RistrettoPoint)
         requires
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_edwards_from_ristretto_iter::<
-                P,
-                J,
-            >(points).len(),
+            scalars@.len() == points@.len(),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
             forall|i: int|
-                0 <= i < spec_edwards_from_ristretto_iter::<P, J>(points).len()
-                    ==> is_well_formed_edwards_point(
-                    #[trigger] spec_edwards_from_ristretto_iter::<P, J>(points)[i],
-                ),
+                0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i].0),
         ensures
             is_well_formed_edwards_point(result.0),
             edwards_point_as_affine(result.0) == sum_of_scalar_muls(
-                spec_scalars_from_iter::<S, I>(scalars),
-                spec_edwards_from_ristretto_iter::<P, J>(points),
+                scalars@,
+                ristretto_points_to_edwards(points@),
             ),
     {
         /* <ORIGINAL CODE>
         let extended_points = points.into_iter().map(|P| P.borrow().0);
         RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
         </ORIGINAL CODE> */
-        // Collect directly to Edwards points. Do not clone `points`: a clone can share state
-        // with the original (see issue #793).
-        let edwards_vec = collect_edwards_from_ristretto_iter(points);
-
-        // Create the iterator for EdwardsPoint::multiscalar_mul_verus
-        let edwards_iter = vec_to_edwards_iter(edwards_vec);
-
-        // Call EdwardsPoint::multiscalar_mul_verus
-        let edwards_result = EdwardsPoint::multiscalar_mul_verus(scalars, edwards_iter);
-
-        proof {
-            // Chain: spec_points_from_iter(edwards_iter) == edwards_vec@
-            //        == spec_edwards_from_ristretto_iter(points)
-            assert(spec_points_from_iter::<EdwardsPoint, _>(edwards_iter)
-                =~= spec_edwards_from_ristretto_iter::<P, J>(points));
+        let mut edwards_points: Vec<EdwardsPoint> = Vec::with_capacity(points.len());
+        let mut i: usize = 0;
+        while i < points.len()
+            invariant
+                0 <= i <= points@.len(),
+                edwards_points@.len() == i,
+                forall|k: int| 0 <= k < i ==> edwards_points@[k] == (#[trigger] points@[k]).0,
+            decreases points.len() - i,
+        {
+            edwards_points.push(points[i].0);
+            i += 1;
         }
-
-        RistrettoPoint(edwards_result)
+        proof {
+            assert(edwards_points@ =~= ristretto_points_to_edwards(points@));
+        }
+        RistrettoPoint(EdwardsPoint::multiscalar_mul_slices(scalars, &edwards_points))
     }
 
-    /// Verus-compatible version of optional_multiscalar_mul.
-    /// Delegates to EdwardsPoint::optional_multiscalar_mul_verus.
+    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and optional points
+    /// \\(P_i\\), in variable time. Returns `None` if any point is `None`. Delegates to
+    /// `EdwardsPoint::optional_multiscalar_mul_slices`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `scalars` and `points` have different lengths.
+    ///
+    /// The scalars need not be reduced modulo \\(\ell\\), but bit 255 of each scalar must be
+    /// clear. The result uses the integer value of each scalar, so for points outside the
+    /// prime-order subgroup an unreduced scalar can give a different result than its reduction.
+    ///
+    /// The `requires` clauses bind only verified callers. An unverified caller that passes a
+    /// scalar with bit 255 set, or points that are not well-formed, gets no guarantee about the
+    /// result.
     #[cfg(feature = "alloc")]
-    pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
-        RistrettoPoint,
-    >) where
-        S: Borrow<Scalar>,
-        I: Iterator<Item = S> + Clone,
-        J: Iterator<Item = Option<RistrettoPoint>> + Clone,
-
+    pub fn optional_multiscalar_mul_slices(
+        scalars: &[Scalar],
+        points: &[Option<RistrettoPoint>],
+    ) -> (result: Option<RistrettoPoint>)
         requires
-            spec_scalars_from_iter::<S, I>(scalars).len()
-                == spec_optional_edwards_from_ristretto_iter::<J>(points).len(),
+            scalars@.len() == points@.len(),
+            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
             forall|i: int|
-                0 <= i < spec_optional_edwards_from_ristretto_iter::<J>(points).len() && (
-                #[trigger] spec_optional_edwards_from_ristretto_iter::<J>(points)[i]).is_some()
-                    ==> is_well_formed_edwards_point(
-                    spec_optional_edwards_from_ristretto_iter::<J>(points)[i].unwrap(),
-                ),
+                0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
+                    ==> is_well_formed_edwards_point(points@[i].unwrap().0),
         ensures
-            result.is_some() <==> all_points_some(
-                spec_optional_edwards_from_ristretto_iter::<J>(points),
-            ),
+            result.is_some() <==> all_points_some(optional_ristretto_points_to_edwards(points@)),
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap().0),
             result.is_some() ==> edwards_point_as_affine(result.unwrap().0) == sum_of_scalar_muls(
-                spec_scalars_from_iter::<S, I>(scalars),
-                unwrap_points(spec_optional_edwards_from_ristretto_iter::<J>(points)),
+                scalars@,
+                unwrap_points(optional_ristretto_points_to_edwards(points@)),
             ),
     {
         /* <ORIGINAL CODE>
         let extended_points = points.into_iter().map(|opt_P| opt_P.map(|P| P.0));
         EdwardsPoint::optional_multiscalar_mul(scalars, extended_points).map(RistrettoPoint)
         </ORIGINAL CODE> */
-        // Collect directly to Edwards points. Do not clone `points`: a clone can share state
-        // with the original (see issue #793).
-        let edwards_vec = collect_optional_edwards_from_ristretto_iter(points);
-
-        // Create the iterator for EdwardsPoint::optional_multiscalar_mul_verus
-        let edwards_iter = vec_to_optional_edwards_iter(edwards_vec);
-
-        // Call EdwardsPoint::optional_multiscalar_mul_verus
-        let edwards_result = EdwardsPoint::optional_multiscalar_mul_verus(scalars, edwards_iter);
-
+        let mut edwards_points: Vec<Option<EdwardsPoint>> = Vec::with_capacity(points.len());
+        let mut i: usize = 0;
+        while i < points.len()
+            invariant
+                0 <= i <= points@.len(),
+                edwards_points@.len() == i,
+                forall|k: int|
+                    0 <= k < i ==> edwards_points@[k] == optional_ristretto_to_edwards(
+                        #[trigger] points@[k],
+                    ),
+            decreases points.len() - i,
+        {
+            let e = match points[i] {
+                Some(p) => Some(p.0),
+                None => None,
+            };
+            edwards_points.push(e);
+            i += 1;
+        }
+        proof {
+            assert(edwards_points@ =~= optional_ristretto_points_to_edwards(points@));
+        }
         // Use match instead of map so Verus can track the relationship
-        let result = match edwards_result {
+        match EdwardsPoint::optional_multiscalar_mul_slices(scalars, &edwards_points) {
             Some(r) => Some(RistrettoPoint(r)),
             None => None,
-        };
-
-        proof {
-            // Chain: spec_optional_points_from_iter(edwards_iter) == edwards_vec@
-            //        == spec_optional_edwards_from_ristretto_iter(points)
-            assert(spec_optional_points_from_iter(edwards_iter)
-                =~= spec_optional_edwards_from_ristretto_iter::<J>(points));
         }
+    }
 
-        result
+    /// Generic-iterator version of `multiscalar_mul` (constant-time).
+    /// Delegates to `EdwardsPoint::multiscalar_mul_verus`.
+    ///
+    /// Not verified. Verified callers use `RistrettoPoint::multiscalar_mul_slices`, which takes slices.
+    ///
+    /// The result for iterators with side effects, or with state that the two iterators share,
+    /// depends on the order of the iterator calls. This function makes them in this order:
+    /// it collects `points`, then `EdwardsPoint::multiscalar_mul_verus` calls
+    /// `scalars.size_hint()` and collects `scalars`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the size hint of `scalars` is not exact or differs from the number of points.
+    #[cfg(feature = "alloc")]
+    #[verifier::external]
+    pub fn multiscalar_mul_verus<S, P, I, J>(scalars: I, points: J) -> RistrettoPoint where
+        S: Borrow<Scalar>,
+        P: Borrow<RistrettoPoint>,
+        I: Iterator<Item = S> + Clone,
+        J: Iterator<Item = P> + Clone,
+     {
+        /* <ORIGINAL CODE>
+        let extended_points = points.into_iter().map(|P| P.borrow().0);
+        RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
+        </ORIGINAL CODE> */
+        // Collect directly to Edwards points. Do not clone `points`: a clone can share state
+        // with the original (see issue #793).
+        let edwards_vec: Vec<EdwardsPoint> = points.map(|p| p.borrow().0).collect();
+        RistrettoPoint(EdwardsPoint::multiscalar_mul_verus(scalars, edwards_vec.into_iter()))
+    }
+
+    /// Generic-iterator version of `optional_multiscalar_mul`.
+    /// Delegates to `EdwardsPoint::optional_multiscalar_mul_verus`.
+    ///
+    /// Not verified. Verified callers use `RistrettoPoint::optional_multiscalar_mul_slices`, which takes slices.
+    ///
+    /// The result for iterators with side effects, or with state that the two iterators share,
+    /// depends on the order of the iterator calls. This function makes them in this order:
+    /// it collects `points`, then `EdwardsPoint::optional_multiscalar_mul_verus` calls
+    /// `scalars.size_hint()` twice and collects `scalars`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the size hint of `scalars` is not exact or differs from the number of points.
+    #[cfg(feature = "alloc")]
+    #[verifier::external]
+    pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> Option<
+        RistrettoPoint,
+    > where
+        S: Borrow<Scalar>,
+        I: Iterator<Item = S> + Clone,
+        J: Iterator<Item = Option<RistrettoPoint>> + Clone,
+     {
+        /* <ORIGINAL CODE>
+        let extended_points = points.into_iter().map(|opt_P| opt_P.map(|P| P.0));
+        EdwardsPoint::optional_multiscalar_mul(scalars, extended_points).map(RistrettoPoint)
+        </ORIGINAL CODE> */
+        // Collect directly to Edwards points. Do not clone `points`: a clone can share state
+        // with the original (see issue #793).
+        let edwards_vec: Vec<Option<EdwardsPoint>> = points.map(|opt| opt.map(|p| p.0)).collect();
+        EdwardsPoint::optional_multiscalar_mul_verus(scalars, edwards_vec.into_iter()).map(
+            RistrettoPoint,
+        )
     }
 }
 
@@ -4687,8 +4735,10 @@ mod test_multiscalar_mul {
             let original =
                 <RistrettoPoint as MultiscalarMul>::multiscalar_mul(scalars.iter(), points.iter());
             let verus = RistrettoPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
+            let slices = RistrettoPoint::multiscalar_mul_slices(&scalars, &points);
 
             assert_eq!(original.compress().as_bytes(), verus.compress().as_bytes());
+            assert_eq!(original.compress().as_bytes(), slices.compress().as_bytes());
         }
     }
 
@@ -4723,7 +4773,17 @@ mod test_multiscalar_mul {
                 scalars.iter(),
                 points.iter().cloned(),
             );
+            let slices = RistrettoPoint::optional_multiscalar_mul_slices(&scalars, &points);
 
+            match (original, slices) {
+                (None, None) => {}
+                (Some(o), Some(v)) => assert_eq!(o.compress().as_bytes(), v.compress().as_bytes()),
+                (a, b) => panic!(
+                    "Mismatch: original={:?} slices={:?}",
+                    a.is_some(),
+                    b.is_some()
+                ),
+            }
             match (original, verus) {
                 (None, None) => {}
                 (Some(o), Some(v)) => assert_eq!(o.compress().as_bytes(), v.compress().as_bytes()),

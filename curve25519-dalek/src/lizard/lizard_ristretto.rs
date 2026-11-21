@@ -243,7 +243,6 @@ impl RistrettoPoint {
 
     /// Verus-friendly variant of `lizard_decode::<Sha256>`.
     ///
-    #[verifier::rlimit(20)]
     pub fn lizard_decode_verus(&self) -> (result: Option<[u8; 16]>)
         requires
             is_well_formed_edwards_point(self.0),
@@ -263,6 +262,9 @@ impl RistrettoPoint {
                 }),
             },
     {
+        // Keep `spec_lizard_encode` out of the context: the body only passes
+        // `is_lizard_preimage_coset` facts between lemmas, never unfolds them.
+        hide(is_lizard_preimage_coset);
         /* ORIGINAL CODE: let mut result: [u8; 16] = Default::default(); */
         let mut result: [u8; 16] = [0u8;16];
         /* ORIGINAL CODE: let mut h: [u8; 32] = Default::default(); */
@@ -410,6 +412,13 @@ impl RistrettoPoint {
             }
         }
 
+        proof {
+            // State the byte equality while the array is still in scope, so the
+            // final proof does not have to find extensionality on its own.
+            if n_found == 1 {
+                assert(result@ =~= passed_data.unwrap());
+            }
+        }
         let result = if n_found == 1 {
             Some(result)
         } else {
@@ -909,6 +918,13 @@ impl RistrettoPoint {
         // Keep the existential in `is_in_even_subgroup` out of the context. It is
         // only passed on to `lemma_coset_bridge`.
         hide(is_in_even_subgroup);
+        // Keep the per-limb quantifiers and limb arrays out of the context: the
+        // bounds are only passed between calls, never unfolded.
+        hide(u64_5_bounded);
+        hide(spec_add_fe51_limbs);
+        hide(spec_sub_limbs);
+        hide(sum_of_limbs_bounded);
+        hide(u64_5_as_nat);
         proof {
             assert(edwards_x(self.0) == self.0.X && edwards_y(self.0) == self.0.Y && edwards_z(
                 self.0,
@@ -1025,11 +1041,12 @@ impl RistrettoPoint {
         // Note that if X=0 or Y=0, then s_i = t_i = 0.
         proof {
             assert(fe51_limbs_bounded(&FieldElement::ONE, 52) && fe51_limbs_bounded(
-                &lizard_constants::MIDOUBLE_INVSQRT_A_MINUS_D,
-                52,
-            )) by {
+                &FieldElement::ONE,
+                54,
+            ) && fe51_limbs_bounded(&lizard_constants::MIDOUBLE_INVSQRT_A_MINUS_D, 52)) by {
                 lemma_one_limbs_bounded_51();
                 lemma_fe51_limbs_bounded_weaken(&FieldElement::ONE, 51, 52);
+                lemma_fe51_limbs_bounded_weaken(&FieldElement::ONE, 51, 54);
                 lemma_midouble_invsqrt_a_minus_d_bounded_51();
                 lemma_fe51_limbs_bounded_weaken(
                     &lizard_constants::MIDOUBLE_INVSQRT_A_MINUS_D,
@@ -1132,43 +1149,224 @@ impl RistrettoPoint {
                     lemma_is_zero_iff_canonical_nat_zero(self.0.X);
                     lemma_is_zero_iff_canonical_nat_zero(self.0.Y);
                 };
-                reveal(spec_to_jacobi_quartic_ristretto);
+                lemma_to_jacobi_quartic_spec_steps(
+                    self.0,
+                    xn,
+                    yn,
+                    zn,
+                    fe51_as_canonical_nat(&x2),
+                    fe51_as_canonical_nat(&y2),
+                    fe51_as_canonical_nat(&y4),
+                    fe51_as_canonical_nat(&z2),
+                    fe51_as_canonical_nat(&z_min_y),
+                    fe51_as_canonical_nat(&z_pl_y),
+                    fe51_as_canonical_nat(&z2_min_y2),
+                    gamma_nat,
+                    fe51_as_canonical_nat(&den1),
+                    fe51_as_canonical_nat(&s_over_x),
+                    fe51_as_canonical_nat(&sp_over_xp),
+                    fe51_as_canonical_nat(&tmp1),
+                    fe51_as_canonical_nat(&den2),
+                    fe51_as_canonical_nat(&iz),
+                    fe51_as_canonical_nat(&s_over_y),
+                    fe51_as_canonical_nat(&sp_over_yp),
+                    fe51_as_canonical_nat(&tmp2),
+                    choice_is_true(x_or_y_is_zero),
+                    s0n,
+                    t0n,
+                    s1n,
+                    t1n,
+                    s2n,
+                    t2n,
+                    s3n,
+                    t3n,
+                );
             };
 
-            // result[i] ↔ nat values
-            assert(fe51_as_canonical_nat(&result[0].S) == s0n && fe51_as_canonical_nat(&result[0].T)
-                == t0n);
-            assert(fe51_as_canonical_nat(&result[1].S) == s1n && fe51_as_canonical_nat(&result[1].T)
-                == t1n);
-            assert(fe51_as_canonical_nat(&result[2].S) == s2n && fe51_as_canonical_nat(&result[2].T)
-                == t2n);
-            assert(fe51_as_canonical_nat(&result[3].S) == s3n && fe51_as_canonical_nat(&result[3].T)
-                == t3n);
-
-            // Per-element spec equality (bridges array equality to result form)
-            let spec_jcs = spec_to_jacobi_quartic_ristretto(self.0);
-            assert(spec_jcs[0] == (
-                fe51_as_canonical_nat(&result[0].S),
-                fe51_as_canonical_nat(&result[0].T),
-            ));
-            assert(spec_jcs[1] == (
-                fe51_as_canonical_nat(&result[1].S),
-                fe51_as_canonical_nat(&result[1].T),
-            ));
-            assert(spec_jcs[2] == (
-                fe51_as_canonical_nat(&result[2].S),
-                fe51_as_canonical_nat(&result[2].T),
-            ));
-            assert(spec_jcs[3] == (
-                fe51_as_canonical_nat(&result[3].S),
-                fe51_as_canonical_nat(&result[3].T),
-            ));
-
-            // Coset correctness from spinoff
-            lemma_coset_bridge(self.0, s0n, t0n, s1n, t1n, s2n, t2n, s3n, t3n);
+            lemma_to_jacobi_quartic_result(self.0, result, s0, t0, s1, t1, s2, t2, s3, t3);
         }
         result
     }
+}
+
+/// The coset and per-element postconditions of `to_jacobi_quartic_ristretto`,
+/// proved apart from the exec context.
+proof fn lemma_to_jacobi_quartic_result(
+    point: EdwardsPoint,
+    result: [JacobiPoint; 4],
+    s0: FieldElement,
+    t0: FieldElement,
+    s1: FieldElement,
+    t1: FieldElement,
+    s2: FieldElement,
+    t2: FieldElement,
+    s3: FieldElement,
+    t3: FieldElement,
+)
+    requires
+        is_well_formed_edwards_point(point),
+        is_in_even_subgroup(point),
+        result == [
+            JacobiPoint { S: s0, T: t0 },
+            JacobiPoint { S: s1, T: t1 },
+            JacobiPoint { S: s2, T: t2 },
+            JacobiPoint { S: s3, T: t3 },
+        ],
+        fe51_limbs_bounded(&s0, 52) && fe51_limbs_bounded(&t0, 52),
+        fe51_limbs_bounded(&s1, 52) && fe51_limbs_bounded(&t1, 52),
+        fe51_limbs_bounded(&s2, 52) && fe51_limbs_bounded(&t2, 52),
+        fe51_limbs_bounded(&s3, 52) && fe51_limbs_bounded(&t3, 52),
+        spec_to_jacobi_quartic_ristretto(point) == [
+            (fe51_as_canonical_nat(&s0), fe51_as_canonical_nat(&t0)),
+            (fe51_as_canonical_nat(&s1), fe51_as_canonical_nat(&t1)),
+            (fe51_as_canonical_nat(&s2), fe51_as_canonical_nat(&t2)),
+            (fe51_as_canonical_nat(&s3), fe51_as_canonical_nat(&t3)),
+        ],
+    ensures
+        forall|i: int|
+            0 <= i < 4 ==> #[trigger] fe51_limbs_bounded(&result[i].S, 52) && fe51_limbs_bounded(
+                &result[i].T,
+                52,
+            ),
+        ({
+            let (x, y) = edwards_point_as_affine(point);
+            let coset = ristretto_coset_affine(x, y);
+            forall|i: int|
+                #![trigger coset[i]]
+                0 <= i < 4 ==> ({
+                    let ji = jacobi_to_edwards_affine(
+                        fe51_as_canonical_nat(&result[i].S),
+                        fe51_as_canonical_nat(&result[i].T),
+                    );
+                    ji == coset[0] || ji == coset[1] || ji == coset[2] || ji == coset[3]
+                })
+        }),
+        ({
+            let spec_jcs = spec_to_jacobi_quartic_ristretto(point);
+            &&& spec_jcs[0] == (
+                fe51_as_canonical_nat(&result[0].S),
+                fe51_as_canonical_nat(&result[0].T),
+            )
+            &&& spec_jcs[1] == (
+                fe51_as_canonical_nat(&result[1].S),
+                fe51_as_canonical_nat(&result[1].T),
+            )
+            &&& spec_jcs[2] == (
+                fe51_as_canonical_nat(&result[2].S),
+                fe51_as_canonical_nat(&result[2].T),
+            )
+            &&& spec_jcs[3] == (
+                fe51_as_canonical_nat(&result[3].S),
+                fe51_as_canonical_nat(&result[3].T),
+            )
+        }),
+{
+    lemma_coset_bridge(
+        point,
+        fe51_as_canonical_nat(&s0),
+        fe51_as_canonical_nat(&t0),
+        fe51_as_canonical_nat(&s1),
+        fe51_as_canonical_nat(&t1),
+        fe51_as_canonical_nat(&s2),
+        fe51_as_canonical_nat(&t2),
+        fe51_as_canonical_nat(&s3),
+        fe51_as_canonical_nat(&t3),
+    );
+}
+
+/// `spec_to_jacobi_quartic_ristretto` from the step-by-step field values that
+/// the exec code computes. The caller proves each step from the exec
+/// postconditions; this lemma only unfolds the spec, in a small context.
+pub proof fn lemma_to_jacobi_quartic_spec_steps(
+    point: crate::edwards::EdwardsPoint,
+    xn: nat,
+    yn: nat,
+    zn: nat,
+    x2: nat,
+    y2: nat,
+    y4: nat,
+    z2: nat,
+    z_min_y: nat,
+    z_pl_y: nat,
+    z2_min_y2: nat,
+    gamma: nat,
+    den1: nat,
+    s_over_x: nat,
+    sp_over_xp: nat,
+    tmp1: nat,
+    den2: nat,
+    iz: nat,
+    s_over_y: nat,
+    sp_over_yp: nat,
+    tmp2: nat,
+    xy_zero: bool,
+    s0: nat,
+    t0: nat,
+    s1: nat,
+    t1: nat,
+    s2: nat,
+    t2: nat,
+    s3: nat,
+    t3: nat,
+)
+    requires
+        edwards_point_as_nat(point).0 == xn,
+        edwards_point_as_nat(point).1 == yn,
+        edwards_point_as_nat(point).2 == zn,
+        x2 == field_square(xn),
+        y2 == field_square(yn),
+        y4 == field_square(y2),
+        z2 == field_square(zn),
+        z_min_y == field_sub(zn, yn),
+        z_pl_y == field_add(zn, yn),
+        z2_min_y2 == field_sub(z2, y2),
+        gamma == nat_invsqrt(field_mul(field_mul(y4, x2), z2_min_y2)),
+        den1 == field_mul(gamma, y2),
+        s_over_x == field_mul(den1, z_min_y),
+        sp_over_xp == field_mul(den1, z_pl_y),
+        tmp1 == field_mul(mdouble_invsqrt_a_minus_d(), zn),
+        den2 == field_mul(field_mul(field_neg(z2_min_y2), minvsqrt_one_plus_d()), gamma),
+        iz == field_mul(sqrt_m1(), zn),
+        s_over_y == field_mul(den2, field_sub(iz, xn)),
+        sp_over_yp == field_mul(den2, field_add(iz, xn)),
+        tmp2 == field_mul(mdouble_invsqrt_a_minus_d(), iz),
+        xy_zero == (xn == 0 || yn == 0),
+        s0 == field_mul(s_over_x, xn),
+        s1 == field_mul(field_neg(sp_over_xp), xn),
+        t0 == if xy_zero {
+            1nat
+        } else {
+            field_mul(tmp1, s_over_x)
+        },
+        t1 == if xy_zero {
+            1nat
+        } else {
+            field_mul(tmp1, sp_over_xp)
+        },
+        s2 == if xy_zero {
+            1nat
+        } else {
+            field_mul(s_over_y, yn)
+        },
+        t2 == if xy_zero {
+            midouble_invsqrt_a_minus_d()
+        } else {
+            field_mul(tmp2, s_over_y)
+        },
+        s3 == if xy_zero {
+            field_neg(1)
+        } else {
+            field_mul(field_neg(sp_over_yp), yn)
+        },
+        t3 == if xy_zero {
+            midouble_invsqrt_a_minus_d()
+        } else {
+            field_mul(tmp2, sp_over_yp)
+        },
+    ensures
+        spec_to_jacobi_quartic_ristretto(point) == [(s0, t0), (s1, t1), (s2, t2), (s3, t3)],
+{
+    reveal(spec_to_jacobi_quartic_ristretto);
 }
 
 } // verus!

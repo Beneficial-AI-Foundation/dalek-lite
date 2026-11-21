@@ -257,10 +257,9 @@ impl Eq for MontgomeryPoint {
 
 }
 
-// Equal points delegate to the same canonical byte array.
 impl Hash for MontgomeryPoint {
-    // `call` tracks `state` before and after `canonical_bytes.hash(state)`.
-    // `verus_builtin::call_ensures` (via `vstd::prelude`) expresses that call's postcondition.
+    // For every `H: Hasher`, the initial and final values of `state` satisfy the postcondition
+    // of `<[u8; 32] as Hash>::hash` on the point's canonical encoding.
     fn hash<H: Hasher>(&self, state: &mut H)
         ensures
             exists|call: &mut H|

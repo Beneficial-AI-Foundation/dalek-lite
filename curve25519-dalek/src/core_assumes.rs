@@ -274,7 +274,7 @@ pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg
     -a
 }
 
-// Declare the array method so MontgomeryPoint can refer to its call contract.
+// Declare `<[T; N] as Hash>::hash` so `MontgomeryPoint::hash` can use its contract for `[u8; 32]`.
 pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
     bytes: &[T; N],
     state: &mut H,

@@ -58,6 +58,8 @@ use crate::core_assumes::zeroize_bool;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::core_assumes::*;
+#[cfg(verus_keep_ghost)]
+pub use crate::core_assumes::{canonical_hash_bytes, lemma_hash_is_canonical};
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 #[cfg(verus_keep_ghost)]
@@ -258,14 +260,20 @@ impl Eq for MontgomeryPoint {
 // Equal MontgomeryPoints must hash to the same value. So we have to get them into a canonical
 // encoding first
 impl Hash for MontgomeryPoint {
+    // For every `H: Hasher`, the initial and final values of `state` satisfy the postcondition
+    // of `<[u8; 32] as Hash>::hash` on the point's canonical encoding.
     fn hash<H: Hasher>(&self, state: &mut H)
-        ensures/*  VERIFICATION NOTE:
-             (1) The postcondition is expressed using the abstract `spec_state_after_hash*` model for
-                 `core::hash::Hash::hash` on fixed-size arrays (see `core_assumes.rs`).
-            (2) `spec_state_after_hash_montgomery` hashes the canonical encoding
-                 `spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))`. */
-
-            *final(state) == spec_state_after_hash_montgomery(*old(state), self),
+        ensures
+            exists|call: &mut H|
+                {
+                    &&& *call == *old(state)
+                    &&& *final(call) == *final(state)
+                    &&& #[trigger] call_ensures(
+                        <[u8; 32] as Hash>::hash::<H>,
+                        (&canonical_hash_bytes(self), call),
+                        (),
+                    )
+                },
     {
         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical
         // 32-byte encoding
@@ -274,41 +282,19 @@ impl Hash for MontgomeryPoint {
         let fe = FieldElement::from_bytes(&self.0);
         let canonical_bytes = fe.as_bytes();
 
-        /* GHOST: track the initial state for reasoning about state transformation */
-        let ghost initial_state = *state;
-
-        // Hash the canonical bytes
-        canonical_bytes.hash(state);
-
         proof {
-            assert(canonical_bytes == seq_to_array_32(
-                spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0)),
-            )) by {
-                let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0));
-                let canonical_arr = seq_to_array_32(canonical_seq);
+            assert(canonical_bytes == canonical_hash_bytes(self)) by {
                 let fe_spec = spec_fe51_from_bytes(&self.0);
-
-                assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe)) by {
-                    lemma_as_bytes_equals_spec_fe51_to_bytes(&fe, &canonical_bytes);
-                }
                 assert(fe51_as_canonical_nat(&fe) == fe51_as_canonical_nat(&fe_spec)) by {
                     lemma_from_u8_32_as_nat(&self.0);
                     lemma_as_nat_32_mod_255(&self.0);
                 }
-                assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec)) by {
-                    lemma_field_element_equal_implies_fe51_to_bytes_equal(&fe, &fe_spec);
-                }
-                assert(seq_from32(&canonical_bytes) == canonical_seq) by {
-                    assert(seq_from32(&canonical_bytes) == spec_fe51_as_bytes(&fe));
-                    assert(spec_fe51_as_bytes(&fe) == spec_fe51_as_bytes(&fe_spec));
-                }
-                assert(canonical_bytes == canonical_arr) by {
-                    assert(canonical_seq.len() == 32);
-                    assert(canonical_seq =~= seq_from32(&canonical_arr));
-                    lemma_seq_eq_implies_array_eq(&canonical_bytes, &canonical_arr);
-                }
+                lemma_u8_32_as_nat_of_spec_fe51_to_bytes(&fe_spec);
+                lemma_canonical_bytes_equal(&canonical_bytes, &canonical_hash_bytes(self));
             }
         }
+
+        canonical_bytes.hash(state);
     }
 }
 

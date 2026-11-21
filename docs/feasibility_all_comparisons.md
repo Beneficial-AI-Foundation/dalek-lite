@@ -758,22 +758,29 @@ SHA-512 follows the same structure (Merkle-Damgard with 80 rounds of 64-bit word
 
 ### 8.2 lemma_hash_is_canonical
 
+For a Montgomery point $P$, let $u(P)$ be its decoded u-coordinate and $B(P)$ the canonical
+32-byte encoding of $u(P)$. The lemma states
+
 $$
-\text{fe}(P_1) = \text{fe}(P_2) \;\implies\; H(\ldots \| P_1) = H(\ldots \| P_2)
+\forall P_1, P_2,\quad u(P_1) = u(P_2) \;\implies\; B(P_1) = B(P_2).
 $$
 
-Hashing depends only on the canonical field-element value, not the byte representation.
+`MontgomeryPoint::hash` calls `<[u8; 32] as Hash>::hash` on $B(P)$. Equal arrays and equal
+initial hasher states imply equal final states if the hasher model guarantees that hashing
+the array is deterministic.
 
-**Verus:**
+**Verus statement** ([proof in core_assumes.rs](../curve25519-dalek/src/core_assumes.rs))
+
 ```rust
-pub proof fn lemma_hash_is_canonical<H>(point1: &MontgomeryPoint, point2: &MontgomeryPoint, state: H)
-    requires field_element_from_bytes(&point1.0) == field_element_from_bytes(&point2.0),
-    ensures spec_state_after_hash_montgomery(state, point1)
-         == spec_state_after_hash_montgomery(state, point2),
-{ admit(); }
+pub proof fn lemma_hash_is_canonical(point1: &MontgomeryPoint, point2: &MontgomeryPoint)
+    requires
+        vstd::std_specs::cmp::PartialEqSpec::eq_spec(point1, point2),
+    ensures
+        canonical_hash_bytes(point1) == canonical_hash_bytes(point2),
 ```
 
-**All three provers:** This is a consequence of the canonical-encoding property of field elements. In each prover it reduces to showing that the byte→field→byte round-trip is deterministic, which is straightforward once the field representation is formalised.
+In Lean 4, Rocq, and Isabelle/HOL, the same implication follows by applying the canonical
+encoder to equal field elements.
 
 ---
 

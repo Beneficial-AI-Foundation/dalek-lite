@@ -257,6 +257,8 @@ impl Eq for MontgomeryPoint {
 
 }
 
+// Equal MontgomeryPoints must hash to the same value. So we have to get them into a canonical
+// encoding first
 impl Hash for MontgomeryPoint {
     // For every `H: Hasher`, the initial and final values of `state` satisfy the postcondition
     // of `<[u8; 32] as Hash>::hash` on the point's canonical encoding.

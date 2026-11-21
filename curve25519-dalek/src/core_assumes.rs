@@ -274,115 +274,24 @@ pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg
     -a
 }
 
-/// Intended meaning: for all `N`, `a: [T; N]` and `s1 == s2: H`, running
-/// `<[T; N] as Hash>::hash(&a, _)` on `s1` and on `s2` gives equal final states.
-/// It fails if a `Hasher` method of `H` or a `Hash` method of `T` reads state outside `H`,
-/// for example a global counter.
-///
-/// Uninterpreted and never proved here. It holds for `(DefaultHasher, u8)` by
-/// `axiom_default_hasher_u8_is_deterministic`; clients assume it for other types.
-pub uninterp spec fn spec_hash_is_deterministic<H, T>() -> bool;
-
-/// Model of `<[T; N] as Hash>::hash`: the final hasher state from `initial_state`.
-/// Equals the actual final state only under `spec_hash_is_deterministic::<H, T>()`
-/// (see the `assume_specification` below).
-pub uninterp spec fn spec_state_after_hash<H, T, const N: usize>(
-    initial_state: H,
-    bytes: &[T; N],
-) -> H;
-
-// Assume specification for array hash implementation
-// This is used when hashing fixed-size arrays like [u8; 32] in Hash implementations.
-// When `spec_hash_is_deterministic::<H, T>()` holds, the specification models hashing as a
-// pure state transition on the hasher state. Neither `Hasher` nor `Hash` requires this, so
-// the postcondition is conditional. A trait impl cannot add `requires`, so the hypothesis
-// is in the `ensures`.
+// Declare the array method so MontgomeryPoint can refer to its call contract.
 pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
     bytes: &[T; N],
     state: &mut H,
 ) where H: core::hash::Hasher, T: core::hash::Hash
-    ensures
-        spec_hash_is_deterministic::<H, T>() ==> *final(state) == spec_state_after_hash(
-            *old(state),
-            bytes,
-        ),
 ;
 
-/// The view of a `DefaultHasher` after hashing `bytes`, given its view before.
-#[cfg(verus_keep_ghost)]
-pub uninterp spec fn spec_default_hasher_view_after_hash(view: Seq<Seq<u8>>, bytes: Seq<u8>) -> Seq<
-    Seq<u8>,
->;
-
-/// Axiom: `spec_hash_is_deterministic::<DefaultHasher, u8>()`.
-///
-/// Reference: Rust 1.99 `std::hash::DefaultHasher` wraps `SipHasher13` and overrides only
-///   `write`, `write_str` and `finish`.
-#[cfg(verus_keep_ghost)]
-pub broadcast proof fn axiom_default_hasher_u8_is_deterministic()
-    ensures
-        #[trigger] spec_hash_is_deterministic::<std::hash::DefaultHasher, u8>(),
-{
-    admit();
+/// The canonical encoding of the u-coordinate supplied to the array's `Hash` implementation.
+pub open spec fn canonical_hash_bytes(point: &MontgomeryPoint) -> [u8; 32] {
+    seq_to_array_32(spec_fe51_as_bytes(&spec_fe51_from_bytes(&point.0)))
 }
 
-/// Axiom: the view of a `DefaultHasher` after hashing `[u8; N]` depends only on its view
-/// before and the bytes.
-///
-/// Reference: Rust 1.99 `<[u8; N] as Hash>::hash` calls `write_usize(N)`, then `write(bytes)`.
-///   vstd specifies `DefaultHasher::write` as appending to the view.
-#[cfg(verus_keep_ghost)]
-pub broadcast proof fn axiom_default_hasher_view_after_hash<const N: usize>(
-    state: std::hash::DefaultHasher,
-    bytes: &[u8; N],
-)
-    ensures
-        #[trigger] spec_state_after_hash(state, bytes)@ == spec_default_hasher_view_after_hash(
-            state@,
-            bytes@,
-        ),
-{
-    admit();
-}
-
-#[cfg(verus_keep_ghost)]
-pub broadcast group group_default_hasher_axioms {
-    axiom_default_hasher_u8_is_deterministic,
-    axiom_default_hasher_view_after_hash,
-}
-
-/// Spec function: the model hash state after hashing a MontgomeryPoint
-/// This is defined as the hash state of its canonical byte representation
-pub open spec fn spec_state_after_hash_montgomery<H>(
-    initial_state: H,
-    point: &MontgomeryPoint,
-) -> H {
-    // The hash state of a MontgomeryPoint is determined by its canonical bytes
-    // Canonical bytes are: spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))
-    let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&point.0));
-    let canonical_bytes = seq_to_array_32(canonical_seq);
-    spec_state_after_hash(initial_state, &canonical_bytes)
-}
-
-/// Points with the same field element have the same model hash state.
-/// This relates only model expressions. Runtime hash states are equal only when
-/// `spec_hash_is_deterministic::<H, u8>()` holds (see `<MontgomeryPoint as Hash>::hash`).
-pub proof fn lemma_hash_is_canonical<H>(
-    point1: &MontgomeryPoint,
-    point2: &MontgomeryPoint,
-    state: H,
-)
+/// Points with the same u-coordinate have identical canonical encodings.
+pub proof fn lemma_hash_is_canonical(point1: &MontgomeryPoint, point2: &MontgomeryPoint)
     requires
-// The two points represent the same field element (same canonical value)
-
-        field_element_from_bytes(&point1.0) == field_element_from_bytes(&point2.0),
+        vstd::std_specs::cmp::PartialEqSpec::eq_spec(point1, point2),
     ensures
-// Points with equal field element values hash to the same state
-
-        spec_state_after_hash_montgomery(state, point1) == spec_state_after_hash_montgomery(
-            state,
-            point2,
-        ),
+        canonical_hash_bytes(point1) == canonical_hash_bytes(point2),
 {
     let fe1 = spec_fe51_from_bytes(&point1.0);
     let fe2 = spec_fe51_from_bytes(&point2.0);

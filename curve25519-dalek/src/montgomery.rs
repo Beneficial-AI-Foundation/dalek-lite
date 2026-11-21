@@ -58,6 +58,8 @@ use crate::core_assumes::zeroize_bool;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::core_assumes::*;
+#[cfg(verus_keep_ghost)]
+pub use crate::core_assumes::{canonical_hash_bytes, lemma_hash_is_canonical};
 use crate::edwards::{CompressedEdwardsY, EdwardsPoint};
 use crate::field::FieldElement;
 #[cfg(verus_keep_ghost)]
@@ -255,20 +257,22 @@ impl Eq for MontgomeryPoint {
 
 }
 
-// Equal MontgomeryPoints must hash to the same value. So we have to get them into a canonical
-// encoding first
+// Equal points delegate to the same canonical byte array.
 impl Hash for MontgomeryPoint {
+    // `call` tracks `state` before and after `canonical_bytes.hash(state)`.
+    // `verus_builtin::call_ensures` (via `vstd::prelude`) expresses that call's postcondition.
     fn hash<H: Hasher>(&self, state: &mut H)
-        ensures/*  VERIFICATION NOTE:
-             (1) The postcondition is expressed using the abstract `spec_state_after_hash*` model for
-                 `core::hash::Hash::hash` on fixed-size arrays (see `core_assumes.rs`).
-            (2) `spec_state_after_hash_montgomery` hashes the canonical encoding
-                 `spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))`.
-            (3) The postcondition holds only if hashing `[u8; 32]` into `H` is deterministic
-                 (`spec_hash_is_deterministic::<H, u8>()`), because `Hasher` does not require it. */
-
-            spec_hash_is_deterministic::<H, u8>() ==> *final(state)
-                == spec_state_after_hash_montgomery(*old(state), self),
+        ensures
+            exists|call: &mut H|
+                {
+                    &&& *call == *old(state)
+                    &&& *final(call) == *final(state)
+                    &&& #[trigger] call_ensures(
+                        <[u8; 32] as Hash>::hash::<H>,
+                        (&canonical_hash_bytes(self), call),
+                        (),
+                    )
+                },
     {
         // Do a round trip through a `FieldElement`. `as_bytes` is guaranteed to give a canonical
         // 32-byte encoding
@@ -277,16 +281,11 @@ impl Hash for MontgomeryPoint {
         let fe = FieldElement::from_bytes(&self.0);
         let canonical_bytes = fe.as_bytes();
 
-        /* GHOST: track the initial state for reasoning about state transformation */
-        let ghost initial_state = *state;
-
         // Hash the canonical bytes
         canonical_bytes.hash(state);
 
         proof {
-            assert(canonical_bytes == seq_to_array_32(
-                spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0)),
-            )) by {
+            assert(canonical_bytes == canonical_hash_bytes(self)) by {
                 let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&self.0));
                 let canonical_arr = seq_to_array_32(canonical_seq);
                 let fe_spec = spec_fe51_from_bytes(&self.0);

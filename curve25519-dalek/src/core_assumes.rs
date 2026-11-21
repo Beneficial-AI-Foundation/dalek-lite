@@ -274,52 +274,24 @@ pub fn negate_field<T>(a: &T) -> (result: T) where for <'a>&'a T: core::ops::Neg
     -a
 }
 
-// Spec function: models the state of a hasher after hashing bytes
-pub uninterp spec fn spec_state_after_hash<H, T, const N: usize>(
-    initial_state: H,
-    bytes: &[T; N],
-) -> H;
-
-// Assume specification for array hash implementation
-// This is used when hashing fixed-size arrays like [u8; 32] in Hash implementations.
-// The specification models hashing as a pure state transition on the hasher state.
+// Declare `<[T; N] as Hash>::hash` so `MontgomeryPoint::hash` can use its contract for `[u8; 32]`.
 pub assume_specification<T, const N: usize, H>[ <[T; N] as core::hash::Hash>::hash ](
     bytes: &[T; N],
     state: &mut H,
 ) where H: core::hash::Hasher, T: core::hash::Hash
-    ensures
-        *final(state) == spec_state_after_hash(*old(state), bytes),
 ;
 
-/// Spec function: the hash state after hashing a MontgomeryPoint
-/// This is defined as the hash state of its canonical byte representation
-pub open spec fn spec_state_after_hash_montgomery<H>(
-    initial_state: H,
-    point: &MontgomeryPoint,
-) -> H {
-    // The hash state of a MontgomeryPoint is determined by its canonical bytes
-    // Canonical bytes are: spec_fe51_as_bytes(spec_fe51_from_bytes(point.0))
-    let canonical_seq = spec_fe51_as_bytes(&spec_fe51_from_bytes(&point.0));
-    let canonical_bytes = seq_to_array_32(canonical_seq);
-    spec_state_after_hash(initial_state, &canonical_bytes)
+/// The canonical encoding of the u-coordinate supplied to the array's `Hash` implementation.
+pub open spec fn canonical_hash_bytes(point: &MontgomeryPoint) -> [u8; 32] {
+    seq_to_array_32(spec_fe51_as_bytes(&spec_fe51_from_bytes(&point.0)))
 }
 
-pub proof fn lemma_hash_is_canonical<H>(
-    point1: &MontgomeryPoint,
-    point2: &MontgomeryPoint,
-    state: H,
-)
+/// Points with the same u-coordinate have identical canonical encodings.
+pub proof fn lemma_hash_is_canonical(point1: &MontgomeryPoint, point2: &MontgomeryPoint)
     requires
-// The two points represent the same field element (same canonical value)
-
-        field_element_from_bytes(&point1.0) == field_element_from_bytes(&point2.0),
+        vstd::std_specs::cmp::PartialEqSpec::eq_spec(point1, point2),
     ensures
-// Points with equal field element values hash to the same state
-
-        spec_state_after_hash_montgomery(state, point1) == spec_state_after_hash_montgomery(
-            state,
-            point2,
-        ),
+        canonical_hash_bytes(point1) == canonical_hash_bytes(point2),
 {
     let fe1 = spec_fe51_from_bytes(&point1.0);
     let fe2 = spec_fe51_from_bytes(&point2.0);

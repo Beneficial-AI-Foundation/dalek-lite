@@ -633,6 +633,36 @@ proof fn lemma_pow2_for_compute_matches_pow2()
     lemma_pow2_adds(51, 204);
 }
 
+/// The first 8-torsion point is the identity: its affine form is (0, 1).
+#[cfg(verus_keep_ghost)]
+pub proof fn lemma_eight_torsion_zero_affine()
+    ensures
+        crate::specs::edwards_specs::edwards_point_as_affine(spec_eight_torsion()[0]) == (
+            0nat,
+            1nat,
+        ),
+{
+    use crate::specs::field_specs::*;
+    use crate::specs::field_specs_u64::*;
+    crate::lemmas::field_lemmas::field_algebra_lemmas::lemma_field_inv_one();
+    p_gt_2();
+    let t0 = spec_eight_torsion()[0];
+    crate::specs::edwards_specs::lemma_unfold_edwards(t0);
+    assert(t0.X.limbs == [0u64, 0u64, 0u64, 0u64, 0u64]);
+    assert(t0.Y.limbs == [1u64, 0u64, 0u64, 0u64, 0u64]);
+    assert(t0.Z.limbs == [1u64, 0u64, 0u64, 0u64, 0u64]);
+    vstd::arithmetic::mul::lemma_mul_basics(vstd::arithmetic::power2::pow2(51) as int);
+    vstd::arithmetic::mul::lemma_mul_basics(vstd::arithmetic::power2::pow2(102) as int);
+    vstd::arithmetic::mul::lemma_mul_basics(vstd::arithmetic::power2::pow2(153) as int);
+    vstd::arithmetic::mul::lemma_mul_basics(vstd::arithmetic::power2::pow2(204) as int);
+    assert(u64_5_as_nat([0u64, 0u64, 0u64, 0u64, 0u64]) == 0);
+    assert(u64_5_as_nat([1u64, 0u64, 0u64, 0u64, 0u64]) == 1);
+    vstd::arithmetic::div_mod::lemma_small_mod(0, p());
+    vstd::arithmetic::div_mod::lemma_small_mod(1, p());
+    assert(field_mul(0, 1) == 0);
+    assert(field_mul(1, 1) == 1);
+}
+
 /// The statement of lemma_four_torsion_affine, proved by computation.
 #[cfg(verus_keep_ghost)]
 pub proof fn lemma_four_torsion_affine_by_computation()

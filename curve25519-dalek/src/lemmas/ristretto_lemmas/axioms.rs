@@ -9,7 +9,7 @@ use crate::field::FieldElement;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
 use crate::lemmas::edwards_lemmas::curve_equation_lemmas::{
-    axiom_edwards_add_complete, lemma_edwards_scalar_mul_distributive,
+    lemma_edwards_add_complete, lemma_edwards_scalar_mul_distributive,
 };
 #[allow(unused_imports)]
 use crate::specs::edwards_specs::*;
@@ -24,21 +24,6 @@ use vstd::prelude::*;
 verus! {
 
 // --- Decode axioms ---
-/// Axiom: when decode succeeds, the decoded (x, y) satisfy the Edwards curve equation.
-///
-/// Reference: RFC 9496 §4.3.1 (Decode); Hamburg, "Decaf" §4;
-///   https://ristretto.group/formulas/decoding.html
-/// Runtime validation: `test_ristretto_decode_on_curve` (100 points)
-pub proof fn axiom_ristretto_decode_on_curve(s: nat)
-    requires
-        s < p(),
-        ristretto_decode_ok(s),
-    ensures
-        is_on_edwards_curve(ristretto_decode_x(s), ristretto_decode_y(s)),
-{
-    admit();
-}
-
 /// Axiom: when decode succeeds, the resulting point is in the even subgroup (2E).
 ///
 /// This is the core Ristretto property: decoded points are always doubles of
@@ -182,7 +167,7 @@ pub proof fn axiom_elligator_in_even_subgroup(r_0: nat)
 ///
 /// If P = 2·Q₁ and Q = 2·Q₂, then P + Q = 2·Q₁ + 2·Q₂ = 2·(Q₁ + Q₂).
 /// The witness for P + Q is Q₁ + Q₂, which is on the curve by
-/// `axiom_edwards_add_complete`.
+/// `lemma_edwards_add_complete`.
 ///
 /// Reference: standard group theory (sum of doubles is a double)
 pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsPoint)
@@ -207,7 +192,7 @@ pub proof fn lemma_even_subgroup_closed_under_add(p1: EdwardsPoint, p2: EdwardsP
         is_on_edwards_curve(q.0, q.1) && edwards_point_as_affine(p2)
             == #[trigger] edwards_scalar_mul(q, 2);
     let q = edwards_add(q1.0, q1.1, q2.0, q2.1);
-    axiom_edwards_add_complete(q1.0, q1.1, q2.0, q2.1);
+    lemma_edwards_add_complete(q1.0, q1.1, q2.0, q2.1);
     lemma_edwards_scalar_mul_distributive(q1, q2, 2);
     assert forall|result: EdwardsPoint|
         edwards_point_as_affine(result) == edwards_add(
@@ -363,7 +348,7 @@ mod test_ristretto_decode_axioms {
         &(&(&yy - &xx) - &FieldElement::ONE) - &dxxyy
     }
 
-    /// Validate axiom_ristretto_decode_on_curve:
+    /// Runtime check of lemma_ristretto_decode_on_curve (proved in compress_roundtrip_lemmas):
     /// Ristretto decoding always produces a point on the Edwards curve.
     #[test]
     fn test_ristretto_decode_on_curve() {

@@ -259,6 +259,9 @@ use crate::lemmas::ristretto_lemmas::axioms::*;
 use crate::lemmas::ristretto_lemmas::batch_compress_lemmas::*;
 #[cfg(verus_keep_ghost)]
 #[allow(unused_imports)]
+use crate::lemmas::ristretto_lemmas::compress_roundtrip_lemmas::lemma_ristretto_decode_on_curve;
+#[cfg(verus_keep_ghost)]
+#[allow(unused_imports)]
 use crate::lemmas::ristretto_lemmas::elligator_lemmas::*;
 #[allow(unused_imports)] // Used in verus! blocks
 use crate::specs::core_specs::*;
@@ -889,7 +892,7 @@ mod decompress {
                 assert(ristretto_decode_ok(s_nat));
                 assert(is_on_edwards_curve(ristretto_decode_x(s_nat), ristretto_decode_y(s_nat)))
                     by {
-                    axiom_ristretto_decode_on_curve(s_nat);
+                    lemma_ristretto_decode_on_curve(s_nat);
                 };
                 assert(is_on_edwards_curve_projective(x_val, y_val, 1nat)) by {
                     assert(x_val < p()) by {

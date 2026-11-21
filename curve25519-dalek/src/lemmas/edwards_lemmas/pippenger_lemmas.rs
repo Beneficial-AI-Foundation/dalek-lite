@@ -356,7 +356,7 @@ pub proof fn lemma_pippenger_horner_on_curve(
         let scaled = edwards_scalar_mul(prev, pow2(w));
         lemma_column_sum_on_curve(pts, digs, j, pts.len() as int);
         let col = straus_column_sum(pts, digs, j, pts.len() as int);
-        axiom_edwards_add_complete(scaled.0, scaled.1, col.0, col.1);
+        lemma_edwards_add_complete(scaled.0, scaled.1, col.0, col.1);
     }
 }
 
@@ -384,9 +384,9 @@ pub proof fn lemma_bucket_contents_on_curve(
         lemma_bucket_contents_on_curve(points_affine, all_digits, col, n - 1, b);
         let prev = pippenger_bucket_contents(points_affine, all_digits, col, n - 1, b);
         let pt = points_affine[n - 1];
-        axiom_edwards_add_complete(prev.0, prev.1, pt.0, pt.1);
+        lemma_edwards_add_complete(prev.0, prev.1, pt.0, pt.1);
         lemma_negation_preserves_curve(pt.0, pt.1);
-        axiom_edwards_add_complete(prev.0, prev.1, field_neg(pt.0), pt.1);
+        lemma_edwards_add_complete(prev.0, prev.1, field_neg(pt.0), pt.1);
     }
 }
 
@@ -408,7 +408,7 @@ pub proof fn lemma_weighted_bucket_sum_on_curve(buckets: Seq<(nat, nat)>, B: int
         let prev = pippenger_weighted_bucket_sum(buckets, B - 1);
         lemma_edwards_scalar_mul_on_curve(buckets[B - 1], B as nat);
         let weighted = edwards_scalar_mul(buckets[B - 1], B as nat);
-        axiom_edwards_add_complete(prev.0, prev.1, weighted.0, weighted.1);
+        lemma_edwards_add_complete(prev.0, prev.1, weighted.0, weighted.1);
     }
 }
 
@@ -430,7 +430,7 @@ pub proof fn lemma_intermediate_sum_on_curve(buckets: Seq<(nat, nat)>, b: int, B
     } else {
         lemma_intermediate_sum_on_curve(buckets, b + 1, B);
         let next = pippenger_intermediate_sum(buckets, b + 1, B);
-        axiom_edwards_add_complete(next.0, next.1, buckets[b].0, buckets[b].1);
+        lemma_edwards_add_complete(next.0, next.1, buckets[b].0, buckets[b].1);
     }
 }
 
@@ -453,7 +453,7 @@ pub proof fn lemma_weighted_from_on_curve(buckets: Seq<(nat, nat)>, b: int, B: i
         let rest = pippenger_weighted_from(buckets, b, B - 1);
         lemma_edwards_scalar_mul_on_curve(buckets[B - 1], (B - b) as nat);
         let weighted = edwards_scalar_mul(buckets[B - 1], (B - b) as nat);
-        axiom_edwards_add_complete(rest.0, rest.1, weighted.0, weighted.1);
+        lemma_edwards_add_complete(rest.0, rest.1, weighted.0, weighted.1);
     }
 }
 
@@ -1051,8 +1051,8 @@ proof fn lemma_weighted_from_decompose(buckets: Seq<(nat, nat)>, b: int, B: int)
         lemma_weighted_from_on_curve(buckets, b + 1, B - 1);
         lemma_intermediate_sum_on_curve(buckets, b, B - 1);
         lemma_edwards_scalar_mul_on_curve(C, m);
-        axiom_edwards_add_complete(mC.0, mC.1, C.0, C.1);
-        axiom_edwards_add_complete(IS_prev.0, IS_prev.1, C.0, C.1);
+        lemma_edwards_add_complete(mC.0, mC.1, C.0, C.1);
+        lemma_edwards_add_complete(IS_prev.0, IS_prev.1, C.0, C.1);
 
         // Four-way reassociation: (W+IS_prev)+(mC+C) = (W+mC)+(IS_prev+C)
         assert(edwards_add(

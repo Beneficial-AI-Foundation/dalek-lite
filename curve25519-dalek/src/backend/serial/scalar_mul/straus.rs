@@ -452,13 +452,11 @@ impl VartimeMultiscalarMul for Straus {
             },
         };
         proof {
-            assert forall|k: int| 0 <= k < tables@.len() implies {
-                &&& #[trigger] pi.produces()[k]
-                &&& pi.remaining()[k].is_some()
-                &&& vartime_table_for(tables@[k], pi.remaining()[k].unwrap())
-            } by {
+            assert forall|k: int| 0 <= k < pi.remaining().len() implies (
+            #[trigger] pi.remaining()[k]).is_some() by {
                 assert(table_for.ensures((pi.remaining()[k],), Some(tables@[k])));
             }
+            assert(all_points_some(pi.remaining()));
         }
         proof {
             assert forall|k: int| 0 <= k < nafs@.len() implies {
@@ -471,6 +469,7 @@ impl VartimeMultiscalarMul for Straus {
                 &&& vartime_table_for(#[trigger] tables@[k], pi.remaining()[k].unwrap())
                 &&& is_well_formed_edwards_point(pi.remaining()[k].unwrap())
             } by {
+                assert(table_for.ensures((pi.remaining()[k],), Some(tables@[k])));
                 assert(pi.produces()[k]);
             }
         }
@@ -866,9 +865,8 @@ proof fn lemma_straus_result<I, J>(si: I, pi: J, ss: Seq<Scalar>, result: Edward
 
     requires
         forall|k: int| 0 <= k < si.remaining().len() ==> #[trigger] si.produces()[k],
-        forall|k: int|
-            0 <= k < pi.remaining().len() ==> #[trigger] pi.produces()[k]
-                && pi.remaining()[k].is_some(),
+        forall|k: int| 0 <= k < pi.remaining().len() ==> #[trigger] pi.produces()[k],
+        all_points_some(pi.remaining()),
         borrowed_values(si.remaining(), ss),
         Straus::vartime_sum(ss, unwrap_points(pi.remaining()), result),
     ensures

@@ -179,8 +179,6 @@ pub trait BasepointTable {
 }
 
 #[cfg(verus_keep_ghost)]
-pub use crate::core_assumes::lemma_map_exact_size_hint as axiom_map_exact_size_hint;
-#[cfg(verus_keep_ghost)]
 pub use crate::core_assumes::{by_ref_preserves_items, exact_size_hint, lemma_map_exact_size_hint};
 #[cfg(verus_keep_ghost)]
 pub use crate::specs::iterator_specs::{

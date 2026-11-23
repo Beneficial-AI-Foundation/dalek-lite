@@ -870,7 +870,8 @@ impl Straus {
         /* <REFACTORED CODE>
          * Convert each scalar to radix-16 signed digits: s = sum(s_j * 16^j)
          */
-        let mut scalar_digits: Vec<[i8; 64]> = Vec::new();
+        // Reserve every digit array up front so reallocation cannot leave a copy behind.
+        let mut scalar_digits: Vec<[i8; 64]> = Vec::with_capacity(scalars.len());
         idx = 0;
         while idx < scalars.len()
             invariant
@@ -897,7 +898,10 @@ impl Straus {
         /* </REFACTORED CODE> */
 
         assert(prepared_inputs(lookup_tables@, scalar_digits@, spec_scalars, spec_points));
-        Self::multiscalar_mul_prepared(lookup_tables, scalar_digits.as_slice())
+        let result = Self::multiscalar_mul_prepared(lookup_tables, scalar_digits.as_slice());
+        #[cfg(feature = "zeroize")]
+        crate::backend::zeroize_scalar_digits(&mut scalar_digits);
+        result
     }
 
     /// Compute the multiscalar sum from the lookup tables and scalar digits prepared by the caller.

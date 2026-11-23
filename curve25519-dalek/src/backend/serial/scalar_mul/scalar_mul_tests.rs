@@ -6,6 +6,7 @@
 mod tests {
     use crate::constants;
     use crate::edwards::EdwardsPoint;
+    use crate::ristretto::RistrettoPoint;
     use crate::scalar::Scalar;
     use crate::traits::{MultiscalarMul, VartimeMultiscalarMul};
     use alloc::vec;
@@ -89,6 +90,15 @@ mod tests {
         let scalars = SkipFirst(alloc::vec![Scalar::ONE, Scalar::from(2u8)].into_iter());
         let points = SkipFirst(alloc::vec![base, base].into_iter());
         assert_eq!(EdwardsPoint::multiscalar_mul(scalars, points), base + base);
+
+        // Ristretto checks the length through Map::by_ref(), preserving both input points.
+        let base = constants::RISTRETTO_BASEPOINT_POINT;
+        let points = SkipFirst(vec![base, base + base].into_iter());
+        let scalars = [Scalar::ONE, Scalar::ONE];
+        assert_eq!(
+            RistrettoPoint::multiscalar_mul(scalars, points),
+            base + base + base
+        );
     }
 
     #[test]

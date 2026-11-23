@@ -27,6 +27,13 @@ pub open spec fn borrowed_values<A: Borrow<B>, B>(items: Seq<A>, values: Seq<B>)
         0 <= k < items.len() ==> #[trigger] call_ensures(Borrow::borrow, (&items[k],), &values[k])
 }
 
+/// Both iterators obey the vstd iterator laws and have the same number of items remaining.
+/// Every permitted borrow of a yielded scalar has bit 255 clear. Every permitted borrow of
+/// a yielded point satisfies `valid_point`.
+///
+/// `scalars.by_ref().size_hint()` must report the remaining length and preserve the items.
+/// `point_hint` specifies the corresponding size check for points. Edwards requires the same
+/// reborrow guarantee. Ristretto requires an exact `size_hint()` on the underlying point iterator.
 #[verifier::prophetic]
 pub open spec fn valid_msm_iters<P, I: Iterator, J: Iterator>(
     scalars: I,
@@ -51,6 +58,8 @@ pub open spec fn valid_msm_iters<P, I: Iterator, J: Iterator>(
         ) ==> valid_point(p)
 }
 
+/// Every pair of iterators permitted by `scalars.into_iter()` and `points.into_iter()`
+/// must satisfy `valid_msm_iters` with the given point validity and size-hint predicates.
 #[verifier::prophetic]
 pub open spec fn valid_msm_sources<P, I: IntoIterator, J: IntoIterator>(
     scalars: I,

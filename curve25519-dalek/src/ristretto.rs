@@ -3563,6 +3563,10 @@ impl MultiscalarMul for RistrettoPoint {
         J: IntoIterator,
         J::Item: Borrow<RistrettoPoint>,
      {
+        /* <ORIGINAL CODE>
+        let extended_points = points.into_iter().map(|P| P.borrow().0);
+        RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
+        </ORIGINAL CODE> */
         let pi = points.into_iter();
         let project = |p: J::Item| -> (e: EdwardsPoint)
             ensures
@@ -3728,6 +3732,9 @@ impl RistrettoPoint {
         let extended_points = points.into_iter().map(|P| P.borrow().0);
         RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
         </ORIGINAL CODE> */
+        #[cfg(not(verus_keep_ghost))]
+        assert_eq!(scalars.len(), points.len());
+
         let mut edwards_points: Vec<EdwardsPoint> = Vec::with_capacity(points.len());
         let mut i: usize = 0;
         while i < points.len()
@@ -3784,6 +3791,9 @@ impl RistrettoPoint {
         let extended_points = points.into_iter().map(|opt_P| opt_P.map(|P| P.0));
         EdwardsPoint::optional_multiscalar_mul(scalars, extended_points).map(RistrettoPoint)
         </ORIGINAL CODE> */
+        #[cfg(not(verus_keep_ghost))]
+        assert_eq!(scalars.len(), points.len());
+
         let mut edwards_points: Vec<Option<EdwardsPoint>> = Vec::with_capacity(points.len());
         let mut i: usize = 0;
         while i < points.len()

@@ -237,6 +237,25 @@ pub(crate) fn straus_multiscalar_mul<I: Iterator, J: Iterator>(
                 &&& edwards_point_as_affine(out) == sum_of_scalar_muls(ss, ps)
             },
 {
+    /* <ORIGINAL CODE>
+    use crate::traits::MultiscalarMul;
+
+    match get_selected_backend() {
+        #[cfg(curve25519_dalek_backend = "simd")]
+        BackendKind::Avx2 => {
+            vector::scalar_mul::straus::spec_avx2::Straus::multiscalar_mul::<I, J>(scalars, points)
+        }
+        #[cfg(all(curve25519_dalek_backend = "simd", nightly))]
+        BackendKind::Avx512 => {
+            vector::scalar_mul::straus::spec_avx512ifma_avx512vl::Straus::multiscalar_mul::<I, J>(
+                scalars, points,
+            )
+        }
+        BackendKind::Serial => {
+            serial::scalar_mul::straus::Straus::multiscalar_mul::<I, J>(scalars, points)
+        }
+    }
+    </ORIGINAL CODE> */
     #[cfg(verus_keep_ghost)]
     use crate::backend::serial::scalar_mul::{iterator::mapped_borrows, straus::prepared_inputs};
     let (s_lo, s_hi) = crate::core_assumes::by_ref_size_hint(&mut scalars);

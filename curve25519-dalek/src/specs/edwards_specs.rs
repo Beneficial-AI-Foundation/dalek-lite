@@ -118,6 +118,24 @@ pub proof fn lemma_ed25519_basepoint_y()
 {
 }
 
+/// Expose the x-coordinate of the Ed25519 basepoint for cross-module proofs.
+///
+/// Companion of `lemma_ed25519_basepoint_y`. With both coordinates, other
+/// modules can compute with the basepoint, for example to prove its order.
+pub proof fn lemma_ed25519_basepoint_x()
+    ensures
+        spec_ed25519_basepoint().0 == u64_5_as_nat(
+            [
+                1738742601995546u64,
+                1146398526822698u64,
+                2070867633025821u64,
+                562264141797630u64,
+                587772402128613u64,
+            ],
+        ),
+{
+}
+
 // =============================================================================
 // EdwardsBasepointTable Specification
 // =============================================================================

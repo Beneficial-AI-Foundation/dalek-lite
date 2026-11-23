@@ -124,16 +124,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_edwards_add_complete()
-**Claim:** Edwards curve addition is complete (denominators are nonzero) and closed (the result is on the curve)
-
-**Reference:** Bernstein, Birkner, Joye, Lange, Peters (2008) — Twisted Edwards Curves, Theorem 3.3  
-**URL:** https://eprint.iacr.org/2008/013.pdf
-
-**Justification:** For Ed25519, d is non-square in GF(p). By Theorem 3.3 of the Twisted Edwards Curves paper, the addition law is complete: for any two curve points (x₁,y₁), (x₂,y₂), the denominators 1 + d·x₁·x₂·y₁·y₂ and 1 − d·x₁·x₂·y₁·y₂ are both nonzero, and the result lies on the curve.
-
----
-
 ### axiom_edwards_scalar_mul_signed_additive()
 **Claim:** [a]P + [b]P = [a+b]P for signed scalar multiplication, for P on the curve with reduced coordinates (< p). The bound is necessary because `edwards_scalar_mul(P, 1)` returns P as given, while `edwards_add` reduces its result
 
@@ -226,18 +216,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_ristretto_decode_on_curve(s)
-**Signature:** `axiom_ristretto_decode_on_curve(s: nat)` — requires `s < p()` and `spec_ristretto_decode_ok(s)`; ensures `is_on_edwards_curve(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s))`.
-
-**Claim:** When the Ristretto decode succeeds for field element s, the decoded coordinates (x, y) satisfy the Edwards curve equation −x² + y² = 1 + d·x²·y² (mod p).
-
-**Reference:** Hamburg (2015) — "Decaf: Eliminating cofactors through point compression"
-**URL:** https://eprint.iacr.org/2015/673; https://ristretto.group/formulas/decoding.html
-
-**Justification:** The Ristretto decode formulas are designed so that when I²·v·u2² ∈ {1, √(−1)}, the resulting point lies on the Edwards curve. This follows from algebraic substitution of Dx = I·u2, Dy = I·Dx·v into the curve equation. The conditional negate (absolute value) does not affect x², so the equation holds regardless of sign choice. Validated by runtime test `test_ristretto_decode_on_curve` (100 points).
-
----
-
 ### axiom_ristretto_decode_in_even_subgroup(s, point)
 **Signature:** `axiom_ristretto_decode_in_even_subgroup(s: nat, point: EdwardsPoint)` — requires `s < p()`, `spec_ristretto_decode_ok(s)`, and that `point`'s projective coordinates match `(spec_ristretto_decode_x(s), spec_ristretto_decode_y(s), 1, x*y)`; ensures `is_in_even_subgroup(point)`.
 
@@ -322,28 +300,6 @@ This document maps each axiom in the curve25519-dalek verification to its justif
 
 ---
 
-### axiom_elligator_forward_zero()
-**Claim:** `spec_elligator_ristretto_flavor(0) == (0, 1)` — the forward Elligator map on r₀ = 0 produces the identity point.
-
-**Reference:** N/A (constant identity)
-
-**Justification:** When r₀ = 0: r = i·0² = 0, and the Elligator map degenerates to s = 0, giving affine (0, 1). This is a constant-level identity about the Elligator map on a specific input. Exceeds Z3 capacity because the forward map involves multiple field operations whose intermediate values must be tracked.
-
-**Runtime validation:** `test_axiom_elligator_inv_roundtrip` in lizard_ristretto.rs (branch 2: s = 0, t ≢ 1 case).
-
----
-
-### axiom_elligator_forward_sqrt_id()
-**Claim:** `spec_elligator_ristretto_flavor(sqrt_id()) == (0, 1)` — the forward Elligator map on √(id) produces the identity point.
-
-**Reference:** N/A (constant identity)
-
-**Justification:** √(id)² = id, so r = i·(id) = −d, giving D = (−1 + d²)·0 = 0, hence X = 0 and the affine point is (0, 1). Not provable by Z3 because √(id) is a 255-bit constant whose square must equal i·d mod p.
-
-**Runtime validation:** `test_axiom_elligator_inv_roundtrip` in lizard_ristretto.rs (branch 1: s = 0, t ≡ 1 case).
-
----
-
 ### axiom_elligator_inv_square_case(s, t, a, s2, s4, inv_sq_y, y, pms2, x, r0)
 **Claim:** When (s, t) is on the Jacobi quartic (`is_on_jacobi_quartic(s, t)`), s ≢ 0, and the inverse square root exists (square case), `spec_elligator_ristretto_flavor(|x|) == jacobi_to_edwards_affine(s, t)`.
 
@@ -399,16 +355,20 @@ now a deterministic function of the point via `spec_sha_consistent_count`.
 
 ## Proved former axioms
 
-These statements were axioms and are now proved in Verus, so they use the `lemma_` prefix. Some of the proofs use other axioms, for example `axiom_edwards_add_complete`.
+These statements were axioms and are now proved in Verus, so they use the `lemma_` prefix. Some of the proofs use other axioms, for example `axiom_edwards_add_associative`.
 
 | Old name | New name | File | Proof method |
 |----------|----------|------|--------------|
 | axiom_486660_not_quadratic_residue | lemma_486660_not_quadratic_residue | montgomery_curve_lemmas.rs | Euler's criterion (`pow_mod`, `lemma_not_square_by_euler`); compute_only |
 | axiom_2_times_486661_not_qr | lemma_2_times_486661_not_qr | montgomery_curve_lemmas.rs | Euler's criterion (`pow_mod`, `lemma_not_square_by_euler`); compute_only |
 | axiom_edwards_scalar_mul_distributive | lemma_edwards_scalar_mul_distributive | curve_equation_lemmas.rs | Induction on n (`lemma_edwards_double_of_add`, `lemma_edwards_add_four_way_swap`) |
-| axiom_even_subgroup_closed_under_add | lemma_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | Witness Q₁ + Q₂, on the curve by `axiom_edwards_add_complete`; `lemma_edwards_scalar_mul_distributive` |
+| axiom_even_subgroup_closed_under_add | lemma_even_subgroup_closed_under_add | ristretto_lemmas/axioms.rs | Witness Q₁ + Q₂, on the curve by `lemma_edwards_add_complete`; `lemma_edwards_scalar_mul_distributive` |
 | axiom_invsqrt_factors_over_square | lemma_invsqrt_factors_over_square | field_specs.rs | Uniqueness of the inverse square root (`lemma_invsqrt_unique`) |
 | axiom_invsqrt_a_minus_d | lemma_invsqrt_a_minus_d | ristretto_lemmas/axioms.rs | compute_only; `lemma_nat_invsqrt_fast` replaces the exponentiation with square and multiply |
+| axiom_edwards_add_complete | lemma_edwards_add_complete | curve_equation_lemmas.rs, add_complete_lemmas.rs | Denominators: Bernstein and Lange 2007, Thm. 3.3, with the rotation u = i·x and `lemma_edwards_d_not_square`. Closure: explicit polynomial certificate, with the ring identities expanded step by step |
+| axiom_ristretto_decode_on_curve | lemma_ristretto_decode_on_curve | compress_roundtrip_lemmas.rs | Field algebra: the curve polynomial of the decoded point is (I²·v·u2² − 1) times a polynomial |
+| axiom_elligator_forward_zero | lemma_elligator_forward_zero | lizard_lemmas.rs | compute_only: N_s·D is not a square for r = 0, so s = 0 |
+| axiom_elligator_forward_sqrt_id | lemma_elligator_forward_sqrt_id | lizard_lemmas.rs | compute_only: r + d = 0, so D = 0 and s = 0 |
 | axiom_sqrt_m1_squared | lemma_sqrt_m1_squared | sqrt_m1_lemmas.rs | compute_only |
 | axiom_sqrt_m1_not_square | lemma_sqrt_m1_not_square | sqrt_m1_lemmas.rs | Euler's criterion; compute_only |
 | axiom_neg_sqrt_m1_not_square | lemma_neg_sqrt_m1_not_square | sqrt_m1_lemmas.rs | Euler's criterion; compute_only |
@@ -443,7 +403,6 @@ Justification types (6 canonical values):
 | axiom_p_is_prime | primality_specs.rs | rfc | RFC 7748 §4.1 |
 | axiom_group_order_is_prime | primality_specs.rs | rfc | RFC 7748 §4.1 |
 | axiom_edwards_add_associative | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 |
-| axiom_edwards_add_complete | curve_equation_lemmas.rs | paper | Bernstein et al. 2008 Thm. 3.3 |
 | axiom_edwards_scalar_mul_signed_additive | curve_equation_lemmas.rs | paper | Bernstein et al. 2008; group theory |
 | axiom_affine_odd_multiples_of_basepoint_valid | window_specs.rs | construction | RFC 8032; implementation |
 | axiom_ristretto_basepoint_table_valid | ristretto_lemmas/axioms.rs | construction | Hamburg 2019 |
@@ -451,7 +410,6 @@ Justification types (6 canonical values):
 | axiom_elligator_nonzero_intermediates | ristretto_lemmas/axioms.rs | paper | RFC 9496 §4.3.4; Hamburg 2015 §6; test (200+ inputs) |
 | axiom_elligator_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (200+ inputs) |
 | axiom_ristretto_cross_mul_iff_equivalent | ristretto_lemmas/axioms.rs | paper | Hamburg 2015 §4; Ristretto §3.2; test |
-| axiom_ristretto_decode_on_curve | ristretto_lemmas/axioms.rs | paper | Hamburg 2015; test_ristretto_decode_on_curve |
 | axiom_ristretto_decode_in_even_subgroup | ristretto_lemmas/axioms.rs | paper | Hamburg 2015/2019; test (100+ points) |
 | axiom_uniform_bytes_split | proba_specs.rs | crypto-assumption | Probability theory |
 | axiom_from_bytes_uniform | proba_specs.rs | crypto-assumption | Probability theory |
@@ -464,8 +422,6 @@ Justification types (6 canonical values):
 | axiom_jacobi_quartic_birational_pair01 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§4.1 + algebraic derivation |
 | axiom_jacobi_quartic_torsion_pair23 | lizard_lemmas.rs | algebraic-gap | Decaf §4/§7 + algebraic derivation |
 | axiom_jacobi_quartic_points_on_quartic | lizard_lemmas.rs | algebraic-gap | Decaf §4.1; Python model |
-| axiom_elligator_forward_zero | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
-| axiom_elligator_forward_sqrt_id | lizard_lemmas.rs | tested | Direct evaluation; test_axiom_elligator_inv_roundtrip |
 | axiom_elligator_inv_square_case | lizard_lemmas.rs | algebraic-gap | Decaf Appendix C + reparameterization |
 | axiom_decode_from_point | lizard_lemmas.rs | algebraic-gap | Sub-properties (a)–(e); test (200+ round-trips) |
 

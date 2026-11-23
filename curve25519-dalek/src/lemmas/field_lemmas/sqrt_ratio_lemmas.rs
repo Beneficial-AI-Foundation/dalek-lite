@@ -42,6 +42,7 @@ use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::lemmas::field_lemmas::as_bytes_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+use crate::lemmas::field_lemmas::field_cong_lemmas::*;
 use crate::lemmas::field_lemmas::sqrt_m1_lemmas::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
@@ -2105,6 +2106,98 @@ pub proof fn lemma_sqrt_ratio_matches_invsqrt_mul(u: nat, v: nat, r: nat, is_sq:
             lemma_sqrt_ratio_mutual_exclusion(u, v, r);
         }
     }
+}
+
+// =============================================================================
+// Inverse square root of a square
+// =============================================================================
+/// If a·den² ≡ num², a ≢ 0 and den ≢ 0, then nat_invsqrt(a)²·a ≡ 1.
+pub proof fn lemma_invsqrt_of_square(a: nat, num: int, den: int)
+    requires
+        !cong(a as int, 0),
+        !cong(den, 0),
+        cong(a * (den * den), num * num),
+    ensures
+        nat_invsqrt(a) < p(),
+        cong((nat_invsqrt(a) * nat_invsqrt(a) * a) as int, 1),
+        is_sqrt_ratio(1, a, nat_invsqrt(a)),
+{
+    lemma_cong_p_facts();
+    lemma_small_mod(0, p());
+    lemma_small_mod(1, p());
+    assert(a % p() != 0);
+    lemma_nat_invsqrt_satisfies_relation(a);
+    let r = nat_invsqrt(a);
+    let R = r as int;
+    let A = a as int;
+    let i = sqrt_m1();
+    if !is_sqrt_ratio(1, a, r) {
+        // r²·a ≡ i, so (r·num/den)² ≡ i: i would be a square.
+        assert(is_sqrt_ratio_times_i(1, a, r));
+        lemma_cong_fmul(i, 1, i as int, 1);
+        assert(cong(R * R * A, i as int));
+        let dn = (den % (p() as int)) as nat;
+        lemma_mod_bound(den, p() as int);
+        lemma_mod_twice(den, p() as int);
+        assert(!cong(dn as int, 0));
+        lemma_cong_inv(dn);
+        let di = field_inv(dn);
+        let nn = (num % (p() as int)) as nat;
+        lemma_mod_bound(num, p() as int);
+        lemma_mod_twice(num, p() as int);
+        let w = field_mul(field_mul(r, nn), di);
+        lemma_cong_fmul(r, nn, R, num);
+        lemma_cong_fmul(field_mul(r, nn), di, R * num, di as int);
+        lemma_cong_fmul(w, w, R * num * di, R * num * di);
+        // (R·num·di)² = (R²·num²)·di² ≡ R²·a·den²·di² = (R²·a)·(di·den)² ≡ i
+        let DI = di as int;
+        assert(R * num * DI * (R * num * DI) == (R * R) * (num * num) * (DI * DI))
+            by (nonlinear_arith);
+        lemma_cong_mul(R * R, num * num, R * R, A * (den * den));
+        lemma_cong_mul((R * R) * (num * num), DI * DI, (R * R) * (A * (den * den)), DI * DI);
+        assert((R * R) * (A * (den * den)) * (DI * DI) == (R * R * A) * ((DI * den) * (DI * den)))
+            by (nonlinear_arith);
+        lemma_cong_mul(DI, dn as int, DI, den);
+        lemma_cong_mul(DI * dn, DI * dn, DI * den, DI * den);
+        assert(cong(DI * dn, 1));
+        lemma_cong_mul(DI * dn, DI * dn, 1, 1);
+        lemma_cong_mul(R * R * A, (DI * den) * (DI * den), i as int, 1);
+        assert(cong(field_mul(w, w) as int, i as int));
+        lemma_mod_bound((w * w) as int, p() as int);
+        lemma_sqrt_m1_limbs_bounded();
+        assert(i < p()) by {
+            lemma_mod_bound(fe51_as_nat(&crate::constants::SQRT_M1) as int, p() as int);
+        }
+        lemma_cong_canonical_eq(field_mul(w, w), i);
+        lemma_small_mod(i, p());
+        assert(field_mul(w, w) == field_canonical(i));
+        lemma_sqrt_m1_not_square();
+        assert(false);
+    }
+    assert(cong(R * R * A, 1));
+}
+
+// =============================================================================
+// Products of sqrt ratios
+// =============================================================================
+/// If r² · v ≡ u, then u · v ≡ (r · v)² is a square.
+pub proof fn lemma_sqrt_ratio_product_is_square(u: nat, v: nat, r: nat)
+    requires
+        is_sqrt_ratio(u, v, r),
+    ensures
+        is_square(field_mul(u, v)),
+{
+    p_gt_2();
+    let pn = p() as int;
+    let y = field_mul(r, v);
+    let (a, b) = (r as int, v as int);
+    assert(field_mul(y, y) == field_canonical(field_mul(u, v))) by {
+        lemma_mul_mod_noop_general(a * b, a * b, pn);
+        assert((a * b) * (a * b) == (a * a * b) * b) by (nonlinear_arith);
+        lemma_mul_mod_noop_general(a * a * b, b, pn);
+        lemma_mul_mod_noop_general(u as int, b, pn);
+        lemma_mod_twice((u * v) as int, pn);
+    };
 }
 
 } // verus!

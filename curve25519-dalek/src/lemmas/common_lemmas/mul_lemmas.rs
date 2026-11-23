@@ -316,4 +316,184 @@ pub proof fn lemma_mul_w0_and_reorder(
     lemma_mul_is_associative(w0, v4, s4);
 }
 
+// =============================================================================
+// Expansion of products of sums
+// =============================================================================
+/// pp·qq = p0·(q0 + q1), with pp and qq equal to the factors.
+pub proof fn lemma_dist_1_2(p0: int, q0: int, q1: int, pp: int, qq: int)
+    requires
+        pp == p0,
+        qq == q0 + q1,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1,
+{
+    lemma_mul_is_distributive_add(p0, q0, q1);
+}
+
+/// pp·qq = p0·(q0 + q1 + q2), with pp and qq equal to the factors.
+pub proof fn lemma_dist_1_3(p0: int, q0: int, q1: int, q2: int, pp: int, qq: int)
+    requires
+        pp == p0,
+        qq == q0 + q1 + q2,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1 + p0 * q2,
+{
+    lemma_mul_distributive_3_terms(p0, q0, q1, q2);
+}
+
+/// pp·qq = p0·(q0 + q1 + q2 + q3), with pp and qq equal to the factors.
+pub proof fn lemma_dist_1_4(p0: int, q0: int, q1: int, q2: int, q3: int, pp: int, qq: int)
+    requires
+        pp == p0,
+        qq == q0 + q1 + q2 + q3,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1 + p0 * q2 + p0 * q3,
+{
+    lemma_mul_is_distributive_add(p0, ((q0 + q1) + q2), q3);
+    lemma_mul_distributive_3_terms(p0, q0, q1, q2);
+}
+
+/// pp·qq = (p0 + p1)·q0, with pp and qq equal to the factors.
+pub proof fn lemma_dist_2_1(p0: int, p1: int, q0: int, pp: int, qq: int)
+    requires
+        pp == p0 + p1,
+        qq == q0,
+    ensures
+        pp * qq == p0 * q0 + p1 * q0,
+{
+    lemma_mul_is_distributive_add_other_way(q0, p0, p1);
+}
+
+/// pp·qq = (p0 + p1)·(q0 + q1), with pp and qq equal to the factors.
+pub proof fn lemma_dist_2_2(p0: int, p1: int, q0: int, q1: int, pp: int, qq: int)
+    requires
+        pp == p0 + p1,
+        qq == q0 + q1,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1 + p1 * q0 + p1 * q1,
+{
+    lemma_mul_is_distributive_add_other_way((q0 + q1), p0, p1);
+    lemma_mul_is_distributive_add(p0, q0, q1);
+    lemma_mul_is_distributive_add(p1, q0, q1);
+}
+
+/// pp·qq = (p0 + p1)·(q0 + q1 + q2), with pp and qq equal to the factors.
+pub proof fn lemma_dist_2_3(p0: int, p1: int, q0: int, q1: int, q2: int, pp: int, qq: int)
+    requires
+        pp == p0 + p1,
+        qq == q0 + q1 + q2,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1 + p0 * q2 + p1 * q0 + p1 * q1 + p1 * q2,
+{
+    lemma_mul_is_distributive_add_other_way(((q0 + q1) + q2), p0, p1);
+    lemma_mul_is_distributive_add(p0, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p0, q0, q1);
+    lemma_mul_is_distributive_add(p1, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p1, q0, q1);
+}
+
+/// pp·qq = (p0 + p1)·(q0 + q1 + q2 + q3), with pp and qq equal to the factors.
+pub proof fn lemma_dist_2_4(p0: int, p1: int, q0: int, q1: int, q2: int, q3: int, pp: int, qq: int)
+    requires
+        pp == p0 + p1,
+        qq == q0 + q1 + q2 + q3,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1 + p0 * q2 + p0 * q3 + p1 * q0 + p1 * q1 + p1 * q2 + p1 * q3,
+{
+    lemma_mul_is_distributive_add_other_way((((q0 + q1) + q2) + q3), p0, p1);
+    lemma_mul_is_distributive_add(p0, ((q0 + q1) + q2), q3);
+    lemma_mul_is_distributive_add(p0, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p0, q0, q1);
+    lemma_mul_is_distributive_add(p1, ((q0 + q1) + q2), q3);
+    lemma_mul_is_distributive_add(p1, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p1, q0, q1);
+}
+
+/// pp·qq = (p0 + p1 + p2)·q0, with pp and qq equal to the factors.
+pub proof fn lemma_dist_3_1(p0: int, p1: int, p2: int, q0: int, pp: int, qq: int)
+    requires
+        pp == p0 + p1 + p2,
+        qq == q0,
+    ensures
+        pp * qq == p0 * q0 + p1 * q0 + p2 * q0,
+{
+    lemma_mul_is_distributive_add_other_way(q0, (p0 + p1), p2);
+    lemma_mul_is_distributive_add_other_way(q0, p0, p1);
+}
+
+/// pp·qq = (p0 + p1 + p2)·(q0 + q1 + q2), with pp and qq equal to the factors.
+pub proof fn lemma_dist_3_3(p0: int, p1: int, p2: int, q0: int, q1: int, q2: int, pp: int, qq: int)
+    requires
+        pp == p0 + p1 + p2,
+        qq == q0 + q1 + q2,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1 + p0 * q2 + p1 * q0 + p1 * q1 + p1 * q2 + p2 * q0 + p2 * q1
+            + p2 * q2,
+{
+    lemma_mul_is_distributive_add_other_way(((q0 + q1) + q2), (p0 + p1), p2);
+    lemma_mul_is_distributive_add_other_way(((q0 + q1) + q2), p0, p1);
+    lemma_mul_is_distributive_add(p0, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p0, q0, q1);
+    lemma_mul_is_distributive_add(p1, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p1, q0, q1);
+    lemma_mul_is_distributive_add(p2, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p2, q0, q1);
+}
+
+/// pp·qq = (p0 + p1 + p2 + p3 + p4)·(q0 + q1 + q2), with pp and qq equal to the factors.
+pub proof fn lemma_dist_5_3(
+    p0: int,
+    p1: int,
+    p2: int,
+    p3: int,
+    p4: int,
+    q0: int,
+    q1: int,
+    q2: int,
+    pp: int,
+    qq: int,
+)
+    requires
+        pp == p0 + p1 + p2 + p3 + p4,
+        qq == q0 + q1 + q2,
+    ensures
+        pp * qq == p0 * q0 + p0 * q1 + p0 * q2 + p1 * q0 + p1 * q1 + p1 * q2 + p2 * q0 + p2 * q1
+            + p2 * q2 + p3 * q0 + p3 * q1 + p3 * q2 + p4 * q0 + p4 * q1 + p4 * q2,
+{
+    lemma_mul_is_distributive_add_other_way(((q0 + q1) + q2), (((p0 + p1) + p2) + p3), p4);
+    lemma_mul_is_distributive_add_other_way(((q0 + q1) + q2), ((p0 + p1) + p2), p3);
+    lemma_mul_is_distributive_add_other_way(((q0 + q1) + q2), (p0 + p1), p2);
+    lemma_mul_is_distributive_add_other_way(((q0 + q1) + q2), p0, p1);
+    lemma_mul_is_distributive_add(p0, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p0, q0, q1);
+    lemma_mul_is_distributive_add(p1, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p1, q0, q1);
+    lemma_mul_is_distributive_add(p2, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p2, q0, q1);
+    lemma_mul_is_distributive_add(p3, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p3, q0, q1);
+    lemma_mul_is_distributive_add(p4, (q0 + q1), q2);
+    lemma_mul_is_distributive_add(p4, q0, q1);
+}
+
+/// (u + y)² = u² + 2·u·y + y².
+pub proof fn lemma_square_of_sum(u: int, y: int)
+    ensures
+        (u + y) * (u + y) == u * u + 2 * (u * y) + y * y,
+{
+    lemma_dist_2_2((u), (y), (u), (y), (u + y), (u + y));
+    assert(((y)) * ((u)) == (u * y)) by (nonlinear_arith);
+}
+
+/// (u − y)² = u² − 2·u·y + y².
+pub proof fn lemma_square_of_difference(u: int, y: int)
+    ensures
+        (u - y) * (u - y) == u * u - 2 * (u * y) + y * y,
+{
+    lemma_dist_2_2((u), (-(y)), (u), (-(y)), (u - y), (u - y));
+    assert(((u)) * ((-(y))) == (-(u * y))) by (nonlinear_arith);
+    assert(((-(y))) * ((u)) == (-(u * y))) by (nonlinear_arith);
+    assert(((-(y))) * ((-(y))) == (y * y)) by (nonlinear_arith);
+}
+
 } // verus!

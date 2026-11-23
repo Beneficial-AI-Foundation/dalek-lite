@@ -15,6 +15,7 @@ use crate::lemmas::common_lemmas::div_mod_lemmas::*;
 use crate::lemmas::common_lemmas::mul_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::specs::core_specs::*;
+use crate::specs::field_specs::*;
 
 verus! {
 
@@ -1078,6 +1079,159 @@ pub proof fn lemma_u64x4_from_le_bytes(
         lemma_u8_32_as_nat_equals_rec(&bytes);
         lemma_decomposition_prefix_rec(&bytes, 32);
     }
+}
+
+// =============================================================================
+// Little-endian bytes of a nat
+// =============================================================================
+/// Byte k of n in little-endian order.
+pub open spec fn nat_byte(n: nat, k: nat) -> u8 {
+    ((n / pow2(k * 8)) % 256) as u8
+}
+
+/// The 32 little-endian bytes of n.
+pub open spec fn nat_to_bytes32(n: nat) -> [u8; 32] {
+    [
+        nat_byte(n, 0),
+        nat_byte(n, 1),
+        nat_byte(n, 2),
+        nat_byte(n, 3),
+        nat_byte(n, 4),
+        nat_byte(n, 5),
+        nat_byte(n, 6),
+        nat_byte(n, 7),
+        nat_byte(n, 8),
+        nat_byte(n, 9),
+        nat_byte(n, 10),
+        nat_byte(n, 11),
+        nat_byte(n, 12),
+        nat_byte(n, 13),
+        nat_byte(n, 14),
+        nat_byte(n, 15),
+        nat_byte(n, 16),
+        nat_byte(n, 17),
+        nat_byte(n, 18),
+        nat_byte(n, 19),
+        nat_byte(n, 20),
+        nat_byte(n, 21),
+        nat_byte(n, 22),
+        nat_byte(n, 23),
+        nat_byte(n, 24),
+        nat_byte(n, 25),
+        nat_byte(n, 26),
+        nat_byte(n, 27),
+        nat_byte(n, 28),
+        nat_byte(n, 29),
+        nat_byte(n, 30),
+        nat_byte(n, 31),
+    ]
+}
+
+pub proof fn lemma_nat_to_bytes32_index(n: nat, k: int)
+    requires
+        0 <= k < 32,
+    ensures
+        nat_to_bytes32(n)[k] == nat_byte(n, k as nat),
+{
+    if k == 0 {
+    } else if k == 1 {
+    } else if k == 2 {
+    } else if k == 3 {
+    } else if k == 4 {
+    } else if k == 5 {
+    } else if k == 6 {
+    } else if k == 7 {
+    } else if k == 8 {
+    } else if k == 9 {
+    } else if k == 10 {
+    } else if k == 11 {
+    } else if k == 12 {
+    } else if k == 13 {
+    } else if k == 14 {
+    } else if k == 15 {
+    } else if k == 16 {
+    } else if k == 17 {
+    } else if k == 18 {
+    } else if k == 19 {
+    } else if k == 20 {
+    } else if k == 21 {
+    } else if k == 22 {
+    } else if k == 23 {
+    } else if k == 24 {
+    } else if k == 25 {
+    } else if k == 26 {
+    } else if k == 27 {
+    } else if k == 28 {
+    } else if k == 29 {
+    } else if k == 30 {
+    } else {
+        assert(k == 31);
+    }
+}
+
+pub proof fn lemma_nat_to_bytes32_rec(n: nat, idx: nat)
+    requires
+        n < pow2(256),
+        idx <= 32,
+    ensures
+        u8_32_as_nat_rec(&nat_to_bytes32(n), idx) == (n / pow2(idx * 8)) * pow2(idx * 8),
+    decreases 32 - idx,
+{
+    use vstd::arithmetic::power2::*;
+    use vstd::arithmetic::mul::*;
+    let b = nat_to_bytes32(n);
+    lemma_pow2_pos(idx * 8);
+    if idx == 32 {
+        lemma_small_mod(n, pow2(256));
+        assert(idx * 8 == 256);
+        lemma_div_basics(n as int);
+        vstd::arithmetic::div_mod::lemma_basic_div(n as int, pow2(256) as int);
+        assert(n / pow2(256) == 0);
+        assert(u8_32_as_nat_rec(&b, idx) == 0);
+    } else {
+        lemma_nat_to_bytes32_rec(n, idx + 1);
+        lemma_nat_to_bytes32_index(n, idx as int);
+        let e = idx * 8;
+        let w = pow2(e);
+        let q = n / w;
+        lemma_pow2_adds(e, 8);
+        lemma2_to64();
+        assert((idx + 1) * 8 == e + 8);
+        assert(pow2((idx + 1) * 8) == w * 256);
+        lemma_div_denominator(n as int, w as int, 256);
+        assert(n / pow2((idx + 1) * 8) == q / 256);
+        lemma_mod_bound(q as int, 256);
+        assert(b[idx as int] as nat == q % 256);
+        lemma_fundamental_div_mod(q as int, 256);
+        let lo = q % 256;
+        let hi = q / 256;
+        assert(q == 256 * hi + lo);
+        assert(u8_32_as_nat_rec(&b, idx) == (b[idx as int] as nat) * pow2(idx * 8)
+            + u8_32_as_nat_rec(&b, idx + 1));
+        assert(u8_32_as_nat_rec(&b, idx + 1) == hi * (w * 256));
+        assert(u8_32_as_nat_rec(&b, idx) == lo * w + hi * (w * 256));
+        assert(lo * w + hi * (w * 256) == (256 * hi + lo) * w) by (nonlinear_arith);
+        assert(u8_32_as_nat_rec(&b, idx) == q * w);
+    }
+}
+
+/// For n < 2^256, u8_32_from_nat(n) holds the value n.
+pub proof fn lemma_u8_32_from_nat_value(n: nat)
+    requires
+        n < pow2(256),
+    ensures
+        u8_32_as_nat(&u8_32_from_nat(n)) == n,
+{
+    let b = nat_to_bytes32(n);
+    lemma_nat_to_bytes32_rec(n, 0);
+    lemma_u8_32_as_nat_equals_rec(&b);
+    assert(pow2(0) == 1) by {
+        vstd::arithmetic::power2::lemma2_to64();
+    }
+    assert(0nat * 8 == 0);
+    assert((n / 1nat) * 1nat == n) by (nonlinear_arith);
+    lemma_small_mod(n, pow2(256));
+    assert(u8_32_as_nat(&b) == n % pow2(256));
 }
 
 } // verus!

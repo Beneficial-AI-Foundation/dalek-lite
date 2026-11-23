@@ -24,6 +24,7 @@ use crate::lemmas::common_lemmas::mul_lemmas::*;
 use crate::lemmas::common_lemmas::number_theory_lemmas::*;
 use crate::lemmas::common_lemmas::pow_lemmas::*;
 use crate::lemmas::field_lemmas::field_algebra_lemmas::*;
+use crate::lemmas::field_lemmas::field_cong_lemmas::*;
 use crate::specs::field_specs::*;
 use crate::specs::field_specs_u64::*;
 use crate::specs::primality_specs::*;
@@ -921,6 +922,25 @@ pub proof fn lemma_one_plus_x_times_i(e: nat, f: nat)
         lemma_field_mul_comm(inv_f, f);
         lemma_field_mul_comm(inv_f, field_mul(e, i));
     };
+}
+
+// =============================================================================
+// sqrt(-1) in congruence form
+// =============================================================================
+/// i = sqrt(−1): i² ≡ −1, i ≢ 0, i < p.
+pub proof fn lemma_sqrt_m1_cong()
+    ensures
+        sqrt_m1() < p(),
+        cong((sqrt_m1() as int) * (sqrt_m1() as int), -1),
+        !cong(sqrt_m1() as int, 0),
+{
+    lemma_cong_p_facts();
+    lemma_sqrt_m1_nonzero();
+    lemma_sqrt_m1_squared();
+    lemma_cong_fneg(1, 1);
+    lemma_small_mod(1, p());
+    lemma_small_mod((p() - 1) as nat, p());
+    lemma_small_mod(0, p());
 }
 
 } // verus!

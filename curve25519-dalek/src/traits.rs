@@ -178,8 +178,95 @@ pub trait BasepointTable {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+pub use crate::core_assumes::lemma_map_exact_size_hint as axiom_map_exact_size_hint;
+#[cfg(verus_keep_ghost)]
+pub use crate::core_assumes::{by_ref_preserves_items, exact_size_hint, lemma_map_exact_size_hint};
+#[cfg(verus_keep_ghost)]
+pub use crate::specs::iterator_specs::{
+    borrowed_values, msm_outcome, valid_msm_iters, valid_msm_sources,
+};
+
+verus! {
+
+/// Borrowing an owned sequence preserves its values.
+pub broadcast proof fn lemma_msm_owned_values<T>(items: Seq<T>, values: Seq<T>)
+    requires
+        #[trigger] borrowed_values(items, values),
+    ensures
+        values == items,
+{
+    assert forall|k: int| 0 <= k < values.len() implies #[trigger] values[k] == items[k] by {
+        crate::core_assumes::axiom_owned_borrow(&items[k], &values[k]);
+    };
+    assert(values =~= items);
+}
+
+/// Borrowing shared references to the elements of a slice preserves its values.
+pub broadcast proof fn lemma_msm_referenced_values<T>(items: Seq<T>, values: Seq<T>)
+    requires
+        #[trigger] borrowed_values(items.as_ref(), values),
+    ensures
+        values == items,
+{
+    assert forall|k: int| 0 <= k < values.len() implies #[trigger] values[k] == items[k] by {
+        crate::core_assumes::axiom_ref_borrow(&items.as_ref()[k], &values[k]);
+    };
+    assert(values =~= items);
+}
+
+/// Checking the size of a vector iterator preserves its remaining items.
+#[cfg(feature = "alloc")]
+pub broadcast proof fn lemma_vec_iter_hint_observation<T>(input: alloc::vec::IntoIter<T>)
+    ensures
+        #[trigger] by_ref_preserves_items(input),
+{
+    crate::core_assumes::lemma_vec_into_iter_exact_size_hint(input);
+}
+
+/// Checking the size of a slice iterator preserves its remaining items.
+pub broadcast proof fn lemma_slice_iter_hint_observation<T>(input: core::slice::Iter<'_, T>)
+    ensures
+        #[trigger] by_ref_preserves_items(input),
+{
+    crate::core_assumes::lemma_slice_iter_exact_size_hint(input);
+}
+
+/// Facts for verifying multiscalar calls with owned vectors and shared slices.
+#[cfg(feature = "alloc")]
+pub broadcast group group_multiscalar_inputs {
+    crate::core_assumes::axiom_owned_borrow,
+    crate::core_assumes::axiom_ref_borrow,
+    crate::core_assumes::lemma_vec_into_iter_exact_size_hint,
+    crate::core_assumes::lemma_slice_iter_exact_size_hint,
+    lemma_vec_iter_hint_observation,
+    lemma_slice_iter_hint_observation,
+    lemma_msm_owned_values,
+    lemma_msm_referenced_values,
+}
+
 /// A trait for constant-time multiscalar multiplication without precomputation.
 pub trait MultiscalarMul {
+    /// Admissible input points for this implementation.
+    open spec fn valid_msm_point(point: Self::Point) -> bool {
+        true
+    }
+
+    /// Guarantee needed from the size check on the point iterator.
+    #[verifier::prophetic]
+    open spec fn valid_msm_point_hint<J: Iterator>(points: J) -> bool {
+        crate::core_assumes::by_ref_preserves_items(points)
+    }
+
+    /// Mathematical relation between the borrowed inputs and the returned point.
+    open spec fn msm_sum(
+        scalars: Seq<Scalar>,
+        points: Seq<Self::Point>,
+        result: Self::Point,
+    ) -> bool {
+        true
+    }
+
     /// The type of point being multiplied, e.g., `RistrettoPoint`.
     type Point;
 
@@ -190,6 +277,11 @@ pub trait MultiscalarMul {
     /// $$
     ///
     /// It is an error to call this function with two iterators of different lengths.
+    ///
+    /// For Edwards and Ristretto points, the verified sum uses the values returned by the
+    /// iterator and `Borrow` calls. The iterators must satisfy vstd's iterator laws.
+    /// The length checks must preserve their items and report equal, exact lengths.
+    /// Each point must be well formed and each scalar must have its top bit clear.
     ///
     /// # Examples
     ///
@@ -229,14 +321,43 @@ pub trait MultiscalarMul {
     /// assert_eq!(A1.compress(), (-A2).compress());
     /// # }
     /// ```
-    fn multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point
-    where
+    fn multiscalar_mul<I, J>(scalars: I, points: J) -> (result: Self::Point) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
-        J::Item: Borrow<Self::Point>;
+        J::Item: Borrow<Self::Point>,
+
+        requires
+            valid_msm_sources(
+                scalars,
+                points,
+                |p| Self::valid_msm_point(p),
+                |it| Self::valid_msm_point_hint(it),
+            ),
+        ensures
+            msm_outcome(scalars, points, |ss, ps| Self::msm_sum(ss, ps, result)),
+    ;
 }
 
+/// Check that a caller using the public iterator method can recover the sum over two slices.
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+#[allow(dead_code)]
+fn check_multiscalar_mul_slices(scalars: &[Scalar], points: &[EdwardsPoint]) -> (result:
+    EdwardsPoint)
+    requires
+        scalars.len() == points.len(),
+        forall|k: int| 0 <= k < scalars.len() ==> (#[trigger] scalars@[k]).bytes[31] <= 127,
+        forall|k: int|
+            0 <= k < points.len() ==> is_well_formed_edwards_point(#[trigger] points@[k]),
+    ensures
+        edwards_point_as_affine(result) == sum_of_scalar_muls(scalars@, points@),
+{
+    broadcast use group_multiscalar_inputs;
+
+    EdwardsPoint::multiscalar_mul(scalars, points)
+}
+
+} // verus!
 /// A trait for variable-time multiscalar multiplication without precomputation.
 pub trait VartimeMultiscalarMul {
     /// The type of point being multiplied, e.g., `RistrettoPoint`.

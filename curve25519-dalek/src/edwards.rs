@@ -2748,46 +2748,48 @@ impl EdwardsPoint {
 // These use the iterator's size hint and the target settings to
 // forward to a specific backend implementation.
 #[cfg(feature = "alloc")]
-#[verifier::external]
 impl MultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `MultiscalarMul::multiscalar_mul` (for EdwardsPoint, see the verified `EdwardsPoint::multiscalar_mul_slices`)
-    fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint where
+    open spec fn valid_msm_point(point: EdwardsPoint) -> bool {
+        is_well_formed_edwards_point(point)
+    }
+
+    #[verifier::prophetic]
+    open spec fn valid_msm_point_hint<J: Iterator>(points: J) -> bool {
+        crate::core_assumes::by_ref_preserves_items(points)
+    }
+
+    open spec fn msm_sum(
+        scalars: Seq<Scalar>,
+        points: Seq<EdwardsPoint>,
+        result: EdwardsPoint,
+    ) -> bool {
+        &&& is_well_formed_edwards_point(result)
+        &&& edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points)
+    }
+
+    fn multiscalar_mul<I, J>(scalars: I, points: J) -> (result: EdwardsPoint) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
-    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-        requires
-            scalars.len() == points.len(),
-            forall|i| is_well_formed_edwards_point(points[i]),
-        ensures
-            is_well_formed_edwards_point(result),
-            edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
-
-        VERIFICATION NOTE: see `EdwardsPoint::multiscalar_mul_slices` below for the verified version over slices.
-        */
-    {
-        // Sanity-check lengths of input iterators
-        let mut scalars = scalars.into_iter();
-        let mut points = points.into_iter();
-
-        // Lower and upper bounds on iterators
-        let (s_lo, s_hi) = scalars.by_ref().size_hint();
-        let (p_lo, p_hi) = points.by_ref().size_hint();
-
-        // They should all be equal
-        assert_eq!(s_lo, p_lo);
-        assert_eq!(s_hi, Some(s_lo));
-        assert_eq!(p_hi, Some(p_lo));
-
-        // Now we know there's a single size.  When we do
-        // size-dependent algorithm dispatch, use this as the hint.
-        let _size = s_lo;
-
-        crate::backend::straus_multiscalar_mul(scalars, points)
+     {
+        let si = scalars.into_iter();
+        let pi = points.into_iter();
+        #[cfg(verus_keep_ghost)]
+        use vstd::std_specs::iter::IteratorSpec;
+        let r = crate::backend::straus_multiscalar_mul(si, pi);
+        let ghost (ss, ps) = choose|ss: Seq<Scalar>, ps: Seq<EdwardsPoint>| #[trigger]
+            crate::specs::iterator_specs::borrowed_values(si.remaining(), ss)
+                && #[trigger] crate::specs::iterator_specs::borrowed_values(pi.remaining(), ps)
+                && edwards_point_as_affine(r) == sum_of_scalar_muls(ss, ps);
+        proof {
+            assert(call_ensures(I::into_iter, (scalars,), si));
+            assert(call_ensures(J::into_iter, (points,), pi));
+            assert(Self::msm_sum(ss, ps, r));
+        }
+        r
     }
 }
 

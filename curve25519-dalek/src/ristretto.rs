@@ -167,6 +167,8 @@ use core::iter::Sum;
 use core::ops::{Add, Neg, Sub};
 use core::ops::{AddAssign, SubAssign};
 use core::ops::{Mul, MulAssign};
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+use vstd::std_specs::iter::IteratorSpec;
 
 #[cfg(any(test, feature = "rand_core"))]
 use rand_core::CryptoRngCore;
@@ -3531,21 +3533,132 @@ define_ristretto_scalar_mul_variants_verus!();
 verus! {
 
 #[cfg(feature = "alloc")]
-#[verifier::external]
 impl MultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `MultiscalarMul::multiscalar_mul` (for RistrettoPoint, delegates to EdwardsPoint)
-    fn multiscalar_mul<I, J>(scalars: I, points: J) -> RistrettoPoint where
+    open spec fn valid_msm_point(point: RistrettoPoint) -> bool {
+        is_well_formed_edwards_point(point.0)
+    }
+
+    #[verifier::prophetic]
+    open spec fn valid_msm_point_hint<J: Iterator>(points: J) -> bool {
+        crate::core_assumes::exact_size_hint(points)
+    }
+
+    open spec fn msm_sum(
+        scalars: Seq<Scalar>,
+        points: Seq<RistrettoPoint>,
+        result: RistrettoPoint,
+    ) -> bool {
+        &&& is_well_formed_edwards_point(result.0)
+        &&& edwards_point_as_affine(result.0) == sum_of_scalar_muls(
+            scalars,
+            points.map(|_, p: RistrettoPoint| p.0),
+        )
+    }
+
+    fn multiscalar_mul<I, J>(scalars: I, points: J) -> (result: RistrettoPoint) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<RistrettoPoint>,
      {
-        let extended_points = points.into_iter().map(|P| P.borrow().0);
-        RistrettoPoint(EdwardsPoint::multiscalar_mul(scalars, extended_points))
+        let pi = points.into_iter();
+        let project = |p: J::Item| -> (e: EdwardsPoint)
+            ensures
+                call_ensures(Borrow::borrow, (&p,), &RistrettoPoint(e)),
+            { p.borrow().0 };
+        let mapped = pi.map(project);
+        let si = scalars.into_iter();
+        let r = multiscalar_mul_projected(si, mapped, Ghost(pi), Ghost(project));
+        let ghost (ss, ps) = choose|ss: Seq<Scalar>, ps: Seq<RistrettoPoint>| #[trigger]
+            crate::specs::iterator_specs::borrowed_values(si.remaining(), ss)
+                && #[trigger] crate::specs::iterator_specs::borrowed_values(pi.remaining(), ps)
+                && edwards_point_as_affine(r) == sum_of_scalar_muls(
+                ss,
+                ps.map(|_, p: RistrettoPoint| p.0),
+            );
+        proof {
+            assert(call_ensures(I::into_iter, (scalars,), si));
+            assert(call_ensures(J::into_iter, (points,), pi));
+            assert(Self::msm_sum(ss, ps, RistrettoPoint(r)));
+        }
+        RistrettoPoint(r)
     }
+}
+
+/// Multiply after projecting the Ristretto representatives to Edwards points.
+#[cfg(feature = "alloc")]
+fn multiscalar_mul_projected<I: Iterator, J: Iterator, F: FnMut(J::Item) -> EdwardsPoint>(
+    si: I,
+    mapped: core::iter::Map<J, F>,
+    Ghost(pi): Ghost<J>,
+    Ghost(project): Ghost<F>,
+) -> (out: EdwardsPoint) where I::Item: Borrow<Scalar>, J::Item: Borrow<RistrettoPoint>
+    requires
+        crate::specs::iterator_specs::valid_msm_iters(
+            si,
+            pi,
+            |p: RistrettoPoint| is_well_formed_edwards_point(p.0),
+            |it| crate::core_assumes::exact_size_hint(it),
+        ),
+        vstd::std_specs::iter::map_post(pi, project, mapped),
+        forall|x: J::Item, e: EdwardsPoint| #[trigger]
+            project.ensures((x,), e) ==> call_ensures(Borrow::borrow, (&x,), &RistrettoPoint(e)),
+    ensures
+        forall|k: int| 0 <= k < si.remaining().len() ==> #[trigger] si.produces()[k],
+        forall|k: int| 0 <= k < pi.remaining().len() ==> #[trigger] pi.produces()[k],
+        is_well_formed_edwards_point(out),
+        exists|ss: Seq<Scalar>, ps: Seq<RistrettoPoint>| #[trigger]
+            crate::specs::iterator_specs::borrowed_values(si.remaining(), ss)
+                && #[trigger] crate::specs::iterator_specs::borrowed_values(pi.remaining(), ps)
+                && edwards_point_as_affine(out) == sum_of_scalar_muls(
+                ss,
+                ps.map(|_, p: RistrettoPoint| p.0),
+            ),
+{
+    #[cfg(verus_keep_ghost)]
+    use crate::core_assumes::{
+        axiom_owned_borrow,
+        by_ref_preserves_items,
+        lemma_map_exact_size_hint,
+    };
+    #[cfg(verus_keep_ghost)]
+    use crate::specs::iterator_specs::{borrowed_values, valid_msm_iters};
+    proof {
+        vstd::std_specs::iter::map_postcondition(pi, project, mapped);
+        lemma_map_exact_size_hint(mapped);
+        assert(valid_msm_iters(
+            si,
+            mapped,
+            |p| is_well_formed_edwards_point(p),
+            |it| by_ref_preserves_items(it),
+        )) by {
+            broadcast use axiom_owned_borrow;
+
+        };
+    }
+    let r = crate::backend::straus_multiscalar_mul(si, mapped);
+    let ghost (ss, es) = choose|ss: Seq<Scalar>, es: Seq<EdwardsPoint>| #[trigger]
+        borrowed_values(si.remaining(), ss) && #[trigger] borrowed_values(mapped.remaining(), es)
+            && edwards_point_as_affine(r) == sum_of_scalar_muls(ss, es);
+    let ghost ps = es.map(|_, e| RistrettoPoint(e));
+    proof {
+        crate::traits::lemma_msm_owned_values::<EdwardsPoint>(mapped.remaining(), es);
+        assert forall|k: int| 0 <= k < pi.remaining().len() implies #[trigger] pi.produces()[k] by {
+            assert(mapped.produces()[k]);
+        }
+        assert forall|k: int| 0 <= k < pi.remaining().len() implies #[trigger] call_ensures(
+            Borrow::borrow,
+            (&pi.remaining()[k],),
+            &ps[k],
+        ) by {
+            assert(project.ensures((pi.remaining()[k],), es[k]));
+        }
+        assert(borrowed_values(pi.remaining(), ps));
+        assert(ps.map(|_, p: RistrettoPoint| p.0) =~= es);
+    }
+    r
 }
 
 #[cfg(feature = "alloc")]

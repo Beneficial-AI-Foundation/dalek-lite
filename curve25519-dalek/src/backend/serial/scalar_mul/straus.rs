@@ -142,10 +142,7 @@ impl MultiscalarMul for Straus {
          *       is_well_formed_edwards_point(result),
          *       edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
          *
-         * NOTE: Verus doesn't support IntoIterator with I::Item projections.
-         * The verified version `multiscalar_mul_verus` below uses:
-         *   - slices instead of iterators, so that the contract can use the
-         *     sequences `scalars@` and `points@`
+         * The verified `multiscalar_mul_verus` below takes slices.
          */
     {
         let lookup_tables: Vec<_> = points
@@ -210,10 +207,7 @@ impl VartimeMultiscalarMul for Straus {
          *       result.is_some() ==> edwards_point_as_affine(result.unwrap())
          *           == sum_of_scalar_muls(scalars, unwrap_points(points)),
          *
-         * NOTE: Verus doesn't support IntoIterator with I::Item projections.
-         * The verified version `optional_multiscalar_mul_verus` below uses:
-         *   - slices instead of iterators, so that the contract can use the
-         *     sequences `scalars@` and `points@`
+         * The verified `optional_multiscalar_mul_verus` below takes slices.
          */
     {
         let nafs: Vec<_> = scalars
@@ -819,14 +813,10 @@ impl Straus {
             forall|i: int|
                 0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i]),
         ensures
-    // Result is a well-formed Edwards point
-
             is_well_formed_edwards_point(result),
             // Semantic correctness: result = sum(scalars[i] * points[i])
             edwards_point_as_affine(result) == sum_of_scalar_muls(scalars@, points@),
     {
-        use crate::traits::Identity;
-
         let ghost spec_scalars = scalars@;
         let ghost spec_points = points@;
 
@@ -906,8 +896,29 @@ impl Straus {
         }
         /* </REFACTORED CODE> */
 
-        // Ghost: build the affine points and digit sequences for the spec
-        let ghost n = scalars@.len();
+        assert(prepared_inputs(lookup_tables@, scalar_digits@, spec_scalars, spec_points));
+        Self::multiscalar_mul_prepared(lookup_tables, scalar_digits.as_slice())
+    }
+
+    /// Compute the multiscalar sum from the lookup tables and scalar digits prepared by the caller.
+    pub(crate) fn multiscalar_mul_prepared(
+        lookup_tables: Vec<LookupTable<ProjectiveNielsPoint>>,
+        scalar_digits: &[[i8; 64]],
+    ) -> (result: EdwardsPoint)
+        requires
+            exists|ss: Seq<Scalar>, ps: Seq<EdwardsPoint>| #[trigger]
+                prepared_inputs(lookup_tables@, scalar_digits@, ss, ps),
+        ensures
+            is_well_formed_edwards_point(result),
+            forall|ss: Seq<Scalar>, ps: Seq<EdwardsPoint>| #[trigger]
+                prepared_inputs(lookup_tables@, scalar_digits@, ss, ps) ==> edwards_point_as_affine(
+                    result,
+                ) == sum_of_scalar_muls(ss, ps),
+    {
+        let ghost (spec_scalars, spec_points) = choose|ss: Seq<Scalar>, ps: Seq<EdwardsPoint>|
+         #[trigger]
+            prepared_inputs(lookup_tables@, scalar_digits@, ss, ps);
+        let ghost n = spec_scalars.len();
         let ghost pts_affine: Seq<(nat, nat)> = points_to_affine(spec_points);
         let ghost digits_seqs: Seq<Seq<i8>> = scalar_digits@.map(|_i, d: [i8; 64]| d@);
 
@@ -1127,11 +1138,64 @@ impl Straus {
                 ) as int);
             };
 
-            lemma_straus_ct_correct(spec_scalars, spec_points, pts_affine, digits_seqs);
+            assert forall|ss: Seq<Scalar>, ps: Seq<EdwardsPoint>| #[trigger]
+                prepared_inputs(
+                    lookup_tables@,
+                    scalar_digits@,
+                    ss,
+                    ps,
+                ) implies edwards_point_as_affine(Q) == sum_of_scalar_muls(ss, ps) by {
+                assert forall|k: int| 0 <= k < pts_affine.len() implies #[trigger] pts_affine[k]
+                    == edwards_point_as_affine(ps[k]) by {
+                    let first = lookup_tables@[k].0[0];
+                    assert(projective_niels_point_as_affine_edwards(first) == edwards_scalar_mul(
+                        edwards_point_as_affine(ps[k]),
+                        1,
+                    ));
+                    assert(projective_niels_point_as_affine_edwards(first) == edwards_scalar_mul(
+                        edwards_point_as_affine(spec_points[k]),
+                        1,
+                    ));
+                }
+                assert forall|k: int| 0 <= k < digits_seqs.len() implies reconstruct_radix_16(
+                    #[trigger] digits_seqs[k],
+                ) == scalar_as_nat(&ss[k]) as int by {
+                    assert(straus_digits_for(scalar_digits@[k], ss[k]));
+                }
+                lemma_straus_ct_correct(ss, ps, pts_affine, digits_seqs);
+            }
         }
 
         Q
     }
+}
+
+/// Inputs represented by the prepared Straus tables and digits.
+pub(crate) open spec fn prepared_inputs(
+    tables: Seq<LookupTable<ProjectiveNielsPoint>>,
+    digits: Seq<[i8; 64]>,
+    ss: Seq<Scalar>,
+    ps: Seq<EdwardsPoint>,
+) -> bool {
+    &&& ss.len() == ps.len() && ss.len() == digits.len() && ps.len() == tables.len()
+    &&& forall|k: int| 0 <= k < ps.len() ==> is_well_formed_edwards_point(#[trigger] ps[k])
+    &&& forall|k: int| 0 <= k < ps.len() ==> straus_table_for(#[trigger] tables[k], ps[k])
+    &&& forall|k: int| 0 <= k < ss.len() ==> straus_digits_for(#[trigger] digits[k], ss[k])
+}
+
+pub(crate) open spec fn straus_table_for(
+    table: LookupTable<ProjectiveNielsPoint>,
+    point: EdwardsPoint,
+) -> bool {
+    &&& is_valid_lookup_table_projective(table.0, point, 8)
+    &&& lookup_table_projective_limbs_bounded(table.0)
+    &&& forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] table.0[j])
+}
+
+pub(crate) open spec fn straus_digits_for(digits: [i8; 64], scalar: Scalar) -> bool {
+    &&& is_valid_radix_16(&digits)
+    &&& radix_16_all_bounded(&digits)
+    &&& reconstruct_radix_16(digits@) == scalar_as_nat(&scalar) as int
 }
 
 // impl Straus

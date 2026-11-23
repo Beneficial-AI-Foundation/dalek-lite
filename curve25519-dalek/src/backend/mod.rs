@@ -88,6 +88,12 @@ fn get_selected_backend() -> (result: BackendKind)
     BackendKind::Serial
 }
 
+#[cfg(all(feature = "alloc", feature = "zeroize"))]
+#[verifier::external_body]
+fn zeroize_scalar_digits(digits: &mut alloc::vec::Vec<[i8; 64]>) {
+    zeroize::Zeroize::zeroize(digits);
+}
+
 } // verus!
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
@@ -189,35 +195,98 @@ impl VartimePrecomputedStraus {
     }
 }
 
-#[allow(missing_docs)]
 #[cfg(feature = "alloc")]
-#[cfg_attr(verus_keep_ghost, verifier::external)]
-pub fn straus_multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint
-where
-    I: IntoIterator,
+use crate::backend::serial::curve_models::ProjectiveNielsPoint;
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+use crate::backend::serial::scalar_mul::straus::{straus_digits_for, straus_table_for};
+#[cfg(feature = "alloc")]
+use crate::backend::serial::scalar_mul::{iterator::collect_borrowed_map, straus::Straus};
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+use crate::specs::iterator_specs::{borrowed_values, valid_msm_iters};
+#[cfg(feature = "alloc")]
+use crate::window::LookupTable;
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+use vstd::std_specs::iter::IteratorSpec;
+
+verus! {
+
+/// Check the size hints, prepare the points first, and run the constant-time Straus kernel.
+#[cfg(feature = "alloc")]
+pub(crate) fn straus_multiscalar_mul<I: Iterator, J: Iterator>(
+    mut scalars: I,
+    mut points: J,
+) -> (out: EdwardsPoint) where
     I::Item: core::borrow::Borrow<Scalar>,
-    J: IntoIterator,
     J::Item: core::borrow::Borrow<EdwardsPoint>,
+
+    requires
+        valid_msm_iters(
+            scalars,
+            points,
+            |p| is_well_formed_edwards_point(p),
+            |it| crate::core_assumes::by_ref_preserves_items(it),
+        ),
+    ensures
+        forall|k: int| 0 <= k < points.remaining().len() ==> #[trigger] points.produces()[k],
+        forall|k: int| 0 <= k < scalars.remaining().len() ==> #[trigger] scalars.produces()[k],
+        is_well_formed_edwards_point(out),
+        exists|ss: Seq<Scalar>, ps: Seq<EdwardsPoint>|
+            {
+                &&& #[trigger] borrowed_values(scalars.remaining(), ss)
+                &&& #[trigger] borrowed_values(points.remaining(), ps)
+                &&& edwards_point_as_affine(out) == sum_of_scalar_muls(ss, ps)
+            },
 {
-    use crate::traits::MultiscalarMul;
+    #[cfg(verus_keep_ghost)]
+    use crate::backend::serial::scalar_mul::{iterator::mapped_borrows, straus::prepared_inputs};
+    let (s_lo, s_hi) = crate::core_assumes::by_ref_size_hint(&mut scalars);
+    let (p_lo, p_hi) = crate::core_assumes::by_ref_size_hint(&mut points);
+    assert_eq!(s_lo, p_lo);
+    assert_eq!(s_hi, Some(s_lo));
+    assert_eq!(p_hi, Some(p_lo));
 
     match get_selected_backend() {
-        // #[cfg(curve25519_dalek_backend = "simd")]
-        // BackendKind::Avx2 => {
-        //     vector::scalar_mul::straus::spec_avx2::Straus::multiscalar_mul::<I, J>(scalars, points)
-        // }
-        // #[cfg(all(curve25519_dalek_backend = "simd", nightly))]
-        // BackendKind::Avx512 => {
-        //     vector::scalar_mul::straus::spec_avx512ifma_avx512vl::Straus::multiscalar_mul::<I, J>(
-        //         scalars, points,
-        //     )
-        // }
         BackendKind::Serial => {
-            serial::scalar_mul::straus::Straus::multiscalar_mul::<I, J>(scalars, points)
-        }
+            let table_for = |p: &EdwardsPoint| -> (t: LookupTable<ProjectiveNielsPoint>)
+                ensures
+                    straus_table_for(t, *p),
+                { LookupTable::<ProjectiveNielsPoint>::from(p) };
+            let tables = collect_borrowed_map(points, table_for);
+            let digits_for = |s: &Scalar| -> (d: [i8; 64])
+                requires
+                    s.bytes[31] <= 127,
+                ensures
+                    straus_digits_for(d, *s),
+                { s.as_radix_16() };
+            #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
+            let mut digits = collect_borrowed_map(scalars, digits_for);
+            let ghost ps = choose|ps: Seq<EdwardsPoint>| #[trigger]
+                mapped_borrows(points.remaining(), tables@, table_for, ps);
+            let ghost ss = choose|ss: Seq<Scalar>| #[trigger]
+                mapped_borrows(scalars.remaining(), digits@, digits_for, ss);
+            proof {
+                assert forall|k: int| 0 <= k < ps.len() implies is_well_formed_edwards_point(
+                    #[trigger] ps[k],
+                ) by {
+                    assert(call_ensures(
+                        core::borrow::Borrow::borrow,
+                        (&points.remaining()[k],),
+                        &ps[k],
+                    ));
+                }
+                assert(prepared_inputs(tables@, digits@, ss, ps));
+            }
+            let out = Straus::multiscalar_mul_prepared(tables, digits.as_slice());
+            #[cfg(feature = "zeroize")]
+            zeroize_scalar_digits(&mut digits);
+            assert(borrowed_values(scalars.remaining(), ss));
+            assert(borrowed_values(points.remaining(), ps));
+            out
+        },
     }
 }
 
+} // verus!
 #[allow(missing_docs)]
 #[cfg(feature = "alloc")]
 #[cfg_attr(verus_keep_ghost, verifier::external)]

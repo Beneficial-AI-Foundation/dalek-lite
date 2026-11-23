@@ -2,6 +2,8 @@
 //! This module provides Verus-compatible wrappers for core types that are used
 //! in the codebase but not directly supported by Verus.
 use core::array::TryFromSliceError;
+#[cfg(verus_keep_ghost)]
+use core::borrow::Borrow;
 use core::convert::TryInto;
 
 #[allow(unused_imports)]
@@ -21,6 +23,8 @@ use crate::specs::scalar52_specs::*;
 #[allow(unused_imports)]
 use crate::Scalar;
 use vstd::prelude::*;
+#[cfg(verus_keep_ghost)]
+use vstd::std_specs::iter::IteratorSpec;
 
 #[cfg(feature = "rand_core")]
 use rand_core::RngCore;
@@ -33,6 +37,253 @@ use digest::Digest;
 use crate::specs::proba_specs::is_uniform_bytes;
 
 verus! {
+
+// The pinned vstd declares Borrow without its method. The type parameter name
+// must match vstd's external trait specification.
+#[verifier::external_trait_specification]
+pub trait ExBorrow<Borrowed> where Borrowed: ?Sized {
+    type ExternalTraitSpecificationFor: core::borrow::Borrow<Borrowed>;
+
+    fn borrow(&self) -> &Borrowed;
+}
+
+/// For any type `T`, the implementation of `Borrow<T>` for `T` takes `item: &T` and returns `item`.
+/// See Rust's `library/core/src/borrow.rs`.
+pub broadcast axiom fn axiom_owned_borrow<T: Borrow<T>>(item: &T, result: &T)
+    requires  // `result` is a possible return value of `<T as Borrow<T>>::borrow(item)`.
+
+        #[trigger] call_ensures(Borrow::borrow, (item,), result),
+    ensures
+        result == item,  // The returned `&T` is `item` itself.
+;
+
+/// For any type `T`, the implementation of `Borrow<T>` for `&T` takes `item: &&T`
+/// and returns the inner reference `*item`.
+/// See Rust's `library/core/src/borrow.rs`.
+pub broadcast axiom fn axiom_ref_borrow<'a, T>(item: &&'a T, result: &T) where &'a T: Borrow<T>
+    requires  // `result` is a possible return value of `<&T as Borrow<T>>::borrow(item)`.
+
+        #[trigger] call_ensures(Borrow::borrow, (item,), result),
+    ensures
+        result == *item,  // The returned `&T` is the inner reference in `item: &&T`.
+;
+
+/// A size hint gives a lower bound and an optional upper bound on the number of remaining items.
+/// An iterator has an exact size hint if every call to `size_hint()` supplies both bounds
+/// and they agree.
+pub open spec fn exact_size_hint<I: Iterator>(iter: I) -> bool {
+    forall|hint: (usize, Option<usize>)| #[trigger]
+        call_ensures(I::size_hint, (&iter,), hint) ==> hint.1 == Some(hint.0)
+}
+
+// The pinned Iterator specification omits by_ref. An override can advance or replace its receiver.
+#[verifier::external_body]
+pub fn iterator_by_ref<I: Iterator>(iter: &mut I) -> &mut I {
+    iter.by_ref()
+}
+
+/// Starting from `before`, the call `by_ref().size_hint()` can return `hint` and leave the
+/// original iterator in state `after`.
+#[verifier::prophetic]
+pub open spec fn by_ref_hint_outcome<I: Iterator>(
+    before: I,
+    after: I,
+    hint: (usize, Option<usize>),
+) -> bool {
+    exists|call: &mut I, returned: &mut I|
+        {
+            &&& *call == before
+            &&& *final(call) == after
+            &&& *final(returned) == *returned
+            &&& #[trigger] call_ensures(iterator_by_ref::<I>, (call,), returned)
+            &&& call_ensures(I::size_hint, (&*returned,), hint)
+        }
+}
+
+/// Let `len = iter.remaining().len()` be the number of items left before the call.
+/// Calling `iter.by_ref().size_hint()` returns `(len, Some(len))` and leaves the same items
+/// to be yielded in the same order.
+#[verifier::prophetic]
+pub open spec fn by_ref_preserves_items<I: Iterator>(iter: I) -> bool {
+    forall|after: I, hint: (usize, Option<usize>)| #[trigger]
+        by_ref_hint_outcome(iter, after, hint) ==> {
+            &&& after.obeys_prophetic_iter_laws()
+            &&& after.remaining() == iter.remaining()
+            &&& after.produces() == iter.produces()
+            &&& hint.0 == iter.remaining().len()
+            &&& hint.1 == Some(hint.0)
+        }
+}
+
+pub(crate) fn by_ref_size_hint<I: Iterator>(iter: &mut I) -> (hint: (usize, Option<usize>))
+    ensures
+        by_ref_hint_outcome(*old(iter), *final(iter), hint),
+{
+    I::size_hint(&*iterator_by_ref(iter))
+}
+
+/// A vector iterator reports equal size bounds and inherits the default `by_ref()`.
+#[cfg(feature = "alloc")]
+axiom fn axiom_vec_methods<T>(iter: alloc::vec::IntoIter<T>) where alloc::vec::IntoIter<T>: Iterator
+    ensures  // The bounds on the number of elements left to yield are `(lower, Some(lower))`.
+
+        forall|lower: usize, upper: Option<usize>| #[trigger]
+            call_ensures(Iterator::size_hint, (&iter,), (lower, upper)) ==> upper == Some(lower),
+        // `receiver` initially holds `iter`. `returned` is the reference from `receiver.by_ref()`.
+        forall|receiver: &mut alloc::vec::IntoIter<T>, returned| #[trigger]
+            call_ensures(iterator_by_ref, (receiver,), returned) && *receiver == iter ==> {
+                // The borrow starts with the receiver's initial value. When it ends, the receiver
+                // has the final iterator value reached through `returned`.
+                &&& *returned == iter
+                &&& *final(receiver) == *final(returned)
+            },
+;
+
+/// A slice iterator reports equal size bounds and inherits the default `by_ref()`.
+axiom fn axiom_slice_methods<'a, T>(iter: core::slice::Iter<'a, T>) where
+    core::slice::Iter<'a, T>: Iterator,
+
+    ensures  // The bounds on the number of references left to yield are `(lower, Some(lower))`.
+
+        forall|lower: usize, upper: Option<usize>| #[trigger]
+            call_ensures(Iterator::size_hint, (&iter,), (lower, upper)) ==> upper == Some(lower),
+        // `receiver` initially holds `iter`. `returned` is the reference from `receiver.by_ref()`.
+        forall|receiver: &mut core::slice::Iter<'a, T>, returned| #[trigger]
+            call_ensures(iterator_by_ref, (receiver,), returned) && *receiver == iter ==> {
+                // The borrow starts with the receiver's initial value. When it ends, the receiver
+                // has the final iterator value reached through `returned`.
+                &&& *returned == iter
+                &&& *final(receiver) == *final(returned)
+            },
+;
+
+/// A mapped iterator inherits the default `by_ref()` and preserves exact size bounds.
+axiom fn axiom_map_methods<I: Iterator, F: FnMut(I::Item) -> T, T>(
+    map: core::iter::Map<I, F>,
+) where core::iter::Map<I, F>: Iterator
+    requires
+        map.obeys_prophetic_iter_laws(),  // vstd's contract for `next()` applies to `map`.
+        // `map_iter(map)` is the underlying iterator. Its size hint must have equal bounds.
+        forall|lower: usize, upper: Option<usize>| #[trigger]
+            call_ensures(I::size_hint, (&vstd::std_specs::iter::map_iter(map),), (lower, upper))
+                ==> upper == Some(lower),
+    ensures  // The bounds on the number of mapped items left to yield are `(lower, Some(lower))`.
+
+        forall|lower: usize, upper: Option<usize>| #[trigger]
+            call_ensures(Iterator::size_hint, (&map,), (lower, upper)) ==> upper == Some(lower),
+        // `receiver` initially holds `map`. `returned` is the reference from `receiver.by_ref()`.
+        forall|receiver: &mut core::iter::Map<I, F>, returned| #[trigger]
+            call_ensures(iterator_by_ref, (receiver,), returned) && *receiver == map ==> {
+                // The borrow starts with the receiver's initial value. When it ends, the receiver
+                // has the final iterator value reached through `returned`.
+                &&& *returned == map
+                &&& *final(receiver) == *final(returned)
+            },
+;
+
+/// Equal size bounds give the remaining length. Reading them through a reborrow preserves the items.
+proof fn lemma_exact_reborrow<I: Iterator>(iter: I)
+    requires
+        iter.obeys_prophetic_iter_laws(),
+        forall|receiver: &mut I, returned: &mut I| #[trigger]
+            call_ensures(iterator_by_ref::<I>, (receiver,), returned) && *receiver == iter ==> {
+                &&& *returned == iter
+                &&& *final(receiver) == *final(returned)
+            },
+        forall|lower: usize, upper: Option<usize>| #[trigger]
+            call_ensures(I::size_hint, (&iter,), (lower, upper)) ==> upper == Some(lower),
+    ensures
+        by_ref_preserves_items(iter),
+{
+}
+
+/// `Iterator::size_hint()` returns `(lower, upper)` of type `(usize, Option<usize>)`.
+/// At least `lower` elements remain. If `upper` is `Some(u)`, at most `u` elements remain.
+/// If `upper` is `None`, the iterator reports no upper bound.
+/// An owning iterator over a `Vec<T>` returns `(n, Some(n))` when `n` elements of type `T` remain.
+/// See Rust's `library/alloc/src/vec/into_iter.rs`.
+#[cfg(feature = "alloc")]
+pub broadcast proof fn lemma_vec_into_iter_exact_size_hint<T>(
+    before: alloc::vec::IntoIter<T>,
+) where alloc::vec::IntoIter<T>: Iterator
+    ensures
+        #![trigger exact_size_hint(before)]
+        // Every result of `before.size_hint()` has an upper bound equal to its lower bound.
+        forall|bounds: (usize, Option<usize>)| #[trigger]
+            call_ensures(Iterator::size_hint, (&before,), bounds) ==> {
+                let (lower, upper) = bounds;
+                upper == Some(lower)
+            },
+        // `before.by_ref()` returns a reference of type `&mut IntoIter<T>`.
+        // `bounds` is its `size_hint()` result. `after` is the iterator state when the borrow ends.
+        forall|after: alloc::vec::IntoIter<T>, bounds: (usize, Option<usize>)| #[trigger]
+            by_ref_hint_outcome(before, after, bounds) ==> {
+                let (lower, upper) = bounds;
+                &&& lower == before.remaining().len()
+                &&& upper == Some(lower)
+                &&& after.remaining()
+                    == before.remaining()
+                // At index `i`, `remaining()[i]` is an item of type `T` and `produces()[i]`
+                // is true if the iterator yields that item.
+                &&& after.produces()
+                    == before.produces()
+                // `next()` returns an `Option<T>`, yielding `Some(item)` in order, then `None`.
+                &&& after.obeys_prophetic_iter_laws()
+            },
+{
+    axiom_vec_methods(before);
+    lemma_exact_reborrow(before);
+}
+
+/// A slice iterator reports the number of elements it has yet to yield.
+/// Querying its size through `by_ref()` leaves the iterator at its current position.
+/// See Rust's `library/core/src/slice/iter/macros.rs`.
+pub broadcast proof fn lemma_slice_iter_exact_size_hint<'a, T>(
+    iter: core::slice::Iter<'a, T>,
+) where core::slice::Iter<'a, T>: Iterator
+    ensures
+        #![trigger exact_size_hint(iter)]
+        forall|hint: (usize, Option<usize>)| #[trigger]
+            call_ensures(Iterator::size_hint, (&iter,), hint) ==> hint.1 == Some(hint.0),
+        forall|after, hint| #[trigger]
+            by_ref_hint_outcome(iter, after, hint) ==> {
+                &&& hint.0 == iter.remaining().len()
+                &&& hint.1 == Some(hint.0)
+                &&& after.remaining() == iter.remaining()
+                &&& after.produces() == iter.produces()
+                &&& after.obeys_prophetic_iter_laws()
+            },
+{
+    axiom_slice_methods(iter);
+    lemma_exact_reborrow(iter);
+}
+
+/// A mapped iterator `Map<I, F>` returns the size hint of its underlying iterator of type `I`.
+/// Reading the hint does not invoke the mapping function of type `F`.
+/// See Rust's `library/core/src/iter/adapters/map.rs`.
+pub proof fn lemma_map_exact_size_hint<I: Iterator, F: FnMut(I::Item) -> T, T>(
+    map: core::iter::Map<I, F>,
+) where core::iter::Map<I, F>: Iterator
+    requires
+        map.obeys_prophetic_iter_laws(),
+        forall|hint: (usize, Option<usize>)| #[trigger]
+            call_ensures(I::size_hint, (&vstd::std_specs::iter::map_iter(map),), hint) ==> hint.1
+                == Some(hint.0),
+    ensures
+        forall|hint: (usize, Option<usize>)| #[trigger]
+            call_ensures(Iterator::size_hint, (&map,), hint) ==> hint.1 == Some(hint.0),
+        forall|after, hint| #[trigger]
+            by_ref_hint_outcome(map, after, hint) ==> {
+                &&& hint.0 == map.remaining().len()
+                &&& hint.1 == Some(hint.0)
+                &&& after.remaining() == map.remaining()
+                &&& after.produces() == map.produces()
+                &&& after.obeys_prophetic_iter_laws()
+            },
+{
+    axiom_map_methods(map);
+    lemma_exact_reborrow(map);
+}
 
 /// External type specification for TryFromSliceError
 /// This error type is returned when trying to convert a slice to an array fails

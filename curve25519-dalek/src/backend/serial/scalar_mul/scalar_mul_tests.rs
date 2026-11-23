@@ -37,6 +37,60 @@ mod tests {
         }
     }
 
+    /// Borrowing a point changes the scalar that the other iterator yields.
+    #[test]
+    fn multiscalar_with_shared_iterator_state() {
+        use core::{borrow::Borrow, cell::Cell, iter::once};
+
+        struct Point<'a>(&'a Cell<bool>, EdwardsPoint);
+
+        impl Borrow<EdwardsPoint> for Point<'_> {
+            fn borrow(&self) -> &EdwardsPoint {
+                self.0.set(true);
+                &self.1
+            }
+        }
+
+        let flag = Cell::new(false);
+        let base = constants::ED25519_BASEPOINT_POINT;
+        let scalars = once(()).map(|_| {
+            if flag.get() {
+                Scalar::ONE
+            } else {
+                Scalar::ZERO
+            }
+        });
+        let points = once(Point(&flag, base));
+        assert_eq!(EdwardsPoint::multiscalar_mul(scalars, points), base);
+    }
+
+    #[test]
+    fn multiscalar_respects_overridden_by_ref() {
+        struct SkipFirst<T>(alloc::vec::IntoIter<T>);
+
+        impl<T> Iterator for SkipFirst<T> {
+            type Item = T;
+
+            fn next(&mut self) -> Option<T> {
+                self.0.next()
+            }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.0.size_hint()
+            }
+
+            fn by_ref(&mut self) -> &mut Self {
+                self.next();
+                self
+            }
+        }
+
+        let base = constants::ED25519_BASEPOINT_POINT;
+        let scalars = SkipFirst(alloc::vec![Scalar::ONE, Scalar::from(2u8)].into_iter());
+        let points = SkipFirst(alloc::vec![base, base].into_iter());
+        assert_eq!(EdwardsPoint::multiscalar_mul(scalars, points), base + base);
+    }
+
     #[test]
     fn test_pippenger_original_vs_verus() {
         // Test sizes covering all window width cases:

@@ -1,18 +1,90 @@
-//! Verus specifications for multiscalar multiplication and point sums.
-//!
-//! Contains spec functions over sequences of optional and Ristretto points. The verified
-//! multiscalar functions take slices, so their contracts use `scalars@` and `points@`
-//! directly.
+//! Specifications for multiscalar multiplication on iterator inputs and on slices.
 use vstd::prelude::*;
 
-#[allow(unused_imports)]
+#[cfg(verus_keep_ghost)]
 use crate::edwards::EdwardsPoint;
-#[allow(unused_imports)]
+#[cfg(verus_keep_ghost)]
 use crate::ristretto::RistrettoPoint;
 #[cfg(verus_keep_ghost)]
 use crate::specs::edwards_specs::{edwards_add, edwards_point_as_affine, sum_of_points};
 
+#[cfg(verus_keep_ghost)]
+use crate::core_assumes::by_ref_preserves_items;
+#[cfg(verus_keep_ghost)]
+use crate::scalar::Scalar;
+#[cfg(verus_keep_ghost)]
+use core::borrow::Borrow;
+#[cfg(verus_keep_ghost)]
+use vstd::std_specs::iter::IteratorSpec;
+
 verus! {
+
+/// Each value is a permitted result of borrowing the corresponding yielded item.
+/// Different calls to `borrow` can return different values.
+pub open spec fn borrowed_values<A: Borrow<B>, B>(items: Seq<A>, values: Seq<B>) -> bool {
+    &&& items.len() == values.len()
+    &&& forall|k: int|
+        0 <= k < items.len() ==> #[trigger] call_ensures(Borrow::borrow, (&items[k],), &values[k])
+}
+
+#[verifier::prophetic]
+pub open spec fn valid_msm_iters<P, I: Iterator, J: Iterator>(
+    scalars: I,
+    points: J,
+    valid_point: spec_fn(P) -> bool,
+    point_hint: spec_fn(J) -> bool,
+) -> bool where I::Item: Borrow<Scalar>, J::Item: Borrow<P> {
+    &&& scalars.obeys_prophetic_iter_laws() && points.obeys_prophetic_iter_laws()
+    &&& by_ref_preserves_items(scalars) && point_hint(points)
+    &&& scalars.remaining().len() == points.remaining().len()
+    &&& forall|k: int, s: Scalar|
+        0 <= k < scalars.remaining().len() && scalars.produces()[k] && #[trigger] call_ensures(
+            Borrow::borrow,
+            (&scalars.remaining()[k],),
+            &s,
+        ) ==> s.bytes[31] <= 127
+    &&& forall|k: int, p: P|
+        0 <= k < points.remaining().len() && points.produces()[k] && #[trigger] call_ensures(
+            Borrow::borrow,
+            (&points.remaining()[k],),
+            &p,
+        ) ==> valid_point(p)
+}
+
+#[verifier::prophetic]
+pub open spec fn valid_msm_sources<P, I: IntoIterator, J: IntoIterator>(
+    scalars: I,
+    points: J,
+    valid_point: spec_fn(P) -> bool,
+    point_hint: spec_fn(J::IntoIter) -> bool,
+) -> bool where I::Item: Borrow<Scalar>, J::Item: Borrow<P> {
+    forall|si: I::IntoIter, pi: J::IntoIter| #[trigger]
+        call_ensures(I::into_iter, (scalars,), si) && #[trigger] call_ensures(
+            J::into_iter,
+            (points,),
+            pi,
+        ) ==> valid_msm_iters(si, pi, valid_point, point_hint)
+}
+
+/// Both iterators produced every item in the sum. Each value used in the sum
+/// satisfies the postcondition of borrowing the corresponding item.
+#[verifier::prophetic]
+pub open spec fn msm_outcome<P, I: IntoIterator, J: IntoIterator>(
+    scalars: I,
+    points: J,
+    sum: spec_fn(Seq<Scalar>, Seq<P>) -> bool,
+) -> bool where I::Item: Borrow<Scalar>, J::Item: Borrow<P> {
+    exists|si: I::IntoIter, pi: J::IntoIter, ss: Seq<Scalar>, ps: Seq<P>|
+        {
+            &&& #[trigger] call_ensures(I::into_iter, (scalars,), si)
+            &&& #[trigger] call_ensures(J::into_iter, (points,), pi)
+            &&& #[trigger] borrowed_values(si.remaining(), ss)
+            &&& #[trigger] borrowed_values(pi.remaining(), ps)
+            &&& forall|k: int| 0 <= k < ss.len() ==> #[trigger] si.produces()[k]
+            &&& forall|k: int| 0 <= k < ps.len() ==> #[trigger] pi.produces()[k]
+            &&& sum(ss, ps)
+        }
+}
 
 // ============================================================================
 // Spec functions for optional point sequences

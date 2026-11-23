@@ -2765,8 +2765,7 @@ impl MultiscalarMul for EdwardsPoint {
         points: Seq<EdwardsPoint>,
         result: EdwardsPoint,
     ) -> bool {
-        &&& is_well_formed_edwards_point(result)
-        &&& edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points)
+        edwards_msm_result(scalars, points, result)
     }
 
     fn multiscalar_mul<I, J>(scalars: I, points: J) -> (result: EdwardsPoint) where
@@ -2775,74 +2774,57 @@ impl MultiscalarMul for EdwardsPoint {
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
      {
-        /* <ORIGINAL CODE>
-        // Sanity-check lengths of input iterators
-        let mut scalars = scalars.into_iter();
-        let mut points = points.into_iter();
-
-        // Lower and upper bounds on iterators
-        let (s_lo, s_hi) = scalars.by_ref().size_hint();
-        let (p_lo, p_hi) = points.by_ref().size_hint();
-
-        // They should all be equal
+        let mut si = scalars.into_iter();
+        let mut pi = points.into_iter();
+        proof {
+            assert(call_ensures(I::into_iter, (scalars,), si));
+            assert(call_ensures(J::into_iter, (points,), pi));
+        }
+        let (s_lo, s_hi) = crate::core_assumes::by_ref_size_hint(&mut si);
+        let (p_lo, p_hi) = crate::core_assumes::by_ref_size_hint(&mut pi);
         assert_eq!(s_lo, p_lo);
         assert_eq!(s_hi, Some(s_lo));
         assert_eq!(p_hi, Some(p_lo));
 
-        // Now we know there's a single size.  When we do
-        // size-dependent algorithm dispatch, use this as the hint.
-        let _size = s_lo;
-
-        crate::backend::straus_multiscalar_mul(scalars, points)
-        </ORIGINAL CODE> */
-        let si = scalars.into_iter();
-        let pi = points.into_iter();
-        #[cfg(verus_keep_ghost)]
-        use vstd::std_specs::iter::IteratorSpec;
-        let r = crate::backend::straus_multiscalar_mul(si, pi);
-        let ghost (ss, ps) = choose|ss: Seq<Scalar>, ps: Seq<EdwardsPoint>| #[trigger]
-            crate::specs::iterator_specs::borrowed_values(si.remaining(), ss)
-                && #[trigger] crate::specs::iterator_specs::borrowed_values(pi.remaining(), ps)
-                && edwards_point_as_affine(r) == sum_of_scalar_muls(ss, ps);
-        proof {
-            assert(call_ensures(I::into_iter, (scalars,), si));
-            assert(call_ensures(J::into_iter, (points,), pi));
-            assert(Self::msm_sum(ss, ps, r));
-        }
-        r
+        crate::backend::straus_multiscalar_mul(si, pi)
     }
 }
 
 #[cfg(feature = "alloc")]
-#[verifier::external]
 impl VartimeMultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
-    /// ASSUMED SPECIFICATION FOR EXTERNAL FUNCTION:
-    /// `VartimeMultiscalarMul::optional_multiscalar_mul` (for EdwardsPoint, see the verified `EdwardsPoint::optional_multiscalar_mul_slices`)
-    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint> where
+    open spec fn valid_vartime_point(point: EdwardsPoint) -> bool {
+        is_well_formed_edwards_point(point)
+    }
+
+    open spec fn vartime_sum(
+        scalars: Seq<Scalar>,
+        points: Seq<EdwardsPoint>,
+        result: EdwardsPoint,
+    ) -> bool {
+        edwards_msm_result(scalars, points, result)
+    }
+
+    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (result: Option<
+        EdwardsPoint,
+    >) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
-    /* VERIFICATION NOTE: VERUS SPEC (when IntoIterator with I::Item projections is supported):
-        requires
-            scalars.len() == points.len(),
-            forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
-        ensures
-            result.is_some() <==> all_points_some(points),
-            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(scalars, unwrap_points(points)),
-
-        VERIFICATION NOTE: see `EdwardsPoint::optional_multiscalar_mul_slices` below for the verified version over slices.
-        */
-    {
+     {
         // Sanity-check lengths of input iterators
-        let mut scalars = scalars.into_iter();
-        let mut points = points.into_iter();
+        let mut si = scalars.into_iter();
+        let mut pi = points.into_iter();
+
+        proof {
+            assert(call_ensures(I::into_iter, (scalars,), si));
+            assert(call_ensures(J::into_iter, (points,), pi));
+        }
 
         // Lower and upper bounds on iterators
-        let (s_lo, s_hi) = scalars.by_ref().size_hint();
-        let (p_lo, p_hi) = points.by_ref().size_hint();
+        let (s_lo, s_hi) = crate::core_assumes::by_ref_size_hint(&mut si);
+        let (p_lo, p_hi) = crate::core_assumes::by_ref_size_hint(&mut pi);
 
         // They should all be equal
         assert_eq!(s_lo, p_lo);
@@ -2854,9 +2836,9 @@ impl VartimeMultiscalarMul for EdwardsPoint {
         let size = s_lo;
 
         if size < 190 {
-            crate::backend::straus_optional_multiscalar_mul(scalars, points)
+            crate::backend::straus_optional_multiscalar_mul(si, pi)
         } else {
-            crate::backend::pippenger_optional_multiscalar_mul(scalars, points)
+            crate::backend::pippenger_optional_multiscalar_mul(si, pi)
         }
     }
 }
@@ -2900,10 +2882,6 @@ impl VartimePrecomputedMultiscalarMul for VartimeEdwardsPrecomputation {
     }
 }
 
-// Import spec functions from iterator_specs for multiscalar verification
-#[cfg(verus_keep_ghost)]
-use crate::specs::iterator_specs::{all_points_some, unwrap_points};
-
 verus! {
 
 impl EdwardsPoint {
@@ -2926,105 +2904,10 @@ impl EdwardsPoint {
         crate::backend::vartime_double_base_mul(a, A, b)
     }
 
-    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and points \\(P_i\\), in
-    /// constant time (Straus).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `scalars` and `points` have different lengths.
-    ///
-    /// The scalars need not be reduced modulo \\(\ell\\), but bit 255 of each scalar must be
-    /// clear. The result uses the integer value of each scalar, so for points outside the
-    /// prime-order subgroup an unreduced scalar can give a different result than its reduction.
-    ///
-    /// The `requires` clauses bind only verified callers. An unverified caller that passes a
-    /// scalar with bit 255 set, or points that are not well-formed, gets no guarantee about the
-    /// result.
-    #[cfg(feature = "alloc")]
-    pub fn multiscalar_mul_slices(scalars: &[Scalar], points: &[EdwardsPoint]) -> (result:
-        EdwardsPoint)
-        requires
-            scalars@.len() == points@.len(),
-            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
-            forall|i: int|
-                0 <= i < points@.len() ==> is_well_formed_edwards_point(#[trigger] points@[i]),
-        ensures
-            is_well_formed_edwards_point(result),
-            edwards_point_as_affine(result) == sum_of_scalar_muls(scalars@, points@),
-    {
-        // Verus proves this from the requires clause; unverified callers get a run-time check.
-        #[cfg(not(verus_keep_ghost))]
-        assert_eq!(scalars.len(), points.len());
-
-        crate::backend::straus_multiscalar_mul_verus(scalars, points)
-    }
-
-    /// Compute \\(\sum_i s_i P_i\\) for slices of scalars \\(s_i\\) and optional points
-    /// \\(P_i\\), in variable time. Returns `None` if any point is `None`.
-    ///
-    /// Uses Straus for fewer than 190 points and Pippenger otherwise.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `scalars` and `points` have different lengths.
-    ///
-    /// The scalars need not be reduced modulo \\(\ell\\), but bit 255 of each scalar must be
-    /// clear. The result uses the integer value of each scalar, so for points outside the
-    /// prime-order subgroup an unreduced scalar can give a different result than its reduction.
-    ///
-    /// The `requires` clauses bind only verified callers. An unverified caller that passes a
-    /// scalar with bit 255 set, or points that are not well-formed, gets no guarantee about the
-    /// result.
-    #[cfg(feature = "alloc")]
-    pub fn optional_multiscalar_mul_slices(
-        scalars: &[Scalar],
-        points: &[Option<EdwardsPoint>],
-    ) -> (result: Option<EdwardsPoint>)
-        requires
-            scalars@.len() == points@.len(),
-            forall|i: int| #![auto] 0 <= i < scalars@.len() ==> scalars@[i].bytes[31] <= 127,
-            forall|i: int|
-                0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
-                    ==> is_well_formed_edwards_point(points@[i].unwrap()),
-        ensures
-            result.is_some() <==> all_points_some(points@),
-            result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-            result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
-                scalars@,
-                unwrap_points(points@),
-            ),
-    {
-        // Verus proves this from the requires clause; unverified callers get a run-time check.
-        #[cfg(not(verus_keep_ghost))]
-        assert_eq!(scalars.len(), points.len());
-
-        if scalars.len() < 190 {
-            crate::backend::straus_optional_multiscalar_mul_verus(scalars, points)
-        } else {
-            crate::backend::pippenger_optional_multiscalar_mul_verus(scalars, points)
-        }
-    }
-
-    /*
-     * VERIFICATION NOTE
-     * =================
-     * The _verus versions take Iterator bounds instead of IntoIterator (Verus doesn't support
-     * I::Item projections), and call size_hint() on the iterator itself (it takes &self).
-     * They are external: Verus has no model of what an arbitrary iterator yields. They collect
-     * the iterators and call the verified slice functions in the backend. Verified callers use
-     * multiscalar_mul_slices and optional_multiscalar_mul_slices.
-     *
-     * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
-     * run both original and _verus implementations, and assert equality of results.
-     * This is evidence of functional equivalence between the original and refactored versions:
-     *     forall scalars s, points p:
-     *         optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
-     *         multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
-     */
     /// Generic-iterator version of `optional_multiscalar_mul`.
     /// Dispatches to Straus (size < 190) or Pippenger (size >= 190) on the size hint.
     ///
-    /// Not verified. Verified callers use `EdwardsPoint::optional_multiscalar_mul_slices`, which takes slices.
+    /// The verified iterator method is [`VartimeMultiscalarMul::optional_multiscalar_mul`].
     ///
     /// The result for iterators with side effects, or with state that the two iterators share,
     /// depends on the order of the iterator calls. This function makes them in this order:
@@ -3091,7 +2974,7 @@ impl EdwardsPoint {
 
     /// Generic-iterator version of `multiscalar_mul` (constant-time, Straus).
     ///
-    /// Not verified. Verified callers use `EdwardsPoint::multiscalar_mul_slices`, which takes slices.
+    /// The verified iterator method is [`MultiscalarMul::multiscalar_mul`].
     ///
     /// The result for iterators with side effects, or with state that the two iterators share,
     /// depends on the order of the iterator calls. This function makes them in this order:

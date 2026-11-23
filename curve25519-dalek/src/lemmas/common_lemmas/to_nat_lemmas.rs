@@ -619,8 +619,10 @@ pub proof fn lemma_u8_32_as_nat_first_byte_only(bytes: &[u8; 32])
         assert(bytes_as_nat_prefix(bytes@, 0) == 0);
         assert(bytes_as_nat_prefix(bytes@, 1) == bytes_as_nat_prefix(bytes@, 0) + pow2(0)
             * bytes[0] as nat);
-        assert(pow2(0) == 1);
-        assert(pow2(0) * bytes[0] as nat == bytes[0] as nat);
+        assert(pow2(0) * bytes[0] as nat == bytes[0] as nat) by (nonlinear_arith)
+            requires
+                pow2(0) == 1,
+        {}
     }
 }
 

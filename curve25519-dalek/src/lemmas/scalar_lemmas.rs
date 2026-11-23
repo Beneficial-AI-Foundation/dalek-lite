@@ -123,6 +123,7 @@ pub proof fn lemma_mul_internal_no_overflow()
     assert((1u128 << 3) * (1u128 << 104) == (1u128 << 107)) by (bit_vector);
 }
 
+#[verifier::rlimit(30)]
 pub proof fn lemma_mul_internal_correct(a: &[u64; 5], b: &[u64; 5], z: &[u128; 9])
     requires
         limb_prod_bounded_u128(*a, *b, 5),

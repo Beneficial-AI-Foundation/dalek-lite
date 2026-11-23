@@ -1000,6 +1000,16 @@ pub open spec fn sum_of_scalar_muls(scalars: Seq<Scalar>, points: Seq<EdwardsPoi
     }
 }
 
+/// The result is a well-formed Edwards point representing the sum of the scalar-point products.
+pub open spec fn edwards_msm_result(
+    scalars: Seq<Scalar>,
+    points: Seq<EdwardsPoint>,
+    result: EdwardsPoint,
+) -> bool {
+    &&& is_well_formed_edwards_point(result)
+    &&& edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points)
+}
+
 /// Lemma: The identity point has affine coordinates (0, 1).
 ///
 /// For an identity point where x == 0 and y == z (with z != 0):

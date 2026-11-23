@@ -1,4 +1,4 @@
-//! The multiscalar slice functions accept unreduced scalars whose bit 255 is clear, and they
+//! The multiscalar iterator methods accept unreduced scalars whose bit 255 is clear, and they
 //! multiply by the integer value of each scalar, not by its reduction modulo the group order.
 #![cfg(feature = "alloc")]
 
@@ -8,7 +8,7 @@ use curve25519_dalek::constants::{
 use curve25519_dalek::edwards::EdwardsPoint;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
+use curve25519_dalek::traits::{Identity, MultiscalarMul, VartimeMultiscalarMul};
 
 /// The group order ℓ as an unreduced scalar. Its reduction is zero.
 #[allow(deprecated)]
@@ -55,12 +55,12 @@ fn ell_times_order_two_point_is_the_point() {
         let (scalars, points) = padded(n, ELL, t);
         let opt_points: Vec<_> = points.iter().copied().map(Some).collect();
         assert_eq!(
-            EdwardsPoint::multiscalar_mul_slices(&scalars, &points),
+            EdwardsPoint::multiscalar_mul(&scalars, &points),
             t,
             "n = {n}"
         );
         assert_eq!(
-            EdwardsPoint::optional_multiscalar_mul_slices(&scalars, &opt_points),
+            EdwardsPoint::optional_multiscalar_mul(&scalars, opt_points),
             Some(t),
             "n = {n}"
         );
@@ -75,12 +75,12 @@ fn unreduced_scalar_times_basepoint() {
         let (scalars, points) = padded(n, MAX_BIT_255_CLEAR, b);
         let opt_points: Vec<_> = points.iter().copied().map(Some).collect();
         assert_eq!(
-            EdwardsPoint::multiscalar_mul_slices(&scalars, &points),
+            EdwardsPoint::multiscalar_mul(&scalars, &points),
             expected,
             "n = {n}"
         );
         assert_eq!(
-            EdwardsPoint::optional_multiscalar_mul_slices(&scalars, &opt_points),
+            EdwardsPoint::optional_multiscalar_mul(&scalars, opt_points),
             Some(expected),
             "n = {n}"
         );
@@ -98,12 +98,12 @@ fn unreduced_scalars_ristretto() {
             let points = vec![b; n];
             let opt_points: Vec<_> = points.iter().copied().map(Some).collect();
             assert_eq!(
-                RistrettoPoint::multiscalar_mul_slices(&scalars, &points),
+                RistrettoPoint::multiscalar_mul(&scalars, &points),
                 expected,
                 "n = {n}"
             );
             assert_eq!(
-                RistrettoPoint::optional_multiscalar_mul_slices(&scalars, &opt_points),
+                RistrettoPoint::optional_multiscalar_mul(&scalars, opt_points),
                 Some(expected),
                 "n = {n}"
             );

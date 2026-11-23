@@ -182,7 +182,9 @@ pub trait BasepointTable {
 pub use crate::core_assumes::{by_ref_preserves_items, exact_size_hint, lemma_map_exact_size_hint};
 #[cfg(verus_keep_ghost)]
 pub use crate::specs::iterator_specs::{
-    borrowed_values, msm_outcome, valid_msm_iters, valid_msm_sources,
+    borrowed_values, msm_outcome, optional_iter_outcome, optional_msm_outcome,
+    valid_dispatch_scalar_hint, valid_msm_iters, valid_msm_sources, valid_optional_msm_sources,
+    valid_optional_points,
 };
 
 verus! {
@@ -364,11 +366,37 @@ fn check_multiscalar_mul_slices(scalars: &[Scalar], points: &[EdwardsPoint]) -> 
     EdwardsPoint::multiscalar_mul(scalars, points)
 }
 
-} // verus!
 /// A trait for variable-time multiscalar multiplication without precomputation.
 pub trait VartimeMultiscalarMul {
     /// The type of point being multiplied, e.g., `RistrettoPoint`.
     type Point;
+
+    /// Scalars accepted by this implementation. Straus requires bit 255 to be clear.
+    open spec fn valid_vartime_scalar(s: Scalar) -> bool {
+        s.bytes[31] <= 127
+    }
+
+    /// Points accepted when the iterator yields `Some(point)`.
+    open spec fn valid_vartime_point(p: Self::Point) -> bool {
+        true
+    }
+
+    /// Size checks made on the scalar iterator by this implementation.
+    #[verifier::prophetic]
+    open spec fn valid_vartime_scalar_hint<I: Iterator>(si: I) -> bool {
+        valid_dispatch_scalar_hint(si)
+    }
+
+    /// Size check made on the optional point iterator by this implementation.
+    #[verifier::prophetic]
+    open spec fn valid_vartime_point_hint<J: Iterator>(pi: J) -> bool {
+        crate::core_assumes::by_ref_preserves_items(pi)
+    }
+
+    /// Relation between the scalars, the yielded points, and the result inside `Some`.
+    open spec fn vartime_sum(ss: Seq<Scalar>, ps: Seq<Self::Point>, result: Self::Point) -> bool {
+        true
+    }
 
     /// Given an iterator of public scalars and an iterator of
     /// `Option`s of points, compute either `Some(Q)`, where
@@ -425,11 +453,23 @@ pub trait VartimeMultiscalarMul {
     /// assert_eq!(A3, Some(A1+A1));
     /// # }
     /// ```
-    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<Self::Point>
-    where
+    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (result: Option<Self::Point>) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
-        J: IntoIterator<Item = Option<Self::Point>>;
+        J: IntoIterator<Item = Option<Self::Point>>,
+
+        requires
+            valid_optional_msm_sources(
+                scalars,
+                points,
+                |s| Self::valid_vartime_scalar(s),
+                |p| Self::valid_vartime_point(p),
+                |si| Self::valid_vartime_scalar_hint(si),
+                |pi| Self::valid_vartime_point_hint(pi),
+            ),
+        ensures
+            optional_msm_outcome(scalars, points, result, |ss, ps, r| Self::vartime_sum(ss, ps, r)),
+    ;
 
     /// Given an iterator of public scalars and an iterator of
     /// public points, compute
@@ -478,23 +518,22 @@ pub trait VartimeMultiscalarMul {
     /// assert_eq!(A1.compress(), (-A2).compress());
     /// # }
     /// ```
-    #[cfg_attr(verus_keep_ghost, verifier::external)]
-    fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point
-    where
+    #[verifier::external_body]
+    fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<Self::Point>,
         Self::Point: Clone,
-    {
+     {
         Self::optional_multiscalar_mul(
             scalars,
             points.into_iter().map(|P| Some(P.borrow().clone())),
-        )
-        .expect("should return some point")
+        ).expect("should return some point")
     }
 }
 
+} // verus!
 /// A trait for variable-time multiscalar multiplication with precomputation.
 ///
 /// A general multiscalar multiplication with precomputation can be written as

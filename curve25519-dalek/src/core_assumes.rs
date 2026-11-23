@@ -68,6 +68,33 @@ pub broadcast axiom fn axiom_ref_borrow<'a, T>(item: &&'a T, result: &T) where &
         result == *item,  // The returned `&T` is the inner reference in `item: &&T`.
 ;
 
+/// Collecting optional items into a vector returns all the yielded values in order,
+/// or returns `None` when the iterator yields a missing item. The remaining tail may be unevaluated.
+#[cfg(feature = "alloc")]
+pub(crate) axiom fn axiom_collect_optional_vec<T, I: Iterator<Item = Option<T>>>(
+    iter: I,
+    out: Option<alloc::vec::Vec<T>>,
+)
+    requires
+        iter.obeys_prophetic_iter_laws(),
+        <Option<alloc::vec::Vec<T>> as vstd::std_specs::iter::FromIteratorSpec<
+            Option<T>,
+        >>::from_iter_ensures(iter.remaining(), iter.produces(), out),
+    ensures
+        match out {
+            Some(v) => {
+                &&& v@.len() == iter.remaining().len()
+                &&& forall|k: int|
+                    0 <= k < v@.len() ==> iter.produces()[k] && iter.remaining()[k] == Some(
+                        #[trigger] v@[k],
+                    )
+            },
+            None => exists|k: int|
+                0 <= k < iter.remaining().len() && iter.produces()[k] && (
+                #[trigger] iter.remaining()[k]).is_none(),
+        },
+;
+
 /// A size hint gives a lower bound and an optional upper bound on the number of remaining items.
 /// An iterator has an exact size hint if every call to `size_hint()` supplies both bounds
 /// and they agree.

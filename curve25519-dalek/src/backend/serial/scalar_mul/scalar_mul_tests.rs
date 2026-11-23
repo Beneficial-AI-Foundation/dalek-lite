@@ -1,4 +1,4 @@
-//! Scalar multiplication tests for the iterator and slice interfaces.
+//! Scalar multiplication tests for the iterator methods and their legacy adapters.
 #[cfg(test)]
 mod tests {
     use crate::constants;
@@ -136,7 +136,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pippenger_original_vs_verus() {
+    fn test_pippenger_slice_adapter() {
         // Test sizes covering all window width cases:
         // w=6 for size < 500, w=7 for 500 <= size < 800, w=8 for size >= 800
         let test_sizes = [
@@ -167,32 +167,31 @@ mod tests {
                     })
                     .collect();
 
-                // Original implementation
-                let original = Pippenger::optional_multiscalar_mul(
+                let iterator_result = Pippenger::optional_multiscalar_mul(
                     scalars.iter(),
                     points.iter().map(|p| Some(*p)),
                 );
 
-                // Verus implementation
                 let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
-                let verus = Pippenger::optional_multiscalar_mul_verus(&scalars, &opt_points);
+                let adapter_result =
+                    Pippenger::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
-                    original.is_some(),
-                    "Original returned None at size={}, round={}",
+                    iterator_result.is_some(),
+                    "Iterator method returned None at size={}, round={}",
                     size,
                     round
                 );
                 assert!(
-                    verus.is_some(),
-                    "Verus returned None at size={}, round={}",
+                    adapter_result.is_some(),
+                    "Slice adapter returned None at size={}, round={}",
                     size,
                     round
                 );
 
                 assert_eq!(
-                    original.unwrap().compress(),
-                    verus.unwrap().compress(),
+                    iterator_result.unwrap().compress(),
+                    adapter_result.unwrap().compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -203,13 +202,13 @@ mod tests {
         }
 
         println!(
-            "Pippenger original vs verus: {} comparisons passed!",
+            "Pippenger iterator and slice adapter: {} comparisons passed!",
             total_comparisons
         );
     }
 
     #[test]
-    fn test_straus_optional_original_vs_verus() {
+    fn test_straus_optional_slice_adapter() {
         // Test various sizes
         let test_sizes = [1, 2, 3, 4, 8, 16, 32, 64, 100, 150];
 
@@ -236,32 +235,30 @@ mod tests {
                     })
                     .collect();
 
-                // Original implementation
-                let original = Straus::optional_multiscalar_mul(
+                let iterator_result = Straus::optional_multiscalar_mul(
                     scalars.iter(),
                     points.iter().map(|p| Some(*p)),
                 );
 
-                // Verus implementation
                 let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
-                let verus = Straus::optional_multiscalar_mul_verus(&scalars, &opt_points);
+                let adapter_result = Straus::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
-                    original.is_some(),
-                    "Original returned None at size={}, round={}",
+                    iterator_result.is_some(),
+                    "Iterator method returned None at size={}, round={}",
                     size,
                     round
                 );
                 assert!(
-                    verus.is_some(),
-                    "Verus returned None at size={}, round={}",
+                    adapter_result.is_some(),
+                    "Slice adapter returned None at size={}, round={}",
                     size,
                     round
                 );
 
                 assert_eq!(
-                    original.unwrap().compress(),
-                    verus.unwrap().compress(),
+                    iterator_result.unwrap().compress(),
+                    adapter_result.unwrap().compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -272,7 +269,7 @@ mod tests {
         }
 
         println!(
-            "Straus optional original vs verus: {} comparisons passed!",
+            "Straus optional iterator and slice adapter: {} comparisons passed!",
             total_comparisons
         );
     }
@@ -368,17 +365,6 @@ mod tests {
                     points.iter().map(|p| Some(*p)),
                 );
 
-                // Verified slice version
-                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
-                let slices = EdwardsPoint::optional_multiscalar_mul_slices(&scalars, &opt_points);
-                assert_eq!(
-                    original.map(|p| p.compress()),
-                    slices.map(|p| p.compress()),
-                    "Slice mismatch at size={}, round={}",
-                    size,
-                    round
-                );
-
                 assert!(
                     original.is_some(),
                     "Original returned None at size={}, round={}",
@@ -441,15 +427,6 @@ mod tests {
 
                 let adapter_result =
                     EdwardsPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
-
-                let slices = EdwardsPoint::multiscalar_mul_slices(&scalars, &points);
-                assert_eq!(
-                    iterator_result.compress(),
-                    slices.compress(),
-                    "Slice mismatch at size={}, round={}",
-                    size,
-                    round
-                );
 
                 assert_eq!(
                     iterator_result.compress(),

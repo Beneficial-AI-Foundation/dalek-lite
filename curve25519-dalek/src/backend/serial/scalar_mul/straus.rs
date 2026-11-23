@@ -11,11 +11,11 @@
 //! Implementation of the interleaved window method, also known as Straus' method.
 #![allow(non_snake_case)]
 
-use super::iterator::collect_borrowed_map;
 #[cfg(verus_keep_ghost)]
 use super::iterator::mapped_borrows;
+use super::iterator::{collect_borrowed_map, collect_optional_map};
 #[cfg(verus_keep_ghost)]
-use crate::specs::iterator_specs::borrowed_values;
+use crate::specs::iterator_specs::{borrowed_values, optional_iter_outcome};
 use alloc::vec::Vec;
 #[cfg(verus_keep_ghost)]
 use vstd::std_specs::iter::IteratorSpec;
@@ -123,7 +123,7 @@ impl MultiscalarMul for Straus {
         points: Seq<EdwardsPoint>,
         result: EdwardsPoint,
     ) -> bool {
-        <EdwardsPoint as MultiscalarMul>::msm_sum(scalars, points, result)
+        edwards_msm_result(scalars, points, result)
     }
 
     /// Constant-time Straus using a fixed window of size \\(4\\).
@@ -244,7 +244,7 @@ impl MultiscalarMul for Straus {
             }
             assert(prepared_inputs(tables@, digits@, ss, ps));
         }
-        let out = Straus::multiscalar_mul_prepared(tables, digits.as_slice());
+        let out = Straus::multiscalar_mul_prepared(tables.as_slice(), digits.as_slice());
         #[cfg(feature = "zeroize")]
         zeroize_scalar_digits(&mut digits);
         assert(borrowed_values(si.remaining(), ss));
@@ -254,84 +254,22 @@ impl MultiscalarMul for Straus {
     }
 }
 
-} // verus!
-#[cfg_attr(verus_keep_ghost, verifier::external)]
-impl VartimeMultiscalarMul for Straus {
-    type Point = EdwardsPoint;
-
-    /// Variable-time Straus using a non-adjacent form of width \\(5\\).
-    ///
-    /// This is completely similar to the constant-time code, but we
-    /// use a non-adjacent form for the scalar, and do not do table
-    /// lookups in constant time.
-    ///
-    /// The non-adjacent form has signed, odd digits.  Using only odd
-    /// digits halves the table size (since we only need odd
-    /// multiples), or gives fewer additions for the same table size.
-    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
-    where
-        I: IntoIterator,
-        I::Item: Borrow<Scalar>,
-        J: IntoIterator<Item = Option<EdwardsPoint>>,
-        /*
-         * VERUS SPEC (intended):
-         *   requires
-         *       scalars.len() == points.len(),
-         *       forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
-         *   ensures
-         *       result.is_some() <==> all_points_some(points),
-         *       result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-         *       result.is_some() ==> edwards_point_as_affine(result.unwrap())
-         *           == sum_of_scalar_muls(scalars, unwrap_points(points)),
-         *
-         * The verified `optional_multiscalar_mul_verus` below takes slices.
-         */
-    {
-        let nafs: Vec<_> = scalars
-            .into_iter()
-            .map(|c| c.borrow().non_adjacent_form(5))
-            .collect();
-
-        let lookup_tables = points
-            .into_iter()
-            .map(|P_opt| P_opt.map(|P| NafLookupTable5::<ProjectiveNielsPoint>::from(&P)))
-            .collect::<Option<Vec<_>>>()?;
-
-        let mut r = ProjectivePoint::identity();
-
-        for i in (0..256).rev() {
-            let mut t: CompletedPoint = r.double();
-
-            for (naf, lookup_table) in nafs.iter().zip(lookup_tables.iter()) {
-                match naf[i].cmp(&0) {
-                    Ordering::Greater => {
-                        t = &t.as_extended() + &lookup_table.select(naf[i] as usize)
-                    }
-                    Ordering::Less => t = &t.as_extended() - &lookup_table.select(-naf[i] as usize),
-                    Ordering::Equal => {}
-                }
-            }
-
-            r = t.as_projective();
-        }
-
-        Some(r.as_extended())
-    }
+spec fn vartime_table_for(
+    table: NafLookupTable5<ProjectiveNielsPoint>,
+    point: EdwardsPoint,
+) -> bool {
+    &&& is_valid_naf_lookup_table5_projective(table.0, point)
+    &&& naf_lookup_table5_projective_limbs_bounded(table.0)
+    &&& forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] table.0[j])
 }
-
-// ============================================================================
-// Verus-compatible version
-// ============================================================================
-
-verus! {
 
 /*
  * VERIFICATION NOTE
  * =================
  * The constant-time iterator and slice methods prepare their inputs separately
  * and use the same verified arithmetic kernel, `multiscalar_mul_prepared`.
- * The variable-time slice method implements the upstream iterator loops using
- * indexed loops with invariants.
+ * The variable-time iterator method builds the NAFs and lookup tables.
+ * Its arithmetic kernel uses indexed loops with invariants.
  *
  * ALGORITHM OVERVIEW
  * ==================
@@ -357,8 +295,9 @@ verus! {
  * straus_lemmas.rs to bundle ~8 quantified loop invariants into a single call.
  * Correctness is proved by `lemma_straus_vt_correct` / `lemma_straus_ct_correct`.
  */
+
 impl Straus {
-    /// Verified version of optional_multiscalar_mul over slices.
+    /// Slice adapter for the variable-time iterator method.
     /// Computes sum(scalars[i] * points[i]) if every points[i] is Some.
     #[verifier::rlimit(30)]
     pub fn optional_multiscalar_mul_verus(
@@ -387,117 +326,157 @@ impl Straus {
                 unwrap_points(points@),
             ),
     {
-        let ghost spec_scalars = scalars@;
-        let ghost spec_points = points@;
+        broadcast use crate::traits::group_multiscalar_inputs;
 
-        /* <ORIGINAL CODE>
-    let nafs: Vec<_> = scalars
-        .into_iter()
-        .map(|c| c.borrow().non_adjacent_form(5))
-        .collect();
-    </ORIGINAL CODE> */
-        /* <REFACTORED CODE>
-         * Convert each scalar to non-adjacent form (NAF) with width 5.
-         * (Verus doesn't support iterator adapters.)
-         */
-
-        let mut nafs: Vec<[i8; 256]> = Vec::new();
-        let mut idx: usize = 0;
-        while idx < scalars.len()
-            invariant
-                0 <= idx <= scalars@.len(),
-                nafs@.len() == idx as int,
-                scalars@ == spec_scalars,
-                // Bit 255 of every scalar is clear (from the precondition)
-                forall|k: int| #![auto] 0 <= k < scalars@.len() ==> scalars@[k].bytes[31] <= 127,
-                // Each NAF is valid
-                forall|k: int|
-                    0 <= k < idx ==> {
-                        &&& is_valid_naf(#[trigger] nafs@[k]@, 5)
-                        &&& reconstruct(nafs@[k]@) == scalar_as_nat(&scalars@[k]) as int
-                    },
-            decreases scalars.len() - idx,
-        {
-            proof {
-                assert(scalars@[idx as int].bytes[31] <= 127);
-                // Establishes non_adjacent_form precondition: scalar_as_nat < pow2(255)
-                crate::lemmas::common_lemmas::to_nat_lemmas::lemma_u8_32_as_nat_lt_pow2_255(
-                    &scalars@[idx as int].bytes,
-                );
-            }
-            nafs.push(scalars[idx].non_adjacent_form(5));
-            idx = idx + 1;
-        }
-        /* </REFACTORED CODE> */
-
-        /* <ORIGINAL CODE>
-    let lookup_tables = points
-        .into_iter()
-        .map(|P_opt| P_opt.map(|P| NafLookupTable5::<ProjectiveNielsPoint>::from(&P)))
-        .collect::<Option<Vec<_>>>()?;
-    </ORIGINAL CODE> */
-        /* <REFACTORED CODE>
-         * Build lookup tables for each point: precompute odd multiples [1P, 3P, 5P, 7P, ...]
-         * Returns None if any point is None (propagates optional failure).
-         */
-        let mut lookup_tables: Vec<NafLookupTable5<ProjectiveNielsPoint>> = Vec::new();
-        idx = 0;
-        while idx < points.len()
-            invariant
-                0 <= idx <= points@.len(),
-                lookup_tables@.len() == idx as int,
-                points@ == spec_points,
-                // All input points (when Some) are well-formed (from function precondition)
-                forall|k: int|
-                    0 <= k < points@.len() && (#[trigger] points@[k]).is_some()
-                        ==> is_well_formed_edwards_point(points@[k].unwrap()),
-                // All processed points were Some (no early return yet)
-                forall|k: int| 0 <= k < idx ==> (#[trigger] points@[k]).is_some(),
-                // Each table is valid and has bounded limbs + per-entry validity
-                forall|k: int|
-                    0 <= k < idx ==> {
-                        &&& is_valid_naf_lookup_table5_projective(
-                            (#[trigger] lookup_tables@[k]).0,
-                            points@[k].unwrap(),
-                        )
-                        &&& naf_lookup_table5_projective_limbs_bounded(lookup_tables@[k].0)
-                        &&& forall|j: int|
-                            0 <= j < 8 ==> is_valid_projective_niels_point(
-                                #[trigger] lookup_tables@[k].0[j],
-                            )
-                    },
-            decreases points.len() - idx,
-        {
-            match points[idx] {
-                Some(P) => {
-                    proof {
-                        assert(spec_points[idx as int].is_some());
-                        assert(is_well_formed_edwards_point(points@[idx as int].unwrap()));
-                    }
-                    lookup_tables.push(NafLookupTable5::<ProjectiveNielsPoint>::from(&P));
-                },
-                None => {
-                    // Found a None point — witness that !all_points_some
-                    proof {
-                        assert(0 <= idx < spec_points.len());
-                        assert(!spec_points[idx as int].is_some());
-                        assert(!all_points_some(spec_points));
-                    }
-                    return None;
-                },
-            }
-            idx = idx + 1;
-        }
-        /* </REFACTORED CODE> */
-
-        // After loop 2: all points were Some (we never returned None)
+        let si = scalars.iter();
+        let source = points.iter();
+        let copy = |p: &Option<EdwardsPoint>| -> (r: Option<EdwardsPoint>)
+            ensures
+                r == *p,
+            { *p };
+        let pi = source.map(copy);
         proof {
-            // All points entries are Some
-            assert(forall|k: int|
-                0 <= k < spec_points.len() ==> (#[trigger] spec_points[k]).is_some());
-            assert(all_points_some(spec_points));
+            vstd::std_specs::iter::map_postcondition(source, copy, pi);
         }
+        let result = Self::optional_multiscalar_mul(si, pi);
+        proof {
+            if result.is_some() {
+                assert(pi.remaining() =~= points@);
+                let ss = choose|ss: Seq<Scalar>| #[trigger]
+                    borrowed_values(si.remaining(), ss) && Self::vartime_sum(
+                        ss,
+                        pi.remaining().map(|_, p: Option<EdwardsPoint>| p.unwrap()),
+                        result.unwrap(),
+                    );
+                crate::traits::lemma_msm_referenced_values(scalars@, ss);
+            } else {
+                let k = choose|k: int|
+                    0 <= k < pi.remaining().len() && pi.produces()[k] && (
+                    #[trigger] pi.remaining()[k]).is_none();
+                assert(points@[k].is_none());
+            }
+        }
+        result
+    }
+}
 
+impl VartimeMultiscalarMul for Straus {
+    type Point = EdwardsPoint;
+
+    open spec fn valid_vartime_point(p: EdwardsPoint) -> bool {
+        is_well_formed_edwards_point(p)
+    }
+
+    #[verifier::prophetic]
+    open spec fn valid_vartime_scalar_hint<I: Iterator>(si: I) -> bool {
+        true
+    }
+
+    #[verifier::prophetic]
+    open spec fn valid_vartime_point_hint<J: Iterator>(pi: J) -> bool {
+        true
+    }
+
+    open spec fn vartime_sum(ss: Seq<Scalar>, ps: Seq<EdwardsPoint>, r: EdwardsPoint) -> bool {
+        edwards_msm_result(ss, ps, r)
+    }
+
+    /// Variable-time Straus using a non-adjacent form of width \\(5\\).
+    ///
+    /// This is completely similar to the constant-time code, but we
+    /// use a non-adjacent form for the scalar, and do not do table
+    /// lookups in constant time.
+    ///
+    /// The non-adjacent form has signed, odd digits.  Using only odd
+    /// digits halves the table size (since we only need odd
+    /// multiples), or gives fewer additions for the same table size.
+    #[verifier::rlimit(30)]
+    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (out: Option<EdwardsPoint>) where
+        I: IntoIterator,
+        I::Item: Borrow<Scalar>,
+        J: IntoIterator<Item = Option<EdwardsPoint>>,
+     {
+        let si = scalars.into_iter();
+        assert(call_ensures(I::into_iter, (scalars,), si));
+        let naf_for = |s: &Scalar| -> (d: [i8; 256])
+            requires
+                s.bytes[31] <= 127,
+            ensures
+                is_valid_naf(d@, 5),
+                reconstruct(d@) == scalar_as_nat(s) as int,
+            {
+                proof {
+                    crate::lemmas::common_lemmas::to_nat_lemmas::lemma_u8_32_as_nat_lt_pow2_255(
+                        &s.bytes,
+                    );
+                }
+                s.non_adjacent_form(5)
+            };
+        let nafs = collect_borrowed_map(si, naf_for);
+        let ghost ss = choose|ss: Seq<Scalar>| mapped_borrows(si.remaining(), nafs@, naf_for, ss);
+
+        let pi = points.into_iter();
+        assert(call_ensures(J::into_iter, (points,), pi));
+        let table_for = |point: Option<EdwardsPoint>| -> (table: Option<
+            NafLookupTable5<ProjectiveNielsPoint>,
+        >)
+            requires
+                point.is_some() ==> is_well_formed_edwards_point(point.unwrap()),
+            ensures
+                table.is_some() == point.is_some(),
+                table.is_some() ==> vartime_table_for(table.unwrap(), point.unwrap()),
+            {
+                match point {
+                    Some(p) => Some(NafLookupTable5::<ProjectiveNielsPoint>::from(&p)),
+                    None => None,
+                }
+            };
+        let tables = match collect_optional_map(pi, table_for) {
+            Some(tables) => tables,
+            None => {
+                proof {
+                    let k = choose|k: int|
+                        0 <= k < pi.remaining().len() && pi.produces()[k] && table_for.ensures(
+                            (#[trigger] pi.remaining()[k],),
+                            None,
+                        );
+                    assert(pi.remaining()[k].is_none());
+                    assert(optional_iter_outcome(
+                        si,
+                        pi,
+                        None,
+                        |ss, ps, r| Self::vartime_sum(ss, ps, r),
+                    ));
+                }
+                return None;
+            },
+        };
+        proof {
+            assert forall|k: int| 0 <= k < tables@.len() implies {
+                &&& #[trigger] pi.produces()[k]
+                &&& pi.remaining()[k].is_some()
+                &&& vartime_table_for(tables@[k], pi.remaining()[k].unwrap())
+            } by {
+                assert(table_for.ensures((pi.remaining()[k],), Some(tables@[k])));
+            }
+        }
+        proof {
+            assert forall|k: int| 0 <= k < nafs@.len() implies {
+                &&& is_valid_naf((#[trigger] nafs@[k])@, 5)
+                &&& reconstruct(nafs@[k]@) == scalar_as_nat(&ss[k]) as int
+            } by {
+                assert(naf_for.ensures((&ss[k],), nafs@[k]));
+            }
+            assert forall|k: int| 0 <= k < tables@.len() implies {
+                &&& vartime_table_for(#[trigger] tables@[k], pi.remaining()[k].unwrap())
+                &&& is_well_formed_edwards_point(pi.remaining()[k].unwrap())
+            } by {
+                assert(pi.produces()[k]);
+            }
+        }
+        let lookup_tables = tables;
+        let ghost spec_scalars = ss;
+        let ghost spec_points = pi.remaining();
         // Ghost: build the affine points and naf sequences for the spec
         let ghost n = nafs@.len();
         let ghost unwrapped_points: Seq<EdwardsPoint> = unwrap_points(spec_points);
@@ -515,6 +494,12 @@ impl Straus {
             // (from Seq::map definition: unwrap_points(s) = s.map(|_, opt| opt.unwrap()))
             assert forall|m: int| 0 <= m < n implies #[trigger] unwrapped_points[m]
                 == spec_points[m].unwrap() by {};
+            assert forall|m: int| 0 <= m < n implies is_valid_edwards_point(
+                #[trigger] unwrapped_points[m],
+            ) by {
+                assert(pi.produces()[m]);
+                assert(is_well_formed_edwards_point(pi.remaining()[m].unwrap()));
+            }
             // pts_affine coordinates are always < p()
             assert forall|m: int| 0 <= m < n implies (#[trigger] pts_affine[m]).0 < p()
                 && pts_affine[m].1 < p() by {
@@ -866,9 +851,35 @@ impl Straus {
             assert(is_well_formed_edwards_point(result));
         }
 
+        proof {
+            lemma_straus_result(si, pi, ss, result);
+        }
         Some(result)
     }
+}
 
+/// Transfer the sum over the prepared inputs to the original iterators.
+proof fn lemma_straus_result<I, J>(si: I, pi: J, ss: Seq<Scalar>, result: EdwardsPoint) where
+    I: Iterator,
+    I::Item: Borrow<Scalar>,
+    J: Iterator<Item = Option<EdwardsPoint>>,
+
+    requires
+        forall|k: int| 0 <= k < si.remaining().len() ==> #[trigger] si.produces()[k],
+        forall|k: int|
+            0 <= k < pi.remaining().len() ==> #[trigger] pi.produces()[k]
+                && pi.remaining()[k].is_some(),
+        borrowed_values(si.remaining(), ss),
+        Straus::vartime_sum(ss, unwrap_points(pi.remaining()), result),
+    ensures
+        optional_iter_outcome(si, pi, Some(result), |ss, ps, r| Straus::vartime_sum(ss, ps, r)),
+{
+    let ps = pi.remaining().map(|_, p: Option<EdwardsPoint>| p.unwrap());
+    assert(ps =~= unwrap_points(pi.remaining()));
+    assert(Straus::vartime_sum(ss, ps, result));
+}
+
+impl Straus {
     /// Verified version of multiscalar_mul (constant-time) over slices.
     /// Computes sum(scalars[i] * points[i]).
     pub fn multiscalar_mul_verus(scalars: &[Scalar], points: &[EdwardsPoint]) -> (result:
@@ -968,7 +979,10 @@ impl Straus {
         /* </REFACTORED CODE> */
 
         assert(prepared_inputs(lookup_tables@, scalar_digits@, spec_scalars, spec_points));
-        let result = Self::multiscalar_mul_prepared(lookup_tables, scalar_digits.as_slice());
+        let result = Self::multiscalar_mul_prepared(
+            lookup_tables.as_slice(),
+            scalar_digits.as_slice(),
+        );
         #[cfg(feature = "zeroize")]
         zeroize_scalar_digits(&mut scalar_digits);
         result
@@ -976,7 +990,7 @@ impl Straus {
 
     /// Compute the multiscalar sum from the lookup tables and scalar digits prepared by the caller.
     fn multiscalar_mul_prepared(
-        lookup_tables: Vec<LookupTable<ProjectiveNielsPoint>>,
+        lookup_tables: &[LookupTable<ProjectiveNielsPoint>],
         scalar_digits: &[[i8; 64]],
     ) -> (result: EdwardsPoint)
         requires

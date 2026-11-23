@@ -815,6 +815,8 @@ impl<'a> From<&'a EdwardsPoint> for NafLookupTable5<ProjectiveNielsPoint> {
             naf_lookup_table5_projective_limbs_bounded(result.0),
             forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] result.0[j]),
     {
+        // Conversion establishes validity for each entry, and mixed addition consumes that fact.
+        hide(is_valid_projective_niels_point);
         proof {
             use_type_invariant(A);
             lemma_unfold_edwards(*A);

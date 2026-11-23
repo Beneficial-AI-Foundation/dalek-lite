@@ -171,6 +171,7 @@ ensures_calls_contain = [
     "montgomery_scalar_mul",
     "montgomery_scalar_mul_u",
     "msm_outcome",
+    "optional_msm_outcome",
     "sum_of_scalar_muls",
     "pippenger_weighted_bucket_sum",
     "pippenger_horner",

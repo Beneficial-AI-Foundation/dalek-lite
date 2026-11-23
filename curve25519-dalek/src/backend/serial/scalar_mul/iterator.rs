@@ -36,6 +36,63 @@ fn map_vec<A, R, I, F>(iter: I, f: F) -> (v: Vec<R>) where I: Iterator<Item = A>
     v
 }
 
+/// Map and collect optional items, retaining the source of each produced result.
+pub(crate) fn collect_optional_map<A, R, I: Iterator<Item = A>, F: FnMut(A) -> Option<R>>(
+    iter: I,
+    f: F,
+) -> (out: Option<Vec<R>>)
+    requires
+        iter.obeys_prophetic_iter_laws(),
+        forall|k: int|
+            0 <= k < iter.remaining().len() && iter.produces()[k] ==> #[trigger] f.requires(
+                (iter.remaining()[k],),
+            ),
+    ensures
+        out.is_some() ==> out.unwrap()@.len() == iter.remaining().len(),
+        out.is_some() ==> forall|k: int|
+            0 <= k < iter.remaining().len() ==> #[trigger] iter.produces()[k],
+        out.is_some() ==> forall|k: int|
+            0 <= k < iter.remaining().len() ==> f.ensures(
+                (iter.remaining()[k],),
+                Some(#[trigger] out.unwrap()@[k]),
+            ),
+        out.is_none() ==> exists|k: int|
+            0 <= k < iter.remaining().len() && iter.produces()[k] && f.ensures(
+                (#[trigger] iter.remaining()[k],),
+                None,
+            ),
+{
+    let mapped = iter.map(f);
+    proof {
+        map_postcondition(iter, f, mapped);
+    }
+    let out = mapped.collect::<Option<Vec<R>>>();
+    proof {
+        crate::core_assumes::axiom_collect_optional_vec(mapped, out);
+        if out.is_none() {
+            let k = choose|k: int|
+                0 <= k < mapped.remaining().len() && mapped.produces()[k] && (
+                #[trigger] mapped.remaining()[k]).is_none();
+            assert(f.ensures((iter.remaining()[k],), None));
+        } else {
+            let v = out.unwrap();
+            assert forall|k: int|
+                0 <= k < iter.remaining().len() implies #[trigger] iter.produces()[k] by {
+                assert(mapped.remaining()[k] == Some(v@[k]));
+                assert(mapped.produces()[k]);
+            }
+            assert forall|k: int| 0 <= k < iter.remaining().len() implies f.ensures(
+                (iter.remaining()[k],),
+                Some(#[trigger] v@[k]),
+            ) by {
+                assert(mapped.remaining()[k] == Some(v@[k]));
+                assert(mapped.produces()[k]);
+            }
+        }
+    }
+    out
+}
+
 /// The mapped results come from borrowing the corresponding items.
 pub(crate) open spec fn mapped_borrows<A: Borrow<B>, B, R, F: Fn(&B) -> R>(
     items: Seq<A>,

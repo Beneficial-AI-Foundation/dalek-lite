@@ -100,6 +100,95 @@ pub open spec fn msm_outcome<P, I: IntoIterator, J: IntoIterator>(
         }
 }
 
+/// Edwards checks the scalar length before dispatch. Pippenger checks it again to choose a window.
+#[verifier::prophetic]
+pub open spec fn valid_dispatch_scalar_hint<I: Iterator>(iter: I) -> bool {
+    &&& by_ref_preserves_items(iter)
+    &&& forall|after: I, hint: (usize, Option<usize>)| #[trigger]
+        crate::core_assumes::by_ref_hint_outcome(iter, after, hint) && hint.0 >= 190
+            ==> by_ref_preserves_items(after)
+}
+
+/// Every yielded point that is present satisfies `valid_point`.
+#[verifier::prophetic]
+pub open spec fn valid_optional_points<P, J: Iterator<Item = Option<P>>>(
+    iter: J,
+    valid_point: spec_fn(P) -> bool,
+) -> bool {
+    &&& iter.obeys_prophetic_iter_laws()
+    &&& forall|k: int|
+        0 <= k < iter.remaining().len() && iter.produces()[k] && (
+        #[trigger] iter.remaining()[k]).is_some() ==> valid_point(iter.remaining()[k].unwrap())
+}
+
+/// Each source must produce admissible iterators, and every pair has equal remaining lengths.
+#[verifier::prophetic]
+pub open spec fn valid_optional_msm_sources<P, I: IntoIterator, J: IntoIterator<Item = Option<P>>>(
+    scalars: I,
+    points: J,
+    valid_scalar: spec_fn(Scalar) -> bool,
+    valid_point: spec_fn(P) -> bool,
+    scalar_hint: spec_fn(I::IntoIter) -> bool,
+    point_hint: spec_fn(J::IntoIter) -> bool,
+) -> bool where I::Item: Borrow<Scalar> {
+    &&& forall|si: I::IntoIter| #[trigger]
+        call_ensures(I::into_iter, (scalars,), si) ==> valid_msm_items(si, valid_scalar)
+            && scalar_hint(si)
+    &&& forall|pi: J::IntoIter| #[trigger]
+        call_ensures(J::into_iter, (points,), pi) ==> valid_optional_points(pi, valid_point)
+            && point_hint(pi)
+    &&& forall|si: I::IntoIter, pi: J::IntoIter| #[trigger]
+        call_ensures(I::into_iter, (scalars,), si) && #[trigger] call_ensures(
+            J::into_iter,
+            (points,),
+            pi,
+        ) ==> si.remaining().len() == pi.remaining().len()
+}
+
+/// A successful call sums every scalar-point pair. A failing call encountered a yielded `None`.
+#[verifier::prophetic]
+pub open spec fn optional_iter_outcome<P, I: Iterator, J: Iterator<Item = Option<P>>>(
+    si: I,
+    pi: J,
+    result: Option<P>,
+    sum: spec_fn(Seq<Scalar>, Seq<P>, P) -> bool,
+) -> bool where I::Item: Borrow<Scalar> {
+    match result {
+        None => exists|k: int|
+            0 <= k < pi.remaining().len() && pi.produces()[k] && (
+            #[trigger] pi.remaining()[k]).is_none(),
+        Some(r) => {
+            &&& forall|k: int| 0 <= k < si.remaining().len() ==> #[trigger] si.produces()[k]
+            &&& forall|k: int|
+                #![trigger pi.produces()[k]]
+                #![trigger pi.remaining()[k]]
+                0 <= k < pi.remaining().len() ==> pi.produces()[k] && pi.remaining()[k].is_some()
+            &&& exists|ss: Seq<Scalar>| #[trigger]
+                borrowed_values(si.remaining(), ss) && sum(
+                    ss,
+                    pi.remaining().map(|_, p: Option<P>| p.unwrap()),
+                    r,
+                )
+        },
+    }
+}
+
+/// The optional result describes a pair of iterator conversions permitted for this call.
+#[verifier::prophetic]
+pub open spec fn optional_msm_outcome<P, I: IntoIterator, J: IntoIterator<Item = Option<P>>>(
+    scalars: I,
+    points: J,
+    result: Option<P>,
+    sum: spec_fn(Seq<Scalar>, Seq<P>, P) -> bool,
+) -> bool where I::Item: Borrow<Scalar> {
+    exists|si: I::IntoIter, pi: J::IntoIter| #[trigger]
+        call_ensures(I::into_iter, (scalars,), si) && #[trigger] call_ensures(
+            J::into_iter,
+            (points,),
+            pi,
+        ) && optional_iter_outcome(si, pi, result, sum)
+}
+
 // ============================================================================
 // Spec functions for optional point sequences
 // ============================================================================
@@ -120,11 +209,6 @@ pub open spec fn unwrap_points(points: Seq<Option<EdwardsPoint>>) -> Seq<Edwards
 // RistrettoPoint sequence specs
 // RistrettoPoint wraps EdwardsPoint, so these extract the inner Edwards points.
 // ============================================================================
-/// The Edwards points inside a sequence of RistrettoPoints.
-pub open spec fn ristretto_points_to_edwards(points: Seq<RistrettoPoint>) -> Seq<EdwardsPoint> {
-    points.map(|_i, p: RistrettoPoint| p.0)
-}
-
 /// The Edwards point inside an optional RistrettoPoint.
 pub open spec fn optional_ristretto_to_edwards(point: Option<RistrettoPoint>) -> Option<
     EdwardsPoint,
@@ -133,13 +217,6 @@ pub open spec fn optional_ristretto_to_edwards(point: Option<RistrettoPoint>) ->
         Some(p) => Some(p.0),
         None => None,
     }
-}
-
-/// The Edwards points inside a sequence of optional RistrettoPoints. `None` stays `None`.
-pub open spec fn optional_ristretto_points_to_edwards(points: Seq<Option<RistrettoPoint>>) -> Seq<
-    Option<EdwardsPoint>,
-> {
-    points.map(|_i, p: Option<RistrettoPoint>| optional_ristretto_to_edwards(p))
 }
 
 /// Spec function to compute sum of all RistrettoPoints in a sequence.

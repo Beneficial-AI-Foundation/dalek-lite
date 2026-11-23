@@ -2978,8 +2978,6 @@ impl Scalar {
                         == self.bytes[j] as int,
                 // All assigned entries are non-negative (in [0, 15])
                 forall|j: int| 0 <= j < 2 * i ==> 0 <= #[trigger] output[j] && output[j] <= 15,
-                // Unassigned entries are still zero
-                forall|j: int| 2 * i <= j < 64 ==> #[trigger] output[j] == 0,
         {
             output[2 * i] = bot_half(self.bytes[i]) as i8;
             output[2 * i + 1] = top_half(self.bytes[i]) as i8;

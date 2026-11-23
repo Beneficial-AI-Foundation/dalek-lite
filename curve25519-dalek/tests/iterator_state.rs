@@ -1,9 +1,6 @@
-//! Run-time behavior of the generic iterator entry points (`Sum`, `Product`, and the
-//! `*_multiscalar_mul_verus` functions) for iterators with state outside the iterator value.
-//!
-//! These functions are unverified adapters. They collect their iterators and call verified code
-//! on the collected values. The tests fix the order of the iterator calls, so that a change of the
-//! adapters cannot change results for iterators with side effects. They do not test soundness.
+//! Run-time behavior of scalar aggregation and multiscalar multiplication for iterators
+//! with external state. These tests exercise the order of size checks, borrows, and iteration
+//! in the public iterator methods and the legacy `*_multiscalar_mul_verus` adapters.
 #![cfg(feature = "alloc")]
 #![allow(non_snake_case)]
 
@@ -14,7 +11,7 @@ use curve25519_dalek::constants::{ED25519_BASEPOINT_POINT, RISTRETTO_BASEPOINT_P
 use curve25519_dalek::edwards::EdwardsPoint;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::Identity;
+use curve25519_dalek::traits::{Identity, VartimeMultiscalarMul};
 
 // ---------------------------------------------------------------------------------------------
 // Iterators with outside state
@@ -241,6 +238,24 @@ fn ristretto_optional_multiscalar_mul_verus_shared_flag() {
     assert_eq!(r, Some(B * s(12)));
 }
 
+/// Ristretto projects each point when Straus asks for it, after Straus has read the scalars.
+#[test]
+fn ristretto_optional_multiscalar_mul_projects_points_lazily() {
+    let flag = Cell::new(false);
+    let scalars = SetsFlagOnNext {
+        items: vec![s(1)],
+        flag: &flag,
+    };
+    let points = IdentityAfterFlag {
+        items: vec![RISTRETTO_BASEPOINT_POINT],
+        flag: &flag,
+    };
+    assert_eq!(
+        RistrettoPoint::optional_multiscalar_mul(scalars, points.map(Some)),
+        Some(RistrettoPoint::identity()),
+    );
+}
+
 // ---------------------------------------------------------------------------------------------
 // Side effects in `size_hint`
 // ---------------------------------------------------------------------------------------------
@@ -349,4 +364,54 @@ fn ristretto_optional_multiscalar_mul_verus_inexact_hint_panics() {
         NoHint(vec![s(1), s(2)]),
         NoHint(vec![Some(B), Some(B)]),
     );
+}
+
+/// Straus prepares all scalars first. Pippenger checks the scalar length a second time
+/// and borrows each scalar immediately before consuming the corresponding optional point.
+#[test]
+fn edwards_optional_msm_stops_at_first_missing_point() {
+    struct CountByRef<'a, I>(I, &'a Cell<usize>);
+    impl<I: Iterator> Iterator for CountByRef<'_, I> {
+        type Item = I::Item;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.next()
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            self.0.size_hint()
+        }
+
+        fn by_ref(&mut self) -> &mut Self {
+            self.1.set(self.1.get() + 1);
+            self
+        }
+    }
+
+    struct CountBorrow<'a>(&'a Cell<usize>);
+    impl core::borrow::Borrow<Scalar> for CountBorrow<'_> {
+        fn borrow(&self) -> &Scalar {
+            self.0.set(self.0.get() + 1);
+            &Scalar::ONE
+        }
+    }
+
+    for (len, expected_hint_calls) in [(189, 1), (190, 2)] {
+        let hint_calls = Cell::new(0);
+        let borrows = Cell::new(0);
+        let points_read = Cell::new(0);
+        let scalars = CountByRef((0..len).map(|_| CountBorrow(&borrows)), &hint_calls);
+        let points = (0..len).map(|i| {
+            points_read.set(points_read.get() + 1);
+            assert_eq!(borrows.get(), if len < 190 { len } else { i + 1 });
+            (i != 1).then_some(ED25519_BASEPOINT_POINT)
+        });
+
+        assert_eq!(
+            EdwardsPoint::optional_multiscalar_mul(scalars, points),
+            None
+        );
+        assert_eq!(points_read.get(), 2);
+        assert_eq!(hint_calls.get(), expected_hint_calls);
+    }
 }

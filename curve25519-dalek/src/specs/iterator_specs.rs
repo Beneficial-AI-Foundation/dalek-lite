@@ -27,6 +27,22 @@ pub open spec fn borrowed_values<A: Borrow<B>, B>(items: Seq<A>, values: Seq<B>)
         0 <= k < items.len() ==> #[trigger] call_ensures(Borrow::borrow, (&items[k],), &values[k])
 }
 
+/// The iterator obeys the vstd iterator laws. Every permitted borrow of a yielded item
+/// satisfies `valid_value`.
+#[verifier::prophetic]
+pub open spec fn valid_msm_items<I: Iterator, T>(
+    iter: I,
+    valid_value: spec_fn(T) -> bool,
+) -> bool where I::Item: Borrow<T> {
+    &&& iter.obeys_prophetic_iter_laws()
+    &&& forall|k: int, value: T|
+        0 <= k < iter.remaining().len() && iter.produces()[k] && #[trigger] call_ensures(
+            Borrow::borrow,
+            (&iter.remaining()[k],),
+            &value,
+        ) ==> valid_value(value)
+}
+
 /// Both iterators obey the vstd iterator laws and have the same number of items remaining.
 /// Every permitted borrow of a yielded scalar has bit 255 clear. Every permitted borrow of
 /// a yielded point satisfies `valid_point`.
@@ -41,21 +57,10 @@ pub open spec fn valid_msm_iters<P, I: Iterator, J: Iterator>(
     valid_point: spec_fn(P) -> bool,
     point_hint: spec_fn(J) -> bool,
 ) -> bool where I::Item: Borrow<Scalar>, J::Item: Borrow<P> {
-    &&& scalars.obeys_prophetic_iter_laws() && points.obeys_prophetic_iter_laws()
+    &&& valid_msm_items(scalars, |s: Scalar| s.bytes[31] <= 127)
+    &&& valid_msm_items(points, valid_point)
     &&& by_ref_preserves_items(scalars) && point_hint(points)
     &&& scalars.remaining().len() == points.remaining().len()
-    &&& forall|k: int, s: Scalar|
-        0 <= k < scalars.remaining().len() && scalars.produces()[k] && #[trigger] call_ensures(
-            Borrow::borrow,
-            (&scalars.remaining()[k],),
-            &s,
-        ) ==> s.bytes[31] <= 127
-    &&& forall|k: int, p: P|
-        0 <= k < points.remaining().len() && points.produces()[k] && #[trigger] call_ensures(
-            Borrow::borrow,
-            (&points.remaining()[k],),
-            &p,
-        ) ==> valid_point(p)
 }
 
 /// Every pair of iterators permitted by `scalars.into_iter()` and `points.into_iter()`

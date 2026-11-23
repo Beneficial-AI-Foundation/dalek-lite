@@ -11,7 +11,14 @@
 //! Implementation of the interleaved window method, also known as Straus' method.
 #![allow(non_snake_case)]
 
+use super::iterator::collect_borrowed_map;
+#[cfg(verus_keep_ghost)]
+use super::iterator::mapped_borrows;
+#[cfg(verus_keep_ghost)]
+use crate::specs::iterator_specs::borrowed_values;
 use alloc::vec::Vec;
+#[cfg(verus_keep_ghost)]
+use vstd::std_specs::iter::IteratorSpec;
 
 use core::borrow::Borrow;
 use core::cmp::Ordering;
@@ -49,6 +56,8 @@ use vstd::arithmetic::power2::pow2;
 #[cfg(verus_keep_ghost)]
 use crate::specs::iterator_specs::{all_points_some, unwrap_points};
 
+verus! {
+
 /// Perform multiscalar multiplication by the interleaved window
 /// method, also known as Straus' method (since it was apparently
 /// [first published][solution] by Straus in 1964, as a solution to [a
@@ -72,9 +81,50 @@ use crate::specs::iterator_specs::{all_points_some, unwrap_points};
 /// [problem]: https://www.jstor.org/stable/2312273
 pub struct Straus {}
 
-#[cfg_attr(verus_keep_ghost, verifier::external)]
+#[cfg(feature = "zeroize")]
+#[verifier::external_body]
+fn zeroize_scalar_digits(digits: &mut Vec<[i8; 64]>) {
+    zeroize::Zeroize::zeroize(digits);
+}
+
 impl MultiscalarMul for Straus {
     type Point = EdwardsPoint;
+
+    open spec fn valid_msm_point(point: EdwardsPoint) -> bool {
+        is_well_formed_edwards_point(point)
+    }
+
+    /// Straus collects the points before converting the scalar source. Each conversion
+    /// must yield a valid iterator, and the two iterators must have the same length.
+    #[verifier::prophetic]
+    open spec fn valid_msm_inputs<I: IntoIterator, J: IntoIterator>(
+        scalars: I,
+        points: J,
+    ) -> bool where I::Item: Borrow<Scalar>, J::Item: Borrow<EdwardsPoint> {
+        &&& forall|pi: J::IntoIter| #[trigger]
+            call_ensures(J::into_iter, (points,), pi)
+                ==> crate::specs::iterator_specs::valid_msm_items(pi, |p| Self::valid_msm_point(p))
+        &&& forall|si: I::IntoIter| #[trigger]
+            call_ensures(I::into_iter, (scalars,), si)
+                ==> crate::specs::iterator_specs::valid_msm_items(
+                si,
+                |s: Scalar| s.bytes[31] <= 127,
+            )
+        &&& forall|si: I::IntoIter, pi: J::IntoIter| #[trigger]
+            call_ensures(I::into_iter, (scalars,), si) && #[trigger] call_ensures(
+                J::into_iter,
+                (points,),
+                pi,
+            ) ==> si.remaining().len() == pi.remaining().len()
+    }
+
+    open spec fn msm_sum(
+        scalars: Seq<Scalar>,
+        points: Seq<EdwardsPoint>,
+        result: EdwardsPoint,
+    ) -> bool {
+        <EdwardsPoint as MultiscalarMul>::msm_sum(scalars, points, result)
+    }
 
     /// Constant-time Straus using a fixed window of size \\(4\\).
     ///
@@ -127,24 +177,13 @@ impl MultiscalarMul for Straus {
     /// top-to-bottom, then right-to-left, we need to multiply by \\(
     /// 16\\) only once per column, sharing the doublings across all
     /// of the input points.
-    fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint
-    where
+    fn multiscalar_mul<I, J>(scalars: I, points: J) -> (out: EdwardsPoint) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
-        /*
-         * VERUS SPEC (intended):
-         *   requires
-         *       scalars.len() == points.len(),
-         *       forall|i| is_well_formed_edwards_point(points[i]),
-         *   ensures
-         *       is_well_formed_edwards_point(result),
-         *       edwards_point_as_affine(result) == sum_of_scalar_muls(scalars, points),
-         *
-         * The verified `multiscalar_mul_verus` below takes slices.
-         */
-    {
+     {
+        /* <ORIGINAL CODE>
         let lookup_tables: Vec<_> = points
             .into_iter()
             .map(|point| LookupTable::<ProjectiveNielsPoint>::from(point.borrow()))
@@ -175,9 +214,47 @@ impl MultiscalarMul for Straus {
         zeroize::Zeroize::zeroize(&mut scalar_digits);
 
         Q
+        </ORIGINAL CODE> */
+        let pi = points.into_iter();
+        assert(call_ensures(J::into_iter, (points,), pi));
+        let table_for = |p: &EdwardsPoint| -> (t: LookupTable<ProjectiveNielsPoint>)
+            ensures
+                straus_table_for(t, *p),
+            { LookupTable::<ProjectiveNielsPoint>::from(p) };
+        let tables = collect_borrowed_map(pi, table_for);
+        let si = scalars.into_iter();
+        assert(call_ensures(I::into_iter, (scalars,), si));
+        let digits_for = |s: &Scalar| -> (d: [i8; 64])
+            requires
+                s.bytes[31] <= 127,
+            ensures
+                straus_digits_for(d, *s),
+            { s.as_radix_16() };
+        #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
+        let mut digits = collect_borrowed_map(si, digits_for);
+        let ghost ps = choose|ps: Seq<EdwardsPoint>| #[trigger]
+            mapped_borrows(pi.remaining(), tables@, table_for, ps);
+        let ghost ss = choose|ss: Seq<Scalar>| #[trigger]
+            mapped_borrows(si.remaining(), digits@, digits_for, ss);
+        proof {
+            assert forall|k: int| 0 <= k < ps.len() implies is_well_formed_edwards_point(
+                #[trigger] ps[k],
+            ) by {
+                assert(call_ensures(core::borrow::Borrow::borrow, (&pi.remaining()[k],), &ps[k]));
+            }
+            assert(prepared_inputs(tables@, digits@, ss, ps));
+        }
+        let out = Straus::multiscalar_mul_prepared(tables, digits.as_slice());
+        #[cfg(feature = "zeroize")]
+        zeroize_scalar_digits(&mut digits);
+        assert(borrowed_values(si.remaining(), ss));
+        assert(borrowed_values(pi.remaining(), ps));
+        assert(Self::msm_sum(ss, ps, out));
+        out
     }
 }
 
+} // verus!
 #[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimeMultiscalarMul for Straus {
     type Point = EdwardsPoint;
@@ -251,17 +328,10 @@ verus! {
 /*
  * VERIFICATION NOTE
  * =================
- * Verus limitations addressed in these _verus versions:
- * - IntoIterator with I::Item projections -> use Iterator bounds instead
- * - Iterator adapters (map, zip) with closures -> use explicit while loops
- * - Op-assignment (+=, -=) on EdwardsPoint -> use explicit a = a + b
- *
- * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
- * run both original and _verus implementations, and assert equality of results.
- * This is evidence of functional equivalence between the original and refactored versions:
- *     forall scalars s, points p:
- *         optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
- *         multiscalar_mul(s, p) == multiscalar_mul_verus(s, p)
+ * The constant-time iterator and slice methods prepare their inputs separately
+ * and use the same verified arithmetic kernel, `multiscalar_mul_prepared`.
+ * The variable-time slice method implements the upstream iterator loops using
+ * indexed loops with invariants.
  *
  * ALGORITHM OVERVIEW
  * ==================
@@ -900,12 +970,12 @@ impl Straus {
         assert(prepared_inputs(lookup_tables@, scalar_digits@, spec_scalars, spec_points));
         let result = Self::multiscalar_mul_prepared(lookup_tables, scalar_digits.as_slice());
         #[cfg(feature = "zeroize")]
-        crate::backend::zeroize_scalar_digits(&mut scalar_digits);
+        zeroize_scalar_digits(&mut scalar_digits);
         result
     }
 
     /// Compute the multiscalar sum from the lookup tables and scalar digits prepared by the caller.
-    pub(crate) fn multiscalar_mul_prepared(
+    fn multiscalar_mul_prepared(
         lookup_tables: Vec<LookupTable<ProjectiveNielsPoint>>,
         scalar_digits: &[[i8; 64]],
     ) -> (result: EdwardsPoint)
@@ -1175,7 +1245,7 @@ impl Straus {
 }
 
 /// Inputs represented by the prepared Straus tables and digits.
-pub(crate) open spec fn prepared_inputs(
+spec fn prepared_inputs(
     tables: Seq<LookupTable<ProjectiveNielsPoint>>,
     digits: Seq<[i8; 64]>,
     ss: Seq<Scalar>,
@@ -1187,16 +1257,13 @@ pub(crate) open spec fn prepared_inputs(
     &&& forall|k: int| 0 <= k < ss.len() ==> straus_digits_for(#[trigger] digits[k], ss[k])
 }
 
-pub(crate) open spec fn straus_table_for(
-    table: LookupTable<ProjectiveNielsPoint>,
-    point: EdwardsPoint,
-) -> bool {
+spec fn straus_table_for(table: LookupTable<ProjectiveNielsPoint>, point: EdwardsPoint) -> bool {
     &&& is_valid_lookup_table_projective(table.0, point, 8)
     &&& lookup_table_projective_limbs_bounded(table.0)
     &&& forall|j: int| 0 <= j < 8 ==> is_valid_projective_niels_point(#[trigger] table.0[j])
 }
 
-pub(crate) open spec fn straus_digits_for(digits: [i8; 64], scalar: Scalar) -> bool {
+spec fn straus_digits_for(digits: [i8; 64], scalar: Scalar) -> bool {
     &&& is_valid_radix_16(&digits)
     &&& radix_16_all_bounded(&digits)
     &&& reconstruct_radix_16(digits@) == scalar_as_nat(&scalar) as int

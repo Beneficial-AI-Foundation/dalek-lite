@@ -1,7 +1,4 @@
-//! Tests for verifying Verus-compatible implementations match original implementations.
-//!
-//! These tests compare the _verus versions of multiscalar multiplication functions
-//! against their original implementations to ensure functional equivalence.
+//! Scalar multiplication tests for the iterator and slice interfaces.
 #[cfg(test)]
 mod tests {
     use crate::constants;
@@ -38,19 +35,19 @@ mod tests {
         }
     }
 
+    struct PointWithBorrowFlag<'a>(&'a core::cell::Cell<bool>, EdwardsPoint);
+
+    impl core::borrow::Borrow<EdwardsPoint> for PointWithBorrowFlag<'_> {
+        fn borrow(&self) -> &EdwardsPoint {
+            self.0.set(true);
+            &self.1
+        }
+    }
+
     /// Borrowing a point changes the scalar that the other iterator yields.
     #[test]
     fn multiscalar_with_shared_iterator_state() {
-        use core::{borrow::Borrow, cell::Cell, iter::once};
-
-        struct Point<'a>(&'a Cell<bool>, EdwardsPoint);
-
-        impl Borrow<EdwardsPoint> for Point<'_> {
-            fn borrow(&self) -> &EdwardsPoint {
-                self.0.set(true);
-                &self.1
-            }
-        }
+        use core::{cell::Cell, iter::once};
 
         let flag = Cell::new(false);
         let base = constants::ED25519_BASEPOINT_POINT;
@@ -61,8 +58,45 @@ mod tests {
                 Scalar::ZERO
             }
         });
-        let points = once(Point(&flag, base));
+        let points = once(PointWithBorrowFlag(&flag, base));
         assert_eq!(EdwardsPoint::multiscalar_mul(scalars, points), base);
+    }
+
+    #[test]
+    fn straus_borrows_points_before_converting_scalars() {
+        use core::cell::Cell;
+
+        // The direct Straus method accepts iterators with the default size hint (0, None).
+        struct One<T>(Option<T>);
+
+        impl<T> Iterator for One<T> {
+            type Item = T;
+
+            fn next(&mut self) -> Option<T> {
+                self.0.take()
+            }
+
+            fn by_ref(&mut self) -> &mut Self {
+                panic!("direct Straus called by_ref on an input iterator");
+            }
+        }
+
+        struct Scalars<'a>(&'a Cell<bool>);
+
+        impl IntoIterator for Scalars<'_> {
+            type Item = Scalar;
+            type IntoIter = One<Scalar>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                assert!(self.0.get(), "scalar conversion preceded the point borrow");
+                One(Some(Scalar::ONE))
+            }
+        }
+
+        let borrowed = Cell::new(false);
+        let base = constants::ED25519_BASEPOINT_POINT;
+        let points = One(Some(PointWithBorrowFlag(&borrowed, base)));
+        assert_eq!(Straus::multiscalar_mul(Scalars(&borrowed), points), base);
     }
 
     #[test]
@@ -244,7 +278,7 @@ mod tests {
     }
 
     #[test]
-    fn test_straus_multiscalar_original_vs_verus() {
+    fn test_straus_multiscalar_iterators_vs_slices() {
         // Test various sizes (constant-time multiscalar_mul)
         let test_sizes = [1, 2, 3, 4, 8, 16, 32, 64, 100, 150];
 
@@ -271,15 +305,13 @@ mod tests {
                     })
                     .collect();
 
-                // Original implementation (via trait)
-                let original = Straus::multiscalar_mul(scalars.iter(), points.iter());
+                let iterator_result = Straus::multiscalar_mul(scalars.iter(), points.iter());
 
-                // Verus implementation
-                let verus = Straus::multiscalar_mul_verus(&scalars, &points);
+                let slice_result = Straus::multiscalar_mul_verus(&scalars, &points);
 
                 assert_eq!(
-                    original.compress(),
-                    verus.compress(),
+                    iterator_result.compress(),
+                    slice_result.compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -290,7 +322,7 @@ mod tests {
         }
 
         println!(
-            "Straus multiscalar_mul original vs verus: {} comparisons passed!",
+            "Straus multiscalar_mul iterators vs slices: {} comparisons passed!",
             total_comparisons
         );
     }
@@ -379,7 +411,7 @@ mod tests {
     }
 
     #[test]
-    fn test_edwards_multiscalar_dispatcher_original_vs_verus() {
+    fn test_edwards_multiscalar_entry_points() {
         // Test sizes (constant-time version only dispatches to Straus)
         let test_sizes = [1, 10, 50, 100, 150, 189];
 
@@ -405,16 +437,14 @@ mod tests {
                     })
                     .collect();
 
-                // Original EdwardsPoint dispatcher (via trait)
-                let original = EdwardsPoint::multiscalar_mul(scalars.iter(), points.iter());
+                let iterator_result = EdwardsPoint::multiscalar_mul(scalars.iter(), points.iter());
 
-                // Verus EdwardsPoint dispatcher
-                let verus = EdwardsPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
+                let adapter_result =
+                    EdwardsPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
 
-                // Verified slice version
                 let slices = EdwardsPoint::multiscalar_mul_slices(&scalars, &points);
                 assert_eq!(
-                    original.compress(),
+                    iterator_result.compress(),
                     slices.compress(),
                     "Slice mismatch at size={}, round={}",
                     size,
@@ -422,8 +452,8 @@ mod tests {
                 );
 
                 assert_eq!(
-                    original.compress(),
-                    verus.compress(),
+                    iterator_result.compress(),
+                    adapter_result.compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -434,7 +464,7 @@ mod tests {
         }
 
         println!(
-            "Edwards multiscalar_mul dispatcher original vs verus: {} comparisons passed!",
+            "Edwards multiscalar_mul entry points: {} comparisons passed!",
             total_comparisons
         );
     }

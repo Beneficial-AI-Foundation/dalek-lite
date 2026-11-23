@@ -256,6 +256,20 @@ pub trait MultiscalarMul {
         crate::core_assumes::by_ref_preserves_items(points)
     }
 
+    /// Conditions on the iterators and on the scalars and points they yield.
+    #[verifier::prophetic]
+    open spec fn valid_msm_inputs<I: IntoIterator, J: IntoIterator>(
+        scalars: I,
+        points: J,
+    ) -> bool where I::Item: Borrow<Scalar>, J::Item: Borrow<Self::Point> {
+        valid_msm_sources(
+            scalars,
+            points,
+            |p| Self::valid_msm_point(p),
+            |it| Self::valid_msm_point_hint(it),
+        )
+    }
+
     /// Mathematical relation between the borrowed inputs and the returned point.
     open spec fn msm_sum(
         scalars: Seq<Scalar>,
@@ -326,12 +340,7 @@ pub trait MultiscalarMul {
         J::Item: Borrow<Self::Point>,
 
         requires
-            valid_msm_sources(
-                scalars,
-                points,
-                |p| Self::valid_msm_point(p),
-                |it| Self::valid_msm_point_hint(it),
-            ),
+            Self::valid_msm_inputs(scalars, points),
         ensures
             msm_outcome(scalars, points, |ss, ps| Self::msm_sum(ss, ps, result)),
     ;

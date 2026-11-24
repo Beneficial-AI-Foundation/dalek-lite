@@ -121,6 +121,21 @@ impl VartimeMultiscalarMul for Pippenger {
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
      {
+        /* <ORIGINAL CODE>
+        let mut scalars = scalars.into_iter();
+        let size = scalars.by_ref().size_hint().0;
+
+        // Digit width in bits. As digit width grows,
+        // number of point additions goes down, but amount of
+        // buckets and bucket additions grows exponentially.
+        let w = if size < 500 {
+            6
+        } else if size < 800 {
+            7
+        } else {
+            8
+        };
+        </ORIGINAL CODE> */
         let mut scalar_iter = scalars.into_iter();
         let ghost si = scalar_iter;
         assert(call_ensures(I::into_iter, (scalars,), si));
@@ -139,6 +154,20 @@ impl VartimeMultiscalarMul for Pippenger {
             8
         };
 
+        /* <ORIGINAL CODE>
+        // Collect optimized scalars and points in buffers for repeated access
+        // (scanning the whole set per digit position).
+        let scalars = scalars.map(|s| s.borrow().as_radix_2w(w));
+
+        let points = points
+            .into_iter()
+            .map(|p| p.map(|P| P.as_projective_niels()));
+
+        let scalars_points = scalars
+            .zip(points)
+            .map(|(s, maybe_p)| maybe_p.map(|p| (s, p)))
+            .collect::<Option<Vec<_>>>()?;
+        </ORIGINAL CODE> */
         // Convert the scalar and point of each pair lazily. Collection stops at the first missing point.
         let digits_for = |item: I::Item| -> (d: [i8; 64])
             ensures

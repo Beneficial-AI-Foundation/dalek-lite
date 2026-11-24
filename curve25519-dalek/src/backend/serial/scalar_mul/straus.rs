@@ -394,6 +394,17 @@ impl VartimeMultiscalarMul for Straus {
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
      {
+        /* <ORIGINAL CODE>
+        let nafs: Vec<_> = scalars
+            .into_iter()
+            .map(|c| c.borrow().non_adjacent_form(5))
+            .collect();
+
+        let lookup_tables = points
+            .into_iter()
+            .map(|P_opt| P_opt.map(|P| NafLookupTable5::<ProjectiveNielsPoint>::from(&P)))
+            .collect::<Option<Vec<_>>>()?;
+        </ORIGINAL CODE> */
         let si = scalars.into_iter();
         assert(call_ensures(I::into_iter, (scalars,), si));
         let naf_for = |s: &Scalar| -> (d: [i8; 256])
@@ -829,6 +840,7 @@ impl VartimeMultiscalarMul for Straus {
             crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken(&r.Y, 52, 54);
             crate::lemmas::field_lemmas::add_lemmas::lemma_fe51_limbs_bounded_weaken(&r.Z, 52, 54);
         }
+        /* ORIGINAL CODE: Some(r.as_extended()) */
         let result = r.as_extended();
 
         proof {

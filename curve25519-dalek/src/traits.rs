@@ -547,6 +547,8 @@ pub trait VartimeMultiscalarMul {
     /// assert_eq!(A1.compress(), (-A2).compress());
     /// # }
     /// ```
+    // Not verified. Verus does not allow `external` on one trait item, so the body is trusted
+    // and `requires false` keeps verified code from calling it.
     #[verifier::external_body]
     fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point where
         I: IntoIterator,
@@ -554,7 +556,10 @@ pub trait VartimeMultiscalarMul {
         J: IntoIterator,
         J::Item: Borrow<Self::Point>,
         Self::Point: Clone,
-     {
+
+        requires
+            false,
+    {
         Self::optional_multiscalar_mul(
             scalars,
             points.into_iter().map(|P| Some(P.borrow().clone())),

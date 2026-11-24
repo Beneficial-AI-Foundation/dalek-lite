@@ -2755,11 +2755,6 @@ impl MultiscalarMul for EdwardsPoint {
         is_well_formed_edwards_point(point)
     }
 
-    #[verifier::prophetic]
-    open spec fn valid_msm_point_hint<J: Iterator>(points: J) -> bool {
-        crate::core_assumes::by_ref_preserves_items(points)
-    }
-
     open spec fn msm_sum(
         scalars: Seq<Scalar>,
         points: Seq<EdwardsPoint>,

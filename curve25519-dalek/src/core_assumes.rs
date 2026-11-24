@@ -224,62 +224,34 @@ proof fn lemma_exact_reborrow<I: Iterator>(iter: I)
 {
 }
 
-/// `Iterator::size_hint()` returns `(lower, upper)` of type `(usize, Option<usize>)`.
-/// At least `lower` elements remain. If `upper` is `Some(u)`, at most `u` elements remain.
-/// If `upper` is `None`, the iterator reports no upper bound.
-/// An owning iterator over a `Vec<T>` returns `(n, Some(n))` when `n` elements of type `T` remain.
+/// A vector iterator `vec::IntoIter<T>` reports its exact remaining length through
+/// `size_hint()`, and `by_ref().size_hint()` leaves its items unchanged.
 /// See Rust's `library/alloc/src/vec/into_iter.rs`.
 #[cfg(feature = "alloc")]
-pub broadcast proof fn lemma_vec_into_iter_exact_size_hint<T>(
-    before: alloc::vec::IntoIter<T>,
-) where alloc::vec::IntoIter<T>: Iterator
+pub broadcast proof fn lemma_vec_into_iter_exact_size_hint<T>(iter: alloc::vec::IntoIter<T>) where
+    alloc::vec::IntoIter<T>: Iterator,
+
     ensures
-        #![trigger exact_size_hint(before)]
-        // Every result of `before.size_hint()` has an upper bound equal to its lower bound.
-        forall|bounds: (usize, Option<usize>)| #[trigger]
-            call_ensures(Iterator::size_hint, (&before,), bounds) ==> {
-                let (lower, upper) = bounds;
-                upper == Some(lower)
-            },
-        // `before.by_ref()` returns a reference of type `&mut IntoIter<T>`.
-        // `bounds` is its `size_hint()` result. `after` is the iterator state when the borrow ends.
-        forall|after: alloc::vec::IntoIter<T>, bounds: (usize, Option<usize>)| #[trigger]
-            by_ref_hint_outcome(before, after, bounds) ==> {
-                let (lower, upper) = bounds;
-                &&& lower == before.remaining().len()
-                &&& upper == Some(lower)
-                &&& after.remaining()
-                    == before.remaining()
-                // At index `i`, `remaining()[i]` is an item of type `T` and `produces()[i]`
-                // is true if the iterator yields that item.
-                &&& after.produces()
-                    == before.produces()
-                // `next()` returns an `Option<T>`, yielding `Some(item)` in order, then `None`.
-                &&& after.obeys_prophetic_iter_laws()
-            },
+        #![trigger exact_size_hint(iter)]
+        #![trigger by_ref_preserves_items(iter)]
+        exact_size_hint(iter),
+        by_ref_preserves_items(iter),
 {
-    axiom_vec_methods(before);
-    lemma_exact_reborrow(before);
+    axiom_vec_methods(iter);
+    lemma_exact_reborrow(iter);
 }
 
-/// A slice iterator reports the number of elements it has yet to yield.
-/// Querying its size through `by_ref()` leaves the iterator at its current position.
+/// A slice iterator `slice::Iter<T>` reports its exact remaining length through
+/// `size_hint()`, and `by_ref().size_hint()` leaves its items unchanged.
 /// See Rust's `library/core/src/slice/iter/macros.rs`.
 pub broadcast proof fn lemma_slice_iter_exact_size_hint<'a, T>(
     iter: core::slice::Iter<'a, T>,
 ) where core::slice::Iter<'a, T>: Iterator
     ensures
         #![trigger exact_size_hint(iter)]
-        forall|hint: (usize, Option<usize>)| #[trigger]
-            call_ensures(Iterator::size_hint, (&iter,), hint) ==> hint.1 == Some(hint.0),
-        forall|after, hint| #[trigger]
-            by_ref_hint_outcome(iter, after, hint) ==> {
-                &&& hint.0 == iter.remaining().len()
-                &&& hint.1 == Some(hint.0)
-                &&& after.remaining() == iter.remaining()
-                &&& after.produces() == iter.produces()
-                &&& after.obeys_prophetic_iter_laws()
-            },
+        #![trigger by_ref_preserves_items(iter)]
+        exact_size_hint(iter),
+        by_ref_preserves_items(iter),
 {
     axiom_slice_methods(iter);
     lemma_exact_reborrow(iter);

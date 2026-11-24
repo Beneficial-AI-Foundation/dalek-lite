@@ -217,23 +217,6 @@ pub broadcast proof fn lemma_msm_referenced_values<T>(items: Seq<T>, values: Seq
     assert(values =~= items);
 }
 
-/// Checking the size of a vector iterator preserves its remaining items.
-#[cfg(feature = "alloc")]
-pub broadcast proof fn lemma_vec_iter_hint_observation<T>(input: alloc::vec::IntoIter<T>)
-    ensures
-        #[trigger] by_ref_preserves_items(input),
-{
-    crate::core_assumes::lemma_vec_into_iter_exact_size_hint(input);
-}
-
-/// Checking the size of a slice iterator preserves its remaining items.
-pub broadcast proof fn lemma_slice_iter_hint_observation<T>(input: core::slice::Iter<'_, T>)
-    ensures
-        #[trigger] by_ref_preserves_items(input),
-{
-    crate::core_assumes::lemma_slice_iter_exact_size_hint(input);
-}
-
 /// Facts for verifying multiscalar calls with owned vectors and shared slices.
 #[cfg(feature = "alloc")]
 pub broadcast group group_multiscalar_inputs {
@@ -241,8 +224,6 @@ pub broadcast group group_multiscalar_inputs {
     crate::core_assumes::axiom_ref_borrow,
     crate::core_assumes::lemma_vec_into_iter_exact_size_hint,
     crate::core_assumes::lemma_slice_iter_exact_size_hint,
-    lemma_vec_iter_hint_observation,
-    lemma_slice_iter_hint_observation,
     lemma_msm_owned_values,
     lemma_msm_referenced_values,
 }

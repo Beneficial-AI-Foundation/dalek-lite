@@ -299,7 +299,6 @@ spec fn vartime_table_for(
 impl Straus {
     /// Slice adapter for the variable-time iterator method.
     /// Computes sum(scalars[i] * points[i]) if every points[i] is Some.
-    #[verifier::rlimit(30)]
     pub fn optional_multiscalar_mul_verus(
         scalars: &[Scalar],
         points: &[Option<EdwardsPoint>],
@@ -390,7 +389,6 @@ impl VartimeMultiscalarMul for Straus {
     /// The non-adjacent form has signed, odd digits.  Using only odd
     /// digits halves the table size (since we only need odd
     /// multiples), or gives fewer additions for the same table size.
-    #[verifier::rlimit(30)]
     fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (out: Option<EdwardsPoint>) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,

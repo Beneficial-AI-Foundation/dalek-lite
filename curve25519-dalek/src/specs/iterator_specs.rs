@@ -1,4 +1,31 @@
-//! Specifications for multiscalar multiplication on iterator inputs and on slices.
+//! Specifications for multiscalar multiplication on iterator inputs.
+//!
+//! # How to read the contracts
+//!
+//! The methods take any `IntoIterator` arguments, and their items are any type that
+//! implements `Borrow<Scalar>` or `Borrow<Point>`. The contracts use the vstd model of an
+//! iterator. `iter.remaining()` is the sequence of items that `iter` will yield, and
+//! `iter.produces()[k]` says whether item `k` is actually requested. These are
+//! prophecies: they describe what will happen in this run, so they also cover iterators
+//! whose items depend on shared state.
+//!
+//! `into_iter()`, `next()`, `size_hint()`, `by_ref()` and `borrow()` can all be user code.
+//! The contracts therefore quantify over the possible results of these calls instead of
+//! naming one value.
+//!
+//! A requirement (`valid_msm_sources`, `valid_optional_msm_sources`) says that every
+//! iterator the arguments may produce obeys the iterator laws, has exact length checks,
+//! and yields valid scalars and points. An outcome (`msm_outcome`, `optional_msm_outcome`)
+//! says that the method read every item and that the result is the sum of the products of
+//! the values it borrowed.
+//!
+//! # The common case
+//!
+//! For arguments that are slices or vectors, with items `T` or `&T`, the requirements reduce
+//! to equal lengths and conditions on the elements, and the outcome reduces to
+//! `sum_of_scalar_muls(scalars@, points@)`. Use `broadcast use group_multiscalar_inputs`
+//! (in `traits.rs`) to get these facts. `check_multiscalar_mul_slices` and
+//! `check_optional_multiscalar_mul_vec` in `traits.rs` show both methods.
 use vstd::prelude::*;
 
 #[cfg(verus_keep_ghost)]
@@ -19,16 +46,19 @@ use vstd::std_specs::iter::IteratorSpec;
 
 verus! {
 
-/// Each value is a permitted result of borrowing the corresponding yielded item.
-/// Different calls to `borrow` can return different values.
+/// `values[k]` is a value that `items[k].borrow()` may return, for every `k`.
+/// `Borrow::borrow` is user code, so two calls on the same item need not agree.
+/// For items of type `T` or `&T`, `values` equals the items themselves
+/// (see `lemma_msm_owned_values` and `lemma_msm_referenced_values` in `traits.rs`).
 pub open spec fn borrowed_values<A: Borrow<B>, B>(items: Seq<A>, values: Seq<B>) -> bool {
     &&& items.len() == values.len()
     &&& forall|k: int|
         0 <= k < items.len() ==> #[trigger] call_ensures(Borrow::borrow, (&items[k],), &values[k])
 }
 
-/// The iterator obeys the vstd iterator laws. Every permitted borrow of a yielded item
-/// satisfies `valid_value`.
+/// Every item that `iter` will yield passes `valid_value` after borrowing.
+/// `iter` must obey the vstd iterator laws, so `remaining()` lists the items it will yield.
+/// For a slice or a vector, this says that every element satisfies `valid_value`.
 #[verifier::prophetic]
 pub open spec fn valid_msm_items<I: Iterator, T>(
     iter: I,
@@ -43,13 +73,13 @@ pub open spec fn valid_msm_items<I: Iterator, T>(
         ) ==> valid_value(value)
 }
 
-/// Both iterators obey the vstd iterator laws and have the same number of items remaining.
-/// Every permitted borrow of a yielded scalar has bit 255 clear. Every permitted borrow of
-/// a yielded point satisfies `valid_point`.
-///
-/// `scalars.by_ref().size_hint()` must report the remaining length and preserve the items.
-/// `point_hint` specifies the corresponding size check for points. Edwards requires the same
-/// reborrow guarantee. Ristretto requires an exact `size_hint()` on the underlying point iterator.
+/// The requirements of the constant-time method on two concrete iterators:
+/// - both obey the vstd iterator laws and have the same number of items left;
+/// - every scalar they yield has bit 255 clear, and every point satisfies `valid_point`;
+/// - `scalars.by_ref().size_hint()` reports the exact length and leaves the items unchanged,
+///   and `point_hint` states the check on the point iterator. For Edwards it is the same
+///   reborrow guarantee. For Ristretto it is an exact `size_hint()` on the point iterator.
+/// For slices or vectors of equal length, only the conditions on the elements remain.
 #[verifier::prophetic]
 pub open spec fn valid_msm_iters<P, I: Iterator, J: Iterator>(
     scalars: I,
@@ -63,8 +93,9 @@ pub open spec fn valid_msm_iters<P, I: Iterator, J: Iterator>(
     &&& scalars.remaining().len() == points.remaining().len()
 }
 
-/// Every pair of iterators permitted by `scalars.into_iter()` and `points.into_iter()`
-/// must satisfy `valid_msm_iters` with the given point validity and size-hint predicates.
+/// The requirement of `MultiscalarMul::multiscalar_mul` on its arguments.
+/// `into_iter()` is user code, so the requirement is stated for every pair of iterators
+/// that `scalars.into_iter()` and `points.into_iter()` may return.
 #[verifier::prophetic]
 pub open spec fn valid_msm_sources<P, I: IntoIterator, J: IntoIterator>(
     scalars: I,
@@ -80,8 +111,12 @@ pub open spec fn valid_msm_sources<P, I: IntoIterator, J: IntoIterator>(
         ) ==> valid_msm_iters(si, pi, valid_point, point_hint)
 }
 
-/// Both iterators produced every item in the sum. Each value used in the sum
-/// satisfies the postcondition of borrowing the corresponding item.
+/// The result of `MultiscalarMul::multiscalar_mul`, stated with `sum`.
+/// There are iterators `si` and `pi` returned by the two `into_iter()` calls, and values
+/// `ss` and `ps` returned by `borrow()` on their items, such that the method read every item
+/// and `sum(ss, ps)` holds.
+/// For slices or vectors, `ss` and `ps` are the elements, so the result is the sum of the
+/// products of the elements.
 #[verifier::prophetic]
 pub open spec fn msm_outcome<P, I: IntoIterator, J: IntoIterator>(
     scalars: I,
@@ -100,13 +135,17 @@ pub open spec fn msm_outcome<P, I: IntoIterator, J: IntoIterator>(
         }
 }
 
-/// The variable-time Edwards dispatcher sends fewer than 190 inputs to Straus, which needs
-/// bit 255 clear, and the rest to Pippenger, which accepts any scalar.
+/// The condition on scalar `s` in a variable-time call with `n` inputs.
+/// The Edwards dispatcher sends fewer than 190 inputs to Straus, which needs bit 255 clear,
+/// and the rest to Pippenger, which accepts any scalar.
 pub open spec fn vartime_dispatch_scalar(s: Scalar, n: nat) -> bool {
     n < 190 ==> s.bytes[31] <= 127
 }
 
-/// Edwards checks the scalar length before dispatch. Pippenger checks it again to choose a window.
+/// The length checks of the variable-time Edwards dispatcher do not disturb `iter`.
+/// The dispatcher checks the length once. If it picks Pippenger, Pippenger checks it again to
+/// choose its window size, so the second check must also leave the items unchanged.
+/// Slice and vector iterators satisfy this.
 #[verifier::prophetic]
 pub open spec fn valid_dispatch_scalar_hint<I: Iterator>(iter: I) -> bool {
     &&& by_ref_preserves_items(iter)
@@ -115,7 +154,8 @@ pub open spec fn valid_dispatch_scalar_hint<I: Iterator>(iter: I) -> bool {
             ==> by_ref_preserves_items(after)
 }
 
-/// Every yielded point that is present satisfies `valid_point`.
+/// Every `Some(point)` that `iter` will yield satisfies `valid_point`.
+/// `None` items are allowed and make the variable-time method return `None`.
 #[verifier::prophetic]
 pub open spec fn valid_optional_points<P, J: Iterator<Item = Option<P>>>(
     iter: J,
@@ -127,8 +167,12 @@ pub open spec fn valid_optional_points<P, J: Iterator<Item = Option<P>>>(
         #[trigger] iter.remaining()[k]).is_some() ==> valid_point(iter.remaining()[k].unwrap())
 }
 
-/// Each source must produce admissible iterators, and every pair has equal remaining lengths.
-/// `valid_scalar(s, n)` is the condition on each scalar `s` when there are `n` inputs.
+/// The requirement of `VartimeMultiscalarMul::optional_multiscalar_mul` on its arguments.
+/// For every iterator that `into_iter()` may return:
+/// - each scalar `s` satisfies `valid_scalar(s, n)`, where `n` is the number of inputs,
+///   and the length checks satisfy `scalar_hint`;
+/// - each present point satisfies `valid_point`, and the length check satisfies `point_hint`;
+/// - the scalar and point iterators have the same number of items left.
 #[verifier::prophetic]
 pub open spec fn valid_optional_msm_sources<P, I: IntoIterator, J: IntoIterator<Item = Option<P>>>(
     scalars: I,
@@ -154,7 +198,10 @@ pub open spec fn valid_optional_msm_sources<P, I: IntoIterator, J: IntoIterator<
         ) ==> si.remaining().len() == pi.remaining().len()
 }
 
-/// A successful call sums every scalar-point pair. A failing call encountered a yielded `None`.
+/// The result of the variable-time method on two concrete iterators.
+/// `None` means that the point iterator yielded a `None`.
+/// `Some(r)` means that the method read every item, every point was present, and
+/// `sum(ss, points, r)` holds, where `ss` are values returned by `borrow()` on the scalars.
 #[verifier::prophetic]
 pub open spec fn optional_iter_outcome<P, I: Iterator, J: Iterator<Item = Option<P>>>(
     si: I,
@@ -182,7 +229,9 @@ pub open spec fn optional_iter_outcome<P, I: Iterator, J: Iterator<Item = Option
     }
 }
 
-/// The optional result describes a pair of iterator conversions permitted for this call.
+/// The result of `VartimeMultiscalarMul::optional_multiscalar_mul`, stated with `sum`.
+/// It is `optional_iter_outcome` for some pair of iterators returned by the two
+/// `into_iter()` calls.
 #[verifier::prophetic]
 pub open spec fn optional_msm_outcome<P, I: IntoIterator, J: IntoIterator<Item = Option<P>>>(
     scalars: I,

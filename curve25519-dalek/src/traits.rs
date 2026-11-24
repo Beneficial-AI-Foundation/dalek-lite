@@ -181,10 +181,12 @@ pub trait BasepointTable {
 #[cfg(verus_keep_ghost)]
 pub use crate::core_assumes::{by_ref_preserves_items, exact_size_hint, lemma_map_exact_size_hint};
 #[cfg(verus_keep_ghost)]
+use crate::specs::iterator_specs::{all_points_some, unwrap_points};
+#[cfg(verus_keep_ghost)]
 pub use crate::specs::iterator_specs::{
     borrowed_values, msm_outcome, optional_iter_outcome, optional_msm_outcome,
     valid_dispatch_scalar_hint, valid_msm_iters, valid_msm_sources, valid_optional_msm_sources,
-    valid_optional_points,
+    valid_optional_points, vartime_dispatch_scalar,
 };
 
 verus! {
@@ -296,6 +298,10 @@ pub trait MultiscalarMul {
     /// iterator and `Borrow` calls. The iterators must satisfy vstd's iterator laws.
     /// The length checks must preserve their items and report equal, exact lengths.
     /// Each point must be well formed and each scalar must have its top bit clear.
+    /// For slices or vectors, this means equal lengths, well-formed points and scalars with
+    /// bit 255 clear, and the result is the sum of the scalar-point products.
+    /// `check_multiscalar_mul_slices` shows this contract. The general contract is explained in
+    /// `specs/iterator_specs.rs`.
     ///
     /// # Examples
     ///
@@ -366,6 +372,36 @@ fn check_multiscalar_mul_slices(scalars: &[Scalar], points: &[EdwardsPoint]) -> 
     EdwardsPoint::multiscalar_mul(scalars, points)
 }
 
+/// Check that a caller using the public variable-time method can recover the sum over a
+/// slice of scalars and a vector of optional points.
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+#[allow(dead_code)]
+fn check_optional_multiscalar_mul_vec(
+    scalars: &[Scalar],
+    points: alloc::vec::Vec<Option<EdwardsPoint>>,
+) -> (result: Option<EdwardsPoint>)
+    requires
+        scalars.len() == points.len(),
+        forall|k: int|
+            0 <= k < scalars.len() ==> vartime_dispatch_scalar(
+                #[trigger] scalars@[k],
+                scalars.len() as nat,
+            ),
+        forall|k: int|
+            0 <= k < points.len() && (#[trigger] points@[k]).is_some()
+                ==> is_well_formed_edwards_point(points@[k].unwrap()),
+    ensures
+        result.is_some() <==> all_points_some(points@),
+        result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
+            scalars@,
+            unwrap_points(points@),
+        ),
+{
+    broadcast use group_multiscalar_inputs;
+
+    EdwardsPoint::optional_multiscalar_mul(scalars, points)
+}
+
 /// A trait for variable-time multiscalar multiplication without precomputation.
 pub trait VartimeMultiscalarMul {
     /// The type of point being multiplied, e.g., `RistrettoPoint`.
@@ -416,6 +452,10 @@ pub trait VartimeMultiscalarMul {
     /// The length checks must preserve their items and report equal, exact lengths.
     /// Each point that is present must be well formed. With fewer than 190 inputs, each
     /// scalar must have bit 255 clear. With 190 or more inputs, any scalar is accepted.
+    /// For a slice of scalars and a vector of optional points, the result is `None` exactly
+    /// when some point is `None`, and otherwise the sum of the scalar-point products.
+    /// `check_optional_multiscalar_mul_vec` shows this contract. The general contract is
+    /// explained in `specs/iterator_specs.rs`.
     ///
     /// ```
     /// #[cfg(feature = "alloc")]

@@ -4,10 +4,10 @@
 //!
 //! The methods take any `IntoIterator` arguments, and their items are any type that
 //! implements `Borrow<Scalar>` or `Borrow<Point>`. The contracts use the vstd model of an
-//! iterator. `iter.remaining()` is the sequence of items that `iter` will yield, and
-//! `iter.produces()[k]` says whether item `k` is actually requested. These are
-//! prophecies: they describe what will happen in this run, so they also cover iterators
-//! whose items depend on shared state.
+//! iterator. `iter.remaining()` is the sequence of items that `iter` can return, and
+//! `iter.produces()[k]` says whether `iter` actually returns item `k` instead of getting
+//! stuck, for example in a diverging closure. These are prophecies: they describe this run,
+//! so they also cover iterators whose items depend on shared state.
 //!
 //! `into_iter()`, `next()`, `size_hint()`, `by_ref()` and `borrow()` can all be user code.
 //! The contracts therefore quantify over the possible results of these calls instead of
@@ -16,8 +16,9 @@
 //! A requirement (`valid_msm_sources`, `valid_optional_msm_sources`) says that every
 //! iterator the arguments may produce obeys the iterator laws, has exact length checks,
 //! and yields valid scalars and points. An outcome (`msm_outcome`, `optional_msm_outcome`)
-//! says that the method read every item and that the result is the sum of the products of
-//! the values it borrowed.
+//! says that the iterators returned every item and that the result is the sum of the
+//! products of the borrowed values. The variable-time outcome can instead be `None`, which
+//! means that the point iterator returned a `None` item.
 //!
 //! # The common case
 //!
@@ -56,8 +57,8 @@ pub open spec fn borrowed_values<A: Borrow<B>, B>(items: Seq<A>, values: Seq<B>)
         0 <= k < items.len() ==> #[trigger] call_ensures(Borrow::borrow, (&items[k],), &values[k])
 }
 
-/// Every item that `iter` will yield passes `valid_value` after borrowing.
-/// `iter` must obey the vstd iterator laws, so `remaining()` lists the items it will yield.
+/// Every item that `iter` returns passes `valid_value` after borrowing.
+/// `iter` must obey the vstd iterator laws, so `remaining()` lists the items it can return.
 /// For a slice or a vector, this says that every element satisfies `valid_value`.
 #[verifier::prophetic]
 pub open spec fn valid_msm_items<I: Iterator, T>(
@@ -113,8 +114,8 @@ pub open spec fn valid_msm_sources<P, I: IntoIterator, J: IntoIterator>(
 
 /// The result of `MultiscalarMul::multiscalar_mul`, stated with `sum`.
 /// There are iterators `si` and `pi` returned by the two `into_iter()` calls, and values
-/// `ss` and `ps` returned by `borrow()` on their items, such that the method read every item
-/// and `sum(ss, ps)` holds.
+/// `ss` and `ps` returned by `borrow()` on their items, such that the iterators returned
+/// every item and `sum(ss, ps)` holds.
 /// For slices or vectors, `ss` and `ps` are the elements, so the result is the sum of the
 /// products of the elements.
 #[verifier::prophetic]
@@ -154,7 +155,7 @@ pub open spec fn valid_dispatch_scalar_hint<I: Iterator>(iter: I) -> bool {
             ==> by_ref_preserves_items(after)
 }
 
-/// Every `Some(point)` that `iter` will yield satisfies `valid_point`.
+/// Every `Some(point)` that `iter` returns satisfies `valid_point`.
 /// `None` items are allowed and make the variable-time method return `None`.
 #[verifier::prophetic]
 pub open spec fn valid_optional_points<P, J: Iterator<Item = Option<P>>>(
@@ -200,7 +201,7 @@ pub open spec fn valid_optional_msm_sources<P, I: IntoIterator, J: IntoIterator<
 
 /// The result of the variable-time method on two concrete iterators.
 /// `None` means that the point iterator yielded a `None`.
-/// `Some(r)` means that the method read every item, every point was present, and
+/// `Some(r)` means that the iterators returned every item, every point was present, and
 /// `sum(ss, points, r)` holds, where `ss` are values returned by `borrow()` on the scalars.
 #[verifier::prophetic]
 pub open spec fn optional_iter_outcome<P, I: Iterator, J: Iterator<Item = Option<P>>>(

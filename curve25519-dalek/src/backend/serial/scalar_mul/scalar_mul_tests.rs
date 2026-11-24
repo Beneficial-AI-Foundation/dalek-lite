@@ -1,20 +1,142 @@
-//! Tests for verifying Verus-compatible implementations match original implementations.
-//!
-//! These tests compare the _verus versions of multiscalar multiplication functions
-//! against their original implementations to ensure functional equivalence.
+//! Scalar multiplication tests for the iterator methods and their legacy adapters.
 #[cfg(test)]
 mod tests {
     use crate::constants;
     use crate::edwards::EdwardsPoint;
+    use crate::ristretto::RistrettoPoint;
     use crate::scalar::Scalar;
     use crate::traits::{MultiscalarMul, VartimeMultiscalarMul};
+    use alloc::vec;
     use alloc::vec::Vec;
 
     use super::super::pippenger::Pippenger;
     use super::super::straus::Straus;
 
+    /// Pippenger needs no bound on the scalars: with bit 255 set it still multiplies by the
+    /// integer value. 2^256 - 1 is odd, so it fixes the order-2 point (0, -1); against the
+    /// basepoint it acts as its reduction. Sizes 200, 600 and 900 select windows 6, 7 and 8.
     #[test]
-    fn test_pippenger_original_vs_verus() {
+    fn test_pippenger_scalar_with_bit_255_set() {
+        let s = Scalar { bytes: [0xff; 32] };
+        let t = constants::EIGHT_TORSION[4];
+        let b = constants::ED25519_BASEPOINT_POINT;
+        let b_expected = b * Scalar::from_bytes_mod_order(s.bytes);
+        for size in [200usize, 600, 900] {
+            let mut scalars = vec![Scalar::ZERO; size];
+            scalars[0] = s;
+            for (p, expected) in [(t, t), (b, b_expected)] {
+                let points = vec![Some(p); size];
+                let verus = Pippenger::optional_multiscalar_mul_verus(&scalars, &points);
+                let original =
+                    Pippenger::optional_multiscalar_mul(scalars.iter(), points.iter().copied());
+                assert_eq!(verus, Some(expected), "size={}", size);
+                assert_eq!(original, Some(expected), "size={}", size);
+            }
+        }
+    }
+
+    struct PointWithBorrowFlag<'a>(&'a core::cell::Cell<bool>, EdwardsPoint);
+
+    impl core::borrow::Borrow<EdwardsPoint> for PointWithBorrowFlag<'_> {
+        fn borrow(&self) -> &EdwardsPoint {
+            self.0.set(true);
+            &self.1
+        }
+    }
+
+    /// Borrowing a point changes the scalar that the other iterator yields.
+    #[test]
+    fn multiscalar_with_shared_iterator_state() {
+        use core::{cell::Cell, iter::once};
+
+        let flag = Cell::new(false);
+        let base = constants::ED25519_BASEPOINT_POINT;
+        let scalars = once(()).map(|_| {
+            if flag.get() {
+                Scalar::ONE
+            } else {
+                Scalar::ZERO
+            }
+        });
+        let points = once(PointWithBorrowFlag(&flag, base));
+        assert_eq!(EdwardsPoint::multiscalar_mul(scalars, points), base);
+    }
+
+    #[test]
+    fn straus_borrows_points_before_converting_scalars() {
+        use core::cell::Cell;
+
+        // The direct Straus method accepts iterators with the default size hint (0, None).
+        struct One<T>(Option<T>);
+
+        impl<T> Iterator for One<T> {
+            type Item = T;
+
+            fn next(&mut self) -> Option<T> {
+                self.0.take()
+            }
+
+            fn by_ref(&mut self) -> &mut Self {
+                panic!("direct Straus called by_ref on an input iterator");
+            }
+        }
+
+        struct Scalars<'a>(&'a Cell<bool>);
+
+        impl IntoIterator for Scalars<'_> {
+            type Item = Scalar;
+            type IntoIter = One<Scalar>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                assert!(self.0.get(), "scalar conversion preceded the point borrow");
+                One(Some(Scalar::ONE))
+            }
+        }
+
+        let borrowed = Cell::new(false);
+        let base = constants::ED25519_BASEPOINT_POINT;
+        let points = One(Some(PointWithBorrowFlag(&borrowed, base)));
+        assert_eq!(Straus::multiscalar_mul(Scalars(&borrowed), points), base);
+    }
+
+    #[test]
+    fn multiscalar_respects_overridden_by_ref() {
+        struct SkipFirst<T>(alloc::vec::IntoIter<T>);
+
+        impl<T> Iterator for SkipFirst<T> {
+            type Item = T;
+
+            fn next(&mut self) -> Option<T> {
+                self.0.next()
+            }
+
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.0.size_hint()
+            }
+
+            fn by_ref(&mut self) -> &mut Self {
+                self.next();
+                self
+            }
+        }
+
+        let base = constants::ED25519_BASEPOINT_POINT;
+        let scalars = SkipFirst(alloc::vec![Scalar::ONE, Scalar::from(2u8)].into_iter());
+        let points = SkipFirst(alloc::vec![base, base].into_iter());
+        assert_eq!(EdwardsPoint::multiscalar_mul(scalars, points), base + base);
+
+        // Ristretto checks the length through Map::by_ref(), preserving both input points.
+        let base = constants::RISTRETTO_BASEPOINT_POINT;
+        let points = SkipFirst(vec![base, base + base].into_iter());
+        let scalars = [Scalar::ONE, Scalar::ONE];
+        assert_eq!(
+            RistrettoPoint::multiscalar_mul(scalars, points),
+            base + base + base
+        );
+    }
+
+    #[test]
+    fn test_pippenger_slice_adapter() {
         // Test sizes covering all window width cases:
         // w=6 for size < 500, w=7 for 500 <= size < 800, w=8 for size >= 800
         let test_sizes = [
@@ -45,34 +167,31 @@ mod tests {
                     })
                     .collect();
 
-                // Original implementation
-                let original = Pippenger::optional_multiscalar_mul(
+                let iterator_result = Pippenger::optional_multiscalar_mul(
                     scalars.iter(),
                     points.iter().map(|p| Some(*p)),
                 );
 
-                // Verus implementation
-                let verus = Pippenger::optional_multiscalar_mul_verus(
-                    scalars.iter(),
-                    points.iter().map(|p| Some(*p)),
-                );
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let adapter_result =
+                    Pippenger::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
-                    original.is_some(),
-                    "Original returned None at size={}, round={}",
+                    iterator_result.is_some(),
+                    "Iterator method returned None at size={}, round={}",
                     size,
                     round
                 );
                 assert!(
-                    verus.is_some(),
-                    "Verus returned None at size={}, round={}",
+                    adapter_result.is_some(),
+                    "Slice adapter returned None at size={}, round={}",
                     size,
                     round
                 );
 
                 assert_eq!(
-                    original.unwrap().compress(),
-                    verus.unwrap().compress(),
+                    iterator_result.unwrap().compress(),
+                    adapter_result.unwrap().compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -83,13 +202,13 @@ mod tests {
         }
 
         println!(
-            "Pippenger original vs verus: {} comparisons passed!",
+            "Pippenger iterator and slice adapter: {} comparisons passed!",
             total_comparisons
         );
     }
 
     #[test]
-    fn test_straus_optional_original_vs_verus() {
+    fn test_straus_optional_slice_adapter() {
         // Test various sizes
         let test_sizes = [1, 2, 3, 4, 8, 16, 32, 64, 100, 150];
 
@@ -116,34 +235,30 @@ mod tests {
                     })
                     .collect();
 
-                // Original implementation
-                let original = Straus::optional_multiscalar_mul(
+                let iterator_result = Straus::optional_multiscalar_mul(
                     scalars.iter(),
                     points.iter().map(|p| Some(*p)),
                 );
 
-                // Verus implementation
-                let verus = Straus::optional_multiscalar_mul_verus(
-                    scalars.iter(),
-                    points.iter().map(|p| Some(*p)),
-                );
+                let opt_points: Vec<_> = points.iter().map(|p| Some(*p)).collect();
+                let adapter_result = Straus::optional_multiscalar_mul_verus(&scalars, &opt_points);
 
                 assert!(
-                    original.is_some(),
-                    "Original returned None at size={}, round={}",
+                    iterator_result.is_some(),
+                    "Iterator method returned None at size={}, round={}",
                     size,
                     round
                 );
                 assert!(
-                    verus.is_some(),
-                    "Verus returned None at size={}, round={}",
+                    adapter_result.is_some(),
+                    "Slice adapter returned None at size={}, round={}",
                     size,
                     round
                 );
 
                 assert_eq!(
-                    original.unwrap().compress(),
-                    verus.unwrap().compress(),
+                    iterator_result.unwrap().compress(),
+                    adapter_result.unwrap().compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -154,13 +269,13 @@ mod tests {
         }
 
         println!(
-            "Straus optional original vs verus: {} comparisons passed!",
+            "Straus optional iterator and slice adapter: {} comparisons passed!",
             total_comparisons
         );
     }
 
     #[test]
-    fn test_straus_multiscalar_original_vs_verus() {
+    fn test_straus_multiscalar_iterators_vs_slices() {
         // Test various sizes (constant-time multiscalar_mul)
         let test_sizes = [1, 2, 3, 4, 8, 16, 32, 64, 100, 150];
 
@@ -187,15 +302,13 @@ mod tests {
                     })
                     .collect();
 
-                // Original implementation (via trait)
-                let original = Straus::multiscalar_mul(scalars.iter(), points.iter());
+                let iterator_result = Straus::multiscalar_mul(scalars.iter(), points.iter());
 
-                // Verus implementation
-                let verus = Straus::multiscalar_mul_verus(scalars.iter(), points.iter());
+                let slice_result = Straus::multiscalar_mul_verus(&scalars, &points);
 
                 assert_eq!(
-                    original.compress(),
-                    verus.compress(),
+                    iterator_result.compress(),
+                    slice_result.compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -206,7 +319,7 @@ mod tests {
         }
 
         println!(
-            "Straus multiscalar_mul original vs verus: {} comparisons passed!",
+            "Straus multiscalar_mul iterators vs slices: {} comparisons passed!",
             total_comparisons
         );
     }
@@ -284,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn test_edwards_multiscalar_dispatcher_original_vs_verus() {
+    fn test_edwards_multiscalar_entry_points() {
         // Test sizes (constant-time version only dispatches to Straus)
         let test_sizes = [1, 10, 50, 100, 150, 189];
 
@@ -310,15 +423,14 @@ mod tests {
                     })
                     .collect();
 
-                // Original EdwardsPoint dispatcher (via trait)
-                let original = EdwardsPoint::multiscalar_mul(scalars.iter(), points.iter());
+                let iterator_result = EdwardsPoint::multiscalar_mul(scalars.iter(), points.iter());
 
-                // Verus EdwardsPoint dispatcher
-                let verus = EdwardsPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
+                let adapter_result =
+                    EdwardsPoint::multiscalar_mul_verus(scalars.iter(), points.iter());
 
                 assert_eq!(
-                    original.compress(),
-                    verus.compress(),
+                    iterator_result.compress(),
+                    adapter_result.compress(),
                     "Mismatch at size={}, round={}",
                     size,
                     round
@@ -329,7 +441,7 @@ mod tests {
         }
 
         println!(
-            "Edwards multiscalar_mul dispatcher original vs verus: {} comparisons passed!",
+            "Edwards multiscalar_mul entry points: {} comparisons passed!",
             total_comparisons
         );
     }

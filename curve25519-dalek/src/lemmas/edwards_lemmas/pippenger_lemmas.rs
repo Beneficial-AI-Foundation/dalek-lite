@@ -532,8 +532,9 @@ pub proof fn lemma_pippenger_single(P: (nat, nat), d: Seq<i8>, j: int, w: nat, d
 
         // [pow2(w)] * [r_next]*P == [pow2(w) * r_next]*P
         assert(edwards_scalar_mul(edwards_scalar_mul_signed(P, r_next), pow2(w))
-            == edwards_scalar_mul_signed(P, r_next * (pow2(w) as int))) by {
+            == edwards_scalar_mul_signed(P, pow2(w) as int * r_next)) by {
             lemma_edwards_scalar_mul_signed_composition(P, r_next, pow2(w));
+            vstd::arithmetic::mul::lemma_mul_is_commutative(r_next, pow2(w) as int);
         }
 
         // column_sum(seq![P], seq![d], j, 1) == [d[j]]*P

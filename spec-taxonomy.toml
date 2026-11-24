@@ -170,6 +170,9 @@ ensures_calls_contain = [
     "edwards_scalar_mul",
     "montgomery_scalar_mul",
     "montgomery_scalar_mul_u",
+    "msm_outcome",
+    "optional_msm_outcome",
+    "sum_of_scalar_muls",
     "pippenger_weighted_bucket_sum",
     "pippenger_horner",
     "pow256",
@@ -221,8 +224,6 @@ ensures_calls_contain = [
     "ristretto_decode_y",
     "ristretto_decode_ok",
     "sum_of_ristretto_points",
-    "spec_edwards_from_ristretto_iter",
-    "spec_optional_edwards_from_ristretto_iter",
 ]
 
 # ── 9. Montgomery / X25519 ──

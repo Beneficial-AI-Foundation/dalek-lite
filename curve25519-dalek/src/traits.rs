@@ -178,8 +178,92 @@ pub trait BasepointTable {
     }
 }
 
+#[cfg(verus_keep_ghost)]
+pub use crate::core_assumes::{by_ref_preserves_items, exact_size_hint, lemma_map_exact_size_hint};
+#[cfg(verus_keep_ghost)]
+use crate::specs::iterator_specs::{all_points_some, unwrap_points};
+#[cfg(verus_keep_ghost)]
+pub use crate::specs::iterator_specs::{
+    borrowed_values, msm_outcome, optional_iter_outcome, optional_msm_outcome,
+    valid_dispatch_scalar_hint, valid_msm_iters, valid_msm_sources, valid_optional_msm_sources,
+    valid_optional_points, vartime_dispatch_scalar,
+};
+
+verus! {
+
+/// Borrowing an owned sequence preserves its values.
+pub broadcast proof fn lemma_msm_owned_values<T>(items: Seq<T>, values: Seq<T>)
+    requires
+        #[trigger] borrowed_values(items, values),
+    ensures
+        values == items,
+{
+    assert forall|k: int| 0 <= k < values.len() implies #[trigger] values[k] == items[k] by {
+        crate::core_assumes::axiom_owned_borrow(&items[k], &values[k]);
+    };
+    assert(values =~= items);
+}
+
+/// Borrowing shared references to the elements of a slice preserves its values.
+pub broadcast proof fn lemma_msm_referenced_values<T>(items: Seq<T>, values: Seq<T>)
+    requires
+        #[trigger] borrowed_values(items.as_ref(), values),
+    ensures
+        values == items,
+{
+    assert forall|k: int| 0 <= k < values.len() implies #[trigger] values[k] == items[k] by {
+        crate::core_assumes::axiom_ref_borrow(&items.as_ref()[k], &values[k]);
+    };
+    assert(values =~= items);
+}
+
+/// Facts for verifying multiscalar calls with owned vectors and shared slices.
+#[cfg(feature = "alloc")]
+pub broadcast group group_multiscalar_inputs {
+    crate::core_assumes::axiom_owned_borrow,
+    crate::core_assumes::axiom_ref_borrow,
+    crate::core_assumes::lemma_vec_into_iter_exact_size_hint,
+    crate::core_assumes::lemma_slice_iter_exact_size_hint,
+    lemma_msm_owned_values,
+    lemma_msm_referenced_values,
+}
+
 /// A trait for constant-time multiscalar multiplication without precomputation.
 pub trait MultiscalarMul {
+    /// Admissible input points for this implementation.
+    open spec fn valid_msm_point(point: Self::Point) -> bool {
+        true
+    }
+
+    /// Guarantee needed from the size check on the point iterator.
+    #[verifier::prophetic]
+    open spec fn valid_msm_point_hint<J: Iterator>(points: J) -> bool {
+        crate::core_assumes::by_ref_preserves_items(points)
+    }
+
+    /// Conditions on the iterators and on the scalars and points they yield.
+    #[verifier::prophetic]
+    open spec fn valid_msm_inputs<I: IntoIterator, J: IntoIterator>(
+        scalars: I,
+        points: J,
+    ) -> bool where I::Item: Borrow<Scalar>, J::Item: Borrow<Self::Point> {
+        valid_msm_sources(
+            scalars,
+            points,
+            |p| Self::valid_msm_point(p),
+            |it| Self::valid_msm_point_hint(it),
+        )
+    }
+
+    /// Mathematical relation between the borrowed inputs and the returned point.
+    open spec fn msm_sum(
+        scalars: Seq<Scalar>,
+        points: Seq<Self::Point>,
+        result: Self::Point,
+    ) -> bool {
+        true
+    }
+
     /// The type of point being multiplied, e.g., `RistrettoPoint`.
     type Point;
 
@@ -190,6 +274,15 @@ pub trait MultiscalarMul {
     /// $$
     ///
     /// It is an error to call this function with two iterators of different lengths.
+    ///
+    /// For Edwards and Ristretto points, the verified sum uses the values returned by the
+    /// iterator and `Borrow` calls. The iterators must satisfy vstd's iterator laws.
+    /// The length checks must preserve their items and report equal, exact lengths.
+    /// Each point must be well formed and each scalar must have its top bit clear.
+    /// For slices or vectors, this means equal lengths, well-formed points and scalars with
+    /// bit 255 clear, and the result is the sum of the scalar-point products.
+    /// `check_multiscalar_mul_slices` shows this contract. The general contract is explained in
+    /// `specs/iterator_specs.rs`.
     ///
     /// # Examples
     ///
@@ -229,18 +322,99 @@ pub trait MultiscalarMul {
     /// assert_eq!(A1.compress(), (-A2).compress());
     /// # }
     /// ```
-    fn multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point
-    where
+    fn multiscalar_mul<I, J>(scalars: I, points: J) -> (result: Self::Point) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
-        J::Item: Borrow<Self::Point>;
+        J::Item: Borrow<Self::Point>,
+
+        requires
+            Self::valid_msm_inputs(scalars, points),
+        ensures
+            msm_outcome(scalars, points, |ss, ps| Self::msm_sum(ss, ps, result)),
+    ;
+}
+
+/// Check that a caller using the public iterator method can recover the sum over two slices.
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+#[allow(dead_code)]
+fn check_multiscalar_mul_slices(scalars: &[Scalar], points: &[EdwardsPoint]) -> (result:
+    EdwardsPoint)
+    requires
+        scalars.len() == points.len(),
+        forall|k: int| 0 <= k < scalars.len() ==> (#[trigger] scalars@[k]).bytes[31] <= 127,
+        forall|k: int|
+            0 <= k < points.len() ==> is_well_formed_edwards_point(#[trigger] points@[k]),
+    ensures
+        edwards_point_as_affine(result) == sum_of_scalar_muls(scalars@, points@),
+{
+    broadcast use group_multiscalar_inputs;
+
+    EdwardsPoint::multiscalar_mul(scalars, points)
+}
+
+/// Check that a caller using the public variable-time method can recover the sum over a
+/// slice of scalars and a vector of optional points.
+#[cfg(all(feature = "alloc", verus_keep_ghost))]
+#[allow(dead_code)]
+fn check_optional_multiscalar_mul_vec(
+    scalars: &[Scalar],
+    points: alloc::vec::Vec<Option<EdwardsPoint>>,
+) -> (result: Option<EdwardsPoint>)
+    requires
+        scalars.len() == points.len(),
+        forall|k: int|
+            0 <= k < scalars.len() ==> vartime_dispatch_scalar(
+                #[trigger] scalars@[k],
+                scalars.len() as nat,
+            ),
+        forall|k: int|
+            0 <= k < points.len() && (#[trigger] points@[k]).is_some()
+                ==> is_well_formed_edwards_point(points@[k].unwrap()),
+    ensures
+        result.is_some() <==> all_points_some(points@),
+        result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
+            scalars@,
+            unwrap_points(points@),
+        ),
+{
+    broadcast use group_multiscalar_inputs;
+
+    EdwardsPoint::optional_multiscalar_mul(scalars, points)
 }
 
 /// A trait for variable-time multiscalar multiplication without precomputation.
 pub trait VartimeMultiscalarMul {
     /// The type of point being multiplied, e.g., `RistrettoPoint`.
     type Point;
+
+    /// Scalars accepted by this implementation when there are `n` inputs. Straus requires
+    /// bit 255 to be clear.
+    open spec fn valid_vartime_scalar(s: Scalar, n: nat) -> bool {
+        s.bytes[31] <= 127
+    }
+
+    /// Points accepted when the iterator yields `Some(point)`.
+    open spec fn valid_vartime_point(p: Self::Point) -> bool {
+        true
+    }
+
+    /// Size checks made on the scalar iterator by this implementation.
+    #[verifier::prophetic]
+    open spec fn valid_vartime_scalar_hint<I: Iterator>(si: I) -> bool {
+        valid_dispatch_scalar_hint(si)
+    }
+
+    /// Size check made on the optional point iterator by this implementation.
+    #[verifier::prophetic]
+    open spec fn valid_vartime_point_hint<J: Iterator>(pi: J) -> bool {
+        crate::core_assumes::by_ref_preserves_items(pi)
+    }
+
+    /// Relation between the scalars, the yielded points, and the result inside `Some`.
+    open spec fn vartime_sum(ss: Seq<Scalar>, ps: Seq<Self::Point>, result: Self::Point) -> bool {
+        true
+    }
 
     /// Given an iterator of public scalars and an iterator of
     /// `Option`s of points, compute either `Some(Q)`, where
@@ -253,6 +427,17 @@ pub trait VartimeMultiscalarMul {
     /// involving compressed points.  Accepting `Option<Point>` allows
     /// inlining point decompression into the multiscalar call,
     /// avoiding the need for temporary buffers.
+    ///
+    /// For Edwards and Ristretto points, the verified result uses the values returned by the
+    /// iterator and `Borrow` calls. The iterators must satisfy vstd's iterator laws.
+    /// The length checks must preserve their items and report equal, exact lengths.
+    /// Each point that is present must be well formed. With fewer than 190 inputs, each
+    /// scalar must have bit 255 clear. With 190 or more inputs, any scalar is accepted.
+    /// For a slice of scalars and a vector of optional points, the result is `None` exactly
+    /// when some point is `None`, and otherwise the sum of the scalar-point products.
+    /// `check_optional_multiscalar_mul_vec` shows this contract. The general contract is
+    /// explained in `specs/iterator_specs.rs`.
+    ///
     /// ```
     /// #[cfg(feature = "alloc")]
     /// # {
@@ -297,11 +482,23 @@ pub trait VartimeMultiscalarMul {
     /// assert_eq!(A3, Some(A1+A1));
     /// # }
     /// ```
-    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<Self::Point>
-    where
+    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (result: Option<Self::Point>) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
-        J: IntoIterator<Item = Option<Self::Point>>;
+        J: IntoIterator<Item = Option<Self::Point>>,
+
+        requires
+            valid_optional_msm_sources(
+                scalars,
+                points,
+                |s, n| Self::valid_vartime_scalar(s, n),
+                |p| Self::valid_vartime_point(p),
+                |si| Self::valid_vartime_scalar_hint(si),
+                |pi| Self::valid_vartime_point_hint(pi),
+            ),
+        ensures
+            optional_msm_outcome(scalars, points, result, |ss, ps, r| Self::vartime_sum(ss, ps, r)),
+    ;
 
     /// Given an iterator of public scalars and an iterator of
     /// public points, compute
@@ -350,23 +547,27 @@ pub trait VartimeMultiscalarMul {
     /// assert_eq!(A1.compress(), (-A2).compress());
     /// # }
     /// ```
-    #[cfg_attr(verus_keep_ghost, verifier::external)]
-    fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point
-    where
+    // Not verified. Verus does not allow `external` on one trait item, so the body is trusted
+    // and `requires false` keeps verified code from calling it.
+    #[verifier::external_body]
+    fn vartime_multiscalar_mul<I, J>(scalars: I, points: J) -> Self::Point where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator,
         J::Item: Borrow<Self::Point>,
         Self::Point: Clone,
+
+        requires
+            false,
     {
         Self::optional_multiscalar_mul(
             scalars,
             points.into_iter().map(|P| Some(P.borrow().clone())),
-        )
-        .expect("should return some point")
+        ).expect("should return some point")
     }
 }
 
+} // verus!
 /// A trait for variable-time multiscalar multiplication with precomputation.
 ///
 /// A general multiscalar multiplication with precomputation can be written as

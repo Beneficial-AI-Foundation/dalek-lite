@@ -11,8 +11,13 @@
 
 use alloc::vec::Vec;
 
+use super::iterator::collect_optional_map;
+#[cfg(verus_keep_ghost)]
+use crate::specs::iterator_specs::{borrowed_values, optional_iter_outcome};
 use core::borrow::Borrow;
 use core::cmp::Ordering;
+#[cfg(verus_keep_ghost)]
+use vstd::std_specs::iter::{map_postcondition, zip_iter_snd, zip_postcondition, IteratorSpec};
 
 use crate::backend::serial::curve_models::ProjectiveNielsPoint;
 use crate::edwards::EdwardsPoint;
@@ -40,18 +45,10 @@ use vstd::arithmetic::div_mod::lemma_small_mod;
 #[cfg(verus_keep_ghost)]
 use vstd::arithmetic::power2::{lemma2_to64, lemma_pow2_pos, pow2};
 
-// Re-export spec functions from iterator_specs for use by other modules
 #[cfg(verus_keep_ghost)]
-pub use crate::specs::iterator_specs::{
-    all_points_some, spec_optional_points_from_iter, spec_points_from_iter, spec_scalars_from_iter,
-    unwrap_points,
-};
+use crate::specs::iterator_specs::{all_points_some, unwrap_points};
 
-// Re-export runtime helpers from iterator_specs
-#[cfg(feature = "alloc")]
-pub use crate::specs::iterator_specs::{
-    collect_optional_points_from_iter, collect_points_from_iter, collect_scalars_from_iter,
-};
+verus! {
 
 /// Implements a version of Pippenger's algorithm.
 ///
@@ -94,35 +91,37 @@ pub use crate::specs::iterator_specs::{
 /// This algorithm is adapted from section 4 of <https://eprint.iacr.org/2012/549.pdf>.
 pub struct Pippenger;
 
-#[cfg_attr(verus_keep_ghost, verifier::external)]
 impl VartimeMultiscalarMul for Pippenger {
     type Point = EdwardsPoint;
 
-    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> Option<EdwardsPoint>
-    where
+    open spec fn valid_vartime_scalar(s: Scalar, n: nat) -> bool {
+        true
+    }
+
+    open spec fn valid_vartime_point(p: EdwardsPoint) -> bool {
+        is_well_formed_edwards_point(p)
+    }
+
+    #[verifier::prophetic]
+    open spec fn valid_vartime_scalar_hint<I: Iterator>(si: I) -> bool {
+        crate::core_assumes::by_ref_preserves_items(si)
+    }
+
+    #[verifier::prophetic]
+    open spec fn valid_vartime_point_hint<J: Iterator>(pi: J) -> bool {
+        true
+    }
+
+    open spec fn vartime_sum(ss: Seq<Scalar>, ps: Seq<EdwardsPoint>, r: EdwardsPoint) -> bool {
+        edwards_msm_result(ss, ps, r)
+    }
+
+    fn optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (out: Option<EdwardsPoint>) where
         I: IntoIterator,
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
-        /*
-         * VERUS SPEC (intended):
-         *   requires
-         *       scalars.len() == points.len(),
-         *       forall|i| points[i].is_some() ==> is_well_formed_edwards_point(points[i].unwrap()),
-         *   ensures
-         *       result.is_some() <==> all_points_some(points),
-         *       result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
-         *       result.is_some() ==> edwards_point_as_affine(result.unwrap())
-         *           == sum_of_scalar_muls(scalars, unwrap_points(points)),
-         *
-         * NOTE: Verus doesn't support IntoIterator with I::Item projections.
-         * The verified version `optional_multiscalar_mul_verus` below uses:
-         *   - Iterator bounds instead of IntoIterator
-         *   - spec_scalars_from_iter / spec_optional_points_from_iter to convert
-         *     iterators to logical sequences (see specs/iterator_specs.rs)
-         */
-    {
-        use crate::traits::Identity;
-
+     {
+        /* <ORIGINAL CODE>
         let mut scalars = scalars.into_iter();
         let size = scalars.by_ref().size_hint().0;
 
@@ -136,11 +135,26 @@ impl VartimeMultiscalarMul for Pippenger {
         } else {
             8
         };
+        </ORIGINAL CODE> */
+        let mut scalar_iter = scalars.into_iter();
+        let ghost si = scalar_iter;
+        assert(call_ensures(I::into_iter, (scalars,), si));
+        assert(crate::core_assumes::by_ref_preserves_items(si));
+        let hint = crate::core_assumes::by_ref_size_hint(&mut scalar_iter);
+        assert(crate::core_assumes::by_ref_hint_outcome(si, scalar_iter, hint));
+        assert(scalar_iter.obeys_prophetic_iter_laws());
+        assert(scalar_iter.remaining() == si.remaining() && scalar_iter.produces()
+            == si.produces());
+        let size = hint.0;
+        let w: usize = if size < 500 {
+            6
+        } else if size < 800 {
+            7
+        } else {
+            8
+        };
 
-        let max_digit: usize = 1 << w;
-        let digits_count: usize = Scalar::to_radix_2w_size_hint(w);
-        let buckets_count: usize = max_digit / 2; // digits are signed+centered hence 2^w/2, excluding 0-th bucket
-
+        /* <ORIGINAL CODE>
         // Collect optimized scalars and points in buffers for repeated access
         // (scanning the whole set per digit position).
         let scalars = scalars.map(|s| s.borrow().as_radix_2w(w));
@@ -153,84 +167,100 @@ impl VartimeMultiscalarMul for Pippenger {
             .zip(points)
             .map(|(s, maybe_p)| maybe_p.map(|p| (s, p)))
             .collect::<Option<Vec<_>>>()?;
-
-        // Prepare 2^w/2 buckets.
-        // buckets[i] corresponds to a multiplication factor (i+1).
-        let mut buckets: Vec<_> = (0..buckets_count)
-            .map(|_| EdwardsPoint::identity())
-            .collect();
-
-        let mut columns = (0..digits_count).rev().map(|digit_index| {
-            // Clear the buckets when processing another digit.
-            for bucket in &mut buckets {
-                *bucket = EdwardsPoint::identity();
-            }
-
-            // Iterate over pairs of (point, scalar)
-            // and add/sub the point to the corresponding bucket.
-            // Note: if we add support for precomputed lookup tables,
-            // we'll be adding/subtracting point premultiplied by `digits[i]` to buckets[0].
-            for (digits, pt) in scalars_points.iter() {
-                // Widen digit so that we don't run into edge cases when w=8.
-                let digit = digits[digit_index] as i16;
-                match digit.cmp(&0) {
-                    Ordering::Greater => {
-                        let b = (digit - 1) as usize;
-                        buckets[b] = (&buckets[b] + pt).as_extended();
-                    }
-                    Ordering::Less => {
-                        let b = (-digit - 1) as usize;
-                        buckets[b] = (&buckets[b] - pt).as_extended();
-                    }
-                    Ordering::Equal => {}
+        </ORIGINAL CODE> */
+        // Convert the scalar and point of each pair lazily. Collection stops at the first missing point.
+        let digits_for = |item: I::Item| -> (d: [i8; 64])
+            ensures
+                exists|s: Scalar| #[trigger]
+                    call_ensures(Borrow::borrow, (&item,), &s) && radix_digits_for(d, s, w),
+            {
+                let s = item.borrow();
+                assert(call_ensures(Borrow::borrow, (&item,), s));
+                let d = s.as_radix_2w(w);
+                assert(radix_digits_for(d, *s, w));
+                d
+            };
+        let niels_for_point = |point: Option<EdwardsPoint>| -> (niels: Option<
+            ProjectiveNielsPoint,
+        >)
+            requires
+                point.is_some() ==> is_well_formed_edwards_point(point.unwrap()),
+            ensures
+                niels.is_some() == point.is_some(),
+                niels.is_some() ==> niels_for(niels.unwrap(), point.unwrap()),
+            {
+                match point {
+                    Some(p) => {
+                        proof {
+                            lemma_unfold_edwards(p);
+                        }
+                        Some(p.as_projective_niels())
+                    },
+                    None => None,
                 }
-            }
-
-            // Add the buckets applying the multiplication factor to each bucket.
-            // The most efficient way to do that is to have a single sum with two running sums:
-            // an intermediate sum from last bucket to the first, and a sum of intermediate sums.
-            //
-            // For example, to add buckets 1*A, 2*B, 3*C we need to add these points:
-            //   C
-            //   C B
-            //   C B A   Sum = C + (C+B) + (C+B+A)
-            let mut buckets_intermediate_sum = buckets[buckets_count - 1];
-            let mut buckets_sum = buckets[buckets_count - 1];
-            for i in (0..(buckets_count - 1)).rev() {
-                buckets_intermediate_sum += buckets[i];
-                buckets_sum += buckets_intermediate_sum;
-            }
-
-            buckets_sum
-        });
-
-        // Take the high column as an initial value to avoid wasting time doubling the identity element in `fold()`.
-        let hi_column = columns.next().expect("should have more than zero digits");
-
-        Some(columns.fold(hi_column, |total, p| total.mul_by_pow_2(w as u32) + p))
+            };
+        let result = Self::collect_pairs(
+            scalar_iter,
+            points,
+            digits_for,
+            niels_for_point,
+            Ghost(w),
+        );
+        let ghost pi = choose|pi: J::IntoIter| #[trigger]
+            call_ensures(J::into_iter, (points,), pi) && prepared_pair_outcome(
+                scalar_iter,
+                pi,
+                result,
+                w,
+            );
+        assert(prepared_pair_outcome(scalar_iter, pi, result, w));
+        let pairs = match result {
+            None => {
+                assert(optional_iter_outcome(
+                    si,
+                    pi,
+                    None,
+                    |ss, ps, r| Self::vartime_sum(ss, ps, r),
+                ));
+                return None;
+            },
+            Some(v) => v,
+        };
+        proof {
+            lemma_prepared_outcome(scalar_iter, pi, pairs, w);
+        }
+        let total = Self::sum_columns(pairs, w);
+        assert(optional_iter_outcome(
+            scalar_iter,
+            pi,
+            Some(total),
+            |ss, ps, r| Self::vartime_sum(ss, ps, r),
+        ));
+        assert(optional_iter_outcome(
+            si,
+            pi,
+            Some(total),
+            |ss, ps, r| Self::vartime_sum(ss, ps, r),
+        ));
+        Some(total)
     }
 }
 
-// ============================================================================
-// Verus-compatible version
-// ============================================================================
+spec fn radix_digits_for(d: [i8; 64], s: Scalar, w: usize) -> bool {
+    let dc = sp_digit_count(w as nat);
+    &&& is_valid_radix_2w(&d, w as nat, dc)
+    &&& reconstruct_radix_2w(d@.take(dc as int), w as nat) == scalar_as_nat(&s) as int
+}
 
-verus! {
+spec fn niels_for(n: ProjectiveNielsPoint, p: EdwardsPoint) -> bool {
+    &&& is_valid_projective_niels_point(n)
+    &&& fe51_limbs_bounded(&n.Y_plus_X, 54)
+    &&& fe51_limbs_bounded(&n.Y_minus_X, 54)
+    &&& fe51_limbs_bounded(&n.Z, 54)
+    &&& fe51_limbs_bounded(&n.T2d, 54)
+    &&& projective_niels_corresponds_to_edwards(n, p)
+}
 
-/*
- * VERIFIED PIPPENGER MULTISCALAR MULTIPLICATION
- * ==============================================
- *
- * Verus limitations addressed in this _verus version:
- * - IntoIterator with I::Item projections -> use Iterator bounds instead
- * - Iterator adapters (map, zip) with closures -> use explicit while loops
- * - Op-assignment (+=, -=) on EdwardsPoint -> use explicit a = a + b
- *
- * TESTING: `scalar_mul_tests.rs` contains tests that generate random scalars and points,
- * run both original and _verus implementations, and assert equality of results.
- * This is evidence of functional equivalence between the original and refactored versions:
- *     forall scalars s, points p: optional_multiscalar_mul(s, p) == optional_multiscalar_mul_verus(s, p)
- */
 impl Pippenger {
     /// Initialize `count` buckets with the identity point.
     /// Replaces: `(0..count).map(|_| EdwardsPoint::identity()).collect()`
@@ -288,7 +318,6 @@ impl Pippenger {
     ///     buckets_sum
     /// });
     /// ```
-    /// Extracted as a helper because Verus does not support closures with map/fold.
     fn process_column(
         buckets: &mut Vec<EdwardsPoint>,
         scalars_points: &Vec<([i8; 64], ProjectiveNielsPoint)>,
@@ -563,206 +592,373 @@ impl Pippenger {
         column
     }
 
-    /// Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels). Returns None if any point is None.
-    /// Replaces: `scalars.zip(points).map(|(s, maybe_p)| maybe_p.map(|p| (s.as_radix_2w(w), p.as_projective_niels()))).collect::<Option<Vec<_>>>()`
-    fn pair_scalars_points(
-        scalars_vec: &Vec<Scalar>,
-        points_vec: &Vec<Option<EdwardsPoint>>,
-        w: usize,
-    ) -> (result: Option<Vec<([i8; 64], ProjectiveNielsPoint)>>)
-        requires
-            scalars_vec@.len() == points_vec@.len(),
-            6 <= w <= 8,
-            forall|k: int|
-                #![auto]
-                0 <= k < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[k]),
-            forall|k: int|
-                0 <= k < points_vec@.len() && (#[trigger] points_vec@[k]).is_some()
-                    ==> is_well_formed_edwards_point(points_vec@[k].unwrap()),
-        ensures
-            result.is_some() <==> all_points_some(points_vec@),
-            result.is_some() ==> ({
-                let sp = result.unwrap();
-                let dc = if w < 8 {
-                    (256 + (w as int) - 1) / (w as int)
-                } else {
-                    (256 + (w as int) - 1) / (w as int) + 1
-                };
-                &&& sp@.len() == scalars_vec@.len()
-                &&& forall|k: int|
-                    0 <= k < sp@.len() ==> {
-                        &&& is_valid_radix_2w(&(#[trigger] sp@[k]).0, w as nat, dc as nat)
-                        &&& reconstruct_radix_2w(sp@[k].0@.take(dc), w as nat) == scalar_as_nat(
-                            &scalars_vec@[k],
-                        ) as int
-                    }
-                &&& forall|k: int|
-                    0 <= k < sp@.len() ==> is_valid_projective_niels_point((#[trigger] sp@[k]).1)
-                &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.Y_plus_X, 54)
-                &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.Y_minus_X, 54)
-                &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.Z, 54)
-                &&& forall|k: int|
-                    0 <= k < sp@.len() ==> fe51_limbs_bounded(&(#[trigger] sp@[k]).1.T2d, 54)
-                &&& forall|k: int|
-                    0 <= k < sp@.len() ==> projective_niels_corresponds_to_edwards(
-                        (#[trigger] sp@[k]).1,
-                        points_vec@[k].unwrap(),
-                    )
-            }),
-    {
-        let mut scalars_points: Vec<([i8; 64], ProjectiveNielsPoint)> = Vec::new();
-        let mut idx: usize = 0;
-        let min_len = if scalars_vec.len() < points_vec.len() {
-            scalars_vec.len()
-        } else {
-            points_vec.len()
-        };
-        proof {
-            assert(scalars_vec@.len() == points_vec@.len());
-        }
-        while idx < min_len
-            invariant
-                0 <= idx <= min_len,
-                min_len == scalars_vec@.len(),
-                scalars_vec@.len() == points_vec@.len(),
-                scalars_points@.len() == idx as int,
-                6 <= w <= 8,
-                forall|k: int|
-                    #![auto]
-                    0 <= k < scalars_vec@.len() ==> is_canonical_scalar(&scalars_vec@[k]),
-                forall|k: int|
-                    0 <= k < points_vec@.len() && (#[trigger] points_vec@[k]).is_some()
-                        ==> is_well_formed_edwards_point(points_vec@[k].unwrap()),
-                forall|k: int| 0 <= k < idx ==> (#[trigger] points_vec@[k]).is_some(),
-                forall|k: int|
-                    0 <= k < idx ==> ({
-                        let dc = if w < 8 {
-                            (256 + (w as int) - 1) / (w as int)
-                        } else {
-                            (256 + (w as int) - 1) / (w as int) + 1
-                        };
-                        &&& is_valid_radix_2w(
-                            &(#[trigger] scalars_points@[k]).0,
-                            w as nat,
-                            dc as nat,
-                        )
-                        &&& reconstruct_radix_2w(scalars_points@[k].0@.take(dc), w as nat)
-                            == scalar_as_nat(&scalars_vec@[k]) as int
-                    }),
-                forall|k: int|
-                    0 <= k < idx ==> is_valid_projective_niels_point(
-                        (#[trigger] scalars_points@[k]).1,
-                    ),
-                forall|k: int|
-                    0 <= k < idx ==> fe51_limbs_bounded(
-                        &(#[trigger] scalars_points@[k]).1.Y_plus_X,
-                        54,
-                    ),
-                forall|k: int|
-                    0 <= k < idx ==> fe51_limbs_bounded(
-                        &(#[trigger] scalars_points@[k]).1.Y_minus_X,
-                        54,
-                    ),
-                forall|k: int|
-                    0 <= k < idx ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[k]).1.Z, 54),
-                forall|k: int|
-                    0 <= k < idx ==> fe51_limbs_bounded(&(#[trigger] scalars_points@[k]).1.T2d, 54),
-                forall|k: int|
-                    0 <= k < idx ==> projective_niels_corresponds_to_edwards(
-                        (#[trigger] scalars_points@[k]).1,
-                        points_vec@[k].unwrap(),
-                    ),
-            decreases min_len - idx,
-        {
-            match points_vec[idx] {
-                Some(P) => {
-                    proof {
-                        lemma_unfold_edwards(P);
-                    }
-                    let digits = scalars_vec[idx].as_radix_2w(w);
-                    let niels = P.as_projective_niels();
-                    scalars_points.push((digits, niels));
-                },
-                None => {
-                    proof {
-                        assert(!all_points_some(points_vec@));
-                    }
-                    return None;
-                },
-            }
-            idx = idx + 1;
-        }
-        proof {
-            assert(forall|k: int|
-                0 <= k < points_vec@.len() ==> (#[trigger] points_vec@[k]).is_some());
-            assert(all_points_some(points_vec@));
-        }
-        Some(scalars_points)
-    }
-
-    /// Verus-compatible version of optional_multiscalar_mul.
-    /// Computes sum(scalars[i] * points[i]) for all i where points[i] is Some.
-    pub fn optional_multiscalar_mul_verus<S, I, J>(scalars: I, points: J) -> (result: Option<
-        EdwardsPoint,
-    >) where S: Borrow<Scalar>, I: Iterator<Item = S>, J: Iterator<Item = Option<EdwardsPoint>>
+    /// Slice adapter for the variable-time iterator method.
+    /// Computes sum(scalars[i] * points[i]) if every points[i] is Some.
+    /// The scalars can be any 256-bit values: the radix-2^w digits for w >= 6 need no bound.
+    pub fn optional_multiscalar_mul_verus(
+        scalars: &[Scalar],
+        points: &[Option<EdwardsPoint>],
+    ) -> (result: Option<EdwardsPoint>)
         requires
     // Same number of scalars and points
 
-            spec_scalars_from_iter::<S, I>(scalars).len() == spec_optional_points_from_iter::<J>(
-                points,
-            ).len(),
+            scalars@.len() == points@.len(),
             // All input points (when Some) must be well-formed
             forall|i: int|
-                0 <= i < spec_optional_points_from_iter::<J>(points).len() && (
-                #[trigger] spec_optional_points_from_iter::<J>(points)[i]).is_some()
-                    ==> is_well_formed_edwards_point(
-                    spec_optional_points_from_iter::<J>(points)[i].unwrap(),
-                ),
+                0 <= i < points@.len() && (#[trigger] points@[i]).is_some()
+                    ==> is_well_formed_edwards_point(points@[i].unwrap()),
         ensures
     // Result is Some iff all input points are Some
 
-            result.is_some() <==> all_points_some(spec_optional_points_from_iter::<J>(points)),
+            result.is_some() <==> all_points_some(points@),
             // If result is Some, it is a well-formed Edwards point
             result.is_some() ==> is_well_formed_edwards_point(result.unwrap()),
             // Semantic correctness: result = sum(scalars[i] * points[i])
             result.is_some() ==> edwards_point_as_affine(result.unwrap()) == sum_of_scalar_muls(
-                spec_scalars_from_iter::<S, I>(scalars),
-                unwrap_points(spec_optional_points_from_iter::<J>(points)),
+                scalars@,
+                unwrap_points(points@),
             ),
     {
-        use crate::traits::Identity;
+        broadcast use crate::traits::group_multiscalar_inputs;
 
-        /* Ghost vars to capture spec values before iterator consumption */
-        let ghost spec_scalars = spec_scalars_from_iter::<S, I>(scalars);
-        let ghost spec_points = spec_optional_points_from_iter::<J>(points);
+        let si = scalars.iter();
+        let source = points.iter();
+        let copy = |p: &Option<EdwardsPoint>| -> (r: Option<EdwardsPoint>)
+            ensures
+                r == *p,
+            { *p };
+        let pi = source.map(copy);
+        proof {
+            vstd::std_specs::iter::map_postcondition(source, copy, pi);
+        }
+        let result = Self::optional_multiscalar_mul(si, pi);
+        proof {
+            if result.is_some() {
+                assert(pi.remaining() =~= points@);
+                let ss = choose|ss: Seq<Scalar>| #[trigger]
+                    borrowed_values(si.remaining(), ss) && Self::vartime_sum(
+                        ss,
+                        pi.remaining().map(|_, p: Option<EdwardsPoint>| p.unwrap()),
+                        result.unwrap(),
+                    );
+                crate::traits::lemma_msm_referenced_values(scalars@, ss);
+            } else {
+                let k = choose|k: int|
+                    0 <= k < pi.remaining().len() && pi.produces()[k] && (
+                    #[trigger] pi.remaining()[k]).is_none();
+                assert(points@[k].is_none());
+            }
+        }
+        result
+    }
+}
 
-        /* <ORIGINAL CODE>
-    let mut scalars = scalars.into_iter();
-    let size = scalars.by_ref().size_hint().0;
-    </ORIGINAL CODE> */
-        /* <REFACTORED CODE>
-         * Collect iterators to Vec (Verus doesn't support size_hint on &mut).
-         * Get size from collected Vec.
-         */
-        let scalars_vec = collect_scalars_from_iter(scalars);
-        let size = scalars_vec.len();
-        let points_vec = collect_optional_points_from_iter(points);
-        /* </REFACTORED CODE> */
+/// Connect the column sum to the particular scalar and point values produced by these iterators.
+proof fn lemma_prepared_outcome<I: Iterator, J: Iterator<Item = Option<EdwardsPoint>>>(
+    si: I,
+    pi: J,
+    pairs: Vec<([i8; 64], ProjectiveNielsPoint)>,
+    w: usize,
+) where I::Item: Borrow<Scalar>
+    requires
+        6 <= w <= 8,
+        prepared_pair_outcome(si, pi, Some(pairs), w),
+        crate::specs::iterator_specs::valid_optional_points(
+            pi,
+            |p| is_well_formed_edwards_point(p),
+        ),
+    ensures
+        pippenger_input_valid(
+            pairs@,
+            sp_points_affine(pairs@),
+            sp_digits_seqs(pairs@),
+            w as nat,
+            sp_digit_count(w as nat),
+        ),
+        forall|total: EdwardsPoint|
+            is_well_formed_edwards_point(total) && (#[trigger] edwards_point_as_affine(total))
+                == pippenger_horner(
+                sp_points_affine(pairs@),
+                sp_digits_seqs(pairs@),
+                0,
+                w as nat,
+                sp_digit_count(w as nat),
+            ) ==> optional_iter_outcome(
+                si,
+                pi,
+                Some(total),
+                |ss, ps, r| Pippenger::vartime_sum(ss, ps, r),
+            ),
+{
+    let ss = choose|ss: Seq<Scalar>| #[trigger]
+        borrowed_values(si.remaining(), ss) && forall|k: int|
+            0 <= k < pairs@.len() ==> radix_digits_for((#[trigger] pairs@[k]).0, ss[k], w);
+    let pts = unwrap_points(pi.remaining());
+    assert forall|k: int| 0 <= k < pairs@.len() implies {
+        &&& is_well_formed_edwards_point(#[trigger] pts[k])
+        &&& niels_for(pairs@[k].1, pts[k])
+        &&& radix_digits_for(pairs@[k].0, ss[k], w)
+    } by {
+        assert(niels_for(pairs@[k].1, pi.remaining()[k].unwrap()));
+        assert(pi.produces()[k] && pi.remaining()[k].is_some());
+    }
+    lemma_prepared_sum(pairs@, ss, pts, w);
+    assert forall|k: int| 0 <= k < si.remaining().len() implies #[trigger] si.produces()[k] by {
+        assert(niels_for(pairs@[k].1, pts[k]));
+    }
+    assert forall|k: int| 0 <= k < pi.remaining().len() implies #[trigger] pi.produces()[k]
+        && pi.remaining()[k].is_some() by {
+        assert(niels_for(pairs@[k].1, pts[k]));
+    }
+    assert forall|total: EdwardsPoint|
+        is_well_formed_edwards_point(total) && (#[trigger] edwards_point_as_affine(total))
+            == pippenger_horner(
+            sp_points_affine(pairs@),
+            sp_digits_seqs(pairs@),
+            0,
+            w as nat,
+            sp_digit_count(w as nat),
+        ) implies optional_iter_outcome(
+        si,
+        pi,
+        Some(total),
+        |ss, ps, r| Pippenger::vartime_sum(ss, ps, r),
+    ) by {
+        assert(Pippenger::vartime_sum(ss, pts, total));
+    }
+}
 
-        /* UNCHANGED FROM ORIGINAL: Digit width selection based on input size */
-        // Digit width in bits. As digit width grows,
-        // number of point additions goes down, but amount of
-        // buckets and bucket additions grows exponentially.
-        let w = if size < 500 {
-            6
-        } else if size < 800 {
-            7
-        } else {
-            8
+/// Evaluating the prepared digit columns gives the sum of the original scalar-point products.
+proof fn lemma_prepared_sum(
+    pairs: Seq<([i8; 64], ProjectiveNielsPoint)>,
+    ss: Seq<Scalar>,
+    pts: Seq<EdwardsPoint>,
+    w: usize,
+)
+    requires
+        6 <= w <= 8,
+        ss.len() == pts.len(),
+        pairs.len() == pts.len(),
+        forall|k: int|
+            #![trigger pts[k]]
+            #![trigger pairs[k]]
+            0 <= k < pairs.len() ==> is_well_formed_edwards_point(pts[k]) && niels_for(
+                pairs[k].1,
+                pts[k],
+            ) && radix_digits_for(pairs[k].0, ss[k], w),
+    ensures
+        pippenger_input_valid(
+            pairs,
+            sp_points_affine(pairs),
+            sp_digits_seqs(pairs),
+            w as nat,
+            sp_digit_count(w as nat),
+        ),
+        pippenger_horner(
+            sp_points_affine(pairs),
+            sp_digits_seqs(pairs),
+            0,
+            w as nat,
+            sp_digit_count(w as nat),
+        ) == sum_of_scalar_muls(ss, pts),
+{
+    let affine = sp_points_affine(pairs);
+    let ds = sp_digits_seqs(pairs);
+    let dc = sp_digit_count(w as nat);
+    assert(dc <= 64) by {
+        assert(sp_digit_count(6) == 43 && sp_digit_count(7) == 37 && sp_digit_count(8) == 33)
+            by (compute);
+        assert(w == 6 || w == 7 || w == 8);
+    }
+    assert forall|k: int| 0 <= k < pairs.len() implies {
+        &&& #[trigger] affine[k] == edwards_point_as_affine(pts[k])
+        &&& affine[k].0 < p() && affine[k].1 < p()
+    } by {
+        lemma_projective_niels_affine_equals_edwards_affine(pairs[k].1, pts[k]);
+        lemma_edwards_point_as_affine_canonical(pts[k]);
+    }
+    assert forall|k: int| 0 <= k < ds.len() implies {
+        &&& (#[trigger] ds[k]).len() >= dc
+        &&& reconstruct_radix_2w_from(ds[k], w as nat, 0, dc) == scalar_as_nat(&ss[k]) as int
+    } by {
+        assert(radix_digits_for(pairs[k].0, ss[k], w));
+        lemma_reconstruct_radix_2w_from_equals_reconstruct(ds[k], w as nat, dc);
+    }
+    lemma_pippenger_horner_correct(ss, pts, affine, ds, w as nat, dc);
+}
+
+#[verifier::prophetic]
+spec fn prepared_pair_outcome<I: Iterator, J: Iterator<Item = Option<EdwardsPoint>>>(
+    si: I,
+    pi: J,
+    out: Option<Vec<([i8; 64], ProjectiveNielsPoint)>>,
+    w: usize,
+) -> bool where I::Item: Borrow<Scalar> {
+    match out {
+        None => exists|k: int|
+            0 <= k < pi.remaining().len() && pi.produces()[k] && (
+            #[trigger] pi.remaining()[k]).is_none(),
+        Some(v) => {
+            &&& v@.len() == si.remaining().len() && v@.len() == pi.remaining().len()
+            &&& forall|k: int|
+                0 <= k < v@.len() ==> si.produces()[k] && pi.produces()[k]
+                    && pi.remaining()[k].is_some() && niels_for(
+                    (#[trigger] v@[k]).1,
+                    pi.remaining()[k].unwrap(),
+                )
+            &&& exists|ss: Seq<Scalar>| #[trigger]
+                borrowed_values(si.remaining(), ss) && forall|k: int|
+                    0 <= k < v@.len() ==> radix_digits_for((#[trigger] v@[k]).0, ss[k], w)
+        },
+    }
+}
+
+impl Pippenger {
+    /// Zip both lazy maps and collect until the first missing point.
+    fn collect_pairs<I, J, D, N>(
+        si: I,
+        points: J,
+        digits_for: D,
+        niels_for_point: N,
+        Ghost(w): Ghost<usize>,
+    ) -> (out: Option<Vec<([i8; 64], ProjectiveNielsPoint)>>) where
+        I: Iterator,
+        I::Item: Borrow<Scalar>,
+        J: IntoIterator<Item = Option<EdwardsPoint>>,
+        D: FnMut(I::Item) -> [i8; 64],
+        N: FnMut(Option<EdwardsPoint>) -> Option<ProjectiveNielsPoint>,
+
+        requires
+            si.obeys_prophetic_iter_laws(),
+            forall|x: I::Item| #[trigger] digits_for.requires((x,)),
+            forall|x: I::Item, d: [i8; 64]| #[trigger]
+                digits_for.ensures((x,), d) ==> exists|s: Scalar| #[trigger]
+                    call_ensures(Borrow::borrow, (&x,), &s) && radix_digits_for(d, s, w),
+            forall|pi: J::IntoIter| #[trigger]
+                call_ensures(J::into_iter, (points,), pi) ==> {
+                    &&& pi.obeys_prophetic_iter_laws()
+                    &&& pi.remaining().len() == si.remaining().len()
+                    &&& forall|k: int|
+                        0 <= k < pi.remaining().len() && pi.produces()[k]
+                            ==> niels_for_point.requires((#[trigger] pi.remaining()[k],))
+                },
+            forall|p: Option<EdwardsPoint>, n: Option<ProjectiveNielsPoint>| #[trigger]
+                niels_for_point.ensures((p,), n) ==> {
+                    &&& n.is_some() == p.is_some()
+                    &&& n.is_some() ==> niels_for(n.unwrap(), p.unwrap())
+                },
+        ensures
+            exists|pi: J::IntoIter| #[trigger]
+                call_ensures(J::into_iter, (points,), pi) && prepared_pair_outcome(si, pi, out, w),
+    {
+        let digits = si.map(digits_for);
+        proof {
+            map_postcondition(si, digits_for, digits);
+        }
+        let pi = points.into_iter();
+        assert(call_ensures(J::into_iter, (points,), pi));
+        let niels = pi.map(niels_for_point);
+        proof {
+            map_postcondition(pi, niels_for_point, niels);
+        }
+        let zipped = digits.zip(niels);
+        proof {
+            zip_postcondition(digits, niels, zipped);
+            assert(zip_iter_snd(zipped) == niels);
+            assert(zipped.remaining().len() == si.remaining().len());
+            assert forall|k: int| 0 <= k < zipped.remaining().len() implies {
+                &&& #[trigger] zipped.remaining()[k] == (
+                    digits.remaining()[k],
+                    niels.remaining()[k],
+                )
+                &&& zipped.produces()[k] == (digits.produces()[k] && niels.produces()[k])
+            } by {}
+        }
+        let pair = |entry: ([i8; 64], Option<ProjectiveNielsPoint>)| -> (out: Option<
+            ([i8; 64], ProjectiveNielsPoint),
+        >)
+            ensures
+                out == (if entry.1.is_some() {
+                    Some((entry.0, entry.1.unwrap()))
+                } else {
+                    None
+                }),
+            {
+                match entry.1 {
+                    Some(p) => Some((entry.0, p)),
+                    None => None,
+                }
+            };
+        let pairs = match collect_optional_map(zipped, pair) {
+            Some(v) => v,
+            None => {
+                proof {
+                    let k = choose|k: int|
+                        0 <= k < zipped.remaining().len() && zipped.produces()[k] && pair.ensures(
+                            (#[trigger] zipped.remaining()[k],),
+                            None,
+                        );
+                    assert(niels.remaining()[k].is_none());
+                    assert(pi.remaining()[k].is_none());
+                    assert(prepared_pair_outcome(si, pi, None, w));
+                }
+                return None;
+            },
         };
+        let ghost ss = Seq::new(
+            pairs@.len(),
+            |k: int|
+                choose|s: Scalar| #[trigger]
+                    call_ensures(Borrow::borrow, (&si.remaining()[k],), &s) && radix_digits_for(
+                        pairs@[k].0,
+                        s,
+                        w,
+                    ),
+        );
+        proof {
+            assert forall|k: int| 0 <= k < pairs@.len() implies {
+                &&& #[trigger] si.produces()[k]
+                &&& pi.produces()[k]
+                &&& pi.remaining()[k].is_some()
+                &&& call_ensures(Borrow::borrow, (&si.remaining()[k],), &ss[k])
+                &&& radix_digits_for(pairs@[k].0, ss[k], w)
+                &&& niels_for(pairs@[k].1, pi.remaining()[k].unwrap())
+            } by {
+                assert(pair.ensures((zipped.remaining()[k],), Some(pairs@[k])));
+                assert(niels.remaining()[k] == Some(pairs@[k].1));
+                assert(digits_for.ensures((si.remaining()[k],), pairs@[k].0));
+            }
+        }
+        assert(borrowed_values(si.remaining(), ss));
+        assert(prepared_pair_outcome(si, pi, Some(pairs), w));
+        Some(pairs)
+    }
+
+    /// Sum the columns of the prepared radix digits and projective Niels points.
+    fn sum_columns(scalars_points: Vec<([i8; 64], ProjectiveNielsPoint)>, w: usize) -> (result:
+        EdwardsPoint)
+        requires
+            6 <= w <= 8,
+            pippenger_input_valid(
+                scalars_points@,
+                sp_points_affine(scalars_points@),
+                sp_digits_seqs(scalars_points@),
+                w as nat,
+                sp_digit_count(w as nat),
+            ),
+        ensures
+            is_well_formed_edwards_point(result),
+            edwards_point_as_affine(result) == pippenger_horner(
+                sp_points_affine(scalars_points@),
+                sp_digits_seqs(scalars_points@),
+                0,
+                w as nat,
+                sp_digit_count(w as nat),
+            ),
+    {
+        let ghost pts_affine = sp_points_affine(scalars_points@);
+        let ghost digits_seqs = sp_digits_seqs(scalars_points@);
+        let ghost dc = sp_digit_count(w as nat);
 
         /* UNCHANGED FROM ORIGINAL: Bucket configuration */
         let max_digit: usize = 1 << w;
@@ -797,76 +993,7 @@ impl Pippenger {
             assert(buckets_count > 0);
         }
 
-        if digits_count == 0 || buckets_count == 0 {
-            proof {
-                assert(false);
-            }
-            return None;
-        }
-        // Collect optimized scalars and points in buffers for repeated access
-        // (scanning the whole set per digit position).
-        /* <ORIGINAL CODE>
-    let scalars = scalars.map(|s| s.borrow().as_radix_2w(w));
-    let points = points.into_iter().map(|p| p.map(|P| P.as_projective_niels()));
-    let scalars_points = scalars.zip(points).map(|(s, maybe_p)| maybe_p.map(|p| (s, p))).collect::<Option<Vec<_>>>()?;
-    </ORIGINAL CODE> */
-        /* <REFACTORED CODE>
-         * Pair scalars (as radix-2^w digits) with points (as ProjectiveNiels).
-         * Returns None if any point is None.
-         */
-        // pair_scalars_points returns Option<Vec<...>>; the match destructures it:
-        // Some(sp) extracts the Vec, None arm returns early from the function.
-
-        let scalars_points = match Pippenger::pair_scalars_points(&scalars_vec, &points_vec, w) {
-            Some(sp) => sp,
-            None => {
-                proof {
-                    assert(!all_points_some(spec_points));
-                }
-                return None;
-            },
-        };
-        proof {
-            assert(all_points_some(spec_points));
-        }
-        /* </REFACTORED CODE> */
-
-        // Ghost state setup
-        let ghost n = scalars_points@.len() as int;
-        let ghost unwrapped_points: Seq<EdwardsPoint> = unwrap_points(spec_points);
-        let ghost pts_affine: Seq<(nat, nat)> = points_to_affine(unwrapped_points);
-        let ghost digits_seqs: Seq<Seq<i8>> = Seq::new(n as nat, |i: int| scalars_points@[i].0@);
-        let ghost dc: nat = if w < 8 {
-            ((256 + (w as int) - 1) / (w as int)) as nat
-        } else {
-            ((256 + (w as int) - 1) / (w as int) + 1) as nat
-        };
-
-        proof {
-            // Connect exec digits_count to spec dc
-            if w == 6 {
-                assert(261int / 6 == 43);
-            } else if w == 7 {
-                assert(262int / 7 == 37);
-            } else {
-                assert(263int / 8 == 32);
-            }
-            assert(digits_count as nat == dc);
-
-            assert forall|k: int| 0 <= k < n implies (#[trigger] pts_affine[k]).0 < p()
-                && pts_affine[k].1 < p() by {
-                lemma_edwards_point_as_affine_canonical(unwrapped_points[k]);
-            };
-            assert forall|k: int| 0 <= k < n implies {
-                &&& (#[trigger] digits_seqs[k]).len() >= dc as int
-                &&& reconstruct_radix_2w_from(digits_seqs[k], w as nat, 0, dc) == scalar_as_nat(
-                    &scalars_vec@[k],
-                ) as int
-            } by {
-                lemma_reconstruct_radix_2w_from_equals_reconstruct(digits_seqs[k], w as nat, dc);
-            };
-        }
-
+        assert(digits_count as nat == dc);
         // Prepare 2^w/2 buckets.
         // buckets[i] corresponds to a multiplication factor (i+1).
         /* <ORIGINAL CODE>
@@ -900,20 +1027,6 @@ impl Pippenger {
             }
             assert(buckets_count as int == pow2((w - 1) as nat));
 
-            // Establish niels affine == pts_affine (needed by pippenger_input_valid)
-            assert forall|k: int| 0 <= k < n implies projective_niels_point_as_affine_edwards(
-                (#[trigger] scalars_points@[k]).1,
-            ) == pts_affine[k] by {
-                lemma_projective_niels_affine_equals_edwards_affine(
-                    scalars_points@[k].1,
-                    points_vec@[k].unwrap(),
-                );
-            };
-
-            // Bridge: spec functions equal caller's ghost vars
-            assert(sp_points_affine(scalars_points@) =~= pts_affine);
-            assert(sp_digits_seqs(scalars_points@) =~= digits_seqs);
-            assert(sp_digit_count(w as nat) == dc);
         }
 
         /* <ORIGINAL CODE>
@@ -987,11 +1100,6 @@ impl Pippenger {
             )) by {
                 reveal_with_fuel(pippenger_horner, 2);
                 lemma_edwards_scalar_mul_identity(pow2(w as nat));
-                // Re-establish pts_affine canonical (needed by lemma_column_sum_canonical)
-                assert forall|k: int| 0 <= k < n implies (#[trigger] pts_affine[k]).0 < p()
-                    && pts_affine[k].1 < p() by {
-                    lemma_edwards_point_as_affine_canonical(unwrapped_points[k]);
-                };
                 lemma_column_sum_canonical(
                     pts_affine,
                     digits_seqs,
@@ -1051,31 +1159,7 @@ impl Pippenger {
         }
         /* </REFACTORED CODE> */
 
-        // Final proof: pippenger_horner(pts, digs, 0, w, dc) == sum_of_scalar_muls(scalars, points)
-        proof {
-            assert forall|k: int| 0 <= k < pts_affine.len() implies #[trigger] pts_affine[k]
-                == edwards_point_as_affine(unwrapped_points[k]) by {};
-
-            assert forall|k: int| 0 <= k < digits_seqs.len() implies {
-                &&& (#[trigger] digits_seqs[k]).len() >= dc as int
-                &&& reconstruct_radix_2w_from(digits_seqs[k], w as nat, 0, dc) == scalar_as_nat(
-                    &spec_scalars[k],
-                ) as int
-            } by {
-                lemma_reconstruct_radix_2w_from_equals_reconstruct(digits_seqs[k], w as nat, dc);
-            };
-
-            lemma_pippenger_horner_correct(
-                spec_scalars,
-                unwrapped_points,
-                pts_affine,
-                digits_seqs,
-                w as nat,
-                dc,
-            );
-        }
-
-        Some(total)
+        total
     }
 }
 

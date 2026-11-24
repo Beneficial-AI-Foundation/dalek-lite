@@ -371,8 +371,9 @@ pub trait VartimeMultiscalarMul {
     /// The type of point being multiplied, e.g., `RistrettoPoint`.
     type Point;
 
-    /// Scalars accepted by this implementation. Straus requires bit 255 to be clear.
-    open spec fn valid_vartime_scalar(s: Scalar) -> bool {
+    /// Scalars accepted by this implementation when there are `n` inputs. Straus requires
+    /// bit 255 to be clear.
+    open spec fn valid_vartime_scalar(s: Scalar, n: nat) -> bool {
         s.bytes[31] <= 127
     }
 
@@ -409,6 +410,13 @@ pub trait VartimeMultiscalarMul {
     /// involving compressed points.  Accepting `Option<Point>` allows
     /// inlining point decompression into the multiscalar call,
     /// avoiding the need for temporary buffers.
+    ///
+    /// For Edwards and Ristretto points, the verified result uses the values returned by the
+    /// iterator and `Borrow` calls. The iterators must satisfy vstd's iterator laws.
+    /// The length checks must preserve their items and report equal, exact lengths.
+    /// Each point that is present must be well formed. With fewer than 190 inputs, each
+    /// scalar must have bit 255 clear. With 190 or more inputs, any scalar is accepted.
+    ///
     /// ```
     /// #[cfg(feature = "alloc")]
     /// # {
@@ -462,7 +470,7 @@ pub trait VartimeMultiscalarMul {
             valid_optional_msm_sources(
                 scalars,
                 points,
-                |s| Self::valid_vartime_scalar(s),
+                |s, n| Self::valid_vartime_scalar(s, n),
                 |p| Self::valid_vartime_point(p),
                 |si| Self::valid_vartime_scalar_hint(si),
                 |pi| Self::valid_vartime_point_hint(pi),

@@ -100,6 +100,12 @@ pub open spec fn msm_outcome<P, I: IntoIterator, J: IntoIterator>(
         }
 }
 
+/// The variable-time Edwards dispatcher sends fewer than 190 inputs to Straus, which needs
+/// bit 255 clear, and the rest to Pippenger, which accepts any scalar.
+pub open spec fn vartime_dispatch_scalar(s: Scalar, n: nat) -> bool {
+    n < 190 ==> s.bytes[31] <= 127
+}
+
 /// Edwards checks the scalar length before dispatch. Pippenger checks it again to choose a window.
 #[verifier::prophetic]
 pub open spec fn valid_dispatch_scalar_hint<I: Iterator>(iter: I) -> bool {
@@ -122,18 +128,21 @@ pub open spec fn valid_optional_points<P, J: Iterator<Item = Option<P>>>(
 }
 
 /// Each source must produce admissible iterators, and every pair has equal remaining lengths.
+/// `valid_scalar(s, n)` is the condition on each scalar `s` when there are `n` inputs.
 #[verifier::prophetic]
 pub open spec fn valid_optional_msm_sources<P, I: IntoIterator, J: IntoIterator<Item = Option<P>>>(
     scalars: I,
     points: J,
-    valid_scalar: spec_fn(Scalar) -> bool,
+    valid_scalar: spec_fn(Scalar, nat) -> bool,
     valid_point: spec_fn(P) -> bool,
     scalar_hint: spec_fn(I::IntoIter) -> bool,
     point_hint: spec_fn(J::IntoIter) -> bool,
 ) -> bool where I::Item: Borrow<Scalar> {
     &&& forall|si: I::IntoIter| #[trigger]
-        call_ensures(I::into_iter, (scalars,), si) ==> valid_msm_items(si, valid_scalar)
-            && scalar_hint(si)
+        call_ensures(I::into_iter, (scalars,), si) ==> valid_msm_items(
+            si,
+            |s: Scalar| valid_scalar(s, si.remaining().len()),
+        ) && scalar_hint(si)
     &&& forall|pi: J::IntoIter| #[trigger]
         call_ensures(J::into_iter, (points,), pi) ==> valid_optional_points(pi, valid_point)
             && point_hint(pi)

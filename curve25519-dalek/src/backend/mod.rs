@@ -107,7 +107,7 @@ pub fn pippenger_optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (resul
         valid_optional_msm_sources(
             scalars,
             points,
-            |s| Pippenger::valid_vartime_scalar(s),
+            |s, n| Pippenger::valid_vartime_scalar(s, n),
             |p| Pippenger::valid_vartime_point(p),
             |si| Pippenger::valid_vartime_scalar_hint(si),
             |pi| Pippenger::valid_vartime_point_hint(pi),
@@ -260,7 +260,7 @@ pub fn straus_optional_multiscalar_mul<I, J>(scalars: I, points: J) -> (result: 
         valid_optional_msm_sources(
             scalars,
             points,
-            |s| Straus::valid_vartime_scalar(s),
+            |s, n| Straus::valid_vartime_scalar(s, n),
             |p| Straus::valid_vartime_point(p),
             |si| Straus::valid_vartime_scalar_hint(si),
             |pi| Straus::valid_vartime_point_hint(pi),

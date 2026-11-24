@@ -3664,6 +3664,11 @@ fn multiscalar_mul_projected<I: Iterator, J: Iterator, F: FnMut(J::Item) -> Edwa
 impl VartimeMultiscalarMul for RistrettoPoint {
     type Point = RistrettoPoint;
 
+    /// The same condition as for `EdwardsPoint`, which does the multiplication.
+    open spec fn valid_vartime_scalar(s: Scalar, n: nat) -> bool {
+        crate::specs::iterator_specs::vartime_dispatch_scalar(s, n)
+    }
+
     open spec fn valid_vartime_point(point: RistrettoPoint) -> bool {
         is_well_formed_edwards_point(point.0)
     }
@@ -3726,7 +3731,7 @@ fn optional_multiscalar_mul_projected<I, J, F>(
     requires
         crate::specs::iterator_specs::valid_msm_items(
             si,
-            |s| RistrettoPoint::valid_vartime_scalar(s),
+            |s| RistrettoPoint::valid_vartime_scalar(s, si.remaining().len()),
         ),
         crate::specs::iterator_specs::valid_dispatch_scalar_hint(si),
         crate::specs::iterator_specs::valid_optional_points(

@@ -94,7 +94,7 @@ pub struct Pippenger;
 impl VartimeMultiscalarMul for Pippenger {
     type Point = EdwardsPoint;
 
-    open spec fn valid_vartime_scalar(s: Scalar) -> bool {
+    open spec fn valid_vartime_scalar(s: Scalar, n: nat) -> bool {
         true
     }
 

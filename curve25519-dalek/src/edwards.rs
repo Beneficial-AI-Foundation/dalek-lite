@@ -2794,6 +2794,12 @@ impl MultiscalarMul for EdwardsPoint {
 impl VartimeMultiscalarMul for EdwardsPoint {
     type Point = EdwardsPoint;
 
+    /// Fewer than 190 inputs go to Straus, which needs bit 255 clear. Pippenger accepts any
+    /// scalar.
+    open spec fn valid_vartime_scalar(s: Scalar, n: nat) -> bool {
+        crate::specs::iterator_specs::vartime_dispatch_scalar(s, n)
+    }
+
     open spec fn valid_vartime_point(point: EdwardsPoint) -> bool {
         is_well_formed_edwards_point(point)
     }

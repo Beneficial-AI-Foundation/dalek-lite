@@ -234,6 +234,32 @@ fn check_pippenger_any_scalar() {
     ));
 }
 
+/// The variable-time Edwards method accepts scalars with bit 255 set when there are at least
+/// 190 inputs, because it then uses Pippenger.
+fn check_edwards_vartime_large_input_any_scalar() {
+    // 2^256 - 1: bit 255 set.
+    let t = Scalar { bytes: [255u8;32] };
+    let p = EdwardsPoint::identity();
+    let mut scalars: Vec<Scalar> = Vec::new();
+    let mut opt_points: Vec<Option<EdwardsPoint>> = Vec::new();
+    let mut i: usize = 0;
+    while i < 190
+        invariant
+            i <= 190,
+            scalars@.len() == i,
+            opt_points@.len() == i,
+            forall|k: int| 0 <= k < i ==> #[trigger] scalars@[k] == t,
+            forall|k: int| 0 <= k < i ==> #[trigger] opt_points@[k] == Some(p),
+        decreases 190 - i,
+    {
+        scalars.push(t);
+        opt_points.push(Some(p));
+        i += 1;
+    }
+    let r = EdwardsPoint::optional_multiscalar_mul(scalars.as_slice(), opt_points);
+    assert(r.is_some());
+}
+
 /// The public dispatchers accept a scalar above the group order when bit 255 is clear.
 fn check_unreduced_scalars() {
     // 2^255 - 1: above the group order, bit 255 clear.
